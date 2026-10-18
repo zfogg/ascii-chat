@@ -174,7 +174,7 @@ test("switching from media retains its frame while the camera opens", async () =
     ready = resolve;
   });
   render(<MirrorPage />);
-  const toggle = screen.getByRole("button", { name: "Toggle Media Playback" });
+  const toggle = screen.getByRole("button", { name: "Toggle Media" });
   fireEvent.click(toggle);
   expect(backend.suspended).toHaveBeenLastCalledWith(true);
   expect(screen.getByTestId("renderer").textContent).toBe("frame");

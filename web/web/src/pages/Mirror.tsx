@@ -343,15 +343,6 @@ export function MirrorPage() {
                 : fileMedia.fileName,
               statusControls: (
                 <>
-                  {fileMedia.kind && (
-                    <button
-                      className="px-3 py-2 bg-terminal-8 rounded"
-                      aria-pressed={fileActive}
-                      onClick={toggleMedia}
-                    >
-                      Toggle Media Playback
-                    </button>
-                  )}
                   {fileMedia.loading && (
                     <button onClick={stopPlayback}>Cancel</button>
                   )}
@@ -360,17 +351,31 @@ export function MirrorPage() {
                     fileMedia.kind !== "image" && (
                       <>
                         <button
-                          className="px-3 py-2 bg-terminal-4 text-terminal-bg rounded"
-                          onClick={fileMedia.togglePause}
+                          className={`px-3 py-2 text-black rounded ${
+                            fileMedia.ended || fileMedia.paused
+                              ? "bg-green-500 hover:bg-green-600"
+                              : "bg-orange-500 hover:bg-orange-600"
+                          }`}
+                          onClick={
+                            fileMedia.ended
+                              ? fileMedia.restart
+                              : fileMedia.togglePause
+                          }
                         >
-                          {fileMedia.paused ? "Play" : "Pause"}
+                          {fileMedia.ended
+                            ? "Restart"
+                            : fileMedia.paused
+                              ? "Play"
+                              : "Pause"}
                         </button>
-                        <button
-                          className="px-3 py-2 bg-terminal-8 rounded"
-                          onClick={fileMedia.restart}
-                        >
-                          Restart
-                        </button>
+                        {!fileMedia.ended && (
+                          <button
+                            className="px-3 py-2 bg-terminal-8 rounded"
+                            onClick={fileMedia.restart}
+                          >
+                            Restart
+                          </button>
+                        )}
                       </>
                     )}
                   {fileMedia.kind === "video" && (
@@ -404,6 +409,15 @@ export function MirrorPage() {
                         />
                       </label>
                     </>
+                  )}
+                  {fileMedia.kind && (
+                    <button
+                      className="px-3 py-2 bg-terminal-8 rounded"
+                      aria-pressed={fileActive}
+                      onClick={toggleMedia}
+                    >
+                      Toggle Media
+                    </button>
                   )}
                 </>
               ),

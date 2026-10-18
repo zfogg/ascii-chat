@@ -128,6 +128,7 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/session/render.c
     ${CMAKE_SOURCE_DIR}/src/common/session/settings.c
     ${CMAKE_SOURCE_DIR}/src/common/session/audio.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/av_state.c
     ${CMAKE_SOURCE_DIR}/src/common/session/participant.c
     ${CMAKE_SOURCE_DIR}/src/common/session/host.c
     ${CMAKE_SOURCE_DIR}/src/common/session/keyboard_handler.c

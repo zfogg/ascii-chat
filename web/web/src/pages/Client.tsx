@@ -673,7 +673,9 @@ export function ClientPage({
       if (!client) throw new Error("Connect before resuming the audio stream");
       client.sendPacket(PacketType.STREAM_START, buildStreamStartPacket(true));
       audioStreamStartedRef.current = true;
-      await audioRef.current.startCapture();
+      const pipeline = audioRef.current;
+      await pipeline.startCapture();
+      if (audioRef.current !== pipeline || !pipeline.captureActive) return;
       micEnabledRef.current = true;
       setMicEnabled(true);
     } catch (error) {

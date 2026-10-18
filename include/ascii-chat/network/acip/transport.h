@@ -362,6 +362,16 @@ static inline bool acip_transport_has_pending_data(acip_transport_t *transport) 
  */
 acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, crypto_context_t *crypto_ctx);
 
+/**
+ * @brief Create a TCP transport that owns its connected socket.
+ * @param name Debug name for the transport
+ * @param sockfd Connected socket; ownership transfers only on success
+ * @param crypto_ctx Optional borrowed crypto context
+ * @return Transport instance or NULL on error
+ * Closing or destroying the transport closes the socket.
+ */
+acip_transport_t *acip_tcp_transport_create_owned(const char *name, socket_t sockfd, crypto_context_t *crypto_ctx);
+
 /** Override the automatic kernel copy-avoidance policy for this TCP transport.
  * Large Linux encrypted sends may pin pages; other platforms fall back to vectors.
  * Copy avoidance is attempted automatically and disabled after copied completions.

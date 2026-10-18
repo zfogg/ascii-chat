@@ -182,11 +182,57 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   return session;
 }
 
+// Join media before releasing the active transport; failed joins retain ownership.
+static asciichat_error_t release_participant_transport(discovery_session_t *session) {
+  session_participant_t *participant = session->participant_ctx;
+  if (!participant)
+    return ASCIICHAT_OK;
+  session_participant_stop_audio(participant);
+  session_participant_stop_video(participant);
+  return session_participant_set_transport(participant, NULL, SESSION_TRANSPORT_BORROWED);
+}
+
+static void release_host_control_transport(discovery_session_t *session) {
+  if (session->host_control_transport && session->host_control_ownership == SESSION_TRANSPORT_OWNED)
+    acip_transport_destroy(session->host_control_transport);
+  session->host_control_transport = NULL;
+  session->host_control_ownership = SESSION_TRANSPORT_BORROWED;
+}
+
+// Discovery retains the host control connection when media switches to WebRTC.
+static asciichat_error_t select_participant_transport(discovery_session_t *session, acip_transport_t *transport) {
+  session_participant_t *participant = session->participant_ctx;
+  bool restart_video = session_participant_is_video_active(participant);
+  bool restart_audio = session_participant_is_audio_active(participant);
+  session_participant_stop_audio(participant);
+  session_participant_stop_video(participant);
+  acip_transport_t *previous = session_participant_get_transport(participant);
+  if (previous && acip_transport_get_type(previous) == ACIP_TRANSPORT_TCP && !session->host_control_transport) {
+    asciichat_error_t result = session_participant_take_transport(
+        participant, &session->host_control_transport, &session->host_control_ownership);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
+  asciichat_error_t result = session_participant_set_transport(participant, transport, SESSION_TRANSPORT_OWNED);
+  if (result != ASCIICHAT_OK)
+    return result;
+  // Ownership has transferred; a capture failure must not make the caller free the transport.
+  if (restart_video && session_participant_start_video(participant) != ASCIICHAT_OK)
+    log_warn("Failed to restart video after switching participant transport");
+  if (restart_audio && session_participant_start_audio(participant) != ASCIICHAT_OK)
+    log_warn("Failed to restart audio after switching participant transport");
+  return ASCIICHAT_OK;
+}
+
 void discovery_session_destroy(discovery_session_t *session) {
   if (!session) {
     SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
     return;
   }
+
+  if (release_participant_transport(session) != ASCIICHAT_OK)
+    return;
+  release_host_control_transport(session);
 
   // Close ACDS connection
   if (session->acds_transport) {
@@ -791,13 +837,15 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
     }
   } else if (session->participant_ctx) {
     // We are a participant - set transport for ourselves
-    asciichat_error_t result = session_participant_set_transport(session->participant_ctx, transport);
+    asciichat_error_t result = select_participant_transport(session, transport);
     if (result == ASCIICHAT_OK) {
       log_info("✓ Participant: Successfully switched to WebRTC transport");
       log_info("  TCP connection remains open as control/signaling channel");
       log_info("  Media frames will now be transmitted over WebRTC DataChannel");
     } else {
       log_error("✗ Participant: Failed to set WebRTC transport: %d", result);
+      acip_transport_destroy(transport);
+      return;
     }
   } else {
     session_participant_config_t pconfig = {
@@ -809,7 +857,8 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
     };
     session->participant_ctx = session_participant_create(&pconfig);
     if (!session->participant_ctx ||
-        session_participant_set_transport(session->participant_ctx, transport) != ASCIICHAT_OK) {
+        select_participant_transport(session, transport) != ASCIICHAT_OK) {
+      acip_transport_destroy(transport);
       set_error(session, ERROR_INVALID_STATE, "Failed to attach WebRTC participant transport");
       return;
     }
@@ -1843,11 +1892,9 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
       }
 
       log_warn("WebRTC peer lost connectivity; resetting its transport and renegotiating");
-      if (session->participant_ctx) {
-        acip_transport_t *transport = session_participant_get_transport(session->participant_ctx);
-        session_participant_set_transport(session->participant_ctx, NULL);
-        acip_transport_destroy(transport);
-      }
+      asciichat_error_t release_result = release_participant_transport(session);
+      if (release_result != ASCIICHAT_OK)
+        return release_result;
 
       // The transport has now closed its borrowed peer objects. The manager
       // can release the failed peer before creating the next offer.
@@ -2366,9 +2413,14 @@ asciichat_error_t discovery_session_connect_to_future_host(discovery_session_t *
 
   // Destroy old participant context if present
   if (session->participant_ctx) {
+    asciichat_error_t release_result = release_participant_transport(session);
+    if (release_result != ASCIICHAT_OK)
+      return release_result;
     session_participant_destroy(session->participant_ctx);
     session->participant_ctx = NULL;
   }
+
+  release_host_control_transport(session);
 
   // Create new participant context for the future host
   session_participant_config_t pconfig = {
