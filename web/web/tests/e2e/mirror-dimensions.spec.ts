@@ -1,5 +1,75 @@
 import { expect, test, type Page } from "@playwright/test";
 
+test("worker uses the same cell size when switching fonts", async ({
+  page,
+}) => {
+  await page.goto("/tests/e2e/raster-worker.html");
+  await page.waitForFunction(() => "render" in window);
+  for (const matrix of [false, true, false]) {
+    const result = await page.evaluate(async (matrixEnabled) => {
+      const render = (
+        window as unknown as {
+          render(
+            matrix: boolean,
+          ): Promise<{ width: number; height: number; lit: number }>;
+        }
+      ).render;
+      return render(matrixEnabled);
+    }, matrix);
+    expect(result.width).toBe(200);
+    expect(result.height).toBe(200);
+    expect(result.lit).toBeGreaterThan(100);
+  }
+});
+
+test("Matrix and regular mode fit the same automatic grid", async ({
+  page,
+}) => {
+  for (const viewport of [
+    { width: 1280, height: 900 },
+    { width: 1000, height: 750 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const grids = [];
+    for (const matrix of [false, true]) {
+      // Keep Settings closed so both fonts have identical drawable space.
+      await page.goto(
+        `/mirror?test2&playing=true${matrix ? "&animationEnabled=true&matrixRain=true" : ""}`,
+      );
+      await expect(
+        page.getByRole("button", { name: "Stop", exact: true }),
+      ).toBeVisible();
+      await expect
+        .poll(async () => (await canvasState(page)).height)
+        .toBeGreaterThan(300);
+      await expect
+        .poll(() =>
+          page.locator("canvas.ascii-canvas").evaluate((element) => {
+            const canvas = element as HTMLCanvasElement;
+            const pixels = canvas
+              .getContext("2d")!
+              .getImageData(0, 0, canvas.width, canvas.height).data;
+            let lit = 0;
+            for (let i = 0; i < pixels.length; i += 4)
+              if (pixels[i + 1]! > 12) lit++;
+            return lit;
+          }),
+        )
+        .toBeGreaterThan(1000);
+      const grid = (await page.getByText(/^\d+x\d+$/).innerText())
+        .split("x")
+        .map(Number);
+      const canvas = await canvasState(page);
+      grids.push(grid);
+      // Check actual raster metrics as well as the reported grid, so canvas
+      // scaling cannot disguise oversized glyphs or sparse output.
+      expect(canvas.width / grid[0]!).toBe(10);
+      expect(canvas.height / grid[1]!).toBe(20);
+    }
+    expect(grids[1]).toEqual(grids[0]);
+  }
+});
+
 test("automatic grid fills the canvas when toggling Matrix animation", async ({
   page,
 }, testInfo) => {

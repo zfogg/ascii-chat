@@ -56,11 +56,11 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 
 /* Browser terminal rendering reads the embedded font directly from WASM memory. */
 const unsigned char *get_font_default_ptr(void) {
-  return g_font_default;
+  return GET_OPTION(matrix_rain) ? g_font_matrix_resurrected : g_font_default;
 }
 
 unsigned int get_font_default_size(void) {
-  return (unsigned int)g_font_default_size;
+  return (unsigned int)(GET_OPTION(matrix_rain) ? g_font_matrix_resurrected_size : g_font_default_size);
 }
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer.h>

@@ -470,10 +470,6 @@ set(WEB_SRC_CLIENT
     ${LIB_ROOT}/ringbuffer.c
     ${LIB_ROOT}/util/aspect_ratio.c
     ${LIB_ROOT}/platform/wasm/stubs/crypto.c # Client-only stubs for known-hosts and prompts unavailable in browsers
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/server.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/protocol.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/crypto.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/keepalive.c
 )
 
 # Create WASM client module

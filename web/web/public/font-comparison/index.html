@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>Matrix font — before and after</title
+  ><style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #0d1117;
+      color: #f0f4fa;
+      font:
+        16px system-ui,
+        sans-serif;
+      padding: 28px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+    }
+    p {
+      color: #a9b6c5;
+      margin: 0 0 22px;
+    }
+    a {
+      color: #78baff;
+    }
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    article {
+      background: #161e29;
+      border: 1px solid #303d4e;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    header {
+      padding: 18px 20px;
+    }
+    h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+    strong {
+      color: #74e6ac;
+    }
+    .detail {
+      color: #b7c2ce;
+    }
+    img {
+      width: 100%;
+      display: block;
+      border-top: 1px solid #303d4e;
+    }
+    .links {
+      margin-top: 20px;
+      display: flex;
+      gap: 24px;
+    }
+  </style>
+  <h1>Matrix now matches regular mode’s character density</h1>
+  <p>
+    Same 1280 × 900 browser viewport and synthetic source. Settings closed for
+    identical drawable space. Regular mode: 128 columns × 37 rows.
+  </p>
+  <div class="comparison">
+    <article>
+      <header>
+        <h2>Before · 80 × 23</h2>
+        <div class="detail">
+          12 pt · 16 × 32 px cells · 1,840 character positions
+        </div>
+      </header>
+      <a href="matrix-before-page.png"
+        ><img
+          src="matrix-before-page.png"
+          alt="Old Matrix rendering with 80 columns and 23 rows"
+      /></a>
+    </article>
+    <article>
+      <header>
+        <h2>After · <strong>128 × 37</strong></h2>
+        <div class="detail">
+          7.5 pt · 10 × 20 px cells · 4,736 character positions
+        </div>
+      </header>
+      <a href="matrix-after-page.png"
+        ><img
+          src="matrix-after-page.png"
+          alt="New Matrix rendering with 128 columns and 37 rows"
+      /></a>
+    </article>
+  </div>
+  <div class="links">
+    <a href="/mirror?test2&playing=true&animationEnabled=true&matrixRain=true"
+      >Open live Matrix preview →</a
+    ><a href="regular-page.png">Regular mode reference →</a>
+  </div>
+  <p style="margin-top: 16px">
+    Both screenshots use freshly rebuilt WASM. Matrix fits 2.57× as many
+    characters; regular mode is unchanged.
+  </p>
+</html>

@@ -1,16 +1,26 @@
 import type { MirrorModule } from "../../wasm/mirror";
 import type { RasterRequest } from "./RasterWorker";
-import { BROWSER_RASTER_FONT_SIZE_PT } from "./rasterConfig";
+import { browserRasterFontSize } from "./rasterConfig";
 
 // The published client module supports workers and exports the same C terminal
 // renderer as Mirror. UI composition and keyboard handling stay in SessionUi.
 const initialized: Promise<MirrorModule> = (async () => {
   const url = new URL("/wasm/client.js", self.location.href).href;
   const { default: factory } = await import(/* @vite-ignore */ url);
-  return factory({
+  const module = await factory({
+    getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
     locateFile: (name: string) =>
       new URL(`/wasm/${name}`, self.location.href).href,
   });
+  const args = module._malloc(7);
+  try {
+    module.stringToUTF8("client", args, 7);
+    if (module._client_init_with_args(args))
+      throw new Error("Cannot initialize raster worker options");
+  } finally {
+    module._free(args);
+  }
+  return module;
 })();
 let renderer = 0;
 let signature = "";
@@ -27,11 +37,13 @@ self.onmessage = (event: MessageEvent<RasterRequest>) => {
         const config = module._malloc(544),
           out = module._malloc(4);
         try {
+          if (module._set_matrix_rain?.(matrix ? 1 : 0) !== 0)
+            throw new Error("Cannot select raster worker font");
           module.HEAPU8.fill(0, config, config + 544);
           const view = new DataView(module.HEAPU8.buffer, config, 544);
           view.setInt32(0, cols, true);
           view.setInt32(4, rows, true);
-          view.setFloat64(8, BROWSER_RASTER_FONT_SIZE_PT, true);
+          view.setFloat64(8, browserRasterFontSize(matrix), true);
           if (matrix) module.stringToUTF8("Matrix", config + 20, 512);
           view.setInt32(536, module._get_font_default_ptr(), true);
           view.setInt32(540, module._get_font_default_size(), true);
