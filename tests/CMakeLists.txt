@@ -1219,3 +1219,57 @@ if(BUILD_TESTS)
     add_test(NAME participant-media COMMAND test-participant-media)
     set_tests_properties(participant-media PROPERTIES LABELS "integration" TIMEOUT 60)
 endif()
+# Owned plaintext admission, real backend saturation, and codec recovery.
+if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
+    foreach(outbound_fixture backpressure backpressure-live)
+        string(REPLACE "-" "_" outbound_source "${outbound_fixture}")
+        if(outbound_fixture STREQUAL "backpressure")
+            set(outbound_source backpressure_test)
+        endif()
+        add_executable(test-${outbound_fixture} EXCLUDE_FROM_ALL
+            ${CMAKE_SOURCE_DIR}/tests/standalone/network/${outbound_source}.c)
+        target_link_libraries(test-${outbound_fixture} PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+        if(WIN32)
+            target_link_libraries(test-${outbound_fixture} PRIVATE ws2_32)
+        endif()
+        apply_sanitizers_to_target(test-${outbound_fixture})
+        target_include_directories(test-${outbound_fixture} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+        set_target_properties(test-${outbound_fixture} PROPERTIES LINKER_LANGUAGE CXX
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        foreach(test_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${test_build_target})
+                add_dependencies(${test_build_target} test-${outbound_fixture})
+            endif()
+        endforeach()
+    endforeach()
+    target_link_libraries(test-backpressure-live PRIVATE libdatachannel ${LIBWEBSOCKETS_LIBRARIES}
+        ${LWS_OPENSSL_SSL_LIBRARY} ${LWS_OPENSSL_CRYPTO_LIBRARY} ${FFMPEG_LIBRARIES})
+    if(APPLE)
+        target_link_libraries(test-backpressure-live PRIVATE "-framework CoreFoundation" "-framework SystemConfiguration")
+    endif()
+    target_link_directories(test-backpressure-live PRIVATE ${FFMPEG_LIBRARY_DIRS})
+    target_include_directories(test-backpressure-live PRIVATE ${LIBWEBSOCKETS_INCLUDE_DIRS}
+        ${OPENSSL_INCLUDE_DIR} ${LWS_OPENSSL_PREFIX}/include ${FFMPEG_INCLUDE_DIRS})
+    if(BUILD_TESTS)
+        add_test(NAME transport-backpressure COMMAND test-backpressure)
+        set_tests_properties(transport-backpressure PROPERTIES TIMEOUT 30)
+        set(outbound_codecs raw,h264,h265)
+        if(WIN32)
+            # The LGPL FFmpeg bundle has no software HEVC encoder.
+            set(outbound_codecs raw,h264)
+        endif()
+        foreach(outbound_transport tcp websocket webrtc)
+            add_test(NAME backpressure-${outbound_transport} COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_SOURCE_DIR}/tests/integration/transport_backpressure.py
+                --binary $<TARGET_FILE:test-backpressure-live>
+                --transports ${outbound_transport} --codecs ${outbound_codecs}
+                --output ${CMAKE_BINARY_DIR}/backpressure/${outbound_transport})
+            set_tests_properties(backpressure-${outbound_transport} PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
+        endforeach()
+        if(WIN32)
+            set_tests_properties(transport-backpressure backpressure-tcp backpressure-websocket backpressure-webrtc
+                PROPERTIES ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin;PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin;PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+        endif()
+    endif()
+endif()

@@ -270,7 +270,15 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
               videoFrame = new VideoFrame(encoderCanvas, {
                 timestamp: Math.round(now * 1000),
               });
-              videoEncoderRef.current.encode(videoFrame, settings.targetFps);
+              videoEncoderRef.current.encode(
+                videoFrame,
+                settings.targetFps,
+                clientRef.current?.needsKeyframe?.(
+                  videoEncoderRef.current.codec === "hevc"
+                    ? PacketType.IMAGE_FRAME_H265
+                    : PacketType.IMAGE_FRAME_H264,
+                ) ?? false,
+              );
             } catch (error) {
               const failedCodec = videoEncoderRef.current.codec;
               const failedLabel = videoEncoderRef.current.label;

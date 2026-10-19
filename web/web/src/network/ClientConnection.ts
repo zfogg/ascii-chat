@@ -1,3 +1,4 @@
+import { OutboundQueue } from "./OutboundQueue";
 /**
  * High-level client connection manager
  * Orchestrates WebSocket, WASM crypto, and packet handling
@@ -157,6 +158,8 @@ export class ClientConnection {
           console.log("[ClientConnection] SocketBridge reconnecting...");
           this.onStateChangeCallback?.(ConnectionState.CONNECTING);
         } else if (state === "closed") {
+          this.outbound?.close();
+          this.outbound = null;
           this.transportState =
             this.isUserDisconnecting || this.wasEverConnected
               ? ConnectionState.DISCONNECTED
@@ -306,7 +309,9 @@ export class ClientConnection {
       console.log(`[ClientConnection] Payload size: ${parsed.length} bytes`);
       console.log(`[ClientConnection] Client ID: ${parsed.client_id}`);
       console.error(
-        `[ClientConnection] <<< RECV packet type=${parsed.type} (${name}) len=${rawPacket.length} payload_len=${parsed.length} client_id=${parsed.client_id}`,
+        `[ClientConnection] <<< RECV packet type=${parsed.type} (${name}) len=${rawPacket.length} payload_len=${
+          parsed.length
+        } client_id=${parsed.client_id}`,
       );
 
       // Extract payload (skip header)
@@ -359,7 +364,8 @@ export class ClientConnection {
       const state = this.getState();
       if (state !== ConnectionState.CONNECTED) {
         // console.error(
-        //   `[ClientConnection] *** Got non-handshake packet ${name} (${parsed.type}) while in state ${ConnectionState[state]} (${state}) - ignoring`,
+        //   `[ClientConnection] *** Got non-handshake packet ${name} (${parsed.type}) while in state
+        //   ${ConnectionState[state]} (${state}) - ignoring`,
         // );
         return;
       }
@@ -459,10 +465,52 @@ export class ClientConnection {
    * Send a packet to server
    */
   getBufferedAmount(): number {
-    return this.socket?.getBufferedAmount?.() ?? 0;
+    return (
+      (this.socket?.getBufferedAmount?.() ?? 0) +
+      (this.outbound?.snapshot().applicationBytes ?? 0)
+    );
+  }
+
+  private outbound: OutboundQueue | null = null;
+
+  needsKeyframe(type: number): boolean {
+    return this.outbound?.needsKeyframe(type) ?? true;
   }
 
   sendPacket(packetType: number, payload: Uint8Array): void {
+    if (this.transportState !== ConnectionState.CONNECTED)
+      throw new Error("Security negotiation is not complete");
+    if (!this.outbound)
+      this.outbound = new OutboundQueue(
+        () => this.socket?.getBufferedAmount?.() ?? 0,
+        (packet) => {
+          const type = new DataView(packet.buffer, packet.byteOffset).getUint16(
+            8,
+            false,
+          );
+          this.sendPacketNow(type, packet.slice(22));
+        },
+        (error) => {
+          this.socket?.close();
+          this.transportState = ConnectionState.ERROR;
+          this.onStateChangeCallback?.(ConnectionState.ERROR);
+          console.error(error);
+        },
+      );
+    const admission = this.outbound.submit(
+      serializePacket(packetType, payload, 0),
+    );
+    if (
+      admission === "congested" &&
+      packetType !== PacketType.IMAGE_FRAME &&
+      packetType !== PacketType.ASCII_FRAME &&
+      packetType !== PacketType.IMAGE_FRAME_H264 &&
+      packetType !== PacketType.IMAGE_FRAME_H265
+    )
+      throw new Error("Reliable outbound queue is congested");
+  }
+
+  private sendPacketNow(packetType: number, payload: Uint8Array): void {
     if (this.transportState !== ConnectionState.CONNECTED)
       throw new Error("Security negotiation is not complete");
     if (!this.socket || !this.socket.isConnected()) {
@@ -488,7 +536,9 @@ export class ClientConnection {
         `[ClientConnection] Current connection state: ${state} (${ConnectionState[state]})`,
       );
       console.error(
-        `[ClientConnection] STATE_CHECK: about to send ${name}, state=${state} CONNECTED=${ConnectionState.CONNECTED} HANDSHAKE=${ConnectionState.HANDSHAKE}`,
+        `[ClientConnection] STATE_CHECK: about to send ${name}, state=${state} CONNECTED=${
+          ConnectionState.CONNECTED
+        } HANDSHAKE=${ConnectionState.HANDSHAKE}`,
       );
 
       if (state === ConnectionState.CONNECTED) {
@@ -519,7 +569,13 @@ export class ClientConnection {
         // Timing for IMAGE_FRAME packets (large frames)
         if (packetType === PacketType.IMAGE_FRAME) {
           console.log(
-            `[WS_TIMING] Browser send ${name}: serialize=${(t1 - t0).toFixed(1)}ms encrypt=${(t2 - t1).toFixed(1)}ms wrap=${(t3 - t2).toFixed(1)}ms ws_send=${(t4 - t3).toFixed(1)}ms total=${(t4 - t0).toFixed(1)}ms size=${encryptedPacket.length}`,
+            `[WS_TIMING] Browser send ${name}: serialize=${(t1 - t0).toFixed(1)}ms encrypt=${(
+              t2 - t1
+            ).toFixed(
+              1,
+            )}ms wrap=${(t3 - t2).toFixed(1)}ms ws_send=${(t4 - t3).toFixed(1)}ms total=${(
+              t4 - t0
+            ).toFixed(1)}ms size=${encryptedPacket.length}`,
           );
         }
       } else if (state === ConnectionState.HANDSHAKE) {
@@ -532,7 +588,11 @@ export class ClientConnection {
           `[ClientConnection] ❌ PACKET DROPPED: ${name} in state ${state} (${ConnectionState[state]})`,
         );
         console.error(
-          `[ClientConnection] State values: DISCONNECTED=${ConnectionState.DISCONNECTED} CONNECTING=${ConnectionState.CONNECTING} HANDSHAKE=${ConnectionState.HANDSHAKE} CONNECTED=${ConnectionState.CONNECTED} ERROR=${ConnectionState.ERROR}`,
+          `[ClientConnection] State values: DISCONNECTED=${ConnectionState.DISCONNECTED} CONNECTING=${
+            ConnectionState.CONNECTING
+          } HANDSHAKE=${ConnectionState.HANDSHAKE} CONNECTED=${
+            ConnectionState.CONNECTED
+          } ERROR=${ConnectionState.ERROR}`,
         );
         console.error(
           `[ClientConnection] Packet details: type=${packetType} size=${payload.length} name=${name}`,
@@ -588,6 +648,8 @@ export class ClientConnection {
    */
   disconnect(): void {
     console.log("[ClientConnection] Disconnecting...");
+    this.outbound?.close();
+    this.outbound = null;
     this.isUserDisconnecting = true;
     this.transportState = ConnectionState.DISCONNECTED;
 

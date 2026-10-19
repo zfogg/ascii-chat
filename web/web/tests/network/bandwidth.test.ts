@@ -1,3 +1,4 @@
+import { OutboundQueue } from "../../src/network/OutboundQueue";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   createBandwidthSampler,
@@ -32,11 +33,19 @@ describe("bandwidth", () => {
     } as unknown as RTCDataChannel;
     const bridge = new WebRTCBridge(channel, vi.fn(), vi.fn(), 16);
     const packet = new Uint8Array(22);
-    bridge.send(packet, true);
-    bridge.send(packet, true);
+    new DataView(packet.buffer).setUint16(8, 3001, false);
+    const outbound = new OutboundQueue(
+      () => bridge.getBufferedAmount(),
+      (bytes) => bridge.send(bytes),
+      vi.fn(),
+      () => 0,
+    );
+    outbound.submit(packet);
+    outbound.submit(packet);
     clock.mockReturnValue(1000);
     expect(sample().upload).toBe(0);
     Object.assign(channel, { bufferedAmount: 0 });
+    outbound.flush();
     channel.onbufferedamountlow?.call(channel, new Event("bufferedamountlow"));
     channel.onmessage?.call(
       channel,
@@ -49,6 +58,7 @@ describe("bandwidth", () => {
     clock.mockReturnValue(2000);
     expect(sample()).toEqual({ upload: 22, download: 22 });
     expect(channel.send).toHaveBeenCalledTimes(2);
+    outbound.close();
     bridge.close();
   });
   it("formats decimal byte rates", () => {

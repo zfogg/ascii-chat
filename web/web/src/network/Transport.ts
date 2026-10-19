@@ -8,6 +8,7 @@ export interface PacketTransport {
 }
 
 export interface ClientSession {
+  needsKeyframe?(type: number): boolean;
   readonly canReconnect?: boolean;
   videoCodecCapabilities?: number;
   getBufferedAmount?(): number;

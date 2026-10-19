@@ -1,0 +1,160 @@
+{
+  "platform": "macOS-26.7.1-x86_64-i386-64bit-Mach-O",
+  "generated_at_utc": "2026-10-19T00:45:52.896460+00:00",
+  "binary_sha256": "a7c6ac249448f36dbbd26be0ef73ec99c2b64a9a22c94150fe953913c80fcd3a",
+  "scenarios": [
+    {
+      "transport": "webrtc",
+      "codec": "raw",
+      "exit_code": 0,
+      "elapsed_seconds": 16.968,
+      "csv": "webrtc-raw.csv",
+      "result": {
+        "transport": "webrtc",
+        "codec": "raw",
+        "peak_queue": 118670,
+        "peak_backend": 10846,
+        "dropped": 130,
+        "rejected": 0,
+        "baseline_fps": 57.5,
+        "recovery_fps": 55.84,
+        "baseline_age_ms": 1.06,
+        "recovery_age_ms": 1.5,
+        "recovery_max_age_ms": 317.73,
+        "recovery_keyframes": 0,
+        "controls": 633
+      },
+      "healthy": {
+        "transport": "webrtc",
+        "codec": "raw",
+        "baseline_fps": 57.5,
+        "saturation_fps": 56.67,
+        "recovery_fps": 55.75
+      },
+      "relay": {
+        "forwarded": 12359,
+        "throttled": 747
+      },
+      "steady": {
+        "fps": 57.5,
+        "age_ms": 0.94,
+        "controls_during_throttle": 161,
+        "recovery_requests": 0
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 10.296605,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 57.5,
+        "saturation_fps": 57.0,
+        "recovery_fps": 55.65
+      }
+    },
+    {
+      "transport": "webrtc",
+      "codec": "h264",
+      "exit_code": 0,
+      "elapsed_seconds": 15.537,
+      "csv": "webrtc-h264.csv",
+      "result": {
+        "transport": "webrtc",
+        "codec": "h264",
+        "peak_queue": 383118,
+        "peak_backend": 16406,
+        "dropped": 133,
+        "rejected": 1,
+        "baseline_fps": 57.0,
+        "recovery_fps": 55.94,
+        "baseline_age_ms": 1.85,
+        "recovery_age_ms": 3.15,
+        "recovery_max_age_ms": 298.82,
+        "recovery_keyframes": 22,
+        "controls": 627
+      },
+      "healthy": {
+        "transport": "webrtc",
+        "codec": "h264",
+        "baseline_fps": 57.0,
+        "saturation_fps": 57.33,
+        "recovery_fps": 55.36
+      },
+      "relay": {
+        "forwarded": 17432,
+        "throttled": 748
+      },
+      "steady": {
+        "fps": 57.0,
+        "age_ms": 1.7,
+        "controls_during_throttle": 165,
+        "recovery_requests": 22
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 10.295873,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 57.0,
+        "saturation_fps": 57.33,
+        "recovery_fps": 55.36
+      }
+    },
+    {
+      "transport": "webrtc",
+      "codec": "h265",
+      "exit_code": 0,
+      "elapsed_seconds": 17.493,
+      "csv": "webrtc-h265.csv",
+      "result": {
+        "transport": "webrtc",
+        "codec": "h265",
+        "peak_queue": 384006,
+        "peak_backend": 16406,
+        "dropped": 136,
+        "rejected": 4,
+        "baseline_fps": 58.0,
+        "recovery_fps": 56.45,
+        "baseline_age_ms": 3.98,
+        "recovery_age_ms": 5.5,
+        "recovery_max_age_ms": 395.9,
+        "recovery_keyframes": 23,
+        "controls": 637
+      },
+      "healthy": {
+        "transport": "webrtc",
+        "codec": "h265",
+        "baseline_fps": 58.0,
+        "saturation_fps": 57.33,
+        "recovery_fps": 56.06
+      },
+      "relay": {
+        "forwarded": 17579,
+        "throttled": 747
+      },
+      "steady": {
+        "fps": 57.5,
+        "age_ms": 3.75,
+        "controls_during_throttle": 162,
+        "recovery_requests": 22
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 10.292317,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 58.0,
+        "saturation_fps": 57.33,
+        "recovery_fps": 56.06
+      }
+    }
+  ],
+  "source_sha": "source archive",
+  "native_source_sha256": "c12291d035c64a81f52c20289efa8ebe6543bd2ba42dc423076aab6b0d712f8f",
+  "source_state": "working tree snapshot; binary and native source fingerprints identify the tested build"
+}

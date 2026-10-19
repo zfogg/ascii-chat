@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file network/acip/transport_tcp.c
  * @brief TCP transport implementation for ACIP protocol
@@ -260,6 +261,7 @@ static void tcp_destroy_impl(acip_transport_t *transport) {
 
 static const acip_transport_methods_t tcp_methods = {
     .send = tcp_send,
+    .reserved_bytes = SOCKET_STREAM_SEND_RESERVE,
     .sendv = tcp_sendv,
     .recv = tcp_recv,
     .close = tcp_close,
@@ -342,6 +344,12 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   transport->stats_peer = stats_runtime_peer_open("TCP");
   transport->crypto_ctx = crypto_ctx;
   transport->impl_data = tcp_data;
+  int send_buffer = SOCKET_STREAM_SEND_BUFFER;
+  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &send_buffer, sizeof(send_buffer)) != 0) {
+    acip_transport_destroy(transport);
+    SET_ERRNO_SYS(ERROR_NETWORK, "Cannot bound TCP send buffer");
+    return NULL;
+  }
 
   // Register transport and impl_data before logging so named replacements work
   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
@@ -350,6 +358,12 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   log_info("[TCP_CREATE_STATE] ✅ CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s",
            (void *)transport, sockfd, crypto_ctx ? "enabled" : "disabled");
 
+#ifndef __EMSCRIPTEN__
+  if (transport && acip_outbound_create(transport) != ASCIICHAT_OK) {
+    acip_transport_destroy(transport);
+    return NULL;
+  }
+#endif
   return transport;
 }
 
@@ -357,6 +371,12 @@ acip_transport_t *acip_tcp_transport_create_owned(const char *name, socket_t soc
   acip_transport_t *transport = acip_tcp_transport_create(name, sockfd, crypto_ctx);
   if (transport)
     ((tcp_transport_data_t *)transport->impl_data)->owns_socket = true;
+#ifndef __EMSCRIPTEN__
+  if (transport && acip_outbound_create(transport) != ASCIICHAT_OK) {
+    acip_transport_destroy(transport);
+    return NULL;
+  }
+#endif
   return transport;
 }
 
@@ -371,6 +391,10 @@ void acip_transport_destroy(acip_transport_t *transport) {
   }
 
   log_warn("[TRANSPORT_DESTROY] 🔴 DESTROY_START: transport=%p, impl_data=%p", (void *)transport, transport->impl_data);
+
+#ifndef __EMSCRIPTEN__
+  acip_outbound_destroy(transport);
+#endif
 
   // Get type before we destroy for logging
   acip_transport_type_t type = 0;
