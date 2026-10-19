@@ -48,6 +48,7 @@ struct network_connection {
   platform_event_stream_t *stream;
   packet_decoder_t decoder;
   acip_security_t security;
+  acip_security_t *adopted_security; // Owned through the adopted transport.
   bool security_claimed, security_options;
   atomic_ptr_t context;
   char peer[256];
@@ -90,6 +91,8 @@ void network_connection_request_stop(network_connection_t *c) {
 }
 
 crypto_handshake_context_t *network_connection_handshake(network_connection_t *c) {
+  if (c->adopted_security)
+    return &c->adopted_security->handshake;
   c->security_claimed = true;
   return &c->security.handshake;
 }
@@ -114,6 +117,7 @@ static network_connection_t *connection_create(network_server_t *s, acip_transpo
     return NULL;
   c->server = s;
   c->transport = transport;
+  c->adopted_security = acip_webrtc_transport_security(transport);
   c->secure = secure;
   c->authenticated_peer = ready;
   c->started = c->last_packet = time_get_ns();
@@ -191,6 +195,7 @@ static void connection_finish(void *arg) {
   c->cleanup_failed = false;
   acip_transport_destroy(c->transport);
   c->transport = NULL;
+  c->adopted_security = NULL;
   if (c->security_options)
     acip_security_cleanup(&c->security);
   else if (c->security_claimed)
@@ -635,7 +640,7 @@ void network_connection_destroy(network_connection_t **owner) {
 }
 
 uint8_t network_connection_crypto_mode(network_connection_t *c) {
-  return c->security.mode;
+  return c->adopted_security ? c->adopted_security->mode : c->security.mode;
 }
 
 asciichat_error_t network_connection_run(network_connection_t *c, const network_connection_callbacks_t *callbacks,

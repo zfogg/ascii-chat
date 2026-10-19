@@ -22,9 +22,13 @@ static asciichat_error_t server_connection_open(network_connection_t *connection
   }
   server_connection_state_t *state = SAFE_CALLOC(1, sizeof(*state), server_connection_state_t *);
   network_connection_set_context(connection, state);
+  bool adopted_ready = network_connection_state(connection) == NETWORK_READY;
+  crypto_handshake_context_t *handshake = network_connection_handshake(connection);
   state->negotiation = (network_negotiation_t){
       .protocol = NETWORK_PROTOCOL_MEDIA,
-      .handshake = network_connection_handshake(connection),
+      .handshake = handshake,
+      .initialized = adopted_ready && crypto_handshake_is_ready(handshake),
+      .encrypt_data = adopted_ready && ACIP_CRYPTO_HAS_ENCRYPT(network_connection_crypto_mode(connection)),
       .identity_keys = g_server_identity_keys,
       .identity_key_count = g_num_server_identity_keys,
       .whitelist = g_client_whitelist,

@@ -769,6 +769,12 @@ static const acip_transport_methods_t webrtc_methods = {
     .destroy_impl = webrtc_destroy_impl,
 };
 
+acip_security_t *acip_webrtc_transport_security(acip_transport_t *transport) {
+  if (!transport || transport->methods != &webrtc_methods || !transport->impl_data)
+    return NULL;
+  return ((webrtc_transport_data_t *)transport->impl_data)->security;
+}
+
 // =============================================================================
 // WebRTC Transport Creation
 // =============================================================================
