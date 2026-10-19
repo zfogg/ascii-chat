@@ -52,8 +52,8 @@ self.onmessage = (event: MessageEvent<RasterWorkerRequest>) => {
           view.setInt32(4, rows, true);
           view.setFloat64(8, browserRasterFontSize(matrix), true);
           if (matrix) module.stringToUTF8("Matrix", config + 20, 512);
-          view.setInt32(536, module._get_font_default_ptr(), true);
-          view.setInt32(540, module._get_font_default_size(), true);
+          view.setInt32(536, module._get_font_default_ptr(0), true);
+          view.setInt32(540, module._get_font_default_size(0), true);
           if (module._term_renderer_create(config, out))
             throw new Error("Cannot create raster worker renderer");
           renderer = new DataView(module.HEAPU8.buffer, out, 4).getUint32(

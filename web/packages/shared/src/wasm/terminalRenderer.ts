@@ -12,6 +12,6 @@ export interface TerminalRendererModule extends WasmModule {
   _term_renderer_height_px(renderer: number): number;
   _term_renderer_pitch(renderer: number): number;
   _term_renderer_destroy(renderer: number): void;
-  _get_font_default_ptr(selection?: number): number;
-  _get_font_default_size(selection?: number): number;
+  _get_font_default_ptr(selection: number): number;
+  _get_font_default_size(selection: number): number;
 }

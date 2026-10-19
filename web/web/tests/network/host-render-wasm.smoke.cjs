@@ -63,7 +63,7 @@ const path = require("node:path");
         normalFont === matrixFont ||
         !m._get_font_default_size(1) ||
         !m._get_font_default_size(2) ||
-        m._get_font_default_ptr() !== normalFont ||
+        m._get_font_default_ptr(0) !== normalFont ||
         m._wasm_options_revision() !== revision
       )
         throw new Error("font selection changed engine preferences");

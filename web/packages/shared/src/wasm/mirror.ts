@@ -57,8 +57,8 @@ interface MirrorModuleExports {
   _term_renderer_get_rows(r: number): number;
   _term_renderer_destroy(r: number): void;
   // Embedded font data
-  _get_font_default_ptr(selection?: number): number;
-  _get_font_default_size(selection?: number): number;
+  _get_font_default_ptr(selection: number): number;
+  _get_font_default_size(selection: number): number;
   HEAPF32: Float32Array;
   // Memory management
   _malloc(size: number): number;
