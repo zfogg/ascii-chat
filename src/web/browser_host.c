@@ -13,10 +13,9 @@ EM_JS(void, browser_host_send, (uint32_t client, const uint8_t *data, size_t len
     Module.hostPacketCallback(client, HEAPU8.slice(data, data + length));
 });
 
-#define BROWSER_HOST_CLIENTS 8
 static session_host_t *host;
-static acip_transport_t transports[BROWSER_HOST_CLIENTS];
-static uint32_t client_ids[BROWSER_HOST_CLIENTS];
+static acip_transport_t transports[PARTICIPANT_LIMIT];
+static uint32_t client_ids[PARTICIPANT_LIMIT];
 static asciichat_error_t host_transport_send(acip_transport_t *transport, const void *data, size_t length) {
   browser_host_send((uint32_t)(uintptr_t)transport->impl_data, data, length);
   return ASCIICHAT_OK;
@@ -41,14 +40,14 @@ EMSCRIPTEN_KEEPALIVE void browser_host_destroy(void) {
 }
 EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_create(void) {
   browser_host_destroy();
-  session_host_config_t config = {.max_clients = BROWSER_HOST_CLIENTS};
+  session_host_config_t config = {.max_clients = PARTICIPANT_LIMIT};
   host = session_host_create(&config);
   return host ? ASCIICHAT_OK : ERROR_MEMORY;
 }
 EMSCRIPTEN_KEEPALIVE uint32_t browser_host_add_client(void) {
   if (!host)
     return 0;
-  for (size_t i = 0; i < BROWSER_HOST_CLIENTS; ++i) {
+  for (size_t i = 0; i < PARTICIPANT_LIMIT; ++i) {
     if (client_ids[i])
       continue;
     uint32_t id = session_host_add_client(host, INVALID_SOCKET_VALUE, "browser", 0);
@@ -69,7 +68,7 @@ EMSCRIPTEN_KEEPALIVE void browser_host_remove_client(uint32_t id) {
   if (!host)
     return;
   session_host_remove_client(host, id);
-  for (size_t i = 0; i < BROWSER_HOST_CLIENTS; ++i)
+  for (size_t i = 0; i < PARTICIPANT_LIMIT; ++i)
     if (client_ids[i] == id)
       client_ids[i] = 0;
 }

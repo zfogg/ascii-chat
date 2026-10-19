@@ -53,6 +53,21 @@ static asciichat_error_t mock_election_func(void *context, consensus_state_t *st
   return ASCIICHAT_OK;
 }
 
+static asciichat_error_t observed_metrics(void *context, const uint8_t id[16], participant_metrics_t *out) {
+  (void)context;
+  *out = make_metrics(id[0], 25, 50000);
+  memcpy(out->participant_id, id, 16);
+  return ASCIICHAT_OK;
+}
+static asciichat_error_t create_test_coordinator(const uint8_t id[16], const consensus_topology_t *topology,
+                                                 consensus_election_func_t election, void *context,
+                                                 consensus_coordinator_t **out) {
+  asciichat_error_t result = consensus_coordinator_create(id, topology, election, context, out);
+  if (result == ASCIICHAT_OK)
+    consensus_coordinator_set_metrics_provider(*out, observed_metrics, NULL);
+  return result;
+}
+
 /* ============================================================================
  * Basic Lifecycle Tests
  * ============================================================================ */
@@ -65,7 +80,7 @@ Test(coordinator, create_and_destroy) {
   make_uuid(my_id, 2);
 
   consensus_coordinator_t *coordinator = NULL;
-  asciichat_error_t err = consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator);
+  asciichat_error_t err = create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator);
 
   cr_assert_eq(err, ASCIICHAT_OK);
   cr_assert_neq(coordinator, NULL);
@@ -86,19 +101,19 @@ Test(coordinator, create_invalid_params) {
   consensus_coordinator_t *coordinator = NULL;
 
   /* NULL my_id */
-  asciichat_error_t err = consensus_coordinator_create(NULL, topo, mock_election_func, NULL, &coordinator);
+  asciichat_error_t err = create_test_coordinator(NULL, topo, mock_election_func, NULL, &coordinator);
   cr_assert_neq(err, ASCIICHAT_OK);
 
   /* NULL topology */
-  err = consensus_coordinator_create(my_id, NULL, mock_election_func, NULL, &coordinator);
+  err = create_test_coordinator(my_id, NULL, mock_election_func, NULL, &coordinator);
   cr_assert_neq(err, ASCIICHAT_OK);
 
   /* NULL election_func */
-  err = consensus_coordinator_create(my_id, topo, NULL, NULL, &coordinator);
+  err = create_test_coordinator(my_id, topo, NULL, NULL, &coordinator);
   cr_assert_neq(err, ASCIICHAT_OK);
 
   /* NULL output */
-  err = consensus_coordinator_create(my_id, topo, mock_election_func, NULL, NULL);
+  err = create_test_coordinator(my_id, topo, mock_election_func, NULL, NULL);
   cr_assert_neq(err, ASCIICHAT_OK);
 
   consensus_topology_destroy(topo);
@@ -114,7 +129,7 @@ Test(coordinator, round_scheduling_initial_interval) {
   make_uuid(my_id, 3); /* Leader is at position 2 (0-indexed) */
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Check that next round is scheduled ~5 minutes in future */
   uint64_t time_until_next = consensus_coordinator_time_until_next_round(coordinator);
@@ -134,7 +149,7 @@ Test(coordinator, process_does_not_start_round_if_not_leader) {
   make_uuid(my_id, 1);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Process should not start a round since we're not the leader */
   asciichat_error_t err = consensus_coordinator_process(coordinator, 100);
@@ -158,7 +173,7 @@ Test(coordinator, leader_initiates_collection) {
   make_uuid(my_id, 3);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Simulate 5+ minute wait */
   /* We can't actually wait 5 minutes in a test, so we'll test collection_start manually */
@@ -188,7 +203,7 @@ Test(coordinator, participant_receives_and_relays_metrics) {
   make_uuid(my_id, 2);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Receive collection start */
   uint64_t deadline_ns = time_get_realtime_ns() + 30000000000ULL;
@@ -225,7 +240,7 @@ Test(coordinator, stats_update_rejects_invalid_state) {
   make_uuid(my_id, 2);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Try to update stats while in IDLE state (should fail) */
   uint8_t sender_id[16];
@@ -249,7 +264,7 @@ Test(coordinator, stores_election_result) {
   make_uuid(my_id, 2);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Receive election result */
   uint8_t host_id[16], backup_id[16];
@@ -278,7 +293,7 @@ Test(coordinator, get_current_host_uses_fallback) {
   make_uuid(my_id, 2);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Before any election, should fail */
   uint8_t host_id[16], backup_id[16];
@@ -313,7 +328,7 @@ Test(coordinator, collection_completion_on_timeout) {
   make_uuid(my_id, 2);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Start collection with deadline already passed (use time_get_ns, not realtime)
      Set deadline to 0 (epoch) so it's definitely in the past compared to any call to time_get_ns() */
@@ -342,7 +357,7 @@ Test(coordinator, invalid_params_in_collection_start) {
   make_uuid(my_id, 2);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* NULL coordinator */
   asciichat_error_t err = consensus_coordinator_on_collection_start(NULL, 1, time_get_realtime_ns());
@@ -362,7 +377,7 @@ Test(coordinator, on_ring_members_updates_topology) {
   make_uuid(my_id, 2);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo1, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo1, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Create new topology */
   consensus_topology_t *topo2 = make_test_topology(1, 4);
@@ -386,7 +401,7 @@ Test(coordinator, on_ring_members_resets_state_during_collection) {
   make_uuid(my_id, 2);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo1, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo1, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Start collection */
   asciichat_error_t err =
@@ -422,7 +437,7 @@ Test(coordinator, process_tolerates_null_timeout) {
   make_uuid(my_id, 1);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Process with different timeout values should work */
   asciichat_error_t err = consensus_coordinator_process(coordinator, 0);
@@ -463,7 +478,7 @@ Test(coordinator, election_result_persists_across_states) {
   make_uuid(my_id, 2);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Store an election result */
   uint8_t host_id[16], backup_id[16];
@@ -494,7 +509,7 @@ Test(coordinator, metrics_count_increases_with_updates) {
   make_uuid(my_id, 2);
 
   consensus_coordinator_t *coordinator = NULL;
-  cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
+  cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Start collection */
   asciichat_error_t err =

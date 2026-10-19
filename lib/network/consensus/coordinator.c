@@ -25,6 +25,8 @@ typedef struct consensus_coordinator {
   consensus_state_t *state;
   consensus_election_func_t election_func;
   void *election_context;
+  consensus_metrics_provider_fn metrics_provider;
+  void *metrics_context;
 
   /* Round scheduling */
   uint64_t last_round_start_ns;    /* When the last round was initiated */
@@ -119,7 +121,9 @@ static bool should_start_new_round(consensus_coordinator_t *coordinator, uint64_
  */
 static asciichat_error_t measure_and_add_metrics(consensus_coordinator_t *coordinator) {
   participant_metrics_t metrics;
-  asciichat_error_t err = consensus_metrics_measure(coordinator->my_id, &metrics);
+  asciichat_error_t err = coordinator->metrics_provider ? coordinator->metrics_provider(coordinator->metrics_context,
+                                                                                        coordinator->my_id, &metrics)
+                                                        : consensus_metrics_measure(coordinator->my_id, &metrics);
   if (err != ASCIICHAT_OK) {
     return err;
   }
@@ -185,17 +189,15 @@ static asciichat_error_t complete_collection(consensus_coordinator_t *coordinato
     /* Leader: Run election */
     log_info("Leader: Computing election from %d metrics", consensus_state_get_metrics_count(coordinator->state));
 
-    err = consensus_state_compute_election(coordinator->state);
-    if (err != ASCIICHAT_OK) {
-      return err;
-    }
-
-    /* Optionally run election callback */
     if (coordinator->election_func) {
       err = coordinator->election_func(coordinator->election_context, coordinator->state);
-      if (err != ASCIICHAT_OK) {
-        log_warn("Election callback returned error: %d", err);
-      }
+      if (err != ASCIICHAT_OK)
+        return err;
+    }
+    if (consensus_state_get_current_state(coordinator->state) == CONSENSUS_STATE_ELECTION_START) {
+      err = consensus_state_compute_election(coordinator->state);
+      if (err != ASCIICHAT_OK)
+        return err;
     }
 
     /* Store elected hosts */
@@ -311,8 +313,9 @@ asciichat_error_t consensus_coordinator_on_collection_start(consensus_coordinato
     log_warn("Failed to measure metrics: %d", err);
   }
 
+  uint64_t now_ns = time_get_ns();
   log_dev("Collection started: round_id=%u, deadline in %u seconds", round_id,
-          (unsigned int)((deadline_ns - time_get_ns()) / NS_PER_SEC_INT));
+          (unsigned int)((deadline_ns > now_ns ? deadline_ns - now_ns : 0) / NS_PER_SEC_INT));
 
   return ASCIICHAT_OK;
 }
@@ -440,4 +443,12 @@ int consensus_coordinator_get_metrics_count(const consensus_coordinator_t *coord
     return -1;
   }
   return consensus_state_get_metrics_count(coordinator->state);
+}
+
+void consensus_coordinator_set_metrics_provider(consensus_coordinator_t *coordinator,
+                                                consensus_metrics_provider_fn provider, void *context) {
+  if (!coordinator)
+    return;
+  coordinator->metrics_provider = provider;
+  coordinator->metrics_context = context;
 }

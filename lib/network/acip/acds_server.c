@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 /**
  * @file network/acip/server.c
  * @brief ACIP server-side protocol implementation
@@ -34,9 +35,9 @@ asciichat_error_t acip_server_validate_session_create(const acip_session_create_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid capabilities bits (only 0-1 allowed)");
   }
 
-  // Validate max_participants (1-8)
-  if (req->max_participants < 1 || req->max_participants > 8) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_participants (must be 1-8)");
+  // Validate max_participants (1-128)
+  if (req->max_participants < 1 || req->max_participants > PARTICIPANT_LIMIT) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_participants (must be 1-128)");
   }
 
   // Server address can be empty - ACDS will auto-detect from connection source IP

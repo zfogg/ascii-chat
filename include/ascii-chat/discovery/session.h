@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 #pragma once
 
 /**
@@ -16,9 +17,6 @@
 /**
  * @brief Maximum participants per session
  */
-#if !defined(MAX_PARTICIPANTS)
-#define MAX_PARTICIPANTS 16
-#endif
 
 /**
  * @brief Participant in a session
@@ -54,7 +52,7 @@ typedef struct session_entry {
 
   uint8_t host_pubkey[32];      ///< Host's Ed25519 key
   uint8_t capabilities;         ///< bit 0: video, bit 1: audio
-  uint8_t max_participants;     ///< 1-8
+  uint8_t max_participants;     ///< 1-128
   uint8_t current_participants; ///< Active participant count
 
   char password_hash[128]; ///< Argon2id hash (if has_password)
@@ -81,9 +79,9 @@ typedef struct session_entry {
   // Host migration state (when host disconnects)
   bool in_migration;           ///< Currently collecting HOST_LOST packets
   uint64_t migration_start_ns; ///< When migration started in nanoseconds (for collection window timeout)
-  host_lost_candidate_t *migration_candidates[MAX_PARTICIPANTS]; ///< Candidates received during migration
+  host_lost_candidate_t *migration_candidates[PARTICIPANT_LIMIT]; ///< Candidates received during migration
 
-  participant_t *participants[MAX_PARTICIPANTS]; ///< Participant array (in-memory only)
+  participant_t *participants[PARTICIPANT_LIMIT]; ///< Participant array (in-memory only)
 } session_entry_t;
 
 /**

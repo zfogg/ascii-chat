@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 /**
  * @file session/consensus.c
  * @brief Mode-agnostic ring consensus abstraction implementation
@@ -91,22 +92,21 @@ static asciichat_error_t session_consensus_election_bridge(void *context, consen
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid best host index: %d", best_index);
   }
 
-  if (backup_index < 0 || backup_index >= num_metrics) {
+  if (backup_index < -1 || backup_index >= num_metrics) {
     SAFE_FREE(metrics);
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid backup host index: %d", backup_index);
   }
 
-  // Store in state for later retrieval
-  // TODO: Add method to store elected host/backup in state
+  result = consensus_state_store_election(state, best_index, backup_index);
 
   log_info("Session consensus election: best=%d, backup=%d", best_index, backup_index);
 
   SAFE_FREE(metrics);
-  return ASCIICHAT_OK;
+  return result;
 }
 
 asciichat_error_t session_consensus_create(const uint8_t my_id[16], bool is_leader,
-                                           const uint8_t participant_ids[64][16], int num_participants,
+                                           const uint8_t participant_ids[PARTICIPANT_LIMIT][16], int num_participants,
                                            const session_consensus_callbacks_t *callbacks,
                                            session_consensus_t **out_consensus) {
   if (!my_id || !callbacks || !out_consensus) {
@@ -119,7 +119,7 @@ asciichat_error_t session_consensus_create(const uint8_t my_id[16], bool is_lead
                      callbacks->send_packet, callbacks->on_election, callbacks->get_metrics);
   }
 
-  if (num_participants < 1 || num_participants > 64) {
+  if (num_participants < 1 || num_participants > PARTICIPANT_LIMIT) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant count: %d", num_participants);
   }
 
@@ -156,6 +156,8 @@ asciichat_error_t session_consensus_create(const uint8_t my_id[16], bool is_lead
     return err;
   }
 
+  consensus_coordinator_set_metrics_provider(consensus->coordinator, callbacks->get_metrics, callbacks->context);
+
   log_debug("Session consensus created: my_id=%.*s, is_leader=%d, participants=%d", 16, my_id, is_leader,
             num_participants);
 
@@ -188,13 +190,14 @@ asciichat_error_t session_consensus_process(session_consensus_t *consensus, uint
   return consensus_coordinator_process(consensus->coordinator, timeout_ms);
 }
 
-asciichat_error_t session_consensus_set_topology(session_consensus_t *consensus, const uint8_t participant_ids[64][16],
+asciichat_error_t session_consensus_set_topology(session_consensus_t *consensus,
+                                                 const uint8_t participant_ids[PARTICIPANT_LIMIT][16],
                                                  int num_participants) {
   if (!consensus || !participant_ids) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  if (num_participants < 1 || num_participants > 64) {
+  if (num_participants < 1 || num_participants > PARTICIPANT_LIMIT) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant count: %d", num_participants);
   }
 

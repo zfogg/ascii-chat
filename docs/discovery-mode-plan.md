@@ -2,6 +2,12 @@
 
 # Discovery Mode: Direct P2P Calling for ascii-chat
 
+This document preserves the original design exploration. The implemented election
+and recovery contract is [measured host handoff](measured-host-handoff.md). Passive
+media byte rates are achieved throughput, not available capacity; a sender timestamp
+alone does not establish RTT, and gaps on a reliable transport do not measure UDP
+loss. Earlier examples using those interpretations are superseded.
+
 ## Philosophy
 
 ascii-chat should be as simple as making a phone call. Today, users need to understand server/client architecture, port forwarding, and NAT traversal to have a video call. The new **Discovery Mode** changes this:

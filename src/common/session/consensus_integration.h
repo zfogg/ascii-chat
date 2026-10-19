@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 /**
  * @file session/consensus_integration.h
  * @brief Integration helpers for session consensus across modes
@@ -49,15 +50,16 @@ asciichat_error_t consensus_get_discovery_callbacks(void *context, session_conse
  *
  * @param session_id Session identifier (16 bytes) - informational
  * @param my_id Our participant ID (16 bytes)
- * @param participant_ids Array of all participant IDs (up to 64)
+ * @param participant_ids Array of all participant IDs (up to 128)
  * @param num_participants Count of participants
  * @param discovery_context Discovery session context (opaque)
  * @param out_consensus Output: Created consensus handle
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t consensus_create_for_discovery(const uint8_t session_id[16], const uint8_t my_id[16],
-                                                 const uint8_t participant_ids[64][16], int num_participants,
-                                                 void *discovery_context, session_consensus_t **out_consensus);
+                                                 const uint8_t participant_ids[PARTICIPANT_LIMIT][16],
+                                                 int num_participants, void *discovery_context,
+                                                 session_consensus_t **out_consensus);
 
 /**
  * @brief Suggest next timeout for consensus processing

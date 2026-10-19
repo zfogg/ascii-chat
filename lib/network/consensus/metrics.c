@@ -23,104 +23,13 @@ typedef struct consensus_metrics_collection {
   int capacity;                   ///< Allocated capacity
 } consensus_metrics_collection_t;
 
-/**
- * Default bandwidth estimate (50 Mbps = 50000 Kbps)
- */
-#define DEFAULT_BANDWIDTH_KBPS 50000
-
-/**
- * Default RTT estimate (25 milliseconds)
- */
-#define DEFAULT_RTT_MS 25
-
-/**
- * Number of STUN probes to send for success rate measurement
- */
-#define NUM_STUN_PROBES 10
-
-/**
- * Measure STUN probe success rate
- *
- * Simulates sending NUM_STUN_PROBES STUN binding requests and counts successes.
- * Returns success rate as 0-100 percentage.
- *
- * @return Success rate 0-100
- */
-static uint8_t measure_stun_probe_success(void) {
-  // TODO: Implement actual STUN probing in future
-  // For now, return a reasonable default (90% success)
-  // In production, this would:
-  // 1. Send NUM_STUN_PROBES STUN Binding Request packets
-  // 2. Count successful responses
-  // 3. Return (successes * 100) / NUM_STUN_PROBES
-  return 90;
-}
-
-/**
- * Convert NAT type to tier (0=best, 4=worst)
- *
- * Mapping:
- * - Open/LAN (no NAT) = 0
- * - Full cone NAT = 1
- * - Address-restricted NAT = 2
- * - Port-restricted NAT = 3
- * - Symmetric NAT = 4
- *
- * Note: This function is reserved for future use when NAT detection is integrated.
- * For now, we use a hardcoded default tier.
- */
-__attribute__((unused)) static uint8_t nat_type_to_tier(int nat_type) {
-  // ACIP_NAT_TYPE_* enum values:
-  // 0 = Open (OPEN = no NAT, essentially LAN)
-  // 1 = Full cone (best NAT)
-  // 2 = Address-restricted
-  // 3 = Port-restricted
-  // 4 = Symmetric (worst NAT)
-
-  if (nat_type < 0 || nat_type > 4) {
-    return 4; // Default to worst case
-  }
-  return (uint8_t)nat_type;
-}
-
 asciichat_error_t consensus_metrics_measure(const uint8_t my_id[16], participant_metrics_t *out_metrics) {
-  if (!my_id || !out_metrics) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to consensus_metrics_measure");
-  }
-
-  // Initialize metrics structure
+  if (!my_id || !out_metrics)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid measurement parameters");
   memset(out_metrics, 0, sizeof(*out_metrics));
-
-  // Copy participant ID
   memcpy(out_metrics->participant_id, my_id, 16);
-
-  // NAT tier: Default to 1 (Public IP, no NAT needed)
-  // TODO: In production, query NAT detection module
-  out_metrics->nat_tier = 1;
-
-  // Upload bandwidth: Default 50 Mbps
-  out_metrics->upload_kbps = DEFAULT_BANDWIDTH_KBPS;
-
-  // RTT: Default 25ms (25,000,000 nanoseconds)
-  out_metrics->rtt_ns = DEFAULT_RTT_MS * NS_PER_MS;
-
-  // STUN probe success rate: Measure by sending probes
-  out_metrics->stun_probe_success_pct = measure_stun_probe_success();
-
-  // Public address and port: Placeholder values
-  snprintf(out_metrics->public_address, sizeof(out_metrics->public_address), "127.0.0.1");
-  out_metrics->public_port = 27224;
-
-  // Connection type: Default to direct
-  out_metrics->connection_type = 0; // Direct connection
-
-  // Measurement time: Current time in nanoseconds
-  out_metrics->measurement_time_ns = time_get_realtime_ns();
-
-  // Measurement window: 1 second in nanoseconds
-  out_metrics->measurement_window_ns = 1 * NS_PER_SEC;
-
-  return ASCIICHAT_OK;
+  out_metrics->nat_tier = 4;
+  return SET_ERRNO(ERROR_INVALID_STATE, "Network measurements require a session measurement provider");
 }
 
 asciichat_error_t consensus_metrics_to_wire(const participant_metrics_t *metrics, participant_metrics_t *out_wire) {
