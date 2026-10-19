@@ -143,6 +143,56 @@ void audio_visualization_read(audio_visualization_source_t source, float *sample
     samples[i] = fmaxf(-1.0f, fminf(1.0f, samples[i]));
 }
 
+/* Encode the same visualization grid for native terminals and browser rasterization.
+ * Half-block grids have two vertical samples per terminal row. */
+static char *visualization_encode(const char *cells, const unsigned char *colors, bool column_colors,
+                                  unsigned int width, unsigned int height, bool use_color, bool flip_x, bool flip_y) {
+  int mode = GET_OPTION(render_mode);
+  bool half = mode == RENDER_MODE_HALF_BLOCK;
+  unsigned int rows = half ? height / 2 : height;
+  size_t capacity = (size_t)width * rows * 64 + rows + 1;
+  char *frame = SAFE_MALLOC(capacity, char *);
+  if (!frame)
+    return NULL;
+  size_t used = 0;
+  for (unsigned int y = 0; y < rows; y++) {
+    for (unsigned int x = 0; x < width; x++) {
+      unsigned int sx = flip_x ? width - x - 1 : x;
+      unsigned int sy = half ? y * 2 : y;
+      unsigned int top = flip_y ? height - sy - 1 : sy;
+      size_t cell = (size_t)top * width + sx;
+      const unsigned char *color = colors + (column_colors ? sx : cell) * 3;
+      char ch = cells[cell];
+      if (half) {
+        unsigned int bottom = flip_y ? height - sy - 2 : sy + 1;
+        size_t lower = (size_t)bottom * width + sx;
+        const unsigned char *lower_color = colors + (column_colors ? sx : lower) * 3;
+        bool upper_on = ch != ' ', lower_on = cells[lower] != ' ';
+        if (use_color) {
+          used += (size_t)snprintf(frame + used, capacity - used,
+              "\033[38;2;%u;%u;%um\033[48;2;%u;%u;%um▀\033[0m",
+              upper_on ? color[0] : 0, upper_on ? color[1] : 0, upper_on ? color[2] : 0,
+              lower_on ? lower_color[0] : 0, lower_on ? lower_color[1] : 0, lower_on ? lower_color[2] : 0);
+        } else {
+          const char *glyph = upper_on ? (lower_on ? "█" : "▀") : (lower_on ? "▄" : " ");
+          size_t length = strlen(glyph);
+          memcpy(frame + used, glyph, length);
+          used += length;
+        }
+      } else if (use_color && ch != ' ') {
+        used += (size_t)snprintf(frame + used, capacity - used, "\033[%d;2;%u;%u;%um%c\033[0m",
+                                mode == RENDER_MODE_BACKGROUND ? 48 : 38,
+                                color[0], color[1], color[2], mode == RENDER_MODE_BACKGROUND ? ' ' : ch);
+      } else {
+        frame[used++] = ch;
+      }
+    }
+    frame[used++] = '\n';
+  }
+  frame[used] = '\0';
+  return frame;
+}
+
 char *audio_visualization_render_waveform(unsigned int width, unsigned int height, audio_visualization_source_t source,
                                           bool use_color, int color_mode, bool flip_x, bool flip_y) {
   if (width < 8 || height < 4 || width > MAX_TERMINAL_WIDTH || height > MAX_TERMINAL_HEIGHT ||
@@ -156,7 +206,7 @@ char *audio_visualization_render_waveform(unsigned int width, unsigned int heigh
     return NULL;
   audio_visualization_read(source, samples, sample_count);
 
-  const unsigned int grid_height = height;
+  const unsigned int grid_height = GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK ? height * 2 : height;
   const unsigned int center = grid_height / 2;
   const unsigned int half_height = grid_height - 1 - center;
   const size_t cell_count = (size_t)width * grid_height;
@@ -206,29 +256,7 @@ char *audio_visualization_render_waveform(unsigned int width, unsigned int heigh
     }
   }
 
-  size_t capacity = cell_count * (use_color ? 24U : 1U) + (size_t)height + 1;
-  char *frame = SAFE_MALLOC(capacity, char *);
-  if (!frame) {
-    SAFE_FREE(cells);
-    SAFE_FREE(samples);
-    return NULL;
-  }
-  size_t used = 0;
-  for (unsigned int y = 0; y < grid_height; y++) {
-    for (unsigned int x = 0; x < width; x++) {
-      unsigned int source_x = flip_x ? width - x - 1 : x;
-      unsigned int source_y = flip_y ? grid_height - y - 1 : y;
-      char ch = cells[(size_t)source_y * width + source_x];
-      if (use_color && ch != ' ') {
-        used += (size_t)snprintf(frame + used, capacity - used, "\033[38;2;%u;%u;%um%c\033[0m", palette[source_x][0],
-                                 palette[source_x][1], palette[source_x][2], ch);
-      } else {
-        frame[used++] = ch;
-      }
-    }
-    frame[used++] = '\n';
-  }
-  frame[used] = '\0';
+  char *frame = visualization_encode(cells, &palette[0][0], true, width, grid_height, use_color, flip_x, flip_y);
   SAFE_FREE(cells);
   SAFE_FREE(samples);
   return frame;
@@ -278,6 +306,8 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       source < AUDIO_VISUALIZATION_SOURCE_MIC || source > AUDIO_VISUALIZATION_SOURCE_MIX)
     return NULL;
 
+  if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK)
+    height *= 2;
   float *samples = SAFE_MALLOC(VISUALIZATION_HISTORY * sizeof(float), float *);
   if (!samples)
     return NULL;
@@ -332,9 +362,7 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
       float db = 20.0f * log10f(fmaxf(magnitude, 0.00001f));
       float intensity = fmaxf(0.0f, fminf(1.0f, (db + 58.0f) / 52.0f));
       int level = (int)lrintf(intensity * (float)(sizeof(levels) - 2));
-      unsigned int source_x = flip_x ? width - x - 1 : x;
-      unsigned int source_row = flip_y ? height - row - 1 : row;
-      size_t cell = (size_t)source_row * width + source_x;
+      size_t cell = (size_t)row * width + x;
       cells[cell] = levels[level];
       float band_hz = sqrtf(low_hz * high_hz);
       visualization_color_for_level(band_hz, intensity, color_mode, &colors[cell * 3], &colors[cell * 3 + 1],
@@ -342,29 +370,7 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
     }
   }
 
-  size_t capacity = cell_count * (use_color ? 24U : 1U) + (size_t)height + 1;
-  char *frame = SAFE_MALLOC(capacity, char *);
-  if (!frame) {
-    SAFE_FREE(colors);
-    SAFE_FREE(cells);
-    SAFE_FREE(samples);
-    return NULL;
-  }
-  size_t used = 0;
-  for (unsigned int row = 0; row < height; row++) {
-    for (unsigned int x = 0; x < width; x++) {
-      size_t cell = (size_t)row * width + x;
-      char ch = cells[cell];
-      if (use_color && ch != ' ') {
-        used += (size_t)snprintf(frame + used, capacity - used, "\033[38;2;%u;%u;%um%c\033[0m", colors[cell * 3],
-                                 colors[cell * 3 + 1], colors[cell * 3 + 2], ch);
-      } else {
-        frame[used++] = ch;
-      }
-    }
-    frame[used++] = '\n';
-  }
-  frame[used] = '\0';
+  char *frame = visualization_encode(cells, colors, false, width, height, use_color, flip_x, flip_y);
   SAFE_FREE(colors);
   SAFE_FREE(cells);
   SAFE_FREE(samples);
