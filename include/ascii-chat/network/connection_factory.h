@@ -20,6 +20,7 @@
  * @param default_port Fallback port for bare hostnames
  * @param crypto_ctx Optional crypto context to attach to the transport
  * @param transport_out Receives the connected transport on success
+ * The caller owns the returned transport, including its connection resources.
  * @param endpoint_out Optional normalized endpoint output
  * @return ASCIICHAT_OK on success, error code otherwise
  */
