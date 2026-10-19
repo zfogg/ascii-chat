@@ -217,10 +217,13 @@ static void event_test(bool expire, bool cancel, bool push, bool zerocopy, bool 
   socket_close(client);
 }
 
+void accepted_start_failure_test(void);
+
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
   asciichat_errno_suppress(true);
   CHECK(socket_init() == ASCIICHAT_OK);
+  accepted_start_failure_test();
   decoder_tests();
   event_test(false, false, false, false, false);
   event_test(true, false, false, false, false);
