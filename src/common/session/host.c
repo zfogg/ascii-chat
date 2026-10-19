@@ -85,9 +85,20 @@ typedef struct {
 
   /** @brief Incoming audio ringbuffer (written by receive loop, read by render thread) */
   ringbuffer_t *incoming_audio;
+  opus_codec_t *opus_decoder;
+  opus_codec_t *opus_encoder;
+  float audio_frame[960];
 } session_host_client_t;
 
 static void host_client_release_transport(session_host_client_t *client) {
+  if (client->opus_decoder) {
+    opus_codec_destroy(client->opus_decoder);
+    client->opus_decoder = NULL;
+  }
+  if (client->opus_encoder) {
+    opus_codec_destroy(client->opus_encoder);
+    client->opus_encoder = NULL;
+  }
   if (client->rain) {
     digital_rain_destroy(client->rain);
     client->rain = NULL;
@@ -181,12 +192,6 @@ typedef struct session_host {
   /** @brief Audio context for mixing (host only) */
   session_audio_ctx_t *audio_ctx;
 
-  /** @brief Opus decoder for decoding incoming Opus audio */
-  opus_codec_t *opus_decoder;
-
-  /** @brief Opus encoder for encoding mixed audio for broadcast */
-  opus_codec_t *opus_encoder;
-
   /** @brief Context is initialized */
   bool initialized;
 } session_host_t;
@@ -267,15 +272,6 @@ void session_host_destroy(session_host_t *host) {
     session_audio_destroy(host->audio_ctx);
 #endif
     host->audio_ctx = NULL;
-  }
-  if (host->opus_decoder) {
-    opus_codec_destroy(host->opus_decoder);
-    host->opus_decoder = NULL;
-  }
-
-  if (host->opus_encoder) {
-    opus_codec_destroy(host->opus_encoder);
-    host->opus_encoder = NULL;
   }
 
   acip_listener_destroy(host->listener);
@@ -428,8 +424,14 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
         // Find client and decode audio
         mutex_lock(&host->clients_mutex);
         for (int j = 0; j < host->max_clients; j++) {
-          if (host->clients[j].client_id == client_id && host->clients[j].incoming_audio && host->opus_decoder) {
-            // Decode each Opus frame and write to ringbuffer
+          if (host->clients[j].client_id == client_id && host->clients[j].active && host->clients[j].incoming_audio) {
+            if (!host->clients[j].opus_decoder)
+              host->clients[j].opus_decoder = opus_codec_create_decoder(48000);
+            if (!host->clients[j].opus_decoder) {
+              mutex_unlock(&host->clients_mutex);
+              return SET_ERRNO(ERROR_AUDIO, "Failed to initialize participant decoder");
+            }
+            // Each participant owns an independent predictive Opus stream.
             const uint8_t *current_frame = opus_frames;
             for (uint32_t k = 0; k < batch_frame_count; k++) {
               uint16_t frame_size_net = 0;
@@ -441,8 +443,8 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
               if (frame_size > 0) {
                 // Allocate buffer for decoded samples
                 float decoded_samples[960]; // Max 20ms @ 48kHz
-                int decoded_count =
-                    opus_codec_decode(host->opus_decoder, current_frame, (int)frame_size, decoded_samples, 960);
+                int decoded_count = opus_codec_decode(host->clients[j].opus_decoder, current_frame, (int)frame_size,
+                                                      decoded_samples, 960);
                 if (decoded_count > 0) {
                   host->clients[j].audio_active = true;
                   // Write samples to ringbuffer one at a time
@@ -776,75 +778,56 @@ asciichat_error_t session_host_render_video(session_host_t *host) {
 asciichat_error_t session_host_render_audio(session_host_t *host) {
   if (!host || !host->initialized)
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid host");
-  if (!host->opus_decoder)
-    host->opus_decoder = opus_codec_create_decoder(48000);
-  if (!host->opus_encoder)
-    host->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
-  if (!host->opus_decoder || !host->opus_encoder)
-    return SET_ERRNO(ERROR_AUDIO, "Failed to initialize host audio codecs");
   uint64_t mix_start = time_get_ns();
-  float mixed_audio[960]; // 20ms @ 48kHz
-  memset(mixed_audio, 0, sizeof(mixed_audio));
-
-  // Lock clients mutex to safely read audio buffers
+  double total[960] = {0};
+  asciichat_error_t result = ASCIICHAT_OK;
   mutex_lock(&host->clients_mutex);
+  // Drain each source once. Keep unclipped samples so mix-minus can subtract
+  // the recipient before clipping without leaking its voice into the output.
   for (int i = 0; i < host->max_clients; i++) {
-    if (!host->clients[i].active || !host->clients[i].audio_active) {
+    session_host_client_t *client = &host->clients[i];
+    memset(client->audio_frame, 0, sizeof(client->audio_frame));
+    if (!client->active || !client->audio_active || !client->incoming_audio)
       continue;
-    }
-
-    if (!host->clients[i].incoming_audio) {
-      continue;
-    }
-
-    // Read audio samples one-by-one from this participant's ringbuffer
-    // ringbuffer_read() reads one element (1 float) per call
     for (int j = 0; j < 960; j++) {
-      float sample = 0.0f;
-      if (ringbuffer_read(host->clients[i].incoming_audio, &sample)) {
-        // Successfully read a sample
-        mixed_audio[j] += sample;
-        // Clip to [-1.0, 1.0] to prevent distortion
-        if (mixed_audio[j] > 1.0f) {
-          mixed_audio[j] = 1.0f;
-        } else if (mixed_audio[j] < -1.0f) {
-          mixed_audio[j] = -1.0f;
-        }
-      }
-      // If ringbuffer is empty, sample remains 0.0f and that's fine
+      if (ringbuffer_read(client->incoming_audio, &client->audio_frame[j]))
+        total[j] += client->audio_frame[j];
+    }
+  }
+  for (int i = 0; i < host->max_clients; i++) {
+    session_host_client_t *client = &host->clients[i];
+    if (!client->active || !client->transport)
+      continue;
+    if (!client->opus_encoder)
+      client->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+    if (!client->opus_encoder) {
+      result = SET_ERRNO(ERROR_AUDIO, "Failed to initialize participant encoder");
+      continue;
+    }
+    float mixed[960];
+    for (int j = 0; j < 960; j++) {
+      float sample = (float)(total[j] - client->audio_frame[j]);
+      mixed[j] = sample > 1.0f ? 1.0f : sample < -1.0f ? -1.0f : sample;
+    }
+    uint8_t opus_buffer[1000];
+    size_t opus_len = opus_codec_encode(client->opus_encoder, mixed, 960, opus_buffer, sizeof(opus_buffer));
+    if (opus_len > 0) {
+      uint16_t frame_sizes[1] = {(uint16_t)opus_len};
+      asciichat_error_t sent =
+          acip_send_audio_opus_batch(client->transport, opus_buffer, opus_len, frame_sizes, 1, 48000, 20);
+      if (sent != ASCIICHAT_OK)
+        log_warn("Failed to send mixed audio to client %u", client->client_id);
     }
   }
   mutex_unlock(&host->clients_mutex);
-
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_AUDIO_MIX, time_get_ns() - mix_start);
 #ifndef __EMSCRIPTEN__
-  audio_recording_submit(AUDIO_RECORDING_REMOTE, mixed_audio, 960, time_get_ns());
+  float recorded[960];
+  for (int j = 0; j < 960; j++)
+    recorded[j] = total[j] > 1.0 ? 1.0f : total[j] < -1.0 ? -1.0f : (float)total[j];
+  audio_recording_submit(AUDIO_RECORDING_REMOTE, recorded, 960, time_get_ns());
 #endif
-
-  // Encode to Opus
-  uint8_t opus_buffer[1000];
-  size_t opus_len = opus_codec_encode(host->opus_encoder, mixed_audio, 960, opus_buffer, sizeof(opus_buffer));
-
-  // Only broadcast audio if we have network-connected clients (not memory participants)
-  if (opus_len > 0) {
-    uint16_t frame_sizes[1] = {(uint16_t)opus_len};
-    mutex_lock(&host->clients_mutex);
-    for (int i = 0; i < host->max_clients; i++) {
-      if (!host->clients[i].active) {
-        continue;
-      }
-      if (host->clients[i].transport) {
-        asciichat_error_t audio_result =
-            acip_send_audio_opus_batch(host->clients[i].transport, opus_buffer, opus_len, frame_sizes, 1, 48000, 20);
-        if (audio_result != ASCIICHAT_OK) {
-          log_warn("Failed to send mixed audio to client %u", host->clients[i].client_id);
-        }
-      }
-    }
-    mutex_unlock(&host->clients_mutex);
-  }
-
-  return ASCIICHAT_OK;
+  return result;
 }
 
 static void *host_render_thread(void *arg) {
@@ -1536,32 +1519,6 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
     }
   }
 
-  // Create Opus decoder for decoding incoming Opus audio (48kHz)
-  if (!host->opus_decoder) {
-    host->opus_decoder = opus_codec_create_decoder(48000);
-    if (!host->opus_decoder) {
-#ifndef __EMSCRIPTEN__
-      session_audio_destroy(host->audio_ctx);
-#endif
-      host->audio_ctx = NULL;
-      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus decoder");
-    }
-  }
-
-  // Create Opus encoder for encoding mixed audio for broadcast (48kHz, VOIP mode, 24kbps)
-  if (!host->opus_encoder) {
-    host->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
-    if (!host->opus_encoder) {
-      opus_codec_destroy(host->opus_decoder);
-      host->opus_decoder = NULL;
-#ifndef __EMSCRIPTEN__
-      session_audio_destroy(host->audio_ctx);
-#endif
-      host->audio_ctx = NULL;
-      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus encoder");
-    }
-  }
-
   // Spawn render thread
   host->render_thread_running = true;
   if (asciichat_thread_create(&host->render_thread, "render", host_render_thread, host) != 0) {
@@ -1595,14 +1552,6 @@ void session_host_stop_render(session_host_t *host) {
     session_audio_destroy(host->audio_ctx);
 #endif
     host->audio_ctx = NULL;
-  }
-  if (host->opus_decoder) {
-    opus_codec_destroy(host->opus_decoder);
-    host->opus_decoder = NULL;
-  }
-  if (host->opus_encoder) {
-    opus_codec_destroy(host->opus_encoder);
-    host->opus_encoder = NULL;
   }
 
   log_info("Host render thread stopped");

@@ -38,6 +38,8 @@ static bool parse_zalgo(const char *arg, void *dest, char **error_msg) {
 // ============================================================================
 // DISPLAY CATEGORY - Display layout options
 // ============================================================================
+static const bool default_face_follow_value = false;
+
 const registry_entry_t g_display_entries[] = {
     {.long_name = "zalgo",
      .type = OPTION_TYPE_CALLBACK,

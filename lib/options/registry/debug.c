@@ -8,6 +8,10 @@
 
 #include <ascii-chat/options/registry/common.h>
 
+#ifndef NDEBUG
+static const bool default_face_follow_debug_value = false;
+#endif
+
 // clang-format off
 const registry_entry_t g_debug_entries[] = {
 #ifndef NDEBUG
