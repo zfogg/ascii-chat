@@ -4,6 +4,7 @@ import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
 import { useAutoGridSize } from "../hooks/useAutoGridSize";
 import { useRenderSettings } from "../hooks/useRenderSettings";
 import { useUrlState } from "../hooks/useUrlState";
+import { readUrlValue } from "../utils/urlState";
 import {
   useCallback,
   useEffect,
@@ -196,6 +197,9 @@ export function ClientPage({
   );
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [webcamDisabledByUser, setWebcamDisabledByUser] = useState(false);
+  const [deviceSetupOpen, setDeviceSetupOpen] = useState(() =>
+    readUrlValue("devices", false),
+  );
   const [rendererReady, setRendererReady] = useState(false);
   const [rendererError, setRendererError] = useState("");
   const [rendererRequested, setRendererRequested] =
@@ -555,6 +559,13 @@ export function ClientPage({
     frameQueueRef,
     setError,
   });
+  const handleDeviceSetupOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) stopWebcam();
+      setDeviceSetupOpen(open);
+    },
+    [stopWebcam],
+  );
 
   const closeAudio = useCallback(() => {
     audioRef.current?.close();
@@ -562,20 +573,25 @@ export function ClientPage({
     setAudioEnabled(false);
     setMicEnabled(false);
   }, []);
-  const disconnectMedia = useCallback(() => {
-    setCreatingSession(false);
-    setConnectionRequested(false);
-    setCreatedSession("");
-    setConnecting(false);
-    pendingConnectRef.current = false;
-    discoveryJoinGenerationRef.current++;
-    // Audio callbacks can survive briefly while AudioContext.close() drains.
-    // Stop them from sending into a DataChannel that disconnect() just closed.
-    audioStreamStartedRef.current = false;
-    stopWebcam();
-    closeAudio();
-    handleDisconnect();
-  }, [stopWebcam, closeAudio, handleDisconnect, setConnectionRequested]);
+  const disconnectMedia = useCallback(
+    (event?: { preventDefault(): void }) => {
+      // React can reuse this button as Connect before the click's default action.
+      event?.preventDefault();
+      setCreatingSession(false);
+      setConnectionRequested(false);
+      setCreatedSession("");
+      setConnecting(false);
+      pendingConnectRef.current = false;
+      discoveryJoinGenerationRef.current++;
+      // Audio callbacks can survive briefly while AudioContext.close() drains.
+      // Stop them from sending into a DataChannel that disconnect() just closed.
+      audioStreamStartedRef.current = false;
+      stopWebcam();
+      closeAudio();
+      handleDisconnect();
+    },
+    [stopWebcam, closeAudio, handleDisconnect, setConnectionRequested],
+  );
   useEffect(() => {
     if (
       connectionState === ConnectionState.DISCONNECTED ||
@@ -945,6 +961,10 @@ export function ClientPage({
       setWebcamDisabledByUser(false);
       return;
     }
+    if (deviceSetupOpen) {
+      webcamAutoStartedRef.current = false;
+      return;
+    }
     if (audioVisualization) {
       if (webcamAutoStartedRef.current || isWebcamRunning) stopWebcam();
       webcamAutoStartedRef.current = false;
@@ -962,6 +982,7 @@ export function ClientPage({
     stopWebcam,
     webcamDisabledByUser,
     audioVisualization,
+    deviceSetupOpen,
   ]);
 
   const disableWebcam = useCallback(() => {
@@ -1065,6 +1086,7 @@ export function ClientPage({
         header={
           <ModeHeader
             showSettings={showSettings}
+            onDeviceSetupOpenChange={handleDeviceSetupOpenChange}
             settingsPanel={
               <BinarySettings
                 config={settings}
@@ -1321,7 +1343,7 @@ export function ClientPage({
                       <p
                         role="alert"
                         title={error}
-                        className="w-full text-terminal-1"
+                        className="w-full rounded border-2 border-red-500 bg-red-950 px-4 py-3 text-lg font-bold text-red-100"
                       >
                         {error}
                       </p>
@@ -1426,7 +1448,7 @@ export function ClientPage({
                       <p
                         role="alert"
                         title={error}
-                        className="w-full text-terminal-1"
+                        className="w-full rounded border-2 border-red-500 bg-red-950 px-4 py-3 text-lg font-bold text-red-100"
                       >
                         {error}
                       </p>

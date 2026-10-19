@@ -6,6 +6,7 @@ import {
   createOptionAccessor,
   initializeOptions,
   cleanupOptions,
+  getWasmAssetUrl,
 } from "@ascii-chat/shared/wasm";
 
 export const BINARY_OPENPGP_KEY_PREFIX = "ascii-chat:openpgp-binary-base64:";
@@ -601,8 +602,7 @@ async function loadWasmModule(): Promise<void> {
 
   console.log("[WASM] Loading module for help text...");
   wasmModule = await ClientModuleFactory({
-    locateFile: (path: string) =>
-      new URL(`/wasm/${path}`, globalThis.location.origin).href,
+    locateFile: getWasmAssetUrl,
     getRandomValue: function () {
       const buf = new Uint32Array(1);
       crypto.getRandomValues(buf);

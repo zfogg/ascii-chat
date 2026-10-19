@@ -7,6 +7,7 @@ import {
   getMirrorModule,
   initMirrorWasm,
   isWasmReady,
+  getWasmAssetUrl,
 } from "@ascii-chat/shared/wasm";
 // @ts-expect-error - Generated file without types
 import MirrorModuleFactory from "../wasm/dist/mirror.js";
@@ -49,7 +50,9 @@ export function MirrorPage() {
   const initWasm = useCallback(() => {
     const t0 = performance.now();
     console.log(`[Mirror] initWasm start at ${t0.toFixed(1)}ms`);
-    const promise = initMirrorWasm(MirrorModuleFactory);
+    const promise = initMirrorWasm(MirrorModuleFactory, {
+      locateFile: getWasmAssetUrl,
+    });
     promise
       .then(() => {
         setWasmModule(getMirrorModule());

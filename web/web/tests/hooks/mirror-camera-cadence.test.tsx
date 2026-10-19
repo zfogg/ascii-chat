@@ -26,7 +26,12 @@ for (const fps of [30, 60]) {
     const track = { stop: vi.fn() };
     const stream = { getTracks: () => [track] };
     const getUserMedia = vi.fn().mockResolvedValue(stream);
-    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia } });
+    vi.stubGlobal("navigator", {
+      mediaDevices: {
+        getUserMedia,
+        enumerateDevices: vi.fn().mockResolvedValue([]),
+      },
+    });
     const video = {
       readyState: 1,
       muted: true,

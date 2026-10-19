@@ -18,7 +18,7 @@ import type { CompressedVideoEncoding } from "../network/VideoUploadEncoder";
 import type { ClientSession } from "../network/Transport";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import type { BinarySettingsConfig } from "../components";
-import { getMediaDevicePreferences } from "../utils/mediaDevicePreferences";
+import { resolveCameraDeviceId } from "../utils/mediaDevicePreferences";
 import {
   MEDIA_DEVICE_PREFERENCES_CHANGED,
   type MediaDevicePreferencesChange,
@@ -609,43 +609,17 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         videoRef.current,
       );
 
-      const preferredCameraId = getMediaDevicePreferences().cameraId;
-      const cameraIndexValue = preferredCameraId
-        ? null
-        : new URLSearchParams(window.location.search).get("videoDeviceIndex");
-      const cameraIndex =
-        cameraIndexValue === null ? null : Number(cameraIndexValue);
-      let videoConstraints: MediaTrackConstraints = {
+      const preferredCameraId = testPattern.enabled
+        ? ""
+        : await resolveCameraDeviceId();
+      const videoConstraints: MediaTrackConstraints = {
         width: { ideal: w },
         height: { ideal: h },
         frameRate: { ideal: settings.targetFps },
+        ...(preferredCameraId
+          ? { deviceId: { exact: preferredCameraId } }
+          : {}),
       };
-      if (cameraIndex !== null) {
-        if (!Number.isInteger(cameraIndex) || cameraIndex < 0) {
-          throw new Error("videoDeviceIndex must be a non-negative integer");
-        }
-        const cameras = (
-          await navigator.mediaDevices.enumerateDevices()
-        ).filter((device) => device.kind === "videoinput");
-        const camera = cameras[cameraIndex];
-        if (!camera?.deviceId) {
-          throw new Error(
-            `Camera index ${cameraIndex} is unavailable (${cameras.length} camera(s) found)`,
-          );
-        }
-        videoConstraints = {
-          ...videoConstraints,
-          deviceId: { exact: camera.deviceId },
-        };
-        console.log(
-          `[Client] Selecting camera ${cameraIndex}: ${camera.label}`,
-        );
-      } else if (preferredCameraId) {
-        videoConstraints = {
-          ...videoConstraints,
-          deviceId: { exact: preferredCameraId },
-        };
-      }
 
       if (!avState.current(generation)) return;
       let stream: MediaStream;
@@ -675,27 +649,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         testPatternSourceRef.current = source;
         stream = source.stream;
       } else {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: videoConstraints,
-            audio: false,
-          });
-        } catch (err) {
-          if (cameraIndex !== null) throw err;
-          console.error(
-            "[Client] getUserMedia failed (trying fallback without constraints):",
-            err,
-          );
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: true,
-              audio: false,
-            });
-          } catch (err2) {
-            console.error("[Client] getUserMedia failed completely:", err2);
-            throw err2;
-          }
-        }
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: videoConstraints,
+          audio: false,
+        });
       }
 
       if (!avState.current(generation)) {
@@ -710,6 +667,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       // is downscaled below, so negotiate a 720p source only when the current
       // mode is below target and this camera advertises a high-FPS mode.
       const videoTrack = stream.getVideoTracks()[0];
+      if (!videoTrack || videoTrack.readyState !== "live") {
+        throw new Error("Selected camera did not provide a live video track");
+      }
       if (videoTrack?.getCapabilities && videoTrack.getSettings) {
         const capabilities = videoTrack.getCapabilities();
         const currentSettings = videoTrack.getSettings();

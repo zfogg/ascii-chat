@@ -3,6 +3,9 @@ import { expect, test, vi } from "vite-plus/test";
 import { useMirrorWebcam } from "../../src/hooks/useMirrorWebcam";
 import { MediaSourceType } from "../../src/hooks/useClientLike";
 import { DEFAULT_SETTINGS } from "../../src/utils/defaultSettings";
+const { resolveCameraDeviceId } = vi.hoisted(() => ({
+  resolveCameraDeviceId: vi.fn(async () => "selected-camera"),
+}));
 vi.mock("@ascii-chat/shared/hooks", () => ({
   useTestPattern: () => ({ enabled: false }),
 }));
@@ -12,6 +15,7 @@ vi.mock("@ascii-chat/shared/wasm", () => ({
 }));
 vi.mock("../../src/utils/mediaDevicePreferences", () => ({
   getMediaDevicePreferences: () => ({}),
+  resolveCameraDeviceId,
   MEDIA_DEVICE_PREFERENCES_CHANGED: "devices",
 }));
 function track(kind: string) {
@@ -124,6 +128,7 @@ test("late camera acquisition is discarded after returning to visualization", as
       animation: "fft",
     },
   });
+  await waitFor(() => expect(finish).toBeTypeOf("function"));
   rerender(audio);
   await act(async () => finish(stream([late])));
   expect(late.stop).toHaveBeenCalledOnce();
@@ -153,4 +158,51 @@ test("starting in FFT requests microphone only and does not wait for video metad
   expect(getUserMedia.mock.calls[0]![0].video).toBe(false);
   expect(params.setIsWebcamRunning).toHaveBeenCalledWith(true);
   expect(params.videoRef.current.play).not.toHaveBeenCalled();
+});
+
+test("failed camera restoration requests only the selected camera", async () => {
+  const { params, mic } = setup();
+  const getUserMedia = vi
+    .fn()
+    .mockRejectedValue(new DOMException("Denied", "NotAllowedError"));
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: { getUserMedia },
+  });
+  const audio = {
+    ...params,
+    settings: {
+      ...DEFAULT_SETTINGS,
+      animationEnabled: true,
+      animation: "fft" as const,
+    },
+  };
+  const { rerender } = renderHook((p) => useMirrorWebcam(p), {
+    initialProps: audio,
+  });
+  rerender({
+    ...audio,
+    settings: {
+      ...DEFAULT_SETTINGS,
+      animationEnabled: false,
+      animation: "fft",
+    },
+  });
+  await waitFor(() =>
+    expect(params.setError).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to restore webcam"),
+    ),
+  );
+  expect(getUserMedia).toHaveBeenCalledTimes(1);
+  expect(getUserMedia).toHaveBeenCalledWith({
+    video: {
+      width: { ideal: 640 },
+      height: { ideal: 480 },
+      frameRate: { ideal: DEFAULT_SETTINGS.targetFps },
+      facingMode: "user",
+      deviceId: { exact: "selected-camera" },
+    },
+    audio: false,
+  });
+  expect(mic.stop).not.toHaveBeenCalled();
 });

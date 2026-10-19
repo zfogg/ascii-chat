@@ -1,4 +1,5 @@
 import { OpusEncoder } from "./OpusEncoder";
+import { getWasmAssetUrl } from "@ascii-chat/shared/wasm";
 
 const send = (message: unknown, transfer: Transferable[] = []) =>
   (self as unknown as Worker).postMessage(message, transfer);
@@ -41,11 +42,10 @@ self.onmessage = async ({
     send({ error: error instanceof Error ? error.message : String(error) });
   };
   try {
-    const url = new URL("/wasm/client.js", self.location.origin).href;
+    const url = getWasmAssetUrl("client.js");
     const { default: createModule } = await import(/* @vite-ignore */ url);
     module = await createModule({
-      locateFile: (file: string) =>
-        new URL(`/wasm/${file}`, self.location.origin).href,
+      locateFile: getWasmAssetUrl,
     });
     if (!module) throw new Error("Audio WASM did not initialize");
     handle = module._wasm_audio_processor_create(sampleRate, bypass);

@@ -486,6 +486,7 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
         COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target mirror-web
         COMMENT "Building mirror-web WASM module"
         BYPRODUCTS "${WASM_BUILD_DIR}/mirror.js" "${WASM_BUILD_DIR}/mirror.wasm"
+        USES_TERMINAL
         VERBATIM
     )
 
@@ -493,6 +494,7 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
         COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target client-web
         COMMENT "Building client-web WASM module"
         BYPRODUCTS "${WASM_BUILD_DIR}/client.js" "${WASM_BUILD_DIR}/client.wasm"
+        USES_TERMINAL
         VERBATIM
     )
 
@@ -509,6 +511,7 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
             COMMENT "Building all WASM modules"
             BYPRODUCTS "${WASM_BUILD_DIR}/mirror.js" "${WASM_BUILD_DIR}/mirror.wasm" "${WASM_BUILD_DIR}/client.js" "${WASM_BUILD_DIR}/client.wasm"
             DEPENDS mirror-web client-web
+            USES_TERMINAL
             VERBATIM
         )
     endif()

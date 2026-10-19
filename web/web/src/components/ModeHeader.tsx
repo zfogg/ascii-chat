@@ -1,5 +1,5 @@
 import { useUrlState } from "../hooks/useUrlState";
-import { useId, type ReactNode } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 import { AnimatedPanel, PanelChevron } from "./AnimatedPanel";
 import { PageControlBar, type PageControlBarProps } from "./PageControlBar";
 import { DeviceSetupModal } from "./DeviceSetupModal";
@@ -9,6 +9,7 @@ interface ModeHeaderProps {
   settingsPanel?: ReactNode;
   connectionPanel?: ReactNode;
   controlBar: PageControlBarProps;
+  onDeviceSetupOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -22,16 +23,24 @@ export function ModeHeader({
   settingsPanel,
   connectionPanel,
   controlBar,
+  onDeviceSetupOpenChange,
 }: ModeHeaderProps) {
   const [deviceSetupOpen, setDeviceSetupOpen] = useUrlState("devices", false);
   const [networkOpen, setNetworkOpen] = useUrlState("network", true);
   const networkId = useId();
+  useEffect(() => {
+    onDeviceSetupOpenChange?.(deviceSetupOpen);
+  }, [deviceSetupOpen, onDeviceSetupOpenChange]);
+  const changeDeviceSetupOpen = (open: boolean) => {
+    onDeviceSetupOpenChange?.(open);
+    setDeviceSetupOpen(open);
+  };
 
   return (
     <>
       <DeviceSetupModal
         open={deviceSetupOpen}
-        onClose={() => setDeviceSetupOpen(false)}
+        onClose={() => changeDeviceSetupOpen(false)}
       />
       <AnimatedPanel open={showSettings}>{settingsPanel}</AnimatedPanel>
       {connectionPanel && (
@@ -58,7 +67,7 @@ export function ModeHeader({
       >
         <PageControlBar
           {...controlBar}
-          onDeviceSetupClick={() => setDeviceSetupOpen(true)}
+          onDeviceSetupClick={() => changeDeviceSetupOpen(true)}
           compactVerticalSpacing={!!connectionPanel}
         />
       </div>
