@@ -25,6 +25,7 @@ import {
 } from "../../../packages/shared/src/capture/cameraRate";
 import {
   getMediaDevicePreferences,
+  resolveCameraDeviceId,
   MEDIA_DEVICE_PREFERENCES_CHANGED,
   type MediaDevicePreferencesChange,
 } from "../utils/mediaDevicePreferences";
@@ -169,6 +170,8 @@ export function useMirrorWebcam({
       console.time("[Mirror] getUserMedia (incl browser permission)");
       console.log("[Mirror] Calling getUserMedia...");
       const devicePreferences = getMediaDevicePreferences();
+      const cameraId = audioOnly ? "" : await resolveCameraDeviceId();
+      if (generation !== startGenerationRef.current) return false;
       const mediaConstraints: MediaStreamConstraints = {
         video: audioOnly
           ? false
@@ -177,9 +180,7 @@ export function useMirrorWebcam({
               height: { ideal: 480 },
               frameRate: { ideal: cameraAcquisitionFps() },
               facingMode: "user",
-              ...(devicePreferences.cameraId
-                ? { deviceId: { exact: devicePreferences.cameraId } }
-                : {}),
+              ...(cameraId ? { deviceId: { exact: cameraId } } : {}),
             },
         // Keep the microphone track available so waveform/FFT can be enabled
         // after the camera has started, without requiring a reconnect.
@@ -187,28 +188,8 @@ export function useMirrorWebcam({
           ? { deviceId: { exact: devicePreferences.microphoneId } }
           : true,
       };
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-      } catch (error) {
-        if (!devicePreferences.cameraId && !devicePreferences.microphoneId)
-          throw error;
-        console.warn(
-          "[Mirror] Saved media device is unavailable; using browser defaults",
-          error,
-        );
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: audioOnly
-            ? false
-            : {
-                width: { ideal: 640 },
-                height: { ideal: 480 },
-                frameRate: { ideal: cameraAcquisitionFps() },
-                facingMode: "user",
-              },
-          audio: true,
-        });
-      }
+      const stream =
+        await navigator.mediaDevices.getUserMedia(mediaConstraints);
       if (generation !== startGenerationRef.current) {
         stream.getTracks().forEach((track) => track.stop());
         return false;
@@ -314,28 +295,21 @@ export function useMirrorWebcam({
     const restore = async () => {
       let camera: MediaStream | undefined;
       try {
-        const cameraId = getMediaDevicePreferences().cameraId;
+        const cameraId = await resolveCameraDeviceId();
+        if (cancelled || streamRef.current !== stream) return;
         const video = {
           width: { ideal: 640 },
           height: { ideal: 480 },
           frameRate: { ideal: cameraAcquisitionFps() },
           facingMode: "user",
         };
-        try {
-          camera = await navigator.mediaDevices.getUserMedia({
-            video: {
-              ...video,
-              ...(cameraId ? { deviceId: { exact: cameraId } } : {}),
-            },
-            audio: false,
-          });
-        } catch (error) {
-          if (!cameraId || cancelled) throw error;
-          camera = await navigator.mediaDevices.getUserMedia({
-            video,
-            audio: false,
-          });
-        }
+        camera = await navigator.mediaDevices.getUserMedia({
+          video: {
+            ...video,
+            ...(cameraId ? { deviceId: { exact: cameraId } } : {}),
+          },
+          audio: false,
+        });
         if (cancelled || streamRef.current !== stream) {
           camera.getTracks().forEach((track) => track.stop());
           return;
@@ -369,6 +343,7 @@ export function useMirrorWebcam({
     audioOnly,
     isWebcamRunning,
     mediaSource,
+    settings.targetFps,
     streamRef,
     videoRef,
     testPattern.enabled,

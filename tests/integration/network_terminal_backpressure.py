@@ -24,6 +24,24 @@ def unused_port():
         return sock.getsockname()[1]
 
 
+def receive_times(text):
+    """Read actual ASCII receive callbacks, independently of lag warnings."""
+    return [
+        (int(hours) * 3600 + int(minutes) * 60 + float(seconds)) * 1000
+        for hours, minutes, seconds in re.findall(
+            r"\[(\d{2}):(\d{2}):(\d{2}\.\d+)\][^\n]*CALLING_DISPLAY_RENDER:", text
+        )
+    ]
+
+
+def receive_intervals(previous, samples):
+    """Require observable reception and handle a measurement crossing midnight."""
+    assert previous, "No pre-stall receive samples; client DEBUG frame logs are required"
+    assert len(samples) >= 2, "No sustained receive samples during the measurement"
+    times = [previous[-1], *samples]
+    return [(current - before) % 86400000 for before, current in zip(times, times[1:])]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, required=True)
@@ -70,7 +88,7 @@ def main():
     log.unlink(missing_ok=True)
     command = [
         binary, "--no-check-update", "--log-file", str(log), "--log-level",
-        "warn", "client", address,
+        "debug", "client", address,
         "--test-pattern", "--video-codec", "raw", "--fps", "60", "--width",
         "80", "--height", "25", "--color-mode", "truecolor", "--audio=false",
         "--splash-screen=false",
@@ -106,24 +124,33 @@ def main():
         assert not ended, "Client exited before the terminal stall"
         assert before.count(b"\x1b[H") >= 30, "No sustained media presentation before the stall"
         drain(1)
+        previous = receive_times(log.read_text(errors="replace"))
+        assert previous, "No pre-stall receive samples; client DEBUG frame logs are required"
         log_offset = log.stat().st_size
         # Fill the PTY's finite output queue, as a slow/minimized terminal can.
         time.sleep(2)
+        with log.open("rb") as logfile:
+            logfile.seek(log_offset)
+            stalled_samples = receive_times(logfile.read().decode(errors="replace"))
         after = drain(4)
         assert after.count(b"\x1b[H") >= 8, "Media did not resume after draining the terminal"
         with log.open("rb") as logfile:
             logfile.seek(log_offset)
             text = logfile.read().decode(errors="replace")
-        intervals = [float(value) for value in re.findall(r"got ([0-9.]+)ms", text)]
+        samples = receive_times(text)
+        intervals = receive_intervals(previous, samples)
         result = {
             "presentations_before_stall": before.count(b"\x1b[H"),
             "presentations_after_stall": after.count(b"\x1b[H"),
-            "maximum_receive_interval_ms": max(intervals, default=0),
+            "frames_received_while_terminal_stalled": len(stalled_samples),
+            "receive_samples": len(samples),
+            "maximum_receive_interval_ms": max(intervals),
             "command": command,
         }
         (output / "result.json").write_text(json.dumps(result, indent=2) + "\n")
         print(json.dumps(result), flush=True)
-        assert max(intervals, default=0) < 500, "A terminal stall delayed network frames"
+        assert len(stalled_samples) >= 8, "Reception did not continue while the terminal was stalled"
+        assert max(intervals) < 500, "A terminal stall delayed network frames"
     finally:
         try:
             os.kill(pid, signal.SIGINT)

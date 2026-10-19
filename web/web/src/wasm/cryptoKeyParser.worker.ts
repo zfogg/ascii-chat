@@ -1,5 +1,6 @@
 // @ts-expect-error Generated Emscripten factory does not ship TypeScript types.
 import ClientModuleFactory from "./dist/client.js";
+import { getWasmAssetUrl } from "@ascii-chat/shared/wasm";
 
 interface ParserModule {
   HEAPU8: Uint8Array;
@@ -37,8 +38,7 @@ const postMessageToWorker = self.postMessage as unknown as (
 
 async function getParserModule(): Promise<ParserModule> {
   modulePromise ??= ClientModuleFactory({
-    locateFile: (path: string) =>
-      new URL(`/wasm/${path}`, self.location.origin).href,
+    locateFile: getWasmAssetUrl,
     getRandomValue: () => {
       const value = new Uint32Array(1);
       crypto.getRandomValues(value);

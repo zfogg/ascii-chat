@@ -19,39 +19,32 @@ function camera() {
   reportCameraTrack(active as unknown as MediaStreamTrack);
   return { active, clone };
 }
-test("device preview reuses the active camera without renegotiating its capture rate", async () => {
+test("device preview clones the active camera without requesting another device", async () => {
   const { active, clone } = camera();
-  const stream = { addTrack: vi.fn() };
+  const getUserMedia = vi.fn();
+  vi.stubGlobal("navigator", { mediaDevices: { getUserMedia } });
+  vi.stubGlobal("MediaStream", class { constructor(public tracks: unknown[]) {} });
+  const stream = await acquireCameraPreview("active", new AbortController().signal);
+  expect((stream as unknown as {tracks: unknown[]}).tracks).toEqual([clone]);
+  expect(getUserMedia).not.toHaveBeenCalled();
+  expect(active.stop).not.toHaveBeenCalled();
+});
+
+test("a different preview camera requests high-rate capture without audio", async () => {
+  const { active } = camera();
+  const stream = { getTracks: () => [] };
   const getUserMedia = vi.fn().mockResolvedValue(stream);
   vi.stubGlobal("navigator", { mediaDevices: { getUserMedia } });
-  expect(await acquireCameraPreview({ cameraId: "active" })).toBe(stream);
-  expect(getUserMedia).toHaveBeenCalledWith({ video: false, audio: true });
-  expect(stream.addTrack).toHaveBeenCalledWith(clone);
-  expect(active.stop).not.toHaveBeenCalled();
-});
-test("a different preview camera requests high-rate capture", async () => {
-  const { active } = camera();
-  const getUserMedia = vi.fn().mockResolvedValue({});
-  vi.stubGlobal("navigator", { mediaDevices: { getUserMedia } });
-  await acquireCameraPreview({ cameraId: "other" });
+  await acquireCameraPreview("other", new AbortController().signal);
   expect(active.clone).not.toHaveBeenCalled();
   expect(getUserMedia).toHaveBeenCalledWith({
-    video: { deviceId: { exact: "other" }, frameRate: { ideal: 60 } },
-    audio: true,
+    video: { width: { ideal: 1280 }, height: { ideal: 720 }, deviceId: { exact: "other" }, frameRate: { ideal: 60 } }, audio: false,
   });
 });
-test("a failed microphone request releases only the preview clone", async () => {
-  const { active, clone } = camera();
-  vi.stubGlobal("navigator", {
-    mediaDevices: {
-      getUserMedia: vi
-        .fn()
-        .mockRejectedValue(new Error("microphone unavailable")),
-    },
-  });
-  await expect(acquireCameraPreview({})).rejects.toThrow(
-    "microphone unavailable",
-  );
-  expect(clone.stop).toHaveBeenCalledOnce();
-  expect(active.stop).not.toHaveBeenCalled();
+
+test("an aborted preview does not clone the live camera", async () => {
+  const { active } = camera();
+  const owner = new AbortController();owner.abort();
+  await expect(acquireCameraPreview("active", owner.signal)).rejects.toThrow();
+  expect(active.clone).not.toHaveBeenCalled();
 });

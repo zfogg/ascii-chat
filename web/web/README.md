@@ -101,8 +101,19 @@ This invokes Emscripten to compile `src/web/mirror.c` and `src/web/client.c` to 
 **Prerequisites:** Emscripten must be installed (`brew install emscripten` on macOS, `pacman -S emscripten` on Arch,
 etc).
 
-Configure the Emscripten CMake build before running this command. Set
-`ASCII_CHAT_WASM_BUILD_DIR` to its build directory; the default is `../../build`.
+Activate the Emscripten SDK environment, then configure from the repository root:
+
+```bash
+cmake --preset default -B build -DBUILD_WEB=ON
+cmake --build build --target mirror-web client-web
+```
+
+All platforms use the same CMake targets and default `../../build` directory.
+CMake keeps the Emscripten build in `build/web`, separate from the native
+compiler's cache. The activated SDK must supply its matching LLVM, Binaryen,
+Python, and Node tools. `ASCII_CHAT_WASM_BUILD_DIR` overrides the configured
+build directory when needed.
+
 The build compiles both modules and copies their JavaScript and WASM into
 `src/wasm/dist` and `public/wasm`. Only `src/wasm/dist` is committed;
 `public/wasm` is ignored and regenerated from that canonical bundle when Vite
@@ -110,6 +121,10 @@ starts for development, a build, or a preview. This includes the public JS
 loaders used by the website demo. A SHA-256 manifest records artifacts and C
 sources. `ASCII_CHAT_WASM_USE_PREBUILT=1` explicitly uses verified prebuilt
 artifacts; a stale source hash fails the build.
+
+The web client and its workers load a versioned artifact directory derived
+from the manifest. Previous artifact sets remain in `public/wasm` across local
+rebuilds so an open page keeps using matching JavaScript and WASM files.
 
 ## Network video encoding
 

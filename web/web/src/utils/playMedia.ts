@@ -1,9 +1,17 @@
 /** Wait for a drawable frame even when autoplay requires another user gesture. */
-export async function playMedia(video: HTMLVideoElement, signal: AbortSignal) {
+export async function playMedia(
+  video: HTMLVideoElement,
+  signal: AbortSignal,
+  timeoutMs = 30_000,
+) {
   signal.throwIfAborted();
   let cleanup = () => {};
-  const ready = new Promise<void>((resolve, reject) => {
-    const loaded = () => resolve();
+  let loaded = () => {};
+  const ready = new Promise<void>((resolve) => {
+    loaded = () => resolve();
+    if (video.readyState >= 2) resolve();
+  });
+  const failure = new Promise<never>((_, reject) => {
     const failed = () =>
       reject(
         new DOMException(
@@ -14,8 +22,9 @@ export async function playMedia(video: HTMLVideoElement, signal: AbortSignal) {
     const aborted = () =>
       reject(new DOMException("Playback cancelled", "AbortError"));
     const timer = window.setTimeout(
-      () => reject(new Error("Timed out loading video.")),
-      30_000,
+      () =>
+        reject(new DOMException("Timed out loading video.", "TimeoutError")),
+      timeoutMs,
     );
     cleanup = () => {
       clearTimeout(timer);
@@ -26,18 +35,20 @@ export async function playMedia(video: HTMLVideoElement, signal: AbortSignal) {
     video.addEventListener("loadeddata", loaded);
     video.addEventListener("error", failed);
     signal.addEventListener("abort", aborted, { once: true });
-    if (video.readyState >= 2) resolve();
   });
   try {
-    await Promise.all([
-      ready,
-      video.play().catch((error: unknown) => {
-        if (
-          !(error instanceof DOMException) ||
-          error.name !== "NotAllowedError"
-        )
-          throw error;
-      }),
+    await Promise.race([
+      failure,
+      Promise.all([
+        ready,
+        video.play().catch((error: unknown) => {
+          if (
+            !(error instanceof DOMException) ||
+            error.name !== "NotAllowedError"
+          )
+            throw error;
+        }),
+      ]),
     ]);
   } finally {
     cleanup();

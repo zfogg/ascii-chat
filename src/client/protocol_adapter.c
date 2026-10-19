@@ -468,6 +468,14 @@ static void *data_reception_thread_func(void *arg) {
 asciichat_error_t client_protocol_start(client_connection_t *connection) {
   log_warn("[FRAME_RECV_INIT] 🟢 PROTOCOL_START: Starting client protocol initialization");
 
+  // The server can send Opus audio as soon as streaming starts. Initialize the
+  // decoder before either transport's receive worker can dispatch those packets.
+  asciichat_error_t audio_result = audio_connection_init(connection);
+  if (audio_result != ASCIICHAT_OK)
+    return audio_result;
+  if (client_connection_checkpoint("audio-pipeline") != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
+
   acip_client_callbacks_t control = g_acip_client_callbacks;
   control.app_ctx = connection;
   session_protocol_init(&connection->protocol, server_connection_get_transport(connection),
@@ -551,11 +559,6 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   }
   log_debug("Webcam capture thread started successfully");
   if (client_connection_checkpoint("capture") != ASCIICHAT_OK)
-    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
-
-  if (audio_connection_init(connection) != ASCIICHAT_OK)
-    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
-  if (client_connection_checkpoint("audio-pipeline") != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
 
   // Start local media audio only after the connection succeeds. Starting the

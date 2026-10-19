@@ -25,8 +25,10 @@ export class FramePresentationScheduler {
     this.pending = false;
     const now = performance.now();
     const interval = this.interval();
-    this.next = Math.max(this.next + interval, now);
-    if (this.next <= now) this.next = now + interval;
+    // Preserve the cadence across small timer delays instead of accumulating
+    // every scheduling delay into a progressively lower presentation rate.
+    this.next += interval;
+    if (this.next < now - interval) this.next = now + interval;
     this.render();
   }
   close(): void {

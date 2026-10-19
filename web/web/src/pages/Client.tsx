@@ -5,6 +5,7 @@ import { useAutoGridSize } from "../hooks/useAutoGridSize";
 import { useCameraFrameRate } from "../hooks/useCameraFrameRate";
 import { useRenderSettings } from "../hooks/useRenderSettings";
 import { useUrlState } from "../hooks/useUrlState";
+import { readUrlValue } from "../utils/urlState";
 import {
   useCallback,
   useEffect,
@@ -197,6 +198,9 @@ export function ClientPage({
   );
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [webcamDisabledByUser, setWebcamDisabledByUser] = useState(false);
+  const [deviceSetupOpen, setDeviceSetupOpen] = useState(() =>
+    readUrlValue("devices", false),
+  );
   const [rendererReady, setRendererReady] = useState(false);
   const [rendererError, setRendererError] = useState("");
   const [rendererRequested, setRendererRequested] =
@@ -567,6 +571,13 @@ export function ClientPage({
     frameQueueRef,
     setError,
   });
+  const handleDeviceSetupOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) stopWebcam();
+      setDeviceSetupOpen(open);
+    },
+    [stopWebcam],
+  );
 
   const closeAudio = useCallback(() => {
     audioRef.current?.close();
@@ -967,6 +978,10 @@ export function ClientPage({
       setWebcamDisabledByUser(false);
       return;
     }
+    if (deviceSetupOpen) {
+      webcamAutoStartedRef.current = false;
+      return;
+    }
     if (audioVisualization) {
       if (webcamAutoStartedRef.current || isWebcamRunning) stopWebcam();
       webcamAutoStartedRef.current = false;
@@ -984,6 +999,7 @@ export function ClientPage({
     stopWebcam,
     webcamDisabledByUser,
     audioVisualization,
+    deviceSetupOpen,
   ]);
 
   const disableWebcam = useCallback(() => {
@@ -1087,6 +1103,7 @@ export function ClientPage({
         header={
           <ModeHeader
             showSettings={showSettings}
+            onDeviceSetupOpenChange={handleDeviceSetupOpenChange}
             settingsPanel={
               <BinarySettings
                 cameraFps={cameraFps}

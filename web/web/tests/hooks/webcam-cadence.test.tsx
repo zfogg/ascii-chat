@@ -104,7 +104,10 @@ async function startCapture(path: CapturePath, targetFps: number) {
     getTracks: () => [track],
   };
   vi.stubGlobal("navigator", {
-    mediaDevices: { getUserMedia: vi.fn().mockResolvedValue(stream) },
+    mediaDevices: {
+      getUserMedia: vi.fn().mockResolvedValue(stream),
+      enumerateDevices: vi.fn().mockResolvedValue([]),
+    },
   });
   vi.stubGlobal(
     "MediaStreamTrackProcessor",

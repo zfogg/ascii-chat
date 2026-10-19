@@ -1,0 +1,3 @@
+# Ubuntu 24.04's x265 3.5 (ABI 199) retains encoder and SAO allocations after close.
+# Match its versioned entry point; keep application and newer codec leaks visible.
+leak:x265_encoder_open_199

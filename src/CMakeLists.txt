@@ -805,9 +805,7 @@ else()
     endif()
 endif()
 
-# Prefer project's own toolchain file (sets CMAKE_C_COMPILER to emcc).
-# The system Platform/Emscripten.cmake does NOT set the compiler, causing
-# the WASM sub-build to use native clang instead of emcc.
+# Use shared SDK discovery, then load Emscripten's compiler and platform settings.
 if(EXISTS "${CMAKE_SOURCE_DIR}/cmake/toolchains/Emscripten.cmake")
     set(EMSCRIPTEN_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/toolchains/Emscripten.cmake" CACHE FILEPATH "Emscripten toolchain file" FORCE)
 else()
@@ -856,6 +854,7 @@ if(NOT TARGET mirror-web)
         COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
         COMMENT "Building WASM mirror module"
         DEPENDS generate_fonts
+        USES_TERMINAL
         VERBATIM
     )
 endif()
@@ -866,6 +865,7 @@ if(NOT TARGET client-web)
         COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
         COMMENT "Building WASM client module"
         DEPENDS generate_fonts
+        USES_TERMINAL
         VERBATIM
     )
 endif()
@@ -877,6 +877,7 @@ if(NOT TARGET web)
         COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
         COMMENT "Building all WASM modules"
         DEPENDS generate_fonts
+        USES_TERMINAL
         VERBATIM
     )
 

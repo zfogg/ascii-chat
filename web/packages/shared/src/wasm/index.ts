@@ -1,3 +1,4 @@
+export { getWasmAssetUrl } from "./assetUrl";
 export {
   initMirrorWasm,
   adoptMirrorWasmModule,

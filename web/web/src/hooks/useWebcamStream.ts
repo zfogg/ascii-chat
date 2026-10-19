@@ -24,7 +24,7 @@ import type { CompressedVideoEncoding } from "../network/VideoUploadEncoder";
 import type { ClientSession } from "../network/Transport";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import type { BinarySettingsConfig } from "../components";
-import { getMediaDevicePreferences } from "../utils/mediaDevicePreferences";
+import { resolveCameraDeviceId } from "../utils/mediaDevicePreferences";
 import {
   MEDIA_DEVICE_PREFERENCES_CHANGED,
   type MediaDevicePreferencesChange,
@@ -621,43 +621,15 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
       const preferredCameraId = testPattern.enabled
         ? ""
-        : getMediaDevicePreferences().cameraId;
-      const cameraIndexValue = preferredCameraId
-        ? null
-        : new URLSearchParams(window.location.search).get("videoDeviceIndex");
-      const cameraIndex =
-        cameraIndexValue === null ? null : Number(cameraIndexValue);
-      let videoConstraints: MediaTrackConstraints = {
+        : await resolveCameraDeviceId();
+      const videoConstraints: MediaTrackConstraints = {
         width: { ideal: w },
         height: { ideal: h },
         frameRate: { ideal: cameraAcquisitionFps() },
+        ...(preferredCameraId
+          ? { deviceId: { exact: preferredCameraId } }
+          : {}),
       };
-      if (!testPattern.enabled && cameraIndex !== null) {
-        if (!Number.isInteger(cameraIndex) || cameraIndex < 0) {
-          throw new Error("videoDeviceIndex must be a non-negative integer");
-        }
-        const cameras = (
-          await navigator.mediaDevices.enumerateDevices()
-        ).filter((device) => device.kind === "videoinput");
-        const camera = cameras[cameraIndex];
-        if (!camera?.deviceId) {
-          throw new Error(
-            `Camera index ${cameraIndex} is unavailable (${cameras.length} camera(s) found)`,
-          );
-        }
-        videoConstraints = {
-          ...videoConstraints,
-          deviceId: { exact: camera.deviceId },
-        };
-        console.log(
-          `[Client] Selecting camera ${cameraIndex}: ${camera.label}`,
-        );
-      } else if (preferredCameraId) {
-        videoConstraints = {
-          ...videoConstraints,
-          deviceId: { exact: preferredCameraId },
-        };
-      }
 
       if (!avState.current(generation)) return;
       let stream: MediaStream;

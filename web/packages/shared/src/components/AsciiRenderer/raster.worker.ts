@@ -1,16 +1,16 @@
 import type { MirrorModule } from "../../wasm/mirror";
 import type { RasterRequest } from "./RasterWorker";
 import { browserRasterFontSize } from "./rasterConfig";
+import { getWasmAssetUrl } from "../../wasm/assetUrl";
 
 // The published client module supports workers and exports the same C terminal
 // renderer as Mirror. UI composition and keyboard handling stay in SessionUi.
 const initialized: Promise<MirrorModule> = (async () => {
-  const url = new URL("/wasm/client.js", self.location.href).href;
+  const url = getWasmAssetUrl("client.js");
   const { default: factory } = await import(/* @vite-ignore */ url);
   const module = await factory({
     getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
-    locateFile: (name: string) =>
-      new URL(`/wasm/${name}`, self.location.href).href,
+    locateFile: getWasmAssetUrl,
   });
   const args = module._malloc(7);
   try {
