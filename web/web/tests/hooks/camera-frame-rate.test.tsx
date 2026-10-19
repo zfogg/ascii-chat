@@ -3,6 +3,7 @@ import { afterEach, expect, test, vi } from "vite-plus/test";
 import { useState } from "react";
 import {
   CameraCadence,
+  normalizeCameraFps,
   reportCameraFrame,
   reportCameraTrack,
   cameraAcquisitionFps,
@@ -20,7 +21,7 @@ afterEach(() => {
   history.replaceState({}, "", "/");
 });
 
-test.each([20, 25, 30, 100 / 3, 59.94, 60, 120])(
+test.each([20, 25, 29.97, 30, 100 / 3, 59.94, 60, 119.88, 120, 143.85, 144])(
   "measures %s FPS independently of arrival jitter",
   (rate) => {
     const cadence = new CameraCadence();
@@ -64,13 +65,14 @@ test("Max follows decreases and increases while a manual limit survives both", (
   expect(effectiveCameraFps("30", 60)).toBe(30);
 });
 
-test("observed rates clamp and recover the actual setting without reducing camera acquisition", async () => {
+test("measured camera delivery controls C FPS and recovers without changing acquisition", async () => {
   let now = 0;
   vi.spyOn(performance, "now").mockImplementation(() => now);
+  let configured = 60;
   const track = {
     label: "60 FPS camera",
     getCapabilities: () => ({ frameRate: { max: 60 } }),
-    getSettings: () => ({ frameRate: 60 }),
+    getSettings: () => ({ frameRate: configured }),
   } as unknown as MediaStreamTrack;
   reportCameraTrack(track);
   const hook = renderHook(() => {
@@ -84,16 +86,23 @@ test("observed rates clamp and recover the actual setting without reducing camer
       await act(async () => reportCameraFrame(now));
     }
   };
+  await deliver(33);
+  expect(hook.result.current.control.rate?.observed).toBe(33);
+  expect(hook.result.current.settings.targetFps).toBe(33);
+  configured = 20;
   await deliver(20);
   expect(hook.result.current.settings.targetFps).toBe(20);
   expect(hook.result.current.control.maximum).toBe(20);
   expect(cameraAcquisitionFps(track)).toBe(60);
+  configured = 60;
   await deliver(60);
   expect(hook.result.current.settings.targetFps).toBe(60);
   await act(async () => hook.result.current.control.select(15));
+  configured = 25;
   await deliver(25);
   expect(hook.result.current.settings.targetFps).toBe(15);
   await act(async () => hook.result.current.control.select(25));
+  configured = 60;
   await deliver(60);
   expect(hook.result.current.settings.targetFps).toBe(60);
 });
@@ -107,4 +116,18 @@ test("Max accepts camera delivery jitter without resampling; lower choices still
   expect(cameraNeedsFrameLimit(60)).toBe(false);
   expect(cameraNeedsFrameLimit(1000 / (1000 / 60))).toBe(false);
   expect(cameraNeedsFrameLimit(30)).toBe(true);
+});
+
+test.each([
+  [29.97, 30],
+  [30.3, 30],
+  [32.8, 33],
+  [33.33, 33],
+  [59.94, 60],
+  [119.88, 120],
+  [143.85, 144],
+  [37.2, 37],
+  [31.5, 32],
+])("normalizes %s to %s without confusing 33 and 30", (measured, expected) => {
+  expect(normalizeCameraFps(measured)).toBe(expected);
 });

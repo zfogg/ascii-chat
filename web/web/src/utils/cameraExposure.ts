@@ -24,7 +24,14 @@ export function setFastExposure(
     .then(async () => {
       if (track.readyState !== "live") return;
       if (!enabled) {
-        const settings = original.get(track);
+        const capabilities = track.getCapabilities?.() as
+          | ExposureCapabilities
+          | undefined;
+        // UVC cameras can retain manual exposure across tracks, tabs, and page
+        // loads. Off must select auto even without a saved setting on this track.
+        const settings = capabilities?.exposureMode?.includes("continuous")
+          ? { exposureMode: "continuous" }
+          : original.get(track);
         if (!settings) return;
         await track.applyConstraints({
           ...track.getConstraints(),

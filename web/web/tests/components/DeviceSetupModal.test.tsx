@@ -85,8 +85,9 @@ function stream(kind: string, id: string) {
 
 function requestedDevice(constraints: MediaStreamConstraints) {
   const input = constraints.video || constraints.audio;
-  return (input as MediaTrackConstraints)
-    ?.deviceId as ConstrainDOMStringParameters;
+  return ((input as MediaTrackConstraints)?.deviceId ?? {
+    exact: constraints.video ? "camera-busy" : "mic-one",
+  }) as ConstrainDOMStringParameters;
 }
 
 beforeEach(() => {
@@ -361,7 +362,6 @@ describe("Device setup with unavailable inputs", () => {
             width: { ideal: 1280 },
             height: { ideal: 720 },
             frameRate: { ideal: 60 },
-            deviceId: { exact: "camera-busy" },
           },
           audio: false,
         },
@@ -503,7 +503,7 @@ describe("Device setup with unavailable inputs", () => {
     );
   });
 
-  it("keeps the system default microphone when its alias is deduplicated", async () => {
+  it("keeps System default selected instead of pinning the microphone alias", async () => {
     const devices = await enumerateDevices();
     enumerateDevices.mockResolvedValue([
       device("default", "audioinput", "Default - Headset microphone"),
@@ -516,7 +516,7 @@ describe("Device setup with unavailable inputs", () => {
       ).toBeEnabled(),
     );
     expect(screen.getByLabelText("Microphone", { exact: true })).toHaveValue(
-      "mic-two",
+      "",
     );
     expect(
       screen
@@ -543,9 +543,7 @@ describe("Device setup with unavailable inputs", () => {
         name: "Busy webcam — In use (unavailable for this tab)",
       }),
     ).toBeEnabled();
-    expect(screen.getByLabelText("Camera", { exact: true })).toHaveValue(
-      "camera-busy",
-    );
+    expect(screen.getByLabelText("Camera", { exact: true })).toHaveValue("");
     expect(screen.getByRole("option", { name: "Other webcam" })).toBeEnabled();
   });
 
@@ -599,11 +597,7 @@ describe("Device setup with unavailable inputs", () => {
       },
     );
     render(<DeviceSetupModal open onClose={vi.fn()} />);
-    expect(
-      await screen.findByRole("option", {
-        name: "Desk microphone — In use (unavailable for this tab)",
-      }),
-    ).toBeEnabled();
+    await screen.findByRole("button", { name: "Retry microphone" });
     expect(
       screen.getByRole("button", { name: /^(?:Test microphone|Stop test)$/ }),
     ).toBeDisabled();
@@ -732,4 +726,34 @@ describe("Device setup with unavailable inputs", () => {
       tracks.find((track) => track.id === "camera-free")!.stop,
     ).not.toHaveBeenCalled();
   });
+});
+
+it("offers System default for both inputs and preserves it after preview and save", async () => {
+  getUserMedia.mockImplementation(async (constraints: MediaStreamConstraints) =>
+    stream(
+      constraints.video ? "video" : "audio",
+      constraints.video ? "camera-free" : "mic-two",
+    ),
+  );
+  render(<DeviceSetupModal open onClose={vi.fn()} />);
+  await waitFor(() => expect(tracks).toHaveLength(2));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: /^(?:Test microphone|Stop test)$/ }),
+    ).toBeEnabled(),
+  );
+  expect(screen.getByLabelText("Camera", { exact: true })).toHaveValue("");
+  expect(screen.getByLabelText("Microphone", { exact: true })).toHaveValue("");
+  expect(
+    screen.getAllByRole("option", { name: "System default" }),
+  ).toHaveLength(3);
+  const requests = getUserMedia.mock.calls.map(([constraints]) => constraints);
+  expect(requests.find((constraints) => constraints.audio).audio).toBe(true);
+  expect(
+    requests.find((constraints) => constraints.video).video,
+  ).not.toHaveProperty("deviceId");
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  expect(
+    JSON.parse(localStorage.getItem("ascii-chat.media-devices")!),
+  ).toMatchObject({ cameraId: "", microphoneId: "" });
 });

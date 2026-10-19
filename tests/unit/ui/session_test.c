@@ -34,6 +34,22 @@ Test(session_ui, two_media_sessions_present_every_jittered_60fps_frame) {
     ui_session_destroy(sessions[client]);
 }
 
+Test(session_ui, identical_media_frames_are_presented_once_per_submission) {
+  ui_session_t *session = ui_session_create();
+  cr_assert_not_null(session);
+  ui_session_resize(session, 80, 30);
+  const char *text = "identical ASCII output";
+  for (unsigned frame = 0; frame < 120; frame++) {
+    uint64_t now = 1000000000ULL + (uint64_t)frame * 1000000000ULL / 60;
+    cr_assert_eq(ui_session_media(session, text, strlen(text)), ASCIICHAT_OK);
+    const char *presented = ui_session_tick(session, now);
+    cr_assert_not_null(presented, "Dropped identical frame %u", frame);
+    cr_assert_not_null(strstr(presented, text));
+    cr_assert_null(ui_session_tick(session, now + 1), "Idle tick duplicated frame %u", frame);
+  }
+  ui_session_destroy(session);
+}
+
 static void draw(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation, void *context) {
   (void)size;
   view_fixture_t *fixture = context;

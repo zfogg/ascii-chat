@@ -206,3 +206,87 @@ test("failed camera restoration requests only the selected camera", async () => 
   });
   expect(mic.stop).not.toHaveBeenCalled();
 });
+
+test("a pending camera startup is shared by repeated requests", async () => {
+  const { params, source } = setup();
+  Object.assign(params.videoRef.current, { readyState: 1 });
+  params.isWebcamRunning = false;
+  params.streamRef.current = null;
+  let finish!: (stream: MediaStream) => void;
+  const getUserMedia = vi.fn(
+    () =>
+      new Promise<MediaStream>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: { getUserMedia },
+  });
+  const hook = renderHook(() => useMirrorWebcam(params));
+  let first!: Promise<boolean>, second!: Promise<boolean>;
+  await act(async () => {
+    first = hook.result.current.startWebcam();
+    second = hook.result.current.startWebcam();
+  });
+  await waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce());
+  await act(async () => {
+    finish(source);
+    expect(await first).toBe(true);
+    expect(await second).toBe(true);
+  });
+  expect(params.setIsWebcamRunning).toHaveBeenCalledWith(true);
+});
+
+test("a transient busy camera is retried by the same startup request", async () => {
+  const { params, source } = setup();
+  Object.assign(params.videoRef.current, { readyState: 1 });
+  params.isWebcamRunning = false;
+  params.streamRef.current = null;
+  const getUserMedia = vi
+    .fn()
+    .mockRejectedValueOnce(
+      new DOMException("Device in use", "NotReadableError"),
+    )
+    .mockResolvedValue(source);
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: { getUserMedia },
+  });
+  const hook = renderHook(() => useMirrorWebcam(params));
+  await act(async () => {
+    expect(await hook.result.current.startWebcam()).toBe(true);
+  });
+  expect(getUserMedia).toHaveBeenCalledTimes(2);
+});
+
+test("cancelling pending startup releases a late stream instead of reviving capture", async () => {
+  const { params, source, camera, mic } = setup();
+  params.isWebcamRunning = false;
+  params.streamRef.current = null;
+  let finish!: (stream: MediaStream) => void;
+  const getUserMedia = vi.fn(
+    () =>
+      new Promise<MediaStream>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: { getUserMedia },
+  });
+  const hook = renderHook(() => useMirrorWebcam(params));
+  let pending!: Promise<boolean>;
+  await act(async () => {
+    pending = hook.result.current.startWebcam();
+  });
+  await waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce());
+  await act(async () => {
+    hook.result.current.cancelStart();
+    expect(await pending).toBe(false);
+  });
+  await act(async () => finish(source));
+  expect(camera.stop).toHaveBeenCalledOnce();
+  expect(mic.stop).toHaveBeenCalledOnce();
+  expect(params.setIsWebcamRunning).not.toHaveBeenCalledWith(true);
+});

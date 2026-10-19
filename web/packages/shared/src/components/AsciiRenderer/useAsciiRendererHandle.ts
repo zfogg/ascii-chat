@@ -65,7 +65,7 @@ export function useAsciiRendererHandle({
 }: UseAsciiRendererHandleParams): UseAsciiRendererHandleReturn {
   const firstRenderDoneRef = useRef(false);
   const dimensionsRef = useRef({ cols: 0, rows: 0 });
-  const changedFrameTimesRef = useRef<number[]>([]);
+  const presentedFrameTimesRef = useRef<number[]>([]);
   const lastReportedFpsRef = useRef<number | null>(null);
   const fpsDisplayRef = useRef<HTMLDivElement>(null);
   const textEncoderRef = useRef(new TextEncoder());
@@ -75,7 +75,7 @@ export function useAsciiRendererHandle({
 
   useEffect(() => {
     if (!showFps) {
-      changedFrameTimesRef.current = [];
+      presentedFrameTimesRef.current = [];
       lastReportedFpsRef.current = null;
       return;
     }
@@ -84,12 +84,12 @@ export function useAsciiRendererHandle({
       const now = performance.now();
       const cutoff = now - 1000;
       while (
-        changedFrameTimesRef.current.length > 0 &&
-        changedFrameTimesRef.current[0]! < cutoff
+        presentedFrameTimesRef.current.length > 0 &&
+        presentedFrameTimesRef.current[0]! < cutoff
       ) {
-        changedFrameTimesRef.current.shift();
+        presentedFrameTimesRef.current.shift();
       }
-      const fps = changedFrameTimesRef.current.length;
+      const fps = presentedFrameTimesRef.current.length;
       if (lastReportedFpsRef.current === fps) return;
       lastReportedFpsRef.current = fps;
       if (fpsDisplayRef.current)
@@ -154,8 +154,7 @@ export function useAsciiRendererHandle({
         context.putImageData(new ImageData(pixels, width, height), 0, 0);
         firstRenderDoneRef.current = true;
         lastFrameChangedRef.current = changed;
-        if (showFps && changed)
-          changedFrameTimesRef.current.push(performance.now());
+        if (showFps) presentedFrameTimesRef.current.push(performance.now());
       },
       (error) => {
         console.error(
@@ -274,7 +273,7 @@ export function useAsciiRendererHandle({
                 imageDataRef.current = imageData;
               }
               // Compare compact ANSI content rather than millions of raster bytes.
-              // Re-presenting an unchanged frame must not inflate content FPS.
+              // Keep content-change diagnostics separate from presentation FPS.
               lastFrameChangedRef.current =
                 ansiString !== lastContentRef.current;
               lastContentRef.current = ansiString;
@@ -332,9 +331,9 @@ export function useAsciiRendererHandle({
         return false;
       }
 
-      if (showFps && lastFrameChangedRef.current) {
+      if (showFps) {
         const now = performance.now();
-        changedFrameTimesRef.current.push(now);
+        presentedFrameTimesRef.current.push(now);
       }
       return true;
     },

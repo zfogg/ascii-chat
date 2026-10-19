@@ -22,6 +22,12 @@ beforeEach(() => {
 
 test.each([
   {
+    selectedCameraId: "",
+    search: "?cameraId=camera-3&videoDeviceIndex=2",
+    stored: "camera-1",
+    expected: "",
+  },
+  {
     selectedCameraId: "camera-4",
     search: "?cameraId=camera-3&videoDeviceIndex=2",
     stored: "camera-1",
@@ -45,7 +51,7 @@ test.each([
     stored: "camera-1",
     expected: "camera-1",
   },
-  { selectedCameraId: undefined, search: "", stored: "", expected: "camera-0" },
+  { selectedCameraId: undefined, search: "", stored: "", expected: "" },
 ])(
   "resolves camera priority: $search / $stored / $selectedCameraId",
   async ({ selectedCameraId, search, stored, expected }) => {

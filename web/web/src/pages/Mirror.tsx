@@ -36,6 +36,7 @@ export function MirrorPage() {
   const contentFit = requestedFit === "cover" ? "cover" : "contain";
   const [playing, setPlaying] = useUrlState("playing", false);
   const resumePending = useRef(playing);
+  const previousStartupPlaying = useRef(playing);
   const playingRef = useRef(playing);
   useLayoutEffect(() => {
     playingRef.current = playing;
@@ -170,7 +171,11 @@ export function MirrorPage() {
 
   // Webcam start logic and auto-start effects
   const pendingWebcamSwitch = useRef<object | null>(null);
-  const { startWebcam, cancelStart: cancelWebcamStart } = useMirrorWebcam({
+  const {
+    startWebcam,
+    cancelStart: cancelWebcamStart,
+    isStarting,
+  } = useMirrorWebcam({
     settings,
     videoRef,
     canvasRef,
@@ -280,6 +285,18 @@ export function MirrorPage() {
   });
 
   useEffect(() => {
+    // URL navigation can reuse the mounted page rather than initialize refs.
+    if (playing !== previousStartupPlaying.current) {
+      resumePending.current = playing;
+      if (!playing) {
+        cancelStart();
+        stopWebcam();
+      }
+    }
+    previousStartupPlaying.current = playing;
+  }, [playing, cancelStart, stopWebcam]);
+
+  useEffect(() => {
     if (
       !resumePending.current ||
       isWebcamRunning ||
@@ -292,6 +309,7 @@ export function MirrorPage() {
     // Synthetic test input already has its own startup path.
     if (!testPattern.enabled) void startWebcam();
   }, [
+    playing,
     wasmInitialized,
     terminalDimensions,
     startWebcam,
@@ -386,19 +404,28 @@ export function MirrorPage() {
               fps: fileMedia.loading ? 0 : fps,
               targetFps: settings.targetFps,
               showBandwidth: false,
-              isWebcamRunning: renderActive,
+              isWebcamRunning: renderActive || isStarting,
+              webcamActionLabels: isStarting
+                ? { start: "Start Webcam", stop: "Cancel startup" }
+                : undefined,
               mediaSource,
               onStartWebcam: () => {
                 stopFile();
+                // This click already starts capture; its URL update must not
+                // start a second acquisition while permission is pending.
+                previousStartupPlaying.current = true;
+                resumePending.current = false;
                 setPlaying(true);
                 void startWebcam();
               },
               onStopWebcam: stopPlayback,
               onUploadClick: () => setShowUploadModal(true),
               videoRef: undefined,
-              status: fileMedia.status
-                ? `${fileMedia.status} ${fileMedia.fileName}`
-                : fileMedia.fileName,
+              status: isStarting
+                ? "Starting webcam..."
+                : fileMedia.status
+                  ? `${fileMedia.status} ${fileMedia.fileName}`
+                  : fileMedia.fileName,
               statusControls: (
                 <>
                   {fileMedia.loading && (

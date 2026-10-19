@@ -4,7 +4,9 @@ import {
   useCallback,
   useEffect,
   useRef,
+  useState,
 } from "react";
+import { acquireMediaStream } from "../utils/acquireMediaStream";
 import type { BinarySettingsConfig } from "../components";
 import { type MediaSource, MediaSourceType } from "./useClientLike";
 import {
@@ -62,13 +64,18 @@ export function useMirrorWebcam({
   const testPattern = useTestPattern();
   const devAutoStartRef = useRef(false);
   const startGenerationRef = useRef(0);
+  const startupOwner = useRef<AbortController | null>(null);
+  const startupPromise = useRef<Promise<boolean> | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
   const permissionGranted = true;
   const audioOnly =
     !!settings.animationEnabled &&
     (settings.animation === "waveform" || settings.animation === "fft");
 
-  const startWebcam = useCallback(async () => {
+  const startCapture = useCallback(async () => {
     const generation = ++startGenerationRef.current;
+    const owner = new AbortController();
+    startupOwner.current = owner;
     setError("");
     const clickTime = performance.now();
     console.log(
@@ -85,6 +92,7 @@ export function useMirrorWebcam({
       return false;
     }
 
+    let acquiredStream: MediaStream | null = null;
     try {
       const tryStartTime = performance.now();
       console.log(
@@ -188,8 +196,37 @@ export function useMirrorWebcam({
           ? { deviceId: { exact: devicePreferences.microphoneId } }
           : true,
       };
-      const stream =
-        await navigator.mediaDevices.getUserMedia(mediaConstraints);
+      let stream: MediaStream | undefined;
+      for (let attempt = 0; ; attempt++) {
+        owner.signal.throwIfAborted();
+        try {
+          stream = await acquireMediaStream(mediaConstraints, owner.signal);
+          acquiredStream = stream;
+          break;
+        } catch (cause) {
+          const busy =
+            cause instanceof DOMException &&
+            (cause.name === "NotReadableError" ||
+              cause.name === "TrackStartError");
+          if (!busy || attempt >= 5 || owner.signal.aborted) throw cause;
+          // Closing the previous tab/stream can release a Windows camera
+          // asynchronously. Keep one cancellable startup while it settles.
+          await new Promise<void>((resolve, reject) => {
+            const aborted = () => {
+              clearTimeout(timer);
+              reject(owner.signal.reason);
+            };
+            const timer = window.setTimeout(
+              () => {
+                owner.signal.removeEventListener("abort", aborted);
+                resolve();
+              },
+              Math.min(2000, 250 * 2 ** attempt),
+            );
+            owner.signal.addEventListener("abort", aborted, { once: true });
+          });
+        }
+      }
       if (generation !== startGenerationRef.current) {
         stream.getTracks().forEach((track) => track.stop());
         return false;
@@ -221,8 +258,11 @@ export function useMirrorWebcam({
       }
       const video = videoRef.current;
       console.time("[Mirror] loadedmetadata");
+      const directCapture =
+        typeof (window as Window & { MediaStreamTrackProcessor?: unknown })
+          .MediaStreamTrackProcessor === "function";
       const metadataReady =
-        video.readyState >= HTMLMediaElement.HAVE_METADATA
+        directCapture || video.readyState >= HTMLMediaElement.HAVE_METADATA
           ? Promise.resolve()
           : new Promise<void>((resolve) => {
               video.addEventListener("loadedmetadata", () => resolve(), {
@@ -231,8 +271,24 @@ export function useMirrorWebcam({
             });
       video.muted = true;
       video.srcObject = stream;
-      await video.play();
-      await metadataReady;
+      const playback = video.play();
+      if (directCapture) {
+        // Direct capture consumes camera frames independently of this hidden
+        // video's compositor. Its play promise must not block C rendering.
+        void playback.catch((cause: unknown) => {
+          if (
+            !owner.signal.aborted &&
+            generation === startGenerationRef.current
+          )
+            console.warn(
+              "[Mirror] Hidden video playback unavailable; using direct camera capture",
+              cause,
+            );
+        });
+      } else {
+        await playback;
+        await metadataReady;
+      }
       if (generation !== startGenerationRef.current) {
         stream.getTracks().forEach((track) => track.stop());
         if (video.srcObject === stream) video.srcObject = null;
@@ -246,6 +302,12 @@ export function useMirrorWebcam({
       console.timeEnd("[Mirror] Total startWebcam time");
       return true;
     } catch (err) {
+      acquiredStream?.getTracks().forEach((track) => track.stop());
+      if (acquiredStream && streamRef.current === acquiredStream) {
+        streamRef.current = null;
+        if (videoRef.current?.srcObject === acquiredStream)
+          videoRef.current.srcObject = null;
+      }
       if (generation === startGenerationRef.current)
         setError(`Failed to start webcam: ${String(err)}`);
       return false;
@@ -262,6 +324,27 @@ export function useMirrorWebcam({
     setMediaSource,
     setError,
   ]);
+
+  const startWebcam = useCallback(() => {
+    if (startupPromise.current) return startupPromise.current;
+    setIsStarting(true);
+    const pending = startCapture().finally(() => {
+      if (startupPromise.current === pending) {
+        startupPromise.current = null;
+        setIsStarting(false);
+      }
+    });
+    startupPromise.current = pending;
+    return pending;
+  }, [startCapture]);
+
+  const cancelStart = useCallback(() => {
+    startGenerationRef.current++;
+    startupOwner.current?.abort();
+    startupOwner.current = null;
+    startupPromise.current = null;
+    setIsStarting(false);
+  }, []);
 
   // Keep the microphone stream alive while releasing the camera hardware.
   // Reacquisition belongs to this effect so a late permission result cannot
@@ -373,7 +456,7 @@ export function useMirrorWebcam({
       )
         return;
 
-      startGenerationRef.current++;
+      cancelStart();
       stream.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
       if (videoRef.current?.srcObject === stream) {
@@ -394,7 +477,14 @@ export function useMirrorWebcam({
         MEDIA_DEVICE_PREFERENCES_CHANGED,
         handleDevicePreferencesChanged,
       );
-  }, [setIsWebcamRunning, setMediaSource, startWebcam, streamRef, videoRef]);
+  }, [
+    setIsWebcamRunning,
+    setMediaSource,
+    startWebcam,
+    streamRef,
+    videoRef,
+    cancelStart,
+  ]);
 
   // DISABLED: Permission request on page load was blocking React for 30+ seconds
   // The getUserMedia call would hang waiting for browser permission dialog.
@@ -524,11 +614,7 @@ export function useMirrorWebcam({
     terminalDimensions,
   ]);
 
-  const cancelStart = useCallback(() => {
-    startGenerationRef.current++;
-  }, []);
-
   useEffect(() => cancelStart, [cancelStart]);
 
-  return { startWebcam, cancelStart };
+  return { startWebcam, cancelStart, isStarting };
 }

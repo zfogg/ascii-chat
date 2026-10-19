@@ -513,3 +513,72 @@ it("connect=false remains disconnected", async () => {
   await act(async () => {});
   expect(backend.connect).not.toHaveBeenCalled();
 });
+
+it.each([false, true])(
+  "connect=true starts mode discovery=%s after renderer readiness",
+  async (discoveryMode) => {
+    history.replaceState(
+      {},
+      "",
+      discoveryMode
+        ? "/discovery?connect=true&session=blue-mountain-tiger"
+        : "/client?connect=true",
+    );
+    render(<ClientPage discoveryMode={discoveryMode} />, {
+      wrapper: HeadingProvider,
+    });
+    await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
+  },
+);
+
+it.each([false, true])(
+  "connect=true URL navigation starts mode discovery=%s",
+  async (discoveryMode) => {
+    render(<ClientPage discoveryMode={discoveryMode} />, {
+      wrapper: HeadingProvider,
+    });
+    await act(async () => {});
+    expect(backend.connect).not.toHaveBeenCalled();
+    act(() => {
+      history.replaceState(
+        {},
+        "",
+        discoveryMode
+          ? "/discovery?connect=true&session=blue-mountain-tiger"
+          : "/client?connect=true",
+      );
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
+  },
+);
+
+it.each([false, true])(
+  "removing connect=true cancels pending startup for discovery=%s",
+  async (discoveryMode) => {
+    history.replaceState(
+      {},
+      "",
+      discoveryMode
+        ? "/discovery?connect=true&session=blue-mountain-tiger"
+        : "/client?connect=true",
+    );
+    render(<ClientPage discoveryMode={discoveryMode} />, {
+      wrapper: HeadingProvider,
+    });
+    act(() => {
+      history.replaceState(
+        {},
+        "",
+        discoveryMode
+          ? "/discovery?connect=false&session=blue-mountain-tiger"
+          : "/client?connect=false",
+      );
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    });
+    expect(backend.connect).not.toHaveBeenCalled();
+  },
+);

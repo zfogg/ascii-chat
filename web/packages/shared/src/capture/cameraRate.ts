@@ -6,6 +6,17 @@ export interface CameraRate {
   limit?: number | undefined;
 }
 
+/** Snap only close measurements; 33 FPS must not be misidentified as 30. */
+export function normalizeCameraFps(rate: number): number {
+  const rates = [15, 20, 24, 25, 30, 33, 48, 50, 60, 72, 75, 90, 100, 120, 144];
+  const nearest = rates.reduce((best, value) =>
+    Math.abs(value - rate) < Math.abs(best - rate) ? value : best,
+  );
+  return Math.abs(nearest - rate) <= Math.max(0.5, nearest * 0.01)
+    ? nearest
+    : Math.max(1, Math.round(rate));
+}
+
 /** Estimate source cadence before any render/upload cap; ignore stalls and duplicates. */
 export class CameraCadence {
   private timestamps: number[] = [];
@@ -46,9 +57,8 @@ export class CameraCadence {
     // USB cameras can alternate between short and long frame intervals. The
     // median describes one interval, while elapsed media time measures FPS.
     const elapsed = timestamp - this.timestamps[0]!;
-    const rate = Math.max(
-      1,
-      Math.round(((this.timestamps.length - 1) * 1000) / elapsed),
+    const rate = normalizeCameraFps(
+      ((this.timestamps.length - 1) * 1000) / elapsed,
     );
     if (rate !== this.candidate) {
       this.candidate = rate;
@@ -83,19 +93,37 @@ export function reportCameraTrack(track: MediaStreamTrack): void {
   active = track;
   cadence = new CameraCadence();
   const advertisedMaximum = track.getCapabilities?.().frameRate?.max;
+  const configured = track.getSettings?.().frameRate;
   publish({
     label: track.label,
     advertisedMaximum,
-    configured: track.getSettings?.().frameRate,
+    configured,
+    limit: Math.min(
+      144,
+      normalizeCameraFps(configured || advertisedMaximum || 60),
+    ),
   });
 }
 
 export function reportCameraFrame(timestampMilliseconds: number): void {
   const observed = cadence.sample(timestampMilliseconds, performance.now());
   if (observed === null) return;
-  const limit = Math.min(observed, snapshot.advertisedMaximum || observed);
-  if (snapshot.observed === observed && snapshot.limit === limit) return;
-  publish({ ...snapshot, observed, limit });
+  const configured = active?.getSettings?.().frameRate ?? snapshot.configured;
+  // The source is measured before any render/upload limit, so a lower user
+  // choice cannot hide camera recovery. Keep the C FPS option in the same range.
+  const limit = Math.min(
+    144,
+    observed,
+    normalizeCameraFps(configured || snapshot.advertisedMaximum || observed),
+    normalizeCameraFps(snapshot.advertisedMaximum || observed),
+  );
+  if (
+    snapshot.observed === observed &&
+    snapshot.limit === limit &&
+    snapshot.configured === configured
+  )
+    return;
+  publish({ ...snapshot, configured, observed, limit });
 }
 
 /** Keep acquisition independent of a lower rendering limit so recovery stays observable. */
