@@ -109,11 +109,7 @@ function deduplicateDefaultDevice(
 }
 
 export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
-  const videoEncodings = useVideoEncodings({
-    fps:
-      Number(new URLSearchParams(window.location.search).get("targetFps")) ||
-      60,
-  });
+  const videoEncodings = useVideoEncodings();
   const [encodingDraft, setEncodingDraft] = useState<VideoEncoding | null>(
     null,
   );
