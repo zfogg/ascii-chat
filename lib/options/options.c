@@ -1501,12 +1501,15 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
     opts->encrypt_enabled = false;
 
   bool cli_encrypt = false, cli_no_encrypt = false;
+  bool cli_flip_x = false, cli_flip_y = false;
   for (int i = 1; i < mode_argc; ++i) {
     if (strcmp(mode_argv[i], "--") == 0)
       break;
     cli_encrypt |= strcmp(mode_argv[i], "--encrypt") == 0 || strcmp(mode_argv[i], "-E") == 0 ||
                    strncmp(mode_argv[i], "--encrypt=", 10) == 0;
     cli_no_encrypt |= strcmp(mode_argv[i], "--no-encrypt") == 0 || strncmp(mode_argv[i], "--no-encrypt=", 13) == 0;
+    cli_flip_x |= strcmp(mode_argv[i], "--flip-x") == 0 || strncmp(mode_argv[i], "--flip-x=", 9) == 0;
+    cli_flip_y |= strcmp(mode_argv[i], "--flip-y") == 0 || strncmp(mode_argv[i], "--flip-y=", 9) == 0;
   }
   // Bare boolean CLI flags toggle from false, independent of lower layers.
   if (cli_encrypt)
@@ -1539,8 +1542,10 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   if (cli_no_encrypt && !cli_encrypt && opts->no_encrypt)
     opts->encrypt_enabled = false;
   // Restore flip_x and flip_y - they should keep their values unless explicitly overridden
-  opts->flip_x = saved_flip_x_for_parse;
-  opts->flip_y = saved_flip_y_for_parse;
+  if (!cli_flip_x)
+    opts->flip_x = saved_flip_x_for_parse;
+  if (!cli_flip_y)
+    opts->flip_y = saved_flip_y_for_parse;
   // json is already restored via the call to options_state_set which calls restore_binary_level
   if (result != ASCIICHAT_OK) {
     // Convert ERROR_CONFIG to ERROR_USAGE for command-line parsing errors
