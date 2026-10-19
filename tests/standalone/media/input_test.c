@@ -27,9 +27,63 @@ static keyboard_key_t fake_keyboard(void) {
   return keyboard_stream_read(raw_byte);
 }
 
-/* Exercise the production UI event collector without a terminal or shortcut side effects. */
+#include <ascii-chat/ui/prompt.h>
+#include <ascii-chat/ui/session.h>
+#include <ascii-chat/log/search.h>
+#include "session/capture.h"
+#include "session/keyboard_handler.h"
+
+static int test_screen = UI_SCREEN_MEDIA;
+static bool search_entering, test_covered;
+static unsigned search_keys, cancel_calls;
+static ui_presentation_state_t fake_state(void) {
+  return (ui_presentation_state_t){.screen = test_screen, .covered = test_covered};
+}
+static int fake_screen(void) {
+  return test_screen;
+}
+static asciichat_error_t fake_present(const char *prompt, const char *text, size_t cursor) {
+  (void)prompt;
+  (void)text;
+  (void)cursor;
+  test_screen = UI_SCREEN_PROMPT;
+  return ASCIICHAT_OK;
+}
+static void fake_remove(void) {
+  test_screen = UI_SCREEN_MEDIA;
+}
+static bool fake_search_entering(void) {
+  return search_entering;
+}
+static bool fake_logs_key(keyboard_key_t key) {
+  (void)key;
+  ++search_keys;
+  return true;
+}
+static bool fake_cancel(session_capture_ctx_t *capture) {
+  (void)capture;
+  ++cancel_calls;
+  return true;
+}
+
+/* Exercise production input and session routing with deterministic terminal state. */
 #define keyboard_read_nonblocking fake_keyboard
+#define ui_controller_state fake_state
+#define ui_controller_current_screen fake_screen
+#define ui_prompt_present fake_present
+#define ui_prompt_remove fake_remove
+#define log_search_is_entering fake_search_entering
 #include "../../../lib/ui/input.c"
+#define ui_session_logs_key fake_logs_key
+#define session_capture_cancel_open fake_cancel
+#include "../../../src/common/session/keyboard_handler.c"
+#undef session_capture_cancel_open
+#undef ui_session_logs_key
+#undef log_search_is_entering
+#undef ui_prompt_remove
+#undef ui_prompt_present
+#undef ui_controller_current_screen
+#undef ui_controller_state
 #undef keyboard_read_nonblocking
 
 static void normalize(const char *input, const char *expected) {
@@ -128,6 +182,68 @@ int main(void) {
   CHECK(event == KEY_PASTE);
   CHECK(ui_input_take_paste(pasted, sizeof(pasted)) != ASCIICHAT_OK);
   CLEAR_ERRNO();
+  /* Beginning and polling an idle prompt must return immediately to the caller's session loop. */
+  feed("");
+  uint64_t before = time_get_ns();
+  CHECK(ui_input_media_begin("movie.mp4") == ASCIICHAT_OK);
+  for (unsigned n = 0; n < 100; ++n)
+    CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  CHECK(time_get_ns() - before < NS_PER_SEC_INT);
+  test_covered = true;
+  feed("discarded\r");
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  CHECK(g_media_editor.active && !g_media_editor.submitted);
+  test_covered = false;
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  feed("\033[D\177");
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  feed("\r");
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_MEDIA_SUBMIT);
+  CHECK(ui_input_media_take(pasted, sizeof(pasted)) == ASCIICHAT_OK);
+  CHECK(strcmp(pasted, "movie.m4") == 0);
+  CHECK(ui_input_media_take(pasted, sizeof(pasted)) != ASCIICHAT_OK);
+  CLEAR_ERRNO();
+  CHECK(ui_input_media_begin("old.mp4") == ASCIICHAT_OK);
+  feed("\033");
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  platform_sleep_ns(60 * NS_PER_MS_INT);
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  CHECK(!g_media_editor.active && !g_media_editor.submitted);
+  CHECK(ui_input_media_begin("old.mp4") == ASCIICHAT_OK);
+  g_media_editor.deadline = 0;
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  CHECK(!g_media_editor.active);
+  CHECK(ui_input_media_begin("") == ASCIICHAT_OK);
+  feed("\033[200~caf\xc3\xa9 video.mp4\033[201~");
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  feed("\r");
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_MEDIA_SUBMIT);
+  CHECK(ui_input_media_take(pasted, sizeof(pasted)) == ASCIICHAT_OK);
+  CHECK(strcmp(pasted, "caf\xc3\xa9 video.mp4") == 0);
+  CHECK(ui_input_media_begin("") == ASCIICHAT_OK);
+  g_sync_keys[g_sync_key_head] = 'v';
+  g_sync_key_count = 1;
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  CHECK(strcmp(g_media_editor.buffer, "v") == 0);
+  feed("\r");
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_MEDIA_SUBMIT);
+  CHECK(ui_input_media_take(pasted, sizeof(pasted)) == ASCIICHAT_OK);
+  /* Search input, including media shortcut letters and Escape, belongs to the logs screen. */
+  search_entering = true;
+  test_screen = UI_SCREEN_LOGS;
+  const char *search = "audio VIDEO";
+  for (const char *p = search; *p; ++p)
+    session_handle_keyboard_input(NULL, NULL, (keyboard_key_t)*p);
+  session_handle_keyboard_input(NULL, NULL, KEY_ESCAPE);
+  CHECK(search_keys == strlen(search) + 1);
+  CHECK(cancel_calls == 0);
+  CHECK(test_screen == UI_SCREEN_LOGS);
+  feed("\033[200~video\033[201~");
+  CHECK(input_read_event() == KEY_PASTE);
+  session_handle_keyboard_input(NULL, NULL, KEY_PASTE);
+  CHECK(search_keys == strlen(search) + 6);
+  CHECK(!g_paste_ready);
   ui_input_shutdown();
   return 0;
 }

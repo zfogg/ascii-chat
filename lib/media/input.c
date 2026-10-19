@@ -33,12 +33,12 @@ asciichat_error_t media_input_normalize(const char *text, char *output, size_t c
     ++text;
     length -= 2;
   }
-  bool uri = length >= 7 && strncmp(text, "file://", 7) == 0;
+  bool uri = length >= 7 && strncmp(text, "file://", sizeof("file://") - 1) == 0;
   bool url = !uri && (strstr(text, "://") != NULL);
   if (uri) {
     text += 7;
     length -= 7;
-    if (length >= 10 && strncmp(text, "localhost/", 10) == 0) {
+    if (length >= 10 && strncmp(text, "localhost/", sizeof("localhost/") - 1) == 0) {
       text += 9;
       length -= 9;
     } else if (*text != '/') {
@@ -53,7 +53,8 @@ asciichat_error_t media_input_normalize(const char *text, char *output, size_t c
   }
   bool windows_path = length >= 2 && (text[1] == ':' || (text[0] == '\\' && text[1] == '\\'));
   size_t used = 0;
-  for (size_t i = 0; i < length; ++i) {
+  size_t i = 0;
+  while (i < length) {
     unsigned char c = (unsigned char)text[i];
     if (uri && c == '%') {
       if (i + 2 >= length || hex_digit((unsigned char)text[i + 1]) < 0 || hex_digit((unsigned char)text[i + 2]) < 0)
@@ -72,6 +73,7 @@ asciichat_error_t media_input_normalize(const char *text, char *output, size_t c
     if (used + 1 >= capacity)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Media path or URL is too long");
     output[used++] = (char)c;
+    ++i;
   }
   output[used] = '\0';
   if (!utf8_is_valid(output))

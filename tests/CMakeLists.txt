@@ -1397,7 +1397,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN)
     set_target_properties(test-media-capture-open PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     add_test(NAME media-capture-open COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/media_capture_open.py $<TARGET_FILE:test-media-capture-open>)
-    set_tests_properties(media-capture-open PROPERTIES LABELS "integration" TIMEOUT 90)
+    set_tests_properties(media-capture-open PROPERTIES LABELS "integration" TIMEOUT 90 SKIP_RETURN_CODE 77)
     if(TARGET tests)
         add_dependencies(tests test-media-capture-open)
     endif()

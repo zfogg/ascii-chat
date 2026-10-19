@@ -45,6 +45,51 @@ static size_t g_paste_length;
 static keyboard_key_t g_text_keys[8192];
 static size_t g_text_head, g_text_count;
 
+typedef struct {
+  char buffer[8192];
+  size_t length, cursor;
+  uint64_t deadline;
+  bool active, submitted;
+} input_editor_t;
+static input_editor_t g_media_editor;
+
+static void input_editor_key(char *buffer, size_t max_len, size_t *length, size_t *position, keyboard_key_t key) {
+  size_t len = *length, cursor = *position;
+  if (key == KEY_HOME)
+    cursor = 0;
+  else if (key == KEY_END)
+    cursor = len;
+  else if (key == KEY_LEFT && cursor) {
+    do {
+      --cursor;
+    } while (cursor && ((unsigned char)buffer[cursor] & 0xc0) == 0x80);
+  } else if (key == KEY_RIGHT && cursor < len) {
+    do {
+      ++cursor;
+    } while (cursor < len && ((unsigned char)buffer[cursor] & 0xc0) == 0x80);
+  } else if ((key == 8 || key == 127) && cursor) {
+    size_t start = cursor;
+    do {
+      --start;
+    } while (start && ((unsigned char)buffer[start] & 0xc0) == 0x80);
+    memmove(buffer + start, buffer + cursor, len - cursor + 1);
+    len -= cursor - start;
+    cursor = start;
+  } else if (key == KEY_DELETE && cursor < len) {
+    size_t end = cursor + 1;
+    while (end < len && ((unsigned char)buffer[end] & 0xc0) == 0x80)
+      ++end;
+    memmove(buffer + cursor, buffer + end, len - end + 1);
+    len -= end - cursor;
+  } else if (key >= 32 && key < 256 && len < max_len - 1) {
+    memmove(buffer + cursor + 1, buffer + cursor, len - cursor + 1);
+    buffer[cursor++] = (char)key;
+    ++len;
+  }
+  *length = len;
+  *position = cursor;
+}
+
 /* Called only with g_input_mutex held. Payload never reaches shortcut routing. */
 static keyboard_key_t input_read_event(void) {
   if (g_paste_ready)
@@ -117,6 +162,17 @@ static keyboard_key_t input_read_event(void) {
   return KEY_NONE;
 }
 
+/* Background debug polling can retain an event before a modal screen appears. */
+static keyboard_key_t input_next_key(void) {
+  if (g_sync_key_count) {
+    keyboard_key_t key = g_sync_keys[g_sync_key_head];
+    g_sync_key_head = (g_sync_key_head + 1) % 256;
+    --g_sync_key_count;
+    return key;
+  }
+  return input_read_event();
+}
+
 static bool input_initialize(void) {
   if (lifecycle_init_once(&g_input_lifecycle)) {
     if (mutex_init(&g_input_mutex, "ui_input") != 0) {
@@ -182,6 +238,52 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
       ui_controller_remove(UI_SCREEN_NOTICE);
     mutex_unlock(&g_input_mutex);
     return notice_key == 'q' || notice_key == 3 ? notice_key : KEY_NONE;
+  }
+  if (screen == UI_SCREEN_MEDIA && g_media_editor.active && state.screen == UI_SCREEN_PROMPT) {
+    if (state.covered || g_input_was_covered) {
+      g_paste_ready = false;
+      g_sync_key_count = 0;
+      for (unsigned n = 0; n < 256 && input_read_event() != KEY_NONE; ++n) {
+        g_paste_ready = false;
+      }
+      g_input_was_covered = state.covered;
+      mutex_unlock(&g_input_mutex);
+      return KEY_NONE;
+    }
+    keyboard_key_t key = input_next_key();
+    if (key == KEY_ESCAPE || key == 3 || ui_input_expired(g_media_editor.deadline)) {
+      g_media_editor.active = false;
+      ui_prompt_remove();
+    } else if (key == '\r' || key == '\n') {
+      g_media_editor.active = false;
+      g_media_editor.submitted = true;
+      ui_prompt_remove();
+      mutex_unlock(&g_input_mutex);
+      return KEY_MEDIA_SUBMIT;
+    } else if (key != KEY_NONE) {
+      if (key == KEY_PASTE) {
+        if (!g_paste_invalid && utf8_is_valid(g_paste) &&
+            g_media_editor.length + g_paste_length < sizeof(g_media_editor.buffer)) {
+          memmove(g_media_editor.buffer + g_media_editor.cursor + g_paste_length,
+                  g_media_editor.buffer + g_media_editor.cursor, g_media_editor.length - g_media_editor.cursor + 1);
+          memcpy(g_media_editor.buffer + g_media_editor.cursor, g_paste, g_paste_length);
+          g_media_editor.cursor += g_paste_length;
+          g_media_editor.length += g_paste_length;
+        }
+        g_paste_ready = false;
+      } else {
+        input_editor_key(g_media_editor.buffer, sizeof(g_media_editor.buffer), &g_media_editor.length,
+                         &g_media_editor.cursor, key);
+      }
+      if (ui_prompt_present("Open media: path or URL\nEnter loads; Escape cancels", g_media_editor.buffer,
+                            g_media_editor.cursor) != ASCIICHAT_OK) {
+        g_media_editor.active = false;
+        ui_prompt_remove();
+        CLEAR_ERRNO();
+      }
+    }
+    mutex_unlock(&g_input_mutex);
+    return KEY_NONE;
   }
   bool active = state.screen < 0 || state.screen == (int)screen ||
                 (screen == UI_SCREEN_MEDIA && state.screen == UI_SCREEN_RENDER_PROGRESS) ||
@@ -319,37 +421,7 @@ asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, si
       result = SET_ERRNO(ERROR_GENERAL, "Prompt cancelled");
       break;
     }
-    if (key == KEY_HOME)
-      cursor = 0;
-    else if (key == KEY_END)
-      cursor = len;
-    else if (key == KEY_LEFT && cursor) {
-      do {
-        --cursor;
-      } while (cursor && ((unsigned char)buffer[cursor] & 0xc0) == 0x80);
-    } else if (key == KEY_RIGHT && cursor < len) {
-      do {
-        ++cursor;
-      } while (cursor < len && ((unsigned char)buffer[cursor] & 0xc0) == 0x80);
-    } else if ((key == 8 || key == 127) && cursor) {
-      size_t start = cursor;
-      do {
-        --start;
-      } while (start && ((unsigned char)buffer[start] & 0xc0) == 0x80);
-      memmove(buffer + start, buffer + cursor, len - cursor + 1);
-      len -= cursor - start;
-      cursor = start;
-    } else if (key == KEY_DELETE && cursor < len) {
-      size_t end = cursor + 1;
-      while (end < len && ((unsigned char)buffer[end] & 0xc0) == 0x80)
-        ++end;
-      memmove(buffer + cursor, buffer + end, len - end + 1);
-      len -= end - cursor;
-    } else if (key >= 32 && key < 256 && len < max_len - 1) {
-      memmove(buffer + cursor + 1, buffer + cursor, len - cursor + 1);
-      buffer[cursor++] = (char)key;
-      ++len;
-    }
+    input_editor_key(buffer, max_len, &len, &cursor, key);
   }
   if (shutdown_is_requested())
     result = SET_ERRNO(ERROR_GENERAL, "Prompt interrupted");
@@ -367,4 +439,33 @@ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_l
   if (buffer && max_len)
     buffer[0] = '\0';
   return ui_input_prompt_prefilled(prompt, buffer, max_len, opts);
+}
+
+asciichat_error_t ui_input_media_begin(const char *text) {
+  if (!text || strlen(text) >= sizeof(g_media_editor.buffer) || !input_initialize())
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid media prompt text");
+  mutex_lock(&g_input_mutex);
+  memset(&g_media_editor, 0, sizeof(g_media_editor));
+  memcpy(g_media_editor.buffer, text, strlen(text) + 1);
+  g_media_editor.length = g_media_editor.cursor = strlen(text);
+  g_media_editor.deadline = ui_input_deadline(120);
+  asciichat_error_t result = ui_prompt_present("Open media: path or URL\nEnter loads; Escape cancels",
+                                               g_media_editor.buffer, g_media_editor.cursor);
+  g_media_editor.active = result == ASCIICHAT_OK;
+  mutex_unlock(&g_input_mutex);
+  return result;
+}
+
+asciichat_error_t ui_input_media_take(char *output, size_t capacity) {
+  if (!output || !input_initialize())
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid media prompt destination");
+  mutex_lock(&g_input_mutex);
+  asciichat_error_t result = ASCIICHAT_OK;
+  if (!g_media_editor.submitted || g_media_editor.length >= capacity)
+    result = SET_ERRNO(ERROR_INVALID_STATE, "No submitted media prompt");
+  else
+    memcpy(output, g_media_editor.buffer, g_media_editor.length + 1);
+  g_media_editor.submitted = false;
+  mutex_unlock(&g_input_mutex);
+  return result;
 }

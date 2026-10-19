@@ -23,6 +23,7 @@
 #include <ascii-chat/ui/notice.h>
 #include <ascii-chat/platform/clipboard.h>
 #include <ascii-chat/media/input.h>
+#include <ascii-chat/log/search.h>
 
 #ifndef NDEBUG
 #include <ascii-chat/debug/sync.h>
@@ -202,36 +203,44 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
 }
 
 void session_handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
-  if (key == KEY_ESCAPE && session_capture_cancel_open(capture))
+  bool text_entry = log_search_is_entering();
+  if (text_entry && key == KEY_PASTE) {
+    char pasted[8192];
+    if (ui_input_take_paste(pasted, sizeof(pasted)) == ASCIICHAT_OK)
+      for (const unsigned char *p = (const unsigned char *)pasted; *p; ++p)
+        ui_session_logs_key((keyboard_key_t)*p);
+    CLEAR_ERRNO();
     return;
-  if (key == KEY_PASTE || key == 'o' || key == 'O' || key == 15 || key == 'v' || key == 'V') {
+  }
+  if (!text_entry && key == KEY_ESCAPE && session_capture_cancel_open(capture))
+    return;
+  if (!text_entry && (key == KEY_MEDIA_SUBMIT || key == KEY_PASTE || key == 'o' || key == 'O' || key == 15 ||
+                      key == 'v' || key == 'V')) {
     log_debug("Media input requested: key=%d", key);
     char input[8192] = {0}, normalized[8192];
     asciichat_error_t result = ASCIICHAT_OK;
-    bool cancelled = false;
-    if (key == KEY_PASTE)
+    if (key == KEY_MEDIA_SUBMIT)
+      result = ui_input_media_take(input, sizeof(input));
+    else if (key == KEY_PASTE)
       result = ui_input_take_paste(input, sizeof(input));
     else if (key == 'v' || key == 'V')
       result = platform_clipboard_read(input, sizeof(input));
     if (result == ASCIICHAT_OK) {
-      if (input[0]) {
+      if (key != KEY_MEDIA_SUBMIT && input[0]) {
         result = media_input_normalize(input, normalized, sizeof(normalized));
         if (result == ASCIICHAT_OK)
           memcpy(input, normalized, strlen(normalized) + 1);
       }
-      if (result == ASCIICHAT_OK) {
-        result = ui_input_prompt_prefilled("Open media: path or URL\nEnter loads; Escape cancels", input, sizeof(input),
-                                           (prompt_opts_t){.echo = true, .timeout_seconds = 120});
-        cancelled = result == ERROR_GENERAL || result == ERROR_PROMPT_TIMEOUT;
-      }
-      if (result == ASCIICHAT_OK)
+      if (result == ASCIICHAT_OK && key != KEY_MEDIA_SUBMIT)
+        result = ui_input_media_begin(input);
+      if (result == ASCIICHAT_OK && key == KEY_MEDIA_SUBMIT)
         result = media_input_normalize(input, normalized, sizeof(normalized));
-      if (result == ASCIICHAT_OK)
+      if (result == ASCIICHAT_OK && key == KEY_MEDIA_SUBMIT)
         result = session_capture_open_media(capture, normalized);
     }
     if (result != ASCIICHAT_OK) {
       asciichat_error_context_t error;
-      if (HAS_ERRNO(&error) && !cancelled)
+      if (HAS_ERRNO(&error))
         NOTICE(WARNING, "MEDIA INPUT", "%s", error.context_message);
       CLEAR_ERRNO();
     }

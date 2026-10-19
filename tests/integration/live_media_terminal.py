@@ -126,7 +126,7 @@ def main():
                         time.sleep(5)
                         self.path = "/mrc-blue.mp4"
                         super().do_GET()
-                    except (BrokenPipeError, ConnectionResetError):
+                    except ConnectionError:
                         pass
                     finally:
                         slow_done.set()
@@ -193,6 +193,9 @@ def main():
             term.expect(lambda s: s.count("oo") > 15, "Initial test pattern is visible", timeout=30)
             term.write("o")
             term.expect(lambda s: "Open media:" in s, "Open shortcut displays editable prompt")
+            drained = log.read_text(encoding="utf-8").count("[PIPELINE_MAIN_POP]")
+            term.pump(2.5)
+            assert log.read_text(encoding="utf-8").count("[PIPELINE_MAIN_POP]") > drained, "Open prompt stalled frame processing"
             term.write(str(red))
             term.pump(0.3)
             term.write("\r")

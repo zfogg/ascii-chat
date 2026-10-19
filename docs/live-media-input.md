@@ -10,7 +10,7 @@ In native mirror, client, and discovery sessions:
 The current source stays active while the replacement loads. A failed load retains
 the previous source. Escape cancels a pending load; an external URL extractor may
 need to finish before another load can begin. Once loaded, Space pauses playback,
-the arrow keys seek, and **[** switches between media and the webcam.
+the left and right arrow keys seek, and **[** switches between media and the webcam.
 
 The prompt accepts one source at a time: local paths, quoted paths, shell-escaped
 spaces, local `file://` URIs, and URLs supported by the existing FFmpeg/yt-dlp

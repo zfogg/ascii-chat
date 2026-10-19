@@ -66,17 +66,18 @@ typedef enum {
   KEY_PASTE_BEGIN = 264,
   KEY_PASTE_END = 265,
   KEY_PASTE = 266,
-  KEY_MINUS = '-',    ///< '-' key - toggle FPS counter
-  KEY_0 = '0',        ///< '0' key - toggle sync debug screen
-  KEY_1 = '1',        ///< '1' key - toggle matrix rain effect
-  KEY_2 = '2',        ///< '2' key - toggle audio waveform
-  KEY_3 = '3',        ///< '3' key - toggle audio frequency display
-  KEY_C = 'c',        ///< 'c' key - cycle color modes
-  KEY_R = 'r',        ///< 'r' key - cycle render modes
-  KEY_M = 'm',        ///< 'm' key - toggle mute
-  KEY_F = 'f',        ///< 'f' key - flip webcam
-  KEY_QUESTION = '?', ///< '?' key - show help screen
-  KEY_BACKTICK = '`', ///< '`' key - print lock state (debug builds)
+  KEY_MEDIA_SUBMIT = 267, ///< Nonblocking media prompt submitted
+  KEY_MINUS = '-',        ///< '-' key - toggle FPS counter
+  KEY_0 = '0',            ///< '0' key - toggle sync debug screen
+  KEY_1 = '1',            ///< '1' key - toggle matrix rain effect
+  KEY_2 = '2',            ///< '2' key - toggle audio waveform
+  KEY_3 = '3',            ///< '3' key - toggle audio frequency display
+  KEY_C = 'c',            ///< 'c' key - cycle color modes
+  KEY_R = 'r',            ///< 'r' key - cycle render modes
+  KEY_M = 'm',            ///< 'm' key - toggle mute
+  KEY_F = 'f',            ///< 'f' key - flip webcam
+  KEY_QUESTION = '?',     ///< '?' key - show help screen
+  KEY_BACKTICK = '`',     ///< '`' key - print lock state (debug builds)
 } keyboard_key_t;
 
 /* ============================================================================

@@ -23,3 +23,8 @@ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_l
 asciichat_error_t ui_input_take_paste(char *buffer, size_t capacity);
 /** Editable prompt initialized with buffer contents. */
 asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts);
+
+/** Begin media text entry without blocking capture or network processing. */
+asciichat_error_t ui_input_media_begin(const char *text);
+/** Consume the value signaled by KEY_MEDIA_SUBMIT. */
+asciichat_error_t ui_input_media_take(char *output, size_t capacity);
