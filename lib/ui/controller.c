@@ -344,17 +344,17 @@ static void *presentation_main(void *unused) {
     if (frame.render) {
       g_render_snapshot = frame.owned;
       screen_t *screen = &frame;
-      terminal_size_t size = {0};
-      // Measure the physical output device, never --width/--height or environment overrides.
-      if (!platform_isatty(screen->fd) || terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK || size.cols <= 0 ||
-          size.rows <= 0) {
+      terminal_resize_watcher_t watcher = {.size = previous_size};
+      bool resized = false;
+      // Observe physical changes once for all modes; consumers use the published dimensions.
+      if (!platform_isatty(screen->fd) || terminal_resize_poll(&watcher, screen->fd, &resized) != ASCIICHAT_OK) {
         // A minimized or detached terminal has no usable drawing area.
         atomic_store_bool(&g_blocked, true);
         const ui_session_view_t hidden = {.screen = -1};
         ui_session_render(g_session, &hidden, time_get_ns());
         goto frame_complete;
       }
-      bool resized = size.cols != previous_size.cols || size.rows != previous_size.rows;
+      terminal_size_t size = watcher.size;
       mutex_lock(&g_mutex);
       g_size = size;
       mutex_unlock(&g_mutex);

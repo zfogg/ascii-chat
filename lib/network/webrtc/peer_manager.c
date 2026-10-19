@@ -17,6 +17,7 @@
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
@@ -63,6 +64,7 @@ typedef struct webrtc_peer_manager {
   mutex_t signaling_mutex;                ///< Serialize SDP and ICE updates for each peer
   pending_ice_candidate_t *pending_ice;   ///< ICE delivered before the peer's remote SDP
   size_t pending_ice_count;
+  thread_id_t owner_thread; ///< Thread responsible for delivering ready transports
 } webrtc_peer_manager_t;
 
 #define MAX_PENDING_ICE_CANDIDATES 64
@@ -207,16 +209,37 @@ static void remove_peer_locked(webrtc_peer_manager_t *manager, peer_entry_t *pee
 
 static void on_peer_security_ready(acip_transport_t *transport, void *user_data) {
   peer_entry_t *peer = user_data;
-  webrtc_peer_manager_t *manager = peer->manager;
   atomic_store_bool(&peer->security_ready, true);
-  if (manager->config.on_transport_ready) {
-    acip_transport_t *pending = atomic_ptr_exchange(&peer->pending_transport, NULL);
-    if (!pending)
-      return;
-    peer->is_connected = true;
-    manager->config.on_transport_ready(pending, peer->participant_id, manager->config.user_data);
-  }
   (void)transport;
+}
+
+asciichat_error_t webrtc_peer_manager_dispatch_ready(webrtc_peer_manager_t *manager) {
+  if (!manager)
+    return ASCIICHAT_OK;
+  if (!asciichat_thread_equal(manager->owner_thread, asciichat_thread_self()))
+    return SET_ERRNO(ERROR_INVALID_STATE, "Ready transport dispatch requires the manager owner thread");
+  if (!manager->config.on_transport_ready)
+    return ASCIICHAT_OK;
+  for (;;) {
+    acip_transport_t *transport = NULL;
+    uint8_t participant_id[16];
+    mutex_lock(&manager->peers_mutex);
+    peer_entry_t *peer, *tmp;
+    HASH_ITER(hh, manager->peers, peer, tmp) {
+      if (!atomic_load_bool(&peer->security_ready))
+        continue;
+      transport = atomic_ptr_exchange(&peer->pending_transport, NULL);
+      if (transport) {
+        memcpy(participant_id, peer->participant_id, sizeof(participant_id));
+        peer->is_connected = true;
+        break;
+      }
+    }
+    mutex_unlock(&manager->peers_mutex);
+    if (!transport)
+      return ASCIICHAT_OK;
+    manager->config.on_transport_ready(transport, participant_id, manager->config.user_data);
+  }
 }
 
 /**
@@ -502,6 +525,7 @@ asciichat_error_t webrtc_peer_manager_create(const webrtc_peer_manager_config_t 
   memcpy(&manager->config, config, sizeof(*config));
   memcpy(&manager->signaling, signaling_callbacks, sizeof(*signaling_callbacks));
   manager->role = config->role;
+  manager->owner_thread = asciichat_thread_self();
   manager->peers = NULL;
   manager->pending_ice = NULL;
   manager->pending_ice_count = 0;

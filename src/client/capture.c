@@ -1,3 +1,4 @@
+#include "connection_internal.h"
 #include <ascii-chat/network/errors.h>
 /**
  * @file client/capture.c
@@ -129,26 +130,6 @@ static session_capture_ctx_t *g_capture_capture_ctx = NULL;
  * Capture Thread Management
  * ============================================================================ */
 
-/**
- * @brief Flag indicating if capture thread was successfully created
- *
- * Used during shutdown to determine whether the thread handle is valid and
- * should be joined. Prevents attempting to join a thread that was never created.
- *
- * @ingroup client_capture
- */
-static bool g_capture_thread_created = false;
-
-/**
- * @brief Atomic flag indicating capture thread has exited
- *
- * Set by the capture thread when it exits. Used by other threads to detect
- * thread termination without blocking on thread join operations.
- *
- * @ingroup client_capture
- */
-static atomic_t g_capture_thread_exited = {0};
-
 /* ============================================================================
  * Frame Processing Constants
  * ============================================================================ */
@@ -188,48 +169,48 @@ static atomic_t g_capture_thread_exited = {0};
  * @ingroup client_capture
  */
 static void *webcam_capture_thread_func(void *arg) {
-  (void)arg;
+  client_connection_t *connection = arg;
 
   // FPS tracking for webcam capture thread
-  static fps_t fps_tracker = {0};
-  static bool fps_tracker_initialized = false;
-  static uint64_t capture_frame_count = 0;
-  static uint64_t last_capture_frame_time_ns = 0;
-  static image_t *last_frame = NULL; // Cache last frame to render when paused
+  fps_t fps_tracker = {0};
+  bool fps_tracker_initialized = false;
+  uint64_t capture_frame_count = 0;
+  uint64_t last_capture_frame_time_ns = 0;
+  image_t *last_frame = NULL; // Cache last frame to render when paused
   const char *video_codec = GET_OPTION(video_codec);
   bool automatic_codec = strcmp(video_codec, "auto") == 0;
   video_codec_t selected_codec = strcmp(video_codec, "raw") == 0    ? VIDEO_CODEC_RGBA
                                  : strcmp(video_codec, "h264") == 0 ? VIDEO_CODEC_H264
                                                                     : VIDEO_CODEC_H265;
   // Each connection starts at the requested codec with a fresh bitstream.
-  h265_encoder_destroy(g_video_encoder);
-  g_video_encoder = NULL;
+  h265_encoder_destroy(connection->video_encoder);
+  connection->video_encoder = NULL;
   if (!fps_tracker_initialized) {
-    int target_fps = (int)session_capture_get_target_fps(g_capture_capture_ctx);
+    int target_fps = (int)session_capture_get_target_fps(connection->capture_context);
     fps_init(&fps_tracker, target_fps, "WEBCAM_TX");
     fps_tracker_initialized = true;
   }
 
-  while (!should_exit() && !server_connection_is_lost()) {
+  while (!should_exit() && !server_connection_is_lost(connection)) {
     // Check connection status
-    if (!server_connection_is_active()) {
+    if (!server_connection_is_active(connection)) {
       log_debug_every(LOG_RATE_NORMAL, "Capture thread: waiting for connection to become active");
       platform_sleep_us(100 * US_PER_MS_INT); // Wait for connection
       continue;
     }
 
     // Frame rate limiting using session capture adaptive sleep
-    session_capture_sleep_for_fps(g_capture_capture_ctx);
+    session_capture_sleep_for_fps(connection->capture_context);
 
     // Re-check connection after FPS sleep in case it was lost during sleep (reconnection)
-    if (!server_connection_is_active() || server_connection_is_lost()) {
+    if (!server_connection_is_active(connection) || server_connection_is_lost(connection)) {
       log_debug("Capture thread: connection lost after FPS sleep, exiting");
       break;
     }
 
     // Read frame using session capture library
     asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
-    image_t *image = session_capture_read_frame(g_capture_capture_ctx);
+    image_t *image = session_capture_read_frame(connection->capture_context);
     asciichat_error_context_t capture_failure;
     if (!image && asciichat_errno_peek_since(frame_scope, &capture_failure)) {
       asciichat_errno_request_exit(capture_failure.code);
@@ -239,13 +220,13 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Check if media is paused and we have a last frame - render last frame to keep keyboard polling active
     if (!image) {
-      media_source_t *source = (media_source_t *)session_capture_get_media_source(g_capture_capture_ctx);
+      media_source_t *source = (media_source_t *)session_capture_get_media_source(connection->capture_context);
       if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE && media_source_is_paused(source) &&
           last_frame) {
         // Use last frame when paused (keeps display thread rendering and keyboard polling active)
         image = last_frame;
         log_debug_every(LOG_RATE_SLOW, "Using cached frame while paused");
-      } else if (session_capture_at_end(g_capture_capture_ctx)) {
+      } else if (session_capture_at_end(connection->capture_context)) {
         // Check if we've reached end of file for media sources
         log_debug("Media source reached end of file");
         image_destroy(last_frame);
@@ -264,7 +245,7 @@ static void *webcam_capture_thread_func(void *arg) {
     // Process frame for network transmission using session library
     // session_capture_process_for_transmission() returns a new image that we own
     // NOTE: The original 'image' is owned by media_source - do NOT free it!
-    image_t *processed_image = session_capture_process_for_transmission(g_capture_capture_ctx, image);
+    image_t *processed_image = session_capture_process_for_transmission(connection->capture_context, image);
     if (!processed_image) {
       SET_ERRNO(ERROR_INVALID_STATE, "Failed to process frame for transmission");
       // NOTE: Do NOT free 'image' - it's owned by capture context
@@ -272,15 +253,15 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Check connection before sending
-    if (!server_connection_is_active()) {
+    if (!server_connection_is_active(connection)) {
       log_warn("Connection lost before sending, stopping video transmission");
       image_destroy(processed_image);
       break;
     }
 
     // Send frame packet to server using proper packet format
-    acip_transport_t *transport = server_connection_get_transport();
-    if (!transport || !server_connection_is_active()) {
+    acip_transport_t *transport = server_connection_get_transport(connection);
+    if (!transport || !server_connection_is_active(connection)) {
       log_warn("Transport became unavailable during capture, stopping transmission");
       image_destroy(processed_image);
       break;
@@ -293,12 +274,12 @@ static void *webcam_capture_thread_func(void *arg) {
     bool encoding_failed = false;
     for (;;) {
       if (selected_codec == VIDEO_CODEC_RGBA) {
-        send_result = threaded_send_image_frame(processed_image->pixels, (uint32_t)processed_image->w,
+        send_result = threaded_send_image_frame(connection, processed_image->pixels, (uint32_t)processed_image->w,
                                                 (uint32_t)processed_image->h, 1);
         break;
       }
       asciichat_errno_scope_t encode_scope = asciichat_errno_scope_begin();
-      send_result = threaded_send_image_frame_encoded(processed_image->pixels, (uint32_t)processed_image->w,
+      send_result = threaded_send_image_frame_encoded(connection, processed_image->pixels, (uint32_t)processed_image->w,
                                                       (uint32_t)processed_image->h, selected_codec, &encoding_failed);
       if (!encoding_failed || !automatic_codec || send_result == ERROR_MEMORY) {
         if (send_result == ASCIICHAT_OK)
@@ -309,8 +290,8 @@ static void *webcam_capture_thread_func(void *arg) {
                selected_codec == VIDEO_CODEC_H265 ? "HEVC" : "H.264",
                selected_codec == VIDEO_CODEC_H265 ? "H.264" : "raw");
       asciichat_errno_scope_end(encode_scope, ASCIICHAT_ERRNO_DISMISSED);
-      h265_encoder_destroy(g_video_encoder);
-      g_video_encoder = NULL;
+      h265_encoder_destroy(connection->video_encoder);
+      connection->video_encoder = NULL;
       selected_codec = selected_codec == VIDEO_CODEC_H265 ? VIDEO_CODEC_H264 : VIDEO_CODEC_RGBA;
       encoding_failed = false;
     }
@@ -327,7 +308,7 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // If send failed due to connection loss, break out of loop
-    if (send_result != ASCIICHAT_OK && !server_connection_is_active()) {
+    if (send_result != ASCIICHAT_OK && !server_connection_is_active(connection)) {
       log_debug("Connection lost during send, stopping transmission");
       image_destroy(processed_image);
       break;
@@ -343,7 +324,7 @@ static void *webcam_capture_thread_func(void *arg) {
     if (send_result != ASCIICHAT_OK) {
       log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME_%s send error=%d (%s) after %.1fms, closing connection",
                 codec_name, send_result, asciichat_error_string(send_result), (double)send_duration_ns / 1e6);
-      server_connection_lost();
+      server_connection_lost(connection);
       image_destroy(processed_image);
       break;
     }
@@ -379,7 +360,8 @@ static void *webcam_capture_thread_func(void *arg) {
     last_capture_frame_time_ns = frame_capture_time_ns;
 
     // Expected frame interval in nanoseconds
-    uint64_t expected_interval_ns = NS_PER_SEC_INT / (uint64_t)session_capture_get_target_fps(g_capture_capture_ctx);
+    uint64_t expected_interval_ns =
+        NS_PER_SEC_INT / (uint64_t)session_capture_get_target_fps(connection->capture_context);
     uint64_t lag_threshold_ns = expected_interval_ns + (expected_interval_ns / 2); // 50% over expected
 
     // Log warning if frame took too long to capture (display in milliseconds for readability)
@@ -412,7 +394,7 @@ static void *webcam_capture_thread_func(void *arg) {
   }
 
   log_debug("CAPTURE_THREAD_EXIT: About to mark thread as exited");
-  atomic_store_bool(&g_capture_thread_exited, true);
+  atomic_store_bool(&connection->capture_thread_exited, true);
   log_debug("CAPTURE_THREAD_EXIT: Thread marked as exited, cleaning up errno");
 
   // Clean up thread-local error context before exit
@@ -506,28 +488,24 @@ int capture_init() {
  *
  * @ingroup client_capture
  */
-int capture_start_thread() {
-  if (THREAD_IS_CREATED(g_capture_thread_created)) {
+int capture_start_thread(client_connection_t *connection) {
+  if (!connection->capture_context)
+    return 0;
+  if (THREAD_IS_CREATED(connection->capture_thread_created)) {
     log_warn("Capture thread already created");
     return 0;
   }
 
-  // Register capture atomics with named debug registry
-  static bool capture_atomics_registered = false;
-  if (!capture_atomics_registered) {
-    NAMED_REGISTER_ATOMIC(&g_capture_thread_exited, "capture_webcam_thread_exit_confirmation", NULL);
-    capture_atomics_registered = true;
-  }
-
   // Start webcam capture thread
-  atomic_store_bool(&g_capture_thread_exited, false);
-  if (thread_pool_spawn(g_client_worker_pool, webcam_capture_thread_func, NULL, 2, "webcam_capture") != ASCIICHAT_OK) {
+  atomic_store_bool(&connection->capture_thread_exited, false);
+  if (thread_pool_spawn(connection->client_worker_pool, webcam_capture_thread_func, connection, 2, "webcam_capture") !=
+      ASCIICHAT_OK) {
     SET_ERRNO(ERROR_THREAD, "Webcam capture thread creation failed");
     LOG_ERRNO_IF_SET("Webcam capture thread creation failed");
     return -1;
   }
 
-  g_capture_thread_created = true;
+  connection->capture_thread_created = true;
   log_debug("Webcam capture thread created successfully");
 
   return 0;
@@ -540,24 +518,26 @@ int capture_start_thread() {
  *
  * @ingroup client_capture
  */
-void capture_stop_thread() {
-  if (!THREAD_IS_CREATED(g_capture_thread_created)) {
+void capture_stop_thread(client_connection_t *connection) {
+  if (!connection)
+    return;
+  if (!THREAD_IS_CREATED(connection->capture_thread_created)) {
     return;
   }
 
   // Wait for thread to exit gracefully
   int wait_count = 0;
-  while (wait_count < 20 && !atomic_load_bool(&g_capture_thread_exited)) {
+  while (wait_count < 20 && !atomic_load_bool(&connection->capture_thread_exited)) {
     platform_sleep_us(100 * US_PER_MS_INT); // 100ms
     wait_count++;
   }
 
-  if (!atomic_load_bool(&g_capture_thread_exited)) {
+  if (!atomic_load_bool(&connection->capture_thread_exited)) {
     log_warn("Capture thread not responding after 2 seconds - will be joined by thread pool");
   }
 
-  // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
-  g_capture_thread_created = false;
+  // Thread will be joined by thread_pool_stop_all() in client_connection_stop()
+  connection->capture_thread_created = false;
 }
 /**
  * Check if capture thread has exited
@@ -566,8 +546,8 @@ void capture_stop_thread() {
  *
  * @ingroup client_capture
  */
-bool capture_thread_exited() {
-  return atomic_load_bool(&g_capture_thread_exited);
+bool capture_thread_exited(client_connection_t *connection) {
+  return atomic_load_bool(&connection->capture_thread_exited);
 }
 /**
  * Cleanup capture subsystem
@@ -578,7 +558,6 @@ bool capture_thread_exited() {
  * @ingroup client_capture
  */
 void capture_cleanup() {
-  capture_stop_thread();
 
   // Destroy capture context
   if (g_capture_capture_ctx) {
@@ -589,4 +568,8 @@ void capture_cleanup() {
 
 void *capture_get_media_source(void) {
   return session_capture_get_media_source(g_capture_capture_ctx);
+}
+
+session_capture_ctx_t *capture_get_context(void) {
+  return g_capture_capture_ctx;
 }

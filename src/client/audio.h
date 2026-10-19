@@ -35,6 +35,7 @@
  */
 
 #pragma once
+#include "connection.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -61,7 +62,7 @@
  *
  * @ingroup client_audio
  */
-void audio_process_received_samples(const float *samples, int num_samples);
+void audio_process_received_samples(client_connection_t *connection, const float *samples, int num_samples);
 
 /**
  * @brief Initialize audio subsystem
@@ -112,13 +113,13 @@ int audio_client_init(void);
  *
  * @see audio_start_thread "Start audio capture thread"
  */
-void audio_sender_init(void);
+asciichat_error_t audio_sender_init(client_connection_t *connection);
 
 /** Signal the asynchronous audio sender to stop before worker threads are joined. */
-void audio_sender_cleanup(void);
+void audio_sender_cleanup(client_connection_t *connection);
 
 /** Release asynchronous audio sender resources after its worker has been joined. */
-void audio_sender_finalize(void);
+void audio_sender_finalize(client_connection_t *connection);
 
 /**
  * @brief Start audio capture thread
@@ -145,7 +146,7 @@ void audio_sender_finalize(void);
  *
  * @see audio_stop_thread "Stop audio capture thread"
  */
-int audio_start_thread(void);
+int audio_start_thread(client_connection_t *connection);
 
 /**
  * @brief Stop audio capture thread
@@ -167,7 +168,7 @@ int audio_start_thread(void);
  *
  * @see audio_start_thread "Start audio capture thread"
  */
-void audio_stop_thread(void);
+void audio_stop_thread(client_connection_t *connection);
 
 /**
  * @brief Check if audio capture thread has exited
@@ -182,7 +183,7 @@ void audio_stop_thread(void);
  *
  * @ingroup client_audio
  */
-bool audio_thread_exited(void);
+bool audio_thread_exited(client_connection_t *connection);
 
 /**
  * @brief Cleanup audio subsystem
@@ -218,7 +219,7 @@ void audio_cleanup(void);
  *
  * @ingroup client_audio
  */
-client_audio_pipeline_t *audio_get_pipeline(void);
+client_audio_pipeline_t *audio_get_pipeline(client_connection_t *connection);
 
 /**
  * @brief Decode Opus packet using the audio pipeline
@@ -237,7 +238,8 @@ client_audio_pipeline_t *audio_get_pipeline(void);
  *
  * @ingroup client_audio
  */
-int audio_decode_opus(const uint8_t *opus_data, size_t opus_len, float *output, int max_samples);
+int audio_decode_opus(client_connection_t *connection, const uint8_t *opus_data, size_t opus_len, float *output,
+                      int max_samples);
 
 /**
  * @brief Get the global audio context for use by other subsystems
@@ -253,3 +255,5 @@ int audio_decode_opus(const uint8_t *opus_data, size_t opus_len, float *output, 
  * @ingroup client_audio
  */
 audio_context_t *audio_get_context(void);
+
+asciichat_error_t audio_connection_init(client_connection_t *connection);

@@ -14,4 +14,3 @@ size_t acip_async_tcp_transport_queued(acip_transport_t *);
  */
 acip_transport_t *acip_async_tcp_client_create(socket_t *, crypto_context_t *);
 /** Atomic-only cancellation request, suitable for the native signal path. */
-void acip_async_tcp_transport_interrupt(acip_transport_t *);

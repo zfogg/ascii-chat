@@ -170,6 +170,9 @@ bool connection_check_timeout(const connection_attempt_context_t *ctx) {
  */
 static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_context_t *ctx, const char *server_address,
                                                          uint16_t server_port) {
+  if (!ctx || !ctx->ops.set_ip || !ctx->ops.set_port || !ctx->ops.set_mode || !ctx->ops.init || !ctx->ops.handshake ||
+      !ctx->ops.is_ready || !ctx->ops.get_context)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Connection attempt requires per-instance callbacks");
   log_info("=== connection_attempt_tcp CALLED: address='%s', port=%u ===", server_address, server_port);
 
   if (!ctx || !server_address) {
@@ -196,8 +199,8 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
     const char *ws_url = endpoint.input;
 
     // Set server IP/port for crypto handshake known_hosts verification
-    APP_CALLBACK_VOID_STR(server_connection_set_ip, endpoint.host);
-    APP_CALLBACK_VOID_INT(server_connection_set_port, endpoint.port);
+    ctx->ops.set_ip(ctx->context, endpoint.host);
+    ctx->ops.set_port(ctx->context, endpoint.port);
     log_debug("Set server IP=%s, port=%u for WebSocket crypto handshake", endpoint.host, endpoint.port);
 
     log_info("Attempting WebSocket connection to %s", ws_url);
@@ -237,17 +240,17 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
 
     log_debug("Initializing crypto context for WebSocket with mode 0x%02x...", crypto_mode);
 
-    APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, crypto_mode);
+    ctx->ops.set_mode(ctx->context, crypto_mode);
 
-    if (APP_CALLBACK_INT(client_crypto_init) != 0) {
+    if (ctx->ops.init(ctx->context) != 0) {
       log_error("Failed to initialize crypto context");
       return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
     }
     log_debug("Crypto context initialized successfully");
 
     // Get crypto context if ready
-    if (APP_CALLBACK_BOOL(crypto_client_is_ready)) {
-      crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
+    if (ctx->ops.is_ready(ctx->context)) {
+      crypto_ctx = ctx->ops.get_context(ctx->context);
     }
 
     // Create WebSocket client instance
@@ -287,13 +290,13 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
       return SET_ERRNO(ERROR_NETWORK, "WebSocket handshake timeout");
     }
 
-    asciichat_error_t handshake_result = APP_CALLBACK_ERROR_TRANSPORT(client_crypto_handshake, transport);
+    asciichat_error_t handshake_result = ctx->ops.handshake(ctx->context, transport);
     if (handshake_result != ASCIICHAT_OK) {
       websocket_client_destroy(&ws_client);
       return handshake_result;
     }
-    if (APP_CALLBACK_BOOL(crypto_client_is_ready))
-      transport->crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
+    if (ctx->ops.is_ready(ctx->context))
+      transport->crypto_ctx = ctx->ops.get_context(ctx->context);
     log_info("WebSocket connection established to %s", ws_url);
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
     ctx->connection.transport = transport;
@@ -348,7 +351,7 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
   // Note: TCP client stores server IP in tcp_client->server_ip for potential crypto context use
   if (tcp_client->server_ip[0] != '\0') {
     log_debug("Server IP available from TCP client: %s", tcp_client->server_ip);
-    APP_CALLBACK_VOID_STR(server_connection_set_ip, tcp_client->server_ip);
+    ctx->ops.set_ip(ctx->context, tcp_client->server_ip);
   } else {
     log_warn("TCP client did not populate server_ip field");
   }
@@ -380,12 +383,12 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
   acip_transport_t *transport = NULL;
 
   {
-    APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, crypto_mode);
+    ctx->ops.set_mode(ctx->context, crypto_mode);
 
     // Initialize crypto context if mode requires handshake (not ACIP_CRYPTO_NONE)
     // This must happen AFTER setting server IP, as crypto init reads server IP/port
     log_debug("Initializing crypto context...");
-    if (APP_CALLBACK_INT(client_crypto_init) != 0) {
+    if (ctx->ops.init(ctx->context) != 0) {
       log_error("Failed to initialize crypto context");
       tcp_client_destroy(&tcp_client);
       return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
@@ -403,7 +406,7 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
     // Perform crypto handshake with server
     log_debug("Performing crypto handshake with server...");
     asciichat_errno_scope_t handshake_scope = asciichat_errno_checkpoint();
-    asciichat_error_t handshake_result = APP_CALLBACK_ERROR_TRANSPORT(client_crypto_handshake, transport);
+    asciichat_error_t handshake_result = ctx->ops.handshake(ctx->context, transport);
     if (handshake_result != ASCIICHAT_OK) {
       acip_transport_destroy(transport);
       tcp_client_destroy(&tcp_client);
@@ -414,8 +417,8 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
     log_debug("Crypto handshake completed successfully");
 
     // Get crypto context after handshake and set it on the transport
-    if (APP_CALLBACK_BOOL(crypto_client_is_ready)) {
-      crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
+    if (ctx->ops.is_ready(ctx->context)) {
+      crypto_ctx = ctx->ops.get_context(ctx->context);
       transport->crypto_ctx = (crypto_context_t *)crypto_ctx;
     }
   }

@@ -1,3 +1,4 @@
+#include "connection_internal.h"
 /**
  * @file main.c
  * @brief ascii-chat Client Main Entry Point
@@ -47,7 +48,7 @@
  * The main loop implements graceful error recovery:
  * - Fatal initialization errors cause immediate exit
  * - Network errors trigger reconnection attempts
- * - Signal handling for graceful shutdown (SIGINT, SIGWINCH)
+ * - Signal handling for graceful shutdown and platform terminal resize detection
  * - Resource cleanup on all exit paths
  *
  * ## Platform Compatibility
@@ -65,11 +66,12 @@
 
 #include <ascii-chat/ui/notice.h>
 #include <ascii-chat/ui/controller.h>
+#include "session/protocol.h"
 
 #include "main.h"
 #include "../main.h" // Global exit API
 #include "server.h"
-#include "protocol.h"
+#include "protocol_adapter.h"
 #include "crypto.h"
 #include "display.h"
 #include "capture.h"
@@ -131,30 +133,6 @@
  * ============================================================================ */
 
 /**
- * Global client worker thread pool
- *
- * Manages all client worker threads including:
- * - Data reception thread (protocol.c)
- * - Webcam capture thread (capture.c)
- * - Ping/keepalive thread (keepalive.c)
- * - Audio capture thread (audio.c)
- * - Audio sender thread (audio.c)
- */
-thread_pool_t *g_client_worker_pool = NULL;
-
-/**
- * Global application client context
- *
- * Central connection and application state for the client.
- * Contains transport-agnostic state: audio, threads, display, crypto.
- * Network-specific state (socket, connection flags) is in the active transport client.
- *
- * Initialized by app_client_create() in client_main().
- * Destroyed by app_client_destroy() at cleanup.
- */
-app_client_t *g_client = NULL;
-
-/**
  * @brief Global WebRTC peer manager (legacy compatibility)
  *
  * Client mode no longer uses WebRTC, but protocol.c still references this.
@@ -174,56 +152,19 @@ struct webrtc_peer_manager *g_peer_manager = NULL;
  * Used by client_run() callback to manage the connection/reconnection loop.
  */
 typedef struct {
-  connection_attempt_context_t connection_ctx; // Fallback connection context (embedded)
-  const char *discovered_address;              // From LAN/session discovery
-  int discovered_port;                         // From LAN/session discovery
-  int reconnect_attempt;                       // Current reconnection attempt number
-  bool has_ever_connected;                     // Track if connection ever succeeded
+  const char *discovered_address; // From LAN/session discovery
+  int discovered_port;            // From LAN/session discovery
+  int reconnect_attempt;          // Current reconnection attempt number
+  bool has_ever_connected;        // Track if connection ever succeeded
 } client_session_state_t;
 
 static client_session_state_t g_client_session = {0};
+static acip_websocket_runtime_t *g_websocket_runtime;
 
 /* Signal handling is now centralized in src/main.c via setup_signal_handlers()
- * Client mode uses set_interrupt_callback(server_connection_shutdown) to register
- * its network shutdown as the interrupt handler. SIGWINCH is still client-specific.
+ * Signal handlers publish application exit; the owner interrupts network I/O
+ * in normal thread context. Resize detection is polled through lib/platform.
  */
-
-/**
- * Platform-compatible SIGWINCH handler for terminal resize events
- *
- * Automatically updates terminal dimensions and notifies server when
- * both width and height are set to auto-detect mode. On Windows, this
- * is a no-op since SIGWINCH is not available.
- *
- * @param sigwinch The signal number (unused)
- */
-#ifndef _WIN32
-static void client_handle_sigwinch(int sigwinch) {
-  (void)(sigwinch);
-
-  // Terminal was resized, update dimensions and recalculate aspect ratio
-  // ONLY if both width and height are auto (not manually set)
-  if (GET_OPTION(auto_width) && GET_OPTION(auto_height)) {
-    // Get terminal size and update via proper RCU setters
-    unsigned short int term_width, term_height;
-    if (get_terminal_size(&term_width, &term_height) == ASCIICHAT_OK) {
-      options_set_int("width", (int)term_width);
-      options_set_int("height", (int)term_height);
-    }
-
-    // Send new size to server if connected
-    if (server_connection_is_active()) {
-      if (threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
-                                                       (int)terminal_get_effective_height()) < 0) {
-        log_warn("Failed to send terminal capabilities to server: %s", network_error_string());
-      } else {
-        display_full_reset();
-        log_set_terminal_output(false);
-      }
-    }
-  }
-}
-#endif
 
 /**
  * Perform complete client shutdown and resource cleanup
@@ -249,41 +190,9 @@ static void shutdown_client() {
   // Stop splash animation thread before any resource cleanup
   splash_intro_done();
 
-  // IMPORTANT: Stop all protocol threads BEFORE cleaning up resources
-  // protocol_stop_connection() shuts down the socket to interrupt blocking recv(),
-  // then waits for the data reception thread and capture thread to exit.
-  // This prevents race conditions where threads access freed resources.
-  log_debug("[SHUTDOWN] 4. About to call protocol_stop_connection()");
-  protocol_stop_connection();
-
-  // Destroy client worker thread pool (all threads already stopped by protocol_stop_connection)
-  if (g_client_worker_pool) {
-    thread_pool_destroy(g_client_worker_pool);
-    g_client_worker_pool = NULL;
-  }
-
-  // Destroy application client context
-  log_debug("[SHUTDOWN] 8. About to destroy app_client");
-  if (g_client) {
-    app_client_destroy(&g_client);
-  }
-
-  // Now safe to cleanup server connection (socket already closed by protocol_stop_connection)
-  // Legacy cleanup - will be removed after full migration to tcp_client
-  log_debug("[SHUTDOWN] 10. About to cleanup server connection");
-  server_connection_cleanup();
-
-  // Cleanup capture subsystems (capture thread already stopped by protocol_stop_connection)
-  log_debug("[SHUTDOWN] 12. About to cleanup capture");
   audio_cleanup();
   capture_cleanup();
-
-  // Cleanup video encoder
-  if (g_video_encoder) {
-    log_debug("[SHUTDOWN] 14a. About to cleanup video encoder");
-    h265_encoder_destroy(g_video_encoder);
-    g_video_encoder = NULL;
-  }
+  acip_websocket_runtime_destroy(&g_websocket_runtime);
 
   // Print audio analysis report if enabled
   // Print audio analysis report if enabled
@@ -320,16 +229,6 @@ static int initialize_client_systems(void) {
   // All shared subsystem initialization (timer, logging, platform, buffer domain)
   // is now done by asciichat_shared_init() in src/main.c BEFORE options_init()
 
-  // Initialize client worker thread pool (needed for network protocol threads)
-  // This is required for all modes that connect to the server, including snapshot mode
-  if (!g_client_worker_pool) {
-    g_client_worker_pool = thread_pool_create("client_workers");
-    if (!g_client_worker_pool) {
-      log_fatal("Failed to create client worker thread pool");
-      return ERROR_THREAD;
-    }
-  }
-
   // Ensure logging output is available for connection attempts (unless it was disabled with --quiet)
   if (!GET_OPTION(quiet)) {
     log_set_terminal_output(true);
@@ -338,22 +237,6 @@ static int initialize_client_systems(void) {
 
   // Display subsystem is now initialized by session_client_like_run()
   // No need to call display_init() here
-
-  // Initialize application client context
-  if (!g_client) {
-    g_client = app_client_create();
-    if (!g_client) {
-      log_fatal("Failed to create application client context");
-      return ERROR_NETWORK;
-    }
-    log_debug("Application client context created successfully");
-  }
-
-  // Initialize server connection management (legacy - will be migrated to tcp_client)
-  if (server_connection_init() != 0) {
-    log_fatal("Failed to initialize server connection");
-    return ERROR_NETWORK;
-  }
 
   // Initialize capture subsystems
   int capture_result = capture_init();
@@ -380,17 +263,6 @@ static int initialize_client_systems(void) {
   return 0;
 }
 
-/**
- * Client mode entry point for unified binary
- *
- * Orchestrates the complete client lifecycle:
- *  - System initialization and resource allocation
- *  - Signal handler registration
- *  - Main connection/reconnection loop
- *  - Graceful shutdown and cleanup
- *
- * @return 0 on success, error code on failure
- */
 /* ============================================================================
  * Client Connection/Reconnection Loop (run_fn for session_client_like)
  * ============================================================================
@@ -448,12 +320,20 @@ static bool client_should_reconnect(asciichat_error_t last_error, int attempt_nu
  * @param user_data Unused (NULL)
  * @return ASCIICHAT_OK if successful, error code if connection failed
  */
-static asciichat_error_t client_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
-  (void)capture;   // Provided by session_client_like, used by protocol threads
-  (void)user_data; // Unused
+static asciichat_error_t client_send_capabilities(const terminal_capabilities_packet_t *packet, void *context) {
+  return threaded_send_packet(context, PACKET_TYPE_CLIENT_CAPABILITIES, packet, sizeof(*packet));
+}
+
+static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, session_display_ctx_t *display,
+                                            void *user_data) {
+  (void)capture; // Provided by session_client_like, used by protocol threads
+  client_connection_t *connection = user_data;
 
   // Make the framework-created display context available to protocol threads
   display_set_context(display);
+  connection->capture_context = capture_get_context();
+  connection->display_context = display;
+  connection->audio_context = audio_get_context();
 
   // Get the render loop's should_exit callback for monitoring
   bool (*render_should_exit)(void *) = session_client_like_get_render_should_exit();
@@ -461,36 +341,14 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
     return SET_ERRNO(ERROR_INVALID_STATE, "Render should_exit callback not initialized");
   }
 
-  // Attempt connection with fallback stages (TCP, WebRTC+STUN, WebRTC+TURN)
-  server_connection_set_remote_error(ASCIICHAT_OK);
-  asciichat_error_t connection_result = connection_attempt_tcp(
-      &g_client_session.connection_ctx,
-      g_client_session.discovered_address != NULL ? g_client_session.discovered_address : "",
+  asciichat_error_t connection_result = client_connection_start(
+      connection, g_client_session.discovered_address ? g_client_session.discovered_address : "",
       (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224));
-
-  // Check if shutdown was requested during connection attempt
-  if (should_exit()) {
-    log_info("Shutdown requested during connection attempt");
-    return ERROR_NETWORK;
-  }
-
   if (connection_result != ASCIICHAT_OK) {
-    // Connection failed - need to stop audio threads that were initialized early
-    // (even though protocol_start_connection was never called)
-    audio_stop_thread();
-    // Framework will handle retry based on config
-    NOTICE(WARNING, "CONNECTION FAILED", "Connection attempt failed");
+    if (should_exit())
+      return ERROR_NETWORK;
     LOG_ERRNO_IF_SET("Connection attempt failed");
     return connection_result;
-  }
-
-  // Connection successful - integrate transport into server layer
-  if (g_client_session.connection_ctx.connection.transport) {
-    server_connection_set_transport(g_client_session.connection_ctx.connection.transport);
-    g_client_session.connection_ctx.connection.transport = NULL;
-  } else {
-    log_error("Connection succeeded but no active transport");
-    return ERROR_NETWORK;
   }
 
   // Log connection status
@@ -501,43 +359,45 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
     log_info("Reconnected");
   }
 
-  // Start protocol worker threads for this connection
-  if (protocol_start_connection() != 0) {
-    log_error("Failed to start connection protocols");
-    protocol_stop_connection();
-    server_connection_close();
-    return ERROR_NETWORK;
-  }
-
   // Monitor connection until it breaks or shutdown is requested
-  static bool snapshot_check_logged_once = false;
-  while (!should_exit() && server_connection_is_active()) {
-    if (protocol_connection_lost()) {
+  bool snapshot_check_logged_once = false;
+  uint64_t last_progress_log_ns = 0;
+  while (!should_exit() && server_connection_is_active(connection)) {
+    terminal_size_t previous = connection->advertised_dimensions;
+    if (session_protocol_update_dimensions(&connection->advertised_dimensions, client_send_capabilities, connection) ==
+            ASCIICHAT_OK &&
+        (previous.cols != connection->advertised_dimensions.cols ||
+         previous.rows != connection->advertised_dimensions.rows)) {
+      display_full_reset();
+      log_set_terminal_output(false);
+    }
+    if (client_protocol_connection_lost(connection)) {
       log_debug("Connection lost detected");
       break;
     }
 
     // Check if snapshot_delay timer has fired (in case frames stopped arriving)
     // This is a safety check for when frame reception is sparse or stops entirely
-    extern uint64_t g_snapshot_first_frame_time_ns;
+
     bool snapshot_mode_enabled = GET_OPTION(snapshot_mode);
 
     if (!snapshot_check_logged_once) {
       log_info("CLIENT_MAIN_LOOP: snapshot_mode=%d first_frame_time=%llu snapshot_delay=%.1f", snapshot_mode_enabled,
-               (unsigned long long)g_snapshot_first_frame_time_ns, GET_OPTION(snapshot_delay));
+               (unsigned long long)atomic_load_u64(&connection->snapshot_first_frame_time_ns),
+               GET_OPTION(snapshot_delay));
       snapshot_check_logged_once = true;
     }
 
-    if (snapshot_mode_enabled && g_snapshot_first_frame_time_ns > 0) {
+    if (snapshot_mode_enabled && atomic_load_u64(&connection->snapshot_first_frame_time_ns) > 0) {
       uint64_t current_time_ns = time_get_ns();
-      double elapsed = time_ns_to_s(time_elapsed_ns(g_snapshot_first_frame_time_ns, current_time_ns));
+      double elapsed =
+          time_ns_to_s(time_elapsed_ns(atomic_load_u64(&connection->snapshot_first_frame_time_ns), current_time_ns));
       double snapshot_delay = GET_OPTION(snapshot_delay);
 
       // Log progress every 500ms
-      static uint64_t last_progress_log_ns = 0;
       if (current_time_ns - last_progress_log_ns > 500 * 1000 * 1000) {
         log_debug("[MAIN_LOOP_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu", elapsed,
-                  snapshot_delay, (unsigned long long)g_snapshot_first_frame_time_ns,
+                  snapshot_delay, (unsigned long long)atomic_load_u64(&connection->snapshot_first_frame_time_ns),
                   (unsigned long long)current_time_ns);
         last_progress_log_ns = current_time_ns;
       }
@@ -560,10 +420,11 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
   } else {
     log_info("[ELSE_BRANCH] Connection lost path (should_exit=0, connection_active=0)");
     // Connection lost - check if snapshot_delay timer has fired before exiting
-    extern uint64_t g_snapshot_first_frame_time_ns;
-    if (GET_OPTION(snapshot_mode) && g_snapshot_first_frame_time_ns > 0) {
+
+    if (GET_OPTION(snapshot_mode) && atomic_load_u64(&connection->snapshot_first_frame_time_ns) > 0) {
       uint64_t current_time_ns = time_get_ns();
-      double elapsed = time_ns_to_s(time_elapsed_ns(g_snapshot_first_frame_time_ns, current_time_ns));
+      double elapsed =
+          time_ns_to_s(time_elapsed_ns(atomic_load_u64(&connection->snapshot_first_frame_time_ns), current_time_ns));
       double snapshot_delay = GET_OPTION(snapshot_delay);
 
       log_info("[CONNECTION_LOSS_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f (checking if timer fired)", elapsed,
@@ -584,46 +445,50 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
     }
   }
 
-  // Clean up this connection for potential reconnection
-  protocol_stop_connection();
-  server_connection_close();
-
-  // Clear transport reference from connection context since server_connection_close() already destroyed it
-  // This prevents double-free when connection_context_cleanup() is called below
-  g_client_session.connection_ctx.connection.transport = NULL;
-
-  // Recreate thread pool for clean reconnection
-  if (g_client_worker_pool) {
-    thread_pool_destroy(g_client_worker_pool);
-    g_client_worker_pool = NULL;
-  }
-  g_client_worker_pool = thread_pool_create("client_reconnect");
-  if (!g_client_worker_pool) {
-    log_error("Failed to recreate worker thread pool");
-    return ERROR_THREAD;
-  }
-
-  // Reset connection context for next attempt
-  connection_context_cleanup(&g_client_session.connection_ctx);
-  memset(&g_client_session.connection_ctx, 0, sizeof(g_client_session.connection_ctx));
-  if (connection_context_init(&g_client_session.connection_ctx) != ASCIICHAT_OK) {
-    log_error("Failed to re-initialize connection context");
-    return ERROR_NETWORK;
-  }
-
   // A snapshot is complete once its first frame has been rendered. The peer
   // may close the connection while the snapshot shutdown is propagating, but
   // that is a successful snapshot rather than a reconnectable network error.
-  extern uint64_t g_snapshot_first_frame_time_ns;
-  if (GET_OPTION(snapshot_mode) && g_snapshot_first_frame_time_ns > 0 && should_exit()) {
+
+  if (should_exit()) {
     return ASCIICHAT_OK;
   }
 
   // The receive worker publishes the rejection before marking the connection lost.
-  asciichat_error_t remote_error = server_connection_get_remote_error();
+  asciichat_error_t remote_error = server_connection_get_remote_error(connection);
   if (remote_error != ASCIICHAT_OK)
     return SET_ERRNO(remote_error, "Server rejected connection: %s", asciichat_error_string(remote_error));
   return ERROR_NETWORK;
+}
+
+/* Every attempt, including dialing/startup failure, leaves through this owner. */
+static asciichat_error_t client_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
+  (void)user_data;
+  const char *address = g_client_session.discovered_address;
+  if (!g_websocket_runtime && address && (strncmp(address, "ws://", 5) == 0 || strncmp(address, "wss://", 6) == 0)) {
+    asciichat_error_t runtime_result = acip_websocket_runtime_create(&g_websocket_runtime);
+    if (runtime_result != ASCIICHAT_OK)
+      return runtime_result;
+  }
+  client_connection_t *connection = NULL;
+  asciichat_error_t result = client_connection_create(&connection);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+  asciichat_errno_scope_t attempt_errors = asciichat_errno_checkpoint();
+  result = client_run_attempt(capture, display, connection);
+  asciichat_error_t cleanup = client_connection_destroy(&connection);
+  while (cleanup != ASCIICHAT_OK) {
+    // Keep borrowed application devices and display alive until all users stop.
+    LOG_ERRNO_IF_SET("Waiting for connection workers before application cleanup");
+    platform_sleep_ms(100);
+    cleanup = client_connection_destroy(&connection);
+  }
+  if (should_exit() && result == ERROR_NETWORK) {
+    // Local cancellation can arrive while a remote disconnect is being cleaned up.
+    asciichat_errno_scope_end(attempt_errors, ASCIICHAT_ERRNO_DISMISSED);
+    return ASCIICHAT_OK;
+  }
+  return result;
 }
 
 int client_main(void) {
@@ -637,18 +502,11 @@ int client_main(void) {
       .signal_exit = signal_exit,
       .platform_get_monotonic_time_us = platform_get_monotonic_time_us,
       .platform_sleep_ms = platform_sleep_ms,
-      .server_connection_set_ip = server_connection_set_ip,
-      .server_connection_set_port = server_connection_set_port,
-      .client_crypto_set_mode = client_crypto_set_mode,
-      .client_crypto_init = client_crypto_init,
-      .client_crypto_handshake = client_crypto_handshake,
-      .crypto_client_is_ready = crypto_client_is_ready,
-      .crypto_client_get_context = crypto_client_get_context,
   };
   app_callbacks_register(&client_crypto_callbacks);
 
   // Initialize client-specific systems (NOT shared with session_client_like)
-  // This includes: thread pool, display layer, app client context, server connection
+  // This includes application devices and the application client context.
   asciichat_errno_scope_t init_scope = asciichat_errno_scope_begin();
   int init_result = initialize_client_systems();
   if (init_result != 0) {
@@ -697,12 +555,7 @@ int client_main(void) {
 
   // Register client interrupt callback (socket shutdown on SIGTERM/Ctrl+C)
   // Global signal handlers (SIGTERM, SIGPIPE, Ctrl+C) are set up in setup_signal_handlers() in src/main.c
-  set_interrupt_callback(server_connection_shutdown);
-
-#ifndef _WIN32
-  // Register SIGWINCH for terminal resize handling (client-specific, not in framework)
-  platform_signal(SIGWINCH, client_handle_sigwinch);
-#endif
+  set_interrupt_callback(NULL); // Signal handlers publish application exit only.
 
   /* ========================================================================
    * Client-Specific: LAN/Session Discovery
@@ -829,13 +682,6 @@ int client_main(void) {
     }
   }
 
-  // Initialize connection context for first attempt
-  asciichat_error_t ctx_init_result = connection_context_init(&g_client_session.connection_ctx);
-  if (ctx_init_result != ASCIICHAT_OK) {
-    log_error("Failed to initialize connection context");
-    return 1;
-  }
-
   /* ========================================================================
    * Configure and Run Shared Client-Like Session Framework
    * ========================================================================
@@ -878,13 +724,6 @@ int client_main(void) {
   asciichat_error_t session_result = session_client_like_run(&config);
   log_debug("[CLIENT_MAIN] session_client_like_run() returned %d", session_result);
 
-  // Network client lifecycle is owned by connection_context_cleanup() after the session returns.
-
-  // Cleanup connection context
-  log_debug("[CLIENT_MAIN] About to call connection_context_cleanup()");
-  connection_context_cleanup(&g_client_session.connection_ctx);
-  log_debug("[CLIENT_MAIN] connection_context_cleanup() returned");
-
   // Cleanup session log buffer (used by splash screen in session_client_like)
   // NOTE: session_log_buffer_destroy() is already called in session_client_like_run()
   // during its cleanup phase, so we don't call it here to avoid double-destroy of mutex
@@ -904,7 +743,7 @@ int client_main(void) {
   asciichat_shared_destroy();
 
   // Log final session statistics before exit
-  // Note: Frame count is logged in protocol_stop_connection() if connection was established
+  // Note: Frame count is logged in client_connection_stop() if connection was established
   // This is a fallback in case the connection never started
   return session_result;
 }

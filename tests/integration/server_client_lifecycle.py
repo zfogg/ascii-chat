@@ -26,7 +26,7 @@ def reject_client(binary, directory, destination, name):
     env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
                APPDATA=str(directory), XDG_CONFIG_HOME=str(directory))
     result = subprocess.run(
-        [str(binary), "--log-file", str(directory / (name + ".log")), "client", destination,
+        [str(binary), "--no-check-update", "--log-file", str(directory / (name + ".log")), "client", destination,
          "--test-pattern", "--audio=false", "--snapshot", "--snapshot-delay", "0",
          "--splash-screen=false", "--reconnect-attempts", "0"],
         cwd=directory, env=env, capture_output=True, timeout=20,

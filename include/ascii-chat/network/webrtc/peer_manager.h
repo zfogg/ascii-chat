@@ -63,6 +63,8 @@ typedef enum {
  * @param participant_id Remote participant UUID (16 bytes)
  * @param user_data User context pointer
  *
+ * Delivered only by dispatch_ready on the thread that created the manager.
+ * The callback must not destroy the manager.
  * The callback receives ownership of the transport and must either:
  * - Use it for ACIP communication
  * - Call acip_transport_destroy() to free it
@@ -244,6 +246,11 @@ asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager
  * @note Thread-safe - uses internal locking
  */
 int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager, uint32_t timeout_ms);
+
+/** Deliver ready transports on the thread that created the manager.
+ * Serialize this call with peer removal and manager destruction.
+ * NULL is a no-op. Foreign-thread calls leave pending transports untouched. */
+asciichat_error_t webrtc_peer_manager_dispatch_ready(webrtc_peer_manager_t *manager);
 
 /** @} */ // end of webrtc_peer_manager group
 

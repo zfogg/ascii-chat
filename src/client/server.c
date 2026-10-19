@@ -1,3 +1,4 @@
+#include "connection_internal.h"
 #include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file client/server.c
@@ -59,6 +60,7 @@
 #include <ascii-chat/ui/notice.h>
 
 #include "server.h"
+#include "session/protocol.h"
 #include "main.h"
 #include "../main.h" // Global exit API
 #include "crypto.h"
@@ -77,7 +79,6 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/connection_endpoint.h>
 #include <ascii-chat/network/connection_factory.h>
-#include <ascii-chat/network/websocket/internal.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
@@ -110,26 +111,6 @@
  * ============================================================================ */
 
 /**
- * @brief Current socket file descriptor
- *
- * Stores the active socket connection to the server. Set to INVALID_SOCKET_VALUE
- * when disconnected. Thread-safe access via atomic operations where needed.
- *
- * @ingroup client_connection
- */
-static socket_t g_sockfd = INVALID_SOCKET_VALUE;
-
-/**
- * @brief ACIP transport for server connection
- *
- * Wraps the socket connection with ACIP protocol abstraction. Created after
- * crypto handshake completes, destroyed when connection closes.
- *
- * @ingroup client_connection
- */
-static acip_transport_t *g_client_transport = NULL;
-
-/**
  * @brief Atomic flag indicating if connection is currently active
  *
  * Thread-safe flag indicating whether the connection is established and active.
@@ -138,112 +119,18 @@ static acip_transport_t *g_client_transport = NULL;
  *
  * @ingroup client_connection
  */
-static atomic_t g_connection_active = {0};
 
 // Publish a remote rejection from the receive worker to the reconnect owner.
-static atomic_t g_remote_error = {0};
-void server_connection_set_remote_error(asciichat_error_t code) {
-  atomic_store_int(&g_remote_error, code);
+void server_connection_set_remote_error(client_connection_t *connection, asciichat_error_t code) {
+  atomic_store_int(&connection->remote_error, code);
 }
-asciichat_error_t server_connection_get_remote_error(void) {
-  return (asciichat_error_t)atomic_load_int(&g_remote_error);
+asciichat_error_t server_connection_get_remote_error(client_connection_t *connection) {
+  return (asciichat_error_t)atomic_load_int(&connection->remote_error);
 }
-
-/**
- * @brief Atomic flag indicating if connection loss was detected
- *
- * Set to true when a connection failure is detected by any thread (protocol,
- * keepalive, or main loop). Used to trigger reconnection logic.
- *
- * @ingroup client_connection
- */
-static atomic_t g_connection_lost = {0};
-
-/**
- * @brief Atomic flag indicating if reconnection should be attempted
- *
- * Set by main loop to signal that reconnection should be attempted after
- * connection loss. Used to coordinate exponential backoff retry logic.
- *
- * @ingroup client_connection
- */
-static atomic_t g_should_reconnect = {0};
-
-/**
- * @brief Client ID assigned by server
- *
- * Unique identifier assigned to this client by the server during connection
- * establishment. Derived from the client's local port number.
- *
- * @ingroup client_connection
- */
-static uint32_t g_my_client_id = 0;
-
-/**
- * @brief Resolved server IP address string
- *
- * Stores the resolved server IP address (IPv4 or IPv6) in string format.
- * Used for known_hosts verification and logging purposes. Sized to hold
- * maximum IPv6 address length with scope ID.
- *
- * @ingroup client_connection
- */
-static char g_server_ip[256] = {0};
-
-/**
- * @brief Server port for known_hosts verification
- *
- * Stores the port number for the server connection. Used in conjunction with
- * g_server_ip for known_hosts entry lookups.
- *
- * @ingroup client_connection
- */
-static int g_server_port = 0;
-
-/**
- * @brief Mutex protecting socket send operations
- *
- * Ensures thread-safe packet transmission by preventing interleaved packets
- * on the wire. All send functions must acquire this mutex before writing
- * to the socket to maintain packet integrity.
- *
- * @ingroup client_connection
- */
-static mutex_t g_send_mutex = {0};
 
 /* ============================================================================
  * Crypto State
  * ============================================================================ */
-
-/**
- * @brief Per-connection crypto handshake context
- *
- * Maintains the cryptographic state for the current connection, including
- * key exchange state, encryption keys, and handshake progress.
- *
- * @note This is not static because it may be accessed from crypto.c
- * @ingroup client_connection
- */
-crypto_handshake_context_t g_crypto_ctx = {0};
-
-/**
- * @brief Global video encoder context for client video streaming
- *
- * Encodes captured RGB frames to HEVC or H.264 format before transmission.
- * Created lazily and used by the capture thread.
- * Set to NULL during shutdown to prevent use-after-free.
- */
-h265_encoder_t *volatile g_video_encoder = NULL;
-
-/**
- * @brief Flag indicating whether encryption is enabled for this connection
- *
- * Set to true after successful cryptographic handshake completion.
- * Controls whether packets are encrypted before transmission.
- *
- * @ingroup client_connection
- */
-static bool g_encryption_enabled = false;
 
 /* ============================================================================
  * Reconnection Logic
@@ -251,62 +138,6 @@ static bool g_encryption_enabled = false;
 
 /** Maximum delay between reconnection attempts (microseconds) */
 #define MAX_RECONNECT_DELAY (5 * 1000 * 1000)
-
-/**
- * @brief Calculate reconnection delay with exponential backoff
- *
- * Implements exponential backoff with a reasonable cap to prevent
- * excessively long delays. The formula provides rapid initial retries
- * that gradually slow down for persistent failures.
- *
- * @param reconnect_attempt The current attempt number (1-based)
- * @return Delay in microseconds before next attempt
- *
- * @ingroup client_connection
- */
-static unsigned int get_reconnect_delay(unsigned int reconnect_attempt) {
-  // Use integer arithmetic for microsecond calculations
-  // Initial delay: 100,000 us (0.1 seconds)
-  // Additional delay per attempt: 200,000 us (0.2 seconds)
-  unsigned int delay_us = 100 * US_PER_MS_INT + (reconnect_attempt - 1) * 200 * US_PER_MS_INT;
-  if (delay_us > MAX_RECONNECT_DELAY)
-    delay_us = MAX_RECONNECT_DELAY;
-  return delay_us;
-}
-
-/* ============================================================================
- * Socket Management Functions
- * ============================================================================ */
-
-/**
- * @brief Close socket connection safely
- *
- * Performs platform-appropriate socket closure and resets the global
- * socket descriptor. Safe to call multiple times or with invalid sockets.
- *
- * @param socketfd Socket file descriptor to close
- * @return 0 on success, -1 on error
- *
- * @ingroup client_connection
- */
-static int close_socket(socket_t socketfd) {
-  if (socket_is_valid(socketfd)) {
-    log_debug("Closing socket %d", socketfd);
-
-    if (socket_close(socketfd) != 0) {
-      log_error("Failed to close socket: %s", network_error_string());
-      return -1;
-    }
-
-    // Small delay to ensure socket resources are fully released
-    // This prevents WSA error 10038 on subsequent connections
-    platform_sleep_us(50 * US_PER_MS_INT); // 50ms delay
-
-    return 0;
-  }
-
-  return 0; // Socket already closed or invalid
-}
 
 /* ============================================================================
  * Public Interface Functions
@@ -322,29 +153,21 @@ static int close_socket(socket_t socketfd) {
  *
  * @ingroup client_connection
  */
-int server_connection_init() {
+int server_connection_init(client_connection_t *connection) {
   // Initialize mutex for thread-safe packet sending
-  if (mutex_init(&g_send_mutex, "send") != 0) {
+  if (mutex_init(&connection->send_mutex, "send") != 0) {
     log_error("Failed to initialize send mutex");
     return -1;
   }
 
-  // Register connection atomics for debug sync state monitoring (one-time registration)
-  static bool connection_atomics_registered = false;
-  if (!connection_atomics_registered) {
-    NAMED_REGISTER_ATOMIC(&g_connection_active, "server_connection_active_flag", NULL);
-    NAMED_REGISTER_ATOMIC(&g_connection_lost, "server_connection_lost_flag", NULL);
-    NAMED_REGISTER_ATOMIC(&g_should_reconnect, "should_attempt_reconnection_flag", NULL);
-    connection_atomics_registered = true;
-  }
+  connection->send_mutex_initialized = true;
 
   // Initialize connection state
-  g_sockfd = INVALID_SOCKET_VALUE;
-  g_client_transport = NULL;
-  atomic_store_bool(&g_connection_active, false);
-  atomic_store_bool(&g_connection_lost, false);
-  atomic_store_bool(&g_should_reconnect, false);
-  g_my_client_id = 0;
+  connection->sockfd = INVALID_SOCKET_VALUE;
+  connection->attempt.connection.transport = NULL;
+  atomic_store_bool(&connection->connection_active, false);
+  atomic_store_bool(&connection->connection_lost, false);
+  connection->my_client_id = 0;
 
   return 0;
 }
@@ -366,315 +189,13 @@ int server_connection_init() {
  *
  * @ingroup client_connection
  */
-int server_connection_establish(const char *address, int port, int reconnect_attempt, bool first_connection,
-                                bool has_ever_connected) {
-  (void)first_connection; // Currently unused
-  if (!address || port <= 0) {
-    log_error("Invalid address or port parameters");
-    return -1;
-  }
-
-  // Close any existing connection
-  if (g_sockfd != INVALID_SOCKET_VALUE) {
-    close_socket(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
-  }
-
-  // Apply reconnection delay if this is a retry
-  if (reconnect_attempt > 0) {
-    unsigned int delay_us = get_reconnect_delay(reconnect_attempt);
-    // Reconnection attempt logged only to file
-    platform_sleep_us(delay_us);
-
-    // Check if user requested exit during reconnection delay
-    if (should_exit()) {
-      log_debug("Exit requested during reconnection delay");
-      return -1;
-    }
-  } else {
-    // Initial connection logged only to file
-  }
-
-  connection_endpoint_t endpoint = {0};
-  asciichat_error_t endpoint_result = connection_endpoint_resolve(address, port, &endpoint);
-  if (endpoint_result != ASCIICHAT_OK) {
-    log_error("Failed to resolve connection endpoint: %s", asciichat_error_string(endpoint_result));
-    return -1;
-  }
-
-  // Check for WebSocket URL - handle separately from TCP
-  if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
-    // WebSocket connection - bypass TCP socket creation
-    // Use the original address (URL already contains port if specified)
-    const char *ws_url = endpoint.input;
-    log_info("Connecting via WebSocket: %s (host=%s, port=%u)", ws_url, endpoint.host, endpoint.port);
-
-    // Set server IP and port for crypto handshake
-    // This ensures the crypto context has proper server address info for known_hosts verification
-    server_connection_set_ip(endpoint.host);
-    server_connection_set_port(endpoint.port);
-    log_debug("CLIENT_CONNECT: Set server IP=%s, port=%u from WebSocket endpoint", endpoint.host, endpoint.port);
-
-    // Initialize crypto if encryption is enabled
-    log_debug("CLIENT_CONNECT: Calling client_crypto_init()");
-    if (client_crypto_init() != 0) {
-      NOTICE(DANGER, "AUTHENTICATION FAILED", "Failed to initialize crypto (password required or incorrect)");
-      log_debug("CLIENT_CONNECT: client_crypto_init() failed");
-      return CONNECTION_ERROR_AUTH_FAILED;
-    }
-
-    // Get crypto context for transport
-    const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
-
-    // Create WebSocket transport through the shared factory.
-    asciichat_error_t ws_result =
-        connection_factory_open("client", ws_url, 0, (crypto_context_t *)crypto_ctx, &g_client_transport, &endpoint);
-    if (ws_result != ASCIICHAT_OK) {
-      log_error("Failed to create WebSocket ACIP transport");
-      return -1;
-    }
-    if (!g_client_transport) {
-      log_error("Failed to create WebSocket ACIP transport");
-      return -1;
-    }
-    log_debug("CLIENT_CONNECT: Created WebSocket ACIP transport with crypto context");
-
-    // Set connection as active
-    atomic_store_bool(&g_connection_active, true);
-    atomic_store_bool(&g_connection_lost, false);
-
-    // CRITICAL: Wait for WebSocket connection to be established before sending
-    // The service thread is running but may not have completed TLS handshake yet
-    // Don't block indefinitely - use timeout loops to allow responsiveness
-    log_debug("CLIENT_CONNECT: Waiting for WebSocket connection to be established...");
-    const int CONNECT_CHECK_ATTEMPTS = 300; // 300 * 50ms = 15 seconds timeout
-    int connect_attempts = 0;
-    while (!acip_transport_is_connected(g_client_transport) && connect_attempts < CONNECT_CHECK_ATTEMPTS) {
-      platform_sleep_us(50000); // Sleep 50ms between checks
-      connect_attempts++;
-      if (connect_attempts % 20 == 0) { // Log every 1 second (20 * 50ms)
-        log_info("CLIENT_CONNECT: Waiting for connection... (%d seconds elapsed)", connect_attempts / 20);
-      }
-    }
-
-    if (!acip_transport_is_connected(g_client_transport)) {
-      log_error("Failed to establish WebSocket connection within 15 seconds");
-      acip_transport_destroy(g_client_transport);
-      g_client_transport = NULL;
-      atomic_store_bool(&g_connection_active, false);
-      return -1;
-    }
-
-    log_info("CLIENT_CONNECT: WebSocket connection established, proceeding with handshake");
-
-    // Send initial terminal capabilities to server
-    int result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
-                                                              (int)terminal_get_effective_height());
-    if (result < 0) {
-      log_error("Failed to send initial capabilities to server: %s", network_error_string());
-      acip_transport_destroy(g_client_transport);
-      g_client_transport = NULL;
-      return -1;
-    }
-
-    // Disable terminal logging after initial setup (for non-snapshot mode)
-    if (!GET_OPTION(snapshot_mode) && has_ever_connected) {
-      log_set_terminal_output(false);
-    }
-
-    // Build capabilities flags
-    uint32_t my_capabilities = CLIENT_CAP_VIDEO;
-    log_debug("GET_OPTION(audio_enabled) = %d (sending CLIENT_JOIN)", GET_OPTION(audio_enabled));
-    if (GET_OPTION(audio_enabled)) {
-      log_debug("Adding CLIENT_CAP_AUDIO to capabilities");
-      my_capabilities |= CLIENT_CAP_AUDIO;
-    }
-    if (GET_OPTION(color_mode) != COLOR_MODE_NONE) {
-      my_capabilities |= CLIENT_CAP_COLOR;
-    }
-    if (GET_OPTION(stretch)) {
-      my_capabilities |= CLIENT_CAP_STRETCH;
-    }
-
-    // Generate display name from username + PID
-    const char *display_name = platform_get_username();
-    char my_display_name[MAX_DISPLAY_NAME_LEN];
-    int pid = getpid();
-    SAFE_SNPRINTF(my_display_name, sizeof(my_display_name), "%s-%d", display_name, pid);
-    if (threaded_send_client_join_packet(my_display_name, my_capabilities) != ASCIICHAT_OK) {
-      log_error("Failed to send client join packet: %s", network_error_string());
-      acip_transport_destroy(g_client_transport);
-      g_client_transport = NULL;
-      return -1;
-    }
-
-    log_info("WebSocket connection established successfully");
-    return 0;
-  }
-
-  asciichat_error_t connect_result =
-      connection_factory_open("client", address, (uint16_t)port, NULL, &g_client_transport, &endpoint);
-  if (connect_result != ASCIICHAT_OK || !g_client_transport) {
-    log_error("Failed to establish TCP transport: %s", asciichat_error_string(connect_result));
-    return -1;
-  }
-
-  g_sockfd = g_client_transport->methods->get_socket(g_client_transport);
-  if (g_sockfd == INVALID_SOCKET_VALUE) {
-    log_error("TCP transport did not expose a valid socket");
-    acip_transport_destroy(g_client_transport);
-    g_client_transport = NULL;
-    return -1;
-  }
-
-  SAFE_STRNCPY(g_server_ip, endpoint.host, sizeof(g_server_ip));
-  log_debug("CLIENT_CONNECT: Resolved TCP endpoint host=%s port=%u", endpoint.host, endpoint.port);
-
-  // Connection successful - extract local port for client ID
-  struct sockaddr_storage local_addr = {0};
-  socklen_t addr_len = sizeof(local_addr);
-  if (getsockname(g_sockfd, (struct sockaddr *)&local_addr, &addr_len) == -1) {
-    log_error("Failed to get local socket address: %s", network_error_string());
-    close_socket(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
-    return -1;
-  }
-
-  // Extract port from either IPv4 or IPv6 address
-  int local_port = 0;
-  if (((struct sockaddr *)&local_addr)->sa_family == AF_INET) {
-    local_port = NET_TO_HOST_U16(((struct sockaddr_in *)&local_addr)->sin_port);
-  } else if (((struct sockaddr *)&local_addr)->sa_family == AF_INET6) {
-    local_port = NET_TO_HOST_U16(((struct sockaddr_in6 *)&local_addr)->sin6_port);
-  }
-  g_my_client_id = (uint32_t)local_port;
-
-  // Mark connection as active immediately after successful socket connection
-  atomic_store_bool(&g_connection_active, true);
-  atomic_store_bool(&g_connection_lost, false);
-  atomic_store_bool(&g_should_reconnect, false);
-
-  // Initialize crypto BEFORE starting protocol handshake
-  // Note: server IP is already set above in the connection loop
-  log_debug("CLIENT_CONNECT: Calling client_crypto_init()");
-  if (client_crypto_init() != 0) {
-    NOTICE(DANGER, "AUTHENTICATION FAILED", "Failed to initialize crypto (password required or incorrect)");
-    log_debug("CLIENT_CONNECT: client_crypto_init() failed");
-    close_socket(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
-    return CONNECTION_ERROR_AUTH_FAILED; // SSH key password was wrong - no retry
-  }
-
-  // Create the persistent TCP transport before handshake.
-  // It starts with NULL crypto; client_crypto_handshake() sets crypto_ctx on success.
-  socket_set_keepalive(g_sockfd, true);
-  socket_configure_buffers(g_sockfd);
-  g_client_transport = acip_async_tcp_client_create(&g_sockfd, NULL);
-  if (!g_client_transport) {
-    log_error("Failed to create TCP ACIP transport");
-    close_socket(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
-    return -1;
-  }
-  log_debug("CLIENT_CONNECT: Created TCP ACIP transport (crypto pending handshake)");
-
-  // Perform crypto handshake if encryption is enabled
-  log_debug("CLIENT_CONNECT: Calling client_crypto_handshake()");
-  asciichat_errno_scope_t handshake_scope = asciichat_errno_scope_begin();
-  asciichat_error_t handshake_result = client_crypto_handshake(g_client_transport);
-  if (handshake_result != 0) {
-    LOG_ERRNO_IF_SET("Crypto handshake failed");
-    log_debug("CLIENT_CONNECT: client_crypto_handshake() failed with code %d", handshake_result);
-    acip_transport_destroy(g_client_transport);
-    g_client_transport = NULL;
-    close_socket(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
-    return -1; // Preserve the handshake cause for the connection owner.
-  }
-  ASSERT_NO_ERRNO_SINCE(handshake_scope);
-  asciichat_errno_scope_end(handshake_scope, ASCIICHAT_ERRNO_HANDLED);
-  log_debug("CLIENT_CONNECT: client_crypto_handshake() succeeded");
-
-  // Turn OFF terminal logging when successfully connected to server
-  // First connection - we'll disable logging after main.c shows the "Connected successfully" message
-  if (!GET_OPTION(snapshot_mode)) {
-    log_debug("Connected to server - terminal logging will be disabled after initial setup");
-  } else {
-    log_debug("Connected to server - terminal logging kept enabled for snapshot mode");
-  }
-
-  // Configure socket options for optimal performance
-  if (g_sockfd != INVALID_SOCKET_VALUE && socket_set_keepalive(g_sockfd, true) < 0) {
-    log_warn("Failed to set socket keepalive: %s", network_error_string());
-  }
-
-  // Configure socket buffers and TCP_NODELAY for optimal performance
-  asciichat_error_t sock_config_result =
-      g_sockfd == INVALID_SOCKET_VALUE ? ASCIICHAT_OK : socket_configure_buffers(g_sockfd);
-  if (sock_config_result != ASCIICHAT_OK) {
-    log_warn("Failed to configure socket: %s", network_error_string());
-  }
-
-  // Send initial terminal capabilities to server (this may generate debug logs)
-  int result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
-                                                            (int)terminal_get_effective_height());
-  if (result < 0) {
-    log_error("Failed to send initial capabilities to server: %s", network_error_string());
-    close_socket(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
-    return -1;
-  }
-
-  // Now disable terminal logging after capabilities are sent (for reconnections)
-  if (!GET_OPTION(snapshot_mode) && has_ever_connected) {
-    log_set_terminal_output(false);
-    log_debug("Reconnected to server - terminal logging disabled to prevent interference with ASCII display");
-  }
-
-  // Send client join packet for multi-user support
-  uint32_t my_capabilities = CLIENT_CAP_VIDEO; // Basic video capability
-  log_debug("GET_OPTION(audio_enabled) = %d (sending CLIENT_JOIN)", GET_OPTION(audio_enabled));
-  if (GET_OPTION(audio_enabled)) {
-    log_debug("Adding CLIENT_CAP_AUDIO to capabilities");
-    my_capabilities |= CLIENT_CAP_AUDIO;
-  }
-  if (GET_OPTION(color_mode) != COLOR_MODE_NONE) {
-    my_capabilities |= CLIENT_CAP_COLOR;
-  }
-  if (GET_OPTION(stretch)) {
-    my_capabilities |= CLIENT_CAP_STRETCH;
-  }
-
-  // Generate display name from username + PID
-  const char *display_name = platform_get_username();
-
-  char my_display_name[MAX_DISPLAY_NAME_LEN];
-  int pid = getpid();
-  SAFE_SNPRINTF(my_display_name, sizeof(my_display_name), "%s-%d", display_name, pid);
-
-  if (threaded_send_client_join_packet(my_display_name, my_capabilities) != ASCIICHAT_OK) {
-    log_error("Failed to send client join packet: %s", network_error_string());
-    close_socket(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
-    return -1;
-  }
-
-  log_info("TCP connection established successfully");
-
-  return 0;
-}
-
-/**
- * @brief Check if server connection is currently active
- *
- * @return true if connection is active, false otherwise
- *
- * @ingroup client_connection
- */
-bool server_connection_is_active() {
+bool server_connection_is_active(client_connection_t *connection) {
+  if (!connection)
+    return false;
   // For TCP: check socket validity
   // For WebRTC: socket is INVALID_SOCKET_VALUE but transport exists
-  return atomic_load_bool(&g_connection_active) && (g_sockfd != INVALID_SOCKET_VALUE || g_client_transport != NULL);
+  return atomic_load_bool(&connection->connection_active) &&
+         (connection->sockfd != INVALID_SOCKET_VALUE || connection->attempt.connection.transport != NULL);
 }
 
 /**
@@ -684,8 +205,8 @@ bool server_connection_is_active() {
  *
  * @ingroup client_connection
  */
-socket_t server_connection_get_socket() {
-  return g_sockfd;
+socket_t server_connection_get_socket(client_connection_t *connection) {
+  return connection->sockfd;
 }
 
 /**
@@ -695,8 +216,8 @@ socket_t server_connection_get_socket() {
  *
  * @ingroup client_connection
  */
-acip_transport_t *server_connection_get_transport(void) {
-  return g_client_transport;
+acip_transport_t *server_connection_get_transport(client_connection_t *connection) {
+  return connection->attempt.connection.transport;
 }
 
 /**
@@ -709,37 +230,27 @@ acip_transport_t *server_connection_get_transport(void) {
  *
  * @ingroup client_connection
  */
-void server_connection_set_transport(acip_transport_t *transport) {
+void server_connection_set_transport(client_connection_t *connection, acip_transport_t *transport) {
   log_debug("[TRANSPORT_LIFECYCLE] server_connection_set_transport() called with transport=%p", (void *)transport);
 
-  // Clean up any existing transport
-  if (g_client_transport) {
-    log_warn("[TRANSPORT_LIFECYCLE] Replacing existing transport=%p with new transport=%p (potential premature "
-             "destruction?)",
-             (void *)g_client_transport, (void *)transport);
-    log_debug("[TRANSPORT_LIFECYCLE] OLD transport is_connected=%s before destruction",
-              acip_transport_is_connected(g_client_transport) ? "true" : "false");
-    acip_transport_destroy(g_client_transport);
-    log_debug("[TRANSPORT_LIFECYCLE] OLD transport destroyed");
-  }
-
   log_debug("[TRANSPORT_LIFECYCLE] Setting g_client_transport to %p", (void *)transport);
-  g_client_transport = transport;
+  connection->attempt.connection.transport = transport;
 
   // Mark connection as active when transport is set
   if (transport) {
     log_debug("[TRANSPORT_LIFECYCLE] Transport is non-NULL, extracting socket...");
-    g_sockfd = acip_transport_get_socket(transport);
-    log_debug("[TRANSPORT_LIFECYCLE] Socket extracted: %d from transport=%p", (int)g_sockfd, (void *)transport);
+    connection->sockfd = acip_transport_get_socket(transport);
+    log_debug("[TRANSPORT_LIFECYCLE] Socket extracted: %d from transport=%p", (int)connection->sockfd,
+              (void *)transport);
 
-    atomic_store_bool(&g_connection_active, true);
-    atomic_store_bool(&g_connection_lost, false); // Reset lost flag for new connection
+    atomic_store_bool(&connection->connection_active, true);
+    atomic_store_bool(&connection->connection_lost, false); // Reset lost flag for new connection
     log_debug("[TRANSPORT_LIFECYCLE] Server connection transport set and marked active (transport=%p, sockfd=%d, "
               "is_connected=%s)",
-              (void *)transport, (int)g_sockfd, acip_transport_is_connected(transport) ? "true" : "false");
+              (void *)transport, (int)connection->sockfd, acip_transport_is_connected(transport) ? "true" : "false");
   } else {
-    g_sockfd = INVALID_SOCKET_VALUE;
-    atomic_store_bool(&g_connection_active, false);
+    connection->sockfd = INVALID_SOCKET_VALUE;
+    atomic_store_bool(&connection->connection_active, false);
     log_debug("[TRANSPORT_LIFECYCLE] Server connection transport cleared and marked inactive");
   }
 
@@ -753,8 +264,8 @@ void server_connection_set_transport(acip_transport_t *transport) {
  *
  * @ingroup client_connection
  */
-uint32_t server_connection_get_client_id() {
-  return g_my_client_id;
+uint32_t server_connection_get_client_id(client_connection_t *connection) {
+  return connection->my_client_id;
 }
 
 /**
@@ -767,8 +278,8 @@ uint32_t server_connection_get_client_id() {
  *
  * @ingroup client_connection
  */
-const char *server_connection_get_ip() {
-  return g_server_ip;
+const char *server_connection_get_ip(client_connection_t *connection) {
+  return connection->server_ip;
 }
 
 /**
@@ -780,12 +291,12 @@ const char *server_connection_get_ip() {
  *
  * @ingroup client_connection
  */
-void server_connection_set_ip(const char *ip) {
+void server_connection_set_ip(client_connection_t *connection, const char *ip) {
   if (ip) {
-    SAFE_STRNCPY(g_server_ip, ip, sizeof(g_server_ip));
-    log_debug("Server IP set to: %s", g_server_ip);
+    SAFE_STRNCPY(connection->server_ip, ip, sizeof(connection->server_ip));
+    log_debug("Server IP set to: %s", connection->server_ip);
   } else {
-    g_server_ip[0] = '\0';
+    connection->server_ip[0] = '\0';
     log_debug("Server IP cleared");
   }
 }
@@ -799,9 +310,9 @@ void server_connection_set_ip(const char *ip) {
  *
  * @ingroup client_connection
  */
-void server_connection_set_port(int port) {
-  g_server_port = port;
-  log_debug("Server port set to: %d", g_server_port);
+void server_connection_set_port(client_connection_t *connection, int port) {
+  connection->server_port = port;
+  log_debug("Server port set to: %d", connection->server_port);
 }
 
 /**
@@ -813,130 +324,18 @@ void server_connection_set_port(int port) {
  *
  * @ingroup client_connection
  */
-int server_connection_get_port(void) {
-  return g_server_port;
+int server_connection_get_port(client_connection_t *connection) {
+  return connection->server_port;
 }
 
-/**
- * @brief Close the server connection gracefully
- *
- * Marks connection as inactive and closes the socket. This function
- * is safe to call multiple times and from multiple threads.
- *
- * @ingroup client_connection
- */
-void server_connection_close() {
-  log_debug("[TRANSPORT_LIFECYCLE] server_connection_close() called");
-
-  // Acquire send mutex to prevent race with threaded_send_image_frame()
-  // This ensures any in-flight sends complete before we destroy the transport
-  mutex_lock(&g_send_mutex);
-  atomic_store_bool(&g_connection_active, false);
-
-  // Destroy ACIP transport before closing socket
-  if (g_client_transport) {
-    log_debug("[TRANSPORT_LIFECYCLE] Destroying transport=%p (is_connected=%s) before closing socket",
-              (void *)g_client_transport, acip_transport_is_connected(g_client_transport) ? "true" : "false");
-    acip_transport_destroy(g_client_transport);
-    g_client_transport = NULL;
-    log_debug("[TRANSPORT_LIFECYCLE] Transport destroyed, g_client_transport set to NULL");
-  }
-
-  mutex_unlock(&g_send_mutex);
-
-  // The socket belongs to the connection handle's TCP/WebSocket owner. The
-  // caller cleans up that owner after protocol workers have stopped; closing
-  // g_sockfd here would close the same descriptor a second time.
-  g_sockfd = INVALID_SOCKET_VALUE;
-
-  g_my_client_id = 0;
-
-  // Cleanup crypto context if encryption was enabled
-  if (g_encryption_enabled) {
-    log_debug("[TRANSPORT_LIFECYCLE] Cleaning up crypto context");
-    crypto_handshake_destroy(&g_crypto_ctx);
-    g_encryption_enabled = false;
-  }
-
-  // Turn ON terminal logging when connection is closed (unless it was disabled with --quiet)
-  if (!GET_OPTION(quiet)) {
-    log_set_terminal_output(true);
-  }
-  log_debug("[TRANSPORT_LIFECYCLE] server_connection_close() completed");
-}
-/**
- * @brief Interrupt WebSocket recv() calls from signal handler
- *
- * For WebSocket transports, we signal the condition variable to wake
- * any blocking recv() calls. This is fully async-signal-safe.
- *
- * The recv() function will check is_connected and return when the
- * main tcp shutdown has taken effect.
- *
- * This is async-signal-safe (no mutexes needed - direct signal only).
- *
- * @ingroup client_connection
- */
-static void server_connection_interrupt_websocket_recv(void) {
-  // Access the transport
-  acip_transport_t *transport = g_client_transport;
-  if (!transport || !transport->impl_data) {
-    return; // No transport
-  }
-
-  // Check if this is a WebSocket transport
-  if (transport->methods && transport->methods->get_type) {
-    acip_transport_type_t type = transport->methods->get_type(transport);
-    if (type == ACIP_TRANSPORT_WEBSOCKET) {
-      // For WebSocket, directly signal the recv condition variable to wake
-      // any blocked threads. This is async-signal-safe (doesn't require mutex).
-      // The waiting threads will re-acquire their mutexes and check is_connected.
-      websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
-
-      // Signal recv condition - wakes threads waiting for fragments
-      // This is safe to call without holding the recv_mutex
-      cond_broadcast(&ws_data->recv_cond);
-      cond_broadcast(&ws_data->state_cond);
-    }
-  }
-}
-
-/**
- * @brief Emergency connection shutdown for signal handlers
- *
- * Performs immediate connection shutdown without waiting for graceful
- * close procedures. Uses socket shutdown to interrupt any blocking
- * recv() operations in other threads.
- *
- * @ingroup client_connection
- */
-void server_connection_shutdown() {
-  acip_async_tcp_transport_interrupt(g_client_transport);
-  // NOTE: This function may be called from:
-  //   - Signal handlers on Unix (async-signal-safe context)
-  //   - SetConsoleCtrlHandler callback thread on Windows (separate thread context)
-  // Only use atomic operations and simple system calls - NO mutex locks, NO malloc, NO logging.
-
-  atomic_store_bool(&g_connection_active, false);
-  atomic_store_bool(&g_connection_lost, true);
-
-  if (g_sockfd != INVALID_SOCKET_VALUE) {
-    // Only shutdown() the socket to interrupt blocking recv()/send() operations.
-    // Do NOT close() here - on Windows, closing the socket while another thread
-    // is using it is undefined behavior and can cause STATUS_STACK_BUFFER_OVERRUN.
-    // The actual socket close happens in server_connection_close() which is called
-    // from the main thread after worker threads have been joined.
-    socket_shutdown(g_sockfd, SHUT_RDWR);
-  }
-
-  // For WebSocket transport: interrupt blocking recv() calls
-  // The recv() checks is_connected before waiting for data. Setting this to false
-  // will cause any blocked recv() to return immediately with CONNECTION_CLOSED.
-  // We use a function that's async-signal-safe (no mutexes) to do this.
-  server_connection_interrupt_websocket_recv();
-
-  // DO NOT call log_set_terminal_output() here - it uses mutex which is NOT async-signal-safe.
-  // The normal cleanup path in shutdown_client() will handle logging state.
+/* Called by the owner and its workers, never by a signal handler. The
+ * transport remains allocated until the controlling thread joins all users. */
+void server_connection_shutdown(client_connection_t *connection) {
+  if (!connection)
+    return;
+  atomic_store_bool(&connection->connection_active, false);
+  atomic_store_bool(&connection->connection_lost, true);
+  session_connection_interrupt_transport(connection->attempt.connection.transport);
 }
 
 /**
@@ -947,9 +346,9 @@ void server_connection_shutdown() {
  *
  * @ingroup client_connection
  */
-void server_connection_lost() {
-  atomic_store_bool(&g_connection_lost, true);
-  atomic_store_bool(&g_connection_active, false);
+void server_connection_lost(client_connection_t *connection) {
+  atomic_store_bool(&connection->connection_lost, true);
+  atomic_store_bool(&connection->connection_active, false);
 
   // Don't re-enable terminal logging here - let the splash screen handle it
   // The reconnection splash will capture and display logs properly
@@ -963,24 +362,10 @@ void server_connection_lost() {
  *
  * @ingroup client_connection
  */
-bool server_connection_is_lost() {
-  return atomic_load_bool(&g_connection_lost);
-}
-
-/**
- * @brief Cleanup connection management subsystem
- *
- * Closes any active connection and destroys synchronization objects.
- * Called during client shutdown.
- *
- * @ingroup client_connection
- */
-void server_connection_cleanup() {
-  if (!GET_OPTION(quiet)) {
-    log_set_terminal_output(true);
-  }
-  server_connection_close();
-  mutex_destroy(&g_send_mutex);
+bool server_connection_is_lost(client_connection_t *connection) {
+  if (!connection)
+    return true;
+  return atomic_load_bool(&connection->connection_lost);
 }
 
 /* ============================================================================
@@ -1004,20 +389,22 @@ void server_connection_cleanup() {
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, size_t len) {
+asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_type_t type, const void *data,
+                                       size_t len) {
   // Lock mutex for entire send operation to prevent concurrent socket writes
-  mutex_lock(&g_send_mutex);
+  mutex_lock(&connection->send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load_bool(&g_connection_active) || !g_client_transport) {
+  if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
     log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() check failed: active=%s, transport=%p",
-              atomic_load_bool(&g_connection_active) ? "true" : "false", (void *)g_client_transport);
-    mutex_unlock(&g_send_mutex);
+              atomic_load_bool(&connection->connection_active) ? "true" : "false",
+              (void *)connection->attempt.connection.transport);
+    mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
   // Get transport reference - transport has its own internal synchronization
-  acip_transport_t *transport = g_client_transport;
+  acip_transport_t *transport = connection->attempt.connection.transport;
   log_debug_every(LOG_RATE_SLOW, "[TRANSPORT_LIFECYCLE] threaded_send_packet() using transport=%p, is_connected=%s",
                   (void *)transport, acip_transport_is_connected(transport) ? "true" : "false");
 
@@ -1025,13 +412,13 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
   asciichat_error_t result = packet_send_via_transport(transport, type, data, len, 0);
 
   // Unlock after send completes
-  mutex_unlock(&g_send_mutex);
+  mutex_unlock(&connection->send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() send failed");
     if (!network_error_is_local_rejection(result))
-      server_connection_lost();
+      server_connection_lost(connection);
     return result;
   }
 
@@ -1052,29 +439,30 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {
+asciichat_error_t threaded_send_audio_batch_packet(client_connection_t *connection, const float *samples,
+                                                   int num_samples, int batch_count) {
   // Lock mutex for entire send operation to prevent concurrent socket writes
-  mutex_lock(&g_send_mutex);
+  mutex_lock(&connection->send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load_bool(&g_connection_active) || !g_client_transport) {
-    mutex_unlock(&g_send_mutex);
+  if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
+    mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active");
   }
 
   // Get transport reference - transport has its own internal synchronization
-  acip_transport_t *transport = g_client_transport;
+  acip_transport_t *transport = connection->attempt.connection.transport;
 
   // Network I/O happens while holding mutex to prevent concurrent socket writes
   asciichat_error_t result = acip_send_audio_batch(transport, samples, (uint32_t)num_samples, (uint32_t)batch_count);
 
   // Unlock after send completes
-  mutex_unlock(&g_send_mutex);
+  mutex_unlock(&connection->send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     if (!network_error_is_local_rejection(result))
-      server_connection_lost();
+      server_connection_lost(connection);
     return result;
   }
 
@@ -1095,20 +483,20 @@ asciichat_error_t threaded_send_audio_batch_packet(const float *samples, int num
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sample_rate,
-                                           int frame_duration) {
+asciichat_error_t threaded_send_audio_opus(client_connection_t *connection, const uint8_t *opus_data, size_t opus_size,
+                                           int sample_rate, int frame_duration) {
   // Get transport reference while holding mutex (brief lock)
-  mutex_lock(&g_send_mutex);
+  mutex_lock(&connection->send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load_bool(&g_connection_active) || !g_client_transport) {
-    mutex_unlock(&g_send_mutex);
+  if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
+    mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
   // Get transport reference - transport has its own internal synchronization
-  acip_transport_t *transport = g_client_transport;
-  mutex_unlock(&g_send_mutex);
+  acip_transport_t *transport = connection->attempt.connection.transport;
+  mutex_unlock(&connection->send_mutex);
 
   // Build Opus packet with header (outside mutex - no blocking I/O yet)
   size_t header_size = 16; // sample_rate (4), frame_duration (4), reserved (8)
@@ -1139,7 +527,7 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     if (!network_error_is_local_rejection(result))
-      server_connection_lost();
+      server_connection_lost(connection);
     return result;
   }
 
@@ -1160,19 +548,19 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_t opus_size,
-                                                 const uint16_t *frame_sizes, int frame_count) {
+asciichat_error_t threaded_send_audio_opus_batch(client_connection_t *connection, const uint8_t *opus_data,
+                                                 size_t opus_size, const uint16_t *frame_sizes, int frame_count) {
   // Lock mutex for entire send operation to prevent concurrent socket writes
-  mutex_lock(&g_send_mutex);
+  mutex_lock(&connection->send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load_bool(&g_connection_active) || !g_client_transport) {
-    mutex_unlock(&g_send_mutex);
+  if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
+    mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
   // Get transport reference - transport has its own internal synchronization
-  acip_transport_t *transport = g_client_transport;
+  acip_transport_t *transport = connection->attempt.connection.transport;
 
   // Network I/O happens while holding mutex to prevent concurrent socket writes
   // Opus uses 20ms frames at 48kHz (960 samples = 20ms)
@@ -1180,12 +568,12 @@ asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_
       acip_send_audio_opus_batch(transport, opus_data, opus_size, frame_sizes, frame_count, 48000, 20);
 
   // Unlock after send completes
-  mutex_unlock(&g_send_mutex);
+  mutex_unlock(&connection->send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     if (!network_error_is_local_rejection(result))
-      server_connection_lost();
+      server_connection_lost(connection);
     return result;
   }
 
@@ -1206,18 +594,18 @@ asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t width, uint32_t height,
-                                            uint32_t pixel_format) {
+asciichat_error_t threaded_send_image_frame(client_connection_t *connection, const void *pixel_data, uint32_t width,
+                                            uint32_t height, uint32_t pixel_format) {
   if (!pixel_data) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Pixel data is NULL");
   }
 
-  mutex_lock(&g_send_mutex);
+  mutex_lock(&connection->send_mutex);
 
   // Get transport reference - may be NULL if connection was lost
-  acip_transport_t *transport = server_connection_get_transport();
-  if (!transport || !server_connection_is_active()) {
-    mutex_unlock(&g_send_mutex);
+  acip_transport_t *transport = server_connection_get_transport(connection);
+  if (!transport || !server_connection_is_active(connection)) {
+    mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Transport unavailable");
   }
 
@@ -1225,12 +613,12 @@ asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t wid
   asciichat_error_t result = acip_send_image_frame(transport, pixel_data, width, height, pixel_format);
 
   // Unlock after send completes
-  mutex_unlock(&g_send_mutex);
+  mutex_unlock(&connection->send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     if (!network_error_is_local_rejection(result))
-      server_connection_lost();
+      server_connection_lost(connection);
     return result;
   }
 
@@ -1251,8 +639,9 @@ asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t wid
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint32_t width, uint32_t height,
-                                                    video_codec_t codec, bool *encoding_failed) {
+asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connection, const void *pixel_data,
+                                                    uint32_t width, uint32_t height, video_codec_t codec,
+                                                    bool *encoding_failed) {
   if (!encoding_failed)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing video encoding status output");
   *encoding_failed = false;
@@ -1260,22 +649,22 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid video frame");
   }
   // The capture thread creates the selected encoder only when a frame is ready.
-  if (!g_video_encoder) {
-    g_video_encoder = video_encoder_create(codec, (uint16_t)width, (uint16_t)height);
-    if (!g_video_encoder) {
+  if (!connection->video_encoder) {
+    connection->video_encoder = video_encoder_create(codec, (uint16_t)width, (uint16_t)height);
+    if (!connection->video_encoder) {
       *encoding_failed = true;
       return GET_ERRNO();
     }
   }
-  h265_encoder_t *encoder = g_video_encoder;
+  h265_encoder_t *encoder = connection->video_encoder;
 #ifndef __EMSCRIPTEN__
-  mutex_lock(&g_send_mutex);
-  acip_transport_t *encoder_transport = server_connection_get_transport();
+  mutex_lock(&connection->send_mutex);
+  acip_transport_t *encoder_transport = server_connection_get_transport(connection);
   if (acip_outbound_needs_keyframe(
           encoder_transport, codec == VIDEO_CODEC_H264 ? PACKET_TYPE_IMAGE_FRAME_H264 : PACKET_TYPE_IMAGE_FRAME_H265,
           0))
     h265_encoder_request_keyframe(encoder);
-  mutex_unlock(&g_send_mutex);
+  mutex_unlock(&connection->send_mutex);
 #endif
   size_t output_buffer_size = 5 + ((size_t)width * height * 3) + 65536;
   uint8_t *output_buffer = buffer_alloc(NULL, output_buffer_size);
@@ -1294,13 +683,13 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
 
   // NOW acquire the send mutex just for the actual network transmission
   log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_3] About to acquire g_send_mutex for network send");
-  mutex_lock(&g_send_mutex);
+  mutex_lock(&connection->send_mutex);
   log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_4] ✅ Acquired g_send_mutex, checking transport");
 
   // Get transport reference - may be NULL if connection was lost
-  acip_transport_t *transport = server_connection_get_transport();
-  if (!transport || !server_connection_is_active()) {
-    mutex_unlock(&g_send_mutex);
+  acip_transport_t *transport = server_connection_get_transport(connection);
+  if (!transport || !server_connection_is_active(connection)) {
+    mutex_unlock(&connection->send_mutex);
     log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_5] Transport unavailable, releasing mutex");
     buffer_release(output_buffer);
     return SET_ERRNO(ERROR_NETWORK, "Transport unavailable");
@@ -1314,7 +703,7 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
   log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_7] packet_send_via_transport returned: %d", result);
 
   // Unlock after send completes
-  mutex_unlock(&g_send_mutex);
+  mutex_unlock(&connection->send_mutex);
   log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_8] ✅ Released g_send_mutex");
 
   buffer_release(output_buffer);
@@ -1323,7 +712,7 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     if (!network_error_is_local_rejection(result))
-      server_connection_lost();
+      server_connection_lost(connection);
     return result;
   }
 
@@ -1337,9 +726,9 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_ping_packet(void) {
+asciichat_error_t threaded_send_ping_packet(client_connection_t *connection) {
   // Use threaded_send_packet which handles encryption, mutex locking, and connection state
-  return threaded_send_packet(PACKET_TYPE_PING, NULL, 0);
+  return threaded_send_packet(connection, PACKET_TYPE_PING, NULL, 0);
 }
 
 /**
@@ -1349,9 +738,9 @@ asciichat_error_t threaded_send_ping_packet(void) {
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_pong_packet(void) {
+asciichat_error_t threaded_send_pong_packet(client_connection_t *connection) {
   // Use threaded_send_packet which handles encryption, mutex locking, and connection state
-  return threaded_send_packet(PACKET_TYPE_PONG, NULL, 0);
+  return threaded_send_packet(connection, PACKET_TYPE_PONG, NULL, 0);
 }
 
 /**
@@ -1362,14 +751,14 @@ asciichat_error_t threaded_send_pong_packet(void) {
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_stream_start_packet(uint32_t stream_type) {
+asciichat_error_t threaded_send_stream_start_packet(client_connection_t *connection, uint32_t stream_type) {
   // Connection and transport availability is checked by threaded_send_packet()
 
   // Build STREAM_START packet locally
   uint32_t type_data = HOST_TO_NET_U32(stream_type);
 
   // Use threaded_send_packet() which handles encryption
-  return threaded_send_packet(PACKET_TYPE_STREAM_START, &type_data, sizeof(type_data));
+  return threaded_send_packet(connection, PACKET_TYPE_STREAM_START, &type_data, sizeof(type_data));
 }
 
 /**
@@ -1385,97 +774,14 @@ asciichat_error_t threaded_send_stream_start_packet(uint32_t stream_type) {
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
-  // Log the dimensions being sent to server (helps debug dimension mismatch issues)
-  log_debug("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height,
-            GET_OPTION(auto_width), GET_OPTION(auto_height));
-
-  // Connection and transport availability is checked by threaded_send_packet()
-
-  // Build terminal capabilities packet locally
-  // Detect terminal capabilities automatically
-  terminal_capabilities_t caps = detect_terminal_capabilities();
-
-  // Set wants_padding based on snapshot mode and TTY status
-  // Disable padding when:
-  // - In snapshot mode (one frame and exit)
-  // - When stdout is not a TTY (piped/redirected output)
-  // Enable padding for interactive terminal sessions
-  bool is_snapshot_mode = GET_OPTION(snapshot_mode);
-  bool is_interactive = terminal_is_interactive();
-  caps.wants_padding = is_interactive && !is_snapshot_mode;
-
-  log_debug("Client capabilities: wants_padding=%d (snapshot=%d, interactive=%d, stdin_tty=%d, stdout_tty=%d)",
-            caps.wants_padding, is_snapshot_mode, is_interactive, terminal_is_stdin_tty(), terminal_is_stdout_tty());
-
-  // Apply user's color mode override
-  caps = apply_color_mode_override(caps);
-
-  // Check if detection was reliable, use fallback only for auto-detection
-  if (!caps.detection_reliable && GET_OPTION(color_mode) == COLOR_MODE_AUTO) {
-    log_warn("Terminal capability detection not reliable, using fallback");
-    SAFE_MEMSET(&caps, sizeof(caps), 0, sizeof(caps));
-    caps.color_level = TERM_COLOR_NONE;
-    caps.color_count = 2;
-    caps.capabilities = 0;
-    SAFE_STRNCPY(caps.term_type, "unknown", sizeof(caps.term_type));
-    SAFE_STRNCPY(caps.colorterm, "", sizeof(caps.colorterm));
-    caps.detection_reliable = 0;
-    // Preserve wants_padding even in fallback mode
-    caps.wants_padding = is_interactive && !is_snapshot_mode;
-  }
-
-  // Convert to network packet format with proper byte order
-  terminal_capabilities_packet_t net_packet;
-  net_packet.capabilities = HOST_TO_NET_U32(caps.capabilities);
-  net_packet.color_level = HOST_TO_NET_U32(caps.color_level);
-  net_packet.color_count = HOST_TO_NET_U32(caps.color_count);
-  net_packet.render_mode = HOST_TO_NET_U32(caps.render_mode);
-  net_packet.width = HOST_TO_NET_U16(width);
-  net_packet.height = HOST_TO_NET_U16(height);
-  net_packet.palette_type = HOST_TO_NET_U32(GET_OPTION(palette_type));
-  net_packet.utf8_support = HOST_TO_NET_U32(caps.utf8_support ? 1 : 0);
-
-  const options_t *opts = options_get();
-  if (GET_OPTION(palette_type) == PALETTE_CUSTOM && GET_OPTION(palette_custom_set)) {
-    const char *palette_custom = opts && opts->palette_custom_set ? opts->palette_custom : "";
-    SAFE_STRNCPY(net_packet.palette_custom, palette_custom, sizeof(net_packet.palette_custom));
-    net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
-  } else {
-    SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));
-  }
-
-  // Set desired FPS
-  int fps = GET_OPTION(fps);
-  if (fps > 0) {
-    net_packet.desired_fps = (uint8_t)(fps > 144 ? 144 : fps);
-  } else {
-    net_packet.desired_fps = caps.desired_fps;
-  }
-
-  if (net_packet.desired_fps == 0) {
-    net_packet.desired_fps = DEFAULT_MAX_FPS;
-  }
-
-  SAFE_STRNCPY(net_packet.term_type, caps.term_type, sizeof(net_packet.term_type));
-  net_packet.term_type[sizeof(net_packet.term_type) - 1] = '\0';
-
-  SAFE_STRNCPY(net_packet.colorterm, caps.colorterm, sizeof(net_packet.colorterm));
-  net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
-
-  net_packet.detection_reliable = caps.detection_reliable;
-  // Send UTF-8 support flag: true for AUTO (default) and TRUE settings, false for FALSE setting
-  net_packet.utf8_support = (GET_OPTION(force_utf8) != UTF8_SETTING_FALSE) ? 1 : 0;
-
-  // Set wants_padding flag (1=padding enabled, 0=no padding for snapshot/piped modes)
-  net_packet.wants_padding = caps.wants_padding ? 1 : 0;
-
-  // Set codec capabilities (client supports all codecs by default)
-  net_packet.codec_capabilities_video = HOST_TO_NET_U32(VIDEO_CODEC_CAP_ALL);
-  net_packet.codec_capabilities_audio = HOST_TO_NET_U32(AUDIO_CODEC_CAP_ALL);
-
-  // Use threaded_send_packet() which handles encryption
-  return threaded_send_packet(PACKET_TYPE_CLIENT_CAPABILITIES, &net_packet, sizeof(net_packet));
+asciichat_error_t threaded_send_terminal_size_with_auto_detect(client_connection_t *connection, unsigned short width,
+                                                               unsigned short height) {
+  terminal_capabilities_packet_t packet;
+  session_protocol_build_capabilities(width, height, &packet);
+  asciichat_error_t result = threaded_send_packet(connection, PACKET_TYPE_CLIENT_CAPABILITIES, &packet, sizeof(packet));
+  if (result == ASCIICHAT_OK)
+    connection->advertised_dimensions = (terminal_size_t){.cols = width, .rows = height};
+  return result;
 }
 
 /**
@@ -1489,7 +795,8 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_client_join_packet(const char *display_name, uint32_t capabilities) {
+asciichat_error_t threaded_send_client_join_packet(client_connection_t *connection, const char *display_name,
+                                                   uint32_t capabilities) {
   // Connection and transport availability is checked by threaded_send_packet()
 
   // Build CLIENT_JOIN packet locally
@@ -1500,18 +807,19 @@ asciichat_error_t threaded_send_client_join_packet(const char *display_name, uin
   join_packet.capabilities = HOST_TO_NET_U32(capabilities);
 
   // Use threaded_send_packet() which handles encryption
-  int send_result = threaded_send_packet(PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
+  int send_result = threaded_send_packet(connection, PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
   if (send_result == 0) {
-    mutex_lock(&g_send_mutex);
-    bool active = atomic_load_u64(&g_connection_active);
-    socket_t socket_snapshot = g_sockfd;
-    const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+    mutex_lock(&connection->send_mutex);
+    bool active = atomic_load_u64(&connection->connection_active);
+    socket_t socket_snapshot = connection->sockfd;
+    const crypto_context_t *crypto_ctx =
+        crypto_client_is_ready(connection) ? crypto_client_get_context(connection) : NULL;
     if (active && socket_snapshot != INVALID_SOCKET_VALUE) {
       (void)log_network_message(
           socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_INFO, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER,
           "CLIENT_JOIN sent (display=\"%s\", capabilities=0x%x)", join_packet.display_name, capabilities);
     }
-    mutex_unlock(&g_send_mutex);
+    mutex_unlock(&connection->send_mutex);
   }
   return send_result;
 }

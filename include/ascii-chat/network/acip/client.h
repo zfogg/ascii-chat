@@ -31,6 +31,11 @@ extern "C" {
 // Client Receive API
 // =============================================================================
 
+/* Receive and decrypt one packet with the same envelope checks as dispatch.
+ * On success the caller owns envelope->allocated_buffer and must buffer_release it.
+ * On failure no allocation is transferred to the caller. */
+asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet_envelope_t *envelope);
+
 /**
  * @brief Receive packet from server and dispatch to callbacks
  *

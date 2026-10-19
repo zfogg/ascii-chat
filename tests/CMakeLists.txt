@@ -1219,6 +1219,67 @@ if(BUILD_TESTS)
     add_test(NAME participant-media COMMAND test-participant-media)
     set_tests_properties(participant-media PROPERTIES LABELS "integration" TIMEOUT 60)
 endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN AND CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
+    add_test(NAME client-connection-lifecycle
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/client_connection_lifecycle.py
+            $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(client-connection-lifecycle PROPERTIES LABELS "integration" TIMEOUT 300)
+endif()
+
+# Independent connection owners with real blocked TCP workers, without Criterion.
+if(BUILD_TESTS AND NOT EMSCRIPTEN)
+    add_executable(test-session-connections standalone/session/connection_test.c standalone/session/protocol_test.c)
+    target_link_libraries(test-session-connections PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-session-connections PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    if(WIN32)
+        target_link_libraries(test-session-connections PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-session-connections)
+    set_target_properties(test-session-connections PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(TARGET tests)
+        add_dependencies(tests test-session-connections)
+    endif()
+    add_test(NAME session-connections COMMAND test-session-connections)
+    set_tests_properties(session-connections PROPERTIES LABELS "integration" TIMEOUT 30)
+endif()
+
+if(BUILD_TESTS AND NOT EMSCRIPTEN)
+    add_executable(test-peer-ready standalone/network/peer_ready_test.c)
+    if(WIN32)
+        target_link_libraries(test-peer-ready PRIVATE ws2_32)
+    endif()
+    target_link_libraries(test-peer-ready PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-peer-ready PRIVATE ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-peer-ready)
+    set_target_properties(test-peer-ready PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(TARGET tests)
+        add_dependencies(tests test-peer-ready)
+    endif()
+    add_test(NAME peer-ready COMMAND test-peer-ready)
+    set_tests_properties(peer-ready PROPERTIES LABELS "integration" TIMEOUT 30)
+endif()
+
+if(BUILD_TESTS AND WIN32)
+    add_executable(test-terminal-resize standalone/session/terminal_resize_test.c)
+    target_link_libraries(test-terminal-resize PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ws2_32)
+    target_include_directories(test-terminal-resize PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-terminal-resize)
+    set_target_properties(test-terminal-resize PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(TARGET tests)
+        add_dependencies(tests test-terminal-resize)
+    endif()
+    add_test(NAME terminal-resize COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_resize_windows.py $<TARGET_FILE:test-terminal-resize>)
+    set_tests_properties(terminal-resize PROPERTIES LABELS "integration" TIMEOUT 40)
+endif()
+
 # Owned plaintext admission, real backend saturation, and codec recovery.
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     foreach(outbound_fixture backpressure backpressure-live)

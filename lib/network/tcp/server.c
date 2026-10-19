@@ -163,8 +163,12 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
 
 static void tcp_event_tick(void *arg) {
   tcp_server_t *server = arg;
-  if (!atomic_load_bool(&server->running))
+  if (!atomic_load_bool(&server->running)) {
     platform_event_loop_stop(server->event_loop);
+    return;
+  }
+  if (server->config.tick_fn)
+    server->config.tick_fn(server->config.tick_user_data);
 }
 
 static asciichat_error_t tcp_server_run_events(tcp_server_t *server) {

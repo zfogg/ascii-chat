@@ -1873,6 +1873,18 @@ static asciichat_error_t server_announce_session(server_discovery_startup_t *sta
   return ASCIICHAT_OK;
 }
 
+static void server_tick_fn(void *user_data) {
+  (void)user_data;
+  asciichat_error_t result = webrtc_peer_manager_dispatch_ready(g_webrtc_peer_manager);
+  if (result != ASCIICHAT_OK) {
+    log_error("WebRTC ready dispatch failed: %s", asciichat_error_string(result));
+    atomic_store_bool(&g_should_exit, true);
+    tcp_server_t *tcp = session_server_like_get_tcp_server();
+    if (tcp)
+      atomic_store_bool(&tcp->running, false);
+  }
+}
+
 static asciichat_error_t server_init_fn(void *user_data) {
   (void)user_data;
   int port = GET_OPTION(port);
@@ -2237,6 +2249,7 @@ int server_main(void) {
 
   session_server_like_config_t config = {
       .init_fn = server_init_fn,
+      .tick_fn = server_tick_fn,
       .init_user_data = NULL,
       .interrupt_fn = server_handle_sigint,
       .cleanup_fn = server_cleanup_fn,

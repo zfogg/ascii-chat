@@ -119,6 +119,8 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/discovery/session.c
     ${CMAKE_SOURCE_DIR}/src/discovery/webrtc.c
     # src/common/session/ (executable code, refactored from lib/session)
+    ${CMAKE_SOURCE_DIR}/src/common/session/protocol.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/connection.c
     ${CMAKE_SOURCE_DIR}/src/common/session/client_like.c
     ${CMAKE_SOURCE_DIR}/src/common/session/consensus.c
     ${CMAKE_SOURCE_DIR}/src/common/session/consensus_integration.c

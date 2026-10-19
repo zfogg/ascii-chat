@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include "connection.h"
 #include <ascii-chat/media/codecs.h>
 
 #include <ascii-chat/platform/socket.h>
@@ -48,82 +49,9 @@ typedef enum {
  *
  * @ingroup client_connection
  */
-int server_connection_init();
+int server_connection_init(client_connection_t *connection);
 
-/**
- * @brief Establish connection to ascii-chat server
- *
- * Establishes a TCP connection to the server and performs the cryptographic handshake.
- * This function handles DNS resolution, socket creation, connection establishment,
- * and authentication. It is designed for use in a reconnection loop with exponential backoff.
- *
- * @param address Server IP address, hostname, or ACDS session string (e.g., "localhost",
- *                 "192.168.1.100", or "blue-mountain-tiger")
- * @param port Server port number (typically 27224)
- * @param reconnect_attempt Current reconnection attempt number (0 for first attempt).
- *                          Used to track retry count for logging and backoff calculation.
- * @param first_connection Whether this is the client's first attempt to connect.
- *                         If true, displays more informative messages. If false,
- *                         this is a reconnection attempt after previous connection loss.
- * @param has_ever_connected Whether the client has EVER successfully connected in this session.
- *                           Used to distinguish "first attempt ever" from "reconnection attempt".
- * @return Connection establishment status:
- *         - CONNECTION_SUCCESS (0): Connection established and authenticated successfully
- *         - CONNECTION_WARNING_NO_CLIENT_AUTH (1): Connected but server is not verifying client identity
- *         - CONNECTION_ERROR_GENERIC (-1): Network error (resolve failed, connect refused, timeout).
- *           Caller should retry with exponential backoff.
- *         - CONNECTION_ERROR_AUTH_FAILED (-2): Authentication failed (wrong password, bad SSH key).
- *           Caller should NOT retry - user intervention required.
- *         - CONNECTION_ERROR_HOST_KEY_FAILED (-3): Server host key verification failed.
- *           Caller should NOT retry - user must update known_hosts.
- *
- * ## Connection Lifecycle
- *
- * 1. **Resolution**: Resolves hostname/IP to socket address (supports IPv4 and IPv6)
- * 2. **Socket Creation**: Creates TCP socket with appropriate options
- * 3. **Connection**: Attempts TCP connect with timeout
- * 4. **Handshake**: Performs cryptographic handshake (X25519 key exchange, Ed25519 auth)
- * 5. **Initialization**: Sends client capabilities and client join packet
- * 6. **State Update**: Updates global connection state atomically
- *
- * ## Error Recovery
- *
- * **Retryable (CONNECTION_ERROR_GENERIC)**:
- * - Connection refused: Server not listening yet
- * - Connection timeout: Network slow or firewall blocking
- * - DNS resolution failure: Temporary DNS issue
- * - Socket creation failure: System resource exhaustion
- *
- * Caller should implement exponential backoff:
- * @code{.c}
- * int result = server_connection_establish(address, port, attempt, first, ever_connected);
- * if (result == CONNECTION_ERROR_GENERIC) {
- *   // Exponential backoff: 10ms, 210ms, 410ms, 610ms, ..., capped at 5 seconds
- *   int delay_ms = 10 + (200 * attempt);
- *   if (delay_ms > 5000) delay_ms = 5000;
- *   sleep_ms(delay_ms);
- *   attempt++;
- *   continue;  // Retry
- * }
- * @endcode
- *
- * **Non-Retryable (AUTH or HOST_KEY failures)**:
- * - `CONNECTION_ERROR_AUTH_FAILED`: Password or SSH key doesn't match server's expectations
- * - `CONNECTION_ERROR_HOST_KEY_FAILED`: Server's public key not in client's known_hosts
- *
- * These indicate configuration problems that won't be fixed by waiting or retrying.
- *
- * @ingroup client_connection
- *
- * @see server_connection_is_active "Check connection status"
- * @see server_connection_close "Close connection gracefully"
- * @see server_connection_lost "Signal connection loss (called by other threads)"
- * @see topic_client_connection "Connection Management Architecture"
- */
-int server_connection_establish(const char *address, int port, int reconnect_attempt, bool first_connection,
-                                bool has_ever_connected);
-
-bool server_connection_is_active();
+bool server_connection_is_active(client_connection_t *connection);
 
 /**
  * @brief Get current socket file descriptor
@@ -131,7 +59,7 @@ bool server_connection_is_active();
  *
  * @ingroup client_connection
  */
-socket_t server_connection_get_socket();
+socket_t server_connection_get_socket(client_connection_t *connection);
 
 /**
  * @brief Get ACIP transport instance
@@ -139,7 +67,7 @@ socket_t server_connection_get_socket();
  *
  * @ingroup client_connection
  */
-struct acip_transport *server_connection_get_transport(void);
+struct acip_transport *server_connection_get_transport(client_connection_t *connection);
 
 /**
  * @brief Set ACIP transport instance from connection fallback
@@ -150,7 +78,7 @@ struct acip_transport *server_connection_get_transport(void);
  *
  * @ingroup client_connection
  */
-void server_connection_set_transport(struct acip_transport *transport);
+void server_connection_set_transport(client_connection_t *connection, struct acip_transport *transport);
 
 /**
  * @brief Get client ID assigned by server
@@ -158,7 +86,7 @@ void server_connection_set_transport(struct acip_transport *transport);
  *
  * @ingroup client_connection
  */
-uint32_t server_connection_get_client_id();
+uint32_t server_connection_get_client_id(client_connection_t *connection);
 
 /**
  * @brief Get resolved server IP address
@@ -166,7 +94,7 @@ uint32_t server_connection_get_client_id();
  *
  * @ingroup client_connection
  */
-const char *server_connection_get_ip();
+const char *server_connection_get_ip(client_connection_t *connection);
 
 /**
  * @brief Set the server IP address
@@ -174,7 +102,7 @@ const char *server_connection_get_ip();
  *
  * @ingroup client_connection
  */
-void server_connection_set_ip(const char *ip);
+void server_connection_set_ip(client_connection_t *connection, const char *ip);
 
 /**
  * @brief Set the server port
@@ -182,7 +110,7 @@ void server_connection_set_ip(const char *ip);
  *
  * @ingroup client_connection
  */
-void server_connection_set_port(int port);
+void server_connection_set_port(client_connection_t *connection, int port);
 
 /**
  * @brief Get the server port
@@ -190,30 +118,23 @@ void server_connection_set_port(int port);
  *
  * @ingroup client_connection
  */
-int server_connection_get_port(void);
+int server_connection_get_port(client_connection_t *connection);
 
 /**
- * @brief Close server connection gracefully
+ * @brief Interrupt connection I/O from normal thread context
  *
  * @ingroup client_connection
  */
-void server_connection_close();
-
-/**
- * @brief Emergency shutdown for signal handlers
- *
- * @ingroup client_connection
- */
-void server_connection_shutdown();
+void server_connection_shutdown(client_connection_t *connection);
 
 /**
  * @brief Signal that connection has been lost
  *
  * @ingroup client_connection
  */
-void server_connection_lost();
-void server_connection_set_remote_error(asciichat_error_t code);
-asciichat_error_t server_connection_get_remote_error(void);
+void server_connection_lost(client_connection_t *connection);
+void server_connection_set_remote_error(client_connection_t *connection, asciichat_error_t code);
+asciichat_error_t server_connection_get_remote_error(client_connection_t *connection);
 
 /**
  * @brief Check if connection loss was detected
@@ -221,14 +142,7 @@ asciichat_error_t server_connection_get_remote_error(void);
  *
  * @ingroup client_connection
  */
-bool server_connection_is_lost();
-
-/**
- * @brief Cleanup connection management subsystem
- *
- * @ingroup client_connection
- */
-void server_connection_cleanup();
+bool server_connection_is_lost(client_connection_t *connection);
 
 /**
  * @brief Thread-safe packet transmission
@@ -243,7 +157,8 @@ void server_connection_cleanup();
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, size_t len);
+asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_type_t type, const void *data,
+                                       size_t len);
 
 /**
  * @brief Thread-safe batched audio packet transmission
@@ -255,7 +170,8 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count);
+asciichat_error_t threaded_send_audio_batch_packet(client_connection_t *connection, const float *samples,
+                                                   int num_samples, int batch_count);
 
 /**
  * @brief Thread-safe Opus audio frame transmission
@@ -271,8 +187,8 @@ asciichat_error_t threaded_send_audio_batch_packet(const float *samples, int num
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sample_rate,
-                                           int frame_duration);
+asciichat_error_t threaded_send_audio_opus(client_connection_t *connection, const uint8_t *opus_data, size_t opus_size,
+                                           int sample_rate, int frame_duration);
 
 /**
  * @brief Thread-safe Opus audio batch packet transmission
@@ -288,8 +204,8 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_t opus_size,
-                                                 const uint16_t *frame_sizes, int frame_count);
+asciichat_error_t threaded_send_audio_opus_batch(client_connection_t *connection, const uint8_t *opus_data,
+                                                 size_t opus_size, const uint16_t *frame_sizes, int frame_count);
 
 /**
  * @brief Thread-safe image frame transmission
@@ -305,8 +221,8 @@ asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t width, uint32_t height,
-                                            uint32_t pixel_format);
+asciichat_error_t threaded_send_image_frame(client_connection_t *connection, const void *pixel_data, uint32_t width,
+                                            uint32_t height, uint32_t pixel_format);
 
 /**
  * @brief Send HEVC/H.264-encoded video frame to server (thread-safe)
@@ -324,8 +240,9 @@ asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t wid
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint32_t width, uint32_t height,
-                                                    video_codec_t codec, bool *encoding_failed);
+asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connection, const void *pixel_data,
+                                                    uint32_t width, uint32_t height, video_codec_t codec,
+                                                    bool *encoding_failed);
 
 /**
  * @brief Thread-safe ping packet transmission
@@ -334,7 +251,7 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_ping_packet(void);
+asciichat_error_t threaded_send_ping_packet(client_connection_t *connection);
 
 /**
  * @brief Thread-safe pong packet transmission
@@ -343,7 +260,7 @@ asciichat_error_t threaded_send_ping_packet(void);
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_pong_packet(void);
+asciichat_error_t threaded_send_pong_packet(client_connection_t *connection);
 
 /**
  * @brief Thread-safe stream start packet transmission
@@ -353,7 +270,7 @@ asciichat_error_t threaded_send_pong_packet(void);
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_stream_start_packet(uint32_t stream_type);
+asciichat_error_t threaded_send_stream_start_packet(client_connection_t *connection, uint32_t stream_type);
 
 /**
  * @brief Thread-safe terminal size packet transmission with auto-detection
@@ -364,7 +281,8 @@ asciichat_error_t threaded_send_stream_start_packet(uint32_t stream_type);
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height);
+asciichat_error_t threaded_send_terminal_size_with_auto_detect(client_connection_t *connection, unsigned short width,
+                                                               unsigned short height);
 
 /**
  * @brief Thread-safe client join packet transmission
@@ -375,7 +293,8 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_client_join_packet(const char *display_name, uint32_t capabilities);
+asciichat_error_t threaded_send_client_join_packet(client_connection_t *connection, const char *display_name,
+                                                   uint32_t capabilities);
 
 /* ============================================================================
  * Thread-Safe Packet Sending Functions

@@ -1,3 +1,4 @@
+#include "connection_internal.h"
 /**
  * @file client/display.c
  * @ingroup client_display
@@ -121,7 +122,6 @@ static session_display_ctx_t *g_display_ctx = NULL;
  *
  * @ingroup client_display
  */
-static atomic_t g_is_first_frame_of_connection = {0};
 
 /**
  * @brief Keyboard input state for client mode
@@ -236,13 +236,6 @@ int display_init() {
   // Only enable keyboard input if stdin is a TTY (avoid interfering with piped/redirected I/O)
   g_keyboard_enabled = terminal_is_stdin_tty();
 
-  // Register display atomics with named debug registry
-  static bool display_atomics_registered = false;
-  if (!display_atomics_registered) {
-    NAMED_REGISTER_ATOMIC(&g_is_first_frame_of_connection, "first_frame_of_display_connection", NULL);
-    display_atomics_registered = true;
-  }
-
   return 0;
 }
 
@@ -279,8 +272,8 @@ void display_full_reset() {
  *
  * @ingroup client_display
  */
-void display_reset_for_new_connection() {
-  atomic_store_bool(&g_is_first_frame_of_connection, true);
+void display_reset_for_new_connection(client_connection_t *connection) {
+  atomic_store_bool(&connection->display_first_frame, true);
 }
 
 /**
@@ -291,10 +284,10 @@ void display_reset_for_new_connection() {
  *
  * @ingroup client_display
  */
-void display_disable_logging_for_first_frame() {
+void display_disable_logging_for_first_frame(client_connection_t *connection) {
   // Atomically check if this is the first frame and mark as not-first
   // Avoids TOCTOU race where multiple threads could both think they're first
-  bool was_first_frame = atomic_exchange_bool(&g_is_first_frame_of_connection, false);
+  bool was_first_frame = atomic_exchange_bool(&connection->display_first_frame, false);
 
   if (was_first_frame) {
     // Disable terminal logging before clearing display and rendering first frame
@@ -317,7 +310,9 @@ void display_disable_logging_for_first_frame() {
  *
  * @ingroup client_display
  */
-void display_render_frame(const char *frame_data) {
+void display_render_frame(client_connection_t *connection, const char *frame_data) {
+  if (!connection->display_context)
+    return;
   if (!frame_data) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Attempted to render NULL frame data");
     return;
@@ -325,24 +320,24 @@ void display_render_frame(const char *frame_data) {
 
   // Stop splash screen animation on first frame
   // This must be called BEFORE any frame rendering to prevent splash/frame flickering
-  display_disable_logging_for_first_frame();
+  display_disable_logging_for_first_frame(connection);
 
   // Render help screen if active (suppresses frame rendering)
-  if (keyboard_help_is_active(g_display_ctx)) {
-    keyboard_help_render(g_display_ctx);
+  if (keyboard_help_is_active(connection->display_context)) {
+    keyboard_help_render(connection->display_context);
 
     // Still poll keyboard for interactive controls while help is visible
     if (g_keyboard_enabled) {
       keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
       if (key != KEY_NONE) {
-        session_handle_keyboard_input(g_display_capture_ctx, g_display_ctx, key);
+        session_handle_keyboard_input(connection->capture_context, connection->display_context, key);
       }
     }
     return; // Skip normal frame rendering
   }
 
   // Use session display library for frame rendering
-  session_display_render_frame(g_display_ctx, frame_data);
+  session_display_render_frame(connection->display_context, frame_data);
 
   // Poll for keyboard input and handle interactive controls
   // - If client mode has local media (--file/--url), pass capture context for full controls
@@ -351,7 +346,7 @@ void display_render_frame(const char *frame_data) {
   if (g_keyboard_enabled) {
     keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
     if (key != KEY_NONE) {
-      session_handle_keyboard_input(g_display_capture_ctx, g_display_ctx, key);
+      session_handle_keyboard_input(connection->capture_context, connection->display_context, key);
     }
   }
 }

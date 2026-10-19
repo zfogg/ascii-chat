@@ -47,61 +47,6 @@
 #include <ascii-chat/video/h265/encoder.h>
 
 /**
- * @brief Global crypto handshake context for this client connection
- *
- * Stores the cryptographic state for secure communication with the server.
- * Initialized once per client execution and cleaned up on shutdown.
- * Thread-safe for use across multiple client threads.
- */
-extern crypto_handshake_context_t g_crypto_ctx;
-
-/**
- * @brief Global compressed video encoder context for client video streaming
- *
- * Encodes captured RGB frames to HEVC or H.264 before transmission.
- * Created lazily and used by the capture thread.
- * Set to NULL during shutdown to prevent use-after-free.
- */
-extern h265_encoder_t *volatile g_video_encoder;
-
-/**
- * @brief Global client worker thread pool
- *
- * Manages all client worker threads including:
- * - Data reception thread (protocol.c)
- * - Webcam capture thread (capture.c)
- * - Ping/keepalive thread (keepalive.c)
- * - Audio capture thread (audio.c)
- * - Audio sender thread (audio.c)
- *
- * This pool is initialized in client_main() and accessible from all
- * client modules for spawning and managing worker threads.
- */
-extern thread_pool_t *g_client_worker_pool;
-
-/**
- * @brief Global client application context
- *
- * Central state management structure for the client, containing both
- * network and application-layer state.
- *
- * This instance provides:
- * - Connection state management via active_transport (TCP or WebSocket)
- * - Audio queue management for async audio streaming
- * - Thread handles for worker threads (data reception, capture, ping, audio)
- * - Display state and terminal capability tracking
- * - Crypto handshake context for encrypted connections
- * - Protocol state (client ID, server initialization status)
- *
- * Initialized by app_client_create() in client_main().
- * Destroyed by app_client_destroy() at cleanup.
- *
- * All client modules (protocol.c, audio.c, capture.c, display.c)
- * should use this instance instead of accessing global connection state.
- */
-extern app_client_t *g_client;
-
-/**
  * @brief Global WebRTC peer manager for P2P connections
  *
  * Manages WebRTC peer connections for ACDS session participants.

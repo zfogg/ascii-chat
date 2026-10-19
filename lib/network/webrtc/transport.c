@@ -724,6 +724,19 @@ static bool webrtc_has_pending_data(acip_transport_t *transport) {
   return pending;
 }
 
+static void webrtc_interrupt(acip_transport_t *transport) {
+  webrtc_transport_data_t *wrtc = transport->impl_data;
+  /* Publish terminal state before waking readers. The owner retains peer handles
+   * and callback contexts until all media workers have joined. */
+  mutex_lock(&wrtc->queue_mutex);
+  mutex_lock(&wrtc->state_mutex);
+  wrtc->is_connected = false;
+  wrtc->data_channel_closed = true;
+  mutex_unlock(&wrtc->state_mutex);
+  cond_broadcast(&wrtc->queue_cond);
+  mutex_unlock(&wrtc->queue_mutex);
+}
+
 static size_t webrtc_queued_bytes(acip_transport_t *transport) {
   webrtc_transport_data_t *wrtc = transport->impl_data;
   size_t bytes = 0;
@@ -740,6 +753,7 @@ static const acip_transport_methods_t webrtc_methods = {
     .reserved_bytes = ACIP_OUTBOUND_SCTP_RESERVE,
     .recv = webrtc_recv,
     .close = webrtc_close,
+    .interrupt = webrtc_interrupt,
     .get_type = webrtc_get_type,
     .get_socket = webrtc_get_socket,
     .is_connected = webrtc_is_connected,

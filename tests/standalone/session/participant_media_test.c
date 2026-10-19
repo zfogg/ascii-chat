@@ -166,6 +166,11 @@ static void destroy_transport_impl(acip_transport_t *transport) {
   clean();
   transports_destroyed++;
 }
+static void *destroy_from_foreign_thread(void *context) {
+  session_participant_destroy(context);
+  return NULL;
+}
+
 int main(void) {
   log_set_terminal_output(true);
   CHECK(socket_init() == ASCIICHAT_OK);
@@ -177,6 +182,16 @@ int main(void) {
   acip_transport_methods_t methods = {.send = test_transport_send, .is_connected = connected};
   acip_transport_t transport = {.methods = &methods};
   session_participant_config_t config = {.enable_video = true, .enable_audio = true};
+  // Refusing cleanup on another thread must retain even a workerless owner.
+  session_participant_t *retained = session_participant_create(&config);
+  CHECK(session_participant_set_transport(retained, &transport, SESSION_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  asciichat_thread_t foreign;
+  CHECK(asciichat_thread_create(&foreign, "foreign_destroy", destroy_from_foreign_thread, retained) == ASCIICHAT_OK);
+  CHECK(asciichat_thread_join(&foreign, NULL) == ASCIICHAT_OK);
+  CHECK(retained->initialized && session_participant_get_transport(retained) == &transport);
+  CHECK(atomic_load_int(&retained->connection.state) == SESSION_CONNECTION_STOPPING);
+  session_participant_destroy(retained);
+  clean();
   CHECK(session_participant_start_video(NULL) == ERROR_INVALID_PARAM);
   session_participant_destroy(NULL);
   for (fail_stage = 1; fail_stage <= 6; fail_stage++) {

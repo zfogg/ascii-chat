@@ -28,12 +28,13 @@
 // Client Receive (from server)
 // =============================================================================
 
-asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
-                                                   const acip_client_callbacks_t *callbacks) {
-  if (!transport || !callbacks) {
-    log_error("[ACIP_RECV] ❌ INVALID_PARAMS: transport=%p, callbacks=%p", (void *)transport, (void *)callbacks);
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
+asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet_envelope_t *out) {
+  if (!transport || !out) {
+    log_error("[ACIP_RECV] ❌ INVALID_PARAMS: transport=%p, output=%p", (void *)transport, (void *)out);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or packet output");
   }
+
+  *out = (packet_envelope_t){0};
 
   log_debug("[ACIP_RECV] 📥 RECV_START: transport=%p, checking connection state", (void *)transport);
 
@@ -45,7 +46,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
 
   log_debug("[ACIP_RECV] ✅ CONNECTED: transport ready, checking transport type");
 
-  packet_envelope_t envelope;
+  packet_envelope_t envelope = {0};
   bool enforce_encryption = (transport->crypto_ctx != NULL);
   log_debug("[ACIP_RECV] 🔐 CRYPTO_MODE: enforce_encryption=%s", enforce_encryption ? "yes" : "no");
 
@@ -68,6 +69,8 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
       stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
       log_error("[ACIP_RECV] ❌ RECV_FAILED: error code %d", recv_result);
     }
+    if (allocated_buffer)
+      buffer_release(allocated_buffer);
     return recv_result;
   }
 
@@ -115,29 +118,21 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
     }
   }
 
-  // Dispatch packet to appropriate ACIP handler
-  log_debug("[ACIP_RECV] 🎯 DISPATCH_START: type=%u (0x%04x), data_len=%u, callbacks=%p", envelope.type, envelope.type,
-            envelope.len, (void *)callbacks);
-  asciichat_error_t dispatch_result =
-      acip_handle_client_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
+  *out = envelope;
+  return ASCIICHAT_OK;
+}
 
-  if (dispatch_result != ASCIICHAT_OK) {
-    log_error("[ACIP_RECV] ❌ DISPATCH_FAILED: type=%u, error=%d", envelope.type, dispatch_result);
-  } else {
-    log_debug("[ACIP_RECV] ✅ DISPATCH_OK: type=%u (0x%04x) handled by callbacks", envelope.type, envelope.type);
-  }
-
-  // Always free the allocated buffer (even if handler failed)
-  log_debug("[ACIP_RECV] 🗑️  CLEANUP: freeing buffer %p (size=%zu)", envelope.allocated_buffer, envelope.allocated_size);
-  if (envelope.allocated_buffer) {
+asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
+                                                   const acip_client_callbacks_t *callbacks) {
+  if (!callbacks)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing client packet callbacks");
+  packet_envelope_t envelope = {0};
+  asciichat_error_t result = acip_client_receive_packet(transport, &envelope);
+  if (result == ASCIICHAT_OK)
+    result = acip_handle_client_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
+  if (envelope.allocated_buffer)
     buffer_release(envelope.allocated_buffer);
-  }
-
-  log_debug("[ACIP_RECV] ✅ RECV_COMPLETE: type=%u, result=%d", envelope.type,
-            dispatch_result != ASCIICHAT_OK ? -1 : 0);
-
-  // Return handler result
-  return dispatch_result;
+  return result;
 }
 
 // =============================================================================
