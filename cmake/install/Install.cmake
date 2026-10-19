@@ -344,6 +344,8 @@ endif()
 
 # Install discoverable, relocatable CMake configs for both public package names.
 include(CMakePackageConfigHelpers)
+set(ASCIICHAT_SDK_RUNTIME_PATHS "${CMAKE_BUILD_RPATH}")
+list(REMOVE_ITEM ASCIICHAT_SDK_RUNTIME_PATHS "${CMAKE_BINARY_DIR}" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 configure_package_config_file(
     "${CMAKE_SOURCE_DIR}/lib/cmake/libasciichat.cmake.in"
     "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config.cmake"

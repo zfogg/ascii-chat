@@ -138,7 +138,8 @@ if("static" IN_LIST _asciichat_components AND ascii-chat_static_FOUND AND NOT TA
     endif()
     if(APPLE)
         # Homebrew media libraries can use the selected LLVM libc++ runtime.
-        foreach(_runtime_path IN ITEMS "@LLVM_RPATH_CXX@" "@LLVM_RPATH_UNWIND@")
+        set(_runtime_paths "@ASCIICHAT_SDK_RUNTIME_PATHS@")
+        foreach(_runtime_path IN LISTS _runtime_paths)
             if(_runtime_path AND IS_DIRECTORY "${_runtime_path}")
                 set_property(TARGET ascii-chat::static APPEND PROPERTY INTERFACE_LINK_OPTIONS "LINKER:-rpath,${_runtime_path}")
             endif()
