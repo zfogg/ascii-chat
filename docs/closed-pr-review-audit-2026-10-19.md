@@ -71,5 +71,6 @@ Additional findings in review summaries:
 - #518: the newer runtime-settings browser regression directly checks the acknowledged matrix_rain value; its acceptance coverage supersedes the older URL-only check.
 - #505: remove the second CRC pass after the same WebRTC packet was already verified.
 - #527/#491 validation: preserve C observer notifications across intervening snapshot reads and acknowledge observed settings before React echoes them back.
+- #527/#491 validation: query font data explicitly without changing animation options; asynchronous renderer recreation must not restore an obsolete Matrix selection.
 
 Validation results are recorded in the accompanying PR description.

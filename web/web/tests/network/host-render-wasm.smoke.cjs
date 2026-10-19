@@ -47,6 +47,26 @@ const path = require("node:path");
       m.stringToUTF8(args, ptr, args.length + 1);
       if (m._client_init_with_args(ptr)) throw new Error("client init failed");
       m._free(ptr);
+      // Measuring an old Matrix renderer must not reset newer C preferences.
+      const selection = '{"waveform":true}';
+      const selectionPtr = m._malloc(selection.length + 1);
+      m.stringToUTF8(selection, selectionPtr, selection.length + 1);
+      if (m._wasm_options_patch(selectionPtr, -1))
+        throw new Error("waveform selection failed");
+      m._free(selectionPtr);
+      const revision = m._wasm_options_revision();
+      const normalFont = m._get_font_default_ptr(1);
+      const matrixFont = m._get_font_default_ptr(2);
+      if (
+        !normalFont ||
+        !matrixFont ||
+        normalFont === matrixFont ||
+        !m._get_font_default_size(1) ||
+        !m._get_font_default_size(2) ||
+        m._get_font_default_ptr() !== normalFont ||
+        m._wasm_options_revision() !== revision
+      )
+        throw new Error("font selection changed engine preferences");
       if (m._browser_host_create()) throw new Error("host create failed");
       const ids = [m._browser_host_add_client(), m._browser_host_add_client()];
       if (m._browser_host_set_local_client(ids[0]))
