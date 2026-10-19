@@ -97,12 +97,13 @@ if(DEFINED EMSCRIPTEN)
     if(CMAKE_HOST_WIN32)
         set(PCRE2_CONFIGURE_COMMAND "${ASCIICHAT_BASH_EXECUTABLE}" <SOURCE_DIR>/configure)
         set(PCRE2_WASM_CC "CC=emcc.bat")
-        set(PCRE2_WASM_MAKE_SHELL "SHELL=C:/Progra~1/Git/usr/bin/sh.exe")
     else()
         set(PCRE2_CONFIGURE_COMMAND <SOURCE_DIR>/configure)
         set(PCRE2_WASM_CC "CC=emcc")
-        set(PCRE2_WASM_MAKE_SHELL)
     endif()
+
+    include(${CMAKE_CURRENT_LIST_DIR}/../utils/WasmAutotools.cmake)
+    asciichat_wasm_make_commands(PCRE2_WASM_BUILD_COMMAND PCRE2_WASM_INSTALL_COMMAND)
 
     include(ExternalProject)
     include(FetchContent)
@@ -111,6 +112,8 @@ if(DEFINED EMSCRIPTEN)
         URL_HASH SHA256=409c443549b13b216da40049850a32f3e6c57d4224ab11553ab5a786878a158e
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/pcre2-src"
+        # Keep PCRE2's CMake project from deleting the Autotools-generated headers.
+        SOURCE_SUBDIR asciichat-autotools
         UPDATE_DISCONNECTED ON
     )
     FetchContent_MakeAvailable(pcre2-src)
@@ -141,8 +144,8 @@ if(DEFINED EMSCRIPTEN)
                 ${PCRE2_WASM_CC}
                 CFLAGS=-O2\ -fPIC
                 LDFLAGS=--no-entry
-            BUILD_COMMAND make -j ${PCRE2_WASM_MAKE_SHELL}
-            INSTALL_COMMAND make ${PCRE2_WASM_MAKE_SHELL} install
+            BUILD_COMMAND ${PCRE2_WASM_BUILD_COMMAND}
+            INSTALL_COMMAND ${PCRE2_WASM_INSTALL_COMMAND}
             BUILD_BYPRODUCTS ${PCRE2_PREFIX}/lib/libpcre2-8.a
             LOG_CONFIGURE TRUE
             LOG_BUILD TRUE

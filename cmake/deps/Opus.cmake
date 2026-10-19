@@ -36,6 +36,7 @@ FetchContent_Declare(opus-src
     URL_HASH SHA256=65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/opus-src"
+    SOURCE_SUBDIR asciichat-autotools
     UPDATE_DISCONNECTED ON
 )
 
@@ -46,12 +47,13 @@ if(DEFINED EMSCRIPTEN)
     if(CMAKE_HOST_WIN32)
         set(OPUS_CONFIGURE_COMMAND "${ASCIICHAT_BASH_EXECUTABLE}" <SOURCE_DIR>/configure)
         set(OPUS_WASM_CC "CC=emcc.bat")
-        set(OPUS_WASM_MAKE_SHELL "SHELL=C:/Progra~1/Git/usr/bin/sh.exe")
     else()
         set(OPUS_CONFIGURE_COMMAND <SOURCE_DIR>/configure)
         set(OPUS_WASM_CC "CC=emcc")
-        set(OPUS_WASM_MAKE_SHELL)
     endif()
+
+    include(${CMAKE_CURRENT_LIST_DIR}/../utils/WasmAutotools.cmake)
+    asciichat_wasm_make_commands(OPUS_WASM_BUILD_COMMAND OPUS_WASM_INSTALL_COMMAND)
 
     include(ExternalProject)
     FetchContent_MakeAvailable(opus-src)
@@ -82,8 +84,8 @@ if(DEFINED EMSCRIPTEN)
                 ${OPUS_WASM_CC}
                 CFLAGS=-O2\ -fPIC
                 LDFLAGS=--no-entry
-            BUILD_COMMAND make -j ${OPUS_WASM_MAKE_SHELL}
-            INSTALL_COMMAND make ${OPUS_WASM_MAKE_SHELL} install
+            BUILD_COMMAND ${OPUS_WASM_BUILD_COMMAND}
+            INSTALL_COMMAND ${OPUS_WASM_INSTALL_COMMAND}
             BUILD_BYPRODUCTS ${OPUS_PREFIX}/lib/libopus.a
             LOG_CONFIGURE TRUE
             LOG_BUILD TRUE
