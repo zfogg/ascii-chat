@@ -8,7 +8,6 @@
 
 #include <ascii-chat/options/registry/common.h>
 
-
 // clang-format off
 const registry_entry_t g_debug_entries[] = {
 #ifndef NDEBUG

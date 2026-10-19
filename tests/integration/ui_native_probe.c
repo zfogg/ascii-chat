@@ -48,8 +48,8 @@ int main(int argc, char **argv) {
   if (!strcmp(kind, "capture-render")) {
     log_io_t capture = log_io_start();
     const char frame[] = "CAPTURE FRAME";
-    ok = ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){.cols = 20, .rows = 10},
-                               frame, sizeof(frame) - 1) == ASCIICHAT_OK;
+    ok = ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){.cols = 20, .rows = 10}, frame,
+                               sizeof(frame) - 1) == ASCIICHAT_OK;
     ui_controller_redraw();
     platform_sleep_ns(5 * NS_PER_SEC_INT);
     log_io_stop(capture, "capture-render");

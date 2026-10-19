@@ -158,9 +158,9 @@ typedef struct {
   size_t num_identity_keys;                        ///< Number of identity keys loaded
 
   // ACDS connection
-  acip_transport_t *acds_transport; ///< Persistent transport for ACDS communication
+  acip_transport_t *acds_transport;          ///< Persistent transport for ACDS communication
   crypto_handshake_context_t acds_handshake; ///< Owns signaling keys until disconnect
-  uint64_t last_acds_keepalive_ns;  ///< Last keepalive sent to the discovery service
+  uint64_t last_acds_keepalive_ns;           ///< Last keepalive sent to the discovery service
   char acds_address[64];
   uint16_t acds_port;
   char acds_url[512]; ///< ACDS WebSocket URL (ws:// or wss://, if set uses WebSocket instead of TCP)
@@ -221,7 +221,7 @@ typedef struct {
   // Role contexts (only one is active at a time)
   session_host_t *host_ctx;
   session_participant_t *participant_ctx;
-  acip_transport_t *host_control_transport; ///< Host control connection retained during WebRTC media.
+  acip_transport_t *host_control_transport;             ///< Host control connection retained during WebRTC media.
   session_transport_ownership_t host_control_ownership; ///< Ownership transferred with the control connection.
 
   // Callbacks for state changes

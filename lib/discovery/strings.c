@@ -189,8 +189,8 @@ static void session_regex_init_once(void) {
 
   // JIT is an optional optimization, including for browser builds.
   uint32_t jit_available = 0;
-  if (!SAFE_GETENV("ASCII_CHAT_PCRE2_DISABLE_JIT") &&
-      pcre2_config(PCRE2_CONFIG_JIT, &jit_available) == 0 && jit_available) {
+  if (!SAFE_GETENV("ASCII_CHAT_PCRE2_DISABLE_JIT") && pcre2_config(PCRE2_CONFIG_JIT, &jit_available) == 0 &&
+      jit_available) {
     int jit_ret = pcre2_jit_compile(g_session_format_regex, PCRE2_JIT_COMPLETE);
     if (jit_ret < 0) {
       log_debug("Session string regex JIT compilation failed (code %d), falling back to interpreter", jit_ret);

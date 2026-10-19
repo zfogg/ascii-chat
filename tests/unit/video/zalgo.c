@@ -102,14 +102,17 @@ Test(zalgo, deterministic_bounded_and_increasing) {
   }
 }
 
-
 Test(zalgo, raster_levels_are_distinct_and_disable_restores_frame) {
-  term_renderer_config_t cfg = {.cols = 80, .rows = 24, .font_size_pt = 12.0,
-                               .theme = TERM_RENDERER_THEME_DARK,
-                               .font_data = g_font_default, .font_data_size = g_font_default_size};
+  term_renderer_config_t cfg = {.cols = 80,
+                                .rows = 24,
+                                .font_size_pt = 12.0,
+                                .theme = TERM_RENDERER_THEME_DARK,
+                                .font_data = g_font_default,
+                                .font_data_size = g_font_default_size};
   terminal_renderer_t *renderer = NULL;
   cr_assert_eq(term_renderer_create(&cfg, &renderer), ASCIICHAT_OK);
-  const char *frame = "\x1b[0m\x1b[H\x1b[37m@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
+  const char *frame =
+      "\x1b[0m\x1b[H\x1b[37m@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
   cr_assert_eq(term_renderer_feed(renderer, frame, strlen(frame)), ASCIICHAT_OK);
   size_t bytes = (size_t)term_renderer_pitch(renderer) * term_renderer_height_px(renderer);
   uint8_t *baseline = SAFE_MALLOC(bytes, uint8_t *);

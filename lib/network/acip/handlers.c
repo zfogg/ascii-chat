@@ -734,15 +734,14 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unhandled server packet type: %d", type);
   }
 
-  log_dev("HANDLER_DISPATCH: type=%d (%s), handler_idx=%d, payload=%zu bytes",
-           type, g_packet_type_name(type), idx, payload_len);
+  log_dev("HANDLER_DISPATCH: type=%d (%s), handler_idx=%d, payload=%zu bytes", type, g_packet_type_name(type), idx,
+          payload_len);
   asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
 
   if (result != ASCIICHAT_OK) {
     log_error("❌ [HANDLER_ERROR] Handler failed: type=%d (%s), result=%d", type, g_packet_type_name(type), result);
   } else {
-    log_dev("HANDLER_COMPLETE: type=%d (%s), payload=%zu bytes", type,
-             g_packet_type_name(type), payload_len);
+    log_dev("HANDLER_COMPLETE: type=%d (%s), payload=%zu bytes", type, g_packet_type_name(type), payload_len);
   }
 
   return result;
@@ -761,8 +760,7 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
     return ASCIICHAT_OK;
   }
 
-  log_dev("ACIP_IMAGE_FRAME_HANDLER: Callback registered (header=%zu)",
-           sizeof(image_frame_packet_t));
+  log_dev("ACIP_IMAGE_FRAME_HANDLER: Callback registered (header=%zu)", sizeof(image_frame_packet_t));
 
   if (payload_len < sizeof(uint32_t) * 2) {
     log_error("ACIP_IMAGE_FRAME_HANDLER: Payload too small: %zu bytes (need at least 8)", payload_len);

@@ -1733,8 +1733,8 @@ static void server_init_webrtc(void) {
                                          strcmp(server_address, "0.0.0.0") != 0 && strcmp(server_address, "::") != 0;
     webrtc_peer_manager_config_t pm_config = {
         .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
-        // Honor an explicitly selected server interface for ICE. With a
-        // wildcard bind, let libdatachannel gather candidates on all interfaces.
+                                     // Honor an explicitly selected server interface for ICE. With a
+                                     // wildcard bind, let libdatachannel gather candidates on all interfaces.
         .bind_address = bind_webrtc_to_server_address ? server_address : NULL,
         .stun_servers = stun_servers,
         .stun_count = stun_count,
@@ -1744,8 +1744,7 @@ static void server_init_webrtc(void) {
         .turn_username = turn_auth_username,
         .turn_credential = turn_auth_credential,
         .on_transport_ready = on_webrtc_transport_ready,
-        .user_data = &g_server_ctx
-    };
+        .user_data = &g_server_ctx};
 
     // Configure signaling callbacks for relaying SDP/ICE via ACDS
     webrtc_signaling_callbacks_t signaling_callbacks = {

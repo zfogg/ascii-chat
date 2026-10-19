@@ -82,8 +82,7 @@ asciichat_error_t rwlock_tryrdlock(rwlock_t *lock, bool *acquired) {
   if (err == EBUSY || err == EAGAIN)
     return ASCIICHAT_OK;
   if (err != 0)
-    return SET_ERRNO(ERROR_THREAD,
-                     "Cannot try shared rwlock: error %d", err);
+    return SET_ERRNO(ERROR_THREAD, "Cannot try shared rwlock: error %d", err);
   rwlock_on_rdlock(lock);
   return ASCIICHAT_OK;
 }

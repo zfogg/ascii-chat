@@ -129,8 +129,7 @@ static pcre2_code *crypto_regex_get_gpg_keygrip(void) {
   return asciichat_pcre2_singleton_get_code(g_gpg_keygrip_regex);
 }
 
-static int crypto_regex_match(pcre2_code *regex, PCRE2_SPTR subject, PCRE2_SIZE length,
-                              pcre2_match_data *match_data) {
+static int crypto_regex_match(pcre2_code *regex, PCRE2_SPTR subject, PCRE2_SIZE length, pcre2_match_data *match_data) {
   int result = pcre2_jit_match(regex, subject, length, 0, 0, match_data, NULL);
   if (result == PCRE2_ERROR_JIT_BADOPTION) {
     result = pcre2_match(regex, subject, length, 0, 0, match_data, NULL);

@@ -178,7 +178,7 @@ static asciichat_error_t discovery_play_samples(const float *samples, size_t cou
 }
 
 static asciichat_error_t discovery_decode_opus(const void *data, size_t length, float *samples, size_t capacity,
-                                              size_t *decoded, void *context) {
+                                               size_t *decoded, void *context) {
   discovery_video_receiver_t *receiver = context;
   *decoded = 0;
   if (!receiver->audio)
@@ -553,8 +553,10 @@ role_dispatch:
           .transport = transport, .display = display, .running = {0}, .result = ASCIICHAT_OK};
       session_protocol_init(&receiver.protocol, transport,
                             (session_protocol_media_t){.on_frame = discovery_present_frame,
-                                .on_samples = discovery_play_samples, .decode_opus = discovery_decode_opus,
-                                .context = &receiver}, (acip_client_callbacks_t){0});
+                                                       .on_samples = discovery_play_samples,
+                                                       .decode_opus = discovery_decode_opus,
+                                                       .context = &receiver},
+                            (acip_client_callbacks_t){0});
       audio_context_t audio = {0};
       session_connection_init(
           &receiver.connection,

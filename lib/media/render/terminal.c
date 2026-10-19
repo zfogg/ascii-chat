@@ -144,8 +144,7 @@ static FT_Bitmap *glyph_cache_get(terminal_renderer_t *r, FT_Face face, uint32_t
   default:
     return NULL;
   }
-  if (source_pitch == 0 || source_pitch < minimum_source_pitch ||
-      src_bitmap->rows > SIZE_MAX / source_pitch ||
+  if (source_pitch == 0 || source_pitch < minimum_source_pitch || src_bitmap->rows > SIZE_MAX / source_pitch ||
       src_bitmap->rows > SIZE_MAX / (size_t)src_bitmap->width) {
     return NULL;
   }
@@ -259,11 +258,14 @@ static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, ui
   // Clip once, outside the pixel loop, so WASM can vectorize alpha blending.
   int first_col = px < 0 ? -px : 0;
   int last_col = (int)bm->width;
-  if (px + last_col > r->width_px) last_col = r->width_px - px;
+  if (px + last_col > r->width_px)
+    last_col = r->width_px - px;
   int first_row = py < 0 ? -py : 0;
   int last_row = (int)bm->rows;
-  if (py + last_row > r->height_px) last_row = r->height_px - py;
-  if (first_col >= last_col || first_row >= last_row) return;
+  if (py + last_row > r->height_px)
+    last_row = r->height_px - py;
+  if (first_col >= last_col || first_row >= last_row)
+    return;
   for (int row = first_row; row < last_row; row++) {
     const uint8_t *alpha = bm->buffer + row * bm->pitch + first_col;
     uint8_t *line = r->framebuffer + (py + row) * r->pitch + (px + first_col) * 4;
@@ -273,10 +275,14 @@ static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, ui
         // A small local bloom softens pale rain heads without blurring the body.
         int x = first_col + col;
         unsigned glow = 0;
-        if (x > 0) glow += bm->buffer[row * bm->pitch + x - 1];
-        if (x + 1 < (int)bm->width) glow += bm->buffer[row * bm->pitch + x + 1];
-        if (row > 0) glow += bm->buffer[(row - 1) * bm->pitch + x];
-        if (row + 1 < (int)bm->rows) glow += bm->buffer[(row + 1) * bm->pitch + x];
+        if (x > 0)
+          glow += bm->buffer[row * bm->pitch + x - 1];
+        if (x + 1 < (int)bm->width)
+          glow += bm->buffer[row * bm->pitch + x + 1];
+        if (row > 0)
+          glow += bm->buffer[(row - 1) * bm->pitch + x];
+        if (row + 1 < (int)bm->rows)
+          glow += bm->buffer[(row + 1) * bm->pitch + x];
         a += (255 - a) * glow / (255 * 24);
       }
       uint8_t *dst = line + col * 4;
@@ -622,7 +628,8 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       fixed_frame[fixed_pos - 1] = '\r';
       fixed_frame[fixed_pos++] = '\n';
     }
-    if (frame[i] == '\n') frame_row++;
+    if (frame[i] == '\n')
+      frame_row++;
   }
 
   vterm_input_write(r->vt, fixed_frame, fixed_pos);
@@ -676,9 +683,8 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
         if (!indexed_rgb_valid[index]) {
           VTermColor foreground = cell.fg;
           vterm_screen_convert_color_to_rgb(r->vts, &foreground);
-          indexed_rgb[index] = ((uint32_t)foreground.rgb.red << 16) |
-                               ((uint32_t)foreground.rgb.green << 8) |
-                               foreground.rgb.blue;
+          indexed_rgb[index] =
+              ((uint32_t)foreground.rgb.red << 16) | ((uint32_t)foreground.rgb.green << 8) | foreground.rgb.blue;
           indexed_rgb_valid[index] = true;
         }
         fr = (uint8_t)(indexed_rgb[index] >> 16);
@@ -699,9 +705,8 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
         if (!indexed_rgb_valid[index]) {
           VTermColor background = cell.bg;
           vterm_screen_convert_color_to_rgb(r->vts, &background);
-          indexed_rgb[index] = ((uint32_t)background.rgb.red << 16) |
-                               ((uint32_t)background.rgb.green << 8) |
-                               background.rgb.blue;
+          indexed_rgb[index] =
+              ((uint32_t)background.rgb.red << 16) | ((uint32_t)background.rgb.green << 8) | background.rgb.blue;
           indexed_rgb_valid[index] = true;
         }
         br = (uint8_t)(indexed_rgb[index] >> 16);
@@ -719,13 +724,12 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       uint32_t cell_hash = cell.chars[0] * 2654435761u ^ foreground * 2246822519u ^ background;
       cell_hash ^= cell_hash >> 16;
       rendered_cell_t *cached_cell = &r->cells[cell_hash % CELL_CACHE_SIZE];
-      bool contained = px >= 0 && py >= 0 && px + r->cell_w <= r->width_px &&
-                       py + r->cell_h <= r->height_px;
+      bool contained = px >= 0 && py >= 0 && px + r->cell_w <= r->width_px && py + r->cell_h <= r->height_px;
       if (contained && cached_cell->valid && cached_cell->character == cell.chars[0] &&
           cached_cell->foreground == foreground && cached_cell->background == background) {
         for (int dy = 0; dy < r->cell_h; dy++) {
-          memcpy(r->framebuffer + (py + dy) * r->pitch + px * 4,
-                 cached_cell->pixels + dy * r->cell_w * 4, (size_t)r->cell_w * 4);
+          memcpy(r->framebuffer + (py + dy) * r->pitch + px * 4, cached_cell->pixels + dy * r->cell_w * 4,
+                 (size_t)r->cell_w * 4);
         }
         if (cell.chars[0] && cell.chars[0] != ' ') {
           occupied_cell_count++;
@@ -736,8 +740,8 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       // Block elements represent cell geometry, independent of font bearings and line spacing.
       bool block = cell.chars[0] == 0x2580 || cell.chars[0] == 0x2584 || cell.chars[0] == 0x2588;
       for (int dy = 0; dy < r->cell_h; dy++) {
-        bool block_foreground = block && (cell.chars[0] == 0x2588 ||
-            (cell.chars[0] == 0x2580 ? dy < r->cell_h / 2 : dy >= r->cell_h / 2));
+        bool block_foreground =
+            block && (cell.chars[0] == 0x2588 || (cell.chars[0] == 0x2580 ? dy < r->cell_h / 2 : dy >= r->cell_h / 2));
         int y = py + dy;
         if (y < 0 || y >= r->height_px)
           continue;
@@ -786,8 +790,8 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
           cached_cell->pixels = SAFE_MALLOC((size_t)r->cell_w * r->cell_h * 4, uint8_t *);
         if (cached_cell->pixels) {
           for (int dy = 0; dy < r->cell_h; dy++) {
-            memcpy(cached_cell->pixels + dy * r->cell_w * 4,
-                   r->framebuffer + (py + dy) * r->pitch + px * 4, (size_t)r->cell_w * 4);
+            memcpy(cached_cell->pixels + dy * r->cell_w * 4, r->framebuffer + (py + dy) * r->pitch + px * 4,
+                   (size_t)r->cell_w * 4);
           }
           cached_cell->character = cell.chars[0];
           cached_cell->foreground = foreground;
@@ -840,6 +844,7 @@ void term_renderer_destroy(terminal_renderer_t *r) {
   FT_Done_FreeType(r->ft_lib);
   SAFE_FREE(r->framebuffer);
   glyph_cache_destroy(&r->glyph_cache);
-  for (size_t i = 0; i < CELL_CACHE_SIZE; i++) SAFE_FREE(r->cells[i].pixels);
+  for (size_t i = 0; i < CELL_CACHE_SIZE; i++)
+    SAFE_FREE(r->cells[i].pixels);
   SAFE_FREE(r);
 }

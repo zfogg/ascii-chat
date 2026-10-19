@@ -133,7 +133,6 @@ float fps_counter_get_at(fps_counter_t *counter, uint64_t now) {
   return (float)(counter->count - 1) * 1e9f / (float)elapsed_ns;
 }
 
-
 bool fps_counter_set_visible(fps_counter_t *counter, bool visible) {
   if (!counter)
     return false;
@@ -189,9 +188,8 @@ void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redraw
   }
   if (now - counter->report_start >= 3 * NS_PER_SEC_INT) {
     if (counter->report_frames)
-      log_debug("FPS_OUTPUT: frames=%llu elapsed_ms=%.3f write_ms=%.3f",
-                (unsigned long long)counter->report_frames, (double)(now - counter->report_start) / NS_PER_MS_INT,
-                (double)counter->report_writes / NS_PER_MS_INT);
+      log_debug("FPS_OUTPUT: frames=%llu elapsed_ms=%.3f write_ms=%.3f", (unsigned long long)counter->report_frames,
+                (double)(now - counter->report_start) / NS_PER_MS_INT, (double)counter->report_writes / NS_PER_MS_INT);
     counter->report_start = now;
     counter->report_writes = counter->report_frames = 0;
   }
