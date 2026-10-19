@@ -68,6 +68,17 @@ typedef enum {
  * Connection Attempt Context
  * ============================================================================ */
 
+/* Per-attempt application hooks; no process-global connection binding. */
+typedef struct {
+  void (*set_ip)(void *context, const char *ip);
+  void (*set_port)(void *context, int port);
+  void (*set_mode)(void *context, uint8_t mode);
+  int (*init)(void *context);
+  asciichat_error_t (*handshake)(void *context, acip_transport_t *transport);
+  bool (*is_ready)(void *context);
+  const crypto_context_t *(*get_context)(void *context);
+} connection_attempt_ops_t;
+
 /**
  * @brief Context for connection attempts (TCP or WebSocket)
  *
@@ -80,6 +91,9 @@ typedef enum {
  * Created at client startup, persists across reconnection attempts.
  */
 typedef struct {
+  connection_attempt_ops_t ops;
+  void *context;
+
   // State Machine
   connection_state_t current_state;  ///< Current connection state
   connection_state_t previous_state; ///< Previous state (for debugging)

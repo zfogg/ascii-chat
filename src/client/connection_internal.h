@@ -1,5 +1,9 @@
 #pragma once
 #include "connection.h"
+#include "session/connection.h"
+#include "session/capture.h"
+#include "session/display.h"
+#include <ascii-chat/audio/audio.h>
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/atomic.h>
@@ -22,16 +26,14 @@ typedef struct {
 /** Ring buffer queue for async audio packets */
 #define AUDIO_SEND_QUEUE_SIZE 32
 
-typedef enum {
-  CLIENT_CONNECTION_STARTING,
-  CLIENT_CONNECTION_RUNNING,
-  CLIENT_CONNECTION_STOPPING,
-  CLIENT_CONNECTION_STOPPED,
-} client_connection_state_t;
-
 /* Mutable state belongs to one attempt. Application devices and UI outlive it. */
 struct client_connection {
   connection_attempt_context_t attempt;
+  // Application resources are borrowed explicitly by this connection.
+  session_capture_ctx_t *capture_context;
+  session_display_ctx_t *display_context;
+  audio_context_t *audio_context;
+  atomic_t display_first_frame;
   int receive_frame_count;
   fps_t frame_fps_tracker;
   bool frame_fps_tracker_initialized;
@@ -43,8 +45,7 @@ struct client_connection {
   uint64_t frame_last_debug_log_ns;
   bool frame_first_frame_rendered;
   bool send_mutex_initialized;
-  atomic_t state;
-  thread_id_t owner_thread;
+  session_connection_t lifecycle;
   bool audio_queue_mutex_initialized;
   bool audio_queue_cond_initialized;
   atomic_t stop_requested;

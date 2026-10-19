@@ -48,6 +48,7 @@
 
 #pragma once
 
+#include "connection.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -76,7 +77,7 @@
  *
  * @ingroup client_crypto
  */
-void client_crypto_set_mode(uint8_t mode);
+void client_crypto_set_mode(client_connection_t *connection, uint8_t mode);
 
 /**
  * @brief Initialize client crypto handshake
@@ -113,14 +114,14 @@ void client_crypto_set_mode(uint8_t mode);
  *
  * @see client_crypto_handshake "Perform actual handshake"
  */
-int client_crypto_init(void);
+int client_crypto_init(client_connection_t *connection);
 
 /**
  * Perform the client handshake on a connected transport.
  * @return ASCIICHAT_OK or a specific error with a pending causal chain.
  * The caller owns transport cleanup and the decision to terminate the session.
  */
-asciichat_error_t client_crypto_handshake(acip_transport_t *transport);
+asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_transport_t *transport);
 
 /**
  * @brief Check if crypto handshake is ready
@@ -129,7 +130,7 @@ asciichat_error_t client_crypto_handshake(acip_transport_t *transport);
  *
  * @ingroup client_crypto
  */
-bool crypto_client_is_ready(void);
+bool crypto_client_is_ready(client_connection_t *connection);
 
 /**
  * @brief Get crypto context for encryption/decryption
@@ -138,7 +139,7 @@ bool crypto_client_is_ready(void);
  *
  * @ingroup client_crypto
  */
-const crypto_context_t *crypto_client_get_context(void);
+const crypto_context_t *crypto_client_get_context(client_connection_t *connection);
 
 /**
  * @brief Encrypt a packet for transmission
@@ -152,8 +153,8 @@ const crypto_context_t *crypto_client_get_context(void);
  *
  * @ingroup client_crypto
  */
-int crypto_client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext,
-                                 size_t ciphertext_size, size_t *ciphertext_len);
+int crypto_client_encrypt_packet(client_connection_t *connection, const uint8_t *plaintext, size_t plaintext_len,
+                                 uint8_t *ciphertext, size_t ciphertext_size, size_t *ciphertext_len);
 
 /**
  * @brief Decrypt a received packet
@@ -167,15 +168,15 @@ int crypto_client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len,
  *
  * @ingroup client_crypto
  */
-int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext,
-                                 size_t plaintext_size, size_t *plaintext_len);
+int crypto_client_decrypt_packet(client_connection_t *connection, const uint8_t *ciphertext, size_t ciphertext_len,
+                                 uint8_t *plaintext, size_t plaintext_size, size_t *plaintext_len);
 
 /**
  * @brief Cleanup crypto client resources
  *
  * @ingroup client_crypto
  */
-void crypto_client_cleanup(void);
+void crypto_client_cleanup(client_connection_t *connection);
 
 /**
  * @brief Check if session rekeying should be triggered
@@ -184,7 +185,7 @@ void crypto_client_cleanup(void);
  *
  * @ingroup client_crypto
  */
-bool crypto_client_should_rekey(void);
+bool crypto_client_should_rekey(client_connection_t *connection);
 
 /**
  * @brief Initiate session rekeying (client-initiated)
@@ -193,7 +194,7 @@ bool crypto_client_should_rekey(void);
  *
  * @ingroup client_crypto
  */
-int crypto_client_initiate_rekey(void);
+int crypto_client_initiate_rekey(client_connection_t *connection);
 
 /**
  * @brief Process received REKEY_REQUEST packet from server
@@ -204,7 +205,7 @@ int crypto_client_initiate_rekey(void);
  *
  * @ingroup client_crypto
  */
-int crypto_client_process_rekey_request(const uint8_t *packet, size_t packet_len);
+int crypto_client_process_rekey_request(client_connection_t *connection, const uint8_t *packet, size_t packet_len);
 
 /**
  * @brief Send REKEY_RESPONSE packet to server
@@ -213,7 +214,7 @@ int crypto_client_process_rekey_request(const uint8_t *packet, size_t packet_len
  *
  * @ingroup client_crypto
  */
-int crypto_client_send_rekey_response(void);
+int crypto_client_send_rekey_response(client_connection_t *connection);
 
 /**
  * @brief Process received REKEY_RESPONSE packet from server
@@ -224,7 +225,7 @@ int crypto_client_send_rekey_response(void);
  *
  * @ingroup client_crypto
  */
-int crypto_client_process_rekey_response(const uint8_t *packet, size_t packet_len);
+int crypto_client_process_rekey_response(client_connection_t *connection, const uint8_t *packet, size_t packet_len);
 
 /**
  * @brief Send REKEY_COMPLETE packet to server and commit to new key
@@ -233,4 +234,4 @@ int crypto_client_process_rekey_response(const uint8_t *packet, size_t packet_le
  *
  * @ingroup client_crypto
  */
-int crypto_client_send_rekey_complete(void);
+int crypto_client_send_rekey_complete(client_connection_t *connection);

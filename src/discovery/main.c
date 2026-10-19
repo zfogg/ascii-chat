@@ -45,6 +45,7 @@
 #include "session/keyboard_handler.h"
 #include "session/client_like.h"
 #include "session/participant.h"
+#include "session/connection.h"
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/send.h>
@@ -71,6 +72,11 @@
  * ============================================================================ */
 
 typedef struct {
+  session_connection_t connection;
+  asciichat_thread_t receiver_thread;
+  asciichat_thread_t audio_thread;
+  bool receiver_started;
+  bool audio_started;
   acip_transport_t *transport;
   session_display_ctx_t *display;
   atomic_t running;
@@ -78,6 +84,40 @@ typedef struct {
   audio_context_t *audio;
   client_audio_pipeline_t *audio_pipeline;
 } discovery_video_receiver_t;
+
+static void discovery_media_interrupt(void *context) {
+  discovery_video_receiver_t *receiver = context;
+  atomic_store_bool(&receiver->running, false);
+  session_connection_interrupt_transport(receiver->transport);
+}
+
+static asciichat_error_t discovery_media_join(void *context) {
+  discovery_video_receiver_t *receiver = context;
+  if (receiver->receiver_started) {
+    asciichat_error_t result = asciichat_thread_join(&receiver->receiver_thread, NULL);
+    if (result != ASCIICHAT_OK)
+      return result;
+    receiver->receiver_started = false;
+  }
+  if (receiver->audio_started) {
+    asciichat_error_t result = asciichat_thread_join(&receiver->audio_thread, NULL);
+    if (result != ASCIICHAT_OK)
+      return result;
+    receiver->audio_started = false;
+  }
+  return ASCIICHAT_OK;
+}
+
+static void discovery_media_release(void *context) {
+  discovery_video_receiver_t *receiver = context;
+  if (receiver->audio) {
+    audio_destroy(receiver->audio);
+    receiver->audio = NULL;
+  }
+  client_audio_pipeline_destroy(receiver->audio_pipeline);
+  receiver->audio_pipeline = NULL;
+  log_info("DISCOVERY_MEDIA_RELEASED: workers=0");
+}
 
 static void *discovery_audio_send_thread(void *user_data) {
   discovery_video_receiver_t *ctx = user_data;
@@ -564,10 +604,15 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       discovery_video_receiver_t receiver = {
           .transport = transport, .display = display, .running = {0}, .result = ASCIICHAT_OK};
       audio_context_t audio = {0};
+      session_connection_init(
+          &receiver.connection,
+          (session_connection_ops_t){discovery_media_interrupt, discovery_media_join, discovery_media_release},
+          &receiver);
       if (enable_audio) {
         result = audio_init(&audio);
         if (result != ASCIICHAT_OK)
-          return result;
+          goto media_cleanup;
+        receiver.audio = &audio;
         media_source_t *local_source = (media_source_t *)session_capture_get_media_source(capture);
         bool has_media_audio = media_source_has_audio(local_source);
         audio.capture_media_source = local_source;
@@ -578,37 +623,34 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
         config.flags.jitter_buffer = false;
         receiver.audio_pipeline = client_audio_pipeline_create(&config);
         if (!receiver.audio_pipeline) {
-          audio_destroy(&audio);
-          return SET_ERRNO(ERROR_AUDIO, "Failed to create discovery audio pipeline");
+          result = SET_ERRNO(ERROR_AUDIO, "Failed to create discovery audio pipeline");
+          goto media_cleanup;
         }
         audio_set_pipeline(&audio, receiver.audio_pipeline);
         receiver.audio = &audio;
         result = audio_start_duplex(&audio);
         if (result != ASCIICHAT_OK) {
-          audio_destroy(&audio);
-          client_audio_pipeline_destroy(receiver.audio_pipeline);
-          return result;
+          goto media_cleanup;
         }
       }
-      asciichat_thread_t receiver_thread;
-      asciichat_thread_t audio_thread;
-      bool audio_thread_started = false;
       atomic_store_bool(&receiver.running, true);
-      result = asciichat_thread_create(&receiver_thread, "discovery_video_receive", discovery_video_receive_thread,
-                                       &receiver);
-      if (result != ASCIICHAT_OK) {
-        if (enable_audio) {
-          audio_destroy(&audio);
-          client_audio_pipeline_destroy(receiver.audio_pipeline);
-        }
-        return result;
-      }
+      result = asciichat_thread_create(&receiver.receiver_thread, "discovery_video_receive",
+                                       discovery_video_receive_thread, &receiver);
+      if (result != ASCIICHAT_OK)
+        goto media_cleanup;
+      receiver.receiver_started = true;
       if (enable_audio) {
-        result = asciichat_thread_create(&audio_thread, "discovery_audio_send", discovery_audio_send_thread, &receiver);
-        audio_thread_started = result == ASCIICHAT_OK;
-        if (!audio_thread_started)
+        result = asciichat_thread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread,
+                                         &receiver);
+        receiver.audio_started = result == ASCIICHAT_OK;
+        if (!receiver.audio_started)
           atomic_store_bool(&receiver.running, false);
       }
+      if (result != ASCIICHAT_OK)
+        goto media_cleanup;
+      result = session_connection_start(&receiver.connection);
+      if (result != ASCIICHAT_OK)
+        goto media_cleanup;
       while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport) &&
              atomic_load_bool(&receiver.running)) {
         keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
@@ -669,13 +711,12 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
         if (elapsed < interval)
           platform_sleep_ns(interval - elapsed);
       }
-      atomic_store_bool(&receiver.running, false);
-      asciichat_thread_join(&receiver_thread, NULL);
-      if (audio_thread_started)
-        asciichat_thread_join(&audio_thread, NULL);
-      if (enable_audio) {
-        audio_destroy(&audio);
-        client_audio_pipeline_destroy(receiver.audio_pipeline);
+    media_cleanup:
+      /* These workers borrow stack audio/display state. Retain it and retry a
+       * failed join before returning to the application/media cleanup. */
+      while (session_connection_stop(&receiver.connection) != ASCIICHAT_OK) {
+        LOG_ERRNO_IF_SET("Waiting for discovery media workers");
+        platform_sleep_ms(10);
       }
       if (receiver.result != ASCIICHAT_OK)
         return receiver.result;
@@ -764,10 +805,20 @@ int discovery_main(void) {
       .exit_callback_data = NULL,
   };
 
+  acip_websocket_runtime_t *websocket_runtime = NULL;
+  if (service_url && (strncmp(service_url, "ws://", 5) == 0 || strncmp(service_url, "wss://", 6) == 0)) {
+    asciichat_error_t runtime_result = acip_websocket_runtime_create(&websocket_runtime);
+    if (runtime_result != ASCIICHAT_OK) {
+      mutex_destroy(&ui.mutex);
+      return runtime_result;
+    }
+  }
+
   // Create discovery session (stored in global for discovery_run() to access)
   g_discovery = discovery_session_create(&discovery_config);
   if (!g_discovery) {
     mutex_destroy(&ui.mutex);
+    acip_websocket_runtime_destroy(&websocket_runtime);
     log_fatal("Failed to create discovery session");
     return ERROR_MEMORY;
   }
@@ -820,10 +871,14 @@ int discovery_main(void) {
 
   if (g_discovery) {
     discovery_session_stop(g_discovery);
-    discovery_session_destroy(g_discovery);
+    while (discovery_session_destroy(g_discovery) != ASCIICHAT_OK) {
+      LOG_ERRNO_IF_SET("Waiting for discovery connection resources");
+      platform_sleep_ms(10);
+    }
     g_discovery = NULL;
   }
 
+  acip_websocket_runtime_destroy(&websocket_runtime);
   splash_clear_discovery_session();
   char discovery_error[sizeof(ui.error)];
   mutex_lock(&ui.mutex);

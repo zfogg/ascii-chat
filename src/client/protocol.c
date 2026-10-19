@@ -114,10 +114,6 @@
 #include <ascii-chat/crypto/handshake/client.h>
 
 // Forward declaration for client crypto functions
-bool crypto_client_is_ready(void);
-const crypto_context_t *crypto_client_get_context(void);
-int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext,
-                                 size_t plaintext_size, size_t *plaintext_len);
 
 #include "crypto.h"
 #include <ascii-chat/util/time.h>
@@ -221,7 +217,7 @@ typedef struct {
  *
  * @ingroup client_protocol
  */
-static void disconnect_server_for_bad_data(const char *format, ...) {
+static void disconnect_server_for_bad_data(client_connection_t *connection, const char *format, ...) {
   va_list args;
   va_start(args, format);
 
@@ -232,8 +228,8 @@ static void disconnect_server_for_bad_data(const char *format, ...) {
   log_error("Server sent invalid data - disconnecting: %s", message);
 
   // Close the server connection
-  server_connection_shutdown();
-  server_connection_lost();
+  server_connection_shutdown(connection);
+  server_connection_lost(connection);
 }
 
 /* ============================================================================
@@ -283,11 +279,11 @@ static char *decode_frame_data(const char *frame_data_ptr, size_t frame_data_len
  *
  * @ingroup client_protocol
  */
-static void handle_ascii_frame_packet(const void *data, size_t len) {
+static void handle_ascii_frame_packet(client_connection_t *connection, const void *data, size_t len) {
   fflush(stdout);
 
-  client_connection_current()->receive_frame_count++;
-  if (client_connection_current()->receive_frame_count == 1) {
+  connection->receive_frame_count++;
+  if (connection->receive_frame_count == 1) {
   }
 
   if (should_exit()) {
@@ -295,22 +291,23 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   }
 
   if (!data || len < sizeof(ascii_frame_packet_t)) {
-    disconnect_server_for_bad_data("ASCII_FRAME payload too small: %zu (min %zu)", len, sizeof(ascii_frame_packet_t));
+    disconnect_server_for_bad_data(connection, "ASCII_FRAME payload too small: %zu (min %zu)", len,
+                                   sizeof(ascii_frame_packet_t));
     return;
   }
 
   // FPS tracking for received ASCII frames using reusable tracker utility
 
   // Initialize FPS tracker on first frame
-  if (!client_connection_current()->frame_fps_tracker_initialized) {
+  if (!connection->frame_fps_tracker_initialized) {
     int fps = GET_OPTION(fps);
     int expected_fps = fps > 0 ? ((fps > 144) ? 144 : fps) : DEFAULT_MAX_FPS;
-    fps_init(&client_connection_current()->frame_fps_tracker, expected_fps, "ASCII_RX");
-    client_connection_current()->frame_fps_tracker_initialized = true;
+    fps_init(&connection->frame_fps_tracker, expected_fps, "ASCII_RX");
+    connection->frame_fps_tracker_initialized = true;
   }
 
   // Track this frame and detect lag
-  fps_frame_ns(&client_connection_current()->frame_fps_tracker, time_get_ns(), "ASCII frame");
+  fps_frame_ns(&connection->frame_fps_tracker, time_get_ns(), "ASCII frame");
 
   // Extract header from the packet
   ascii_frame_packet_t header;
@@ -354,28 +351,27 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   // Track frame dimension changes
 
   if (header.width > 0 && header.height > 0) {
-    if (header.width != client_connection_current()->frame_last_width ||
-        header.height != client_connection_current()->frame_last_height) {
-      client_connection_current()->frame_last_width = header.width;
-      client_connection_current()->frame_last_height = header.height;
+    if (header.width != connection->frame_last_width || header.height != connection->frame_last_height) {
+      connection->frame_last_width = header.width;
+      connection->frame_last_height = header.height;
     }
   }
 
   // Handle snapshot mode timing
   if (GET_OPTION(snapshot_mode)) {
 
-    client_connection_current()->frame_snapshot_frame_count++;
-    log_debug("Snapshot frame %d received", client_connection_current()->frame_snapshot_frame_count);
+    connection->frame_snapshot_frame_count++;
+    log_debug("Snapshot frame %d received", connection->frame_snapshot_frame_count);
 
-    if (!client_connection_current()->frame_first_frame_recorded) {
-      client_connection_current()->frame_first_frame_time_ns = time_get_ns();
-      atomic_store_u64(&client_connection_current()->snapshot_first_frame_time_ns,
-                       client_connection_current()
-                           ->frame_first_frame_time_ns); // Also store globally for access from data_reception_thread
+    if (!connection->frame_first_frame_recorded) {
+      connection->frame_first_frame_time_ns = time_get_ns();
+      atomic_store_u64(
+          &connection->snapshot_first_frame_time_ns,
+          connection->frame_first_frame_time_ns); // Also store globally for access from data_reception_thread
       log_info("[SNAPSHOT_INIT] SET g_snapshot_first_frame_time_ns=%llu first_frame_time_ns=%llu",
-               (unsigned long long)atomic_load_u64(&client_connection_current()->snapshot_first_frame_time_ns),
-               (unsigned long long)client_connection_current()->frame_first_frame_time_ns);
-      client_connection_current()->frame_first_frame_recorded = true;
+               (unsigned long long)atomic_load_u64(&connection->snapshot_first_frame_time_ns),
+               (unsigned long long)connection->frame_first_frame_time_ns);
+      connection->frame_first_frame_recorded = true;
 
       if (GET_OPTION(snapshot_delay) == 0) {
         log_debug("Snapshot captured immediately (delay=0)!");
@@ -386,17 +382,16 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       }
     } else {
       uint64_t current_time_ns = time_get_ns();
-      double elapsed =
-          time_ns_to_s(time_elapsed_ns(client_connection_current()->frame_first_frame_time_ns, current_time_ns));
+      double elapsed = time_ns_to_s(time_elapsed_ns(connection->frame_first_frame_time_ns, current_time_ns));
       double snapshot_delay = GET_OPTION(snapshot_delay);
 
       // Log every 0.5 seconds to debug timing
 
-      if (current_time_ns - client_connection_current()->frame_last_debug_log_ns > 500 * 1000 * 1000) { // 500ms
+      if (current_time_ns - connection->frame_last_debug_log_ns > 500 * 1000 * 1000) { // 500ms
         log_info("SNAPSHOT_DELAY_CHECK: elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu", elapsed,
-                 snapshot_delay, (unsigned long long)client_connection_current()->frame_first_frame_time_ns,
+                 snapshot_delay, (unsigned long long)connection->frame_first_frame_time_ns,
                  (unsigned long long)current_time_ns);
-        client_connection_current()->frame_last_debug_log_ns = current_time_ns;
+        connection->frame_last_debug_log_ns = current_time_ns;
       }
 
       if (elapsed >= snapshot_delay) {
@@ -412,22 +407,22 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   // Check if we need to clear console before rendering this frame
   // IMPORTANT: We track if this is the first frame to ensure proper initialization
 
-  if (!client_connection_current()->frame_first_frame_rendered) {
+  if (!connection->frame_first_frame_rendered) {
     // Always clear display and disable logging before rendering the first frame
     // This ensures clean ASCII display regardless of packet arrival order
     log_debug("First frame - clearing display and disabling terminal logging");
     log_set_terminal_output(false);
     display_full_reset();
-    client_connection_current()->frame_first_frame_rendered = true;
-    client_connection_current()->server_state_initialized = true;        // Mark as initialized
-    client_connection_current()->should_clear_before_next_frame = false; // Clear any pending clear request
+    connection->frame_first_frame_rendered = true;
+    connection->server_state_initialized = true;        // Mark as initialized
+    connection->should_clear_before_next_frame = false; // Clear any pending clear request
     log_debug("CLIENT_DISPLAY: Display cleared, ready for ASCII frames");
-  } else if (client_connection_current()->should_clear_before_next_frame) {
+  } else if (connection->should_clear_before_next_frame) {
     // Subsequent clear request from server (e.g., after client list changes)
     log_debug("CLIENT_DISPLAY: Clearing display for layout change");
     log_set_terminal_output(false);
     display_full_reset();
-    client_connection_current()->should_clear_before_next_frame = false;
+    connection->should_clear_before_next_frame = false;
   }
 
   // Safety check before rendering
@@ -450,7 +445,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   // Render ASCII art frame (display_render_frame will apply effects like --matrix)
   log_debug("🎬 CALLING_DISPLAY_RENDER: frame_data=%p len=%zu, calling display_render_frame()", frame_data,
             strlen(frame_data));
-  display_render_frame(frame_data);
+  display_render_frame(connection, frame_data);
   log_debug("🎬 DISPLAY_RENDER_RETURNED: frame was rendered");
 
   SAFE_FREE(frame_data);
@@ -468,7 +463,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
  *
  * @ingroup client_protocol
  */
-static void handle_audio_packet(const void *data, size_t len) {
+static void handle_audio_packet(client_connection_t *connection, const void *data, size_t len) {
   if (!data || len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio packet data");
     return;
@@ -490,7 +485,7 @@ static void handle_audio_packet(const void *data, size_t len) {
   SAFE_MEMCPY(samples, sizeof(samples), data, len);
 
   // Process audio through audio subsystem
-  audio_process_received_samples(samples, num_samples);
+  audio_process_received_samples(connection, samples, num_samples);
 
 #ifdef DEBUG_AUDIO
   log_debug("Processed %d audio samples", num_samples);
@@ -508,7 +503,7 @@ static void handle_audio_packet(const void *data, size_t len) {
  *
  * @ingroup client_protocol
  */
-static void handle_audio_opus_packet(const void *data, size_t len) {
+static void handle_audio_opus_packet(client_connection_t *connection, const void *data, size_t len) {
   START_TIMER("audio_packet_total");
 
   // Validate parameters
@@ -529,7 +524,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   float samples[2880];
 
   START_TIMER("opus_decode");
-  int decoded_samples = audio_decode_opus(opus_data, len, samples, 2880);
+  int decoded_samples = audio_decode_opus(connection, opus_data, len, samples, 2880);
   double decode_ns = STOP_TIMER("opus_decode");
 
   if (decoded_samples <= 0) {
@@ -544,7 +539,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
 
   // Process decoded audio through audio subsystem
   START_TIMER("process_samples");
-  audio_process_received_samples(samples, decoded_samples);
+  audio_process_received_samples(connection, samples, decoded_samples);
   double process_ns = STOP_TIMER("process_samples");
 
   double total_ns = STOP_TIMER("audio_packet_total");
@@ -582,7 +577,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
  *
  * @ingroup client_protocol
  */
-static void handle_audio_opus_batch_packet(const void *data, size_t len) {
+static void handle_audio_opus_batch_packet(client_connection_t *connection, const void *data, size_t len) {
   // Validate parameters
   if (!data || len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid opus batch packet: data=%p, len=%zu", data, len);
@@ -665,11 +660,11 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     // Decode frame through audio pipeline
     float *frame_buffer = all_samples + total_decoded_samples;
     int remaining_space = (int)(max_decoded_samples - (size_t)total_decoded_samples);
-    int decoded = audio_decode_opus(opus_data + opus_offset, frame_size, frame_buffer, remaining_space);
+    int decoded = audio_decode_opus(connection, opus_data + opus_offset, frame_size, frame_buffer, remaining_space);
 
     if (decoded <= 0) {
       log_warn("Concealing invalid Opus frame %d in batch", i);
-      decoded = audio_decode_opus(NULL, 0, frame_buffer, samples_per_frame);
+      decoded = audio_decode_opus(connection, NULL, 0, frame_buffer, samples_per_frame);
       if (decoded <= 0)
         break;
     }
@@ -685,7 +680,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     }
 
     // Process decoded audio through audio subsystem
-    audio_process_received_samples(all_samples, total_decoded_samples);
+    audio_process_received_samples(connection, all_samples, total_decoded_samples);
 
     log_debug_every(LOG_RATE_DEFAULT, "Processed Opus batch: %d decoded samples from %d frames", total_decoded_samples,
                     frame_count);
@@ -695,7 +690,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
   SAFE_FREE(all_samples);
 }
 
-static bool handle_error_message_packet(const void *data, size_t len) {
+static bool handle_error_message_packet(client_connection_t *connection, const void *data, size_t len) {
   asciichat_error_t remote_error = ASCIICHAT_OK;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
 
@@ -714,15 +709,15 @@ static bool handle_error_message_packet(const void *data, size_t len) {
     asciichat_errno_scope_end(notification, ASCIICHAT_ERRNO_HANDLED);
     return true;
   }
-  server_connection_set_remote_error(remote_error);
+  server_connection_set_remote_error(connection, remote_error);
   if (network_error_action(remote_error) == NETWORK_ERROR_STOP) {
     asciichat_errno_request_exit(remote_error);
     signal_exit();
   }
   log_warn("Server rejected this connection; closing it");
   asciichat_errno_scope_end(notification, ASCIICHAT_ERRNO_HANDLED);
-  server_connection_shutdown();
-  server_connection_lost();
+  server_connection_shutdown(connection);
+  server_connection_lost(connection);
   return true;
 }
 
@@ -765,7 +760,7 @@ static void handle_remote_log_packet(const void *data, size_t len) {
  *
  * @ingroup client_protocol
  */
-static void handle_server_state_packet(const void *data, size_t len) {
+static void handle_server_state_packet(client_connection_t *connection, const void *data, size_t len) {
   if (!data || len != sizeof(server_state_packet_t)) {
     log_error("Invalid server state packet size: %zu", len);
     return;
@@ -777,20 +772,20 @@ static void handle_server_state_packet(const void *data, size_t len) {
   uint32_t active_count = NET_TO_HOST_U32(state->active_client_count);
 
   // Check if connected count changed - if so, set flag to clear console before next frame
-  if (client_connection_current()->server_state_initialized) {
-    if (client_connection_current()->last_active_count != active_count) {
+  if (connection->server_state_initialized) {
+    if (connection->last_active_count != active_count) {
       log_debug("Active client count changed from %u to %u - will clear console before next frame",
-                client_connection_current()->last_active_count, active_count);
-      client_connection_current()->should_clear_before_next_frame = true;
+                connection->last_active_count, active_count);
+      connection->should_clear_before_next_frame = true;
     }
   } else {
     // First state packet received
-    client_connection_current()->server_state_initialized = true;
+    connection->server_state_initialized = true;
     // Clear terminal before the very first frame
-    client_connection_current()->should_clear_before_next_frame = true;
+    connection->should_clear_before_next_frame = true;
   }
 
-  client_connection_current()->last_active_count = active_count;
+  connection->last_active_count = active_count;
 }
 
 /* ============================================================================
@@ -895,14 +890,14 @@ static void *data_reception_thread_func(void *arg) {
   acip_client_callbacks_t callbacks = g_acip_client_callbacks;
   callbacks.app_ctx = connection;
   int packet_count = 0;
-  while (!should_exit() && server_connection_is_active()) {
+  while (!should_exit() && server_connection_is_active(connection)) {
     // Main loop: receive and process packets while connection is active
     // When connection becomes inactive or shutdown is requested, thread exits cleanly
 
     // Debug: periodically check loop condition
     if (packet_count % 50 == 0) {
       bool exit_flag = should_exit();
-      bool conn_active = server_connection_is_active();
+      bool conn_active = server_connection_is_active(connection);
       if (packet_count > 0) {
         log_debug("[FRAME_RECV_LOOP] DEBUG: packet_count=%d, should_exit=%d, server_connection_is_active=%d",
                   packet_count, exit_flag, conn_active);
@@ -911,12 +906,12 @@ static void *data_reception_thread_func(void *arg) {
 
     // Receive and dispatch packet using ACIP transport API
     // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
-    acip_transport_t *transport = server_connection_get_transport();
+    acip_transport_t *transport = server_connection_get_transport(connection);
     if (packet_count < 3) {
     }
     if (!transport) {
       log_error("[FRAME_RECV_LOOP] ❌ NO_TRANSPORT: connection lost, transport not available");
-      server_connection_lost();
+      server_connection_lost(connection);
       break;
     }
 
@@ -976,7 +971,7 @@ static void *data_reception_thread_func(void *arg) {
         if (acip_result == ERROR_NETWORK || acip_result == ERROR_NETWORK_PROTOCOL) {
           log_warn("[FRAME_RECV_LOOP] ⚠️  NETWORK_ERROR: Server disconnected after %d packets, exiting loop",
                    packet_count);
-          server_connection_lost();
+          server_connection_lost(connection);
           break;
         }
 
@@ -992,7 +987,7 @@ static void *data_reception_thread_func(void *arg) {
         // Other errors - still disconnect to prevent infinite loop
         log_error("[FRAME_RECV_LOOP] ❌ RECV_FAILED: packet #%d failed after %d packets, disconnecting",
                   packet_count + 1, packet_count);
-        server_connection_lost();
+        server_connection_lost(connection);
         break;
       }
     }
@@ -1000,7 +995,7 @@ static void *data_reception_thread_func(void *arg) {
 
   // Log why the loop exited (DEBUG to avoid affecting timing)
   bool final_exit_flag = should_exit();
-  bool final_conn_active = server_connection_is_active();
+  bool final_conn_active = server_connection_is_active(connection);
   log_debug("[FRAME_RECV_LOOP] ⏹️  LOOP_EXIT: should_exit=%d server_connection_is_active=%d (packets_received=%d)",
             final_exit_flag, final_conn_active, packet_count);
 
@@ -1067,13 +1062,13 @@ int protocol_start_connection(client_connection_t *connection) {
   log_info("[FRAME_RECV_INIT] ✅ STATE_RESET: server_initialized=false, active_count=0, clear_flag=false");
 
   // Reset display state for new connection
-  display_reset_for_new_connection();
+  display_reset_for_new_connection(connection);
 
   // Check if we're on a WebSocket transport (crypto handshake is async via ACIP callbacks)
   // For WS/WSS, we must start data_reception FIRST so it can handle the crypto handshake,
   // then wait for crypto to complete before sending CAPABILITIES/STREAM_START.
   // For TCP, crypto is already done synchronously before this function is called.
-  acip_transport_t *init_transport = server_connection_get_transport();
+  acip_transport_t *init_transport = server_connection_get_transport(connection);
   bool is_websocket = init_transport && acip_transport_get_type(init_transport) == ACIP_TRANSPORT_WEBSOCKET;
 
   if (is_websocket) {
@@ -1096,8 +1091,8 @@ int protocol_start_connection(client_connection_t *connection) {
   // Send CLIENT_CAPABILITIES packet (after crypto is ready for both TCP and WS)
   // Server expects this as the first packet after crypto handshake
   log_debug("[FRAME_RECV_INIT] Sending CLIENT_CAPABILITIES (terminal size)");
-  asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
-                                                                              (int)terminal_get_effective_height());
+  asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect(
+      connection, (int)terminal_get_effective_width(), (int)terminal_get_effective_height());
   if (cap_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send terminal size capabilities");
     return -1;
@@ -1110,7 +1105,7 @@ int protocol_start_connection(client_connection_t *connection) {
   }
   log_debug("[FRAME_RECV_INIT] Sending STREAM_START: types=0x%x (video%s)", stream_types,
             (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
-  asciichat_error_t stream_result = threaded_send_stream_start_packet(stream_types);
+  asciichat_error_t stream_result = threaded_send_stream_start_packet(connection, stream_types);
   if (stream_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send stream start");
     return -1;
@@ -1148,9 +1143,9 @@ int protocol_start_connection(client_connection_t *connection) {
 
   // Start local media audio only after the connection succeeds. Starting the
   // worker during client initialization would consume file audio while dialing.
-  audio_context_t *audio_context = audio_get_context();
+  audio_context_t *audio_context = connection->audio_context;
   if (audio_context && audio_context->initialized) {
-    audio_context->capture_media_source = capture_get_media_source();
+    audio_context->capture_media_source = session_capture_get_media_source(connection->capture_context);
     if (audio_start_duplex(audio_context) != ASCIICHAT_OK) {
       log_error("Failed to start full-duplex audio");
       return -1;
@@ -1197,8 +1192,8 @@ int protocol_start_connection(client_connection_t *connection) {
  *
  * @ingroup client_protocol
  */
-bool protocol_connection_lost() {
-  return atomic_load_bool(&client_connection_current()->data_thread_exited) || server_connection_is_lost();
+bool protocol_connection_lost(client_connection_t *connection) {
+  return atomic_load_bool(&connection->data_thread_exited) || server_connection_is_lost(connection);
 }
 
 /* ============================================================================
@@ -1212,6 +1207,7 @@ bool protocol_connection_lost() {
  */
 static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *frame_data, size_t data_len,
                                 void *ctx) {
+  client_connection_t *connection = ctx;
   (void)ctx;
 
   log_info("[FRAME_RECV_CALLBACK] 🎬 FRAME_RECEIVED: width=%u, height=%u, data_len=%zu bytes, flags=0x%x",
@@ -1248,7 +1244,7 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
   memcpy(packet + sizeof(net_header), frame_data, data_len);
 
   log_info("[FRAME_RECV_CALLBACK] 📥 FRAME_DISPATCH: calling handle_ascii_frame_packet() with %zu bytes", total_len);
-  handle_ascii_frame_packet(packet, total_len);
+  handle_ascii_frame_packet(connection, packet, total_len);
   log_info("[FRAME_RECV_CALLBACK] ✅ FRAME_DISPATCH_COMPLETE: frame processing finished");
 
   SAFE_FREE(packet);
@@ -1260,6 +1256,7 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
  */
 static void acip_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples,
                                 void *ctx) {
+  client_connection_t *connection = ctx;
   (void)ctx;
   (void)header;
 
@@ -1268,7 +1265,7 @@ static void acip_on_audio_batch(const audio_batch_packet_t *header, const float 
   }
 
   // Process samples directly (already dequantized by ACIP handler)
-  audio_process_received_samples((float *)samples, (int)num_samples);
+  audio_process_received_samples(connection, (float *)samples, (int)num_samples);
 
   if (GET_OPTION(audio_analysis_enabled)) {
     // Approximate packet size for analysis
@@ -1283,26 +1280,29 @@ static void acip_on_audio_batch(const audio_batch_packet_t *header, const float 
  * @brief ACIP callback for Opus audio packets
  */
 static void acip_on_audio_opus(const void *opus_data, size_t opus_len, void *ctx) {
+  client_connection_t *connection = ctx;
   (void)ctx;
 
   // Call existing handler directly
-  handle_audio_opus_packet(opus_data, opus_len);
+  handle_audio_opus_packet(connection, opus_data, opus_len);
 }
 
 /**
  * @brief ACIP callback for server state packets
  */
 static void acip_on_server_state(const server_state_packet_t *state, void *ctx) {
+  client_connection_t *connection = ctx;
   (void)ctx;
 
   // Call existing handler directly
-  handle_server_state_packet(state, sizeof(*state));
+  handle_server_state_packet(connection, state, sizeof(*state));
 }
 
 /**
  * @brief ACIP callback for error packets
  */
 static void acip_on_error(const error_packet_t *header, const char *message, void *ctx) {
+  client_connection_t *connection = ctx;
   (void)ctx;
 
   // Reconstruct packet for existing handler
@@ -1321,7 +1321,7 @@ static void acip_on_error(const error_packet_t *header, const char *message, voi
     memcpy(packet + sizeof(*header), message, msg_len);
   }
 
-  handle_error_message_packet(packet, total_len);
+  handle_error_message_packet(connection, packet, total_len);
   SAFE_FREE(packet);
 }
 
@@ -1329,10 +1329,11 @@ static void acip_on_error(const error_packet_t *header, const char *message, voi
  * @brief ACIP callback for ping packets
  */
 static void acip_on_ping(void *ctx) {
+  client_connection_t *connection = ctx;
   (void)ctx;
 
   // Respond with PONG
-  if (threaded_send_pong_packet() != ASCIICHAT_OK) {
+  if (threaded_send_pong_packet(connection) != ASCIICHAT_OK) {
     log_error("Failed to send PONG response");
   }
 }
@@ -1341,20 +1342,22 @@ static void acip_on_ping(void *ctx) {
  * @brief ACIP callback for raw audio packets
  */
 static void acip_on_audio(const void *audio_data, size_t audio_len, void *ctx) {
+  client_connection_t *connection = ctx;
   (void)ctx;
 
   // Call existing handler directly
-  handle_audio_packet(audio_data, audio_len);
+  handle_audio_packet(connection, audio_data, audio_len);
 }
 
 /**
  * @brief ACIP callback for Opus batch packets
  */
 static void acip_on_audio_opus_batch(const void *batch_data, size_t batch_len, void *ctx) {
+  client_connection_t *connection = ctx;
   (void)ctx;
 
   // Call existing handler directly
-  handle_audio_opus_batch_packet(batch_data, batch_len);
+  handle_audio_opus_batch_packet(connection, batch_data, batch_len);
 }
 
 /**
@@ -1404,17 +1407,18 @@ static void acip_on_clear_console(void *ctx) {
  * @brief ACIP callback for crypto rekey request packets
  */
 static void acip_on_crypto_rekey_request(const void *payload, size_t payload_len, void *ctx) {
+  client_connection_t *connection = ctx;
   (void)ctx;
 
   // Process the server's rekey request
-  asciichat_error_t crypto_result = crypto_client_process_rekey_request(payload, payload_len);
+  asciichat_error_t crypto_result = crypto_client_process_rekey_request(connection, payload, payload_len);
   if (crypto_result != ASCIICHAT_OK) {
     log_error("Failed to process REKEY_REQUEST: %d", crypto_result);
     return;
   }
 
   // Send REKEY_RESPONSE
-  crypto_result = crypto_client_send_rekey_response();
+  crypto_result = crypto_client_send_rekey_response(connection);
   if (crypto_result != ASCIICHAT_OK) {
     log_error("Failed to send REKEY_RESPONSE: %d", crypto_result);
   }
@@ -1424,17 +1428,18 @@ static void acip_on_crypto_rekey_request(const void *payload, size_t payload_len
  * @brief ACIP callback for crypto rekey response packets
  */
 static void acip_on_crypto_rekey_response(const void *payload, size_t payload_len, void *ctx) {
+  client_connection_t *connection = ctx;
   (void)ctx;
 
   // Process server's response
-  asciichat_error_t crypto_result = crypto_client_process_rekey_response(payload, payload_len);
+  asciichat_error_t crypto_result = crypto_client_process_rekey_response(connection, payload, payload_len);
   if (crypto_result != ASCIICHAT_OK) {
     log_error("Failed to process REKEY_RESPONSE: %d", crypto_result);
     return;
   }
 
   // Send REKEY_COMPLETE
-  crypto_result = crypto_client_send_rekey_complete();
+  crypto_result = crypto_client_send_rekey_complete(connection);
   if (crypto_result != ASCIICHAT_OK) {
     log_error("Failed to send REKEY_COMPLETE: %d", crypto_result);
   }
@@ -1573,7 +1578,7 @@ static void acip_on_crypto_key_exchange_init(packet_type_t type, const void *pay
 
   log_debug("Received CRYPTO_KEY_EXCHANGE_INIT from server");
 
-  acip_transport_t *transport = server_connection_get_transport();
+  acip_transport_t *transport = server_connection_get_transport(connection);
   if (!transport) {
     log_error("Cannot handle key exchange - no transport available");
     return;
@@ -1583,7 +1588,7 @@ static void acip_on_crypto_key_exchange_init(packet_type_t type, const void *pay
                                                                   (const uint8_t *)payload, payload_len);
   if (result != ASCIICHAT_OK) {
     log_error("Crypto handshake key exchange failed");
-    server_connection_lost();
+    server_connection_lost(connection);
   } else {
     log_debug("Sent CRYPTO_KEY_EXCHANGE_RESP to server");
   }
@@ -1607,7 +1612,7 @@ static void acip_on_crypto_auth_challenge(packet_type_t type, const void *payloa
 
   log_debug("Received CRYPTO_AUTH_CHALLENGE from server");
 
-  acip_transport_t *transport = server_connection_get_transport();
+  acip_transport_t *transport = server_connection_get_transport(connection);
   if (!transport) {
     log_error("Cannot handle auth challenge - no transport available");
     return;
@@ -1617,7 +1622,7 @@ static void acip_on_crypto_auth_challenge(packet_type_t type, const void *payloa
                                                                    (const uint8_t *)payload, payload_len);
   if (result != ASCIICHAT_OK) {
     log_error("Crypto handshake auth response failed");
-    server_connection_lost();
+    server_connection_lost(connection);
   } else {
     log_debug("Sent CRYPTO_AUTH_RESPONSE to server");
   }
@@ -1641,7 +1646,7 @@ static void acip_on_crypto_server_auth_resp(packet_type_t type, const void *payl
 
   log_debug("Received CRYPTO_SERVER_AUTH_RESP from server");
 
-  acip_transport_t *transport = server_connection_get_transport();
+  acip_transport_t *transport = server_connection_get_transport(connection);
   if (!transport) {
     log_error("Cannot handle server auth response - no transport available");
     return;
@@ -1651,7 +1656,7 @@ static void acip_on_crypto_server_auth_resp(packet_type_t type, const void *payl
       crypto_handshake_client_complete(&connection->crypto_ctx, transport, type, (const uint8_t *)payload, payload_len);
   if (result != ASCIICHAT_OK) {
     NOTICE(DANGER, "HANDSHAKE VERIFICATION FAILED", "Crypto handshake verification failed");
-    server_connection_lost();
+    server_connection_lost(connection);
   } else {
     log_info("Crypto handshake completed successfully (mutual auth)");
 
@@ -1674,6 +1679,7 @@ static void acip_on_crypto_server_auth_resp(packet_type_t type, const void *payl
  * @ingroup client_protocol
  */
 static void acip_on_crypto_auth_failed(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
+  client_connection_t *connection = ctx;
   (void)ctx;
   (void)type;
 
@@ -1688,7 +1694,7 @@ static void acip_on_crypto_auth_failed(packet_type_t type, const void *payload, 
   NOTICE(DANGER, "AUTHENTICATION REJECTED", "Server rejected authentication: %s", error_msg);
   log_error("Disconnecting - crypto handshake failed");
 
-  server_connection_lost();
+  server_connection_lost(connection);
 }
 
 /**
@@ -1709,7 +1715,7 @@ static void acip_on_crypto_handshake_complete(packet_type_t type, const void *pa
 
   log_debug("Received CRYPTO_HANDSHAKE_COMPLETE from server");
 
-  acip_transport_t *transport = server_connection_get_transport();
+  acip_transport_t *transport = server_connection_get_transport(connection);
   if (!transport) {
     log_error("Cannot complete handshake - no transport available");
     return;
@@ -1719,7 +1725,7 @@ static void acip_on_crypto_handshake_complete(packet_type_t type, const void *pa
       crypto_handshake_client_complete(&connection->crypto_ctx, transport, type, (const uint8_t *)payload, payload_len);
   if (result != ASCIICHAT_OK) {
     log_error("Crypto handshake completion failed");
-    server_connection_lost();
+    server_connection_lost(connection);
   } else {
     log_info("Crypto handshake completed successfully");
 
@@ -1743,7 +1749,7 @@ static void acip_on_crypto_parameters(packet_type_t type, const void *payload, s
 
   if (payload_len != sizeof(crypto_parameters_packet_t)) {
     log_error("Invalid CRYPTO_PARAMETERS size: %zu (expected %zu)", payload_len, sizeof(crypto_parameters_packet_t));
-    server_connection_lost();
+    server_connection_lost(connection);
     return;
   }
 
@@ -1765,7 +1771,7 @@ static void acip_on_crypto_parameters(packet_type_t type, const void *payload, s
   asciichat_error_t result = crypto_handshake_set_parameters(&connection->crypto_ctx, &server_params);
   if (result != ASCIICHAT_OK) {
     log_error("Failed to set crypto parameters: %d", result);
-    server_connection_lost();
+    server_connection_lost(connection);
     return;
   }
 

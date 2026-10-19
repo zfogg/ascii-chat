@@ -11,6 +11,7 @@
  */
 
 #include "session/participant.h"
+#include "session/connection.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/options/options.h>
@@ -43,6 +44,7 @@
  * Contains connection state, media stream state, and callback configuration.
  */
 typedef struct session_participant {
+  session_connection_t connection;
   /** @brief Server address */
   char address[BUFFER_SIZE_SMALL];
 
@@ -123,6 +125,15 @@ typedef struct session_participant {
  * Session Participant Lifecycle Functions
  * ============================================================================ */
 
+static void participant_interrupt(void *context);
+static asciichat_error_t participant_join(void *context);
+static void participant_release(void *context);
+
+static void participant_connection_init(session_participant_t *p) {
+  session_connection_init(&p->connection,
+                          (session_connection_ops_t){participant_interrupt, participant_join, participant_release}, p);
+}
+
 session_participant_t *session_participant_create(const session_participant_config_t *config) {
   log_info("session_participant_create: START - config=%p", config);
 
@@ -168,6 +179,7 @@ session_participant_t *session_participant_create(const session_participant_conf
   // Initialize settings
   session_settings_init(&p->settings);
 
+  participant_connection_init(p);
   p->initialized = true;
   log_info("session_participant_create: DONE - returning p=%p (initialized=%d, connected=%d)", p, p->initialized,
            p->connected);
@@ -261,6 +273,8 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   if (p->video_thread_created || p->audio_thread_created)
     return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before reconnecting TCP");
 
+  participant_connection_init(p);
+
   // Create TCP connection to server
   log_debug("session_participant_connect: calling connect_to_server(%s, %d)", p->address, p->port);
   socket_t socket = connect_to_server(p->address, p->port);
@@ -287,6 +301,7 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   p->transport_ownership = SESSION_TRANSPORT_OWNED;
 
   log_debug("session_participant_connect: setting p->connected=true");
+  session_connection_start(&p->connection);
   p->connected = true;
   p->client_id = 0; // Will be assigned by server
 
@@ -308,23 +323,39 @@ void session_participant_disconnect(session_participant_t *p) {
   }
 
   bool was_connected = p->connected;
-  session_participant_stop_audio(p);
-  session_participant_stop_video(p);
-  if (p->video_thread_created || p->audio_thread_created)
+  if (session_connection_stop(&p->connection) != ASCIICHAT_OK)
     return;
-
-  if (p->transport && p->transport_ownership == SESSION_TRANSPORT_OWNED)
-    acip_transport_destroy(p->transport);
-  p->transport = NULL;
-  p->transport_ownership = SESSION_TRANSPORT_BORROWED;
-
-  p->connected = false;
-  p->client_id = 0;
 
   // Invoke callback
   if (was_connected && p->callbacks.on_disconnected) {
     p->callbacks.on_disconnected(p, p->user_data);
   }
+}
+
+static void participant_interrupt(void *context) {
+  session_participant_t *p = context;
+  session_av_state_begin_stop(&p->audio);
+  session_av_state_begin_stop(&p->video);
+  session_connection_interrupt_transport(p->transport);
+}
+
+static asciichat_error_t participant_join(void *context) {
+  session_participant_t *p = context;
+  session_participant_stop_audio(p);
+  session_participant_stop_video(p);
+  if (p->video_thread_created || p->audio_thread_created)
+    return SET_ERRNO(ERROR_THREAD, "Participant workers still own connection resources");
+  return ASCIICHAT_OK;
+}
+
+static void participant_release(void *context) {
+  session_participant_t *p = context;
+  if (p->transport && p->transport_ownership == SESSION_TRANSPORT_OWNED)
+    acip_transport_destroy(p->transport);
+  p->transport = NULL;
+  p->transport_ownership = SESSION_TRANSPORT_BORROWED;
+  p->connected = false;
+  p->client_id = 0;
 }
 
 bool session_participant_is_connected(session_participant_t *p) {
@@ -686,10 +717,17 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
       return SET_ERRNO(ERROR_INVALID_STATE, "Detach before transferring transport ownership");
     return ASCIICHAT_OK;
   }
-  if (p->transport && p->transport_ownership == SESSION_TRANSPORT_OWNED)
-    acip_transport_destroy(p->transport);
+  asciichat_error_t result = session_connection_stop(&p->connection);
+  if (result != ASCIICHAT_OK)
+    return result;
+  participant_connection_init(p);
   p->transport = transport;
   p->transport_ownership = transport ? ownership : SESSION_TRANSPORT_BORROWED;
+  if (transport) {
+    result = session_connection_start(&p->connection);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
   p->connected = p->transport && acip_transport_is_connected(p->transport);
 
   return ASCIICHAT_OK;

@@ -11,11 +11,9 @@
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 
-static client_connection_t *active_connection;
-
-client_connection_t *client_connection_current(void) {
-  return active_connection;
-}
+static void client_interrupt(void *context);
+static asciichat_error_t client_join(void *context);
+static void client_release(void *context);
 
 asciichat_error_t client_connection_checkpoint(const char *stage) {
 #ifndef NDEBUG
@@ -30,21 +28,46 @@ asciichat_error_t client_connection_checkpoint(const char *stage) {
   return ASCIICHAT_OK;
 }
 
+static void attempt_set_ip(void *context, const char *ip) {
+  server_connection_set_ip(context, ip);
+}
+static void attempt_set_port(void *context, int port) {
+  server_connection_set_port(context, port);
+}
+static void attempt_set_mode(void *context, uint8_t mode) {
+  client_crypto_set_mode(context, mode);
+}
+static int attempt_init(void *context) {
+  return client_crypto_init(context);
+}
+static asciichat_error_t attempt_handshake(void *context, acip_transport_t *transport) {
+  return client_crypto_handshake(context, transport);
+}
+static bool attempt_is_ready(void *context) {
+  return crypto_client_is_ready(context);
+}
+static const crypto_context_t *attempt_get_context(void *context) {
+  return crypto_client_get_context(context);
+}
+
 asciichat_error_t client_connection_create(client_connection_t **out) {
-  if (!out || active_connection) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Previous client connection has not been released");
+  if (!out) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Missing client connection output");
   }
   *out = SAFE_CALLOC(1, sizeof(client_connection_t), client_connection_t *);
   if (!*out)
     return SET_ERRNO(ERROR_MEMORY, "Could not allocate client connection");
   client_connection_t *connection = *out;
-  active_connection = connection;
-  connection->owner_thread = asciichat_thread_self();
-  atomic_store_int(&connection->state, CLIENT_CONNECTION_STARTING);
+  session_connection_init(&connection->lifecycle,
+                          (session_connection_ops_t){client_interrupt, client_join, client_release}, connection);
   connection->sockfd = INVALID_SOCKET_VALUE;
   connection->crypto_mode = ACIP_CRYPTO_ENCRYPT;
   asciichat_error_t result = connection_context_init(&connection->attempt);
-  if (result == ASCIICHAT_OK && server_connection_init() != 0)
+  connection->attempt.context = connection;
+  connection->attempt.ops =
+      (connection_attempt_ops_t){attempt_set_ip,    attempt_set_port, attempt_set_mode,   attempt_init,
+                                 attempt_handshake, attempt_is_ready, attempt_get_context};
+  if (result == ASCIICHAT_OK && server_connection_init(connection) != 0)
     result = ERROR_THREAD;
   if (result == ASCIICHAT_OK)
     result = client_connection_checkpoint("send-mutex");
@@ -66,8 +89,7 @@ asciichat_error_t client_connection_create(client_connection_t **out) {
 }
 
 asciichat_error_t client_connection_start(client_connection_t *connection, const char *address, uint16_t port) {
-  if (!connection || connection != active_connection ||
-      atomic_load_int(&connection->state) != CLIENT_CONNECTION_STARTING) {
+  if (!connection || atomic_load_int(&connection->lifecycle.state) != SESSION_CONNECTION_STARTING) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection is not ready for startup");
   }
   asciichat_error_t result = connection_attempt_tcp(&connection->attempt, address, port);
@@ -77,7 +99,7 @@ asciichat_error_t client_connection_start(client_connection_t *connection, const
     return SET_ERRNO(ERROR_NETWORK, "Connection startup interrupted");
   if (!connection->attempt.connection.transport)
     return SET_ERRNO(ERROR_NETWORK, "Connection has no transport");
-  server_connection_set_transport(connection->attempt.connection.transport);
+  server_connection_set_transport(connection, connection->attempt.connection.transport);
   result = client_connection_checkpoint("transport");
   if (result != ASCIICHAT_OK)
     return result;
@@ -85,33 +107,34 @@ asciichat_error_t client_connection_start(client_connection_t *connection, const
     return ERROR_NETWORK;
   if (atomic_load_bool(&connection->stop_requested))
     return SET_ERRNO(ERROR_NETWORK, "Connection stopped during startup");
-  atomic_store_int(&connection->state, CLIENT_CONNECTION_RUNNING);
+  result = session_connection_start(&connection->lifecycle);
+  if (result != ASCIICHAT_OK)
+    return result;
   log_info("CLIENT_CONNECTION_RUNNING");
   return ASCIICHAT_OK;
 }
 
 void client_connection_request_stop(client_connection_t *connection) {
-  if (!connection || atomic_load_int(&connection->state) == CLIENT_CONNECTION_STOPPED)
-    return;
-  atomic_store_int(&connection->state, CLIENT_CONNECTION_STOPPING);
+  if (connection)
+    session_connection_request_stop(&connection->lifecycle);
+}
+
+static void client_interrupt(void *context) {
+  client_connection_t *connection = context;
   atomic_store_bool(&connection->stop_requested, true);
-  /* Interrupt without the send mutex: a blocked sender may own that mutex. */
-  server_connection_shutdown();
+  server_connection_shutdown(connection);
 }
 
 asciichat_error_t client_connection_stop(client_connection_t *connection) {
-  if (!connection || atomic_load_int(&connection->state) == CLIENT_CONNECTION_STOPPED)
-    return ASCIICHAT_OK;
-  if (!asciichat_thread_equal(connection->owner_thread, asciichat_thread_self())) {
-    client_connection_request_stop(connection);
-    return SET_ERRNO(ERROR_INVALID_STATE, "Connection cleanup must run on its controlling thread");
-  }
-  log_debug("CLIENT_CONNECTION_STOP_BEGIN");
-  client_connection_request_stop(connection);
+  return connection ? session_connection_stop(&connection->lifecycle) : ASCIICHAT_OK;
+}
+
+static asciichat_error_t client_join(void *context) {
+  client_connection_t *connection = context;
   log_debug("CLIENT_CONNECTION_IO_INTERRUPTED");
-  audio_sender_cleanup();
-  audio_stop_thread();
-  audio_context_t *audio = audio_get_context();
+  audio_sender_cleanup(connection);
+  audio_stop_thread(connection);
+  audio_context_t *audio = connection->audio_context;
   if (audio && audio->initialized)
     audio_stop_duplex(audio);
 
@@ -124,7 +147,13 @@ asciichat_error_t client_connection_stop(client_connection_t *connection) {
   }
   log_info("CLIENT_CONNECTION_STOPPED: workers=0 frames=%llu",
            (unsigned long long)atomic_load_u64(&connection->frames_rendered));
-  audio_sender_finalize();
+  return ASCIICHAT_OK;
+}
+
+static void client_release(void *context) {
+  client_connection_t *connection = context;
+  audio_context_t *audio = connection->audio_context;
+  audio_sender_finalize(connection);
   if (audio && audio->initialized) {
     audio_set_pipeline(audio, NULL);
     audio_ring_buffer_clear(audio->capture_buffer);
@@ -142,10 +171,8 @@ asciichat_error_t client_connection_stop(client_connection_t *connection) {
   log_debug("CLIENT_CONNECTION_TRANSPORT_RELEASED");
   connection->attempt.connection.transport = NULL;
   connection->sockfd = INVALID_SOCKET_VALUE;
-  crypto_client_cleanup();
+  crypto_client_cleanup(connection);
   NAMED_UNREGISTER(&connection->crypto_ctx);
-  atomic_store_int(&connection->state, CLIENT_CONNECTION_STOPPED);
-  return ASCIICHAT_OK;
 }
 
 asciichat_error_t client_connection_destroy(client_connection_t **owner) {
@@ -160,7 +187,6 @@ asciichat_error_t client_connection_destroy(client_connection_t **owner) {
   if (connection->send_mutex_initialized)
     mutex_destroy(&connection->send_mutex);
   log_info("CLIENT_CONNECTION_RELEASED");
-  active_connection = NULL;
   SAFE_FREE(*owner);
   *owner = NULL;
   return ASCIICHAT_OK;

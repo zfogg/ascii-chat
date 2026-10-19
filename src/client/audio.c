@@ -159,27 +159,26 @@ static wav_writer_t *g_wav_playback_received = NULL;
  * @param frame_count Number of frames
  * @return 0 on success, -1 if queue is full
  */
-static int audio_queue_packet(const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes,
-                              int frame_count) {
-  if (!lifecycle_is_initialized(&client_connection_current()->audio_send_queue_lc) || !opus_data || opus_size == 0) {
+static int audio_queue_packet(client_connection_t *connection, const uint8_t *opus_data, size_t opus_size,
+                              const uint16_t *frame_sizes, int frame_count) {
+  if (!lifecycle_is_initialized(&connection->audio_send_queue_lc) || !opus_data || opus_size == 0) {
     return -1;
   }
 
-  mutex_lock(&client_connection_current()->audio_send_queue_mutex);
+  mutex_lock(&connection->audio_send_queue_mutex);
 
   // Check if queue is full
-  int next_head = (client_connection_current()->audio_send_queue_head + 1) % AUDIO_SEND_QUEUE_SIZE;
-  if (next_head == client_connection_current()->audio_send_queue_tail) {
-    mutex_unlock(&client_connection_current()->audio_send_queue_mutex);
+  int next_head = (connection->audio_send_queue_head + 1) % AUDIO_SEND_QUEUE_SIZE;
+  if (next_head == connection->audio_send_queue_tail) {
+    mutex_unlock(&connection->audio_send_queue_mutex);
     log_warn_every(LOG_RATE_FAST, "Audio send queue full, dropping packet");
     return -1;
   }
 
   // Copy packet to queue
-  audio_send_packet_t *packet =
-      &client_connection_current()->audio_send_queue[client_connection_current()->audio_send_queue_head];
+  audio_send_packet_t *packet = &connection->audio_send_queue[connection->audio_send_queue_head];
   if (opus_size > sizeof(packet->data)) {
-    mutex_unlock(&client_connection_current()->audio_send_queue_mutex);
+    mutex_unlock(&connection->audio_send_queue_mutex);
     log_warn("Audio packet too large for queue: %zu > %zu bytes", opus_size, sizeof(packet->data));
     return -1;
   }
@@ -190,11 +189,11 @@ static int audio_queue_packet(const uint8_t *opus_data, size_t opus_size, const 
   for (int i = 0; i < frame_count && i < 8; i++) {
     packet->frame_sizes[i] = frame_sizes[i];
   }
-  client_connection_current()->audio_send_queue_head = next_head;
+  connection->audio_send_queue_head = next_head;
 
   // Signal sender thread (must be held while signaling)
-  cond_signal(&client_connection_current()->audio_send_queue_cond);
-  mutex_unlock(&client_connection_current()->audio_send_queue_mutex);
+  cond_signal(&connection->audio_send_queue_cond);
+  mutex_unlock(&connection->audio_send_queue_mutex);
 
   return 0;
 }
@@ -243,7 +242,7 @@ static void *audio_sender_thread_func(void *arg) {
     asciichat_errno_scope_t send_scope = asciichat_errno_scope_begin();
     START_TIMER("network_send_audio");
     asciichat_error_t send_result =
-        threaded_send_audio_opus_batch(packet.data, packet.size, packet.frame_sizes, packet.frame_count);
+        threaded_send_audio_opus_batch(connection, packet.data, packet.size, packet.frame_sizes, packet.frame_count);
     double send_time_ns = STOP_TIMER("network_send_audio");
 
     send_count++;
@@ -306,26 +305,25 @@ asciichat_error_t audio_sender_init(client_connection_t *connection) {
 /**
  * @brief Cleanup async audio sender
  */
-void audio_sender_cleanup(void) {
-  if (!client_connection_current())
+void audio_sender_cleanup(client_connection_t *connection) {
+  if (!connection)
     return;
   // Signal thread to exit
-  if (lifecycle_is_initialized(&client_connection_current()->audio_send_queue_lc)) {
-    atomic_store_bool(&client_connection_current()->audio_sender_should_exit, true);
-    mutex_lock(&client_connection_current()->audio_send_queue_mutex);
-    cond_signal(&client_connection_current()->audio_send_queue_cond);
-    mutex_unlock(&client_connection_current()->audio_send_queue_mutex);
+  if (lifecycle_is_initialized(&connection->audio_send_queue_lc)) {
+    atomic_store_bool(&connection->audio_sender_should_exit, true);
+    mutex_lock(&connection->audio_send_queue_mutex);
+    cond_signal(&connection->audio_send_queue_cond);
+    mutex_unlock(&connection->audio_send_queue_mutex);
   }
 
   // The worker is joined by thread_pool_stop_all() in client_connection_stop().
   // Keep the queue synchronization objects alive until that join completes.
-  if (THREAD_IS_CREATED(client_connection_current()->audio_sender_thread_created)) {
+  if (THREAD_IS_CREATED(connection->audio_sender_thread_created)) {
     log_debug("Audio sender thread will be joined by thread pool");
   }
 }
 
-void audio_sender_finalize(void) {
-  client_connection_t *connection = client_connection_current();
+void audio_sender_finalize(client_connection_t *connection) {
   if (!connection)
     return;
   if (connection->audio_queue_cond_initialized) {
@@ -364,9 +362,9 @@ void audio_sender_finalize(void) {
  *
  * @ingroup client_audio
  */
-void audio_process_received_samples(const float *samples, int num_samples) {
+void audio_process_received_samples(client_connection_t *connection, const float *samples, int num_samples) {
   // Validate parameters
-  if (!samples || num_samples <= 0) {
+  if (!connection || !connection->audio_context || !samples || num_samples <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio samples: samples=%p, num_samples=%d", (void *)samples, num_samples);
     return;
   }
@@ -424,11 +422,11 @@ void audio_process_received_samples(const float *samples, int num_samples) {
   // NOTE: AEC3's AnalyzeRender is called in output_callback() when audio actually plays,
   // NOT here. The jitter buffer adds 50-100ms delay, so calling AnalyzeRender here
   // would give AEC3 the wrong timing and break echo cancellation.
-  audio_write_samples(&g_audio_context, audio_buffer, num_samples);
+  audio_write_samples(connection->audio_context, audio_buffer, num_samples);
 
   // Log latency after writing to playback buffer
-  if (g_audio_context.playback_buffer) {
-    size_t buffer_samples = audio_ring_buffer_available_read(g_audio_context.playback_buffer);
+  if (connection->audio_context->playback_buffer) {
+    size_t buffer_samples = audio_ring_buffer_available_read(connection->audio_context->playback_buffer);
     float buffer_latency_ms = (float)buffer_samples / 48.0f;
     log_dev_every(500 * US_PER_MS_INT, "LATENCY: Client playback buffer after recv: %.1fms (%zu samples)",
                   buffer_latency_ms, buffer_samples);
@@ -528,25 +526,25 @@ static void *audio_capture_thread_func(void *arg) {
   uint64_t batch_start_time_ns = 0;
   bool batch_has_data = false;
 
-  while (!should_exit() && !server_connection_is_lost()) {
+  while (!should_exit() && !server_connection_is_lost(connection)) {
     START_TIMER("audio_capture_loop_iteration");
     timing_loop_count++;
 
-    if (!server_connection_is_active()) {
+    if (!server_connection_is_active(connection)) {
       STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
       platform_sleep_us(100 * US_PER_MS_INT);     // Wait for connection
       continue;
     }
 
     // Check if pipeline is ready
-    if (!client_connection_current()->audio_pipeline) {
+    if (!connection->audio_pipeline) {
       STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
       platform_sleep_us(100 * US_PER_MS_INT);
       continue;
     }
 
     // Check how many samples are available in the ring buffer
-    int available = audio_ring_buffer_available_read(g_audio_context.capture_buffer);
+    int available = audio_ring_buffer_available_read(connection->audio_context->capture_buffer);
     if (available <= 0) {
       // Flush partial batch before sleeping (prevent starvation during idle periods)
       if (batch_has_data && batch_frame_count > 0) {
@@ -557,7 +555,7 @@ static void *audio_capture_thread_func(void *arg) {
           long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
           log_debug_every(LOG_RATE_FAST, "Idle timeout flush: %d frames (%zu bytes) after %ld ms", batch_frame_count,
                           batch_total_size, elapsed_ms);
-          (void)audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
+          (void)audio_queue_packet(connection, batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
           batch_frame_count = 0;
           batch_total_size = 0;
           batch_has_data = false;
@@ -577,7 +575,7 @@ static void *audio_capture_thread_func(void *arg) {
     int to_read = (available < CAPTURE_READ_SIZE) ? available : CAPTURE_READ_SIZE;
 
     START_TIMER("audio_read_samples");
-    asciichat_error_t read_result = audio_read_samples(&g_audio_context, audio_buffer, to_read);
+    asciichat_error_t read_result = audio_read_samples(connection->audio_context, audio_buffer, to_read);
     double read_time_ns = STOP_TIMER("audio_read_samples");
 
     total_read_ns += read_time_ns;
@@ -674,7 +672,7 @@ static void *audio_capture_thread_func(void *arg) {
           uint8_t opus_packet[OPUS_MAX_PACKET_SIZE];
 
           START_TIMER("opus_encode");
-          int opus_len = client_audio_pipeline_capture(client_connection_current()->audio_pipeline, opus_frame_buffer,
+          int opus_len = client_audio_pipeline_capture(connection->audio_pipeline, opus_frame_buffer,
                                                        OPUS_FRAME_SAMPLES, opus_packet, OPUS_MAX_PACKET_SIZE);
 
           int encode_count = 0;
@@ -734,7 +732,8 @@ static void *audio_capture_thread_func(void *arg) {
         batch_send_count++;
 
         START_TIMER("audio_queue_packet");
-        int queue_result = audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
+        int queue_result =
+            audio_queue_packet(connection, batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
         double queue_time_ns = STOP_TIMER("audio_queue_packet");
 
         total_queue_ns += queue_time_ns;
@@ -803,7 +802,8 @@ static void *audio_capture_thread_func(void *arg) {
                           batch_frame_count, batch_total_size, elapsed_ms);
 
           // Queue partial batch
-          int queue_result = audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
+          int queue_result =
+              audio_queue_packet(connection, batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
           if (queue_result == 0) {
             // Track audio frame for FPS reporting
             fps_frame_ns(&fps_tracker, time_get_ns(), "audio batch timeout flush");
@@ -836,7 +836,7 @@ static void *audio_capture_thread_func(void *arg) {
           long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
           log_debug_every(LOG_RATE_FAST, "Error path timeout flush: %d frames (%zu bytes) after %ld ms",
                           batch_frame_count, batch_total_size, elapsed_ms);
-          (void)audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
+          (void)audio_queue_packet(connection, batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
           batch_frame_count = 0;
           batch_total_size = 0;
           batch_has_data = false;
@@ -926,10 +926,10 @@ int audio_client_init() {
 }
 
 asciichat_error_t audio_connection_init(client_connection_t *connection) {
-  if (!g_audio_context.initialized)
+  if (!connection->audio_context || !connection->audio_context->initialized)
     return ASCIICHAT_OK;
   // Create unified audio pipeline (handles AEC, AGC, noise suppression, Opus)
-  bool has_media_audio = media_source_has_audio(capture_get_media_source());
+  bool has_media_audio = media_source_has_audio(session_capture_get_media_source(connection->capture_context));
   client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_config_for_source(has_media_audio);
 
   // Enable echo cancellation, AGC, and essential processing for clear audio
@@ -945,7 +945,8 @@ asciichat_error_t audio_connection_init(client_connection_t *connection) {
   pipeline_config.flags.lowpass = false;        // DISABLED: preserve high-frequency content
 
   // Applied before streams start; actual underflows increase this bounded target.
-  audio_ring_buffer_set_jitter_target(g_audio_context.playback_buffer, (uint32_t)pipeline_config.jitter_margin_ms * 48);
+  audio_ring_buffer_set_jitter_target(connection->audio_context->playback_buffer,
+                                      (uint32_t)pipeline_config.jitter_margin_ms * 48);
 
   log_debug("DEBUG: About to create audio pipeline...");
   connection->audio_pipeline = client_audio_pipeline_create(&pipeline_config);
@@ -960,7 +961,7 @@ asciichat_error_t audio_connection_init(client_connection_t *connection) {
   // Associate pipeline with audio context for echo cancellation
   // The audio output callback will feed playback samples directly to AEC3 from the speaker output,
   // ensuring proper timing synchronization (not from the decode path 50-100ms earlier)
-  audio_set_pipeline(&g_audio_context, (void *)connection->audio_pipeline);
+  audio_set_pipeline(connection->audio_context, (void *)connection->audio_pipeline);
 
   // Audio streams start from protocol_start_connection() after the network
   // connection succeeds, so local media playback does not advance while dialing.
@@ -979,6 +980,8 @@ asciichat_error_t audio_connection_init(client_connection_t *connection) {
  * @ingroup client_audio
  */
 int audio_start_thread(client_connection_t *connection) {
+  if (!connection->audio_context)
+    return 0;
   log_debug("audio_start_thread called: audio_enabled=%d", GET_OPTION(audio_enabled));
 
   if (!GET_OPTION(audio_enabled)) {
@@ -1017,35 +1020,35 @@ int audio_start_thread(client_connection_t *connection) {
  *
  * @ingroup client_audio
  */
-void audio_stop_thread() {
-  if (!client_connection_current())
+void audio_stop_thread(client_connection_t *connection) {
+  if (!connection || !connection->audio_context)
     return;
   // If audio was never initialized (e.g., in snapshot mode), nothing to stop
-  if (!lifecycle_is_initialized(&g_audio_client_init_lc)) {
+  if (!connection->audio_context->initialized) {
     log_debug("[AUDIO_STOP] Audio never initialized, nothing to stop");
     return;
   }
 
   // Signal audio worker thread to exit first (stop processing)
   log_debug("[AUDIO_STOP] Signaling audio worker thread to stop");
-  atomic_store_bool(&g_audio_context.worker_should_stop, true);
+  atomic_store_bool(&connection->audio_context->worker_should_stop, true);
   // Wake up the worker thread if it's waiting on condition variable
-  mutex_lock(&g_audio_context.worker_mutex);
-  cond_signal(&g_audio_context.worker_cond);
-  mutex_unlock(&g_audio_context.worker_mutex);
+  mutex_lock(&connection->audio_context->worker_mutex);
+  cond_signal(&connection->audio_context->worker_cond);
+  mutex_unlock(&connection->audio_context->worker_mutex);
   log_debug("[AUDIO_STOP] Worker thread stop signal sent");
 
   // Signal audio sender thread to exit first.
   // This must happen before thread_pool_stop_all() is called, otherwise the sender
   // thread will be stuck in cond_wait() and thread_pool_stop_all() will hang forever.
   // The sender thread uses a condition variable to wait for packets - we must wake it up.
-  // NOTE: Only do this if audio_sender_init(client_connection_t *connection) was actually called
-  if (lifecycle_is_initialized(&client_connection_current()->audio_send_queue_lc)) {
+  // NOTE: Only do this if audio_sender_init() was actually called
+  if (lifecycle_is_initialized(&connection->audio_send_queue_lc)) {
     log_debug("[AUDIO_STOP] Signaling audio sender thread to exit");
-    atomic_store_bool(&client_connection_current()->audio_sender_should_exit, true);
-    mutex_lock(&client_connection_current()->audio_send_queue_mutex);
-    cond_signal(&client_connection_current()->audio_send_queue_cond);
-    mutex_unlock(&client_connection_current()->audio_send_queue_mutex);
+    atomic_store_bool(&connection->audio_sender_should_exit, true);
+    mutex_lock(&connection->audio_send_queue_mutex);
+    cond_signal(&connection->audio_send_queue_cond);
+    mutex_unlock(&connection->audio_send_queue_mutex);
     log_debug("[AUDIO_STOP] Signal sent to sender thread");
 
     // Wait for audio sender thread to exit gracefully
@@ -1054,12 +1057,12 @@ void audio_stop_thread() {
     // Network operations can block for 10-50ms, so we need to wait longer
     int wait_count = 0;
     log_debug("[AUDIO_STOP] Waiting for sender thread to exit, max 500ms");
-    while (wait_count < 50 && !atomic_load_bool(&client_connection_current()->audio_sender_exited)) {
+    while (wait_count < 50 && !atomic_load_bool(&connection->audio_sender_exited)) {
       platform_sleep_us(10 * US_PER_MS_INT); // 10ms * 50 = 500ms max wait
       wait_count++;
     }
 
-    if (!atomic_load_bool(&client_connection_current()->audio_sender_exited)) {
+    if (!atomic_load_bool(&connection->audio_sender_exited)) {
       log_warn("[AUDIO_STOP] Audio sender thread not responding after 500ms - will be joined by thread pool");
     } else {
       log_debug("[AUDIO_STOP] Sender thread exited successfully");
@@ -1069,8 +1072,8 @@ void audio_stop_thread() {
   }
 
   log_debug("[AUDIO_STOP] Checking if capture thread was created: g_audio_capture_thread_created=%d",
-            client_connection_current()->audio_capture_thread_created);
-  if (!THREAD_IS_CREATED(client_connection_current()->audio_capture_thread_created)) {
+            connection->audio_capture_thread_created);
+  if (!THREAD_IS_CREATED(connection->audio_capture_thread_created)) {
     log_debug("[AUDIO_STOP] Capture thread was not created, committing lifecycle and returning");
     log_debug("[AUDIO_STOP] Lifecycle committed, returning");
     return;
@@ -1084,19 +1087,19 @@ void audio_stop_thread() {
   // Threads check should_exit() every 1-5ms, so timeout can be much shorter than 500ms
   int wait_count2 = 0;
   log_debug("[AUDIO_STOP] Waiting for capture thread to exit, max 50ms");
-  while (wait_count2 < 5 && !atomic_load_bool(&client_connection_current()->audio_capture_thread_exited)) {
+  while (wait_count2 < 5 && !atomic_load_bool(&connection->audio_capture_thread_exited)) {
     platform_sleep_us(10 * US_PER_MS_INT); // 10ms * 5 = 50ms max wait (threads respond in ~1-5ms)
     wait_count2++;
   }
 
-  if (!atomic_load_bool(&client_connection_current()->audio_capture_thread_exited)) {
+  if (!atomic_load_bool(&connection->audio_capture_thread_exited)) {
     log_warn("[AUDIO_STOP] Audio capture thread not responding - will be joined by thread pool");
   } else {
     log_debug("[AUDIO_STOP] Capture thread exited successfully");
   }
 
   // Thread will be joined by thread_pool_stop_all() in client_connection_stop()
-  client_connection_current()->audio_capture_thread_created = false;
+  connection->audio_capture_thread_created = false;
 
   log_debug("Audio capture thread stopped");
 }
@@ -1108,8 +1111,8 @@ void audio_stop_thread() {
  *
  * @ingroup client_audio
  */
-bool audio_thread_exited() {
-  return atomic_load_bool(&client_connection_current()->audio_capture_thread_exited);
+bool audio_thread_exited(client_connection_t *connection) {
+  return atomic_load_bool(&connection->audio_capture_thread_exited);
 }
 
 /**
@@ -1125,11 +1128,7 @@ void audio_cleanup() {
     return;
   }
 
-  // Stop capture thread first (stops producing packets)
-  audio_stop_thread();
-
-  // Stop async sender thread (drains queue and exits)
-  audio_sender_cleanup();
+  // Connection workers have joined before application audio cleanup.
 
   // Stop audio stream before destroying pipeline to prevent race condition.
   // PortAudio may invoke the callback one more time after we request stop.
@@ -1181,8 +1180,8 @@ void audio_cleanup() {
  *
  * @ingroup client_audio
  */
-client_audio_pipeline_t *audio_get_pipeline(void) {
-  return client_connection_current() ? client_connection_current()->audio_pipeline : NULL;
+client_audio_pipeline_t *audio_get_pipeline(client_connection_t *connection) {
+  return connection ? connection->audio_pipeline : NULL;
 }
 
 /**
@@ -1195,13 +1194,13 @@ client_audio_pipeline_t *audio_get_pipeline(void) {
  *
  * @ingroup client_audio
  */
-int audio_decode_opus(const uint8_t *opus_data, size_t opus_len, float *output, int max_samples) {
-  if (!client_connection_current()->audio_pipeline || !output || max_samples <= 0) {
+int audio_decode_opus(client_connection_t *connection, const uint8_t *opus_data, size_t opus_len, float *output,
+                      int max_samples) {
+  if (!connection->audio_pipeline || !output || max_samples <= 0) {
     return -1;
   }
 
-  return client_audio_pipeline_playback(client_connection_current()->audio_pipeline, opus_data, (int)opus_len, output,
-                                        max_samples);
+  return client_audio_pipeline_playback(connection->audio_pipeline, opus_data, (int)opus_len, output, max_samples);
 }
 
 /**

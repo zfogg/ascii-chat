@@ -119,11 +119,11 @@
  */
 
 // Publish a remote rejection from the receive worker to the reconnect owner.
-void server_connection_set_remote_error(asciichat_error_t code) {
-  atomic_store_int(&client_connection_current()->remote_error, code);
+void server_connection_set_remote_error(client_connection_t *connection, asciichat_error_t code) {
+  atomic_store_int(&connection->remote_error, code);
 }
-asciichat_error_t server_connection_get_remote_error(void) {
-  return (asciichat_error_t)atomic_load_int(&client_connection_current()->remote_error);
+asciichat_error_t server_connection_get_remote_error(client_connection_t *connection) {
+  return (asciichat_error_t)atomic_load_int(&connection->remote_error);
 }
 
 /* ============================================================================
@@ -151,21 +151,21 @@ asciichat_error_t server_connection_get_remote_error(void) {
  *
  * @ingroup client_connection
  */
-int server_connection_init() {
+int server_connection_init(client_connection_t *connection) {
   // Initialize mutex for thread-safe packet sending
-  if (mutex_init(&client_connection_current()->send_mutex, "send") != 0) {
+  if (mutex_init(&connection->send_mutex, "send") != 0) {
     log_error("Failed to initialize send mutex");
     return -1;
   }
 
-  client_connection_current()->send_mutex_initialized = true;
+  connection->send_mutex_initialized = true;
 
   // Initialize connection state
-  client_connection_current()->sockfd = INVALID_SOCKET_VALUE;
-  client_connection_current()->attempt.connection.transport = NULL;
-  atomic_store_bool(&client_connection_current()->connection_active, false);
-  atomic_store_bool(&client_connection_current()->connection_lost, false);
-  client_connection_current()->my_client_id = 0;
+  connection->sockfd = INVALID_SOCKET_VALUE;
+  connection->attempt.connection.transport = NULL;
+  atomic_store_bool(&connection->connection_active, false);
+  atomic_store_bool(&connection->connection_lost, false);
+  connection->my_client_id = 0;
 
   return 0;
 }
@@ -187,14 +187,13 @@ int server_connection_init() {
  *
  * @ingroup client_connection
  */
-bool server_connection_is_active() {
-  if (!client_connection_current())
+bool server_connection_is_active(client_connection_t *connection) {
+  if (!connection)
     return false;
   // For TCP: check socket validity
   // For WebRTC: socket is INVALID_SOCKET_VALUE but transport exists
-  return atomic_load_bool(&client_connection_current()->connection_active) &&
-         (client_connection_current()->sockfd != INVALID_SOCKET_VALUE ||
-          client_connection_current()->attempt.connection.transport != NULL);
+  return atomic_load_bool(&connection->connection_active) &&
+         (connection->sockfd != INVALID_SOCKET_VALUE || connection->attempt.connection.transport != NULL);
 }
 
 /**
@@ -204,8 +203,8 @@ bool server_connection_is_active() {
  *
  * @ingroup client_connection
  */
-socket_t server_connection_get_socket() {
-  return client_connection_current()->sockfd;
+socket_t server_connection_get_socket(client_connection_t *connection) {
+  return connection->sockfd;
 }
 
 /**
@@ -215,8 +214,8 @@ socket_t server_connection_get_socket() {
  *
  * @ingroup client_connection
  */
-acip_transport_t *server_connection_get_transport(void) {
-  return client_connection_current()->attempt.connection.transport;
+acip_transport_t *server_connection_get_transport(client_connection_t *connection) {
+  return connection->attempt.connection.transport;
 }
 
 /**
@@ -229,28 +228,27 @@ acip_transport_t *server_connection_get_transport(void) {
  *
  * @ingroup client_connection
  */
-void server_connection_set_transport(acip_transport_t *transport) {
+void server_connection_set_transport(client_connection_t *connection, acip_transport_t *transport) {
   log_debug("[TRANSPORT_LIFECYCLE] server_connection_set_transport() called with transport=%p", (void *)transport);
 
   log_debug("[TRANSPORT_LIFECYCLE] Setting g_client_transport to %p", (void *)transport);
-  client_connection_current()->attempt.connection.transport = transport;
+  connection->attempt.connection.transport = transport;
 
   // Mark connection as active when transport is set
   if (transport) {
     log_debug("[TRANSPORT_LIFECYCLE] Transport is non-NULL, extracting socket...");
-    client_connection_current()->sockfd = acip_transport_get_socket(transport);
-    log_debug("[TRANSPORT_LIFECYCLE] Socket extracted: %d from transport=%p", (int)client_connection_current()->sockfd,
+    connection->sockfd = acip_transport_get_socket(transport);
+    log_debug("[TRANSPORT_LIFECYCLE] Socket extracted: %d from transport=%p", (int)connection->sockfd,
               (void *)transport);
 
-    atomic_store_bool(&client_connection_current()->connection_active, true);
-    atomic_store_bool(&client_connection_current()->connection_lost, false); // Reset lost flag for new connection
+    atomic_store_bool(&connection->connection_active, true);
+    atomic_store_bool(&connection->connection_lost, false); // Reset lost flag for new connection
     log_debug("[TRANSPORT_LIFECYCLE] Server connection transport set and marked active (transport=%p, sockfd=%d, "
               "is_connected=%s)",
-              (void *)transport, (int)client_connection_current()->sockfd,
-              acip_transport_is_connected(transport) ? "true" : "false");
+              (void *)transport, (int)connection->sockfd, acip_transport_is_connected(transport) ? "true" : "false");
   } else {
-    client_connection_current()->sockfd = INVALID_SOCKET_VALUE;
-    atomic_store_bool(&client_connection_current()->connection_active, false);
+    connection->sockfd = INVALID_SOCKET_VALUE;
+    atomic_store_bool(&connection->connection_active, false);
     log_debug("[TRANSPORT_LIFECYCLE] Server connection transport cleared and marked inactive");
   }
 
@@ -264,8 +262,8 @@ void server_connection_set_transport(acip_transport_t *transport) {
  *
  * @ingroup client_connection
  */
-uint32_t server_connection_get_client_id() {
-  return client_connection_current()->my_client_id;
+uint32_t server_connection_get_client_id(client_connection_t *connection) {
+  return connection->my_client_id;
 }
 
 /**
@@ -278,8 +276,8 @@ uint32_t server_connection_get_client_id() {
  *
  * @ingroup client_connection
  */
-const char *server_connection_get_ip() {
-  return client_connection_current()->server_ip;
+const char *server_connection_get_ip(client_connection_t *connection) {
+  return connection->server_ip;
 }
 
 /**
@@ -291,12 +289,12 @@ const char *server_connection_get_ip() {
  *
  * @ingroup client_connection
  */
-void server_connection_set_ip(const char *ip) {
+void server_connection_set_ip(client_connection_t *connection, const char *ip) {
   if (ip) {
-    SAFE_STRNCPY(client_connection_current()->server_ip, ip, sizeof(client_connection_current()->server_ip));
-    log_debug("Server IP set to: %s", client_connection_current()->server_ip);
+    SAFE_STRNCPY(connection->server_ip, ip, sizeof(connection->server_ip));
+    log_debug("Server IP set to: %s", connection->server_ip);
   } else {
-    client_connection_current()->server_ip[0] = '\0';
+    connection->server_ip[0] = '\0';
     log_debug("Server IP cleared");
   }
 }
@@ -310,9 +308,9 @@ void server_connection_set_ip(const char *ip) {
  *
  * @ingroup client_connection
  */
-void server_connection_set_port(int port) {
-  client_connection_current()->server_port = port;
-  log_debug("Server port set to: %d", client_connection_current()->server_port);
+void server_connection_set_port(client_connection_t *connection, int port) {
+  connection->server_port = port;
+  log_debug("Server port set to: %d", connection->server_port);
 }
 
 /**
@@ -324,22 +322,18 @@ void server_connection_set_port(int port) {
  *
  * @ingroup client_connection
  */
-int server_connection_get_port(void) {
-  return client_connection_current()->server_port;
+int server_connection_get_port(client_connection_t *connection) {
+  return connection->server_port;
 }
 
 /* Called by the owner and its workers, never by a signal handler. The
  * transport remains allocated until the controlling thread joins all users. */
-void server_connection_shutdown(void) {
-  client_connection_t *connection = client_connection_current();
+void server_connection_shutdown(client_connection_t *connection) {
   if (!connection)
     return;
   atomic_store_bool(&connection->connection_active, false);
   atomic_store_bool(&connection->connection_lost, true);
-  acip_async_tcp_transport_interrupt(connection->attempt.connection.transport);
-  acip_websocket_transport_interrupt(connection->attempt.connection.transport);
-  if (connection->sockfd != INVALID_SOCKET_VALUE)
-    socket_shutdown(connection->sockfd, SHUT_RDWR);
+  session_connection_interrupt_transport(connection->attempt.connection.transport);
 }
 
 /**
@@ -350,9 +344,9 @@ void server_connection_shutdown(void) {
  *
  * @ingroup client_connection
  */
-void server_connection_lost() {
-  atomic_store_bool(&client_connection_current()->connection_lost, true);
-  atomic_store_bool(&client_connection_current()->connection_active, false);
+void server_connection_lost(client_connection_t *connection) {
+  atomic_store_bool(&connection->connection_lost, true);
+  atomic_store_bool(&connection->connection_active, false);
 
   // Don't re-enable terminal logging here - let the splash screen handle it
   // The reconnection splash will capture and display logs properly
@@ -366,10 +360,10 @@ void server_connection_lost() {
  *
  * @ingroup client_connection
  */
-bool server_connection_is_lost() {
-  if (!client_connection_current())
+bool server_connection_is_lost(client_connection_t *connection) {
+  if (!connection)
     return true;
-  return atomic_load_bool(&client_connection_current()->connection_lost);
+  return atomic_load_bool(&connection->connection_lost);
 }
 
 /* ============================================================================
@@ -393,22 +387,22 @@ bool server_connection_is_lost() {
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, size_t len) {
+asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_type_t type, const void *data,
+                                       size_t len) {
   // Lock mutex for entire send operation to prevent concurrent socket writes
-  mutex_lock(&client_connection_current()->send_mutex);
+  mutex_lock(&connection->send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load_bool(&client_connection_current()->connection_active) ||
-      !client_connection_current()->attempt.connection.transport) {
+  if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
     log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() check failed: active=%s, transport=%p",
-              atomic_load_bool(&client_connection_current()->connection_active) ? "true" : "false",
-              (void *)client_connection_current()->attempt.connection.transport);
-    mutex_unlock(&client_connection_current()->send_mutex);
+              atomic_load_bool(&connection->connection_active) ? "true" : "false",
+              (void *)connection->attempt.connection.transport);
+    mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
   // Get transport reference - transport has its own internal synchronization
-  acip_transport_t *transport = client_connection_current()->attempt.connection.transport;
+  acip_transport_t *transport = connection->attempt.connection.transport;
   log_debug_every(LOG_RATE_SLOW, "[TRANSPORT_LIFECYCLE] threaded_send_packet() using transport=%p, is_connected=%s",
                   (void *)transport, acip_transport_is_connected(transport) ? "true" : "false");
 
@@ -416,13 +410,13 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
   asciichat_error_t result = packet_send_via_transport(transport, type, data, len, 0);
 
   // Unlock after send completes
-  mutex_unlock(&client_connection_current()->send_mutex);
+  mutex_unlock(&connection->send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() send failed");
     if (!network_error_is_local_rejection(result))
-      server_connection_lost();
+      server_connection_lost(connection);
     return result;
   }
 
@@ -443,30 +437,30 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {
+asciichat_error_t threaded_send_audio_batch_packet(client_connection_t *connection, const float *samples,
+                                                   int num_samples, int batch_count) {
   // Lock mutex for entire send operation to prevent concurrent socket writes
-  mutex_lock(&client_connection_current()->send_mutex);
+  mutex_lock(&connection->send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load_bool(&client_connection_current()->connection_active) ||
-      !client_connection_current()->attempt.connection.transport) {
-    mutex_unlock(&client_connection_current()->send_mutex);
+  if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
+    mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active");
   }
 
   // Get transport reference - transport has its own internal synchronization
-  acip_transport_t *transport = client_connection_current()->attempt.connection.transport;
+  acip_transport_t *transport = connection->attempt.connection.transport;
 
   // Network I/O happens while holding mutex to prevent concurrent socket writes
   asciichat_error_t result = acip_send_audio_batch(transport, samples, (uint32_t)num_samples, (uint32_t)batch_count);
 
   // Unlock after send completes
-  mutex_unlock(&client_connection_current()->send_mutex);
+  mutex_unlock(&connection->send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     if (!network_error_is_local_rejection(result))
-      server_connection_lost();
+      server_connection_lost(connection);
     return result;
   }
 
@@ -487,21 +481,20 @@ asciichat_error_t threaded_send_audio_batch_packet(const float *samples, int num
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sample_rate,
-                                           int frame_duration) {
+asciichat_error_t threaded_send_audio_opus(client_connection_t *connection, const uint8_t *opus_data, size_t opus_size,
+                                           int sample_rate, int frame_duration) {
   // Get transport reference while holding mutex (brief lock)
-  mutex_lock(&client_connection_current()->send_mutex);
+  mutex_lock(&connection->send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load_bool(&client_connection_current()->connection_active) ||
-      !client_connection_current()->attempt.connection.transport) {
-    mutex_unlock(&client_connection_current()->send_mutex);
+  if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
+    mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
   // Get transport reference - transport has its own internal synchronization
-  acip_transport_t *transport = client_connection_current()->attempt.connection.transport;
-  mutex_unlock(&client_connection_current()->send_mutex);
+  acip_transport_t *transport = connection->attempt.connection.transport;
+  mutex_unlock(&connection->send_mutex);
 
   // Build Opus packet with header (outside mutex - no blocking I/O yet)
   size_t header_size = 16; // sample_rate (4), frame_duration (4), reserved (8)
@@ -532,7 +525,7 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     if (!network_error_is_local_rejection(result))
-      server_connection_lost();
+      server_connection_lost(connection);
     return result;
   }
 
@@ -553,20 +546,19 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_t opus_size,
-                                                 const uint16_t *frame_sizes, int frame_count) {
+asciichat_error_t threaded_send_audio_opus_batch(client_connection_t *connection, const uint8_t *opus_data,
+                                                 size_t opus_size, const uint16_t *frame_sizes, int frame_count) {
   // Lock mutex for entire send operation to prevent concurrent socket writes
-  mutex_lock(&client_connection_current()->send_mutex);
+  mutex_lock(&connection->send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load_bool(&client_connection_current()->connection_active) ||
-      !client_connection_current()->attempt.connection.transport) {
-    mutex_unlock(&client_connection_current()->send_mutex);
+  if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
+    mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
   // Get transport reference - transport has its own internal synchronization
-  acip_transport_t *transport = client_connection_current()->attempt.connection.transport;
+  acip_transport_t *transport = connection->attempt.connection.transport;
 
   // Network I/O happens while holding mutex to prevent concurrent socket writes
   // Opus uses 20ms frames at 48kHz (960 samples = 20ms)
@@ -574,12 +566,12 @@ asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_
       acip_send_audio_opus_batch(transport, opus_data, opus_size, frame_sizes, frame_count, 48000, 20);
 
   // Unlock after send completes
-  mutex_unlock(&client_connection_current()->send_mutex);
+  mutex_unlock(&connection->send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     if (!network_error_is_local_rejection(result))
-      server_connection_lost();
+      server_connection_lost(connection);
     return result;
   }
 
@@ -600,18 +592,18 @@ asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t width, uint32_t height,
-                                            uint32_t pixel_format) {
+asciichat_error_t threaded_send_image_frame(client_connection_t *connection, const void *pixel_data, uint32_t width,
+                                            uint32_t height, uint32_t pixel_format) {
   if (!pixel_data) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Pixel data is NULL");
   }
 
-  mutex_lock(&client_connection_current()->send_mutex);
+  mutex_lock(&connection->send_mutex);
 
   // Get transport reference - may be NULL if connection was lost
-  acip_transport_t *transport = server_connection_get_transport();
-  if (!transport || !server_connection_is_active()) {
-    mutex_unlock(&client_connection_current()->send_mutex);
+  acip_transport_t *transport = server_connection_get_transport(connection);
+  if (!transport || !server_connection_is_active(connection)) {
+    mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Transport unavailable");
   }
 
@@ -619,12 +611,12 @@ asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t wid
   asciichat_error_t result = acip_send_image_frame(transport, pixel_data, width, height, pixel_format);
 
   // Unlock after send completes
-  mutex_unlock(&client_connection_current()->send_mutex);
+  mutex_unlock(&connection->send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     if (!network_error_is_local_rejection(result))
-      server_connection_lost();
+      server_connection_lost(connection);
     return result;
   }
 
@@ -645,8 +637,9 @@ asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t wid
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint32_t width, uint32_t height,
-                                                    video_codec_t codec, bool *encoding_failed) {
+asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connection, const void *pixel_data,
+                                                    uint32_t width, uint32_t height, video_codec_t codec,
+                                                    bool *encoding_failed) {
   if (!encoding_failed)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing video encoding status output");
   *encoding_failed = false;
@@ -654,14 +647,14 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid video frame");
   }
   // The capture thread creates the selected encoder only when a frame is ready.
-  if (!client_connection_current()->video_encoder) {
-    client_connection_current()->video_encoder = video_encoder_create(codec, (uint16_t)width, (uint16_t)height);
-    if (!client_connection_current()->video_encoder) {
+  if (!connection->video_encoder) {
+    connection->video_encoder = video_encoder_create(codec, (uint16_t)width, (uint16_t)height);
+    if (!connection->video_encoder) {
       *encoding_failed = true;
       return GET_ERRNO();
     }
   }
-  h265_encoder_t *encoder = client_connection_current()->video_encoder;
+  h265_encoder_t *encoder = connection->video_encoder;
   size_t output_buffer_size = 5 + ((size_t)width * height * 3) + 65536;
   uint8_t *output_buffer = buffer_alloc(NULL, output_buffer_size);
   if (!output_buffer)
@@ -679,13 +672,13 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
 
   // NOW acquire the send mutex just for the actual network transmission
   log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_3] About to acquire g_send_mutex for network send");
-  mutex_lock(&client_connection_current()->send_mutex);
+  mutex_lock(&connection->send_mutex);
   log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_4] ✅ Acquired g_send_mutex, checking transport");
 
   // Get transport reference - may be NULL if connection was lost
-  acip_transport_t *transport = server_connection_get_transport();
-  if (!transport || !server_connection_is_active()) {
-    mutex_unlock(&client_connection_current()->send_mutex);
+  acip_transport_t *transport = server_connection_get_transport(connection);
+  if (!transport || !server_connection_is_active(connection)) {
+    mutex_unlock(&connection->send_mutex);
     log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_5] Transport unavailable, releasing mutex");
     buffer_release(output_buffer);
     return SET_ERRNO(ERROR_NETWORK, "Transport unavailable");
@@ -699,7 +692,7 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
   log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_7] packet_send_via_transport returned: %d", result);
 
   // Unlock after send completes
-  mutex_unlock(&client_connection_current()->send_mutex);
+  mutex_unlock(&connection->send_mutex);
   log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_8] ✅ Released g_send_mutex");
 
   buffer_release(output_buffer);
@@ -708,7 +701,7 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     if (!network_error_is_local_rejection(result))
-      server_connection_lost();
+      server_connection_lost(connection);
     return result;
   }
 
@@ -722,9 +715,9 @@ asciichat_error_t threaded_send_image_frame_encoded(const void *pixel_data, uint
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_ping_packet(void) {
+asciichat_error_t threaded_send_ping_packet(client_connection_t *connection) {
   // Use threaded_send_packet which handles encryption, mutex locking, and connection state
-  return threaded_send_packet(PACKET_TYPE_PING, NULL, 0);
+  return threaded_send_packet(connection, PACKET_TYPE_PING, NULL, 0);
 }
 
 /**
@@ -734,9 +727,9 @@ asciichat_error_t threaded_send_ping_packet(void) {
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_pong_packet(void) {
+asciichat_error_t threaded_send_pong_packet(client_connection_t *connection) {
   // Use threaded_send_packet which handles encryption, mutex locking, and connection state
-  return threaded_send_packet(PACKET_TYPE_PONG, NULL, 0);
+  return threaded_send_packet(connection, PACKET_TYPE_PONG, NULL, 0);
 }
 
 /**
@@ -747,14 +740,14 @@ asciichat_error_t threaded_send_pong_packet(void) {
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_stream_start_packet(uint32_t stream_type) {
+asciichat_error_t threaded_send_stream_start_packet(client_connection_t *connection, uint32_t stream_type) {
   // Connection and transport availability is checked by threaded_send_packet()
 
   // Build STREAM_START packet locally
   uint32_t type_data = HOST_TO_NET_U32(stream_type);
 
   // Use threaded_send_packet() which handles encryption
-  return threaded_send_packet(PACKET_TYPE_STREAM_START, &type_data, sizeof(type_data));
+  return threaded_send_packet(connection, PACKET_TYPE_STREAM_START, &type_data, sizeof(type_data));
 }
 
 /**
@@ -770,7 +763,8 @@ asciichat_error_t threaded_send_stream_start_packet(uint32_t stream_type) {
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
+asciichat_error_t threaded_send_terminal_size_with_auto_detect(client_connection_t *connection, unsigned short width,
+                                                               unsigned short height) {
   // Log the dimensions being sent to server (helps debug dimension mismatch issues)
   log_debug("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height,
             GET_OPTION(auto_width), GET_OPTION(auto_height));
@@ -860,7 +854,7 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
   net_packet.codec_capabilities_audio = HOST_TO_NET_U32(AUDIO_CODEC_CAP_ALL);
 
   // Use threaded_send_packet() which handles encryption
-  return threaded_send_packet(PACKET_TYPE_CLIENT_CAPABILITIES, &net_packet, sizeof(net_packet));
+  return threaded_send_packet(connection, PACKET_TYPE_CLIENT_CAPABILITIES, &net_packet, sizeof(net_packet));
 }
 
 /**
@@ -874,7 +868,8 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
  *
  * @ingroup client_connection
  */
-asciichat_error_t threaded_send_client_join_packet(const char *display_name, uint32_t capabilities) {
+asciichat_error_t threaded_send_client_join_packet(client_connection_t *connection, const char *display_name,
+                                                   uint32_t capabilities) {
   // Connection and transport availability is checked by threaded_send_packet()
 
   // Build CLIENT_JOIN packet locally
@@ -885,18 +880,19 @@ asciichat_error_t threaded_send_client_join_packet(const char *display_name, uin
   join_packet.capabilities = HOST_TO_NET_U32(capabilities);
 
   // Use threaded_send_packet() which handles encryption
-  int send_result = threaded_send_packet(PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
+  int send_result = threaded_send_packet(connection, PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
   if (send_result == 0) {
-    mutex_lock(&client_connection_current()->send_mutex);
-    bool active = atomic_load_u64(&client_connection_current()->connection_active);
-    socket_t socket_snapshot = client_connection_current()->sockfd;
-    const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+    mutex_lock(&connection->send_mutex);
+    bool active = atomic_load_u64(&connection->connection_active);
+    socket_t socket_snapshot = connection->sockfd;
+    const crypto_context_t *crypto_ctx =
+        crypto_client_is_ready(connection) ? crypto_client_get_context(connection) : NULL;
     if (active && socket_snapshot != INVALID_SOCKET_VALUE) {
       (void)log_network_message(
           socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_INFO, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER,
           "CLIENT_JOIN sent (display=\"%s\", capabilities=0x%x)", join_packet.display_name, capabilities);
     }
-    mutex_unlock(&client_connection_current()->send_mutex);
+    mutex_unlock(&connection->send_mutex);
   }
   return send_result;
 }

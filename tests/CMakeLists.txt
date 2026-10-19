@@ -1227,3 +1227,40 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN AND CMAKE_BUILD_TYPE MAT
             $<TARGET_FILE:ascii-chat>)
     set_tests_properties(client-connection-lifecycle PROPERTIES LABELS "integration" TIMEOUT 300)
 endif()
+
+# Independent connection owners with real blocked TCP workers, without Criterion.
+if(BUILD_TESTS AND NOT EMSCRIPTEN)
+    add_executable(test-session-connections standalone/session/connection_test.c)
+    target_link_libraries(test-session-connections PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-session-connections PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    if(WIN32)
+        target_link_libraries(test-session-connections PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-session-connections)
+    set_target_properties(test-session-connections PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(TARGET tests)
+        add_dependencies(tests test-session-connections)
+    endif()
+    add_test(NAME session-connections COMMAND test-session-connections)
+    set_tests_properties(session-connections PROPERTIES LABELS "integration" TIMEOUT 30)
+endif()
+
+if(BUILD_TESTS AND NOT EMSCRIPTEN)
+    add_executable(test-peer-ready standalone/network/peer_ready_test.c)
+    if(WIN32)
+        target_link_libraries(test-peer-ready PRIVATE ws2_32)
+    endif()
+    target_link_libraries(test-peer-ready PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-peer-ready PRIVATE ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-peer-ready)
+    set_target_properties(test-peer-ready PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(TARGET tests)
+        add_dependencies(tests test-peer-ready)
+    endif()
+    add_test(NAME peer-ready COMMAND test-peer-ready)
+    set_tests_properties(peer-ready PROPERTIES LABELS "integration" TIMEOUT 30)
+endif()

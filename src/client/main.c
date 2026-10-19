@@ -175,30 +175,10 @@ static acip_websocket_runtime_t *g_websocket_runtime;
  * @param sigwinch The signal number (unused)
  */
 #ifndef _WIN32
+static volatile sig_atomic_t g_resize_pending;
 static void client_handle_sigwinch(int sigwinch) {
-  (void)(sigwinch);
-
-  // Terminal was resized, update dimensions and recalculate aspect ratio
-  // ONLY if both width and height are auto (not manually set)
-  if (GET_OPTION(auto_width) && GET_OPTION(auto_height)) {
-    // Get terminal size and update via proper RCU setters
-    unsigned short int term_width, term_height;
-    if (get_terminal_size(&term_width, &term_height) == ASCIICHAT_OK) {
-      options_set_int("width", (int)term_width);
-      options_set_int("height", (int)term_height);
-    }
-
-    // Send new size to server if connected
-    if (server_connection_is_active()) {
-      if (threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
-                                                       (int)terminal_get_effective_height()) < 0) {
-        log_warn("Failed to send terminal capabilities to server: %s", network_error_string());
-      } else {
-        display_full_reset();
-        log_set_terminal_output(false);
-      }
-    }
-  }
+  (void)sigwinch;
+  g_resize_pending = 1;
 }
 #endif
 
@@ -226,11 +206,6 @@ static void shutdown_client() {
   // Stop splash animation thread before any resource cleanup
   splash_intro_done();
 
-  client_connection_t *connection = client_connection_current();
-  if (client_connection_destroy(&connection) != ASCIICHAT_OK) {
-    log_error("Connection workers still running; retaining application resources");
-    return;
-  }
   audio_cleanup();
   capture_cleanup();
   acip_websocket_runtime_destroy(&g_websocket_runtime);
@@ -364,10 +339,13 @@ static bool client_should_reconnect(asciichat_error_t last_error, int attempt_nu
 static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, session_display_ctx_t *display,
                                             void *user_data) {
   (void)capture;   // Provided by session_client_like, used by protocol threads
-  (void)user_data; // Unused
+  client_connection_t *connection = user_data;
 
   // Make the framework-created display context available to protocol threads
   display_set_context(display);
+  connection->capture_context = capture_get_context();
+  connection->display_context = display;
+  connection->audio_context = audio_get_context();
 
   // Get the render loop's should_exit callback for monitoring
   bool (*render_should_exit)(void *) = session_client_like_get_render_should_exit();
@@ -376,7 +354,7 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
   }
 
   asciichat_error_t connection_result = client_connection_start(
-      client_connection_current(), g_client_session.discovered_address ? g_client_session.discovered_address : "",
+      connection, g_client_session.discovered_address ? g_client_session.discovered_address : "",
       (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224));
   if (connection_result != ASCIICHAT_OK) {
     LOG_ERRNO_IF_SET("Connection attempt failed");
@@ -394,8 +372,22 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
   // Monitor connection until it breaks or shutdown is requested
   bool snapshot_check_logged_once = false;
   uint64_t last_progress_log_ns = 0;
-  while (!should_exit() && server_connection_is_active()) {
-    if (protocol_connection_lost()) {
+  while (!should_exit() && server_connection_is_active(connection)) {
+#ifndef _WIN32
+    if (g_resize_pending) {
+      g_resize_pending = 0;
+      unsigned short width, height;
+      if (GET_OPTION(auto_width) && GET_OPTION(auto_height) && get_terminal_size(&width, &height) == ASCIICHAT_OK) {
+        options_set_int("width", width);
+        options_set_int("height", height);
+        if (threaded_send_terminal_size_with_auto_detect(connection, width, height) == ASCIICHAT_OK) {
+          display_full_reset();
+          log_set_terminal_output(false);
+        }
+      }
+    }
+#endif
+    if (protocol_connection_lost(connection)) {
       log_debug("Connection lost detected");
       break;
     }
@@ -407,22 +399,21 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
 
     if (!snapshot_check_logged_once) {
       log_info("CLIENT_MAIN_LOOP: snapshot_mode=%d first_frame_time=%llu snapshot_delay=%.1f", snapshot_mode_enabled,
-               (unsigned long long)atomic_load_u64(&client_connection_current()->snapshot_first_frame_time_ns),
+               (unsigned long long)atomic_load_u64(&connection->snapshot_first_frame_time_ns),
                GET_OPTION(snapshot_delay));
       snapshot_check_logged_once = true;
     }
 
-    if (snapshot_mode_enabled && atomic_load_u64(&client_connection_current()->snapshot_first_frame_time_ns) > 0) {
+    if (snapshot_mode_enabled && atomic_load_u64(&connection->snapshot_first_frame_time_ns) > 0) {
       uint64_t current_time_ns = time_get_ns();
-      double elapsed = time_ns_to_s(time_elapsed_ns(
-          atomic_load_u64(&client_connection_current()->snapshot_first_frame_time_ns), current_time_ns));
+      double elapsed =
+          time_ns_to_s(time_elapsed_ns(atomic_load_u64(&connection->snapshot_first_frame_time_ns), current_time_ns));
       double snapshot_delay = GET_OPTION(snapshot_delay);
 
       // Log progress every 500ms
       if (current_time_ns - last_progress_log_ns > 500 * 1000 * 1000) {
         log_debug("[MAIN_LOOP_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu", elapsed,
-                  snapshot_delay,
-                  (unsigned long long)atomic_load_u64(&client_connection_current()->snapshot_first_frame_time_ns),
+                  snapshot_delay, (unsigned long long)atomic_load_u64(&connection->snapshot_first_frame_time_ns),
                   (unsigned long long)current_time_ns);
         last_progress_log_ns = current_time_ns;
       }
@@ -446,10 +437,10 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     log_info("[ELSE_BRANCH] Connection lost path (should_exit=0, connection_active=0)");
     // Connection lost - check if snapshot_delay timer has fired before exiting
 
-    if (GET_OPTION(snapshot_mode) && atomic_load_u64(&client_connection_current()->snapshot_first_frame_time_ns) > 0) {
+    if (GET_OPTION(snapshot_mode) && atomic_load_u64(&connection->snapshot_first_frame_time_ns) > 0) {
       uint64_t current_time_ns = time_get_ns();
-      double elapsed = time_ns_to_s(time_elapsed_ns(
-          atomic_load_u64(&client_connection_current()->snapshot_first_frame_time_ns), current_time_ns));
+      double elapsed =
+          time_ns_to_s(time_elapsed_ns(atomic_load_u64(&connection->snapshot_first_frame_time_ns), current_time_ns));
       double snapshot_delay = GET_OPTION(snapshot_delay);
 
       log_info("[CONNECTION_LOSS_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f (checking if timer fired)", elapsed,
@@ -479,7 +470,7 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
   }
 
   // The receive worker publishes the rejection before marking the connection lost.
-  asciichat_error_t remote_error = server_connection_get_remote_error();
+  asciichat_error_t remote_error = server_connection_get_remote_error(connection);
   if (remote_error != ASCIICHAT_OK)
     return SET_ERRNO(remote_error, "Server rejected connection: %s", asciichat_error_string(remote_error));
   return ERROR_NETWORK;
@@ -487,6 +478,7 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
 
 /* Every attempt, including dialing/startup failure, leaves through this owner. */
 static asciichat_error_t client_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
+  (void)user_data;
   const char *address = g_client_session.discovered_address;
   if (!g_websocket_runtime && address && (strncmp(address, "ws://", 5) == 0 || strncmp(address, "wss://", 6) == 0)) {
     asciichat_error_t runtime_result = acip_websocket_runtime_create(&g_websocket_runtime);
@@ -499,7 +491,7 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
     return result;
   }
   asciichat_errno_scope_t attempt_errors = asciichat_errno_checkpoint();
-  result = client_run_attempt(capture, display, user_data);
+  result = client_run_attempt(capture, display, connection);
   asciichat_error_t cleanup = client_connection_destroy(&connection);
   while (cleanup != ASCIICHAT_OK) {
     // Keep borrowed application devices and display alive until all users stop.
@@ -526,13 +518,6 @@ int client_main(void) {
       .signal_exit = signal_exit,
       .platform_get_monotonic_time_us = platform_get_monotonic_time_us,
       .platform_sleep_ms = platform_sleep_ms,
-      .server_connection_set_ip = server_connection_set_ip,
-      .server_connection_set_port = server_connection_set_port,
-      .client_crypto_set_mode = client_crypto_set_mode,
-      .client_crypto_init = client_crypto_init,
-      .client_crypto_handshake = client_crypto_handshake,
-      .crypto_client_is_ready = crypto_client_is_ready,
-      .crypto_client_get_context = crypto_client_get_context,
   };
   app_callbacks_register(&client_crypto_callbacks);
 

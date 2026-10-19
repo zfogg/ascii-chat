@@ -1,4 +1,4 @@
-# Native client connection ownership
+# Shared connection ownership
 
 `src/client/connection.c` owns one native connection attempt, including dialing,
 handshake state, transport/client handle, worker pool, outbound audio queue,
@@ -16,11 +16,20 @@ Startup records initialized synchronization objects separately from workers so
 partial queue initialization also unwinds. No "all workers started" flag gates
 cleanup.
 
-Workers and ACIP callbacks receive their connection context. Fixed-signature
-application/crypto adapters borrow `client_connection_current()`. The controlling
-thread publishes that binding before starting transport owners or workers and
-clears it only after joining them and quiescing the transport. Signal handlers
-publish application exit only; they never dereference the connection binding.
+The reusable state machine lives in `src/common/session/connection.c`. It owns
+startup/stop state and the controlling-thread boundary, and enforces interruption,
+joining, then release. Mode adapters supply resource-specific operations. Native
+client attempts, discovery participants, and discovery WebRTC media workers all
+use that sequence. Discovery still coordinates signaling, host control, media
+transport switching, and host migration.
+
+Workers, ACIP callbacks, and crypto negotiation receive their connection context
+explicitly. There is no current-connection singleton or thread-local replacement.
+Each attempt holds its own crypto callbacks and user data. Multiple owners can
+coexist on one thread or in one program. Application media devices, capture, and
+display are borrowed explicitly; applications must provide distinct resources
+when running independent media sessions. The CLI still runs one interactive
+session. Signal handlers publish exit/resize requests without walking owners.
 
 Shutdown publishes STOPPING, interrupts network I/O without taking the send
 mutex, and wakes the audio sender before joining workers. Worker join failure
@@ -55,3 +64,12 @@ exercising the audio pipeline, capture, and sender without webcam or audio hardw
 
 `ASCII_CHAT_TEST_CLIENT_FAIL_STAGE` selects an acquisition checkpoint in Debug
 builds only. It has no effect in release builds.
+
+The Criterion-free `session-connections` test runs two live TCP owners with
+blocked receive workers, stops one while checking that the other keeps receiving,
+injects a failed join, checks controlling-thread cleanup, and unwinds partial
+startup. `participant-media` exercises discovery participant failures, repeated
+media lifecycles, transport transfer, recovery, and host-control preservation.
+`discovery-session-process` covers production discovery state transitions.
+Discovery media teardown also retains its stack dependencies until worker joins
+succeed; NAT-worker join failures retain the discovery session for a safe retry.

@@ -303,7 +303,7 @@ int capture_start_thread(client_connection_t *connection);
  *
  * @see capture_start_thread "Start capture thread"
  */
-void capture_stop_thread();
+void capture_stop_thread(client_connection_t *connection);
 
 /**
  * @brief Check if capture thread has exited
@@ -320,7 +320,7 @@ void capture_stop_thread();
  *
  * @see capture_stop_thread "Stop capture thread"
  */
-bool capture_thread_exited();
+bool capture_thread_exited(client_connection_t *connection);
 
 /**
  * @brief Cleanup capture subsystem
@@ -345,3 +345,6 @@ void capture_cleanup();
 
 /* Borrowed source; audio must stop before capture cleanup. */
 void *capture_get_media_source(void);
+
+struct session_capture_ctx;
+struct session_capture_ctx *capture_get_context(void);

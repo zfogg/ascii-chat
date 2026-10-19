@@ -270,7 +270,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config);
  * @brief Destroy discovery session and free resources
  * @param session Session to destroy
  */
-void discovery_session_destroy(discovery_session_t *session);
+asciichat_error_t discovery_session_destroy(discovery_session_t *session);
 
 /**
  * @brief Start the discovery session

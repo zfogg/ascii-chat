@@ -763,6 +763,21 @@ static const acip_transport_methods_t webrtc_methods = {
     .destroy_impl = webrtc_destroy_impl,
 };
 
+void acip_webrtc_transport_interrupt(acip_transport_t *transport) {
+  if (!transport || transport->methods != &webrtc_methods || !transport->impl_data)
+    return;
+  webrtc_transport_data_t *wrtc = transport->impl_data;
+  /* Publish terminal state before waking readers. The owner retains peer handles
+   * and callback contexts until all media workers have joined. */
+  mutex_lock(&wrtc->queue_mutex);
+  mutex_lock(&wrtc->state_mutex);
+  wrtc->is_connected = false;
+  wrtc->data_channel_closed = true;
+  mutex_unlock(&wrtc->state_mutex);
+  cond_broadcast(&wrtc->queue_cond);
+  mutex_unlock(&wrtc->queue_mutex);
+}
+
 // =============================================================================
 // WebRTC Transport Creation
 // =============================================================================

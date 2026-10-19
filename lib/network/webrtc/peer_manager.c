@@ -209,7 +209,7 @@ static void on_peer_security_ready(acip_transport_t *transport, void *user_data)
   peer_entry_t *peer = user_data;
   webrtc_peer_manager_t *manager = peer->manager;
   atomic_store_bool(&peer->security_ready, true);
-  if (manager->config.on_transport_ready) {
+  if (manager->config.on_transport_ready && !manager->config.defer_transport_ready) {
     acip_transport_t *pending = atomic_ptr_exchange(&peer->pending_transport, NULL);
     if (!pending)
       return;
@@ -217,6 +217,31 @@ static void on_peer_security_ready(acip_transport_t *transport, void *user_data)
     manager->config.on_transport_ready(pending, peer->participant_id, manager->config.user_data);
   }
   (void)transport;
+}
+
+void webrtc_peer_manager_dispatch_ready(webrtc_peer_manager_t *manager) {
+  if (!manager || !manager->config.defer_transport_ready || !manager->config.on_transport_ready)
+    return;
+  for (;;) {
+    acip_transport_t *transport = NULL;
+    uint8_t participant_id[16];
+    mutex_lock(&manager->peers_mutex);
+    peer_entry_t *peer, *tmp;
+    HASH_ITER(hh, manager->peers, peer, tmp) {
+      if (!atomic_load_bool(&peer->security_ready))
+        continue;
+      transport = atomic_ptr_exchange(&peer->pending_transport, NULL);
+      if (transport) {
+        memcpy(participant_id, peer->participant_id, sizeof(participant_id));
+        peer->is_connected = true;
+        break;
+      }
+    }
+    mutex_unlock(&manager->peers_mutex);
+    if (!transport)
+      return;
+    manager->config.on_transport_ready(transport, participant_id, manager->config.user_data);
+  }
 }
 
 /**

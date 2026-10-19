@@ -1,3 +1,4 @@
+#include "connection.h"
 /**
  * @file client/display.h
  * @ingroup client_display
@@ -119,7 +120,7 @@ void display_full_reset();
  *
  * @see display_reset_for_new_connection "Reset for new connection"
  */
-void display_reset_for_new_connection();
+void display_reset_for_new_connection(client_connection_t *connection);
 
 /**
  * @brief Disable terminal logging for first frame
@@ -139,7 +140,7 @@ void display_reset_for_new_connection();
  *
  * @see display_render_frame "Render ASCII frame"
  */
-void display_disable_logging_for_first_frame();
+void display_disable_logging_for_first_frame(client_connection_t *connection);
 
 /**
  * @brief Render ASCII frame to display
@@ -165,7 +166,7 @@ void display_disable_logging_for_first_frame();
  *
  * @see display_init "Initialize display subsystem"
  */
-void display_render_frame(const char *frame_data);
+void display_render_frame(client_connection_t *connection, const char *frame_data);
 
 /**
  * @brief Cleanup display subsystem

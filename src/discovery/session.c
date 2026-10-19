@@ -198,9 +198,10 @@ static asciichat_error_t release_participant_transport(discovery_session_t *sess
   session_participant_t *participant = session->participant_ctx;
   if (!participant)
     return ASCIICHAT_OK;
-  session_participant_stop_audio(participant);
-  session_participant_stop_video(participant);
-  return session_participant_set_transport(participant, NULL, SESSION_TRANSPORT_BORROWED);
+  session_participant_disconnect(participant);
+  if (session_participant_has_transport(participant))
+    return SET_ERRNO(ERROR_THREAD, "Participant connection is still stopping");
+  return ASCIICHAT_OK;
 }
 
 static void release_host_control_transport(discovery_session_t *session) {
@@ -235,14 +236,22 @@ static asciichat_error_t select_participant_transport(discovery_session_t *sessi
   return ASCIICHAT_OK;
 }
 
-void discovery_session_destroy(discovery_session_t *session) {
+asciichat_error_t discovery_session_destroy(discovery_session_t *session) {
   if (!session) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
-    return;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
   }
 
-  if (release_participant_transport(session) != ASCIICHAT_OK)
-    return;
+  asciichat_error_t result = release_participant_transport(session);
+  if (result != ASCIICHAT_OK)
+    return result;
+  // The detector borrows the session and mutex; retain both on a timed join failure.
+  if (session->nat_detection_thread_started) {
+    asciichat_error_t join_result =
+        asciichat_thread_join_timeout(&session->nat_detection_thread, NULL, 500 * NS_PER_MS_INT);
+    if (join_result != ASCIICHAT_OK)
+      return SET_ERRNO(ERROR_THREAD, "NAT detection worker still owns discovery session");
+    session->nat_detection_thread_started = false;
+  }
   release_host_control_transport(session);
 
   // Close ACDS connection
@@ -283,20 +292,11 @@ void discovery_session_destroy(discovery_session_t *session) {
     session->turn_count = 0;
   }
 
-  // Wait for NAT detection thread to complete if still running (with 500ms timeout)
-  if (session->nat_detection_thread_started) {
-    log_debug("Waiting for NAT detection thread to complete (500ms timeout)...");
-    int join_result = asciichat_thread_join_timeout(&session->nat_detection_thread, NULL, 500 * 1000 * 1000); // 500ms
-    if (join_result != 0) {
-      log_warn("NAT detection thread did not exit within 500ms, continuing cleanup anyway");
-    }
-    session->nat_detection_thread_started = false;
-  }
-
   // Destroy NAT quality mutex
   mutex_destroy(&session->nat_quality_mutex);
 
   SAFE_FREE(session);
+  return ASCIICHAT_OK;
 }
 
 static void set_state(discovery_session_t *session, discovery_state_t new_state) {
@@ -1041,23 +1041,22 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
            role == WEBRTC_ROLE_JOINER ? "JOINER" : "CREATOR", session->stun_count, session->turn_count);
 
   // Create peer manager configuration
-  webrtc_peer_manager_config_t pm_config = {
-      .role = role,
-      // The host TCP listener can be loopback-only while WebRTC still needs
-      // candidates for every usable local interface. Do not reuse the TCP
-      // bind address for libdatachannel's ICE sockets.
-      .bind_address = NULL,
-      .stun_servers = session->stun_servers,
-      .stun_count = session->stun_count,
-      .turn_servers = session->turn_servers,
-      .turn_count = session->turn_count,
-      .relay_only = GET_OPTION(webrtc_relay_only),
-      .turn_username = session->turn_username,
-      .turn_credential = session->turn_password,
-      .on_transport_ready = discovery_on_transport_ready,
-      .on_gathering_timeout = discovery_on_gathering_timeout,
-      .user_data = session
-  };
+  webrtc_peer_manager_config_t pm_config = {.role = role,
+                                            // The host TCP listener can be loopback-only while WebRTC still needs
+                                            // candidates for every usable local interface. Do not reuse the TCP
+                                            // bind address for libdatachannel's ICE sockets.
+                                            .bind_address = NULL,
+                                            .stun_servers = session->stun_servers,
+                                            .stun_count = session->stun_count,
+                                            .turn_servers = session->turn_servers,
+                                            .turn_count = session->turn_count,
+                                            .relay_only = GET_OPTION(webrtc_relay_only),
+                                            .turn_username = session->turn_username,
+                                            .turn_credential = session->turn_password,
+                                            .on_transport_ready = discovery_on_transport_ready,
+                                            .defer_transport_ready = true,
+                                            .on_gathering_timeout = discovery_on_gathering_timeout,
+                                            .user_data = session};
 
   // Create signaling callbacks
   webrtc_signaling_callbacks_t signaling = {
@@ -1966,6 +1965,10 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
   if (!session) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
   }
+
+  // Transport callbacks publish readiness; ownership changes and worker joins
+  // execute here on the session's controlling thread.
+  webrtc_peer_manager_dispatch_ready(session->peer_manager);
 
   asciichat_error_t result = discovery_session_send_keepalive(session);
   if (result != ASCIICHAT_OK) {

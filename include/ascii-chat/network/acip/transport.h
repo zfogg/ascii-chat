@@ -406,6 +406,7 @@ void acip_websocket_runtime_destroy(acip_websocket_runtime_t **runtime);
 /** Interrupt WebSocket I/O without freeing the transport or joining workers.
  * Call from normal thread context while retaining ownership of the transport. */
 void acip_websocket_transport_interrupt(acip_transport_t *transport);
+void acip_webrtc_transport_interrupt(acip_transport_t *transport);
 
 acip_transport_t *acip_websocket_client_transport_create(const char *name, const char *url,
                                                          crypto_context_t *crypto_ctx);

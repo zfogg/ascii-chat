@@ -142,17 +142,17 @@ static void *ping_thread_func(void *arg) {
   APP_CALLBACK_VOID(platform_pump_events);
   platform_sleep_ms(100);
 
-  while (!should_exit() && !server_connection_is_lost()) {
+  while (!should_exit() && !server_connection_is_lost(connection)) {
     // Check if connection is still active before sending
-    if (!server_connection_is_active()) {
+    if (!server_connection_is_active(connection)) {
       log_debug("Connection inactive, exiting ping thread");
       break;
     }
 
     // Check if session rekeying should be triggered
-    if (crypto_client_should_rekey()) {
+    if (crypto_client_should_rekey(connection)) {
       log_debug("Rekey threshold reached, initiating session rekey");
-      if (crypto_client_initiate_rekey() < 0) {
+      if (crypto_client_initiate_rekey(connection) < 0) {
         log_error("Failed to initiate rekey");
         // Don't break - continue with keepalive, rekey will be retried
       }
@@ -160,10 +160,10 @@ static void *ping_thread_func(void *arg) {
 
     // Send ping packet every PING_INTERVAL_SECONDS to keep connection alive
     // Server timeout is 5 seconds, so 3-second pings provide safety margin
-    if (threaded_send_ping_packet() != ASCIICHAT_OK) {
+    if (threaded_send_ping_packet(connection) != ASCIICHAT_OK) {
       log_debug("Failed to send ping packet");
       // Set connection lost flag so main loop knows to reconnect
-      server_connection_lost();
+      server_connection_lost(connection);
       break;
     }
 
@@ -173,7 +173,7 @@ static void *ping_thread_func(void *arg) {
 
     // Sleep with early wake capability for responsive shutdown
     // Break sleep into intervals to check shutdown flags and rekey triggers
-    while (!should_exit() && !server_connection_is_lost() && server_connection_is_active()) {
+    while (!should_exit() && !server_connection_is_lost(connection) && server_connection_is_active(connection)) {
       uint64_t now_ns = time_get_ns();
       uint64_t elapsed_ns = time_elapsed_ns(ping_start_ns, now_ns);
 
@@ -240,10 +240,10 @@ int keepalive_start_thread(client_connection_t *connection) {
  *
  * @ingroup client_keepalive
  */
-void keepalive_stop_thread() {
-  if (!client_connection_current())
+void keepalive_stop_thread(client_connection_t *connection) {
+  if (!connection)
     return;
-  if (!client_connection_current()->ping_thread_created) {
+  if (!connection->ping_thread_created) {
     return;
   }
 
@@ -252,17 +252,17 @@ void keepalive_stop_thread() {
 
   // Wait for thread to exit gracefully
   int wait_count = 0;
-  while (wait_count < 20 && !atomic_load_bool(&client_connection_current()->ping_thread_exited)) {
+  while (wait_count < 20 && !atomic_load_bool(&connection->ping_thread_exited)) {
     platform_sleep_ns(100 * NS_PER_MS_INT); // 100ms
     wait_count++;
   }
 
-  if (!atomic_load_bool(&client_connection_current()->ping_thread_exited)) {
+  if (!atomic_load_bool(&connection->ping_thread_exited)) {
     log_warn("Ping thread not responding - will be joined by thread pool");
   }
 
   // Thread will be joined by thread_pool_stop_all() in client_connection_stop()
-  client_connection_current()->ping_thread_created = false;
+  connection->ping_thread_created = false;
 
   log_debug("Ping thread stopped and joined");
 }
@@ -274,6 +274,6 @@ void keepalive_stop_thread() {
  *
  * @ingroup client_keepalive
  */
-bool keepalive_thread_exited() {
-  return atomic_load_bool(&client_connection_current()->ping_thread_exited);
+bool keepalive_thread_exited(client_connection_t *connection) {
+  return atomic_load_bool(&connection->ping_thread_exited);
 }

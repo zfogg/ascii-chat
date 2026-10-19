@@ -99,6 +99,7 @@ typedef struct {
   const char *turn_credential;                              ///< Optional TURN credential override
   webrtc_transport_ready_callback_t on_transport_ready;     ///< Called when DataChannel ready
   webrtc_gathering_timeout_callback_t on_gathering_timeout; ///< Called when ICE gathering times out
+  bool defer_transport_ready; ///< Deliver ready transports through dispatch_ready on the owner thread.
   void *user_data;                                          ///< Passed to callbacks
 } webrtc_peer_manager_config_t;
 
@@ -250,3 +251,7 @@ int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager,
 #ifdef __cplusplus
 }
 #endif
+
+/** Deliver deferred ready transports on the session controlling thread.
+ * Serialize this call with peer removal and manager destruction. */
+void webrtc_peer_manager_dispatch_ready(webrtc_peer_manager_t *manager);

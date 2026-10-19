@@ -146,7 +146,12 @@ int socket_getsockopt(socket_t sock, int level, int optname, void *optval, sockl
 }
 
 int socket_shutdown(socket_t sock, int how) {
-  return shutdown(sock, how);
+  int result = shutdown(sock, how);
+  // Winsock shutdown retains the handle and can leave an outstanding receive
+  // waiting. Cancel its I/O before the owner joins workers, without closing it.
+  if (how == SD_BOTH || how == SD_RECEIVE)
+    CancelIoEx((HANDLE)sock, NULL);
+  return result;
 }
 
 int socket_getpeername(socket_t sock, struct sockaddr *addr, socklen_t *addrlen) {
