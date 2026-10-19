@@ -153,7 +153,6 @@ typedef struct {
 } client_like_state_t;
 
 static void client_like_setup_terminal_logging(void) {
-  log_debug("session_client_like_run(): Setting up terminal and logging");
 
   // Force stderr when stdout is piped (prevents ASCII corruption in output stream)
   bool should_force_stderr = terminal_should_force_stderr();
@@ -177,7 +176,6 @@ static void client_like_setup_terminal_logging(void) {
 }
 
 static asciichat_error_t client_like_setup_keepawake(void) {
-  log_debug("session_client_like_run(): Validating keepawake options");
 
   // Validate mutual exclusivity
   bool enable_ka = GET_OPTION(enable_keepawake);
@@ -188,14 +186,11 @@ static asciichat_error_t client_like_setup_keepawake(void) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
   }
 
-  log_debug("session_client_like_run(): Enabling keepawake if needed");
-
   // Enable keepawake unless explicitly disabled
   if (!disable_ka) {
     (void)platform_enable_keepawake();
   }
 
-  log_debug("session_client_like_run(): Keepawake setup complete");
   return ASCIICHAT_OK;
 }
 
@@ -228,11 +223,10 @@ static asciichat_error_t client_like_create_session_display(client_like_state_t 
 static asciichat_error_t client_like_prepare_session_splash(const session_client_like_config_t *config,
                                                             client_like_state_t *state, bool *stop) {
   asciichat_error_t result = ASCIICHAT_OK;
-  log_debug("session_client_like_run(): Starting splash with display context");
+  log_debug("Starting splash with display context");
 
   // Use the display context we just created for splash animation
   splash_intro_start(state->display);
-  log_debug("session_client_like_run(): splash_intro_start() returned");
   if (splash_is_running()) {
     log_set_terminal_output(false);
   }
@@ -253,7 +247,6 @@ static asciichat_error_t client_like_prepare_session_splash(const session_client
     APP_CALLBACK_VOID(platform_pump_events);
     APP_CALLBACK_VOID_UINT(platform_sleep_ms, 250);
   }
-  log_debug("session_client_like_run(): After splash sleep");
 
   // Restore stderr now that splash animation and post-splash logging are done
   // This allows logs to appear on screen again after this point
@@ -276,20 +269,17 @@ static asciichat_error_t client_like_prepare_session_splash(const session_client
 }
 
 static void client_like_configure_session_logging(const session_client_like_config_t *config) {
-  log_debug("session_client_like_run(): About to disable terminal logging (snapshot=%d, discovery=%d)",
-            GET_OPTION(snapshot_mode), config->discovery != NULL);
+  log_debug("About to disable terminal logging (snapshot=%d, discovery=%d)", GET_OPTION(snapshot_mode),
+            config->discovery != NULL);
   // For discovery mode, skip disabling logging initially - we'll handle it after role is determined
   // Discovery participants should show logs, only hosts should have logs disabled for rendering
   bool should_disable_logging = !GET_OPTION(snapshot_mode) && (config->discovery == NULL);
   if (should_disable_logging) {
-    log_debug("session_client_like_run(): Calling log_set_terminal_output(false)...");
     log_set_terminal_output(false);
-    log_debug("session_client_like_run(): RETURNED from log_set_terminal_output(false)");
   } else {
-    log_debug("session_client_like_run(): Skipping log disable (snapshot=%d or discovery=%d)",
-              GET_OPTION(snapshot_mode), config->discovery != NULL);
+    log_debug("Skipping log disable (snapshot=%d or discovery=%d)", GET_OPTION(snapshot_mode),
+              config->discovery != NULL);
   }
-  log_debug("session_client_like_run(): Terminal logging setup complete, starting media source setup");
 }
 
 static void client_like_configure_url_capture(client_like_state_t *state) {
@@ -347,19 +337,15 @@ static uint32_t client_like_select_capture_fps(client_like_state_t *state) {
 
 static asciichat_error_t client_like_configure_media_capture(const session_client_like_config_t *config,
                                                              client_like_state_t *state) {
-  log_debug("session_client_like_run(): Initializing capture config");
   // capture_config starts zeroed with the session state.
   state->capture_config.resize_for_network = client_like_is_networked(config->kind);
   state->capture_config.should_exit_callback = client_like_capture_should_exit_adapter;
   state->capture_config.callback_data = NULL;
 
   // Select media source based on options (priority order)
-  log_debug("session_client_like_run(): Getting media_url option");
   state->media_url_val = GET_OPTION(media_url);
-  log_debug("session_client_like_run(): Getting media_file option");
   state->media_file_val = GET_OPTION(media_file);
-  log_debug("session_client_like_run(): media_url=%s, media_file=%s",
-            state->media_url_val ? state->media_url_val : "(null)",
+  log_debug("media_url=%s, media_file=%s", state->media_url_val ? state->media_url_val : "(null)",
             state->media_file_val ? state->media_file_val : "(null)");
 
   if (state->media_url_val && strlen(state->media_url_val) > 0) {
@@ -368,7 +354,7 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
     client_like_configure_file_capture(state);
   } else if (GET_OPTION(test_pattern)) {
     // Test pattern
-    log_debug("session_client_like_run(): Using test pattern");
+    log_debug("Using test pattern");
     log_info("Using test pattern");
     state->capture_config.type = MEDIA_SOURCE_TEST;
     state->capture_config.path = NULL;
@@ -379,7 +365,7 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
     bool stdout_is_tty = terminal_is_stdout_tty();
     if (stdout_is_tty) {
       // Normal terminal mode: use webcam
-      log_debug("session_client_like_run(): Stdout is TTY, using local webcam");
+      log_debug("Stdout is TTY, using local webcam");
       log_info("Using local webcam");
       state->capture_config.type = MEDIA_SOURCE_WEBCAM;
       static char webcam_index_str[32];
@@ -389,7 +375,7 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
       state->capture_config.loop = false;
     } else {
       // Piped output mode: use test pattern (webcam + pipes often fails)
-      log_debug("session_client_like_run(): Stdout is piped, defaulting to test pattern for reliability");
+      log_debug("Stdout is piped, defaulting to test pattern for reliability");
       log_info("Stdout is piped - using test pattern instead of webcam");
       state->capture_config.type = MEDIA_SOURCE_TEST;
       state->capture_config.path = NULL;
@@ -400,25 +386,18 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
   state->capture_config.target_fps = client_like_select_capture_fps(state);
 
   // Apply initial seek if specified
-  log_debug("session_client_like_run(): Getting media_seek_timestamp option");
   state->capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
-  log_debug("session_client_like_run(): Media seek timestamp set");
 
   // Clean up probe source (don't reuse for actual capture)
   if (state->probe_source) {
-    log_debug("session_client_like_run(): Destroying probe source");
     media_source_destroy(state->probe_source);
     state->probe_source = NULL;
-    log_debug("session_client_like_run(): Probe source destroyed");
-  } else {
-    log_debug("session_client_like_run(): No probe source to destroy");
   }
 
   // Pass probed FPS to display context for correct render-file duration
   if (state->capture_config.target_fps > 0) {
     session_display_set_render_fps(state->display, state->capture_config.target_fps);
-    log_debug("session_client_like_run(): Set display render FPS to %u for correct video encoding duration",
-              state->capture_config.target_fps);
+    log_debug("Set display render FPS to %u for correct video encoding duration", state->capture_config.target_fps);
   }
 
   asciichat_error_t render_init_result =
@@ -431,7 +410,7 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
 
 static asciichat_error_t client_like_create_network_capture(const session_client_like_config_t *config,
                                                             client_like_state_t *state) {
-  log_debug("session_client_like_run(): Setting up network transports");
+  log_debug("Setting up network transports");
 
   bool networked_mode = client_like_is_networked(config->kind);
 
@@ -818,11 +797,9 @@ static asciichat_error_t client_like_cleanup_session(const session_client_like_c
 }
 
 asciichat_error_t session_client_like_run(const session_client_like_config_t *config) {
-  log_info("session_client_like_run: ENTRY");
   if (!config || !config->run_fn) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "config or run_fn is NULL");
   }
-  log_info("session_client_like_run: config validated");
 
   g_current_config = *config;
   g_render_should_exit = client_like_display_should_exit_adapter;

@@ -5,6 +5,7 @@ const wasm = vi.hoisted(() => ({
     | ((id: number, bytes: Uint8Array) => void),
   _browser_host_create: () => 0,
   _browser_host_add_client: () => 1,
+  _browser_host_set_local_client: vi.fn(() => 0),
   _browser_host_render: vi.fn(() => 0),
 }));
 vi.mock("../../src/wasm/client", () => ({
@@ -34,7 +35,8 @@ it("pipelines two batches, bounds backlog, and resumes on acknowledgement withou
     for (let i = 0; i < 8; i++) await Promise.resolve();
   };
   await send({ kind: "init" });
-  await send({ kind: "add", id: 1 });
+  await send({ kind: "add", id: 1, local: true });
+  expect(wasm._browser_host_set_local_client).toHaveBeenCalledWith(1);
   await vi.advanceTimersByTimeAsync(34);
   const batches = () =>
     scope.postMessage.mock.calls.filter(([m]) => m.kind === "packets");

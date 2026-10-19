@@ -317,8 +317,8 @@ static void discovery_keyboard_handler(session_capture_ctx_t *capture, int key, 
  * @param user_data Unused (NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-static asciichat_error_t discovery_send_capabilities(const terminal_capabilities_packet_t *packet, void *context) {
-  return acip_send_capabilities(context, packet, sizeof(*packet));
+static asciichat_error_t discovery_send_settings(const options_t *values, uint32_t request, void *context) {
+  return acip_settings_send(context, values, request, UINT32_MAX);
 }
 
 static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_display_ctx_t *display,
@@ -501,6 +501,7 @@ role_dispatch:
           acip_send_client_join(transport, CLIENT_CAP_VIDEO | CLIENT_CAP_COLOR | (enable_audio ? CLIENT_CAP_AUDIO : 0));
       if (result != ASCIICHAT_OK)
         return result;
+      uint64_t advertised_revision = UINT64_MAX;
       terminal_size_t advertised = {.cols = GET_OPTION(width) > 0 ? GET_OPTION(width) : 80,
                                     .rows = GET_OPTION(height) > 0 ? GET_OPTION(height) : 24};
       terminal_capabilities_packet_t packet;
@@ -572,7 +573,8 @@ role_dispatch:
         goto media_cleanup;
       while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport) &&
              atomic_load_bool(&receiver.running)) {
-        result = session_protocol_update_dimensions(&advertised, discovery_send_capabilities, transport);
+        result =
+            session_protocol_update_settings(&advertised, &advertised_revision, discovery_send_settings, transport);
         if (result != ASCIICHAT_OK)
           break;
         keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
@@ -689,7 +691,6 @@ static asciichat_error_t discovery_prepare(void *user_data) {
 
 /** Run discovery mode using the shared splash, media, and terminal lifecycle. */
 int discovery_main(void) {
-  log_debug("discovery_main() starting");
 
   // Discovery-specific setup: initialize ACDS connection and session negotiation
   // Note: Shared setup (keepawake, splash, terminal, capture, display, audio)

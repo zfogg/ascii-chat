@@ -18,7 +18,7 @@ extern "C" {
 
 // Forward declarations
 struct atomic_t;
-struct atomic_ptr;  // Forward declaration for atomic_ptr_t if needed
+struct atomic_ptr; // Forward declaration for atomic_ptr_t if needed
 
 /**
  * @brief Register an atomic_t in the debug named registry

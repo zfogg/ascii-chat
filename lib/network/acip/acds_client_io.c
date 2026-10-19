@@ -22,6 +22,7 @@
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
@@ -33,40 +34,26 @@
 #include <errno.h>
 
 static asciichat_error_t acds_client_handshake(acds_client_t *client) {
-  asciichat_error_t result = crypto_handshake_init("acds_client", &client->handshake_ctx, false);
+  client->handshake_ctx = network_connection_handshake(client->connection);
+  asciichat_error_t result = crypto_handshake_init("acds_client", client->handshake_ctx, false);
   if (result != ASCIICHAT_OK)
     return result;
   crypto_policy_t policy = client->config.security_policy;
   policy.transport_secure = network_connection_secure(client->connection);
   if (client->config.identity_key && client->config.identity_key[0]) {
-    result = parse_private_key(client->config.identity_key, &client->handshake_ctx.client_private_key);
+    result = parse_private_key(client->config.identity_key, &client->handshake_ctx->client_private_key);
     if (result != ASCIICHAT_OK)
       return result;
-    client->handshake_ctx.client_public_key.type = KEY_TYPE_ED25519;
-    memcpy(client->handshake_ctx.client_public_key.key, client->handshake_ctx.client_private_key.public_key,
-           sizeof(client->handshake_ctx.client_private_key.public_key));
+    client->handshake_ctx->client_public_key.type = KEY_TYPE_ED25519;
+    memcpy(client->handshake_ctx->client_public_key.key, client->handshake_ctx->client_private_key.public_key,
+           sizeof(client->handshake_ctx->client_private_key.public_key));
     policy.has_identity = true;
   }
   uint8_t mode;
   result = crypto_policy_resolve(&policy, &mode);
   if (result != ASCIICHAT_OK)
     return result;
-  client->handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
-  result = acds_handshake_begin(client->transport, mode);
-  if (mode == ACIP_CRYPTO_NONE)
-    return result;
-  while (result == ASCIICHAT_OK && client->handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
-    packet_type_t type;
-    void *payload = NULL, *allocation = NULL;
-    size_t length = 0;
-    result = packet_receive_via_transport(client->transport, &type, &payload, &length, &allocation);
-    if (result == ASCIICHAT_OK)
-      result = acds_handshake_receive(&client->handshake_ctx, client->transport, type, payload, length);
-    buffer_release(allocation);
-  }
-  if (result == ASCIICHAT_OK)
-    client->transport->crypto_ctx = &client->handshake_ctx.crypto_ctx;
-  return result;
+  return network_client_negotiate(client->transport, client->handshake_ctx, mode, NETWORK_PROTOCOL_DISCOVERY);
 }
 
 #ifdef _WIN32
@@ -119,7 +106,7 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
       network_connection_destroy(&client->connection);
       client->transport = NULL;
       client->connected = false;
-      crypto_handshake_destroy(&client->handshake_ctx);
+      client->handshake_ctx = NULL;
       return handshake_result;
     }
 
@@ -142,13 +129,9 @@ void acds_client_disconnect(acds_client_t *client) {
     return;
   }
 
-  if (client->connection) {
-    if (client->transport) {
-      network_connection_destroy(&client->connection);
-      client->transport = NULL;
-    }
-    crypto_handshake_destroy(&client->handshake_ctx);
-  }
+  network_connection_destroy(&client->connection);
+  client->transport = NULL;
+  client->handshake_ctx = NULL;
 
   client->connected = false;
   log_debug("Disconnected from ACDS server");

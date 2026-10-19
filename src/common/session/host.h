@@ -54,6 +54,7 @@
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/rgba/image.h>
 
@@ -260,22 +261,12 @@ bool session_host_is_running(session_host_t *host);
  * @{
  */
 
-/**
- * @brief Add a client from an accepted socket
- * @param host Host handle (must not be NULL)
- * @param socket Accepted client socket
- * @param ip Client IP address
- * @param port Client port
- * @return Assigned client ID on success, 0 on failure
- *
- * Registers a new client from an accepted socket connection. This is typically
- * called internally by the accept loop, but can be used for testing.
- *
- * @note on_client_join callback is invoked on successful registration.
- *
- * @ingroup session
+/** Register a transport-backed client. The same API accepts TCP, WebSocket,
+ * and WebRTC. Ownership transfers only on success. NULL registers a participant
+ * whose transport will be supplied later. on_client_join runs after admission.
  */
-uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transport, const char *ip, int port);
+uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transport,
+                                 acip_transport_ownership_t ownership, const char *ip, int port);
 
 /**
  * @brief Add a memory participant (host's own media)
@@ -414,7 +405,7 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
  */
 
 /**
- * @brief Set display context for local frame rendering
+ * @brief Set a native terminal display context for local frame rendering
  * @param host Host handle (must not be NULL)
  * @param display Display context for rendering frames locally (can be NULL to disable)
  * @return ASCIICHAT_OK on success, error code on failure
@@ -428,6 +419,30 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
  * @ingroup session
  */
 asciichat_error_t session_host_set_display(session_host_t *host, struct session_display_ctx *display);
+
+/** Rendering inputs for a local display backend. Palette is borrowed during the render cycle. */
+typedef struct {
+  terminal_capabilities_t caps;
+  const char *palette;
+  int width;
+  int height;
+} session_host_render_config_t;
+
+/** Local output can use a registered client's capabilities/transport, or a display backend.
+ * Callbacks execute under the host client lock and must not call host APIs.
+ */
+typedef struct {
+  uint32_t client_id;
+  asciichat_error_t (*get_config)(void *context, session_host_render_config_t *config);
+  void (*render_frame)(void *context, const char *frame, size_t size, int width, int height);
+  void *context;
+} session_host_render_target_t;
+
+/** Set local output on native or WASM hosts. NULL disables the local target.
+ * A client target is rendered once and delivered through its existing transport.
+ * A backend's context must outlive its registration.
+ */
+asciichat_error_t session_host_set_render_target(session_host_t *host, const session_host_render_target_t *target);
 
 /**
  * @brief Start media rendering thread (video mixing and audio distribution)
@@ -475,49 +490,45 @@ void session_host_stop_render(session_host_t *host);
 typedef struct acip_transport acip_transport_t;
 
 /**
- * @brief Set an alternative transport for a specific client in the host
+ * @brief Select a transport for a specific client in the host
  *
- * Allows replacing a client's default TCP socket transport with an alternative
- * transport such as WebRTC DataChannel. Once set, the host will use this
- * transport for send/receive operations with the specified client.
+ * Selects the transport used for this client by all send/receive operations.
+ * Detaching clears the selection; no backend-specific fallback is retained.
  *
  * @param host Host handle (must not be NULL)
  * @param client_id Client ID whose transport should be replaced
- * @param transport Alternative transport to use (can be NULL to clear)
+ * @param transport Selected transport, or NULL to detach without a fallback
+ * @param ownership Responsibility for destroying the selected transport
  * @return ASCIICHAT_OK on success, ERROR_NOT_FOUND if client not found, other error on failure
  *
- * @note This is used for WebRTC integration when DataChannel becomes ready
- * @note Transport ownership remains with caller (host does not free it)
- * @note If both socket and transport exist, transport takes precedence
+ * @note Replacing an owned transport destroys it. Ownership transfers only on success.
  *
  * @ingroup session
  */
 asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32_t client_id,
-                                                    acip_transport_t *transport);
+                                                    acip_transport_t *transport, acip_transport_ownership_t ownership);
 
 /**
  * @brief Get the current transport for a specific client in the host
  *
- * Returns the currently active transport for the client, if any. May return NULL
- * if only socket transport is in use.
+ * Returns the currently active transport, regardless of its backend.
  *
  * @param host Host handle (must not be NULL)
  * @param client_id Client ID whose transport should be retrieved
- * @return Transport pointer if set, NULL if using socket transport or client not found
+ * @return Borrowed transport pointer, NULL if no transport is registered or client not found
  *
  * @ingroup session
  */
 acip_transport_t *session_host_get_client_transport(session_host_t *host, uint32_t client_id);
 
 /**
- * @brief Check if a specific client has an active alternative transport
+ * @brief Check if a specific client has an active ACIP transport
  *
- * Convenient way to check if a client is using an alternative transport
- * (WebRTC, WebSocket, etc.) instead of raw TCP socket.
+ * Includes TCP, WebRTC, and WebSocket transports.
  *
  * @param host Host handle (must not be NULL)
  * @param client_id Client ID to check
- * @return true if alternative transport is set, false otherwise
+ * @return true if a transport is set, false otherwise
  *
  * @ingroup session
  */

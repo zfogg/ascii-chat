@@ -681,7 +681,7 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[16], const uin
 static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t participant_id[16], void *user_data) {
   server_context_t *server_ctx = (server_context_t *)user_data;
   if (!transport || !participant_id || !server_ctx) {
-    log_error("on_webrtc_transport_ready: Invalid parameters");
+    log_error("Invalid parameters");
     if (transport) {
       acip_transport_destroy(transport);
     }
@@ -720,15 +720,14 @@ static void on_webrtc_sdp_server(const acip_webrtc_sdp_t *sdp, size_t total_len,
   (void)ctx;
 
   if (!sdp || !g_webrtc_peer_manager) {
-    log_error("on_webrtc_sdp_server: Invalid parameters or peer_manager not initialized");
+    log_error("Invalid parameters or peer_manager not initialized");
     return;
   }
 
   // Validate packet length
   uint16_t sdp_len = NET_TO_HOST_U16(sdp->sdp_len);
   if (total_len < sizeof(acip_webrtc_sdp_t) + sdp_len) {
-    log_error("on_webrtc_sdp_server: Invalid packet length (total=%zu, expected>=%zu)", total_len,
-              sizeof(acip_webrtc_sdp_t) + sdp_len);
+    log_error("Invalid packet length (total=%zu, expected>=%zu)", total_len, sizeof(acip_webrtc_sdp_t) + sdp_len);
     return;
   }
 
@@ -761,15 +760,14 @@ static void on_webrtc_ice_server(const acip_webrtc_ice_t *ice, size_t total_len,
   (void)ctx;
 
   if (!ice || !g_webrtc_peer_manager) {
-    log_error("on_webrtc_ice_server: Invalid parameters or peer_manager not initialized");
+    log_error("Invalid parameters or peer_manager not initialized");
     return;
   }
 
   // Validate packet length
   uint16_t payload_len = NET_TO_HOST_U16(ice->candidate_len);
   if (total_len < sizeof(acip_webrtc_ice_t) + payload_len) {
-    log_error("on_webrtc_ice_server: Invalid packet length (total=%zu, expected>=%zu)", total_len,
-              sizeof(acip_webrtc_ice_t) + payload_len);
+    log_error("Invalid packet length (total=%zu, expected>=%zu)", total_len, sizeof(acip_webrtc_ice_t) + payload_len);
     return;
   }
 
@@ -1405,7 +1403,7 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
 
   // Set IP disclosure policy (determined above)
   params->acds_expose_ip = policy->expose_ip;
-  log_debug("DEBUG: Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)",
+  log_debug("Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)",
            params->acds_expose_ip, policy->explicit_expose, policy->has_password, policy->has_identity);
 
   // Set session type (Direct TCP or WebRTC)
@@ -1452,7 +1450,7 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
   }
 
   // DEBUG: Log what we're sending to ACDS
-  log_debug("DEBUG: Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u",
+  log_debug("Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u",
            params->acds_expose_ip, params->server_address, params->server_port, params->session_type);
 }
 

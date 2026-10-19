@@ -717,7 +717,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
     if (*endptr == '\0' && errno == 0 && cols > 40 && cols <= INT_MAX)
       term_width = (int)cols;
     else if (*endptr != '\0' || errno != 0 || cols <= 40)
-      log_error("options_config_print_binary_help: Invalid COLUMNS value: %s", cols_env);
+      log_error("Invalid COLUMNS value: %s", cols_env);
   }
 
   // Binary-level help uses MODE_DISCOVERY internally
@@ -871,7 +871,7 @@ void options_config_print_usage_section(const options_config_t *config, FILE *st
     if (*endptr == '\0' && errno == 0 && cols > 40 && cols <= INT_MAX)
       term_width = (int)cols;
     else if (*endptr != '\0' || errno != 0 || cols <= 40)
-      log_error("options_config_print_binary_help: Invalid COLUMNS value: %s", cols_env);
+      log_error("Invalid COLUMNS value: %s", cols_env);
   }
 
   // Calculate global max column width across all sections for consistent alignment

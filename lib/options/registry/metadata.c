@@ -60,11 +60,15 @@ const char *g_utf8_setting_descs[] = {"Auto-detect UTF-8 support from terminal c
 // Color Mode Metadata
 // ============================================================================
 
-const char *g_color_mode_values[] = {OPT_COLOR_MODE_AUTO, OPT_COLOR_MODE_NONE, OPT_COLOR_MODE_MONO,
+const char *g_color_mode_values[] = {OPT_COLOR_MODE_AUTO,
+                                     OPT_COLOR_MODE_NONE,
+                                     OPT_COLOR_MODE_MONO,
                                      OPT_COLOR_MODE_16,
-                                     OPT_COLOR_MODE_256,  OPT_COLOR_MODE_TRUECOLOR, NULL};
-const int g_color_mode_integers[] = {TERM_COLOR_AUTO, TERM_COLOR_NONE, TERM_COLOR_NONE, TERM_COLOR_16, TERM_COLOR_256,
-                                     TERM_COLOR_TRUECOLOR};
+                                     OPT_COLOR_MODE_256,
+                                     OPT_COLOR_MODE_TRUECOLOR,
+                                     NULL};
+const int g_color_mode_integers[] = {TERM_COLOR_AUTO, TERM_COLOR_NONE, TERM_COLOR_NONE,
+                                     TERM_COLOR_16,   TERM_COLOR_256,  TERM_COLOR_TRUECOLOR};
 const char *g_color_mode_descs[] = {"Auto-detect from terminal",
                                     "Monochrome only",
                                     "Monochrome only (alias)",
@@ -193,4 +197,4 @@ const char *g_speakers_examples[] = {"-1", "0", "1", NULL};
 const char *g_seek_examples[] = {"0", "60", "3:45", NULL};
 
 const char *g_completion_shell_values[] = {OPT_COMPLETION_SHELL_BASH, OPT_COMPLETION_SHELL_FISH,
-                                         OPT_COMPLETION_SHELL_ZSH, OPT_COMPLETION_SHELL_POWERSHELL, NULL};
+                                           OPT_COMPLETION_SHELL_ZSH, OPT_COMPLETION_SHELL_POWERSHELL, NULL};

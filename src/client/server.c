@@ -369,7 +369,7 @@ asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_t
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
-    log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() send failed");
+    log_debug("Packet send failed");
     if (!network_error_is_local_rejection(result))
       server_connection_lost(connection);
     return result;

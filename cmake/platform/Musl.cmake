@@ -20,137 +20,19 @@
 # =============================================================================
 
 function(configure_musl_pre_project BUILD_TYPE_PARAM)
-    # If BUILD_TYPE_PARAM is empty, try to get from CMAKE_BUILD_TYPE cache variable (from preset)
-    # Presets set CMAKE_BUILD_TYPE before project() via cacheVariables
-    if(NOT BUILD_TYPE_PARAM)
-        set(BUILD_TYPE_PARAM "${CMAKE_BUILD_TYPE}")
+    if(NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+        set(USE_MUSL OFF CACHE BOOL "musl is Linux-only" FORCE)
+        return()
     endif()
-    if(NOT BUILD_TYPE_PARAM)
-        # Still empty - try to read from CMakeUserPresets.json or cache
-        get_property(_build_type_cached CACHE CMAKE_BUILD_TYPE PROPERTY VALUE)
-        if(_build_type_cached)
-            set(BUILD_TYPE_PARAM "${_build_type_cached}")
-        endif()
+    set(_default OFF)
+    execute_process(COMMAND uname -m OUTPUT_VARIABLE _host_arch OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(_host_arch STREQUAL "x86_64" AND BUILD_TYPE_PARAM MATCHES "^(Release|RelWithDebInfo)$")
+        set(_default ON)
     endif()
-    # Option to use musl libc (Linux only - musl is not compatible with macOS or Windows)
-    # =============================================================================
-    # musl libc Configuration for Linux Release Builds
-    # =============================================================================
-    # musl + mimalloc provides ~85% better performance than glibc on Release builds
-    # Performance results (Release builds, test-pattern mode):
-    #   - glibc + mimalloc:  ~60 FPS
-    #   - musl + mimalloc:   ~100 FPS (85% faster!)
-    #   - musl only:         ~55 FPS
-    #
-    # Default behavior by platform and build type:
-    #   Linux:
-    #     - Release/RelWithDebInfo: ON (musl + mimalloc for best performance)
-    #     - Debug/Dev: OFF (use glibc for better debugging experience)
-    #   macOS/Windows: OFF (not applicable - use system libc + mimalloc)
-    #
-    # Detect Homebrew environment on macOS only - use system libraries instead of musl
-    # Homebrew provides its own glibc and libraries on macOS, so we should use those
-    # However, respect explicit preset override (e.g., release-musl preset)
-    # Note: linuxbrew on Linux should still use musl for better performance
-    #
-    # Detect if we're on macOS: use uname since CMAKE_HOST_SYSTEM_NAME may not be set yet
-    execute_process(
-        COMMAND uname -s
-        OUTPUT_VARIABLE UNAME_SYSTEM
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
-    )
-    if(UNAME_SYSTEM STREQUAL "Darwin" AND (DEFINED ENV{HOMEBREW_PREFIX} OR DEFINED ENV{HOMEBREW_CELLAR}))
-        # Check if USE_MUSL is already set in cache (from preset cacheVariables)
-        get_property(_use_musl_cached CACHE USE_MUSL PROPERTY VALUE SET)
-        if(_use_musl_cached)
-            if(USE_MUSL)
-                message(STATUS "Homebrew build detected, but USE_MUSL explicitly enabled via preset/option")
-            else()
-                message(STATUS "Homebrew build detected - disabling musl (using Homebrew's system libraries)")
-            endif()
-        else()
-            # USE_MUSL not in cache yet - set default to OFF for Homebrew
-            set(USE_MUSL OFF CACHE BOOL "Homebrew build - using system libraries")
-            message(STATUS "Homebrew build detected - disabling musl (using Homebrew's system libraries)")
-        endif()
-    # Detect Linux early (before project()) using CMAKE_HOST_SYSTEM_NAME
-    # CMAKE_SYSTEM_NAME is only set after project() is called
-    elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-        # Detect architecture early using uname (before project() sets CMAKE_SYSTEM_PROCESSOR)
-        execute_process(
-            COMMAND uname -m
-            OUTPUT_VARIABLE HOST_ARCH
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-
-        # Only enable musl by default on x86_64 - ARM64 musl support on GitHub runners is limited
-        # Autotools (autoconf, automake, libtool) are installed by scripts/install-deps.sh before cmake runs
-        if(HOST_ARCH STREQUAL "x86_64" AND (BUILD_TYPE_PARAM STREQUAL "Release" OR BUILD_TYPE_PARAM STREQUAL "RelWithDebInfo"))
-            option(USE_MUSL "Use musl libc + mimalloc for optimal performance (Linux Release builds)" ON)
-        else()
-            option(USE_MUSL "Use musl libc instead of glibc (Linux only)" OFF)
-        endif()
-    else()
-        # musl is Linux-only
-        set(USE_MUSL OFF CACHE BOOL "musl is Linux-only (not ${CMAKE_HOST_SYSTEM_NAME})" FORCE)
-    endif()
-
-    if(USE_MUSL)
-        if(NOT UNIX OR APPLE OR WIN32)
-            message(FATAL_ERROR "musl libc is only supported on Linux. macOS and Windows use their own C libraries.")
-        endif()
-
-        # Use clang directly with musl instead of musl-gcc wrapper
-        # musl-gcc wrapper doesn't properly support -static-pie flag
-        # See: https://github.com/rust-lang/rust/issues/95926
-        # Use centralized clang from FindPrograms.cmake
-        if(NOT ASCIICHAT_CLANG_EXECUTABLE)
-            message(FATAL_ERROR "clang not found. Install clang for musl static-PIE support:\n"
-                                "  Ubuntu/Debian: sudo apt install clang")
-        endif()
-        set(CLANG_COMPILER "${ASCIICHAT_CLANG_EXECUTABLE}")
-
-        if(NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
-            message(FATAL_ERROR "clang++ not found. Install clang for musl static-PIE support:\n"
-                                "  Ubuntu/Debian: sudo apt install clang")
-        endif()
-        set(CLANGXX_COMPILER "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
-
-        # Verify musl development files are installed
-        # Check multiple locations (Arch vs Debian/Ubuntu) and architectures (x86_64 vs aarch64)
-        if(EXISTS "/usr/lib/musl/lib/libc.a")
-            # Arch Linux location (all architectures)
-            set(MUSL_LIBC_PATH "/usr/lib/musl/lib/libc.a")
-        elseif(EXISTS "/usr/lib/x86_64-linux-musl/libc.a")
-            # Debian/Ubuntu x86_64 location
-            set(MUSL_LIBC_PATH "/usr/lib/x86_64-linux-musl/libc.a")
-        elseif(EXISTS "/usr/lib/aarch64-linux-musl/libc.a")
-            # Debian/Ubuntu ARM64/aarch64 location
-            set(MUSL_LIBC_PATH "/usr/lib/aarch64-linux-musl/libc.a")
-        elseif(EXISTS "/usr/x86_64-linux-musl/lib64/libc.a")
-            # Fedora x86_64 location
-            set(MUSL_LIBC_PATH "/usr/x86_64-linux-musl/lib64/libc.a")
-        elseif(EXISTS "/usr/aarch64-linux-musl/lib64/libc.a")
-            # Fedora ARM64/aarch64 location
-            set(MUSL_LIBC_PATH "/usr/aarch64-linux-musl/lib64/libc.a")
-        else()
-            message(FATAL_ERROR "musl development files not found. Install musl-dev:\n"
-                                "  Arch Linux: sudo pacman -S musl\n"
-                                "  Ubuntu/Debian: sudo apt install musl-tools musl-dev\n"
-                                "  Fedora: sudo dnf install musl-devel")
-        endif()
-
-        # Set compiler to clang BEFORE project()
-        set(CMAKE_C_COMPILER "${CLANG_COMPILER}" CACHE FILEPATH "C compiler" FORCE)
-        set(CMAKE_CXX_COMPILER "${CLANGXX_COMPILER}" CACHE FILEPATH "CXX compiler" FORCE)
-
-        # Set LLVM archiver and ranlib for proper archive handling
-        # Use helper function from LLVM.cmake
-        include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
-        find_llvm_tools()
-
-        message(STATUS "Using ${BoldCyan}clang${ColorReset} with ${BoldYellow}musl${ColorReset} for static-PIE support")
+    option(USE_MUSL "Build against musl libc with Clang" ${_default})
+    if(USE_MUSL AND NOT CMAKE_TOOLCHAIN_FILE)
+        get_filename_component(_musl_toolchain "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../toolchains/Musl.cmake" ABSOLUTE)
+        set(CMAKE_TOOLCHAIN_FILE "${_musl_toolchain}" CACHE FILEPATH "Clang musl toolchain" FORCE)
     endif()
 endfunction()
 
@@ -207,78 +89,19 @@ function(configure_musl_post_project)
     endif()
     set(MUSL_LIBGCC_PATH "${GCC_LIBGCC_PATH}" CACHE FILEPATH "Compiler runtime archive for musl static executables" FORCE)
 
-    # Detect architecture for musl target triple
-    # CMAKE_SYSTEM_PROCESSOR is available after project()
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
-        set(MUSL_ARCH "aarch64")
-    else()
-        set(MUSL_ARCH "x86_64")
+    if(NOT CMAKE_C_COMPILER_TARGET STREQUAL MUSL_TARGET)
+        message(FATAL_ERROR "The musl compiler toolchain was not loaded. Configure a fresh build tree with cmake --fresh.")
     endif()
-    set(MUSL_TARGET "${MUSL_ARCH}-linux-musl")
+    target_compile_definitions(asciichat-project-options INTERFACE USE_MUSL _FORTIFY_SOURCE=0)
+    target_compile_options(asciichat-project-options INTERFACE -U_FORTIFY_SOURCE)
 
-    # Detect musl library directory (Arch vs Debian/Ubuntu vs Fedora)
-    # Check architecture-specific paths
-    if(EXISTS "/usr/lib/musl/lib")
-        # Arch Linux location (all architectures)
-        set(MUSL_LIBDIR "/usr/lib/musl/lib")
-        set(MUSL_INCLUDE_DIR "/usr/lib/musl/include")
-    elseif(EXISTS "/usr/${MUSL_ARCH}-linux-musl/lib64")
-        # Fedora location
-        set(MUSL_LIBDIR "/usr/${MUSL_ARCH}-linux-musl/lib64")
-        set(MUSL_INCLUDE_DIR "/usr/${MUSL_ARCH}-linux-musl/include")
-    elseif(EXISTS "/usr/lib/${MUSL_ARCH}-linux-musl")
-        # Debian/Ubuntu location - libs in /usr/lib, includes in /usr/include
-        set(MUSL_LIBDIR "/usr/lib/${MUSL_ARCH}-linux-musl")
-        # Ubuntu puts musl headers in /usr/include/{arch}-linux-musl/ (not /usr/lib/)
-        if(EXISTS "/usr/include/${MUSL_ARCH}-linux-musl")
-            set(MUSL_INCLUDE_DIR "/usr/include/${MUSL_ARCH}-linux-musl")
-        else()
-            # Fallback: some systems put it in lib path
-            set(MUSL_INCLUDE_DIR "/usr/lib/${MUSL_ARCH}-linux-musl/include")
-        endif()
-    else()
-        message(FATAL_ERROR "musl library directory not found for ${MUSL_ARCH}. Install musl-dev:\n"
-                            "  Arch Linux: sudo pacman -S musl\n"
-                            "  Ubuntu/Debian: sudo apt install musl-tools musl-dev\n"
-                            "  Fedora: sudo dnf install musl-devel")
-    endif()
-
-    # Cache MUSL_INCLUDE_DIR for use by other modules (like Libdatachannel.cmake)
-    set(MUSL_INCLUDE_DIR "${MUSL_INCLUDE_DIR}" CACHE PATH "musl libc include directory" FORCE)
-    message(STATUS "musl include directory: ${BoldCyan}${MUSL_INCLUDE_DIR}${ColorReset}")
-
-    # Configure clang to use musl with static-PIE
-    # Based on: https://wiki.debian.org/musl
-    # Note: -fPIE is added by CompilerFlags.cmake for all PIE builds (dynamic and static)
-    # Use LLVM runtime libraries instead of GCC for musl compatibility
-    # Disable FORTIFY_SOURCE: musl doesn't provide __*_chk wrapper functions (glibc-specific)
-    add_compile_options(
-        -target ${MUSL_TARGET}
-        -DUSE_MUSL
-        -U_FORTIFY_SOURCE
-        -D_FORTIFY_SOURCE=0
-    )
-    # Use libc++ for C++ code (musl-compatible, unlike libstdc++)
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
-
-    # Linker flags for static-PIE linking with musl
-    # Use rcrt1.o for static-PIE (combines static linking with ASLR security)
-    # Use lld for LTO support (lld has built-in LTO, doesn't need LLVMgold.so plugin)
-    # Force retention of custom sections with -Wl,--undefined to prevent LTO from removing them
-    # Apply RELRO hardening: -Wl,-z,relro enables GOT read-only relocation, -Wl,-z,now enables full RELRO (BIND_NOW)
-    # Add -nostdlib++ to prevent automatic linking of system libc++ (we link Alpine libc++ explicitly)
-    set(CMAKE_EXE_LINKER_FLAGS
-        "-target ${MUSL_TARGET} -fuse-ld=lld -static-pie -nostdlib -nostdlib++ -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o -Wl,--undefined=ascii_chat_custom_section -Wl,--undefined=ascii_chat_comment_string -Wl,--undefined=ascii_chat_version_string -Wl,-z,relro -Wl,-z,now"
-        CACHE STRING "Linker flags for musl static-PIE linking" FORCE
-    )
-
-    # Shared library linker flags for musl builds
-    # Note: Shared libraries link against glibc (not musl) since they'll be used on glibc systems
-    # Don't use musl target for shared libs - let it use default glibc
-    set(CMAKE_SHARED_LINKER_FLAGS
-        "-fuse-ld=lld -flto -Wl,--gc-sections"
-        CACHE STRING "Shared linker flags for musl builds (uses glibc for compatibility)" FORCE
-    )
+    # Compiler target, CRT startup files and search boundaries belong to the toolchain.
+    # Retention and hardening are policy for our own binaries and libraries.
+    target_link_options(asciichat-project-options INTERFACE
+        "LINKER:--undefined=ascii_chat_custom_section"
+        "LINKER:--undefined=ascii_chat_comment_string"
+        "LINKER:--undefined=ascii_chat_version_string"
+        "LINKER:-z,relro" "LINKER:-z,now")
 
     # Detect LLVM runtime libraries location
     # For musl builds, we need libc++ compiled WITHOUT glibc fortify functions.
@@ -570,13 +393,13 @@ function(configure_musl_post_project)
         endif()
     endfunction()
 
-    add_link_options(
-        "${MUSL_LIBDIR}/crtn.o"
-    )
+    # Search the target runtime after all application and dependency archives.
+    set(CMAKE_C_STANDARD_LIBRARIES "\"${MUSL_LIBGCC_PATH}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\"" PARENT_SCOPE)
+    set(CMAKE_CXX_STANDARD_LIBRARIES "\"${MUSL_LIBGCC_PATH}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\"" PARENT_SCOPE)
 
     # Disable fortify source for our code (musl doesn't support it)
     # Note: We now use Alpine's musl-native libc++ which doesn't have fortify calls
-    add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
+    target_compile_options(asciichat-project-options INTERFACE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
 
     # Disable precompiled headers
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl" FORCE)

@@ -1341,7 +1341,7 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
 
   // No positional args defined - but we got some positional arguments
   if (config->num_positional_args == 0 && remaining_argc > 0) {
-    log_error("Error: Unexpected positional argument '%s'", remaining_argv[0]);
+    log_error("Unexpected positional argument '%s'", remaining_argv[0]);
     return ERROR_USAGE;
   }
 
@@ -1349,7 +1349,7 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
   for (size_t i = 0; i < config->num_positional_args; i++) {
     const positional_arg_descriptor_t *pos_arg = &config->positional_args[i];
     if (pos_arg->required && remaining_argc == 0) {
-      log_error("Error: Missing required positional argument '%s'", pos_arg->name);
+      log_error("Missing required positional argument '%s'", pos_arg->name);
       if (pos_arg->help_text) {
         log_error("  %s", pos_arg->help_text);
       }
@@ -1387,7 +1387,7 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
 
   // Check for extra unconsumed positional arguments
   if (arg_index < remaining_argc) {
-    log_error("Error: Unexpected positional argument '%s'", remaining_argv[arg_index]);
+    log_error("Unexpected positional argument '%s'", remaining_argv[arg_index]);
     return ERROR_USAGE;
   }
 
@@ -1642,8 +1642,9 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
     } else if (argv_index + 1 < argc && !is_flag_argument(argv[argv_index + 1])) {
       // Check if next argument is a valid boolean value
       const char *next_arg = argv[argv_index + 1];
-      if (strcasecmp(next_arg, OPT_VALUE_TRUE) == 0 || strcasecmp(next_arg, "yes") == 0 || strcasecmp(next_arg, "1") == 0 ||
-          strcasecmp(next_arg, "on") == 0 || strcasecmp(next_arg, OPT_VALUE_FALSE) == 0 || strcasecmp(next_arg, "no") == 0 ||
+      if (strcasecmp(next_arg, OPT_VALUE_TRUE) == 0 || strcasecmp(next_arg, "yes") == 0 ||
+          strcasecmp(next_arg, "1") == 0 || strcasecmp(next_arg, "on") == 0 ||
+          strcasecmp(next_arg, OPT_VALUE_FALSE) == 0 || strcasecmp(next_arg, "no") == 0 ||
           strcasecmp(next_arg, "0") == 0 || strcasecmp(next_arg, "off") == 0) {
         // Next argument is a boolean value, consume it
         opt_value = next_arg;
@@ -1787,7 +1788,7 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
 
     // Check for extra unconsumed positional arguments
     if (arg_index < positional_count) {
-      log_error("Error: Unexpected positional argument '%s'", positional_args[arg_index]);
+      log_error("Unexpected positional argument '%s'", positional_args[arg_index]);
       SAFE_FREE(positional_args);
       return ERROR_USAGE;
     }
@@ -1796,7 +1797,7 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
     for (size_t i = 0; i < config->num_positional_args; i++) {
       const positional_arg_descriptor_t *pos_arg = &config->positional_args[i];
       if (pos_arg->required && i >= (size_t)arg_index) {
-        log_error("Error: Missing required positional argument '%s'", pos_arg->name);
+        log_error("Missing required positional argument '%s'", pos_arg->name);
         if (pos_arg->help_text) {
           log_error("  %s", pos_arg->help_text);
         }
@@ -1806,7 +1807,7 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
     }
   } else if (positional_count > 0) {
     // No positional args expected, but we got some
-    log_error("Error: Unexpected positional argument '%s'", positional_args[0]);
+    log_error("Unexpected positional argument '%s'", positional_args[0]);
     SAFE_FREE(positional_args);
     return ERROR_USAGE;
   }

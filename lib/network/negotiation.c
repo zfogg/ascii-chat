@@ -1,5 +1,6 @@
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/network/negotiation.h>
+#include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/crypto/handshake/client.h>
@@ -311,11 +312,40 @@ static asciichat_error_t client_negotiate(acip_transport_t *transport, crypto_ha
   transport->crypto_ctx = &ctx->crypto_ctx;
   return ASCIICHAT_OK;
 }
-asciichat_error_t network_client_negotiate(acip_transport_t *transport, crypto_handshake_context_t *ctx, uint8_t mode) {
-  if (!transport || !ctx || mode > ACIP_CRYPTO_FULL)
+static asciichat_error_t discovery_client_negotiate(acip_transport_t *transport, crypto_handshake_context_t *ctx,
+                                                    uint8_t mode) {
+  ctx->crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
+  asciichat_error_t result = acds_handshake_begin(transport, mode);
+  if (result != ASCIICHAT_OK)
+    return result;
+  if (mode == ACIP_CRYPTO_NONE) {
+    ctx->state = CRYPTO_HANDSHAKE_DISABLED;
+    return ASCIICHAT_OK;
+  }
+  uint64_t deadline = time_get_ns() + 30 * NS_PER_SEC_INT;
+  for (unsigned step = 0; step < 3 && ctx->state != CRYPTO_HANDSHAKE_READY; ++step) {
+    packet_type_t type;
+    void *payload = NULL, *allocation = NULL;
+    size_t length = 0;
+    result = negotiation_read(transport, deadline, &type, &payload, &length, &allocation);
+    if (result == ASCIICHAT_OK)
+      result = acds_handshake_receive(ctx, transport, type, payload, length);
+    buffer_release(allocation);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
+  if (ctx->state != CRYPTO_HANDSHAKE_READY)
+    return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Discovery negotiation did not reach readiness");
+  transport->crypto_ctx = &ctx->crypto_ctx;
+  return ASCIICHAT_OK;
+}
+asciichat_error_t network_client_negotiate(acip_transport_t *transport, crypto_handshake_context_t *ctx, uint8_t mode,
+                                           network_protocol_t protocol) {
+  if (!transport || !ctx || mode > ACIP_CRYPTO_FULL || protocol > NETWORK_PROTOCOL_DISCOVERY)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client negotiation");
   uint64_t timeout = transport->receive_timeout_ns;
-  asciichat_error_t result = client_negotiate(transport, ctx, mode);
+  asciichat_error_t result = protocol == NETWORK_PROTOCOL_DISCOVERY ? discovery_client_negotiate(transport, ctx, mode)
+                                                                    : client_negotiate(transport, ctx, mode);
   transport->receive_timeout_ns = timeout;
   return result;
 }

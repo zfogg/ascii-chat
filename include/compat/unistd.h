@@ -15,7 +15,7 @@
 
 /* Standard file descriptors */
 #ifndef STDIN_FILENO
-#define STDIN_FILENO  0
+#define STDIN_FILENO 0
 #endif
 #ifndef STDOUT_FILENO
 #define STDOUT_FILENO 1
@@ -32,43 +32,43 @@ typedef SSIZE_T ssize_t;
 
 /* Map POSIX functions to Windows equivalents */
 #ifndef access
-#define access    _access
+#define access _access
 #endif
 #ifndef dup
-#define dup       _dup
+#define dup _dup
 #endif
 #ifndef dup2
-#define dup2      _dup2
+#define dup2 _dup2
 #endif
 #ifndef close
-#define close     _close
+#define close _close
 #endif
 #ifndef read
-#define read      _read
+#define read _read
 #endif
 #ifndef write
-#define write     _write
+#define write _write
 #endif
 #ifndef getcwd
-#define getcwd    _getcwd
+#define getcwd _getcwd
 #endif
 #ifndef chdir
-#define chdir     _chdir
+#define chdir _chdir
 #endif
 #ifndef isatty
-#define isatty    _isatty
+#define isatty _isatty
 #endif
 #ifndef fileno
-#define fileno    _fileno
+#define fileno _fileno
 #endif
 #ifndef unlink
-#define unlink    _unlink
+#define unlink _unlink
 #endif
 #ifndef rmdir
-#define rmdir     _rmdir
+#define rmdir _rmdir
 #endif
 #ifndef getpid
-#define getpid    _getpid
+#define getpid _getpid
 #endif
 
 /* access() mode flags */

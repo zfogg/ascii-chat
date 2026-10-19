@@ -169,7 +169,7 @@ uint64_t time_timespec_to_ns(const struct timespec *ts) {
   // Use __uint128_t to prevent overflow during multiplication of large time values
   __uint128_t result = (__uint128_t)ts->tv_sec * NS_PER_SEC_INT;
   if (result > UINT64_MAX) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "time_timespec_to_ns: timespec value would overflow");
+    SET_ERRNO(ERROR_INVALID_PARAM, "timespec value would overflow");
     return UINT64_MAX;
   }
   return (uint64_t)result + (uint64_t)ts->tv_nsec;
@@ -785,8 +785,8 @@ bool time_format_is_valid_strftime(const char *format_str) {
 
 int time_format_now(const char *format_str, char *buf, size_t buf_size) {
   if (!format_str || !buf || buf_size < 2) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "time_format_now: invalid arguments - format_str=%p, buf=%p, buf_size=%zu",
-              format_str, buf, buf_size);
+    SET_ERRNO(ERROR_INVALID_PARAM, "invalid arguments - format_str=%p, buf=%p, buf_size=%zu", format_str, buf,
+              buf_size);
     return 0;
   }
 
@@ -812,7 +812,7 @@ int time_format_now(const char *format_str, char *buf, size_t buf_size) {
 
   if (len >= buf_size - 1) {
     /* Buffer would overflow - strftime filled entire buffer or hit exact size */
-    log_error("time_format_now: buffer too small (need %zu, have %zu)", len + 1, buf_size);
+    log_error("buffer too small (need %zu, have %zu)", len + 1, buf_size);
     return 0;
   }
 
@@ -822,27 +822,27 @@ int time_format_now(const char *format_str, char *buf, size_t buf_size) {
 asciichat_error_t time_format_safe(const char *format_str, char *buf, size_t buf_size) {
   /* Check NULL pointers */
   if (!format_str) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "time_format_safe: format_str is NULL");
+    return SET_ERRNO(ERROR_INVALID_STATE, "format_str is NULL");
   }
 
   if (!buf) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "time_format_safe: buf is NULL");
+    return SET_ERRNO(ERROR_INVALID_STATE, "buf is NULL");
   }
 
   /* Check minimum buffer size */
   if (buf_size < 64) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "time_format_safe: buffer too small (minimum 64 bytes, got %zu)", buf_size);
+    return SET_ERRNO(ERROR_INVALID_STATE, "buffer too small (minimum 64 bytes, got %zu)", buf_size);
   }
 
   /* Validate format string */
   if (!time_format_is_valid_strftime(format_str)) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "time_format_safe: invalid time format: %s", format_str);
+    return SET_ERRNO(ERROR_INVALID_STATE, "invalid time format: %s", format_str);
   }
 
   /* Format the time */
   int result = time_format_now(format_str, buf, buf_size);
   if (result <= 0) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "time_format_safe: strftime formatting failed");
+    return SET_ERRNO(ERROR_INVALID_STATE, "strftime formatting failed");
   }
 
   return ASCIICHAT_OK;

@@ -1,6 +1,10 @@
+import {
+  useEngineSettings,
+  renderPreferences,
+} from "../hooks/useEngineSettings";
 import { FramePresentationScheduler } from "../network/FramePresentationScheduler";
 import { SessionInvite } from "../components/SessionInvite";
-import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
+import { sessionUiMedia } from "../utils/sessionUi";
 import { useAutoGridSize } from "../hooks/useAutoGridSize";
 import { useCameraFrameRate } from "../hooks/useCameraFrameRate";
 import { useRenderSettings } from "../hooks/useRenderSettings";
@@ -74,7 +78,6 @@ import {
   useClientConnection,
   useWebcamStream,
 } from "../hooks";
-import { buildCapabilitiesPacket } from "../network";
 import { buildStreamStartPacket } from "../network";
 import { AudioPipeline } from "../audio";
 import { SecuritySetupModal } from "../components/SecuritySetupModal";
@@ -409,6 +412,8 @@ export function ClientPage({
   const {
     clientRef,
     status,
+    renderSettingsStatus,
+    sendRenderSettings,
     connectionState,
     error,
     setError,
@@ -575,6 +580,7 @@ export function ClientPage({
     videoRef,
     canvasRef,
     settings.flipX ?? false,
+    settings,
   );
 
   // Use webcam stream hook
@@ -742,35 +748,13 @@ export function ClientPage({
     (dims: { cols: number; rows: number }) => {
       frameQueueRef.current = [];
       setTerminalDimensions(dims);
-
-      // If connected, send updated dimensions to server
-      if (clientRef.current && connectionState === ConnectionState.CONNECTED) {
-        try {
-          const payload = buildCapabilitiesPacket(
-            dims.cols,
-            dims.rows,
-            settings.targetFps,
-            settings.colorMode,
-            settings.colorFilter,
-            settings.palette,
-            settings.paletteChars,
-            settings.matrixRain,
-            clientRef.current.videoCodecCapabilities,
-            settings.renderMode,
-          );
-          clientRef.current.sendPacket(PacketType.CLIENT_CAPABILITIES, payload);
-        } catch (err) {
-          console.error("[Client] Failed to send capabilities on resize:", err);
-        }
-      }
     },
-    [connectionState, settings, clientRef],
+    [],
   );
 
-  // The native server renders each client's ASCII stream according to its
-  // advertised capabilities. Re-send them when the live settings panel
-  // changes so color, palette, filter, and FPS updates take effect without a
-  // reconnect.
+  useEngineSettings(rendererReady, settings, setSettings);
+
+  // Send each live rendering update through the shared settings transaction.
   useEffect(() => {
     if (
       connectionState !== ConnectionState.CONNECTED ||
@@ -779,30 +763,28 @@ export function ClientPage({
       !clientRef.current
     )
       return;
-    try {
-      clientRef.current.sendPacket(
-        PacketType.CLIENT_CAPABILITIES,
-        buildCapabilitiesPacket(
-          terminalDimensions.cols,
-          terminalDimensions.rows,
-          settings.targetFps,
-          settings.colorMode,
-          settings.colorFilter,
-          settings.palette,
-          settings.paletteChars,
-          settings.matrixRain,
-          clientRef.current.videoCodecCapabilities,
-          settings.renderMode,
-        ),
-      );
-    } catch (err) {
-      console.error("[Client] Failed to apply live capabilities:", err);
-    }
-  }, [clientRef, connectionState, settings, terminalDimensions]);
+    const timer = setTimeout(() => {
+      try {
+        sendRenderSettings(
+          renderPreferences(terminalDimensions.cols, terminalDimensions.rows),
+        );
+      } catch (err) {
+        console.error("[Client] Failed to apply rendering settings:", err);
+      }
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [
+    clientRef,
+    connectionState,
+    settings,
+    terminalDimensions,
+    sendRenderSettings,
+  ]);
 
   // Expose frame count for testing
   useEffect(() => {
     const metrics = {
+      lastRenderedFrame: window.__clientFrameMetrics?.lastRenderedFrame ?? "",
       rendered: frameCountRef.current,
       received: receivedFrameCountRef.current,
       changedReceived: changedReceivedFrameCountRef.current,
@@ -1127,15 +1109,22 @@ export function ClientPage({
             showSettings={showSettings}
             onDeviceSetupOpenChange={handleDeviceSetupOpenChange}
             settingsPanel={
-              <BinarySettings
-                cameraFps={cameraFps}
-                separateCameraFps
-                config={settings}
-                onChange={setSettings}
-                mode={AsciiChatMode.CLIENT}
-                contentFit={contentFit}
-                onContentFitChange={setContentFit}
-              />
+              <>
+                {renderSettingsStatus && (
+                  <p role="status" className="px-4 py-2 text-sm">
+                    {renderSettingsStatus}
+                  </p>
+                )}
+                <BinarySettings
+                  cameraFps={cameraFps}
+                  separateCameraFps
+                  config={settings}
+                  onChange={setSettings}
+                  mode={AsciiChatMode.CLIENT}
+                  contentFit={contentFit}
+                  onContentFitChange={setContentFit}
+                />
+              </>
             }
             connectionPanel={
               discoveryMode ? (
@@ -1537,8 +1526,6 @@ export function ClientPage({
                   : undefined
               }
               onUiAction={(event) => {
-                if (event.action === 1 || event.action === 7)
-                  setSettings(sessionUiSettings(event, settings));
                 sessionUiMedia(event, videoRef.current);
                 audioRef.current?.setVolume(event.module._wasm_ui_volume());
                 if (event.action === 3) disconnectMedia();

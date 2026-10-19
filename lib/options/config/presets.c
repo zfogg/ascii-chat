@@ -367,10 +367,10 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                                            "Cannot use --no-auth with --key (key requires authentication)");
   options_builder_add_dependency_conflicts(b, "no-auth", "password",
                                            "Cannot use --no-auth with --password (password requires authentication)");
-  options_builder_add_dependency_conflicts(b, "no-auth", "client-keys",
-                                           "Cannot use --no-auth with --client-keys (key list requires authentication)");
-  options_builder_add_dependency_conflicts(b, "no-auth", "server-key",
-                                           "Cannot use --no-auth with --server-key (verification requires authentication)");
+  options_builder_add_dependency_conflicts(
+      b, "no-auth", "client-keys", "Cannot use --no-auth with --client-keys (key list requires authentication)");
+  options_builder_add_dependency_conflicts(
+      b, "no-auth", "server-key", "Cannot use --no-auth with --server-key (verification requires authentication)");
 
   // Identity and verification keys can be combined, including with --no-encrypt.
 
@@ -391,16 +391,14 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // ============================================================================
   // Display & Screen Conflicts
   // ============================================================================
-  options_builder_add_dependency_conflicts(b, "waveform", "matrix",
-                                           "Option --waveform cannot be used with --matrix");
+  options_builder_add_dependency_conflicts(b, "waveform", "matrix", "Option --waveform cannot be used with --matrix");
   options_builder_add_dependency_conflicts(b, "fft", "matrix", "Option --fft cannot be used with --matrix");
   options_builder_add_dependency_conflicts(b, "waveform", "fft",
                                            "Options --waveform and --fft cannot be used together");
   options_builder_add_dependency_conflicts(b, "waveform", "audio",
                                            "Option --waveform requires audio; remove --audio=false");
   options_builder_add_dependency_conflicts(b, "fft", "audio", "Option --fft requires audio; remove --audio=false");
-  options_builder_add_dependency_conflicts(b, "waveform", "stretch",
-                                           "Option --waveform cannot be used with --stretch");
+  options_builder_add_dependency_conflicts(b, "waveform", "stretch", "Option --waveform cannot be used with --stretch");
   options_builder_add_dependency_conflicts(b, "fft", "stretch", "Option --fft cannot be used with --stretch");
 
   // ============================================================================

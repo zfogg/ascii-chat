@@ -13,4 +13,9 @@ size_t acip_async_tcp_transport_queued(acip_transport_t *);
  * Takes socket ownership when *socket becomes INVALID_SOCKET_VALUE.
  */
 acip_transport_t *acip_async_tcp_client_create(socket_t *, crypto_context_t *);
+/** Queue complete packets from an accepted stream on its listener's loop.
+ * The returned transport is owned by the accepting caller. Destroy it outside
+ * the loop thread while the listener is running, or after the listener stops.
+ */
+acip_transport_t *acip_async_tcp_accepted_create(platform_event_stream_t *);
 /** Atomic-only cancellation request, suitable for the native signal path. */

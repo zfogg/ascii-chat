@@ -72,7 +72,7 @@ int mirror_init_with_args(const char *args_json) {
   log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
 
   // Log option values after initialization
-  log_info("[mirror_init_with_args] After options_init: argc=%d, matrix_rain=%d", argc, GET_OPTION(matrix_rain));
+  log_info("After options_init: argc=%d, matrix_rain=%d", argc, GET_OPTION(matrix_rain));
 
   // Initialize ANSI color code generation (dec3 cache for RGB values)
   ansi_fast_init();
@@ -270,15 +270,14 @@ void mirror_submit_audio_samples(const float *samples, int count, int source) {
   if (!samples || count <= 0 || count > 8192)
     return;
   audio_visualization_submit(source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC
-                                                                       : AUDIO_VISUALIZATION_SOURCE_MEDIA,
+                                                                      : AUDIO_VISUALIZATION_SOURCE_MEDIA,
                              samples, (size_t)count);
 }
 
 EMSCRIPTEN_KEEPALIVE
 char *mirror_render_audio_visualization(unsigned int width, unsigned int height, int source) {
-  audio_visualization_source_t audio_source = source == AUDIO_VISUALIZATION_SOURCE_MIC
-                                                 ? AUDIO_VISUALIZATION_SOURCE_MIC
-                                                 : AUDIO_VISUALIZATION_SOURCE_MEDIA;
+  audio_visualization_source_t audio_source =
+      source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA;
   if (GET_OPTION(fft))
     return audio_visualization_render_fft(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER,
                                           GET_OPTION(flip_x), GET_OPTION(flip_y));
@@ -305,13 +304,13 @@ EMSCRIPTEN_KEEPALIVE
 const unsigned char *get_font_default_ptr(void) {
   // Auto-select matrix font when --matrix flag is set
   int matrix_rain_val = GET_OPTION(matrix_rain);
-  log_info("[get_font_default_ptr] CALLED: matrix_rain=%d, g_font_matrix_resurrected=%p, g_font_default=%p",
-           matrix_rain_val, (void *)g_font_matrix_resurrected, (void *)g_font_default);
+  log_info("matrix_rain=%d, g_font_matrix_resurrected=%p, g_font_default=%p", matrix_rain_val,
+           (void *)g_font_matrix_resurrected, (void *)g_font_default);
   if (matrix_rain_val) {
-    log_info("[get_font_default_ptr] RETURNING matrix font");
+    log_info("RETURNING matrix font");
     return g_font_matrix_resurrected;
   }
-  log_info("[get_font_default_ptr] RETURNING default font");
+  log_info("RETURNING default font");
   return g_font_default;
 }
 

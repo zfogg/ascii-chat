@@ -118,8 +118,8 @@ typedef struct {
   char session_version[16]; ///< Session version (timestamp)
 
   /* Audio media section */
-  bool has_audio;             ///< Audio media included
-  opus_config_t audio_config; ///< Opus codec configuration
+  bool has_audio;                    ///< Audio media included
+  opus_config_t audio_config;        ///< Opus codec configuration
   uint32_t codec_capabilities_audio; ///< AUDIO_CODEC_CAP_* bitmask (which audio codecs peer supports)
 
   /* Video media section (terminal capabilities) */
@@ -158,8 +158,7 @@ typedef struct {
  */
 asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, size_t capability_count,
                                      const opus_config_t *audio_config, const terminal_format_params_t *format,
-                                     uint32_t video_codec_caps, uint32_t audio_codec_caps,
-                                     sdp_session_t *offer_out);
+                                     uint32_t video_codec_caps, uint32_t audio_codec_caps, sdp_session_t *offer_out);
 
 /**
  * @brief Generate SDP answer (server side)
@@ -182,9 +181,8 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
  */
 asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal_capability_t *server_capabilities,
                                       size_t server_capability_count, const opus_config_t *audio_config,
-                                      const terminal_format_params_t *server_format,
-                                      uint32_t server_video_codec_caps, uint32_t server_audio_codec_caps,
-                                      sdp_session_t *answer_out);
+                                      const terminal_format_params_t *server_format, uint32_t server_video_codec_caps,
+                                      uint32_t server_audio_codec_caps, sdp_session_t *answer_out);
 
 /* ============================================================================
  * SDP Parsing (Offer/Answer)

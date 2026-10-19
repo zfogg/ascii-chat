@@ -896,7 +896,7 @@ void *client_audio_render_thread(void *arg) {
  */
 
 int create_client_render_threads(server_context_t *server_ctx, client_info_t *client) {
-  log_debug("★★★ create_client_render_threads() CALLED for client_id=%s", client ? client->client_id : "NULL");
+  log_debug("client_id=%s", client ? client->client_id : "NULL");
 
   if (!server_ctx || !client) {
     log_error("Cannot create render threads: NULL %s", !server_ctx ? "server_ctx" : "client");

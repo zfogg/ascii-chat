@@ -13,33 +13,6 @@
 #   - clean_all target
 # =============================================================================
 
-# Format target - cross-platform version
-file(GLOB_RECURSE ALL_SOURCE_FILES
-    ${CMAKE_SOURCE_DIR}/src/**/*.c
-    ${CMAKE_SOURCE_DIR}/src/**/*.h
-    ${CMAKE_SOURCE_DIR}/src/*.c
-    ${CMAKE_SOURCE_DIR}/src/*.h
-    ${CMAKE_SOURCE_DIR}/lib/**/*.c
-    ${CMAKE_SOURCE_DIR}/lib/**/*.h
-    ${CMAKE_SOURCE_DIR}/lib/*.c
-    ${CMAKE_SOURCE_DIR}/lib/*.h
-    ${CMAKE_SOURCE_DIR}/tests/**/*.c
-    ${CMAKE_SOURCE_DIR}/tests/**/*.h
-    ${CMAKE_SOURCE_DIR}/tests/*.c
-    ${CMAKE_SOURCE_DIR}/tests/*.h
-)
-
-# Include Objective-C files on Apple platforms
-if(APPLE)
-    file(GLOB_RECURSE OBJC_SOURCE_FILES
-        ${CMAKE_SOURCE_DIR}/lib/**/*.m
-        ${CMAKE_SOURCE_DIR}/lib/*.m
-        ${CMAKE_SOURCE_DIR}/src/**/*.m
-        ${CMAKE_SOURCE_DIR}/src/*.m
-    )
-    list(APPEND ALL_SOURCE_FILES ${OBJC_SOURCE_FILES})
-endif()
-
 # Create production source files list (exclude tests for clang-tidy)
 file(GLOB_RECURSE PRODUCTION_SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/src/**/*.c
@@ -66,62 +39,29 @@ endif()
 # Filter out third-party or generated files if needed
 # Note: Objective-C files (.m) are included for Apple platforms
 
-# Use centralized clang-format from FindPrograms.cmake
-set(CLANG_FORMAT_EXECUTABLE "${ASCIICHAT_CLANG_FORMAT_EXECUTABLE}")
-
-if(CLANG_FORMAT_EXECUTABLE)
-    add_custom_target(format
-        COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${ALL_SOURCE_FILES}
-        COMMENT "Formatting source code with clang-format"
-        VERBATIM
-    )
-
-    if(NOT TARGET clang-format)
-        add_custom_target(clang-format
-            COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${ALL_SOURCE_FILES}
-            COMMENT "Formatting source code with clang-format"
-            VERBATIM
-        )
+# The runner discovers all owned source files at invocation time and uses a
+# response file to avoid platform command-line limits.
+foreach(_format_target format format-check)
+    if(_format_target STREQUAL "format-check")
+        set(_check_only ON)
+    else()
+        set(_check_only OFF)
     endif()
-
-    if(NOT TARGET format-check)
-        add_custom_target(format-check
-            COMMAND ${CLANG_FORMAT_EXECUTABLE} --dry-run -Werror ${ALL_SOURCE_FILES}
-            COMMENT "Checking code formatting"
-            VERBATIM
-        )
-    endif()
-else()
-    message(WARNING "${BoldRed}clang-format not found.${ColorReset} Format targets will not be available.")
-    add_custom_target(format
-        COMMAND ${CMAKE_COMMAND} -E echo "${BoldRed}clang-format not found.${ColorReset} Please install clang-format."
-    )
-    if(NOT TARGET clang-format)
-        add_custom_target(clang-format
-            COMMAND ${CMAKE_COMMAND} -E echo "${BoldRed}clang-format not found.${ColorReset} Please install clang-format."
-        )
-    endif()
-    if(NOT TARGET format-check)
-        add_custom_target(format-check
-            COMMAND ${CMAKE_COMMAND} -E echo "${BoldRed}clang-format not found.${ColorReset} Please install clang-format."
-        )
-    endif()
-endif()
-
+    add_custom_target(${_format_target}
+        COMMAND ${CMAKE_COMMAND}
+            "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
+            "-DCLANG_FORMAT_EXECUTABLE=${ASCIICHAT_CLANG_FORMAT_EXECUTABLE}"
+            "-DRESPONSE_FILE=${CMAKE_BINARY_DIR}/${_format_target}-files.rsp"
+            "-DCHECK_ONLY=${_check_only}"
+            -P "${CMAKE_SOURCE_DIR}/cmake/tools/FormatSources.cmake"
+        COMMENT "Running ${_format_target} on authored sources"
+        VERBATIM)
+endforeach()
 if(NOT TARGET clang-format)
-    add_custom_target(clang-format
-        COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/cmake/utils/RunClangFormat.cmake
-        COMMENT "Running clang-format on source files"
-        VERBATIM
-    )
+    add_custom_target(clang-format DEPENDS format)
 endif()
-
 if(NOT TARGET clang-format-check)
-    add_custom_target(clang-format-check
-        COMMAND ${CMAKE_COMMAND} -DONLY_CHECK=ON -P ${CMAKE_SOURCE_DIR}/cmake/utils/RunClangFormat.cmake
-        COMMENT "Checking clang-format formatting"
-        VERBATIM
-    )
+    add_custom_target(clang-format-check DEPENDS format-check)
 endif()
 
 # Use centralized clang-tidy from FindPrograms.cmake

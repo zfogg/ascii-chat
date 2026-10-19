@@ -45,45 +45,47 @@ if(PLATFORM_IOS OR EMSCRIPTEN)
     return()
 endif()
 
-# Handle musl builds - PortAudio is built from source
-if(USE_MUSL)
-    message(STATUS "Configuring ${BoldBlue}PortAudio${ColorReset} from source...")
 
-    set(PORTAUDIO_PREFIX "${MUSL_DEPS_DIR_STATIC}/portaudio")
-    set(PORTAUDIO_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/portaudio-build")
-
-    # Only add external project if library doesn't exist
-    if(NOT EXISTS "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
-        message(STATUS "  PortAudio library not found in cache, will build from source")
-        ExternalProject_Add(portaudio-musl
-            URL http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
-            URL_HASH SHA256=47efbf42c77c19a05d22e627d42873e991ec0c1357219c0d74ce6a2948cb2def
-            TLS_VERIFY FALSE  # PortAudio's SSL cert is expired (Dec 2025)
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
+if(USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
+    function(asciichat_build_portaudio)
+        asciichat_dependency_defaults()
+        set(PA_BUILD_SHARED ${BUILD_SHARED_LIBS})
+        set(PA_BUILD_STATIC ON)
+        if(BUILD_SHARED_LIBS)
+            set(PA_BUILD_STATIC OFF)
+        endif()
+        set(PA_BUILD_EXAMPLES OFF)
+        set(PA_BUILD_TESTS OFF)
+        set(PA_USE_JACK OFF)
+        set(PA_USE_ASIO OFF)
+        if(USE_MUSL)
+            set(ALSA_INCLUDE_DIR "${ALSA_PREFIX}/include")
+            set(ALSA_LIBRARY "${ALSA_PREFIX}/lib/libasound.a")
+        endif()
+        FetchContent_Declare(asciichat_portaudio
+            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_portaudio"
+            EXCLUDE_FROM_ALL
+            URL https://github.com/PortAudio/portaudio/archive/refs/tags/v19.7.0.tar.gz
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            PREFIX ${PORTAUDIO_BUILD_DIR}
-            STAMP_DIR ${PORTAUDIO_BUILD_DIR}/stamps
-            UPDATE_DISCONNECTED 1
-            BUILD_ALWAYS 0
-            CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC PKG_CONFIG_PATH=${ALSA_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${PORTAUDIO_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
-            BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j
-            INSTALL_COMMAND make install
-            BUILD_BYPRODUCTS ${PORTAUDIO_PREFIX}/lib/libportaudio.a
-            DEPENDS alsa-lib-musl
-            LOG_DOWNLOAD TRUE
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}PortAudio${ColorReset} library found in cache: ${BoldMagenta}${PORTAUDIO_PREFIX}/lib/libportaudio.a${ColorReset}")
-        # Create a dummy target so dependencies can reference it
-        add_custom_target(portaudio-musl DEPENDS alsa-lib-musl)
-    endif()
-
+            SOURCE_SUBDIR asciichat-patch-first)
+        FetchContent_MakeAvailable(asciichat_portaudio)
+        set(PORTAUDIO_SOURCE_DIR "${asciichat_portaudio_SOURCE_DIR}")
+        include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-portaudio-cmake.cmake")
+        add_subdirectory("${asciichat_portaudio_SOURCE_DIR}" "${asciichat_portaudio_BINARY_DIR}" EXCLUDE_FROM_ALL)
+        if(BUILD_SHARED_LIBS)
+            set(_target portaudio)
+        else()
+            set(_target portaudio_static)
+        endif()
+        if(TARGET alsa-lib-musl)
+            add_dependencies(${_target} alsa-lib-musl)
+        endif()
+        set(PORTAUDIO_LIBRARIES ${_target} PARENT_SCOPE)
+        set(PORTAUDIO_INCLUDE_DIRS "${asciichat_portaudio_SOURCE_DIR}/include" PARENT_SCOPE)
+    endfunction()
+    asciichat_build_portaudio()
     set(PORTAUDIO_FOUND TRUE)
-    set(PORTAUDIO_LIBRARIES "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
-    set(PORTAUDIO_INCLUDE_DIRS "${PORTAUDIO_PREFIX}/include")
     return()
 endif()
 

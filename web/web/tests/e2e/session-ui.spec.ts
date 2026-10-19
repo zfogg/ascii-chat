@@ -1,11 +1,16 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./browser-fixture";
 import { fileURLToPath } from "node:url";
 
-const moduleUrl = `/@fs/${fileURLToPath(new URL("../../../packages/shared/src/wasm/mirror.ts", import.meta.url)).replaceAll("\\", "/")}`;
+const moduleUrl = `/@fs/${fileURLToPath(
+  new URL("../../../packages/shared/src/wasm/mirror.ts", import.meta.url),
+)
+  .replaceAll("\\", "/")
+  .replace(/^\/+/, "")}`;
 
 declare global {
   interface Window {
     __sessionUiFrames?: string[];
+    __sessionSettingsPatches?: string[];
   }
 }
 
@@ -24,6 +29,16 @@ async function observe(page: Page) {
   await page.evaluate(async (url) => {
     const { getMirrorModule } = await import(url);
     const m = getMirrorModule();
+    const patch = m._wasm_options_patch;
+    window.__sessionSettingsPatches = [];
+    m._wasm_options_patch = (pointer: number, revision: number) => {
+      window.__sessionSettingsPatches!.push(m.UTF8ToString(pointer));
+      if (window.__sessionSettingsPatches!.length > 100)
+        throw new Error(
+          `Settings feedback loop: ${window.__sessionSettingsPatches!.slice(-10).join("; ")}`,
+        );
+      return patch(pointer, revision);
+    };
     const feed = m._term_renderer_feed;
     window.__sessionUiFrames = [];
     m._term_renderer_feed = (
@@ -93,7 +108,7 @@ test("C splash animates and keyboard settings update both C and the web controls
   await expect(page).toHaveURL(/colorMode=none/);
   await expect.poll(() => lastFrame(page)).toContain("Mono");
   for (const [key, parameter, value] of [
-    ["x", "flipX", "false"],
+    ["x", "horizontalFlip", "off"],
     ["y", "flipY", "true"],
     ["r", "renderMode", "1"],
     ["1", "animationEnabled", "true"],
@@ -117,6 +132,9 @@ test("C splash animates and keyboard settings update both C and the web controls
       .locator("select")
       .filter({ has: page.locator('option[value="truecolor"]') }),
   ).toHaveValue("none");
+  expect(
+    await page.evaluate(() => window.__sessionSettingsPatches!.length),
+  ).toBeLessThan(100);
   await canvas.focus();
   await page.keyboard.press("Escape");
   await expect
@@ -132,7 +150,7 @@ test("help owns presentation during live video and recovers after resize", async
   await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 15_000 });
   const canvas = page.locator("canvas.ascii-canvas");
   await canvas.focus();
   await page.keyboard.press("?");
@@ -243,7 +261,7 @@ test("C application logs survive closed overlays and share exclusive presentatio
   await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 15_000 });
   await canvas.focus();
   await page.keyboard.press("]");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");

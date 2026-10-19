@@ -16,7 +16,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <ascii-chat/platform/windows/getopt.h>
+#else
 #include <getopt.h>
+#endif
 #include <sodium.h>
 #include <ascii-chat/common/error_codes.h>
 #include <ascii-chat/discovery/adjectives.h>

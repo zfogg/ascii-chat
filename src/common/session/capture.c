@@ -18,6 +18,7 @@
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/video/rgba/image.h>
+#include <ascii-chat/video/face_follow_image.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/audio/audio.h>
@@ -49,6 +50,9 @@
 struct session_capture_ctx {
   /** @brief Underlying media source (webcam, file, stdin, test) */
   media_source_t *source;
+  face_follow_image_t *face_follow;
+  double face_media_position, face_media_tick;
+  bool face_media_valid;
   media_source_t *webcam_source;
   image_t *last_media_frame;
   image_t *empty_frame;
@@ -358,6 +362,8 @@ void session_capture_destroy(session_capture_ctx_t *ctx) {
     image_destroy(ctx->last_media_frame);
   if (ctx->empty_frame)
     image_destroy(ctx->empty_frame);
+  face_follow_image_destroy(ctx->face_follow);
+  ctx->face_follow = NULL;
   // Destroy media source
   if (ctx->source) {
     media_source_destroy(ctx->source);
@@ -417,6 +423,9 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
     if (!leaving && !ctx->media_was_paused)
       media_source_resume(ctx->source);
     atomic_store_bool(&ctx->non_media_active, leaving);
+    ctx->face_media_valid = false;
+    face_follow_image_destroy(ctx->face_follow);
+    ctx->face_follow = NULL;
     atomic_store_bool(&ctx->redraw_media, true);
     ctx->next_frame_deadline_ns = 0;
     log_info("Media playback %s at %.3fs (%s)", leaving ? "hidden" : "selected", media_source_get_position(ctx->source),
@@ -440,6 +449,18 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
   }
   image_t *frame = alternate ? (ctx->webcam_source ? media_source_read_video(ctx->webcam_source) : ctx->empty_frame)
                              : media_source_read_video(ctx->source);
+  if (frame && is_file && !alternate) {
+    double now = (double)time_get_ns() / 1e9;
+    double position = media_source_get_position(ctx->source);
+    if (ctx->face_media_valid && (position < ctx->face_media_position - 0.1 ||
+                                  position > ctx->face_media_position + (now - ctx->face_media_tick) + 0.75)) {
+      face_follow_image_destroy(ctx->face_follow);
+      ctx->face_follow = NULL;
+    }
+    ctx->face_media_valid = true;
+    ctx->face_media_position = position;
+    ctx->face_media_tick = now;
+  }
   if (is_file && !alternate && !GET_OPTION(snapshot_mode) && !GET_OPTION(render_file)[0]) {
     if (frame) {
       ctx->retained_frame_shown = false;
@@ -456,7 +477,14 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
       bool redraw = atomic_exchange_bool(&ctx->redraw_media, false);
       if (!ctx->retained_frame_shown || redraw) {
         ctx->retained_frame_shown = true;
-        return ctx->last_media_frame;
+        bool debug = false;
+#ifndef NDEBUG
+        debug = GET_OPTION(face_follow_debug);
+#endif
+        return face_follow_image_process(&ctx->face_follow, ctx->last_media_frame, (double)time_get_ns() / 1e9,
+                                         GET_OPTION(face_follow), debug,
+                                         ctx->resize_for_network ? SESSION_MAX_FRAME_WIDTH : 960,
+                                         ctx->resize_for_network ? SESSION_MAX_FRAME_HEIGHT : 720);
       }
       return NULL;
     }
@@ -497,12 +525,18 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
     }
   }
 
-  return frame;
+  bool debug = false;
+#ifndef NDEBUG
+  debug = GET_OPTION(face_follow_debug);
+#endif
+  return face_follow_image_process(&ctx->face_follow, frame, (double)time_get_ns() / 1e9, GET_OPTION(face_follow),
+                                   debug, ctx->resize_for_network ? SESSION_MAX_FRAME_WIDTH : 960,
+                                   ctx->resize_for_network ? SESSION_MAX_FRAME_HEIGHT : 720);
 }
 
 image_t *session_capture_process_for_transmission(session_capture_ctx_t *ctx, image_t *frame) {
   if (!ctx || !frame) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_capture_process_for_transmission: NULL parameter");
+    SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
     return NULL;
   }
 

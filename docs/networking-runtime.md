@@ -65,7 +65,7 @@ and retained cleanup after a failed producer join. The other standalone suites
 cover participant ownership, peer readiness, security policy, backend events, and
 congestion.
 
-Media slots and their buffers are allocated only after security negotiation and
+The media server allocates slots and buffers only after security negotiation and
 initial capabilities succeed. Unauthenticated stalled peers consume a bounded
 connection entry rather than a media slot.
 

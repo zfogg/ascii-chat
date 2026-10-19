@@ -177,10 +177,9 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
       char line[BUFFER_SIZE_LARGE];
       if (fgets(line, sizeof(line), f)) {
         uint8_t first_packet = (uint8_t)line[0];
-        unsigned int packet_tag = (first_packet & 0x80u)
-                                      ? ((first_packet & 0x40u) ? (first_packet & 0x3fu)
-                                                                 : ((first_packet >> 2) & 0x0fu))
-                                      : 0u;
+        unsigned int packet_tag =
+            (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu))
+                                   : 0u;
         bool armored_gpg = strstr(line, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL;
         if (armored_gpg || packet_tag == 6u) {
           if (fseek(f, 0, SEEK_END) != 0) {
@@ -304,7 +303,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   header[bytes_read] = '\0';
   fclose(f);
 
-  log_debug("parse_private_key: Read %zu bytes from %s", bytes_read, key_path);
+  log_debug("Read %zu bytes from %s", bytes_read, key_path);
 
   // Check for PGP armored secret key format
   if (strstr(header, "-----BEGIN PGP PRIVATE KEY") != NULL || strstr(header, "-----BEGIN PGP SECRET KEY") != NULL) {
@@ -362,10 +361,8 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   }
 
   uint8_t first_packet = bytes_read > 0 ? (uint8_t)header[0] : 0;
-  unsigned int first_packet_tag = (first_packet & 0x80u)
-                                      ? ((first_packet & 0x40u) ? (first_packet & 0x3fu)
-                                                                 : ((first_packet >> 2) & 0x0fu))
-                                      : 0u;
+  unsigned int first_packet_tag =
+      (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu)) : 0u;
   if (bytes_read > 0 && first_packet_tag == 5u) {
     f = platform_fopen("file_stream", normalized_path, "rb");
     if (!f) {
@@ -394,12 +391,12 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
 
     uint8_t ed25519_pk[32];
     uint8_t ed25519_sk[32];
-    asciichat_error_t openpgp_result =
-        openpgp_parse_binary_seckey(file_content, content_read, ed25519_pk, ed25519_sk);
+    asciichat_error_t openpgp_result = openpgp_parse_binary_seckey(file_content, content_read, ed25519_pk, ed25519_sk);
     sodium_memzero(file_content, content_read);
     SAFE_FREE(file_content);
     SAFE_FREE(normalized_path);
-    if (openpgp_result != ASCIICHAT_OK) return openpgp_result;
+    if (openpgp_result != ASCIICHAT_OK)
+      return openpgp_result;
 
     key_out->type = KEY_TYPE_ED25519;
     key_out->use_gpg_agent = false;
@@ -554,7 +551,7 @@ asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, s
 
 asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_pk[32]) {
   if (!key || !x25519_pk) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for public_key_to_x25519");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   if (key->type == KEY_TYPE_X25519) {
@@ -573,7 +570,7 @@ asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_p
 
 asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[32]) {
   if (!key || !x25519_sk) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for private_key_to_x25519");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   if (key->type == KEY_TYPE_X25519) {
@@ -596,7 +593,7 @@ asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519
 
 asciichat_error_t fetch_github_keys(const char *username, char ***keys_out, size_t *num_keys, bool use_gpg) {
   if (!username || !keys_out || !num_keys) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for fetch_github_keys");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   if (use_gpg) {
@@ -608,7 +605,7 @@ asciichat_error_t fetch_github_keys(const char *username, char ***keys_out, size
 
 asciichat_error_t fetch_gitlab_keys(const char *username, char ***keys_out, size_t *num_keys, bool use_gpg) {
   if (!username || !keys_out || !num_keys) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for fetch_gitlab_keys");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   if (use_gpg) {
@@ -649,12 +646,9 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
   char line[BUFFER_SIZE_LARGE];
   bool has_first_line = fgets(line, sizeof(line), f) != NULL;
   uint8_t first_packet = has_first_line ? (uint8_t)line[0] : 0;
-  unsigned int first_packet_tag = (first_packet & 0x80u)
-                                      ? ((first_packet & 0x40u) ? (first_packet & 0x3fu)
-                                                                 : ((first_packet >> 2) & 0x0fu))
-                                      : 0u;
-  if (has_first_line &&
-      (strstr(line, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL || first_packet_tag == 6u)) {
+  unsigned int first_packet_tag =
+      (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu)) : 0u;
+  if (has_first_line && (strstr(line, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL || first_packet_tag == 6u)) {
     if (fseek(f, 0, SEEK_END) != 0) {
       (void)fclose(f);
       SAFE_FREE(normalized_path);
@@ -682,7 +676,8 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
       result = parse_public_key(armored_key, &keys[0]);
     }
     SAFE_FREE(armored_key);
-    if (result == ASCIICHAT_OK) *num_keys = 1;
+    if (result == ASCIICHAT_OK)
+      *num_keys = 1;
     return result;
   }
   rewind(f);
@@ -745,7 +740,7 @@ void format_public_key(const public_key_t *key, char *output, size_t output_size
 
 asciichat_error_t hex_decode(const char *hex, uint8_t *output, size_t output_len) {
   if (!hex || !output) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for hex_decode");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   size_t hex_len = strlen(hex);

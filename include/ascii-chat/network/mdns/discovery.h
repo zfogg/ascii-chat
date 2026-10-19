@@ -68,7 +68,7 @@
 #include <time.h>
 #include "../../common.h"
 #include "../../discovery/strings.h" // For is_session_string()
-#include "../../ui/mdns.h"  // For ui_mdns_server_t
+#include "../../ui/mdns.h"           // For ui_mdns_server_t
 
 #ifdef __cplusplus
 extern "C" {

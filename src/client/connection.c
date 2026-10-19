@@ -11,7 +11,6 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
-#include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/options/options.h>
 
 static void client_interrupt(void *context);
@@ -75,25 +74,13 @@ asciichat_error_t client_connection_start(client_connection_t *connection, const
   connection->transport = network_connection_transport(connection->network);
   server_connection_set_ip(connection, endpoint.host);
   server_connection_set_port(connection, endpoint.port);
-  crypto_policy_t policy = {.transport_secure = network_connection_secure(connection->network),
-                            .encrypt = GET_OPTION(encrypt_enabled),
-                            .no_encrypt = GET_OPTION(no_encrypt),
-                            .no_auth = GET_OPTION(no_auth),
-                            .has_password = GET_OPTION(password)[0] != 0,
-                            .has_identity = GET_OPTION(encrypt_key)[0] != 0 || GET_OPTION(num_identity_keys) > 0,
-                            .has_verification_key = GET_OPTION(server_key)[0] != 0};
-  uint8_t mode;
-  result = crypto_policy_resolve(&policy, &mode);
+  result = client_crypto_init(connection);
   if (result != ASCIICHAT_OK)
     return result;
-  client_crypto_set_mode(connection, mode);
-  if (client_crypto_init(connection) != 0)
-    return SET_ERRNO(ERROR_CRYPTO, "Cannot initialize connection security");
-  result = network_client_negotiate(connection->transport, &connection->crypto_ctx, connection->crypto_mode);
+  result = network_client_negotiate(connection->transport, connection->crypto_ctx, connection->crypto_mode,
+                                    NETWORK_PROTOCOL_MEDIA);
   if (result != ASCIICHAT_OK)
     return result;
-  if (crypto_client_is_ready(connection))
-    connection->transport->crypto_ctx = crypto_client_get_context(connection);
   network_connection_ready(connection->network);
   if (should_exit())
     return SET_ERRNO(ERROR_NETWORK, "Connection startup interrupted");
@@ -163,14 +150,12 @@ static void client_release(void *context) {
   connection->audio_pipeline = NULL;
   h265_encoder_destroy(connection->video_encoder);
   connection->video_encoder = NULL;
-  /* The handle destroys the transport and its event/client owner, quiescing
-   * callbacks before releasing the crypto state referenced by the transport. */
+  /* The shared owner drains callbacks before releasing transport and security. */
   log_debug("CLIENT_CONNECTION_TRANSPORT_CLEANUP");
   network_connection_destroy(&connection->network);
   log_debug("CLIENT_CONNECTION_TRANSPORT_RELEASED");
   connection->transport = NULL;
-  crypto_client_cleanup(connection);
-  NAMED_UNREGISTER(&connection->crypto_ctx);
+  connection->crypto_ctx = NULL;
 }
 
 asciichat_error_t client_connection_destroy(client_connection_t **owner) {

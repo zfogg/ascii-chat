@@ -299,8 +299,8 @@ static void on_local_description(webrtc_peer_connection_t *pc, const char *sdp, 
     return;
   }
 
-  log_debug("on_local_description: peer->session_id=%02x%02x%02x%02x..., peer->participant_id=%02x%02x%02x%02x...",
-            peer->session_id[0], peer->session_id[1], peer->session_id[2], peer->session_id[3], peer->participant_id[0],
+  log_debug("peer->session_id=%02x%02x%02x%02x..., peer->participant_id=%02x%02x%02x%02x...", peer->session_id[0],
+            peer->session_id[1], peer->session_id[2], peer->session_id[3], peer->participant_id[0],
             peer->participant_id[1], peer->participant_id[2], peer->participant_id[3]);
 
   log_debug("Sending SDP %s to remote peer via ACDS", type);
@@ -767,9 +767,8 @@ asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, co
     return SET_ERRNO(ERROR_INVALID_PARAM, "Only joiners can initiate connections");
   }
 
-  log_debug("webrtc_peer_manager_connect: session_id=%02x%02x%02x%02x..., participant_id=%02x%02x%02x%02x...",
-            session_id[0], session_id[1], session_id[2], session_id[3], participant_id[0], participant_id[1],
-            participant_id[2], participant_id[3]);
+  log_debug("session_id=%02x%02x%02x%02x..., participant_id=%02x%02x%02x%02x...", session_id[0], session_id[1],
+            session_id[2], session_id[3], participant_id[0], participant_id[1], participant_id[2], participant_id[3]);
 
   mutex_lock(&manager->peers_mutex);
 

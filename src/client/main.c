@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/settings.h>
 #include "connection_internal.h"
 /**
  * @file main.c
@@ -319,8 +320,9 @@ static bool client_should_reconnect(asciichat_error_t last_error, int attempt_nu
  * @param user_data Unused (NULL)
  * @return ASCIICHAT_OK if successful, error code if connection failed
  */
-static asciichat_error_t client_send_capabilities(const terminal_capabilities_packet_t *packet, void *context) {
-  return threaded_send_packet(context, PACKET_TYPE_CLIENT_CAPABILITIES, packet, sizeof(*packet));
+static asciichat_error_t client_send_settings(const options_t *values, uint32_t request, void *context) {
+  return acip_settings_send(server_connection_get_transport((client_connection_t *)context), values, request,
+                            UINT32_MAX);
 }
 
 static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, session_display_ctx_t *display,
@@ -361,10 +363,11 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
   // Monitor connection until it breaks or shutdown is requested
   bool snapshot_check_logged_once = false;
   uint64_t last_progress_log_ns = 0;
+  uint64_t advertised_revision = OPTIONS_REVISION_ANY;
   while (!should_exit() && server_connection_is_active(connection)) {
     terminal_size_t previous = connection->advertised_dimensions;
-    if (session_protocol_update_dimensions(&connection->advertised_dimensions, client_send_capabilities, connection) ==
-            ASCIICHAT_OK &&
+    if (session_protocol_update_settings(&connection->advertised_dimensions, &advertised_revision, client_send_settings,
+                                         connection) == ASCIICHAT_OK &&
         (previous.cols != connection->advertised_dimensions.cols ||
          previous.rows != connection->advertised_dimensions.rows)) {
       display_full_reset();
@@ -491,18 +494,6 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
 }
 
 int client_main(void) {
-  log_debug("client_main() starting");
-
-  // Register client crypto callbacks for TCP connection path
-  // The TCP path in lib/network/connection_attempt.c relies on these callbacks
-  // to handle cryptographic operations and key exchange
-  static const app_callbacks_t client_crypto_callbacks = {
-      .should_exit = should_exit,
-      .signal_exit = signal_exit,
-      .platform_get_monotonic_time_us = platform_get_monotonic_time_us,
-      .platform_sleep_ms = platform_sleep_ms,
-  };
-  app_callbacks_register(&client_crypto_callbacks);
 
   // Initialize client-specific systems (NOT shared with session_client_like)
   // This includes application devices and the application client context.
@@ -719,26 +710,26 @@ int client_main(void) {
       .print_newline_on_tty_exit = false, // Server/client manages cursor
   };
 
-  log_debug("[CLIENT_MAIN] About to call session_client_like_run() with %d attempts", reconnect_attempts);
+  log_debug("About to call session_client_like_run() with %d attempts", reconnect_attempts);
   asciichat_error_t session_result = session_client_like_run(&config);
-  log_debug("[CLIENT_MAIN] session_client_like_run() returned %d", session_result);
+  log_debug("session_client_like_run() returned %d", session_result);
 
   // Cleanup session log buffer (used by splash screen in session_client_like)
   // NOTE: session_log_buffer_destroy() is already called in session_client_like_run()
   // during its cleanup phase, so we don't call it here to avoid double-destroy of mutex
 
-  log_debug("[CLIENT_MAIN] ascii-chat client shutting down");
+  log_debug("ascii-chat client shutting down");
 
   // IMPORTANT: Stop worker threads and join them BEFORE memory report
   // atexit(shutdown_client) won't run if interrupted by SIGTERM, so call explicitly
-  log_debug("[CLIENT_MAIN] About to call shutdown_client()");
+  log_debug("About to call shutdown_client()");
   fflush(stderr);
   shutdown_client();
-  log_debug("[CLIENT_MAIN] shutdown_client() returned");
+  log_debug("shutdown_client() returned");
   fflush(stderr);
 
   // Cleanup remaining shared subsystems (buffer domain, platform, etc.)
-  log_debug("[CLIENT_MAIN] About to call asciichat_shared_destroy()");
+  log_debug("About to call asciichat_shared_destroy()");
   asciichat_shared_destroy();
 
   // Log final session statistics before exit

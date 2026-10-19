@@ -152,7 +152,7 @@ static void *ping_thread_func(void *arg) {
     // Check if session rekeying should be triggered
     if (crypto_client_should_rekey(connection)) {
       log_debug("Rekey threshold reached, initiating session rekey");
-      if (crypto_client_initiate_rekey(connection) < 0) {
+      if (crypto_client_initiate_rekey(connection) != ASCIICHAT_OK) {
         log_error("Failed to initiate rekey");
         // Don't break - continue with keepalive, rekey will be retried
       }

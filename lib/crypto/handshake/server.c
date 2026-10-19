@@ -67,7 +67,6 @@ asciichat_error_t crypto_handshake_server_send_parameters(crypto_handshake_conte
 
 // Server: Start crypto handshake by sending public key
 asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx, acip_transport_t *transport) {
-  log_debug("[HANDSHAKE_START] ===== ENTRY: crypto_handshake_server_start called =====");
   log_debug("[HANDSHAKE_START] ctx=%p, transport=%p", (void *)ctx, (void *)transport);
 
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_INIT) {

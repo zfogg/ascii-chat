@@ -45,7 +45,8 @@ __attribute__((target("crc"), noinline)) static uint32_t crc32_arm_hw(uint32_t p
 #endif
 
 #ifdef ARCH_X86_64
-__attribute__((target("sse4.2"), noinline)) static uint32_t crc32_intel_hw(uint32_t previous, const void *data, size_t len) {
+__attribute__((target("sse4.2"), noinline)) static uint32_t crc32_intel_hw(uint32_t previous, const void *data,
+                                                                           size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
   uint32_t crc = ~previous;
   while (len >= sizeof(uint64_t)) {

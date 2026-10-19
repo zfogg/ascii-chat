@@ -12,129 +12,44 @@
 #   - FREETYPE_INCLUDE_DIRS: FreeType2 include directories
 # =============================================================================
 
-# iOS build: Build from source for iOS cross-compilation
-# Only build FreeType if we're building executables or libvterm (both need fonts)
-if(PLATFORM_IOS AND BUILD_EXECUTABLES)
-    message(STATUS "Configuring ${BoldBlue}freetype${ColorReset} from source (iOS cross-compile)...")
 
-    include(ExternalProject)
-
-    set(FREETYPE_PREFIX "${IOS_DEPS_CACHE_DIR}/freetype")
-    set(FREETYPE_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/freetype-build")
-
-    if(NOT EXISTS "${FREETYPE_PREFIX}/lib/libfreetype.a")
-        message(STATUS "  freetype library not found in cache, will build from source")
-
-        # Determine iOS SDK path
-        if(BUILD_IOS_SIM)
-            set(IOS_SDK_PATH "$(xcrun --sdk iphonesimulator --show-sdk-path)")
-        else()
-            set(IOS_SDK_PATH "$(xcrun --sdk iphoneos --show-sdk-path)")
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
+if(PLATFORM_IOS AND NOT BUILD_EXECUTABLES)
+    return()
+endif()
+if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
+    function(asciichat_build_freetype)
+        asciichat_dependency_defaults()
+        set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/_deps/installed/freetype")
+        if(USE_MUSL OR PLATFORM_IOS)
+            set(CMAKE_INSTALL_PREFIX "${_prefix}")
         endif()
-
-        ExternalProject_Add(freetype-ios
+        set(FT_DISABLE_PNG ON)
+        set(FT_DISABLE_ZLIB ON)
+        set(FT_DISABLE_BZIP2 ON)
+        set(FT_DISABLE_HARFBUZZ ON)
+        set(FT_DISABLE_BROTLI ON)
+        set(ZLIB_FOUND FALSE)
+        set(BZIP2_FOUND FALSE)
+        set(PNG_FOUND FALSE)
+        set(HARFBUZZ_FOUND FALSE)
+        set(BROTLIDEC_FOUND FALSE)
+        FetchContent_Declare(asciichat_freetype
+            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_freetype"
+            EXCLUDE_FROM_ALL
             URL https://github.com/freetype/freetype/archive/refs/tags/VER-2-13-2.tar.gz
             URL_HASH SHA256=427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            PREFIX ${FREETYPE_BUILD_DIR}
-            STAMP_DIR ${FREETYPE_BUILD_DIR}/stamps
-            UPDATE_DISCONNECTED 1
-            BUILD_ALWAYS 0
-            CMAKE_ARGS
-                -DCMAKE_SYSTEM_NAME=iOS
-                -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0
-                -DCMAKE_OSX_ARCHITECTURES=arm64
-                -DCMAKE_OSX_SYSROOT=${IOS_SDK_PATH}
-                -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-                -DCMAKE_INSTALL_PREFIX=${FREETYPE_PREFIX}
-                -DCMAKE_BUILD_TYPE=Release
-                -DBUILD_SHARED_LIBS=OFF
-                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                -DFT_DISABLE_PNG=ON
-                -DFT_DISABLE_ZLIB=ON
-                -DFT_DISABLE_BZIP2=ON
-                -DFT_DISABLE_HARFBUZZ=ON
-                -DFT_DISABLE_BROTLI=ON
-            INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${FREETYPE_PREFIX}
-            BUILD_BYPRODUCTS ${FREETYPE_PREFIX}/lib/libfreetype.a
-            LOG_DOWNLOAD TRUE
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}freetype${ColorReset} library found in cache: ${BoldMagenta}${FREETYPE_PREFIX}/lib/libfreetype.a${ColorReset}")
-        add_custom_target(freetype-ios)
-    endif()
-
-    set(FREETYPE_LIBRARIES "${FREETYPE_PREFIX}/lib/libfreetype.a")
-    set(FREETYPE_INCLUDE_DIRS "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/include/freetype2")
-    set(FREETYPE_PREFIX "${FREETYPE_PREFIX}")
-    file(MAKE_DIRECTORY "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/lib")
-
-    return()
-endif()
-
-# iOS without executables: Skip FreeType (not needed, render-file is disabled)
-if(PLATFORM_IOS)
-    message(STATUS "Skipping FreeType (iOS with BUILD_EXECUTABLES=OFF)")
-    return()
-endif()
-
-# Musl build: Build from source
-if(USE_MUSL)
-    message(STATUS "Configuring ${BoldBlue}freetype${ColorReset} from source (musl)...")
-
-    include(ExternalProject)
-
-    set(FREETYPE_PREFIX "${MUSL_DEPS_DIR_STATIC}/freetype")
-    set(FREETYPE_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/freetype-build")
-
-    if(NOT EXISTS "${FREETYPE_PREFIX}/lib/libfreetype.a")
-        message(STATUS "  freetype library not found in cache, will build from source")
-        ExternalProject_Add(freetype-musl
-            URL https://github.com/freetype/freetype/archive/refs/tags/VER-2-13-2.tar.gz
-            URL_HASH SHA256=427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            PREFIX ${FREETYPE_BUILD_DIR}
-            STAMP_DIR ${FREETYPE_BUILD_DIR}/stamps
-            UPDATE_DISCONNECTED 1
-            BUILD_ALWAYS 0
-            CMAKE_ARGS
-                -DCMAKE_TOOLCHAIN_FILE=${MUSL_TOOLCHAIN_FILE}
-                -DMUSL_GCC_PATH=${MUSL_GCC}
-                -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-                -DCMAKE_INSTALL_PREFIX=${FREETYPE_PREFIX}
-                -DCMAKE_BUILD_TYPE=Release
-                -DBUILD_SHARED_LIBS=OFF
-                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                -DCMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES=
-                -DCMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES=
-                -DCMAKE_C_FLAGS=-nostdinc\ -isystem\ /usr/lib/musl/include\ -O2\ -fPIC
-                -DFT_DISABLE_PNG=ON
-                -DFT_DISABLE_ZLIB=ON
-                -DFT_DISABLE_BZIP2=ON
-                -DFT_DISABLE_HARFBUZZ=ON
-                -DFT_DISABLE_BROTLI=ON
-            INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${FREETYPE_PREFIX}
-            BUILD_BYPRODUCTS ${FREETYPE_PREFIX}/lib/libfreetype.a
-            LOG_DOWNLOAD TRUE
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}freetype${ColorReset} library found in cache: ${BoldMagenta}${FREETYPE_PREFIX}/lib/libfreetype.a${ColorReset}")
-        add_custom_target(freetype-musl)
-    endif()
-
-    set(FREETYPE_LIBRARIES "${FREETYPE_PREFIX}/lib/libfreetype.a")
-    set(FREETYPE_INCLUDE_DIRS "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/include/freetype2")
-    set(FREETYPE_PREFIX "${FREETYPE_PREFIX}")
-    file(MAKE_DIRECTORY "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/lib")
-
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+        FetchContent_MakeAvailable(asciichat_freetype)
+        set(FREETYPE_INCLUDE_DIRS "${asciichat_freetype_SOURCE_DIR}/include;${asciichat_freetype_BINARY_DIR}/include" PARENT_SCOPE)
+        # Fontconfig's Autotools build consumes an installation, not CMake targets.
+        add_custom_target(asciichat-freetype-stage
+            COMMAND "${CMAKE_COMMAND}" --install "${asciichat_freetype_BINARY_DIR}" --prefix "${_prefix}"
+            DEPENDS freetype VERBATIM)
+        set(FREETYPE_PREFIX "${_prefix}" PARENT_SCOPE)
+    endfunction()
+    asciichat_build_freetype()
+    set(FREETYPE_LIBRARIES freetype)
     return()
 endif()
 

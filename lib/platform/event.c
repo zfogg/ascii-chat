@@ -298,6 +298,7 @@ asciichat_error_t platform_event_stream_start(platform_event_stream_t *stream, p
                                               platform_event_close_fn close, void *arg) {
   if (!stream || stream->closing || !read)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid stream callbacks");
+  // Retain cleanup callbacks even when configuring or starting reads fails.
   stream->read = read;
   stream->close = close;
   stream->arg = arg;

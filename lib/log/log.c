@@ -1089,8 +1089,8 @@ static void output_notice(log_level_t level, const char *file, int line, const c
                       : -1;
   size_t start = 0, length = 0;
   if (!GET_OPTION(quiet) &&
-      (log_get_terminal_output() || ui_controller_is_presenting() || severity == UI_NOTICE_FATAL) &&
-      plain_len > 0 && (size_t)plain_len < capacity && grep_should_output(plain_log_line, &start, &length))
+      (log_get_terminal_output() || ui_controller_is_presenting() || severity == UI_NOTICE_FATAL) && plain_len > 0 &&
+      (size_t)plain_len < capacity && grep_should_output(plain_log_line, &start, &length))
 #ifdef EMSCRIPTEN_BUILD
     log_plain("%s", text);
 #else
@@ -1170,7 +1170,6 @@ void ui_notice_announce(const char *file, int line, const char *func, const char
 }
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
-
 
   // All state access uses atomic operations - fully lock-free
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
@@ -2228,7 +2227,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     // No colors available, return plain text
     static bool warned_once = false;
     if (!warned_once) {
-      log_debug("WARNING: log_recolor_plain_entry() called but colors not initialized - returning plain text");
+      log_debug("Colors not initialized - returning plain text");
       warned_once = true;
     }
     size_t len = strlen(plain_line);

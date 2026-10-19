@@ -313,8 +313,9 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
               log_warn("Device does not support %u FPS - using maximum available %.0f FPS", target_fps,
                        maxRange.maxFrameRate);
             } @catch (NSException *exception) {
-              log_warn("AVFoundation: Device rejected maximum frame rate configuration: %s; using its default frame rate",
-                       [[exception reason] UTF8String]);
+              log_warn(
+                  "AVFoundation: Device rejected maximum frame rate configuration: %s; using its default frame rate",
+                  [[exception reason] UTF8String]);
             }
           } else {
             log_warn("Could not determine device FPS capabilities, using device default");
@@ -673,7 +674,7 @@ asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *
 
 asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsigned int *out_count) {
   if (!out_devices || !out_count) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "webcam_list_devices: invalid parameters");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   }
 
   *out_devices = NULL;

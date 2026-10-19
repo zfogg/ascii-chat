@@ -311,7 +311,6 @@ void debug_sync_print_backtrace_delayed(uint64_t delay_ns);
 void debug_sync_print(void);
 void debug_sync_poll(void);
 
-
 #ifdef __cplusplus
 }
 #endif

@@ -448,7 +448,7 @@ asciichat_error_t named_registry_for_each(named_iter_callback_t callback, void *
 }
 
 asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required, bool *completed,
-                                             named_snapshot_fn copy, void *data) {
+                                              named_snapshot_fn copy, void *data) {
   if (!required || !completed || !copy)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid protected registry snapshot");
   *completed = false;

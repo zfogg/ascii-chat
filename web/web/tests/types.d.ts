@@ -34,6 +34,7 @@ declare module "ws" {
 
   export class WebSocketServer extends EventEmitter {
     constructor(options?: WebSocketOptions, callback?: () => void);
+    address(): import("net").AddressInfo | string | null;
     on(
       event: "connection",
       listener: (ws: WebSocket, request: IncomingMessage) => void,

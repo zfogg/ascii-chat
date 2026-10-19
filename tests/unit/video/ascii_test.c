@@ -832,9 +832,10 @@ typedef struct {
   char description[64];
 } ascii_size_test_case_t;
 
-static ascii_size_test_case_t ascii_size_cases[] = { // Skip 1x1 - causes SIMD buffer overflow
-    {2, 2, "2x2 image"},     {4, 4, "4x4 image"},     {8, 8, "8x8 image"},
-    {16, 16, "16x16 image"}, {32, 32, "32x32 image"}, {64, 64, "64x64 image"}};
+static ascii_size_test_case_t ascii_size_cases[] = {// Skip 1x1 - causes SIMD buffer overflow
+                                                    {2, 2, "2x2 image"},     {4, 4, "4x4 image"},
+                                                    {8, 8, "8x8 image"},     {16, 16, "16x16 image"},
+                                                    {32, 32, "32x32 image"}, {64, 64, "64x64 image"}};
 
 ParameterizedTestParameters(ascii, size_tests) {
   size_t nb_cases = sizeof(ascii_size_cases) / sizeof(ascii_size_cases[0]);
@@ -1076,7 +1077,6 @@ Test(ascii, ascii_create_grid_unicode_clipping) {
   SAFE_FREE(grid);
 }
 
-
 Test(ascii, ascii_create_grid_unicode_separators) {
   const char *left = "\033[31mé中😀ABCDEextra\033[0m\n";
   const char *right = "\033[32m中é😀12345extra\033[0m\n";
@@ -1102,7 +1102,6 @@ Test(ascii, ascii_create_grid_unicode_separators) {
   cr_assert_eq(*row, '\0');
   SAFE_FREE(grid);
 }
-
 
 Test(ascii, grid_layout_sizes_source_tiles_to_viewport) {
   const int sizes[][2] = {{154, 52}, {186, 52}, {100, 40}};
@@ -1131,7 +1130,8 @@ Test(ascii, grid_layout_sizes_source_tiles_to_viewport) {
           size_t row_offset = (size_t)((i / columns) * (cell_height + 1) + y) * (width + 2);
           size_t start = row_offset + (i % columns) * (cell_width + 1);
           for (int x = 0; x < cell_width; ++x)
-            cr_assert_eq(grid[start + x], 'X', "Missing tile cell at viewport %dx%d, tile %d, %d,%d", width, height, i, x, y);
+            cr_assert_eq(grid[start + x], 'X', "Missing tile cell at viewport %dx%d, tile %d, %d,%d", width, height, i,
+                         x, y);
         }
       }
       SAFE_FREE(grid);

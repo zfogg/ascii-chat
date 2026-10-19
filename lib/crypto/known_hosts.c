@@ -347,7 +347,7 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
  */
 static asciichat_error_t mkdir_recursive(const char *path) {
   if (!path || !*path) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path for mkdir_recursive");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path");
   }
 
   // Make a mutable copy of the path

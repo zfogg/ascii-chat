@@ -35,12 +35,12 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool ba
 
 void quantize_color(int *r, int *g, int *b, int levels) {
   if (!r || !g || !b) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "quantize_color: r, g, or b is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "r, g, or b is NULL");
     return;
   }
 
   if (levels <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "quantize_color: levels must be positive, got %d", levels);
+    SET_ERRNO(ERROR_INVALID_PARAM, "levels must be positive, got %d", levels);
     return;
   }
 
@@ -64,7 +64,7 @@ char *rgb_to_ansi_bg(int r, int g, int b) {
 
 void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
   if (!fg_code || !bg_code) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "rgb_to_ansi_8bit: fg_code or bg_code is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "fg_code or bg_code is NULL");
     return;
   }
 

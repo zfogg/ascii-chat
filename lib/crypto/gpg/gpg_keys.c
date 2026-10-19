@@ -82,8 +82,8 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
   uint8_t ed25519_pk[32];
   asciichat_error_t result;
   if (key_size >= strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----") &&
-      memcmp(gpg_key_binary, "-----BEGIN PGP PUBLIC KEY BLOCK-----",
-             strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----")) == 0) {
+      memcmp(gpg_key_binary, "-----BEGIN PGP PUBLIC KEY BLOCK-----", strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----")) ==
+          0) {
     char *armored_text = SAFE_MALLOC(key_size + 1, char *);
     memcpy(armored_text, gpg_key_binary, key_size);
     armored_text[key_size] = '\0';
@@ -201,7 +201,7 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
 
   // Only support key ID format (8, 16, or 40 hex chars)
   if (!is_hex || (key_len != 8 && key_len != 16 && key_len != 40)) {
-    log_warn("check_gpg_key_expiry: Input is not a key ID format (expected 8/16/40 hex chars)");
+    log_warn("Input is not a key ID format (expected 8/16/40 hex chars)");
     *is_expired = false; // Assume not expired if we can't check
     return ASCIICHAT_OK;
   }

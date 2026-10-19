@@ -54,7 +54,6 @@
  *
  * @ingroup options
  */
-#define IS_OPTION_EXPLICIT(name, opts) \
-  ((opts) && (opts)->name##_explicit)
+#define IS_OPTION_EXPLICIT(name, opts) ((opts) && (opts)->name##_explicit)
 
 /** @} */

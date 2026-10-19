@@ -171,10 +171,9 @@ asciichat_error_t session_display_init_render_file(session_display_ctx_t *ctx, u
 }
 
 session_display_ctx_t *session_display_create(const session_display_config_t *config) {
-  if (GET_OPTION(zalgo) > 0 &&
-      (GET_OPTION(force_utf8) == UTF8_SETTING_FALSE ||
-       (GET_OPTION(force_utf8) == UTF8_SETTING_AUTO && terminal_is_stdout_tty() &&
-        !detect_terminal_capabilities().utf8_support))) {
+  if (GET_OPTION(zalgo) > 0 && (GET_OPTION(force_utf8) == UTF8_SETTING_FALSE ||
+                                (GET_OPTION(force_utf8) == UTF8_SETTING_AUTO && terminal_is_stdout_tty() &&
+                                 !detect_terminal_capabilities().utf8_support))) {
     SET_ERRNO(ERROR_USAGE, "--zalgo requires UTF-8 terminal output (on Windows, run chcp 65001 first)");
     return NULL;
   }
@@ -316,8 +315,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
 
   // Initialize render-file unless media setup needs to determine its timing first.
   const char *render_file_opt = GET_OPTION(render_file);
-  log_debug("DISPLAY_CREATE: render-file opt='%s' (len=%zu), deferred=%d", render_file_opt ? render_file_opt : "(null)",
-           render_file_opt ? strlen(render_file_opt) : 0, config->defer_render_file);
+  log_debug("render-file opt='%s' (len=%zu), deferred=%d", render_file_opt ? render_file_opt : "(null)",
+            render_file_opt ? strlen(render_file_opt) : 0, config->defer_render_file);
   if (!config->defer_render_file) {
     asciichat_error_t render_err = session_display_init_render_file(ctx, config->render_fps);
     if (render_err != ASCIICHAT_OK) {
@@ -397,7 +396,7 @@ void session_display_set_stdin_reader(session_display_ctx_t *ctx, void *reader) 
   }
 
   ctx->stdin_reader = (terminal_fd_reader_t *)reader;
-  log_debug("session_display: stdin_reader set");
+  log_debug("stdin_reader set");
 }
 
 /* ============================================================================
@@ -472,7 +471,7 @@ void session_display_set_render_fps(session_display_ctx_t *ctx, uint32_t fps) {
     return;
   ctx->render_fps = fps;
   if (fps > 0) {
-    log_debug("session_display_set_render_fps: Updated render FPS to %u (for correct video duration)", fps);
+    log_debug("Updated render FPS to %u (for correct video duration)", fps);
   }
 }
 
@@ -506,17 +505,17 @@ bool session_display_has_render_file(session_display_ctx_t *ctx) {
 char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t *image) {
   uint64_t stats_start = time_get_ns();
   if (!ctx) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_display_convert_to_ascii: ctx is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "ctx is NULL");
     return NULL;
   }
 
   if (!ctx->initialized) {
-    SET_ERRNO(ERROR_INVALID_STATE, "session_display_convert_to_ascii: ctx not initialized");
+    SET_ERRNO(ERROR_INVALID_STATE, "ctx not initialized");
     return NULL;
   }
 
   if (!image) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_display_convert_to_ascii: image is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "image is NULL");
     return NULL;
   }
 
@@ -844,7 +843,8 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   char *zalgo_frame = NULL;
   int zalgo_level = GET_OPTION(zalgo);
   if (zalgo_level > 0) {
-    asciichat_error_t err = zalgo_apply(display_frame, frame_len, zalgo_level, UI_CONTROLLER_MAX_FRAME_BYTES - 7, &zalgo_frame);
+    asciichat_error_t err =
+        zalgo_apply(display_frame, frame_len, zalgo_level, UI_CONTROLLER_MAX_FRAME_BYTES - 7, &zalgo_frame);
     if (err == ASCIICHAT_OK) {
       display_frame = zalgo_frame;
       frame_len = strlen(zalgo_frame);
@@ -916,8 +916,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
                 frame_len);
       asciichat_error_t presented = ui_controller_present(
           UI_SCREEN_MEDIA, ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO,
-          (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS},
-          frame_buffer, total_size);
+          (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, frame_buffer, total_size);
       ssize_t written = presented == ASCIICHAT_OK ? (ssize_t)total_size : -1;
       log_debug("FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)", written, total_size);
 
@@ -1012,8 +1011,8 @@ void session_display_set_render_live_timing(session_display_ctx_t *ctx) {
 asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image, uint64_t captured_ns) {
   static int call_count = 0;
   if (call_count++ < 5) {
-    log_debug("session_display_encode_frame: CALLED (ctx=%p, image=%p, captured_ns=%llu, ctx->render_file=%p)",
-             (void *)ctx, (void *)image, (unsigned long long)captured_ns, ctx ? (void *)ctx->render_file : NULL);
+    log_debug("ctx=%p, image=%p, captured_ns=%llu, ctx->render_file=%p", (void *)ctx, (void *)image,
+              (unsigned long long)captured_ns, ctx ? (void *)ctx->render_file : NULL);
   }
 
   if (!ctx || !ctx->initialized) {
@@ -1026,14 +1025,14 @@ asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const
 
   // Only encode if render_file is active
   if (!ctx->render_file) {
-    log_warn_every(10 * US_PER_SEC_INT, "session_display_encode_frame: render_file is NULL, skipping encode");
+    log_warn_every(10 * US_PER_SEC_INT, "render_file is NULL, skipping encode");
     return ASCIICHAT_OK;
   }
 
   // Convert image to ASCII
   char *ascii = session_display_convert_to_ascii(ctx, image);
   if (!ascii) {
-    log_warn("session_display_encode_frame: Failed to convert image to ASCII");
+    log_warn("Failed to convert image to ASCII");
     return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot convert recording frame to ASCII");
   }
 
@@ -1241,8 +1240,8 @@ void keyboard_help_toggle_global(void) {
 }
 
 void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, double actual_duration_sec) {
-  log_debug("session_display_set_snapshot_actual_duration: CALLED with duration=%.3f, ctx=%p, render_file=%p",
-           actual_duration_sec, (void *)ctx, ctx ? (void *)ctx->render_file : NULL);
+  log_debug("duration=%.3f, ctx=%p, render_file=%p", actual_duration_sec, (void *)ctx,
+            ctx ? (void *)ctx->render_file : NULL);
 
   if (!ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");

@@ -50,12 +50,12 @@ EMSCRIPTEN_KEEPALIVE uint32_t browser_host_add_client(void) {
   for (size_t i = 0; i < PARTICIPANT_LIMIT; ++i) {
     if (client_ids[i])
       continue;
-    uint32_t id = session_host_add_client(host, NULL, "browser", 0);
+    uint32_t id = session_host_add_client(host, NULL, ACIP_TRANSPORT_BORROWED, "browser", 0);
     if (!id)
       return 0;
     client_ids[i] = id;
     transports[i] = (acip_transport_t){.methods = &methods, .impl_data = (void *)(uintptr_t)id};
-    if (session_host_set_client_transport(host, id, &transports[i]) != ASCIICHAT_OK) {
+    if (session_host_set_client_transport(host, id, &transports[i], ACIP_TRANSPORT_BORROWED) != ASCIICHAT_OK) {
       session_host_remove_client(host, id);
       client_ids[i] = 0;
       return 0;
@@ -71,6 +71,10 @@ EMSCRIPTEN_KEEPALIVE void browser_host_remove_client(uint32_t id) {
   for (size_t i = 0; i < PARTICIPANT_LIMIT; ++i)
     if (client_ids[i] == id)
       client_ids[i] = 0;
+}
+EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_set_local_client(uint32_t id) {
+  session_host_render_target_t target = {.client_id = id};
+  return session_host_set_render_target(host, id ? &target : NULL);
 }
 EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_receive(uint32_t id, uint32_t type, const void *data,
                                                             size_t length) {

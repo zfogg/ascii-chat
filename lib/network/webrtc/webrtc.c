@@ -316,15 +316,15 @@ static void on_local_candidate_adapter(int pc_id, const char *candidate, const c
 
 static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
   (void)pc_id; // Unused - we get peer connection from user_data
-  log_info("on_datachannel_adapter: pc_id=%d, dc_id=%d, user_data=%p", pc_id, dc_id, user_data);
+  log_info("pc_id=%d, dc_id=%d, user_data=%p", pc_id, dc_id, user_data);
 
   webrtc_peer_connection_t *pc = (webrtc_peer_connection_t *)user_data;
   if (!pc) {
-    log_error("on_datachannel_adapter: peer connection user_data is NULL!");
+    log_error("peer connection user_data is NULL!");
     return;
   }
 
-  log_info("on_datachannel_adapter: received DataChannel (dc_id=%d) from remote peer", dc_id);
+  log_info("received DataChannel (dc_id=%d) from remote peer", dc_id);
 
   // Allocate data channel wrapper
   webrtc_data_channel_t *dc = SAFE_CALLOC(1, sizeof(webrtc_data_channel_t), webrtc_data_channel_t *);
@@ -364,9 +364,9 @@ static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
 
 static void on_datachannel_open_adapter(int dc_id, void *user_data) {
   webrtc_data_channel_t *dc = (webrtc_data_channel_t *)user_data;
-  log_info("on_datachannel_open_adapter called: dc_id=%d, dc=%p", dc_id, (void *)dc);
+  log_info("dc_id=%d, dc=%p", dc_id, (void *)dc);
   if (!dc) {
-    log_error("on_datachannel_open_adapter: dc is NULL!");
+    log_error("dc is NULL!");
     return;
   }
 
@@ -387,9 +387,9 @@ static void on_datachannel_open_adapter(int dc_id, void *user_data) {
 
 static void on_datachannel_closed_adapter(int dc_id, void *user_data) {
   webrtc_data_channel_t *dc = (webrtc_data_channel_t *)user_data;
-  log_info("on_datachannel_closed_adapter called: dc_id=%d, dc=%p", dc_id, (void *)dc);
+  log_info("dc_id=%d, dc=%p", dc_id, (void *)dc);
   if (!dc) {
-    log_error("on_datachannel_closed_adapter: dc is NULL!");
+    log_error("dc is NULL!");
     return;
   }
 

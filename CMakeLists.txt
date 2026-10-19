@@ -1,7 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
-
-# Suppress FetchContent_Populate deprecation warning (CMP0169)
-cmake_policy(SET CMP0169 OLD)
+cmake_minimum_required(VERSION 3.30)
 
 # =============================================================================
 # Git Submodule Initialization (must come FIRST, before any dependencies are accessed)
@@ -11,6 +8,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
 # =============================================================================
 # CMake Build Types
 # =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/ProjectSettings.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
 # INFO: CMAKE_BUILD_TYPE is now configured.
 
@@ -41,13 +39,13 @@ endif()
 # Note: Only compute if not already passed from parent build (e.g., temp build for defer tool)
 # This allows the defer tool's temp cmake build to use the same cache as the parent
 if(NOT DEFINED ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL "")
-    set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
+    set(ASCIICHAT_DEPS_CACHE_DIR "${CMAKE_BINARY_DIR}/_deps/legacy/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
 endif()
 
 # Web-specific build-type cache directory for WASM/Emscripten builds
 # Keeps web dependencies separate from native build dependencies
 if(NOT DEFINED WEB_DEPS_CACHE_DIR OR WEB_DEPS_CACHE_DIR STREQUAL "")
-    set(WEB_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/web/${CMAKE_BUILD_TYPE}" CACHE PATH "Web dependency cache for current build type" FORCE)
+    set(WEB_DEPS_CACHE_DIR "${CMAKE_BINARY_DIR}/web/_deps/legacy/${CMAKE_BUILD_TYPE}" CACHE PATH "Web dependency cache for current build type" FORCE)
 endif()
 
 # Shared source download cache for FetchContent (not build-type-qualified)
@@ -104,16 +102,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildConfiguration.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/platform/Musl.cmake)
 configure_musl_pre_project("${CMAKE_BUILD_TYPE}")
-
-# Configure musl-specific compiler flags BEFORE project()
-if(USE_MUSL)
-    # Disable LTO to prevent TPOFF32 TLS relocation errors (LLVM issue #55909)
-    # Use global-dynamic TLS model for shared library compatibility
-    # Set via CMAKE_C_FLAGS_INIT and CMAKE_CXX_FLAGS_INIT before project() is called
-    set(CMAKE_C_FLAGS_INIT "${CMAKE_C_FLAGS_INIT} -fno-lto -ftls-model=global-dynamic -fPIC")
-    set(CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT} -fno-lto -ftls-model=global-dynamic -fPIC")
-    message(STATUS "Configuring musl build: -fno-lto -ftls-model=global-dynamic -fPIC")
-endif()
 
 # =============================================================================
 # iOS Platform Configuration (must come before project())
@@ -180,6 +168,7 @@ endif()
 # MUST be after project() when languages are enabled
 message(STATUS "DEBUG IPO setup: USE_MUSL=${USE_MUSL}")
 include(CheckIPOSupported)
+set(ASCIICHAT_ENABLE_IPO FALSE CACHE INTERNAL "IPO is enabled only for supported project configurations" FORCE)
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     # Musl builds disable LTO to prevent TPOFF32 relocations. macOS also
     # needs a working LLD linker for ThinLTO.
@@ -187,8 +176,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
         check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
         if(IPO_SUPPORTED)
             set(ASCIICHAT_ENABLE_IPO TRUE CACHE INTERNAL "Enable IPO for release builds" FORCE)
-            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
-            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
             message(STATUS "Interprocedural optimization ${BoldGreen}enabled${ColorReset} for ${CMAKE_BUILD_TYPE} builds")
         else()
             message(STATUS "Interprocedural optimization ${BoldYellow}disabled${ColorReset}: ${IPO_ERROR}")
@@ -240,7 +227,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/CCache.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerDetection.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerFlags.cmake)
 configure_base_compiler_flags()
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/HeaderChecks.cmake)
 configure_llvm_post_project()
 fix_llvm_ranlib()
 configure_musl_post_project()
@@ -305,6 +291,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/Include.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Mimalloc.cmake)
 
 configure_include_directories()
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/HeaderChecks.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/init/BuildIdentity.cmake)
 
 if(USE_MUSL)
     set(CMAKE_PREFIX_PATH "${MUSL_PREFIX}" ${CMAKE_PREFIX_PATH})
@@ -380,7 +368,7 @@ target_sources(ascii-chat-core PRIVATE "${MANPAGE_TEMPLATE_EMBEDDED}")
 # Define resource paths for development builds
 # Point to BINARY_DIR where configured templates are located (not SOURCE_DIR raw templates)
 # These are used by embedded_resources.c to locate resources when running from the build directory
-add_compile_definitions(
+target_compile_definitions(asciichat-project-options INTERFACE
     ASCIICHAT_RESOURCE_DIR="${CMAKE_BINARY_DIR}"
 )
 
@@ -411,6 +399,9 @@ ascii_build_tooling_runtime()
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
+enable_testing()
+add_test(NAME ascii-chat-version COMMAND $<TARGET_FILE:ascii-chat> --version)
+set_tests_properties(ascii-chat-version PROPERTIES LABELS smoke TIMEOUT 15)
 ascii_panic_finalize()
 if(false)
     if(NOT USE_MUSL)
@@ -442,19 +433,25 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
     set(WASM_BUILD_DIR "${CMAKE_BINARY_DIR}/web")
     set(WASM_CONFIG_STAMP "${CMAKE_BINARY_DIR}/.wasm_configured")
 
-    if(NOT EXISTS "${WASM_CONFIG_STAMP}")
+    if(ASCIICHAT_MSYS2_ROOT AND EXISTS "${WASM_BUILD_DIR}/CMakeCache.txt")
+        load_cache("${WASM_BUILD_DIR}" READ_WITH_PREFIX _WASM_ ASCIICHAT_MSYS2_ROOT)
+    endif()
+    if(NOT EXISTS "${WASM_CONFIG_STAMP}" OR
+       (ASCIICHAT_MSYS2_ROOT AND NOT "${ASCIICHAT_MSYS2_ROOT}" STREQUAL "${_WASM_ASCIICHAT_MSYS2_ROOT}"))
         message(STATUS "Configuring WASM targets with Emscripten toolchain")
         set(WASM_CMAKE_ARGS
             -G "${CMAKE_GENERATOR}"
             -B "${WASM_BUILD_DIR}"
             "${WASM_SOURCE_DIR}"
             -DCMAKE_TOOLCHAIN_FILE=${EMSCRIPTEN_TOOLCHAIN_FILE}
-            -DASCIICHAT_BASH_EXECUTABLE=${ASCIICHAT_BASH_EXECUTABLE}
             -DFETCHCONTENT_BASE_DIR=${WEB_FETCHCONTENT_BASE_DIR}
             -DASCIICHAT_DEPS_CACHE_ROOT=${ASCIICHAT_DEPS_CACHE_ROOT}
             -DASCIICHAT_DEPS_CACHE_DIR=${WEB_DEPS_CACHE_DIR}
             -DPARENT_CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
         )
+        if(ASCIICHAT_MSYS2_ROOT)
+            list(APPEND WASM_CMAKE_ARGS "-DASCIICHAT_MSYS2_ROOT=${ASCIICHAT_MSYS2_ROOT}")
+        endif()
         execute_process(
             COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
             WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
@@ -490,6 +487,11 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
         VERBATIM
     )
 
+    add_custom_target(face-follow-web
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target face-follow-web
+        COMMENT "Building Face Follow detector worker"
+        VERBATIM)
+
     add_custom_target(client-web
         COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target client-web
         COMMENT "Building client-web WASM module"
@@ -510,7 +512,7 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
             COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target web
             COMMENT "Building all WASM modules"
             BYPRODUCTS "${WASM_BUILD_DIR}/mirror.js" "${WASM_BUILD_DIR}/mirror.wasm" "${WASM_BUILD_DIR}/client.js" "${WASM_BUILD_DIR}/client.wasm"
-            DEPENDS mirror-web client-web
+            DEPENDS mirror-web client-web face-follow-web
             USES_TERMINAL
             VERBATIM
         )
@@ -551,3 +553,5 @@ include(${CMAKE_SOURCE_DIR}/cmake/tools/CustomTargets.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/StatusMessages.cmake)
 
 # Test trigger 1774232744
+
+cmake_language(DEFER CALL asciichat_finalize_project_settings)

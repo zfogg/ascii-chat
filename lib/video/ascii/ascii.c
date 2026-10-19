@@ -51,7 +51,7 @@
 static void image_resize_cover(const image_t *source, image_t *dest, ssize_t viewport_width, ssize_t viewport_height) {
   if (!source || !dest || source->w <= 0 || source->h <= 0 || dest->w <= 0 || dest->h <= 0 || viewport_width <= 0 ||
       viewport_height <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_resize_cover: invalid image or viewport dimensions");
+    SET_ERRNO(ERROR_INVALID_PARAM, "invalid image or viewport dimensions");
     return;
   }
 
@@ -134,13 +134,13 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
                     const bool _aspect_ratio, const bool stretch, const char *palette_chars,
                     const char luminance_palette[256]) {
   if (original == NULL || !palette_chars || !luminance_palette) {
-    log_error("ascii_convert: invalid parameters");
+    log_error("invalid parameters");
     return NULL;
   }
 
   // Check for empty strings
   if (palette_chars[0] == '\0' || luminance_palette[0] == '\0') {
-    log_error("ascii_convert: empty palette strings");
+    log_error("empty palette strings");
     return NULL;
   }
 
@@ -347,9 +347,9 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
   uint64_t prof_print_start_ns = prof_resize_end_ns;
 
   // DEBUG: Log dimensions going to renderer
-  log_debug_every(10 * US_PER_SEC_INT,
-                  "ascii_convert: original=%dx%d, requested=%zdx%zd, resized=%dx%d, pad=%zux%zu (mode=%d)", original->w,
-                  original->h, width, height, resized->w, resized->h, pad_width, pad_height, caps->render_mode);
+  log_debug_every(10 * US_PER_SEC_INT, "original=%dx%d, requested=%zdx%zd, resized=%dx%d, pad=%zux%zu (mode=%d)",
+                  original->w, original->h, width, height, resized->w, resized->h, pad_width, pad_height,
+                  caps->render_mode);
 
   // Check if image is all black
   int black_pixels = 0, total_pixels = 0;
@@ -495,7 +495,7 @@ void ascii_write_destroy(int fd, bool reset_terminal) {
  */
 char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
   if (!frame) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "ascii_pad_frame_width: frame is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "frame is NULL");
     return NULL;
   }
 
@@ -622,7 +622,6 @@ asciichat_error_t ascii_grid_layout(int source_count, int width, int height, int
   *grid_cols = best_cols;
   *grid_rows = best_rows;
   return ASCIICHAT_OK;
-
 }
 
 /**

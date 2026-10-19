@@ -220,7 +220,7 @@ static void initialize_default_render_capabilities(client_info_t *client) {
   client->client_palette_type = PALETTE_STANDARD;
   client->client_palette_initialized =
       initialize_client_palette(PALETTE_STANDARD, NULL, client->client_palette_chars, &client->client_palette_len,
-                               client->client_luminance_palette) == 0;
+                                client->client_luminance_palette) == 0;
   client->has_terminal_caps = false;
 }
 
@@ -312,9 +312,9 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
     log_debug("Sent initial server state to client %s: %u connected clients", client_id, state.connected_client_count);
   }
 
-    atomic_store_bool(&client->event_ready, true);
-    return create_client_render_threads(server_ctx, client);
-  }
+  atomic_store_bool(&client->event_ready, true);
+  return create_client_render_threads(server_ctx, client);
+}
 
 static void server_client_initialize_transport_slot(server_context_t *server_ctx, client_info_t *client,
                                                     acip_transport_t *transport, const char *new_client_id,
@@ -343,7 +343,7 @@ static void server_client_initialize_transport_slot(server_context_t *server_ctx
   client->server_ctx = server_ctx; // Store server context for receive thread cleanup
   log_info("Added new transport client %s from %s (transport=%p, slot=%d)", new_client_id, client_ip, transport, slot);
   atomic_store_bool(&client->shutting_down, false);
-  atomic_store_u64(&client->last_sent_grid_sources, 0);     // Send thread updates this
+  atomic_store_u64(&client->last_sent_grid_sources, 0); // Send thread updates this
   log_debug("transport client slot assigned: client_id=%s assigned to slot %d", client->client_id, slot);
   client->connected_at = time(NULL);
 
@@ -392,7 +392,7 @@ static asciichat_error_t server_client_initialize_transport_sync(client_info_t *
  * after the shared runtime completes negotiation and receives capabilities. */
 client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip) {
   if (!server_ctx || !transport || !client_ip) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to add_transport_client");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
     return NULL;
   }
 
@@ -463,7 +463,8 @@ client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport
   // Register client with session_host (for discovery mode support)
   // transport clients use INVALID_SOCKET_VALUE since they don't have a TCP socket
   if (server_ctx->session_host) {
-    client->session_client_id = session_host_add_client(server_ctx->session_host, NULL, client_ip, 0);
+    client->session_client_id =
+        session_host_add_client(server_ctx->session_host, NULL, ACIP_TRANSPORT_BORROWED, client_ip, 0);
     if (client->session_client_id == 0) {
       log_warn("Failed to register transport client %s with session_host", new_client_id);
     } else {
@@ -714,6 +715,8 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
 static const acip_server_callbacks_t g_acip_server_callbacks;
 
 asciichat_error_t server_dispatch_packet(client_info_t *client, packet_type_t type, const void *data, size_t length) {
+  if (type == PACKET_TYPE_ACIP_SETTINGS_SYNC)
+    return handle_runtime_settings(client, data, length);
   return acip_handle_server_packet(client->transport, type, data, length, client, &g_acip_server_callbacks);
 }
 
@@ -935,16 +938,16 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   }
 
   log_dev("CALLBACK_IMAGE_FRAME: client_id=%s width=%u height=%u pixel_format=%u compressed_size=%u data_len=%zu",
-           client->client_id, header->width, header->height, header->pixel_format, header->compressed_size, data_len);
+          client->client_id, header->width, header->height, header->pixel_format, header->compressed_size, data_len);
 
   size_t center_pixel_offset = ((size_t)(header->height / 2) * header->width + header->width / 2) * 3;
   const uint8_t *first_pixel = pixel_data;
   const uint8_t *center_pixel =
       center_pixel_offset + 3 <= data_len ? (const uint8_t *)pixel_data + center_pixel_offset : first_pixel;
   log_debug_every(US_PER_SEC_INT,
-                 "WebRTC pixel sample client=%s size=%ux%u bytes=%zu first=%02x%02x%02x center=%02x%02x%02x",
-                 client->client_id, header->width, header->height, data_len, first_pixel[0], first_pixel[1],
-                 first_pixel[2], center_pixel[0], center_pixel[1], center_pixel[2]);
+                  "WebRTC pixel sample client=%s size=%ux%u bytes=%zu first=%02x%02x%02x center=%02x%02x%02x",
+                  client->client_id, header->width, header->height, data_len, first_pixel[0], first_pixel[1],
+                  first_pixel[2], center_pixel[0], center_pixel[1], center_pixel[2]);
 
   // Validate frame dimensions to prevent DoS and buffer overflow attacks
   if (header->width == 0 || header->height == 0) {
@@ -1017,13 +1020,13 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   }
   if (is_new_frame) {
     log_dev("RECV_FRAME #%u NEW: client=%s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x prev=0x%08x",
-             client->frames_received, client->client_id, header->width, header->height, data_len, incoming_pixel_hash,
-             first_pixel_rgb, client->last_received_frame_hash);
+            client->frames_received, client->client_id, header->width, header->height, data_len, incoming_pixel_hash,
+            first_pixel_rgb, client->last_received_frame_hash);
     client->last_received_frame_hash = incoming_pixel_hash;
   } else {
     log_dev("RECV_FRAME #%u DUP: client=%s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x",
-             client->frames_received, client->client_id, header->width, header->height, data_len, incoming_pixel_hash,
-             first_pixel_rgb);
+            client->frames_received, client->client_id, header->width, header->height, data_len, incoming_pixel_hash,
+            first_pixel_rgb);
   }
   if (client->frames_received_logged > 0 && client->frames_received_logged % 60 == 0) {
     log_info("Incoming video signature client=%s frames=%u state=%s hash=0x%08x size=%ux%u bytes=%zu",

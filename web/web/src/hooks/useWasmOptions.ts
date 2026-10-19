@@ -1,269 +1,75 @@
-import { useCallback } from "react";
 import {
   getMirrorModule,
-  getColorFilter,
-  getColorMode,
-  getDimensions,
-  getFft,
-  getFlipX,
-  getMatrixRain,
-  getWaveform,
-  getPalette,
-  getPaletteChars,
-  getTargetFps,
+  runtimeOptions,
   isOptionsInitialized,
   isWasmReady,
-  setColorFilter,
-  setColorMode,
-  setDimensions,
-  setFft,
-  setFlipX,
-  setMatrixRain,
-  setPalette,
-  setPaletteChars,
-  setTargetFps,
-  setWaveform,
+  type RuntimeOptionsStore,
+  type RuntimeValues,
 } from "@ascii-chat/shared/wasm";
-import type {
-  BinarySettingsConfig,
-  ColorMode,
-  ColorFilter,
-  Palette,
-} from "../components";
+import type { BinarySettingsConfig } from "../components";
 import { mapColorFilterToWasm, mapColorModeToWasm } from "../utils";
 
-export interface WasmOptionsManager {
-  setDimensions: (width: number, height: number) => void;
-  getDimensions: () => { width: number; height: number };
-  setColorMode: (mode: ColorMode) => void;
-  getColorMode: () => ColorMode;
-  setColorFilter: (filter: ColorFilter) => void;
-  getColorFilter: () => ColorFilter;
-  setPalette: (palette: Palette) => void;
-  getPalette: () => string;
-  setPaletteChars: (chars: string) => void;
-  getPaletteChars: () => string;
-  setMatrixRain: (enabled: boolean) => void;
-  getMatrixRain: () => boolean;
-  setWaveform: (enabled: boolean) => void;
-  getWaveform: () => boolean;
-  setFft: (enabled: boolean) => void;
-  getFft: () => boolean;
-  setFlipX: (enabled: boolean) => void;
-  getFlipX: () => boolean;
-  setTargetFps: (fps: number) => void;
-  getTargetFps: () => number;
-  applySettings: (settings: BinarySettingsConfig) => void;
-}
+// Compare UI submissions with prior submissions, so an unrelated UI edit cannot
+// overwrite an engine change that React has not observed yet.
+const submitted = new WeakMap<RuntimeOptionsStore, RuntimeValues>();
 
-/**
- * The browser mirror renderer owns the shared options module used by all
- * browser video modes. Keep its option wiring in one place so Client and
- * Discovery apply exactly the same settings as Mirror.
- */
-export function createMirrorWasmOptionsManager(): WasmOptionsManager {
-  return createWasmOptionsManager(
-    setColorMode,
-    getColorMode,
-    setColorFilter,
-    getColorFilter,
-    setPalette,
-    getPalette,
-    setPaletteChars,
-    getPaletteChars,
-    setMatrixRain,
-    getMatrixRain,
-    setWaveform,
-    getWaveform,
-    setFft,
-    getFft,
-    setFlipX,
-    getFlipX,
-    setDimensions,
-    getDimensions,
-    setTargetFps,
-    getTargetFps,
-    mapColorModeToWasm,
-    mapColorFilterToWasm,
-  );
-}
-
-/** Apply settings when the shared Mirror WASM option accessor is available. */
 export function applyMirrorWasmSettings(
   settings: BinarySettingsConfig,
 ): boolean {
   if (!isWasmReady() || !isOptionsInitialized()) return false;
-  const audioVisualizationEnabled =
-    settings.animationEnabled &&
-    (settings.animation === "waveform" || settings.animation === "fft");
-  createMirrorWasmOptionsManager().applySettings({
-    ...settings,
-    // Audio visualizations own their colors; color filters are video-only.
-    colorFilter: audioVisualizationEnabled ? "none" : settings.colorFilter,
-  });
   const module = getMirrorModule();
-  module?._set_flip_y?.(Number(settings.flipY ?? false));
-  module?._set_render_mode?.(settings.renderMode ?? 0);
+  if (!module) return false;
+  const store = runtimeOptions(module);
+  const animation = settings.animation ?? "matrix";
+  const enabled = settings.animationEnabled ?? settings.matrixRain ?? false;
+  const visualization =
+    enabled && (animation === "waveform" || animation === "fft");
+  const palettes = {
+    standard: 1,
+    blocks: 2,
+    digital: 3,
+    minimal: 4,
+    cool: 5,
+    custom: 6,
+  };
+  const values: RuntimeValues = {
+    color_mode: mapColorModeToWasm(settings.colorMode),
+    color_filter: mapColorFilterToWasm(
+      visualization ? "none" : settings.colorFilter,
+    ),
+    render_mode: settings.renderMode ?? 0,
+    palette_type: palettes[settings.palette],
+    palette_custom: settings.paletteChars || " =#░░▒▒▓▓██",
+    matrix_rain: enabled && animation === "matrix",
+    waveform: enabled && animation === "waveform",
+    fft: enabled && animation === "fft",
+    flip_x: settings.flipX ?? false,
+    flip_y: settings.flipY ?? false,
+    fps: settings.targetFps,
+  };
+  const previous = submitted.get(store);
+  const patch = Object.fromEntries(
+    Object.entries(values).filter(
+      ([name, value]) => previous?.[name] !== value,
+    ),
+  );
+  // Store the submission before notifying React through the C store.
+  // Notifications can synchronously re-enter a settings effect.
+  submitted.set(store, values);
+  try {
+    if (Object.keys(patch).length) store.applyPatch(patch);
+  } catch (error) {
+    if (previous) submitted.set(store, previous);
+    else submitted.delete(store);
+    throw error;
+  }
   return true;
 }
 
-/** Keep the shared renderer dimensions synchronized with the current canvas. */
 export function setMirrorWasmDimensions(cols: number, rows: number): boolean {
   if (!isWasmReady() || !isOptionsInitialized()) return false;
-  createMirrorWasmOptionsManager().setDimensions(cols, rows);
+  const module = getMirrorModule();
+  if (!module) return false;
+  runtimeOptions(module).applyPatch({ width: cols, height: rows });
   return true;
-}
-
-/**
- * Create a WASM options manager that works with any WASM module
- * providing the standard getter/setter functions
- */
-export function createWasmOptionsManager(
-  setColorModeFn: (mode: number) => void,
-  getColorModeFn: () => number,
-  setColorFilterFn: (filter: number) => void,
-  getColorFilterFn: () => number,
-  setPaletteFn: (palette: Palette) => void,
-  getPaletteFn: () => string,
-  setPaletteCharsFn: (chars: string) => void,
-  getPaletteCharsFn: () => string,
-  setMatrixRainFn: (enabled: boolean) => void,
-  getMatrixRainFn: () => boolean,
-  setWaveformFn: (enabled: boolean) => void,
-  getWaveformFn: () => boolean,
-  setFftFn: (enabled: boolean) => void,
-  getFftFn: () => boolean,
-  setFlipXFn: (enabled: boolean) => void,
-  getFlipXFn: () => boolean,
-  setDimensionsFn: (width: number, height: number) => void,
-  getDimensionsFn: () => { width: number; height: number },
-  setTargetFpsFn: (fps: number) => void,
-  getTargetFpsFn: () => number,
-  mapColorMode: (mode: ColorMode) => number,
-  mapColorFilter: (filter: ColorFilter) => number,
-): WasmOptionsManager {
-  return {
-    setDimensions: setDimensionsFn,
-    getDimensions: getDimensionsFn,
-    setColorMode: (mode: ColorMode) => setColorModeFn(mapColorMode(mode)),
-    getColorMode: () => {
-      const mode = getColorModeFn();
-      // Map back from WASM enum to ColorMode
-      // Values match terminal_color_mode_t: AUTO=-1, NONE=0, 16=1, 256=2, TRUECOLOR=3
-      const modeMap: Record<number, ColorMode> = {
-        [-1]: "auto",
-        0: "none",
-        1: "16",
-        2: "256",
-        3: "truecolor",
-      };
-      return modeMap[mode] || "auto";
-    },
-    setColorFilter: (filter: ColorFilter) =>
-      setColorFilterFn(mapColorFilter(filter)),
-    getColorFilter: () => {
-      const filter = getColorFilterFn();
-      // Map back from WASM enum to ColorFilter
-      const filterMap: Record<number, ColorFilter> = {
-        0: "none",
-        1: "black",
-        2: "white",
-        3: "green",
-        4: "magenta",
-        5: "fuchsia",
-        6: "orange",
-        7: "teal",
-        8: "cyan",
-        9: "pink",
-        10: "red",
-        11: "yellow",
-        12: "rainbow",
-      };
-      return filterMap[filter] || "none";
-    },
-    setPalette: (palette: Palette) => setPaletteFn(palette),
-    getPalette: getPaletteFn,
-    setPaletteChars: setPaletteCharsFn,
-    getPaletteChars: getPaletteCharsFn,
-    setMatrixRain: setMatrixRainFn,
-    getMatrixRain: getMatrixRainFn,
-    setWaveform: setWaveformFn,
-    getWaveform: getWaveformFn,
-    setFft: setFftFn,
-    getFft: getFftFn,
-    setFlipX: setFlipXFn,
-    getFlipX: getFlipXFn,
-    setTargetFps: setTargetFpsFn,
-    getTargetFps: getTargetFpsFn,
-    applySettings: (settings: BinarySettingsConfig) => {
-      console.log("[WasmOptionsManager] applySettings called with:", settings);
-      try {
-        console.log(
-          "[WasmOptionsManager] Setting colorMode:",
-          settings.colorMode,
-          "->",
-          mapColorMode(settings.colorMode),
-        );
-        setColorModeFn(mapColorMode(settings.colorMode));
-        console.log(
-          "[WasmOptionsManager] Setting colorFilter:",
-          settings.colorFilter,
-          "->",
-          mapColorFilter(settings.colorFilter),
-        );
-        setColorFilterFn(mapColorFilter(settings.colorFilter));
-        console.log("[WasmOptionsManager] Setting palette:", settings.palette);
-        setPaletteFn(settings.palette);
-        if (settings.palette === "custom" && settings.paletteChars) {
-          console.log(
-            "[WasmOptionsManager] Setting paletteChars:",
-            settings.paletteChars,
-          );
-          setPaletteCharsFn(settings.paletteChars);
-        }
-        console.log(
-          "[WasmOptionsManager] Setting matrixRain:",
-          settings.matrixRain ?? false,
-        );
-        const animation = settings.animation ?? "matrix";
-        const enabled =
-          settings.animationEnabled ?? settings.matrixRain ?? false;
-        setMatrixRainFn(enabled && animation === "matrix");
-        setWaveformFn(enabled && animation === "waveform");
-        setFftFn(enabled && animation === "fft");
-        console.log(
-          "[WasmOptionsManager] Setting flipX:",
-          settings.flipX ?? false,
-        );
-        setFlipXFn(settings.flipX ?? false);
-        console.log(
-          "[WasmOptionsManager] Setting targetFps:",
-          settings.targetFps,
-        );
-        setTargetFpsFn(settings.targetFps);
-        console.log("[WasmOptionsManager] All settings applied successfully");
-      } catch (err) {
-        console.error("[WasmOptionsManager] Error applying settings:", err);
-        throw err;
-      }
-    },
-  };
-}
-
-/**
- * Hook to use WASM options manager
- */
-export function useWasmOptions(manager: WasmOptionsManager | null) {
-  const applySettings = useCallback(
-    (settings: BinarySettingsConfig) => {
-      if (!manager) return;
-      manager.applySettings(settings);
-    },
-    [manager],
-  );
-
-  return {
-    manager,
-    applySettings,
-  };
 }

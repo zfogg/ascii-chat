@@ -211,7 +211,8 @@ void platform_sleep_ns(uint64_t ns) {
     // Relative waitable-timer deadlines are measured in 100ns units.
     uint64_t ticks_100ns = (ns + 99) / 100;
     due_time.QuadPart = -(LONGLONG)ticks_100ns;
-    if (SetWaitableTimer(timer, &due_time, 0, NULL, NULL, FALSE) && WaitForSingleObject(timer, INFINITE) == WAIT_OBJECT_0) {
+    if (SetWaitableTimer(timer, &due_time, 0, NULL, NULL, FALSE) &&
+        WaitForSingleObject(timer, INFINITE) == WAIT_OBJECT_0) {
       return;
     }
   }
@@ -1500,7 +1501,7 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
  */
 int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size) {
   if (!executable || !argv) {
-    log_error("platform_execute_subprocess: invalid parameters");
+    log_error("invalid parameters");
     return -1;
   }
 

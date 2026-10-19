@@ -963,7 +963,7 @@ static bool is_sensitive_system_path(const char *path) {
  */
 static bool is_file_empty(const char *path) {
   if (!path) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "is_file_empty: invalid parameter");
+    SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameter");
     return false;
   }
 
@@ -1007,8 +1007,7 @@ static bool is_existing_ascii_chat_log(const char *path) {
 
     // ascii-chat logs start with timestamps like: [HH:MM:SS.microseconds] [LEVEL]
     // Pattern: [digit][digit]:[digit][digit]:[digit][digit].[digits]
-    if (plain[0] == '[' && isdigit((unsigned char)plain[1]) && isdigit((unsigned char)plain[2]) &&
-        plain[3] == ':') {
+    if (plain[0] == '[' && isdigit((unsigned char)plain[1]) && isdigit((unsigned char)plain[2]) && plain[3] == ':') {
       is_ascii_chat_log = true;
     }
   }
@@ -1019,7 +1018,7 @@ static bool is_existing_ascii_chat_log(const char *path) {
 
 asciichat_error_t path_validate_user_path(const char *input, path_role_t role, char **normalized_out) {
   if (!normalized_out) {
-    return SET_ERRNO(map_role_to_error(role), "path_validate_user_path requires output pointer");
+    return SET_ERRNO(map_role_to_error(role), "Output pointer is required");
   }
   *normalized_out = NULL;
 

@@ -254,9 +254,9 @@ echo "Source tree copied (excluding source files, headers, and build artifacts)"
 
 # Copy version.h to the instrumented tree so the panic instrumentation tool can find it
 # version.h is generated at build time and needs to be available for parsing
-if [[ -f "${BUILD_DIR}/generated/version.h" ]]; then
+if [[ -f "${BUILD_DIR}/generated/ascii-chat/version.h" ]]; then
   mkdir -p "${OUTPUT_DIR}/lib"
-  cp "${BUILD_DIR}/generated/version.h" "${OUTPUT_DIR}/lib/version.h"
+  cp "${BUILD_DIR}/generated/ascii-chat/version.h" "${OUTPUT_DIR}/lib/version.h"
   echo "Copied version.h to instrumented tree"
 fi
 

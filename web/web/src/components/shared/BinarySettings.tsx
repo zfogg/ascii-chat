@@ -41,6 +41,8 @@ export interface BinarySettingsConfig {
   zalgo?: number;
   animationEnabled?: boolean;
   animation?: Animation;
+  faceFollow?: boolean;
+  faceFollowDebug?: boolean;
   flipX?: boolean;
   flipY?: boolean;
   renderMode?: number;
@@ -525,6 +527,22 @@ export function BinarySettings({
             </div>
           )}
 
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-xs font-medium text-terminal-8 mb-1">
+              Camera Framing
+            </label>
+            <button
+              type="button"
+              aria-label="Face Follow"
+              aria-pressed={!!config.faceFollow}
+              disabled={disabled}
+              onClick={() => updateConfig({ faceFollow: !config.faceFollow })}
+              title="Automatically zoom and pan to keep your face in view. Widens smoothly when your face is lost."
+              className={`w-full px-4 py-2 border rounded text-sm font-medium transition-colors ${config.faceFollow ? "border-transparent bg-terminal-2 text-terminal-bg hover:bg-terminal-10" : "bg-terminal-bg text-terminal-fg border-terminal-8 hover:border-terminal-fg"}`}
+            >
+              Face Follow{config.faceFollow ? " On" : " Off"}
+            </button>
+          </div>
           <Tooltip
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "flip-x")

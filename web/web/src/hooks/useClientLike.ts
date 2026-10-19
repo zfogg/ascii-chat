@@ -175,7 +175,12 @@ export function useClientLike(
   }, [terminalDimensions, isWasmReady, setWasmDimensions]);
 
   // Canvas capture hook
-  const { captureFrame } = useCanvasCapture(videoRef, canvasRef);
+  const { captureFrame } = useCanvasCapture(
+    videoRef,
+    canvasRef,
+    false,
+    settings,
+  );
 
   // Handle dimension changes from AsciiRenderer
   const handleDimensionsChange = useCallback(

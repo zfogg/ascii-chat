@@ -890,7 +890,7 @@ int audio_client_init() {
   }
 
   // Initialize PortAudio context using library function
-  log_debug("DEBUG: About to call audio_init()...");
+  log_debug("About to call audio_init()...");
   if (audio_init(&g_audio_context) != ASCIICHAT_OK) {
     log_error("Failed to initialize audio system");
     // Clean up WAV writer if it was opened
@@ -901,7 +901,7 @@ int audio_client_init() {
     lifecycle_init_abort(&g_audio_client_init_lc);
     return -1;
   }
-  log_debug("DEBUG: audio_init() completed successfully");
+  log_debug("audio_init() completed successfully");
 
   // Initialize WAV dumpers only once (file handles persist)
   if (wav_dump_enabled()) {
@@ -944,9 +944,9 @@ asciichat_error_t audio_connection_init(client_connection_t *connection) {
   audio_ring_buffer_set_jitter_target(connection->audio_context->playback_buffer,
                                       (uint32_t)pipeline_config.jitter_margin_ms * 48);
 
-  log_debug("DEBUG: About to create audio pipeline...");
+  log_debug("About to create audio pipeline...");
   connection->audio_pipeline = client_audio_pipeline_create(&pipeline_config);
-  log_debug("DEBUG: client_audio_pipeline_create() returned");
+  log_debug("client_audio_pipeline_create() returned");
   if (!connection->audio_pipeline) {
     return SET_ERRNO(ERROR_AUDIO, "Failed to create connection audio pipeline");
   }
@@ -978,7 +978,7 @@ asciichat_error_t audio_connection_init(client_connection_t *connection) {
 int audio_start_thread(client_connection_t *connection) {
   if (!connection->audio_context)
     return 0;
-  log_debug("audio_start_thread called: audio_enabled=%d", GET_OPTION(audio_enabled));
+  log_debug("audio_enabled=%d", GET_OPTION(audio_enabled));
 
   if (!GET_OPTION(audio_enabled)) {
     log_debug("Audio is disabled, skipping audio capture thread creation");

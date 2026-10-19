@@ -1126,7 +1126,9 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
             add_dependencies(tests test-acip-prepare)
         endif()
     endif()
-    add_executable(test-network-events EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/event_test.c)
+    add_executable(test-network-events EXCLUDE_FROM_ALL
+        ${CMAKE_SOURCE_DIR}/tests/standalone/network/event_test.c
+        ${CMAKE_SOURCE_DIR}/tests/standalone/network/accepted_start_test.c)
     target_link_libraries(test-network-events PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET})
     apply_sanitizers_to_target(test-network-events)
     target_include_directories(test-network-events PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
@@ -1217,7 +1219,54 @@ if(TARGET ascii-chat-static)
     endif()
 endif()
 
+# Shared discovery host rendering, including builds without Criterion.
+if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
+    add_executable(test-host-render EXCLUDE_FROM_ALL standalone/session/host_render_test.c)
+    target_link_libraries(test-host-render PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    if(WIN32)
+        target_link_libraries(test-host-render PRIVATE ws2_32)
+    endif()
+    target_include_directories(test-host-render PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-host-render)
+    set_target_properties(test-host-render PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS)
+        set_property(TARGET test-host-render PROPERTY EXCLUDE_FROM_ALL FALSE)
+        add_test(NAME host-render COMMAND test-host-render)
+        set_tests_properties(host-render PROPERTIES LABELS "integration" TIMEOUT 30)
+        if(WIN32)
+            set_property(TEST host-render PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+        endif()
+        foreach(test_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${test_build_target})
+                add_dependencies(${test_build_target} test-host-render)
+            endif()
+        endforeach()
+    endif()
+endif()
+
 # Fault injection around real participant workers; runs without Criterion on Windows too.
+if(BUILD_TESTS AND NOT EMSCRIPTEN)
+    add_executable(test-runtime-settings standalone/options/runtime_test.c)
+    target_link_libraries(test-runtime-settings PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-runtime-settings PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    if(WIN32)
+        target_link_libraries(test-runtime-settings PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-runtime-settings)
+    set_target_properties(test-runtime-settings PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(TARGET tests)
+        add_dependencies(tests test-runtime-settings)
+    endif()
+    add_test(NAME runtime-settings COMMAND test-runtime-settings)
+    set_tests_properties(runtime-settings PROPERTIES LABELS "unit" TIMEOUT 60)
+endif()
+
 if(BUILD_TESTS)
     add_executable(test-participant-media standalone/session/participant_media_test.c)
     target_link_libraries(test-participant-media PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})

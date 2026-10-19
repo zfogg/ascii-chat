@@ -94,7 +94,7 @@ elseif(NOT DEFINED VCPKG_TARGET_TRIPLET)
     # Determine triplet based on platform and build type
     # Windows Release: static libraries to avoid DLL dependencies
     # Unix/macOS: always use dynamic libraries (static is default)
-    if(WIN32 AND CMAKE_BUILD_TYPE MATCHES "Release")
+    if(WIN32 AND CMAKE_BUILD_TYPE MATCHES "Release" AND NOT ASCIICHAT_SHARED_DEPS)
         set(VCPKG_TARGET_TRIPLET "${_vcpkg_arch}-${_vcpkg_platform}-static")
         set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_SOURCE_DIR}/vcpkg-triplets")
         message(STATUS "vcpkg: Using ${BoldGreen}static triplet${ColorReset} for Windows Release: ${BoldCyan}${VCPKG_TARGET_TRIPLET}${ColorReset} (release-only, no debug libs)")
@@ -109,7 +109,7 @@ elseif(NOT DEFINED VCPKG_TARGET_TRIPLET)
     else()
         set(VCPKG_TARGET_TRIPLET "${_vcpkg_arch}-${_vcpkg_platform}")
         if(WIN32)
-            message(STATUS "vcpkg: Using ${BoldYellow}dynamic triplet${ColorReset} for Windows Debug/Dev: ${BoldCyan}${VCPKG_TARGET_TRIPLET}${ColorReset}")
+            message(STATUS "vcpkg: Using ${BoldYellow}dynamic triplet${ColorReset} for Windows: ${BoldCyan}${VCPKG_TARGET_TRIPLET}${ColorReset}")
         else()
             message(STATUS "vcpkg: Using triplet: ${BoldCyan}${VCPKG_TARGET_TRIPLET}${ColorReset}")
         endif()
@@ -134,8 +134,8 @@ set(VCPKG_INCLUDE_PATH "${_vcpkg_installed_dir}/include")
 
 # Set CMake paths to use the selected triplet
 set(CMAKE_PREFIX_PATH "${_vcpkg_installed_dir}" ${CMAKE_PREFIX_PATH})
-include_directories("${VCPKG_INCLUDE_PATH}")
-link_directories("${VCPKG_LIB_PATH}")
+target_include_directories(asciichat-project-includes INTERFACE "${VCPKG_INCLUDE_PATH}")
+target_link_directories(asciichat-project-options INTERFACE "${VCPKG_LIB_PATH}")
 
 message(STATUS "vcpkg: Include path: ${VCPKG_INCLUDE_PATH}")
 message(STATUS "vcpkg: Library path: ${VCPKG_LIB_PATH}")

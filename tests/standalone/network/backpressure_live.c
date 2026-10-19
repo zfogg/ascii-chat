@@ -697,9 +697,8 @@ int main(int argc, char **argv) {
   }
   if (!strcmp(transport, "webrtc")) {
     CHECK(f->sender->methods->close(f->sender) == ASCIICHAT_OK);
-    packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-                              .type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME),
-                              .length = 0};
+    packet_header_t header = {
+        .magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME), .length = 0};
     socket_buffer_t buffer = {&header, sizeof(header)};
     uint64_t closed_at = time_get_ns();
     for (;;) {

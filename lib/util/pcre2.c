@@ -140,8 +140,8 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
 
   /* JIT is optional; builds such as WebAssembly use the interpreter. */
   uint32_t jit_available = 0;
-  if (!SAFE_GETENV("ASCII_CHAT_PCRE2_DISABLE_JIT") &&
-      pcre2_config(PCRE2_CONFIG_JIT, &jit_available) == 0 && jit_available) {
+  if (!SAFE_GETENV("ASCII_CHAT_PCRE2_DISABLE_JIT") && pcre2_config(PCRE2_CONFIG_JIT, &jit_available) == 0 &&
+      jit_available) {
     int jit_rc = pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
     if (jit_rc < 0) {
       log_debug("PCRE2 JIT compilation failed (code %d), using interpreted mode", jit_rc);
@@ -269,7 +269,7 @@ void asciichat_pcre2_cleanup_all(void) {
 char *asciichat_pcre2_extract_named_group(pcre2_code *regex, pcre2_match_data *match_data, const char *group_name,
                                           const char *subject) {
   if (!regex || !match_data || !group_name || !subject) {
-    log_error("pcre2_extract_named_group: invalid parameters");
+    log_error("invalid parameters");
     return NULL;
   }
 
@@ -292,7 +292,7 @@ char *asciichat_pcre2_extract_named_group(pcre2_code *regex, pcre2_match_data *m
   size_t len = end - start;
   char *result = SAFE_MALLOC(len + 1, char *);
   if (!result) {
-    log_error("pcre2_extract_named_group: failed to allocate %zu bytes", len + 1);
+    log_error("failed to allocate %zu bytes", len + 1);
     return NULL;
   }
 
@@ -323,7 +323,7 @@ char *asciichat_pcre2_extract_group(pcre2_match_data *match_data, int group_num,
   size_t len = end - start;
   char *result = SAFE_MALLOC(len + 1, char *);
   if (!result) {
-    log_error("asciichat_pcre2_extract_group: failed to allocate %zu bytes", len + 1);
+    log_error("failed to allocate %zu bytes", len + 1);
     return NULL;
   }
 

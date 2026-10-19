@@ -58,7 +58,7 @@ struct client_connection {
   char server_ip[256];
   int server_port;
   mutex_t send_mutex;
-  crypto_handshake_context_t crypto_ctx;
+  crypto_handshake_context_t *crypto_ctx; // Borrowed from network until its users join.
   h265_encoder_t *volatile video_encoder;
   atomic_t data_thread_exited;
   atomic_t frames_rendered;
@@ -80,7 +80,6 @@ struct client_connection {
   atomic_t audio_sender_exited;
   bool ping_thread_created;
   atomic_t ping_thread_exited;
-  lifecycle_t crypto_lc;
   uint8_t crypto_mode;
   thread_pool_t *client_worker_pool;
   client_audio_pipeline_t *audio_pipeline;

@@ -118,9 +118,17 @@ foreach(OBJ_FILE ${OBJECT_LIST})
 endforeach()
 
 # Create archive from renamed objects
-message(STATUS "  Running: ${AR} crs ${OUTPUT} <${CMAKE_MATCH_COUNT} objects>")
+# A response file keeps the full object inventory below Windows command-line limits.
+set(_archive_response "${TEMP_DIR}/objects.rsp")
+set(_archive_arguments "")
+foreach(_object IN LISTS RENAMED_OBJECTS)
+    string(REPLACE "\\" "/" _object "${_object}")
+    string(APPEND _archive_arguments "\"${_object}\"\n")
+endforeach()
+file(WRITE "${_archive_response}" "${_archive_arguments}")
+message(STATUS "  Running: ${AR} crs ${OUTPUT} <${OBJECT_COUNT} objects>")
 execute_process(
-    COMMAND ${AR} crs "${OUTPUT}" ${RENAMED_OBJECTS}
+    COMMAND "${AR}" crs "${OUTPUT}" "@${_archive_response}"
     RESULT_VARIABLE AR_RESULT
     OUTPUT_VARIABLE AR_OUTPUT
     ERROR_VARIABLE AR_ERROR

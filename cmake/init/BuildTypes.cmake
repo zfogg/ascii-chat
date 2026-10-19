@@ -52,9 +52,9 @@ function(configure_build_type_post_project)
         configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
         configure_debug_build_flags("Debug")
 
-        add_definitions(-DCMAKE_BUILD_TYPE_DEBUG)
-        add_definitions(-DENABLE_ERRNO_BACKTRACES)
-        add_definitions(-DDEBUG_LOCKS)
+        target_compile_definitions(asciichat-project-options INTERFACE CMAKE_BUILD_TYPE_DEBUG)
+        target_compile_definitions(asciichat-project-options INTERFACE ENABLE_ERRNO_BACKTRACES)
+        target_compile_definitions(asciichat-project-options INTERFACE DEBUG_LOCKS)
 
         # Configure sanitizers (automatically handles mimalloc conflicts)
         # Note: Sanitizers are compatible with instrumentation - they work at different stages
@@ -70,9 +70,9 @@ function(configure_build_type_post_project)
         configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
         configure_debug_build_flags("Dev")
         # No sanitizers in Dev mode
-        add_definitions(-DCMAKE_BUILD_TYPE_DEBUG)
-        add_definitions(-DENABLE_ERRNO_BACKTRACES)
-        add_definitions(-DDEBUG_LOCKS)
+        target_compile_definitions(asciichat-project-options INTERFACE CMAKE_BUILD_TYPE_DEBUG)
+        target_compile_definitions(asciichat-project-options INTERFACE ENABLE_ERRNO_BACKTRACES)
+        target_compile_definitions(asciichat-project-options INTERFACE DEBUG_LOCKS)
         fix_macos_asan_runtime()
 
     # Note: Coverage build type removed - use ASCIICHAT_ENABLE_COVERAGE option instead
@@ -87,26 +87,26 @@ function(configure_build_type_post_project)
         configure_release_flags(${PLATFORM_DARWIN} ${PLATFORM_LINUX} ${IS_ROSETTA} ${IS_APPLE_SILICON} ${ASCIICHAT_ENABLE_CRC32_HW} TRUE)
 
         # Enable errno backtraces for RelWithDebInfo (useful for debugging production issues)
-        add_definitions(-DENABLE_ERRNO_BACKTRACES)
+        target_compile_definitions(asciichat-project-options INTERFACE ENABLE_ERRNO_BACKTRACES)
         message(STATUS "RelWithDebInfo: Enabled errno backtraces for debugging")
 
         # Windows-specific: Add debug info format for RelWithDebInfo
         if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
-            add_compile_options(-gcodeview)
-            add_link_options(-Wl,/DEBUG:FULL)
+            target_compile_options(asciichat-project-options INTERFACE -gcodeview)
+            target_link_options(asciichat-project-options INTERFACE -Wl,/DEBUG:FULL)
             message(STATUS "RelWithDebInfo: Enabled PDB generation with optimized code")
         endif()
 
     elseif(CMAKE_BUILD_TYPE STREQUAL "Sanitize")
         # Sanitize mode - focus on AddressSanitizer
-        add_definitions(-DDEBUG_MEMORY)
+        target_compile_definitions(asciichat-project-options INTERFACE DEBUG_MEMORY)
         configure_debug_build_flags("Debug")
         configure_sanitizers(${USE_MIMALLOC} "Sanitize")
         copy_asan_runtime_dll()
 
     elseif(CMAKE_BUILD_TYPE STREQUAL "TSan")
         # Thread Sanitizer mode
-        add_definitions(-DDEBUG_MEMORY -DDEBUG_THREADS)
+        target_compile_definitions(asciichat-project-options INTERFACE DEBUG_MEMORY DEBUG_THREADS)
         configure_sanitizers(${USE_MIMALLOC} "TSan")
     endif()
 

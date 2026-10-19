@@ -1,540 +1,86 @@
-# =============================================================================
-# mimalloc Memory Allocator Configuration
-# =============================================================================
-# Configures and builds Microsoft's mimalloc high-performance allocator
-#
-# Prerequisites (must be set before including this file):
-#   - USE_MIMALLOC: Option to enable mimalloc
-#   - USE_MUSL: Whether using musl libc (affects override behavior)
-#   - FETCHCONTENT_BASE_DIR: Where to cache the mimalloc build
-#   - CMAKE_BUILD_TYPE: Build type (affects debug settings)
-#   - REAL_GCC: (Optional) For musl builds
-#   - VCPKG_ROOT: (Windows only) vcpkg installation path
-#   - VCPKG_TARGET_TRIPLET: (Windows only) vcpkg triplet (e.g., x64-windows-static)
-#
-# Outputs:
-#   - MIMALLOC_LIBRARIES: Target to link against (mimalloc-static)
-#   - Defines: USE_MIMALLOC, MI_STATIC_LIB (via add_compile_definitions)
-# =============================================================================
-
-# iOS: Skip mimalloc (iOS has efficient built-in memory management)
+# Use the installed package or upstream targets, including its allocator feature options.
 if(PLATFORM_IOS)
-    message(STATUS "Configuring ${BoldCyan}mimalloc${ColorReset} (iOS - skipped, using system allocator)...")
-    message(STATUS "  ℹ iOS uses system memory management, mimalloc not needed")
-    add_compile_definitions(USE_MIMALLOC=0)
+    if(TARGET asciichat-project-options)
+        target_compile_definitions(asciichat-project-options INTERFACE USE_MIMALLOC=0)
+    endif()
+    return()
+endif()
+if(NOT USE_MIMALLOC)
     return()
 endif()
 
-if(USE_MIMALLOC)
-    message(STATUS "Configuring ${BoldCyan}mimalloc${ColorReset} memory allocator...")
-
-    # Try to find system-installed mimalloc first (Linux, or macOS with ASCIICHAT_SHARED_DEPS)
-    # Skip on macOS by default: Homebrew's mimalloc has MI_OVERRIDE=ON which causes crashes
-    # when system libraries (getaddrinfo/freeaddrinfo) try to free memory.
-    # Exception: When ASCIICHAT_SHARED_DEPS=ON (Homebrew formula), use system shared library.
-    set(_MIMALLOC_FROM_SYSTEM FALSE)
-    if(NOT WIN32 AND NOT USE_MUSL AND (NOT APPLE OR ASCIICHAT_SHARED_DEPS))
-        # Try to find mimalloc via CMake's find_package (uses mimalloc-config.cmake)
-        # Detect multiarch directory (e.g., x86_64-linux-gnu, aarch64-linux-gnu)
-        if(NOT CMAKE_LIBRARY_ARCHITECTURE)
-            # If not set by CMake, try to detect it
-            if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
-                set(_MULTIARCH_DIR "x86_64-linux-gnu")
-            elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
-                set(_MULTIARCH_DIR "aarch64-linux-gnu")
-            elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
-                set(_MULTIARCH_DIR "arm-linux-gnueabihf")
-            else()
-                set(_MULTIARCH_DIR "")
-            endif()
-        else()
-            set(_MULTIARCH_DIR "${CMAKE_LIBRARY_ARCHITECTURE}")
-        endif()
-
-        # Build search paths
-        set(_MIMALLOC_SEARCH_PATHS
-            /usr/lib/${_MULTIARCH_DIR}/cmake/mimalloc
-            /usr/lib/cmake/mimalloc
-            /usr/local/lib/${_MULTIARCH_DIR}/cmake/mimalloc
-            /usr/local/lib/cmake/mimalloc
-        )
-
-        # Add Homebrew paths on macOS
-        if(APPLE AND HOMEBREW_PREFIX)
-            list(APPEND _MIMALLOC_SEARCH_PATHS
-                ${HOMEBREW_PREFIX}/opt/mimalloc/lib/cmake/mimalloc
-                ${HOMEBREW_PREFIX}/lib/cmake/mimalloc
-            )
-        endif()
-
-        find_package(mimalloc QUIET CONFIG
-            PATHS ${_MIMALLOC_SEARCH_PATHS}
-        )
-        if(mimalloc_FOUND)
-            # Found system mimalloc via CMake config
-            message(STATUS "Found ${BoldGreen}mimalloc${ColorReset} via find_package, version ${BoldGreen}${mimalloc_VERSION}${ColorReset}")
-
-            # When ASCIICHAT_SHARED_DEPS is set, prefer the shared library (for Homebrew builds)
-            # Otherwise use mimalloc-static for consistency with our FetchContent build
-            if(ASCIICHAT_SHARED_DEPS AND TARGET mimalloc)
-                # Get the actual library path from the imported target
-                get_target_property(_mimalloc_shared_lib mimalloc IMPORTED_LOCATION_RELEASE)
-                if(NOT _mimalloc_shared_lib)
-                    get_target_property(_mimalloc_shared_lib mimalloc IMPORTED_LOCATION)
-                endif()
-                message(STATUS "  Using system ${BoldCyan}mimalloc${ColorReset} shared library (ASCIICHAT_SHARED_DEPS=ON)")
-                message(STATUS "  Library path: ${_mimalloc_shared_lib}")
-                # Use the actual library path, not just the target name
-                if(_mimalloc_shared_lib)
-                    set(MIMALLOC_LIBRARIES "${_mimalloc_shared_lib}")
-                    set(ASCIICHAT_MIMALLOC_LINK_LIB "${_mimalloc_shared_lib}")
-                else()
-                    set(MIMALLOC_LIBRARIES mimalloc)
-                    set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc)
-                endif()
-                set(_MIMALLOC_FROM_SYSTEM TRUE)
-                set(MIMALLOC_IS_SHARED_LIB TRUE CACHE INTERNAL "Using shared mimalloc library")
-                # Create alias for compatibility
-                if(NOT TARGET mimalloc-static)
-                    add_library(mimalloc-static ALIAS mimalloc)
-                endif()
-                if(NOT TARGET mimalloc-shared)
-                    add_library(mimalloc-shared ALIAS mimalloc)
-                endif()
-            elseif(TARGET mimalloc-static)
-                message(STATUS "  Using system ${BoldCyan}mimalloc-static${ColorReset} target")
-                set(MIMALLOC_LIBRARIES mimalloc-static)
-                set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc-static)
-                set(_MIMALLOC_FROM_SYSTEM TRUE)
-
-                # Alias mimalloc-shared to mimalloc-static for system builds
-                if(NOT TARGET mimalloc-shared)
-                    add_library(mimalloc-shared ALIAS mimalloc-static)
-                endif()
-            elseif(TARGET mimalloc)
-                # The 'mimalloc' target might be the shared library - check for static
-                # We need the static library (.a) for embedding into our shared library
-                get_target_property(_mimalloc_type mimalloc TYPE)
-                get_target_property(_mimalloc_location mimalloc IMPORTED_LOCATION)
-
-                # Try to find the static library explicitly
-                find_library(_MIMALLOC_STATIC_LIB
-                    NAMES libmimalloc.a mimalloc.a mimalloc-static.a
-                    HINTS /usr/lib/${CMAKE_LIBRARY_ARCHITECTURE} /usr/lib /usr/local/lib
-                    NO_DEFAULT_PATH
-                )
-
-                if(_MIMALLOC_STATIC_LIB)
-                    message(STATUS "  Using system ${BoldCyan}mimalloc${ColorReset} static library: ${_MIMALLOC_STATIC_LIB}")
-                    # Create proper IMPORTED target for the static library
-                    add_library(mimalloc-static STATIC IMPORTED)
-                    set_target_properties(mimalloc-static PROPERTIES
-                        IMPORTED_LOCATION "${_MIMALLOC_STATIC_LIB}"
-                    )
-                    # Get include dir from the mimalloc target if available
-                    get_target_property(_mimalloc_inc mimalloc INTERFACE_INCLUDE_DIRECTORIES)
-                    if(_mimalloc_inc)
-                        set_target_properties(mimalloc-static PROPERTIES
-                            INTERFACE_INCLUDE_DIRECTORIES "${_mimalloc_inc}"
-                            INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_mimalloc_inc}"
-                        )
-                    endif()
-                    add_library(mimalloc-shared ALIAS mimalloc-static)
-                    set(MIMALLOC_LIBRARIES mimalloc-static)
-                    set(ASCIICHAT_MIMALLOC_LINK_LIB "${_MIMALLOC_STATIC_LIB}")
-                else()
-                    message(STATUS "  Using system ${BoldCyan}mimalloc${ColorReset} target (shared library)")
-                    # Fall back to shared - won't work with --whole-archive
-                    add_library(mimalloc-static ALIAS mimalloc)
-                    add_library(mimalloc-shared ALIAS mimalloc)
-                    set(MIMALLOC_LIBRARIES mimalloc)
-                    set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc)
-                    # Mark that we're using shared mimalloc (can't use --whole-archive)
-                    set(MIMALLOC_IS_SHARED_LIB TRUE CACHE INTERNAL "Using shared mimalloc library")
-                endif()
-                set(_MIMALLOC_FROM_SYSTEM TRUE)
-            endif()
-        endif()
-    endif()
-
-    # On Windows, prefer vcpkg; on Unix (if system not found), use FetchContent
-    if(NOT _MIMALLOC_FROM_SYSTEM AND WIN32 AND DEFINED VCPKG_TARGET_TRIPLET)
-        # Use find_package - vcpkg hooks into this automatically
-        find_package(mimalloc CONFIG QUIET)
-        if(mimalloc_FOUND)
-            message(STATUS "Found ${BoldGreen}mimalloc${ColorReset} from vcpkg via find_package: ${mimalloc_VERSION}")
-
-            # Use vcpkg-provided target directly
-            if(TARGET mimalloc-static)
-                set(MIMALLOC_LIBRARIES mimalloc-static)
-            elseif(TARGET mimalloc)
-                set(MIMALLOC_LIBRARIES mimalloc)
-            endif()
-
-            # Get library path for ASCIICHAT_MIMALLOC_LINK_LIB
-            get_target_property(MIMALLOC_LIBRARY_RELEASE ${MIMALLOC_LIBRARIES} IMPORTED_LOCATION_RELEASE)
-            if(NOT MIMALLOC_LIBRARY_RELEASE)
-                get_target_property(MIMALLOC_LIBRARY_RELEASE ${MIMALLOC_LIBRARIES} IMPORTED_LOCATION)
-            endif()
-            set(ASCIICHAT_MIMALLOC_LINK_LIB "${MIMALLOC_LIBRARY_RELEASE}")
-            set(_MIMALLOC_FROM_VCPKG TRUE)
-        else()
-            message(WARNING "Could not find ${BoldYellow}mimalloc${ColorReset} from vcpkg - falling back to FetchContent")
-            set(_MIMALLOC_FROM_VCPKG FALSE)
-        endif()
-    else()
-        set(_MIMALLOC_FROM_VCPKG FALSE)
-    endif()
-
-    # Fall back to FetchContent if not using system or vcpkg
-    if(NOT _MIMALLOC_FROM_SYSTEM AND NOT _MIMALLOC_FROM_VCPKG)
-        set(MIMALLOC_SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/mimalloc-src")
-        set(MIMALLOC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/mimalloc")
-
-        # Check if mimalloc library already exists in cache
-        # For Debug builds with ASAN, look for ASAN-enabled library first
-        if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT WIN32)
-            # Unix: Try ASAN library first (libmimalloc-asan-debug.a), fallback to static
-            set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/libmimalloc-asan-debug.a")
-            if(NOT EXISTS "${_MIMALLOC_LIB_PATH}")
-                set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/libmimalloc-static.a")
-            endif()
-        elseif(CMAKE_BUILD_TYPE STREQUAL "Debug" AND WIN32)
-            # Windows: Try ASAN library first, fallback to static
-            set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/mimalloc-asan-debug.lib")
-            if(NOT EXISTS "${_MIMALLOC_LIB_PATH}")
-                set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/mimalloc-static.lib")
-            endif()
-        else()
-            # Non-Debug builds: Use regular static library
-            set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/mimalloc-static.lib")
-            if(NOT WIN32)
-                set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/libmimalloc-static.a")
-                if(NOT EXISTS "${_MIMALLOC_LIB_PATH}")
-                    set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/libmimalloc.a")
-                endif()
-            elseif(NOT EXISTS "${_MIMALLOC_LIB_PATH}")
-                set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/mimalloc.lib")
-            endif()
-        endif()
-
-        if(EXISTS "${_MIMALLOC_LIB_PATH}")
-            message(STATUS "Detected mimalloc archive: ${_MIMALLOC_LIB_PATH}")
-            # Extract version from FetchContent declaration above (v2.1.7)
-            set(MIMALLOC_VERSION "2.2.4")
-            message(STATUS "Using cached ${BoldGreen}mimalloc${ColorReset}, version ${BoldGreen}${MIMALLOC_VERSION}${ColorReset}: ${BoldCyan}${_MIMALLOC_LIB_PATH}${ColorReset}")
-
-            # Create an imported target for the cached library
-            add_library(mimalloc-static STATIC IMPORTED)
-            set_target_properties(mimalloc-static PROPERTIES
-                IMPORTED_LOCATION "${_MIMALLOC_LIB_PATH}"
-                INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
-                INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
-            )
-
-            # Propagate cached static library location to downstream consumers
-            set(MIMALLOC_LIBRARIES "${_MIMALLOC_LIB_PATH}")
-            if(NOT ASCIICHAT_MIMALLOC_LINK_LIB)
-                set(ASCIICHAT_MIMALLOC_LINK_LIB "${_MIMALLOC_LIB_PATH}")
-            endif()
-
-            # Also create mimalloc-shared target for shared library builds
-            # Determine the shared library file path
-            get_filename_component(_MIMALLOC_LIB_DIR "${_MIMALLOC_LIB_PATH}" DIRECTORY)
-            get_filename_component(_MIMALLOC_LIB_NAME "${_MIMALLOC_LIB_PATH}" NAME_WE)
-            # Replace "mimalloc" with "mimalloc-shared" in the filename
-            string(REPLACE "libmimalloc" "libmimalloc-shared" _MIMALLOC_SHARED_NAME "${_MIMALLOC_LIB_NAME}")
-            set(_MIMALLOC_SHARED_LIB_PATH "${_MIMALLOC_LIB_DIR}/${_MIMALLOC_SHARED_NAME}.a")
-
-            if(EXISTS "${_MIMALLOC_SHARED_LIB_PATH}")
-                add_library(mimalloc-shared STATIC IMPORTED)
-                set_target_properties(mimalloc-shared PROPERTIES
-                    IMPORTED_LOCATION "${_MIMALLOC_SHARED_LIB_PATH}"
-                    INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
-                    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
-                )
-                set(MIMALLOC_SHARED_LIBRARIES "${_MIMALLOC_SHARED_LIB_PATH}")
-                if(NOT ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
-                    set(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB "${_MIMALLOC_SHARED_LIB_PATH}")
-                endif()
-            endif()
-
-            # Skip FetchContent download/build
-            set(_MIMALLOC_CACHED TRUE)
-        else()
-            # Download and build mimalloc from GitHub
-            message(STATUS "Downloading ${BoldYellow}mimalloc${ColorReset} from GitHub...")
-
-            include(FetchContent)
-
-            FetchContent_Declare(
-                mimalloc
-                GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
-                GIT_TAG v2.2.4  # Match vcpkg version
-                GIT_SHALLOW TRUE
-                GIT_SHALLOW_EXCLUDE_DEPS TRUE  # Don't shallow-clone submodules
-                # Use persistent cache directories (survives build/ deletion)
-                SOURCE_DIR "${MIMALLOC_SOURCE_DIR}"
-                BINARY_DIR "${MIMALLOC_BUILD_DIR}"
-                # CMake 3.28+: EXCLUDE_FROM_ALL prevents mimalloc's install() from running
-                EXCLUDE_FROM_ALL TRUE
-                # CMake 3.25+: SYSTEM suppresses compiler warnings from mimalloc
-                SYSTEM TRUE
-            )
-
-            set(_MIMALLOC_CACHED FALSE)
-        endif()
-    endif()
-
-    # Only configure and build if not using cached library, system, or vcpkg
-    if(NOT _MIMALLOC_CACHED AND NOT _MIMALLOC_FROM_SYSTEM AND NOT _MIMALLOC_FROM_VCPKG)
-        # Configure mimalloc build options - disable all built-in targets
-        # We'll create our own mimalloc-static and mimalloc-shared targets
-        set(MI_BUILD_SHARED OFF CACHE BOOL "Build shared library")
-        set(MI_BUILD_STATIC OFF CACHE BOOL "Build static library")
-        set(MI_BUILD_OBJECT OFF CACHE BOOL "Build object library")
-        set(MI_BUILD_TESTS OFF CACHE BOOL "Build test executables")
-
-        # Disable MI_OVERRIDE to avoid conflicts with system libraries that use the
-        # system allocator (e.g., getaddrinfo/freeaddrinfo on macOS). When MI_OVERRIDE
-        # is ON, mimalloc intercepts free() calls, but system libraries allocate with
-        # the real malloc, causing "pointer being freed was not allocated" crashes.
-        # We use explicit mi_malloc/mi_free via ALLOC_* macros in common.h.
-        set(MI_OVERRIDE OFF CACHE BOOL "Don't override malloc - use explicit mi_* calls")
-
-        # Completely disable mimalloc installation - it's statically linked
-        set(MI_INSTALL_TOPLEVEL OFF CACHE BOOL "Install in top-level")
-
-        # Set debug level for mimalloc based on build type
-        if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-            set(MI_DEBUG_FULL ON CACHE BOOL "Full debug mode for mimalloc")
-        endif()
-
-        # Enable AddressSanitizer support for Debug builds
-        # This builds libmimalloc-asan-debug.a which is compatible with programs using -fsanitize=address
+if(NOT USE_MUSL AND NOT ASCIICHAT_BUILD_DEPS_FROM_SOURCE AND (WIN32 OR ASCIICHAT_SHARED_DEPS))
+    find_package(mimalloc QUIET CONFIG)
+endif()
+if(NOT TARGET mimalloc AND NOT TARGET mimalloc-static)
+    include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
+    function(asciichat_build_mimalloc)
+        asciichat_dependency_defaults()
+        set(MI_BUILD_SHARED ${BUILD_SHARED_LIBS})
+        set(MI_BUILD_STATIC ON)
+        set(MI_BUILD_OBJECT OFF)
+        set(MI_BUILD_TESTS OFF)
+        set(MI_OVERRIDE OFF)
+        set(MI_WIN_REDIRECT OFF)
+        set(MI_INSTALL_TOPLEVEL OFF)
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-            set(MI_TRACK_ASAN ON CACHE BOOL "Build mimalloc with AddressSanitizer support")
-            message(STATUS "Enabling ${BoldCyan}MI_TRACK_ASAN${ColorReset} for AddressSanitizer compatibility")
+            set(MI_TRACK_ASAN ON)
         endif()
-
-        # Platform-specific mimalloc options
-        if(WIN32)
-            set(MI_WIN_REDIRECT ON CACHE BOOL "Redirect malloc on Windows")
-        endif()
-
-        # For musl builds, use local dynamic TLS to avoid conflicts
         if(USE_MUSL)
-            set(MI_LOCAL_DYNAMIC_TLS ON CACHE BOOL "Use local dynamic TLS for musl compatibility")
-            message(STATUS "Enabling ${BoldCyan}MI_LOCAL_DYNAMIC_TLS${ColorReset} for musl compatibility")
+            set(MI_LOCAL_DYNAMIC_TLS ON)
+            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
         endif()
-
-        # Save current output directory settings
-        set(_SAVED_ARCHIVE_OUTPUT_DIR ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
-        set(_SAVED_LIBRARY_OUTPUT_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
-
-        # Set output directories to persistent cache (so library survives build/ deletion)
-        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${MIMALLOC_BUILD_DIR}/lib")
-        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${MIMALLOC_BUILD_DIR}/lib")
-
-        # Make mimalloc sources available (EXCLUDE_FROM_ALL and SYSTEM set in FetchContent_Declare)
-        # This prevents mimalloc's install() commands from running and suppresses compiler warnings
-        # Suppress CMake dev warnings from mimalloc (GNUInstallDirs before project() is upstream bug)
-        set(_SAVED_SUPPRESS_DEV_WARNINGS ${CMAKE_SUPPRESS_DEVELOPER_WARNINGS})
-        set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS ON)
-
-        # For musl builds, disable LTO on mimalloc to avoid TPOFF32 relocation errors.
-        # LLVM issue #55909: LTO generates incompatible TPOFF32 relocations for TLS variables in shared libraries.
-        # These are only valid for executables, not shared libraries.
-        set(_SAVED_IPO ${CMAKE_INTERPROCEDURAL_OPTIMIZATION})
-        set(_SAVED_IPO_RELEASE ${CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE})
-        if(USE_MUSL)
-            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
-            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE FALSE)
-            message(STATUS "Disabling LTO on mimalloc for musl compatibility (TPOFF32 relocation fix)")
-        endif()
-
-        FetchContent_MakeAvailable(mimalloc)
-
-        # Restore IPO settings
-        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${_SAVED_IPO})
-        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ${_SAVED_IPO_RELEASE})
-
-        set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS ${_SAVED_SUPPRESS_DEV_WARNINGS})
-
-        # Restore original output directory settings
-        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${_SAVED_ARCHIVE_OUTPUT_DIR})
-        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${_SAVED_LIBRARY_OUTPUT_DIR})
-
-        # Manually create mimalloc targets with different compile flags
-        # Use static.c which includes all other source files (single compilation unit)
-        set(MIMALLOC_SRCS "${MIMALLOC_SOURCE_DIR}/src/static.c")
-
-        # Common compile options for both targets
-        set(MIMALLOC_COMMON_OPTIONS
-            -include errno.h  # C23 compatibility
-            -Wno-undef       # Suppress mimalloc warnings
-            -Wno-strict-prototypes
-        )
-
-        # Target 1: mimalloc-static (for executables, uses global -fPIE)
-        add_library(mimalloc-static STATIC ${MIMALLOC_SRCS})
-        target_include_directories(mimalloc-static SYSTEM PUBLIC
-            "${MIMALLOC_SOURCE_DIR}/include"
-        )
-        target_compile_options(mimalloc-static PRIVATE ${MIMALLOC_COMMON_OPTIONS})
-
-        # Set output name based on build type and ASAN support
-        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-            set(_MIMALLOC_OUTPUT_NAME "mimalloc-asan-debug")
-        else()
-            set(_MIMALLOC_OUTPUT_NAME "mimalloc")
-        endif()
-
-        set_target_properties(mimalloc-static PROPERTIES
-            OUTPUT_NAME "${_MIMALLOC_OUTPUT_NAME}"
-            ARCHIVE_OUTPUT_DIRECTORY "${MIMALLOC_BUILD_DIR}/lib"
-        )
-
-        # Target 2: mimalloc-shared (for shared library, uses -fPIC and global-dynamic TLS on Unix)
-        add_library(mimalloc-shared STATIC ${MIMALLOC_SRCS})
-        target_include_directories(mimalloc-shared SYSTEM PUBLIC
-            "${MIMALLOC_SOURCE_DIR}/include"
-        )
-        target_compile_options(mimalloc-shared PRIVATE
-            ${MIMALLOC_COMMON_OPTIONS}
-        )
-        # Unix-specific flags for shared library compatibility
-        if(NOT WIN32)
-            target_compile_options(mimalloc-shared PRIVATE
-                -fno-pie                    # Disable PIE
-                -fPIC                       # Enable PIC for shared library
-                -ftls-model=global-dynamic  # Correct TLS model for shared libraries
-            )
-        endif()
-
-        # Set output name for shared library variant (also uses ASAN naming in Debug)
-        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-            set(_MIMALLOC_SHARED_OUTPUT_NAME "mimalloc-shared-asan-debug")
-        else()
-            set(_MIMALLOC_SHARED_OUTPUT_NAME "mimalloc-shared")
-        endif()
-
-        set_target_properties(mimalloc-shared PROPERTIES
-            POSITION_INDEPENDENT_CODE ON
-            OUTPUT_NAME "${_MIMALLOC_SHARED_OUTPUT_NAME}"
-            ARCHIVE_OUTPUT_DIRECTORY "${MIMALLOC_BUILD_DIR}/lib"
-        )
-
-        # For musl builds, set REALGCC environment for both targets
-        if(USE_MUSL AND REAL_GCC)
-            set_target_properties(mimalloc-static PROPERTIES
-                RULE_LAUNCH_COMPILE "env REALGCC=${REAL_GCC}"
-            )
-            set_target_properties(mimalloc-shared PROPERTIES
-                RULE_LAUNCH_COMPILE "env REALGCC=${REAL_GCC}"
-            )
-            message(STATUS "Configured ${BoldGreen}mimalloc${ColorReset} build environment with REALGCC=${BoldCyan}${REAL_GCC}${ColorReset}")
-        endif()
-
-        # For musl builds, disable LTO on mimalloc-shared to avoid TPOFF32 relocation errors.
-        # The mimalloc-shared target is built with -fPIC for embedding in the shared library.
-        # When LTO is enabled, LLVM generates incompatible TPOFF32 relocations for TLS variables.
-        if(USE_MUSL)
-            set_target_properties(mimalloc-shared PROPERTIES
-                INTERPROCEDURAL_OPTIMIZATION FALSE
-            )
-        endif()
-
-        # Update status messages based on ASAN support
-        set(MIMALLOC_VERSION "2.2.4")
-        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-            message(STATUS "Created two ${BoldGreen}mimalloc${ColorReset} targets with ${BoldCyan}AddressSanitizer${ColorReset} support:")
-            message(STATUS "  - ${BoldCyan}mimalloc-static${ColorReset} → ${BoldBlue}${_MIMALLOC_OUTPUT_NAME}.a${ColorReset}: for executables (uses -fPIE from global flags)")
-            message(STATUS "  - ${BoldCyan}mimalloc-shared${ColorReset} → ${BoldBlue}${_MIMALLOC_SHARED_OUTPUT_NAME}.a${ColorReset}: for shared libraries (uses -fPIC and global-dynamic TLS)")
-            message(STATUS "Built ${BoldGreen}mimalloc${ColorReset} from source, version ${BoldGreen}${MIMALLOC_VERSION}${ColorReset}, with ${BoldCyan}ASAN${ColorReset} tracking enabled")
-        else()
-            message(STATUS "Created two ${BoldGreen}mimalloc${ColorReset} targets:")
-            message(STATUS "  - ${BoldCyan}mimalloc-static${ColorReset}: for executables (uses -fPIE from global flags)")
-            message(STATUS "  - ${BoldCyan}mimalloc-shared${ColorReset}: for shared libraries (uses -fPIC and global-dynamic TLS)")
-            message(STATUS "Built ${BoldGreen}mimalloc${ColorReset} from source, version ${BoldGreen}${MIMALLOC_VERSION}${ColorReset}")
-        endif()
-
-        # Only set these for FetchContent builds (vcpkg already set MIMALLOC_LIBRARIES)
-        # Set paths for both static and shared library variants
-        set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/lib${_MIMALLOC_OUTPUT_NAME}.a")
-        set(_MIMALLOC_SHARED_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/lib${_MIMALLOC_SHARED_OUTPUT_NAME}.a")
-
-        set(MIMALLOC_LIBRARIES "${_MIMALLOC_LIB_PATH}")
-        set(ASCIICHAT_MIMALLOC_LINK_LIB "${_MIMALLOC_LIB_PATH}")
-        if(EXISTS "${_MIMALLOC_SHARED_LIB_PATH}")
-            set(MIMALLOC_SHARED_LIBRARIES "${_MIMALLOC_SHARED_LIB_PATH}")
-            set(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB "${_MIMALLOC_SHARED_LIB_PATH}")
-        endif()
-    endif()
-
-    if(NOT ASCIICHAT_MIMALLOC_LINK_LIB)
-        set(_ascii_chat_mimalloc_candidates
-            "${_MIMALLOC_LIB_PATH}"
-            "${MIMALLOC_BUILD_DIR}/lib/libmimalloc.a"
-            "${MIMALLOC_BUILD_DIR}/lib/libmimalloc-static.a"
-            "${MIMALLOC_BUILD_DIR}/lib/mimalloc-static.lib"
-            "${MIMALLOC_BUILD_DIR}/lib/mimalloc.lib"
-        )
-        foreach(candidate IN LISTS _ascii_chat_mimalloc_candidates)
-            if(candidate AND EXISTS "${candidate}")
-                set(ASCIICHAT_MIMALLOC_LINK_LIB "${candidate}")
-                break()
+        FetchContent_Declare(asciichat_mimalloc
+            GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
+            GIT_TAG v2.2.4 GIT_SHALLOW TRUE
+            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_mimalloc"
+            EXCLUDE_FROM_ALL)
+        FetchContent_MakeAvailable(asciichat_mimalloc)
+        foreach(_target mimalloc-static mimalloc)
+            if(TARGET ${_target})
+                target_compile_options(${_target} PRIVATE -include errno.h)
+                if(UNIX)
+                    target_compile_options(${_target} PRIVATE -fPIC -ftls-model=global-dynamic)
+                endif()
             endif()
         endforeach()
-    endif()
-
-    # Define USE_MIMALLOC for all source files so they can use mi_malloc/mi_free directly
-    # Also define MI_STATIC_LIB to tell mimalloc headers we're using static library (prevents dllimport)
-    # Skip MI_STATIC_LIB when using shared library (ASCIICHAT_SHARED_DEPS)
-    if(MIMALLOC_IS_SHARED_LIB)
-        add_compile_definitions(USE_MIMALLOC)
-    else()
-        add_compile_definitions(USE_MIMALLOC MI_STATIC_LIB)
-    endif()
-
-    if(MIMALLOC_LIBRARIES)
-        message(STATUS "mimalloc static library resolved to: ${MIMALLOC_LIBRARIES}")
-    endif()
-    if(MIMALLOC_SHARED_LIBRARIES)
-        message(STATUS "mimalloc shared library resolved to: ${MIMALLOC_SHARED_LIBRARIES}")
-    endif()
-
-    message(STATUS "${BoldGreen}mimalloc${ColorReset} enabled (MI_OVERRIDE=OFF, explicit mi_* calls)")
-    message(STATUS "SAFE_MALLOC/SAFE_FREE macros use ${BoldGreen}mi_malloc/mi_free${ColorReset}")
-
-    # Helper: Collect all mimalloc include directories for test harnesses and other consumers
-    # This handles system-installed mimalloc (e.g., Homebrew on macOS), FetchContent builds, and vcpkg
-    set(MIMALLOC_INCLUDE_DIRS "")
-    if(TARGET mimalloc-static)
-        get_target_property(_mimalloc_iface mimalloc-static INTERFACE_INCLUDE_DIRECTORIES)
-        if(_mimalloc_iface)
-            list(APPEND MIMALLOC_INCLUDE_DIRS ${_mimalloc_iface})
-        endif()
-    elseif(TARGET mimalloc)
-        # Some system installations provide 'mimalloc' target instead of 'mimalloc-static'
-        get_target_property(_mimalloc_iface mimalloc INTERFACE_INCLUDE_DIRECTORIES)
-        if(_mimalloc_iface)
-            list(APPEND MIMALLOC_INCLUDE_DIRS ${_mimalloc_iface})
-        endif()
-    endif()
-    # Only add MIMALLOC_SOURCE_DIR for FetchContent builds (not system or vcpkg)
-    # This prevents stale include paths when switching between system and FetchContent mimalloc
-    if(NOT _MIMALLOC_FROM_SYSTEM AND NOT _MIMALLOC_FROM_VCPKG)
-        if(DEFINED MIMALLOC_SOURCE_DIR AND EXISTS "${MIMALLOC_SOURCE_DIR}/include")
-            list(APPEND MIMALLOC_INCLUDE_DIRS "${MIMALLOC_SOURCE_DIR}/include")
-        endif()
-    endif()
-    # Add MIMALLOC_INCLUDE_DIR if set (vcpkg and Linux system packages set it correctly)
-    # Skip on macOS with system mimalloc - Homebrew's package incorrectly sets it to
-    # /opt/homebrew/include/mimalloc instead of /opt/homebrew/include
-    # The INTERFACE_INCLUDE_DIRECTORIES from the target is already correct on macOS
-    if(DEFINED MIMALLOC_INCLUDE_DIR AND MIMALLOC_INCLUDE_DIR AND NOT (APPLE AND _MIMALLOC_FROM_SYSTEM))
-        list(APPEND MIMALLOC_INCLUDE_DIRS "${MIMALLOC_INCLUDE_DIR}")
-    endif()
-    list(REMOVE_DUPLICATES MIMALLOC_INCLUDE_DIRS)
+        set(MIMALLOC_SOURCE_DIR "${asciichat_mimalloc_SOURCE_DIR}" PARENT_SCOPE)
+    endfunction()
+    asciichat_build_mimalloc()
 endif()
+
+if(ASCIICHAT_SHARED_DEPS AND TARGET mimalloc)
+    set(MIMALLOC_LIBRARIES mimalloc)
+elseif(TARGET mimalloc-static)
+    set(MIMALLOC_LIBRARIES mimalloc-static)
+elseif(TARGET mimalloc)
+    set(MIMALLOC_LIBRARIES mimalloc)
+else()
+    message(FATAL_ERROR "mimalloc did not provide a usable CMake target")
+endif()
+get_target_property(_mimalloc_actual ${MIMALLOC_LIBRARIES} ALIASED_TARGET)
+if(NOT _mimalloc_actual)
+    set(_mimalloc_actual ${MIMALLOC_LIBRARIES})
+endif()
+if(NOT TARGET mimalloc-static)
+    add_library(mimalloc-static ALIAS ${_mimalloc_actual})
+endif()
+if(NOT TARGET mimalloc-shared)
+    add_library(mimalloc-shared ALIAS ${_mimalloc_actual})
+endif()
+get_target_property(_mimalloc_type ${MIMALLOC_LIBRARIES} TYPE)
+if(_mimalloc_type STREQUAL "SHARED_LIBRARY")
+    set(MIMALLOC_IS_SHARED_LIB TRUE)
+    if(TARGET asciichat-project-options)
+        target_compile_definitions(asciichat-project-options INTERFACE USE_MIMALLOC)
+    endif()
+else()
+    set(MIMALLOC_IS_SHARED_LIB FALSE)
+    if(TARGET asciichat-project-options)
+        target_compile_definitions(asciichat-project-options INTERFACE USE_MIMALLOC MI_STATIC_LIB)
+    endif()
+endif()
+set(ASCIICHAT_MIMALLOC_LINK_LIB ${MIMALLOC_LIBRARIES})
+set(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB mimalloc-shared)
+set(MIMALLOC_SHARED_LIBRARIES mimalloc-shared)
+get_target_property(MIMALLOC_INCLUDE_DIRS ${MIMALLOC_LIBRARIES} INTERFACE_INCLUDE_DIRECTORIES)

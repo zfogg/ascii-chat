@@ -132,7 +132,7 @@ Unified initialization framework for client-like modes:
    → Accept loop running
 
 4. Client Connection
-   session_host_add_client(host, socket, ip, port);
+   session_host_add_client(host, transport, ACIP_TRANSPORT_BORROWED, ip, port);
    → on_client_join() callback fired
    → Client registered and ready
 

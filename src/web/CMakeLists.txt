@@ -7,8 +7,14 @@ if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     # Being used as a subdirectory - don't call project() again
 else()
     # Being used as a standalone project - initialize CMake
-    cmake_minimum_required(VERSION 3.18)
-    project(ascii-chat-wasm)
+    cmake_minimum_required(VERSION 3.30)
+    include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/install/Version.cmake")
+    version_detect()
+    project(ascii-chat-wasm VERSION ${PROJECT_VERSION_FROM_GIT})
+    if(NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_BUILD_TYPE Release CACHE STRING "WASM build type" FORCE)
+    endif()
+    version_setup_targets()
 
     # Include sanitizer configuration so apply_sanitizers_to_target() is available
     # Compute path to cmake/platform relative to this file location
@@ -41,6 +47,12 @@ if(NOT ASCIICHAT_DEPS_CACHE_ROOT)
     set(ASCIICHAT_DEPS_CACHE_ROOT "${_repo_root}/.deps-cache" CACHE PATH "Dependency cache root" FORCE)
 endif()
 
+# Standalone and parent-driven builds use the same build-local artifact layout.
+if(NOT WEB_DEPS_CACHE_DIR)
+    set(WEB_DEPS_CACHE_DIR "${CMAKE_BINARY_DIR}/_deps/legacy/${CMAKE_BUILD_TYPE}"
+        CACHE PATH "WASM dependency build/install cache" FORCE)
+endif()
+
 # Include all WASM dependency configuration files
 # Each file handles EMSCRIPTEN builds and sets output variables:
 # - FOO_LIBRARIES: libraries to link
@@ -53,6 +65,7 @@ include(${_cmake_dir}/deps/Opus.cmake)
 include(${_cmake_dir}/deps/Zstd.cmake)
 include(${_cmake_dir}/deps/Libvterm.cmake)
 include(${_cmake_dir}/deps/FFTW.cmake)
+include(${_cmake_dir}/deps/Utf8proc.cmake)
 
 # TOML (using tomlc17 from deps)
 # No FetchContent needed - using vendored tomlc17
@@ -65,6 +78,7 @@ set(DEPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../deps)
 # Include directories for library headers
 # IMPORTANT: WASM stubs must come FIRST to override native headers
 include_directories(
+    ${CMAKE_BINARY_DIR}/generated
     ${LIB_ROOT}/platform/wasm/stubs  # WASM stub headers (override native)
     ${INCLUDE_ROOT}
     ${LIB_ROOT}
@@ -72,6 +86,7 @@ include_directories(
     ${DEPS_ROOT}
     ${DEPS_ROOT}/ascii-chat-deps/tomlc17/src
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
+    ${DEPS_ROOT}/ascii-chat-deps/yyjson/src
     # Dependency includes from cmake/deps/*.cmake output variables
     ${VTERM_INCLUDE_DIRS}  # libvterm
     ${LIBSODIUM_INCLUDE_DIRS}  # libsodium
@@ -129,10 +144,6 @@ set(TOML_SRC
     ${DEPS_ROOT}/ascii-chat-deps/tomlc17/src/tomlc17.c
 )
 
-set(UTF8PROC_SRC
-    ${DEPS_ROOT}/ascii-chat-deps/utf8proc/utf8proc.c
-)
-
 # Generated font data (created by cmake/targets/Fonts.cmake at configure time)
 # Fonts are generated in the parent build directory before WASM configure runs
 # Note: In web builds, CMAKE_BINARY_DIR points to build/web/, but fonts are generated in root build/
@@ -165,6 +176,7 @@ set(LIB_SRC_COMMON
 
     # Options system
     ${LIB_ROOT}/options/rcu.c
+    ${LIB_ROOT}/../deps/ascii-chat-deps/yyjson/src/yyjson.c
     ${LIB_ROOT}/options/options.c
     ${LIB_ROOT}/options/common.c
     ${LIB_ROOT}/options/enums.c
@@ -359,7 +371,6 @@ add_library(wasm-common OBJECT
     ${LIB_SRC_COMMON}
     ${WASM_RENDERER_SRC}
     ${TOML_SRC}
-    ${UTF8PROC_SRC}
     ${GENERATED_FONT_SRC}
 )
 
@@ -367,20 +378,6 @@ add_library(wasm-common OBJECT
 # Ensure font generation happens before compiling wasm-common
 if(TARGET generate_fonts)
     add_dependencies(wasm-common generate_fonts)
-endif()
-
-# Ensure WASM dependencies are built before compiling wasm-common
-if(TARGET libsodium-wasm)
-    add_dependencies(wasm-common libsodium-wasm)
-endif()
-if(TARGET pcre2-wasm)
-    add_dependencies(wasm-common pcre2-wasm)
-endif()
-if(TARGET opus-wasm)
-    add_dependencies(wasm-common opus-wasm)
-endif()
-if(TARGET zstd-wasm)
-    add_dependencies(wasm-common zstd-wasm)
 endif()
 
 # Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
@@ -404,7 +401,9 @@ endif()
 # Link dependencies using output variables from cmake/deps/*.cmake
 # These are set by Libsodium.cmake, PCRE2.cmake, Libvterm.cmake, etc.
 
+add_dependencies(wasm-common generate_version)
 target_link_libraries(wasm-common PRIVATE
+    ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
     ${VTERM_LDFLAGS}
@@ -445,6 +444,7 @@ target_link_options(mirror-web PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_
 # Link dependencies with explicit library paths for wasm-ld
 
 target_link_libraries(mirror-web PRIVATE
+    ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
     ${VTERM_LDFLAGS}
@@ -468,6 +468,7 @@ set(WEB_SRC_CLIENT
     ${CMAKE_CURRENT_SOURCE_DIR}/browser_discovery.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/host.c
     ${LIB_ROOT}/network/acip/server.c
+    ${LIB_ROOT}/network/acip/settings.c
     ${LIB_ROOT}/network/acip/acds_client.c
     ${LIB_ROOT}/network/consensus/election.c
     ${LIB_ROOT}/network/consensus/handoff.c
@@ -511,6 +512,7 @@ target_include_directories(client-web PRIVATE
 
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE
+    ${UTF8PROC_LIBRARIES}
     ${FFTW_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
@@ -549,6 +551,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _get_font_default_ptr
     _get_font_default_size
     # Option getters/setters for live option updates (no restart needed)
+    _wasm_options_revision _wasm_options_values _wasm_options_patch _wasm_options_release
     _set_width
     _set_height
     _get_width
@@ -581,6 +584,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
+    _client_settings_receive _client_settings_values
     _peer_crypto_error
     _peer_crypto_create
     _peer_crypto_destroy
@@ -596,6 +600,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     _browser_handoff_encode _browser_handoff_decode
     _browser_host_create _browser_host_destroy _browser_host_add_client _browser_host_remove_client
+    _browser_host_set_local_client
     _browser_host_receive _browser_host_render _browser_discovery_new _browser_discovery_destroy _browser_discovery_enter _browser_discovery_receive _browser_discovery_leave _browser_discovery_snapshot
     _client_resolve_crypto_policy _client_handshake_begin _client_handshake_receive
     _client_acds_handshake_begin _client_acds_handshake_receive
@@ -622,6 +627,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _get_font_default_ptr
     _get_font_default_size
     # Option getters/setters for live option updates (no restart needed)
+    _wasm_options_revision _wasm_options_values _wasm_options_patch _wasm_options_release
     _set_width
     _set_height
     _get_width
@@ -726,7 +732,7 @@ if(BUILD_WEB)
         COMMENT "Copying client WASM files to web/src/wasm/dist/"
     )
 
-# Combined WASM target (builds both mirror and client)
+# Combined WASM target; the face worker is added after its target is defined.
     add_custom_target(web
         DEPENDS mirror-web client-web
         COMMENT "All WASM modules built"
@@ -737,3 +743,32 @@ endif()
 # Enable SIMD at compilation, not only linking, for the pixel compositor.
 set_source_files_properties("${LIB_ROOT}/media/render/terminal.c"
     PROPERTIES COMPILE_OPTIONS "-msimd128")
+
+# Face detection runs in an independent browser worker, sharing the native controller and model.
+include(${_cmake_dir}/deps/FaceDetection.cmake)
+add_executable(face-follow-web ${CMAKE_CURRENT_SOURCE_DIR}/face_follow.c ${LIB_ROOT}/video/face_follow.c)
+ascii_chat_add_face_detector(face-follow-web)
+set_target_properties(face-follow-web PROPERTIES OUTPUT_NAME "face-follow" SUFFIX ".js")
+target_compile_options(face-follow-web PRIVATE -O3)
+target_link_options(face-follow-web PRIVATE --no-entry -O3
+    -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createFaceFollow
+    -sENVIRONMENT=worker -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=2097152
+    "-sEXPORTED_RUNTIME_METHODS=['HEAPU8','HEAPF32']")
+
+if(BUILD_WEB)
+    add_dependencies(web face-follow-web)
+    add_custom_command(TARGET face-follow-web POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../web/web/src/wasm/dist
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/face-follow.js
+            ${CMAKE_CURRENT_BINARY_DIR}/face-follow.wasm
+            ${CMAKE_SOURCE_DIR}/../../web/web/src/wasm/dist/
+        COMMENT "Copying face-follow WASM files to web/src/wasm/dist/"
+    )
+endif()
+
+if(EMSCRIPTEN)
+    enable_testing()
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../tests/wasm/dependencies"
+        "${CMAKE_CURRENT_BINARY_DIR}/tests/dependencies" EXCLUDE_FROM_ALL)
+endif()

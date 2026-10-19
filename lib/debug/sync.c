@@ -439,8 +439,7 @@ static void debug_sync_print_lock_stacks(sync_buffer_t *buf) {
       char elapsed_str[64];
       time_pretty(elapsed, -1, elapsed_str, sizeof(elapsed_str));
 
-      sync_buffer_append(buf, "    [%d] mutex @ %p (%s) %s", j,
-                          (void *)entry->mutex_key, state_str, elapsed_str);
+      sync_buffer_append(buf, "    [%d] mutex @ %p (%s) %s", j, (void *)entry->mutex_key, state_str, elapsed_str);
     }
   }
 
@@ -454,11 +453,10 @@ static void debug_sync_print_lock_stacks(sync_buffer_t *buf) {
 void debug_sync_print_state(void) {
 // Use a single large buffer for all sync state output
 #define SYNC_BUFFER_SIZE 65536 // Increased from 8192 to handle many syncs
-  log_debug("[debug_sync_print_state] ENTRY");
 
   char *buffer = SAFE_MALLOC(SYNC_BUFFER_SIZE, char *);
   if (!buffer) {
-    log_debug("[debug_sync_print_state] Failed to allocate buffer");
+    log_debug("Failed to allocate buffer");
     return;
   }
 
@@ -467,11 +465,11 @@ void debug_sync_print_state(void) {
   bool completed = false;
   bool complete = true;
   // Iterate through all registered syncs
-  log_debug("[debug_sync_print_state] Iterating mutexes");
+  log_debug("Iterating mutexes");
   complete &= named_registry_for_each(mutex_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
-  log_debug("[debug_sync_print_state] Iterating rwlocks");
+  log_debug("Iterating rwlocks");
   complete &= named_registry_for_each(rwlock_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
-  log_debug("[debug_sync_print_state] Iterating conds");
+  log_debug("Iterating conds");
   complete &= named_registry_for_each(cond_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
 
   complete &= named_registry_for_each(atomic_t_iter_callback, &buf, &completed) == ASCIICHAT_OK && completed;
@@ -481,13 +479,13 @@ void debug_sync_print_state(void) {
     log_info("SYNC_STATE: registry snapshot incomplete; some entries could not be collected");
 
   // Print lock stacks for deadlock analysis
-  log_debug("[debug_sync_print_state] Getting lock stacks");
+  log_debug("Getting lock stacks");
   debug_sync_print_lock_stacks(&buf);
   if (buf.truncated)
     log_info("SYNC_STATE: output truncated at %zu bytes", buf.buffer_size - 1);
 
   // Log everything in one call
-  log_debug("[debug_sync_print_state] Buffer size: %zu bytes", buf.offset);
+  log_debug("Buffer size: %zu bytes", buf.offset);
   if (buf.offset > 0) {
     // Emit bounded lines so the logger does not truncate a large registry report.
     log_info("SYNC_STATE:");
@@ -627,9 +625,7 @@ void debug_sync_print_state(void) {
   // No-op in release builds
 }
 
-
 #endif
-
 
 static atomic_t g_signal = {0};
 static atomic_t g_exiting = {0};

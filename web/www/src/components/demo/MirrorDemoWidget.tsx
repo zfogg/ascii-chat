@@ -37,6 +37,7 @@ import { registerActiveDemo, unregisterActiveDemo } from "./activeDemo";
 import type { DemoOption } from "./types";
 
 interface MirrorDemoWidgetProps {
+  webcamOnly?: boolean;
   demoVideo?: { src: string; title: string; href: string };
   demoOptions?: DemoOption[];
   defaultOptionIndex?: number;
@@ -109,6 +110,7 @@ function applyDemoOption(
 }
 
 export default function MirrorDemoWidget({
+  webcamOnly = false,
   demoVideo = {
     src: "/assets/demo-video-white-knuckles.webm",
     title: "OK Go — White Knuckles",
@@ -157,10 +159,12 @@ export default function MirrorDemoWidget({
   const audioOutputConnectedRef = useRef(false);
   const audioDiagnosticLoggedRef = useRef(false);
 
-  const { captureFrame } = useCanvasCapture(videoRef, canvasRef);
-
   const selectedOption =
     demoOptions?.find((o) => o.id === selectedOptionId) ?? null;
+
+  const { captureFrame } = useCanvasCapture(videoRef, canvasRef, false, {
+    faceFollow: selectedOption?.settings.faceFollow ?? false,
+  });
 
   const addDebugLog = useCallback((msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -270,8 +274,8 @@ export default function MirrorDemoWidget({
             "loadedmetadata",
             () => {
               if (canvasRef.current) {
-                canvasRef.current.width = 640;
-                canvasRef.current.height = 480;
+                canvasRef.current.width = videoRef.current!.videoWidth;
+                canvasRef.current.height = videoRef.current!.videoHeight;
               }
               resolve();
             },
@@ -860,17 +864,19 @@ export default function MirrorDemoWidget({
                     {loading ? "Loading..." : "Webcam"}
                   </button>
                 )}
-                <button
-                  onClick={startDemo}
-                  disabled={loading}
-                  className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {loading
-                    ? "Loading..."
-                    : isAudioVisualization
-                      ? "Demo Audio"
-                      : "Demo Video"}
-                </button>
+                {!webcamOnly && (
+                  <button
+                    onClick={startDemo}
+                    disabled={loading}
+                    className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {loading
+                      ? "Loading..."
+                      : isAudioVisualization
+                        ? "Demo Audio"
+                        : "Demo Video"}
+                  </button>
+                )}
               </div>
               {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
             </div>
@@ -958,17 +964,19 @@ export default function MirrorDemoWidget({
         </div>
       )}
 
-      <p className="text-gray-600 text-xs mt-2 sm:text-right">
-        {isAudioVisualization ? "Demo audio:" : "Demo video:"}{" "}
-        <a
-          href={demoVideo.href}
-          className="text-gray-500 hover:text-gray-400 underline"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {demoVideo.title}
-        </a>
-      </p>
+      {!webcamOnly && (
+        <p className="text-gray-600 text-xs mt-2 sm:text-right">
+          {isAudioVisualization ? "Demo audio:" : "Demo video:"}{" "}
+          <a
+            href={demoVideo.href}
+            className="text-gray-500 hover:text-gray-400 underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {demoVideo.title}
+          </a>
+        </p>
+      )}
     </div>
   );
 }

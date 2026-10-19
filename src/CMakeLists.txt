@@ -413,15 +413,13 @@ endif()
 if(USE_MUSL)
     # Add dependencies on all musl libraries (they'll build automatically)
     # Note: Do NOT add ascii-chat-shared as a dependency - we'll link OBJECT libraries directly
-    add_dependencies(ascii-chat portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl pcre2-musl ffmpeg-musl libwebsockets-musl)
+    add_dependencies(ascii-chat alsa-lib-musl libsodium-musl libexecinfo-musl)
 
     # Link against musl-built static libraries from individual dependency directories
     target_link_directories(ascii-chat PRIVATE
-        ${PORTAUDIO_PREFIX}/lib
         ${ALSA_PREFIX}/lib
         ${LIBSODIUM_PREFIX}/lib
         ${LIBEXECINFO_PREFIX}/lib
-        ${PCRE2_PREFIX}/lib
     )
     # Note: -rdynamic is incompatible with -static and not needed for musl + libexecinfo
     # Use lld linker for musl+LTO builds (handles LTO without gold plugin)
@@ -445,23 +443,24 @@ if(USE_MUSL)
 
     # Link external dependencies (LTO + dead code elimination removes unused code)
     target_link_libraries(ascii-chat PRIVATE
-        ${PORTAUDIO_PREFIX}/lib/libportaudio.a
+        ${PORTAUDIO_LIBRARIES}
         ${ALSA_PREFIX}/lib/libasound.a
         ${LIBSODIUM_PREFIX}/lib/libsodium.a
         ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a
-        ${PCRE2_PREFIX}/lib/libpcre2-8.a
+        ${PCRE2_LIBRARIES}
         ${ZLIB_LIBRARY}
+        ${UTF8PROC_LIBRARIES}
         -lm -lpthread
     )
 
     # Link libvterm for terminal emulation in render-file
     target_link_libraries(ascii-chat PRIVATE
-        ${MUSL_DEPS_DIR_STATIC}/libvterm/lib/libvterm.a
+        ${VTERM_LDFLAGS}
     )
 
     # Link FreeType for font rendering in render-file
     target_link_libraries(ascii-chat PRIVATE
-        ${MUSL_DEPS_DIR_STATIC}/freetype/lib/libfreetype.a
+        ${FREETYPE_LIBRARIES}
     )
 
     # Link FFmpeg for media file streaming (musl-built static libraries - required)
@@ -474,11 +473,8 @@ if(USE_MUSL)
     # The libdatachannel INTERFACE target's dependencies don't propagate through
     # the combined static library, so we link them directly here
     if(TARGET libdatachannel)
-        set(LIBDATACHANNEL_MUSL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libdatachannel-build")
         target_link_libraries(ascii-chat PRIVATE
-            "${LIBDATACHANNEL_MUSL_BUILD_DIR}/lib/libdatachannel.a"
-            "${LIBDATACHANNEL_MUSL_BUILD_DIR}/lib/libjuice.a"
-            "${LIBDATACHANNEL_MUSL_BUILD_DIR}/lib/libusrsctp.a"
+            libdatachannel
         )
         # OpenSSL for libdatachannel TURN credentials (musl-built)
         if(OPENSSL_SSL_LIBRARY AND OPENSSL_CRYPTO_LIBRARY)
@@ -695,7 +691,7 @@ endif()
 include(${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake)
 # Copy DLL dependencies to bin directory on Windows (for non-static builds)
 # Skip for static Release builds where all deps are linked into the executable
-if(WIN32 AND _use_shared_lib)
+if(WIN32)
     copy_windows_dlls(ascii-chat)
 endif()
 # Check static linking for Release builds
@@ -719,6 +715,9 @@ if(BUILD_WEB AND BUILD_EXECUTABLES)
         ${CMAKE_SOURCE_DIR}/lib/discovery/adjectives.c
         ${CMAKE_SOURCE_DIR}/lib/discovery/nouns.c
     )
+    if(WIN32)
+        list(APPEND _strings_srcs ${CMAKE_SOURCE_DIR}/lib/platform/windows/getopt.c)
+    endif()
     if(USE_MUSL)
         list(APPEND _strings_srcs ${CMAKE_SOURCE_DIR}/lib/musl_c23_compat.c)
     endif()
@@ -826,13 +825,20 @@ set(WASM_CMAKE_ARGS
     -DCMAKE_TOOLCHAIN_FILE=${EMSCRIPTEN_TOOLCHAIN_FILE}
     -DBUILD_WEB=ON
 )
+if(ASCIICHAT_MSYS2_ROOT)
+    list(APPEND WASM_CMAKE_ARGS "-DASCIICHAT_MSYS2_ROOT=${ASCIICHAT_MSYS2_ROOT}")
+endif()
 
 # Configure WASM build directory during CMake configuration (not during build)
 if(EMSCRIPTEN_TOOLCHAIN_FILE)
     file(MAKE_DIRECTORY "${WASM_BUILD_DIR}")
 
     # Check if build.ninja exists (indicates successful WASM configuration)
-    if(NOT EXISTS "${WASM_BUILD_DIR}/build.ninja")
+    if(ASCIICHAT_MSYS2_ROOT AND EXISTS "${WASM_BUILD_DIR}/CMakeCache.txt")
+        load_cache("${WASM_BUILD_DIR}" READ_WITH_PREFIX _WASM_ ASCIICHAT_MSYS2_ROOT)
+    endif()
+    if(NOT EXISTS "${WASM_BUILD_DIR}/build.ninja" OR
+       (ASCIICHAT_MSYS2_ROOT AND NOT "${ASCIICHAT_MSYS2_ROOT}" STREQUAL "${_WASM_ASCIICHAT_MSYS2_ROOT}"))
         message(STATUS "Configuring WASM build directory: ${WASM_BUILD_DIR}")
         execute_process(
             COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
@@ -869,11 +875,21 @@ if(NOT TARGET client-web)
     )
 endif()
 
-# Combined WASM target (builds both mirror and client)
+if(NOT TARGET face-follow-web)
+    add_custom_target(face-follow-web
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target face-follow-web
+        COMMENT "Building Face Follow detector worker"
+        USES_TERMINAL
+        VERBATIM
+    )
+endif()
+
+# Combined WASM target (builds renderer, client, and detector worker)
 if(NOT TARGET web)
     add_custom_target(web
         COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
         COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target face-follow-web
         COMMENT "Building all WASM modules"
         DEPENDS generate_fonts
         USES_TERMINAL

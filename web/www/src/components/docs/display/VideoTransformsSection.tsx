@@ -30,6 +30,21 @@ const FLIP_OPTIONS: DemoOption[] = [
   },
 ];
 
+const FACE_FOLLOW_OPTIONS: DemoOption[] = [
+  {
+    id: "face-follow",
+    label: "Face Follow",
+    description: "Smoothly frame your face as you move",
+    settings: { faceFollow: true },
+  },
+  {
+    id: "full-frame",
+    label: "Full Frame",
+    description: "Show the entire camera view",
+    settings: { faceFollow: false },
+  },
+];
+
 export default function VideoTransformsSection() {
   return (
     <section className="docs-section-spacing">
@@ -76,6 +91,25 @@ export default function VideoTransformsSection() {
       </div>
       <div className="mt-8">
         <MirrorDemoWidget demoOptions={FLIP_OPTIONS} />
+      </div>
+      <div data-testid="face-follow-demo" className="docs-subsection-spacing">
+        <Heading level={3} className="heading-3 text-cyan-300 mb-3">
+          Face Follow
+        </Heading>
+        <p className="docs-paragraph">
+          Keep your face recognizable at small ASCII resolutions. Face Follow
+          zooms and pans before rendering, gives everyday movement room to
+          settle, and gently returns to the full frame when your face
+          disappears. When another person enters, it keeps following the face it
+          already selected.
+        </p>
+        <CodeBlock language="bash">ascii-chat mirror --face-follow</CodeBlock>
+        <p className="docs-paragraph">
+          Try your webcam below, then switch between Face Follow and Full Frame.
+          Move to one side and pause to let the framing catch up, or step away
+          to see the full-frame fallback. Your camera stays in your browser.
+        </p>
+        <MirrorDemoWidget webcamOnly demoOptions={FACE_FOLLOW_OPTIONS} />
       </div>
     </section>
   );

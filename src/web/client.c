@@ -1,4 +1,38 @@
 #include <ascii-chat/crypto/policy.h>
+#include <emscripten.h>
+#include <ascii-chat/common.h>
+#include <string.h>
+#include <ascii-chat/network/acip/settings.h>
+
+static acip_render_settings_t remote_render_settings;
+
+/** Effective remote state is separate from this participant's saved preferences. */
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_settings_receive(const void *payload, size_t length) {
+  acip_settings_header_t header;
+  const char *json;
+  size_t json_length;
+  asciichat_error_t result = acip_settings_decode(payload, length, &header, &json, &json_length);
+  if (result != ASCIICHAT_OK)
+    return result;
+  options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
+            *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+  acip_render_settings_options(&remote_render_settings, current);
+  result = options_prepare_json(current, json, json_length, candidate, true);
+  if (result == ASCIICHAT_OK)
+    result = acip_render_settings_prepare(&remote_render_settings, candidate);
+  if (result == ASCIICHAT_OK)
+    remote_render_settings.revision = header.revision;
+  SAFE_FREE(current);
+  SAFE_FREE(candidate);
+  return result;
+}
+EMSCRIPTEN_KEEPALIVE char *client_settings_values(void) {
+  options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
+  acip_render_settings_options(&remote_render_settings, values);
+  char *json = options_values_json(values, true);
+  SAFE_FREE(values);
+  return json;
+}
 /**
  * @file client_wasm.c
  * @brief WASM entry point for ascii-chat client mode
@@ -146,11 +180,13 @@ static connection_state_t g_connection_state = CONNECTION_STATE_DISCONNECTED;
 
 static int apply_client_crypto_options(void) {
   crypto_handshake_context_t *ctx = &g_crypto_handshake_ctx;
-  if (ctx->state != CRYPTO_HANDSHAKE_INIT) return -1;
+  if (ctx->state != CRYPTO_HANDSHAKE_INIT)
+    return -1;
 
   if (g_crypto_password[0] != '\0') {
     crypto_result_t result = crypto_derive_password_key(&ctx->crypto_ctx, g_crypto_password);
-    if (result != CRYPTO_OK) return -1;
+    if (result != CRYPTO_OK)
+      return -1;
     ctx->crypto_ctx.has_password = true;
     ctx->has_password = true;
     SAFE_STRNCPY(ctx->password, g_crypto_password, sizeof(ctx->password) - 1);
@@ -177,7 +213,8 @@ static int apply_client_crypto_options(void) {
 EMSCRIPTEN_KEEPALIVE
 int client_configure_crypto_options(const char *password, const uint8_t *identity_secret_key,
                                     const uint8_t *expected_server_public_key) {
-  if (!g_initialized) return -1;
+  if (!g_initialized)
+    return -1;
 
   sodium_memzero(g_crypto_password, sizeof(g_crypto_password));
   sodium_memzero(g_client_identity_key, sizeof(g_client_identity_key));
@@ -187,15 +224,16 @@ int client_configure_crypto_options(const char *password, const uint8_t *identit
 
   if (password && password[0] != '\0') {
     size_t length = strnlen(password, sizeof(g_crypto_password));
-    if (length < 8 || length >= sizeof(g_crypto_password)) return -1;
+    if (length < 8 || length >= sizeof(g_crypto_password))
+      return -1;
     SAFE_STRNCPY(g_crypto_password, password, sizeof(g_crypto_password) - 1);
   }
 
   if (identity_secret_key) {
     uint8_t derived_public_key[crypto_sign_PUBLICKEYBYTES];
     if (crypto_sign_ed25519_sk_to_pk(derived_public_key, identity_secret_key) != 0 ||
-        sodium_memcmp(derived_public_key, identity_secret_key + crypto_sign_SEEDBYTES,
-                      crypto_sign_PUBLICKEYBYTES) != 0) {
+        sodium_memcmp(derived_public_key, identity_secret_key + crypto_sign_SEEDBYTES, crypto_sign_PUBLICKEYBYTES) !=
+            0) {
       sodium_memzero(derived_public_key, sizeof(derived_public_key));
       return -1;
     }
@@ -214,11 +252,13 @@ int client_configure_crypto_options(const char *password, const uint8_t *identit
 /** Parse an OpenSSH Ed25519 private-key file through the shared SSH parser. */
 EMSCRIPTEN_KEEPALIVE
 int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) {
-  if (!key_path || !secret_key_out) return -1;
+  if (!key_path || !secret_key_out)
+    return -1;
   CLEAR_ERRNO_ALL();
 #ifdef EMSCRIPTEN_BUILD
   static const char wasm_key_prefix[] = "/tmp/ascii-chat-key-";
-  if (strncmp(key_path, wasm_key_prefix, sizeof(wasm_key_prefix) - 1) != 0) return -1;
+  if (strncmp(key_path, wasm_key_prefix, sizeof(wasm_key_prefix) - 1) != 0)
+    return -1;
 #endif
   private_key_t key = {0};
   asciichat_error_t result = parse_ssh_private_key(key_path, &key);
@@ -234,7 +274,8 @@ int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) 
 /** Parse an OpenSSH Ed25519 public-key line through the shared SSH parser. */
 EMSCRIPTEN_KEEPALIVE
 int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
-  if (!key_line || !public_key_out) return -1;
+  if (!key_line || !public_key_out)
+    return -1;
   CLEAR_ERRNO_ALL();
   return parse_ssh_ed25519_line(key_line, public_key_out) == ASCIICHAT_OK ? 0 : -1;
 }
@@ -242,7 +283,8 @@ int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
 /** Parse an armored OpenPGP Ed25519 public key through the shared C parser. */
 EMSCRIPTEN_KEEPALIVE
 int client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out) {
-  if (!armored_key || !public_key_out) return -1;
+  if (!armored_key || !public_key_out)
+    return -1;
   CLEAR_ERRNO_ALL();
   return openpgp_parse_armored_pubkey(armored_key, public_key_out) == ASCIICHAT_OK ? 0 : -1;
 }
@@ -250,7 +292,8 @@ int client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out
 /** Parse a binary OpenPGP Ed25519 public-key packet stream. */
 EMSCRIPTEN_KEEPALIVE
 int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *public_key_out) {
-  if (!key_data || key_data_len == 0 || !public_key_out) return -1;
+  if (!key_data || key_data_len == 0 || !public_key_out)
+    return -1;
   CLEAR_ERRNO_ALL();
   return openpgp_parse_binary_pubkey(key_data, key_data_len, public_key_out) == ASCIICHAT_OK ? 0 : -1;
 }
@@ -258,7 +301,8 @@ int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_
 /** Parse an unencrypted armored OpenPGP Ed25519 private key through the shared C parser. */
 EMSCRIPTEN_KEEPALIVE
 int client_parse_gpg_private_key(const char *armored_key, uint8_t *secret_key_out) {
-  if (!armored_key || !secret_key_out) return -1;
+  if (!armored_key || !secret_key_out)
+    return -1;
   CLEAR_ERRNO_ALL();
 
   uint8_t public_key[crypto_sign_PUBLICKEYBYTES] = {0};
@@ -267,7 +311,8 @@ int client_parse_gpg_private_key(const char *armored_key, uint8_t *secret_key_ou
   uint8_t secret_key[crypto_sign_SECRETKEYBYTES] = {0};
   int result = -1;
 
-  if (openpgp_parse_armored_seckey(armored_key, public_key, seed) != ASCIICHAT_OK) goto cleanup;
+  if (openpgp_parse_armored_seckey(armored_key, public_key, seed) != ASCIICHAT_OK)
+    goto cleanup;
   if (crypto_sign_seed_keypair(derived_public_key, secret_key, seed) != 0 ||
       sodium_memcmp(derived_public_key, public_key, sizeof(public_key)) != 0) {
     SET_ERRNO(ERROR_CRYPTO_KEY, "OpenPGP private key does not match its Ed25519 public key");
@@ -288,7 +333,8 @@ cleanup:
 /** Parse an unencrypted binary OpenPGP Ed25519 secret-key packet stream. */
 EMSCRIPTEN_KEEPALIVE
 int client_parse_gpg_private_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *secret_key_out) {
-  if (!key_data || key_data_len == 0 || !secret_key_out) return -1;
+  if (!key_data || key_data_len == 0 || !secret_key_out)
+    return -1;
   CLEAR_ERRNO_ALL();
 
   uint8_t public_key[crypto_sign_PUBLICKEYBYTES] = {0};
@@ -297,7 +343,8 @@ int client_parse_gpg_private_key_binary(const uint8_t *key_data, size_t key_data
   uint8_t secret_key[crypto_sign_SECRETKEYBYTES] = {0};
   int result = -1;
 
-  if (openpgp_parse_binary_seckey(key_data, key_data_len, public_key, seed) != ASCIICHAT_OK) goto cleanup;
+  if (openpgp_parse_binary_seckey(key_data, key_data_len, public_key, seed) != ASCIICHAT_OK)
+    goto cleanup;
   if (crypto_sign_seed_keypair(derived_public_key, secret_key, seed) != 0 ||
       sodium_memcmp(derived_public_key, public_key, sizeof(public_key)) != 0) {
     SET_ERRNO(ERROR_CRYPTO_KEY, "OpenPGP private key does not match its Ed25519 public key");
@@ -318,7 +365,8 @@ cleanup:
 /** Copy the most recent C crypto error into a caller-provided buffer. */
 EMSCRIPTEN_KEEPALIVE
 int client_get_crypto_error_message(char *output, size_t output_size) {
-  if (!output || output_size == 0) return -1;
+  if (!output || output_size == 0)
+    return -1;
   asciichat_error_context_t context = {0};
   if (!HAS_ERRNO(&context) || !context.context_message[0])
     return -1;
@@ -379,6 +427,7 @@ int client_init_with_args(const char *args_json) {
 
 EMSCRIPTEN_KEEPALIVE
 void client_cleanup(void) {
+  remote_render_settings = (acip_render_settings_t){0};
   asciichat_errno_destroy();
 
   // Clean up crypto handshake context
@@ -513,7 +562,8 @@ int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
     if (init_result != ASCIICHAT_OK) {
       return -1;
     }
-    if (apply_client_crypto_options() != 0) return -1;
+    if (apply_client_crypto_options() != 0)
+      return -1;
   }
 
   if (!packet || packet_len == 0) {
@@ -581,7 +631,8 @@ int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
     if (crypto_handshake_init("wasm-client", &g_crypto_handshake_ctx, false) != ASCIICHAT_OK) {
       return -1;
     }
-    if (apply_client_crypto_options() != 0) return -1;
+    if (apply_client_crypto_options() != 0)
+      return -1;
   }
 
   // Extract packet type and payload
@@ -1029,14 +1080,20 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_begin(uint8_t mode)
   g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
   return acds_handshake_begin(&g_wasm_transport, mode);
 }
-EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_receive(uint32_t type, const void *payload, size_t length) {
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_receive(uint32_t type, const void *payload,
+                                                                     size_t length) {
   asciichat_error_t result = acds_handshake_receive(&g_crypto_handshake_ctx, &g_wasm_transport, type, payload, length);
-  if (result != ASCIICHAT_OK) { g_connection_state = CONNECTION_STATE_ERROR; return result; }
+  if (result != ASCIICHAT_OK) {
+    g_connection_state = CONNECTION_STATE_ERROR;
+    return result;
+  }
   if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
     g_handshake_complete = true;
     g_wasm_transport.crypto_ctx = &g_crypto_handshake_ctx.crypto_ctx;
     g_connection_state = CONNECTION_STATE_CONNECTED;
-  } else { g_connection_state = CONNECTION_STATE_HANDSHAKE; }
+  } else {
+    g_connection_state = CONNECTION_STATE_HANDSHAKE;
+  }
   return ASCIICHAT_OK;
 }
 

@@ -1,5 +1,5 @@
 # Generate a Windows .def file from object files for DLL export
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.30)
 
 # Use the active target object list. Directory scans retain stale exports after
 # a source is removed or renamed in an incremental build.

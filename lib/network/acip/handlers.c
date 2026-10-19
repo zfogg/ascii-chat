@@ -58,7 +58,7 @@ typedef struct {
 // Must check all HANDLER_HASH_SIZE slots because gaps can exist in the hash table
 static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_type_t type) {
   uint32_t h = HANDLER_HASH(type);
-  log_dev_every(4500 * US_PER_MS_INT, "HANDLER_HASH_LOOKUP: type=%d, hash=%u", type, h);
+  log_dev_every(4500 * US_PER_MS_INT, "type=%d, hash=%u", type, h);
   for (int i = 0; i < HANDLER_HASH_SIZE; i++) {
     uint32_t slot = (h + i) % HANDLER_HASH_SIZE;
     log_dev_every(4500 * US_PER_MS_INT, "  Checking slot %u: key=%d, handler_idx=%d", slot, table[slot].key,
@@ -734,15 +734,14 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unhandled server packet type: %d", type);
   }
 
-  log_dev("HANDLER_DISPATCH: type=%d (%s), handler_idx=%d, payload=%zu bytes",
-           type, g_packet_type_name(type), idx, payload_len);
+  log_dev("HANDLER_DISPATCH: type=%d (%s), handler_idx=%d, payload=%zu bytes", type, g_packet_type_name(type), idx,
+          payload_len);
   asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
 
   if (result != ASCIICHAT_OK) {
     log_error("❌ [HANDLER_ERROR] Handler failed: type=%d (%s), result=%d", type, g_packet_type_name(type), result);
   } else {
-    log_dev("HANDLER_COMPLETE: type=%d (%s), payload=%zu bytes", type,
-             g_packet_type_name(type), payload_len);
+    log_dev("HANDLER_COMPLETE: type=%d (%s), payload=%zu bytes", type, g_packet_type_name(type), payload_len);
   }
 
   return result;
@@ -761,8 +760,7 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
     return ASCIICHAT_OK;
   }
 
-  log_dev("ACIP_IMAGE_FRAME_HANDLER: Callback registered (header=%zu)",
-           sizeof(image_frame_packet_t));
+  log_dev("ACIP_IMAGE_FRAME_HANDLER: Callback registered (header=%zu)", sizeof(image_frame_packet_t));
 
   if (payload_len < sizeof(uint32_t) * 2) {
     log_error("ACIP_IMAGE_FRAME_HANDLER: Payload too small: %zu bytes (need at least 8)", payload_len);
@@ -1022,8 +1020,7 @@ static asciichat_error_t handle_server_stream_stop(const void *payload, size_t p
 
 static asciichat_error_t handle_server_capabilities(const void *payload, size_t payload_len, void *client_ctx,
                                                     const acip_server_callbacks_t *callbacks) {
-  log_debug("handle_server_capabilities: payload_len=%zu, client_ctx=%p, callbacks=%p", payload_len, client_ctx,
-            (const void *)callbacks);
+  log_debug("payload_len=%zu, client_ctx=%p, callbacks=%p", payload_len, client_ctx, (const void *)callbacks);
 
   if (!callbacks->on_capabilities) {
     log_error("on_capabilities callback is NULL!");

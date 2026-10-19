@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.30)
 
 # On Windows, prevent CMake from running compiler tests that would add problematic flags
 if(WIN32)

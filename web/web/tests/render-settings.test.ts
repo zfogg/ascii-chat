@@ -2,6 +2,30 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, expect, test } from "vite-plus/test";
 import { useRenderSettings } from "../src/hooks/useRenderSettings";
 beforeEach(() => window.history.replaceState(null, "", "/mirror"));
+test("bare Face Follow query flags persist independently and explicit false disables framing", () => {
+  window.history.replaceState(null, "", "/mirror?faceFollow&faceFollowDebug");
+  const hook = renderHook(useRenderSettings);
+  expect(hook.result.current[0].faceFollow).toBe(true);
+  expect(hook.result.current[0].faceFollowDebug).toBe(true);
+  act(() =>
+    hook.result.current[1]((settings) => ({ ...settings, faceFollow: false })),
+  );
+  expect(new URLSearchParams(window.location.search).has("faceFollow")).toBe(
+    false,
+  );
+  expect(
+    new URLSearchParams(window.location.search).get("faceFollowDebug"),
+  ).toBe("true");
+  hook.unmount();
+  window.history.replaceState(
+    null,
+    "",
+    "/mirror?faceFollow=false&faceFollowDebug",
+  );
+  const restored = renderHook(useRenderSettings);
+  expect(restored.result.current[0].faceFollow).toBe(false);
+  expect(restored.result.current[0].faceFollowDebug).toBe(true);
+});
 test("automatic defaults follow modes until an explicit choice, which survives switching and reload", () => {
   const hook = renderHook(useRenderSettings);
   const mode = (

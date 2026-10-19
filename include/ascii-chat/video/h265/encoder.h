@@ -31,7 +31,7 @@ typedef struct h265_encoder h265_encoder_t;
 /**
  * Encoder flags
  */
-#define H265_ENCODER_FLAG_KEYFRAME  0x01
+#define H265_ENCODER_FLAG_KEYFRAME 0x01
 #define H265_ENCODER_FLAG_SIZE_CHANGE 0x02
 
 /**
@@ -72,14 +72,8 @@ void h265_encoder_destroy(h265_encoder_t *encoder);
  * OUTPUT PACKET FORMAT:
  *   [flags: u8][width: u16][height: u16][x265_data...]
  */
-asciichat_error_t h265_encode(
-    h265_encoder_t *encoder,
-    uint16_t width,
-    uint16_t height,
-    const uint8_t *ascii_data,
-    uint8_t *output_buf,
-    size_t *output_size
-);
+asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *ascii_data,
+                              uint8_t *output_buf, size_t *output_size);
 
 /**
  * Request a keyframe on the next encode
@@ -113,11 +107,7 @@ void h265_encoder_request_keyframe(h265_encoder_t *encoder);
  *     }
  *   }
  */
-asciichat_error_t h265_encoder_flush(
-    h265_encoder_t *encoder,
-    uint8_t *output_buf,
-    size_t *output_size
-);
+asciichat_error_t h265_encoder_flush(h265_encoder_t *encoder, uint8_t *output_buf, size_t *output_size);
 
 /**
  * Get encoder statistics
@@ -127,9 +117,5 @@ asciichat_error_t h265_encoder_flush(
  * @param keyframes Output: total keyframes encoded
  * @param avg_bitrate Output: average bitrate in bits per second
  */
-void h265_encoder_get_stats(
-    h265_encoder_t *encoder,
-    uint64_t *total_frames,
-    uint64_t *keyframes,
-    uint32_t *avg_bitrate
-);
+void h265_encoder_get_stats(h265_encoder_t *encoder, uint64_t *total_frames, uint64_t *keyframes,
+                            uint32_t *avg_bitrate);

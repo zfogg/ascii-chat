@@ -1,3 +1,4 @@
+import type { RuntimeOptionsModule } from "./runtimeOptions";
 /**
  * @file optionsWrapper.ts
  * @brief Generic WASM option wrapper utilities
@@ -12,7 +13,7 @@
 /**
  * WASM module interface with memory management and string functions
  */
-export interface WasmModule {
+export interface WasmModule extends RuntimeOptionsModule {
   HEAPU8: Uint8Array;
   UTF8ToString(ptr: number): string;
   stringToUTF8(str: string, outPtr: number, maxBytes: number): void;
