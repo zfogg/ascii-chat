@@ -205,6 +205,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                   settings.paletteChars,
                   settings.matrixRain,
                   conn.videoCodecCapabilities,
+                  settings.renderMode,
                 );
                 console.log(
                   `[Client] Payload size: ${capsPayload.length} bytes`,
