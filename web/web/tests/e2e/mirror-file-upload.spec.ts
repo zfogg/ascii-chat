@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./browser-fixture";
 import path from "node:path";
 
 async function upload(page: Page, name: string) {
@@ -37,7 +37,10 @@ for (const file of [
     test.setTimeout(120_000);
     await page.goto("/mirror");
     await upload(page, file);
-    const video = page.locator("video");
+    // Measure from a fresh playback position even if decoding/setup consumed
+    // most of the short fixture before the first rendered-frame assertion.
+    await page.getByRole("button", { name: "Restart", exact: true }).click();
+    const video = page.locator("video:not([autoplay])");
     const rms = await video.evaluate(async (element) => {
       const media = element as HTMLVideoElement & {
         captureStream: () => MediaStream;
@@ -51,7 +54,7 @@ for (const file of [
       const samples = new Float32Array(analyser.fftSize);
       let peakRms = 0;
       try {
-        for (let attempt = 0; attempt < 10; attempt++) {
+        for (let attempt = 0; attempt < 100 && peakRms <= 0.001; attempt++) {
           await new Promise((resolve) => setTimeout(resolve, 50));
           analyser.getFloatTimeDomainData(samples);
           peakRms = Math.max(
@@ -103,7 +106,7 @@ test("GIF animates repeatedly and pauses; PNG/JPEG replace it with still ASCII",
   await upload(page, "loop.gif");
   const pixels = () =>
     page
-      .locator("video + canvas")
+      .locator("video:not([autoplay]) + canvas")
       .evaluate((element) => (element as HTMLCanvasElement).toDataURL());
   const first = await pixels();
   await expect.poll(pixels).not.toBe(first);

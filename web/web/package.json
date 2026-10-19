@@ -15,6 +15,7 @@
     "test": "vp test",
     "test:unit": "vp test run",
     "test:e2e": "playwright test",
+    "test:e2e:ci": "playwright test --config playwright.ci.config.ts",
     "test:e2e:ui": "playwright test --ui",
     "wasm:build": "node scripts/wasm-build.mjs",
     "wasm:build:mirror": "cd ../.. && cmake --build build --target mirror-web",

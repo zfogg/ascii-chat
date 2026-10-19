@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./browser-fixture";
 test("device preview releases streams and can reopen", async ({ page }) => {
   await page.goto("/mirror");
   await page.evaluate(() => {
