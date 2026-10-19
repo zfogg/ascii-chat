@@ -344,6 +344,8 @@ export function useMirrorRenderLoop({
     let reportedFrameError = false;
     const animationFrameRef = (time: DOMHighResTimeStamp) => {
       try {
+        // Script-driven addTrack/removeTrack calls do not emit track events.
+        captureCameraTrack();
         if (trackCapture) return;
         const video = cameraVideoRef?.current;
         const cameraSource = video?.srcObject as MediaStream | null;
