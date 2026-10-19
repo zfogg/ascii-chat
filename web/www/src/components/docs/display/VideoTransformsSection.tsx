@@ -38,6 +38,12 @@ const FACE_FOLLOW_OPTIONS: DemoOption[] = [
     settings: { faceFollow: true },
   },
   {
+    id: "face-follow-outlined",
+    label: "Face Follow (outlined face)",
+    description: "Follow your face and outline the detected face in red",
+    settings: { faceFollow: true, faceFollowDebug: true },
+  },
+  {
     id: "full-frame",
     label: "Full Frame",
     description: "Show the entire camera view",
