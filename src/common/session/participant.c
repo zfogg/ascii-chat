@@ -193,7 +193,8 @@ void session_participant_destroy(session_participant_t *p) {
 
   session_participant_disconnect(p);
   // A failed join retains the participant and its resources for a safe retry.
-  if (p->video_thread_created || p->audio_thread_created)
+  if (atomic_load_int(&p->connection.state) != SESSION_CONNECTION_STOPPED ||
+      p->video_thread_created || p->audio_thread_created)
     return;
 
   // Clear sensitive data
