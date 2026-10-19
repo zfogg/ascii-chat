@@ -18,7 +18,7 @@ python generate.py
 python package.py
 ```
 
-The snapshot records repository HEAD and includes current working-tree source. Generated WASM artifacts, headers, tests, and third-party dependencies are excluded. The source graph uses lexical references to uniquely indexed externally visible functions, relative module/resource references, mode entry points, and callback registrations. It is not a compiler call graph: build variants, macros, aliases, barrel exports, macros, methods, callbacks, and dynamic dispatch may be incomplete. C function traces filter cross-file evidence to the function body; they do not enumerate same-file calls. GitHub links show the recorded commit and can differ from an uncommitted working-tree excerpt.
+The snapshot records repository HEAD and includes current working-tree source. Generated WASM artifacts, headers, tests, and third-party dependencies are excluded. The source graph uses lexical references to uniquely indexed externally visible functions, relative module/resource references, mode entry points, and callback registrations. It is not a compiler call graph: build variants, macros, aliases, barrel exports, methods, callbacks, and dynamic dispatch may be incomplete. C function traces filter cross-file evidence to the function body; they do not enumerate same-file calls. GitHub links show the recorded commit and can differ from an uncommitted working-tree excerpt.
 
 The hosting-ready static files are in `dist/`. Sites registration and publication were blocked because this session did not expose the Sites create/save/deploy tools. No Site identity has been fabricated or registered. Existing repository changes were left intact.
 
@@ -29,3 +29,5 @@ Selected symbols show their complete declaration or function body, with no neigh
 Guides are organized into Architecture, Make a call, Inside a call, and Control & recovery. Each guide has a user question, scope, outcome, three chapter diagrams, source checkpoints, failure boundaries, and related journeys. Function nodes inspect the complete selected declaration; Guide notes restores the walkthrough. Guide metadata lives in guides.py, guides_calls.py, guides_media.py, and guides_controls.py. validate_guides.py checks the requested 5+12 guide count and every primary function/file against the parsed snapshot.
 
 The inspector is 1.7 times its previous desktop width: 527 px normally, 595 px at the large-screen breakpoint, and 442 px at the smaller desktop breakpoint. Mobile retains a viewport-fitting layout.
+
+Validation completed: all 17 overview routes and all 51 chapter views were opened in the in-app browser. Authored source checkpoints were checked against current parsed source; all chapter diagrams contain source-backed connections. Search-to-guide navigation and exact function inspection were also checked.
