@@ -85,7 +85,6 @@ export class SocketBridge {
     this.ws.binaryType = "arraybuffer";
 
     const handleOpen = () => {
-      console.error("[SocketBridge] ✓✓✓ handleOpen CALLED");
       console.log("[SocketBridge] WebSocket connected");
       this.wasEverConnected = true;
       this.reconnectAttempts = 0;
@@ -103,10 +102,6 @@ export class SocketBridge {
       const fragment = new Uint8Array(msgEvent.data);
       recordDownload(fragment.byteLength);
 
-      console.error(
-        `[SocketBridge] ★ RECEIVED MESSAGE: ${fragment.length} bytes`,
-      );
-
       // ★ CRITICAL FIX: Reassemble WebSocket-fragmented messages
       // WebSocket may split large packets into multiple frames. We need to reassemble
       // them before passing to the packet handler.
@@ -116,9 +111,6 @@ export class SocketBridge {
         // Start new reassembly with this fragment
         this.reassemblyBuffer = new Uint8Array(fragment);
         this.reassemblySize = fragment.length;
-        console.error(
-          `[SocketBridge] ★ START REASSEMBLY: received first fragment ${fragment.length} bytes`,
-        );
       } else {
         // Append to existing reassembly buffer
         const newSize = this.reassemblySize + fragment.length;
@@ -213,7 +205,7 @@ export class SocketBridge {
 
     const handleClose = (event: Event) => {
       const closeEvent = event as CloseEvent;
-      console.error(
+      console.log(
         `[SocketBridge] WebSocket CLOSED: code=${closeEvent.code} reason="${closeEvent.reason}" wasClean=${closeEvent.wasClean}`,
       );
       this.stopHeartbeat();

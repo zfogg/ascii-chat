@@ -16,11 +16,17 @@ import { fillTestPatternAudioSamples } from "../testPattern";
 import { useTestPattern } from "./useTestPattern";
 import { captureVisualizationAudio } from "../audio/visualizationCapture";
 import { VideoFrameClock } from "./videoFrameClock";
+import {
+  cameraNeedsFrameLimit,
+  reportCameraTrack,
+  reportCameraFrame,
+  reportCameraVideoFrame,
+} from "../capture/cameraRate";
 
 interface UseMirrorRenderLoopParams {
   isWebcamRunning: boolean;
   terminalDimensions: { cols: number; rows: number };
-  captureFrame: () => {
+  captureFrame: (drawVideo?: boolean) => {
     data: Uint8Array;
     width: number;
     height: number;
@@ -34,6 +40,7 @@ interface UseMirrorRenderLoopParams {
   animation?: "matrix" | "waveform" | "fft";
   animationEnabled?: boolean;
   mediaVideoRef?: RefObject<HTMLVideoElement | null> | undefined;
+  cameraVideoRef?: RefObject<HTMLVideoElement | null> | undefined;
   onMediaFps?: (fps: number) => void;
   mediaRevision?: unknown;
   fileActive?: boolean;
@@ -55,6 +62,7 @@ export function useMirrorRenderLoop({
   animation,
   animationEnabled,
   mediaVideoRef,
+  cameraVideoRef,
   onMediaFps,
   mediaRevision,
   fileActive = false,
@@ -157,11 +165,14 @@ export function useMirrorRenderLoop({
           }, 250)
         : undefined;
     let videoHandle = 0;
+    let trackReader: ReadableStreamDefaultReader<VideoFrame> | null = null;
+    let cameraTrack: MediaStreamTrack | undefined;
+    let trackCapture = false;
     let pendingVideoFrame = false;
     const mediaClock = new VideoFrameClock();
     let lastConversionTime = 0;
     const audioSamples = new Float32Array(1024);
-    const renderFrame = () => {
+    const renderFrame = (directCameraFrame = false) => {
       if (!isWasmReady() || !rendererRef.current) {
         return;
       }
@@ -266,7 +277,7 @@ export function useMirrorRenderLoop({
           height: canvas.height,
         };
       } else {
-        frame = captureFrame();
+        frame = captureFrame(!directCameraFrame);
       }
 
       if (
@@ -330,15 +341,21 @@ export function useMirrorRenderLoop({
       debugCountRef.current++;
     };
 
-    let frameCount = 0;
     let reportedFrameError = false;
     const animationFrameRef = (time: DOMHighResTimeStamp) => {
       try {
-        frameCount++;
-        if (frameCount % 60 === 0) {
-          console.debug(`[${loopId}] Frame ${frameCount}`);
+        // Script-driven addTrack/removeTrack calls do not emit track events.
+        captureCameraTrack();
+        if (trackCapture) return;
+        const video = cameraVideoRef?.current;
+        const cameraSource = video?.srcObject as MediaStream | null;
+        if (video && cameraSource?.getVideoTracks) {
+          const track = cameraSource.getVideoTracks()[0];
+          if (track) {
+            reportCameraTrack(track);
+            reportCameraVideoFrame(video);
+          }
         }
-
         if (usesVideoClock) {
           if (pendingVideoFrame) {
             pendingVideoFrame = false;
@@ -380,6 +397,87 @@ export function useMirrorRenderLoop({
       }
     };
 
+    const cameraStream =
+      !fileActive && !testMode && !audioAnimation ? streamRef.current : null;
+    const captureCameraTrack = () => {
+      const track = cameraStream?.getVideoTracks()[0];
+      if (track === cameraTrack) return;
+      cameraTrack = track;
+      void trackReader?.cancel().catch(() => {});
+      trackReader = null;
+      trackCapture = false;
+      const Processor = (
+        window as Window & {
+          MediaStreamTrackProcessor?: new (options: {
+            track: MediaStreamTrack;
+          }) => { readable: ReadableStream<VideoFrame> };
+        }
+      ).MediaStreamTrackProcessor;
+      if (!track || !Processor || !canvasRef.current) return;
+      reportCameraTrack(track);
+      try {
+        const reader = new Processor({ track }).readable.getReader();
+        trackReader = reader;
+        trackCapture = true;
+        const clock = new VideoFrameClock();
+        void (async () => {
+          try {
+            while (isActive && reader === trackReader) {
+              const { value: frame, done } = await reader.read();
+              if (done) break;
+              try {
+                if (!isActive || reader !== trackReader) break;
+                reportCameraFrame(frame.timestamp / 1000);
+                const canvas = canvasRef.current;
+                const context = canvas?.getContext("2d");
+                if (
+                  !canvas ||
+                  !context ||
+                  (cameraNeedsFrameLimit(1000 / frameIntervalRef.current) &&
+                    !clock.accept(
+                      frame.timestamp / 1e6,
+                      frameIntervalRef.current,
+                    ))
+                )
+                  continue;
+                // Capture the delivered camera frame, rather than sampling a
+                // hidden video's compositor on an independent RAF clock.
+                context.drawImage(frame, 0, 0, canvas.width, canvas.height);
+                renderFrame(true);
+                reportedFrameError = false;
+              } catch (error) {
+                if (!reportedFrameError)
+                  console.warn(
+                    "[Mirror] Camera frame failed; retrying next frame",
+                    error,
+                  );
+                reportedFrameError = true;
+              } finally {
+                frame.close();
+              }
+            }
+          } catch (error) {
+            if (isActive && reader === trackReader)
+              console.warn(
+                "[Mirror] Direct camera capture failed; using video element",
+                error,
+              );
+          } finally {
+            if (reader === trackReader) trackCapture = false;
+            reader.releaseLock();
+          }
+        })();
+      } catch (error) {
+        console.warn(
+          "[Mirror] Direct camera capture unavailable; using video element",
+          error,
+        );
+      }
+    };
+    captureCameraTrack();
+    cameraStream?.addEventListener?.("addtrack", captureCameraTrack);
+    cameraStream?.addEventListener?.("removetrack", captureCameraTrack);
+
     lastFrameTime = performance.now();
     const videoFrame = (_now: number, metadata: VideoFrameCallbackMetadata) => {
       if (!isActive || !mediaVideo) return;
@@ -401,6 +499,9 @@ export function useMirrorRenderLoop({
     return () => {
       console.debug(`[${loopId}] Cleanup - stopping render loop`);
       isActive = false;
+      cameraStream?.removeEventListener?.("addtrack", captureCameraTrack);
+      cameraStream?.removeEventListener?.("removetrack", captureCameraTrack);
+      void trackReader?.cancel().catch(() => {});
       window.clearInterval(fpsTimer);
       if (videoHandle) mediaVideo?.cancelVideoFrameCallback(videoHandle);
       cancelAnimationFrame(rafHandle);
@@ -420,6 +521,7 @@ export function useMirrorRenderLoop({
     streamRef,
     testPattern,
     mediaVideoRef,
+    cameraVideoRef,
     onMediaFps,
     mediaRevision,
     fileActive,

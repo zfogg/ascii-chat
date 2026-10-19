@@ -7,9 +7,9 @@ import {
   getMirrorModule,
   initMirrorWasm,
   isWasmReady,
+  createWasmModule,
+  type MirrorModule,
 } from "@ascii-chat/shared/wasm";
-// @ts-expect-error - Generated file without types
-import MirrorModuleFactory from "../wasm/dist/mirror.js";
 import { SITES } from "@ascii-chat/shared/utils";
 import { BinarySettings } from "../components/shared/BinarySettings";
 import { AsciiRenderer } from "@ascii-chat/shared/components/AsciiRenderer";
@@ -25,6 +25,7 @@ import {
 } from "../hooks/useWasmOptions";
 import { useClientLike } from "../hooks/useClientLike";
 import { useMirrorRenderLoop } from "@ascii-chat/shared/hooks";
+import { useCameraFrameRate } from "../hooks/useCameraFrameRate";
 import { useMirrorWebcam } from "../hooks/useMirrorWebcam";
 import { useMirrorFile } from "../hooks/useMirrorFile";
 import { useTestPattern } from "@ascii-chat/shared/hooks";
@@ -49,7 +50,9 @@ export function MirrorPage() {
   const initWasm = useCallback(() => {
     const t0 = performance.now();
     console.log(`[Mirror] initWasm start at ${t0.toFixed(1)}ms`);
-    const promise = initMirrorWasm(MirrorModuleFactory);
+    const promise = initMirrorWasm((options) =>
+      createWasmModule<MirrorModule>("mirror", options),
+    );
     promise
       .then(() => {
         setWasmModule(getMirrorModule());
@@ -201,6 +204,16 @@ export function MirrorPage() {
   const { start: startFile, stop: stopFile } = fileMedia;
 
   const fileActive = mediaSource === MediaSourceType.FILE;
+  const cameraFps = useCameraFrameRate(
+    settings,
+    setSettings,
+    isWebcamRunning &&
+      !fileActive &&
+      !(
+        settings.animationEnabled &&
+        (settings.animation === "waveform" || settings.animation === "fft")
+      ),
+  );
   const contentSettings = useMemo(
     () =>
       fileActive
@@ -244,6 +257,7 @@ export function MirrorPage() {
 
   // Render loop that captures and converts frames to ASCII
   useMirrorRenderLoop({
+    cameraVideoRef: videoRef,
     isWebcamRunning: renderActive,
     terminalDimensions,
     onMediaFps: setFps,
@@ -356,6 +370,7 @@ export function MirrorPage() {
             showSettings={showSettings}
             settingsPanel={
               <BinarySettings
+                cameraFps={cameraFps}
                 config={contentSettings}
                 onChange={handleSettingsChange}
                 mode={AsciiChatMode.MIRROR}
@@ -474,6 +489,7 @@ export function MirrorPage() {
         renderer={(() => {
           return (
             <AsciiRenderer
+              clientLikeKind="mirror"
               ref={rendererRef}
               contentFit={contentFit}
               uiLoading={!renderActive}

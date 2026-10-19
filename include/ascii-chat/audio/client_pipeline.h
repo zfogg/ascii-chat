@@ -61,6 +61,7 @@
 #endif
 
 #include "../audio/mixer.h"
+#include "../audio/processor.h"
 #include "../platform/mutex.h"
 
 // Forward declarations for SpeexDSP types
@@ -177,40 +178,11 @@ typedef struct {
   /** Reserved echo-filter hint in milliseconds; AEC3 currently uses its fixed configuration */
   uint64_t echo_filter_ms;
 
-  /** Noise suppression level in dB (default: -25, negative = more suppression) */
-  int noise_suppress_db;
-  /** AGC target level (default: 8000, range 1-32767) */
-  int agc_level;
-  /** AGC maximum gain in dB (default: 30) */
-  int agc_max_gain;
+  /** Shared microphone enhancement settings. */
+  audio_processor_config_t processor;
 
-  /** Initial jitter buffer margin in milliseconds (default: 60ms) */
+  /** Initial playback jitter margin in milliseconds. */
   uint64_t jitter_margin_ms;
-
-  /** High-pass filter cutoff frequency in Hz (default: 80) */
-  float highpass_hz;
-  /** Low-pass filter cutoff frequency in Hz (default: 8000) */
-  float lowpass_hz;
-
-  /** Compressor threshold in dB (default: -10) */
-  float comp_threshold_db;
-  /** Compressor ratio (default: 4.0 for 4:1) */
-  float comp_ratio;
-  /** Compressor attack time in nanoseconds (default: 10ms) */
-  uint64_t comp_attack_ns;
-  /** Compressor release time in nanoseconds (default: 100ms) */
-  uint64_t comp_release_ns;
-  /** Compressor makeup gain in dB (default: 3) */
-  float comp_makeup_db;
-
-  /** Noise gate threshold (linear, default: 0.01 = -40dB) */
-  float gate_threshold;
-  /** Noise gate attack time in nanoseconds (default: 2ms) */
-  uint64_t gate_attack_ns;
-  /** Noise gate release time in nanoseconds (default: 50ms) */
-  uint64_t gate_release_ns;
-  /** Noise gate hysteresis (default: 0.9) */
-  float gate_hysteresis;
 
   /** Component enable flags */
   client_audio_pipeline_flags_t flags;
@@ -237,7 +209,7 @@ typedef struct {
 
   /** WebRTC AEC3 echo cancellation (opaque pointer to webrtc::EchoCanceller3) */
   void *echo_canceller;
-  struct spectral_processor *spectral;
+  audio_processor_t *processor;
   /** Speex preprocessor state (noise/AGC/VAD) */
   SpeexPreprocessState *preprocess;
 
@@ -253,20 +225,8 @@ typedef struct {
   /** Opus decoder */
   OpusDecoder *decoder;
 
-  /** Dynamic range compressor */
-  compressor_t compressor;
-  /** Noise gate for capture */
-  noise_gate_t noise_gate;
-  /** High-pass filter */
-  highpass_filter_t highpass;
-  /** Low-pass filter */
-  lowpass_filter_t lowpass;
-
   /** Configuration */
   client_audio_pipeline_config_t config;
-
-  /** Smoothed linear gain for the capture AGC. */
-  float agc_current_gain;
 
   /** Frame size in samples */
   int frame_size;

@@ -17,6 +17,7 @@ vi.mock("../../src/hooks/useVideoEncodings", () => ({
 }));
 vi.mock("../../src/utils/mediaDevicePreferences", () => ({
   getMediaDevicePreferences: () => ({ cameraId: media.cameraId }),
+  resolveCameraDeviceId: async () => media.cameraId,
   MEDIA_DEVICE_PREFERENCES_CHANGED: "devices",
 }));
 vi.mock("../../src/wasm/AVState", () => ({

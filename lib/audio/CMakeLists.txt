@@ -2,6 +2,8 @@
 
 set(AUDIO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/test_pattern.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/processor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/effects.c
     ${CMAKE_CURRENT_SOURCE_DIR}/spectral.c
     ${CMAKE_CURRENT_SOURCE_DIR}/audio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/recording.c
@@ -16,4 +18,4 @@ set(AUDIO_SRCS
 set(AUDIO_SRCS ${AUDIO_SRCS} PARENT_SCOPE)
 
 # Preserve non-finite input checks even in Release configurations using fast math.
-set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/spectral.c PROPERTIES COMPILE_OPTIONS "-fno-fast-math")
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/processor.c ${CMAKE_CURRENT_SOURCE_DIR}/spectral.c PROPERTIES COMPILE_OPTIONS "-fno-fast-math")

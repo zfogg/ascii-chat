@@ -6,11 +6,11 @@ import numpy as np
 from test_spectral import load
 
 library_path = Path(sys.argv[1]).resolve()
-lib = load(library_path)
 original_cwd = Path.cwd()
 temporary = tempfile.TemporaryDirectory(prefix="ascii-spectral-test-")
 os.chdir(temporary.name)
 os.environ["TEMP"] = os.environ["TMP"] = os.environ["TMPDIR"] = temporary.name
+lib = load(library_path)
 args = [
     str(
         library_path.parent / ("ascii-chat.exe" if os.name == "nt" else "ascii-chat")

@@ -1,5 +1,5 @@
 # Cross builds must not accidentally link the host's FFTW installation.
-if(USE_MUSL OR IOS)
+if(USE_MUSL OR IOS OR EMSCRIPTEN)
     include(FetchContent)
     function(asciichat_build_fftw)
         set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)

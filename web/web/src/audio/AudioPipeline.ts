@@ -1,5 +1,6 @@
 import { AVState } from "../wasm/AVState";
 import { OpusEncoder } from "./OpusEncoder";
+import { AudioCapture } from "./AudioCapture";
 import { getClientModule, PacketType } from "../wasm/client";
 import {
   createTestPatternAudioSource,
@@ -9,6 +10,7 @@ import {
 import { getMediaDevicePreferences } from "../utils/mediaDevicePreferences";
 
 export interface AudioPipelineOptions {
+  onError?: (error: Error) => void;
   onAudioData?: (payload: Uint8Array) => void;
   /** Receives microphone PCM synchronously while the capture buffer is valid. */
   onMicrophoneSamples?: (samples: Float32Array) => void;
@@ -28,8 +30,7 @@ export class AudioPipeline {
   private context: AudioContext | null = null;
   private stream: MediaStream | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
-  private processor: ScriptProcessorNode | null = null;
-  private gain: GainNode | null = null;
+  private processor: AudioCapture | null = null;
   private outputGain: GainNode | null = null;
   private volume = 1;
   private playbackEnabled = false;
@@ -42,7 +43,6 @@ export class AudioPipeline {
   private codec: OpusEncoder | null = null;
   private playback: AudioWorkletNode | null = null;
   private playbackInit: Promise<void> | null = null;
-  private pending: number[] = [];
   private playAt = 0;
   private sources = new Set<AudioBufferSourceNode>();
   private avState = new AVState();
@@ -188,8 +188,8 @@ export class AudioPipeline {
             channelCount: 1,
             sampleRate: 48000,
             echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
+            noiseSuppression: false,
+            autoGainControl: false,
             ...(microphoneId ? { deviceId: { exact: microphoneId } } : {}),
           };
           try {
@@ -208,8 +208,8 @@ export class AudioPipeline {
                 channelCount: 1,
                 sampleRate: 48000,
                 echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
+                noiseSuppression: false,
+                autoGainControl: false,
               },
               video: false,
             });
@@ -223,39 +223,31 @@ export class AudioPipeline {
     }
     this.stream = stream;
     this.source = this.context.createMediaStreamSource(stream);
-    this.processor = this.context.createScriptProcessor(2048, 1, 1);
-    this.gain = this.context.createGain();
-    this.gain.gain.value = 0;
-    this.processor.onaudioprocess = (event) => {
-      const input = event.inputBuffer.getChannelData(0);
-      this.options.onMicrophoneSamples?.(input);
-      this.microphoneLevel = Math.sqrt(
-        input.reduce((sum, value) => sum + value * value, 0) / input.length,
-      );
-      for (const sample of input) this.pending.push(sample);
-      while (this.pending.length >= 960 && this.codec) {
-        const frame = this.pending.splice(0, 960);
-        const pcm = Int16Array.from(frame, (sample) =>
-          Math.round(
-            Math.max(-1, Math.min(1, sample)) * (sample < 0 ? 32768 : 32767),
-          ),
+    const processor = await AudioCapture.create(this.context, {
+      bypass: isTestMode(),
+      onFrame: (payload, input) => {
+        if (!this.avState.current(generation)) return;
+        this.options.onMicrophoneSamples?.(input);
+        this.microphoneLevel = Math.sqrt(
+          input.reduce((sum, value) => sum + value * value, 0) / input.length,
         );
-        const opus = this.codec.encode(pcm);
-        const payload = new Uint8Array(18 + opus.length);
-        const view = new DataView(payload.buffer);
-        view.setUint32(0, 48000, false);
-        view.setUint32(4, 20, false);
-        view.setUint32(8, 1, false);
-        view.setUint16(16, opus.length, false);
-        payload.set(opus, 18);
         this.options.onAudioData?.(payload);
         this.sent++;
-      }
-      this.reportLevels();
-    };
-    this.source.connect(this.processor);
-    this.processor.connect(this.gain);
-    this.gain.connect(this.context.destination);
+        this.reportLevels();
+      },
+      onError: (error) => {
+        if (!this.avState.current(generation)) return;
+        this.stopCapture();
+        console.error("[Audio] Capture processing failed", error);
+        this.options.onError?.(error);
+      },
+    });
+    if (!this.avState.current(generation)) {
+      processor.close();
+      return;
+    }
+    this.processor = processor;
+    this.source!.connect(processor.node);
     this.avState.complete(generation);
   }
   async replaceMicrophone(deviceId: string): Promise<void> {
@@ -273,8 +265,8 @@ export class AudioPipeline {
       channelCount: 1,
       sampleRate: 48000,
       echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
+      noiseSuppression: false,
+      autoGainControl: false,
       ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
     };
     let nextStream: MediaStream;
@@ -294,8 +286,8 @@ export class AudioPipeline {
           channelCount: 1,
           sampleRate: 48000,
           echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
+          noiseSuppression: false,
+          autoGainControl: false,
         },
         video: false,
       });
@@ -311,7 +303,7 @@ export class AudioPipeline {
     }
 
     const nextSource = this.context.createMediaStreamSource(nextStream);
-    nextSource.connect(this.processor);
+    nextSource.connect(this.processor.node);
     const previousSource = this.source;
     const previousStream = this.stream;
     this.source = nextSource;
@@ -456,18 +448,14 @@ export class AudioPipeline {
   stopCapture(): void {
     this.avState.stop(() => {
       this.microphoneChangeGeneration++;
-      if (this.processor) this.processor.onaudioprocess = null;
-      this.processor?.disconnect();
+      this.processor?.close();
       this.source?.disconnect();
-      this.gain?.disconnect();
       this.stream?.getTracks().forEach((track) => track.stop());
       this.testPatternSource?.stop();
       this.testPatternSource = null;
       this.processor = null;
       this.source = null;
-      this.gain = null;
       this.stream = null;
-      this.pending = [];
     });
   }
   close(): void {

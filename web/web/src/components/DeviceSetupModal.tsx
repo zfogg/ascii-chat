@@ -3,12 +3,16 @@ import {
   VIDEO_ENCODING_LABELS,
 } from "../hooks/useVideoEncodings";
 import type { VideoEncoding } from "../network/videoEncoding";
+import { acquireMediaStream } from "../utils/acquireMediaStream";
+import { playMedia } from "../utils/playMedia";
 import { useUrlState } from "../hooks/useUrlState";
 import { useCallback, useRef, useState } from "react";
 import { Modal, ModalTitle } from "./Modal";
+import { acquireCameraPreview } from "../utils/acquireCameraPreview";
 import {
   getMediaDevicePreferences,
   getStoredMediaDevicePreferences,
+  resolveCameraDeviceId,
   saveMediaDevicePreferences,
 } from "../utils/mediaDevicePreferences";
 
@@ -21,12 +25,44 @@ interface DeviceChoices {
   cameras: MediaDeviceInfo[];
   microphones: MediaDeviceInfo[];
   speakers: MediaDeviceInfo[];
+  defaultMicrophoneId: string;
+}
+
+type InputDeviceKey = "cameraId" | "microphoneId";
+
+const INPUT_DEVICE_KEYS: InputDeviceKey[] = ["cameraId", "microphoneId"];
+
+const EMPTY_INPUT_ERRORS: Record<InputDeviceKey, string | null> = {
+  cameraId: null,
+  microphoneId: null,
+};
+
+function isDeviceStartupTimeout(cause: unknown): boolean {
+  return (
+    (cause instanceof DOMException || cause instanceof Error) &&
+    (cause.name === "AbortError" || cause.name === "TimeoutError") &&
+    /timeout|timed out/i.test(cause.message)
+  );
+}
+
+function describeDeviceError(cause: unknown): string {
+  const exception =
+    cause instanceof DOMException || cause instanceof Error ? cause : null;
+  const name = exception?.name;
+  if (name === "NotReadableError" || name === "TrackStartError")
+    return "In use (unavailable for this tab)";
+  if (name === "NotAllowedError" || name === "PermissionDeniedError")
+    return "Access denied. Allow access in your browser to use this device.";
+  if (isDeviceStartupTimeout(cause))
+    return "Startup timed out. This device may be in use by another tab or app.";
+  return exception?.message || "Unable to open this device.";
 }
 
 const EMPTY_CHOICES: DeviceChoices = {
   cameras: [],
   microphones: [],
   speakers: [],
+  defaultMicrophoneId: "",
 };
 
 function getComparableDeviceLabel(label: string): string {
@@ -81,9 +117,12 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const audioStateCleanupRef = useRef<(() => void) | null>(null);
+  const microphoneSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const previewGenerationRef = useRef(0);
+  const previewGenerationRef = useRef({ cameraId: 0, microphoneId: 0 });
+  const previewOwnersRef = useRef<
+    Record<InputDeviceKey, AbortController | null>
+  >({ cameraId: null, microphoneId: null });
   const isOpenRef = useRef(open);
   const [choices, setChoices] = useState<DeviceChoices>(EMPTY_CHOICES);
   const [preferences, setPreferences] = useUrlState(
@@ -93,172 +132,290 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
   const [level, setLevel] = useState(0);
   const [testingMicrophone, setTestingMicrophone] = useState(false);
   const [testingSpeakers, setTestingSpeakers] = useState(false);
+  const [audioReady, setAudioReady] = useState(false);
   const [audioRunning, setAudioRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState({
+    cameraId: false,
+    microphoneId: false,
+  });
   const [hasCamera, setHasCamera] = useState(false);
   const [hasMicrophone, setHasMicrophone] = useState(false);
+  const [deviceErrors, setDeviceErrors] = useState(EMPTY_INPUT_ERRORS);
+  const [unavailableDevices, setUnavailableDevices] = useState<
+    Record<string, string>
+  >({});
 
-  const stopPreview = useCallback((invalidate = true) => {
-    if (invalidate) previewGenerationRef.current++;
+  const refreshDevices = useCallback(async () => {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const defaultMicrophone = devices.find(
+      (device) => device.kind === "audioinput" && device.deviceId === "default",
+    );
+    const microphones = deduplicateDefaultDevice(
+      devices.filter((device) => device.kind === "audioinput"),
+    );
+    const nextChoices = {
+      cameras: devices.filter((device) => device.kind === "videoinput"),
+      microphones,
+      defaultMicrophoneId:
+        microphones.find(
+          (device) =>
+            defaultMicrophone &&
+            ((defaultMicrophone.groupId &&
+              device.groupId === defaultMicrophone.groupId) ||
+              getComparableDeviceLabel(device.label) ===
+                getComparableDeviceLabel(defaultMicrophone.label)),
+        )?.deviceId ||
+        microphones[0]?.deviceId ||
+        "",
+      speakers: deduplicateDefaultDevice(
+        devices.filter((device) => device.kind === "audiooutput"),
+        true,
+      ),
+    };
+    if (isOpenRef.current) setChoices(nextChoices);
+    return nextChoices;
+  }, []);
+
+  const stopPreview = useCallback(() => {
+    for (const key of INPUT_DEVICE_KEYS) {
+      previewGenerationRef.current[key]++;
+      previewOwnersRef.current[key]?.abort();
+      previewOwnersRef.current[key] = null;
+    }
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
-    audioStateCleanupRef.current?.();
-    audioStateCleanupRef.current = null;
     audioContextRef.current?.close().catch(() => undefined);
     audioContextRef.current = null;
+    setAudioReady(false);
     setAudioRunning(false);
+    microphoneSourceRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     setHasCamera(false);
     setHasMicrophone(false);
+    setLoading({ cameraId: false, microphoneId: false });
     if (videoRef.current) videoRef.current.srcObject = null;
     setLevel(0);
     setTestingMicrophone(false);
   }, []);
 
   const startPreview = useCallback(
-    async (nextPreferences: typeof preferences) => {
-      const generation = ++previewGenerationRef.current;
-      setLoading(true);
-      setError(null);
-      stopPreview(false);
-      try {
-        let stream: MediaStream;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: nextPreferences.cameraId
-              ? { deviceId: { exact: nextPreferences.cameraId } }
-              : true,
-            audio: nextPreferences.microphoneId
-              ? { deviceId: { exact: nextPreferences.microphoneId } }
-              : true,
-          });
-        } catch (cause) {
-          if (!nextPreferences.cameraId && !nextPreferences.microphoneId)
-            throw cause;
-          // A saved device may have been unplugged since the previous visit.
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-          });
-        }
-        if (!isOpenRef.current || generation !== previewGenerationRef.current) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        streamRef.current = stream;
-        setHasCamera(stream.getVideoTracks().length > 0);
-        setHasMicrophone(stream.getAudioTracks().length > 0);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play().catch(() => undefined);
-        }
-
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        if (!isOpenRef.current || generation !== previewGenerationRef.current) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        const cameras = devices.filter(
-          (device) => device.kind === "videoinput",
-        );
-        const microphones = deduplicateDefaultDevice(
-          devices.filter((device) => device.kind === "audioinput"),
-        );
-        const speakers = deduplicateDefaultDevice(
-          devices.filter((device) => device.kind === "audiooutput"),
-          true,
-        );
-        setChoices({
-          cameras,
-          microphones,
-          speakers,
+    async (
+      nextPreferences: typeof preferences,
+      changedInput?: InputDeviceKey,
+    ) => {
+      const cameraSearch = window.location.search;
+      const inputKeys = changedInput ? [changedInput] : INPUT_DEVICE_KEYS;
+      const generations = { ...previewGenerationRef.current };
+      const owners = { ...previewOwnersRef.current };
+      for (const key of inputKeys) {
+        previewOwnersRef.current[key]?.abort();
+        owners[key] = new AbortController();
+        previewOwnersRef.current[key] = owners[key];
+        generations[key] = ++previewGenerationRef.current[key];
+        setLoading((current) => ({ ...current, [key]: true }));
+        setDeviceErrors((current) => ({ ...current, [key]: null }));
+        const preview = streamRef.current;
+        const previousTracks =
+          key === "cameraId"
+            ? preview?.getVideoTracks()
+            : preview?.getAudioTracks();
+        previousTracks?.forEach((track) => {
+          track.stop();
+          preview?.removeTrack(track);
         });
-        const actualCameraId =
-          stream.getVideoTracks()[0]?.getSettings().deviceId || "";
-        const actualMicrophoneId =
-          stream.getAudioTracks()[0]?.getSettings().deviceId || "";
-        setPreferences({
-          cameraId: cameras.some((device) => device.deviceId === actualCameraId)
-            ? actualCameraId
-            : "",
-          microphoneId: microphones.some(
-            (device) => device.deviceId === actualMicrophoneId,
-          )
-            ? actualMicrophoneId
-            : "",
-          speakerId: speakers.some(
-            (device) => device.deviceId === nextPreferences.speakerId,
-          )
-            ? nextPreferences.speakerId
-            : speakers.find((device) => device.deviceId === "default")
-                ?.deviceId ||
-              speakers[0]?.deviceId ||
-              "",
-        });
-
-        const audioContext = new AudioContext();
-        audioContextRef.current = audioContext;
-        const syncAudioState = () => {
-          if (audioContextRef.current === audioContext)
-            setAudioRunning(audioContext.state === "running");
-        };
-        audioContext.addEventListener("statechange", syncAudioState);
-        audioStateCleanupRef.current = () =>
-          audioContext.removeEventListener("statechange", syncAudioState);
-        syncAudioState();
-        // A URL-opened modal may need a later click to satisfy autoplay rules.
-        void audioContext.resume().catch(() => undefined);
-        setTestingMicrophone(true);
-        if (
-          nextPreferences.speakerId &&
-          nextPreferences.speakerId !== "default"
-        ) {
-          await setAudioOutputDevice(
-            audioContext,
-            nextPreferences.speakerId,
-          ).catch(() =>
-            setError("This browser cannot select a speaker output."),
-          );
-        }
-        const source = audioContext.createMediaStreamSource(stream);
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 512;
-        source.connect(analyser);
-        const samples = new Float32Array(analyser.fftSize);
-        const readLevel = () => {
-          if (!isOpenRef.current || generation !== previewGenerationRef.current)
-            return;
-          if (audioContext.state === "running") {
-            analyser.getFloatTimeDomainData(samples);
-            let sum = 0;
-            for (const sample of samples) sum += sample * sample;
-            const rms = Math.sqrt(sum / samples.length);
-            // Map -60 dBFS to silence and 0 dBFS to a full meter.
-            const decibels = 20 * Math.log10(Math.max(rms, 1e-8));
-            setLevel(Math.max(0, Math.min(1, (decibels + 60) / 60)));
-          } else {
-            setLevel(0);
+        if (key === "cameraId") {
+          setHasCamera(false);
+          if (videoRef.current) {
+            videoRef.current.pause();
+            videoRef.current.srcObject = null;
           }
-          animationFrameRef.current = requestAnimationFrame(readLevel);
-        };
-        animationFrameRef.current = requestAnimationFrame(readLevel);
-      } catch (cause) {
-        if (generation === previewGenerationRef.current) {
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "Unable to access camera or microphone.",
-          );
+        } else {
+          setHasMicrophone(false);
+          setTestingMicrophone(false);
+          setLevel(0);
+          microphoneSourceRef.current?.disconnect();
+          microphoneSourceRef.current = null;
+          if (animationFrameRef.current !== null)
+            cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
         }
-      } finally {
-        if (generation === previewGenerationRef.current) setLoading(false);
       }
+      setError(null);
+      let devices: DeviceChoices;
+      try {
+        // Listing devices must not depend on successfully opening a preview.
+        devices = await refreshDevices();
+        if (!isOpenRef.current) return;
+        setPreferences((current) => ({
+          ...current,
+          speakerId: devices.speakers.some(
+            (device) => device.deviceId === current.speakerId,
+          )
+            ? current.speakerId
+            : devices.speakers.find((device) => device.deviceId === "default")
+                ?.deviceId ||
+              devices.speakers[0]?.deviceId ||
+              "",
+        }));
+      } catch (cause) {
+        if (isOpenRef.current) {
+          setError(describeDeviceError(cause));
+          for (const key of inputKeys) {
+            if (generations[key] === previewGenerationRef.current[key])
+              setLoading((current) => ({ ...current, [key]: false }));
+          }
+        }
+        return;
+      }
+
+      await Promise.all(
+        inputKeys.map(async (key) => {
+          const generation = generations[key];
+          const isCurrent = () =>
+            isOpenRef.current &&
+            generation === previewGenerationRef.current[key];
+          if (!isCurrent()) return;
+          const owner = owners[key];
+          if (!owner) return;
+          const isCamera = key === "cameraId";
+          const candidates = isCamera ? devices.cameras : devices.microphones;
+          const requestedId = nextPreferences[key];
+          let deviceId = isCamera
+            ? ""
+            : candidates.some((device) => device.deviceId === requestedId)
+              ? requestedId
+              : devices.defaultMicrophoneId;
+
+          let stream: MediaStream | null = null;
+          let requestedDefault = false;
+          try {
+            if (isCamera) {
+              deviceId = await resolveCameraDeviceId({
+                selectedCameraId:
+                  changedInput === "cameraId"
+                    ? nextPreferences.cameraId
+                    : undefined,
+                cameras: devices.cameras,
+                search: cameraSearch,
+              });
+              if (!isCurrent()) return;
+            }
+            setPreferences((current) => ({ ...current, [key]: deviceId }));
+            requestedDefault = !deviceId;
+            const constraints = deviceId
+              ? { deviceId: { exact: deviceId } }
+              : true;
+            stream = isCamera
+              ? await acquireCameraPreview(deviceId, owner.signal)
+              : await acquireMediaStream(
+                  { video: false, audio: constraints },
+                  owner.signal,
+                );
+            if (!isCurrent()) {
+              stream.getTracks().forEach((track) => track.stop());
+              return;
+            }
+            deviceId =
+              stream.getTracks()[0]?.getSettings().deviceId || deviceId;
+            setPreferences((current) => ({ ...current, [key]: deviceId }));
+            setUnavailableDevices((current) => {
+              const next = { ...current };
+              delete next[`${key}:${deviceId}`];
+              return next;
+            });
+            stream
+              .getTracks()
+              .forEach((track) => streamRef.current?.addTrack(track));
+            if (isCamera) {
+              if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                await playMedia(videoRef.current, owner.signal, 10_000);
+              }
+              if (!isCurrent()) return;
+              setHasCamera(stream.getVideoTracks().length > 0);
+            } else {
+              setHasMicrophone(stream.getAudioTracks().length > 0);
+              setTestingMicrophone(true);
+              const audioContext = audioContextRef.current;
+              if (audioContext) {
+                const source = audioContext.createMediaStreamSource(stream);
+                microphoneSourceRef.current = source;
+                const analyser = audioContext.createAnalyser();
+                analyser.fftSize = 512;
+                source.connect(analyser);
+                const samples = new Float32Array(analyser.fftSize);
+                const readLevel = () => {
+                  if (!isCurrent()) return;
+                  if (audioContext.state === "running") {
+                    analyser.getFloatTimeDomainData(samples);
+                    let sum = 0;
+                    for (const sample of samples) sum += sample * sample;
+                    const rms = Math.sqrt(sum / samples.length);
+                    // Map -60 dBFS to silence and 0 dBFS to a full meter.
+                    const decibels = 20 * Math.log10(Math.max(rms, 1e-8));
+                    setLevel(Math.max(0, Math.min(1, (decibels + 60) / 60)));
+                  } else {
+                    setLevel(0);
+                  }
+                  animationFrameRef.current = requestAnimationFrame(readLevel);
+                };
+                animationFrameRef.current = requestAnimationFrame(readLevel);
+              }
+            }
+          } catch (cause) {
+            if (!isCurrent()) return;
+            stream?.getTracks().forEach((track) => {
+              track.stop();
+              streamRef.current?.removeTrack(track);
+            });
+            if (isCamera) {
+              setHasCamera(false);
+              if (videoRef.current?.srcObject === stream) {
+                videoRef.current.pause();
+                videoRef.current.srcObject = null;
+              }
+            } else {
+              setHasMicrophone(false);
+            }
+            if (requestedDefault) {
+              const revealedDevices = await refreshDevices().catch(
+                () => devices,
+              );
+              if (!isCurrent()) return;
+              deviceId =
+                (isCamera
+                  ? revealedDevices.cameras[0]?.deviceId
+                  : revealedDevices.defaultMicrophoneId) || "";
+              setPreferences((current) => ({ ...current, [key]: deviceId }));
+            }
+            const message = describeDeviceError(cause);
+            setDeviceErrors((current) => ({ ...current, [key]: message }));
+            if (deviceId)
+              setUnavailableDevices((current) => ({
+                ...current,
+                [`${key}:${deviceId}`]: isDeviceStartupTimeout(cause)
+                  ? "Startup timed out (unavailable for this tab)"
+                  : message.startsWith("In use")
+                    ? message
+                    : "Unavailable for this tab",
+              }));
+          } finally {
+            if (isCurrent()) {
+              if (previewOwnersRef.current[key] === owner)
+                previewOwnersRef.current[key] = null;
+              setLoading((current) => ({ ...current, [key]: false }));
+              // Permission changes can reveal additional devices and their labels.
+              void refreshDevices().catch(() => undefined);
+            }
+          }
+        }),
+      );
     },
-    [stopPreview, setPreferences],
+    [refreshDevices, setPreferences],
   );
 
   const attachPreview = useCallback(
@@ -266,28 +423,72 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
       videoRef.current = element;
       if (!element) return;
       isOpenRef.current = true;
+      streamRef.current = new MediaStream();
+      setUnavailableDevices({});
+      setDeviceErrors(EMPTY_INPUT_ERRORS);
+      let previewAudio: AudioContext | null = null;
+      const syncAudioState = () => {
+        if (audioContextRef.current === previewAudio)
+          setAudioRunning(previewAudio?.state === "running");
+      };
+      try {
+        // Output tests do not require a working camera or microphone.
+        previewAudio = new AudioContext();
+        audioContextRef.current = previewAudio;
+        previewAudio.addEventListener("statechange", syncAudioState);
+        setAudioReady(true);
+        syncAudioState();
+        // A URL-opened modal may need a later click to satisfy autoplay rules.
+        void previewAudio.resume().catch(() => undefined);
+      } catch (cause) {
+        setError(describeDeviceError(cause));
+      }
       setEncodingDraft(null);
       const preferences = getMediaDevicePreferences();
       setPreferences(preferences);
+      if (
+        audioContextRef.current &&
+        preferences.speakerId &&
+        preferences.speakerId !== "default"
+      ) {
+        void setAudioOutputDevice(
+          audioContextRef.current,
+          preferences.speakerId,
+        ).catch(() => setError("This browser cannot select a speaker output."));
+      }
       void startPreview(preferences);
+      const onDeviceChange = () => {
+        void refreshDevices().catch(() => undefined);
+      };
+      navigator.mediaDevices.addEventListener("devicechange", onDeviceChange);
       return () => {
+        previewAudio?.removeEventListener("statechange", syncAudioState);
         isOpenRef.current = false;
+        navigator.mediaDevices.removeEventListener(
+          "devicechange",
+          onDeviceChange,
+        );
         stopPreview();
         videoRef.current = null;
       };
     },
-    [startPreview, stopPreview, setPreferences],
+    [startPreview, stopPreview, setPreferences, refreshDevices],
   );
 
   if (!open) return null;
 
   const microphoneTestRunning =
-    testingMicrophone && audioRunning && hasMicrophone && !loading;
+    testingMicrophone && audioRunning && hasMicrophone && !loading.microphoneId;
   const displayedLevel = microphoneTestRunning ? level : 0;
 
   const changeDevice = (key: keyof typeof preferences, value: string) => {
     const nextPreferences = { ...preferences, [key]: value };
     setPreferences(nextPreferences);
+    if (key === "cameraId") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("videoDeviceIndex");
+      window.history.replaceState(window.history.state, "", url);
+    }
     if (key === "speakerId") {
       const audioContext = audioContextRef.current;
       if (audioContext) {
@@ -300,7 +501,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
         );
       }
     } else {
-      void startPreview(nextPreferences);
+      void startPreview(nextPreferences, key);
     }
   };
 
@@ -393,12 +594,12 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
               playsInline
               ref={attachPreview}
             />
-            {loading && (
+            {loading.cameraId && (
               <div className="absolute inset-0 grid place-items-center text-sm text-terminal-8">
                 Starting camera preview…
               </div>
             )}
-            {!loading && !hasCamera && (
+            {!loading.cameraId && !hasCamera && (
               <div className="absolute inset-0 grid place-items-center text-sm text-terminal-8">
                 Camera preview unavailable
               </div>
@@ -410,26 +611,76 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
           <p className="mt-2 text-xs text-terminal-8">
             Preview stays local to this browser.
           </p>
+          <button
+            className="mt-3 text-xs underline"
+            onClick={() => {
+              setUnavailableDevices({});
+              void refreshDevices().catch((cause: unknown) =>
+                setError(describeDeviceError(cause)),
+              );
+            }}
+            type="button"
+          >
+            Refresh device list
+          </button>
         </div>
 
         <div className="space-y-5">
-          <label className="block text-sm">
-            <span className="mb-2 block font-medium">Camera</span>
-            <select
-              className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
-              disabled={loading || choices.cameras.length === 0}
-              onChange={(event) =>
-                changeDevice("cameraId", event.currentTarget.value)
-              }
-              value={preferences.cameraId}
-            >
-              {choices.cameras.map((camera, index) => (
-                <option key={camera.deviceId} value={camera.deviceId}>
-                  {camera.label || `Camera ${index + 1}`}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div>
+            <label className="block text-sm">
+              <span className="mb-2 block font-medium">Camera</span>
+              <select
+                className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
+                aria-describedby={
+                  deviceErrors.cameraId ? "camera-device-error" : undefined
+                }
+                disabled={choices.cameras.length === 0}
+                onChange={(event) =>
+                  changeDevice("cameraId", event.currentTarget.value)
+                }
+                value={preferences.cameraId}
+              >
+                {choices.cameras.length === 0 && (
+                  <option value="">No cameras found</option>
+                )}
+                {preferences.cameraId &&
+                  !choices.cameras.some(
+                    (camera) => camera.deviceId === preferences.cameraId,
+                  ) && (
+                    <option value={preferences.cameraId}>
+                      Selected camera (not currently listed)
+                    </option>
+                  )}
+                {choices.cameras.map((camera, index) => (
+                  <option key={camera.deviceId} value={camera.deviceId}>
+                    {camera.label || `Camera ${index + 1}`}
+                    {unavailableDevices[`cameraId:${camera.deviceId}`] &&
+                      ` — ${unavailableDevices[`cameraId:${camera.deviceId}`]}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {deviceErrors.cameraId && (
+              <div
+                className="mt-2 text-xs text-terminal-3"
+                id="camera-device-error"
+                role="status"
+              >
+                <p>
+                  {deviceErrors.cameraId} Choose another camera or retry when it
+                  is available.
+                </p>
+                <button
+                  className="mt-1 cursor-pointer underline disabled:cursor-not-allowed disabled:opacity-50"
+                  type="button"
+                  disabled={loading.cameraId}
+                  onClick={() => void startPreview(preferences, "cameraId")}
+                >
+                  Retry camera
+                </button>
+              </div>
+            )}
+          </div>
 
           <div>
             <label className="block text-sm">
@@ -484,12 +735,15 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
             <span className="mb-2 block font-medium">Speakers</span>
             <select
               className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
-              disabled={loading || choices.speakers.length === 0}
+              disabled={choices.speakers.length === 0}
               onChange={(event) =>
                 changeDevice("speakerId", event.currentTarget.value)
               }
               value={preferences.speakerId}
             >
+              {choices.speakers.length === 0 && (
+                <option value="">No speakers found</option>
+              )}
               {choices.speakers.map((speaker, index) => (
                 <option key={speaker.deviceId} value={speaker.deviceId}>
                   {speaker.deviceId === "default"
@@ -502,7 +756,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
           <button
             className="rounded border border-terminal-8 px-3 py-1.5 text-xs hover:bg-terminal-8 disabled:opacity-50"
             disabled={
-              loading || choices.speakers.length === 0 || testingSpeakers
+              choices.speakers.length === 0 || testingSpeakers || !audioReady
             }
             onClick={() =>
               void playSpeakerTest().catch((cause: unknown) => {
@@ -519,30 +773,64 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
             {testingSpeakers ? "Playing test tone…" : "Test speakers"}
           </button>
 
-          <label className="block text-sm">
-            <span className="mb-2 block font-medium">Microphone</span>
-            <select
-              className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
-              disabled={loading || choices.microphones.length === 0}
-              onChange={(event) =>
-                changeDevice("microphoneId", event.currentTarget.value)
-              }
-              value={preferences.microphoneId}
-            >
-              {choices.microphones.map((microphone, index) => (
-                <option key={microphone.deviceId} value={microphone.deviceId}>
-                  {microphone.label || `Microphone ${index + 1}`}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div>
+            <label className="block text-sm">
+              <span className="mb-2 block font-medium">Microphone</span>
+              <select
+                className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
+                aria-describedby={
+                  deviceErrors.microphoneId
+                    ? "microphone-device-error"
+                    : undefined
+                }
+                disabled={choices.microphones.length === 0}
+                onChange={(event) =>
+                  changeDevice("microphoneId", event.currentTarget.value)
+                }
+                value={preferences.microphoneId}
+              >
+                {choices.microphones.length === 0 && (
+                  <option value="">No microphones found</option>
+                )}
+                {choices.microphones.map((microphone, index) => (
+                  <option key={microphone.deviceId} value={microphone.deviceId}>
+                    {microphone.label || `Microphone ${index + 1}`}
+                    {unavailableDevices[
+                      `microphoneId:${microphone.deviceId}`
+                    ] &&
+                      ` — ${unavailableDevices[`microphoneId:${microphone.deviceId}`]}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {deviceErrors.microphoneId && (
+              <div
+                className="mt-2 text-xs text-terminal-3"
+                id="microphone-device-error"
+                role="status"
+              >
+                <p>
+                  {deviceErrors.microphoneId} Choose another microphone or retry
+                  when it is available.
+                </p>
+                <button
+                  className="mt-1 cursor-pointer underline disabled:cursor-not-allowed disabled:opacity-50"
+                  type="button"
+                  disabled={loading.microphoneId}
+                  onClick={() => void startPreview(preferences, "microphoneId")}
+                >
+                  Retry microphone
+                </button>
+              </div>
+            )}
+          </div>
 
           <div>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-medium">Microphone level</span>
               <button
                 className="rounded border border-terminal-8 px-3 py-1.5 text-xs hover:bg-terminal-8 disabled:opacity-50"
-                disabled={!hasMicrophone || loading}
+                disabled={!hasMicrophone || loading.microphoneId}
                 onClick={() => {
                   if (microphoneTestRunning) {
                     setTestingMicrophone(false);
@@ -559,11 +847,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
                     },
                     (cause: unknown) => {
                       if (audioContextRef.current === context)
-                        setError(
-                          cause instanceof Error
-                            ? cause.message
-                            : "Unable to start microphone levels.",
-                        );
+                        setError(describeDeviceError(cause));
                     },
                   );
                 }}

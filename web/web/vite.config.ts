@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import sitemap from "vite-plugin-sitemap";
 import { execFileSync, execSync } from "child_process";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 
 // Fresh checkouts have only the canonical bundle; publish runtime URLs for
 // development, production builds, and previews without recompiling WASM.
@@ -11,6 +13,11 @@ execFileSync(
   [path.resolve(__dirname, "scripts/wasm-build.mjs"), "--publish-only"],
   { stdio: "inherit" },
 );
+const wasmManifestPath = path.resolve(__dirname, "src/wasm/dist/manifest.json");
+const wasmVersion = createHash("sha256")
+  .update(readFileSync(wasmManifestPath))
+  .digest("hex")
+  .slice(0, 32);
 
 const getCommitSha = () => {
   // Check deployment platform environment variables in order
@@ -37,8 +44,22 @@ const getCommitSha = () => {
 export default defineConfig({
   define: {
     __COMMIT_SHA__: JSON.stringify(getCommitSha()),
+    __WASM_ASSET_BASE__: JSON.stringify(`/wasm/${wasmVersion}/`),
   },
   plugins: [
+    {
+      name: "wasm-manifest-reload",
+      configureServer(server) {
+        server.watcher.add(wasmManifestPath);
+        const reload = (file: string) => {
+          if (path.resolve(file) === wasmManifestPath) void server.restart();
+        };
+        server.watcher.on("change", reload);
+        server.httpServer?.once("close", () => {
+          server.watcher.off("change", reload);
+        });
+      },
+    },
     react(),
     sitemap({
       hostname: "https://web.ascii-chat.com",

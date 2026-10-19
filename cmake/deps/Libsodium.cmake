@@ -89,12 +89,13 @@ if(DEFINED EMSCRIPTEN)
     if(CMAKE_HOST_WIN32)
         set(LIBSODIUM_CONFIGURE_COMMAND "${ASCIICHAT_BASH_EXECUTABLE}" <SOURCE_DIR>/configure)
         set(LIBSODIUM_WASM_CC "CC=emcc.bat")
-        set(LIBSODIUM_WASM_MAKE_SHELL "SHELL=C:/Progra~1/Git/usr/bin/sh.exe")
     else()
         set(LIBSODIUM_CONFIGURE_COMMAND <SOURCE_DIR>/configure)
         set(LIBSODIUM_WASM_CC "CC=emcc")
-        set(LIBSODIUM_WASM_MAKE_SHELL)
     endif()
+
+    include(${CMAKE_CURRENT_LIST_DIR}/../utils/WasmAutotools.cmake)
+    asciichat_wasm_make_commands(LIBSODIUM_WASM_BUILD_COMMAND LIBSODIUM_WASM_INSTALL_COMMAND)
 
     include(ExternalProject)
     include(FetchContent)
@@ -103,6 +104,7 @@ if(DEFINED EMSCRIPTEN)
         URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/libsodium-src"
+        SOURCE_SUBDIR asciichat-autotools
         UPDATE_DISCONNECTED ON
     )
     FetchContent_MakeAvailable(libsodium-src)
@@ -132,8 +134,8 @@ if(DEFINED EMSCRIPTEN)
                 CFLAGS=-O2\ -fPIC
                 LDFLAGS=--no-entry
                 ac_cv_func_memset_s=no
-            BUILD_COMMAND make -j ${LIBSODIUM_WASM_MAKE_SHELL}
-            INSTALL_COMMAND make ${LIBSODIUM_WASM_MAKE_SHELL} install
+            BUILD_COMMAND ${LIBSODIUM_WASM_BUILD_COMMAND}
+            INSTALL_COMMAND ${LIBSODIUM_WASM_INSTALL_COMMAND}
             BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
             LOG_CONFIGURE TRUE
             LOG_BUILD TRUE

@@ -62,7 +62,6 @@ export class ClientConnection {
   private wasmReinitInProgress = false;
   private deferredPackets: Uint8Array[] = [];
   private socketHasEverOpened = false; // Track if this socket instance has ever opened
-  private packetStats: Map<number, number> = new Map(); // Track packets by type
 
   constructor(private options: ClientConnectionOptions) {}
 
@@ -89,17 +88,6 @@ export class ClientConnection {
 
     // Register callback so WASM can send raw packets back through WebSocket
     registerSendPacketCallback((rawPacket: Uint8Array) => {
-      // Try to parse the packet to get its type name
-      let typeInfo = `${rawPacket.length} bytes`;
-      try {
-        const parsed = parsePacket(rawPacket);
-        typeInfo = `type=${parsed.type} (${packetTypeName(parsed.type)}) ${rawPacket.length} bytes`;
-      } catch {
-        /* ignore parse errors */
-      }
-      console.error(
-        `[ClientConnection] >>> WASM->JS->WS sending raw packet: ${typeInfo}`,
-      );
       if (!this.socket) {
         console.error(
           "[ClientConnection] Cannot send packet - socket not connected",
@@ -107,9 +95,7 @@ export class ClientConnection {
         return;
       }
       this.socket.send(rawPacket);
-      console.error(`[ClientConnection] >>> WASM->JS->WS packet sent OK`);
     });
-    console.error("[ClientConnection] WASM send packet callback registered");
 
     // Generate client keypair
     console.log("[ClientConnection] Generating keypair...");
@@ -147,7 +133,7 @@ export class ClientConnection {
         // The reconnection logic will handle these - just log them
       },
       onStateChange: (state) => {
-        console.error(
+        console.log(
           `[ClientConnection] *** onStateChange: state='${state}' wasEverConnected=${this.wasEverConnected}`,
         );
         console.log("[ClientConnection] WebSocket state:", state);
@@ -270,9 +256,6 @@ export class ClientConnection {
   private handlePacket(rawPacket: Uint8Array): void {
     // Defer packet handling if WASM is being reinitialized
     if (this.wasmReinitInProgress) {
-      console.error(
-        `[ClientConnection] WASM reinit in progress, deferring packet (${rawPacket.length} bytes)`,
-      );
       this.deferredPackets.push(rawPacket);
       return;
     }
@@ -280,39 +263,6 @@ export class ClientConnection {
     try {
       // Parse packet header
       const parsed = parsePacket(rawPacket);
-
-      // Track packet statistics
-      const count = (this.packetStats.get(parsed.type) || 0) + 1;
-      this.packetStats.set(parsed.type, count);
-
-      // Log stats every 100 packets
-      // if (
-      //   Array.from(this.packetStats.values()).reduce((a, b) => a + b, 0) %
-      //     100 ===
-      //   0
-      // ) {
-      //   const stats: string[] = [];
-      //   for (const [type, cnt] of this.packetStats.entries()) {
-      //     stats.push(`${packetTypeName(type)}=${cnt}`);
-      //   }
-      //   console.error(
-      //     `[ClientConnection] PACKET STATS (total packets): ${stats.join(", ")}`,
-      //   );
-      // }
-
-      const name = packetTypeName(parsed.type);
-      console.log(`[ClientConnection] ========== PACKET RECEIVED ==========`);
-      console.log(`[ClientConnection] Type: ${parsed.type} (${name})`);
-      console.log(
-        `[ClientConnection] Raw packet size: ${rawPacket.length} bytes`,
-      );
-      console.log(`[ClientConnection] Payload size: ${parsed.length} bytes`);
-      console.log(`[ClientConnection] Client ID: ${parsed.client_id}`);
-      console.error(
-        `[ClientConnection] <<< RECV packet type=${parsed.type} (${name}) len=${rawPacket.length} payload_len=${
-          parsed.length
-        } client_id=${parsed.client_id}`,
-      );
 
       // Extract payload (skip header)
       const HEADER_SIZE = 22; // sizeof(packet_header_t): magic(8) + type(2) + length(4) + crc32(4) + client_id(4)
@@ -406,19 +356,6 @@ export class ClientConnection {
           // console.log(
           //   `[ClientConnection] Inner payload extracted: ${innerPayload.length} bytes`,
           // );
-
-          // Track inner packet types too
-          const innerCount = (this.packetStats.get(innerParsed.type) || 0) + 1;
-          this.packetStats.set(innerParsed.type, innerCount);
-
-          // if (innerParsed.type === PacketType.ASCII_FRAME) {
-          //   console.log(
-          //     `[ClientConnection] ========== INNER PACKET IS ASCII_FRAME ==========`,
-          //   );
-          //   console.log(
-          //     `[ClientConnection] Calling user callback with ASCII_FRAME...`,
-          //   );
-          // }
 
           // Call user callback with the decrypted inner packet
           this.onPacketCallback?.(innerParsed, innerPayload);
@@ -521,25 +458,9 @@ export class ClientConnection {
     }
 
     const name = packetTypeName(packetType);
-    console.log(
-      `[ClientConnection] sendPacket() called: type=${packetType} (${name}), payload_size=${payload.length}`,
-    );
-    console.log(
-      `[ClientConnection] Payload hex: [${Array.from(payload.slice(0, 32))
-        .map((b) => `0x${b.toString(16).padStart(2, "0")}`)
-        .join(" ")}]${payload.length > 32 ? "..." : ""}`,
-    );
 
     try {
       const state = this.getState();
-      console.log(
-        `[ClientConnection] Current connection state: ${state} (${ConnectionState[state]})`,
-      );
-      console.error(
-        `[ClientConnection] STATE_CHECK: about to send ${name}, state=${state} CONNECTED=${
-          ConnectionState.CONNECTED
-        } HANDSHAKE=${ConnectionState.HANDSHAKE}`,
-      );
 
       if (state === ConnectionState.CONNECTED) {
         if (!this.usesApplicationEncryption) {
@@ -548,13 +469,10 @@ export class ClientConnection {
         }
         // Matching TCP transport protocol: encrypt entire packet, wrap in PACKET_TYPE_ENCRYPTED
         // 1. Build plaintext packet (header + payload)
-        const t0 = performance.now();
         const plaintextPacket = serializePacket(packetType, payload, 0);
-        const t1 = performance.now();
 
         // 2. Encrypt the entire plaintext packet
         const ciphertext = encryptPacket(plaintextPacket);
-        const t2 = performance.now();
 
         // 3. Wrap ciphertext in PACKET_TYPE_ENCRYPTED header
         const encryptedPacket = serializePacket(
@@ -562,22 +480,8 @@ export class ClientConnection {
           ciphertext,
           0,
         );
-        const t3 = performance.now();
-        this.socket.send(encryptedPacket);
-        const t4 = performance.now();
 
-        // Timing for IMAGE_FRAME packets (large frames)
-        if (packetType === PacketType.IMAGE_FRAME) {
-          console.log(
-            `[WS_TIMING] Browser send ${name}: serialize=${(t1 - t0).toFixed(1)}ms encrypt=${(
-              t2 - t1
-            ).toFixed(
-              1,
-            )}ms wrap=${(t3 - t2).toFixed(1)}ms ws_send=${(t4 - t3).toFixed(1)}ms total=${(
-              t4 - t0
-            ).toFixed(1)}ms size=${encryptedPacket.length}`,
-          );
-        }
+        this.socket.send(encryptedPacket);
       } else if (state === ConnectionState.HANDSHAKE) {
         // During handshake, send unencrypted ACIP packet
         // Delegate to sendUnencryptedAcipPacket for consistent handling

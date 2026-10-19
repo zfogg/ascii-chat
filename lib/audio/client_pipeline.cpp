@@ -115,32 +115,8 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
 
       .echo_filter_ms = 250,
 
-      .noise_suppress_db = -25,
-      .agc_level = 16000, // Increased from 8000 for louder output
-      .agc_max_gain = 35, // Increased from 30 dB to handle very quiet mics (35 dB = ~56x gain)
-
-      // Jitter margin: wait this long before starting playback
-      // Lower = less latency but more risk of underruns
+      .processor = audio_processor_default_config(CLIENT_AUDIO_PIPELINE_SAMPLE_RATE),
       .jitter_margin_ms = 60,
-
-      // Higher cutoff to cut low-frequency rumble and feedback
-      .highpass_hz = 150.0f, // Was 80Hz, increased to break rumble feedback loop
-      .lowpass_hz = 8000.0f,
-
-      // Compressor: only compress loud peaks, moderate makeup for volume
-      // User reported clipping with +6dB makeup gain
-      .comp_threshold_db = -12.0f,            // Compress above -12dB (was -6dB)
-      .comp_ratio = 3.0f,                     // Gentler 3:1 ratio
-      .comp_attack_ns = 5 * NS_PER_MS_INT,    // Fast attack for peaks
-      .comp_release_ns = 150 * NS_PER_MS_INT, // Slower release
-      .comp_makeup_db = 6.0f,                 // Increased from 2dB for more output volume
-
-      // Noise gate: VERY aggressive to cut quiet background audio completely
-      // User feedback: "don't amplify or play quiet background audio at all"
-      .gate_threshold = 0.08f,               // -22dB threshold (was 0.02/-34dB) - cuts quiet audio hard
-      .gate_attack_ns = 500 * NS_PER_US_INT, // Very fast attack
-      .gate_release_ns = 30 * NS_PER_MS_INT, // Fast release (was 50ms)
-      .gate_hysteresis = 0.3f,               // Tighter hysteresis = stays closed longer
 
       .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
   };
@@ -150,9 +126,15 @@ client_audio_pipeline_config_t client_audio_pipeline_config_for_source(bool has_
   client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
   const options_t *options = options_get();
   if (options) {
-    bool media = options->test_audio ||
-                 (has_media_audio && options->audio_capture_source != AUDIO_CAPTURE_SOURCE_MIC &&
-                  options->audio_capture_source != AUDIO_CAPTURE_SOURCE_REMOTE);
+    config.processor.spectral_enabled = options->audio_spectral && !options->test_audio;
+    config.processor.spectral.fft_size = options->audio_fft_size;
+    config.processor.spectral.noise_gate = options->audio_spectral_gate;
+    config.processor.spectral.compressor = options->audio_multiband;
+    config.processor.spectral.adaptive_eq = options->audio_adaptive_eq;
+    config.processor.spectral.pitch_correct = options->audio_pitch_correct;
+    config.processor.spectral.auto_gain = options->audio_spectral_agc;
+    bool media = options->test_audio || (has_media_audio && options->audio_capture_source != AUDIO_CAPTURE_SOURCE_MIC &&
+                                         options->audio_capture_source != AUDIO_CAPTURE_SOURCE_REMOTE);
     config.opus_application = media ? OPUS_APPLICATION_AUDIO : OPUS_APPLICATION_VOIP;
     config.opus_bitrate = media ? 128000 : 32000;
   }
@@ -188,7 +170,6 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
 
   p->flags = p->config.flags;
   p->frame_size = p->config.sample_rate * p->config.frame_duration_ms / 1000;
-  p->agc_current_gain = 1.0f;
 
   // No mutex needed - full-duplex means single callback thread handles all AEC3
 
@@ -299,8 +280,8 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   // Initialize debug WAV writers for AEC3 analysis (if echo_cancel enabled)
   p->debug_wav_aec3_in = NULL;
   p->debug_wav_aec3_out = NULL;
-  if (p->flags.echo_cancel) {
-    // Open WAV files to capture AEC3 input and output
+  if (p->flags.echo_cancel && wav_dump_enabled()) {
+    // Record microphone diagnostics only when WAV dumping was requested.
     char tmp[PLATFORM_MAX_PATH_LENGTH];
     if (platform_get_temp_dir(tmp, sizeof(tmp))) {
       char path[PLATFORM_MAX_PATH_LENGTH];
@@ -319,49 +300,12 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     log_info("✓ AEC3 echo cancellation enabled (full-duplex mode, no ring buffer delay)");
   }
 
-  // Initialize audio processing components (compressor, noise gate, filters)
-  // These are applied in the capture path after AEC3 and before Opus encoding
-  {
-    float sample_rate = (float)p->config.sample_rate;
-
-    // Initialize compressor with config values
-    compressor_init(&p->compressor, sample_rate);
-    compressor_set_params(&p->compressor, p->config.comp_threshold_db, p->config.comp_ratio, p->config.comp_attack_ns,
-                          p->config.comp_release_ns, p->config.comp_makeup_db);
-    log_debug("✓ Capture compressor: threshold=%.1fdB, ratio=%.1f:1, makeup=+%.1fdB", p->config.comp_threshold_db,
-             p->config.comp_ratio, p->config.comp_makeup_db);
-
-    // Initialize noise gate with config values
-    noise_gate_init(&p->noise_gate, sample_rate);
-    noise_gate_set_params(&p->noise_gate, p->config.gate_threshold, p->config.gate_attack_ns, p->config.gate_release_ns,
-                          p->config.gate_hysteresis);
-    log_debug("✓ Capture noise gate: threshold=%.4f (%.1fdB)", p->config.gate_threshold,
-             20.0f * log10f(p->config.gate_threshold + 1e-10f));
-
-    // Initialize highpass filter (removes low-frequency rumble)
-    highpass_filter_init(&p->highpass, p->config.highpass_hz, sample_rate);
-    log_debug("✓ Capture highpass filter: %.1f Hz", p->config.highpass_hz);
-
-    // Initialize lowpass filter (removes high-frequency hiss)
-    lowpass_filter_init(&p->lowpass, p->config.lowpass_hz, sample_rate);
-    log_debug("✓ Capture lowpass filter: %.1f Hz", p->config.lowpass_hz);
-  }
-
-  if (options_get() && options_get()->audio_spectral && !options_get()->test_audio) {
-    spectral_config_t spectral_config = spectral_default_config(p->config.sample_rate);
-    spectral_config.fft_size = options_get()->audio_fft_size;
-    spectral_config.noise_gate = options_get()->audio_spectral_gate;
-    spectral_config.compressor = options_get()->audio_multiband;
-    spectral_config.adaptive_eq = options_get()->audio_adaptive_eq;
-    spectral_config.pitch_correct = options_get()->audio_pitch_correct;
-    spectral_config.auto_gain = options_get()->audio_spectral_agc;
-    if (spectral_config.auto_gain)
-      p->flags.agc = false;
-    if (spectral_config.compressor)
-      p->flags.compressor = false;
-    if (spectral_create(&spectral_config, &p->spectral) != ASCIICHAT_OK)
-      goto error;
-  }
+  p->config.processor.sample_rate = p->config.sample_rate;
+  p->config.processor.spectral.sample_rate = p->config.sample_rate;
+  p->config.processor.flags = {p->flags.agc, p->flags.compressor, p->flags.noise_gate, p->flags.highpass,
+                               p->flags.lowpass};
+  if (audio_processor_create(&p->config.processor, &p->processor) != ASCIICHAT_OK)
+    goto error;
   p->initialized = true;
 
   // Initialize startup fade-in to prevent initial microphone click
@@ -371,8 +315,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   log_debug("✓ Capture fade-in: %d samples (200ms)", p->capture_fadein_remaining);
 
   log_info("Audio pipeline created: %dHz, %llums frames, %dkbps Opus", p->config.sample_rate,
-           (unsigned long long)p->config.frame_duration_ms,
-           p->config.opus_bitrate / 1000);
+           (unsigned long long)p->config.frame_duration_ms, p->config.opus_bitrate / 1000);
 
   (void)NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(p, "audio_pipeline", NULL);
 
@@ -387,8 +330,8 @@ void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
   if (!pipeline)
     return;
 
-  spectral_destroy(pipeline->spectral);
-  pipeline->spectral = NULL;
+  audio_processor_destroy(pipeline->processor);
+  pipeline->processor = NULL;
 
   // Clean up WebRTC AEC3 AudioBuffer instances
   if (pipeline->aec3_render_buffer) {
@@ -440,6 +383,8 @@ void client_audio_pipeline_set_flags(client_audio_pipeline_t *pipeline, client_a
     return;
   // No mutex needed - flags are only read by capture thread
   pipeline->flags = flags;
+  audio_processor_set_flags(pipeline->processor,
+                            {flags.agc, flags.compressor, flags.noise_gate, flags.highpass, flags.lowpass});
 }
 
 client_audio_pipeline_flags_t client_audio_pipeline_get_flags(client_audio_pipeline_t *pipeline) {
@@ -631,7 +576,7 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
             if (++duplex_log_count % 100 == 1) {
               webrtc::EchoControl::Metrics metrics = wrapper->aec3->GetMetrics();
               log_debug("AEC3 DUPLEX: ERL=%.1f ERLE=%.1f delay=%dms", metrics.echo_return_loss,
-                       metrics.echo_return_loss_enhancement, metrics.delay_ms);
+                        metrics.echo_return_loss_enhancement, metrics.delay_ms);
               audio_analysis_set_aec3_metrics(metrics.echo_return_loss, metrics.echo_return_loss_enhancement,
                                               metrics.delay_ms);
             }
@@ -647,50 +592,10 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
     wav_writer_write((wav_writer_t *)pipeline->debug_wav_aec3_out, processed_output, capture_count);
   }
 
-  if (pipeline->spectral && capture_count > 0) {
-    spectral_process(pipeline->spectral, processed_output, processed_output, (size_t)capture_count);
-  }
-
-  // Adjust gain from this frame's level. Applying agc_max_gain as a constant
-  // pre-gain amplifies silence and background noise by the maximum amount.
-  if (pipeline->flags.agc && capture_count > 0) {
-    double energy = 0.0;
-    for (int i = 0; i < capture_count; i++) {
-      const double sample = processed_output[i];
-      energy += sample * sample;
-    }
-    const float rms = static_cast<float>(std::sqrt(energy / capture_count));
-    const float target_rms = std::clamp(pipeline->config.agc_level / 32768.0f, 0.05f, 0.5f);
-    const float max_gain_db = std::clamp(static_cast<float>(pipeline->config.agc_max_gain), 0.0f, 36.0f);
-    const float max_gain = std::pow(10.0f, max_gain_db / 20.0f);
-    const float desired_gain = rms > 1e-5f ? std::clamp(target_rms / rms, 1.0f, max_gain) : 1.0f;
-
-    // Attenuate a loud frame quickly and raise quiet input more gradually.
-    const float smoothing = desired_gain < pipeline->agc_current_gain ? 0.25f : 0.05f;
-    pipeline->agc_current_gain += smoothing * (desired_gain - pipeline->agc_current_gain);
-    for (int i = 0; i < capture_count; i++) {
-      processed_output[i] *= pipeline->agc_current_gain;
-    }
-  }
-
-  // Apply capture processing chain: filters, noise gate, compressor
-  if (pipeline->flags.highpass) {
-    highpass_filter_process_buffer(&pipeline->highpass, processed_output, capture_count);
-  }
-  if (pipeline->flags.lowpass) {
-    lowpass_filter_process_buffer(&pipeline->lowpass, processed_output, capture_count);
-  }
-  if (pipeline->flags.noise_gate) {
-    noise_gate_process_buffer(&pipeline->noise_gate, processed_output, capture_count);
-  }
-  if (pipeline->flags.compressor) {
-    for (int i = 0; i < capture_count; i++) {
-      float gain = compressor_process_sample(&pipeline->compressor, processed_output[i]);
-      processed_output[i] *= gain;
-    }
-    // Apply soft clipping after compressor - threshold=0.7 gives 3dB headroom
-    soft_clip_buffer(processed_output, capture_count, 0.7f, 3.0f);
-  }
+  asciichat_error_t result =
+      audio_processor_process(pipeline->processor, processed_output, processed_output, (size_t)capture_count);
+  if (result != ASCIICHAT_OK)
+    log_error("Audio enhancement failed: %d", result);
 }
 
 /**
@@ -709,12 +614,11 @@ void client_audio_pipeline_reset(client_audio_pipeline_t *pipeline) {
   if (!pipeline)
     return;
 
-  spectral_reset(pipeline->spectral);
+  audio_processor_reset(pipeline->processor);
 
   // Reset global counters
   g_render_frames_fed.store(0, std::memory_order_relaxed);
   g_max_render_rms.store(0.0f, std::memory_order_relaxed);
-  pipeline->agc_current_gain = 1.0f;
 
   log_info("Pipeline state reset");
 }

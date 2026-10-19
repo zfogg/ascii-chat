@@ -1,5 +1,40 @@
 # FFTW spectral audio processing
 
+## Shared microphone processing
+
+Native and browser clients use `audio_processor_t` (`audio/processor.h`) for the
+same PCM enhancement: spectral denoising, gain control, high/low-pass filters,
+optional noise gating, compression and soft clipping. Configuration is explicit;
+the processor does not read CLI options, capture devices, encode Opus or send
+packets. Each instance has one processing owner. Processing accepts arbitrary
+block sizes and in-place buffers, with no allocations or locks in the hot path.
+Gain metering follows the sample clock so changing callback sizes does not change
+the result. Spectral AGC/compression replace their traditional equivalents.
+
+The native client first runs AEC3 using its actual speaker playback reference,
+then calls the shared processor. Browser microphone capture requests native
+`getUserMedia` echo cancellation, with browser noise suppression and gain control
+disabled to avoid applying those effects twice. An AudioWorklet transfers bounded,
+reusable 20 ms PCM buffers directly to a dedicated worker running the shared C
+processor and Opus encoder. Audio processing does not run on the UI thread.
+The worker uses its own WASM instance and codec state, independent of playback.
+Synthetic test audio bypasses microphone enhancement.
+
+The native server separately performs participant mixing, crowd scaling,
+compression and clipping. Server spectral processing remains opt-in. A server mix
+does not replace microphone enhancement or local echo cancellation.
+
+Browser AEC must be assessed with real speakers and microphones, including
+simultaneous speech and output-device changes, because received audio is rendered
+through Web Audio rather than an incoming WebRTC audio track. Requested
+constraints and `getSettings()` alone do not measure echo removal. A WASM AEC3
+backend should only replace browser AEC if acoustic testing shows a need; running
+both cancellers on the same microphone is not the intended configuration.
+
+`tests/audio/test_processor.py` verifies the compiled PCM processor's callback
+size invariance, reset, in-place processing and media bypass, and can emit raw
+float32 native/WASM comparison fixtures with an optional output directory.
+
 Microphone spectral noise reduction is enabled by default. Media files and
 `--test-audio` bypass microphone processing. When microphone and media are mixed,
 media samples are added after the microphone processor. Other spectral effects

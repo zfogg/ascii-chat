@@ -278,26 +278,6 @@ export function useClientConnection(options: UseClientConnectionOptions) {
 
             try {
               const frame = parseAsciiFrame(decryptedPayload);
-              if (receivedFrameCountRef.current % 60 === 0)
-                console.info(
-                  "[useClientConnection] parsed ASCII_FRAME",
-                  JSON.stringify({
-                    received: receivedFrameCountRef.current,
-                    dimensions: `${frame.header.width}x${frame.header.height}`,
-                    rendererDimensions: rendererRef.current
-                      ? `${rendererRef.current.getDimensions().cols}x${rendererRef.current.getDimensions().rows}`
-                      : null,
-                    ansiBytes: frame.ansiString.length,
-                    visibleChars: (
-                      frame.ansiString
-                        // Strip ANSI escape sequences before counting visible cells.
-                        // oxlint-disable-next-line no-control-regex
-                        .replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "")
-                        .match(/\S/g) || []
-                    ).length,
-                    sample: frame.ansiString.slice(0, 96),
-                  }),
-                );
               // Track unique frames at reception (for measuring actual frames from server)
               const frameHash = hashFrame(frame.ansiString);
               const previousFrameHash = receivedFrameHashRef.current;

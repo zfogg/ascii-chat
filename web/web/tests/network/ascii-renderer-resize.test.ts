@@ -55,6 +55,7 @@ it("pauses during resize debounce then renders server grids at the local canvas 
   const timeout = { current: null as ReturnType<typeof setTimeout> | null };
   const params = {
     ref,
+    clientLikeKind: "mirror",
     moduleRef: {
       current: {
         HEAPU8: new Uint8Array(4096),

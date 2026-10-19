@@ -25,9 +25,6 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
   const packetArray = new Uint8Array(HEAPU8.buffer, packet_data, packet_len);
   const packetCopy = new Uint8Array(packetArray);
 
-  var pktType = packetCopy.length >= 10 ? ((packetCopy[8] << 8) | packetCopy[9]) : -1;
-  console.error('[WASM->JS] Sending raw packet:', packetCopy.length, 'bytes, type=0x' + pktType.toString(16));
-
   // Send as raw binary packet via WebSocket
   Module.sendPacketCallback(packetCopy);
 });
@@ -361,8 +358,8 @@ int client_init_with_args(const char *args_json) {
     return -1;
   }
 
-  // Initialize logging to stderr (console.error in browser)
-  log_init(NULL, LOG_DEBUG, true, false);
+  // Honor the requested verbosity and let INFO use stdout (console.log).
+  log_init(NULL, GET_OPTION(log_level), false, false);
   // Use debug-style format in WASM so browser console shows full log headers
   log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
   log_info("WASM client initialized via logging system");

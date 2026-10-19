@@ -2,8 +2,10 @@ import { FramePresentationScheduler } from "../network/FramePresentationSchedule
 import { SessionInvite } from "../components/SessionInvite";
 import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
 import { useAutoGridSize } from "../hooks/useAutoGridSize";
+import { useCameraFrameRate } from "../hooks/useCameraFrameRate";
 import { useRenderSettings } from "../hooks/useRenderSettings";
 import { useUrlState } from "../hooks/useUrlState";
+import { readUrlValue } from "../utils/urlState";
 import {
   useCallback,
   useEffect,
@@ -196,6 +198,9 @@ export function ClientPage({
   );
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [webcamDisabledByUser, setWebcamDisabledByUser] = useState(false);
+  const [deviceSetupOpen, setDeviceSetupOpen] = useState(() =>
+    readUrlValue("devices", false),
+  );
   const [rendererReady, setRendererReady] = useState(false);
   const [rendererError, setRendererError] = useState("");
   const [rendererRequested, setRendererRequested] =
@@ -354,6 +359,17 @@ export function ClientPage({
   // Settings state (must be declared before hooks that use it)
   // Discovery shares the native server cadence and targets display refresh.
   const [settings, setSettings] = useRenderSettings();
+  const [captureFps, setCaptureFps] = useUrlState("captureFps", 60);
+  const cameraSettings = useMemo(
+    () => ({ ...settings, targetFps: captureFps }),
+    [settings, captureFps],
+  );
+  const setCameraSettings = useCallback(
+    (next: BinarySettingsConfig) => setCaptureFps(next.targetFps),
+    [setCaptureFps],
+  );
+  const cameraFrameInterval = useRef(1000 / 60);
+  const cameraLastFrameTime = useRef(0);
   useAutoGridSize(setSettings);
 
   useEffect(() => {
@@ -372,14 +388,6 @@ export function ClientPage({
   const frameHashesRef = useRef<Record<string, number>>({});
   const onFrameAvailableRef = useRef<(() => void) | null>(null);
   const presentedFrameRef = useRef<AsciiFrame | null>(null);
-  const renderTimingRef = useRef({
-    frames: 0,
-    totalMs: 0,
-    maxMs: 0,
-    windowStart: 0,
-    previousFrameAt: 0,
-    maxFrameGapMs: 0,
-  });
 
   // Simple hash function for frame content
   const hashFrame = (content: string): string => {
@@ -554,15 +562,23 @@ export function ClientPage({
     terminalDimensions,
     clientRef,
     connectionState,
-    settings,
+    settings: cameraSettings,
+    receiveFps: settings.targetFps,
     captureFrame,
     canvasRef,
     videoRef,
-    frameIntervalRef,
-    lastFrameTimeRef,
+    frameIntervalRef: cameraFrameInterval,
+    lastFrameTimeRef: cameraLastFrameTime,
     frameQueueRef,
     setError,
   });
+  const handleDeviceSetupOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) stopWebcam();
+      setDeviceSetupOpen(open);
+    },
+    [stopWebcam],
+  );
 
   const closeAudio = useCallback(() => {
     audioRef.current?.close();
@@ -570,6 +586,11 @@ export function ClientPage({
     setAudioEnabled(false);
     setMicEnabled(false);
   }, []);
+  const cameraFps = useCameraFrameRate(
+    cameraSettings,
+    setCameraSettings,
+    isWebcamRunning,
+  );
   const disconnectMedia = useCallback(
     (event?: { preventDefault(): void }) => {
       // React can reuse this button as Connect before the click's default action.
@@ -625,6 +646,10 @@ export function ClientPage({
     try {
       if (!audioRef.current)
         audioRef.current = new AudioPipeline({
+          onError: (error) => {
+            setMicEnabled(false);
+            setError(error.message);
+          },
           onLevels: setAudioLevels,
           onMicrophoneSamples: (samples) => {
             const current = settingsRef.current;
@@ -828,47 +853,15 @@ export function ClientPage({
           // unchanged network snapshot wastes the next frame's CPU budget.
           if (!visualAnimation && frame === presentedFrameRef.current) return;
           const frameHash = hashFrame(frameContent);
-          const writeStartedAt = performance.now();
           const drewFrame = rendererRef.current.writeFrame(frameContent, {
             cols: dimensions.cols,
             rows: dimensions.rows,
           });
-          const writeDurationMs = performance.now() - writeStartedAt;
           if (!drewFrame) {
             return;
           }
 
           presentedFrameRef.current = visualAnimation ? null : frame;
-          const timing = renderTimingRef.current;
-          const renderedAt = performance.now();
-          if (!timing.windowStart) timing.windowStart = renderedAt;
-          if (timing.previousFrameAt) {
-            timing.maxFrameGapMs = Math.max(
-              timing.maxFrameGapMs,
-              renderedAt - timing.previousFrameAt,
-            );
-          }
-          timing.previousFrameAt = renderedAt;
-          timing.frames++;
-          timing.totalMs += writeDurationMs;
-          timing.maxMs = Math.max(timing.maxMs, writeDurationMs);
-          if (timing.frames >= 60) {
-            console.info(
-              "[ClientRenderTiming]",
-              JSON.stringify({
-                frames: timing.frames,
-                elapsedMs: Math.round(renderedAt - timing.windowStart),
-                avgWriteMs: Number((timing.totalMs / timing.frames).toFixed(2)),
-                maxWriteMs: Number(timing.maxMs.toFixed(2)),
-                maxFrameGapMs: Number(timing.maxFrameGapMs.toFixed(2)),
-              }),
-            );
-            timing.frames = 0;
-            timing.totalMs = 0;
-            timing.maxMs = 0;
-            timing.windowStart = renderedAt;
-            timing.maxFrameGapMs = 0;
-          }
           // Track if this is a new unique frame we haven't seen before
           if (!frameHashesRef.current[frameHash]) {
             cumulativeUniqueFramesRef.current++;
@@ -986,6 +979,10 @@ export function ClientPage({
       setWebcamDisabledByUser(false);
       return;
     }
+    if (deviceSetupOpen) {
+      webcamAutoStartedRef.current = false;
+      return;
+    }
     if (audioVisualization) {
       if (webcamAutoStartedRef.current || isWebcamRunning) stopWebcam();
       webcamAutoStartedRef.current = false;
@@ -1003,6 +1000,7 @@ export function ClientPage({
     stopWebcam,
     webcamDisabledByUser,
     audioVisualization,
+    deviceSetupOpen,
   ]);
 
   const disableWebcam = useCallback(() => {
@@ -1106,8 +1104,11 @@ export function ClientPage({
         header={
           <ModeHeader
             showSettings={showSettings}
+            onDeviceSetupOpenChange={handleDeviceSetupOpenChange}
             settingsPanel={
               <BinarySettings
+                cameraFps={cameraFps}
+                separateCameraFps
                 config={settings}
                 onChange={setSettings}
                 mode={AsciiChatMode.CLIENT}
@@ -1498,6 +1499,7 @@ export function ClientPage({
         renderer={
           rendererRequested ? (
             <AsciiRenderer
+              clientLikeKind="client"
               ref={rendererRef}
               workerRendering
               contentFit={contentFit}

@@ -54,7 +54,7 @@ export interface UseClientLikeReturn {
   setSettings: (settings: BinarySettingsConfig) => void;
 
   // Hooks
-  captureFrame: () => {
+  captureFrame: (drawVideo?: boolean) => {
     data: Uint8Array;
     width: number;
     height: number;

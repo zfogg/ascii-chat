@@ -1,54 +1,27 @@
-set(CMAKE_SYSTEM_NAME Emscripten)
-
-# Detect Emscripten SDK location from environment
+# Locate the SDK's toolchain so compiler, platform, and runtime settings stay together.
 if(DEFINED ENV{EMSDK})
     set(EMSCRIPTEN_SDK_ROOT "$ENV{EMSDK}/upstream/emscripten")
 elseif(DEFINED ENV{EMSCRIPTEN})
     set(EMSCRIPTEN_SDK_ROOT "$ENV{EMSCRIPTEN}")
 else()
-    # Try common installation paths
     set(EMSCRIPTEN_SDK_ROOT "/usr/lib/emscripten")
 endif()
 
-# Resolve emcc/em++ from Emscripten SDK or PATH
-# emcmake sets CC=emcc and CXX=em++, so honor those.
-# Ignore non-emscripten CC/CXX (e.g. CC=clang from the shell) to avoid
-# accidentally using the native compiler for WASM cross-compilation.
-if(DEFINED ENV{CC} AND "$ENV{CC}" MATCHES "emcc")
-    set(CMAKE_C_COMPILER "$ENV{CC}")
-else()
-    find_program(EMCC_EXECUTABLE NAMES emcc PATHS "${EMSCRIPTEN_SDK_ROOT}" NO_DEFAULT_PATH)
-    if(EMCC_EXECUTABLE)
-        set(CMAKE_C_COMPILER "${EMCC_EXECUTABLE}")
-    else()
-        set(CMAKE_C_COMPILER emcc)
-    endif()
-endif()
-
-if(DEFINED ENV{CXX} AND "$ENV{CXX}" MATCHES "em\\+\\+")
-    set(CMAKE_CXX_COMPILER "$ENV{CXX}")
-else()
-    find_program(EMXX_EXECUTABLE NAMES em++ PATHS "${EMSCRIPTEN_SDK_ROOT}" NO_DEFAULT_PATH)
-    if(EMXX_EXECUTABLE)
-        set(CMAKE_CXX_COMPILER "${EMXX_EXECUTABLE}")
-    else()
-        set(CMAKE_CXX_COMPILER em++)
-    endif()
-endif()
-
-# Emscripten-specific archiver
-if(DEFINED ENV{AR} AND "$ENV{AR}" MATCHES "emar")
-    set(CMAKE_AR "$ENV{AR}")
-else()
-    find_program(EMAR_EXECUTABLE NAMES emar emar.bat PATHS "${EMSCRIPTEN_SDK_ROOT}" NO_DEFAULT_PATH)
-    if(EMAR_EXECUTABLE)
-        set(CMAKE_AR "${EMAR_EXECUTABLE}")
-    else()
-        set(CMAKE_AR emar)
-    endif()
-endif()
-
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+find_program(EMCC_EXECUTABLE
+    NAMES emcc emcc.bat
+    HINTS "${EMSCRIPTEN_SDK_ROOT}"
+    REQUIRED
+)
+get_filename_component(_emscripten_compiler "${EMCC_EXECUTABLE}" REALPATH)
+get_filename_component(_emscripten_compiler_dir "${_emscripten_compiler}" DIRECTORY)
+find_file(EMSCRIPTEN_PLATFORM_TOOLCHAIN
+    NAMES Emscripten.cmake
+    HINTS
+        "${EMSCRIPTEN_SDK_ROOT}"
+        "${_emscripten_compiler_dir}"
+        "${_emscripten_compiler_dir}/../libexec"
+    PATH_SUFFIXES cmake/Modules/Platform
+    NO_DEFAULT_PATH
+    REQUIRED
+)
+include("${EMSCRIPTEN_PLATFORM_TOOLCHAIN}")

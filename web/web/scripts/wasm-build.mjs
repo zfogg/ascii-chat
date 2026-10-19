@@ -113,8 +113,14 @@ if (
   );
 }
 mkdirSync(publicOutput, { recursive: true });
+const version = hash(readFileSync(manifestPath)).slice(0, 32);
+const versionedOutput = resolve(publicOutput, version);
+mkdirSync(versionedOutput, { recursive: true });
 // JS imports and runtime WASM URLs are published from the same verified build.
-for (const file of files)
-  copyFileSync(resolve(output, file), resolve(publicOutput, file));
-copyFileSync(manifestPath, resolve(publicOutput, "manifest.json"));
+// Retain older versions so an open page can finish loading its own artifact set.
+for (const destination of [versionedOutput, publicOutput]) {
+  for (const file of files)
+    copyFileSync(resolve(output, file), resolve(destination, file));
+  copyFileSync(manifestPath, resolve(destination, "manifest.json"));
+}
 console.log("Verified and published mirror/client WASM artifacts.");

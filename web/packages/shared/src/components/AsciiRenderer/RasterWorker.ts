@@ -1,3 +1,5 @@
+import type { ClientLikeKind } from "../../wasm/assetUrl";
+
 export interface RasterRequest {
   text: string;
   cols: number;
@@ -11,6 +13,9 @@ export interface RasterResult {
   width: number;
   height: number;
 }
+export interface RasterWorkerRequest extends RasterRequest {
+  clientLikeKind: ClientLikeKind;
+}
 /** Two rasters in flight and one replaceable newest frame; no stale-frame backlog. */
 export class RasterWorker {
   private worker = new Worker(new URL("./raster.worker.ts", import.meta.url), {
@@ -20,6 +25,7 @@ export class RasterWorker {
   private pending: RasterRequest | null = null;
   private closed = false;
   constructor(
+    private readonly clientLikeKind: ClientLikeKind,
     present: (result: RasterResult) => void,
     failure: (error: Error) => void,
   ) {
@@ -44,7 +50,10 @@ export class RasterWorker {
       return;
     }
     this.inFlight++;
-    this.worker.postMessage(request);
+    this.worker.postMessage({
+      ...request,
+      clientLikeKind: this.clientLikeKind,
+    } satisfies RasterWorkerRequest);
   }
   close(): void {
     this.closed = true;

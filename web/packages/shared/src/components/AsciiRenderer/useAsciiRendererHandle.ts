@@ -13,10 +13,12 @@ import {
 } from "react";
 import type { AsciiRendererHandle } from "./types";
 import type { MirrorModule } from "../../wasm/mirror";
+import type { ClientLikeKind } from "../../wasm/assetUrl";
 import { startGridStabilityProbe } from "./gridStabilityProbe";
 
 interface UseAsciiRendererHandleParams {
   ref: ForwardedRef<AsciiRendererHandle>;
+  clientLikeKind: ClientLikeKind;
   workerRendering?: boolean;
   matrixMode?: boolean;
   moduleRef: RefObject<MirrorModule | null>;
@@ -44,6 +46,7 @@ interface UseAsciiRendererHandleReturn {
 
 export function useAsciiRendererHandle({
   ref,
+  clientLikeKind,
   workerRendering = false,
   matrixMode = false,
   moduleRef,
@@ -134,6 +137,7 @@ export function useAsciiRendererHandle({
   useEffect(() => {
     if (!workerRendering) return;
     const worker = new RasterWorker(
+      clientLikeKind,
       ({ pixels, width, height, changed }) => {
         const canvas = canvasRef.current;
         if (
@@ -168,7 +172,7 @@ export function useAsciiRendererHandle({
       worker.close();
       rasterWorkerRef.current = null;
     };
-  }, [workerRendering, canvasRef, resizeTimeoutRef, showFps]);
+  }, [clientLikeKind, workerRendering, canvasRef, resizeTimeoutRef, showFps]);
 
   const paintFrame = useCallback(
     (ansiString: string): boolean => {

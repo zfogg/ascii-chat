@@ -1,4 +1,4 @@
-import { cleanup, renderHook } from "@testing-library/react";
+import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 import { useMirrorRenderLoop } from "../../../packages/shared/src/hooks/useMirrorRenderLoop";
 
@@ -15,6 +15,167 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   convert.mockReset();
+});
+
+test("Mirror renders each delivered camera frame without sampling the stale video element", async () => {
+  let controller: ReadableStreamDefaultController<VideoFrame>;
+  const cancel = vi.fn();
+  vi.stubGlobal(
+    "MediaStreamTrackProcessor",
+    class {
+      readable = new ReadableStream<VideoFrame>({
+        start(value) {
+          controller = value;
+        },
+        cancel,
+      });
+    },
+  );
+  vi.stubGlobal(
+    "requestAnimationFrame",
+    vi.fn(() => 1),
+  );
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  const drawImage = vi.fn();
+  const captureFrame = vi.fn((_drawVideo?: boolean) => ({
+    data: new Uint8Array(4),
+    width: 1,
+    height: 1,
+  }));
+  const writeFrame = vi.fn(() => true);
+  convert.mockReturnValue("camera frame");
+  const hook = renderHook(() =>
+    useMirrorRenderLoop({
+      isWebcamRunning: true,
+      terminalDimensions: { cols: 80, rows: 30 },
+      captureFrame,
+      canvasRef: {
+        current: {
+          width: 1,
+          height: 1,
+          getContext: () => ({ drawImage }),
+        } as unknown as HTMLCanvasElement,
+      },
+      rendererRef: {
+        current: {
+          writeFrame,
+          getDimensions: () => ({ cols: 80, rows: 30 }),
+          clear: vi.fn(),
+          recreateRenderer: vi.fn(),
+        },
+      },
+      debugCountRef: { current: 0 },
+      firstFrameTimeRef: { current: null },
+      frameIntervalRef: { current: 1000 / 60 },
+      streamRef: {
+        current: { getVideoTracks: () => [{}] } as unknown as MediaStream,
+      },
+    }),
+  );
+  const frames = Array.from({ length: 120 }, (_, index) => ({
+    timestamp: Math.round((index * 1e6) / 60),
+    close: vi.fn(),
+  }));
+  for (const frame of frames) {
+    await act(async () => {
+      controller!.enqueue(frame as unknown as VideoFrame);
+    });
+  }
+  expect(drawImage).toHaveBeenCalledTimes(120);
+  expect(writeFrame).toHaveBeenCalledTimes(120);
+  expect(
+    captureFrame.mock.calls.every(([drawVideo]) => drawVideo === false),
+  ).toBe(true);
+  expect(frames.every((frame) => frame.close.mock.calls.length === 1)).toBe(
+    true,
+  );
+  hook.unmount();
+  expect(cancel).toHaveBeenCalledOnce();
+});
+
+test("Mirror starts and replaces direct capture after script-driven track restoration", async () => {
+  let tick: FrameRequestCallback = () => {};
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+    tick = callback;
+    return 1;
+  });
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  const readers: {
+    track: MediaStreamTrack;
+    controller: ReadableStreamDefaultController<VideoFrame>;
+    cancel: ReturnType<typeof vi.fn>;
+  }[] = [];
+  vi.stubGlobal(
+    "MediaStreamTrackProcessor",
+    class {
+      readable: ReadableStream<VideoFrame>;
+      constructor({ track }: { track: MediaStreamTrack }) {
+        const cancel = vi.fn();
+        this.readable = new ReadableStream<VideoFrame>({
+          start(controller) {
+            readers.push({ track, controller, cancel });
+          },
+          cancel,
+        });
+      }
+    },
+  );
+  let tracks: MediaStreamTrack[] = [];
+  const stream = Object.assign(new EventTarget(), {
+    getVideoTracks: () => tracks,
+  });
+  const drawImage = vi.fn();
+  const captureFrame = vi.fn(() => ({
+    data: new Uint8Array(4),
+    width: 1,
+    height: 1,
+  }));
+  const writeFrame = vi.fn(() => true);
+  convert.mockReturnValue("restored camera frame");
+  const hook = renderHook(() =>
+    useMirrorRenderLoop({
+      isWebcamRunning: true,
+      terminalDimensions: { cols: 80, rows: 24 },
+      captureFrame,
+      canvasRef: {
+        current: {
+          width: 1,
+          height: 1,
+          getContext: () => ({ drawImage }),
+        } as unknown as HTMLCanvasElement,
+      },
+      rendererRef: {
+        current: {
+          writeFrame,
+          getDimensions: () => ({ cols: 80, rows: 24 }),
+          clear: vi.fn(),
+          recreateRenderer: vi.fn(),
+        },
+      },
+      debugCountRef: { current: 0 },
+      firstFrameTimeRef: { current: null },
+      frameIntervalRef: { current: 1000 / 60 },
+      streamRef: { current: stream as unknown as MediaStream },
+    }),
+  );
+  expect(readers).toHaveLength(0);
+  for (let index = 0; index < 2; index++) {
+    // Like MediaStream.addTrack(), this mutation emits no addtrack event.
+    tracks = [{} as MediaStreamTrack];
+    await act(async () => tick(performance.now() + 20));
+    expect(readers).toHaveLength(index + 1);
+    expect(readers[index]!.track).toBe(tracks[0]);
+    const frame = { timestamp: 0, close: vi.fn() };
+    await act(async () => {
+      readers[index]!.controller.enqueue(frame as unknown as VideoFrame);
+    });
+    expect(frame.close).toHaveBeenCalledOnce();
+    expect(captureFrame).toHaveBeenLastCalledWith(false);
+    expect(writeFrame).toHaveBeenCalledTimes(index + 1);
+  }
+  expect(readers[0]!.cancel).toHaveBeenCalledOnce();
+  hook.unmount();
+  expect(readers[1]!.cancel).toHaveBeenCalledOnce();
 });
 
 for (const contentFit of [undefined, "cover"] as const) {

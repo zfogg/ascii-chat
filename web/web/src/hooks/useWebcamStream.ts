@@ -1,4 +1,12 @@
 import { AVState } from "../wasm/AVState";
+import { VideoFrameClock } from "../../../packages/shared/src/hooks/videoFrameClock";
+import {
+  cameraNeedsFrameLimit,
+  reportCameraTrack,
+  reportCameraFrame,
+  reportCameraVideoFrame,
+  cameraAcquisitionFps,
+} from "../../../packages/shared/src/capture/cameraRate";
 import { useLayoutEffect } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
@@ -17,7 +25,7 @@ import type { CompressedVideoEncoding } from "../network/VideoUploadEncoder";
 import type { ClientSession } from "../network/Transport";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import type { BinarySettingsConfig } from "../components";
-import { getMediaDevicePreferences } from "../utils/mediaDevicePreferences";
+import { resolveCameraDeviceId } from "../utils/mediaDevicePreferences";
 import {
   MEDIA_DEVICE_PREFERENCES_CHANGED,
   type MediaDevicePreferencesChange,
@@ -44,6 +52,7 @@ interface UseWebcamStreamOptions {
   clientRef: React.RefObject<ClientSession | null>;
   connectionState: ConnectionState;
   settings: BinarySettingsConfig;
+  receiveFps?: number;
   captureFrame: (
     drawVideo?: boolean,
     sourceCanvas?: HTMLCanvasElement,
@@ -69,6 +78,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     terminalDimensions,
     connectionState,
     settings,
+    receiveFps = settings.targetFps,
     captureFrame,
     canvasRef,
     videoRef,
@@ -207,7 +217,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         buildCapabilitiesPacket(
           terminalDimensions.cols || 80,
           terminalDimensions.rows || 40,
-          settings.targetFps,
+          receiveFps,
           settings.colorMode,
           settings.colorFilter,
           settings.palette,
@@ -221,7 +231,14 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         `[Client] Upload encoding: ${encoder?.codec ?? "raw"} ${width}x${height}`,
       );
     },
-    [clientRef, settings, terminalDimensions, createEncoder, avState],
+    [
+      clientRef,
+      settings,
+      receiveFps,
+      terminalDimensions,
+      createEncoder,
+      avState,
+    ],
   );
 
   // Inner loop function that doesn't have dependencies - this prevents RAF recursion from breaking
@@ -386,22 +403,22 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       }
       const videoTrack = streamRef.current?.getVideoTracks()[0];
       if (videoTrack) {
+        reportCameraTrack(videoTrack);
         void videoTrack
           .applyConstraints({
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            frameRate: { ideal: settings.targetFps },
+            frameRate: { ideal: cameraAcquisitionFps(videoTrack) },
           })
           .catch((error) =>
             console.warn("[Client] Unable to update webcam settings:", error),
           );
       }
       const sendInterval = 1000 / settings.targetFps;
+      const mediaClock = new VideoFrameClock();
       const video = videoRef.current;
       let stopped = false;
       let animationFrameId: number | null = null;
-      let lastSentAt = 0;
-      let lastVideoTime = Number.NaN;
       let captureCallbackHandle: number | null = null;
       let frameReader: ReadableStreamDefaultReader<VideoFrame> | null = null;
       const frameVideo = video as
@@ -433,10 +450,17 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
               const { value: frame, done } = await frameReader.read();
               if (done) break;
               try {
-                const now = performance.now();
+                reportCameraFrame(frame.timestamp / 1000);
                 const canvas = canvasRef.current;
                 const context = canvas?.getContext("2d");
-                if (canvas && context && now - lastSentAt >= sendInterval) {
+                // Pace against camera timestamps; callback delivery jitter must
+                // not discard every other frame of a healthy 60 FPS track.
+                if (
+                  canvas &&
+                  context &&
+                  (!cameraNeedsFrameLimit(settings.targetFps) ||
+                    mediaClock.accept(frame.timestamp / 1e6, sendInterval))
+                ) {
                   if (settings.flipX) {
                     context.save();
                     context.translate(canvas.width, 0);
@@ -447,7 +471,6 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                     context.drawImage(frame, 0, 0, canvas.width, canvas.height);
                   }
                   webcamCaptureLoopRef.current?.(false);
-                  lastSentAt = now;
                 }
               } finally {
                 frame.close();
@@ -476,11 +499,17 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           `[Client] Capturing webcam frames directly from the media track, capped at ${settings.targetFps} FPS`,
         );
       } else if (frameVideo?.requestVideoFrameCallback) {
-        const onVideoFrame = (now: number) => {
+        const onVideoFrame = (
+          _now: number,
+          metadata: { mediaTime: number },
+        ) => {
           if (stopped) return;
-          if (now - lastSentAt >= sendInterval) {
+          reportCameraFrame(metadata.mediaTime * 1000);
+          if (
+            !cameraNeedsFrameLimit(settings.targetFps) ||
+            mediaClock.accept(metadata.mediaTime, sendInterval)
+          ) {
             webcamCaptureLoopRef.current?.();
-            lastSentAt = now;
           }
           captureCallbackHandle =
             frameVideo.requestVideoFrameCallback!(onVideoFrame);
@@ -491,19 +520,16 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           `[Client] Capturing webcam frames from the media track, capped at ${settings.targetFps} FPS`,
         );
       } else {
-        const pollDecodedFrame = (now: number) => {
+        const pollDecodedFrame = () => {
           if (stopped) return;
           if (video) {
-            const videoTime = video.currentTime;
+            reportCameraVideoFrame(video);
             if (
               video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
               !video.paused &&
-              videoTime !== lastVideoTime &&
-              now - lastSentAt >= sendInterval
+              mediaClock.accept(video.currentTime, sendInterval)
             ) {
               webcamCaptureLoopRef.current?.();
-              lastVideoTime = videoTime;
-              lastSentAt = now;
             }
           }
           animationFrameId = requestAnimationFrame(pollDecodedFrame);
@@ -609,43 +635,15 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
       const preferredCameraId = testPattern.enabled
         ? ""
-        : getMediaDevicePreferences().cameraId;
-      const cameraIndexValue = preferredCameraId
-        ? null
-        : new URLSearchParams(window.location.search).get("videoDeviceIndex");
-      const cameraIndex =
-        cameraIndexValue === null ? null : Number(cameraIndexValue);
-      let videoConstraints: MediaTrackConstraints = {
+        : await resolveCameraDeviceId();
+      const videoConstraints: MediaTrackConstraints = {
         width: { ideal: w },
         height: { ideal: h },
-        frameRate: { ideal: settings.targetFps },
+        frameRate: { ideal: cameraAcquisitionFps() },
+        ...(preferredCameraId
+          ? { deviceId: { exact: preferredCameraId } }
+          : {}),
       };
-      if (!testPattern.enabled && cameraIndex !== null) {
-        if (!Number.isInteger(cameraIndex) || cameraIndex < 0) {
-          throw new Error("videoDeviceIndex must be a non-negative integer");
-        }
-        const cameras = (
-          await navigator.mediaDevices.enumerateDevices()
-        ).filter((device) => device.kind === "videoinput");
-        const camera = cameras[cameraIndex];
-        if (!camera?.deviceId) {
-          throw new Error(
-            `Camera index ${cameraIndex} is unavailable (${cameras.length} camera(s) found)`,
-          );
-        }
-        videoConstraints = {
-          ...videoConstraints,
-          deviceId: { exact: camera.deviceId },
-        };
-        console.log(
-          `[Client] Selecting camera ${cameraIndex}: ${camera.label}`,
-        );
-      } else if (preferredCameraId) {
-        videoConstraints = {
-          ...videoConstraints,
-          deviceId: { exact: preferredCameraId },
-        };
-      }
 
       if (!avState.current(generation)) return;
       let stream: MediaStream;
@@ -701,17 +699,18 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         const currentSettings = videoTrack.getSettings();
         const currentFps = currentSettings.frameRate;
         const maximumFps = capabilities.frameRate?.max;
+        const captureFps = cameraAcquisitionFps(videoTrack);
         if (
           maximumFps !== undefined &&
-          maximumFps >= Math.min(settings.targetFps, 45) &&
+          maximumFps >= Math.min(captureFps, 45) &&
           (currentFps === undefined ||
-            currentFps + 1 < Math.min(settings.targetFps, maximumFps))
+            currentFps + 1 < Math.min(captureFps, maximumFps))
         ) {
           try {
             await videoTrack.applyConstraints({
               width: { ideal: Math.max(w, 1280) },
               height: { ideal: Math.max(h, 720) },
-              frameRate: { ideal: Math.min(settings.targetFps, maximumFps) },
+              frameRate: { ideal: Math.min(captureFps, maximumFps) },
             });
             let negotiatedSettings = videoTrack.getSettings();
             if (

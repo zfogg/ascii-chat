@@ -52,6 +52,7 @@ include(${_cmake_dir}/deps/PCRE2.cmake)
 include(${_cmake_dir}/deps/Opus.cmake)
 include(${_cmake_dir}/deps/Zstd.cmake)
 include(${_cmake_dir}/deps/Libvterm.cmake)
+include(${_cmake_dir}/deps/FFTW.cmake)
 
 # TOML (using tomlc17 from deps)
 # No FetchContent needed - using vendored tomlc17
@@ -456,6 +457,10 @@ apply_sanitizers_to_target(mirror-web)
 # The browser schedules the shared session host's packet and video steps.
 # Native client entry points and their blocking main loops remain excluded.
 set(WEB_SRC_CLIENT
+    ${CMAKE_CURRENT_SOURCE_DIR}/audio.c
+    ${LIB_ROOT}/audio/processor.c
+    ${LIB_ROOT}/audio/effects.c
+    ${LIB_ROOT}/audio/spectral.c
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/peer_crypto.c
@@ -497,6 +502,7 @@ target_link_options(client-web PRIVATE
 
 # Add include directories for dependencies (needed because wasm-common object files don't auto-inherit INTERFACE_INCLUDE_DIRECTORIES)
 target_include_directories(client-web PRIVATE
+    ${FFTW_INCLUDE_DIRS}
     ${LIBSODIUM_INCLUDE_DIRS}
     ${PCRE2_INCLUDE_DIRS}
     ${OPUS_INCLUDE_DIRS}
@@ -505,6 +511,7 @@ target_include_directories(client-web PRIVATE
 
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE
+    ${FFTW_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
     ${OPUS_LIBRARIES}
@@ -648,7 +655,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
 string(REPLACE ";" "," EXPORTED_FUNCTIONS_MIRROR_CSV "${EXPORTED_FUNCTIONS_MIRROR}")
 string(REPLACE ";" "," EXPORTED_FUNCTIONS_CLIENT_CSV "${EXPORTED_FUNCTIONS_CLIENT}")
 
-set(EXPORTED_RUNTIME_METHODS_CSV "ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8,getValue,setValue,HEAPU8,HEAP16,FS")
+set(EXPORTED_RUNTIME_METHODS_CSV "ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8,getValue,setValue,HEAPU8,HEAP16,HEAPF32,FS")
 
 # Use target_link_options for better cross-platform quoting
 target_link_options(mirror-web PRIVATE
@@ -657,7 +664,7 @@ target_link_options(mirror-web PRIVATE
     "-sEXPORT_NAME=MirrorModule"
     "-sEXPORTED_FUNCTIONS=${EXPORTED_FUNCTIONS_MIRROR_CSV}"
     "-sEXPORTED_RUNTIME_METHODS=${EXPORTED_RUNTIME_METHODS_CSV}"
-    -sENVIRONMENT=web
+    -sENVIRONMENT=web,worker
     -sALLOW_MEMORY_GROWTH=1
     -sINITIAL_MEMORY=32MB
     -sMAXIMUM_MEMORY=128MB
