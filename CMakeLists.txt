@@ -42,7 +42,7 @@ endif()
 # Note: Only compute if not already passed from parent build (e.g., temp build for defer tool)
 # This allows the defer tool's temp cmake build to use the same cache as the parent
 if(NOT DEFINED ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL "")
-    set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
+    set(ASCIICHAT_DEPS_CACHE_DIR "${CMAKE_BINARY_DIR}/_deps/legacy/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
 endif()
 
 # Web-specific build-type cache directory for WASM/Emscripten builds
@@ -306,6 +306,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/Include.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Mimalloc.cmake)
 
 configure_include_directories()
+include(${CMAKE_SOURCE_DIR}/cmake/init/BuildIdentity.cmake)
 
 if(USE_MUSL)
     set(CMAKE_PREFIX_PATH "${MUSL_PREFIX}" ${CMAKE_PREFIX_PATH})
@@ -412,6 +413,9 @@ ascii_build_tooling_runtime()
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
+enable_testing()
+add_test(NAME ascii-chat-version COMMAND $<TARGET_FILE:ascii-chat> --version)
+set_tests_properties(ascii-chat-version PROPERTIES LABELS smoke TIMEOUT 15)
 ascii_panic_finalize()
 if(false)
     if(NOT USE_MUSL)
