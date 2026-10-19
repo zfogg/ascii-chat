@@ -80,7 +80,7 @@ function(configure_include_directories)
 
     if(USE_MUSL)
         target_include_directories(asciichat-project-includes SYSTEM INTERFACE
-            ${MUSL_INCLUDE_DIR} ${KERNEL_HEADERS_DIR}
+            ${KERNEL_HEADERS_DIR} ${LIBEXECINFO_INCLUDE_DIRS}
             "$<$<COMPILE_LANGUAGE:CXX>:${ALPINE_LIBCXX_INCLUDE_DIR}>")
     endif()
 

@@ -659,6 +659,7 @@ endif()
 if(USE_MUSL)
     target_link_libraries(ascii-chat-core PRIVATE ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a)
     add_dependencies(ascii-chat-core libexecinfo-musl)
+    add_dependencies(ascii-chat-platform libexecinfo-musl)
 endif()
 
 # mimalloc for core
