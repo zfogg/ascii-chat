@@ -56,6 +56,20 @@ vi.mock("../../src/wasm/client", async (original) => ({
   getClientModule: () => harness.module,
 }));
 
+vi.mock("../../src/network/BrowserHostRuntime", () => ({
+  BrowserHostRuntime: class {
+    constructor(callback: (id: number, bytes: Uint8Array) => void) {
+      harness.module.hostPacketCallback = callback;
+    }
+    async start() {}
+    addClient() {
+      return 1;
+    }
+    removeClient() {}
+    close() {}
+  },
+}));
+
 describe("browser host peer isolation", () => {
   it.each([
     "WebRTC channel is not open",

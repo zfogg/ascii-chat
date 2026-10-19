@@ -40,6 +40,10 @@ interface MirrorDemoWidgetProps {
   minHeight?: number;
   showHeader?: boolean;
   showDebugLogs?: boolean;
+  /** Contain preserves the full source; cover crops to fill the viewport. Defaults to contain. */
+  contentFit?: "contain" | "cover";
+  columns?: number;
+  rows?: number;
 }
 
 function formatPlaybackTime(seconds: number): string {
@@ -112,6 +116,9 @@ export default function MirrorDemoWidget({
   minHeight = 200,
   showHeader = true,
   showDebugLogs = import.meta.env.MODE !== "production",
+  contentFit = "contain",
+  columns,
+  rows,
 }: MirrorDemoWidgetProps) {
   const [source, setSource] = useState<MediaSource>(null);
   const [loading, setLoading] = useState(false);
@@ -621,6 +628,7 @@ export default function MirrorDemoWidget({
           frame.data,
           frame.width,
           frame.height,
+          contentFit,
         );
         if (ascii) {
           frameCountRef.current++;
@@ -667,7 +675,15 @@ export default function MirrorDemoWidget({
         frameIntervalRef.current = null;
       }
     };
-  }, [source, wasmReady, termDims, captureFrame, selectedOption, addDebugLog]);
+  }, [
+    source,
+    wasmReady,
+    termDims,
+    captureFrame,
+    selectedOption,
+    addDebugLog,
+    contentFit,
+  ]);
 
   useEffect(() => {
     const stopFn = stop;
@@ -740,6 +756,9 @@ export default function MirrorDemoWidget({
         <div className="demo-widget-inner">
           <AsciiRenderer
             ref={rendererRef}
+            contentFit={contentFit}
+            {...(columns === undefined ? {} : { columns })}
+            {...(rows === undefined ? {} : { rows })}
             initializeOptions={false}
             keyboardEnabled={false}
             splashEnabled={false}

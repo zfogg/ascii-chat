@@ -7,6 +7,51 @@ function packet(flags = 1) {
 }
 afterEach(() => vi.unstubAllGlobals());
 describe("browser host video decoding", () => {
+  it("bounds pixel copies and replaces stale decoded frames", async () => {
+    let output!: (frame: VideoFrame) => void;
+    vi.stubGlobal(
+      "VideoDecoder",
+      class {
+        state = "configured";
+        constructor(init: VideoDecoderInit) {
+          output = init.output;
+        }
+        configure() {}
+        decode() {}
+        close() {
+          this.state = "closed";
+        }
+      },
+    );
+    vi.stubGlobal("EncodedVideoChunk", class {});
+    let complete!: () => void;
+    const copy = new Promise<void>((resolve) => {
+      complete = resolve;
+    });
+    const makeFrame = (pending = false) => ({
+      displayWidth: 2,
+      displayHeight: 2,
+      copyTo: vi.fn(() => (pending ? copy : Promise.resolve())),
+      close: vi.fn(),
+    });
+    const first = makeFrame(true),
+      stale = makeFrame(),
+      latest = makeFrame();
+    const pixels = vi.fn();
+    const decoder = new BrowserVideoDecoder(pixels, vi.fn());
+    decoder.receive(PacketType.IMAGE_FRAME_H264, packet());
+    output(first as unknown as VideoFrame);
+    output(stale as unknown as VideoFrame);
+    output(latest as unknown as VideoFrame);
+    expect(stale.close).toHaveBeenCalledOnce();
+    expect(stale.copyTo).not.toHaveBeenCalled();
+    expect(latest.copyTo).not.toHaveBeenCalled();
+    complete();
+    await vi.waitFor(() => expect(pixels).toHaveBeenCalledTimes(2));
+    expect(first.close).toHaveBeenCalledOnce();
+    expect(latest.close).toHaveBeenCalledOnce();
+    decoder.destroy();
+  });
   it.each([
     [PacketType.IMAGE_FRAME_H264, "avc1.42E01F"],
     [PacketType.IMAGE_FRAME_H265, "hev1.1.6.L120.B0"],

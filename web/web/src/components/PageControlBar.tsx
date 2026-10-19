@@ -6,6 +6,7 @@ import { MediaSourceType, type MediaSource } from "../hooks/useClientLike";
 export interface PageControlBarProps {
   title?: string | undefined;
   status?: string | undefined;
+  isHost?: boolean | undefined;
   statusDotColor?: string | undefined;
   dimensions?: { cols: number; rows: number } | undefined;
   fps?: number | undefined;
@@ -31,6 +32,7 @@ export interface PageControlBarProps {
 export function PageControlBar({
   title,
   status,
+  isHost = false,
   statusDotColor,
   dimensions,
   fps,
@@ -99,22 +101,29 @@ export function PageControlBar({
             <h2 className="text-sm font-semibold">{title}</h2>
           )}
           {dimensions && dimensions.cols > 0 && (
-            <span className="text-xs text-terminal-8">
+            <span className="text-xs text-terminal-8 tabular-nums inline-block w-[7ch] shrink-0">
               {dimensions.cols}x{dimensions.rows}
             </span>
           )}
           {status && (
             <span className="status text-xs text-terminal-8">{status}</span>
           )}
+          {isHost && (
+            <span className="text-xs font-semibold text-purple-400">Host</span>
+          )}
           {fps !== undefined && (
-            <span className={`text-xs ${getFpsColor()}`}>
+            <span
+              className={`text-xs tabular-nums inline-block w-[13ch] shrink-0 ${getFpsColor()}`}
+            >
               FPS: {fps}
               {targetFps && ` / ${targetFps}`}
             </span>
           )}
           {fps !== undefined && showBandwidth && <BandwidthMeter />}
           {statusControls && (
-            <div className="flex items-center gap-2">{statusControls}</div>
+            <div className="flex flex-wrap items-center gap-2">
+              {statusControls}
+            </div>
           )}
         </div>
         <div className="flex flex-wrap gap-2">

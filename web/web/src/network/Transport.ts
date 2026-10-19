@@ -10,6 +10,8 @@ export interface PacketTransport {
 export interface ClientSession {
   needsKeyframe?(type: number): boolean;
   readonly canReconnect?: boolean;
+  /** Local host input does not cross a network and needs no codec round trip. */
+  sendVideoFrame?(frame: VideoFrame): void;
   videoCodecCapabilities?: number;
   getBufferedAmount?(): number;
   readonly transportType?: "websocket" | "webrtc";

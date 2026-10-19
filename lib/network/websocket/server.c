@@ -827,6 +827,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
 
   // Each connection owns a handler until disconnect; provide a worker for every participant.
   server->handler_pool = thread_pool_create_with_workers("websocket_handlers", PARTICIPANT_LIMIT);
+
   if (!server->handler_pool) {
     lws_context_destroy(server->context);
     server->context = NULL;

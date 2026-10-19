@@ -728,3 +728,7 @@ if(BUILD_WEB)
     )
 endif()
 
+
+# Enable SIMD at compilation, not only linking, for the pixel compositor.
+set_source_files_properties("${LIB_ROOT}/media/render/terminal.c"
+    PROPERTIES COMPILE_OPTIONS "-msimd128")
