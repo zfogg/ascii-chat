@@ -2007,25 +2007,10 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
 
     bool peer_failed = !peer_found || peer_state == WEBRTC_STATE_FAILED || peer_state == WEBRTC_STATE_CLOSED;
     if (session->webrtc_transport_ready && (peer_failed || disconnected_too_long)) {
-      int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
-      if (session->webrtc_retry_attempt >= max_attempts) {
-        set_error(session, ERROR_NETWORK, "WebRTC peer remained disconnected after retry attempts");
-        return SET_ERRNO(ERROR_NETWORK, "WebRTC connection failed");
-      }
-
-      log_warn("WebRTC peer lost connectivity; resetting its transport and renegotiating");
-      asciichat_error_t release_result = release_participant_transport(session);
-      if (release_result != ASCIICHAT_OK)
-        return release_result;
-
-      // The transport has now closed its borrowed peer objects. The manager
-      // can release the failed peer before creating the next offer.
-      webrtc_peer_manager_remove_peer(session->peer_manager, session->host_id);
-      session->webrtc_transport_ready = false;
-      session->webrtc_connection_initiated = false;
-      session->webrtc_disconnected_since_ms = 0;
-      session->webrtc_retry_attempt++;
-      set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
+      // Media workers still borrow this transport. The role dispatcher joins them
+      // before applying the elected successor and releasing the old participant.
+      session->migration.detection_time_ms = session_get_current_time_ms();
+      set_state(session, DISCOVERY_STATE_MIGRATING);
       return ASCIICHAT_OK;
     }
   }
