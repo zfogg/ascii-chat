@@ -53,8 +53,8 @@ benchmark or a performance guarantee for every camera and machine.
 The seated fixture translates a real face image by ±25 pixels horizontally and
 ±12 pixels vertically, adds a 350 ms lean, then makes a sustained 65-pixel move.
 The real-detector browser run recorded zero changes to crop X, Y, or width in
-46 samples during the seated shifts and brief lean. The deliberate move began
-reframing after about 1.12 seconds, including detection and rendering cadence.
+35 samples during the seated shifts and brief lean. The deliberate move began
+reframing after about 1.41 seconds, including detection and rendering cadence.
 
 ![View held through seated shifts and a brief lean](browser-seated-hold.png)
 

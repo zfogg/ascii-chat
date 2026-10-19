@@ -18,166 +18,41 @@
 #   - FETCHCONTENT_BASE_DIR: Shared source cache directory
 # =============================================================================
 
-include(FetchContent)
 
-# Shared source URL for all builds
-FetchContent_Declare(zstd-src
-    URL https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
-    URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/zstd-src"
-    UPDATE_DISCONNECTED ON
-)
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
 
-# =============================================================================
-# WASM: Build from source with Emscripten CMake
-# =============================================================================
-if(DEFINED EMSCRIPTEN)
-    message(STATUS "Configuring ${BoldBlue}zstd${ColorReset} from source (WASM)...")
-    set(ZSTD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
-    set(ZSTD_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-    set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "" FORCE)
-
-    FetchContent_Declare(zstd-wasm
-        URL https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
-        URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/zstd-wasm-src"
-        SOURCE_SUBDIR build/cmake
-        UPDATE_DISCONNECTED ON
-        CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-                   -DZSTD_BUILD_TESTS=OFF
-                   -DZSTD_BUILD_PROGRAMS=OFF
-    )
-
-    FetchContent_MakeAvailable(zstd-wasm)
-    set(ZSTD_LIBRARIES libzstd_static)
-    set(ZSTD_INCLUDE_DIRS "${zstd-wasm_SOURCE_DIR}/lib")
-    set(ZSTD_FOUND TRUE)
-
-    message(STATUS "${BoldGreen}✓${ColorReset} zstd (WASM): ${BoldCyan}zstd${ColorReset}")
-    return()
-endif()
-
-# =============================================================================
-# iOS: Build from source
-# =============================================================================
-if(PLATFORM_IOS)
-    message(STATUS "Configuring ${BoldBlue}zstd${ColorReset} from source (iOS cross-compile)...")
-
-    FetchContent_Populate(zstd-src)
-
-    set(ZSTD_PREFIX "${IOS_DEPS_CACHE_DIR}/zstd")
-    set(ZSTD_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/zstd-build")
-
-    # Get iOS SDK path
-    if(BUILD_IOS_SIM)
-        execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-    else()
-        execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-    endif()
-
-    if(NOT EXISTS "${ZSTD_PREFIX}/lib/libzstd.a")
-        message(STATUS "  zstd library not found in cache, will build from source")
-
-        # Build
-        execute_process(
-            COMMAND bash -c "make -j lib-release CC=clang 'CFLAGS=-arch arm64 -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=16.0 -fPIC' PREFIX=${ZSTD_PREFIX}"
-            WORKING_DIRECTORY "${zstd-src_SOURCE_DIR}"
-            RESULT_VARIABLE ZSTD_BUILD_RESULT
-            ERROR_VARIABLE ZSTD_BUILD_ERROR
-        )
-        if(NOT ZSTD_BUILD_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to build zstd for iOS:\n${ZSTD_BUILD_ERROR}")
+if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
+    function(asciichat_build_zstd)
+        asciichat_dependency_defaults()
+        set(ZSTD_BUILD_SHARED ${BUILD_SHARED_LIBS})
+        set(ZSTD_BUILD_STATIC ON)
+        if(BUILD_SHARED_LIBS)
+            set(ZSTD_BUILD_STATIC OFF)
         endif()
-
-        # Install
-        execute_process(
-            COMMAND make install PREFIX=${ZSTD_PREFIX}
-            WORKING_DIRECTORY "${zstd-src_SOURCE_DIR}"
-            RESULT_VARIABLE ZSTD_INSTALL_RESULT
-            ERROR_VARIABLE ZSTD_INSTALL_ERROR
-        )
-        if(NOT ZSTD_INSTALL_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to install zstd:\n${ZSTD_INSTALL_ERROR}")
+        set(ZSTD_BUILD_PROGRAMS OFF)
+        set(ZSTD_BUILD_TESTS OFF)
+        if(EMSCRIPTEN)
+            set(ZSTD_MULTITHREAD_SUPPORT OFF)
         endif()
-
-        message(STATUS "  ${BoldBlue}zstd${ColorReset} built and installed successfully")
-    else()
-        message(STATUS "  ${BoldBlue}zstd${ColorReset} library found in cache: ${BoldMagenta}${ZSTD_PREFIX}/lib/libzstd.a${ColorReset}")
-    endif()
-
-    set(ZSTD_LIBRARIES "${ZSTD_PREFIX}/lib/libzstd.a")
-    set(ZSTD_INCLUDE_DIRS "${ZSTD_PREFIX}/include")
-
-    # Create placeholder directories
-    file(MAKE_DIRECTORY "${ZSTD_PREFIX}/include" "${ZSTD_PREFIX}/lib")
-
-    # Create imported target
-    if(NOT TARGET zstd::libzstd)
-        add_library(zstd::libzstd STATIC IMPORTED GLOBAL)
-        set_target_properties(zstd::libzstd PROPERTIES
-            IMPORTED_LOCATION "${ZSTD_PREFIX}/lib/libzstd.a"
-            INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_PREFIX}/include"
-        )
-    endif()
-
+        FetchContent_Declare(asciichat_zstd
+            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_zstd"
+            EXCLUDE_FROM_ALL
+            URL https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
+            URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
+            SOURCE_SUBDIR build/cmake DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+        FetchContent_MakeAvailable(asciichat_zstd)
+        if(BUILD_SHARED_LIBS)
+            set(_target libzstd_shared)
+        else()
+            set(_target libzstd_static)
+        endif()
+        target_include_directories(${_target} PUBLIC "$<BUILD_INTERFACE:${asciichat_zstd_SOURCE_DIR}/lib>")
+        add_library(zstd::libzstd ALIAS ${_target})
+        set(ZSTD_LIBRARIES ${_target} PARENT_SCOPE)
+        set(ZSTD_INCLUDE_DIRS "${asciichat_zstd_SOURCE_DIR}/lib" PARENT_SCOPE)
+    endfunction()
+    asciichat_build_zstd()
     set(ZSTD_FOUND TRUE)
-    return()
-endif()
-
-# =============================================================================
-# musl: Build from source
-# =============================================================================
-if(USE_MUSL)
-    message(STATUS "Configuring ${BoldBlue}zstd${ColorReset} from source (musl)...")
-
-    include(ExternalProject)
-    FetchContent_Populate(zstd-src)
-
-    set(ZSTD_PREFIX "${MUSL_DEPS_DIR_STATIC}/zstd")
-    set(ZSTD_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/zstd-build")
-
-    # Only add external project if library doesn't exist
-    if(NOT EXISTS "${ZSTD_PREFIX}/lib/libzstd.a")
-        message(STATUS "  zstd library not found in cache, will build from source")
-        ExternalProject_Add(zstd-musl
-            SOURCE_DIR ${zstd-src_SOURCE_DIR}
-            PREFIX ${ZSTD_BUILD_DIR}
-            STAMP_DIR ${ZSTD_BUILD_DIR}/stamps
-            BUILD_ALWAYS 0
-            CONFIGURE_COMMAND ""
-            BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j -C <SOURCE_DIR> lib-release PREFIX=${ZSTD_PREFIX}
-            INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${ZSTD_PREFIX}
-            BUILD_IN_SOURCE 1
-            BUILD_BYPRODUCTS ${ZSTD_PREFIX}/lib/libzstd.a
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}zstd${ColorReset} library found in cache: ${BoldMagenta}${ZSTD_PREFIX}/lib/libzstd.a${ColorReset}")
-        add_custom_target(zstd-musl)
-    endif()
-
-    set(ZSTD_LIBRARIES "${ZSTD_PREFIX}/lib/libzstd.a")
-    set(ZSTD_INCLUDE_DIRS "${ZSTD_PREFIX}/include")
-
-    # Create placeholder directories so CMake validation doesn't fail at configure time
-    file(MAKE_DIRECTORY "${ZSTD_PREFIX}/include")
-
-    # Create imported target for zstd to match system find_package behavior
-    if(NOT TARGET zstd::libzstd)
-        add_library(zstd::libzstd STATIC IMPORTED GLOBAL)
-        set_target_properties(zstd::libzstd PROPERTIES
-            IMPORTED_LOCATION "${ZSTD_PREFIX}/lib/libzstd.a"
-            INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_PREFIX}/include"
-        )
-    endif()
-
-    set(ZSTD_FOUND TRUE)
-    message(STATUS "${BoldGreen}✓${ColorReset} zstd (musl): ${ZSTD_PREFIX}/lib/libzstd.a")
     return()
 endif()
 

@@ -4,7 +4,7 @@
 # Find FFmpeg libraries for media file decoding
 #
 # For iOS builds: Built from source with iOS cross-compilation
-# For musl builds: Built from source at configure time
+# For musl builds: Built from source after its codec dependencies
 # For Release builds: Built from source with minimal codec set
 # For other builds: Uses system package manager (pkg-config)
 
@@ -121,189 +121,53 @@ if(PLATFORM_IOS)
     return()
 endif()
 
-# Handle musl builds - FFmpeg is built from source at configure time
+# FFmpeg has no upstream CMake build. Its build waits for the CMake codec targets.
 if(USE_MUSL)
-    message(STATUS "Configuring ${BoldBlue}FFmpeg${ColorReset} from source...")
-
-    set(FFMPEG_PREFIX "${MUSL_DEPS_DIR_STATIC}/ffmpeg")
-    set(FFMPEG_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/ffmpeg-build")
-    set(FFMPEG_SOURCE_DIR "${FFMPEG_BUILD_DIR}/src/ffmpeg")
-
-    # Build FFmpeg synchronously at configure time if not cached
-    if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
-       NOT EXISTS "${FFMPEG_PREFIX}/lib/libavcodec.a" OR
-       NOT EXISTS "${FFMPEG_PREFIX}/lib/libavutil.a" OR
-       NOT EXISTS "${FFMPEG_PREFIX}/lib/libswscale.a" OR
-       NOT EXISTS "${FFMPEG_PREFIX}/lib/libswresample.a")
-        message(STATUS "  FFmpeg libraries not found in cache, will build from source")
-        message(STATUS "  This may take several minutes on first build...")
-
-        file(MAKE_DIRECTORY "${FFMPEG_BUILD_DIR}")
-        file(MAKE_DIRECTORY "${FFMPEG_SOURCE_DIR}")
-
-        # Download FFmpeg source
-        set(FFMPEG_TARBALL "${FFMPEG_BUILD_DIR}/ffmpeg-${FFMPEG_VERSION}.tar.xz")
-        if(NOT EXISTS "${FFMPEG_TARBALL}")
-            message(STATUS "  Downloading FFmpeg ${FFMPEG_VERSION}...")
-            file(DOWNLOAD
-                "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
-                "${FFMPEG_TARBALL}"
-                EXPECTED_HASH SHA256=${FFMPEG_HASH}
-                STATUS DOWNLOAD_STATUS
-                SHOW_PROGRESS
-            )
-            list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-            if(NOT STATUS_CODE EQUAL 0)
-                list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
-                message(FATAL_ERROR "Failed to download FFmpeg: ${ERROR_MSG}")
-            endif()
-        endif()
-
-        # Extract tarball
-        if(NOT EXISTS "${FFMPEG_SOURCE_DIR}/configure")
-            message(STATUS "  Extracting FFmpeg...")
-            execute_process(
-                COMMAND ${CMAKE_COMMAND} -E tar xJf "${FFMPEG_TARBALL}"
-                WORKING_DIRECTORY "${FFMPEG_BUILD_DIR}"
-                RESULT_VARIABLE EXTRACT_RESULT
-            )
-            if(NOT EXTRACT_RESULT EQUAL 0)
-                message(FATAL_ERROR "Failed to extract FFmpeg tarball")
-            endif()
-            # Move from ffmpeg-${FFMPEG_VERSION}/ to src/ffmpeg/
-            file(RENAME "${FFMPEG_BUILD_DIR}/ffmpeg-${FFMPEG_VERSION}" "${FFMPEG_SOURCE_DIR}")
-        endif()
-
-        # Configure FFmpeg
-        message(STATUS "  Configuring FFmpeg...")
-        # x265 is built against Alpine's musl-compatible libc++. GCC's
-        # libstdc++ and libgcc are built against the runner's glibc and cannot
-        # be used in this musl link (notably on aarch64, where they reference
-        # glibc-only symbols such as __getauxval and __isoc23_strtoul).
-        set(MUSL_LIBCXX_LIB_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libcxx/usr/lib")
-        foreach(_runtime_archive libc++.a libc++abi.a libunwind.a)
-            if(NOT EXISTS "${MUSL_LIBCXX_LIB_DIR}/${_runtime_archive}")
-                message(FATAL_ERROR
-                    "Missing musl-compatible C++ runtime archive: ${MUSL_LIBCXX_LIB_DIR}/${_runtime_archive}")
-            endif()
-        endforeach()
-        set(MUSL_FFMPEG_EXTRA_LDFLAGS "-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib")
-        set(MUSL_FFMPEG_EXTRA_LIBS "-lm ${MUSL_LIBCXX_LIB_DIR}/libc++.a ${MUSL_LIBCXX_LIB_DIR}/libc++abi.a ${MUSL_LIBCXX_LIB_DIR}/libunwind.a")
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
-            # musl-gcc wraps Debian's glibc-targeted GCC. Suppress its default
-            # libraries so it does not inject glibc's LSE initializer, then
-            # provide the musl libraries required by the configure probes.
-            string(APPEND MUSL_FFMPEG_EXTRA_LDFLAGS " -mno-outline-atomics -nodefaultlibs")
-            string(APPEND MUSL_FFMPEG_EXTRA_LIBS " ${MUSL_LIBGCC_PATH} -lc")
-        endif()
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env
-                CC=${MUSL_GCC}
-                REALGCC=${REAL_GCC}
-                CFLAGS=${MUSL_KERNEL_CFLAGS}\ -fPIC
-                PKG_CONFIG_PATH=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig
-                ASAN_OPTIONS=
-                "${FFMPEG_SOURCE_DIR}/configure"
-                --prefix=${FFMPEG_PREFIX}
-                --cc=${MUSL_GCC}
-                "--extra-cflags=-I${X264_PREFIX}/include -I${X265_PREFIX}/include"
-                "--extra-ldflags=${MUSL_FFMPEG_EXTRA_LDFLAGS}"
-                "--extra-libs=${MUSL_FFMPEG_EXTRA_LIBS}"
-                --enable-static
-                --disable-shared
-                --enable-pic
-                --disable-programs
-                --disable-doc
-                --disable-htmlpages
-                --disable-manpages
-                --disable-podpages
-                --disable-txtpages
-                --disable-debug
-                --disable-runtime-cpudetect
-                --disable-autodetect
-                --disable-x86asm
-                --disable-inline-asm
-                --enable-gpl
-                --enable-protocol=file
-                --enable-demuxer=mov,matroska,avi,gif,image2
-                --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg
-                --enable-encoder=libx264,libx265
-                --enable-libx264
-                --enable-libx265
-                --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video
-                --enable-swscale
-                --enable-swresample
-            WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
-            RESULT_VARIABLE CONFIG_RESULT
-            OUTPUT_VARIABLE CONFIG_OUTPUT
-            ERROR_VARIABLE CONFIG_ERROR
-        )
-        if(NOT CONFIG_RESULT EQUAL 0)
-            set(FFMPEG_CONFIG_LOG "${FFMPEG_SOURCE_DIR}/ffbuild/config.log")
-            set(FFMPEG_CONFIG_LOG_TAIL "")
-            if(EXISTS "${FFMPEG_CONFIG_LOG}")
-                file(STRINGS "${FFMPEG_CONFIG_LOG}" FFMPEG_CONFIG_LOG_LINES)
-                list(LENGTH FFMPEG_CONFIG_LOG_LINES FFMPEG_CONFIG_LOG_LINE_COUNT)
-                if(FFMPEG_CONFIG_LOG_LINE_COUNT GREATER 120)
-                    math(EXPR FFMPEG_CONFIG_LOG_START "${FFMPEG_CONFIG_LOG_LINE_COUNT} - 120")
-                    list(SUBLIST FFMPEG_CONFIG_LOG_LINES ${FFMPEG_CONFIG_LOG_START} 120 FFMPEG_CONFIG_LOG_TAIL_LINES)
-                else()
-                    set(FFMPEG_CONFIG_LOG_TAIL_LINES ${FFMPEG_CONFIG_LOG_LINES})
-                endif()
-                string(JOIN "\n" FFMPEG_CONFIG_LOG_TAIL ${FFMPEG_CONFIG_LOG_TAIL_LINES})
-            endif()
-            message(FATAL_ERROR
-                "Failed to configure FFmpeg:\n${CONFIG_OUTPUT}\n${CONFIG_ERROR}\n"
-                "FFmpeg configure log (${FFMPEG_CONFIG_LOG}):\n${FFMPEG_CONFIG_LOG_TAIL}")
-        endif()
-
-        # Build FFmpeg
-        message(STATUS "  Building FFmpeg (this takes several minutes)...")
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} CFLAGS=${MUSL_KERNEL_CFLAGS}\ -fPIC make -j${CMAKE_BUILD_PARALLEL_LEVEL}
-            WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
-            RESULT_VARIABLE BUILD_RESULT
-            OUTPUT_VARIABLE BUILD_OUTPUT
-            ERROR_VARIABLE BUILD_ERROR
-        )
-        if(NOT BUILD_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to build FFmpeg:\n${BUILD_ERROR}")
-        endif()
-
-        # Install FFmpeg
-        message(STATUS "  Installing FFmpeg...")
-        execute_process(
-            COMMAND make install
-            WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
-            RESULT_VARIABLE INSTALL_RESULT
-            OUTPUT_VARIABLE INSTALL_OUTPUT
-            ERROR_VARIABLE INSTALL_ERROR
-        )
-        if(NOT INSTALL_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to install FFmpeg:\n${INSTALL_ERROR}")
-        endif()
-
-        message(STATUS "  ${BoldGreen}FFmpeg${ColorReset} built and cached successfully")
-    else()
-        message(STATUS "  ${BoldBlue}FFmpeg${ColorReset} libraries found in cache: ${BoldMagenta}${FFMPEG_PREFIX}/lib/libavformat.a${ColorReset}")
-    endif()
-
-    # Set FFmpeg variables for use in the build
-    set(FFMPEG_FOUND TRUE)
+    include(ExternalProject)
+    set(FFMPEG_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/installed/ffmpeg")
     set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include")
-
-    set(FFMPEG_LIBRARIES
-        "${FFMPEG_PREFIX}/lib/libavformat.a"
-        "${FFMPEG_PREFIX}/lib/libavcodec.a"
-        "${FFMPEG_PREFIX}/lib/libavutil.a"
-        "${FFMPEG_PREFIX}/lib/libswscale.a"
-        "${FFMPEG_PREFIX}/lib/libswresample.a"
-        "${X264_PREFIX}/lib/libx264.a"
-        "${X265_PREFIX}/lib/libx265.a")
-
-    # Create a custom target for musl builds (libraries are pre-built/cached)
-    add_custom_target(ffmpeg-musl)
-
+    file(MAKE_DIRECTORY "${FFMPEG_INCLUDE_DIRS}")
+    set(_ffmpeg_runtime "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libcxx/usr/lib")
+    set(_ffmpeg_libs "-lm ${_ffmpeg_runtime}/libc++.a ${_ffmpeg_runtime}/libc++abi.a ${_ffmpeg_runtime}/libunwind.a")
+    set(_ffmpeg_ldflags "-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+        string(APPEND _ffmpeg_ldflags " -mno-outline-atomics -nodefaultlibs")
+        string(APPEND _ffmpeg_libs " ${MUSL_LIBGCC_PATH} -lc")
+    endif()
+    set(_ffmpeg_archives)
+    foreach(_lib avformat avcodec avutil swscale swresample)
+        list(APPEND _ffmpeg_archives "${FFMPEG_PREFIX}/lib/lib${_lib}.a")
+    endforeach()
+    set(_ffmpeg_env "${CMAKE_COMMAND}" -E env "REALGCC=${REAL_GCC}"
+        "PKG_CONFIG_PATH=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig"
+        "PKG_CONFIG_LIBDIR=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig" --)
+    ExternalProject_Add(ffmpeg-musl
+        URL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+        URL_HASH "SHA256=${FFMPEG_HASH}" DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/ffmpeg"
+        CONFIGURE_COMMAND ${_ffmpeg_env} <SOURCE_DIR>/configure
+            --prefix=${FFMPEG_PREFIX} --cc=${MUSL_GCC}
+            "--extra-cflags=${MUSL_KERNEL_CFLAGS} -I${X264_PREFIX}/include -I${X265_PREFIX}/include"
+            "--extra-ldflags=${_ffmpeg_ldflags}" "--extra-libs=${_ffmpeg_libs}"
+            --enable-static --disable-shared --enable-pic --disable-programs --disable-doc
+            --disable-debug --disable-runtime-cpudetect --disable-autodetect
+            --disable-x86asm --disable-inline-asm --enable-gpl --enable-protocol=file
+            --enable-demuxer=mov,matroska,avi,gif,image2
+            --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg
+            --enable-encoder=libx264,libx265 --enable-libx264 --enable-libx265
+            --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video --enable-swscale --enable-swresample
+        BUILD_COMMAND ${_ffmpeg_env} make -j8
+        INSTALL_COMMAND ${_ffmpeg_env} make install
+        INSTALL_BYPRODUCTS ${_ffmpeg_archives}
+        DEPENDS asciichat-x265-stage
+        LOG_CONFIGURE TRUE LOG_BUILD TRUE LOG_INSTALL TRUE LOG_OUTPUT_ON_FAILURE TRUE)
+    add_library(asciichat-ffmpeg INTERFACE IMPORTED GLOBAL)
+    set_target_properties(asciichat-ffmpeg PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIRS}"
+        INTERFACE_LINK_LIBRARIES "${_ffmpeg_archives};${X264_LIBRARIES};${X265_LIBRARIES}")
+    add_dependencies(asciichat-ffmpeg ffmpeg-musl)
+    set(FFMPEG_LIBRARIES asciichat-ffmpeg)
+    set(FFMPEG_FOUND TRUE)
     return()
 endif()
 
@@ -311,121 +175,13 @@ endif()
 # Windows: Use vcpkg-provided FFmpeg
 # =============================================================================
 if(WIN32)
-    # Release Windows packages use a static vcpkg triplet. Prefer its FFmpeg
-    # archives before considering the prebuilt shared FFmpeg fallback.
-    if(USE_VCPKG AND ASCIICHAT_ENFORCE_STATIC_RELEASE)
-        set(_vcpkg_ffmpeg_include "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include")
-        set(_vcpkg_ffmpeg_lib "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib")
-        set(_vcpkg_ffmpeg_static_libraries)
-        foreach(_lib avformat avcodec swresample swscale avutil)
-            if(NOT EXISTS "${_vcpkg_ffmpeg_lib}/${_lib}.lib")
-                message(FATAL_ERROR "Static FFmpeg library not found: ${_vcpkg_ffmpeg_lib}/${_lib}.lib")
-            endif()
-            list(APPEND _vcpkg_ffmpeg_static_libraries "${_vcpkg_ffmpeg_lib}/${_lib}.lib")
-        endforeach()
-        if(NOT EXISTS "${_vcpkg_ffmpeg_include}/libavcodec/avcodec.h")
-            message(FATAL_ERROR "Static FFmpeg headers not found in ${_vcpkg_ffmpeg_include}")
-        endif()
-        find_package(ZLIB REQUIRED)
-        set(FFMPEG_FOUND TRUE)
-        set(FFMPEG_INCLUDE_DIRS "${_vcpkg_ffmpeg_include}")
-        set(FFMPEG_LIBRARY_DIRS "${_vcpkg_ffmpeg_lib}")
-        set(FFMPEG_LIBRARIES
-            ${_vcpkg_ffmpeg_static_libraries}
-            ZLIB::ZLIB
-            secur32 ws2_32 mfuuid strmiids ole32 user32 bcrypt
-        )
-        message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found via static vcpkg triplet")
-        message(STATUS "  - FFMPEG_LIBRARIES: ${FFMPEG_LIBRARIES}")
-            return()
+    # vcpkg's package describes both static archives and DLL import libraries.
+    find_package(FFMPEG REQUIRED)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-l(pthreads|pthread|m|atomic)$")
+        list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-pthread$")
     endif()
-
-    # Try prebuilt FFmpeg first (user-provided or auto-downloaded)
-    set(_ffmpeg_prebuilt_dir "${ASCIICHAT_FFMPEG_DIR}")
-
-    # Auto-download prebuilt FFmpeg if not provided and not available via vcpkg
-    if(NOT _ffmpeg_prebuilt_dir)
-        set(_ffmpeg_version "8.1")
-        set(_ffmpeg_build "n8.1.3-14-g330caae0c1")
-        set(_ffmpeg_release "autobuild-2026-10-01-13-06")
-        if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64" OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
-            set(_ffmpeg_arch "winarm64")
-            set(_ffmpeg_hash "522ae933df0c48256b082431c506b1b7d346992452df3c297573af133d1b14c0")
-        else()
-            set(_ffmpeg_arch "win64")
-            set(_ffmpeg_hash "bf545d8fee9bb6957c1f3dea0f384bf64edead407d763326dbbd2de1b04768a4")
-        endif()
-        set(_ffmpeg_archive "ffmpeg-${_ffmpeg_build}-${_ffmpeg_arch}-lgpl-shared-${_ffmpeg_version}")
-        set(_ffmpeg_prebuilt_dir "${ASCIICHAT_DEPS_CACHE_DIR}/${_ffmpeg_archive}")
-
-        if(NOT EXISTS "${_ffmpeg_prebuilt_dir}/include/libavcodec/avcodec.h")
-            set(_ffmpeg_url "https://github.com/BtbN/FFmpeg-Builds/releases/download/${_ffmpeg_release}/${_ffmpeg_archive}.zip")
-            set(_ffmpeg_zip "${ASCIICHAT_DEPS_CACHE_DIR}/${_ffmpeg_archive}.zip")
-            message(STATUS "Downloading prebuilt FFmpeg ${_ffmpeg_version} (${_ffmpeg_arch})...")
-            file(DOWNLOAD
-                "${_ffmpeg_url}"
-                "${_ffmpeg_zip}"
-                EXPECTED_HASH "SHA256=${_ffmpeg_hash}"
-                STATUS _dl_status
-                SHOW_PROGRESS
-            )
-            list(GET _dl_status 0 _dl_code)
-            if(_dl_code EQUAL 0)
-                message(STATUS "Extracting prebuilt FFmpeg...")
-                file(ARCHIVE_EXTRACT INPUT "${_ffmpeg_zip}" DESTINATION "${ASCIICHAT_DEPS_CACHE_DIR}")
-                file(REMOVE "${_ffmpeg_zip}")
-            else()
-                message(WARNING "Failed to download prebuilt FFmpeg (status: ${_dl_status})")
-                set(_ffmpeg_prebuilt_dir "")
-            endif()
-        endif()
-    endif()
-
-    if(_ffmpeg_prebuilt_dir AND EXISTS "${_ffmpeg_prebuilt_dir}/include/libavcodec/avcodec.h")
-        set(FFMPEG_INCLUDE_DIRS "${_ffmpeg_prebuilt_dir}/include")
-        set(FFMPEG_LIBRARY_DIRS "${_ffmpeg_prebuilt_dir}/lib")
-
-        set(FFMPEG_LIBRARIES "")
-        foreach(_lib avcodec avformat avutil swresample swscale)
-            if(EXISTS "${_ffmpeg_prebuilt_dir}/lib/${_lib}.lib")
-                list(APPEND FFMPEG_LIBRARIES "${_ffmpeg_prebuilt_dir}/lib/${_lib}.lib")
-            endif()
-        endforeach()
-
-        if(FFMPEG_LIBRARIES)
-            set(FFMPEG_FOUND TRUE)
-            message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found (prebuilt: ${_ffmpeg_prebuilt_dir})")
-            message(STATUS "  - FFMPEG_INCLUDE_DIRS: ${FFMPEG_INCLUDE_DIRS}")
-            message(STATUS "  - FFMPEG_LIBRARY_DIRS: ${FFMPEG_LIBRARY_DIRS}")
-            message(STATUS "  - FFMPEG_LIBRARIES: ${FFMPEG_LIBRARIES}")
-
-            # Copy DLLs to binary output dir so the executable can find them
-            file(GLOB _ffmpeg_dlls "${_ffmpeg_prebuilt_dir}/bin/*.dll")
-            foreach(_dll ${_ffmpeg_dlls})
-                get_filename_component(_dll_name "${_dll}" NAME)
-                configure_file("${_dll}" "${CMAKE_BINARY_DIR}/bin/${_dll_name}" COPYONLY)
-            endforeach()
-            return()
-        endif()
-    endif()
-
-    # Fallback: vcpkg-provided FFmpeg
-    find_package(FFMPEG QUIET)
-
-    if(FFMPEG_FOUND)
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-            list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-l(pthreads|pthread|m|atomic)$")
-            list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-pthread$")
-        endif()
-
-        message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found (Windows vcpkg)")
-        message(STATUS "  - FFMPEG_INCLUDE_DIRS: ${FFMPEG_INCLUDE_DIRS}")
-        message(STATUS "  - FFMPEG_LIBRARY_DIRS: ${FFMPEG_LIBRARY_DIRS}")
-        message(STATUS "  - FFMPEG_LIBRARIES: ${FFMPEG_LIBRARIES}")
-        return()
-    else()
-        message(FATAL_ERROR "FFmpeg not found - required dependency")
-    endif()
+    return()
 endif()
 
 # =============================================================================

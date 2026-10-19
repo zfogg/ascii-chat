@@ -20,7 +20,7 @@ URL: @PROJECT_HOMEPAGE_URL@
 # Core required dependencies (available in distro package managers).
 # BearSSL, yyjson, and WebRTC AEC3 are bundled in the static archive.
 # libdatachannel is bundled in the static archive (not packaged in distros).
-Requires.private: libsodium >= 1.0.18, libzstd, portaudio-2.0, opus, libpcre2-8, sqlite3, @ASCIICHAT_OPTIONAL_MIMALLOC_PC@libavformat, libavcodec, libavutil, libswscale, libswresample, openssl, freetype2, fontconfig, libwebsockets, libuv
+Requires.private: libsodium >= 1.0.18, libzstd, portaudio-2.0, opus, libpcre2-8, sqlite3, @ASCIICHAT_OPTIONAL_MIMALLOC_PC@libavformat, libavcodec, libavutil, libswscale, libswresample, openssl, freetype2, fontconfig, libwebsockets, libuv, libutf8proc
 
 # Main library to link
 Libs: -L${libdir} -lasciichat

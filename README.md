@@ -137,6 +137,9 @@ ascii-chat client          # Connect client (in another terminal)
 
 For detailed build instructions, configuration options, and troubleshooting, see the **[Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)**.
 
+See [Dependency builds](docs/dependency-builds.md) for upstream CMake targets,
+static and shared linkage, and the source dependency smoke tests.
+
 ### Useful CMake Targets
 
 Common development targets (run with `cmake --build build --target <name>`):

@@ -11,9 +11,9 @@
 #include <ascii-chat/util/time.h>
 
 #ifdef HAVE_MINIUPNPC
-#include <miniupnpc/miniupnpc.h>
-#include <miniupnpc/upnpcommands.h>
-#include <miniupnpc/upnperrors.h>
+#include <miniupnpc.h>
+#include <upnpcommands.h>
+#include <upnperrors.h>
 #ifdef __APPLE__
 #include <natpmp.h>
 #endif

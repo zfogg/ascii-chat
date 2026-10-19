@@ -114,6 +114,42 @@ compiler's cache. The activated SDK must supply its matching LLVM, Binaryen,
 Python, and Node tools. `ASCII_CHAT_WASM_BUILD_DIR` overrides the configured
 build directory when needed.
 
+PCRE2 and Opus use their upstream CMake projects as targets in the WASM
+Ninja build. They inherit the Emscripten toolchain and build static libraries
+without running Autotools or GNU Make. Their source trees are separate from
+the Autotools sources used by other build variants; objects and generated
+headers live in the configured build directory.
+
+Libsodium uses an out-of-source Autotools build driven by CMake. On Windows,
+install MSYS2 and run `pacman -S --needed base-devel` in its shell. CMake finds
+MSYS2 in its default installation, Scoop, vcpkg's downloaded tools, or PATH.
+For another location, pass `-DASCIICHAT_MSYS2_ROOT=D:/tools/msys64` to CMake,
+or set the `MSYS2_ROOT` environment variable.
+Configure, build, and install all use Bash and Make from that installation,
+with its Unix tools first on PATH and the selected Emscripten compiler next.
+There is no `SHELL` override. Linux and macOS use their system Autotools tools.
+
+To check the dependency integration independently of the browser, build and
+run its smoke test from the repository root:
+
+```bash
+cmake --build build/web --target wasm-dependencies --parallel
+ctest --test-dir build/web -R '^wasm-dependencies$' --output-on-failure
+```
+
+For a separate, clean dependency build, use the same test as a standalone
+project with the SDK activated (CMake 3.28 or newer):
+
+```bash
+emcmake cmake -S tests/wasm/dependencies -B build/wasm-dependencies -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build/wasm-dependencies --parallel
+ctest --test-dir build/wasm-dependencies --output-on-failure
+```
+
+The test runs libsodium hashing against a known BLAKE2b digest, a Unicode
+PCRE2 capture, and an Opus audio encode/decode round trip under Node via
+CMake's Emscripten emulator.
+
 The build compiles both modules and copies their JavaScript and WASM into
 `src/wasm/dist` and `public/wasm`. Only `src/wasm/dist` is committed;
 `public/wasm` is ignored and regenerated from that canonical bundle when Vite

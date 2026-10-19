@@ -44,15 +44,13 @@ function(configure_include_directories)
         endif()
 
         # Add core dependencies with SYSTEM flag (avoid conflicts)
-        # Strip /opus suffix from OPUS_INCLUDE_DIRS (macOS pkg-config quirk)
         get_core_deps_include_dirs(CORE_INCLUDE_DIRS)
-        strip_suffix_from_list("${CORE_INCLUDE_DIRS}" "/opus" CORE_INCLUDE_DIRS)
         include_directories(SYSTEM ${CORE_INCLUDE_DIRS})
 
         # Add mimalloc include directory for USE_MIMALLOC builds
         # Use MIMALLOC_INCLUDE_DIRS which handles system vs FetchContent mimalloc
         if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
-            include_directories(${MIMALLOC_INCLUDE_DIRS})
+            include_directories(BEFORE ${MIMALLOC_INCLUDE_DIRS})
         endif()
     else()
         # Use pkg-config flags (matches Makefile CFLAGS approach)
@@ -60,16 +58,12 @@ function(configure_include_directories)
 
         # Don't add system include paths when using musl - musl-gcc handles this via -specs
         if(NOT USE_MUSL)
-            # Strip /opus suffix from OPUS_INCLUDE_DIRS (macOS pkg-config quirk)
             get_core_deps_include_dirs(CORE_INCLUDE_DIRS)
-            strip_suffix_from_list("${CORE_INCLUDE_DIRS}" "/opus" CORE_INCLUDE_DIRS)
             include_directories(${CORE_INCLUDE_DIRS})
         else()
             # When using musl, strip /usr/include from all include paths
             get_core_deps_include_dirs(CORE_INCLUDE_DIRS)
             list(REMOVE_ITEM CORE_INCLUDE_DIRS "/usr/include")
-            # Also strip /opus suffix if present
-            strip_suffix_from_list("${CORE_INCLUDE_DIRS}" "/opus" CORE_INCLUDE_DIRS)
 
             # Strip /usr/include from BearSSL as well
             if(BEARSSL_INCLUDE_DIRS)
