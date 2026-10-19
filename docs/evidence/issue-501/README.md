@@ -1,5 +1,11 @@
 # Issue 501 saturation and recovery evidence
 
+The [SCTP review follow-up](sctp-review/README.md) contains the current WebRTC
+measurements. The original WebRTC rows below under-accounted SCTP capacity by
+192 KiB because libdatachannel raised its send buffer to the default maximum
+message size. The follow-up fixes that configuration and repeats all WebRTC
+cases with matching regression assertions.
+
 These are receiver measurements from real native TCP, libwebsockets, and
 libdatachannel connections, not sender admission counts. Each case runs a
 2-second baseline, 3-second paced saturation, and 10-second recovery while a
