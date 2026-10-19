@@ -29,3 +29,17 @@ dependency build/install outputs inside their own binary directories. Explicit
 cache-directory overrides remain supported. Once configured, a build tree
 rejects changes to compiler, target ABI, CRT or static/shared dependency policy;
 select another preset or use `cmake --fresh` to change those settings.
+
+## Musl toolchain
+
+`USE_MUSL=ON` selects `cmake/toolchains/Musl.cmake` before `project()`.
+It selects Clang's target triple, musl headers and CRT startup files and keeps
+host package searches out of the target build. Programs such as Perl and Make
+still run on the host. `ASCIICHAT_MUSL_SYSROOT` can select a complete target SDK;
+otherwise the toolchain discovers the distribution's packaged musl paths.
+
+The platform module stages the matching Alpine C++ runtime and non-CMake
+libraries. Source dependencies use the same compiler/header settings through
+`MuslFlags.cmake`. Project C++ sources use those runtime headers as well.
+Use a fresh configuration when adopting the toolchain in a pre-existing musl
+build tree. A separate shared/glibc preset produces libraries for glibc hosts.

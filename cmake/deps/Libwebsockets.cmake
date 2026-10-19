@@ -40,7 +40,7 @@ function(asciichat_build_libwebsockets)
         # TLS feature checks must link, otherwise missing functions appear to
         # exist. Use the target CRT rather than the host's implicit runtime.
         set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)
-        set(CMAKE_C_STANDARD_LIBRARIES "${MUSL_LIBGCC_PATH} -lc -lm")
+        set(CMAKE_C_STANDARD_LIBRARIES "${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
         list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES CMAKE_C_STANDARD_LIBRARIES)
     endif()
     set(LWS_WITH_SHARED ${BUILD_SHARED_LIBS})

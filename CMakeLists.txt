@@ -106,16 +106,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildConfiguration.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/platform/Musl.cmake)
 configure_musl_pre_project("${CMAKE_BUILD_TYPE}")
 
-# Configure musl-specific compiler flags BEFORE project()
-if(USE_MUSL)
-    # Disable LTO to prevent TPOFF32 TLS relocation errors (LLVM issue #55909)
-    # Use global-dynamic TLS model for shared library compatibility
-    # Set via CMAKE_C_FLAGS_INIT and CMAKE_CXX_FLAGS_INIT before project() is called
-    set(CMAKE_C_FLAGS_INIT "${CMAKE_C_FLAGS_INIT} -fno-lto -ftls-model=global-dynamic -fPIC")
-    set(CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT} -fno-lto -ftls-model=global-dynamic -fPIC")
-    message(STATUS "Configuring musl build: -fno-lto -ftls-model=global-dynamic -fPIC")
-endif()
-
 # =============================================================================
 # iOS Platform Configuration (must come before project())
 # =============================================================================
@@ -241,7 +231,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/CCache.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerDetection.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerFlags.cmake)
 configure_base_compiler_flags()
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/HeaderChecks.cmake)
 configure_llvm_post_project()
 fix_llvm_ranlib()
 configure_musl_post_project()
@@ -306,6 +295,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/Include.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Mimalloc.cmake)
 
 configure_include_directories()
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/HeaderChecks.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildIdentity.cmake)
 
 if(USE_MUSL)

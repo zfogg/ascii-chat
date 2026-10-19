@@ -78,6 +78,12 @@ function(configure_include_directories)
         endif()
     endif()
 
+    if(USE_MUSL)
+        target_include_directories(asciichat-project-includes SYSTEM INTERFACE
+            ${MUSL_INCLUDE_DIR} ${KERNEL_HEADERS_DIR}
+            "$<$<COMPILE_LANGUAGE:CXX>:${ALPINE_LIBCXX_INCLUDE_DIR}>")
+    endif()
+
     # Dependency roots (including mimalloc's vcpkg root) may also contain an
     # older FFmpeg. Its public structs must match the selected libraries, so
     # use a normal include path before those roots, not a trailing SYSTEM path.

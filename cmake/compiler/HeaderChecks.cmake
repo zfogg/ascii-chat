@@ -18,7 +18,12 @@ include(CheckIncludeFile)
 # Check for execinfo.h (backtrace functions)
 # Available on: glibc (Linux), with libexecinfo (musl), macOS
 # Not available on: Windows, some embedded systems
+set(_saved_required_includes "${CMAKE_REQUIRED_INCLUDES}")
+if(USE_MUSL AND LIBEXECINFO_INCLUDE_DIRS)
+    list(APPEND CMAKE_REQUIRED_INCLUDES ${LIBEXECINFO_INCLUDE_DIRS})
+endif()
 check_include_file(execinfo.h HAVE_EXECINFO_H)
+set(CMAKE_REQUIRED_INCLUDES "${_saved_required_includes}")
 
 if(HAVE_EXECINFO_H)
     message(STATUS "${BoldGreen}Found${ColorReset} header: ${BoldCyan}execinfo.h${ColorReset} (backtrace support)")
