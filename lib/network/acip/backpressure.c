@@ -249,7 +249,6 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
   memcpy(&header, buffers[0].data, sizeof(header));
   outbound_packet_t info = {.size = size,
                             .cost = 3 * (size + WIRE_OVERHEAD) + sizeof(outbound_packet_t) + 128,
-                            .created = time_get_ns(),
                             .type = NET_TO_HOST_U16(header.type),
                             .stream = NET_TO_HOST_U32(header.client_id)};
   info.encoded = info.type == PACKET_TYPE_IMAGE_FRAME_H264 || info.type == PACKET_TYPE_IMAGE_FRAME_H265;
@@ -268,6 +267,7 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
   }
   acip_outbound_t *out = transport->outbound;
   mutex_lock(&out->mutex);
+  info.created = time_get_ns();
   if (out->stopping || out->failed) {
     mutex_unlock(&out->mutex);
     return SET_ERRNO(ERROR_NETWORK, "Outbound connection closed");

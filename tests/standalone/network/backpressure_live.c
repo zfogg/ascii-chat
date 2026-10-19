@@ -695,6 +695,24 @@ int main(int argc, char **argv) {
     packet_send_via_transport(f->sender, type, payload, length, 0);
     asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
+  if (!strcmp(transport, "webrtc")) {
+    CHECK(f->sender->methods->close(f->sender) == ASCIICHAT_OK);
+    packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                              .type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME),
+                              .length = 0};
+    socket_buffer_t buffer = {&header, sizeof(header)};
+    uint64_t closed_at = time_get_ns();
+    for (;;) {
+      acip_admission_t admission;
+      asciichat_error_t result = acip_outbound_submitv(f->sender, &buffer, 1, &admission);
+      if (result == ERROR_NETWORK)
+        break;
+      CHECK(result == ASCIICHAT_OK);
+      CHECK(time_get_ns() - closed_at < 2 * NS_PER_SEC_INT);
+      platform_sleep_ms(1);
+    }
+    log_error("CLOSED_CHANNEL result=ERROR_NETWORK");
+  }
   teardown(f, transport);
   teardown(healthy, transport);
   SAFE_FREE(healthy);

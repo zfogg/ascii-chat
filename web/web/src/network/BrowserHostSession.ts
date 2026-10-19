@@ -172,7 +172,21 @@ export class BrowserHostSession implements ClientSession {
                 (packet) => peer.crypto!.sendPacket(packet),
                 () => this.removePeer(key),
               );
-              peer.outbound.submit(bytes);
+              const admission = peer.outbound.submit(bytes);
+              if (admission === "congested") {
+                const type = new DataView(
+                  bytes.buffer,
+                  bytes.byteOffset,
+                  bytes.byteLength,
+                ).getUint16(8, false);
+                if (
+                  type !== PacketType.IMAGE_FRAME &&
+                  type !== PacketType.ASCII_FRAME &&
+                  type !== PacketType.IMAGE_FRAME_H264 &&
+                  type !== PacketType.IMAGE_FRAME_H265
+                )
+                  throw new Error("Reliable outbound queue is congested");
+              }
             } catch (error) {
               this.removePeer(key);
               this.options.onProgress?.(`Peer disconnected: ${String(error)}`);

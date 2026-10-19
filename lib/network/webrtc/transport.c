@@ -730,7 +730,8 @@ static size_t webrtc_queued_bytes(acip_transport_t *transport) {
   asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
   asciichat_error_t result = webrtc_datachannel_get_buffered_amount(wrtc->data_channel, &bytes);
   asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
-  return result == ASCIICHAT_OK ? bytes : ACIP_OUTBOUND_BUDGET;
+  // Let the sender report a closed channel and fail the outbound queue.
+  return result == ASCIICHAT_OK ? bytes : 0;
 }
 
 static const acip_transport_methods_t webrtc_methods = {

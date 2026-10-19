@@ -23,11 +23,11 @@ args = parser.parse_args()
 args.binary = args.binary.resolve()
 args.output.mkdir(parents=True, exist_ok=True)
 summary = {'platform': platform.platform(), 'generated_at_utc': datetime.now(timezone.utc).isoformat(), 'binary_sha256': hashlib.sha256(args.binary.read_bytes()).hexdigest(), 'scenarios': []}
-try:
-    summary['source_sha'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True, stderr=subprocess.DEVNULL).strip()
-except subprocess.CalledProcessError:
-    summary['source_sha'] = 'source archive'
 source_root = Path(__file__).resolve().parents[2]
+try:
+    summary['source_sha'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True, stderr=subprocess.DEVNULL, cwd=source_root, timeout=30).strip()
+except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+    summary['source_sha'] = 'source archive'
 source_digest = hashlib.sha256()
 for directory in ['include', 'lib', 'src', 'tests/standalone/network']:
     for source in sorted((source_root / directory).rglob('*')):
