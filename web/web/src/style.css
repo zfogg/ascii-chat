@@ -140,22 +140,6 @@
   }
 }
 
-/* TODO/FIXME: tailwind should  generate 
- * this kinda stuff. this makes the 
- * component on the homepage work. 
- * refactor/fix so tailwind handles 
- * automatically and i don't need these 
- * declarataions. */
-.bg-terminal-cyan {
-  @apply bg-terminal-cyan;
-}
-.bg-terminal-magenta {
-  @apply bg-terminal-magenta;
-}
-.bg-terminal-green {
-  @apply bg-terminal-green;
-}
-
 /* Let wrappers receive hover events even over disabled browser controls. */
 .settings-locked :is(input, select, button):disabled {
   pointer-events: none;
