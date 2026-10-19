@@ -675,7 +675,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
                 ))}
               </select>
             </label>
-            <label className="flex items-center gap-2 text-sm">
+            <label className="mt-3 flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 aria-label="Fast camera exposure"
