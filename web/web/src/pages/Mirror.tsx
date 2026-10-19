@@ -171,7 +171,11 @@ export function MirrorPage() {
 
   // Webcam start logic and auto-start effects
   const pendingWebcamSwitch = useRef<object | null>(null);
-  const { startWebcam, cancelStart: cancelWebcamStart } = useMirrorWebcam({
+  const {
+    startWebcam,
+    cancelStart: cancelWebcamStart,
+    isStarting,
+  } = useMirrorWebcam({
     settings,
     videoRef,
     canvasRef,
@@ -395,7 +399,10 @@ export function MirrorPage() {
               fps: fileMedia.loading ? 0 : fps,
               targetFps: settings.targetFps,
               showBandwidth: false,
-              isWebcamRunning: renderActive,
+              isWebcamRunning: renderActive || isStarting,
+              webcamActionLabels: isStarting
+                ? { start: "Start Webcam", stop: "Cancel startup" }
+                : undefined,
               mediaSource,
               onStartWebcam: () => {
                 stopFile();
@@ -409,9 +416,11 @@ export function MirrorPage() {
               onStopWebcam: stopPlayback,
               onUploadClick: () => setShowUploadModal(true),
               videoRef: undefined,
-              status: fileMedia.status
-                ? `${fileMedia.status} ${fileMedia.fileName}`
-                : fileMedia.fileName,
+              status: isStarting
+                ? "Starting webcam..."
+                : fileMedia.status
+                  ? `${fileMedia.status} ${fileMedia.fileName}`
+                  : fileMedia.fileName,
               statusControls: (
                 <>
                   {fileMedia.loading && (

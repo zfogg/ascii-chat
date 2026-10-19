@@ -17,7 +17,7 @@ afterEach(() => {
   convert.mockReset();
 });
 
-test("Mirror renders each delivered camera frame without sampling the stale video element", async () => {
+test("Mirror converts at 60 FPS independently of 30 FPS delivery without sampling the stale video element", async () => {
   let controller: ReadableStreamDefaultController<VideoFrame>;
   const cancel = vi.fn();
   vi.stubGlobal(
@@ -31,10 +31,13 @@ test("Mirror renders each delivered camera frame without sampling the stale vide
       });
     },
   );
-  vi.stubGlobal(
-    "requestAnimationFrame",
-    vi.fn(() => 1),
-  );
+  let now = 0;
+  let tick: FrameRequestCallback = () => {};
+  vi.spyOn(performance, "now").mockImplementation(() => now);
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+    tick = callback;
+    return 1;
+  });
   vi.stubGlobal("cancelAnimationFrame", vi.fn());
   const drawImage = vi.fn();
   const captureFrame = vi.fn((_drawVideo?: boolean) => ({
@@ -44,6 +47,7 @@ test("Mirror renders each delivered camera frame without sampling the stale vide
   }));
   const writeFrame = vi.fn(() => true);
   convert.mockReturnValue("camera frame");
+  const cameraTrack = {};
   const hook = renderHook(() =>
     useMirrorRenderLoop({
       isWebcamRunning: true,
@@ -68,21 +72,32 @@ test("Mirror renders each delivered camera frame without sampling the stale vide
       firstFrameTimeRef: { current: null },
       frameIntervalRef: { current: 1000 / 60 },
       streamRef: {
-        current: { getVideoTracks: () => [{}] } as unknown as MediaStream,
+        current: {
+          getVideoTracks: () => [cameraTrack],
+        } as unknown as MediaStream,
       },
     }),
   );
   const frames = Array.from({ length: 120 }, (_, index) => ({
-    timestamp: Math.round((index * 1e6) / 60),
+    timestamp: Math.round((index * 1e6) / 30),
     close: vi.fn(),
   }));
   for (const frame of frames) {
     await act(async () => {
       controller!.enqueue(frame as unknown as VideoFrame);
     });
+    // One new camera image for two render deadlines. C processes both,
+    // including the repeated image, at the independent presentation cadence.
+    for (let repeat = 0; repeat < 2; repeat++) {
+      now += 1000 / 60;
+      await act(async () => tick(now));
+    }
   }
+  now += 1000 / 60;
+  await act(async () => tick(now));
   expect(drawImage).toHaveBeenCalledTimes(120);
-  expect(writeFrame).toHaveBeenCalledTimes(120);
+  expect(writeFrame).toHaveBeenCalledTimes(240);
+  expect(convert).toHaveBeenCalledTimes(240);
   expect(
     captureFrame.mock.calls.every(([drawVideo]) => drawVideo === false),
   ).toBe(true);
@@ -169,6 +184,8 @@ test("Mirror starts and replaces direct capture after script-driven track restor
     await act(async () => {
       readers[index]!.controller.enqueue(frame as unknown as VideoFrame);
     });
+    await act(async () => tick(performance.now() + (index + 1) * 40));
+    await act(async () => tick(performance.now() + (index + 1) * 40 + 20));
     expect(frame.close).toHaveBeenCalledOnce();
     expect(captureFrame).toHaveBeenLastCalledWith(false);
     expect(writeFrame).toHaveBeenCalledTimes(index + 1);

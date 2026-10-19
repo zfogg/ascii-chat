@@ -64,13 +64,14 @@ test("Max follows decreases and increases while a manual limit survives both", (
   expect(effectiveCameraFps("30", 60)).toBe(30);
 });
 
-test("observed rates clamp and recover the actual setting without reducing camera acquisition", async () => {
+test("configured camera modes clamp and recover the setting while slower delivery does not", async () => {
   let now = 0;
   vi.spyOn(performance, "now").mockImplementation(() => now);
+  let configured = 60;
   const track = {
     label: "60 FPS camera",
     getCapabilities: () => ({ frameRate: { max: 60 } }),
-    getSettings: () => ({ frameRate: 60 }),
+    getSettings: () => ({ frameRate: configured }),
   } as unknown as MediaStreamTrack;
   reportCameraTrack(track);
   const hook = renderHook(() => {
@@ -84,16 +85,23 @@ test("observed rates clamp and recover the actual setting without reducing camer
       await act(async () => reportCameraFrame(now));
     }
   };
+  await deliver(33);
+  expect(hook.result.current.control.rate?.observed).toBe(33);
+  expect(hook.result.current.settings.targetFps).toBe(60);
+  configured = 20;
   await deliver(20);
   expect(hook.result.current.settings.targetFps).toBe(20);
   expect(hook.result.current.control.maximum).toBe(20);
   expect(cameraAcquisitionFps(track)).toBe(60);
+  configured = 60;
   await deliver(60);
   expect(hook.result.current.settings.targetFps).toBe(60);
   await act(async () => hook.result.current.control.select(15));
+  configured = 25;
   await deliver(25);
   expect(hook.result.current.settings.targetFps).toBe(15);
   await act(async () => hook.result.current.control.select(25));
+  configured = 60;
   await deliver(60);
   expect(hook.result.current.settings.targetFps).toBe(60);
 });

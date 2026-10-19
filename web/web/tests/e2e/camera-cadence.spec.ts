@@ -5,14 +5,15 @@ import { resolve } from "node:path";
 
 // Supply real VideoFrames through getUserMedia. The built-in ?test source bypasses
 // camera scheduling and cannot detect a camera callback gate that halves 60 FPS.
-async function camera(page: Page) {
-  await page.addInitScript(() => {
+async function camera(page: Page, startup = { busy: 0, delay: 0 }) {
+  await page.addInitScript(({ busy, delay }) => {
     const stats = {
       generated: 0,
       uploaded: 0,
       painted: 0,
       changed: 0,
       rate: 60,
+      configuredRate: 60,
       still: false,
       exposureMode: "manual",
       exposureTime: 156.25,
@@ -50,6 +51,9 @@ async function camera(page: Page) {
       Reflect.apply(paint, this, [image, dx, dy, ...dirty]);
     };
     navigator.mediaDevices.getUserMedia = async () => {
+      if (busy-- > 0)
+        throw new DOMException("Device in use", "NotReadableError");
+      if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
       const Generator = (
         window as unknown as {
           MediaStreamTrackGenerator: new (options: {
@@ -71,7 +75,7 @@ async function camera(page: Page) {
       Object.defineProperty(track, "getSettings", {
         value: () => ({
           ...getSettings(),
-          frameRate: 60,
+          frameRate: stats.configuredRate,
           exposureMode: stats.exposureMode,
           exposureTime: stats.exposureTime,
         }),
@@ -129,7 +133,7 @@ async function camera(page: Page) {
       // No microphone or speaker tracks are created, including Mirror's audio request.
       return new MediaStream([track]);
     };
-  });
+  }, startup);
 }
 
 async function measure(page: Page) {
@@ -169,8 +173,13 @@ test("camera FPS limit follows delivery changes and preserves a lower user choic
   const changeSource = async (fps: number) => {
     await page.evaluate((rate) => {
       (
-        window as unknown as { cameraCadence: { rate: number } }
+        window as unknown as {
+          cameraCadence: { rate: number; configuredRate: number };
+        }
       ).cameraCadence.rate = rate;
+      (
+        window as unknown as { cameraCadence: { configuredRate: number } }
+      ).cameraCadence.configuredRate = rate;
     }, fps);
     await expect(slider).toHaveAttribute("max", String(fps), {
       timeout: 12000,
@@ -297,6 +306,9 @@ test("two camera clients upload at 60 FPS and preserve fresh received content", 
       (
         window as unknown as { cameraCadence: { rate: number } }
       ).cameraCadence.rate = 20;
+      (
+        window as unknown as { cameraCadence: { configuredRate: number } }
+      ).cameraCadence.configuredRate = 20;
     });
     const uploadLimit = page.getByRole("slider", {
       name: "Camera upload frame rate",
@@ -486,4 +498,89 @@ test("Discovery connect=true starts signaling without a click", async ({
       await exited;
     }
   }
+});
+
+test("a 33 FPS camera delivery still produces 60 C frames at the configured maximum", async ({
+  page,
+}) => {
+  await camera(page);
+  await page.goto(
+    "/mirror?settings=true&animation=fft&fpsLimit=auto&playing=true",
+  );
+  await page.evaluate(() => {
+    (
+      window as unknown as { cameraCadence: { rate: number } }
+    ).cameraCadence.rate = 33;
+  });
+  await page.waitForFunction(
+    () =>
+      ((window as unknown as { __lastAnsiFrameCount?: number })
+        .__lastAnsiFrameCount ?? 0) > 100,
+  );
+  const before = await page.evaluate(() => ({
+    now: performance.now(),
+    frames: (window as unknown as { __lastAnsiFrameCount: number })
+      .__lastAnsiFrameCount,
+  }));
+  await page.waitForTimeout(6000);
+  const after = await page.evaluate(() => ({
+    now: performance.now(),
+    frames: (window as unknown as { __lastAnsiFrameCount: number })
+      .__lastAnsiFrameCount,
+  }));
+  const fps =
+    ((after.frames - before.frames) * 1000) / (after.now - before.now);
+  console.log("33 FPS capture / C conversion", { fps });
+  expect(fps).toBeGreaterThanOrEqual(55);
+  await expect(
+    page.getByRole("slider", { name: "Frame rate", exact: true }),
+  ).toHaveValue("60");
+});
+
+test("Mirror completes delayed startup after a transient busy camera without a second click", async ({
+  page,
+}) => {
+  await camera(page, { busy: 1, delay: 1200 });
+  await page.goto(
+    "/mirror?settings=true&animation=fft&fpsLimit=auto&playing=true",
+  );
+  await expect(
+    page.getByRole("button", { name: "Cancel startup", exact: true }),
+  ).toBeVisible();
+  await page.waitForFunction(
+    () =>
+      ((window as unknown as { __lastAnsiFrameCount?: number })
+        .__lastAnsiFrameCount ?? 0) > 30,
+  );
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true }),
+  ).toBeVisible();
+});
+
+test("Mirror direct capture does not wait for the hidden video play promise", async ({
+  page,
+}) => {
+  await camera(page);
+  await page.addInitScript(() => {
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+      const playback = play.call(this);
+      if (this instanceof HTMLVideoElement && this.srcObject)
+        return playback.then(() => new Promise<void>(() => {}));
+      return playback;
+    };
+  });
+  await page.goto(
+    "/mirror?settings=true&animation=fft&fpsLimit=auto&playing=true",
+  );
+  await page.waitForFunction(
+    () =>
+      ((window as unknown as { __lastAnsiFrameCount?: number })
+        .__lastAnsiFrameCount ?? 0) > 30,
+    {},
+    { timeout: 7000 },
+  );
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true }),
+  ).toBeVisible();
 });

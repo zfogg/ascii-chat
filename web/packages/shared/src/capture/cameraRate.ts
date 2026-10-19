@@ -83,19 +83,32 @@ export function reportCameraTrack(track: MediaStreamTrack): void {
   active = track;
   cadence = new CameraCadence();
   const advertisedMaximum = track.getCapabilities?.().frameRate?.max;
+  const configured = track.getSettings?.().frameRate;
   publish({
     label: track.label,
     advertisedMaximum,
-    configured: track.getSettings?.().frameRate,
+    configured,
+    limit: configured || advertisedMaximum,
   });
 }
 
 export function reportCameraFrame(timestampMilliseconds: number): void {
   const observed = cadence.sample(timestampMilliseconds, performance.now());
   if (observed === null) return;
-  const limit = Math.min(observed, snapshot.advertisedMaximum || observed);
-  if (snapshot.observed === observed && snapshot.limit === limit) return;
-  publish({ ...snapshot, observed, limit });
+  const configured = active?.getSettings?.().frameRate ?? snapshot.configured;
+  // Exposure and driver delivery can run below the negotiated camera mode.
+  // They describe fresh capture, not the maximum requested render cadence.
+  const limit = Math.min(
+    configured || snapshot.advertisedMaximum || observed,
+    snapshot.advertisedMaximum || Infinity,
+  );
+  if (
+    snapshot.observed === observed &&
+    snapshot.limit === limit &&
+    snapshot.configured === configured
+  )
+    return;
+  publish({ ...snapshot, configured, observed, limit });
 }
 
 /** Keep acquisition independent of a lower rendering limit so recovery stays observable. */

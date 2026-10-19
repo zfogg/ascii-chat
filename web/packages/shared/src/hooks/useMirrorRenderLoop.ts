@@ -168,6 +168,9 @@ export function useMirrorRenderLoop({
     let trackReader: ReadableStreamDefaultReader<VideoFrame> | null = null;
     let cameraTrack: MediaStreamTrack | undefined;
     let trackCapture = false;
+    let cameraFrameReady = false;
+    let cameraPrimed = false;
+    const cameraFrames: VideoFrame[] = [];
     let pendingVideoFrame = false;
     const mediaClock = new VideoFrameClock();
     let lastConversionTime = 0;
@@ -346,10 +349,10 @@ export function useMirrorRenderLoop({
       try {
         // Script-driven addTrack/removeTrack calls do not emit track events.
         captureCameraTrack();
-        if (trackCapture) return;
+        if (trackCapture && !cameraFrameReady) return;
         const video = cameraVideoRef?.current;
         const cameraSource = video?.srcObject as MediaStream | null;
-        if (video && cameraSource?.getVideoTracks) {
+        if (!trackCapture && video && cameraSource?.getVideoTracks) {
           const track = cameraSource.getVideoTracks()[0];
           if (track) {
             reportCameraTrack(track);
@@ -378,7 +381,26 @@ export function useMirrorRenderLoop({
             Math.floor((elapsed + tolerance) / interval),
           );
           lastFrameTime += intervalsElapsed * interval;
-          renderFrame();
+          if (trackCapture) {
+            // Prime one display tick so equal-rate capture/render clocks can
+            // absorb arrival jitter without dropping alternating fresh frames.
+            if (!cameraPrimed) {
+              cameraPrimed = true;
+              return;
+            }
+            const frame = cameraFrames.shift();
+            if (frame) {
+              try {
+                const canvas = canvasRef.current;
+                canvas
+                  ?.getContext("2d")
+                  ?.drawImage(frame, 0, 0, canvas.width, canvas.height);
+              } finally {
+                frame.close();
+              }
+            }
+          }
+          renderFrame(trackCapture);
           reportedFrameError = false;
         }
       } catch (error) {
@@ -406,6 +428,9 @@ export function useMirrorRenderLoop({
       void trackReader?.cancel().catch(() => {});
       trackReader = null;
       trackCapture = false;
+      cameraFrameReady = false;
+      cameraPrimed = false;
+      cameraFrames.splice(0).forEach((frame) => frame.close());
       const Processor = (
         window as Window & {
           MediaStreamTrackProcessor?: new (options: {
@@ -425,6 +450,7 @@ export function useMirrorRenderLoop({
             while (isActive && reader === trackReader) {
               const { value: frame, done } = await reader.read();
               if (done) break;
+              let queued = false;
               try {
                 if (!isActive || reader !== trackReader) break;
                 reportCameraFrame(frame.timestamp / 1000);
@@ -442,9 +468,12 @@ export function useMirrorRenderLoop({
                   continue;
                 // Capture the delivered camera frame, rather than sampling a
                 // hidden video's compositor on an independent RAF clock.
-                context.drawImage(frame, 0, 0, canvas.width, canvas.height);
-                renderFrame(true);
-                reportedFrameError = false;
+                // Retain at most two fresh images for the independent render
+                // clock. A stalled host drops old frames instead of building lag.
+                cameraFrames.push(frame);
+                queued = true;
+                if (cameraFrames.length > 2) cameraFrames.shift()!.close();
+                cameraFrameReady = true;
               } catch (error) {
                 if (!reportedFrameError)
                   console.warn(
@@ -453,7 +482,7 @@ export function useMirrorRenderLoop({
                   );
                 reportedFrameError = true;
               } finally {
-                frame.close();
+                if (!queued) frame.close();
               }
             }
           } catch (error) {
@@ -502,6 +531,7 @@ export function useMirrorRenderLoop({
       cameraStream?.removeEventListener?.("addtrack", captureCameraTrack);
       cameraStream?.removeEventListener?.("removetrack", captureCameraTrack);
       void trackReader?.cancel().catch(() => {});
+      cameraFrames.splice(0).forEach((frame) => frame.close());
       window.clearInterval(fpsTimer);
       if (videoHandle) mediaVideo?.cancelVideoFrameCallback(videoHandle);
       cancelAnimationFrame(rafHandle);
