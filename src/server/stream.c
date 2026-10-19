@@ -817,17 +817,18 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
 
   // Render with client's custom palette using enhanced capabilities
   // Palette data is stable after initialization, so no locking needed
-  const int h = caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK ? height * 2 : height;
+  // The converter expands terminal rows into half-block samples itself.
+  // Keep cell dimensions here so the frame and Matrix overlay fit the client grid.
 
   // DEBUG: Log dimensions being used for ASCII conversion
-  log_dev_every(LOG_RATE_SLOW, "convert_composite_to_ascii: composite=%dx%d, terminal=%dx%d, h=%d (mode=%d)",
-                composite->w, composite->h, width, height, h, caps_snapshot.render_mode);
+  log_dev_every(LOG_RATE_SLOW, "convert_composite_to_ascii: composite=%dx%d, terminal=%dx%d (mode=%d)", composite->w,
+                composite->h, width, height, caps_snapshot.render_mode);
 
   // Pass full terminal dimensions so ascii_convert_with_capabilities can fit the image correctly
   // with proper CHAR_ASPECT correction. The composite may have been pre-fitted in pixel space,
   // but ascii_convert will handle terminal character aspect ratio properly when aspect_ratio=true.
   uint64_t convert_start_ns = time_get_ns();
-  char *ascii_frame = ascii_convert_with_capabilities(composite, width, h, &caps_snapshot, true, false,
+  char *ascii_frame = ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false,
                                                       render_client->client_palette_chars);
   uint64_t convert_end_ns = time_get_ns();
   uint64_t convert_duration_ns = convert_end_ns - convert_start_ns;
@@ -842,11 +843,11 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
   const bool matrix_rain = (caps_snapshot.capabilities & TERM_CAP_MATRIX_RAIN) != 0;
   if (matrix_rain && ascii_frame) {
     if (!render_client->digital_rain || render_client->digital_rain->num_columns != width ||
-        render_client->digital_rain->num_rows != h) {
+        render_client->digital_rain->num_rows != height) {
       if (render_client->digital_rain) {
         digital_rain_destroy(render_client->digital_rain);
       }
-      render_client->digital_rain = digital_rain_init(width, h);
+      render_client->digital_rain = digital_rain_init(width, height);
       render_client->digital_rain_last_update_time = (double)time_get_ns() / (double)NS_PER_SEC_INT;
     }
 
