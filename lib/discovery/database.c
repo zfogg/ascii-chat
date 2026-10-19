@@ -232,7 +232,7 @@ static void load_session_participants(sqlite3 *db, session_entry_t *session) {
   sqlite3_bind_text(stmt, 1, session->session_string, -1, SQLITE_STATIC);
 
   size_t idx = 0;
-  while (sqlite3_step(stmt) == SQLITE_ROW && idx < MAX_PARTICIPANTS) {
+  while (sqlite3_step(stmt) == SQLITE_ROW && idx < PARTICIPANT_LIMIT) {
     participant_t *p = SAFE_MALLOC(sizeof(participant_t), participant_t *);
     if (!p) {
       break;
@@ -360,8 +360,9 @@ asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create
   uint64_t expires_at = now + ACIP_SESSION_EXPIRATION_MS;
 
   // Calculate max_participants
-  uint8_t max_participants =
-      req->max_participants > 0 && req->max_participants <= MAX_PARTICIPANTS ? req->max_participants : MAX_PARTICIPANTS;
+  uint8_t max_participants = req->max_participants > 0 && req->max_participants <= PARTICIPANT_LIMIT
+                                 ? req->max_participants
+                                 : PARTICIPANT_LIMIT;
 
   // Insert into database
   const char *sql = "INSERT INTO sessions "
@@ -641,7 +642,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
 
   // IP disclosure logic
   log_debug("DATABASE_SESSION_JOIN: has_password=%d, expose_ip_publicly=%d, server_address='%s'", session->has_password,
-           session->expose_ip_publicly, session->server_address);
+            session->expose_ip_publicly, session->server_address);
   bool reveal_ip = session->has_password || session->expose_ip_publicly;
   log_debug("DATABASE_SESSION_JOIN: reveal_ip=%d", reveal_ip);
 

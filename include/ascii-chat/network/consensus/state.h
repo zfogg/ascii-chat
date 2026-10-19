@@ -169,3 +169,6 @@ int consensus_state_get_metrics_count(const consensus_state_t *state);
  */
 asciichat_error_t consensus_state_get_metric_at(const consensus_state_t *state, int index,
                                                 participant_metrics_t *out_metrics);
+
+/** Store a selector result while completing the current election. */
+asciichat_error_t consensus_state_store_election(consensus_state_t *state, int best, int backup);

@@ -431,7 +431,7 @@ Test(state, election_result_storage_best_lowest_rtt) {
 
   consensus_state_start_collection(state);
   participant_metrics_t m1 = make_metrics(1, 50, 5000); /* High RTT */
-  participant_metrics_t m2 = make_metrics(2, 10, 4000); /* Low RTT - should be host */
+  participant_metrics_t m2 = make_metrics(2, 10, 5000); /* Same bandwidth, lower RTT wins. */
   consensus_state_add_metrics(state, &m1);
   consensus_state_add_metrics(state, &m2);
   consensus_state_collection_complete(state);

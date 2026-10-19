@@ -18,7 +18,7 @@ void session_entry_destroy(session_entry_t *entry) {
   }
 
   // Free all participants
-  for (size_t i = 0; i < MAX_PARTICIPANTS; i++) {
+  for (size_t i = 0; i < PARTICIPANT_LIMIT; i++) {
     if (entry->participants[i]) {
       SAFE_FREE(entry->participants[i]);
     }

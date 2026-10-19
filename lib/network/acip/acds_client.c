@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 /**
  * @file network/acip/client.c
  * @brief ACIP client-side protocol implementation
@@ -302,7 +303,7 @@ asciichat_error_t acds_protocol_enter(acds_protocol_t *p, bool create, const cha
   if (!create)
     return acds_protocol_lookup(p, name);
   acds_session_create_params_t params = {.capabilities = 3,
-                                         .max_participants = 8,
+                                         .max_participants = PARTICIPANT_LIMIT,
                                          .session_type = SESSION_TYPE_WEBRTC,
                                          .has_password = p->join.has_password};
   memcpy(params.identity_pubkey, p->join.identity_pubkey, sizeof(params.identity_pubkey));

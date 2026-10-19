@@ -19,6 +19,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
+#include <ascii-chat/network/consensus/handoff.h>
 
 // =============================================================================
 // ACDS Handler Function Types and Hash Table
@@ -133,7 +134,13 @@ asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_ty
   if (type == PACKET_TYPE_ACIP_NETWORK_QUALITY) {
     log_debug_every(US_PER_SEC_INT,
                     "★ ACIP_HANDLE_ACDS_PACKET: Dispatching type=%u (NETWORK_QUALITY) from %s, payload_len=%zu", type,
-             client_ip, payload_len);
+                    client_ip, payload_len);
+  }
+
+  if ((unsigned)type == CONSENSUS_HANDOFF_PACKET) {
+    if (!callbacks->on_handoff)
+      return SET_ERRNO(ERROR_INVALID_STATE, "Handoff unsupported");
+    return callbacks->on_handoff(payload, payload_len, transport, callbacks->app_ctx);
   }
 
   // O(1) dispatch via hash table lookup
@@ -175,8 +182,8 @@ static asciichat_error_t handle_acds_session_create(const void *payload, size_t 
   // total_keys > 0 indicates multi-key mode; skip validation for subsequent keys
   if (req->key_index == 0 || req->total_keys == 0) {
     // Validate session parameters for first key or single-key mode
-    if (req->max_participants == 0 || req->max_participants > 32) {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_participants: %u from %s (expected: 1-32)",
+    if (req->max_participants == 0 || req->max_participants > PARTICIPANT_LIMIT) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_participants: %u from %s (expected: 1-128)",
                        req->max_participants, client_ip);
     }
 

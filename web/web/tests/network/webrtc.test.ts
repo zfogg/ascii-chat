@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vite-plus/test";
-import { ConnectionState } from "../../src/wasm/client";
+import { ConnectionState, PacketType } from "../../src/wasm/client";
 import { WebRTCBridge } from "../../src/network/WebRTCBridge";
 import {
   discoveryRTCConfiguration,
@@ -11,6 +11,18 @@ import {
   parseSignal,
   signalPacket,
 } from "../../src/network/acdsProtocol";
+
+vi.mock("../../src/wasm/client", async (original) => ({
+  ...(await original<typeof import("../../src/wasm/client")>()),
+  serializePacket(type: number, payload: Uint8Array) {
+    const bytes = new Uint8Array(22 + payload.length);
+    const view = new DataView(bytes.buffer);
+    view.setUint16(8, type, false);
+    view.setUint32(10, payload.length, false);
+    bytes.set(payload, 22);
+    return bytes;
+  },
+}));
 
 const signalingHarness = vi.hoisted(() => ({
   current: null as null | {
@@ -499,5 +511,66 @@ describe("ACDS wire compatibility", () => {
     });
     answer[16] = 99;
     expect(() => parseSignal(answer, local, false)).toThrow("mismatch");
+  });
+});
+
+describe("handoff with queued media", () => {
+  const options: DiscoveryOptions = {
+    sessionName: "blue-mountain-tiger",
+    password: "",
+    signalingUrl: "ws://localhost",
+    stunServers: [],
+    turnServers: [],
+  };
+  it("discards old plaintext before replacing a peer and its crypto context", () => {
+    const session = new WebRTCSession(options);
+    const oldCrypto = { sendPacket: vi.fn(), close: vi.fn() };
+    let buffered = 300000;
+    Reflect.set(session, "state", ConnectionState.CONNECTED);
+    Reflect.set(session, "bridge", {
+      getBufferedAmount: () => buffered,
+      close: vi.fn(),
+    });
+    Reflect.set(session, "peerCrypto", oldCrypto);
+    session.sendPacket(PacketType.IMAGE_FRAME, new Uint8Array(8));
+    expect(session.getBufferedAmount()).toBeGreaterThan(buffered);
+    const oldQueue = Reflect.get(session, "outbound");
+    Reflect.get(session, "closePeer").call(session);
+    buffered = 0;
+    oldQueue.flush();
+    expect(oldCrypto.sendPacket).not.toHaveBeenCalled();
+    expect(oldCrypto.close).toHaveBeenCalledOnce();
+    const nextCrypto = { sendPacket: vi.fn(), close: vi.fn() };
+    Reflect.set(session, "bridge", {
+      getBufferedAmount: () => 0,
+      close: vi.fn(),
+    });
+    Reflect.set(session, "peerCrypto", nextCrypto);
+    expect(session.needsKeyframe(PacketType.IMAGE_FRAME_H264)).toBe(true);
+    session.sendPacket(
+      PacketType.IMAGE_FRAME_H264,
+      new Uint8Array([1, 0, 1, 0, 1, 0]),
+    );
+    expect(nextCrypto.sendPacket).toHaveBeenCalledOnce();
+    session.disconnect();
+  });
+  it("uses the promoted host's queue and recovery state", () => {
+    const session = new WebRTCSession(options);
+    const host = {
+      getBufferedAmount: () => 123,
+      needsKeyframe: vi.fn(() => false),
+      sendPacket: vi.fn(),
+      disconnect: vi.fn(),
+    };
+    Reflect.set(session, "promoted", host);
+    expect(session.getBufferedAmount()).toBe(123);
+    expect(session.needsKeyframe(PacketType.IMAGE_FRAME_H264)).toBe(false);
+    const payload = new Uint8Array([1]);
+    session.sendPacket(PacketType.IMAGE_FRAME_H264, payload);
+    expect(host.sendPacket).toHaveBeenCalledWith(
+      PacketType.IMAGE_FRAME_H264,
+      payload,
+    );
+    session.disconnect();
   });
 });

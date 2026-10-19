@@ -33,11 +33,11 @@ Test(consensus_metrics, measure_basic) {
   participant_metrics_t metrics;
   asciichat_error_t err = consensus_metrics_measure(my_id, &metrics);
 
-  cr_assert_eq(err, ASCIICHAT_OK, "Measurement should succeed");
+  cr_assert_eq(err, ERROR_INVALID_STATE, "A session observation provider is required");
   cr_assert_eq(memcmp(metrics.participant_id, my_id, 16), 0, "ID should match");
   cr_assert(metrics.nat_tier >= 0 && metrics.nat_tier <= 4, "NAT tier should be 0-4 range");
-  cr_assert_gt(metrics.upload_kbps, 0, "Upload bandwidth should be positive");
-  cr_assert_gt(metrics.rtt_ns, 0, "RTT should be positive");
+  cr_assert_eq(metrics.upload_kbps, 0, "Unknown upload must not become an observation");
+  cr_assert_eq(metrics.measurement_window_ns, 0, "Missing observations have no measurement window");
   cr_assert(metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100,
             "Success rate should be 0-100 range");
 }
@@ -221,7 +221,7 @@ Test(consensus_metrics, stun_probe_success) {
             "Success rate should be 0-100 percent");
 
   // In current implementation, should be exactly 90
-  cr_assert_eq(metrics.stun_probe_success_pct, 90, "Default success rate should be 90 percent");
+  cr_assert_eq(metrics.stun_probe_success_pct, 0, "No probes means no observed successes");
 }
 
 /**

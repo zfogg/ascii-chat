@@ -12,7 +12,7 @@
 
 #include <string.h>
 
-// MAX_PARTICIPANTS is defined in session.h (included via negotiate.h)
+// PARTICIPANT_LIMIT is defined in session.h (included via negotiate.h)
 
 void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[16], const uint8_t participant_id[16],
                     bool is_initiator) {
@@ -187,7 +187,7 @@ asciichat_error_t negotiate_elect_future_host(const acip_nat_quality_t collected
     return ERROR_INVALID_PARAM;
   }
 
-  if (num_participants == 0 || num_participants > MAX_PARTICIPANTS) {
+  if (num_participants == 0 || num_participants > PARTICIPANT_LIMIT) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant count");
     return ERROR_INVALID_PARAM;
   }
@@ -200,7 +200,7 @@ asciichat_error_t negotiate_elect_future_host(const acip_nat_quality_t collected
   }
 
   // Convert all acip_nat_quality_t to nat_quality_t for comparison
-  nat_quality_t qualities[MAX_PARTICIPANTS];
+  nat_quality_t qualities[PARTICIPANT_LIMIT];
   for (size_t i = 0; i < num_participants; i++) {
     nat_quality_from_acip(&collected_quality[i], &qualities[i]);
   }
