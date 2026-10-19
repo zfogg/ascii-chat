@@ -23,9 +23,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#define SQRT_2 1.4142135623730951
-#define SQRT_5 2.23606797749979
-
 /**
  * Generate pseudo-random float from 2D coordinates
  * Uses hash function to generate deterministic randomness per column
@@ -34,14 +31,6 @@ static float random_float(float x, float y) {
   float dt = x * 12.9898f + y * 78.233f;
   float sn = fmodf(dt, (float)M_PI);
   return fmodf(sinf(sn) * 43758.5453f, 1.0f);
-}
-
-/**
- * Apply organic wobble to time value
- * Prevents mechanical-looking wave patterns
- */
-static float wobble(float x) {
-  return x + 0.3f * sinf((float)SQRT_2 * x) + 0.2f * sinf((float)SQRT_5 * x);
 }
 
 /**
@@ -67,27 +56,51 @@ static inline float fract(float x) {
  * @param sim_time Current simulation time
  * @return Brightness value (0.0 to 1.0)
  */
-static float get_rain_brightness(digital_rain_t *rain, int col, int row, float sim_time) {
-  if (col < 0 || col >= rain->num_columns) {
+static float get_rain_brightness(digital_rain_t *rain, int col, int row, float sim_time, float *head) {
+  *head = 0.0f;
+  if (col < 0 || col >= rain->num_columns)
     return 0.0f;
-  }
+  const digital_rain_column_t *column = &rain->columns[col];
+  float length = rain->raindrop_length * (0.75f + 0.5f * random_float((float)col + 0.3f, 0));
+  float gap = length * (0.25f + 0.65f * random_float((float)col + 0.4f, 0));
+  float period = length + gap;
+  float travel = column->time_offset + sim_time * rain->fall_speed * column->speed_multiplier;
+  travel += 0.35f * sinf(sim_time * 0.7f + column->phase_offset);
+  float distance = fract((travel - (float)row) / period) * period;
+  float head_distance = fminf(distance, period - distance);
+  *head = expf(-2.5f * head_distance * head_distance);
+  float tail = powf(fmaxf(0.0f, 1.0f - distance / length), 0.65f);
+  // Keep the source readable between streams; the head and tail add contrast.
+  return 0.45f + 0.55f * tail;
+}
 
-  digital_rain_column_t *column = &rain->columns[col];
+// Ordered by approximate ink coverage in a monospace terminal. Keeping mutations
+// within a group preserves the source image's shading and leaves spaces untouched.
+static const char *glyph_groups[] = {".,'`",           ":;-_",        "!|/\\()[]{}", "iltfrxnvczXYUJLC",
+                                     "oahkbdpqwmZO0Q", "*+?%&$#@MWB8"};
 
-  // Calculate time for this column (with random offset and speed variation)
-  float column_time = column->time_offset + sim_time * rain->fall_speed * column->speed_multiplier;
+int digital_rain_glyph_group(uint32_t codepoint) {
+  if (codepoint > 126 || codepoint <= 32)
+    return -1;
+  for (size_t i = 0; i < sizeof(glyph_groups) / sizeof(glyph_groups[0]); i++)
+    if (strchr(glyph_groups[i], (int)codepoint))
+      return (int)i;
+  return -1;
+}
 
-  // Calculate rain time for this cell
-  // Subtract row from column_time so the wave moves DOWN (to higher row numbers)
-  // As column_time increases, the pattern shifts to higher rows (downward)
-  float rain_time = (column_time - (float)row) / rain->raindrop_length;
-
-  // Apply wobble for organic variation
-  rain_time = wobble(rain_time);
-
-  // Create sawtooth wave: fract() wraps time to 0-1, creating repeating drops
-  // Subtract from 1.0 so brightness increases toward bottom of drop
-  return 1.0f - fract(rain_time);
+static uint32_t mutate_glyph(uint32_t codepoint, int col, int row, float time) {
+  int group = digital_rain_glyph_group(codepoint);
+  if (group < 0)
+    return codepoint;
+  // Independent periods and phase offsets avoid synchronized full-grid flicker.
+  float seed = random_float((float)col + 1.3f, (float)row + 2.7f);
+  unsigned int cycle = (unsigned int)floorf(time * (1.2f + 2.0f * seed) + seed * 13.0f);
+  uint32_t hash = (uint32_t)(col + 1) * 73856093u ^ (uint32_t)(row + 1) * 19349663u ^ cycle * 83492791u;
+  hash ^= hash >> 16;
+  hash *= 0x7feb352du;
+  hash ^= hash >> 15;
+  const char *choices = glyph_groups[group];
+  return (uint8_t)choices[hash % strlen(choices)];
 }
 
 /* ============================================================================
@@ -334,48 +347,17 @@ static const char *skip_ansi_sequence(const char *str) {
   return str;
 }
 
-/**
- * Generate brightness-modulated ANSI color code
- * Multiplies RGB values by brightness factor
- */
-static int generate_modulated_color(char *buf, size_t buf_size, int r, int g, int b, float brightness,
-                                    bool is_foreground, bool is_cursor) {
-  // Apply cursor brightness boost
-  if (is_cursor) {
-    brightness *= 2.0f;
-  }
-
-  // Clamp brightness
-  if (brightness < 0.0f)
-    brightness = 0.0f;
-  if (brightness > 1.0f)
-    brightness = 1.0f;
-
-  // Modulate RGB by brightness
-  int new_r = (int)((float)r * brightness);
-  int new_g = (int)((float)g * brightness);
-  int new_b = (int)((float)b * brightness);
-
-  // Clamp to valid range
-  if (new_r < 0)
-    new_r = 0;
-  if (new_r > 255)
-    new_r = 255;
-  if (new_g < 0)
-    new_g = 0;
-  if (new_g > 255)
-    new_g = 255;
-  if (new_b < 0)
-    new_b = 0;
-  if (new_b > 255)
-    new_b = 255;
-
-  // Generate ANSI code
-  if (is_foreground) {
-    return snprintf(buf, buf_size, "\033[38;2;%d;%d;%dm", new_r, new_g, new_b);
-  } else {
-    return snprintf(buf, buf_size, "\033[48;2;%d;%d;%dm", new_r, new_g, new_b);
-  }
+static int generate_rain_color(char *buf, size_t size, digital_rain_t *rain, float brightness, float head,
+                               float luminance, bool foreground) {
+  // Source luminance shapes both the saturated body and the pale leading glint.
+  float light = foreground ? 0.80f + 0.20f * sqrtf(luminance) : luminance;
+  // Limit whitening so even boosted heads retain the selected rain hue.
+  float white = fminf(0.40f, head * rain->cursor_brightness * 0.18f);
+  float level = fminf(1.0f, brightness + head * 0.25f) * light;
+  int r = (int)((rain->color_r + (255 - rain->color_r) * white) * level);
+  int g = (int)((rain->color_g + (255 - rain->color_g) * white) * level);
+  int b = (int)((rain->color_b + (255 - rain->color_b) * white) * level);
+  return snprintf(buf, size, "\033[%d;2;%d;%d;%dm", foreground ? 38 : 48, r, g, b);
 }
 
 char *digital_rain_apply(digital_rain_t *rain, const char *frame, float delta_time) {
@@ -402,151 +384,106 @@ char *digital_rain_render_at(digital_rain_t *rain, const char *frame, float seco
     return NULL;
   }
 
-  // Update time
-  rain->time = seconds;
-  float sim_time = rain->time;
-
-  // Update rainbow color if rainbow mode is enabled
-  if (rain->rainbow_mode) {
-    color_filter_calculate_rainbow(sim_time, &rain->color_r, &rain->color_g, &rain->color_b);
-  }
-
-  // Allocate output buffer (input size + overhead for ANSI codes)
-  // Estimate: each character might need up to 20 bytes for ANSI codes
-  size_t input_len = strlen(frame);
-  size_t output_capacity = input_len * 20 + 1024;
-  char *output = SAFE_MALLOC(output_capacity, char *);
-  if (!output) {
-    log_error("digital_rain_apply: failed to allocate output buffer");
+  if (!isfinite(seconds) || seconds < 0)
     return NULL;
-  }
+  float elapsed = fmaxf(0.0f, seconds - rain->time);
+  rain->time = seconds;
+  float sim_time = seconds;
+  // brightness_decay retains its meaning as a blend factor at 60 Hz.
+  float decay = fminf(1.0f, fmaxf(0.0f, rain->brightness_decay));
+  float alpha = elapsed > 0 ? 1.0f - powf(1.0f - decay, elapsed * 60.0f) : 0.0f;
+
+  if (rain->rainbow_mode)
+    color_filter_calculate_rainbow(sim_time, &rain->color_r, &rain->color_g, &rain->color_b);
+
+  size_t input_len = strlen(frame);
+  if (input_len > (SIZE_MAX - 1024) / 48)
+    return NULL;
+  size_t output_capacity = input_len * 48 + 1024;
+  char *output = SAFE_MALLOC(output_capacity, char *);
+  if (!output)
+    return NULL;
 
   const char *src = frame;
   char *dst = output;
   size_t remaining = output_capacity;
-
-  int col = 0;
-  int row = 0;
+  int col = 0, row = 0;
+  float foreground_luminance = 1.0f, background_luminance = 0.0f;
+  bool has_background = false;
 
   while (*src && remaining > 100) {
-    // Try to parse and modify ANSI color sequences
     if (*src == '\033') {
       int r, g, b;
-      bool is_foreground;
-      const char *after = parse_ansi_color(src, &r, &g, &b, &is_foreground);
-
+      bool foreground;
+      const char *after = parse_ansi_color(src, &r, &g, &b, &foreground);
       if (after) {
-        // Found a color sequence - calculate brightness for this position
-        float brightness = get_rain_brightness(rain, col, row, sim_time);
-        float brightness_below = get_rain_brightness(rain, col, row + 1, sim_time);
-        bool is_cursor = brightness > brightness_below;
-
-        // Blend with previous brightness for smooth transitions
-        if (!rain->first_frame && row < rain->num_rows && col < rain->num_columns) {
-          size_t idx = (size_t)row * (size_t)rain->num_columns + (size_t)col;
-          float prev_brightness = rain->previous_brightness[idx];
-          brightness = prev_brightness + (brightness - prev_brightness) * rain->brightness_decay;
-          rain->previous_brightness[idx] = brightness;
-        } else if (row < rain->num_rows && col < rain->num_columns) {
-          size_t idx = (size_t)row * (size_t)rain->num_columns + (size_t)col;
-          rain->previous_brightness[idx] = brightness;
+        float luminance = fminf(1.0f, fmaxf(0.0f, (0.2126f * r + 0.7152f * g + 0.0722f * b) / 255.0f));
+        if (foreground)
+          foreground_luminance = luminance;
+        else {
+          background_luminance = luminance;
+          has_background = true;
         }
-
-        // Generate modulated color
-        char ansi_buf[32];
-        int ansi_len =
-            generate_modulated_color(ansi_buf, sizeof(ansi_buf), r, g, b, brightness, is_foreground, is_cursor);
-
-        if ((size_t)ansi_len < remaining) {
-          memcpy(dst, ansi_buf, (size_t)ansi_len);
-          dst += ansi_len;
-          remaining -= (size_t)ansi_len;
-        }
-
         src = after;
-        continue;
       } else {
-        // Not a color sequence - copy as-is
-        const char *after_skip = skip_ansi_sequence(src);
-        size_t ansi_len = (size_t)(after_skip - src);
-        if (ansi_len < remaining) {
-          memcpy(dst, src, ansi_len);
-          dst += ansi_len;
-          remaining -= ansi_len;
-          src = after_skip;
-        } else {
-          break;
+        after = skip_ansi_sequence(src);
+        size_t count = (size_t)(after - src);
+        if ((count == 4 && memcmp(src, "\033[0m", 4) == 0) || (count == 3 && memcmp(src, "\033[m", 3) == 0)) {
+          foreground_luminance = 1.0f;
+          has_background = false;
         }
-        continue;
+        memcpy(dst, src, count);
+        dst += count;
+        remaining -= count;
+        src = after;
       }
+      continue;
     }
-
-    // Handle newline
-    if (*src == '\n') {
+    if (*src == '\n' || *src == '\r') {
+      if (*src == '\n')
+        row++;
+      col = 0;
       *dst++ = *src++;
       remaining--;
-      row++;
-      col = 0;
       continue;
     }
 
-    // Copy regular characters - inject color for non-colored characters
-    if (remaining > 0) {
-      // Calculate brightness for this position
-      float brightness = get_rain_brightness(rain, col, row, sim_time);
-      float brightness_below = get_rain_brightness(rain, col, row + 1, sim_time);
-      bool is_cursor = brightness > brightness_below;
-
-      // Blend with previous brightness
-      if (!rain->first_frame && row < rain->num_rows && col < rain->num_columns) {
-        size_t idx = (size_t)row * (size_t)rain->num_columns + (size_t)col;
-        float prev_brightness = rain->previous_brightness[idx];
-        brightness = prev_brightness + (brightness - prev_brightness) * rain->brightness_decay;
-        rain->previous_brightness[idx] = brightness;
-      } else if (row < rain->num_rows && col < rain->num_columns) {
-        size_t idx = (size_t)row * (size_t)rain->num_columns + (size_t)col;
-        rain->previous_brightness[idx] = brightness;
-      }
-
-      // For characters without explicit color codes, use the rain's default color
-      char ansi_buf[32];
-      int ansi_len = generate_modulated_color(ansi_buf, sizeof(ansi_buf), rain->color_r, rain->color_g, rain->color_b,
-                                              brightness, true, is_cursor);
-
-      if ((size_t)ansi_len < remaining) {
-        memcpy(dst, ansi_buf, (size_t)ansi_len);
-        dst += ansi_len;
-        remaining -= (size_t)ansi_len;
-      }
-
-      // Decode UTF-8 character to get byte length
-      uint32_t codepoint;
-      int utf8_len = utf8_decode((const uint8_t *)src, &codepoint);
-      if (utf8_len < 0) {
-        // Invalid UTF-8, treat as single byte
-        utf8_len = 1;
-      }
-
-      // Copy all bytes of the UTF-8 character
-      for (int i = 0; i < utf8_len && *src && remaining > 0; i++) {
-        *dst++ = *src++;
-        remaining--;
-      }
-
-      // Only increment column once per character (not per byte)
-      col++;
-    } else {
-      break;
+    float head;
+    float brightness = get_rain_brightness(rain, col, row, sim_time, &head);
+    // Update once per cell, independently of how many ANSI sequences precede it.
+    if (row < rain->num_rows && col < rain->num_columns) {
+      size_t idx = (size_t)row * (size_t)rain->num_columns + (size_t)col;
+      if (!rain->first_frame)
+        brightness = rain->previous_brightness[idx] + (brightness - rain->previous_brightness[idx]) * alpha;
+      rain->previous_brightness[idx] = brightness;
     }
+    int count = generate_rain_color(dst, remaining, rain, brightness, head, foreground_luminance, true);
+    dst += count;
+    remaining -= (size_t)count;
+    if (has_background) {
+      count = generate_rain_color(dst, remaining, rain, brightness, head, background_luminance, false);
+      dst += count;
+      remaining -= (size_t)count;
+    }
+    uint32_t codepoint;
+    int bytes = utf8_decode((const uint8_t *)src, &codepoint);
+    if (bytes <= 0) {
+      bytes = 1;
+      codepoint = (uint8_t)*src;
+    }
+    if (bytes == 1 && codepoint > 32 && codepoint < 127) {
+      *dst++ = (char)mutate_glyph(codepoint, col, row, sim_time);
+      src++;
+      remaining--;
+    } else {
+      memcpy(dst, src, (size_t)bytes);
+      dst += bytes;
+      src += bytes;
+      remaining -= (size_t)bytes;
+    }
+    col++;
   }
-
-  // Null-terminate
-  if (remaining > 0) {
-    *dst = '\0';
-  } else {
-    output[output_capacity - 1] = '\0';
-  }
-
+  *dst = '\0';
   rain->first_frame = false;
   return output;
 }

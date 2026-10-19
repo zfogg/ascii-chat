@@ -12,6 +12,7 @@
  * No platform-specific code (#if guards) needed — this code compiles on all platforms.
  */
 
+#include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/platform/terminal.h>
@@ -236,8 +237,14 @@ static uint32_t matrix_char_map(uint32_t ascii_char) {
   // Map printable ASCII (32-126) to matrix glyphs
   if (ascii_char >= 32 && ascii_char <= 126) {
     // Cycle through available glyphs
-    uint32_t offset = (ascii_char - 32) % matrix_count;
-    return matrix_start + offset;
+    // Coverage order measured from the bundled Matrix-Resurrected font at 10px.
+    // Adjacent alternatives preserve image shading when the rain mutates symbols.
+    static const uint8_t glyphs[6][4] = {{15, 18, 19, 15}, {20, 1, 26, 25}, {23, 0, 3, 13},
+                                         {12, 16, 24, 17}, {9, 4, 22, 21},  {2, 11, 14, 5}};
+    int group = digital_rain_glyph_group(ascii_char);
+    if (group >= 0)
+      return matrix_start + glyphs[group][ascii_char % 4];
+    return matrix_start + (ascii_char - 32) % matrix_count;
   }
 
   // Return unmapped characters as-is (will have no glyph)
@@ -262,6 +269,16 @@ static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, ui
     uint8_t *line = r->framebuffer + (py + row) * r->pitch + (px + first_col) * 4;
     for (int col = 0; col < last_col - first_col; col++) {
       unsigned a = alpha[col];
+      if (r->is_matrix_font && fr > 64 && fg > 64 && fb > 64 && (fr > 200 || fg > 200 || fb > 200)) {
+        // A small local bloom softens pale rain heads without blurring the body.
+        int x = first_col + col;
+        unsigned glow = 0;
+        if (x > 0) glow += bm->buffer[row * bm->pitch + x - 1];
+        if (x + 1 < (int)bm->width) glow += bm->buffer[row * bm->pitch + x + 1];
+        if (row > 0) glow += bm->buffer[(row - 1) * bm->pitch + x];
+        if (row + 1 < (int)bm->rows) glow += bm->buffer[(row + 1) * bm->pitch + x];
+        a += (255 - a) * glow / (255 * 24);
+      }
       uint8_t *dst = line + col * 4;
       dst[0] = (uint8_t)((fr * a + br * (255 - a)) / 255);
       dst[1] = (uint8_t)((fg * a + bg * (255 - a)) / 255);

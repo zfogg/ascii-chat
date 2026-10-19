@@ -28,9 +28,7 @@
 
 // Global digital rain effect context
 static digital_rain_t *g_digital_rain = NULL;
-static char *g_last_rain_output = NULL;
 static double g_last_rain_update_time = 0.0;
-#define RAIN_UPDATE_INTERVAL_MS 100.0 // Update every 100ms for smooth animation
 
 // Frame counter for time-based effects (emscripten_get_now is unreliable in pthreads builds)
 static uint32_t g_frame_count = 0;
@@ -88,10 +86,6 @@ void mirror_cleanup(void) {
   if (g_digital_rain) {
     digital_rain_destroy(g_digital_rain);
     g_digital_rain = NULL;
-  }
-  if (g_last_rain_output) {
-    SAFE_FREE(g_last_rain_output);
-    g_last_rain_output = NULL;
   }
   options_state_destroy();
   buffer_system_cleanup();
@@ -238,10 +232,6 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
       if (g_digital_rain) {
         digital_rain_destroy(g_digital_rain);
       }
-      if (g_last_rain_output) {
-        SAFE_FREE(g_last_rain_output);
-        g_last_rain_output = NULL;
-      }
       g_digital_rain = digital_rain_init(dst_width, dst_height);
       if (!g_digital_rain) {
         log_error("Failed to initialize digital rain effect");
@@ -253,43 +243,21 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
     // Update color from active filter (allows filter changes after initialization)
     digital_rain_set_color_from_filter(g_digital_rain, filter);
 
-    // Render immediately when the cache is empty after enabling or resizing.
-    // Only subsequent frames wait for the animation update interval.
+    // Always apply rain to the newest input. Caching an entire ANSI frame freezes
+    // both the animation and webcam while the browser keeps counting presentations.
     double current_time = emscripten_get_now();
-    double elapsed_ms = current_time - g_last_rain_update_time;
-
-    if (!g_last_rain_output || elapsed_ms >= RAIN_UPDATE_INTERVAL_MS) {
-      // Calculate actual delta time in seconds
-      float delta_time = (float)(elapsed_ms / 1000.0);
-      g_last_rain_update_time = current_time;
-
-      // Apply effect and cache a copy
-      char *rain_output = digital_rain_apply(g_digital_rain, ascii_output, delta_time);
-      if (rain_output) {
-        // Free old cached output
-        if (g_last_rain_output) {
-          SAFE_FREE(g_last_rain_output);
-        }
-        // Cache a copy (we'll return the original rain_output)
-        g_last_rain_output = strdup(rain_output);
-        // Return the rain output (caller will free it)
-        SAFE_FREE(ascii_output);
-        ascii_output = rain_output;
-      }
-    } else if (g_last_rain_output) {
-      // Use cached output
+    float delta_time = (float)((current_time - g_last_rain_update_time) / 1000.0);
+    g_last_rain_update_time = current_time;
+    char *rain_output = digital_rain_apply(g_digital_rain, ascii_output, delta_time);
+    if (rain_output) {
       SAFE_FREE(ascii_output);
-      ascii_output = strdup(g_last_rain_output);
+      ascii_output = rain_output;
     }
   } else {
     // Clean up digital rain context if it exists but effect is disabled
     if (g_digital_rain) {
       digital_rain_destroy(g_digital_rain);
       g_digital_rain = NULL;
-    }
-    if (g_last_rain_output) {
-      SAFE_FREE(g_last_rain_output);
-      g_last_rain_output = NULL;
     }
     g_last_rain_update_time = 0.0;
   }

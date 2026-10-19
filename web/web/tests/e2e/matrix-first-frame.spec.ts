@@ -69,10 +69,10 @@ test("Matrix starts green after enabling, restarting, and resizing", async ({
         let green = false;
         for (let i = 0; i < image.data.length; i += 4) {
           if (image.data[i + 3]! === 0) continue;
-          // Default rain is RGB(0, 255, 80), scaled by glyph coverage.
+          // Matrix permits pale heads while every shade stays green-dominant.
           if (
-            image.data[i]! > 12 ||
-            image.data[i + 2]! > image.data[i + 1]! * (80 / 255) + 3
+            image.data[i]! > image.data[i + 1]! + 3 ||
+            image.data[i + 2]! > image.data[i + 1]! + 3
           )
             colored = true;
           if (image.data[i + 1]! > 12) green = true;

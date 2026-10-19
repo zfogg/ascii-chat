@@ -105,7 +105,7 @@ typedef struct digital_rain {
  * Controls how fast the brightness wave moves down each column.
  * Higher values = faster falling rain.
  */
-#define DIGITAL_RAIN_DEFAULT_FALL_SPEED 3.0f
+#define DIGITAL_RAIN_DEFAULT_FALL_SPEED 10.0f
 
 /**
  * @brief Default raindrop length
@@ -252,5 +252,8 @@ void digital_rain_set_color(digital_rain_t *rain, uint8_t r, uint8_t g, uint8_t 
  * If filter is COLOR_FILTER_NONE, uses default Matrix green.
  */
 void digital_rain_set_color_from_filter(digital_rain_t *rain, color_filter_t filter);
+
+/** Approximate ink-coverage group for printable ASCII, or -1 for an unmapped glyph. */
+int digital_rain_glyph_group(uint32_t codepoint);
 
 /** @} */

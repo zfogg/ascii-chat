@@ -6,6 +6,7 @@ export interface RasterRequest {
   zalgo: number;
 }
 export interface RasterResult {
+  changed: boolean;
   pixels: Uint8ClampedArray<ArrayBuffer>;
   width: number;
   height: number;

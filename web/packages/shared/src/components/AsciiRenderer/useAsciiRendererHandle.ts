@@ -68,6 +68,7 @@ export function useAsciiRendererHandle({
   const textEncoderRef = useRef(new TextEncoder());
   const imageDataRef = useRef<ImageData | null>(null);
   const lastFrameChangedRef = useRef(false);
+  const lastContentRef = useRef("");
 
   useEffect(() => {
     if (!showFps) {
@@ -133,7 +134,7 @@ export function useAsciiRendererHandle({
   useEffect(() => {
     if (!workerRendering) return;
     const worker = new RasterWorker(
-      ({ pixels, width, height }) => {
+      ({ pixels, width, height, changed }) => {
         const canvas = canvasRef.current;
         if (
           !canvas ||
@@ -148,8 +149,9 @@ export function useAsciiRendererHandle({
         if (!context) return;
         context.putImageData(new ImageData(pixels, width, height), 0, 0);
         firstRenderDoneRef.current = true;
-        lastFrameChangedRef.current = true;
-        if (showFps) changedFrameTimesRef.current.push(performance.now());
+        lastFrameChangedRef.current = changed;
+        if (showFps && changed)
+          changedFrameTimesRef.current.push(performance.now());
       },
       (error) => {
         console.error(
@@ -267,13 +269,11 @@ export function useAsciiRendererHandle({
                 imageData = new ImageData(w, h);
                 imageDataRef.current = imageData;
               }
-              // Frames received from the server are display snapshots. Do
-              // not compare their framebuffer byte-by-byte in JavaScript:
-              // at typical canvas sizes that costs hundreds of millions of
-              // comparisons per second and blocks rAF. Typed-array copies
-              // stay in native code, and a received frame is a valid FPS
-              // update even when its pixels happen to match the prior one.
-              lastFrameChangedRef.current = true;
+              // Compare compact ANSI content rather than millions of raster bytes.
+              // Re-presenting an unchanged frame must not inflate content FPS.
+              lastFrameChangedRef.current =
+                ansiString !== lastContentRef.current;
+              lastContentRef.current = ansiString;
               if (stride === rowBytes) {
                 imageData.data.set(fbData);
               } else {

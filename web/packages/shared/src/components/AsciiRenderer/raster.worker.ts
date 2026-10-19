@@ -25,12 +25,14 @@ const initialized: Promise<MirrorModule> = (async () => {
 let renderer = 0;
 let signature = "";
 let queue = Promise.resolve();
+let previousText: string | null = null;
 self.onmessage = (event: MessageEvent<RasterRequest>) => {
   queue = queue
     .then(async () => {
       const module = await initialized;
       const { text, cols, rows, matrix, zalgo } = event.data;
       const nextSignature = `${cols}:${rows}:${matrix}`;
+      const changed = text !== previousText || nextSignature !== signature;
       if (signature !== nextSignature) {
         if (renderer) module._term_renderer_destroy(renderer);
         renderer = 0;
@@ -82,9 +84,10 @@ self.onmessage = (event: MessageEvent<RasterRequest>) => {
           ),
           row * width * 4,
         );
+      previousText = text;
       (
         self.postMessage as (message: unknown, transfer: Transferable[]) => void
-      )({ width, height, pixels }, [pixels.buffer]);
+      )({ width, height, pixels, changed }, [pixels.buffer]);
     })
     .catch((error) => self.postMessage({ error: String(error) }));
 };

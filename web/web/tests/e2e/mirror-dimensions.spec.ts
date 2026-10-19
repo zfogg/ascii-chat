@@ -97,8 +97,8 @@ test("automatic grid fills the canvas when toggling Matrix animation", async ({
             for (let i = 0; i < pixels.length; i += 4) {
               if (pixels[i + 1]! > 12) lit++;
               if (
-                pixels[i]! > 12 ||
-                pixels[i + 2]! > pixels[i + 1]! * (80 / 255) + 3
+                pixels[i]! > pixels[i + 1]! + 3 ||
+                pixels[i + 2]! > pixels[i + 1]! + 3
               )
                 colored++;
             }
