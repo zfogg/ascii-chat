@@ -1330,6 +1330,10 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
                 --transports ${outbound_transport} --codecs ${outbound_codecs}
                 --output ${CMAKE_BINARY_DIR}/backpressure/${outbound_transport})
             set_tests_properties(backpressure-${outbound_transport} PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
+            if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+                set_property(TEST backpressure-${outbound_transport} APPEND PROPERTY ENVIRONMENT_MODIFICATION
+                    "LSAN_OPTIONS=string_append::suppressions=${CMAKE_CURRENT_SOURCE_DIR}/standalone/network/x265_3_5_lsan.supp")
+            endif()
         endforeach()
         if(WIN32)
             set_tests_properties(transport-backpressure backpressure-tcp backpressure-websocket backpressure-webrtc
