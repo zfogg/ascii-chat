@@ -1,7 +1,11 @@
 import { test, expect, type Page } from "./browser-fixture";
 import { fileURLToPath } from "node:url";
 
-const moduleUrl = `/@fs/${fileURLToPath(new URL("../../../packages/shared/src/wasm/mirror.ts", import.meta.url)).replaceAll("\\", "/")}`;
+const moduleUrl = `/@fs/${fileURLToPath(
+  new URL("../../../packages/shared/src/wasm/mirror.ts", import.meta.url),
+)
+  .replaceAll("\\", "/")
+  .replace(/^\/+/, "")}`;
 
 declare global {
   interface Window {
