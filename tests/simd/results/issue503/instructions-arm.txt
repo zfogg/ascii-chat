@@ -1,0 +1,10 @@
+simd_pack_neon: 9070:	4cdf4164 	ld3	{v4.16b-v6.16b}, [x11], #48
+simd_lookup_neon: 8bf4:	4e186019 	tbl	v25.16b, {v0.16b-v3.16b}, v24.16b
+simd_quantize_neon: 8cc0:	4ea69cc6 	mul	v6.4s, v6.4s, v6.4s
+simd_run_neon: 8f4c:	6ea08c63 	cmeq	v3.4s, v3.4s, v0.4s
+simd_halfblock_neon: 91a4:	4ea09e73 	mul	v19.4s, v19.4s, v0.4s
+simd_pack_sve: 9784:	a440e400 	ld3b	{z0.b-z2.b}, p1/z, [x0]
+simd_lookup_sve: 9308:	85204020 	ld1w	{z0.s}, p0/z, [x1, z0.s, uxtw #2]
+simd_quantize_sve: 93e0:	04900631 	mul	z17.s, p1/m, z17.s, z17.s
+simd_run_sve: 96d4:	2481a061 	cmpeq	p1.s, p0/z, z3.s, z1.s
+simd_halfblock_sve: 9874:	04900432 	mul	z18.s, p1/m, z18.s, z1.s
