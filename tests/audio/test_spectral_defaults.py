@@ -8,6 +8,7 @@ import tempfile
 import subprocess
 import numpy as np
 from test_spectral import load
+from pipeline_ctypes import Config, Flags
 
 library = Path(sys.argv[1]).resolve()
 if len(sys.argv) == 2:
@@ -54,23 +55,9 @@ with tempfile.TemporaryDirectory() as directory:
     assert option(b"spectral-audio") == (case != "disabled")
     assert not option(b"audio-spectral-mixer")
 
-    class Flags(c.Structure):
-        _fields_ = [
-            (name, c.c_bool)
-            for name in [
-                "echo_cancel",
-                "noise_suppress",
-                "agc",
-                "vad",
-                "jitter_buffer",
-                "compressor",
-                "noise_gate",
-                "highpass",
-                "lowpass",
-            ]
-        ]
-
-    lib.client_audio_pipeline_create.argtypes = [c.c_void_p]
+    lib.client_audio_pipeline_config_for_source.argtypes = [c.c_bool]
+    lib.client_audio_pipeline_config_for_source.restype = Config
+    lib.client_audio_pipeline_create.argtypes = [c.POINTER(Config)]
     lib.client_audio_pipeline_create.restype = c.c_void_p
     lib.client_audio_pipeline_set_flags.argtypes = [c.c_void_p, Flags]
     lib.client_audio_pipeline_process_duplex.argtypes = [
@@ -84,7 +71,8 @@ with tempfile.TemporaryDirectory() as directory:
     lib.client_audio_pipeline_destroy.argtypes = [c.c_void_p]
 
     def capture_start():
-        pipeline = lib.client_audio_pipeline_create(None)
+        config = lib.client_audio_pipeline_config_for_source(False)
+        pipeline = lib.client_audio_pipeline_create(c.byref(config))
         assert pipeline
         lib.client_audio_pipeline_set_flags(pipeline, Flags())
         signal = np.full(480, 0.1, dtype="float32")

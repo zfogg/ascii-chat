@@ -7,6 +7,11 @@ from processor_ctypes import Config, Flags
 from test_spectral import load
 
 
+def check(condition, message):
+    if not condition:
+        raise AssertionError(message)
+
+
 def test(path, fixtures=None):
     lib = load(path)
     lib.audio_processor_default_config.argtypes = [c.c_int]
@@ -23,7 +28,8 @@ def test(path, fixtures=None):
 
     def process(blocks, inplace=False):
         handle = c.c_void_p()
-        assert lib.audio_processor_create(c.byref(config), c.byref(handle)) == 0
+        result = lib.audio_processor_create(c.byref(config), c.byref(handle))
+        check(result == 0, f"Processor creation failed: {result}")
         try:
             def run():
                 output = signal.copy() if inplace else np.zeros_like(signal)
@@ -31,7 +37,8 @@ def test(path, fixtures=None):
                 while position < len(signal):
                     count = min(blocks[index % len(blocks)], len(signal) - position)
                     source = output if inplace else signal
-                    assert lib.audio_processor_process(handle, pointer(source[position:]), pointer(output[position:]), count) == 0
+                    result = lib.audio_processor_process(handle, pointer(source[position:]), pointer(output[position:]), count)
+                    check(result == 0, f"Processor processing failed at sample {position}: {result}")
                     position += count
                     index += 1
                 return output
@@ -43,8 +50,8 @@ def test(path, fixtures=None):
             lib.audio_processor_destroy(handle)
 
     reference = process([480])
-    assert np.isfinite(reference).all() and np.max(np.abs(reference)) <= 1
-    assert np.max(np.abs(reference[24000:])) > 0.01
+    check(np.isfinite(reference).all() and np.max(np.abs(reference)) <= 1, "Processor output must be finite and bounded")
+    check(np.max(np.abs(reference[24000:])) > 0.01, "Processor must preserve the input signal")
     np.testing.assert_array_equal(reference, process([128, 960, 13, 1, 127]))
     np.testing.assert_array_equal(reference, process([960], inplace=True))
     if fixtures:

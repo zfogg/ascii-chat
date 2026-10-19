@@ -13,8 +13,9 @@ execFileSync(
   [path.resolve(__dirname, "scripts/wasm-build.mjs"), "--publish-only"],
   { stdio: "inherit" },
 );
+const wasmManifestPath = path.resolve(__dirname, "src/wasm/dist/manifest.json");
 const wasmVersion = createHash("sha256")
-  .update(readFileSync(path.resolve(__dirname, "src/wasm/dist/manifest.json")))
+  .update(readFileSync(wasmManifestPath))
   .digest("hex")
   .slice(0, 32);
 
@@ -46,6 +47,19 @@ export default defineConfig({
     __WASM_ASSET_BASE__: JSON.stringify(`/wasm/${wasmVersion}/`),
   },
   plugins: [
+    {
+      name: "wasm-manifest-reload",
+      configureServer(server) {
+        server.watcher.add(wasmManifestPath);
+        const reload = (file: string) => {
+          if (path.resolve(file) === wasmManifestPath) void server.restart();
+        };
+        server.watcher.on("change", reload);
+        server.httpServer?.once("close", () => {
+          server.watcher.off("change", reload);
+        });
+      },
+    },
     react(),
     sitemap({
       hostname: "https://web.ascii-chat.com",
