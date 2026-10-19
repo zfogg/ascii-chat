@@ -50,7 +50,7 @@ if(TEST_EMISSION)
     set(emission_sources
         lib/video/ascii/scalar/foreground.c lib/video/ascii/scalar/background.c
         lib/video/ascii/scalar/halfblock.c lib/video/ascii/output_buffer.c
-        lib/video/ascii/sgr.c lib/video/ascii/common.c lib/video/ascii/palette.c
+        lib/video/ascii/render.c lib/video/ascii/sgr.c lib/video/ascii/common.c lib/video/ascii/palette.c
         lib/video/terminal/ansi.c
         lib/video/ascii/simd/dispatch.c lib/platform/cpu.c
         lib/lifecycle.c lib/atomic.c lib/platform/rwlock.c

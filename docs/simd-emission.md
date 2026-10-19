@@ -1,7 +1,7 @@
 # Shared ASCII terminal emission
 
 All scalar and SIMD entry points use `ascii_render()` in
-`lib/video/ascii/scalar/foreground.c`. SSE2, SSSE3, AVX2, NEON, and SVE supply
+`lib/video/ascii/render.c`. SSE2, SSSE3, AVX2, NEON, and SVE supply
 only their RGB24-to-luminance kernel. Runtime selection and scalar tails keep
 the existing CPU/OS safety checks. ISA-specific types never cross this boundary.
 

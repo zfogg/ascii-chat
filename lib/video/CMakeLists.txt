@@ -48,6 +48,8 @@ endif()
 
 # SIMD sources (reorganized into ascii/{arch}/{halfblock,foreground,background})
 set(SIMD_SRCS
+    # Shared cell formatting for scalar and SIMD kernels
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/render.c
     # Scalar ASCII render implementations
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/scalar/halfblock.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/scalar/foreground.c
