@@ -274,9 +274,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     ctx->saved_matrix = GET_OPTION(matrix_rain);
     ctx->saved_waveform = GET_OPTION(waveform);
     ctx->saved_fft = GET_OPTION(fft);
-    options_set_bool("matrix_rain", false);
-    options_set_bool("waveform", false);
-    options_set_bool("fft", false);
+    // Explicit visualization flags also apply to the initial media source.
   }
 
   // Set up exit callback on media source for graceful shutdown during I/O
