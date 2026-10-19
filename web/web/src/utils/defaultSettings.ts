@@ -12,6 +12,8 @@ export const DEFAULT_SETTINGS: BinarySettingsConfig = {
   zalgo: 0,
   animationEnabled: false,
   animation: "matrix",
+  faceFollow: false,
+  faceFollowDebug: false,
   flipX: true,
   flipY: false,
   renderMode: 0,

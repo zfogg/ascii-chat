@@ -1,3 +1,4 @@
+import { drawFaceFollow } from "../../../packages/shared/src/capture/faceFollow";
 import { AVState } from "../wasm/AVState";
 import { VideoFrameClock } from "../../../packages/shared/src/hooks/videoFrameClock";
 import {
@@ -465,10 +466,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                     context.save();
                     context.translate(canvas.width, 0);
                     context.scale(-1, 1);
-                    context.drawImage(frame, 0, 0, canvas.width, canvas.height);
+                    drawFaceFollow(context, frame, canvas);
                     context.restore();
                   } else {
-                    context.drawImage(frame, 0, 0, canvas.width, canvas.height);
+                    drawFaceFollow(context, frame, canvas);
                   }
                   webcamCaptureLoopRef.current?.(false);
                 }

@@ -713,7 +713,7 @@ if(BUILD_WEB)
         COMMENT "Copying client WASM files to web/src/wasm/dist/"
     )
 
-# Combined WASM target (builds both mirror and client)
+# Combined WASM target; the face worker is added after its target is defined.
     add_custom_target(web
         DEPENDS mirror-web client-web
         COMMENT "All WASM modules built"
@@ -724,6 +724,29 @@ endif()
 # Enable SIMD at compilation, not only linking, for the pixel compositor.
 set_source_files_properties("${LIB_ROOT}/media/render/terminal.c"
     PROPERTIES COMPILE_OPTIONS "-msimd128")
+
+# Face detection runs in an independent browser worker, sharing the native controller and model.
+include(${_cmake_dir}/deps/FaceDetection.cmake)
+add_executable(face-follow-web ${CMAKE_CURRENT_SOURCE_DIR}/face_follow.c ${LIB_ROOT}/video/face_follow.c)
+ascii_chat_add_face_detector(face-follow-web)
+set_target_properties(face-follow-web PROPERTIES OUTPUT_NAME "face-follow" SUFFIX ".js")
+target_compile_options(face-follow-web PRIVATE -O3)
+target_link_options(face-follow-web PRIVATE --no-entry -O3
+    -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createFaceFollow
+    -sENVIRONMENT=worker -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=2097152
+    "-sEXPORTED_RUNTIME_METHODS=['HEAPU8','HEAPF32']")
+
+if(BUILD_WEB)
+    add_dependencies(web face-follow-web)
+    add_custom_command(TARGET face-follow-web POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../web/web/src/wasm/dist
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/face-follow.js
+            ${CMAKE_CURRENT_BINARY_DIR}/face-follow.wasm
+            ${CMAKE_SOURCE_DIR}/../../web/web/src/wasm/dist/
+        COMMENT "Copying face-follow WASM files to web/src/wasm/dist/"
+    )
+endif()
 
 if(EMSCRIPTEN)
     enable_testing()

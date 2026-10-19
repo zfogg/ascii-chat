@@ -12,6 +12,7 @@ export default defineConfig({
     "session-ui.spec.ts",
     "mirror-file-upload.spec.ts",
     "wasm-assets.spec.ts",
+    "face-follow.spec.ts",
   ],
   grepInvert: /connected web client shows its C network logs/,
   workers: 1,
