@@ -1,0 +1,69 @@
+name: Web Tests
+
+on:
+  pull_request:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-tests:
+    name: Web ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [unit, playwright]
+    defaults:
+      run:
+        working-directory: web/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Vite+ and Node.js
+        uses: voidzero-dev/setup-vp@v1.21.2
+        with:
+          version: '1.3.0'
+          node-version: '24'
+          working-directory: web
+          cache: true
+
+      - name: Install workspace dependencies
+        working-directory: web
+        run: vp install --frozen-lockfile
+
+      - name: Run web unit tests
+        if: matrix.suite == 'unit'
+        run: vp test run --maxWorkers=4 --reporter=default --reporter=junit --outputFile.junit=test-results/unit.xml
+
+      - name: Verify and publish the checked-in WASM bundle
+        if: matrix.suite == 'playwright'
+        run: vp exec node scripts/wasm-build.mjs --publish-only
+
+      - name: Install Chromium and system dependencies
+        if: matrix.suite == 'playwright'
+        run: vp exec playwright install --with-deps chromium
+
+      - name: Run focused browser checks
+        if: matrix.suite == 'playwright'
+        run: vp run test:e2e:ci
+
+      - name: Upload test reports and browser failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-${{ matrix.suite }}-results
+          path: |
+            web/web/test-results/
+            web/web/playwright-report/
+            web/web/artifacts/
+          if-no-files-found: ignore
+          retention-days: 14
