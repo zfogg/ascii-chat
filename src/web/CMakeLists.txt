@@ -11,6 +11,9 @@ else()
     include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/install/Version.cmake")
     version_detect()
     project(ascii-chat-wasm VERSION ${PROJECT_VERSION_FROM_GIT})
+    if(NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_BUILD_TYPE Release CACHE STRING "WASM build type" FORCE)
+    endif()
     version_setup_targets()
 
     # Include sanitizer configuration so apply_sanitizers_to_target() is available
@@ -45,9 +48,6 @@ if(NOT ASCIICHAT_DEPS_CACHE_ROOT)
 endif()
 
 # Standalone and parent-driven builds use the same build-local artifact layout.
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "WASM build type" FORCE)
-endif()
 if(NOT WEB_DEPS_CACHE_DIR)
     set(WEB_DEPS_CACHE_DIR "${CMAKE_BINARY_DIR}/_deps/legacy/${CMAKE_BUILD_TYPE}"
         CACHE PATH "WASM dependency build/install cache" FORCE)
