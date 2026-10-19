@@ -876,11 +876,21 @@ if(NOT TARGET client-web)
     )
 endif()
 
-# Combined WASM target (builds both mirror and client)
+if(NOT TARGET face-follow-web)
+    add_custom_target(face-follow-web
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target face-follow-web
+        COMMENT "Building Face Follow detector worker"
+        USES_TERMINAL
+        VERBATIM
+    )
+endif()
+
+# Combined WASM target (builds renderer, client, and detector worker)
 if(NOT TARGET web)
     add_custom_target(web
         COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
         COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target face-follow-web
         COMMENT "Building all WASM modules"
         DEPENDS generate_fonts
         USES_TERMINAL

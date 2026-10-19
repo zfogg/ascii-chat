@@ -37,6 +37,20 @@ interface UseMirrorWebcamParams {
   terminalDimensions?: { cols: number; rows: number };
 }
 
+function sizeCaptureCanvas(
+  canvas: HTMLCanvasElement | null,
+  track: MediaStreamTrack | undefined,
+  video: HTMLVideoElement | null,
+): void {
+  const camera = track?.getSettings?.();
+  const width = camera?.width || video?.videoWidth;
+  const height = camera?.height || video?.videoHeight;
+  if (!canvas || !width || !height) return;
+  const scale = Math.min(1, 320 / width, 240 / height);
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+}
+
 export function useMirrorWebcam({
   settings,
   videoRef,
@@ -231,6 +245,10 @@ export function useMirrorWebcam({
       }
       console.timeEnd("[Mirror] loadedmetadata");
 
+      // Direct track capture can start before video metadata; use the negotiated
+      // camera geometry so the default HTML canvas size cannot stretch the crop.
+      sizeCaptureCanvas(canvasRef.current, stream.getVideoTracks()[0], video);
+
       lastFrameTimeRef.current = performance.now();
       setIsWebcamRunning(true);
       setMediaSource(MediaSourceType.WEBCAM);
@@ -338,6 +356,11 @@ export function useMirrorWebcam({
           return;
         }
         camera.getVideoTracks().forEach((track) => stream.addTrack(track));
+        sizeCaptureCanvas(
+          canvasRef.current,
+          camera.getVideoTracks()[0],
+          videoRef.current,
+        );
         console.info(
           `[Mirror] Camera restored: ${stream.getVideoTracks().length} video tracks, ${stream.getAudioTracks().length} microphone tracks`,
         );
@@ -365,6 +388,7 @@ export function useMirrorWebcam({
     streamRef,
     videoRef,
     testPattern.enabled,
+    canvasRef,
     setError,
   ]);
 

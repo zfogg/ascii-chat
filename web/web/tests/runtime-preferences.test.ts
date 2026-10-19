@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { act, renderHook } from "@testing-library/react";
+import { useLayoutEffect } from "react";
+import { useEngineSettings } from "../src/hooks/useEngineSettings";
 import { runtimeOptions } from "@ascii-chat/shared/wasm";
 import type { RuntimeOptionsModule } from "@ascii-chat/shared/wasm";
 import { DEFAULT_SETTINGS } from "../src/utils/defaultSettings";
@@ -61,6 +64,36 @@ function createEngine() {
 }
 
 describe("browser preference transactions", () => {
+  it("does not echo a snapshot superseded by an earlier React effect", () => {
+    vi.stubGlobal("requestAnimationFrame", () => 1);
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+    createEngine();
+    applyMirrorWasmSettings(DEFAULT_SETTINGS);
+    const store = runtimeOptions(engine.module!);
+    const onChange = vi.fn();
+    const hook = renderHook(
+      ({ replace }) => {
+        useLayoutEffect(() => {
+          if (replace) store.applyPatch({ matrix_rain: false, waveform: true });
+        }, [replace]);
+        useEngineSettings(true, DEFAULT_SETTINGS, onChange);
+      },
+      { initialProps: { replace: false } },
+    );
+    act(() => {
+      store.applyPatch({ matrix_rain: true });
+      hook.rerender({ replace: true });
+    });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        animationEnabled: true,
+        animation: "waveform",
+        matrixRain: false,
+      }),
+    );
+    hook.unmount();
+  });
   it("does not repeat a submission when store notification re-enters the UI adapter", () => {
     vi.stubGlobal("requestAnimationFrame", () => 1);
     vi.stubGlobal("cancelAnimationFrame", () => {});

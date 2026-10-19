@@ -503,6 +503,8 @@ create_ascii_chat_module(ascii-chat-simd "${SIMD_SRCS}")
 # the same version as the linked libraries.
 
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
+include(${CMAKE_SOURCE_DIR}/cmake/deps/FaceDetection.cmake)
+ascii_chat_add_face_detector(ascii-chat-video)
 
 # Link external dependencies (FFmpeg, freetype, fontconfig)
 # Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging

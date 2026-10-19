@@ -13,6 +13,7 @@ export default defineConfig({
     "mirror-file-upload.spec.ts",
     "wasm-assets.spec.ts",
     "runtime-settings.spec.ts",
+    "face-follow.spec.ts",
   ],
   grepInvert:
     /connected web client shows its C network logs|native host applies live browser settings/,

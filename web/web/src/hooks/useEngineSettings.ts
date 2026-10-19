@@ -34,6 +34,9 @@ export function useEngineSettings(
     current.current = { settings, onChange };
   }, [settings, onChange]);
   useEffect(() => {
+    // Earlier layout/passive effects may already have published a newer revision.
+    // React will render that snapshot next; do not echo the stale one into the UI.
+    if (snapshot && store && snapshot !== store.getSnapshot()) return;
     const old = previous.current;
     previous.current = snapshot;
     if (!old || !snapshot || old === snapshot) return;
@@ -111,7 +114,7 @@ export function useEngineSettings(
       )
     )
       onChange(next);
-  }, [snapshot]);
+  }, [snapshot, store]);
 }
 
 /** The network adapter transmits C's committed preferences, with viewport dimensions. */

@@ -1,6 +1,8 @@
 # lib/video - Video processing and SIMD
 
 set(VIDEO_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/face_follow.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/face_follow_image.c
     ${CMAKE_CURRENT_SOURCE_DIR}/anim/test_pattern.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rgba/video_frame.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rgba/image.c
@@ -17,8 +19,8 @@ set(VIDEO_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/terminal/ansi.c
     # SIMD-based ASCII render implementations
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/common.c
-    
-    
+
+
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/palette.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/output_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/rle.c

@@ -496,6 +496,11 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
         VERBATIM
     )
 
+    add_custom_target(face-follow-web
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target face-follow-web
+        COMMENT "Building Face Follow detector worker"
+        VERBATIM)
+
     add_custom_target(client-web
         COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target client-web
         COMMENT "Building client-web WASM module"
@@ -516,7 +521,7 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
             COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target web
             COMMENT "Building all WASM modules"
             BYPRODUCTS "${WASM_BUILD_DIR}/mirror.js" "${WASM_BUILD_DIR}/mirror.wasm" "${WASM_BUILD_DIR}/client.js" "${WASM_BUILD_DIR}/client.wasm"
-            DEPENDS mirror-web client-web
+            DEPENDS mirror-web client-web face-follow-web
             USES_TERMINAL
             VERBATIM
         )

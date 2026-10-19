@@ -30,6 +30,12 @@ function(asciichat_build_aec3)
         target_compile_definitions(AudioProcess PUBLIC WEBRTC_POSIX)
     endif()
     set_target_properties(AudioProcess aec3 api base PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    # MSVC's C++ container annotations must match the consuming ASan objects.
+    if(WIN32 AND "-fsanitize=address" IN_LIST ASCIICHAT_SANITIZER_COMPILE_FLAGS)
+        foreach(_target AudioProcess aec3 api base)
+            target_compile_options(${_target} PRIVATE -fsanitize=address)
+        endforeach()
+    endif()
     # The factory and implementation reference each other; CMake repeats this
     # static component group when linking a consumer on one-pass linkers.
     target_link_libraries(api PUBLIC aec3)

@@ -15,6 +15,7 @@ import type { AsciiRendererHandle } from "../components";
 import { fillTestPatternAudioSamples } from "../testPattern";
 import { useTestPattern } from "./useTestPattern";
 import { captureVisualizationAudio } from "../audio/visualizationCapture";
+import { drawFaceFollow } from "../capture/faceFollow";
 import { VideoFrameClock } from "./videoFrameClock";
 import {
   cameraNeedsFrameLimit,
@@ -455,7 +456,7 @@ export function useMirrorRenderLoop({
                   continue;
                 // Camera delivery drives C conversion and presentation. Identical
                 // incoming images still count, but idle host ticks produce no frame.
-                context.drawImage(frame, 0, 0, canvas.width, canvas.height);
+                drawFaceFollow(context, frame, canvas);
                 renderFrame(true);
                 reportedFrameError = false;
               } catch (error) {

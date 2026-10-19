@@ -17,7 +17,14 @@ const app = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = resolve(app, "../..");
 const output = resolve(app, "src/wasm/dist");
 const publicOutput = resolve(app, "public/wasm");
-const files = ["mirror.js", "mirror.wasm", "client.js", "client.wasm"];
+const files = [
+  "mirror.js",
+  "mirror.wasm",
+  "client.js",
+  "client.wasm",
+  "face-follow.js",
+  "face-follow.wasm",
+];
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 function sourceHash() {
   const digest = createHash("sha256");
@@ -33,13 +40,14 @@ function sourceHash() {
       )
         continue;
       if (entry.isDirectory()) walk(path);
-      else if (/\.(c|h|cmake|txt|in)$/.test(entry.name)) {
+      else if (/\.(c|cpp|h|cmake|txt|in)$/.test(entry.name)) {
         digest.update(relative(repo, path).replaceAll("\\", "/"));
         digest.update(readFileSync(path, "utf8").replaceAll("\r\n", "\n"));
       }
     }
   };
   for (const directory of [
+    "deps/libfacedetection",
     "src/web",
     "src/common/session",
     "lib",
@@ -71,7 +79,7 @@ if (
     manifest.sourceHash !== sourceHash()
   ) {
     throw new Error(
-      "Prebuilt WASM is stale. Rebuild mirror-web and client-web.",
+      "Prebuilt WASM is stale. Rebuild mirror-web, client-web, and face-follow-web.",
     );
   }
   for (const file of files) {
@@ -84,7 +92,14 @@ if (
   if (!artifactDirectory)
     execFileSync(
       "cmake",
-      ["--build", build, "--target", "mirror-web", "client-web"],
+      [
+        "--build",
+        build,
+        "--target",
+        "mirror-web",
+        "client-web",
+        "face-follow-web",
+      ],
       { stdio: "inherit" },
     );
   const source = artifactDirectory
@@ -123,4 +138,4 @@ for (const destination of [versionedOutput, publicOutput]) {
     copyFileSync(resolve(output, file), resolve(destination, file));
   copyFileSync(manifestPath, resolve(destination, "manifest.json"));
 }
-console.log("Verified and published mirror/client WASM artifacts.");
+console.log("Verified and published mirror/client/face-follow WASM artifacts.");
