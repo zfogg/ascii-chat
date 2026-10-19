@@ -103,6 +103,41 @@
   a {
     text-decoration: underline;
   }
+
+  /* Action controls use a pointer; editable text and numbers keep the I-beam. */
+  a[href],
+  button,
+  select,
+  summary,
+  [role="button"],
+  input:is(
+    [type="button"],
+    [type="submit"],
+    [type="reset"],
+    [type="checkbox"],
+    [type="radio"],
+    [type="range"],
+    [type="file"]
+  ),
+  label:has(
+    select,
+    input:is([type="checkbox"], [type="radio"], [type="range"], [type="file"])
+  ) {
+    cursor: pointer;
+  }
+
+  :is(button, input, select, textarea):disabled,
+  label:has(
+    select:disabled,
+    input:is(
+        [type="checkbox"],
+        [type="radio"],
+        [type="range"],
+        [type="file"]
+      ):disabled
+  ) {
+    cursor: not-allowed;
+  }
 }
 
 /* TODO/FIXME: tailwind should  generate 
