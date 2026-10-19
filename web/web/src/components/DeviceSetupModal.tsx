@@ -5,6 +5,9 @@ import {
 import type { VideoEncoding } from "../network/videoEncoding";
 import { acquireMediaStream } from "../utils/acquireMediaStream";
 import { playMedia } from "../utils/playMedia";
+import { useCameraExposure } from "../hooks/useCameraExposure";
+import { cameraRateStore } from "../../../packages/shared/src/capture/cameraRate";
+import { supportsFastExposure } from "../utils/cameraExposure";
 import { useUrlState } from "../hooks/useUrlState";
 import { useCallback, useRef, useState } from "react";
 import { Modal, ModalTitle } from "./Modal";
@@ -140,7 +143,18 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
     microphoneId: false,
   });
   const [hasCamera, setHasCamera] = useState(false);
+  const [previewCameraTrack, setPreviewCameraTrack] =
+    useState<MediaStreamTrack | null>(null);
   const [hasMicrophone, setHasMicrophone] = useState(false);
+  const activeTrack = cameraRateStore.activeTrack();
+  const previewTrack = open && hasCamera ? previewCameraTrack : null;
+  // The page owns exposure changes for its live capture. Only apply here when
+  // device setup owns a standalone preview.
+  const exposure = useCameraExposure(activeTrack ? null : previewTrack);
+  const exposureSupported =
+    !!(activeTrack ?? previewTrack) &&
+    supportsFastExposure((activeTrack ?? previewTrack)!);
+
   const [deviceErrors, setDeviceErrors] = useState(EMPTY_INPUT_ERRORS);
   const [unavailableDevices, setUnavailableDevices] = useState<
     Record<string, string>
@@ -336,6 +350,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
                 await playMedia(videoRef.current, owner.signal, 10_000);
               }
               if (!isCurrent()) return;
+              setPreviewCameraTrack(stream.getVideoTracks()[0] ?? null);
               setHasCamera(stream.getVideoTracks().length > 0);
             } else {
               setHasMicrophone(stream.getAudioTracks().length > 0);
@@ -660,6 +675,21 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
                 ))}
               </select>
             </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                aria-label="Fast camera exposure"
+                checked={exposure.enabled}
+                disabled={!exposureSupported}
+                onChange={(event) => exposure.select(event.target.checked)}
+              />
+              Fast camera exposure (debug)
+            </label>
+            <p className="text-xs text-terminal-8">
+              Shortens exposure for camera timing tests and may darken the
+              image. Off by default.
+            </p>
+            {exposure.error && <p role="alert">{exposure.error}</p>}
             {deviceErrors.cameraId && (
               <div
                 className="mt-2 text-xs text-terminal-3"

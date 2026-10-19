@@ -1,14 +1,8 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { cameraRateStore } from "../../../packages/shared/src/capture/cameraRate";
 import type { BinarySettingsConfig } from "../components";
 import { useUrlState } from "./useUrlState";
-import { setFastExposure, supportsFastExposure } from "../utils/cameraExposure";
+import { useCameraExposure } from "./useCameraExposure";
 
 export function effectiveCameraFps(
   preference: string,
@@ -29,29 +23,7 @@ export function useCameraFrameRate(
     cameraRateStore.subscribe,
     cameraRateStore.snapshot,
   );
-  const [fastExposure, selectFastExposure] = useUrlState("fastExposure", false);
-  const [exposureError, setExposureError] = useState("");
-  const track = enabled ? cameraRateStore.activeTrack() : null;
-  const exposureSupported = !!track && supportsFastExposure(track);
-  useEffect(() => {
-    if (!track || !exposureSupported) return;
-    let current = true;
-    void setFastExposure(track, fastExposure).then(
-      () => {
-        if (current) setExposureError("");
-      },
-      (error: unknown) => {
-        if (current)
-          setExposureError(
-            error instanceof Error ? error.message : String(error),
-          );
-      },
-    );
-    return () => {
-      current = false;
-      void setFastExposure(track, false).catch(() => {});
-    };
-  }, [track, fastExposure, exposureSupported]);
+  useCameraExposure(enabled ? cameraRateStore.activeTrack() : null);
   const [preference, setPreference] = useUrlState(
     "fpsLimit",
     "",
@@ -103,10 +75,6 @@ export function useCameraFrameRate(
     [maximum, settings, setSettings, setPreference],
   );
   return {
-    fastExposure,
-    selectFastExposure,
-    exposureSupported,
-    exposureError,
     target: settings.targetFps,
     rate: enabled ? rate : undefined,
     maximum,

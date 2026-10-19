@@ -11,6 +11,7 @@ async function camera(page: Page) {
       painted: 0,
       changed: 0,
       rate: 60,
+      still: false,
     };
     Object.assign(window, { cameraCadence: stats });
     const send = WebSocket.prototype.send;
@@ -72,10 +73,11 @@ async function camera(page: Page) {
       let timestamp = 0;
       const tick = async () => {
         if (track.readyState === "ended") return;
-        context.fillStyle = `rgb(${120 + (frame % 120)},${120 + ((frame * 3) % 120)},${120 + ((frame * 7) % 120)})`;
+        const contentFrame = stats.still ? 0 : frame;
+        context.fillStyle = `rgb(${120 + (contentFrame % 120)},${120 + ((contentFrame * 3) % 120)},${120 + ((contentFrame * 7) % 120)})`;
         context.fillRect(0, 0, 320, 180);
         context.fillStyle = "white";
-        context.fillRect((frame * 3) % 288, 30, 32, 120);
+        context.fillRect((contentFrame * 3) % 288, 30, 32, 120);
         const image = new VideoFrame(canvas, {
           timestamp: Math.round(timestamp),
         });
@@ -182,6 +184,35 @@ test("Mirror presents fresh camera frames near 60 FPS", async ({ page }) => {
   expect(
     ((after.changed! - before.changed!) * 1000) / (after.now - before.now),
   ).toBeGreaterThanOrEqual(55);
+});
+
+test("Mirror counts identical C frames as rendered FPS", async ({ page }) => {
+  await camera(page);
+  await page.goto("/mirror?playing=true");
+  await page.evaluate(() => {
+    (
+      window as unknown as { cameraCadence: { still: boolean } }
+    ).cameraCadence.still = true;
+  });
+  await page.waitForTimeout(5000);
+  const before = await measure(page);
+  await page.waitForTimeout(5000);
+  const after = await measure(page);
+  const paintedFps =
+    ((after.painted! - before.painted!) * 1000) / (after.now - before.now);
+  console.log("Identical C-frame presentation", {
+    paintedFps,
+    changes: after.changed! - before.changed!,
+  });
+  expect(paintedFps).toBeGreaterThanOrEqual(55);
+  expect(after.changed! - before.changed!).toBeLessThan(5);
+  await expect
+    .poll(async () =>
+      Number(
+        (await page.getByText(/^FPS:/).innerText()).match(/FPS: (\d+)/)?.[1],
+      ),
+    )
+    .toBeGreaterThanOrEqual(55);
 });
 
 test("two camera clients upload at 60 FPS and preserve fresh received content", async ({
