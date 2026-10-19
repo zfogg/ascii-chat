@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Raster worker font regression</title>
+  </head>
+  <body>
+    <canvas></canvas>
+    <script type="module">
+      import { RasterWorker } from "../../../packages/shared/src/components/AsciiRenderer/RasterWorker";
+      let pending;
+      const worker = new RasterWorker(
+        ({ pixels, width, height }) => {
+          const canvas = document.querySelector("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          canvas
+            .getContext("2d")
+            .putImageData(new ImageData(pixels, width, height), 0, 0);
+          pending.resolve({
+            width,
+            height,
+            lit: pixels.filter((value, i) => i % 4 === 1 && value > 12).length,
+          });
+        },
+        (error) => pending.reject(error),
+      );
+      window.render = (matrix) =>
+        new Promise((resolve, reject) => {
+          pending = { resolve, reject };
+          worker.write({
+            text: "\x1b[H\x1b[32mMMMMMMMMMM\r\nMMMMMMMMMM",
+            cols: 20,
+            rows: 10,
+            matrix,
+            zalgo: 0,
+          });
+        });
+    </script>
+  </body>
+</html>
