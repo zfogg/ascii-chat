@@ -17,6 +17,26 @@ import time
 from winpty import PtyProcess
 
 
+def set_high_priority(pid):
+    """Isolate an explicitly requested benchmark from normal-priority host work."""
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.SetPriorityClass.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    kernel.SetPriorityClass.restype = wintypes.BOOL
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    handle = kernel.OpenProcess(0x200, False, pid)
+    if not handle:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        if not kernel.SetPriorityClass(handle, 0x80):
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        kernel.CloseHandle(handle)
+
+
 def stop_client(client):
     """Wait on the owned Windows child, rather than the ConPTY agent's liveness."""
     import ctypes
@@ -77,6 +97,7 @@ def run(options, transport):
     started = time.monotonic()
 
     def command(name, flags, level='warn'):
+        level = os.environ.get('ASCII_CHAT_TEST_LOG_LEVEL', level)
         (output / (name + '.log')).write_text('', encoding='utf-8')
         argv = [str(options.binary), '--no-check-update', '--log-level', level,
                 '--log-file', str(output / (name + '.log'))] + flags
@@ -89,6 +110,8 @@ def run(options, transport):
         process = subprocess.Popen(command(name, flags, level), env=env, stdout=dest, stderr=dest,
                                    stdin=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
         servers.append(process)
+        if options.priority == 'high':
+            set_high_priority(process.pid)
         return process
 
     tcp, ws, acds, acds_ws = [unused_port() for _ in range(4)]
@@ -135,6 +158,8 @@ def run(options, transport):
         flags += ['--test-pattern', '--fps', str(options.fps), '--fps-counter', '--width', str(options.width),
                   '--height', str(options.height), '--color-mode', 'truecolor', '--audio=false', '--splash-screen=false']
         client = PtyProcess.spawn(command('client', flags), env=env, dimensions=(options.height, options.width))
+        if options.priority == 'high':
+            set_high_priority(client.pid)
         started = time.monotonic()
 
         def read_output():
@@ -175,7 +200,7 @@ def run(options, transport):
             if measurement_start <= elapsed < measurement_start + options.seconds:
                 buckets[int(elapsed - measurement_start)] = value
         values = list(buckets.values())
-        result = dict(transport=transport, target_fps=options.fps, width=options.width, height=options.height,
+        result = dict(transport=transport, priority=options.priority, target_fps=options.fps, width=options.width, height=options.height,
                       samples_by_second=buckets, commands=commands, first_frame_s=first_frame,
                       median_fps=statistics.median(values) if values else 0, minimum_fps=min(values) if values else 0,
                       maximum_fps=max(values) if values else 0)
@@ -215,12 +240,15 @@ def main():
     parser.add_argument('--height', type=int, default=40)
     parser.add_argument('--fps', type=int, default=60)
     parser.add_argument('--seconds', type=int, default=30)
+    parser.add_argument('--priority', choices=['normal', 'high'], default='normal')
     parser.add_argument('--transport', choices=['all', 'tcp', 'websocket', 'webrtc', 'discovery-tcp'], default='all')
     options = parser.parse_args()
     assert os.name == 'nt', 'This runner requires Windows ConPTY'
     assert options.seconds >= 10 and options.fps > 0 and options.width > 0 and options.height > 0
     options.binary = options.binary.resolve()
     options.output = options.output.resolve()
+    if options.priority == 'high':
+        set_high_priority(os.getpid())
     for transport in ['tcp', 'websocket', 'webrtc'] if options.transport == 'all' else [options.transport]:
         run(options, transport)
 

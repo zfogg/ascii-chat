@@ -170,7 +170,7 @@ static asciichat_error_t discovery_play_samples(const float *samples, size_t cou
 }
 
 static asciichat_error_t discovery_decode_opus(const void *data, size_t length, float *samples, size_t capacity,
-                                              size_t *decoded, void *context) {
+                                               size_t *decoded, void *context) {
   discovery_video_receiver_t *receiver = context;
   *decoded = 0;
   if (!receiver->audio)
@@ -494,13 +494,9 @@ role_dispatch:
   } else {
     session_participant_t *participant = discovery_session_get_participant(g_discovery);
     acip_transport_t *transport = session_participant_get_transport(participant);
-    if (transport && acip_transport_get_type(transport) == ACIP_TRANSPORT_WEBRTC) {
+    if (transport) {
       bool enable_audio = GET_OPTION(audio_enabled);
-      log_info("Discovery WebRTC audio: %s", enable_audio ? "enabled" : "disabled");
-      result =
-          acip_send_client_join(transport, CLIENT_CAP_VIDEO | CLIENT_CAP_COLOR | (enable_audio ? CLIENT_CAP_AUDIO : 0));
-      if (result != ASCIICHAT_OK)
-        return result;
+      log_info("Discovery participant audio: %s", enable_audio ? "enabled" : "disabled");
       uint64_t advertised_revision = UINT64_MAX;
       terminal_size_t advertised = {.cols = GET_OPTION(width) > 0 ? GET_OPTION(width) : 80,
                                     .rows = GET_OPTION(height) > 0 ? GET_OPTION(height) : 24};
@@ -655,26 +651,7 @@ role_dispatch:
         return result;
       return ASCIICHAT_OK;
     }
-    // PARTICIPANT ROLE: Just wait for host connection
-    // Don't use capture/display for participant discovery mode
-    (void)capture; // Not used
-
-    splash_intro_done();
-    splash_wait_for_animation();
-
-    // For participants, destroy the display context to reset terminal state
-    // and prevent the discovery framework from rendering anything
-    if (display) {
-      log_info("Participant mode - cleaning up display context");
-      session_display_destroy(display);
-      // Also clear the global display context to prevent signal handlers from using stale pointer
-      session_display_set_global_context_public(NULL);
-    }
-
-    // Session is active and we're a participant. In discovery mode, participants
-    // don't render anything - they just wait for the host. Return early to skip
-    // any display rendering that would happen after discovery_run returns.
-    return ASCIICHAT_OK;
+    return SET_ERRNO(ERROR_INVALID_STATE, "Active discovery participant has no connection");
   }
 
   return result;

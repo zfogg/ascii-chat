@@ -52,6 +52,10 @@ protocols. They share execution, admission, deadlines, and teardown. Transport
 security and authenticated peer adoption remain explicit inputs to negotiation;
 neither replaces required password or identity authentication.
 
+Discovery participants use the same media path after either TCP establishment or
+authenticated WebRTC adoption. Initial capabilities precede stream startup for
+both; there is no separate client-join announcement or TCP-only wait loop.
+
 Server render workers submit media directly to the ACIP outbound scheduler.
 That scheduler owns congestion admission, ordered control traffic, media dropping,
 and encryption sequencing for every transport. There is no second mode-owned

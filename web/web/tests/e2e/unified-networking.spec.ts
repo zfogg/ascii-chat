@@ -4,6 +4,16 @@ import { createWriteStream, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createServer } from "node:net";
 
+test.beforeEach(async ({ page }) => {
+  // Seed suggestions from the separate website API for this isolated dev server.
+  await page.route("**/api/session-strings?**", (route) =>
+    route.fulfill({
+      headers: { "access-control-allow-origin": "*" },
+      json: { strings: ["blue-mountain-tiger"] },
+    }),
+  );
+});
+
 async function port(): Promise<number> {
   const server = createServer();
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
