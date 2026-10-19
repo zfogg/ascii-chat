@@ -1498,6 +1498,7 @@ export function ClientPage({
         renderer={
           rendererRequested ? (
             <AsciiRenderer
+              clientLikeKind="client"
               ref={rendererRef}
               workerRendering
               contentFit={contentFit}

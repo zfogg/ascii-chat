@@ -31,9 +31,9 @@ vi.mock("@ascii-chat/shared/hooks", () => ({
 vi.mock("@ascii-chat/shared/wasm", () => ({
   getMirrorModule: () => null,
   initMirrorWasm: vi.fn(),
+  createWasmModule: vi.fn(),
   isWasmReady: () => true,
 }));
-vi.mock("../../src/wasm/dist/mirror.js", () => ({ default: vi.fn() }));
 vi.mock("../../src/components/shared/BinarySettings", () => ({
   BinarySettings: ({
     config,

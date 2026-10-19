@@ -52,6 +52,7 @@ import { useAsciiRendererHandle } from "./useAsciiRendererHandle";
 const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
   function AsciiRenderer(
     {
+      clientLikeKind,
       workerRendering = false,
       contentFit = "contain",
       keyboardEnabled = true,
@@ -97,6 +98,7 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
     const { updateDimensions, fpsDisplayRef, onKeyDown } =
       useAsciiRendererHandle({
         ref,
+        clientLikeKind,
         workerRendering,
         matrixMode,
         uiLoading:

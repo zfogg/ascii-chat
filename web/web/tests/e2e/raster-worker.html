@@ -9,6 +9,9 @@
       import { RasterWorker } from "../../../packages/shared/src/components/AsciiRenderer/RasterWorker";
       let pending;
       const worker = new RasterWorker(
+        new URLSearchParams(location.search).get("mode") === "mirror"
+          ? "mirror"
+          : "client",
         ({ pixels, width, height }) => {
           const canvas = document.querySelector("canvas");
           canvas.width = width;
