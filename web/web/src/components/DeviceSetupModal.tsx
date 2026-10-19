@@ -744,9 +744,8 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
               </select>
             </label>
             <p className="mt-2 text-xs text-terminal-8">
-              {videoEncodings.loading
-                ? "Checking browser support…"
-                : "Used for Client and Discovery uploads. Automatic prefers HEVC, then H.264, then raw pixels."}
+              Used for Client and Discovery uploads. Automatic prefers HEVC,
+              then H.264, then raw pixels.
             </p>
             {videoEncodings.source === "url" && (
               <p className="mt-1 text-xs text-terminal-8">
