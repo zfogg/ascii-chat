@@ -35,11 +35,9 @@ test("saved microphone feeds the docs WASM audio visualization", async ({
     );
     return id;
   });
-  const widget = page
-    .locator("[data-demo-widget]")
-    .filter({
-      has: page.getByRole("button", { name: "Audio Waveform", exact: true }),
-    });
+  const widget = page.locator("[data-demo-widget]").filter({
+    has: page.getByRole("button", { name: "Audio Waveform", exact: true }),
+  });
   await widget.getByRole("button", { name: "Microphone", exact: true }).click();
   await expect(
     widget.getByRole("button", { name: "Stop", exact: true }),
