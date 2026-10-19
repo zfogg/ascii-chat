@@ -262,7 +262,7 @@ export function MirrorPage() {
     frameIntervalRef,
     streamRef,
     animation: settings.animation ?? "matrix",
-    animationEnabled: !fileActive && (settings.animationEnabled ?? false),
+    animationEnabled: settings.animationEnabled ?? false,
   });
 
   useEffect(() => {

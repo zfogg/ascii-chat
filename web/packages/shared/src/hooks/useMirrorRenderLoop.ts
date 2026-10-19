@@ -59,6 +59,20 @@ export function useMirrorRenderLoop({
   contentFit = "contain",
 }: UseMirrorRenderLoopParams) {
   const testPattern = useTestPattern();
+  // A media element may be connected to only one Web Audio source. Retain its
+  // graph across resize, render-mode changes and media/webcam toggles.
+  const mediaAudioRef = useRef<{
+    video: HTMLVideoElement;
+    context: AudioContext;
+    analyser: AnalyserNode;
+  } | null>(null);
+  useEffect(
+    () => () => {
+      void mediaAudioRef.current?.context.close();
+      mediaAudioRef.current = null;
+    },
+    [],
+  );
   const prevDepsRef = useRef<{
     isWebcamRunning: boolean;
     terminalDimensions: { cols: number; rows: number };
@@ -109,6 +123,10 @@ export function useMirrorRenderLoop({
     const testMode = testPattern.enabled && !fileActive;
     let lastFrameTime = performance.now();
     const mediaVideo = mediaVideoRef?.current;
+    const audioAnimation =
+      animationEnabled && (animation === "waveform" || animation === "fft");
+    const usesVideoClock =
+      !!mediaVideo?.requestVideoFrameCallback && !audioAnimation;
     const presented: number[] = [];
     const fpsTimer =
       mediaVideo && onMediaFps
@@ -143,7 +161,27 @@ export function useMirrorRenderLoop({
         animationEnabled &&
         (animation === "waveform" || animation === "fft")
       ) {
+        if (mediaVideo) {
+          if (mediaAudioRef.current?.video !== mediaVideo) {
+            void mediaAudioRef.current?.context.close();
+            const context = new AudioContext();
+            const mediaAnalyser = context.createAnalyser();
+            mediaAnalyser.fftSize = 2048;
+            const source = context.createMediaElementSource(mediaVideo);
+            source.connect(mediaAnalyser);
+            mediaAnalyser.connect(context.destination);
+            mediaAudioRef.current = {
+              video: mediaVideo,
+              context,
+              analyser: mediaAnalyser,
+            };
+          }
+          analyser = mediaAudioRef.current.analyser;
+          if (mediaAudioRef.current.context.state === "suspended")
+            void mediaAudioRef.current.context.resume();
+        }
         if (
+          !mediaVideo &&
           !testMode &&
           !analyser &&
           streamRef.current?.getAudioTracks().length
@@ -164,20 +202,26 @@ export function useMirrorRenderLoop({
               audioSamples,
               terminalDimensions.cols,
               terminalDimensions.rows,
-              { source: "microphone", mode: animation },
+              { source: mediaVideo ? "media" : "microphone", mode: animation },
             )
           : analyser
             ? renderAnalyserAudioVisualization(
                 analyser,
                 terminalDimensions.cols,
                 terminalDimensions.rows,
-                { source: "microphone", mode: animation },
+                {
+                  source: mediaVideo ? "media" : "microphone",
+                  mode: animation,
+                },
               )
             : renderAudioVisualizationFrame(
                 audioSamples,
                 terminalDimensions.cols,
                 terminalDimensions.rows,
-                { source: "microphone", mode: animation },
+                {
+                  source: mediaVideo ? "media" : "microphone",
+                  mode: animation,
+                },
               );
       } else if (testMode) {
         // Generate synthetic test frame
@@ -272,13 +316,14 @@ export function useMirrorRenderLoop({
           console.debug(`[${loopId}] Frame ${frameCount}`);
         }
 
-        if (mediaVideo?.requestVideoFrameCallback) {
+        if (usesVideoClock) {
           if (pendingVideoFrame) {
             pendingVideoFrame = false;
             renderFrame();
           }
           return;
         }
+        if (mediaVideo?.paused) return;
         const elapsed = time - lastFrameTime;
         const interval = frameIntervalRef.current;
         // requestAnimationFrame timestamps can fall a fraction of a millisecond
@@ -322,7 +367,7 @@ export function useMirrorRenderLoop({
         pendingVideoFrame = true;
       }
     };
-    const usesVideoClock = !!mediaVideo?.requestVideoFrameCallback;
+    if (mediaVideo && audioAnimation) renderFrame();
     if (usesVideoClock && mediaVideo.paused && mediaVideo.readyState >= 2)
       renderFrame();
     if (usesVideoClock)
