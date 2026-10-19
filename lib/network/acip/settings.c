@@ -57,6 +57,8 @@ asciichat_error_t acip_render_settings_prepare(acip_render_settings_t *candidate
 static asciichat_error_t prepare_for_viewer(acip_render_settings_t *state, options_t *values) {
   if (values->palette_type < PALETTE_STANDARD || values->palette_type >= PALETTE_COUNT)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rendering palette");
+  if (!state->caps.utf8_support && values->render_mode == RENDER_MODE_HALF_BLOCK)
+    values->render_mode = RENDER_MODE_FOREGROUND;
   values->palette_type = select_compatible_palette(values->palette_type, state->caps.utf8_support);
   if (values->palette_type == PALETTE_CUSTOM && !state->caps.utf8_support &&
       palette_requires_utf8_encoding(values->palette_custom, strlen(values->palette_custom)))

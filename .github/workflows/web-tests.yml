@@ -27,6 +27,8 @@ jobs:
         working-directory: web/web
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Vite+ and Node.js
         uses: voidzero-dev/setup-vp@v1.21.2

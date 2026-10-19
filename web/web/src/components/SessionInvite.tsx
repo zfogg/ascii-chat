@@ -22,6 +22,19 @@ export function SessionInvite({
     if (value !== null) invite.searchParams.set(key, value);
   }
 
+  if (current.searchParams.has("turnUrls")) {
+    const fragment = new URLSearchParams(invite.hash.slice(1));
+    const currentFragment = new URLSearchParams(current.hash.slice(1));
+    for (const key of ["turnUsername", "turnCredential"]) {
+      const value = currentFragment.get(key) ?? current.searchParams.get(key);
+      if (value) {
+        if (key === "turnUsername") invite.searchParams.set(key, value);
+        else fragment.set(key, value);
+      }
+    }
+    invite.hash = fragment.toString();
+  }
+
   const copy = async (value: string, label: string) => {
     try {
       await navigator.clipboard.writeText(value);

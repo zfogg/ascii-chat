@@ -38,6 +38,8 @@ static bool parse_zalgo(const char *arg, void *dest, char **error_msg) {
 // ============================================================================
 // DISPLAY CATEGORY - Display layout options
 // ============================================================================
+static const bool default_face_follow_value = false;
+
 const registry_entry_t g_display_entries[] = {
     {.long_name = "zalgo",
      .type = OPTION_TYPE_CALLBACK,
@@ -289,7 +291,7 @@ const registry_entry_t g_display_entries[] = {
      '\0',
      OPTION_TYPE_BOOL,
      offsetof(options_t, face_follow),
-     &default_flip_y_value,
+     &default_face_follow_value,
      sizeof(bool),
      "Automatically zoom and pan to follow your face, with smooth full-frame fallback.",
      "DISPLAY",

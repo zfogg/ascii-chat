@@ -113,8 +113,6 @@ static void build_help_line(char *output, size_t output_size, const char *conten
 
   // Available width: max_width - 3 (left border "║  ") - 1 (right border "║")
   int content_available = max_width - 4;
-  if (content_available < 1)
-    content_available = 1;
 
   // Truncate content if needed (ANSI-aware, with ellipsis indicator)
   char truncated[256];

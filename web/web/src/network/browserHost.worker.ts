@@ -14,6 +14,7 @@ type HostModule = NonNullable<ReturnType<typeof getClientModule>> & {
     length: number,
   ): number;
   _browser_host_render(): number;
+  _browser_host_render_audio(): number;
   hostPacketCallback?: (id: number, bytes: Uint8Array) => void;
 };
 const post = self.postMessage as unknown as (
@@ -165,12 +166,37 @@ self.onmessage = (event) => {
         if (module._browser_host_create())
           throw new Error("Could not initialize C host worker.");
         module.hostPacketCallback = (actual, bytes) => {
+          if (
+            pendingBatches >= 2 &&
+            new DataView(
+              bytes.buffer,
+              bytes.byteOffset,
+              bytes.byteLength,
+            ).getUint16(8) === PacketType.AUDIO_OPUS_BATCH
+          )
+            return;
           const entry = [...clients].find(([, value]) => value === actual);
           if (entry) packets.push({ id: entry[0], bytes });
         };
         post({ kind: "ready" });
         nextFrameAt = performance.now();
         render();
+        setInterval(() => {
+          try {
+            if (module._browser_host_render_audio())
+              throw new Error("C host could not mix audio.");
+            if (packets.length) {
+              pendingBatches++;
+              post(
+                { kind: "packets", packets, sentAt: performance.now() },
+                packets.map((packet) => packet.bytes.buffer as ArrayBuffer),
+              );
+              packets = [];
+            }
+          } catch (error) {
+            fail(error);
+          }
+        }, 20);
       } else if (message.kind === "add") {
         const id = module._browser_host_add_client();
         if (!id) throw new Error("Host participant limit reached.");

@@ -60,7 +60,7 @@ test.describe("live webcam", () => {
       expect(draw).toHaveLength(8);
       // The sampled source rectangle is smaller than the camera frame, before C receives its pixels.
       expect(draw![2]! / 640).toBeLessThan(0.75);
-      expect(draw![6]! / draw![7]!).toBeCloseTo(640 / 480, 2);
+      expect(draw![2]! / draw![3]!).toBeCloseTo(640 / 480, 2);
       // Release WASM supplies detections; the outline must reach the rendered ASCII pixels.
       const redPixels = (selector: string) =>
         page.locator(selector).evaluate((element) => {

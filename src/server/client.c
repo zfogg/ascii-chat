@@ -925,6 +925,8 @@ static void server_client_stop_threads(server_context_t *server_ctx, const char 
 }
 
 static void server_client_close_transport(const char *client_id, server_client_removal_t *removal) {
+  if (removal->client)
+    mutex_lock(&removal->client->send_mutex);
   // Destroy ACIP transport before closing socket
   // For WebSocket clients: LWS_CALLBACK_CLOSED already closed and destroyed the transport
   // Trying to destroy it again causes heap-use-after-free since LWS callbacks might still fire
@@ -940,6 +942,8 @@ static void server_client_close_transport(const char *client_id, server_client_r
   }
 
   // Now safe to close the socket (threads are stopped)
+  if (removal->client)
+    mutex_unlock(&removal->client->send_mutex);
   if (removal->socket != INVALID_SOCKET_VALUE) {
     log_debug("SOCKET_DEBUG: Closing socket %d for client %s after thread cleanup", removal->socket, client_id);
     socket_close(removal->socket);
