@@ -2,6 +2,7 @@ import { FramePresentationScheduler } from "../network/FramePresentationSchedule
 import { SessionInvite } from "../components/SessionInvite";
 import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
 import { useAutoGridSize } from "../hooks/useAutoGridSize";
+import { useCameraFrameRate } from "../hooks/useCameraFrameRate";
 import { useRenderSettings } from "../hooks/useRenderSettings";
 import { useUrlState } from "../hooks/useUrlState";
 import {
@@ -354,6 +355,17 @@ export function ClientPage({
   // Settings state (must be declared before hooks that use it)
   // Discovery shares the native server cadence and targets display refresh.
   const [settings, setSettings] = useRenderSettings();
+  const [captureFps, setCaptureFps] = useUrlState("captureFps", 60);
+  const cameraSettings = useMemo(
+    () => ({ ...settings, targetFps: captureFps }),
+    [settings, captureFps],
+  );
+  const setCameraSettings = useCallback(
+    (next: BinarySettingsConfig) => setCaptureFps(next.targetFps),
+    [setCaptureFps],
+  );
+  const cameraFrameInterval = useRef(1000 / 60);
+  const cameraLastFrameTime = useRef(0);
   useAutoGridSize(setSettings);
 
   useEffect(() => {
@@ -546,12 +558,12 @@ export function ClientPage({
     terminalDimensions,
     clientRef,
     connectionState,
-    settings,
+    settings: cameraSettings,
     captureFrame,
     canvasRef,
     videoRef,
-    frameIntervalRef,
-    lastFrameTimeRef,
+    frameIntervalRef: cameraFrameInterval,
+    lastFrameTimeRef: cameraLastFrameTime,
     frameQueueRef,
     setError,
   });
@@ -562,6 +574,11 @@ export function ClientPage({
     setAudioEnabled(false);
     setMicEnabled(false);
   }, []);
+  const cameraFps = useCameraFrameRate(
+    cameraSettings,
+    setCameraSettings,
+    isWebcamRunning,
+  );
   const disconnectMedia = useCallback(
     (event?: { preventDefault(): void }) => {
       // React can reuse this button as Connect before the click's default action.
@@ -1072,6 +1089,8 @@ export function ClientPage({
             showSettings={showSettings}
             settingsPanel={
               <BinarySettings
+                cameraFps={cameraFps}
+                separateCameraFps
                 config={settings}
                 onChange={setSettings}
                 mode={AsciiChatMode.CLIENT}

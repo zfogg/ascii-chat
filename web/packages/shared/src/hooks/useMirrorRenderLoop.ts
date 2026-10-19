@@ -16,6 +16,11 @@ import { fillTestPatternAudioSamples } from "../testPattern";
 import { useTestPattern } from "./useTestPattern";
 import { captureVisualizationAudio } from "../audio/visualizationCapture";
 import { VideoFrameClock } from "./videoFrameClock";
+import {
+  reportCameraTrack,
+  reportCameraFrame,
+  reportCameraVideoFrame,
+} from "../capture/cameraRate";
 
 interface UseMirrorRenderLoopParams {
   isWebcamRunning: boolean;
@@ -34,6 +39,7 @@ interface UseMirrorRenderLoopParams {
   animation?: "matrix" | "waveform" | "fft";
   animationEnabled?: boolean;
   mediaVideoRef?: RefObject<HTMLVideoElement | null> | undefined;
+  cameraVideoRef?: RefObject<HTMLVideoElement | null> | undefined;
   onMediaFps?: (fps: number) => void;
   mediaRevision?: unknown;
   fileActive?: boolean;
@@ -55,6 +61,7 @@ export function useMirrorRenderLoop({
   animation,
   animationEnabled,
   mediaVideoRef,
+  cameraVideoRef,
   onMediaFps,
   mediaRevision,
   fileActive = false,
@@ -337,6 +344,15 @@ export function useMirrorRenderLoop({
     const animationFrameRef = (time: DOMHighResTimeStamp) => {
       try {
         if (trackCapture) return;
+        const video = cameraVideoRef?.current;
+        const cameraSource = video?.srcObject as MediaStream | null;
+        if (video && cameraSource?.getVideoTracks) {
+          const track = cameraSource.getVideoTracks()[0];
+          if (track) {
+            reportCameraTrack(track);
+            reportCameraVideoFrame(video);
+          }
+        }
         if (usesVideoClock) {
           if (pendingVideoFrame) {
             pendingVideoFrame = false;
@@ -395,6 +411,7 @@ export function useMirrorRenderLoop({
         }
       ).MediaStreamTrackProcessor;
       if (!track || !Processor || !canvasRef.current) return;
+      reportCameraTrack(track);
       try {
         const reader = new Processor({ track }).readable.getReader();
         trackReader = reader;
@@ -407,6 +424,7 @@ export function useMirrorRenderLoop({
               if (done) break;
               try {
                 if (!isActive || reader !== trackReader) break;
+                reportCameraFrame(frame.timestamp / 1000);
                 const canvas = canvasRef.current;
                 const context = canvas?.getContext("2d");
                 if (
@@ -496,6 +514,7 @@ export function useMirrorRenderLoop({
     streamRef,
     testPattern,
     mediaVideoRef,
+    cameraVideoRef,
     onMediaFps,
     mediaRevision,
     fileActive,

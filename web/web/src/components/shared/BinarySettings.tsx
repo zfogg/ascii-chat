@@ -3,6 +3,7 @@ import { Heading } from "@ascii-chat/shared/components/Heading";
 import { getOptionHelp, AsciiChatMode } from "../../utils";
 import { Tooltip } from "../Tooltip";
 import { LOCKED_SETTINGS_HELP } from "../lockedSettings";
+import type { useCameraFrameRate } from "../../hooks/useCameraFrameRate";
 
 export type ColorMode = "auto" | "none" | "16" | "256" | "truecolor";
 export type ColorFilter =
@@ -52,6 +53,8 @@ interface BinarySettingsProps {
   mode: AsciiChatMode;
   contentFit?: "contain" | "cover";
   onContentFitChange?: (fit: "contain" | "cover") => void;
+  cameraFps?: ReturnType<typeof useCameraFrameRate>;
+  separateCameraFps?: boolean;
 }
 
 function DimensionHelp({ label, text }: { label: string; text: string }) {
@@ -84,8 +87,17 @@ export function BinarySettings({
   mode,
   contentFit,
   onContentFitChange,
+  cameraFps,
+  separateCameraFps = false,
 }: BinarySettingsProps) {
   const dimensionsId = useId();
+  const cameraRate = cameraFps?.rate;
+  const adaptiveRate = separateCameraFps ? undefined : cameraRate;
+  const maximumFps = adaptiveRate ? cameraFps!.maximum : 60;
+  const minimumFps = adaptiveRate ? 1 : 15;
+  const cameraHelp = cameraRate
+    ? `Webcam maximum: ${cameraRate.advertisedMaximum ?? "unknown"} FPS. Configured capture: ${cameraRate.configured ?? "unknown"} FPS. Current capture: ${cameraRate.observed ?? "measuring"} FPS. The selectable maximum follows sustained camera delivery, which may vary with camera mode or exposure. Max follows changes automatically; a lower selection is preserved. Rendering FPS is shown separately in the control bar.`
+    : "";
   const audioVisualizationSelected =
     config.animationEnabled &&
     (config.animation === "waveform" || config.animation === "fft");
@@ -210,27 +222,100 @@ export function BinarySettings({
             <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-medium text-terminal-8 mb-1">
                 Frame Rate: {config.targetFps} FPS
+                {adaptiveRate && (
+                  <span className="ml-2">
+                    <DimensionHelp
+                      label="Webcam frame rate"
+                      text={cameraHelp}
+                    />
+                  </span>
+                )}
               </label>
               <input
                 type="range"
-                min="15"
-                max="60"
-                step="15"
+                aria-label="Frame rate"
+                min={minimumFps}
+                max={maximumFps}
+                step={adaptiveRate ? 1 : 15}
                 value={config.targetFps}
                 onChange={(e) =>
-                  updateConfig({ targetFps: parseInt(e.target.value) })
+                  cameraFps && !separateCameraFps
+                    ? cameraFps.select(parseInt(e.target.value))
+                    : updateConfig({ targetFps: parseInt(e.target.value) })
                 }
                 disabled={disabled}
                 className="w-full"
               />
               <div className="flex justify-between text-xs text-terminal-8 mt-1">
-                <span>15</span>
-                <span>30</span>
-                <span>45</span>
-                <span>60</span>
+                <span>{minimumFps}</span>
+                {!adaptiveRate && (
+                  <>
+                    <span>30</span>
+                    <span>45</span>
+                  </>
+                )}
+                <span>{maximumFps}</span>
               </div>
+              {adaptiveRate && cameraFps && (
+                <div className="mt-1 flex items-center justify-between gap-2 text-xs text-terminal-8">
+                  <span>
+                    {adaptiveRate.observed === undefined
+                      ? "Measuring camera…"
+                      : `Capture: ${adaptiveRate.observed} FPS`}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    aria-pressed={cameraFps.followsMaximum}
+                    onClick={() => cameraFps.select(maximumFps)}
+                    className="rounded border border-terminal-8 px-2 py-0.5 hover:text-terminal-fg"
+                  >
+                    Max
+                  </button>
+                </div>
+              )}
             </div>
           </Tooltip>
+
+          {separateCameraFps && cameraRate && cameraFps && (
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-medium text-terminal-8 mb-1">
+                Camera upload: {cameraFps.target} FPS
+                <span className="ml-2">
+                  <DimensionHelp label="Webcam frame rate" text={cameraHelp} />
+                </span>
+              </label>
+              <input
+                aria-label="Camera upload frame rate"
+                type="range"
+                min={1}
+                max={cameraFps.maximum}
+                step={1}
+                value={cameraFps.target}
+                onChange={(event) =>
+                  cameraFps.select(Number(event.target.value))
+                }
+                disabled={disabled}
+                className="w-full"
+              />
+              <div className="mt-1 flex items-center justify-between gap-2 text-xs text-terminal-8">
+                <span>
+                  {cameraRate.observed === undefined
+                    ? "Measuring camera…"
+                    : `Capture: ${cameraRate.observed} FPS`}
+                </span>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  aria-pressed={cameraFps.followsMaximum}
+                  onClick={() => cameraFps.select(cameraFps.maximum)}
+                  className="rounded border border-terminal-8 px-2 py-0.5 hover:text-terminal-fg"
+                >
+                  Max
+                </button>
+              </div>
+            </div>
+          )}
 
           <Tooltip
             text={

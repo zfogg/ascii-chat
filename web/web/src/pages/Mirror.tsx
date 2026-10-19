@@ -25,6 +25,7 @@ import {
 } from "../hooks/useWasmOptions";
 import { useClientLike } from "../hooks/useClientLike";
 import { useMirrorRenderLoop } from "@ascii-chat/shared/hooks";
+import { useCameraFrameRate } from "../hooks/useCameraFrameRate";
 import { useMirrorWebcam } from "../hooks/useMirrorWebcam";
 import { useMirrorFile } from "../hooks/useMirrorFile";
 import { useTestPattern } from "@ascii-chat/shared/hooks";
@@ -201,6 +202,16 @@ export function MirrorPage() {
   const { start: startFile, stop: stopFile } = fileMedia;
 
   const fileActive = mediaSource === MediaSourceType.FILE;
+  const cameraFps = useCameraFrameRate(
+    settings,
+    setSettings,
+    isWebcamRunning &&
+      !fileActive &&
+      !(
+        settings.animationEnabled &&
+        (settings.animation === "waveform" || settings.animation === "fft")
+      ),
+  );
   const contentSettings = useMemo(
     () =>
       fileActive
@@ -244,6 +255,7 @@ export function MirrorPage() {
 
   // Render loop that captures and converts frames to ASCII
   useMirrorRenderLoop({
+    cameraVideoRef: videoRef,
     isWebcamRunning: renderActive,
     terminalDimensions,
     onMediaFps: setFps,
@@ -356,6 +368,7 @@ export function MirrorPage() {
             showSettings={showSettings}
             settingsPanel={
               <BinarySettings
+                cameraFps={cameraFps}
                 config={contentSettings}
                 onChange={handleSettingsChange}
                 mode={AsciiChatMode.MIRROR}

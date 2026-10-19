@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 for (const fps of [30, 60]) {
-  test(`Mirror requests its ${fps} FPS target from the camera`, async () => {
+  test(`Mirror keeps camera acquisition at 60 FPS with a ${fps} FPS rendering limit`, async () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "time").mockImplementation(() => {});
     vi.spyOn(console, "timeEnd").mockImplementation(() => {});
@@ -51,7 +51,7 @@ for (const fps of [30, 60]) {
     });
     expect(getUserMedia).toHaveBeenCalledWith(
       expect.objectContaining({
-        video: expect.objectContaining({ frameRate: { ideal: fps } }),
+        video: expect.objectContaining({ frameRate: { ideal: 60 } }),
       }),
     );
   });

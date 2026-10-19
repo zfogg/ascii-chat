@@ -6,6 +6,7 @@ import type { VideoEncoding } from "../network/videoEncoding";
 import { useUrlState } from "../hooks/useUrlState";
 import { useCallback, useRef, useState } from "react";
 import { Modal, ModalTitle } from "./Modal";
+import { acquireCameraPreview } from "../utils/acquireCameraPreview";
 import {
   getMediaDevicePreferences,
   getStoredMediaDevicePreferences,
@@ -128,22 +129,12 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
       try {
         let stream: MediaStream;
         try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: nextPreferences.cameraId
-              ? { deviceId: { exact: nextPreferences.cameraId } }
-              : true,
-            audio: nextPreferences.microphoneId
-              ? { deviceId: { exact: nextPreferences.microphoneId } }
-              : true,
-          });
+          stream = await acquireCameraPreview(nextPreferences);
         } catch (cause) {
           if (!nextPreferences.cameraId && !nextPreferences.microphoneId)
             throw cause;
           // A saved device may have been unplugged since the previous visit.
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-          });
+          stream = await acquireCameraPreview({});
         }
         if (!isOpenRef.current || generation !== previewGenerationRef.current) {
           stream.getTracks().forEach((track) => track.stop());

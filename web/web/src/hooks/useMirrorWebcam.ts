@@ -20,6 +20,10 @@ import {
 import { mapColorFilterToWasm, mapColorModeToWasm } from "../utils";
 import { useTestPattern } from "@ascii-chat/shared/hooks";
 import {
+  cameraAcquisitionFps,
+  preferCameraMaximum,
+} from "../../../packages/shared/src/capture/cameraRate";
+import {
   getMediaDevicePreferences,
   MEDIA_DEVICE_PREFERENCES_CHANGED,
   type MediaDevicePreferencesChange,
@@ -171,7 +175,7 @@ export function useMirrorWebcam({
           : {
               width: { ideal: 640 },
               height: { ideal: 480 },
-              frameRate: { ideal: settings.targetFps },
+              frameRate: { ideal: cameraAcquisitionFps() },
               facingMode: "user",
               ...(devicePreferences.cameraId
                 ? { deviceId: { exact: devicePreferences.cameraId } }
@@ -199,7 +203,7 @@ export function useMirrorWebcam({
             : {
                 width: { ideal: 640 },
                 height: { ideal: 480 },
-                frameRate: { ideal: settings.targetFps },
+                frameRate: { ideal: cameraAcquisitionFps() },
                 facingMode: "user",
               },
           audio: true,
@@ -219,6 +223,11 @@ export function useMirrorWebcam({
 
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = stream;
+      await preferCameraMaximum(stream.getVideoTracks?.()[0]);
+      if (generation !== startGenerationRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return false;
+      }
       if (audioOnly) {
         console.info(
           `[Mirror] Audio visualization started: ${stream.getVideoTracks().length} camera tracks, ${stream.getAudioTracks().length} microphone tracks`,
@@ -309,7 +318,7 @@ export function useMirrorWebcam({
         const video = {
           width: { ideal: 640 },
           height: { ideal: 480 },
-          frameRate: { ideal: settings.targetFps },
+          frameRate: { ideal: cameraAcquisitionFps() },
           facingMode: "user",
         };
         try {
@@ -327,6 +336,11 @@ export function useMirrorWebcam({
             audio: false,
           });
         }
+        if (cancelled || streamRef.current !== stream) {
+          camera.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        await preferCameraMaximum(camera.getVideoTracks()[0]);
         if (cancelled || streamRef.current !== stream) {
           camera.getTracks().forEach((track) => track.stop());
           return;
@@ -355,7 +369,6 @@ export function useMirrorWebcam({
     audioOnly,
     isWebcamRunning,
     mediaSource,
-    settings.targetFps,
     streamRef,
     videoRef,
     testPattern.enabled,

@@ -1,5 +1,11 @@
 import { AVState } from "../wasm/AVState";
 import { VideoFrameClock } from "../../../packages/shared/src/hooks/videoFrameClock";
+import {
+  reportCameraTrack,
+  reportCameraFrame,
+  reportCameraVideoFrame,
+  cameraAcquisitionFps,
+} from "../../../packages/shared/src/capture/cameraRate";
 import { useLayoutEffect } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
@@ -387,11 +393,12 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       }
       const videoTrack = streamRef.current?.getVideoTracks()[0];
       if (videoTrack) {
+        reportCameraTrack(videoTrack);
         void videoTrack
           .applyConstraints({
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            frameRate: { ideal: settings.targetFps },
+            frameRate: { ideal: cameraAcquisitionFps(videoTrack) },
           })
           .catch((error) =>
             console.warn("[Client] Unable to update webcam settings:", error),
@@ -433,6 +440,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
               const { value: frame, done } = await frameReader.read();
               if (done) break;
               try {
+                reportCameraFrame(frame.timestamp / 1000);
                 const canvas = canvasRef.current;
                 const context = canvas?.getContext("2d");
                 // Pace against camera timestamps; callback delivery jitter must
@@ -485,6 +493,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           metadata: { mediaTime: number },
         ) => {
           if (stopped) return;
+          reportCameraFrame(metadata.mediaTime * 1000);
           if (mediaClock.accept(metadata.mediaTime, sendInterval)) {
             webcamCaptureLoopRef.current?.();
           }
@@ -500,6 +509,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         const pollDecodedFrame = () => {
           if (stopped) return;
           if (video) {
+            reportCameraVideoFrame(video);
             if (
               video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
               !video.paused &&
@@ -620,7 +630,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       let videoConstraints: MediaTrackConstraints = {
         width: { ideal: w },
         height: { ideal: h },
-        frameRate: { ideal: settings.targetFps },
+        frameRate: { ideal: cameraAcquisitionFps() },
       };
       if (!testPattern.enabled && cameraIndex !== null) {
         if (!Number.isInteger(cameraIndex) || cameraIndex < 0) {
@@ -703,17 +713,18 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         const currentSettings = videoTrack.getSettings();
         const currentFps = currentSettings.frameRate;
         const maximumFps = capabilities.frameRate?.max;
+        const captureFps = cameraAcquisitionFps(videoTrack);
         if (
           maximumFps !== undefined &&
-          maximumFps >= Math.min(settings.targetFps, 45) &&
+          maximumFps >= Math.min(captureFps, 45) &&
           (currentFps === undefined ||
-            currentFps + 1 < Math.min(settings.targetFps, maximumFps))
+            currentFps + 1 < Math.min(captureFps, maximumFps))
         ) {
           try {
             await videoTrack.applyConstraints({
               width: { ideal: Math.max(w, 1280) },
               height: { ideal: Math.max(h, 720) },
-              frameRate: { ideal: Math.min(settings.targetFps, maximumFps) },
+              frameRate: { ideal: Math.min(captureFps, maximumFps) },
             });
             let negotiatedSettings = videoTrack.getSettings();
             if (

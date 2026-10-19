@@ -5,7 +5,13 @@ import { ServerFixture } from "./server-fixture";
 // camera scheduling and cannot detect a camera callback gate that halves 60 FPS.
 async function camera(page: Page) {
   await page.addInitScript(() => {
-    const stats = { generated: 0, uploaded: 0, painted: 0, changed: 0 };
+    const stats = {
+      generated: 0,
+      uploaded: 0,
+      painted: 0,
+      changed: 0,
+      rate: 60,
+    };
     Object.assign(window, { cameraCadence: stats });
     const send = WebSocket.prototype.send;
     WebSocket.prototype.send = function (data) {
@@ -49,13 +55,21 @@ async function camera(page: Page) {
         }
       ).MediaStreamTrackGenerator;
       const track = new Generator({ kind: "video" });
+      const getSettings = track.getSettings.bind(track);
+      Object.defineProperty(track, "getCapabilities", {
+        value: () => ({ frameRate: { min: 1, max: 60 } }),
+      });
+      Object.defineProperty(track, "getSettings", {
+        value: () => ({ ...getSettings(), frameRate: 60 }),
+      });
       const writer = track.writable.getWriter();
       const canvas = document.createElement("canvas");
       canvas.width = 320;
       canvas.height = 180;
       const context = canvas.getContext("2d")!;
       let frame = 0;
-      const start = performance.now();
+      let deadline = performance.now();
+      let timestamp = 0;
       const tick = async () => {
         if (track.readyState === "ended") return;
         context.fillStyle = `rgb(${120 + (frame % 120)},${120 + ((frame * 3) % 120)},${120 + ((frame * 7) % 120)})`;
@@ -63,7 +77,7 @@ async function camera(page: Page) {
         context.fillStyle = "white";
         context.fillRect((frame * 3) % 288, 30, 32, 120);
         const image = new VideoFrame(canvas, {
-          timestamp: Math.round((frame * 1e6) / 60),
+          timestamp: Math.round(timestamp),
         });
         try {
           await writer.write(image);
@@ -75,15 +89,12 @@ async function camera(page: Page) {
         }
         // A camera drops stale frames during a host stall instead of emitting
         // an unbounded catch-up burst afterwards.
-        frame = Math.max(
-          frame + 1,
-          Math.floor(((performance.now() - start) * 60) / 1000),
-        );
+        frame++;
+        const interval = 1000 / stats.rate;
+        timestamp += interval * 1000;
+        deadline = Math.max(deadline + interval, performance.now() - interval);
         const jitter = frame % 2 ? -0.7 : 0.7;
-        setTimeout(
-          tick,
-          Math.max(0, start + (frame * 1000) / 60 + jitter - performance.now()),
-        );
+        setTimeout(tick, Math.max(0, deadline + jitter - performance.now()));
       };
       void tick();
       // No microphone or speaker tracks are created, including Mirror's audio request.
@@ -118,6 +129,42 @@ async function measure(page: Page) {
 }
 
 test.use({ viewport: { width: 800, height: 850 } });
+
+test("camera FPS limit follows delivery changes and preserves a lower user choice", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await camera(page);
+  await page.goto("/mirror?playing=true&settings=true");
+  const slider = page.getByRole("slider", { name: "Frame rate", exact: true });
+  const changeSource = async (fps: number) => {
+    await page.evaluate((rate) => {
+      (
+        window as unknown as { cameraCadence: { rate: number } }
+      ).cameraCadence.rate = rate;
+    }, fps);
+    await expect(slider).toHaveAttribute("max", String(fps), {
+      timeout: 12000,
+    });
+  };
+  await changeSource(20);
+  await expect(slider).toHaveValue("20");
+  await page.getByRole("button", { name: "Webcam frame rate help" }).hover();
+  await expect(
+    page.getByRole("tooltip").filter({ hasText: "Webcam maximum: 60 FPS" }),
+  ).toBeVisible();
+  await changeSource(60);
+  await expect(slider).toHaveValue("60");
+  await slider.press("Home");
+  for (let i = 1; i < 15; i++) await slider.press("ArrowRight");
+  await expect(slider).toHaveValue("15");
+  await changeSource(25);
+  await expect(slider).toHaveValue("15");
+  await page.getByRole("button", { name: "Max", exact: true }).click();
+  await expect(slider).toHaveValue("25");
+  await changeSource(60);
+  await expect(slider).toHaveValue("60");
+});
 
 test("Mirror presents fresh camera frames near 60 FPS", async ({ page }) => {
   await camera(page);
