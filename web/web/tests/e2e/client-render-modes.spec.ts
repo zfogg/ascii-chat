@@ -1,11 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { getRandomPort, ServerFixture } from "./server-fixture";
+import { ServerFixture } from "./server-fixture";
+
+// Keep this suite's TCP/WebSocket pair outside the shared random-port range.
+// Serial execution lets the three modes reuse one server without worker collisions.
+test.describe.configure({ mode: "serial" });
 
 let server: ServerFixture;
 
 test.beforeAll(async () => {
-  const port = getRandomPort();
-  server = new ServerFixture(port);
+  server = new ServerFixture(38240);
   await server.start();
 });
 
