@@ -208,6 +208,9 @@ typedef struct {
    */
   asciichat_error_t (*sendv)(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count);
 
+  /** Bytes retained by this backend, including an in-progress packet. */
+  size_t (*queued_bytes)(acip_transport_t *transport);
+  size_t reserved_bytes; ///< Bound for backend-owned pending data not exposed by queued_bytes.
   void (*destroy_impl)(acip_transport_t *transport);
 } acip_transport_methods_t;
 
@@ -218,6 +221,7 @@ typedef struct {
  * Specific transports extend this with their own state.
  */
 struct acip_transport {
+  struct acip_outbound *outbound;          ///< Per-connection plaintext admission and scheduling.
   stats_peer_t *stats_peer;                ///< Owned statistics handle, destroyed with transport.
   const acip_transport_methods_t *methods; ///< Method table (virtual functions)
   crypto_context_t *crypto_ctx;            ///< Optional encryption context
@@ -257,14 +261,7 @@ void acip_transport_destroy(acip_transport_t *transport);
  */
 asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count);
 
-static inline asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *data, size_t len) {
-  if (!transport || !transport->methods || !transport->methods->send) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
-  }
-  // Implementations preserve local construction errors; failures after transmission
-  // begins must return ERROR_NETWORK because framing may have been consumed.
-  return transport->methods->send(transport, data, len);
-}
+asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *data, size_t len);
 
 /**
  * @brief Receive data from transport

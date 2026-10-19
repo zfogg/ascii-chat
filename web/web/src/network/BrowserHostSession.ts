@@ -1,3 +1,4 @@
+import { OutboundQueue } from "./OutboundQueue";
 import { HandoffProtocol } from "./HandoffProtocol";
 import { DiscoveryProtocol } from "./DiscoveryProtocol";
 import { BrowserHostRuntime } from "./BrowserHostRuntime";
@@ -23,6 +24,7 @@ import {
 } from "../wasm/client";
 
 type Peer = {
+  outbound?: OutboundQueue;
   pc: RTCPeerConnection;
   bridge: WebRTCBridge | null;
   crypto: PeerCryptoSession | null;
@@ -147,17 +149,27 @@ export class BrowserHostSession implements ClientSession {
           } else {
             for (const [key, peer] of this.peers) {
               if (peer.id !== id || !peer.crypto?.ready) continue;
-              const type = new DataView(
-                bytes.buffer,
-                bytes.byteOffset,
-              ).getUint16(8, false);
-              if (
-                type === PacketType.ASCII_FRAME &&
-                (peer.bridge?.getBufferedAmount() ?? 0) > 256 * 1024
-              )
-                continue;
               try {
-                peer.crypto.sendPacket(bytes);
+                peer.outbound ??= new OutboundQueue(
+                  () => peer.bridge?.getBufferedAmount() ?? 0,
+                  (packet) => peer.crypto!.sendPacket(packet),
+                  () => this.removePeer(key),
+                );
+                const admission = peer.outbound.submit(bytes);
+                if (admission === "congested") {
+                  const type = new DataView(
+                    bytes.buffer,
+                    bytes.byteOffset,
+                    bytes.byteLength,
+                  ).getUint16(8, false);
+                  if (
+                    type !== PacketType.IMAGE_FRAME &&
+                    type !== PacketType.ASCII_FRAME &&
+                    type !== PacketType.IMAGE_FRAME_H264 &&
+                    type !== PacketType.IMAGE_FRAME_H265
+                  )
+                    throw new Error("Reliable outbound queue is congested");
+                }
               } catch (error) {
                 this.removePeer(key);
                 this.options.onProgress?.(
@@ -329,6 +341,7 @@ export class BrowserHostSession implements ClientSession {
     this.peers.delete(key);
     if (peer.id) this.runtime?.removeClient(peer.id);
     peer.pc.close();
+    peer.outbound?.close();
     peer.bridge?.close();
     peer.crypto?.close();
     this.options.onProgress?.(
@@ -337,8 +350,18 @@ export class BrowserHostSession implements ClientSession {
         : "Hosting — waiting for a participant",
     );
   }
+  private localKeyframes = new Set<number>();
+  needsKeyframe(type: number): boolean {
+    return (
+      (type === PacketType.IMAGE_FRAME_H264 ||
+        type === PacketType.IMAGE_FRAME_H265) &&
+      !this.localKeyframes.has(type)
+    );
+  }
   sendPacket(type: number, payload: Uint8Array) {
     this.receive(this.localId, type, payload);
+    if (this.needsKeyframe(type) && payload[0]! & 1)
+      this.localKeyframes.add(type);
   }
   sendUnencryptedAcipPacket(type: number, payload: Uint8Array) {
     this.sendPacket(type, payload);
@@ -348,7 +371,9 @@ export class BrowserHostSession implements ClientSession {
       0,
       ...Array.from(
         this.peers.values(),
-        (peer) => peer.bridge?.getBufferedAmount() || 0,
+        (peer) =>
+          (peer.bridge?.getBufferedAmount() ?? 0) +
+          (peer.outbound?.snapshot().applicationBytes ?? 0),
       ),
     );
   }
@@ -396,6 +421,7 @@ export class BrowserHostSession implements ClientSession {
     this.discovery = null;
     for (const peer of this.peers.values()) {
       peer.pc.close();
+      peer.outbound?.close();
       peer.bridge?.close();
       peer.crypto?.close();
     }

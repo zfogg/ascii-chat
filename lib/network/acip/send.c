@@ -10,6 +10,7 @@
  */
 
 #include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/errors.h>
@@ -69,20 +70,29 @@ static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const
       memcpy(packet + offset, buffers[i].data, buffers[i].len);
     offset += buffers[i].len;
   }
-  asciichat_error_t result = acip_transport_send(transport, packet, total);
+  asciichat_error_t result = transport->methods->send(transport, packet, total);
   buffer_release(packet);
   return result;
 }
 
 asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
-  asciichat_error_t result = transport_sendv_impl(transport, buffers, count);
-  if (result == ASCIICHAT_OK)
-    return result;
-  log_error("ACIP packet send failed: %s", asciichat_error_string(result));
-  // A local preparation failure can drop one frame without ending the session.
-  // ERROR_MESSAGE sanitizes these failures to fatal ERROR_INTERNAL at the peer;
-  // leave protocol-level rejection notifications to callers that intend to stop.
-  return SET_ERRNO(result, "ACIP packet send failed: %s", asciichat_error_string(result));
+#ifndef __EMSCRIPTEN__
+  if (transport && transport->outbound) {
+    acip_admission_t admission;
+    asciichat_error_t result = acip_outbound_submitv(transport, buffers, count, &admission);
+    if (result != ASCIICHAT_OK)
+      return result;
+    if (admission != ACIP_ADMISSION_ACCEPTED)
+      return SET_ERRNO(ERROR_BUFFER_FULL, "Outbound media not admitted (%d)", admission);
+    return ASCIICHAT_OK;
+  }
+#endif
+  return transport_sendv_impl(transport, buffers, count);
+}
+
+asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *data, size_t len) {
+  socket_buffer_t buffer = {data, len};
+  return acip_transport_sendv(transport, &buffer, 1);
 }
 
 asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet_type_t type,
