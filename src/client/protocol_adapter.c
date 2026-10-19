@@ -55,8 +55,6 @@
 static void handle_ascii_frame_packet(client_connection_t *connection, const ascii_frame_packet_t *frame_header,
                                       const char *frame_data) {
   ascii_frame_packet_t header = *frame_header;
-  fflush(stdout);
-
   if (should_exit())
     return;
 

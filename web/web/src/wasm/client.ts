@@ -377,16 +377,6 @@ export function packetTypeName(type: number): string {
   return names[type] || `UNKNOWN(${type})`;
 }
 
-function isMediaPacketType(type: number): boolean {
-  return (
-    type === PacketType.ASCII_FRAME ||
-    type === PacketType.IMAGE_FRAME ||
-    type === PacketType.IMAGE_FRAME_H265 ||
-    type === PacketType.AUDIO_BATCH ||
-    type === PacketType.AUDIO_OPUS_BATCH
-  );
-}
-
 // Import the Emscripten-generated module factory
 // @ts-expect-error - Generated file without types
 import ClientModuleFactory from "./dist/client.js";
@@ -729,10 +719,10 @@ async function initializeClientWasm(options: ClientInitOptions): Promise<void> {
  * Cleanup WASM module resources
  */
 export function cleanupClientWasm(): void {
-  console.error("[cleanupClientWasm] ========== CLEANUP CALLED ==========");
+  console.log("[cleanupClientWasm] ========== CLEANUP CALLED ==========");
   if (wasmModule) {
     if (clientInitialized) {
-      console.error("[cleanupClientWasm] Calling _client_cleanup()...");
+      console.log("[cleanupClientWasm] Calling _client_cleanup()...");
       wasmModule._client_cleanup();
       clientInitialized = false;
     }
@@ -740,11 +730,9 @@ export function cleanupClientWasm(): void {
     // Recreating it on every WebRTC reconnect leaks worker-backed memories
     // until the browser can no longer allocate another WebAssembly.Memory.
     cleanupOptions();
-    console.error(
-      "[cleanupClientWasm] Client state cleaned up; module retained",
-    );
+    console.log("[cleanupClientWasm] Client state cleaned up; module retained");
   } else {
-    console.error("[cleanupClientWasm] No module to cleanup");
+    console.log("[cleanupClientWasm] No module to cleanup");
   }
 }
 
@@ -966,10 +954,6 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
     throw new Error("WASM module not initialized");
   }
 
-  console.debug(
-    `[Client WASM] encryptPacket: ${plaintext.length} bytes plaintext`,
-  );
-
   // Allocate buffers
   const ptPtr = wasmModule._malloc(plaintext.length);
   const ctPtr = wasmModule._malloc(plaintext.length + 48); // Room for AEAD overhead (24-byte nonce + 16-byte MAC + padding)
@@ -1007,9 +991,6 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
     const ciphertext = new Uint8Array(outLen);
     ciphertext.set(wasmModule.HEAPU8.subarray(ctPtr, ctPtr + outLen));
 
-    console.debug(
-      `[Client WASM] encryptPacket: ${plaintext.length} -> ${outLen} bytes`,
-    );
     return ciphertext;
   } finally {
     wasmModule._free(ptPtr);
@@ -1025,10 +1006,6 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
   if (!wasmModule) {
     throw new Error("WASM module not initialized");
   }
-
-  console.debug(
-    `[Client WASM] decryptPacket: ${ciphertext.length} bytes ciphertext`,
-  );
 
   // Allocate buffers
   const ctPtr = wasmModule._malloc(ciphertext.length);
@@ -1067,9 +1044,6 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
     const plaintext = new Uint8Array(outLen);
     plaintext.set(wasmModule.HEAPU8.subarray(ptPtr, ptPtr + outLen));
 
-    console.debug(
-      `[Client WASM] decryptPacket: ${ciphertext.length} -> ${outLen} bytes`,
-    );
     return plaintext;
   } finally {
     wasmModule._free(ctPtr);
@@ -1107,11 +1081,7 @@ export function parsePacket(rawPacket: Uint8Array): ParsedPacket {
 
     // Parse JSON
     const parsed = JSON.parse(jsonStr) as ParsedPacket;
-    if (!isMediaPacketType(parsed.type)) {
-      console.debug(
-        `[Client WASM] parsePacket: type=${packetTypeName(parsed.type)}, len=${parsed.length}, client_id=${parsed.client_id}`,
-      );
-    }
+
     return parsed;
   } finally {
     wasmModule._free(pktPtr);
@@ -1169,11 +1139,6 @@ export function serializePacket(
     const packet = new Uint8Array(outLen);
     packet.set(wasmModule.HEAPU8.subarray(outputPtr, outputPtr + outLen));
 
-    if (!isMediaPacketType(packetType)) {
-      console.debug(
-        `[Client WASM] serializePacket: type=${packetTypeName(packetType)}, payload=${payload.length}B, total=${outLen}B`,
-      );
-    }
     return packet;
   } finally {
     if (payloadPtr) wasmModule._free(payloadPtr);

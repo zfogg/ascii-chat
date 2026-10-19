@@ -50,11 +50,6 @@ int mirror_init_with_args(const char *args_json) {
     return -1;
   }
 
-  // Initialize logging to stderr (console.error in browser)
-  log_init(NULL, LOG_DEBUG, true, false);
-  // Use debug-style format in WASM so browser console shows full log headers
-  log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
-
   // Parse space-separated arguments
   char *args_copy = NULL;
   char *argv[64] = {NULL};
@@ -70,6 +65,11 @@ int mirror_init_with_args(const char *args_json) {
   if (err != ASCIICHAT_OK) {
     return -1;
   }
+
+  // Honor parsed verbosity and let INFO use stdout (console.log).
+  log_init(NULL, GET_OPTION(log_level), false, false);
+  // Use debug-style format in WASM so browser console shows full log headers.
+  log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
 
   // Log option values after initialization
   log_info("[mirror_init_with_args] After options_init: argc=%d, matrix_rain=%d", argc, GET_OPTION(matrix_rain));

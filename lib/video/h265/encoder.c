@@ -289,7 +289,6 @@ static void h265_encoder_ascii_to_yuv420(const uint8_t *rgb_data, uint16_t width
 
 asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *ascii_data,
                               uint8_t *output_buf, size_t *output_size) {
-  log_info("[H265_ENCODE_1] Starting h265_encode %ux%u", width, height);
   if (!encoder || !ascii_data || !output_buf || !output_size) {
     return SET_ERRNO(ERROR_INTERNAL, "Invalid encoder arguments");
   }
@@ -302,18 +301,13 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Output buffer too small (minimum 5 bytes)");
   }
 
-  log_info("[H265_ENCODE_2] Reconfigure %ux%u -> %ux%u", encoder->current_width, encoder->current_height, width,
-           height);
   bool size_changed = width != encoder->current_width || height != encoder->current_height;
   asciichat_error_t result = h265_encoder_reconfigure(encoder, width, height);
-  log_info("[H265_ENCODE_3] Reconfigure returned %d", result);
   if (result != ASCIICHAT_OK) {
     return result;
   }
 
-  log_info("[H265_ENCODE_4] Converting ASCII to YUV420");
   h265_encoder_ascii_to_yuv420(ascii_data, width, height, encoder->yuv_buf);
-  log_info("[H265_ENCODE_5] YUV420 conversion done");
 
   // Setup frame data pointers
   encoder->frame->data[0] = encoder->yuv_buf;
@@ -336,17 +330,14 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
   }
 
   // Encode frame
-  log_info("[H265_ENCODE_6] Sending frame to encoder: %ux%u format=%d", width, height, encoder->frame->format);
   uint64_t stats_codec_start = time_get_ns();
   int send_ret = avcodec_send_frame(encoder->codec_ctx, encoder->frame);
-  log_info("[H265_ENCODE_7] avcodec_send_frame returned %d", send_ret);
   if (send_ret < 0) {
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_ENCODE, time_get_ns() - stats_codec_start);
     log_error("H265_ENCODE: avcodec_send_frame failed: %d", send_ret);
     return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to send frame to encoder");
   }
 
-  log_info("[H265_ENCODE_8] Receiving encoded packet...");
   int recv_ret = avcodec_receive_packet(encoder->codec_ctx, encoder->packet);
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_ENCODE, time_get_ns() - stats_codec_start);
   if (recv_ret == AVERROR(EAGAIN)) {

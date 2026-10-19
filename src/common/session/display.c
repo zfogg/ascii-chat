@@ -915,7 +915,8 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       log_debug("FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout", total_size, cursor_seq_len,
                 frame_len);
       asciichat_error_t presented = ui_controller_present(
-          UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS},
+          UI_SCREEN_MEDIA, ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO,
+          (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS},
           frame_buffer, total_size);
       ssize_t written = presented == ASCIICHAT_OK ? (ssize_t)total_size : -1;
       log_debug("FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)", written, total_size);
@@ -930,11 +931,13 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       SAFE_FREE(frame_buffer);
     }
 
-    // Flush buffers
-    log_debug("FRAME_FLUSH: Flushing stdout");
-    (void)fflush(stdout);
-    int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-    (void)terminal_flush(flush_fd);
+    // Live presentation owns terminal writes on its worker. Draining here
+    // blocks packet reception, including audio, behind a slow terminal reader.
+    if (ctx->snapshot_mode) {
+      (void)fflush(stdout);
+      int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
+      (void)terminal_flush(flush_fd);
+    }
 
   } else if (terminal_is_interactive()) {
     // Piped to interactive terminal: output ASCII frames with newline
@@ -951,10 +954,11 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       SAFE_FREE(write_buf);
     }
 
-    // Flush buffers
-    (void)fflush(stdout);
-    int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-    (void)terminal_flush(flush_fd);
+    if (ctx->snapshot_mode) {
+      (void)fflush(stdout);
+      int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
+      (void)terminal_flush(flush_fd);
+    }
   } else {
     // Named render files leave stdout available for ASCII output
     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
@@ -978,9 +982,10 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       SAFE_FREE(write_buf);
     }
 
-    // Flush buffers (skip terminal_flush on pipes to avoid blocking in snapshot mode)
+    // Writes already reach the OS synchronously; streaming frames do not need
+    // a durability barrier or a terminal drain on the receiving thread.
     (void)fflush(stdout);
-    if (!GET_OPTION(snapshot_mode) || ctx->has_tty) {
+    if (ctx->snapshot_mode && ctx->has_tty) {
       int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
       (void)terminal_flush(flush_fd);
     }

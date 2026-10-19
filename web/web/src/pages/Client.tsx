@@ -372,14 +372,6 @@ export function ClientPage({
   const frameHashesRef = useRef<Record<string, number>>({});
   const onFrameAvailableRef = useRef<(() => void) | null>(null);
   const presentedFrameRef = useRef<AsciiFrame | null>(null);
-  const renderTimingRef = useRef({
-    frames: 0,
-    totalMs: 0,
-    maxMs: 0,
-    windowStart: 0,
-    previousFrameAt: 0,
-    maxFrameGapMs: 0,
-  });
 
   // Simple hash function for frame content
   const hashFrame = (content: string): string => {
@@ -827,47 +819,15 @@ export function ClientPage({
           // unchanged network snapshot wastes the next frame's CPU budget.
           if (!visualAnimation && frame === presentedFrameRef.current) return;
           const frameHash = hashFrame(frameContent);
-          const writeStartedAt = performance.now();
           const drewFrame = rendererRef.current.writeFrame(frameContent, {
             cols: dimensions.cols,
             rows: dimensions.rows,
           });
-          const writeDurationMs = performance.now() - writeStartedAt;
           if (!drewFrame) {
             return;
           }
 
           presentedFrameRef.current = visualAnimation ? null : frame;
-          const timing = renderTimingRef.current;
-          const renderedAt = performance.now();
-          if (!timing.windowStart) timing.windowStart = renderedAt;
-          if (timing.previousFrameAt) {
-            timing.maxFrameGapMs = Math.max(
-              timing.maxFrameGapMs,
-              renderedAt - timing.previousFrameAt,
-            );
-          }
-          timing.previousFrameAt = renderedAt;
-          timing.frames++;
-          timing.totalMs += writeDurationMs;
-          timing.maxMs = Math.max(timing.maxMs, writeDurationMs);
-          if (timing.frames >= 60) {
-            console.info(
-              "[ClientRenderTiming]",
-              JSON.stringify({
-                frames: timing.frames,
-                elapsedMs: Math.round(renderedAt - timing.windowStart),
-                avgWriteMs: Number((timing.totalMs / timing.frames).toFixed(2)),
-                maxWriteMs: Number(timing.maxMs.toFixed(2)),
-                maxFrameGapMs: Number(timing.maxFrameGapMs.toFixed(2)),
-              }),
-            );
-            timing.frames = 0;
-            timing.totalMs = 0;
-            timing.maxMs = 0;
-            timing.windowStart = renderedAt;
-            timing.maxFrameGapMs = 0;
-          }
           // Track if this is a new unique frame we haven't seen before
           if (!frameHashesRef.current[frameHash]) {
             cumulativeUniqueFramesRef.current++;
