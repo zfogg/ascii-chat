@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="Explore ascii-chat's native C, TypeScript, and WebAssembly architecture through an interactive source map."
+    />
+    <title>ascii-chat / Code Atlas</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="#"
+        ><span class="logo">a<span>:</span></span
+        ><strong>ascii-chat</strong><span class="slash">/</span
+        ><span>code atlas</span></a
+      >
+      <div class="header-right">
+        <span class="live"></span> SOURCE EXPLORER
+        <button id="about">About this map ↗</button>
+      </div>
+    </header>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="eyebrow">TRACE THE IMPLEMENTATION</div>
+        <h1>Follow a call.<br />Through the code.</h1>
+        <p class="intro">18 journeys from user action to implementation.</p>
+        <label class="search"
+          ><span>⌕</span
+          ><input
+            id="search"
+            placeholder="Search the atlas…"
+            aria-label="Find guided path, file, or function"
+          /><kbd>/</kbd></label
+        >
+        <div id="results" hidden></div>
+        <div class="section-label">
+          GUIDED PATHS <span id="path-count">18</span>
+        </div>
+        <nav id="views" aria-label="Guided code paths"></nav>
+        <div class="sidebar-bottom">
+          <div class="section-label">THE BUILDING BLOCKS</div>
+          <div class="legend">
+            <span class="dot c"></span>Native C
+            <span class="dot ts"></span>TypeScript<br /><span
+              class="dot wasm"
+            ></span
+            >WASM bridge <span class="dot lib"></span>Shared lib/
+          </div>
+          <div class="snapshot" id="snapshot"></div>
+          <button id="method">How to read the map ↗</button>
+        </div>
+      </aside>
+      <main>
+        <div class="map-heading">
+          <div>
+            <div class="eyebrow" id="path-number">PATH 01 / NATIVE</div>
+            <h2 id="title">Native lifecycle</h2>
+            <p id="subtitle"></p>
+          </div>
+          <div class="heading-actions">
+            <button id="guide-notes">Guide notes</button
+            ><button id="back" hidden>← Back to path</button>
+          </div>
+        </div>
+        <div id="chapter-tabs" aria-label="Guided path chapters"></div>
+        <div
+          id="viewport"
+          tabindex="0"
+          aria-label="Interactive code map. Drag to pan; use zoom controls. Select a file to inspect."
+        >
+          <div class="canvas-label">
+            ENTRY POINT <span>→</span> IMPLEMENTATION <span>→</span> SHARED
+            CAPABILITIES
+          </div>
+          <div id="world">
+            <svg id="edges" aria-label="Source relationships"></svg>
+            <div id="nodes"></div>
+          </div>
+          <div id="empty" hidden>
+            No connections in this scope. Explore this file to see its
+            neighbors.
+          </div>
+          <div class="map-hint">
+            Drag to pan <span>·</span> Scroll to zoom <span>·</span> Click a
+            connection for evidence
+          </div>
+          <div class="controls">
+            <button id="minus" aria-label="Zoom out">−</button
+            ><span id="zoom">100%</span
+            ><button id="plus" aria-label="Zoom in">+</button><i></i
+            ><button id="fit">Fit view</button
+            ><button id="expand" aria-label="Toggle expanded canvas">⛶</button>
+          </div>
+        </div>
+        <footer>
+          <span id="counts"></span
+          ><span
+            >Solid: symbol reference <span class="dashed">┄</span> Dashed:
+            import/resource <button id="reset">Reset view ↺</button></span
+          >
+        </footer>
+      </main>
+      <aside class="inspector">
+        <div class="inspector-label">
+          INSPECTOR <span id="inspect-kind">FILE</span
+          ><button id="detail-close" aria-label="Close inspector">×</button>
+        </div>
+        <div id="details"></div>
+      </aside>
+    </div>
+    <dialog id="modal">
+      <button id="close-modal" aria-label="Close">×</button>
+      <div class="eyebrow">BUILT FROM SOURCE</div>
+      <h2>A map, with receipts.</h2>
+      <p id="method-note"></p>
+      <p>
+        Each arrow is backed by a source line. A symbol reference can be a
+        scoped function call, constructor selection, or callback registration;
+        it is not proof that the code executes on every build or path. Import
+        arrows show relative TypeScript module imports. These relationships can
+        include calls, declarations, and macro-generated references.
+      </p>
+      <p>
+        Eighteen guided paths cover the user journeys. Overview maps introduce
+        each path; chapter tabs focus on three source checkpoints at a time.
+        Select a file to inspect symbols, then choose <b>Explore file</b> for
+        its immediate callers and dependencies. Select a connection to read the
+        evidence. GitHub links use the recorded commit; local source excerpts
+        may include uncommitted edits.
+      </p>
+      <p>
+        Pan by dragging blank space, zoom with the wheel or controls, and use
+        Fit view to reset. Search files or functions with <kbd>/</kbd>. Press
+        Escape to clear search or close this dialog.
+      </p>
+    </dialog>
+    <script src="guides.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

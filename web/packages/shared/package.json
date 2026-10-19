@@ -11,7 +11,8 @@
     "./wasm": "./src/wasm/index.ts",
     "./utils": "./src/utils/index.ts",
     "./tailwind.config.js": "./tailwind.config.js",
-    "./styles/base.css": "./src/styles/base.css"
+    "./styles/base.css": "./src/styles/base.css",
+    "./components/*": "./src/components/*"
   },
   "scripts": {
     "build": "echo 'Shared package (no build needed)'"

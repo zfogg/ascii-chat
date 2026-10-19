@@ -45,7 +45,7 @@ G('shared-grid','Receive & render the call','Inside a call','CLI + browser','How
  P('src/server/stream.c','convert_composite_to_ascii','Apply the C ASCII engine','Palette, color, and style choices feed reusable C rendering. SIMD dispatch chooses available implementations beneath this conversion.',L+'video/ascii/ascii.c',L+'video/ascii/simd/dispatch.c'),
  P(L+'network/acip/send.c',None,'Frame the media payload','ACIP sends typed media/control data through the chosen transport. Framing and optional compression differ from terminal rasterization.',L+'network/compression.c')),
  C('present','Decode and present','Receipt is followed by parsing, decompression, UI composition, and an output target.',
- P('src/client/protocol.c','handle_ascii_frame_packet','Decode native frames','The native client validates and decodes the received representation before updating display state.','src/client/display.c'),
+ P('src/client/protocol_adapter.c','handle_ascii_frame_packet','Present native frames','The shared session protocol validates and decompresses the frame before the native adapter updates display state.',S+'protocol.c','src/client/display.c'),
  P(N+'AsciiFrameParser.ts','parseAsciiFrame','Parse browser frame structure','The browser frame parser interprets the payload; connection callbacks pass text onward to the renderer.',W+'hooks/useClientConnection.ts'),
  P(L+'media/render/terminal.c','term_renderer_feed','Rasterize browser output','ANSI becomes terminal glyph pixels for the canvas. Native display instead writes terminal output through its display/platform path.',B+'components/AsciiRenderer/useAsciiRendererHandle.ts'))],['capture','hosting','settings']),
 G('audio','Microphone to speakers','Inside a call','CLI + browser','How do I hear everyone without hearing my own echo?',
@@ -61,7 +61,7 @@ G('audio','Microphone to speakers','Inside a call','CLI + browser','How do I hea
  P('src/server/render.c','client_audio_render_thread','Mix dedicated-server output','The server mixes sources per recipient and encodes outgoing Opus. Excluding the listener avoids sending their voice back over the network.',L+'audio/mixer.c'),
  P(S+'audio.c','session_audio_mix_excluding','Mix shared-session sources','Per-source writes and exclude-a-participant mixing belong to shared session audio. This is distinct from acoustic echo cancellation on a device.')),
  C('play','Decode, buffer, and play','After receipt, samples still require decoding, pacing, and a live output device.',
- P('src/client/protocol.c','handle_audio_opus_batch_packet','Decode native audio','Batch structure is validated before Opus frames are decoded and samples forwarded to playback processing.','src/client/audio.c'),
+ P(S+'protocol.c','receive_opus_batch','Decode native audio','The shared protocol validates the complete batch before invoking the native adapter to decode each Opus frame and forward samples to playback.','src/client/protocol_adapter.c','src/client/audio.c'),
  P(L+'audio/client_pipeline.cpp',None,'Process native duplex audio','The C++ client pipeline integrates WebRTC AEC3. Playback-reference and capture processing address speaker-to-microphone echo.',L+'audio/audio.c'),
  P(W+'audio/playback-worklet.js',None,'Drain browser PCM','The worklet drains queued samples and reports underruns. AudioPipeline owns its lifetime, decoder integration, and speaker choice.',W+'audio/AudioPipeline.ts'))],['hosting','media','settings']),
  ]

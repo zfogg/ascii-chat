@@ -1,17 +1,18 @@
 import { useEffect } from "react";
-import { ensureWasmModuleLoaded } from "../wasm/client";
+import { useLocation } from "react-router-dom";
 
-/**
- * Hook that initializes the WASM module early in the app lifecycle.
- * This makes help text available for Settings tooltips before ClientConnection is created.
- */
+/** Mirror owns its module and help exports; only network routes need client WASM. */
 export function useInitializeWasm(): void {
+  const { pathname } = useLocation();
   useEffect(() => {
-    ensureWasmModuleLoaded().catch((error) => {
-      console.error(
-        "[useInitializeWasm] Failed to initialize WASM module:",
-        error,
+    if (pathname !== "/client" && pathname !== "/discovery") return;
+    void import("../wasm/client")
+      .then(({ ensureWasmModuleLoaded }) => ensureWasmModuleLoaded())
+      .catch((error) =>
+        console.error(
+          "[useInitializeWasm] Failed to initialize WASM module:",
+          error,
+        ),
       );
-    });
-  }, []);
+  }, [pathname]);
 }

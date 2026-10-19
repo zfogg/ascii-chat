@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { Heading } from "@ascii-chat/shared/components";
+import { Heading } from "@ascii-chat/shared/components/Heading";
 import { getOptionHelp, AsciiChatMode } from "../../utils";
 import { Tooltip } from "../Tooltip";
 import { LOCKED_SETTINGS_HELP } from "../lockedSettings";
@@ -453,10 +453,10 @@ export function BinarySettings({
                 aria-pressed={!!config.flipX}
                 onClick={() => updateConfig({ flipX: !config.flipX })}
                 disabled={disabled}
-                className={`w-full px-4 py-2 rounded text-sm font-medium transition-colors ${
+                className={`w-full px-4 py-2 border rounded text-sm font-medium transition-colors ${
                   config.flipX
-                    ? "bg-terminal-2 text-terminal-bg hover:bg-terminal-10"
-                    : "bg-terminal-8 text-terminal-fg hover:bg-terminal-7"
+                    ? "border-transparent bg-terminal-2 text-terminal-bg hover:bg-terminal-10"
+                    : "bg-terminal-bg text-terminal-fg border-terminal-8 hover:border-terminal-fg"
                 }`}
               >
                 {config.flipX ? "🟢 Flip Horizontal" : "Flip Horizontal"}
@@ -477,10 +477,10 @@ export function BinarySettings({
                 aria-pressed={!!config.flipY}
                 onClick={() => updateConfig({ flipY: !config.flipY })}
                 disabled={disabled}
-                className={`w-full px-4 py-2 rounded text-sm font-medium transition-colors ${
+                className={`w-full px-4 py-2 border rounded text-sm font-medium transition-colors ${
                   config.flipY
-                    ? "bg-terminal-2 text-terminal-bg hover:bg-terminal-10"
-                    : "bg-terminal-8 text-terminal-fg hover:bg-terminal-7"
+                    ? "border-transparent bg-terminal-2 text-terminal-bg hover:bg-terminal-10"
+                    : "bg-terminal-bg text-terminal-fg border-terminal-8 hover:border-terminal-fg"
                 }`}
               >
                 {config.flipY ? "🟢 Flip Vertical" : "Flip Vertical"}

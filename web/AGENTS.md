@@ -14,6 +14,32 @@
 All three are React/TypeScript apps and share components and utilities through
 `packages/shared/` (`@ascii-chat/shared`).
 
+## ChatGPT Sites
+
+- **`chatgpt-sites/ascii-chat-code-atlas/` — code-guide.ascii-chat.com:**
+  Interactive source map and guided walkthroughs of native C, TypeScript, and
+  shared C/WASM implementations. This static Python/JavaScript project is hosted
+  with the Sites plugin, separately from the three Vercel apps. Its dependencies
+  use the shared pnpm workspace. Keep future ChatGPT Sites projects under
+  `chatgpt-sites/`.
+- Keep generators, guide definitions, dependency manifests/lockfiles, authored
+  `dist/index.html`, `dist/app.js`, `dist/guides.js`, `dist/style.css`, and
+  `.openai/hosting.json` in Git. Ignore generated source data, standalone HTML,
+  QA screenshots, dependency caches, `cloudflare-dist/`, and `.sites-checkout/`.
+  Do not ignore the entire `dist/` directory: it contains authored frontend code.
+- From the atlas directory run `vp install --ignore-scripts`,
+  `python generate.py`, `python package.py`, and `python prepare_cloudflare.py`.
+  Packaging parses complete references, validates every guide checkpoint against
+  current source, highlights code, and creates the standalone bundle. Compression
+  verifies a lossless round trip for the hosting payload. These are the atlas's
+  build/check commands; the React `vp check`/`vp test` workflow below applies to
+  the three React apps.
+- Python and JavaScript source scanners resolve the repository root three levels
+  above the atlas directory. Update both when relocating a Site.
+- Use the Sites skill to publish the compressed output through its isolated
+  checkout. Preserve the recorded project ID, public access, and custom domain.
+  Do not publish this Site through a Vercel release branch or commit credentials.
+
 <!--VITE PLUS START-->
 
 # Using Vite+, the Unified Toolchain for the Web

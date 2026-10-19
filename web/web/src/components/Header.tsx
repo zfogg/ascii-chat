@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "@ascii-chat/shared/components";
+import { Link } from "@ascii-chat/shared/components/Link";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

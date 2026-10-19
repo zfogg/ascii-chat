@@ -1,5 +1,5 @@
 export { AsciiChatWebHead } from "./AsciiChatWebHead";
-export { AsciiRenderer } from "@ascii-chat/shared/components";
+export { AsciiRenderer } from "@ascii-chat/shared/components/AsciiRenderer";
 export type {
   AsciiRendererHandle,
   AsciiRendererProps,

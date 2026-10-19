@@ -1,4 +1,5 @@
-import { Button, Heading } from "@ascii-chat/shared/components";
+import { Button } from "@ascii-chat/shared/components/Button";
+import { Heading } from "@ascii-chat/shared/components/Heading";
 import { AsciiChatWebHead } from "../components";
 
 function LinkedItemWithDescription({

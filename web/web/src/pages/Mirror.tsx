@@ -11,23 +11,21 @@ import {
 // @ts-expect-error - Generated file without types
 import MirrorModuleFactory from "../wasm/dist/mirror.js";
 import { SITES } from "@ascii-chat/shared/utils";
-import {
-  BinarySettings,
-  AsciiRenderer,
-  PageLayout,
-  ModeHeader,
-  AsciiChatWebHead,
-  VideoUploadModal,
-} from "../components";
+import { BinarySettings } from "../components/shared/BinarySettings";
+import { AsciiRenderer } from "@ascii-chat/shared/components/AsciiRenderer";
+import { PageLayout } from "../components/PageLayout";
+import { ModeHeader } from "../components/ModeHeader";
+import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
+import { VideoUploadModal } from "../components/VideoUploadModal";
 import type { BinarySettingsConfig } from "../components";
 import { AsciiChatMode } from "../utils";
 import {
   applyMirrorWasmSettings,
-  useClientLike,
-  useMirrorRenderLoop,
-  useMirrorWebcam,
   setMirrorWasmDimensions,
-} from "../hooks";
+} from "../hooks/useWasmOptions";
+import { useClientLike } from "../hooks/useClientLike";
+import { useMirrorRenderLoop } from "@ascii-chat/shared/hooks";
+import { useMirrorWebcam } from "../hooks/useMirrorWebcam";
 import { useMirrorFile } from "../hooks/useMirrorFile";
 import { useTestPattern } from "@ascii-chat/shared/hooks";
 
@@ -240,9 +238,13 @@ export function MirrorPage() {
     setIsWebcamRunning,
   ]);
 
+  // Animations can paint while hardware permission and capture are pending.
+  const renderActive =
+    isWebcamRunning || (playing && !!settings.animationEnabled && !fileActive);
+
   // Render loop that captures and converts frames to ASCII
   useMirrorRenderLoop({
-    isWebcamRunning,
+    isWebcamRunning: renderActive,
     terminalDimensions,
     onMediaFps: setFps,
     fileActive,
@@ -369,10 +371,11 @@ export function MirrorPage() {
               fps: fileMedia.loading ? 0 : fps,
               targetFps: settings.targetFps,
               showBandwidth: false,
-              isWebcamRunning,
+              isWebcamRunning: renderActive,
               mediaSource,
               onStartWebcam: () => {
                 stopFile();
+                setPlaying(true);
                 void startWebcam();
               },
               onStopWebcam: stopPlayback,
@@ -473,7 +476,7 @@ export function MirrorPage() {
             <AsciiRenderer
               ref={rendererRef}
               contentFit={contentFit}
-              uiLoading={!isWebcamRunning}
+              uiLoading={!renderActive}
               uiMessage={
                 error ||
                 (fileMedia.status

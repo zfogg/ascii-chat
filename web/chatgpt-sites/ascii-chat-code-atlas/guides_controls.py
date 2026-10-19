@@ -37,7 +37,7 @@ G('recovery','Recover & hand off a call','Control & recovery','CLI + browser + s
  'Find executable handoff code and distinguish it from illustrative consensus integration helpers.',
  'Identify the failed layer first: signaling, media channel, stream delivery, or host ownership. A socket reconnect does not itself elect a host or cancel stale capture work.',[
  C('retry','Retry the right session','Native client and browser hook maintain different retry/liveness policies.',
- P('src/client/server.c','get_reconnect_delay','Back off native retries','Connection retries use a bounded delay. Client policy, shutdown state, and remote errors determine whether another attempt should occur.','src/client/main.c','src/client/keepalive.c'),
+ P('src/client/main.c','client_should_reconnect','Decide native retries','Client policy rejects permanent remote errors and snapshot retries. The shared client-like lifecycle applies the configured retry limit and one-second delay between attempts.',S+'client_like.c','src/client/keepalive.c'),
  P(W+'hooks/useClientConnection.ts','useClientConnection','Watch stream and connection state','Attempts reset on connection. Stream-stall timing starts after a real frame, and host creation is not treated like an ordinary reconnectable join.'),
  P(N+'WebRTCSession.ts','WebRTCSession','Detect media-channel loss','The joining strategy has peer timers alongside its signaling connection. A working signaling socket does not prove the media DataChannel survived.')),
  C('handoff','Transfer host ownership','The active protocol validates session identity, generations, and staged role changes.',

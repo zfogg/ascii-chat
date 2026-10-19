@@ -1,4 +1,4 @@
-import { NotFound } from "@ascii-chat/shared/components";
+import { NotFound } from "@ascii-chat/shared/components/NotFound";
 import { SITES } from "@ascii-chat/shared/utils";
 import { AsciiChatWebHead } from "../components";
 
