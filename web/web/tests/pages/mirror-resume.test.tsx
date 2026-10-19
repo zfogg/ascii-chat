@@ -24,6 +24,7 @@ const backend = vi.hoisted(() => ({
   stop: vi.fn(),
 }));
 vi.mock("@ascii-chat/shared/hooks", () => ({
+  useMirrorRenderLoop: vi.fn(),
   useTestPattern: () => ({ enabled: false }),
   useCanvasCapture: () => ({ captureFrame: vi.fn() }),
 }));
@@ -33,7 +34,7 @@ vi.mock("@ascii-chat/shared/wasm", () => ({
   isWasmReady: () => true,
 }));
 vi.mock("../../src/wasm/dist/mirror.js", () => ({ default: vi.fn() }));
-vi.mock("../../src/components", () => ({
+vi.mock("../../src/components/shared/BinarySettings", () => ({
   BinarySettings: ({
     config,
     onChange,
@@ -56,11 +57,19 @@ vi.mock("../../src/components", () => ({
       </button>
     </>
   ),
+}));
+vi.mock("@ascii-chat/shared/components/AsciiRenderer", () => ({
   AsciiRenderer: ({ uiLoading }: { uiLoading: boolean }) => (
     <div data-testid="renderer">{uiLoading ? "splash" : "frame"}</div>
   ),
+}));
+vi.mock("../../src/components/AsciiChatWebHead", () => ({
   AsciiChatWebHead: () => null,
+}));
+vi.mock("../../src/components/VideoUploadModal", () => ({
   VideoUploadModal: () => null,
+}));
+vi.mock("../../src/components/PageLayout", () => ({
   PageLayout: ({
     header,
     renderer,
@@ -73,6 +82,8 @@ vi.mock("../../src/components", () => ({
       {renderer}
     </>
   ),
+}));
+vi.mock("../../src/components/ModeHeader", () => ({
   ModeHeader: ({
     settingsPanel,
     controlBar,
@@ -94,10 +105,12 @@ vi.mock("../../src/components", () => ({
     </>
   ),
 }));
-vi.mock("../../src/hooks", () => ({
+vi.mock("../../src/hooks/useWasmOptions", () => ({
   applyMirrorWasmSettings: backend.applySettings,
   setMirrorWasmDimensions: vi.fn(),
-  useMirrorRenderLoop: vi.fn(),
+}));
+vi.mock("../../src/hooks/useClientLike", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/hooks/useClientLike")>()),
   useClientLike: () => {
     const [running, setRunning] = useState(backend.file);
     const [source, setSource] = useState<symbol | null>(
@@ -134,6 +147,8 @@ vi.mock("../../src/hooks", () => ({
       }, []),
     };
   },
+}));
+vi.mock("../../src/hooks/useMirrorWebcam", () => ({
   useMirrorWebcam: ({
     setIsWebcamRunning,
     setMediaSource,
