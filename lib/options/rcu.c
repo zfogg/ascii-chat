@@ -4,6 +4,10 @@
  */
 
 #include <ascii-chat/options/rcu.h>
+#include <ascii-chat/options/runtime.h>
+#include <math.h>
+#include <yyjson.h>
+#include <limits.h>
 #include <ascii-chat/options/schema.h>
 #include <ascii-chat/options/registry/core.h>
 #include <ascii-chat/options/registry/common.h>
@@ -285,52 +289,33 @@ static const options_t g_default_options = (options_t){
  *
  * **Current approach:** Never free until shutdown (acceptable for rare updates)
  */
-#define MAX_DEFERRED_FREES 64
-static options_t *g_deferred_frees[MAX_DEFERRED_FREES];
-static size_t g_deferred_free_count = 0;
+typedef struct retired_options {
+  options_t *value;
+  struct retired_options *next;
+} retired_options_t;
+static retired_options_t *g_retired;
 static mutex_t g_deferred_free_mutex;
+static uint64_t g_revision;
+static options_origin_t g_origin;
 
-/**
- * @brief Add old options struct to deferred free list
- *
- * @param old_opts Old options struct to free later
- */
+// options_get() borrows snapshots until shutdown. Preserve that public lifetime;
+// never free a published snapshot while a legacy reader can still hold it.
 static void deferred_free_add(options_t *old_opts) {
-  if (!old_opts) {
-    return;
-  }
-
+  retired_options_t *node = SAFE_MALLOC(sizeof(*node), retired_options_t *);
+  node->value = old_opts;
   mutex_lock(&g_deferred_free_mutex);
-
-  if (g_deferred_free_count < MAX_DEFERRED_FREES) {
-    g_deferred_frees[g_deferred_free_count++] = old_opts;
-    log_debug("Added options struct %p to deferred free list (count=%zu)", (void *)old_opts, g_deferred_free_count);
-  } else {
-    // List full - free immediately (risky but unlikely with infrequent updates)
-    log_warn("Deferred free list full (%d entries), freeing options struct %p immediately", MAX_DEFERRED_FREES,
-             (void *)old_opts);
-    SAFE_FREE(old_opts);
-  }
-
+  node->next = g_retired;
+  g_retired = node;
   mutex_unlock(&g_deferred_free_mutex);
 }
 
-/**
- * @brief Free all deferred options structs
- *
- * Called at shutdown when no readers are active.
- */
 static void deferred_free_all(void) {
-  mutex_lock(&g_deferred_free_mutex);
-
-  log_debug("Freeing %zu deferred options structs", g_deferred_free_count);
-
-  for (size_t i = 0; i < g_deferred_free_count; i++) {
-    SAFE_FREE(g_deferred_frees[i]);
+  while (g_retired) {
+    retired_options_t *node = g_retired;
+    g_retired = node->next;
+    SAFE_FREE(node->value);
+    SAFE_FREE(node);
   }
-
-  g_deferred_free_count = 0;
-  mutex_unlock(&g_deferred_free_mutex);
 }
 
 // ============================================================================
@@ -435,6 +420,8 @@ asciichat_error_t options_state_init(void) {
   // Publish initial struct (release semantics - make all fields visible to readers)
   atomic_ptr_store(&g_options, initial_opts);
 
+  ++g_revision;
+  g_origin = OPTIONS_ORIGIN_CONFIG;
   g_init_pid = current_pid; // Record PID to detect fork later
   log_dev("Options state initialized with RCU pattern (PID %d)", current_pid);
 
@@ -451,15 +438,15 @@ asciichat_error_t options_state_set(const options_t *opts) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Options state not initialized (call options_state_init first)");
   }
 
-  // Get current struct (should be the initial zero-initialized one during startup)
-  options_t *current = atomic_ptr_load(&g_options);
-
-  // Copy provided options into current struct
-  // Note: No need for RCU update here since this is called during initialization
-  // before any reader threads exist
-  memcpy(current, opts, sizeof(options_t));
-
-  log_debug("Options state set from parsed struct");
+  mutex_lock(&g_options_write_mutex);
+  options_t *next = SAFE_MALLOC(sizeof(*next), options_t *);
+  *next = *opts;
+  options_t *previous = atomic_ptr_load(&g_options);
+  atomic_ptr_store(&g_options, next);
+  ++g_revision;
+  g_origin = OPTIONS_ORIGIN_CONFIG;
+  deferred_free_add(previous);
+  mutex_unlock(&g_options_write_mutex);
   return ASCIICHAT_OK;
 }
 
@@ -522,806 +509,441 @@ const options_t *options_get(void) {
   return current;
 }
 
-static asciichat_error_t options_update(void (*updater)(options_t *, void *), void *context) {
-  if (!updater) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "updater function is NULL");
-  }
+typedef struct {
+  const char *name;
+  options_value_type_t type;
+  size_t offset, size;
+  const char *cli;
+} runtime_field_t;
+#define FIELD(name, type, cli) {#name, type, offsetof(options_t, name), sizeof(((options_t *)0)->name), cli}
+static const runtime_field_t runtime_fields[] = {
+    FIELD(width, OPTIONS_VALUE_INT, "width"),
+    FIELD(height, OPTIONS_VALUE_INT, "height"),
+    FIELD(max_clients, OPTIONS_VALUE_INT, "max-clients"),
+    FIELD(compression_level, OPTIONS_VALUE_INT, "compression-level"),
+    FIELD(reconnect_attempts, OPTIONS_VALUE_INT, "reconnect-attempts"),
+    FIELD(microphone_index, OPTIONS_VALUE_INT, "microphone-index"),
+    FIELD(speakers_index, OPTIONS_VALUE_INT, "speakers-index"),
+    FIELD(discovery_port, OPTIONS_VALUE_INT, "discovery-port"),
+    FIELD(port, OPTIONS_VALUE_INT, "port"),
+    FIELD(fps, OPTIONS_VALUE_INT, "fps"),
+    FIELD(color_mode, OPTIONS_VALUE_INT, "color-mode"),
+    FIELD(color_filter, OPTIONS_VALUE_INT, "color-filter"),
+    FIELD(render_mode, OPTIONS_VALUE_INT, "render-mode"),
+    FIELD(log_level, OPTIONS_VALUE_INT, "log-level"),
+    FIELD(palette_type, OPTIONS_VALUE_INT, "palette"),
+    FIELD(no_compress, OPTIONS_VALUE_BOOL, "no-compress"),
+    FIELD(encode_audio, OPTIONS_VALUE_BOOL, "encode-audio"),
+    FIELD(flip_x, OPTIONS_VALUE_BOOL, "flip-x"),
+    FIELD(flip_y, OPTIONS_VALUE_BOOL, "flip-y"),
+    FIELD(test_pattern, OPTIONS_VALUE_BOOL, "test-pattern"),
+    FIELD(no_audio_mixer, OPTIONS_VALUE_BOOL, "no-audio-mixer"),
+    FIELD(show_capabilities, OPTIONS_VALUE_BOOL, "show-capabilities"),
+    FIELD(force_utf8, OPTIONS_VALUE_BOOL, "force-utf8"),
+    FIELD(audio_enabled, OPTIONS_VALUE_BOOL, "audio-enabled"),
+    FIELD(audio_analysis_enabled, OPTIONS_VALUE_BOOL, "audio-analysis-enabled"),
+    FIELD(audio_no_playback, OPTIONS_VALUE_BOOL, "audio-no-playback"),
+    FIELD(stretch, OPTIONS_VALUE_BOOL, "stretch"),
+    FIELD(snapshot_mode, OPTIONS_VALUE_BOOL, "snapshot-mode"),
+    FIELD(strip_ansi, OPTIONS_VALUE_BOOL, "strip-ansi"),
+    FIELD(quiet, OPTIONS_VALUE_BOOL, "quiet"),
+    FIELD(encrypt_enabled, OPTIONS_VALUE_BOOL, "encrypt-enabled"),
+    FIELD(no_encrypt, OPTIONS_VALUE_BOOL, "no-encrypt"),
+    FIELD(discovery, OPTIONS_VALUE_BOOL, "discovery"),
+    FIELD(discovery_expose_ip, OPTIONS_VALUE_BOOL, "discovery-expose-ip"),
+    FIELD(discovery_insecure, OPTIONS_VALUE_BOOL, "discovery-insecure"),
+    FIELD(webrtc, OPTIONS_VALUE_BOOL, "webrtc"),
+    FIELD(lan_discovery, OPTIONS_VALUE_BOOL, "lan-discovery"),
+    FIELD(no_mdns_advertise, OPTIONS_VALUE_BOOL, "no-mdns-advertise"),
+    FIELD(prefer_webrtc, OPTIONS_VALUE_BOOL, "prefer-webrtc"),
+    FIELD(no_webrtc, OPTIONS_VALUE_BOOL, "no-webrtc"),
+    FIELD(webrtc_skip_stun, OPTIONS_VALUE_BOOL, "webrtc-skip-stun"),
+    FIELD(webrtc_relay_only, OPTIONS_VALUE_BOOL, "webrtc-relay-only"),
+    FIELD(webrtc_disable_turn, OPTIONS_VALUE_BOOL, "webrtc-disable-turn"),
+    FIELD(enable_upnp, OPTIONS_VALUE_BOOL, "enable-upnp"),
+    FIELD(require_server_identity, OPTIONS_VALUE_BOOL, "require-server-identity"),
+    FIELD(require_client_identity, OPTIONS_VALUE_BOOL, "require-client-identity"),
+    FIELD(require_server_verify, OPTIONS_VALUE_BOOL, "require-server-verify"),
+    FIELD(require_client_verify, OPTIONS_VALUE_BOOL, "require-client-verify"),
+    FIELD(palette_custom_set, OPTIONS_VALUE_BOOL, "palette-custom-set"),
+    FIELD(media_loop, OPTIONS_VALUE_BOOL, "media-loop"),
+    FIELD(media_from_stdin, OPTIONS_VALUE_BOOL, "media-from-stdin"),
+    FIELD(auto_width, OPTIONS_VALUE_BOOL, "auto-width"),
+    FIELD(auto_height, OPTIONS_VALUE_BOOL, "auto-height"),
+    FIELD(splash_screen, OPTIONS_VALUE_BOOL, "splash-screen"),
+    FIELD(status_screen, OPTIONS_VALUE_BOOL, "status-screen"),
+    FIELD(matrix_rain, OPTIONS_VALUE_BOOL, "matrix-rain"),
+    FIELD(waveform, OPTIONS_VALUE_BOOL, "waveform"),
+    FIELD(fft, OPTIONS_VALUE_BOOL, "fft"),
+    FIELD(fps_counter, OPTIONS_VALUE_BOOL, "fps-counter"),
+    FIELD(address, OPTIONS_VALUE_STRING, "address"),
+    FIELD(address6, OPTIONS_VALUE_STRING, "address6"),
+    FIELD(encrypt_key, OPTIONS_VALUE_STRING, "encrypt-key"),
+    FIELD(password, OPTIONS_VALUE_STRING, "password"),
+    FIELD(encrypt_keyfile, OPTIONS_VALUE_STRING, "encrypt-keyfile"),
+    FIELD(server_key, OPTIONS_VALUE_STRING, "server-key"),
+    FIELD(client_keys, OPTIONS_VALUE_STRING, "client-keys"),
+    FIELD(discovery_server, OPTIONS_VALUE_STRING, "discovery-server"),
+    FIELD(discovery_service_key, OPTIONS_VALUE_STRING, "discovery-service-key"),
+    FIELD(discovery_database_path, OPTIONS_VALUE_STRING, "discovery-database-path"),
+    FIELD(log_file, OPTIONS_VALUE_STRING, "log-file"),
+    FIELD(media_file, OPTIONS_VALUE_STRING, "media-file"),
+    FIELD(palette_custom, OPTIONS_VALUE_STRING, "palette-chars"),
+    FIELD(stun_servers, OPTIONS_VALUE_STRING, "stun-servers"),
+    FIELD(turn_servers, OPTIONS_VALUE_STRING, "turn-servers"),
+    FIELD(turn_username, OPTIONS_VALUE_STRING, "turn-username"),
+    FIELD(turn_credential, OPTIONS_VALUE_STRING, "turn-credential"),
+    FIELD(turn_secret, OPTIONS_VALUE_STRING, "turn-secret"),
+    FIELD(session_string, OPTIONS_VALUE_STRING, "session-string"),
+    FIELD(snapshot_delay, OPTIONS_VALUE_DOUBLE, "snapshot-delay"),
+    FIELD(microphone_sensitivity, OPTIONS_VALUE_DOUBLE, "microphone-volume"),
+    FIELD(speakers_volume, OPTIONS_VALUE_DOUBLE, "speakers-volume"),
+};
+#undef FIELD
 
-  // The state pointer may remain valid in a forked child even though the
-  // lifecycle marker was reset. Recreate a standalone state for that case.
-  bool lock_writers = lifecycle_is_initialized(&g_options_lifecycle);
+static const runtime_field_t *find_field(const char *name) {
+  if (!name)
+    return NULL;
+  if (!strcmp(name, "volume") || !strcmp(name, "speakers-volume"))
+    name = "speakers_volume";
+  if (!strcmp(name, "ivolume") || !strcmp(name, "microphone-volume"))
+    name = "microphone_sensitivity";
+  for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i)
+    if (!strcmp(name, runtime_fields[i].name) || !strcmp(name, runtime_fields[i].cli))
+      return &runtime_fields[i];
+  return NULL;
+}
 
-  // 1. Load current options (acquire semantics)
-  options_t *old_opts = atomic_ptr_load(&g_options);
-  if (!old_opts) {
-    old_opts = SAFE_MALLOC(sizeof(options_t), options_t *);
-    if (!old_opts) {
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate initial options struct");
+bool options_remote_render_field(const char *name) {
+  const runtime_field_t *field = find_field(name);
+  if (!field)
+    return false;
+  const char *allowed[] = {"width",        "height",         "fps",        "color_mode", "color_filter", "render_mode",
+                           "palette_type", "palette_custom", "matrix_rain"};
+  for (size_t i = 0; i < sizeof(allowed) / sizeof(*allowed); ++i)
+    if (!strcmp(field->name, allowed[i]))
+      return true;
+  return false;
+}
+
+static asciichat_error_t validate_field(const runtime_field_t *field, const options_t *candidate) {
+  const registry_entry_t *entry = registry_find_entry_by_name(field->cli);
+  const char *ptr = (const char *)candidate + field->offset;
+  if (entry && entry->validate_fn && !entry->validate_fn(candidate))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid option '%s'", field->name);
+  if (field->type == OPTIONS_VALUE_INT || field->type == OPTIONS_VALUE_DOUBLE) {
+    double value = field->type == OPTIONS_VALUE_INT ? *(const int *)ptr
+                   : field->size == sizeof(float)   ? *(const float *)ptr
+                                                    : *(const double *)ptr;
+    if (!isfinite(value))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Nonfinite option '%s'", field->name);
+    if (entry && (entry->metadata.numeric_range.min || entry->metadata.numeric_range.max) &&
+        (value < entry->metadata.numeric_range.min || value > entry->metadata.numeric_range.max))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' is out of range", field->name);
+    if (entry && entry->metadata.enum_values && entry->metadata.input_type == OPTION_INPUT_ENUM) {
+      bool found = false;
+      for (size_t i = 0; entry->metadata.enum_values[i]; ++i) {
+        int enum_value = entry->metadata.enum_integer_values ? entry->metadata.enum_integer_values[i] : (int)i;
+        if (value == enum_value)
+          found = true;
+      }
+      if (!found)
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Unknown value for '%s'", field->name);
     }
-    *old_opts = options_t_new();
-    atomic_ptr_store(&g_options, old_opts);
+    if ((!strcmp(field->name, "port") || !strcmp(field->name, "discovery_port")) && (value < 1 || value > 65535))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Port must be in [1, 65535]");
   }
-
-  // Serialize writers with mutex when the lifecycle owns an initialized one.
-  if (lock_writers) {
-    mutex_lock(&g_options_write_mutex);
-  }
-
-  // 2. Allocate new options struct
-  options_t *new_opts = SAFE_MALLOC(sizeof(options_t), options_t *);
-  if (!new_opts) {
-    if (lock_writers) {
-      mutex_unlock(&g_options_write_mutex);
-    }
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate new options struct");
-  }
-
-  // 3. Copy current values to new struct
-  memcpy(new_opts, old_opts, sizeof(options_t));
-
-  // 4. Call user updater to modify the new struct
-  updater(new_opts, context);
-
-  // 5. Atomically swap global pointer (release semantics)
-  // This makes the new struct visible to all readers
-  atomic_ptr_store(&g_options, new_opts);
-
-  // 6. Add old struct to deferred free list
-  deferred_free_add(old_opts);
-
-  if (lock_writers) {
-    mutex_unlock(&g_options_write_mutex);
-  }
-
-  log_debug("Options updated via RCU (old=%p, new=%p)", (void *)old_opts, (void *)new_opts);
   return ASCIICHAT_OK;
 }
 
-// ============================================================================
-// Generic Option Setters
-// ============================================================================
+static asciichat_error_t edit_candidate(options_t *candidate, const options_edit_t *edit) {
+  const runtime_field_t *field = find_field(edit->name);
+  if (!field || field->type != edit->type)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Unknown option or wrong type: %s", edit->name ? edit->name : "(null)");
+  char *ptr = (char *)candidate + field->offset;
+  switch (edit->type) {
+  case OPTIONS_VALUE_INT: {
+    int value = edit->value.integer;
+    if (edit->operation == OPTIONS_CYCLE) {
+      if (value <= 0 || value > 256)
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid cycle size");
+      value = (*(int *)ptr + 1) % value;
+    } else if (edit->operation != OPTIONS_ASSIGN)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid integer operation");
+    memcpy(ptr, &value, sizeof(value));
+    break;
+  }
+  case OPTIONS_VALUE_BOOL: {
+    bool value = edit->value.boolean;
+    if (edit->operation == OPTIONS_TOGGLE)
+      value = field->size == sizeof(int) ? !*(int *)ptr : !*(bool *)ptr;
+    else if (edit->operation != OPTIONS_ASSIGN)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid boolean operation");
+    if (field->size == sizeof(int)) {
+      int integer = value;
+      memcpy(ptr, &integer, sizeof(integer));
+    } else
+      memcpy(ptr, &value, sizeof(value));
+    // An animation selection is one coherent change, including its exclusions.
+    if (value &&
+        (!strcmp(field->name, "matrix_rain") || !strcmp(field->name, "waveform") || !strcmp(field->name, "fft"))) {
+      candidate->matrix_rain = !strcmp(field->name, "matrix_rain");
+      candidate->waveform = !strcmp(field->name, "waveform");
+      candidate->fft = !strcmp(field->name, "fft");
+    }
+    break;
+  }
+  case OPTIONS_VALUE_DOUBLE: {
+    double value = edit->value.number;
+    if (edit->operation == OPTIONS_ADD) {
+      value += field->size == sizeof(float) ? *(float *)ptr : *(double *)ptr;
+      if (!strcmp(field->name, "speakers_volume") || !strcmp(field->name, "microphone_sensitivity"))
+        value = fmax(0.0, fmin(1.0, value));
+    } else if (edit->operation != OPTIONS_ASSIGN)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid number operation");
+    if (!isfinite(value))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Nonfinite option '%s'", field->name);
+    if (field->size == sizeof(float)) {
+      float number = (float)value;
+      memcpy(ptr, &number, sizeof(number));
+    } else
+      memcpy(ptr, &value, sizeof(value));
+    break;
+  }
+  case OPTIONS_VALUE_STRING:
+    if (edit->operation != OPTIONS_ASSIGN || !edit->value.string || strlen(edit->value.string) >= field->size)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid or overlong string option '%s'", field->name);
+    memset(ptr, 0, field->size);
+    memcpy(ptr, edit->value.string, strlen(edit->value.string));
+    if (!strcmp(field->name, "palette_custom"))
+      candidate->palette_custom_set = ptr[0] != 0;
+    break;
+  }
+  return ASCIICHAT_OK;
+}
 
-/**
- * @brief Field name to registry option name mapping
- *
- * Maps C struct field names (underscores) to registry option names (hyphens).
- * Some names don't map by simple substitution:
- * - discovery_port → discovery-service-port
- * - palette_type → palette
- * - reconnect_attempts → reconnect
- */
-typedef struct {
-  const char *field;  ///< C struct field name (e.g., "color_mode")
-  const char *option; ///< Registry option name (e.g., "color-mode")
-} field_option_map_t;
+asciichat_error_t options_prepare_patch(const options_t *current, const options_patch_t *patch, options_t *candidate,
+                                        bool remote_only) {
+  if (!current || !candidate || current == candidate || !patch || !patch->edits || !patch->count ||
+      patch->count > OPTIONS_PATCH_MAX_EDITS)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid options patch");
+  *candidate = *current;
+  for (size_t i = 0; i < patch->count; ++i) {
+    if (remote_only &&
+        (!options_remote_render_field(patch->edits[i].name) || patch->edits[i].operation != OPTIONS_ASSIGN))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Option is not a remote render preference");
+    asciichat_error_t error = edit_candidate(candidate, &patch->edits[i]);
+    if (error != ASCIICHAT_OK)
+      return error;
+  }
+  for (size_t i = 0; i < patch->count; ++i) {
+    asciichat_error_t error = validate_field(find_field(patch->edits[i].name), candidate);
+    if (error != ASCIICHAT_OK)
+      return error;
+  }
+  return ASCIICHAT_OK;
+}
 
-static const field_option_map_t g_field_to_option[] = { // INT fields
-    {"width", "width"},
-    {"height", "height"},
-    {"max_clients", "max-clients"},
-    {"compression_level", "compression-level"},
-    {"reconnect_attempts", "reconnect"},
-    {"microphone_index", "microphone-index"},
-    {"speakers_index", "speakers-index"},
-    {"discovery_port", "discovery-service-port"},
-    {"port", "port"},
-    {"fps", "fps"},
-    {"color_mode", "color-mode"},
-    {"color_filter", "color-filter"},
-    {"render_mode", "render-mode"},
-    {"log_level", "log-level"},
-    {"palette_type", "palette"},
-    // DOUBLE fields
-    {"snapshot_delay", "snapshot-delay"},
-    {"microphone_sensitivity", "microphone-volume"},
-    {"speakers_volume", "speakers-volume"},
-    // STRING fields with registry entries
-    {"address", "address"},
-    {"log_file", "log-file"},
-    {"password", "password"},
-    {NULL, NULL}};
+asciichat_error_t options_apply_patch(const options_patch_t *patch, options_patch_result_t *result) {
+  if (!patch || !patch->edits || !patch->count || patch->count > OPTIONS_PATCH_MAX_EDITS)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid options patch");
+  if (!lifecycle_is_initialized(&g_options_lifecycle))
+    return SET_ERRNO(ERROR_INVALID_STATE, "Options are not initialized");
+  mutex_lock(&g_options_write_mutex);
+  if (result)
+    *result = (options_patch_result_t){.revision = g_revision};
+  if (patch->expected_revision != OPTIONS_REVISION_ANY && patch->expected_revision != g_revision) {
+    mutex_unlock(&g_options_write_mutex);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Options changed; refresh and retry");
+  }
+  options_t *current = atomic_ptr_load(&g_options);
+  options_t *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+  asciichat_error_t error = options_prepare_patch(current, patch, candidate, false);
+  if (error == ASCIICHAT_OK && memcmp(current, candidate, sizeof(*current))) {
+    atomic_ptr_store(&g_options, candidate);
+    deferred_free_add(current);
+    ++g_revision;
+    g_origin = patch->origin;
+    if (result)
+      *result = (options_patch_result_t){.revision = g_revision, .changed = true};
+  } else
+    SAFE_FREE(candidate);
+  mutex_unlock(&g_options_write_mutex);
+  return error;
+}
 
-/**
- * @brief Validate an option value against registry metadata
- *
- * Performs pre-validation before setting options:
- * 1. Looks up the registry entry by option name
- * 2. Checks numeric range (min/max) for INT fields
- * 3. Checks enum bounds for ENUM fields
- * 4. Calls cross-field validator if set
- *
- * @param field_name C struct field name (e.g., "fps")
- * @param new_opts The new options struct with updated value
- * @return ASCIICHAT_OK if valid, error otherwise
- */
-static asciichat_error_t rcu_validate_field(const char *field_name, const options_t *new_opts) {
-  // Look up option name from field name
-  const char *opt_name = NULL;
-  for (int i = 0; g_field_to_option[i].field; i++) {
-    if (strcmp(g_field_to_option[i].field, field_name) == 0) {
-      opt_name = g_field_to_option[i].option;
+asciichat_error_t options_read_snapshot(options_snapshot_t *snapshot) {
+  if (!snapshot || !lifecycle_is_initialized(&g_options_lifecycle))
+    return SET_ERRNO(ERROR_INVALID_STATE, "Options are not initialized");
+  mutex_lock(&g_options_write_mutex);
+  snapshot->values = *(options_t *)atomic_ptr_load(&g_options);
+  snapshot->revision = g_revision;
+  snapshot->origin = g_origin;
+  mutex_unlock(&g_options_write_mutex);
+  return ASCIICHAT_OK;
+}
+
+uint64_t options_revision(void) {
+  if (!lifecycle_is_initialized(&g_options_lifecycle))
+    return 0;
+  mutex_lock(&g_options_write_mutex);
+  uint64_t revision = g_revision;
+  mutex_unlock(&g_options_write_mutex);
+  return revision;
+}
+
+static asciichat_error_t apply_one(options_edit_t edit) {
+  options_patch_t patch = {.edits = &edit, .count = 1, .expected_revision = OPTIONS_REVISION_ANY};
+  return options_apply_patch(&patch, NULL);
+}
+asciichat_error_t options_set_int(const char *name, int value) {
+  return apply_one((options_edit_t){.name = name, .type = OPTIONS_VALUE_INT, .value.integer = value});
+}
+asciichat_error_t options_set_bool(const char *name, bool value) {
+  return apply_one((options_edit_t){.name = name, .type = OPTIONS_VALUE_BOOL, .value.boolean = value});
+}
+asciichat_error_t options_set_double(const char *name, double value) {
+  return apply_one((options_edit_t){.name = name, .type = OPTIONS_VALUE_DOUBLE, .value.number = value});
+}
+asciichat_error_t options_set_string(const char *name, const char *value) {
+  return apply_one((options_edit_t){.name = name, .type = OPTIONS_VALUE_STRING, .value.string = value});
+}
+asciichat_error_t options_toggle(const char *name) {
+  return apply_one((options_edit_t){.name = name, .type = OPTIONS_VALUE_BOOL, .operation = OPTIONS_TOGGLE});
+}
+asciichat_error_t options_adjust(const char *name, double amount) {
+  return apply_one(
+      (options_edit_t){.name = name, .type = OPTIONS_VALUE_DOUBLE, .operation = OPTIONS_ADD, .value.number = amount});
+}
+asciichat_error_t options_cycle(const char *name, int count) {
+  return apply_one(
+      (options_edit_t){.name = name, .type = OPTIONS_VALUE_INT, .operation = OPTIONS_CYCLE, .value.integer = count});
+}
+
+static void *json_allocate(void *context, size_t size) {
+  (void)context;
+  return SAFE_MALLOC(size, void *);
+}
+static void *json_reallocate(void *context, void *ptr, size_t old_size, size_t size) {
+  (void)context;
+  (void)old_size;
+  return SAFE_REALLOC(ptr, size, void *);
+}
+static void json_release(void *context, void *ptr) {
+  (void)context;
+  SAFE_FREE(ptr);
+}
+static const yyjson_alc runtime_json_allocator = {json_allocate, json_reallocate, json_release, NULL};
+
+static asciichat_error_t parse_json_edits(const char *json, size_t length, yyjson_doc **doc, options_edit_t *edits,
+                                          size_t *count) {
+  if (!json || !length || length > 4096)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid settings payload size");
+  *doc = yyjson_read_opts((char *)json, length, 0, &runtime_json_allocator, NULL);
+  yyjson_val *root = *doc ? yyjson_doc_get_root(*doc) : NULL;
+  if (!yyjson_is_obj(root) || !yyjson_obj_size(root) || yyjson_obj_size(root) > OPTIONS_PATCH_MAX_EDITS)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Expected a nonempty settings object");
+  size_t index, max;
+  yyjson_val *key, *value;
+  *count = 0;
+  yyjson_obj_foreach(root, index, max, key, value) {
+    const char *name = yyjson_get_str(key);
+    if (strlen(name) != yyjson_get_len(key))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Setting names cannot contain NUL");
+    const runtime_field_t *field = find_field(name);
+    if (!field)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Unknown setting '%s'", name);
+    for (size_t j = 0; j < *count; ++j)
+      if (find_field(edits[j].name) == field)
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Duplicate setting '%s'", name);
+    options_edit_t edit = {.name = name, .type = field->type};
+    switch (field->type) {
+    case OPTIONS_VALUE_INT:
+      if (!yyjson_is_int(value) || yyjson_get_sint(value) < INT_MIN || yyjson_get_sint(value) > INT_MAX)
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Expected integer '%s'", name);
+      edit.value.integer = (int)yyjson_get_sint(value);
+      break;
+    case OPTIONS_VALUE_BOOL:
+      if (!yyjson_is_bool(value))
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Expected boolean '%s'", name);
+      edit.value.boolean = yyjson_get_bool(value);
+      break;
+    case OPTIONS_VALUE_DOUBLE:
+      if (!yyjson_is_num(value))
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Expected number '%s'", name);
+      edit.value.number = yyjson_get_num(value);
+      break;
+    case OPTIONS_VALUE_STRING:
+      if (!yyjson_is_str(value) || strlen(yyjson_get_str(value)) != yyjson_get_len(value))
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Expected string without NUL '%s'", name);
+      edit.value.string = yyjson_get_str(value);
+      break;
+    }
+    edits[(*count)++] = edit;
+  }
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t options_prepare_json(const options_t *current, const char *json, size_t length, options_t *candidate,
+                                       bool remote_only) {
+  yyjson_doc *doc = NULL;
+  options_edit_t edits[OPTIONS_PATCH_MAX_EDITS];
+  size_t count = 0;
+  asciichat_error_t error = parse_json_edits(json, length, &doc, edits, &count);
+  options_patch_t patch = {.edits = edits, .count = count, .expected_revision = OPTIONS_REVISION_ANY};
+  if (error == ASCIICHAT_OK)
+    error = options_prepare_patch(current, &patch, candidate, remote_only);
+  yyjson_doc_free(doc);
+  return error;
+}
+
+asciichat_error_t options_apply_json(const char *json, size_t length, uint64_t expected_revision,
+                                     options_origin_t origin, options_patch_result_t *result) {
+  yyjson_doc *doc = NULL;
+  options_edit_t edits[OPTIONS_PATCH_MAX_EDITS];
+  size_t count = 0;
+  asciichat_error_t error = parse_json_edits(json, length, &doc, edits, &count);
+  options_patch_t patch = {.edits = edits, .count = count, .expected_revision = expected_revision, .origin = origin};
+  if (error == ASCIICHAT_OK)
+    error = options_apply_patch(&patch, result);
+  yyjson_doc_free(doc);
+  return error;
+}
+
+char *options_values_json(const options_t *values, bool remote_only) {
+  yyjson_mut_doc *doc = yyjson_mut_doc_new(&runtime_json_allocator);
+  if (!doc)
+    return NULL;
+  yyjson_mut_val *root = yyjson_mut_obj(doc);
+  yyjson_mut_doc_set_root(doc, root);
+  for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i) {
+    const runtime_field_t *field = &runtime_fields[i];
+    bool exposed = options_remote_render_field(field->name);
+    if (!remote_only && (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_y") ||
+                         !strcmp(field->name, "waveform") || !strcmp(field->name, "fft") ||
+                         !strcmp(field->name, "fps_counter") || !strcmp(field->name, "speakers_volume") ||
+                         !strcmp(field->name, "microphone_sensitivity") || !strcmp(field->name, "audio_enabled")))
+      exposed = true;
+    if (!exposed)
+      continue;
+    const char *ptr = (const char *)values + field->offset;
+    switch (field->type) {
+    case OPTIONS_VALUE_INT:
+      yyjson_mut_obj_add_int(doc, root, field->name, *(const int *)ptr);
+      break;
+    case OPTIONS_VALUE_BOOL:
+      yyjson_mut_obj_add_bool(doc, root, field->name, *(const bool *)ptr);
+      break;
+    case OPTIONS_VALUE_DOUBLE:
+      yyjson_mut_obj_add_real(doc, root, field->name,
+                              field->size == sizeof(float) ? *(const float *)ptr : *(const double *)ptr);
+      break;
+    case OPTIONS_VALUE_STRING:
+      yyjson_mut_obj_add_str(doc, root, field->name, ptr);
       break;
     }
   }
-  if (!opt_name)
-    return ASCIICHAT_OK; // No mapping → skip validation
-
-  const registry_entry_t *entry = registry_find_entry_by_name(opt_name);
-  if (!entry) {
-    return ASCIICHAT_OK; // Not in registry → skip
-  }
-
-  // Cross-field validate_fn (future-proofing)
-  if (entry->validate_fn) {
-    asciichat_errno_scope_t validation_scope = asciichat_errno_checkpoint();
-    if (!entry->validate_fn(new_opts)) {
-      asciichat_error_context_t error;
-      if (asciichat_errno_peek_since(validation_scope, &error))
-        return error.code;
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' failed validation", opt_name);
-    }
-  }
-
-  // Numeric range check. Float-valued callback options store their value as a
-  // float; reading those bytes as an int produces nondeterministic validation
-  // failures (and can read beyond the field on some layouts).
-  int min = entry->metadata.numeric_range.min;
-  int max = entry->metadata.numeric_range.max;
-  if (min != 0 || max != 0) {
-    if (entry->type == OPTION_TYPE_CALLBACK && entry->default_value_size == sizeof(float)) {
-      float val = *(const float *)((const char *)new_opts + entry->offset);
-      if (val < (float)min || val > (float)max) {
-        log_error("Option '%s' value %f out of range [%d, %d]", opt_name, val, min, max);
-        return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %f out of range [%d, %d]", opt_name, val, min, max);
-      }
-    } else {
-      int val = *(const int *)((const char *)new_opts + entry->offset);
-      if (val < min || val > max) {
-        log_error("Option '%s' value %d out of range [%d, %d]", opt_name, val, min, max);
-        return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %d out of range [%d, %d]", opt_name, val, min, max);
-      }
-    }
-  }
-
-  // Enum validation: check value against known enum values
-  size_t enum_count = 0;
-  if (entry->metadata.enum_values) {
-    for (size_t i = 0; entry->metadata.enum_values[i]; i++) {
-      enum_count++;
-    }
-  }
-
-  if (enum_count > 0 && entry->metadata.input_type == OPTION_INPUT_ENUM) {
-    int val = *(const int *)((const char *)new_opts + entry->offset);
-    if (entry->metadata.enum_integer_values) {
-      // Validate against actual enum integer values (handles non-sequential enums like color_mode with AUTO=-1)
-      bool found = false;
-      for (size_t i = 0; i < enum_count; i++) {
-        if (strcmp(field_name, "color_mode") == 0 && entry->metadata.enum_integer_values[i] == TERM_COLOR_AUTO) {
-          continue;
-        }
-        if (val == entry->metadata.enum_integer_values[i]) {
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        log_error("Option '%s' value %d is not a valid enum value", opt_name, val);
-        return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %d is not a valid enum", opt_name, val);
-      }
-    } else {
-      // Fallback: assume 0-based sequential enum values
-      if (val < 0 || (size_t)val >= enum_count) {
-        log_error("Option '%s' value %d is not a valid enum (0..%zu)", opt_name, val, enum_count - 1);
-        return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %d is not a valid enum", opt_name, val);
-      }
-    }
-  }
-
-  return ASCIICHAT_OK;
-}
-
-/**
- * @brief Context for integer field updates in RCU updater callback
- */
-typedef struct {
-  const char *field_name; ///< Name of the field to update
-  int value;              ///< New value to set
-} int_field_ctx_t;
-
-static void int_field_updater(options_t *opts, void *context) {
-  int_field_ctx_t *ctx = (int_field_ctx_t *)context;
-  if (strcmp(ctx->field_name, "width") == 0)
-    opts->width = ctx->value;
-  else if (strcmp(ctx->field_name, "height") == 0)
-    opts->height = ctx->value;
-  else if (strcmp(ctx->field_name, "max_clients") == 0)
-    opts->max_clients = ctx->value;
-  else if (strcmp(ctx->field_name, "compression_level") == 0)
-    opts->compression_level = ctx->value;
-  else if (strcmp(ctx->field_name, "reconnect_attempts") == 0)
-    opts->reconnect_attempts = ctx->value;
-  else if (strcmp(ctx->field_name, "microphone_index") == 0)
-    opts->microphone_index = ctx->value;
-  else if (strcmp(ctx->field_name, "speakers_index") == 0)
-    opts->speakers_index = ctx->value;
-  else if (strcmp(ctx->field_name, "discovery_port") == 0)
-    opts->discovery_port = ctx->value;
-  else if (strcmp(ctx->field_name, "port") == 0)
-    opts->port = ctx->value;
-  else if (strcmp(ctx->field_name, "fps") == 0)
-    opts->fps = ctx->value;
-  else if (strcmp(ctx->field_name, "color_mode") == 0)
-    opts->color_mode = (terminal_color_mode_t)ctx->value;
-  else if (strcmp(ctx->field_name, "color_filter") == 0)
-    opts->color_filter = (color_filter_t)ctx->value;
-  else if (strcmp(ctx->field_name, "render_mode") == 0)
-    opts->render_mode = (render_mode_t)ctx->value;
-  else if (strcmp(ctx->field_name, "log_level") == 0)
-    opts->log_level = (log_level_t)ctx->value;
-  else if (strcmp(ctx->field_name, "palette_type") == 0)
-    opts->palette_type = (palette_type_t)ctx->value;
-}
-
-asciichat_error_t options_set_int(const char *field_name, int value) {
-  if (!field_name) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "field_name is NULL");
-    return ERROR_INVALID_PARAM;
-  }
-
-  if (strcmp(field_name, "width") != 0 && strcmp(field_name, "height") != 0 && strcmp(field_name, "max_clients") != 0 &&
-      strcmp(field_name, "compression_level") != 0 && strcmp(field_name, "reconnect_attempts") != 0 &&
-      strcmp(field_name, "microphone_index") != 0 && strcmp(field_name, "speakers_index") != 0 &&
-      strcmp(field_name, "discovery_port") != 0 && strcmp(field_name, "port") != 0 && strcmp(field_name, "fps") != 0 &&
-      strcmp(field_name, "color_mode") != 0 && strcmp(field_name, "color_filter") != 0 &&
-      strcmp(field_name, "render_mode") != 0 && strcmp(field_name, "log_level") != 0 &&
-      strcmp(field_name, "palette_type") != 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown integer field: %s", field_name);
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Keep the state API's public invariants explicit even when the registry
-  // has not yet been populated by the command-line parser.
-  if (strcmp(field_name, "port") == 0 && (value < 1 || value > 65535)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Option 'port' value %d out of range [1, 65535]", value);
-  }
-  if (strcmp(field_name, "color_mode") == 0 && value == TERM_COLOR_AUTO) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Option 'color_mode' value %d is not valid for the state API", value);
-  }
-
-  // Pre-validate against registry metadata
-  {
-    const options_t *cur = options_get();
-
-    // Skip RCU update if value is already set (avoids unnecessary alloc+deferred-free)
-    int cur_value = 0;
-    if (strcmp(field_name, "width") == 0)
-      cur_value = cur->width;
-    else if (strcmp(field_name, "height") == 0)
-      cur_value = cur->height;
-    else if (strcmp(field_name, "max_clients") == 0)
-      cur_value = cur->max_clients;
-    else if (strcmp(field_name, "compression_level") == 0)
-      cur_value = cur->compression_level;
-    else if (strcmp(field_name, "reconnect_attempts") == 0)
-      cur_value = cur->reconnect_attempts;
-    else if (strcmp(field_name, "microphone_index") == 0)
-      cur_value = cur->microphone_index;
-    else if (strcmp(field_name, "speakers_index") == 0)
-      cur_value = cur->speakers_index;
-    else if (strcmp(field_name, "discovery_port") == 0)
-      cur_value = cur->discovery_port;
-    else if (strcmp(field_name, "port") == 0)
-      cur_value = cur->port;
-    else if (strcmp(field_name, "fps") == 0)
-      cur_value = cur->fps;
-    else if (strcmp(field_name, "color_mode") == 0)
-      cur_value = (int)cur->color_mode;
-    else if (strcmp(field_name, "color_filter") == 0)
-      cur_value = (int)cur->color_filter;
-    else if (strcmp(field_name, "render_mode") == 0)
-      cur_value = (int)cur->render_mode;
-    else if (strcmp(field_name, "log_level") == 0)
-      cur_value = (int)cur->log_level;
-    else if (strcmp(field_name, "palette_type") == 0)
-      cur_value = (int)cur->palette_type;
-    if (cur_value == value)
-      return ASCIICHAT_OK;
-
-    options_t temp = *cur;
-    // Manually set the field in temp to validate
-    if (strcmp(field_name, "width") == 0)
-      temp.width = value;
-    else if (strcmp(field_name, "height") == 0)
-      temp.height = value;
-    else if (strcmp(field_name, "max_clients") == 0)
-      temp.max_clients = value;
-    else if (strcmp(field_name, "compression_level") == 0)
-      temp.compression_level = value;
-    else if (strcmp(field_name, "reconnect_attempts") == 0)
-      temp.reconnect_attempts = value;
-    else if (strcmp(field_name, "microphone_index") == 0)
-      temp.microphone_index = value;
-    else if (strcmp(field_name, "speakers_index") == 0)
-      temp.speakers_index = value;
-    else if (strcmp(field_name, "discovery_port") == 0)
-      temp.discovery_port = value;
-    else if (strcmp(field_name, "port") == 0)
-      temp.port = value;
-    else if (strcmp(field_name, "fps") == 0)
-      temp.fps = value;
-    else if (strcmp(field_name, "color_mode") == 0)
-      temp.color_mode = (terminal_color_mode_t)value;
-    else if (strcmp(field_name, "color_filter") == 0)
-      temp.color_filter = (color_filter_t)value;
-    else if (strcmp(field_name, "render_mode") == 0)
-      temp.render_mode = (render_mode_t)value;
-    else if (strcmp(field_name, "log_level") == 0)
-      temp.log_level = (log_level_t)value;
-    else if (strcmp(field_name, "palette_type") == 0)
-      temp.palette_type = (palette_type_t)value;
-
-    asciichat_error_t err = rcu_validate_field(field_name, &temp);
-    if (err != ASCIICHAT_OK)
-      return err;
-  }
-
-  int_field_ctx_t ctx = {.field_name = field_name, .value = value};
-  asciichat_error_t update_result = options_update(int_field_updater, &ctx);
-  return update_result;
-}
-
-/**
- * @brief Context for boolean field updates in RCU updater callback
- */
-typedef struct {
-  const char *field_name; ///< Name of the field to update
-  bool value;             ///< New value to set
-} bool_field_ctx_t;
-
-static void bool_field_updater(options_t *opts, void *context) {
-  bool_field_ctx_t *ctx = (bool_field_ctx_t *)context;
-  if (strcmp(ctx->field_name, "no_compress") == 0)
-    opts->no_compress = ctx->value;
-  else if (strcmp(ctx->field_name, "encode_audio") == 0)
-    opts->encode_audio = ctx->value;
-  else if (strcmp(ctx->field_name, "flip_x") == 0)
-    opts->flip_x = ctx->value;
-  else if (strcmp(ctx->field_name, "flip_y") == 0)
-    opts->flip_y = ctx->value;
-  else if (strcmp(ctx->field_name, "test_pattern") == 0)
-    opts->test_pattern = ctx->value;
-  else if (strcmp(ctx->field_name, "no_audio_mixer") == 0)
-    opts->no_audio_mixer = ctx->value;
-  else if (strcmp(ctx->field_name, "show_capabilities") == 0)
-    opts->show_capabilities = ctx->value;
-  else if (strcmp(ctx->field_name, "force_utf8") == 0)
-    opts->force_utf8 = ctx->value;
-  else if (strcmp(ctx->field_name, "audio_enabled") == 0)
-    opts->audio_enabled = ctx->value;
-  else if (strcmp(ctx->field_name, "audio_analysis_enabled") == 0)
-    opts->audio_analysis_enabled = ctx->value;
-  else if (strcmp(ctx->field_name, "audio_no_playback") == 0)
-    opts->audio_no_playback = ctx->value;
-  else if (strcmp(ctx->field_name, "stretch") == 0)
-    opts->stretch = ctx->value;
-  else if (strcmp(ctx->field_name, "snapshot_mode") == 0)
-    opts->snapshot_mode = ctx->value;
-  else if (strcmp(ctx->field_name, "strip_ansi") == 0)
-    opts->strip_ansi = ctx->value;
-  else if (strcmp(ctx->field_name, "quiet") == 0)
-    opts->quiet = ctx->value;
-  else if (strcmp(ctx->field_name, "encrypt_enabled") == 0)
-    opts->encrypt_enabled = ctx->value;
-  else if (strcmp(ctx->field_name, "no_encrypt") == 0)
-    opts->no_encrypt = ctx->value;
-  else if (strcmp(ctx->field_name, "discovery") == 0)
-    opts->discovery = ctx->value;
-  else if (strcmp(ctx->field_name, "discovery_expose_ip") == 0)
-    opts->discovery_expose_ip = ctx->value;
-  else if (strcmp(ctx->field_name, "discovery_insecure") == 0)
-    opts->discovery_insecure = ctx->value;
-  else if (strcmp(ctx->field_name, "webrtc") == 0)
-    opts->webrtc = ctx->value;
-  else if (strcmp(ctx->field_name, "lan_discovery") == 0)
-    opts->lan_discovery = ctx->value;
-  else if (strcmp(ctx->field_name, "no_mdns_advertise") == 0)
-    opts->no_mdns_advertise = ctx->value;
-  else if (strcmp(ctx->field_name, "prefer_webrtc") == 0)
-    opts->prefer_webrtc = ctx->value;
-  else if (strcmp(ctx->field_name, "no_webrtc") == 0)
-    opts->no_webrtc = ctx->value;
-  else if (strcmp(ctx->field_name, "webrtc_skip_stun") == 0)
-    opts->webrtc_skip_stun = ctx->value;
-  else if (strcmp(ctx->field_name, "webrtc_relay_only") == 0)
-    opts->webrtc_relay_only = ctx->value;
-  else if (strcmp(ctx->field_name, "webrtc_disable_turn") == 0)
-    opts->webrtc_disable_turn = ctx->value;
-  else if (strcmp(ctx->field_name, "enable_upnp") == 0)
-    opts->enable_upnp = ctx->value;
-  else if (strcmp(ctx->field_name, "require_server_identity") == 0)
-    opts->require_server_identity = ctx->value;
-  else if (strcmp(ctx->field_name, "require_client_identity") == 0)
-    opts->require_client_identity = ctx->value;
-  else if (strcmp(ctx->field_name, "require_server_verify") == 0)
-    opts->require_server_verify = ctx->value;
-  else if (strcmp(ctx->field_name, "require_client_verify") == 0)
-    opts->require_client_verify = ctx->value;
-  else if (strcmp(ctx->field_name, "palette_custom_set") == 0)
-    opts->palette_custom_set = ctx->value;
-  else if (strcmp(ctx->field_name, "media_loop") == 0)
-    opts->media_loop = ctx->value;
-  else if (strcmp(ctx->field_name, "media_from_stdin") == 0)
-    opts->media_from_stdin = ctx->value;
-  else if (strcmp(ctx->field_name, "auto_width") == 0)
-    opts->auto_width = ctx->value;
-  else if (strcmp(ctx->field_name, "auto_height") == 0)
-    opts->auto_height = ctx->value;
-  else if (strcmp(ctx->field_name, "splash_screen") == 0)
-    opts->splash_screen = ctx->value;
-  else if (strcmp(ctx->field_name, "status_screen") == 0)
-    opts->status_screen = ctx->value;
-  else if (strcmp(ctx->field_name, "matrix_rain") == 0)
-    opts->matrix_rain = ctx->value;
-  else if (strcmp(ctx->field_name, "waveform") == 0)
-    opts->waveform = ctx->value;
-  else if (strcmp(ctx->field_name, "fft") == 0)
-    opts->fft = ctx->value;
-  else if (strcmp(ctx->field_name, "fps_counter") == 0)
-    opts->fps_counter = ctx->value;
-}
-
-asciichat_error_t options_set_bool(const char *field_name, bool value) {
-  if (!field_name) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "field_name is NULL");
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Validate field exists
-  if (strcmp(field_name, "no_compress") != 0 && strcmp(field_name, "encode_audio") != 0 &&
-      strcmp(field_name, "flip_x") != 0 && strcmp(field_name, "flip_y") != 0 &&
-      strcmp(field_name, "test_pattern") != 0 && strcmp(field_name, "no_audio_mixer") != 0 &&
-      strcmp(field_name, "show_capabilities") != 0 && strcmp(field_name, "force_utf8") != 0 &&
-      strcmp(field_name, "audio_enabled") != 0 && strcmp(field_name, "audio_analysis_enabled") != 0 &&
-      strcmp(field_name, "audio_no_playback") != 0 && strcmp(field_name, "stretch") != 0 &&
-      strcmp(field_name, "snapshot_mode") != 0 && strcmp(field_name, "strip_ansi") != 0 &&
-      strcmp(field_name, "quiet") != 0 && strcmp(field_name, "encrypt_enabled") != 0 &&
-      strcmp(field_name, "no_encrypt") != 0 && strcmp(field_name, "discovery") != 0 &&
-      strcmp(field_name, "discovery_expose_ip") != 0 && strcmp(field_name, "discovery_insecure") != 0 &&
-      strcmp(field_name, "webrtc") != 0 && strcmp(field_name, "lan_discovery") != 0 &&
-      strcmp(field_name, "no_mdns_advertise") != 0 && strcmp(field_name, "prefer_webrtc") != 0 &&
-      strcmp(field_name, "no_webrtc") != 0 && strcmp(field_name, "webrtc_skip_stun") != 0 &&
-      strcmp(field_name, "webrtc_relay_only") != 0 && strcmp(field_name, "webrtc_disable_turn") != 0 &&
-      strcmp(field_name, "enable_upnp") != 0 && strcmp(field_name, "require_server_identity") != 0 &&
-      strcmp(field_name, "require_client_identity") != 0 && strcmp(field_name, "require_server_verify") != 0 &&
-      strcmp(field_name, "require_client_verify") != 0 && strcmp(field_name, "palette_custom_set") != 0 &&
-      strcmp(field_name, "media_loop") != 0 && strcmp(field_name, "media_from_stdin") != 0 &&
-      strcmp(field_name, "auto_width") != 0 && strcmp(field_name, "auto_height") != 0 &&
-      strcmp(field_name, "splash_screen") != 0 && strcmp(field_name, "status_screen") != 0 &&
-      strcmp(field_name, "matrix_rain") != 0 && strcmp(field_name, "fps_counter") != 0 &&
-      strcmp(field_name, "waveform") != 0 && strcmp(field_name, "fft") != 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown boolean field: %s", field_name);
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Pre-validate against registry metadata (for cross-field validators)
-  {
-    const options_t *cur = options_get();
-
-    // Skip RCU update if value is already set
-    bool cur_value = false;
-    if (strcmp(field_name, "no_compress") == 0)
-      cur_value = cur->no_compress;
-    else if (strcmp(field_name, "encode_audio") == 0)
-      cur_value = cur->encode_audio;
-    else if (strcmp(field_name, "flip_x") == 0)
-      cur_value = cur->flip_x;
-    else if (strcmp(field_name, "flip_y") == 0)
-      cur_value = cur->flip_y;
-    else if (strcmp(field_name, "test_pattern") == 0)
-      cur_value = cur->test_pattern;
-    else if (strcmp(field_name, "matrix_rain") == 0)
-      cur_value = cur->matrix_rain;
-    else if (strcmp(field_name, "waveform") == 0)
-      cur_value = cur->waveform;
-    else if (strcmp(field_name, "fft") == 0)
-      cur_value = cur->fft;
-    else if (strcmp(field_name, "fps_counter") == 0)
-      cur_value = cur->fps_counter;
-    else if (strcmp(field_name, "splash_screen") == 0)
-      cur_value = cur->splash_screen;
-    else if (strcmp(field_name, "status_screen") == 0)
-      cur_value = cur->status_screen;
-    // For less common fields, always update (safe default)
-    else
-      cur_value = !value;
-    if (cur_value == value)
-      return ASCIICHAT_OK;
-
-    options_t temp = *cur;
-    // Manually set the field in temp to validate
-    if (strcmp(field_name, "no_compress") == 0)
-      temp.no_compress = value;
-    else if (strcmp(field_name, "encode_audio") == 0)
-      temp.encode_audio = value;
-    else if (strcmp(field_name, "flip_x") == 0)
-      temp.flip_x = value;
-    else if (strcmp(field_name, "flip_y") == 0)
-      temp.flip_y = value;
-    else if (strcmp(field_name, "test_pattern") == 0)
-      temp.test_pattern = value;
-    else if (strcmp(field_name, "no_audio_mixer") == 0)
-      temp.no_audio_mixer = value;
-    else if (strcmp(field_name, "show_capabilities") == 0)
-      temp.show_capabilities = value;
-    else if (strcmp(field_name, "force_utf8") == 0)
-      temp.force_utf8 = value;
-    else if (strcmp(field_name, "audio_enabled") == 0)
-      temp.audio_enabled = value;
-    else if (strcmp(field_name, "audio_analysis_enabled") == 0)
-      temp.audio_analysis_enabled = value;
-    else if (strcmp(field_name, "audio_no_playback") == 0)
-      temp.audio_no_playback = value;
-    else if (strcmp(field_name, "stretch") == 0)
-      temp.stretch = value;
-    else if (strcmp(field_name, "snapshot_mode") == 0)
-      temp.snapshot_mode = value;
-    else if (strcmp(field_name, "strip_ansi") == 0)
-      temp.strip_ansi = value;
-    else if (strcmp(field_name, "quiet") == 0)
-      temp.quiet = value;
-    else if (strcmp(field_name, "encrypt_enabled") == 0)
-      temp.encrypt_enabled = value;
-    else if (strcmp(field_name, "no_encrypt") == 0)
-      temp.no_encrypt = value;
-    else if (strcmp(field_name, "discovery") == 0)
-      temp.discovery = value;
-    else if (strcmp(field_name, "discovery_expose_ip") == 0)
-      temp.discovery_expose_ip = value;
-    else if (strcmp(field_name, "discovery_insecure") == 0)
-      temp.discovery_insecure = value;
-    else if (strcmp(field_name, "webrtc") == 0)
-      temp.webrtc = value;
-    else if (strcmp(field_name, "lan_discovery") == 0)
-      temp.lan_discovery = value;
-    else if (strcmp(field_name, "no_mdns_advertise") == 0)
-      temp.no_mdns_advertise = value;
-    else if (strcmp(field_name, "prefer_webrtc") == 0)
-      temp.prefer_webrtc = value;
-    else if (strcmp(field_name, "no_webrtc") == 0)
-      temp.no_webrtc = value;
-    else if (strcmp(field_name, "webrtc_skip_stun") == 0)
-      temp.webrtc_skip_stun = value;
-    else if (strcmp(field_name, "webrtc_relay_only") == 0)
-      temp.webrtc_relay_only = value;
-    else if (strcmp(field_name, "webrtc_disable_turn") == 0)
-      temp.webrtc_disable_turn = value;
-    else if (strcmp(field_name, "enable_upnp") == 0)
-      temp.enable_upnp = value;
-    else if (strcmp(field_name, "require_server_identity") == 0)
-      temp.require_server_identity = value;
-    else if (strcmp(field_name, "require_client_identity") == 0)
-      temp.require_client_identity = value;
-    else if (strcmp(field_name, "require_server_verify") == 0)
-      temp.require_server_verify = value;
-    else if (strcmp(field_name, "require_client_verify") == 0)
-      temp.require_client_verify = value;
-    else if (strcmp(field_name, "palette_custom_set") == 0)
-      temp.palette_custom_set = value;
-    else if (strcmp(field_name, "media_loop") == 0)
-      temp.media_loop = value;
-    else if (strcmp(field_name, "media_from_stdin") == 0)
-      temp.media_from_stdin = value;
-    else if (strcmp(field_name, "auto_width") == 0)
-      temp.auto_width = value;
-    else if (strcmp(field_name, "auto_height") == 0)
-      temp.auto_height = value;
-    else if (strcmp(field_name, "splash_screen") == 0)
-      temp.splash_screen = value;
-    else if (strcmp(field_name, "status_screen") == 0)
-      temp.status_screen = value;
-    else if (strcmp(field_name, "matrix_rain") == 0)
-      temp.matrix_rain = value;
-    else if (strcmp(field_name, "waveform") == 0)
-      temp.waveform = value;
-    else if (strcmp(field_name, "fft") == 0)
-      temp.fft = value;
-    else if (strcmp(field_name, "fps_counter") == 0)
-      temp.fps_counter = value;
-
-    asciichat_error_t err = rcu_validate_field(field_name, &temp);
-    if (err != ASCIICHAT_OK)
-      return err;
-  }
-
-  bool_field_ctx_t ctx = {.field_name = field_name, .value = value};
-  return options_update(bool_field_updater, &ctx);
-}
-
-/**
- * @brief Context for string field updates in RCU updater callback
- */
-typedef struct {
-  const char *field_name; ///< Name of the field to update
-  const char *value;      ///< New value to set
-} string_field_ctx_t;
-
-static void string_field_updater(options_t *opts, void *context) {
-  string_field_ctx_t *ctx = (string_field_ctx_t *)context;
-  if (strcmp(ctx->field_name, "address") == 0)
-    SAFE_STRNCPY(opts->address, ctx->value, sizeof(opts->address));
-  else if (strcmp(ctx->field_name, "address6") == 0)
-    SAFE_STRNCPY(opts->address6, ctx->value, sizeof(opts->address6));
-  else if (strcmp(ctx->field_name, "encrypt_key") == 0)
-    SAFE_STRNCPY(opts->encrypt_key, ctx->value, sizeof(opts->encrypt_key));
-  else if (strcmp(ctx->field_name, "password") == 0)
-    SAFE_STRNCPY(opts->password, ctx->value, sizeof(opts->password));
-  else if (strcmp(ctx->field_name, "encrypt_keyfile") == 0)
-    SAFE_STRNCPY(opts->encrypt_keyfile, ctx->value, sizeof(opts->encrypt_keyfile));
-  else if (strcmp(ctx->field_name, "server_key") == 0)
-    SAFE_STRNCPY(opts->server_key, ctx->value, sizeof(opts->server_key));
-  else if (strcmp(ctx->field_name, "client_keys") == 0)
-    SAFE_STRNCPY(opts->client_keys, ctx->value, sizeof(opts->client_keys));
-  else if (strcmp(ctx->field_name, "discovery_server") == 0)
-    SAFE_STRNCPY(opts->discovery_server, ctx->value, sizeof(opts->discovery_server));
-  else if (strcmp(ctx->field_name, "discovery_service_key") == 0)
-    SAFE_STRNCPY(opts->discovery_service_key, ctx->value, sizeof(opts->discovery_service_key));
-  else if (strcmp(ctx->field_name, "discovery_database_path") == 0)
-    SAFE_STRNCPY(opts->discovery_database_path, ctx->value, sizeof(opts->discovery_database_path));
-  else if (strcmp(ctx->field_name, "log_file") == 0)
-    SAFE_STRNCPY(opts->log_file, ctx->value, sizeof(opts->log_file));
-  else if (strcmp(ctx->field_name, "media_file") == 0)
-    SAFE_STRNCPY(opts->media_file, ctx->value, sizeof(opts->media_file));
-  else if (strcmp(ctx->field_name, "palette_custom") == 0)
-    SAFE_STRNCPY(opts->palette_custom, ctx->value, sizeof(opts->palette_custom));
-  else if (strcmp(ctx->field_name, "stun_servers") == 0)
-    SAFE_STRNCPY(opts->stun_servers, ctx->value, sizeof(opts->stun_servers));
-  else if (strcmp(ctx->field_name, "turn_servers") == 0)
-    SAFE_STRNCPY(opts->turn_servers, ctx->value, sizeof(opts->turn_servers));
-  else if (strcmp(ctx->field_name, "turn_username") == 0)
-    SAFE_STRNCPY(opts->turn_username, ctx->value, sizeof(opts->turn_username));
-  else if (strcmp(ctx->field_name, "turn_credential") == 0)
-    SAFE_STRNCPY(opts->turn_credential, ctx->value, sizeof(opts->turn_credential));
-  else if (strcmp(ctx->field_name, "turn_secret") == 0)
-    SAFE_STRNCPY(opts->turn_secret, ctx->value, sizeof(opts->turn_secret));
-  else if (strcmp(ctx->field_name, "session_string") == 0)
-    SAFE_STRNCPY(opts->session_string, ctx->value, sizeof(opts->session_string));
-}
-
-asciichat_error_t options_set_string(const char *field_name, const char *value) {
-  if (!field_name) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "field_name is NULL");
-    return ERROR_INVALID_PARAM;
-  }
-
-  if (!value) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "value is NULL");
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Validate field exists
-  if (strcmp(field_name, "address") != 0 && strcmp(field_name, "address6") != 0 &&
-      strcmp(field_name, "encrypt_key") != 0 && strcmp(field_name, "password") != 0 &&
-      strcmp(field_name, "encrypt_keyfile") != 0 && strcmp(field_name, "server_key") != 0 &&
-      strcmp(field_name, "client_keys") != 0 && strcmp(field_name, "discovery_server") != 0 &&
-      strcmp(field_name, "discovery_service_key") != 0 && strcmp(field_name, "discovery_database_path") != 0 &&
-      strcmp(field_name, "log_file") != 0 && strcmp(field_name, "media_file") != 0 &&
-      strcmp(field_name, "palette_custom") != 0 && strcmp(field_name, "stun_servers") != 0 &&
-      strcmp(field_name, "turn_servers") != 0 && strcmp(field_name, "turn_username") != 0 &&
-      strcmp(field_name, "turn_credential") != 0 && strcmp(field_name, "turn_secret") != 0 &&
-      strcmp(field_name, "session_string") != 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown string field: %s", field_name);
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Pre-validate against registry metadata (for cross-field validators)
-  {
-    const options_t *cur = options_get();
-    options_t temp = *cur;
-    // Manually set the field in temp to validate
-    if (strcmp(field_name, "address") == 0)
-      SAFE_STRNCPY(temp.address, value, sizeof(temp.address));
-    else if (strcmp(field_name, "address6") == 0)
-      SAFE_STRNCPY(temp.address6, value, sizeof(temp.address6));
-    else if (strcmp(field_name, "encrypt_key") == 0)
-      SAFE_STRNCPY(temp.encrypt_key, value, sizeof(temp.encrypt_key));
-    else if (strcmp(field_name, "password") == 0)
-      SAFE_STRNCPY(temp.password, value, sizeof(temp.password));
-    else if (strcmp(field_name, "encrypt_keyfile") == 0)
-      SAFE_STRNCPY(temp.encrypt_keyfile, value, sizeof(temp.encrypt_keyfile));
-    else if (strcmp(field_name, "server_key") == 0)
-      SAFE_STRNCPY(temp.server_key, value, sizeof(temp.server_key));
-    else if (strcmp(field_name, "client_keys") == 0)
-      SAFE_STRNCPY(temp.client_keys, value, sizeof(temp.client_keys));
-    else if (strcmp(field_name, "discovery_server") == 0)
-      SAFE_STRNCPY(temp.discovery_server, value, sizeof(temp.discovery_server));
-    else if (strcmp(field_name, "discovery_service_key") == 0)
-      SAFE_STRNCPY(temp.discovery_service_key, value, sizeof(temp.discovery_service_key));
-    else if (strcmp(field_name, "discovery_database_path") == 0)
-      SAFE_STRNCPY(temp.discovery_database_path, value, sizeof(temp.discovery_database_path));
-    else if (strcmp(field_name, "log_file") == 0)
-      SAFE_STRNCPY(temp.log_file, value, sizeof(temp.log_file));
-    else if (strcmp(field_name, "media_file") == 0)
-      SAFE_STRNCPY(temp.media_file, value, sizeof(temp.media_file));
-    else if (strcmp(field_name, "palette_custom") == 0)
-      SAFE_STRNCPY(temp.palette_custom, value, sizeof(temp.palette_custom));
-    else if (strcmp(field_name, "stun_servers") == 0)
-      SAFE_STRNCPY(temp.stun_servers, value, sizeof(temp.stun_servers));
-    else if (strcmp(field_name, "turn_servers") == 0)
-      SAFE_STRNCPY(temp.turn_servers, value, sizeof(temp.turn_servers));
-    else if (strcmp(field_name, "turn_username") == 0)
-      SAFE_STRNCPY(temp.turn_username, value, sizeof(temp.turn_username));
-    else if (strcmp(field_name, "turn_credential") == 0)
-      SAFE_STRNCPY(temp.turn_credential, value, sizeof(temp.turn_credential));
-    else if (strcmp(field_name, "turn_secret") == 0)
-      SAFE_STRNCPY(temp.turn_secret, value, sizeof(temp.turn_secret));
-    else if (strcmp(field_name, "session_string") == 0)
-      SAFE_STRNCPY(temp.session_string, value, sizeof(temp.session_string));
-
-    asciichat_error_t err = rcu_validate_field(field_name, &temp);
-    if (err != ASCIICHAT_OK)
-      return err;
-  }
-
-  string_field_ctx_t ctx = {.field_name = field_name, .value = value};
-  return options_update(string_field_updater, &ctx);
-}
-
-/**
- * @brief Context for double field updates in RCU updater callback
- */
-typedef struct {
-  const char *field_name; ///< Name of the field to update
-  double value;           ///< New value to set
-} double_field_ctx_t;
-
-static void double_field_updater(options_t *opts, void *context) {
-  double_field_ctx_t *ctx = (double_field_ctx_t *)context;
-  if (strcmp(ctx->field_name, "snapshot_delay") == 0)
-    opts->snapshot_delay = ctx->value;
-  else if (strcmp(ctx->field_name, "microphone_sensitivity") == 0)
-    opts->microphone_sensitivity = ctx->value;
-  else if (strcmp(ctx->field_name, "speakers_volume") == 0)
-    opts->speakers_volume = ctx->value;
-}
-
-asciichat_error_t options_set_double(const char *field_name, double value) {
-  if (!field_name) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "field_name is NULL");
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Normalize option names to internal field names
-  const char *internal_name = field_name;
-  if (strcmp(field_name, "microphone-volume") == 0 || strcmp(field_name, "ivolume") == 0) {
-    internal_name = "microphone_sensitivity";
-  } else if (strcmp(field_name, "speakers-volume") == 0 || strcmp(field_name, "volume") == 0) {
-    internal_name = "speakers_volume";
-  }
-
-  if (strcmp(internal_name, "snapshot_delay") != 0 && strcmp(internal_name, "microphone_sensitivity") != 0 &&
-      strcmp(internal_name, "speakers_volume") != 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown double field: %s", field_name);
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Pre-validate against registry metadata (if available)
-  {
-    const options_t *cur = options_get();
-    options_t temp = *cur;
-    // Manually set the field in temp to validate
-    if (strcmp(internal_name, "snapshot_delay") == 0)
-      temp.snapshot_delay = value;
-    else if (strcmp(internal_name, "microphone_sensitivity") == 0)
-      temp.microphone_sensitivity = value;
-    else if (strcmp(internal_name, "speakers_volume") == 0)
-      temp.speakers_volume = value;
-
-    asciichat_error_t err = rcu_validate_field(internal_name, &temp);
-    if (err != ASCIICHAT_OK)
-      return err;
-  }
-
-  double_field_ctx_t ctx = {.field_name = internal_name, .value = value};
-  return options_update(double_field_updater, &ctx);
+  char *json = yyjson_mut_write_opts(doc, 0, &runtime_json_allocator, NULL, NULL);
+  yyjson_mut_doc_free(doc);
+  return json;
 }

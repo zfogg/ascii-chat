@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/settings.h>
 /**
  * @file lib/network/client.h
  * @brief Client state structures
@@ -83,7 +84,7 @@ typedef enum {
 typedef struct client_info {
   participant_type_t participant_type; // Network (socket) or memory (direct injection)
   socket_t socket;
-  bool event_driven;                 // Network callbacks own lifetime; only render threads are per-client
+  bool event_driven; // Network callbacks own lifetime; only render threads are per-client
   atomic_t event_ready;
   atomic_t event_cleanup;
   acip_transport_t *transport;       // ACIP transport for protocol-agnostic packet sending
@@ -121,6 +122,7 @@ typedef struct client_info {
   void *video_sws_ctx;      // SwsContext* - Color space converter for YUV->RGB
 
   // Terminal capabilities (for rendering appropriate ASCII frames)
+  acip_render_settings_t render_settings;
   terminal_capabilities_t terminal_caps;
   bool has_terminal_caps; // Whether we've received terminal capabilities from this client
 

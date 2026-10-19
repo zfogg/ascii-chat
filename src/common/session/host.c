@@ -1,3 +1,6 @@
+#include <ascii-chat/video/anim/digital_rain.h>
+#include <session/protocol.h>
+#include <ascii-chat/network/acip/settings.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/audio/recording.h>
@@ -73,6 +76,10 @@ typedef struct {
   bool video_active;
   bool audio_active;
   uint64_t connected_at;
+  acip_render_settings_t rendering;
+  digital_rain_t *rain;
+  uint64_t next_video_deadline;
+  double rain_time;
   uint16_t render_width;
   uint16_t render_height;
   render_mode_t render_mode;
@@ -610,28 +617,54 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
     break;
 
   case PACKET_TYPE_CLIENT_CAPABILITIES:
-    if (data && len >= sizeof(terminal_capabilities_packet_t)) {
-      terminal_capabilities_packet_t caps;
-      memcpy(&caps, data, sizeof(caps));
-      uint16_t width = NET_TO_HOST_U16(caps.width);
-      uint16_t height = NET_TO_HOST_U16(caps.height);
-      if (width > 0 && height > 0) {
-        mutex_lock(&host->clients_mutex);
-        for (int j = 0; j < host->max_clients; j++) {
-          if (host->clients[j].active && host->clients[j].client_id == client_id) {
-            host->clients[j].render_width = width;
-            host->clients[j].render_height = height;
-            uint32_t render_mode = NET_TO_HOST_U32(caps.render_mode);
-            host->clients[j].render_mode = render_mode <= RENDER_MODE_HALF_BLOCK
-                                              ? (render_mode_t)render_mode : RENDER_MODE_FOREGROUND;
-            log_info("Client %u requested render dimensions %ux%u", client_id, width, height);
-            break;
-          }
-        }
-        mutex_unlock(&host->clients_mutex);
+  case PACKET_TYPE_ACIP_SETTINGS_SYNC: {
+    uint8_t reply[ACIP_SETTINGS_MAX_SIZE];
+    size_t reply_length = 0;
+    asciichat_error_t result = ASCIICHAT_OK;
+    session_host_client_t *target = NULL;
+    mutex_lock(&host->clients_mutex);
+    for (int j = 0; j < host->max_clients; ++j) {
+      if (host->clients[j].active && host->clients[j].client_id == client_id) {
+        target = &host->clients[j];
+        break;
       }
     }
-    break;
+    if (!target)
+      result = SET_ERRNO(ERROR_INVALID_STATE, "Unknown settings participant");
+    else if (ptype == PACKET_TYPE_CLIENT_CAPABILITIES) {
+      if (!data || len != sizeof(terminal_capabilities_packet_t))
+        result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid capabilities");
+      else {
+        terminal_capabilities_packet_t packet;
+        memcpy(&packet, data, sizeof(packet));
+        if (target->rendering.width) {
+          // Codec advertisements cannot change an established viewer's settings.
+          mutex_unlock(&host->clients_mutex);
+          return ASCIICHAT_OK;
+        }
+        result = acip_render_settings_capabilities(&target->rendering, &packet);
+        if (result == ASCIICHAT_OK) {
+          uint8_t query[ACIP_SETTINGS_HEADER_SIZE];
+          size_t query_length;
+          acip_settings_header_t header = {.schema = 1, .expected_revision = UINT32_MAX};
+          result = acip_settings_encode(&header, "", query, sizeof(query), &query_length);
+          if (result == ASCIICHAT_OK)
+            result =
+                acip_settings_request(&target->rendering, query, query_length, reply, sizeof(reply), &reply_length);
+        }
+      }
+    } else
+      result = acip_settings_request(&target->rendering, data, len, reply, sizeof(reply), &reply_length);
+    if (target && result == ASCIICHAT_OK) {
+      target->render_width = target->rendering.width;
+      target->render_height = target->rendering.height;
+      target->render_mode = target->rendering.caps.render_mode;
+      if (reply_length)
+        result = session_host_send_packet(target, PACKET_TYPE_ACIP_SETTINGS_ACK, reply, reply_length);
+    }
+    mutex_unlock(&host->clients_mutex);
+    return result;
+  }
 
   case PACKET_TYPE_STREAM_STOP:
     log_info("Client %u stopped streaming", client_id);
@@ -797,7 +830,8 @@ static void *receive_loop_thread(void *arg) {
  * - Broadcasts mixed audio to all participants
  */
 // The caller holds clients_mutex so all viewports use the same set of source frames.
-static char *host_create_video_grid(session_host_t *host, int count, int width, int height, render_mode_t render_mode, size_t *size) {
+static char *host_create_video_grid(session_host_t *host, int count, int width, int height,
+                                    const acip_render_settings_t *settings, size_t *size) {
   int columns, rows;
   if (ascii_grid_layout(count, width, height, &columns, &rows) != ASCIICHAT_OK)
     return NULL;
@@ -815,17 +849,12 @@ static char *host_create_video_grid(session_host_t *host, int count, int width, 
     if (!host->clients[i].active || !host->clients[i].video_active || !host->clients[i].incoming_video)
       continue;
     uint64_t start = time_get_ns();
-    terminal_capabilities_t caps = {0};
-    caps.color_level = TERM_COLOR_TRUECOLOR;
-    caps.utf8_support = true;
-    caps.render_mode = render_mode;
-    caps.wants_background = render_mode == RENDER_MODE_BACKGROUND;
+    terminal_capabilities_t caps = settings->caps;
     sources[index].frame_data = ascii_convert_with_capabilities(host->clients[i].incoming_video, cell_width,
-                                                               cell_height, &caps, false, false,
-                                                               PALETTE_CHARS_STANDARD);
+                                                                cell_height, &caps, false, false, settings->palette);
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - start);
-    stats_counter_add(stats_runtime_scope(), sources[index].frame_data ? STATS_COUNTER_FRAMES_CONVERTED
-                                                                     : STATS_COUNTER_FRAMES_DROPPED, 1);
+    stats_counter_add(stats_runtime_scope(),
+                      sources[index].frame_data ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
     sources[index].frame_size = sources[index].frame_data ? strlen(sources[index].frame_data) : 0;
     ++index;
     if (fallback)
@@ -849,7 +878,7 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer, bool 
   if (count > 0) {
     typedef struct {
       int width, height;
-      render_mode_t render_mode;
+      acip_render_settings_t settings;
       char *frame;
       size_t size;
     } host_grid_t;
@@ -859,7 +888,23 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer, bool 
     for (int i = 0; i <= host->max_clients; ++i) {
       bool local_display = i == host->max_clients;
       int width = 80, height = 24;
-      render_mode_t render_mode = local_display ? GET_OPTION(render_mode) : host->clients[i].render_mode;
+      acip_render_settings_t settings = {0};
+      if (local_display) {
+        if (!host->display_context || waiting_for_peer)
+          continue;
+#ifndef __EMSCRIPTEN__
+        terminal_capabilities_packet_t packet;
+        session_protocol_build_capabilities((unsigned short)terminal_get_effective_width(),
+                                            (unsigned short)terminal_get_effective_height(), &packet);
+        if (acip_render_settings_capabilities(&settings, &packet) != ASCIICHAT_OK)
+          continue;
+        width = settings.width;
+        height = settings.height;
+#else
+        continue;
+#endif
+      } else
+        settings = host->clients[i].rendering;
       if (local_display) {
         if (!host->display_context || waiting_for_peer)
           continue;
@@ -872,20 +917,59 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer, bool 
           height = host->clients[i].render_height;
         }
       }
+      uint64_t now = time_get_ns();
+      if (!local_display && settings.caps.desired_fps > 0) {
+        uint64_t interval = NS_PER_SEC_INT / settings.caps.desired_fps;
+        uint64_t *deadline = &host->clients[i].next_video_deadline;
+        if (*deadline && now < *deadline)
+          continue;
+        if (!*deadline || now - *deadline > interval * 2)
+          *deadline = now;
+        *deadline += interval;
+      }
       int cached = 0;
       while (cached < grid_count && (grids[cached].width != width || grids[cached].height != height ||
-                                     grids[cached].render_mode != render_mode))
+                                     memcmp(&grids[cached].settings.caps, &settings.caps, sizeof(settings.caps))))
         ++cached;
       if (cached == grid_count) {
         grids[cached].width = width;
         grids[cached].height = height;
-        grids[cached].render_mode = render_mode;
-        grids[cached].frame = host_create_video_grid(host, count, width, height, render_mode, &grids[cached].size);
+        grids[cached].settings = settings;
+        grids[cached].frame = host_create_video_grid(host, count, width, height, &settings, &grids[cached].size);
         ++grid_count;
       }
       host_grid_t *grid = &grids[cached];
       if (!grid->frame)
         continue;
+      char *rain_frame = NULL;
+      const char *output = grid->frame;
+      size_t output_size = grid->size;
+      if (!local_display) {
+        session_host_client_t *client = &host->clients[i];
+        if (settings.caps.capabilities & TERM_CAP_MATRIX_RAIN) {
+          if (client->rain && (client->rain->num_columns != width || client->rain->num_rows != height)) {
+            digital_rain_destroy(client->rain);
+            client->rain = NULL;
+          }
+          if (!client->rain) {
+            client->rain = digital_rain_init(width, height);
+            client->rain_time = (double)now / NS_PER_SEC_INT;
+          }
+          if (client->rain) {
+            double seconds = (double)now / NS_PER_SEC_INT;
+            digital_rain_set_color_from_filter(client->rain, settings.caps.color_filter);
+            rain_frame = digital_rain_apply(client->rain, grid->frame, (float)(seconds - client->rain_time));
+            client->rain_time = seconds;
+            if (rain_frame) {
+              output = rain_frame;
+              output_size = strlen(rain_frame);
+            }
+          }
+        } else if (client->rain) {
+          digital_rain_destroy(client->rain);
+          client->rain = NULL;
+        }
+      }
       if (local_display) {
 #ifndef __EMSCRIPTEN__
         if (!*logging_disabled_ptr) {
@@ -898,11 +982,12 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer, bool 
           *snapshot_first_frame_ns_ptr = time_get_ns();
 #endif
       } else if (host->clients[i].transport) {
-        acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, grid->frame, grid->size,
-                              width, height, "session-host");
+        acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, output, output_size, width, height,
+                              "session-host");
       } else {
-        session_host_send_packet(&host->clients[i], PACKET_TYPE_ASCII_FRAME, grid->frame, grid->size);
+        session_host_send_packet(&host->clients[i], PACKET_TYPE_ASCII_FRAME, output, output_size);
       }
+      SAFE_FREE(rain_frame);
     }
     for (int i = 0; i < grid_count; ++i)
       SAFE_FREE(grids[i].frame);
@@ -1222,6 +1307,9 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
       host->clients[i].audio_active = false;
       host->clients[i].connected_at = (uint64_t)time(NULL);
       host->clients[i].transport = NULL; // No alternative transport initially
+      memset(&host->clients[i].rendering, 0, sizeof(host->clients[i].rendering));
+      host->clients[i].rendering.fps_limit = 60;
+      host->clients[i].next_video_deadline = 0;
       host->clients[i].render_width = 0;
       host->clients[i].render_height = 0;
       host->clients[i].render_mode = RENDER_MODE_FOREGROUND;
@@ -1450,6 +1538,10 @@ asciichat_error_t session_host_remove_client(session_host_t *host, uint32_t clie
         host->clients[i].socket = INVALID_SOCKET_VALUE;
       }
 
+      if (host->clients[i].rain) {
+        digital_rain_destroy(host->clients[i].rain);
+        host->clients[i].rain = NULL;
+      }
       // Clean up media buffers
       if (host->clients[i].incoming_video) {
         image_destroy(host->clients[i].incoming_video);

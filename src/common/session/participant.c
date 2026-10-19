@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/settings.h>
 /**
  * @file session/participant.c
  * @brief 👤 Client-side session participation implementation
@@ -92,6 +93,8 @@ typedef struct session_participant {
 
   /** @brief Current session settings */
   session_settings_t settings;
+  mutex_t settings_mutex;
+  uint32_t settings_request;
 
   /** @brief Video capture context (for webcam/file media) */
   session_capture_ctx_t *video_capture;
@@ -178,6 +181,10 @@ session_participant_t *session_participant_create(const session_participant_conf
 
   // Initialize settings
   session_settings_init(&p->settings);
+  if (mutex_init(&p->settings_mutex, "participant_settings") != 0) {
+    SAFE_FREE(p);
+    return NULL;
+  }
 
   participant_connection_init(p);
   p->initialized = true;
@@ -193,8 +200,8 @@ void session_participant_destroy(session_participant_t *p) {
 
   session_participant_disconnect(p);
   // A failed join retains the participant and its resources for a safe retry.
-  if (atomic_load_int(&p->connection.state) != SESSION_CONNECTION_STOPPED ||
-      p->video_thread_created || p->audio_thread_created)
+  if (atomic_load_int(&p->connection.state) != SESSION_CONNECTION_STOPPED || p->video_thread_created ||
+      p->audio_thread_created)
     return;
 
   // Clear sensitive data
@@ -202,6 +209,7 @@ void session_participant_destroy(session_participant_t *p) {
   memset(p->server_key, 0, sizeof(p->server_key));
 
   p->initialized = false;
+  mutex_destroy(&p->settings_mutex);
   SAFE_FREE(p);
 }
 
@@ -300,6 +308,11 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   }
   p->transport = transport;
   p->transport_ownership = SESSION_TRANSPORT_OWNED;
+
+  mutex_lock(&p->settings_mutex);
+  p->settings_request = 0;
+  p->settings.version = 0;
+  mutex_unlock(&p->settings_mutex);
 
   log_debug("session_participant_connect: setting p->connected=true");
   session_connection_start(&p->connection);
@@ -401,7 +414,9 @@ asciichat_error_t session_participant_get_settings(session_participant_t *p, ses
     return SET_ERRNO(ERROR_INVALID_PARAM, "session_participant_get_settings: invalid parameter");
   }
 
+  mutex_lock(&p->settings_mutex);
   memcpy(settings, &p->settings, sizeof(session_settings_t));
+  mutex_unlock(&p->settings_mutex);
   return ASCIICHAT_OK;
 }
 
@@ -414,9 +429,18 @@ asciichat_error_t session_participant_request_settings(session_participant_t *p,
     return SET_ERRNO(ERROR_INVALID_STATE, "session_participant_request_settings: not connected");
   }
 
-  // TODO: Send settings update request to server
-
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "session_participant_request_settings: not implemented yet");
+  options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
+  session_settings_to_options(settings, values);
+  acip_render_settings_t prepared = {0};
+  asciichat_error_t result = acip_render_settings_prepare(&prepared, values);
+  if (result == ASCIICHAT_OK) {
+    mutex_lock(&p->settings_mutex);
+    uint32_t request = ++p->settings_request;
+    mutex_unlock(&p->settings_mutex);
+    result = acip_settings_send(p->transport, values, request, UINT32_MAX);
+  }
+  SAFE_FREE(values);
+  return result;
 }
 
 /* ============================================================================
@@ -723,6 +747,10 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
     return result;
   participant_connection_init(p);
   p->transport = transport;
+  mutex_lock(&p->settings_mutex);
+  p->settings_request = 0;
+  p->settings.version = 0;
+  mutex_unlock(&p->settings_mutex);
   p->transport_ownership = transport ? ownership : SESSION_TRANSPORT_BORROWED;
   if (transport) {
     result = session_connection_start(&p->connection);
@@ -763,4 +791,39 @@ bool session_participant_has_transport(session_participant_t *p) {
   }
 
   return p->transport != NULL;
+}
+
+asciichat_error_t session_participant_receive_settings(session_participant_t *p, const void *payload, size_t length) {
+  if (!p || !p->initialized)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant");
+  acip_settings_header_t header;
+  const char *json;
+  size_t json_length;
+  asciichat_error_t result = acip_settings_decode(payload, length, &header, &json, &json_length);
+  if (result != ASCIICHAT_OK)
+    return result;
+  mutex_lock(&p->settings_mutex);
+  if ((header.request && header.request != p->settings_request) || header.revision < p->settings.version) {
+    mutex_unlock(&p->settings_mutex);
+    return ASCIICHAT_OK;
+  }
+  options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
+            *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+  session_settings_to_options(&p->settings, current);
+  result = options_prepare_json(current, json, json_length, candidate, true);
+  if (result == ASCIICHAT_OK) {
+    session_settings_from_values(candidate, &p->settings);
+    p->settings.version = header.revision;
+  }
+  session_settings_t effective = p->settings;
+  SAFE_FREE(current);
+  SAFE_FREE(candidate);
+  mutex_unlock(&p->settings_mutex);
+  if (result != ASCIICHAT_OK)
+    return result;
+  if (header.status && p->callbacks.on_error)
+    p->callbacks.on_error(p, (asciichat_error_t)header.status, "Remote rendering update rejected", p->user_data);
+  if (p->callbacks.on_settings_changed)
+    p->callbacks.on_settings_changed(p, &effective, p->user_data);
+  return ASCIICHAT_OK;
 }

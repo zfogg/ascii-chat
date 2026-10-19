@@ -62,3 +62,10 @@ export {
 } from "./common/options";
 
 export type { SessionUiEvent } from "./sessionUi";
+
+export { runtimeOptions, RuntimeOptionsStore } from "./common/runtimeOptions";
+export type {
+  RuntimeOptionsModule,
+  RuntimeValues,
+  RuntimeSnapshot,
+} from "./common/runtimeOptions";

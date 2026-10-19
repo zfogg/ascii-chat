@@ -1,4 +1,5 @@
 import type { SessionUiModule } from "./sessionUi";
+import { resetRuntimeOptions } from "./common/runtimeOptions";
 // Shared TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
 // Decoupled from Emscripten factory location — callers provide the factory.
@@ -115,12 +116,16 @@ let wasmModule: MirrorModule | null = null;
  * points. Reusing it avoids starting a second Emscripten pthread runtime.
  */
 export function adoptMirrorWasmModule(module: MirrorModule): void {
+  if (wasmModule !== module) resetRuntimeOptions(module);
   wasmModule = module;
+  initializeOptions(createOptionAccessor(module));
 }
 
 /** Clear a client module reference before its owning client runtime is cleaned up. */
 export function resetAdoptedMirrorWasmModule(): void {
+  if (wasmModule) resetRuntimeOptions(wasmModule);
   wasmModule = null;
+  cleanupOptions();
 }
 
 /**
@@ -197,6 +202,7 @@ export async function initMirrorWasm(
     // Initialize shared options module with option accessor
     // This allows React components to call setColorMode, setPalette, etc.
     const optionsAccessor = createOptionAccessor(wasmModule);
+    resetRuntimeOptions(wasmModule);
     initializeOptions(optionsAccessor);
 
     // Expose WASM module to window for JavaScript access (e.g., tooltips)

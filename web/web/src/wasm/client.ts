@@ -2,12 +2,11 @@
 // Provides type-safe interface to libasciichat client mode
 
 import type { Palette } from "../components";
-import {
-  createOptionAccessor,
-  initializeOptions,
-  cleanupOptions,
-  createWasmModule,
+import type {
+  RuntimeOptionsModule,
+  RuntimeValues,
 } from "@ascii-chat/shared/wasm";
+import { createWasmModule } from "@ascii-chat/shared/wasm";
 
 export const BINARY_OPENPGP_KEY_PREFIX = "ascii-chat:openpgp-binary-base64:";
 
@@ -151,7 +150,9 @@ interface ClientModuleExports {
   _free(ptr: number): void;
 }
 
-interface ClientModule extends ClientModuleExports {
+interface ClientModule extends ClientModuleExports, RuntimeOptionsModule {
+  _client_settings_receive(pointer: number, length: number): number;
+  _client_settings_values(): number;
   _client_resolve_crypto_policy(secure: number, encryption: number): number;
   _client_handshake_begin(): number;
   _client_handshake_receive(
@@ -244,6 +245,27 @@ export interface ClientCryptoOptions {
   password?: string;
   identityPrivateKeyText?: string;
   expectedServerPublicKeyText?: string;
+}
+
+/** Commit the peer's effective settings in C before notifying browser observers. */
+export function acceptRemoteRenderSettings(payload: Uint8Array): RuntimeValues {
+  if (!wasmModule) throw new Error("Client engine is unavailable");
+  const pointer = wasmModule._malloc(payload.length);
+  if (!pointer) throw new Error("Cannot allocate remote settings");
+  try {
+    wasmModule.HEAPU8.set(payload, pointer);
+    const result = wasmModule._client_settings_receive(pointer, payload.length);
+    if (result) throw new Error(`Invalid remote settings (${result})`);
+    const values = wasmModule._client_settings_values();
+    if (!values) throw new Error("Cannot read effective remote settings");
+    try {
+      return JSON.parse(wasmModule.UTF8ToString(values)) as RuntimeValues;
+    } finally {
+      wasmModule._wasm_options_release(values);
+    }
+  } finally {
+    wasmModule._free(pointer);
+  }
 }
 
 // Enums matching libasciichat definitions
@@ -695,10 +717,6 @@ async function initializeClientWasm(options: ClientInitOptions): Promise<void> {
     }
     clientInitialized = true;
     console.log("[Client WASM] Initialization complete!");
-
-    // Initialize shared options module with option accessor
-    const optionsAccessor = createOptionAccessor(wasmModule);
-    initializeOptions(optionsAccessor);
   } finally {
     wasmModule._free(strPtr);
   }
@@ -718,7 +736,7 @@ export function cleanupClientWasm(): void {
     // Keep the Emscripten module and its shared memory/pthread pool alive.
     // Recreating it on every WebRTC reconnect leaks worker-backed memories
     // until the browser can no longer allocate another WebAssembly.Memory.
-    cleanupOptions();
+
     console.log("[cleanupClientWasm] Client state cleaned up; module retained");
   } else {
     console.log("[cleanupClientWasm] No module to cleanup");
