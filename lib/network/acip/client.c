@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file network/acip/client.c
  * @brief ACIP client-side protocol implementation
@@ -58,7 +59,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   log_debug("[ACIP_RECV] 📥 RECV_CALL: using transport->methods->recv()");
   asciichat_error_t recv_result = acip_transport_recv(transport, &packet_data, &packet_len, &allocated_buffer);
   log_debug("[ACIP_RECV] 📥 RECV_RESULT: error=%d, packet_len=%zu, data=%p, alloc=%p", recv_result, packet_len,
-           packet_data, allocated_buffer);
+            packet_data, allocated_buffer);
 
   if (recv_result != ASCIICHAT_OK) {
     if (recv_result == ERROR_NETWORK_TIMEOUT) {
@@ -87,7 +88,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   envelope.was_encrypted = false;
 
   log_debug("[ACIP_RECV] HEADER_PARSED: type=%u (0x%04x), len=%u, total_size=%zu", envelope.type, envelope.type,
-           envelope.len, packet_len);
+            envelope.len, packet_len);
 
   log_dev_every(4500 * US_PER_MS_INT, "ACIP received packet: type=%u, len=%u, total_size=%zu", envelope.type,
                 envelope.len, packet_len);
@@ -116,7 +117,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
 
   // Dispatch packet to appropriate ACIP handler
   log_debug("[ACIP_RECV] 🎯 DISPATCH_START: type=%u (0x%04x), data_len=%u, callbacks=%p", envelope.type, envelope.type,
-           envelope.len, (void *)callbacks);
+            envelope.len, (void *)callbacks);
   asciichat_error_t dispatch_result =
       acip_handle_client_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
 
@@ -127,8 +128,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   }
 
   // Always free the allocated buffer (even if handler failed)
-  log_debug("[ACIP_RECV] 🗑️  CLEANUP: freeing buffer %p (size=%zu)", envelope.allocated_buffer,
-            envelope.allocated_size);
+  log_debug("[ACIP_RECV] 🗑️  CLEANUP: freeing buffer %p (size=%zu)", envelope.allocated_buffer, envelope.allocated_size);
   if (envelope.allocated_buffer) {
     buffer_release(envelope.allocated_buffer);
   }
@@ -203,11 +203,15 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate H.265 output buffer: %zu bytes", output_buffer_size);
   }
 
-  // Encode frame
-  size_t encoded_size = output_buffer_size - 5;
+  // Admission expiry can invalidate a previously accepted reference chain.
+#ifndef __EMSCRIPTEN__
+  if (acip_outbound_needs_keyframe(transport, PACKET_TYPE_IMAGE_FRAME_H265, 0))
+    h265_encoder_request_keyframe(encoder);
+#endif
+  size_t encoded_size = output_buffer_size;
   log_dev("[ACIP_SEND_H265_3] Calling h265_encode");
   asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data,
-                                                output_buffer + 5, &encoded_size);
+                                                output_buffer, &encoded_size);
   log_dev("[ACIP_SEND_H265_4] h265_encode returned: %d, encoded_size=%zu", encode_result, encoded_size);
 
   if (encode_result != ASCIICHAT_OK) {
@@ -216,14 +220,12 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
     return encode_result;
   }
 
-  // Prepare H.265 packet: [flags:u8][width:u16][height:u16][h265_data...]
-  output_buffer[0] = 0; // flags: no flags set by default
-  output_buffer[1] = (width >> 8) & 0xFF;
-  output_buffer[2] = width & 0xFF;
-  output_buffer[3] = (height >> 8) & 0xFF;
-  output_buffer[4] = height & 0xFF;
-
-  size_t total_size = 5 + encoded_size;
+  // h265_encode includes flags, dimensions, and the encoded picture already.
+  size_t total_size = encoded_size;
+  if (!total_size) {
+    buffer_release(output_buffer);
+    return ASCIICHAT_OK;
+  }
 
   log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Encoded %ux%u → %zu bytes", width, height, total_size);
 

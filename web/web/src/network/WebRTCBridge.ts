@@ -4,11 +4,7 @@ import { recordDownload, recordUpload } from "./bandwidth";
 /** ACIP uses the same byte stream framing on native DataChannels and WebSockets. */
 export class WebRTCBridge implements PacketTransport {
   private pending = new Uint8Array(0);
-  private queue: Array<{
-    packet: Uint8Array;
-    offset: number;
-    replaceable: boolean;
-  }> = [];
+  private queue: Array<{ packet: Uint8Array; offset: number }> = [];
   private queuedBytes = 0;
   private readonly limit = 8 * 1024 * 1024;
   // Keep at most one current ASCII snapshot ahead of the receiver. A deeper
@@ -112,50 +108,17 @@ export class WebRTCBridge implements PacketTransport {
     this.onPacket(packet);
   }
 
-  send(packet: Uint8Array, replaceable = false): void {
+  send(packet: Uint8Array): void {
     if (!this.isConnected()) throw new Error("WebRTC DataChannel is not open");
-    if (replaceable) {
-      // Only whole, unsent raw frames can be replaced. A partially transmitted
-      // ACIP packet must finish to preserve framing, and control packets stay.
-      this.queue = this.queue.filter((entry) => {
-        if (entry.replaceable && entry.offset === 0) {
-          this.queuedBytes -= entry.packet.length;
-          return false;
-        }
-        return true;
-      });
-    }
     if (
       this.queuedBytes + this.channel.bufferedAmount + packet.length >
       this.limit
     ) {
       throw new Error("WebRTC send buffer is full");
     }
-    const entry = { packet, offset: 0, replaceable };
-    if (this.isAudioPacket(packet)) {
-      // ACIP packets must remain whole and ordered, but audio can pass a video
-      // frame that has not started yet. This prevents a waiting raw frame from
-      // delaying audio while preserving any packet already on the wire.
-      const nextUnsentFrame = this.queue.findIndex(
-        (queued) => queued.replaceable && queued.offset === 0,
-      );
-      if (nextUnsentFrame >= 0) this.queue.splice(nextUnsentFrame, 0, entry);
-      else this.queue.push(entry);
-    } else {
-      this.queue.push(entry);
-    }
+    this.queue.push({ packet: packet.slice(), offset: 0 });
     this.queuedBytes += packet.length;
     this.flush();
-  }
-
-  private isAudioPacket(packet: Uint8Array): boolean {
-    if (packet.length < 10) return false;
-    const type = new DataView(
-      packet.buffer,
-      packet.byteOffset,
-      packet.byteLength,
-    ).getUint16(8, false);
-    return type === 4000 || type === 4001;
   }
 
   private flush(): void {
@@ -163,20 +126,8 @@ export class WebRTCBridge implements PacketTransport {
     try {
       while (this.queue.length) {
         const entry = this.queue[0]!;
-        const isAudio = this.isAudioPacket(entry.packet);
         const highWaterMark = Math.max(this.sendWindow, entry.packet.length);
-        // A small audio packet may bypass buffered video that has already
-        // entered the DataChannel. An unsent video frame remains queued after
-        // audio; partially sent ACIP packets still keep their byte order.
-        // A raw browser image commonly exceeds the 256 KiB steady-state
-        // window. Do not pause partway through that packet: the receiver
-        // cannot use an incomplete ACIP frame, and draining it a 128 KiB low
-        // watermark at a time leaves the server composing stale input. Keep
-        // one complete replaceable image in flight; the next one still waits
-        // until the DataChannel has room.
-        if (this.channel.bufferedAmount >= highWaterMark && !isAudio) break;
         if (
-          entry.replaceable &&
           entry.offset === 0 &&
           this.channel.bufferedAmount + entry.packet.length > highWaterMark
         )

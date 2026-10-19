@@ -66,6 +66,8 @@ typedef struct {
   int fragment_count;           ///< Fragment count for current reassembly
   bool reassembling;            ///< True if currently assembling a message
 
+  size_t pending_send_bytes; ///< Includes the inflight owner until writable completion.
+  size_t inflight_bytes;
   uint8_t *inflight_buffer; ///< Owned until the next writable callback or teardown.
 
   // Graceful shutdown flag for thread-safe destruction

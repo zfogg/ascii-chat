@@ -472,6 +472,11 @@ int socket_connect(socket_t sock, const struct sockaddr *addr, socklen_t addrlen
 /** Borrowed slices remain valid until the synchronous send returns. */
 #define SOCKET_IOV_MAX 16
 #define SOCKET_ZEROCOPY_THRESHOLD (64 * 1024)
+/** Requested kernel send buffer for latency-sensitive ACIP connections.
+ * Linux may report twice this value for bookkeeping; reserve that upper bound. */
+#define SOCKET_STREAM_SEND_BUFFER (64U * 1024U)
+#define SOCKET_STREAM_SEND_RESERVE (2U * SOCKET_STREAM_SEND_BUFFER)
+
 #define SOCKET_SEND_BUFFER_MAX (32 * 1024 * 1024)
 typedef struct {
   const void *data;

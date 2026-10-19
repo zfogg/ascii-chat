@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/tcp/async.h>
 #include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/packet/packet.h>
@@ -204,7 +205,13 @@ static void async_destroy(acip_transport_t *transport) {
   }
   mutex_destroy(&tcp->mutex);
 }
+static size_t async_queued_bytes(acip_transport_t *transport) {
+  return acip_async_tcp_transport_queued(transport);
+}
+
 static const acip_transport_methods_t async_methods = {.send = async_send,
+                                                       .reserved_bytes = SOCKET_STREAM_SEND_RESERVE,
+                                                       .queued_bytes = async_queued_bytes,
                                                        .sendv = async_sendv,
                                                        .recv = async_recv,
                                                        .close = async_close,
@@ -239,6 +246,10 @@ acip_transport_t *acip_async_tcp_transport_create(platform_event_stream_t *strea
   transport->impl_data = tcp;
   transport->crypto_ctx = crypto;
   transport->stats_peer = stats_runtime_peer_open("TCP-async");
+  if (acip_outbound_create(transport) != ASCIICHAT_OK) {
+    acip_transport_destroy(transport);
+    return NULL;
+  }
   return transport;
 }
 
@@ -335,5 +346,9 @@ acip_transport_t *acip_async_tcp_client_create(socket_t *socket, crypto_context_
     return NULL;
   }
   tcp->thread_started = true;
+  if (acip_outbound_create(transport) != ASCIICHAT_OK) {
+    acip_transport_destroy(transport);
+    return NULL;
+  }
   return transport;
 }

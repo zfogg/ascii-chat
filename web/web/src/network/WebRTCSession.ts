@@ -1,3 +1,4 @@
+import { OutboundQueue } from "./OutboundQueue";
 import { BrowserHostSession } from "./BrowserHostSession";
 import { HandoffProtocol } from "./HandoffProtocol";
 import { DiscoveryProtocol } from "./DiscoveryProtocol";
@@ -421,6 +422,10 @@ export class WebRTCSession implements ClientSession {
     );
   }
   private closePeer(): void {
+    this.outbound?.close();
+    this.outbound = null;
+    this.peerCrypto?.close();
+    this.peerCrypto = null;
     if (this.peer) {
       this.peer.onconnectionstatechange = null;
       this.peer.onicecandidate = null;
@@ -491,11 +496,19 @@ export class WebRTCSession implements ClientSession {
   getBufferedAmount(): number {
     return (
       this.promoted?.getBufferedAmount() ??
-      this.bridge?.getBufferedAmount() ??
-      0
+      (this.bridge?.getBufferedAmount() ?? 0) +
+        (this.outbound?.snapshot().applicationBytes ?? 0)
     );
   }
 
+  private outbound: OutboundQueue | null = null;
+  needsKeyframe(type: number): boolean {
+    return (
+      this.promoted?.needsKeyframe(type) ??
+      this.outbound?.needsKeyframe(type) ??
+      true
+    );
+  }
   sendPacket(type: number, payload: Uint8Array): void {
     if (this.promoted) {
       this.promoted.sendPacket(type, payload);
@@ -503,18 +516,21 @@ export class WebRTCSession implements ClientSession {
     }
     if (!this.bridge || this.state !== ConnectionState.CONNECTED)
       throw new Error("WebRTC is not connected");
-    // Drop replaceable media before encryption advances the peer's nonce.
+    if (!this.outbound)
+      this.outbound = new OutboundQueue(
+        () => this.bridge?.getBufferedAmount() ?? 0,
+        (packet) => this.peerCrypto!.sendPacket(packet),
+        (error) => this.fail(error),
+      );
+    const admission = this.outbound.submit(serializePacket(type, payload, 0));
     if (
-      type === PacketType.IMAGE_FRAME &&
-      this.bridge.getBufferedAmount() > 256 * 1024
+      admission === "congested" &&
+      type !== PacketType.IMAGE_FRAME &&
+      type !== PacketType.ASCII_FRAME &&
+      type !== PacketType.IMAGE_FRAME_H264 &&
+      type !== PacketType.IMAGE_FRAME_H265
     )
-      return;
-    try {
-      this.peerCrypto!.sendPacket(serializePacket(type, payload, 0));
-    } catch (error) {
-      this.fail(error);
-      throw error;
-    }
+      throw new Error("Reliable outbound queue is congested");
   }
   sendUnencryptedAcipPacket(type: number, payload: Uint8Array): void {
     this.sendPacket(type, payload);
@@ -534,6 +550,8 @@ export class WebRTCSession implements ClientSession {
     return null;
   }
   disconnect(): void {
+    this.outbound?.close();
+    this.outbound = null;
     if (this.closed) return;
     this.closed = true;
     this.handoff?.close();
