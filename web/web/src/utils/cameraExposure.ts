@@ -52,12 +52,24 @@ export function setFastExposure(
         range.min,
         range.min + Math.floor((ceiling - range.min) / step) * step,
       );
-      await track.applyConstraints({
-        ...track.getConstraints(),
-        advanced: [
-          { exposureMode: "manual", exposureTime } as MediaTrackConstraintSet,
-        ],
-      });
+      let requested = exposureTime;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await track.applyConstraints({
+          ...track.getConstraints(),
+          advanced: [
+            {
+              exposureMode: "manual",
+              exposureTime: requested,
+            } as MediaTrackConstraintSet,
+          ],
+        });
+        const actual = (track.getSettings() as ExposureSettings).exposureTime;
+        if (actual === undefined || actual <= ceiling || requested <= range.min)
+          break;
+        // Some UVC drivers advertise linear steps but round up to powers of
+        // two. Verify the applied value so rounding cannot exceed a frame.
+        requested = Math.max(range.min, Math.min(requested / 2, actual / 2));
+      }
     });
   operations.set(track, operation);
   return operation;

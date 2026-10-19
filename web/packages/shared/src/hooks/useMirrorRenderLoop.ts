@@ -17,6 +17,7 @@ import { useTestPattern } from "./useTestPattern";
 import { captureVisualizationAudio } from "../audio/visualizationCapture";
 import { VideoFrameClock } from "./videoFrameClock";
 import {
+  cameraNeedsFrameLimit,
   reportCameraTrack,
   reportCameraFrame,
   reportCameraVideoFrame,
@@ -430,7 +431,11 @@ export function useMirrorRenderLoop({
                 if (
                   !canvas ||
                   !context ||
-                  !clock.accept(frame.timestamp / 1e6, frameIntervalRef.current)
+                  (cameraNeedsFrameLimit(1000 / frameIntervalRef.current) &&
+                    !clock.accept(
+                      frame.timestamp / 1e6,
+                      frameIntervalRef.current,
+                    ))
                 )
                   continue;
                 // Capture the delivered camera frame, rather than sampling a

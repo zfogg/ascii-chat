@@ -1,6 +1,7 @@
 import { AVState } from "../wasm/AVState";
 import { VideoFrameClock } from "../../../packages/shared/src/hooks/videoFrameClock";
 import {
+  cameraNeedsFrameLimit,
   reportCameraTrack,
   reportCameraFrame,
   reportCameraVideoFrame,
@@ -448,7 +449,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                 if (
                   canvas &&
                   context &&
-                  mediaClock.accept(frame.timestamp / 1e6, sendInterval)
+                  (!cameraNeedsFrameLimit(settings.targetFps) ||
+                    mediaClock.accept(frame.timestamp / 1e6, sendInterval))
                 ) {
                   if (settings.flipX) {
                     context.save();
@@ -494,7 +496,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         ) => {
           if (stopped) return;
           reportCameraFrame(metadata.mediaTime * 1000);
-          if (mediaClock.accept(metadata.mediaTime, sendInterval)) {
+          if (
+            !cameraNeedsFrameLimit(settings.targetFps) ||
+            mediaClock.accept(metadata.mediaTime, sendInterval)
+          ) {
             webcamCaptureLoopRef.current?.();
           }
           captureCallbackHandle =

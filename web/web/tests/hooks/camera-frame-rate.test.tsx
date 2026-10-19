@@ -6,6 +6,7 @@ import {
   reportCameraFrame,
   reportCameraTrack,
   cameraAcquisitionFps,
+  cameraNeedsFrameLimit,
 } from "../../../packages/shared/src/capture/cameraRate";
 import {
   effectiveCameraFps,
@@ -95,4 +96,14 @@ test("observed rates clamp and recover the actual setting without reducing camer
   await act(async () => hook.result.current.control.select(25));
   await deliver(60);
   expect(hook.result.current.settings.targetFps).toBe(60);
+});
+
+test("Max accepts camera delivery jitter without resampling; lower choices still throttle", () => {
+  reportCameraTrack({
+    label: "jittery camera",
+    getCapabilities: () => ({ frameRate: { max: 60 } }),
+    getSettings: () => ({ frameRate: 60 }),
+  } as unknown as MediaStreamTrack);
+  expect(cameraNeedsFrameLimit(60)).toBe(false);
+  expect(cameraNeedsFrameLimit(30)).toBe(true);
 });
