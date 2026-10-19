@@ -563,6 +563,7 @@ export function ClientPage({
     clientRef,
     connectionState,
     settings: cameraSettings,
+    receiveFps: settings.targetFps,
     captureFrame,
     canvasRef,
     videoRef,

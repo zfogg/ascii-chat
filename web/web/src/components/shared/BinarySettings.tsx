@@ -96,7 +96,7 @@ export function BinarySettings({
   const maximumFps = adaptiveRate ? cameraFps!.maximum : 60;
   const minimumFps = adaptiveRate ? 1 : 15;
   const cameraHelp = cameraRate
-    ? `Webcam maximum: ${cameraRate.advertisedMaximum ?? "unknown"} FPS. Configured capture: ${cameraRate.configured ?? "unknown"} FPS. Current capture: ${cameraRate.observed ?? "measuring"} FPS. The selectable maximum follows sustained camera delivery, which may vary with camera mode or exposure. Max follows changes automatically; a lower selection is preserved. Rendering FPS is shown separately in the control bar.`
+    ? `Webcam maximum: ${cameraRate.advertisedMaximum ?? "unknown"} FPS. Configured capture: ${cameraRate.configured ?? "unknown"} FPS. Current capture: ${cameraRate.observed ?? "measuring"} FPS. The selectable maximum follows sustained camera delivery, which may vary with camera mode or exposure. Max follows changes automatically; a lower selection is preserved. Content FPS in the control bar counts changes in the ASCII image, so a still scene can show a lower number.`
     : "";
   const audioVisualizationSelected =
     config.animationEnabled &&

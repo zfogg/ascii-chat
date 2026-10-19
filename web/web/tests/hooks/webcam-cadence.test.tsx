@@ -50,7 +50,11 @@ afterEach(() => {
 });
 
 type CapturePath = "track" | "video-callback" | "poll";
-async function startCapture(path: CapturePath, targetFps: number) {
+async function startCapture(
+  path: CapturePath,
+  targetFps: number,
+  receiveFps = targetFps,
+) {
   let wallTime = 1000;
   let mediaTime = 0;
   let callback:
@@ -139,6 +143,7 @@ async function startCapture(path: CapturePath, targetFps: number) {
     },
     connectionState: ConnectionState.CONNECTED,
     settings: { ...DEFAULT_SETTINGS, targetFps, flipX: false },
+    receiveFps,
     captureFrame: () => ({ data: new Uint8Array(16), width: 2, height: 2 }),
     canvasRef: { current: canvas },
     videoRef: { current: video },
@@ -170,12 +175,24 @@ async function startCapture(path: CapturePath, targetFps: number) {
     });
   };
   return {
+    receiveFps: () =>
+      sendPacket.mock.calls.find(
+        ([type]) => type === PacketType.CLIENT_CAPABILITIES,
+      )?.[1][157],
     deliver,
     sent: () =>
       sendPacket.mock.calls.filter(([type]) => type === PacketType.IMAGE_FRAME)
         .length,
   };
 }
+
+it("advertises the receive FPS independently of a saved low camera upload limit", async () => {
+  const capture = await startCapture("track", 20, 60);
+  expect(capture.receiveFps()).toBe(60);
+  for (let frame = 0; frame < 120; frame++)
+    await capture.deliver(frame / 60, 1000 + (frame * 1000) / 60);
+  expect(capture.sent()).toBe(40);
+});
 
 for (const path of ["track", "video-callback", "poll"] as const) {
   it(`${path}: preserves 60 FPS despite callback jitter and rounded arrival times`, async () => {

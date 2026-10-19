@@ -113,9 +113,10 @@ export function PageControlBar({
           )}
           {fps !== undefined && (
             <span
-              className={`text-xs tabular-nums inline-block w-[13ch] shrink-0 ${getFpsColor()}`}
+              className={`text-xs tabular-nums inline-block w-[21ch] shrink-0 ${getFpsColor()}`}
+              title="Counts changes in the ASCII image. A still scene can show fewer changes than the camera's capture FPS, shown in Settings."
             >
-              FPS: {fps}
+              Content FPS: {fps}
               {targetFps && ` / ${targetFps}`}
             </span>
           )}

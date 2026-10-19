@@ -52,6 +52,7 @@ interface UseWebcamStreamOptions {
   clientRef: React.RefObject<ClientSession | null>;
   connectionState: ConnectionState;
   settings: BinarySettingsConfig;
+  receiveFps?: number;
   captureFrame: (
     drawVideo?: boolean,
     sourceCanvas?: HTMLCanvasElement,
@@ -77,6 +78,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     terminalDimensions,
     connectionState,
     settings,
+    receiveFps = settings.targetFps,
     captureFrame,
     canvasRef,
     videoRef,
@@ -215,7 +217,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         buildCapabilitiesPacket(
           terminalDimensions.cols || 80,
           terminalDimensions.rows || 40,
-          settings.targetFps,
+          receiveFps,
           settings.colorMode,
           settings.colorFilter,
           settings.palette,
@@ -229,7 +231,14 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         `[Client] Upload encoding: ${encoder?.codec ?? "raw"} ${width}x${height}`,
       );
     },
-    [clientRef, settings, terminalDimensions, createEncoder, avState],
+    [
+      clientRef,
+      settings,
+      receiveFps,
+      terminalDimensions,
+      createEncoder,
+      avState,
+    ],
   );
 
   // Inner loop function that doesn't have dependencies - this prevents RAF recursion from breaking

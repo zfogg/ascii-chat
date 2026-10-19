@@ -262,6 +262,25 @@ test("two camera clients upload at 60 FPS and preserve fresh received content", 
     expect(
       (slowAfter.sourceChanged - slowBefore.sourceChanged) / seconds,
     ).toBeGreaterThan(45);
+    // A saved upload limit must also stay independent during a fresh handshake.
+    await page.reload();
+    await page.waitForFunction(
+      () =>
+        (window as unknown as { cameraCadence: { uploaded: number } })
+          .cameraCadence.uploaded > 100,
+    );
+    const restartBefore = await measure(page);
+    await page.waitForTimeout(5000);
+    const restartAfter = await measure(page);
+    console.log(
+      "saved low upload limit after reconnect",
+      restartBefore,
+      restartAfter,
+    );
+    expect(
+      ((restartAfter.sourceChanged - restartBefore.sourceChanged) * 1000) /
+        (restartAfter.now - restartBefore.now),
+    ).toBeGreaterThan(45);
   } finally {
     await second.close();
     await server.stop();
