@@ -15,13 +15,15 @@ export function useUrlState<T>(
   key: string,
   initial: T | (() => T),
   fragment = false,
+  migrateInitial?: (value: T) => T,
 ) {
   const [fallback] = useState(() =>
     initial instanceof Function ? initial() : initial,
   );
-  const [value, setValue] = useState(() =>
-    readUrlValue(key, fallback, fragment),
-  );
+  const [value, setValue] = useState(() => {
+    const restored = readUrlValue(key, fallback, fragment);
+    return migrateInitial ? migrateInitial(restored) : restored;
+  });
   const current = useRef(value);
   const update = useCallback(
     (action: SetStateAction<T>) => {

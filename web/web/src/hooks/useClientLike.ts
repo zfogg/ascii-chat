@@ -3,7 +3,7 @@ import { useUrlState } from "./useUrlState";
 import { useCallback, useEffect, useRef, useState, RefObject } from "react";
 import type { BinarySettingsConfig, AsciiRendererHandle } from "../components";
 import { useCanvasCapture } from "@ascii-chat/shared/hooks";
-import { getDefaultSettings } from "../utils";
+import { useRenderSettings } from "./useRenderSettings";
 
 /**
  * Shared hook for client-like modes (Mirror, Client)
@@ -102,10 +102,7 @@ export function useClientLike(
   const [fps, setFps] = useState<number | undefined>(0);
   const [wasmInitialized, setWasmInitialized] = useState(false);
   const [showSettings, setShowSettings] = useUrlState("settings", false);
-  const [settings, setSettings] = useUrlState<BinarySettingsConfig>(
-    "render",
-    getDefaultSettings,
-  );
+  const [settings, setSettings] = useRenderSettings();
   useAutoGridSize(setSettings);
 
   // Debug refs

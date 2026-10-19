@@ -85,8 +85,10 @@ export function MirrorPage() {
         ? {
             ...settings,
             ...mediaFlipRef.current,
-            animationEnabled: false,
-            matrixRain: false,
+            animationEnabled:
+              !!settings.animationEnabled && settings.animation === "matrix",
+            matrixRain:
+              !!settings.animationEnabled && settings.animation === "matrix",
           }
         : settings,
     );
@@ -160,17 +162,9 @@ export function MirrorPage() {
       } else {
         setSettings(newSettings);
       }
-      // Apply WASM settings immediately so renderer recreates if needed
-      applyWasmSettings(newSettings);
+      // The settings effect applies the resolved per-mode flip preference to C.
     },
-    [
-      setSettings,
-      applyWasmSettings,
-      settings.flipX,
-      settings.flipY,
-      setMediaFlipX,
-      setMediaFlipY,
-    ],
+    [setSettings, settings.flipX, settings.flipY, setMediaFlipX, setMediaFlipY],
   );
 
   // Webcam start logic and auto-start effects

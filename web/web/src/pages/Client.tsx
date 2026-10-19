@@ -2,6 +2,7 @@ import { FramePresentationScheduler } from "../network/FramePresentationSchedule
 import { SessionInvite } from "../components/SessionInvite";
 import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
 import { useAutoGridSize } from "../hooks/useAutoGridSize";
+import { useRenderSettings } from "../hooks/useRenderSettings";
 import { useUrlState } from "../hooks/useUrlState";
 import {
   useCallback,
@@ -352,10 +353,7 @@ export function ClientPage({
 
   // Settings state (must be declared before hooks that use it)
   // Discovery shares the native server cadence and targets display refresh.
-  const [settings, setSettings] = useUrlState<BinarySettingsConfig>(
-    "render",
-    DEFAULT_SETTINGS,
-  );
+  const [settings, setSettings] = useRenderSettings();
   useAutoGridSize(setSettings);
 
   useEffect(() => {
