@@ -171,6 +171,7 @@ export function useMirrorWebcam({
           : {
               width: { ideal: 640 },
               height: { ideal: 480 },
+              frameRate: { ideal: settings.targetFps },
               facingMode: "user",
               ...(devicePreferences.cameraId
                 ? { deviceId: { exact: devicePreferences.cameraId } }
@@ -198,6 +199,7 @@ export function useMirrorWebcam({
             : {
                 width: { ideal: 640 },
                 height: { ideal: 480 },
+                frameRate: { ideal: settings.targetFps },
                 facingMode: "user",
               },
           audio: true,
@@ -307,6 +309,7 @@ export function useMirrorWebcam({
         const video = {
           width: { ideal: 640 },
           height: { ideal: 480 },
+          frameRate: { ideal: settings.targetFps },
           facingMode: "user",
         };
         try {
@@ -352,6 +355,7 @@ export function useMirrorWebcam({
     audioOnly,
     isWebcamRunning,
     mediaSource,
+    settings.targetFps,
     streamRef,
     videoRef,
     testPattern.enabled,

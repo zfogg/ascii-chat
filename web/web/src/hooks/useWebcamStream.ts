@@ -1,4 +1,5 @@
 import { AVState } from "../wasm/AVState";
+import { VideoFrameClock } from "../../../packages/shared/src/hooks/videoFrameClock";
 import { useLayoutEffect } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
@@ -397,11 +398,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           );
       }
       const sendInterval = 1000 / settings.targetFps;
+      const mediaClock = new VideoFrameClock();
       const video = videoRef.current;
       let stopped = false;
       let animationFrameId: number | null = null;
-      let lastSentAt = 0;
-      let lastVideoTime = Number.NaN;
       let captureCallbackHandle: number | null = null;
       let frameReader: ReadableStreamDefaultReader<VideoFrame> | null = null;
       const frameVideo = video as
@@ -433,10 +433,15 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
               const { value: frame, done } = await frameReader.read();
               if (done) break;
               try {
-                const now = performance.now();
                 const canvas = canvasRef.current;
                 const context = canvas?.getContext("2d");
-                if (canvas && context && now - lastSentAt >= sendInterval) {
+                // Pace against camera timestamps; callback delivery jitter must
+                // not discard every other frame of a healthy 60 FPS track.
+                if (
+                  canvas &&
+                  context &&
+                  mediaClock.accept(frame.timestamp / 1e6, sendInterval)
+                ) {
                   if (settings.flipX) {
                     context.save();
                     context.translate(canvas.width, 0);
@@ -447,7 +452,6 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                     context.drawImage(frame, 0, 0, canvas.width, canvas.height);
                   }
                   webcamCaptureLoopRef.current?.(false);
-                  lastSentAt = now;
                 }
               } finally {
                 frame.close();
@@ -476,11 +480,13 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           `[Client] Capturing webcam frames directly from the media track, capped at ${settings.targetFps} FPS`,
         );
       } else if (frameVideo?.requestVideoFrameCallback) {
-        const onVideoFrame = (now: number) => {
+        const onVideoFrame = (
+          _now: number,
+          metadata: { mediaTime: number },
+        ) => {
           if (stopped) return;
-          if (now - lastSentAt >= sendInterval) {
+          if (mediaClock.accept(metadata.mediaTime, sendInterval)) {
             webcamCaptureLoopRef.current?.();
-            lastSentAt = now;
           }
           captureCallbackHandle =
             frameVideo.requestVideoFrameCallback!(onVideoFrame);
@@ -491,19 +497,15 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           `[Client] Capturing webcam frames from the media track, capped at ${settings.targetFps} FPS`,
         );
       } else {
-        const pollDecodedFrame = (now: number) => {
+        const pollDecodedFrame = () => {
           if (stopped) return;
           if (video) {
-            const videoTime = video.currentTime;
             if (
               video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
               !video.paused &&
-              videoTime !== lastVideoTime &&
-              now - lastSentAt >= sendInterval
+              mediaClock.accept(video.currentTime, sendInterval)
             ) {
               webcamCaptureLoopRef.current?.();
-              lastVideoTime = videoTime;
-              lastSentAt = now;
             }
           }
           animationFrameId = requestAnimationFrame(pollDecodedFrame);
