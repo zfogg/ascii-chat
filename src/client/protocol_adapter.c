@@ -564,6 +564,7 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   // worker during client initialization would consume file audio while dialing.
   audio_context_t *audio_context = connection->audio_context;
   if (audio_context && audio_context->initialized) {
+    session_capture_set_audio_context(connection->capture_context, audio_context);
     audio_context->capture_media_source = session_capture_get_media_source(connection->capture_context);
     if (audio_start_duplex(audio_context) != ASCIICHAT_OK) {
       log_error("Failed to start full-duplex audio");

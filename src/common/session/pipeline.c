@@ -483,6 +483,10 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
   }
 
   log_debug("[PIPELINE_MAIN] Starting main thread loop");
+  if (keyboard_handler && !GET_OPTION(snapshot_mode)) {
+    asciichat_error_t keyboard_result = keyboard_init();
+    log_debug("Pipeline keyboard initialization: %d", keyboard_result);
+  }
 
   // Snapshot duration is owned by the capture thread. It records the first
   // captured frame and marks capture_finished at its duration limit.

@@ -260,3 +260,5 @@ size_t session_audio_mix_excluding(session_audio_ctx_t *ctx, uint32_t exclude_id
 
 /* Configure a borrowed local source before starting audio. */
 void session_audio_set_capture_source(session_audio_ctx_t *ctx, void *source);
+
+void *session_audio_get_context(session_audio_ctx_t *ctx);

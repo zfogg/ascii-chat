@@ -18,3 +18,8 @@ bool ui_input_expired(uint64_t deadline);
 void ui_input_timeout_report(unsigned seconds, const char *consequence);
 
 asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts);
+
+/** Copy a complete paste event. Invalid/oversized payloads fail without truncation. */
+asciichat_error_t ui_input_take_paste(char *buffer, size_t capacity);
+/** Editable prompt initialized with buffer contents. */
+asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts);

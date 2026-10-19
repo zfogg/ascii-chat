@@ -125,6 +125,16 @@ static acip_transport_t *test_tcp_transport_create_owned(const char *name, socke
 #define acip_tcp_transport_create_owned test_tcp_transport_create_owned
 #define connection_factory_open test_connection_factory_open
 #include "../../../lib/network/connection_factory.c"
+static void test_capture_audio(session_capture_ctx_t *ctx, void *audio) {
+  (void)ctx;
+  (void)audio;
+}
+static void *test_audio_context(session_audio_ctx_t *ctx) {
+  (void)ctx;
+  return NULL;
+}
+#define session_capture_set_audio_context test_capture_audio
+#define session_audio_get_context test_audio_context
 #define session_capture_create test_capture_create
 #define session_capture_destroy test_capture_destroy
 #define session_capture_read_frame test_read_frame

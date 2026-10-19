@@ -27,6 +27,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/ui/frame_buffer.h>
+#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/common/shutdown.h>
 
 /* ============================================================================
  * Session Capture Constants
@@ -50,6 +56,15 @@
 struct session_capture_ctx {
   /** @brief Underlying media source (webcam, file, stdin, test) */
   media_source_t *source;
+  mutex_t source_mutex, load_mutex;
+  bool media_locks_ready, loader_created, loader_done;
+  asciichat_thread_t loader;
+  atomic_t load_cancel;
+  media_source_t *loaded_source;
+  image_t *loaded_frame, *initial_frame;
+  bool initial_frame_pending;
+  char load_path[8192], load_error[512];
+
   face_follow_image_t *face_follow;
   double face_media_position, face_media_tick;
   bool face_media_valid;
@@ -242,6 +257,19 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   // Allocate context
   session_capture_ctx_t *ctx = SAFE_CALLOC(1, sizeof(session_capture_ctx_t), session_capture_ctx_t *);
 
+  if (!ctx)
+    return NULL;
+  if (mutex_init(&ctx->source_mutex, "capture_source") != 0) {
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+  if (mutex_init(&ctx->load_mutex, "capture_load") != 0) {
+    mutex_destroy(&ctx->source_mutex);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+  ctx->media_locks_ready = true;
+
   // Store configuration
   ctx->target_fps = config->target_fps > 0 ? config->target_fps : 60;
   ctx->resize_for_network = config->resize_for_network;
@@ -264,12 +292,20 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     if (existing_error == ASCIICHAT_OK) {
       SET_ERRNO(ERROR_MEDIA_INIT, "Failed to create media source");
     }
+    if (ctx->media_locks_ready) {
+      mutex_destroy(&ctx->load_mutex);
+      mutex_destroy(&ctx->source_mutex);
+    }
     SAFE_FREE(ctx);
     return NULL;
   }
 
   if (media_source_start_video(ctx->source) != ASCIICHAT_OK) {
     media_source_destroy(ctx->source);
+    if (ctx->media_locks_ready) {
+      mutex_destroy(&ctx->load_mutex);
+      mutex_destroy(&ctx->source_mutex);
+    }
     SAFE_FREE(ctx);
     return NULL;
   }
@@ -338,6 +374,10 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   char *tracker_name = SAFE_MALLOC(32, char *);
   if (!tracker_name) {
     media_source_destroy(ctx->source);
+    if (ctx->media_locks_ready) {
+      mutex_destroy(&ctx->load_mutex);
+      mutex_destroy(&ctx->source_mutex);
+    }
     SAFE_FREE(ctx);
     return NULL;
   }
@@ -356,6 +396,26 @@ void session_capture_destroy(session_capture_ctx_t *ctx) {
     return;
   }
 
+  if (ctx->loader_created) {
+    atomic_store_bool(&ctx->load_cancel, true);
+    if (asciichat_thread_join(&ctx->loader, NULL) != 0) {
+      log_error("Cannot join media loader; retaining capture resources");
+      return;
+    }
+    ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
+  }
+  if (ctx->loaded_frame)
+    image_destroy(ctx->loaded_frame);
+  if (ctx->initial_frame)
+    image_destroy(ctx->initial_frame);
+  if (ctx->loaded_source) {
+    media_source_destroy(ctx->loaded_source);
+    ctx->loaded_source = NULL;
+  }
+  if (ctx->media_locks_ready) {
+    mutex_destroy(&ctx->load_mutex);
+    mutex_destroy(&ctx->source_mutex);
+  }
   if (ctx->webcam_source)
     media_source_destroy(ctx->webcam_source);
   if (ctx->last_media_frame)
@@ -384,11 +444,277 @@ void session_capture_destroy(session_capture_ctx_t *ctx) {
  * Session Capture Operations
  * ============================================================================ */
 
-image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
+static bool load_cancelled(void *data) {
+  session_capture_ctx_t *ctx = data;
+  return shutdown_is_requested() || atomic_load_bool(&ctx->load_cancel);
+}
+
+static bool playback_cancelled(void *data) {
+  (void)data;
+  return shutdown_is_requested();
+}
+
+static void render_media_loading(terminal_size_t size, const void *data) {
+  (void)data;
+  frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
+  if (!buffer)
+    return;
+  const char *text = "\033[H\033[2JLoading media...\r\nEsc cancels; current playback continues.";
+  frame_buffer_append(buffer, text, strlen(text));
+  ui_controller_write(STDERR_FILENO, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
+  frame_buffer_destroy(buffer);
+}
+
+static void *load_media_worker(void *data) {
+  session_capture_ctx_t *ctx = data;
+  asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+  media_source_t *source = media_source_create_interruptible(MEDIA_SOURCE_FILE, ctx->load_path, load_cancelled, ctx);
+  if (source) {
+    media_source_set_exit_callback(source, load_cancelled, ctx);
+    media_source_set_loop(source, GET_OPTION(media_loop));
+    if (media_source_start_video(source) != ASCIICHAT_OK) {
+      media_source_destroy(source);
+      source = NULL;
+    }
+  }
+  image_t *first = NULL;
+  if (source && media_source_has_video(source)) {
+    uint64_t deadline = time_get_ns() + 15 * NS_PER_SEC_INT;
+    while (!load_cancelled(ctx) && time_get_ns() < deadline) {
+      asciichat_errno_scope_t read_scope = asciichat_errno_checkpoint();
+      image_t *frame = media_source_read_video(source);
+      if (frame) {
+        first = image_new(frame->w, frame->h);
+        if (first)
+          memcpy(first->pixels, frame->pixels, (size_t)frame->w * frame->h * sizeof(rgb_pixel_t));
+        break;
+      }
+      asciichat_error_context_t read_failure;
+      if (asciichat_errno_peek_since(read_scope, &read_failure) || media_source_at_end(source))
+        break;
+      platform_sleep_ms(1);
+    }
+    if (!first) {
+      media_source_destroy(source);
+      source = NULL;
+    }
+  }
+  asciichat_error_context_t failure;
+  char error[512] = "Could not open media";
+  if (!source && asciichat_errno_peek_since(scope, &failure))
+    snprintf(error, sizeof(error), "%s", failure.context_message);
+  asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  mutex_lock(&ctx->load_mutex);
+  ctx->loaded_source = source;
+  ctx->loaded_frame = first;
+  snprintf(ctx->load_error, sizeof(ctx->load_error), "%s", error);
+  ctx->loader_done = true;
+  mutex_unlock(&ctx->load_mutex);
+  return NULL;
+}
+
+bool session_capture_cancel_open(session_capture_ctx_t *ctx) {
+  if (!ctx || !ctx->media_locks_ready)
+    return false;
+  mutex_lock(&ctx->load_mutex);
+  bool busy = ctx->loader_created;
+  if (busy)
+    atomic_store_bool(&ctx->load_cancel, true);
+  mutex_unlock(&ctx->load_mutex);
+  if (busy)
+    ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
+  return busy;
+}
+
+asciichat_error_t session_capture_open_media(session_capture_ctx_t *ctx, const char *path) {
+  if (!ctx || !ctx->media_locks_ready || !path || strlen(path) >= sizeof(ctx->load_path))
+    return SET_ERRNO(ERROR_INVALID_STATE, "Local capture is unavailable");
+  size_t limit = strstr(path, "://") ? sizeof(((options_t *)0)->media_url) : sizeof(((options_t *)0)->media_file);
+  if (strlen(path) >= limit)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Media path or URL exceeds the configured source limit");
+  mutex_lock(&ctx->load_mutex);
+  if (ctx->loader_created || ctx->loaded_source) {
+    mutex_unlock(&ctx->load_mutex);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Previous media load is still active; Escape cancels loading");
+  }
+  snprintf(ctx->load_path, sizeof(ctx->load_path), "%s", path);
+  ctx->loader_done = false;
+  atomic_store_bool(&ctx->load_cancel, false);
+  if (asciichat_thread_create(&ctx->loader, "media_open", load_media_worker, ctx) != 0) {
+    mutex_unlock(&ctx->load_mutex);
+    return SET_ERRNO(ERROR_THREAD, "Cannot start media loader");
+  }
+  ctx->loader_created = true;
+  mutex_unlock(&ctx->load_mutex);
+  asciichat_error_t result = ui_controller_submit(
+      UI_SCREEN_RENDER_PROGRESS, STDERR_FILENO, (terminal_size_t){.cols = 40, .rows = 4}, render_media_loading, "", 1);
+  if (result != ASCIICHAT_OK)
+    atomic_store_bool(&ctx->load_cancel, true);
+  return result;
+}
+
+/* Only the capture owner commits replacements, between frame reads. */
+static void capture_commit_media(session_capture_ctx_t *ctx) {
+  if (!ctx->media_locks_ready)
+    return;
+  mutex_lock(&ctx->load_mutex);
+  if (!ctx->loader_created || !ctx->loader_done) {
+    mutex_unlock(&ctx->load_mutex);
+    return;
+  }
+  if (asciichat_thread_join(&ctx->loader, NULL) != 0) {
+    mutex_unlock(&ctx->load_mutex);
+    log_error("Cannot join media loader; deferring replacement");
+    return;
+  }
+  char path[8192], failure[512];
+  snprintf(path, sizeof(path), "%s", ctx->load_path);
+  snprintf(failure, sizeof(failure), "%s", ctx->load_error);
+  ctx->loader_created = false;
+  media_source_t *replacement = ctx->loaded_source;
+  ctx->loaded_source = NULL;
+  image_t *first = ctx->loaded_frame;
+  ctx->loaded_frame = NULL;
+  bool cancelled = atomic_load_bool(&ctx->load_cancel);
+  mutex_unlock(&ctx->load_mutex);
+  ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
+  if (cancelled || !replacement) {
+    if (first)
+      image_destroy(first);
+    if (replacement)
+      media_source_destroy(replacement);
+    if (!cancelled)
+      NOTICE(WARNING, "MEDIA COULD NOT BE OPENED", "%s", failure);
+    CLEAR_ERRNO();
+    return;
+  }
+  audio_context_t *audio = ctx->audio_ctx;
+  if (audio && audio_stop_duplex(audio) != ASCIICHAT_OK) {
+    if (first)
+      image_destroy(first);
+    media_source_destroy(replacement);
+    LOG_ERRNO_IF_SET("Cannot stop audio for media replacement");
+    CLEAR_ERRNO();
+    return;
+  }
+  bool has_audio = media_source_has_audio(replacement);
+  media_source_set_exit_callback(replacement, playback_cancelled, ctx);
+  if (audio) {
+    media_source_t *old_audio_source = audio->capture_media_source;
+    bool old_playback_only = audio->playback_only;
+    bool use_media = has_audio && GET_OPTION(audio_capture_source) != AUDIO_CAPTURE_SOURCE_MIC;
+    audio->capture_media_source = use_media ? replacement : NULL;
+    audio->playback_only = !audio_should_enable_microphone(GET_OPTION(audio_capture_source), has_audio);
+    media_source_set_audio_context(replacement, audio);
+    audio_flush_playback_buffers(audio);
+    if (audio->capture_buffer)
+      audio_ring_buffer_clear(audio->capture_buffer);
+    if (audio_start_duplex(audio) != ASCIICHAT_OK) {
+      LOG_ERRNO_IF_SET("Cannot start replacement audio; restoring previous source");
+      CLEAR_ERRNO();
+      if (first)
+        image_destroy(first);
+      if (audio_stop_duplex(audio) != ASCIICHAT_OK) {
+        /* A live worker may still borrow replacement; retain it until teardown. */
+        mutex_lock(&ctx->load_mutex);
+        ctx->loaded_source = replacement;
+        mutex_unlock(&ctx->load_mutex);
+        NOTICE(WARNING, "MEDIA AUDIO", "Could not stop replacement audio");
+        CLEAR_ERRNO();
+        return;
+      }
+      audio->capture_media_source = old_audio_source;
+      audio->playback_only = old_playback_only;
+      media_source_destroy(replacement);
+      if (audio_start_duplex(audio) != ASCIICHAT_OK) {
+        LOG_ERRNO_IF_SET("Cannot restore previous audio");
+        CLEAR_ERRNO();
+      }
+      NOTICE(WARNING, "MEDIA AUDIO", "Could not start replacement audio; previous video retained");
+      CLEAR_ERRNO();
+      return;
+    }
+  }
+  media_source_t *previous = ctx->source;
+  bool was_file = media_source_get_type(previous) == MEDIA_SOURCE_FILE;
+  if (!was_file && !ctx->webcam_source && media_source_uses_webcam(previous)) {
+    ctx->webcam_source = previous;
+    ctx->webcam_attempted = true;
+    previous = NULL;
+  }
+  ctx->source = replacement;
+  if (ctx->initial_frame)
+    image_destroy(ctx->initial_frame);
+  ctx->initial_frame = first;
+  ctx->initial_frame_pending = first != NULL;
+  ctx->file_has_audio = has_audio;
+  ctx->using_file_audio = ctx->file_has_audio;
+  ctx->audio_enabled = audio != NULL;
+  ctx->saved_audio_source = replacement;
+  ctx->non_media_requested = false;
+  atomic_store_bool(&ctx->non_media_active, false);
+  atomic_store_u64(&ctx->toggle_media, 0);
+  if (!was_file) {
+    ctx->saved_matrix = GET_OPTION(matrix_rain);
+    ctx->saved_waveform = GET_OPTION(waveform);
+    ctx->saved_fft = GET_OPTION(fft);
+  }
+  options_set_bool("matrix_rain", false);
+  options_set_bool("waveform", false);
+  options_set_bool("fft", false);
+  ctx->retained_frame_shown = false;
+  if (ctx->last_media_frame)
+    image_destroy(ctx->last_media_frame);
+  ctx->last_media_frame = NULL;
+  face_follow_image_destroy(ctx->face_follow);
+  ctx->face_follow = NULL;
+  ctx->face_media_valid = false;
+  ctx->next_frame_deadline_ns = 0;
+  ctx->frame_count = 0;
+  ctx->start_time_ns = time_get_ns();
+  if (!GET_OPTION(fps_explicitly_set)) {
+    double fps = media_source_get_video_fps(replacement);
+    if (fps >= 0.5 && fps <= UINT32_MAX - 0.5) {
+      ctx->target_fps = (uint32_t)(fps + 0.5);
+      fps_init(&ctx->fps_tracker, (int)ctx->target_fps, ctx->fps_tracker.tracker_name);
+    }
+  }
+  ctx->should_pause_after_first_frame = false;
+  ctx->paused_after_first_frame = false;
+  if (audio) {
+    ctx->saved_audio_source = audio->capture_media_source;
+    ctx->saved_playback_only = audio->playback_only;
+    ctx->saved_monitor_media = audio->monitor_local_media;
+  }
+  if (previous)
+    media_source_destroy(previous);
+  bool url = strstr(path, "://") != NULL;
+  options_set_string("media_url", url ? path : "");
+  options_set_string("media_file", url ? "" : path);
+  options_set_bool("media_from_stdin", false);
+  log_info("Opened media: %s", path);
+  CLEAR_ERRNO();
+}
+
+void session_capture_lock_source(session_capture_ctx_t *ctx) {
+  if (ctx && ctx->media_locks_ready)
+    mutex_lock(&ctx->source_mutex);
+}
+void session_capture_unlock_source(session_capture_ctx_t *ctx) {
+  if (ctx && ctx->media_locks_ready)
+    mutex_unlock(&ctx->source_mutex);
+}
+
+static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
+  capture_commit_media(ctx);
   if (!ctx || !ctx->initialized || !ctx->source) {
     return NULL;
   }
 
+  if (ctx->initial_frame && !ctx->initial_frame_pending) {
+    image_destroy(ctx->initial_frame);
+    ctx->initial_frame = NULL;
+  }
   static uint64_t last_frame_time_ns = 0;
   uint64_t frame_request_time_ns = time_get_ns();
 
@@ -447,14 +773,19 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
         memset(ctx->empty_frame->pixels, 0, 320 * 180 * sizeof(rgb_pixel_t));
     }
   }
-  image_t *frame = alternate ? (ctx->webcam_source ? media_source_read_video(ctx->webcam_source) : ctx->empty_frame)
-                             : media_source_read_video(ctx->source);
+  image_t *frame;
+  if (!alternate && ctx->initial_frame_pending) {
+    frame = ctx->initial_frame;
+    ctx->initial_frame_pending = false;
+  } else {
+    frame = alternate ? (ctx->webcam_source ? media_source_read_video(ctx->webcam_source) : ctx->empty_frame)
+                      : media_source_read_video(ctx->source);
+  }
   if (frame && is_file && !alternate) {
     double now = (double)time_get_ns() / 1e9;
     double position = media_source_get_position(ctx->source);
-    if (ctx->face_media_valid &&
-        (position < ctx->face_media_position - 0.1 ||
-         position > ctx->face_media_position + (now - ctx->face_media_tick) + 0.75)) {
+    if (ctx->face_media_valid && (position < ctx->face_media_position - 0.1 ||
+                                  position > ctx->face_media_position + (now - ctx->face_media_tick) + 0.75)) {
       face_follow_image_destroy(ctx->face_follow);
       ctx->face_follow = NULL;
     }
@@ -533,6 +864,15 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
   return face_follow_image_process(&ctx->face_follow, frame, (double)time_get_ns() / 1e9, GET_OPTION(face_follow),
                                    debug, ctx->resize_for_network ? SESSION_MAX_FRAME_WIDTH : 960,
                                    ctx->resize_for_network ? SESSION_MAX_FRAME_HEIGHT : 720);
+}
+
+image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
+  if (!ctx)
+    return NULL;
+  session_capture_lock_source(ctx);
+  image_t *frame = capture_read_frame(ctx);
+  session_capture_unlock_source(ctx);
+  return frame;
 }
 
 image_t *session_capture_process_for_transmission(session_capture_ctx_t *ctx, image_t *frame) {
@@ -655,7 +995,7 @@ bool session_capture_has_audio(session_capture_ctx_t *ctx) {
   return ctx->audio_enabled;
 }
 
-size_t session_capture_read_audio(session_capture_ctx_t *ctx, float *buffer, size_t num_samples) {
+static size_t capture_read_audio(session_capture_ctx_t *ctx, float *buffer, size_t num_samples) {
   if (!ctx || !ctx->initialized || !buffer || num_samples == 0) {
     return 0;
   }
@@ -678,6 +1018,13 @@ size_t session_capture_read_audio(session_capture_ctx_t *ctx, float *buffer, siz
   }
 
   return 0;
+}
+
+size_t session_capture_read_audio(session_capture_ctx_t *ctx, float *buffer, size_t num_samples) {
+  session_capture_lock_source(ctx);
+  size_t count = capture_read_audio(ctx, buffer, num_samples);
+  session_capture_unlock_source(ctx);
+  return count;
 }
 
 bool session_capture_using_file_audio(session_capture_ctx_t *ctx) {
@@ -703,7 +1050,9 @@ void *session_capture_get_audio_context(session_capture_ctx_t *ctx) {
 
 void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_ctx) {
   if (ctx) {
+    session_capture_lock_source(ctx);
     ctx->audio_ctx = audio_ctx;
+    session_capture_unlock_source(ctx);
   }
 }
 

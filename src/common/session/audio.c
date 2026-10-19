@@ -358,3 +358,7 @@ void session_audio_set_capture_source(session_audio_ctx_t *ctx, void *source) {
   if (ctx && !ctx->running)
     ctx->audio_ctx.capture_media_source = source;
 }
+
+void *session_audio_get_context(session_audio_ctx_t *ctx) {
+  return ctx ? &ctx->audio_ctx : NULL;
+}

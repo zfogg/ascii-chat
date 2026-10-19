@@ -372,3 +372,9 @@ void session_capture_toggle_media(session_capture_ctx_t *ctx);
 bool session_capture_media_active(session_capture_ctx_t *ctx);
 
 void session_capture_redraw_media(session_capture_ctx_t *ctx);
+
+asciichat_error_t session_capture_open_media(session_capture_ctx_t *ctx, const char *path);
+bool session_capture_cancel_open(session_capture_ctx_t *ctx);
+/** Serialize decoder controls with capture-owner replacement. */
+void session_capture_lock_source(session_capture_ctx_t *ctx);
+void session_capture_unlock_source(session_capture_ctx_t *ctx);

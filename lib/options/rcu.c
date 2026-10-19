@@ -1171,6 +1171,8 @@ static void string_field_updater(options_t *opts, void *context) {
     SAFE_STRNCPY(opts->log_file, ctx->value, sizeof(opts->log_file));
   else if (strcmp(ctx->field_name, "media_file") == 0)
     SAFE_STRNCPY(opts->media_file, ctx->value, sizeof(opts->media_file));
+  else if (strcmp(ctx->field_name, "media_url") == 0)
+    SAFE_STRNCPY(opts->media_url, ctx->value, sizeof(opts->media_url));
   else if (strcmp(ctx->field_name, "palette_custom") == 0)
     SAFE_STRNCPY(opts->palette_custom, ctx->value, sizeof(opts->palette_custom));
   else if (strcmp(ctx->field_name, "stun_servers") == 0)
@@ -1205,10 +1207,10 @@ asciichat_error_t options_set_string(const char *field_name, const char *value) 
       strcmp(field_name, "client_keys") != 0 && strcmp(field_name, "discovery_server") != 0 &&
       strcmp(field_name, "discovery_service_key") != 0 && strcmp(field_name, "discovery_database_path") != 0 &&
       strcmp(field_name, "log_file") != 0 && strcmp(field_name, "media_file") != 0 &&
-      strcmp(field_name, "palette_custom") != 0 && strcmp(field_name, "stun_servers") != 0 &&
-      strcmp(field_name, "turn_servers") != 0 && strcmp(field_name, "turn_username") != 0 &&
-      strcmp(field_name, "turn_credential") != 0 && strcmp(field_name, "turn_secret") != 0 &&
-      strcmp(field_name, "session_string") != 0) {
+      strcmp(field_name, "media_url") != 0 && strcmp(field_name, "palette_custom") != 0 &&
+      strcmp(field_name, "stun_servers") != 0 && strcmp(field_name, "turn_servers") != 0 &&
+      strcmp(field_name, "turn_username") != 0 && strcmp(field_name, "turn_credential") != 0 &&
+      strcmp(field_name, "turn_secret") != 0 && strcmp(field_name, "session_string") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown string field: %s", field_name);
     return ERROR_INVALID_PARAM;
   }
@@ -1242,6 +1244,8 @@ asciichat_error_t options_set_string(const char *field_name, const char *value) 
       SAFE_STRNCPY(temp.log_file, value, sizeof(temp.log_file));
     else if (strcmp(field_name, "media_file") == 0)
       SAFE_STRNCPY(temp.media_file, value, sizeof(temp.media_file));
+    else if (strcmp(field_name, "media_url") == 0)
+      SAFE_STRNCPY(temp.media_url, value, sizeof(temp.media_url));
     else if (strcmp(field_name, "palette_custom") == 0)
       SAFE_STRNCPY(temp.palette_custom, value, sizeof(temp.palette_custom));
     else if (strcmp(field_name, "stun_servers") == 0)

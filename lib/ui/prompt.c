@@ -45,7 +45,7 @@ static void render_prompt(terminal_size_t size, const void *data) {
   }
   int cursor_col = 3 + utf8_display_width_n(visible + start, snapshot->cursor - start);
   frame_buffer_printf(buffer, "\033[%d;%dH\033[?25h", row, cursor_col);
-  frame_buffer_flush(buffer);
+  ui_controller_write(STDERR_FILENO, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
   frame_buffer_destroy(buffer);
 }
 

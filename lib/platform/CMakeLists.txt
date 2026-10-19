@@ -2,6 +2,7 @@
 
 set(PLATFORM_SRCS_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/keyboard_edit.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/keyboard_stream.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu.c
     ${CMAKE_CURRENT_SOURCE_DIR}/process_title.c
     ${CMAKE_CURRENT_SOURCE_DIR}/socket.c
@@ -41,6 +42,7 @@ elseif(WIN32)
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/terminal.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/keyboard.c
         ${CMAKE_CURRENT_SOURCE_DIR}/system.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/windows/clipboard.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/system.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/keepawake.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/socket.c
@@ -60,7 +62,7 @@ elseif(WIN32)
         ${CMAKE_SOURCE_DIR}/lib/video/webcam/windows/webcam_mediafoundation.c
     )
     # Link psapi for EnumProcessModules (used in backtrace symbol resolution)
-    set(PLATFORM_LIBS psapi)
+    set(PLATFORM_LIBS psapi user32 shell32)
 elseif(PLATFORM_POSIX)
     set(PLATFORM_SRCS
         ${PLATFORM_SRCS_COMMON}
@@ -88,7 +90,8 @@ elseif(PLATFORM_POSIX)
 
     if(PLATFORM_DARWIN)
         list(APPEND PLATFORM_SRCS
-            ${CMAKE_CURRENT_SOURCE_DIR}/macos/system.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/macos/clipboard.m
+        ${CMAKE_CURRENT_SOURCE_DIR}/macos/system.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/process_title.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/keepawake.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/font.c
@@ -97,7 +100,8 @@ elseif(PLATFORM_POSIX)
         )
     elseif(PLATFORM_LINUX)
         list(APPEND PLATFORM_SRCS
-            ${CMAKE_CURRENT_SOURCE_DIR}/linux/system.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/linux/clipboard.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/linux/system.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/process_title.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/keepawake.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/font.c
@@ -110,3 +114,5 @@ elseif(PLATFORM_POSIX)
 endif()
 
 set(PLATFORM_SRCS ${PLATFORM_SRCS} PARENT_SCOPE)
+
+set(PLATFORM_LIBS ${PLATFORM_LIBS} PARENT_SCOPE)

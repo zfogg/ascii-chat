@@ -501,8 +501,8 @@ static asciichat_error_t controller_start(void) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
-                                       const void *snapshot, size_t bytes) {
+static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
+                                       const void *snapshot, size_t bytes, bool retained_terminal) {
   if (screen < 0 || screen >= UI_SCREEN_COUNT || !render || !snapshot || !bytes || minimum.cols <= 0 ||
       minimum.rows <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI screen snapshot");
@@ -512,6 +512,22 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
     mutex_lock(&g_mutex);
     live = g_screens[screen].render != NULL;
     mutex_unlock(&g_mutex);
+  }
+  // New modal slots inherit the live terminal instead of process stdio, which
+  // an audio/decoder worker can temporarily redirect through LOG_IO.
+  if (!live && !retained_terminal && lifecycle_is_initialized(&g_lifecycle) &&
+      (screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_RENDER_PROGRESS || screen == UI_SCREEN_NOTICE)) {
+    int inherited = -1;
+    mutex_lock(&g_mutex);
+    int active = selected_screen_locked();
+    if (active >= 0 && platform_isatty(g_screens[active].fd))
+      inherited = platform_dup(g_screens[active].fd);
+    mutex_unlock(&g_mutex);
+    if (inherited >= 0) {
+      asciichat_error_t result = submit_screen(screen, inherited, minimum, render, snapshot, bytes, true);
+      platform_close(inherited);
+      return result;
+    }
   }
   // Batch output and finite snapshots retain their synchronous output semantics.
   if ((!live && !platform_isatty(fd)) || (GET_OPTION(snapshot_mode) && screen != UI_SCREEN_RENDER_PROGRESS)) {
@@ -593,6 +609,11 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
   mutex_unlock(&g_mutex);
   release_snapshot(retired);
   return ui_sync_start(fd);
+}
+
+asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
+                                       const void *snapshot, size_t bytes) {
+  return submit_screen(screen, fd, minimum, render, snapshot, bytes, false);
 }
 
 void ui_controller_remove(ui_screen_t screen) {

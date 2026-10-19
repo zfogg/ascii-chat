@@ -5,6 +5,9 @@
  */
 
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/platform/keyboard_stream.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>
@@ -147,6 +150,9 @@ asciichat_error_t keyboard_init(void) {
   // blocking select(). Non-blocking mode is unnecessary and can cause
   // read() to return EAGAIN spuriously.
 
+  keyboard_stream_reset();
+  platform_write_all(STDERR_FILENO, "\033[?2004h", 8);
+
   // Mark as initialized (still under lock-free CAS)
   log_debug("SUCCESS - using %s for keyboard input", use_stdin ? "stdin" : "/dev/tty");
   return ASCIICHAT_OK;
@@ -156,6 +162,9 @@ void keyboard_destroy(void) {
   if (!lifecycle_shutdown(&g_keyboard_lc)) {
     return; // Not initialized or already shutting down
   }
+
+  platform_write_all(STDERR_FILENO, "\033[?2004l", 8);
+  keyboard_stream_reset();
 
   // Restore original terminal settings to prevent corrupting subsequent shell commands
   // This is safe to call at process exit time after all output is complete
@@ -175,268 +184,31 @@ void keyboard_destroy(void) {
   }
 }
 
+static int keyboard_raw_read(void) {
+  int fd = g_tty_fd >= 0 ? g_tty_fd : STDIN_FILENO;
+  fd_set fds;
+  FD_ZERO(&fds);
+  FD_SET(fd, &fds);
+  struct timeval timeout = {0};
+  if (select(fd + 1, &fds, NULL, NULL, &timeout) <= 0)
+    return 0;
+  unsigned char byte;
+  return read(fd, &byte, 1) == 1 ? byte : 0;
+}
+
 keyboard_key_t keyboard_read_nonblocking(void) {
-  // Note: This function works with or without keyboard_init() having been called.
-  // If init failed or wasn't called, we still try to read from stdin or /dev/tty.
-  // The select() and read() calls below are safe to use regardless of init state.
-
-  // Determine which fd to read from: use /dev/tty if available (keyboard_init fallback),
-  // otherwise use stdin
-  int read_fd = (g_tty_fd >= 0) ? g_tty_fd : STDIN_FILENO;
-
-  // Check if input is available using select with zero timeout
-  fd_set readfds;
-  struct timeval timeout;
-
-  FD_ZERO(&readfds);
-  FD_SET(read_fd, &readfds);
-
-  timeout.tv_sec = 0;
-  timeout.tv_usec = 0;
-
-  int select_result = select(read_fd + 1, &readfds, NULL, NULL, &timeout);
-  log_dev_every(5 * NS_PER_SEC_INT, "select fd=%d result=%d, tty_fd=%d", read_fd, select_result, g_tty_fd);
-  if (select_result <= 0) {
-    return KEY_NONE; // No input available or error
-  }
-
-  // Input is available, read one byte
-  unsigned char ch;
-  ssize_t n = read(read_fd, &ch, 1);
-  if (n <= 0) {
-    // EOF is normal for redirected stdin. A paused session can poll this path
-    // every millisecond; do not turn absent input into a stream of warnings.
-    if (n < 0 && errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
-      log_warn_every(US_PER_SEC_INT, "read() failed, errno=%d", errno);
-    }
-    return KEY_NONE;
-  }
-
-  // Handle special characters first
-  if (ch == ' ') {
-    return KEY_SPACE;
-  }
-  if (ch == 27) { // ESC - might be start of escape sequence
-    // Try to read escape sequence for arrow keys
-    // Sequences: ESC[A (up), ESC[B (down), ESC[C (right), ESC[D (left)
-
-    // Check if there's more data available
-    FD_ZERO(&readfds);
-    FD_SET(read_fd, &readfds);
-    timeout.tv_sec = 0;
-    timeout.tv_usec =
-        (suseconds_t)((KEYBOARD_ESCAPE_TIMEOUT_NS % NS_PER_SEC_INT) / 1000); // 50ms escape sequence timeout
-
-    if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-      unsigned char ch2;
-      if (read(read_fd, &ch2, 1) > 0) {
-        if (ch2 == '[') {
-          // Might be an arrow key or function key sequence
-          if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-            unsigned char ch3;
-            if (read(read_fd, &ch3, 1) > 0) {
-              switch (ch3) {
-              case 'A':
-                return KEY_UP;
-              case 'B':
-                return KEY_DOWN;
-              case 'C':
-                return KEY_RIGHT;
-              case 'D':
-                return KEY_LEFT;
-              case 'H':
-                // Home key (some terminals send ESC [ H instead of ESC [ 1 ~)
-                return 261; // KEY_HOME
-              case 'F':
-                // End key (some terminals send ESC [ F instead of ESC [ 4 ~)
-                return 262; // KEY_END
-              case '1':
-                // Home key sends ESC [ 1 ~
-                if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-                  unsigned char ch4;
-                  if (read(read_fd, &ch4, 1) > 0) {
-                    // ch4 should be '~', consume it
-                  }
-                }
-                return 261; // KEY_HOME
-              case '2':
-                // Insert/Ctrl+Delete sends ESC [ 2 ~
-                if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-                  unsigned char ch4;
-                  if (read(read_fd, &ch4, 1) > 0) {
-                    // ch4 should be '~', consume it
-                  }
-                }
-                return 263; // KEY_CTRL_DELETE
-              case '3':
-                // Delete key sends ESC [ 3 ~
-                if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-                  unsigned char ch4;
-                  if (read(read_fd, &ch4, 1) > 0) {
-                    // ch4 should be '~', consume it
-                  }
-                }
-                return 260; // KEY_DELETE
-              case '4':
-                // End key sends ESC [ 4 ~
-                if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-                  unsigned char ch4;
-                  if (read(read_fd, &ch4, 1) > 0) {
-                    // ch4 should be '~', consume it
-                  }
-                }
-                return 262; // KEY_END
-              default:
-                // Unknown escape sequence - consume any trailing ~ to avoid leaving it in buffer
-                if (ch3 >= '0' && ch3 <= '9') {
-                  // Other function key sequences - just consume the trailing ~
-                  if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-                    unsigned char ch4;
-                    read(read_fd, &ch4, 1); // Just consume it
-                  }
-                }
-                return KEY_NONE;
-              }
-            }
-          }
-        } else {
-          // ESC followed by something other than [ (like Ctrl+number sending ESC+digit)
-          // Ignore the sequence and return KEY_NONE
-          return KEY_NONE;
-        }
-      }
-    }
-
-    return KEY_ESCAPE;
-  }
-
-  // Return regular ASCII character (including control characters 0-31, printable 32-126)
-  return (keyboard_key_t)ch;
+  return keyboard_stream_read(keyboard_raw_read);
 }
 
 keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
-  // Note: This function works with or without keyboard_init() having been called.
-  // If init failed or wasn't called, we still try to read from stdin or /dev/tty.
-  // The select() and read() calls below are safe to use regardless of init state.
-
-  // Determine which fd to read from: use /dev/tty if available (keyboard_init fallback),
-  // otherwise use stdin
-  int read_fd = (g_tty_fd >= 0) ? g_tty_fd : STDIN_FILENO;
-
-  // Wait for input with timeout
-  fd_set readfds;
-  struct timeval timeout;
-
-  FD_ZERO(&readfds);
-  FD_SET(read_fd, &readfds);
-
-  timeout.tv_sec = timeout_ms / 1000;
-  timeout.tv_usec = (timeout_ms % 1000) * 1000;
-
-  int select_result = select(read_fd + 1, &readfds, NULL, NULL, &timeout);
-  if (select_result <= 0) {
-    return KEY_NONE; // Timeout or error
-  }
-
-  // Input is available, read it (reuse the same logic as nonblocking)
-  unsigned char ch;
-  ssize_t n = read(read_fd, &ch, 1);
-  if (n <= 0) {
-    return KEY_NONE;
-  }
-
-  // Handle special characters
-  if (ch == ' ') {
-    return KEY_SPACE;
-  }
-  if (ch == 27) { // ESC
-    FD_ZERO(&readfds);
-    FD_SET(read_fd, &readfds);
-    timeout.tv_sec = 0;
-    timeout.tv_usec = (KEYBOARD_ESCAPE_TIMEOUT_NS % NS_PER_SEC_INT) / 1000;
-
-    if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-      unsigned char ch2;
-      if (read(read_fd, &ch2, 1) > 0) {
-        if (ch2 == '[') {
-          if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-            unsigned char ch3;
-            if (read(read_fd, &ch3, 1) > 0) {
-              switch (ch3) {
-              case 'A':
-                return KEY_UP;
-              case 'B':
-                return KEY_DOWN;
-              case 'C':
-                return KEY_RIGHT;
-              case 'D':
-                return KEY_LEFT;
-              case 'H':
-                // Home key (some terminals send ESC [ H instead of ESC [ 1 ~)
-                return 261; // KEY_HOME
-              case 'F':
-                // End key (some terminals send ESC [ F instead of ESC [ 4 ~)
-                return 262; // KEY_END
-              case '1':
-                // Home key sends ESC [ 1 ~
-                if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-                  unsigned char ch4;
-                  if (read(read_fd, &ch4, 1) > 0) {
-                    // ch4 should be '~', consume it
-                  }
-                }
-                return 261; // KEY_HOME
-              case '2':
-                // Insert/Ctrl+Delete sends ESC [ 2 ~
-                if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-                  unsigned char ch4;
-                  if (read(read_fd, &ch4, 1) > 0) {
-                    // ch4 should be '~', consume it
-                  }
-                }
-                return 263; // KEY_CTRL_DELETE
-              case '3':
-                // Delete key sends ESC [ 3 ~
-                if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-                  unsigned char ch4;
-                  if (read(read_fd, &ch4, 1) > 0) {
-                    // ch4 should be '~', consume it
-                  }
-                }
-                return 260; // KEY_DELETE
-              case '4':
-                // End key sends ESC [ 4 ~
-                if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-                  unsigned char ch4;
-                  if (read(read_fd, &ch4, 1) > 0) {
-                    // ch4 should be '~', consume it
-                  }
-                }
-                return 262; // KEY_END
-              default:
-                // Unknown escape sequence - consume any trailing ~ to avoid leaving it in buffer
-                if (ch3 >= '0' && ch3 <= '9') {
-                  // Other function key sequences - just consume the trailing ~
-                  if (select(read_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-                    unsigned char ch4;
-                    read(read_fd, &ch4, 1); // Just consume it
-                  }
-                }
-                return KEY_NONE;
-              }
-            }
-          }
-        } else {
-          // ESC followed by something other than [
-          // Ignore the sequence and return KEY_NONE
-          return KEY_NONE;
-        }
-      }
-    }
-    return KEY_ESCAPE;
-  }
-
-  return (keyboard_key_t)ch;
+  uint64_t deadline = time_get_ns() + (uint64_t)timeout_ms * NS_PER_MS_INT;
+  do {
+    keyboard_key_t key = keyboard_read_nonblocking();
+    if (key != KEY_NONE || timeout_ms == 0)
+      return key;
+    platform_sleep_ns(NS_PER_MS_INT);
+  } while (time_get_ns() < deadline);
+  return KEY_NONE;
 }
 
 /* ============================================================================

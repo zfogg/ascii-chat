@@ -1,10 +1,13 @@
 /**
  * @file platform/windows/keyboard.c
- * @brief Windows keyboard input implementation using _kbhit() and _getch()
+ * @brief Windows keyboard input implementation using Unicode console events
  * @ingroup platform
  */
 
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/platform/keyboard_stream.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/lifecycle.h>
@@ -58,8 +61,8 @@ asciichat_error_t keyboard_init(void) {
   //          no echo (no ENABLE_ECHO_INPUT)
   //          but keep ENABLE_PROCESSED_INPUT to handle Ctrl+C
   DWORD new_mode = g_original_console_mode;
-  new_mode &= ~ENABLE_LINE_INPUT; // Disable line buffering
-  new_mode &= ~ENABLE_ECHO_INPUT; // Disable echo
+  new_mode &= ~(DWORD)ENABLE_LINE_INPUT; // Disable line buffering
+  new_mode &= ~(DWORD)ENABLE_ECHO_INPUT; // Disable echo
   // Keep ENABLE_PROCESSED_INPUT for Ctrl+C signal handling
 
   if (!SetConsoleMode(g_console_input, new_mode)) {
@@ -67,6 +70,9 @@ asciichat_error_t keyboard_init(void) {
     return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to set console mode");
   }
 
+  keyboard_stream_reset();
+  log_debug("Windows keyboard initialized: console=%p", g_console_input);
+  platform_write_all(STDERR_FILENO, "\033[?2004h", 8);
   return ASCIICHAT_OK;
 }
 
@@ -75,6 +81,8 @@ void keyboard_destroy(void) {
     return; // Not initialized
   }
 
+  platform_write_all(STDERR_FILENO, "\033[?2004l", 8);
+  keyboard_stream_reset();
   // Restore console mode
   if (g_console_input != NULL && g_console_input != INVALID_HANDLE_VALUE) {
     if (!SetConsoleMode(g_console_input, g_original_console_mode)) {
@@ -83,104 +91,85 @@ void keyboard_destroy(void) {
   }
 }
 
+static int keyboard_raw_read(void) {
+  static unsigned char utf8[4];
+  static int next, count;
+  static wchar_t high;
+  static KEY_EVENT_RECORD repeated;
+  if (next < count)
+    return utf8[next++];
+  if (!lifecycle_is_initialized(&g_keyboard_lc))
+    return 0;
+  for (unsigned attempt = 0; attempt < 64; ++attempt) {
+    KEY_EVENT_RECORD key;
+    if (repeated.wRepeatCount) {
+      key = repeated;
+      --repeated.wRepeatCount;
+    } else {
+      DWORD available = 0, read = 0;
+      INPUT_RECORD event;
+      if (!GetNumberOfConsoleInputEvents(g_console_input, &available) || !available ||
+          !ReadConsoleInputW(g_console_input, &event, 1, &read) || !read)
+        return 0;
+      if (event.EventType != KEY_EVENT || !event.Event.KeyEvent.bKeyDown)
+        continue;
+      key = event.Event.KeyEvent;
+      repeated = key;
+      repeated.wRepeatCount = key.wRepeatCount > 0 ? (WORD)(key.wRepeatCount - 1) : 0;
+    }
+    wchar_t ch = key.uChar.UnicodeChar;
+    if (!ch) {
+      switch (key.wVirtualKeyCode) {
+      case VK_UP:
+        return KEY_UP;
+      case VK_DOWN:
+        return KEY_DOWN;
+      case VK_LEFT:
+        return KEY_LEFT;
+      case VK_RIGHT:
+        return KEY_RIGHT;
+      case VK_DELETE:
+        return key.dwControlKeyState & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED) ? KEY_CTRL_DELETE : KEY_DELETE;
+      case VK_HOME:
+        return KEY_HOME;
+      case VK_END:
+        return KEY_END;
+      default:
+        continue;
+      }
+    }
+    if (ch >= 0xd800 && ch <= 0xdbff) {
+      high = ch;
+      continue;
+    }
+    wchar_t wide[2] = {ch, 0};
+    int length = 1;
+    if (high) {
+      wide[0] = high;
+      wide[1] = ch;
+      length = 2;
+      high = 0;
+    }
+    count = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wide, length, (char *)utf8, 4, NULL, NULL);
+    next = 0;
+    if (count > 0)
+      return utf8[next++];
+  }
+  return 0;
+}
+
 keyboard_key_t keyboard_read_nonblocking(void) {
-  // Check if keyboard is initialized with reference counting
-  bool is_initialized = lifecycle_is_initialized(&g_keyboard_lc);
-
-  if (!is_initialized) {
-    return KEY_NONE;
-  }
-
-  // Check if input is available using _kbhit
-  if (!_kbhit()) {
-    return KEY_NONE;
-  }
-
-  // Input is available, read it
-  int ch = _getch();
-  if (ch < 0) {
-    return KEY_NONE;
-  }
-
-  // Handle special characters
-  if (ch == ' ') {
-    return KEY_SPACE;
-  }
-  if (ch == 27) {
-    return KEY_ESCAPE;
-  }
-
-  // Handle Windows extended key codes (0xE0 or 0x00 prefix)
-  if (ch == 0xE0 || ch == 0x00) {
-    // Extended key code - read the actual key
-    if (!_kbhit()) {
-      return KEY_NONE; // Not enough data
-    }
-
-    int extended = _getch();
-    if (extended < 0) {
-      return KEY_NONE;
-    }
-
-    // Map extended key codes to arrow keys
-    switch (extended) {
-    case 72: // Up arrow
-      return KEY_UP;
-    case 80: // Down arrow
-      return KEY_DOWN;
-    case 75: // Left arrow
-      return KEY_LEFT;
-    case 77: // Right arrow
-      return KEY_RIGHT;
-    case 83:
-      return KEY_DELETE;
-    case 71:
-      return KEY_HOME;
-    case 79:
-      return KEY_END;
-    default:
-      // Unknown extended key
-      return KEY_NONE;
-    }
-  }
-
-  // Return regular ASCII character (including control characters 1-31, printable 32-126)
-  return (keyboard_key_t)ch;
+  return keyboard_stream_read(keyboard_raw_read);
 }
 
 keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
-  // Check if keyboard is initialized
-  bool is_initialized = lifecycle_is_initialized(&g_keyboard_lc);
-
-  if (!is_initialized) {
-    return KEY_NONE;
-  }
-
-  // Zero timeout: non-blocking
-  if (timeout_ms == 0) {
-    return keyboard_read_nonblocking();
-  }
-
-  // Poll _kbhit() at 10ms intervals until input or timeout.
-  // WaitForSingleObject on console input handles is unreliable when
-  // console mode has been reconfigured, so polling is the robust approach.
-  uint32_t elapsed = 0;
-  const uint32_t poll_interval = 10;
-
-  while (elapsed < timeout_ms) {
-    if (_kbhit()) {
-      return keyboard_read_nonblocking();
-    }
-    uint32_t sleep_time = (timeout_ms - elapsed < poll_interval) ? (timeout_ms - elapsed) : poll_interval;
-    Sleep(sleep_time);
-    elapsed += sleep_time;
-  }
-
-  // Final check after timeout
-  if (_kbhit()) {
-    return keyboard_read_nonblocking();
-  }
-
+  uint64_t deadline = time_get_ns() + (uint64_t)timeout_ms * NS_PER_MS_INT;
+  do {
+    keyboard_key_t key = keyboard_read_nonblocking();
+    if (key != KEY_NONE || timeout_ms == 0)
+      return key;
+    platform_sleep_ns(NS_PER_MS_INT);
+  } while (time_get_ns() < deadline);
   return KEY_NONE;
 }
 

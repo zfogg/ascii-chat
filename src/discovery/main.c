@@ -567,6 +567,7 @@ role_dispatch:
         if (result != ASCIICHAT_OK)
           goto media_cleanup;
         receiver.audio = &audio;
+        session_capture_set_audio_context(capture, &audio);
         media_source_t *local_source = (media_source_t *)session_capture_get_media_source(capture);
         bool has_media_audio = media_source_has_audio(local_source);
         audio.capture_media_source = local_source;
@@ -669,6 +670,7 @@ role_dispatch:
           platform_sleep_ns(interval - elapsed);
       }
     media_cleanup:
+      session_capture_set_audio_context(capture, NULL);
       /* These workers borrow stack audio/display state. Retain it and retry a
        * failed join before returning to the application/media cleanup. */
       while (session_connection_stop(&receiver.connection) != ASCIICHAT_OK) {
