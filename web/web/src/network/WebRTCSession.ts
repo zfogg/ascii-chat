@@ -393,7 +393,7 @@ export class WebRTCSession implements ClientSession {
             this.fail(error);
           }
         },
-        (error) => this.fail(error),
+        () => this.waitForSuccessor(),
         this.peer?.sctp?.maxMessageSize,
       );
       try {
@@ -405,12 +405,9 @@ export class WebRTCSession implements ClientSession {
     channel.onclose = () => {
       if (!this.closed) this.waitForSuccessor();
     };
-    channel.onerror = (event) =>
-      this.fail(
-        new Error(
-          `WebRTC DataChannel failed: ${(event as RTCErrorEvent).error?.message || "unknown SCTP error"}`,
-        ),
-      );
+    channel.onerror = () => {
+      if (!this.closed) this.waitForSuccessor();
+    };
     const offer = await this.peer.createOffer();
     await this.peer.setLocalDescription(offer);
     if (this.closed) return;
@@ -459,6 +456,7 @@ export class WebRTCSession implements ClientSession {
   }
   private waitForSuccessor(): void {
     if (this.closed || this.promoted) return;
+    this.setState(ConnectionState.CONNECTING);
     this.options.onProgress?.(
       "Host disconnected — waiting for elected successor",
     );

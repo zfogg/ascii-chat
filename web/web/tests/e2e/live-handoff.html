@@ -1,0 +1,150 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Live browser host failover</title>
+    <style>
+      body {
+        background: #10151d;
+        color: #e2e8f0;
+        font: 17px system-ui;
+        margin: 24px;
+      }
+      button {
+        font: inherit;
+        padding: 12px;
+        background: #dc3545;
+        color: white;
+        border: 0;
+        border-radius: 5px;
+      }
+      #peers {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      iframe {
+        width: 100%;
+        height: 420px;
+        border: 1px solid #567;
+      }
+      pre {
+        white-space: pre-wrap;
+      }
+      h2 {
+        font-size: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Live host failover</h1>
+    <p>
+      Three real browser peers, real ACDS signaling, WebRTC, and C/WASM media.
+      The moving ASCII below is received over live connections.
+    </p>
+    <p id="status">Starting session…</p>
+    <button id="kill" disabled>Kill host browser context</button>
+    <pre id="metrics"></pre>
+    <div id="peers"></div>
+    <script type="module">
+      const status = document.querySelector("#status"),
+        kill = document.querySelector("#kill"),
+        metrics = document.querySelector("#metrics");
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const wait = async (fn, ms = 45000) => {
+        let end = Date.now() + ms;
+        while (Date.now() < end) {
+          if (await fn()) return;
+          await sleep(100);
+        }
+        throw Error("Timed out");
+      };
+      async function peer(label) {
+        const el = document.createElement("section");
+        el.innerHTML = "<h2>" + label + "</h2>";
+        const iframe = document.createElement("iframe");
+        iframe.src = "/tests/e2e/handoff-probe.html";
+        el.append(iframe);
+        document.querySelector("#peers").append(el);
+        await wait(() => iframe.contentWindow?.handoffProbe);
+        return {
+          iframe,
+          el,
+          get p() {
+            return iframe.contentWindow.handoffProbe;
+          },
+        };
+      }
+      try {
+        status.textContent = "Waiting for local discovery service…";
+        await wait(
+          () =>
+            new Promise((resolve) => {
+              const s = new WebSocket("ws://127.0.0.1:28101", "acip");
+              s.onopen = () => {
+                s.close();
+                resolve(true);
+              };
+              s.onerror = () => resolve(false);
+            }),
+          300000,
+        );
+        const host = await peer("Original host"),
+          a = await peer("Participant A"),
+          b = await peer("Participant B");
+        status.textContent = "Creating browser host…";
+        await host.p.start(true, "", "ws://127.0.0.1:28101");
+        await wait(() => host.p.name);
+        const name = host.p.name;
+        status.textContent = "Joining participant A…";
+        await a.p.start(false, name, "ws://127.0.0.1:28101");
+        status.textContent = "Joining participant B…";
+        await b.p.start(false, name, "ws://127.0.0.1:28101");
+        let killed = false,
+          baseline = [0, 0],
+          recovered = false;
+        setInterval(() => {
+          metrics.textContent = `Session: ${name}\nA: frames=${a.p.frames}, changing images=${a.p.unique}, migrations=${a.p.migrations}, ${a.p.status}\nB: frames=${b.p.frames}, changing images=${b.p.unique}, migrations=${b.p.migrations}, ${b.p.status}`;
+          if (
+            killed &&
+            !recovered &&
+            a.p.migrations &&
+            b.p.migrations &&
+            a.p.unique > baseline[0] + 5 &&
+            b.p.unique > baseline[1] + 5
+          ) {
+            recovered = true;
+            status.textContent =
+              "RECOVERED: both surviving peers received new changing images after electing the successor. This session remains live.";
+          }
+        }, 250);
+        await wait(
+          () =>
+            a.p.unique >= 10 &&
+            b.p.unique >= 10 &&
+            (a.p.status.startsWith("Successor prepared:") ||
+              b.p.status.startsWith("Successor prepared:")),
+        );
+        status.textContent =
+          "Live video is flowing. A successor is prepared. Click Kill host to trigger failover.";
+        kill.disabled = false;
+        kill.onclick = () => {
+          baseline = [a.p.unique, b.p.unique];
+          host.iframe.remove();
+          host.el.innerHTML =
+            "<h2>Original host — killed</h2><p>Browser context removed; signaling and media connections closed.</p>";
+          killed = true;
+          kill.disabled = true;
+          status.textContent =
+            "Host context killed. Waiting for successor election and fresh media…";
+        };
+        if (new URLSearchParams(location.search).has("auto")) {
+          status.textContent =
+            "Live video is flowing. The host will be killed automatically in 12 seconds…";
+          setTimeout(() => kill.click(), 12000);
+        }
+      } catch (e) {
+        status.textContent = "ERROR: " + e.stack;
+      }
+    </script>
+  </body>
+</html>
