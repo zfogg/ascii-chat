@@ -31,7 +31,8 @@ describe("browser host worker backpressure", () => {
   it("keeps only the newest waiting raw frame and cancels it on stream control", async () => {
     const { runtime, ready, sent, worker } = setup();
     await ready;
-    const id = runtime.addClient();
+    const id = runtime.addClient(true);
+    expect(sent.at(-1)).toEqual({ kind: "add", id, local: true });
     for (const value of [1, 2, 3])
       runtime.receive(id, PacketType.IMAGE_FRAME, new Uint8Array([value]));
     expect(sent.filter((m) => m.kind === "receive")).toHaveLength(1);
