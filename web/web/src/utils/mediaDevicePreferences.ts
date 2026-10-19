@@ -84,7 +84,7 @@ export async function resolveCameraDeviceId({
   cameras?: readonly MediaDeviceInfo[];
   search?: string;
 } = {}): Promise<string> {
-  if (selectedCameraId) return selectedCameraId;
+  if (selectedCameraId !== undefined) return selectedCameraId;
   const params = new URLSearchParams(search);
   const queryCameraId = params.get("cameraId");
   if (queryCameraId) return queryCameraId;
@@ -114,7 +114,7 @@ export async function resolveCameraDeviceId({
 
   if (cameraIndex === null) {
     const storedCameraId = getStoredMediaDevicePreferences().cameraId;
-    if (storedCameraId) return storedCameraId;
+    return storedCameraId;
   }
 
   const choices =

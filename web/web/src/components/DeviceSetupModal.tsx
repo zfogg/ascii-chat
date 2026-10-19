@@ -9,7 +9,7 @@ import { useCameraExposure } from "../hooks/useCameraExposure";
 import { cameraRateStore } from "../../../packages/shared/src/capture/cameraRate";
 import { supportsFastExposure } from "../utils/cameraExposure";
 import { useUrlState } from "../hooks/useUrlState";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Modal, ModalTitle } from "./Modal";
 import { acquireCameraPreview } from "../utils/acquireCameraPreview";
 import {
@@ -134,6 +134,12 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
   const [audioReady, setAudioReady] = useState(false);
   const [audioRunning, setAudioRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshedAt, setRefreshedAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (refreshedAt === null) return;
+    const timer = window.setTimeout(() => setRefreshedAt(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [refreshedAt]);
   const [loading, setLoading] = useState({
     cameraId: false,
     microphoneId: false,
@@ -158,26 +164,13 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
 
   const refreshDevices = useCallback(async () => {
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const defaultMicrophone = devices.find(
-      (device) => device.kind === "audioinput" && device.deviceId === "default",
-    );
     const microphones = deduplicateDefaultDevice(
       devices.filter((device) => device.kind === "audioinput"),
     );
     const nextChoices = {
       cameras: devices.filter((device) => device.kind === "videoinput"),
       microphones,
-      defaultMicrophoneId:
-        microphones.find(
-          (device) =>
-            defaultMicrophone &&
-            ((defaultMicrophone.groupId &&
-              device.groupId === defaultMicrophone.groupId) ||
-              getComparableDeviceLabel(device.label) ===
-                getComparableDeviceLabel(defaultMicrophone.label)),
-        )?.deviceId ||
-        microphones[0]?.deviceId ||
-        "",
+      defaultMicrophoneId: "",
       speakers: deduplicateDefaultDevice(
         devices.filter((device) => device.kind === "audiooutput"),
         true,
@@ -314,8 +307,8 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
               });
               if (!isCurrent()) return;
             }
-            setPreferences((current) => ({ ...current, [key]: deviceId }));
             requestedDefault = !deviceId;
+            setPreferences((current) => ({ ...current, [key]: deviceId }));
             const constraints = deviceId
               ? { deviceId: { exact: deviceId } }
               : true;
@@ -331,7 +324,8 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
             }
             deviceId =
               stream.getTracks()[0]?.getSettings().deviceId || deviceId;
-            setPreferences((current) => ({ ...current, [key]: deviceId }));
+            if (!requestedDefault)
+              setPreferences((current) => ({ ...current, [key]: deviceId }));
             setUnavailableDevices((current) => {
               const next = { ...current };
               delete next[`${key}:${deviceId}`];
@@ -401,7 +395,6 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
                 (isCamera
                   ? revealedDevices.cameras[0]?.deviceId
                   : revealedDevices.defaultMicrophoneId) || "";
-              setPreferences((current) => ({ ...current, [key]: deviceId }));
             }
             const message = describeDeviceError(cause);
             setDeviceErrors((current) => ({ ...current, [key]: message }));
@@ -623,16 +616,18 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
             Preview stays local to this browser.
           </p>
           <button
-            className="mt-3 text-xs underline"
+            className={`mt-3 text-xs underline ${refreshedAt !== null ? "text-terminal-2" : ""}`}
             onClick={() => {
               setUnavailableDevices({});
-              void refreshDevices().catch((cause: unknown) =>
-                setError(describeDeviceError(cause)),
+              setRefreshedAt(null);
+              void refreshDevices().then(
+                () => setRefreshedAt(Date.now()),
+                (cause: unknown) => setError(describeDeviceError(cause)),
               );
             }}
             type="button"
           >
-            Refresh device list
+            {refreshedAt !== null ? "Refreshed!" : "Refresh device list"}
           </button>
         </div>
 
@@ -651,6 +646,9 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
                 }
                 value={preferences.cameraId}
               >
+                {choices.cameras.length > 0 && (
+                  <option value="">System default</option>
+                )}
                 {choices.cameras.length === 0 && (
                   <option value="">No cameras found</option>
                 )}
@@ -814,6 +812,9 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
                 }
                 value={preferences.microphoneId}
               >
+                {choices.microphones.length > 0 && (
+                  <option value="">System default</option>
+                )}
                 {choices.microphones.length === 0 && (
                   <option value="">No microphones found</option>
                 )}
