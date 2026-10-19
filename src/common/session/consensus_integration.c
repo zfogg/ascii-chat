@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 /**
  * @file session/consensus_integration.c
  * @brief Integration helpers for session consensus in discovery mode
@@ -97,22 +98,7 @@ static asciichat_error_t consensus_get_metrics(void *context, const uint8_t my_i
   // 4. Send STUN probes and count success rate
   // 5. Get public address from detected NAT result
 
-  // Placeholder with dummy metrics
-  memcpy(out_metrics->participant_id, my_id, 16);
-  out_metrics->nat_tier = 1;               // Public NAT
-  out_metrics->upload_kbps = htonl(50000); // 50 Mbps
-  out_metrics->rtt_ns = htonl(25000000);   // 25ms
-  out_metrics->stun_probe_success_pct = 95;
-  SAFE_STRNCPY(out_metrics->public_address, "203.0.113.42", sizeof(out_metrics->public_address));
-  out_metrics->public_port = htons(54321);
-  out_metrics->connection_type = 0; // Direct connection
-  out_metrics->measurement_time_ns = htonll(time_get_ns());
-  out_metrics->measurement_window_ns = htonll(5000000000ULL); // 5 second measurement window
-
-  log_debug("Consensus measured metrics: NAT tier=%d, upload=%u Kbps, RTT=%u ns", out_metrics->nat_tier,
-            ntohl(out_metrics->upload_kbps), ntohl(out_metrics->rtt_ns));
-
-  return ASCIICHAT_OK;
+  return consensus_metrics_measure(my_id, out_metrics);
 }
 
 /**
@@ -150,22 +136,23 @@ asciichat_error_t consensus_get_discovery_callbacks(void *context, session_conse
  *
  * @param session_id Session identifier (16 bytes)
  * @param my_id My participant identifier (16 bytes)
- * @param participant_ids Array of all participant IDs (up to 64)
+ * @param participant_ids Array of all participant IDs (up to 128)
  * @param num_participants Count of participants
  * @param discovery_context Mode-specific context (e.g., discovery_session_t)
  * @param out_consensus Output: Created consensus handle
  * @return ASCIICHAT_OK on success
  */
 asciichat_error_t consensus_create_for_discovery(const uint8_t session_id[16], const uint8_t my_id[16],
-                                                 const uint8_t participant_ids[64][16], int num_participants,
-                                                 void *discovery_context, session_consensus_t **out_consensus) {
+                                                 const uint8_t participant_ids[PARTICIPANT_LIMIT][16],
+                                                 int num_participants, void *discovery_context,
+                                                 session_consensus_t **out_consensus) {
   (void)session_id; // Informational only, not needed by consensus itself
 
   if (!my_id || !participant_ids || !discovery_context || !out_consensus) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  if (num_participants < 1 || num_participants > 64) {
+  if (num_participants < 1 || num_participants > PARTICIPANT_LIMIT) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant count: %d", num_participants);
   }
 

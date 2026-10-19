@@ -61,11 +61,12 @@ typedef struct consensus_metrics_collection consensus_metrics_collection_t;
  *
  * Collects all metrics needed for host selection:
  * - NAT tier from detected NAT type (0-4)
- * - Bandwidth estimate (default 50 Mbps if not available)
- * - RTT from keepalive pings (default 25ms if not available)
+ * - Session-supplied measured bandwidth
+ * - Matched-probe RTT when available
  * - STUN probe success rate by sending 10 probes
  *
- * The measurement includes the participant's UUID and timestamps.
+ * Without a session provider this returns ERROR_INVALID_STATE with an empty
+ * observation. Missing data must not be scored as a favorable default.
  *
  * @param my_id Participant UUID (16 bytes)
  * @param out_metrics Output metrics structure (caller-allocated)

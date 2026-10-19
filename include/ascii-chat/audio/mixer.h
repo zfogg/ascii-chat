@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 #pragma once
 
 /**
@@ -101,7 +102,7 @@ extern "C" {
  *
  * @ingroup audio
  */
-#define MIXER_MAX_SOURCES 32 // Increased to match MAX_CLIENTS
+#define MIXER_MAX_SOURCES PARTICIPANT_LIMIT // Increased to match MAX_CLIENTS
 
 /**
  * @brief Number of samples processed per audio frame

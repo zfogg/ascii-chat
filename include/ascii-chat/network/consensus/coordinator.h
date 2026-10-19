@@ -182,3 +182,7 @@ uint64_t consensus_coordinator_time_until_next_round(const consensus_coordinator
  * @return Number of metrics collected, or -1 if invalid
  */
 int consensus_coordinator_get_metrics_count(const consensus_coordinator_t *coordinator);
+
+/** Session-owned observations; this callback must not perform blocking I/O. */
+typedef asciichat_error_t (*consensus_metrics_provider_fn)(void *, const uint8_t[16], participant_metrics_t *);
+void consensus_coordinator_set_metrics_provider(consensus_coordinator_t *, consensus_metrics_provider_fn, void *);

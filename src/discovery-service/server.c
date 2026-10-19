@@ -42,6 +42,7 @@
 #include <ascii-chat/util/endian.h>
 #include <string.h>
 #include <ascii-chat/network/packet/decoder.h>
+#include <ascii-chat/network/crc32.h>
 #include <ascii-chat/network/tcp/async.h>
 #include <ascii-chat/crypto/handshake/server.h>
 
@@ -161,6 +162,8 @@ static void monitor_host_migrations(acds_server_t *server, uint64_t migration_ti
  * - Remove old rate limit events from the database
  * - Clean up expired sessions
  */
+static asciichat_error_t acds_handoff_tick(acds_server_t *, consensus_handoff_t *);
+
 static void *cleanup_thread_func(void *arg) {
   acds_server_t *server = (acds_server_t *)arg;
   if (!server) {
@@ -174,6 +177,15 @@ static void *cleanup_thread_func(void *arg) {
     // Use 100ms sleep intervals for responsive shutdown on timeout
     for (int i = 0; i < 3000 && !atomic_load_bool(&server->shutdown); i++) {
       APP_CALLBACK_VOID(platform_pump_events);
+      mutex_lock(&server->handoff_mutex);
+      for (size_t handoff_index = 0; handoff_index < 32; ++handoff_index) {
+        if (!server->handoff_used[handoff_index])
+          continue;
+        asciichat_error_t tick_result = acds_handoff_tick(server, &server->handoffs[handoff_index]);
+        if (tick_result != ASCIICHAT_OK)
+          log_warn("Handoff timer failed: %d", tick_result);
+      }
+      mutex_unlock(&server->handoff_mutex);
       platform_sleep_ms(100); // Sleep 100ms at a time for responsive shutdown
     }
 
@@ -207,6 +219,9 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   }
 
   memset(server, 0, sizeof(*server));
+  asciichat_error_t lock_result = mutex_init(&server->handoff_mutex, "acds_handoff");
+  if (lock_result != ASCIICHAT_OK)
+    return lock_result;
   memcpy(&server->config, config, sizeof(acds_config_t));
 
   // Initialize stats
@@ -786,6 +801,9 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
   }
 }
 
+static consensus_handoff_t *acds_handoff_find(acds_server_t *, const uint8_t[16], bool);
+static asciichat_error_t acds_handoff_tick(acds_server_t *, consensus_handoff_t *);
+
 static asciichat_error_t acds_remove_client_from_session(acds_server_t *server, acds_client_data_t *client_data) {
   if (!server || !client_data || !client_data->joined_session) {
     return ASCIICHAT_OK;
@@ -805,6 +823,20 @@ static asciichat_error_t acds_remove_client_from_session(acds_server_t *server, 
   }
 
   client_data->joined_session = false;
+  mutex_lock(&server->handoff_mutex);
+  consensus_handoff_t *handoff = acds_handoff_find(server, client_data->session_id, false);
+  if (handoff) {
+    consensus_handoff_leave(handoff, client_data->participant_id);
+    asciichat_error_t handoff_result = acds_handoff_tick(server, handoff);
+    if (handoff_result != ASCIICHAT_OK)
+      log_warn("Handoff after departure failed: %d", handoff_result);
+    if (!handoff->count) {
+      for (size_t i = 0; i < 32; ++i)
+        if (&server->handoffs[i] == handoff)
+          server->handoff_used[i] = false;
+    }
+  }
+  mutex_unlock(&server->handoff_mutex);
 
   // A closed connection can no longer send SESSION_LEAVE. Notify peers after
   // deleting the participant so reconnects do not try signaling this socket.
@@ -915,6 +947,21 @@ static void acds_on_host_announcement(const acip_host_announcement_t *announceme
            announcement->host_id[0], announcement->host_id[1], announcement->host_address, announcement->host_port,
            announcement->connection_type);
 
+  acds_client_data_t *client = transport ? transport->user_data : NULL;
+  if (!client || !client->joined_session || memcmp(client->participant_id, announcement->host_id, 16) ||
+      memcmp(client->session_id, announcement->session_id, 16)) {
+    acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Host announcement identity mismatch");
+    return;
+  }
+  mutex_lock(&server->handoff_mutex);
+  consensus_handoff_t *handoff = acds_handoff_find(server, announcement->session_id, false);
+  bool authorized = !handoff || !memcmp(handoff->host, announcement->host_id, 16);
+  mutex_unlock(&server->handoff_mutex);
+  if (!authorized) {
+    acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Obsolete host announcement");
+    return;
+  }
+
   // Update session host in database
   asciichat_error_t result =
       database_session_update_host(server->db, announcement->session_id, announcement->host_id,
@@ -968,6 +1015,85 @@ static void acds_on_host_lost(const acip_host_lost_t *host_lost, acip_transport_
   // ACDS just tracks migration timeout for cleanup.
 }
 
+static consensus_handoff_t *acds_handoff_find(acds_server_t *server, const uint8_t session[16], bool create) {
+  int free_slot = -1;
+  for (int i = 0; i < 32; ++i) {
+    if (server->handoff_used[i] && !memcmp(server->handoffs[i].session, session, 16))
+      return &server->handoffs[i];
+    if (!server->handoff_used[i])
+      free_slot = i;
+  }
+  if (!create || free_slot < 0)
+    return NULL;
+  session_entry_t *entry = database_session_find_by_id(server->db, session);
+  if (!entry)
+    return NULL;
+  consensus_handoff_t *state = &server->handoffs[free_slot];
+  consensus_handoff_init(state, session, entry->host_established ? entry->host_participant_id : entry->initiator_id);
+  session_entry_destroy(entry);
+  server->handoff_used[free_slot] = true;
+  return state;
+}
+static asciichat_error_t acds_handoff_broadcast(acds_server_t *server, consensus_handoff_message_t *message) {
+  uint8_t bytes[CONSENSUS_HANDOFF_HEADER];
+  consensus_handoff_encode(message, bytes);
+  log_info("Handoff action=%u generation=%u round=%u candidate=%02x%02x", message->kind, message->generation,
+           message->sequence, message->participant[0], message->participant[1]);
+  return signaling_broadcast(server->db, server->tcp_server, message->session, (packet_type_t)CONSENSUS_HANDOFF_PACKET,
+                             bytes, sizeof(bytes), NULL);
+}
+static asciichat_error_t acds_handoff_tick(acds_server_t *server, consensus_handoff_t *state) {
+  consensus_handoff_message_t action;
+  if (!consensus_handoff_tick(state, time_get_ns() / NS_PER_MS_INT, &action))
+    return ASCIICHAT_OK;
+  if (action.kind == HANDOFF_COMMIT) {
+    asciichat_error_t result = database_session_update_host(server->db, state->session, action.participant, "",
+                                                            action.port, ACIP_CONNECTION_TYPE_STUN);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
+  if (action.kind == HANDOFF_FAILED) {
+    asciichat_error_t result = database_session_clear_host(server->db, state->session);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
+  return acds_handoff_broadcast(server, &action);
+}
+static asciichat_error_t acds_on_handoff(const void *data, size_t length, acip_transport_t *transport, void *ctx) {
+  acds_server_t *server = ctx;
+  acds_client_data_t *client = transport ? transport->user_data : NULL;
+  consensus_handoff_message_t message;
+  asciichat_error_t result = consensus_handoff_decode(data, length, &message);
+  if (result != ASCIICHAT_OK)
+    return result;
+  if (!client || !client->joined_session || memcmp(client->session_id, message.session, 16) ||
+      memcmp(client->participant_id, message.participant, 16))
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Handoff transport identity mismatch");
+  mutex_lock(&server->handoff_mutex);
+  consensus_handoff_t *state = acds_handoff_find(server, message.session, true);
+  if (!state) {
+    mutex_unlock(&server->handoff_mutex);
+    return SET_ERRNO(ERROR_INVALID_STATE, "No handoff session");
+  }
+  if ((message.kind == HANDOFF_READY || message.kind == HANDOFF_REJECT) &&
+      (message.generation != state->generation || message.sequence != state->round ||
+       memcmp(message.participant, state->successor, 16))) {
+    mutex_unlock(&server->handoff_mutex);
+    return ASCIICHAT_OK; // Membership changes can overtake a preparation acknowledgment.
+  }
+  result = consensus_handoff_join(state, message.participant);
+  if (result == ASCIICHAT_OK)
+    result = consensus_handoff_receive(state, &message, length, time_get_ns() / NS_PER_MS_INT);
+  if (result == ASCIICHAT_OK && message.kind == HANDOFF_READY && state->ready) {
+    message.kind = HANDOFF_PLAN;
+    result = acds_handoff_broadcast(server, &message);
+  }
+  if (result == ASCIICHAT_OK)
+    result = acds_handoff_tick(server, state);
+  mutex_unlock(&server->handoff_mutex);
+  return result;
+}
+
 // Global ACIP callback structure for ACDS
 static const acip_acds_callbacks_t g_acds_callbacks = {
     .on_session_create = acds_on_session_create,
@@ -979,6 +1105,7 @@ static const acip_acds_callbacks_t g_acds_callbacks = {
     .on_host_announcement = acds_on_host_announcement,
     .on_host_lost = acds_on_host_lost,
     .on_network_quality = acds_on_network_quality,
+    .on_handoff = acds_on_handoff,
     .app_ctx = NULL // Set dynamically to server instance
 };
 
@@ -1103,6 +1230,7 @@ static void acds_event_work_done(platform_event_stream_t *stream, void *arg, boo
   if (closing)
     return;
   if (connection->result != ASCIICHAT_OK) {
+    log_warn("ACDS event connection failed: %s", asciichat_error_string(connection->result));
     platform_event_stream_close(stream, connection->result);
     return;
   }
@@ -1175,7 +1303,7 @@ void acds_event_accept(platform_event_stream_t *stream, void *arg) {
   acds_event_client_t *connection = SAFE_CALLOC(1, sizeof(*connection), acds_event_client_t *);
   connection->server = server;
   connection->stream = stream;
-  connection->decoder.max_payload = 65536;
+  connection->decoder.max_payload = CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES + 1024;
   struct sockaddr_storage peer;
   socklen_t length = sizeof(peer);
   if (platform_event_stream_peer(stream, &peer, &length) == ASCIICHAT_OK)

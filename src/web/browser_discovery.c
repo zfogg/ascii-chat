@@ -1,3 +1,29 @@
+#include <emscripten.h>
+#include <ascii-chat/network/consensus/handoff.h>
+
+EMSCRIPTEN_KEEPALIVE void browser_handoff_encode(int kind, const uint8_t *session, const uint8_t *id,
+                                                 uint32_t generation, uint32_t sequence, int capabilities, int nat_tier,
+                                                 int port, uint8_t *out) {
+  consensus_handoff_message_t message = {.kind = (uint8_t)kind,
+                                         .generation = generation,
+                                         .sequence = sequence,
+                                         .capabilities = (uint8_t)capabilities,
+                                         .nat_tier = (uint8_t)nat_tier,
+                                         .port = (uint16_t)port};
+  memcpy(message.session, session, 16);
+  memcpy(message.participant, id, 16);
+  consensus_handoff_encode(&message, out);
+}
+EM_JS(void, handoff_snapshot, (int kind, const uint8_t *id, uint32_t generation, uint32_t sequence),
+      { Module.handoffResult = {kind, participant : HEAPU8.slice(id, id + 16), generation, sequence}; });
+EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_handoff_decode(const uint8_t *data, size_t length) {
+  consensus_handoff_message_t message;
+  asciichat_error_t result = consensus_handoff_decode(data, length, &message);
+  if (result == ASCIICHAT_OK)
+    handoff_snapshot(message.kind, message.participant, message.generation, message.sequence);
+  return result;
+}
+
 #include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/common.h>
 #include <emscripten.h>

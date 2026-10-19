@@ -370,6 +370,11 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
   asciichat_error_t result = ASCIICHAT_OK;
   bool snapshot_mode = GET_OPTION(snapshot_mode);
 
+role_dispatch:
+  result = discovery_session_apply_handoff(g_discovery);
+  if (result != ASCIICHAT_OK)
+    return result;
+
   // Wait for session to become active (host negotiation complete)
   // This processes ACDS events until we have a determined role
   // Snapshot capture requires negotiation to finish before its exit condition is honored.
@@ -384,6 +389,8 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       return result;
     }
 
+    if (g_discovery->handoff_pending)
+      goto role_dispatch;
     if (discovery_session_is_active(g_discovery)) {
       break; // Session is active, role is determined
     }
@@ -676,6 +683,13 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       if (enable_audio) {
         audio_destroy(&audio);
         client_audio_pipeline_destroy(receiver.audio_pipeline);
+      }
+      if (!should_exit() && g_discovery->session_type == SESSION_TYPE_WEBRTC) {
+        if (!g_discovery->handoff_pending) {
+          g_discovery->state = DISCOVERY_STATE_MIGRATING;
+          g_discovery->migration.detection_time_ms = time_get_ns() / NS_PER_MS_INT;
+        }
+        goto role_dispatch;
       }
       if (receiver.result != ASCIICHAT_OK)
         return receiver.result;

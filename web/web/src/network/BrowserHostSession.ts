@@ -1,3 +1,4 @@
+import { HandoffProtocol } from "./HandoffProtocol";
 import { DiscoveryProtocol } from "./DiscoveryProtocol";
 import { BrowserVideoDecoder } from "./BrowserVideoDecoder";
 import { ClientConnection } from "./ClientConnection";
@@ -50,6 +51,7 @@ export class BrowserHostSession implements ClientSession {
   readonly transportType = "webrtc" as const;
   private decoders = new Map<number, BrowserVideoDecoder>();
   private discovery: DiscoveryProtocol | null = null;
+  private handoff: HandoffProtocol | null = null;
   private signaling: ClientConnection;
   private module: HostModule | null = null;
   private joined: JoinedSession | null = null;
@@ -131,7 +133,83 @@ export class BrowserHostSession implements ClientSession {
     }
     return ready;
   }
+  static adopt(
+    options: DiscoveryOptions,
+    signaling: ClientConnection,
+    joined: JoinedSession,
+  ): BrowserHostSession {
+    const host = new BrowserHostSession(options);
+    host.signaling = signaling;
+    host.joined = joined;
+    host.module = getClientModule() as HostModule;
+    signaling.onPacketReceived((packet, payload) => {
+      host.queue = host.queue
+        .then(() => host.signal(packet.type, payload))
+        .catch((error) => host.fail(error));
+    });
+    host.startHosting();
+    return host;
+  }
+  private startHosting(): void {
+    const module = this.module!;
+    if (module._browser_host_create())
+      throw new Error("Could not initialize C session host.");
+    module.hostPacketCallback = (id, bytes) => {
+      // Deliver after C releases its host/client locks.
+      queueMicrotask(() => {
+        if (this.closed) return;
+        if (id === this.localId) {
+          const packet = parsePacket(bytes);
+          this.packetCallback?.(packet, bytes.slice(22));
+        } else {
+          for (const [key, peer] of this.peers) {
+            if (peer.id !== id || !peer.crypto?.ready) continue;
+            const type = new DataView(bytes.buffer, bytes.byteOffset).getUint16(
+              8,
+              false,
+            );
+            if (
+              type === PacketType.ASCII_FRAME &&
+              (peer.bridge?.getBufferedAmount() ?? 0) > 256 * 1024
+            )
+              continue;
+            try {
+              peer.crypto.sendPacket(bytes);
+            } catch (error) {
+              this.removePeer(key);
+              this.options.onProgress?.(`Peer disconnected: ${String(error)}`);
+            }
+          }
+        }
+      });
+    };
+    this.localId = module._browser_host_add_client();
+    if (!this.localId) throw new Error("Could not add local host participant.");
+    if (this.deadline) clearTimeout(this.deadline);
+    this.options.onCreated?.(this.name);
+    this.setState(ConnectionState.CONNECTED);
+    this.options.onProgress?.("Hosting — waiting for a participant");
+    this.timer = setInterval(() => {
+      if (this.closed) return;
+      try {
+        if (module._browser_host_render())
+          throw new Error("C host could not render video.");
+      } catch (error) {
+        this.fail(error);
+      }
+    }, 16);
+    this.resolve?.();
+    this.resolve = null;
+    this.reject = null;
+    this.handoff = new HandoffProtocol(
+      this.joined!,
+      (type, payload) => this.signaling.sendPacket(type, payload),
+      () => {},
+      this.options.onProgress,
+    );
+  }
   private async signal(type: number, payload: Uint8Array): Promise<void> {
+    if (this.handoff?.receive(type, payload)) return;
     const snapshot = this.discovery?.receive(type, payload);
     if (snapshot?.state === 6 && !this.joined) {
       this.name = snapshot.name;
@@ -140,59 +218,7 @@ export class BrowserHostSession implements ClientSession {
         !this.joined.participantId.every((v, i) => v === this.joined!.hostId[i])
       )
         throw new Error("Creator was not assigned the host role.");
-      const module = this.module!;
-      if (module._browser_host_create())
-        throw new Error("Could not initialize C session host.");
-      module.hostPacketCallback = (id, bytes) => {
-        // Deliver after C releases its host/client locks.
-        queueMicrotask(() => {
-          if (this.closed) return;
-          if (id === this.localId) {
-            const packet = parsePacket(bytes);
-            this.packetCallback?.(packet, bytes.slice(22));
-          } else {
-            for (const [key, peer] of this.peers) {
-              if (peer.id !== id || !peer.crypto?.ready) continue;
-              const type = new DataView(
-                bytes.buffer,
-                bytes.byteOffset,
-              ).getUint16(8, false);
-              if (
-                type === PacketType.ASCII_FRAME &&
-                (peer.bridge?.getBufferedAmount() ?? 0) > 256 * 1024
-              )
-                continue;
-              try {
-                peer.crypto.sendPacket(bytes);
-              } catch (error) {
-                this.removePeer(key);
-                this.options.onProgress?.(
-                  `Peer disconnected: ${String(error)}`,
-                );
-              }
-            }
-          }
-        });
-      };
-      this.localId = module._browser_host_add_client();
-      if (!this.localId)
-        throw new Error("Could not add local host participant.");
-      if (this.deadline) clearTimeout(this.deadline);
-      this.options.onCreated?.(this.name);
-      this.setState(ConnectionState.CONNECTED);
-      this.options.onProgress?.("Hosting — waiting for a participant");
-      this.timer = setInterval(() => {
-        if (this.closed) return;
-        try {
-          if (module._browser_host_render())
-            throw new Error("C host could not render video.");
-        } catch (error) {
-          this.fail(error);
-        }
-      }, 16);
-      this.resolve?.();
-      this.resolve = null;
-      this.reject = null;
+      this.startHosting();
     } else if (
       (type === AcdsType.SDP || type === AcdsType.ICE) &&
       this.joined
@@ -404,6 +430,7 @@ export class BrowserHostSession implements ClientSession {
   disconnect() {
     if (this.closed) return;
     this.closed = true;
+    this.handoff?.close();
     if (this.deadline) clearTimeout(this.deadline);
     if (this.timer) clearInterval(this.timer);
     this.reject?.(new Error("Session creation cancelled."));

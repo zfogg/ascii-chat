@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 /**
  * @file session/consensus.h
  * @brief Mode-agnostic ring consensus abstraction for session discovery
@@ -133,14 +134,14 @@ typedef struct {
  *
  * @param my_id 16-byte UUID of this participant
  * @param is_leader Whether this participant should run elections (typically last in ring)
- * @param participant_ids Array of participant UUIDs (up to 64)
+ * @param participant_ids Array of participant UUIDs (up to 128)
  * @param num_participants Count of participants
  * @param callbacks Callback functions for mode integration
  * @param out_consensus Output consensus handle (caller must destroy)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t session_consensus_create(const uint8_t my_id[16], bool is_leader,
-                                           const uint8_t participant_ids[64][16], int num_participants,
+                                           const uint8_t participant_ids[PARTICIPANT_LIMIT][16], int num_participants,
                                            const session_consensus_callbacks_t *callbacks,
                                            session_consensus_t **out_consensus);
 
@@ -182,7 +183,8 @@ asciichat_error_t session_consensus_process(session_consensus_t *consensus, uint
  * @param num_participants New count of participants
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t session_consensus_set_topology(session_consensus_t *consensus, const uint8_t participant_ids[64][16],
+asciichat_error_t session_consensus_set_topology(session_consensus_t *consensus,
+                                                 const uint8_t participant_ids[PARTICIPANT_LIMIT][16],
                                                  int num_participants);
 
 /**
