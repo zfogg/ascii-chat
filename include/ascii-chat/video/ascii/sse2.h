@@ -46,8 +46,7 @@ char *render_ascii_mono_sse2(const image_t *image, const char *ascii_chars);
  *
  * @ingroup video
  */
-char *render_ascii_color_sse2(const image_t *image, bool use_background, bool use_256color,
-                                          const char *ascii_chars);
+char *render_ascii_color_sse2(const image_t *image, bool use_background, bool use_256color, const char *ascii_chars);
 
 /**
  * @brief Destroy SSE2 caches
@@ -59,3 +58,19 @@ void sse2_caches_destroy(void);
 #endif /* SIMD_SUPPORT_SSE2 */
 
 /** @} */
+
+#if SIMD_SUPPORT_SSE2
+char *rgb_to_truecolor_halfblocks_sse2(const uint8_t *rgb, int width, int height, int stride);
+#endif
+
+#if SIMD_SUPPORT_SSE2
+char *rgb_to_256color_halfblocks_sse2(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif
+
+#if SIMD_SUPPORT_SSE2
+char *rgb_to_16color_halfblocks_sse2(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif
+
+#if SIMD_SUPPORT_SSE2
+char *rgb_to_halfblocks_sse2(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif

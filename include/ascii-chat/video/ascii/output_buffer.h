@@ -95,7 +95,7 @@ typedef struct {
 /**
  * @brief Reserve buffer space for upcoming writes
  * @param ob Output buffer structure (must not be NULL)
- * @param need Minimum bytes needed (must be > 0)
+ * @param need Minimum bytes needed (zero initializes an unallocated buffer)
  *
  * Ensures the buffer has at least 'need' bytes of available space.
  * Automatically expands the buffer if necessary. Buffer grows exponentially
@@ -403,3 +403,10 @@ void emit_set_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
  */
 
 /* digits_u32() is now in util/number.h - include above for access */
+
+/** Emit complete UTF-8 glyphs, using REP only when it saves bytes.
+ * count includes the first glyph; callers keep runs inside one terminal row.
+ */
+void emit_glyph_run(outbuf_t *out, const void *glyph, size_t bytes, uint32_t count);
+/** Reset colored state before moving to the next row. */
+void emit_row_end(outbuf_t *out, bool colored, bool newline);

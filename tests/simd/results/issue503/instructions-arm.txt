@@ -1,0 +1,15 @@
+simd_pack_neon: 9990:	4cdf4164 	ld3	{v4.16b-v6.16b}, [x11], #48
+simd_lookup_neon: 9090:	4e186019 	tbl	v25.16b, {v0.16b-v3.16b}, v24.16b
+simd_quantize_neon: 943c:	4ea69cc6 	mul	v6.4s, v6.4s, v6.4s
+simd_run_neon: 96c8:	6ea08c63 	cmeq	v3.4s, v3.4s, v0.4s
+simd_halfblock_neon: 9ac4:	4ea09e73 	mul	v19.4s, v19.4s, v0.4s
+simd_luminance_neon: 8fb4:	2e22c207 	umull	v7.8h, v16.8b, v2.8b
+simd_emit_mono_neon: 9300:	4c0081d0 	st2	{v16.16b, v17.16b}, [x14]
+simd_emit_mono_neon: 9308:	4c0041d0 	st3	{v16.16b-v18.16b}, [x14]
+simd_emit_mono_neon: 9310:	4c0001d0 	st4	{v16.16b-v19.16b}, [x14]
+simd_pack_sve: a9b8:	a440e400 	ld3b	{z0.b-z2.b}, p1/z, [x0]
+simd_lookup_sve: a3a4:	85204020 	ld1w	{z0.s}, p0/z, [x1, z0.s, uxtw #2]
+simd_quantize_sve: a470:	04900631 	mul	z17.s, p1/m, z17.s, z17.s
+simd_run_sve: a764:	2481a061 	cmpeq	p1.s, p0/z, z3.s, z1.s
+simd_halfblock_sve: aaa8:	04900432 	mul	z18.s, p1/m, z18.s, z1.s
+simd_luminance_sve: a25c:	04500460 	mul	z0.h, p1/m, z0.h, z3.h

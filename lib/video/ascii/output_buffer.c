@@ -7,6 +7,7 @@
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/common.h>
+#include <ascii-chat/video/ascii/sgr.h>
 
 /*****************************************************************************/
 // char* output buffer helpers
@@ -22,22 +23,22 @@
 void ob_reserve(outbuf_t *ob, size_t need) {
   if (!ob)
     return;
-  if (ob->cap == 0) {
-    // Always allocate at least default capacity on first call
-    size_t ncap = 4096;
-    while (ncap < ob->len + need)
-      ncap = (ncap * 3) / 2;
-    // SAFE_REALLOC handles NULL ptr as malloc - this is safe
-    ob->buf = SAFE_REALLOC(ob->buf, ncap, char *);
-    ob->cap = ncap;
-  } else if (ob->len + need > ob->cap) {
-    // Expand existing buffer
-    size_t ncap = ob->cap;
-    while (ncap < ob->len + need)
-      ncap = (ncap * 3) / 2;
-    ob->buf = SAFE_REALLOC(ob->buf, ncap, char *);
-    ob->cap = ncap;
+  if (need > SIZE_MAX - ob->len)
+    FATAL(ERROR_MEMORY, "Output buffer size overflow");
+  size_t required = ob->len + need;
+  if (ob->cap && required <= ob->cap)
+    return;
+  size_t capacity = ob->cap ? ob->cap : 4096;
+  while (capacity < required) {
+    size_t increment = capacity / 2 + 1;
+    if (capacity > SIZE_MAX - increment) {
+      capacity = required;
+      break;
+    }
+    capacity += increment;
   }
+  ob->buf = SAFE_REALLOC(ob->buf, capacity, char *);
+  ob->cap = capacity;
 }
 
 void ob_putc(outbuf_t *ob, char c) {
@@ -103,45 +104,30 @@ void ob_u32(outbuf_t *ob, uint32_t v) {
     ob->buf[ob->len++] = tmp[i];
 }
 
-// Truecolor SGR emission (foreground)
-void emit_set_truecolor_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
-  if (!ob)
+// Reserve once per SGR sequence; no ISA-specific encoding is necessary.
+static void emit_truecolor(outbuf_t *out, bool background, uint8_t r, uint8_t g, uint8_t b) {
+  if (!out)
     return;
-  // ESC[38;2;R;G;Bm
-  ob_putc(ob, 0x1b);
-  ob_putc(ob, '[');
-  ob_write(ob, "38;2;", 5);
-  ob_u8(ob, r);
-  ob_putc(ob, ';');
-  ob_u8(ob, g);
-  ob_putc(ob, ';');
-  ob_u8(ob, b);
-  ob_putc(ob, 'm');
+  ob_reserve(out, 19);
+  char *start = out->buf + out->len;
+  char *p = background ? append_sgr_truecolor_bg(start, r, g, b) : append_sgr_truecolor_fg(start, r, g, b);
+  out->len += (size_t)(p - start);
 }
 
-// Truecolor SGR emission (background)
-void emit_set_truecolor_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
-  if (!ob)
-    return;
-  // ESC[48;2;R;G;Bm
-  ob_putc(ob, 0x1b);
-  ob_putc(ob, '[');
-  ob_write(ob, "48;2;", 5);
-  ob_u8(ob, r);
-  ob_putc(ob, ';');
-  ob_u8(ob, g);
-  ob_putc(ob, ';');
-  ob_u8(ob, b);
-  ob_putc(ob, 'm');
+void emit_set_truecolor_fg(outbuf_t *out, uint8_t r, uint8_t g, uint8_t b) {
+  emit_truecolor(out, false, r, g, b);
 }
 
-void emit_reset(outbuf_t *ob) {
-  if (!ob)
+void emit_set_truecolor_bg(outbuf_t *out, uint8_t r, uint8_t g, uint8_t b) {
+  emit_truecolor(out, true, r, g, b);
+}
+
+void emit_reset(outbuf_t *out) {
+  if (!out)
     return;
-  ob_putc(ob, 0x1b);
-  ob_putc(ob, '[');
-  ob_putc(ob, '0');
-  ob_putc(ob, 'm');
+  ob_reserve(out, 4);
+  append_sgr_reset(out->buf + out->len);
+  out->len += 4;
 }
 
 // REP profitability calculation
@@ -184,31 +170,31 @@ void emit_set_256_color_bg(outbuf_t *ob, uint8_t color_idx) {
 }
 
 void emit_set_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
-  if (!ob)
-    return;
-  // ESC[38;2;R;G;Bm
-  ob_putc(ob, 0x1b);
-  ob_putc(ob, '[');
-  ob_write(ob, "38;2;", 5);
-  ob_u8(ob, r);
-  ob_putc(ob, ';');
-  ob_u8(ob, g);
-  ob_putc(ob, ';');
-  ob_u8(ob, b);
-  ob_putc(ob, 'm');
+  emit_set_truecolor_fg(ob, r, g, b);
 }
 
 void emit_set_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
-  if (!ob)
+  emit_set_truecolor_bg(ob, r, g, b);
+}
+
+void emit_glyph_run(outbuf_t *out, const void *glyph, size_t bytes, uint32_t count) {
+  if (!count || !bytes)
     return;
-  // ESC[48;2;R;G;Bm
-  ob_putc(ob, 0x1b);
-  ob_putc(ob, '[');
-  ob_write(ob, "48;2;", 5);
-  ob_u8(ob, r);
-  ob_putc(ob, ';');
-  ob_u8(ob, g);
-  ob_putc(ob, ';');
-  ob_u8(ob, b);
-  ob_putc(ob, 'm');
+  ob_write(out, glyph, bytes);
+  uint32_t extra = count - 1;
+  // Compare division rather than multiplying count by glyph size (overflow).
+  size_t cost = digits_u32(extra) + 3u;
+  if (extra > cost / bytes) {
+    emit_rep(out, extra);
+  } else {
+    for (uint32_t i = 0; i < extra; ++i)
+      ob_write(out, glyph, bytes);
+  }
+}
+
+void emit_row_end(outbuf_t *out, bool colored, bool newline) {
+  if (colored)
+    emit_reset(out);
+  if (newline)
+    ob_putc(out, '\n');
 }

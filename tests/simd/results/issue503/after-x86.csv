@@ -1,0 +1,17 @@
+backend,pattern,color,ns_per_frame,allocations_per_frame,bytes_per_frame
+scalar,runs,truecolor,57447,2.00,7472
+scalar,runs,256,466645,2.00,5280
+scalar,noise,truecolor,569183,2.00,184057
+scalar,noise,256,1005002,2.00,113284
+sse2,runs,truecolor,163546,2.00,7472
+sse2,runs,256,211701,2.00,5280
+sse2,noise,truecolor,760460,2.00,184057
+sse2,noise,256,683375,2.00,113284
+ssse3,runs,truecolor,58181,2.00,7472
+ssse3,runs,256,195631,2.00,5280
+ssse3,noise,truecolor,633110,2.00,184057
+ssse3,noise,256,864735,2.00,113284
+avx2,runs,truecolor,53555,2.00,7472
+avx2,runs,256,79055,2.00,5280
+avx2,noise,truecolor,571146,2.00,184057
+avx2,noise,256,535252,2.00,113284

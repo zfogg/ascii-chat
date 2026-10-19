@@ -1,0 +1,9 @@
+backend,pattern,color,ns_per_frame,allocations_per_frame,bytes_per_frame
+scalar,runs,truecolor,1353242,2.00,14235
+scalar,runs,256,5326628,2.00,113295
+scalar,noise,truecolor,7230769,2.00,183817
+scalar,noise,256,5725848,2.00,113284
+sve,runs,truecolor,1100072,1.00,9881
+sve,runs,256,2083948,1.00,7343
+sve,noise,truecolor,1109322,1.00,9881
+sve,noise,256,7679721,3.00,113474

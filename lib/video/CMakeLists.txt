@@ -48,6 +48,8 @@ endif()
 
 # SIMD sources (reorganized into ascii/{arch}/{halfblock,foreground,background})
 set(SIMD_SRCS
+    # Shared cell formatting for scalar and SIMD kernels
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/render.c
     # Scalar ASCII render implementations
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/scalar/halfblock.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/scalar/foreground.c
@@ -56,22 +58,25 @@ set(SIMD_SRCS
 
 # ISA flags apply in the directory that creates ascii-chat-simd (the root).
 # Source options also exclude these files from unity builds and shared PCHs.
-list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/ascii/simd/dispatch.c)
+list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/ascii/simd/dispatch.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/simd/cells.c)
 foreach(isa SSE2 SSSE3 AVX2 NEON SVE)
     if(NOT ENABLE_SIMD_${isa})
         continue()
     endif()
     string(TOLOWER "${isa}" name)
-    set(isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/luminance.c)
+    set(isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/luminance.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/mono.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/color.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/halfblock.c)
     if(isa STREQUAL "NEON")
-        list(APPEND isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/common.c ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/halfblock.c)
+        list(APPEND isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/common.c)
         if(ASCIICHAT_IS_ARM64)
             set(isa_flags -march=armv8-a)
         else()
             set(isa_flags -mfpu=neon)
         endif()
     else()
-        list(APPEND isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/mono.c ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/color.c)
         if(isa STREQUAL "AVX2")
             list(APPEND isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/common.c)
         endif()

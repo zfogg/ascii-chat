@@ -18,32 +18,6 @@ THREAD_LOCAL ALIGNED_32 uint8_t avx2_g_buffer[32];
 THREAD_LOCAL ALIGNED_32 uint8_t avx2_b_buffer[32];
 THREAD_LOCAL ALIGNED_32 uint8_t avx2_luminance_buffer[32];
 
-// Helper function to emit RLE repeat count (handles any count up to 9999)
-char *emit_rle_count(char *pos, uint32_t rep_count) {
-  *pos++ = '\x1b';
-  *pos++ = '[';
-
-  // Handle up to 4 digits (max 9999)
-  if (rep_count >= 1000) {
-    *pos++ = '0' + (rep_count / 1000);
-    *pos++ = '0' + ((rep_count / 100) % 10);
-    *pos++ = '0' + ((rep_count / 10) % 10);
-    *pos++ = '0' + (rep_count % 10);
-  } else if (rep_count >= 100) {
-    *pos++ = '0' + (rep_count / 100);
-    *pos++ = '0' + ((rep_count / 10) % 10);
-    *pos++ = '0' + (rep_count % 10);
-  } else if (rep_count >= 10) {
-    *pos++ = '0' + (rep_count / 10);
-    *pos++ = '0' + (rep_count % 10);
-  } else {
-    *pos++ = '0' + rep_count;
-  }
-  *pos++ = 'b';
-
-  return pos;
-}
-
 // Optimized AVX2 function to load 32 RGB pixels and separate channels
 // Uses simple loop that auto-vectorizes to VMOVDQU + VPSHUFB
 void avx2_load_rgb32_optimized(const rgb_pixel_t *__restrict pixels, uint8_t *__restrict r_out,
