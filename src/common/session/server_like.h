@@ -162,6 +162,10 @@ typedef struct session_server_like_config {
   /* Optional Callbacks                                                */
   /* ================================================================ */
 
+  /** Periodic work on the thread that runs init_fn and cleanup_fn. */
+  void (*tick_fn)(void *user_data);
+  void *tick_user_data;
+
   /** Mode-specific teardown (optional, NULL to skip). */
   session_server_like_cleanup_fn cleanup_fn;
   void *cleanup_user_data;

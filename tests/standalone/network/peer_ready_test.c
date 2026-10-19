@@ -35,36 +35,58 @@ static void *publish_ready(void *context) {
   on_peer_security_ready(atomic_ptr_load(&peer->pending_transport), peer);
   return NULL;
 }
+static void *dispatch_foreign(void *context) {
+  CHECK(webrtc_peer_manager_dispatch_ready(context) == ERROR_INVALID_STATE);
+  return NULL;
+}
+static asciichat_error_t send_sdp(const uint8_t session[16], const uint8_t recipient[16], const char *type,
+                                  const char *sdp, void *context) {
+  (void)session;
+  (void)recipient;
+  (void)type;
+  (void)sdp;
+  (void)context;
+  return ASCIICHAT_OK;
+}
+static asciichat_error_t send_ice(const uint8_t session[16], const uint8_t recipient[16], const char *candidate,
+                                  const char *mid, void *context) {
+  (void)session;
+  (void)recipient;
+  (void)candidate;
+  (void)mid;
+  (void)context;
+  return ASCIICHAT_OK;
+}
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
   controlling_thread = asciichat_thread_self();
-  webrtc_peer_manager_t manager = {0};
-  manager.config.on_transport_ready = ready;
-  manager.config.defer_transport_ready = true;
-  manager.config.user_data = &manager;
-  CHECK(mutex_init(&manager.peers_mutex, "ready_test") == ASCIICHAT_OK);
-  peer_entry_t *first = add_peer(&manager, 1);
-  peer_entry_t *second = add_peer(&manager, 2);
+  webrtc_peer_manager_t *manager = NULL;
+  webrtc_peer_manager_config_t config = {.on_transport_ready = ready, .user_data = &manager};
+  webrtc_signaling_callbacks_t signaling = {.send_sdp = send_sdp, .send_ice = send_ice};
+  CHECK(webrtc_peer_manager_create(&config, &signaling, &manager) == ASCIICHAT_OK);
+  peer_entry_t *first = add_peer(manager, 1);
+  peer_entry_t *second = add_peer(manager, 2);
   asciichat_thread_t worker;
   CHECK(asciichat_thread_create(&worker, "publish_ready", publish_ready, first) == ASCIICHAT_OK);
   CHECK(asciichat_thread_join(&worker, NULL) == ASCIICHAT_OK);
+  CHECK(asciichat_thread_create(&worker, "dispatch_foreign", dispatch_foreign, manager) == ASCIICHAT_OK);
+  CHECK(asciichat_thread_join(&worker, NULL) == ASCIICHAT_OK);
   CHECK(callbacks == 0 && atomic_ptr_load(&first->pending_transport));
-  webrtc_peer_manager_dispatch_ready(&manager);
+  CHECK(webrtc_peer_manager_dispatch_ready(manager) == ASCIICHAT_OK);
   CHECK(callbacks == 1 && released == 1 && !atomic_ptr_load(&first->pending_transport));
   CHECK(!second->is_connected && atomic_ptr_load(&second->pending_transport));
   CHECK(asciichat_thread_create(&worker, "publish_ready", publish_ready, second) == ASCIICHAT_OK);
   CHECK(asciichat_thread_join(&worker, NULL) == ASCIICHAT_OK);
-  webrtc_peer_manager_dispatch_ready(&manager);
-  webrtc_peer_manager_dispatch_ready(&manager);
+  CHECK(webrtc_peer_manager_dispatch_ready(manager) == ASCIICHAT_OK);
+  CHECK(webrtc_peer_manager_dispatch_ready(manager) == ASCIICHAT_OK);
   CHECK(callbacks == 2 && released == 2);
-  remove_peer_locked(&manager, first);
-  remove_peer_locked(&manager, second);
+  remove_peer_locked(manager, first);
+  remove_peer_locked(manager, second);
   // A session destroyed before dispatch still owns its pending transport.
-  first = add_peer(&manager, 1);
+  first = add_peer(manager, 1);
   publish_ready(first);
-  remove_peer_locked(&manager, first);
-  CHECK(callbacks == 2 && released == 3 && !manager.peers);
-  mutex_destroy(&manager.peers_mutex);
+  webrtc_peer_manager_destroy(manager);
+  CHECK(callbacks == 2 && released == 3);
   log_destroy();
   return 0;
 }

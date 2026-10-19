@@ -72,6 +72,8 @@ typedef struct {
   bool bind_ipv4;                        ///< Whether to bind IPv4 socket
   bool bind_ipv6;                        ///< Whether to bind IPv6 socket
   platform_event_accept_fn event_handler; ///< Required asynchronous accept handler
+  void (*tick_fn)(void *user_data);       ///< Optional periodic callback on the tcp_server_run thread
+  void *tick_user_data;
   void *user_data;                       ///< User data passed to each client handler
 } tcp_server_config_t;
 

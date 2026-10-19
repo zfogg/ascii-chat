@@ -63,6 +63,8 @@ typedef enum {
  * @param participant_id Remote participant UUID (16 bytes)
  * @param user_data User context pointer
  *
+ * Delivered only by dispatch_ready on the thread that created the manager.
+ * The callback must not destroy the manager.
  * The callback receives ownership of the transport and must either:
  * - Use it for ACIP communication
  * - Call acip_transport_destroy() to free it
@@ -99,7 +101,6 @@ typedef struct {
   const char *turn_credential;                              ///< Optional TURN credential override
   webrtc_transport_ready_callback_t on_transport_ready;     ///< Called when DataChannel ready
   webrtc_gathering_timeout_callback_t on_gathering_timeout; ///< Called when ICE gathering times out
-  bool defer_transport_ready; ///< Deliver ready transports through dispatch_ready on the owner thread.
   void *user_data;                                          ///< Passed to callbacks
 } webrtc_peer_manager_config_t;
 
@@ -246,12 +247,13 @@ asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager
  */
 int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager, uint32_t timeout_ms);
 
+/** Deliver ready transports on the thread that created the manager.
+ * Serialize this call with peer removal and manager destruction.
+ * NULL is a no-op. Foreign-thread calls leave pending transports untouched. */
+asciichat_error_t webrtc_peer_manager_dispatch_ready(webrtc_peer_manager_t *manager);
+
 /** @} */ // end of webrtc_peer_manager group
 
 #ifdef __cplusplus
 }
 #endif
-
-/** Deliver deferred ready transports on the session controlling thread.
- * Serialize this call with peer removal and manager destruction. */
-void webrtc_peer_manager_dispatch_ready(webrtc_peer_manager_t *manager);

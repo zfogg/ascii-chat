@@ -428,6 +428,8 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
       .bind_ipv4 = ipv4_has_value || !ipv6_has_value,
       .bind_ipv6 = ipv6_has_value || !ipv4_has_value,
       .event_handler = config->tcp_event_handler,
+      .tick_fn = config->tick_fn,
+      .tick_user_data = config->tick_user_data,
       .user_data = config->tcp_user_data,
   };
 

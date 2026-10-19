@@ -1054,7 +1054,6 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
                                             .turn_username = session->turn_username,
                                             .turn_credential = session->turn_password,
                                             .on_transport_ready = discovery_on_transport_ready,
-                                            .defer_transport_ready = true,
                                             .on_gathering_timeout = discovery_on_gathering_timeout,
                                             .user_data = session};
 
@@ -1968,9 +1967,11 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 
   // Transport callbacks publish readiness; ownership changes and worker joins
   // execute here on the session's controlling thread.
-  webrtc_peer_manager_dispatch_ready(session->peer_manager);
+  asciichat_error_t result = webrtc_peer_manager_dispatch_ready(session->peer_manager);
+  if (result != ASCIICHAT_OK)
+    return result;
 
-  asciichat_error_t result = discovery_session_send_keepalive(session);
+  result = discovery_session_send_keepalive(session);
   if (result != ASCIICHAT_OK) {
     return result;
   }
