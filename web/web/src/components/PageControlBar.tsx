@@ -129,7 +129,6 @@ export function PageControlBar({
           )}
         </div>
         <div className="ml-auto flex flex-wrap gap-2">
-          {onFileSelect && <UploadFile onFileSelect={onFileSelect} />}
           {/* File playback controls (shown when playing a video file) */}
           {isWebcamRunning &&
             mediaSource === MediaSourceType.FILE &&
@@ -171,6 +170,7 @@ export function PageControlBar({
                 {webcamActionLabels?.start ?? "Start Webcam"}
               </button>
             ))}
+          {onFileSelect && <UploadFile onFileSelect={onFileSelect} />}
           {showConnectionButton && (
             <button
               onClick={onConnectionClick}
