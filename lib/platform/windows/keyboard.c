@@ -102,7 +102,6 @@ keyboard_key_t keyboard_read_nonblocking(void) {
     return KEY_NONE;
   }
 
-
   // Handle special characters
   if (ch == ' ') {
     return KEY_SPACE;

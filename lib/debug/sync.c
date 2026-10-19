@@ -439,8 +439,7 @@ static void debug_sync_print_lock_stacks(sync_buffer_t *buf) {
       char elapsed_str[64];
       time_pretty(elapsed, -1, elapsed_str, sizeof(elapsed_str));
 
-      sync_buffer_append(buf, "    [%d] mutex @ %p (%s) %s", j,
-                          (void *)entry->mutex_key, state_str, elapsed_str);
+      sync_buffer_append(buf, "    [%d] mutex @ %p (%s) %s", j, (void *)entry->mutex_key, state_str, elapsed_str);
     }
   }
 
@@ -626,9 +625,7 @@ void debug_sync_print_state(void) {
   // No-op in release builds
 }
 
-
 #endif
-
 
 static atomic_t g_signal = {0};
 static atomic_t g_exiting = {0};

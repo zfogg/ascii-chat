@@ -43,7 +43,8 @@ const registry_entry_t g_display_entries[] = {
      .type = OPTION_TYPE_CALLBACK,
      .offset = offsetof(options_t, zalgo),
      .default_value_size = sizeof(int),
-     .help_text = "Add combining marks at intensity 1-10 (default when enabled: 7). Omit to disable. Terminal/text output only.",
+     .help_text =
+         "Add combining marks at intensity 1-10 (default when enabled: 7). Omit to disable. Terminal/text output only.",
      .group = "DISPLAY",
      .arg_placeholder = "LEVEL",
      .env_var_name = "ASCII_CHAT_ZALGO",

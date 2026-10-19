@@ -226,8 +226,8 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
   }
 
   // Monochrome/None
-  if (strcmp(lower, OPT_COLOR_MODE_NONE) == 0 || strcmp(lower, OPT_COLOR_MODE_MONO) == 0 || strcmp(lower, "monochrome") == 0 ||
-      strcmp(lower, "0") == 0) {
+  if (strcmp(lower, OPT_COLOR_MODE_NONE) == 0 || strcmp(lower, OPT_COLOR_MODE_MONO) == 0 ||
+      strcmp(lower, "monochrome") == 0 || strcmp(lower, "0") == 0) {
     *color_mode = TERM_COLOR_NONE;
     return true;
   }

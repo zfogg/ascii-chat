@@ -177,10 +177,9 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
       char line[BUFFER_SIZE_LARGE];
       if (fgets(line, sizeof(line), f)) {
         uint8_t first_packet = (uint8_t)line[0];
-        unsigned int packet_tag = (first_packet & 0x80u)
-                                      ? ((first_packet & 0x40u) ? (first_packet & 0x3fu)
-                                                                 : ((first_packet >> 2) & 0x0fu))
-                                      : 0u;
+        unsigned int packet_tag =
+            (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu))
+                                   : 0u;
         bool armored_gpg = strstr(line, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL;
         if (armored_gpg || packet_tag == 6u) {
           if (fseek(f, 0, SEEK_END) != 0) {
@@ -362,10 +361,8 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   }
 
   uint8_t first_packet = bytes_read > 0 ? (uint8_t)header[0] : 0;
-  unsigned int first_packet_tag = (first_packet & 0x80u)
-                                      ? ((first_packet & 0x40u) ? (first_packet & 0x3fu)
-                                                                 : ((first_packet >> 2) & 0x0fu))
-                                      : 0u;
+  unsigned int first_packet_tag =
+      (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu)) : 0u;
   if (bytes_read > 0 && first_packet_tag == 5u) {
     f = platform_fopen("file_stream", normalized_path, "rb");
     if (!f) {
@@ -394,12 +391,12 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
 
     uint8_t ed25519_pk[32];
     uint8_t ed25519_sk[32];
-    asciichat_error_t openpgp_result =
-        openpgp_parse_binary_seckey(file_content, content_read, ed25519_pk, ed25519_sk);
+    asciichat_error_t openpgp_result = openpgp_parse_binary_seckey(file_content, content_read, ed25519_pk, ed25519_sk);
     sodium_memzero(file_content, content_read);
     SAFE_FREE(file_content);
     SAFE_FREE(normalized_path);
-    if (openpgp_result != ASCIICHAT_OK) return openpgp_result;
+    if (openpgp_result != ASCIICHAT_OK)
+      return openpgp_result;
 
     key_out->type = KEY_TYPE_ED25519;
     key_out->use_gpg_agent = false;
@@ -649,12 +646,9 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
   char line[BUFFER_SIZE_LARGE];
   bool has_first_line = fgets(line, sizeof(line), f) != NULL;
   uint8_t first_packet = has_first_line ? (uint8_t)line[0] : 0;
-  unsigned int first_packet_tag = (first_packet & 0x80u)
-                                      ? ((first_packet & 0x40u) ? (first_packet & 0x3fu)
-                                                                 : ((first_packet >> 2) & 0x0fu))
-                                      : 0u;
-  if (has_first_line &&
-      (strstr(line, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL || first_packet_tag == 6u)) {
+  unsigned int first_packet_tag =
+      (first_packet & 0x80u) ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu)) : 0u;
+  if (has_first_line && (strstr(line, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL || first_packet_tag == 6u)) {
     if (fseek(f, 0, SEEK_END) != 0) {
       (void)fclose(f);
       SAFE_FREE(normalized_path);
@@ -682,7 +676,8 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
       result = parse_public_key(armored_key, &keys[0]);
     }
     SAFE_FREE(armored_key);
-    if (result == ASCIICHAT_OK) *num_keys = 1;
+    if (result == ASCIICHAT_OK)
+      *num_keys = 1;
     return result;
   }
   rewind(f);

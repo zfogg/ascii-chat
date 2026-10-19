@@ -258,15 +258,15 @@ static asciichat_error_t parse_bool_value(const char *value_str, bool *out_value
   }
 
   // Check for true values
-  if (strcasecmp(value_str, OPT_VALUE_TRUE) == 0 || strcasecmp(value_str, "yes") == 0 || strcasecmp(value_str, "1") == 0 ||
-      strcasecmp(value_str, "on") == 0) {
+  if (strcasecmp(value_str, OPT_VALUE_TRUE) == 0 || strcasecmp(value_str, "yes") == 0 ||
+      strcasecmp(value_str, "1") == 0 || strcasecmp(value_str, "on") == 0) {
     *out_value = true;
     return ASCIICHAT_OK;
   }
 
   // Check for false values
-  if (strcasecmp(value_str, OPT_VALUE_FALSE) == 0 || strcasecmp(value_str, "no") == 0 || strcasecmp(value_str, "0") == 0 ||
-      strcasecmp(value_str, "off") == 0) {
+  if (strcasecmp(value_str, OPT_VALUE_FALSE) == 0 || strcasecmp(value_str, "no") == 0 ||
+      strcasecmp(value_str, "0") == 0 || strcasecmp(value_str, "off") == 0) {
     *out_value = false;
     return ASCIICHAT_OK;
   }

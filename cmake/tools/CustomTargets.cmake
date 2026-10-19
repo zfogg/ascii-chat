@@ -70,15 +70,19 @@ endif()
 set(CLANG_FORMAT_EXECUTABLE "${ASCIICHAT_CLANG_FORMAT_EXECUTABLE}")
 
 if(CLANG_FORMAT_EXECUTABLE)
+    # Response files keep the source list below platform command-line limits.
+    set(_clang_format_response_file "${CMAKE_CURRENT_BINARY_DIR}/clang-format-files.rsp")
+    string(REPLACE ";" "\"\n\"" _clang_format_files "${ALL_SOURCE_FILES}")
+    file(WRITE "${_clang_format_response_file}" "\"${_clang_format_files}\"\n")
     add_custom_target(format
-        COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${ALL_SOURCE_FILES}
+        COMMAND ${CLANG_FORMAT_EXECUTABLE} -i "@${_clang_format_response_file}"
         COMMENT "Formatting source code with clang-format"
         VERBATIM
     )
 
     if(NOT TARGET clang-format)
         add_custom_target(clang-format
-            COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${ALL_SOURCE_FILES}
+            COMMAND ${CLANG_FORMAT_EXECUTABLE} -i "@${_clang_format_response_file}"
             COMMENT "Formatting source code with clang-format"
             VERBATIM
         )
@@ -86,7 +90,7 @@ if(CLANG_FORMAT_EXECUTABLE)
 
     if(NOT TARGET format-check)
         add_custom_target(format-check
-            COMMAND ${CLANG_FORMAT_EXECUTABLE} --dry-run -Werror ${ALL_SOURCE_FILES}
+            COMMAND ${CLANG_FORMAT_EXECUTABLE} --dry-run -Werror "@${_clang_format_response_file}"
             COMMENT "Checking code formatting"
             VERBATIM
         )

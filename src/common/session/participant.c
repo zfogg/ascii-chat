@@ -181,8 +181,7 @@ session_participant_t *session_participant_create(const session_participant_conf
 
   participant_connection_init(p);
   p->initialized = true;
-  log_info("returning p=%p (initialized=%d, connected=%d)", p, p->initialized,
-           p->connected);
+  log_info("returning p=%p (initialized=%d, connected=%d)", p, p->initialized, p->connected);
   return p;
 }
 
@@ -193,8 +192,8 @@ void session_participant_destroy(session_participant_t *p) {
 
   session_participant_disconnect(p);
   // A failed join retains the participant and its resources for a safe retry.
-  if (atomic_load_int(&p->connection.state) != SESSION_CONNECTION_STOPPED ||
-      p->video_thread_created || p->audio_thread_created)
+  if (atomic_load_int(&p->connection.state) != SESSION_CONNECTION_STOPPED || p->video_thread_created ||
+      p->audio_thread_created)
     return;
 
   // Clear sensitive data
@@ -279,8 +278,7 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   // Create TCP connection to server
   log_debug("calling connect_to_server(%s, %d)", p->address, p->port);
   socket_t socket = connect_to_server(p->address, p->port);
-  log_debug("connect_to_server returned socket=%d (INVALID=%d)", socket,
-            INVALID_SOCKET_VALUE);
+  log_debug("connect_to_server returned socket=%d (INVALID=%d)", socket, INVALID_SOCKET_VALUE);
 
   if (socket == INVALID_SOCKET_VALUE) {
     log_error("Failed to connect to server at %s:%d", p->address, p->port);
@@ -474,8 +472,7 @@ static void *participant_video_capture_thread(void *arg) {
 static void *participant_audio_capture_thread(void *arg) {
   session_participant_t *p = (session_participant_t *)arg;
   if (!p || !p->audio_capture || !p->opus_encoder) {
-    SET_ERRNO(ERROR_INVALID_PARAM,
-              "invalid participant, audio_capture, or opus_encoder");
+    SET_ERRNO(ERROR_INVALID_PARAM, "invalid participant, audio_capture, or opus_encoder");
     return NULL;
   }
 

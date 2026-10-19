@@ -96,7 +96,8 @@ const registry_entry_t g_audio_entries[] = {
      offsetof(options_t, audio_spectral),
      &default_audio_spectral,
      sizeof(bool),
-     "Process microphone audio with FFTW (default on; media/test audio bypass it). Disable with --spectral-audio=false.",
+     "Process microphone audio with FFTW (default on; media/test audio bypass it). Disable with "
+     "--spectral-audio=false.",
      "AUDIO",
      NULL,
      false,

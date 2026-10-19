@@ -800,7 +800,8 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   uint32_t img_width = NET_TO_HOST_U32(img_width_net);
   uint32_t img_height = NET_TO_HOST_U32(img_height_net);
 
-  log_debug_every(US_PER_SEC_INT, "IMAGE_FRAME packet: width=%u, height=%u, payload_len=%zu", img_width, img_height, len);
+  log_debug_every(US_PER_SEC_INT, "IMAGE_FRAME packet: width=%u, height=%u, payload_len=%zu", img_width, img_height,
+                  len);
 
   // Validate dimensions using image utility functions
   if (image_validate_dimensions((size_t)img_width, (size_t)img_height) != ASCIICHAT_OK) {
@@ -891,8 +892,8 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
 
         if (is_new_frame) {
           log_debug_every(US_PER_SEC_INT, "RECV_FRAME #%u NEW: Client %s size=%zu dims=%ux%u hash=0x%08x (prev=0x%08x)",
-                   client->frames_received, client_id, rgb_data_size, img_width, img_height, incoming_rgb_hash,
-                   client->last_received_frame_hash);
+                          client->frames_received, client_id, rgb_data_size, img_width, img_height, incoming_rgb_hash,
+                          client->last_received_frame_hash);
           client->last_received_frame_hash = incoming_rgb_hash;
         } else {
           log_debug_every(US_PER_SEC_INT, "RECV_FRAME #%u DUP: Client %s size=%zu dims=%ux%u hash=0x%08x",
@@ -1775,7 +1776,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
   mutex_unlock(&client->client_state_mutex);
 
   log_debug("[CAPS_HANDLER] ✅ CAPS_COMPLETE: client_id=%s - all validations passed, capabilities stored",
-           client->client_id);
+            client->client_id);
 }
 
 /**

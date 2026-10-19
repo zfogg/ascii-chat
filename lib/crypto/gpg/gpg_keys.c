@@ -82,8 +82,8 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
   uint8_t ed25519_pk[32];
   asciichat_error_t result;
   if (key_size >= strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----") &&
-      memcmp(gpg_key_binary, "-----BEGIN PGP PUBLIC KEY BLOCK-----",
-             strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----")) == 0) {
+      memcmp(gpg_key_binary, "-----BEGIN PGP PUBLIC KEY BLOCK-----", strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----")) ==
+          0) {
     char *armored_text = SAFE_MALLOC(key_size + 1, char *);
     memcpy(armored_text, gpg_key_binary, key_size);
     armored_text[key_size] = '\0';

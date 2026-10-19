@@ -99,12 +99,12 @@ struct ffmpeg_decoder_t {
   image_t *current_prefetch_image;    ///< Currently available prefetched frame
   bool prefetch_frame_ready;          ///< Whether current_prefetch_image has valid data
   asciichat_error_context_t prefetch_failure;
-  bool prefetch_thread_running;       ///< Whether prefetch thread is active
-  bool prefetch_should_stop;          ///< Signal to stop prefetch thread
-  bool seeking_in_progress;           ///< Signal to pause prefetch thread during seek
-  cond_t prefetch_cond;               ///< Condition variable for pausing during seek
-  mutex_t prefetch_mutex;             ///< Protect prefetch state and FFmpeg decoder access
-  mutex_t read_frame_mutex;           ///< Protect av_read_frame() calls from video and audio threads
+  bool prefetch_thread_running; ///< Whether prefetch thread is active
+  bool prefetch_should_stop;    ///< Signal to stop prefetch thread
+  bool seeking_in_progress;     ///< Signal to pause prefetch thread during seek
+  cond_t prefetch_cond;         ///< Condition variable for pausing during seek
+  mutex_t prefetch_mutex;       ///< Protect prefetch state and FFmpeg decoder access
+  mutex_t read_frame_mutex;     ///< Protect av_read_frame() calls from video and audio threads
 
   // Track which buffer is being read by main thread
   image_t *current_read_buffer; ///< Buffer main thread is currently reading/rendering
@@ -113,8 +113,8 @@ struct ffmpeg_decoder_t {
 
   // State flags
   atomic_t eof_reached; ///< Whether end of file was reached
-  bool is_stdin;       ///< Whether reading from stdin
-  bool video_draining; ///< Whether EOF was sent to the video decoder
+  bool is_stdin;        ///< Whether reading from stdin
+  bool video_draining;  ///< Whether EOF was sent to the video decoder
 
   // Stdin I/O context
   AVIOContext *avio_ctx;      ///< Custom I/O context for stdin
@@ -479,8 +479,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       static int decode_count = 0;
       if (++decode_count <= 3) {
         log_debug("[FRAME_DECODE] Frame %d: width=%d, height=%d, codec_pix_fmt=%d, frame_pix_fmt=%d (is_stdin=%d)",
-                 decode_count, width, height, decoder->video_codec_ctx->pix_fmt, decoder->frame->format,
-                 decoder->is_stdin);
+                  decode_count, width, height, decoder->video_codec_ctx->pix_fmt, decoder->frame->format,
+                  decoder->is_stdin);
       }
 
       // For fragmented MP4 from stdin, pixel format might not be set - default to YUV420p
@@ -538,8 +538,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
         uint8_t *u_data = decoder->frame->data[1];
         uint8_t *v_data = decoder->frame->data[2];
         log_debug("[YUV_INPUT] Frame %d: Y[0]=%u, U[0]=%u, V[0]=%u (linesize=%d,%d,%d)", decode_count,
-                 y_data ? y_data[0] : 255, u_data ? u_data[0] : 255, v_data ? v_data[0] : 255,
-                 decoder->frame->linesize[0], decoder->frame->linesize[1], decoder->frame->linesize[2]);
+                  y_data ? y_data[0] : 255, u_data ? u_data[0] : 255, v_data ? v_data[0] : 255,
+                  decoder->frame->linesize[0], decoder->frame->linesize[1], decoder->frame->linesize[2]);
       }
 
       int ret_scale = sws_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data,
@@ -1495,7 +1495,7 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
 
     packet_count++;
     log_debug_every(US_PER_SEC_INT, "Audio packet #%lu: pts=%ld dts=%ld duration=%d size=%d", packet_count,
-                   decoder->packet->pts, decoder->packet->dts, decoder->packet->duration, decoder->packet->size);
+                    decoder->packet->pts, decoder->packet->dts, decoder->packet->duration, decoder->packet->size);
 
     // Send packet to decoder
     ret = avcodec_send_packet(decoder->audio_codec_ctx, decoder->packet);

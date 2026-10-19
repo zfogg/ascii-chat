@@ -59,7 +59,6 @@ asciichat_error_t key_identity_format_terminal(const public_key_t *key, char *ou
   return key_identity_format(key, art, tty && terminal_supports_utf8(), cols, out, size);
 }
 
-
 const char *key_identity_art_end(const char *text) {
   static const char heading[] = "Keymask v2 / SHA-256\n";
   static const char border[] = "+--------------------------------+\n";

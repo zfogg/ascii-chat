@@ -270,15 +270,14 @@ void mirror_submit_audio_samples(const float *samples, int count, int source) {
   if (!samples || count <= 0 || count > 8192)
     return;
   audio_visualization_submit(source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC
-                                                                       : AUDIO_VISUALIZATION_SOURCE_MEDIA,
+                                                                      : AUDIO_VISUALIZATION_SOURCE_MEDIA,
                              samples, (size_t)count);
 }
 
 EMSCRIPTEN_KEEPALIVE
 char *mirror_render_audio_visualization(unsigned int width, unsigned int height, int source) {
-  audio_visualization_source_t audio_source = source == AUDIO_VISUALIZATION_SOURCE_MIC
-                                                 ? AUDIO_VISUALIZATION_SOURCE_MIC
-                                                 : AUDIO_VISUALIZATION_SOURCE_MEDIA;
+  audio_visualization_source_t audio_source =
+      source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA;
   if (GET_OPTION(fft))
     return audio_visualization_render_fft(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER,
                                           GET_OPTION(flip_x), GET_OPTION(flip_y));

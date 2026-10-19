@@ -35,7 +35,6 @@ Test(fps_counter, inactivity_and_clock_reset) {
   fps_counter_destroy(counter);
 }
 
-
 Test(fps_counter, presentation_counts_only_complete_frames) {
   fps_counter_t *counter = fps_counter_create();
   // Two writes are one presentation, and a failed second write invalidates it.

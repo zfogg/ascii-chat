@@ -386,7 +386,6 @@ static void concurrency_contract(void) {
   CHECK(asciichat_error_stats_get().pending_errors == 0);
 }
 
-
 #ifndef _WIN32
 static atomic_t probe_ready = {0};
 static atomic_t probe_release = {0};

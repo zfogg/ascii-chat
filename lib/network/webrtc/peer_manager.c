@@ -28,19 +28,19 @@
  * @brief Per-peer connection state
  */
 typedef struct {
-  uint8_t participant_id[16];          ///< Remote participant UUID (hash key)
-  uint8_t session_id[16];              ///< Session UUID
-  webrtc_peer_connection_t *pc;        ///< WebRTC peer connection
-  webrtc_data_channel_t *dc;           ///< WebRTC data channel
-  acip_security_t *security;           ///< Owned until transferred to the transport
+  uint8_t participant_id[16];   ///< Remote participant UUID (hash key)
+  uint8_t session_id[16];       ///< Session UUID
+  webrtc_peer_connection_t *pc; ///< WebRTC peer connection
+  webrtc_data_channel_t *dc;    ///< WebRTC data channel
+  acip_security_t *security;    ///< Owned until transferred to the transport
   atomic_t security_ready;
   atomic_t handshake_started_ns;
   atomic_ptr_t pending_transport;      ///< Owned until authenticated and handed to the application
   bool is_connected;                   ///< DataChannel opened
-  bool remote_sdp_attempted;            ///< A remote description was applied or attempted
-  bool remote_description_set;          ///< libdatachannel has installed the remote SDP and ICE transport
-  char remote_ice_ufrag[257];            ///< ICE generation currently installed on this peer
-  bool gathering_timeout_reported;       ///< ICE gathering timed out while trickle candidates may still connect
+  bool remote_sdp_attempted;           ///< A remote description was applied or attempted
+  bool remote_description_set;         ///< libdatachannel has installed the remote SDP and ICE transport
+  char remote_ice_ufrag[257];          ///< ICE generation currently installed on this peer
+  bool gathering_timeout_reported;     ///< ICE gathering timed out while trickle candidates may still connect
   struct webrtc_peer_manager *manager; ///< Back-reference to manager
   UT_hash_handle hh;                   ///< uthash handle
 } peer_entry_t;
@@ -633,8 +633,8 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
     if (existing && existing->remote_sdp_attempted && existing->pc) {
       webrtc_state_t state = webrtc_get_state(existing->pc);
       bool comparable_ice_generation = has_incoming_ice_ufrag && existing->remote_ice_ufrag[0] != '\0';
-      bool new_ice_generation = comparable_ice_generation &&
-                                strcmp(incoming_ice_ufrag, existing->remote_ice_ufrag) != 0;
+      bool new_ice_generation =
+          comparable_ice_generation && strcmp(incoming_ice_ufrag, existing->remote_ice_ufrag) != 0;
       bool terminal_state = state == WEBRTC_STATE_FAILED || state == WEBRTC_STATE_CLOSED;
       if (!terminal_state && comparable_ice_generation && !new_ice_generation && existing->remote_description_set) {
         log_debug("Ignoring duplicate WebRTC offer for existing ICE generation");
@@ -644,7 +644,8 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
         return ASCIICHAT_OK;
       }
       if (terminal_state || new_ice_generation) {
-        log_info("Replacing WebRTC peer for %s", new_ice_generation ? "new ICE generation" : "terminal connection state");
+        log_info("Replacing WebRTC peer for %s",
+                 new_ice_generation ? "new ICE generation" : "terminal connection state");
         remove_peer_locked(manager, existing);
       }
     }
@@ -805,8 +806,7 @@ bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t
   return found;
 }
 
-asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager,
-                                                   const uint8_t participant_id[16]) {
+asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager, const uint8_t participant_id[16]) {
   if (!manager || !participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Peer manager and participant ID are required");
   }
