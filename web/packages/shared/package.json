@@ -12,7 +12,10 @@
     "./utils": "./src/utils/index.ts",
     "./tailwind.config.js": "./tailwind.config.js",
     "./styles/base.css": "./src/styles/base.css",
-    "./components/*": "./src/components/*"
+    "./components/*": "./src/components/*",
+    "./devices/*": "./src/devices/*.ts",
+    "./hooks/*": "./src/hooks/*.ts",
+    "./capture/*": "./src/capture/*.ts"
   },
   "scripts": {
     "build": "echo 'Shared package (no build needed)'"
@@ -22,7 +25,8 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.0",
-    "react-syntax-highlighter": "^16.1.0"
+    "react-syntax-highlighter": "^16.1.0",
+    "@headlessui/react": "^2.2.9"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

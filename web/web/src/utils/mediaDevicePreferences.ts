@@ -1,79 +1,25 @@
 import { readUrlValue, writeUrlValue } from "./urlState";
-const STORAGE_KEY = "ascii-chat.media-devices";
-
-export interface MediaDevicePreferences {
-  cameraId: string;
-  microphoneId: string;
-  speakerId: string;
+import {
+  getStoredMediaDevicePreferences,
+  saveMediaDevicePreferences as saveStored,
+  type MediaDevicePreferences,
+} from "@ascii-chat/shared/devices/mediaDevicePreferences";
+export * from "@ascii-chat/shared/devices/mediaDevicePreferences";
+export function getMediaDevicePreferences(): MediaDevicePreferences {
+  return readUrlValue("mediaDevices", getStoredMediaDevicePreferences());
 }
-
-export type MediaDevicePreferenceKey = keyof MediaDevicePreferences;
-
-export interface MediaDevicePreferencesChange {
-  preferences: MediaDevicePreferences;
-  changedKeys: MediaDevicePreferenceKey[];
-}
-
-export const MEDIA_DEVICE_PREFERENCES_CHANGED =
-  "ascii-chat:media-devices-changed";
-
-const EMPTY_PREFERENCES: MediaDevicePreferences = {
-  cameraId: "",
-  microphoneId: "",
-  speakerId: "",
-};
-
-export function getStoredMediaDevicePreferences(): MediaDevicePreferences {
-  if (typeof window === "undefined") return EMPTY_PREFERENCES;
-
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (!stored) return EMPTY_PREFERENCES;
-    const parsed: unknown = JSON.parse(stored);
-    if (!parsed || typeof parsed !== "object") return EMPTY_PREFERENCES;
-    const preferences = parsed as Partial<MediaDevicePreferences>;
-    return {
-      cameraId:
-        typeof preferences.cameraId === "string" ? preferences.cameraId : "",
-      microphoneId:
-        typeof preferences.microphoneId === "string"
-          ? preferences.microphoneId
-          : "",
-      speakerId:
-        typeof preferences.speakerId === "string" ? preferences.speakerId : "",
-    };
-  } catch {
-    return EMPTY_PREFERENCES;
-  }
-}
-
 export function saveMediaDevicePreferences(
   preferences: MediaDevicePreferences,
+  previous = getMediaDevicePreferences(),
 ): void {
-  if (typeof window === "undefined") return;
-  const previous = getMediaDevicePreferences();
   writeUrlValue(
     "mediaDevices",
     preferences,
     false,
     getStoredMediaDevicePreferences(),
   );
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
-  const changedKeys = (
-    Object.keys(preferences) as MediaDevicePreferenceKey[]
-  ).filter((key) => previous[key] !== preferences[key]);
-  window.dispatchEvent(
-    new CustomEvent<MediaDevicePreferencesChange>(
-      MEDIA_DEVICE_PREFERENCES_CHANGED,
-      { detail: { preferences, changedKeys } },
-    ),
-  );
+  saveStored(preferences, previous);
 }
-
-export function getMediaDevicePreferences(): MediaDevicePreferences {
-  return readUrlValue("mediaDevices", getStoredMediaDevicePreferences());
-}
-
 /** Resolve a camera without opening it or probing other devices for availability. */
 export async function resolveCameraDeviceId({
   selectedCameraId,

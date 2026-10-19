@@ -143,6 +143,9 @@ importers:
 
   packages/shared:
     dependencies:
+      '@headlessui/react':
+        specifier: ^2.2.9
+        version: 2.2.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       prismjs:
         specifier: ^1.30.0
         version: 1.30.0

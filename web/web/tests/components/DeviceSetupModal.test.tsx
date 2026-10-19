@@ -757,3 +757,130 @@ it("offers System default for both inputs and preserves it after preview and sav
     JSON.parse(localStorage.getItem("ascii-chat.media-devices")!),
   ).toMatchObject({ cameraId: "", microphoneId: "" });
 });
+
+describe("shared Device Setup without chat URL policy", () => {
+  it("uses saved devices, ignores URL overrides, and saves without changing the URL", async () => {
+    const { DeviceSetupModal: SharedDeviceSetupModal } =
+      await import("@ascii-chat/shared/components/DeviceSetupModal");
+    localStorage.setItem(
+      "ascii-chat.media-devices",
+      JSON.stringify({
+        cameraId: "camera-free",
+        microphoneId: "mic-two",
+        speakerId: "default",
+      }),
+    );
+    window.history.replaceState(
+      {},
+      "",
+      "/docs/display?cameraId=camera-busy&videoDeviceIndex=0#face-follow",
+    );
+    const url = location.href;
+    const onClose = vi.fn();
+    render(<SharedDeviceSetupModal open onClose={onClose} />);
+    await waitFor(() =>
+      expect(screen.getByLabelText("Camera", { exact: true })).toHaveValue(
+        "camera-free",
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^(Test microphone|Stop test)$/ }),
+      ).toBeEnabled(),
+    );
+    expect(screen.getByLabelText("Microphone", { exact: true })).toHaveValue(
+      "mic-two",
+    );
+    expect(screen.queryByLabelText("Video encoding")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Microphone", { exact: true }), {
+      target: { value: "mic-one" },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^(Test microphone|Stop test)$/ }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(
+      JSON.parse(localStorage.getItem("ascii-chat.media-devices")!),
+    ).toEqual({
+      cameraId: "camera-free",
+      microphoneId: "mic-one",
+      speakerId: "default",
+    });
+    expect(location.href).toBe(url);
+  });
+  it("keeps defaults unpinned and releases previews when dismissed without saving", async () => {
+    const { DeviceSetupModal: SharedDeviceSetupModal } =
+      await import("@ascii-chat/shared/components/DeviceSetupModal");
+    getUserMedia.mockImplementation(
+      async (constraints: MediaStreamConstraints) =>
+        stream(
+          constraints.video ? "video" : "audio",
+          constraints.video ? "camera-free" : "mic-two",
+        ),
+    );
+    const { unmount } = render(
+      <SharedDeviceSetupModal open onClose={vi.fn()} />,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^(Test microphone|Stop test)$/ }),
+      ).toBeEnabled(),
+    );
+    expect(screen.getByLabelText("Camera", { exact: true })).toHaveValue("");
+    expect(screen.getByLabelText("Microphone", { exact: true })).toHaveValue(
+      "",
+    );
+    unmount();
+    expect(tracks.every((track) => track.stop.mock.calls.length > 0)).toBe(
+      true,
+    );
+    expect(localStorage.getItem("ascii-chat.media-devices")).toBeNull();
+  });
+});
+
+it("restores a saved microphone and speaker while permission hides their IDs", async () => {
+  const { DeviceSetupModal: SharedDeviceSetupModal } =
+    await import("@ascii-chat/shared/components/DeviceSetupModal");
+  localStorage.setItem(
+    "ascii-chat.media-devices",
+    JSON.stringify({
+      cameraId: "camera-free",
+      microphoneId: "hidden-mic",
+      speakerId: "hidden-speaker",
+    }),
+  );
+  enumerateDevices.mockResolvedValue([
+    device("", "videoinput", ""),
+    device("", "audioinput", ""),
+    device("", "audiooutput", ""),
+  ]);
+  getUserMedia.mockImplementation(async (constraints: MediaStreamConstraints) =>
+    stream(
+      constraints.video ? "video" : "audio",
+      constraints.video ? "camera-free" : "hidden-mic",
+    ),
+  );
+  render(<SharedDeviceSetupModal open onClose={vi.fn()} />);
+  await waitFor(() =>
+    expect(
+      getUserMedia.mock.calls.some(
+        ([constraints]) => constraints.audio?.deviceId?.exact === "hidden-mic",
+      ),
+    ).toBe(true),
+  );
+  await waitFor(() =>
+    expect(screen.getByLabelText("Microphone", { exact: true })).toHaveValue(
+      "hidden-mic",
+    ),
+  );
+  expect(screen.getByLabelText("Speakers", { exact: true })).toHaveValue(
+    "hidden-speaker",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  expect(
+    JSON.parse(localStorage.getItem("ascii-chat.media-devices")!),
+  ).toMatchObject({ microphoneId: "hidden-mic", speakerId: "hidden-speaker" });
+});

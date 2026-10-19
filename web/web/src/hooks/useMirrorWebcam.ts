@@ -1,4 +1,8 @@
 import {
+  cameraConstraints,
+  microphoneConstraints,
+} from "@ascii-chat/shared/devices/mediaDevicePreferences";
+import {
   type MutableRefObject,
   type RefObject,
   useCallback,
@@ -132,18 +136,15 @@ export function useMirrorWebcam({
       const mediaConstraints: MediaStreamConstraints = {
         video: audioOnly
           ? false
-          : {
+          : cameraConstraints(cameraId, {
               width: { ideal: 1280 },
               height: { ideal: 720 },
               frameRate: { ideal: cameraAcquisitionFps() },
               facingMode: "user",
-              ...(cameraId ? { deviceId: { exact: cameraId } } : {}),
-            },
+            }),
         // Keep the microphone track available so waveform/FFT can be enabled
         // after the camera has started, without requiring a reconnect.
-        audio: devicePreferences.microphoneId
-          ? { deviceId: { exact: devicePreferences.microphoneId } }
-          : true,
+        audio: microphoneConstraints(devicePreferences.microphoneId),
       };
       let stream: MediaStream | undefined;
       for (let attempt = 0; ; attempt++) {
