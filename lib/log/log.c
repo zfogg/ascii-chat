@@ -195,7 +195,7 @@ const char *get_level_string_padded(log_level_t level) {
   // Verify length
   if (strlen(result) != 5) {
     log_terminal_printf(STDERR_FILENO, "ERROR: get_level_string_padded() returned non-5-char string: '%s' (len=%zu)\n",
-                         result, strlen(result));
+                        result, strlen(result));
   }
   return result;
 }
@@ -212,7 +212,7 @@ const char *get_level_string_padded(log_level_t level) {
   do {                                                                                                                 \
     asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                    \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);              \
+    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);               \
     int _log_fd = atomic_load_int(&g_log.file);                                                                        \
     platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
     platform_write(_log_fd, message, strlen(message));                                                                 \
@@ -224,7 +224,7 @@ const char *get_level_string_padded(log_level_t level) {
   do {                                                                                                                 \
     asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);              \
+    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);               \
     int _log_fd = atomic_load_int(&g_log.file);                                                                        \
     platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
     platform_write(_log_fd, message, strlen(message));                                                                 \
@@ -1088,8 +1088,8 @@ static void output_notice(log_level_t level, const char *file, int line, const c
                       : -1;
   size_t start = 0, length = 0;
   if (!GET_OPTION(quiet) &&
-      (log_get_terminal_output() || ui_controller_is_presenting() || severity == UI_NOTICE_FATAL) &&
-      plain_len > 0 && (size_t)plain_len < capacity && grep_should_output(plain_log_line, &start, &length))
+      (log_get_terminal_output() || ui_controller_is_presenting() || severity == UI_NOTICE_FATAL) && plain_len > 0 &&
+      (size_t)plain_len < capacity && grep_should_output(plain_log_line, &start, &length))
 #ifdef EMSCRIPTEN_BUILD
     log_plain("%s", text);
 #else
@@ -1170,7 +1170,6 @@ void ui_notice_announce(const char *file, int line, const char *func, const char
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
 
-
   // All state access uses atomic operations - fully lock-free
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;
@@ -1245,14 +1244,14 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
           const char **colors = log_get_color_array();
           if (colors) {
             log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s%s%s\n", header_buffer,
-                                 colors[LOG_COLOR_RESET], colorized_msg, colors[LOG_COLOR_RESET]);
+                                colors[LOG_COLOR_RESET], colorized_msg, colors[LOG_COLOR_RESET]);
           } else {
             log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s\n", header_buffer,
-                                 colorized_msg);
+                                colorized_msg);
           }
         } else {
           log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s\n", header_buffer,
-                               msg_buffer);
+                              msg_buffer);
         }
         (void)fflush(output_stream);
       }

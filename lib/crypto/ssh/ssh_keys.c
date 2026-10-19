@@ -1104,8 +1104,7 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
     } else {
       uint8_t first_packet = (uint8_t)header[0];
       unsigned int packet_tag = (first_packet & 0x80u)
-                                    ? ((first_packet & 0x40u) ? (first_packet & 0x3fu)
-                                                               : ((first_packet >> 2) & 0x0fu))
+                                    ? ((first_packet & 0x40u) ? (first_packet & 0x3fu) : ((first_packet >> 2) & 0x0fu))
                                     : 0u;
       is_valid_key_file = packet_tag == 5u;
     }
@@ -1180,7 +1179,7 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Key is not an Ed25519 key");
   }
 
- #ifndef EMSCRIPTEN_BUILD
+#ifndef EMSCRIPTEN_BUILD
   // If using GPG agent, delegate signing to GPG agent
   if (key->use_gpg_agent) {
     log_debug("Using GPG agent for Ed25519 signing (keygrip: %.40s)", key->gpg_keygrip);
@@ -1257,11 +1256,11 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
     log_debug("Successfully signed message with SSH agent (64 bytes)");
     return ASCIICHAT_OK;
   }
- #else
+#else
   if (key->use_gpg_agent || key->use_ssh_agent) {
     return SET_ERRNO(ERROR_NOT_SUPPORTED, "External SSH and GPG agents are not available in the browser");
   }
- #endif
+#endif
 
   // Sign the message with Ed25519 (in-memory key)
   if (crypto_sign_detached(signature, NULL, message, message_len, key->key.ed25519) != 0) {

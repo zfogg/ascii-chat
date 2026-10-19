@@ -622,7 +622,6 @@ asciichat_error_t ascii_grid_layout(int source_count, int width, int height, int
   *grid_cols = best_cols;
   *grid_rows = best_rows;
   return ASCIICHAT_OK;
-
 }
 
 /**

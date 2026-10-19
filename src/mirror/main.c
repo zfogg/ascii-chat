@@ -281,7 +281,6 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
   return result;
 }
 
-
 /* ============================================================================
  * Mirror Mode Entry Point
  * ============================================================================ */

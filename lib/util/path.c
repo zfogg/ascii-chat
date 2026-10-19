@@ -1007,8 +1007,7 @@ static bool is_existing_ascii_chat_log(const char *path) {
 
     // ascii-chat logs start with timestamps like: [HH:MM:SS.microseconds] [LEVEL]
     // Pattern: [digit][digit]:[digit][digit]:[digit][digit].[digits]
-    if (plain[0] == '[' && isdigit((unsigned char)plain[1]) && isdigit((unsigned char)plain[2]) &&
-        plain[3] == ':') {
+    if (plain[0] == '[' && isdigit((unsigned char)plain[1]) && isdigit((unsigned char)plain[2]) && plain[3] == ':') {
       is_ascii_chat_log = true;
     }
   }

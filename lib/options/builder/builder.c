@@ -1642,8 +1642,9 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
     } else if (argv_index + 1 < argc && !is_flag_argument(argv[argv_index + 1])) {
       // Check if next argument is a valid boolean value
       const char *next_arg = argv[argv_index + 1];
-      if (strcasecmp(next_arg, OPT_VALUE_TRUE) == 0 || strcasecmp(next_arg, "yes") == 0 || strcasecmp(next_arg, "1") == 0 ||
-          strcasecmp(next_arg, "on") == 0 || strcasecmp(next_arg, OPT_VALUE_FALSE) == 0 || strcasecmp(next_arg, "no") == 0 ||
+      if (strcasecmp(next_arg, OPT_VALUE_TRUE) == 0 || strcasecmp(next_arg, "yes") == 0 ||
+          strcasecmp(next_arg, "1") == 0 || strcasecmp(next_arg, "on") == 0 ||
+          strcasecmp(next_arg, OPT_VALUE_FALSE) == 0 || strcasecmp(next_arg, "no") == 0 ||
           strcasecmp(next_arg, "0") == 0 || strcasecmp(next_arg, "off") == 0) {
         // Next argument is a boolean value, consume it
         opt_value = next_arg;

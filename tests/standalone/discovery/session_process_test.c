@@ -59,9 +59,8 @@ static asciichat_error_t discovery_session_receive(acip_transport_t *transport, 
   return ASCIICHAT_OK;
 }
 static discovery_session_t discovery_session_fixture(discovery_state_t state) {
-  return (discovery_session_t){.state = state,
-                               .on_state_change = discovery_session_transition,
-                               .handoff_last_sample_ms = now_ms};
+  return (discovery_session_t){
+      .state = state, .on_state_change = discovery_session_transition, .handoff_last_sample_ms = now_ms};
 }
 static asciichat_error_t discovery_session_step(discovery_session_t *session, int64_t timeout_ns) {
   session->callback_user_data = session;

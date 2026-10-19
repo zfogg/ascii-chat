@@ -64,7 +64,7 @@ struct media_source_t {
 
   // Test pattern state (for MEDIA_SOURCE_TEST)
   test_pattern_t *test_pattern; ///< Independent reusable synthetic renderer
-  uint64_t test_start_ns; ///< Monotonic animation origin
+  uint64_t test_start_ns;       ///< Monotonic animation origin
 };
 
 /* ============================================================================
@@ -432,7 +432,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   case MEDIA_SOURCE_TEST: {
     // Test pattern state is encapsulated in media_source_t
     source->webcam_index = 0;
-    source->webcam_ctx = NULL;         // No context needed for test pattern
+    source->webcam_ctx = NULL; // No context needed for test pattern
     source->test_pattern = NULL;
     source->test_start_ns = 0;
 
@@ -532,9 +532,11 @@ static image_t *read_test_pattern(media_source_t *source) {
   width = width > 0 ? width : 320;
   height = height > 0 ? height * 2 : 240;
   if (!source->test_pattern) {
-    if (test_pattern_create(width, height, &source->test_pattern) != ASCIICHAT_OK) return NULL;
+    if (test_pattern_create(width, height, &source->test_pattern) != ASCIICHAT_OK)
+      return NULL;
     source->test_start_ns = time_get_ns();
-  } else if (test_pattern_resize(source->test_pattern, width, height) != ASCIICHAT_OK) return NULL;
+  } else if (test_pattern_resize(source->test_pattern, width, height) != ASCIICHAT_OK)
+    return NULL;
   double elapsed = (double)time_elapsed_ns(source->test_start_ns, time_get_ns()) / 1000000.0;
   if (test_pattern_render(source->test_pattern, GET_OPTION(test_pattern_index), elapsed, false) != ASCIICHAT_OK)
     return NULL;
@@ -632,9 +634,9 @@ image_t *media_source_read_video(media_source_t *source) {
         double max_read_ms = (double)max_read_time_ns / NS_PER_MS;
         double null_rate = (double)null_frame_count * 100.0 / (double)total_attempts;
         log_debug_every(3 * US_PER_SEC_INT,
-                       "FRAME_STATS[%lu]: avg_read=%.2f ms, max_read=%.2f ms, null_rate=%.1f%% "
-                       "(%lu null/%lu attempts)",
-                       successful_frames, avg_read_ms, max_read_ms, null_rate, null_frame_count, total_attempts);
+                        "FRAME_STATS[%lu]: avg_read=%.2f ms, max_read=%.2f ms, null_rate=%.1f%% "
+                        "(%lu null/%lu attempts)",
+                        successful_frames, avg_read_ms, max_read_ms, null_rate, null_frame_count, total_attempts);
       }
     } else {
       null_frame_count++;
@@ -744,7 +746,7 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
     }
 
     log_debug_every(US_PER_SEC_INT, "Audio: read %zu samples, pos %.2f Ã¢â€ â€™ %.2f", samples_read,
-                   audio_pos_before_read, audio_pos_after_read);
+                    audio_pos_before_read, audio_pos_after_read);
 
     // Handle EOF with loop
     if (samples_read == 0 && ffmpeg_decoder_at_end(source->audio_decoder)) {
@@ -857,7 +859,8 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
     }
 
     // Rewind video decoder
-    asciichat_error_t video_result = source->video_decoder ? ffmpeg_decoder_rewind(source->video_decoder) : ASCIICHAT_OK;
+    asciichat_error_t video_result =
+        source->video_decoder ? ffmpeg_decoder_rewind(source->video_decoder) : ASCIICHAT_OK;
     if (video_result != ASCIICHAT_OK) {
       if (source->is_shared_decoder) {
         mutex_unlock(&source->decoder_mutex);
@@ -936,7 +939,7 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
       result = video_err;
     } else {
       log_debug("Video SEEK: %.2f Ã¢â€ â€™ %.2f sec (target %.2f, took %s)", video_pos_before, video_pos_after,
-               timestamp_sec, video_seek_str);
+                timestamp_sec, video_seek_str);
     }
   }
 
@@ -957,7 +960,7 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
       result = audio_err;
     } else {
       log_debug("Audio SEEK COMPLETE: %.2f Ã¢â€ â€™ %.2f sec (target %.2f, took %s)", audio_pos_before, audio_pos_after,
-               timestamp_sec, audio_seek_str);
+                timestamp_sec, audio_seek_str);
     }
   }
 

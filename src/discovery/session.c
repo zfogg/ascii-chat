@@ -220,8 +220,8 @@ static asciichat_error_t select_participant_transport(discovery_session_t *sessi
   session_participant_stop_video(participant);
   acip_transport_t *previous = session_participant_get_transport(participant);
   if (previous && acip_transport_get_type(previous) == ACIP_TRANSPORT_TCP && !session->host_control_transport) {
-    asciichat_error_t result = session_participant_take_transport(
-        participant, &session->host_control_transport, &session->host_control_ownership);
+    asciichat_error_t result = session_participant_take_transport(participant, &session->host_control_transport,
+                                                                  &session->host_control_ownership);
     if (result != ASCIICHAT_OK)
       return result;
   }
@@ -566,7 +566,8 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t discovery_protocol_send(void *transport, packet_type_t type, const void *payload, size_t length) {
+static asciichat_error_t discovery_protocol_send(void *transport, packet_type_t type, const void *payload,
+                                                 size_t length) {
   return packet_send_via_transport(transport, type, payload, length, 0);
 }
 static asciichat_error_t discovery_protocol_receive(discovery_session_t *session, acds_protocol_t *protocol) {
@@ -574,9 +575,11 @@ static asciichat_error_t discovery_protocol_receive(discovery_session_t *session
   void *payload = NULL, *allocation = NULL;
   size_t length = 0;
   asciichat_error_t result = acds_receive_packet(session->acds_transport, &type, &payload, &length, &allocation);
-  if (result == ASCIICHAT_OK) result = acds_protocol_receive(protocol, type, payload, length);
+  if (result == ASCIICHAT_OK)
+    result = acds_protocol_receive(protocol, type, payload, length);
   buffer_release(allocation);
-  if (result != ASCIICHAT_OK) set_error(session, result, protocol->error[0] ? protocol->error : "Discovery receive failed");
+  if (result != ASCIICHAT_OK)
+    set_error(session, result, protocol->error[0] ? protocol->error : "Discovery receive failed");
   return result;
 }
 
@@ -603,12 +606,19 @@ static asciichat_error_t create_session(discovery_session_t *session) {
       SAFE_STRNCPY(params.server_address, "127.0.0.1", sizeof(params.server_address));
       params.server_port = ACIP_HOST_DEFAULT_PORT;
     }
-    asciichat_error_t result = acds_protocol_create(&protocol, &params, (uint8_t)session->num_identity_keys, (uint8_t)key_idx);
+    asciichat_error_t result =
+        acds_protocol_create(&protocol, &params, (uint8_t)session->num_identity_keys, (uint8_t)key_idx);
     sodium_memzero(&params, sizeof(params));
-    if (result != ASCIICHAT_OK) { acds_protocol_destroy(&protocol); return result; }
+    if (result != ASCIICHAT_OK) {
+      acds_protocol_destroy(&protocol);
+      return result;
+    }
   }
   asciichat_error_t result = discovery_protocol_receive(session, &protocol);
-  if (result != ASCIICHAT_OK) { acds_protocol_destroy(&protocol); return result; }
+  if (result != ASCIICHAT_OK) {
+    acds_protocol_destroy(&protocol);
+    return result;
+  }
   acip_session_created_t created_value = protocol.created;
   acip_session_created_t *created = &created_value;
   void *alloc_buffer = NULL;
@@ -867,8 +877,7 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
         .encryption_enabled = false,
     };
     session->participant_ctx = session_participant_create(&pconfig);
-    if (!session->participant_ctx ||
-        select_participant_transport(session, transport) != ASCIICHAT_OK) {
+    if (!session->participant_ctx || select_participant_transport(session, transport) != ASCIICHAT_OK) {
       acip_transport_destroy(transport);
       set_error(session, ERROR_INVALID_STATE, "Failed to attach WebRTC participant transport");
       return;
@@ -1292,14 +1301,18 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   acds_protocol_t protocol;
   acds_protocol_init(&protocol, discovery_protocol_send, session->acds_transport);
   acds_session_join_params_t params = {.session_string = session->session_string,
-                                      .has_password = session->password[0] != 0};
+                                       .has_password = session->password[0] != 0};
   memcpy(params.identity_pubkey, session->identity_pubkey, sizeof(params.identity_pubkey));
   memcpy(params.identity_seckey, session->identity_seckey, sizeof(params.identity_seckey));
   SAFE_STRNCPY(params.password, session->password, sizeof(params.password));
   asciichat_error_t result = acds_protocol_join(&protocol, &params);
   sodium_memzero(&params, sizeof(params));
-  if (result == ASCIICHAT_OK) result = discovery_protocol_receive(session, &protocol);
-  if (result != ASCIICHAT_OK) { acds_protocol_destroy(&protocol); return result; }
+  if (result == ASCIICHAT_OK)
+    result = discovery_protocol_receive(session, &protocol);
+  if (result != ASCIICHAT_OK) {
+    acds_protocol_destroy(&protocol);
+    return result;
+  }
   acip_session_joined_t joined_value = protocol.joined;
   acip_session_joined_t *joined = &joined_value;
   void *alloc_buffer = NULL;

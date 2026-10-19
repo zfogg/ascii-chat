@@ -169,10 +169,10 @@ static char *visualization_encode(const char *cells, const unsigned char *colors
         const unsigned char *lower_color = colors + (column_colors ? sx : lower) * 3;
         bool upper_on = ch != ' ', lower_on = cells[lower] != ' ';
         if (use_color) {
-          used += (size_t)snprintf(frame + used, capacity - used,
-              "\033[38;2;%u;%u;%um\033[48;2;%u;%u;%um▀\033[0m",
-              upper_on ? color[0] : 0, upper_on ? color[1] : 0, upper_on ? color[2] : 0,
-              lower_on ? lower_color[0] : 0, lower_on ? lower_color[1] : 0, lower_on ? lower_color[2] : 0);
+          used += (size_t)snprintf(frame + used, capacity - used, "\033[38;2;%u;%u;%um\033[48;2;%u;%u;%um▀\033[0m",
+                                   upper_on ? color[0] : 0, upper_on ? color[1] : 0, upper_on ? color[2] : 0,
+                                   lower_on ? lower_color[0] : 0, lower_on ? lower_color[1] : 0,
+                                   lower_on ? lower_color[2] : 0);
         } else {
           const char *glyph = upper_on ? (lower_on ? "█" : "▀") : (lower_on ? "▄" : " ");
           size_t length = strlen(glyph);
@@ -181,8 +181,8 @@ static char *visualization_encode(const char *cells, const unsigned char *colors
         }
       } else if (use_color && ch != ' ') {
         used += (size_t)snprintf(frame + used, capacity - used, "\033[%d;2;%u;%u;%um%c\033[0m",
-                                mode == RENDER_MODE_BACKGROUND ? 48 : 38,
-                                color[0], color[1], color[2], mode == RENDER_MODE_BACKGROUND ? ' ' : ch);
+                                 mode == RENDER_MODE_BACKGROUND ? 48 : 38, color[0], color[1], color[2],
+                                 mode == RENDER_MODE_BACKGROUND ? ' ' : ch);
       } else {
         frame[used++] = ch;
       }

@@ -51,8 +51,8 @@ static bool address_resolves_to_tailscale(const char *address, bool numeric_only
   bool tailscale = results->ai_canonname && is_tailscale_hostname(results->ai_canonname);
   for (struct addrinfo *entry = results; !tailscale && entry; entry = entry->ai_next) {
     char hostname[NI_MAXHOST] = {0};
-    if (getnameinfo(entry->ai_addr, (socklen_t)entry->ai_addrlen, hostname, sizeof(hostname), NULL, 0,
-                    NI_NAMEREQD) == 0) {
+    if (getnameinfo(entry->ai_addr, (socklen_t)entry->ai_addrlen, hostname, sizeof(hostname), NULL, 0, NI_NAMEREQD) ==
+        0) {
       tailscale = is_tailscale_hostname(hostname);
     }
   }

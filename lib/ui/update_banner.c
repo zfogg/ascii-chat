@@ -278,8 +278,7 @@ static void render_update_prompt(terminal_size_t size, const void *data) {
   // Prompt (grey)
   {
     char line[256];
-    snprintf(line, sizeof(line), "\033[90m[Y] update [N] continue (%us: continue)\033[0m",
-             10u);
+    snprintf(line, sizeof(line), "\033[90m[Y] update [N] continue (%us: continue)\033[0m", 10u);
     append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
   }
 

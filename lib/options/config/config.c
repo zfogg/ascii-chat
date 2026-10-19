@@ -414,8 +414,8 @@ static asciichat_error_t parse_validate_bool(const char *value_str, const config
   (void)error_size;
 
   // Parse boolean from string representation (OPT_VALUE_TRUE or OPT_VALUE_FALSE)
-  parsed->bool_value =
-      value_str && (strcmp(value_str, OPT_VALUE_TRUE) == 0 || strcmp(value_str, "1") == 0 || strcmp(value_str, "yes") == 0);
+  parsed->bool_value = value_str && (strcmp(value_str, OPT_VALUE_TRUE) == 0 || strcmp(value_str, "1") == 0 ||
+                                     strcmp(value_str, "yes") == 0);
   return ASCIICHAT_OK;
 }
 
@@ -1555,8 +1555,7 @@ asciichat_error_t config_create_default(const char *config_path) {
     // Write buffer to file
     size_t written = fwrite(builder.buffer, 1, builder.size, output_file);
     if (written != builder.size) {
-      asciichat_error_t error =
-          SET_ERRNO_SYS(ERROR_CONFIG, "Failed to write config to file: %s", config_path_expanded);
+      asciichat_error_t error = SET_ERRNO_SYS(ERROR_CONFIG, "Failed to write config to file: %s", config_path_expanded);
       SAFE_FCLOSE(output_file);
       return error;
     }

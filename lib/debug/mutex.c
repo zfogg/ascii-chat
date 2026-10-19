@@ -259,8 +259,7 @@ void mutex_stack_pop(uintptr_t mutex_key) {
   // matching acquisition, preserving any recursive acquisitions below it.
   for (int i = stack->depth - 1; i >= 0; --i) {
     if (stack->stack[i].mutex_key == mutex_key) {
-      memmove(&stack->stack[i], &stack->stack[i + 1],
-              (size_t)(stack->depth - i - 1) * sizeof(stack->stack[0]));
+      memmove(&stack->stack[i], &stack->stack[i + 1], (size_t)(stack->depth - i - 1) * sizeof(stack->stack[0]));
       --stack->depth;
       break;
     }
@@ -507,7 +506,7 @@ bool mutex_stack_try_snapshot(mutex_wait_snapshot_t *waits, size_t capacity, siz
         for (int j = 0; j < length; ++j)
           cycle |= path[j] == i;
       waits[(*count)++] = (mutex_wait_snapshot_t){key, (uintptr_t)ids[i],
-                                                snapshots[i].stack[snapshots[i].depth - 1].timestamp_ns, cycle};
+                                                  snapshots[i].stack[snapshots[i].depth - 1].timestamp_ns, cycle};
     }
   }
   atomic_flag_clear(&sampling);

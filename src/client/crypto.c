@@ -456,10 +456,10 @@ asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_
 
   // Step 0a: Send protocol version to server
   protocol_version_packet_t client_version = {0};
-  client_version.protocol_version = HOST_TO_NET_U16(1);                          // Protocol version 1
-  client_version.protocol_revision = HOST_TO_NET_U16(0);                         // Revision 0
-  client_version.supports_encryption = connection->crypto_mode;                  // Send crypto mode bitmask
-  client_version.compression_algorithms = 0;                                     // No compression for now
+  client_version.protocol_version = HOST_TO_NET_U16(1);         // Protocol version 1
+  client_version.protocol_revision = HOST_TO_NET_U16(0);        // Revision 0
+  client_version.supports_encryption = connection->crypto_mode; // Send crypto mode bitmask
+  client_version.compression_algorithms = 0;                    // No compression for now
   client_version.compression_threshold = 0;
   client_version.feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS);
 

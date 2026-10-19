@@ -27,16 +27,16 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/crypto/known_hosts.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>       // For RCU-based options access
-#include <ascii-chat/discovery/strings.h> // For RCU-based options access
-#include <ascii-chat/debug/sync.h>        // Synchronization diagnostics lifecycle
-#include <ascii-chat/debug/mutex.h>       // For mutex_stack_cleanup
-#include <ascii-chat/debug/named.h>       // For named_destroy()
-#include <ascii-chat/debug/atomic.h>      // For debug_atomic_shutdown()
-#include <ascii-chat/debug/memory.h>      // For debug_memory_thread_cleanup in debug builds
-#include <ascii-chat/platform/symbols.h>  // For symbols cache init
-#include <ascii-chat/platform/terminal.h> // For terminal_screen_cleanup
-#include <ascii-chat/platform/keyboard.h> // For keyboard_destroy()
+#include <ascii-chat/options/rcu.h>        // For RCU-based options access
+#include <ascii-chat/discovery/strings.h>  // For RCU-based options access
+#include <ascii-chat/debug/sync.h>         // Synchronization diagnostics lifecycle
+#include <ascii-chat/debug/mutex.h>        // For mutex_stack_cleanup
+#include <ascii-chat/debug/named.h>        // For named_destroy()
+#include <ascii-chat/debug/atomic.h>       // For debug_atomic_shutdown()
+#include <ascii-chat/debug/memory.h>       // For debug_memory_thread_cleanup in debug builds
+#include <ascii-chat/platform/symbols.h>   // For symbols cache init
+#include <ascii-chat/platform/terminal.h>  // For terminal_screen_cleanup
+#include <ascii-chat/platform/keyboard.h>  // For keyboard_destroy()
 #include <ascii-chat/ui/terminal_screen.h> // For terminal_screen_cleanup
 #include <string.h>
 #include <ascii-chat/atomic.h>

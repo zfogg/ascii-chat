@@ -296,7 +296,8 @@ asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_l
   while (offset < data_len) {
     openpgp_packet_header_t header;
     asciichat_error_t result = openpgp_parse_packet_header(data + offset, data_len - offset, &header);
-    if (result != ASCIICHAT_OK) return result;
+    if (result != ASCIICHAT_OK)
+      return result;
     if (header.header_len > data_len - offset || header.length > data_len - offset - header.header_len) {
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Truncated OpenPGP packet in public key");
     }
@@ -729,7 +730,8 @@ asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_l
   while (offset < data_len) {
     openpgp_packet_header_t header;
     asciichat_error_t result = openpgp_parse_packet_header(data + offset, data_len - offset, &header);
-    if (result != ASCIICHAT_OK) return result;
+    if (result != ASCIICHAT_OK)
+      return result;
     if (header.header_len > data_len - offset || header.length > data_len - offset - header.header_len) {
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Truncated OpenPGP packet in secret key");
     }

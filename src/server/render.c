@@ -645,7 +645,7 @@ void *client_video_render_thread(void *arg) {
                        thread_client_id, render_fps, client_fps, (unsigned long long)missed_deadlines_in_window);
             } else {
               log_debug("Server video render client=%s fps=%.1f target=%d missed_deadlines=0", thread_client_id,
-                       render_fps, client_fps);
+                        render_fps, client_fps);
             }
             render_rate_window_start_ns = render_rate_now_ns;
             rendered_frames_in_window = 0;

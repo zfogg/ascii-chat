@@ -171,10 +171,9 @@ asciichat_error_t session_display_init_render_file(session_display_ctx_t *ctx, u
 }
 
 session_display_ctx_t *session_display_create(const session_display_config_t *config) {
-  if (GET_OPTION(zalgo) > 0 &&
-      (GET_OPTION(force_utf8) == UTF8_SETTING_FALSE ||
-       (GET_OPTION(force_utf8) == UTF8_SETTING_AUTO && terminal_is_stdout_tty() &&
-        !detect_terminal_capabilities().utf8_support))) {
+  if (GET_OPTION(zalgo) > 0 && (GET_OPTION(force_utf8) == UTF8_SETTING_FALSE ||
+                                (GET_OPTION(force_utf8) == UTF8_SETTING_AUTO && terminal_is_stdout_tty() &&
+                                 !detect_terminal_capabilities().utf8_support))) {
     SET_ERRNO(ERROR_USAGE, "--zalgo requires UTF-8 terminal output (on Windows, run chcp 65001 first)");
     return NULL;
   }
@@ -844,7 +843,8 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   char *zalgo_frame = NULL;
   int zalgo_level = GET_OPTION(zalgo);
   if (zalgo_level > 0) {
-    asciichat_error_t err = zalgo_apply(display_frame, frame_len, zalgo_level, UI_CONTROLLER_MAX_FRAME_BYTES - 7, &zalgo_frame);
+    asciichat_error_t err =
+        zalgo_apply(display_frame, frame_len, zalgo_level, UI_CONTROLLER_MAX_FRAME_BYTES - 7, &zalgo_frame);
     if (err == ASCIICHAT_OK) {
       display_frame = zalgo_frame;
       frame_len = strlen(zalgo_frame);
@@ -916,8 +916,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
                 frame_len);
       asciichat_error_t presented = ui_controller_present(
           UI_SCREEN_MEDIA, ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO,
-          (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS},
-          frame_buffer, total_size);
+          (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, frame_buffer, total_size);
       ssize_t written = presented == ASCIICHAT_OK ? (ssize_t)total_size : -1;
       log_debug("FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)", written, total_size);
 

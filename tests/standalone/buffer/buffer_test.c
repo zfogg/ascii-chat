@@ -359,7 +359,8 @@ static void websocket_control_reserve_contract(void) {
   // An oversized miss trims idle media storage, so cached blocks cannot mask pressure.
   CHECK(buffer_alloc(NULL, BUFFER_DOMAIN_LIMIT) == NULL);
   buffer_budget_t pressure = {0};
-  CHECK(buffer_budget_reserve(&pressure, BUFFER_PROCESS_LIMIT - BUFFER_CONTROL_RESERVE - buffer_process_reserved()) == ASCIICHAT_OK);
+  CHECK(buffer_budget_reserve(&pressure, BUFFER_PROCESS_LIMIT - BUFFER_CONTROL_RESERVE - buffer_process_reserved()) ==
+        ASCIICHAT_OK);
   // Consume all non-control process allowance while leaving the reserved bytes available.
   packet_type_t types[] = {PACKET_TYPE_CRYPTO_PARAMETERS, PACKET_TYPE_ERROR_MESSAGE};
   for (int client = 0; client < 2; ++client) {
@@ -373,7 +374,8 @@ static void websocket_control_reserve_contract(void) {
         CHECK(ringbuffer_read(ws.send_queue, &message));
         packet_header_t wire;
         memcpy(&wire, message.data + LWS_PRE, sizeof(wire));
-        CHECK(NET_TO_HOST_U16(wire.type) == (encrypted && types[i] == PACKET_TYPE_ERROR_MESSAGE ? PACKET_TYPE_ENCRYPTED : types[i]));
+        CHECK(NET_TO_HOST_U16(wire.type) ==
+              (encrypted && types[i] == PACKET_TYPE_ERROR_MESSAGE ? PACKET_TYPE_ENCRYPTED : types[i]));
         buffer_release(message.data);
       }
     }

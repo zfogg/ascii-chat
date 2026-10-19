@@ -140,8 +140,8 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
 
   /* JIT is optional; builds such as WebAssembly use the interpreter. */
   uint32_t jit_available = 0;
-  if (!SAFE_GETENV("ASCII_CHAT_PCRE2_DISABLE_JIT") &&
-      pcre2_config(PCRE2_CONFIG_JIT, &jit_available) == 0 && jit_available) {
+  if (!SAFE_GETENV("ASCII_CHAT_PCRE2_DISABLE_JIT") && pcre2_config(PCRE2_CONFIG_JIT, &jit_available) == 0 &&
+      jit_available) {
     int jit_rc = pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
     if (jit_rc < 0) {
       log_debug("PCRE2 JIT compilation failed (code %d), using interpreted mode", jit_rc);

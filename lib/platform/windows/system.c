@@ -211,7 +211,8 @@ void platform_sleep_ns(uint64_t ns) {
     // Relative waitable-timer deadlines are measured in 100ns units.
     uint64_t ticks_100ns = (ns + 99) / 100;
     due_time.QuadPart = -(LONGLONG)ticks_100ns;
-    if (SetWaitableTimer(timer, &due_time, 0, NULL, NULL, FALSE) && WaitForSingleObject(timer, INFINITE) == WAIT_OBJECT_0) {
+    if (SetWaitableTimer(timer, &due_time, 0, NULL, NULL, FALSE) &&
+        WaitForSingleObject(timer, INFINITE) == WAIT_OBJECT_0) {
       return;
     }
   }

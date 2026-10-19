@@ -25,9 +25,7 @@ bool ui_input_expired(uint64_t deadline) {
 
 void ui_input_timeout_report(unsigned seconds, const char *consequence) {
   char message[512];
-  int length = snprintf(message, sizeof(message),
-                        "\nPrompt timed out after %u seconds; %s.\n",
-                        seconds, consequence);
+  int length = snprintf(message, sizeof(message), "\nPrompt timed out after %u seconds; %s.\n", seconds, consequence);
   // This diagnostic must remain visible even while a background screen owns the terminal.
   if (length > 0)
     platform_write_all(STDERR_FILENO, message, (size_t)length < sizeof(message) ? (size_t)length : sizeof(message) - 1);
@@ -106,7 +104,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
       }
       if (key == KEY_NONE)
         key = state.screen == UI_SCREEN_HELP && keyboard_help_check_signal_cancel() ? KEY_QUESTION
-                                                                                  : keyboard_read_nonblocking();
+                                                                                    : keyboard_read_nonblocking();
       if (!log_search_is_entering())
         key = ui_sync_handle_key(key);
     }

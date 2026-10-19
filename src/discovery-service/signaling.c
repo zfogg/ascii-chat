@@ -47,7 +47,7 @@ typedef struct {
   const void *packet;
   size_t length;
   asciichat_error_t result;
-  bool found;                           ///< Whether client was found
+  bool found; ///< Whether client was found
 } find_client_context_t;
 
 /**
@@ -127,13 +127,13 @@ static void broadcast_callback(socket_t socket, void *client_data, void *user_ar
 
   // Send packet through transport (not raw socket)
   log_debug("★ BROADCAST_CALLBACK: sending packet_type=%u to participant=%02x%02x...", ctx->packet_type,
-           acds_data->participant_id[0], acds_data->participant_id[1]);
+            acds_data->participant_id[0], acds_data->participant_id[1]);
   asciichat_error_t result =
       packet_send_via_transport(acds_data->transport, ctx->packet_type, ctx->packet, ctx->packet_len, 0);
   if (result == ASCIICHAT_OK) {
     ctx->sent_count++;
     log_debug("★ BROADCAST_CALLBACK: successfully sent to participant=%02x%02x...", acds_data->participant_id[0],
-             acds_data->participant_id[1]);
+              acds_data->participant_id[1]);
   } else {
     log_warn("★ BROADCAST_CALLBACK_FAILED: Failed to send to participant=%02x%02x...: %s", acds_data->participant_id[0],
              acds_data->participant_id[1], asciichat_error_string(result));
@@ -245,7 +245,7 @@ asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, con
   }
 
   log_debug("★ SIGNALING_BROADCAST_START: packet_type=%u, packet_len=%zu, session=%02x%02x...", packet_type, packet_len,
-           session_id[0], session_id[1]);
+            session_id[0], session_id[1]);
   if (exclude_participant_id) {
     log_debug("★ SIGNALING_BROADCAST: excluding participant=%02x%02x...", exclude_participant_id[0],
               exclude_participant_id[1]);

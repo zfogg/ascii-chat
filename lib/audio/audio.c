@@ -237,11 +237,11 @@ static void *audio_worker_thread(void *arg) {
       time_pretty(max_playback_ns, -1, max_playback_str, sizeof(max_playback_str));
 
       log_debug("Worker stats: loops=%lu, signals=%lu, timeouts=%lu, processed=%lu", loop_count, signal_count,
-               timeout_count, process_count);
+                timeout_count, process_count);
       log_debug("Worker timing: wait avg=%s max=%s, capture avg=%s max=%s, playback avg=%s max=%s", avg_wait_str,
-               max_wait_str, avg_capture_str, max_capture_str, avg_playback_str, max_playback_str);
+                max_wait_str, avg_capture_str, max_capture_str, avg_playback_str, max_playback_str);
       log_debug("Worker buffers: capture=%zu, render=%zu, playback=%zu (need >= %d to process)", capture_available,
-               render_available, playback_available, WORKER_BATCH_SAMPLES);
+                render_available, playback_available, WORKER_BATCH_SAMPLES);
     }
 
     if (wait_result != 0 && capture_available == 0 && playback_available == 0 && !ctx->capture_media_source &&
@@ -360,7 +360,7 @@ static void *audio_worker_thread(void *arg) {
             time_pretty((uint64_t)aec3_max_ns, -1, max_str, sizeof(max_str));
             time_pretty((uint64_t)aec3_ns, -1, latest_str, sizeof(latest_str));
             log_debug("AEC3 performance: avg=%s, max=%s, latest=%s (samples=%zu, %d calls)", avg_str, max_str,
-                     latest_str, capture_read, aec3_count);
+                      latest_str, capture_read, aec3_count);
           }
         }
 
@@ -512,7 +512,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   }
 
   log_debug_every(US_PER_SEC_INT, "CB_START: ctx=%p output=%p inputBuffer=%p", (void *)ctx, (void *)outputBuffer,
-                 inputBuffer);
+                  inputBuffer);
 
   const float *input = (const float *)inputBuffer;
   float *output = (float *)outputBuffer;
@@ -636,13 +636,13 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     time_pretty(max_callback_ns, -1, max_str, sizeof(max_str));
     log_debug("Duplex callback timing: count=%lu, avg=%s, max=%s (budget: 2ms)", callback_count, avg_str, max_str);
     log_debug("Playback stats: total_samples_read=%lu, underruns=%lu, read_success_rate=%.1f%%",
-             total_samples_read_local, underrun_count_local,
-             100.0 * (double)(callback_count - underrun_count_local) / (double)callback_count);
+              total_samples_read_local, underrun_count_local,
+              100.0 * (double)(callback_count - underrun_count_local) / (double)callback_count);
 
     // DEBUG: Log first few output samples to verify they're not zero
     if (output && num_samples >= 4) {
       log_debug("Output sample check: first4=[%.4f, %.4f, %.4f, %.4f] (verifying audio is not silent)", output[0],
-               output[1], output[2], output[3]);
+                output[1], output[2], output[3]);
     }
   }
 
@@ -954,7 +954,7 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
     long elapsed_ms = (long)time_ns_to_ms(time_elapsed_ns(last_log_time_ns, now_ns));
     if (elapsed_ms >= 1000) {
       log_debug("Input callback: %lu calls/sec, %lu frames/call, %zu samples/call", callback_count, framesPerBuffer,
-               num_samples);
+                num_samples);
       callback_count = 0;
       last_log_time_ns = now_ns;
     }
