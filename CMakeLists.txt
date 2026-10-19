@@ -48,7 +48,7 @@ endif()
 # Web-specific build-type cache directory for WASM/Emscripten builds
 # Keeps web dependencies separate from native build dependencies
 if(NOT DEFINED WEB_DEPS_CACHE_DIR OR WEB_DEPS_CACHE_DIR STREQUAL "")
-    set(WEB_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/web/${CMAKE_BUILD_TYPE}" CACHE PATH "Web dependency cache for current build type" FORCE)
+    set(WEB_DEPS_CACHE_DIR "${CMAKE_BINARY_DIR}/web/_deps/legacy/${CMAKE_BUILD_TYPE}" CACHE PATH "Web dependency cache for current build type" FORCE)
 endif()
 
 # Shared source download cache for FetchContent (not build-type-qualified)

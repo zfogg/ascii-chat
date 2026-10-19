@@ -44,6 +44,15 @@ if(NOT ASCIICHAT_DEPS_CACHE_ROOT)
     set(ASCIICHAT_DEPS_CACHE_ROOT "${_repo_root}/.deps-cache" CACHE PATH "Dependency cache root" FORCE)
 endif()
 
+# Standalone and parent-driven builds use the same build-local artifact layout.
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "WASM build type" FORCE)
+endif()
+if(NOT WEB_DEPS_CACHE_DIR)
+    set(WEB_DEPS_CACHE_DIR "${CMAKE_BINARY_DIR}/_deps/legacy/${CMAKE_BUILD_TYPE}"
+        CACHE PATH "WASM dependency build/install cache" FORCE)
+endif()
+
 # Include all WASM dependency configuration files
 # Each file handles EMSCRIPTEN builds and sets output variables:
 # - FOO_LIBRARIES: libraries to link
