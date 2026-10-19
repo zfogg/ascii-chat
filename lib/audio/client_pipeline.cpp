@@ -280,8 +280,8 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   // Initialize debug WAV writers for AEC3 analysis (if echo_cancel enabled)
   p->debug_wav_aec3_in = NULL;
   p->debug_wav_aec3_out = NULL;
-  if (p->flags.echo_cancel) {
-    // Open WAV files to capture AEC3 input and output
+  if (p->flags.echo_cancel && wav_dump_enabled()) {
+    // Record microphone diagnostics only when WAV dumping was requested.
     char tmp[PLATFORM_MAX_PATH_LENGTH];
     if (platform_get_temp_dir(tmp, sizeof(tmp))) {
       char path[PLATFORM_MAX_PATH_LENGTH];
