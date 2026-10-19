@@ -327,9 +327,9 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->initialized = true;
   if (ctx->has_tty && !ctx->snapshot_mode) {
     const char initial[] = "\033[H";
-    (void)ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO,
-                                (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, initial,
-                                sizeof(initial) - 1);
+    (void)ui_controller_present_retained(UI_SCREEN_MEDIA, STDOUT_FILENO,
+                                         (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS},
+                                         initial, sizeof(initial) - 1);
   }
 
   return ctx;
@@ -775,7 +775,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   session_display_write_ascii(ctx, frame_data);
 }
 
-void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) {
+void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *ascii, bool fresh) {
   if (!ctx || !ctx->initialized) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL or uninitialized");
     return;
@@ -903,8 +903,8 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
 
   if (use_tty_control) {
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
-    const char *cursor_home_sequence = "\033[H\033[3J"; // 7 bytes total
-    size_t cursor_seq_len = 7;
+    const char *cursor_home_sequence = "\033[H";
+    size_t cursor_seq_len = 3;
     size_t total_size = cursor_seq_len + frame_len;
 
     char *frame_buffer = SAFE_MALLOC(total_size, char *);
@@ -914,7 +914,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
 
       log_debug("FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout", total_size, cursor_seq_len,
                 frame_len);
-      asciichat_error_t presented = ui_controller_present(
+      asciichat_error_t presented = (fresh ? ui_controller_present : ui_controller_present_retained)(
           UI_SCREEN_MEDIA, ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO,
           (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, frame_buffer, total_size);
       ssize_t written = presented == ASCIICHAT_OK ? (ssize_t)total_size : -1;
@@ -1255,4 +1255,8 @@ void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, do
 
   log_debug("  -> Passing duration %.3f to render_file encoder", actual_duration_sec);
   render_file_set_snapshot_actual_duration(ctx->render_file, actual_duration_sec);
+}
+
+void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) {
+  session_display_write_ascii_frame(ctx, ascii, true);
 }

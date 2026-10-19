@@ -295,9 +295,7 @@ Test(permessage_deflate, buffer_overflow_protection) {
  * Simulate receiving a message in multiple fragments
  */
 Test(permessage_deflate, fragmented_decompression) {
-  size_t total_size = 128 * 1024;   // 128KB total message
-  size_t fragment_size = 16 * 1024; // 16KB fragments
-  size_t num_fragments = total_size / fragment_size;
+  size_t total_size = 128 * 1024; // 128KB total message
 
   uint8_t *original = SAFE_MALLOC(total_size, uint8_t *);
   cr_assert_not_null(original);
@@ -308,6 +306,12 @@ Test(permessage_deflate, fragmented_decompression) {
   size_t compressed_len = 0;
   int ret = deflate_compress(original, total_size, &compressed, &compressed_len);
   cr_assert_eq(ret, 0);
+
+  // Fragment the compressed bytes, which can be much shorter than the input.
+  cr_assert_gt(compressed_len, 1);
+  size_t fragment_size = (compressed_len + 7) / 8;
+  size_t num_fragments = (compressed_len + fragment_size - 1) / fragment_size;
+  cr_assert_gt(num_fragments, 1);
 
   // Decompress fragments sequentially
   uint8_t *decompressed = SAFE_MALLOC(total_size, uint8_t *);

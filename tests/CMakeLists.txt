@@ -526,6 +526,15 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             set(_test_ctest_timeout 120)
         endif()
 
+        # BoxFort's concurrent timeout queue can lose pending requests when
+        # different deadlines are inserted. These suites mix per-case timeouts
+        # with the default limit; serialize them to retain every timeout and
+        # allow LeakSanitizer to check the runner without suppressions.
+        if(test_exe_name MATCHES "^test_unit_(audio_recording|stats_stats)$")
+            set(_test_criterion_jobs 1)
+            set(_test_ctest_timeout 120)
+        endif()
+
         if(test_exe_name MATCHES "stream_resolution_e2e")
             # This suite runs many serial network cases with bounded per-request timeouts.
             set(_test_ctest_timeout 600)
@@ -1413,5 +1422,18 @@ if(BUILD_TESTS AND WIN32)
     set_tests_properties(media-clipboard PROPERTIES LABELS "unit" TIMEOUT 30)
     if(TARGET tests)
         add_dependencies(tests test-media-clipboard)
+    endif()
+endif()
+
+if(BUILD_TESTS AND NOT EMSCRIPTEN)
+    add_executable(test-media-pipeline standalone/media/pipeline_latest_test.c)
+    target_link_libraries(test-media-pipeline PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-media-pipeline PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-media-pipeline)
+    set_target_properties(test-media-pipeline PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_test(NAME media-pipeline COMMAND test-media-pipeline)
+    set_tests_properties(media-pipeline PROPERTIES LABELS "unit" TIMEOUT 30)
+    if(TARGET tests)
+        add_dependencies(tests test-media-pipeline)
     endif()
 endif()

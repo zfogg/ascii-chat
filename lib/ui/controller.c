@@ -25,6 +25,7 @@
 typedef struct {
   _Atomic unsigned references;
   int fd;
+  uint64_t frame_id, submitted_ns;
   _Alignas(max_align_t) char data[];
 } screen_snapshot_t;
 
@@ -144,6 +145,7 @@ static void publish_screen_locked(void) {
 }
 static bool g_redraw;
 static bool g_finished;
+static uint64_t g_media_frame_id;
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
 static _Thread_local fps_counter_t *g_fps;
@@ -269,6 +271,7 @@ typedef struct {
   int active;
   bool volume;
   bool drew;
+  bool fresh;
 } native_view_t;
 
 static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
@@ -277,7 +280,7 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
   g_capture = output;
   g_animation = animation;
   g_render_volume = view->volume;
-  fps_counter_frame_begin(g_fps, view->active == UI_SCREEN_MEDIA || view->active == UI_SCREEN_HELP);
+  view->fresh = fps_counter_frame_begin_id(g_fps, view->active == UI_SCREEN_MEDIA ? view->screen->owned->frame_id : 0);
   view->screen->render(size, view->screen->snapshot);
   g_render_volume = false;
   g_animation = NULL;
@@ -387,7 +390,7 @@ static void *presentation_main(void *unused) {
       ui_session_resize(g_session, size.cols, size.rows);
       if (redraw)
         ui_session_redraw(g_session);
-      native_view_t context = {.screen = screen, .active = active, .volume = volume_visible};
+      native_view_t context = {.screen = screen, .active = active, .volume = volume_visible, .fresh = false};
       ui_session_view_t view = {
           .screen = active,
           .minimum = screen->minimum,
@@ -404,8 +407,19 @@ static void *presentation_main(void *unused) {
       if (covered && !was_covered)
         fps_counter_reset(g_fps);
       if (output) {
-        stats_media_begin(active == UI_SCREEN_MEDIA && context.drew);
-        ui_controller_write(screen->fd, output, ui_session_frame_length(g_session));
+        stats_media_begin(context.fresh && context.drew);
+        asciichat_error_t written = ui_controller_write(screen->fd, output, ui_session_frame_length(g_session));
+        if (context.fresh && context.drew) {
+          fps_counter_write_begin(g_fps);
+          asciichat_error_t drained = terminal_flush(screen->fd);
+          fps_counter_write_end(g_fps, drained == ASCIICHAT_OK);
+          if (written != ASCIICHAT_OK || drained != ASCIICHAT_OK)
+            CLEAR_ERRNO();
+          else
+            log_debug_every(US_PER_SEC_INT, "FRAME_PRESENT: id=%llu submit_to_draw_ms=%.2f",
+                            (unsigned long long)screen->owned->frame_id,
+                            (double)(time_get_ns() - screen->owned->submitted_ns) / NS_PER_MS_INT);
+        }
         stats_media_end();
         if (context.drew)
           fps_counter_frame_end(g_fps, time_get_ns());
@@ -502,7 +516,7 @@ static asciichat_error_t controller_start(void) {
 }
 
 static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
-                                       const void *snapshot, size_t bytes, bool retained_terminal) {
+                                       const void *snapshot, size_t bytes, bool retained_terminal, bool fresh_frame) {
   if (screen < 0 || screen >= UI_SCREEN_COUNT || !render || !snapshot || !bytes || minimum.cols <= 0 ||
       minimum.rows <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI screen snapshot");
@@ -524,7 +538,7 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
       inherited = platform_dup(g_screens[active].fd);
     mutex_unlock(&g_mutex);
     if (inherited >= 0) {
-      asciichat_error_t result = submit_screen(screen, inherited, minimum, render, snapshot, bytes, true);
+      asciichat_error_t result = submit_screen(screen, inherited, minimum, render, snapshot, bytes, true, fresh_frame);
       platform_close(inherited);
       return result;
     }
@@ -566,6 +580,8 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     SAFE_FREE(copy);
     return ASCIICHAT_OK;
   }
+  copy->frame_id = screen == UI_SCREEN_MEDIA && fresh_frame ? ++g_media_frame_id : 0;
+  copy->submitted_ns = time_get_ns();
   screen_t *slot = &g_screens[screen];
   bool queue_notice = screen == UI_SCREEN_NOTICE && slot->render;
   int output_fd = platform_dup(slot->render && !queue_notice ? slot->fd : fd);
@@ -613,7 +629,7 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
 
 asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
                                        const void *snapshot, size_t bytes) {
-  return submit_screen(screen, fd, minimum, render, snapshot, bytes, false);
+  return submit_screen(screen, fd, minimum, render, snapshot, bytes, false, true);
 }
 
 void ui_controller_remove(ui_screen_t screen) {
@@ -730,8 +746,8 @@ void ui_controller_redraw(void) {
   mutex_unlock(&g_mutex);
 }
 
-asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data,
-                                        size_t len) {
+static asciichat_error_t present_text(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data, size_t len,
+                                      bool fresh) {
   if (!data || !len || len > UI_CONTROLLER_MAX_FRAME_BYTES)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI frame");
   text_snapshot_t *text = SAFE_MALLOC(sizeof(*text) + len, text_snapshot_t *);
@@ -742,7 +758,7 @@ asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_siz
   text->dimensions = (terminal_size_t){.cols = GET_OPTION(width), .rows = GET_OPTION(height)};
   text->len = len;
   memcpy(text->text, data, len);
-  asciichat_error_t err = ui_controller_submit(screen, fd, minimum, render_text, text, sizeof(*text) + len);
+  asciichat_error_t err = submit_screen(screen, fd, minimum, render_text, text, sizeof(*text) + len, false, fresh);
   SAFE_FREE(text);
   return err;
 }
@@ -813,4 +829,13 @@ void ui_controller_toggle_logs(void) {
                            &snapshot, sizeof(snapshot));
   if (result != ASCIICHAT_OK)
     log_warn("Cannot show application logs: %d", result);
+}
+
+asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data,
+                                        size_t len) {
+  return present_text(screen, fd, minimum, data, len, true);
+}
+asciichat_error_t ui_controller_present_retained(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data,
+                                                 size_t len) {
+  return present_text(screen, fd, minimum, data, len, false);
 }

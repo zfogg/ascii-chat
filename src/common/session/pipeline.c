@@ -37,6 +37,8 @@ extern bool g_snapshot_first_frame_rendered;
 typedef struct {
   const uint8_t *pixels; // Immutable owning reference shared by display and encoding
   int w, h;
+  uint64_t source_epoch, frame_serial;
+  bool fresh;
   uint64_t captured_ns; // wall-clock timestamp
 } pipeline_frame_t;
 
@@ -115,6 +117,18 @@ static void *frame_queue_pop(frame_queue_t *q, uint64_t timeout_ns) {
   cond_signal(&q->not_full);
   mutex_unlock(&q->mu);
   return item;
+}
+
+static void *frame_queue_replace_latest(frame_queue_t *q, void *item) {
+  mutex_lock(&q->mu);
+  void *retired = q->count ? q->slots[q->head] : NULL;
+  q->head = 0;
+  q->tail = 0;
+  q->count = 1;
+  q->slots[0] = item;
+  cond_signal(&q->not_empty);
+  mutex_unlock(&q->mu);
+  return retired;
 }
 
 static int frame_queue_count(frame_queue_t *q) {
@@ -248,6 +262,7 @@ static void *pipeline_capture_thread(void *arg) {
         (unsigned long long)g_snapshot_actual_duration_ms, snapshot_delay);
   }
 
+  uint64_t previous_serial = 0;
   while (!atomic_load_bool(&pipeline->stop)) {
     asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
     image_t *img = session_capture_read_frame(pipeline->capture);
@@ -273,6 +288,11 @@ static void *pipeline_capture_thread(void *arg) {
       continue;
     }
 
+    frame->source_epoch = session_capture_source_epoch(pipeline->capture);
+    frame->frame_serial = session_capture_frame_serial(pipeline->capture);
+    frame->fresh = frame->frame_serial != previous_serial;
+    previous_serial = frame->frame_serial;
+
     // Record first frame timestamp for snapshot timer
     uint64_t zero = 0;
     atomic_cas_u64(&pipeline->first_frame_ns, &zero, frame->captured_ns);
@@ -285,15 +305,13 @@ static void *pipeline_capture_thread(void *arg) {
     uint64_t push_time_ns = time_get_ns();
     log_debug_every(US_PER_SEC_INT, "[PIPELINE_CAPTURE_PUSH_DISPLAY] Pushing %dx%d frame to display_queue at %llu ns",
                     display_copy->w, display_copy->h, (unsigned long long)push_time_ns);
-    if (!frame_queue_push(pipeline->display_queue, display_copy, 0)) {
-      // Non-blocking: drop if queue full
-      log_warn_every(US_PER_SEC_INT, "[PIPELINE_CAPTURE_DROP] Display queue full, dropping frame");
+    pipeline_frame_t *retired = frame_queue_replace_latest(pipeline->display_queue, display_copy);
+    if (retired) {
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
-      free_frame(display_copy);
-    } else {
-      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENQUEUED, 1);
+      free_frame(retired);
     }
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENQUEUED, 1);
 
     if (pipeline->has_render_file) {
       // Encode all captured frames, including frames before display rendering starts
@@ -427,7 +445,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   session_pipeline_t *p = SAFE_CALLOC(1, sizeof(*p), session_pipeline_t *);
   p->capture = capture;
   p->display = display;
-  p->display_queue = frame_queue_create(4, "display");
+  p->display_queue = frame_queue_create(1, "display");
   p->encode_queue = frame_queue_create(256, "encode"); // Large buffer for slow encoding
 
   // Check if display has render_file configured (will be checked in encode thread)
@@ -537,12 +555,19 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
       // Convert to ASCII
       image_t tmp = {.w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels};
       char *ascii = session_display_convert_to_ascii(pipeline->display, &tmp);
+      uint64_t epoch = frame->source_epoch;
+      bool fresh = frame->fresh;
+      uint64_t capture_age = time_get_ns() - frame->captured_ns;
       free_frame(frame);
       frame = NULL;
 
       if (ascii) {
-        // Write ASCII to terminal
-        session_display_write_ascii(pipeline->display, ascii);
+        if (epoch == session_capture_source_epoch(pipeline->capture)) {
+          session_display_write_ascii_frame(pipeline->display, ascii, fresh);
+          session_capture_complete_open(pipeline->capture, epoch);
+          log_debug_every(US_PER_SEC_INT, "LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d",
+                          (double)capture_age / NS_PER_MS_INT, fresh);
+        }
         SAFE_FREE(ascii);
       } else {
         log_error_every(US_PER_SEC_INT, "Failed to convert captured frame to ASCII; skipping display frame");

@@ -27,6 +27,7 @@ struct fps_counter_s {
   bool measuring;
   bool written;
   bool failed;
+  uint64_t current_frame_id, completed_frame_id;
   uint64_t write_start;
   uint64_t frame_write_ns;
   uint64_t report_start;
@@ -120,7 +121,8 @@ float fps_counter_get_at(fps_counter_t *counter, uint64_t now) {
   uint64_t newest_time = counter->frame_times[newest_idx];
   if (now < newest_time || now - newest_time >= 2000000000ULL)
     return 0.0f;
-  uint64_t elapsed_ns = newest_time - oldest_time;
+  // Include time since the last completed frame so stalled output decays immediately.
+  uint64_t elapsed_ns = now - oldest_time;
 
   // Avoid division by zero
   if (elapsed_ns == 0) {
@@ -146,9 +148,18 @@ bool fps_counter_set_visible(fps_counter_t *counter, bool visible) {
 void fps_counter_frame_begin(fps_counter_t *counter, bool measure) {
   if (!counter)
     return;
+  counter->current_frame_id = 0;
   counter->measuring = measure;
   counter->written = counter->failed = false;
   counter->frame_write_ns = 0;
+}
+
+bool fps_counter_frame_begin_id(fps_counter_t *counter, uint64_t frame_id) {
+  if (!counter)
+    return false;
+  fps_counter_frame_begin(counter, frame_id && frame_id != counter->completed_frame_id);
+  counter->current_frame_id = frame_id;
+  return counter->measuring;
 }
 
 void fps_counter_write_begin(fps_counter_t *counter) {
@@ -169,6 +180,8 @@ void fps_counter_frame_end(fps_counter_t *counter, uint64_t now) {
     return;
   if (counter->measuring && counter->written && !counter->failed) {
     fps_counter_tick_at(counter, now);
+    if (counter->current_frame_id)
+      counter->completed_frame_id = counter->current_frame_id;
     counter->report_writes += counter->frame_write_ns;
     counter->report_frames++;
   }

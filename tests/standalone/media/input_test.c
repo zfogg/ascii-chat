@@ -215,6 +215,13 @@ int main(void) {
   CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
   CHECK(!g_media_editor.active);
   CHECK(ui_input_media_begin("") == ASCIICHAT_OK);
+  g_media_editor.deadline = 0;
+  feed("\033[200~late.mp4\033[201~");
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  CHECK(!g_media_editor.active && !g_paste_ready);
+  feed("o");
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == 'o');
+  CHECK(ui_input_media_begin("") == ASCIICHAT_OK);
   feed("\033[200~caf\xc3\xa9 video.mp4\033[201~");
   CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
   feed("\r");

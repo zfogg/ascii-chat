@@ -721,7 +721,9 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       int px = offset_x + col * r->cell_w, py = offset_y + row * r->cell_h;
       uint32_t foreground = ((uint32_t)fr << 16) | ((uint32_t)fg << 8) | fb;
       uint32_t background = ((uint32_t)br << 16) | ((uint32_t)bg << 8) | bb;
-      uint32_t cell_hash = cell.chars[0] * 2654435761u ^ foreground * 2246822519u ^ background;
+      // Retain the low 32 bits without overflowing the intermediate products.
+      uint32_t cell_hash = (uint32_t)((uint64_t)cell.chars[0] * UINT64_C(2654435761) ^
+                                      (uint64_t)foreground * UINT64_C(2246822519) ^ background);
       cell_hash ^= cell_hash >> 16;
       rendered_cell_t *cached_cell = &r->cells[cell_hash % CELL_CACHE_SIZE];
       bool contained = px >= 0 && py >= 0 && px + r->cell_w <= r->width_px && py + r->cell_h <= r->height_px;

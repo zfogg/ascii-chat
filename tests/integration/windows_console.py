@@ -43,6 +43,7 @@ class WindowsConsole:
         self.kernel.GetConsoleScreenBufferInfo.argtypes = [w.HANDLE, c.POINTER(BufferInfo)]
         self.kernel.ReadConsoleOutputW.argtypes = [w.HANDLE, c.POINTER(Cell), Coord, Coord, c.POINTER(Rect)]
         self.kernel.WriteConsoleInputW.argtypes = [w.HANDLE, c.POINTER(Event), w.DWORD, c.POINTER(w.DWORD)]
+        self.kernel.SetConsoleScreenBufferSize.argtypes = [w.HANDLE, Coord]
         self.kernel.SetConsoleWindowInfo.argtypes = [w.HANDLE, w.BOOL, c.POINTER(Rect)]
         self.screen = CaptureScreen(cols, rows)
         self.raw, self.output = [], queue.Queue()
@@ -62,8 +63,16 @@ class WindowsConsole:
         self.kernel.SetConsoleCtrlHandler(None, True)
         handle = self._open("CONOUT$")
         try:
+            info = BufferInfo()
+            assert self.kernel.GetConsoleScreenBufferInfo(handle, c.byref(info))
+            assert self.kernel.SetConsoleScreenBufferSize(handle, Coord(max(cols, info.size.X), max(rows, info.size.Y)))
             rect = Rect(0, 0, cols - 1, rows - 1)
             assert self.kernel.SetConsoleWindowInfo(handle, True, c.byref(rect))
+        except BaseException:
+            self.process.terminate()
+            self.process.wait(timeout=10)
+            self.kernel.FreeConsole()
+            raise
         finally:
             self.kernel.CloseHandle(handle)
 

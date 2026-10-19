@@ -8,6 +8,7 @@ import contextlib
 import functools
 import http.server
 import os
+import re
 from pathlib import Path
 import struct
 import subprocess
@@ -189,8 +190,23 @@ def main():
                 assert rms > 0.001 and abs(peak - frequency) < 5, (frequency, peak, rms)
                 print(f"PASS audible output: expected={frequency}Hz measured={peak:.1f}Hz rms={rms:.4f}")
 
+        def expect_transition(channel, previous, description):
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline:
+                text = term.pump(0.01)
+                if colored(channel)(text):
+                    return text
+                if "Open media:" in text or "Loading media" in text:
+                    continue
+                assert not previous(text), description + ": previous source flashed after submission\n" + text
+            raise AssertionError(description + ": replacement never appeared")
+
         try:
-            term.expect(lambda s: s.count("oo") > 15, "Initial test pattern is visible", timeout=30)
+            term.expect(lambda s: s.count("oo") > 15, "Initial test pattern is visible", timeout=90)
+            term.write("-")
+            term.pump(3)
+            term.expect(lambda text: (measured := re.search(r"FPS:\s*(\d+)", text))
+                        and 3 <= int(measured[1]) <= 7, "FPS must track the 5 FPS capture source")
             term.write("o")
             term.expect(lambda s: "Open media:" in s, "Open shortcut displays editable prompt")
             drained = log.read_text(encoding="utf-8").count("[PIPELINE_MAIN_POP]")
@@ -199,12 +215,18 @@ def main():
             term.write(str(red))
             term.pump(0.3)
             term.write("\r")
-            term.expect(colored(0), "Local Unicode path renders red video")
+            expect_transition(0, lambda text: text.count("oo") > 15, "Local Unicode path renders red video")
             verify_tone(440)
+            term.write(" ")
+            term.pump(2.5)
+            text = term.pump(0.1)
+            measured = re.search(r"FPS:\s*(\d+)", text)
+            assert measured and int(measured[1]) == 0, "A retained paused frame must report zero FPS: " + text
+            term.write(" ")
             term.write("\x1b[200~http://127.0.0.1:%d/mrc-blue.mp4\x1b[201~" % server.server_port)
             term.expect(lambda s: "Open media:" in s and "mrc-blue.mp4" in s, "Pasted URL prefills prompt")
             term.write("\r")
-            term.expect(colored(2), "URL replacement renders blue video")
+            expect_transition(2, colored(0), "URL replacement renders blue video")
             verify_tone(880)
             term.write("o")
             term.expect(lambda s: "Open media:" in s, "Reopen prompt")

@@ -213,6 +213,10 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     log_warn("Failed to set advanced video processing attribute: 0x%08x", hr);
   }
 
+  hr = IMFAttributes_SetUINT32(readerAttrs, &MF_LOW_LATENCY, TRUE);
+  if (FAILED(hr))
+    log_debug("Webcam source reader does not accept low-latency mode: 0x%08x", hr);
+
   hr = MFCreateSourceReaderFromMediaSource(cam->device, readerAttrs, &cam->reader);
   log_info("MFCreateSourceReaderFromMediaSource returned: 0x%08x, readerAttrs=%p", hr, (void *)readerAttrs);
 

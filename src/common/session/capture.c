@@ -60,6 +60,7 @@ struct session_capture_ctx {
   bool media_locks_ready, loader_created, loader_done;
   asciichat_thread_t loader;
   atomic_t load_cancel;
+  atomic_t source_epoch, frame_serial, awaiting_presentation;
   media_source_t *loaded_source;
   image_t *loaded_frame, *initial_frame;
   bool initial_frame_pending;
@@ -539,18 +540,22 @@ asciichat_error_t session_capture_open_media(session_capture_ctx_t *ctx, const c
   }
   snprintf(ctx->load_path, sizeof(ctx->load_path), "%s", path);
   ctx->loader_done = false;
+  atomic_store_bool(&ctx->awaiting_presentation, false);
   atomic_store_bool(&ctx->load_cancel, false);
+  asciichat_error_t progress = ui_controller_submit(
+      UI_SCREEN_RENDER_PROGRESS, STDERR_FILENO, (terminal_size_t){.cols = 40, .rows = 4}, render_media_loading, "", 1);
+  if (progress != ASCIICHAT_OK) {
+    mutex_unlock(&ctx->load_mutex);
+    return progress;
+  }
   if (asciichat_thread_create(&ctx->loader, "media_open", load_media_worker, ctx) != 0) {
+    ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
     mutex_unlock(&ctx->load_mutex);
     return SET_ERRNO(ERROR_THREAD, "Cannot start media loader");
   }
   ctx->loader_created = true;
   mutex_unlock(&ctx->load_mutex);
-  asciichat_error_t result = ui_controller_submit(
-      UI_SCREEN_RENDER_PROGRESS, STDERR_FILENO, (terminal_size_t){.cols = 40, .rows = 4}, render_media_loading, "", 1);
-  if (result != ASCIICHAT_OK)
-    atomic_store_bool(&ctx->load_cancel, true);
-  return result;
+  return ASCIICHAT_OK;
 }
 
 /* Only the capture owner commits replacements, between frame reads. */
@@ -577,8 +582,8 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   ctx->loaded_frame = NULL;
   bool cancelled = atomic_load_bool(&ctx->load_cancel);
   mutex_unlock(&ctx->load_mutex);
-  ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
   if (cancelled || !replacement) {
+    ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
     if (first)
       image_destroy(first);
     if (replacement)
@@ -590,6 +595,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   }
   audio_context_t *audio = ctx->audio_ctx;
   if (audio && audio_stop_duplex(audio) != ASCIICHAT_OK) {
+    ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
     if (first)
       image_destroy(first);
     media_source_destroy(replacement);
@@ -610,6 +616,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
     if (audio->capture_buffer)
       audio_ring_buffer_clear(audio->capture_buffer);
     if (audio_start_duplex(audio) != ASCIICHAT_OK) {
+      ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
       LOG_ERRNO_IF_SET("Cannot start replacement audio; restoring previous source");
       CLEAR_ERRNO();
       if (first)
@@ -692,6 +699,10 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   options_set_string("media_url", url ? path : "");
   options_set_string("media_file", url ? "" : path);
   options_set_bool("media_from_stdin", false);
+  mutex_lock(&ctx->load_mutex);
+  atomic_fetch_add_u64(&ctx->source_epoch, 1);
+  atomic_store_bool(&ctx->awaiting_presentation, !ctx->loader_created);
+  mutex_unlock(&ctx->load_mutex);
   log_info("Opened media: %s", path);
   CLEAR_ERRNO();
 }
@@ -834,6 +845,7 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
     // Track frame for FPS reporting
     fps_frame_ns(&ctx->fps_tracker, frame_available_time_ns, "frame captured");
     ctx->frame_count++;
+    atomic_fetch_add_u64(&ctx->frame_serial, 1);
 
     // Log frame-to-frame timing
     if (last_frame_time_ns > 0) {
@@ -1084,4 +1096,19 @@ bool session_capture_media_active(session_capture_ctx_t *ctx) {
 void session_capture_redraw_media(session_capture_ctx_t *ctx) {
   if (ctx)
     atomic_store_bool(&ctx->redraw_media, true);
+}
+
+uint64_t session_capture_source_epoch(session_capture_ctx_t *ctx) {
+  return ctx ? atomic_load_u64(&ctx->source_epoch) : 0;
+}
+uint64_t session_capture_frame_serial(session_capture_ctx_t *ctx) {
+  return ctx ? atomic_load_u64(&ctx->frame_serial) : 0;
+}
+void session_capture_complete_open(session_capture_ctx_t *ctx, uint64_t epoch) {
+  if (!ctx)
+    return;
+  mutex_lock(&ctx->load_mutex);
+  if (epoch == session_capture_source_epoch(ctx) && atomic_exchange_bool(&ctx->awaiting_presentation, false))
+    ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
+  mutex_unlock(&ctx->load_mutex);
 }

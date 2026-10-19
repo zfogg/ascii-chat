@@ -7,9 +7,9 @@
 /** Mix cell coordinates into a repeatable distribution without global random state. */
 static uint32_t zalgo_hash(uint32_t value) {
   value ^= value >> 16;
-  value *= UINT32_C(0x7feb352d);
+  value = (uint32_t)((uint64_t)value * UINT64_C(0x7feb352d));
   value ^= value >> 15;
-  value *= UINT32_C(0x846ca68b);
+  value = (uint32_t)((uint64_t)value * UINT64_C(0x846ca68b));
   return value ^ (value >> 16);
 }
 
@@ -24,12 +24,12 @@ unsigned zalgo_cell_marks(uint32_t row, uint32_t col, int level, uint16_t marks[
   static const uint16_t stack_marks[] = {0x0300, 0x0301, 0x0302, 0x0303, 0x0308, 0x030a,
                                          0x0310, 0x0311, 0x0324, 0x0325, 0x0329, 0x0330};
   unsigned index = (unsigned)level - 1;
-  uint32_t hash = zalgo_hash(row * UINT32_C(0x9e3779b9) ^ col ^ UINT32_C(0x5a17));
+  uint32_t hash = zalgo_hash((uint32_t)((uint64_t)row * UINT64_C(0x9e3779b9)) ^ col ^ UINT32_C(0x5a17));
   if (hash % 100 >= coverage[index])
     return 0;
   unsigned count = minimum[index] + ((hash >> 8) % 256) * (zalgo_maximum[index] - minimum[index] + 1) / 256;
   for (unsigned mark = 0; mark < count; mark++) {
-    uint32_t choice = zalgo_hash(hash + mark);
+    uint32_t choice = zalgo_hash((uint32_t)((uint64_t)hash + mark));
     marks[mark] = mark == 0 ? short_marks[choice % 5] : stack_marks[choice % 12];
   }
   return count;

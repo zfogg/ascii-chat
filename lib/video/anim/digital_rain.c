@@ -95,9 +95,10 @@ static uint32_t mutate_glyph(uint32_t codepoint, int col, int row, float time) {
   // Independent periods and phase offsets avoid synchronized full-grid flicker.
   float seed = random_float((float)col + 1.3f, (float)row + 2.7f);
   unsigned int cycle = (unsigned int)floorf(time * (1.2f + 2.0f * seed) + seed * 13.0f);
-  uint32_t hash = (uint32_t)(col + 1) * 73856093u ^ (uint32_t)(row + 1) * 19349663u ^ cycle * 83492791u;
+  uint32_t hash = (uint32_t)((uint64_t)(col + 1) * UINT64_C(73856093) ^ (uint64_t)(row + 1) * UINT64_C(19349663) ^
+                             (uint64_t)cycle * UINT64_C(83492791));
   hash ^= hash >> 16;
-  hash *= 0x7feb352du;
+  hash = (uint32_t)((uint64_t)hash * UINT64_C(0x7feb352d));
   hash ^= hash >> 15;
   const char *choices = glyph_groups[group];
   return (uint8_t)choices[hash % strlen(choices)];

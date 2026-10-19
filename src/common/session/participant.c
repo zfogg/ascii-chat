@@ -386,6 +386,8 @@ static void *participant_video_capture_thread(void *arg) {
       if (err != ASCIICHAT_OK) {
         log_warn_every(5 * US_PER_SEC_INT, "Failed to send video frame: %d", err);
       }
+      if (err == ASCIICHAT_OK)
+        session_capture_complete_open(p->video_capture, session_capture_source_epoch(p->video_capture));
       image_destroy(processed);
     }
 

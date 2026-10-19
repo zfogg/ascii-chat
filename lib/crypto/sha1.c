@@ -35,7 +35,7 @@
 #endif
 #endif
 
-#define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
+#define rol(value, bits) __builtin_rotateleft32((uint32_t)(value), (bits))
 
 /* blk0() and blk() perform the initial expand. */
 /* I got the idea of expanding during the round function from SSLeay */
@@ -50,19 +50,19 @@
 
 /* (R0+R1), R2, R3, R4 are the different operations used in SHA1 */
 #define R0(v, w, x, y, z, i)                                                                                           \
-  z += ((w & (x ^ y)) ^ y) + blk0(i) + 0x5A827999 + rol(v, 5);                                                         \
+  z = (uint32_t)((uint64_t)z + ((w & (x ^ y)) ^ y) + blk0(i) + 0x5A827999 + rol(v, 5));                                \
   w = rol(w, 30);
 #define R1(v, w, x, y, z, i)                                                                                           \
-  z += ((w & (x ^ y)) ^ y) + blk(i) + 0x5A827999 + rol(v, 5);                                                          \
+  z = (uint32_t)((uint64_t)z + ((w & (x ^ y)) ^ y) + blk(i) + 0x5A827999 + rol(v, 5));                                 \
   w = rol(w, 30);
 #define R2(v, w, x, y, z, i)                                                                                           \
-  z += (w ^ x ^ y) + blk(i) + 0x6ED9EBA1 + rol(v, 5);                                                                  \
+  z = (uint32_t)((uint64_t)z + (w ^ x ^ y) + blk(i) + 0x6ED9EBA1 + rol(v, 5));                                         \
   w = rol(w, 30);
 #define R3(v, w, x, y, z, i)                                                                                           \
-  z += (((w | x) & y) | (w & x)) + blk(i) + 0x8F1BBCDC + rol(v, 5);                                                    \
+  z = (uint32_t)((uint64_t)z + (((w | x) & y) | (w & x)) + blk(i) + 0x8F1BBCDC + rol(v, 5));                           \
   w = rol(w, 30);
 #define R4(v, w, x, y, z, i)                                                                                           \
-  z += (w ^ x ^ y) + blk(i) + 0xCA62C1D6 + rol(v, 5);                                                                  \
+  z = (uint32_t)((uint64_t)z + (w ^ x ^ y) + blk(i) + 0xCA62C1D6 + rol(v, 5));                                         \
   w = rol(w, 30);
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
@@ -172,11 +172,11 @@ void SHA1Transform(uint32_t state[5], const unsigned char buffer[SHA1_BLOCK_LENG
   R4(b, c, d, e, a, 79);
 
   /* Add the working vars back into context.state[] */
-  state[0] += a;
-  state[1] += b;
-  state[2] += c;
-  state[3] += d;
-  state[4] += e;
+  state[0] = (uint32_t)((uint64_t)state[0] + a);
+  state[1] = (uint32_t)((uint64_t)state[1] + b);
+  state[2] = (uint32_t)((uint64_t)state[2] + c);
+  state[3] = (uint32_t)((uint64_t)state[3] + d);
+  state[4] = (uint32_t)((uint64_t)state[4] + e);
   /* Wipe variables */
   a = b = c = d = e = 0;
 }
@@ -201,7 +201,7 @@ void SHA1Update(SHA1_CTX *context, const void *dataptr, unsigned int len) {
   unsigned int j;
 
   j = (uint32_t)((context->count >> 3) & 63);
-  context->count += (len << 3);
+  context->count += (uint64_t)len << 3;
   if ((j + len) > 63) {
     memcpy(&context->buffer[j], data, (i = 64 - j));
     SHA1Transform(context->state, context->buffer);

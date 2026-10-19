@@ -378,3 +378,9 @@ bool session_capture_cancel_open(session_capture_ctx_t *ctx);
 /** Serialize decoder controls with capture-owner replacement. */
 void session_capture_lock_source(session_capture_ctx_t *ctx);
 void session_capture_unlock_source(session_capture_ctx_t *ctx);
+
+/** Source identity and successful acquisition count; retained redraws do not advance the serial. */
+uint64_t session_capture_source_epoch(session_capture_ctx_t *ctx);
+uint64_t session_capture_frame_serial(session_capture_ctx_t *ctx);
+/** Reveal the committed source after its first frame has been published or transmitted. */
+void session_capture_complete_open(session_capture_ctx_t *ctx, uint64_t epoch);

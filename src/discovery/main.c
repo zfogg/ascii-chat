@@ -486,6 +486,8 @@ role_dispatch:
         log_debug_every(5 * NS_PER_SEC_INT, "Captured frame, injecting into host");
         // Inject host's frame into mixer for broadcasting
         result = session_host_inject_frame(host, host_participant_id, frame);
+        if (result == ASCIICHAT_OK)
+          session_capture_complete_open(capture, session_capture_source_epoch(capture));
         if (result != ASCIICHAT_OK) {
           LOG_ERRNO_IF_SET("Failed to inject host frame");
           break;
@@ -648,6 +650,8 @@ role_dispatch:
         }
         if (processing_end == processing_start)
           processing_end = time_get_ns();
+        if (frame && result == ASCIICHAT_OK)
+          session_capture_complete_open(capture, session_capture_source_epoch(capture));
         uint64_t signaling_start = send_end;
         result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
         uint64_t signaling_end = time_get_ns();

@@ -423,3 +423,12 @@ int main(void) {
   log_info("PASS: six startup failures, 20 real-worker cycles, media packets, cleanup, async cancellation");
   return 0;
 }
+
+uint64_t session_capture_source_epoch(session_capture_ctx_t *ctx) {
+  (void)ctx;
+  return 0;
+}
+void session_capture_complete_open(session_capture_ctx_t *ctx, uint64_t epoch) {
+  (void)ctx;
+  (void)epoch;
+}

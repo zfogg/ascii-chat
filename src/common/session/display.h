@@ -494,3 +494,6 @@ asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const 
 /** @} */
 
 /** @} */
+
+/** Publish an acquired frame, or redraw retained content without advancing displayed FPS. */
+void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *ascii, bool fresh);

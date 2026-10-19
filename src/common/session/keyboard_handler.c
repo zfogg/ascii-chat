@@ -20,6 +20,7 @@
 #include <string.h>
 #include <signal.h>
 #include <ascii-chat/ui/input.h>
+#include <ascii-chat/ui/prompt.h>
 #include <ascii-chat/ui/notice.h>
 #include <ascii-chat/platform/clipboard.h>
 #include <ascii-chat/media/input.h>
@@ -238,6 +239,8 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
       if (result == ASCIICHAT_OK && key == KEY_MEDIA_SUBMIT)
         result = session_capture_open_media(capture, normalized);
     }
+    if (key == KEY_MEDIA_SUBMIT)
+      ui_prompt_remove();
     if (result != ASCIICHAT_OK) {
       asciichat_error_context_t error;
       if (HAS_ERRNO(&error))

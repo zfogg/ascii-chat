@@ -252,12 +252,13 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     }
     keyboard_key_t key = input_next_key();
     if (key == KEY_ESCAPE || key == 3 || ui_input_expired(g_media_editor.deadline)) {
+      if (key == KEY_PASTE)
+        g_paste_ready = false;
       g_media_editor.active = false;
       ui_prompt_remove();
     } else if (key == '\r' || key == '\n') {
       g_media_editor.active = false;
       g_media_editor.submitted = true;
-      ui_prompt_remove();
       mutex_unlock(&g_input_mutex);
       return KEY_MEDIA_SUBMIT;
     } else if (key != KEY_NONE) {
