@@ -43,7 +43,16 @@ test("saved microphone feeds the docs WASM audio visualization", async ({
     widget.getByRole("button", { name: "Stop", exact: true }),
   ).toBeVisible({ timeout: 30000 });
   expect(
-    await page.evaluate(() => (window as any).audioDeviceProbe.requests.at(-1)),
+    await page.evaluate(() =>
+      (
+        window as unknown as {
+          audioDeviceProbe: {
+            requests: MediaStreamConstraints[];
+            tracks: MediaStreamTrack[];
+          };
+        }
+      ).audioDeviceProbe.requests.at(-1),
+    ),
   ).toMatchObject({ audio: { deviceId: { exact: micId } }, video: false });
   await expect
     .poll(() =>
@@ -67,7 +76,14 @@ test("saved microphone feeds the docs WASM audio visualization", async ({
   await widget.getByRole("button", { name: "Stop", exact: true }).click();
   expect(
     await page.evaluate(() =>
-      (window as any).audioDeviceProbe.tracks.every(
+      (
+        window as unknown as {
+          audioDeviceProbe: {
+            requests: MediaStreamConstraints[];
+            tracks: MediaStreamTrack[];
+          };
+        }
+      ).audioDeviceProbe.tracks.every(
         (t: MediaStreamTrack) => t.readyState === "ended",
       ),
     ),
