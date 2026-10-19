@@ -326,7 +326,7 @@ static asciichat_error_t client_send_capabilities(const terminal_capabilities_pa
 
 static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, session_display_ctx_t *display,
                                             void *user_data) {
-  (void)capture;   // Provided by session_client_like, used by protocol threads
+  (void)capture; // Provided by session_client_like, used by protocol threads
   client_connection_t *connection = user_data;
 
   // Make the framework-created display context available to protocol threads
@@ -359,15 +359,15 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     log_info("Reconnected");
   }
 
-  terminal_size_t advertised = {0};
-
   // Monitor connection until it breaks or shutdown is requested
   bool snapshot_check_logged_once = false;
   uint64_t last_progress_log_ns = 0;
   while (!should_exit() && server_connection_is_active(connection)) {
-    terminal_size_t previous = advertised;
-    if (session_protocol_update_dimensions(&advertised, client_send_capabilities, connection) == ASCIICHAT_OK &&
-        (previous.cols != advertised.cols || previous.rows != advertised.rows)) {
+    terminal_size_t previous = connection->advertised_dimensions;
+    if (session_protocol_update_dimensions(&connection->advertised_dimensions, client_send_capabilities, connection) ==
+            ASCIICHAT_OK &&
+        (previous.cols != connection->advertised_dimensions.cols ||
+         previous.rows != connection->advertised_dimensions.rows)) {
       display_full_reset();
       log_set_terminal_output(false);
     }

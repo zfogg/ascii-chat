@@ -64,6 +64,7 @@ struct client_connection {
   atomic_t frames_rendered;
   atomic_t snapshot_first_frame_time_ns;
   session_protocol_t protocol;
+  terminal_size_t advertised_dimensions; // Last dimensions successfully sent to this server.
   bool capture_thread_created;
   atomic_t capture_thread_exited;
   bool audio_capture_thread_created;

@@ -768,7 +768,10 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(client_connection
                                                                unsigned short height) {
   terminal_capabilities_packet_t packet;
   session_protocol_build_capabilities(width, height, &packet);
-  return threaded_send_packet(connection, PACKET_TYPE_CLIENT_CAPABILITIES, &packet, sizeof(packet));
+  asciichat_error_t result = threaded_send_packet(connection, PACKET_TYPE_CLIENT_CAPABILITIES, &packet, sizeof(packet));
+  if (result == ASCIICHAT_OK)
+    connection->advertised_dimensions = (terminal_size_t){.cols = width, .rows = height};
+  return result;
 }
 
 /**
