@@ -6,7 +6,7 @@ import {
   createOptionAccessor,
   initializeOptions,
   cleanupOptions,
-  getWasmAssetUrl,
+  createWasmModule,
 } from "@ascii-chat/shared/wasm";
 
 export const BINARY_OPENPGP_KEY_PREFIX = "ascii-chat:openpgp-binary-base64:";
@@ -378,10 +378,6 @@ export function packetTypeName(type: number): string {
   return names[type] || `UNKNOWN(${type})`;
 }
 
-// Import the Emscripten-generated module factory
-// @ts-expect-error - Generated file without types
-import ClientModuleFactory from "./dist/client.js";
-
 let wasmModule: ClientModule | null = null;
 let moduleLoading: Promise<void> | null = null;
 let keyParserWorker: Worker | null = null;
@@ -601,14 +597,7 @@ async function loadWasmModule(): Promise<void> {
   }
 
   console.log("[WASM] Loading module for help text...");
-  wasmModule = await ClientModuleFactory({
-    locateFile: getWasmAssetUrl,
-    getRandomValue: function () {
-      const buf = new Uint32Array(1);
-      crypto.getRandomValues(buf);
-      return buf[0];
-    },
-  });
+  wasmModule = await createWasmModule<ClientModule>("client");
 
   if (!wasmModule) {
     throw new Error("Failed to load WASM module");

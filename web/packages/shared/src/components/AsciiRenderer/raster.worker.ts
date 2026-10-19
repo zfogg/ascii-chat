@@ -1,35 +1,40 @@
-import type { MirrorModule } from "../../wasm/mirror";
-import type { RasterRequest } from "./RasterWorker";
+import type { TerminalRendererModule } from "../../wasm/terminalRenderer";
+import type { RasterWorkerRequest } from "./RasterWorker";
 import { browserRasterFontSize } from "./rasterConfig";
-import { getWasmAssetUrl } from "../../wasm/assetUrl";
+import { createWasmModule, type ClientLikeKind } from "../../wasm/assetUrl";
 
-// The published client module supports workers and exports the same C terminal
-// renderer as Mirror. UI composition and keyboard handling stay in SessionUi.
-const initialized: Promise<MirrorModule> = (async () => {
-  const url = getWasmAssetUrl("client.js");
-  const { default: factory } = await import(/* @vite-ignore */ url);
-  const module = await factory({
-    getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
-    locateFile: getWasmAssetUrl,
-  });
-  const args = module._malloc(7);
+async function initialize(
+  clientLikeKind: ClientLikeKind,
+): Promise<TerminalRendererModule> {
+  const module = await createWasmModule<TerminalRendererModule>(clientLikeKind);
+  const initializeOptions =
+    clientLikeKind === "mirror"
+      ? module._mirror_init_with_args
+      : module._client_init_with_args;
+  if (!initializeOptions)
+    throw new Error(`Missing ${clientLikeKind} raster worker initializer`);
+  const size = module.lengthBytesUTF8(clientLikeKind) + 1;
+  const args = module._malloc(size);
   try {
-    module.stringToUTF8("client", args, 7);
-    if (module._client_init_with_args(args))
+    module.stringToUTF8(clientLikeKind, args, size);
+    if (initializeOptions(args))
       throw new Error("Cannot initialize raster worker options");
   } finally {
     module._free(args);
   }
   return module;
-})();
+}
+let initialized: Promise<TerminalRendererModule> | undefined;
 let renderer = 0;
 let signature = "";
 let queue = Promise.resolve();
 let previousText: string | null = null;
-self.onmessage = (event: MessageEvent<RasterRequest>) => {
+self.onmessage = (event: MessageEvent<RasterWorkerRequest>) => {
+  initialized ??= initialize(event.data.clientLikeKind);
+  const ready = initialized;
   queue = queue
     .then(async () => {
-      const module = await initialized;
+      const module = await ready;
       const { text, cols, rows, matrix, zalgo } = event.data;
       const nextSignature = `${cols}:${rows}:${matrix}`;
       const changed = text !== previousText || nextSignature !== signature;

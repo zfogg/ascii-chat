@@ -1,3 +1,5 @@
+import type { ClientLikeKind } from "../../wasm/assetUrl";
+
 export interface AsciiRendererHandle {
   writeFrame(
     ansiString: string,
@@ -11,6 +13,8 @@ export interface AsciiRendererHandle {
 }
 
 export interface AsciiRendererProps {
+  /** Mirror uses its local module; client and discovery use the network module. */
+  clientLikeKind: ClientLikeKind;
   /** Rasterize network frames away from capture and transport callbacks. */
   workerRendering?: boolean;
   /** Contain the complete terminal grid by default, or crop it with cover. */

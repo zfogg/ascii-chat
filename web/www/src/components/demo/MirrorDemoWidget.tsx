@@ -776,6 +776,7 @@ export default function MirrorDemoWidget({
       >
         <div className="demo-widget-inner">
           <AsciiRenderer
+            clientLikeKind="mirror"
             ref={rendererRef}
             contentFit={contentFit}
             {...(columns === undefined ? {} : { columns })}

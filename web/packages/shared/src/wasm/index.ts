@@ -1,4 +1,5 @@
-export { getWasmAssetUrl } from "./assetUrl";
+export { createWasmModule, getWasmAssetUrl } from "./assetUrl";
+export type { ClientLikeKind } from "./assetUrl";
 export {
   initMirrorWasm,
   adoptMirrorWasmModule,

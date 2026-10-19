@@ -7,10 +7,9 @@ import {
   getMirrorModule,
   initMirrorWasm,
   isWasmReady,
-  getWasmAssetUrl,
+  createWasmModule,
+  type MirrorModule,
 } from "@ascii-chat/shared/wasm";
-// @ts-expect-error - Generated file without types
-import MirrorModuleFactory from "../wasm/dist/mirror.js";
 import { SITES } from "@ascii-chat/shared/utils";
 import { BinarySettings } from "../components/shared/BinarySettings";
 import { AsciiRenderer } from "@ascii-chat/shared/components/AsciiRenderer";
@@ -50,9 +49,9 @@ export function MirrorPage() {
   const initWasm = useCallback(() => {
     const t0 = performance.now();
     console.log(`[Mirror] initWasm start at ${t0.toFixed(1)}ms`);
-    const promise = initMirrorWasm(MirrorModuleFactory, {
-      locateFile: getWasmAssetUrl,
-    });
+    const promise = initMirrorWasm((options) =>
+      createWasmModule<MirrorModule>("mirror", options),
+    );
     promise
       .then(() => {
         setWasmModule(getMirrorModule());
@@ -477,6 +476,7 @@ export function MirrorPage() {
         renderer={(() => {
           return (
             <AsciiRenderer
+              clientLikeKind="mirror"
               ref={rendererRef}
               contentFit={contentFit}
               uiLoading={!renderActive}
