@@ -27,7 +27,18 @@ typedef struct endpoint {
 static void description(webrtc_peer_connection_t *pc, const char *sdp, const char *type, void *arg) {
   (void)pc;
   endpoint_t *endpoint = arg;
-  CHECK(webrtc_set_remote_description(endpoint->other->pc, sdp, type) == ASCIICHAT_OK);
+  char message_limit[64];
+  safe_snprintf(message_limit, sizeof(message_limit), "a=max-message-size:%u", ACIP_OUTBOUND_SCTP_RESERVE);
+  const char *limit = strstr(sdp, message_limit);
+  CHECK(limit);
+  // Model a browser advertising a larger receive limit than our local SCTP buffer.
+  // The oversized ACIP exchange below must still use locally bounded chunks.
+  size_t capacity = strlen(sdp) + 64;
+  char *remote_sdp = SAFE_MALLOC(capacity, char *);
+  safe_snprintf(remote_sdp, capacity, "%.*sa=max-message-size:%u%s", (int)(limit - sdp), sdp,
+                4 * ACIP_OUTBOUND_SCTP_RESERVE, limit + strlen(message_limit));
+  CHECK(webrtc_set_remote_description(endpoint->other->pc, remote_sdp, type) == ASCIICHAT_OK);
+  SAFE_FREE(remote_sdp);
 }
 
 static void candidate(webrtc_peer_connection_t *pc, const char *ice, const char *mid, void *arg) {
@@ -45,6 +56,9 @@ static void ready(acip_transport_t *transport, void *arg) {
 static void opened(webrtc_data_channel_t *dc, void *arg) {
   endpoint_t *endpoint = arg;
   endpoint->dc = dc;
+  size_t max_message_size = 0;
+  CHECK(webrtc_datachannel_get_max_message_size(dc, &max_message_size) == ASCIICHAT_OK);
+  CHECK(max_message_size == ACIP_OUTBOUND_SCTP_RESERVE);
   if (!endpoint->security->handshake.is_server) {
     endpoint->transport = acip_webrtc_transport_create_secure(endpoint->pc, dc, endpoint->security, ready, endpoint);
     CHECK(endpoint->transport);

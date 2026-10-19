@@ -602,6 +602,9 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   // Create libdatachannel configuration
   rtcConfiguration rtc_config;
   memset(&rtc_config, 0, sizeof(rtc_config));
+  // libdatachannel raises SO_SNDBUF to at least the local maximum message size.
+  // Keep both limits equal so the fixed SCTP reservation covers retained bytes.
+  rtc_config.maxMessageSize = ACIP_OUTBOUND_SCTP_RESERVE;
   rtc_config.bindAddress = config->bind_address;
   rtc_config.iceServers = ice_servers;
   rtc_config.iceServersCount = (int)ice_count;

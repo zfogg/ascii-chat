@@ -168,6 +168,9 @@ static socket_t bound_socket(int type, struct sockaddr_in *address) {
 static void description(webrtc_peer_connection_t *pc, const char *sdp, const char *type, void *arg) {
   (void)pc;
   endpoint_t *endpoint = arg;
+  char message_limit[64];
+  safe_snprintf(message_limit, sizeof(message_limit), "a=max-message-size:%u", ACIP_OUTBOUND_SCTP_RESERVE);
+  CHECK(strstr(sdp, message_limit));
   // Candidate callbacks advertise only the relay. Remove candidates embedded
   // in the SDP so ICE cannot silently select a direct loopback shortcut.
   char *filtered = SAFE_MALLOC(strlen(sdp) + 1, char *);
@@ -456,6 +459,11 @@ static void setup(fixture_t *f, const char *transport, bool slow) {
            time_get_ns() - start < 15 * NS_PER_SEC_INT)
       platform_sleep_ms(5);
     CHECK(atomic_load_bool(&f->endpoints[0].opened) && atomic_load_bool(&f->endpoints[1].opened));
+    for (int i = 0; i < 2; ++i) {
+      size_t max_message_size = 0;
+      CHECK(webrtc_datachannel_get_max_message_size(f->endpoints[i].dc, &max_message_size) == ASCIICHAT_OK);
+      CHECK(max_message_size == ACIP_OUTBOUND_SCTP_RESERVE);
+    }
     char local[1024], remote[1024], foundation[128], protocol[32], ip[128];
     unsigned component, priority, port;
     CHECK(rtcGetSelectedCandidatePair(webrtc_get_rtc_id(f->endpoints[0].pc), local, sizeof(local), remote,

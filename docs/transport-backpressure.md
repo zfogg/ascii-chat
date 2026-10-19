@@ -14,6 +14,11 @@ Native TCP/WebSocket request a 64 KiB socket send buffer and reserve 128 KiB
 within the budget, covering Linux socket accounting. Receive buffers retain
 their normal tuning. Native SCTP send space is capped and reserves 64 KiB within this budget,
 because libdatachannel does not expose that retained amount in buffered bytes.
+Both `rtcSctpSettings.sendBufferSize` and each peer's
+`rtcConfiguration.maxMessageSize` are set to that same 64 KiB limit:
+libdatachannel raises its SCTP socket buffer to at least the local maximum
+message size. Larger ACIP packets are split into negotiated-size DataChannel
+messages by the existing transport and reassembled before ACIP decoding.
 Snapshots report the fixed reservation separately from measured backend bytes.
 Backend pending bytes are additional; Receive buffers and bytes already in the network are outside this outbound budget.
 
