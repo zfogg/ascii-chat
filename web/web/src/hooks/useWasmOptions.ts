@@ -13,6 +13,24 @@ import { mapColorFilterToWasm, mapColorModeToWasm } from "../utils";
 // overwrite an engine change that React has not observed yet.
 const submitted = new WeakMap<RuntimeOptionsStore, RuntimeValues>();
 
+/** A C change observed by React is already committed, even before its UI echo. */
+export function acknowledgeEngineSettings(
+  store: RuntimeOptionsStore,
+  values: RuntimeValues,
+  changed: (name: string) => boolean,
+) {
+  const previous = submitted.get(store);
+  if (!previous) return;
+  const animations = ["matrix_rain", "waveform", "fft"];
+  const animationChanged = animations.some(changed);
+  const next = { ...previous };
+  for (const name of Object.keys(previous)) {
+    if (changed(name) || (animationChanged && animations.includes(name)))
+      next[name] = values[name]!;
+  }
+  submitted.set(store, next);
+}
+
 export function applyMirrorWasmSettings(
   settings: BinarySettingsConfig,
 ): boolean {

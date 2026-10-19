@@ -75,6 +75,10 @@ set(LIB_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../lib)
 set(INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 set(DEPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../deps)
 
+include(${_cmake_dir}/utils/SourceRoot.cmake)
+get_filename_component(_source_root "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+asciichat_configure_source_root("${_source_root}" "${CMAKE_BINARY_DIR}")
+
 # Include directories for library headers
 # IMPORTANT: WASM stubs must come FIRST to override native headers
 include_directories(
@@ -555,7 +559,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _get_font_default_ptr
     _get_font_default_size
     # Option getters/setters for live option updates (no restart needed)
-    _wasm_options_revision _wasm_options_values _wasm_options_patch _wasm_options_release
+    _wasm_options_revision _wasm_options_retired_count _wasm_options_values _wasm_options_patch _wasm_options_release
     _set_width
     _set_height
     _get_width
@@ -604,7 +608,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     _browser_handoff_encode _browser_handoff_decode
     _browser_host_create _browser_host_destroy _browser_host_add_client _browser_host_remove_client
-    _browser_host_set_local_client
+    _browser_host_set_local_client _browser_host_render_audio
     _browser_host_receive _browser_host_render _browser_discovery_new _browser_discovery_destroy _browser_discovery_enter _browser_discovery_receive _browser_discovery_leave _browser_discovery_snapshot
     _client_resolve_crypto_policy _client_handshake_begin _client_handshake_receive
     _client_acds_handshake_begin _client_acds_handshake_receive
@@ -631,7 +635,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _get_font_default_ptr
     _get_font_default_size
     # Option getters/setters for live option updates (no restart needed)
-    _wasm_options_revision _wasm_options_values _wasm_options_patch _wasm_options_release
+    _wasm_options_revision _wasm_options_retired_count _wasm_options_values _wasm_options_patch _wasm_options_release
     _set_width
     _set_height
     _get_width

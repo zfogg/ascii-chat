@@ -11,6 +11,7 @@ import {
   type RuntimeValues,
 } from "@ascii-chat/shared/wasm";
 import type { BinarySettingsConfig } from "../components";
+import { acknowledgeEngineSettings } from "./useWasmOptions";
 
 const emptySubscribe = () => () => {};
 const emptySnapshot = () => null;
@@ -44,6 +45,7 @@ export function useEngineSettings(
     const values = snapshot.values;
     const next = { ...settings };
     const changed = (name: string) => old.values[name] !== values[name];
+    if (store) acknowledgeEngineSettings(store, values, changed);
     const numeric = (name: string) => Number(values[name]);
     const colors: BinarySettingsConfig["colorMode"][] = [
       "none",

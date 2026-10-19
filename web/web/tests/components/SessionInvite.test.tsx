@@ -15,6 +15,33 @@ afterEach(() => {
 });
 
 describe("Session invitation", () => {
+  it("preserves custom TURN credentials with the password in the fragment", () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/discovery?turnUrls=turn%3Arelay.example&turnUsername=alice&connectionRoute=relay#turnCredential=p%2Bass",
+    );
+    render(
+      <SessionInvite
+        sessionName="quiet-river-otter"
+        signalingUrl="wss://discovery.example/ws"
+        sessionPassword="session"
+      />,
+    );
+    const url = new URL(
+      (screen.getByLabelText("Join link") as HTMLInputElement).value,
+    );
+    expect(url.searchParams.get("turnUrls")).toBe("turn:relay.example");
+    expect(url.searchParams.get("turnUsername")).toBe("alice");
+    expect(url.searchParams.get("connectionRoute")).toBe("relay");
+    expect(url.searchParams.has("turnCredential")).toBe(false);
+    expect(new URLSearchParams(url.hash.slice(1)).get("turnCredential")).toBe(
+      "p+ass",
+    );
+    expect(new URLSearchParams(url.hash.slice(1)).get("sessionPassword")).toBe(
+      "session",
+    );
+  });
   it("copies the confirmed name and a join URL with the password only in its fragment", async () => {
     window.history.replaceState(
       {},

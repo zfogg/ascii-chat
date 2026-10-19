@@ -191,3 +191,12 @@ Test(face_follow, reversing_box_noise_does_not_accumulate_a_direction_or_zoom) {
     cr_assert_float_eq(state.crop.w, crop.w, 0.0002);
   }
 }
+
+Test(face_follow, first_detected_frame_is_cropped_for_zero_delay_snapshot) {
+  face_follow_state_t state;
+  face_follow_init(&state);
+  face_follow_observe(&state, &subject, 1, 0);
+  face_follow_tick(&state, 0, true);
+  cr_assert_lt(state.crop.w, 0.75f);
+  cr_assert_float_eq(state.crop.w, state.target.w, 0.0001f);
+}

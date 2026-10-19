@@ -12,6 +12,7 @@
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/paths.h>
+#include <ascii-chat/source_root.h>
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
@@ -315,191 +316,39 @@ static const char *normalize_path(const char *path) {
   return normalized;
 }
 
-/**
- * @brief Find the project root directory by searching for .git or CMakeLists.txt
- *
- * Walks up the directory tree from the current working directory looking for
- * either a .git directory or a CMakeLists.txt file, which indicate the project root.
- * Searches up to 128 directories deep.
- *
- * Results are cached to avoid repeated stat() calls which can hang during shutdown.
- * Uses malloc/free instead of SAFE_MALLOC/SAFE_FREE to avoid deadlock when called
- * during memory report (which holds g_mem.mutex) - debug_malloc would try to acquire
- * that same mutex to record the allocation, causing a deadlock.
- *
- * @return Allocated string containing project root path, or NULL if not found.
- *         Caller must free() the result (not SAFE_FREE).
- */
-static char *find_project_root(void) {
-  // Cache the result so we don't repeatedly call stat() which can hang during shutdown
-  static char cached_root[PLATFORM_MAX_PATH_LENGTH] = {0};
-  static bool search_done = false;
-
-  if (search_done) {
-    if (cached_root[0] != '\0') {
-      // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
-      // recursion when called during memory report while holding g_mem.mutex
-      size_t root_len = strlen(cached_root) + 1;
-      char *copy = malloc(root_len);
-      if (copy) {
-        asciichat_error_t strcpy_result = SAFE_STRCPY(copy, root_len, cached_root);
-        if (strcpy_result != ASCIICHAT_OK) {
-          log_error("Failed to copy project root: %s", asciichat_error_string(strcpy_result));
-          free(copy);
-          return NULL;
-        }
-      }
-      return copy;
-    }
-    return NULL; // Not found
-  }
-
-  char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
-  if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
-    search_done = true;
-    return NULL;
-  }
-
-  char search_path[PLATFORM_MAX_PATH_LENGTH];
-  SAFE_STRNCPY(search_path, cwd_buf, sizeof(search_path));
-
-  // Search up to 128 levels deep for repository root
-  for (int i = 0; i < 128; i++) {
-    // Check for .git directory
-    char git_check[PLATFORM_MAX_PATH_LENGTH];
-    safe_snprintf(git_check, sizeof(git_check), "%s%s.git", search_path, PATH_SEPARATOR_STR);
-    struct stat git_stat;
-    bool git_found = stat(git_check, &git_stat) == 0 && S_ISDIR(git_stat.st_mode);
-    if (git_found) {
-      // Found .git directory - this is the repo root
-      safe_snprintf(cached_root, sizeof(cached_root), "%s", search_path);
-      search_done = true;
-      // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
-      // recursion when called during memory report while holding g_mem.mutex
-      size_t path_len = strlen(search_path) + 1;
-      char *result = malloc(path_len);
-      if (result) {
-        asciichat_error_t strcpy_result = SAFE_STRCPY(result, path_len, search_path);
-        if (strcpy_result != ASCIICHAT_OK) {
-          log_error("Failed to copy search path (git root): %s", asciichat_error_string(strcpy_result));
-          free(result);
-          return NULL;
-        }
-      }
-      return result;
-    }
-
-    // We might be built from a tarball and not a git repo. But I still want this to work.
-    // So check for LICENSE.txt and CMakeLists.txt (ascii-chat's license is in the repo root with the main
-    // CMakeLists.txt).
-    char license_check[PLATFORM_MAX_PATH_LENGTH];
-    safe_snprintf(license_check, sizeof(license_check), "%s%sLICENSE.txt", search_path, PATH_SEPARATOR_STR);
-    char cmake_check[PLATFORM_MAX_PATH_LENGTH];
-    safe_snprintf(cmake_check, sizeof(cmake_check), "%s%sCMakeLists.txt", search_path, PATH_SEPARATOR_STR);
-    struct stat license_stat;
-    bool license_found = stat(license_check, &license_stat) == 0 && S_ISREG(license_stat.st_mode);
-    struct stat cmake_stat;
-    bool cmake_found = stat(cmake_check, &cmake_stat) == 0 && S_ISREG(cmake_stat.st_mode);
-    if (license_found && cmake_found) {
-      // Found LICENSE.txt
-      safe_snprintf(cached_root, sizeof(cached_root), "%s", search_path);
-      search_done = true;
-      // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
-      // recursion when called during memory report while holding g_mem.mutex
-      size_t path_len = strlen(search_path) + 1;
-      char *result = malloc(path_len);
-      if (result) {
-        asciichat_error_t strcpy_result = SAFE_STRCPY(result, path_len, search_path);
-        if (strcpy_result != ASCIICHAT_OK) {
-          log_error("Failed to copy search path (license root): %s", asciichat_error_string(strcpy_result));
-          free(result);
-          return NULL;
-        }
-      }
-      return result;
-    }
-
-    // Go up one directory
-    size_t len = strlen(search_path);
-    if (len == 0 || (len == 1 && search_path[0] == '/')) {
-      // Hit root directory without finding .git or CMakeLists.txt
-      break;
-    }
-
-    // Remove trailing separator if present
-    if (search_path[len - 1] == '/' || search_path[len - 1] == '\\') {
-      search_path[len - 1] = '\0';
-      len--;
-    }
-
-    // Find last separator
-    int last_sep = -1;
-    for (int j = (int)len - 1; j >= 0; j--) {
-      if (search_path[j] == '/' || search_path[j] == '\\') {
-        last_sep = j;
-        break;
-      }
-    }
-
-    if (last_sep <= 0) {
-      // Can't go up further
-      break;
-    }
-
-    search_path[last_sep] = '\0';
-  }
-
-  search_done = true;
-  return NULL;
-}
-
 const char *extract_project_relative_path(const char *file) {
+  // This runs inside logging and while the memory tracker holds its mutex.
+  // Avoid allocations, filesystem access, mutable caches, and error logging.
   if (!file) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "file is null");
     return "unknown";
   }
 
-#ifdef __EMSCRIPTEN__
-  // WASM builds: Return raw path to avoid recursion in logging system
-  // extract_project_relative_path is called from format_log_header, which is part of logging.
-  // If we call normalize_path or other functions that might use SET_ERRNO or log functions,
-  // we create infinite recursion: log_msg -> format_log_header -> extract_project_relative_path -> SET_ERRNO ->
-  // log_error -> log_msg For WASM, just return the filename without path processing.
-  const char *sep = strrchr(file, '/');
-  if (!sep) {
-    sep = strrchr(file, '\\');
-  }
-  return sep ? sep + 1 : file;
-#endif
-
-  /* First normalize the path to resolve .. and . components */
-  const char *normalized = normalize_path(file);
-
-  /* Try to find and strip the project root from the absolute path */
-  char *project_root = find_project_root();
-  if (project_root) {
-    size_t root_len = strlen(project_root);
-    size_t norm_len = strlen(normalized);
-
-    /* Check if normalized path starts with project root */
-    if (norm_len > root_len && strncmp(normalized, project_root, root_len) == 0) {
-      const char *remainder = normalized + root_len;
-
-      /* Skip the separator if present */
-      if (*remainder == PATH_DELIM || *remainder == '/' || *remainder == '\\') {
-        remainder++;
+  const char *root = ASCIICHAT_SOURCE_ROOT;
+  size_t i = 0;
+  for (; root[i]; i++) {
+    unsigned char source_char = (unsigned char)root[i];
+    unsigned char file_char = (unsigned char)file[i];
+    if (source_char == '/' || source_char == '\\') {
+      if (file_char != '/' && file_char != '\\') {
+        return file;
       }
-
-      free(project_root);
-      return remainder;
+    } else {
+#ifdef _WIN32
+      // Windows source paths are case insensitive; POSIX paths are not.
+      if (tolower(source_char) != tolower(file_char)) {
+#else
+      if (source_char != file_char) {
+#endif
+        return file;
+      }
     }
-    free(project_root);
   }
 
-  /* Fallback: Project root detection failed, but we should still try to return
-   * a meaningful relative path, not just the filename. Return the normalized path
-   * which should contain the full directory structure. */
-  return normalized;
+  // Match a whole directory, not a sibling whose name starts with the root.
+  if (i > 0 && (file[i] == '/' || file[i] == '\\')) {
+    return file + i + 1;
+  }
+  return file;
 }
 
 char *expand_path(const char *path) {
@@ -594,22 +443,18 @@ char *get_log_dir(void) {
 
   return log_dir;
 #else
-  // Debug builds: Use repository root for logs.
-  // find_project_root() returns a raw malloc() allocation (to avoid debug_malloc
-  // recursion), but callers free with SAFE_FREE. Re-allocate with SAFE_MALLOC
-  // so the allocator matches.
-  char *repo_root = find_project_root();
-  if (repo_root) {
+  // Debug builds: Use the build checkout for logs when it is still writable.
+  const char *repo_root = ASCIICHAT_SOURCE_ROOT;
+  if (platform_access(repo_root, PLATFORM_ACCESS_WRITE) == 0) {
     size_t len = strlen(repo_root) + 1;
     char *result = SAFE_MALLOC(len, char *);
     if (result) {
       memcpy(result, repo_root, len);
     }
-    free(repo_root);
     return result;
   }
 
-  // Fallback to current working directory if repo root not found
+  // The binary may have been copied to a machine without the build checkout.
   char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
     return NULL;

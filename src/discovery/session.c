@@ -1232,6 +1232,10 @@ asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session) 
     session->peer_manager = NULL;
   }
   session->is_host = !memcmp(session->host_id, session->participant_id, 16);
+  if (!session->is_host && session->host_ctx) {
+    session_host_destroy(session->host_ctx);
+    session->host_ctx = NULL;
+  }
   session->webrtc_transport_ready = false;
   session->webrtc_connection_initiated = false;
   session->webrtc_retry_attempt = 0;

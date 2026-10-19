@@ -302,30 +302,16 @@ extern const size_t g_font_matrix_resurrected_size;
  * @return Pointer to font data
  */
 EMSCRIPTEN_KEEPALIVE
-const unsigned char *get_font_default_ptr(void) {
-  // Auto-select matrix font when --matrix flag is set
-  int matrix_rain_val = GET_OPTION(matrix_rain);
-  log_info("matrix_rain=%d, g_font_matrix_resurrected=%p, g_font_default=%p", matrix_rain_val,
-           (void *)g_font_matrix_resurrected, (void *)g_font_default);
-  if (matrix_rain_val) {
-    log_info("RETURNING matrix font");
-    return g_font_matrix_resurrected;
-  }
-  log_info("RETURNING default font");
-  return g_font_default;
+const unsigned char *get_font_default_ptr(int selection) {
+  bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
+  return matrix ? g_font_matrix_resurrected : g_font_default;
 }
 
-/**
- * Get the size of the embedded default font
- * @return Font data size in bytes
- */
+/** Selection 0 follows settings, 1 selects the default font, 2 selects Matrix. */
 EMSCRIPTEN_KEEPALIVE
-unsigned int get_font_default_size(void) {
-  // Auto-select matrix font when --matrix flag is set
-  if (GET_OPTION(matrix_rain)) {
-    return (unsigned int)g_font_matrix_resurrected_size;
-  }
-  return (unsigned int)g_font_default_size;
+unsigned int get_font_default_size(int selection) {
+  bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
+  return (unsigned int)(matrix ? g_font_matrix_resurrected_size : g_font_default_size);
 }
 
 #endif
