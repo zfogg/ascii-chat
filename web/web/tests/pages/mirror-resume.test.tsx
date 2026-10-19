@@ -267,3 +267,14 @@ test("media flips start off, reach WASM and remain independent of webcam flips",
     expect.objectContaining({ flipX: true, flipY: true }),
   );
 });
+
+test("playing=true navigation starts the existing Mirror page", async () => {
+  backend.ready = true;
+  render(<MirrorPage />);
+  expect(backend.start).not.toHaveBeenCalled();
+  act(() => {
+    history.replaceState({}, "", "/mirror?playing=true");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+  await waitFor(() => expect(backend.start).toHaveBeenCalledOnce());
+});

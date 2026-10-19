@@ -476,6 +476,22 @@ export function ClientPage({
       setConnectionRequested(true);
   }, [connectionState, setConnectionRequested]);
 
+  const previousStartupRequest = useRef(requestedConnection);
+  useEffect(() => {
+    // A query change on an existing page must arm the same renderer-ready
+    // startup path as loading a saved connect=true URL.
+    if (
+      requestedConnection &&
+      !previousStartupRequest.current &&
+      connectionState !== ConnectionState.CONNECTED
+    ) {
+      pendingConnectRef.current = true;
+      setRendererRequested(true);
+      setConnecting(true);
+    }
+    previousStartupRequest.current = requestedConnection;
+  }, [requestedConnection, connectionState]);
+
   // Wait until the renderer reports a settled size before connecting. Discovery
   // sends capabilities as soon as its DataChannel opens, and the direct client
   // also needs the final dimensions before protocol startup.
@@ -524,6 +540,7 @@ export function ClientPage({
     };
   }, [
     connectToServer,
+    requestedConnection,
     connectionRequested,
     connecting,
     rendererError,

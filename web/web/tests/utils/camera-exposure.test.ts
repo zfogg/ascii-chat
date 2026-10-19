@@ -40,7 +40,7 @@ test("fast exposure fits the frame interval and restores automatic exposure", as
   expect(track.applyConstraints).toHaveBeenLastCalledWith({
     frameRate: { ideal: 60 },
     deviceId: { exact: "camera" },
-    advanced: [{ exposureMode: "continuous", exposureTime: 300 }],
+    advanced: [{ exposureMode: "continuous" }],
   });
 });
 test("quick toggles serialize camera changes and restore the original settings", async () => {
@@ -54,7 +54,7 @@ test("quick toggles serialize camera changes and restore the original settings",
   expect(track.applyConstraints).toHaveBeenCalledTimes(4);
   expect(track.applyConstraints).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      advanced: [{ exposureMode: "continuous", exposureTime: 300 }],
+      advanced: [{ exposureMode: "continuous" }],
     }),
   );
 });
@@ -86,4 +86,34 @@ test("retries when a UVC driver rounds exposure above the frame interval", async
   await setFastExposure(track, true);
   expect(track.applyConstraints).toHaveBeenCalledTimes(2);
   expect(exposureTime).toBeLessThanOrEqual(10000 / 60);
+});
+
+test("off restores automatic exposure even on a newly acquired manual track", async () => {
+  const track = camera();
+  Object.assign(track, {
+    getSettings: () => ({
+      exposureMode: "manual",
+      exposureTime: 156.25,
+      frameRate: 60,
+    }),
+  });
+  await setFastExposure(track, false);
+  expect(track.applyConstraints).toHaveBeenLastCalledWith(
+    expect.objectContaining({ advanced: [{ exposureMode: "continuous" }] }),
+  );
+});
+test("disabling inherited manual exposure cannot restore the fast manual setting", async () => {
+  const track = camera();
+  Object.assign(track, {
+    getSettings: () => ({
+      exposureMode: "manual",
+      exposureTime: 156.25,
+      frameRate: 60,
+    }),
+  });
+  await setFastExposure(track, true);
+  await setFastExposure(track, false);
+  expect(track.applyConstraints).toHaveBeenLastCalledWith(
+    expect.objectContaining({ advanced: [{ exposureMode: "continuous" }] }),
+  );
 });

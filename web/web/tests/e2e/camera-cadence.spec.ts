@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { ServerFixture } from "./server-fixture";
+import { ServerFixture, waitForPort } from "./server-fixture";
+import { spawn } from "node:child_process";
+import { resolve } from "node:path";
 
 // Supply real VideoFrames through getUserMedia. The built-in ?test source bypasses
 // camera scheduling and cannot detect a camera callback gate that halves 60 FPS.
@@ -12,6 +14,8 @@ async function camera(page: Page) {
       changed: 0,
       rate: 60,
       still: false,
+      exposureMode: "manual",
+      exposureTime: 156.25,
     };
     Object.assign(window, { cameraCadence: stats });
     const send = WebSocket.prototype.send;
@@ -58,10 +62,33 @@ async function camera(page: Page) {
       const track = new Generator({ kind: "video" });
       const getSettings = track.getSettings.bind(track);
       Object.defineProperty(track, "getCapabilities", {
-        value: () => ({ frameRate: { min: 1, max: 60 } }),
+        value: () => ({
+          frameRate: { min: 1, max: 60 },
+          exposureMode: ["manual", "continuous"],
+          exposureTime: { min: 10, max: 10000, step: 10 },
+        }),
       });
       Object.defineProperty(track, "getSettings", {
-        value: () => ({ ...getSettings(), frameRate: 60 }),
+        value: () => ({
+          ...getSettings(),
+          frameRate: 60,
+          exposureMode: stats.exposureMode,
+          exposureTime: stats.exposureTime,
+        }),
+      });
+      Object.defineProperty(track, "applyConstraints", {
+        value: async (constraints: MediaTrackConstraints) => {
+          for (const advanced of constraints.advanced ?? []) {
+            const exposure = advanced as {
+              exposureMode?: string;
+              exposureTime?: number;
+            };
+            if (exposure.exposureMode)
+              stats.exposureMode = exposure.exposureMode;
+            if (exposure.exposureTime)
+              stats.exposureTime = exposure.exposureTime;
+          }
+        },
       });
       const writer = track.writable.getWriter();
       const canvas = document.createElement("canvas");
@@ -331,5 +358,132 @@ test("two camera clients upload at 60 FPS and preserve fresh received content", 
   } finally {
     await second.close();
     await server.stop();
+  }
+});
+
+test("Mirror starts from playing=true on load, reload and URL navigation", async ({
+  page,
+}) => {
+  await camera(page);
+  await page.goto("/mirror?playing=true");
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await page.evaluate(() => {
+    const url = new URL(location.href);
+    url.searchParams.set("playing", "true");
+    history.pushState(null, "", url);
+    dispatchEvent(new PopStateEvent("popstate"));
+  });
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true }),
+  ).toBeVisible();
+});
+
+test("Device setup toggles actual exposure and off resets inherited manual exposure", async ({
+  page,
+}) => {
+  await camera(page);
+  await page.goto("/mirror?playing=true&fastExposure=true");
+  const mode = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { cameraCadence: { exposureMode: string } })
+          .cameraCadence.exposureMode,
+    );
+  await expect.poll(mode).toBe("continuous");
+  await page.getByRole("button", { name: "Device setup", exact: true }).click();
+  const toggle = page.getByRole("checkbox", {
+    name: "Fast camera exposure",
+    exact: true,
+  });
+  await expect(toggle).not.toBeChecked();
+  await toggle.check();
+  await expect.poll(mode).toBe("manual");
+  await expect(page).toHaveURL(/fastCameraExposure=true/);
+  await toggle.uncheck();
+  await expect.poll(mode).toBe("continuous");
+});
+
+test("Client connect=true starts on load and reload without a click", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const server = new ServerFixture(39534, ["--status-screen=false"]);
+  try {
+    await server.start();
+    await camera(page);
+    await page.goto(
+      "/client?connect=true&serverUrl=ws%3A%2F%2F127.0.0.1%3A39535",
+    );
+    await expect(
+      page.getByRole("button", { name: "Disconnect", exact: true }),
+    ).toBeVisible({ timeout: 20000 });
+    await page.reload();
+    await expect(
+      page.getByRole("button", { name: "Disconnect", exact: true }),
+    ).toBeVisible({ timeout: 20000 });
+  } finally {
+    await server.stop();
+  }
+});
+
+test("Discovery connect=true starts signaling without a click", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(45000);
+  const acds = spawn(
+    resolve(process.env["ASCII_CHAT_TEST_BINARY"] || "build/bin/ascii-chat"),
+    [
+      "--log-level",
+      "warn",
+      "discovery-service",
+      "--port",
+      "39544",
+      "--websocket-port",
+      "39545",
+      "--database",
+      testInfo.outputPath("startup.sqlite"),
+      "--stun-servers",
+      "",
+      "--turn-servers",
+      "",
+    ],
+    { windowsHide: true, stdio: "ignore" },
+  );
+  let processError: Error | undefined;
+  acds.on("error", (error) => {
+    processError = error;
+  });
+  try {
+    await waitForPort(39545, "127.0.0.1", { timeoutMs: 15000 });
+    if (processError) throw processError;
+    // Prove the saved URL starts the C discovery protocol and receives its
+    // server response. The deliberately absent session cannot create a call.
+    let sent = 0,
+      received = 0;
+    page.on("websocket", (socket) => {
+      if (socket.url() !== "ws://127.0.0.1:39545/") return;
+      socket.on("framesent", () => sent++);
+      socket.on("framereceived", () => received++);
+    });
+    await page.goto(
+      "/discovery?connect=true&session=blue-mountain-tiger&signalingUrl=ws%3A%2F%2F127.0.0.1%3A39545",
+    );
+    await expect.poll(() => sent, { timeout: 20000 }).toBeGreaterThan(0);
+    await expect.poll(() => received, { timeout: 20000 }).toBeGreaterThan(0);
+  } finally {
+    if (acds.exitCode === null && acds.pid) {
+      const exited = new Promise<void>((done) =>
+        acds.once("exit", () => done()),
+      );
+      acds.kill();
+      await exited;
+    }
   }
 });

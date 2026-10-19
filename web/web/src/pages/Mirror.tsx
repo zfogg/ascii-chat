@@ -280,6 +280,11 @@ export function MirrorPage() {
   });
 
   useEffect(() => {
+    // URL navigation can reuse the mounted page rather than initialize refs.
+    resumePending.current = playing;
+  }, [playing]);
+
+  useEffect(() => {
     if (
       !resumePending.current ||
       isWebcamRunning ||
@@ -292,6 +297,7 @@ export function MirrorPage() {
     // Synthetic test input already has its own startup path.
     if (!testPattern.enabled) void startWebcam();
   }, [
+    playing,
     wasmInitialized,
     terminalDimensions,
     startWebcam,

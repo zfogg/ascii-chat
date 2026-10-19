@@ -513,3 +513,42 @@ it("connect=false remains disconnected", async () => {
   await act(async () => {});
   expect(backend.connect).not.toHaveBeenCalled();
 });
+
+it.each([false, true])(
+  "connect=true starts mode discovery=%s after renderer readiness",
+  async (discoveryMode) => {
+    history.replaceState(
+      {},
+      "",
+      discoveryMode
+        ? "/discovery?connect=true&session=blue-mountain-tiger"
+        : "/client?connect=true",
+    );
+    render(<ClientPage discoveryMode={discoveryMode} />, {
+      wrapper: HeadingProvider,
+    });
+    await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
+  },
+);
+
+it.each([false, true])(
+  "connect=true URL navigation starts mode discovery=%s",
+  async (discoveryMode) => {
+    render(<ClientPage discoveryMode={discoveryMode} />, {
+      wrapper: HeadingProvider,
+    });
+    await act(async () => {});
+    expect(backend.connect).not.toHaveBeenCalled();
+    act(() => {
+      history.replaceState(
+        {},
+        "",
+        discoveryMode
+          ? "/discovery?connect=true&session=blue-mountain-tiger"
+          : "/client?connect=true",
+      );
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
+  },
+);
