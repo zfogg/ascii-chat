@@ -11,6 +11,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
 # =============================================================================
 # CMake Build Types
 # =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/ProjectSettings.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
 # INFO: CMAKE_BUILD_TYPE is now configured.
 
@@ -380,7 +381,7 @@ target_sources(ascii-chat-core PRIVATE "${MANPAGE_TEMPLATE_EMBEDDED}")
 # Define resource paths for development builds
 # Point to BINARY_DIR where configured templates are located (not SOURCE_DIR raw templates)
 # These are used by embedded_resources.c to locate resources when running from the build directory
-add_compile_definitions(
+target_compile_definitions(asciichat-project-options INTERFACE
     ASCIICHAT_RESOURCE_DIR="${CMAKE_BINARY_DIR}"
 )
 
@@ -557,3 +558,5 @@ include(${CMAKE_SOURCE_DIR}/cmake/tools/CustomTargets.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/StatusMessages.cmake)
 
 # Test trigger 1774232744
+
+cmake_language(DEFER CALL asciichat_finalize_project_settings)

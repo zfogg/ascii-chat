@@ -102,7 +102,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(IS_ROSETTA 0)
 
 elseif(WIN32)
-    add_definitions(-D_WIN32 -DWIN32_LEAN_AND_MEAN)
+    target_compile_definitions(asciichat-project-options INTERFACE _WIN32 WIN32_LEAN_AND_MEAN)
     set(PLATFORM_WINDOWS TRUE)
     set(IS_APPLE_SILICON 0)
     set(IS_ROSETTA 0)
@@ -125,6 +125,6 @@ endif()
 
 # Enable GNU extensions for POSIX functions (matches Makefile)
 if(PLATFORM_POSIX AND NOT WIN32)
-    add_definitions(-D_GNU_SOURCE)
+    target_compile_definitions(asciichat-project-options INTERFACE _GNU_SOURCE)
 endif()
 

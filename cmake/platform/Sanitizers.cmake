@@ -397,7 +397,7 @@ function(fix_macos_asan_runtime)
             list(GET CLANG_VERSION_DIRS 0 CLANG_VERSION_DIR)
             get_filename_component(CLANG_VERSION_NAME "${CLANG_VERSION_DIR}" NAME)
             # Explicitly link against the correct ASan runtime from LLVM
-            add_link_options(-L${_llvm_lib_dir}/clang/${CLANG_VERSION_NAME}/lib/darwin)
+            target_link_options(asciichat-project-options INTERFACE -L${_llvm_lib_dir}/clang/${CLANG_VERSION_NAME}/lib/darwin)
             # NOTE: Don't add -rpath explicitly - clang automatically adds it when using -fsanitize
             message(STATUS "Using ASan runtime from: ${_llvm_lib_dir}/clang/${CLANG_VERSION_NAME}/lib/darwin")
         endif()
