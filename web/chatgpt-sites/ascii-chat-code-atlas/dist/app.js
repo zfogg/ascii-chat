@@ -25,6 +25,124 @@ let data,
   height = 650,
   focused = false,
   scopeEdges = null;
+let inspectorOpen = true,
+  inspectorDetail = null,
+  selectedEdge = null,
+  explorerFile = null,
+  traceSymbol = null,
+  cameraChanged = false,
+  restoringState = true,
+  stateQueued = false;
+function setInspectorOpen(open) {
+  if (!restoringState && inspectorOpen !== open) cameraChanged = true;
+  inspectorOpen = open;
+  document.body.classList.toggle("inspector-closed", !open);
+  document.body.classList.toggle("inspect-open", open);
+  $("#inspector-toggle").setAttribute("aria-expanded", String(open));
+  queueUrlState();
+}
+function queueUrlState() {
+  if (restoringState || stateQueued) return;
+  stateQueued = true;
+  queueMicrotask(() => {
+    stateQueued = false;
+    writeUrlState();
+  });
+}
+function writeUrlState() {
+  if (restoringState || !view) return;
+  const url = new URL(location.href);
+  const values = {
+    inspector: inspectorOpen ? null : "closed",
+    expanded: document.body.classList.contains("expanded") ? "true" : null,
+    file: explorerFile,
+    trace: traceSymbol,
+    node: selected,
+    edgeSource: selectedEdge?.source,
+    edgeTarget: selectedEdge?.target,
+    edgeKind: selectedEdge?.kind,
+    detailFile: inspectorDetail?.file,
+    symbol: inspectorDetail?.symbol,
+    zoom: cameraChanged ? scale : null,
+    x: cameraChanged ? tx : null,
+    y: cameraChanged ? ty : null,
+    scroll: $(".inspector").scrollTop || null,
+  };
+  for (const [key, value] of Object.entries(values)) {
+    if (value == null) url.searchParams.delete(key);
+    else url.searchParams.set(key, String(value));
+  }
+  const chapter = view.chapters[activeChapter];
+  url.hash = view.id + (chapter ? "/" + chapter.id : "");
+  if (url.href !== location.href) history.replaceState(null, "", url);
+}
+function restoreUrlState() {
+  restoringState = true;
+  const params = new URL(location.href).searchParams;
+  let hash;
+  try {
+    hash = decodeURIComponent(location.hash.slice(1));
+  } catch {
+    hash = "";
+  }
+  const [id, chapter] = hash.split("/");
+  const guide = data.views.find((v) => v.id === id) || data.views[0];
+  document.body.classList.toggle("expanded", params.get("expanded") === "true");
+  setInspectorOpen(params.get("inspector") !== "closed");
+  showGuide(
+    guide.id,
+    guide.chapters.findIndex((c) => c.id === chapter),
+  );
+  const file =
+    params.get("file") || (hash.startsWith("file=") ? hash.slice(5) : null);
+  if (file && byId.has(file)) {
+    const fn = byId
+      .get(file)
+      .functions.find((f) => f.name === params.get("trace"));
+    if (fn) traceFunction(file, fn);
+    else explore(file);
+  }
+  const node = params.get("node");
+  if (node && byId.has(node)) select(node);
+  const edgeIndex = connections.findIndex(
+    (e) =>
+      e.source === params.get("edgeSource") &&
+      e.target === params.get("edgeTarget") &&
+      e.kind === params.get("edgeKind"),
+  );
+  if (edgeIndex >= 0) inspectEdge(connections[edgeIndex], edgeIndex);
+  const detailFile = params.get("detailFile");
+  const fn = byId
+    .get(detailFile)
+    ?.functions.find((f) => f.name === params.get("symbol"));
+  if (fn) showFunctionReference(detailFile, fn);
+  setInspectorOpen(params.get("inspector") !== "closed");
+  fit();
+  const number = (key) =>
+    params.has(key) && params.get(key).trim() !== ""
+      ? Number(params.get(key))
+      : NaN;
+  const savedScale = number("zoom"),
+    savedX = number("x"),
+    savedY = number("y");
+  if (
+    Number.isFinite(savedScale) &&
+    savedScale >= 0.18 &&
+    savedScale <= 2 &&
+    Number.isFinite(savedX) &&
+    Number.isFinite(savedY)
+  ) {
+    scale = savedScale;
+    tx = savedX;
+    ty = savedY;
+    cameraChanged = true;
+    transform();
+  }
+  const scroll = number("scroll");
+  $(".inspector").scrollTop = Number.isFinite(scroll) ? Math.max(0, scroll) : 0;
+  restoringState = false;
+  writeUrlState();
+}
 const nodeWidth = parseFloat(
     getComputedStyle(document.documentElement).getPropertyValue("--node-width"),
   ),
@@ -42,8 +160,10 @@ function sourceLink(id, line = 1) {
 function transform() {
   $("#world").style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
   $("#zoom").textContent = Math.round(scale * 100) + "%";
+  queueUrlState();
 }
 function fit() {
+  cameraChanged = false;
   const r = $("#viewport").getBoundingClientRect();
   scale = Math.min(1.15, (r.width - 65) / width, (r.height - 105) / height);
   scale = Math.max(0.18, scale);
@@ -52,6 +172,7 @@ function fit() {
   transform();
 }
 function zoom(f, x, y) {
+  cameraChanged = true;
   const r = $("#viewport").getBoundingClientRect();
   x ??= r.width / 2;
   y ??= r.height / 2;
@@ -188,11 +309,13 @@ function showView(id) {
   showGuide(id);
 }
 function select(id) {
-  if (document.body.classList.contains("expanded"))
-    document.body.classList.add("inspect-open");
-  selected = id;
   const n = byId.get(id);
   if (!n) return;
+  selected = id;
+  selectedEdge = null;
+  inspectorDetail = null;
+  setInspectorOpen(true);
+  $(".inspector").scrollTop = 0;
   highlight(id);
   if (n.baseId) {
     showFunctionReference(n.baseId, n.functions[0]);
@@ -224,6 +347,8 @@ function select(id) {
 }
 function showFunctionReference(id, f) {
   const file = id.split("::")[0];
+  inspectorDetail = { file, symbol: f.name };
+  setInspectorOpen(true);
   $("#inspect-kind").textContent = "FUNCTION";
   $("#details").innerHTML =
     `<button id="reference-back">← File</button><h3>${esc(f.name)}</h3><div class="filepath">${esc(file)}:${f.line}–${f.end}</div><div id="code">${f.snippetHtml || `<pre class="snippet">${esc(f.snippet)}</pre>`}</div><a href="${sourceLink(file, f.line)}" target="_blank" rel="noopener">Source ↗</a>${file.endsWith(".c") ? '<button id="reference-trace">Trace function →</button>' : ""}`;
@@ -234,6 +359,8 @@ function showFunctionReference(id, f) {
 }
 
 function explore(id) {
+  explorerFile = id;
+  traceSymbol = null;
   hideGuideContext();
   scopeEdges = null;
   focused = true;
@@ -254,10 +381,12 @@ function explore(id) {
   $("#path-number").textContent = "FILE EXPLORER / ONE HOP";
   layout([incoming, [id], outgoing]);
   select(id);
-  history.replaceState(null, "", "#file=" + encodeURIComponent(id));
+  queueUrlState();
 }
 
 function traceFunction(id, f) {
+  explorerFile = id;
+  traceSymbol = f.name;
   hideGuideContext();
   focused = true;
   const n = byId.get(id),
@@ -265,6 +394,7 @@ function traceFunction(id, f) {
   byId.set(virtual, {
     ...n,
     id: virtual,
+    baseId: id,
     name: f.name + "()",
     functions: [f],
     lines: f.end - f.line + 1,
@@ -315,8 +445,17 @@ function traceFunction(id, f) {
 }
 
 function inspectEdge(e, i) {
-  if (document.body.classList.contains("expanded"))
-    document.body.classList.add("inspect-open");
+  selected = null;
+  selectedEdge = e;
+  inspectorDetail = null;
+  setInspectorOpen(true);
+  $(".inspector").scrollTop = 0;
+  $("#nodes")
+    .querySelectorAll(".node")
+    .forEach((el) => el.classList.remove("selected", "dim"));
+  $("#edges")
+    .querySelectorAll(".wire")
+    .forEach((el) => el.classList.remove("dim"));
   $("#inspect-kind").textContent = e.kind.toUpperCase();
   $("#edges")
     .querySelectorAll(".wire")
@@ -339,15 +478,7 @@ async function init() {
     `SOURCE SNAPSHOT · OCT 18, 2026<br>${data.sha.slice(0, 12)} · working tree<br>${data.nodes.length} files · ${data.nodes.reduce((a, n) => a + n.functions.length, 0).toLocaleString()} symbols`;
   $("#method-note").textContent = data.note;
   initializeGuideNavigation();
-  const hash = decodeURIComponent(location.hash.slice(1));
-  if (hash.startsWith("file=") && byId.has(hash.slice(5))) {
-    view = data.views[0];
-    explore(hash.slice(5));
-  } else {
-    const [id, chapter] = hash.split("/");
-    const guide = data.views.find((v) => v.id === id);
-    showGuide(id, guide?.chapters.findIndex((c) => c.id === chapter) ?? -1);
-  }
+  restoreUrlState();
 }
 const tooltip = document.createElement("div");
 tooltip.id = "tooltip";
@@ -355,15 +486,18 @@ tooltip.hidden = true;
 document.body.appendChild(tooltip);
 $("#expand").onclick = () => {
   document.body.classList.toggle("expanded");
-  document.body.classList.remove("inspect-open");
-  fit();
+  cameraChanged = true;
+  queueUrlState();
 };
-$("#detail-close").onclick = () =>
-  document.body.classList.remove("inspect-open");
+$("#detail-close").onclick = () => {
+  setInspectorOpen(false);
+  $("#inspector-toggle").focus();
+};
+$("#inspector-toggle").onclick = () => setInspectorOpen(!inspectorOpen);
 $("#guide-notes").onclick = () => {
   if (focused) showGuide(view.id, activeChapter);
   else readGuide();
-  document.body.classList.add("inspect-open");
+  setInspectorOpen(true);
   $(".inspector").focus({ preventScroll: true });
 };
 $("#plus").onclick = () => zoom(1.2);
@@ -442,10 +576,15 @@ $("#viewport").addEventListener("pointermove", (e) => {
   if (!drag) return;
   tx = drag.tx + e.clientX - drag.x;
   ty = drag.ty + e.clientY - drag.y;
+  cameraChanged = true;
   transform();
 });
-$("#viewport").addEventListener("pointerup", () => (drag = null));
-$("#viewport").addEventListener("pointercancel", () => (drag = null));
+function finishDrag() {
+  drag = null;
+  queueUrlState();
+}
+$("#viewport").addEventListener("pointerup", finishDrag);
+$("#viewport").addEventListener("pointercancel", finishDrag);
 $("#viewport").addEventListener(
   "wheel",
   (e) => {
@@ -455,7 +594,16 @@ $("#viewport").addEventListener(
   },
   { passive: false },
 );
-window.addEventListener("resize", fit);
+window.addEventListener("resize", () => {
+  if (!cameraChanged) fit();
+});
+window.addEventListener("popstate", () => {
+  if (data) restoreUrlState();
+});
+window.addEventListener("hashchange", () => {
+  if (data) restoreUrlState();
+});
+$(".inspector").addEventListener("scroll", queueUrlState);
 init().catch((e) => {
   $("#details").textContent = "Could not load source data: " + e.message;
 });

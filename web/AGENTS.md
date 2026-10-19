@@ -39,6 +39,15 @@ All three are React/TypeScript apps and share components and utilities through
 - Use the Sites skill to publish the compressed output through its isolated
   checkout. Preserve the recorded project ID, public access, and custom domain.
   Do not publish this Site through a Vercel release branch or commit credentials.
+- Atlas view state uses scalar URL query parameters: `inspector=closed`,
+  `expanded=true`, `node`, `edgeSource`/`edgeTarget`/`edgeKind`, `file`/`trace`,
+  `detailFile`/`symbol`, `zoom`/`x`/`y`, and inspector `scroll`. The hash retains
+  the guide/chapter. Omit default values, preserve unrelated query parameters,
+  and restore after source data and the selected layout are ready.
+- After packaging, serve `cloudflare-dist/` locally and run
+  `vp exec node test-browser-state.mjs http://127.0.0.1:4189` from the atlas
+  directory. This browser regression checks refresh and copied URLs across
+  desktop/mobile sizes, including closed inspectors and selected connections.
 
 <!--VITE PLUS START-->
 

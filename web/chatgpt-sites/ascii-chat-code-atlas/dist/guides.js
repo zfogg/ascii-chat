@@ -96,9 +96,12 @@ function showGuide(id, chapterIndex = -1) {
       : -1;
   const chapter = activeChapter < 0 ? null : view.chapters[activeChapter];
   selected = null;
+  selectedEdge = null;
+  inspectorDetail = null;
+  explorerFile = null;
+  traceSymbol = null;
   scopeEdges = null;
   focused = false;
-  document.body.classList.remove("inspect-open");
   $("#title").textContent = view.title;
   $("#subtitle").textContent = chapter ? chapter.summary : view.goal;
   $("#path-number").textContent =
@@ -137,11 +140,7 @@ function showGuide(id, chapterIndex = -1) {
       : view.columnTitles.join(" → "));
   layout(chapter ? chapter.columns : view.columns);
   readGuide();
-  history.replaceState(
-    null,
-    "",
-    "#" + view.id + (chapter ? "/" + chapter.id : ""),
-  );
+  queueUrlState();
 }
 function hideGuideContext() {
   $("#chapter-tabs").hidden = true;
@@ -149,6 +148,15 @@ function hideGuideContext() {
     "SOURCE REFERENCES · SELECT A NODE OR CONNECTION";
 }
 function readGuide() {
+  selected = null;
+  selectedEdge = null;
+  inspectorDetail = null;
+  $("#nodes")
+    .querySelectorAll(".node")
+    .forEach((el) => el.classList.remove("selected", "dim"));
+  $("#edges")
+    .querySelectorAll(".wire")
+    .forEach((el) => el.classList.remove("selected", "dim"));
   const chapter = activeChapter < 0 ? null : view.chapters[activeChapter];
   $("#inspect-kind").textContent = "GUIDE";
   const steps = chapter ? chapter.steps : [];
@@ -176,4 +184,5 @@ function readGuide() {
   if ($("#chapter-next"))
     $("#chapter-next").onclick = () => showGuide(view.id, activeChapter + 1);
   $(".inspector").scrollTop = 0;
+  queueUrlState();
 }

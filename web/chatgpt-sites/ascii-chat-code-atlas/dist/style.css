@@ -808,7 +808,7 @@ body.expanded.inspect-open .inspector {
   border-radius: 10px;
 }
 #detail-close {
-  display: none;
+  display: block;
   padding: 0 5px;
   font: 14px monospace;
 }
@@ -817,9 +817,23 @@ body.expanded #detail-close {
 }
 .inspector-label {
   align-items: center;
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+
+body.inspector-closed .inspector {
+  display: none;
+}
+body.inspector-closed:not(.expanded) .app {
+  grid-template-columns: 230px minmax(0, 1fr);
 }
 
 @media (max-width: 760px) {
+  body.inspector-closed:not(.expanded) .app {
+    grid-template-columns: minmax(0, 1fr);
+  }
   body.expanded .app {
     grid-template-columns: minmax(0, 1fr);
   }

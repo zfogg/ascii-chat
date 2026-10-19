@@ -61,6 +61,13 @@
             <p id="subtitle"></p>
           </div>
           <div class="heading-actions">
+            <button
+              id="inspector-toggle"
+              aria-expanded="true"
+              aria-controls="inspector"
+            >
+              Inspector
+            </button>
             <button id="guide-notes">Guide notes</button
             ><button id="back" hidden>← Back to path</button>
           </div>
@@ -104,6 +111,7 @@
         </footer>
       </main>
       <aside
+        id="inspector"
         class="inspector"
         tabindex="-1"
         aria-label="Guide notes and source details"
