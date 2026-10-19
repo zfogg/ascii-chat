@@ -1,4 +1,5 @@
 import type { ReactNode, RefObject } from "react";
+import { UploadFile } from "./UploadFile";
 import { BandwidthMeter } from "./BandwidthMeter";
 import { PanelChevron } from "./AnimatedPanel";
 import { MediaSourceType, type MediaSource } from "../hooks/useClientLike";
@@ -17,7 +18,7 @@ export interface PageControlBarProps {
   onStartWebcam?: (() => void) | undefined;
   onStopWebcam?: (() => void) | undefined;
   webcamActionLabels?: { start: string; stop: string } | undefined;
-  onUploadClick?: (() => void) | undefined;
+  onFileSelect?: ((file: File) => void) | undefined;
   videoRef?: RefObject<HTMLVideoElement | null> | undefined;
   showConnectionButton?: boolean | undefined;
   onConnectionClick?: (() => void) | undefined;
@@ -43,7 +44,7 @@ export function PageControlBar({
   onStartWebcam,
   onStopWebcam,
   webcamActionLabels,
-  onUploadClick,
+  onFileSelect,
   videoRef,
   showConnectionButton = false,
   onConnectionClick,
@@ -127,7 +128,8 @@ export function PageControlBar({
             </div>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
+          {onFileSelect && <UploadFile onFileSelect={onFileSelect} />}
           {/* File playback controls (shown when playing a video file) */}
           {isWebcamRunning &&
             mediaSource === MediaSourceType.FILE &&
@@ -169,14 +171,6 @@ export function PageControlBar({
                 {webcamActionLabels?.start ?? "Start Webcam"}
               </button>
             ))}
-          {onUploadClick && (
-            <button
-              onClick={onUploadClick}
-              className="px-4 py-2 bg-terminal-5 text-terminal-bg rounded hover:bg-terminal-13 text-sm font-medium"
-            >
-              Upload Video
-            </button>
-          )}
           {showConnectionButton && (
             <button
               onClick={onConnectionClick}

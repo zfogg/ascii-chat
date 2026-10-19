@@ -17,7 +17,6 @@ import { AsciiRenderer } from "@ascii-chat/shared/components/AsciiRenderer";
 import { PageLayout } from "../components/PageLayout";
 import { ModeHeader } from "../components/ModeHeader";
 import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
-import { VideoUploadModal } from "../components/VideoUploadModal";
 import type { BinarySettingsConfig } from "../components";
 import { AsciiChatMode } from "../utils";
 import {
@@ -42,7 +41,6 @@ export function MirrorPage() {
   useLayoutEffect(() => {
     playingRef.current = playing;
   }, [playing]);
-  const [showUploadModal, setShowUploadModal] = useState(false);
   const [wasmModule, setWasmModule] = useState(() => {
     return getMirrorModule();
   });
@@ -423,7 +421,7 @@ export function MirrorPage() {
                 void startWebcam();
               },
               onStopWebcam: stopPlayback,
-              onUploadClick: () => setShowUploadModal(true),
+              onFileSelect: handleVideoFileSelect,
               videoRef: undefined,
               status: isStarting
                 ? "Starting webcam..."
@@ -560,14 +558,6 @@ export function MirrorPage() {
             />
           );
         })()}
-        modal={
-          <VideoUploadModal
-            isOpen={showUploadModal}
-            onClose={() => setShowUploadModal(false)}
-            onFileSelect={handleVideoFileSelect}
-            allowImages
-          />
-        }
       />
     </>
   );

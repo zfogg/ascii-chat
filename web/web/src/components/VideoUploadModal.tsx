@@ -1,3 +1,4 @@
+import { MAX_MEDIA_FILE_SIZE } from "../utils/mediaUpload";
 import { useCallback, useState } from "react";
 import { Modal, ModalTitle } from "./Modal";
 import { useDropzone } from "react-dropzone";
@@ -61,7 +62,15 @@ export function VideoUploadModal({
       ],
     },
     multiple: false,
-    onDropRejected: () => setError("Choose one video or image file at a time."),
+    maxSize: MAX_MEDIA_FILE_SIZE,
+    onDropRejected: (rejections) =>
+      setError(
+        rejections.some(({ errors }) =>
+          errors.some(({ code }) => code === "file-too-large"),
+        )
+          ? "Files must be 8 GB or smaller."
+          : "Choose one video or image file at a time.",
+      ),
     onFileDialogOpen: () => setError(""),
   });
 
@@ -74,7 +83,7 @@ export function VideoUploadModal({
     >
       <div className="p-6">
         <ModalTitle className="text-lg font-semibold text-terminal-fg mb-4">
-          {allowImages ? "Upload Video or Image" : "Upload Video"}
+          Upload File
         </ModalTitle>
 
         <div
@@ -102,8 +111,9 @@ export function VideoUploadModal({
 
         {allowImages && (
           <p className="text-xs text-terminal-8 mt-3">
-            Files play locally and are not uploaded. Less common video formats
-            are converted in your browser before playback (up to 256 MB).
+            Files open locally; connected sessions share their video frames.
+            Less common video formats are converted in your browser before
+            playback. Maximum file size: 8 GB.
           </p>
         )}
         {error && (

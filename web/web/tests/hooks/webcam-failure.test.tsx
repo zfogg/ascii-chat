@@ -44,6 +44,26 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+it("sends selected file pixels without acquiring a webcam and respects backpressure", () => {
+  const { result, options } = setup();
+  const sendPacket = vi.fn();
+  let queued = 0;
+  Object.assign(options.clientRef.current!, {
+    sendPacket,
+    getBufferedAmount: () => queued,
+  });
+  const frame = { data: new Uint8Array(16).fill(128), width: 2, height: 2 };
+  result.current.sendFileFrame(frame, options.canvasRef.current!);
+  expect(sendPacket).toHaveBeenCalledExactlyOnceWith(
+    PacketType.IMAGE_FRAME,
+    expect.any(Uint8Array),
+  );
+  expect(result.current.isWebcamRunning).toBe(false);
+  queued = 1024 * 1024;
+  result.current.sendFileFrame(frame, options.canvasRef.current!);
+  expect(sendPacket).toHaveBeenCalledTimes(1);
+});
+
 function setup() {
   const send = vi.fn();
   const options = {
