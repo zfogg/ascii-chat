@@ -21,7 +21,11 @@ typedef struct {
 typedef struct {
   face_follow_rect_t crop, target, face;
   double last_tick, last_seen;
+  double pan_outside_since, zoom_outside_since;
+  float anchor_x, anchor_y;
+  float pan_direction_x, pan_direction_y, zoom_direction;
   bool initialized, tracking, detected;
+  bool pan_pending, zoom_pending;
   unsigned int misses;
 } face_follow_state_t;
 

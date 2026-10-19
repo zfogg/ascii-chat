@@ -214,6 +214,60 @@ test("real detector follows a moving face, retains its subject, widens on loss a
   expect(await page.locator("canvas[data-face-follow-error]").count()).toBe(0);
 });
 
+test("seated shifts hold the view, a brief lean is ignored, and a sustained move reframes", async ({
+  page,
+}, testInfo) => {
+  const seated = path.resolve("../../artifacts/face-follow/seated.mp4");
+  test.skip(!existsSync(seated), "Generate the seated fixture first");
+  await page.goto("/mirror?faceFollow&faceFollowDebug");
+  await page.getByRole("button", { name: "Upload Video", exact: true }).click();
+  await page.getByLabel("Choose media file").setInputFiles(seated);
+  await expect(page.locator("canvas[data-face-follow]")).toHaveCount(1, {
+    timeout: 30_000,
+  });
+  await expect
+    .poll(() => state(page).then((s) => s[2]), { timeout: 15_000 })
+    .toBeLessThan(0.75);
+  const samples: { time: number; values: number[] }[] = [];
+  let screenshot = false;
+  while ((await mediaTime(page)) < 17) {
+    const time = await mediaTime(page);
+    samples.push({ time, values: await state(page) });
+    if (!screenshot && time > 11) {
+      await page.screenshot({
+        path: testInfo.outputPath("browser-seated-hold.png"),
+      });
+      screenshot = true;
+    }
+    await page.waitForTimeout(100);
+  }
+  await testInfo.attach("seated-framing", {
+    body: JSON.stringify(samples),
+    contentType: "application/json",
+  });
+  const quiet = samples.filter(
+    (sample) => sample.time > 4 && sample.time < 12.8,
+  );
+  expect(quiet.length).toBeGreaterThan(15);
+  for (const axis of [0, 1, 2]) {
+    const values = quiet.map((sample) => sample.values[axis]!);
+    expect(Math.max(...values) - Math.min(...values)).toBeLessThan(0.001);
+  }
+  const before = quiet[quiet.length - 1]!.values[0]!;
+  const grace = samples.filter(
+    (sample) => sample.time > 13 && sample.time < 13.6,
+  );
+  expect(grace.length).toBeGreaterThan(1);
+  expect(
+    grace.every((sample) => Math.abs(sample.values[0]! - before) < 0.003),
+  ).toBe(true);
+  const moved = samples.filter((sample) => sample.time > 15);
+  expect(moved.some((sample) => sample.values[0]! - before > 0.06)).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("browser-deliberate-reframe.png"),
+  });
+});
+
 test("settings panel toggles real framing and the setting survives reload", async ({
   page,
 }, testInfo) => {

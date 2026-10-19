@@ -53,9 +53,11 @@ void face_follow_observe(face_follow_state_t *state, const face_follow_detection
   }
   state->detected = selected >= 0;
   if (selected < 0) {
+    state->pan_pending = state->zoom_pending = false;
     state->misses++;
     return;
   }
+  bool acquired = !retain;
   state->face = faces[selected].box;
   state->last_seen = now;
   state->tracking = true;
@@ -65,21 +67,49 @@ void face_follow_observe(face_follow_state_t *state, const face_follow_detection
   float size = clampf(fmaxf(box.w * 1.8f, box.h * 1.6f), 0.35f, 1.0f);
   float cx = box.x + box.w * 0.5f;
   float cy = box.y + box.h * 0.55f;
-  face_follow_rect_t target = {clampf(cx - size * 0.5f, 0, 1 - size), clampf(cy - size * 0.5f, 0, 1 - size), size,
-                               size};
-  // Ignore tiny movements inside the composition, including detector box noise.
-  float old_cx = state->target.x + state->target.w * 0.5f;
-  float old_cy = state->target.y + state->target.h * 0.5f;
-  if (fabsf(cx - old_cx) < size * 0.07f)
-    target.x = clampf(old_cx - size * 0.5f, 0, 1 - size);
-  if (fabsf(cy - old_cy) < size * 0.07f)
-    target.y = clampf(old_cy - size * 0.5f, 0, 1 - size);
-  if (fabsf(logf(size / state->target.w)) < 0.08f) {
-    target.w = target.h = state->target.w;
-    target.x = clampf(target.x, 0, 1 - target.w);
-    target.y = clampf(target.y, 0, 1 - target.h);
+  // Measure against the last accepted face position, not the moving/clamped crop.
+  // Keep the entire composition fixed through breathing and detector box noise.
+  float dx = fabsf(cx - state->anchor_x) / state->target.w;
+  float dy = fabsf(cy - state->anchor_y) / state->target.h;
+  if (state->pan_pending &&
+      (cx - state->anchor_x) * state->pan_direction_x + (cy - state->anchor_y) * state->pan_direction_y <= 0)
+    state->pan_pending = false;
+  if (dx < 0.12f && dy < 0.09f)
+    state->pan_pending = false;
+  else if (!state->pan_pending && (dx > 0.18f || dy > 0.14f)) {
+    state->pan_pending = true;
+    state->pan_outside_since = now;
+    state->pan_direction_x = cx - state->anchor_x;
+    state->pan_direction_y = cy - state->anchor_y;
   }
-  state->target = target;
+  // Large moves near the edge still need two or more consistent detections.
+  double pan_grace = dx > 0.35f || dy > 0.25f ? 0.2 : 0.85;
+  bool pan = acquired || (state->pan_pending && now - state->pan_outside_since >= pan_grace);
+  float zoom_delta = logf(size / state->target.w);
+  float zoom_change = fabsf(zoom_delta);
+  if (state->zoom_pending && zoom_delta * state->zoom_direction <= 0)
+    state->zoom_pending = false;
+  if (zoom_change < 0.12f)
+    state->zoom_pending = false;
+  else if (!state->zoom_pending && zoom_change > 0.18f) {
+    state->zoom_pending = true;
+    state->zoom_outside_since = now;
+    state->zoom_direction = zoom_delta;
+  }
+  bool zoom = acquired || (state->zoom_pending && now - state->zoom_outside_since >= 1.2);
+  if (pan) {
+    state->anchor_x = cx;
+    state->anchor_y = cy;
+    state->pan_pending = false;
+  }
+  if (zoom) {
+    state->target.w = state->target.h = size;
+    state->zoom_pending = false;
+  }
+  if (pan || zoom) {
+    state->target.x = clampf(state->anchor_x - state->target.w * 0.5f, 0, 1 - state->target.w);
+    state->target.y = clampf(state->anchor_y - state->target.h * 0.5f, 0, 1 - state->target.h);
+  }
 }
 
 void face_follow_tick(face_follow_state_t *state, double now, bool enabled) {
@@ -93,12 +123,16 @@ void face_follow_tick(face_follow_state_t *state, double now, bool enabled) {
   face_follow_rect_t target = enabled && !lost ? state->target : full_frame();
   if (state->tracking && now - state->last_seen > 1.5)
     state->tracking = false;
-  float pan = (float)(1 - exp(-dt / (lost || !enabled ? 0.45 : 0.16)));
+  float pan = (float)(1 - exp(-dt / (lost || !enabled ? 0.45 : 0.28)));
   float zoom = (float)(1 - exp(-dt / (lost || !enabled ? 0.45 : 0.35)));
   float cx = state->crop.x + state->crop.w * 0.5f;
   float cy = state->crop.y + state->crop.h * 0.5f;
   cx += (target.x + target.w * 0.5f - cx) * pan;
   cy += (target.y + target.h * 0.5f - cy) * pan;
+  if (fabsf(cx - (target.x + target.w * 0.5f)) < 0.0001f)
+    cx = target.x + target.w * 0.5f;
+  if (fabsf(cy - (target.y + target.h * 0.5f)) < 0.0001f)
+    cy = target.y + target.h * 0.5f;
   float size = expf(logf(state->crop.w) + (logf(target.w) - logf(state->crop.w)) * zoom);
   if (fabsf(size - target.w) < 0.0001f)
     size = target.w;

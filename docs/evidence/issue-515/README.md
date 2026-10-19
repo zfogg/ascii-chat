@@ -48,13 +48,29 @@ counts and maximum observed speeds, blank-frame samples, and input checksums.
 These are functional checks on a moving-face fixture, not a detector accuracy
 benchmark or a performance guarantee for every camera and machine.
 
+## Seated stability regression
+
+The seated fixture translates a real face image by ±25 pixels horizontally and
+±12 pixels vertically, adds a 350 ms lean, then makes a sustained 65-pixel move.
+The real-detector browser run recorded zero changes to crop X, Y, or width in
+46 samples during the seated shifts and brief lean. The deliberate move began
+reframing after about 1.12 seconds, including detection and rendering cadence.
+
+![View held through seated shifts and a brief lean](browser-seated-hold.png)
+
+![Reframing after a sustained deliberate move](browser-deliberate-reframe.png)
+
+Five controller regressions fail against the previous controller and pass with
+the anchor, quiet zone, and grace periods. These cover position/size noise,
+brief leans, deliberate movement, zoom grace, and reversing detector-box noise.
+
 ## Checks
 
 - Windows native Clang/Ninja build and CLI render: exit 0.
 - All three Emscripten targets built; verified six-file JS/WASM artifact manifest.
-- Linux Clang/Criterion controller suite: 6 passed, exit 0.
+- Linux Clang/Criterion controller suite: 11 passed, exit 0.
 - Web unit suite: 347 passed in 50 files, exit 0.
-- Chromium browser integration suite: 4 passed, exit 0.
+- Chromium browser integration suite: 5 passed, exit 0.
 - TypeScript check and production browser build: exit 0.
 - `vp check`: exit 0, with three pre-existing shared renderer warnings.
 

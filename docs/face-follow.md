@@ -27,7 +27,13 @@ another face can be selected. All changes, including a new subject or disabling
 the setting, pass through the same smooth crop controller.
 
 The crop preserves source aspect ratio, frames the face at about two thirds of
-the view height, and limits zoom to about 2.86x. A dead zone suppresses small movements.
+the view height, and limits zoom to about 2.86x. The composition stays fixed during
+normal seated shifts: the face can move 18% of the view width or 14% of its height
+from the last accepted position before a pan is considered. Movement must persist
+for 850 ms; returning inside a smaller inner zone cancels it. Large movements near
+the edge use a shorter 200 ms grace period. Reversing direction restarts the grace
+period. Zoom has a separate roughly 20% size tolerance and 1.2-second grace period,
+so noisy box sizes and breathing do not make the view creep or pump.
 Pan responds faster than zoom; smoothing uses elapsed time rather than frame
 counts. A face outside the camera's original field of view cannot be recovered.
 Subject association uses geometry; similar faces crossing can still exchange
@@ -89,7 +95,8 @@ full-frame fallback, reacquisition, the settings toggle, and reload persistence.
 The camera tests feed the clip through Chromium's real fake-camera device,
 exercise both direct camera-track and video-element capture, and check the source
 rectangle drawn before ASCII conversion. They save screenshots and timestamped
-crop samples. The six Criterion controller
+crop samples. A seated fixture adds small shifts, a brief lean, and a sustained
+move, checking that the view holds before deliberately reframing. The eleven Criterion controller
 tests in `tests/unit/video/face_follow_test.c` additionally exercise startup with
 no face, normal webcam framing, transient loss, a larger bystander, frame-rate
-independence, and disabling.
+independence, disabling, seated jitter, brief leans, pan grace, and zoom grace.

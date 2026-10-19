@@ -28,4 +28,17 @@ subprocess.run([
     "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(source),
     "-t", "4", "-vf", "scale=640:480", "-pix_fmt", "yuv420p", str(output / "webcam.y4m"),
 ], check=True)
+still = output / "seated-face.png"
+subprocess.run([
+    "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-ss", "1", "-i", str(source),
+    "-frames:v", "1", str(still),
+], check=True)
+subprocess.run([
+    "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-loop", "1", "-i", str(still),
+    "-f", "lavfi", "-i", "color=c=0x242830:s=640x360:r=25:d=18",
+    "-filter_complex",
+    "[1:v][0:v]overlay=x='140+if(between(t,3,9),25*sin(2*t),0)+if(between(t,10,10.35),55,0)+if(gte(t,13),65,0)':y='60+if(between(t,3,9),12*sin(3*t),0)'[out]",
+    "-map", "[out]", "-t", "18", "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+    str(output / "seated.mp4"),
+], check=True)
 print(f"Source: {url}\nFixture: {output / 'scenarios.mp4'}\nCamera: {output / 'webcam.y4m'}")
