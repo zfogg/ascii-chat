@@ -36,6 +36,7 @@ export function MirrorPage() {
   const contentFit = requestedFit === "cover" ? "cover" : "contain";
   const [playing, setPlaying] = useUrlState("playing", false);
   const resumePending = useRef(playing);
+  const previousStartupPlaying = useRef(playing);
   const playingRef = useRef(playing);
   useLayoutEffect(() => {
     playingRef.current = playing;
@@ -281,7 +282,9 @@ export function MirrorPage() {
 
   useEffect(() => {
     // URL navigation can reuse the mounted page rather than initialize refs.
-    resumePending.current = playing;
+    if (playing !== previousStartupPlaying.current)
+      resumePending.current = playing;
+    previousStartupPlaying.current = playing;
   }, [playing]);
 
   useEffect(() => {
@@ -396,6 +399,10 @@ export function MirrorPage() {
               mediaSource,
               onStartWebcam: () => {
                 stopFile();
+                // This click already starts capture; its URL update must not
+                // start a second acquisition while permission is pending.
+                previousStartupPlaying.current = true;
+                resumePending.current = false;
                 setPlaying(true);
                 void startWebcam();
               },

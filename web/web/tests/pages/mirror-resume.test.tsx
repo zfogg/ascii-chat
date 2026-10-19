@@ -278,3 +278,16 @@ test("playing=true navigation starts the existing Mirror page", async () => {
   });
   await waitFor(() => expect(backend.start).toHaveBeenCalledOnce());
 });
+
+test("a manual start does not launch a second camera while permission is pending", async () => {
+  backend.ready = true;
+  let ready!: () => void;
+  backend.cameraReady = new Promise<void>((resolve) => {
+    ready = resolve;
+  });
+  render(<MirrorPage />);
+  fireEvent.click(screen.getByText("Start"));
+  expect(backend.start).toHaveBeenCalledOnce();
+  await act(async () => ready());
+  expect(backend.start).toHaveBeenCalledOnce();
+});
