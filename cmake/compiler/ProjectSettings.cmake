@@ -34,6 +34,9 @@ function(asciichat_apply_project_settings directory)
             endforeach()
         endif()
         if(_owned)
+            # Generated public headers must precede source public includes,
+            # including legacy ignored headers from older build configurations.
+            target_include_directories("${_target}" BEFORE PRIVATE "${PROJECT_BINARY_DIR}/generated")
             if(ASCIICHAT_ENABLE_IPO)
                 set_property(TARGET "${_target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
                 set_property(TARGET "${_target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
