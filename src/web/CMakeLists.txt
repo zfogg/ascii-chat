@@ -7,7 +7,7 @@ if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     # Being used as a subdirectory - don't call project() again
 else()
     # Being used as a standalone project - initialize CMake
-    cmake_minimum_required(VERSION 3.28)
+    cmake_minimum_required(VERSION 3.30)
     include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/install/Version.cmake")
     version_detect()
     project(ascii-chat-wasm VERSION ${PROJECT_VERSION_FROM_GIT})
