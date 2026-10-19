@@ -8,7 +8,10 @@ if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 else()
     # Being used as a standalone project - initialize CMake
     cmake_minimum_required(VERSION 3.28)
-    project(ascii-chat-wasm)
+    include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/install/Version.cmake")
+    version_detect()
+    project(ascii-chat-wasm VERSION ${PROJECT_VERSION_FROM_GIT})
+    version_setup_targets()
 
     # Include sanitizer configuration so apply_sanitizers_to_target() is available
     # Compute path to cmake/platform relative to this file location
@@ -66,6 +69,7 @@ set(DEPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../deps)
 # Include directories for library headers
 # IMPORTANT: WASM stubs must come FIRST to override native headers
 include_directories(
+    ${CMAKE_BINARY_DIR}/generated
     ${LIB_ROOT}/platform/wasm/stubs  # WASM stub headers (override native)
     ${INCLUDE_ROOT}
     ${LIB_ROOT}
@@ -387,6 +391,7 @@ endif()
 # Link dependencies using output variables from cmake/deps/*.cmake
 # These are set by Libsodium.cmake, PCRE2.cmake, Libvterm.cmake, etc.
 
+add_dependencies(wasm-common generate_version)
 target_link_libraries(wasm-common PRIVATE
     ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}

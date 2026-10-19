@@ -210,6 +210,7 @@ if(WIN32)
         COMPONENT Development
         FILES_MATCHING
         PATTERN "*.h"
+        PATTERN "version.h" EXCLUDE
         PATTERN "*/internal/*" EXCLUDE
         PATTERN "*/private/*" EXCLUDE
         PATTERN "*/posix/*" EXCLUDE
@@ -223,6 +224,7 @@ elseif(APPLE)
         COMPONENT Development
         FILES_MATCHING
         PATTERN "*.h"
+        PATTERN "version.h" EXCLUDE
         PATTERN "*/internal/*" EXCLUDE
         PATTERN "*/private/*" EXCLUDE
         PATTERN "*/windows/*" EXCLUDE
@@ -235,12 +237,16 @@ else()
         COMPONENT Development
         FILES_MATCHING
         PATTERN "*.h"
+        PATTERN "version.h" EXCLUDE
         PATTERN "*/internal/*" EXCLUDE
         PATTERN "*/private/*" EXCLUDE
         PATTERN "*/windows/*" EXCLUDE
         PATTERN "*/macos/*" EXCLUDE
     )
 endif()
+
+install(FILES "${CMAKE_BINARY_DIR}/generated/ascii-chat/version.h"
+    DESTINATION include/ascii-chat COMPONENT Development)
 
 # Install all ascii-chat-deps headers to include/ascii-chat-deps/
 # This allows includes like: #include <ascii-chat-deps/uthash/src/uthash.h>
