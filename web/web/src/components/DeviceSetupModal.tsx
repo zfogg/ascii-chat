@@ -311,7 +311,10 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
               : true;
             stream = isCamera
               ? await acquireCameraPreview(deviceId, owner.signal)
-              : await acquireMediaStream({ video: false, audio: constraints }, owner.signal);
+              : await acquireMediaStream(
+                  { video: false, audio: constraints },
+                  owner.signal,
+                );
             if (!isCurrent()) {
               stream.getTracks().forEach((track) => track.stop());
               return;

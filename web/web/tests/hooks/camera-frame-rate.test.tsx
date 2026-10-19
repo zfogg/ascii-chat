@@ -45,6 +45,17 @@ test("duplicates and a long host stall do not lower the measured camera ceiling"
   expect(cadence.sample(8000, 8000)).toBeNull();
 });
 
+test("alternating USB frame intervals report delivered FPS rather than median interval FPS", () => {
+  const cadence = new CameraCadence();
+  let timestamp = 0;
+  let measured: number | null = null;
+  for (let frame = 0; frame < 300; frame++) {
+    timestamp += frame % 2 ? 25 : 35;
+    measured = cadence.sample(timestamp, timestamp) ?? measured;
+  }
+  expect(measured).toBe(33);
+});
+
 test("Max follows decreases and increases while a manual limit survives both", () => {
   expect(effectiveCameraFps("auto", 20)).toBe(20);
   expect(effectiveCameraFps("auto", 60)).toBe(60);

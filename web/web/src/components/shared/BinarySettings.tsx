@@ -317,6 +317,30 @@ export function BinarySettings({
             </div>
           )}
 
+          {cameraRate && cameraFps?.exposureSupported && (
+            <div className="flex-1 min-w-[200px] text-xs text-terminal-8">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  aria-label="Fast camera exposure"
+                  checked={cameraFps.fastExposure}
+                  disabled={disabled}
+                  onChange={(event) =>
+                    cameraFps.selectFastExposure(event.target.checked)
+                  }
+                />
+                Fast camera exposure
+                <DimensionHelp
+                  label="Fast camera exposure"
+                  text="Shortens exposure to fit the webcam's maximum frame rate. This can restore fast capture when automatic exposure slows the camera, but may darken the image. Turning it off restores the previous exposure settings."
+                />
+              </label>
+              {cameraFps.exposureError && (
+                <p role="alert">{cameraFps.exposureError}</p>
+              )}
+            </div>
+          )}
+
           <Tooltip
             text={
               disabled

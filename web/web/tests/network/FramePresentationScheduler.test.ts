@@ -28,3 +28,32 @@ it("coalesces a burst, respects the selected FPS and cancels pending work", asyn
   await vi.advanceTimersByTimeAsync(1000);
   expect(render).toHaveBeenCalledTimes(2);
 });
+
+it("does not accumulate timer lateness into a lower presentation rate", () => {
+  let now = 0;
+  let pending: { at: number; callback: () => void } | undefined;
+  vi.spyOn(performance, "now").mockImplementation(() => now);
+  vi.spyOn(globalThis, "setTimeout").mockImplementation(((
+    callback: () => void,
+    delay: number,
+  ) => {
+    pending = { at: now + delay + 2, callback };
+    return 1;
+  }) as typeof setTimeout);
+  const render = vi.fn();
+  const scheduler = new FramePresentationScheduler(() => 1000 / 60, render);
+  for (let frame = 0; frame < 120; frame++) {
+    const arrival = (frame * 1000) / 60 + (frame % 2 ? 0.7 : -0.7);
+    if (pending && pending.at <= arrival) {
+      now = pending.at;
+      const callback = pending.callback;
+      pending = undefined;
+      callback();
+    }
+    now = arrival;
+    scheduler.request();
+  }
+  expect(render.mock.calls.length).toBeGreaterThanOrEqual(118);
+  scheduler.close();
+  vi.restoreAllMocks();
+});

@@ -360,7 +360,7 @@ describe("Device setup with unavailable inputs", () => {
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            frameRate: { ideal: 30 },
+            frameRate: { ideal: 60 },
             deviceId: { exact: "camera-busy" },
           },
           audio: false,
@@ -393,7 +393,7 @@ describe("Device setup with unavailable inputs", () => {
       video: {
         width: { ideal: 1280 },
         height: { ideal: 720 },
-        frameRate: { ideal: 30 },
+        frameRate: { ideal: 60 },
         deviceId: { exact: "camera-fifth" },
       },
       audio: false,
@@ -424,7 +424,7 @@ describe("Device setup with unavailable inputs", () => {
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            frameRate: { ideal: 30 },
+            frameRate: { ideal: 60 },
             deviceId: { exact: "camera-free" },
           },
           audio: false,
@@ -463,7 +463,7 @@ describe("Device setup with unavailable inputs", () => {
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            frameRate: { ideal: 30 },
+            frameRate: { ideal: 60 },
             deviceId: { exact: "camera-hidden" },
           },
           audio: false,

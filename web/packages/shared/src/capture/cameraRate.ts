@@ -40,10 +40,16 @@ export class CameraCadence {
       median <= 0 ||
       intervals[Math.floor(intervals.length * 0.75)]! -
         intervals[Math.floor(intervals.length * 0.25)]! >
-        median * 0.15
+        median * 0.5
     )
       return null;
-    const rate = Math.max(1, Math.round(1000 / median));
+    // USB cameras can alternate between short and long frame intervals. The
+    // median describes one interval, while elapsed media time measures FPS.
+    const elapsed = timestamp - this.timestamps[0]!;
+    const rate = Math.max(
+      1,
+      Math.round(((this.timestamps.length - 1) * 1000) / elapsed),
+    );
     if (rate !== this.candidate) {
       this.candidate = rate;
       this.confirmations = 0;
