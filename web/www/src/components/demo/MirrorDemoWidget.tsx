@@ -118,7 +118,7 @@ export default function MirrorDemoWidget({
   },
   demoOptions,
   defaultOptionIndex = 0,
-  height = "36vh",
+  height = "400px",
   minHeight = 200,
   showHeader = true,
   showDebugLogs = import.meta.env.MODE !== "production",
