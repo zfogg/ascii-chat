@@ -1,10 +1,10 @@
 {
-  "sourceHash": "cedd21f9fe1ee790248bf87289d73e17fcf83b6b274b47ee21174a87fe8302e7",
+  "sourceHash": "f66fd1691bdd7d89d10df917c81964c4f98f39a3292980575f49aa4925100086",
   "files": {
     "mirror.js": "b607bb7d9a5df29e6a2220bf6a1adef72932057cfba23f69ac19debb463341df",
     "mirror.wasm": "026ddf1010a543e9a77ab59f3aec5947f1eaff000463c7534823d8c14d59f953",
-    "client.js": "69e6ef4de77eae4ce083b05c74603e8cf084e69eac71d52bc1e86ec3e95252f1",
-    "client.wasm": "f1bc550c692bbe687d30bc02d52650a997f0cf9e5bc523aa4f991445bc4aff1e",
+    "client.js": "bc16894b8357882bf8c35a4098b399b8609e1853c857b935e1d0340eac425ff9",
+    "client.wasm": "4b464c782ea56fdb52169cf767cd0df17749cccca38b982376adc7b5dc1e5f53",
     "face-follow.js": "f0d3d0b4e4a50a731d074581bdc3a9d48106420b340d943029c347d009d46ecb",
     "face-follow.wasm": "a777274f995c0c2224bd04041892eedbe593fa5c2db1289787a1ec923a707943"
   }
