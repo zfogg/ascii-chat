@@ -258,11 +258,18 @@ static void tcp_destroy_impl(acip_transport_t *transport) {
 // TCP Transport Method Table
 // =============================================================================
 
+static void tcp_interrupt(acip_transport_t *transport) {
+  tcp_transport_data_t *tcp = transport->impl_data;
+  if (tcp->sockfd != INVALID_SOCKET_VALUE)
+    socket_shutdown(tcp->sockfd, SHUT_RDWR);
+}
+
 static const acip_transport_methods_t tcp_methods = {
     .send = tcp_send,
     .sendv = tcp_sendv,
     .recv = tcp_recv,
     .close = tcp_close,
+    .interrupt = tcp_interrupt,
     .get_type = tcp_get_type,
     .get_socket = tcp_get_socket,
     .is_connected = tcp_is_connected,

@@ -1129,9 +1129,7 @@ asciichat_error_t acip_websocket_transport_flush(acip_transport_t *transport, ui
   return SET_ERRNO(ERROR_NETWORK, "WebSocket closed before send queue drained");
 }
 
-void acip_websocket_transport_interrupt(acip_transport_t *transport) {
-  if (!transport || acip_transport_get_type(transport) != ACIP_TRANSPORT_WEBSOCKET || !transport->impl_data)
-    return;
+static void websocket_interrupt(acip_transport_t *transport) {
   websocket_transport_data_t *ws_data = transport->impl_data;
   atomic_store_bool(&ws_data->is_destroying, true);
   mutex_lock(&ws_data->state_mutex);
@@ -1363,6 +1361,7 @@ static const acip_transport_methods_t websocket_methods = {
     .send = websocket_transport_send,
     .recv = websocket_recv,
     .close = websocket_close,
+    .interrupt = websocket_interrupt,
     .get_type = websocket_get_type,
     .get_socket = websocket_get_socket,
     .is_connected = websocket_is_connected,

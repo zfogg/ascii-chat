@@ -156,6 +156,11 @@ typedef struct {
    */
   asciichat_error_t (*close)(acip_transport_t *transport);
 
+  /** Interrupt pending I/O from normal thread context without freeing the
+   * transport, joining workers, or taking a mutex held by a blocked sender.
+   * The owner retains the transport until all users have stopped. */
+  void (*interrupt)(acip_transport_t *transport);
+
   /**
    * @brief Get transport type
    *
@@ -313,6 +318,13 @@ static inline acip_transport_type_t acip_transport_get_type(acip_transport_t *tr
   return transport->methods->get_type(transport);
 }
 
+/** Interrupt I/O while retaining the transport and callback contexts.
+ * NULL is safe; transports without interrupt support are left untouched. */
+static inline void acip_transport_interrupt(acip_transport_t *transport) {
+  if (transport && transport->methods && transport->methods->interrupt)
+    transport->methods->interrupt(transport);
+}
+
 /**
  * @brief Get underlying socket
  *
@@ -402,11 +414,6 @@ asciichat_error_t acip_websocket_transport_flush(acip_transport_t *transport, ui
 typedef struct acip_websocket_runtime acip_websocket_runtime_t;
 asciichat_error_t acip_websocket_runtime_create(acip_websocket_runtime_t **out);
 void acip_websocket_runtime_destroy(acip_websocket_runtime_t **runtime);
-
-/** Interrupt WebSocket I/O without freeing the transport or joining workers.
- * Call from normal thread context while retaining ownership of the transport. */
-void acip_websocket_transport_interrupt(acip_transport_t *transport);
-void acip_webrtc_transport_interrupt(acip_transport_t *transport);
 
 acip_transport_t *acip_websocket_client_transport_create(const char *name, const char *url,
                                                          crypto_context_t *crypto_ctx);

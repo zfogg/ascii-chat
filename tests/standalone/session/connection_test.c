@@ -5,6 +5,24 @@
 #include <ascii-chat/util/time.h>
 #include <string.h>
 
+#include <ascii-chat/network/webrtc/webrtc.h>
+
+/* Keep ICE setup out of this lifecycle fixture while exercising the production
+ * transport queue, connectivity state, method dispatch, and interruption. */
+static webrtc_state_t connected_peer(webrtc_peer_connection_t *peer) {
+  (void)peer;
+  return WEBRTC_STATE_CONNECTED;
+}
+static bool open_channel(webrtc_data_channel_t *channel) {
+  (void)channel;
+  return true;
+}
+#define webrtc_get_state connected_peer
+#define webrtc_datachannel_is_open open_channel
+#include "../../../lib/network/webrtc/transport.c"
+#undef webrtc_get_state
+#undef webrtc_datachannel_is_open
+
 #define CHECK(expr)                                                                                                    \
   do {                                                                                                                 \
     if (!(expr))                                                                                                       \
@@ -85,9 +103,80 @@ static void *foreign_stop(void *context) {
   CHECK(session_connection_stop(&owner->connection) == ERROR_INVALID_STATE);
   return NULL;
 }
+typedef struct {
+  acip_transport_t *transport;
+  atomic_t entered;
+  asciichat_error_t result;
+} webrtc_wait_t;
+
+static void *wait_for_webrtc(void *context) {
+  webrtc_wait_t *wait = context;
+  void *data = NULL, *allocation = NULL;
+  size_t length = 0;
+  atomic_store_bool(&wait->entered, true);
+  wait->result = acip_transport_recv(wait->transport, &data, &length, &allocation);
+  buffer_release(allocation);
+  return NULL;
+}
+
+static void webrtc_interrupt_test(void) {
+  webrtc_transport_data_t data[2] = {0};
+  acip_transport_t transports[2] = {0};
+  for (int i = 0; i < 2; i++) {
+    data[i].peer_conn = (void *)&data[i];
+    data[i].data_channel = (void *)&data[i];
+    data[i].is_connected = true;
+    data[i].recv_queue = ringbuffer_create(sizeof(webrtc_recv_msg_t), WEBRTC_RECV_QUEUE_SIZE);
+    CHECK(data[i].recv_queue);
+    CHECK(mutex_init(&data[i].queue_mutex, "webrtc_test_queue") == ASCIICHAT_OK);
+    CHECK(mutex_init(&data[i].state_mutex, "webrtc_test_state") == ASCIICHAT_OK);
+    CHECK(cond_init(&data[i].queue_cond, "webrtc_test_receive") == ASCIICHAT_OK);
+    transports[i].methods = &webrtc_methods;
+    transports[i].impl_data = &data[i];
+  }
+  webrtc_wait_t wait = {.transport = &transports[0]};
+  asciichat_thread_t worker;
+  CHECK(asciichat_thread_create(&worker, "blocked_webrtc", wait_for_webrtc, &wait) == ASCIICHAT_OK);
+  uint64_t start = time_get_ns();
+  while (!atomic_load_bool(&wait.entered) && time_elapsed_ns(start, time_get_ns()) < NS_PER_SEC_INT)
+    platform_sleep_ms(1);
+  CHECK(atomic_load_bool(&wait.entered));
+  platform_sleep_ms(10);
+  acip_transport_interrupt(&transports[0]);
+  acip_transport_interrupt(&transports[0]);
+  CHECK(asciichat_thread_join_timeout(&worker, NULL, NS_PER_SEC_INT) == ASCIICHAT_OK);
+  CHECK(wait.result != ASCIICHAT_OK);
+  CHECK(!acip_transport_is_connected(&transports[0]));
+  CHECK(acip_transport_is_connected(&transports[1]));
+  for (int i = 0; i < 2; i++) {
+    cond_destroy(&data[i].queue_cond);
+    mutex_destroy(&data[i].state_mutex);
+    mutex_destroy(&data[i].queue_mutex);
+    ringbuffer_destroy(data[i].recv_queue);
+  }
+}
+
+static void count_interrupt(acip_transport_t *transport) {
+  int *count = transport->impl_data;
+  ++*count;
+}
+
 int main(void) {
   log_init(NULL, LOG_DEBUG, false, false);
   log_set_terminal_output(true);
+  webrtc_interrupt_test();
+  int interrupted[2] = {0};
+  const acip_transport_methods_t dispatch_methods = {.interrupt = count_interrupt};
+  acip_transport_t dispatch[2] = {{.methods = &dispatch_methods, .impl_data = &interrupted[0]},
+                                  {.methods = &dispatch_methods, .impl_data = &interrupted[1]}};
+  acip_transport_interrupt(NULL);
+  session_connection_interrupt_transport(&dispatch[0]);
+  CHECK(interrupted[0] == 1 && interrupted[1] == 0);
+  acip_transport_interrupt(&dispatch[1]);
+  CHECK(interrupted[0] == 1 && interrupted[1] == 1);
+  const acip_transport_methods_t no_interrupt = {0};
+  acip_transport_t unsupported = {.methods = &no_interrupt};
+  acip_transport_interrupt(&unsupported);
   CHECK(socket_init() == ASCIICHAT_OK);
   socket_t listener = socket_create("owners_listener", AF_INET, SOCK_STREAM, 0);
   CHECK(listener != INVALID_SOCKET_VALUE);

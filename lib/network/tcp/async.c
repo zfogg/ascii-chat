@@ -204,10 +204,16 @@ static void async_destroy(acip_transport_t *transport) {
   }
   mutex_destroy(&tcp->mutex);
 }
+static void async_interrupt(acip_transport_t *transport) {
+  async_tcp_t *tcp = transport->impl_data;
+  atomic_store_bool(&tcp->interrupted, true);
+}
+
 static const acip_transport_methods_t async_methods = {.send = async_send,
                                                        .sendv = async_sendv,
                                                        .recv = async_recv,
                                                        .close = async_close,
+                                                       .interrupt = async_interrupt,
                                                        .get_type = async_type,
                                                        .get_socket = async_socket,
                                                        .is_connected = async_connected,
@@ -301,12 +307,6 @@ static void *client_loop(void *arg) {
   async_tcp_t *tcp = arg;
   platform_event_loop_run(tcp->loop);
   return NULL;
-}
-void acip_async_tcp_transport_interrupt(acip_transport_t *transport) {
-  if (acip_async_tcp_transport_is(transport)) {
-    async_tcp_t *tcp = transport->impl_data;
-    atomic_store_bool(&tcp->interrupted, true);
-  }
 }
 acip_transport_t *acip_async_tcp_client_create(socket_t *socket, crypto_context_t *crypto) {
   acip_transport_t *transport = acip_async_tcp_transport_create(NULL, crypto);

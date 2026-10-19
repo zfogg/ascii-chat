@@ -752,20 +752,7 @@ static bool webrtc_has_pending_data(acip_transport_t *transport) {
   return pending;
 }
 
-static const acip_transport_methods_t webrtc_methods = {
-    .send = webrtc_send,
-    .recv = webrtc_recv,
-    .close = webrtc_close,
-    .get_type = webrtc_get_type,
-    .get_socket = webrtc_get_socket,
-    .is_connected = webrtc_is_connected,
-    .has_pending_data = webrtc_has_pending_data,
-    .destroy_impl = webrtc_destroy_impl,
-};
-
-void acip_webrtc_transport_interrupt(acip_transport_t *transport) {
-  if (!transport || transport->methods != &webrtc_methods || !transport->impl_data)
-    return;
+static void webrtc_interrupt(acip_transport_t *transport) {
   webrtc_transport_data_t *wrtc = transport->impl_data;
   /* Publish terminal state before waking readers. The owner retains peer handles
    * and callback contexts until all media workers have joined. */
@@ -777,6 +764,18 @@ void acip_webrtc_transport_interrupt(acip_transport_t *transport) {
   cond_broadcast(&wrtc->queue_cond);
   mutex_unlock(&wrtc->queue_mutex);
 }
+
+static const acip_transport_methods_t webrtc_methods = {
+    .send = webrtc_send,
+    .recv = webrtc_recv,
+    .close = webrtc_close,
+    .interrupt = webrtc_interrupt,
+    .get_type = webrtc_get_type,
+    .get_socket = webrtc_get_socket,
+    .is_connected = webrtc_is_connected,
+    .has_pending_data = webrtc_has_pending_data,
+    .destroy_impl = webrtc_destroy_impl,
+};
 
 // =============================================================================
 // WebRTC Transport Creation

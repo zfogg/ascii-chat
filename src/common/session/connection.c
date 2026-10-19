@@ -1,7 +1,4 @@
 #include "session/connection.h"
-#include <ascii-chat/network/tcp/async.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/log/log.h>
 
 void session_connection_init(session_connection_t *connection, session_connection_ops_t ops, void *context) {
   connection->owner_thread = asciichat_thread_self();
@@ -45,15 +42,5 @@ asciichat_error_t session_connection_stop(session_connection_t *connection) {
 }
 
 void session_connection_interrupt_transport(acip_transport_t *transport) {
-  if (!transport)
-    return;
-  acip_async_tcp_transport_interrupt(transport);
-  acip_websocket_transport_interrupt(transport);
-  acip_webrtc_transport_interrupt(transport);
-  socket_t socket = acip_transport_get_socket(transport);
-  if (socket != INVALID_SOCKET_VALUE) {
-    int result = socket_shutdown(socket, SHUT_RDWR);
-    log_debug("Connection socket interruption: socket=%llu how=%d result=%d", (unsigned long long)socket, SHUT_RDWR,
-              result);
-  }
+  acip_transport_interrupt(transport);
 }
