@@ -469,18 +469,6 @@ export function renderAudioVisualizationFrame(
   return renderAudioVisualization(width, height, source, mode);
 }
 
-/** Read a Web Audio analyser and render the resulting visualization frame. */
-export function renderAnalyserAudioVisualization(
-  analyser: AnalyserNode,
-  width: number,
-  height: number,
-  options: AudioVisualizationFrameOptions = {},
-): string {
-  const samples = new Float32Array(analyser.fftSize);
-  analyser.getFloatTimeDomainData(samples);
-  return renderAudioVisualizationFrame(samples, width, height, options);
-}
-
 /**
  * Check if WASM module is ready
  */

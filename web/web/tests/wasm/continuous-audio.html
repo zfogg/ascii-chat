@@ -1,0 +1,61 @@
+<!doctype html>
+<title>Continuous audio worklet regression</title>
+<pre>Running real AudioWorklet regression...</pre>
+<script type="module">
+  import url from "../../../packages/shared/src/audio/visualization-worklet.js?url";
+  const report = document.querySelector("pre");
+  try {
+    const length = 131072;
+    const context = new OfflineAudioContext(1, length, 48000);
+    await context.audioWorklet.addModule(url);
+    const buffer = context.createBuffer(2, length, 48000);
+    for (let i = 0; i < length; i++) {
+      buffer.getChannelData(0)[i] =
+        Math.sin((2 * Math.PI * 440 * i) / 48000) * 0.5;
+      buffer.getChannelData(1)[i] =
+        Math.sin((2 * Math.PI * 440 * i) / 48000) * 0.25;
+    }
+    const node = new AudioWorkletNode(context, "visualization-pcm");
+    const received = new Float32Array(length);
+    let count = 0;
+    const complete = new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(`Only ${count} samples received`)),
+        10000,
+      );
+      node.port.onmessage = ({ data }) => {
+        received.set(data, count);
+        count += data.length;
+        if (count === length) {
+          clearTimeout(timer);
+          resolve();
+        }
+      };
+    });
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(node);
+    node.connect(context.destination);
+    source.start();
+    const output = await context.startRendering();
+    await complete;
+    let error = 0;
+    for (let i = 0; i < length; i++)
+      error = Math.max(
+        error,
+        Math.abs(
+          received[i] -
+            (buffer.getChannelData(0)[i] + buffer.getChannelData(1)[i]) / 2,
+        ),
+      );
+    if (error > 1e-7)
+      throw new Error(`Discontinuous PCM: maximum error ${error}`);
+    if (output.getChannelData(0).some((value) => value !== 0))
+      throw new Error("Tap emitted audible output");
+    report.textContent = `PASS: ${count} consecutive stereo-downmixed samples at 48000 Hz, max error ${error}. No display callbacks. Silent tap output.`;
+    node.port.close();
+    node.disconnect();
+  } catch (error) {
+    report.textContent = `FAIL: ${error.stack}`;
+  }
+</script>

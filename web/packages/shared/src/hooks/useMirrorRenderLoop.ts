@@ -7,12 +7,14 @@ import {
 import {
   isWasmReady,
   convertFrameToAscii,
-  renderAnalyserAudioVisualization,
+  renderAudioVisualization,
+  submitAudioVisualizationSamples,
   renderAudioVisualizationFrame,
 } from "../wasm/mirror";
 import type { AsciiRendererHandle } from "../components";
 import { fillTestPatternAudioSamples } from "../testPattern";
 import { useTestPattern } from "./useTestPattern";
+import { captureVisualizationAudio } from "../audio/visualizationCapture";
 import { VideoFrameClock } from "./videoFrameClock";
 
 interface UseMirrorRenderLoopParams {
@@ -64,11 +66,28 @@ export function useMirrorRenderLoop({
   const mediaAudioRef = useRef<{
     video: HTMLVideoElement;
     context: AudioContext;
-    analyser: AnalyserNode;
+    dispose: () => void;
   } | null>(null);
+  const microphoneAudioRef = useRef<{
+    stream: MediaStream;
+    context: AudioContext;
+    dispose: () => void;
+  } | null>(null);
+  const audioInputRef = useRef({ enabled: false, fileActive });
+  audioInputRef.current = {
+    enabled:
+      isWebcamRunning &&
+      !!animationEnabled &&
+      (animation === "waveform" || animation === "fft"),
+    fileActive,
+  };
   useEffect(
     () => () => {
+      mediaAudioRef.current?.dispose();
       void mediaAudioRef.current?.context.close();
+      microphoneAudioRef.current?.dispose();
+      void microphoneAudioRef.current?.context.close();
+      microphoneAudioRef.current = null;
       mediaAudioRef.current = null;
     },
     [],
@@ -142,8 +161,6 @@ export function useMirrorRenderLoop({
     const mediaClock = new VideoFrameClock();
     let lastConversionTime = 0;
     const audioSamples = new Float32Array(1024);
-    let audioContext: AudioContext | null = null;
-    let analyser: AnalyserNode | null = null;
     const renderFrame = () => {
       if (!isWasmReady() || !rendererRef.current) {
         return;
@@ -163,35 +180,54 @@ export function useMirrorRenderLoop({
       ) {
         if (mediaVideo) {
           if (mediaAudioRef.current?.video !== mediaVideo) {
+            mediaAudioRef.current?.dispose();
             void mediaAudioRef.current?.context.close();
-            const context = new AudioContext();
-            const mediaAnalyser = context.createAnalyser();
-            mediaAnalyser.fftSize = 2048;
+            const context = new AudioContext({ sampleRate: 48000 });
             const source = context.createMediaElementSource(mediaVideo);
-            source.connect(mediaAnalyser);
-            mediaAnalyser.connect(context.destination);
-            mediaAudioRef.current = {
-              video: mediaVideo,
+            source.connect(context.destination);
+            const dispose = captureVisualizationAudio(
               context,
-              analyser: mediaAnalyser,
-            };
+              source,
+              (samples) => {
+                if (
+                  isWasmReady() &&
+                  audioInputRef.current.enabled &&
+                  audioInputRef.current.fileActive &&
+                  !mediaVideo.paused
+                )
+                  submitAudioVisualizationSamples(samples, "media");
+              },
+            );
+            mediaAudioRef.current = { video: mediaVideo, context, dispose };
           }
-          analyser = mediaAudioRef.current.analyser;
           if (mediaAudioRef.current.context.state === "suspended")
             void mediaAudioRef.current.context.resume();
-        }
-        if (
-          !mediaVideo &&
-          !testMode &&
-          !analyser &&
-          streamRef.current?.getAudioTracks().length
-        ) {
-          audioContext = new AudioContext();
-          analyser = audioContext.createAnalyser();
-          analyser.fftSize = 2048;
-          audioContext
-            .createMediaStreamSource(streamRef.current)
-            .connect(analyser);
+        } else if (!testMode && streamRef.current?.getAudioTracks().length) {
+          if (microphoneAudioRef.current?.stream !== streamRef.current) {
+            microphoneAudioRef.current?.dispose();
+            void microphoneAudioRef.current?.context.close();
+            const context = new AudioContext({ sampleRate: 48000 });
+            const source = context.createMediaStreamSource(streamRef.current);
+            const dispose = captureVisualizationAudio(
+              context,
+              source,
+              (samples) => {
+                if (
+                  isWasmReady() &&
+                  audioInputRef.current.enabled &&
+                  !audioInputRef.current.fileActive
+                )
+                  submitAudioVisualizationSamples(samples, "microphone");
+              },
+            );
+            microphoneAudioRef.current = {
+              stream: streamRef.current,
+              context,
+              dispose,
+            };
+          }
+          if (microphoneAudioRef.current.context.state === "suspended")
+            void microphoneAudioRef.current.context.resume();
         }
         for (let index = 0; index < audioSamples.length; index++) {
           audioSamples[index] = 0;
@@ -204,25 +240,12 @@ export function useMirrorRenderLoop({
               terminalDimensions.rows,
               { source: mediaVideo ? "media" : "microphone", mode: animation },
             )
-          : analyser
-            ? renderAnalyserAudioVisualization(
-                analyser,
-                terminalDimensions.cols,
-                terminalDimensions.rows,
-                {
-                  source: mediaVideo ? "media" : "microphone",
-                  mode: animation,
-                },
-              )
-            : renderAudioVisualizationFrame(
-                audioSamples,
-                terminalDimensions.cols,
-                terminalDimensions.rows,
-                {
-                  source: mediaVideo ? "media" : "microphone",
-                  mode: animation,
-                },
-              );
+          : renderAudioVisualization(
+              terminalDimensions.cols,
+              terminalDimensions.rows,
+              mediaVideo ? "media" : "microphone",
+              animation,
+            );
       } else if (testMode) {
         // Generate synthetic test frame
         const canvas = canvasRef.current;
@@ -382,7 +405,6 @@ export function useMirrorRenderLoop({
       if (videoHandle) mediaVideo?.cancelVideoFrameCallback(videoHandle);
       cancelAnimationFrame(rafHandle);
       cancelAnimationFrame(currentRafHandle);
-      void audioContext?.close();
     };
   }, [
     isWebcamRunning,

@@ -3,13 +3,13 @@ import { afterEach, expect, test, vi } from "vite-plus/test";
 import { useMirrorRenderLoop } from "../../../packages/shared/src/hooks/useMirrorRenderLoop";
 import {
   convertFrameToAscii,
-  renderAudioVisualizationFrame,
+  renderAudioVisualization,
 } from "../../../packages/shared/src/wasm/mirror";
 vi.mock("../../../packages/shared/src/wasm/mirror", () => ({
   isWasmReady: () => true,
   convertFrameToAscii: vi.fn(() => "rain"),
-  renderAudioVisualizationFrame: vi.fn(() => "silence"),
-  renderAnalyserAudioVisualization: vi.fn(),
+  renderAudioVisualization: vi.fn(() => "silence"),
+  submitAudioVisualizationSamples: vi.fn(),
 }));
 vi.mock("../../../packages/shared/src/hooks/useTestPattern", () => ({
   useTestPattern: () => ({ enabled: false }),
@@ -50,11 +50,11 @@ for (const animation of ["matrix", "waveform", "fft"] as const) {
     );
     if (animation === "matrix") expect(convertFrameToAscii).toHaveBeenCalled();
     else
-      expect(renderAudioVisualizationFrame).toHaveBeenCalledWith(
-        expect.any(Float32Array),
+      expect(renderAudioVisualization).toHaveBeenCalledWith(
         80,
         24,
-        { source: "microphone", mode: animation },
+        "microphone",
+        animation,
       );
   });
 }

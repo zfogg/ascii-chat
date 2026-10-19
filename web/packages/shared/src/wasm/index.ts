@@ -9,7 +9,6 @@ export {
   renderAudioVisualization,
   formatAudioVisualizationFrame,
   renderAudioVisualizationFrame,
-  renderAnalyserAudioVisualization,
   isWasmReady,
   getMirrorModule,
   RenderMode,
