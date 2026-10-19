@@ -232,10 +232,14 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
         }
       }
     }
-    if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+    if (pfd.revents & (POLLERR | POLLNVAL)) {
       SET_ERRNO(ERROR_NETWORK, "recv_with_timeout poll reported socket flags 0x%x", pfd.revents);
       return -1;
     }
+    // A drained asynchronous writer may close while readable bytes remain.
+    // Consume POLLIN before treating POLLHUP as EOF (notably WSAPoll).
+    if ((pfd.revents & POLLHUP) && !(pfd.revents & POLLIN))
+      return total_received;
 
     // Other readiness flags without POLLIN are an ordinary no-data result.
     if (!(pfd.revents & POLLIN)) {

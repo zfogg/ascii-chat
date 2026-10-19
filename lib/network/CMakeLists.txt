@@ -71,6 +71,7 @@ set(NETWORK_SRCS
 )
 
 if(NOT EMSCRIPTEN)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/acip/backpressure.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/tcp/async.c)
 endif()
 

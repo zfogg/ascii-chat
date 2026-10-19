@@ -191,6 +191,14 @@ static asciichat_error_t h265_encoder_open_codec(h265_encoder_t *encoder, uint16
   encoder->codec_ctx->thread_count = h265_thread_count();
   encoder->codec_ctx->max_b_frames = 0;
   encoder->codec_ctx->gop_size = 30;
+  // Recovery frames must be independently decodable after discarded output.
+  if (encoder->codec->id == AV_CODEC_ID_H264) {
+    av_opt_set(encoder->codec_ctx->priv_data, "x264-params", "repeat-headers=1", 0);
+    av_opt_set(encoder->codec_ctx->priv_data, "forced-idr", "1", 0);
+  } else {
+    av_opt_set(encoder->codec_ctx->priv_data, "x265-params", "repeat-headers=1:open-gop=0", 0);
+    av_opt_set(encoder->codec_ctx->priv_data, "forced-idr", "1", 0);
+  }
 
   if (av_opt_set(encoder->codec_ctx->priv_data, "preset", "ultrafast", 0) < 0) {
     log_warn("Failed to set preset to ultrafast");

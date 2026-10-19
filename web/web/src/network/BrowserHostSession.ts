@@ -1,3 +1,4 @@
+import { OutboundQueue } from "./OutboundQueue";
 import { DiscoveryProtocol } from "./DiscoveryProtocol";
 import { BrowserVideoDecoder } from "./BrowserVideoDecoder";
 import { ClientConnection } from "./ClientConnection";
@@ -37,6 +38,7 @@ type HostModule = NonNullable<ReturnType<typeof getClientModule>> & {
   hostPacketCallback?: (id: number, packet: Uint8Array) => void;
 };
 type Peer = {
+  outbound?: OutboundQueue;
   pc: RTCPeerConnection;
   bridge: WebRTCBridge | null;
   crypto: PeerCryptoSession | null;
@@ -153,17 +155,13 @@ export class BrowserHostSession implements ClientSession {
           } else {
             for (const [key, peer] of this.peers) {
               if (peer.id !== id || !peer.crypto?.ready) continue;
-              const type = new DataView(
-                bytes.buffer,
-                bytes.byteOffset,
-              ).getUint16(8, false);
-              if (
-                type === PacketType.ASCII_FRAME &&
-                (peer.bridge?.getBufferedAmount() ?? 0) > 256 * 1024
-              )
-                continue;
               try {
-                peer.crypto.sendPacket(bytes);
+                peer.outbound ??= new OutboundQueue(
+                  () => peer.bridge?.getBufferedAmount() ?? 0,
+                  (packet) => peer.crypto!.sendPacket(packet),
+                  () => this.removePeer(key),
+                );
+                peer.outbound.submit(bytes);
               } catch (error) {
                 this.removePeer(key);
                 this.options.onProgress?.(
@@ -349,6 +347,7 @@ export class BrowserHostSession implements ClientSession {
     this.decoders.get(peer.id)?.destroy();
     this.decoders.delete(peer.id);
     peer.pc.close();
+    peer.outbound?.close();
     peer.bridge?.close();
     peer.crypto?.close();
     this.options.onProgress?.(
@@ -368,7 +367,9 @@ export class BrowserHostSession implements ClientSession {
       0,
       ...Array.from(
         this.peers.values(),
-        (peer) => peer.bridge?.getBufferedAmount() || 0,
+        (peer) =>
+          (peer.bridge?.getBufferedAmount() ?? 0) +
+          (peer.outbound?.snapshot().applicationBytes ?? 0),
       ),
     );
   }
@@ -416,6 +417,7 @@ export class BrowserHostSession implements ClientSession {
     this.discovery = null;
     for (const peer of this.peers.values()) {
       peer.pc.close();
+      peer.outbound?.close();
       peer.bridge?.close();
       peer.crypto?.close();
     }

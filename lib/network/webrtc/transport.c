@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file network/acip/transport_webrtc.c
  * @brief WebRTC DataChannel transport implementation for ACIP protocol
@@ -474,25 +475,10 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
   mutex_lock(&wrtc->send_mutex);
   uint64_t send_start_ns = time_get_ns();
   size_t buffered_before_send = 0;
-  bool is_video_packet = false;
-  if (len >= sizeof(packet_header_t)) {
-    packet_header_t header;
-    memcpy(&header, data, sizeof(header));
-    if (NET_TO_HOST_U64(header.magic) == PACKET_MAGIC) {
-      uint16_t packet_type = NET_TO_HOST_U16(header.type);
-      is_video_packet = packet_type == PACKET_TYPE_IMAGE_FRAME || packet_type == PACKET_TYPE_ASCII_FRAME;
-      if (is_video_packet) {
-        asciichat_errno_scope_t buffered_scope = asciichat_errno_scope_begin();
-        asciichat_error_t buffered_result =
-            webrtc_datachannel_get_buffered_amount(wrtc->data_channel, &buffered_before_send);
-        if (buffered_result != ASCIICHAT_OK) {
-          buffered_before_send = 0;
-        } else {
-          ASSERT_NO_ERRNO_SINCE(buffered_scope);
-        }
-        asciichat_errno_scope_end(buffered_scope, ASCIICHAT_ERRNO_DISMISSED);
-      }
-    }
+  asciichat_error_t buffered_result = webrtc_datachannel_get_buffered_amount(wrtc->data_channel, &buffered_before_send);
+  if (buffered_result != ASCIICHAT_OK) {
+    mutex_unlock(&wrtc->send_mutex);
+    return buffered_result;
   }
 
   size_t max_message_size = 16384;
@@ -505,20 +491,6 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
   }
   asciichat_errno_scope_end(size_scope, ASCIICHAT_ERRNO_DISMISSED);
   log_debug_every(60 * US_PER_SEC_INT, "WebRTC DataChannel negotiated max message size: %zu bytes", max_message_size);
-
-  // A video packet is a replaceable snapshot. Admit it only when the
-  // DataChannel can hold the complete packet without queuing obsolete
-  // snapshots ahead of a current frame.
-  if (is_video_packet) {
-    size_t high_water = len > WEBRTC_SEND_VIDEO_HIGH_WATER ? len : WEBRTC_SEND_VIDEO_HIGH_WATER;
-    if (buffered_before_send >= high_water || len > high_water - buffered_before_send) {
-      mutex_unlock(&wrtc->send_mutex);
-      log_warn_every(US_PER_SEC_INT,
-                     "WebRTC outgoing video backlog: dropping replaceable %zu-byte frame (buffered=%zu, limit=%zu)",
-                     len, buffered_before_send, high_water);
-      return ASCIICHAT_OK;
-    }
-  }
 
   socket_buffer_t input = {.data = data, .len = len};
   acip_packet_plan_t plan;
@@ -752,8 +724,19 @@ static bool webrtc_has_pending_data(acip_transport_t *transport) {
   return pending;
 }
 
+static size_t webrtc_queued_bytes(acip_transport_t *transport) {
+  webrtc_transport_data_t *wrtc = transport->impl_data;
+  size_t bytes = 0;
+  asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+  asciichat_error_t result = webrtc_datachannel_get_buffered_amount(wrtc->data_channel, &bytes);
+  asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  return result == ASCIICHAT_OK ? bytes : ACIP_OUTBOUND_BUDGET;
+}
+
 static const acip_transport_methods_t webrtc_methods = {
     .send = webrtc_send,
+    .queued_bytes = webrtc_queued_bytes,
+    .reserved_bytes = ACIP_OUTBOUND_SCTP_RESERVE,
     .recv = webrtc_recv,
     .close = webrtc_close,
     .get_type = webrtc_get_type,
@@ -889,6 +872,10 @@ static acip_transport_t *webrtc_transport_create(webrtc_peer_connection_t *peer_
   // Register WebRTC transport implementation data with transport as parent
   NAMED_REGISTER(wrtc_data, "impl", "webrtc_impl", "0x%tx", (uintptr_t)(const void *)(transport));
 
+  if (acip_outbound_create(transport) != ASCIICHAT_OK) {
+    acip_transport_destroy(transport);
+    return NULL;
+  }
   return transport;
 }
 

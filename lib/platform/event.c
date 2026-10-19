@@ -296,6 +296,13 @@ static void read_stream(uv_stream_t *handle, ssize_t count, const uv_buf_t *buff
 
 asciichat_error_t platform_event_stream_start(platform_event_stream_t *stream, platform_event_read_fn read,
                                               platform_event_close_fn close, void *arg) {
+  int send_buffer = SOCKET_STREAM_SEND_BUFFER;
+  if (stream) {
+    int status = uv_send_buffer_size((uv_handle_t *)&stream->tcp, &send_buffer);
+    if (status < 0)
+      return event_error(status, "Bound stream send buffer");
+  }
+
   if (!stream || stream->closing || !read)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid stream callbacks");
   stream->read = read;

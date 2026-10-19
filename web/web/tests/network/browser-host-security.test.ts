@@ -63,6 +63,10 @@ describe("browser host peer isolation", () => {
       harness.disconnected.mockClear();
       const host = new BrowserHostSession({
         signalingUrl: "ws://localhost",
+        sessionName: "",
+        password: "",
+        stunServers: [],
+        turnServers: [],
         createSession: true,
       });
       const ready = host.connect();

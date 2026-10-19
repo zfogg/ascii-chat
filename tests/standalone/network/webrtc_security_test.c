@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/acip/send.h>
@@ -74,8 +75,19 @@ static void initialize(endpoint_t *endpoint, bool server, uint8_t mode, const ch
 static void exchange(endpoint_t *sender, endpoint_t *receiver) {
   uint8_t payload[65536];
   memset(payload, 0x5a, sizeof(payload));
+  acip_outbound_stats_t before;
+  CHECK(acip_outbound_snapshot(sender->transport, &before) == ASCIICHAT_OK);
   uint64_t nonce = sender->security->handshake.crypto_ctx.nonce_counter;
   CHECK(packet_send_via_transport(sender->transport, PACKET_TYPE_PING, payload, sizeof(payload), 0) == ASCIICHAT_OK);
+  uint64_t submitted_start = time_get_ns();
+  for (;;) {
+    acip_outbound_stats_t after;
+    CHECK(acip_outbound_snapshot(sender->transport, &after) == ASCIICHAT_OK);
+    if (after.submitted > before.submitted)
+      break;
+    CHECK(time_get_ns() - submitted_start < 5 * NS_PER_SEC_INT);
+    platform_sleep_ms(1);
+  }
   CHECK(sender->security->handshake.crypto_ctx.nonce_counter ==
         nonce + (ACIP_CRYPTO_HAS_ENCRYPT(sender->security->mode) ? 1 : 0));
   uint64_t start = time_get_ns();
