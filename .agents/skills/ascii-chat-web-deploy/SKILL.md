@@ -62,6 +62,7 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
   | `DISCOVERY_TURN_SERVERS` | Comma-separated `turn:host:port` URLs. Whitespace around commas is ignored; bare `host:port` remains accepted for compatibility. | `turn:turn.ascii-chat.com:3478` |
 
   STUN and TURN default to port `3478` over UDP when omitted. Use `stuns:host[:port]` or `turns:host[:port]` for TLS; status functions probe those endpoints over TLS and default omitted ports to `5349`. These non-secret values are exposed to the frontend at Vite build time, and Vercel functions use the same values at runtime. `DISCOVERY_STATUS_TURN_USERNAME` and `DISCOVERY_STATUS_TURN_PASSWORD` remain server-only credentials for authenticated TURN probes.
+
 ### Conditional WASM Release builds
 
 - Compile `mirror-web` / `client-web` and generate their JavaScript glue **only when needed**: canonical artifacts are missing, source or artifact hash validation fails, relevant compiler/build settings changed, or their Release-build provenance cannot be established. A frontend-only, documentation, or skill change does not by itself require regenerating WASM or its JavaScript. Never rewrite the manifest to make stale binaries appear current.
@@ -70,15 +71,17 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 - For an absent build directory, configure the standalone browser project with Emscripten and Ninja:
 
   ```bash
-  emcmake cmake -S src/web -B build_release -G Ninja -DCMAKE_BUILD_TYPE=Release
+  emcmake cmake -S src/web -B build_release -G Ninja -DCMAKE_BUILD_TYPE=Release -DPARENT_CMAKE_BINARY_DIR="<build-with-generated-fonts>"
   cmake --build build_release --config Release --target mirror-web client-web
   ```
+
+  The parent build must contain `generated/data/fonts/default.c` and `matrix_resurrected.c`; reuse verified generated fonts or generate them with the repository font targets first. On the current Windows Emscripten SDK, `-DCMAKE_EXE_LINKER_FLAGS=-sMALLOC=emmalloc` avoids the bundled dlmalloc/Clang alias incompatibility. Use `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` only when the dependency cache is already populated.
 
   Confirm `CMAKE_BUILD_TYPE:STRING=Release` in the effective WASM `CMakeCache.txt` before publishing. Never publish Debug artifacts. CMake's incremental build determines which objects and generated glue actually need regeneration.
 - Publish the successful build using `ASCII_CHAT_WASM_BUILD_DIR=build_release node web/web/scripts/wasm-build.mjs` (in PowerShell, set `$env:ASCII_CHAT_WASM_BUILD_DIR = 'build_release'` first). The script resolves that directory from the repository root and supports standalone outputs or the native build's `web/` outputs. Re-run `--publish-only` afterward to verify the final source/artifact hashes.
 - Commit regenerated `mirror.js`, `mirror.wasm`, `client.js`, `client.wasm`, and `manifest.json` only in `web/web/src/wasm/dist/`. `web/web/public/wasm/` contains ignored runtime copies; do not force-add them. Record the Release configuration and build directory in the artifact commit message so subsequent deployments can establish provenance and skip unnecessary compilation.
 
-- For a local web build, use pnpm. If the isolated worktree has no dependencies, report that limitation rather than installing unrelated dependencies into the user's checkout.
+- For local installation, checks, tests, and builds, follow `web/AGENTS.md` and use the `vp` wrappers. GitHub deployment workflows use pnpm.
 
 ## Domains and DNS
 

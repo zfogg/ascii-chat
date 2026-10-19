@@ -214,6 +214,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           settings.paletteChars,
           settings.matrixRain,
           conn.videoCodecCapabilities,
+          settings.renderMode,
         ),
       );
       console.info(

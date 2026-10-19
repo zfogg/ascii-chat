@@ -707,6 +707,7 @@ export function ClientPage({
             settings.paletteChars,
             settings.matrixRain,
             clientRef.current.videoCodecCapabilities,
+            settings.renderMode,
           );
           clientRef.current.sendPacket(PacketType.CLIENT_CAPABILITIES, payload);
         } catch (err) {
@@ -742,6 +743,7 @@ export function ClientPage({
           settings.paletteChars,
           settings.matrixRain,
           clientRef.current.videoCodecCapabilities,
+          settings.renderMode,
         ),
       );
     } catch (err) {

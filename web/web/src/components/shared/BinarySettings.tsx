@@ -264,6 +264,36 @@ export function BinarySettings({
             text={
               disabled
                 ? LOCKED_SETTINGS_HELP
+                : "Foreground colors the text; Background colors each character cell; Half-block uses two vertically stacked pixels per cell for more detail."
+            }
+          >
+            <div className="flex-1 min-w-[200px]">
+              <label
+                htmlFor={`${dimensionsId}-render-mode`}
+                className="block text-xs font-medium text-terminal-8 mb-1"
+              >
+                Render Mode
+              </label>
+              <select
+                id={`${dimensionsId}-render-mode`}
+                value={config.renderMode ?? 0}
+                onChange={(e) =>
+                  updateConfig({ renderMode: Number(e.target.value) })
+                }
+                disabled={disabled}
+                className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
+              >
+                <option value={0}>Foreground</option>
+                <option value={1}>Background</option>
+                <option value={2}>Half-block</option>
+              </select>
+            </div>
+          </Tooltip>
+
+          <Tooltip
+            text={
+              disabled
+                ? LOCKED_SETTINGS_HELP
                 : getOptionHelp(mode, "color-filter")
             }
           >

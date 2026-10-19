@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   buildCapabilitiesPacket,
   buildImageFramePayload,
@@ -92,4 +92,20 @@ describe("buildCapabilitiesPacket", () => {
 
     expect(view.getUint32(0, false)).toBe(0x2f);
   });
+});
+
+it.each([0, 1, 2])("sends render mode %i in network byte order", (mode) => {
+  const packet = buildCapabilitiesPacket(
+    80,
+    24,
+    60,
+    "truecolor",
+    "none",
+    "standard",
+    undefined,
+    false,
+    undefined,
+    mode,
+  );
+  expect(new DataView(packet.buffer).getUint32(12, false)).toBe(mode);
 });

@@ -75,6 +75,7 @@ typedef struct {
   uint64_t connected_at;
   uint16_t render_width;
   uint16_t render_height;
+  render_mode_t render_mode;
 
   /** @brief Alternative transport (WebRTC, WebSocket, etc.) - NULL if using socket only */
   struct acip_transport *transport;
@@ -620,6 +621,9 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
           if (host->clients[j].active && host->clients[j].client_id == client_id) {
             host->clients[j].render_width = width;
             host->clients[j].render_height = height;
+            uint32_t render_mode = NET_TO_HOST_U32(caps.render_mode);
+            host->clients[j].render_mode = render_mode <= RENDER_MODE_HALF_BLOCK
+                                              ? (render_mode_t)render_mode : RENDER_MODE_FOREGROUND;
             log_info("Client %u requested render dimensions %ux%u", client_id, width, height);
             break;
           }
@@ -793,7 +797,7 @@ static void *receive_loop_thread(void *arg) {
  * - Broadcasts mixed audio to all participants
  */
 // The caller holds clients_mutex so all viewports use the same set of source frames.
-static char *host_create_video_grid(session_host_t *host, int count, int width, int height, size_t *size) {
+static char *host_create_video_grid(session_host_t *host, int count, int width, int height, render_mode_t render_mode, size_t *size) {
   int columns, rows;
   if (ascii_grid_layout(count, width, height, &columns, &rows) != ASCIICHAT_OK)
     return NULL;
@@ -811,8 +815,14 @@ static char *host_create_video_grid(session_host_t *host, int count, int width, 
     if (!host->clients[i].active || !host->clients[i].video_active || !host->clients[i].incoming_video)
       continue;
     uint64_t start = time_get_ns();
-    sources[index].frame_data = ascii_convert(host->clients[i].incoming_video, cell_width, cell_height, true, false,
-                                               false, PALETTE_CHARS_STANDARD, g_default_luminance_palette);
+    terminal_capabilities_t caps = {0};
+    caps.color_level = TERM_COLOR_TRUECOLOR;
+    caps.utf8_support = true;
+    caps.render_mode = render_mode;
+    caps.wants_background = render_mode == RENDER_MODE_BACKGROUND;
+    sources[index].frame_data = ascii_convert_with_capabilities(host->clients[i].incoming_video, cell_width,
+                                                               cell_height, &caps, false, false,
+                                                               PALETTE_CHARS_STANDARD);
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - start);
     stats_counter_add(stats_runtime_scope(), sources[index].frame_data ? STATS_COUNTER_FRAMES_CONVERTED
                                                                      : STATS_COUNTER_FRAMES_DROPPED, 1);
@@ -839,6 +849,7 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer, bool 
   if (count > 0) {
     typedef struct {
       int width, height;
+      render_mode_t render_mode;
       char *frame;
       size_t size;
     } host_grid_t;
@@ -848,6 +859,7 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer, bool 
     for (int i = 0; i <= host->max_clients; ++i) {
       bool local_display = i == host->max_clients;
       int width = 80, height = 24;
+      render_mode_t render_mode = local_display ? GET_OPTION(render_mode) : host->clients[i].render_mode;
       if (local_display) {
         if (!host->display_context || waiting_for_peer)
           continue;
@@ -861,12 +873,14 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer, bool 
         }
       }
       int cached = 0;
-      while (cached < grid_count && (grids[cached].width != width || grids[cached].height != height))
+      while (cached < grid_count && (grids[cached].width != width || grids[cached].height != height ||
+                                     grids[cached].render_mode != render_mode))
         ++cached;
       if (cached == grid_count) {
         grids[cached].width = width;
         grids[cached].height = height;
-        grids[cached].frame = host_create_video_grid(host, count, width, height, &grids[cached].size);
+        grids[cached].render_mode = render_mode;
+        grids[cached].frame = host_create_video_grid(host, count, width, height, render_mode, &grids[cached].size);
         ++grid_count;
       }
       host_grid_t *grid = &grids[cached];
@@ -1210,6 +1224,7 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
       host->clients[i].transport = NULL; // No alternative transport initially
       host->clients[i].render_width = 0;
       host->clients[i].render_height = 0;
+      host->clients[i].render_mode = RENDER_MODE_FOREGROUND;
 
       // Allocate media buffers
       host->clients[i].incoming_video = image_new(480, 270);                        // Network-optimal size (HD preview)

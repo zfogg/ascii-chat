@@ -716,7 +716,11 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
         }
         continue;
       }
+      // Block elements represent cell geometry, independent of font bearings and line spacing.
+      bool block = cell.chars[0] == 0x2580 || cell.chars[0] == 0x2584 || cell.chars[0] == 0x2588;
       for (int dy = 0; dy < r->cell_h; dy++) {
+        bool block_foreground = block && (cell.chars[0] == 0x2588 ||
+            (cell.chars[0] == 0x2580 ? dy < r->cell_h / 2 : dy >= r->cell_h / 2));
         int y = py + dy;
         if (y < 0 || y >= r->height_px)
           continue;
@@ -725,14 +729,17 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
           int x = px + dx;
           if (x < 0 || x >= r->width_px)
             continue;
-          line[dx * 4] = br;
-          line[dx * 4 + 1] = bg;
-          line[dx * 4 + 2] = bb;
+          line[dx * 4] = block_foreground ? fr : br;
+          line[dx * 4 + 1] = block_foreground ? fg : bg;
+          line[dx * 4 + 2] = block_foreground ? fb : bb;
           line[dx * 4 + 3] = 255;
         }
       }
 
-      if (cell.chars[0] && cell.chars[0] != ' ') {
+      if (block) {
+        occupied_cell_count++;
+        glyph_rendered_count++;
+      } else if (cell.chars[0] && cell.chars[0] != ' ') {
         occupied_cell_count++;
         // For matrix font, map ASCII characters to Private Use Area glyphs (U+E900-U+E91A)
         uint32_t char_to_render = r->is_matrix_font ? matrix_char_map(cell.chars[0]) : cell.chars[0];
