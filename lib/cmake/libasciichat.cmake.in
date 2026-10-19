@@ -79,7 +79,11 @@ if("static" IN_LIST _asciichat_components AND ascii-chat_static_FOUND AND NOT TA
         list(APPEND _asciichat_deps PkgConfig::_asciichat_fontconfig)
     endif()
     foreach(_module vterm utf8proc)
-        find_library(_asciichat_bundled_${_module} NAMES ${_module}
+        set(_bundled_names "${_module}")
+        if(_module STREQUAL vterm)
+            list(PREPEND _bundled_names asciichat-vterm)
+        endif()
+        find_library(_asciichat_bundled_${_module} NAMES ${_bundled_names}
             PATHS "${_asciichat_prefix}/lib" NO_DEFAULT_PATH NO_CACHE)
         if(_asciichat_bundled_${_module})
             list(APPEND _asciichat_deps "${_asciichat_bundled_${_module}}")
