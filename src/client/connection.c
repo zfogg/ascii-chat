@@ -67,11 +67,7 @@ static asciichat_error_t attempt_handshake(void *context, acip_transport_t *tran
   asciichat_error_t result = asciichat_thread_create(&worker, "handshake_stop", watch_handshake, &watch);
   if (result != ASCIICHAT_OK)
     return result;
-  // A peer may need the connection budget to initialize before its first reply.
-  const uint64_t receive_timeout_ns = transport->receive_timeout_ns;
-  transport->receive_timeout_ns = CONN_TIMEOUT_TCP;
   result = client_crypto_handshake(context, transport);
-  transport->receive_timeout_ns = receive_timeout_ns;
   atomic_store_bool(&watch.finished, true);
   while (asciichat_thread_join(&worker, NULL) != ASCIICHAT_OK) {
     log_warn("Retaining handshake watcher until it joins");

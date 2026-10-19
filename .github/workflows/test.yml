@@ -468,6 +468,11 @@ jobs:
           path: |
             integration-tests-*.log
             build/Testing/criterion-xml/*.xml
+            build/backpressure/
+            /tmp/webrtc_e2e_*.log
+            /tmp/acds_test.log
+            /tmp/server_test.log
+            /tmp/client_test*.log
           retention-days: 7
 
   performance-tests:

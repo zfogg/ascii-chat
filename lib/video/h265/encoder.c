@@ -196,7 +196,9 @@ static asciichat_error_t h265_encoder_open_codec(h265_encoder_t *encoder, uint16
     av_opt_set(encoder->codec_ctx->priv_data, "x264-params", "repeat-headers=1", 0);
     av_opt_set(encoder->codec_ctx->priv_data, "forced-idr", "1", 0);
   } else {
-    av_opt_set(encoder->codec_ctx->priv_data, "x265-params", "repeat-headers=1:open-gop=0", 0);
+    // FFmpeg can override zerolatency's frame-thread count with thread_count.
+    // Keep parallelism within a frame so each submitted frame is available immediately.
+    av_opt_set(encoder->codec_ctx->priv_data, "x265-params", "repeat-headers=1:open-gop=0:frame-threads=1", 0);
     av_opt_set(encoder->codec_ctx->priv_data, "forced-idr", "1", 0);
   }
 
