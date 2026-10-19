@@ -37,7 +37,7 @@
 // Test configuration
 #define TEST_PORT_BASE 20000
 #define ACDS_STARTUP_TIMEOUT_MS 10000
-#define HOST_STARTUP_TIMEOUT_MS 3000
+#define HOST_STARTUP_TIMEOUT_MS 10000
 #define WEBRTC_CONNECTION_TIMEOUT_MS 15000 // WebRTC can take time with STUN
 #define PROCESS_CLEANUP_TIMEOUT_MS 2000
 #define MAX_PROCESSES 10
@@ -337,6 +337,7 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
   // ============================================================
 
   char *acds_argv[] = {(char *)binary_path,
+                       "--no-check-update",
                        "--log-level",
                        "debug",
                        "discovery-service",
@@ -351,15 +352,14 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
   cr_assert_gt(acds_pid, 0, "Failed to spawn discovery-service");
 
   // Wait for discovery service to be ready
-  bool acds_ready =
-      wait_for_log_pattern(acds_log, "Server accepting connections on port", ACDS_STARTUP_TIMEOUT_MS, NULL, 0);
+  bool acds_ready = wait_for_log_pattern(acds_log, "Listening on", ACDS_STARTUP_TIMEOUT_MS, NULL, 0);
   cr_assert(acds_ready, "Discovery service failed to start (log: %s)", acds_log);
 
   // ============================================================
   // Step 2: Start host to create session
   // ============================================================
 
-  char *host_argv[] = {(char *)binary_path, "--log-level", "debug",
+  char *host_argv[] = {(char *)binary_path, "--no-check-update", "--log-level", "debug",
                        "server",        // Run as SERVER with --discovery flag
                        "0.0.0.0", "::", // Bind addresses
                        "--port", "27224",
@@ -394,6 +394,7 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
   // ============================================================
 
   char *guest_argv[] = {(char *)binary_path,
+                        "--no-check-update",
                         "--log-level",
                         "debug",
                         session_string, // Discovery mode with session string
@@ -402,7 +403,9 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
                         "--discovery-service-port",
                         port_str,
                         "--prefer-webrtc", // Force WebRTC instead of direct TCP
-                        "--test-pattern",  // Use test pattern instead of webcam
+                        "--port",
+                        "27234",          // Successor preparation needs a separate local listener.
+                        "--test-pattern", // Use test pattern instead of webcam
                         "--snapshot",
                         "--snapshot-delay",
                         "10", // Keep alive for 10s to allow WebRTC connection

@@ -61,6 +61,7 @@ for transport in args.transports.split(','):
                                         if re.fullmatch(r'[\d.]+', value) else value for key, value in fields.items()}
         if code or 'result' not in entry or 'healthy' not in entry:
             failed = True
+            print(text, flush=True)
         summary['scenarios'].append(entry)
         print(json.dumps(entry), flush=True)
         (args.output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
