@@ -1230,7 +1230,7 @@ endif()
 
 # Independent connection owners with real blocked TCP workers, without Criterion.
 if(BUILD_TESTS AND NOT EMSCRIPTEN)
-    add_executable(test-session-connections standalone/session/connection_test.c)
+    add_executable(test-session-connections standalone/session/connection_test.c standalone/session/protocol_test.c)
     target_link_libraries(test-session-connections PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     target_include_directories(test-session-connections PRIVATE
         ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})

@@ -1,84 +1,12 @@
 #include "connection_internal.h"
+
+/* Client mode adapter: worker startup, display/snapshot effects and crypto/control
+ * callbacks. Media parsing and participant state live in session/protocol. */
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/stats/runtime.h>
-/**
- * @file client/protocol.c
- * @ingroup client_protocol
- * @brief 📡 Client protocol handler: packet reception, parsing, and dispatch with data thread coordination
- *
- * The client protocol handler follows a producer-consumer pattern:
- * - **Producer**: Data reception thread reads packets from socket
- * - **Consumer**: Protocol handlers process packets based on type
- * - **Coordination**: Thread-safe flags manage connection state
- * - **Error Recovery**: Connection loss detection and recovery signaling
- *
- * ## Packet Processing Pipeline
- *
- * 1. **Reception**: Raw packet data read from TCP socket
- * 2. **Validation**: Header validation and CRC verification
- * 3. **Deserialization**: Network byte order conversion
- * 4. **Dispatch**: Route to type-specific handler functions
- * 5. **Processing**: Handler executes packet-specific logic
- * 6. **Cleanup**: Buffer management and resource deallocation
- *
- * ## Thread Management
- *
- * The protocol module manages a dedicated data reception thread:
- * - **Lifecycle**: Thread creation, monitoring, and graceful termination
- * - **Exit Coordination**: Atomic flags coordinate thread shutdown
- * - **Connection Monitoring**: Detect socket closure and network errors
- * - **Resource Management**: Clean buffer domain usage and leak prevention
- *
- * ## Packet Type Handlers
- *
- * Each packet type has a dedicated handler function:
- * - **ASCII_FRAME**: Display ASCII art frames with decompression
- * - **AUDIO**: Process and queue audio samples for playback
- * - **PING/PONG**: Keepalive protocol implementation
- * - **CLEAR_CONSOLE**: Terminal control commands from server
- * - **SERVER_STATE**: Multi-client state synchronization
- * - **Unknown Types**: Graceful handling of protocol extensions
- *
- * ## Compression Support
- *
- * Frame packets support optional zstd compression:
- * - **Detection**: Frame flags indicate compression status
- * - **Decompression**: zstd inflation with size validation
- * - **Fallback**: Graceful handling when compression disabled
- * - **Integrity**: CRC32 verification of decompressed data
- *
- * ## Integration Points
- *
- * - **main.c**: Thread lifecycle management and coordination
- * - **server.c**: Socket operations and connection state
- * - **display.c**: Frame rendering and terminal control
- * - **audio.c**: Audio sample processing and playback
- * - **keepalive.c**: Ping/pong response coordination
- *
- * ## Error Handling
- *
- * Protocol errors are classified and handled appropriately:
- * - **Network Errors**: Socket failures trigger connection loss
- * - **Protocol Errors**: Malformed packets logged but connection continues
- * - **Resource Errors**: Memory allocation failures with graceful degradation
- * - **Compression Errors**: Invalid compressed data with frame skipping
- *
- * ## Buffer Management
- *
- * Uses shared buffer domain for efficient memory management:
- * - **Allocation**: Packets allocated from global buffer domain
- * - **Ownership**: Clear ownership transfer between modules
- * - **Deallocation**: Automatic cleanup with buffer domain integration
- * - **Leak Prevention**: Comprehensive cleanup on all error paths
- *
- * @author Zachary Fogg <me@zfo.gg>
- * @date September 2025
- * @version 2.0
- */
-
 #include <ascii-chat/ui/notice.h>
 
-#include "protocol.h"
+#include "protocol_adapter.h"
 #include "main.h"
 #include "../main.h" // Global exit API
 #include "server.h"
@@ -92,7 +20,6 @@
 
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/parsing.h>
-#include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/client.h>
@@ -103,26 +30,19 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/validation.h>
-#include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
-#include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/handshake/client.h>
 
-// Forward declaration for client crypto functions
-
 #include "crypto.h"
-#include <ascii-chat/util/time.h>
 
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
-#include <time.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -130,171 +50,15 @@
 #include <ascii-chat/platform/windows_compat.h>
 #endif
 
-#include <ascii-chat/network/compression.h>
-#include <ascii-chat/network/packet/parsing.h>
-
 #include <errno.h>
 
-/* ============================================================================
- * Thread State Management
- * ============================================================================ */
-
-/* ============================================================================
- * Frame Rendering Statistics
- * ============================================================================ */
-
-/**
- * @brief Counter for total unique frames rendered by the client
- *
- * Incremented each time a frame packet is received and rendered.
- * Used for performance monitoring and verifying that frames are being
- * transmitted and displayed, not just replaying the same frame.
- *
- * @ingroup client_protocol
- */
-
-// Snapshot delay tracking: time when first frame was rendered in snapshot mode
-// Used to check if snapshot_delay has elapsed when connection is lost
-// Non-static so it can be accessed from main.c for monitoring
-
-/* ============================================================================
- * Multi-User Client State
- * ============================================================================ */
-
-/**
- * @brief Remote client information structure for multi-user client tracking
- *
- * Tracks information about other clients connected to the server. Used by
- * the client to maintain awareness of other participants in the chat session.
- *
- * CORE FIELDS:
- * ============
- * - client_id: Unique identifier for this remote client
- * - display_name: User-friendly display name for the client
- * - is_active: Whether this client is currently active (sending video/audio)
- * - last_seen: Timestamp when this client was last seen (for timeout detection)
- *
- * USAGE:
- * ======
- * The client maintains an array of remote_client_info_t structures to track
- * all other clients. This information is used for:
- * - Multi-user display coordination
- * - Client list display
- * - Connection state awareness
- * - Timeout detection
- *
- * @note The client_id matches the server's assigned client identifier.
- * @note display_name is received from server in CLIENT_JOIN packets.
- * @note is_active indicates whether client is sending media (video/audio).
- * @note last_seen is updated when receiving packets from this client.
- *
- * @ingroup client_protocol
- */
-typedef struct {
-  /** @brief Unique client identifier assigned by server */
-  uint32_t client_id;
-  /** @brief User-friendly display name (null-terminated) */
-  char display_name[MAX_DISPLAY_NAME_LEN];
-  /** @brief Whether client is currently active (sending video/audio) */
-  bool is_active;
-  /** @brief Timestamp when client was last seen (for timeout detection) */
-  time_t last_seen;
-} remote_client_info_t;
-
-/* ============================================================================
- * Protocol Validation and Error Handling
- * ============================================================================ */
-
-/**
- * @brief Disconnect from server due to bad/invalid packet data
- *
- * Closes the connection when the server sends malformed or invalid packets.
- * This provides client-side protocol enforcement, matching the server's
- * disconnect_client_for_bad_data behavior.
- *
- * @param format Printf-style format string for error details
- * @param ... Arguments for format string
- *
- * @ingroup client_protocol
- */
-static void disconnect_server_for_bad_data(client_connection_t *connection, const char *format, ...) {
-  va_list args;
-  va_start(args, format);
-
-  char message[BUFFER_SIZE_SMALL];
-  safe_vsnprintf(message, sizeof(message), format, args);
-  va_end(args);
-
-  log_error("Server sent invalid data - disconnecting: %s", message);
-
-  // Close the server connection
-  server_connection_shutdown(connection);
-  server_connection_lost(connection);
-}
-
-/* ============================================================================
- * Packet Handler Functions
- * ============================================================================ */
-
-/**
- * @brief Decode frame data, handling both compressed and uncompressed formats
- *
- * Wrapper around shared packet_decode_frame_data_malloc() utility function.
- * Consolidates decompression/copy logic with unified size validation and error handling.
- * Allocates buffer and returns decoded frame data, or NULL on error.
- *
- * @param frame_data_ptr Pointer to compressed or uncompressed frame data
- * @param frame_data_len Size of frame_data_ptr in bytes
- * @param is_compressed True if data is zstd-compressed
- * @param original_size Expected decompressed size
- * @param compressed_size Expected compressed size (used for validation when compressed)
- * @return Allocated frame buffer (caller must SAFE_FREE) or NULL on error
- *
- * @see packet_decode_frame_data_malloc() For shared implementation
- * @ingroup client_protocol
- */
-static char *decode_frame_data(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
-                               uint32_t original_size, uint32_t compressed_size) {
-  return packet_decode_frame_data_malloc(frame_data_ptr, frame_data_len, is_compressed, original_size, compressed_size);
-}
-
-/**
- * @brief Handle incoming ASCII frame packet from server
- *
- * Processes unified ASCII frame packets that contain both header information
- * and frame data. Supports optional zstd compression with integrity verification.
- * Manages frame display timing for snapshot mode and console clearing logic.
- *
- * Frame Processing Pipeline:
- * 1. Header extraction and network byte order conversion
- * 2. Compression detection and decompression if needed
- * 3. CRC32 integrity verification of frame data
- * 4. Frame dimension change detection and logging
- * 5. Snapshot mode timing and exit logic
- * 6. Console clearing coordination with multi-client state
- * 7. Frame rendering through display subsystem
- *
- * @param data Raw packet data starting with ascii_frame_packet_t header
- * @param len Total packet length including header and frame data
- *
- * @ingroup client_protocol
- */
-static void handle_ascii_frame_packet(client_connection_t *connection, const void *data, size_t len) {
+static void handle_ascii_frame_packet(client_connection_t *connection, const ascii_frame_packet_t *frame_header,
+                                      const char *frame_data) {
+  ascii_frame_packet_t header = *frame_header;
   fflush(stdout);
 
-  connection->receive_frame_count++;
-  if (connection->receive_frame_count == 1) {
-  }
-
-  if (should_exit()) {
+  if (should_exit())
     return;
-  }
-
-  if (!data || len < sizeof(ascii_frame_packet_t)) {
-    disconnect_server_for_bad_data(connection, "ASCII_FRAME payload too small: %zu (min %zu)", len,
-                                   sizeof(ascii_frame_packet_t));
-    return;
-  }
 
   // FPS tracking for received ASCII frames using reusable tracker utility
 
@@ -308,45 +72,6 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const voi
 
   // Track this frame and detect lag
   fps_frame_ns(&connection->frame_fps_tracker, time_get_ns(), "ASCII frame");
-
-  // Extract header from the packet
-  ascii_frame_packet_t header;
-  memcpy(&header, data, sizeof(ascii_frame_packet_t));
-
-  // Convert from network byte order
-  header.width = NET_TO_HOST_U32(header.width);
-  header.height = NET_TO_HOST_U32(header.height);
-  header.original_size = NET_TO_HOST_U32(header.original_size);
-  header.compressed_size = NET_TO_HOST_U32(header.compressed_size);
-  header.checksum = NET_TO_HOST_U32(header.checksum);
-  header.flags = NET_TO_HOST_U32(header.flags);
-
-  // Get the frame data (starts after the header)
-  const char *frame_data_ptr = (const char *)data + sizeof(ascii_frame_packet_t);
-  size_t frame_data_len = len - sizeof(ascii_frame_packet_t);
-
-  // Decode frame data (handles both compressed and uncompressed)
-  bool is_compressed = (header.flags & FRAME_FLAG_IS_COMPRESSED) && header.compressed_size > 0;
-  char *frame_data =
-      decode_frame_data(frame_data_ptr, frame_data_len, is_compressed, header.original_size, header.compressed_size);
-  if (!frame_data) {
-    return; // Error already logged by decode_frame_data
-  }
-
-  // Verify checksum
-  uint32_t actual_crc = asciichat_crc32(frame_data, header.original_size);
-  if (actual_crc != header.checksum) {
-    log_error("Frame checksum mismatch: got 0x%x, expected 0x%x (size=%u, first_bytes=%02x%02x%02x%02x)", actual_crc,
-              header.checksum, header.original_size, (unsigned char)frame_data[0], (unsigned char)frame_data[1],
-              (unsigned char)frame_data[2], (unsigned char)frame_data[3]);
-
-    // DEBUG: Try software CRC32 to compare
-    uint32_t sw_crc = asciichat_crc32_sw(frame_data, header.original_size);
-    log_error("Software CRC32: 0x%x (matches: %s)", sw_crc, (sw_crc == header.checksum) ? "YES" : "NO");
-
-    SAFE_FREE(frame_data);
-    return;
-  }
 
   // Track frame dimension changes
 
@@ -414,23 +139,20 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const voi
     log_set_terminal_output(false);
     display_full_reset();
     connection->frame_first_frame_rendered = true;
-    connection->server_state_initialized = true;        // Mark as initialized
-    connection->should_clear_before_next_frame = false; // Clear any pending clear request
+    connection->protocol.server_state_initialized = true; // Mark as initialized
+    connection->protocol.layout_changed = false;          // Clear any pending clear request
     log_debug("CLIENT_DISPLAY: Display cleared, ready for ASCII frames");
-  } else if (connection->should_clear_before_next_frame) {
+  } else if (connection->protocol.layout_changed) {
     // Subsequent clear request from server (e.g., after client list changes)
     log_debug("CLIENT_DISPLAY: Clearing display for layout change");
     log_set_terminal_output(false);
     display_full_reset();
-    connection->should_clear_before_next_frame = false;
+    connection->protocol.layout_changed = false;
   }
 
   // Safety check before rendering
   if (!frame_data || header.original_size == 0) {
     log_error("Invalid frame data for rendering: frame_data=%p, size=%u", frame_data, header.original_size);
-    if (frame_data) {
-      SAFE_FREE(frame_data);
-    }
     return;
   }
 
@@ -447,247 +169,6 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const voi
             strlen(frame_data));
   display_render_frame(connection, frame_data);
   log_debug("🎬 DISPLAY_RENDER_RETURNED: frame was rendered");
-
-  SAFE_FREE(frame_data);
-}
-
-/**
- * @brief Handle incoming audio packet from server
- *
- * Processes audio sample packets and queues them for playback. Extracts
- * float samples from packet payload and passes them to the audio subsystem
- * for jitter-buffered playback.
- *
- * @param data Packet payload containing float audio samples
- * @param len Total packet length in bytes
- *
- * @ingroup client_protocol
- */
-static void handle_audio_packet(client_connection_t *connection, const void *data, size_t len) {
-  if (!data || len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio packet data");
-    return;
-  }
-
-  if (!GET_OPTION(audio_enabled)) {
-    log_warn_every(NS_PER_MS_INT, "Received audio packet but audio is disabled");
-    return;
-  }
-
-  int num_samples = (int)(len / sizeof(float));
-  if (num_samples > AUDIO_SAMPLES_PER_PACKET) {
-    log_warn("Audio packet too large: %d samples", num_samples);
-    return;
-  }
-
-  // Copy data to properly aligned buffer to avoid UndefinedBehaviorSanitizer errors
-  float samples[AUDIO_SAMPLES_PER_PACKET];
-  SAFE_MEMCPY(samples, sizeof(samples), data, len);
-
-  // Process audio through audio subsystem
-  audio_process_received_samples(connection, samples, num_samples);
-
-#ifdef DEBUG_AUDIO
-  log_debug("Processed %d audio samples", num_samples);
-#endif
-}
-
-/**
- * @brief Handle incoming Opus-encoded audio packet from server
- *
- * Decodes single Opus-encoded audio frame and processes for playback.
- * Opus provides ~98% bandwidth reduction compared to raw PCM.
- *
- * @param data Packet payload containing Opus-encoded audio
- * @param len Total packet length in bytes
- *
- * @ingroup client_protocol
- */
-static void handle_audio_opus_packet(client_connection_t *connection, const void *data, size_t len) {
-  START_TIMER("audio_packet_total");
-
-  // Validate parameters
-  if (!data || len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio opus packet: data=%p, len=%zu", data, len);
-    return;
-  }
-
-  if (!GET_OPTION(audio_enabled)) {
-    log_warn_every(NS_PER_MS_INT, "Received opus audio packet but audio is disabled");
-    return;
-  }
-
-  // Data is raw Opus-encoded frame (no header parsing needed)
-  const uint8_t *opus_data = (const uint8_t *)data;
-
-  // Opus max frame size is 2880 samples (120ms @ 48kHz)
-  float samples[2880];
-
-  START_TIMER("opus_decode");
-  int decoded_samples = audio_decode_opus(connection, opus_data, len, samples, 2880);
-  double decode_ns = STOP_TIMER("opus_decode");
-
-  if (decoded_samples <= 0) {
-    log_warn("Failed to decode Opus audio packet, decoded=%d", decoded_samples);
-    return;
-  }
-
-  // Track received packet for analysis
-  if (GET_OPTION(audio_analysis_enabled)) {
-    audio_analysis_track_received_packet(len);
-  }
-
-  // Process decoded audio through audio subsystem
-  START_TIMER("process_samples");
-  audio_process_received_samples(connection, samples, decoded_samples);
-  double process_ns = STOP_TIMER("process_samples");
-
-  double total_ns = STOP_TIMER("audio_packet_total");
-
-  int timing_count = ++connection->audio_timing_count;
-  if (timing_count % 100 == 0) {
-    char decode_str[32], process_str[32], total_str[32];
-    time_pretty((uint64_t)decode_ns, -1, decode_str, sizeof(decode_str));
-    time_pretty((uint64_t)process_ns, -1, process_str, sizeof(process_str));
-    time_pretty((uint64_t)total_ns, -1, total_str, sizeof(total_str));
-    log_debug("Audio packet timing #%d: decode=%s, process=%s, total=%s", timing_count, decode_str, process_str,
-              total_str);
-  }
-
-  log_debug_every(LOG_RATE_DEFAULT, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples,
-                  len);
-}
-
-/**
- * @brief Handle incoming Opus batch packet from server
- *
- * Processes batched Opus-encoded audio packets for efficiency.
- * Each batch contains multiple Opus frames.
- *
- * Batch packet format (from av_send_audio_opus_batch):
- * - Offset 0: sample_rate (uint32_t, network byte order)
- * - Offset 4: frame_duration (uint32_t, network byte order)
- * - Offset 8: frame_count (uint32_t, network byte order)
- * - Offset 12: reserved (4 bytes)
- * - Offset 16: frame_sizes array (uint16_t * frame_count, network byte order)
- * - After frame_sizes: Opus encoded data
- *
- * @param data Packet payload containing Opus batch header + Opus frames
- * @param len Total packet length in bytes
- *
- * @ingroup client_protocol
- */
-static void handle_audio_opus_batch_packet(client_connection_t *connection, const void *data, size_t len) {
-  // Validate parameters
-  if (!data || len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid opus batch packet: data=%p, len=%zu", data, len);
-    return;
-  }
-
-  // DEBUG: Log first 12 bytes of received Opus batch header
-  if (len >= 12) {
-    const uint8_t *bytes = (const uint8_t *)data;
-    log_info("OPUS_BATCH_RECV_DEBUG: first_bytes=[%02x %02x %02x %02x][%02x %02x %02x %02x][%02x %02x %02x %02x]",
-             bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9],
-             bytes[10], bytes[11]);
-
-    // Parse header manually to check values
-    uint32_t sr, fd, fc;
-    memcpy(&sr, bytes, 4);
-    memcpy(&fd, bytes + 4, 4);
-    memcpy(&fc, bytes + 8, 4);
-    log_info("OPUS_BATCH_RECV_PARSED: sample_rate(net)=0x%08x frame_duration(net)=0x%08x frame_count(net)=0x%08x", sr,
-             fd, fc);
-    log_info("OPUS_BATCH_RECV_PARSED: sample_rate=%u frame_duration=%u frame_count=%u", NET_TO_HOST_U32(sr),
-             NET_TO_HOST_U32(fd), NET_TO_HOST_U32(fc));
-  }
-
-  if (!GET_OPTION(audio_enabled)) {
-    log_warn_every(NS_PER_MS_INT, "Received opus batch packet but audio is disabled");
-    return;
-  }
-
-  // Parse batch header using av_receive_audio_opus_batch() for consistency
-  const uint8_t *opus_data = NULL;
-  size_t opus_size = 0;
-  const uint16_t *frame_sizes = NULL;
-  int sample_rate = 0;
-  int frame_duration = 0;
-  int frame_count = 0;
-
-  asciichat_error_t result = packet_parse_opus_batch(data, len, &opus_data, &opus_size, &frame_sizes, &sample_rate,
-                                                     &frame_duration, &frame_count);
-
-  if (result != ASCIICHAT_OK) {
-    log_warn("Failed to parse Opus batch packet");
-    return;
-  }
-
-  if (frame_count <= 0 || frame_count > 256 || opus_size == 0) {
-    log_warn("Invalid Opus batch: frame_count=%d, opus_size=%zu", frame_count, opus_size);
-    return;
-  }
-
-  // Calculate samples per frame
-  int samples_per_frame = (sample_rate * frame_duration) / 1000;
-  if (samples_per_frame <= 0 || samples_per_frame > 2880) {
-    log_warn("Invalid Opus frame parameters: samples_per_frame=%d", samples_per_frame);
-    return;
-  }
-
-  // Allocate buffer for all decoded samples
-  size_t max_decoded_samples = (size_t)samples_per_frame * (size_t)frame_count;
-  float *all_samples = SAFE_MALLOC(max_decoded_samples * sizeof(float), float *);
-  if (!all_samples) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for Opus batch decoding");
-    return;
-  }
-
-  // Decode each Opus frame using frame_sizes array
-  int total_decoded_samples = 0;
-  size_t opus_offset = 0;
-
-  for (int i = 0; i < frame_count; i++) {
-    // Get frame size (convert from network byte order)
-    size_t frame_size = (size_t)NET_TO_HOST_U16(frame_sizes[i]);
-
-    if (opus_offset + frame_size > opus_size) {
-      log_warn("Opus batch truncated at frame %d (offset=%zu, frame_size=%zu, total=%zu)", i, opus_offset, frame_size,
-               opus_size);
-      break;
-    }
-
-    // Decode frame through audio pipeline
-    float *frame_buffer = all_samples + total_decoded_samples;
-    int remaining_space = (int)(max_decoded_samples - (size_t)total_decoded_samples);
-    int decoded = audio_decode_opus(connection, opus_data + opus_offset, frame_size, frame_buffer, remaining_space);
-
-    if (decoded <= 0) {
-      log_warn("Concealing invalid Opus frame %d in batch", i);
-      decoded = audio_decode_opus(connection, NULL, 0, frame_buffer, samples_per_frame);
-      if (decoded <= 0)
-        break;
-    }
-
-    total_decoded_samples += decoded;
-    opus_offset += frame_size;
-  }
-
-  if (total_decoded_samples > 0) {
-    // Track received packet for analysis
-    if (GET_OPTION(audio_analysis_enabled)) {
-      audio_analysis_track_received_packet(len);
-    }
-
-    // Process decoded audio through audio subsystem
-    audio_process_received_samples(connection, all_samples, total_decoded_samples);
-
-    log_debug_every(LOG_RATE_DEFAULT, "Processed Opus batch: %d decoded samples from %d frames", total_decoded_samples,
-                    frame_count);
-  }
-
-  // Clean up
-  SAFE_FREE(all_samples);
 }
 
 static bool handle_error_message_packet(client_connection_t *connection, const void *data, size_t len) {
@@ -748,44 +229,36 @@ static void handle_remote_log_packet(const void *data, size_t len) {
   }
 }
 
-/**
- * @brief Handle incoming server state packet
- *
- * Processes server state updates including active client count and console
- * clear coordination. Manages multi-client state tracking and terminal
- * synchronization.
- *
- * @param data Packet payload (must be server_state_packet_t)
- * @param len Total packet length in bytes
- *
- * @ingroup client_protocol
- */
-static void handle_server_state_packet(client_connection_t *connection, const void *data, size_t len) {
-  if (!data || len != sizeof(server_state_packet_t)) {
-    log_error("Invalid server state packet size: %zu", len);
-    return;
-  }
+static asciichat_error_t client_present_frame(const ascii_frame_packet_t *header, const char *text, void *context) {
+  handle_ascii_frame_packet(context, header, text);
+  return ASCIICHAT_OK;
+}
 
-  const server_state_packet_t *state = (const server_state_packet_t *)data;
+static asciichat_error_t client_play_samples(const float *samples, size_t count, void *context) {
+  if (GET_OPTION(audio_enabled))
+    audio_process_received_samples(context, samples, (int)count);
+  return ASCIICHAT_OK;
+}
 
-  // Convert from network byte order
-  uint32_t active_count = NET_TO_HOST_U32(state->active_client_count);
+static asciichat_error_t client_decode_opus(const void *data, size_t length, float *samples, size_t capacity,
+                                            size_t *decoded, void *context) {
+  *decoded = 0;
+  if (!GET_OPTION(audio_enabled))
+    return ASCIICHAT_OK;
+  int count = audio_decode_opus(context, data, length, samples, (int)capacity);
+  // The audio pipeline provides packet-loss concealment for corrupt frames.
+  if (count <= 0)
+    count = audio_decode_opus(context, NULL, 0, samples, (int)capacity);
+  if (count <= 0)
+    return SET_ERRNO(ERROR_AUDIO, "Failed to decode participant Opus audio");
+  *decoded = (size_t)count;
+  return ASCIICHAT_OK;
+}
 
-  // Check if connected count changed - if so, set flag to clear console before next frame
-  if (connection->server_state_initialized) {
-    if (connection->last_active_count != active_count) {
-      log_debug("Active client count changed from %u to %u - will clear console before next frame",
-                connection->last_active_count, active_count);
-      connection->should_clear_before_next_frame = true;
-    }
-  } else {
-    // First state packet received
-    connection->server_state_initialized = true;
-    // Clear terminal before the very first frame
-    connection->should_clear_before_next_frame = true;
-  }
-
-  connection->last_active_count = active_count;
+static void client_track_audio(size_t length, void *context) {
+  (void)context;
+  if (GET_OPTION(audio_enabled) && GET_OPTION(audio_analysis_enabled))
+    audio_analysis_track_received_packet(length);
 }
 
 /* ============================================================================
@@ -793,13 +266,6 @@ static void handle_server_state_packet(client_connection_t *connection, const vo
  * ============================================================================ */
 
 // Forward declarations for ACIP callbacks (implemented after this section)
-static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *frame_data, size_t data_len, void *ctx);
-static void acip_on_audio(const void *audio_data, size_t audio_len, void *ctx);
-static void acip_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples,
-                                void *ctx);
-static void acip_on_audio_opus(const void *opus_data, size_t opus_len, void *ctx);
-static void acip_on_audio_opus_batch(const void *batch_data, size_t batch_len, void *ctx);
-static void acip_on_server_state(const server_state_packet_t *state, void *ctx);
 static void acip_on_error(const error_packet_t *header, const char *message, void *ctx);
 static void acip_on_remote_log(const remote_log_packet_t *header, const char *message, void *ctx);
 static void acip_on_ping(void *ctx);
@@ -817,19 +283,7 @@ static void acip_on_crypto_auth_failed(packet_type_t type, const void *payload, 
 static void acip_on_crypto_handshake_complete(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
 static void acip_on_crypto_parameters(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
 
-/**
- * @brief Global ACIP client callbacks structure
- *
- * Handles all ACIP packet types including crypto rekey protocol.
- * Integrates with existing client-side packet handlers.
- */
 static const acip_client_callbacks_t g_acip_client_callbacks = {
-    .on_ascii_frame = acip_on_ascii_frame,
-    .on_audio = acip_on_audio,
-    .on_audio_batch = acip_on_audio_batch,
-    .on_audio_opus = acip_on_audio_opus,
-    .on_audio_opus_batch = acip_on_audio_opus_batch,
-    .on_server_state = acip_on_server_state,
     .on_error = acip_on_error,
     .on_remote_log = acip_on_remote_log,
     .on_ping = acip_on_ping,
@@ -852,32 +306,6 @@ static const acip_client_callbacks_t g_acip_client_callbacks = {
  * Data Reception Thread
  * ============================================================================ */
 
-/**
- * @brief Data reception thread function
- *
- * Implements the core packet reception loop that continuously reads packets
- * from the server connection and dispatches them to appropriate handlers.
- * Manages connection health monitoring and graceful thread termination.
- *
- * Reception Loop:
- * 1. Check global shutdown flags and connection status
- * 2. Call receive_packet() to read next packet from socket
- * 3. Handle connection errors and socket closure events
- * 4. Dispatch packet to type-specific handler based on packet type
- * 5. Manage buffer cleanup and memory leak prevention
- * 6. Continue until shutdown or connection failure
- *
- * Error Handling:
- * - Network errors trigger connection loss signaling
- * - Protocol errors are logged but processing continues
- * - Resource errors handled with graceful degradation
- * - Buffer cleanup performed on all exit paths
- *
- * @param arg Thread argument (unused)
- * @return NULL on thread exit
- *
- * @ingroup client_protocol
- */
 static void *data_reception_thread_func(void *arg) {
   client_connection_t *connection = arg;
 
@@ -887,8 +315,6 @@ static void *data_reception_thread_func(void *arg) {
   log_debug("[FRAME_RECV_LOOP] Thread lifecycle tracking enabled");
 #endif
 
-  acip_client_callbacks_t callbacks = g_acip_client_callbacks;
-  callbacks.app_ctx = connection;
   int packet_count = 0;
   while (!should_exit() && server_connection_is_active(connection)) {
     // Main loop: receive and process packets while connection is active
@@ -923,7 +349,7 @@ static void *data_reception_thread_func(void *arg) {
     // Instead of blocking indefinitely waiting for a packet,
     // we timeout quickly so main thread can continue rendering
     asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
-    asciichat_error_t acip_result = acip_client_receive_and_dispatch(transport, &callbacks);
+    asciichat_error_t acip_result = session_protocol_receive(&connection->protocol);
     if (packet_count == 0) {
     }
 
@@ -1041,25 +467,18 @@ static void *data_reception_thread_func(void *arg) {
  * Public Interface Functions
  * ============================================================================ */
 
-/**
- * Start protocol connection handling
- *
- * Initializes protocol state and starts the data reception thread.
- * Must be called after successful server connection establishment.
- *
- * @return 0 on success, negative on error
- *
- * @ingroup client_protocol
- */
-int protocol_start_connection(client_connection_t *connection) {
+asciichat_error_t client_protocol_start(client_connection_t *connection) {
   log_warn("[FRAME_RECV_INIT] 🟢 PROTOCOL_START: Starting client protocol initialization");
 
-  // Reset protocol state for new connection
-  connection->server_state_initialized = false;
-  connection->last_active_count = 0;
-  connection->should_clear_before_next_frame = false;
-
-  log_info("[FRAME_RECV_INIT] ✅ STATE_RESET: server_initialized=false, active_count=0, clear_flag=false");
+  acip_client_callbacks_t control = g_acip_client_callbacks;
+  control.app_ctx = connection;
+  session_protocol_init(&connection->protocol, server_connection_get_transport(connection),
+                        (session_protocol_media_t){.on_frame = client_present_frame,
+                                                   .on_samples = client_play_samples,
+                                                   .decode_opus = client_decode_opus,
+                                                   .on_audio_packet = client_track_audio,
+                                                   .context = connection},
+                        control);
 
   // Reset display state for new connection
   display_reset_for_new_connection(connection);
@@ -1081,10 +500,10 @@ int protocol_start_connection(client_connection_t *connection) {
                           "data_reception") != ASCIICHAT_OK) {
       log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
       LOG_ERRNO_IF_SET("Data reception thread creation failed");
-      return -1;
+      return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
     }
     if (client_connection_checkpoint("receive") != ASCIICHAT_OK)
-      return -1;
+      return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
     log_debug("[FRAME_RECV_INIT] WS: Data thread spawned, waiting for crypto handshake");
   }
 
@@ -1095,7 +514,7 @@ int protocol_start_connection(client_connection_t *connection) {
       connection, (int)terminal_get_effective_width(), (int)terminal_get_effective_height());
   if (cap_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send terminal size capabilities");
-    return -1;
+    return cap_result;
   }
 
   // Send STREAM_START packet with combined stream types
@@ -1108,7 +527,7 @@ int protocol_start_connection(client_connection_t *connection) {
   asciichat_error_t stream_result = threaded_send_stream_start_packet(connection, stream_types);
   if (stream_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send stream start");
-    return -1;
+    return stream_result;
   }
 
   // Start data reception thread (TCP only - WS already started it above for crypto)
@@ -1119,27 +538,27 @@ int protocol_start_connection(client_connection_t *connection) {
                           "data_reception") != ASCIICHAT_OK) {
       log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
       LOG_ERRNO_IF_SET("Data reception thread creation failed");
-      return -1;
+      return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
     }
   }
 
   if (client_connection_checkpoint("receive") != ASCIICHAT_OK)
-    return -1;
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
 
   // Start webcam capture thread
   log_debug("Starting webcam capture thread...");
   if (capture_start_thread(connection) != 0) {
     log_error("Failed to start webcam capture thread");
-    return -1;
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
   }
   log_debug("Webcam capture thread started successfully");
   if (client_connection_checkpoint("capture") != ASCIICHAT_OK)
-    return -1;
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
 
   if (audio_connection_init(connection) != ASCIICHAT_OK)
-    return -1;
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
   if (client_connection_checkpoint("audio-pipeline") != ASCIICHAT_OK)
-    return -1;
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
 
   // Start local media audio only after the connection succeeds. Starting the
   // worker during client initialization would consume file audio while dialing.
@@ -1148,51 +567,44 @@ int protocol_start_connection(client_connection_t *connection) {
     audio_context->capture_media_source = session_capture_get_media_source(connection->capture_context);
     if (audio_start_duplex(audio_context) != ASCIICHAT_OK) {
       log_error("Failed to start full-duplex audio");
-      return -1;
+      return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
     }
   }
 
   if (client_connection_checkpoint("audio-duplex") != ASCIICHAT_OK)
-    return -1;
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
 
   // Initialize audio sender thread BEFORE starting audio capture
   // This ensures sender is ready when capture thread starts queueing packets
   // Must happen after connection succeeds to prevent deadlock if connection fails
   if (audio_sender_init(connection) != ASCIICHAT_OK)
-    return -1;
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
 
   // Start audio capture thread if audio is enabled
   log_debug("Starting audio capture thread...");
   if (audio_start_thread(connection) != 0) {
     log_error("Failed to start audio capture thread");
-    return -1;
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
   }
   log_debug("Audio capture thread started successfully (or skipped if audio disabled)");
 
   if (client_connection_checkpoint("audio-capture") != ASCIICHAT_OK)
-    return -1;
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
 
   // Start keepalive/ping thread to prevent server timeout
   log_debug("Starting keepalive/ping thread...");
   if (keepalive_start_thread(connection) != 0) {
     log_error("Failed to start keepalive/ping thread");
-    return -1;
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
   }
   log_debug("Keepalive/ping thread started successfully");
 
   if (client_connection_checkpoint("keepalive") != ASCIICHAT_OK)
-    return -1;
-  return 0;
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
+  return ASCIICHAT_OK;
 }
 
-/**
- * Check if connection has been lost
- *
- * @return true if protocol detected connection loss, false otherwise
- *
- * @ingroup client_protocol
- */
-bool protocol_connection_lost(client_connection_t *connection) {
+bool client_protocol_connection_lost(client_connection_t *connection) {
   return atomic_load_bool(&connection->data_thread_exited) || server_connection_is_lost(connection);
 }
 
@@ -1200,107 +612,6 @@ bool protocol_connection_lost(client_connection_t *connection) {
  * ACIP Callback Implementations
  * ============================================================================ */
 
-/**
- * @brief ACIP callback for ASCII frame packets
- *
- * Wraps handle_ascii_frame_packet() to integrate with ACIP handler system.
- */
-static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *frame_data, size_t data_len,
-                                void *ctx) {
-  client_connection_t *connection = ctx;
-  (void)ctx;
-
-  log_info("[FRAME_RECV_CALLBACK] 🎬 FRAME_RECEIVED: width=%u, height=%u, data_len=%zu bytes, flags=0x%x",
-           header->width, header->height, data_len, header->flags);
-
-  // Reconstruct full packet for existing handler (header + data)
-  // IMPORTANT: header is already in HOST byte order from ACIP layer,
-  // but handle_ascii_frame_packet() expects NETWORK byte order and does conversion.
-  // So we need to convert back to network order before passing.
-  size_t total_len = sizeof(*header) + data_len;
-  log_debug("[FRAME_RECV_CALLBACK] 📦 FRAME_SIZE: header=%zu + data=%zu = total=%zu", sizeof(*header), data_len,
-            total_len);
-
-  uint8_t *packet = SAFE_MALLOC(total_len, uint8_t *);
-  if (!packet) {
-    log_error("[FRAME_RECV_CALLBACK] ❌ ALLOC_FAILED: cannot allocate %zu bytes for frame", total_len);
-    return;
-  }
-
-  log_debug("[FRAME_RECV_CALLBACK] ✅ BUFFER_ALLOCATED: packet=%p, capacity=%zu", (void *)packet, total_len);
-
-  // Convert header fields back to network byte order for handle_ascii_frame_packet()
-  ascii_frame_packet_t net_header = *header;
-  net_header.width = HOST_TO_NET_U32(header->width);
-  net_header.height = HOST_TO_NET_U32(header->height);
-  net_header.original_size = HOST_TO_NET_U32(header->original_size);
-  net_header.compressed_size = HOST_TO_NET_U32(header->compressed_size);
-  net_header.checksum = HOST_TO_NET_U32(header->checksum);
-  net_header.flags = HOST_TO_NET_U32(header->flags);
-
-  log_debug("[FRAME_RECV_CALLBACK] 🔄 BYTE_ORDER_CONVERSION: converting header to network byte order");
-
-  memcpy(packet, &net_header, sizeof(net_header));
-  memcpy(packet + sizeof(net_header), frame_data, data_len);
-
-  log_info("[FRAME_RECV_CALLBACK] 📥 FRAME_DISPATCH: calling handle_ascii_frame_packet() with %zu bytes", total_len);
-  handle_ascii_frame_packet(connection, packet, total_len);
-  log_info("[FRAME_RECV_CALLBACK] ✅ FRAME_DISPATCH_COMPLETE: frame processing finished");
-
-  SAFE_FREE(packet);
-  log_debug("[FRAME_RECV_CALLBACK] 🗑️  BUFFER_FREED: frame callback cleanup complete");
-}
-
-/**
- * @brief ACIP callback for audio batch packets
- */
-static void acip_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples,
-                                void *ctx) {
-  client_connection_t *connection = ctx;
-  (void)ctx;
-  (void)header;
-
-  if (!GET_OPTION(audio_enabled)) {
-    return;
-  }
-
-  // Process samples directly (already dequantized by ACIP handler)
-  audio_process_received_samples(connection, (float *)samples, (int)num_samples);
-
-  if (GET_OPTION(audio_analysis_enabled)) {
-    // Approximate packet size for analysis
-    size_t approx_size = sizeof(*header) + (num_samples * sizeof(uint32_t));
-    audio_analysis_track_received_packet(approx_size);
-  }
-
-  log_debug_every(LOG_RATE_DEFAULT, "Processed audio batch: %zu samples from server", num_samples);
-}
-
-/**
- * @brief ACIP callback for Opus audio packets
- */
-static void acip_on_audio_opus(const void *opus_data, size_t opus_len, void *ctx) {
-  client_connection_t *connection = ctx;
-  (void)ctx;
-
-  // Call existing handler directly
-  handle_audio_opus_packet(connection, opus_data, opus_len);
-}
-
-/**
- * @brief ACIP callback for server state packets
- */
-static void acip_on_server_state(const server_state_packet_t *state, void *ctx) {
-  client_connection_t *connection = ctx;
-  (void)ctx;
-
-  // Call existing handler directly
-  handle_server_state_packet(connection, state, sizeof(*state));
-}
-
-/**
- * @brief ACIP callback for error packets
- */
 static void acip_on_error(const error_packet_t *header, const char *message, void *ctx) {
   client_connection_t *connection = ctx;
   (void)ctx;
@@ -1325,9 +636,6 @@ static void acip_on_error(const error_packet_t *header, const char *message, voi
   SAFE_FREE(packet);
 }
 
-/**
- * @brief ACIP callback for ping packets
- */
 static void acip_on_ping(void *ctx) {
   client_connection_t *connection = ctx;
   (void)ctx;
@@ -1338,31 +646,6 @@ static void acip_on_ping(void *ctx) {
   }
 }
 
-/**
- * @brief ACIP callback for raw audio packets
- */
-static void acip_on_audio(const void *audio_data, size_t audio_len, void *ctx) {
-  client_connection_t *connection = ctx;
-  (void)ctx;
-
-  // Call existing handler directly
-  handle_audio_packet(connection, audio_data, audio_len);
-}
-
-/**
- * @brief ACIP callback for Opus batch packets
- */
-static void acip_on_audio_opus_batch(const void *batch_data, size_t batch_len, void *ctx) {
-  client_connection_t *connection = ctx;
-  (void)ctx;
-
-  // Call existing handler directly
-  handle_audio_opus_batch_packet(connection, batch_data, batch_len);
-}
-
-/**
- * @brief ACIP callback for remote log packets
- */
 static void acip_on_remote_log(const remote_log_packet_t *header, const char *message, void *ctx) {
   (void)ctx;
 
@@ -1384,17 +667,11 @@ static void acip_on_remote_log(const remote_log_packet_t *header, const char *me
   SAFE_FREE(packet);
 }
 
-/**
- * @brief ACIP callback for pong packets
- */
 static void acip_on_pong(void *ctx) {
   (void)ctx;
   // Pong received - no action needed (server acknowledged our ping)
 }
 
-/**
- * @brief ACIP callback for console clear packets
- */
 static void acip_on_clear_console(void *ctx) {
   (void)ctx;
 
@@ -1403,9 +680,6 @@ static void acip_on_clear_console(void *ctx) {
   log_debug("Console cleared by server");
 }
 
-/**
- * @brief ACIP callback for crypto rekey request packets
- */
 static void acip_on_crypto_rekey_request(const void *payload, size_t payload_len, void *ctx) {
   client_connection_t *connection = ctx;
   (void)ctx;
@@ -1424,9 +698,6 @@ static void acip_on_crypto_rekey_request(const void *payload, size_t payload_len
   }
 }
 
-/**
- * @brief ACIP callback for crypto rekey response packets
- */
 static void acip_on_crypto_rekey_response(const void *payload, size_t payload_len, void *ctx) {
   client_connection_t *connection = ctx;
   (void)ctx;
@@ -1445,16 +716,6 @@ static void acip_on_crypto_rekey_response(const void *payload, size_t payload_le
   }
 }
 
-/**
- * @brief ACIP callback for WebRTC SDP offer/answer packets
- *
- * Routes incoming SDP signaling messages to the peer manager for processing.
- * Called when ACDS relays SDP from another session participant.
- *
- * @param sdp SDP packet (header + variable SDP data)
- * @param total_len Total length of the SDP packet
- * @param ctx Application context (unused)
- */
 static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx) {
   (void)ctx;
   (void)total_len; // Peer manager reads variable data via pointer arithmetic
@@ -1478,16 +739,6 @@ static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, v
   }
 }
 
-/**
- * @brief ACIP callback for WebRTC ICE candidate packets
- *
- * Routes incoming ICE candidates to the peer manager for processing.
- * Called when ACDS relays ICE candidates from another session participant.
- *
- * @param ice ICE packet (header + variable candidate/mid data)
- * @param total_len Total length of the ICE packet
- * @param ctx Application context (unused)
- */
 static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, void *ctx) {
   (void)ctx;
   (void)total_len; // Peer manager reads variable data via pointer arithmetic
@@ -1508,26 +759,6 @@ static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, v
   }
 }
 
-/**
- * @brief Handle ACDS SESSION_JOINED response (Phase 3 WebRTC integration)
- *
- * Called when server responds to ACDS session join request.
- * Validates join success and stores session context for WebRTC handshake.
- *
- * Flow:
- * 1. Check if join succeeded
- * 2. If failed, log error and return (connection will timeout and fallback)
- * 3. If successful:
- *    - Store session context (session_id, participant_id)
- *    - Check session_type (DIRECT_TCP or WEBRTC)
- *    - For WEBRTC: signal WebRTC initialization with TURN credentials
- *    - For DIRECT_TCP: continue with existing TCP flow
- *
- * @param joined SESSION_JOINED response from ACDS
- * @param ctx Application context (unused for now)
- *
- * @ingroup client_protocol
- */
 static void acip_on_session_joined(const acip_session_joined_t *joined, void *ctx) {
   (void)ctx; // Unused for now, may be used in future for context passing
 
@@ -1560,19 +791,6 @@ static void acip_on_session_joined(const acip_session_joined_t *joined, void *ct
   }
 }
 
-/**
- * @brief Handle CRYPTO_KEY_EXCHANGE_INIT from server (start handshake)
- *
- * Server sent its public key, we respond with ours and derive shared secret.
- * This is step 1 of the crypto handshake protocol.
- *
- * @param type Packet type (should be PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT)
- * @param payload Server's public key packet
- * @param payload_len Payload length
- * @param ctx Application context (unused)
- *
- * @ingroup client_protocol
- */
 static void acip_on_crypto_key_exchange_init(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
   client_connection_t *connection = ctx;
 
@@ -1594,19 +812,6 @@ static void acip_on_crypto_key_exchange_init(packet_type_t type, const void *pay
   }
 }
 
-/**
- * @brief Handle CRYPTO_AUTH_CHALLENGE from server (authenticate)
- *
- * Server sent authentication challenge, we respond with proof of identity.
- * This is step 2 of the crypto handshake protocol.
- *
- * @param type Packet type (should be PACKET_TYPE_CRYPTO_AUTH_CHALLENGE)
- * @param payload Server's auth challenge packet
- * @param payload_len Payload length
- * @param ctx Application context (unused)
- *
- * @ingroup client_protocol
- */
 static void acip_on_crypto_auth_challenge(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
   client_connection_t *connection = ctx;
 
@@ -1628,19 +833,6 @@ static void acip_on_crypto_auth_challenge(packet_type_t type, const void *payloa
   }
 }
 
-/**
- * @brief Handle CRYPTO_SERVER_AUTH_RESP from server (mutual authentication)
- *
- * Server proved its identity, we verify and complete handshake.
- * This is step 3 of the crypto handshake protocol (mutual auth mode).
- *
- * @param type Packet type (should be PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP)
- * @param payload Server's auth response packet
- * @param payload_len Payload length
- * @param ctx Application context (unused)
- *
- * @ingroup client_protocol
- */
 static void acip_on_crypto_server_auth_resp(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
   client_connection_t *connection = ctx;
 
@@ -1665,19 +857,6 @@ static void acip_on_crypto_server_auth_resp(packet_type_t type, const void *payl
   }
 }
 
-/**
- * @brief Handle CRYPTO_AUTH_FAILED from server (authentication failed)
- *
- * Server rejected our authentication credentials.
- * Connection cannot proceed - disconnect.
- *
- * @param type Packet type (should be PACKET_TYPE_CRYPTO_AUTH_FAILED)
- * @param payload Error message (optional)
- * @param payload_len Payload length
- * @param ctx Application context (unused)
- *
- * @ingroup client_protocol
- */
 static void acip_on_crypto_auth_failed(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
   client_connection_t *connection = ctx;
   (void)ctx;
@@ -1697,19 +876,6 @@ static void acip_on_crypto_auth_failed(packet_type_t type, const void *payload, 
   server_connection_lost(connection);
 }
 
-/**
- * @brief Handle CRYPTO_HANDSHAKE_COMPLETE from server (handshake success)
- *
- * Server confirmed handshake completion, encryption is now active.
- * This is the final step in simple (non-mutual-auth) handshake mode.
- *
- * @param type Packet type (should be PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE)
- * @param payload Confirmation data (optional)
- * @param payload_len Payload length
- * @param ctx Application context (unused)
- *
- * @ingroup client_protocol
- */
 static void acip_on_crypto_handshake_complete(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
   client_connection_t *connection = ctx;
 
@@ -1734,13 +900,6 @@ static void acip_on_crypto_handshake_complete(packet_type_t type, const void *pa
   }
 }
 
-/**
- * @brief Handle CRYPTO_PARAMETERS from server (algorithm negotiation)
- *
- * Server sent its selected crypto algorithms and key sizes.
- * Must be processed before KEY_EXCHANGE_INIT arrives so that the handshake
- * context knows the expected packet sizes.
- */
 static void acip_on_crypto_parameters(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
   client_connection_t *connection = ctx;
   (void)type;

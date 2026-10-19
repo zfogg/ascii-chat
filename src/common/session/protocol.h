@@ -1,0 +1,35 @@
+#pragma once
+
+#include <ascii-chat/network/acip/client.h>
+
+/* Callbacks borrow decoded buffers for the duration of the call. Device and UI
+ * ownership remain with the mode; one receive worker owns this protocol state. */
+typedef struct {
+  asciichat_error_t (*on_frame)(const ascii_frame_packet_t *header, const char *text, void *context);
+  asciichat_error_t (*on_samples)(const float *samples, size_t count, void *context);
+  asciichat_error_t (*decode_opus)(const void *data, size_t length, float *samples, size_t capacity, size_t *decoded,
+                                   void *context);
+  void (*on_audio_packet)(size_t length, void *context);
+  void *context;
+} session_protocol_media_t;
+
+typedef struct {
+  acip_transport_t *transport; // Borrowed until the receive worker joins.
+  session_protocol_media_t media;
+  acip_client_callbacks_t control;
+  asciichat_error_t callback_result;
+  uint64_t packets_received;
+  uint64_t frames_received;
+  uint64_t audio_packets_received;
+  uint32_t active_client_count;
+  bool server_state_initialized;
+  bool layout_changed;
+} session_protocol_t;
+
+void session_protocol_init(session_protocol_t *protocol, acip_transport_t *transport, session_protocol_media_t media,
+                           acip_client_callbacks_t control);
+/* Dispatch borrows its payload. Receive releases the packet allocation on every path.
+ * Timeouts/incomplete reads are returned to the caller for its scheduling policy. */
+asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet_type_t type, const void *payload,
+                                            size_t length);
+asciichat_error_t session_protocol_receive(session_protocol_t *protocol);

@@ -22,6 +22,27 @@ The module is used by all display modes:
 
 ## Architecture
 
+### Participant protocol
+
+`protocol.c` and `protocol.h` provide the participant protocol used by native client
+mode and the discovery WebRTC receiver. Each receive worker has its own
+`session_protocol_t`: packet/frame/audio counters, server participant count, and
+pending layout state. The protocol borrows its transport until the worker joins.
+
+The ACIP receive layer validates packet envelopes and decrypts them before the
+session protocol dispatches media and control messages. Shared media handling
+validates and decompresses ASCII frames, checks frame CRCs, dequantizes PCM, and
+validates Opus batch boundaries before decoding. Decoded buffers are borrowed only
+for the duration of a callback; a mode that defers presentation must copy them.
+Callback failures propagate through the receive result, and packet allocations
+are released on success and failure.
+
+`src/client/protocol_adapter.c` retains client worker startup, snapshot/display
+effects, and crypto/control callbacks. Discovery retains negotiation, host
+migration, audio-device effects, and newest-frame presentation. Both call
+`session_protocol_receive()`; neither implements its own media packet parser.
+Mirror mode does not use this network protocol.
+
 ### Core Components
 
 ```

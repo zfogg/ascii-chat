@@ -2,7 +2,7 @@
 #include "server.h"
 #include "audio.h"
 #include "crypto.h"
-#include "protocol.h"
+#include "protocol_adapter.h"
 #include "../main.h"
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/network/acip/transport.h>
@@ -135,8 +135,9 @@ asciichat_error_t client_connection_start(client_connection_t *connection, const
   result = client_connection_checkpoint("transport");
   if (result != ASCIICHAT_OK)
     return result;
-  if (protocol_start_connection(connection) != 0)
-    return ERROR_NETWORK;
+  result = client_protocol_start(connection);
+  if (result != ASCIICHAT_OK)
+    return result;
   if (atomic_load_bool(&connection->stop_requested))
     return SET_ERRNO(ERROR_NETWORK, "Connection stopped during startup");
   result = session_connection_start(&connection->lifecycle);

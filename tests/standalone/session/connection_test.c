@@ -161,9 +161,12 @@ static void count_interrupt(acip_transport_t *transport) {
   ++*count;
 }
 
+void test_session_protocol(void);
+
 int main(void) {
   log_init(NULL, LOG_DEBUG, false, false);
   log_set_terminal_output(true);
+  test_session_protocol();
   webrtc_interrupt_test();
   int interrupted[2] = {0};
   const acip_transport_methods_t dispatch_methods = {.interrupt = count_interrupt};

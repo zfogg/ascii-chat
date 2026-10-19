@@ -70,7 +70,7 @@
 #include "main.h"
 #include "../main.h" // Global exit API
 #include "server.h"
-#include "protocol.h"
+#include "protocol_adapter.h"
 #include "crypto.h"
 #include "display.h"
 #include "capture.h"
@@ -389,7 +389,7 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
       }
     }
 #endif
-    if (protocol_connection_lost(connection)) {
+    if (client_protocol_connection_lost(connection)) {
       log_debug("Connection lost detected");
       break;
     }

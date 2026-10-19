@@ -1,6 +1,7 @@
 #pragma once
 #include "connection.h"
 #include "session/connection.h"
+#include "session/protocol.h"
 #include "session/capture.h"
 #include "session/display.h"
 #include <ascii-chat/audio/audio.h>
@@ -34,9 +35,7 @@ struct client_connection {
   session_display_ctx_t *display_context;
   audio_context_t *audio_context;
   atomic_t display_first_frame;
-  int receive_frame_count;
   int audio_receive_count;
-  int audio_timing_count;
   fps_t frame_fps_tracker;
   bool frame_fps_tracker_initialized;
   uint32_t frame_last_width;
@@ -64,9 +63,7 @@ struct client_connection {
   atomic_t data_thread_exited;
   atomic_t frames_rendered;
   atomic_t snapshot_first_frame_time_ns;
-  uint32_t last_active_count;
-  bool server_state_initialized;
-  bool should_clear_before_next_frame;
+  session_protocol_t protocol;
   bool capture_thread_created;
   atomic_t capture_thread_exited;
   bool audio_capture_thread_created;
