@@ -24,6 +24,7 @@ typedef struct {
   asciichat_thread_t thread;
   bool thread_started;
   bool queued_receive;
+  acip_transport_t *destroy_on_close;
   cond_t received;
   packet_decoder_t decoder;
   async_packet_t *head, *tail;
@@ -326,9 +327,12 @@ static void client_closed(void *arg, asciichat_error_t reason) {
   tcp->stream = NULL;
   cond_broadcast(&tcp->received);
   platform_event_loop_t *loop = tcp->loop;
+  acip_transport_t *destroy_on_close = tcp->destroy_on_close;
   mutex_unlock(&tcp->mutex);
   if (loop)
     platform_event_loop_stop(loop);
+  if (destroy_on_close)
+    acip_transport_destroy(destroy_on_close);
 }
 static void client_tick(void *arg) {
   async_tcp_t *tcp = arg;
@@ -387,7 +391,11 @@ acip_transport_t *acip_async_tcp_accepted_create(platform_event_stream_t *stream
   }
   tcp->queued_receive = true;
   asciichat_error_t result = platform_event_stream_start(stream, client_read, client_closed, tcp);
-  if (result != ASCIICHAT_OK)
+  if (result != ASCIICHAT_OK) {
+    // The stream retains its callbacks on startup failure; release their state after close completes.
+    tcp->destroy_on_close = transport;
     platform_event_stream_close(stream, result);
+    return NULL;
+  }
   return transport;
 }
