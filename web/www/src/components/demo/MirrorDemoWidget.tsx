@@ -15,14 +15,18 @@ import {
   setMatrixRain,
   setWaveform,
   setFft,
-  renderAnalyserAudioVisualization,
+  renderAudioVisualization,
+  submitAudioVisualizationSamples,
   setTargetFps,
   ColorMode,
   ColorFilter,
   RenderMode,
 } from "@ascii-chat/shared/wasm";
 import type { EmscriptenModuleFactory } from "@ascii-chat/shared/wasm";
-import { useCanvasCapture } from "@ascii-chat/shared/hooks";
+import {
+  captureVisualizationAudio,
+  useCanvasCapture,
+} from "@ascii-chat/shared/hooks";
 import {
   Heading,
   AsciiRenderer,
@@ -144,7 +148,8 @@ export default function MirrorDemoWidget({
   const sourceRef = useRef<MediaSource>(null);
   const frameCountRef = useRef(0);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const audioAnalyserRef = useRef<AnalyserNode | null>(null);
+  const audioInputRef = useRef<GainNode | null>(null);
+  const disposeAudioCaptureRef = useRef<(() => void) | null>(null);
   const mediaElementSourceRef = useRef<MediaElementAudioSourceNode | null>(
     null,
   );
@@ -295,17 +300,32 @@ export default function MirrorDemoWidget({
     }
   }, [initWasm, stop, applySelectedOption, termDims]);
 
-  const ensureAudioAnalyzer = useCallback(async (playThrough: boolean) => {
+  const ensureAudioCapture = useCallback(async (playThrough: boolean) => {
     let audioContext = audioContextRef.current;
     if (!audioContext) {
       audioContext = new AudioContext({ sampleRate: 48000 });
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 2048;
-      analyser.smoothingTimeConstant = 0.72;
+      const analyser = audioContext.createGain();
+      disposeAudioCaptureRef.current = captureVisualizationAudio(
+        audioContext,
+        analyser,
+        (samples) => {
+          const source = sourceRef.current;
+          if (
+            !isWasmReady() ||
+            !source ||
+            (source === MediaSourceType.FILE && videoRef.current?.paused)
+          )
+            return;
+          submitAudioVisualizationSamples(
+            samples,
+            source === MediaSourceType.MICROPHONE ? "microphone" : "media",
+          );
+        },
+      );
       audioContextRef.current = audioContext;
-      audioAnalyserRef.current = analyser;
+      audioInputRef.current = analyser;
     }
-    const analyser = audioAnalyserRef.current!;
+    const analyser = audioInputRef.current!;
     if (playThrough && !audioOutputConnectedRef.current) {
       analyser.connect(audioContext.destination);
       audioOutputConnectedRef.current = true;
@@ -319,14 +339,14 @@ export default function MirrorDemoWidget({
   const startAudioAnalysis = useCallback(async () => {
     const video = videoRef.current;
     if (!video) throw new Error("Demo video is not ready");
-    await ensureAudioAnalyzer(true);
+    await ensureAudioCapture(true);
     if (!mediaElementSourceRef.current) {
       const mediaSource =
         audioContextRef.current!.createMediaElementSource(video);
-      mediaSource.connect(audioAnalyserRef.current!);
+      mediaSource.connect(audioInputRef.current!);
       mediaElementSourceRef.current = mediaSource;
     }
-  }, [ensureAudioAnalyzer]);
+  }, [ensureAudioCapture]);
 
   const startMicrophone = useCallback(async () => {
     stop();
@@ -342,10 +362,10 @@ export default function MirrorDemoWidget({
         video: false,
       });
       streamRef.current = stream;
-      await ensureAudioAnalyzer(false);
+      await ensureAudioCapture(false);
       microphoneSourceRef.current =
         audioContextRef.current!.createMediaStreamSource(stream);
-      microphoneSourceRef.current.connect(audioAnalyserRef.current!);
+      microphoneSourceRef.current.connect(audioInputRef.current!);
       applySelectedOption(false);
       if (termDims.cols > 0 && termDims.rows > 0) {
         setDimensions(termDims.cols, termDims.rows);
@@ -361,7 +381,7 @@ export default function MirrorDemoWidget({
     } finally {
       setLoading(false);
     }
-  }, [stop, initWasm, ensureAudioAnalyzer, applySelectedOption, termDims]);
+  }, [stop, initWasm, ensureAudioCapture, applySelectedOption, termDims]);
 
   const startDemo = useCallback(async () => {
     stop();
@@ -473,15 +493,15 @@ export default function MirrorDemoWidget({
       if (selectedOption?.settings.waveform || selectedOption?.settings.fft) {
         if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
         frameIntervalRef.current = setInterval(() => {
-          const analyser = audioAnalyserRef.current;
+          const analyser = audioInputRef.current;
           const renderer = rendererRef.current;
           if (!analyser || !renderer || !isWasmReady()) return;
           try {
             const dims = termDimsRef.current;
-            const frame = renderAnalyserAudioVisualization(
-              analyser,
+            const frame = renderAudioVisualization(
               dims.cols,
               dims.rows,
+              "media",
             );
             if (frame) renderer.writeFrame(frame);
           } catch (error) {
@@ -602,15 +622,14 @@ export default function MirrorDemoWidget({
         return;
 
       if (selectedOption?.settings.waveform || selectedOption?.settings.fft) {
-        const analyser = audioAnalyserRef.current;
+        const analyser = audioInputRef.current;
         if (analyser) {
           const audioSource =
             source === MediaSourceType.MICROPHONE ? "microphone" : "media";
-          const audioFrame = renderAnalyserAudioVisualization(
-            analyser,
+          const audioFrame = renderAudioVisualization(
             termDims.cols,
             termDims.rows,
-            { source: audioSource },
+            audioSource,
           );
           if (audioFrame) rendererRef.current.writeFrame(audioFrame);
           return;
@@ -689,9 +708,11 @@ export default function MirrorDemoWidget({
     const stopFn = stop;
     return () => {
       stopFn();
+      disposeAudioCaptureRef.current?.();
+      disposeAudioCaptureRef.current = null;
       void audioContextRef.current?.close();
       audioContextRef.current = null;
-      audioAnalyserRef.current = null;
+      audioInputRef.current = null;
       unregisterActiveDemo(stopFn);
       cleanupMirrorWasm();
     };
