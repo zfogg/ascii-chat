@@ -342,62 +342,61 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}pkg-config${ColorReset} files: libasciichat.pc, libasciichat-static.pc")
 endif()
 
-# Install CMake package config file (for find_package support)
-# Single file defines both ascii-chat::shared and ascii-chat::static targets
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    # Configure the single cmake config file
-    configure_file(
-        "${CMAKE_SOURCE_DIR}/lib/cmake/libasciichat.cmake.in"
-        "${CMAKE_BINARY_DIR}/lib/cmake/libasciichat.cmake"
-        @ONLY
-    )
-
-    install(FILES
-        "${CMAKE_BINARY_DIR}/lib/cmake/libasciichat.cmake"
-        DESTINATION lib/cmake/ascii-chat
-        COMPONENT Development
-    )
-
-    message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}CMake${ColorReset} package config installation")
+# Install discoverable, relocatable CMake configs for both public package names.
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    "${CMAKE_SOURCE_DIR}/lib/cmake/libasciichat.cmake.in"
+    "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config.cmake"
+    INSTALL_DESTINATION lib/cmake/ascii-chat)
+configure_file("${CMAKE_SOURCE_DIR}/lib/cmake/asciichatConfig.cmake.in"
+    "${CMAKE_BINARY_DIR}/lib/cmake/asciichatConfig.cmake" @ONLY)
+if(ASCIICHAT_LIB_VERSION_MAJOR EQUAL 0)
+    set(_sdk_compatibility SameMinorVersion)
+else()
+    set(_sdk_compatibility SameMajorVersion)
 endif()
+write_basic_package_version_file("${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config-version.cmake"
+    VERSION "${ASCIICHAT_LIB_VERSION}" COMPATIBILITY ${_sdk_compatibility})
+install(FILES "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config.cmake"
+    "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config-version.cmake"
+    DESTINATION lib/cmake/ascii-chat COMPONENT Development)
+# Retain the old direct-include filename.
+install(FILES "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config.cmake"
+    DESTINATION lib/cmake/ascii-chat RENAME libasciichat.cmake COMPONENT Development)
+install(FILES "${CMAKE_BINARY_DIR}/lib/cmake/asciichatConfig.cmake"
+    DESTINATION lib/cmake/asciichat COMPONENT Development)
+install(FILES "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config-version.cmake"
+    DESTINATION lib/cmake/asciichat RENAME asciichatConfigVersion.cmake COMPONENT Development)
 
-# Remove mimalloc files from installation - it's statically linked so not needed
-# This CODE block runs during "cmake --install" after mimalloc is installed
-install(CODE "
-    message(STATUS \"Removing mimalloc files from installation...\")
-    message(STATUS \"  Install prefix: \${CMAKE_INSTALL_PREFIX}\")
-
-    # Check what exists before removal
-    if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/include/mimalloc-2.1\")
-        message(STATUS \"  Found mimalloc headers at: \${CMAKE_INSTALL_PREFIX}/include/mimalloc-2.1\")
-        file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/include/mimalloc-2.1\")
-    else()
-        message(STATUS \"  No mimalloc headers found\")
+# Include the selected small source-built libraries when no installed package
+# exists, rather than pointing SDK consumers back into this build tree.
+set(_sdk_dependency_targets)
+foreach(_dependency IN LISTS VTERM_LDFLAGS UTF8PROC_LIBRARIES MIMALLOC_LIBRARIES)
+    if(TARGET "${_dependency}")
+        get_target_property(_alias "${_dependency}" ALIASED_TARGET)
+        if(_alias)
+            set(_dependency "${_alias}")
+        endif()
+        get_target_property(_imported "${_dependency}" IMPORTED)
+        get_target_property(_type "${_dependency}" TYPE)
+        if(NOT _imported AND _type MATCHES "^(STATIC_LIBRARY|SHARED_LIBRARY)$")
+            list(APPEND _sdk_dependency_targets "${_dependency}")
+        endif()
     endif()
-
-    if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/lib/mimalloc-2.1\")
-        message(STATUS \"  Found mimalloc libs at: \${CMAKE_INSTALL_PREFIX}/lib/mimalloc-2.1\")
-        file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/lib/mimalloc-2.1\")
-    else()
-        message(STATUS \"  No mimalloc libs found\")
-    endif()
-
-    if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/lib/cmake/mimalloc-2.1\")
-        message(STATUS \"  Found mimalloc cmake at: \${CMAKE_INSTALL_PREFIX}/lib/cmake/mimalloc-2.1\")
-        file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/lib/cmake/mimalloc-2.1\")
-    else()
-        message(STATUS \"  No mimalloc cmake found\")
-    endif()
-
-    if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/mimalloc.pc\")
-        message(STATUS \"  Found mimalloc pkgconfig at: \${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/mimalloc.pc\")
-        file(REMOVE \"\${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/mimalloc.pc\")
-    else()
-        message(STATUS \"  No mimalloc pkgconfig found\")
-    endif()
-
-    message(STATUS \"Finished removing mimalloc files from installation\")
-" COMPONENT Development)
+endforeach()
+list(REMOVE_DUPLICATES _sdk_dependency_targets)
+if(_sdk_dependency_targets)
+    install(TARGETS ${_sdk_dependency_targets}
+        ARCHIVE DESTINATION lib COMPONENT Development
+        LIBRARY DESTINATION lib COMPONENT Development
+        RUNTIME DESTINATION bin COMPONENT Development
+        PUBLIC_HEADER DESTINATION include COMPONENT Development)
+endif()
+if(WIN32 AND TARGET ascii-chat-shared)
+    install(TARGETS ascii-chat-shared
+        ARCHIVE DESTINATION lib COMPONENT Development
+        RUNTIME DESTINATION bin COMPONENT Development OPTIONAL)
+endif()
 
 # =============================================================================
 # Install dependency DLLs on Windows (for dynamic builds only)

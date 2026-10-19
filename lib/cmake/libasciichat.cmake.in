@@ -1,233 +1,144 @@
-# ascii-chat CMake Package Config
-#
-# Usage:
-#   find_package(ascii-chat REQUIRED)
-#   target_link_libraries(your-target PRIVATE ascii-chat::shared)  # dynamic
-#   target_link_libraries(your-target PRIVATE ascii-chat::static)  # static
-#
-# Targets:
-#   ascii-chat::shared - Shared library
-#   ascii-chat::static - Static library
-#
-# Required dependencies (install via package manager):
-#   libsodium, zstd, portaudio, opus, pcre2, sqlite3, openssl,
-#   freetype, fontconfig, ffmpeg, libwebsockets, miniupnpc
-#
-# Optional dependencies:
-#   mimalloc (used if built with USE_MIMALLOC=@USE_MIMALLOC@)
-#
-# Bundled in libasciichat.a (not required to install):
-#   BearSSL, yyjson, WebRTC AEC3, libdatachannel
+@PACKAGE_INIT@
 
-cmake_minimum_required(VERSION 3.16)
+# Both package spellings expose the same imported targets. Components let a
+# shared-only consumer avoid resolving the static library's link dependencies.
+include(CMakeFindDependencyMacro)
+set(_asciichat_prefix "${PACKAGE_PREFIX_DIR}")
+set(_asciichat_include "${_asciichat_prefix}/include;${_asciichat_prefix}/include/ascii-chat")
+set(_asciichat_archive "${_asciichat_prefix}/lib/libasciichat.a")
+if(WIN32)
+    set(_asciichat_shared "${_asciichat_prefix}/bin/asciichat.dll")
+    set(_asciichat_implib "${_asciichat_prefix}/lib/asciichat.lib")
+else()
+    set(_asciichat_shared "${_asciichat_prefix}/lib/libasciichat@CMAKE_SHARED_LIBRARY_SUFFIX@")
+endif()
 
-# Compute install prefix from this file's location
-# Config is installed to lib/cmake/ascii-chat/ascii-chat-config.cmake
-get_filename_component(_IMPORT_PREFIX "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
+set(ascii-chat_VERSION "@ASCIICHAT_LIB_VERSION@")
+set(ascii-chat_PROJECT_VERSION "@PROJECT_VERSION@")
+set(ascii-chat_MSVC_RUNTIME_LIBRARY "@CMAKE_MSVC_RUNTIME_LIBRARY@")
+set(ascii-chat_INCLUDE_DIRS "${_asciichat_include}")
+set(ascii-chat_FOUND TRUE)
+set(ascii-chat_static_FOUND FALSE)
+set(ascii-chat_shared_FOUND FALSE)
+if(EXISTS "${_asciichat_archive}")
+    set(ascii-chat_static_FOUND TRUE)
+endif()
+if(EXISTS "${_asciichat_shared}" AND (NOT WIN32 OR EXISTS "${_asciichat_implib}"))
+    set(ascii-chat_shared_FOUND TRUE)
+endif()
+set(_asciichat_components "${ascii-chat_FIND_COMPONENTS}")
+if(NOT _asciichat_components)
+    foreach(_variant shared static)
+        if(ascii-chat_${_variant}_FOUND)
+            list(APPEND _asciichat_components "${_variant}")
+        endif()
+    endforeach()
+endif()
+if(NOT _asciichat_components)
+    set(ascii-chat_FOUND FALSE)
+    set(ascii-chat_NOT_FOUND_MESSAGE "No ascii-chat library artifacts were installed. Build static-lib and/or shared-lib before installing Development.")
+    return()
+endif()
+check_required_components(ascii-chat)
+if(NOT ascii-chat_FOUND)
+    set(ascii-chat_NOT_FOUND_MESSAGE "A requested ascii-chat library component is not installed: ${ascii-chat_FIND_COMPONENTS}")
+    return()
+endif()
 
-set(_INCLUDE_DIRS "${_IMPORT_PREFIX}/include/ascii-chat")
-
-# =============================================================================
-# ascii-chat::shared - Dynamic library
-# =============================================================================
-# Shared library consumers don't need transitive dependencies
-# (they are embedded in the dylib)
-if(NOT TARGET ascii-chat::shared)
+if("shared" IN_LIST _asciichat_components AND ascii-chat_shared_FOUND AND NOT TARGET ascii-chat::shared)
     add_library(ascii-chat::shared SHARED IMPORTED)
     set_target_properties(ascii-chat::shared PROPERTIES
-        IMPORTED_LOCATION "${_IMPORT_PREFIX}/lib/libasciichat@CMAKE_SHARED_LIBRARY_SUFFIX@"
-        IMPORTED_SONAME "libasciichat@CMAKE_SHARED_LIBRARY_SUFFIX@"
-        VERSION "@ASCIICHAT_LIB_VERSION@"
-        SOVERSION "@ASCIICHAT_LIB_VERSION_MAJOR@"
-        INTERFACE_INCLUDE_DIRECTORIES "${_INCLUDE_DIRS}"
-    )
-    # No INTERFACE_LINK_LIBRARIES — all deps are embedded in the dylib
+        IMPORTED_LOCATION "${_asciichat_shared}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_include}")
+    if(WIN32)
+        set_property(TARGET ascii-chat::shared PROPERTY IMPORTED_IMPLIB "${_asciichat_implib}")
+    endif()
 endif()
 
-# =============================================================================
-# ascii-chat::static - Static library
-# =============================================================================
-# Bundled: BearSSL, yyjson, WebRTC AEC3, libdatachannel (baked into the archive)
-# Required: libsodium, zstd, portaudio, opus, pcre2, sqlite3, libwebsockets,
-#           openssl, freetype, fontconfig, ffmpeg, miniupnpc
-# Optional: mimalloc (if built with USE_MIMALLOC)
-if(NOT TARGET ascii-chat::static)
+if("static" IN_LIST _asciichat_components AND ascii-chat_static_FOUND AND NOT TARGET ascii-chat::static)
+    find_dependency(PkgConfig)
+    find_dependency(OpenSSL)
+    find_dependency(Freetype)
+    find_dependency(ZLIB)
+    set(_asciichat_deps OpenSSL::SSL OpenSSL::Crypto Freetype::Freetype ZLIB::ZLIB)
+    foreach(_module libsodium libzstd portaudio-2.0 opus libpcre2-8 sqlite3 libwebsockets libuv
+            libavformat libavcodec libavutil libswscale libswresample miniupnpc)
+        string(MAKE_C_IDENTIFIER "${_module}" _id)
+        pkg_check_modules(_asciichat_${_id} REQUIRED IMPORTED_TARGET "${_module}")
+        list(APPEND _asciichat_deps PkgConfig::_asciichat_${_id})
+    endforeach()
+    if(WIN32)
+        # vcpkg's FFTW pkg-config file includes Unix -lm; its CMake target
+        # supplies the actual Windows runtime dependencies.
+        find_dependency(FFTW3 CONFIG)
+        list(APPEND _asciichat_deps FFTW3::fftw3)
+    else()
+        pkg_check_modules(_asciichat_fftw REQUIRED IMPORTED_TARGET fftw3)
+        list(APPEND _asciichat_deps PkgConfig::_asciichat_fftw)
+        pkg_check_modules(_asciichat_fontconfig REQUIRED IMPORTED_TARGET fontconfig)
+        list(APPEND _asciichat_deps PkgConfig::_asciichat_fontconfig)
+    endif()
+    foreach(_module vterm utf8proc)
+        find_library(_asciichat_bundled_${_module} NAMES ${_module}
+            PATHS "${_asciichat_prefix}/lib" NO_DEFAULT_PATH NO_CACHE)
+        if(_asciichat_bundled_${_module})
+            list(APPEND _asciichat_deps "${_asciichat_bundled_${_module}}")
+        else()
+            if(_module STREQUAL utf8proc)
+                set(_pc_module libutf8proc)
+            else()
+                set(_pc_module vterm)
+            endif()
+            pkg_check_modules(_asciichat_${_module} REQUIRED IMPORTED_TARGET "${_pc_module}")
+            list(APPEND _asciichat_deps PkgConfig::_asciichat_${_module})
+        endif()
+    endforeach()
+    if(@USE_MIMALLOC@)
+        find_library(_asciichat_bundled_mimalloc NAMES mimalloc-static mimalloc
+            PATHS "${_asciichat_prefix}/lib" NO_DEFAULT_PATH NO_CACHE)
+        if(_asciichat_bundled_mimalloc)
+            list(APPEND _asciichat_deps "${_asciichat_bundled_mimalloc}")
+        else()
+            find_dependency(mimalloc CONFIG)
+            if(@ASCIICHAT_SHARED_DEPS@ AND TARGET mimalloc)
+                list(APPEND _asciichat_deps mimalloc)
+            elseif(TARGET mimalloc-static)
+                list(APPEND _asciichat_deps mimalloc-static)
+            else()
+                list(APPEND _asciichat_deps mimalloc)
+            endif()
+        endif()
+    endif()
+    find_dependency(Threads)
+    list(APPEND _asciichat_deps Threads::Threads)
+    if(APPLE)
+        foreach(_framework Foundation AVFoundation CoreMedia CoreVideo CoreAudio AudioUnit
+                AudioToolbox CoreServices IOKit)
+            list(APPEND _asciichat_deps "-framework ${_framework}")
+        endforeach()
+        list(APPEND _asciichat_deps m c++)
+    elseif(WIN32)
+        list(APPEND _asciichat_deps ws2_32 user32 advapi32 dbghelp mf mfplat mfreadwrite mfuuid
+            ole32 crypt32 winmm iphlpapi)
+    else()
+        list(APPEND _asciichat_deps m dl rt stdc++)
+    endif()
     add_library(ascii-chat::static STATIC IMPORTED)
     set_target_properties(ascii-chat::static PROPERTIES
-        IMPORTED_LOCATION "${_IMPORT_PREFIX}/lib/libasciichat.a"
-        VERSION "@ASCIICHAT_LIB_VERSION@"
-        INTERFACE_INCLUDE_DIRECTORIES "${_INCLUDE_DIRS}"
-        INTERFACE_COMPILE_OPTIONS "-fPIC"
-    )
-
-    # Core required dependencies (all platforms)
-    find_package(PkgConfig QUIET)
-    if(PkgConfig_FOUND)
-        # Core crypto, compression, and I/O
-        pkg_check_modules(_LIBSODIUM QUIET IMPORTED_TARGET libsodium)
-        pkg_check_modules(_ZSTD QUIET IMPORTED_TARGET libzstd)
-        pkg_check_modules(_PORTAUDIO QUIET IMPORTED_TARGET portaudio-2.0)
-        pkg_check_modules(_OPUS QUIET IMPORTED_TARGET opus)
-        pkg_check_modules(_PCRE2 QUIET IMPORTED_TARGET libpcre2-8)
-        pkg_check_modules(_SQLITE3 QUIET IMPORTED_TARGET sqlite3)
-        pkg_check_modules(_LWS QUIET IMPORTED_TARGET libwebsockets)
-        pkg_check_modules(_LIBUV REQUIRED IMPORTED_TARGET libuv)
-        set_property(TARGET ascii-chat::static APPEND PROPERTY
-            INTERFACE_LINK_LIBRARIES PkgConfig::_LIBUV)
-
-        # Optional: mimalloc (only if ascii-chat was built with it)
-        set(_ASCIICHAT_BUILT_WITH_MIMALLOC @USE_MIMALLOC@)
-        if(_ASCIICHAT_BUILT_WITH_MIMALLOC)
-            pkg_check_modules(_MIMALLOC QUIET IMPORTED_TARGET mimalloc)
-        endif()
-
-        # Media: FFmpeg components
-        pkg_check_modules(_FFMPEG_FORMAT QUIET IMPORTED_TARGET libavformat)
-        pkg_check_modules(_FFMPEG_CODEC QUIET IMPORTED_TARGET libavcodec)
-        pkg_check_modules(_FFMPEG_UTIL QUIET IMPORTED_TARGET libavutil)
-        pkg_check_modules(_FFMPEG_SWSCALE QUIET IMPORTED_TARGET libswscale)
-        pkg_check_modules(_FFMPEG_SWRESAMPLE QUIET IMPORTED_TARGET libswresample)
-
-        # Security and rendering
-        pkg_check_modules(_OPENSSL QUIET IMPORTED_TARGET openssl)
-        pkg_check_modules(_FREETYPE QUIET IMPORTED_TARGET freetype2)
-        pkg_check_modules(_MINIUPNPC QUIET IMPORTED_TARGET miniupnpc)
-        pkg_check_modules(_FONTCONFIG QUIET IMPORTED_TARGET fontconfig)
-        pkg_check_modules(_VTERM REQUIRED IMPORTED_TARGET vterm)
-
-        # Add all found libraries to INTERFACE_LINK_LIBRARIES
-        foreach(_dep
-            _LIBSODIUM _ZSTD _PORTAUDIO _OPUS _PCRE2 _SQLITE3 _LWS
-            _MIMALLOC
-            _FFMPEG_FORMAT _FFMPEG_CODEC _FFMPEG_UTIL _FFMPEG_SWSCALE _FFMPEG_SWRESAMPLE
-            _OPENSSL _FREETYPE _MINIUPNPC _FONTCONFIG _VTERM
-        )
-            if(${_dep}_FOUND)
-                set_property(TARGET ascii-chat::static APPEND PROPERTY
-                    INTERFACE_LINK_LIBRARIES PkgConfig::${_dep})
-            endif()
-        endforeach()
-    else()
-        # Fallback: try to find libraries without pkg-config
-        find_library(_LIBUV_LIB NAMES uv libuv uv_a REQUIRED)
-        set_property(TARGET ascii-chat::static APPEND PROPERTY
-            INTERFACE_LINK_LIBRARIES ${_LIBUV_LIB})
-        find_library(_LIBSODIUM_LIB sodium REQUIRED)
-        find_library(_ZSTD_LIB zstd REQUIRED)
-        find_library(_PORTAUDIO_LIB portaudio REQUIRED)
-        find_library(_OPUS_LIB opus REQUIRED)
-        find_library(_PCRE2_LIB pcre2-8 REQUIRED)
-        find_library(_SQLITE3_LIB sqlite3 REQUIRED)
-        find_library(_LWS_LIB websockets REQUIRED)
-        find_library(_VTERM_LIB vterm REQUIRED)
-
-        set_property(TARGET ascii-chat::static APPEND PROPERTY
-            INTERFACE_LINK_LIBRARIES ${_LIBSODIUM_LIB} ${_ZSTD_LIB} ${_PORTAUDIO_LIB}
-                ${_OPUS_LIB} ${_PCRE2_LIB} ${_SQLITE3_LIB} ${_LWS_LIB} ${_VTERM_LIB}
-        )
-
-        # Optional: mimalloc (only if ascii-chat was built with it)
-        set(_ASCIICHAT_BUILT_WITH_MIMALLOC @USE_MIMALLOC@)
-        if(_ASCIICHAT_BUILT_WITH_MIMALLOC)
-            find_library(_MIMALLOC_LIB mimalloc)
-            if(_MIMALLOC_LIB)
-                set_property(TARGET ascii-chat::static APPEND PROPERTY
-                    INTERFACE_LINK_LIBRARIES ${_MIMALLOC_LIB})
-            endif()
-        endif()
-
-        # FFmpeg
-        find_library(_AVFORMAT_LIB avformat)
-        find_library(_AVCODEC_LIB avcodec)
-        find_library(_AVUTIL_LIB avutil)
-        find_library(_SWSCALE_LIB swscale)
-        find_library(_SWRESAMPLE_LIB swresample)
-        if(_AVFORMAT_LIB AND _AVCODEC_LIB AND _AVUTIL_LIB AND _SWSCALE_LIB AND _SWRESAMPLE_LIB)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES ${_AVFORMAT_LIB} ${_AVCODEC_LIB} ${_AVUTIL_LIB}
-                    ${_SWSCALE_LIB} ${_SWRESAMPLE_LIB})
-        endif()
-
-        # OpenSSL
-        find_package(OpenSSL QUIET)
-        if(OPENSSL_FOUND)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
-        endif()
-
-        # FreeType
-        find_library(_FREETYPE_LIB freetype)
-        if(_FREETYPE_LIB)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES ${_FREETYPE_LIB})
-        endif()
-
-        # miniupnpc
-        find_library(_MINIUPNPC_LIB miniupnpc)
-        if(_MINIUPNPC_LIB)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES ${_MINIUPNPC_LIB})
-        endif()
-
-        # fontconfig
-        find_library(_FONTCONFIG_LIB fontconfig)
-        if(_FONTCONFIG_LIB)
-            set_property(TARGET ascii-chat::static APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES ${_FONTCONFIG_LIB})
-        endif()
-    endif()
-
-    # System libraries and threading
-    find_package(Threads QUIET)
-    if(Threads_FOUND)
-        set_property(TARGET ascii-chat::static APPEND PROPERTY
-            INTERFACE_LINK_LIBRARIES Threads::Threads)
-    endif()
-
-    # Platform-specific system libraries
-    if(APPLE)
-        set_property(TARGET ascii-chat::static APPEND PROPERTY
-            INTERFACE_LINK_LIBRARIES
-                "-framework Foundation"
-                "-framework AVFoundation"
-                "-framework CoreMedia"
-                "-framework CoreVideo"
-                "-framework CoreAudio"
-                "-framework AudioUnit"
-                "-framework AudioToolbox"
-                "-framework CoreServices"
-                "-framework IOKit"
-                m
-                c++
-        )
-    elseif(UNIX AND NOT APPLE)
-        set_property(TARGET ascii-chat::static APPEND PROPERTY
-            INTERFACE_LINK_LIBRARIES m dl rt stdc++)
-    elseif(WIN32)
-        set_property(TARGET ascii-chat::static APPEND PROPERTY
-            INTERFACE_LINK_LIBRARIES ws2_32 user32 advapi32 dbghelp mf mfplat
-                mfreadwrite mfuuid ole32 crypt32 winmm iphlpapi)
-    endif()
+        IMPORTED_LOCATION "${_asciichat_archive}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_include}"
+        INTERFACE_LINK_LIBRARIES "${_asciichat_deps}")
 endif()
 
-# Package info
-set(ascii-chat_FOUND TRUE)
-set(ascii-chat_VERSION "@PROJECT_VERSION@")
-set(ascii-chat_INCLUDE_DIRS ${_INCLUDE_DIRS})
-
-# Version compatibility checking
-if(DEFINED ascii-chat_FIND_VERSION)
-    if(ascii-chat_VERSION VERSION_LESS ascii-chat_FIND_VERSION)
-        set(ascii-chat_FOUND FALSE)
-        if(ascii-chat_FIND_REQUIRED)
-            message(FATAL_ERROR "ascii-chat version ${ascii-chat_VERSION} is less than required version ${ascii-chat_FIND_VERSION}")
-        endif()
+foreach(_variant shared static)
+    if(TARGET ascii-chat::${_variant} AND NOT TARGET asciichat::${_variant})
+        add_library(asciichat::${_variant} ALIAS ascii-chat::${_variant})
     endif()
-endif()
-
-unset(_IMPORT_PREFIX)
-unset(_INCLUDE_DIRS)
-
-if(NOT ascii-chat_FIND_QUIETLY)
-    message(STATUS "Found ascii-chat: ${ascii-chat_VERSION}")
+endforeach()
+if(NOT TARGET asciichat::asciichat)
+    if(TARGET ascii-chat::shared)
+        add_library(asciichat::asciichat ALIAS ascii-chat::shared)
+    elseif(TARGET ascii-chat::static)
+        add_library(asciichat::asciichat ALIAS ascii-chat::static)
+    endif()
 endif()

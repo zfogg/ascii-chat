@@ -43,3 +43,23 @@ libraries. Source dependencies use the same compiler/header settings through
 `MuslFlags.cmake`. Project C++ sources use those runtime headers as well.
 Use a fresh configuration when adopting the toolchain in a pre-existing musl
 build tree. A separate shared/glibc preset produces libraries for glibc hosts.
+
+## Installed SDK
+
+Build `static-lib` and/or `shared-lib`, then install the Development component.
+Both `find_package(asciichat CONFIG REQUIRED)` and
+`find_package(ascii-chat CONFIG REQUIRED)` are supported. The package version
+tracks the library ABI (`lib/v*`), independently of the executable's version.
+For the current 0.x ABI, version compatibility is restricted to the same minor.
+
+Use `COMPONENTS shared` or `COMPONENTS static` to require a particular variant.
+The targets are `asciichat::shared` and `asciichat::static`, with the existing
+`ascii-chat::*` spellings retained. `asciichat::asciichat` selects an available
+shared library first. A shared-only consumer does not resolve static link
+requirements. Static consumers need pkg-config and the required development
+packages; missing dependencies fail during configuration. Config files and
+selected source-built support libraries relocate with the installed prefix.
+
+Windows consumers can match the SDK's CRT with the target property
+`MSVC_RUNTIME_LIBRARY=${asciichat_MSVC_RUNTIME_LIBRARY}`. The installed-SDK
+smoke project demonstrates this without changing the consumer's global flags.
