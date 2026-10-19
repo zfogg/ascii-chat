@@ -1,4 +1,11 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useLayoutEffect, useEffect } from "react";
+
+import {
+  configureFaceFollow,
+  disposeFaceFollow,
+  drawFaceFollow,
+  type FaceFollowOptions,
+} from "../capture/faceFollow";
 
 /**
  * Hook for capturing video frames from a canvas
@@ -8,7 +15,19 @@ export function useCanvasCapture(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
   flipX = false,
+  faceOptions: FaceFollowOptions = {},
 ) {
+  const { faceFollow = false, faceFollowDebug = false } = faceOptions;
+  useLayoutEffect(() => {
+    if (canvasRef.current)
+      configureFaceFollow(canvasRef.current, { faceFollow, faceFollowDebug });
+  }, [canvasRef, faceFollow, faceFollowDebug]);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    return () => {
+      if (canvas) disposeFaceFollow(canvas);
+    };
+  }, [canvasRef]);
   const capturedDataRef = useRef<{
     data: Uint8Array;
     width: number;
@@ -81,10 +100,10 @@ export function useCanvasCapture(
             ctx.save();
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            drawFaceFollow(ctx, video, canvas);
             ctx.restore();
           } else {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            drawFaceFollow(ctx, video, canvas);
           }
         }
         // WebCodecs consumes the canvas directly; avoid a synchronous GPU

@@ -1047,6 +1047,8 @@ typedef struct options_state {
   int stats_interval;               ///< Periodic plain statistics on stdout; zero disables.
   int fps;                          ///< Target framerate (1-144, default: 60)
   bool fps_explicitly_set;          ///< True if FPS was explicitly configured by the user
+  bool face_follow;                 ///< Automatically frame and follow the selected face
+  bool face_follow_debug;           ///< Developer diagnostic face outline
   bool flip_x;                      ///< Flip video horizontally (X-axis). Ignored for webcam on macOS
   bool flip_y;                      ///< Flip video vertically (Y-axis)
 

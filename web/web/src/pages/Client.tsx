@@ -575,6 +575,7 @@ export function ClientPage({
     videoRef,
     canvasRef,
     settings.flipX ?? false,
+    settings,
   );
 
   // Use webcam stream hook
