@@ -7,8 +7,14 @@ if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     # Being used as a subdirectory - don't call project() again
 else()
     # Being used as a standalone project - initialize CMake
-    cmake_minimum_required(VERSION 3.28)
-    project(ascii-chat-wasm)
+    cmake_minimum_required(VERSION 3.30)
+    include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/install/Version.cmake")
+    version_detect()
+    project(ascii-chat-wasm VERSION ${PROJECT_VERSION_FROM_GIT})
+    if(NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_BUILD_TYPE Release CACHE STRING "WASM build type" FORCE)
+    endif()
+    version_setup_targets()
 
     # Include sanitizer configuration so apply_sanitizers_to_target() is available
     # Compute path to cmake/platform relative to this file location
@@ -41,6 +47,12 @@ if(NOT ASCIICHAT_DEPS_CACHE_ROOT)
     set(ASCIICHAT_DEPS_CACHE_ROOT "${_repo_root}/.deps-cache" CACHE PATH "Dependency cache root" FORCE)
 endif()
 
+# Standalone and parent-driven builds use the same build-local artifact layout.
+if(NOT WEB_DEPS_CACHE_DIR)
+    set(WEB_DEPS_CACHE_DIR "${CMAKE_BINARY_DIR}/_deps/legacy/${CMAKE_BUILD_TYPE}"
+        CACHE PATH "WASM dependency build/install cache" FORCE)
+endif()
+
 # Include all WASM dependency configuration files
 # Each file handles EMSCRIPTEN builds and sets output variables:
 # - FOO_LIBRARIES: libraries to link
@@ -66,6 +78,7 @@ set(DEPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../deps)
 # Include directories for library headers
 # IMPORTANT: WASM stubs must come FIRST to override native headers
 include_directories(
+    ${CMAKE_BINARY_DIR}/generated
     ${LIB_ROOT}/platform/wasm/stubs  # WASM stub headers (override native)
     ${INCLUDE_ROOT}
     ${LIB_ROOT}
@@ -389,6 +402,7 @@ endif()
 # Link dependencies using output variables from cmake/deps/*.cmake
 # These are set by Libsodium.cmake, PCRE2.cmake, Libvterm.cmake, etc.
 
+add_dependencies(wasm-common generate_version)
 target_link_libraries(wasm-common PRIVATE
     ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}

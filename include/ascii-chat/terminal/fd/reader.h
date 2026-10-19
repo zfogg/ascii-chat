@@ -29,8 +29,7 @@ typedef struct terminal_fd_reader_s terminal_fd_reader_t;
  *
  * Width is auto-detected from the first frame's line length.
  */
-asciichat_error_t terminal_fd_reader_create(int fd, int frame_height,
-                                            terminal_fd_reader_t **out);
+asciichat_error_t terminal_fd_reader_create(int fd, int frame_height, terminal_fd_reader_t **out);
 
 /**
  * @brief Read next frame from file descriptor

@@ -418,7 +418,6 @@ bool timer_is_initialized(void);
 // Time Formatting API
 // ============================================================================
 
-
 /**
  * @brief Format nanoseconds as pretty duration with spaces and configurable precision
  * @param nanoseconds Duration in nanoseconds

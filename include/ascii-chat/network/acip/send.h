@@ -200,4 +200,3 @@ asciichat_error_t acip_send_session_info(acip_transport_t *transport, const acip
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t acip_send_session_joined(acip_transport_t *transport, const acip_session_joined_t *response);
-

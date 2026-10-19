@@ -66,15 +66,15 @@ typedef void (*tcp_client_foreach_fn)(socket_t socket, void *client_data, void *
  * Configures server binding, timeouts, and client handler.
  */
 typedef struct {
-  int port;                              ///< TCP listen port
-  const char *ipv4_address;              ///< IPv4 bind address (NULL or empty = don't bind)
-  const char *ipv6_address;              ///< IPv6 bind address (NULL or empty = don't bind)
-  bool bind_ipv4;                        ///< Whether to bind IPv4 socket
-  bool bind_ipv6;                        ///< Whether to bind IPv6 socket
+  int port;                               ///< TCP listen port
+  const char *ipv4_address;               ///< IPv4 bind address (NULL or empty = don't bind)
+  const char *ipv6_address;               ///< IPv6 bind address (NULL or empty = don't bind)
+  bool bind_ipv4;                         ///< Whether to bind IPv4 socket
+  bool bind_ipv6;                         ///< Whether to bind IPv6 socket
   platform_event_accept_fn event_handler; ///< Required asynchronous accept handler
   void (*tick_fn)(void *user_data);       ///< Optional periodic callback on the tcp_server_run thread
   void *tick_user_data;
-  void *user_data;                       ///< User data passed to each client handler
+  void *user_data; ///< User data passed to each client handler
 } tcp_server_config_t;
 
 /**
@@ -84,9 +84,9 @@ typedef struct {
  * Uses uthash for efficient socket-based lookup.
  */
 struct tcp_client_entry {
-  socket_t socket;        ///< Client socket (hash key)
-  void *client_data;      ///< User-provided client data
-  UT_hash_handle hh;      ///< uthash handle
+  socket_t socket;   ///< Client socket (hash key)
+  void *client_data; ///< User-provided client data
+  UT_hash_handle hh; ///< uthash handle
 };
 
 /**
@@ -96,10 +96,10 @@ struct tcp_client_entry {
  */
 struct tcp_server {
   platform_event_loop_t *event_loop; ///< Owned while the asynchronous server runs
-  socket_t listen_socket;     ///< IPv4 listen socket
-  socket_t listen_socket6;    ///< IPv6 listen socket
-  atomic_t running;           ///< Server running flag (set false to shutdown)
-  tcp_server_config_t config; ///< Server configuration
+  socket_t listen_socket;            ///< IPv4 listen socket
+  socket_t listen_socket6;           ///< IPv6 listen socket
+  atomic_t running;                  ///< Server running flag (set false to shutdown)
+  tcp_server_config_t config;        ///< Server configuration
 
   // Client registry (thread-safe with read-write lock)
   tcp_client_entry_t *clients;      ///< Hash table of connected clients

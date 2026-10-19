@@ -452,9 +452,8 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
   if (frame && is_file && !alternate) {
     double now = (double)time_get_ns() / 1e9;
     double position = media_source_get_position(ctx->source);
-    if (ctx->face_media_valid &&
-        (position < ctx->face_media_position - 0.1 ||
-         position > ctx->face_media_position + (now - ctx->face_media_tick) + 0.75)) {
+    if (ctx->face_media_valid && (position < ctx->face_media_position - 0.1 ||
+                                  position > ctx->face_media_position + (now - ctx->face_media_tick) + 0.75)) {
       face_follow_image_destroy(ctx->face_follow);
       ctx->face_follow = NULL;
     }

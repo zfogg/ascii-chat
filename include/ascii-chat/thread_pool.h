@@ -85,8 +85,8 @@ typedef struct thread_pool_entry thread_pool_entry_t;
  * Represents a single unit of work to be executed by a pool worker.
  */
 typedef struct thread_pool_work_entry {
-  void *(*work_func)(void *);     ///< Work function to execute
-  void *work_arg;                 ///< Argument passed to work function
+  void *(*work_func)(void *);          ///< Work function to execute
+  void *work_arg;                      ///< Argument passed to work function
   struct thread_pool_work_entry *next; ///< Linked list next pointer
 } thread_pool_work_entry_t;
 
@@ -122,12 +122,12 @@ struct thread_pool {
   size_t thread_count;          ///< Number of threads in pool
 
   // Work queue mode fields (only used if num_workers > 0)
-  bool is_work_queue_mode;                ///< True if using work queue mode
-  size_t num_workers;                     ///< Number of pre-created worker threads
-  thread_pool_work_entry_t *work_queue;   ///< Queue of pending work
-  mutex_t work_queue_mutex;               ///< Mutex protecting work queue
-  cond_t work_available;                  ///< Condition variable for workers to wait on
-  bool shutdown_requested;                ///< Signal workers to exit
+  bool is_work_queue_mode;              ///< True if using work queue mode
+  size_t num_workers;                   ///< Number of pre-created worker threads
+  thread_pool_work_entry_t *work_queue; ///< Queue of pending work
+  mutex_t work_queue_mutex;             ///< Mutex protecting work queue
+  cond_t work_available;                ///< Condition variable for workers to wait on
+  bool shutdown_requested;              ///< Signal workers to exit
 };
 
 /**
@@ -190,7 +190,8 @@ void thread_pool_destroy(thread_pool_t *pool);
  * @param work_arg Argument passed to work function
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *), void *work_arg);
+asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *),
+                                         void *work_arg);
 
 /**
  * @brief Spawn a worker thread in the pool

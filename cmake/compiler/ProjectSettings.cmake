@@ -1,0 +1,57 @@
+include_guard(GLOBAL)
+
+add_library(asciichat-project-options INTERFACE)
+add_library(asciichat-project-includes INTERFACE)
+
+# Apply policy to our targets after all subdirectories have declared their targets.
+# FetchContent and ExternalProject dependencies keep their upstream settings.
+function(asciichat_apply_project_settings directory)
+    get_property(_targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(_target IN LISTS _targets)
+        get_target_property(_type "${_target}" TYPE)
+        if(NOT _type MATCHES "^(EXECUTABLE|STATIC_LIBRARY|SHARED_LIBRARY|MODULE_LIBRARY|OBJECT_LIBRARY)$")
+            continue()
+        endif()
+        get_target_property(_source_dir "${_target}" SOURCE_DIR)
+        file(RELATIVE_PATH _relative "${PROJECT_SOURCE_DIR}" "${_source_dir}")
+        set(_owned FALSE)
+        if(_relative MATCHES "^(src|lib|tests|cmake/tooling)(/|$)" OR _target MATCHES "^ascii-chat($|-)")
+            set(_owned TRUE)
+        else()
+            # Object libraries declared by included files can have the root as
+            # SOURCE_DIR. Identify them by their own source files instead.
+            get_target_property(_sources "${_target}" SOURCES)
+            foreach(_source IN LISTS _sources)
+                if(_source MATCHES "^\\$<")
+                    continue()
+                endif()
+                get_filename_component(_absolute "${_source}" ABSOLUTE BASE_DIR "${_source_dir}")
+                file(RELATIVE_PATH _relative_source "${PROJECT_SOURCE_DIR}" "${_absolute}")
+                if(_relative_source MATCHES "^(src|lib|tests|cmake/tooling)/")
+                    set(_owned TRUE)
+                    break()
+                endif()
+            endforeach()
+        endif()
+        if(_owned)
+            # Generated public headers must precede source public includes,
+            # including legacy ignored headers from older build configurations.
+            target_include_directories("${_target}" BEFORE PRIVATE "${PROJECT_BINARY_DIR}/generated")
+            if(ASCIICHAT_ENABLE_IPO)
+                set_property(TARGET "${_target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+                set_property(TARGET "${_target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
+            endif()
+            # LINK_LIBRARIES is private and also supports older plain signatures.
+            set_property(TARGET "${_target}" APPEND PROPERTY LINK_LIBRARIES
+                asciichat-project-options asciichat-project-includes)
+        endif()
+    endforeach()
+    get_property(_children DIRECTORY "${directory}" PROPERTY SUBDIRECTORIES)
+    foreach(_child IN LISTS _children)
+        asciichat_apply_project_settings("${_child}")
+    endforeach()
+endfunction()
+
+function(asciichat_finalize_project_settings)
+    asciichat_apply_project_settings("${PROJECT_SOURCE_DIR}")
+endfunction()

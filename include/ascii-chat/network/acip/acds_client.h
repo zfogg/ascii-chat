@@ -111,9 +111,9 @@ typedef bool (*parallel_connect_should_exit_fn)(void *user_data);
  * @brief ACDS client connection configuration
  */
 typedef struct {
-  char server_address[256]; ///< ACDS server address (e.g., "discovery.ascii.chat" or "127.0.0.1")
-  uint16_t server_port;     ///< ACDS server port (default: 27225)
-  uint32_t timeout_ms;      ///< Connection timeout in milliseconds
+  char server_address[256];        ///< ACDS server address (e.g., "discovery.ascii.chat" or "127.0.0.1")
+  uint16_t server_port;            ///< ACDS server port (default: 27225)
+  uint32_t timeout_ms;             ///< Connection timeout in milliseconds
   crypto_policy_t security_policy; ///< Signaling policy, independent of peer media policy
   const char *identity_key;        ///< Optional private identity key path, borrowed during connect
 

@@ -510,6 +510,10 @@ ascii_chat_add_face_detector(ascii-chat-video)
 # Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging
 target_link_directories(ascii-chat-video PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(ascii-chat-video PRIVATE ${FFMPEG_LIBRARIES})
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # V4L2 capture uses swscale and needs generated FFmpeg headers before compiling.
+    target_link_libraries(ascii-chat-platform PRIVATE ${FFMPEG_LIBRARIES})
+endif()
 if(VTERM_MUSL_TARGET)
     add_dependencies(ascii-chat-video ${VTERM_MUSL_TARGET})
 endif()
@@ -659,6 +663,7 @@ endif()
 if(USE_MUSL)
     target_link_libraries(ascii-chat-core PRIVATE ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a)
     add_dependencies(ascii-chat-core libexecinfo-musl)
+    add_dependencies(ascii-chat-platform libexecinfo-musl)
 endif()
 
 # mimalloc for core
@@ -870,6 +875,11 @@ add_library(ascii-chat-shared SHARED
     # Set RPATH on shared library so it can find dependencies at runtime
     # This ensures transitive dependencies (like custom FFmpeg) are found
     if(APPLE OR UNIX)
+        if(APPLE)
+            set(_shared_origin "@loader_path")
+        else()
+            set(_shared_origin "\$ORIGIN")
+        endif()
         if(CMAKE_BUILD_TYPE STREQUAL "Release")
             # Release builds: use only relative paths to avoid embedded developer paths
             # Copy FFmpeg libraries to lib/ directory alongside shared library
@@ -901,10 +911,7 @@ add_library(ascii-chat-shared SHARED
             endif()
         endif()
 
-        # Convert list to colon-separated string for linker -rpath flag
-        string(REPLACE ";" ":" _shared_rpath_str "${_shared_rpath_list}")
-
-        # Set both BUILD_RPATH and linker flags to ensure RPATH is embedded
+        # Let CMake encode each runtime search path for the platform linker.
         if(CMAKE_BUILD_TYPE STREQUAL "Release")
             # Release: use only our explicit RPATH, don't add linked library paths automatically
             set_target_properties(ascii-chat-shared PROPERTIES
@@ -917,15 +924,10 @@ add_library(ascii-chat-shared SHARED
             # Non-Release: allow automatic RPATH for development
             set_target_properties(ascii-chat-shared PROPERTIES
                 BUILD_RPATH "${_shared_rpath_list}"
+                INSTALL_RPATH "${_shared_origin};${CMAKE_BUILD_RPATH}"
                 SKIP_BUILD_RPATH FALSE
                 INSTALL_RPATH_USE_LINK_PATH TRUE
             )
-        endif()
-        # Also use linker flag to ensure RPATH is properly embedded
-        if(APPLE)
-            target_link_options(ascii-chat-shared PRIVATE "LINKER:-rpath,${_shared_rpath_str}")
-        else()
-            target_link_options(ascii-chat-shared PRIVATE "LINKER:-rpath=${_shared_rpath_str}")
         endif()
     endif()
 
@@ -1503,6 +1505,7 @@ add_custom_command(
     # Depend on the object files themselves as well as their object-library
     # targets so rebuilt objects refresh the combined archive.
     DEPENDS ${STATIC_LIB_MODULES} ${OBJECT_EXPR_LIST} ${OBJECT_LIST_FILE}
+        ${CMAKE_SOURCE_DIR}/cmake/scripts/create_static_archive.cmake
     COMMENT "Creating static archive with unique object names (eliminates duplicates)"
     VERBATIM
 )

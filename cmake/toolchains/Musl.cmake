@@ -1,0 +1,58 @@
+# A Clang musl toolchain for packaged musl SDKs and optional complete sysroots.
+include_guard(GLOBAL)
+set(CMAKE_SYSTEM_NAME Linux)
+if(NOT CMAKE_SYSTEM_PROCESSOR)
+    set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_HOST_SYSTEM_PROCESSOR}")
+    if(NOT CMAKE_SYSTEM_PROCESSOR)
+        execute_process(COMMAND uname -m OUTPUT_VARIABLE CMAKE_SYSTEM_PROCESSOR
+            OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+    endif()
+endif()
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|aarch64|ARM64)$")
+    set(MUSL_ARCH aarch64)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
+    set(MUSL_ARCH x86_64)
+else()
+    message(FATAL_ERROR "Unsupported musl architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+set(MUSL_TARGET "${MUSL_ARCH}-linux-musl" CACHE STRING "Clang musl target")
+find_program(CMAKE_C_COMPILER NAMES clang REQUIRED)
+find_program(CMAKE_CXX_COMPILER NAMES clang++ REQUIRED)
+set(CMAKE_C_COMPILER_TARGET "${MUSL_TARGET}")
+set(CMAKE_CXX_COMPILER_TARGET "${MUSL_TARGET}")
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+
+if(ASCIICHAT_MUSL_SYSROOT)
+    set(CMAKE_SYSROOT "${ASCIICHAT_MUSL_SYSROOT}")
+    set(_musl_include_paths "${CMAKE_SYSROOT}/usr/include" "${CMAKE_SYSROOT}/include")
+    set(_musl_lib_paths "${CMAKE_SYSROOT}/usr/lib" "${CMAKE_SYSROOT}/lib")
+else()
+    set(_musl_include_paths /usr/lib/musl/include /usr/include/${MUSL_TARGET}
+        /usr/${MUSL_TARGET}/include /usr/lib/${MUSL_TARGET}/include)
+    set(_musl_lib_paths /usr/lib/musl/lib /usr/lib/${MUSL_TARGET} /usr/${MUSL_TARGET}/lib64)
+endif()
+find_path(MUSL_INCLUDE_DIR stdlib.h PATHS ${_musl_include_paths} NO_DEFAULT_PATH REQUIRED)
+find_path(MUSL_LIBDIR libc.a PATHS ${_musl_lib_paths} NO_DEFAULT_PATH REQUIRED)
+
+include("${CMAKE_CURRENT_LIST_DIR}/MuslFlags.cmake")
+asciichat_musl_compile_flags(_musl_c_flags _musl_cxx_flags)
+string(APPEND CMAKE_C_FLAGS_INIT " ${_musl_c_flags}")
+string(APPEND CMAKE_CXX_FLAGS_INIT " ${_musl_cxx_flags}")
+
+set(_musl_exe_link "-fuse-ld=lld -static-pie -nostdlib -nostdlib++ -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o")
+set(_musl_shared_link "-fuse-ld=lld -nostdlib -nostdlib++ -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/crti.o")
+string(APPEND CMAKE_EXE_LINKER_FLAGS_INIT " ${_musl_exe_link}")
+string(APPEND CMAKE_SHARED_LINKER_FLAGS_INIT " ${_musl_shared_link}")
+string(APPEND CMAKE_MODULE_LINKER_FLAGS_INIT " ${_musl_shared_link}")
+set(CMAKE_C_STANDARD_LIBRARIES_INIT "-lc -lm ${MUSL_LIBDIR}/crtn.o")
+set(CMAKE_CXX_STANDARD_LIBRARIES_INIT "${CMAKE_C_STANDARD_LIBRARIES_INIT}")
+
+# Programs execute on the host; headers, libraries and packages belong to the target.
+list(APPEND CMAKE_FIND_ROOT_PATH "${MUSL_LIBDIR}" "${MUSL_INCLUDE_DIR}"
+    "${ASCIICHAT_DEPS_CACHE_DIR}" "${CMAKE_BINARY_DIR}/_deps/installed")
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES MUSL_TARGET MUSL_INCLUDE_DIR
+    MUSL_LIBDIR ASCIICHAT_MUSL_SYSROOT ASCIICHAT_DEPS_CACHE_DIR KERNEL_HEADERS_DIR)

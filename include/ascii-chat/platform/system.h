@@ -710,8 +710,7 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
  *
  * @ingroup platform_system
  */
-int platform_execute_subprocess(const char *executable, const char **argv,
-                                char *output_buffer, size_t output_size);
+int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size);
 
 // ============================================================================
 // I/O Functions

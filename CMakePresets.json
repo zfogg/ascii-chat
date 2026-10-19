@@ -77,7 +77,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
         "BUILD_TESTS": "OFF"
-      }
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "debug-musl",
@@ -89,7 +90,8 @@
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
         "USE_MUSL": "ON",
         "BUILD_TESTS": "OFF"
-      }
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "release",
@@ -107,7 +109,8 @@
       "inherits": "base-release",
       "cacheVariables": {
         "USE_MUSL": "ON"
-      }
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "relwithdebinfo",
@@ -118,7 +121,8 @@
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "USE_MIMALLOC": "ON",
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF"
-      }
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "dev",
@@ -127,7 +131,8 @@
       "inherits": "base-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Dev"
-      }
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "coverage",
@@ -136,7 +141,8 @@
       "inherits": "base-debug",
       "cacheVariables": {
         "ASCIICHAT_ENABLE_COVERAGE": "ON"
-      }
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "tests",
@@ -147,7 +153,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTS": "ON",
         "USE_CPACK": "OFF"
-      }
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "github",
@@ -196,7 +203,8 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
-      }
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "windows-release",
@@ -213,7 +221,8 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
-      }
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "vs26",
@@ -232,6 +241,23 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "ASCIICHAT_BUILD_WITH_PANIC": "ON",
         "ASCIICHAT_USE_PCH": "OFF"
+      }
+    },
+    {
+      "name": "shared",
+      "inherits": "relwithdebinfo",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "ASCIICHAT_SHARED_DEPS": "ON",
+        "USE_MUSL": "OFF"
+      }
+    },
+    {
+      "name": "static",
+      "inherits": "release",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "ASCIICHAT_SHARED_DEPS": "OFF"
       }
     }
   ],
@@ -278,7 +304,10 @@
     },
     {
       "name": "tests",
-      "configurePreset": "tests"
+      "configurePreset": "tests",
+      "targets": [
+        "tests"
+      ]
     },
     {
       "name": "github",
@@ -295,6 +324,35 @@
     {
       "name": "panic",
       "configurePreset": "panic"
+    },
+    {
+      "name": "shared",
+      "configurePreset": "shared"
+    },
+    {
+      "name": "static",
+      "configurePreset": "static"
+    },
+    {
+      "name": "check-default",
+      "configurePreset": "default",
+      "targets": [
+        "ascii-chat"
+      ]
+    },
+    {
+      "name": "check-shared",
+      "configurePreset": "shared",
+      "targets": [
+        "ascii-chat"
+      ]
+    },
+    {
+      "name": "check-static",
+      "configurePreset": "static",
+      "targets": [
+        "ascii-chat"
+      ]
     }
   ],
   "testPresets": [
@@ -312,7 +370,7 @@
       "name": "unit",
       "displayName": "Unit Tests",
       "description": "Run unit tests only",
-      "configurePreset": "default",
+      "configurePreset": "tests",
       "inherits": "base-test",
       "filter": {
         "include": {
@@ -324,7 +382,7 @@
       "name": "integration",
       "displayName": "Integration Tests",
       "description": "Run integration tests only",
-      "configurePreset": "default",
+      "configurePreset": "tests",
       "inherits": "base-test",
       "filter": {
         "include": {
@@ -336,7 +394,7 @@
       "name": "performance",
       "displayName": "Performance Tests",
       "description": "Run performance tests only",
-      "configurePreset": "default",
+      "configurePreset": "tests",
       "inherits": "base-test",
       "filter": {
         "include": {
@@ -379,6 +437,129 @@
           "label": "^performance$"
         }
       }
+    },
+    {
+      "name": "all",
+      "configurePreset": "tests",
+      "inherits": "base-test",
+      "execution": {
+        "jobs": 0,
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "smoke-default",
+      "configurePreset": "default",
+      "inherits": "base-test",
+      "filter": {
+        "include": {
+          "name": "^ascii-chat-version$"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "smoke-shared",
+      "configurePreset": "shared",
+      "inherits": "base-test",
+      "filter": {
+        "include": {
+          "name": "^ascii-chat-version$"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "smoke-static",
+      "configurePreset": "static",
+      "inherits": "base-test",
+      "filter": {
+        "include": {
+          "name": "^ascii-chat-version$"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
     }
-  ]
+  ],
+  "workflowPresets": [
+    {
+      "name": "check-default",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "default"
+        },
+        {
+          "type": "build",
+          "name": "check-default"
+        },
+        {
+          "type": "test",
+          "name": "smoke-default"
+        }
+      ]
+    },
+    {
+      "name": "check-shared",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "shared"
+        },
+        {
+          "type": "build",
+          "name": "check-shared"
+        },
+        {
+          "type": "test",
+          "name": "smoke-shared"
+        }
+      ]
+    },
+    {
+      "name": "check-static",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "static"
+        },
+        {
+          "type": "build",
+          "name": "check-static"
+        },
+        {
+          "type": "test",
+          "name": "smoke-static"
+        }
+      ]
+    },
+    {
+      "name": "tests",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "tests"
+        },
+        {
+          "type": "build",
+          "name": "tests"
+        },
+        {
+          "type": "test",
+          "name": "all"
+        }
+      ]
+    }
+  ],
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 30,
+    "patch": 0
+  }
 }

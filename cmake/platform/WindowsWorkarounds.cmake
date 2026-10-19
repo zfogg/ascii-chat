@@ -92,7 +92,7 @@ function(find_msvc_libraries)
     endforeach()
 
     if(MSVC_LIB_PATH)
-        link_directories("${MSVC_LIB_PATH}")
+        target_link_directories(asciichat-project-options INTERFACE "${MSVC_LIB_PATH}")
         message(STATUS "Added ${BoldGreen}MSVC${ColorReset} library path: ${BoldCyan}${MSVC_LIB_PATH}${ColorReset}")
     else()
         message(FATAL_ERROR "Visual Studio MSVC libraries not found! Windows builds require Visual Studio runtime libraries.\n"
