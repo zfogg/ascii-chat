@@ -29,7 +29,7 @@ asciichat_error_t terminal_fd_writer_create(int fd, terminal_fd_writer_t **out) 
   terminal_fd_writer_t *writer = SAFE_CALLOC(1, sizeof(*writer), terminal_fd_writer_t *);
   writer->fp = fp;
 
-  log_debug("terminal_fd_writer: created with fd=%d", fd);
+  log_debug("created with fd=%d", fd);
   *out = writer;
   return ASCIICHAT_OK;
 }
@@ -55,7 +55,7 @@ asciichat_error_t terminal_fd_writer_write(terminal_fd_writer_t *writer, const c
     return SET_ERRNO_SYS(ERROR_INVALID_PARAM, "fflush failed");
   }
 
-  log_debug_every(NS_PER_SEC_INT, "terminal_fd_writer: wrote frame (%zu bytes)", strlen(frame));
+  log_debug_every(NS_PER_SEC_INT, "wrote frame (%zu bytes)", strlen(frame));
   return ASCIICHAT_OK;
 }
 

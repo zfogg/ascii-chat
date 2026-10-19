@@ -88,8 +88,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   session->liveness.timeout_ms = 10 * MS_PER_SEC_INT;      // 10 second timeout
   session->liveness.ping_in_flight = false;
 
-  log_info("discovery_session_create: After CALLOC - participant_ctx=%p, host_ctx=%p", session->participant_ctx,
-           session->host_ctx);
+  log_info("After CALLOC - participant_ctx=%p, host_ctx=%p", session->participant_ctx, session->host_ctx);
 
   // Explicit identity credentials apply to signaling as well as media authentication.
   const options_t *opts = options_get();
@@ -806,7 +805,7 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
   discovery_session_t *session = (discovery_session_t *)user_data;
 
   if (!session) {
-    SET_ERRNO(ERROR_INVALID_STATE, "discovery_on_transport_ready: session is NULL");
+    SET_ERRNO(ERROR_INVALID_STATE, "session is NULL");
     return;
   }
 
@@ -1282,7 +1281,7 @@ static void handle_acds_webrtc_packet(discovery_session_t *session, packet_type_
  * @brief Join an existing discovery session
  */
 static asciichat_error_t join_session(discovery_session_t *session) {
-  log_info("join_session: START - participant_ctx=%p", session->participant_ctx);
+  log_info("participant_ctx=%p", session->participant_ctx);
 
   if (!session)
     return ERROR_INVALID_PARAM;
@@ -1351,10 +1350,9 @@ static asciichat_error_t join_session(discovery_session_t *session) {
              session->host_address, session->host_port, session->session_type, session->participant_ctx);
     buffer_release(alloc_buffer);
 
-    log_info("join_session: About to transition to CONNECTING_HOST - participant_ctx=%p", session->participant_ctx);
+    log_info("About to transition to CONNECTING_HOST - participant_ctx=%p", session->participant_ctx);
     set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
-    log_info("join_session: Transitioned to CONNECTING_HOST - participant_ctx=%p (returning ASCIICHAT_OK)",
-             session->participant_ctx);
+    log_info("Transitioned to CONNECTING_HOST - participant_ctx=%p (returning ASCIICHAT_OK)", session->participant_ctx);
     return ASCIICHAT_OK;
   }
 
@@ -1383,46 +1381,45 @@ static asciichat_error_t join_session(discovery_session_t *session) {
 }
 
 asciichat_error_t discovery_session_start(discovery_session_t *session) {
-  log_info("discovery_session_start: ENTRY - session=%p", session);
+  log_info("session=%p", session);
 
   if (!session) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
   }
 
-  log_info("discovery_session_start: is_initiator=%d, session_string='%s'", session->is_initiator,
-           session->session_string);
+  log_info("is_initiator=%d, session_string='%s'", session->is_initiator, session->session_string);
 
   // Check if we should exit before starting blocking operations
   if (session->should_exit_callback && session->should_exit_callback(session->exit_callback_data)) {
-    log_info("discovery_session_start: Exiting early due to should_exit_callback (before ACDS connect)");
+    log_info("Exiting early due to should_exit_callback (before ACDS connect)");
     return ASCIICHAT_OK; // Return success to allow clean shutdown
   }
 
-  log_info("discovery_session_start: Calling connect_to_acds...");
+  log_info("Calling connect_to_acds...");
   // Connect to ACDS
   asciichat_error_t result = connect_to_acds(session);
   if (result != ASCIICHAT_OK) {
-    log_error("discovery_session_start: connect_to_acds FAILED - result=%d", result);
+    log_error("connect_to_acds FAILED - result=%d", result);
     set_state(session, DISCOVERY_STATE_FAILED);
     return result;
   }
-  log_info("discovery_session_start: connect_to_acds succeeded");
+  log_info("connect_to_acds succeeded");
 
   // Check again after connection
   if (session->should_exit_callback && session->should_exit_callback(session->exit_callback_data)) {
-    log_info("discovery_session_start: Exiting early due to should_exit_callback (after ACDS connect)");
+    log_info("Exiting early due to should_exit_callback (after ACDS connect)");
     return ASCIICHAT_OK; // Return success to allow clean shutdown
   }
 
   session->acds_transport->receive_timeout_ns = 10 * NS_PER_SEC_INT;
 
   // Perform crypto handshake with ACDS (same as client-server handshake)
-  log_info("discovery_session_start: Performing crypto handshake with ACDS...");
+  log_info("Performing crypto handshake with ACDS...");
   crypto_handshake_context_t *handshake_ctx = &session->acds_handshake;
 
   result = crypto_handshake_init("discovery_client", handshake_ctx, false);
   if (result != ASCIICHAT_OK) {
-    log_error("discovery_session_start: Handshake init failed - %s", asciichat_error_string(result));
+    log_error("Handshake init failed - %s", asciichat_error_string(result));
     set_error(session, result, "Crypto handshake init failed");
     return result;
   }
@@ -1463,16 +1460,15 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
 
   // Check again after handshake
   if (session->should_exit_callback && session->should_exit_callback(session->exit_callback_data)) {
-    log_info("discovery_session_start: Exiting early due to should_exit_callback (after handshake)");
+    log_info("Exiting early due to should_exit_callback (after handshake)");
     return ASCIICHAT_OK; // Return success to allow clean shutdown
   }
 
   // Create or join session
   if (session->is_initiator) {
-    log_info("discovery_session_start: Calling create_session - participant_ctx before=%p", session->participant_ctx);
+    log_info("Calling create_session - participant_ctx before=%p", session->participant_ctx);
     result = create_session(session);
-    log_info("discovery_session_start: create_session returned - participant_ctx after=%p, result=%d",
-             session->participant_ctx, result);
+    log_info("create_session returned - participant_ctx after=%p, result=%d", session->participant_ctx, result);
 
     if (result == ASCIICHAT_OK) {
       // Initiator also needs to register itself as a participant so it can receive PARTICIPANT_JOINED notifications
@@ -1483,10 +1479,10 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     }
     return result;
   } else {
-    log_info("discovery_session_start: Calling join_session - participant_ctx before=%p", session->participant_ctx);
+    log_info("Calling join_session - participant_ctx before=%p", session->participant_ctx);
     asciichat_error_t result = join_session(session);
-    log_info("discovery_session_start: join_session returned - participant_ctx after=%p, state=%d, result=%d",
-             session->participant_ctx, session->state, result);
+    log_info("join_session returned - participant_ctx after=%p, state=%d, result=%d", session->participant_ctx,
+             session->state, result);
     return result;
   }
 }
@@ -1949,19 +1945,19 @@ static asciichat_error_t discovery_session_connect_tcp(discovery_session_t *sess
   // Check if connection is established
   bool ctx_valid = session->participant_ctx != NULL;
   bool is_connected = ctx_valid ? session_participant_is_connected(session->participant_ctx) : false;
-  log_debug("discovery_session_process: CONNECTING_HOST - participant_ctx=%p, ctx_valid=%d, is_connected=%d",
-            session->participant_ctx, ctx_valid, is_connected);
+  log_debug("CONNECTING_HOST - participant_ctx=%p, ctx_valid=%d, is_connected=%d", session->participant_ctx, ctx_valid,
+            is_connected);
 
   if (ctx_valid && !is_connected) {
     // Log more details about why it's not connected
-    log_debug("discovery_session_process: CONNECTING_HOST - context exists but not connected yet");
+    log_debug("CONNECTING_HOST - context exists but not connected yet");
   }
 
   if (is_connected) {
     log_info("Participant connection confirmed, transitioning to ACTIVE state");
     set_state(session, DISCOVERY_STATE_ACTIVE);
   } else {
-    log_debug("discovery_session_process: CONNECTING_HOST - awaiting connection establishment (ctx_valid=%d, "
+    log_debug("CONNECTING_HOST - awaiting connection establishment (ctx_valid=%d, "
               "is_connected=%d)",
               ctx_valid, is_connected);
   }
@@ -2121,7 +2117,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
   case DISCOVERY_STATE_JOINING_SESSION:
     // These states are handled during discovery_session_start(), not in the process loop
     // If we reach here, something went wrong - sleep and wait
-    log_debug("discovery_session_process: State %d should be handled by discovery_session_start", session->state);
+    log_debug("State %d should be handled by discovery_session_start", session->state);
     platform_sleep_us(timeout_ns / 1000);
     break;
 

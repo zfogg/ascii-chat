@@ -177,7 +177,7 @@ void websocket_client_shutdown(websocket_client_t *client) {
 acip_transport_t *websocket_client_connect(websocket_client_t *client, const char *url,
                                            struct crypto_context_t *crypto_ctx) {
   if (!client || !url) {
-    log_error("Invalid arguments to websocket_client_connect");
+    log_error("Invalid arguments");
     return NULL;
   }
 

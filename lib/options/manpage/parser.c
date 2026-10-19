@@ -192,7 +192,7 @@ static section_type_t type_string_to_enum(const char *type_str) {
  */
 static asciichat_error_t parse_sections_internal(FILE *f, parsed_section_t **out_sections, size_t *out_count) {
   if (!f || !out_sections || !out_count) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_sections_internal");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   parsed_section_t *sections = NULL;
@@ -338,7 +338,7 @@ static asciichat_error_t parse_sections_internal(FILE *f, parsed_section_t **out
 
 asciichat_error_t manpage_parser_parse_file(FILE *f, parsed_section_t **out_sections, size_t *out_count) {
   if (!f || !out_sections || !out_count) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for manpage_parser_parse_file");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   return parse_sections_internal(f, out_sections, out_count);
@@ -347,7 +347,7 @@ asciichat_error_t manpage_parser_parse_file(FILE *f, parsed_section_t **out_sect
 asciichat_error_t manpage_parser_parse_memory(const char *content, size_t content_len, parsed_section_t **out_sections,
                                               size_t *out_count) {
   if (!content || content_len == 0 || !out_sections || !out_count) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for manpage_parser_parse_memory");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   // Create temporary file from memory

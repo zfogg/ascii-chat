@@ -525,7 +525,7 @@ int validate_opt_password(const char *value_str, char *error_msg, size_t error_m
  */
 int options_collect_identity_keys(options_t *opts, int argc, char *argv[]) {
   if (!opts || !argv) {
-    log_error("options_collect_identity_keys: Invalid arguments");
+    log_error("Invalid arguments");
     return -1;
   }
 

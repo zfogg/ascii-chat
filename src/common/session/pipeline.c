@@ -419,7 +419,7 @@ static void *pipeline_encode_thread(void *arg) {
 asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, session_display_ctx_t *display,
                                           session_pipeline_t **out) {
   if (!capture || !display || !out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_pipeline_create: NULL argument");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL argument");
   }
 
   session_pipeline_t *p = SAFE_CALLOC(1, sizeof(*p), session_pipeline_t *);
@@ -454,7 +454,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
     frame_queue_destroy(p->encode_queue);
     NAMED_UNREGISTER(&p->capture_finished);
     SAFE_FREE(p);
-    return SET_ERRNO(ERROR_INIT, "session_pipeline_create: failed to start capture thread");
+    return SET_ERRNO(ERROR_INIT, "failed to start capture thread");
   }
 
   // Start encode thread only if render_file is active
@@ -466,7 +466,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
       frame_queue_destroy(p->encode_queue);
       NAMED_UNREGISTER(&p->capture_finished);
       SAFE_FREE(p);
-      return SET_ERRNO(ERROR_INIT, "session_pipeline_create: failed to start encode thread");
+      return SET_ERRNO(ERROR_INIT, "failed to start encode thread");
     }
   }
 
@@ -477,7 +477,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
 asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, session_should_exit_fn should_exit,
                                             session_keyboard_handler_fn keyboard_handler, void *user_data) {
   if (!pipeline || !should_exit) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_pipeline_run_main: NULL argument");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL argument");
   }
 
   log_debug("[PIPELINE_MAIN] Starting main thread loop");

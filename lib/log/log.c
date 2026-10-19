@@ -2250,7 +2250,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     // No colors available, return plain text
     static bool warned_once = false;
     if (!warned_once) {
-      log_debug("WARNING: log_recolor_plain_entry() called but colors not initialized - returning plain text");
+      log_debug("Colors not initialized - returning plain text");
       warned_once = true;
     }
     size_t len = strlen(plain_line);

@@ -45,7 +45,7 @@ static size_t g_dynamic_strings_capacity = 0;
  */
 static void str_tolower(char *str) {
   if (!str) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid string for str_tolower");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid string");
     return;
   }
   for (; *str; str++) {
@@ -58,7 +58,7 @@ static void str_tolower(char *str) {
  */
 static void dashes_to_underscores(char *str) {
   if (!str) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid string for dashes_to_underscores");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid string");
     return;
   }
   for (; *str; str++) {
@@ -74,7 +74,7 @@ static void dashes_to_underscores(char *str) {
  */
 static char *generate_toml_key(const char *group, const char *field_name, char *buffer, size_t buffer_size) {
   if (!group || !field_name || !buffer || buffer_size == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments for generate_toml_key");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
     return NULL;
   }
 
@@ -113,7 +113,7 @@ static char *generate_toml_key(const char *group, const char *field_name, char *
  */
 static char *generate_cli_flag(const char *long_name, char *buffer, size_t buffer_size) {
   if (!long_name || !buffer || buffer_size < 3) { // Need at least "--" + 1 char
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments for generate_cli_flag");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
     return NULL;
   }
 
@@ -379,7 +379,7 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
 
 const config_option_metadata_t *config_schema_get_by_toml_key(const char *toml_key) {
   if (!toml_key) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments for config_schema_get_by_toml_key");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
     return NULL;
   }
 

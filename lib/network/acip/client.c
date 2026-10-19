@@ -231,7 +231,6 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
   log_dev("[ACIP_SEND_H265_6] packet_send_via_transport returned: %d", result);
 
   buffer_release(output_buffer);
-  log_dev("[ACIP_SEND_H265_7] ✅ Freed output buffer, returning from acip_send_image_frame_h265");
   return result;
 }
 

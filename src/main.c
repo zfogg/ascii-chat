@@ -783,7 +783,7 @@ int main(int argc, char *argv[]) {
   // Get parsed options
   const options_t *opts = options_get();
   if (!opts) {
-    log_error("Error: Options not initialized");
+    log_error("Options not initialized");
     return 1;
   }
 
@@ -1025,7 +1025,7 @@ int main(int argc, char *argv[]) {
   // Find and dispatch to mode entry point
   const mode_descriptor_t *mode = find_mode(opts->detected_mode);
   if (!mode) {
-    log_error("Error: Mode not found for detected_mode=%d", opts->detected_mode);
+    log_error("Mode not found for detected_mode=%d", opts->detected_mode);
     return 1;
   }
 

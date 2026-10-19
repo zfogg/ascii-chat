@@ -73,7 +73,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
       keyboard_help_render(display);
       log_info("✓ Help screen toggle complete");
     } else {
-      log_error("ERROR: Cannot toggle help - display context is NULL");
+      log_error("Cannot toggle help - display context is NULL");
     }
     break;
   }

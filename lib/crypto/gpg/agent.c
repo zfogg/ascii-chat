@@ -154,7 +154,7 @@ void gpg_agent_disconnect(int handle_as_int) {
 int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *message, size_t message_len,
                    uint8_t *signature_out, size_t *signature_len_out) {
   if (handle_as_int < 0 || !keygrip || !message || !signature_out || !signature_len_out) {
-    log_error("Invalid arguments to gpg_agent_sign");
+    log_error("Invalid arguments");
     return -1;
   }
 

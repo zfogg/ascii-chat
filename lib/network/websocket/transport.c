@@ -713,12 +713,12 @@ asciichat_error_t websocket_transport_send(acip_transport_t *transport, const vo
     mutex_unlock(&ws_data->state_mutex);
 
     if (connection_failed) {
-      log_error("[WEBSOCKET_SEND] Connection failed - cannot send");
+      log_error("Connection failed - cannot send");
       return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
     }
 
     if (!connected) {
-      log_debug("[WEBSOCKET_SEND] Connection is opening; queueing packet for delivery after handshake");
+      log_debug("Connection is opening; queueing packet for delivery after handshake");
     }
 
     log_dev_every(1000000, "websocket_send (client): is_connected=%d, wsi=%p, send_len=%zu", connected,
@@ -1170,34 +1170,33 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
   atomic_store_bool(&ws_data->is_destroying, true);
 
   if (ws_data->service_running) {
-    log_debug("[websocket_close] Stopping service thread to prevent deadlock during lws_close_reason()");
+    log_debug("Stopping service thread to prevent deadlock during lws_close_reason()");
     ws_data->service_running = false;
     // Give service thread time to notice is_destroying flag
     platform_sleep_us(10000); // 10ms
     asciichat_thread_join(&ws_data->service_thread, NULL);
-    log_debug("[websocket_close] Service thread stopped");
+    log_debug("Service thread stopped");
   }
 
   mutex_lock(&ws_data->state_mutex);
 
   if (!ws_data->is_connected) {
     mutex_unlock(&ws_data->state_mutex);
-    log_debug_every(US_PER_SEC_INT, "websocket_close: Already closed (is_connected=false), wsi=%p, timestamp=%llu",
-                    (void *)ws_data->wsi, (unsigned long long)now_ns);
+    log_debug_every(US_PER_SEC_INT, "Already closed (is_connected=false), wsi=%p, timestamp=%llu", (void *)ws_data->wsi,
+                    (unsigned long long)now_ns);
     return ASCIICHAT_OK; // Already closed
   }
 
-  log_fatal("🔴 websocket_close called! Setting is_connected=false, wsi=%p, timestamp=%llu", (void *)ws_data->wsi,
-            (unsigned long long)now_ns);
+  log_fatal("Setting is_connected=false, wsi=%p, timestamp=%llu", (void *)ws_data->wsi, (unsigned long long)now_ns);
   ws_data->is_connected = false;
   mutex_unlock(&ws_data->state_mutex);
 
   // Close WebSocket connection
   // Safe to call lws_close_reason() now - service thread is stopped, so no callback contention
   if (ws_data->wsi) {
-    log_fatal("    [websocket_close] Calling lws_close_reason for wsi=%p", (void *)ws_data->wsi);
+    log_fatal("Calling lws_close_reason for wsi=%p", (void *)ws_data->wsi);
     lws_close_reason(ws_data->wsi, LWS_CLOSE_STATUS_NORMAL, NULL, 0);
-    log_fatal("    [websocket_close] lws_close_reason returned");
+    log_fatal("lws_close_reason returned");
   }
 
   // Wake any blocking recv() calls and send() waits
@@ -1442,7 +1441,7 @@ static asciichat_error_t websocket_parse_endpoint(const char *url, websocket_end
     errno = 0;
     long port_val = strtol(port_start + 1, &endptr, 10);
     if (*endptr != '\0' || errno != 0 || port_val <= 0 || port_val > 65535) {
-      log_error("websocket_transport_create: Invalid port number: %s", port_start + 1);
+      log_error("Invalid port number: %s", port_start + 1);
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port number");
     }
     port = (uint16_t)port_val;
@@ -1941,9 +1940,8 @@ acip_transport_t *acip_websocket_server_transport_create(const char *name, struc
   ws_data->context = lws_get_context(wsi); // Get context from wsi (not owned)
   ws_data->owns_context = false;           // Server owns context, not transport
   ws_data->is_connected = true;            // Already connected (server-side)
-  log_debug_every(US_PER_SEC_INT,
-                  "[WEBSOCKET_TRANSPORT_CREATE] ★★★ SERVER TRANSPORT CREATED: is_connected=true, wsi=%p, ws_data=%p",
-                  (void *)wsi, (void *)ws_data);
+  log_debug_every(US_PER_SEC_INT, "★★★ SERVER TRANSPORT CREATED: is_connected=true, wsi=%p, ws_data=%p", (void *)wsi,
+                  (void *)ws_data);
   log_debug("Server transport created: is_connected=true, wsi=%p", (void *)wsi);
 
   // Initialize transport

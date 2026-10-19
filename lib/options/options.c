@@ -1235,7 +1235,7 @@ static asciichat_error_t handle_fallback_actions(options_t *opts, const binary_a
       // Use default config path: ~/.ascii-chat/config.toml
       char *config_dir = get_config_dir();
       if (!config_dir) {
-        log_error("Error: Failed to determine default config directory");
+        log_error("Failed to determine default config directory");
         return ERROR_CONFIG;
       }
       safe_snprintf(config_path, sizeof(config_path), "%sconfig.toml", config_dir);
@@ -1249,7 +1249,7 @@ static asciichat_error_t handle_fallback_actions(options_t *opts, const binary_a
       if (HAS_ERRNO(&err_ctx)) {
         log_error("Error creating config: %s", err_ctx.context_message);
       } else {
-        log_error("Error: Failed to create config file at %s", config_path);
+        log_error("Failed to create config file at %s", config_path);
       }
       return result;
     }
@@ -1264,7 +1264,7 @@ static asciichat_error_t handle_fallback_actions(options_t *opts, const binary_a
     const char *existing_template_path = "share/man/man1/ascii-chat.1.in";
     options_config_t *config = options_preset_unified(NULL, NULL);
     if (!config) {
-      log_error("Error: Failed to get binary options config");
+      log_error("Failed to get binary options config");
       return ERROR_MEMORY;
     }
 
@@ -1280,7 +1280,7 @@ static asciichat_error_t handle_fallback_actions(options_t *opts, const binary_a
       if (HAS_ERRNO(&err_ctx)) {
         log_error("%s", err_ctx.context_message);
       } else {
-        log_error("Error: Failed to generate man page");
+        log_error("Failed to generate man page");
       }
       return err;
     }
@@ -1412,7 +1412,7 @@ static void initialize_mode_defaults(options_t *opts, asciichat_mode_t detected_
   // This ensures discovery mode knows which session to join
   if (detected_session_string[0] != '\0') {
     SAFE_STRNCPY(opts->session_string, detected_session_string, sizeof(opts->session_string));
-    log_info("options_init: Detected session string from argv: '%s'", detected_session_string);
+    log_info("Detected session string from argv: '%s'", detected_session_string);
   }
 
   // Encryption options default to disabled/empty
@@ -1601,7 +1601,7 @@ static asciichat_error_t validate_custom_palette(options_t *opts) {
 
     // Validate palette characters for UTF-8 correctness
     if (!utf8_is_valid(opts->palette_custom)) {
-      log_error("Error: --palette-chars contains invalid UTF-8 sequences");
+      log_error("--palette-chars contains invalid UTF-8 sequences");
 
       return option_error_invalid();
     }
@@ -1615,14 +1615,14 @@ static asciichat_error_t validate_custom_palette(options_t *opts) {
       bool utf8_auto_unavailable = (opts->force_utf8 == COLOR_SETTING_AUTO && !terminal_supports_utf8());
 
       if (utf8_disabled) {
-        log_error("Error: --palette-chars contains non-ASCII characters but --utf8=false was specified");
+        log_error("--palette-chars contains non-ASCII characters but --utf8=false was specified");
         log_error("       Remove --utf8=false or use ASCII-only palette characters");
 
         return option_error_invalid();
       }
 
       if (utf8_auto_unavailable) {
-        log_error("Error: --palette-chars contains non-ASCII characters but terminal does not support UTF-8");
+        log_error("--palette-chars contains non-ASCII characters but terminal does not support UTF-8");
         log_error("       Use --utf8=true to force UTF-8 mode or use ASCII-only palette characters");
 
         return option_error_invalid();
@@ -1675,7 +1675,7 @@ static asciichat_error_t validate_color_filter(options_t *opts) {
   if (opts->color_filter != COLOR_FILTER_NONE) {
     // Color filter requires color to be enabled
     if (opts->color == COLOR_SETTING_FALSE) {
-      log_error("Error: --color-filter cannot be used with --color=false");
+      log_error("--color-filter cannot be used with --color=false");
 
       return option_error_invalid();
     }
@@ -1870,7 +1870,7 @@ static asciichat_error_t validate_option_strings(const options_t *opts) {
 
     // Validate UTF-8
     if (!utf8_is_valid(field_value)) {
-      log_error("Error: Option --%s contains invalid UTF-8 sequences", field_name);
+      log_error("Option --%s contains invalid UTF-8 sequences", field_name);
       log_error("       Value: %s", field_value);
 
       return option_error_invalid();
@@ -1893,7 +1893,7 @@ static asciichat_error_t validate_parsed_options(options_t *opts, options_config
   }
   // Check for unexpected remaining arguments
   if (remaining_argc > 0) {
-    log_error("Error: Unexpected arguments after options:");
+    log_error("Unexpected arguments after options:");
     for (int i = 0; i < remaining_argc; i++) {
       log_error("  %s", remaining_argv[i]);
     }
@@ -2189,8 +2189,8 @@ static void apply_logging_color_scheme(const options_t *opts) {
 }
 
 asciichat_error_t options_init(int argc, char **argv) {
-  log_debug("options_init: starting with argc=%d, argv[0]=%s, argv[1]=%s", argc,
-            (argv && argc > 0 && argv[0]) ? argv[0] : "(null)", (argv && argc > 1 && argv[1]) ? argv[1] : "N/A");
+  log_debug("starting with argc=%d, argv[0]=%s, argv[1]=%s", argc, (argv && argc > 0 && argv[0]) ? argv[0] : "(null)",
+            (argv && argc > 1 && argv[1]) ? argv[1] : "N/A");
   asciichat_error_t result = validate_options_argv(argc, argv);
   if (result != ASCIICHAT_OK) {
     return result;

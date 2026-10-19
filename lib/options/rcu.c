@@ -381,8 +381,7 @@ asciichat_error_t options_state_init(void) {
   // Detect fork: after fork(), child process must reinitialize
   pid_t current_pid = platform_get_pid();
   if ((lifecycle_is_initialized(&g_options_lifecycle) || g_init_pid != -1) && g_init_pid != current_pid) {
-    log_debug("Detected fork in options_state_init (parent PID %d, child PID %d) - resetting lifecycle", g_init_pid,
-              current_pid);
+    log_debug("Detected fork (parent PID %d, child PID %d) - resetting lifecycle", g_init_pid, current_pid);
     /* Reset lifecycle to allow reinitialization after fork */
     lifecycle_shutdown(&g_options_lifecycle);
     g_init_pid = current_pid;

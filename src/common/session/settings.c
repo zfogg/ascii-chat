@@ -50,7 +50,7 @@ void session_settings_init(session_settings_t *settings) {
 
 asciichat_error_t session_settings_serialize(const session_settings_t *settings, uint8_t *buffer, size_t *len) {
   if (!settings || !buffer || !len) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_settings_serialize: NULL parameter");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
 
   // Fixed-size serialization format
@@ -100,13 +100,12 @@ asciichat_error_t session_settings_serialize(const session_settings_t *settings,
 
 asciichat_error_t session_settings_deserialize(const uint8_t *buffer, size_t len, session_settings_t *settings) {
   if (!buffer || !settings) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_settings_deserialize: NULL parameter");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
 
   // Check minimum buffer size
   if (len < SESSION_SETTINGS_SERIALIZED_SIZE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_settings_deserialize: buffer too small (%zu < %d)", len,
-                     SESSION_SETTINGS_SERIALIZED_SIZE);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "buffer too small (%zu < %d)", len, SESSION_SETTINGS_SERIALIZED_SIZE);
   }
 
   memset(settings, 0, sizeof(session_settings_t));
@@ -159,7 +158,7 @@ asciichat_error_t session_settings_deserialize(const uint8_t *buffer, size_t len
 
 asciichat_error_t session_settings_from_options(session_settings_t *settings) {
   if (!settings) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_settings_from_options: NULL settings");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL settings");
   }
 
   // Initialize to defaults
@@ -197,7 +196,7 @@ asciichat_error_t session_settings_from_options(session_settings_t *settings) {
 
 asciichat_error_t session_settings_apply_to_options(const session_settings_t *settings) {
   if (!settings) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_settings_apply_to_options: NULL settings");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL settings");
   }
 
   // Update dimensions if specified

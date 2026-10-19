@@ -201,7 +201,7 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
 
   // Only support key ID format (8, 16, or 40 hex chars)
   if (!is_hex || (key_len != 8 && key_len != 16 && key_len != 40)) {
-    log_warn("check_gpg_key_expiry: Input is not a key ID format (expected 8/16/40 hex chars)");
+    log_warn("Input is not a key ID format (expected 8/16/40 hex chars)");
     *is_expired = false; // Assume not expired if we can't check
     return ASCIICHAT_OK;
   }
