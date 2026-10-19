@@ -44,7 +44,6 @@ static uint64_t g_received_max_silence_burst = 0;
 
 // For consecutive low-energy detection
 static uint64_t g_received_low_energy_samples = 0; // Samples < 0.05 (very quiet)
-static uint64_t g_received_below_noise_floor = 0;  // Samples < 0.001 (noise floor)
 
 // For clipping and artifact detection
 static uint64_t g_sent_clipping_samples = 0;      // Samples exceeding ±1.0
@@ -53,8 +52,8 @@ static uint64_t g_sent_sharp_transitions = 0;     // Sudden amplitude jumps (pot
 static uint64_t g_received_sharp_transitions = 0; // Sudden amplitude jumps
 
 // For dynamic range and musicality detection
-static float g_sent_mean = 0.0f;
-static float g_received_mean = 0.0f;
+static double g_sent_mean = 0.0;
+static double g_received_mean = 0.0;
 static uint64_t g_sent_transition_samples = 0;
 static uint64_t g_received_transition_samples = 0;
 
@@ -77,7 +76,6 @@ static uint64_t g_received_last_silence_end_sample = 0;       // When last silen
 static uint64_t g_received_packet_times_ns[MAX_PACKET_SAMPLES]; // When each packet was received (nanoseconds)
 static uint32_t g_received_packet_times_count = 0;              // Number of packets tracked
 static uint32_t g_received_packet_sizes[MAX_PACKET_SAMPLES];    // Size of each packet in bytes
-static uint64_t g_received_total_audio_samples = 0;             // Total decoded audio samples
 
 // Echo detection: store recent sent samples to check if they appear in received audio
 #define ECHO_BUFFER_SIZE 48000                       // 1 second at 48kHz
@@ -115,6 +113,10 @@ int audio_analysis_init(void) {
   SAFE_MEMSET(&g_sent_stats, sizeof(g_sent_stats), 0, sizeof(g_sent_stats));
   SAFE_MEMSET(&g_received_stats, sizeof(g_received_stats), 0, sizeof(g_received_stats));
 
+  g_sent_mean = g_received_mean = 0.0;
+  g_sent_rms_accumulator = g_received_rms_accumulator = 0.0f;
+  g_sent_rms_sample_count = g_received_rms_sample_count = 0;
+
   // Reset stuttering/gap tracking
   SAFE_MEMSET(g_received_gap_intervals_ms, sizeof(g_received_gap_intervals_ms), 0, sizeof(g_received_gap_intervals_ms));
   g_received_gap_count = 0;
@@ -123,7 +125,6 @@ int audio_analysis_init(void) {
   SAFE_MEMSET(g_received_packet_times_ns, sizeof(g_received_packet_times_ns), 0, sizeof(g_received_packet_times_ns));
   g_received_packet_times_count = 0;
   SAFE_MEMSET(g_received_packet_sizes, sizeof(g_received_packet_sizes), 0, sizeof(g_received_packet_sizes));
-  g_received_total_audio_samples = 0;
 
   // Reset echo detection
   SAFE_MEMSET(g_echo_buffer, sizeof(g_echo_buffer), 0, sizeof(g_echo_buffer));
@@ -318,7 +319,6 @@ void audio_analysis_track_received_sample(float sample) {
   if (abs_sample < 0.001f) {
     g_received_stats.silent_samples++;
     g_received_silence_burst++;
-    g_received_below_noise_floor++;
 
     // Track when silence started
     if (g_received_silence_burst == 1) {
@@ -500,10 +500,16 @@ void audio_analysis_track_received_packet(size_t size) {
 }
 
 const audio_analysis_stats_t *audio_analysis_get_sent_stats(void) {
+  g_sent_stats.dc_offset = g_sent_stats.total_samples ? (float)(g_sent_mean / g_sent_stats.total_samples) : 0.0f;
+  g_sent_stats.rms_level = g_sent_rms_sample_count ? sqrtf(g_sent_rms_accumulator / g_sent_rms_sample_count) : 0.0f;
   return &g_sent_stats;
 }
 
 const audio_analysis_stats_t *audio_analysis_get_received_stats(void) {
+  g_received_stats.dc_offset =
+      g_received_stats.total_samples ? (float)(g_received_mean / g_received_stats.total_samples) : 0.0f;
+  g_received_stats.rms_level =
+      g_received_rms_sample_count ? sqrtf(g_received_rms_accumulator / g_received_rms_sample_count) : 0.0f;
   return &g_received_stats;
 }
 
@@ -529,15 +535,10 @@ void audio_analysis_print_report(void) {
   int64_t sent_duration_ms = (g_sent_stats.timestamp_end_ns - g_sent_stats.timestamp_start_ns) / NS_PER_MS_INT;
   int64_t recv_duration_ms = (g_received_stats.timestamp_end_ns - g_received_stats.timestamp_start_ns) / NS_PER_MS_INT;
 
-  // Calculate RMS levels
-  float sent_rms = 0.0f;
-  float recv_rms = 0.0f;
-  if (g_sent_rms_sample_count > 0) {
-    sent_rms = sqrtf(g_sent_rms_accumulator / g_sent_rms_sample_count);
-  }
-  if (g_received_rms_sample_count > 0) {
-    recv_rms = sqrtf(g_received_rms_accumulator / g_received_rms_sample_count);
-  }
+  const audio_analysis_stats_t *sent = audio_analysis_get_sent_stats();
+  const audio_analysis_stats_t *received = audio_analysis_get_received_stats();
+  float sent_rms = sent->rms_level;
+  float recv_rms = received->rms_level;
 
   log_plain("================================================================================");
   log_plain("                         AUDIO ANALYSIS REPORT                                 ");
@@ -547,6 +548,7 @@ void audio_analysis_print_report(void) {
   log_plain("  Total Samples:           %llu", (unsigned long long)g_sent_stats.total_samples);
   log_plain("  Peak Level:              %.4f (should be < 1.0)", g_sent_stats.peak_level);
   log_plain("  RMS Level:               %.4f (audio energy/loudness)", sent_rms);
+  log_plain("  DC Offset:               %.6f (signal mean)", sent->dc_offset);
   log_plain("  Clipping Events:         %llu samples (%.2f%%)", (unsigned long long)g_sent_stats.clipping_count,
             g_sent_stats.total_samples > 0 ? (100.0 * g_sent_stats.clipping_count / g_sent_stats.total_samples) : 0);
   log_plain("  Silent Samples:          %llu samples (%.2f%%)", (unsigned long long)g_sent_stats.silent_samples,
@@ -562,6 +564,7 @@ void audio_analysis_print_report(void) {
   log_plain("  Total Samples:           %llu", (unsigned long long)g_received_stats.total_samples);
   log_plain("  Peak Level:              %.4f", g_received_stats.peak_level);
   log_plain("  RMS Level:               %.4f (audio energy/loudness)", recv_rms);
+  log_plain("  DC Offset:               %.6f (signal mean)", received->dc_offset);
   log_plain("  Clipping Events:         %llu samples (%.2f%%)", (unsigned long long)g_received_stats.clipping_count,
             g_received_stats.total_samples > 0
                 ? (100.0 * g_received_stats.clipping_count / g_received_stats.total_samples)

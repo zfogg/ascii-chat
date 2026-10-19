@@ -4,6 +4,7 @@
 #include <ascii-chat/video/face_follow.h>
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/util/fnv1a.h>
 #include <math.h>
 #include <string.h>
@@ -60,6 +61,27 @@ static void test_handoff_unmeasured_host(void) {
   CHECK(message.kind == HANDOFF_COMMIT);
 }
 
+static void test_audio_analysis_levels(void) {
+  CHECK(audio_analysis_init() == 0);
+  audio_analysis_track_sent_sample(0.25f);
+  audio_analysis_track_sent_sample(0.75f);
+  audio_analysis_track_received_sample(-0.5f);
+  audio_analysis_track_received_sample(-0.5f);
+  const audio_analysis_stats_t *sent = audio_analysis_get_sent_stats();
+  const audio_analysis_stats_t *received = audio_analysis_get_received_stats();
+  CHECK(fabsf(sent->dc_offset - 0.5f) < 0.00001f);
+  CHECK(fabsf(sent->rms_level - sqrtf(0.3125f)) < 0.00001f);
+  CHECK(fabsf(received->dc_offset + 0.5f) < 0.00001f);
+  CHECK(fabsf(received->rms_level - 0.5f) < 0.00001f);
+  audio_analysis_destroy();
+  CHECK(audio_analysis_init() == 0);
+  sent = audio_analysis_get_sent_stats();
+  received = audio_analysis_get_received_stats();
+  CHECK(sent->total_samples == 0 && sent->dc_offset == 0.0f && sent->rms_level == 0.0f);
+  CHECK(received->total_samples == 0 && received->dc_offset == 0.0f && received->rms_level == 0.0f);
+  audio_analysis_destroy();
+}
+
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
   CHECK(options_state_init() == ASCIICHAT_OK);
@@ -71,8 +93,9 @@ int main(void) {
   CHECK(face.crop.w < 0.75f);
   test_handoff_unmeasured_host();
   test_mixer_high_slot();
+  test_audio_analysis_levels();
   options_state_destroy();
   log_set_terminal_output(true);
-  log_warn("PASS: first-frame framing, unmeasured incumbent loss, mixer slot 64 and self exclusion");
+  log_warn("PASS: first-frame framing, unmeasured incumbent loss, mixer slot 64/self exclusion and audio RMS/DC stats");
   return 0;
 }
