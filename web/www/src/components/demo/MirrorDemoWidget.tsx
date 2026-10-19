@@ -118,7 +118,7 @@ export default function MirrorDemoWidget({
   },
   demoOptions,
   defaultOptionIndex = 0,
-  height = "36vh",
+  height = "400px",
   minHeight = 200,
   showHeader = true,
   showDebugLogs = import.meta.env.MODE !== "production",
@@ -164,6 +164,7 @@ export default function MirrorDemoWidget({
 
   const { captureFrame } = useCanvasCapture(videoRef, canvasRef, false, {
     faceFollow: selectedOption?.settings.faceFollow ?? false,
+    faceFollowDebug: selectedOption?.settings.faceFollowDebug ?? false,
   });
 
   const addDebugLog = useCallback((msg: string) => {

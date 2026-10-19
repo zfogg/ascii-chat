@@ -53,6 +53,11 @@ Debug native builds accept `--face-follow-debug`, which draws a red square aroun
 the selected detected face. It can also be used alone to inspect detection
 without enabling automatic zoom. Release native builds omit this CLI option.
 
+Outline rendering remains available in Release builds, including the deployed
+WASM modules. Only the native CLI option is debug-build-only. The website's
+webcam demo offers **Face Follow (outlined face)** between **Face Follow** and
+**Full Frame**; returning to either other mode removes the outline.
+
 The browser equivalent is `?faceFollow&faceFollowDebug`, with no debug toggle in
 the Settings panel. Debugging is opt-in and the square is included in the rendered
 image. Debug capture canvases expose normalized crop/face coordinates and
