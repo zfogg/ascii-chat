@@ -222,8 +222,7 @@ asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, co
 /** Return the current state for a participant's peer connection. */
 bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t participant_id[16],
                                    webrtc_state_t *state_out);
-asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager,
-                                                   const uint8_t participant_id[16]);
+asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager, const uint8_t participant_id[16]);
 
 // ============================================================================
 // Connection Health Monitoring

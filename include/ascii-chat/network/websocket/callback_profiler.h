@@ -25,12 +25,12 @@
  * @brief Callback profiling statistics for a single LWS callback reason
  */
 typedef struct {
-  uint64_t invocation_count;      ///< Number of times callback was invoked
-  uint64_t total_time_ns;         ///< Total accumulated execution time in nanoseconds
-  uint64_t min_time_ns;           ///< Minimum single callback execution time
-  uint64_t max_time_ns;           ///< Maximum single callback execution time
-  uint64_t bytes_processed;       ///< Total data processed by this callback
-  uint64_t last_invocation_ns;    ///< Timestamp of last invocation (wall clock)
+  uint64_t invocation_count;   ///< Number of times callback was invoked
+  uint64_t total_time_ns;      ///< Total accumulated execution time in nanoseconds
+  uint64_t min_time_ns;        ///< Minimum single callback execution time
+  uint64_t max_time_ns;        ///< Maximum single callback execution time
+  uint64_t bytes_processed;    ///< Total data processed by this callback
+  uint64_t last_invocation_ns; ///< Timestamp of last invocation (wall clock)
 } lws_callback_stats_t;
 
 /**

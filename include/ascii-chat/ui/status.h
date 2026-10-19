@@ -64,8 +64,8 @@ void ui_status_render_header(frame_buffer_t *buffer, terminal_size_t size, void 
  * @return ASCIICHAT_OK on success
  */
 asciichat_error_t ui_status_gather(tcp_server_t *server, const char *session_string, const char *ipv4_address,
-                                       const char *ipv6_address, uint16_t port, time_t start_time,
-                                       const char *mode_name, bool session_is_mdns_only, ui_status_t *out_status);
+                                   const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
+                                   bool session_is_mdns_only, ui_status_t *out_status);
 
 /**
  * @brief Display status screen
@@ -106,8 +106,8 @@ bool ui_status_display_interactive(const ui_status_t *status);
  * @param[in,out] last_update_ns Last update time in microseconds (from platform_get_monotonic_time_us)
  */
 void ui_status_update(tcp_server_t *server, const char *session_string, const char *ipv4_address,
-                          const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
-                          bool session_is_mdns_only, uint64_t *last_update_ns);
+                      const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
+                      bool session_is_mdns_only, uint64_t *last_update_ns);
 
 /**
  * @brief Initialize status screen log capture system

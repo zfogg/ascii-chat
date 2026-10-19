@@ -40,10 +40,10 @@ typedef enum {
  * Each codec is represented by a single bit, allowing multiple codecs
  * to be advertised simultaneously in the codec_capabilities_video field.
  */
-#define VIDEO_CODEC_CAP_RGBA ((uint32_t)(1 << VIDEO_CODEC_RGBA))   ///< Bit 0: RGBA support
-#define VIDEO_CODEC_CAP_H265 ((uint32_t)(1 << VIDEO_CODEC_H265))   ///< Bit 1: H.265 support
-#define VIDEO_CODEC_CAP_JPEG ((uint32_t)(1 << VIDEO_CODEC_JPEG))   ///< Bit 2: JPEG support
-#define VIDEO_CODEC_CAP_H264 ((uint32_t)(1 << VIDEO_CODEC_H264))   ///< Bit 3: H.264 support
+#define VIDEO_CODEC_CAP_RGBA ((uint32_t)(1 << VIDEO_CODEC_RGBA)) ///< Bit 0: RGBA support
+#define VIDEO_CODEC_CAP_H265 ((uint32_t)(1 << VIDEO_CODEC_H265)) ///< Bit 1: H.265 support
+#define VIDEO_CODEC_CAP_JPEG ((uint32_t)(1 << VIDEO_CODEC_JPEG)) ///< Bit 2: JPEG support
+#define VIDEO_CODEC_CAP_H264 ((uint32_t)(1 << VIDEO_CODEC_H264)) ///< Bit 3: H.264 support
 
 /**
  * @brief Default video codec capabilities (all codecs supported)
@@ -57,8 +57,8 @@ typedef enum {
  * @ingroup media
  */
 typedef enum {
-  AUDIO_CODEC_RAW = 0,   ///< Raw PCM audio (uncompressed)
-  AUDIO_CODEC_OPUS = 1,  ///< Opus audio codec
+  AUDIO_CODEC_RAW = 0,  ///< Raw PCM audio (uncompressed)
+  AUDIO_CODEC_OPUS = 1, ///< Opus audio codec
 } audio_codec_t;
 
 /**
@@ -69,8 +69,8 @@ typedef enum {
  * Each codec is represented by a single bit, allowing multiple codecs
  * to be advertised simultaneously in the codec_capabilities_audio field.
  */
-#define AUDIO_CODEC_CAP_RAW ((uint32_t)(1 << AUDIO_CODEC_RAW))     ///< Bit 0: Raw PCM support
-#define AUDIO_CODEC_CAP_OPUS ((uint32_t)(1 << AUDIO_CODEC_OPUS))   ///< Bit 1: Opus support
+#define AUDIO_CODEC_CAP_RAW ((uint32_t)(1 << AUDIO_CODEC_RAW))   ///< Bit 0: Raw PCM support
+#define AUDIO_CODEC_CAP_OPUS ((uint32_t)(1 << AUDIO_CODEC_OPUS)) ///< Bit 1: Opus support
 
 /**
  * @brief Default audio codec capabilities (all codecs supported)

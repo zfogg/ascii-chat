@@ -163,19 +163,19 @@ typedef struct {
   mutex_t state_mutex;    ///< Mutex protecting context state
 
   // Audio pipeline and device info
-  void *audio_pipeline;       ///< Client audio pipeline for AEC3 echo cancellation (opaque pointer)
-  bool monitor_local_media;   ///< Play local file audio in solo sessions
+  void *audio_pipeline;                  ///< Client audio pipeline for AEC3 echo cancellation (opaque pointer)
+  bool monitor_local_media;              ///< Play local file audio in solo sessions
   uint64_t test_audio_playback_position; ///< Output callback's synthesized monitor sample clock
-  void *capture_media_source; ///< Borrowed local media audio; configure before starting duplex
-  double sample_rate;         ///< Actual sample rate of streams (48kHz)
-  double input_device_rate;   ///< Native sample rate of input device
-  double output_device_rate;  ///< Native sample rate of output device
-  double input_resample_phase; ///< Source position carried between native-rate input blocks
-  float input_resample_previous; ///< Last input sample used at a block boundary
-  bool input_resample_has_previous; ///< Whether a prior input block has been processed
-  double output_resample_phase; ///< 48 kHz source position carried between output callbacks
-  float output_resample_previous; ///< Last source sample used at an output boundary
-  bool output_resample_has_previous; ///< Whether a prior output block has been processed
+  void *capture_media_source;            ///< Borrowed local media audio; configure before starting duplex
+  double sample_rate;                    ///< Actual sample rate of streams (48kHz)
+  double input_device_rate;              ///< Native sample rate of input device
+  double output_device_rate;             ///< Native sample rate of output device
+  double input_resample_phase;           ///< Source position carried between native-rate input blocks
+  float input_resample_previous;         ///< Last input sample used at a block boundary
+  bool input_resample_has_previous;      ///< Whether a prior input block has been processed
+  double output_resample_phase;          ///< 48 kHz source position carried between output callbacks
+  float output_resample_previous;        ///< Last source sample used at an output boundary
+  bool output_resample_has_previous;     ///< Whether a prior output block has been processed
 } audio_context_t;
 
 /* ============================================================================

@@ -83,7 +83,7 @@ typedef enum {
 typedef struct client_info {
   participant_type_t participant_type; // Network (socket) or memory (direct injection)
   socket_t socket;
-  bool event_driven;                 // Network callbacks own lifetime; only render threads are per-client
+  bool event_driven; // Network callbacks own lifetime; only render threads are per-client
   atomic_t event_ready;
   atomic_t event_cleanup;
   acip_transport_t *transport;       // ACIP transport for protocol-agnostic packet sending

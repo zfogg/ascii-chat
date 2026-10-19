@@ -74,16 +74,16 @@ extern "C" {
  * @endcode
  */
 typedef struct {
-    _Atomic(uint64_t) impl;  ///< Underlying C11 atomic value
+  _Atomic(uint64_t) impl; ///< Underlying C11 atomic value
 #ifndef NDEBUG
-    _Atomic(uint64_t)          change_count;
-    _Atomic(uint64_t)          last_store_time_ns;
-    _Atomic(uint64_t)          last_load_time_ns;
-    _Atomic(uint64_t)          store_count;
-    _Atomic(uint64_t)          load_count;
-    _Atomic(uint64_t)          cas_count;
-    _Atomic(uint64_t)          cas_success_count;
-    _Atomic(uint64_t)          fetch_count;
+  _Atomic(uint64_t) change_count;
+  _Atomic(uint64_t) last_store_time_ns;
+  _Atomic(uint64_t) last_load_time_ns;
+  _Atomic(uint64_t) store_count;
+  _Atomic(uint64_t) load_count;
+  _Atomic(uint64_t) cas_count;
+  _Atomic(uint64_t) cas_success_count;
+  _Atomic(uint64_t) fetch_count;
 #endif
 } atomic_t;
 
@@ -105,19 +105,18 @@ typedef struct {
  * @endcode
  */
 typedef struct {
-    _Atomic(void *)   impl;  ///< Underlying C11 atomic pointer
+  _Atomic(void *) impl; ///< Underlying C11 atomic pointer
 #ifndef NDEBUG
-    _Atomic(uint64_t)          change_count;
-    _Atomic(uint64_t)          last_store_time_ns;
-    _Atomic(uint64_t)          last_load_time_ns;
-    _Atomic(uint64_t)          store_count;
-    _Atomic(uint64_t)          load_count;
-    _Atomic(uint64_t)          cas_count;
-    _Atomic(uint64_t)          cas_success_count;
-    _Atomic(uint64_t)          exchange_count;
+  _Atomic(uint64_t) change_count;
+  _Atomic(uint64_t) last_store_time_ns;
+  _Atomic(uint64_t) last_load_time_ns;
+  _Atomic(uint64_t) store_count;
+  _Atomic(uint64_t) load_count;
+  _Atomic(uint64_t) cas_count;
+  _Atomic(uint64_t) cas_success_count;
+  _Atomic(uint64_t) exchange_count;
 #endif
 } atomic_ptr_t;
-
 
 // ============================================================================
 // bool Operations
@@ -159,8 +158,7 @@ void atomic_store_bool_impl(atomic_t *a, uint64_t value);
 #ifndef NDEBUG
 bool atomic_cas_bool(atomic_t *a, bool *expected, bool new_value);
 #else
-#define atomic_cas_bool(a, expected, new_value) \
-    atomic_cas_bool_impl((a), (expected), (new_value))
+#define atomic_cas_bool(a, expected, new_value) atomic_cas_bool_impl((a), (expected), (new_value))
 #endif
 
 bool atomic_cas_bool_impl(atomic_t *a, bool *expected, bool new_value);
@@ -177,8 +175,7 @@ bool atomic_cas_bool_impl(atomic_t *a, bool *expected, bool new_value);
 #ifndef NDEBUG
 bool atomic_exchange_bool(atomic_t *a, bool new_value);
 #else
-#define atomic_exchange_bool(a, new_value) \
-    atomic_exchange_bool_impl((a), (new_value))
+#define atomic_exchange_bool(a, new_value) atomic_exchange_bool_impl((a), (new_value))
 #endif
 
 bool atomic_exchange_bool_impl(atomic_t *a, bool new_value);
@@ -222,8 +219,7 @@ void atomic_store_int_impl(atomic_t *a, uint64_t value);
 #ifndef NDEBUG
 int atomic_fetch_add_int(atomic_t *a, int delta);
 #else
-#define atomic_fetch_add_int(a, delta) \
-    ((int)atomic_fetch_add_int_impl((a), (int64_t)(delta)))
+#define atomic_fetch_add_int(a, delta) ((int)atomic_fetch_add_int_impl((a), (int64_t)(delta)))
 #endif
 
 int atomic_fetch_add_int_impl(atomic_t *a, int64_t delta);
@@ -237,8 +233,7 @@ int atomic_fetch_add_int_impl(atomic_t *a, int64_t delta);
 #ifndef NDEBUG
 int atomic_fetch_sub_int(atomic_t *a, int delta);
 #else
-#define atomic_fetch_sub_int(a, delta) \
-    ((int)atomic_fetch_sub_int_impl((a), (int64_t)(delta)))
+#define atomic_fetch_sub_int(a, delta) ((int)atomic_fetch_sub_int_impl((a), (int64_t)(delta)))
 #endif
 
 int atomic_fetch_sub_int_impl(atomic_t *a, int64_t delta);
@@ -253,8 +248,7 @@ int atomic_fetch_sub_int_impl(atomic_t *a, int64_t delta);
 #ifndef NDEBUG
 bool atomic_cas_int(atomic_t *a, int *expected, int new_value);
 #else
-#define atomic_cas_int(a, expected, new_value) \
-    atomic_cas_int_impl((a), (expected), (new_value))
+#define atomic_cas_int(a, expected, new_value) atomic_cas_int_impl((a), (expected), (new_value))
 #endif
 
 bool atomic_cas_int_impl(atomic_t *a, int *expected, int new_value);
@@ -327,8 +321,7 @@ uint64_t atomic_fetch_sub_u64_impl(atomic_t *a, uint64_t delta);
 #ifndef NDEBUG
 bool atomic_cas_u64(atomic_t *a, uint64_t *expected, uint64_t new_value);
 #else
-#define atomic_cas_u64(a, expected, new_value) \
-    atomic_cas_u64_impl((a), (expected), (new_value))
+#define atomic_cas_u64(a, expected, new_value) atomic_cas_u64_impl((a), (expected), (new_value))
 #endif
 
 bool atomic_cas_u64_impl(atomic_t *a, uint64_t *expected, uint64_t new_value);
@@ -351,8 +344,7 @@ bool atomic_cas_u64_impl(atomic_t *a, uint64_t *expected, uint64_t new_value);
 #ifndef NDEBUG
 uint64_t atomic_exchange_u64(atomic_t *a, uint64_t new_value);
 #else
-#define atomic_exchange_u64(a, new_value) \
-    atomic_exchange_u64_impl((a), (new_value))
+#define atomic_exchange_u64(a, new_value) atomic_exchange_u64_impl((a), (new_value))
 #endif
 
 uint64_t atomic_exchange_u64_impl(atomic_t *a, uint64_t new_value);
@@ -397,8 +389,7 @@ void atomic_ptr_store_impl(atomic_ptr_t *a, void *value);
 #ifndef NDEBUG
 bool atomic_ptr_cas(atomic_ptr_t *a, void **expected, void *new_value);
 #else
-#define atomic_ptr_cas(a, expected, new_value) \
-    atomic_ptr_cas_impl((a), (expected), (new_value))
+#define atomic_ptr_cas(a, expected, new_value) atomic_ptr_cas_impl((a), (expected), (new_value))
 #endif
 
 bool atomic_ptr_cas_impl(atomic_ptr_t *a, void **expected, void *new_value);
@@ -412,8 +403,7 @@ bool atomic_ptr_cas_impl(atomic_ptr_t *a, void **expected, void *new_value);
 #ifndef NDEBUG
 void *atomic_ptr_exchange(atomic_ptr_t *a, void *new_value);
 #else
-#define atomic_ptr_exchange(a, new_value) \
-    atomic_ptr_exchange_impl((a), (new_value))
+#define atomic_ptr_exchange(a, new_value) atomic_ptr_exchange_impl((a), (new_value))
 #endif
 
 void *atomic_ptr_exchange_impl(atomic_ptr_t *a, void *new_value);
@@ -427,8 +417,7 @@ void *atomic_ptr_exchange_impl(atomic_ptr_t *a, void *new_value);
 #ifndef NDEBUG
 int atomic_exchange_int(atomic_t *a, int new_value);
 #else
-#define atomic_exchange_int(a, new_value) \
-    atomic_exchange_int_impl((a), (new_value))
+#define atomic_exchange_int(a, new_value) atomic_exchange_int_impl((a), (new_value))
 #endif
 
 int atomic_exchange_int_impl(atomic_t *a, int new_value);
@@ -471,7 +460,8 @@ void atomic_ptr_on_exchange(atomic_ptr_t *a);
  * ATOMIC_REGISTER_AUTO(g_counter, NULL);
  * @endcode
  */
-#define ATOMIC_REGISTER_AUTO(name, parent_ptr) NAMED_REGISTER_ATOMIC(&(name), #name, (uintptr_t)(const void *)(parent_ptr))
+#define ATOMIC_REGISTER_AUTO(name, parent_ptr)                                                                         \
+  NAMED_REGISTER_ATOMIC(&(name), #name, (uintptr_t)(const void *)(parent_ptr))
 
 /**
  * @brief Register an atomic pointer variable for debug tracking with automatic name generation
@@ -527,15 +517,19 @@ void atomic_ptr_on_exchange(atomic_ptr_t *a);
 
 // Actual init functions (defined below - use a workaround pattern)
 // These are helpers that work with static initialization
-#define _atomic_init_auto(name) {0}; \
-  static void __attribute__((constructor, used)) _atomic_reg_##name(void) { \
-    NAMED_REGISTER_ATOMIC(&name, #name, NULL); \
-  } typedef int _atomic_assert_##name
+#define _atomic_init_auto(name)                                                                                        \
+  {0};                                                                                                                 \
+  static void __attribute__((constructor, used)) _atomic_reg_##name(void) {                                            \
+    NAMED_REGISTER_ATOMIC(&name, #name, NULL);                                                                         \
+  }                                                                                                                    \
+  typedef int _atomic_assert_##name
 
-#define _atomic_ptr_init_auto(name) {0}; \
-  static void __attribute__((constructor, used)) _atomic_ptr_reg_##name(void) { \
-    NAMED_REGISTER_ATOMIC_PTR(&name, #name, NULL); \
-  } typedef int _atomic_ptr_assert_##name
+#define _atomic_ptr_init_auto(name)                                                                                    \
+  {0};                                                                                                                 \
+  static void __attribute__((constructor, used)) _atomic_ptr_reg_##name(void) {                                        \
+    NAMED_REGISTER_ATOMIC_PTR(&name, #name, NULL);                                                                     \
+  }                                                                                                                    \
+  typedef int _atomic_ptr_assert_##name
 
 // ============================================================================
 // Debug Initialization/Shutdown
@@ -547,10 +541,10 @@ void debug_atomic_shutdown(void);
 bool debug_atomic_is_initialized(void);
 void debug_atomic_print_state(void);
 #else
-#define debug_atomic_init()           ((void)0)
-#define debug_atomic_shutdown()       ((void)0)
+#define debug_atomic_init() ((void)0)
+#define debug_atomic_shutdown() ((void)0)
 #define debug_atomic_is_initialized() (true)
-#define debug_atomic_print_state()    ((void)0)
+#define debug_atomic_print_state() ((void)0)
 #endif
 
 #ifdef __cplusplus

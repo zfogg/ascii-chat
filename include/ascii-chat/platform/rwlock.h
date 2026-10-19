@@ -40,17 +40,17 @@
  * @ingroup platform
  */
 typedef struct {
-    SRWLOCK impl;            ///< Underlying Windows SRW lock
-    const char *name;        ///< Human-readable name for named registry (all builds)
+  SRWLOCK impl;     ///< Underlying Windows SRW lock
+  const char *name; ///< Human-readable name for named registry (all builds)
 #ifndef NDEBUG
-    _Atomic(uint64_t) last_rdlock_time_ns;  ///< Timestamp of last read lock acquisition (nanoseconds)
-    _Atomic(uint64_t) last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
-    _Atomic(uint64_t) last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
-    _Atomic(uintptr_t) write_held_by_key;    ///< Registry key of thread holding write lock (0 if not held)
-    atomic_t read_lock_count;       ///< Number of threads holding read locks (thread-safe atomic)
-    _Atomic(uint64_t) rdlock_count;          ///< Total read lock acquisitions
-    _Atomic(uint64_t) wrlock_count;          ///< Total write lock acquisitions
-    _Atomic(uint64_t) unlock_count;          ///< Total unlocks
+  _Atomic(uint64_t) last_rdlock_time_ns; ///< Timestamp of last read lock acquisition (nanoseconds)
+  _Atomic(uint64_t) last_wrlock_time_ns; ///< Timestamp of last write lock acquisition (nanoseconds)
+  _Atomic(uint64_t) last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
+  _Atomic(uintptr_t) write_held_by_key;  ///< Registry key of thread holding write lock (0 if not held)
+  atomic_t read_lock_count;              ///< Number of threads holding read locks (thread-safe atomic)
+  _Atomic(uint64_t) rdlock_count;        ///< Total read lock acquisitions
+  _Atomic(uint64_t) wrlock_count;        ///< Total write lock acquisitions
+  _Atomic(uint64_t) unlock_count;        ///< Total unlocks
 #endif
 } rwlock_t;
 #else
@@ -60,17 +60,17 @@ typedef struct {
  * @ingroup platform
  */
 typedef struct {
-    pthread_rwlock_t impl;   ///< Underlying POSIX rwlock
-    const char *name;        ///< Human-readable name for named registry (all builds)
+  pthread_rwlock_t impl; ///< Underlying POSIX rwlock
+  const char *name;      ///< Human-readable name for named registry (all builds)
 #ifndef NDEBUG
-    _Atomic(uint64_t) last_rdlock_time_ns;  ///< Timestamp of last read lock acquisition (nanoseconds)
-    _Atomic(uint64_t) last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
-    _Atomic(uint64_t) last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
-    _Atomic(uintptr_t) write_held_by_key;    ///< Registry key of thread holding write lock (0 if not held)
-    atomic_t read_lock_count;       ///< Number of threads holding read locks (thread-safe atomic)
-    _Atomic(uint64_t) rdlock_count;          ///< Total read lock acquisitions
-    _Atomic(uint64_t) wrlock_count;          ///< Total write lock acquisitions
-    _Atomic(uint64_t) unlock_count;          ///< Total unlocks
+  _Atomic(uint64_t) last_rdlock_time_ns; ///< Timestamp of last read lock acquisition (nanoseconds)
+  _Atomic(uint64_t) last_wrlock_time_ns; ///< Timestamp of last write lock acquisition (nanoseconds)
+  _Atomic(uint64_t) last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
+  _Atomic(uintptr_t) write_held_by_key;  ///< Registry key of thread holding write lock (0 if not held)
+  atomic_t read_lock_count;              ///< Number of threads holding read locks (thread-safe atomic)
+  _Atomic(uint64_t) rdlock_count;        ///< Total read lock acquisitions
+  _Atomic(uint64_t) wrlock_count;        ///< Total write lock acquisitions
+  _Atomic(uint64_t) unlock_count;        ///< Total unlocks
 #endif
 } rwlock_t;
 #endif
@@ -296,7 +296,8 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #define rwlock_rdlock(lock) rwlock_rdlock_impl(lock)
 #else
 #define rwlock_rdlock(lock)                                                                                            \
-  (debug_sync_is_initialized() ? debug_sync_rwlock_rdlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdlock_impl(lock))
+  (debug_sync_is_initialized() ? debug_sync_rwlock_rdlock(lock, __FILE__, __LINE__, __func__)                          \
+                               : rwlock_rdlock_impl(lock))
 #endif
 
 /**
@@ -315,7 +316,8 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #define rwlock_wrlock(lock) rwlock_wrlock_impl(lock)
 #else
 #define rwlock_wrlock(lock)                                                                                            \
-  (debug_sync_is_initialized() ? debug_sync_rwlock_wrlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrlock_impl(lock))
+  (debug_sync_is_initialized() ? debug_sync_rwlock_wrlock(lock, __FILE__, __LINE__, __func__)                          \
+                               : rwlock_wrlock_impl(lock))
 #endif
 
 /**
@@ -333,7 +335,8 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #define rwlock_rdunlock(lock) rwlock_rdunlock_impl(lock)
 #else
 #define rwlock_rdunlock(lock)                                                                                          \
-  (debug_sync_is_initialized() ? debug_sync_rwlock_rdunlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdunlock_impl(lock))
+  (debug_sync_is_initialized() ? debug_sync_rwlock_rdunlock(lock, __FILE__, __LINE__, __func__)                        \
+                               : rwlock_rdunlock_impl(lock))
 #endif
 
 /**
@@ -351,7 +354,8 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #define rwlock_wrunlock(lock) rwlock_wrunlock_impl(lock)
 #else
 #define rwlock_wrunlock(lock)                                                                                          \
-  (debug_sync_is_initialized() ? debug_sync_rwlock_wrunlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrunlock_impl(lock))
+  (debug_sync_is_initialized() ? debug_sync_rwlock_wrunlock(lock, __FILE__, __LINE__, __func__)                        \
+                               : rwlock_wrunlock_impl(lock))
 #endif
 
 #ifdef __cplusplus

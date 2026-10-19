@@ -15,8 +15,5 @@
 // out_is_path: true if out is an absolute file path, false if it is a family name.
 // out_font_data: non-NULL only for bundled fonts; points to TTF data in memory.
 // out_font_data_size: size of font_data, or 0 if not used.
-asciichat_error_t platform_font_resolve(const char *spec,
-                                        char *out, size_t out_size,
-                                        bool *out_is_path,
-                                        const uint8_t **out_font_data,
-                                        size_t *out_font_data_size);
+asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_size, bool *out_is_path,
+                                        const uint8_t **out_font_data, size_t *out_font_data_size);

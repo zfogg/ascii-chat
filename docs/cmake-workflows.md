@@ -63,3 +63,15 @@ selected source-built support libraries relocate with the installed prefix.
 Windows consumers can match the SDK's CRT with the target property
 `MSVC_RUNTIME_LIBRARY=${asciichat_MSVC_RUNTIME_LIBRARY}`. The installed-SDK
 smoke project demonstrates this without changing the consumer's global flags.
+
+## Formatting
+
+`cmake --build build --target format` formats all owned C, C++, Objective-C,
+headers and C-family templates, including public headers and every test type.
+`format-check` checks the same inventory; `clang-format` and
+`clang-format-check` are aliases. Git checkouts include tracked and newly
+created nonignored source files while excluding submodules and generated
+outputs. Source archives use the authored source directories instead.
+The inventory is collected when the target runs and passed through a response
+file, so Windows command-line limits and new test files are handled consistently.
+Run `vp format` from `web/` for frontend code.
