@@ -69,8 +69,8 @@ export function VideoUploadModal({
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
       <div className="fixed inset-0 bg-black/60" aria-hidden="true" />
 
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="w-full max-w-md bg-terminal-0 border border-terminal-8 rounded-lg shadow-xl">
+      <div className="fixed inset-0 flex cursor-pointer items-center justify-center p-4">
+        <DialogPanel className="w-full max-w-md cursor-auto bg-terminal-0 border border-terminal-8 rounded-lg shadow-xl">
           <div className="p-6">
             <DialogTitle className="text-lg font-semibold text-terminal-fg mb-4">
               {allowImages ? "Upload Video or Image" : "Upload Video"}

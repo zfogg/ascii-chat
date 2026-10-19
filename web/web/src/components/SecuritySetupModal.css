@@ -9,6 +9,7 @@
   background: #060a09c9;
   backdrop-filter: blur(7px);
   font-family: "Segoe UI", Inter, system-ui, sans-serif;
+  cursor: pointer;
 }
 
 .crypto-modal {
@@ -19,6 +20,7 @@
   border-radius: 8px;
   background: #17201e;
   box-shadow: 0 28px 100px #000a;
+  cursor: auto;
 }
 
 .crypto-modal button,
@@ -297,7 +299,7 @@
 .crypto-add:disabled,
 .crypto-row-button:disabled {
   opacity: 0.55;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .crypto-key-list {
@@ -369,7 +371,7 @@
   border-color: #50644a !important;
   background: #24311f;
   color: #b6f36b !important;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .crypto-row-button.is-delete {

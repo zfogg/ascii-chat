@@ -331,7 +331,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -342,7 +342,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
       <section
         aria-labelledby="device-setup-title"
         aria-modal="true"
-        className="w-full max-w-3xl overflow-hidden rounded-lg border border-terminal-8 bg-terminal-bg text-terminal-fg shadow-2xl"
+        className="w-full max-w-3xl cursor-auto overflow-hidden rounded-lg border border-terminal-8 bg-terminal-bg text-terminal-fg shadow-2xl"
         role="dialog"
       >
         <header className="flex items-start justify-between border-b border-terminal-8 px-6 py-5">
