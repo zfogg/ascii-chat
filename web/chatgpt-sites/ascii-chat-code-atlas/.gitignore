@@ -1,0 +1,14 @@
+/node_modules/
+/cloudflare-dist/
+/.sites-checkout/
+/.sites-checkout-*/
+/.sites-runtime/
+/dist/data.json
+/ascii-chat-code-atlas.html
+/*.png
+__pycache__/
+*.py[cod]
+*.tar.gz
+*.log
+.env
+.env.*

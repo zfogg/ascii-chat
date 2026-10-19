@@ -2,7 +2,7 @@ from pathlib import Path
 import re,json,subprocess,collections,bisect
 from guides import make_guides
 C_EXTENSIONS={'.c','.cpp','.m'}
-root=Path(__file__).resolve().parents[2]
+root=Path(__file__).resolve().parents[3]
 out=Path(__file__).parent/'dist'
 paths=[]
 for folder in ['src','lib','web/web/src','web/packages/shared/src']:
@@ -75,7 +75,7 @@ for id,text in contents.items():
 
 
 views=make_guides()
-assert len(views)==17 and len({v['id'] for v in views})==17
+assert len(views)==18 and len({v['id'] for v in views})==18
 node_index={n['id']:n for n in nodes}
 for v in views:
  def columns(steps):
@@ -92,7 +92,7 @@ for v in views:
  for chapter in v['chapters']:
   chapter['columns'],chapter['columnTitles']=columns(chapter['steps'])
  seen=set();v['columns']=[];v['columnTitles']=[]
- for chapter in v['chapters']:
+ for chapter in (v['chapters'] if len(v['chapters'])<=4 else v['chapters'][::3]):
   col=[]
   for step in chapter['steps']:
    key=step['file']+'::'+step['symbol'] if step['symbol'] else step['file']
