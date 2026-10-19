@@ -75,3 +75,5 @@ Additional findings in review summaries:
 - Follow-up review: each participant owns its Opus decoder and output encoder; mix-minus excludes the recipient before clipping. Compiled tests verify sender silence and stream isolation. Face Follow default constants now live in their consuming registries.
 
 Validation results are recorded in the accompanying PR description.
+
+PR #530 follow-up: fixed the 20 ms native audio deadline to retain scheduler overshoot and bound catch-up after a long stall; remove the local memory participant before redispatching a retained host; skip the unused outer CRC for encrypted WebRTC envelopes while retaining inner authentication/CRC validation; share the font-selection mapping and update its comment. Regressions cover simulated 21 ms scheduling, long stalls, repeated live host render re-entry, and encrypted packets with a deliberately altered outer CRC.

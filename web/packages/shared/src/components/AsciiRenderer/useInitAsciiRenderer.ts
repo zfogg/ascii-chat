@@ -17,6 +17,8 @@ import {
 
 import { browserRasterFontSize } from "./rasterConfig";
 
+const rendererFontSelection = (matrix: boolean) => (matrix ? 2 : 1);
+
 interface UseInitAsciiRendererReturn {
   moduleRef: RefObject<MirrorModule | null>;
   setupDoneRef: RefObject<boolean>;
@@ -187,14 +189,13 @@ export function useInitAsciiRenderer({
       moduleRef.current.HEAPU8[configPtr + 20 + fontSpec.length] = 0; // null terminate
       moduleRef.current.HEAPU8[configPtr + 532] = 0; // font_is_path
 
-      const fontDataPtr = moduleRef.current._get_font_default_ptr(
-        isMatrixMode ? 2 : 1,
-      );
+      const fontSelection = rendererFontSelection(isMatrixMode);
+      const fontDataPtr =
+        moduleRef.current._get_font_default_ptr(fontSelection);
       view.setInt32(536, fontDataPtr, true); // font_data pointer
 
-      const fontDataSize = moduleRef.current._get_font_default_size(
-        isMatrixMode ? 2 : 1,
-      );
+      const fontDataSize =
+        moduleRef.current._get_font_default_size(fontSelection);
       view.setInt32(540, fontDataSize, true); // font_data_size
     },
     [],
@@ -224,10 +225,9 @@ export function useInitAsciiRenderer({
         // Measure the selected font through the same renderer that paints frames.
         // Guessing a taller Matrix cell produces too few rows and letterboxes
         // the entire raster when the canvas uses object-fit: contain.
-        // URL settings can reach this hook before the options effect runs.
-        // Select the font before reading its data or measuring its cells.
-        // Font measurement must not overwrite newer keyboard/settings changes.
-        const metricKey = `${isMatrixMode}:${moduleRef.current._get_font_default_ptr(isMatrixMode ? 2 : 1)}:${moduleRef.current._get_font_default_size(isMatrixMode ? 2 : 1)}`;
+        // Query the requested font without changing current engine settings.
+        const fontSelection = rendererFontSelection(isMatrixMode);
+        const metricKey = `${fontSelection}:${moduleRef.current._get_font_default_ptr(fontSelection)}:${moduleRef.current._get_font_default_size(fontSelection)}`;
         let cell = cellMetricsRef.current.get(metricKey);
         if (!cell) {
           writeConfigStructFields(configPtr, 1, 1, isMatrixMode);

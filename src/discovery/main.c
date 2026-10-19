@@ -524,8 +524,13 @@ role_dispatch:
       return ASCIICHAT_OK;
     }
 
-    if (g_discovery->handoff_pending)
+    if (g_discovery->handoff_pending) {
+      // A retained host re-enters this branch and registers fresh local media.
+      result = session_host_remove_client(host, host_participant_id);
+      if (result != ASCIICHAT_OK)
+        return result;
       goto role_dispatch;
+    }
 
     // If we reach here, discovery session is no longer active (role change)
     if (!discovery_session_is_active(g_discovery)) {

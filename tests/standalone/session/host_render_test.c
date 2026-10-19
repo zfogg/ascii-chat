@@ -1,5 +1,6 @@
 /* Capability packets must affect the frames delivered by the discovery host. */
 #include "session/host.h"
+#include "session/host_timing.h"
 #include <ascii-chat/network/acip/listener.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/buffer.h>
@@ -338,10 +339,51 @@ static void test_host_listener(void) {
   socket_cleanup();
 }
 
+static void test_host_reentry(void) {
+  CHECK(socket_init() == ASCIICHAT_OK);
+  acip_listener_t *reservation = NULL;
+  CHECK(acip_listener_open("127.0.0.1", 0, 1, &reservation) == ASCIICHAT_OK);
+  uint16_t port = acip_listener_port(reservation);
+  acip_listener_destroy(reservation);
+  session_host_config_t config = {.port = port, .ipv4_address = "127.0.0.1", .max_clients = 1};
+  session_host_t *host = session_host_create(&config);
+  CHECK(host && session_host_start(host) == ASCIICHAT_OK);
+  for (int reentry = 0; reentry < 3; ++reentry) {
+    uint32_t source = session_host_add_memory_participant(host);
+    CHECK(source);
+    CHECK(session_host_start_render(host) == ASCIICHAT_OK);
+    session_host_stop_render(host);
+    CHECK(session_host_remove_client(host, source) == ASCIICHAT_OK);
+    CHECK(session_host_get_client_count(host) == 0);
+  }
+  session_host_destroy(host);
+  socket_cleanup();
+}
+
+static void test_audio_cadence(void) {
+  uint64_t deadline = 0;
+  const uint64_t start = NS_PER_SEC_INT;
+  CHECK(!session_host_audio_due(&deadline, start));
+  unsigned ticks = 0;
+  // A 21 ms scheduler must still consume 500 frames over ten seconds.
+  for (uint64_t elapsed = 21; elapsed < 10000; elapsed += 21)
+    while (session_host_audio_due(&deadline, start + elapsed * NS_PER_MS_INT))
+      ticks++;
+  while (session_host_audio_due(&deadline, start + 10 * NS_PER_SEC_INT))
+    ticks++;
+  CHECK(ticks == 500);
+  CHECK(deadline == start + 10 * NS_PER_SEC_INT + 20 * NS_PER_MS_INT);
+  CHECK(session_host_audio_due(&deadline, start + 11 * NS_PER_SEC_INT));
+  CHECK(!session_host_audio_due(&deadline, start + 11 * NS_PER_SEC_INT));
+  CHECK(deadline == start + 11 * NS_PER_SEC_INT + 20 * NS_PER_MS_INT);
+}
+
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
   CHECK(options_state_init() == ASCIICHAT_OK);
   ascii_simd_init();
+  test_audio_cadence();
+  test_host_reentry();
   session_host_config_t config = {.max_clients = 4};
   session_host_t *host = session_host_create(&config);
   CHECK(host);

@@ -248,7 +248,8 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     if (!msg.data)
       break;
     memcpy(msg.data, wrtc->partial + offset, packet_len);
-    if (asciichat_crc32(msg.data + sizeof(header), payload_len) != NET_TO_HOST_U32(header.crc32)) {
+    if (NET_TO_HOST_U16(header.type) != PACKET_TYPE_ENCRYPTED &&
+        asciichat_crc32(msg.data + sizeof(header), payload_len) != NET_TO_HOST_U32(header.crc32)) {
       buffer_release(msg.data);
       mutex_unlock(&wrtc->queue_mutex);
       log_error("WebRTC packet checksum failed");

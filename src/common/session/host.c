@@ -16,6 +16,7 @@
  */
 
 #include "session/host.h"
+#include "session/host_timing.h"
 #include "session/display.h"
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/common.h>
@@ -843,7 +844,7 @@ static void *host_render_thread(void *arg) {
                           GET_OPTION(splash_screen) && terminal_is_interactive() && terminal_is_stdout_tty();
   host->snapshot_first_frame_ns = 0;
   uint64_t last_video_render_ns = 0;
-  uint64_t last_audio_render_ns = 0;
+  uint64_t audio_deadline_ns = 0;
 
   while (host->render_thread_running && host->running) {
     uint64_t now_ns = time_get_ns();
@@ -881,7 +882,7 @@ static void *host_render_thread(void *arg) {
     }
 
     // Audio consumes one 20 ms Opus frame per tick.
-    if (time_elapsed_ns(last_audio_render_ns, now_ns) >= NS_PER_MS_INT * 20) {
+    while (session_host_audio_due(&audio_deadline_ns, now_ns)) {
       // Mix audio from all participants
       // 1. Read samples from each participant's incoming_audio ringbuffer
       // 2. Mix into output buffer (simple addition with clipping)
@@ -892,7 +893,6 @@ static void *host_render_thread(void *arg) {
         log_warn("Host audio rendering failed");
 
       log_debug_every(NS_PER_MS_INT, "Audio render cycle");
-      last_audio_render_ns = now_ns;
     }
 
     // Small sleep to prevent busy-loop
