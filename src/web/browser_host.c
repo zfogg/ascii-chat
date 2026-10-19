@@ -72,6 +72,10 @@ EMSCRIPTEN_KEEPALIVE void browser_host_remove_client(uint32_t id) {
     if (client_ids[i] == id)
       client_ids[i] = 0;
 }
+EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_set_local_client(uint32_t id) {
+  session_host_render_target_t target = {.client_id = id};
+  return session_host_set_render_target(host, id ? &target : NULL);
+}
 EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_receive(uint32_t id, uint32_t type, const void *data,
                                                             size_t length) {
   return session_host_receive_packet(host, id, (packet_type_t)type, data, length);
