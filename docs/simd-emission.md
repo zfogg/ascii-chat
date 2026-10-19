@@ -69,9 +69,8 @@ Local validation on 2026-10-18:
   shared and x86 renderer sources pass native Clang syntax checking.
 - ARM64 under QEMU 6.2: NEON and SVE cell equivalence passes at SVE vector lengths
   16, 32, 64, 128, and 256 bytes; a cortex-a53 run checks NEON without SVE.
-- `.github/workflows/simd-emission.yml` repeats the x86 sanitizer and ARM64
-  emulation matrix on pull requests. Physical ARM hardware performance is not
-  measured here; emulator throughput is not a hardware benchmark.
+- Physical ARM hardware performance is not measured here; emulator throughput
+  is not a hardware benchmark.
 
 The full application configure/build attempts were stopped while rebuilding unrelated
 FFmpeg (Windows) and OpenSSL (Linux) dependencies; no complete application build
@@ -125,7 +124,9 @@ ASCII_CHAT_SIMD=scalar build-emission/emission-benchmark
 ```
 
 The benchmark accepts an optional backend name to isolate a failing baseline.
-For ARM cross-compilation, use the flags in the workflow; the old NEON benchmark
-also requires `-DASCIICHAT_CAN_COMPILE_NEON=OFF` because of the baseline compile
+For ARM cross-compilation, configure with
+`-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64
+-DCMAKE_C_COMPILER_TARGET=aarch64-linux-gnu -DCMAKE_C_FLAGS=--gcc-toolchain=/usr`.
+The old NEON benchmark also requires `-DASCIICHAT_CAN_COMPILE_NEON=OFF` because of the baseline compile
 failure. Run emulated tests at an explicit SVE length with
 `qemu-aarch64 -L /usr/aarch64-linux-gnu -cpu max build-emission-arm/emission-test 16`.
