@@ -152,5 +152,5 @@ char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, 
 
 char *image_print_color_simd(image_t *image, bool background, bool indexed, const char *palette) {
   return ascii_render(image, palette, indexed ? ASCII_COLOR_256 : ASCII_COLOR_TRUE, background, false,
-                      simd_backend()->luminance);
+                      simd_cells_backend());
 }

@@ -5,6 +5,6 @@
 #include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/video/ascii/avx2.h>
 char *render_ascii_mono_avx2(const image_t *image, const char *palette) {
-  return ascii_render(image, palette, ASCII_COLOR_NONE, false, false, simd_luminance_avx2);
+  return render_ascii_cells_avx2(image, palette, ASCII_COLOR_NONE, false);
 }
 #endif

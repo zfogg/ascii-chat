@@ -32,3 +32,21 @@ for stage,pattern in patterns[args.backend].items():
     if evidence is None:
         raise SystemExit(f"{name}: expected vector instructions were not found")
     print(f"{name}: {evidence}")
+
+# Check the retained ISA-owned row arithmetic, not just separately linked kernels.
+row_name = "avx2_compute_luminance_32" if args.backend == "avx2" else f"simd_luminance_{args.backend}"
+row_pattern = {
+    "sse2": r"\bpmullw\b", "ssse3": r"\bpmullw\b", "avx2": r"\bvpmullw\b",
+    "neon": r"\bumull\b", "sve": r"\bmul\s+z",
+}[args.backend]
+evidence = next((line.strip() for line in functions.get(row_name, []) if re.search(row_pattern, line)), None)
+if evidence is None:
+    raise SystemExit(f"{row_name}: retained vector row arithmetic was not found")
+print(f"{row_name}: {evidence}")
+if args.backend == "neon":
+    for instruction in ("st2", "st3", "st4"):
+        evidence = next((line.strip() for line in functions.get("simd_emit_mono_neon", [])
+                         if re.search(r"\b" + instruction + r"\b", line)), None)
+        if evidence is None:
+            raise SystemExit(f"NEON UTF-8 compaction: {instruction} was not found")
+        print(f"simd_emit_mono_neon: {evidence}")

@@ -1,13 +1,24 @@
 # Shared ASCII terminal emission
 
-The shared row driver and ANSI emitter live in `lib/video/ascii/render.c`.
+Each ISA owns its image and half-block processing loops in its `color.c` and
+`halfblock.c`. Monochrome uses that ISA's same pixel pipeline. Shared output
+allocation, terminal state, and ANSI emission live in `lib/video/ascii/render.c`.
+The normal ISA entry points do not call a shared scalar renderer.
 SSE2, SSSE3, AVX2, NEON, and SVE each supply vector stages for luminance, RGB
 packing, palette lookup, exact indexed-color quantization, run comparison, and
 half-block classification. Runtime selection keeps the CPU/OS safety checks;
-only incomplete fixed-width vector tails use the scalar stages. ISA types do
-not cross the callback boundary in `simd/cells.h`.
+incomplete fixed-width vector tails use the scalar stages. ISA types do
+not cross the shared output boundary in `simd/cells.h`.
 
-The architecture `mono.c`, `color.c`, and `halfblock.c` files instantiate their
+The original SSE2/SSSE3 two-half arithmetic, AVX2 32-pixel helpers, NEON
+16-pixel structure loads and widening arithmetic, and SVE channel/widening
+processing are retained in each ISA's `luminance.c` and used by its row loop. The SVE active
+count is bounded by halfword lanes before widening. NEON retains vector UTF-8
+compaction with `st1`, `st2`, `st3`, and `st4` stores for uniform glyph lengths;
+mixed lengths compact the gathered byte streams in order. Duplicate per-ISA
+ANSI decimal/escape builders are replaced by the shared encoders.
+
+The architecture `mono.c`, `color.c`, and `halfblock.c` files also instantiate their
 vector implementations from `simd/lookup.c`, `simd/quantize.c`, and `simd/pack.c`,
 with per-file ISA flags and no unity/PCH mixing. The shared math expresses one
 color contract using vector operations; it does not call the scalar renderer
@@ -29,8 +40,9 @@ lookup, and run comparison still use the selected SIMD backend in that mode.
   BT.601 luminance, the 6-bit bucket `luminance >> 2`, and `cache64`. A glyph is
   copied as a complete UTF-8 sequence; repeated glyphs compare their bytes,
   not their luminance bucket or their first byte.
-- Monochrome, ANSI 16-color, xterm 256-color, and truecolor share the same
-  cell/run writer. Dithered 16-color quantization still processes every pixel
+- Monochrome, ANSI 16-color, xterm 256-color, and truecolor share terminal
+  state and row semantics. NEON monochrome retains vector UTF-8 compaction;
+  other paths use the common cell/run writer. Dithered 16-color quantization still processes every pixel
   in source order, even within a run.
 - Foreground mode colors the glyph. Background mode colors the background
   and selects contrasting black or white text. Indexed modes use the shared
@@ -114,7 +126,7 @@ Raw CSVs are in `tests/simd/results/issue503/`. The baseline is
 161x61 RGB images, 120 frames, ASCII palettes, truecolor and 256-color foreground,
 and two patterns (40-pixel runs and changing colors). The host is an AMD Ryzen 7
 5800X through WSL2. ARM measurements use QEMU 6.2 `-cpu max` with its default SVE
-vector length, 64 bytes. Concurrent dependency builds and emulation make these
+vector length, 64 bytes. Emulation and host scheduling make these
 single-run timings approximate; they are not stable regression thresholds.
 Allocation counts include malloc/calloc/realloc calls after warming caches.
 SIMD is not uniformly faster for these small frames: indexed-color paths benefit
@@ -145,7 +157,7 @@ The baseline cannot supply valid performance comparisons for every backend:
   versus 184,057 bytes from the complete shared renderer. These outputs also
   cannot support a valid speed comparison.
 
-The new cell tests pass for all of those variants. The raw baseline numbers are
+The restored ISA-owned pipelines pass the new cell tests for all of those variants. The raw baseline numbers are
 retained as evidence of the old workloads, not as equivalent-rendering speedups.
 Scalar timings are comparable as rendering workloads, while Unicode lookup and
 row-reset semantics are now normalized across all paths.

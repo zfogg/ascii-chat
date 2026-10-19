@@ -21,23 +21,23 @@ void *__wrap_realloc(void *ptr, size_t size) {
 static const struct {
   const char *name;
   uint32_t feature;
-  simd_luminance_fn kernel;
+  const simd_cells_t *kernel;
 } backends[] = {
-    {"scalar", 0, simd_luminance_scalar},
+    {"scalar", 0, &simd_cells_scalar},
 #if SIMD_SUPPORT_SSE2
-    {"sse2", CPU_FEATURE_SSE2, simd_luminance_sse2},
+    {"sse2", CPU_FEATURE_SSE2, &simd_cells_sse2},
 #endif
 #if SIMD_SUPPORT_SSSE3
-    {"ssse3", CPU_FEATURE_SSSE3, simd_luminance_ssse3},
+    {"ssse3", CPU_FEATURE_SSSE3, &simd_cells_ssse3},
 #endif
 #if SIMD_SUPPORT_AVX2
-    {"avx2", CPU_FEATURE_AVX2, simd_luminance_avx2},
+    {"avx2", CPU_FEATURE_AVX2, &simd_cells_avx2},
 #endif
 #if SIMD_SUPPORT_NEON
-    {"neon", CPU_FEATURE_NEON, simd_luminance_neon},
+    {"neon", CPU_FEATURE_NEON, &simd_cells_neon},
 #endif
 #if SIMD_SUPPORT_SVE
-    {"sve", CPU_FEATURE_SVE, simd_luminance_sve},
+    {"sve", CPU_FEATURE_SVE, &simd_cells_sve},
 #endif
 };
 int main(void) {
@@ -56,14 +56,13 @@ int main(void) {
         rgb[3 * i + 2] = (uint8_t)(v * 13);
       }
       for (ascii_color_t mode = ASCII_COLOR_NONE; mode <= ASCII_COLOR_TRUE; ++mode) {
-        char *warm = ascii_render_halfblocks(rgb, WIDTH, HEIGHT, 0, mode, simd_cells_for_luminance(backends[b].kernel));
+        char *warm = ascii_render_halfblocks(rgb, WIDTH, HEIGHT, 0, mode, backends[b].kernel);
         SAFE_FREE(warm);
         allocations = 0;
         size_t bytes = 0;
         uint64_t start = time_get_ns();
         for (unsigned frame = 0; frame < FRAMES; ++frame) {
-          char *out =
-              ascii_render_halfblocks(rgb, WIDTH, HEIGHT, 0, mode, simd_cells_for_luminance(backends[b].kernel));
+          char *out = ascii_render_halfblocks(rgb, WIDTH, HEIGHT, 0, mode, backends[b].kernel);
           if (!out)
             return 1;
           bytes += strlen(out);

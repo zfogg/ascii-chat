@@ -39,25 +39,25 @@ typedef char *(*color_fn)(const image_t *, bool, bool, const char *);
 static const struct {
   const char *name;
   uint32_t feature;
-  simd_luminance_fn luma;
+  const simd_cells_t *luma;
   mono_fn mono;
   color_fn color;
 } backends[] = {
-    {"scalar", 0, simd_luminance_scalar, NULL, NULL},
+    {"scalar", 0, &simd_cells_scalar, NULL, NULL},
 #if SIMD_SUPPORT_SSE2
-    {"sse2", CPU_FEATURE_SSE2, simd_luminance_sse2, render_ascii_mono_sse2, render_ascii_color_sse2},
+    {"sse2", CPU_FEATURE_SSE2, &simd_cells_sse2, render_ascii_mono_sse2, render_ascii_color_sse2},
 #endif
 #if SIMD_SUPPORT_SSSE3
-    {"ssse3", CPU_FEATURE_SSSE3, simd_luminance_ssse3, render_ascii_mono_ssse3, render_ascii_color_ssse3},
+    {"ssse3", CPU_FEATURE_SSSE3, &simd_cells_ssse3, render_ascii_mono_ssse3, render_ascii_color_ssse3},
 #endif
 #if SIMD_SUPPORT_AVX2
-    {"avx2", CPU_FEATURE_AVX2, simd_luminance_avx2, render_ascii_mono_avx2, render_ascii_color_avx2},
+    {"avx2", CPU_FEATURE_AVX2, &simd_cells_avx2, render_ascii_mono_avx2, render_ascii_color_avx2},
 #endif
 #if SIMD_SUPPORT_NEON
-    {"neon", CPU_FEATURE_NEON, simd_luminance_neon, render_ascii_mono_neon, render_ascii_color_neon},
+    {"neon", CPU_FEATURE_NEON, &simd_cells_neon, render_ascii_mono_neon, render_ascii_color_neon},
 #endif
 #if SIMD_SUPPORT_SVE
-    {"sve", CPU_FEATURE_SVE, simd_luminance_sve, render_ascii_mono_sve, render_ascii_color_sve},
+    {"sve", CPU_FEATURE_SVE, &simd_cells_sve, render_ascii_mono_sve, render_ascii_color_sve},
 #endif
 };
 
@@ -183,7 +183,7 @@ Test(ascii_emission, all_backends_terminal_cells, .timeout = 120) {
         for (ascii_color_t mode = ASCII_COLOR_NONE; mode <= ASCII_COLOR_TRUE; ++mode) {
           for (int bg = 0; bg <= (mode != ASCII_COLOR_NONE); ++bg) {
             for (int dither = 0; dither <= (mode == ASCII_COLOR_16); ++dither) {
-              char *reference = ascii_render(image, palettes[pi], mode, bg, dither, simd_luminance_scalar);
+              char *reference = ascii_render(image, palettes[pi], mode, bg, dither, &simd_cells_scalar);
               cr_assert_not_null(reference);
               terminal_cell_t *expected = SAFE_CALLOC((size_t)width * 3, sizeof(*expected), terminal_cell_t *);
               terminal_cell_t *actual = SAFE_CALLOC((size_t)width * 3, sizeof(*actual), terminal_cell_t *);
@@ -249,9 +249,9 @@ Test(ascii_emission, simd_pixel_stages_and_tails, .timeout = 120) {
   for (size_t b = 0; b < sizeof(backends) / sizeof(backends[0]); ++b) {
     if ((platform_cpu_features() & backends[b].feature) != backends[b].feature)
       continue;
-    const simd_cells_t *ops = simd_cells_for_luminance(backends[b].luma);
+    const simd_cells_t *ops = backends[b].luma;
     if (b)
-      cr_assert(ops != simd_cells_for_luminance(simd_luminance_scalar));
+      cr_assert(ops != &simd_cells_scalar);
     for (size_t n = 0; n <= 257; ++n) {
       actual[0] = actual[n + 1] = 0xdeadbeef;
       simd_pack_scalar(rgb + 1, expected, n);
@@ -357,8 +357,7 @@ Test(ascii_emission, all_simd_halfblock_modes, .timeout = 120) {
         for (size_t b = 0; b < sizeof(backends) / sizeof(backends[0]); ++b) {
           if ((platform_cpu_features() & backends[b].feature) != backends[b].feature)
             continue;
-          char *result =
-              ascii_render_halfblocks(rgb, width, height, stride, mode, simd_cells_for_luminance(backends[b].luma));
+          char *result = ascii_render_halfblocks(rgb, width, height, stride, mode, backends[b].luma);
           cr_assert_not_null(result);
           decode(result, actual, width, (height + 1) / 2, mode != ASCII_COLOR_NONE);
           cr_assert_eq(memcmp(expected, actual, cells_count * sizeof(*expected)), 0);
@@ -438,12 +437,12 @@ Test(ascii_emission, sgr_encoders_and_compatibility) {
 Test(ascii_emission, rejects_invalid_input) {
   rgb_pixel_t pixel = {0};
   image_t image = {.pixels = &pixel, .w = -1, .h = 1};
-  cr_assert_null(ascii_render(&image, "@", ASCII_COLOR_TRUE, false, false, simd_luminance_scalar));
+  cr_assert_null(ascii_render(&image, "@", ASCII_COLOR_TRUE, false, false, &simd_cells_scalar));
   uint8_t half_pixel[3] = {0};
   cr_assert_null(ascii_render_halfblocks(half_pixel, 1, 1, 0, ASCII_COLOR_TRUE, NULL));
   cr_assert_null(ascii_render_halfblocks(half_pixel, 1, 1, 2, ASCII_COLOR_TRUE, &simd_cells_scalar));
   image.w = 1;
-  cr_assert_null(ascii_render(&image, "", ASCII_COLOR_TRUE, false, false, simd_luminance_scalar));
+  cr_assert_null(ascii_render(&image, "", ASCII_COLOR_TRUE, false, false, &simd_cells_scalar));
   cr_assert_null(ascii_render(&image, "@", ASCII_COLOR_TRUE, false, false, NULL));
 }
 

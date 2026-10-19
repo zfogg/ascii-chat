@@ -5,6 +5,6 @@
 #include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/video/ascii/sve.h>
 char *render_ascii_mono_sve(const image_t *image, const char *palette) {
-  return ascii_render(image, palette, ASCII_COLOR_NONE, false, false, simd_luminance_sve);
+  return render_ascii_cells_sve(image, palette, ASCII_COLOR_NONE, false);
 }
 #endif

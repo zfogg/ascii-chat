@@ -6,31 +6,31 @@
 #include <ascii-chat/video/ascii/scalar/foreground.h>
 
 char *image_print(const image_t *image, const char *palette) {
-  return ascii_render(image, palette, ASCII_COLOR_NONE, false, false, simd_backend()->luminance);
+  return ascii_render(image, palette, ASCII_COLOR_NONE, false, false, simd_cells_backend());
 }
 
 char *image_print_color(const image_t *image, const char *palette) {
-  return ascii_render(image, palette, ASCII_COLOR_TRUE, false, false, simd_backend()->luminance);
+  return ascii_render(image, palette, ASCII_COLOR_TRUE, false, false, simd_cells_backend());
 }
 
 char *image_print_color_utf8(const image_t *image, const char *palette) {
-  return ascii_render(image, palette, ASCII_COLOR_TRUE, false, false, simd_backend()->luminance);
+  return ascii_render(image, palette, ASCII_COLOR_TRUE, false, false, simd_cells_backend());
 }
 
 char *image_print_256color(const image_t *image, const char *palette) {
-  return ascii_render(image, palette, ASCII_COLOR_256, false, false, simd_backend()->luminance);
+  return ascii_render(image, palette, ASCII_COLOR_256, false, false, simd_cells_backend());
 }
 
 char *image_print_16color(const image_t *image, const char *palette) {
-  return ascii_render(image, palette, ASCII_COLOR_16, false, false, simd_backend()->luminance);
+  return ascii_render(image, palette, ASCII_COLOR_16, false, false, simd_cells_backend());
 }
 
 char *image_print_16color_dithered(const image_t *image, const char *palette) {
-  return ascii_render(image, palette, ASCII_COLOR_16, false, true, simd_backend()->luminance);
+  return ascii_render(image, palette, ASCII_COLOR_16, false, true, simd_cells_backend());
 }
 
 char *image_print_16color_dithered_with_background(const image_t *image, bool background, const char *palette) {
-  return ascii_render(image, palette, ASCII_COLOR_16, background, true, simd_backend()->luminance);
+  return ascii_render(image, palette, ASCII_COLOR_16, background, true, simd_cells_backend());
 }
 
 void quantize_color(int *r, int *g, int *b, int levels) {

@@ -180,8 +180,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
     // Check for half-block mode first
     if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK) {
       const uint8_t *rgb_data = (const uint8_t *)resized->pixels;
-      ascii = ascii_render_halfblocks(rgb_data, resized->w, resized->h, 0, ASCII_COLOR_TRUE,
-                                      simd_cells_for_luminance(simd_backend()->luminance));
+      ascii = ascii_render_halfblocks(rgb_data, resized->w, resized->h, 0, ASCII_COLOR_TRUE, simd_cells_backend());
     } else {
       // Standard color modes (foreground/background)
       bool use_background = (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND);
@@ -792,19 +791,15 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     const uint8_t *rgb_data = (const uint8_t *)image->pixels;
     switch (color_level) {
     case TERM_COLOR_TRUECOLOR:
-      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_TRUE,
-                                     simd_cells_for_luminance(simd_backend()->luminance));
+      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_TRUE, simd_cells_backend());
     case TERM_COLOR_256:
-      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_256,
-                                     simd_cells_for_luminance(simd_backend()->luminance));
+      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_256, simd_cells_backend());
     case TERM_COLOR_16:
-      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_16,
-                                     simd_cells_for_luminance(simd_backend()->luminance));
+      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_16, simd_cells_backend());
     case TERM_COLOR_NONE:
     case TERM_COLOR_AUTO:
     default:
-      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_NONE,
-                                     simd_cells_for_luminance(simd_backend()->luminance));
+      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_NONE, simd_cells_backend());
     }
   }
 

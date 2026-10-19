@@ -33,43 +33,51 @@ void simd_halfblock_scalar(const uint32_t *top, const uint32_t *bottom, uint32_t
       fg[i] = bg[i] = UINT32_MAX;
   }
 }
-#define CELLS(isa) {simd_pack_##isa, simd_lookup_##isa, simd_quantize_##isa, simd_halfblock_##isa, simd_run_##isa}
+#define CELLS(isa, mono)                                                                                               \
+  {simd_luminance_##isa,                                                                                               \
+   simd_pack_##isa,                                                                                                    \
+   simd_lookup_##isa,                                                                                                  \
+   simd_quantize_##isa,                                                                                                \
+   simd_halfblock_##isa,                                                                                               \
+   simd_run_##isa,                                                                                                     \
+   mono}
 #if SIMD_SUPPORT_SSE2
-const simd_cells_t simd_cells_sse2 = CELLS(sse2);
+const simd_cells_t simd_cells_sse2 = CELLS(sse2, NULL);
 #endif
 #if SIMD_SUPPORT_SSSE3
-const simd_cells_t simd_cells_ssse3 = CELLS(ssse3);
+const simd_cells_t simd_cells_ssse3 = CELLS(ssse3, NULL);
 #endif
 #if SIMD_SUPPORT_AVX2
-const simd_cells_t simd_cells_avx2 = CELLS(avx2);
+const simd_cells_t simd_cells_avx2 = CELLS(avx2, NULL);
 #endif
 #if SIMD_SUPPORT_NEON
-const simd_cells_t simd_cells_neon = CELLS(neon);
+const simd_cells_t simd_cells_neon = CELLS(neon, simd_emit_mono_neon);
 #endif
 #if SIMD_SUPPORT_SVE
-const simd_cells_t simd_cells_sve = CELLS(sve);
+const simd_cells_t simd_cells_sve = CELLS(sve, NULL);
 #endif
-const simd_cells_t simd_cells_scalar = CELLS(scalar);
-const simd_cells_t *simd_cells_for_luminance(simd_luminance_fn luminance) {
-  (void)luminance;
+const simd_cells_t simd_cells_scalar = CELLS(scalar, NULL);
+const simd_cells_t *simd_cells_backend(void) {
+  uint32_t features = simd_backend()->required_features;
+  (void)features;
 #if SIMD_SUPPORT_SSE2
-  if (luminance == simd_luminance_sse2)
+  if (features == CPU_FEATURE_SSE2)
     return &simd_cells_sse2;
 #endif
 #if SIMD_SUPPORT_SSSE3
-  if (luminance == simd_luminance_ssse3)
+  if (features == CPU_FEATURE_SSSE3)
     return &simd_cells_ssse3;
 #endif
 #if SIMD_SUPPORT_AVX2
-  if (luminance == simd_luminance_avx2)
+  if (features == CPU_FEATURE_AVX2)
     return &simd_cells_avx2;
 #endif
 #if SIMD_SUPPORT_NEON
-  if (luminance == simd_luminance_neon)
+  if (features == CPU_FEATURE_NEON)
     return &simd_cells_neon;
 #endif
 #if SIMD_SUPPORT_SVE
-  if (luminance == simd_luminance_sve)
+  if (features == CPU_FEATURE_SVE)
     return &simd_cells_sve;
 #endif
   return &simd_cells_scalar;
