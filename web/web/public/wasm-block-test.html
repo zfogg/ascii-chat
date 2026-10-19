@@ -1,0 +1,62 @@
+<!doctype html><meta charset="utf-8" /><title>
+  Block raster regression test
+</title>
+<pre id="status">Running...</pre>
+<script type="module">
+  const assert = {
+    equal(a, b, message) {
+      if (a !== b) throw Error(message || `${a} != ${b}`);
+    },
+    deepEqual(a, b, message) {
+      this.equal(JSON.stringify(a), JSON.stringify(b), message);
+    },
+  };
+  import factory from "/wasm/mirror.js";
+  const m = await factory({ print() {}, printErr() {} });
+  const config = m._malloc(544),
+    out = m._malloc(4);
+  m.HEAPU8.fill(0, config, config + 544);
+  const v = new DataView(m.HEAPU8.buffer, config, 544);
+  v.setInt32(0, 2, true);
+  v.setInt32(4, 2, true);
+  v.setFloat64(8, 12, true);
+  v.setInt32(536, m._get_font_default_ptr(), true);
+  v.setInt32(540, m._get_font_default_size(), true);
+  assert.equal(m._term_renderer_create(config, out), 0);
+  const r = new DataView(m.HEAPU8.buffer).getUint32(out, true);
+  const w = m._term_renderer_width_px(r),
+    h = m._term_renderer_height_px(r),
+    pitch = m._term_renderer_pitch(r);
+  for (const glyph of ["▀", "▄", "█"]) {
+    const frame = new TextEncoder().encode(
+      `\x1b[38;2;255;0;0m\x1b[48;2;0;0;255m${glyph.repeat(2)}\n${glyph.repeat(2)}`,
+    );
+    const p = m._malloc(frame.length);
+    m.HEAPU8.set(frame, p);
+    for (let pass = 0; pass < 2; pass++) {
+      assert.equal(m._term_renderer_feed(r, p, frame.length), 0);
+      const start = m._term_renderer_pixels(r);
+      for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++) {
+          const upper = y % (h / 2) < Math.floor(h / 4);
+          const red = glyph === "█" || (glyph === "▀" ? upper : !upper);
+          assert.deepEqual(
+            Array.from(
+              m.HEAPU8.subarray(
+                start + y * pitch + x * 4,
+                start + y * pitch + x * 4 + 4,
+              ),
+            ),
+            red ? [255, 0, 0, 255] : [0, 0, 255, 255],
+            `${glyph} pass ${pass} pixel ${x},${y}`,
+          );
+        }
+    }
+    m._free(p);
+  }
+  m._term_renderer_destroy(r);
+  m._free(config);
+  m._free(out);
+  document.querySelector("#status").textContent =
+    `PASS: upper/lower/full blocks cover every pixel (${w}x${h}), including cached frames`;
+</script>

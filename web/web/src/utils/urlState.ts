@@ -45,13 +45,13 @@ function readFields(
             );
     } else {
       result[name] = readScalar(params.get(key), initial);
-      if (name === "zalgo") {
+      if (name === "zalgo" || name === "renderMode") {
         const level = result[name];
         if (
           typeof level !== "number" ||
           !Number.isInteger(level) ||
           level < 0 ||
-          level > 10
+          level > (name === "renderMode" ? 2 : 10)
         )
           result[name] = initial;
       }
@@ -150,6 +150,7 @@ export function migrateLegacyUrlState(): void {
       "height",
       "targetFps",
       "colorMode",
+      "renderMode",
       "colorFilter",
       "palette",
       "paletteChars",

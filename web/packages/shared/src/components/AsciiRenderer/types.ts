@@ -11,6 +11,10 @@ export interface AsciiRendererHandle {
 }
 
 export interface AsciiRendererProps {
+  /** Rasterize network frames away from capture and transport callbacks. */
+  workerRendering?: boolean;
+  /** Contain the complete terminal grid by default, or crop it with cover. */
+  contentFit?: "contain" | "cover";
   /** Disable interactive terminal shortcuts for embedded demos. */
   keyboardEnabled?: boolean;
   /** Allow the loading splash; embedded demos can keep their own placeholder. */
@@ -21,6 +25,7 @@ export interface AsciiRendererProps {
   onDimensionsChange?: (dims: { cols: number; rows: number }) => void;
   onFpsChange?: (fps: number) => void;
   error?: string;
+  connectionError?: string | undefined;
   showFps?: boolean;
   connectionState?: number;
   wasmModuleReady?: boolean;

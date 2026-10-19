@@ -1,5 +1,7 @@
+import { OutboundQueue } from "./OutboundQueue";
+import { HandoffProtocol } from "./HandoffProtocol";
 import { DiscoveryProtocol } from "./DiscoveryProtocol";
-import { BrowserVideoDecoder } from "./BrowserVideoDecoder";
+import { BrowserHostRuntime } from "./BrowserHostRuntime";
 import { ClientConnection } from "./ClientConnection";
 import { WebRTCBridge } from "./WebRTCBridge";
 import type { ClientSession } from "./Transport";
@@ -17,26 +19,12 @@ import {
   PeerCryptoSession,
   ConnectionState,
   PacketType,
-  getClientModule,
   parsePacket,
   type ParsedPacket,
 } from "../wasm/client";
 
-type HostModule = NonNullable<ReturnType<typeof getClientModule>> & {
-  _browser_host_create(): number;
-  _browser_host_destroy(): void;
-  _browser_host_add_client(): number;
-  _browser_host_remove_client(id: number): void;
-  _browser_host_receive(
-    id: number,
-    type: number,
-    data: number,
-    length: number,
-  ): number;
-  _browser_host_render(): number;
-  hostPacketCallback?: (id: number, packet: Uint8Array) => void;
-};
 type Peer = {
+  outbound?: OutboundQueue;
   pc: RTCPeerConnection;
   bridge: WebRTCBridge | null;
   crypto: PeerCryptoSession | null;
@@ -47,11 +35,15 @@ type Peer = {
 
 /** Browser scheduling and transport adapter; media hosting stays in session/host.c. */
 export class BrowserHostSession implements ClientSession {
+  sendVideoFrame(frame: VideoFrame): void {
+    if (this.runtime) this.runtime.receiveVideoFrame(this.localId, frame);
+    else frame.close();
+  }
   readonly transportType = "webrtc" as const;
-  private decoders = new Map<number, BrowserVideoDecoder>();
   private discovery: DiscoveryProtocol | null = null;
+  private handoff: HandoffProtocol | null = null;
   private signaling: ClientConnection;
-  private module: HostModule | null = null;
+  private runtime: BrowserHostRuntime | null = null;
   private joined: JoinedSession | null = null;
   private peers = new Map<string, Peer>();
   private localId = 0;
@@ -61,7 +53,6 @@ export class BrowserHostSession implements ClientSession {
     | ((packet: ParsedPacket, payload: Uint8Array) => void)
     | null = null;
   private closed = false;
-  private timer: ReturnType<typeof setInterval> | null = null;
   private deadline: ReturnType<typeof setTimeout> | null = null;
   private queue = Promise.resolve();
   private resolve: (() => void) | null = null;
@@ -102,7 +93,6 @@ export class BrowserHostSession implements ClientSession {
       if (state === ConnectionState.CONNECTED && !requested) {
         requested = true;
         try {
-          this.module = getClientModule() as HostModule;
           this.discovery = new DiscoveryProtocol((type, payload) =>
             this.signaling.sendPacket(type, payload),
           );
@@ -131,19 +121,25 @@ export class BrowserHostSession implements ClientSession {
     }
     return ready;
   }
-  private async signal(type: number, payload: Uint8Array): Promise<void> {
-    const snapshot = this.discovery?.receive(type, payload);
-    if (snapshot?.state === 6 && !this.joined) {
-      this.name = snapshot.name;
-      this.joined = snapshot.joined;
-      if (
-        !this.joined.participantId.every((v, i) => v === this.joined!.hostId[i])
-      )
-        throw new Error("Creator was not assigned the host role.");
-      const module = this.module!;
-      if (module._browser_host_create())
-        throw new Error("Could not initialize C session host.");
-      module.hostPacketCallback = (id, bytes) => {
+  static adopt(
+    options: DiscoveryOptions,
+    signaling: ClientConnection,
+    joined: JoinedSession,
+  ): BrowserHostSession {
+    const host = new BrowserHostSession(options);
+    host.signaling = signaling;
+    host.joined = joined;
+    signaling.onPacketReceived((packet, payload) => {
+      host.queue = host.queue
+        .then(() => host.signal(packet.type, payload))
+        .catch((error) => host.fail(error));
+    });
+    host.queue = host.startHosting().catch((error) => host.fail(error));
+    return host;
+  }
+  private async startHosting(): Promise<void> {
+    this.runtime = new BrowserHostRuntime(
+      (id, bytes) => {
         // Deliver after C releases its host/client locks.
         queueMicrotask(() => {
           if (this.closed) return;
@@ -153,17 +149,27 @@ export class BrowserHostSession implements ClientSession {
           } else {
             for (const [key, peer] of this.peers) {
               if (peer.id !== id || !peer.crypto?.ready) continue;
-              const type = new DataView(
-                bytes.buffer,
-                bytes.byteOffset,
-              ).getUint16(8, false);
-              if (
-                type === PacketType.ASCII_FRAME &&
-                (peer.bridge?.getBufferedAmount() ?? 0) > 256 * 1024
-              )
-                continue;
               try {
-                peer.crypto.sendPacket(bytes);
+                peer.outbound ??= new OutboundQueue(
+                  () => peer.bridge?.getBufferedAmount() ?? 0,
+                  (packet) => peer.crypto!.sendPacket(packet),
+                  () => this.removePeer(key),
+                );
+                const admission = peer.outbound.submit(bytes);
+                if (admission === "congested") {
+                  const type = new DataView(
+                    bytes.buffer,
+                    bytes.byteOffset,
+                    bytes.byteLength,
+                  ).getUint16(8, false);
+                  if (
+                    type !== PacketType.IMAGE_FRAME &&
+                    type !== PacketType.ASCII_FRAME &&
+                    type !== PacketType.IMAGE_FRAME_H264 &&
+                    type !== PacketType.IMAGE_FRAME_H265
+                  )
+                    throw new Error("Reliable outbound queue is congested");
+                }
               } catch (error) {
                 this.removePeer(key);
                 this.options.onProgress?.(
@@ -173,26 +179,38 @@ export class BrowserHostSession implements ClientSession {
             }
           }
         });
-      };
-      this.localId = module._browser_host_add_client();
-      if (!this.localId)
-        throw new Error("Could not add local host participant.");
-      if (this.deadline) clearTimeout(this.deadline);
-      this.options.onCreated?.(this.name);
-      this.setState(ConnectionState.CONNECTED);
-      this.options.onProgress?.("Hosting — waiting for a participant");
-      this.timer = setInterval(() => {
-        if (this.closed) return;
-        try {
-          if (module._browser_host_render())
-            throw new Error("C host could not render video.");
-        } catch (error) {
-          this.fail(error);
-        }
-      }, 16);
-      this.resolve?.();
-      this.resolve = null;
-      this.reject = null;
+      },
+      (error) => this.fail(error),
+    );
+    await this.runtime.start();
+    if (this.closed) return;
+    this.localId = this.runtime.addClient();
+    if (!this.localId) throw new Error("Could not add local host participant.");
+    if (this.deadline) clearTimeout(this.deadline);
+    this.options.onCreated?.(this.name);
+    this.setState(ConnectionState.CONNECTED);
+    this.options.onProgress?.("Hosting — waiting for a participant");
+    this.resolve?.();
+    this.resolve = null;
+    this.reject = null;
+    this.handoff = new HandoffProtocol(
+      this.joined!,
+      (type, payload) => this.signaling.sendPacket(type, payload),
+      () => {},
+      this.options.onProgress,
+    );
+  }
+  private async signal(type: number, payload: Uint8Array): Promise<void> {
+    if (this.handoff?.receive(type, payload)) return;
+    const snapshot = this.discovery?.receive(type, payload);
+    if (snapshot?.state === 6 && !this.joined) {
+      this.name = snapshot.name;
+      this.joined = snapshot.joined;
+      if (
+        !this.joined.participantId.every((v, i) => v === this.joined!.hostId[i])
+      )
+        throw new Error("Creator was not assigned the host role.");
+      await this.startHosting();
     } else if (
       (type === AcdsType.SDP || type === AcdsType.ICE) &&
       this.joined
@@ -261,7 +279,7 @@ export class BrowserHostSession implements ClientSession {
               try {
                 const decoded = remote.crypto!.receive(bytes);
                 if (remote.crypto!.ready && !remote.id) {
-                  remote.id = this.module!._browser_host_add_client();
+                  remote.id = this.runtime!.addClient();
                   if (!remote.id)
                     throw new Error("Cannot admit authenticated peer");
                   this.options.onProgress?.(
@@ -315,40 +333,15 @@ export class BrowserHostSession implements ClientSession {
     }
   }
   private receive(id: number, type: number, payload: Uint8Array) {
-    if (this.closed) return;
-    if (
-      type === PacketType.IMAGE_FRAME_H264 ||
-      type === PacketType.IMAGE_FRAME_H265
-    ) {
-      let decoder = this.decoders.get(id);
-      if (!decoder) {
-        decoder = new BrowserVideoDecoder(
-          (pixels) => this.receive(id, PacketType.IMAGE_FRAME, pixels),
-          (error) => this.fail(error),
-        );
-        this.decoders.set(id, decoder);
-      }
-      decoder.receive(type, payload);
-      return;
-    }
-    const module = this.module!;
-    const ptr = module._malloc(payload.length || 1);
-    try {
-      module.HEAPU8.set(payload, ptr);
-      if (module._browser_host_receive(id, type, ptr, payload.length))
-        throw new Error("C host rejected packet.");
-    } finally {
-      module._free(ptr);
-    }
+    if (!this.closed) this.runtime?.receive(id, type, payload);
   }
   private removePeer(key: string) {
     const peer = this.peers.get(key);
     if (!peer) return;
     this.peers.delete(key);
-    if (peer.id) this.module?._browser_host_remove_client(peer.id);
-    this.decoders.get(peer.id)?.destroy();
-    this.decoders.delete(peer.id);
+    if (peer.id) this.runtime?.removeClient(peer.id);
     peer.pc.close();
+    peer.outbound?.close();
     peer.bridge?.close();
     peer.crypto?.close();
     this.options.onProgress?.(
@@ -357,8 +350,18 @@ export class BrowserHostSession implements ClientSession {
         : "Hosting — waiting for a participant",
     );
   }
+  private localKeyframes = new Set<number>();
+  needsKeyframe(type: number): boolean {
+    return (
+      (type === PacketType.IMAGE_FRAME_H264 ||
+        type === PacketType.IMAGE_FRAME_H265) &&
+      !this.localKeyframes.has(type)
+    );
+  }
   sendPacket(type: number, payload: Uint8Array) {
     this.receive(this.localId, type, payload);
+    if (this.needsKeyframe(type) && payload[0]! & 1)
+      this.localKeyframes.add(type);
   }
   sendUnencryptedAcipPacket(type: number, payload: Uint8Array) {
     this.sendPacket(type, payload);
@@ -368,7 +371,9 @@ export class BrowserHostSession implements ClientSession {
       0,
       ...Array.from(
         this.peers.values(),
-        (peer) => peer.bridge?.getBufferedAmount() || 0,
+        (peer) =>
+          (peer.bridge?.getBufferedAmount() ?? 0) +
+          (peer.outbound?.snapshot().applicationBytes ?? 0),
       ),
     );
   }
@@ -404,8 +409,8 @@ export class BrowserHostSession implements ClientSession {
   disconnect() {
     if (this.closed) return;
     this.closed = true;
+    this.handoff?.close();
     if (this.deadline) clearTimeout(this.deadline);
-    if (this.timer) clearInterval(this.timer);
     this.reject?.(new Error("Session creation cancelled."));
     this.reject = null;
     try {
@@ -416,16 +421,13 @@ export class BrowserHostSession implements ClientSession {
     this.discovery = null;
     for (const peer of this.peers.values()) {
       peer.pc.close();
+      peer.outbound?.close();
       peer.bridge?.close();
       peer.crypto?.close();
     }
     this.peers.clear();
-    for (const decoder of this.decoders.values()) decoder.destroy();
-    this.decoders.clear();
-    if (this.module) {
-      delete this.module.hostPacketCallback;
-      this.module._browser_host_destroy();
-    }
+    this.runtime?.close();
+    this.runtime = null;
     this.signaling.disconnect();
     this.setState(ConnectionState.DISCONNECTED);
   }

@@ -12,6 +12,15 @@ class PcmPlaybackProcessor extends AudioWorkletProcessor {
     this.underruns = 0;
     this.fadeOut = 0;
     this.port.onmessage = ({ data }) => {
+      if (data.reset) {
+        this.read = 0;
+        this.count = 0;
+        this.started = false;
+        this.last = [0, 0];
+        this.fade = 0;
+        this.fadeOut = 0;
+        return;
+      }
       const { samples, channels, rate } = data;
       if (rate !== sampleRate || channels < 1 || channels > 2) return;
       const frames = samples.length / channels;

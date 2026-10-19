@@ -116,6 +116,7 @@ export function buildCapabilitiesPacket(
   paletteChars?: string,
   matrixRain = false,
   videoCodecCapabilities = VIDEO_CODEC_CAP_SUPPORTED,
+  renderMode = 0,
 ): Uint8Array {
   const buf = new ArrayBuffer(CAPABILITIES_PACKET_SIZE);
   const view = new DataView(buf);
@@ -126,7 +127,7 @@ export function buildCapabilitiesPacket(
   const color = getColorCapabilities(colorMode);
   view.setUint32(4, color.level, false); // color_level
   view.setUint32(8, color.count, false); // color_count
-  view.setUint32(12, 0, false); // render_mode (foreground)
+  view.setUint32(12, [0, 1, 2].includes(renderMode) ? renderMode : 0, false);
   view.setUint16(16, cols, false); // width
   view.setUint16(18, rows, false); // height
 

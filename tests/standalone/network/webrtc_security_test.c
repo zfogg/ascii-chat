@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/acip/send.h>
@@ -26,7 +27,18 @@ typedef struct endpoint {
 static void description(webrtc_peer_connection_t *pc, const char *sdp, const char *type, void *arg) {
   (void)pc;
   endpoint_t *endpoint = arg;
-  CHECK(webrtc_set_remote_description(endpoint->other->pc, sdp, type) == ASCIICHAT_OK);
+  char message_limit[64];
+  safe_snprintf(message_limit, sizeof(message_limit), "a=max-message-size:%u", ACIP_OUTBOUND_SCTP_RESERVE);
+  const char *limit = strstr(sdp, message_limit);
+  CHECK(limit);
+  // Model a browser advertising a larger receive limit than our local SCTP buffer.
+  // The oversized ACIP exchange below must still use locally bounded chunks.
+  size_t capacity = strlen(sdp) + 64;
+  char *remote_sdp = SAFE_MALLOC(capacity, char *);
+  safe_snprintf(remote_sdp, capacity, "%.*sa=max-message-size:%u%s", (int)(limit - sdp), sdp,
+                4 * ACIP_OUTBOUND_SCTP_RESERVE, limit + strlen(message_limit));
+  CHECK(webrtc_set_remote_description(endpoint->other->pc, remote_sdp, type) == ASCIICHAT_OK);
+  SAFE_FREE(remote_sdp);
 }
 
 static void candidate(webrtc_peer_connection_t *pc, const char *ice, const char *mid, void *arg) {
@@ -44,6 +56,9 @@ static void ready(acip_transport_t *transport, void *arg) {
 static void opened(webrtc_data_channel_t *dc, void *arg) {
   endpoint_t *endpoint = arg;
   endpoint->dc = dc;
+  size_t max_message_size = 0;
+  CHECK(webrtc_datachannel_get_max_message_size(dc, &max_message_size) == ASCIICHAT_OK);
+  CHECK(max_message_size == ACIP_OUTBOUND_SCTP_RESERVE);
   if (!endpoint->security->handshake.is_server) {
     endpoint->transport = acip_webrtc_transport_create_secure(endpoint->pc, dc, endpoint->security, ready, endpoint);
     CHECK(endpoint->transport);
@@ -64,7 +79,8 @@ static void initialize(endpoint_t *endpoint, bool server, uint8_t mode, const ch
   endpoint->security->mode = mode;
   CHECK((password ? crypto_handshake_init_with_password("webrtc_test", &endpoint->security->handshake, server, password)
                   : crypto_handshake_init("webrtc_test", &endpoint->security->handshake, server)) == ASCIICHAT_OK);
-  webrtc_config_t config = {.on_local_description = description,
+  webrtc_config_t config = {.bind_address = "127.0.0.1",
+                            .on_local_description = description,
                             .on_local_candidate = candidate,
                             .on_datachannel_open = opened,
                             .user_data = endpoint};
@@ -74,8 +90,19 @@ static void initialize(endpoint_t *endpoint, bool server, uint8_t mode, const ch
 static void exchange(endpoint_t *sender, endpoint_t *receiver) {
   uint8_t payload[65536];
   memset(payload, 0x5a, sizeof(payload));
+  acip_outbound_stats_t before;
+  CHECK(acip_outbound_snapshot(sender->transport, &before) == ASCIICHAT_OK);
   uint64_t nonce = sender->security->handshake.crypto_ctx.nonce_counter;
   CHECK(packet_send_via_transport(sender->transport, PACKET_TYPE_PING, payload, sizeof(payload), 0) == ASCIICHAT_OK);
+  uint64_t submitted_start = time_get_ns();
+  for (;;) {
+    acip_outbound_stats_t after;
+    CHECK(acip_outbound_snapshot(sender->transport, &after) == ASCIICHAT_OK);
+    if (after.submitted > before.submitted)
+      break;
+    CHECK(time_get_ns() - submitted_start < 5 * NS_PER_SEC_INT);
+    platform_sleep_ms(1);
+  }
   CHECK(sender->security->handshake.crypto_ctx.nonce_counter ==
         nonce + (ACIP_CRYPTO_HAS_ENCRYPT(sender->security->mode) ? 1 : 0));
   uint64_t start = time_get_ns();

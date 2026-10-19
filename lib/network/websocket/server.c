@@ -825,9 +825,9 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
                      ssl_err_str);
   }
 
-  // Create thread pool for handling client connections
-  // Use 4 worker threads to handle concurrent client handlers without blocking LWS event loop
-  server->handler_pool = thread_pool_create_with_workers("websocket_handlers", 4);
+  // Each connection owns a handler until disconnect; provide a worker for every participant.
+  server->handler_pool = thread_pool_create_with_workers("websocket_handlers", PARTICIPANT_LIMIT);
+
   if (!server->handler_pool) {
     lws_context_destroy(server->context);
     server->context = NULL;

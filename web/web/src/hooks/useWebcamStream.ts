@@ -47,6 +47,7 @@ interface UseWebcamStreamOptions {
   captureFrame: (
     drawVideo?: boolean,
     sourceCanvas?: HTMLCanvasElement,
+    readPixels?: boolean,
   ) => {
     data: Uint8Array;
     width: number;
@@ -166,26 +167,29 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     ) => {
       const conn = clientRef.current;
       if (!conn) return;
-      const encoder = await createEncoder(
-        width,
-        height,
-        settings.targetFps,
-        (chunk, codec) => {
-          if (!avState.current(generation) || !captureReadyRef.current) return;
-          conn.sendPacket(
-            codec === "hevc"
-              ? PacketType.IMAGE_FRAME_H265
-              : PacketType.IMAGE_FRAME_H264,
-            buildImageFrameH265Payload(
-              chunk.flags,
-              chunk.width,
-              chunk.height,
-              chunk.data,
-            ),
+      const encoder = conn.sendVideoFrame
+        ? null
+        : await createEncoder(
+            width,
+            height,
+            settings.targetFps,
+            (chunk, codec) => {
+              if (!avState.current(generation) || !captureReadyRef.current)
+                return;
+              conn.sendPacket(
+                codec === "hevc"
+                  ? PacketType.IMAGE_FRAME_H265
+                  : PacketType.IMAGE_FRAME_H264,
+                buildImageFrameH265Payload(
+                  chunk.flags,
+                  chunk.width,
+                  chunk.height,
+                  chunk.data,
+                ),
+              );
+            },
+            after,
           );
-        },
-        after,
-      );
       if (!avState.current(generation)) {
         encoder?.destroy();
         return;
@@ -210,6 +214,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           settings.paletteChars,
           settings.matrixRain,
           conn.videoCodecCapabilities,
+          settings.renderMode,
         ),
       );
       console.info(
@@ -238,7 +243,11 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         connectionState === ConnectionState.CONNECTED
       ) {
         if ((conn.getBufferedAmount?.() ?? 0) > 256 * 1024) return;
-        const frame = captureFrame(drawVideo, sourceCanvas);
+        const frame = captureFrame(
+          drawVideo,
+          sourceCanvas,
+          !videoEncoderRef.current && !conn.sendVideoFrame,
+        );
         if (frame && frame.data) {
           captureLoopFrameCountRef.current++;
           const frameHash = computeFrameHash(frame.data);
@@ -262,6 +271,14 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
             // );
           }
 
+          if (conn.sendVideoFrame) {
+            const source = sourceCanvas ?? canvasRef.current;
+            if (source)
+              conn.sendVideoFrame(
+                new VideoFrame(source, { timestamp: Math.round(now * 1000) }),
+              );
+            return;
+          }
           if (videoEncoderRef.current) {
             const encoderCanvas = sourceCanvas ?? canvasRef.current;
             if (!encoderCanvas) return;
@@ -270,7 +287,15 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
               videoFrame = new VideoFrame(encoderCanvas, {
                 timestamp: Math.round(now * 1000),
               });
-              videoEncoderRef.current.encode(videoFrame, settings.targetFps);
+              videoEncoderRef.current.encode(
+                videoFrame,
+                settings.targetFps,
+                clientRef.current?.needsKeyframe?.(
+                  videoEncoderRef.current.codec === "hevc"
+                    ? PacketType.IMAGE_FRAME_H265
+                    : PacketType.IMAGE_FRAME_H264,
+                ) ?? false,
+              );
             } catch (error) {
               const failedCodec = videoEncoderRef.current.codec;
               const failedLabel = videoEncoderRef.current.label;

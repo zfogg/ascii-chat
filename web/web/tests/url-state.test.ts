@@ -215,3 +215,13 @@ test("Zalgo levels round trip and reject invalid intensities", () => {
   writeUrlValue("render", defaults, false, defaults);
   expect(new URLSearchParams(location.search).has("zalgo")).toBe(false);
 });
+
+test.each([0, 1, 2, -1, 3, 1.5])(
+  "validates render mode %s from links",
+  (mode) => {
+    window.history.replaceState(null, "", `/mirror?renderMode=${mode}`);
+    expect(readUrlValue("render", { renderMode: 0 }).renderMode).toBe(
+      [0, 1, 2].includes(mode) ? mode : 0,
+    );
+  },
+);

@@ -52,10 +52,13 @@ import { useAsciiRendererHandle } from "./useAsciiRendererHandle";
 const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
   function AsciiRenderer(
     {
+      workerRendering = false,
+      contentFit = "contain",
       keyboardEnabled = true,
       splashEnabled = true,
       uiLoading,
       uiMessage,
+      connectionError,
       onUiAction,
       onDimensionsChange,
       onFpsChange,
@@ -94,6 +97,8 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
     const { updateDimensions, fpsDisplayRef, onKeyDown } =
       useAsciiRendererHandle({
         ref,
+        workerRendering,
+        matrixMode,
         uiLoading:
           splashEnabled &&
           (uiLoading ?? (connectionState === 1 || connectionState === 2)),
@@ -138,12 +143,26 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
             keyboardEnabled ? (event) => event.currentTarget.focus() : undefined
           }
           className="ascii-canvas max-w-full max-h-full shrink-0 object-contain"
+          style={
+            contentFit
+              ? {
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: contentFit,
+                }
+              : undefined
+          }
         />
         {/* Disconnected overlay - only show if error or explicitly disconnected */}
         {connectionState === 4 && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded pointer-events-none">
-            <div className="text-5xl font-bold text-red-500 drop-shadow-lg">
-              CONNECTION ERROR
+            <div
+              role="alert"
+              className="max-w-full p-6 text-center text-3xl font-bold text-red-500 drop-shadow-lg break-words"
+            >
+              Connection error{connectionError ? `: ${connectionError}` : ""}
             </div>
           </div>
         )}

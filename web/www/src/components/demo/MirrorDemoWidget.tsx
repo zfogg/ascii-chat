@@ -33,11 +33,17 @@ import { registerActiveDemo, unregisterActiveDemo } from "./activeDemo";
 import type { DemoOption } from "./types";
 
 interface MirrorDemoWidgetProps {
+  demoVideo?: { src: string; title: string; href: string };
   demoOptions?: DemoOption[];
   defaultOptionIndex?: number;
   height?: string;
   minHeight?: number;
   showHeader?: boolean;
+  showDebugLogs?: boolean;
+  /** Contain preserves the full source; cover crops to fill the viewport. Defaults to contain. */
+  contentFit?: "contain" | "cover";
+  columns?: number;
+  rows?: number;
 }
 
 function formatPlaybackTime(seconds: number): string {
@@ -99,11 +105,20 @@ function applyDemoOption(
 }
 
 export default function MirrorDemoWidget({
+  demoVideo = {
+    src: "/assets/demo-video-white-knuckles.webm",
+    title: "OK Go — White Knuckles",
+    href: "https://www.youtube.com/watch?v=nHlJODYBLKs",
+  },
   demoOptions,
   defaultOptionIndex = 0,
   height = "36vh",
   minHeight = 200,
   showHeader = true,
+  showDebugLogs = import.meta.env.MODE !== "production",
+  contentFit = "contain",
+  columns,
+  rows,
 }: MirrorDemoWidgetProps) {
   const [source, setSource] = useState<MediaSource>(null);
   const [loading, setLoading] = useState(false);
@@ -364,7 +379,7 @@ export default function MirrorDemoWidget({
 
       if (videoRef.current) {
         addDebugLog("Setting up video element");
-        videoRef.current.src = "/assets/demo-video-white-knuckles.webm";
+        videoRef.current.src = demoVideo.src;
         // Don't set crossOrigin for same-domain resources
         // (production server doesn't provide CORS headers)
         videoRef.current.loop = true;
@@ -494,6 +509,7 @@ export default function MirrorDemoWidget({
     termDims,
     selectedOption,
     startAudioAnalysis,
+    demoVideo.src,
   ]);
 
   const togglePause = useCallback(() => {
@@ -612,6 +628,7 @@ export default function MirrorDemoWidget({
           frame.data,
           frame.width,
           frame.height,
+          contentFit,
         );
         if (ascii) {
           frameCountRef.current++;
@@ -658,7 +675,15 @@ export default function MirrorDemoWidget({
         frameIntervalRef.current = null;
       }
     };
-  }, [source, wasmReady, termDims, captureFrame, selectedOption, addDebugLog]);
+  }, [
+    source,
+    wasmReady,
+    termDims,
+    captureFrame,
+    selectedOption,
+    addDebugLog,
+    contentFit,
+  ]);
 
   useEffect(() => {
     const stopFn = stop;
@@ -731,6 +756,9 @@ export default function MirrorDemoWidget({
         <div className="demo-widget-inner">
           <AsciiRenderer
             ref={rendererRef}
+            contentFit={contentFit}
+            {...(columns === undefined ? {} : { columns })}
+            {...(rows === undefined ? {} : { rows })}
             initializeOptions={false}
             keyboardEnabled={false}
             splashEnabled={false}
@@ -892,7 +920,7 @@ export default function MirrorDemoWidget({
       </div>
 
       {/* Debug logs panel (dev only) */}
-      {import.meta.env.MODE !== "production" && debugLogs.length > 0 && (
+      {showDebugLogs && debugLogs.length > 0 && (
         <div className="mt-2 bg-gray-950 border border-gray-700 rounded p-2 max-h-32 overflow-y-auto">
           <p className="text-gray-500 text-xs font-medium mb-1">Debug Logs:</p>
           {debugLogs.map((log, i) => (
@@ -911,12 +939,12 @@ export default function MirrorDemoWidget({
       <p className="text-gray-600 text-xs mt-2 sm:text-right">
         {isAudioVisualization ? "Demo audio:" : "Demo video:"}{" "}
         <a
-          href="https://www.youtube.com/watch?v=nHlJODYBLKs"
+          href={demoVideo.href}
           className="text-gray-500 hover:text-gray-400 underline"
           target="_blank"
           rel="noopener noreferrer"
         >
-          OK Go — White Knuckles
+          {demoVideo.title}
         </a>
       </p>
     </div>

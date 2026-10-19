@@ -1,4 +1,5 @@
 #include "connection_internal.h"
+#include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file client/server.c
  * @ingroup client_connection
@@ -656,6 +657,15 @@ asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connect
     }
   }
   h265_encoder_t *encoder = connection->video_encoder;
+#ifndef __EMSCRIPTEN__
+  mutex_lock(&connection->send_mutex);
+  acip_transport_t *encoder_transport = server_connection_get_transport(connection);
+  if (acip_outbound_needs_keyframe(
+          encoder_transport, codec == VIDEO_CODEC_H264 ? PACKET_TYPE_IMAGE_FRAME_H264 : PACKET_TYPE_IMAGE_FRAME_H265,
+          0))
+    h265_encoder_request_keyframe(encoder);
+  mutex_unlock(&connection->send_mutex);
+#endif
   size_t output_buffer_size = 5 + ((size_t)width * height * 3) + 65536;
   uint8_t *output_buffer = buffer_alloc(NULL, output_buffer_size);
   if (!output_buffer)

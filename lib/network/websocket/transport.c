@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file network/websocket/transport.c
  * @brief WebSocket transport implementation for ACIP protocol
@@ -224,8 +225,8 @@ static void *websocket_service_thread(void *arg) {
     if (loop_count <= 10) {
       log_debug_every(US_PER_SEC_INT,
                       "[LOOP %d] Timing check: time_since_last=%lu us, interval=%lu us, will_service=%d", loop_count,
-                time_since_last_service / 1000, service_interval / 1000,
-                (int)(time_since_last_service >= service_interval));
+                      time_since_last_service / 1000, service_interval / 1000,
+                      (int)(time_since_last_service >= service_interval));
     }
 
     if (time_since_last_service >= service_interval) {
@@ -252,7 +253,7 @@ static void *websocket_service_thread(void *arg) {
         if (loop_count <= 10) {
           log_debug_every(US_PER_SEC_INT,
                           "[LOOP %d] >>> CALLING lws_service() NOW (is_connected=%d, wsi=%p, timeout=1ms)", loop_count,
-                   ws_data->is_connected, (void *)ws_data->wsi);
+                          ws_data->is_connected, (void *)ws_data->wsi);
         }
 
         result = lws_service(ws_data->context, 1);
@@ -314,6 +315,14 @@ static void *websocket_service_thread(void *arg) {
 static void websocket_on_established(struct lws *wsi, websocket_transport_data_t *ws_data) {
   // Don't process if we're in shutdown mode
   if (atomic_load_bool(&ws_data->is_destroying)) {
+    return;
+  }
+  int send_buffer = SOCKET_STREAM_SEND_BUFFER;
+  if (socket_setsockopt(lws_get_socket_fd(wsi), SOL_SOCKET, SO_SNDBUF, &send_buffer, sizeof(send_buffer)) != 0) {
+    mutex_lock(&ws_data->state_mutex);
+    ws_data->connection_failed = true;
+    mutex_unlock(&ws_data->state_mutex);
+    lws_set_timeout(wsi, PENDING_TIMEOUT_CLOSE_SEND, LWS_TO_KILL_ASYNC);
     return;
   }
   uint64_t now_ns = time_get_ns();
@@ -447,9 +456,12 @@ void websocket_transport_write_pending(struct lws *wsi, websocket_transport_data
   mutex_lock(&ws_data->send_mutex);
   buffer_release(ws_data->inflight_buffer);
   ws_data->inflight_buffer = NULL;
+  ws_data->pending_send_bytes -= ws_data->inflight_bytes;
+  ws_data->inflight_bytes = 0;
   bool available = ringbuffer_read(ws_data->send_queue, &msg);
   if (available)
     ws_data->inflight_buffer = msg.data;
+  ws_data->inflight_bytes = msg.len;
   mutex_unlock(&ws_data->send_mutex);
   if (!available)
     return;
@@ -509,7 +521,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
   case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH: {
     log_debug_every(US_PER_SEC_INT,
                     ">>> CALLBACK: LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH (wsi=%p) - WebSocket upgrade starting",
-             (void *)wsi);
+                    (void *)wsi);
     break;
   }
 
@@ -552,8 +564,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 /**
  * @brief Encrypt non-handshake packets when needed; return a borrowed payload or an owned buffer.
  */
-static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, buffer_domain_t *domain, const void *data, size_t len,
-                                                   const void **out_data, size_t *out_len,
+static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, buffer_domain_t *domain,
+                                                   const void *data, size_t len, const void **out_data, size_t *out_len,
                                                    uint8_t **out_encrypted_packet, size_t *out_encrypted_size) {
   *out_data = data;
   *out_len = len;
@@ -587,8 +599,8 @@ static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, 
 /**
  * @brief Copy a padded message into the appropriate send queue and wake its service thread.
  */
-static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_data, buffer_domain_t *domain, const void *send_data,
-                                                 size_t send_len) {
+static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_data, buffer_domain_t *domain,
+                                                 const void *send_data, size_t send_len) {
   // Server-side transports cannot call lws_write() directly
   // They must queue data and send from LWS_CALLBACK_SERVER_WRITEABLE
   if (!ws_data->owns_context) {
@@ -610,6 +622,8 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
 
     mutex_lock(&ws_data->send_mutex);
     bool success = ringbuffer_write(ws_data->send_queue, &msg);
+    if (success)
+      ws_data->pending_send_bytes += send_len;
 
     if (!success) {
       mutex_unlock(&ws_data->send_mutex);
@@ -656,6 +670,8 @@ static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_
 
   mutex_lock(&ws_data->send_mutex);
   bool success = ringbuffer_write(ws_data->send_queue, &msg);
+  if (success)
+    ws_data->pending_send_bytes += send_len;
 
   if (!success) {
     mutex_unlock(&ws_data->send_mutex);
@@ -727,8 +743,8 @@ asciichat_error_t websocket_transport_send(acip_transport_t *transport, const vo
   size_t send_len = 0;
   uint8_t *encrypted_packet = NULL;
   size_t encrypted_packet_size = 0;
-  asciichat_error_t result =
-      websocket_prepare_payload(transport, domain, data, len, &send_data, &send_len, &encrypted_packet, &encrypted_packet_size);
+  asciichat_error_t result = websocket_prepare_payload(transport, domain, data, len, &send_data, &send_len,
+                                                       &encrypted_packet, &encrypted_packet_size);
   if (result != ASCIICHAT_OK) {
     return result;
   }
@@ -765,7 +781,7 @@ static asciichat_error_t websocket_wait_for_connection(websocket_transport_data_
       uint64_t elapsed_ms = elapsed_ns / 1000000ULL;
 
       log_debug_every(US_PER_SEC_INT, "WEBSOCKET_RECV: Wait returned (result=%d, elapsed=%llums)", wait_result,
-               (unsigned long long)elapsed_ms);
+                      (unsigned long long)elapsed_ms);
 
       // Re-check after wait
       connected = ws_data->is_connected;
@@ -983,7 +999,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
         // Connection closed but we have partial data - return it
         log_debug_every(US_PER_SEC_INT,
                         "[WS_REASSEMBLE] Connection closed mid-reassembly, returning %zu bytes received so far",
-                 assembled_size);
+                        assembled_size);
         *buffer = assembled_buffer;
         *out_len = assembled_size;
         *out_allocated_buffer = assembled_buffer;
@@ -1065,8 +1081,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
           log_dev_every(1000000, "[WS_REASSEMBLE] Complete message: %zu bytes in %d fragments (payload=%u)",
                         expected_size, fragment_count, msg_payload_len);
 
-          return websocket_finish_packet_locked(ws_data, assembled_buffer, assembled_size,
-                                                expected_size, buffer, out_len, out_allocated_buffer);
+          return websocket_finish_packet_locked(ws_data, assembled_buffer, assembled_size, expected_size, buffer,
+                                                out_len, out_allocated_buffer);
         }
         // Need more fragments to complete this message
       }
@@ -1089,8 +1105,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
           log_dev_every(1000000, "[WS_REASSEMBLE] Complete ACIP packet: %zu bytes in %d fragments", expected_size,
                         fragment_count);
 
-          return websocket_finish_packet_locked(ws_data, assembled_buffer, assembled_size,
-                                                expected_size, buffer, out_len, out_allocated_buffer);
+          return websocket_finish_packet_locked(ws_data, assembled_buffer, assembled_size, expected_size, buffer,
+                                                out_len, out_allocated_buffer);
         } else {
           // ACIP packet is incomplete even though WebSocket frame is final
           // This shouldn't happen - WebSocket is delivering corrupt data
@@ -1357,8 +1373,18 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
 // WebSocket Transport Method Table
 // =============================================================================
 
+static size_t websocket_queued_bytes(acip_transport_t *transport) {
+  websocket_transport_data_t *ws = transport->impl_data;
+  mutex_lock(&ws->send_mutex);
+  size_t bytes = ws->pending_send_bytes;
+  mutex_unlock(&ws->send_mutex);
+  return bytes;
+}
+
 static const acip_transport_methods_t websocket_methods = {
     .send = websocket_transport_send,
+    .queued_bytes = websocket_queued_bytes,
+    .reserved_bytes = SOCKET_STREAM_SEND_RESERVE,
     .recv = websocket_recv,
     .close = websocket_close,
     .interrupt = websocket_interrupt,
@@ -1625,6 +1651,10 @@ static acip_transport_t *websocket_allocate_client_transport(const char *name) {
   }
 
   transport->impl_data = ws_data;
+  if (transport->methods && acip_outbound_create(transport) != ASCIICHAT_OK) {
+    acip_transport_destroy(transport);
+    return NULL;
+  }
   return transport;
 }
 
@@ -1762,6 +1792,10 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
 
   // Return transport immediately - connection will be established by service thread
   // If connection fails, recv() will detect is_connected=false and return error
+  if (transport->methods && acip_outbound_create(transport) != ASCIICHAT_OK) {
+    acip_transport_destroy(transport);
+    return NULL;
+  }
   return transport;
 }
 
@@ -1866,6 +1900,10 @@ static acip_transport_t *websocket_allocate_server_transport(const char *name) {
   }
 
   transport->impl_data = ws_data;
+  if (transport->methods && acip_outbound_create(transport) != ASCIICHAT_OK) {
+    acip_transport_destroy(transport);
+    return NULL;
+  }
   return transport;
 }
 
@@ -1899,12 +1937,13 @@ acip_transport_t *acip_websocket_server_transport_create(const char *name, struc
 
   // Store connection info (server-side: no context ownership, connection already established)
   ws_data->wsi = wsi;
+
   ws_data->context = lws_get_context(wsi); // Get context from wsi (not owned)
   ws_data->owns_context = false;           // Server owns context, not transport
   ws_data->is_connected = true;            // Already connected (server-side)
   log_debug_every(US_PER_SEC_INT,
                   "[WEBSOCKET_TRANSPORT_CREATE] ★★★ SERVER TRANSPORT CREATED: is_connected=true, wsi=%p, ws_data=%p",
-           (void *)wsi, (void *)ws_data);
+                  (void *)wsi, (void *)ws_data);
   log_debug("Server transport created: is_connected=true, wsi=%p", (void *)wsi);
 
   // Initialize transport
@@ -1922,5 +1961,16 @@ acip_transport_t *acip_websocket_server_transport_create(const char *name, struc
   // Register websocket implementation data with transport as parent
   (void)NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, "impl", (uintptr_t)(const void *)(transport));
 
+  int send_buffer = SOCKET_STREAM_SEND_BUFFER;
+  if (socket_setsockopt(lws_get_socket_fd(wsi), SOL_SOCKET, SO_SNDBUF, &send_buffer, sizeof(send_buffer)) != 0) {
+    acip_transport_destroy(transport);
+    SET_ERRNO_SYS(ERROR_NETWORK, "Cannot bound WebSocket send buffer");
+    return NULL;
+  }
+
+  if (transport->methods && acip_outbound_create(transport) != ASCIICHAT_OK) {
+    acip_transport_destroy(transport);
+    return NULL;
+  }
   return transport;
 }

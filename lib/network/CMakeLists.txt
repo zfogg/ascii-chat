@@ -58,6 +58,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/handlers.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/acds_handlers.c
     # consensus/
+    ${CMAKE_CURRENT_SOURCE_DIR}/consensus/handoff.c
     ${CMAKE_CURRENT_SOURCE_DIR}/consensus/topology.c
     ${CMAKE_CURRENT_SOURCE_DIR}/consensus/state.c
     ${CMAKE_CURRENT_SOURCE_DIR}/consensus/election.c
@@ -71,6 +72,7 @@ set(NETWORK_SRCS
 )
 
 if(NOT EMSCRIPTEN)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/acip/backpressure.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/tcp/async.c)
 endif()
 

@@ -2,7 +2,7 @@ import { useLayoutEffect } from "react";
 import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
 import { MediaSourceType } from "../hooks/useClientLike";
 import { useUrlState } from "../hooks/useUrlState";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   getMirrorModule,
   initMirrorWasm,
@@ -33,6 +33,8 @@ import { useTestPattern } from "@ascii-chat/shared/hooks";
 
 export function MirrorPage() {
   const testPattern = useTestPattern();
+  const [requestedFit, setContentFit] = useUrlState("fit", "contain");
+  const contentFit = requestedFit === "cover" ? "cover" : "contain";
   const [playing, setPlaying] = useUrlState("playing", false);
   const resumePending = useRef(playing);
   const playingRef = useRef(playing);
@@ -71,12 +73,18 @@ export function MirrorPage() {
   const fileCanvasRef = useRef<HTMLCanvasElement>(null);
   const ignoreMediaFps = useCallback(() => {}, []);
   const fileSourceRef = useRef(false);
+  const [mediaFlipX, setMediaFlipX] = useUrlState("mediaFlipX", false);
+  const [mediaFlipY, setMediaFlipY] = useUrlState("mediaFlipY", false);
+  const mediaFlipRef = useRef({ flipX: mediaFlipX, flipY: mediaFlipY });
+  useLayoutEffect(() => {
+    mediaFlipRef.current = { flipX: mediaFlipX, flipY: mediaFlipY };
+  }, [mediaFlipX, mediaFlipY]);
   const applyWasmSettings = useCallback((settings: BinarySettingsConfig) => {
     applyMirrorWasmSettings(
       fileSourceRef.current
         ? {
             ...settings,
-            flipX: false,
+            ...mediaFlipRef.current,
             animationEnabled: false,
             matrixRain: false,
           }
@@ -125,16 +133,44 @@ export function MirrorPage() {
   useEffect(() => {
     fileSourceRef.current = mediaSource === MediaSourceType.FILE;
     if (wasmInitialized) applyWasmSettings(settings);
-  }, [mediaSource, wasmInitialized, settings, applyWasmSettings]);
+  }, [
+    mediaSource,
+    wasmInitialized,
+    settings,
+    applyWasmSettings,
+    mediaFlipX,
+    mediaFlipY,
+  ]);
 
   // Handle settings change
   const handleSettingsChange = useCallback(
     (newSettings: BinarySettingsConfig) => {
-      setSettings(newSettings);
+      if (fileSourceRef.current) {
+        mediaFlipRef.current = {
+          flipX: !!newSettings.flipX,
+          flipY: !!newSettings.flipY,
+        };
+        setMediaFlipX(!!newSettings.flipX);
+        setMediaFlipY(!!newSettings.flipY);
+        setSettings({
+          ...newSettings,
+          flipX: settings.flipX ?? true,
+          flipY: settings.flipY ?? false,
+        });
+      } else {
+        setSettings(newSettings);
+      }
       // Apply WASM settings immediately so renderer recreates if needed
       applyWasmSettings(newSettings);
     },
-    [setSettings, applyWasmSettings],
+    [
+      setSettings,
+      applyWasmSettings,
+      settings.flipX,
+      settings.flipY,
+      setMediaFlipX,
+      setMediaFlipY,
+    ],
   );
 
   // Webcam start logic and auto-start effects
@@ -173,6 +209,13 @@ export function MirrorPage() {
   const { start: startFile, stop: stopFile } = fileMedia;
 
   const fileActive = mediaSource === MediaSourceType.FILE;
+  const contentSettings = useMemo(
+    () =>
+      fileActive
+        ? { ...settings, flipX: mediaFlipX, flipY: mediaFlipY }
+        : settings,
+    [fileActive, settings, mediaFlipX, mediaFlipY],
+  );
   const toggleMedia = useCallback(() => {
     if (!fileMedia.kind) return;
     if (fileActive && !pendingWebcamSwitch.current) {
@@ -209,7 +252,8 @@ export function MirrorPage() {
     terminalDimensions,
     onMediaFps: setFps,
     fileActive,
-    mediaRevision: settings,
+    contentFit,
+    mediaRevision: contentSettings,
     captureFrame: fileActive
       ? fileMedia.captureFrame
       : optionsManager.captureFrame,
@@ -316,9 +360,11 @@ export function MirrorPage() {
             showSettings={showSettings}
             settingsPanel={
               <BinarySettings
-                config={settings}
+                config={contentSettings}
                 onChange={handleSettingsChange}
                 mode={AsciiChatMode.MIRROR}
+                contentFit={contentFit}
+                onContentFitChange={setContentFit}
               />
             }
             controlBar={{
@@ -432,6 +478,7 @@ export function MirrorPage() {
           return (
             <AsciiRenderer
               ref={rendererRef}
+              contentFit={contentFit}
               uiLoading={!isWebcamRunning}
               uiMessage={
                 error ||
@@ -441,7 +488,9 @@ export function MirrorPage() {
               }
               onUiAction={(event) => {
                 if (event.action === 1 || event.action === 7)
-                  handleSettingsChange(sessionUiSettings(event, settings));
+                  handleSettingsChange(
+                    sessionUiSettings(event, contentSettings),
+                  );
                 if (event.key === "[") toggleMedia();
                 else if (event.action === 6 && fileActive)
                   fileMedia.togglePause();

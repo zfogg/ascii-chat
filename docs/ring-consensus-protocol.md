@@ -2,6 +2,11 @@
 
 # Ring Consensus Protocol for ACDS
 
+This document is the historical ring design. See [measured host handoff](measured-host-handoff.md)
+for the implemented selection, measurement semantics, ACDS fencing, browser support,
+and end-to-end recovery tests. The score-ordering and ACDS-independent failover
+claims below are not the current implementation contract.
+
 **Version**: 1.0
 **Date**: February 2026
 **Author**: Protocol Design - ascii-chat Discovery Service

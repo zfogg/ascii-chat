@@ -307,16 +307,10 @@ asciichat_error_t nat_detect_quality(nat_quality_t *quality, const char *stun_se
       // Successfully got reflexive address via STUN
       quality->has_srflx_candidates = true;
 
-      // If reflexive address is not private range, we have public IP
-      // Private ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-      if (quality->public_address[0] && strncmp(quality->public_address, "10.", 3) != 0 &&
-          strncmp(quality->public_address, "172.16.", 7) != 0 && strncmp(quality->public_address, "192.168.", 8) != 0) {
-        quality->has_public_ip = true;
-        quality->nat_type = ACIP_NAT_TYPE_OPEN;
-      } else {
-        // Reflexive address is still private - behind symmetric NAT
-        quality->nat_type = ACIP_NAT_TYPE_SYMMETRIC;
-      }
+      // A server-reflexive address demonstrates STUN reachability, not a public
+      // interface or NAT classification. Those require separate observations.
+      quality->has_public_ip = false;
+
     } else {
       log_debug("STUN probe failed, falling back to symmetric NAT assumption");
     }

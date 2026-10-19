@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 /**
  * @file network/consensus/topology.h
  * @brief Ring topology management
@@ -22,13 +23,13 @@ typedef struct consensus_topology consensus_topology_t;
  * Sorts participants lexicographically and computes ring positions.
  * Returns error if my_id not in participant list.
  *
- * @param participant_ids Array of 16-byte UUIDs (up to 64 participants)
- * @param num_participants Number of participants (1-64)
+ * @param participant_ids Array of 16-byte UUIDs (up to 128 participants)
+ * @param num_participants Number of participants (1-128)
  * @param my_id My 16-byte UUID (must be in participant_ids)
  * @param out_topology Output topology handle (caller must destroy)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_topology_create(const uint8_t participant_ids[64][16], int num_participants,
+asciichat_error_t consensus_topology_create(const uint8_t participant_ids[PARTICIPANT_LIMIT][16], int num_participants,
                                             const uint8_t my_id[16], consensus_topology_t **out_topology);
 
 /**
@@ -93,5 +94,5 @@ asciichat_error_t consensus_topology_get_leader(const consensus_topology_t *topo
  * @param out_count Output number of participants
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_topology_get_all(const consensus_topology_t *topology, uint8_t out_ids[64][16],
-                                             int *out_count);
+asciichat_error_t consensus_topology_get_all(const consensus_topology_t *topology,
+                                             uint8_t out_ids[PARTICIPANT_LIMIT][16], int *out_count);

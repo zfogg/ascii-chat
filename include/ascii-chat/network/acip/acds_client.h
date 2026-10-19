@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 #pragma once
 
 /**
@@ -167,7 +168,7 @@ typedef struct {
   uint8_t identity_pubkey[32]; ///< Ed25519 public key (host identity)
   uint8_t identity_seckey[64]; ///< Ed25519 secret key (for signing)
   uint8_t capabilities;        ///< Bit 0: video, Bit 1: audio
-  uint8_t max_participants;    ///< Maximum participants (1-8)
+  uint8_t max_participants;    ///< Maximum participants (1-128)
   bool has_password;           ///< Password protection enabled
   char password[128];          ///< Optional password (if has_password)
   bool acds_expose_ip;         ///< Explicitly allow public IP disclosure (--acds-expose-ip opt-in)
@@ -285,7 +286,7 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
  * @param identity_seckey Ed25519 secret key (64 bytes)
  * @param timestamp Unix milliseconds timestamp
  * @param capabilities Capabilities bitfield
- * @param max_participants Maximum participants (1-8)
+ * @param max_participants Maximum participants (1-128)
  * @param signature_out Output buffer for signature (64 bytes)
  * @return ASCIICHAT_OK on success, error code on failure
  */

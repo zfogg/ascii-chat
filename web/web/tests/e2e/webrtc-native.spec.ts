@@ -69,7 +69,10 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
     .getByRole("button", { name: "Enable microphone", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Mute microphone", exact: true }),
+    page.getByRole("button", { name: "Disable microphone", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Enable speakers", exact: true }),
   ).toBeVisible();
   const initialFrames = await renderedFrames();
   // A connected WebRTC data channel is not enough: assert that rendered
@@ -88,7 +91,7 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
     fullPage: true,
   });
   await page
-    .getByRole("button", { name: "Mute microphone", exact: true })
+    .getByRole("button", { name: "Disable microphone", exact: true })
     .click();
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   await expect(

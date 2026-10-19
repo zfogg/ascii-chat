@@ -195,6 +195,11 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
                                       const terminal_capabilities_t *caps, const bool use_aspect_ratio,
                                       const bool stretch, const char *palette_chars);
 
+/** Convert with explicit contain (true) or cover (false) viewport fitting. */
+char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width, const ssize_t height,
+                                          const terminal_capabilities_t *caps, const bool use_aspect_ratio,
+                                          const bool stretch, const char *palette_chars, const bool contain);
+
 /**
  * @brief Convert image to ASCII art with terminal capabilities
  * @param image Image to convert (must not be NULL)
@@ -326,6 +331,9 @@ typedef struct {
   const char *frame_data; ///< Frame data pointer (ASCII frame string, not owned)
   size_t frame_size;      ///< Frame data size in bytes (length of frame string)
 } ascii_frame_source_t;
+
+/** Calculate the shared grid layout before sizing source video tiles. */
+asciichat_error_t ascii_grid_layout(int source_count, int width, int height, int *grid_cols, int *grid_rows);
 
 /**
  * @brief Create a grid layout from multiple ASCII frames

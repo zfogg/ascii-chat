@@ -35,15 +35,6 @@
 uint8x16_t palette256_index_dithered_neon(uint8x16_t r, uint8x16_t g, uint8x16_t b, int pixel_offset);
 
 /**
- * @brief Initialize NEON decimal lookup table
- *
- * Must be called once at startup before using NEON functions.
- *
- * @ingroup video
- */
-void init_neon_decimal_table(void);
-
-/**
  * @brief Render image as monochrome ASCII using NEON
  * @param image Source image
  * @param ascii_chars Character palette
@@ -95,3 +86,15 @@ void image_flip_horizontal_neon(image_t *image);
 #endif
 
 /** @} */
+
+#if SIMD_SUPPORT_NEON
+char *rgb_to_256color_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif
+
+#if SIMD_SUPPORT_NEON
+char *rgb_to_16color_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif
+
+#if SIMD_SUPPORT_NEON
+char *rgb_to_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif

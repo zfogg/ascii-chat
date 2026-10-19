@@ -103,7 +103,7 @@ void mirror_cleanup(void) {
 // ============================================================================
 
 EMSCRIPTEN_KEEPALIVE
-char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
+char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, int contain) {
   if (!rgba_data || src_width <= 0 || src_height <= 0) {
     return NULL;
   }
@@ -210,8 +210,8 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   }
 
   // Convert to ASCII using capability-aware function
-  char *ascii_output = ascii_convert_with_capabilities(&img, dst_width, dst_height, &caps, preserve_aspect_ratio,
-                                                       stretch, palette_chars);
+  char *ascii_output = ascii_convert_with_capabilities_fit(&img, dst_width, dst_height, &caps, preserve_aspect_ratio,
+                                                           stretch, palette_chars, contain != 0);
 
   // Clean up
   SAFE_FREE(rgb_pixels);

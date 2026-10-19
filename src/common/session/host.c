@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/audio/recording.h>
 /**
@@ -53,7 +54,7 @@
  * ============================================================================ */
 
 /** @brief Default maximum clients */
-#define SESSION_HOST_DEFAULT_MAX_CLIENTS 32
+#define SESSION_HOST_DEFAULT_MAX_CLIENTS PARTICIPANT_LIMIT
 
 /* ============================================================================
  * Session Host Internal Types
@@ -74,6 +75,7 @@ typedef struct {
   uint64_t connected_at;
   uint16_t render_width;
   uint16_t render_height;
+  render_mode_t render_mode;
 
   /** @brief Alternative transport (WebRTC, WebSocket, etc.) - NULL if using socket only */
   struct acip_transport *transport;
@@ -619,6 +621,9 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
           if (host->clients[j].active && host->clients[j].client_id == client_id) {
             host->clients[j].render_width = width;
             host->clients[j].render_height = height;
+            uint32_t render_mode = NET_TO_HOST_U32(caps.render_mode);
+            host->clients[j].render_mode = render_mode <= RENDER_MODE_HALF_BLOCK
+                                              ? (render_mode_t)render_mode : RENDER_MODE_FOREGROUND;
             log_info("Client %u requested render dimensions %ux%u", client_id, width, height);
             break;
           }
@@ -791,173 +796,119 @@ static void *receive_loop_thread(void *arg) {
  * - Mixes audio from all participants (100 FPS)
  * - Broadcasts mixed audio to all participants
  */
+// The caller holds clients_mutex so all viewports use the same set of source frames.
+static char *host_create_video_grid(session_host_t *host, int count, int width, int height, render_mode_t render_mode, size_t *size) {
+  int columns, rows;
+  if (ascii_grid_layout(count, width, height, &columns, &rows) != ASCIICHAT_OK)
+    return NULL;
+  int cell_width = (width - columns + 1) / columns;
+  int cell_height = (height - rows + 1) / rows;
+  // Match ascii_create_grid's first-source fallback for very small viewports.
+  bool fallback = count > 1 && (cell_width < 10 || cell_height < 3);
+  if (fallback) {
+    cell_width = width;
+    cell_height = height;
+  }
+  ascii_frame_source_t *sources = SAFE_CALLOC((size_t)count, sizeof(*sources), ascii_frame_source_t *);
+  int index = 0;
+  for (int i = 0; i < host->max_clients; ++i) {
+    if (!host->clients[i].active || !host->clients[i].video_active || !host->clients[i].incoming_video)
+      continue;
+    uint64_t start = time_get_ns();
+    terminal_capabilities_t caps = {0};
+    caps.color_level = TERM_COLOR_TRUECOLOR;
+    caps.utf8_support = true;
+    caps.render_mode = render_mode;
+    caps.wants_background = render_mode == RENDER_MODE_BACKGROUND;
+    sources[index].frame_data = ascii_convert_with_capabilities(host->clients[i].incoming_video, cell_width,
+                                                               cell_height, &caps, false, false,
+                                                               PALETTE_CHARS_STANDARD);
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - start);
+    stats_counter_add(stats_runtime_scope(), sources[index].frame_data ? STATS_COUNTER_FRAMES_CONVERTED
+                                                                     : STATS_COUNTER_FRAMES_DROPPED, 1);
+    sources[index].frame_size = sources[index].frame_data ? strlen(sources[index].frame_data) : 0;
+    ++index;
+    if (fallback)
+      break;
+  }
+  char *grid = ascii_create_grid(sources, count, width, height, size);
+  for (int i = 0; i < count; ++i)
+    SAFE_FREE(sources[i].frame_data);
+  SAFE_FREE(sources);
+  return grid;
+}
+
 static void host_render_video(session_host_t *host, bool waiting_for_peer, bool *logging_disabled_ptr,
                               uint64_t *snapshot_first_frame_ns_ptr) {
-  bool logging_disabled = *logging_disabled_ptr;
-  uint64_t snapshot_first_frame_ns = *snapshot_first_frame_ns_ptr;
-  // Collect video frames from all participants and create grid layout
   mutex_lock(&host->clients_mutex);
+  int count = 0;
+  for (int i = 0; i < host->max_clients; ++i)
+    if (host->clients[i].active && host->clients[i].video_active && host->clients[i].incoming_video)
+      ++count;
 
-  // Count active participants with video
-  int active_video_count = 0;
-  for (int i = 0; i < host->max_clients; i++) {
-    if (host->clients[i].active && host->clients[i].video_active && host->clients[i].incoming_video) {
-      active_video_count++;
-    }
-  }
-
-  // Generate and broadcast grid if we have active participants,
-  // or display locally if display context is set
-  if (active_video_count > 0 || host->display_context) {
-    // Allocate arrays for ASCII frames and sources
-    char **ascii_frames = SAFE_MALLOC(active_video_count * sizeof(char *), char **);
-    ascii_frame_source_t *sources =
-        SAFE_MALLOC(active_video_count * sizeof(ascii_frame_source_t), ascii_frame_source_t *);
-
-    if (ascii_frames && sources) {
-      // Convert each incoming video frame to ASCII
-      int frame_idx = 0;
-      for (int i = 0; i < host->max_clients; i++) {
-        if (host->clients[i].active && host->clients[i].video_active && host->clients[i].incoming_video) {
-          image_t *img = host->clients[i].incoming_video;
-
-          // Convert image to ASCII (80x24 for each frame in grid, monochrome for now)
-          uint64_t convert_start = time_get_ns();
-          ascii_frames[frame_idx] =
-              ascii_convert(img, 80, 24, true, false, false, PALETTE_CHARS_STANDARD, g_default_luminance_palette);
-          stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - convert_start);
-          stats_counter_add(stats_runtime_scope(),
-                            ascii_frames[frame_idx] ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
-          if (ascii_frames[frame_idx]) {
-            sources[frame_idx].frame_data = ascii_frames[frame_idx];
-            sources[frame_idx].frame_size = strlen(ascii_frames[frame_idx]) + 1;
-          } else {
-            sources[frame_idx].frame_data = "";
-            sources[frame_idx].frame_size = 1;
-          }
-          frame_idx++;
+  if (count > 0) {
+    typedef struct {
+      int width, height;
+      render_mode_t render_mode;
+      char *frame;
+      size_t size;
+    } host_grid_t;
+    // Cache every distinct viewport for this frame, including the local display.
+    host_grid_t *grids = SAFE_CALLOC((size_t)host->max_clients + 1, sizeof(*grids), host_grid_t *);
+    int grid_count = 0;
+    for (int i = 0; i <= host->max_clients; ++i) {
+      bool local_display = i == host->max_clients;
+      int width = 80, height = 24;
+      render_mode_t render_mode = local_display ? GET_OPTION(render_mode) : host->clients[i].render_mode;
+      if (local_display) {
+        if (!host->display_context || waiting_for_peer)
+          continue;
+      } else {
+        if (!host->clients[i].active ||
+            (!host->clients[i].transport && host->clients[i].socket == INVALID_SOCKET_VALUE))
+          continue;
+        if (host->clients[i].transport && host->clients[i].render_width > 0 && host->clients[i].render_height > 0) {
+          width = host->clients[i].render_width;
+          height = host->clients[i].render_height;
         }
       }
-
-      // Use the first connected WebRTC client's negotiated dimensions for
-      // the shared grid so its ACIP frame dimensions match the browser renderer.
-      int output_width = 80;
-      int output_height = 24;
-      for (int i = 0; i < host->max_clients; i++) {
-        if (host->clients[i].active && host->clients[i].transport && host->clients[i].render_width > 0 &&
-            host->clients[i].render_height > 0) {
-          output_width = host->clients[i].render_width;
-          output_height = host->clients[i].render_height;
-          break;
-        }
+      int cached = 0;
+      while (cached < grid_count && (grids[cached].width != width || grids[cached].height != height ||
+                                     grids[cached].render_mode != render_mode))
+        ++cached;
+      if (cached == grid_count) {
+        grids[cached].width = width;
+        grids[cached].height = height;
+        grids[cached].render_mode = render_mode;
+        grids[cached].frame = host_create_video_grid(host, count, width, height, render_mode, &grids[cached].size);
+        ++grid_count;
       }
-      size_t grid_size = 0;
-      char *grid_frame = ascii_create_grid(sources, active_video_count, output_width, output_height, &grid_size);
-
-      if (grid_frame) {
-        // Broadcast grid to all connected participants
-        if (active_video_count > 0) {
-          for (int i = 0; i < host->max_clients; i++) {
-            if (host->clients[i].active &&
-                (host->clients[i].transport || host->clients[i].socket != INVALID_SOCKET_VALUE)) {
-              if (host->clients[i].transport) {
-                // Web clients parse the ACIP ASCII-frame payload, which includes
-                // dimensions, size, and checksum ahead of the grid bytes.
-                uint16_t client_width = host->clients[i].render_width;
-                uint16_t client_height = host->clients[i].render_height;
-                if (client_width == 0 || client_height == 0) {
-                  client_width = (uint16_t)output_width;
-                  client_height = (uint16_t)output_height;
-                }
-
-                if (active_video_count != 1 && client_width == output_width && client_height == output_height) {
-                  acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, grid_frame, grid_size,
-                                        output_width, output_height, "session-host");
-                } else {
-                  // The terminal renderer's line feeds rely on the grid
-                  // width. Rebuild the source cells at this client's grid
-                  // dimensions instead of relabeling an 80x24 frame.
-                  char **client_frames = SAFE_CALLOC((size_t)active_video_count, sizeof(*client_frames), char **);
-                  ascii_frame_source_t *client_sources =
-                      SAFE_CALLOC((size_t)active_video_count, sizeof(*client_sources), ascii_frame_source_t *);
-                  if (client_frames && client_sources) {
-                    int client_frame_idx = 0;
-                    for (int j = 0; j < host->max_clients; j++) {
-                      if (host->clients[j].active && host->clients[j].video_active && host->clients[j].incoming_video) {
-                        client_frames[client_frame_idx] =
-                            ascii_convert(host->clients[j].incoming_video, client_width, client_height, true, false,
-                                          false, PALETTE_CHARS_STANDARD, g_default_luminance_palette);
-                        client_sources[client_frame_idx].frame_data =
-                            client_frames[client_frame_idx] ? client_frames[client_frame_idx] : "";
-                        client_sources[client_frame_idx].frame_size =
-                            client_frames[client_frame_idx] ? strlen(client_frames[client_frame_idx]) + 1 : 1;
-                        client_frame_idx++;
-                      }
-                    }
-                    if (active_video_count == 1 && client_frames[0]) {
-                      acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, client_frames[0],
-                                            strlen(client_frames[0]), client_width, client_height, "session-host");
-                    } else {
-                      size_t client_grid_size = 0;
-                      char *client_grid = ascii_create_grid(client_sources, active_video_count, client_width,
-                                                            client_height, &client_grid_size);
-                      if (client_grid) {
-                        acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, client_grid,
-                                              client_grid_size, client_width, client_height, "session-host");
-                        SAFE_FREE(client_grid);
-                      }
-                    }
-                    for (int j = 0; j < active_video_count; j++) {
-                      SAFE_FREE(client_frames[j]);
-                    }
-                  }
-                  SAFE_FREE(client_frames);
-                  SAFE_FREE(client_sources);
-                }
-              } else {
-                session_host_send_packet(&host->clients[i], PACKET_TYPE_ASCII_FRAME, grid_frame, grid_size);
-              }
-            }
-          }
-        }
-
+      host_grid_t *grid = &grids[cached];
+      if (!grid->frame)
+        continue;
+      if (local_display) {
 #ifndef __EMSCRIPTEN__
-        // Display locally if display context is set
-        if (host->display_context && !waiting_for_peer) {
-          // Disable terminal logging on first rendered frame so logs don't
-          // interleave with ASCII art output
-          if (!logging_disabled) {
-            log_set_terminal_output(false);
-            logging_disabled = true;
-          }
-          session_display_render_frame(host->display_context, grid_frame);
-          if (GET_OPTION(snapshot_mode) && snapshot_first_frame_ns == 0 &&
-              session_display_has_first_frame(host->display_context)) {
-            snapshot_first_frame_ns = time_get_ns();
-          }
+        if (!*logging_disabled_ptr) {
+          log_set_terminal_output(false);
+          *logging_disabled_ptr = true;
         }
-
+        session_display_render_frame(host->display_context, grid->frame);
+        if (GET_OPTION(snapshot_mode) && *snapshot_first_frame_ns_ptr == 0 &&
+            session_display_has_first_frame(host->display_context))
+          *snapshot_first_frame_ns_ptr = time_get_ns();
 #endif
-        SAFE_FREE(grid_frame);
-      }
-
-      // Free ASCII frames
-      for (int i = 0; i < active_video_count; i++) {
-        if (ascii_frames[i]) {
-          SAFE_FREE(ascii_frames[i]);
-        }
+      } else if (host->clients[i].transport) {
+        acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, grid->frame, grid->size,
+                              width, height, "session-host");
+      } else {
+        session_host_send_packet(&host->clients[i], PACKET_TYPE_ASCII_FRAME, grid->frame, grid->size);
       }
     }
-
-    SAFE_FREE(ascii_frames);
-    SAFE_FREE(sources);
+    for (int i = 0; i < grid_count; ++i)
+      SAFE_FREE(grids[i].frame);
+    SAFE_FREE(grids);
   }
-
   mutex_unlock(&host->clients_mutex);
-  log_debug_every(NS_PER_MS_INT, "Video render cycle (%d active)", active_video_count);
-
-  *logging_disabled_ptr = logging_disabled;
-  *snapshot_first_frame_ns_ptr = snapshot_first_frame_ns;
 }
 
 asciichat_error_t session_host_render_video(session_host_t *host) {
@@ -1273,6 +1224,7 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
       host->clients[i].transport = NULL; // No alternative transport initially
       host->clients[i].render_width = 0;
       host->clients[i].render_height = 0;
+      host->clients[i].render_mode = RENDER_MODE_FOREGROUND;
 
       // Allocate media buffers
       host->clients[i].incoming_video = image_new(480, 270);                        // Network-optimal size (HD preview)

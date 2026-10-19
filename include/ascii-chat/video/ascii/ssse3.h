@@ -55,3 +55,19 @@ void ssse3_caches_destroy(void);
 #endif /* SIMD_SUPPORT_SSSE3 */
 
 /** @} */
+
+#if SIMD_SUPPORT_SSSE3
+char *rgb_to_truecolor_halfblocks_ssse3(const uint8_t *rgb, int width, int height, int stride);
+#endif
+
+#if SIMD_SUPPORT_SSSE3
+char *rgb_to_256color_halfblocks_ssse3(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif
+
+#if SIMD_SUPPORT_SSSE3
+char *rgb_to_16color_halfblocks_ssse3(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif
+
+#if SIMD_SUPPORT_SSSE3
+char *rgb_to_halfblocks_ssse3(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif

@@ -1,3 +1,4 @@
+#include <ascii-chat/video/ascii/render.h>
 /**
  * @file video/ascii.c
  * @ingroup video
@@ -80,6 +81,24 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
     for (int x = 0; x < dest->w; x++) {
       int source_x = crop_x + (int)(((int64_t)x * crop_width) / dest->w);
       dest_row[x] = source_row[source_x];
+    }
+  }
+}
+
+// Fit the complete source into the physical viewport, leaving black bars.
+// Half-block sampling doubles the destination height without changing geometry.
+static void image_resize_contain(const image_t *source, image_t *dest, ssize_t columns, ssize_t rows) {
+  ssize_t fitted_columns, fitted_rows;
+  aspect_ratio(source->w, source->h, columns, rows, false, &fitted_columns, &fitted_rows);
+  int width = (int)fitted_columns;
+  int height = (int)(fitted_rows * dest->h / rows);
+  int left = (dest->w - width) / 2;
+  int top = (dest->h - height) / 2;
+  for (int y = 0; y < height; ++y) {
+    int source_y = (int)((int64_t)y * source->h / height);
+    for (int x = 0; x < width; ++x) {
+      int source_x = (int)((int64_t)x * source->w / width);
+      dest->pixels[(y + top) * dest->w + x + left] = source->pixels[source_y * source->w + source_x];
     }
   }
 }
@@ -179,15 +198,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
     // Check for half-block mode first
     if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK) {
       const uint8_t *rgb_data = (const uint8_t *)resized->pixels;
-#if SIMD_SUPPORT_NEON
-      // Use NEON half-block renderer (optimized SIMD path)
-      log_dev("Using NEON halfblock renderer");
-      ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized->w, resized->h, 0);
-#else
-      // Fallback to scalar halfblock renderer (works on all platforms)
-      log_dev("Using scalar halfblock renderer (NEON not available)");
-      ascii = rgb_to_truecolor_halfblocks_scalar(rgb_data, resized->w, resized->h, 0);
-#endif
+      ascii = ascii_render_halfblocks(rgb_data, resized->w, resized->h, 0, ASCII_COLOR_TRUE, simd_cells_backend());
     } else {
       // Standard color modes (foreground/background)
       bool use_background = (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND);
@@ -229,6 +240,14 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
                                       const terminal_capabilities_t *caps, const bool use_aspect_ratio,
                                       const bool stretch, const char *palette_chars) {
 
+  return ascii_convert_with_capabilities_fit(original, width, height, caps, use_aspect_ratio, stretch, palette_chars,
+                                             false);
+}
+
+char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width, const ssize_t height,
+                                          const terminal_capabilities_t *caps, const bool use_aspect_ratio,
+                                          const bool stretch, const char *palette_chars, const bool contain) {
+
   if (original == NULL || caps == NULL) {
     log_error("Invalid parameters for ascii_convert_with_capabilities");
     return NULL;
@@ -249,15 +268,14 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   ssize_t resized_width = width;
   ssize_t resized_height = height;
 
-  // Preserve aspect ratio by cropping the source to cover the viewport. The
-  // destination dimensions remain the full requested viewport dimensions.
+  // Both contain and cover produce a complete viewport, including any black bars.
 
   // Half-block mode doubles height for 2x vertical resolution (AFTER aspect ratio)
   if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
     resized_height = resized_height * 2;
   }
 
-  // Cover rendering fills the viewport, so no aspect-ratio padding is needed.
+  // Fitting is performed inside the pixel viewport, so ANSI padding is not needed.
   size_t pad_width = 0;
   size_t pad_height = 0;
 
@@ -293,8 +311,11 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   uint64_t prof_resize_start_ns = prof_alloc_end_ns;
 
   if (use_aspect_ratio && !stretch) {
-    // Crop using terminal cells; half-block pixel height is only the sampling resolution.
-    image_resize_cover(original, resized, width, height);
+    // Fit using terminal cells; half-block pixel height is only the sampling resolution.
+    if (contain)
+      image_resize_contain(original, resized, width, height);
+    else
+      image_resize_cover(original, resized, width, height);
   } else {
     image_resize(original, resized);
   }
@@ -534,31 +555,14 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
   return buffer;
 }
 
-/**
- * Creates a grid layout from multiple ASCII frame sources with | and _ separators.
- *
- * Parameters:
- *   sources       Array of ASCII frame sources to combine
- *   source_count  Number of sources in the array
- *   width         Target width of the output grid
- *   height        Target height of the output grid
- *   out_size      Output parameter for the size of the returned buffer
- *
- * Returns:
- *   A newly allocated, null-terminated string containing the grid layout,
- *   or NULL on error. Caller must free the returned buffer.
- */
-char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int width, int height, size_t *out_size) {
-  if (!sources || source_count <= 0 || width <= 0 || height <= 0 || !out_size) {
-    return NULL;
-  }
-
+asciichat_error_t ascii_grid_layout(int source_count, int width, int height, int *grid_cols, int *grid_rows) {
+  if (source_count <= 0 || width <= 0 || height <= 0 || !grid_cols || !grid_rows)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid grid dimensions");
   // Multiple sources: create grid layout
   // Calculate grid dimensions that maximize the use of terminal space
   // Character aspect ratio: terminal chars are typically ~2x taller than wide
   float char_aspect = 2.0f;
 
-  int grid_cols, grid_rows;
   float best_score = -1.0f;
   int best_cols = 1;
   int best_rows = source_count;
@@ -615,8 +619,34 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
     }
   }
 
-  grid_cols = best_cols;
-  grid_rows = best_rows;
+  *grid_cols = best_cols;
+  *grid_rows = best_rows;
+  return ASCIICHAT_OK;
+
+}
+
+/**
+ * Creates a grid layout from multiple ASCII frame sources with | and _ separators.
+ *
+ * Parameters:
+ *   sources       Array of ASCII frame sources to combine
+ *   source_count  Number of sources in the array
+ *   width         Target width of the output grid
+ *   height        Target height of the output grid
+ *   out_size      Output parameter for the size of the returned buffer
+ *
+ * Returns:
+ *   A newly allocated, null-terminated string containing the grid layout,
+ *   or NULL on error. Caller must free the returned buffer.
+ */
+char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int width, int height, size_t *out_size) {
+  if (!sources || source_count <= 0 || width <= 0 || height <= 0 || !out_size) {
+    return NULL;
+  }
+
+  int grid_cols, grid_rows;
+  if (ascii_grid_layout(source_count, width, height, &grid_cols, &grid_rows) != ASCIICHAT_OK)
+    return NULL;
 
   // Calculate dimensions for each cell (leave 1 char for separators)
   int cell_width = (width - (grid_cols - 1)) / grid_cols;
@@ -798,15 +828,15 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     const uint8_t *rgb_data = (const uint8_t *)image->pixels;
     switch (color_level) {
     case TERM_COLOR_TRUECOLOR:
-      return rgb_to_truecolor_halfblocks_scalar(rgb_data, image->w, image->h, 0);
+      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_TRUE, simd_cells_backend());
     case TERM_COLOR_256:
-      return rgb_to_256color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_256, simd_cells_backend());
     case TERM_COLOR_16:
-      return rgb_to_16color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_16, simd_cells_backend());
     case TERM_COLOR_NONE:
     case TERM_COLOR_AUTO:
     default:
-      return rgb_to_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_NONE, simd_cells_backend());
     }
   }
 
@@ -817,9 +847,11 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     return image_print_color_simd((image_t *)image, use_background, false, palette);
   }
   case TERM_COLOR_256:
-    return image_print_256color(image, palette);
+    return ascii_render(image, palette, ASCII_COLOR_256, render_mode == RENDER_MODE_BACKGROUND, false,
+                        simd_cells_backend());
   case TERM_COLOR_16:
-    return image_print_16color(image, palette);
+    return ascii_render(image, palette, ASCII_COLOR_16, render_mode == RENDER_MODE_BACKGROUND, false,
+                        simd_cells_backend());
   case TERM_COLOR_NONE:
   case TERM_COLOR_AUTO:
   default:

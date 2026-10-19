@@ -1,0 +1,315 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "generated_at_utc": "2026-10-19T01:23:20.457134+00:00",
+  "binary_sha256": "8456558ebb899180f4fc9d9287efaf5fb2052ba549294003e54b82a5608e2823",
+  "scenarios": [
+    {
+      "transport": "tcp",
+      "codec": "raw",
+      "exit_code": 0,
+      "elapsed_seconds": 16.953,
+      "csv": "tcp-raw.csv",
+      "result": {
+        "transport": "tcp",
+        "codec": "raw",
+        "peak_queue": 187242,
+        "peak_backend": 10846,
+        "dropped": 153,
+        "rejected": 0,
+        "baseline_fps": 56.0,
+        "recovery_fps": 49.92,
+        "baseline_age_ms": 5.39,
+        "recovery_age_ms": 64.7,
+        "recovery_max_age_ms": 2695.11,
+        "recovery_keyframes": 0,
+        "controls": 752
+      },
+      "healthy": {
+        "transport": "tcp",
+        "codec": "raw",
+        "baseline_fps": 55.5,
+        "saturation_fps": 56.67,
+        "recovery_fps": 49.83
+      },
+      "steady": {
+        "fps": 51.0,
+        "age_ms": 7.25,
+        "controls_during_throttle": 19,
+        "recovery_requests": 0
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 11.076851,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 56.0,
+        "saturation_fps": 56.33,
+        "recovery_fps": 50.01
+      }
+    },
+    {
+      "transport": "tcp",
+      "codec": "h264",
+      "exit_code": 0,
+      "elapsed_seconds": 16.907,
+      "csv": "tcp-h264.csv",
+      "result": {
+        "transport": "tcp",
+        "codec": "h264",
+        "peak_queue": 452346,
+        "peak_backend": 16406,
+        "dropped": 165,
+        "rejected": 5,
+        "baseline_fps": 53.0,
+        "recovery_fps": 45.71,
+        "baseline_age_ms": 11.06,
+        "recovery_age_ms": 64.88,
+        "recovery_max_age_ms": 2814.73,
+        "recovery_keyframes": 33,
+        "controls": 682
+      },
+      "healthy": {
+        "transport": "tcp",
+        "codec": "h264",
+        "baseline_fps": 53.0,
+        "saturation_fps": 52.67,
+        "recovery_fps": 47.34
+      },
+      "steady": {
+        "fps": 39.5,
+        "age_ms": 21.62,
+        "controls_during_throttle": 11,
+        "recovery_requests": 28
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 10.391853,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 53.5,
+        "saturation_fps": 52.33,
+        "recovery_fps": 47.34
+      }
+    },
+    {
+      "transport": "tcp",
+      "codec": "h265",
+      "exit_code": 102,
+      "elapsed_seconds": 2.578,
+      "csv": "tcp-h265.csv"
+    },
+    {
+      "transport": "websocket",
+      "codec": "raw",
+      "exit_code": 0,
+      "elapsed_seconds": 31.375,
+      "csv": "websocket-raw.csv",
+      "result": {
+        "transport": "websocket",
+        "codec": "raw",
+        "peak_queue": 183198,
+        "peak_backend": 10846,
+        "dropped": 113,
+        "rejected": 0,
+        "baseline_fps": 27.5,
+        "recovery_fps": 49.43,
+        "baseline_age_ms": 10.45,
+        "recovery_age_ms": 79.23,
+        "recovery_max_age_ms": 2405.21,
+        "recovery_keyframes": 0,
+        "controls": 668
+      },
+      "healthy": {
+        "transport": "websocket",
+        "codec": "raw",
+        "baseline_fps": 30.5,
+        "saturation_fps": 45.33,
+        "recovery_fps": 48.2
+      },
+      "steady": {
+        "fps": 46.5,
+        "age_ms": 13.23,
+        "controls_during_throttle": 20,
+        "recovery_requests": 0
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 10.560677,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 31.0,
+        "saturation_fps": 45.33,
+        "recovery_fps": 48.1
+      }
+    },
+    {
+      "transport": "websocket",
+      "codec": "h264",
+      "exit_code": 0,
+      "elapsed_seconds": 41.297,
+      "csv": "websocket-h264.csv",
+      "result": {
+        "transport": "websocket",
+        "codec": "h264",
+        "peak_queue": 449216,
+        "peak_backend": 16406,
+        "dropped": 122,
+        "rejected": 4,
+        "baseline_fps": 37.5,
+        "recovery_fps": 48.47,
+        "baseline_age_ms": 18.0,
+        "recovery_age_ms": 63.2,
+        "recovery_max_age_ms": 2745.01,
+        "recovery_keyframes": 31,
+        "controls": 669
+      },
+      "healthy": {
+        "transport": "websocket",
+        "codec": "h264",
+        "baseline_fps": 37.5,
+        "saturation_fps": 49.0,
+        "recovery_fps": 47.13
+      },
+      "steady": {
+        "fps": 52.5,
+        "age_ms": 16.94,
+        "controls_during_throttle": 12,
+        "recovery_requests": 21
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 10.438476,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 37.5,
+        "saturation_fps": 49.0,
+        "recovery_fps": 47.13
+      }
+    },
+    {
+      "transport": "websocket",
+      "codec": "h265",
+      "exit_code": 102,
+      "elapsed_seconds": 5.891,
+      "csv": "websocket-h265.csv"
+    },
+    {
+      "transport": "webrtc",
+      "codec": "raw",
+      "exit_code": 0,
+      "elapsed_seconds": 19.875,
+      "csv": "webrtc-raw.csv",
+      "result": {
+        "transport": "webrtc",
+        "codec": "raw",
+        "peak_queue": 143282,
+        "peak_backend": 10846,
+        "dropped": 94,
+        "rejected": 0,
+        "baseline_fps": 27.0,
+        "recovery_fps": 35.04,
+        "baseline_age_ms": 43.68,
+        "recovery_age_ms": 51.01,
+        "recovery_max_age_ms": 2951.77,
+        "recovery_keyframes": 0,
+        "controls": 584
+      },
+      "healthy": {
+        "transport": "webrtc",
+        "codec": "raw",
+        "baseline_fps": 28.0,
+        "saturation_fps": 32.67,
+        "recovery_fps": 34.58
+      },
+      "relay": {
+        "forwarded": 8652,
+        "throttled": 119
+      },
+      "steady": {
+        "fps": 50.0,
+        "age_ms": 5.76,
+        "controls_during_throttle": 4,
+        "recovery_requests": 0
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 13.043482,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 28.5,
+        "saturation_fps": 33.33,
+        "recovery_fps": 34.58
+      }
+    },
+    {
+      "transport": "webrtc",
+      "codec": "h264",
+      "exit_code": 0,
+      "elapsed_seconds": 17.812,
+      "csv": "webrtc-h264.csv",
+      "result": {
+        "transport": "webrtc",
+        "codec": "h264",
+        "peak_queue": 387114,
+        "peak_backend": 16406,
+        "dropped": 115,
+        "rejected": 3,
+        "baseline_fps": 48.0,
+        "recovery_fps": 29.85,
+        "baseline_age_ms": 7.89,
+        "recovery_age_ms": 18.35,
+        "recovery_max_age_ms": 1018.41,
+        "recovery_keyframes": 23,
+        "controls": 400
+      },
+      "healthy": {
+        "transport": "webrtc",
+        "codec": "h264",
+        "baseline_fps": 48.0,
+        "saturation_fps": 43.0,
+        "recovery_fps": 29.58
+      },
+      "relay": {
+        "forwarded": 10765,
+        "throttled": 276
+      },
+      "steady": {
+        "fps": 31.5,
+        "age_ms": 10.87,
+        "controls_during_throttle": 96,
+        "recovery_requests": 23
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 11.357697,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 48.0,
+        "saturation_fps": 43.33,
+        "recovery_fps": 29.5
+      }
+    },
+    {
+      "transport": "webrtc",
+      "codec": "h265",
+      "exit_code": 3221225477,
+      "elapsed_seconds": 3.032,
+      "csv": "webrtc-h265.csv"
+    }
+  ],
+  "source_sha": "cb920b5a2f014fb299b336291e1206f2d3ba1806",
+  "native_source_sha256": "65d9decd3ec63ec337655c932c76cb76c827526b77d6267fbdfce6dbdf7a1fc4",
+  "source_state": "working tree snapshot; binary and native source fingerprints identify the tested build"
+}

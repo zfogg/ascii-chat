@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 /**
  * @file network/acip/acds.h
  * @brief ascii-chat Discovery Service (ACDS) Protocol Message Formats
@@ -169,7 +170,7 @@ typedef enum {
  * 32      64    signature              Ed25519(type || timestamp || capabilities)
  * 96      8     timestamp              Unix milliseconds (replay protection)
  * 104     1     capabilities           Bit 0=video, Bit 1=audio
- * 105     1     max_participants       1-8 allowed concurrent participants
+ * 105     1     max_participants       1-128 allowed concurrent participants
  * 106     1     session_type           0=DIRECT_TCP, 1=WEBRTC
  * 107     1     has_password           0=no password, 1=password protected
  * 108     128   password_hash          Argon2id hash (if has_password=1)
@@ -198,7 +199,7 @@ typedef struct __attribute__((packed)) {
   uint64_t timestamp;          ///< Unix ms (replay protection)
 
   uint8_t capabilities;     ///< Bit 0: video, Bit 1: audio
-  uint8_t max_participants; ///< 1-8 participants allowed
+  uint8_t max_participants; ///< 1-128 participants allowed
   uint8_t session_type;     ///< acds_session_type_t: 0=DIRECT_TCP (default), 1=WEBRTC
 
   uint8_t has_password;       ///< 0 = no password, 1 = password protected
@@ -210,8 +211,8 @@ typedef struct __attribute__((packed)) {
   // char  reserved_string[];        ///< Variable length, follows if len > 0
 
   // Multi-key protocol: tracks which key in sequence this is
-  uint8_t total_keys;  ///< Total number of keys to transmit (0 = single key mode, legacy)
-  uint8_t key_index;   ///< Index of this key in the sequence (0-based), only valid if total_keys > 0
+  uint8_t total_keys; ///< Total number of keys to transmit (0 = single key mode, legacy)
+  uint8_t key_index;  ///< Index of this key in the sequence (0-based), only valid if total_keys > 0
 
   // Server connection information (where clients should connect)
   // For DIRECT_TCP: server_address and server_port specify where to connect

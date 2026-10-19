@@ -7,6 +7,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/video/ascii/common.h>
+#include <ascii-chat/video/ascii/sgr.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/util/math.h>
 #include <ascii-chat/platform/init.h>
@@ -124,12 +125,6 @@ bool ansi_is_already_colorized(const char *message, size_t pos) {
   return !in_reset;
 }
 
-/* ===== 256-COLOR LOOKUP TABLES ===== */
-
-static char color256_strings[256][16];    // Pre-built SGR strings like "\033[38;5;123m"
-static char color256_bg_strings[256][16]; // Pre-built SGR strings like "\033[48;5;123m"
-static lifecycle_t g_color256_lc = LIFECYCLE_INIT;
-
 /* ===== 16-COLOR LOOKUP TABLES ===== */
 
 static char color16_fg_strings[16][16];
@@ -141,105 +136,15 @@ static lifecycle_t g_color16_lc = LIFECYCLE_INIT;
 // Fast foreground color: \033[38;2;R;G;Bm
 // Maximum output: 19 bytes (\033[38;2;255;255;255m)
 char *append_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
-  // Ensure dec3 cache is initialized
-  if (!g_dec3_cache.dec3_initialized) {
-    init_dec3();
-  }
-
-  // Static prefix - 7 bytes
-  SAFE_MEMCPY(dst, 19, "\033[38;2;", 7);
-  dst += 7;
-
-  // Red component + semicolon
-  SAFE_MEMCPY(dst, 12, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
-  dst += g_dec3_cache.dec3_table[r].len;
-  *dst++ = ';';
-
-  // Green component + semicolon
-  SAFE_MEMCPY(dst, 8, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
-  dst += g_dec3_cache.dec3_table[g].len;
-  *dst++ = ';';
-
-  // Blue component + suffix
-  SAFE_MEMCPY(dst, 4, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
-  dst += g_dec3_cache.dec3_table[b].len;
-  *dst++ = 'm';
-
-  return dst;
+  return append_sgr_truecolor_fg(dst, r, g, b);
 }
 
-// Fast background color: \033[48;2;R;G;Bm
-// Maximum output: 19 bytes (\033[48;2;255;255;255m)
 char *append_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
-  // Ensure dec3 cache is initialized
-  if (!g_dec3_cache.dec3_initialized) {
-    init_dec3();
-  }
-
-  SAFE_MEMCPY(dst, 19, "\033[48;2;", 7);
-  dst += 7;
-
-  SAFE_MEMCPY(dst, 12, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
-  dst += g_dec3_cache.dec3_table[r].len;
-  *dst++ = ';';
-
-  SAFE_MEMCPY(dst, 8, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
-  dst += g_dec3_cache.dec3_table[g].len;
-  *dst++ = ';';
-
-  SAFE_MEMCPY(dst, 4, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
-  dst += g_dec3_cache.dec3_table[b].len;
-  *dst++ = 'm';
-
-  return dst;
+  return append_sgr_truecolor_bg(dst, r, g, b);
 }
 
-// Combined foreground + background: \033[38;2;R;G;B;48;2;r;g;bm
-// Maximum output: 38 bytes (\033[38;2;255;255;255;48;2;255;255;255m)
-char *append_truecolor_fg_bg(char *dst, uint8_t fg_r, uint8_t fg_g, uint8_t fg_b, uint8_t bg_r, uint8_t bg_g,
-                             uint8_t bg_b) {
-  // Ensure dec3 cache is initialized
-  if (!g_dec3_cache.dec3_initialized) {
-    init_dec3();
-  }
-
-  SAFE_MEMCPY(dst, 38, "\033[38;2;", 7);
-  dst += 7;
-
-  // Foreground RGB (remaining: 31 bytes max)
-  SAFE_MEMCPY(dst, 31, g_dec3_cache.dec3_table[fg_r].s, g_dec3_cache.dec3_table[fg_r].len);
-  dst += g_dec3_cache.dec3_table[fg_r].len;
-  *dst++ = ';';
-
-  // Remaining: 27 bytes max
-  SAFE_MEMCPY(dst, 27, g_dec3_cache.dec3_table[fg_g].s, g_dec3_cache.dec3_table[fg_g].len);
-  dst += g_dec3_cache.dec3_table[fg_g].len;
-  *dst++ = ';';
-
-  // Remaining: 23 bytes max
-  SAFE_MEMCPY(dst, 23, g_dec3_cache.dec3_table[fg_b].s, g_dec3_cache.dec3_table[fg_b].len);
-  dst += g_dec3_cache.dec3_table[fg_b].len;
-
-  // Background RGB (remaining: 20 bytes max)
-  SAFE_MEMCPY(dst, 20, ";48;2;", 6);
-  dst += 6;
-
-  // Remaining: 14 bytes max
-  SAFE_MEMCPY(dst, 14, g_dec3_cache.dec3_table[bg_r].s, g_dec3_cache.dec3_table[bg_r].len);
-  dst += g_dec3_cache.dec3_table[bg_r].len;
-  *dst++ = ';';
-
-  // Remaining: 10 bytes max
-  SAFE_MEMCPY(dst, 10, g_dec3_cache.dec3_table[bg_g].s, g_dec3_cache.dec3_table[bg_g].len);
-  dst += g_dec3_cache.dec3_table[bg_g].len;
-  *dst++ = ';';
-
-  // Remaining: 6 bytes max
-  SAFE_MEMCPY(dst, 6, g_dec3_cache.dec3_table[bg_b].s, g_dec3_cache.dec3_table[bg_b].len);
-  dst += g_dec3_cache.dec3_table[bg_b].len;
-  *dst++ = 'm';
-
-  return dst;
+char *append_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb) {
+  return append_sgr_truecolor_fg_bg(dst, fr, fg, fb, br, bg, bb);
 }
 
 /* ===== RUN-LENGTH ENCODING FUNCTIONS ===== */
@@ -321,39 +226,22 @@ void ansi_fast_init(void) {
   ascii_simd_init();
 }
 
-// 256-color mode initialization (optional high-speed mode)
-// Private initialization function (called exactly once via lifecycle)
-static void do_init_256color(void) {
-  for (int i = 0; i < 256; i++) {
-    SAFE_SNPRINTF(color256_strings[i], sizeof(color256_strings[i]), "\033[38;5;%dm", i);
-    SAFE_SNPRINTF(color256_bg_strings[i], sizeof(color256_bg_strings[i]), "\033[48;5;%dm", i);
-  }
-}
-
-// Public initialization wrapper - thread-safe using lifecycle API
 void ansi_fast_init_256color(void) {
-  if (!lifecycle_init(&g_color256_lc, "ansi_256color")) {
-    return; // Already initialized
-  }
-  do_init_256color();
+  prewarm_sgr256_cache();
 }
 
-/* ===== 256-COLOR FUNCTIONS ===== */
-
-// Fast 256-color foreground
-char *append_256color_fg(char *dst, uint8_t color_index) {
-  const char *color_str = color256_strings[color_index];
-  size_t len = strlen(color_str);
-  SAFE_MEMCPY(dst, len, color_str, len);
-  return dst + len;
+char *append_256color_fg(char *dst, uint8_t index) {
+  uint8_t length;
+  const char *sequence = get_sgr256_fg_string(index, &length);
+  memcpy(dst, sequence, length);
+  return dst + length;
 }
 
-// Fast 256-color background
-char *append_256color_bg(char *dst, uint8_t color_index) {
-  const char *color_str = color256_bg_strings[color_index];
-  size_t len = strlen(color_str);
-  SAFE_MEMCPY(dst, len, color_str, len);
-  return dst + len;
+char *append_256color_bg(char *dst, uint8_t index) {
+  uint8_t length;
+  const char *sequence = get_sgr256_bg_string(index, &length);
+  memcpy(dst, sequence, length);
+  return dst + length;
 }
 
 // Convert RGB to closest 256-color palette index
@@ -365,28 +253,43 @@ uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
   for (int c = 0; c < 3; c++) {
     cube[c] = 0;
     for (int i = 1; i < 6; i++)
-      if (abs(values[c] - levels[i]) < abs(values[c] - levels[cube[c]])) cube[c] = i;
+      if (abs(values[c] - levels[i]) < abs(values[c] - levels[cube[c]]))
+        cube[c] = i;
     int delta = values[c] - levels[cube[c]];
     error += delta * delta;
   }
   int gray = ((int)r + g + b - 9) / 30;
-  if (gray < 0) gray = 0;
-  if (gray > 23) gray = 23;
+  if (gray < 0)
+    gray = 0;
+  if (gray > 23)
+    gray = 23;
   int level = 8 + 10 * gray;
   int dr = r - level, dg = g - level, db = b - level;
-  if (dr * dr + dg * dg + db * db < error) return (uint8_t)(232 + gray);
+  if (dr * dr + dg * dg + db * db < error)
+    return (uint8_t)(232 + gray);
   return (uint8_t)(16 + cube[0] * 36 + cube[1] * 6 + cube[2]);
 }
 
 // Expand a standard xterm palette index to truecolor. The first 16 entries
 // use the same reference palette as rgb_to_16color (terminal themes may vary).
 void get_256color_rgb(uint8_t index, uint8_t *r, uint8_t *g, uint8_t *b) {
-  if (!r || !g || !b) { SET_ERRNO(ERROR_INVALID_PARAM, "Missing palette RGB output"); return; }
-  if (index < 16) { get_16color_rgb(index, r, g, b); return; }
-  if (index >= 232) { *r = *g = *b = (uint8_t)(8 + (index - 232) * 10); return; }
+  if (!r || !g || !b) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Missing palette RGB output");
+    return;
+  }
+  if (index < 16) {
+    get_16color_rgb(index, r, g, b);
+    return;
+  }
+  if (index >= 232) {
+    *r = *g = *b = (uint8_t)(8 + (index - 232) * 10);
+    return;
+  }
   static const uint8_t levels[] = {0, 95, 135, 175, 215, 255};
   int cube = index - 16;
-  *r = levels[cube / 36]; *g = levels[(cube / 6) % 6]; *b = levels[cube % 6];
+  *r = levels[cube / 36];
+  *g = levels[(cube / 6) % 6];
+  *b = levels[cube % 6];
 }
 
 /* ===== 16-COLOR FUNCTIONS ===== */

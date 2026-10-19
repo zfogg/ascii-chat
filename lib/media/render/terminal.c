@@ -60,7 +60,16 @@ static void glyph_cache_destroy(glyph_cache_entry_t **cache) {
   }
 }
 
+// Cache complete cells so repeated glyph/color combinations need only row copies.
+#define CELL_CACHE_SIZE 512
+typedef struct {
+  uint32_t character, foreground, background;
+  uint8_t *pixels;
+  bool valid;
+} rendered_cell_t;
+
 struct terminal_renderer_s {
+  rendered_cell_t cells[CELL_CACHE_SIZE];
   VTerm *vt;
   VTermScreen *vts;
   int cols, rows;
@@ -240,24 +249,23 @@ static uint32_t matrix_char_map(uint32_t ascii_char) {
  */
 static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, uint8_t fr, uint8_t fg, uint8_t fb,
                        uint8_t br, uint8_t bg, uint8_t bb) {
-  for (unsigned row = 0; row < bm->rows; row++) {
-    int dy = py + (int)row;
-    if (dy < 0 || dy >= r->height_px)
-      continue;
-    for (unsigned col = 0; col < bm->width; col++) {
-      int dx = px + (int)col;
-      if (dx < 0 || dx >= r->width_px)
-        continue;
-      uint8_t a = bm->buffer[row * bm->pitch + col];
-
-      uint8_t *dst = r->framebuffer + dy * r->pitch + dx * 4;
-      uint8_t r_val = (uint8_t)((fr * a + br * (255 - a)) / 255);
-      uint8_t g_val = (uint8_t)((fg * a + bg * (255 - a)) / 255);
-      uint8_t b_val = (uint8_t)((fb * a + bb * (255 - a)) / 255);
-
-      dst[0] = r_val;
-      dst[1] = g_val;
-      dst[2] = b_val;
+  // Clip once, outside the pixel loop, so WASM can vectorize alpha blending.
+  int first_col = px < 0 ? -px : 0;
+  int last_col = (int)bm->width;
+  if (px + last_col > r->width_px) last_col = r->width_px - px;
+  int first_row = py < 0 ? -py : 0;
+  int last_row = (int)bm->rows;
+  if (py + last_row > r->height_px) last_row = r->height_px - py;
+  if (first_col >= last_col || first_row >= last_row) return;
+  for (int row = first_row; row < last_row; row++) {
+    const uint8_t *alpha = bm->buffer + row * bm->pitch + first_col;
+    uint8_t *line = r->framebuffer + (py + row) * r->pitch + (px + first_col) * 4;
+    for (int col = 0; col < last_col - first_col; col++) {
+      unsigned a = alpha[col];
+      uint8_t *dst = line + col * 4;
+      dst[0] = (uint8_t)((fr * a + br * (255 - a)) / 255);
+      dst[1] = (uint8_t)((fg * a + bg * (255 - a)) / 255);
+      dst[2] = (uint8_t)((fb * a + bb * (255 - a)) / 255);
       dst[3] = 255;
     }
   }
@@ -689,7 +697,30 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       }
 
       int px = offset_x + col * r->cell_w, py = offset_y + row * r->cell_h;
+      uint32_t foreground = ((uint32_t)fr << 16) | ((uint32_t)fg << 8) | fb;
+      uint32_t background = ((uint32_t)br << 16) | ((uint32_t)bg << 8) | bb;
+      uint32_t cell_hash = cell.chars[0] * 2654435761u ^ foreground * 2246822519u ^ background;
+      cell_hash ^= cell_hash >> 16;
+      rendered_cell_t *cached_cell = &r->cells[cell_hash % CELL_CACHE_SIZE];
+      bool contained = px >= 0 && py >= 0 && px + r->cell_w <= r->width_px &&
+                       py + r->cell_h <= r->height_px;
+      if (contained && cached_cell->valid && cached_cell->character == cell.chars[0] &&
+          cached_cell->foreground == foreground && cached_cell->background == background) {
+        for (int dy = 0; dy < r->cell_h; dy++) {
+          memcpy(r->framebuffer + (py + dy) * r->pitch + px * 4,
+                 cached_cell->pixels + dy * r->cell_w * 4, (size_t)r->cell_w * 4);
+        }
+        if (cell.chars[0] && cell.chars[0] != ' ') {
+          occupied_cell_count++;
+          glyph_rendered_count++;
+        }
+        continue;
+      }
+      // Block elements represent cell geometry, independent of font bearings and line spacing.
+      bool block = cell.chars[0] == 0x2580 || cell.chars[0] == 0x2584 || cell.chars[0] == 0x2588;
       for (int dy = 0; dy < r->cell_h; dy++) {
+        bool block_foreground = block && (cell.chars[0] == 0x2588 ||
+            (cell.chars[0] == 0x2580 ? dy < r->cell_h / 2 : dy >= r->cell_h / 2));
         int y = py + dy;
         if (y < 0 || y >= r->height_px)
           continue;
@@ -698,14 +729,17 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
           int x = px + dx;
           if (x < 0 || x >= r->width_px)
             continue;
-          line[dx * 4] = br;
-          line[dx * 4 + 1] = bg;
-          line[dx * 4 + 2] = bb;
+          line[dx * 4] = block_foreground ? fr : br;
+          line[dx * 4 + 1] = block_foreground ? fg : bg;
+          line[dx * 4 + 2] = block_foreground ? fb : bb;
           line[dx * 4 + 3] = 255;
         }
       }
 
-      if (cell.chars[0] && cell.chars[0] != ' ') {
+      if (block) {
+        occupied_cell_count++;
+        glyph_rendered_count++;
+      } else if (cell.chars[0] && cell.chars[0] != ' ') {
         occupied_cell_count++;
         // For matrix font, map ASCII characters to Private Use Area glyphs (U+E900-U+E91A)
         uint32_t char_to_render = r->is_matrix_font ? matrix_char_map(cell.chars[0]) : cell.chars[0];
@@ -717,12 +751,31 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
           glyph_cache_entry_t *cache_entry = NULL;
           HASH_FIND_INT(r->glyph_cache, &char_to_render, cache_entry);
           if (cache_entry) {
+            // Overhanging glyphs must retain the normal cross-cell drawing order.
+            contained = contained && cache_entry->bitmap_left >= 0 &&
+                        cache_entry->bitmap_left + cache_entry->width <= r->cell_w &&
+                        r->baseline - cache_entry->bitmap_top >= 0 &&
+                        r->baseline - cache_entry->bitmap_top + cache_entry->rows <= r->cell_h;
             blit_glyph(r, cached_bitmap, px + cache_entry->bitmap_left, py + r->baseline - cache_entry->bitmap_top, fr,
                        fg, fb, br, bg, bb);
             glyph_rendered_count++;
           }
         } else {
           glyph_missing_count++;
+        }
+      }
+      if (contained) {
+        if (!cached_cell->pixels)
+          cached_cell->pixels = SAFE_MALLOC((size_t)r->cell_w * r->cell_h * 4, uint8_t *);
+        if (cached_cell->pixels) {
+          for (int dy = 0; dy < r->cell_h; dy++) {
+            memcpy(cached_cell->pixels + dy * r->cell_w * 4,
+                   r->framebuffer + (py + dy) * r->pitch + px * 4, (size_t)r->cell_w * 4);
+          }
+          cached_cell->character = cell.chars[0];
+          cached_cell->foreground = foreground;
+          cached_cell->background = background;
+          cached_cell->valid = true;
         }
       }
     }
@@ -771,5 +824,6 @@ void term_renderer_destroy(terminal_renderer_t *r) {
   FT_Done_FreeType(r->ft_lib);
   SAFE_FREE(r->framebuffer);
   glyph_cache_destroy(&r->glyph_cache);
+  for (size_t i = 0; i < CELL_CACHE_SIZE; i++) SAFE_FREE(r->cells[i].pixels);
   SAFE_FREE(r);
 }

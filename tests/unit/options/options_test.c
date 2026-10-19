@@ -119,6 +119,15 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
  * Basic Functionality Tests
  * ============================================================================ */
 
+Test(options, explicit_flip_values_survive_mode_parsing) {
+  char *argv[] = {"program", "mirror", "--test-pattern=0", "--flip-x=false", "--flip-y=true", NULL};
+  optind = 1;
+  cr_assert_eq(options_init(5, argv), ASCIICHAT_OK);
+  const options_t *opts = options_get();
+  cr_assert_eq(opts->flip_x, false);
+  cr_assert_eq(opts->flip_y, true);
+}
+
 Test(options, default_values) {
   options_backup_t backup;
   save_options(&backup);

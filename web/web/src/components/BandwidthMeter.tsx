@@ -12,7 +12,7 @@ export function BandwidthMeter() {
 
   return (
     <span
-      className="text-xs text-terminal-8 whitespace-nowrap tabular-nums"
+      className="text-xs text-terminal-8 whitespace-nowrap tabular-nums inline-block w-[24ch] shrink-0"
       aria-label={`Bandwidth: upload ${formatBandwidth(rates.upload)}, download ${formatBandwidth(rates.download)}`}
       title="Upload / download across this page's WebSocket and WebRTC connections. Updated every second; excludes transport overhead."
     >

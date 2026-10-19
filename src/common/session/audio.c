@@ -24,7 +24,7 @@
 /**
  * @brief Maximum number of audio sources for mixing
  */
-#define SESSION_AUDIO_MAX_SOURCES 32
+#define SESSION_AUDIO_MAX_SOURCES PARTICIPANT_LIMIT
 
 /**
  * @brief Per-source audio buffer info for mixing
