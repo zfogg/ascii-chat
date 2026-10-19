@@ -224,7 +224,8 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
 
         # Pass CMAKE_PREFIX_PATH so WebRTC can find system Abseil (Homebrew, vcpkg, etc.)
         if(CMAKE_PREFIX_PATH)
-            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
+            string(REPLACE ";" "\\;" _webrtc_prefix_path "${CMAKE_PREFIX_PATH}")
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_PREFIX_PATH=${_webrtc_prefix_path}")
         endif()
 
         # The top-level vcpkg toolchain resolves Abseil to an installed config
