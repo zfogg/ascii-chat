@@ -1501,6 +1501,7 @@ add_custom_command(
     # Depend on the object files themselves as well as their object-library
     # targets so rebuilt objects refresh the combined archive.
     DEPENDS ${STATIC_LIB_MODULES} ${OBJECT_EXPR_LIST} ${OBJECT_LIST_FILE}
+        ${CMAKE_SOURCE_DIR}/cmake/scripts/create_static_archive.cmake
     COMMENT "Creating static archive with unique object names (eliminates duplicates)"
     VERBATIM
 )
