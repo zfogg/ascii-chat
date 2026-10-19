@@ -1,5 +1,6 @@
 /** Isolated before/after renderer benchmark. CSV goes to stdout. */
 #include <ascii-chat/common.h>
+#include <ascii-chat/platform/system.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
 #include <ascii-chat/video/ascii/simd/dispatch.h>
 #include <ascii-chat/video/ascii/common.h>
@@ -65,6 +66,11 @@ static const struct {
 };
 
 int main(int argc, char **argv) {
+  // The scalar wrappers dispatch at runtime; ISA rows call their implementations directly.
+  if (platform_setenv("ASCII_CHAT_SIMD", "scalar") != 0)
+    return 1;
+  if (simd_backend()->required_features != 0)
+    return 1;
   setbuf(stdout, NULL);
   enum { WIDTH = 161, HEIGHT = 61, FRAMES = 120 };
   rgb_pixel_t pixels[WIDTH * HEIGHT];
