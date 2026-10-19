@@ -810,9 +810,11 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     return image_print_color_simd((image_t *)image, use_background, false, palette);
   }
   case TERM_COLOR_256:
-    return image_print_256color(image, palette);
+    return ascii_render(image, palette, ASCII_COLOR_256, render_mode == RENDER_MODE_BACKGROUND, false,
+                        simd_cells_backend());
   case TERM_COLOR_16:
-    return image_print_16color(image, palette);
+    return ascii_render(image, palette, ASCII_COLOR_16, render_mode == RENDER_MODE_BACKGROUND, false,
+                        simd_cells_backend());
   case TERM_COLOR_NONE:
   case TERM_COLOR_AUTO:
   default:

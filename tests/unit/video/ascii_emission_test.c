@@ -5,6 +5,7 @@
 #endif
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/sgr.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
 #include <ascii-chat/video/ascii/common.h>
@@ -434,6 +435,24 @@ Test(ascii_emission, sgr_encoders_and_compatibility) {
   }
 }
 
+Test(ascii_emission, capability_dispatch_preserves_background) {
+  rgb_pixel_t pixels[2] = {{240, 50, 20}, {20, 50, 240}};
+  image_t image = {.pixels = pixels, .w = 2, .h = 1};
+  const terminal_color_mode_t modes[] = {TERM_COLOR_16, TERM_COLOR_256, TERM_COLOR_TRUECOLOR};
+  for (size_t i = 0; i < sizeof(modes) / sizeof(modes[0]); ++i) {
+    terminal_capabilities_t caps = {.color_level = modes[i], .render_mode = RENDER_MODE_BACKGROUND};
+    char *text = image_print_with_capabilities(&image, &caps, "@");
+    cr_assert(text != NULL);
+    terminal_cell_t cells[2] = {0};
+    decode(text, cells, 2, 1, true);
+    for (size_t x = 0; x < 2; ++x) {
+      cr_assert(cells[x].bg != -1, "Background color lost for mode %d", modes[i]);
+      cr_assert(cells[x].fg != -1, "Contrasting foreground missing for mode %d", modes[i]);
+    }
+    SAFE_FREE(text);
+  }
+}
+
 Test(ascii_emission, rejects_invalid_input) {
   rgb_pixel_t pixel = {0};
   image_t image = {.pixels = &pixel, .w = -1, .h = 1};
@@ -469,6 +488,7 @@ int main(int argc, char **argv) {
   ascii_emission_halfblock_odd_height_padding_and_colors();
   ascii_emission_sgr_encoders_and_compatibility();
   ascii_emission_rejects_invalid_input();
+  ascii_emission_capability_dispatch_preserves_background();
   simd_caches_destroy_all();
   return 0;
 }
