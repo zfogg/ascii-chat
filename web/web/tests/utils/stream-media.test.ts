@@ -1,5 +1,37 @@
 import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
 import { streamMedia } from "../../src/utils/streamMedia";
+import { MAX_MEDIA_FILE_SIZE } from "../../src/utils/mediaUpload";
+
+test("Upload File keeps an 8 GB native video out of the conversion heap", async () => {
+  const file = new File(["mp4"], "large.mp4", { type: "video/mp4" });
+  Object.defineProperty(file, "size", { value: MAX_MEDIA_FILE_SIZE });
+  const result = await streamMedia(
+    file,
+    document.createElement("video"),
+    new AbortController().signal,
+    vi.fn(),
+    true,
+    vi.fn(),
+    vi.fn(),
+  );
+  expect(result).toBe(file);
+});
+
+test("Upload File rejects conversion inputs above 8 GB", async () => {
+  const file = new File(["avi"], "large.avi");
+  Object.defineProperty(file, "size", { value: MAX_MEDIA_FILE_SIZE + 1 });
+  await expect(
+    streamMedia(
+      file,
+      document.createElement("video"),
+      new AbortController().signal,
+      vi.fn(),
+      false,
+      vi.fn(),
+      vi.fn(),
+    ),
+  ).rejects.toThrow("8 GB");
+});
 
 class FakeWorker {
   static current: FakeWorker;

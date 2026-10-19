@@ -1,3 +1,4 @@
+import { MAX_MEDIA_FILE_SIZE } from "./mediaUpload";
 import coreURL from "@ffmpeg/core?url";
 import wasmURL from "@ffmpeg/core/wasm?url";
 import {
@@ -25,18 +26,21 @@ export function streamMedia(
   onError: (error: unknown) => void,
 ): Promise<StreamPlayback | File | null> {
   const videoCodec = "avc1.42C02A";
+  if (file.size > MAX_MEDIA_FILE_SIZE)
+    return Promise.reject(
+      new Error(
+        "Browser conversion is limited to 8 GB input. Trim or compress this file first.",
+      ),
+    );
+  signal.throwIfAborted();
+  // Native decoding keeps large browser-supported files out of the WASM heap.
+  if (allowNative && file.size >= 512 * 1024 * 1024)
+    return Promise.resolve(file);
   if (
     typeof MediaSource === "undefined" ||
     !MediaSource.isTypeSupported(`video/mp4; codecs="${videoCodec},mp4a.40.2"`)
   )
     return Promise.resolve(null);
-  if (file.size > 256 * 1024 * 1024)
-    return Promise.reject(
-      new Error(
-        "Browser conversion is limited to 256 MB input. Trim or compress this file first.",
-      ),
-    );
-  signal.throwIfAborted();
   return new Promise((resolve, reject) => {
     const worker = new Worker(
       new URL("./streamMedia.worker.ts", import.meta.url),
