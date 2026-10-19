@@ -12,12 +12,8 @@ export { useMirrorWebcam } from "./useMirrorWebcam";
 export { useRenderLoop } from "./useRenderLoop";
 export {
   applyMirrorWasmSettings,
-  createMirrorWasmOptionsManager,
-  createWasmOptionsManager,
   setMirrorWasmDimensions,
-  useWasmOptions,
 } from "./useWasmOptions";
-export type { WasmOptionsManager } from "./useWasmOptions";
 export { useWebcamStream } from "./useWebcamStream";
 
 export { useVideoEncodings } from "./useVideoEncodings";

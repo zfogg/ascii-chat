@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/settings.h>
 /**
  * @file lib/network/client.h
  * @brief Client state structures
@@ -121,6 +122,7 @@ typedef struct client_info {
   void *video_sws_ctx;      // SwsContext* - Color space converter for YUV->RGB
 
   // Terminal capabilities (for rendering appropriate ASCII frames)
+  acip_render_settings_t render_settings;
   terminal_capabilities_t terminal_caps;
   bool has_terminal_caps; // Whether we've received terminal capabilities from this client
 

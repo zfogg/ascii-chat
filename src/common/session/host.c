@@ -1,3 +1,5 @@
+#include <ascii-chat/network/acip/settings.h>
+#include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/audio/recording.h>
@@ -69,8 +71,10 @@ typedef struct {
   uint64_t connected_at;
   uint16_t render_width;
   uint16_t render_height;
-  terminal_capabilities_t render_caps;
-  char palette_chars[256];
+  acip_render_settings_t rendering;
+  digital_rain_t *rain;
+  uint64_t next_video_deadline;
+  double rain_time;
 
   /** @brief Active ACIP transport. Externally supplied transports are borrowed. */
   struct acip_transport *transport;
@@ -84,6 +88,10 @@ typedef struct {
 } session_host_client_t;
 
 static void host_client_release_transport(session_host_client_t *client) {
+  if (client->rain) {
+    digital_rain_destroy(client->rain);
+    client->rain = NULL;
+  }
   if (client->transport_ownership == ACIP_TRANSPORT_OWNED)
     acip_transport_destroy(client->transport);
   client->transport = NULL;
@@ -462,58 +470,53 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
     break;
 
   case PACKET_TYPE_CLIENT_CAPABILITIES:
-    if (data && len >= sizeof(terminal_capabilities_packet_t)) {
-      terminal_capabilities_packet_t caps;
-      memcpy(&caps, data, sizeof(caps));
-      uint16_t width = NET_TO_HOST_U16(caps.width);
-      uint16_t height = NET_TO_HOST_U16(caps.height);
-      if (width > 0 && height > 0) {
-        mutex_lock(&host->clients_mutex);
-        for (int j = 0; j < host->max_clients; j++) {
-          if (host->clients[j].active && host->clients[j].client_id == client_id) {
-            host->clients[j].render_width = width;
-            host->clients[j].render_height = height;
-            terminal_capabilities_t *render_caps = &host->clients[j].render_caps;
-            uint32_t color_level = NET_TO_HOST_U32(caps.color_level);
-            render_caps->color_level =
-                color_level <= TERM_COLOR_TRUECOLOR ? (terminal_color_mode_t)color_level : TERM_COLOR_NONE;
-            uint32_t render_mode = NET_TO_HOST_U32(caps.render_mode);
-            render_caps->render_mode =
-                render_mode <= RENDER_MODE_HALF_BLOCK ? (render_mode_t)render_mode : RENDER_MODE_FOREGROUND;
-            render_caps->wants_background = render_caps->render_mode == RENDER_MODE_BACKGROUND;
-            render_caps->utf8_support = NET_TO_HOST_U32(caps.utf8_support) != 0;
-            render_caps->color_filter =
-                caps.color_filter < COLOR_FILTER_COUNT ? (color_filter_t)caps.color_filter : COLOR_FILTER_NONE;
-
-            uint32_t palette_type = NET_TO_HOST_U32(caps.palette_type);
-            palette_type_t palette = palette_type > PALETTE_UNSET && palette_type < PALETTE_COUNT
-                                         ? (palette_type_t)palette_type
-                                         : PALETTE_STANDARD;
-            palette = select_compatible_palette(palette, render_caps->utf8_support);
-            const char *chars = NULL;
-            if (palette == PALETTE_CUSTOM) {
-              // Network strings must be terminated before validation or copying.
-              if (memchr(caps.palette_custom, '\0', sizeof(caps.palette_custom)) &&
-                  validate_palette_chars(caps.palette_custom, strlen(caps.palette_custom)) &&
-                  (render_caps->utf8_support ||
-                   !palette_requires_utf8_encoding(caps.palette_custom, strlen(caps.palette_custom)))) {
-                chars = caps.palette_custom;
-              } else {
-                palette = PALETTE_STANDARD;
-              }
-            }
-            if (!chars)
-              chars = get_builtin_palette(palette)->chars;
-            render_caps->palette_type = palette;
-            SAFE_STRNCPY(host->clients[j].palette_chars, chars, sizeof(host->clients[j].palette_chars));
-            log_info("Client %u requested render dimensions %ux%u", client_id, width, height);
-            break;
-          }
-        }
-        mutex_unlock(&host->clients_mutex);
+  case PACKET_TYPE_ACIP_SETTINGS_SYNC: {
+    uint8_t reply[ACIP_SETTINGS_MAX_SIZE];
+    size_t reply_length = 0;
+    asciichat_error_t result = ASCIICHAT_OK;
+    session_host_client_t *target = NULL;
+    mutex_lock(&host->clients_mutex);
+    for (int j = 0; j < host->max_clients; ++j) {
+      if (host->clients[j].active && host->clients[j].client_id == client_id) {
+        target = &host->clients[j];
+        break;
       }
     }
-    break;
+    if (!target)
+      result = SET_ERRNO(ERROR_INVALID_STATE, "Unknown settings participant");
+    else if (ptype == PACKET_TYPE_CLIENT_CAPABILITIES) {
+      if (!data || len != sizeof(terminal_capabilities_packet_t))
+        result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid capabilities");
+      else {
+        terminal_capabilities_packet_t packet;
+        memcpy(&packet, data, sizeof(packet));
+        if (target->rendering.width) {
+          // Codec advertisements cannot change an established viewer's settings.
+          mutex_unlock(&host->clients_mutex);
+          return ASCIICHAT_OK;
+        }
+        result = acip_render_settings_capabilities(&target->rendering, &packet);
+        if (result == ASCIICHAT_OK) {
+          uint8_t query[ACIP_SETTINGS_HEADER_SIZE];
+          size_t query_length;
+          acip_settings_header_t header = {.schema = 1, .expected_revision = UINT32_MAX};
+          result = acip_settings_encode(&header, "", query, sizeof(query), &query_length);
+          if (result == ASCIICHAT_OK)
+            result =
+                acip_settings_request(&target->rendering, query, query_length, reply, sizeof(reply), &reply_length);
+        }
+      }
+    } else
+      result = acip_settings_request(&target->rendering, data, len, reply, sizeof(reply), &reply_length);
+    if (target && result == ASCIICHAT_OK) {
+      target->render_width = target->rendering.width;
+      target->render_height = target->rendering.height;
+      if (reply_length)
+        result = packet_send_via_transport(target->transport, PACKET_TYPE_ACIP_SETTINGS_ACK, reply, reply_length, 0);
+    }
+    mutex_unlock(&host->clients_mutex);
+    return result;
+  }
 
   case PACKET_TYPE_STREAM_STOP:
     log_info("Client %u stopped streaming", client_id);
@@ -668,8 +671,10 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
       if (recipient) {
         if (!recipient->active || !recipient->transport)
           continue;
-        caps = recipient->render_caps;
-        palette = recipient->palette_chars;
+        if (!recipient->rendering.revision)
+          continue;
+        caps = recipient->rendering.caps;
+        palette = recipient->rendering.palette;
         if (recipient->render_width > 0 && recipient->render_height > 0) {
           width = recipient->render_width;
           height = recipient->render_height;
@@ -677,6 +682,15 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
       }
       if (!palette)
         continue;
+      uint64_t now = time_get_ns();
+      if (recipient && caps.desired_fps > 0) {
+        uint64_t interval = NS_PER_SEC_INT / caps.desired_fps;
+        if (recipient->next_video_deadline && now < recipient->next_video_deadline)
+          continue;
+        if (!recipient->next_video_deadline || now - recipient->next_video_deadline > interval * 2)
+          recipient->next_video_deadline = now;
+        recipient->next_video_deadline += interval;
+      }
       int cached = 0;
       while (cached < grid_count &&
              (grids[cached].width != width || grids[cached].height != height ||
@@ -696,12 +710,41 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
       host_grid_t *grid = &grids[cached];
       if (!grid->frame)
         continue;
+      char *rain_frame = NULL;
+      const char *output = grid->frame;
+      size_t output_size = grid->size;
+      if (recipient) {
+        if (caps.capabilities & TERM_CAP_MATRIX_RAIN) {
+          if (recipient->rain && (recipient->rain->num_columns != width || recipient->rain->num_rows != height)) {
+            digital_rain_destroy(recipient->rain);
+            recipient->rain = NULL;
+          }
+          if (!recipient->rain) {
+            recipient->rain = digital_rain_init(width, height);
+            recipient->rain_time = (double)now / NS_PER_SEC_INT;
+          }
+          if (recipient->rain) {
+            double seconds = (double)now / NS_PER_SEC_INT;
+            digital_rain_set_color_from_filter(recipient->rain, caps.color_filter);
+            rain_frame = digital_rain_apply(recipient->rain, grid->frame, (float)(seconds - recipient->rain_time));
+            recipient->rain_time = seconds;
+            if (rain_frame) {
+              output = rain_frame;
+              output_size = strlen(rain_frame);
+            }
+          }
+        } else if (recipient->rain) {
+          digital_rain_destroy(recipient->rain);
+          recipient->rain = NULL;
+        }
+      }
       if (!recipient) {
-        host->render_target.render_frame(host->render_target.context, grid->frame, grid->size, width, height);
+        host->render_target.render_frame(host->render_target.context, output, output_size, width, height);
       } else {
-        acip_send_ascii_frame(recipient->transport, &host->frame_workspace, grid->frame, grid->size, width, height,
+        acip_send_ascii_frame(recipient->transport, &host->frame_workspace, output, output_size, width, height,
                               "session-host");
       }
+      SAFE_FREE(rain_frame);
     }
     for (int i = 0; i < grid_count; ++i)
       SAFE_FREE(grids[i].frame);
@@ -996,9 +1039,9 @@ uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transpo
       host->clients[i].transport_ownership = ACIP_TRANSPORT_BORROWED;
       host->clients[i].render_width = 0;
       host->clients[i].render_height = 0;
-      host->clients[i].render_caps = (terminal_capabilities_t){
-          .color_level = TERM_COLOR_TRUECOLOR, .utf8_support = true, .render_mode = RENDER_MODE_FOREGROUND};
-      SAFE_STRNCPY(host->clients[i].palette_chars, PALETTE_CHARS_STANDARD, sizeof(host->clients[i].palette_chars));
+      memset(&host->clients[i].rendering, 0, sizeof(host->clients[i].rendering));
+      host->clients[i].rendering.fps_limit = 60;
+      host->clients[i].next_video_deadline = 0;
 
       // Allocate media buffers
       host->clients[i].incoming_video = image_new(480, 270);                        // Network-optimal size (HD preview)

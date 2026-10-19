@@ -1111,6 +1111,8 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
 static const acip_server_callbacks_t g_acip_server_callbacks;
 
 asciichat_error_t server_event_dispatch(client_info_t *client, packet_type_t type, const void *data, size_t length) {
+  if (type == PACKET_TYPE_ACIP_SETTINGS_SYNC)
+    return handle_runtime_settings(client, data, length);
   return acip_handle_server_packet(client->transport, type, data, length, client, &g_acip_server_callbacks);
 }
 
@@ -1256,8 +1258,7 @@ void *client_dispatch_thread(void *arg) {
         // Dispatch the decrypted packet
         if (client->transport) {
           log_dev("DISPATCH_THREAD[%s]: dispatching type=%d payload_len=%u", client_id, packet_type, payload_len);
-          asciichat_error_t dispatch_result = acip_handle_server_packet(client->transport, packet_type, payload,
-                                                                        payload_len, client, &g_acip_server_callbacks);
+          asciichat_error_t dispatch_result = server_event_dispatch(client, packet_type, payload, payload_len);
 
           if (dispatch_result != ASCIICHAT_OK) {
             log_error("🔴 DISPATCH_THREAD[%s]: Handler failed for decrypted packet type=%d: %s", client_id, packet_type,
@@ -1275,8 +1276,7 @@ void *client_dispatch_thread(void *arg) {
         // Not encrypted or no crypto context - dispatch as-is
         if (client->transport) {
           log_dev("DISPATCH_THREAD[%s]: dispatching type=%d payload_len=%zu", client_id, packet_type, payload_len);
-          asciichat_error_t dispatch_result = acip_handle_server_packet(client->transport, packet_type, payload,
-                                                                        payload_len, client, &g_acip_server_callbacks);
+          asciichat_error_t dispatch_result = server_event_dispatch(client, packet_type, payload, payload_len);
 
           if (dispatch_result != ASCIICHAT_OK) {
             log_error("🔴 DISPATCH_THREAD[%s]: Handler failed for packet type=%d: %s", client_id, packet_type,
@@ -1612,10 +1612,6 @@ void *client_send_thread_func(void *arg) {
 
   // Track timing for video frame sends
   uint64_t last_video_send_time = 0;
-  const uint64_t video_send_interval_us = 16666; // 60fps = ~16.67ms
-  const int target_video_fps = client->has_terminal_caps && client->terminal_caps.desired_fps > 0
-                                   ? client->terminal_caps.desired_fps
-                                   : VIDEO_RENDER_FPS;
 
   // High-frequency audio loop - separate from video frame loop
   // to ensure audio packets are sent immediately, not rate-limited by video
@@ -1629,6 +1625,12 @@ void *client_send_thread_func(void *arg) {
   unsigned long video_rate_window_start_count = atomic_load_u64(&client->frames_sent_count);
   while (!atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down) &&
          atomic_load_bool(&client->active) && atomic_load_bool(&client->send_thread_running)) {
+    mutex_lock(&client->client_state_mutex);
+    const int target_video_fps = client->has_terminal_caps && client->terminal_caps.desired_fps > 0
+                                     ? client->terminal_caps.desired_fps
+                                     : VIDEO_RENDER_FPS;
+    mutex_unlock(&client->client_state_mutex);
+    const uint64_t video_send_interval_us = US_PER_SEC_INT / (uint64_t)target_video_fps;
     loop_iteration_count++;
     bool sent_something = false;
     uint64_t loop_start_ns = time_get_ns();

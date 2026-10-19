@@ -333,12 +333,12 @@ bool session_participant_is_audio_active(session_participant_t *p);
 asciichat_error_t session_participant_get_settings(session_participant_t *p, session_settings_t *settings);
 
 /**
- * @brief Request session settings update (if permitted)
+ * @brief Request this participant's remote rendering update
  * @param p Participant handle (must not be NULL)
  * @param settings New settings to request (must not be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Requests the host to update session settings. The host may accept
+ * Requests rendering for this participant. The host may accept
  * or reject the request.
  *
  * @note Actual settings change is signaled via on_settings_changed callback.
@@ -427,3 +427,6 @@ bool session_participant_has_transport(session_participant_t *p);
 /** @} */
 
 /** @} */
+
+/** Dispatch SETTINGS_ACK on the connection owner thread; callbacks run outside locks. */
+asciichat_error_t session_participant_receive_settings(session_participant_t *p, const void *payload, size_t length);

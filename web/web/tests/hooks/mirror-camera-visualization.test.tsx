@@ -9,9 +9,8 @@ const { resolveCameraDeviceId } = vi.hoisted(() => ({
 vi.mock("@ascii-chat/shared/hooks", () => ({
   useTestPattern: () => ({ enabled: false }),
 }));
-vi.mock("@ascii-chat/shared/wasm", () => ({
-  isWasmReady: () => false,
-  isOptionsInitialized: () => true,
+vi.mock("../../src/hooks/useWasmOptions", () => ({
+  applyMirrorWasmSettings: () => true,
 }));
 vi.mock("../../src/utils/mediaDevicePreferences", () => ({
   getMediaDevicePreferences: () => ({}),

@@ -102,7 +102,7 @@ Test(rcu_validation, max_clients_valid) {
  * Test: Enum validation - color_mode below valid range
  */
 Test(rcu_validation, color_mode_invalid_negative) {
-  asciichat_error_t err = options_set_int("color_mode", -1);
+  asciichat_error_t err = options_set_int("color_mode", -2);
   cr_assert_neq(err, ASCIICHAT_OK, "Expected validation error for invalid color_mode");
 }
 

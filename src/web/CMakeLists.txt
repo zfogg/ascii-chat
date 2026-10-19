@@ -86,6 +86,7 @@ include_directories(
     ${DEPS_ROOT}
     ${DEPS_ROOT}/ascii-chat-deps/tomlc17/src
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
+    ${DEPS_ROOT}/ascii-chat-deps/yyjson/src
     # Dependency includes from cmake/deps/*.cmake output variables
     ${VTERM_INCLUDE_DIRS}  # libvterm
     ${LIBSODIUM_INCLUDE_DIRS}  # libsodium
@@ -175,6 +176,7 @@ set(LIB_SRC_COMMON
 
     # Options system
     ${LIB_ROOT}/options/rcu.c
+    ${LIB_ROOT}/../deps/ascii-chat-deps/yyjson/src/yyjson.c
     ${LIB_ROOT}/options/options.c
     ${LIB_ROOT}/options/common.c
     ${LIB_ROOT}/options/enums.c
@@ -467,6 +469,7 @@ set(WEB_SRC_CLIENT
     ${CMAKE_CURRENT_SOURCE_DIR}/browser_discovery.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/host.c
     ${LIB_ROOT}/network/acip/server.c
+    ${LIB_ROOT}/network/acip/settings.c
     ${LIB_ROOT}/network/acip/acds_client.c
     ${LIB_ROOT}/network/consensus/election.c
     ${LIB_ROOT}/network/consensus/handoff.c
@@ -549,6 +552,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _get_font_default_ptr
     _get_font_default_size
     # Option getters/setters for live option updates (no restart needed)
+    _wasm_options_revision _wasm_options_values _wasm_options_patch _wasm_options_release
     _set_width
     _set_height
     _get_width
@@ -581,6 +585,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
+    _client_settings_receive _client_settings_values
     _peer_crypto_error
     _peer_crypto_create
     _peer_crypto_destroy
@@ -623,6 +628,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _get_font_default_ptr
     _get_font_default_size
     # Option getters/setters for live option updates (no restart needed)
+    _wasm_options_revision _wasm_options_values _wasm_options_patch _wasm_options_release
     _set_width
     _set_height
     _get_width

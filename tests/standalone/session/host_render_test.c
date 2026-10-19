@@ -9,6 +9,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/palette.h>
 
@@ -70,8 +71,28 @@ static terminal_capabilities_packet_t capabilities(terminal_color_mode_t color, 
   return packet;
 }
 
+static void patch(session_host_t *host, uint32_t id, const char *json) {
+  uint8_t payload[ACIP_SETTINGS_MAX_SIZE];
+  size_t length;
+  acip_settings_header_t header = {.schema = 1, .request = 1, .expected_revision = UINT32_MAX};
+  CHECK(acip_settings_encode(&header, json, payload, sizeof(payload), &length) == ASCIICHAT_OK);
+  CHECK(session_host_receive_packet(host, id, PACKET_TYPE_ACIP_SETTINGS_SYNC, payload, length) == ASCIICHAT_OK);
+}
 static void update(session_host_t *host, uint32_t id, const terminal_capabilities_packet_t *caps) {
   CHECK(session_host_receive_packet(host, id, PACKET_TYPE_CLIENT_CAPABILITIES, caps, sizeof(*caps)) == ASCIICHAT_OK);
+  acip_render_settings_t settings = {0};
+  CHECK(acip_render_settings_capabilities(&settings, caps) == ASCIICHAT_OK);
+  options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
+  acip_render_settings_options(&settings, values);
+  char *json = options_values_json(values, true);
+  CHECK(json);
+  patch(host, id, json);
+  SAFE_FREE(json);
+  SAFE_FREE(values);
+}
+static asciichat_error_t render_tick(session_host_t *host) {
+  time_sleep_ns(20 * NS_PER_MS_INT);
+  return session_host_render_video(host);
 }
 
 /* Ignore ANSI control sequences and grid whitespace when checking palette use. */
@@ -143,14 +164,16 @@ static void test_tcp_delivery(const image_t *image) {
                         (acip_client_callbacks_t){0});
   terminal_capabilities_packet_t caps = capabilities(TERM_COLOR_NONE, PALETTE_CUSTOM, "TT");
   update(host, client, &caps);
-  CHECK(session_host_render_video(host) == ASCIICHAT_OK);
-  CHECK(session_protocol_receive(&sink.protocol) == ASCIICHAT_OK);
+  CHECK(render_tick(host) == ASCIICHAT_OK);
+  while (sink.frames < 1)
+    CHECK(session_protocol_receive(&sink.protocol) == ASCIICHAT_OK);
   CHECK(sink.frames == 1);
   check_palette(sink.frame, "T");
   session_host_render_target_t target = {.client_id = client};
   CHECK(session_host_set_render_target(host, &target) == ASCIICHAT_OK);
-  CHECK(session_host_render_video(host) == ASCIICHAT_OK);
-  CHECK(session_protocol_receive(&sink.protocol) == ASCIICHAT_OK);
+  CHECK(render_tick(host) == ASCIICHAT_OK);
+  while (sink.frames < 2)
+    CHECK(session_protocol_receive(&sink.protocol) == ASCIICHAT_OK);
   CHECK(sink.frames == 2);
   check_palette(sink.frame, "T");
 
@@ -336,7 +359,7 @@ int main(void) {
                                             capabilities(TERM_COLOR_NONE, PALETTE_CUSTOM, "XY")};
   for (int i = 0; i < 3; ++i)
     update(host, ids[i], &caps[i]);
-  CHECK(session_host_render_video(host) == ASCIICHAT_OK);
+  CHECK(render_tick(host) == ASCIICHAT_OK);
   CHECK(strstr(sinks[0].frame, "\033[38;2;"));
   CHECK(strstr(sinks[1].frame, "\033[38;5;"));
   CHECK(!strstr(sinks[1].frame, "\033[38;2;"));
@@ -350,7 +373,7 @@ int main(void) {
   caps[2] = capabilities(TERM_COLOR_NONE, PALETTE_MINIMAL, NULL);
   for (int i = 0; i < 3; ++i)
     update(host, ids[i], &caps[i]);
-  CHECK(session_host_render_video(host) == ASCIICHAT_OK);
+  CHECK(render_tick(host) == ASCIICHAT_OK);
   check_palette(sinks[0].frame, "X");
   check_palette(sinks[1].frame, "Y");
   check_palette(sinks[2].frame, PALETTE_CHARS_MINIMAL);
@@ -360,7 +383,7 @@ int main(void) {
   caps[1].color_filter = COLOR_FILTER_GREEN;
   for (int i = 0; i < 3; ++i)
     update(host, ids[i], &caps[i]);
-  CHECK(session_host_render_video(host) == ASCIICHAT_OK);
+  CHECK(render_tick(host) == ASCIICHAT_OK);
   CHECK(strcmp(sinks[0].frame, sinks[1].frame) != 0);
   CHECK(strcmp(sinks[0].frame, sinks[2].frame) == 0);
 
@@ -369,31 +392,26 @@ int main(void) {
   caps[2].render_mode = HOST_TO_NET_U32(RENDER_MODE_BACKGROUND);
   update(host, ids[1], &caps[1]);
   update(host, ids[2], &caps[2]);
-  CHECK(session_host_render_video(host) == ASCIICHAT_OK);
+  CHECK(render_tick(host) == ASCIICHAT_OK);
   CHECK(strstr(sinks[1].frame, "\033["));
   CHECK(!strstr(sinks[1].frame, "\033[38;"));
   CHECK(strstr(sinks[2].frame, "\033[48;5;"));
   caps[2].render_mode = HOST_TO_NET_U32(RENDER_MODE_HALF_BLOCK);
   update(host, ids[2], &caps[2]);
-  CHECK(session_host_render_video(host) == ASCIICHAT_OK);
+  CHECK(render_tick(host) == ASCIICHAT_OK);
   CHECK(strstr(sinks[2].frame, "\xe2\x96\x80"));
 
-  // Untrusted enum values and unterminated/empty palettes resolve to safe defaults.
-  caps[0] = capabilities(TERM_COLOR_NONE, PALETTE_STANDARD, NULL);
-  caps[1] = capabilities(TERM_COLOR_NONE, PALETTE_CUSTOM, NULL);
-  memset(caps[1].palette_custom, 'X', sizeof(caps[1].palette_custom));
-  caps[1].color_level = caps[1].render_mode = HOST_TO_NET_U32(UINT32_MAX);
-  caps[1].color_filter = UINT8_MAX;
-  caps[2] = capabilities(TERM_COLOR_NONE, PALETTE_BLOCKS, NULL);
-  caps[2].utf8_support = 0;
-  for (int i = 0; i < 3; ++i)
+  // Invalid runtime transactions leave all recipients' last committed values intact.
+  for (int i = 0; i < 3; ++i) {
+    caps[i] = capabilities(TERM_COLOR_NONE, PALETTE_STANDARD, NULL);
     update(host, ids[i], &caps[i]);
-  CHECK(session_host_render_video(host) == ASCIICHAT_OK);
+  }
+  patch(host, ids[1], "{\"color_mode\":999,\"palette_type\":6,\"palette_custom\":\"XX\"}");
+  CHECK(render_tick(host) == ASCIICHAT_OK);
   CHECK(strcmp(sinks[0].frame, sinks[1].frame) == 0);
   CHECK(strcmp(sinks[0].frame, sinks[2].frame) == 0);
-  caps[1] = capabilities(TERM_COLOR_NONE, PALETTE_CUSTOM, "");
-  update(host, ids[1], &caps[1]);
-  CHECK(session_host_render_video(host) == ASCIICHAT_OK);
+  patch(host, ids[1], "{\"palette_type\":6,\"palette_custom\":\"\"}");
+  CHECK(render_tick(host) == ASCIICHAT_OK);
   CHECK(strcmp(sinks[0].frame, sinks[1].frame) == 0);
 
   CHECK(display.sink.frames == 7);
@@ -401,7 +419,7 @@ int main(void) {
   // A local backend also picks up changed rendering settings at the next tick.
   display.config.caps.color_level = TERM_COLOR_TRUECOLOR;
   display.config.palette = "LL";
-  CHECK(session_host_render_video(host) == ASCIICHAT_OK);
+  CHECK(render_tick(host) == ASCIICHAT_OK);
   CHECK(display.sink.frames == 8);
   CHECK(strstr(display.sink.frame, "\033[38;2;"));
   check_palette(display.sink.frame, "L");
@@ -412,7 +430,7 @@ int main(void) {
   CHECK(session_host_set_render_target(host, &target) == ASCIICHAT_OK);
   caps[1] = capabilities(TERM_COLOR_NONE, PALETTE_CUSTOM, "WW");
   update(host, ids[1], &caps[1]);
-  CHECK(session_host_render_video(host) == ASCIICHAT_OK);
+  CHECK(render_tick(host) == ASCIICHAT_OK);
   check_palette(sinks[1].frame, "W");
   CHECK(display.sink.frames == 8);
   for (int i = 0; i < 3; ++i) {
@@ -429,7 +447,7 @@ int main(void) {
   test_listener_interrupt();
   image_destroy(image);
   options_state_destroy();
-  log_info("PASS: per-recipient color, palettes, filters, live updates, and malformed capabilities");
+  log_info("PASS: per-recipient color, palettes, filters, live updates, and rejected runtime transactions");
   log_destroy();
   return 0;
 }

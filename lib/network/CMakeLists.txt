@@ -49,6 +49,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/listener.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/server.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/acip/settings.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/acds_client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/acds_client_io.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/acds_server.c

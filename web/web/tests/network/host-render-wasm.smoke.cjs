@@ -84,12 +84,25 @@ const path = require("node:path");
       send(ids[0], 3001, image);
       send(ids[0], 5005, new Uint8Array());
       const output = [];
-      m.hostPacketCallback = (id, bytes) =>
-        output.push({ id, bytes: Array.from(bytes) });
+      m.hostPacketCallback = (id, bytes) => {
+        if (new DataView(bytes.buffer, bytes.byteOffset).getUint16(8) === 3000)
+          output.push({ id, bytes: Array.from(bytes) });
+      };
       if (m._browser_host_render()) throw new Error("render failed");
       const first = output.splice(0);
-      send(ids[0], 5000, caps(0, "ZZ"));
-      send(ids[1], 5000, caps(3, "YY"));
+      const patch = (id, values) => {
+        const json = new TextEncoder().encode(JSON.stringify(values));
+        const payload = new Uint8Array(20 + json.length);
+        const view = new DataView(payload.buffer);
+        view.setUint32(0, 1);
+        view.setUint32(4, 1);
+        view.setUint32(8, 0xffffffff);
+        payload.set(json, 20);
+        send(id, 6063, payload);
+      };
+      patch(ids[0], { color_mode: 0, palette_custom: "ZZ" });
+      patch(ids[1], { color_mode: 3 });
+      await new Promise((resolve) => setTimeout(resolve, 20));
       if (m._browser_host_render()) throw new Error("updated render failed");
       m._browser_host_destroy();
       return [first, output];

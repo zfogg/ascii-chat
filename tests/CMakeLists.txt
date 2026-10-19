@@ -1232,6 +1232,23 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
 endif()
 
 # Fault injection around real participant workers; runs without Criterion on Windows too.
+if(BUILD_TESTS AND NOT EMSCRIPTEN)
+    add_executable(test-runtime-settings standalone/options/runtime_test.c)
+    target_link_libraries(test-runtime-settings PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-runtime-settings PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    if(WIN32)
+        target_link_libraries(test-runtime-settings PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-runtime-settings)
+    set_target_properties(test-runtime-settings PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(TARGET tests)
+        add_dependencies(tests test-runtime-settings)
+    endif()
+    add_test(NAME runtime-settings COMMAND test-runtime-settings)
+    set_tests_properties(runtime-settings PROPERTIES LABELS "unit" TIMEOUT 60)
+endif()
+
 if(BUILD_TESTS)
     add_executable(test-participant-media standalone/session/participant_media_test.c)
     target_link_libraries(test-participant-media PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})

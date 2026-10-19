@@ -1,4 +1,5 @@
 #include "session/protocol.h"
+#include "session/participant.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
@@ -61,41 +62,130 @@ static asciichat_error_t send_vectors(acip_transport_t *transport, const socket_
 typedef struct {
   unsigned calls;
   bool fail;
-  terminal_capabilities_packet_t packet;
+  options_t values;
 } dimensions_sink_t;
-static asciichat_error_t send_dimensions(const terminal_capabilities_packet_t *packet, void *context) {
+static asciichat_error_t send_dimensions(const options_t *values, uint32_t request, void *context) {
+  (void)request;
   dimensions_sink_t *sink = context;
   sink->calls++;
-  sink->packet = *packet;
+  sink->values = *values;
   return sink->fail ? ERROR_NETWORK : ASCIICHAT_OK;
 }
 static void test_dimensions(void) {
   CHECK(options_state_init() == ASCIICHAT_OK);
   CHECK(options_set_int("width", 80) == ASCIICHAT_OK);
   CHECK(options_set_int("height", 24) == ASCIICHAT_OK);
+  uint64_t revisions[2] = {UINT64_MAX, UINT64_MAX};
   terminal_size_t client = {0}, discovery = {0};
   dimensions_sink_t sinks[2] = {0};
-  CHECK(session_protocol_update_dimensions(&client, send_dimensions, &sinks[0]) == ASCIICHAT_OK);
-  CHECK(session_protocol_update_dimensions(&discovery, send_dimensions, &sinks[1]) == ASCIICHAT_OK);
+  CHECK(session_protocol_update_settings(&client, &revisions[0], send_dimensions, &sinks[0]) == ASCIICHAT_OK);
+  CHECK(session_protocol_update_settings(&discovery, &revisions[1], send_dimensions, &sinks[1]) == ASCIICHAT_OK);
   CHECK(sinks[0].calls == 1 && sinks[1].calls == 1);
-  CHECK(NET_TO_HOST_U16(sinks[1].packet.width) == 80 && NET_TO_HOST_U16(sinks[1].packet.height) == 24);
-  CHECK(session_protocol_update_dimensions(&client, send_dimensions, &sinks[0]) == ASCIICHAT_OK);
+  CHECK(sinks[1].values.width == 80 && sinks[1].values.height == 24);
+  CHECK(session_protocol_update_settings(&client, &revisions[0], send_dimensions, &sinks[0]) == ASCIICHAT_OK);
   CHECK(sinks[0].calls == 1);
   CHECK(options_set_int("width", 100) == ASCIICHAT_OK);
   sinks[0].fail = true;
-  CHECK(session_protocol_update_dimensions(&client, send_dimensions, &sinks[0]) == ERROR_NETWORK);
+  CHECK(session_protocol_update_settings(&client, &revisions[0], send_dimensions, &sinks[0]) == ERROR_NETWORK);
   CHECK(client.cols == 80);
-  CHECK(session_protocol_update_dimensions(&discovery, send_dimensions, &sinks[1]) == ASCIICHAT_OK);
+  CHECK(session_protocol_update_settings(&discovery, &revisions[1], send_dimensions, &sinks[1]) == ASCIICHAT_OK);
   CHECK(discovery.cols == 100 && client.cols == 80);
-  CHECK(NET_TO_HOST_U16(sinks[1].packet.width) == 100 && NET_TO_HOST_U16(sinks[1].packet.height) == 24);
+  CHECK(sinks[1].values.width == 100 && sinks[1].values.height == 24);
   sinks[0].fail = false;
-  CHECK(session_protocol_update_dimensions(&client, send_dimensions, &sinks[0]) == ASCIICHAT_OK);
+  CHECK(session_protocol_update_settings(&client, &revisions[0], send_dimensions, &sinks[0]) == ASCIICHAT_OK);
   CHECK(client.cols == 100 && sinks[0].calls == 3);
+  options_state_destroy();
+}
+
+typedef struct {
+  acip_render_settings_t host;
+  uint8_t reply[ACIP_SETTINGS_MAX_SIZE];
+  size_t reply_length;
+  unsigned callbacks;
+} settings_roundtrip_t;
+
+static bool mock_transport_is_connected(acip_transport_t *transport) {
+  (void)transport;
+  return true;
+}
+
+static asciichat_error_t settings_send(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
+  CHECK(count == 2);
+  packet_header_t packet;
+  memcpy(&packet, buffers[0].data, sizeof(packet));
+  CHECK(NET_TO_HOST_U16(packet.type) == PACKET_TYPE_ACIP_SETTINGS_SYNC);
+  settings_roundtrip_t *test = transport->impl_data;
+  return acip_settings_request(&test->host, buffers[1].data, buffers[1].len, test->reply, sizeof(test->reply),
+                               &test->reply_length);
+}
+
+static void settings_changed(session_participant_t *participant, const session_settings_t *effective, void *context) {
+  settings_roundtrip_t *test = context;
+  session_settings_t readback;
+  // Calling a reader from the callback verifies that notifications run unlocked.
+  CHECK(session_participant_get_settings(participant, &readback) == ASCIICHAT_OK);
+  CHECK(readback.version == effective->version && readback.width == effective->width);
+  test->callbacks++;
+}
+
+static void test_participant_settings(void) {
+  settings_roundtrip_t test = {0};
+  const acip_transport_methods_t methods = {.sendv = settings_send, .is_connected = mock_transport_is_connected};
+  acip_transport_t transport = {.methods = &methods, .impl_data = &test};
+  session_participant_config_t config = {
+      .address = "127.0.0.1", .port = 1, .callbacks.on_settings_changed = settings_changed, .user_data = &test};
+  session_participant_t *participant = session_participant_create(&config);
+  CHECK(participant);
+  session_settings_t requested = {
+      .width = 80, .height = 24, .color_mode = TERM_COLOR_TRUECOLOR, .palette_type = PALETTE_STANDARD, .fps = 30};
+  CHECK(session_participant_request_settings(participant, &requested) == ERROR_INVALID_STATE);
+  CLEAR_ERRNO();
+  CHECK(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  CHECK(session_participant_request_settings(participant, &requested) == ASCIICHAT_OK);
+  CHECK(test.host.width == 80 && test.callbacks == 0);
+  CHECK(session_participant_receive_settings(participant, test.reply, test.reply_length) == ASCIICHAT_OK);
+  CHECK(test.callbacks == 1);
+  requested.width = 55;
+  requested.palette_type = PALETTE_CUSTOM;
+  SAFE_STRNCPY(requested.palette_custom, " .+#", sizeof(requested.palette_custom));
+  CHECK(session_participant_request_settings(participant, &requested) == ASCIICHAT_OK);
+  CHECK(session_participant_receive_settings(participant, test.reply, test.reply_length) == ASCIICHAT_OK);
+  CHECK(test.host.width == 55 && test.callbacks == 2 && !strcmp(test.host.palette, " .+#"));
+  CHECK(session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  memset(&test.host, 0, sizeof(test.host));
+  CHECK(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  requested.width = 70;
+  CHECK(session_participant_request_settings(participant, &requested) == ASCIICHAT_OK);
+  CHECK(session_participant_receive_settings(participant, test.reply, test.reply_length) == ASCIICHAT_OK);
+  CHECK(test.callbacks == 3 && test.host.width == 70);
+  CHECK(session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  session_participant_destroy(participant);
+
+  // The public initializer supplies AUTO; callers can submit it unchanged.
+  CHECK(options_state_init() == ASCIICHAT_OK);
+  participant = session_participant_create(&config);
+  CHECK(participant);
+  session_settings_init(&requested);
+  CHECK(requested.color_mode == TERM_COLOR_AUTO);
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  int expected_color = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;
+  memset(&test.host, 0, sizeof(test.host));
+  CHECK(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  CHECK(session_participant_request_settings(participant, &requested) == ASCIICHAT_OK);
+  CHECK(requested.color_mode == TERM_COLOR_AUTO);
+  CHECK(test.host.caps.color_level == expected_color);
+  CHECK(session_participant_receive_settings(participant, test.reply, test.reply_length) == ASCIICHAT_OK);
+  session_settings_t effective;
+  CHECK(session_participant_get_settings(participant, &effective) == ASCIICHAT_OK);
+  CHECK(effective.color_mode == expected_color && test.callbacks == 4);
+  CHECK(session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  session_participant_destroy(participant);
   options_state_destroy();
 }
 
 void test_session_protocol(void) {
   test_dimensions();
+  test_participant_settings();
   sink_t sinks[2] = {0};
   const acip_transport_methods_t methods = {.sendv = send_vectors};
   acip_transport_t transports[2] = {{.methods = &methods, .impl_data = &sinks[0]},
