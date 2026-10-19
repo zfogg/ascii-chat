@@ -41,6 +41,31 @@ vi.mock("../../src/wasm/AVState", () => ({
     dispose() {}
   },
 }));
+vi.mock("../../src/audio/AudioCapture", () => ({
+  AudioCapture: {
+    create: vi.fn(async (_context, options) => {
+      processor.onaudioprocess = (event: AudioProcessingEvent) => {
+        const input = event.inputBuffer.getChannelData(0);
+        for (let offset = 0; offset + 960 <= input.length; offset += 960) {
+          const payload = new Uint8Array(21);
+          const view = new DataView(payload.buffer);
+          view.setUint32(0, 48000);
+          view.setUint32(4, 20);
+          view.setUint32(8, 1);
+          view.setUint16(16, 3);
+          payload.set([1, 2, 3], 18);
+          options.onFrame(payload, input.subarray(offset, offset + 960));
+        }
+      };
+      return {
+        node: processor,
+        close: () => {
+          processor.onaudioprocess = null;
+        },
+      };
+    }),
+  },
+}));
 vi.mock("../../src/audio/OpusEncoder", () => ({
   OpusEncoder: class {
     init = vi.fn().mockResolvedValue(undefined);
@@ -137,7 +162,7 @@ describe("AudioPipeline", () => {
     pipeline.close();
   });
 
-  it("captures echo-cancelled microphone audio into native Opus packets", async () => {
+  it("requests browser AEC without duplicate denoising or gain control", async () => {
     const send = vi.fn();
     const pipeline = new AudioPipeline({ onAudioData: send });
     await pipeline.startCapture();
@@ -146,8 +171,8 @@ describe("AudioPipeline", () => {
         channelCount: 1,
         sampleRate: 48000,
         echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
+        noiseSuppression: false,
+        autoGainControl: false,
       },
       video: false,
     });

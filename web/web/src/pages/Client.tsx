@@ -620,6 +620,10 @@ export function ClientPage({
     try {
       if (!audioRef.current)
         audioRef.current = new AudioPipeline({
+          onError: (error) => {
+            setMicEnabled(false);
+            setError(error.message);
+          },
           onLevels: setAudioLevels,
           onMicrophoneSamples: (samples) => {
             const current = settingsRef.current;
