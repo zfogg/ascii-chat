@@ -221,8 +221,8 @@ static socket_t tcp_get_socket(acip_transport_t *transport) {
 static bool tcp_is_connected(acip_transport_t *transport) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
   bool result = tcp->is_connected;
-  log_debug_every(LOG_RATE_FAST, "[TCP_STATE_CHECK] tcp_is_connected(): transport=%p, sockfd=%d, result=%s",
-                  (void *)transport, tcp->sockfd, result ? "true" : "false");
+  log_debug_every(LOG_RATE_FAST, "transport=%p, sockfd=%d, result=%s", (void *)transport, tcp->sockfd,
+                  result ? "true" : "false");
   return result;
 }
 

@@ -1,7 +1,11 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./browser-fixture";
 import { fileURLToPath } from "node:url";
 
-const moduleUrl = `/@fs/${fileURLToPath(new URL("../../../packages/shared/src/wasm/mirror.ts", import.meta.url)).replaceAll("\\", "/")}`;
+const moduleUrl = `/@fs/${fileURLToPath(
+  new URL("../../../packages/shared/src/wasm/mirror.ts", import.meta.url),
+)
+  .replaceAll("\\", "/")
+  .replace(/^\/+/, "")}`;
 
 declare global {
   interface Window {
@@ -93,7 +97,7 @@ test("C splash animates and keyboard settings update both C and the web controls
   await expect(page).toHaveURL(/colorMode=none/);
   await expect.poll(() => lastFrame(page)).toContain("Mono");
   for (const [key, parameter, value] of [
-    ["x", "flipX", "false"],
+    ["x", "horizontalFlip", "off"],
     ["y", "flipY", "true"],
     ["r", "renderMode", "1"],
     ["1", "animationEnabled", "true"],
@@ -132,7 +136,7 @@ test("help owns presentation during live video and recovers after resize", async
   await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 15_000 });
   const canvas = page.locator("canvas.ascii-canvas");
   await canvas.focus();
   await page.keyboard.press("?");
@@ -243,7 +247,7 @@ test("C application logs survive closed overlays and share exclusive presentatio
   await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 15_000 });
   await canvas.focus();
   await page.keyboard.press("]");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");

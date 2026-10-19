@@ -492,7 +492,6 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
 }
 
 int client_main(void) {
-  log_debug("client_main() starting");
 
   // Register client crypto callbacks for TCP connection path
   // The TCP path in lib/network/connection_attempt.c relies on these callbacks
@@ -720,26 +719,26 @@ int client_main(void) {
       .print_newline_on_tty_exit = false, // Server/client manages cursor
   };
 
-  log_debug("[CLIENT_MAIN] About to call session_client_like_run() with %d attempts", reconnect_attempts);
+  log_debug("About to call session_client_like_run() with %d attempts", reconnect_attempts);
   asciichat_error_t session_result = session_client_like_run(&config);
-  log_debug("[CLIENT_MAIN] session_client_like_run() returned %d", session_result);
+  log_debug("session_client_like_run() returned %d", session_result);
 
   // Cleanup session log buffer (used by splash screen in session_client_like)
   // NOTE: session_log_buffer_destroy() is already called in session_client_like_run()
   // during its cleanup phase, so we don't call it here to avoid double-destroy of mutex
 
-  log_debug("[CLIENT_MAIN] ascii-chat client shutting down");
+  log_debug("ascii-chat client shutting down");
 
   // IMPORTANT: Stop worker threads and join them BEFORE memory report
   // atexit(shutdown_client) won't run if interrupted by SIGTERM, so call explicitly
-  log_debug("[CLIENT_MAIN] About to call shutdown_client()");
+  log_debug("About to call shutdown_client()");
   fflush(stderr);
   shutdown_client();
-  log_debug("[CLIENT_MAIN] shutdown_client() returned");
+  log_debug("shutdown_client() returned");
   fflush(stderr);
 
   // Cleanup remaining shared subsystems (buffer domain, platform, etc.)
-  log_debug("[CLIENT_MAIN] About to call asciichat_shared_destroy()");
+  log_debug("About to call asciichat_shared_destroy()");
   asciichat_shared_destroy();
 
   // Log final session statistics before exit

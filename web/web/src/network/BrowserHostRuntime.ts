@@ -78,9 +78,9 @@ export class BrowserHostRuntime {
       this.worker.postMessage({ kind: "init" });
     });
   }
-  addClient(): number {
+  addClient(local = false): number {
     const id = this.nextId++;
-    this.worker.postMessage({ kind: "add", id });
+    this.worker.postMessage({ kind: "add", id, local });
     return id;
   }
   removeClient(id: number): void {

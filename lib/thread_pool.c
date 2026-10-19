@@ -478,7 +478,7 @@ asciichat_error_t thread_pool_stop_all(thread_pool_t *pool) {
     mutex_unlock(&pool->threads_mutex);
   }
 
-  log_debug("thread_pool_stop_all: joined=%d, freed=%d", joined_count, freed_count);
+  log_debug("joined=%d, freed=%d", joined_count, freed_count);
 
   log_debug("All threads stopped in pool '%s'", pool->name);
   if (still_running_count > 0) {
@@ -548,7 +548,7 @@ asciichat_error_t thread_pool_interrupt_all(thread_pool_t *pool, int sig) {
 #else
   // Windows: no pthread_kill equivalent needed - socket_shutdown() is sufficient
   (void)sig; // Unused on Windows
-  log_debug("thread_pool_interrupt_all: no-op on Windows (socket shutdown is sufficient)");
+  log_debug("no-op on Windows (socket shutdown is sufficient)");
   return ASCIICHAT_OK;
 #endif
 }

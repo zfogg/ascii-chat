@@ -693,7 +693,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
     return -1;
   }
 
-  log_debug("parse_client_address: Processing argument: '%s'", arg);
+  log_debug("Processing argument: '%s'", arg);
 
   // Access address and port fields from options_state struct
   char *address = (char *)config + offsetof(struct options_state, address);
@@ -720,18 +720,18 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   // Check if this is a session string (format: adjective-noun-noun)
   // Session strings have exactly 2 hyphens, only lowercase letters, length 5-47
   bool is_session = is_session_string(arg);
-  log_debug("parse_client_address: is_session_string('%s') = %s", arg, is_session ? "true" : "false");
+  log_debug("is_session_string('%s') = %s", arg, is_session ? "true" : "false");
 
   if (is_session) {
     // This is a session string, not a server address
     char *session_string = (char *)config + offsetof(struct options_state, session_string);
     SAFE_SNPRINTF(session_string, SESSION_STRING_BUFFER_SIZE, "%s", arg);
-    log_debug("parse_client_address: Stored session string: %s", arg);
+    log_debug("Stored session string: %s", arg);
     return 1; // Consumed 1 arg
   }
 
   // Not a session string, parse as server address
-  log_debug("parse_client_address: Parsing as server address (not a session string)");
+  log_debug("Parsing as server address (not a session string)");
 
   // Check for port in address (format: address:port or [ipv6]:port)
   const char *colon = strrchr(arg, ':');
@@ -851,7 +851,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   // (checking if --port flag was used). For now, this is a simplified version.
   // Full implementation would need to track whether port was set via flag.
 
-  log_debug("parse_client_address: Set address='%s', port=%d", address[0] ? address : "(empty)", *port);
+  log_debug("Set address='%s', port=%d", address[0] ? address : "(empty)", *port);
 
   return 1; // Consumed 1 arg
 }
@@ -880,7 +880,7 @@ int parse_mirror_media(const char *arg, void *config, char **remaining, int num_
     return -1;
   }
 
-  log_debug("parse_mirror_media: Processing argument: '%s'", arg);
+  log_debug("Processing argument: '%s'", arg);
 
   // Access media_file and media_url fields from options_state struct (same as other positional parsers)
   char *media_file = (char *)config + offsetof(struct options_state, media_file);

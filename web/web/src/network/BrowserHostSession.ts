@@ -184,7 +184,7 @@ export class BrowserHostSession implements ClientSession {
     );
     await this.runtime.start();
     if (this.closed) return;
-    this.localId = this.runtime.addClient();
+    this.localId = this.runtime.addClient(true);
     if (!this.localId) throw new Error("Could not add local host participant.");
     if (this.deadline) clearTimeout(this.deadline);
     this.options.onCreated?.(this.name);

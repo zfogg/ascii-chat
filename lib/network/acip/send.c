@@ -132,7 +132,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
 asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, packet_type_t *type, void **payload,
                                                size_t *payload_len, void **alloc_buffer) {
   if (!transport || !type || !payload || !payload_len || !alloc_buffer) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for packet_receive_via_transport");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   *type = 0;
@@ -152,7 +152,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
 
   // Parse packet header
   if (recv_len < sizeof(packet_header_t)) {
-    log_warn("packet_receive_via_transport: packet too small (%zu bytes, need %zu)", recv_len, sizeof(packet_header_t));
+    log_warn("packet too small (%zu bytes, need %zu)", recv_len, sizeof(packet_header_t));
     if (*alloc_buffer) {
       buffer_release(*alloc_buffer);
       *alloc_buffer = NULL;
@@ -166,7 +166,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
   size_t plen = NET_TO_HOST_U32(header->length);
 
   if (recv_len < sizeof(packet_header_t) + plen) {
-    log_warn("packet_receive_via_transport: truncated packet (header says %zu payload, got %zu total)", plen, recv_len);
+    log_warn("truncated packet (header says %zu payload, got %zu total)", plen, recv_len);
     if (*alloc_buffer) {
       buffer_release(*alloc_buffer);
       *alloc_buffer = NULL;

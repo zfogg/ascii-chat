@@ -34,7 +34,7 @@ asciichat_error_t consensus_metrics_measure(const uint8_t my_id[16], participant
 
 asciichat_error_t consensus_metrics_to_wire(const participant_metrics_t *metrics, participant_metrics_t *out_wire) {
   if (!metrics || !out_wire) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to consensus_metrics_to_wire");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   // Copy entire structure first
@@ -53,7 +53,7 @@ asciichat_error_t consensus_metrics_to_wire(const participant_metrics_t *metrics
 asciichat_error_t consensus_metrics_from_wire(const participant_metrics_t *wire_metrics,
                                               participant_metrics_t *out_metrics) {
   if (!wire_metrics || !out_metrics) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to consensus_metrics_from_wire");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   // Copy entire structure first

@@ -41,7 +41,7 @@
 int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message_len, uint8_t *signature_out,
                       size_t *signature_len_out) {
   if (!key_id || !message || message_len == 0 || !signature_out || !signature_len_out) {
-    log_error("Invalid parameters to gpg_sign_with_key");
+    log_error("Invalid parameters");
     return -1;
   }
 
@@ -139,7 +139,7 @@ cleanup:
 
 int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
                               uint8_t signature_out[64]) {
-  log_debug("gpg_sign_detached_ed25519: Signing with key ID %s (fallback mode)", key_id);
+  log_debug("Signing with key ID %s (fallback mode)", key_id);
 
   // Get OpenPGP signature packet from gpg --detach-sign
   uint8_t openpgp_signature[512];

@@ -31,7 +31,7 @@ static asciichat_error_t resolve_via_fontconfig(const char *name, char *out, siz
   FcConfig *fc = FcInitLoadConfigAndFonts();
   FcPattern *pat = FcNameParse((const FcChar8 *)name);
   if (!pat)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "platform_font_resolve: bad name '%s'", name);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "bad name '%s'", name);
 
   FcConfigSubstitute(fc, pat, FcMatchPattern);
   FcDefaultSubstitute(pat);
@@ -41,15 +41,15 @@ static asciichat_error_t resolve_via_fontconfig(const char *name, char *out, siz
   FcPatternDestroy(pat);
 
   if (!match || result != FcResultMatch)
-    return SET_ERRNO(ERROR_NOT_FOUND, "platform_font_resolve: no font matching '%s'", name);
+    return SET_ERRNO(ERROR_NOT_FOUND, "no font matching '%s'", name);
 
   FcChar8 *file = NULL;
   if (FcPatternGetString(match, FC_FILE, 0, &file) != FcResultMatch || !file) {
     FcPatternDestroy(match);
-    return SET_ERRNO(ERROR_NOT_FOUND, "platform_font_resolve: fontconfig matched but no file");
+    return SET_ERRNO(ERROR_NOT_FOUND, "fontconfig matched but no file");
   }
   snprintf(out, sz, "%s", (const char *)file);
-  log_debug("platform_font_resolve: '%s' → %s", name, out);
+  log_debug("'%s' → %s", name, out);
   FcPatternDestroy(match);
   return ASCIICHAT_OK;
 }
@@ -80,7 +80,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
       *out_font_data_size = g_font_matrix_resurrected_size;
     snprintf(out, out_size, "matrix");
     *out_is_path = false;
-    log_info("platform_font_resolve: USING MATRIX FONT - g_font_matrix_resurrected=%p (size=%zu), g_font_default=%p "
+    log_info("USING MATRIX FONT - g_font_matrix_resurrected=%p (size=%zu), g_font_default=%p "
              "(size=%zu)",
              (void *)g_font_matrix_resurrected, g_font_matrix_resurrected_size, (void *)g_font_default,
              g_font_default_size);
@@ -94,7 +94,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
       *out_font_data_size = g_font_default_size;
     snprintf(out, out_size, "default");
     *out_is_path = false;
-    log_info("platform_font_resolve: USING DEFAULT FONT - g_font_default=%p (size=%zu), g_font_matrix_resurrected=%p "
+    log_info("USING DEFAULT FONT - g_font_default=%p (size=%zu), g_font_matrix_resurrected=%p "
              "(size=%zu)",
              (void *)g_font_default, g_font_default_size, (void *)g_font_matrix_resurrected,
              g_font_matrix_resurrected_size);
@@ -105,13 +105,13 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
   *out_is_path = true;
   asciichat_error_t err = resolve_via_fontconfig(eff, out, out_size);
   if (err != ASCIICHAT_OK && strcmp(eff, k_fallback) != 0) {
-    log_warn("platform_font_resolve: '%s' not found, trying '%s'", eff, k_fallback);
+    log_warn("'%s' not found, trying '%s'", eff, k_fallback);
     err = resolve_via_fontconfig(k_fallback, out, out_size);
   }
 
   // Fallback chain: system fonts → bundled default font
   if (err != ASCIICHAT_OK) {
-    log_warn("platform_font_resolve: system font resolution failed, using bundled default font");
+    log_warn("system font resolution failed, using bundled default font");
     if (out_font_data)
       *out_font_data = g_font_default;
     if (out_font_data_size)
@@ -124,7 +124,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
   return err;
 #else
   // musl static builds: fontconfig not available, use bundled default font
-  log_debug("platform_font_resolve: using bundled default font (musl build, no fontconfig)");
+  log_debug("using bundled default font (musl build, no fontconfig)");
   if (out_font_data)
     *out_font_data = g_font_default;
   if (out_font_data_size)

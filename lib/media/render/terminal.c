@@ -317,7 +317,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   r->is_matrix_font = (strstr(cfg->font_spec, "matrix") != NULL || strstr(cfg->font_spec, "Matrix") != NULL) ||
                       (cfg->font_data != NULL && GET_OPTION(matrix_rain));
   if (r->is_matrix_font) {
-    log_debug("term_renderer_create: Detected matrix font - will use Private Use Area character mapping");
+    log_debug("Detected matrix font - will use Private Use Area character mapping");
   }
 
   // Handle scalable vs bitmap fonts differently
@@ -326,20 +326,20 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   if (r->ft_face->num_fixed_sizes > 0) {
     // Bitmap font: use FT_Set_Pixel_Sizes to select appropriate size (12px is reasonable for ASCII)
     int err = FT_Set_Pixel_Sizes(r->ft_face, 12, 12);
-    log_debug("term_renderer_create: [BITMAP] FT_Set_Pixel_Sizes(12, 12) returned %d", err);
+    log_debug("[BITMAP] FT_Set_Pixel_Sizes(12, 12) returned %d", err);
 
     // If that fails, try FT_Select_Size as fallback
     if (err != 0) {
       err = FT_Select_Size(r->ft_face, 0); // Use first available strike
-      log_debug("term_renderer_create: [BITMAP FALLBACK] FT_Select_Size(0) returned %d", err);
+      log_debug("[BITMAP FALLBACK] FT_Select_Size(0) returned %d", err);
     }
   } else {
     // Scalable font: use FT_Set_Char_Size
     // FT_Set_Char_Size takes 1/64pt units and DPI — supports fractional point sizes.
     // 96 DPI is the standard screen DPI used here; the 64 factor is the 26.6 fixed-point scale.
     int err = FT_Set_Char_Size(r->ft_face, 0, (FT_F26Dot6)(cfg->font_size_pt * 64.0), 96, 96);
-    log_debug("term_renderer_create: [SCALABLE] FT_Set_Char_Size(size_pt=%.1f → %ld 1/64pt) returned %d",
-              cfg->font_size_pt, (long)(cfg->font_size_pt * 64.0), err);
+    log_debug("[SCALABLE] FT_Set_Char_Size(size_pt=%.1f → %ld 1/64pt) returned %d", cfg->font_size_pt,
+              (long)(cfg->font_size_pt * 64.0), err);
   }
 
   // For matrix fonts, try PUA glyph first (U+E900) since ASCII chars might not have bitmap data
@@ -359,7 +359,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   } else {
     // For non-matrix fonts, standard approach
     load_err = FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
-    log_debug("DEBUG: FT_Load_Char('M', FT_LOAD_RENDER) returned %d", load_err);
+    log_debug("FT_Load_Char('M', FT_LOAD_RENDER) returned %d", load_err);
 
     // For bitmap fonts (like matrix), FT_Load_Char may fail if the character doesn't exist.
     // Try a fallback character if 'M' fails.
@@ -379,7 +379,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 
   // For monospace ASCII grid: use advance.x (proper character spacing) and rendered height
   FT_Pos advance_x_26_6 = r->ft_face->glyph->advance.x;
-  log_debug("DEBUG: advance.x (26.6pt)=%ld", advance_x_26_6);
+  log_debug("advance.x (26.6pt)=%ld", advance_x_26_6);
 
   // Calculate cell width from font metrics
   r->cell_w = (int)(advance_x_26_6 >> 6);
@@ -387,7 +387,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   // Safeguard: for bitmap fonts, cell_w might be wrong if the font metrics are off
   // Ensure we have a reasonable minimum width
   if (r->cell_w <= 0) {
-    log_warn("term_renderer_create: cell_w is %d (invalid), using default 10px", r->cell_w);
+    log_warn("cell_w is %d (invalid), using default 10px", r->cell_w);
     r->cell_w = 10;
   }
 
@@ -407,11 +407,11 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   // instead of bitmap.rows causes cells to be too large and text to overflow.
   r->cell_h = r->ft_face->glyph->bitmap.rows;
   int raw_bitmap_top = r->ft_face->glyph->bitmap_top;
-  log_debug("DEBUG: cell_h=%d (from bitmap.rows), raw_bitmap_top=%d", r->cell_h, raw_bitmap_top);
+  log_debug("cell_h=%d (from bitmap.rows), raw_bitmap_top=%d", r->cell_h, raw_bitmap_top);
 
   // Fallback: if cell_h is 0 (bitmap failed to load), use aspect ratio calculation
   if (r->cell_h <= 0) {
-    log_warn("term_renderer_create: cell_h is 0 (FT_Load_Char failed or no bitmap), using aspect ratio fallback");
+    log_warn("cell_h is 0 (FT_Load_Char failed or no bitmap), using aspect ratio fallback");
     r->cell_h = r->cell_w * 2;
     log_debug("FALLBACK: cell_h set to %d (2x width=%d)", r->cell_h, r->cell_w);
   }
@@ -453,19 +453,19 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   // We want: 0 <= baseline - bitmap_top < cell_h (glyph fits within cell)
   // Choose: baseline = (3 * cell_h) / 4 (positions at 75% height)
   r->baseline = (3 * r->cell_h) / 4;
-  log_debug("DEBUG: baseline set to %d (75%% of cell_h=%d)", r->baseline, r->cell_h);
+  log_debug("baseline set to %d (75%% of cell_h=%d)", r->baseline, r->cell_h);
 
   r->width_px = r->cols * r->cell_w;
   r->height_px = r->rows * r->cell_h;
-  log_debug("DEBUG: calculated dimensions: width_px=%d (cols=%d * cell_w=%d), height_px=%d (rows=%d * cell_h=%d)",
-            r->width_px, r->cols, r->cell_w, r->height_px, r->rows, r->cell_h);
+  log_debug("calculated dimensions: width_px=%d (cols=%d * cell_w=%d), height_px=%d (rows=%d * cell_h=%d)", r->width_px,
+            r->cols, r->cell_w, r->height_px, r->rows, r->cell_h);
   // Pitch in bytes: each pixel is 4 bytes (RGBA), already aligned to 4-byte boundary
   int base_pitch = r->width_px * 4;
   r->pitch = base_pitch;
   log_debug("PITCH_CALC: width_px=%d, base_pitch=%d, final_pitch=%d (RGBA, no padding needed)", r->width_px, base_pitch,
             r->pitch);
-  log_debug("DEBUG: Allocating framebuffer: %d bytes total (%d pitch * %d height)",
-            (int)((size_t)r->pitch * r->height_px), r->pitch, r->height_px);
+  log_debug("Allocating framebuffer: %d bytes total (%d pitch * %d height)", (int)((size_t)r->pitch * r->height_px),
+            r->pitch, r->height_px);
   r->framebuffer = SAFE_MALLOC((size_t)r->pitch * r->height_px, uint8_t *);
 
   r->vt = vterm_new(r->rows, r->cols);
@@ -476,7 +476,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 
   // Set size BEFORE reset to ensure screen is allocated with correct dimensions
   vterm_set_size(r->vt, r->rows, r->cols);
-  log_debug("DEBUG: vterm_set_size called with rows=%d cols=%d", r->rows, r->cols);
+  log_debug("vterm_set_size called with rows=%d cols=%d", r->rows, r->cols);
 
   vterm_screen_set_callbacks(r->vts, &g_vterm_cbs, r);
   // Reset MUST come before any input writing to initialize state correctly
@@ -485,11 +485,11 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   // Verify the size was set correctly after reset
   int vt_rows, vt_cols;
   vterm_get_size(r->vt, &vt_rows, &vt_cols);
-  log_debug("DEBUG: vterm_get_size returned rows=%d cols=%d (expected %d,%d)", vt_rows, vt_cols, r->rows, r->cols);
+  log_debug("vterm_get_size returned rows=%d cols=%d (expected %d,%d)", vt_rows, vt_cols, r->rows, r->cols);
 
   // CRITICAL: Set size AGAIN after reset, as reset may have affected it
   vterm_set_size(r->vt, r->rows, r->cols);
-  log_debug("DEBUG: vterm_set_size called AGAIN after reset");
+  log_debug("vterm_set_size called AGAIN after reset");
 
   // Initialize per-renderer glyph cache (empty, will populate on demand)
   r->glyph_cache = NULL;
@@ -572,7 +572,7 @@ static void render_zalgo(terminal_renderer_t *r, int offset_x, int offset_y) {
 
 asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_frame, size_t len) {
   if (!r || (!ansi_frame && len > 0)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "term_renderer_feed: renderer or frame is invalid");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "renderer or frame is invalid");
   }
 
   // libvterm natively implements CSI REP.  Expanding those runs here turns a
@@ -798,8 +798,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
     }
   }
   render_zalgo(r, offset_x, offset_y);
-  log_debug_every(5 * US_PER_SEC_INT,
-                  "term_renderer_feed: Rendered %d glyphs from %d occupied cells (%d missing) out of %d cells",
+  log_debug_every(5 * US_PER_SEC_INT, "Rendered %d glyphs from %d occupied cells (%d missing) out of %d cells",
                   glyph_rendered_count, occupied_cell_count, glyph_missing_count, r->rows * r->cols);
 
   return ASCIICHAT_OK;

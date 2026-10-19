@@ -350,7 +350,8 @@ jobs:
 
       - name: Clear stale integration executables and libraries
         run: |
-          rm -f build/bin/test_* build/bin/ascii-chat build/lib/libasciichat*
+          # macOS debug symbol bundles matching these paths are directories.
+          rm -rf build/bin/test_* build/bin/ascii-chat build/bin/ascii-chat.dSYM build/lib/libasciichat*
 
       - name: Configure integration tests with coverage
         run: |

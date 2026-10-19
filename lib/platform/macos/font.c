@@ -49,7 +49,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
       if (fd >= 0) {
         write(fd, *out_font_data, *out_font_data_size);
         close(fd);
-        log_debug("platform_font_resolve: wrote bundled matrix font to %s", tmp_path);
+        log_debug("wrote bundled matrix font to %s", tmp_path);
       }
     }
     if (tmp_path[0] != '\0') {
@@ -72,7 +72,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
       if (fd >= 0) {
         write(fd, *out_font_data, *out_font_data_size);
         close(fd);
-        log_debug("platform_font_resolve: wrote bundled default font to %s", tmp_path_default);
+        log_debug("wrote bundled default font to %s", tmp_path_default);
       }
     }
     if (tmp_path_default[0] != '\0') {
@@ -89,7 +89,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
   *out_is_path = false;
 
   // Log that we're using a system font name (will be resolved by CoreText)
-  log_debug("platform_font_resolve: using system font name '%s' (will be resolved by CoreText)", eff);
+  log_debug("using system font name '%s' (will be resolved by CoreText)", eff);
   return ASCIICHAT_OK;
 }
 #endif // __APPLE__

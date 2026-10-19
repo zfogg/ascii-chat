@@ -177,7 +177,7 @@ static asciichat_error_t check_http_status(const char *response) {
 
 char *https_get(const char *hostname, const char *path) {
   if (!hostname || !path) {
-    log_error("Invalid arguments to https_get");
+    log_error("Invalid arguments");
     return NULL;
   }
 

@@ -37,8 +37,8 @@ struct render_file_ctx_s {
 
 asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme,
                                      render_file_ctx_t **out) {
-  log_info("[RENDER_FILE_CREATE] CALLED with output_path=%s, cols=%d, rows=%d, fps=%d, theme=%d, out=%p",
-           output_path ? output_path : "(null)", cols, rows, fps, theme, (void *)out);
+  log_info("output_path=%s, cols=%d, rows=%d, fps=%d, theme=%d, out=%p", output_path ? output_path : "(null)", cols,
+           rows, fps, theme, (void *)out);
   render_file_ctx_t *ctx = SAFE_CALLOC(1, sizeof(*ctx), render_file_ctx_t *);
 
   // Resolve font spec → platform-appropriate file path, family name, or bundled data.
@@ -56,14 +56,13 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   log_debug("raw_font=%s, matrix_rain=%d", raw_font, GET_OPTION(matrix_rain));
   if ((!raw_font || raw_font[0] == '\0') && GET_OPTION(matrix_rain)) {
     raw_font = "matrix";
-    log_debug("render_file_create: [MATRIX] Using matrix font (enabled by --matrix flag)");
+    log_debug("[MATRIX] Using matrix font (enabled by --matrix flag)");
   }
 
   asciichat_error_t fe =
       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
   if (fe != ASCIICHAT_OK) {
-    log_warn("renderer: font resolution failed for '%s' — using bundled default",
-             raw_font ? raw_font : "(explicit system)");
+    log_warn("font resolution failed for '%s' — using bundled default", raw_font ? raw_font : "(explicit system)");
     fe = platform_font_resolve("default", font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
     if (fe != ASCIICHAT_OK) {
       SAFE_FREE(ctx);
@@ -71,16 +70,15 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     }
   }
 
-  log_debug("render_file_create: Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)", font_spec,
-            font_is_path, (void *)font_data, font_data_size);
+  log_debug("Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)", font_spec, font_is_path,
+            (void *)font_data, font_data_size);
 
   // Use reasonable default font size for render-file quality
   double font_size_pt = GET_OPTION(render_font_size);
   term_renderer_theme_t resolved_theme = (term_renderer_theme_t)theme;
   if (resolved_theme == TERM_RENDERER_THEME_AUTO) {
     resolved_theme = terminal_has_dark_background() ? TERM_RENDERER_THEME_DARK : TERM_RENDERER_THEME_LIGHT;
-    log_debug("render_file_create: auto theme resolved to %s",
-              resolved_theme == TERM_RENDERER_THEME_DARK ? "dark" : "light");
+    log_debug("auto theme resolved to %s", resolved_theme == TERM_RENDERER_THEME_DARK ? "dark" : "light");
   }
 
   term_renderer_config_t tr_cfg = {
@@ -96,25 +94,23 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 
   asciichat_error_t err = term_renderer_create(&tr_cfg, &ctx->renderer);
   if (err != ASCIICHAT_OK) {
-    log_error("render_file_create: term_renderer_create failed: %s", asciichat_error_string(err));
+    log_error("term_renderer_create failed: %s", asciichat_error_string(err));
     SAFE_FREE(ctx);
     return err;
   }
   int actual_width_px = term_renderer_width_px(ctx->renderer);
   int actual_height_px = term_renderer_height_px(ctx->renderer);
-  log_info("render_file_create: GRID DIMENSIONS: %ux%u cells -> PIXEL DIMENSIONS: %dx%d px", cols, rows,
-           actual_width_px, actual_height_px);
-  log_debug("render_file_create: term_renderer created (%dx%d cells, %dx%d px)", cols, rows, actual_width_px,
-            actual_height_px);
+  log_info("GRID DIMENSIONS: %ux%u cells -> PIXEL DIMENSIONS: %dx%d px", cols, rows, actual_width_px, actual_height_px);
+  log_debug("term_renderer created (%dx%d cells, %dx%d px)", cols, rows, actual_width_px, actual_height_px);
 
   err = ffmpeg_encoder_create(output_path, actual_width_px, actual_height_px, fps, &ctx->encoder);
   if (err != ASCIICHAT_OK) {
-    log_error("render_file_create: ffmpeg_encoder_create failed: %s", asciichat_error_string(err));
+    log_error("ffmpeg_encoder_create failed: %s", asciichat_error_string(err));
     term_renderer_destroy(ctx->renderer);
     SAFE_FREE(ctx);
     return err;
   }
-  log_debug("render_file_create: ffmpeg_encoder created successfully");
+  log_debug("ffmpeg_encoder created successfully");
 
   // Initialize audio fields
   ctx->audio_sample_rate = 48000; // Audio pipeline is 48kHz
@@ -132,7 +128,7 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     SAFE_FREE(ctx);
     return err;
   }
-  log_info("renderer: initialized encoder for %s", output_path);
+  log_info("initialized encoder for %s", output_path);
 
   // Register render file context for debugging
   NAMED_REGISTER_CONTEXT(ctx, "render_file_ctx", output_path, NULL);
@@ -153,15 +149,15 @@ void render_file_set_live_timing(render_file_ctx_t *ctx) {
 static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx, const char *ansi_frame,
                                                           uint64_t captured_ns) {
 
-  log_info("render_file_write_frame: CALLED - ctx=%p, captured_ns=%llu", (void *)ctx, (unsigned long long)captured_ns);
+  log_info("ctx=%p, captured_ns=%llu", (void *)ctx, (unsigned long long)captured_ns);
 
   if (!ctx) {
-    log_warn("render_file_write_frame: ctx is NULL");
+    log_warn("ctx is NULL");
     return ASCIICHAT_OK;
   }
 
   if (!ansi_frame) {
-    log_warn("render_file_write_frame: ansi_frame is NULL");
+    log_warn("ansi_frame is NULL");
     return ASCIICHAT_OK;
   }
 
@@ -173,14 +169,14 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
     if (frame_index <= ctx->last_frame_index)
       return ASCIICHAT_OK;
   }
-  log_info("render_file_write_frame: processing frame (len=%zu)", frame_len);
+  log_info("processing frame (len=%zu)", frame_len);
   if (frame_len > 0) {
     log_info("  first 100 chars: %.100s", ansi_frame);
   }
 
   asciichat_error_t err = term_renderer_feed(ctx->renderer, ansi_frame, frame_len);
   if (err != ASCIICHAT_OK) {
-    log_warn("render_file_write_frame: term_renderer_feed failed: %s", asciichat_error_string(err));
+    log_warn("term_renderer_feed failed: %s", asciichat_error_string(err));
     return err;
   }
 
@@ -189,7 +185,7 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
   int width_px = term_renderer_width_px(ctx->renderer);
   int height_px = term_renderer_height_px(ctx->renderer);
 
-  log_info("render_file_write_frame: pixels=%p pitch=%d dims=%dx%d", (void *)pixels, pitch, width_px, height_px);
+  log_info("pixels=%p pitch=%d dims=%dx%d", (void *)pixels, pitch, width_px, height_px);
 
   if (pixels) {
     uint8_t sample_r = pixels[0], sample_g = pixels[1], sample_b = pixels[2], sample_a = pixels[3];
@@ -211,13 +207,13 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
       return err;
     pixels_copy = ctx->pixels.data;
     memcpy(pixels_copy, pixels, pixel_buffer_size);
-    log_info("render_file_write_frame: copied %zu bytes of pixel data (was at %p, now at %p)", pixel_buffer_size,
-             (void *)pixels, (void *)pixels_copy);
+    log_info("copied %zu bytes of pixel data (was at %p, now at %p)", pixel_buffer_size, (void *)pixels,
+             (void *)pixels_copy);
   }
 
   err = ffmpeg_encoder_write_frame(ctx->encoder, pixels_copy, pitch, captured_ns);
   if (err != ASCIICHAT_OK) {
-    log_warn("render_file_write_frame: ffmpeg_encoder_write_frame failed: %s", asciichat_error_string(err));
+    log_warn("ffmpeg_encoder_write_frame failed: %s", asciichat_error_string(err));
   }
 
   // The encoder consumes the view synchronously; retain storage for the next frame.

@@ -133,7 +133,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
 
     if (resolve_registry_font(HKEY_CURRENT_USER, effective_spec, fonts_dir, out, out_size) ||
         resolve_registry_font(HKEY_LOCAL_MACHINE, effective_spec, fonts_dir, out, out_size)) {
-      log_debug("platform_font_resolve: '%s' resolved to %s", effective_spec, out);
+      log_debug("'%s' resolved to %s", effective_spec, out);
       return ASCIICHAT_OK;
     }
   }

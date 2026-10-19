@@ -120,8 +120,7 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const asc
       if (elapsed >= snapshot_delay) {
         char duration_str[32];
         time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
-        log_info("🎬 SNAPSHOT TIMEOUT FIRED: Snapshot captured after %s! (target=%.3f) AT handle_ascii_frame_packet",
-                 duration_str, snapshot_delay);
+        log_info("Snapshot captured after %s (target=%.3f)", duration_str, snapshot_delay);
         signal_exit();
       }
     }

@@ -578,7 +578,7 @@ int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *
   initialize_symbol_handler();
 
 #ifdef DEBUG_THREADS
-  log_debug("ENTER asciichat_thread_create: thread=%p, func=%p, arg=%p", thread, func, arg);
+  log_debug("thread=%p, func=%p, arg=%p", thread, func, arg);
   log_debug("About to malloc wrapper (size=%zu)", sizeof(thread_wrapper_t));
 #endif
 

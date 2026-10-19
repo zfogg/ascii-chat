@@ -136,7 +136,7 @@ ssize_t platform_getline(char **lineptr, size_t *n, FILE *stream) {
  */
 asciichat_error_t platform_escape_shell_path(const char *path, char *output, size_t output_size) {
   if (!path || !output || output_size == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments to platform_escape_shell_path");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
   }
 
   size_t path_len = strlen(path);

@@ -173,7 +173,7 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
   if (!ctx || !ctx->ops.set_ip || !ctx->ops.set_port || !ctx->ops.set_mode || !ctx->ops.init || !ctx->ops.handshake ||
       !ctx->ops.is_ready || !ctx->ops.get_context)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Connection attempt requires per-instance callbacks");
-  log_info("=== connection_attempt_tcp CALLED: address='%s', port=%u ===", server_address, server_port);
+  log_info("address='%s', port=%u", server_address, server_port);
 
   if (!ctx || !server_address) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
@@ -191,7 +191,7 @@ static asciichat_error_t connection_attempt_tcp_measured(connection_attempt_cont
     return endpoint_result;
   }
 
-  log_debug("connection_attempt_tcp: server_address='%s', normalized=%s host=%s port=%u", server_address,
+  log_debug("server_address='%s', normalized=%s host=%s port=%u", server_address,
             connection_endpoint_protocol_name(endpoint.protocol), endpoint.host, endpoint.port);
 
   if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {

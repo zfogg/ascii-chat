@@ -29,7 +29,7 @@ pid_t platform_get_pid(void) {
  */
 asciichat_error_t platform_popen(const char *name, const char *command, const char *mode, FILE **out_stream) {
   if (!name || !command || !mode || !out_stream) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to platform_popen");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
     return ERROR_INVALID_PARAM;
   }
 
@@ -56,7 +56,7 @@ asciichat_error_t platform_popen(const char *name, const char *command, const ch
  */
 asciichat_error_t platform_pclose(FILE **stream_ptr) {
   if (!stream_ptr || !*stream_ptr) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid stream pointer to platform_pclose");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid stream pointer");
     return ERROR_INVALID_PARAM;
   }
 

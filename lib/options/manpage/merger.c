@@ -78,7 +78,7 @@ char *manpage_merger_merge_positional(const options_config_t *config, const pars
 
 asciichat_error_t manpage_merger_generate_usage(const options_config_t *config, char **out_content, size_t *out_len) {
   if (!out_content || !out_len) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid output parameters for manpage_merger_generate_usage");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid output parameters");
   }
 
   if (!config || config->num_usage_lines == 0) {
@@ -136,7 +136,7 @@ asciichat_error_t manpage_merger_generate_usage(const options_config_t *config, 
 
 asciichat_error_t manpage_merger_generate_synopsis(const char *mode_name, char **out_content, size_t *out_len) {
   if (!out_content || !out_len) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid output parameters for manpage_merger_generate_synopsis");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid output parameters");
   }
 
   // Allocate buffer for synopsis

@@ -5,6 +5,7 @@ import { BrowserVideoDecoder } from "./BrowserVideoDecoder";
 type HostModule = NonNullable<ReturnType<typeof getClientModule>> & {
   _browser_host_create(): number;
   _browser_host_add_client(): number;
+  _browser_host_set_local_client(id: number): number;
   _browser_host_remove_client(id: number): void;
   _browser_host_receive(
     id: number,
@@ -174,6 +175,8 @@ self.onmessage = (event) => {
         const id = module._browser_host_add_client();
         if (!id) throw new Error("Host participant limit reached.");
         clients.set(message.id, id);
+        if (message.local && module._browser_host_set_local_client(id))
+          throw new Error("Could not configure the host's local display.");
       } else if (message.kind === "remove") {
         const id = clients.get(message.id);
         if (id) module._browser_host_remove_client(id);
