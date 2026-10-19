@@ -85,7 +85,9 @@ test.describe("live webcam", () => {
         page.getByRole("button", { name: /Face Follow.*(debug|outlined)/i }),
       ).toHaveCount(0);
       await page.getByRole("button", { name: "Settings", exact: true }).click();
-      await expect.poll(() => redPixels("canvas.ascii-canvas")).toBeGreaterThan(10);
+      await expect
+        .poll(() => redPixels("canvas.ascii-canvas"))
+        .toBeGreaterThan(10);
       await testInfo.attach("camera-framing", {
         body: JSON.stringify({ crop, draw }),
         contentType: "application/json",
