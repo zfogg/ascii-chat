@@ -48,7 +48,7 @@
  * The main loop implements graceful error recovery:
  * - Fatal initialization errors cause immediate exit
  * - Network errors trigger reconnection attempts
- * - Signal handling for graceful shutdown (SIGINT, SIGWINCH)
+ * - Signal handling for graceful shutdown and platform terminal resize detection
  * - Resource cleanup on all exit paths
  *
  * ## Platform Compatibility
@@ -162,25 +162,8 @@ static acip_websocket_runtime_t *g_websocket_runtime;
 
 /* Signal handling is now centralized in src/main.c via setup_signal_handlers()
  * Signal handlers publish application exit; the owner interrupts network I/O
- * in normal thread context. SIGWINCH is still client-specific.
+ * in normal thread context. Resize detection is polled through lib/platform.
  */
-
-/**
- * Platform-compatible SIGWINCH handler for terminal resize events
- *
- * Automatically updates terminal dimensions and notifies server when
- * both width and height are set to auto-detect mode. On Windows, this
- * is a no-op since SIGWINCH is not available.
- *
- * @param sigwinch The signal number (unused)
- */
-#ifndef _WIN32
-static volatile sig_atomic_t g_resize_pending;
-static void client_handle_sigwinch(int sigwinch) {
-  (void)sigwinch;
-  g_resize_pending = 1;
-}
-#endif
 
 /**
  * Perform complete client shutdown and resource cleanup
@@ -371,24 +354,30 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     log_info("Reconnected");
   }
 
+  terminal_resize_watcher_t resize = {.size = {.cols = GET_OPTION(width), .rows = GET_OPTION(height)}};
+
   // Monitor connection until it breaks or shutdown is requested
   bool snapshot_check_logged_once = false;
   uint64_t last_progress_log_ns = 0;
   while (!should_exit() && server_connection_is_active(connection)) {
-#ifndef _WIN32
-    if (g_resize_pending) {
-      g_resize_pending = 0;
-      unsigned short width, height;
-      if (GET_OPTION(auto_width) && GET_OPTION(auto_height) && get_terminal_size(&width, &height) == ASCIICHAT_OK) {
-        options_set_int("width", width);
-        options_set_int("height", height);
+    if (terminal_is_stdout_tty() && (GET_OPTION(auto_width) || GET_OPTION(auto_height))) {
+      bool changed = false;
+      asciichat_errno_scope_t resize_errors = asciichat_errno_scope_begin();
+      asciichat_error_t resize_result = terminal_resize_poll(&resize, STDOUT_FILENO, &changed);
+      asciichat_errno_scope_end(resize_errors, ASCIICHAT_ERRNO_DISMISSED);
+      if (resize_result == ASCIICHAT_OK && changed) {
+        unsigned short width = GET_OPTION(auto_width) ? resize.size.cols : GET_OPTION(width);
+        unsigned short height = GET_OPTION(auto_height) ? resize.size.rows : GET_OPTION(height);
+        if (GET_OPTION(auto_width))
+          options_set_int("width", width);
+        if (GET_OPTION(auto_height))
+          options_set_int("height", height);
         if (threaded_send_terminal_size_with_auto_detect(connection, width, height) == ASCIICHAT_OK) {
           display_full_reset();
           log_set_terminal_output(false);
         }
       }
     }
-#endif
     if (client_protocol_connection_lost(connection)) {
       log_debug("Connection lost detected");
       break;
@@ -574,11 +563,6 @@ int client_main(void) {
   // Register client interrupt callback (socket shutdown on SIGTERM/Ctrl+C)
   // Global signal handlers (SIGTERM, SIGPIPE, Ctrl+C) are set up in setup_signal_handlers() in src/main.c
   set_interrupt_callback(NULL); // Signal handlers publish application exit only.
-
-#ifndef _WIN32
-  // Register SIGWINCH for terminal resize handling (client-specific, not in framework)
-  platform_signal(SIGWINCH, client_handle_sigwinch);
-#endif
 
   /* ========================================================================
    * Client-Specific: LAN/Session Discovery

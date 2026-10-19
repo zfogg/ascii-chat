@@ -187,6 +187,17 @@ asciichat_error_t terminal_get_size(terminal_size_t *size);
 /** Query physical dimensions of an output descriptor without option fallbacks. */
 asciichat_error_t terminal_get_size_fd(int fd, terminal_size_t *size);
 
+/** Per-consumer resize state; initialize size to the last advertised dimensions.
+ * Keep each watcher on one thread. No signal handler or background thread is needed. */
+typedef struct {
+  terminal_size_t size;
+} terminal_resize_watcher_t;
+
+/** Query physical dimensions and report changes from the watcher's last sample.
+ * On failure, changed is false and the previous dimensions are retained.
+ * The descriptor must refer to a terminal; redirected output is not a resize. */
+asciichat_error_t terminal_resize_poll(terminal_resize_watcher_t *watcher, int fd, bool *changed);
+
 /**
  * @brief Set terminal to raw mode
  * @param enable true to enable raw mode, false to disable

@@ -15,6 +15,22 @@
 #endif
 #include <string.h>
 
+asciichat_error_t terminal_resize_poll(terminal_resize_watcher_t *watcher, int fd, bool *changed) {
+  if (changed)
+    *changed = false;
+  if (!watcher || !changed)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Resize watcher and change output are required");
+  terminal_size_t size;
+  asciichat_error_t result = terminal_get_size_fd(fd, &size);
+  if (result != ASCIICHAT_OK)
+    return result;
+  if (size.cols <= 0 || size.rows <= 0)
+    return SET_ERRNO(ERROR_TERMINAL, "Terminal dimensions must be positive");
+  *changed = size.cols != watcher->size.cols || size.rows != watcher->size.rows;
+  watcher->size = size;
+  return ASCIICHAT_OK;
+}
+
 /**
  * @brief Determine if color output should be used
  *

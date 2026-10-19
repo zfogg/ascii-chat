@@ -1264,3 +1264,18 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN)
     add_test(NAME peer-ready COMMAND test-peer-ready)
     set_tests_properties(peer-ready PROPERTIES LABELS "integration" TIMEOUT 30)
 endif()
+
+if(BUILD_TESTS AND WIN32)
+    add_executable(test-terminal-resize standalone/session/terminal_resize_test.c)
+    target_link_libraries(test-terminal-resize PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ws2_32)
+    target_include_directories(test-terminal-resize PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-terminal-resize)
+    set_target_properties(test-terminal-resize PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(TARGET tests)
+        add_dependencies(tests test-terminal-resize)
+    endif()
+    add_test(NAME terminal-resize COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_resize_windows.py $<TARGET_FILE:test-terminal-resize>)
+    set_tests_properties(terminal-resize PROPERTIES LABELS "integration" TIMEOUT 40)
+endif()
