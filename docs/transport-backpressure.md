@@ -68,7 +68,7 @@ now calls its counter admission FPS; the live harness measures receiver FPS.
 
 ## Verification
 
-Build `test-backpressure`, `test-backpressure-live`, `test-network-events`, and
+Build `ascii-chat`, `test-backpressure`, `test-backpressure-live`, `test-network-events`, and
 `test-webrtc-security`. Run the deterministic test before the live matrix:
 
 ```
@@ -88,7 +88,7 @@ and control delivery, then disconnects with queued data. Audio sequence checks
 verify ordering. For both encoded codecs, every keyframe starts a brand-new
 FFmpeg decoder; every delivered frame must decode successfully with no decoder corruption flags.
 Legal codec filler NAL units pad encoded packets to at least 16 KiB so encoder bitrate
-defaults cannot accidentally bypass saturation. Raw packets contain a 80x45 RGB
+defaults cannot accidentally bypass saturation. Raw packets contain an 80x45 RGB
 image. Control pings are interleaved with every generated frame.
 
 CSV records application/backend bytes, oldest queued video age, delivered count,
