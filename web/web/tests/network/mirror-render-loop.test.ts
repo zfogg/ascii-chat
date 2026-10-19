@@ -17,96 +17,101 @@ afterEach(() => {
   convert.mockReset();
 });
 
-test("Mirror converts at 60 FPS independently of 30 FPS delivery without sampling the stale video element", async () => {
-  let controller: ReadableStreamDefaultController<VideoFrame>;
-  const cancel = vi.fn();
-  vi.stubGlobal(
-    "MediaStreamTrackProcessor",
-    class {
-      readable = new ReadableStream<VideoFrame>({
-        start(value) {
-          controller = value;
-        },
-        cancel,
-      });
-    },
-  );
-  let now = 0;
-  let tick: FrameRequestCallback = () => {};
-  vi.spyOn(performance, "now").mockImplementation(() => now);
-  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-    tick = callback;
-    return 1;
-  });
-  vi.stubGlobal("cancelAnimationFrame", vi.fn());
-  const drawImage = vi.fn();
-  const captureFrame = vi.fn((_drawVideo?: boolean) => ({
-    data: new Uint8Array(4),
-    width: 1,
-    height: 1,
-  }));
-  const writeFrame = vi.fn(() => true);
-  convert.mockReturnValue("camera frame");
-  const cameraTrack = {};
-  const hook = renderHook(() =>
-    useMirrorRenderLoop({
-      isWebcamRunning: true,
-      terminalDimensions: { cols: 80, rows: 30 },
-      captureFrame,
-      canvasRef: {
-        current: {
-          width: 1,
-          height: 1,
-          getContext: () => ({ drawImage }),
-        } as unknown as HTMLCanvasElement,
+test.each([30, 33, 60, 120, 144])(
+  "Mirror converts each %s FPS source frame once, with no duplicates on idle render ticks",
+  async (fps) => {
+    let controller: ReadableStreamDefaultController<VideoFrame>;
+    const cancel = vi.fn();
+    vi.stubGlobal(
+      "MediaStreamTrackProcessor",
+      class {
+        readable = new ReadableStream<VideoFrame>({
+          start(value) {
+            controller = value;
+          },
+          cancel,
+        });
       },
-      rendererRef: {
-        current: {
-          writeFrame,
-          getDimensions: () => ({ cols: 80, rows: 30 }),
-          clear: vi.fn(),
-          recreateRenderer: vi.fn(),
-        },
-      },
-      debugCountRef: { current: 0 },
-      firstFrameTimeRef: { current: null },
-      frameIntervalRef: { current: 1000 / 60 },
-      streamRef: {
-        current: {
-          getVideoTracks: () => [cameraTrack],
-        } as unknown as MediaStream,
-      },
-    }),
-  );
-  const frames = Array.from({ length: 120 }, (_, index) => ({
-    timestamp: Math.round((index * 1e6) / 30),
-    close: vi.fn(),
-  }));
-  for (const frame of frames) {
-    await act(async () => {
-      controller!.enqueue(frame as unknown as VideoFrame);
+    );
+    let now = 0;
+    let tick: FrameRequestCallback = () => {};
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      tick = callback;
+      return 1;
     });
-    // One new camera image for two render deadlines. C processes both,
-    // including the repeated image, at the independent presentation cadence.
-    for (let repeat = 0; repeat < 2; repeat++) {
-      now += 1000 / 60;
-      await act(async () => tick(now));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    const drawImage = vi.fn();
+    const captureFrame = vi.fn((_drawVideo?: boolean) => ({
+      data: new Uint8Array(4),
+      width: 1,
+      height: 1,
+    }));
+    const writeFrame = vi.fn(() => true);
+    convert.mockReturnValue("camera frame");
+    const cameraTrack = {
+      getCapabilities: () => ({ frameRate: { max: fps } }),
+      getSettings: () => ({ frameRate: fps }),
+    };
+    const hook = renderHook(() =>
+      useMirrorRenderLoop({
+        isWebcamRunning: true,
+        terminalDimensions: { cols: 80, rows: 30 },
+        captureFrame,
+        canvasRef: {
+          current: {
+            width: 1,
+            height: 1,
+            getContext: () => ({ drawImage }),
+          } as unknown as HTMLCanvasElement,
+        },
+        rendererRef: {
+          current: {
+            writeFrame,
+            getDimensions: () => ({ cols: 80, rows: 30 }),
+            clear: vi.fn(),
+            recreateRenderer: vi.fn(),
+          },
+        },
+        debugCountRef: { current: 0 },
+        firstFrameTimeRef: { current: null },
+        frameIntervalRef: { current: 1000 / fps },
+        streamRef: {
+          current: {
+            getVideoTracks: () => [cameraTrack],
+          } as unknown as MediaStream,
+        },
+      }),
+    );
+    const frames = Array.from({ length: 120 }, (_, index) => ({
+      timestamp: Math.round((index * 1e6) / fps),
+      close: vi.fn(),
+    }));
+    for (const frame of frames) {
+      await act(async () => {
+        controller!.enqueue(frame as unknown as VideoFrame);
+      });
+      // Idle host ticks between arrivals must not convert the same image twice.
+      for (let repeat = 0; repeat < 2; repeat++) {
+        now += 1000 / 60;
+        await act(async () => tick(now));
+      }
     }
-  }
-  now += 1000 / 60;
-  await act(async () => tick(now));
-  expect(drawImage).toHaveBeenCalledTimes(120);
-  expect(writeFrame).toHaveBeenCalledTimes(240);
-  expect(convert).toHaveBeenCalledTimes(240);
-  expect(
-    captureFrame.mock.calls.every(([drawVideo]) => drawVideo === false),
-  ).toBe(true);
-  expect(frames.every((frame) => frame.close.mock.calls.length === 1)).toBe(
-    true,
-  );
-  hook.unmount();
-  expect(cancel).toHaveBeenCalledOnce();
-});
+    now += 1000 / 60;
+    await act(async () => tick(now));
+    expect(drawImage).toHaveBeenCalledTimes(120);
+    expect(writeFrame).toHaveBeenCalledTimes(120);
+    expect(convert).toHaveBeenCalledTimes(120);
+    expect(
+      captureFrame.mock.calls.every(([drawVideo]) => drawVideo === false),
+    ).toBe(true);
+    expect(frames.every((frame) => frame.close.mock.calls.length === 1)).toBe(
+      true,
+    );
+    hook.unmount();
+    expect(cancel).toHaveBeenCalledOnce();
+  },
+);
 
 test("Mirror starts and replaces direct capture after script-driven track restoration", async () => {
   let tick: FrameRequestCallback = () => {};
@@ -261,3 +266,53 @@ for (const contentFit of [undefined, "cover"] as const) {
     });
   }
 }
+
+test("camera video callbacks also convert once per arrival when direct capture is unavailable", async () => {
+  vi.stubGlobal("MediaStreamTrackProcessor", undefined);
+  let tick!: FrameRequestCallback;
+  let delivered!: VideoFrameRequestCallback;
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+    tick = callback;
+    return 1;
+  });
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  const track = {
+    getSettings: () => ({ frameRate: 30 }),
+    getCapabilities: () => ({ frameRate: { max: 30 } }),
+  };
+  const video = {
+    srcObject: { getVideoTracks: () => [track] },
+    requestVideoFrameCallback: (callback: VideoFrameRequestCallback) => {
+      delivered = callback;
+      return 1;
+    },
+    cancelVideoFrameCallback: vi.fn(),
+  };
+  const writeFrame = vi.fn(() => true);
+  convert.mockReturnValue("identical camera output");
+  renderHook(() =>
+    useMirrorRenderLoop({
+      isWebcamRunning: true,
+      terminalDimensions: { cols: 80, rows: 24 },
+      captureFrame: () => ({ data: new Uint8Array(4), width: 1, height: 1 }),
+      cameraVideoRef: { current: video as unknown as HTMLVideoElement },
+      canvasRef: { current: null },
+      rendererRef: { current: { writeFrame } as never },
+      debugCountRef: { current: 0 },
+      firstFrameTimeRef: { current: null },
+      frameIntervalRef: { current: 1000 / 30 },
+      streamRef: { current: null },
+    }),
+  );
+  for (let frame = 0; frame < 10; frame++) {
+    await act(async () =>
+      delivered(performance.now(), {
+        mediaTime: frame / 30,
+      } as VideoFrameCallbackMetadata),
+    );
+    await act(async () => tick(performance.now() + 20));
+    await act(async () => tick(performance.now() + 40));
+  }
+  expect(convert).toHaveBeenCalledTimes(10);
+  expect(writeFrame).toHaveBeenCalledTimes(10);
+});

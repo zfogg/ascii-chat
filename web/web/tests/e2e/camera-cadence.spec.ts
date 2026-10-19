@@ -500,7 +500,7 @@ test("Discovery connect=true starts signaling without a click", async ({
   }
 });
 
-test("a 33 FPS camera delivery still produces 60 C frames at the configured maximum", async ({
+test("a 33 FPS camera aligns C FPS, conversion and presentation with actual capture", async ({
   page,
 }) => {
   await camera(page);
@@ -531,10 +531,22 @@ test("a 33 FPS camera delivery still produces 60 C frames at the configured maxi
   const fps =
     ((after.frames - before.frames) * 1000) / (after.now - before.now);
   console.log("33 FPS capture / C conversion", { fps });
-  expect(fps).toBeGreaterThanOrEqual(55);
+  expect(fps).toBeGreaterThanOrEqual(30);
+  expect(fps).toBeLessThanOrEqual(35);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (
+          window as unknown as {
+            asciiChatWasm: { _wasmModule: { _get_target_fps(): number } };
+          }
+        ).asciiChatWasm._wasmModule._get_target_fps(),
+      ),
+    )
+    .toBe(33);
   await expect(
     page.getByRole("slider", { name: "Frame rate", exact: true }),
-  ).toHaveValue("60");
+  ).toHaveValue("33");
 });
 
 test("Mirror completes delayed startup after a transient busy camera without a second click", async ({
