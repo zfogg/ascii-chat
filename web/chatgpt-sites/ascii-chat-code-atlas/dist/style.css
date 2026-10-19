@@ -459,6 +459,10 @@ footer button {
   overflow: auto;
   padding: 22px 19px;
 }
+.inspector:focus {
+  outline: 2px solid var(--lib);
+  outline-offset: -2px;
+}
 .inspector-label {
   display: flex;
   justify-content: space-between;
@@ -666,7 +670,7 @@ dialog p {
     font-size: 13px;
   }
   .app {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     height: auto;
     min-height: calc(100dvh - 58px);
   }
@@ -817,11 +821,22 @@ body.expanded #detail-close {
 
 @media (max-width: 760px) {
   body.expanded .app {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
+  body.inspect-open .inspector,
   body.expanded.inspect-open .inspector {
+    display: block;
+    position: fixed;
     top: 65px;
+    right: 12px;
     width: min(527px, 90vw);
+    max-height: calc(100dvh - 80px);
+    z-index: 20;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  body.inspect-open #detail-close {
+    display: block;
   }
 }
 .snippet.shiki code {

@@ -363,8 +363,8 @@ $("#detail-close").onclick = () =>
 $("#guide-notes").onclick = () => {
   if (focused) showGuide(view.id, activeChapter);
   else readGuide();
-  if (document.body.classList.contains("expanded"))
-    document.body.classList.add("inspect-open");
+  document.body.classList.add("inspect-open");
+  $(".inspector").focus({ preventScroll: true });
 };
 $("#plus").onclick = () => zoom(1.2);
 $("#minus").onclick = () => zoom(1 / 1.2);
