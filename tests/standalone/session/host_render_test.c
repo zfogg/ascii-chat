@@ -1,5 +1,10 @@
 /* Capability packets must affect the frames delivered by the discovery host. */
 #include "session/host.h"
+#include <ascii-chat/network/acip/listener.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/buffer.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/network/connection_factory.h>
 #include "session/protocol.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/rcu.h>
@@ -125,43 +130,38 @@ static void display_frame(void *context, const char *text, size_t size, int widt
 
 static void test_tcp_delivery(const image_t *image) {
   CHECK(socket_init() == ASCIICHAT_OK);
-  socket_t listener = socket_create("host_render_listener", AF_INET, SOCK_STREAM, 0);
-  CHECK(listener != INVALID_SOCKET_VALUE);
-  struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  CHECK(socket_bind(listener, (struct sockaddr *)&address, sizeof(address)) == 0);
-  CHECK(socket_listen(listener, 1) == 0);
-  socklen_t length = sizeof(address);
-  CHECK(socket_getsockname(listener, (struct sockaddr *)&address, &length) == 0);
-  socket_t peer = socket_create("host_render_peer", AF_INET, SOCK_STREAM, 0);
-  CHECK(peer != INVALID_SOCKET_VALUE);
-  CHECK(socket_connect(peer, (struct sockaddr *)&address, sizeof(address)) == 0);
-  socket_t accepted = socket_accept(listener, NULL, NULL, "host_render_accepted");
-  CHECK(accepted != INVALID_SOCKET_VALUE);
-  socket_close(listener);
-
+  acip_listener_t *listener = NULL;
+  CHECK(acip_listener_open("127.0.0.1", 0, 2, &listener) == ASCIICHAT_OK);
+  uint16_t port = acip_listener_port(listener);
+  acip_listener_t *conflicting = NULL;
+  CHECK(acip_listener_open("invalid-address", 0, 2, &conflicting) != ASCIICHAT_OK);
+  CHECK(!conflicting);
+  acip_transport_t *receiver = NULL;
+  CHECK(connection_factory_open("host_render_peer", "127.0.0.1", port, NULL, &receiver, NULL) == ASCIICHAT_OK);
+  acip_transport_t *accepted = NULL;
+  char address[64] = {0};
+  int peer_port = 0;
+  uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
+  while (!accepted && time_get_ns() < deadline) {
+    CHECK(acip_listener_accept(listener, &accepted, address, sizeof(address), &peer_port) == ASCIICHAT_OK);
+    platform_sleep_ms(1);
+  }
+  CHECK(accepted && strcmp(address, "127.0.0.1") == 0 && peer_port > 0);
   session_host_config_t config = {.max_clients = 2};
   session_host_t *host = session_host_create(&config);
   CHECK(host);
   uint32_t source = session_host_add_memory_participant(host);
   CHECK(source && session_host_inject_frame(host, source, image) == ASCIICHAT_OK);
-  uint32_t client = session_host_add_client(host, accepted, "127.0.0.1", 0);
+  uint32_t client = session_host_add_client(host, accepted, ACIP_TRANSPORT_OWNED, address, peer_port);
   CHECK(client);
   acip_transport_t *tcp = session_host_get_client_transport(host, client);
-  CHECK(tcp && acip_transport_get_socket(tcp) == accepted);
+  CHECK(tcp == accepted);
 
   sink_t sink = {0};
-  acip_transport_t *receiver = acip_tcp_transport_create("host_render_receiver", peer, NULL);
   CHECK(receiver);
   session_protocol_init(&sink.protocol, receiver,
                         (session_protocol_media_t){.on_frame = receive_frame, .context = &sink},
                         (acip_client_callbacks_t){0});
-  // Temporarily replacing a borrowed transport must preserve the TCP wrapper.
-  const acip_transport_methods_t methods = {.sendv = send_frame};
-  acip_transport_t alternate = {.methods = &methods, .impl_data = &sink};
-  CHECK(session_host_set_client_transport(host, client, &alternate) == ASCIICHAT_OK);
-  CHECK(session_host_set_client_transport(host, client, NULL) == ASCIICHAT_OK);
-  CHECK(session_host_get_client_transport(host, client) == tcp);
-
   terminal_capabilities_packet_t caps = capabilities(TERM_COLOR_NONE, PALETTE_CUSTOM, "TT");
   update(host, client, &caps);
   CHECK(render_tick(host) == ASCIICHAT_OK);
@@ -181,9 +181,140 @@ static void test_tcp_delivery(const image_t *image) {
   CHECK(session_host_get_client_transport(host, client) == NULL);
   session_host_destroy(host);
   acip_transport_destroy(receiver);
-  socket_close(peer);
+  acip_listener_destroy(listener);
   socket_cleanup();
   SAFE_FREE(sink.frame);
+}
+
+static asciichat_error_t accept_send(acip_transport_t *transport, const void *data, size_t length) {
+  (void)transport;
+  (void)data;
+  (void)length;
+  return ASCIICHAT_OK;
+}
+static asciichat_error_t reject_send(acip_transport_t *transport, const void *data, size_t length) {
+  (void)transport;
+  (void)data;
+  (void)length;
+  return ERROR_NETWORK;
+}
+static void count_destroy(acip_transport_t *transport) {
+  ++*(int *)transport->user_data;
+}
+static void test_transport_ownership(void) {
+  session_host_config_t config = {.max_clients = 1};
+  session_host_t *host = session_host_create(&config);
+  CHECK(host);
+  int destroyed = 0;
+  const acip_transport_methods_t good = {.send = accept_send, .destroy_impl = count_destroy};
+  const acip_transport_methods_t bad = {.send = reject_send, .destroy_impl = count_destroy};
+  acip_transport_t *original = SAFE_CALLOC(1, sizeof(*original), acip_transport_t *);
+  original->methods = &good;
+  original->user_data = &destroyed;
+  uint32_t id = session_host_add_client(host, original, ACIP_TRANSPORT_OWNED, "owned", 0);
+  CHECK(id);
+  CHECK(session_host_set_client_transport(host, id, original, ACIP_TRANSPORT_BORROWED) == ERROR_INVALID_STATE);
+  acip_transport_t *candidate = SAFE_CALLOC(1, sizeof(*candidate), acip_transport_t *);
+  candidate->methods = &bad;
+  candidate->user_data = &destroyed;
+  CHECK(session_host_set_client_transport(host, id, candidate, ACIP_TRANSPORT_OWNED) == ERROR_NETWORK);
+  CHECK(session_host_get_client_transport(host, id) == original && destroyed == 0);
+  acip_transport_destroy(candidate);
+  CHECK(destroyed == 1);
+  CHECK(session_host_set_client_transport(host, id, NULL, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  CHECK(!session_host_get_client_transport(host, id) && destroyed == 2);
+  session_host_destroy(host);
+  CHECK(destroyed == 2);
+}
+
+typedef struct {
+  acip_transport_t *transport;
+  asciichat_error_t result;
+  atomic_t entered;
+} receive_wait_t;
+static void *receive_wait(void *context) {
+  receive_wait_t *wait = context;
+  void *data = NULL, *allocation = NULL;
+  size_t size = 0;
+  atomic_store_bool(&wait->entered, true);
+  wait->result = acip_transport_recv(wait->transport, &data, &size, &allocation);
+  buffer_release(allocation);
+  return NULL;
+}
+static void test_listener_interrupt(void) {
+  CHECK(socket_init() == ASCIICHAT_OK);
+  acip_listener_t *listener = NULL;
+  CHECK(acip_listener_open("127.0.0.1", 0, 1, &listener) == ASCIICHAT_OK);
+  acip_transport_t *peer = NULL, *accepted = NULL;
+  CHECK(connection_factory_open("interrupt_peer", "127.0.0.1", acip_listener_port(listener), NULL, &peer, NULL) ==
+        ASCIICHAT_OK);
+  uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
+  while (!accepted && time_get_ns() < deadline) {
+    CHECK(acip_listener_accept(listener, &accepted, NULL, 0, NULL) == ASCIICHAT_OK);
+    platform_sleep_ms(1);
+  }
+  CHECK(accepted);
+  accepted->receive_timeout_ns = 5 * NS_PER_SEC_INT;
+  receive_wait_t wait = {.transport = accepted};
+  asciichat_thread_t thread;
+  CHECK(asciichat_thread_create(&thread, "accepted_receive", receive_wait, &wait) == ASCIICHAT_OK);
+  while (!atomic_load_bool(&wait.entered))
+    platform_sleep_ms(1);
+  acip_transport_interrupt(accepted);
+  CHECK(asciichat_thread_join_timeout(&thread, NULL, NS_PER_SEC_INT) == ASCIICHAT_OK);
+  CHECK(wait.result != ASCIICHAT_OK && !acip_transport_is_connected(accepted));
+  acip_transport_destroy(accepted);
+  CHECK(acip_listener_stop(listener) == ASCIICHAT_OK);
+  CHECK(acip_listener_stop(listener) == ASCIICHAT_OK);
+  acip_transport_destroy(peer);
+  acip_listener_destroy(listener);
+  socket_cleanup();
+}
+
+static void test_host_listener(void) {
+  CHECK(socket_init() == ASCIICHAT_OK);
+  session_host_config_t invalid = {.port = UINT16_MAX + 1};
+  session_host_t *invalid_host = session_host_create(&invalid);
+  CHECK(invalid_host && session_host_start(invalid_host) == ERROR_INVALID_PARAM);
+  session_host_destroy(invalid_host);
+  acip_listener_t *reservation = NULL;
+  CHECK(acip_listener_open("127.0.0.1", 0, 1, &reservation) == ASCIICHAT_OK);
+  uint16_t port = acip_listener_port(reservation);
+  acip_listener_destroy(reservation);
+  session_host_config_t config = {.port = port, .ipv4_address = "127.0.0.1", .max_clients = 1};
+  session_host_t *host = session_host_create(&config);
+  CHECK(host && session_host_start(host) == ASCIICHAT_OK);
+  acip_transport_t *peer = NULL;
+  CHECK(connection_factory_open("host_lifecycle_peer", "127.0.0.1", port, NULL, &peer, NULL) == ASCIICHAT_OK);
+  uint32_t id = 0;
+  uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
+  while (!session_host_get_client_ids(host, &id, 1) && time_get_ns() < deadline)
+    platform_sleep_ms(1);
+  CHECK(id);
+  CHECK(packet_send_via_transport(peer, PACKET_TYPE_PING, NULL, 0, 0) == ASCIICHAT_OK);
+  packet_type_t type = 0;
+  void *payload = NULL, *allocation = NULL;
+  size_t length = 0;
+  CHECK(packet_receive_via_transport(peer, &type, &payload, &length, &allocation) == ASCIICHAT_OK);
+  CHECK(type == PACKET_TYPE_PONG && length == 0);
+  buffer_release(allocation);
+  // An over-capacity peer is rejected through transport cleanup on the library loop.
+  acip_transport_t *excess = NULL;
+  CHECK(connection_factory_open("host_excess_peer", "127.0.0.1", port, NULL, &excess, NULL) == ASCIICHAT_OK);
+  CHECK(packet_receive_via_transport(excess, &type, &payload, &length, &allocation) != ASCIICHAT_OK);
+  buffer_release(allocation);
+  acip_transport_destroy(excess);
+  CHECK(packet_send_via_transport(peer, PACKET_TYPE_PING, NULL, 0, 0) == ASCIICHAT_OK);
+  CHECK(packet_receive_via_transport(peer, &type, &payload, &length, &allocation) == ASCIICHAT_OK);
+  CHECK(type == PACKET_TYPE_PONG);
+  buffer_release(allocation);
+  session_host_stop(host);
+  CHECK(!session_host_is_running(host));
+  CHECK(packet_receive_via_transport(peer, &type, &payload, &length, &allocation) != ASCIICHAT_OK);
+  buffer_release(allocation);
+  acip_transport_destroy(peer);
+  session_host_destroy(host);
+  socket_cleanup();
 }
 
 int main(void) {
@@ -210,9 +341,12 @@ int main(void) {
     session_protocol_init(&sinks[i].protocol, &transports[i],
                           (session_protocol_media_t){.on_frame = receive_frame, .context = &sinks[i]},
                           (acip_client_callbacks_t){0});
-    ids[i] = session_host_add_client(host, INVALID_SOCKET_VALUE, "test", 0);
+    ids[i] = session_host_add_client(host, NULL, ACIP_TRANSPORT_BORROWED, "test", 0);
     CHECK(ids[i]);
-    CHECK(session_host_set_client_transport(host, ids[i], &transports[i]) == ASCIICHAT_OK);
+    CHECK(session_host_set_client_transport(host, ids[i], &transports[i], ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+    CHECK(session_host_set_client_transport(host, ids[i], NULL, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+    CHECK(session_host_get_client_transport(host, ids[i]) == NULL);
+    CHECK(session_host_set_client_transport(host, ids[i], &transports[i], ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
   }
   display_t display = {
       .config = {.caps = {.color_level = TERM_COLOR_NONE}, .palette = "ZZ", .width = 40, .height = 12}};
@@ -308,6 +442,9 @@ int main(void) {
   CHECK(session_host_set_render_target(host, NULL) == ASCIICHAT_OK);
   session_host_destroy(host);
   test_tcp_delivery(image);
+  test_transport_ownership();
+  test_host_listener();
+  test_listener_interrupt();
   image_destroy(image);
   options_state_destroy();
   log_info("PASS: per-recipient color, palettes, filters, live updates, and rejected runtime transactions");

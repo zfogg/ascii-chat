@@ -737,7 +737,8 @@ client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport
   // Register client with session_host (for discovery mode support)
   // transport clients use INVALID_SOCKET_VALUE since they don't have a TCP socket
   if (server_ctx->session_host) {
-    client->session_client_id = session_host_add_client(server_ctx->session_host, INVALID_SOCKET_VALUE, client_ip, 0);
+    client->session_client_id =
+        session_host_add_client(server_ctx->session_host, NULL, ACIP_TRANSPORT_BORROWED, client_ip, 0);
     if (client->session_client_id == 0) {
       log_warn("Failed to register transport client %s with session_host", new_client_id);
     } else {

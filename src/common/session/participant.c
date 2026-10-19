@@ -18,14 +18,13 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/network.h>
 #include <ascii-chat/log/log.h>
 #include "session/capture.h"
 #include "session/audio.h"
 #include "session/av_state.h"
 #include <ascii-chat/network/acip/client.h>
+#include <ascii-chat/network/connection_factory.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/transport.h>
@@ -77,7 +76,7 @@ typedef struct session_participant {
   struct acip_transport *transport;
 
   /** @brief Responsibility for releasing the selected transport. */
-  session_transport_ownership_t transport_ownership;
+  acip_transport_ownership_t transport_ownership;
 
   /** @brief Currently connected */
   bool connected;
@@ -216,52 +215,6 @@ void session_participant_destroy(session_participant_t *p) {
  * Session Participant Connection Functions
  * ============================================================================ */
 
-/**
- * @brief Establish TCP connection to server
- * @return Socket on success, INVALID_SOCKET_VALUE on failure
- */
-static socket_t connect_to_server(const char *address, int port) {
-  struct addrinfo hints, *result = NULL, *rp = NULL;
-  char port_str[16];
-
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET; // IPv4
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_protocol = IPPROTO_TCP;
-
-  safe_snprintf(port_str, sizeof(port_str), "%d", port);
-
-  int s = getaddrinfo(address, port_str, &hints, &result);
-  if (s != 0) {
-    SET_ERRNO(ERROR_NETWORK, "getaddrinfo failed: %s", gai_strerror(s));
-    return INVALID_SOCKET_VALUE;
-  }
-
-  socket_t sock = INVALID_SOCKET_VALUE;
-  for (rp = result; rp != NULL; rp = rp->ai_next) {
-    sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-    if (sock == INVALID_SOCKET_VALUE) {
-      continue;
-    }
-
-    if (connect(sock, rp->ai_addr, (int)rp->ai_addrlen) == 0) {
-      break; // Success
-    }
-
-    socket_close(sock);
-    sock = INVALID_SOCKET_VALUE;
-  }
-
-  freeaddrinfo(result);
-
-  if (sock == INVALID_SOCKET_VALUE) {
-    SET_ERRNO_SYS(ERROR_NETWORK_CONNECT, "Failed to connect to %s:%d", address, port);
-    return INVALID_SOCKET_VALUE;
-  }
-
-  return sock;
-}
-
 asciichat_error_t session_participant_connect(session_participant_t *p) {
   log_debug("p=%p", p);
 
@@ -276,36 +229,25 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
     log_debug("already connected, returning OK");
     return ASCIICHAT_OK; // Already connected
   }
+  if (p->port > UINT16_MAX)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Participant port is outside the transport endpoint range");
 
   session_participant_disconnect(p);
   if (p->video_thread_created || p->audio_thread_created)
-    return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before reconnecting TCP");
+    return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before reconnecting");
 
   participant_connection_init(p);
 
-  // Create TCP connection to server
-  log_debug("calling connect_to_server(%s, %d)", p->address, p->port);
-  socket_t socket = connect_to_server(p->address, p->port);
-  log_debug("connect_to_server returned socket=%d (INVALID=%d)", socket, INVALID_SOCKET_VALUE);
-
-  if (socket == INVALID_SOCKET_VALUE) {
-    log_error("Failed to connect to server at %s:%d", p->address, p->port);
-    if (p->callbacks.on_error) {
-      p->callbacks.on_error(p, ERROR_NETWORK_CONNECT, "Failed to connect to server", p->user_data);
-    }
-    return SET_ERRNO(ERROR_NETWORK_CONNECT, "Session participant could not connect to server");
-  }
-
-  asciichat_errno_scope_t checkpoint = asciichat_errno_checkpoint();
-  acip_transport_t *transport = acip_tcp_transport_create_owned("session_participant_tcp", socket, NULL);
-  if (!transport) {
-    asciichat_error_context_t cause;
-    asciichat_error_t error = asciichat_errno_peek_since(checkpoint, &cause) ? cause.code : ERROR_NETWORK_CONNECT;
-    socket_close(socket);
-    return SET_ERRNO(error, "Failed to create participant TCP transport");
+  acip_transport_t *transport = NULL;
+  asciichat_error_t result =
+      connection_factory_open("session_participant", p->address, p->port, NULL, &transport, NULL);
+  if (result != ASCIICHAT_OK) {
+    if (p->callbacks.on_error)
+      p->callbacks.on_error(p, result, "Failed to connect to server", p->user_data);
+    return result;
   }
   p->transport = transport;
-  p->transport_ownership = SESSION_TRANSPORT_OWNED;
+  p->transport_ownership = ACIP_TRANSPORT_OWNED;
 
   mutex_lock(&p->settings_mutex);
   p->settings_request = 0;
@@ -316,7 +258,7 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   p->connected = true;
   p->client_id = 0; // Will be assigned by server
 
-  log_info("Connected to server at %s:%d (socket=%d)", p->address, p->port, socket);
+  log_info("Connected to server at %s:%d", p->address, p->port);
 
   // Invoke callback
   if (p->callbacks.on_connected) {
@@ -359,10 +301,10 @@ static asciichat_error_t participant_join(void *context) {
 
 static void participant_release(void *context) {
   session_participant_t *p = context;
-  if (p->transport && p->transport_ownership == SESSION_TRANSPORT_OWNED)
+  if (p->transport && p->transport_ownership == ACIP_TRANSPORT_OWNED)
     acip_transport_destroy(p->transport);
   p->transport = NULL;
-  p->transport_ownership = SESSION_TRANSPORT_BORROWED;
+  p->transport_ownership = ACIP_TRANSPORT_BORROWED;
   p->connected = false;
   p->client_id = 0;
 }
@@ -379,13 +321,6 @@ uint32_t session_participant_get_client_id(session_participant_t *p) {
     return 0;
   }
   return p->client_id;
-}
-
-socket_t session_participant_get_socket(session_participant_t *p) {
-  if (!p || !p->initialized) {
-    return INVALID_SOCKET_VALUE;
-  }
-  return acip_transport_get_socket(p->transport);
 }
 
 /* ============================================================================
@@ -718,7 +653,7 @@ void session_participant_stop_audio(session_participant_t *p) {
  * ============================================================================ */
 
 asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport,
-                                                    session_transport_ownership_t ownership) {
+                                                    acip_transport_ownership_t ownership) {
   if (!p || !p->initialized) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Participant is NULL or not initialized");
   }
@@ -729,7 +664,7 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
 
   log_info("Setting transport=%p (was=%p)", transport, p->transport);
 
-  if (ownership != SESSION_TRANSPORT_BORROWED && ownership != SESSION_TRANSPORT_OWNED)
+  if (ownership != ACIP_TRANSPORT_BORROWED && ownership != ACIP_TRANSPORT_OWNED)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport ownership");
   if (transport == p->transport) {
     if (transport && ownership != p->transport_ownership)
@@ -745,7 +680,7 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
   p->settings_request = 0;
   p->settings.version = 0;
   mutex_unlock(&p->settings_mutex);
-  p->transport_ownership = transport ? ownership : SESSION_TRANSPORT_BORROWED;
+  p->transport_ownership = transport ? ownership : ACIP_TRANSPORT_BORROWED;
   if (transport) {
     result = session_connection_start(&p->connection);
     if (result != ASCIICHAT_OK)
@@ -757,7 +692,7 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
 }
 
 asciichat_error_t session_participant_take_transport(session_participant_t *p, acip_transport_t **transport,
-                                                     session_transport_ownership_t *ownership) {
+                                                     acip_transport_ownership_t *ownership) {
   if (!p || !p->initialized || !transport || !ownership)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport transfer parameters");
   if (session_av_state_should_run(&p->video) || session_av_state_should_run(&p->audio) || p->video_thread_created ||
@@ -766,7 +701,7 @@ asciichat_error_t session_participant_take_transport(session_participant_t *p, a
   *transport = p->transport;
   *ownership = p->transport_ownership;
   p->transport = NULL;
-  p->transport_ownership = SESSION_TRANSPORT_BORROWED;
+  p->transport_ownership = ACIP_TRANSPORT_BORROWED;
   p->connected = false;
   return ASCIICHAT_OK;
 }

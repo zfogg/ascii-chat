@@ -61,11 +61,13 @@ static asciichat_error_t connection_factory_open_tcp(const char *name, const con
     return SET_ERRNO(ERROR_NETWORK_CONNECT, "Failed to connect to TCP endpoint");
   }
 
-  acip_transport_t *transport = acip_tcp_transport_create(name, sockfd, crypto_ctx);
+  asciichat_errno_scope_t checkpoint = asciichat_errno_checkpoint();
+  acip_transport_t *transport = acip_tcp_transport_create_owned(name, sockfd, crypto_ctx);
   if (!transport) {
-    log_error("Failed to create TCP transport for %s:%u", endpoint->host, endpoint->port);
+    asciichat_error_context_t cause;
+    asciichat_error_t error = asciichat_errno_peek_since(checkpoint, &cause) ? cause.code : ERROR_NETWORK;
     socket_close(sockfd);
-    return SET_ERRNO(ERROR_NETWORK, "Failed to create TCP transport");
+    return SET_ERRNO(error, "Failed to create TCP transport for %s:%u", endpoint->host, endpoint->port);
   }
 
   *transport_out = transport;

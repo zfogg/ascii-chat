@@ -140,7 +140,7 @@ static void test_participant_settings(void) {
       .width = 80, .height = 24, .color_mode = TERM_COLOR_TRUECOLOR, .palette_type = PALETTE_STANDARD, .fps = 30};
   CHECK(session_participant_request_settings(participant, &requested) == ERROR_INVALID_STATE);
   CLEAR_ERRNO();
-  CHECK(session_participant_set_transport(participant, &transport, SESSION_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  CHECK(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
   CHECK(session_participant_request_settings(participant, &requested) == ASCIICHAT_OK);
   CHECK(test.host.width == 80 && test.callbacks == 0);
   CHECK(session_participant_receive_settings(participant, test.reply, test.reply_length) == ASCIICHAT_OK);
@@ -151,14 +151,14 @@ static void test_participant_settings(void) {
   CHECK(session_participant_request_settings(participant, &requested) == ASCIICHAT_OK);
   CHECK(session_participant_receive_settings(participant, test.reply, test.reply_length) == ASCIICHAT_OK);
   CHECK(test.host.width == 55 && test.callbacks == 2 && !strcmp(test.host.palette, " .+#"));
-  CHECK(session_participant_set_transport(participant, NULL, SESSION_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  CHECK(session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
   memset(&test.host, 0, sizeof(test.host));
-  CHECK(session_participant_set_transport(participant, &transport, SESSION_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  CHECK(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
   requested.width = 70;
   CHECK(session_participant_request_settings(participant, &requested) == ASCIICHAT_OK);
   CHECK(session_participant_receive_settings(participant, test.reply, test.reply_length) == ASCIICHAT_OK);
   CHECK(test.callbacks == 3 && test.host.width == 70);
-  CHECK(session_participant_set_transport(participant, NULL, SESSION_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  CHECK(session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
   session_participant_destroy(participant);
 }
 

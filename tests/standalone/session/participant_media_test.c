@@ -123,6 +123,8 @@ static acip_transport_t *test_tcp_transport_create_owned(const char *name, socke
   return acip_tcp_transport_create_owned(name, socket, crypto);
 }
 #define acip_tcp_transport_create_owned test_tcp_transport_create_owned
+#define connection_factory_open test_connection_factory_open
+#include "../../../lib/network/connection_factory.c"
 #define session_capture_create test_capture_create
 #define session_capture_destroy test_capture_destroy
 #define session_capture_read_frame test_read_frame
@@ -172,6 +174,7 @@ static void *destroy_from_foreign_thread(void *context) {
 }
 
 int main(void) {
+  log_init(NULL, LOG_ERROR, false, false);
   log_set_terminal_output(true);
   CHECK(socket_init() == ASCIICHAT_OK);
   options_t options = options_t_new();
@@ -184,7 +187,7 @@ int main(void) {
   session_participant_config_t config = {.enable_video = true, .enable_audio = true};
   // Refusing cleanup on another thread must retain even a workerless owner.
   session_participant_t *retained = session_participant_create(&config);
-  CHECK(session_participant_set_transport(retained, &transport, SESSION_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  CHECK(session_participant_set_transport(retained, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
   asciichat_thread_t foreign;
   CHECK(asciichat_thread_create(&foreign, "foreign_destroy", destroy_from_foreign_thread, retained) == ASCIICHAT_OK);
   CHECK(asciichat_thread_join(&foreign, NULL) == ASCIICHAT_OK);
@@ -198,7 +201,7 @@ int main(void) {
     session_participant_t *p = session_participant_create(&config);
     CHECK(p);
     CHECK(session_participant_start_video(p) == ERROR_INVALID_STATE);
-    CHECK(session_participant_set_transport(p, &transport, SESSION_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+    CHECK(session_participant_set_transport(p, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
     asciichat_error_t error = fail_stage <= 2 ? session_participant_start_video(p) : session_participant_start_audio(p);
     CHECK(error == (fail_stage == 1 || fail_stage == 3 || fail_stage == 5 ? ERROR_MEMORY
                     : fail_stage == 2 || fail_stage == 6                  ? ERROR_THREAD
@@ -213,17 +216,17 @@ int main(void) {
   fail_stage = 0;
   for (int cycle = 0; cycle < 20; cycle++) {
     session_participant_t *p = session_participant_create(&config);
-    CHECK(session_participant_set_transport(p, &transport, SESSION_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+    CHECK(session_participant_set_transport(p, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
     CHECK(session_participant_start_video(p) == ASCIICHAT_OK);
     CHECK(session_participant_start_video(p) == ASCIICHAT_OK);
     CHECK(session_participant_start_audio(p) == ASCIICHAT_OK);
     CHECK(session_participant_start_audio(p) == ASCIICHAT_OK);
     CHECK(workers == 2 && session_participant_is_video_active(p) && session_participant_is_audio_active(p));
-    CHECK(session_participant_set_transport(p, NULL, SESSION_TRANSPORT_BORROWED) == ERROR_INVALID_STATE);
+    CHECK(session_participant_set_transport(p, NULL, ACIP_TRANSPORT_BORROWED) == ERROR_INVALID_STATE);
     acip_transport_t *unchanged = &transport;
-    session_transport_ownership_t unchanged_ownership = SESSION_TRANSPORT_OWNED;
+    acip_transport_ownership_t unchanged_ownership = ACIP_TRANSPORT_OWNED;
     CHECK(session_participant_take_transport(p, &unchanged, &unchanged_ownership) == ERROR_INVALID_STATE);
-    CHECK(unchanged == &transport && unchanged_ownership == SESSION_TRANSPORT_OWNED);
+    CHECK(unchanged == &transport && unchanged_ownership == ACIP_TRANSPORT_OWNED);
     int before = atomic_load_int(&packets);
     for (int i = 0; i < 200 && atomic_load_int(&packets) < before + 4; i++)
       platform_sleep_ms(1);
@@ -256,7 +259,7 @@ int main(void) {
   acip_transport_t *owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
   methods.destroy_impl = destroy_transport_impl;
   owned->methods = &methods;
-  CHECK(session_participant_set_transport(session->participant_ctx, owned, SESSION_TRANSPORT_OWNED) == ASCIICHAT_OK);
+  CHECK(session_participant_set_transport(session->participant_ctx, owned, ACIP_TRANSPORT_OWNED) == ASCIICHAT_OK);
   CHECK(session_participant_start_video(session->participant_ctx) == ASCIICHAT_OK);
   CHECK(session_participant_start_audio(session->participant_ctx) == ASCIICHAT_OK);
   fail_join = true;
@@ -274,7 +277,7 @@ int main(void) {
   session->participant_ctx = session_participant_create(&config);
   owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
   owned->methods = &methods;
-  CHECK(session_participant_set_transport(session->participant_ctx, owned, SESSION_TRANSPORT_OWNED) == ASCIICHAT_OK);
+  CHECK(session_participant_set_transport(session->participant_ctx, owned, ACIP_TRANSPORT_OWNED) == ASCIICHAT_OK);
   CHECK(session_participant_start_video(session->participant_ctx) == ASCIICHAT_OK);
   CHECK(session_participant_start_audio(session->participant_ctx) == ASCIICHAT_OK);
   // The same release operation is used before WebRTC recovery and host migration.
@@ -288,6 +291,11 @@ int main(void) {
   CHECK(transports_destroyed == 2);
   clean();
   // A real TCP connection uses the same ACIP media send path as borrowed transports.
+  config.port = UINT16_MAX + 1;
+  session_participant_t *invalid_port = session_participant_create(&config);
+  CHECK(invalid_port && session_participant_connect(invalid_port) == ERROR_INVALID_PARAM);
+  CHECK(!session_participant_has_transport(invalid_port));
+  session_participant_destroy(invalid_port);
   socket_t listener = socket_create("participant-test-listener", AF_INET, SOCK_STREAM, 0);
   CHECK(listener != INVALID_SOCKET_VALUE);
   struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
@@ -302,7 +310,7 @@ int main(void) {
   CHECK(session_participant_connect(tcp_participant) == ERROR_MEMORY);
   CHECK(!session_participant_is_connected(tcp_participant));
   CHECK(!session_participant_has_transport(tcp_participant));
-  CHECK(session_participant_get_socket(tcp_participant) == INVALID_SOCKET_VALUE);
+  CHECK(session_participant_get_transport(tcp_participant) == NULL);
   socket_t rejected = socket_accept(listener, NULL, NULL, "rejected-wrapper");
   CHECK(rejected != INVALID_SOCKET_VALUE);
   socket_close(rejected);
@@ -315,12 +323,12 @@ int main(void) {
     CHECK(session_participant_connect(tcp_participant) == ASCIICHAT_OK);
     CHECK(session_participant_get_transport(tcp_participant) == tcp);
     acip_transport_t *taken = NULL;
-    session_transport_ownership_t ownership = SESSION_TRANSPORT_BORROWED;
+    acip_transport_ownership_t ownership = ACIP_TRANSPORT_BORROWED;
     CHECK(session_participant_take_transport(tcp_participant, &taken, &ownership) == ASCIICHAT_OK);
-    CHECK(taken == tcp && ownership == SESSION_TRANSPORT_OWNED);
+    CHECK(taken == tcp && ownership == ACIP_TRANSPORT_OWNED);
     CHECK(!session_participant_has_transport(tcp_participant));
-    CHECK(session_participant_set_transport(tcp_participant, &transport, SESSION_TRANSPORT_BORROWED) == ASCIICHAT_OK);
-    CHECK(session_participant_set_transport(tcp_participant, NULL, SESSION_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+    CHECK(session_participant_set_transport(tcp_participant, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+    CHECK(session_participant_set_transport(tcp_participant, NULL, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
     CHECK(!session_participant_has_transport(tcp_participant));
     CHECK(session_participant_set_transport(tcp_participant, taken, ownership) == ASCIICHAT_OK);
     socket_t peer = socket_accept(listener, NULL, NULL, "participant-test-peer");
@@ -361,7 +369,7 @@ int main(void) {
     CHECK(atomic_load_int(&audio_packets) > audio_before_switch);
     CHECK(cycle == 1 || atomic_load_int(&video_packets) > video_before_switch);
     CHECK(session->host_control_transport == tcp);
-    CHECK(session->host_control_ownership == SESSION_TRANSPORT_OWNED);
+    CHECK(session->host_control_ownership == ACIP_TRANSPORT_OWNED);
     CHECK(session_participant_get_transport(tcp_participant) == owned);
     int destroyed_before_release = transports_destroyed;
     CHECK(release_participant_transport(session) == ASCIICHAT_OK);
@@ -372,7 +380,7 @@ int main(void) {
       session->participant_ctx = NULL;
       session_participant_disconnect(tcp_participant);
       CHECK(!session_participant_has_transport(tcp_participant));
-      CHECK(session_participant_get_socket(tcp_participant) == INVALID_SOCKET_VALUE);
+      CHECK(session_participant_get_transport(tcp_participant) == NULL);
     }
     discovery_session_destroy(session);
     session = NULL;
