@@ -130,3 +130,53 @@ describe("browser host peer isolation", () => {
     }
   });
 });
+
+it("stops an established host when signaling reconnects", async () => {
+  const host = new BrowserHostSession({
+    signalingUrl: "ws://localhost",
+    sessionName: "",
+    password: "",
+    stunServers: [],
+    turnServers: [],
+  });
+  const ready = host.connect();
+  harness.packet({ type: 1 }, new Uint8Array());
+  await ready;
+  harness.state(ConnectionState.CONNECTING);
+  expect(host.getState()).toBe(ConnectionState.ERROR);
+});
+
+it("rejects invalid ICE settings before publishing an invitation", async () => {
+  const onCreated = vi.fn();
+  const host = new BrowserHostSession({
+    signalingUrl: "ws://localhost",
+    sessionName: "",
+    password: "",
+    stunServers: [],
+    turnServers: [],
+    iceTransportPolicy: "relay",
+    onCreated,
+  });
+  const ready = host.connect();
+  harness.packet({ type: 1 }, new Uint8Array());
+  await expect(ready).rejects.toThrow("Relay only");
+  expect(onCreated).not.toHaveBeenCalled();
+  expect(host.getState()).toBe(ConnectionState.ERROR);
+});
+
+it("stops obsolete hosting when another participant commits", async () => {
+  const host = new BrowserHostSession({
+    signalingUrl: "ws://localhost",
+    sessionName: "",
+    password: "",
+    stunServers: [],
+    turnServers: [],
+  });
+  const ready = host.connect();
+  harness.packet({ type: 1 }, new Uint8Array());
+  await ready;
+  const handoff = Reflect.get(host, "handoff");
+  Reflect.get(handoff, "commit")(new Uint8Array(16).fill(1));
+  expect(host.getState()).toBe(ConnectionState.ERROR);
+  expect(harness.disconnected).toHaveBeenCalled();
+});

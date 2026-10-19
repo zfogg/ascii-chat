@@ -75,6 +75,7 @@ static void test_transactions(void) {
   CHECK(options_set_bool("fft", true) == ASCIICHAT_OK && snapshot->revision == options_revision());
   SAFE_FREE(snapshot);
   before = options_revision();
+  CHECK(options_retired_snapshot_count() > 0);
   options_state_destroy();
   CHECK(options_state_init() == ASCIICHAT_OK && options_revision() > before);
   patch.expected_revision = before;
@@ -131,6 +132,7 @@ int main(void) {
   test_transactions();
   test_remote();
   options_state_destroy();
+  CHECK(options_retired_snapshot_count() == 0);
   log_set_terminal_output(true);
   log_warn("PASS: atomic patches, concurrent toggles, stale revisions, snapshot lifetimes, scoped remote settings and "
            "rejection rollback");

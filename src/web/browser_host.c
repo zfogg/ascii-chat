@@ -42,7 +42,9 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_create(void) {
   browser_host_destroy();
   session_host_config_t config = {.max_clients = PARTICIPANT_LIMIT};
   host = session_host_create(&config);
-  return host ? ASCIICHAT_OK : ERROR_MEMORY;
+  if (!host)
+    return ERROR_MEMORY;
+  return session_host_render_audio(host);
 }
 EMSCRIPTEN_KEEPALIVE uint32_t browser_host_add_client(void) {
   if (!host)
@@ -82,4 +84,7 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_receive(uint32_t id, uint32_
 }
 EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_render(void) {
   return session_host_render_video(host);
+}
+EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_render_audio(void) {
+  return session_host_render_audio(host);
 }

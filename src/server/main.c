@@ -239,14 +239,6 @@ rate_limiter_t *g_rate_limiter = NULL;
  */
 static time_t g_server_start_time = 0;
 
-/**
- * @brief Last status screen update time
- *
- * Tracks when status was last displayed to avoid excessive updates.
- * Used by status screen thread to track frame timing.
- */
-static uint64_t g_last_status_update = 0; // Microseconds from platform_get_monotonic_time_us()
-
 // Status screen thread, keyboard thread, and SPSC queue are now owned by session_server_like.
 
 /**
@@ -1960,9 +1952,8 @@ static asciichat_error_t server_init_fn(void *user_data) {
   SAFE_STRNCPY(g_session_string, startup.session_string, sizeof(g_session_string));
   g_session_is_mdns_only = startup.mdns_only;
 
-  // Initialize status screen timestamps
+  // Initialize the status screen uptime
   g_server_start_time = time(NULL);
-  g_last_status_update = platform_get_monotonic_time_us();
 
   stats_runtime_set_provider(server_stats_provider, NULL);
   log_debug("Server init_fn complete");

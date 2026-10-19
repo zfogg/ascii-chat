@@ -1,5 +1,6 @@
 """Download a moving-face test clip and compose repeatable acquisition/loss scenarios."""
 import argparse
+import hashlib
 import pathlib
 import subprocess
 import urllib.request
@@ -10,9 +11,11 @@ args = parser.parse_args()
 output = pathlib.Path(args.output)
 output.mkdir(parents=True, exist_ok=True)
 source = output / "faceocc2.webm"
-url = "https://raw.githubusercontent.com/opencv/opencv_extra/5.x/testdata/cv/tracking/faceocc2/data/faceocc2.webm"
+url = "https://raw.githubusercontent.com/opencv/opencv_extra/cb09893cc0d1147787b254597cb78c5ae854185a/testdata/cv/tracking/faceocc2/data/faceocc2.webm"
 if not source.exists():
     urllib.request.urlretrieve(url, source)
+if hashlib.sha256(source.read_bytes()).hexdigest() != "5ffedeca4fb3acfd65e6f6aa71f016f748628727be1e24914fde2198b42089c5":
+    raise SystemExit("Face Follow source checksum mismatch: remove the cached clip and retry.")
 filters = (
     "[0:v]trim=duration=4,loop=loop=-1:size=100:start=0,setpts=N/(25*TB),split=2[a][b];[a]scale=240:180[face];[b]scale=280:210[other];"
     "[1:v][face]overlay=x='75+55*sin(t)':y=80:enable='lt(t,9)+gte(t,13)'[one];"

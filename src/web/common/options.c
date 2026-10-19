@@ -20,6 +20,9 @@
 EMSCRIPTEN_KEEPALIVE double wasm_options_revision(void) {
   return (double)options_revision();
 }
+EMSCRIPTEN_KEEPALIVE double wasm_options_retired_count(void) {
+  return (double)options_retired_snapshot_count();
+}
 EMSCRIPTEN_KEEPALIVE asciichat_error_t wasm_options_patch(const char *json, double expected_revision) {
   return options_apply_json(json, json ? strlen(json) : 0,
                             expected_revision < 0 ? OPTIONS_REVISION_ANY : (uint64_t)expected_revision,

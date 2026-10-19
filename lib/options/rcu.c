@@ -294,6 +294,7 @@ typedef struct retired_options {
   struct retired_options *next;
 } retired_options_t;
 static retired_options_t *g_retired;
+static size_t g_retired_count;
 static mutex_t g_deferred_free_mutex;
 static uint64_t g_revision;
 static options_origin_t g_origin;
@@ -306,13 +307,24 @@ static void deferred_free_add(options_t *old_opts) {
   mutex_lock(&g_deferred_free_mutex);
   node->next = g_retired;
   g_retired = node;
+  ++g_retired_count;
   mutex_unlock(&g_deferred_free_mutex);
+}
+
+size_t options_retired_snapshot_count(void) {
+  if (!lifecycle_is_initialized(&g_options_lifecycle))
+    return 0;
+  mutex_lock(&g_deferred_free_mutex);
+  size_t count = g_retired_count;
+  mutex_unlock(&g_deferred_free_mutex);
+  return count;
 }
 
 static void deferred_free_all(void) {
   while (g_retired) {
     retired_options_t *node = g_retired;
     g_retired = node->next;
+    --g_retired_count;
     SAFE_FREE(node->value);
     SAFE_FREE(node);
   }

@@ -101,6 +101,7 @@ export class BrowserHostSession implements ClientSession {
           this.fail(error);
         }
       } else if (
+        (requested && state === ConnectionState.CONNECTING) ||
         state === ConnectionState.ERROR ||
         state === ConnectionState.DISCONNECTED
       ) {
@@ -129,6 +130,10 @@ export class BrowserHostSession implements ClientSession {
     const host = new BrowserHostSession(options);
     host.signaling = signaling;
     host.joined = joined;
+    signaling.onStateChange((state) => {
+      if (!host.closed && state !== ConnectionState.CONNECTED)
+        host.fail(new Error("Discovery connection closed."));
+    });
     signaling.onPacketReceived((packet, payload) => {
       host.queue = host.queue
         .then(() => host.signal(packet.type, payload))
@@ -138,6 +143,7 @@ export class BrowserHostSession implements ClientSession {
     return host;
   }
   private async startHosting(): Promise<void> {
+    discoveryRTCConfiguration(this.options, this.joined!);
     this.runtime = new BrowserHostRuntime(
       (id, bytes) => {
         // Deliver after C releases its host/client locks.
@@ -196,7 +202,14 @@ export class BrowserHostSession implements ClientSession {
     this.handoff = new HandoffProtocol(
       this.joined!,
       (type, payload) => this.signaling.sendPacket(type, payload),
-      () => {},
+      (id) => {
+        if (!id.every((value, i) => value === this.joined!.participantId[i]))
+          this.fail(
+            new Error(
+              "Another participant has taken over hosting. Rejoin the session.",
+            ),
+          );
+      },
       this.options.onProgress,
     );
   }

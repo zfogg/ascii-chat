@@ -114,6 +114,8 @@ void face_follow_observe(face_follow_state_t *state, const face_follow_detection
 
 void face_follow_tick(face_follow_state_t *state, double now, bool enabled) {
   if (!state->initialized) {
+    if (enabled && state->tracking && now - state->last_seen <= 0.7)
+      state->crop = state->target;
     state->last_tick = now;
     state->initialized = true;
   }

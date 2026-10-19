@@ -53,6 +53,7 @@ import {
 } from "../wasm/client";
 import {
   adoptMirrorWasmModule,
+  getMirrorModule,
   resetAdoptedMirrorWasmModule,
   convertFrameToAscii,
   renderAudioVisualization,
@@ -673,6 +674,10 @@ export function ClientPage({
     [stopWebcam, suspendFile],
   );
 
+  useEffect(() => {
+    getMirrorModule()?._wasm_ui_audio(Number(audioEnabled || micEnabled));
+  }, [audioEnabled, micEnabled, connectionState, rendererReady]);
+
   const closeAudio = useCallback(() => {
     audioRef.current?.close();
     audioRef.current = null;
@@ -774,6 +779,8 @@ export function ClientPage({
             }
           },
         });
+      const ui = getMirrorModule();
+      if (ui) audioRef.current.setVolume(ui._wasm_ui_volume());
       if (speakers) await audioRef.current.enablePlayback();
       const client = clientRef.current;
       if (!client) throw new Error("Connect before starting the audio stream");

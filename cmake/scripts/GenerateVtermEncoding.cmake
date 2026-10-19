@@ -1,2 +1,3 @@
-execute_process(COMMAND "${PERL}" -CSD "${GENERATOR}" "${INPUT}"
+execute_process(COMMAND "${CMAKE_COMMAND}" -E env "LC_ALL=C" "LANG=C"
+    "${PERL}" -CSD "${GENERATOR}" "${INPUT}"
     OUTPUT_FILE "${OUTPUT}" COMMAND_ERROR_IS_FATAL ANY)

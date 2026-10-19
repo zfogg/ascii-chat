@@ -543,3 +543,6 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
                                               const void *data, size_t len);
 /** Run one shared host video cycle without starting a thread. */
 asciichat_error_t session_host_render_video(session_host_t *host);
+
+/** Mix and distribute one 20 ms audio frame without starting a thread. */
+asciichat_error_t session_host_render_audio(session_host_t *host);

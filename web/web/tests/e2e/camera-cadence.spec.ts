@@ -366,6 +366,10 @@ test("two camera clients upload at 60 FPS and preserve fresh received content", 
     expect(
       ((restartAfter.uploaded - restartBefore.uploaded) * 1000) /
         (restartAfter.now - restartBefore.now),
+    ).toBeGreaterThan(17);
+    expect(
+      ((restartAfter.uploaded - restartBefore.uploaded) * 1000) /
+        (restartAfter.now - restartBefore.now),
     ).toBeLessThan(23);
   } finally {
     await second.close();

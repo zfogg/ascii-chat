@@ -28,7 +28,9 @@ typedef struct {
 } thread_wrapper_t;
 
 // Global to hold exception info from filter
+#ifndef NDEBUG
 static EXCEPTION_POINTERS *g_exception_pointers = NULL;
+#endif
 
 // Global symbol initialization for thread exception handling (separate from system.c)
 static BOOL g_thread_symbols_initialized = FALSE;
@@ -368,7 +370,11 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
 // Exception filter that captures exception information
 static LONG WINAPI exception_filter(EXCEPTION_POINTERS *exception_info) {
   // Store the exception info for use in the handler
+#ifndef NDEBUG
   g_exception_pointers = exception_info;
+#else
+  (void)exception_info;
+#endif
 
   // Return EXCEPTION_EXECUTE_HANDLER to handle the exception
   return EXCEPTION_EXECUTE_HANDLER;
