@@ -56,7 +56,11 @@ for (const fps of [30, 60]) {
     });
     expect(getUserMedia).toHaveBeenCalledWith(
       expect.objectContaining({
-        video: expect.objectContaining({ frameRate: { ideal: 60 } }),
+        video: expect.objectContaining({
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 60 },
+        }),
       }),
     );
   });

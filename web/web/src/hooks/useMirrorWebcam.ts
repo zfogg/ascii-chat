@@ -176,8 +176,8 @@ export function useMirrorWebcam({
         video: audioOnly
           ? false
           : {
-              width: { ideal: 640 },
-              height: { ideal: 480 },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
               frameRate: { ideal: cameraAcquisitionFps() },
               facingMode: "user",
               ...(cameraId ? { deviceId: { exact: cameraId } } : {}),
@@ -298,8 +298,8 @@ export function useMirrorWebcam({
         const cameraId = await resolveCameraDeviceId();
         if (cancelled || streamRef.current !== stream) return;
         const video = {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
           frameRate: { ideal: cameraAcquisitionFps() },
           facingMode: "user",
         };

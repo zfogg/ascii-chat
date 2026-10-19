@@ -196,8 +196,8 @@ test("failed camera restoration requests only the selected camera", async () => 
   expect(getUserMedia).toHaveBeenCalledTimes(1);
   expect(getUserMedia).toHaveBeenCalledWith({
     video: {
-      width: { ideal: 640 },
-      height: { ideal: 480 },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
       frameRate: { ideal: DEFAULT_SETTINGS.targetFps },
       facingMode: "user",
       deviceId: { exact: "selected-camera" },
