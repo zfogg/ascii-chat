@@ -510,6 +510,10 @@ ascii_chat_add_face_detector(ascii-chat-video)
 # Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging
 target_link_directories(ascii-chat-video PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(ascii-chat-video PRIVATE ${FFMPEG_LIBRARIES})
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # V4L2 capture uses swscale and needs generated FFmpeg headers before compiling.
+    target_link_libraries(ascii-chat-platform PRIVATE ${FFMPEG_LIBRARIES})
+endif()
 if(VTERM_MUSL_TARGET)
     add_dependencies(ascii-chat-video ${VTERM_MUSL_TARGET})
 endif()
