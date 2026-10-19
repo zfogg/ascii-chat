@@ -607,7 +607,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         videoRef.current,
       );
 
-      const preferredCameraId = getMediaDevicePreferences().cameraId;
+      const preferredCameraId = testPattern.enabled
+        ? ""
+        : getMediaDevicePreferences().cameraId;
       const cameraIndexValue = preferredCameraId
         ? null
         : new URLSearchParams(window.location.search).get("videoDeviceIndex");
@@ -618,7 +620,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         height: { ideal: h },
         frameRate: { ideal: settings.targetFps },
       };
-      if (cameraIndex !== null) {
+      if (!testPattern.enabled && cameraIndex !== null) {
         if (!Number.isInteger(cameraIndex) || cameraIndex < 0) {
           throw new Error("videoDeviceIndex must be a non-negative integer");
         }
@@ -673,27 +675,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         testPatternSourceRef.current = source;
         stream = source.stream;
       } else {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: videoConstraints,
-            audio: false,
-          });
-        } catch (err) {
-          if (cameraIndex !== null) throw err;
-          console.error(
-            "[Client] getUserMedia failed (trying fallback without constraints):",
-            err,
-          );
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: true,
-              audio: false,
-            });
-          } catch (err2) {
-            console.error("[Client] getUserMedia failed completely:", err2);
-            throw err2;
-          }
-        }
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: videoConstraints,
+          audio: false,
+        });
       }
 
       if (!avState.current(generation)) {
@@ -708,6 +693,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       // is downscaled below, so negotiate a 720p source only when the current
       // mode is below target and this camera advertises a high-FPS mode.
       const videoTrack = stream.getVideoTracks()[0];
+      if (!videoTrack || videoTrack.readyState !== "live") {
+        throw new Error("Selected camera did not provide a live video track");
+      }
       if (videoTrack?.getCapabilities && videoTrack.getSettings) {
         const capabilities = videoTrack.getCapabilities();
         const currentSettings = videoTrack.getSettings();
