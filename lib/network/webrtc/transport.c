@@ -280,9 +280,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
                                   .allocated_size = msg.len};
     crypto_context_t *crypto = wrtc->transport->crypto_ctx;
     asciichat_error_t result = ASCIICHAT_OK;
-    if (asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(header.crc32)) {
-      result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid WebRTC packet checksum");
-    } else if (envelope.type == PACKET_TYPE_ENCRYPTED) {
+    if (envelope.type == PACKET_TYPE_ENCRYPTED) {
       if (!crypto || !crypto->encrypt_data || !crypto_is_ready(crypto))
         result = SET_ERRNO(ERROR_CRYPTO, "Unexpected encrypted WebRTC packet");
       else

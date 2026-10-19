@@ -524,6 +524,9 @@ role_dispatch:
       return ASCIICHAT_OK;
     }
 
+    if (g_discovery->handoff_pending)
+      goto role_dispatch;
+
     // If we reach here, discovery session is no longer active (role change)
     if (!discovery_session_is_active(g_discovery)) {
       log_info("Session ended or role changed");

@@ -7,6 +7,7 @@ const wasm = vi.hoisted(() => ({
   _browser_host_add_client: () => 1,
   _browser_host_set_local_client: vi.fn(() => 0),
   _browser_host_render: vi.fn(() => 0),
+  _browser_host_render_audio: vi.fn(() => 0),
 }));
 vi.mock("../../src/wasm/client", () => ({
   initClientWasm: async () => {},
@@ -22,7 +23,15 @@ afterEach(() => {
   vi.resetModules();
 });
 it("pipelines two batches, bounds backlog, and resumes on acknowledgement without polling", async () => {
-  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+  vi.useFakeTimers({
+    toFake: [
+      "setTimeout",
+      "clearTimeout",
+      "setInterval",
+      "clearInterval",
+      "performance",
+    ],
+  });
   const scope = { postMessage: vi.fn(), onmessage: undefined as any };
   vi.stubGlobal("self", scope);
   wasm._browser_host_render.mockImplementation(() => {
@@ -43,7 +52,8 @@ it("pipelines two batches, bounds backlog, and resumes on acknowledgement withou
   expect(batches()).toHaveLength(2);
   await vi.advanceTimersByTimeAsync(100);
   expect(batches()).toHaveLength(2);
-  expect(vi.getTimerCount()).toBe(0);
+  expect(vi.getTimerCount()).toBe(1); // Audio continues on its independent clock.
+  expect(wasm._browser_host_render_audio).toHaveBeenCalled();
   await send({
     kind: "video",
     id: 1,
@@ -58,5 +68,5 @@ it("pipelines two batches, bounds backlog, and resumes on acknowledgement withou
   await send({ kind: "presented" });
   // A due frame is produced by the ack task itself, without a timer wake-up.
   expect(batches()).toHaveLength(3);
-  expect(vi.getTimerCount()).toBe(0);
+  expect(vi.getTimerCount()).toBe(1);
 });

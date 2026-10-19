@@ -64,6 +64,26 @@ function createEngine() {
 }
 
 describe("browser preference transactions", () => {
+  it("does not replay an observed animation over a newer C keyboard change", () => {
+    vi.stubGlobal("requestAnimationFrame", () => 1);
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+    const c = createEngine();
+    applyMirrorWasmSettings(DEFAULT_SETTINGS);
+    const store = runtimeOptions(engine.module!);
+    const onChange = vi.fn();
+    const hook = renderHook(() =>
+      useEngineSettings(true, DEFAULT_SETTINGS, onChange),
+    );
+    act(() => store.applyPatch({ matrix_rain: true }));
+    const observed = onChange.mock.calls.at(-1)![0];
+    hook.unmount();
+    store.applyPatch({ matrix_rain: false, waveform: true });
+    const count = c.patches.length;
+    applyMirrorWasmSettings(observed);
+    expect(c.patches).toHaveLength(count);
+    expect(c.values()["waveform"]).toBe(true);
+    expect(c.values()["matrix_rain"]).toBe(false);
+  });
   it("does not echo a snapshot superseded by an earlier React effect", () => {
     vi.stubGlobal("requestAnimationFrame", () => 1);
     vi.stubGlobal("cancelAnimationFrame", () => {});

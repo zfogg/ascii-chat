@@ -17,6 +17,11 @@ test("demo playback ignores terminal shortcuts and never requests the splash", a
   page,
 }) => {
   test.setTimeout(60_000);
+  const response = await page.request.get("/@vite/client");
+  test.skip(
+    !response.ok() || !(await response.text()).includes("WebSocket"),
+    "Module instrumentation requires the Vite development server.",
+  );
   // Serve the generated artifact directly on Windows, where the public symlink is a text file.
   await page.context().route(/\/wasm\/mirror\.(js|wasm)$/, (route) => {
     const name = new URL(route.request().url()).pathname.endsWith(".wasm")

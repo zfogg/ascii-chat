@@ -67,6 +67,8 @@ describe("C runtime settings bridge", () => {
     const listener = vi.fn();
     const unsubscribe = first.store.subscribe(listener);
     first.change();
+    // A render/network reader must not consume the observer notification.
+    expect(first.store.getSnapshot().values["flip_x"]).toBe(true);
     frame!(0);
     expect(listener).toHaveBeenCalledOnce();
     expect(first.store.getSnapshot().values["flip_x"]).toBe(true);

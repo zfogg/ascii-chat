@@ -104,10 +104,71 @@ const path = require("node:path");
       patch(ids[1], { color_mode: 3 });
       await new Promise((resolve) => setTimeout(resolve, 20));
       if (m._browser_host_render()) throw new Error("updated render failed");
-      m._browser_host_destroy();
-      return [first, output];
+      const updated = output.splice(0);
+      if (
+        m._client_opus_encoder_init(48000, 1, 24000) ||
+        m._client_opus_decoder_init(48000, 1)
+      )
+        throw new Error("Could not initialize test audio codecs");
+      const pcm = m._malloc(1920),
+        encoded = m._malloc(1000),
+        decoded = m._malloc(1920);
+      let audioEnergy = 0,
+        audioSamples = 0;
+      m.hostPacketCallback = (id, bytes) => {
+        const view = new DataView(
+          bytes.buffer,
+          bytes.byteOffset,
+          bytes.byteLength,
+        );
+        if (id !== ids[1] || view.getUint16(8) !== 4001) return;
+        const length = view.getUint16(22 + 16);
+        m.HEAPU8.set(bytes.subarray(22 + 18, 22 + 18 + length), encoded);
+        const count = m._client_opus_decode(encoded, length, decoded, 960, 0);
+        if (count !== 960)
+          throw new Error("Mixed Opus did not decode to 20 ms");
+        for (let i = 0; i < count; i++) {
+          const value = m.HEAP16[(decoded >> 1) + i];
+          audioEnergy += value * value;
+        }
+        audioSamples += count;
+      };
+      try {
+        for (let frame = 0; frame < 12; frame++) {
+          for (let i = 0; i < 960; i++)
+            m.HEAP16[(pcm >> 1) + i] = Math.round(
+              8000 * Math.sin((2 * Math.PI * 440 * (frame * 960 + i)) / 48000),
+            );
+          const length = m._client_opus_encode(pcm, 960, encoded, 1000);
+          if (length <= 0) throw new Error("Test Opus encoding failed");
+          const batch = new Uint8Array(18 + length),
+            view = new DataView(batch.buffer);
+          view.setUint32(0, 48000);
+          view.setUint32(4, 20);
+          view.setUint32(8, 1);
+          view.setUint16(16, length);
+          batch.set(m.HEAPU8.slice(encoded, encoded + length), 18);
+          send(ids[0], 4001, batch);
+          if (m._browser_host_render_audio())
+            throw new Error("Host audio tick failed");
+        }
+      } finally {
+        m._free(pcm);
+        m._free(encoded);
+        m._free(decoded);
+        m._client_opus_encoder_cleanup();
+        m._client_opus_decoder_cleanup();
+        m._browser_host_destroy();
+      }
+      return {
+        video: [first, updated],
+        audioRms: Math.sqrt(audioEnergy / Math.max(1, audioSamples)),
+        audioSamples,
+      };
     });
-    const frames = packets.map((batch) => {
+    assert.ok(packets.audioSamples >= 9600);
+    assert.ok(packets.audioRms > 1000, `Mixed audio RMS ${packets.audioRms}`);
+    const frames = packets.video.map((batch) => {
       assert.equal(
         batch.length,
         2,

@@ -128,6 +128,27 @@ static void display_frame(void *context, const char *text, size_t size, int widt
   CHECK(receive_frame(&header, text, &((display_t *)context)->sink) == ASCIICHAT_OK);
 }
 
+static void test_ascii_only_display(const image_t *image) {
+  session_host_config_t config = {.max_clients = 1};
+  session_host_t *host = session_host_create(&config);
+  CHECK(host);
+  uint32_t source = session_host_add_memory_participant(host);
+  CHECK(source && session_host_inject_frame(host, source, image) == ASCIICHAT_OK);
+  display_t display = {.config = {.width = 40,
+                                  .height = 12,
+                                  .caps = {.color_level = TERM_COLOR_NONE, .render_mode = RENDER_MODE_HALF_BLOCK},
+                                  .palette = get_builtin_palette(PALETTE_BLOCKS)->chars}};
+  session_host_render_target_t target = {
+      .get_config = display_config, .render_frame = display_frame, .context = &display};
+  CHECK(session_host_set_render_target(host, &target) == ASCIICHAT_OK);
+  CHECK(render_tick(host) == ASCIICHAT_OK);
+  CHECK(display.sink.frame);
+  for (const unsigned char *p = (const unsigned char *)display.sink.frame; *p; ++p)
+    CHECK(*p < 128);
+  SAFE_FREE(display.sink.frame);
+  session_host_destroy(host);
+}
+
 static void test_tcp_delivery(const image_t *image) {
   CHECK(socket_init() == ASCIICHAT_OK);
   acip_listener_t *listener = NULL;
@@ -343,6 +364,13 @@ int main(void) {
                           (acip_client_callbacks_t){0});
     ids[i] = session_host_add_client(host, NULL, ACIP_TRANSPORT_BORROWED, "test", 0);
     CHECK(ids[i]);
+    uint8_t query[ACIP_SETTINGS_HEADER_SIZE];
+    size_t query_length;
+    acip_settings_header_t header = {.schema = 1, .expected_revision = UINT32_MAX};
+    CHECK(acip_settings_encode(&header, "", query, sizeof(query), &query_length) == ASCIICHAT_OK);
+    CHECK(session_host_receive_packet(host, ids[i], PACKET_TYPE_ACIP_SETTINGS_SYNC, query, query_length) ==
+          ERROR_INVALID_STATE);
+    CLEAR_ERRNO();
     CHECK(session_host_set_client_transport(host, ids[i], &transports[i], ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
     CHECK(session_host_set_client_transport(host, ids[i], NULL, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
     CHECK(session_host_get_client_transport(host, ids[i]) == NULL);
@@ -445,6 +473,7 @@ int main(void) {
   test_transport_ownership();
   test_host_listener();
   test_listener_interrupt();
+  test_ascii_only_display(image);
   image_destroy(image);
   options_state_destroy();
   log_info("PASS: per-recipient color, palettes, filters, live updates, and rejected runtime transactions");

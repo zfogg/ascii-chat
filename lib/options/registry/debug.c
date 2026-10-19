@@ -12,7 +12,7 @@
 const registry_entry_t g_debug_entries[] = {
 #ifndef NDEBUG
     {"face-follow-debug", '\0', OPTION_TYPE_BOOL, offsetof(options_t, face_follow_debug),
-     &default_flip_y_value, sizeof(bool), "Outline the selected detected face with a red square (debug builds only).",
+     &default_face_follow_debug_value, sizeof(bool), "Outline the selected detected face with a red square (debug builds only).",
      "DEBUG", NULL, false, "ASCII_CHAT_FACE_FOLLOW_DEBUG", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY, {0}, NULL},
 

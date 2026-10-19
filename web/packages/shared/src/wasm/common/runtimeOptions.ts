@@ -1,6 +1,7 @@
 /** Each C/WASM instance owns its state. Observers run on the browser thread. */
 export interface RuntimeOptionsModule {
   _wasm_options_revision(): number;
+  _wasm_options_retired_count?(): number;
   _wasm_options_values(): number;
   _wasm_options_patch(json: number, expectedRevision: number): number;
   _wasm_options_release(json: number): void;
@@ -18,6 +19,7 @@ export interface RuntimeSnapshot {
 
 export class RuntimeOptionsStore {
   private snapshot: RuntimeSnapshot | null = null;
+  private notified: RuntimeSnapshot | null = null;
   private listeners = new Set<() => void>();
   private frame: number | null = null;
   constructor(readonly module: RuntimeOptionsModule) {}
@@ -43,15 +45,16 @@ export class RuntimeOptionsStore {
 
   private readonly poll = () => {
     this.frame = null;
-    const previous = this.snapshot;
     const snapshot = this.getSnapshot();
-    if (snapshot !== previous)
+    if (snapshot !== this.notified) {
+      this.notified = snapshot;
       for (const listener of this.listeners) listener();
+    }
     if (this.listeners.size) this.frame = requestAnimationFrame(this.poll);
   };
 
   readonly subscribe = (listener: () => void): (() => void) => {
-    this.getSnapshot();
+    if (!this.listeners.size) this.notified = this.getSnapshot();
     this.listeners.add(listener);
     if (this.frame === null) this.frame = requestAnimationFrame(this.poll);
     return () => {
@@ -78,10 +81,11 @@ export class RuntimeOptionsStore {
     } finally {
       this.module._free(pointer);
     }
-    const previous = this.snapshot;
     const snapshot = this.getSnapshot();
-    if (previous !== snapshot)
+    if (this.notified !== snapshot) {
+      this.notified = snapshot;
       for (const listener of this.listeners) listener();
+    }
     return snapshot;
   }
 }

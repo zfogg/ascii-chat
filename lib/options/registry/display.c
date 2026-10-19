@@ -289,7 +289,7 @@ const registry_entry_t g_display_entries[] = {
      '\0',
      OPTION_TYPE_BOOL,
      offsetof(options_t, face_follow),
-     &default_flip_y_value,
+     &default_face_follow_value,
      sizeof(bool),
      "Automatically zoom and pan to follow your face, with smooth full-frame fallback.",
      "DISPLAY",
