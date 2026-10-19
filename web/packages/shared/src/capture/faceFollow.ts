@@ -210,7 +210,7 @@ export function drawFaceFollow(
     const side = Math.max(fw * width, fh * height);
     context.save();
     context.strokeStyle = "#ff0000";
-    context.lineWidth = Math.max(3, canvas.width / 90);
+    context.lineWidth = 2 * Math.max(3, canvas.width / 90);
     context.strokeRect(
       (((fx + fw / 2) * width - side / 2 - x * width) / (w * width)) *
         canvas.width,

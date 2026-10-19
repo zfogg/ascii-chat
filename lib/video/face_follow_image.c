@@ -73,7 +73,7 @@ image_t *face_follow_image_process(face_follow_image_t **context, image_t *sourc
   face_follow_rect_t face = ctx->state.face;
   float side = fmaxf(face.w * source->w, face.h * source->h);
   float fx = (face.x + face.w * 0.5f) * source->w, fy = (face.y + face.h * 0.5f) * source->h;
-  float thickness = fmaxf(3, source->w * crop.w / 90);
+  float thickness = 2 * fmaxf(3, source->w * crop.w / 90);
   for (int y = 0; y < output_height; y++) {
     int sy = (int)fminf(source->h - 1, (crop.y + (float)y / output_height * crop.h) * source->h);
     for (int x = 0; x < output_width; x++) {
