@@ -1,26 +1,16 @@
 .crypto-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: grid;
-  place-items: center;
-  padding: 22px;
-  color: #edf4ee;
   background: #060a09c9;
   backdrop-filter: blur(7px);
-  font-family: "Segoe UI", Inter, system-ui, sans-serif;
-  cursor: pointer;
 }
 
 .crypto-modal {
-  width: min(820px, 100%);
-  max-height: min(850px, calc(100vh - 44px));
-  overflow: auto;
+  max-width: 820px;
+  color: #edf4ee;
+  font-family: "Segoe UI", Inter, system-ui, sans-serif;
   border: 1px solid #52635d;
   border-radius: 8px;
   background: #17201e;
   box-shadow: 0 28px 100px #000a;
-  cursor: auto;
 }
 
 .crypto-modal button,

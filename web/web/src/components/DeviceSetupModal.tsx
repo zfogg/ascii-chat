@@ -5,6 +5,7 @@ import {
 import type { VideoEncoding } from "../network/videoEncoding";
 import { useUrlState } from "../hooks/useUrlState";
 import { useCallback, useRef, useState } from "react";
+import { Modal, ModalTitle } from "./Modal";
 import {
   getMediaDevicePreferences,
   getStoredMediaDevicePreferences,
@@ -80,6 +81,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const audioStateCleanupRef = useRef<(() => void) | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const previewGenerationRef = useRef(0);
   const isOpenRef = useRef(open);
@@ -91,9 +93,11 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
   const [level, setLevel] = useState(0);
   const [testingMicrophone, setTestingMicrophone] = useState(false);
   const [testingSpeakers, setTestingSpeakers] = useState(false);
+  const [audioRunning, setAudioRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasCamera, setHasCamera] = useState(false);
+  const [hasMicrophone, setHasMicrophone] = useState(false);
 
   const stopPreview = useCallback((invalidate = true) => {
     if (invalidate) previewGenerationRef.current++;
@@ -101,11 +105,15 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
+    audioStateCleanupRef.current?.();
+    audioStateCleanupRef.current = null;
     audioContextRef.current?.close().catch(() => undefined);
     audioContextRef.current = null;
+    setAudioRunning(false);
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     setHasCamera(false);
+    setHasMicrophone(false);
     if (videoRef.current) videoRef.current.srcObject = null;
     setLevel(0);
     setTestingMicrophone(false);
@@ -143,6 +151,7 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
         }
         streamRef.current = stream;
         setHasCamera(stream.getVideoTracks().length > 0);
+        setHasMicrophone(stream.getAudioTracks().length > 0);
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play().catch(() => undefined);
@@ -193,11 +202,17 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
 
         const audioContext = new AudioContext();
         audioContextRef.current = audioContext;
-        await audioContext.resume();
-        if (!isOpenRef.current || generation !== previewGenerationRef.current) {
-          await audioContext.close().catch(() => undefined);
-          return;
-        }
+        const syncAudioState = () => {
+          if (audioContextRef.current === audioContext)
+            setAudioRunning(audioContext.state === "running");
+        };
+        audioContext.addEventListener("statechange", syncAudioState);
+        audioStateCleanupRef.current = () =>
+          audioContext.removeEventListener("statechange", syncAudioState);
+        syncAudioState();
+        // A URL-opened modal may need a later click to satisfy autoplay rules.
+        void audioContext.resume().catch(() => undefined);
+        setTestingMicrophone(true);
         if (
           nextPreferences.speakerId &&
           nextPreferences.speakerId !== "default"
@@ -213,16 +228,21 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = 512;
         source.connect(analyser);
-        const samples = new Uint8Array(analyser.fftSize);
+        const samples = new Float32Array(analyser.fftSize);
         const readLevel = () => {
-          if (!isOpenRef.current) return;
-          analyser.getByteTimeDomainData(samples);
-          let sum = 0;
-          for (const sample of samples) {
-            const amplitude = (sample - 128) / 128;
-            sum += amplitude * amplitude;
+          if (!isOpenRef.current || generation !== previewGenerationRef.current)
+            return;
+          if (audioContext.state === "running") {
+            analyser.getFloatTimeDomainData(samples);
+            let sum = 0;
+            for (const sample of samples) sum += sample * sample;
+            const rms = Math.sqrt(sum / samples.length);
+            // Map -60 dBFS to silence and 0 dBFS to a full meter.
+            const decibels = 20 * Math.log10(Math.max(rms, 1e-8));
+            setLevel(Math.max(0, Math.min(1, (decibels + 60) / 60)));
+          } else {
+            setLevel(0);
           }
-          setLevel(Math.min(1, Math.sqrt(sum / samples.length) * 3));
           animationFrameRef.current = requestAnimationFrame(readLevel);
         };
         animationFrameRef.current = requestAnimationFrame(readLevel);
@@ -260,6 +280,10 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
   );
 
   if (!open) return null;
+
+  const microphoneTestRunning =
+    testingMicrophone && audioRunning && hasMicrophone && !loading;
+  const displayedLevel = microphoneTestRunning ? level : 0;
 
   const changeDevice = (key: keyof typeof preferences, value: string) => {
     const nextPreferences = { ...preferences, [key]: value };
@@ -330,251 +354,270 @@ export function DeviceSetupModal({ open, onClose }: DeviceSetupModalProps) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") onClose();
-      }}
+    <Modal
+      open={open}
+      onClose={onClose}
+      className="max-w-3xl rounded-lg border border-terminal-8 bg-terminal-bg text-terminal-fg shadow-2xl"
     >
-      <section
-        aria-labelledby="device-setup-title"
-        aria-modal="true"
-        className="w-full max-w-3xl cursor-auto overflow-hidden rounded-lg border border-terminal-8 bg-terminal-bg text-terminal-fg shadow-2xl"
-        role="dialog"
-      >
-        <header className="flex items-start justify-between border-b border-terminal-8 px-6 py-5">
-          <div>
-            <h2 className="text-xl font-semibold" id="device-setup-title">
-              Device setup
-            </h2>
-            <p className="mt-1 text-sm text-terminal-8">
-              Choose your camera and microphone, then check your levels.
-            </p>
-          </div>
-          <button
-            aria-label="Close device setup"
-            className="rounded px-2 text-2xl leading-none text-terminal-8 hover:bg-terminal-8 hover:text-terminal-fg"
-            onClick={onClose}
-            type="button"
+      <header className="flex items-start justify-between border-b border-terminal-8 px-6 py-5">
+        <div>
+          <ModalTitle
+            as="h2"
+            className="text-xl font-semibold"
+            id="device-setup-title"
           >
-            ×
-          </button>
-        </header>
+            Device setup
+          </ModalTitle>
+          <p className="mt-1 text-sm text-terminal-8">
+            Choose your camera and microphone, then check your levels.
+          </p>
+        </div>
+        <button
+          aria-label="Close device setup"
+          className="rounded px-2 text-2xl leading-none text-terminal-8 hover:bg-terminal-8 hover:text-terminal-fg"
+          onClick={onClose}
+          type="button"
+        >
+          ×
+        </button>
+      </header>
 
-        <div className="grid gap-6 p-6 md:grid-cols-2">
-          <div>
-            <div className="relative aspect-video overflow-hidden rounded border border-terminal-8 bg-black">
-              <video
-                aria-label="Camera preview"
-                autoPlay
-                className="h-full w-full object-cover"
-                muted
-                playsInline
-                ref={attachPreview}
-              />
-              {loading && (
-                <div className="absolute inset-0 grid place-items-center text-sm text-terminal-8">
-                  Starting camera preview…
-                </div>
-              )}
-              {!loading && !hasCamera && (
-                <div className="absolute inset-0 grid place-items-center text-sm text-terminal-8">
-                  Camera preview unavailable
-                </div>
-              )}
-              <span className="absolute left-3 top-3 rounded bg-black/70 px-2 py-1 text-xs text-terminal-fg">
-                Camera preview
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-terminal-8">
-              Preview stays local to this browser.
-            </p>
-          </div>
-
-          <div className="space-y-5">
-            <label className="block text-sm">
-              <span className="mb-2 block font-medium">Camera</span>
-              <select
-                className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
-                disabled={loading || choices.cameras.length === 0}
-                onChange={(event) =>
-                  changeDevice("cameraId", event.currentTarget.value)
-                }
-                value={preferences.cameraId}
-              >
-                {choices.cameras.map((camera, index) => (
-                  <option key={camera.deviceId} value={camera.deviceId}>
-                    {camera.label || `Camera ${index + 1}`}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div>
-              <label className="block text-sm">
-                <span className="mb-2 block font-medium">Video encoding</span>
-                <select
-                  className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
-                  aria-label="Video encoding"
-                  disabled={videoEncodings.loading}
-                  value={encodingDraft ?? videoEncodings.selectedEncoding}
-                  onChange={(event) =>
-                    setEncodingDraft(event.currentTarget.value as VideoEncoding)
-                  }
-                >
-                  <option value="auto">
-                    Automatic (
-                    {VIDEO_ENCODING_LABELS[videoEncodings.bestEncoding]})
-                  </option>
-                  {videoEncodings.supportedEncodings.map((encoding) => (
-                    <option key={encoding} value={encoding}>
-                      {VIDEO_ENCODING_LABELS[encoding]}
-                    </option>
-                  ))}
-                  {!videoEncodings.supportedEncodings.includes(
-                    videoEncodings.selectedEncoding,
-                  ) && (
-                    <option value={videoEncodings.selectedEncoding} disabled>
-                      {VIDEO_ENCODING_LABELS[videoEncodings.selectedEncoding]}{" "}
-                      (unavailable)
-                    </option>
-                  )}
-                </select>
-              </label>
-              <p className="mt-2 text-xs text-terminal-8">
-                {videoEncodings.loading
-                  ? "Checking browser support…"
-                  : "Used for Client and Discovery uploads. Automatic prefers HEVC, then H.264, then raw pixels."}
-              </p>
-              {videoEncodings.source === "url" && (
-                <p className="mt-1 text-xs text-terminal-8">
-                  The URL overrides your saved encoding. Choose an encoding and
-                  press Done to save a new preference.
-                </p>
-              )}
-              {videoEncodings.error && (
-                <p className="mt-1 text-sm text-terminal-1">
-                  {videoEncodings.error}
-                </p>
-              )}
-            </div>
-
-            <label className="block text-sm">
-              <span className="mb-2 block font-medium">Speakers</span>
-              <select
-                className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
-                disabled={loading || choices.speakers.length === 0}
-                onChange={(event) =>
-                  changeDevice("speakerId", event.currentTarget.value)
-                }
-                value={preferences.speakerId}
-              >
-                {choices.speakers.map((speaker, index) => (
-                  <option key={speaker.deviceId} value={speaker.deviceId}>
-                    {speaker.deviceId === "default"
-                      ? "System default"
-                      : speaker.label || `Speaker ${index + 1}`}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              className="rounded border border-terminal-8 px-3 py-1.5 text-xs hover:bg-terminal-8 disabled:opacity-50"
-              disabled={
-                loading || choices.speakers.length === 0 || testingSpeakers
-              }
-              onClick={() =>
-                void playSpeakerTest().catch((cause: unknown) => {
-                  setTestingSpeakers(false);
-                  setError(
-                    cause instanceof Error
-                      ? cause.message
-                      : "Speaker test failed.",
-                  );
-                })
-              }
-              type="button"
-            >
-              {testingSpeakers ? "Playing test tone…" : "Test speakers"}
-            </button>
-
-            <label className="block text-sm">
-              <span className="mb-2 block font-medium">Microphone</span>
-              <select
-                className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
-                disabled={loading || choices.microphones.length === 0}
-                onChange={(event) =>
-                  changeDevice("microphoneId", event.currentTarget.value)
-                }
-                value={preferences.microphoneId}
-              >
-                {choices.microphones.map((microphone, index) => (
-                  <option key={microphone.deviceId} value={microphone.deviceId}>
-                    {microphone.label || `Microphone ${index + 1}`}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium">Microphone level</span>
-                <button
-                  className="rounded border border-terminal-8 px-3 py-1.5 text-xs hover:bg-terminal-8"
-                  onClick={() => setTestingMicrophone((testing) => !testing)}
-                  type="button"
-                >
-                  {testingMicrophone ? "Stop test" : "Test microphone"}
-                </button>
+      <div className="grid gap-6 p-6 md:grid-cols-2">
+        <div>
+          <div className="relative aspect-video overflow-hidden rounded border border-terminal-8 bg-black">
+            <video
+              aria-label="Camera preview"
+              autoPlay
+              className="h-full w-full object-cover"
+              muted
+              playsInline
+              ref={attachPreview}
+            />
+            {loading && (
+              <div className="absolute inset-0 grid place-items-center text-sm text-terminal-8">
+                Starting camera preview…
               </div>
-              <div
-                aria-label={`Microphone input level ${Math.round(level * 100)} percent`}
-                className="h-3 overflow-hidden rounded bg-terminal-8"
-                role="meter"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round(level * 100)}
-              >
-                <div
-                  className="h-full bg-terminal-2 transition-[width] duration-100"
-                  style={{ width: `${testingMicrophone ? level * 100 : 0}%` }}
-                />
+            )}
+            {!loading && !hasCamera && (
+              <div className="absolute inset-0 grid place-items-center text-sm text-terminal-8">
+                Camera preview unavailable
               </div>
-              <p className="mt-2 text-xs text-terminal-8">
-                {testingMicrophone
-                  ? "Speak to see your input level."
-                  : "Start the test and speak to check your mic."}
-              </p>
-            </div>
+            )}
+            <span className="absolute left-3 top-3 rounded bg-black/70 px-2 py-1 text-xs text-terminal-fg">
+              Camera preview
+            </span>
           </div>
+          <p className="mt-2 text-xs text-terminal-8">
+            Preview stays local to this browser.
+          </p>
         </div>
 
-        {error && (
-          <p className="mx-6 mb-4 rounded border border-terminal-1/50 bg-terminal-1/10 px-3 py-2 text-sm text-terminal-1">
-            {error}
-          </p>
-        )}
+        <div className="space-y-5">
+          <label className="block text-sm">
+            <span className="mb-2 block font-medium">Camera</span>
+            <select
+              className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
+              disabled={loading || choices.cameras.length === 0}
+              onChange={(event) =>
+                changeDevice("cameraId", event.currentTarget.value)
+              }
+              value={preferences.cameraId}
+            >
+              {choices.cameras.map((camera, index) => (
+                <option key={camera.deviceId} value={camera.deviceId}>
+                  {camera.label || `Camera ${index + 1}`}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <footer className="flex justify-end gap-2 border-t border-terminal-8 px-6 py-4">
+          <div>
+            <label className="block text-sm">
+              <span className="mb-2 block font-medium">Video encoding</span>
+              <select
+                className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
+                aria-label="Video encoding"
+                disabled={videoEncodings.loading}
+                value={encodingDraft ?? videoEncodings.selectedEncoding}
+                onChange={(event) =>
+                  setEncodingDraft(event.currentTarget.value as VideoEncoding)
+                }
+              >
+                <option value="auto">
+                  Automatic (
+                  {VIDEO_ENCODING_LABELS[videoEncodings.bestEncoding]})
+                </option>
+                {videoEncodings.supportedEncodings.map((encoding) => (
+                  <option key={encoding} value={encoding}>
+                    {VIDEO_ENCODING_LABELS[encoding]}
+                  </option>
+                ))}
+                {!videoEncodings.supportedEncodings.includes(
+                  videoEncodings.selectedEncoding,
+                ) && (
+                  <option value={videoEncodings.selectedEncoding} disabled>
+                    {VIDEO_ENCODING_LABELS[videoEncodings.selectedEncoding]}{" "}
+                    (unavailable)
+                  </option>
+                )}
+              </select>
+            </label>
+            <p className="mt-2 text-xs text-terminal-8">
+              {videoEncodings.loading
+                ? "Checking browser support…"
+                : "Used for Client and Discovery uploads. Automatic prefers HEVC, then H.264, then raw pixels."}
+            </p>
+            {videoEncodings.source === "url" && (
+              <p className="mt-1 text-xs text-terminal-8">
+                The URL overrides your saved encoding. Choose an encoding and
+                press Done to save a new preference.
+              </p>
+            )}
+            {videoEncodings.error && (
+              <p className="mt-1 text-sm text-terminal-1">
+                {videoEncodings.error}
+              </p>
+            )}
+          </div>
+
+          <label className="block text-sm">
+            <span className="mb-2 block font-medium">Speakers</span>
+            <select
+              className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
+              disabled={loading || choices.speakers.length === 0}
+              onChange={(event) =>
+                changeDevice("speakerId", event.currentTarget.value)
+              }
+              value={preferences.speakerId}
+            >
+              {choices.speakers.map((speaker, index) => (
+                <option key={speaker.deviceId} value={speaker.deviceId}>
+                  {speaker.deviceId === "default"
+                    ? "System default"
+                    : speaker.label || `Speaker ${index + 1}`}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
-            className="rounded border border-terminal-8 px-4 py-2 text-sm hover:bg-terminal-8"
-            onClick={onClose}
+            className="rounded border border-terminal-8 px-3 py-1.5 text-xs hover:bg-terminal-8 disabled:opacity-50"
+            disabled={
+              loading || choices.speakers.length === 0 || testingSpeakers
+            }
+            onClick={() =>
+              void playSpeakerTest().catch((cause: unknown) => {
+                setTestingSpeakers(false);
+                setError(
+                  cause instanceof Error
+                    ? cause.message
+                    : "Speaker test failed.",
+                );
+              })
+            }
             type="button"
           >
-            Cancel
+            {testingSpeakers ? "Playing test tone…" : "Test speakers"}
           </button>
-          <button
-            className="rounded bg-terminal-2 px-4 py-2 text-sm font-medium text-terminal-bg hover:bg-terminal-10"
-            onClick={handleSave}
-            type="button"
-          >
-            Done
-          </button>
-        </footer>
-      </section>
-    </div>
+
+          <label className="block text-sm">
+            <span className="mb-2 block font-medium">Microphone</span>
+            <select
+              className="w-full rounded border border-terminal-8 bg-terminal-bg px-3 py-2 text-terminal-fg focus:border-terminal-4 focus:outline-none"
+              disabled={loading || choices.microphones.length === 0}
+              onChange={(event) =>
+                changeDevice("microphoneId", event.currentTarget.value)
+              }
+              value={preferences.microphoneId}
+            >
+              {choices.microphones.map((microphone, index) => (
+                <option key={microphone.deviceId} value={microphone.deviceId}>
+                  {microphone.label || `Microphone ${index + 1}`}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-medium">Microphone level</span>
+              <button
+                className="rounded border border-terminal-8 px-3 py-1.5 text-xs hover:bg-terminal-8 disabled:opacity-50"
+                disabled={!hasMicrophone || loading}
+                onClick={() => {
+                  if (microphoneTestRunning) {
+                    setTestingMicrophone(false);
+                    setLevel(0);
+                    return;
+                  }
+                  const context = audioContextRef.current;
+                  if (!context) return;
+                  setTestingMicrophone(true);
+                  void context.resume().then(
+                    () => {
+                      if (audioContextRef.current === context)
+                        setAudioRunning(context.state === "running");
+                    },
+                    (cause: unknown) => {
+                      if (audioContextRef.current === context)
+                        setError(
+                          cause instanceof Error
+                            ? cause.message
+                            : "Unable to start microphone levels.",
+                        );
+                    },
+                  );
+                }}
+                type="button"
+              >
+                {microphoneTestRunning ? "Stop test" : "Test microphone"}
+              </button>
+            </div>
+            <div
+              aria-label="Microphone input level"
+              className="h-3 overflow-hidden rounded bg-terminal-8"
+              role="meter"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(displayedLevel * 100)}
+            >
+              <div
+                className="h-full bg-terminal-2 transition-[width] duration-100"
+                style={{ width: `${displayedLevel * 100}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-terminal-8">
+              {microphoneTestRunning
+                ? "Speak to see your input level."
+                : !audioRunning
+                  ? "Click Test microphone to enable microphone levels."
+                  : "Start the test and speak to check your mic."}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <p className="mx-6 mb-4 rounded border border-terminal-1/50 bg-terminal-1/10 px-3 py-2 text-sm text-terminal-1">
+          {error}
+        </p>
+      )}
+
+      <footer className="flex justify-end gap-2 border-t border-terminal-8 px-6 py-4">
+        <button
+          className="rounded border border-terminal-8 px-4 py-2 text-sm hover:bg-terminal-8"
+          onClick={onClose}
+          type="button"
+        >
+          Cancel
+        </button>
+        <button
+          className="rounded bg-terminal-2 px-4 py-2 text-sm font-medium text-terminal-bg hover:bg-terminal-10"
+          onClick={handleSave}
+          type="button"
+        >
+          Done
+        </button>
+      </footer>
+    </Modal>
   );
 }
