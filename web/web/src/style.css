@@ -103,22 +103,41 @@
   a {
     text-decoration: underline;
   }
-}
 
-/* TODO/FIXME: tailwind should  generate 
- * this kinda stuff. this makes the 
- * component on the homepage work. 
- * refactor/fix so tailwind handles 
- * automatically and i don't need these 
- * declarataions. */
-.bg-terminal-cyan {
-  @apply bg-terminal-cyan;
-}
-.bg-terminal-magenta {
-  @apply bg-terminal-magenta;
-}
-.bg-terminal-green {
-  @apply bg-terminal-green;
+  /* Action controls use a pointer; editable text and numbers keep the I-beam. */
+  a[href],
+  button,
+  select,
+  summary,
+  [role="button"],
+  input:is(
+    [type="button"],
+    [type="submit"],
+    [type="reset"],
+    [type="checkbox"],
+    [type="radio"],
+    [type="range"],
+    [type="file"]
+  ),
+  label:has(
+    select,
+    input:is([type="checkbox"], [type="radio"], [type="range"], [type="file"])
+  ) {
+    cursor: pointer;
+  }
+
+  :is(button, input, select, textarea):disabled,
+  label:has(
+    select:disabled,
+    input:is(
+        [type="checkbox"],
+        [type="radio"],
+        [type="range"],
+        [type="file"]
+      ):disabled
+  ) {
+    cursor: not-allowed;
+  }
 }
 
 /* Let wrappers receive hover events even over disabled browser controls. */

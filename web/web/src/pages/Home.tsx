@@ -2,6 +2,21 @@ import { Button } from "@ascii-chat/shared/components/Button";
 import { Heading } from "@ascii-chat/shared/components/Heading";
 import { AsciiChatWebHead } from "../components";
 
+const MODE_COLORS = {
+  cyan: {
+    background: "bg-terminal-cyan",
+    text: "text-terminal-cyan",
+  },
+  green: {
+    background: "bg-terminal-green",
+    text: "text-terminal-green",
+  },
+  magenta: {
+    background: "bg-terminal-magenta",
+    text: "text-terminal-magenta",
+  },
+} as const;
+
 function LinkedItemWithDescription({
   mode_name,
   description,
@@ -9,25 +24,21 @@ function LinkedItemWithDescription({
 }: {
   mode_name: string;
   description: string;
-  color: string;
+  color: keyof typeof MODE_COLORS;
 }) {
-  console.log(color);
-  const bg_terminal_class = "bg-terminal-" + color;
-  console.log(bg_terminal_class);
+  const colors = MODE_COLORS[color];
   return (
     <div className="flex flex-col sm:flex-row gap-4 w-full justify-center items-center">
       <Button
         href={`/${mode_name}`}
-        className={`flex flex-col justify-center w-56 px-6 py-3 ${bg_terminal_class} text-terminal-bg rounded hover:opacity-80 transition-opacity order-last sm:order-first`}
+        className={`flex flex-col justify-center w-56 px-6 py-3 ${colors.background} text-terminal-bg rounded hover:opacity-80 transition-opacity order-last sm:order-first`}
       >
         <span className="">
           {mode_name.slice(0, 1).toUpperCase()}
           {mode_name.slice(1)} Mode
         </span>
       </Button>
-      <p className={`text-sm text-terminal-${color} flex-1 text-left`}>
-        {description}
-      </p>
+      <p className={`text-sm ${colors.text} flex-1 text-left`}>{description}</p>
     </div>
   );
 }

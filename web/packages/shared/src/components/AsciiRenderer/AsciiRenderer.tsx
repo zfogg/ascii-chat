@@ -176,8 +176,8 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
 
         {/* Error bar */}
         {error && (
-          <div className="px-4 pb-2">
-            <div className="p-4 bg-terminal-1 text-terminal-fg rounded">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 p-4 pointer-events-none">
+            <div className="max-w-full rounded border-2 border-red-500 bg-red-950 p-6 text-center text-2xl font-bold text-red-100 break-words">
               {error}
             </div>
           </div>

@@ -562,20 +562,25 @@ export function ClientPage({
     setAudioEnabled(false);
     setMicEnabled(false);
   }, []);
-  const disconnectMedia = useCallback(() => {
-    setCreatingSession(false);
-    setConnectionRequested(false);
-    setCreatedSession("");
-    setConnecting(false);
-    pendingConnectRef.current = false;
-    discoveryJoinGenerationRef.current++;
-    // Audio callbacks can survive briefly while AudioContext.close() drains.
-    // Stop them from sending into a DataChannel that disconnect() just closed.
-    audioStreamStartedRef.current = false;
-    stopWebcam();
-    closeAudio();
-    handleDisconnect();
-  }, [stopWebcam, closeAudio, handleDisconnect, setConnectionRequested]);
+  const disconnectMedia = useCallback(
+    (event?: { preventDefault(): void }) => {
+      // React can reuse this button as Connect before the click's default action.
+      event?.preventDefault();
+      setCreatingSession(false);
+      setConnectionRequested(false);
+      setCreatedSession("");
+      setConnecting(false);
+      pendingConnectRef.current = false;
+      discoveryJoinGenerationRef.current++;
+      // Audio callbacks can survive briefly while AudioContext.close() drains.
+      // Stop them from sending into a DataChannel that disconnect() just closed.
+      audioStreamStartedRef.current = false;
+      stopWebcam();
+      closeAudio();
+      handleDisconnect();
+    },
+    [stopWebcam, closeAudio, handleDisconnect, setConnectionRequested],
+  );
   useEffect(() => {
     if (
       connectionState === ConnectionState.DISCONNECTED ||
@@ -1321,7 +1326,7 @@ export function ClientPage({
                       <p
                         role="alert"
                         title={error}
-                        className="w-full text-terminal-1"
+                        className="w-full rounded border-2 border-red-500 bg-red-950 px-4 py-3 text-lg font-bold text-red-100"
                       >
                         {error}
                       </p>
@@ -1426,7 +1431,7 @@ export function ClientPage({
                       <p
                         role="alert"
                         title={error}
-                        className="w-full text-terminal-1"
+                        className="w-full rounded border-2 border-red-500 bg-red-950 px-4 py-3 text-lg font-bold text-red-100"
                       >
                         {error}
                       </p>

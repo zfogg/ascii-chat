@@ -479,8 +479,21 @@ it("Connect persists intent, refresh reconnects once, and Disconnect clears it",
   await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
   backend.state = ConnectionState.CONNECTED;
   refreshed.rerender(<ClientPage />);
+  backend.disconnect.mockImplementationOnce(() => {
+    backend.state = ConnectionState.DISCONNECTED;
+    backend.status = "Disconnected";
+    refreshed.rerender(<ClientPage />);
+  });
   await userEvent.click(screen.getByRole("button", { name: "Disconnect" }));
   expect(new URLSearchParams(location.search).has("connect")).toBe(false);
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  expect(backend.connect).toHaveBeenCalledOnce();
+  expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+  refreshed.unmount();
+  backend.connect.mockClear();
+  render(<ClientPage />, { wrapper: HeadingProvider });
+  await act(async () => {});
+  expect(backend.connect).not.toHaveBeenCalled();
 });
 
 it("a saved discovery session resumes through the renderer-ready path", async () => {
