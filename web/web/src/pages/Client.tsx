@@ -1,3 +1,5 @@
+import { useMirrorFile } from "../hooks/useMirrorFile";
+import { MediaSourceType } from "../hooks/useClientLike";
 import {
   useEngineSettings,
   renderPreferences,
@@ -52,6 +54,7 @@ import {
 import {
   adoptMirrorWasmModule,
   resetAdoptedMirrorWasmModule,
+  convertFrameToAscii,
   renderAudioVisualization,
   submitAudioVisualizationSamples,
 } from "@ascii-chat/shared/wasm";
@@ -584,7 +587,7 @@ export function ClientPage({
   );
 
   // Use webcam stream hook
-  const { startWebcam, stopWebcam, isWebcamRunning } = useWebcamStream({
+  const { startWebcam, stopWebcam, isWebcamRunning, sendFileFrame } = useWebcamStream({
     includeAudio: audioEnabled,
     terminalDimensions,
     clientRef,
@@ -599,6 +602,41 @@ export function ClientPage({
     frameQueueRef,
     setError,
   });
+  const fileVideoRef = useRef<HTMLVideoElement>(null);
+  const fileCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [fileRunning, setFileRunning] = useState(false);
+  const ignoreMediaSource = useCallback(() => {}, []);
+  const fileMedia = useMirrorFile({
+    settings,
+    videoRef: fileVideoRef,
+    canvasRef: fileCanvasRef,
+    stopWebcam: () => { stopWebcam(); setFileRunning(false); },
+    cancelStart: ignoreMediaSource,
+    setIsWebcamRunning: setFileRunning,
+    setMediaSource: ignoreMediaSource,
+    setError,
+  });
+  const fileSelected = !!fileMedia.fileName;
+  const fileCaptureRef = useRef({ fileMedia, sendFileFrame, contentFit, rendererReady });
+  fileCaptureRef.current = { fileMedia, sendFileFrame, contentFit, rendererReady };
+  useEffect(() => {
+    if (!fileRunning) return;
+    if (connectionState === ConnectionState.CONNECTED) {
+      clientRef.current?.sendPacket(PacketType.STREAM_START, buildStreamStartPacket(false));
+    }
+    const timer = window.setInterval(() => {
+      const current = fileCaptureRef.current;
+      const frame = current.fileMedia.captureFrame();
+      const canvas = fileCanvasRef.current;
+      if (!frame || !canvas) return;
+      current.sendFileFrame(frame, canvas);
+      if (connectionState !== ConnectionState.CONNECTED && current.rendererReady) {
+        const ascii = convertFrameToAscii(frame.data, frame.width, frame.height, current.contentFit === "cover" ? "cover" : "contain");
+        if (ascii) rendererRef.current?.writeFrame(ascii);
+      }
+    }, 1000 / settings.targetFps);
+    return () => window.clearInterval(timer);
+  }, [fileRunning, connectionState, clientRef, settings.targetFps]);
   const handleDeviceSetupOpenChange = useCallback(
     (open: boolean) => {
       if (open) stopWebcam();
@@ -982,6 +1020,7 @@ export function ClientPage({
       setWebcamDisabledByUser(false);
       return;
     }
+    if (fileSelected) return;
     if (deviceSetupOpen) {
       webcamAutoStartedRef.current = false;
       return;
@@ -1004,6 +1043,7 @@ export function ClientPage({
     webcamDisabledByUser,
     audioVisualization,
     deviceSetupOpen,
+    fileSelected,
   ]);
 
   const disableWebcam = useCallback(() => {
@@ -1101,6 +1141,8 @@ export function ClientPage({
         description="Connect to an ascii-chat server. Real-time encrypted video chat rendered as ASCII art in your browser."
         url={`${SITES.WEB}/client`}
       />
+      <video ref={fileVideoRef} playsInline style={{ display: "none" }} />
+      <canvas ref={fileCanvasRef} style={{ display: "none" }} />
       <PageLayout
         videoRef={videoRef}
         canvasRef={canvasRef}
@@ -1489,7 +1531,11 @@ export function ClientPage({
             }
             controlBar={{
               title: discoveryMode ? "Discovery mode" : "Client mode",
-              status,
+              status: fileSelected ? `${fileMedia.status} ${fileMedia.fileName}` : status,
+              onFileSelect: (file) => { setRendererRequested(true); void fileMedia.start(file); },
+              onStopWebcam: fileSelected ? fileMedia.stop : undefined,
+              mediaSource: fileSelected ? MediaSourceType.FILE : MediaSourceType.WEBCAM,
+              videoRef: fileSelected ? fileVideoRef : undefined,
               isHost:
                 !!createdSession &&
                 connectionState === ConnectionState.CONNECTED,
@@ -1497,7 +1543,7 @@ export function ClientPage({
               dimensions: terminalDimensions,
               fps,
               targetFps: settings.targetFps,
-              isWebcamRunning,
+              isWebcamRunning: fileRunning || fileMedia.loading || isWebcamRunning,
               showConnectionButton: false,
               onSettingsClick: () => setShowSettings((open) => !open),
               showSettingsButton: true,

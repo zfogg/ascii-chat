@@ -122,7 +122,7 @@ export function CodeBlock({
   }
 
   return (
-    <div ref={codeRef}>
+    <div ref={codeRef} className="mb-4">
       <SyntaxHighlighter
         language={language}
         style={vscDarkPlus}

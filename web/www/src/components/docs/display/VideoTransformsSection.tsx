@@ -104,7 +104,7 @@ export default function VideoTransformsSection() {
           already selected.
         </p>
         <CodeBlock language="bash">ascii-chat mirror --face-follow</CodeBlock>
-        <p className="docs-paragraph docs-demo-instructions">
+        <p className="docs-paragraph">
           Try your webcam below, then switch between Face Follow and Full Frame.
           Move to one side and pause to let the framing catch up, or step away
           to see the full-frame fallback. Your camera stays in your browser.
