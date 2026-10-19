@@ -56,6 +56,20 @@ vi.mock("../../src/wasm/client", async (original) => ({
   getClientModule: () => harness.module,
 }));
 
+vi.mock("../../src/network/BrowserHostRuntime", () => ({
+  BrowserHostRuntime: class {
+    constructor(callback: (id: number, bytes: Uint8Array) => void) {
+      harness.module.hostPacketCallback = callback;
+    }
+    async start() {}
+    addClient() {
+      return 1;
+    }
+    removeClient() {}
+    close() {}
+  },
+}));
+
 describe("browser host peer isolation", () => {
   it.each(["WebRTC channel is not open", "WebRTC send buffer is full"])(
     "keeps other peers and signaling alive: %s",
@@ -64,6 +78,10 @@ describe("browser host peer isolation", () => {
       const host = new BrowserHostSession({
         signalingUrl: "ws://localhost",
         createSession: true,
+        sessionName: "",
+        password: "",
+        stunServers: [],
+        turnServers: [],
       });
       const ready = host.connect();
       harness.packet({ type: 1 }, new Uint8Array());

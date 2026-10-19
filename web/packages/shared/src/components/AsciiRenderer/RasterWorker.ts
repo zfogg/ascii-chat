@@ -1,0 +1,53 @@
+export interface RasterRequest {
+  text: string;
+  cols: number;
+  rows: number;
+  matrix: boolean;
+  zalgo: number;
+}
+export interface RasterResult {
+  pixels: Uint8ClampedArray<ArrayBuffer>;
+  width: number;
+  height: number;
+}
+/** One raster in flight and one replaceable newest frame; no stale-frame backlog. */
+export class RasterWorker {
+  private worker = new Worker(new URL("./raster.worker.ts", import.meta.url), {
+    type: "module",
+  });
+  private busy = false;
+  private pending: RasterRequest | null = null;
+  private closed = false;
+  constructor(
+    present: (result: RasterResult) => void,
+    failure: (error: Error) => void,
+  ) {
+    this.worker.onerror = (event) => failure(new Error(event.message));
+    this.worker.onmessage = (event) => {
+      if (this.closed) return;
+      if (event.data.error) {
+        failure(new Error(event.data.error));
+        return;
+      }
+      present(event.data);
+      this.busy = false;
+      const next = this.pending;
+      this.pending = null;
+      if (next) this.write(next);
+    };
+  }
+  write(request: RasterRequest): void {
+    if (this.closed) return;
+    if (this.busy) {
+      this.pending = request;
+      return;
+    }
+    this.busy = true;
+    this.worker.postMessage(request);
+  }
+  close(): void {
+    this.closed = true;
+    this.pending = null;
+    this.worker.terminate();
+  }
+}

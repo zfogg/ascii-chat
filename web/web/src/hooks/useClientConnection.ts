@@ -51,6 +51,7 @@ interface UseClientConnectionOptions {
   frameCountRef: React.MutableRefObject<number>;
   receivedFrameCountRef: React.MutableRefObject<number>;
   frameReceiptTimesRef: React.MutableRefObject<number[]>;
+  onFrameAvailableRef?: React.RefObject<(() => void) | null>;
   onWasmInitialized: () => void;
 }
 
@@ -71,6 +72,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     frameCountRef,
     receivedFrameCountRef,
     frameReceiptTimesRef,
+    onFrameAvailableRef,
     onWasmInitialized,
     discovery,
     onAudioPacket,
@@ -98,7 +100,6 @@ export function useClientConnection(options: UseClientConnectionOptions) {
   const hasBeenConnectedRef = useRef(false);
   const autoReconnectEnabledRef = useRef(false);
   const autoConnectStartedRef = useRef(false);
-  const lastReceivedFrameAtRef = useRef(0);
 
   const connectToServer = useCallback(
     async (options?: { showErrors?: boolean }) => {
@@ -161,11 +162,6 @@ export function useClientConnection(options: UseClientConnectionOptions) {
           if (state === ConnectionState.CONNECTED) {
             hasBeenConnectedRef.current = true;
             reconnectAttemptRef.current = 0;
-            // Startup can legitimately take longer than the stalled-stream
-            // threshold while the native host creates its first composite
-            // frame. Leave this at zero until a real ASCII frame arrives so
-            // the watchdog cannot turn a successful join into a reconnect.
-            lastReceivedFrameAtRef.current = 0;
             console.log(
               "[Client] CONNECTED state reached, attempting to send CLIENT_CAPABILITIES and STREAM_START",
             );
@@ -271,7 +267,6 @@ export function useClientConnection(options: UseClientConnectionOptions) {
           if (parsed.type === PacketType.ASCII_FRAME) {
             receivedFrameCountRef.current++;
             const now = performance.now();
-            lastReceivedFrameAtRef.current = now;
             frameReceiptTimesRef.current.push(now);
             if (frameReceiptTimesRef.current.length > 10) {
               frameReceiptTimesRef.current.splice(
@@ -325,6 +320,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
               // Queue frame for the render loop to process at target FPS
               // This prevents frame accumulation when tab is hidden
               frameQueueRef.current.push(frame);
+              onFrameAvailableRef?.current?.();
               if (frameQueueRef.current.length > 3)
                 frameQueueRef.current.splice(
                   0,
@@ -392,6 +388,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
       frameCountRef,
       receivedFrameCountRef,
       frameReceiptTimesRef,
+      onFrameAvailableRef,
       onWasmInitialized,
       discovery,
       onAudioPacket,
@@ -449,26 +446,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     };
   }, [connectionState, discovery]);
 
-  // A data channel may stay open after the server's frame stream has stalled.
-  // Treat the missing frames as a failed discovery connection so the normal
-  // reconnect path can replace the dead media session.
-  useEffect(() => {
-    if (!discovery || connectionState !== ConnectionState.CONNECTED) return;
-
-    const watchdog = setInterval(() => {
-      const lastFrameAt = lastReceivedFrameAtRef.current;
-      if (lastFrameAt && performance.now() - lastFrameAt > 12_000) {
-        console.warn(
-          "[Client] No ASCII frames received for 12s; reconnecting discovery session",
-        );
-        onConnectionStateChange?.(ConnectionState.ERROR);
-        setStatus("Video stream stalled; reconnecting");
-        setConnectionState(ConnectionState.ERROR);
-      }
-    }, 1000);
-
-    return () => clearInterval(watchdog);
-  }, [connectionState, discovery, onConnectionStateChange]);
+  // Frame gaps can come from paused media or background-tab throttling.
+  // Transport state callbacks, not video cadence, determine connection health.
 
   const handleDisconnect = useCallback(() => {
     console.log("[Client] handleDisconnect() called");

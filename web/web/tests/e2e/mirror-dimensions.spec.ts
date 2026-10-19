@@ -45,8 +45,18 @@ for (const matrix of [false, true]) {
       await page
         .getByRole("button", { name: "Animation", exact: true })
         .click();
-    const width = page.getByLabel("Width (columns; 0 = auto)", { exact: true });
-    const height = page.getByLabel("Height (rows; 0 = auto)", { exact: true });
+    const fit = page.getByLabel("Content fit", { exact: true });
+    const canvas = page.locator("canvas.ascii-canvas");
+    await expect(fit).toHaveValue("contain");
+    await expect(canvas).toHaveCSS("object-fit", "contain");
+    await fit.selectOption("cover");
+    await expect(canvas).toHaveCSS("object-fit", "cover");
+    await expect(page).toHaveURL(/fit=cover/);
+    await fit.selectOption("contain");
+    await expect(canvas).toHaveCSS("object-fit", "contain");
+    await expect(page).not.toHaveURL(/fit=/);
+    const width = page.getByLabel("Width", { exact: true });
+    const height = page.getByLabel("Height", { exact: true });
     await expect(width).toHaveValue("0");
     await expect(height).toHaveValue("0");
     const initial = await canvasState(page);

@@ -73,7 +73,46 @@
       if (g > 180 && r < 100 && b < 100) counts.green++;
       if (b > 180 && r < 100 && g < 100) counts.blue++;
     }
-    status.textContent = JSON.stringify({ width, height, counts }, null, 2);
+    // A warm cell cache must produce exactly the same pixels as a fresh one,
+    // including after eviction, background changes and overhanging glyphs.
+    const sampleFrames = [
+      "\x1b[0m\x1b[31mRED   \x1b[32mGREEN   \x1b[34mBLUE",
+      "\x1b[0m\x1b[47;30m @gj_  \x1b[44;97mWMM \x1b[0m",
+      "\x1b[0m\x1b[38;2;91;172;253m@@@@@@@@@@@@@@@@@@",
+      "\x1b[0m\x1b[48;2;17;33;49m                  ",
+    ];
+    const renderPixels = (target, text) => {
+      const bytes = new TextEncoder().encode(text);
+      const ptr = module._malloc(bytes.length);
+      module.HEAPU8.set(bytes, ptr);
+      if (module._term_renderer_feed(target, ptr, bytes.length))
+        throw new Error("cell cache test feed failed");
+      module._free(ptr);
+      const start = module._term_renderer_pixels(target);
+      return module.HEAPU8.slice(start, start + pitch * height);
+    };
+    let comparisons = 0;
+    for (const text of sampleFrames) {
+      if (module._term_renderer_create(config, out))
+        throw new Error("create failed");
+      const fresh = new DataView(module.HEAPU8.buffer, out, 4).getUint32(
+        0,
+        true,
+      );
+      const expected = renderPixels(fresh, text);
+      module._term_renderer_destroy(fresh);
+      for (let pass = 0; pass < 2; pass++) {
+        const actual = renderPixels(renderer, text);
+        if (!actual.every((value, index) => value === expected[index]))
+          throw new Error("warm/cold renderer pixel mismatch");
+        comparisons++;
+      }
+    }
+    status.textContent = JSON.stringify(
+      { width, height, counts, comparisons, result: "PASS" },
+      null,
+      2,
+    );
     module._term_renderer_destroy(renderer);
     module._free(framePtr);
     module._free(config);

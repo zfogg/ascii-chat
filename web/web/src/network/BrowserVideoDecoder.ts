@@ -7,6 +7,12 @@ export class BrowserVideoDecoder {
   private signature = "";
   private generation = 0;
   private timestamp = 0;
+  private copying = false;
+  private pending: {
+    frame: VideoFrame;
+    generation: number;
+    label: string;
+  } | null = null;
   constructor(
     private output: (payload: Uint8Array) => void,
     private failure: (error: Error) => void,
@@ -34,26 +40,10 @@ export class BrowserVideoDecoder {
       const generation = this.generation;
       this.decoder = new VideoDecoder({
         output: (frame) => {
-          const rgba = new Uint8Array(
-            frame.displayWidth * frame.displayHeight * 4,
-          );
-          const w = frame.displayWidth,
-            h = frame.displayHeight;
-          void frame
-            .copyTo(rgba, {
-              format: "RGBA",
-              layout: [{ offset: 0, stride: w * 4 }],
-            })
-            .then(() => {
-              if (generation === this.generation)
-                this.output(buildImageFramePayload(rgba, w, h));
-            })
-            .catch((error) =>
-              this.failure(
-                new Error(`${label} pixel conversion failed: ${String(error)}`),
-              ),
-            )
-            .finally(() => frame.close());
+          if (this.copying) {
+            this.pending?.frame.close();
+            this.pending = { frame, generation, label };
+          } else this.copyFrame(frame, generation, label);
         },
         error: (error) => {
           if (generation === this.generation)
@@ -80,8 +70,36 @@ export class BrowserVideoDecoder {
       }),
     );
   }
+  private copyFrame(frame: VideoFrame, generation: number, label: string) {
+    this.copying = true;
+    const w = frame.displayWidth,
+      h = frame.displayHeight;
+    const rgba = new Uint8Array(w * h * 4);
+    void frame
+      .copyTo(rgba, { format: "RGBA", layout: [{ offset: 0, stride: w * 4 }] })
+      .then(() => {
+        if (generation === this.generation)
+          this.output(buildImageFramePayload(rgba, w, h));
+      })
+      .catch((error) => {
+        if (generation === this.generation)
+          this.failure(
+            new Error(`${label} pixel conversion failed: ${String(error)}`),
+          );
+      })
+      .finally(() => {
+        frame.close();
+        this.copying = false;
+        const pending = this.pending;
+        this.pending = null;
+        if (pending)
+          this.copyFrame(pending.frame, pending.generation, pending.label);
+      });
+  }
   destroy() {
     this.generation++;
+    this.pending?.frame.close();
+    this.pending = null;
     if (this.decoder && this.decoder.state !== "closed") this.decoder.close();
     this.decoder = null;
     this.signature = "";

@@ -10,9 +10,11 @@ import { useCallback, useRef, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
 import { MirrorPage } from "../../src/pages/Mirror";
 import { MediaSourceType } from "../../src/hooks/useClientLike";
+import type { BinarySettingsConfig } from "../../src/components/shared/BinarySettings";
 import { DEFAULT_SETTINGS } from "../../src/utils/defaultSettings";
 
 const backend = vi.hoisted(() => ({
+  applySettings: vi.fn(),
   ready: false,
   file: false,
   loading: false,
@@ -32,7 +34,28 @@ vi.mock("@ascii-chat/shared/wasm", () => ({
 }));
 vi.mock("../../src/wasm/dist/mirror.js", () => ({ default: vi.fn() }));
 vi.mock("../../src/components", () => ({
-  BinarySettings: () => null,
+  BinarySettings: ({
+    config,
+    onChange,
+  }: {
+    config: BinarySettingsConfig;
+    onChange: (config: BinarySettingsConfig) => void;
+  }) => (
+    <>
+      <button
+        aria-pressed={!!config.flipX}
+        onClick={() => onChange({ ...config, flipX: !config.flipX })}
+      >
+        Horizontal
+      </button>
+      <button
+        aria-pressed={!!config.flipY}
+        onClick={() => onChange({ ...config, flipY: !config.flipY })}
+      >
+        Vertical
+      </button>
+    </>
+  ),
   AsciiRenderer: ({ uiLoading }: { uiLoading: boolean }) => (
     <div data-testid="renderer">{uiLoading ? "splash" : "frame"}</div>
   ),
@@ -51,8 +74,10 @@ vi.mock("../../src/components", () => ({
     </>
   ),
   ModeHeader: ({
+    settingsPanel,
     controlBar,
   }: {
+    settingsPanel: React.ReactNode;
     controlBar: {
       onStartWebcam: () => void;
       onStopWebcam: () => void;
@@ -61,6 +86,7 @@ vi.mock("../../src/components", () => ({
     };
   }) => (
     <>
+      {settingsPanel}
       <button onClick={controlBar.onStartWebcam}>Start</button>
       <button onClick={controlBar.onStopWebcam}>Stop</button>
       {controlBar.statusControls}
@@ -69,7 +95,7 @@ vi.mock("../../src/components", () => ({
   ),
 }));
 vi.mock("../../src/hooks", () => ({
-  applyMirrorWasmSettings: vi.fn(),
+  applyMirrorWasmSettings: backend.applySettings,
   setMirrorWasmDimensions: vi.fn(),
   useMirrorRenderLoop: vi.fn(),
   useClientLike: () => {
@@ -77,6 +103,7 @@ vi.mock("../../src/hooks", () => ({
     const [source, setSource] = useState<symbol | null>(
       backend.file ? MediaSourceType.FILE : null,
     );
+    const [settings, setSettings] = useState(DEFAULT_SETTINGS);
     const ref = useRef(null);
     return {
       videoRef: ref,
@@ -92,7 +119,8 @@ vi.mock("../../src/hooks", () => ({
       setIsWebcamRunning: setRunning,
       mediaSource: source,
       setMediaSource: setSource,
-      settings: DEFAULT_SETTINGS,
+      settings,
+      setSettings,
       terminalDimensions: {
         cols: backend.ready ? 80 : 0,
         rows: backend.ready ? 40 : 0,
@@ -189,4 +217,38 @@ test("loading media does not report splash animation frames as video FPS", () =>
   backend.loading = true;
   render(<MirrorPage />);
   expect(screen.getByTestId("fps").textContent).toBe("0");
+});
+
+test("media flips start off, reach WASM and remain independent of webcam flips", async () => {
+  backend.ready = true;
+  backend.file = true;
+  render(<MirrorPage />);
+  const horizontal = screen.getByRole("button", { name: "Horizontal" });
+  const vertical = screen.getByRole("button", { name: "Vertical" });
+  expect(horizontal.getAttribute("aria-pressed")).toBe("false");
+  expect(vertical.getAttribute("aria-pressed")).toBe("false");
+  fireEvent.click(vertical);
+  expect(backend.applySettings).toHaveBeenLastCalledWith(
+    expect.objectContaining({ flipX: false, flipY: true }),
+  );
+  fireEvent.click(horizontal);
+  expect(backend.applySettings).toHaveBeenLastCalledWith(
+    expect.objectContaining({ flipX: true, flipY: true }),
+  );
+  await act(async () =>
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Media" })),
+  );
+  expect(vertical.getAttribute("aria-pressed")).toBe("false");
+  expect(backend.applySettings).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      flipX: DEFAULT_SETTINGS.flipX,
+      flipY: DEFAULT_SETTINGS.flipY,
+    }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Toggle Media" }));
+  expect(vertical.getAttribute("aria-pressed")).toBe("true");
+  expect(horizontal.getAttribute("aria-pressed")).toBe("true");
+  expect(backend.applySettings).toHaveBeenLastCalledWith(
+    expect.objectContaining({ flipX: true, flipY: true }),
+  );
 });
