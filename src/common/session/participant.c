@@ -241,7 +241,7 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
 
   participant_connection_init(p);
 
-  asciichat_error_t result = network_connection_open("participant", p->address, p->port, &p->network, NULL);
+  asciichat_error_t result = network_connection_open("participant", p->address, p->port, NULL, &p->network, NULL);
   if (result != ASCIICHAT_OK)
     return result;
   p->transport = network_connection_transport(p->network);

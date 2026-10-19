@@ -116,8 +116,7 @@ typedef struct {
 typedef struct {
   network_server_t *network_server; ///< Network runtime owned by server_like
   mutex_t handoff_mutex;
-  consensus_handoff_t handoffs[32];
-  bool handoff_used[32];
+  struct acds_handoff_entry *handoffs;
 
   // Identity
   uint8_t identity_public[32]; ///< Ed25519 public key

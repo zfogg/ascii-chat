@@ -68,7 +68,13 @@ for (const mode of ["mirror", "client", "discovery"]) {
       .toBeGreaterThan(100);
     expect(errors).toEqual([]);
     await page.screenshot({ path: `test-results/upload-file-${mode}.png` });
-    await page.getByRole("button", { name: "Stop", exact: true }).click();
+    const stop = page.getByRole("button", { name: "Stop", exact: true });
+    const stopBox = await stop.boundingBox();
+    const activeUploadBox = await upload.boundingBox();
+    expect(activeUploadBox!.x).toBeGreaterThanOrEqual(
+      stopBox!.x + stopBox!.width,
+    );
+    await stop.click();
     await expect(video).not.toHaveAttribute("src");
   });
 }

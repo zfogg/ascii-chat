@@ -549,7 +549,7 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   uint16_t endpoint_default_port = session->acds_port > 0 ? session->acds_port : ACIP_DISCOVERY_DEFAULT_PORT;
   connection_endpoint_t endpoint = {0};
   asciichat_error_t endpoint_result = network_connection_open("discovery_acds", endpoint_input, endpoint_default_port,
-                                                              &session->acds_connection, &endpoint);
+                                                              NULL, &session->acds_connection, &endpoint);
   if (endpoint_result != ASCIICHAT_OK) {
     set_error(session, endpoint_result, "Failed to connect to ACDS");
     return endpoint_result;
@@ -1219,6 +1219,10 @@ asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session) 
     session->peer_manager = NULL;
   }
   session->is_host = !memcmp(session->host_id, session->participant_id, 16);
+  if (!session->is_host && session->host_ctx) {
+    session_host_destroy(session->host_ctx);
+    session->host_ctx = NULL;
+  }
   session->webrtc_transport_ready = false;
   session->webrtc_connection_initiated = false;
   session->webrtc_retry_attempt = 0;

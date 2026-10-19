@@ -82,8 +82,18 @@ asciichat_error_t network_connection_adopt(acip_transport_t *, network_connectio
 /** Shared outbound establishment. Native TCP is adopted into the event backend;
  * WebSocket establishes its library-managed transport. Returns one owned object.
  */
+typedef struct {
+  uint32_t timeout_ms;
+  bool (*should_exit_callback)(void *);
+  void *callback_data;
+} network_connect_config_t;
+
+/** A NULL config uses backend defaults and the application's exit callback.
+ * A supplied config preserves its timeout, including zero, and also checks its
+ * cancellation callback before dialing and while waiting for establishment. */
 asciichat_error_t network_connection_open(const char *name, const char *address, uint16_t default_port,
-                                          network_connection_t **, connection_endpoint_t *);
+                                          const network_connect_config_t *, network_connection_t **,
+                                          connection_endpoint_t *);
 void network_connection_destroy(network_connection_t **);
 
 uint8_t network_connection_crypto_mode(network_connection_t *);

@@ -213,6 +213,12 @@ describe("WebSocket encryption defaults", () => {
       expect(states.at(-1)).toBe(ConnectionState.ERROR);
       expect(connection.getState()).toBe(ConnectionState.ERROR);
       expect(sockets.instances[0]!.isConnected()).toBe(false);
+      // A reconnect failure can receive its close notification after ERROR.
+      Object.assign(connection, { wasEverConnected: true });
+      await Promise.resolve();
+      sockets.instances[0]!.emit("closed");
+      expect(connection.getState()).toBe(ConnectionState.ERROR);
+      expect(states.at(-1)).toBe(ConnectionState.ERROR);
       connection.disconnect();
     },
   );

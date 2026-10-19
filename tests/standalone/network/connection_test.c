@@ -1,4 +1,5 @@
 #include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/network.h>
@@ -198,7 +199,7 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
     if (websocket)
       upgrade_websocket(fragmented, ws);
   } else {
-    open_result = network_connection_open("connection_test", endpoint, tcp, &client, NULL);
+    open_result = network_connection_open("connection_test", endpoint, tcp, NULL, &client, NULL);
   }
   CHECK(open_result == ASCIICHAT_OK || (reject && open_result == ERROR_NETWORK_CONNECT));
   wait_count(&f.opened, 1);
@@ -210,7 +211,8 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
                                 .type = HOST_TO_NET_U16(PACKET_TYPE_PING)};
       acip_transport_t *transport = network_connection_transport(client);
       if (rtc) {
-        CHECK(webrtc_datachannel_send(endpoints[0].dc, (const uint8_t *)&header, corrupt == 2 ? 5 : sizeof(header)) == ASCIICHAT_OK);
+        CHECK(webrtc_datachannel_send(endpoints[0].dc, (const uint8_t *)&header, corrupt == 2 ? 5 : sizeof(header)) ==
+              ASCIICHAT_OK);
       } else if (corrupt == 2) {
         uint8_t frame[11] = {0x82, 0x85, 0, 0, 0, 0};
         memcpy(frame + 6, &header, 5);
@@ -272,10 +274,67 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
   CHECK(!f.server);
   rtc_cleanup(endpoints);
 }
+typedef struct {
+  unsigned calls;
+  unsigned cancel_after;
+} cancellation_t;
+
+static bool cancel_connect(void *data) {
+  cancellation_t *cancel = data;
+  CHECK(cancel);
+  return ++cancel->calls >= cancel->cancel_after;
+}
+
+static void establishment_controls(void) {
+  cancellation_t cancel = {.cancel_after = 1};
+  network_connect_config_t config = {
+      .timeout_ms = 120, .should_exit_callback = cancel_connect, .callback_data = &cancel};
+  network_connection_t *connection = NULL;
+  CHECK(network_connection_open("cancelled", "tcp://127.0.0.1", 1, &config, &connection, NULL) != ASCIICHAT_OK);
+  CHECK(cancel.calls == 1 && !connection);
+  cancel.calls = 0;
+  CHECK(network_connection_open("cancelled", "ws://127.0.0.1:1", 1, &config, &connection, NULL) != ASCIICHAT_OK);
+  CHECK(cancel.calls == 1 && !connection);
+
+  acds_client_config_t discovery;
+  acds_client_config_init_defaults(&discovery);
+  discovery.timeout_ms = config.timeout_ms;
+  discovery.should_exit_callback = cancel_connect;
+  discovery.callback_data = &cancel;
+  acds_client_t client;
+  cancel.calls = 0;
+  CHECK(acds_client_connect(&client, &discovery) != ASCIICHAT_OK);
+  CHECK(cancel.calls == 1 && !client.connected && !client.connection && !client.transport);
+
+  // A listening TCP peer that never upgrades must obey the WebSocket deadline.
+  socket_t listener = socket_create("stalled_upgrade", AF_INET, SOCK_STREAM, 0);
+  CHECK(listener != INVALID_SOCKET_VALUE);
+  struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  CHECK(socket_bind(listener, (struct sockaddr *)&address, sizeof(address)) == 0);
+  CHECK(socket_listen(listener, 16) == 0);
+  socklen_t length = sizeof(address);
+  CHECK(socket_getsockname(listener, (struct sockaddr *)&address, &length) == 0);
+  char endpoint[128];
+  safe_snprintf(endpoint, sizeof(endpoint), "ws://127.0.0.1:%u", NET_TO_HOST_U16(address.sin_port));
+  config.should_exit_callback = NULL;
+  uint64_t start = time_get_ns();
+  CHECK(network_connection_open("deadline", endpoint, 1, &config, &connection, NULL) != ASCIICHAT_OK);
+  uint64_t elapsed = time_get_ns() - start;
+  CHECK(elapsed >= 100 * NS_PER_MS_INT && elapsed < 2 * NS_PER_SEC_INT && !connection);
+  cancel = (cancellation_t){.cancel_after = 4};
+  config.timeout_ms = 5000;
+  config.should_exit_callback = cancel_connect;
+  start = time_get_ns();
+  CHECK(network_connection_open("cancel_upgrade", endpoint, 1, &config, &connection, NULL) != ASCIICHAT_OK);
+  CHECK(cancel.calls >= 4 && time_get_ns() - start < 2 * NS_PER_SEC_INT && !connection);
+  socket_close(listener);
+}
+
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
   asciichat_errno_suppress(true);
   CHECK(socket_init() == ASCIICHAT_OK);
+  establishment_controls();
   for (int websocket = 0; websocket < 2; ++websocket) {
     scenario(websocket, false, false, 0, false);
     scenario(websocket, true, false, 0, false);

@@ -198,7 +198,7 @@ static void capture_thread_name(uint64_t tid, char *thread_name_buf, size_t buf_
 static bool should_ignore_allocation(const char *file, int line, uint64_t tid, size_t size) {
   // file is already the normalized relative path from curr->file
   // (set during debug_malloc/debug_calloc using extract_project_relative_path)
-  // Do NOT call extract_project_relative_path again - it won't work on already-relative paths
+  // Already-relative paths remain unchanged by extract_project_relative_path.
 
   for (size_t i = 0; g_suppression_config[i].file != NULL; i++) {
     if (line == g_suppression_config[i].line && strcmp(file, g_suppression_config[i].file) == 0) {
@@ -1176,65 +1176,31 @@ void debug_memory_report(void) {
             continue;
           }
 
-          // Parse site key to extract file and line for ignore checking
-          // Key format: "file:line:tid"  (where file is the relative path)
-          char file[BUFFER_SIZE_SMALL];
-          memset(file, 0, sizeof(file));
+          // Keys end in :line:tid; earlier colons can belong to Windows drive letters.
+          // Shorten before copying so an absolute root cannot consume the file buffer.
+          const char *relative_key = extract_project_relative_path(site->key);
+          char file[sizeof(site->key)] = {0};
           int line = 0;
           uint64_t tid = 0;
           bool parse_success = false;
-
-          // Strategy: Find both colons by scanning for the rightmost two ':'
-          // 1. Find the LAST ':' (between line and tid)
-          // 2. Find the SECOND-LAST ':' (between file and line)
-          // 3. Extract each component
-
-          // Count colons to verify we have exactly 2
-          int colon_count = 0;
-          for (const char *p = site->key; *p; p++) {
-            if (*p == ':')
-              colon_count++;
-          }
-
-          if (colon_count == 2) {
-            // Find the two colons from right to left
-            char *last_colon = strrchr(site->key, ':'); // Last colon
-            char *first_colon = strchr(site->key, ':'); // First colon
-
-            if (last_colon && first_colon && first_colon < last_colon) {
-              // Extract components: file is from start to first_colon
-              size_t file_len = first_colon - site->key;
-
-              if (file_len > 0 && file_len < sizeof(file)) {
-                SAFE_MEMCPY(file, sizeof(file), site->key, file_len);
-                file[file_len] = '\0';
-
-                // Extract line (between first and last colon)
-                if (SAFE_SSCANF(first_colon + 1, "%d", &line) == 1 &&
-                    SAFE_SSCANF(last_colon + 1, "%" SCNu64, &tid) == 1) {
-                  parse_success = true;
-                }
-              } else if (file_len >= sizeof(file)) {
-                // Filename too long, truncate with ellipsis
-                size_t max_len = sizeof(file) - 4;
-                SAFE_MEMCPY(file, sizeof(file), site->key, max_len);
-                file[max_len] = '\0';
-                int snprintf_result = SAFE_SNPRINTF(file + max_len, sizeof(file) - max_len, "%s", "...");
-                if (snprintf_result < 0) {
-                  log_error("Failed to append ellipsis to filename: snprintf returned %d", snprintf_result);
-                }
-
-                if (SAFE_SSCANF(first_colon + 1, "%d", &line) == 1 &&
-                    SAFE_SSCANF(last_colon + 1, "%" SCNu64, &tid) == 1) {
-                  parse_success = true;
-                }
+          const char *last_colon = strrchr(relative_key, ':');
+          const char *line_colon = NULL;
+          if (last_colon) {
+            for (const char *p = last_colon; p > relative_key;) {
+              if (*--p == ':') {
+                line_colon = p;
+                break;
               }
             }
           }
-
-          // If parsing failed, use a descriptive fallback
-          if (!parse_success) {
-            safe_snprintf(file, sizeof(file), "<key:%s>", site->key);
+          if (line_colon && line_colon > relative_key && SAFE_SSCANF(line_colon + 1, "%d", &line) == 1 &&
+              SAFE_SSCANF(last_colon + 1, "%" SCNu64, &tid) == 1) {
+            size_t file_len = (size_t)(line_colon - relative_key);
+            SAFE_MEMCPY(file, sizeof(file), relative_key, file_len);
+            file[file_len] = '\0';
+            parse_success = true;
+          } else {
+            safe_snprintf(file, sizeof(file), "%s", relative_key);
           }
 
           // Skip ignored allocations
@@ -1246,7 +1212,10 @@ void debug_memory_report(void) {
           format_bytes_pretty(site->live_bytes, pretty_bytes, sizeof(pretty_bytes));
 
           char line_str[32];
-          safe_snprintf(line_str, sizeof(line_str), "%d", line);
+          line_str[0] = '\0';
+          if (parse_success) {
+            safe_snprintf(line_str, sizeof(line_str), ":%d", line);
+          }
           char count_str[32];
           safe_snprintf(count_str, sizeof(count_str), "%zu", site->live_count);
 
@@ -1263,7 +1232,7 @@ void debug_memory_report(void) {
           const char *colored_thread_name = colorize_named_string(site->thread_name);
 
           // Print site summary with thread name (captured at site creation, colorized)
-          APPEND_REPORT("  - %s:%s [%s] %s live %s total\n", colored_string(LOG_COLOR_GREY, file),
+          APPEND_REPORT("  - %s%s [%s] %s live %s total\n", colored_string(LOG_COLOR_GREY, file),
                         colored_string(LOG_COLOR_FATAL, line_str), colored_thread_name,
                         colored_string(size_color, count_str), colored_string(size_color, pretty_bytes));
 

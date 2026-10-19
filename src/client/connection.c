@@ -68,7 +68,7 @@ asciichat_error_t client_connection_start(client_connection_t *connection, const
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection is not ready for startup");
   }
   connection_endpoint_t endpoint;
-  asciichat_error_t result = network_connection_open("client", address, port, &connection->network, &endpoint);
+  asciichat_error_t result = network_connection_open("client", address, port, NULL, &connection->network, &endpoint);
   if (result != ASCIICHAT_OK)
     return result;
   connection->transport = network_connection_transport(connection->network);

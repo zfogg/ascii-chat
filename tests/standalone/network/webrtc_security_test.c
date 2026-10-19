@@ -3,6 +3,8 @@
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/prepare.h>
+#include <ascii-chat/network/crc32.h>
 #include <ascii-chat/network/webrtc/webrtc.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/time.h>
@@ -122,6 +124,38 @@ static void exchange(endpoint_t *sender, endpoint_t *receiver) {
   buffer_release(owned);
 }
 
+static void exchange_unused_outer_crc(endpoint_t *sender, endpoint_t *receiver) {
+  const uint8_t payload[] = {1, 2, 3, 4};
+  packet_header_t inner = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                           .type = HOST_TO_NET_U16(PACKET_TYPE_PING),
+                           .length = HOST_TO_NET_U32(sizeof(payload)),
+                           .crc32 = HOST_TO_NET_U32(asciichat_crc32(payload, sizeof(payload)))};
+  socket_buffer_t buffers[] = {{.data = &inner, .len = sizeof(inner)}, {.data = payload, .len = sizeof(payload)}};
+  acip_packet_plan_t plan;
+  CHECK(acip_packet_plan(&sender->security->handshake.crypto_ctx, buffers, 2, &plan) == ASCIICHAT_OK);
+  CHECK(plan.encrypt);
+  uint8_t *wire = SAFE_MALLOC(sizeof(inner) + plan.ciphertext_capacity, uint8_t *);
+  packet_header_t outer;
+  size_t encrypted_length = 0;
+  CHECK(acip_packet_encrypt(&sender->security->handshake.crypto_ctx, &plan, NULL, wire + sizeof(outer),
+                            plan.ciphertext_capacity, &outer, &encrypted_length) == ASCIICHAT_OK);
+  // The protocol leaves the outer CRC unused; authenticated inner CRC stays valid.
+  outer.crc32 ^= UINT32_MAX;
+  memcpy(wire, &outer, sizeof(outer));
+  CHECK(webrtc_datachannel_send(sender->dc, wire, sizeof(outer) + encrypted_length) == ASCIICHAT_OK);
+  SAFE_FREE(wire);
+  uint64_t start = time_get_ns();
+  while (!acip_transport_has_pending_data(receiver->transport) && time_get_ns() - start < 5 * NS_PER_SEC_INT)
+    platform_sleep_ms(5);
+  CHECK(acip_transport_has_pending_data(receiver->transport));
+  void *data = NULL, *owned = NULL;
+  size_t length = 0;
+  CHECK(acip_transport_recv(receiver->transport, &data, &length, &owned) == ASCIICHAT_OK);
+  CHECK(length == sizeof(inner) + sizeof(payload));
+  CHECK(memcmp((uint8_t *)data + sizeof(inner), payload, sizeof(payload)) == 0);
+  buffer_release(owned);
+}
+
 static void fixture(uint8_t mode, const char *password, bool identity, int rejection) {
   network_connection_t *server_owner = NULL, *client_owner = NULL;
   endpoint_t server = {0}, client = {0};
@@ -182,6 +216,10 @@ static void fixture(uint8_t mode, const char *password, bool identity, int rejec
     CHECK(network_connection_crypto_mode(client_owner) == mode);
     exchange(&client, &server);
     exchange(&server, &client);
+    if (ACIP_CRYPTO_HAS_ENCRYPT(mode)) {
+      exchange_unused_outer_crc(&client, &server);
+      exchange_unused_outer_crc(&server, &client);
+    }
   }
   if (client_owner)
     network_connection_destroy(&client_owner);

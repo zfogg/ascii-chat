@@ -21,7 +21,9 @@ library event engines. Backend adapters deliver input to the common connection
 executor; modes do not accept sockets, run transport receive loops, or maintain
 synthetic TCP registry entries for other transports.
 
-`network_connection_open()` resolves and establishes an outbound endpoint.
+`network_connection_open()` resolves and establishes an outbound endpoint. Its
+optional configuration carries the caller's timeout and cancellation callback/data
+through TCP and WebSocket establishment; application shutdown is checked as well.
 `network_connection_run()` drives packet callbacks on its controlling worker.
 An established authenticated peer can be adopted by a server or an outbound
 owner without repeating the peer's cryptographic negotiation.

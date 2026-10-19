@@ -238,13 +238,6 @@ rate_limiter_t *g_rate_limiter = NULL;
  */
 static time_t g_server_start_time = 0;
 
-/**
- * @brief Last status screen update time
- *
- * Tracks when status was last displayed to avoid excessive updates.
- * Used by status screen thread to track frame timing.
- */
-
 // Status screen thread, keyboard thread, and SPSC queue are now owned by session_server_like.
 
 /**
@@ -1404,7 +1397,7 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
   // Set IP disclosure policy (determined above)
   params->acds_expose_ip = policy->expose_ip;
   log_debug("Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)",
-           params->acds_expose_ip, policy->explicit_expose, policy->has_password, policy->has_identity);
+            params->acds_expose_ip, policy->explicit_expose, policy->has_password, policy->has_identity);
 
   // Set session type (Direct TCP or WebRTC)
   // Auto-detect: Use WebRTC if UPnP failed OR if explicitly requested via --webrtc
@@ -1451,7 +1444,7 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
 
   // DEBUG: Log what we're sending to ACDS
   log_debug("Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u",
-           params->acds_expose_ip, params->server_address, params->server_port, params->session_type);
+            params->acds_expose_ip, params->server_address, params->server_port, params->session_type);
 }
 
 static void server_join_discovery_session(const acds_session_create_params_t *params,
@@ -1597,19 +1590,20 @@ static void server_init_webrtc(void) {
     const char *server_address = GET_OPTION(address);
     bool bind_webrtc_to_server_address = server_address && server_address[0] &&
                                          strcmp(server_address, "0.0.0.0") != 0 && strcmp(server_address, "::") != 0;
-    webrtc_peer_manager_config_t pm_config = {.role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
-                                              // Honor an explicitly selected server interface for ICE. With a
-                                              // wildcard bind, let libdatachannel gather candidates on all interfaces.
-                                              .bind_address = bind_webrtc_to_server_address ? server_address : NULL,
-                                              .stun_servers = stun_servers,
-                                              .stun_count = stun_count,
-                                              .turn_servers = turn_servers,
-                                              .turn_count = turn_count,
-                                              .relay_only = GET_OPTION(webrtc_relay_only),
-                                              .turn_username = turn_auth_username,
-                                              .turn_credential = turn_auth_credential,
-                                              .on_transport_ready = on_webrtc_transport_ready,
-                                              .user_data = &g_server_ctx};
+    webrtc_peer_manager_config_t pm_config = {
+        .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
+                                     // Honor an explicitly selected server interface for ICE. With a
+                                     // wildcard bind, let libdatachannel gather candidates on all interfaces.
+        .bind_address = bind_webrtc_to_server_address ? server_address : NULL,
+        .stun_servers = stun_servers,
+        .stun_count = stun_count,
+        .turn_servers = turn_servers,
+        .turn_count = turn_count,
+        .relay_only = GET_OPTION(webrtc_relay_only),
+        .turn_username = turn_auth_username,
+        .turn_credential = turn_auth_credential,
+        .on_transport_ready = on_webrtc_transport_ready,
+        .user_data = &g_server_ctx};
 
     // Configure signaling callbacks for relaying SDP/ICE via ACDS
     webrtc_signaling_callbacks_t signaling_callbacks = {
@@ -1825,7 +1819,7 @@ static asciichat_error_t server_init_fn(void *user_data) {
   SAFE_STRNCPY(g_session_string, startup.session_string, sizeof(g_session_string));
   g_session_is_mdns_only = startup.mdns_only;
 
-  // Initialize status screen timestamps
+  // Initialize the status screen uptime
   g_server_start_time = time(NULL);
 
   stats_runtime_set_provider(server_stats_provider, NULL);

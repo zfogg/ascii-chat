@@ -1584,13 +1584,24 @@ asciichat_error_t handle_runtime_settings(client_info_t *client, const void *dat
   uint8_t reply[ACIP_SETTINGS_MAX_SIZE];
   size_t reply_length = 0;
   mutex_lock(&client->client_state_mutex);
+  if (!client->has_terminal_caps || atomic_load_bool(&client->shutting_down)) {
+    mutex_unlock(&client->client_state_mutex);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Settings require an active bootstrapped viewer");
+  }
   asciichat_error_t result =
       acip_settings_request(&client->render_settings, data, length, reply, sizeof(reply), &reply_length);
   if (result == ASCIICHAT_OK)
     publish_render_settings(client);
   mutex_unlock(&client->client_state_mutex);
-  if (result == ASCIICHAT_OK)
-    result = packet_send_via_transport(client->transport, PACKET_TYPE_ACIP_SETTINGS_ACK, reply, reply_length, 0);
+  if (result == ASCIICHAT_OK) {
+    // Teardown takes this mutex before releasing the transport.
+    mutex_lock(&client->send_mutex);
+    if (atomic_load_bool(&client->shutting_down) || !client->transport)
+      result = SET_ERRNO(ERROR_INVALID_STATE, "Viewer is shutting down");
+    else
+      result = packet_send_via_transport(client->transport, PACKET_TYPE_ACIP_SETTINGS_ACK, reply, reply_length, 0);
+    mutex_unlock(&client->send_mutex);
+  }
   return result;
 }
 

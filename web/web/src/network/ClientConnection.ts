@@ -146,6 +146,13 @@ export class ClientConnection {
         } else if (state === "closed") {
           this.outbound?.close();
           this.outbound = null;
+          if (
+            !this.isUserDisconnecting &&
+            this.transportState === ConnectionState.ERROR
+          ) {
+            this.onStateChangeCallback?.(ConnectionState.ERROR);
+            return;
+          }
           this.transportState =
             this.isUserDisconnecting || this.wasEverConnected
               ? ConnectionState.DISCONNECTED

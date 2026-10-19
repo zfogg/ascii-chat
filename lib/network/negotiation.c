@@ -1,4 +1,5 @@
 #include <ascii-chat/app_callbacks.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/network/acip/send.h>
@@ -13,6 +14,10 @@
 #include <sodium.h>
 #include <string.h>
 
+/** Advance one media-server handshake step without consuming application packets.
+ * Version/policy admission (0) precedes algorithm selection (1), optional pinned
+ * identity selection (2), key exchange (3), and authentication completion (4).
+ * Only a completed handshake publishes the transport's encryption context. */
 static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_t *transport, packet_type_t type,
                                        const void *payload, size_t length) {
   crypto_handshake_context_t *ctx = n->handshake;
@@ -65,6 +70,7 @@ static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_
     return result;
   }
   if (n->step == 1) {
+    // Select algorithms once; a pinned identity request defers the server hello.
     if (type != PACKET_TYPE_CRYPTO_CAPABILITIES || length != sizeof(crypto_capabilities_packet_t))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected crypto capabilities");
     crypto_capabilities_packet_t capabilities;
@@ -102,6 +108,7 @@ static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_
     return crypto_handshake_server_start(ctx, transport);
   }
   if (n->step == 2) {
+    // A legacy single-key client can send its key exchange response directly.
     if (type != PACKET_TYPE_CRYPTO_CLIENT_HELLO) {
       if (n->identity_key_count != 1 || type != PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP)
         return SET_ERRNO(ERROR_CRYPTO, "Expected pinned server identity");
@@ -133,6 +140,7 @@ static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_
     }
   }
   if (n->step == 3) {
+    // Keep challenge/response verification separate from key derivation.
     result = crypto_handshake_server_auth_challenge(ctx, transport, type, payload, length);
     n->step = 4;
   } else if (n->step == 4) {

@@ -8,6 +8,7 @@
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/parallel_connect.h>
 #include <ascii-chat/app_callbacks.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/thread_pool.h>
@@ -132,6 +133,7 @@ static network_connection_t *connection_create(network_server_t *s, acip_transpo
     mutex_lock(&s->registry_mutex);
     if (atomic_load_bool(&s->stopping) || s->count >= s->config.max_connections) {
       mutex_unlock(&s->registry_mutex);
+      NAMED_UNREGISTER(&c->state);
       SAFE_FREE(c);
       SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "Connection admission limit reached");
       return NULL;
@@ -212,8 +214,12 @@ static void connection_finish(void *arg) {
 }
 static void connection_free(void *arg) {
   network_connection_t *c = arg;
-  if (!c->cleanup_failed)
+  if (!c->cleanup_failed) {
+    NAMED_UNREGISTER(&c->context);
+    NAMED_UNREGISTER(&c->state);
+    NAMED_UNREGISTER(&c->pins);
     SAFE_FREE(c);
+  }
 }
 
 static asciichat_error_t connection_open(network_connection_t *c) {
@@ -546,6 +552,8 @@ void network_server_destroy(network_server_t **owner) {
     tcp_server_destroy(&s->listener);
   thread_pool_destroy(s->peers);
   mutex_destroy(&s->registry_mutex);
+  NAMED_UNREGISTER(&s->stopping);
+  NAMED_UNREGISTER(&s->executing);
   SAFE_FREE(*owner);
   *owner = NULL;
 }
@@ -564,18 +572,21 @@ const network_server_config_t *network_server_config(network_server_t *s) {
   return s ? &s->config : NULL;
 }
 
-static bool connect_cancelled(void *unused) {
-  (void)unused;
-  return APP_CALLBACK_BOOL(should_exit);
+static bool connect_cancelled(void *data) {
+  const network_connect_config_t *config = data;
+  return APP_CALLBACK_BOOL(should_exit) ||
+         (config && config->should_exit_callback && config->should_exit_callback(config->callback_data));
 }
 static asciichat_error_t connection_open_tcp(const char *name, const connection_endpoint_t *endpoint,
-                                             crypto_context_t *crypto, acip_transport_t **out) {
+                                             const network_connect_config_t *settings, crypto_context_t *crypto,
+                                             acip_transport_t **out) {
   (void)name;
   socket_t socket = INVALID_SOCKET_VALUE;
   parallel_connect_config_t config = {.hostname = endpoint->host,
                                       .port = endpoint->port,
-                                      .timeout_ms = 3000,
-                                      .should_exit_callback = connect_cancelled};
+                                      .timeout_ms = settings ? settings->timeout_ms : 3000,
+                                      .should_exit_callback = connect_cancelled,
+                                      .callback_data = (void *)settings};
   asciichat_error_t result = parallel_connect(&config, &socket);
   if (result != ASCIICHAT_OK)
     return result;
@@ -586,10 +597,13 @@ static asciichat_error_t connection_open_tcp(const char *name, const connection_
 }
 
 asciichat_error_t network_connection_open(const char *name, const char *address, uint16_t port,
-                                          network_connection_t **out, connection_endpoint_t *resolved) {
+                                          const network_connect_config_t *settings, network_connection_t **out,
+                                          connection_endpoint_t *resolved) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing connection output");
   *out = NULL;
+  if (connect_cancelled((void *)settings))
+    return SET_ERRNO(ERROR_NETWORK_CONNECT, "Connection establishment cancelled");
   connection_endpoint_t endpoint;
   asciichat_error_t result = connection_endpoint_resolve(address, port, &endpoint);
   if (result != ASCIICHAT_OK)
@@ -598,21 +612,24 @@ asciichat_error_t network_connection_open(const char *name, const char *address,
   if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
     transport = acip_websocket_client_transport_create(name, endpoint.input, NULL);
   } else {
-    result = connection_open_tcp(name, &endpoint, NULL, &transport);
+    result = connection_open_tcp(name, &endpoint, settings, NULL, &transport);
+    if (result != ASCIICHAT_OK)
+      return result;
   }
   if (!transport)
     return SET_ERRNO(ERROR_NETWORK_CONNECT, "Cannot establish connection to %s", address);
   if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
-    uint64_t deadline = time_get_ns() + 15 * NS_PER_SEC_INT;
-    while (!acip_transport_is_connected(transport) && time_get_ns() < deadline && !connect_cancelled(NULL))
+    uint64_t deadline =
+        time_get_ns() + (settings ? (uint64_t)settings->timeout_ms * NS_PER_MS_INT : 15 * NS_PER_SEC_INT);
+    while (!acip_transport_is_connected(transport) && time_get_ns() < deadline && !connect_cancelled((void *)settings))
       platform_sleep_ms(10);
     if (!acip_transport_is_connected(transport)) {
       acip_transport_destroy(transport);
       return SET_ERRNO(ERROR_NETWORK_CONNECT, "WebSocket establishment failed or cancelled");
     }
   }
-  network_connection_t *c =
-      connection_create(NULL, transport, endpoint.host, strncmp(endpoint.input, "wss://", 6) == 0, false);
+  network_connection_t *c = connection_create(NULL, transport, endpoint.host,
+                                              strncmp(endpoint.input, "wss://", sizeof("wss://") - 1) == 0, false);
   if (!c) {
     acip_transport_destroy(transport);
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate connection");

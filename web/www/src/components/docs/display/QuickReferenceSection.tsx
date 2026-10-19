@@ -134,6 +134,34 @@ export default function QuickReferenceSection() {
                 Delay before snapshot (seconds)
               </td>
             </tr>
+            <tr>
+              <td className="table-body-cell">
+                <code>--waveform</code>
+              </td>
+              <td className="table-body-cell">—</td>
+              <td className="table-body-cell">false</td>
+              <td className="table-body-cell">Display audio as a waveform</td>
+            </tr>
+            <tr className="table-row-alt">
+              <td className="table-body-cell">
+                <code>--fft</code>
+              </td>
+              <td className="table-body-cell">—</td>
+              <td className="table-body-cell">false</td>
+              <td className="table-body-cell">
+                Display the audio frequency spectrum
+              </td>
+            </tr>
+            <tr>
+              <td className="table-body-cell">
+                <code>--face-follow</code>
+              </td>
+              <td className="table-body-cell">—</td>
+              <td className="table-body-cell">false</td>
+              <td className="table-body-cell">
+                Automatically zoom and pan to follow your face
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>

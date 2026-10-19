@@ -95,8 +95,11 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
   memcpy(&client->config, config, sizeof(acds_client_config_t));
   client->connected = false;
 
-  asciichat_error_t pconn_result =
-      network_connection_open("acds", config->server_address, config->server_port, &client->connection, NULL);
+  network_connect_config_t settings = {.timeout_ms = config->timeout_ms,
+                                       .should_exit_callback = config->should_exit_callback,
+                                       .callback_data = config->callback_data};
+  asciichat_error_t pconn_result = network_connection_open("acds", config->server_address, config->server_port,
+                                                           &settings, &client->connection, NULL);
   if (pconn_result == ASCIICHAT_OK) {
     client->connected = true;
     client->transport = network_connection_transport(client->connection);

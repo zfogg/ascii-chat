@@ -2,6 +2,7 @@
 #include "session/host.h"
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/negotiation.h>
+#include "session/host_timing.h"
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/time.h>
@@ -142,7 +143,7 @@ static uint16_t unused_port(void) {
 }
 static network_connection_t *connect_host(uint16_t port) {
   network_connection_t *owner = NULL;
-  CHECK(network_connection_open("host_render_peer", "127.0.0.1", port, &owner, NULL) == ASCIICHAT_OK);
+  CHECK(network_connection_open("host_render_peer", "127.0.0.1", port, NULL, &owner, NULL) == ASCIICHAT_OK);
   CHECK(network_connection_prepare_security(owner, false, NULL) == ASCIICHAT_OK);
   CHECK(network_client_negotiate(network_connection_transport(owner), network_connection_handshake(owner),
                                  network_connection_crypto_mode(owner), NETWORK_PROTOCOL_MEDIA) == ASCIICHAT_OK);
@@ -157,6 +158,27 @@ static void receive_render(sink_t *sink) {
   CHECK(session_protocol_dispatch(&sink->protocol, type, payload, size) == ASCIICHAT_OK);
   buffer_release(allocation);
 }
+static void test_ascii_only_display(const image_t *image) {
+  session_host_config_t config = {.max_clients = 1};
+  session_host_t *host = session_host_create(&config);
+  CHECK(host);
+  uint32_t source = session_host_add_memory_participant(host);
+  CHECK(source && session_host_inject_frame(host, source, image) == ASCIICHAT_OK);
+  display_t display = {.config = {.width = 40,
+                                  .height = 12,
+                                  .caps = {.color_level = TERM_COLOR_NONE, .render_mode = RENDER_MODE_HALF_BLOCK},
+                                  .palette = get_builtin_palette(PALETTE_BLOCKS)->chars}};
+  session_host_render_target_t target = {
+      .get_config = display_config, .render_frame = display_frame, .context = &display};
+  CHECK(session_host_set_render_target(host, &target) == ASCIICHAT_OK);
+  CHECK(render_tick(host) == ASCIICHAT_OK);
+  CHECK(display.sink.frame);
+  for (const unsigned char *p = (const unsigned char *)display.sink.frame; *p; ++p)
+    CHECK(*p < 128);
+  SAFE_FREE(display.sink.frame);
+  session_host_destroy(host);
+}
+
 static void test_tcp_delivery(const image_t *image) {
   CHECK(socket_init() == ASCIICHAT_OK);
   session_host_config_t config = {.port = unused_port(), .ipv4_address = "127.0.0.1", .max_clients = 2};
@@ -295,7 +317,7 @@ static void test_host_listener(void) {
   buffer_release(allocation);
   // An over-capacity peer is rejected through transport cleanup on the library loop.
   network_connection_t *excess_owner = NULL;
-  CHECK(network_connection_open("host_excess_peer", "127.0.0.1", port, &excess_owner, NULL) == ASCIICHAT_OK);
+  CHECK(network_connection_open("host_excess_peer", "127.0.0.1", port, NULL, &excess_owner, NULL) == ASCIICHAT_OK);
   acip_transport_t *excess = network_connection_transport(excess_owner);
   CHECK(packet_receive_via_transport(excess, &type, &payload, &length, &allocation) != ASCIICHAT_OK);
   buffer_release(allocation);
@@ -313,6 +335,42 @@ static void test_host_listener(void) {
   socket_cleanup();
 }
 
+static void test_host_reentry(void) {
+  CHECK(socket_init() == ASCIICHAT_OK);
+  uint16_t port = unused_port();
+  session_host_config_t config = {.port = port, .ipv4_address = "127.0.0.1", .max_clients = 1};
+  session_host_t *host = session_host_create(&config);
+  CHECK(host && session_host_start(host) == ASCIICHAT_OK);
+  for (int reentry = 0; reentry < 3; ++reentry) {
+    uint32_t source = session_host_add_memory_participant(host);
+    CHECK(source);
+    CHECK(session_host_start_render(host) == ASCIICHAT_OK);
+    session_host_stop_render(host);
+    CHECK(session_host_remove_client(host, source) == ASCIICHAT_OK);
+    CHECK(session_host_get_client_count(host) == 0);
+  }
+  session_host_destroy(host);
+  socket_cleanup();
+}
+
+static void test_audio_cadence(void) {
+  uint64_t deadline = 0;
+  const uint64_t start = NS_PER_SEC_INT;
+  CHECK(!session_host_audio_due(&deadline, start));
+  unsigned ticks = 0;
+  // A 21 ms scheduler must still consume 500 frames over ten seconds.
+  for (uint64_t elapsed = 21; elapsed < 10000; elapsed += 21)
+    while (session_host_audio_due(&deadline, start + elapsed * NS_PER_MS_INT))
+      ticks++;
+  while (session_host_audio_due(&deadline, start + 10 * NS_PER_SEC_INT))
+    ticks++;
+  CHECK(ticks == 500);
+  CHECK(deadline == start + 10 * NS_PER_SEC_INT + 20 * NS_PER_MS_INT);
+  CHECK(session_host_audio_due(&deadline, start + 11 * NS_PER_SEC_INT));
+  CHECK(!session_host_audio_due(&deadline, start + 11 * NS_PER_SEC_INT));
+  CHECK(deadline == start + 11 * NS_PER_SEC_INT + 20 * NS_PER_MS_INT);
+}
+
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
   CHECK(options_state_init() == ASCIICHAT_OK);
@@ -322,6 +380,8 @@ int main(void) {
   CHECK(options_state_set(values) == ASCIICHAT_OK);
   SAFE_FREE(values);
   ascii_simd_init();
+  test_audio_cadence();
+  test_host_reentry();
   session_host_config_t config = {.max_clients = 4};
   session_host_t *host = session_host_create(&config);
   CHECK(host);
@@ -344,6 +404,13 @@ int main(void) {
                           (acip_client_callbacks_t){0});
     ids[i] = session_host_add_client(host, NULL, ACIP_TRANSPORT_BORROWED, "test", 0);
     CHECK(ids[i]);
+    uint8_t query[ACIP_SETTINGS_HEADER_SIZE];
+    size_t query_length;
+    acip_settings_header_t header = {.schema = 1, .expected_revision = UINT32_MAX};
+    CHECK(acip_settings_encode(&header, "", query, sizeof(query), &query_length) == ASCIICHAT_OK);
+    CHECK(session_host_receive_packet(host, ids[i], PACKET_TYPE_ACIP_SETTINGS_SYNC, query, query_length) ==
+          ERROR_INVALID_STATE);
+    CLEAR_ERRNO();
     CHECK(session_host_set_client_transport(host, ids[i], &transports[i], ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
     CHECK(session_host_set_client_transport(host, ids[i], NULL, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
     CHECK(session_host_get_client_transport(host, ids[i]) == NULL);
@@ -446,6 +513,7 @@ int main(void) {
   test_transport_ownership();
   test_host_listener();
   test_listener_interrupt();
+  test_ascii_only_display(image);
   image_destroy(image);
   options_state_destroy();
   log_info("PASS: per-recipient color, palettes, filters, live updates, and rejected runtime transactions");

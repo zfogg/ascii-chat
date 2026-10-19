@@ -545,3 +545,5 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
 asciichat_error_t session_host_render_video(session_host_t *host);
 
 asciichat_error_t session_host_accept_peer(session_host_t *, acip_transport_t *);
+/** Mix and distribute one 20 ms audio frame without starting a thread. */
+asciichat_error_t session_host_render_audio(session_host_t *host);

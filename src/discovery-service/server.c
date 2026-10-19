@@ -151,6 +151,11 @@ static void monitor_host_migrations(acds_server_t *server, uint64_t migration_ti
  * - Remove old rate limit events from the database
  * - Clean up expired sessions
  */
+typedef struct acds_handoff_entry {
+  consensus_handoff_t state;
+  struct acds_handoff_entry *next;
+} acds_handoff_entry_t;
+
 static asciichat_error_t acds_handoff_tick(acds_server_t *, consensus_handoff_t *);
 
 static void *cleanup_thread_func(void *arg) {
@@ -167,12 +172,10 @@ static void *cleanup_thread_func(void *arg) {
     for (int i = 0; i < 3000 && !atomic_load_bool(&server->shutdown); i++) {
       APP_CALLBACK_VOID(platform_pump_events);
       mutex_lock(&server->handoff_mutex);
-      for (size_t handoff_index = 0; handoff_index < 32; ++handoff_index) {
-        if (!server->handoff_used[handoff_index])
-          continue;
-        asciichat_error_t tick_result = acds_handoff_tick(server, &server->handoffs[handoff_index]);
+      for (acds_handoff_entry_t *entry = server->handoffs; entry; entry = entry->next) {
+        asciichat_error_t tick_result = acds_handoff_tick(server, &entry->state);
         if (tick_result != ASCIICHAT_OK)
-          log_warn("Handoff timer failed: %d", tick_result);
+          log_warn("Periodic handoff failed: %d", tick_result);
       }
       mutex_unlock(&server->handoff_mutex);
       platform_sleep_ms(100); // Sleep 100ms at a time for responsive shutdown
@@ -277,6 +280,14 @@ void acds_server_shutdown(acds_server_t *server) {
     server->worker_pool = NULL;
     log_debug("Worker thread pool stopped");
   }
+
+  mutex_lock(&server->handoff_mutex);
+  while (server->handoffs) {
+    acds_handoff_entry_t *entry = server->handoffs;
+    server->handoffs = entry->next;
+    SAFE_FREE(entry);
+  }
+  mutex_unlock(&server->handoff_mutex);
 
   // Destroy rate limiter
   if (server->rate_limiter) {
@@ -797,9 +808,14 @@ static asciichat_error_t acds_remove_client_from_session(acds_server_t *server, 
     if (handoff_result != ASCIICHAT_OK)
       log_warn("Handoff after departure failed: %d", handoff_result);
     if (!handoff->count) {
-      for (size_t i = 0; i < 32; ++i)
-        if (&server->handoffs[i] == handoff)
-          server->handoff_used[i] = false;
+      acds_handoff_entry_t **link = &server->handoffs;
+      while (*link && &(*link)->state != handoff)
+        link = &(*link)->next;
+      if (*link) {
+        acds_handoff_entry_t *entry = *link;
+        *link = entry->next;
+        SAFE_FREE(entry);
+      }
     }
   }
   mutex_unlock(&server->handoff_mutex);
@@ -982,23 +998,22 @@ static void acds_on_host_lost(const acip_host_lost_t *host_lost, acip_transport_
 }
 
 static consensus_handoff_t *acds_handoff_find(acds_server_t *server, const uint8_t session[16], bool create) {
-  int free_slot = -1;
-  for (int i = 0; i < 32; ++i) {
-    if (server->handoff_used[i] && !memcmp(server->handoffs[i].session, session, 16))
-      return &server->handoffs[i];
-    if (!server->handoff_used[i])
-      free_slot = i;
-  }
-  if (!create || free_slot < 0)
+  for (acds_handoff_entry_t *entry = server->handoffs; entry; entry = entry->next)
+    if (!memcmp(entry->state.session, session, 16))
+      return &entry->state;
+  if (!create)
     return NULL;
-  session_entry_t *entry = database_session_find_by_id(server->db, session);
-  if (!entry)
+  session_entry_t *session_entry = database_session_find_by_id(server->db, session);
+  if (!session_entry)
     return NULL;
-  consensus_handoff_t *state = &server->handoffs[free_slot];
-  consensus_handoff_init(state, session, entry->host_established ? entry->host_participant_id : entry->initiator_id);
-  session_entry_destroy(entry);
-  server->handoff_used[free_slot] = true;
-  return state;
+  acds_handoff_entry_t *entry = SAFE_CALLOC(1, sizeof(*entry), acds_handoff_entry_t *);
+  consensus_handoff_init(&entry->state, session,
+                         session_entry->host_established ? session_entry->host_participant_id
+                                                         : session_entry->initiator_id);
+  session_entry_destroy(session_entry);
+  entry->next = server->handoffs;
+  server->handoffs = entry;
+  return &entry->state;
 }
 static asciichat_error_t acds_handoff_broadcast(acds_server_t *server, consensus_handoff_message_t *message) {
   uint8_t bytes[CONSENSUS_HANDOFF_HEADER];

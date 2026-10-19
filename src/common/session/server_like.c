@@ -73,8 +73,6 @@ static bool g_status_screen_thread_started = false;
 static session_server_like_status_fn g_status_fn = NULL;
 static void *g_status_user_data = NULL;
 
-/** Stored config pointer (valid during session_server_like_run scope). */
-
 /* ============================================================================
  * Signal Handler
  * ============================================================================ */
@@ -128,7 +126,7 @@ static void *status_screen_thread_func(void *arg) {
       log_search_exit_mode(false);
 
     // Call mode's status callback to populate status data
-    // Use direct static pointers for callbacks to avoid stale reference during shutdown
+    // Callbacks outlive the borrowed run configuration until the thread stops.
     if (g_status_fn) {
       ui_status_t status;
       memset(&status, 0, sizeof(status));
@@ -392,7 +390,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     if ((status_opt && terminal_is_interactive()) || (status_explicit && status_opt)) {
       atomic_store_bool(&g_status_should_exit, false);
 
-      // Store callback and user data for status thread for the status worker
+      // Store callback and user data for the lifetime of the status thread.
       g_status_fn = config->status_fn;
       g_status_user_data = config->status_user_data;
 

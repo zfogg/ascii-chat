@@ -248,7 +248,8 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     if (!msg.data)
       break;
     memcpy(msg.data, wrtc->partial + offset, packet_len);
-    if (asciichat_crc32(msg.data + sizeof(header), payload_len) != NET_TO_HOST_U32(header.crc32)) {
+    if (NET_TO_HOST_U16(header.type) != PACKET_TYPE_ENCRYPTED &&
+        asciichat_crc32(msg.data + sizeof(header), payload_len) != NET_TO_HOST_U32(header.crc32)) {
       buffer_release(msg.data);
       mutex_unlock(&wrtc->queue_mutex);
       log_error("WebRTC packet checksum failed");
@@ -280,9 +281,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
                                   .allocated_size = msg.len};
     crypto_context_t *crypto = wrtc->transport->crypto_ctx;
     asciichat_error_t result = ASCIICHAT_OK;
-    if (asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(header.crc32)) {
-      result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid WebRTC packet checksum");
-    } else if (envelope.type == PACKET_TYPE_ENCRYPTED) {
+    if (envelope.type == PACKET_TYPE_ENCRYPTED) {
       if (!crypto || !crypto->encrypt_data || !crypto_is_ready(crypto))
         result = SET_ERRNO(ERROR_CRYPTO, "Unexpected encrypted WebRTC packet");
       else

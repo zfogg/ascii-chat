@@ -118,10 +118,11 @@ static int test_thread_join(asciichat_thread_t *thread, void **result) {
   return error;
 }
 static asciichat_error_t test_connection_open(const char *name, const char *address, uint16_t port,
-                                              network_connection_t **out, connection_endpoint_t *endpoint) {
+                                              const network_connect_config_t *settings, network_connection_t **out,
+                                              connection_endpoint_t *endpoint) {
   if (fail_tcp_transport)
     return SET_ERRNO(ERROR_MEMORY, "Injected connection allocation failure");
-  return network_connection_open(name, address, port, out, endpoint);
+  return network_connection_open(name, address, port, settings, out, endpoint);
 }
 static asciichat_error_t fixture_start(asciichat_thread_t *thread, void *(*fn)(void *), void *context) {
   return asciichat_thread_create(thread, "participant_fixture", fn, context);

@@ -1259,6 +1259,9 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   mutex_destroy(&ws_data->send_mutex);
 
   // Deregister websocket implementation data
+  NAMED_UNREGISTER(&ws_data->is_destroying);
+  NAMED_UNREGISTER(&ws_data->server_handler_owned);
+  NAMED_UNREGISTER(&ws_data->server_detached);
   NAMED_UNREGISTER(ws_data);
 
   // Clear impl_data pointer BEFORE freeing to prevent use-after-free in callbacks

@@ -139,6 +139,7 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
 
   // Ensure at least one socket bound successfully
   if (server->listen_socket == INVALID_SOCKET_VALUE && server->listen_socket6 == INVALID_SOCKET_VALUE) {
+    NAMED_UNREGISTER(&server->running);
     return SET_ERRNO(ERROR_NETWORK_BIND, "Failed to bind any sockets (IPv4 and IPv6 both failed)");
   }
 
@@ -219,4 +220,6 @@ void tcp_server_destroy(tcp_server_t *server) {
   }
 
   log_debug("TCP listener shutdown complete");
+  NAMED_UNREGISTER(&server->running);
+  NAMED_UNREGISTER(server);
 }
