@@ -478,6 +478,7 @@ export function MirrorPage() {
           return (
             <AsciiRenderer
               ref={rendererRef}
+              contentFit={contentFit}
               uiLoading={!isWebcamRunning}
               uiMessage={
                 error ||

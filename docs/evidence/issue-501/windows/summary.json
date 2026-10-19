@@ -1,0 +1,294 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "generated_at_utc": "2026-10-19T00:26:51.445038+00:00",
+  "binary_sha256": "0128ade809462ae3be0db101fdd932ae7a83aab00fbc1620f4d57625bb079f5e",
+  "scenarios": [
+    {
+      "transport": "tcp",
+      "codec": "raw",
+      "exit_code": 0,
+      "elapsed_seconds": 18.25,
+      "csv": "tcp-raw.csv",
+      "result": {
+        "transport": "tcp",
+        "codec": "raw",
+        "peak_queue": 186798,
+        "peak_backend": 10846,
+        "dropped": 290,
+        "rejected": 0,
+        "baseline_fps": 34.0,
+        "recovery_fps": 32.42,
+        "baseline_age_ms": 20.77,
+        "recovery_age_ms": 96.47,
+        "recovery_max_age_ms": 1706.1,
+        "recovery_keyframes": 0,
+        "controls": 593
+      },
+      "healthy": {
+        "transport": "tcp",
+        "codec": "raw",
+        "baseline_fps": 47.0,
+        "saturation_fps": 44.67,
+        "recovery_fps": 45.36
+      },
+      "steady": {
+        "fps": 7.5,
+        "age_ms": 8.25,
+        "controls_during_throttle": 65,
+        "recovery_requests": 0
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 10.426637,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 47.0,
+        "saturation_fps": 47.0,
+        "recovery_fps": 45.56
+      }
+    },
+    {
+      "transport": "tcp",
+      "codec": "h264",
+      "exit_code": 0,
+      "elapsed_seconds": 17.234,
+      "csv": "tcp-h264.csv",
+      "result": {
+        "transport": "tcp",
+        "codec": "h264",
+        "peak_queue": 465622,
+        "peak_backend": 16406,
+        "dropped": 127,
+        "rejected": 4,
+        "baseline_fps": 41.0,
+        "recovery_fps": 44.43,
+        "baseline_age_ms": 18.96,
+        "recovery_age_ms": 69.36,
+        "recovery_max_age_ms": 2726.72,
+        "recovery_keyframes": 29,
+        "controls": 610
+      },
+      "healthy": {
+        "transport": "tcp",
+        "codec": "h264",
+        "baseline_fps": 46.5,
+        "saturation_fps": 44.33,
+        "recovery_fps": 43.75
+      },
+      "steady": {
+        "fps": 44.5,
+        "age_ms": 22.53,
+        "controls_during_throttle": 18,
+        "recovery_requests": 25
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 10.376985,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 47.0,
+        "saturation_fps": 44.33,
+        "recovery_fps": 43.65
+      }
+    },
+    {
+      "transport": "websocket",
+      "codec": "raw",
+      "exit_code": 0,
+      "elapsed_seconds": 31.032,
+      "csv": "websocket-raw.csv",
+      "result": {
+        "transport": "websocket",
+        "codec": "raw",
+        "peak_queue": 181866,
+        "peak_backend": 10846,
+        "dropped": 112,
+        "rejected": 0,
+        "baseline_fps": 39.5,
+        "recovery_fps": 38.08,
+        "baseline_age_ms": 11.31,
+        "recovery_age_ms": 105.92,
+        "recovery_max_age_ms": 2656.37,
+        "recovery_keyframes": 0,
+        "controls": 564
+      },
+      "healthy": {
+        "transport": "websocket",
+        "codec": "raw",
+        "baseline_fps": 41.0,
+        "saturation_fps": 44.0,
+        "recovery_fps": 37.45
+      },
+      "steady": {
+        "fps": 39.5,
+        "age_ms": 17.93,
+        "controls_during_throttle": 18,
+        "recovery_requests": 0
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 11.054361,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 41.0,
+        "saturation_fps": 44.0,
+        "recovery_fps": 37.45
+      }
+    },
+    {
+      "transport": "websocket",
+      "codec": "h264",
+      "exit_code": 0,
+      "elapsed_seconds": 31.218,
+      "csv": "websocket-h264.csv",
+      "result": {
+        "transport": "websocket",
+        "codec": "h264",
+        "peak_queue": 464290,
+        "peak_backend": 16406,
+        "dropped": 113,
+        "rejected": 9,
+        "baseline_fps": 34.5,
+        "recovery_fps": 22.64,
+        "baseline_age_ms": 19.01,
+        "recovery_age_ms": 94.77,
+        "recovery_max_age_ms": 2812.04,
+        "recovery_keyframes": 25,
+        "controls": 515
+      },
+      "healthy": {
+        "transport": "websocket",
+        "codec": "h264",
+        "baseline_fps": 34.5,
+        "saturation_fps": 44.33,
+        "recovery_fps": 22.09
+      },
+      "steady": {
+        "fps": 26.0,
+        "age_ms": 39.21,
+        "controls_during_throttle": 13,
+        "recovery_requests": 22
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 16.388105,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 35.0,
+        "saturation_fps": 44.33,
+        "recovery_fps": 22.03
+      }
+    },
+    {
+      "transport": "webrtc",
+      "codec": "raw",
+      "exit_code": 0,
+      "elapsed_seconds": 16.453,
+      "csv": "webrtc-raw.csv",
+      "result": {
+        "transport": "webrtc",
+        "codec": "raw",
+        "peak_queue": 130310,
+        "peak_backend": 10846,
+        "dropped": 97,
+        "rejected": 0,
+        "baseline_fps": 49.0,
+        "recovery_fps": 50.38,
+        "baseline_age_ms": 7.96,
+        "recovery_age_ms": 82.03,
+        "recovery_max_age_ms": 2671.47,
+        "recovery_keyframes": 0,
+        "controls": 658
+      },
+      "healthy": {
+        "transport": "webrtc",
+        "codec": "raw",
+        "baseline_fps": 49.5,
+        "saturation_fps": 43.33,
+        "recovery_fps": 48.65
+      },
+      "relay": {
+        "forwarded": 11067,
+        "throttled": 243
+      },
+      "steady": {
+        "fps": 54.0,
+        "age_ms": 5.18,
+        "controls_during_throttle": 18,
+        "recovery_requests": 0
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 10.360694,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 50.0,
+        "saturation_fps": 43.33,
+        "recovery_fps": 48.65
+      }
+    },
+    {
+      "transport": "webrtc",
+      "codec": "h264",
+      "exit_code": 0,
+      "elapsed_seconds": 16.688,
+      "csv": "webrtc-h264.csv",
+      "result": {
+        "transport": "webrtc",
+        "codec": "h264",
+        "peak_queue": 384450,
+        "peak_backend": 16406,
+        "dropped": 120,
+        "rejected": 1,
+        "baseline_fps": 54.0,
+        "recovery_fps": 47.6,
+        "baseline_age_ms": 7.64,
+        "recovery_age_ms": 48.81,
+        "recovery_max_age_ms": 2291.3,
+        "recovery_keyframes": 40,
+        "controls": 644
+      },
+      "healthy": {
+        "transport": "webrtc",
+        "codec": "h264",
+        "baseline_fps": 54.0,
+        "saturation_fps": 53.67,
+        "recovery_fps": 45.8
+      },
+      "relay": {
+        "forwarded": 15194,
+        "throttled": 490
+      },
+      "steady": {
+        "fps": 49.0,
+        "age_ms": 8.51,
+        "controls_during_throttle": 43,
+        "recovery_requests": 20
+      },
+      "duration": {
+        "baseline_s": 2,
+        "throttle_s": 3,
+        "recovery_s": 10.546449,
+        "steady_s": 2.0
+      },
+      "source": {
+        "baseline_fps": 54.5,
+        "saturation_fps": 53.33,
+        "recovery_fps": 45.8
+      }
+    }
+  ],
+  "source_sha": "c0b985af819da5b8238d16e733629727d68902a5",
+  "native_source_sha256": "d545a733c4f89f037d141330f265e86f98491df2ae6ea2f41924a782e681c24f",
+  "source_state": "working tree snapshot; binary and native source fingerprints identify the tested build"
+}

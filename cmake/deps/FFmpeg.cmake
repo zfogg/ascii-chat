@@ -326,11 +326,13 @@ if(WIN32)
         if(NOT EXISTS "${_vcpkg_ffmpeg_include}/libavcodec/avcodec.h")
             message(FATAL_ERROR "Static FFmpeg headers not found in ${_vcpkg_ffmpeg_include}")
         endif()
+        find_package(ZLIB REQUIRED)
         set(FFMPEG_FOUND TRUE)
         set(FFMPEG_INCLUDE_DIRS "${_vcpkg_ffmpeg_include}")
         set(FFMPEG_LIBRARY_DIRS "${_vcpkg_ffmpeg_lib}")
         set(FFMPEG_LIBRARIES
             ${_vcpkg_ffmpeg_static_libraries}
+            ZLIB::ZLIB
             secur32 ws2_32 mfuuid strmiids ole32 user32 bcrypt
         )
         message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found via static vcpkg triplet")

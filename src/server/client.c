@@ -500,6 +500,7 @@ static void server_client_initialize_transport_slot(server_context_t *server_ctx
   // Set up transport-specific fields
   client->socket = INVALID_SOCKET_VALUE; // transport has no traditional socket
   client->transport_encrypted = acip_transport_get_type(transport) == ACIP_TRANSPORT_WEBRTC;
+  client->security_ready = client->transport_encrypted;
   client->transport = transport; // Use provided transport
   client->event_driven = acip_async_tcp_transport_is(transport);
   SAFE_STRNCPY(client->client_id, new_client_id, sizeof(client->client_id) - 1);
@@ -729,7 +730,7 @@ client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport
   // The client is fully initialized before other threads can look it up.
   rwlock_wrunlock(&g_client_manager_rwlock);
 
-  if (!client->event_driven)
+  if (!client->event_driven && client->security_ready)
     server_client_send_webrtc_state(client, new_client_id);
 
   // Register client with session_host (for discovery mode support)
@@ -1657,7 +1658,7 @@ void *client_send_thread_func(void *arg) {
     if (audio_packet_count > 0) {
       // Protect crypto field access with mutex
       mutex_lock(&client->client_state_mutex);
-      bool crypto_ready = client->transport_encrypted || GET_OPTION(no_encrypt) ||
+      bool crypto_ready = client->security_ready ||
                           (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx));
       mutex_unlock(&client->client_state_mutex);
 
@@ -1760,7 +1761,7 @@ void *client_send_thread_func(void *arg) {
 
       // Check if session rekeying should be triggered
       mutex_lock(&client->client_state_mutex);
-      bool should_rekey = !GET_OPTION(no_encrypt) && client->crypto_initialized &&
+      bool should_rekey = client->encrypt_data && client->crypto_initialized &&
                           crypto_handshake_is_ready(&client->crypto_handshake_ctx) &&
                           crypto_handshake_should_rekey(&client->crypto_handshake_ctx);
       mutex_unlock(&client->client_state_mutex);
@@ -1910,7 +1911,7 @@ void *client_send_thread_func(void *arg) {
 
       // Check if crypto handshake is complete before sending (prevents sending to unauthenticated clients)
       mutex_lock(&client->client_state_mutex);
-      bool crypto_ready = client->transport_encrypted || GET_OPTION(no_encrypt) ||
+      bool crypto_ready = client->security_ready ||
                           (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx));
       mutex_unlock(&client->client_state_mutex);
 
@@ -1971,6 +1972,10 @@ void *client_send_thread_func(void *arg) {
                     loop_iteration_count, client->client_id, send_elapsed_str, send_result);
       uint64_t step5_ns = time_get_ns();
 
+      if (send_result == ERROR_BUFFER_FULL) {
+        CLEAR_ERRNO();
+        continue; // Local congestion keeps this client's transport usable.
+      }
       if (send_result != ASCIICHAT_OK) {
         transport_failed = send_result == ERROR_NETWORK;
         if (!atomic_load_bool(&g_should_exit)) {
@@ -1985,7 +1990,7 @@ void *client_send_thread_func(void *arg) {
 
       log_dev_every(4500 * US_PER_MS_INT, "SEND_FRAME_SUCCESS: client_id=%s size=%zu", client->client_id, frame_size);
 
-      // Increment frame counter for metrics.
+      // Count local admission; receiver presentation is measured separately.
       unsigned long frame_count = atomic_fetch_add_u64(&client->frames_sent_count, 1) + 1;
       log_dev_every(4500 * US_PER_MS_INT, "FRAME_SENT: client_id=%s frame_num=%lu size=%zu", client->client_id,
                     frame_count, frame_size);
@@ -1995,13 +2000,12 @@ void *client_send_thread_func(void *arg) {
         unsigned long rate_frames = frame_count - video_rate_window_start_count;
         double delivery_fps = (double)rate_frames * NS_PER_SEC_INT / (double)rate_elapsed_ns;
         if (delivery_fps < (double)target_video_fps * 0.9) {
-          log_warn("Server ASCII delivery lagging client=%s fps=%.1f target=%d frames=%lu elapsed=%.2fs",
+          log_warn("Server ASCII admission lagging client=%s fps=%.1f target=%d frames=%lu elapsed=%.2fs",
                    client->client_id, delivery_fps, target_video_fps, rate_frames,
                    (double)rate_elapsed_ns / (double)NS_PER_SEC_INT);
         } else {
-          log_info("Server ASCII delivery client=%s fps=%.1f target=%d frames=%lu elapsed=%.2fs", client->client_id,
-                   delivery_fps, target_video_fps, rate_frames,
-                   (double)rate_elapsed_ns / (double)NS_PER_SEC_INT);
+          log_info("Server ASCII admission client=%s fps=%.1f target=%d frames=%lu elapsed=%.2fs", client->client_id,
+                   delivery_fps, target_video_fps, rate_frames, (double)rate_elapsed_ns / (double)NS_PER_SEC_INT);
         }
         video_rate_window_start_ns = rate_now_ns;
         video_rate_window_start_count = frame_count;
@@ -2112,7 +2116,7 @@ void broadcast_server_state_to_all_clients(void) {
     if (is_active && g_client_manager.clients[i].socket != INVALID_SOCKET_VALUE) {
       // Skip clients that haven't completed crypto handshake yet
       // Check both crypto_initialized AND crypto context (defense in depth)
-      if (!GET_OPTION(no_encrypt) && !g_client_manager.clients[i].crypto_initialized) {
+      if (!g_client_manager.clients[i].security_ready) {
         log_debug("Skipping server_state broadcast to client %s: crypto handshake not complete",
                   g_client_manager.clients[i].client_id);
         continue;
@@ -2121,7 +2125,7 @@ void broadcast_server_state_to_all_clients(void) {
       // Get crypto context (may be NULL if --no-encrypt)
       const crypto_context_t *crypto_ctx =
           crypto_handshake_get_context(&g_client_manager.clients[i].crypto_handshake_ctx);
-      if (!GET_OPTION(no_encrypt) && !crypto_ctx) {
+      if (g_client_manager.clients[i].encrypt_data && !crypto_ctx) {
         // Skip clients without valid crypto context
         log_debug("Skipping server_state broadcast to client %s: no crypto context",
                   g_client_manager.clients[i].client_id);

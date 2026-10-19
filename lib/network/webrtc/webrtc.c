@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file networking/webrtc/webrtc.c
  * @brief WebRTC peer connection implementation using libdatachannel
@@ -45,12 +46,12 @@ struct webrtc_peer_connection {
   asciichat_thread_t mapping_thread;
   atomic_t mapping_stop;
   bool mapping_thread_started;
-  int rtc_id;                               ///< libdatachannel peer connection ID
-  webrtc_config_t config;                   ///< Configuration with callbacks
-  atomic_t state;                     ///< Current connection state
-  atomic_t gathering_state;           ///< Current ICE gathering state
-  atomic_t gathering_start_time_ms;   ///< When gathering started (platform_get_time_ms)
-  webrtc_data_channel_t *dc;                ///< Primary data channel (if created/received)
+  int rtc_id;                       ///< libdatachannel peer connection ID
+  webrtc_config_t config;           ///< Configuration with callbacks
+  atomic_t state;                   ///< Current connection state
+  atomic_t gathering_state;         ///< Current ICE gathering state
+  atomic_t gathering_start_time_ms; ///< When gathering started (platform_get_time_ms)
+  webrtc_data_channel_t *dc;        ///< Primary data channel (if created/received)
 };
 
 /**
@@ -344,7 +345,10 @@ static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
   // Set up data channel callbacks for incoming channel
   rtcSetUserPointer(dc_id, dc);
   rtcSetOpenCallback(dc_id, on_datachannel_open_adapter);
-  rtcSetMessageCallback(dc_id, on_datachannel_message_adapter);
+  // Keep libdatachannel's receive queue intact until a consumer is installed.
+  // An adapter with no user callback would silently discard early peer hellos.
+  if (pc->config.on_datachannel_message)
+    rtcSetMessageCallback(dc_id, on_datachannel_message_adapter);
   rtcSetErrorCallback(dc_id, on_datachannel_error_adapter);
 
   log_info("Set up callbacks for incoming DataChannel (dc_id=%d, dc=%p)", dc_id, (void *)dc);
@@ -454,13 +458,19 @@ static void on_datachannel_error_adapter(int dc_id, const char *error, void *use
  * @return ASCIICHAT_OK on success, error code on failure
  */
 static asciichat_error_t webrtc_ensure_initialized(void) {
-  if (!lifecycle_init(&g_webrtc_lc, "webrtc")) {
+  if (!lifecycle_init_once(&g_webrtc_lc)) {
     return ASCIICHAT_OK; // Already initialized
   }
 
   // First initialization - call library initialization exactly once
   rtcInitLogger(log_get_level() <= LOG_DEV ? RTC_LOG_VERBOSE : RTC_LOG_INFO, rtc_log_callback);
+  rtcSctpSettings settings = {.sendBufferSize = ACIP_OUTBOUND_SCTP_RESERVE};
+  if (rtcSetSctpSettings(&settings) < 0) {
+    lifecycle_init_abort(&g_webrtc_lc);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot bound SCTP send buffer");
+  }
   rtcPreload();
+  lifecycle_init_commit(&g_webrtc_lc);
 
   log_debug("WebRTC library initialized (libdatachannel)");
   return ASCIICHAT_OK;
@@ -592,6 +602,9 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   // Create libdatachannel configuration
   rtcConfiguration rtc_config;
   memset(&rtc_config, 0, sizeof(rtc_config));
+  // libdatachannel raises SO_SNDBUF to at least the local maximum message size.
+  // Keep both limits equal so the fixed SCTP reservation covers retained bytes.
+  rtc_config.maxMessageSize = ACIP_OUTBOUND_SCTP_RESERVE;
   rtc_config.bindAddress = config->bind_address;
   rtc_config.iceServers = ice_servers;
   rtc_config.iceServersCount = (int)ice_count;
@@ -815,7 +828,10 @@ asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const 
   // Set up callbacks
   rtcSetUserPointer(dc_id, dc);
   rtcSetOpenCallback(dc_id, on_datachannel_open_adapter);
-  rtcSetMessageCallback(dc_id, on_datachannel_message_adapter);
+  // Keep libdatachannel's receive queue intact until a consumer is installed.
+  // An adapter with no user callback would silently discard early peer hellos.
+  if (pc->config.on_datachannel_message)
+    rtcSetMessageCallback(dc_id, on_datachannel_message_adapter);
   rtcSetErrorCallback(dc_id, on_datachannel_error_adapter);
 
   pc->dc = dc;

@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/audio/recording.h>
 /**
@@ -53,7 +54,7 @@
  * ============================================================================ */
 
 /** @brief Default maximum clients */
-#define SESSION_HOST_DEFAULT_MAX_CLIENTS 32
+#define SESSION_HOST_DEFAULT_MAX_CLIENTS PARTICIPANT_LIMIT
 
 /* ============================================================================
  * Session Host Internal Types

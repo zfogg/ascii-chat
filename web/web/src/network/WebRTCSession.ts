@@ -1,3 +1,6 @@
+import { OutboundQueue } from "./OutboundQueue";
+import { BrowserHostSession } from "./BrowserHostSession";
+import { HandoffProtocol } from "./HandoffProtocol";
 import { DiscoveryProtocol } from "./DiscoveryProtocol";
 import { ClientConnection } from "./ClientConnection";
 import { WebRTCBridge } from "./WebRTCBridge";
@@ -10,6 +13,7 @@ import {
   type JoinedSession,
 } from "./acdsProtocol";
 import {
+  PeerCryptoSession,
   ConnectionState,
   PacketType,
   parsePacket,
@@ -24,6 +28,8 @@ export interface DiscoveryOptions {
   sessionName: string;
   password: string;
   signalingUrl: string;
+  signalingApplicationEncryption?: boolean;
+  signalingCryptoOptions?: ClientCryptoOptions;
   applicationEncryption?: boolean;
   cryptoOptions?: ClientCryptoOptions;
   stunServers: string[];
@@ -72,9 +78,12 @@ export class WebRTCSession implements ClientSession {
   canReconnect = true;
   readonly transportType = "webrtc" as const;
   private discovery: DiscoveryProtocol | null = null;
+  private handoff: HandoffProtocol | null = null;
+  private promoted: BrowserHostSession | null = null;
   private signaling: ClientConnection;
   private peer: RTCPeerConnection | null = null;
   private bridge: WebRTCBridge | null = null;
+  private peerCrypto: PeerCryptoSession | null = null;
   private joined: JoinedSession | null = null;
   private state = ConnectionState.DISCONNECTED;
   private stateCallback: ((state: ConnectionState) => void) | null = null;
@@ -98,6 +107,8 @@ export class WebRTCSession implements ClientSession {
    */
   private completeConnection(): void {
     if (this.closed || this.state === ConnectionState.CONNECTED) return;
+    if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
+    this.disconnectedTimer = null;
     this.clearTimer();
     this.setState(ConnectionState.CONNECTED);
     this.options.onProgress?.("Connected over WebRTC (DTLS encrypted)");
@@ -113,11 +124,11 @@ export class WebRTCSession implements ClientSession {
   ) {
     this.signaling = new ClientConnection({
       serverUrl: options.signalingUrl,
-      ...(options.applicationEncryption === undefined
+      ...(options.signalingApplicationEncryption === undefined
         ? {}
-        : { applicationEncryption: options.applicationEncryption }),
-      ...(options.cryptoOptions
-        ? { cryptoOptions: options.cryptoOptions }
+        : { applicationEncryption: options.signalingApplicationEncryption }),
+      ...(options.signalingCryptoOptions
+        ? { cryptoOptions: options.signalingCryptoOptions }
         : {}),
       // Plain ws:// signaling uses the ACIP crypto handshake; wss:// relies on
       // TLS when ACDS does not require client identity authentication.
@@ -216,134 +227,19 @@ export class WebRTCSession implements ClientSession {
     type: number,
     payload: Uint8Array,
   ): Promise<void> {
+    if (this.handoff?.receive(type, payload)) return;
     const snapshot = this.discovery?.receive(type, payload);
     if (snapshot?.state === 6 && !this.joined) {
       this.joined = snapshot.joined;
-      this.options.onProgress?.("Negotiating WebRTC connection");
-      this.peer = new RTCPeerConnection(
-        discoveryRTCConfiguration(this.options, this.joined),
+      this.handoff = new HandoffProtocol(
+        this.joined,
+        (type, payload) => this.signaling.sendPacket(type, payload),
+        (id) => {
+          void this.changeHost(id).catch((error) => this.fail(error));
+        },
+        this.options.onProgress,
       );
-      this.peer.onicecandidate = (event) => {
-        if (!event.candidate || !this.joined || this.closed) return;
-        try {
-          this.signaling.sendPacket(
-            AcdsType.ICE,
-            signalPacket(
-              this.joined,
-              "ice",
-              event.candidate.candidate,
-              event.candidate.sdpMid || "0",
-            ),
-          );
-        } catch (error) {
-          this.fail(error);
-        }
-      };
-      this.peer.onconnectionstatechange = () => {
-        if (this.closed || !this.peer) return;
-        if (
-          this.peer.connectionState === "failed" ||
-          this.peer.connectionState === "closed"
-        ) {
-          this.fail(
-            new Error(
-              "WebRTC connection failed. Check STUN/TURN settings and reconnect.",
-            ),
-          );
-        } else if (this.peer.connectionState === "disconnected") {
-          this.options.onProgress?.("WebRTC connection interrupted");
-          if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
-          this.disconnectedTimer = setTimeout(() => {
-            this.disconnectedTimer = null;
-            if (!this.closed && this.peer?.connectionState === "disconnected")
-              this.fail(
-                new Error("WebRTC connectivity was lost; reconnecting."),
-              );
-          }, 5000);
-        } else if (this.peer.connectionState === "connected") {
-          if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
-          this.disconnectedTimer = null;
-          this.options.onProgress?.("Connected over WebRTC (DTLS encrypted)");
-        }
-      };
-      const channel = this.peer.createDataChannel("acip", {
-        ordered: true,
-        negotiated: true,
-        id: 0,
-      });
-      channel.onopen = () => {
-        if (this.closed) {
-          channel.close();
-          return;
-        }
-        let receivedAsciiFrames = 0;
-        this.bridge = new WebRTCBridge(
-          channel,
-          (bytes) => {
-            try {
-              const packet = parsePacket(bytes);
-              if (packet.type === PacketType.ENCRYPTED)
-                throw new Error(
-                  "Unexpected custom encryption on WebRTC transport",
-                );
-              if (packet.type === PacketType.PING)
-                this.sendPacket(PacketType.PONG, bytes.slice(22));
-              else {
-                if (packet.type === PacketType.ASCII_FRAME) {
-                  receivedAsciiFrames++;
-                  if (receivedAsciiFrames % 60 === 0)
-                    console.info(
-                      "[WebRTCSession] ASCII_FRAME dispatch",
-                      JSON.stringify({
-                        count: receivedAsciiFrames,
-                        callbackAttached: Boolean(this.packetCallback),
-                        payloadBytes: bytes.length - 22,
-                      }),
-                    );
-                }
-                // Do not send browser capabilities at DataChannel open: the
-                // native host may still be replacing its peer-manager
-                // callback with the transport callback, which drops those
-                // first packets. SERVER_STATE is emitted after registration.
-                // A legacy/native host may begin streaming before emitting
-                // SERVER_STATE. The first valid ASCII frame proves the data
-                // channel and protocol callback are ready, so do not leave
-                // the browser stuck in the connection timeout.
-                if (
-                  packet.type === PacketType.SERVER_STATE ||
-                  packet.type === PacketType.ASCII_FRAME
-                )
-                  this.completeConnection();
-                this.packetCallback?.(packet, bytes.slice(22));
-              }
-            } catch (error) {
-              this.fail(error);
-            }
-          },
-          (error) => this.fail(error),
-          this.peer?.sctp?.maxMessageSize,
-        );
-      };
-      channel.onclose = () => {
-        if (!this.closed) this.fail(new Error("WebRTC DataChannel closed"));
-      };
-      channel.onerror = (event) =>
-        this.fail(
-          new Error(
-            `WebRTC DataChannel failed: ${(event as RTCErrorEvent).error?.message || "unknown SCTP error"}`,
-          ),
-        );
-      const offer = await this.peer.createOffer();
-      await this.peer.setLocalDescription(offer);
-      if (this.closed) return;
-      this.signaling.sendPacket(
-        AcdsType.SDP,
-        signalPacket(
-          this.joined,
-          "offer",
-          `${offer.sdp!}a=dcmap:0 label="acip"\r\n`,
-        ),
-      );
+      await this.connectPeer();
     } else if (
       (type === AcdsType.SDP || type === AcdsType.ICE) &&
       this.peer &&
@@ -385,6 +281,198 @@ export class WebRTCSession implements ClientSession {
     }
   }
 
+  private async connectPeer(): Promise<void> {
+    if (!this.joined) throw new Error("Missing discovery identity");
+    this.options.onProgress?.("Negotiating WebRTC connection");
+    this.peer = new RTCPeerConnection(
+      discoveryRTCConfiguration(this.options, this.joined),
+    );
+    this.peer.onicecandidate = (event) => {
+      if (!event.candidate || !this.joined || this.closed) return;
+      try {
+        this.signaling.sendPacket(
+          AcdsType.ICE,
+          signalPacket(
+            this.joined,
+            "ice",
+            event.candidate.candidate,
+            event.candidate.sdpMid || "0",
+          ),
+        );
+      } catch (error) {
+        this.fail(error);
+      }
+    };
+    this.peer.onconnectionstatechange = () => {
+      if (this.closed || !this.peer) return;
+      if (
+        this.peer.connectionState === "failed" ||
+        this.peer.connectionState === "closed"
+      ) {
+        this.waitForSuccessor();
+      } else if (this.peer.connectionState === "disconnected") {
+        this.options.onProgress?.("WebRTC connection interrupted");
+        if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
+        this.disconnectedTimer = setTimeout(() => {
+          this.disconnectedTimer = null;
+          if (!this.closed && this.peer?.connectionState === "disconnected")
+            this.fail(new Error("WebRTC connectivity was lost; reconnecting."));
+        }, 5000);
+      } else if (this.peer.connectionState === "connected") {
+        if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
+        this.disconnectedTimer = null;
+        this.options.onProgress?.("Connected over WebRTC (DTLS encrypted)");
+      }
+    };
+    const channel = this.peer.createDataChannel("acip", {
+      ordered: true,
+      negotiated: true,
+      id: 0,
+    });
+    this.peerCrypto = await PeerCryptoSession.create(
+      {
+        ...this.options.cryptoOptions,
+        password: this.options.cryptoOptions?.password || this.options.password,
+      },
+      this.options.applicationEncryption,
+      false,
+      (packet) => {
+        if (!this.bridge) throw new Error("WebRTC bridge is not ready");
+        this.bridge.send(packet);
+      },
+    );
+    if (this.closed) {
+      this.peerCrypto.close();
+      this.peerCrypto = null;
+      return;
+    }
+    channel.onopen = () => {
+      if (this.closed) {
+        channel.close();
+        return;
+      }
+      let receivedAsciiFrames = 0;
+      this.bridge = new WebRTCBridge(
+        channel,
+        (bytes) => {
+          try {
+            const decoded = this.peerCrypto!.receive(bytes);
+            if (!decoded) return;
+            bytes = decoded;
+            const packet = parsePacket(bytes);
+            if (packet.type === PacketType.PING)
+              this.sendPacket(PacketType.PONG, bytes.slice(22));
+            else {
+              if (packet.type === PacketType.ASCII_FRAME) {
+                receivedAsciiFrames++;
+                if (receivedAsciiFrames % 60 === 0)
+                  console.info(
+                    "[WebRTCSession] ASCII_FRAME dispatch",
+                    JSON.stringify({
+                      count: receivedAsciiFrames,
+                      callbackAttached: Boolean(this.packetCallback),
+                      payloadBytes: bytes.length - 22,
+                    }),
+                  );
+              }
+              // Do not send browser capabilities at DataChannel open: the
+              // native host may still be replacing its peer-manager
+              // callback with the transport callback, which drops those
+              // first packets. SERVER_STATE is emitted after registration.
+              // A legacy/native host may begin streaming before emitting
+              // SERVER_STATE. The first valid ASCII frame proves the data
+              // channel and protocol callback are ready, so do not leave
+              // the browser stuck in the connection timeout.
+              if (
+                packet.type === PacketType.SERVER_STATE ||
+                packet.type === PacketType.ASCII_FRAME
+              )
+                this.completeConnection();
+              this.packetCallback?.(packet, bytes.slice(22));
+            }
+          } catch (error) {
+            this.fail(error);
+          }
+        },
+        () => this.waitForSuccessor(),
+        this.peer?.sctp?.maxMessageSize,
+      );
+      try {
+        this.peerCrypto!.flush();
+      } catch (error) {
+        this.fail(error);
+      }
+    };
+    channel.onclose = () => {
+      if (!this.closed) this.waitForSuccessor();
+    };
+    channel.onerror = () => {
+      if (!this.closed) this.waitForSuccessor();
+    };
+    const offer = await this.peer.createOffer();
+    await this.peer.setLocalDescription(offer);
+    if (this.closed) return;
+    this.signaling.sendPacket(
+      AcdsType.SDP,
+      signalPacket(
+        this.joined,
+        "offer",
+        `${offer.sdp!}a=dcmap:0 label="acip"\r\n`,
+      ),
+    );
+  }
+  private closePeer(): void {
+    this.outbound?.close();
+    this.outbound = null;
+    this.peerCrypto?.close();
+    this.peerCrypto = null;
+    if (this.peer) {
+      this.peer.onconnectionstatechange = null;
+      this.peer.onicecandidate = null;
+    }
+    this.bridge?.close();
+    this.bridge = null;
+    this.peer?.close();
+    this.peer = null;
+    this.pendingIce = [];
+  }
+  private async changeHost(id: Uint8Array): Promise<void> {
+    if (!this.joined || this.closed) return;
+    this.setState(ConnectionState.CONNECTING);
+    this.options.onProgress?.("Migrating to elected successor");
+    if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
+    this.disconnectedTimer = null;
+    this.closePeer();
+    this.joined.hostId = id;
+    if (id.every((value, i) => value === this.joined!.participantId[i])) {
+      this.handoff?.close();
+      this.handoff = null;
+      this.promoted = BrowserHostSession.adopt(
+        this.options,
+        this.signaling,
+        this.joined,
+      );
+      this.promoted.onPacketReceived((packet, payload) =>
+        this.packetCallback?.(packet, payload),
+      );
+      this.promoted.onStateChange((state) => this.setState(state));
+      this.setState(this.promoted.getState());
+    } else await this.connectPeer();
+  }
+  private waitForSuccessor(): void {
+    if (this.closed || this.promoted) return;
+    this.setState(ConnectionState.CONNECTING);
+    this.options.onProgress?.(
+      "Host disconnected — waiting for elected successor",
+    );
+    if (this.disconnectedTimer) return;
+    this.disconnectedTimer = setTimeout(() => {
+      this.disconnectedTimer = null;
+      this.fail(
+        new Error("No prepared successor became available within 15 seconds."),
+      );
+    }, 15000);
+  }
   private setState(state: ConnectionState): void {
     this.state = state;
     this.stateCallback?.(state);
@@ -406,17 +494,43 @@ export class WebRTCSession implements ClientSession {
     this.options.onProgress?.(failure.message);
   }
   getBufferedAmount(): number {
-    return this.bridge?.getBufferedAmount() ?? 0;
+    return (
+      this.promoted?.getBufferedAmount() ??
+      (this.bridge?.getBufferedAmount() ?? 0) +
+        (this.outbound?.snapshot().applicationBytes ?? 0)
+    );
   }
 
+  private outbound: OutboundQueue | null = null;
+  needsKeyframe(type: number): boolean {
+    return (
+      this.promoted?.needsKeyframe(type) ??
+      this.outbound?.needsKeyframe(type) ??
+      true
+    );
+  }
   sendPacket(type: number, payload: Uint8Array): void {
+    if (this.promoted) {
+      this.promoted.sendPacket(type, payload);
+      return;
+    }
     if (!this.bridge || this.state !== ConnectionState.CONNECTED)
       throw new Error("WebRTC is not connected");
-    // DTLS provides encryption; ACIP media packets carry no custom encryption wrapper.
-    this.bridge.send(
-      serializePacket(type, payload, 0),
-      type === PacketType.IMAGE_FRAME,
-    );
+    if (!this.outbound)
+      this.outbound = new OutboundQueue(
+        () => this.bridge?.getBufferedAmount() ?? 0,
+        (packet) => this.peerCrypto!.sendPacket(packet),
+        (error) => this.fail(error),
+      );
+    const admission = this.outbound.submit(serializePacket(type, payload, 0));
+    if (
+      admission === "congested" &&
+      type !== PacketType.IMAGE_FRAME &&
+      type !== PacketType.ASCII_FRAME &&
+      type !== PacketType.IMAGE_FRAME_H264 &&
+      type !== PacketType.IMAGE_FRAME_H265
+    )
+      throw new Error("Reliable outbound queue is congested");
   }
   sendUnencryptedAcipPacket(type: number, payload: Uint8Array): void {
     this.sendPacket(type, payload);
@@ -436,8 +550,12 @@ export class WebRTCSession implements ClientSession {
     return null;
   }
   disconnect(): void {
+    this.outbound?.close();
+    this.outbound = null;
     if (this.closed) return;
     this.closed = true;
+    this.handoff?.close();
+    this.promoted?.disconnect();
     if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
     this.disconnectedTimer = null;
     this.clearTimer();
@@ -451,6 +569,8 @@ export class WebRTCSession implements ClientSession {
     this.discovery = null;
     this.bridge?.close();
     this.bridge = null;
+    this.peerCrypto?.close();
+    this.peerCrypto = null;
     if (this.peer) {
       this.peer.onconnectionstatechange = null;
       this.peer.onicecandidate = null;

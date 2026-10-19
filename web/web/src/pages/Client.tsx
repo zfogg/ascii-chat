@@ -156,12 +156,6 @@ export function ClientPage({
     "crypto",
     false,
   );
-  let signalingUsesWss = false;
-  try {
-    signalingUsesWss = new URL(signalingUrl).protocol === "wss:";
-  } catch {
-    // The URL field will show validation through the normal connection error.
-  }
   const discoveryCryptoOptions = useMemo<ClientCryptoOptions>(() => {
     const options: ClientCryptoOptions = {};
     if (cryptoSettings.authenticationEnabled) {
@@ -176,13 +170,21 @@ export function ClientPage({
     if (expected) options.expectedServerPublicKeyText = expected;
     return options;
   }, [cryptoSettings]);
-  const discoveryHasAuthMaterial =
-    !!discoveryCryptoOptions.password ||
-    !!discoveryCryptoOptions.identityPrivateKeyText ||
-    !!discoveryCryptoOptions.expectedServerPublicKeyText;
+  const peerCryptoOptions = useMemo<ClientCryptoOptions>(() => {
+    const options: ClientCryptoOptions = {};
+    if (discoveryCryptoOptions.password)
+      options.password = discoveryCryptoOptions.password;
+    if (discoveryCryptoOptions.identityPrivateKeyText)
+      options.identityPrivateKeyText =
+        discoveryCryptoOptions.identityPrivateKeyText;
+    const expected = cryptoSettings.skipServerVerification
+      ? undefined
+      : getActiveVerificationKey(cryptoSettings, "client-server");
+    if (expected) options.expectedServerPublicKeyText = expected;
+    return options;
+  }, [cryptoSettings, discoveryCryptoOptions]);
   const discoveryApplicationEncryption =
-    (cryptoSettings.customEncryption ?? !signalingUsesWss) ||
-    discoveryHasAuthMaterial;
+    cryptoSettings.customEncryption ?? undefined;
   const [stunUrls, setStunUrls] = useUrlState(
     "stunUrls",
     "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302",
@@ -257,8 +259,11 @@ export function ClientPage({
             sessionName: sessionName.trim(),
             password: sessionPassword,
             signalingUrl,
-            applicationEncryption: discoveryApplicationEncryption,
-            cryptoOptions: discoveryCryptoOptions,
+            ...(discoveryApplicationEncryption === undefined
+              ? {}
+              : { applicationEncryption: discoveryApplicationEncryption }),
+            cryptoOptions: peerCryptoOptions,
+            signalingCryptoOptions: discoveryCryptoOptions,
             iceTransportPolicy: connectionRoute,
             turnUsername,
             turnCredential,
@@ -281,6 +286,7 @@ export function ClientPage({
       signalingUrl,
       discoveryApplicationEncryption,
       discoveryCryptoOptions,
+      peerCryptoOptions,
       stunUrls,
       turnUrls,
       connectionRoute,
@@ -308,13 +314,6 @@ export function ClientPage({
     "serverUrl",
     params.get("testServerUrl") || "ws://localhost:27226",
   );
-  let usesWss = false;
-  try {
-    usesWss =
-      new URL(discoveryMode ? signalingUrl : serverUrl).protocol === "wss:";
-  } catch {
-    // The URL field will show validation through the normal connection error.
-  }
   const connectionCryptoTarget: VerificationKeyTarget = discoveryMode
     ? "discovery-service"
     : "client-server";
@@ -332,12 +331,7 @@ export function ClientPage({
     if (expected) options.expectedServerPublicKeyText = expected;
     return options;
   }, [cryptoSettings, connectionCryptoTarget]);
-  const connectionHasAuthMaterial =
-    !!connectionCryptoOptions.password ||
-    !!connectionCryptoOptions.identityPrivateKeyText ||
-    !!connectionCryptoOptions.expectedServerPublicKeyText;
-  const applicationEncryption =
-    (cryptoSettings.customEncryption ?? !usesWss) || connectionHasAuthMaterial;
+  const applicationEncryption = cryptoSettings.customEncryption ?? undefined;
   const [showSettings, setShowSettings] = useUrlState("settings", false);
   const [requestedFit, setContentFit] = useUrlState("fit", "contain");
   const contentFit = requestedFit === "cover" ? "cover" : "contain";
@@ -417,7 +411,7 @@ export function ClientPage({
   } = useClientConnection({
     onFrameAvailableRef,
     autoConnect: false,
-    applicationEncryption,
+    ...(applicationEncryption === undefined ? {} : { applicationEncryption }),
     cryptoOptions: connectionCryptoOptions,
     ...(discovery ? { discovery } : {}),
     onAudioPacket,
@@ -685,7 +679,9 @@ export function ClientPage({
       if (!client) throw new Error("Connect before resuming the audio stream");
       client.sendPacket(PacketType.STREAM_START, buildStreamStartPacket(true));
       audioStreamStartedRef.current = true;
-      await audioRef.current.startCapture();
+      const pipeline = audioRef.current;
+      await pipeline.startCapture();
+      if (audioRef.current !== pipeline || !pipeline.captureActive) return;
       micEnabledRef.current = true;
       setMicEnabled(true);
     } catch (error) {
@@ -1521,7 +1517,6 @@ export function ClientPage({
       <SecuritySetupModal
         open={securityModalOpen}
         settings={cryptoSettings}
-        defaultEncryptionEnabled={!usesWss}
         onClose={() => {
           writeCryptoUrl(cryptoSettings);
           setSecurityModalOpen(false);

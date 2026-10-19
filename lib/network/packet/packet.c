@@ -458,7 +458,7 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
 
   // If no crypto context or crypto not ready, send unencrypted
   bool ready = crypto_ctx ? crypto_is_ready(crypto_ctx) : false;
-  if (!crypto_ctx || !ready) {
+  if (!crypto_ctx || !ready || !crypto_ctx->encrypt_data) {
     log_warn_every(LOG_RATE_FAST, "CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type,
                    (void *)crypto_ctx, ready);
     asciichat_error_t result = packet_send(sockfd, type, final_data, final_len);
@@ -914,7 +914,7 @@ asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *cry
     memcpy(payload + sizeof(error_packet_t), message, message_len);
   }
 
-  bool encryption_ready = crypto_ctx && crypto_is_ready(crypto_ctx);
+  bool encryption_ready = crypto_ctx && crypto_ctx->encrypt_data && crypto_is_ready(crypto_ctx);
   asciichat_error_t send_result;
 
   if (encryption_ready) {
@@ -1011,7 +1011,7 @@ asciichat_error_t packet_send_remote_log(socket_t sockfd, const crypto_context_t
     memcpy(payload + sizeof(remote_log_packet_t), safe_message, message_len);
   }
 
-  bool encryption_ready = crypto_ctx && crypto_is_ready(crypto_ctx);
+  bool encryption_ready = crypto_ctx && crypto_ctx->encrypt_data && crypto_is_ready(crypto_ctx);
   asciichat_error_t send_result;
 
   if (encryption_ready) {

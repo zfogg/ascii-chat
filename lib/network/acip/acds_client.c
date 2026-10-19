@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 /**
  * @file network/acip/client.c
  * @brief ACIP client-side protocol implementation
@@ -27,6 +28,7 @@
 #include <ascii-chat/debug/named.h>
 
 #include <ascii-chat/network/errors.h>
+#include <ascii-chat/network/crc32.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
@@ -301,7 +303,7 @@ asciichat_error_t acds_protocol_enter(acds_protocol_t *p, bool create, const cha
   if (!create)
     return acds_protocol_lookup(p, name);
   acds_session_create_params_t params = {.capabilities = 3,
-                                         .max_participants = 8,
+                                         .max_participants = PARTICIPANT_LIMIT,
                                          .session_type = SESSION_TYPE_WEBRTC,
                                          .has_password = p->join.has_password};
   memcpy(params.identity_pubkey, p->join.identity_pubkey, sizeof(params.identity_pubkey));
@@ -391,10 +393,10 @@ asciichat_error_t acds_protocol_leave(acds_protocol_t *p) {
   p->state = ACDS_ENDED;
   return protocol_send(p, PACKET_TYPE_ACIP_SESSION_LEAVE, &req, sizeof(req));
 }
-asciichat_error_t acds_handshake_begin(acip_transport_t *transport, bool encrypted) {
+asciichat_error_t acds_handshake_begin(acip_transport_t *transport, uint8_t mode) {
   protocol_version_packet_t version = {0};
   version.protocol_version = HOST_TO_NET_U16(1);
-  version.supports_encryption = encrypted;
+  version.supports_encryption = mode;
   return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
 }
 asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *ctx, acip_transport_t *transport,
@@ -405,6 +407,9 @@ asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *ctx, acip_t
   case PACKET_TYPE_CRYPTO_PARAMETERS:
     if (ctx->state != CRYPTO_HANDSHAKE_INIT || length != sizeof(crypto_parameters_packet_t))
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid discovery crypto parameters");
+    if ((((const crypto_parameters_packet_t *)payload)->selected_cipher != CIPHER_ALGO_NONE) !=
+        ctx->crypto_ctx.encrypt_data)
+      return SET_ERRNO(ERROR_CRYPTO, "Discovery server changed requested encryption");
     return crypto_handshake_set_parameters(ctx, payload);
   case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT:
     return crypto_handshake_client_key_exchange(ctx, transport, type, payload, length);
@@ -417,4 +422,27 @@ asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *ctx, acip_t
   default:
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected discovery handshake packet: %u", type);
   }
+}
+
+asciichat_error_t acds_receive_packet(acip_transport_t *transport, packet_type_t *type, void **payload, size_t *length,
+                                      void **allocation) {
+  asciichat_error_t result = packet_receive_via_transport(transport, type, payload, length, allocation);
+  if (result != ASCIICHAT_OK || acip_transport_get_type(transport) != ACIP_TRANSPORT_WEBSOCKET ||
+      !transport->crypto_ctx || !transport->crypto_ctx->encrypt_data)
+    return result;
+  if (*type != PACKET_TYPE_ENCRYPTED)
+    return SET_ERRNO(ERROR_CRYPTO, "Discovery signaling requires encrypted packets");
+  packet_envelope_t envelope = {.type = *type, .data = *payload, .len = *length, .allocated_buffer = *allocation};
+  result = packet_decrypt_envelope(&envelope, transport->crypto_ctx);
+  *allocation = envelope.allocated_buffer;
+  *type = envelope.type;
+  *payload = envelope.data;
+  *length = envelope.len;
+  if (result == ASCIICHAT_OK) {
+    const packet_header_t *inner = envelope.allocated_buffer;
+    if (NET_TO_HOST_U64(inner->magic) != PACKET_MAGIC || envelope.type == PACKET_TYPE_ENCRYPTED ||
+        asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(inner->crc32))
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid encrypted discovery packet");
+  }
+  return result;
 }

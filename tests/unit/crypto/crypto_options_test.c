@@ -120,7 +120,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "password",
      "",
      "",
-     1},  // Expected to FAIL - --no-encrypt conflicts with --key
+     0},  // Authentication remains available without payload encryption
     {"GitHub key reference",
      4,
      {"program", "client", "--key", "github:username"},
@@ -291,12 +291,22 @@ Test(crypto_options, server_only_options) {
 Test(crypto_options, mutually_exclusive_options) {
   char program[] = "program";
   char client[] = "client";
+  char encrypt[] = "--encrypt";
   char no_encrypt[] = "--no-encrypt";
-  char key[] = "--key";
-  char password[] = "password";
-  char *argv[] = {program, client, no_encrypt, key, password};
+  char *argv[] = {program, client, encrypt, no_encrypt};
 
-  cr_assert_neq(options_init_exit_code(5, argv), 0, "--no-encrypt must reject key authentication");
+  cr_assert_neq(options_init_exit_code(4, argv), 0, "Explicit encryption flags must conflict");
+}
+
+Test(crypto_options, no_auth_rejects_authentication) {
+  char program[] = "program";
+  char client[] = "client";
+  char no_auth[] = "--no-auth";
+  char key[] = "--key";
+  char identity[] = "test-key";
+  char *argv[] = {program, client, no_auth, key, identity};
+
+  cr_assert_neq(options_init_exit_code(5, argv), 0, "--no-auth must reject identity keys");
 }
 
 Test(crypto_options, invalid_key_formats) {
@@ -417,9 +427,9 @@ Theory((bool is_client, bool no_encrypt, bool has_key), crypto_options, option_c
   static const char *server_mode = "server";
   static const char *no_encrypt_opt = "--no-encrypt";
   static const char *key_opt = "--key";
-  static const char *key_val = "test-key";
+  static const char *key_val = "gpg:0x1234567890ABCDEF";
 
-  const char *argv[10];
+  const char *argv[10] = {NULL};
   int argc = 0;
   argv[argc++] = program;
   argv[argc++] = is_client ? client_mode : server_mode;
@@ -433,12 +443,8 @@ Theory((bool is_client, bool no_encrypt, bool has_key), crypto_options, option_c
     argv[argc++] = key_val;
   }
 
-  if (no_encrypt && has_key) {
-    cr_assert_neq(options_init_exit_code(argc, (char **)argv), 0, "--no-encrypt must reject key authentication");
-    return;
-  }
-
-  options_init(argc, (char **)argv);
+  cr_assert_eq(options_init(argc, (char **)argv), ASCIICHAT_OK,
+               "Authentication and payload encryption are independent");
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -519,7 +525,12 @@ Test(crypto_options, many_options) {
   char server_key_value[] = "/etc/server_key";
   char *argv[] = {program, client, no_encrypt, key, password, server_key, server_key_value};
 
-  cr_assert_neq(options_init_exit_code(7, argv), 0, "--no-encrypt must reject authentication options");
+  cr_assert_eq(options_init(7, argv), ASCIICHAT_OK, "Auth-only options should be accepted");
+  const options_t *opts = options_get();
+  cr_assert(opts->no_encrypt);
+  cr_assert_not(opts->encrypt_enabled);
+  cr_assert_str_eq(opts->encrypt_key, password);
+  cr_assert_str_eq(opts->server_key, server_key_value);
 }
 
 Test(crypto_options, repeated_options) {

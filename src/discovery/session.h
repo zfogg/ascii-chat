@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/handshake/common.h>
 /**
  * @file discovery/session.h
  * @brief Discovery session flow management
@@ -12,6 +13,7 @@
  */
 
 #pragma once
+#include <ascii-chat/crypto/handshake/common.h>
 
 #include <ascii-chat/asciichat_errno.h>
 #include "negotiate.h"
@@ -32,9 +34,6 @@ extern "C" {
 #endif
 
 // Forward declarations
-#if !defined(MAX_PARTICIPANTS)
-#define MAX_PARTICIPANTS 16
-#endif
 
 /**
  * @brief Ring consensus state (Host-Mediated Proactive Election)
@@ -160,6 +159,7 @@ typedef struct {
 
   // ACDS connection
   acip_transport_t *acds_transport; ///< Persistent transport for ACDS communication
+  crypto_handshake_context_t acds_handshake; ///< Owns signaling keys until disconnect
   uint64_t last_acds_keepalive_ns;  ///< Last keepalive sent to the discovery service
   char acds_address[64];
   uint16_t acds_port;
@@ -194,6 +194,11 @@ typedef struct {
   // Host liveness detection (participants only)
   host_liveness_t liveness;
 
+  uint64_t handoff_last_sample_ms;
+  uint32_t handoff_sequence;
+  uint32_t handoff_generation;
+  bool handoff_pending;
+
   // Migration state (host failover)
   migration_ctx_t migration;
 
@@ -203,7 +208,7 @@ typedef struct {
   bool webrtc_connection_initiated;         ///< True when we've called webrtc_peer_manager_connect()
   int webrtc_retry_attempt;                 ///< Current retry attempt number (0 = initial, 1+ = retries)
   uint64_t webrtc_last_attempt_time_ms;     ///< Timestamp of last connection attempt (monotonic time)
-  uint64_t webrtc_disconnected_since_ms;      ///< Start of a transient peer disconnection
+  uint64_t webrtc_disconnected_since_ms;    ///< Start of a transient peer disconnection
 
   // WebRTC ICE servers (for STUN/TURN support)
   // These must be stored in the session to keep memory valid for peer manager lifetime
@@ -216,6 +221,8 @@ typedef struct {
   // Role contexts (only one is active at a time)
   session_host_t *host_ctx;
   session_participant_t *participant_ctx;
+  acip_transport_t *host_control_transport; ///< Host control connection retained during WebRTC media.
+  session_transport_ownership_t host_control_ownership; ///< Ownership transferred with the control connection.
 
   // Callbacks for state changes
   void (*on_state_change)(discovery_state_t new_state, void *user_data);
@@ -407,3 +414,6 @@ bool discovery_session_is_future_host(const discovery_session_t *session);
 #ifdef __cplusplus
 }
 #endif
+
+/** Apply a committed role change after media workers have stopped. */
+asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session);

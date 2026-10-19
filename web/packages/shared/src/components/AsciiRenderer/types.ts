@@ -13,7 +13,7 @@ export interface AsciiRendererHandle {
 export interface AsciiRendererProps {
   /** Rasterize network frames away from capture and transport callbacks. */
   workerRendering?: boolean;
-  /** Fit the complete composed terminal grid inside the canvas area. */
+  /** Contain the complete terminal grid by default, or crop it with cover. */
   contentFit?: "contain" | "cover";
   /** Disable interactive terminal shortcuts for embedded demos. */
   keyboardEnabled?: boolean;

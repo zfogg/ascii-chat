@@ -1,3 +1,4 @@
+#include <ascii-chat/common.h>
 #pragma once
 
 /**
@@ -96,6 +97,7 @@
 #include "../../platform/socket.h"
 #include "../../network/acip/acds.h"
 #include "../../crypto/handshake/common.h"
+#include "../../crypto/policy.h"
 #include "../../network/acip/transport.h"
 
 // ============================================================================
@@ -112,6 +114,8 @@ typedef struct {
   char server_address[256]; ///< ACDS server address (e.g., "discovery.ascii.chat" or "127.0.0.1")
   uint16_t server_port;     ///< ACDS server port (default: 27225)
   uint32_t timeout_ms;      ///< Connection timeout in milliseconds
+  crypto_policy_t security_policy; ///< Signaling policy, independent of peer media policy
+  const char *identity_key;        ///< Optional private identity key path, borrowed during connect
 
   // Optional: callback to check if connection should be abandoned (e.g., shutdown signal)
   parallel_connect_should_exit_fn should_exit_callback;
@@ -164,7 +168,7 @@ typedef struct {
   uint8_t identity_pubkey[32]; ///< Ed25519 public key (host identity)
   uint8_t identity_seckey[64]; ///< Ed25519 secret key (for signing)
   uint8_t capabilities;        ///< Bit 0: video, Bit 1: audio
-  uint8_t max_participants;    ///< Maximum participants (1-8)
+  uint8_t max_participants;    ///< Maximum participants (1-128)
   bool has_password;           ///< Password protection enabled
   char password[128];          ///< Optional password (if has_password)
   bool acds_expose_ip;         ///< Explicitly allow public IP disclosure (--acds-expose-ip opt-in)
@@ -282,7 +286,7 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
  * @param identity_seckey Ed25519 secret key (64 bytes)
  * @param timestamp Unix milliseconds timestamp
  * @param capabilities Capabilities bitfield
- * @param max_participants Maximum participants (1-8)
+ * @param max_participants Maximum participants (1-128)
  * @param signature_out Output buffer for signature (64 bytes)
  * @return ASCIICHAT_OK on success, error code on failure
  */

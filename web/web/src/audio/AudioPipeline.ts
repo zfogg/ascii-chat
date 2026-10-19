@@ -1,3 +1,4 @@
+import { AVState } from "../wasm/AVState";
 import { OpusEncoder } from "./OpusEncoder";
 import { getClientModule, PacketType } from "../wasm/client";
 import {
@@ -44,7 +45,9 @@ export class AudioPipeline {
   private pending: number[] = [];
   private playAt = 0;
   private sources = new Set<AudioBufferSourceNode>();
-  private generation = 0;
+  private avState = new AVState();
+  private starting: Promise<void> | null = null;
+  private closed = false;
   private microphoneChangeGeneration = 0;
   private speakerChangeQueue: Promise<void> = Promise.resolve();
   private sent = 0;
@@ -92,7 +95,9 @@ export class AudioPipeline {
       this.outputGain.gain.value = this.playbackEnabled ? this.volume : 0;
       this.outputGain.connect(this.context.destination);
     }
-    await this.context.resume();
+    const playbackContext = this.context;
+    await playbackContext.resume();
+    if (this.context !== playbackContext) return;
     const speakerId = getMediaDevicePreferences().speakerId;
     if (speakerId && speakerId !== "default") {
       await this.setSpeakerDevice(speakerId).catch((error: unknown) =>
@@ -122,6 +127,7 @@ export class AudioPipeline {
         });
     }
     await this.playbackInit;
+    if (this.context !== playbackContext) return;
     if (!this.codec) {
       const module = getClientModule();
       if (!module) throw new Error("Connect before enabling audio");
@@ -129,9 +135,48 @@ export class AudioPipeline {
       await this.codec.init(module);
     }
   }
-  async startCapture(): Promise<void> {
-    const generation = ++this.generation;
+  get captureActive(): boolean {
+    return this.avState.active;
+  }
+
+  startCapture(): Promise<void> {
+    if (this.closed)
+      return Promise.reject(new Error("Audio pipeline is closed"));
+    if (this.starting && this.avState.current(this.avState.generation))
+      return this.starting;
+    const previous = this.starting;
+    let generation: number;
+    try {
+      generation = this.avState.begin();
+    } catch (error) {
+      return Promise.reject(error);
+    }
+    if (!generation) return Promise.resolve();
+    const pending = (
+      previous ? previous.catch(() => undefined) : Promise.resolve()
+    )
+      .then(() => {
+        if (this.avState.current(generation))
+          return this.startCaptureHost(generation);
+        return undefined;
+      })
+      .catch((error: unknown) => {
+        if (this.avState.current(generation)) this.stopCapture();
+        throw error;
+      })
+      .finally(() => {
+        if (this.starting !== pending) return;
+        this.starting = null;
+        if (this.closed) this.avState.dispose();
+      });
+    this.starting = pending;
+    return pending;
+  }
+
+  private async startCaptureHost(generation: number): Promise<void> {
     await this.initializeAudio();
+    if (!this.avState.current(generation)) return;
+
     const microphoneId = getMediaDevicePreferences().microphoneId;
     const stream = isTestMode()
       ? (() => {
@@ -170,7 +215,7 @@ export class AudioPipeline {
             });
           }
         })();
-    if (generation !== this.generation || !this.context) {
+    if (!this.avState.current(generation) || !this.context) {
       stream.getTracks().forEach((track) => track.stop());
       this.testPatternSource?.stop();
       this.testPatternSource = null;
@@ -211,6 +256,7 @@ export class AudioPipeline {
     this.source.connect(this.processor);
     this.processor.connect(this.gain);
     this.gain.connect(this.context.destination);
+    this.avState.complete(generation);
   }
   async replaceMicrophone(deviceId: string): Promise<void> {
     if (
@@ -221,7 +267,7 @@ export class AudioPipeline {
     )
       return;
 
-    const generation = this.generation;
+    const generation = this.avState.generation;
     const requestGeneration = ++this.microphoneChangeGeneration;
     const audio: MediaTrackConstraints = {
       channelCount: 1,
@@ -255,7 +301,7 @@ export class AudioPipeline {
       });
     }
     if (
-      generation !== this.generation ||
+      !this.avState.current(generation) ||
       requestGeneration !== this.microphoneChangeGeneration ||
       !this.processor ||
       !this.context
@@ -408,24 +454,28 @@ export class AudioPipeline {
     this.reportLevels();
   }
   stopCapture(): void {
-    this.generation++;
-    this.microphoneChangeGeneration++;
-    if (this.processor) this.processor.onaudioprocess = null;
-    this.processor?.disconnect();
-    this.source?.disconnect();
-    this.gain?.disconnect();
-    this.stream?.getTracks().forEach((track) => track.stop());
-    this.testPatternSource?.stop();
-    this.testPatternSource = null;
-    this.processor = null;
-    this.source = null;
-    this.gain = null;
-    this.stream = null;
-    this.pending = [];
+    this.avState.stop(() => {
+      this.microphoneChangeGeneration++;
+      if (this.processor) this.processor.onaudioprocess = null;
+      this.processor?.disconnect();
+      this.source?.disconnect();
+      this.gain?.disconnect();
+      this.stream?.getTracks().forEach((track) => track.stop());
+      this.testPatternSource?.stop();
+      this.testPatternSource = null;
+      this.processor = null;
+      this.source = null;
+      this.gain = null;
+      this.stream = null;
+      this.pending = [];
+    });
   }
   close(): void {
+    this.closed = true;
     this.playbackEnabled = false;
+
     this.stopCapture();
+    if (!this.starting) this.avState.dispose();
     for (const source of this.sources) source.stop();
     this.sources.clear();
     this.playback?.disconnect();

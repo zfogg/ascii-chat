@@ -208,6 +208,9 @@ typedef struct {
    */
   asciichat_error_t (*sendv)(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count);
 
+  /** Bytes retained by this backend, including an in-progress packet. */
+  size_t (*queued_bytes)(acip_transport_t *transport);
+  size_t reserved_bytes; ///< Bound for backend-owned pending data not exposed by queued_bytes.
   void (*destroy_impl)(acip_transport_t *transport);
 } acip_transport_methods_t;
 
@@ -218,6 +221,7 @@ typedef struct {
  * Specific transports extend this with their own state.
  */
 struct acip_transport {
+  struct acip_outbound *outbound;          ///< Per-connection plaintext admission and scheduling.
   stats_peer_t *stats_peer;                ///< Owned statistics handle, destroyed with transport.
   const acip_transport_methods_t *methods; ///< Method table (virtual functions)
   crypto_context_t *crypto_ctx;            ///< Optional encryption context
@@ -257,14 +261,7 @@ void acip_transport_destroy(acip_transport_t *transport);
  */
 asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count);
 
-static inline asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *data, size_t len) {
-  if (!transport || !transport->methods || !transport->methods->send) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
-  }
-  // Implementations preserve local construction errors; failures after transmission
-  // begins must return ERROR_NETWORK because framing may have been consumed.
-  return transport->methods->send(transport, data, len);
-}
+asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *data, size_t len);
 
 /**
  * @brief Receive data from transport
@@ -362,6 +359,16 @@ static inline bool acip_transport_has_pending_data(acip_transport_t *transport) 
  */
 acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, crypto_context_t *crypto_ctx);
 
+/**
+ * @brief Create a TCP transport that owns its connected socket.
+ * @param name Debug name for the transport
+ * @param sockfd Connected socket; ownership transfers only on success
+ * @param crypto_ctx Optional borrowed crypto context
+ * @return Transport instance or NULL on error
+ * Closing or destroying the transport closes the socket.
+ */
+acip_transport_t *acip_tcp_transport_create_owned(const char *name, socket_t sockfd, crypto_context_t *crypto_ctx);
+
 /** Override the automatic kernel copy-avoidance policy for this TCP transport.
  * Large Linux encrypted sends may pin pages; other platforms fall back to vectors.
  * Copy avoidance is attempted automatically and disabled after copied completions.
@@ -383,6 +390,10 @@ asciichat_error_t acip_tcp_transport_set_zerocopy(acip_transport_t *transport, b
  * @note Port defaults to 80 for ws:// and 443 for wss:// if not specified
  * @note Connection is established synchronously during creation
  */
+/** Wait for queued messages to reach their writable completion callback.
+ * Call from a worker, never from the libwebsockets service thread. */
+asciichat_error_t acip_websocket_transport_flush(acip_transport_t *transport, uint64_t timeout_ns);
+
 acip_transport_t *acip_websocket_client_transport_create(const char *name, const char *url,
                                                          crypto_context_t *crypto_ctx);
 

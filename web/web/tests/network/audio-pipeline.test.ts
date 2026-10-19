@@ -1,10 +1,45 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 import { AudioPipeline } from "../../src/audio/AudioPipeline";
+import { AVState } from "../../src/wasm/AVState";
 import { PacketType } from "../../src/wasm/client";
 
 vi.mock("../../src/wasm/client", () => ({
   getClientModule: () => ({}),
   PacketType: { AUDIO_BATCH: 4, AUDIO_OPUS_BATCH: 5 },
+}));
+// Host resource tests isolate the C boundary; native and browser integration tests
+// exercise the actual shared state machine.
+vi.mock("../../src/wasm/AVState", () => ({
+  AVState: class {
+    generation = 0;
+    active = false;
+    pending = false;
+    begin() {
+      if (this.active || this.pending) return 0;
+      this.pending = true;
+      return ++this.generation;
+    }
+    current(token: number) {
+      return token === this.generation && (this.pending || this.active);
+    }
+    complete(token: number) {
+      if (!this.current(token)) return false;
+      this.pending = false;
+      return (this.active = true);
+    }
+    stop(release: () => void) {
+      this.active = this.pending = false;
+      release();
+    }
+    dispose() {}
+  },
 }));
 vi.mock("../../src/audio/OpusEncoder", () => ({
   OpusEncoder: class {
@@ -53,6 +88,29 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("AudioPipeline", () => {
+  it("rejects state startup errors without throwing synchronously and permits retry", async () => {
+    const pipeline = new AudioPipeline({ onAudioData: vi.fn() });
+    const begin = vi
+      .spyOn(AVState.prototype, "begin")
+      .mockImplementationOnce(() => {
+        throw new Error("Initialize the client before capture");
+      });
+    try {
+      const pending = pipeline.startCapture();
+      expect(pending).toBeInstanceOf(Promise);
+      await expect(pending).rejects.toThrow(
+        "Initialize the client before capture",
+      );
+      expect(getUserMedia).not.toHaveBeenCalled();
+      expect(pipeline.captureActive).toBe(false);
+      await pipeline.startCapture();
+      expect(pipeline.captureActive).toBe(true);
+    } finally {
+      begin.mockRestore();
+      pipeline.close();
+    }
+  });
+
   it("keeps microphone capture independent from speaker playback", async () => {
     const send = vi.fn();
     const pipeline = new AudioPipeline({ onAudioData: send });
@@ -78,6 +136,7 @@ describe("AudioPipeline", () => {
     expect(send).toHaveBeenCalled();
     pipeline.close();
   });
+
   it("captures echo-cancelled microphone audio into native Opus packets", async () => {
     const send = vi.fn();
     const pipeline = new AudioPipeline({ onAudioData: send });
@@ -143,5 +202,70 @@ describe("AudioPipeline", () => {
     await pending;
     expect(stopTrack).toHaveBeenCalledOnce();
     expect(processor.onaudioprocess).toBeNull();
+  });
+  it("does not create duplicate microphone streams on repeated start", async () => {
+    const pipeline = new AudioPipeline();
+    await Promise.all([pipeline.startCapture(), pipeline.startCapture()]);
+    await pipeline.startCapture();
+    expect(getUserMedia).toHaveBeenCalledOnce();
+    pipeline.stopCapture();
+    await pipeline.startCapture();
+    expect(getUserMedia).toHaveBeenCalledTimes(2);
+    pipeline.close();
+    expect(stopTrack).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([false, true])(
+    "queues a cancelled startup restart (cancel again: %s)",
+    async (cancelAgain) => {
+      let grant!: (stream: unknown) => void;
+      getUserMedia.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            grant = resolve;
+          }),
+      );
+      const pipeline = new AudioPipeline();
+      const first = pipeline.startCapture();
+      await vi.waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce());
+      pipeline.stopCapture();
+      const restart = pipeline.startCapture();
+      expect(pipeline.startCapture()).toBe(restart);
+      if (cancelAgain) pipeline.stopCapture();
+      grant({ getTracks: () => [{ stop: stopTrack }] });
+      await Promise.all([first, restart]);
+      expect(pipeline.captureActive).toBe(!cancelAgain);
+      expect(getUserMedia).toHaveBeenCalledTimes(cancelAgain ? 1 : 2);
+      expect(stopTrack).toHaveBeenCalledOnce();
+      pipeline.close();
+    },
+  );
+
+  it("cleans partial capture after node creation fails and permits retry", async () => {
+    const pipeline = new AudioPipeline();
+    await pipeline.enablePlayback();
+    // Our device stub installs methods on the context instance.
+    const context = (pipeline as unknown as { context: AudioContext }).context;
+    const create = context.createMediaStreamSource;
+    context.createMediaStreamSource = () => {
+      throw new Error("node startup failed");
+    };
+    await expect(pipeline.startCapture()).rejects.toThrow(
+      "node startup failed",
+    );
+    expect(stopTrack).toHaveBeenCalledOnce();
+    context.createMediaStreamSource = create;
+    await pipeline.startCapture();
+    pipeline.close();
+    expect(stopTrack).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports denied capture and allows a subsequent successful start", async () => {
+    const pipeline = new AudioPipeline();
+    getUserMedia.mockRejectedValueOnce(new Error("permission denied"));
+    await expect(pipeline.startCapture()).rejects.toThrow("permission denied");
+    await pipeline.startCapture();
+    pipeline.close();
+    expect(stopTrack).toHaveBeenCalledOnce();
   });
 });

@@ -6,7 +6,7 @@ async function expectPlayback(page: Page) {
   ).toBeVisible();
   await expect
     .poll(() =>
-      page.locator("video").evaluate((video) => {
+      page.locator("video[autoplay]").evaluate((video) => {
         const stream = (video as HTMLVideoElement)
           .srcObject as MediaStream | null;
         return (
@@ -53,7 +53,7 @@ test("Mirror resumes webcam playback after reload and Fast Refresh", async ({
   await expectPlayback(page);
   for (let attempt = 0; attempt < 2; attempt++) {
     const trackId = await page
-      .locator("video")
+      .locator("video[autoplay]")
       .evaluate(
         (video) =>
           (
@@ -64,7 +64,7 @@ test("Mirror resumes webcam playback after reload and Fast Refresh", async ({
     await expect
       .poll(() =>
         page
-          .locator("video")
+          .locator("video[autoplay]")
           .evaluate(
             (video) =>
               (
@@ -88,5 +88,8 @@ test("Mirror resumes webcam playback after reload and Fast Refresh", async ({
   await expect(
     page.getByRole("button", { name: "Start Webcam", exact: true }),
   ).toBeVisible();
-  await expect(page.locator("video")).toHaveJSProperty("srcObject", null);
+  await expect(page.locator("video[autoplay]")).toHaveJSProperty(
+    "srcObject",
+    null,
+  );
 });

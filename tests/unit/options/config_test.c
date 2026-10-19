@@ -944,7 +944,7 @@ Test(config_sections, crypto_encrypt_enabled) {
   save_config_options(&backup);
 
   const char *content = "[security]\n"
-                        "encrypt_enabled = true\n";
+                        "encrypt = true\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -969,7 +969,6 @@ Test(config_sections, crypto_no_encrypt) {
   options_t writable_opts;
   memcpy(&writable_opts, current_opts, sizeof(options_t));
   writable_opts.encrypt_enabled = 1;
-  options_state_set(&writable_opts);
 
   const char *content = "[security]\n"
                         "no_encrypt = true\n";
@@ -977,12 +976,12 @@ Test(config_sections, crypto_no_encrypt) {
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
-  asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
+  asciichat_error_t result = config_load_and_apply(true, config_path, false, &writable_opts);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid no_encrypt should succeed");
-  options_state_set(&backup);
+  options_state_set(&writable_opts);
   const options_t *opts = options_get();
   cr_assert_eq(opts->no_encrypt, 1, "No encrypt should be set");
-  cr_assert_eq(opts->encrypt_enabled, 0, "Encryption should be disabled by no_encrypt");
+  cr_assert_eq(opts->encrypt_enabled, 1, "Preserve explicit encryption for conflict validation");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1010,7 +1009,7 @@ Test(config_sections, crypto_key_auto_enables_encryption) {
   options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_str_eq(opts->encrypt_key, "gpg:ABCD1234", "Crypto key should be set");
-  cr_assert_eq(opts->encrypt_enabled, 1, "Encryption should be auto-enabled when key provided");
+  cr_assert_eq(opts->encrypt_enabled, 0, "Keys must not force payload encryption");
 
   unlink(config_path);
   SAFE_FREE(config_path);

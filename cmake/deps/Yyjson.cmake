@@ -28,9 +28,17 @@ macro(_yyjson_build_from_submodule source_dir label)
     set(YYJSON_BUILD_DOC OFF CACHE BOOL "Disable yyjson documentation" FORCE)
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build yyjson as static library" FORCE)
 
+    if(PLATFORM_IOS)
+        set(YYJSON_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/yyjson-build")
+    elseif(USE_MUSL)
+        set(YYJSON_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/yyjson-build")
+    else()
+        set(YYJSON_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/yyjson-build")
+    endif()
+
     add_subdirectory(
         "${${source_dir}}"
-        "${CMAKE_CURRENT_BINARY_DIR}/yyjson-build"
+        "${YYJSON_BUILD_DIR}"
     )
 
     if(NOT TARGET yyjson)
@@ -40,7 +48,10 @@ macro(_yyjson_build_from_submodule source_dir label)
     # yyjson is linked into ascii-chat's shared library on sanitizer and test
     # builds.  Keep the static archive position-independent so those links
     # work on ELF platforms as well as macOS.
-    set_target_properties(yyjson PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    set_target_properties(yyjson PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+        ARCHIVE_OUTPUT_DIRECTORY "${YYJSON_BUILD_DIR}/lib"
+    )
 
     set(YYJSON_LIBRARIES yyjson PARENT_SCOPE)
     set(YYJSON_INCLUDE_DIRS "${${source_dir}}/src" PARENT_SCOPE)

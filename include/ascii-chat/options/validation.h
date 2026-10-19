@@ -184,13 +184,13 @@ ASCIICHAT_API float validate_opt_volume(const char *value_str, char *error_msg, 
 ASCIICHAT_API int validate_opt_fps(const char *value_str, char *error_msg, size_t error_msg_size);
 
 /**
- * @brief Validate max clients value (1-32)
+ * @brief Validate max clients value (1-128)
  * @param value_str Max clients value as string
  * @param error_msg Buffer for error message (can be NULL)
  * @param error_msg_size Size of error message buffer
  * @return Parsed value on success, -1 on error
  *
- * Validates that the max clients is in the valid range of 1-32.
+ * Validates that the max clients is in the valid range of 1-128.
  *
  * @ingroup options
  */

@@ -394,7 +394,7 @@ describe("Discovery page", () => {
     const field = screen.getByLabelText("Discovery service URL", {
       exact: true,
     });
-    fireEvent.mouseEnter(field.closest("label")!);
+    fireEvent.mouseEnter(field.parentElement!);
     act(() => vi.advanceTimersByTime(400));
     expect(screen.getByText(LOCKED_SETTINGS_HELP)).toHaveTextContent(
       LOCKED_SETTINGS_HELP,
@@ -406,9 +406,8 @@ describe("Discovery page", () => {
     view.rerender(<ClientPage discoveryMode />);
     expectFieldsDisabled(false);
     fireEvent.mouseEnter(
-      screen
-        .getByLabelText("Discovery service URL", { exact: true })
-        .closest("label")!,
+      screen.getByLabelText("Discovery service URL", { exact: true })
+        .parentElement!,
     );
     act(() => vi.advanceTimersByTime(400));
     expect(screen.queryByText(LOCKED_SETTINGS_HELP)).not.toBeInTheDocument();

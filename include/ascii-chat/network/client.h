@@ -198,6 +198,7 @@ typedef struct client_info {
   crypto_handshake_context_t crypto_handshake_ctx;
   bool crypto_initialized;
   bool transport_encrypted; ///< TLS or DTLS already encrypts this client's transport.
+  bool security_ready;      // Negotiation and any required authentication completed
   bool encrypt_data;        // Whether payload encryption is enabled (false = auth-only mode)
 
   // Pending packet storage for --no-encrypt mode

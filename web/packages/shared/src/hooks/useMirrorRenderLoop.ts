@@ -56,7 +56,7 @@ export function useMirrorRenderLoop({
   onMediaFps,
   mediaRevision,
   fileActive = false,
-  contentFit = "cover",
+  contentFit = "contain",
 }: UseMirrorRenderLoopParams) {
   const testPattern = useTestPattern();
   const prevDepsRef = useRef<{

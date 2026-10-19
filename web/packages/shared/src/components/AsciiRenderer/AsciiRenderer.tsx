@@ -53,7 +53,7 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
   function AsciiRenderer(
     {
       workerRendering = false,
-      contentFit,
+      contentFit = "contain",
       keyboardEnabled = true,
       splashEnabled = true,
       uiLoading,

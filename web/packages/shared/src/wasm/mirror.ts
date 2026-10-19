@@ -235,7 +235,7 @@ export function convertFrameToAscii(
   rgbaData: Uint8Array,
   srcWidth: number,
   srcHeight: number,
-  contentFit: "contain" | "cover" = "cover",
+  contentFit: "contain" | "cover" = "contain",
 ): string {
   if (!wasmModule) {
     throw new Error(

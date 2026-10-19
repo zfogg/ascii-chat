@@ -139,7 +139,11 @@ export class VideoUploadEncoder {
     }
   }
 
-  encode(frame: VideoFrame, fps = this.config?.framerate): void {
+  encode(
+    frame: VideoFrame,
+    fps = this.config?.framerate,
+    forceKeyframe = false,
+  ): void {
     if (this.failure) throw this.failure;
     if (!this.encoder || !this.config || this.resizing) return;
     if (
@@ -160,7 +164,9 @@ export class VideoUploadEncoder {
       return;
     }
     if (this.encoder.encodeQueueSize >= 2) return;
-    this.encoder.encode(frame, { keyFrame: this.frameCount % 60 === 0 });
+    this.encoder.encode(frame, {
+      keyFrame: forceKeyframe || this.frameCount % 60 === 0,
+    });
     this.frameCount++;
   }
 

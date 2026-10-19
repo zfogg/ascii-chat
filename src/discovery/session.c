@@ -1,3 +1,5 @@
+#include <ascii-chat/network/consensus/handoff.h>
+#include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/stats/runtime.h>
 /**
@@ -89,12 +91,20 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   log_info("discovery_session_create: After CALLOC - participant_ctx=%p, host_ctx=%p", session->participant_ctx,
            session->host_ctx);
 
-  // Load or generate identity key
+  // Explicit identity credentials apply to signaling as well as media authentication.
+  const options_t *opts = options_get();
+  bool explicit_identity = opts && opts->encrypt_key[0];
   char identity_path[256];
-  asciichat_error_t id_result = acds_identity_default_path(identity_path, sizeof(identity_path));
+  asciichat_error_t id_result;
+  if (explicit_identity) {
+    SAFE_STRNCPY(identity_path, opts->encrypt_key, sizeof(identity_path));
+    id_result = ASCIICHAT_OK;
+  } else {
+    id_result = acds_identity_default_path(identity_path, sizeof(identity_path));
+  }
   if (id_result == ASCIICHAT_OK) {
     id_result = acds_identity_load(identity_path, session->identity_pubkey, session->identity_seckey);
-    if (id_result != ASCIICHAT_OK) {
+    if (id_result != ASCIICHAT_OK && !explicit_identity) {
       // File doesn't exist or is corrupted - generate new key
       log_info("Identity key not found, generating new key");
       id_result = acds_identity_generate(session->identity_pubkey, session->identity_seckey);
@@ -105,6 +115,10 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
     }
   }
 
+  if (id_result != ASCIICHAT_OK && explicit_identity) {
+    SAFE_FREE(session);
+    return NULL;
+  }
   if (id_result != ASCIICHAT_OK) {
     NOTICE(DANGER, "DISCOVERY IDENTITY UNAVAILABLE", "Failed to load/generate identity key, using zero key");
     memset(session->identity_pubkey, 0, sizeof(session->identity_pubkey));
@@ -116,7 +130,6 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   }
 
   // Load multiple identity keys from options (multi-key protocol support)
-  const options_t *opts = options_get();
   if (opts && opts->num_identity_keys > 0) {
     // Load all identity keys from options
     for (size_t i = 0; i < opts->num_identity_keys && i < MAX_IDENTITY_KEYS; i++) {
@@ -181,16 +194,63 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   return session;
 }
 
+// Join media before releasing the active transport; failed joins retain ownership.
+static asciichat_error_t release_participant_transport(discovery_session_t *session) {
+  session_participant_t *participant = session->participant_ctx;
+  if (!participant)
+    return ASCIICHAT_OK;
+  session_participant_stop_audio(participant);
+  session_participant_stop_video(participant);
+  return session_participant_set_transport(participant, NULL, SESSION_TRANSPORT_BORROWED);
+}
+
+static void release_host_control_transport(discovery_session_t *session) {
+  if (session->host_control_transport && session->host_control_ownership == SESSION_TRANSPORT_OWNED)
+    acip_transport_destroy(session->host_control_transport);
+  session->host_control_transport = NULL;
+  session->host_control_ownership = SESSION_TRANSPORT_BORROWED;
+}
+
+// Discovery retains the host control connection when media switches to WebRTC.
+static asciichat_error_t select_participant_transport(discovery_session_t *session, acip_transport_t *transport) {
+  session_participant_t *participant = session->participant_ctx;
+  bool restart_video = session_participant_is_video_active(participant);
+  bool restart_audio = session_participant_is_audio_active(participant);
+  session_participant_stop_audio(participant);
+  session_participant_stop_video(participant);
+  acip_transport_t *previous = session_participant_get_transport(participant);
+  if (previous && acip_transport_get_type(previous) == ACIP_TRANSPORT_TCP && !session->host_control_transport) {
+    asciichat_error_t result = session_participant_take_transport(
+        participant, &session->host_control_transport, &session->host_control_ownership);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
+  asciichat_error_t result = session_participant_set_transport(participant, transport, SESSION_TRANSPORT_OWNED);
+  if (result != ASCIICHAT_OK)
+    return result;
+  // Ownership has transferred; a capture failure must not make the caller free the transport.
+  if (restart_video && session_participant_start_video(participant) != ASCIICHAT_OK)
+    log_warn("Failed to restart video after switching participant transport");
+  if (restart_audio && session_participant_start_audio(participant) != ASCIICHAT_OK)
+    log_warn("Failed to restart audio after switching participant transport");
+  return ASCIICHAT_OK;
+}
+
 void discovery_session_destroy(discovery_session_t *session) {
   if (!session) {
     SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
     return;
   }
 
+  if (release_participant_transport(session) != ASCIICHAT_OK)
+    return;
+  release_host_control_transport(session);
+
   // Close ACDS connection
   if (session->acds_transport) {
     acip_transport_destroy(session->acds_transport);
     session->acds_transport = NULL;
+    crypto_handshake_destroy(&session->acds_handshake);
   }
 
   // Destroy host context if active
@@ -233,6 +293,7 @@ void discovery_session_destroy(discovery_session_t *session) {
     }
     session->nat_detection_thread_started = false;
   }
+
 
   // Destroy NAT quality mutex
   mutex_destroy(&session->nat_quality_mutex);
@@ -321,7 +382,7 @@ static void *nat_detection_thread_fn(void *arg) {
     session->nat_quality_cached = true;
     mutex_unlock(&session->nat_quality_mutex);
     log_debug("★ NAT_DETECTION_COMPLETE (thread): tier=%d, nat_type=%s", nat_compute_tier(&quality),
-             nat_type_to_string(quality.nat_type));
+              nat_type_to_string(quality.nat_type));
   } else {
     log_warn("NAT detection failed in background thread, using defaults");
     // Don't update - caller will use defaults
@@ -404,14 +465,14 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
   nat_quality_to_acip(&our_quality, session->session_id, session->participant_id, &wire_quality);
 
   log_debug("★ SEND_NETWORK_QUALITY: About to send type=%u, size=%zu", PACKET_TYPE_ACIP_NETWORK_QUALITY,
-           sizeof(wire_quality));
+            sizeof(wire_quality));
   // Send via ACDS
   asciichat_error_t send_result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_NETWORK_QUALITY,
                                                             &wire_quality, sizeof(wire_quality), 0);
 
   if (send_result == ASCIICHAT_OK) {
     log_debug("★ SEND_NETWORK_QUALITY_SUCCESS: Sent to ACDS (NAT tier: %d, upload: %u Kbps)",
-             nat_compute_tier(&our_quality), our_quality.upload_kbps);
+              nat_compute_tier(&our_quality), our_quality.upload_kbps);
   } else {
     log_error("★ SEND_NETWORK_QUALITY_FAILED: Failed with error %d", send_result);
   }
@@ -440,7 +501,7 @@ __attribute__((unused)) static asciichat_error_t receive_network_quality_from_ac
   void *data = NULL;
   size_t len = 0;
   void *alloc_buffer = NULL;
-  asciichat_error_t result = packet_receive_via_transport(session->acds_transport, &ptype, &data, &len, &alloc_buffer);
+  asciichat_error_t result = acds_receive_packet(session->acds_transport, &ptype, &data, &len, &alloc_buffer);
 
   if (result != ASCIICHAT_OK) {
     log_error("★ RECEIVE_NETWORK_QUALITY_FAILED: packet_receive_via_transport returned %d: %s", result,
@@ -514,7 +575,7 @@ static asciichat_error_t discovery_protocol_receive(discovery_session_t *session
   packet_type_t type;
   void *payload = NULL, *allocation = NULL;
   size_t length = 0;
-  asciichat_error_t result = packet_receive_via_transport(session->acds_transport, &type, &payload, &length, &allocation);
+  asciichat_error_t result = acds_receive_packet(session->acds_transport, &type, &payload, &length, &allocation);
   if (result == ASCIICHAT_OK) result = acds_protocol_receive(protocol, type, payload, length);
   buffer_release(allocation);
   if (result != ASCIICHAT_OK) set_error(session, result, protocol->error[0] ? protocol->error : "Discovery receive failed");
@@ -537,7 +598,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     memcpy(params.identity_seckey, session->identity_seckey, sizeof(params.identity_seckey));
     if (key_idx == 0) {
       params.capabilities = 3;
-      params.max_participants = 8;
+      params.max_participants = PARTICIPANT_LIMIT;
       params.session_type = SESSION_TYPE_WEBRTC;
       params.has_password = session->password[0] != 0;
       SAFE_STRNCPY(params.password, session->password, sizeof(params.password));
@@ -789,13 +850,15 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
     }
   } else if (session->participant_ctx) {
     // We are a participant - set transport for ourselves
-    asciichat_error_t result = session_participant_set_transport(session->participant_ctx, transport);
+    asciichat_error_t result = select_participant_transport(session, transport);
     if (result == ASCIICHAT_OK) {
       log_info("✓ Participant: Successfully switched to WebRTC transport");
       log_info("  TCP connection remains open as control/signaling channel");
       log_info("  Media frames will now be transmitted over WebRTC DataChannel");
     } else {
       log_error("✗ Participant: Failed to set WebRTC transport: %d", result);
+      acip_transport_destroy(transport);
+      return;
     }
   } else {
     session_participant_config_t pconfig = {
@@ -807,7 +870,8 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
     };
     session->participant_ctx = session_participant_create(&pconfig);
     if (!session->participant_ctx ||
-        session_participant_set_transport(session->participant_ctx, transport) != ASCIICHAT_OK) {
+        select_participant_transport(session, transport) != ASCIICHAT_OK) {
+      acip_transport_destroy(transport);
       set_error(session, ERROR_INVALID_STATE, "Failed to attach WebRTC participant transport");
       return;
     }
@@ -994,8 +1058,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
       .turn_credential = session->turn_password,
       .on_transport_ready = discovery_on_transport_ready,
       .on_gathering_timeout = discovery_on_gathering_timeout,
-      .user_data = session,
-      .crypto_ctx = NULL // Crypto happens at ACIP layer
+      .user_data = session
   };
 
   // Create signaling callbacks
@@ -1099,7 +1162,113 @@ static void handle_discovery_webrtc_ice(discovery_session_t *session, void *data
 /**
  * @brief Dispatch incoming ACDS packets for WebRTC signaling
  */
+static asciichat_error_t discovery_handoff_send(discovery_session_t *session, consensus_handoff_message_t *message,
+                                                bool probe) {
+  size_t length = CONSENSUS_HANDOFF_HEADER + (probe ? CONSENSUS_HANDOFF_PROBE_BYTES : 0);
+  uint8_t *bytes = SAFE_CALLOC(1, length, uint8_t *);
+  consensus_handoff_encode(message, bytes);
+  asciichat_error_t result =
+      packet_send_via_transport(session->acds_transport, (packet_type_t)CONSENSUS_HANDOFF_PACKET, bytes, length, 0);
+  SAFE_FREE(bytes);
+  return result;
+}
+static void discovery_handoff_receive(discovery_session_t *session, const void *data, size_t length) {
+  consensus_handoff_message_t message;
+  if (consensus_handoff_decode(data, length, &message) != ASCIICHAT_OK ||
+      memcmp(message.session, session->session_id, 16))
+    return;
+  if (message.generation < session->handoff_generation)
+    return;
+  session->handoff_generation = message.generation;
+  if (message.kind == HANDOFF_PREPARE && !memcmp(message.participant, session->participant_id, 16)) {
+    asciichat_error_t result = ASCIICHAT_OK;
+    if (!session->host_ctx) {
+      session_host_config_t config = {.port = GET_OPTION(port),
+                                      .ipv4_address = "0.0.0.0",
+                                      .max_clients = PARTICIPANT_LIMIT,
+                                      .encryption_enabled = session->session_type != SESSION_TYPE_WEBRTC};
+      session->host_ctx = session_host_create(&config);
+      result = session->host_ctx ? session_host_start(session->host_ctx) : ERROR_MEMORY;
+    }
+    message.kind = result == ASCIICHAT_OK ? HANDOFF_READY : HANDOFF_REJECT;
+    message.capabilities = session->session_type == SESSION_TYPE_WEBRTC ? 2 : 1;
+    message.port = (uint16_t)GET_OPTION(port);
+    if (discovery_handoff_send(session, &message, false) != ASCIICHAT_OK)
+      log_warn("Could not acknowledge successor preparation");
+  } else if (message.kind == HANDOFF_PLAN) {
+    memcpy(session->ring.future_host_id, message.participant, 16);
+    session->ring.am_future_host = !memcmp(message.participant, session->participant_id, 16);
+    session->ring.future_host_elected_round = message.sequence;
+    log_info("Prepared successor %02x%02x%02x%02x round=%u", message.participant[0], message.participant[1],
+             message.participant[2], message.participant[3], message.sequence);
+  } else if (message.kind == HANDOFF_FAILED) {
+    set_error(session, ERROR_NETWORK, "No eligible successor has fresh measurements and a prepared host");
+  } else if (message.kind == HANDOFF_COMMIT) {
+    memcpy(session->host_id, message.participant, 16);
+    session->host_port = message.port;
+    session->handoff_pending = true;
+    set_state(session, DISCOVERY_STATE_MIGRATING);
+    log_info("Committed successor %02x%02x generation=%u", message.participant[0], message.participant[1],
+             message.generation);
+  }
+}
+asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session) {
+  if (!session || !session->handoff_pending)
+    return ASCIICHAT_OK;
+  session->handoff_pending = false;
+  if (session->participant_ctx) {
+    session_participant_destroy(session->participant_ctx);
+    session->participant_ctx = NULL;
+  }
+  if (session->peer_manager) {
+    webrtc_peer_manager_destroy(session->peer_manager);
+    session->peer_manager = NULL;
+  }
+  session->is_host = !memcmp(session->host_id, session->participant_id, 16);
+  session->webrtc_transport_ready = false;
+  session->webrtc_connection_initiated = false;
+  session->webrtc_retry_attempt = 0;
+  asciichat_error_t result = initialize_webrtc_peer_manager(session);
+  if (result != ASCIICHAT_OK)
+    return result;
+  session->migration.state = MIGRATION_STATE_NONE;
+  set_state(session, session->is_host ? DISCOVERY_STATE_STARTING_HOST : DISCOVERY_STATE_CONNECTING_HOST);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) {
+  uint64_t now = session_get_current_time_ms();
+  if (session->handoff_last_sample_ms && now - session->handoff_last_sample_ms < 5000)
+    return ASCIICHAT_OK;
+  session->handoff_last_sample_ms = now;
+  if (!session->handoff_sequence)
+    log_info("Handoff identity=%02x%02x%02x%02x", session->participant_id[0], session->participant_id[1],
+             session->participant_id[2], session->participant_id[3]);
+  consensus_handoff_message_t message = {.kind = HANDOFF_SAMPLE_START,
+                                         .sequence = ++session->handoff_sequence,
+                                         .capabilities = session->session_type == SESSION_TYPE_WEBRTC ? 2 : 0,
+                                         .nat_tier = 255,
+                                         .port = (uint16_t)GET_OPTION(port)};
+  mutex_lock(&session->nat_quality_mutex);
+  if (session->nat_quality_cached && session->cached_nat_quality.detection_complete &&
+      (session->cached_nat_quality.lan_reachable || session->cached_nat_quality.has_public_ip ||
+       session->cached_nat_quality.upnp_available))
+    message.nat_tier = (uint8_t)nat_compute_tier(&session->cached_nat_quality);
+  mutex_unlock(&session->nat_quality_mutex);
+  memcpy(message.session, session->session_id, 16);
+  memcpy(message.participant, session->participant_id, 16);
+  asciichat_error_t result = discovery_handoff_send(session, &message, false);
+  if (result != ASCIICHAT_OK)
+    return result;
+  message.kind = HANDOFF_SAMPLE_DATA;
+  return discovery_handoff_send(session, &message, true);
+}
+
 static void handle_acds_webrtc_packet(discovery_session_t *session, packet_type_t type, void *data, size_t len) {
+  if ((unsigned)type == CONSENSUS_HANDOFF_PACKET) {
+    discovery_handoff_receive(session, data, len);
+    return;
+  }
   switch (type) {
   case PACKET_TYPE_ACIP_WEBRTC_SDP:
     handle_discovery_webrtc_sdp(session, data, len);
@@ -1248,35 +1417,48 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     return ASCIICHAT_OK; // Return success to allow clean shutdown
   }
 
+  session->acds_transport->receive_timeout_ns = 10 * NS_PER_SEC_INT;
+
   // Perform crypto handshake with ACDS (same as client-server handshake)
   log_info("discovery_session_start: Performing crypto handshake with ACDS...");
-  crypto_handshake_context_t handshake_ctx;
-  memset(&handshake_ctx, 0, sizeof(handshake_ctx));
+  crypto_handshake_context_t *handshake_ctx = &session->acds_handshake;
 
-  result = crypto_handshake_init("discovery_client", &handshake_ctx, false);
+  result = crypto_handshake_init("discovery_client", handshake_ctx, false);
   if (result != ASCIICHAT_OK) {
     log_error("discovery_session_start: Handshake init failed - %s", asciichat_error_string(result));
     set_error(session, result, "Crypto handshake init failed");
     return result;
   }
 
+  bool has_identity = memcmp(session->identity_pubkey, (uint8_t[32]){0}, 32) != 0;
   // Store identity key in handshake context
-  handshake_ctx.client_public_key.type = KEY_TYPE_ED25519;
-  handshake_ctx.client_private_key.type = KEY_TYPE_ED25519;
-  memcpy(handshake_ctx.client_public_key.key, session->identity_pubkey, 32);
-  memcpy(handshake_ctx.client_private_key.key.ed25519, session->identity_seckey, 64);
+  handshake_ctx->client_public_key.type = has_identity ? KEY_TYPE_ED25519 : KEY_TYPE_UNKNOWN;
+  handshake_ctx->client_private_key.type = handshake_ctx->client_public_key.type;
+  memcpy(handshake_ctx->client_public_key.key, session->identity_pubkey, 32);
+  memcpy(handshake_ctx->client_private_key.key.ed25519, session->identity_seckey, 64);
+  memcpy(handshake_ctx->client_private_key.public_key, session->identity_pubkey, sizeof(session->identity_pubkey));
 
-  result = acds_handshake_begin(session->acds_transport, true);
-  while (result == ASCIICHAT_OK && handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
+  crypto_policy_t signaling_policy = {
+      .transport_secure = strncmp(session->acds_url, "wss://", 6) == 0,
+      .has_identity = has_identity,
+  };
+  uint8_t mode;
+  result = crypto_policy_resolve(&signaling_policy, &mode);
+  if (result == ASCIICHAT_OK) {
+    handshake_ctx->crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
+    result = acds_handshake_begin(session->acds_transport, mode);
+  }
+  while (result == ASCIICHAT_OK && handshake_ctx->state != CRYPTO_HANDSHAKE_READY) {
     packet_type_t type;
     void *payload = NULL, *allocation = NULL;
     size_t length = 0;
-    result = packet_receive_via_transport(session->acds_transport, &type, &payload, &length, &allocation);
+    result = acds_receive_packet(session->acds_transport, &type, &payload, &length, &allocation);
     if (result == ASCIICHAT_OK)
-      result = acds_handshake_receive(&handshake_ctx, session->acds_transport, type, payload, length);
+      result = acds_handshake_receive(handshake_ctx, session->acds_transport, type, payload, length);
     buffer_release(allocation);
   }
-  crypto_handshake_destroy(&handshake_ctx);
+  if (result == ASCIICHAT_OK)
+    session->acds_transport->crypto_ctx = &handshake_ctx->crypto_ctx;
   if (result != ASCIICHAT_OK) {
     set_error(session, result, "Discovery handshake failed");
     return result;
@@ -1345,8 +1527,7 @@ static asciichat_error_t discovery_session_wait_for_peer(discovery_session_t *se
     void *alloc_buffer = NULL;
 
     // Try to receive a packet
-    asciichat_error_t recv_result =
-        packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+    asciichat_error_t recv_result = acds_receive_packet(session->acds_transport, &type, &data, &len, &alloc_buffer);
     if (recv_result == ASCIICHAT_OK) {
       if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
         log_info("Peer joined session, transitioning to negotiation");
@@ -1399,8 +1580,7 @@ static void discovery_session_receive_host_announcement(discovery_session_t *ses
     size_t len = 0;
     void *alloc_buffer = NULL;
 
-    asciichat_error_t recv_result =
-        packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+    asciichat_error_t recv_result = acds_receive_packet(session->acds_transport, &type, &data, &len, &alloc_buffer);
     if (recv_result == ASCIICHAT_OK && type == PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) {
       acip_host_announcement_t *announcement = (acip_host_announcement_t *)data;
       log_info("Received HOST_ANNOUNCEMENT from ACDS: %s:%u", announcement->host_address, announcement->host_port);
@@ -1480,7 +1660,7 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
     session_host_config_t hconfig = {
         .port = host_port,
         .ipv4_address = "0.0.0.0",
-        .max_clients = 32,
+        .max_clients = PARTICIPANT_LIMIT,
         .encryption_enabled = true,
     };
 
@@ -1614,8 +1794,7 @@ static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *s
     size_t len = 0;
     void *alloc_buffer = NULL;
 
-    asciichat_error_t recv_result =
-        packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+    asciichat_error_t recv_result = acds_receive_packet(session->acds_transport, &type, &data, &len, &alloc_buffer);
 
     if (recv_result == ASCIICHAT_OK) {
       // Dispatch to appropriate handler
@@ -1801,8 +1980,7 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
     size_t len = 0;
     void *alloc_buffer = NULL;
 
-    asciichat_error_t recv_result =
-        packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+    asciichat_error_t recv_result = acds_receive_packet(session->acds_transport, &type, &data, &len, &alloc_buffer);
 
     if (recv_result == ASCIICHAT_OK) {
       // Dispatch to appropriate handler
@@ -1829,30 +2007,16 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
 
     bool peer_failed = !peer_found || peer_state == WEBRTC_STATE_FAILED || peer_state == WEBRTC_STATE_CLOSED;
     if (session->webrtc_transport_ready && (peer_failed || disconnected_too_long)) {
-      int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
-      if (session->webrtc_retry_attempt >= max_attempts) {
-        set_error(session, ERROR_NETWORK, "WebRTC peer remained disconnected after retry attempts");
-        return SET_ERRNO(ERROR_NETWORK, "WebRTC connection failed");
-      }
-
-      log_warn("WebRTC peer lost connectivity; resetting its transport and renegotiating");
-      if (session->participant_ctx) {
-        acip_transport_t *transport = session_participant_get_transport(session->participant_ctx);
-        session_participant_set_transport(session->participant_ctx, NULL);
-        acip_transport_destroy(transport);
-      }
-
-      // The transport has now closed its borrowed peer objects. The manager
-      // can release the failed peer before creating the next offer.
-      webrtc_peer_manager_remove_peer(session->peer_manager, session->host_id);
-      session->webrtc_transport_ready = false;
-      session->webrtc_connection_initiated = false;
-      session->webrtc_disconnected_since_ms = 0;
-      session->webrtc_retry_attempt++;
-      set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
+      // Media workers still borrow this transport. The role dispatcher joins them
+      // before applying the elected successor and releasing the old participant.
+      session->migration.detection_time_ms = session_get_current_time_ms();
+      set_state(session, DISCOVERY_STATE_MIGRATING);
       return ASCIICHAT_OK;
     }
   }
+
+  if (session->handoff_pending)
+    return ASCIICHAT_OK;
 
   // Session is active - check for host disconnect
   if (!session->is_host) {
@@ -1880,6 +2044,17 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
 }
 
 static asciichat_error_t discovery_session_process_migration(discovery_session_t *session, int64_t timeout_ns) {
+  if (session->acds_transport && acip_transport_has_pending_data(session->acds_transport)) {
+    packet_type_t type;
+    void *data = NULL, *allocated = NULL;
+    size_t length = 0;
+    asciichat_error_t result = packet_receive_via_transport(session->acds_transport, &type, &data, &length, &allocated);
+    if (result == ASCIICHAT_OK)
+      handle_acds_webrtc_packet(session, type, data, length);
+    buffer_release(allocated);
+  }
+  if (session->handoff_pending)
+    return ASCIICHAT_OK;
   // Host migration in progress
   // Check if migration has timed out (if it takes >30 seconds, give up)
   if (session->migration.state == MIGRATION_STATE_COMPLETE) {
@@ -1904,6 +2079,13 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
   asciichat_error_t result = discovery_session_send_keepalive(session);
   if (result != ASCIICHAT_OK) {
     return result;
+  }
+
+  if (session->state == DISCOVERY_STATE_ACTIVE || session->state == DISCOVERY_STATE_CONNECTING_HOST ||
+      session->state == DISCOVERY_STATE_MIGRATING) {
+    result = discovery_handoff_sample(session);
+    if (result != ASCIICHAT_OK)
+      return result;
   }
 
   // State handlers preserve deferred failures: recording a failed state does not
@@ -2036,81 +2218,6 @@ session_participant_t *discovery_session_get_participant(discovery_session_t *se
  * NOTE: For MVP, participants' quality data comes from when they connected.
  * TODO: Extend to request fresh NETWORK_QUALITY from participants periodically.
  */
-static asciichat_error_t discovery_session_run_election(discovery_session_t *session) {
-  if (!session || !session->is_host) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or not a host");
-  }
-
-  log_debug("Running host election with collected NETWORK_QUALITY");
-
-  // TODO: Request fresh NETWORK_QUALITY from all participants
-  // Implementation steps:
-  // 1. Get list of connected participants from session_host_ctx
-  // 2. Send RING_COLLECT or broadcast request via ACDS to each participant
-  // 3. Wait for NETWORK_QUALITY responses (with timeout)
-  // 4. Collect responses into array: nat_quality_t qualities[MAX_PARTICIPANTS]
-  // 5. Run election: negotiate_elect_future_host(qualities, participant_ids, count, &future_host_id)
-  //
-  // For now: Use host's own quality only (single-participant session)
-
-  // Measure host's own NAT quality (fresh measurement)
-  nat_quality_t host_quality = {0};
-  nat_quality_init(&host_quality);
-
-  // Re-measure host's NAT quality for accurate election
-  const options_t *opts = options_get();
-  const char *stun_server = opts ? opts->stun_servers : NULL;
-  if (stun_server && stun_server[0] != '\0') {
-    log_debug("Re-measuring host NAT quality for election");
-    nat_detect_quality(&host_quality, stun_server, 0);
-
-    // Measure bandwidth to ACDS
-    if (session->acds_transport) {
-      socket_t acds_socket = acip_transport_get_socket(session->acds_transport);
-      if (acds_socket != INVALID_SOCKET_VALUE) {
-        nat_measure_bandwidth(&host_quality, acds_socket);
-      }
-    }
-  } else {
-    // Fallback: use placeholder values
-    host_quality.has_public_ip = true;
-    host_quality.upload_kbps = 100000; // Placeholder: 100 Mbps
-    host_quality.detection_complete = true;
-  }
-
-  // Run election (currently only host quality, will include participants later)
-  // TODO: Pass collected participant qualities to election algorithm
-  uint8_t future_host_id[16];
-  memcpy(future_host_id, session->participant_id, 16); // Host stays host for now
-
-  log_info("Election result: Future host elected (round %llu)",
-           (unsigned long long)(session->ring.future_host_elected_round + 1));
-
-  // Store locally
-  session->ring.future_host_elected_round++;
-  memcpy(session->ring.future_host_id, future_host_id, 16);
-  session->ring.am_future_host = (memcmp(future_host_id, session->participant_id, 16) == 0);
-  memcpy(session->ring.future_host_address, session->host_address, 64);
-  session->ring.future_host_port = session->host_port;
-  session->ring.future_host_connection_type = 0; // DIRECT_PUBLIC (we're the host)
-
-  // Broadcast FUTURE_HOST_ELECTED to all participants via ACDS
-  acip_future_host_elected_t msg = {0};
-  memcpy(msg.session_id, session->session_id, 16);
-  memcpy(msg.future_host_id, future_host_id, 16);
-  memcpy(msg.future_host_address, session->ring.future_host_address, 64);
-  msg.future_host_port = session->ring.future_host_port;
-  msg.connection_type = session->ring.future_host_connection_type;
-  msg.elected_at_round = session->ring.future_host_elected_round;
-
-  packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED, &msg, sizeof(msg), 0);
-
-  log_info("Broadcasted FUTURE_HOST_ELECTED: participant_id=%.*s, round=%llu", 16, (char *)future_host_id,
-           (unsigned long long)msg.elected_at_round);
-
-  return ASCIICHAT_OK;
-}
-
 asciichat_error_t discovery_session_init_ring(discovery_session_t *session) {
   if (!session) {
     SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
@@ -2128,32 +2235,10 @@ asciichat_error_t discovery_session_init_ring(discovery_session_t *session) {
 }
 
 asciichat_error_t discovery_session_start_ring_round(discovery_session_t *session) {
-  if (!session) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
-    return ERROR_INVALID_PARAM;
-  }
-
-  session->ring.last_ring_round_ms = session_get_current_time_ms();
-
-  if (session->is_host) {
-    log_info("Starting 5-minute proactive election round (collecting NETWORK_QUALITY from participants)");
-
-    // HOST: Run proactive host election
-    // 1. Collect NETWORK_QUALITY from all connected participants (TODO: request fresh data)
-    // 2. Measure the host's own NAT quality
-    // 3. Run deterministic election to determine future host
-    // 4. Broadcast FUTURE_HOST_ELECTED to all participants via ACDS
-    asciichat_error_t result = discovery_session_run_election(session);
-    if (result != ASCIICHAT_OK) {
-      log_error("Host election failed: %d", result);
-      return result;
-    }
-
-    return ASCIICHAT_OK;
-  } else {
-    log_debug("Ring round timer triggered (waiting for host to broadcast FUTURE_HOST_ELECTED)");
-    return ASCIICHAT_OK;
-  }
+  if (!session)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing discovery session");
+  session->handoff_last_sample_ms = 0;
+  return discovery_handoff_sample(session);
 }
 
 asciichat_error_t discovery_session_check_host_alive(discovery_session_t *session) {
@@ -2300,7 +2385,7 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
     session_host_config_t hconfig = {
         .port = host_port,
         .ipv4_address = "0.0.0.0",
-        .max_clients = 32,
+        .max_clients = PARTICIPANT_LIMIT,
         .encryption_enabled = true,
     };
 
@@ -2359,9 +2444,14 @@ asciichat_error_t discovery_session_connect_to_future_host(discovery_session_t *
 
   // Destroy old participant context if present
   if (session->participant_ctx) {
+    asciichat_error_t release_result = release_participant_transport(session);
+    if (release_result != ASCIICHAT_OK)
+      return release_result;
     session_participant_destroy(session->participant_ctx);
     session->participant_ctx = NULL;
   }
+
+  release_host_control_transport(session);
 
   // Create new participant context for the future host
   session_participant_config_t pconfig = {
