@@ -1126,7 +1126,9 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
             add_dependencies(tests test-acip-prepare)
         endif()
     endif()
-    add_executable(test-network-events EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/event_test.c)
+    add_executable(test-network-events EXCLUDE_FROM_ALL
+        ${CMAKE_SOURCE_DIR}/tests/standalone/network/event_test.c
+        ${CMAKE_SOURCE_DIR}/tests/standalone/network/accepted_start_test.c)
     target_link_libraries(test-network-events PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET})
     apply_sanitizers_to_target(test-network-events)
     target_include_directories(test-network-events PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)

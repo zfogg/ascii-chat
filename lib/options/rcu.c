@@ -639,11 +639,12 @@ static asciichat_error_t validate_field(const runtime_field_t *field, const opti
     if (entry && (entry->metadata.numeric_range.min || entry->metadata.numeric_range.max) &&
         (value < entry->metadata.numeric_range.min || value > entry->metadata.numeric_range.max))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' is out of range", field->name);
-    if (entry && entry->metadata.enum_values && entry->metadata.input_type == OPTION_INPUT_ENUM) {
+    if (field->type == OPTIONS_VALUE_INT && entry && entry->metadata.enum_values &&
+        entry->metadata.input_type == OPTION_INPUT_ENUM) {
       bool found = false;
       for (size_t i = 0; entry->metadata.enum_values[i]; ++i) {
         int enum_value = entry->metadata.enum_integer_values ? entry->metadata.enum_integer_values[i] : (int)i;
-        if (value == enum_value)
+        if (*(const int *)ptr == enum_value)
           found = true;
       }
       if (!found)
@@ -709,14 +710,18 @@ static asciichat_error_t edit_candidate(options_t *candidate, const options_edit
       memcpy(ptr, &value, sizeof(value));
     break;
   }
-  case OPTIONS_VALUE_STRING:
-    if (edit->operation != OPTIONS_ASSIGN || !edit->value.string || strlen(edit->value.string) >= field->size)
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid or overlong string option '%s'", field->name);
+  case OPTIONS_VALUE_STRING: {
+    if (edit->operation != OPTIONS_ASSIGN || !edit->value.string)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid string option '%s'", field->name);
+    size_t length = strlen(edit->value.string);
+    if (length >= field->size)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Overlong string option '%s'", field->name);
     memset(ptr, 0, field->size);
-    memcpy(ptr, edit->value.string, strlen(edit->value.string));
+    memcpy(ptr, edit->value.string, length);
     if (!strcmp(field->name, "palette_custom"))
       candidate->palette_custom_set = ptr[0] != 0;
     break;
+  }
   }
   return ASCIICHAT_OK;
 }
@@ -795,9 +800,19 @@ static asciichat_error_t apply_one(options_edit_t edit) {
   options_patch_t patch = {.edits = &edit, .count = 1, .expected_revision = OPTIONS_REVISION_ANY};
   return options_apply_patch(&patch, NULL);
 }
+/**
+ * Assign an integer through the serialized writer transaction.
+ * Resolve aliases and validate the final candidate before publishing it.
+ * A rejected edit leaves the current snapshot and revision intact.
+ */
 asciichat_error_t options_set_int(const char *name, int value) {
   return apply_one((options_edit_t){.name = name, .type = OPTIONS_VALUE_INT, .value.integer = value});
 }
+/**
+ * Assign a boolean through the same transaction used by patches and toggles.
+ * Field descriptors account for both bool and integer-backed storage.
+ * Animation exclusions are applied atomically with the requested value.
+ */
 asciichat_error_t options_set_bool(const char *name, bool value) {
   return apply_one((options_edit_t){.name = name, .type = OPTIONS_VALUE_BOOL, .value.boolean = value});
 }

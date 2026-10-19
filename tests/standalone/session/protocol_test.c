@@ -160,6 +160,27 @@ static void test_participant_settings(void) {
   CHECK(test.callbacks == 3 && test.host.width == 70);
   CHECK(session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
   session_participant_destroy(participant);
+
+  // The public initializer supplies AUTO; callers can submit it unchanged.
+  CHECK(options_state_init() == ASCIICHAT_OK);
+  participant = session_participant_create(&config);
+  CHECK(participant);
+  session_settings_init(&requested);
+  CHECK(requested.color_mode == TERM_COLOR_AUTO);
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  int expected_color = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;
+  memset(&test.host, 0, sizeof(test.host));
+  CHECK(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  CHECK(session_participant_request_settings(participant, &requested) == ASCIICHAT_OK);
+  CHECK(requested.color_mode == TERM_COLOR_AUTO);
+  CHECK(test.host.caps.color_level == expected_color);
+  CHECK(session_participant_receive_settings(participant, test.reply, test.reply_length) == ASCIICHAT_OK);
+  session_settings_t effective;
+  CHECK(session_participant_get_settings(participant, &effective) == ASCIICHAT_OK);
+  CHECK(effective.color_mode == expected_color && test.callbacks == 4);
+  CHECK(session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  session_participant_destroy(participant);
+  options_state_destroy();
 }
 
 void test_session_protocol(void) {

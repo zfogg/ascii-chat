@@ -1598,6 +1598,11 @@ static void publish_render_settings(client_info_t *client) {
            (state->caps.capabilities & TERM_CAP_MATRIX_RAIN) != 0, state->revision);
 }
 
+/**
+ * Bootstrap a viewer's rendering state from its initial terminal capabilities.
+ * Later advertisements update codecs while SETTINGS_SYNC owns live preferences.
+ * Publish under the client mutex, then send the initial effective settings unlocked.
+ */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
   if (!data || len != sizeof(terminal_capabilities_packet_t)) {
     disconnect_client_for_bad_data(client, "Invalid capabilities size");

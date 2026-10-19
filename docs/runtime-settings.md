@@ -68,7 +68,9 @@ All live remote rendering changes use `ACIP_SETTINGS_SYNC` (6063) and
 `ACIP_SETTINGS_ACK` (6064), over the connection’s normal encrypted transport.
 `CLIENT_CAPABILITIES` initializes terminal capabilities and advertises codec
 support. Later codec advertisements cannot overwrite rendering preferences.
-There is no feature negotiation or alternate runtime settings path.
+There is no feature negotiation or alternate runtime settings path. Hosts and
+clients must both be updated for live rendering controls; older clients that
+only send capability updates cannot change rendering after initialization.
 
 Each payload begins with five network-order 32-bit integers:
 
@@ -95,7 +97,10 @@ state in C before exposing it to JavaScript.
 `session_participant_request_settings()` submits this request;
 `session_participant_receive_settings()` consumes the acknowledgment and invokes
 the participant callbacks after releasing its settings mutex. It never applies
-another viewer’s preferences to global options.
+another viewer’s preferences to global options. Requests may retain the default
+`TERM_COLOR_AUTO`: the participant resolves it to detected terminal capabilities
+(or monochrome when detection is unreliable) before validating and sending,
+without rewriting the caller’s preferences.
 
 ## Verification
 
