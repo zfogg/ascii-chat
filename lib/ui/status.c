@@ -56,7 +56,7 @@ asciichat_error_t ui_status_gather(tcp_server_t *server, const char *session_str
                                    const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
                                    bool session_is_mdns_only, ui_status_t *out_status) {
   if (!server || !out_status || !mode_name) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for ui_status_gather");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   memset(out_status, 0, sizeof(*out_status));

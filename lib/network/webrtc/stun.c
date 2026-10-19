@@ -50,7 +50,7 @@ static pcre2_code *stun_entry_regex_get(void) {
  */
 int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_server_t *out_servers, int max_count) {
   if (!out_servers || max_count <= 0) {
-    log_warn("stun_servers_parse: Invalid output array or max_count");
+    log_warn("Invalid output array or max_count");
     return -1;
   }
 
@@ -61,7 +61,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
   }
 
   if (!servers_to_parse || servers_to_parse[0] == '\0') {
-    log_warn("stun_servers_parse: No servers to parse and no defaults provided");
+    log_warn("No servers to parse and no defaults provided");
     return 0;
   }
 
@@ -70,7 +70,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
 
   // If regex not available, fall back to manual parsing
   if (!regex) {
-    log_warn("stun_servers_parse: PCRE2 regex not available, falling back to manual parsing");
+    log_warn("PCRE2 regex not available, falling back to manual parsing");
     // Fallback: manual character-by-character parsing (original implementation)
     int count = 0;
     const char *current = servers_to_parse;
@@ -99,7 +99,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
       }
 
       if (len >= STUN_MAX_URL_LEN) {
-        log_warn("stun_servers_parse: STUN server URL too long (max %d): %.*s", STUN_MAX_URL_LEN, (int)len, current);
+        log_warn("STUN server URL too long (max %d): %.*s", STUN_MAX_URL_LEN, (int)len, current);
         return -1;
       }
 
@@ -117,7 +117,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
   int count = 0;
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
-    log_warn("stun_servers_parse: Failed to allocate PCRE2 match data");
+    log_warn("Failed to allocate PCRE2 match data");
     return -1;
   }
 
@@ -141,7 +141,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
     }
 
     if (len >= STUN_MAX_URL_LEN) {
-      log_warn("stun_servers_parse: STUN server URL too long (max %d): %.*s", STUN_MAX_URL_LEN, (int)len, server_url);
+      log_warn("STUN server URL too long (max %d): %.*s", STUN_MAX_URL_LEN, (int)len, server_url);
       pcre2_match_data_free(match_data);
       return -1;
     }

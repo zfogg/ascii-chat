@@ -88,18 +88,28 @@ describe("C runtime settings bridge", () => {
   });
 });
 
-function reply(request: number, status = 0) {
+function reply(request: number, status = 0, revision = 7) {
   const json = new TextEncoder().encode('{"fps":30}');
   const payload = new Uint8Array(20 + json.length);
   const view = new DataView(payload.buffer);
   view.setUint32(0, 1);
   view.setUint32(4, request);
-  view.setUint32(12, 7);
+  view.setUint32(12, revision);
   view.setUint32(16, status);
   payload.set(json, 20);
   return payload;
 }
 describe("remote render request correlation", () => {
+  it("accepts a new host's lower revision with a fresh connection control", () => {
+    const connection = { sendPacket: vi.fn() } as unknown as ClientSession;
+    const commit = vi.fn(() => ({ fps: 30 }));
+    const previous = new RenderSettingsControl(connection, commit);
+    previous.send({ fps: 30 });
+    expect(previous.receive(reply(1, 0, 100))).not.toBeNull();
+    const reconnected = new RenderSettingsControl(connection, commit);
+    reconnected.send({ fps: 30 });
+    expect(reconnected.receive(reply(1, 0, 1))).toMatchObject({ revision: 1 });
+  });
   it("ignores old replies before they can replace C effective state", () => {
     const sendPacket = vi.fn();
     const commit = vi.fn(() => ({ fps: 30 }));

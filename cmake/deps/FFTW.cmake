@@ -13,6 +13,8 @@ if(USE_MUSL OR IOS OR EMSCRIPTEN)
         set(DISABLE_FORTRAN ON)
         set(CMAKE_POSITION_INDEPENDENT_CODE ON)
         FetchContent_Declare(asciichat_fftw
+            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_fftw"
+            EXCLUDE_FROM_ALL
             URL https://www.fftw.org/fftw-3.3.10.tar.gz
             URL_HASH SHA256=56c932549852cddcfafdab3820b0200c7742675be92179e59e6215b340e26467
         )
@@ -23,6 +25,16 @@ if(USE_MUSL OR IOS OR EMSCRIPTEN)
     set(FFTW_LIBRARIES fftw3)
     set(FFTW_SYS_LIBRARIES fftw3)
     set(FFTW_SYS_INCLUDE_DIRS ${FFTW_INCLUDE_DIRS})
+    return()
+endif()
+
+if(WIN32)
+    find_package(FFTW3 CONFIG REQUIRED)
+    set(FFTW_LIBRARIES FFTW3::fftw3)
+    set(FFTW_SYS_LIBRARIES FFTW3::fftw3)
+    get_target_property(FFTW_INCLUDE_DIRS FFTW3::fftw3 INTERFACE_INCLUDE_DIRECTORIES)
+    set(FFTW_SYS_INCLUDE_DIRS ${FFTW_INCLUDE_DIRS})
+    set(FFTW_FOUND TRUE)
     return()
 endif()
 

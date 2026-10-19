@@ -235,7 +235,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       if (*endptr == '\0' && errno == 0 && parsed >= 0 && parsed <= USHRT_MAX) {
         index = (unsigned short int)parsed;
       } else if (*endptr != '\0' || errno != 0) {
-        log_error("media_source_create: Invalid webcam index: %s", path);
+        log_error("Invalid webcam index: %s", path);
       }
     }
 
@@ -695,7 +695,7 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
   static uint64_t call_count = 0;
   call_count++;
   if (call_count <= 5 || call_count % 1000 == 0) {
-    log_debug("media_source_read_audio #%lu: source_type=%d num_samples=%zu", call_count, source->type, num_samples);
+    log_debug("#%lu: source_type=%d num_samples=%zu", call_count, source->type, num_samples);
   }
 
   // Check pause state (thread-safe)
@@ -718,7 +718,7 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN: {
     if (!source->audio_decoder) {
-      log_warn_every(US_PER_SEC_INT, "media_source_read_audio: audio_decoder is NULL!");
+      log_warn_every(US_PER_SEC_INT, "audio_decoder is NULL!");
       return 0;
     }
 

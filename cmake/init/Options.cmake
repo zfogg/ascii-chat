@@ -120,6 +120,7 @@ endif()
 # Homebrew: ON (link against Homebrew's shared libraries)
 #
 option(ASCIICHAT_SHARED_DEPS "Link against shared libraries instead of static (for Homebrew builds)" OFF)
+option(ASCIICHAT_BUILD_DEPS_FROM_SOURCE "Build converted dependencies from upstream sources instead of installed packages" OFF)
 
 # Release tuning controls
 set(ASCIICHAT_RELEASE_CPU_TUNE "portable" CACHE STRING "CPU tuning profile for Release builds (portable, native, x86-64-v2, x86-64-v3, custom)")

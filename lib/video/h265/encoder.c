@@ -336,7 +336,7 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
   int send_ret = avcodec_send_frame(encoder->codec_ctx, encoder->frame);
   if (send_ret < 0) {
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_ENCODE, time_get_ns() - stats_codec_start);
-    log_error("H265_ENCODE: avcodec_send_frame failed: %d", send_ret);
+    log_error("avcodec_send_frame failed: %d", send_ret);
     return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to send frame to encoder");
   }
 
@@ -344,15 +344,15 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_ENCODE, time_get_ns() - stats_codec_start);
   if (recv_ret == AVERROR(EAGAIN)) {
     // EAGAIN is normal - encoder needs more frames before outputting a packet
-    log_dev("H265_ENCODE: EAGAIN - encoder buffering frames (normal), waiting for next frame");
+    log_dev("EAGAIN - encoder buffering frames (normal), waiting for next frame");
     *output_size = 0; // No output this time
     return ASCIICHAT_OK;
   }
   if (recv_ret < 0) {
-    log_error("H265_ENCODE: avcodec_receive_packet failed: %d (EAGAIN=%d)", recv_ret, AVERROR(EAGAIN));
+    log_error("avcodec_receive_packet failed: %d (EAGAIN=%d)", recv_ret, AVERROR(EAGAIN));
     return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to receive encoded packet");
   }
-  log_debug("H265_ENCODE: Got packet: size=%d", (int)encoder->packet->size);
+  log_debug("Got packet: size=%d", (int)encoder->packet->size);
 
   uint8_t flags = 0;
   if (encoder->packet->flags & AV_PKT_FLAG_KEY) {

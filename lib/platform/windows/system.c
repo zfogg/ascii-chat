@@ -1507,7 +1507,7 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
  */
 int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size) {
   if (!executable || !argv) {
-    log_error("platform_execute_subprocess: invalid parameters");
+    log_error("invalid parameters");
     return -1;
   }
 

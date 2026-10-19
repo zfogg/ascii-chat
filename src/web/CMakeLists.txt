@@ -7,7 +7,7 @@ if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     # Being used as a subdirectory - don't call project() again
 else()
     # Being used as a standalone project - initialize CMake
-    cmake_minimum_required(VERSION 3.18)
+    cmake_minimum_required(VERSION 3.28)
     project(ascii-chat-wasm)
 
     # Include sanitizer configuration so apply_sanitizers_to_target() is available
@@ -53,6 +53,7 @@ include(${_cmake_dir}/deps/Opus.cmake)
 include(${_cmake_dir}/deps/Zstd.cmake)
 include(${_cmake_dir}/deps/Libvterm.cmake)
 include(${_cmake_dir}/deps/FFTW.cmake)
+include(${_cmake_dir}/deps/Utf8proc.cmake)
 
 # TOML (using tomlc17 from deps)
 # No FetchContent needed - using vendored tomlc17
@@ -128,10 +129,6 @@ set(WASM_RENDERER_SRC
 # Third-party dependencies (source-included)
 set(TOML_SRC
     ${DEPS_ROOT}/ascii-chat-deps/tomlc17/src/tomlc17.c
-)
-
-set(UTF8PROC_SRC
-    ${DEPS_ROOT}/ascii-chat-deps/utf8proc/utf8proc.c
 )
 
 # Generated font data (created by cmake/targets/Fonts.cmake at configure time)
@@ -361,7 +358,6 @@ add_library(wasm-common OBJECT
     ${LIB_SRC_COMMON}
     ${WASM_RENDERER_SRC}
     ${TOML_SRC}
-    ${UTF8PROC_SRC}
     ${GENERATED_FONT_SRC}
 )
 
@@ -369,20 +365,6 @@ add_library(wasm-common OBJECT
 # Ensure font generation happens before compiling wasm-common
 if(TARGET generate_fonts)
     add_dependencies(wasm-common generate_fonts)
-endif()
-
-# Ensure WASM dependencies are built before compiling wasm-common
-if(TARGET libsodium-wasm)
-    add_dependencies(wasm-common libsodium-wasm)
-endif()
-if(TARGET pcre2-wasm)
-    add_dependencies(wasm-common pcre2-wasm)
-endif()
-if(TARGET opus-wasm)
-    add_dependencies(wasm-common opus-wasm)
-endif()
-if(TARGET zstd-wasm)
-    add_dependencies(wasm-common zstd-wasm)
 endif()
 
 # Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
@@ -407,6 +389,7 @@ endif()
 # These are set by Libsodium.cmake, PCRE2.cmake, Libvterm.cmake, etc.
 
 target_link_libraries(wasm-common PRIVATE
+    ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
     ${VTERM_LDFLAGS}
@@ -447,6 +430,7 @@ target_link_options(mirror-web PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_
 # Link dependencies with explicit library paths for wasm-ld
 
 target_link_libraries(mirror-web PRIVATE
+    ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
     ${VTERM_LDFLAGS}
@@ -514,6 +498,7 @@ target_include_directories(client-web PRIVATE
 
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE
+    ${UTF8PROC_LIBRARIES}
     ${FFTW_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
@@ -601,6 +586,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     _browser_handoff_encode _browser_handoff_decode
     _browser_host_create _browser_host_destroy _browser_host_add_client _browser_host_remove_client
+    _browser_host_set_local_client
     _browser_host_receive _browser_host_render _browser_discovery_new _browser_discovery_destroy _browser_discovery_enter _browser_discovery_receive _browser_discovery_leave _browser_discovery_snapshot
     _client_resolve_crypto_policy _client_handshake_begin _client_handshake_receive
     _client_acds_handshake_begin _client_acds_handshake_receive
@@ -743,3 +729,9 @@ endif()
 # Enable SIMD at compilation, not only linking, for the pixel compositor.
 set_source_files_properties("${LIB_ROOT}/media/render/terminal.c"
     PROPERTIES COMPILE_OPTIONS "-msimd128")
+
+if(EMSCRIPTEN)
+    enable_testing()
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../tests/wasm/dependencies"
+        "${CMAKE_CURRENT_BINARY_DIR}/tests/dependencies" EXCLUDE_FROM_ALL)
+endif()

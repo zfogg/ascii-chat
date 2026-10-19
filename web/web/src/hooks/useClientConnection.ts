@@ -171,6 +171,11 @@ export function useClientConnection(options: UseClientConnectionOptions) {
         renderControl.current = new RenderSettingsControl(conn);
         setRenderSettingsStatus("");
         conn.onStateChange((state) => {
+          if (state === ConnectionState.CONNECTING) {
+            renderControl.current = new RenderSettingsControl(conn);
+            if (renderTimeout.current) clearTimeout(renderTimeout.current);
+            setRenderSettingsStatus("");
+          }
           onConnectionStateChange?.(state);
           const stateName = STATE_NAMES[state] || "Unknown";
           console.log(`[Client] State change: ${state} (${stateName})`);
@@ -340,6 +345,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                 );
 
               window.__clientFrameMetrics = {
+                lastRenderedFrame:
+                  window.__clientFrameMetrics?.lastRenderedFrame ?? "",
                 rendered: frameCountRef.current,
                 received: receivedFrameCountRef.current,
                 changedReceived: changedReceivedFrameCountRef.current,

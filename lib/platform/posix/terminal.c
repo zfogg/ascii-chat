@@ -479,7 +479,7 @@ bool is_valid_tty_path(const char *path) {
  */
 asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short int *height) {
   if (!width || !height) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for get_terminal_size");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   struct winsize ws = {0};
@@ -909,7 +909,7 @@ bool terminal_has_dark_background(void) {
           return true; // Dark background
         }
       } else {
-        log_error("terminal_is_dark_background: Invalid color value in COLORFGBG: %s", semicolon + 1);
+        log_error("Invalid color value in COLORFGBG: %s", semicolon + 1);
       }
     }
   }

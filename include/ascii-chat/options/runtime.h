@@ -40,7 +40,7 @@ typedef struct {
   options_origin_t origin;
 } options_snapshot_t;
 
-/** No callbacks or I/O run under the writer mutex. A rejected patch publishes nothing. */
+/** No observer callbacks or network I/O run under the writer mutex. A rejected patch publishes nothing. */
 asciichat_error_t options_apply_patch(const options_patch_t *patch, options_patch_result_t *result);
 /** Prepare caller-owned state. The owner serializes access; remote edits use an allowlist. */
 asciichat_error_t options_prepare_patch(const options_t *current, const options_patch_t *patch, options_t *candidate,

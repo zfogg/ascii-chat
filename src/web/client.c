@@ -427,6 +427,7 @@ int client_init_with_args(const char *args_json) {
 
 EMSCRIPTEN_KEEPALIVE
 void client_cleanup(void) {
+  remote_render_settings = (acip_render_settings_t){0};
   asciichat_errno_destroy();
 
   // Clean up crypto handshake context

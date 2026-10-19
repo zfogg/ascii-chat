@@ -1169,7 +1169,7 @@ bool terminal_has_dark_background(void) {
           return true; // Dark background
         }
       } else {
-        log_error("terminal_is_dark_background: Invalid color value in COLORFGBG: %s", semicolon + 1);
+        log_error("Invalid color value in COLORFGBG: %s", semicolon + 1);
       }
     }
   }

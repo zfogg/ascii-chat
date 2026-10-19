@@ -144,7 +144,7 @@ void session_audio_destroy(session_audio_ctx_t *ctx) {
 
 asciichat_error_t session_audio_start_capture(session_audio_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_audio_start_capture: invalid context");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid context");
   }
 
   // Use full duplex for proper echo cancellation
@@ -153,7 +153,7 @@ asciichat_error_t session_audio_start_capture(session_audio_ctx_t *ctx) {
 
 asciichat_error_t session_audio_start_playback(session_audio_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_audio_start_playback: invalid context");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid context");
   }
 
   // Use full duplex for proper echo cancellation
@@ -162,7 +162,7 @@ asciichat_error_t session_audio_start_playback(session_audio_ctx_t *ctx) {
 
 asciichat_error_t session_audio_start_duplex(session_audio_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_audio_start_duplex: invalid context");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid context");
   }
 
   if (ctx->running) {
@@ -207,7 +207,7 @@ size_t session_audio_read_captured(session_audio_ctx_t *ctx, float *buffer, size
 
 asciichat_error_t session_audio_write_playback(session_audio_ctx_t *ctx, const float *buffer, size_t num_samples) {
   if (!ctx || !ctx->initialized || !buffer) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_audio_write_playback: invalid parameter");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameter");
   }
 
   return audio_write_samples(&ctx->audio_ctx, buffer, (int)num_samples);
@@ -219,11 +219,11 @@ asciichat_error_t session_audio_write_playback(session_audio_ctx_t *ctx, const f
 
 asciichat_error_t session_audio_add_source(session_audio_ctx_t *ctx, uint32_t source_id) {
   if (!ctx || !ctx->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_audio_add_source: invalid context");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid context");
   }
 
   if (!ctx->is_host) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_audio_add_source: not a host context");
+    return SET_ERRNO(ERROR_INVALID_STATE, "not a host context");
   }
 
   // Check if source already exists
@@ -273,11 +273,11 @@ void session_audio_remove_source(session_audio_ctx_t *ctx, uint32_t source_id) {
 asciichat_error_t session_audio_write_source(session_audio_ctx_t *ctx, uint32_t source_id, const float *samples,
                                              size_t num_samples) {
   if (!ctx || !ctx->initialized || !samples) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_audio_write_source: invalid parameter");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameter");
   }
 
   if (!ctx->is_host) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_audio_write_source: not a host context");
+    return SET_ERRNO(ERROR_INVALID_STATE, "not a host context");
   }
 
   // Find the source

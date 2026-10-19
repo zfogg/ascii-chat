@@ -21,12 +21,12 @@ asciichat_error_t platform_popen(const char *name, const char *command, const ch
   (void)command;
   (void)mode;
   (void)out_stream;
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "platform_popen not supported in WASM");
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "not supported in WASM");
 }
 
 asciichat_error_t platform_pclose(FILE **stream_ptr) {
   (void)stream_ptr;
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "platform_pclose not supported in WASM");
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "not supported in WASM");
 }
 
 int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size) {
@@ -74,7 +74,7 @@ void app_client_destroy(app_client_t *client) {
 
 asciichat_error_t connection_context_init(connection_attempt_context_t *ctx) {
   (void)ctx;
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "connection_context_init not supported in WASM");
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "not supported in WASM");
 }
 
 void connection_context_cleanup(connection_attempt_context_t *ctx) {

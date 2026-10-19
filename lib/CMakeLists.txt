@@ -306,7 +306,7 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
 
     # Mimalloc include directory (use MIMALLOC_INCLUDE_DIRS for system vs FetchContent)
     if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
-        target_include_directories(${MODULE_NAME} PRIVATE ${MIMALLOC_INCLUDE_DIRS})
+        target_include_directories(${MODULE_NAME} BEFORE PRIVATE ${MIMALLOC_INCLUDE_DIRS})
     endif()
 
     # Musl flag
@@ -321,11 +321,9 @@ endmacro()
 # -----------------------------------------------------------------------------
 # Module 1: Utilities (no dependencies)
 # -----------------------------------------------------------------------------
+list(FILTER UTIL_SRCS EXCLUDE REGEX "/utf8proc/utf8proc[.]c$")
 create_ascii_chat_module(ascii-chat-util "${UTIL_SRCS}")
-
-# utf8proc: Define UTF8PROC_STATIC to avoid dllexport/dllimport issues on Windows
-# We build utf8proc as part of our library, not as a separate DLL
-target_compile_definitions(ascii-chat-util PRIVATE UTF8PROC_STATIC)
+target_link_libraries(ascii-chat-util PRIVATE ${UTF8PROC_LIBRARIES})
 
 # PCRE2: Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
 # CRITICAL: Must be defined before including pcre2.h in any source file
@@ -723,6 +721,7 @@ if(WIN32)
 endif()
 # Exclude main() function from mdns library
 target_compile_definitions(ascii-chat-network PRIVATE MDNS_NO_MAIN)
+target_link_libraries(ascii-chat-network PRIVATE mdns::mdns)
 # yyjson for /health JSON endpoint
 target_include_directories(ascii-chat-network PRIVATE ${YYJSON_INCLUDE_DIRS})
 target_link_libraries(ascii-chat-network PRIVATE ${YYJSON_LIBRARIES})
@@ -824,6 +823,7 @@ add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-core>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
+    target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES})
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
     endif()
@@ -1021,7 +1021,7 @@ add_library(ascii-chat-shared SHARED
     )
 
     if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
-        target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${MIMALLOC_INCLUDE_DIRS}>)
+        target_include_directories(ascii-chat-shared BEFORE PRIVATE $<BUILD_INTERFACE:${MIMALLOC_INCLUDE_DIRS}>)
     endif()
 
     # Add yyjson include directory
@@ -1533,6 +1533,7 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 # Create an INTERFACE library for dependency propagation
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
 add_library(ascii-chat-static-lib-deps INTERFACE)
+target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${UTF8PROC_LIBRARIES})
 
 # Link bundled dependencies (not available via package managers)
 # BearSSL and WebRTC AEC3 are embedded in the static library

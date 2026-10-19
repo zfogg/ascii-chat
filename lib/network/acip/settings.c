@@ -46,12 +46,22 @@ asciichat_error_t acip_render_settings_prepare(acip_render_settings_t *candidate
     next.caps.capabilities |= TERM_CAP_MATRIX_RAIN;
   else
     next.caps.capabilities &= ~(uint32_t)TERM_CAP_MATRIX_RAIN;
-  if (initialize_client_palette(values->palette_type, values->palette_custom, next.palette, &next.palette_length,
+  if (initialize_client_palette(next.caps.palette_type, values->palette_custom, next.palette, &next.palette_length,
                                 next.luminance))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rendering palette");
   next.revision = candidate->revision + 1;
   *candidate = next;
   return ASCIICHAT_OK;
+}
+
+static asciichat_error_t prepare_for_viewer(acip_render_settings_t *state, options_t *values) {
+  if (values->palette_type < PALETTE_STANDARD || values->palette_type >= PALETTE_COUNT)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rendering palette");
+  values->palette_type = select_compatible_palette(values->palette_type, state->caps.utf8_support);
+  if (values->palette_type == PALETTE_CUSTOM && !state->caps.utf8_support &&
+      palette_requires_utf8_encoding(values->palette_custom, strlen(values->palette_custom)))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Custom palette requires UTF-8 support");
+  return acip_render_settings_prepare(state, values);
 }
 
 asciichat_error_t acip_render_settings_capabilities(acip_render_settings_t *state,
@@ -62,7 +72,7 @@ asciichat_error_t acip_render_settings_capabilities(acip_render_settings_t *stat
   acip_render_settings_options(state, values);
   values->width = NET_TO_HOST_U16(packet->width);
   values->height = NET_TO_HOST_U16(packet->height);
-  values->fps = packet->desired_fps;
+  values->fps = packet->desired_fps ? packet->desired_fps : 60;
   values->color_mode = NET_TO_HOST_U32(packet->color_level);
   values->color_filter = packet->color_filter;
   values->render_mode = NET_TO_HOST_U32(packet->render_mode);
@@ -75,7 +85,7 @@ asciichat_error_t acip_render_settings_capabilities(acip_render_settings_t *stat
   next.caps.capabilities = NET_TO_HOST_U32(packet->capabilities);
   next.caps.utf8_support = NET_TO_HOST_U32(packet->utf8_support) != 0;
   next.caps.wants_padding = packet->wants_padding != 0;
-  asciichat_error_t result = acip_render_settings_prepare(&next, values);
+  asciichat_error_t result = prepare_for_viewer(&next, values);
   if (result == ASCIICHAT_OK)
     *state = next;
   SAFE_FREE(values);
@@ -133,7 +143,7 @@ asciichat_error_t acip_settings_request(acip_render_settings_t *state, const voi
   else if (json_length) {
     result = options_prepare_json(current, json, json_length, candidate, true);
     if (result == ASCIICHAT_OK)
-      result = acip_render_settings_prepare(state, candidate);
+      result = prepare_for_viewer(state, candidate);
   }
   header.status = result;
   header.revision = state->revision;

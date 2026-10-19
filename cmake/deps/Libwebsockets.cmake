@@ -1,234 +1,5 @@
-# =============================================================================
-# libwebsockets Library Configuration
-# =============================================================================
-# Finds and configures libwebsockets for WebSocket transport support.
-#
-# libwebsockets enables browser clients to connect via WebSocket protocol,
-# allowing WASM client builds and mixed TCP+WebSocket server support.
-#
-# Platform-specific dependency management:
-#   - musl: Built from source (below)
-#   - Linux/macOS native: Built from source (ExternalProject_Add) with
-#     permessage-deflate extension support. System packages often ship with
-#     LWS_WITHOUT_EXTENSIONS=ON which disables RFC 7692 compression.
-#   - Windows: Uses vcpkg
-#
-# Prerequisites (must be set before including this file):
-#   - WIN32, UNIX, APPLE: Platform detection variables
-#   - USE_MUSL: Whether using musl libc
-#   - CMAKE_BUILD_TYPE: Build type
-#   - VCPKG_ROOT, VCPKG_TARGET_TRIPLET: (Windows only) vcpkg configuration
-#   - ASCIICHAT_DEPS_CACHE_DIR: Dependency cache directory (non-Windows)
-#
-# Outputs (variables set by this file):
-#   - LIBWEBSOCKETS_LIBRARIES: Libraries to link against
-#   - LIBWEBSOCKETS_INCLUDE_DIRS: Include directories
-#   - LIBWEBSOCKETS_FOUND: Whether libwebsockets was found
-# =============================================================================
-
-# Skip if already configured (by MuslDependencies.cmake or other means)
-# Check LIBWEBSOCKETS_FOUND first in case MuslDependencies.cmake already ran
-if(LIBWEBSOCKETS_FOUND)
-    if(TARGET websockets)
-        message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets (musl): using musl-built static library")
-    endif()
-    return()
-endif()
-
-# =============================================================================
-# iOS build: Build from source for iOS cross-compilation
-# =============================================================================
-if(PLATFORM_IOS)
-    message(STATUS "Configuring ${BoldBlue}libwebsockets${ColorReset} from source (iOS cross-compile)...")
-
-    include(ExternalProject)
-
-    set(LWS_PREFIX "${IOS_DEPS_CACHE_DIR}/libwebsockets")
-    set(LWS_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/libwebsockets-build")
-
-    # Determine iOS platform variant
-    if(BUILD_IOS_SIM)
-        set(LWS_IOS_PLATFORM SIMULATOR64)
-    else()
-        set(LWS_IOS_PLATFORM OS)
-    endif()
-
-    if(NOT EXISTS "${LWS_PREFIX}/lib/libwebsockets.a")
-        message(STATUS "  libwebsockets library not found in cache, will build from source")
-
-        set(LWS_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/toolchains/LibwebsocketsIOS.cmake")
-
-        ExternalProject_Add(libwebsockets-ios
-            URL https://github.com/warmcat/libwebsockets/archive/refs/heads/main.tar.gz
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            PREFIX ${LWS_BUILD_DIR}
-            STAMP_DIR ${LWS_BUILD_DIR}/stamps
-            UPDATE_DISCONNECTED 1
-            BUILD_ALWAYS 0
-            CMAKE_ARGS
-                -DCMAKE_TOOLCHAIN_FILE=${LWS_TOOLCHAIN_FILE}
-                -DIOS_PLATFORM=${LWS_IOS_PLATFORM}
-                -DIOS_DEPLOYMENT_TARGET=16.0
-                -DCMAKE_BUILD_TYPE=Release
-                -DCMAKE_INSTALL_PREFIX=${LWS_PREFIX}
-                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                -DLWS_WITH_SHARED=OFF
-                -DLWS_WITH_STATIC=ON
-                -DLWS_WITHOUT_TESTAPPS=ON
-                -DLWS_WITHOUT_TEST_SERVER=ON
-                -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON
-                -DLWS_WITHOUT_TEST_PING=ON
-                -DLWS_WITHOUT_TEST_CLIENT=ON
-                -DLWS_WITH_SSL=OFF
-                -DLWS_WITH_LIBEV=OFF
-                -DLWS_WITH_LIBUV=OFF
-                -DLWS_WITH_LIBEVENT=OFF
-                -DLWS_WITH_GLIB=OFF
-                -DLWS_WITH_SYSTEMD=OFF
-                -DLWS_WITH_LIBCAP=OFF
-                -DLWS_WITH_JOSE=OFF
-                -DLWS_WITH_GENCRYPTO=OFF
-                -DLWS_IPV6=ON
-                -DLWS_WITHOUT_EXTENSIONS=OFF
-                -DLWS_WITH_ZLIB=ON
-            INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${LWS_PREFIX}
-            BUILD_BYPRODUCTS ${LWS_PREFIX}/lib/libwebsockets.a
-            LOG_DOWNLOAD TRUE
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}libwebsockets${ColorReset} library found in cache: ${BoldMagenta}${LWS_PREFIX}/lib/libwebsockets.a${ColorReset}")
-        add_custom_target(libwebsockets-ios)
-    endif()
-
-    set(LIBWEBSOCKETS_LIBRARIES "${LWS_PREFIX}/lib/libwebsockets.a")
-    set(LIBWEBSOCKETS_INCLUDE_DIRS "${LWS_PREFIX}/include")
-    set(LIBWEBSOCKETS_BUILD_TARGET libwebsockets-ios)
-    add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
-
-    # Create placeholder directories
-    file(MAKE_DIRECTORY "${LIBWEBSOCKETS_INCLUDE_DIRS}")
-
-    # Create imported target for libwebsockets (iOS build)
-    add_library(websockets STATIC IMPORTED GLOBAL)
-    set_target_properties(websockets PROPERTIES
-        IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}"
-        INTERFACE_INCLUDE_DIRECTORIES "${LIBWEBSOCKETS_INCLUDE_DIRS}"
-    )
-    add_dependencies(websockets libwebsockets-ios)
-
-    set(LIBWEBSOCKETS_FOUND TRUE)
-
-    message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets configured (iOS cross-compile): ${LWS_PREFIX}/lib/libwebsockets.a")
-
-    return()
-endif()
-
-# =============================================================================
-# Musl build: Build from source
-# =============================================================================
-if(USE_MUSL)
-    message(STATUS "Configuring ${BoldBlue}libwebsockets${ColorReset} from source (musl)...")
-
-    include(ExternalProject)
-
-    set(LWS_PREFIX "${MUSL_DEPS_DIR_STATIC}/libwebsockets")
-    set(LWS_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libwebsockets-build")
-
-    if(NOT EXISTS "${LWS_PREFIX}/lib/libwebsockets.a")
-        message(STATUS "  libwebsockets library not found in cache, will build from source")
-
-        # Pass musl-gcc path to the toolchain file via cache variable
-        set(MUSL_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/toolchains/MuslGcc.cmake")
-
-        ExternalProject_Add(libwebsockets-musl
-            URL https://github.com/warmcat/libwebsockets/archive/refs/heads/main.tar.gz
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            PREFIX ${LWS_BUILD_DIR}
-            STAMP_DIR ${LWS_BUILD_DIR}/stamps
-            UPDATE_DISCONNECTED 1
-            BUILD_ALWAYS 0
-            DEPENDS zlib-musl openssl-musl
-            CMAKE_ARGS
-                -DCMAKE_TOOLCHAIN_FILE=${MUSL_TOOLCHAIN_FILE}
-                -DMUSL_GCC_PATH=${MUSL_GCC}
-                -DCMAKE_BUILD_TYPE=Release
-                -DCMAKE_INSTALL_PREFIX=${LWS_PREFIX}
-                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                -DCMAKE_C_FLAGS=-O2\ -fPIC\ -Wno-sign-conversion\ -Wno-error\ -isystem\ ${KERNEL_HEADERS_DIR}
-                -DLWS_WITH_SHARED=OFF
-                -DLWS_WITH_STATIC=ON
-                -DLWS_WITHOUT_TESTAPPS=ON
-                -DLWS_WITHOUT_TEST_SERVER=ON
-                -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON
-                -DLWS_WITHOUT_TEST_PING=ON
-                -DLWS_WITHOUT_TEST_CLIENT=ON
-                -DLWS_WITH_SSL=ON
-                -DLWS_WITH_MBEDTLS=OFF
-                -DLWS_WITH_GNUTLS=OFF
-                -DLWS_WITH_HTTP3=OFF
-                -DLWS_ROLE_QUIC=OFF
-                -DOPENSSL_ROOT_DIR=${OPENSSL_PREFIX}
-                -DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}
-                -DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}
-                -DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}
-                -DLWS_WITH_LIBEV=OFF
-                -DLWS_WITH_LIBUV=OFF
-                -DLWS_WITH_LIBEVENT=OFF
-                -DLWS_WITH_GLIB=OFF
-                -DLWS_WITH_SYSTEMD=OFF
-                -DLWS_WITH_LIBCAP=OFF
-                -DLWS_WITH_JOSE=OFF
-                -DLWS_WITH_GENCRYPTO=OFF
-                -DLWS_IPV6=ON
-                -DLWS_UNIX_SOCK=ON
-                -DLWS_WITHOUT_DAEMONIZE=ON
-                -DLWS_WITHOUT_EXTENSIONS=OFF
-                -DLWS_WITH_ZLIB=ON
-                -DLWS_WITH_BUNDLED_ZLIB=ON
-                -DZLIB_INCLUDE_DIR=${ZLIB_INCLUDE_DIR}
-                -DZLIB_LIBRARY=${ZLIB_LIBRARY}
-                -DLWS_WITH_SOCKS5=OFF
-            INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${LWS_PREFIX}
-            BUILD_BYPRODUCTS ${LWS_PREFIX}/lib/libwebsockets.a
-            LOG_DOWNLOAD TRUE
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}libwebsockets${ColorReset} library found in cache: ${BoldMagenta}${LWS_PREFIX}/lib/libwebsockets.a${ColorReset}")
-        add_custom_target(libwebsockets-musl)
-    endif()
-
-    set(LIBWEBSOCKETS_LIBRARIES "${LWS_PREFIX}/lib/libwebsockets.a")
-    set(LIBWEBSOCKETS_INCLUDE_DIRS "${LWS_PREFIX}/include")
-    set(LIBWEBSOCKETS_BUILD_TARGET libwebsockets-musl)
-    add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
-
-    # Create placeholder directories so CMake validation doesn't fail at configure time
-    file(MAKE_DIRECTORY "${LIBWEBSOCKETS_INCLUDE_DIRS}")
-
-    # Create imported target for libwebsockets (musl build) to match Libwebsockets.cmake behavior
-    add_library(websockets STATIC IMPORTED GLOBAL)
-    set_target_properties(websockets PROPERTIES
-        IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}"
-        INTERFACE_INCLUDE_DIRECTORIES "${LIBWEBSOCKETS_INCLUDE_DIRS}"
-    )
-    add_dependencies(websockets libwebsockets-musl)
-
-    set(LIBWEBSOCKETS_FOUND TRUE)
-    return()
-endif()
-
-# =============================================================================
-# Package-manager builds and Windows: use the installed package
-# =============================================================================
-if(WIN32 OR ASCIICHAT_SHARED_DEPS)
+# Installed packages retain their own static/shared dependency configuration.
+if((WIN32 OR ASCIICHAT_SHARED_DEPS) AND NOT ASCIICHAT_BUILD_DEPS_FROM_SOURCE AND NOT PLATFORM_IOS AND NOT USE_MUSL)
     # Try CMake config first, then fall back to pkg-config
     find_package(libwebsockets QUIET CONFIG)
     if(NOT libwebsockets_FOUND)
@@ -262,152 +33,68 @@ if(WIN32 OR ASCIICHAT_SHARED_DEPS)
     return()
 endif()
 
-# =============================================================================
-# Linux / macOS: build from source with extensions enabled
-#
-# System packages (pacman, apt, brew) typically ship with LWS_WITHOUT_EXTENSIONS=ON,
-# which disables permessage-deflate (RFC 7692). We build from source so we can
-# enable extensions and zlib compression support.
-# =============================================================================
-include(ExternalProject)
-
-set(LWS_NATIVE_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/libwebsockets")
-set(LWS_NATIVE_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libwebsockets-build")
-
-# Compute OpenSSL 3.4.0 path that libwebsockets will use
-set(LWS_OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
-set(LWS_OPENSSL_SSL_LIBRARY "")
-set(LWS_OPENSSL_CRYPTO_LIBRARY "")
-
-if(OPENSSL_SSL_LIBRARY AND EXISTS "${OPENSSL_SSL_LIBRARY}")
-    set(LWS_OPENSSL_SSL_LIBRARY "${OPENSSL_SSL_LIBRARY}")
-endif()
-if(OPENSSL_CRYPTO_LIBRARY AND EXISTS "${OPENSSL_CRYPTO_LIBRARY}")
-    set(LWS_OPENSSL_CRYPTO_LIBRARY "${OPENSSL_CRYPTO_LIBRARY}")
-endif()
-
-if(NOT LWS_OPENSSL_SSL_LIBRARY)
-    if(EXISTS "${LWS_OPENSSL_PREFIX}/lib/libssl${CMAKE_SHARED_LIBRARY_SUFFIX}")
-        set(LWS_OPENSSL_SSL_LIBRARY "${LWS_OPENSSL_PREFIX}/lib/libssl${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    elseif(EXISTS "${LWS_OPENSSL_PREFIX}/lib/libssl.a")
-        set(LWS_OPENSSL_SSL_LIBRARY "${LWS_OPENSSL_PREFIX}/lib/libssl.a")
-    elseif(EXISTS "${LWS_OPENSSL_PREFIX}/lib64/libssl.a")
-        set(LWS_OPENSSL_SSL_LIBRARY "${LWS_OPENSSL_PREFIX}/lib64/libssl.a")
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
+function(asciichat_build_libwebsockets)
+    asciichat_dependency_defaults()
+    if(USE_MUSL)
+        # TLS feature checks must link, otherwise missing functions appear to
+        # exist. Use the target CRT rather than the host's implicit runtime.
+        set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)
+        set(CMAKE_C_STANDARD_LIBRARIES "${MUSL_LIBGCC_PATH} -lc -lm")
+        list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES CMAKE_C_STANDARD_LIBRARIES)
     endif()
-endif()
-
-if(NOT LWS_OPENSSL_CRYPTO_LIBRARY)
-    if(EXISTS "${LWS_OPENSSL_PREFIX}/lib/libcrypto${CMAKE_SHARED_LIBRARY_SUFFIX}")
-        set(LWS_OPENSSL_CRYPTO_LIBRARY "${LWS_OPENSSL_PREFIX}/lib/libcrypto${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    elseif(EXISTS "${LWS_OPENSSL_PREFIX}/lib/libcrypto.a")
-        set(LWS_OPENSSL_CRYPTO_LIBRARY "${LWS_OPENSSL_PREFIX}/lib/libcrypto.a")
-    elseif(EXISTS "${LWS_OPENSSL_PREFIX}/lib64/libcrypto.a")
-        set(LWS_OPENSSL_CRYPTO_LIBRARY "${LWS_OPENSSL_PREFIX}/lib64/libcrypto.a")
+    set(LWS_WITH_SHARED ${BUILD_SHARED_LIBS})
+    set(LWS_WITH_STATIC ON)
+    if(BUILD_SHARED_LIBS)
+        set(LWS_WITH_STATIC OFF)
     endif()
-endif()
-
-# Force rebuild of libwebsockets if OpenSSL 3.4.0 is missing
-# (This ensures libwebsockets is built AFTER OpenSSL when initially cached with wrong TLS backend)
-set(LWS_OPENSSL_LIBS_EXIST FALSE)
-if(LWS_OPENSSL_SSL_LIBRARY AND LWS_OPENSSL_CRYPTO_LIBRARY)
-    set(LWS_OPENSSL_LIBS_EXIST TRUE)
-endif()
-
-if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a"
-   OR NOT EXISTS "${LWS_NATIVE_PREFIX}/include/libwebsockets.h" OR NOT LWS_OPENSSL_LIBS_EXIST)
-    message(STATUS "  libwebsockets not in cache, building from source with extensions enabled...")
-    message(STATUS "  libwebsockets will use OpenSSL from: ${LWS_OPENSSL_PREFIX}")
-    if(LWS_OPENSSL_SSL_LIBRARY)
-        message(STATUS "  OpenSSL SSL library: ${LWS_OPENSSL_SSL_LIBRARY}")
-    else()
-        message(STATUS "  OpenSSL SSL library: NOT FOUND")
-    endif()
-    if(LWS_OPENSSL_CRYPTO_LIBRARY)
-        message(STATUS "  OpenSSL Crypto library: ${LWS_OPENSSL_CRYPTO_LIBRARY}")
-    else()
-        message(STATUS "  OpenSSL Crypto library: NOT FOUND")
-    endif()
-
-    ExternalProject_Add(libwebsockets-native
-        URL https://github.com/warmcat/libwebsockets/archive/refs/heads/main.tar.gz
+    set(LWS_WITHOUT_TESTAPPS ON)
+    set(DISABLE_WERROR ON)
+    set(LWS_WITH_SSL ON)
+    set(LWS_WITH_SCHANNEL OFF)
+    set(LWS_WITH_MBEDTLS OFF)
+    set(LWS_WITH_GNUTLS OFF)
+    set(LWS_WITH_LIBEV OFF)
+    set(LWS_WITH_LIBUV OFF)
+    set(LWS_WITH_LIBEVENT OFF)
+    set(LWS_WITH_GLIB OFF)
+    set(LWS_WITH_SYSTEMD OFF)
+    set(LWS_WITH_LIBCAP OFF)
+    set(LWS_WITH_JOSE OFF)
+    set(LWS_WITH_GENCRYPTO OFF)
+    set(LWS_WITH_HTTP3 OFF)
+    set(LWS_ROLE_QUIC OFF)
+    set(LWS_WITHOUT_EXTENSIONS OFF)
+    set(LWS_WITH_ZLIB ON)
+    set(LWS_WITH_BUNDLED_ZLIB OFF)
+    set(LWS_WITH_SOCKS5 OFF)
+    set(LWS_WITHOUT_DAEMONIZE ON)
+    set(LWS_IPV6 ON)
+    FetchContent_Declare(asciichat_libwebsockets
+        BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_libwebsockets"
+        URL https://github.com/warmcat/libwebsockets/archive/4cb71af648294663ebd38550ccf47b29adec7974.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        PREFIX ${LWS_NATIVE_BUILD_DIR}
-        STAMP_DIR ${LWS_NATIVE_BUILD_DIR}/stamps
-        UPDATE_DISCONNECTED 1
-        BUILD_ALWAYS 0
-        CMAKE_ARGS
-            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-            -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-            -DCMAKE_INSTALL_PREFIX=${LWS_NATIVE_PREFIX}
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-            -DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}
-            -DCMAKE_PREFIX_PATH=${LWS_OPENSSL_PREFIX}
-            -DCMAKE_C_FLAGS=-I${LWS_OPENSSL_PREFIX}/include\ -Wno-sign-conversion\ -Wno-error\ -w
-            -DLWS_WITH_SHARED=OFF
-            -DLWS_WITH_STATIC=ON
-            -DLWS_WITHOUT_TESTAPPS=ON
-            -DLWS_WITHOUT_TEST_SERVER=ON
-            -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON
-            -DLWS_WITHOUT_TEST_PING=ON
-            -DLWS_WITHOUT_TEST_CLIENT=ON
-            -DLWS_WITH_SSL=ON
-            -DLWS_WITH_MBEDTLS=OFF
-            -DLWS_WITH_GNUTLS=OFF
-            -DLWS_WITH_HTTP3=OFF
-            -DLWS_ROLE_QUIC=OFF
-            -DOPENSSL_ROOT_DIR=${LWS_OPENSSL_PREFIX}
-            -DOPENSSL_INCLUDE_DIR=${LWS_OPENSSL_PREFIX}/include
-            -DOPENSSL_CRYPTO_LIBRARY=${LWS_OPENSSL_CRYPTO_LIBRARY}
-            -DOPENSSL_SSL_LIBRARY=${LWS_OPENSSL_SSL_LIBRARY}
-            -DLWS_WITH_LIBEV=OFF
-            -DLWS_WITH_LIBUV=OFF
-            -DLWS_WITH_LIBEVENT=OFF
-            -DLWS_WITH_GLIB=OFF
-            -DLWS_WITH_SYSTEMD=OFF
-            -DLWS_WITH_LIBCAP=OFF
-            -DLWS_WITH_JOSE=OFF
-            -DLWS_WITH_GENCRYPTO=OFF
-            -DLWS_IPV6=ON
-            -DLWS_UNIX_SOCK=ON
-            -DLWS_WITHOUT_DAEMONIZE=ON
-            -DLWS_WITHOUT_EXTENSIONS=OFF
-            -DLWS_WITH_ZLIB=ON
-            -DLWS_WITH_BUNDLED_ZLIB=ON
-            -DLWS_WITH_SOCKS5=OFF
-        BUILD_BYPRODUCTS ${LWS_NATIVE_PREFIX}/lib/libwebsockets.a
-        INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${LWS_NATIVE_PREFIX}
-        LOG_DOWNLOAD TRUE
-        LOG_CONFIGURE TRUE
-        LOG_BUILD TRUE
-        LOG_INSTALL TRUE
-        LOG_OUTPUT_ON_FAILURE TRUE
-    )
-else()
-    message(STATUS "  ${BoldBlue}libwebsockets${ColorReset} (native) found in cache: ${BoldMagenta}${LWS_NATIVE_PREFIX}/lib/libwebsockets.a${ColorReset}")
-    add_custom_target(libwebsockets-native)
-endif()
-
-set(LIBWEBSOCKETS_FOUND TRUE)
-set(LIBWEBSOCKETS_LIBRARIES "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a")
-set(LIBWEBSOCKETS_INCLUDE_DIRS "${LWS_NATIVE_PREFIX}/include")
-set(LIBWEBSOCKETS_BUILD_TARGET libwebsockets-native)
-add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
-
-# Create placeholder directories so CMake validation doesn't fail at configure time
-file(MAKE_DIRECTORY "${LIBWEBSOCKETS_INCLUDE_DIRS}")
-
-# Create an imported target for consistency with find_package() targets
-# Only create if not already created (by MuslDependencies.cmake or other means)
-if(NOT TARGET websockets)
-    add_library(websockets STATIC IMPORTED)
-    # IMPORTED_LOCATION must be set (CMake requires it), but validation is deferred to link time
-    set_property(TARGET websockets PROPERTY IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}")
-    # Include directories - only add if they exist to avoid validation errors
-    if(EXISTS "${LIBWEBSOCKETS_INCLUDE_DIRS}")
-        target_include_directories(websockets SYSTEM INTERFACE "${LIBWEBSOCKETS_INCLUDE_DIRS}")
+        SOURCE_SUBDIR asciichat-patch-first)
+    FetchContent_MakeAvailable(asciichat_libwebsockets)
+    set(LWS_SOURCE_DIR "${asciichat_libwebsockets_SOURCE_DIR}")
+    include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-libwebsockets-cmake.cmake")
+    add_subdirectory("${asciichat_libwebsockets_SOURCE_DIR}" "${asciichat_libwebsockets_BINARY_DIR}" EXCLUDE_FROM_ALL)
+    # An OpenSSL package prefix can also contain installed copies of libraries
+    # being built here. Keep those external headers after the selected sources.
+    foreach(_target websockets websockets_shared)
+        if(TARGET ${_target})
+            foreach(_include IN LISTS OPENSSL_INCLUDE_DIR OPENSSL_INCLUDE_DIRS)
+                target_include_directories(${_target} SYSTEM PUBLIC "$<BUILD_INTERFACE:${_include}>")
+            endforeach()
+        endif()
+    endforeach()
+    if(BUILD_SHARED_LIBS)
+        set(LIBWEBSOCKETS_LIBRARIES websockets_shared PARENT_SCOPE)
+    else()
+        set(LIBWEBSOCKETS_LIBRARIES websockets PARENT_SCOPE)
     endif()
-    add_dependencies(websockets libwebsockets-native)
-endif()
-
-message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets (native, extensions enabled): ${LIBWEBSOCKETS_LIBRARIES}")
+    set(LIBWEBSOCKETS_INCLUDE_DIRS "${asciichat_libwebsockets_SOURCE_DIR}/include;${asciichat_libwebsockets_BINARY_DIR}" PARENT_SCOPE)
+endfunction()
+asciichat_build_libwebsockets()
+set(LIBWEBSOCKETS_FOUND TRUE)
+add_compile_definitions(HAVE_LIBWEBSOCKETS=1)

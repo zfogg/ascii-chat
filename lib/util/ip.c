@@ -195,7 +195,7 @@ int parse_ipv6_address(const char *input, char *output, size_t output_size) {
 // Format IP address from socket address structure
 asciichat_error_t format_ip_address(int family, const struct sockaddr *addr, char *output, size_t output_size) {
   if (!addr || !output || output_size == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments to format_ip_address");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
   }
 
   const void *ip_ptr = NULL;
@@ -370,7 +370,7 @@ int parse_ip_with_port(const char *input, char *ip_output, size_t ip_output_size
 int parse_address_with_optional_port(const char *input, char *address_output, size_t address_output_size,
                                      uint16_t *port_output, uint16_t default_port) {
   if (!input || !address_output || !port_output || address_output_size == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments to parse_address_with_optional_port");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
     return -1;
   }
 
@@ -839,7 +839,7 @@ int ip_in_cidr(const char *ip, const char *cidr) {
 // Convert IPv4 address to IPv6-mapped format
 asciichat_error_t ipv4_to_ipv6_mapped(const char *ipv4, char *ipv6_out, size_t out_size) {
   if (!ipv4 || !ipv6_out || out_size == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments to ipv4_to_ipv6_mapped");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
   }
 
   // Validate IPv4
@@ -895,7 +895,7 @@ int is_ipv4_mapped_ipv6(const char *ipv6) {
 // Extract IPv4 address from IPv6-mapped format
 asciichat_error_t extract_ipv4_from_mapped_ipv6(const char *ipv6, char *ipv4_out, size_t out_size) {
   if (!ipv6 || !ipv4_out || out_size == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments to extract_ipv4_from_mapped_ipv6");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
   }
 
   if (!is_ipv4_mapped_ipv6(ipv6)) {
@@ -931,7 +931,7 @@ asciichat_error_t extract_ipv4_from_mapped_ipv6(const char *ipv6, char *ipv4_out
 // Expand IPv6 address to full form
 asciichat_error_t expand_ipv6(const char *ipv6, char *expanded_out, size_t out_size) {
   if (!ipv6 || !expanded_out || out_size == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments to expand_ipv6");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
   }
 
   // Normalize (remove brackets)
@@ -968,7 +968,7 @@ asciichat_error_t expand_ipv6(const char *ipv6, char *expanded_out, size_t out_s
 // Canonicalize IPv6 address to standard form
 asciichat_error_t canonicalize_ipv6(const char *ipv6, char *canonical_out, size_t out_size) {
   if (!ipv6 || !canonical_out || out_size == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments to canonicalize_ipv6");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
   }
 
   // Normalize (remove brackets)

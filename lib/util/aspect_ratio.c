@@ -38,7 +38,7 @@ static inline ssize_t calc_height_from_width(ssize_t width, ssize_t img_w, ssize
 static void calculate_fit_dimensions(ssize_t img_w, ssize_t img_h, ssize_t max_w, ssize_t max_h, ssize_t *out_width,
                                      ssize_t *out_height) {
   if (!out_width || !out_height) {
-    log_error("calculate_fit_dimensions: out_width or out_height is NULL");
+    log_error("out_width or out_height is NULL");
     return;
   }
 

@@ -23,95 +23,32 @@
 #   - MINIUPNPC_FOUND: Whether miniupnpc was found (not required, gracefully degrades)
 # =============================================================================
 
-include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
 
-# =============================================================================
-# iOS: Build from source for iOS cross-compilation
-# =============================================================================
-if(PLATFORM_IOS)
-    message(STATUS "Configuring ${BoldBlue}miniupnpc${ColorReset} from source (iOS cross-compile)...")
 
-    set(MINIUPNPC_PREFIX "${IOS_DEPS_CACHE_DIR}/miniupnpc")
-    set(MINIUPNPC_LIBRARY "${MINIUPNPC_PREFIX}/lib/libminiupnpc.a")
-    set(MINIUPNPC_INCLUDE_DIRS "${MINIUPNPC_PREFIX}/include")
-
-    if(NOT EXISTS "${MINIUPNPC_LIBRARY}")
-        message(STATUS "  miniupnpc library not found in cache, will build from source")
-
-        set(MINIUPNPC_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/miniupnpc-build")
-        file(MAKE_DIRECTORY "${MINIUPNPC_BUILD_DIR}")
-
-        # Get iOS SDK path
-        if(BUILD_IOS_SIM)
-            execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-        else()
-            execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
+if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
+    function(asciichat_build_miniupnpc)
+        asciichat_dependency_defaults()
+        set(UPNPC_BUILD_SHARED ${BUILD_SHARED_LIBS})
+        set(UPNPC_BUILD_STATIC ON)
+        if(BUILD_SHARED_LIBS)
+            set(UPNPC_BUILD_STATIC OFF)
         endif()
-
-        message(STATUS "  Downloading miniupnpc 2.2.7...")
-        file(DOWNLOAD
-            "https://github.com/miniupnp/miniupnp/archive/refs/tags/miniupnpc_2_2_7.tar.gz"
-            "${MINIUPNPC_BUILD_DIR}/miniupnpc-2.2.7.tar.gz"
-            TIMEOUT 30
-            SHOW_PROGRESS
-        )
-
-        message(STATUS "  Extracting miniupnpc...")
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E tar xzf miniupnpc-2.2.7.tar.gz
-            WORKING_DIRECTORY "${MINIUPNPC_BUILD_DIR}"
-            RESULT_VARIABLE EXTRACT_RESULT
-        )
-        if(NOT EXTRACT_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to extract miniupnpc")
-        endif()
-
-        message(STATUS "  Building miniupnpc for iOS...")
-        execute_process(
-            COMMAND bash -c "cd '${MINIUPNPC_BUILD_DIR}/miniupnp-miniupnpc_2_2_7/miniupnpc' && \
-                    mkdir -p build && \
-                    clang -Ibuild -DMINIUPNPC_SET_SOCKET_TIMEOUT -DMINIUPNPC_GET_SRC_ADDR -D_BSD_SOURCE -D_DEFAULT_SOURCE -Iinclude -D_DARWIN_C_SOURCE \
-                    -std=gnu11 -O -Wall -W -Wstrict-prototypes -fno-common -fPIC \
-                    -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0 \
-                    -c src/miniupnpc.c -o build/miniupnpc.o && \
-                    clang -Ibuild -DMINIUPNPC_SET_SOCKET_TIMEOUT -DMINIUPNPC_GET_SRC_ADDR -D_BSD_SOURCE -D_DEFAULT_SOURCE -Iinclude -D_DARWIN_C_SOURCE \
-                    -std=gnu11 -O -Wall -W -Wstrict-prototypes -fno-common -fPIC \
-                    -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0 \
-                    -c src/upnpcommands.c -o build/upnpcommands.o && \
-                    clang -Ibuild -DMINIUPNPC_SET_SOCKET_TIMEOUT -DMINIUPNPC_GET_SRC_ADDR -D_BSD_SOURCE -D_DEFAULT_SOURCE -Iinclude -D_DARWIN_C_SOURCE \
-                    -std=gnu11 -O -Wall -W -Wstrict-prototypes -fno-common -fPIC \
-                    -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0 \
-                    -c src/upnperrors.c -o build/upnperrors.o && \
-                    ar rcs build/libminiupnpc.a build/miniupnpc.o build/upnpcommands.o build/upnperrors.o && \
-                    mkdir -p '${MINIUPNPC_PREFIX}/lib' '${MINIUPNPC_PREFIX}/include' && \
-                    cp build/libminiupnpc.a '${MINIUPNPC_PREFIX}/lib/' && \
-                    cp include/miniupnpc.h '${MINIUPNPC_PREFIX}/include/' && \
-                    cp include/upnpcommands.h '${MINIUPNPC_PREFIX}/include/' && \
-                    cp include/upnperrors.h '${MINIUPNPC_PREFIX}/include/'"
-            RESULT_VARIABLE BUILD_RESULT
-            OUTPUT_VARIABLE BUILD_OUTPUT
-            ERROR_VARIABLE BUILD_ERROR
-        )
-        if(NOT BUILD_RESULT EQUAL 0)
-            message(FATAL_ERROR "miniupnpc iOS build failed:\\n${BUILD_ERROR}")
-        endif()
-    else()
-        message(STATUS "  ${BoldBlue}miniupnpc${ColorReset} library found in iOS cache: ${BoldMagenta}${MINIUPNPC_LIBRARY}${ColorReset}")
-    endif()
-
+        set(UPNPC_BUILD_TESTS OFF)
+        set(UPNPC_BUILD_SAMPLE OFF)
+        FetchContent_Declare(asciichat_miniupnpc
+            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_miniupnpc"
+            EXCLUDE_FROM_ALL
+            URL https://github.com/miniupnp/miniupnp/archive/refs/tags/miniupnpc_2_2_7.tar.gz
+            SOURCE_SUBDIR miniupnpc DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+        FetchContent_MakeAvailable(asciichat_miniupnpc)
+        set(MINIUPNPC_INCLUDE_DIRS "${asciichat_miniupnpc_SOURCE_DIR}/miniupnpc/include" PARENT_SCOPE)
+    endfunction()
+    asciichat_build_miniupnpc()
     set(MINIUPNPC_FOUND TRUE)
-    set(MINIUPNPC_LIBRARIES "${MINIUPNPC_LIBRARY}")
-
-    # Create imported target
-    if(NOT TARGET PkgConfig::MINIUPNPC)
-        add_library(PkgConfig::MINIUPNPC STATIC IMPORTED GLOBAL)
-        set_target_properties(PkgConfig::MINIUPNPC PROPERTIES
-            IMPORTED_LOCATION "${MINIUPNPC_LIBRARY}"
-            INTERFACE_INCLUDE_DIRECTORIES "${MINIUPNPC_INCLUDE_DIRS}"
-        )
-    endif()
-
-    message(STATUS "${BoldGreen}✓${ColorReset} miniupnpc (iOS): ${MINIUPNPC_LIBRARY}")
+    set(MINIUPNPC_LIBRARIES miniupnpc::miniupnpc)
+    add_compile_definitions(HAVE_MINIUPNPC=1)
     return()
 endif()
 
@@ -136,6 +73,9 @@ find_dependency_library(
 
 # If miniupnpc is found, define HAVE_MINIUPNPC for the C code
 if(MINIUPNPC_FOUND)
+    find_path(MINIUPNPC_HEADER_INCLUDE_DIR NAMES miniupnpc.h
+        HINTS ${MINIUPNPC_INCLUDE_DIRS} PATH_SUFFIXES miniupnpc NO_DEFAULT_PATH REQUIRED)
+    set(MINIUPNPC_INCLUDE_DIRS "${MINIUPNPC_HEADER_INCLUDE_DIR}")
     message(STATUS "miniupnpc found: ${MINIUPNPC_LIBRARIES}")
     message(STATUS "  UPnP/NAT-PMP support: ENABLED")
     add_compile_definitions(HAVE_MINIUPNPC=1)
@@ -175,8 +115,8 @@ if(MINIUPNPC_FOUND)
 
     check_c_source_compiles("
         #include <stddef.h>  // For size_t - miniupnpc headers need it but don't include it
-        #include <miniupnpc/miniupnpc.h>
-        #include <miniupnpc/upnpcommands.h>
+        #include <miniupnpc.h>
+        #include <upnpcommands.h>
         int main(void) {
             struct UPNPUrls urls;
             struct IGDdatas data;

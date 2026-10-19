@@ -668,7 +668,7 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
       const char *comma_pos = strchr(spec->literal, ',');
       if (!comma_pos) {
         /* Invalid format - no comma found */
-        log_debug("log_template_apply: %%color format missing comma in: %s", spec->literal);
+        log_debug("%%color format missing comma in: %s", spec->literal);
         written = 0;
         break;
       }
@@ -731,7 +731,7 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
 
     if ((size_t)written > remaining) {
       /* Buffer overflow prevention */
-      log_debug("log_template_apply: buffer overflow prevented");
+      log_debug("buffer overflow prevented");
       return -1;
     }
 

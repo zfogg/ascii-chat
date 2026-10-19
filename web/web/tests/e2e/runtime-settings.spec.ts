@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createServer } from "node:net";
@@ -38,6 +38,17 @@ const effective = (page: Page) =>
     }
   });
 
+const receivedFps = (page: Page) =>
+  page.evaluate(async () => {
+    const before = window.__clientFrameMetrics?.received ?? 0;
+    const start = performance.now();
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    return (
+      (((window.__clientFrameMetrics?.received ?? 0) - before) * 1000) /
+      (performance.now() - start)
+    );
+  });
+
 test("native host applies live browser settings and isolates two viewers", async ({
   page,
   context,
@@ -48,7 +59,9 @@ test("native host applies live browser settings and isolates two viewers", async
   const log = join(directory, "server.log");
   const binary =
     process.env["ASCII_CHAT_TEST_BINARY"] ??
-    resolve("../../build/bin/ascii-chat.exe");
+    resolve(
+      `../../build/bin/ascii-chat${process.platform === "win32" ? ".exe" : ""}`,
+    );
   let server: ChildProcess | undefined;
   const second = await context.newPage();
   const errors: string[] = [];
@@ -59,7 +72,7 @@ test("native host applies live browser settings and isolates two viewers", async
       [
         "--no-check-update",
         "--log-level",
-        "debug",
+        "info",
         "--log-file",
         log,
         "server",
@@ -81,7 +94,7 @@ test("native host applies live browser settings and isolates two viewers", async
         }
       })
       .toContain("Server accepting connections");
-    const url = `/client?test&testServerUrl=${encodeURIComponent(`ws://127.0.0.1:${ws}`)}&settings=true&colorMode=truecolor&width=40&height=12`;
+    const url = `/client?test&testServerUrl=${encodeURIComponent(`ws://127.0.0.1:${ws}`)}&settings=true&colorMode=truecolor`;
     await page.goto(url);
     await expect(page.locator(".status")).toContainText("Connected", {
       timeout: 30000,
@@ -92,11 +105,17 @@ test("native host applies live browser settings and isolates two viewers", async
         .filter({ hasText: "Rendering settings applied" }),
     ).toBeVisible({ timeout: 15000 });
     await expect.poll(() => frame(page)).toContain("\x1b[38;2;");
+    await page.getByLabel("Width", { exact: true }).fill("40");
+    await page.getByLabel("Height", { exact: true }).fill("12");
+    await expect.poll(async () => (await effective(page)).height).toBe(12);
     await second.goto(url);
     await expect(second.locator(".status")).toContainText("Connected", {
       timeout: 30000,
     });
     await expect.poll(() => frame(second)).toContain("\x1b[38;2;");
+    await second.getByLabel("Width", { exact: true }).fill("40");
+    await second.getByLabel("Height", { exact: true }).fill("12");
+    await expect.poll(async () => (await effective(second)).height).toBe(12);
     for (const [mode, sequence] of [
       ["none", ""],
       ["16", "\x1b["],
@@ -166,9 +185,24 @@ test("native host applies live browser settings and isolates two viewers", async
     const fps = page.locator('input[type="range"]').first();
     await fps.press("Home");
     await expect.poll(async () => (await effective(page)).fps).toBe(15);
+    const lowFps = await receivedFps(page);
+    expect(lowFps).toBeGreaterThan(5);
+    expect(lowFps).toBeLessThan(22);
     await fps.press("End");
     await expect.poll(async () => (await effective(page)).fps).toBe(60);
     await expect(fps).toHaveValue("60");
+    const highFps = await receivedFps(page);
+    expect(highFps).toBeGreaterThan(25);
+    expect(highFps).toBeGreaterThan(lowFps * 1.5);
+    const measuredRates = test.info().outputPath("received-frame-rates.json");
+    writeFileSync(
+      measuredRates,
+      JSON.stringify({ requested15: lowFps, requested60: highFps }),
+    );
+    await test.info().attach("received-frame-rates.json", {
+      path: measuredRates,
+      contentType: "application/json",
+    });
     await page.getByLabel("Width", { exact: true }).fill("55");
     await page.getByLabel("Height", { exact: true }).fill("13");
     await expect
@@ -193,14 +227,21 @@ test("native host applies live browser settings and isolates two viewers", async
     await page.screenshot({
       path: "artifacts/runtime-settings-native-browser.png",
     });
+    await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+    await page.getByRole("button", { name: "Connect", exact: true }).click();
+    await expect(page.locator(".status")).toContainText("Connected", {
+      timeout: 30000,
+    });
+    await expect.poll(async () => (await effective(page)).color_mode).toBe(0);
+    await expect.poll(async () => (await effective(page)).width).toBe(55);
     await page.reload();
     await expect(page.locator(".status")).toContainText("Connected", {
       timeout: 30000,
     });
     await expect(colors(page)).toHaveValue("none");
-    await expect
-      .poll(async () => (await frame(page)).split("\n").length)
-      .toBe(13);
+    await expect(page.getByLabel("Width", { exact: true })).toHaveValue("0");
+    await expect(page.getByLabel("Height", { exact: true })).toHaveValue("0");
+    await expect.poll(() => frame(page)).not.toBe("");
     expect(errors).toEqual([]);
   } finally {
     try {
@@ -211,6 +252,10 @@ test("native host applies live browser settings and isolates two viewers", async
     } catch {
       /* The process may have failed before creating its log. */
     }
+    await Promise.allSettled([
+      page.goto("about:blank", { timeout: 5000 }),
+      second.goto("about:blank", { timeout: 5000 }),
+    ]);
     await second.close();
     if (server?.exitCode === null) {
       server.kill();

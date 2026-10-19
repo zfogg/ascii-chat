@@ -783,7 +783,7 @@ export function ClientPage({
   // Expose frame count for testing
   useEffect(() => {
     const metrics = {
-      lastRenderedFrame: window.__clientFrameMetrics?.lastRenderedFrame,
+      lastRenderedFrame: window.__clientFrameMetrics?.lastRenderedFrame ?? "",
       rendered: frameCountRef.current,
       received: receivedFrameCountRef.current,
       changedReceived: changedReceivedFrameCountRef.current,

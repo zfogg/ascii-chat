@@ -58,7 +58,7 @@ typedef struct {
 // Must check all HANDLER_HASH_SIZE slots because gaps can exist in the hash table
 static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_type_t type) {
   uint32_t h = HANDLER_HASH(type);
-  log_dev_every(4500 * US_PER_MS_INT, "HANDLER_HASH_LOOKUP: type=%d, hash=%u", type, h);
+  log_dev_every(4500 * US_PER_MS_INT, "type=%d, hash=%u", type, h);
   for (int i = 0; i < HANDLER_HASH_SIZE; i++) {
     uint32_t slot = (h + i) % HANDLER_HASH_SIZE;
     log_dev_every(4500 * US_PER_MS_INT, "  Checking slot %u: key=%d, handler_idx=%d", slot, table[slot].key,
@@ -1022,8 +1022,7 @@ static asciichat_error_t handle_server_stream_stop(const void *payload, size_t p
 
 static asciichat_error_t handle_server_capabilities(const void *payload, size_t payload_len, void *client_ctx,
                                                     const acip_server_callbacks_t *callbacks) {
-  log_debug("handle_server_capabilities: payload_len=%zu, client_ctx=%p, callbacks=%p", payload_len, client_ctx,
-            (const void *)callbacks);
+  log_debug("payload_len=%zu, client_ctx=%p, callbacks=%p", payload_len, client_ctx, (const void *)callbacks);
 
   if (!callbacks->on_capabilities) {
     log_error("on_capabilities callback is NULL!");

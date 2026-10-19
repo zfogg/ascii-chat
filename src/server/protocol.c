@@ -230,7 +230,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
   APP_CALLBACK_VOID(platform_pump_events);
   platform_sleep_ms(500);
 
-  log_debug("Setting active=false in disconnect_client_for_bad_data (client_id=%s, reason=%s)", client_id, reason_str);
+  log_debug("Setting active=false (client_id=%s, reason=%s)", client_id, reason_str);
   atomic_store_bool(&client->active, false);
   atomic_store_bool(&client->shutting_down, true);
   atomic_store_bool(&client->send_thread_running, false);
@@ -479,7 +479,7 @@ void handle_client_leave_packet(client_info_t *client, const void *data, size_t 
 
   // Deactivate client to stop processing packets
   // Sets client->active = false immediately - triggers client cleanup procedures
-  log_debug("Setting active=false in handle_client_leave_packet (client_id=%s)", client_id);
+  log_debug("Setting active=false (client_id=%s)", client_id);
   atomic_store_bool(&client->active, false);
 
   // Note: We don't disconnect the client here - that happens when socket closes
@@ -1826,6 +1826,6 @@ int send_server_state_to_client(client_info_t *client) {
 // from each client's render thread when it detects a grid layout change.
 // Keeping this for reference but it should not be called.
 void broadcast_clear_console_to_all_clients(void) {
-  SET_ERRNO(ERROR_INVALID_STATE, "broadcast_clear_console_to_all_clients() called - unexpected usage");
+  SET_ERRNO(ERROR_INVALID_STATE, "Unexpected console clear broadcast");
   log_warn("CLEAR_CONSOLE is now sent from render threads, not broadcast");
 }

@@ -12,29 +12,25 @@
 # Helper: set yyjson build options, add_subdirectory, and validate the target.
 # Must be called from within configure_yyjson() since it sets PARENT_SCOPE vars
 # (which propagate to configure_yyjson's caller).
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
 macro(_yyjson_build_from_submodule source_dir label)
+    asciichat_dependency_defaults()
     if(NOT EXISTS "${${source_dir}}/CMakeLists.txt")
         message(FATAL_ERROR "yyjson submodule not found at ${${source_dir}}\n"
                             "Did you run 'git submodule update --init --recursive'?")
     endif()
 
     # Build options — disable unused features to reduce binary size
-    set(YYJSON_DISABLE_READER OFF CACHE BOOL "Enable JSON reader for update checker" FORCE)
-    set(YYJSON_DISABLE_UTILS ON CACHE BOOL "Disable JSON Pointer/Patch/Merge utilities" FORCE)
-    set(YYJSON_DISABLE_INCR_READER OFF CACHE BOOL "Disable incremental reader" FORCE)
-    set(YYJSON_BUILD_TESTS OFF CACHE BOOL "Disable yyjson tests" FORCE)
-    set(YYJSON_BUILD_FUZZER OFF CACHE BOOL "Disable yyjson fuzzer" FORCE)
-    set(YYJSON_BUILD_MISC OFF CACHE BOOL "Disable yyjson misc" FORCE)
-    set(YYJSON_BUILD_DOC OFF CACHE BOOL "Disable yyjson documentation" FORCE)
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build yyjson as static library" FORCE)
+    set(YYJSON_DISABLE_READER OFF)
+    set(YYJSON_DISABLE_UTILS ON)
+    set(YYJSON_DISABLE_INCR_READER OFF)
+    set(YYJSON_BUILD_TESTS OFF)
+    set(YYJSON_BUILD_FUZZER OFF)
+    set(YYJSON_BUILD_MISC OFF)
+    set(YYJSON_BUILD_DOC OFF)
+    set(BUILD_SHARED_LIBS OFF)
 
-    if(PLATFORM_IOS)
-        set(YYJSON_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/yyjson-build")
-    elseif(USE_MUSL)
-        set(YYJSON_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/yyjson-build")
-    else()
-        set(YYJSON_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/yyjson-build")
-    endif()
+    set(YYJSON_BUILD_DIR "${CMAKE_BINARY_DIR}/_deps/yyjson")
 
     add_subdirectory(
         "${${source_dir}}"

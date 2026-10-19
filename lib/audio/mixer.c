@@ -64,7 +64,7 @@ static void mixer_distribute_samples(mixer_t *mixer) {
 // Ducking implementation
 int ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   if (!duck) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "ducking_init: duck is NULL");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "duck is NULL");
   }
 
   // Set default parameters

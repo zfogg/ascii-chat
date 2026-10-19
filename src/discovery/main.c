@@ -726,7 +726,6 @@ static asciichat_error_t discovery_prepare(void *user_data) {
 
 /** Run discovery mode using the shared splash, media, and terminal lifecycle. */
 int discovery_main(void) {
-  log_debug("discovery_main() starting");
 
   // Discovery-specific setup: initialize ACDS connection and session negotiation
   // Note: Shared setup (keepawake, splash, terminal, capture, display, audio)

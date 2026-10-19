@@ -520,7 +520,7 @@ void discovery_config_init_defaults(discovery_config_t *config) {
 asciichat_error_t discover_session_parallel(const char *session_string, const discovery_config_t *config,
                                             discovery_result_t *result) {
   if (!session_string || !config || !result) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to discover_session_parallel");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
     return ERROR_INVALID_PARAM;
   }
 

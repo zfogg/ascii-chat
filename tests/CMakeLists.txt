@@ -1199,6 +1199,36 @@ if(TARGET ascii-chat-static)
     endif()
 endif()
 
+# Shared discovery host rendering, including builds without Criterion.
+if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
+    add_executable(test-host-render EXCLUDE_FROM_ALL standalone/session/host_render_test.c)
+    target_link_libraries(test-host-render PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    if(WIN32)
+        target_link_libraries(test-host-render PRIVATE ws2_32)
+    endif()
+    target_include_directories(test-host-render PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-host-render)
+    set_target_properties(test-host-render PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS)
+        set_property(TARGET test-host-render PROPERTY EXCLUDE_FROM_ALL FALSE)
+        add_test(NAME host-render COMMAND test-host-render)
+        set_tests_properties(host-render PROPERTIES LABELS "integration" TIMEOUT 30)
+        if(WIN32)
+            set_property(TEST host-render PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+        endif()
+        foreach(test_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${test_build_target})
+                add_dependencies(${test_build_target} test-host-render)
+            endif()
+        endforeach()
+    endif()
+endif()
+
 # Fault injection around real participant workers; runs without Criterion on Windows too.
 if(BUILD_TESTS AND NOT EMSCRIPTEN)
     add_executable(test-runtime-settings standalone/options/runtime_test.c)

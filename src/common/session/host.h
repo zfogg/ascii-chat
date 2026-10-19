@@ -54,6 +54,7 @@
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/socket.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/rgba/image.h>
 
@@ -414,7 +415,7 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
  */
 
 /**
- * @brief Set display context for local frame rendering
+ * @brief Set a native terminal display context for local frame rendering
  * @param host Host handle (must not be NULL)
  * @param display Display context for rendering frames locally (can be NULL to disable)
  * @return ASCIICHAT_OK on success, error code on failure
@@ -428,6 +429,30 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
  * @ingroup session
  */
 asciichat_error_t session_host_set_display(session_host_t *host, struct session_display_ctx *display);
+
+/** Rendering inputs for a local display backend. Palette is borrowed during the render cycle. */
+typedef struct {
+  terminal_capabilities_t caps;
+  const char *palette;
+  int width;
+  int height;
+} session_host_render_config_t;
+
+/** Local output can use a registered client's capabilities/transport, or a display backend.
+ * Callbacks execute under the host client lock and must not call host APIs.
+ */
+typedef struct {
+  uint32_t client_id;
+  asciichat_error_t (*get_config)(void *context, session_host_render_config_t *config);
+  void (*render_frame)(void *context, const char *frame, size_t size, int width, int height);
+  void *context;
+} session_host_render_target_t;
+
+/** Set local output on native or WASM hosts. NULL disables the local target.
+ * A client target is rendered once and delivered through its existing transport.
+ * A backend's context must outlive its registration.
+ */
+asciichat_error_t session_host_set_render_target(session_host_t *host, const session_host_render_target_t *target);
 
 /**
  * @brief Start media rendering thread (video mixing and audio distribution)
@@ -483,7 +508,7 @@ typedef struct acip_transport acip_transport_t;
  *
  * @param host Host handle (must not be NULL)
  * @param client_id Client ID whose transport should be replaced
- * @param transport Alternative transport to use (can be NULL to clear)
+ * @param transport Borrowed transport to use (NULL restores the host's TCP wrapper, if present)
  * @return ASCIICHAT_OK on success, ERROR_NOT_FOUND if client not found, other error on failure
  *
  * @note This is used for WebRTC integration when DataChannel becomes ready
@@ -498,26 +523,24 @@ asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32
 /**
  * @brief Get the current transport for a specific client in the host
  *
- * Returns the currently active transport for the client, if any. May return NULL
- * if only socket transport is in use.
+ * Returns the currently active transport, including the host-owned TCP wrapper.
  *
  * @param host Host handle (must not be NULL)
  * @param client_id Client ID whose transport should be retrieved
- * @return Transport pointer if set, NULL if using socket transport or client not found
+ * @return Borrowed transport pointer, NULL if no transport is registered or client not found
  *
  * @ingroup session
  */
 acip_transport_t *session_host_get_client_transport(session_host_t *host, uint32_t client_id);
 
 /**
- * @brief Check if a specific client has an active alternative transport
+ * @brief Check if a specific client has an active ACIP transport
  *
- * Convenient way to check if a client is using an alternative transport
- * (WebRTC, WebSocket, etc.) instead of raw TCP socket.
+ * Includes TCP, WebRTC, and WebSocket transports.
  *
  * @param host Host handle (must not be NULL)
  * @param client_id Client ID to check
- * @return true if alternative transport is set, false otherwise
+ * @return true if a transport is set, false otherwise
  *
  * @ingroup session
  */

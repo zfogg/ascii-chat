@@ -32,7 +32,7 @@ int platform_backtrace(void **buffer, int size) {
   HANDLE process = GetCurrentProcess();
   if (!SymInitialize(process, NULL, TRUE)) {
     DWORD error = GetLastError();
-    log_error("[ERROR] platform_backtrace: SymInitialize failed with error %lu", error);
+    log_error("SymInitialize failed with error %lu", error);
     return 0;
   }
 
@@ -67,7 +67,7 @@ int platform_backtrace(void **buffer, int size) {
     if (!result) {
       DWORD error = GetLastError();
       if (count == 0) {
-        log_error("[ERROR] platform_backtrace: StackWalk64 failed with error %lu", error);
+        log_error("StackWalk64 failed with error %lu", error);
       }
       break;
     }
