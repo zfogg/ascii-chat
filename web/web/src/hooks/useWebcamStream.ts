@@ -104,7 +104,12 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   const streamRef = useRef<MediaStream | null>(null);
   const videoEncoderRef = useRef<VideoUploadEncoder | null>(null);
   const webcamCaptureLoopRef = useRef<
-    ((drawVideo?: boolean, sourceCanvas?: HTMLCanvasElement) => void) | null
+    | ((
+        drawVideo?: boolean,
+        sourceCanvas?: HTMLCanvasElement,
+        fileFrame?: { data: Uint8Array; width: number; height: number },
+      ) => void)
+    | null
   >(null);
   const captureTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const testPatternSourceRef = useRef<TestPatternVideoSource | null>(null);
@@ -250,22 +255,25 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     const sendOneFrame = (
       drawVideo = true,
       sourceCanvas?: HTMLCanvasElement,
+      fileFrame?: { data: Uint8Array; width: number; height: number },
     ) => {
       const now = performance.now();
 
       // Call captureAndSendFrame through ref to get the latest version
       const conn = clientRef.current;
       if (
-        captureReadyRef.current &&
+        (captureReadyRef.current || fileFrame) &&
         conn &&
         connectionState === ConnectionState.CONNECTED
       ) {
         if ((conn.getBufferedAmount?.() ?? 0) > 256 * 1024) return;
-        const frame = captureFrame(
-          drawVideo,
-          sourceCanvas,
-          !videoEncoderRef.current && !conn.sendVideoFrame,
-        );
+        const frame =
+          fileFrame ??
+          captureFrame(
+            drawVideo,
+            sourceCanvas,
+            !videoEncoderRef.current && !conn.sendVideoFrame,
+          );
         if (frame && frame.data) {
           captureLoopFrameCountRef.current++;
           const frameHash = computeFrameHash(frame.data);
@@ -1045,5 +1053,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     startWebcam,
     stopWebcam,
     isWebcamRunning,
+    sendFileFrame: (
+      frame: { data: Uint8Array; width: number; height: number },
+      canvas: HTMLCanvasElement,
+    ) => webcamCaptureLoopRef.current?.(false, canvas, frame),
   };
 }

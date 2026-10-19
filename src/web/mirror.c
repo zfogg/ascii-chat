@@ -290,6 +290,7 @@ void mirror_free_string(char *ptr) {
   SAFE_FREE(ptr);
 }
 
+#ifndef BUILD_WASM_CLIENT
 // Embedded font data (defined in generated/data/fonts/default.c and matrix.c)
 extern const unsigned char g_font_default[];
 extern const size_t g_font_default_size;
@@ -326,3 +327,5 @@ unsigned int get_font_default_size(void) {
   }
   return (unsigned int)g_font_default_size;
 }
+
+#endif

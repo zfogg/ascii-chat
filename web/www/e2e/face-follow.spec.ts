@@ -63,6 +63,11 @@ test("Face Follow uses only the webcam and switches framing before ASCII renderi
     0,
   );
   await expect(
+    section
+      .getByRole("button")
+      .filter({ hasText: /^(Face Follow|Full Frame)/ }),
+  ).toHaveText(["Face Follow", "Face Follow (outlined face)", "Full Frame"]);
+  await expect(
     section.getByRole("link", { name: /White Knuckles/ }),
   ).toHaveCount(0);
   const probe = () =>
@@ -94,11 +99,56 @@ test("Face Follow uses only the webcam and switches framing before ASCII renderi
       .toBeLessThan(0.75);
   await section.screenshot({ path: testInfo.outputPath("face-follow.png") });
   await section
+    .getByRole("button", { name: "Face Follow (outlined face)", exact: true })
+    .click();
+  if (webcam) {
+    const capture = page.locator("canvas[data-face-follow]");
+    await expect(capture).toHaveCount(1);
+    const redPixels = (selector: string) =>
+      page.locator(selector).evaluate((element) => {
+        const canvas = element as HTMLCanvasElement;
+        const pixels = canvas
+          .getContext("2d")!
+          .getImageData(0, 0, canvas.width, canvas.height).data;
+        let count = 0;
+        for (let i = 0; i < pixels.length; i += 4)
+          if (pixels[i]! > 200 && pixels[i + 1]! < 40 && pixels[i + 2]! < 40)
+            count++;
+        return count;
+      });
+    await expect
+      .poll(() => redPixels("canvas[data-face-follow]"), { timeout: 20000 })
+      .toBeGreaterThan(100);
+    await expect
+      .poll(
+        () => redPixels('[data-testid="face-follow-demo"] canvas.ascii-canvas'),
+        { timeout: 20000 },
+      )
+      .toBeGreaterThan(10);
+    await section.screenshot({
+      path: testInfo.outputPath("outlined-face.png"),
+    });
+    await section
+      .getByRole("button", { name: "Face Follow", exact: true })
+      .click();
+    await expect(capture).toHaveCount(0);
+    await expect
+      .poll(() =>
+        redPixels('[data-testid="face-follow-demo"] canvas.ascii-canvas'),
+      )
+      .toBeLessThan(10);
+    await section
+      .getByRole("button", { name: "Face Follow (outlined face)", exact: true })
+      .click();
+    await expect(capture).toHaveCount(1);
+  }
+  await section
     .getByRole("button", { name: "Full Frame", exact: true })
     .click();
   await expect
     .poll(async () => (await probe()).ratio, { timeout: 15000 })
     .toBeGreaterThan(0.99);
+  await expect(page.locator("canvas[data-face-follow]")).toHaveCount(0);
   await section.screenshot({ path: testInfo.outputPath("full-frame.png") });
   await section
     .getByRole("button", { name: "Face Follow", exact: true })

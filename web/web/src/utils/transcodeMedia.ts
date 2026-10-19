@@ -1,3 +1,4 @@
+import { MAX_MEDIA_FILE_SIZE } from "./mediaUpload";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import coreURL from "@ffmpeg/core?url";
 import wasmURL from "@ffmpeg/core/wasm?url";
@@ -8,9 +9,9 @@ export async function transcodeMedia(
   status: (message: string) => void,
   allowNative = false,
 ) {
-  if (file.size > 256 * 1024 * 1024)
+  if (file.size > MAX_MEDIA_FILE_SIZE)
     throw new Error(
-      "Browser media inspection and conversion are limited to 256 MB. Trim or compress this file locally first.",
+      "Browser media inspection and conversion are limited to 8 GB. Trim or compress this file locally first.",
     );
   signal.throwIfAborted();
   const ffmpeg = new FFmpeg();

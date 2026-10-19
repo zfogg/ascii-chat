@@ -19,6 +19,7 @@ export interface DemoSettings {
   flipY?: boolean;
   targetFps?: number;
   faceFollow?: boolean;
+  faceFollowDebug?: boolean;
 }
 
 export interface DemoOption {

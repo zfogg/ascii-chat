@@ -457,6 +457,9 @@ apply_sanitizers_to_target(mirror-web)
 # The browser schedules the shared session host's packet and video steps.
 # Native client entry points and their blocking main loops remain excluded.
 set(WEB_SRC_CLIENT
+    # Local file previews share the mirror frame converter.
+    ${CMAKE_CURRENT_SOURCE_DIR}/mirror.c
+    ${LIB_ROOT}/audio/visualization.c
     ${CMAKE_CURRENT_SOURCE_DIR}/audio.c
     ${LIB_ROOT}/audio/processor.c
     ${LIB_ROOT}/audio/effects.c

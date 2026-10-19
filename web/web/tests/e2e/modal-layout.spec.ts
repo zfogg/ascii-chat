@@ -47,7 +47,7 @@ test.use({
 const modals = [
   { modal: "device", title: "Device setup", last: "Done" },
   { modal: "crypto", title: "Crypto", last: "Save security settings" },
-  { modal: "upload", title: "Upload Video or Image", last: "Cancel" },
+  { modal: "upload", title: "Upload File", last: "Cancel" },
   { modal: "connection", title: "Connection", last: "Close" },
 ];
 
