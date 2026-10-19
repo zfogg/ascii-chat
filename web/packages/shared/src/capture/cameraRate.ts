@@ -106,7 +106,7 @@ export function cameraAcquisitionFps(track?: MediaStreamTrack): number {
 /** At Max the camera already supplies the pacing; do not resample its jitter. */
 export function cameraNeedsFrameLimit(targetFps: number): boolean {
   const maximum = snapshot.limit ?? snapshot.advertisedMaximum;
-  return maximum === undefined || targetFps < Math.round(maximum);
+  return maximum === undefined || targetFps + 0.01 < Math.round(maximum);
 }
 
 export function reportCameraVideoFrame(video: HTMLVideoElement): void {

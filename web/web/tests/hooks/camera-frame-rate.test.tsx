@@ -105,5 +105,6 @@ test("Max accepts camera delivery jitter without resampling; lower choices still
     getSettings: () => ({ frameRate: 60 }),
   } as unknown as MediaStreamTrack);
   expect(cameraNeedsFrameLimit(60)).toBe(false);
+  expect(cameraNeedsFrameLimit(1000 / (1000 / 60))).toBe(false);
   expect(cameraNeedsFrameLimit(30)).toBe(true);
 });
