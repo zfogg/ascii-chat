@@ -36,6 +36,7 @@
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/tailscale.h>
 
 #ifdef _WIN32
@@ -205,10 +206,10 @@ static asciichat_error_t release_participant_transport(discovery_session_t *sess
 }
 
 static void release_host_control_transport(discovery_session_t *session) {
-  if (session->host_control_transport && session->host_control_ownership == SESSION_TRANSPORT_OWNED)
+  if (session->host_control_transport && session->host_control_ownership == ACIP_TRANSPORT_OWNED)
     acip_transport_destroy(session->host_control_transport);
   session->host_control_transport = NULL;
-  session->host_control_ownership = SESSION_TRANSPORT_BORROWED;
+  session->host_control_ownership = ACIP_TRANSPORT_BORROWED;
 }
 
 // Discovery retains the host control connection when media switches to WebRTC.
@@ -225,7 +226,7 @@ static asciichat_error_t select_participant_transport(discovery_session_t *sessi
     if (result != ASCIICHAT_OK)
       return result;
   }
-  asciichat_error_t result = session_participant_set_transport(participant, transport, SESSION_TRANSPORT_OWNED);
+  asciichat_error_t result = session_participant_set_transport(participant, transport, ACIP_TRANSPORT_OWNED);
   if (result != ASCIICHAT_OK)
     return result;
   // Ownership has transferred; a capture failure must not make the caller free the transport.
@@ -841,14 +842,15 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
     // Each WebRTC peer needs its own host client slot. Reusing the first slot
     // replaces the previous peer's transport, so only the most recently
     // connected browser receives frames.
-    uint32_t client_id = session_host_add_client(session->host_ctx, INVALID_SOCKET_VALUE, "webrtc", 0);
+    uint32_t client_id = session_host_add_client(session->host_ctx, NULL, ACIP_TRANSPORT_BORROWED, "webrtc", 0);
     if (client_id == 0) {
       log_error("Failed to allocate host client for WebRTC peer %02x%02x%02x%02x", participant_id[0], participant_id[1],
                 participant_id[2], participant_id[3]);
       return;
     }
 
-    asciichat_error_t result = session_host_set_client_transport(session->host_ctx, client_id, transport);
+    asciichat_error_t result =
+        session_host_set_client_transport(session->host_ctx, client_id, transport, ACIP_TRANSPORT_BORROWED);
     if (result == ASCIICHAT_OK) {
       log_info("✓ Host: WebRTC peer %02x%02x%02x%02x assigned client %u", participant_id[0], participant_id[1],
                participant_id[2], participant_id[3], client_id);
@@ -1821,19 +1823,19 @@ static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *s
 }
 
 static asciichat_error_t discovery_session_receive_protocol_version(discovery_session_t *session,
-                                                                    socket_t participant_socket) {
+                                                                    acip_transport_t *transport) {
   // Step 2: Receive server protocol version
   log_debug("Receiving server protocol version...");
   packet_type_t packet_type = 0;
   void *payload = NULL;
   size_t payload_len = 0;
 
-  int recv_result = receive_packet(participant_socket, &packet_type, &payload, &payload_len);
+  void *allocation = NULL;
+  asciichat_error_t recv_result =
+      packet_receive_via_transport(transport, &packet_type, &payload, &payload_len, &allocation);
   if (recv_result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
     log_error("Failed to receive server protocol version (got type 0x%x)", packet_type);
-    if (payload) {
-      buffer_release(payload);
-    }
+    buffer_release(allocation);
     set_error(session, ERROR_NETWORK, "Failed to receive protocol version from server");
     session_participant_disconnect(session->participant_ctx);
     return SET_ERRNO(ERROR_NETWORK, "Failed to receive protocol version from server");
@@ -1841,7 +1843,7 @@ static asciichat_error_t discovery_session_receive_protocol_version(discovery_se
 
   if (payload_len != sizeof(protocol_version_packet_t)) {
     log_error("Invalid protocol version packet size: %zu", payload_len);
-    buffer_release(payload);
+    buffer_release(allocation);
     set_error(session, ERROR_NETWORK, "Invalid protocol version packet");
     session_participant_disconnect(session->participant_ctx);
     return SET_ERRNO(ERROR_NETWORK, "Invalid protocol version packet");
@@ -1849,7 +1851,7 @@ static asciichat_error_t discovery_session_receive_protocol_version(discovery_se
 
   protocol_version_packet_t server_version;
   memcpy(&server_version, payload, sizeof(protocol_version_packet_t));
-  buffer_release(payload);
+  buffer_release(allocation);
 
   if (!server_version.supports_encryption) {
     NOTICE(DANGER, "ENCRYPTION UNAVAILABLE", "Server does not support encryption");
@@ -1867,14 +1869,11 @@ static asciichat_error_t discovery_session_receive_protocol_version(discovery_se
 static asciichat_error_t discovery_session_start_handshake(discovery_session_t *session) {
   log_info("Connected to host, performing crypto handshake...");
 
-  // Perform crypto handshake with server
-  // Get the socket from participant context
-  socket_t participant_socket = session_participant_get_socket(session->participant_ctx);
-  if (participant_socket == INVALID_SOCKET_VALUE) {
-    log_error("Failed to get socket from participant context");
-    set_error(session, ERROR_NETWORK, "Failed to get participant socket");
+  acip_transport_t *transport = session_participant_get_transport(session->participant_ctx);
+  if (!transport) {
+    set_error(session, ERROR_NETWORK, "Failed to get participant transport");
     session_participant_disconnect(session->participant_ctx);
-    return SET_ERRNO(ERROR_NETWORK, "Failed to get participant socket");
+    return SET_ERRNO(ERROR_NETWORK, "Failed to get participant transport");
   }
 
   // Step 1: Send client protocol version
@@ -1887,7 +1886,7 @@ static asciichat_error_t discovery_session_start_handshake(discovery_session_t *
   client_version.compression_threshold = 0;
   client_version.feature_flags = 0;
 
-  int result = send_protocol_version_packet(participant_socket, &client_version);
+  asciichat_error_t result = acip_send_protocol_version(transport, &client_version);
   if (result != 0) {
     log_error("Failed to send protocol version to server");
     set_error(session, ERROR_NETWORK, "Failed to send protocol version");
@@ -1895,7 +1894,7 @@ static asciichat_error_t discovery_session_start_handshake(discovery_session_t *
     return SET_ERRNO(ERROR_NETWORK, "Failed to send protocol version");
   }
 
-  asciichat_error_t version_result = discovery_session_receive_protocol_version(session, participant_socket);
+  asciichat_error_t version_result = discovery_session_receive_protocol_version(session, transport);
   if (version_result != ASCIICHAT_OK) {
     return version_result;
   }
@@ -1911,7 +1910,7 @@ static asciichat_error_t discovery_session_start_handshake(discovery_session_t *
   client_caps.preferred_auth = 0x0001;   // AUTH_ALGO_ED25519
   client_caps.preferred_cipher = 0x0001; // CIPHER_ALGO_XSALSA20_POLY1305
 
-  result = send_crypto_capabilities_packet(participant_socket, &client_caps);
+  result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &client_caps, sizeof(client_caps), 0);
   if (result != 0) {
     log_error("Failed to send crypto capabilities");
     set_error(session, ERROR_NETWORK, "Failed to send crypto capabilities");
@@ -2304,9 +2303,9 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
   uint64_t time_since_last_ping = now_ms - session->liveness.last_ping_sent_ms;
   if (!session->liveness.ping_in_flight && time_since_last_ping >= session->liveness.ping_interval_ms) {
     // Send ping to host via participant connection
-    socket_t host_socket = session_participant_get_socket(session->participant_ctx);
-    if (host_socket != INVALID_SOCKET_VALUE) {
-      asciichat_error_t result = packet_send(host_socket, PACKET_TYPE_PING, NULL, 0);
+    acip_transport_t *transport = session_participant_get_transport(session->participant_ctx);
+    if (transport) {
+      asciichat_error_t result = acip_send_ping(transport);
       if (result == ASCIICHAT_OK) {
         session->liveness.last_ping_sent_ms = now_ms;
         session->liveness.ping_in_flight = true;

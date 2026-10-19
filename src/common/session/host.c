@@ -9,9 +9,6 @@
  * Implements the session host abstraction for server-side client management
  * and session coordination.
  *
- * NOTE: This is a stub implementation that provides the API structure.
- * Full implementation will integrate with existing server code in a future phase.
- *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
  */
@@ -23,14 +20,13 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/app_callbacks.h>
-#include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/network.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/client.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/listener.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/util/endian.h>
@@ -47,7 +43,6 @@
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
-#include <errno.h>
 
 /* ============================================================================
  * Session Host Constants
@@ -66,7 +61,6 @@
 typedef struct {
   participant_type_t participant_type; // NETWORK or MEMORY
   uint32_t client_id;
-  socket_t socket;
   char ip_address[64];
   int port;
   bool active;
@@ -80,8 +74,7 @@ typedef struct {
 
   /** @brief Active ACIP transport. Externally supplied transports are borrowed. */
   struct acip_transport *transport;
-  /** @brief Host-owned wrapper around the separately owned client socket. */
-  acip_transport_t *tcp_transport;
+  acip_transport_ownership_t transport_ownership;
 
   /** @brief Incoming video frame buffer (for host render thread) */
   image_t *incoming_video;
@@ -90,11 +83,11 @@ typedef struct {
   ringbuffer_t *incoming_audio;
 } session_host_client_t;
 
-static void host_client_release_tcp(session_host_client_t *client) {
-  if (client->transport == client->tcp_transport)
-    client->transport = NULL;
-  acip_transport_destroy(client->tcp_transport);
-  client->tcp_transport = NULL;
+static void host_client_release_transport(session_host_client_t *client) {
+  if (client->transport_ownership == ACIP_TRANSPORT_OWNED)
+    acip_transport_destroy(client->transport);
+  client->transport = NULL;
+  client->transport_ownership = ACIP_TRANSPORT_BORROWED;
 }
 
 /* ============================================================================
@@ -141,11 +134,8 @@ typedef struct session_host {
   bool display_logging_disabled;
   uint64_t snapshot_first_frame_ns;
 
-  /** @brief IPv4 listen socket */
-  socket_t socket_v4;
-
-  /** @brief IPv6 listen socket */
-  socket_t socket_v6;
+  /** @brief Native connection admission; accepted peers are ACIP transports. */
+  acip_listener_t *listener;
 
   /** @brief Server is running */
   bool running;
@@ -230,9 +220,6 @@ session_host_t *session_host_create(const session_host_config_t *config) {
   host->callbacks = config->callbacks;
   host->user_data = config->user_data;
 
-  // Initialize sockets to invalid
-  host->socket_v4 = INVALID_SOCKET_VALUE;
-  host->socket_v6 = INVALID_SOCKET_VALUE;
   host->running = false;
 
   // Allocate client array
@@ -262,6 +249,8 @@ void session_host_destroy(session_host_t *host) {
   // Stop if running
   if (host->running) {
     session_host_stop(host);
+    if (host->running)
+      return;
   }
 
   // Clean up audio resources
@@ -276,22 +265,13 @@ void session_host_destroy(session_host_t *host) {
     host->opus_decoder = NULL;
   }
 
-  // Close sockets
-  if (host->socket_v4 != INVALID_SOCKET_VALUE) {
-    socket_close(host->socket_v4);
-    host->socket_v4 = INVALID_SOCKET_VALUE;
-  }
-  if (host->socket_v6 != INVALID_SOCKET_VALUE) {
-    socket_close(host->socket_v6);
-    host->socket_v6 = INVALID_SOCKET_VALUE;
-  }
+  acip_listener_destroy(host->listener);
+  host->listener = NULL;
 
   // Free client array and per-client resources
   if (host->clients) {
     for (int i = 0; i < host->max_clients; i++) {
-      host_client_release_tcp(&host->clients[i]);
-      if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE)
-        socket_close(host->clients[i].socket);
+      host_client_release_transport(&host->clients[i]);
       if (host->clients[i].incoming_video) {
         image_destroy(host->clients[i].incoming_video);
         host->clients[i].incoming_video = NULL;
@@ -319,143 +299,21 @@ void session_host_destroy(session_host_t *host) {
  * Session Host Server Control Functions
  * ============================================================================ */
 
-/**
- * @brief Create and bind a listening socket on the given address and port
- * @return Socket on success, INVALID_SOCKET_VALUE on failure
- */
-static socket_t create_listen_socket(const char *address, int port) {
-  struct addrinfo hints, *result = NULL, *rp = NULL;
-  char port_str[16];
-
-  if (!address)
-    address = "0.0.0.0";
-
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET; // IPv4
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE;
-
-  safe_snprintf(port_str, sizeof(port_str), "%d", port);
-
-  int s = getaddrinfo(address, port_str, &hints, &result);
-  if (s != 0) {
-    SET_ERRNO(ERROR_NETWORK, "getaddrinfo failed: %s", gai_strerror(s));
-    return INVALID_SOCKET_VALUE;
-  }
-
-  socket_t listen_sock = INVALID_SOCKET_VALUE;
-  for (rp = result; rp != NULL; rp = rp->ai_next) {
-    listen_sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-    if (listen_sock == INVALID_SOCKET_VALUE) {
-      continue;
-    }
-
-    // Set SO_REUSEADDR to allow rebinding quickly after restart
-    int reuse = 1;
-    if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse, sizeof(reuse)) < 0) {
-      log_warn("setsockopt SO_REUSEADDR failed");
-    }
-
-    if (bind(listen_sock, rp->ai_addr, (int)rp->ai_addrlen) == 0) {
-      break; // Success
-    }
-
-    socket_close(listen_sock);
-    listen_sock = INVALID_SOCKET_VALUE;
-  }
-
-  freeaddrinfo(result);
-
-  if (listen_sock == INVALID_SOCKET_VALUE) {
-    SET_ERRNO_SYS(ERROR_NETWORK_BIND, "Failed to bind listen socket on %s:%d", address, port);
-    return INVALID_SOCKET_VALUE;
-  }
-
-  if (listen(listen_sock, SOMAXCONN) != 0) {
-    SET_ERRNO_SYS(ERROR_NETWORK_BIND, "listen() failed on %s:%d", address, port);
-    socket_close(listen_sock);
-    return INVALID_SOCKET_VALUE;
-  }
-
-  return listen_sock;
-}
-
-/**
- * @brief Accept loop thread - continuously accept incoming client connections
- * @param arg session_host_t pointer
- * @return NULL
- *
- * This thread runs in a loop accepting connections on the listen socket.
- * For each accepted connection, it adds the client to the host and invokes callbacks.
- */
 static void *accept_loop_thread(void *arg) {
-  session_host_t *host = (session_host_t *)arg;
-  if (!host)
-    return NULL;
-
-  log_info("Accept loop started");
-
-  // Use select() to handle accept with timeout
-  struct timeval tv;
-  fd_set readfds;
-  int max_fd;
-
+  session_host_t *host = arg;
   while (host->accept_thread_running && host->running) {
-    // Set timeout to 1 second
-    tv.tv_sec = 0;
-    tv.tv_usec = 10000;
-
-    FD_ZERO(&readfds);
-    max_fd = 0;
-
-    if (host->socket_v4 != INVALID_SOCKET_VALUE) {
-      FD_SET(host->socket_v4, &readfds);
-      max_fd = (int)host->socket_v4;
+    acip_transport_t *transport = NULL;
+    char address[64];
+    int port = 0;
+    asciichat_error_t result = acip_listener_accept(host->listener, &transport, address, sizeof(address), &port);
+    if (result != ASCIICHAT_OK) {
+      log_error("Transport admission failed: %d", result);
+      break;
     }
-
-    // Wait for incoming connections
-    int activity = select(max_fd + 1, &readfds, NULL, NULL, &tv);
-    if (activity < 0) {
-      if (errno != EINTR) {
-        log_error("select() failed");
-      }
-      continue;
-    }
-
-    if (activity == 0) {
-      // Timeout - check if we should exit
-      continue;
-    }
-
-    // Check for incoming connections
-    if (host->socket_v4 != INVALID_SOCKET_VALUE && FD_ISSET(host->socket_v4, &readfds)) {
-      struct sockaddr_in client_addr;
-      socklen_t client_addr_len = sizeof(client_addr);
-
-      // Accept incoming connection
-      socket_t client_socket = accept(host->socket_v4, (struct sockaddr *)&client_addr, &client_addr_len);
-      if (client_socket == INVALID_SOCKET_VALUE) {
-        log_warn("accept() failed");
-        continue;
-      }
-
-      // Get client IP and port
-      char client_ip[64];
-      inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
-      int client_port = ntohs(client_addr.sin_port);
-
-      log_info("New connection from %s:%d", client_ip, client_port);
-
-      // Add client to host
-      uint32_t client_id = session_host_add_client(host, client_socket, client_ip, client_port);
-      if (client_id == 0) {
-        log_error("Failed to add client");
-        socket_close(client_socket);
-      }
-    }
+    if (transport && !session_host_add_client(host, transport, ACIP_TRANSPORT_OWNED, address, port))
+      acip_transport_destroy(transport);
+    platform_sleep_ms(1);
   }
-
-  log_info("Accept loop stopped");
   return NULL;
 }
 
@@ -689,125 +547,37 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
 }
 
 static void *receive_loop_thread(void *arg) {
-  session_host_t *host = (session_host_t *)arg;
-  if (!host)
-    return NULL;
-
-  log_info("Receive loop started");
-
-  struct timeval tv;
-  fd_set readfds;
-  socket_t max_fd;
-
+  session_host_t *host = arg;
   while (host->receive_thread_running && host->running) {
-    // Set timeout to 1 second
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
-
-    FD_ZERO(&readfds);
-    max_fd = INVALID_SOCKET_VALUE;
-
-    // Wait on sockets belonging to the active transports.
     mutex_lock(&host->clients_mutex);
-    for (int i = 0; i < host->max_clients; i++) {
-      if (!host->clients[i].active || !host->clients[i].transport)
+    for (int i = 0; i < host->max_clients; ++i) {
+      session_host_client_t *client = &host->clients[i];
+      acip_transport_t *transport = client->transport;
+      if (!client->active || !transport || !acip_transport_has_pending_data(transport))
         continue;
-      socket_t transport_socket = acip_transport_get_socket(host->clients[i].transport);
-      if (transport_socket != INVALID_SOCKET_VALUE) {
-        FD_SET(transport_socket, &readfds);
-        if (max_fd == INVALID_SOCKET_VALUE || transport_socket > max_fd)
-          max_fd = transport_socket;
-      }
-    }
-    mutex_unlock(&host->clients_mutex);
-
-    // If clients only have a non-socket transport, poll its receive queue below.
-    if (max_fd == INVALID_SOCKET_VALUE) {
-      platform_sleep_ms(1);
-    }
-
-    // Wait briefly for socket data, then also check non-socket transports.
-    int activity = max_fd == INVALID_SOCKET_VALUE ? 0 : select((int)max_fd + 1, &readfds, NULL, NULL, &tv);
-    if (activity < 0) {
-      if (errno != EINTR) {
-        log_error("select() failed in receive loop");
-      }
-      continue;
-    }
-
-    // Check socket readiness and queued transport data for each client.
-    mutex_lock(&host->clients_mutex);
-    for (int i = 0; i < host->max_clients; i++) {
-      if (!host->clients[i].active) {
-        continue;
-      }
-
-      acip_transport_t *client_transport = host->clients[i].transport;
-      if (!client_transport || !acip_transport_has_pending_data(client_transport)) {
-        continue;
-      }
-
-      // Try to receive packet from this client
-      packet_type_t ptype = (packet_type_t)0;
-      void *data = NULL;
-      size_t len = 0;
-      void *transport_buffer = NULL;
-      size_t transport_buffer_len = 0;
-      void *packet = NULL;
-      asciichat_error_t result =
-          acip_transport_recv(client_transport, &packet, &transport_buffer_len, &transport_buffer);
-      if (result == ASCIICHAT_OK && packet && transport_buffer_len >= sizeof(packet_header_t)) {
-        const packet_header_t *header = (const packet_header_t *)packet;
-        ptype = (packet_type_t)NET_TO_HOST_U16(header->type);
-        len = NET_TO_HOST_U32(header->length);
-        if (len != transport_buffer_len - sizeof(packet_header_t)) {
-          result = SET_ERRNO(ERROR_NETWORK, "Session packet length mismatch");
-        } else {
-          data = (uint8_t *)packet + sizeof(packet_header_t);
-        }
-      } else if (result == ASCIICHAT_OK) {
-        result = SET_ERRNO(ERROR_NETWORK, "Session packet header is truncated");
-      }
-      if (result != ASCIICHAT_OK) {
-        log_warn("Failed to receive packet from client %u: %d", host->clients[i].client_id, result);
-        if (transport_buffer) {
-          buffer_release(transport_buffer);
-        }
-        // Client disconnected or error - will be cleaned up by timeout mechanism
-        continue;
-      }
-
-      stats_runtime_packet(client_transport->stats_peer, ptype, len, false, true);
-      // Process packet based on type
-      uint32_t client_id = host->clients[i].client_id;
+      packet_type_t type;
+      void *payload = NULL, *allocation = NULL;
+      size_t size = 0;
+      uint32_t id = client->client_id;
+      asciichat_error_t result = packet_receive_via_transport(transport, &type, &payload, &size, &allocation);
+      if (result == ASCIICHAT_OK)
+        stats_runtime_packet(transport->stats_peer, type, size, false, true);
       mutex_unlock(&host->clients_mutex);
-
-      session_host_receive_packet(host, client_id, ptype, data, len);
-
-      // Free packet data
-      if (transport_buffer) {
-        buffer_release(transport_buffer);
+      if (result == ASCIICHAT_OK)
+        session_host_receive_packet(host, id, type, payload, size);
+      else if (result != ERROR_NETWORK_TIMEOUT) {
+        log_debug("Client %u transport disconnected: %d", id, result);
+        session_host_remove_client(host, id);
       }
-
+      buffer_release(allocation);
       mutex_lock(&host->clients_mutex);
     }
     mutex_unlock(&host->clients_mutex);
+    platform_sleep_ms(1);
   }
-
-  log_info("Receive loop stopped");
   return NULL;
 }
 
-/**
- * @brief Host render thread - mixes media and broadcasts to participants
- *
- * DESIGN: Reuses patterns from server/render.c
- * - Collects video frames from all participants (60 FPS)
- * - Broadcasts mixed ASCII frame to all participants
- * - Mixes audio from all participants (100 FPS)
- * - Broadcasts mixed audio to all participants
- */
-// The caller holds clients_mutex so all viewports use the same set of source frames.
 static char *host_create_video_grid(session_host_t *host, int count, int width, int height,
                                     const terminal_capabilities_t *caps, const char *palette, size_t *size) {
   int columns, rows;
@@ -1088,51 +858,35 @@ asciichat_error_t session_host_start(session_host_t *host) {
   if (host->running) {
     return ASCIICHAT_OK; // Already running
   }
+  if (host->port > UINT16_MAX)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Host port is outside the transport endpoint range");
 
-  // Create listen socket(s)
-  // For simplicity, we bind to IPv4 if specified, otherwise default to 0.0.0.0
-  const char *bind_address = host->ipv4_address[0] ? host->ipv4_address : "0.0.0.0";
-
-  host->socket_v4 = create_listen_socket(bind_address, host->port);
-  if (host->socket_v4 == INVALID_SOCKET_VALUE) {
-    log_error("Failed to create IPv4 listen socket");
-    if (host->callbacks.on_error) {
-      host->callbacks.on_error(host, ERROR_NETWORK_BIND, "Failed to create listen socket", host->user_data);
-    }
-    return SET_ERRNO(ERROR_NETWORK_BIND, "Session host could not create a listening socket");
+  const char *address = host->ipv4_address;
+  asciichat_error_t result =
+      acip_listener_open(address[0] ? address : NULL, host->port, host->max_clients, &host->listener);
+  if (result != ASCIICHAT_OK) {
+    if (host->callbacks.on_error)
+      host->callbacks.on_error(host, result, "Failed to open transport listener", host->user_data);
+    return result;
   }
-
   host->running = true;
-  log_info("Session host listening on %s:%d", bind_address, host->port);
-
-  // Spawn accept loop thread
   host->accept_thread_running = true;
-  if (asciichat_thread_create(&host->accept_thread, "accept", accept_loop_thread, host) != 0) {
-    log_error("Failed to spawn accept loop thread");
+  result = asciichat_thread_create(&host->accept_thread, "host_accept", accept_loop_thread, host);
+  if (result != ASCIICHAT_OK) {
     host->accept_thread_running = false;
-    if (host->callbacks.on_error) {
-      host->callbacks.on_error(host, ERROR_THREAD, "Failed to spawn accept loop thread", host->user_data);
-    }
-    socket_close(host->socket_v4);
-    host->socket_v4 = INVALID_SOCKET_VALUE;
-    host->running = false;
-    return SET_ERRNO(ERROR_THREAD, "Failed to spawn accept loop thread");
+    session_host_stop(host);
+    if (host->callbacks.on_error)
+      host->callbacks.on_error(host, ERROR_THREAD, "Failed to start transport admission", host->user_data);
+    return SET_ERRNO(ERROR_THREAD, "Failed to start transport admission");
   }
-
-  // Spawn receive loop thread
   host->receive_thread_running = true;
-  if (asciichat_thread_create(&host->receive_thread, "host_recv", receive_loop_thread, host) != 0) {
-    log_error("Failed to spawn receive loop thread");
+  result = asciichat_thread_create(&host->receive_thread, "host_recv", receive_loop_thread, host);
+  if (result != ASCIICHAT_OK) {
     host->receive_thread_running = false;
-    host->accept_thread_running = false;
-    asciichat_thread_join(&host->accept_thread, NULL);
-    if (host->callbacks.on_error) {
-      host->callbacks.on_error(host, ERROR_THREAD, "Failed to spawn receive loop thread", host->user_data);
-    }
-    socket_close(host->socket_v4);
-    host->socket_v4 = INVALID_SOCKET_VALUE;
-    host->running = false;
-    return SET_ERRNO(ERROR_THREAD, "Failed to spawn receive loop thread");
+    session_host_stop(host);
+    if (host->callbacks.on_error)
+      host->callbacks.on_error(host, ERROR_THREAD, "Failed to start transport reception", host->user_data);
+    return SET_ERRNO(ERROR_THREAD, "Failed to start transport reception");
   }
 
   // Spawn render thread (optional - can be started later)
@@ -1145,6 +899,10 @@ void session_host_stop(session_host_t *host) {
     return;
   }
 
+  if (acip_listener_stop(host->listener) != ASCIICHAT_OK)
+    return;
+  host->running = false;
+
   // Stop render thread if running
   if (host->render_thread_running) {
     host->render_thread_running = false;
@@ -1152,14 +910,14 @@ void session_host_stop(session_host_t *host) {
     log_info("Render thread joined");
   }
 
-  // Stop receive loop thread (reads from client sockets)
+  // Stop transport reception before releasing clients.
   if (host->receive_thread_running) {
     host->receive_thread_running = false;
     asciichat_thread_join(&host->receive_thread, NULL);
     log_info("Receive loop thread joined");
   }
 
-  // Stop accept loop thread (before closing listen socket)
+  // Join admission after the listener has stopped.
   if (host->accept_thread_running) {
     host->accept_thread_running = false;
     asciichat_thread_join(&host->accept_thread, NULL);
@@ -1175,12 +933,7 @@ void session_host_stop(session_host_t *host) {
         host->callbacks.on_client_leave(host, host->clients[i].client_id, host->user_data);
       }
 
-      host_client_release_tcp(&host->clients[i]);
-      // Close socket
-      if (host->clients[i].socket != INVALID_SOCKET_VALUE) {
-        socket_close(host->clients[i].socket);
-        host->clients[i].socket = INVALID_SOCKET_VALUE;
-      }
+      host_client_release_transport(&host->clients[i]);
 
       host->clients[i].active = false;
     }
@@ -1188,15 +941,8 @@ void session_host_stop(session_host_t *host) {
   host->client_count = 0;
   mutex_unlock(&host->clients_mutex);
 
-  // Close listen sockets
-  if (host->socket_v4 != INVALID_SOCKET_VALUE) {
-    socket_close(host->socket_v4);
-    host->socket_v4 = INVALID_SOCKET_VALUE;
-  }
-  if (host->socket_v6 != INVALID_SOCKET_VALUE) {
-    socket_close(host->socket_v6);
-    host->socket_v6 = INVALID_SOCKET_VALUE;
-  }
+  acip_listener_destroy(host->listener);
+  host->listener = NULL;
 
   host->running = false;
 }
@@ -1212,8 +958,15 @@ bool session_host_is_running(session_host_t *host) {
  * Session Host Client Management Functions
  * ============================================================================ */
 
-uint32_t session_host_add_client(session_host_t *host, socket_t socket, const char *ip, int port) {
+uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transport,
+                                 acip_transport_ownership_t ownership, const char *ip, int port) {
   if (!host || !host->initialized) {
+    return 0;
+  }
+
+  if ((ownership != ACIP_TRANSPORT_BORROWED && ownership != ACIP_TRANSPORT_OWNED) ||
+      (!transport && ownership == ACIP_TRANSPORT_OWNED)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport ownership");
     return 0;
   }
 
@@ -1231,7 +984,6 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
     if (!host->clients[i].active) {
       host->clients[i].participant_type = PARTICIPANT_TYPE_NETWORK;
       host->clients[i].client_id = host->next_client_id++;
-      host->clients[i].socket = socket;
       if (ip) {
         SAFE_STRNCPY(host->clients[i].ip_address, ip, sizeof(host->clients[i].ip_address));
       }
@@ -1241,7 +993,7 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
       host->clients[i].audio_active = false;
       host->clients[i].connected_at = (uint64_t)time(NULL);
       host->clients[i].transport = NULL;
-      host->clients[i].tcp_transport = NULL;
+      host->clients[i].transport_ownership = ACIP_TRANSPORT_BORROWED;
       host->clients[i].render_width = 0;
       host->clients[i].render_height = 0;
       host->clients[i].render_caps = (terminal_capabilities_t){
@@ -1268,19 +1020,8 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
         return 0;
       }
 
-      if (socket != INVALID_SOCKET_VALUE) {
-        host->clients[i].tcp_transport = acip_tcp_transport_create("session_host_tcp", socket, NULL);
-        if (!host->clients[i].tcp_transport) {
-          image_destroy(host->clients[i].incoming_video);
-          host->clients[i].incoming_video = NULL;
-          ringbuffer_destroy(host->clients[i].incoming_audio);
-          host->clients[i].incoming_audio = NULL;
-          host->clients[i].active = false;
-          mutex_unlock(&host->clients_mutex);
-          return 0;
-        }
-        host->clients[i].transport = host->clients[i].tcp_transport;
-      }
+      host->clients[i].transport = transport;
+      host->clients[i].transport_ownership = ownership;
       uint32_t client_id = host->clients[i].client_id;
       host->client_count++;
 
@@ -1327,7 +1068,6 @@ uint32_t session_host_add_memory_participant(session_host_t *host) {
     if (!host->clients[i].active) {
       host->clients[i].participant_type = PARTICIPANT_TYPE_MEMORY;
       host->clients[i].client_id = host->next_client_id++;
-      host->clients[i].socket = INVALID_SOCKET_VALUE; // No socket for memory participant
       SAFE_STRNCPY(host->clients[i].ip_address, "memory", sizeof(host->clients[i].ip_address));
       host->clients[i].port = 0;
       host->clients[i].active = true;
@@ -1335,7 +1075,7 @@ uint32_t session_host_add_memory_participant(session_host_t *host) {
       host->clients[i].audio_active = true;
       host->clients[i].connected_at = (uint64_t)time(NULL);
       host->clients[i].transport = NULL;
-      host->clients[i].tcp_transport = NULL;
+      host->clients[i].transport_ownership = ACIP_TRANSPORT_BORROWED;
 
       // Allocate media buffers (same as network clients)
       host->clients[i].incoming_video = image_new(480, 270);
@@ -1480,12 +1220,7 @@ asciichat_error_t session_host_remove_client(session_host_t *host, uint32_t clie
       }
       mutex_lock(&host->clients_mutex);
 
-      host_client_release_tcp(&host->clients[i]);
-      // Close socket
-      if (host->clients[i].socket != INVALID_SOCKET_VALUE) {
-        socket_close(host->clients[i].socket);
-        host->clients[i].socket = INVALID_SOCKET_VALUE;
-      }
+      host_client_release_transport(&host->clients[i]);
 
       // Clean up media buffers
       if (host->clients[i].incoming_video) {
@@ -1803,10 +1538,14 @@ void session_host_stop_render(session_host_t *host) {
  * ============================================================================ */
 
 asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32_t client_id,
-                                                    acip_transport_t *transport) {
+                                                    acip_transport_t *transport, acip_transport_ownership_t ownership) {
   if (!host || !host->initialized) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Host is NULL or not initialized");
   }
+
+  if ((ownership != ACIP_TRANSPORT_BORROWED && ownership != ACIP_TRANSPORT_OWNED) ||
+      (!transport && ownership == ACIP_TRANSPORT_OWNED))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport ownership");
 
   mutex_lock(&host->clients_mutex);
 
@@ -1815,14 +1554,10 @@ asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32
     if (host->clients[i].active && host->clients[i].client_id == client_id) {
       log_info("Setting transport=%p for client %u (was=%p)", transport, client_id, host->clients[i].transport);
 
-      host->clients[i].transport = transport ? transport : host->clients[i].tcp_transport;
-
-      if (transport) {
-        log_info("Client %u transport registered", client_id);
-      } else {
-        log_info("Client %u transport reset to its TCP wrapper", client_id);
+      if (host->clients[i].transport == transport && host->clients[i].transport_ownership != ownership) {
+        mutex_unlock(&host->clients_mutex);
+        return SET_ERRNO(ERROR_INVALID_STATE, "Cannot change ownership of a registered transport");
       }
-
       server_state_packet_t state = {0};
       if (transport) {
         uint32_t active_count = 0;
@@ -1834,16 +1569,18 @@ asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32
         state.connected_client_count = HOST_TO_NET_U32(active_count);
         state.active_client_count = HOST_TO_NET_U32(active_count);
       }
-      mutex_unlock(&host->clients_mutex);
-
       if (transport) {
-        // Discovery sessions bypass the native server handshake. Notify the
-        // browser after registering its transport so it can start media.
-        asciichat_error_t send_result = acip_send_server_state(transport, &state);
-        if (send_result != ASCIICHAT_OK) {
-          return send_result;
+        asciichat_error_t result = acip_send_server_state(transport, &state);
+        if (result != ASCIICHAT_OK) {
+          mutex_unlock(&host->clients_mutex);
+          return result;
         }
       }
+      if (host->clients[i].transport != transport)
+        host_client_release_transport(&host->clients[i]);
+      host->clients[i].transport = transport;
+      host->clients[i].transport_ownership = transport ? ownership : ACIP_TRANSPORT_BORROWED;
+      mutex_unlock(&host->clients_mutex);
       return ASCIICHAT_OK;
     }
   }

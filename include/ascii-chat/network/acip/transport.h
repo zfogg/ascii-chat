@@ -107,6 +107,12 @@ typedef enum {
  */
 typedef struct acip_transport acip_transport_t;
 
+/** Ownership transfers only after successful registration. */
+typedef enum {
+  ACIP_TRANSPORT_BORROWED,
+  ACIP_TRANSPORT_OWNED,
+} acip_transport_ownership_t;
+
 /**
  * @brief Transport method table (virtual function table)
  *
