@@ -24,6 +24,7 @@ const backend = vi.hoisted(() => ({
   stop: vi.fn(),
 }));
 vi.mock("@ascii-chat/shared/hooks", () => ({
+  useMirrorRenderLoop: vi.fn(),
   useTestPattern: () => ({ enabled: false }),
   useCanvasCapture: () => ({ captureFrame: vi.fn() }),
 }));
@@ -97,7 +98,6 @@ vi.mock("../../src/components", () => ({
 vi.mock("../../src/hooks", () => ({
   applyMirrorWasmSettings: backend.applySettings,
   setMirrorWasmDimensions: vi.fn(),
-  useMirrorRenderLoop: vi.fn(),
   useClientLike: () => {
     const [running, setRunning] = useState(backend.file);
     const [source, setSource] = useState<symbol | null>(
@@ -151,6 +151,41 @@ vi.mock("../../src/hooks", () => ({
     cancelStart: vi.fn(),
   }),
 }));
+
+// Mirror imports these modules directly so production can split route bundles.
+vi.mock("../../src/components/shared/BinarySettings", async () => ({
+  BinarySettings: (await import("../../src/components")).BinarySettings,
+}));
+vi.mock("@ascii-chat/shared/components/AsciiRenderer", async () => ({
+  AsciiRenderer: (await import("../../src/components")).AsciiRenderer,
+}));
+vi.mock("../../src/components/AsciiChatWebHead", async () => ({
+  AsciiChatWebHead: (await import("../../src/components")).AsciiChatWebHead,
+}));
+vi.mock("../../src/components/VideoUploadModal", async () => ({
+  VideoUploadModal: (await import("../../src/components")).VideoUploadModal,
+}));
+vi.mock("../../src/components/PageLayout", async () => ({
+  PageLayout: (await import("../../src/components")).PageLayout,
+}));
+vi.mock("../../src/components/ModeHeader", async () => ({
+  ModeHeader: (await import("../../src/components")).ModeHeader,
+}));
+vi.mock("../../src/hooks/useWasmOptions", async () => {
+  const hooks = await import("../../src/hooks");
+  return {
+    applyMirrorWasmSettings: hooks.applyMirrorWasmSettings,
+    setMirrorWasmDimensions: hooks.setMirrorWasmDimensions,
+  };
+});
+vi.mock("../../src/hooks/useClientLike", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/hooks/useClientLike")>()),
+  useClientLike: (await import("../../src/hooks")).useClientLike,
+}));
+vi.mock("../../src/hooks/useMirrorWebcam", async () => ({
+  useMirrorWebcam: (await import("../../src/hooks")).useMirrorWebcam,
+}));
+
 vi.mock("../../src/hooks/useMirrorFile", () => ({
   useMirrorFile: ({ stopWebcam }: { stopWebcam: () => void }) => ({
     kind: backend.file ? "video" : null,

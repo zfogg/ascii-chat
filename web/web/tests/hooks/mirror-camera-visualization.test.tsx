@@ -116,7 +116,14 @@ test("late camera acquisition is discarded after returning to visualization", as
   const { rerender } = renderHook((p) => useMirrorWebcam(p), {
     initialProps: audio,
   });
-  rerender({ ...audio, settings: { ...DEFAULT_SETTINGS, animation: "fft" } });
+  rerender({
+    ...audio,
+    settings: {
+      ...DEFAULT_SETTINGS,
+      animationEnabled: false,
+      animation: "fft",
+    },
+  });
   rerender(audio);
   await act(async () => finish(stream([late])));
   expect(late.stop).toHaveBeenCalledOnce();
