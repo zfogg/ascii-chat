@@ -7,7 +7,7 @@ if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     # Being used as a subdirectory - don't call project() again
 else()
     # Being used as a standalone project - initialize CMake
-    cmake_minimum_required(VERSION 3.18)
+    cmake_minimum_required(VERSION 3.28)
     project(ascii-chat-wasm)
 
     # Include sanitizer configuration so apply_sanitizers_to_target() is available
@@ -370,15 +370,6 @@ if(TARGET generate_fonts)
 endif()
 
 # Ensure WASM dependencies are built before compiling wasm-common
-if(TARGET libsodium-wasm)
-    add_dependencies(wasm-common libsodium-wasm)
-endif()
-if(TARGET pcre2-wasm)
-    add_dependencies(wasm-common pcre2-wasm)
-endif()
-if(TARGET opus-wasm)
-    add_dependencies(wasm-common opus-wasm)
-endif()
 if(TARGET zstd-wasm)
     add_dependencies(wasm-common zstd-wasm)
 endif()
@@ -737,3 +728,9 @@ endif()
 # Enable SIMD at compilation, not only linking, for the pixel compositor.
 set_source_files_properties("${LIB_ROOT}/media/render/terminal.c"
     PROPERTIES COMPILE_OPTIONS "-msimd128")
+
+if(EMSCRIPTEN)
+    enable_testing()
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../tests/wasm/dependencies"
+        "${CMAKE_CURRENT_BINARY_DIR}/tests/dependencies" EXCLUDE_FROM_ALL)
+endif()

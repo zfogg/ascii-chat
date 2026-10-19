@@ -827,13 +827,20 @@ set(WASM_CMAKE_ARGS
     -DCMAKE_TOOLCHAIN_FILE=${EMSCRIPTEN_TOOLCHAIN_FILE}
     -DBUILD_WEB=ON
 )
+if(ASCIICHAT_MSYS2_ROOT)
+    list(APPEND WASM_CMAKE_ARGS "-DASCIICHAT_MSYS2_ROOT=${ASCIICHAT_MSYS2_ROOT}")
+endif()
 
 # Configure WASM build directory during CMake configuration (not during build)
 if(EMSCRIPTEN_TOOLCHAIN_FILE)
     file(MAKE_DIRECTORY "${WASM_BUILD_DIR}")
 
     # Check if build.ninja exists (indicates successful WASM configuration)
-    if(NOT EXISTS "${WASM_BUILD_DIR}/build.ninja")
+    if(ASCIICHAT_MSYS2_ROOT AND EXISTS "${WASM_BUILD_DIR}/CMakeCache.txt")
+        load_cache("${WASM_BUILD_DIR}" READ_WITH_PREFIX _WASM_ ASCIICHAT_MSYS2_ROOT)
+    endif()
+    if(NOT EXISTS "${WASM_BUILD_DIR}/build.ninja" OR
+       (ASCIICHAT_MSYS2_ROOT AND NOT "${ASCIICHAT_MSYS2_ROOT}" STREQUAL "${_WASM_ASCIICHAT_MSYS2_ROOT}"))
         message(STATUS "Configuring WASM build directory: ${WASM_BUILD_DIR}")
         execute_process(
             COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}

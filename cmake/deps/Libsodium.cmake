@@ -86,69 +86,93 @@ endif()
 if(DEFINED EMSCRIPTEN)
     message(STATUS "Configuring ${BoldBlue}libsodium${ColorReset} from source (WASM)...")
 
+    get_filename_component(_emscripten_bin "${CMAKE_C_COMPILER}" DIRECTORY)
+    set(_libsodium_environment "${CMAKE_COMMAND}" -E env
+        --modify "PATH=path_list_prepend:${_emscripten_bin}")
     if(CMAKE_HOST_WIN32)
-        set(LIBSODIUM_CONFIGURE_COMMAND "${ASCIICHAT_BASH_EXECUTABLE}" <SOURCE_DIR>/configure)
-        set(LIBSODIUM_WASM_CC "CC=emcc.bat")
+        include(${CMAKE_CURRENT_LIST_DIR}/../platform/MSYS2.cmake)
+        # Use one MSYS2 runtime and the selected SDK's compiler and archive tools.
+        list(APPEND _libsodium_environment
+            --modify "PATH=path_list_prepend:${ASCIICHAT_MSYS2_ROOT}/usr/bin" --)
+        set(LIBSODIUM_WASM_BUILD_COMMAND ${_libsodium_environment} "${MSYS2_MAKE_EXECUTABLE}" -j)
+        set(LIBSODIUM_WASM_INSTALL_COMMAND ${_libsodium_environment} "${MSYS2_MAKE_EXECUTABLE}" install)
+        set(_libsodium_tool_suffix .bat)
     else()
-        set(LIBSODIUM_CONFIGURE_COMMAND <SOURCE_DIR>/configure)
-        set(LIBSODIUM_WASM_CC "CC=emcc")
+        list(APPEND _libsodium_environment --)
+        set(LIBSODIUM_CONFIGURE_COMMAND ${_libsodium_environment} <SOURCE_DIR>/configure)
+        set(LIBSODIUM_WASM_BUILD_COMMAND ${_libsodium_environment} make -j)
+        set(LIBSODIUM_WASM_INSTALL_COMMAND ${_libsodium_environment} make install)
+        set(_libsodium_tool_suffix "")
     endif()
-
-    include(${CMAKE_CURRENT_LIST_DIR}/../utils/WasmAutotools.cmake)
-    asciichat_wasm_make_commands(LIBSODIUM_WASM_BUILD_COMMAND LIBSODIUM_WASM_INSTALL_COMMAND)
+    set(LIBSODIUM_WASM_TOOLCHAIN
+        CC=emcc${_libsodium_tool_suffix}
+        AR=emar${_libsodium_tool_suffix}
+        RANLIB=emranlib${_libsodium_tool_suffix}
+        NM=emnm${_libsodium_tool_suffix}
+        LD=emcc${_libsodium_tool_suffix})
 
     include(ExternalProject)
     include(FetchContent)
-    FetchContent_Declare(libsodium-src
+    FetchContent_Declare(libsodium-wasm-src
         URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
         URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/libsodium-src"
+        SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/libsodium-wasm-src"
         SOURCE_SUBDIR asciichat-autotools
         UPDATE_DISCONNECTED ON
     )
-    FetchContent_MakeAvailable(libsodium-src)
+    FetchContent_MakeAvailable(libsodium-wasm-src)
 
-    set(LIBSODIUM_PREFIX "${FETCHCONTENT_BASE_DIR}/libsodium-wasm")
-    set(LIBSODIUM_BUILD_DIR "${FETCHCONTENT_BASE_DIR}/libsodium-wasm-build")
-
-    if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
-        message(STATUS "  libsodium library not found in cache, will build from source")
-
-        ExternalProject_Add(libsodium-wasm
-            SOURCE_DIR ${libsodium-src_SOURCE_DIR}
-            BUILD_IN_SOURCE 1
-            PREFIX ${LIBSODIUM_BUILD_DIR}
-            STAMP_DIR ${LIBSODIUM_BUILD_DIR}/stamps
-            BUILD_ALWAYS 0
-            CONFIGURE_COMMAND
-                ${LIBSODIUM_CONFIGURE_COMMAND}
-                --prefix=${LIBSODIUM_PREFIX}
-                --host=wasm32-emscripten
-                --enable-static
-                --disable-shared
-                --with-pic
-                --disable-asm
-                --disable-soname-versions
-                ${LIBSODIUM_WASM_CC}
-                CFLAGS=-O2\ -fPIC
-                LDFLAGS=--no-entry
-                ac_cv_func_memset_s=no
-            BUILD_COMMAND ${LIBSODIUM_WASM_BUILD_COMMAND}
-            INSTALL_COMMAND ${LIBSODIUM_WASM_INSTALL_COMMAND}
-            BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}libsodium${ColorReset} library found in cache: ${BoldMagenta}${LIBSODIUM_PREFIX}/lib/libsodium.a${ColorReset}")
-        add_custom_target(libsodium-wasm)
+    if(CMAKE_HOST_WIN32)
+        # Autoconf treats the colon in a Windows source path as a path-list separator.
+        execute_process(
+            COMMAND "${ASCIICHAT_MSYS2_ROOT}/usr/bin/cygpath.exe" -u "${libsodium-wasm-src_SOURCE_DIR}/configure"
+            OUTPUT_VARIABLE _libsodium_configure OUTPUT_STRIP_TRAILING_WHITESPACE
+            COMMAND_ERROR_IS_FATAL ANY)
+        set(LIBSODIUM_CONFIGURE_COMMAND ${_libsodium_environment}
+            "${MSYS2_BASH_EXECUTABLE}" --noprofile --norc "${_libsodium_configure}")
     endif()
 
+    set(LIBSODIUM_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/libsodium")
+    set(LIBSODIUM_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/_deps/libsodium-build")
+
+    ExternalProject_Add(libsodium-wasm
+        SOURCE_DIR ${libsodium-wasm-src_SOURCE_DIR}
+        BINARY_DIR ${LIBSODIUM_BUILD_DIR}
+        PREFIX ${LIBSODIUM_BUILD_DIR}
+        STAMP_DIR ${LIBSODIUM_BUILD_DIR}/stamps
+        BUILD_ALWAYS 0
+        CONFIGURE_COMMAND
+            ${LIBSODIUM_CONFIGURE_COMMAND}
+            --prefix=${LIBSODIUM_PREFIX}
+            --host=wasm32-emscripten
+            --enable-static
+            --disable-shared
+            --with-pic
+            --disable-asm
+            --disable-soname-versions
+            ${LIBSODIUM_WASM_TOOLCHAIN}
+            CFLAGS=-O2\ -fPIC
+            LDFLAGS=--no-entry
+            ac_cv_func_memset_s=no
+        BUILD_COMMAND ${LIBSODIUM_WASM_BUILD_COMMAND}
+        INSTALL_COMMAND ${LIBSODIUM_WASM_INSTALL_COMMAND}
+        INSTALL_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+
+    file(MAKE_DIRECTORY "${LIBSODIUM_PREFIX}/include")
+    add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
+    set_target_properties(asciichat-libsodium PROPERTIES
+        IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
+    add_dependencies(asciichat-libsodium libsodium-wasm)
+
     set(LIBSODIUM_FOUND TRUE)
-    set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
+    set(LIBSODIUM_LIBRARIES asciichat-libsodium)
     set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-wasm)
 

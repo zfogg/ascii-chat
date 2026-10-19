@@ -94,72 +94,31 @@ endif()
 if(DEFINED EMSCRIPTEN)
     message(STATUS "Configuring ${BoldBlue}PCRE2${ColorReset} from source (WASM)...")
 
-    if(CMAKE_HOST_WIN32)
-        set(PCRE2_CONFIGURE_COMMAND "${ASCIICHAT_BASH_EXECUTABLE}" <SOURCE_DIR>/configure)
-        set(PCRE2_WASM_CC "CC=emcc.bat")
-    else()
-        set(PCRE2_CONFIGURE_COMMAND <SOURCE_DIR>/configure)
-        set(PCRE2_WASM_CC "CC=emcc")
-    endif()
-
-    include(${CMAKE_CURRENT_LIST_DIR}/../utils/WasmAutotools.cmake)
-    asciichat_wasm_make_commands(PCRE2_WASM_BUILD_COMMAND PCRE2_WASM_INSTALL_COMMAND)
-
-    include(ExternalProject)
     include(FetchContent)
-    FetchContent_Declare(pcre2-src
+    # CMake removes Autotools headers from its source tree, so keep these sources separate.
+    FetchContent_Declare(pcre2-wasm-src
         URL https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-10.47.tar.gz
         URL_HASH SHA256=409c443549b13b216da40049850a32f3e6c57d4224ab11553ab5a786878a158e
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/pcre2-src"
-        # Keep PCRE2's CMake project from deleting the Autotools-generated headers.
-        SOURCE_SUBDIR asciichat-autotools
+        SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/pcre2-wasm-src"
+        BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/_deps/pcre2"
         UPDATE_DISCONNECTED ON
     )
-    FetchContent_MakeAvailable(pcre2-src)
-
-    set(PCRE2_PREFIX "${FETCHCONTENT_BASE_DIR}/pcre2-wasm")
-    set(PCRE2_BUILD_DIR "${FETCHCONTENT_BASE_DIR}/pcre2-wasm-build")
-
-    if(NOT EXISTS "${PCRE2_PREFIX}/lib/libpcre2-8.a")
-        message(STATUS "  PCRE2 library not found in cache, will build from source")
-
-        ExternalProject_Add(pcre2-wasm
-            SOURCE_DIR ${pcre2-src_SOURCE_DIR}
-            BUILD_IN_SOURCE 1
-            PREFIX ${PCRE2_BUILD_DIR}
-            STAMP_DIR ${PCRE2_BUILD_DIR}/stamps
-            BUILD_ALWAYS 0
-            CONFIGURE_COMMAND
-                ${PCRE2_CONFIGURE_COMMAND}
-                --prefix=${PCRE2_PREFIX}
-                --host=wasm32-emscripten
-                --enable-static
-                --disable-shared
-                --enable-pcre2-8
-                --disable-pcre2-16
-                --disable-pcre2-32
-                --disable-maintainer-mode
-                --with-pic
-                ${PCRE2_WASM_CC}
-                CFLAGS=-O2\ -fPIC
-                LDFLAGS=--no-entry
-            BUILD_COMMAND ${PCRE2_WASM_BUILD_COMMAND}
-            INSTALL_COMMAND ${PCRE2_WASM_INSTALL_COMMAND}
-            BUILD_BYPRODUCTS ${PCRE2_PREFIX}/lib/libpcre2-8.a
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}PCRE2${ColorReset} library found in cache: ${BoldMagenta}${PCRE2_PREFIX}/lib/libpcre2-8.a${ColorReset}")
-        add_custom_target(pcre2-wasm)
-    endif()
+    set(BUILD_SHARED_LIBS OFF)
+    set(BUILD_STATIC_LIBS ON)
+    set(PCRE2_BUILD_PCRE2_8 ON)
+    set(PCRE2_BUILD_PCRE2_16 OFF)
+    set(PCRE2_BUILD_PCRE2_32 OFF)
+    set(PCRE2_BUILD_PCRE2GREP OFF)
+    set(PCRE2_BUILD_TESTS OFF)
+    set(PCRE2_SUPPORT_JIT OFF)
+    set(PCRE2_STATIC_PIC ON)
+    FetchContent_MakeAvailable(pcre2-wasm-src)
+    target_compile_options(pcre2-8-static PRIVATE -O2)
 
     set(PCRE2_FOUND TRUE)
-    set(PCRE2_LIBRARIES "${PCRE2_PREFIX}/lib/libpcre2-8.a")
-    set(PCRE2_INCLUDE_DIRS "${PCRE2_PREFIX}/include")
+    set(PCRE2_LIBRARIES pcre2-8-static)
+    set(PCRE2_INCLUDE_DIRS "${pcre2-wasm-src_BINARY_DIR}/interface")
 
     message(STATUS "${BoldGreen}✓${ColorReset} PCRE2 (WASM): ${BoldCyan}libpcre2-8${ColorReset}")
     return()

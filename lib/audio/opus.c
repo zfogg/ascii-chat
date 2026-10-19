@@ -8,7 +8,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/debug/named.h>
-#include <opus/opus.h>
+#include <opus.h>
 #include <stdlib.h>
 #include <string.h>
 

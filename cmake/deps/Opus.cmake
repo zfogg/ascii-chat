@@ -30,80 +30,48 @@
 
 include(FetchContent)
 
-# Shared source URL for autotools builds (iOS, musl, WASM)
-FetchContent_Declare(opus-src
-    URL https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz
-    URL_HASH SHA256=65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/opus-src"
-    SOURCE_SUBDIR asciichat-autotools
-    UPDATE_DISCONNECTED ON
-)
+set(OPUS_SOURCE_URL https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz)
+set(OPUS_SOURCE_HASH SHA256=65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1)
 
 # WASM builds: Use Emscripten toolchain
 if(DEFINED EMSCRIPTEN)
     message(STATUS "Configuring ${BoldBlue}Opus${ColorReset} from source (WASM)...")
 
-    if(CMAKE_HOST_WIN32)
-        set(OPUS_CONFIGURE_COMMAND "${ASCIICHAT_BASH_EXECUTABLE}" <SOURCE_DIR>/configure)
-        set(OPUS_WASM_CC "CC=emcc.bat")
-    else()
-        set(OPUS_CONFIGURE_COMMAND <SOURCE_DIR>/configure)
-        set(OPUS_WASM_CC "CC=emcc")
-    endif()
-
-    include(${CMAKE_CURRENT_LIST_DIR}/../utils/WasmAutotools.cmake)
-    asciichat_wasm_make_commands(OPUS_WASM_BUILD_COMMAND OPUS_WASM_INSTALL_COMMAND)
-
-    include(ExternalProject)
-    FetchContent_MakeAvailable(opus-src)
-
-    set(OPUS_PREFIX "${FETCHCONTENT_BASE_DIR}/opus-wasm")
-    set(OPUS_BUILD_DIR "${FETCHCONTENT_BASE_DIR}/opus-wasm-build")
-
-    if(NOT EXISTS "${OPUS_PREFIX}/lib/libopus.a")
-        message(STATUS "  Opus library not found in cache, will build from source")
-
-        ExternalProject_Add(opus-wasm
-            SOURCE_DIR ${opus-src_SOURCE_DIR}
-            BUILD_IN_SOURCE 1
-            PREFIX ${OPUS_BUILD_DIR}
-            STAMP_DIR ${OPUS_BUILD_DIR}/stamps
-            BUILD_ALWAYS 0
-            CONFIGURE_COMMAND
-                ${OPUS_CONFIGURE_COMMAND}
-                --prefix=${OPUS_PREFIX}
-                --host=wasm32-emscripten
-                --enable-static
-                --disable-shared
-                --disable-doc
-                --disable-extra-programs
-                --disable-intrinsics
-                --disable-asm
-                --with-pic
-                ${OPUS_WASM_CC}
-                CFLAGS=-O2\ -fPIC
-                LDFLAGS=--no-entry
-            BUILD_COMMAND ${OPUS_WASM_BUILD_COMMAND}
-            INSTALL_COMMAND ${OPUS_WASM_INSTALL_COMMAND}
-            BUILD_BYPRODUCTS ${OPUS_PREFIX}/lib/libopus.a
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}Opus${ColorReset} library found in cache: ${BoldMagenta}${OPUS_PREFIX}/lib/libopus.a${ColorReset}")
-        add_custom_target(opus-wasm)
-    endif()
+    FetchContent_Declare(opus-wasm-src
+        URL ${OPUS_SOURCE_URL}
+        URL_HASH ${OPUS_SOURCE_HASH}
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/opus-wasm-src"
+        BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/_deps/opus"
+        UPDATE_DISCONNECTED ON
+    )
+    set(BUILD_SHARED_LIBS OFF)
+    set(BUILD_TESTING OFF)
+    set(OPUS_BUILD_SHARED_LIBRARY OFF)
+    set(OPUS_BUILD_TESTING OFF)
+    set(OPUS_BUILD_PROGRAMS OFF)
+    set(OPUS_DISABLE_INTRINSICS ON)
+    FetchContent_MakeAvailable(opus-wasm-src)
+    set_target_properties(opus PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_compile_options(opus PRIVATE -O2)
 
     set(OPUS_FOUND TRUE)
-    set(OPUS_LIBRARIES "${OPUS_PREFIX}/lib/libopus.a")
-    set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include;${OPUS_PREFIX}/include/opus")
+    set(OPUS_LIBRARIES Opus::opus)
+    set(OPUS_INCLUDE_DIRS "${opus-wasm-src_SOURCE_DIR}/include")
 
     message(STATUS "${BoldGreen}✓${ColorReset} Opus (WASM): ${BoldCyan}libopus${ColorReset}")
     return()
 endif()
+
+# Shared sources for the iOS and musl Autotools builds.
+FetchContent_Declare(opus-src
+    URL ${OPUS_SOURCE_URL}
+    URL_HASH ${OPUS_SOURCE_HASH}
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/opus-src"
+    SOURCE_SUBDIR asciichat-autotools
+    UPDATE_DISCONNECTED ON
+)
 
 # iOS build: Build from source for iOS cross-compilation
 if(PLATFORM_IOS)
@@ -216,3 +184,8 @@ find_dependency_library(
     STATIC_LIB_NAME libopus.a
     REQUIRED
 )
+
+# Match the header layout exported by Opus::opus and pkg-config.
+find_path(OPUS_HEADER_INCLUDE_DIR NAMES opus.h
+    HINTS ${OPUS_INCLUDE_DIRS} PATH_SUFFIXES opus NO_DEFAULT_PATH REQUIRED)
+set(OPUS_INCLUDE_DIRS "${OPUS_HEADER_INCLUDE_DIR}")
