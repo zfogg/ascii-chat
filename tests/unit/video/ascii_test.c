@@ -990,6 +990,13 @@ Test(ascii, halfblock_cover_uses_cell_geometry) {
   cr_assert_null(strstr(square, "38;2;255;0;0m"));
   cr_assert_null(strstr(square, "38;2;0;255;0m"));
   SAFE_FREE(square);
+  // Contain preserves both source edges and adds black bars instead of cropping.
+  char *contained = ascii_convert_with_capabilities_fit(img, 8, 4, &caps, true, false, " .#", true);
+  cr_assert_not_null(contained);
+  cr_assert_not_null(strstr(contained, "38;2;255;0;0m"));
+  cr_assert_not_null(strstr(contained, "38;2;0;255;0m"));
+  cr_assert_not_null(strstr(contained, "38;2;0;0;0m"));
+  SAFE_FREE(contained);
   image_destroy(img);
 }
 
@@ -1074,4 +1081,41 @@ Test(ascii, ascii_create_grid_unicode_separators) {
   }
   cr_assert_eq(*row, '\0');
   SAFE_FREE(grid);
+}
+
+
+Test(ascii, grid_layout_sizes_source_tiles_to_viewport) {
+  const int sizes[][2] = {{154, 52}, {186, 52}, {100, 40}};
+  for (size_t viewport = 0; viewport < sizeof(sizes) / sizeof(sizes[0]); ++viewport) {
+    for (int count = 1; count <= 6; ++count) {
+      int columns, rows;
+      int width = sizes[viewport][0], height = sizes[viewport][1];
+      cr_assert_eq(ascii_grid_layout(count, width, height, &columns, &rows), ASCIICHAT_OK);
+      int cell_width = (width - columns + 1) / columns;
+      int cell_height = (height - rows + 1) / rows;
+      size_t length = (size_t)(cell_width + 1) * cell_height;
+      char *tile = SAFE_MALLOC(length + 1, char *);
+      for (int y = 0; y < cell_height; ++y) {
+        memset(tile + y * (cell_width + 1), 'X', cell_width);
+        tile[y * (cell_width + 1) + cell_width] = '\n';
+      }
+      tile[length] = '\0';
+      ascii_frame_source_t sources[6];
+      for (int i = 0; i < count; ++i)
+        sources[i] = (ascii_frame_source_t){tile, length};
+      size_t grid_size;
+      char *grid = ascii_create_grid(sources, count, width, height, &grid_size);
+      cr_assert_not_null(grid);
+      for (int i = 0; i < count; ++i) {
+        for (int y = 0; y < cell_height; ++y) {
+          size_t row_offset = (size_t)((i / columns) * (cell_height + 1) + y) * (width + 2);
+          size_t start = row_offset + (i % columns) * (cell_width + 1);
+          for (int x = 0; x < cell_width; ++x)
+            cr_assert_eq(grid[start + x], 'X', "Missing tile cell at viewport %dx%d, tile %d, %d,%d", width, height, i, x, y);
+        }
+      }
+      SAFE_FREE(grid);
+      SAFE_FREE(tile);
+    }
+  }
 }

@@ -1,4 +1,5 @@
 import { useLayoutEffect } from "react";
+import { RasterWorker } from "./RasterWorker";
 import { SessionUi } from "../../wasm/sessionUi";
 import type { SessionUiEvent } from "../../wasm/sessionUi";
 import type { KeyboardEvent } from "react";
@@ -16,6 +17,8 @@ import { startGridStabilityProbe } from "./gridStabilityProbe";
 
 interface UseAsciiRendererHandleParams {
   ref: ForwardedRef<AsciiRendererHandle>;
+  workerRendering?: boolean;
+  matrixMode?: boolean;
   moduleRef: RefObject<MirrorModule | null>;
   setupDoneRef: RefObject<boolean>;
   rendererPtrRef: RefObject<number>;
@@ -41,6 +44,8 @@ interface UseAsciiRendererHandleReturn {
 
 export function useAsciiRendererHandle({
   ref,
+  workerRendering = false,
+  matrixMode = false,
   moduleRef,
   setupDoneRef,
   rendererPtrRef,
@@ -124,6 +129,45 @@ export function useAsciiRendererHandle({
     return ui;
   }, [moduleRef, setupDoneRef, rendererPtrRef]);
 
+  const rasterWorkerRef = useRef<RasterWorker | null>(null);
+  useEffect(() => {
+    if (!workerRendering) return;
+    const worker = new RasterWorker(
+      ({ pixels, width, height }) => {
+        const canvas = canvasRef.current;
+        if (
+          !canvas ||
+          resizeTimeoutRef.current ||
+          canvas.width !== width ||
+          canvas.height !== height
+        ) {
+          uiRef.current?.redraw();
+          return;
+        }
+        const context = canvas.getContext("2d");
+        if (!context) return;
+        context.putImageData(new ImageData(pixels, width, height), 0, 0);
+        firstRenderDoneRef.current = true;
+        lastFrameChangedRef.current = true;
+        if (showFps) changedFrameTimesRef.current.push(performance.now());
+      },
+      (error) => {
+        console.error(
+          "[AsciiRenderer] Worker failed; using synchronous renderer",
+          error,
+        );
+        worker.close();
+        rasterWorkerRef.current = null;
+        uiRef.current?.redraw();
+      },
+    );
+    rasterWorkerRef.current = worker;
+    return () => {
+      worker.close();
+      rasterWorkerRef.current = null;
+    };
+  }, [workerRendering, canvasRef, resizeTimeoutRef, showFps]);
+
   const paintFrame = useCallback(
     (ansiString: string): boolean => {
       lastFrameChangedRef.current = false;
@@ -134,6 +178,16 @@ export function useAsciiRendererHandle({
       // Skip rendering during resize debounce to avoid dimension mismatches
       if (resizeTimeoutRef.current) {
         return false;
+      }
+      if (rasterWorkerRef.current) {
+        rasterWorkerRef.current.write({
+          text: ansiString,
+          ...dimensionsRef.current,
+          matrix: matrixMode,
+          zalgo:
+            Number.isInteger(zalgo) && zalgo >= 1 && zalgo <= 10 ? zalgo : 0,
+        });
+        return true;
       }
       try {
         // Encode string to UTF-8 bytes
@@ -287,6 +341,7 @@ export function useAsciiRendererHandle({
       rendererPtrRef,
       canvasRef,
       zalgo,
+      matrixMode,
       showFps,
     ],
   );

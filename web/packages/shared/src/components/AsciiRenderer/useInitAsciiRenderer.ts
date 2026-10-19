@@ -18,7 +18,7 @@ import {
 // Match the original browser renderer scale. The canvas is displayed at its
 // raster dimensions, so reducing this value makes every CSS pixel represent a
 // larger terminal glyph when the canvas fills its container.
-const BROWSER_RASTER_FONT_SIZE_PT = 12.0;
+import { BROWSER_RASTER_FONT_SIZE_PT } from "./rasterConfig";
 
 interface UseInitAsciiRendererReturn {
   moduleRef: RefObject<MirrorModule | null>;

@@ -19,6 +19,7 @@ export function useCanvasCapture(
     (
       drawVideo = true,
       sourceCanvas?: HTMLCanvasElement,
+      readPixels = true,
     ): {
       data: Uint8Array;
       width: number;
@@ -86,6 +87,14 @@ export function useCanvasCapture(
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           }
         }
+        // WebCodecs consumes the canvas directly; avoid a synchronous GPU
+        // readback and RGBA allocation when no caller needs raw pixels.
+        if (!readPixels)
+          return {
+            data: new Uint8Array(0),
+            width: canvas.width,
+            height: canvas.height,
+          };
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
         // Verify imageData has expected size

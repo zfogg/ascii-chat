@@ -53,6 +53,31 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("AudioPipeline", () => {
+  it("keeps microphone capture independent from speaker playback", async () => {
+    const send = vi.fn();
+    const pipeline = new AudioPipeline({ onAudioData: send });
+    await pipeline.startCapture();
+    const payload = new Uint8Array(21);
+    const header = new DataView(payload.buffer);
+    header.setUint32(0, 48000);
+    header.setUint32(4, 20);
+    header.setUint32(8, 1);
+    header.setUint16(16, 3);
+    pipeline.playPacket(PacketType.AUDIO_OPUS_BATCH, payload);
+    expect(start).not.toHaveBeenCalled();
+    await pipeline.enablePlayback();
+    pipeline.playPacket(PacketType.AUDIO_OPUS_BATCH, payload);
+    expect(start).toHaveBeenCalledOnce();
+    pipeline.disablePlayback();
+    pipeline.playPacket(PacketType.AUDIO_OPUS_BATCH, payload);
+    expect(start).toHaveBeenCalledOnce();
+    expect(stopTrack).not.toHaveBeenCalled();
+    processor.onaudioprocess!({
+      inputBuffer: { getChannelData: () => new Float32Array(2048).fill(0.25) },
+    } as unknown as AudioProcessingEvent);
+    expect(send).toHaveBeenCalled();
+    pipeline.close();
+  });
   it("captures echo-cancelled microphone audio into native Opus packets", async () => {
     const send = vi.fn();
     const pipeline = new AudioPipeline({ onAudioData: send });

@@ -30,6 +30,7 @@ interface MirrorModuleExports {
     rgba_data_ptr: number,
     src_width: number,
     src_height: number,
+    contain?: number,
   ): number;
   _mirror_free_string(ptr: number): void;
   _mirror_submit_audio_samples(
@@ -234,6 +235,7 @@ export function convertFrameToAscii(
   rgbaData: Uint8Array,
   srcWidth: number,
   srcHeight: number,
+  contentFit: "contain" | "cover" = "cover",
 ): string {
   if (!wasmModule) {
     throw new Error(
@@ -296,6 +298,7 @@ export function convertFrameToAscii(
       dataPtr,
       srcWidth,
       srcHeight,
+      contentFit === "contain" ? 1 : 0,
     );
 
     if (!resultPtr) {

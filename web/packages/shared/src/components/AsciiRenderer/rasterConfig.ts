@@ -1,0 +1,1 @@
+export const BROWSER_RASTER_FONT_SIZE_PT = 12;

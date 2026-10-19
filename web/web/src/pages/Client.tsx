@@ -1,3 +1,4 @@
+import { FramePresentationScheduler } from "../network/FramePresentationScheduler";
 import { SessionInvite } from "../components/SessionInvite";
 import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
 import { useAutoGridSize } from "../hooks/useAutoGridSize";
@@ -338,6 +339,8 @@ export function ClientPage({
   const applicationEncryption =
     (cryptoSettings.customEncryption ?? !usesWss) || connectionHasAuthMaterial;
   const [showSettings, setShowSettings] = useUrlState("settings", false);
+  const [requestedFit, setContentFit] = useUrlState("fit", "contain");
+  const contentFit = requestedFit === "cover" ? "cover" : "contain";
   const connectionSettingsId = useId();
   const [connectionSettingsOpen, setConnectionSettingsOpen] = useUrlState(
     "connectionSettings",
@@ -375,6 +378,8 @@ export function ClientPage({
   const renderLoopStartTimeRef = useRef<number>(0);
 
   const frameHashesRef = useRef<Record<string, number>>({});
+  const onFrameAvailableRef = useRef<(() => void) | null>(null);
+  const presentedFrameRef = useRef<AsciiFrame | null>(null);
   const renderTimingRef = useRef({
     frames: 0,
     totalMs: 0,
@@ -410,6 +415,7 @@ export function ClientPage({
     connectToServer,
     handleDisconnect,
   } = useClientConnection({
+    onFrameAvailableRef,
     autoConnect: false,
     applicationEncryption,
     cryptoOptions: connectionCryptoOptions,
@@ -618,7 +624,7 @@ export function ClientPage({
     },
     [],
   );
-  const enableAudio = async () => {
+  const enableAudio = async (speakers = true) => {
     try {
       if (!audioRef.current)
         audioRef.current = new AudioPipeline({
@@ -653,12 +659,12 @@ export function ClientPage({
             }
           },
         });
-      await audioRef.current.enablePlayback();
+      if (speakers) await audioRef.current.enablePlayback();
       const client = clientRef.current;
       if (!client) throw new Error("Connect before starting the audio stream");
       client.sendPacket(PacketType.STREAM_START, buildStreamStartPacket(true));
       audioStreamStartedRef.current = true;
-      setAudioEnabled(true);
+      if (speakers) setAudioEnabled(true);
       return true;
     } catch (error) {
       setError(String(error));
@@ -673,7 +679,7 @@ export function ClientPage({
       return;
     }
     try {
-      if (!(await enableAudio())) return;
+      if (!(await enableAudio(false))) return;
       if (!audioRef.current) return;
       const client = clientRef.current;
       if (!client) throw new Error("Connect before resuming the audio stream");
@@ -761,7 +767,7 @@ export function ClientPage({
   });
 
   const renderFrame = useCallback(
-    (_deltaMs: number) => {
+    (_deltaMs: number, networkFrame = false) => {
       // Drain new network frames when they arrive, but keep presenting the most
       // recent complete frame at the selected display cadence. WebSocket frame
       // delivery can be bursty; tying canvas writes directly to packet arrival
@@ -782,6 +788,7 @@ export function ClientPage({
             activeSettings.animationEnabled &&
             (activeSettings.animation === "waveform" ||
               activeSettings.animation === "fft");
+          if (visualAnimation === networkFrame) return;
           const dimensions = visualAnimation
             ? terminalDimensionsRef.current
             : frame
@@ -816,6 +823,9 @@ export function ClientPage({
             );
           }
           if (!frameContent) return;
+          // The shared UI loop animates overlays independently. Repainting an
+          // unchanged network snapshot wastes the next frame's CPU budget.
+          if (!visualAnimation && frame === presentedFrameRef.current) return;
           const frameHash = hashFrame(frameContent);
           const writeStartedAt = performance.now();
           const drewFrame = rendererRef.current.writeFrame(frameContent, {
@@ -827,6 +837,7 @@ export function ClientPage({
             return;
           }
 
+          presentedFrameRef.current = visualAnimation ? null : frame;
           const timing = renderTimingRef.current;
           const renderedAt = performance.now();
           if (!timing.windowStart) timing.windowStart = renderedAt;
@@ -888,6 +899,19 @@ export function ClientPage({
     [syntheticAudio],
   );
 
+  useEffect(() => {
+    const scheduler = new FramePresentationScheduler(
+      () => frameIntervalRef.current,
+      () => renderFrame(0, true),
+    );
+    onFrameAvailableRef.current = () => scheduler.request();
+    if (frameQueueRef.current.length) scheduler.request();
+    return () => {
+      onFrameAvailableRef.current = null;
+      scheduler.close();
+    };
+  }, [renderFrame]);
+
   const { startRenderLoop } = useRenderLoop(
     renderFrame,
     frameIntervalRef,
@@ -926,7 +950,7 @@ export function ClientPage({
   useEffect(() => {
     if (
       !discovery ||
-      !audioEnabled ||
+      (!audioEnabled && !micEnabled) ||
       connectionState !== ConnectionState.CONNECTED
     )
       return;
@@ -1015,19 +1039,27 @@ export function ClientPage({
     connectionState === ConnectionState.CONNECTED ? (
       <>
         <button
+          onClick={isWebcamRunning ? disableWebcam : enableWebcam}
+          className={`border rounded px-3 py-1 cursor-pointer text-white ${isWebcamRunning ? "border-red-700 bg-red-700 hover:bg-red-800" : "border-green-700 bg-green-700 hover:bg-green-800"}`}
+        >
+          {isWebcamRunning ? "Disable webcam" : "Enable webcam"}
+        </button>
+        <button
           onClick={() => {
-            if (audioEnabled) closeAudio();
-            else void enableAudio();
+            if (audioEnabled) {
+              audioRef.current?.disablePlayback();
+              setAudioEnabled(false);
+            } else void enableAudio();
           }}
-          className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
+          className={`border rounded px-3 py-1 cursor-pointer text-white ${audioEnabled ? "border-red-700 bg-red-700 hover:bg-red-800" : "border-terminal-8 bg-transparent"}`}
         >
           {audioEnabled ? "Disable speakers" : "Enable speakers"}
         </button>
         <button
           onClick={() => void toggleMicrophone()}
-          className="border border-terminal-8 rounded px-3 py-1 cursor-pointer"
+          className={`border rounded px-3 py-1 cursor-pointer text-white ${micEnabled ? "border-red-700 bg-red-700 hover:bg-red-800" : "border-terminal-8 bg-transparent"}`}
         >
-          {micEnabled ? "Mute microphone" : "Enable microphone"}
+          {micEnabled ? "Disable microphone" : "Enable microphone"}
         </button>
         {audioEnabled && (
           <output
@@ -1038,7 +1070,7 @@ export function ClientPage({
             data-underruns={audioLevels.underruns}
             className="self-center text-sm text-terminal-8"
           >
-            Mic {Math.round(audioLevels.microphone * 100)}% Â· Playback{" "}
+            Mic {Math.round(audioLevels.microphone * 100)}% &middot; Playback{" "}
             {Math.round(audioLevels.playback * 100)}%
           </output>
         )}
@@ -1063,6 +1095,8 @@ export function ClientPage({
                 config={settings}
                 onChange={setSettings}
                 mode={AsciiChatMode.CLIENT}
+                contentFit={contentFit}
+                onContentFitChange={setContentFit}
               />
             }
             connectionPanel={
@@ -1079,9 +1113,12 @@ export function ClientPage({
                       setConnecting(true);
                     }}
                   >
-                    <Tooltip text={disabledSettingsHelp} className="contents">
-                      <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                        Discovery service URL
+                    <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                      <HelpLabel
+                        label="Discovery service URL"
+                        text="Use a ws:// or wss:// WebSocket URL reachable from your browser. Include :port when the service uses a non-default port, for example ws://localhost:29327. HTTPS pages should use wss://."
+                      />
+                      <Tooltip text={disabledSettingsHelp} className="block">
                         <input
                           aria-label="Discovery service URL"
                           disabled={settingsDisabled}
@@ -1091,11 +1128,14 @@ export function ClientPage({
                           }
                           className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
                         />
-                      </label>
-                    </Tooltip>
-                    <Tooltip text={disabledSettingsHelp} className="contents">
-                      <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                        Session name
+                      </Tooltip>
+                    </label>
+                    <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                      <HelpLabel
+                        label="Session name"
+                        text="Join with the host's generated name: lowercase adjective-noun-noun from ascii-chat's word lists, e.g. swift-river-mountain. Create session generates a name to share."
+                      />
+                      <Tooltip text={disabledSettingsHelp} className="block">
                         <input
                           aria-label="Session name"
                           disabled={settingsDisabled}
@@ -1108,14 +1148,14 @@ export function ClientPage({
                           className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
                           placeholder={sessionNamePlaceholder}
                         />
-                      </label>
-                    </Tooltip>
-                    <Tooltip text={disabledSettingsHelp} className="contents">
-                      <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                        <HelpLabel
-                          label="Session password"
-                          text="Leave blank for no password."
-                        />
+                      </Tooltip>
+                    </label>
+                    <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                      <HelpLabel
+                        label="Session password"
+                        text="Leave blank for no password."
+                      />
+                      <Tooltip text={disabledSettingsHelp} className="block">
                         <input
                           aria-label="Session password"
                           disabled={settingsDisabled}
@@ -1127,8 +1167,8 @@ export function ClientPage({
                           className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
                           autoComplete="off"
                         />
-                      </label>
-                    </Tooltip>
+                      </Tooltip>
+                    </label>
                     <button
                       type="button"
                       disabled={settingsDisabled}
@@ -1183,12 +1223,15 @@ export function ClientPage({
                         id={connectionSettingsId}
                       >
                         <div className="flex flex-col gap-2 mt-2">
-                          <Tooltip
-                            text={disabledSettingsHelp}
-                            className="contents"
-                          >
-                            <label className="flex flex-col gap-1 w-56 max-w-full">
-                              Connection route
+                          <label className="flex flex-col gap-1 w-56 max-w-full">
+                            <HelpLabel
+                              label="Connection route"
+                              text="Automatic allows direct connections or a TURN relay. Relay only requires a TURN relay and skips direct connections."
+                            />
+                            <Tooltip
+                              text={disabledSettingsHelp}
+                              className="block"
+                            >
                               <select
                                 aria-label="Connection route"
                                 value={connectionRoute}
@@ -1203,17 +1246,17 @@ export function ClientPage({
                                 <option value="all">Automatic</option>
                                 <option value="relay">Relay only</option>
                               </select>
-                            </label>
-                          </Tooltip>
-                          <Tooltip
-                            text={disabledSettingsHelp}
-                            className="contents"
-                          >
-                            <label>
-                              <HelpLabel
-                                label="STUN URLs"
-                                text="Enter one or more comma-separated STUN URLs, each starting with stun: or stuns:. Example: stun:stun.example.com:3478."
-                              />
+                            </Tooltip>
+                          </label>
+                          <label>
+                            <HelpLabel
+                              label="STUN URLs"
+                              text="Enter one or more comma-separated STUN URLs, each starting with stun: or stuns:. Example: stun:stun.example.com:3478."
+                            />
+                            <Tooltip
+                              text={disabledSettingsHelp}
+                              className="block"
+                            >
                               <input
                                 aria-label="STUN URLs"
                                 disabled={settingsDisabled}
@@ -1223,17 +1266,17 @@ export function ClientPage({
                                 }
                                 className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
                               />
-                            </label>
-                          </Tooltip>
-                          <Tooltip
-                            text={disabledSettingsHelp}
-                            className="contents"
-                          >
-                            <label>
-                              <HelpLabel
-                                label="TURN URLs"
-                                text="Enter one or more comma-separated TURN URLs, each starting with turn: or turns:. TURN uses the manual credentials below, or credentials from the discovery service."
-                              />
+                            </Tooltip>
+                          </label>
+                          <label>
+                            <HelpLabel
+                              label="TURN URLs"
+                              text="Enter one or more comma-separated TURN URLs, each starting with turn: or turns:. TURN uses the manual credentials below, or credentials from the discovery service."
+                            />
+                            <Tooltip
+                              text={disabledSettingsHelp}
+                              className="block"
+                            >
                               <input
                                 aria-label="TURN URLs"
                                 disabled={settingsDisabled}
@@ -1243,19 +1286,19 @@ export function ClientPage({
                                 }
                                 className="bg-terminal-bg border border-terminal-8 rounded px-2 py-1 w-full"
                               />
-                            </label>
-                          </Tooltip>
+                            </Tooltip>
+                          </label>
                           <fieldset disabled={settingsDisabled}>
                             <div className="flex flex-wrap gap-3 mt-2">
-                              <Tooltip
-                                text={disabledSettingsHelp}
-                                className="contents"
-                              >
-                                <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                                  <HelpLabel
-                                    label="TURN username"
-                                    text="Leave both TURN fields blank to use the credentials provided by the discovery service."
-                                  />
+                              <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                                <HelpLabel
+                                  label="TURN username"
+                                  text="Leave both TURN fields blank to use the credentials provided by the discovery service."
+                                />
+                                <Tooltip
+                                  text={disabledSettingsHelp}
+                                  className="block"
+                                >
                                   <input
                                     aria-label="TURN username"
                                     disabled={settingsDisabled}
@@ -1268,17 +1311,17 @@ export function ClientPage({
                                     autoComplete="off"
                                     className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
                                   />
-                                </label>
-                              </Tooltip>
-                              <Tooltip
-                                text={disabledSettingsHelp}
-                                className="contents"
-                              >
-                                <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                                  <HelpLabel
-                                    label="TURN password"
-                                    text="Leave both TURN fields blank to use the credentials provided by the discovery service."
-                                  />
+                                </Tooltip>
+                              </label>
+                              <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                                <HelpLabel
+                                  label="TURN password"
+                                  text="Leave both TURN fields blank to use the credentials provided by the discovery service."
+                                />
+                                <Tooltip
+                                  text={disabledSettingsHelp}
+                                  className="block"
+                                >
                                   <input
                                     aria-label="TURN password"
                                     disabled={settingsDisabled}
@@ -1292,8 +1335,8 @@ export function ClientPage({
                                     autoComplete="off"
                                     className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
                                   />
-                                </label>
-                              </Tooltip>
+                                </Tooltip>
+                              </label>
                             </div>
                           </fieldset>
                         </div>
@@ -1330,9 +1373,9 @@ export function ClientPage({
                       setConnecting(true);
                     }}
                   >
-                    <Tooltip text={disabledSettingsHelp} className="contents">
-                      <label className="flex flex-col gap-1 w-80 max-w-full min-w-0">
-                        Server WebSocket URL
+                    <label className="flex flex-col gap-1 w-80 max-w-full min-w-0">
+                      Server WebSocket URL
+                      <Tooltip text={disabledSettingsHelp} className="block">
                         <input
                           aria-label="Server WebSocket URL"
                           disabled={settingsDisabled}
@@ -1341,14 +1384,14 @@ export function ClientPage({
                           placeholder="ws://localhost:27226"
                           className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full font-mono"
                         />
-                      </label>
-                    </Tooltip>
-                    <Tooltip text={disabledSettingsHelp} className="contents">
-                      <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                        <HelpLabel
-                          label="Crypto password"
-                          text="Leave blank for no password. If the server requires a password, enter the same password here."
-                        />
+                      </Tooltip>
+                    </label>
+                    <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
+                      <HelpLabel
+                        label="Crypto password"
+                        text="Leave blank for no password. If the server requires a password, enter the same password here."
+                      />
+                      <Tooltip text={disabledSettingsHelp} className="block">
                         <input
                           aria-label="Crypto password"
                           type="password"
@@ -1369,8 +1412,8 @@ export function ClientPage({
                           placeholder="Server --password"
                           className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full font-mono"
                         />
-                      </label>
-                    </Tooltip>
+                      </Tooltip>
+                    </label>
                     <button
                       type="button"
                       disabled={settingsDisabled}
@@ -1420,25 +1463,14 @@ export function ClientPage({
             controlBar={{
               title: discoveryMode ? "Discovery mode" : "Client mode",
               status,
+              isHost:
+                !!createdSession &&
+                connectionState === ConnectionState.CONNECTED,
               statusDotColor: getStatusDotColor(),
               dimensions: terminalDimensions,
               fps,
               targetFps: settings.targetFps,
               isWebcamRunning,
-              onStartWebcam:
-                connectionState === ConnectionState.CONNECTED
-                  ? discoveryMode
-                    ? enableWebcam
-                    : startWebcam
-                  : undefined,
-              onStopWebcam: isWebcamRunning
-                ? discoveryMode
-                  ? disableWebcam
-                  : stopWebcam
-                : undefined,
-              webcamActionLabels: discoveryMode
-                ? { start: "Enable webcam", stop: "Disable webcam" }
-                : undefined,
               showConnectionButton: false,
               onSettingsClick: () => setShowSettings((open) => !open),
               showSettingsButton: true,
@@ -1451,7 +1483,20 @@ export function ClientPage({
           rendererRequested ? (
             <AsciiRenderer
               ref={rendererRef}
+              workerRendering
+              contentFit={contentFit}
               uiMessage={status}
+              connectionError={
+                connectionState === ConnectionState.ERROR
+                  ? (
+                      status
+                        .replace(/^(?:connection )?error:?\s*/i, "")
+                        .trim() || error
+                    )
+                      .replace(/^(?:connection )?error:?\s*/i, "")
+                      .trim()
+                  : undefined
+              }
               onUiAction={(event) => {
                 if (event.action === 1 || event.action === 7)
                   setSettings(sessionUiSettings(event, settings));

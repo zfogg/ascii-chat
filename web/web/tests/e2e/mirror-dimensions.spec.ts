@@ -45,8 +45,8 @@ for (const matrix of [false, true]) {
       await page
         .getByRole("button", { name: "Animation", exact: true })
         .click();
-    const width = page.getByLabel("Width (columns; 0 = auto)", { exact: true });
-    const height = page.getByLabel("Height (rows; 0 = auto)", { exact: true });
+    const width = page.getByLabel("Width", { exact: true });
+    const height = page.getByLabel("Height", { exact: true });
     await expect(width).toHaveValue("0");
     await expect(height).toHaveValue("0");
     const initial = await canvasState(page);

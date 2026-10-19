@@ -35,6 +35,7 @@ interface UseMirrorRenderLoopParams {
   onMediaFps?: (fps: number) => void;
   mediaRevision?: unknown;
   fileActive?: boolean;
+  contentFit?: "contain" | "cover";
 }
 
 let loopCounter = 0;
@@ -55,6 +56,7 @@ export function useMirrorRenderLoop({
   onMediaFps,
   mediaRevision,
   fileActive = false,
+  contentFit = "cover",
 }: UseMirrorRenderLoopParams) {
   const testPattern = useTestPattern();
   const prevDepsRef = useRef<{
@@ -220,6 +222,7 @@ export function useMirrorRenderLoop({
           frame!.data,
           frame!.width,
           frame!.height,
+          contentFit,
         );
         lastConversionTime = performance.now() - conversionStartTime;
       }
@@ -334,5 +337,6 @@ export function useMirrorRenderLoop({
     onMediaFps,
     mediaRevision,
     fileActive,
+    contentFit,
   ]);
 }

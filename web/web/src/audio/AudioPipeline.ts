@@ -31,10 +31,12 @@ export class AudioPipeline {
   private gain: GainNode | null = null;
   private outputGain: GainNode | null = null;
   private volume = 1;
+  private playbackEnabled = false;
 
   setVolume(value: number): void {
     this.volume = Math.min(1, Math.max(0, value));
-    if (this.outputGain) this.outputGain.gain.value = this.volume;
+    if (this.outputGain)
+      this.outputGain.gain.value = this.playbackEnabled ? this.volume : 0;
   }
   private codec: OpusEncoder | null = null;
   private playback: AudioWorkletNode | null = null;
@@ -70,10 +72,24 @@ export class AudioPipeline {
 
   constructor(private options: AudioPipelineOptions = {}) {}
   async enablePlayback(): Promise<void> {
+    await this.initializeAudio();
+    this.playbackEnabled = true;
+    this.setVolume(this.volume);
+  }
+  disablePlayback(): void {
+    this.playbackEnabled = false;
+    this.setVolume(this.volume);
+    for (const source of this.sources) source.stop();
+    this.sources.clear();
+    this.playback?.port.postMessage({ reset: true });
+    this.playAt = 0;
+    this.playbackLevel = 0;
+  }
+  private async initializeAudio(): Promise<void> {
     if (!this.context) this.context = new AudioContext({ sampleRate: 48000 });
     if (!this.outputGain) {
       this.outputGain = this.context.createGain();
-      this.outputGain.gain.value = this.volume;
+      this.outputGain.gain.value = this.playbackEnabled ? this.volume : 0;
       this.outputGain.connect(this.context.destination);
     }
     await this.context.resume();
@@ -115,7 +131,7 @@ export class AudioPipeline {
   }
   async startCapture(): Promise<void> {
     const generation = ++this.generation;
-    await this.enablePlayback();
+    await this.initializeAudio();
     const microphoneId = getMediaDevicePreferences().microphoneId;
     const stream = isTestMode()
       ? (() => {
@@ -277,7 +293,12 @@ export class AudioPipeline {
     await operation;
   }
   playPacket(type: number, payload: Uint8Array): void {
-    if (!this.context || !this.codec || this.context.state !== "running")
+    if (
+      !this.playbackEnabled ||
+      !this.context ||
+      !this.codec ||
+      this.context.state !== "running"
+    )
       return;
     const view = new DataView(
       payload.buffer,
@@ -403,6 +424,7 @@ export class AudioPipeline {
     this.pending = [];
   }
   close(): void {
+    this.playbackEnabled = false;
     this.stopCapture();
     for (const source of this.sources) source.stop();
     this.sources.clear();
