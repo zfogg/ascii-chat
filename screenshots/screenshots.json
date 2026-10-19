@@ -1,0 +1,2262 @@
+[
+  {
+    "id": "verified-docker-frames-scalar-pattern0",
+    "cases": [
+      {
+        "name": "scalar-pattern0-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "scalar-pattern0-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "scalar-pattern0-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 14
+      },
+      {
+        "name": "scalar-pattern0-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 305
+      },
+      {
+        "name": "scalar-pattern0-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "scalar-pattern0-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "scalar-pattern0-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 15
+      },
+      {
+        "name": "scalar-pattern0-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 305
+      },
+      {
+        "name": "scalar-pattern0-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "scalar-pattern0-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 19
+      },
+      {
+        "name": "scalar-pattern0-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 46
+      },
+      {
+        "name": "scalar-pattern0-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 475
+      }
+    ]
+  },
+  {
+    "id": "verified-docker-frames-scalar-pattern1",
+    "cases": [
+      {
+        "name": "scalar-pattern1-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "scalar-pattern1-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 9
+      },
+      {
+        "name": "scalar-pattern1-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 24
+      },
+      {
+        "name": "scalar-pattern1-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 51
+      },
+      {
+        "name": "scalar-pattern1-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "scalar-pattern1-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 9
+      },
+      {
+        "name": "scalar-pattern1-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 27
+      },
+      {
+        "name": "scalar-pattern1-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 51
+      },
+      {
+        "name": "scalar-pattern1-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "scalar-pattern1-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 29
+      },
+      {
+        "name": "scalar-pattern1-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 67
+      },
+      {
+        "name": "scalar-pattern1-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 103
+      }
+    ]
+  },
+  {
+    "id": "verified-docker-frames-sse2-pattern0",
+    "cases": [
+      {
+        "name": "sse2-pattern0-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sse2-pattern0-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "sse2-pattern0-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 14
+      },
+      {
+        "name": "sse2-pattern0-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 303
+      },
+      {
+        "name": "sse2-pattern0-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sse2-pattern0-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "sse2-pattern0-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 15
+      },
+      {
+        "name": "sse2-pattern0-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 305
+      },
+      {
+        "name": "sse2-pattern0-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sse2-pattern0-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 19
+      },
+      {
+        "name": "sse2-pattern0-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 46
+      },
+      {
+        "name": "sse2-pattern0-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 474
+      }
+    ]
+  },
+  {
+    "id": "verified-docker-frames-sse2-pattern1",
+    "cases": [
+      {
+        "name": "sse2-pattern1-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sse2-pattern1-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 9
+      },
+      {
+        "name": "sse2-pattern1-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 24
+      },
+      {
+        "name": "sse2-pattern1-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 51
+      },
+      {
+        "name": "sse2-pattern1-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sse2-pattern1-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 9
+      },
+      {
+        "name": "sse2-pattern1-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 27
+      },
+      {
+        "name": "sse2-pattern1-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 49
+      },
+      {
+        "name": "sse2-pattern1-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sse2-pattern1-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 29
+      },
+      {
+        "name": "sse2-pattern1-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 67
+      },
+      {
+        "name": "sse2-pattern1-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 103
+      }
+    ]
+  },
+  {
+    "id": "verified-docker-frames-ssse3-pattern0",
+    "cases": [
+      {
+        "name": "ssse3-pattern0-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "ssse3-pattern0-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "ssse3-pattern0-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 14
+      },
+      {
+        "name": "ssse3-pattern0-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 357
+      },
+      {
+        "name": "ssse3-pattern0-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "ssse3-pattern0-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "ssse3-pattern0-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 15
+      },
+      {
+        "name": "ssse3-pattern0-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 305
+      },
+      {
+        "name": "ssse3-pattern0-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "ssse3-pattern0-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 19
+      },
+      {
+        "name": "ssse3-pattern0-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 46
+      },
+      {
+        "name": "ssse3-pattern0-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 475
+      }
+    ]
+  },
+  {
+    "id": "verified-docker-frames-ssse3-pattern1",
+    "cases": [
+      {
+        "name": "ssse3-pattern1-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "ssse3-pattern1-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 9
+      },
+      {
+        "name": "ssse3-pattern1-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 24
+      },
+      {
+        "name": "ssse3-pattern1-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 50
+      },
+      {
+        "name": "ssse3-pattern1-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "ssse3-pattern1-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 9
+      },
+      {
+        "name": "ssse3-pattern1-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 27
+      },
+      {
+        "name": "ssse3-pattern1-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 51
+      },
+      {
+        "name": "ssse3-pattern1-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "ssse3-pattern1-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 29
+      },
+      {
+        "name": "ssse3-pattern1-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 69
+      },
+      {
+        "name": "ssse3-pattern1-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 103
+      }
+    ]
+  },
+  {
+    "id": "verified-docker-frames-avx2-pattern0",
+    "cases": [
+      {
+        "name": "avx2-pattern0-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "avx2-pattern0-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "avx2-pattern0-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 14
+      },
+      {
+        "name": "avx2-pattern0-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 303
+      },
+      {
+        "name": "avx2-pattern0-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "avx2-pattern0-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "avx2-pattern0-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 16
+      },
+      {
+        "name": "avx2-pattern0-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 305
+      },
+      {
+        "name": "avx2-pattern0-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "avx2-pattern0-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 19
+      },
+      {
+        "name": "avx2-pattern0-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 46
+      },
+      {
+        "name": "avx2-pattern0-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 474
+      }
+    ]
+  },
+  {
+    "id": "verified-docker-frames-avx2-pattern1",
+    "cases": [
+      {
+        "name": "avx2-pattern1-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "avx2-pattern1-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 9
+      },
+      {
+        "name": "avx2-pattern1-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 24
+      },
+      {
+        "name": "avx2-pattern1-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 51
+      },
+      {
+        "name": "avx2-pattern1-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "avx2-pattern1-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 9
+      },
+      {
+        "name": "avx2-pattern1-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 27
+      },
+      {
+        "name": "avx2-pattern1-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 51
+      },
+      {
+        "name": "avx2-pattern1-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "avx2-pattern1-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 29
+      },
+      {
+        "name": "avx2-pattern1-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 69
+      },
+      {
+        "name": "avx2-pattern1-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 103
+      }
+    ]
+  },
+  {
+    "id": "verified-mac-frames-sse2-pattern0",
+    "cases": [
+      {
+        "name": "sse2-pattern0-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sse2-pattern0-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "sse2-pattern0-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 15
+      },
+      {
+        "name": "sse2-pattern0-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 368
+      },
+      {
+        "name": "sse2-pattern0-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sse2-pattern0-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "sse2-pattern0-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 22
+      },
+      {
+        "name": "sse2-pattern0-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 302
+      },
+      {
+        "name": "sse2-pattern0-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sse2-pattern0-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 17
+      },
+      {
+        "name": "sse2-pattern0-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 47
+      },
+      {
+        "name": "sse2-pattern0-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 472
+      }
+    ]
+  },
+  {
+    "id": "verified-mac-frames-sse2-pattern1",
+    "cases": [
+      {
+        "name": "sse2-pattern1-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sse2-pattern1-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 12
+      },
+      {
+        "name": "sse2-pattern1-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 37
+      },
+      {
+        "name": "sse2-pattern1-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 51
+      },
+      {
+        "name": "sse2-pattern1-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sse2-pattern1-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 12
+      },
+      {
+        "name": "sse2-pattern1-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 28
+      },
+      {
+        "name": "sse2-pattern1-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 53
+      },
+      {
+        "name": "sse2-pattern1-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sse2-pattern1-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 34
+      },
+      {
+        "name": "sse2-pattern1-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 95
+      },
+      {
+        "name": "sse2-pattern1-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 103
+      }
+    ]
+  },
+  {
+    "id": "verified-mac-frames-ssse3-pattern0",
+    "cases": [
+      {
+        "name": "ssse3-pattern0-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "ssse3-pattern0-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "ssse3-pattern0-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 20
+      },
+      {
+        "name": "ssse3-pattern0-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 303
+      },
+      {
+        "name": "ssse3-pattern0-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "ssse3-pattern0-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "ssse3-pattern0-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 17
+      },
+      {
+        "name": "ssse3-pattern0-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 305
+      },
+      {
+        "name": "ssse3-pattern0-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "ssse3-pattern0-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 16
+      },
+      {
+        "name": "ssse3-pattern0-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 45
+      },
+      {
+        "name": "ssse3-pattern0-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 471
+      }
+    ]
+  },
+  {
+    "id": "verified-mac-frames-ssse3-pattern1",
+    "cases": [
+      {
+        "name": "ssse3-pattern1-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "ssse3-pattern1-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 12
+      },
+      {
+        "name": "ssse3-pattern1-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 38
+      },
+      {
+        "name": "ssse3-pattern1-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 51
+      },
+      {
+        "name": "ssse3-pattern1-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "ssse3-pattern1-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 12
+      },
+      {
+        "name": "ssse3-pattern1-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 38
+      },
+      {
+        "name": "ssse3-pattern1-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 50
+      },
+      {
+        "name": "ssse3-pattern1-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "ssse3-pattern1-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 37
+      },
+      {
+        "name": "ssse3-pattern1-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 89
+      },
+      {
+        "name": "ssse3-pattern1-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 102
+      }
+    ]
+  },
+  {
+    "id": "verified-mac-frames-avx2-pattern0",
+    "cases": [
+      {
+        "name": "avx2-pattern0-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "avx2-pattern0-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "avx2-pattern0-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 14
+      },
+      {
+        "name": "avx2-pattern0-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 303
+      },
+      {
+        "name": "avx2-pattern0-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "avx2-pattern0-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "avx2-pattern0-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 13
+      },
+      {
+        "name": "avx2-pattern0-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 302
+      },
+      {
+        "name": "avx2-pattern0-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "avx2-pattern0-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 19
+      },
+      {
+        "name": "avx2-pattern0-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 48
+      },
+      {
+        "name": "avx2-pattern0-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 472
+      }
+    ]
+  },
+  {
+    "id": "verified-mac-frames-avx2-pattern1",
+    "cases": [
+      {
+        "name": "avx2-pattern1-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "avx2-pattern1-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 9
+      },
+      {
+        "name": "avx2-pattern1-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 37
+      },
+      {
+        "name": "avx2-pattern1-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 48
+      },
+      {
+        "name": "avx2-pattern1-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "avx2-pattern1-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 12
+      },
+      {
+        "name": "avx2-pattern1-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 35
+      },
+      {
+        "name": "avx2-pattern1-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 49
+      },
+      {
+        "name": "avx2-pattern1-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "avx2-pattern1-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 35
+      },
+      {
+        "name": "avx2-pattern1-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 86
+      },
+      {
+        "name": "avx2-pattern1-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 100
+      }
+    ]
+  },
+  {
+    "id": "verified-pi-frames-scalar-pattern0",
+    "cases": [
+      {
+        "name": "scalar-pattern0-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "scalar-pattern0-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "scalar-pattern0-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 21
+      },
+      {
+        "name": "scalar-pattern0-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 294
+      },
+      {
+        "name": "scalar-pattern0-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "scalar-pattern0-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "scalar-pattern0-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 16
+      },
+      {
+        "name": "scalar-pattern0-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 302
+      },
+      {
+        "name": "scalar-pattern0-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "scalar-pattern0-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 18
+      },
+      {
+        "name": "scalar-pattern0-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 44
+      },
+      {
+        "name": "scalar-pattern0-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 476
+      }
+    ]
+  },
+  {
+    "id": "verified-pi-frames-scalar-pattern1",
+    "cases": [
+      {
+        "name": "scalar-pattern1-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "scalar-pattern1-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 12
+      },
+      {
+        "name": "scalar-pattern1-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 38
+      },
+      {
+        "name": "scalar-pattern1-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 47
+      },
+      {
+        "name": "scalar-pattern1-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "scalar-pattern1-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 11
+      },
+      {
+        "name": "scalar-pattern1-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 38
+      },
+      {
+        "name": "scalar-pattern1-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 55
+      },
+      {
+        "name": "scalar-pattern1-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "scalar-pattern1-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 33
+      },
+      {
+        "name": "scalar-pattern1-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 82
+      },
+      {
+        "name": "scalar-pattern1-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 105
+      }
+    ]
+  },
+  {
+    "id": "verified-pi-frames-neon-pattern0",
+    "cases": [
+      {
+        "name": "neon-pattern0-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "neon-pattern0-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "neon-pattern0-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 19
+      },
+      {
+        "name": "neon-pattern0-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 365
+      },
+      {
+        "name": "neon-pattern0-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "neon-pattern0-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "neon-pattern0-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 20
+      },
+      {
+        "name": "neon-pattern0-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 321
+      },
+      {
+        "name": "neon-pattern0-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "neon-pattern0-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 18
+      },
+      {
+        "name": "neon-pattern0-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 47
+      },
+      {
+        "name": "neon-pattern0-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 423
+      }
+    ]
+  },
+  {
+    "id": "verified-pi-frames-neon-pattern1",
+    "cases": [
+      {
+        "name": "neon-pattern1-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "neon-pattern1-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 11
+      },
+      {
+        "name": "neon-pattern1-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 38
+      },
+      {
+        "name": "neon-pattern1-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 46
+      },
+      {
+        "name": "neon-pattern1-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "neon-pattern1-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 12
+      },
+      {
+        "name": "neon-pattern1-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 25
+      },
+      {
+        "name": "neon-pattern1-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 54
+      },
+      {
+        "name": "neon-pattern1-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "neon-pattern1-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 30
+      },
+      {
+        "name": "neon-pattern1-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 85
+      },
+      {
+        "name": "neon-pattern1-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 99
+      }
+    ]
+  },
+  {
+    "id": "verified-sve-emulated-frames-sve-pattern0",
+    "cases": [
+      {
+        "name": "sve-pattern0-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sve-pattern0-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "sve-pattern0-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 18
+      },
+      {
+        "name": "sve-pattern0-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 378
+      },
+      {
+        "name": "sve-pattern0-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sve-pattern0-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 7
+      },
+      {
+        "name": "sve-pattern0-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 31
+      },
+      {
+        "name": "sve-pattern0-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 345
+      },
+      {
+        "name": "sve-pattern0-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sve-pattern0-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 15
+      },
+      {
+        "name": "sve-pattern0-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 47
+      },
+      {
+        "name": "sve-pattern0-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 539
+      }
+    ]
+  },
+  {
+    "id": "verified-sve-emulated-frames-sve-pattern1",
+    "cases": [
+      {
+        "name": "sve-pattern1-foreground-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sve-pattern1-foreground-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 12
+      },
+      {
+        "name": "sve-pattern1-foreground-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 25
+      },
+      {
+        "name": "sve-pattern1-foreground-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 4800,
+        "colorPairs": 43
+      },
+      {
+        "name": "sve-pattern1-background-mono",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sve-pattern1-background-16",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 8
+      },
+      {
+        "name": "sve-pattern1-background-256",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 31
+      },
+      {
+        "name": "sve-pattern1-background-truecolor",
+        "exit": 0,
+        "ink": 4605,
+        "replacement": 0,
+        "bgPainted": 4800,
+        "fgPainted": 4800,
+        "colorPairs": 37
+      },
+      {
+        "name": "sve-pattern1-half-block-mono",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 0,
+        "fgPainted": 0,
+        "colorPairs": 1
+      },
+      {
+        "name": "sve-pattern1-half-block-16",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 27
+      },
+      {
+        "name": "sve-pattern1-half-block-256",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 64
+      },
+      {
+        "name": "sve-pattern1-half-block-truecolor",
+        "exit": 0,
+        "ink": 4626,
+        "replacement": 0,
+        "bgPainted": 4626,
+        "fgPainted": 4626,
+        "colorPairs": 80
+      }
+    ]
+  }
+]

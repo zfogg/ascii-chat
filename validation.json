@@ -1,0 +1,10 @@
+{
+  "source_sha": "a9ad621303cc8140979b78a4b5ce4ad25c6df22d",
+  "cases": 240,
+  "screenshots": 20,
+  "exit_failures": 0,
+  "renderer_errors": 0,
+  "replacement_characters": 0,
+  "geometry": "120x40",
+  "visual_review": "All 20 matrices reviewed: gradient/square, rainbow/circle, readable test label, expected color modes and half blocks."
+}

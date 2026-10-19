@@ -1,0 +1,7 @@
+Darwin ZachBook-Pro 25.6.0 Darwin Kernel Version 25.6.0: Tue Aug 18 17:46:40 PDT 2026; root:xnu-12377.161.15.700.19~2/RELEASE_X86_64 x86_64 i386 Darwin
+Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
+Homebrew clang version 23.1.2
+a9ad621303cc8140979b78a4b5ce4ad25c6df22d
+selected=sse2 cpu_features=0x27
+selected=ssse3 cpu_features=0x27
+selected=avx2 cpu_features=0x27

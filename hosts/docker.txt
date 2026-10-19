@@ -1,0 +1,8 @@
+Linux fecce3ee0006 5.15.167.4-microsoft-standard-WSL2 #1 SMP Tue Nov 5 00:21:55 UTC 2024 x86_64 GNU/Linux
+clang version 23.1.1
+model name	: AMD Ryzen 7 5800X 8-Core Processor
+a9ad621303cc8140979b78a4b5ce4ad25c6df22d
+selected=scalar cpu_features=0x27
+selected=sse2 cpu_features=0x27
+selected=ssse3 cpu_features=0x27
+selected=avx2 cpu_features=0x27

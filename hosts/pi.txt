@@ -1,0 +1,29 @@
+Linux pi5 6.18.53-1-rpi #1 SMP PREEMPT Thu Sep 24 15:16:33 UTC 2026 aarch64 GNU/Linux
+Architecture:                            aarch64
+CPU op-mode(s):                          32-bit, 64-bit
+Byte Order:                              Little Endian
+CPU(s):                                  4
+On-line CPU(s) list:                     0-3
+Vendor ID:                               ARM
+Model name:                              Cortex-A76
+Model:                                   1
+Thread(s) per core:                      1
+Core(s) per cluster:                     4
+Socket(s):                               -
+Cluster(s):                              1
+Stepping:                                r4p1
+Frequency boost:                         disabled
+CPU(s) scaling MHz:                      100%
+CPU max MHz:                             2400.0000
+CPU min MHz:                             1500.0000
+BogoMIPS:                                108.00
+Flags:                                   fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm lrcpc dcpop asimddp
+L1d cache:                               256 KiB (4 instances)
+L1i cache:                               256 KiB (4 instances)
+L2 cache:                                2 MiB (4 instances)
+L3 cache:                                2 MiB (1 instance)
+NUMA node(s):                            1
+clang version 22.1.8
+a9ad621303cc8140979b78a4b5ce4ad25c6df22d
+selected=neon cpu_features=0x28
+selected=sve cpu_features=0x38 sve_vector_bytes=64
