@@ -58,6 +58,9 @@ export function useMirrorWebcam({
   const devAutoStartRef = useRef(false);
   const startGenerationRef = useRef(0);
   const permissionGranted = true;
+  const audioOnly =
+    !!settings.animationEnabled &&
+    (settings.animation === "waveform" || settings.animation === "fft");
 
   const startWebcam = useCallback(async () => {
     const generation = ++startGenerationRef.current;
@@ -163,14 +166,16 @@ export function useMirrorWebcam({
       console.log("[Mirror] Calling getUserMedia...");
       const devicePreferences = getMediaDevicePreferences();
       const mediaConstraints: MediaStreamConstraints = {
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: "user",
-          ...(devicePreferences.cameraId
-            ? { deviceId: { exact: devicePreferences.cameraId } }
-            : {}),
-        },
+        video: audioOnly
+          ? false
+          : {
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+              facingMode: "user",
+              ...(devicePreferences.cameraId
+                ? { deviceId: { exact: devicePreferences.cameraId } }
+                : {}),
+            },
         // Keep the microphone track available so waveform/FFT can be enabled
         // after the camera has started, without requiring a reconnect.
         audio: devicePreferences.microphoneId
@@ -188,11 +193,13 @@ export function useMirrorWebcam({
           error,
         );
         stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-            facingMode: "user",
-          },
+          video: audioOnly
+            ? false
+            : {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: "user",
+              },
           audio: true,
         });
       }
@@ -208,7 +215,18 @@ export function useMirrorWebcam({
         }ms from button click`,
       );
 
+      streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = stream;
+      if (audioOnly) {
+        console.info(
+          `[Mirror] Audio visualization started: ${stream.getVideoTracks().length} camera tracks, ${stream.getAudioTracks().length} microphone tracks`,
+        );
+        videoRef.current.srcObject = null;
+        lastFrameTimeRef.current = performance.now();
+        setIsWebcamRunning(true);
+        setMediaSource(MediaSourceType.WEBCAM);
+        return true;
+      }
       const video = videoRef.current;
       console.time("[Mirror] loadedmetadata");
       const metadataReady =
@@ -241,6 +259,7 @@ export function useMirrorWebcam({
       return false;
     }
   }, [
+    audioOnly,
     testPattern.enabled,
     settings,
     videoRef,
@@ -249,6 +268,93 @@ export function useMirrorWebcam({
     lastFrameTimeRef,
     setIsWebcamRunning,
     setMediaSource,
+    setError,
+  ]);
+
+  // Keep the microphone stream alive while releasing the camera hardware.
+  // Reacquisition belongs to this effect so a late permission result cannot
+  // resurrect the camera after Stop, a media switch, or another mode change.
+  useEffect(() => {
+    const stream = streamRef.current;
+    if (
+      !isWebcamRunning ||
+      mediaSource !== MediaSourceType.WEBCAM ||
+      !stream ||
+      testPattern.enabled
+    )
+      return;
+    if (audioOnly) {
+      for (const track of stream.getVideoTracks()) {
+        track.stop();
+        stream.removeTrack(track);
+      }
+      console.info(
+        `[Mirror] Camera released for audio visualization; ${stream.getAudioTracks().length} microphone tracks retained`,
+      );
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.srcObject = null;
+      }
+      return;
+    }
+    if (stream.getVideoTracks().some((track) => track.readyState === "live"))
+      return;
+    let cancelled = false;
+    const restore = async () => {
+      let camera: MediaStream | undefined;
+      try {
+        const cameraId = getMediaDevicePreferences().cameraId;
+        const video = {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user",
+        };
+        try {
+          camera = await navigator.mediaDevices.getUserMedia({
+            video: {
+              ...video,
+              ...(cameraId ? { deviceId: { exact: cameraId } } : {}),
+            },
+            audio: false,
+          });
+        } catch (error) {
+          if (!cameraId || cancelled) throw error;
+          camera = await navigator.mediaDevices.getUserMedia({
+            video,
+            audio: false,
+          });
+        }
+        if (cancelled || streamRef.current !== stream) {
+          camera.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        camera.getVideoTracks().forEach((track) => stream.addTrack(track));
+        console.info(
+          `[Mirror] Camera restored: ${stream.getVideoTracks().length} video tracks, ${stream.getAudioTracks().length} microphone tracks`,
+        );
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+      } catch (error) {
+        camera?.getTracks().forEach((track) => {
+          track.stop();
+          stream.removeTrack(track);
+        });
+        if (!cancelled) setError(`Failed to restore webcam: ${String(error)}`);
+      }
+    };
+    void restore();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    audioOnly,
+    isWebcamRunning,
+    mediaSource,
+    streamRef,
+    videoRef,
+    testPattern.enabled,
     setError,
   ]);
 

@@ -173,10 +173,12 @@ export function useMirrorRenderLoop({
                 terminalDimensions.rows,
                 { source: "microphone", mode: animation },
               )
-            : "";
-        // Files and still images have no microphone stream. Keep rendering
-        // their pixels when no audio analyser is available.
-        if (!testMode && !analyser) frame = captureFrame();
+            : renderAudioVisualizationFrame(
+                audioSamples,
+                terminalDimensions.cols,
+                terminalDimensions.rows,
+                { source: "microphone", mode: animation },
+              );
       } else if (testMode) {
         // Generate synthetic test frame
         const canvas = canvasRef.current;
@@ -200,6 +202,19 @@ export function useMirrorRenderLoop({
         frame = captureFrame();
       }
 
+      if (
+        !asciiArt &&
+        !frame &&
+        animationEnabled &&
+        animation === "matrix" &&
+        !fileActive
+      ) {
+        // Neutral pixels let the existing C rain effect run before the first
+        // camera frame. Replace them with live capture as soon as it is ready.
+        const data = new Uint8Array(32 * 32 * 4).fill(160);
+        for (let i = 3; i < data.length; i += 4) data[i] = 255;
+        frame = { data, width: 32, height: 32 };
+      }
       if (!asciiArt && !frame) {
         return;
       }
@@ -238,8 +253,12 @@ export function useMirrorRenderLoop({
       win["__lastAnsiFrameCount"] =
         ((win["__lastAnsiFrameCount"] as number) || 0) + 1;
 
-      if (rendererRef.current!.writeFrame(asciiArt) && mediaVideo)
-        presented.push(performance.now());
+      const painted = rendererRef.current!.writeFrame(asciiArt);
+      if (painted && debugCountRef.current === 0)
+        console.debug(
+          `[Mirror] First content frame at ${performance.now().toFixed(1)}ms`,
+        );
+      if (painted && mediaVideo) presented.push(performance.now());
 
       debugCountRef.current++;
     };

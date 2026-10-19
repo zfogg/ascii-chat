@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
-import { useInitializeWasm } from "../hooks";
+import { useInitializeWasm } from "../hooks/useInitializeWasm";
 
 interface LayoutProps {
   children: ReactNode;

@@ -971,6 +971,9 @@ export function ClientPage({
     }
   }, [audioEnabled, connectionState, discovery, clientRef, micEnabled]);
 
+  const audioVisualization =
+    !!settings.animationEnabled &&
+    (settings.animation === "waveform" || settings.animation === "fft");
   const webcamAutoStartedRef = useRef(false);
   useEffect(() => {
     if (connectionState !== ConnectionState.CONNECTED) {
@@ -978,12 +981,24 @@ export function ClientPage({
       setWebcamDisabledByUser(false);
       return;
     }
+    if (audioVisualization) {
+      if (webcamAutoStartedRef.current || isWebcamRunning) stopWebcam();
+      webcamAutoStartedRef.current = false;
+      return;
+    }
     if (!webcamDisabledByUser && !webcamAutoStartedRef.current) {
       webcamAutoStartedRef.current = true;
       console.log("[Client] Connected and ready, auto-starting webcam...");
       void startWebcam();
     }
-  }, [connectionState, isWebcamRunning, startWebcam, webcamDisabledByUser]);
+  }, [
+    connectionState,
+    isWebcamRunning,
+    startWebcam,
+    stopWebcam,
+    webcamDisabledByUser,
+    audioVisualization,
+  ]);
 
   const disableWebcam = useCallback(() => {
     setWebcamDisabledByUser(true);
@@ -992,8 +1007,8 @@ export function ClientPage({
 
   const enableWebcam = useCallback(() => {
     setWebcamDisabledByUser(false);
-    void startWebcam();
-  }, [startWebcam]);
+    if (!audioVisualization) void startWebcam();
+  }, [startWebcam, audioVisualization]);
 
   const getStatusDotColor = () => {
     switch (connectionState) {

@@ -1,4 +1,4 @@
-import { Footer as SharedFooter } from "@ascii-chat/shared/components";
+import { Footer as SharedFooter } from "@ascii-chat/shared/components/Footer";
 import { SITES } from "@ascii-chat/shared/utils";
 
 export function Footer() {

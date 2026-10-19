@@ -204,6 +204,7 @@ export async function initMirrorWasm(
       asciiChatWasm: AsciiChatWasmExports;
     };
     globalWindow.asciiChatWasm = {
+      get_help_text: wasmModule._get_help_text.bind(wasmModule),
       _wasmModule: wasmModule,
     };
   } catch (err) {

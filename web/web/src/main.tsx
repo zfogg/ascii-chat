@@ -1,6 +1,7 @@
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { ErrorBoundary, HeadingProvider } from "@ascii-chat/shared/components";
+import ErrorBoundary from "@ascii-chat/shared/components/ErrorBoundary";
+import { HeadingProvider } from "@ascii-chat/shared/components/Heading";
 import { App } from "./App";
 import "./style.css";
 

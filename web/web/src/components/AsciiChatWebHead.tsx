@@ -1,4 +1,5 @@
-import { Head, HeadProps } from "@ascii-chat/shared/components";
+import { Head } from "@ascii-chat/shared/components/Head";
+import { HeadProps } from "@ascii-chat/shared/components/Head";
 import { SITES } from "@ascii-chat/shared/utils";
 
 type AsciiChatWebHeadProps = Partial<HeadProps> & {
