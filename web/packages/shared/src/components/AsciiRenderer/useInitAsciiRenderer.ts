@@ -9,6 +9,7 @@ import {
   getMatrixRain,
   getPalette,
   getTargetFps,
+  setMatrixRain,
 } from "../../wasm";
 import {
   wasmColorModeToString,
@@ -63,6 +64,9 @@ export function useInitAsciiRenderer({
     requestedGridRef.current = { columns, rows };
   }, [columns, rows]);
   const currentMatrixModeRef = useRef<boolean>(false);
+  const cellMetricsRef = useRef(
+    new Map<string, { width: number; height: number }>(),
+  );
 
   // Rebuild and apply args with current settings from WASM state
   const reinitializeWithCurrentSettings = useCallback(() => {
@@ -217,30 +221,66 @@ export function useInitAsciiRenderer({
           throw new Error("_malloc returned null for config struct");
         }
 
-        // Estimate cols/rows from container size
-        // Rough estimate: 10px wide, 20px tall per cell (for normal fonts)
-        // For matrix fonts: cell height is typically 32px (2x width) due to aspect ratio correction
-        // BUT: cap container dimensions to prevent cascading resize loops
+        // Measure the selected font through the same renderer that paints frames.
+        // Guessing a taller Matrix cell produces too few rows and letterboxes
+        // the entire raster when the canvas uses object-fit: contain.
+        // URL settings can reach this hook before the options effect runs.
+        // Select the font before reading its data or measuring its cells.
+        setMatrixRain(isMatrixMode);
+        const metricKey = `${isMatrixMode}:${moduleRef.current._get_font_default_ptr()}:${moduleRef.current._get_font_default_size()}`;
+        let cell = cellMetricsRef.current.get(metricKey);
+        if (!cell) {
+          writeConfigStructFields(configPtr, 1, 1, isMatrixMode);
+          const outPtr = moduleRef.current._malloc(4);
+          if (!outPtr) {
+            moduleRef.current._free(configPtr);
+            throw new Error("Cannot allocate font measurement output");
+          }
+          let probe = 0;
+          try {
+            const result = moduleRef.current._term_renderer_create(
+              configPtr,
+              outPtr,
+            );
+            if (result !== 0)
+              throw new Error(`Cannot measure renderer font: ${result}`);
+            probe = new DataView(
+              moduleRef.current.HEAPU8.buffer,
+              outPtr,
+              4,
+            ).getUint32(0, true);
+            cell = {
+              width: moduleRef.current._term_renderer_width_px(probe),
+              height: moduleRef.current._term_renderer_height_px(probe),
+            };
+            if (cell.width <= 0 || cell.height <= 0)
+              throw new Error("Renderer font has invalid cell dimensions");
+            cellMetricsRef.current.set(metricKey, cell);
+          } catch (error) {
+            moduleRef.current._free(configPtr);
+            throw error;
+          } finally {
+            if (probe) moduleRef.current._term_renderer_destroy(probe);
+            moduleRef.current._free(outPtr);
+          }
+        }
+
         const maxContainerHeight = 2000;
         const effectiveHeight = Math.min(containerHeight, maxContainerHeight);
         const requested = requestedGridRef.current;
+        // Match UI_MEDIA_MIN_COLS/ROWS in the C option registry. A rejected
+        // dimension leaves the converter on its previous grid and clips frames.
         const estimatedCols =
           requested.columns > 0
-            ? Math.min(400, Math.max(1, Math.floor(requested.columns)))
-            : Math.max(1, Math.floor(containerWidth / 10));
+            ? Math.min(400, Math.max(20, Math.floor(requested.columns)))
+            : Math.max(20, Math.floor(containerWidth / cell.width));
 
-        // Use larger pixel-per-row estimate for matrix mode (32px) vs normal mode (20px)
-        const pixelsPerRow = isMatrixMode ? 32 : 20;
         const estimatedRows =
           requested.rows > 0
-            ? Math.min(150, Math.max(1, Math.floor(requested.rows)))
-            : Math.max(1, Math.floor(effectiveHeight / pixelsPerRow));
+            ? Math.min(150, Math.max(10, Math.floor(requested.rows)))
+            : Math.max(10, Math.floor(effectiveHeight / cell.height));
 
         // Sanity check: ensure grid dimensions are reasonable
-        // With capped container height of 2000px:
-        //   - Normal fonts: 2000px / 20px per row = max 100 rows
-        //   - Matrix fonts: 2000px / 32px per row = max 62 rows
-        // Cols are typically 80-256 depending on window width
         const maxReasonableCols = 400;
         const maxReasonableRows = 150;
 

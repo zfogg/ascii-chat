@@ -1,5 +1,125 @@
 import { expect, test, type Page } from "@playwright/test";
 
+test("automatic grid fills the canvas when toggling Matrix animation", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/mirror?test&playing=true&settings=true", {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true }),
+  ).toBeVisible();
+
+  let matrix = false;
+  const expectFullRaster = async () => {
+    await expect
+      .poll(() =>
+        page
+          .locator("canvas.ascii-canvas")
+          .evaluate((element, matrixEnabled) => {
+            const canvas = element as HTMLCanvasElement;
+            const pixels = canvas
+              .getContext("2d")!
+              .getImageData(0, 0, canvas.width, canvas.height).data;
+            let lit = 0;
+            let colored = 0;
+            for (let i = 0; i < pixels.length; i += 4) {
+              if (pixels[i + 1]! > 12) lit++;
+              if (
+                pixels[i]! > 12 ||
+                pixels[i + 2]! > pixels[i + 1]! * (80 / 255) + 3
+              )
+                colored++;
+            }
+            if (lit < 20 || (matrixEnabled && colored > 0)) return 0;
+            const rect = canvas.getBoundingClientRect();
+            const scale = Math.min(
+              rect.width / canvas.width,
+              rect.height / canvas.height,
+            );
+            // Rounding to whole cells can leave less than one cell of unused space.
+            // The old Matrix estimate left about a third of the viewport empty.
+            return Math.min(
+              (canvas.width * scale) / rect.width,
+              (canvas.height * scale) / rect.height,
+            );
+          }, matrix),
+      )
+      .toBeGreaterThan(0.94);
+  };
+
+  await expectFullRaster();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    matrix = true;
+    await page.getByRole("button", { name: "Animation", exact: true }).click();
+    await expect(page).toHaveURL(/matrixRain=true/);
+    await expectFullRaster();
+    await page.setViewportSize({
+      width: 1100 + attempt * 180,
+      height: 800 + attempt * 100,
+    });
+    await expectFullRaster();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await expectFullRaster();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await expectFullRaster();
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(
+      page.getByRole("button", { name: "Stop", exact: true }),
+    ).toBeVisible();
+    await expectFullRaster();
+    if (attempt === 1)
+      await page.screenshot({
+        path: testInfo.outputPath("matrix-full-canvas.png"),
+      });
+    await page
+      .getByRole("button", { name: "🟢 Animation", exact: true })
+      .click();
+    matrix = false;
+    await expectFullRaster();
+  }
+});
+
+test("Matrix renders its first row in a compact window after direct load", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1270, height: 705 });
+  const errors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  await page.goto(
+    "/mirror?test2&playing=true&settings=true&animationEnabled=true&matrixRain=true",
+  );
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.locator("canvas.ascii-canvas").evaluate((element) => {
+        const canvas = element as HTMLCanvasElement;
+        const pixels = canvas
+          .getContext("2d")!
+          .getImageData(0, 0, canvas.width, canvas.height).data;
+        for (let y = 0; y < canvas.height; y++) {
+          let green = 0;
+          for (let x = 0; x < canvas.width; x++) {
+            const i = (y * canvas.width + x) * 4;
+            if (pixels[i + 1]! > 12 && pixels[i]! < 12) green++;
+          }
+          if (green > 20) return y / canvas.height;
+        }
+        return 1;
+      }),
+    )
+    .toBeLessThan(0.1);
+  expect(
+    errors.filter((message) => /dimensions|height|width/.test(message)),
+  ).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("compact-matrix.png") });
+});
+
 async function canvasState(page: Page) {
   return page.locator("canvas.ascii-canvas").evaluate((element) => {
     const canvas = element as HTMLCanvasElement;
