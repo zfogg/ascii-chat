@@ -171,6 +171,7 @@ endif()
 # MUST be after project() when languages are enabled
 message(STATUS "DEBUG IPO setup: USE_MUSL=${USE_MUSL}")
 include(CheckIPOSupported)
+set(ASCIICHAT_ENABLE_IPO FALSE CACHE INTERNAL "IPO is enabled only for supported project configurations" FORCE)
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     # Musl builds disable LTO to prevent TPOFF32 relocations. macOS also
     # needs a working LLD linker for ThinLTO.
@@ -178,8 +179,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
         check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
         if(IPO_SUPPORTED)
             set(ASCIICHAT_ENABLE_IPO TRUE CACHE INTERNAL "Enable IPO for release builds" FORCE)
-            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
-            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
             message(STATUS "Interprocedural optimization ${BoldGreen}enabled${ColorReset} for ${CMAKE_BUILD_TYPE} builds")
         else()
             message(STATUS "Interprocedural optimization ${BoldYellow}disabled${ColorReset}: ${IPO_ERROR}")

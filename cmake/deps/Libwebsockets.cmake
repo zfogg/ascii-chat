@@ -12,7 +12,9 @@ if((WIN32 OR ASCIICHAT_SHARED_DEPS) AND NOT ASCIICHAT_BUILD_DEPS_FROM_SOURCE AND
         endif()
     endif()
     message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets found (installed package)")
-    add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
+    if(TARGET asciichat-project-options)
+        target_compile_definitions(asciichat-project-options INTERFACE HAVE_LIBWEBSOCKETS=1)
+    endif()
 
     # Prefer the shared target when the package exports both static and shared
     # variants. Linking the static target into libasciichat can fail when the
@@ -97,4 +99,6 @@ function(asciichat_build_libwebsockets)
 endfunction()
 asciichat_build_libwebsockets()
 set(LIBWEBSOCKETS_FOUND TRUE)
-add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
+if(TARGET asciichat-project-options)
+    target_compile_definitions(asciichat-project-options INTERFACE HAVE_LIBWEBSOCKETS=1)
+endif()

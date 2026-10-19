@@ -34,6 +34,10 @@ function(asciichat_apply_project_settings directory)
             endforeach()
         endif()
         if(_owned)
+            if(ASCIICHAT_ENABLE_IPO)
+                set_property(TARGET "${_target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+                set_property(TARGET "${_target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
+            endif()
             # LINK_LIBRARIES is private and also supports older plain signatures.
             set_property(TARGET "${_target}" APPEND PROPERTY LINK_LIBRARIES
                 asciichat-project-options asciichat-project-includes)
