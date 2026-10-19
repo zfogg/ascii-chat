@@ -3,10 +3,10 @@ import { afterEach, expect, it, vi } from "vite-plus/test";
 import {
   setFastExposure,
   supportsFastExposure,
-} from "../../src/utils/cameraExposure";
+} from "@ascii-chat/shared/devices/cameraExposure";
 import { useCameraExposure } from "../../src/hooks/useCameraExposure";
 
-vi.mock("../../src/utils/cameraExposure", () => ({
+vi.mock("@ascii-chat/shared/devices/cameraExposure", () => ({
   supportsFastExposure: vi.fn(() => true),
   setFastExposure: vi.fn(async () => {}),
 }));
