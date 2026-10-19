@@ -1,3 +1,4 @@
+import { applyAudioOutputDevice } from "@ascii-chat/shared/devices/mediaDevicePreferences";
 import React from "react";
 import {
   getMediaDevicePreferences,
@@ -22,13 +23,9 @@ export function PageLayout({
   React.useEffect(() => {
     const applySpeaker = () => {
       const speakerId = getMediaDevicePreferences().speakerId;
-      const video = videoRef.current as
-        | (HTMLVideoElement & {
-            setSinkId?: (deviceId: string) => Promise<void>;
-          })
-        | null;
-      if (!video?.setSinkId || !speakerId) return;
-      void video.setSinkId(speakerId).catch((error: unknown) => {
+      const video = videoRef.current;
+      if (!video) return;
+      void applyAudioOutputDevice(video, speakerId).catch((error: unknown) => {
         console.warn(
           "Unable to route video audio to the selected speaker:",
           error,
