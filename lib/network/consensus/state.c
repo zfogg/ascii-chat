@@ -4,6 +4,7 @@
  */
 
 #include <ascii-chat/network/consensus/state.h>
+#include <ascii-chat/network/consensus/election.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -34,18 +35,6 @@ typedef struct consensus_state {
   /* Election result */
   election_result_t election_result; /**< Last election result */
 } consensus_state_t;
-
-/* Static helper: compute score from metrics (lower is better) */
-static double compute_metric_score(const participant_metrics_t *m) {
-  /* Simple score: prioritize low RTT, then high bandwidth
-   * Score = RTT_ns / 1000 + (max_bandwidth - upload_kbps) / 1000
-   * Lower RTT = lower score
-   * Higher bandwidth = lower score
-   */
-  double rtt_score = m->rtt_ns / 1000.0; // Convert ns to µs for reasonable scale
-  double bandwidth_penalty = (1000000.0 - m->upload_kbps) / 1000.0;
-  return rtt_score + bandwidth_penalty;
-}
 
 asciichat_error_t consensus_state_create(const uint8_t my_id[16], const consensus_topology_t *topology,
                                          consensus_state_t **out_state) {
@@ -150,46 +139,24 @@ asciichat_error_t consensus_state_compute_election(consensus_state_t *state) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid transition from state %d", state->current_state);
   }
 
-  if (state->metrics_count < 2) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Need at least 2 metrics for election, have %d", state->metrics_count);
-  }
+  int best_idx = -1, backup_idx = -1;
+  asciichat_error_t result =
+      consensus_election_choose_hosts(state->metrics, state->metrics_count, &best_idx, &backup_idx);
+  if (result != ASCIICHAT_OK)
+    return result;
+  return consensus_state_store_election(state, best_idx, backup_idx);
+}
 
-  /* Find best and second-best metrics */
-  int best_idx = 0;
-  int backup_idx = 1;
-
-  double best_score = compute_metric_score(&state->metrics[0]);
-  double backup_score = compute_metric_score(&state->metrics[1]);
-
-  /* Ensure best_idx has lower score */
-  if (best_score > backup_score) {
-    int tmp = best_idx;
-    best_idx = backup_idx;
-    backup_idx = tmp;
-    double tmp_score = best_score;
-    best_score = backup_score;
-    backup_score = tmp_score;
-  }
-
-  /* Find best and second-best */
-  for (int i = 2; i < state->metrics_count; i++) {
-    double score = compute_metric_score(&state->metrics[i]);
-    if (score < best_score) {
-      backup_idx = best_idx;
-      backup_score = best_score;
-      best_idx = i;
-      best_score = score;
-    } else if (score < backup_score) {
-      backup_idx = i;
-      backup_score = score;
-    }
-  }
-
-  /* Store election result */
+asciichat_error_t consensus_state_store_election(consensus_state_t *state, int best_idx, int backup_idx) {
+  if (!state || state->current_state != CONSENSUS_STATE_ELECTION_START || best_idx < 0 ||
+      best_idx >= state->metrics_count || backup_idx < -1 || backup_idx >= state->metrics_count ||
+      backup_idx == best_idx)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid election result");
   memcpy(state->election_result.host_id, state->metrics[best_idx].participant_id, 16);
-  memcpy(state->election_result.backup_id, state->metrics[backup_idx].participant_id, 16);
+  memset(state->election_result.backup_id, 0, 16);
+  if (backup_idx >= 0)
+    memcpy(state->election_result.backup_id, state->metrics[backup_idx].participant_id, 16);
   state->election_result.timestamp_ns = time_get_realtime_ns();
-
   state->current_state = CONSENSUS_STATE_ELECTION_COMPLETE;
   return ASCIICHAT_OK;
 }

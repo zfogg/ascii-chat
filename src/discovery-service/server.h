@@ -1,4 +1,5 @@
 #pragma once
+#include <ascii-chat/network/consensus/handoff.h>
 #include <ascii-chat/platform/event.h>
 
 void acds_event_accept(platform_event_stream_t *, void *);
@@ -38,7 +39,7 @@ void acds_event_accept(platform_event_stream_t *, void *);
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/crypto/handshake/common.h>
 #include "discovery-service/main.h"
-#include <ascii-chat/discovery/session.h> // For host_lost_candidate_t and MAX_PARTICIPANTS
+#include <ascii-chat/discovery/session.h> // For host_lost_candidate_t and participant storage
 
 /**
  * @brief Per-client connection data
@@ -117,6 +118,9 @@ typedef struct {
  */
 typedef struct {
   tcp_server_t *tcp_server; ///< TCP server (owned by server_like)
+  mutex_t handoff_mutex;
+  consensus_handoff_t handoffs[32];
+  bool handoff_used[32];
 
   // Identity
   uint8_t identity_public[32]; ///< Ed25519 public key

@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 uint32_t consensus_election_compute_score(const participant_metrics_t *metrics) {
-  if (!metrics)
+  if (!metrics || metrics->nat_tier > 4 || metrics->stun_probe_success_pct > 100)
     return 0;
 
   // NAT tier: 0=LAN (best), 4=TURN (worst)
@@ -36,18 +36,29 @@ uint32_t consensus_election_compute_score(const participant_metrics_t *metrics) 
 }
 
 // Helper: find index of best and second-best
-static void find_best_two(const uint32_t *scores, int count, int *best, int *second) {
+static bool ranks_before(const participant_metrics_t *metrics, const uint32_t *scores, int a, int b) {
+  if (scores[a] != scores[b])
+    return scores[a] > scores[b];
+  if (metrics[a].nat_tier != metrics[b].nat_tier)
+    return metrics[a].nat_tier < metrics[b].nat_tier;
+  if (metrics[a].upload_kbps != metrics[b].upload_kbps)
+    return metrics[a].upload_kbps > metrics[b].upload_kbps;
+  return memcmp(metrics[a].participant_id, metrics[b].participant_id, 16) < 0;
+}
+
+static void find_best_two(const participant_metrics_t *metrics, const uint32_t *scores, int count, int *best,
+                          int *second) {
   *best = 0;
   *second = 1;
 
   // Handle 1-participant case (shouldn't happen, but be safe)
   if (count < 2) {
-    *second = 0;
+    *second = -1;
     return;
   }
 
   // Swap if second is better than first
-  if (scores[1] > scores[0]) {
+  if (ranks_before(metrics, scores, 1, 0)) {
     int tmp = *best;
     *best = *second;
     *second = tmp;
@@ -55,10 +66,10 @@ static void find_best_two(const uint32_t *scores, int count, int *best, int *sec
 
   // Find best and second-best
   for (int i = 2; i < count; i++) {
-    if (scores[i] > scores[*best]) {
+    if (ranks_before(metrics, scores, i, *best)) {
       *second = *best;
       *best = i;
-    } else if (scores[i] > scores[*second]) {
+    } else if (ranks_before(metrics, scores, i, *second)) {
       *second = i;
     }
   }
@@ -70,6 +81,14 @@ asciichat_error_t consensus_election_choose_hosts(const participant_metrics_t *m
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid election parameters");
   }
 
+  for (int i = 0; i < num_metrics; ++i) {
+    if (metrics[i].nat_tier > 4 || metrics[i].stun_probe_success_pct > 100)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Malformed participant metrics");
+    for (int j = 0; j < i; ++j)
+      if (!memcmp(metrics[i].participant_id, metrics[j].participant_id, 16))
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Duplicate election participant");
+  }
+
   // Compute scores for all participants
   uint32_t *scores = SAFE_MALLOC(sizeof(uint32_t) * num_metrics, uint32_t *);
 
@@ -78,7 +97,7 @@ asciichat_error_t consensus_election_choose_hosts(const participant_metrics_t *m
   }
 
   // Find best and second-best
-  find_best_two(scores, num_metrics, out_best_index, out_backup_index);
+  find_best_two(metrics, scores, num_metrics, out_best_index, out_backup_index);
 
   SAFE_FREE(scores);
   return ASCIICHAT_OK;
@@ -104,7 +123,7 @@ asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics
   }
 
   // If we can't find announced IDs, result is invalid
-  if (host_idx < 0 || backup_idx < 0) {
+  if (host_idx < 0) {
     *out_valid = false;
     return ASCIICHAT_OK;
   }
@@ -118,6 +137,9 @@ asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics
   }
 
   // Check if computed result matches announced
-  *out_valid = (host_idx == computed_host && backup_idx == computed_backup);
+  uint8_t no_backup[16] = {0};
+  *out_valid =
+      host_idx == computed_host && (computed_backup < 0 ? memcmp(announced_backup_id, no_backup, sizeof(no_backup)) == 0
+                                                        : backup_idx == computed_backup);
   return ASCIICHAT_OK;
 }

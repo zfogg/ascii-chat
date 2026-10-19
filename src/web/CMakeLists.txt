@@ -462,6 +462,8 @@ set(WEB_SRC_CLIENT
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/host.c
     ${LIB_ROOT}/network/acip/server.c
     ${LIB_ROOT}/network/acip/acds_client.c
+    ${LIB_ROOT}/network/consensus/election.c
+    ${LIB_ROOT}/network/consensus/handoff.c
     ${LIB_ROOT}/audio/opus.c
     ${LIB_ROOT}/ringbuffer.c
     ${LIB_ROOT}/util/aspect_ratio.c
@@ -587,6 +589,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _peer_crypto_received_size
     _asciichat_errno_print_stacks _asciichat_errno_print_history
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
+    _browser_handoff_encode _browser_handoff_decode
     _browser_host_create _browser_host_destroy _browser_host_add_client _browser_host_remove_client
     _browser_host_receive _browser_host_render _browser_discovery_new _browser_discovery_destroy _browser_discovery_enter _browser_discovery_receive _browser_discovery_leave _browser_discovery_snapshot
     _client_resolve_crypto_policy _client_handshake_begin _client_handshake_receive

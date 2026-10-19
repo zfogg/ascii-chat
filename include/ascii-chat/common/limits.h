@@ -22,8 +22,8 @@
 /** @brief Maximum client ID length - format: "noun.N (transport:port)" e.g., "mountain.0 (tcp:48036)" */
 #define MAX_CLIENT_ID_LEN 64
 
-/** @brief Maximum possible clients (static array size) - actual runtime limit set by --max-clients (1-32) */
-#define MAX_CLIENTS 32
+/** @brief Maximum possible clients (static array size) - actual runtime limit set by --max-clients (1-128) */
+#define MAX_CLIENTS PARTICIPANT_LIMIT
 
 /** @brief Default maximum frame rate (frames per second) */
 #define DEFAULT_MAX_FPS 60

@@ -26,6 +26,9 @@
 
 #pragma once
 
+/** Maximum participants supported by session membership, hosting, and election. */
+#define PARTICIPANT_LIMIT 128
+
 /* Note: string.h must come before any platform includes
  * that might use memcpy (used in unaligned access helpers below). */
 #include <string.h> // For memcpy in unaligned access helpers

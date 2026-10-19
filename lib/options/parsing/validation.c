@@ -371,11 +371,11 @@ float validate_opt_volume(const char *value_str, char *error_msg, size_t error_m
 }
 
 /**
- * Validate max clients (1-32)
+ * Validate max clients (1-128)
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_max_clients(const char *value_str, char *error_msg, size_t error_msg_size) {
-  int result = validate_int_range(value_str, 1, 32, "Max clients", error_msg, error_msg_size);
+  int result = validate_int_range(value_str, 1, PARTICIPANT_LIMIT, "Max clients", error_msg, error_msg_size);
   return (result == INT_MIN) ? -1 : result;
 }
 
