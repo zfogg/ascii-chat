@@ -8,6 +8,7 @@ from contextlib import nullcontext
 import os
 from pathlib import Path
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -162,6 +163,46 @@ def stalled_handshake(binary, directory):
             client.stream.close()
 
 
+def delayed_handshake(binary, directory):
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        listener.settimeout(15)
+        client = Service(binary, directory, "delayed-handshake", "client",
+                         [*client_options(f"127.0.0.1:{listener.getsockname()[1]}"),
+                          "--reconnect-attempts", "0"])
+        try:
+            with listener.accept()[0] as peer:
+                peer.settimeout(5)
+
+                def receive_exact(length):
+                    data = bytearray()
+                    while len(data) < length:
+                        chunk = peer.recv(length - len(data))
+                        assert chunk, "Client closed before sending its protocol version"
+                        data.extend(chunk)
+                    return bytes(data)
+
+                header = receive_exact(22)
+                _, packet_type, length, _, _ = struct.unpack("!QHIII", header)
+                assert packet_type == 1 and length == 16
+                version = receive_exact(length)
+                # Echo a valid protocol reply after the normal one-second poll
+                # window. Initialization must allow the connection budget.
+                time.sleep(1.25)
+                peer.sendall(header + version)
+                wait_count(client, "Server protocol version: 1.0", 1, timeout=5)
+                interrupt(client.process)
+                wait_count(client, "CLIENT_CONNECTION_RELEASED", 1, timeout=5)
+                client.process.wait(timeout=20)
+            print("PASS: delayed TCP protocol reply accepted and handshake remains cancellable", flush=True)
+        finally:
+            if client.process.poll() is None:
+                client.process.kill()
+                client.process.wait()
+            client.stream.close()
+
+
 def main():
     binary = Path(sys.argv[1]).resolve()
     output = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else None
@@ -170,6 +211,7 @@ def main():
     with nullcontext(str(output)) if output else tempfile.TemporaryDirectory(prefix="ascii-connection-owner-") as tmp:
         directory = Path(tmp)
         stalled_handshake(binary, directory)
+        delayed_handshake(binary, directory)
         tcp, ws = free_port(), free_port()
         with running(binary, directory, "failure-server", "server", server_options(tcp, ws)) as server:
             server.wait_for("Server accepting connections")

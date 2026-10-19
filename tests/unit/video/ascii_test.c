@@ -4,7 +4,9 @@
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/video/ascii/ascii.h>
+#include <ascii-chat/video/ascii/rle.h>
 #include <ascii-chat/video/rgba/image.h>
+#include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/string.h>
@@ -973,8 +975,9 @@ Test(ascii, halfblock_cover_uses_cell_geometry) {
   cr_assert_not_null(img);
   for (int y = 0; y < 4; ++y) {
     for (int x = 0; x < 8; ++x) {
-      img->pixels[y * 8 + x] = x < 2 ? (rgb_pixel_t){255, 0, 0}
-                                     : x >= 6 ? (rgb_pixel_t){0, 255, 0} : (rgb_pixel_t){0, 0, 255};
+      img->pixels[y * 8 + x] = x < 2    ? (rgb_pixel_t){255, 0, 0}
+                               : x >= 6 ? (rgb_pixel_t){0, 255, 0}
+                                        : (rgb_pixel_t){0, 0, 255};
     }
   }
   terminal_capabilities_t caps = {.color_level = TERM_COLOR_TRUECOLOR, .render_mode = RENDER_MODE_HALF_BLOCK};
@@ -995,7 +998,24 @@ Test(ascii, halfblock_cover_uses_cell_geometry) {
   cr_assert_not_null(contained);
   cr_assert_not_null(strstr(contained, "38;2;255;0;0m"));
   cr_assert_not_null(strstr(contained, "38;2;0;255;0m"));
-  cr_assert_not_null(strstr(contained, "38;2;0;0;0m"));
+  // Black half-block pairs are blank cells with default colors, so validate
+  // the letterbox rows rather than requiring an explicit black foreground.
+  char *expanded = ansi_expand_rle(contained, strlen(contained));
+  cr_assert_not_null(expanded);
+  char *plain = ansi_strip_escapes(expanded, strlen(expanded));
+  SAFE_FREE(expanded);
+  cr_assert_not_null(plain);
+  const char *last_row = strrchr(plain, '\n');
+  cr_assert_not_null(last_row);
+  ++last_row;
+  cr_assert_eq(strspn(plain, " "), 8, "Top letterbox row must contain eight blank cells");
+  cr_assert_eq(plain[8], '\n');
+  cr_assert_str_eq(last_row, "        ", "Bottom letterbox row must contain eight blank cells");
+  size_t rows = 1;
+  for (const char *cursor = plain; *cursor; ++cursor)
+    rows += *cursor == '\n';
+  cr_assert_eq(rows, 4, "Contain must preserve the terminal row count");
+  SAFE_FREE(plain);
   SAFE_FREE(contained);
   image_destroy(img);
 }
