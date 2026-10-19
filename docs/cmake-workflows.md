@@ -56,7 +56,8 @@ Use `COMPONENTS shared` or `COMPONENTS static` to require a particular variant.
 The targets are `asciichat::shared` and `asciichat::static`, with the existing
 `ascii-chat::*` spellings retained. `asciichat::asciichat` selects an available
 shared library first. A shared-only consumer does not resolve static link
-requirements. Static consumers need pkg-config and the required development
+requirements. Archives built with IPO propagate Clang ThinLTO linker options (including LLD on Linux).
+Static consumers need pkg-config and the required development
 packages; missing dependencies fail during configuration. Config files and
 selected source-built support libraries relocate with the installed prefix.
 

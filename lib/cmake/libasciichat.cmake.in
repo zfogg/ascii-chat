@@ -128,6 +128,14 @@ if("static" IN_LIST _asciichat_components AND ascii-chat_static_FOUND AND NOT TA
         list(APPEND _asciichat_deps m dl rt stdc++)
     endif()
     add_library(ascii-chat::static STATIC IMPORTED)
+    if(@ASCIICHAT_ENABLE_IPO@)
+        # The archive contains Clang ThinLTO objects. Propagate the matching
+        # linker driver options so consumers can read those objects.
+        set_property(TARGET ascii-chat::static APPEND PROPERTY INTERFACE_LINK_OPTIONS "-flto=thin")
+        if(UNIX AND NOT APPLE)
+            set_property(TARGET ascii-chat::static APPEND PROPERTY INTERFACE_LINK_OPTIONS "-fuse-ld=lld")
+        endif()
+    endif()
     set_target_properties(ascii-chat::static PROPERTIES
         IMPORTED_LOCATION "${_asciichat_archive}"
         INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_include}"
