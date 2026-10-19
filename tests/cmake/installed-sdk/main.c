@@ -2,10 +2,10 @@
 #include <stdio.h>
 
 int main(void) {
-  const char *version = ascii_chat_get_version();
-  if (!version || !version[0]) {
+  semantic_version_t version = version_parse(ASCII_CHAT_VERSION_STRING);
+  if (!version.valid || version.major != ASCII_CHAT_VERSION_MAJOR) {
     return 1;
   }
-  puts(version);
+  puts(ASCII_CHAT_VERSION_STRING);
   return 0;
 }
