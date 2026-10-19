@@ -835,6 +835,17 @@ endif()
 # =============================================================================
 # Available when shared library is built (skipped for musl and Linux Release non-musl)
 if(TARGET ascii-chat-shared)
+    add_executable(test-source-paths EXCLUDE_FROM_ALL integration/source_paths.c)
+    target_link_libraries(test-source-paths PRIVATE ascii-chat-shared)
+    apply_sanitizers_to_target(test-source-paths)
+    target_include_directories(test-source-paths PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    set_target_properties(test-source-paths PROPERTIES
+        LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS)
+        add_test(NAME source-paths COMMAND test-source-paths "${CMAKE_CURRENT_BINARY_DIR}/source-paths.log")
+        set_tests_properties(source-paths PROPERTIES TIMEOUT 30)
+    endif()
+
     add_executable(test-sync-regressions EXCLUDE_FROM_ALL integration/sync_regressions.c)
     target_link_libraries(test-sync-regressions PRIVATE ascii-chat-shared)
     apply_sanitizers_to_target(test-sync-regressions)

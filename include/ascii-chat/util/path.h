@@ -90,26 +90,17 @@
  */
 
 /**
- * @brief Extract relative path from an absolute path
- * @param file Absolute file path (typically from __FILE__, must not be NULL)
- * @return Relative path from project directory (e.g., lib/platform/symbols.c),
- *         or filename if no project directory found
+ * @brief Extract a path relative to the source root embedded by CMake
+ * @param file Source path (typically __FILE__), or NULL
+ * @return Path relative to the build-time project directory, the unchanged input
+ *         for paths outside that directory, or "unknown" for NULL.
  *
- * Extracts a project-relative path from an absolute file path. Searches for
- * common project directories (lib/, src/, tests/, include/) and returns the
- * path relative from that directory. Useful for logging and error reporting
- * where full paths are too verbose.
+ * Supports all directories beneath the source root, including src/ and lib/.
+ * Handles Unix (/) and Windows (\) separators and ignores case on Windows.
+ * Already-relative paths are returned unchanged. No runtime root discovery is used.
  *
- * @note Handles both Unix (/) and Windows (\) path separators.
- * @note Falls back to just the filename if no project directory found.
- * @note Returns a pointer into the input string (does not allocate memory).
- * @note Input string must remain valid for the lifetime of the returned pointer.
- *
- * @par Example
- * @code
- * const char *rel = extract_project_relative_path("/home/user/src/lib/path.c");
- * // Returns: "lib/path.c"
- * @endcode
+ * @note Does not allocate, log, or access the filesystem; safe in memory reports.
+ * @note Returns a pointer into the input, which must remain valid.
  */
 const char *extract_project_relative_path(const char *file);
 

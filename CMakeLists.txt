@@ -208,6 +208,9 @@ configure_file(
 )
 message(STATUS "Generated paths.h with ASCIICHAT_INSTALL_PREFIX=${BoldYellow}${CMAKE_INSTALL_PREFIX}${ColorReset}")
 
+include(${PROJECT_SOURCE_DIR}/cmake/utils/SourceRoot.cmake)
+asciichat_configure_source_root("${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
+
 # Only Ninja generator is supported - enforce this requirement
 #if(NOT CMAKE_GENERATOR MATCHES "Ninja")
 #    message(FATAL_ERROR

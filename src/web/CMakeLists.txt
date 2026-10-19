@@ -75,6 +75,10 @@ set(LIB_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../lib)
 set(INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 set(DEPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../deps)
 
+include(${_cmake_dir}/utils/SourceRoot.cmake)
+get_filename_component(_source_root "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+asciichat_configure_source_root("${_source_root}" "${CMAKE_BINARY_DIR}")
+
 # Include directories for library headers
 # IMPORTANT: WASM stubs must come FIRST to override native headers
 include_directories(
