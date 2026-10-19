@@ -413,7 +413,8 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
     SAFE_FREE(peer);
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate peer security");
   }
-  asciichat_error_t security_result = acip_security_init_options(peer->security, manager->role == WEBRTC_ROLE_CREATOR);
+  asciichat_error_t security_result =
+      acip_security_init_options(peer->security, manager->role == WEBRTC_ROLE_CREATOR, true, NULL);
   if (security_result != ASCIICHAT_OK) {
     SAFE_FREE(peer->security);
     SAFE_FREE(peer);
@@ -633,8 +634,8 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
     if (existing && existing->remote_sdp_attempted && existing->pc) {
       webrtc_state_t state = webrtc_get_state(existing->pc);
       bool comparable_ice_generation = has_incoming_ice_ufrag && existing->remote_ice_ufrag[0] != '\0';
-      bool new_ice_generation = comparable_ice_generation &&
-                                strcmp(incoming_ice_ufrag, existing->remote_ice_ufrag) != 0;
+      bool new_ice_generation =
+          comparable_ice_generation && strcmp(incoming_ice_ufrag, existing->remote_ice_ufrag) != 0;
       bool terminal_state = state == WEBRTC_STATE_FAILED || state == WEBRTC_STATE_CLOSED;
       if (!terminal_state && comparable_ice_generation && !new_ice_generation && existing->remote_description_set) {
         log_debug("Ignoring duplicate WebRTC offer for existing ICE generation");
@@ -644,7 +645,8 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
         return ASCIICHAT_OK;
       }
       if (terminal_state || new_ice_generation) {
-        log_info("Replacing WebRTC peer for %s", new_ice_generation ? "new ICE generation" : "terminal connection state");
+        log_info("Replacing WebRTC peer for %s",
+                 new_ice_generation ? "new ICE generation" : "terminal connection state");
         remove_peer_locked(manager, existing);
       }
     }
@@ -806,8 +808,7 @@ bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t
   return found;
 }
 
-asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager,
-                                                   const uint8_t participant_id[16]) {
+asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager, const uint8_t participant_id[16]) {
   if (!manager || !participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Peer manager and participant ID are required");
   }

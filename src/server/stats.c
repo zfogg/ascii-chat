@@ -377,65 +377,22 @@ void *stats_logger_thread(void *arg) {
     int active_clients = 0;
     int clients_with_audio = 0;
     int clients_with_video = 0;
-    char client_details[BUFFER_SIZE_XLARGE] = {0};
-    int client_details_len = 0;
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
       if (atomic_load_bool(&g_client_manager.clients[i].active)) {
         active_clients++;
-        if (g_client_manager.clients[i].audio_queue) {
+        if (atomic_load_bool(&g_client_manager.clients[i].is_sending_audio)) {
           clients_with_audio++;
         }
-        if (g_client_manager.clients[i].outgoing_video_buffer) {
+        if (atomic_load_bool(&g_client_manager.clients[i].is_sending_video)) {
           clients_with_video++;
         }
       }
     }
 
-    // Collect per-client details
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      client_info_t *client = &g_client_manager.clients[i];
-      bool is_active = atomic_load_bool(&client->active);
-      const char *client_id_snapshot = client->client_id;
-
-      if (is_active && client_id_snapshot != 0) {
-        // Check audio queue stats
-        if (client->audio_queue) {
-          uint64_t enqueued, dequeued, dropped;
-          packet_queue_get_stats(client->audio_queue, &enqueued, &dequeued, &dropped);
-          if (enqueued > 0 || dequeued > 0 || dropped > 0) {
-            int len =
-                safe_snprintf(client_details + client_details_len, sizeof(client_details) - client_details_len,
-                              "  Client %u audio queue: %llu enqueued, %llu dequeued, %llu dropped", client_id_snapshot,
-                              (unsigned long long)enqueued, (unsigned long long)dequeued, (unsigned long long)dropped);
-            if (len > 0 && client_details_len + len < (int)sizeof(client_details)) {
-              client_details_len += len;
-            }
-          }
-        }
-        // Check video buffer stats
-        if (client->outgoing_video_buffer) {
-          video_frame_stats_t stats;
-          video_frame_get_stats(client->outgoing_video_buffer, &stats);
-          if (stats.total_frames > 0) {
-            int len = safe_snprintf(client_details + client_details_len, sizeof(client_details) - client_details_len,
-                                    "  Client %u video buffer: %llu frames, %llu dropped (%.1f%% drop rate)",
-                                    client_id_snapshot, (unsigned long long)stats.total_frames,
-                                    (unsigned long long)stats.dropped_frames, stats.drop_rate * 100.0f);
-            if (len > 0 && client_details_len + len < (int)sizeof(client_details)) {
-              client_details_len += len;
-            }
-          }
-        }
-      }
-    }
     rwlock_rdunlock(&g_client_manager_rwlock);
 
-    // Single comprehensive log statement
-    if (client_details_len > 0) {
-      log_info("Stats: Clients: %d, Audio: %d, Video: %d\n%s", active_clients, clients_with_audio, clients_with_video,
-               client_details);
-    }
+    log_info("Stats: Clients: %d, Audio: %d, Video: %d", active_clients, clients_with_audio, clients_with_video);
   }
 
   log_server_stats();

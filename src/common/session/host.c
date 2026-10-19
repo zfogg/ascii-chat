@@ -17,6 +17,8 @@
  */
 
 #include "session/host.h"
+#include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/negotiation.h>
 #include "session/display.h"
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/common.h>
@@ -66,7 +68,7 @@
 typedef struct {
   participant_type_t participant_type; // NETWORK or MEMORY
   uint32_t client_id;
-  socket_t socket;
+  network_connection_t *connection;
   char ip_address[64];
   int port;
   bool active;
@@ -77,7 +79,7 @@ typedef struct {
   uint16_t render_height;
   render_mode_t render_mode;
 
-  /** @brief Alternative transport (WebRTC, WebSocket, etc.) - NULL if using socket only */
+  /** @brief Transport borrowed from the connection owner or browser bridge. */
   struct acip_transport *transport;
 
   /** @brief Incoming video frame buffer (for host render thread) */
@@ -91,11 +93,6 @@ static asciichat_error_t session_host_send_packet(session_host_client_t *client,
                                                   const void *payload, size_t payload_len) {
   if (client->transport) {
     return packet_send_via_transport(client->transport, type, payload, payload_len, 0);
-  }
-  if (client->socket != INVALID_SOCKET_VALUE) {
-    asciichat_error_t result = packet_send(client->socket, type, payload, payload_len);
-    stats_runtime_packet(NULL, type, payload_len, true, result == ASCIICHAT_OK);
-    return result;
   }
   return SET_ERRNO(ERROR_INVALID_STATE, "Session host client has no active transport");
 }
@@ -142,10 +139,11 @@ typedef struct session_host {
   struct session_display_ctx *display_context;
 
   /** @brief IPv4 listen socket */
-  socket_t socket_v4;
+  network_server_t *network_server;
 
   /** @brief IPv6 listen socket */
-  socket_t socket_v6;
+  asciichat_thread_t network_thread;
+  bool network_thread_started;
 
   /** @brief Server is running */
   bool running;
@@ -161,18 +159,6 @@ typedef struct session_host {
 
   /** @brief Client list mutex */
   mutex_t clients_mutex;
-
-  /** @brief Accept thread handle */
-  asciichat_thread_t accept_thread;
-
-  /** @brief Accept thread is running */
-  bool accept_thread_running;
-
-  /** @brief Receive thread handle */
-  asciichat_thread_t receive_thread;
-
-  /** @brief Receive thread is running */
-  bool receive_thread_running;
 
   /** @brief Render thread handle (for video mixing and audio distribution) */
   asciichat_thread_t render_thread;
@@ -231,8 +217,6 @@ session_host_t *session_host_create(const session_host_config_t *config) {
   host->user_data = config->user_data;
 
   // Initialize sockets to invalid
-  host->socket_v4 = INVALID_SOCKET_VALUE;
-  host->socket_v6 = INVALID_SOCKET_VALUE;
   host->running = false;
 
   // Allocate client array
@@ -254,15 +238,12 @@ session_host_t *session_host_create(const session_host_config_t *config) {
   return host;
 }
 
-void session_host_destroy(session_host_t *host) {
-  if (!host) {
-    return;
-  }
-
-  // Stop if running
-  if (host->running) {
-    session_host_stop(host);
-  }
+asciichat_error_t session_host_destroy(session_host_t *host) {
+  if (!host)
+    return ASCIICHAT_OK;
+  asciichat_error_t result = session_host_stop(host);
+  if (result != ASCIICHAT_OK)
+    return result;
 
   // Clean up audio resources
   if (host->audio_ctx) {
@@ -274,16 +255,6 @@ void session_host_destroy(session_host_t *host) {
   if (host->opus_decoder) {
     opus_codec_destroy(host->opus_decoder);
     host->opus_decoder = NULL;
-  }
-
-  // Close sockets
-  if (host->socket_v4 != INVALID_SOCKET_VALUE) {
-    socket_close(host->socket_v4);
-    host->socket_v4 = INVALID_SOCKET_VALUE;
-  }
-  if (host->socket_v6 != INVALID_SOCKET_VALUE) {
-    socket_close(host->socket_v6);
-    host->socket_v6 = INVALID_SOCKET_VALUE;
   }
 
   // Free client array and per-client resources
@@ -310,174 +281,18 @@ void session_host_destroy(session_host_t *host) {
   host->initialized = false;
   acip_frame_workspace_destroy(&host->frame_workspace);
   SAFE_FREE(host);
+  return ASCIICHAT_OK;
 }
 
 /* ============================================================================
  * Session Host Server Control Functions
  * ============================================================================ */
 
-/**
- * @brief Create and bind a listening socket on the given address and port
- * @return Socket on success, INVALID_SOCKET_VALUE on failure
- */
-static socket_t create_listen_socket(const char *address, int port) {
-  struct addrinfo hints, *result = NULL, *rp = NULL;
-  char port_str[16];
-
-  if (!address)
-    address = "0.0.0.0";
-
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET; // IPv4
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE;
-
-  safe_snprintf(port_str, sizeof(port_str), "%d", port);
-
-  int s = getaddrinfo(address, port_str, &hints, &result);
-  if (s != 0) {
-    SET_ERRNO(ERROR_NETWORK, "getaddrinfo failed: %s", gai_strerror(s));
-    return INVALID_SOCKET_VALUE;
-  }
-
-  socket_t listen_sock = INVALID_SOCKET_VALUE;
-  for (rp = result; rp != NULL; rp = rp->ai_next) {
-    listen_sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-    if (listen_sock == INVALID_SOCKET_VALUE) {
-      continue;
-    }
-
-    // Set SO_REUSEADDR to allow rebinding quickly after restart
-    int reuse = 1;
-    if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse, sizeof(reuse)) < 0) {
-      log_warn("setsockopt SO_REUSEADDR failed");
-    }
-
-    if (bind(listen_sock, rp->ai_addr, (int)rp->ai_addrlen) == 0) {
-      break; // Success
-    }
-
-    socket_close(listen_sock);
-    listen_sock = INVALID_SOCKET_VALUE;
-  }
-
-  freeaddrinfo(result);
-
-  if (listen_sock == INVALID_SOCKET_VALUE) {
-    SET_ERRNO_SYS(ERROR_NETWORK_BIND, "Failed to bind listen socket on %s:%d", address, port);
-    return INVALID_SOCKET_VALUE;
-  }
-
-  if (listen(listen_sock, SOMAXCONN) != 0) {
-    SET_ERRNO_SYS(ERROR_NETWORK_BIND, "listen() failed on %s:%d", address, port);
-    socket_close(listen_sock);
-    return INVALID_SOCKET_VALUE;
-  }
-
-  return listen_sock;
-}
-
-/**
- * @brief Accept loop thread - continuously accept incoming client connections
- * @param arg session_host_t pointer
- * @return NULL
- *
- * This thread runs in a loop accepting connections on the listen socket.
- * For each accepted connection, it adds the client to the host and invokes callbacks.
- */
-static void *accept_loop_thread(void *arg) {
-  session_host_t *host = (session_host_t *)arg;
-  if (!host)
-    return NULL;
-
-  log_info("Accept loop started");
-
-  // Use select() to handle accept with timeout
-  struct timeval tv;
-  fd_set readfds;
-  int max_fd;
-
-  while (host->accept_thread_running && host->running) {
-    // Set timeout to 1 second
-    tv.tv_sec = 0;
-    tv.tv_usec = 10000;
-
-    FD_ZERO(&readfds);
-    max_fd = 0;
-
-    if (host->socket_v4 != INVALID_SOCKET_VALUE) {
-      FD_SET(host->socket_v4, &readfds);
-      max_fd = (int)host->socket_v4;
-    }
-
-    // Wait for incoming connections
-    int activity = select(max_fd + 1, &readfds, NULL, NULL, &tv);
-    if (activity < 0) {
-      if (errno != EINTR) {
-        log_error("select() failed");
-      }
-      continue;
-    }
-
-    if (activity == 0) {
-      // Timeout - check if we should exit
-      continue;
-    }
-
-    // Check for incoming connections
-    if (host->socket_v4 != INVALID_SOCKET_VALUE && FD_ISSET(host->socket_v4, &readfds)) {
-      struct sockaddr_in client_addr;
-      socklen_t client_addr_len = sizeof(client_addr);
-
-      // Accept incoming connection
-      socket_t client_socket = accept(host->socket_v4, (struct sockaddr *)&client_addr, &client_addr_len);
-      if (client_socket == INVALID_SOCKET_VALUE) {
-        log_warn("accept() failed");
-        continue;
-      }
-
-      // Get client IP and port
-      char client_ip[64];
-      inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
-      int client_port = ntohs(client_addr.sin_port);
-
-      log_info("New connection from %s:%d", client_ip, client_port);
-
-      // Add client to host
-      uint32_t client_id = session_host_add_client(host, client_socket, client_ip, client_port);
-      if (client_id == 0) {
-        log_error("Failed to add client");
-        socket_close(client_socket);
-      }
-    }
-  }
-
-  log_info("Accept loop stopped");
-  return NULL;
-}
-
-/**
- * @brief Receive loop thread - continuously receive packets from connected clients
- * @param arg session_host_t pointer
- * @return NULL
- *
- * This thread runs in a loop listening for packets from all connected clients.
- * When a packet arrives, it processes it based on the packet type.
- */
 asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t client_id, packet_type_t ptype,
                                               const void *data, size_t len) {
   if (!host || !host->initialized || (!data && len))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid host packet");
   acip_transport_t *client_transport = session_host_get_client_transport(host, client_id);
-  socket_t client_socket = INVALID_SOCKET_VALUE;
-  mutex_lock(&host->clients_mutex);
-  for (int i = 0; i < host->max_clients; i++) {
-    if (host->clients[i].client_id == client_id) {
-      client_socket = host->clients[i].socket;
-      break;
-    }
-  }
-  mutex_unlock(&host->clients_mutex);
   switch (ptype) {
   case PACKET_TYPE_IMAGE_FRAME:
     // Client sent a video frame - parse and store in incoming buffer
@@ -622,8 +437,8 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
             host->clients[j].render_width = width;
             host->clients[j].render_height = height;
             uint32_t render_mode = NET_TO_HOST_U32(caps.render_mode);
-            host->clients[j].render_mode = render_mode <= RENDER_MODE_HALF_BLOCK
-                                              ? (render_mode_t)render_mode : RENDER_MODE_FOREGROUND;
+            host->clients[j].render_mode =
+                render_mode <= RENDER_MODE_HALF_BLOCK ? (render_mode_t)render_mode : RENDER_MODE_FOREGROUND;
             log_info("Client %u requested render dimensions %ux%u", client_id, width, height);
             break;
           }
@@ -650,8 +465,6 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
     log_debug_every(NS_PER_MS_INT, "PING from client %u", client_id);
     if (client_transport) {
       packet_send_via_transport(client_transport, PACKET_TYPE_PONG, NULL, 0, 0);
-    } else {
-      packet_send(client_socket, PACKET_TYPE_PONG, NULL, 0);
     }
     break;
 
@@ -668,136 +481,8 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
   return ASCIICHAT_OK;
 }
 
-static void *receive_loop_thread(void *arg) {
-  session_host_t *host = (session_host_t *)arg;
-  if (!host)
-    return NULL;
-
-  log_info("Receive loop started");
-
-  struct timeval tv;
-  fd_set readfds;
-  socket_t max_fd;
-
-  while (host->receive_thread_running && host->running) {
-    // Set timeout to 1 second
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
-
-    FD_ZERO(&readfds);
-    max_fd = INVALID_SOCKET_VALUE;
-
-    // Add all active client sockets to the set
-    mutex_lock(&host->clients_mutex);
-    for (int i = 0; i < host->max_clients; i++) {
-      if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
-        FD_SET(host->clients[i].socket, &readfds);
-        if (max_fd == INVALID_SOCKET_VALUE || host->clients[i].socket > max_fd) {
-          max_fd = host->clients[i].socket;
-        }
-      }
-    }
-    mutex_unlock(&host->clients_mutex);
-
-    // If clients only have a non-socket transport, poll its receive queue below.
-    if (max_fd == INVALID_SOCKET_VALUE) {
-      platform_sleep_ms(1);
-    }
-
-    // Wait briefly for socket data, then also check non-socket transports.
-    int activity = max_fd == INVALID_SOCKET_VALUE ? 0 : select((int)max_fd + 1, &readfds, NULL, NULL, &tv);
-    if (activity < 0) {
-      if (errno != EINTR) {
-        log_error("select() failed in receive loop");
-      }
-      continue;
-    }
-
-    // Check socket readiness and queued transport data for each client.
-    mutex_lock(&host->clients_mutex);
-    for (int i = 0; i < host->max_clients; i++) {
-      if (!host->clients[i].active) {
-        continue;
-      }
-
-      acip_transport_t *client_transport = host->clients[i].transport;
-      socket_t client_socket = host->clients[i].socket;
-      bool transport_ready = client_transport && acip_transport_has_pending_data(client_transport);
-      bool socket_ready = client_socket != INVALID_SOCKET_VALUE && FD_ISSET(client_socket, &readfds);
-      if (!transport_ready && !socket_ready) {
-        continue;
-      }
-
-      // Try to receive packet from this client
-      packet_type_t ptype = (packet_type_t)0;
-      void *data = NULL;
-      size_t len = 0;
-      void *transport_buffer = NULL;
-      size_t transport_buffer_len = 0;
-      asciichat_error_t result;
-      if (transport_ready) {
-        void *packet = NULL;
-        result = acip_transport_recv(client_transport, &packet, &transport_buffer_len, &transport_buffer);
-        if (result == ASCIICHAT_OK && packet && transport_buffer_len >= sizeof(packet_header_t)) {
-          const packet_header_t *header = (const packet_header_t *)packet;
-          ptype = (packet_type_t)NET_TO_HOST_U16(header->type);
-          len = NET_TO_HOST_U32(header->length);
-          if (len != transport_buffer_len - sizeof(packet_header_t)) {
-            result = SET_ERRNO(ERROR_NETWORK, "WebRTC packet length mismatch");
-          } else {
-            data = (uint8_t *)packet + sizeof(packet_header_t);
-          }
-        } else if (result == ASCIICHAT_OK) {
-          result = SET_ERRNO(ERROR_NETWORK, "WebRTC packet header is truncated");
-        }
-      } else {
-        result = packet_receive(client_socket, &ptype, &data, &len);
-      }
-
-      if (result != ASCIICHAT_OK) {
-        log_warn("Failed to receive packet from client %u: %d", host->clients[i].client_id, result);
-        if (transport_buffer) {
-          buffer_release(transport_buffer);
-        }
-        // Client disconnected or error - will be cleaned up by timeout mechanism
-        continue;
-      }
-
-      stats_runtime_packet(client_transport ? client_transport->stats_peer : NULL, ptype, len, false, true);
-      // Process packet based on type
-      uint32_t client_id = host->clients[i].client_id;
-      mutex_unlock(&host->clients_mutex);
-
-      session_host_receive_packet(host, client_id, ptype, data, len);
-
-      // Free packet data
-      if (transport_buffer) {
-        buffer_release(transport_buffer);
-      } else if (data) {
-        // packet_receive returns a pooled payload, just like the transport path.
-        buffer_release(data);
-      }
-
-      mutex_lock(&host->clients_mutex);
-    }
-    mutex_unlock(&host->clients_mutex);
-  }
-
-  log_info("Receive loop stopped");
-  return NULL;
-}
-
-/**
- * @brief Host render thread - mixes media and broadcasts to participants
- *
- * DESIGN: Reuses patterns from server/render.c
- * - Collects video frames from all participants (60 FPS)
- * - Broadcasts mixed ASCII frame to all participants
- * - Mixes audio from all participants (100 FPS)
- * - Broadcasts mixed audio to all participants
- */
-// The caller holds clients_mutex so all viewports use the same set of source frames.
-static char *host_create_video_grid(session_host_t *host, int count, int width, int height, render_mode_t render_mode, size_t *size) {
+static char *host_create_video_grid(session_host_t *host, int count, int width, int height, render_mode_t render_mode,
+                                    size_t *size) {
   int columns, rows;
   if (ascii_grid_layout(count, width, height, &columns, &rows) != ASCIICHAT_OK)
     return NULL;
@@ -820,12 +505,11 @@ static char *host_create_video_grid(session_host_t *host, int count, int width, 
     caps.utf8_support = true;
     caps.render_mode = render_mode;
     caps.wants_background = render_mode == RENDER_MODE_BACKGROUND;
-    sources[index].frame_data = ascii_convert_with_capabilities(host->clients[i].incoming_video, cell_width,
-                                                               cell_height, &caps, false, false,
-                                                               PALETTE_CHARS_STANDARD);
+    sources[index].frame_data = ascii_convert_with_capabilities(
+        host->clients[i].incoming_video, cell_width, cell_height, &caps, false, false, PALETTE_CHARS_STANDARD);
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - start);
-    stats_counter_add(stats_runtime_scope(), sources[index].frame_data ? STATS_COUNTER_FRAMES_CONVERTED
-                                                                     : STATS_COUNTER_FRAMES_DROPPED, 1);
+    stats_counter_add(stats_runtime_scope(),
+                      sources[index].frame_data ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
     sources[index].frame_size = sources[index].frame_data ? strlen(sources[index].frame_data) : 0;
     ++index;
     if (fallback)
@@ -864,8 +548,8 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer, bool 
         if (!host->display_context || waiting_for_peer)
           continue;
       } else {
-        if (!host->clients[i].active ||
-            (!host->clients[i].transport && host->clients[i].socket == INVALID_SOCKET_VALUE))
+        if (!host->clients[i].active || !host->clients[i].transport || !host->clients[i].render_width ||
+            !host->clients[i].render_height)
           continue;
         if (host->clients[i].transport && host->clients[i].render_width > 0 && host->clients[i].render_height > 0) {
           width = host->clients[i].render_width;
@@ -898,8 +582,8 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer, bool 
           *snapshot_first_frame_ns_ptr = time_get_ns();
 #endif
       } else if (host->clients[i].transport) {
-        acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, grid->frame, grid->size,
-                              width, height, "session-host");
+        acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, grid->frame, grid->size, width,
+                              height, "session-host");
       } else {
         session_host_send_packet(&host->clients[i], PACKET_TYPE_ASCII_FRAME, grid->frame, grid->size);
       }
@@ -1025,7 +709,6 @@ static void *host_render_thread(void *arg) {
         if (opus_len > 0) {
           uint16_t frame_sizes[1] = {(uint16_t)opus_len};
           mutex_lock(&host->clients_mutex);
-          bool has_socket_clients = false;
           for (int i = 0; i < host->max_clients; i++) {
             if (!host->clients[i].active) {
               continue;
@@ -1036,16 +719,9 @@ static void *host_render_thread(void *arg) {
               if (audio_result != ASCIICHAT_OK) {
                 log_warn("Failed to send mixed audio to WebRTC client %u", host->clients[i].client_id);
               }
-            } else if (host->clients[i].socket != INVALID_SOCKET_VALUE) {
-              has_socket_clients = true;
             }
           }
           mutex_unlock(&host->clients_mutex);
-
-          if (has_socket_clients) {
-            // Preserve the existing socket-based audio broadcast path.
-            av_send_audio_opus_batch(host->socket_v4, opus_buffer, opus_len, frame_sizes, 48000, 20, 1, NULL);
-          }
         }
       }
 
@@ -1062,124 +738,151 @@ static void *host_render_thread(void *arg) {
   return NULL;
 }
 
-asciichat_error_t session_host_start(session_host_t *host) {
-  if (!host || !host->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_start: invalid host");
-  }
-
-  if (host->running) {
-    return ASCIICHAT_OK; // Already running
-  }
-
-  // Create listen socket(s)
-  // For simplicity, we bind to IPv4 if specified, otherwise default to 0.0.0.0
-  const char *bind_address = host->ipv4_address[0] ? host->ipv4_address : "0.0.0.0";
-
-  host->socket_v4 = create_listen_socket(bind_address, host->port);
-  if (host->socket_v4 == INVALID_SOCKET_VALUE) {
-    log_error("Failed to create IPv4 listen socket");
-    if (host->callbacks.on_error) {
-      host->callbacks.on_error(host, ERROR_NETWORK_BIND, "Failed to create listen socket", host->user_data);
-    }
-    return SET_ERRNO(ERROR_NETWORK_BIND, "Session host could not create a listening socket");
-  }
-
-  host->running = true;
-  log_info("Session host listening on %s:%d", bind_address, host->port);
-
-  // Spawn accept loop thread
-  host->accept_thread_running = true;
-  if (asciichat_thread_create(&host->accept_thread, "accept", accept_loop_thread, host) != 0) {
-    log_error("Failed to spawn accept loop thread");
-    host->accept_thread_running = false;
-    if (host->callbacks.on_error) {
-      host->callbacks.on_error(host, ERROR_THREAD, "Failed to spawn accept loop thread", host->user_data);
-    }
-    socket_close(host->socket_v4);
-    host->socket_v4 = INVALID_SOCKET_VALUE;
-    host->running = false;
-    return SET_ERRNO(ERROR_THREAD, "Failed to spawn accept loop thread");
-  }
-
-  // Spawn receive loop thread
-  host->receive_thread_running = true;
-  if (asciichat_thread_create(&host->receive_thread, "host_recv", receive_loop_thread, host) != 0) {
-    log_error("Failed to spawn receive loop thread");
-    host->receive_thread_running = false;
-    host->accept_thread_running = false;
-    asciichat_thread_join(&host->accept_thread, NULL);
-    if (host->callbacks.on_error) {
-      host->callbacks.on_error(host, ERROR_THREAD, "Failed to spawn receive loop thread", host->user_data);
-    }
-    socket_close(host->socket_v4);
-    host->socket_v4 = INVALID_SOCKET_VALUE;
-    host->running = false;
-    return SET_ERRNO(ERROR_THREAD, "Failed to spawn receive loop thread");
-  }
-
-  // Spawn render thread (optional - can be started later)
-  // This thread handles video mixing and audio distribution
+#ifndef __EMSCRIPTEN__
+typedef struct {
+  uint32_t client_id;
+  network_negotiation_t negotiation;
+  private_key_t identity;
+} host_connection_t;
+static asciichat_error_t host_connection_open(network_connection_t *connection, void *arg) {
+  session_host_t *host = arg;
+  host_connection_t *client = SAFE_CALLOC(1, sizeof(*client), host_connection_t *);
+  if (!client)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate host connection");
+  network_connection_set_context(connection, client);
+  client->client_id =
+      session_host_add_client(host, network_connection_transport(connection), network_connection_peer(connection), 0);
+  if (!client->client_id)
+    return SET_ERRNO(ERROR_SESSION_FULL, "Host has no participant capacity");
+  mutex_lock(&host->clients_mutex);
+  for (int i = 0; i < host->max_clients; ++i)
+    if (host->clients[i].client_id == client->client_id)
+      host->clients[i].connection = connection;
+  mutex_unlock(&host->clients_mutex);
+  if (network_connection_state(connection) == NETWORK_READY)
+    return ASCIICHAT_OK;
+  asciichat_error_t result = network_connection_prepare_security(connection, true, host->password);
+  if (result != ASCIICHAT_OK)
+    return result;
+  crypto_handshake_context_t *ctx = network_connection_handshake(connection);
+  client->identity = ctx->server_private_key;
+  client->negotiation = (network_negotiation_t){.protocol = NETWORK_PROTOCOL_MEDIA,
+                                                .handshake = ctx,
+                                                .identity_keys = &client->identity,
+                                                .identity_key_count = client->identity.type == KEY_TYPE_ED25519 ? 1 : 0,
+                                                .whitelist = ctx->client_whitelist,
+                                                .whitelist_count = ctx->num_whitelisted_clients,
+                                                .initialized = true,
+                                                .password = host->password,
+                                                .secure = network_connection_secure(connection),
+                                                .require_auth = ctx->has_password || ctx->require_client_auth,
+                                                .require_identity = ctx->require_client_auth,
+                                                .require_encryption = GET_OPTION(encrypt_enabled),
+                                                .forbid_encryption = GET_OPTION(no_encrypt)};
   return ASCIICHAT_OK;
 }
-
-void session_host_stop(session_host_t *host) {
-  if (!host || !host->initialized || !host->running) {
-    return;
+static asciichat_error_t host_connection_packet(network_connection_t *connection, packet_type_t type,
+                                                const void *payload, size_t length, void *arg) {
+  host_connection_t *client = network_connection_context(connection);
+  if (network_connection_state(connection) == NETWORK_NEGOTIATING) {
+    asciichat_error_t result = network_negotiation_receive(
+        &client->negotiation, network_connection_transport(connection), type, payload, length);
+    if (result == ASCIICHAT_OK && client->negotiation.ready)
+      network_connection_ready(connection);
+    return result;
   }
-
-  // Stop render thread if running
+  return session_host_receive_packet(arg, client->client_id, type, payload, length);
+}
+static asciichat_error_t host_connection_closing(network_connection_t *connection, void *arg) {
+  session_host_t *host = arg;
+  host_connection_t *client = network_connection_context(connection);
+  if (!client || !client->client_id)
+    return ASCIICHAT_OK;
+  mutex_lock(&host->clients_mutex);
+  for (int i = 0; i < host->max_clients; ++i)
+    if (host->clients[i].client_id == client->client_id)
+      host->clients[i].connection = NULL;
+  mutex_unlock(&host->clients_mutex);
+  return session_host_remove_client(host, client->client_id);
+}
+static void host_connection_closed(network_connection_t *connection, void *arg) {
+  (void)arg;
+  host_connection_t *client = network_connection_context(connection);
+  SAFE_FREE(client);
+}
+static void *host_network_run(void *arg) {
+  session_host_t *host = arg;
+  network_server_run(host->network_server);
+  return NULL;
+}
+#endif
+asciichat_error_t session_host_start(session_host_t *host) {
+  if (!host || !host->initialized)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session host");
+  if (host->running)
+    return ASCIICHAT_OK;
+#ifdef __EMSCRIPTEN__
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "Browser hosts accept browser-managed connections");
+#else
+  network_server_config_t config = {
+      .port = host->port,
+      .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "0.0.0.0",
+      .bind_ipv4 = true,
+      .max_connections = host->max_clients,
+      .partial_timeout_ms = 30000,
+      .callbacks = {host_connection_open, host_connection_packet, host_connection_closing, host_connection_closed},
+      .user_data = host};
+  asciichat_error_t result = network_server_create(&config, &host->network_server);
+  if (result == ASCIICHAT_OK)
+    result = network_server_start(host->network_server);
+  if (result == ASCIICHAT_OK)
+    result = asciichat_thread_create(&host->network_thread, "host_network", host_network_run, host);
+  if (result != ASCIICHAT_OK) {
+    network_server_destroy(&host->network_server);
+    return result;
+  }
+  host->network_thread_started = true;
+  host->running = true;
+  return ASCIICHAT_OK;
+#endif
+}
+asciichat_error_t session_host_stop(session_host_t *host) {
+  if (!host || !host->initialized)
+    return ASCIICHAT_OK;
   if (host->render_thread_running) {
     host->render_thread_running = false;
-    asciichat_thread_join(&host->render_thread, NULL);
-    log_info("Render thread joined");
-  }
-
-  // Stop receive loop thread (reads from client sockets)
-  if (host->receive_thread_running) {
-    host->receive_thread_running = false;
-    asciichat_thread_join(&host->receive_thread, NULL);
-    log_info("Receive loop thread joined");
-  }
-
-  // Stop accept loop thread (before closing listen socket)
-  if (host->accept_thread_running) {
-    host->accept_thread_running = false;
-    asciichat_thread_join(&host->accept_thread, NULL);
-    log_info("Accept loop thread joined");
-  }
-
-  // Disconnect all clients
-  mutex_lock(&host->clients_mutex);
-  for (int i = 0; i < host->max_clients; i++) {
-    if (host->clients[i].active) {
-      // Invoke callback
-      if (host->callbacks.on_client_leave) {
-        host->callbacks.on_client_leave(host, host->clients[i].client_id, host->user_data);
-      }
-
-      // Close socket
-      if (host->clients[i].socket != INVALID_SOCKET_VALUE) {
-        socket_close(host->clients[i].socket);
-        host->clients[i].socket = INVALID_SOCKET_VALUE;
-      }
-
-      host->clients[i].active = false;
+    asciichat_error_t result = asciichat_thread_join(&host->render_thread, NULL);
+    if (result != ASCIICHAT_OK) {
+      host->render_thread_running = true;
+      return result;
     }
   }
-  host->client_count = 0;
-  mutex_unlock(&host->clients_mutex);
-
-  // Close listen sockets
-  if (host->socket_v4 != INVALID_SOCKET_VALUE) {
-    socket_close(host->socket_v4);
-    host->socket_v4 = INVALID_SOCKET_VALUE;
+#ifndef __EMSCRIPTEN__
+  network_server_request_stop(host->network_server);
+  if (host->network_thread_started) {
+    asciichat_error_t result = asciichat_thread_join(&host->network_thread, NULL);
+    if (result != ASCIICHAT_OK)
+      return result;
+    host->network_thread_started = false;
   }
-  if (host->socket_v6 != INVALID_SOCKET_VALUE) {
-    socket_close(host->socket_v6);
-    host->socket_v6 = INVALID_SOCKET_VALUE;
-  }
-
+  asciichat_error_t result = network_server_stop(host->network_server);
+  if (result != ASCIICHAT_OK)
+    return result;
+  network_server_destroy(&host->network_server);
+#endif
   host->running = false;
+  return ASCIICHAT_OK;
+}
+asciichat_error_t session_host_accept_peer(session_host_t *host, acip_transport_t *transport) {
+#ifndef __EMSCRIPTEN__
+  if (!host || !host->network_server)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Host network is not running");
+  return network_server_adopt(host->network_server, transport, "peer", true);
+#else
+  (void)host;
+  (void)transport;
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "Browser peers use the browser host bridge");
+#endif
 }
 
 bool session_host_is_running(session_host_t *host) {
@@ -1193,7 +896,7 @@ bool session_host_is_running(session_host_t *host) {
  * Session Host Client Management Functions
  * ============================================================================ */
 
-uint32_t session_host_add_client(session_host_t *host, socket_t socket, const char *ip, int port) {
+uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transport, const char *ip, int port) {
   if (!host || !host->initialized) {
     return 0;
   }
@@ -1212,7 +915,7 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
     if (!host->clients[i].active) {
       host->clients[i].participant_type = PARTICIPANT_TYPE_NETWORK;
       host->clients[i].client_id = host->next_client_id++;
-      host->clients[i].socket = socket;
+      host->clients[i].connection = NULL;
       if (ip) {
         SAFE_STRNCPY(host->clients[i].ip_address, ip, sizeof(host->clients[i].ip_address));
       }
@@ -1221,7 +924,7 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
       host->clients[i].video_active = false;
       host->clients[i].audio_active = false;
       host->clients[i].connected_at = (uint64_t)time(NULL);
-      host->clients[i].transport = NULL; // No alternative transport initially
+      host->clients[i].transport = transport;
       host->clients[i].render_width = 0;
       host->clients[i].render_height = 0;
       host->clients[i].render_mode = RENDER_MODE_FOREGROUND;
@@ -1292,7 +995,6 @@ uint32_t session_host_add_memory_participant(session_host_t *host) {
     if (!host->clients[i].active) {
       host->clients[i].participant_type = PARTICIPANT_TYPE_MEMORY;
       host->clients[i].client_id = host->next_client_id++;
-      host->clients[i].socket = INVALID_SOCKET_VALUE; // No socket for memory participant
       SAFE_STRNCPY(host->clients[i].ip_address, "memory", sizeof(host->clients[i].ip_address));
       host->clients[i].port = 0;
       host->clients[i].active = true;
@@ -1444,11 +1146,13 @@ asciichat_error_t session_host_remove_client(session_host_t *host, uint32_t clie
       }
       mutex_lock(&host->clients_mutex);
 
-      // Close socket
-      if (host->clients[i].socket != INVALID_SOCKET_VALUE) {
-        socket_close(host->clients[i].socket);
-        host->clients[i].socket = INVALID_SOCKET_VALUE;
+#ifndef __EMSCRIPTEN__
+      if (host->clients[i].connection) {
+        network_connection_request_stop(host->clients[i].connection);
+        mutex_unlock(&host->clients_mutex);
+        return ASCIICHAT_OK;
       }
+#endif
 
       // Clean up media buffers
       if (host->clients[i].incoming_video) {
@@ -1548,12 +1252,6 @@ asciichat_error_t session_host_broadcast_frame(session_host_t *host, const char 
         log_warn("Failed to send ASCII frame to client %u", host->clients[i].client_id);
         result = send_result;
       }
-    } else if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
-      asciichat_error_t send_result = packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, frame, frame_len);
-      if (send_result != ASCIICHAT_OK) {
-        log_warn("Failed to send ASCII frame to client %u", host->clients[i].client_id);
-        result = send_result; // Store error but continue broadcasting to other clients
-      }
     }
   }
   mutex_unlock(&host->clients_mutex);
@@ -1576,13 +1274,10 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
   mutex_lock(&host->clients_mutex);
   for (int i = 0; i < host->max_clients; i++) {
     if (host->clients[i].client_id == client_id && host->clients[i].active) {
-      asciichat_error_t result =
-          host->clients[i].transport
-              ? acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, frame, frame_len - 1, 80, 24,
-                                      "session-host")
-              : (host->clients[i].socket != INVALID_SOCKET_VALUE
-                     ? packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, frame, frame_len)
-                     : ERROR_NOT_FOUND);
+      asciichat_error_t result = host->clients[i].transport
+                                     ? acip_send_ascii_frame(host->clients[i].transport, &host->frame_workspace, frame,
+                                                             frame_len - 1, 80, 24, "session-host")
+                                     : ERROR_NOT_FOUND;
       mutex_unlock(&host->clients_mutex);
       return result;
     }

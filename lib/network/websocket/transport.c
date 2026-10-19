@@ -601,98 +601,31 @@ static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, 
  */
 static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_data, buffer_domain_t *domain,
                                                  const void *send_data, size_t send_len) {
-  // Server-side transports cannot call lws_write() directly
-  // They must queue data and send from LWS_CALLBACK_SERVER_WRITEABLE
-  if (!ws_data->owns_context) {
-    // Queue the data for server-side sending
-    // Allocate with LWS_PRE padding because lws_write() needs to write
-    // the WebSocket frame header backwards into the LWS_PRE region
-    // The queued owner is retained until the writable callback completes.
-    websocket_recv_msg_t msg;
-    size_t buffer_size = LWS_PRE + send_len;
-    msg.data = buffer_alloc(domain, buffer_size);
-    if (!msg.data) {
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate send queue buffer");
-    }
-    // Copy data AFTER the LWS_PRE region
-    memcpy(msg.data + LWS_PRE, send_data, send_len);
-    msg.len = send_len;
-    msg.first = 1;
-    msg.final = 1;
-
-    mutex_lock(&ws_data->send_mutex);
-    bool success = ringbuffer_write(ws_data->send_queue, &msg);
-    if (success)
-      ws_data->pending_send_bytes += send_len;
-
-    if (!success) {
-      mutex_unlock(&ws_data->send_mutex);
-      log_error("WebSocket server send queue FULL - cannot queue %zu bytes (queue size=%d)", send_len,
-                WEBSOCKET_SEND_QUEUE_SIZE);
-      buffer_release(msg.data);
-
-      return SET_ERRNO(ERROR_NETWORK, "Send queue full (cannot queue %zu bytes)", send_len);
-    }
-    mutex_unlock(&ws_data->send_mutex);
-
-    log_debug_every(US_PER_SEC_INT, ">>> SERVER FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
-
-    // Wake the LWS service thread so it processes the queued data.
-    // lws_callback_on_writable() is NOT safe from non-service threads. Instead, use
-    // lws_cancel_service() which safely interrupts the blocking lws_service() poll.
-    // The service thread handles LWS_CALLBACK_EVENT_WAIT_CANCELLED by calling
-    // lws_callback_on_writable_all_protocol() for all protocols.
-    START_TIMER("ws_callback");
-    lws_cancel_service(ws_data->context);
-    STOP_TIMER_AND_LOG(dev, 0, "ws_callback", "[WEBSOCKET] lws_cancel_service");
-    log_debug_every(US_PER_SEC_INT, ">>> CANCELLED SERVICE to wake event loop for wsi=%p", (void *)ws_data->wsi);
-
-    return ASCIICHAT_OK;
-  }
-
-  // Client-side: queue entire message for service thread to send
-  // Avoid fragmentation race conditions by sending atomic messages from service thread
-  // libwebsockets handles automatic fragmentation internally when needed
-  // Allocate with LWS_PRE padding because lws_write() needs to write
-  // the WebSocket frame header backwards into the LWS_PRE region
-  // Queue ownership extends through the writable completion callback.
-  websocket_recv_msg_t msg;
-  size_t buffer_size = LWS_PRE + send_len;
-  msg.data = buffer_alloc(domain, buffer_size);
-  if (!msg.data) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate client send queue buffer");
-  }
-  // Copy data AFTER the LWS_PRE region
+  // Both sides retain padded wire data until the owning service callback sends it.
+  websocket_recv_msg_t msg = {.data = buffer_alloc(domain, LWS_PRE + send_len), .len = send_len,
+                              .first = 1, .final = 1};
+  if (!msg.data)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate WebSocket send buffer");
   memcpy(msg.data + LWS_PRE, send_data, send_len);
-  msg.len = send_len;
-  msg.first = 1;
-  msg.final = 1;
-
-  mutex_lock(&ws_data->send_mutex);
-  bool success = ringbuffer_write(ws_data->send_queue, &msg);
-  if (success)
-    ws_data->pending_send_bytes += send_len;
-
-  if (!success) {
-    mutex_unlock(&ws_data->send_mutex);
-    log_error("WebSocket client send queue FULL - cannot queue %zu bytes (queue size=%d)", send_len,
-              WEBSOCKET_SEND_QUEUE_SIZE);
+  mutex_lock(&ws_data->state_mutex);
+  if (atomic_load_bool(&ws_data->is_destroying) || ws_data->connection_failed || !ws_data->context) {
+    mutex_unlock(&ws_data->state_mutex);
     buffer_release(msg.data);
-
-    return SET_ERRNO(ERROR_NETWORK, "Client send queue full (cannot queue %zu bytes)", send_len);
+    return SET_ERRNO(ERROR_NETWORK, "WebSocket closed before send admission");
   }
+  mutex_lock(&ws_data->send_mutex);
+  bool admitted = ringbuffer_write(ws_data->send_queue, &msg);
+  if (admitted)
+    ws_data->pending_send_bytes += send_len;
   mutex_unlock(&ws_data->send_mutex);
-
-  log_debug_every(US_PER_SEC_INT, ">>> QUEUED CLIENT MESSAGE: %zu bytes queued at %p for service thread (wsi=%p)",
-                  send_len, (void *)ws_data->wsi, (void *)ws_data->wsi);
-
-  // Wake the client's service thread from its blocking lws_service() call.
-  // Without this, the service thread may block in poll() for up to its timeout
-  // duration before checking the send queue, causing multi-second send delays.
-  lws_cancel_service(ws_data->context);
-
-  log_dev_every(1000000, "WebSocket client: queued %zu bytes for service thread to send", send_len);
-
+  // Context detachment takes state_mutex too; cancellation cannot use a stale context.
+  if (admitted)
+    lws_cancel_service(ws_data->context);
+  mutex_unlock(&ws_data->state_mutex);
+  if (!admitted) {
+    buffer_release(msg.data);
+    return SET_ERRNO(ERROR_NETWORK, "WebSocket send queue full");
+  }
   return ASCIICHAT_OK;
 }
 
@@ -981,6 +914,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     ws_data->partial_capacity = 0;
   }
 
+  uint64_t started = time_get_ns();
+  uint64_t timeout = transport->receive_timeout_ns ? transport->receive_timeout_ns : NS_PER_SEC_INT;
   while (true) {
     // Wait for fragment if queue is empty
     while (ringbuffer_is_empty(ws_data->recv_queue)) {
@@ -988,6 +923,14 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       // set is_connected=false and we'll detect it below. Arbitrary timeouts just cause
       // unnecessary disconnections while data is actually being transmitted.
 
+      if (time_get_ns() - started >= timeout) {
+        ws_data->partial_buffer = assembled_buffer;
+        ws_data->partial_size = assembled_size;
+        ws_data->partial_capacity = assembled_capacity;
+        mutex_unlock(&ws_data->recv_mutex);
+        return SET_ERRNO(assembled_size ? ERROR_NETWORK_INCOMPLETE : ERROR_NETWORK_TIMEOUT,
+                         "WebSocket receive deadline expired");
+      }
       // Check connection state - but don't fail immediately if connection closes
       // while reassembling. Instead, return what we have so the handler can process it.
       // This prevents losing buffered data due to connection timeouts.
@@ -1151,67 +1094,25 @@ static void websocket_interrupt(acip_transport_t *transport) {
   mutex_lock(&ws_data->state_mutex);
   ws_data->is_connected = false;
   cond_broadcast(&ws_data->state_cond);
+  if (ws_data->context)
+    lws_cancel_service(ws_data->context);
   mutex_unlock(&ws_data->state_mutex);
   // Receivers release recv_mutex while waiting; acquire it to avoid lost wakes.
   mutex_lock(&ws_data->recv_mutex);
   cond_broadcast(&ws_data->recv_cond);
   mutex_unlock(&ws_data->recv_mutex);
-  if (ws_data->context)
-    lws_cancel_service(ws_data->context);
 }
 
 static asciichat_error_t websocket_close(acip_transport_t *transport) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
-  uint64_t now_ns = time_get_ns();
-
-  // Stop service thread BEFORE calling lws_close_reason()
-  // Mark as destroying FIRST to signal service thread to stop immediately
-  // This prevents service thread from trying to call lws_service on a destroying/destroyed context
-  atomic_store_bool(&ws_data->is_destroying, true);
-
+  websocket_interrupt(transport);
+  // Client contexts are exclusive; server contexts close on their writable callback.
   if (ws_data->service_running) {
-    log_debug("[websocket_close] Stopping service thread to prevent deadlock during lws_close_reason()");
+    asciichat_error_t result = asciichat_thread_join(&ws_data->service_thread, NULL);
+    if (result != ASCIICHAT_OK)
+      return result;
     ws_data->service_running = false;
-    // Give service thread time to notice is_destroying flag
-    platform_sleep_us(10000); // 10ms
-    asciichat_thread_join(&ws_data->service_thread, NULL);
-    log_debug("[websocket_close] Service thread stopped");
   }
-
-  mutex_lock(&ws_data->state_mutex);
-
-  if (!ws_data->is_connected) {
-    mutex_unlock(&ws_data->state_mutex);
-    log_debug_every(US_PER_SEC_INT, "websocket_close: Already closed (is_connected=false), wsi=%p, timestamp=%llu",
-                    (void *)ws_data->wsi, (unsigned long long)now_ns);
-    return ASCIICHAT_OK; // Already closed
-  }
-
-  log_fatal("🔴 websocket_close called! Setting is_connected=false, wsi=%p, timestamp=%llu", (void *)ws_data->wsi,
-            (unsigned long long)now_ns);
-  ws_data->is_connected = false;
-  mutex_unlock(&ws_data->state_mutex);
-
-  // Close WebSocket connection
-  // Safe to call lws_close_reason() now - service thread is stopped, so no callback contention
-  if (ws_data->wsi) {
-    log_fatal("    [websocket_close] Calling lws_close_reason for wsi=%p", (void *)ws_data->wsi);
-    lws_close_reason(ws_data->wsi, LWS_CLOSE_STATUS_NORMAL, NULL, 0);
-    log_fatal("    [websocket_close] lws_close_reason returned");
-  }
-
-  // Wake any blocking recv() calls and send() waits
-  // Signal both recv_cond and state_cond to unblock all waiting threads
-  // before the transport is destroyed. This prevents use-after-free when threads
-  // wake from cond_timedwait() after the structure has been freed.
-  cond_broadcast(&ws_data->recv_cond);
-  cond_broadcast(&ws_data->state_cond);
-
-  // The server event thread closes rejected connections in its writable callback.
-  if (!ws_data->owns_context && ws_data->context)
-    lws_cancel_service(ws_data->context);
-
-  log_info("WebSocket transport closed, wsi=%p", (void *)ws_data->wsi);
   return ASCIICHAT_OK;
 }
 
@@ -1307,6 +1208,10 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
 
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
+  // Server transport callbacks retain their storage until CLOSED has detached it.
+  while (atomic_load_bool(&ws_data->server_handler_owned) && !atomic_load_bool(&ws_data->server_detached))
+    platform_sleep_ms(1);
+
   // Mark transport as destroying and broadcast condition variables
   // This signals all waiting threads to wake and exit naturally.
   log_debug("[WEBSOCKET_DESTROY] Marking transport as destroying");
@@ -1323,10 +1228,6 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
     log_debug("[WEBSOCKET_DESTROY] Cancelling libwebsockets service");
     lws_cancel_service(ws_data->context);
   }
-
-  // Give threads a brief moment to detect the flag and exit
-  // Threads should check is_destroying before acquiring mutexes
-  platform_sleep_us(50 * US_PER_MS_INT); // 50ms for threads to detect flag
 
   // Stop service thread (client-side only)
   if (ws_data->service_running) {

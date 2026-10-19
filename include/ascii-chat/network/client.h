@@ -1,12 +1,7 @@
-/**
- * @file lib/network/client.h
- * @brief Client state structures
- *
- * Defines two client structures:
- * - client_info_t: Server-side per-client state
- * - app_client_t: Client-side application state (replaces mixed-concern tcp_client_t)
- */
 #pragma once
+/** Server media state. The network runtime owns establishment, security,
+ * packet execution, and transport teardown. This state owns media buffers,
+ * capabilities, and the render workers joined by the connection closing hook. */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -16,7 +11,7 @@
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/acip/transport.h> // For acip_transport_t
-#include <ascii-chat/network/connection_handle.h>
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/crypto/handshake/common.h> // For crypto_handshake_context_t (complete type needed for field)
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/video/rgba/video_frame.h>
@@ -38,59 +33,12 @@ typedef enum {
   PARTICIPANT_TYPE_MEMORY   // Local host participant (direct memory access)
 } participant_type_t;
 
-/**
- * @brief Per-client state structure for server-side client management
- *
- * Represents complete state for a single connected client in the ascii-chat server.
- * This structure stores all client-specific information including network connection,
- * media capabilities, terminal settings, threading state, and synchronization primitives.
- *
- * CORE FIELDS:
- * ============
- * - Network: Socket, IP address, port, thread handles
- * - Media: Video/audio capabilities, stream state, buffers
- * - Terminal: Capabilities, palette cache, dimensions
- * - Threading: Send/receive/render thread handles and flags
- * - Synchronization: Mutexes for thread-safe state access
- * - Crypto: Cryptographic handshake context for secure communication
- *
- * THREADING MODEL:
- * ================
- * Each client has dedicated threads:
- * - receive_thread: Handles incoming packets (protocol processing)
- * - send_thread: Manages outgoing packet delivery (packet queues)
- * - video_render_thread: Generates ASCII frames at 60fps
- * - audio_render_thread: Mixes audio streams at 172fps
- *
- * BUFFER MANAGEMENT:
- * ==================
- * - incoming_video_buffer: Double-buffered video frames from client
- * - incoming_audio_buffer: Ring buffer for client's audio samples
- * - outgoing_video_buffer: Double-buffered ASCII frames to send
- * - audio_queue: Packet queue for audio packets to send
- *
- * MEMORY MANAGEMENT:
- * ==================
- * - Pre-allocated buffers to avoid malloc/free in hot paths
- * - send_buffer: For packet assembly
- * - crypto_plaintext_buffer: For encryption plaintext
- * - crypto_ciphertext_buffer: For encryption ciphertext
- *
- * @note All atomic fields are thread-safe for concurrent access.
- * @note Buffer pointers are set once during client creation and never change.
- * @note Thread handles are valid only when threads are running.
- */
 typedef struct client_info {
   participant_type_t participant_type; // Network (socket) or memory (direct injection)
-  socket_t socket;
-  bool event_driven;                 // Network callbacks own lifetime; only render threads are per-client
+  network_connection_t *network_connection;
   atomic_t event_ready;
   atomic_t event_cleanup;
   acip_transport_t *transport;       // ACIP transport for protocol-agnostic packet sending
-  asciichat_thread_t receive_thread; // Thread for receiving client data
-  asciichat_thread_t send_thread;    // Thread for sending data to client
-  thread_id_t send_thread_id;        // Thread ID of send thread (for self-join detection)
-  thread_id_t receive_thread_id;     // Thread ID of receive thread (for self-join detection)
   void *server_ctx;                  // Pointer to server_context_t (avoid circular includes)
   char client_id[MAX_CLIENT_ID_LEN]; // String-based client ID: "noun.N (transport:port)"
   uint32_t session_client_id;        // Session host client ID (0 if not registered)
@@ -154,35 +102,11 @@ typedef struct client_info {
   video_frame_buffer_t *incoming_video_buffer; // Modern double-buffered video frame
   audio_ring_buffer_t *incoming_audio_buffer;  // Buffer for this client's audio
 
-  // Professional double-buffer system for outgoing frames
-  video_frame_buffer_t *outgoing_video_buffer; // Double buffer for ASCII frames to send
-
-  // Packet queue for audio only (video uses double buffer now)
-  packet_queue_t *audio_queue; // Queue for audio packets to send to this client
-
-  // Async dispatch: queue for received packets (async processing)
-  packet_queue_t *received_packet_queue; // Queue of complete received packets waiting for dispatch
-  asciichat_thread_t dispatch_thread;    // Async dispatch thread processes queued packets
-  atomic_t dispatch_thread_running;      // Flag to signal dispatch thread to exit
-  cond_t dispatch_queue_cond;            // Condition variable to wake dispatch thread when packets arrive
-
-  // Dedicated send thread for this client
-  atomic_t send_thread_running;
-
-  // Per-client grid tracking for CLEAR_CONSOLE logic
-  atomic_t last_rendered_grid_sources; // Render thread: source count in buffered frame
-  atomic_t last_sent_grid_sources;     // Send thread: source count in last sent frame
+  // Tracks the last source layout submitted to the shared send scheduler.
+  atomic_t last_sent_grid_sources;
 
   // Frame statistics for debugging
   atomic_t frames_sent_count; // Total ASCII frames sent to this client
-
-  // Pre-allocated buffers to avoid malloc/free in send thread (prevents buffer domain contention)
-  void *send_buffer;
-  size_t send_buffer_size;
-  void *crypto_plaintext_buffer; // For encryption plaintext (frame + header)
-  size_t crypto_plaintext_size;
-  void *crypto_ciphertext_buffer; // For encryption ciphertext (encrypted result)
-  size_t crypto_ciphertext_size;
 
   // Per-client rendering threads
   asciichat_thread_t video_render_thread;
@@ -192,128 +116,15 @@ typedef struct client_info {
 
   // Per-client synchronization
   mutex_t client_state_mutex;
-  mutex_t send_mutex; // Protects socket writes (prevents concurrent send race)
+  mutex_t send_mutex; // Serializes application control and media transitions
 
-  // Per-client crypto context for secure communication
-  crypto_handshake_context_t crypto_handshake_ctx;
+  // Borrowed from the owning network connection; valid until producer threads join.
+  crypto_handshake_context_t *crypto_handshake_ctx;
   bool crypto_initialized;
   bool transport_encrypted; ///< TLS or DTLS already encrypts this client's transport.
   bool security_ready;      // Negotiation and any required authentication completed
   bool encrypt_data;        // Whether payload encryption is enabled (false = auth-only mode)
 
-  // Pending packet storage for --no-encrypt mode
-  // When client uses --no-encrypt, the first packet (e.g., CLIENT_JOIN) arrives
-  // during crypto handshake attempt. We store it here so the caller can process it.
-  packet_type_t pending_packet_type;
-  void *pending_packet_payload;
-  size_t pending_packet_length;
-
   // uthash handle for hash table operations
   UT_hash_handle hh;
 } client_info_t;
-
-/* ============================================================================
- * Client-Side Application State (replaces tcp_client_t mixed concerns)
- * ============================================================================ */
-
-/**
- * @brief Audio packet for async transmission
- */
-typedef struct {
-  uint8_t data[4096];       ///< Opus-encoded audio data
-  size_t size;              ///< Size of encoded data
-  uint16_t frame_sizes[48]; ///< Individual frame sizes for Opus batching
-  int frame_count;          ///< Number of frames in packet
-} app_client_audio_packet_t;
-
-#define APP_CLIENT_AUDIO_QUEUE_SIZE 256
-
-/**
- * @brief Client-side application state
- *
- * Transport-agnostic container for application-layer state previously mixed
- * in tcp_client_t. Holds audio queues, thread handles, crypto context, and
- * display state. Connection ownership is tracked through connection_handle_t.
- */
-typedef struct app_client {
-  /* ========================================================================
-   * Active Transport & Network Client
-   * ======================================================================== */
-
-  connection_handle_t connection;
-
-  /* ========================================================================
-   * Audio State
-   * ======================================================================== */
-
-  audio_context_t audio_ctx;
-  app_client_audio_packet_t audio_send_queue[APP_CLIENT_AUDIO_QUEUE_SIZE];
-  int audio_send_queue_head;
-  int audio_send_queue_tail;
-  mutex_t audio_send_queue_mutex;
-  cond_t audio_send_queue_cond;
-  bool audio_send_queue_initialized;
-  atomic_t audio_sender_should_exit;
-  asciichat_thread_t audio_capture_thread;
-  asciichat_thread_t audio_sender_thread;
-  bool audio_capture_thread_created;
-  bool audio_sender_thread_created;
-  atomic_t audio_capture_thread_exited;
-
-  /* ========================================================================
-   * Protocol State
-   * ======================================================================== */
-
-  asciichat_thread_t data_reception_thread;
-  bool data_thread_created;
-  atomic_t data_thread_exited;
-  uint32_t last_active_count;
-  bool server_state_initialized;
-  bool should_clear_before_next_frame;
-  uint32_t my_client_id;
-  bool encryption_enabled;
-
-  /* ========================================================================
-   * Capture State
-   * ======================================================================== */
-
-  asciichat_thread_t capture_thread;
-  bool capture_thread_created;
-  atomic_t capture_thread_exited;
-
-  /* ========================================================================
-   * Keepalive State
-   * ======================================================================== */
-
-  asciichat_thread_t ping_thread;
-  bool ping_thread_created;
-  atomic_t ping_thread_exited;
-
-  /* ========================================================================
-   * Display State
-   * ======================================================================== */
-
-  bool has_tty;
-  atomic_t is_first_frame_of_connection;
-  tty_info_t tty_info;
-
-  /* ========================================================================
-   * Crypto State
-   * ======================================================================== */
-
-  crypto_handshake_context_t crypto_ctx;
-  bool crypto_initialized;
-
-} app_client_t;
-
-/**
- * @brief Create and initialize client application context
- * @return Pointer to initialized context, or NULL on failure
- */
-app_client_t *app_client_create(void);
-
-/**
- * @brief Destroy client application context and free all resources
- * @param client_ptr Pointer to client pointer (set to NULL after free)
- */
-void app_client_destroy(app_client_t **client_ptr);

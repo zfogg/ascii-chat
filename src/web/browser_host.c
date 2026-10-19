@@ -50,7 +50,7 @@ EMSCRIPTEN_KEEPALIVE uint32_t browser_host_add_client(void) {
   for (size_t i = 0; i < PARTICIPANT_LIMIT; ++i) {
     if (client_ids[i])
       continue;
-    uint32_t id = session_host_add_client(host, INVALID_SOCKET_VALUE, "browser", 0);
+    uint32_t id = session_host_add_client(host, NULL, "browser", 0);
     if (!id)
       return 0;
     client_ids[i] = id;

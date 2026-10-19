@@ -19,22 +19,16 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/errors.c
     ${CMAKE_CURRENT_SOURCE_DIR}/parallel_connect.c
     ${CMAKE_CURRENT_SOURCE_DIR}/connection_endpoint.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/connection_factory.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/connection_handle.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/connection_attempt.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/client.c
     # rate_limit/
     ${CMAKE_CURRENT_SOURCE_DIR}/rate_limit/rate_limit.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rate_limit/memory.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rate_limit/sqlite.c
     # tcp/
     ${CMAKE_CURRENT_SOURCE_DIR}/tcp/server.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/tcp/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/tcp/transport.c
     # websocket/
     ${CMAKE_CURRENT_SOURCE_DIR}/websocket/transport.c
     ${CMAKE_CURRENT_SOURCE_DIR}/websocket/server.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/websocket/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/websocket/callback_timing.c
     # webrtc/
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/webrtc.c
@@ -73,7 +67,7 @@ set(NETWORK_SRCS
 
 if(NOT EMSCRIPTEN)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/acip/backpressure.c)
-    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/tcp/async.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/tcp/async.c ${CMAKE_CURRENT_SOURCE_DIR}/connection.c ${CMAKE_CURRENT_SOURCE_DIR}/negotiation.c)
 endif()
 
 # Third-party code properties (mdns)

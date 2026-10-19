@@ -967,16 +967,18 @@ add_library(ascii-chat-shared SHARED
             list(APPEND _export_object_dependencies $<TARGET_OBJECTS:${_module}>)
         endforeach()
 
+        set(_export_object_manifest "${CMAKE_CURRENT_BINARY_DIR}/asciichat-export-objects-$<CONFIG>.txt")
+        file(GENERATE OUTPUT "${_export_object_manifest}" CONTENT "$<JOIN:${_export_object_dependencies},\n>\n")
+
         add_custom_command(
             OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
             COMMAND ${CMAKE_COMMAND}
                 -DNM_TOOL=${CMAKE_NM}
-                -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
-                -DMODULE_TARGETS=${MODULE_TARGETS_STR}
+                -DOBJECT_LIST_FILE=${_export_object_manifest}
                 -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
                 -DLIBRARY_NAME=asciichat
                 -P ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
-            DEPENDS ${MODULE_TARGETS} ${_export_object_dependencies} ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
+            DEPENDS ${MODULE_TARGETS} ${_export_object_dependencies} ${_export_object_manifest} ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
             COMMENT "Generating Windows .def file from object files"
             VERBATIM
         )

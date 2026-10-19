@@ -197,6 +197,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
   // Mark the handler as owning the transport before it becomes visible to a
   // worker. A peer can close immediately after the upgrade; CLOSED must not
   // destroy a transport that has already been queued for handling.
+  atomic_store_bool(&((websocket_transport_data_t *)conn_data->transport->impl_data)->server_handler_owned, true);
   conn_data->handler_started = true;
   asciichat_error_t queue_result =
       thread_pool_queue_work("websocket_handler_established", server->handler_pool, server->handler, client_ctx);
@@ -205,6 +206,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
   if (queue_result != ASCIICHAT_OK) {
     log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: thread_pool_queue_work returned error");
     conn_data->handler_started = false;
+    atomic_store_bool(&((websocket_transport_data_t *)conn_data->transport->impl_data)->server_handler_owned, false);
     SAFE_FREE(client_ctx);
     acip_transport_destroy(conn_data->transport);
     conn_data->transport = NULL;
@@ -251,6 +253,7 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
   // Close the transport to mark it as disconnected.
   // This signals the receive thread to exit, allowing clean shutdown.
   // Guard against use-after-free: check both conn_data and transport are valid
+  websocket_transport_data_t *detached = conn_data && conn_data->transport ? conn_data->transport->impl_data : NULL;
   acip_transport_t *transport_snapshot = NULL;
   if (conn_data && conn_data->transport) {
     transport_snapshot = conn_data->transport;
@@ -286,6 +289,14 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
   // Ensure transport pointer is NULL
   if (conn_data) {
     conn_data->transport = NULL;
+  }
+
+  if (detached && atomic_load_bool(&detached->server_handler_owned)) {
+    mutex_lock(&detached->state_mutex);
+    detached->context = NULL;
+    detached->wsi = NULL;
+    mutex_unlock(&detached->state_mutex);
+    atomic_store_bool(&detached->server_detached, true);
   }
 
   uint64_t close_callback_end_ns = time_get_ns();
@@ -909,20 +920,14 @@ void websocket_server_destroy(websocket_server_t *server) {
   // Unregister atomic fields
   NAMED_UNREGISTER(&server->running);
 
-  // Destroy handler thread pool (waits for pending work to complete)
+  if (server->context) {
+    NAMED_UNREGISTER(server->context);
+    lws_context_destroy(server->context);
+    server->context = NULL;
+  }
   if (server->handler_pool) {
     thread_pool_destroy(server->handler_pool);
     server->handler_pool = NULL;
-  }
-
-  // Context is normally destroyed by websocket_server_run (from the event loop
-  // thread) for fast shutdown. This handles the case where run() wasn't called
-  // or didn't complete normally.
-  if (server->context) {
-    NAMED_UNREGISTER(server->context);
-    log_debug("WebSocket context still alive in destroy, cleaning up");
-    lws_context_destroy(server->context);
-    server->context = NULL;
   }
 
   log_debug("WebSocket server destroyed");

@@ -17,6 +17,44 @@ import time
 from winpty import PtyProcess
 
 
+def stop_client(client):
+    """Wait on the owned Windows child, rather than the ConPTY agent's liveness."""
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    kernel.WaitForSingleObject.restype = wintypes.DWORD
+    kernel.TerminateProcess.argtypes = [wintypes.HANDLE, wintypes.UINT]
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    handle = kernel.OpenProcess(0x1000 | 0x100000 | 1, False, client.pid)
+    if not handle:
+        error = ctypes.get_last_error()
+        if error == 87:  # The child already exited and its PID no longer exists.
+            return
+        raise ctypes.WinError(error)
+    try:
+        status = kernel.WaitForSingleObject(handle, 0)
+        if status == 0:
+            return
+        if status != 258:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            client.sendintr()
+        except (EOFError, OSError):
+            pass
+        status = kernel.WaitForSingleObject(handle, 3000)
+        if status == 258:
+            if not kernel.TerminateProcess(handle, 1):
+                raise ctypes.WinError(ctypes.get_last_error())
+            assert kernel.WaitForSingleObject(handle, 5000) == 0, 'CLI child did not exit'
+        elif status != 0:
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        kernel.CloseHandle(handle)
+
+
 def unused_port():
     with socket.socket() as sock:
         sock.bind(('127.0.0.1', 0))
@@ -26,8 +64,10 @@ def unused_port():
 def run(options, transport):
     output = options.output / transport
     output.mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ, ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1',
-               ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y', TERM='xterm-256color')
+    env = {key: value for key, value in os.environ.items() if not key.startswith('ASCII_CHAT_')}
+    env.update(ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1',
+               ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y', TERM='xterm-256color', HOME=str(output),
+               USERPROFILE=str(output), APPDATA=str(output), XDG_CONFIG_HOME=str(output))
     servers, files, commands = [], [], []
     client = None
     reader = None
@@ -37,6 +77,7 @@ def run(options, transport):
     started = time.monotonic()
 
     def command(name, flags, level='warn'):
+        (output / (name + '.log')).write_text('', encoding='utf-8')
         argv = [str(options.binary), '--no-check-update', '--log-level', level,
                 '--log-file', str(output / (name + '.log'))] + flags
         commands.append(argv)
@@ -54,15 +95,23 @@ def run(options, transport):
     try:
         server_flags = ['server', '0.0.0.0' if transport == 'webrtc' else '127.0.0.1',
                         '--port', str(tcp), '--websocket-port', str(ws), '--status-screen=false']
-        if transport == 'webrtc':
+        if transport in ('webrtc', 'discovery-tcp'):
+            # Public RFC 8032 vector, used only by this isolated fixture.
+            identity = output / 'acds-test-key'
+            identity.write_bytes(bytes.fromhex(
+                '9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60'
+                'd75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a'))
             server('acds', ['discovery-service', '127.0.0.1', '--port', str(acds),
+                           '--key', str(identity),
                            '--websocket-port', str(acds_ws), '--database', str(output / 'acds.db'),
                            '--status-screen=false'])
             time.sleep(1)
-            server_flags += ['--password', 'fps-test-password', '--discovery', '--webrtc',
+            server_flags += ['--password', 'fps-test-password', '--discovery',
                              '--discovery-service', '127.0.0.1', '--discovery-service-port', str(acds)]
+            if transport == 'webrtc':
+                server_flags += ['--webrtc']
         host = server('server', server_flags, 'info')
-        if transport == 'webrtc':
+        if transport in ('webrtc', 'discovery-tcp'):
             deadline = time.monotonic() + 25
             session = None
             while time.monotonic() < deadline:
@@ -76,7 +125,9 @@ def run(options, transport):
                 time.sleep(.1)
             assert session, 'No discovery session created'
             flags = [session, '--discovery-service', '127.0.0.1', '--discovery-service-port', str(acds),
-                     '--prefer-webrtc', '--password', 'fps-test-password']
+                     '--password', 'fps-test-password']
+            if transport == 'webrtc':
+                flags += ['--prefer-webrtc']
         else:
             time.sleep(1)
             flags = ['client', f'{"tcp" if transport == "tcp" else "ws"}://127.0.0.1:{tcp if transport == "tcp" else ws}',
@@ -134,25 +185,26 @@ def run(options, transport):
         assert len(values) >= options.seconds * .8, 'Insufficient sustained FPS samples'
         assert statistics.median(values) >= options.fps * .98, 'Median presentation FPS below target'
         assert sum(value >= options.fps * .95 for value in values) >= len(values) * .9, 'Unstable presentation FPS'
+        server_log = (output / 'server.log').read_text(encoding='utf-8', errors='replace')
+        assert 'state=changing' in server_log, 'Server did not observe changing client video'
         if transport == 'webrtc':
-            assert 'DataChannel opened, transport ready' in (output / 'server.log').read_text(encoding='utf-8', errors='replace')
+            assert 'Authenticated WebRTC connection adopted' in server_log
     finally:
-        if client and client.isalive():
-            client.sendintr()
-            time.sleep(.3)
-            if client.isalive():
-                client.terminate(force=True)
-        stopped.set()
-        if reader:
-            reader.join(timeout=2)
-        for process in reversed(servers):
-            if process.poll() is None:
-                process.kill()
-            process.wait()
-        for file in files:
-            file.close()
-        (output / 'commands.json').write_text(json.dumps(commands, indent=2), encoding='utf-8')
-        (output / 'terminal.ansi').write_text(tail[0], encoding='utf-8')
+        try:
+            if client:
+                stop_client(client)
+        finally:
+            stopped.set()
+            if reader:
+                reader.join(timeout=2)
+            for process in reversed(servers):
+                if process.poll() is None:
+                    process.kill()
+                process.wait()
+            for file in files:
+                file.close()
+            (output / 'commands.json').write_text(json.dumps(commands, indent=2), encoding='utf-8')
+            (output / 'terminal.ansi').write_text(tail[0], encoding='utf-8')
 
 
 def main():
@@ -163,7 +215,7 @@ def main():
     parser.add_argument('--height', type=int, default=40)
     parser.add_argument('--fps', type=int, default=60)
     parser.add_argument('--seconds', type=int, default=30)
-    parser.add_argument('--transport', choices=['all', 'tcp', 'websocket', 'webrtc'], default='all')
+    parser.add_argument('--transport', choices=['all', 'tcp', 'websocket', 'webrtc', 'discovery-tcp'], default='all')
     options = parser.parse_args()
     assert os.name == 'nt', 'This runner requires Windows ConPTY'
     assert options.seconds >= 10 and options.fps > 0 and options.width > 0 and options.height > 0

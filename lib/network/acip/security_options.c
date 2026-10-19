@@ -3,19 +3,21 @@
 #include <ascii-chat/options/options.h>
 #include <string.h>
 
-asciichat_error_t acip_security_init_options(acip_security_t *security, bool server) {
+asciichat_error_t acip_security_init_options(acip_security_t *security, bool server, bool transport_secure,
+                                             const char *password_override) {
   if (!security)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing peer security state");
   memset(security, 0, sizeof(*security));
   const options_t *options = options_get();
   if (!options)
     return SET_ERRNO(ERROR_INVALID_STATE, "Peer security requires initialized options");
+  const char *password = password_override ? password_override : options->password;
   crypto_policy_t policy = {
-      .transport_secure = true,
+      .transport_secure = transport_secure,
       .encrypt = options->encrypt_enabled,
       .no_encrypt = options->no_encrypt,
       .no_auth = options->no_auth,
-      .has_password = options->password[0] != '\0',
+      .has_password = password[0] != '\0',
       .has_identity = options->encrypt_key[0] != '\0',
       .has_verification_key = server ? options->client_keys[0] != '\0' : options->server_key[0] != '\0',
   };
@@ -25,7 +27,7 @@ asciichat_error_t acip_security_init_options(acip_security_t *security, bool ser
   if (result != ASCIICHAT_OK)
     return result;
   crypto_handshake_context_t *ctx = &security->handshake;
-  result = policy.has_password ? crypto_handshake_init_with_password("webrtc_peer", ctx, server, options->password)
+  result = policy.has_password ? crypto_handshake_init_with_password("webrtc_peer", ctx, server, password)
                                : crypto_handshake_init("webrtc_peer", ctx, server);
   if (result != ASCIICHAT_OK)
     return result;

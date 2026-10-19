@@ -1,3 +1,4 @@
+#include <ascii-chat/network/connection.h>
 /**
  * @file session/participant.h
  * @brief 👤 Client-side session participation abstraction
@@ -348,15 +349,6 @@ asciichat_error_t session_participant_request_settings(session_participant_t *p,
 
 /** @} */
 
-/**
- * @brief Get the socket from a participant context
- * @param p Participant handle (must not be NULL)
- * @return The socket file descriptor, or INVALID_SOCKET_VALUE if not connected
- *
- * @ingroup session
- */
-socket_t session_participant_get_socket(session_participant_t *p);
-
 /** @} */
 
 /* ============================================================================
@@ -410,8 +402,8 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
  * @param ownership Receives the detached transport's ownership mode
  * @return ASCIICHAT_OK on success; outputs are unchanged on failure
  */
-asciichat_error_t session_participant_take_transport(session_participant_t *p, acip_transport_t **transport,
-                                                     session_transport_ownership_t *ownership);
+asciichat_error_t session_participant_set_connection(session_participant_t *p, network_connection_t **owner);
+asciichat_error_t session_participant_take_connection(session_participant_t *, network_connection_t **);
 
 /**
  * @brief Get the current transport for the participant
@@ -442,3 +434,6 @@ bool session_participant_has_transport(session_participant_t *p);
 /** @} */
 
 /** @} */
+
+/** Borrow the connection until the participant stops or transfers ownership. */
+network_connection_t *session_participant_connection(session_participant_t *p);

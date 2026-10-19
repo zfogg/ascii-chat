@@ -29,11 +29,9 @@ typedef struct {
 
 void session_protocol_init(session_protocol_t *protocol, acip_transport_t *transport, session_protocol_media_t media,
                            acip_client_callbacks_t control);
-/* Dispatch borrows its payload. Receive releases the packet allocation on every path.
- * Timeouts/incomplete reads are returned to the caller for its scheduling policy. */
+/* Dispatch borrows its payload from the shared connection executor. */
 asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet_type_t type, const void *payload,
                                             size_t length);
-asciichat_error_t session_protocol_receive(session_protocol_t *protocol);
 
 /* Shared packet construction for initial join and subsequent dimension updates. */
 void session_protocol_build_capabilities(unsigned short width, unsigned short height,

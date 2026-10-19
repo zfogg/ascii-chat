@@ -53,13 +53,6 @@ int server_connection_init(client_connection_t *connection);
 
 bool server_connection_is_active(client_connection_t *connection);
 
-/**
- * @brief Get current socket file descriptor
- * @return Socket FD or INVALID_SOCKET_VALUE if disconnected
- *
- * @ingroup client_connection
- */
-socket_t server_connection_get_socket(client_connection_t *connection);
 
 /**
  * @brief Get ACIP transport instance

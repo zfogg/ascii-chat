@@ -21,7 +21,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/connection_endpoint.h>
-#include <ascii-chat/network/connection_factory.h>
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
 #include <ascii-chat/discovery/identity.h>
@@ -81,7 +81,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
 
   // Initialize host liveness detection
   session->liveness.last_ping_sent_ms = 0;
-  session->liveness.last_pong_received_ms = 0;
+  atomic_store_u64(&session->liveness.last_pong_received_ms, 0);
   session->liveness.consecutive_failures = 0;
   session->liveness.max_failures = 3;
   session->liveness.ping_interval_ms = 3 * MS_PER_SEC_INT; // Ping every 3 seconds
@@ -206,10 +206,8 @@ static asciichat_error_t release_participant_transport(discovery_session_t *sess
 }
 
 static void release_host_control_transport(discovery_session_t *session) {
-  if (session->host_control_transport && session->host_control_ownership == SESSION_TRANSPORT_OWNED)
-    acip_transport_destroy(session->host_control_transport);
+  network_connection_destroy(&session->host_control_connection);
   session->host_control_transport = NULL;
-  session->host_control_ownership = SESSION_TRANSPORT_BORROWED;
 }
 
 // Discovery retains the host control connection when media switches to WebRTC.
@@ -221,10 +219,10 @@ static asciichat_error_t select_participant_transport(discovery_session_t *sessi
   session_participant_stop_video(participant);
   acip_transport_t *previous = session_participant_get_transport(participant);
   if (previous && acip_transport_get_type(previous) == ACIP_TRANSPORT_TCP && !session->host_control_transport) {
-    asciichat_error_t result = session_participant_take_transport(
-        participant, &session->host_control_transport, &session->host_control_ownership);
+    asciichat_error_t result = session_participant_take_connection(participant, &session->host_control_connection);
     if (result != ASCIICHAT_OK)
       return result;
+    session->host_control_transport = network_connection_transport(session->host_control_connection);
   }
   asciichat_error_t result = session_participant_set_transport(participant, transport, SESSION_TRANSPORT_OWNED);
   if (result != ASCIICHAT_OK)
@@ -257,14 +255,16 @@ asciichat_error_t discovery_session_destroy(discovery_session_t *session) {
 
   // Close ACDS connection
   if (session->acds_transport) {
-    acip_transport_destroy(session->acds_transport);
+    network_connection_destroy(&session->acds_connection);
     session->acds_transport = NULL;
     crypto_handshake_destroy(&session->acds_handshake);
   }
 
   // Destroy host context if active
   if (session->host_ctx) {
-    session_host_destroy(session->host_ctx);
+    asciichat_error_t result = session_host_destroy(session->host_ctx);
+    if (result != ASCIICHAT_OK)
+      return result;
     session->host_ctx = NULL;
   }
 
@@ -548,13 +548,14 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   const char *endpoint_input = session->acds_url[0] != '\0' ? session->acds_url : session->acds_address;
   uint16_t endpoint_default_port = session->acds_port > 0 ? session->acds_port : ACIP_DISCOVERY_DEFAULT_PORT;
   connection_endpoint_t endpoint = {0};
-  asciichat_error_t endpoint_result = connection_factory_open("discovery_acds", endpoint_input, endpoint_default_port,
-                                                              NULL, &session->acds_transport, &endpoint);
+  asciichat_error_t endpoint_result = network_connection_open("discovery_acds", endpoint_input, endpoint_default_port,
+                                                              &session->acds_connection, &endpoint);
   if (endpoint_result != ASCIICHAT_OK) {
     set_error(session, endpoint_result, "Failed to connect to ACDS");
     return endpoint_result;
   }
 
+  session->acds_transport = network_connection_transport(session->acds_connection);
   SAFE_STRNCPY(session->acds_address, endpoint.host, sizeof(session->acds_address));
   session->acds_port = endpoint.port;
 
@@ -567,7 +568,8 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t discovery_protocol_send(void *transport, packet_type_t type, const void *payload, size_t length) {
+static asciichat_error_t discovery_protocol_send(void *transport, packet_type_t type, const void *payload,
+                                                 size_t length) {
   return packet_send_via_transport(transport, type, payload, length, 0);
 }
 static asciichat_error_t discovery_protocol_receive(discovery_session_t *session, acds_protocol_t *protocol) {
@@ -575,9 +577,11 @@ static asciichat_error_t discovery_protocol_receive(discovery_session_t *session
   void *payload = NULL, *allocation = NULL;
   size_t length = 0;
   asciichat_error_t result = acds_receive_packet(session->acds_transport, &type, &payload, &length, &allocation);
-  if (result == ASCIICHAT_OK) result = acds_protocol_receive(protocol, type, payload, length);
+  if (result == ASCIICHAT_OK)
+    result = acds_protocol_receive(protocol, type, payload, length);
   buffer_release(allocation);
-  if (result != ASCIICHAT_OK) set_error(session, result, protocol->error[0] ? protocol->error : "Discovery receive failed");
+  if (result != ASCIICHAT_OK)
+    set_error(session, result, protocol->error[0] ? protocol->error : "Discovery receive failed");
   return result;
 }
 
@@ -604,12 +608,19 @@ static asciichat_error_t create_session(discovery_session_t *session) {
       SAFE_STRNCPY(params.server_address, "127.0.0.1", sizeof(params.server_address));
       params.server_port = ACIP_HOST_DEFAULT_PORT;
     }
-    asciichat_error_t result = acds_protocol_create(&protocol, &params, (uint8_t)session->num_identity_keys, (uint8_t)key_idx);
+    asciichat_error_t result =
+        acds_protocol_create(&protocol, &params, (uint8_t)session->num_identity_keys, (uint8_t)key_idx);
     sodium_memzero(&params, sizeof(params));
-    if (result != ASCIICHAT_OK) { acds_protocol_destroy(&protocol); return result; }
+    if (result != ASCIICHAT_OK) {
+      acds_protocol_destroy(&protocol);
+      return result;
+    }
   }
   asciichat_error_t result = discovery_protocol_receive(session, &protocol);
-  if (result != ASCIICHAT_OK) { acds_protocol_destroy(&protocol); return result; }
+  if (result != ASCIICHAT_OK) {
+    acds_protocol_destroy(&protocol);
+    return result;
+  }
   acip_session_created_t created_value = protocol.created;
   acip_session_created_t *created = &created_value;
   void *alloc_buffer = NULL;
@@ -829,23 +840,10 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
 
   // Implement transport switching for participant/host
   if (session->is_host && session->host_ctx) {
-    // Each WebRTC peer needs its own host client slot. Reusing the first slot
-    // replaces the previous peer's transport, so only the most recently
-    // connected browser receives frames.
-    uint32_t client_id = session_host_add_client(session->host_ctx, INVALID_SOCKET_VALUE, "webrtc", 0);
-    if (client_id == 0) {
-      log_error("Failed to allocate host client for WebRTC peer %02x%02x%02x%02x", participant_id[0], participant_id[1],
-                participant_id[2], participant_id[3]);
-      return;
-    }
-
-    asciichat_error_t result = session_host_set_client_transport(session->host_ctx, client_id, transport);
-    if (result == ASCIICHAT_OK) {
-      log_info("✓ Host: WebRTC peer %02x%02x%02x%02x assigned client %u", participant_id[0], participant_id[1],
-               participant_id[2], participant_id[3], client_id);
-    } else {
-      log_error("✗ Host: Failed to set WebRTC transport for client %u: %d", client_id, result);
-      session_host_remove_client(session->host_ctx, client_id);
+    asciichat_error_t result = session_host_accept_peer(session->host_ctx, transport);
+    if (result != ASCIICHAT_OK) {
+      log_error("Cannot admit host peer: %s", asciichat_error_string(result));
+      acip_transport_destroy(transport);
     }
   } else if (session->participant_ctx) {
     // We are a participant - set transport for ourselves
@@ -868,8 +866,7 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
         .encryption_enabled = false,
     };
     session->participant_ctx = session_participant_create(&pconfig);
-    if (!session->participant_ctx ||
-        select_participant_transport(session, transport) != ASCIICHAT_OK) {
+    if (!session->participant_ctx || select_participant_transport(session, transport) != ASCIICHAT_OK) {
       acip_transport_destroy(transport);
       set_error(session, ERROR_INVALID_STATE, "Failed to attach WebRTC participant transport");
       return;
@@ -1299,8 +1296,12 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   SAFE_STRNCPY(params.password, session->password, sizeof(params.password));
   asciichat_error_t result = acds_protocol_join(&protocol, &params);
   sodium_memzero(&params, sizeof(params));
-  if (result == ASCIICHAT_OK) result = discovery_protocol_receive(session, &protocol);
-  if (result != ASCIICHAT_OK) { acds_protocol_destroy(&protocol); return result; }
+  if (result == ASCIICHAT_OK)
+    result = discovery_protocol_receive(session, &protocol);
+  if (result != ASCIICHAT_OK) {
+    acds_protocol_destroy(&protocol);
+    return result;
+  }
   acip_session_joined_t joined_value = protocol.joined;
   acip_session_joined_t *joined = &joined_value;
   void *alloc_buffer = NULL;
@@ -1811,160 +1812,24 @@ static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *s
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t discovery_session_receive_protocol_version(discovery_session_t *session,
-                                                                    socket_t participant_socket) {
-  // Step 2: Receive server protocol version
-  log_debug("Receiving server protocol version...");
-  packet_type_t packet_type = 0;
-  void *payload = NULL;
-  size_t payload_len = 0;
-
-  int recv_result = receive_packet(participant_socket, &packet_type, &payload, &payload_len);
-  if (recv_result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
-    log_error("Failed to receive server protocol version (got type 0x%x)", packet_type);
-    if (payload) {
-      buffer_release(payload);
-    }
-    set_error(session, ERROR_NETWORK, "Failed to receive protocol version from server");
-    session_participant_disconnect(session->participant_ctx);
-    return SET_ERRNO(ERROR_NETWORK, "Failed to receive protocol version from server");
-  }
-
-  if (payload_len != sizeof(protocol_version_packet_t)) {
-    log_error("Invalid protocol version packet size: %zu", payload_len);
-    buffer_release(payload);
-    set_error(session, ERROR_NETWORK, "Invalid protocol version packet");
-    session_participant_disconnect(session->participant_ctx);
-    return SET_ERRNO(ERROR_NETWORK, "Invalid protocol version packet");
-  }
-
-  protocol_version_packet_t server_version;
-  memcpy(&server_version, payload, sizeof(protocol_version_packet_t));
-  buffer_release(payload);
-
-  if (!server_version.supports_encryption) {
-    NOTICE(DANGER, "ENCRYPTION UNAVAILABLE", "Server does not support encryption");
-    set_error(session, ERROR_NETWORK, "Server does not support encryption");
-    session_participant_disconnect(session->participant_ctx);
-    return SET_ERRNO(ERROR_NETWORK, "Server does not support encryption");
-  }
-
-  log_info("Server protocol version: %u.%u (encryption: yes)", NET_TO_HOST_U16(server_version.protocol_version),
-           NET_TO_HOST_U16(server_version.protocol_revision));
-
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t discovery_session_start_handshake(discovery_session_t *session) {
-  log_info("Connected to host, performing crypto handshake...");
-
-  // Perform crypto handshake with server
-  // Get the socket from participant context
-  socket_t participant_socket = session_participant_get_socket(session->participant_ctx);
-  if (participant_socket == INVALID_SOCKET_VALUE) {
-    log_error("Failed to get socket from participant context");
-    set_error(session, ERROR_NETWORK, "Failed to get participant socket");
-    session_participant_disconnect(session->participant_ctx);
-    return SET_ERRNO(ERROR_NETWORK, "Failed to get participant socket");
-  }
-
-  // Step 1: Send client protocol version
-  log_debug("Sending protocol version to server...");
-  protocol_version_packet_t client_version = {0};
-  client_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
-  client_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
-  client_version.supports_encryption = 1;                // We support encryption
-  client_version.compression_algorithms = 0;
-  client_version.compression_threshold = 0;
-  client_version.feature_flags = 0;
-
-  int result = send_protocol_version_packet(participant_socket, &client_version);
-  if (result != 0) {
-    log_error("Failed to send protocol version to server");
-    set_error(session, ERROR_NETWORK, "Failed to send protocol version");
-    session_participant_disconnect(session->participant_ctx);
-    return SET_ERRNO(ERROR_NETWORK, "Failed to send protocol version");
-  }
-
-  asciichat_error_t version_result = discovery_session_receive_protocol_version(session, participant_socket);
-  if (version_result != ASCIICHAT_OK) {
-    return version_result;
-  }
-
-  // Step 3: Send crypto capabilities
-  log_debug("Sending crypto capabilities...");
-  crypto_capabilities_packet_t client_caps = {0};
-  client_caps.supported_kex_algorithms = HOST_TO_NET_U16(0x0001);    // KEX_ALGO_X25519
-  client_caps.supported_auth_algorithms = HOST_TO_NET_U16(0x0003);   // AUTH_ALGO_ED25519 | AUTH_ALGO_NONE
-  client_caps.supported_cipher_algorithms = HOST_TO_NET_U16(0x0001); // CIPHER_ALGO_XSALSA20_POLY1305
-  client_caps.requires_verification = 0;
-  client_caps.preferred_kex = 0x0001;    // KEX_ALGO_X25519
-  client_caps.preferred_auth = 0x0001;   // AUTH_ALGO_ED25519
-  client_caps.preferred_cipher = 0x0001; // CIPHER_ALGO_XSALSA20_POLY1305
-
-  result = send_crypto_capabilities_packet(participant_socket, &client_caps);
-  if (result != 0) {
-    log_error("Failed to send crypto capabilities");
-    set_error(session, ERROR_NETWORK, "Failed to send crypto capabilities");
-    session_participant_disconnect(session->participant_ctx);
-    return SET_ERRNO(ERROR_NETWORK, "Failed to send crypto capabilities");
-  }
-
-  log_info("Crypto handshake initiated successfully");
-  log_warn("*** Connected to host as participant - transitioning to ACTIVE ***");
-  return ASCIICHAT_OK;
-}
-
 static asciichat_error_t discovery_session_connect_tcp(discovery_session_t *session) {
   if (!session->participant_ctx) {
-    // Create participant context for this session
-    session_participant_config_t pconfig = {
-        .address = session->host_address,
-        .port = session->host_port,
-        .enable_audio = true,
-        .enable_video = true,
-        .encryption_enabled = true,
-    };
-
-    session->participant_ctx = session_participant_create(&pconfig);
-    if (!session->participant_ctx) {
-      log_error("Failed to create participant context");
-      set_error(session, ERROR_MEMORY, "Failed to create participant context");
-      return ASCIICHAT_OK;
+    session_participant_config_t config = {.address = session->host_address,
+                                           .port = session->host_port,
+                                           .enable_audio = true,
+                                           .enable_video = true,
+                                           .encryption_enabled = true,
+                                           .password = session->password};
+    session->participant_ctx = session_participant_create(&config);
+    if (!session->participant_ctx)
+      return SET_ERRNO(ERROR_MEMORY, "Cannot allocate discovery participant");
     }
-
-    // Attempt connection
-    asciichat_error_t pconn = session_participant_connect(session->participant_ctx);
-    if (pconn != ASCIICHAT_OK) {
-      log_error("Failed to connect as participant: %d", pconn);
-      // Stay in this state, will retry on next process() call
-      return ASCIICHAT_OK;
+    asciichat_error_t result = session_participant_connect(session->participant_ctx);
+    if (result != ASCIICHAT_OK) {
+      set_error(session, result, "Cannot establish authenticated host connection");
+      return result;
     }
-
-    if (discovery_session_start_handshake(session) != ASCIICHAT_OK) {
-      return ASCIICHAT_OK;
-    }
-  }
-
-  // Check if connection is established
-  bool ctx_valid = session->participant_ctx != NULL;
-  bool is_connected = ctx_valid ? session_participant_is_connected(session->participant_ctx) : false;
-  log_debug("discovery_session_process: CONNECTING_HOST - participant_ctx=%p, ctx_valid=%d, is_connected=%d",
-            session->participant_ctx, ctx_valid, is_connected);
-
-  if (ctx_valid && !is_connected) {
-    // Log more details about why it's not connected
-    log_debug("discovery_session_process: CONNECTING_HOST - context exists but not connected yet");
-  }
-
-  if (is_connected) {
-    log_info("Participant connection confirmed, transitioning to ACTIVE state");
     set_state(session, DISCOVERY_STATE_ACTIVE);
-  } else {
-    log_debug("discovery_session_process: CONNECTING_HOST - awaiting connection establishment (ctx_valid=%d, "
-              "is_connected=%d)",
-              ctx_valid, is_connected);
-  }
   return ASCIICHAT_OK;
 }
 
@@ -2273,6 +2138,11 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
 
   uint64_t now_ms = session_get_current_time_ms();
 
+  if (session->liveness.ping_in_flight &&
+      atomic_load_u64(&session->liveness.last_pong_received_ms) >= session->liveness.last_ping_sent_ms) {
+    session->liveness.ping_in_flight = false;
+    session->liveness.consecutive_failures = 0;
+  }
   // Check if we have a ping in flight that timed out
   if (session->liveness.ping_in_flight) {
     uint64_t ping_age_ms = now_ms - session->liveness.last_ping_sent_ms;
@@ -2295,9 +2165,9 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
   uint64_t time_since_last_ping = now_ms - session->liveness.last_ping_sent_ms;
   if (!session->liveness.ping_in_flight && time_since_last_ping >= session->liveness.ping_interval_ms) {
     // Send ping to host via participant connection
-    socket_t host_socket = session_participant_get_socket(session->participant_ctx);
-    if (host_socket != INVALID_SOCKET_VALUE) {
-      asciichat_error_t result = packet_send(host_socket, PACKET_TYPE_PING, NULL, 0);
+    acip_transport_t *transport = session_participant_get_transport(session->participant_ctx);
+    if (transport && acip_transport_is_connected(transport)) {
+      asciichat_error_t result = acip_send_ping(transport);
       if (result == ASCIICHAT_OK) {
         session->liveness.last_ping_sent_ms = now_ms;
         session->liveness.ping_in_flight = true;

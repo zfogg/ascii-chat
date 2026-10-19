@@ -49,6 +49,8 @@ class Service:
     def __init__(self, binary, directory, name, mode, options):
         self.log = directory / (name + ".log")
         self.output = directory / (name + ".txt")
+        # A reused output directory must not satisfy readiness from an older run.
+        self.log.write_text("", encoding="utf-8")
         self.stream = self.output.open("wb")
         flags = {}
         if os.name == "nt":

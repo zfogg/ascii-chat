@@ -23,6 +23,7 @@
 # =============================================================================
 
 # Platform-specific system libraries for libdatachannel (used by both vcpkg and source builds)
+set(ASCIICHAT_WEBRTC_RUNTIME_DLLS "" CACHE INTERNAL "WebRTC sanitizer runtime" FORCE)
 macro(_libdatachannel_link_platform_libs)
     if(APPLE)
         target_link_libraries(libdatachannel INTERFACE
@@ -235,6 +236,22 @@ if(NOT USE_MUSL)
         if(NOT TARGET libdatachannel)
             add_library(libdatachannel INTERFACE)
             target_link_libraries(libdatachannel INTERFACE LibDataChannel::LibDataChannel)
+        endif()
+
+        # ASan uses the release CRT. The vcpkg C API is ABI-compatible across
+        # configurations; avoid loading the debug C++ CRT into this process.
+        if(WIN32 AND ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB)
+            set(_webrtc_runtime_dlls "")
+            foreach(_target LibDataChannel::LibDataChannel LibJuice::LibJuice)
+                if(TARGET ${_target})
+                    get_target_property(_runtime ${_target} IMPORTED_LOCATION_RELEASE)
+                    if(_runtime AND EXISTS "${_runtime}")
+                        set_property(TARGET ${_target} PROPERTY MAP_IMPORTED_CONFIG_DEBUG Release)
+                        list(APPEND _webrtc_runtime_dlls "${_runtime}")
+                    endif()
+                endif()
+            endforeach()
+            set(ASCIICHAT_WEBRTC_RUNTIME_DLLS "${_webrtc_runtime_dlls}" CACHE INTERNAL "WebRTC sanitizer runtime" FORCE)
         endif()
 
         # Skip the rest if found

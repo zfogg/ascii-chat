@@ -5,7 +5,6 @@ import type { Palette } from "../components";
 import {
   createOptionAccessor,
   initializeOptions,
-  cleanupOptions,
   createWasmModule,
 } from "@ascii-chat/shared/wasm";
 
@@ -718,7 +717,8 @@ export function cleanupClientWasm(): void {
     // Keep the Emscripten module and its shared memory/pthread pool alive.
     // Recreating it on every WebRTC reconnect leaks worker-backed memories
     // until the browser can no longer allocate another WebAssembly.Memory.
-    cleanupOptions();
+    // The shared options accessor belongs to the retained module and renderers.
+    // Disconnect only releases connection state, matching _client_cleanup().
     console.log("[cleanupClientWasm] Client state cleaned up; module retained");
   } else {
     console.log("[cleanupClientWasm] No module to cleanup");

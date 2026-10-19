@@ -274,190 +274,47 @@ static void acip_on_crypto_rekey_response(const void *payload, size_t payload_le
 static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx);
 static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, void *ctx);
 static void acip_on_session_joined(const acip_session_joined_t *joined, void *ctx);
-static void acip_on_crypto_key_exchange_init(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
-static void acip_on_crypto_auth_challenge(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
-static void acip_on_crypto_server_auth_resp(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
-static void acip_on_crypto_auth_failed(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
-static void acip_on_crypto_handshake_complete(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
-static void acip_on_crypto_parameters(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
 
-static const acip_client_callbacks_t g_acip_client_callbacks = {
-    .on_error = acip_on_error,
-    .on_remote_log = acip_on_remote_log,
-    .on_ping = acip_on_ping,
-    .on_pong = acip_on_pong,
-    .on_clear_console = acip_on_clear_console,
-    .on_crypto_rekey_request = acip_on_crypto_rekey_request,
-    .on_crypto_rekey_response = acip_on_crypto_rekey_response,
-    .on_webrtc_sdp = acip_on_webrtc_sdp,
-    .on_webrtc_ice = acip_on_webrtc_ice,
-    .on_session_joined = acip_on_session_joined,
-    .on_crypto_key_exchange_init = acip_on_crypto_key_exchange_init,
-    .on_crypto_auth_challenge = acip_on_crypto_auth_challenge,
-    .on_crypto_server_auth_resp = acip_on_crypto_server_auth_resp,
-    .on_crypto_auth_failed = acip_on_crypto_auth_failed,
-    .on_crypto_handshake_complete = acip_on_crypto_handshake_complete,
-    .on_crypto_parameters = acip_on_crypto_parameters,
-    .app_ctx = NULL};
+static const acip_client_callbacks_t g_acip_client_callbacks = {.on_error = acip_on_error,
+                                                                .on_remote_log = acip_on_remote_log,
+                                                                .on_ping = acip_on_ping,
+                                                                .on_pong = acip_on_pong,
+                                                                .on_clear_console = acip_on_clear_console,
+                                                                .on_crypto_rekey_request = acip_on_crypto_rekey_request,
+                                                                .on_crypto_rekey_response =
+                                                                    acip_on_crypto_rekey_response,
+                                                                .on_webrtc_sdp = acip_on_webrtc_sdp,
+                                                                .on_webrtc_ice = acip_on_webrtc_ice,
+                                                                .on_session_joined = acip_on_session_joined,
+                                                                .app_ctx = NULL};
 
 /* ============================================================================
  * Data Reception Thread
  * ============================================================================ */
 
+static asciichat_error_t client_connection_packet(network_connection_t *network, packet_type_t type,
+                                                  const void *payload, size_t length, void *arg) {
+  (void)network;
+  client_connection_t *connection = arg;
+  return session_protocol_dispatch(&connection->protocol, type, payload, length);
+}
 static void *data_reception_thread_func(void *arg) {
   client_connection_t *connection = arg;
-
-  log_warn("[FRAME_RECV_LOOP] 🔄 THREAD_STARTED: Data reception thread active, callbacks initialized");
-
-#ifdef DEBUG_THREADS
-  log_debug("[FRAME_RECV_LOOP] Thread lifecycle tracking enabled");
-#endif
-
-  int packet_count = 0;
-  while (!should_exit() && server_connection_is_active(connection)) {
-    // Main loop: receive and process packets while connection is active
-    // When connection becomes inactive or shutdown is requested, thread exits cleanly
-
-    // Debug: periodically check loop condition
-    if (packet_count % 50 == 0) {
-      bool exit_flag = should_exit();
-      bool conn_active = server_connection_is_active(connection);
-      if (packet_count > 0) {
-        log_debug("[FRAME_RECV_LOOP] DEBUG: packet_count=%d, should_exit=%d, server_connection_is_active=%d",
-                  packet_count, exit_flag, conn_active);
-      }
+  network_connection_callbacks_t callbacks = {.packet = client_connection_packet};
+  asciichat_error_t result = network_connection_run(connection->network, &callbacks, connection);
+  uint64_t first_frame = atomic_load_u64(&connection->snapshot_first_frame_time_ns);
+  if (GET_OPTION(snapshot_mode) && first_frame &&
+      time_ns_to_s(time_elapsed_ns(first_frame, time_get_ns())) >= GET_OPTION(snapshot_delay)) {
+    signal_exit();
+  } else if (!should_exit()) {
+    if (result == ERROR_CRYPTO) {
+      NOTICE(DANGER, "ENCRYPTION POLICY VIOLATION", "Server violated the encryption policy; closing connection.");
+      asciichat_errno_request_exit(ERROR_CRYPTO);
+      signal_exit();
     }
-
-    // Receive and dispatch packet using ACIP transport API
-    // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
-    acip_transport_t *transport = server_connection_get_transport(connection);
-    if (packet_count < 3) {
-    }
-    if (!transport) {
-      log_error("[FRAME_RECV_LOOP] ❌ NO_TRANSPORT: connection lost, transport not available");
-      server_connection_lost(connection);
-      break;
-    }
-
-    log_debug("[FRAME_RECV_LOOP] 📥 RECV_WAITING: awaiting packet #%d from server (transport ready)", packet_count + 1);
-
-    if (packet_count == 0) {
-    }
-    // Use short 16ms timeout to allow rendering at 60 FPS
-    // Instead of blocking indefinitely waiting for a packet,
-    // we timeout quickly so main thread can continue rendering
-    asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
-    asciichat_error_t acip_result = session_protocol_receive(&connection->protocol);
-    if (packet_count == 0) {
-    }
-
-    if (acip_result == ASCIICHAT_OK) {
-      ASSERT_NO_ERRNO_SINCE(receive_scope);
-      asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
-      packet_count++;
-      log_debug("[FRAME_RECV_LOOP] ✅ PACKET_%d_DISPATCHED: callbacks processed successfully", packet_count);
-    } else if (acip_result == ERROR_NETWORK_TIMEOUT) {
-      asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
-      // Network timeouts are expected - socket may have no data available
-      // Continue looping to allow snapshot timer to expire
-      log_debug("[FRAME_RECV_LOOP] ⏱️  TIMEOUT: No data available, retrying (packets received: %d)", packet_count);
-      continue;
-    } else if (acip_result == ERROR_NETWORK_INCOMPLETE &&
-               HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_INCOMPLETE)) {
-      asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
-      continue;
-    } else {
-      // Handle receive/dispatch errors - ALWAYS exit on network errors
-      // NOTE: Log to file even if terminal logging is disabled (important for debugging)
-      log_warn("[FRAME_RECV_LOOP] ⚠️  RECV_ERROR_BEFORE_SNAPSHOT_CHECK: acip_result=%d: %s (after %d packets received)",
-               acip_result, asciichat_error_string(acip_result), packet_count);
-
-      // Before breaking due to error, check if snapshot_delay timer has fired in snapshot mode
-      bool should_break_now = true;
-      if (GET_OPTION(snapshot_mode) && atomic_load_u64(&connection->snapshot_first_frame_time_ns) > 0) {
-        uint64_t current_time_ns = time_get_ns();
-        double elapsed =
-            time_ns_to_s(time_elapsed_ns(atomic_load_u64(&connection->snapshot_first_frame_time_ns), current_time_ns));
-        double snapshot_delay = GET_OPTION(snapshot_delay);
-
-        if (elapsed >= snapshot_delay) {
-          char duration_str[32];
-          time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
-          log_info("🎬 SNAPSHOT TIMEOUT FIRED (ON_ERROR): Snapshot captured after %s! (target=%.3f)", duration_str,
-                   snapshot_delay);
-          signal_exit();
-          should_break_now = false; // Don't disconnect, let normal shutdown handle it
-        }
-      }
-
-      if (should_break_now) {
-        // Network errors (ERROR_NETWORK, ERROR_NETWORK_PROTOCOL, etc) always disconnect
-        if (acip_result == ERROR_NETWORK || acip_result == ERROR_NETWORK_PROTOCOL) {
-          log_warn("[FRAME_RECV_LOOP] ⚠️  NETWORK_ERROR: Server disconnected after %d packets, exiting loop",
-                   packet_count);
-          server_connection_lost(connection);
-          break;
-        }
-
-        // Check errno context for additional error details
-        if (HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_CRYPTO)) {
-          NOTICE(DANGER, "ENCRYPTION POLICY VIOLATION", "Server violated the encryption policy; closing connection.");
-          LOG_ERRNO_IF_SET("Server violated the encryption policy");
-          asciichat_errno_request_exit(ERROR_CRYPTO);
-          signal_exit();
-          break;
-        }
-
-        // Other errors - still disconnect to prevent infinite loop
-        log_error("[FRAME_RECV_LOOP] ❌ RECV_FAILED: packet #%d failed after %d packets, disconnecting",
-                  packet_count + 1, packet_count);
-        server_connection_lost(connection);
-        break;
-      }
-    }
+    server_connection_lost(connection);
   }
-
-  // Log why the loop exited (DEBUG to avoid affecting timing)
-  bool final_exit_flag = should_exit();
-  bool final_conn_active = server_connection_is_active(connection);
-  log_debug("[FRAME_RECV_LOOP] ⏹️  LOOP_EXIT: should_exit=%d server_connection_is_active=%d (packets_received=%d)",
-            final_exit_flag, final_conn_active, packet_count);
-
-  // Before exiting due to connection loss, check if snapshot_delay timer has fired
-  // If it has, take the snapshot and exit cleanly instead of abandoning the snapshot
-  if (GET_OPTION(snapshot_mode)) {
-    log_debug("[FRAME_RECV_LOOP] ⏰ SNAPSHOT_CHECK_ON_EXIT: snapshot_mode enabled, g_snapshot_first_frame_time_ns=%llu",
-              (unsigned long long)atomic_load_u64(&connection->snapshot_first_frame_time_ns));
-
-    if (atomic_load_u64(&connection->snapshot_first_frame_time_ns) > 0) {
-      uint64_t current_time_ns = time_get_ns();
-      double elapsed =
-          time_ns_to_s(time_elapsed_ns(atomic_load_u64(&connection->snapshot_first_frame_time_ns), current_time_ns));
-      double snapshot_delay = GET_OPTION(snapshot_delay);
-
-      log_debug("[FRAME_RECV_LOOP] ⏰ SNAPSHOT_CHECK_DETAILS: elapsed=%.3f target=%.3f", elapsed, snapshot_delay);
-
-      if (elapsed >= snapshot_delay) {
-        char duration_str[32];
-        time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
-        log_info("🎬 SNAPSHOT TIMEOUT FIRED (ON_CONNECTION_LOSS): Snapshot captured after %s! (target=%.3f)",
-                 duration_str, snapshot_delay);
-        signal_exit();
-      }
-    }
-  }
-
-  log_warn("[FRAME_RECV_LOOP] 🔴 THREAD_EXITING: received %d packets total, connection inactive or shutdown requested",
-           packet_count);
-
-#ifdef DEBUG_THREADS
-  log_debug("[FRAME_RECV_LOOP] Thread lifecycle tracking - exit");
-#endif
-
   atomic_store_bool(&connection->data_thread_exited, true);
-
-  // The platform thread wrapper unregisters pending errors on return.
-  log_debug("[FRAME_RECV_LOOP] Thread terminating");
   return NULL;
 }
 
@@ -489,30 +346,6 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   // Reset display state for new connection
   display_reset_for_new_connection(connection);
 
-  // Check if we're on a WebSocket transport (crypto handshake is async via ACIP callbacks)
-  // For WS/WSS, we must start data_reception FIRST so it can handle the crypto handshake,
-  // then wait for crypto to complete before sending CAPABILITIES/STREAM_START.
-  // For TCP, crypto is already done synchronously before this function is called.
-  acip_transport_t *init_transport = server_connection_get_transport(connection);
-  bool is_websocket = init_transport && acip_transport_get_type(init_transport) == ACIP_TRANSPORT_WEBSOCKET;
-
-  if (is_websocket) {
-    // WebSocket: start data reception thread FIRST to handle async crypto handshake.
-    // TCP does crypto synchronously in connection_attempt.c, but WS crypto flows
-    // asynchronously via ACIP callbacks in the data_reception thread.
-    log_debug("[FRAME_RECV_INIT] WS: Starting data_reception for async crypto handshake");
-    atomic_store_bool(&connection->data_thread_exited, false);
-    if (thread_pool_spawn(connection->client_worker_pool, data_reception_thread_func, connection, 1,
-                          "data_reception") != ASCIICHAT_OK) {
-      log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
-      LOG_ERRNO_IF_SET("Data reception thread creation failed");
-      return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
-    }
-    if (client_connection_checkpoint("receive") != ASCIICHAT_OK)
-      return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
-    log_debug("[FRAME_RECV_INIT] WS: Data thread spawned, waiting for crypto handshake");
-  }
-
   // Send CLIENT_CAPABILITIES packet (after crypto is ready for both TCP and WS)
   // Server expects this as the first packet after crypto handshake
   log_debug("[FRAME_RECV_INIT] Sending CLIENT_CAPABILITIES (terminal size)");
@@ -536,16 +369,13 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
     return stream_result;
   }
 
-  // Start data reception thread (TCP only - WS already started it above for crypto)
-  if (!is_websocket) {
-    log_debug("[FRAME_RECV_INIT] TCP: Starting data reception thread");
-    atomic_store_bool(&connection->data_thread_exited, false);
-    if (thread_pool_spawn(connection->client_worker_pool, data_reception_thread_func, connection, 1,
-                          "data_reception") != ASCIICHAT_OK) {
-      log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
-      LOG_ERRNO_IF_SET("Data reception thread creation failed");
-      return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
-    }
+  // Every transport has completed security negotiation before protocol startup.
+  atomic_store_bool(&connection->data_thread_exited, false);
+  if (thread_pool_spawn(connection->client_worker_pool, data_reception_thread_func, connection, 1, "data_reception") !=
+      ASCIICHAT_OK) {
+    log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
+    LOG_ERRNO_IF_SET("Data reception thread creation failed");
+    return SET_ERRNO(ERROR_THREAD, "Could not start client protocol workers");
   }
 
   if (client_connection_checkpoint("receive") != ASCIICHAT_OK)
@@ -790,157 +620,4 @@ static void acip_on_session_joined(const acip_session_joined_t *joined, void *ct
     // Direct TCP - connection is already established or will be established
     log_debug("Direct TCP session - using existing connection");
   }
-}
-
-static void acip_on_crypto_key_exchange_init(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
-  client_connection_t *connection = ctx;
-
-  log_debug("Received CRYPTO_KEY_EXCHANGE_INIT from server");
-
-  acip_transport_t *transport = server_connection_get_transport(connection);
-  if (!transport) {
-    log_error("Cannot handle key exchange - no transport available");
-    return;
-  }
-
-  asciichat_error_t result = crypto_handshake_client_key_exchange(&connection->crypto_ctx, transport, type,
-                                                                  (const uint8_t *)payload, payload_len);
-  if (result != ASCIICHAT_OK) {
-    log_error("Crypto handshake key exchange failed");
-    server_connection_lost(connection);
-  } else {
-    log_debug("Sent CRYPTO_KEY_EXCHANGE_RESP to server");
-  }
-}
-
-static void acip_on_crypto_auth_challenge(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
-  client_connection_t *connection = ctx;
-
-  log_debug("Received CRYPTO_AUTH_CHALLENGE from server");
-
-  acip_transport_t *transport = server_connection_get_transport(connection);
-  if (!transport) {
-    log_error("Cannot handle auth challenge - no transport available");
-    return;
-  }
-
-  asciichat_error_t result = crypto_handshake_client_auth_response(&connection->crypto_ctx, transport, type,
-                                                                   (const uint8_t *)payload, payload_len);
-  if (result != ASCIICHAT_OK) {
-    log_error("Crypto handshake auth response failed");
-    server_connection_lost(connection);
-  } else {
-    log_debug("Sent CRYPTO_AUTH_RESPONSE to server");
-  }
-}
-
-static void acip_on_crypto_server_auth_resp(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
-  client_connection_t *connection = ctx;
-
-  log_debug("Received CRYPTO_SERVER_AUTH_RESP from server");
-
-  acip_transport_t *transport = server_connection_get_transport(connection);
-  if (!transport) {
-    log_error("Cannot handle server auth response - no transport available");
-    return;
-  }
-
-  asciichat_error_t result =
-      crypto_handshake_client_complete(&connection->crypto_ctx, transport, type, (const uint8_t *)payload, payload_len);
-  if (result != ASCIICHAT_OK) {
-    NOTICE(DANGER, "HANDSHAKE VERIFICATION FAILED", "Crypto handshake verification failed");
-    server_connection_lost(connection);
-  } else {
-    log_info("Crypto handshake completed successfully (mutual auth)");
-
-    // Link crypto context to transport for automatic encryption
-    transport->crypto_ctx = &connection->crypto_ctx.crypto_ctx;
-  }
-}
-
-static void acip_on_crypto_auth_failed(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
-  client_connection_t *connection = ctx;
-  (void)ctx;
-  (void)type;
-
-  // Extract error message if present
-  char error_msg[256] = "Unknown error";
-  if (payload && payload_len > 0) {
-    size_t msg_len = payload_len < sizeof(error_msg) - 1 ? payload_len : sizeof(error_msg) - 1;
-    memcpy(error_msg, payload, msg_len);
-    error_msg[msg_len] = '\0';
-  }
-
-  NOTICE(DANGER, "AUTHENTICATION REJECTED", "Server rejected authentication: %s", error_msg);
-  log_error("Disconnecting - crypto handshake failed");
-
-  server_connection_lost(connection);
-}
-
-static void acip_on_crypto_handshake_complete(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
-  client_connection_t *connection = ctx;
-
-  log_debug("Received CRYPTO_HANDSHAKE_COMPLETE from server");
-
-  acip_transport_t *transport = server_connection_get_transport(connection);
-  if (!transport) {
-    log_error("Cannot complete handshake - no transport available");
-    return;
-  }
-
-  asciichat_error_t result =
-      crypto_handshake_client_complete(&connection->crypto_ctx, transport, type, (const uint8_t *)payload, payload_len);
-  if (result != ASCIICHAT_OK) {
-    log_error("Crypto handshake completion failed");
-    server_connection_lost(connection);
-  } else {
-    log_info("Crypto handshake completed successfully");
-
-    // Link crypto context to transport for automatic encryption
-    transport->crypto_ctx = &connection->crypto_ctx.crypto_ctx;
-  }
-}
-
-static void acip_on_crypto_parameters(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
-  client_connection_t *connection = ctx;
-  (void)type;
-
-  log_debug("Received CRYPTO_PARAMETERS from server (payload_len=%zu)", payload_len);
-
-  if (payload_len != sizeof(crypto_parameters_packet_t)) {
-    log_error("Invalid CRYPTO_PARAMETERS size: %zu (expected %zu)", payload_len, sizeof(crypto_parameters_packet_t));
-    server_connection_lost(connection);
-    return;
-  }
-
-  crypto_parameters_packet_t server_params;
-  memcpy(&server_params, payload, sizeof(crypto_parameters_packet_t));
-
-  // Log parameters (fields are still in network byte order for set_parameters)
-  uint16_t kex_pubkey_size = NET_TO_HOST_U16(server_params.kex_public_key_size);
-  uint16_t auth_pubkey_size = NET_TO_HOST_U16(server_params.auth_public_key_size);
-  uint16_t signature_size = NET_TO_HOST_U16(server_params.signature_size);
-  uint16_t shared_secret_size = NET_TO_HOST_U16(server_params.shared_secret_size);
-
-  log_debug("Server crypto parameters: KEX=%u, Auth=%u, Cipher=%u (key_size=%u, auth_size=%u, sig_size=%u, "
-            "secret_size=%u, verification=%u)",
-            server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher, kex_pubkey_size,
-            auth_pubkey_size, signature_size, shared_secret_size, server_params.verification_enabled);
-
-  // Set the crypto parameters in the handshake context so KEY_EXCHANGE_INIT knows sizes
-  asciichat_error_t result = crypto_handshake_set_parameters(&connection->crypto_ctx, &server_params);
-  if (result != ASCIICHAT_OK) {
-    log_error("Failed to set crypto parameters: %d", result);
-    server_connection_lost(connection);
-    return;
-  }
-
-  // Store verification flag
-  if (server_params.verification_enabled) {
-    connection->crypto_ctx.server_uses_client_auth = true;
-    connection->crypto_ctx.require_client_auth = true;
-    log_info("Server will verify client identity (whitelist enabled)");
-  }
-
-  log_info("CRYPTO_PARAMETERS processed - ready for KEY_EXCHANGE_INIT");
 }

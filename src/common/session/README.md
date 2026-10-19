@@ -40,7 +40,7 @@ are released on success and failure.
 `src/client/protocol_adapter.c` retains client worker startup, snapshot/display
 effects, and crypto/control callbacks. Discovery retains negotiation, host
 migration, audio-device effects, and newest-frame presentation. Both call
-`session_protocol_receive()`; neither implements its own media packet parser.
+`network_connection_run()` and `session_protocol_dispatch()`; neither implements its own media packet parser.
 Mirror mode does not use this network protocol.
 
 ### Core Components

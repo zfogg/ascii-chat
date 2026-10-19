@@ -22,7 +22,8 @@ asciichat_error_t acip_security_receive(acip_security_t *security, acip_transpor
                                         const void *payload, size_t length);
 
 /** Initialize a peer from native CLI options; cleanup releases owned credentials. */
-asciichat_error_t acip_security_init_options(acip_security_t *security, bool server);
+asciichat_error_t acip_security_init_options(acip_security_t *security, bool server, bool transport_secure,
+                                             const char *password);
 void acip_security_cleanup(acip_security_t *security);
 
 /** Transfer security ownership on success. Ready fires only after negotiation. */

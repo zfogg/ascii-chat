@@ -75,7 +75,7 @@
 typedef struct {
   session_connection_t connection;
   session_protocol_t protocol;
-  char *latest_text;
+  network_connection_t *network;
   asciichat_thread_t receiver_thread;
   asciichat_thread_t audio_thread;
   bool receiver_started;
@@ -119,7 +119,6 @@ static void discovery_media_release(void *context) {
   }
   client_audio_pipeline_destroy(receiver->audio_pipeline);
   receiver->audio_pipeline = NULL;
-  SAFE_FREE(receiver->latest_text);
   log_info("DISCOVERY_MEDIA_RELEASED: workers=0");
 }
 
@@ -150,15 +149,8 @@ static void *discovery_audio_send_thread(void *user_data) {
 
 static asciichat_error_t discovery_present_frame(const ascii_frame_packet_t *header, const char *text, void *context) {
   discovery_video_receiver_t *receiver = context;
-  char *copy = SAFE_MALLOC((size_t)header->original_size + 1, char *);
-  if (!copy)
-    return SET_ERRNO(ERROR_MEMORY, "Could not retain discovery display frame");
-  memcpy(copy, text, header->original_size);
-  copy[header->original_size] = '\0';
-  if (receiver->latest_text)
-    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_SKIPPED, 1);
-  SAFE_FREE(receiver->latest_text);
-  receiver->latest_text = copy;
+  (void)header;
+  session_display_render_frame(receiver->display, text);
   return ASCIICHAT_OK;
 }
 
@@ -190,54 +182,24 @@ static asciichat_error_t discovery_decode_opus(const void *data, size_t length, 
   return ASCIICHAT_OK;
 }
 
-static void *discovery_video_receive_thread(void *user_data) {
-  discovery_video_receiver_t *ctx = user_data;
-  uint64_t report_start_ns = time_get_ns();
-  uint64_t report_received_frames = 0;
-  uint64_t report_rendered_frames = 0;
-  uint64_t report_render_time_ns = 0;
-  while (atomic_load_bool(&ctx->running) && !should_exit() && acip_transport_is_connected(ctx->transport)) {
-    asciichat_error_t result = ASCIICHAT_OK;
-    // Keep the newest display frame and bound receive work so capture cannot starve.
-    uint64_t previous_frames = ctx->protocol.frames_received;
-    for (size_t received = 0; received < 128 && acip_transport_has_pending_data(ctx->transport); received++) {
-      asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
-      result = session_protocol_receive(&ctx->protocol);
-      if (result == ERROR_NETWORK_TIMEOUT || result == ERROR_NETWORK_INCOMPLETE) {
-        asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
-        break;
-      }
-      asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
-      if (result != ASCIICHAT_OK) {
-        SAFE_FREE(ctx->latest_text);
-        ctx->result = result;
-        atomic_store_bool(&ctx->running, false);
-        return NULL;
-      }
-    }
-    report_received_frames += ctx->protocol.frames_received - previous_frames;
-    if (ctx->latest_text) {
-      uint64_t render_start_ns = time_get_ns();
-      session_display_render_frame(ctx->display, ctx->latest_text);
-      report_render_time_ns += time_get_ns() - render_start_ns;
-      report_rendered_frames++;
-      SAFE_FREE(ctx->latest_text);
-      ctx->latest_text = NULL;
-    }
-    uint64_t now_ns = time_get_ns();
-    uint64_t report_elapsed_ns = now_ns - report_start_ns;
-    if (report_elapsed_ns >= NS_PER_SEC_INT) {
-      log_info("Discovery ASCII receive/render rate: received=%.1f fps rendered=%.1f fps avg_render=%.2fms",
-               (double)report_received_frames * NS_PER_SEC_INT / (double)report_elapsed_ns,
-               (double)report_rendered_frames * NS_PER_SEC_INT / (double)report_elapsed_ns,
-               report_rendered_frames ? (double)report_render_time_ns / (double)report_rendered_frames / 1e6 : 0.0);
-      report_start_ns = now_ns;
-      report_received_frames = 0;
-      report_rendered_frames = 0;
-      report_render_time_ns = 0;
-    }
-    platform_sleep_ns(NS_PER_MS_INT);
-  }
+static void discovery_host_pong(void *arg) {
+  discovery_session_t *session = arg;
+  atomic_store_u64(&session->liveness.last_pong_received_ms, time_get_ns() / NS_PER_MS_INT);
+}
+
+static asciichat_error_t discovery_media_packet(network_connection_t *network, packet_type_t type, const void *payload,
+                                                size_t length, void *arg) {
+  (void)network;
+  discovery_video_receiver_t *receiver = arg;
+  return session_protocol_dispatch(&receiver->protocol, type, payload, length);
+}
+static void *discovery_video_receive_thread(void *arg) {
+  discovery_video_receiver_t *receiver = arg;
+  network_connection_callbacks_t callbacks = {.packet = discovery_media_packet};
+  receiver->result = network_connection_run(receiver->network, &callbacks, receiver);
+  if (!atomic_load_bool(&receiver->running) || should_exit())
+    receiver->result = ASCIICHAT_OK;
+  atomic_store_bool(&receiver->running, false);
   return NULL;
 }
 
@@ -549,12 +511,17 @@ role_dispatch:
       result = acip_send_stream_start(transport, STREAM_TYPE_VIDEO | (enable_audio ? STREAM_TYPE_AUDIO : 0));
       if (result != ASCIICHAT_OK)
         return result;
-      discovery_video_receiver_t receiver = {
-          .transport = transport, .display = display, .running = {0}, .result = ASCIICHAT_OK};
+      discovery_video_receiver_t receiver = {.network = session_participant_connection(g_discovery->participant_ctx),
+                                             .transport = transport,
+                                             .display = display,
+                                             .running = {0},
+                                             .result = ASCIICHAT_OK};
       session_protocol_init(&receiver.protocol, transport,
                             (session_protocol_media_t){.on_frame = discovery_present_frame,
-                                .on_samples = discovery_play_samples, .decode_opus = discovery_decode_opus,
-                                .context = &receiver}, (acip_client_callbacks_t){0});
+                                                       .on_samples = discovery_play_samples,
+                                                       .decode_opus = discovery_decode_opus,
+                                                       .context = &receiver},
+                            (acip_client_callbacks_t){.on_pong = discovery_host_pong, .app_ctx = g_discovery});
       audio_context_t audio = {0};
       session_connection_init(
           &receiver.connection,

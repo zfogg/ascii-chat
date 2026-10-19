@@ -116,12 +116,6 @@ void client_crypto_set_mode(client_connection_t *connection, uint8_t mode);
  */
 int client_crypto_init(client_connection_t *connection);
 
-/**
- * Perform the client handshake on a connected transport.
- * @return ASCIICHAT_OK or a specific error with a pending causal chain.
- * The caller owns transport cleanup and the decision to terminate the session.
- */
-asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_transport_t *transport);
 
 /**
  * @brief Check if crypto handshake is ready

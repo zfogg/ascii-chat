@@ -101,13 +101,12 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/network/network.h>
-#include <ascii-chat/network/tcp/client.h>
 #include <ascii-chat/network/client.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/client.h>
-#include "connection_state.h"
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/app_callbacks.h>
 

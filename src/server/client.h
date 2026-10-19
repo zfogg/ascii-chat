@@ -77,8 +77,7 @@ extern rwlock_t g_client_manager_rwlock;
 extern bool g_client_manager_rwlock_initialized;
 
 // Client management functions
-client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip,
-                                    bool start_threads);
+client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip);
 int start_transport_client_threads(server_context_t *server_ctx, const char *client_id);
 int remove_client(server_context_t *server_ctx, const char *client_id);
 client_info_t *find_client_by_id(const char *client_id);
@@ -86,12 +85,8 @@ void cleanup_client_media_buffers(client_info_t *client);
 void cleanup_client_packet_queues(client_info_t *client);
 
 // Client thread functions
-void *client_receive_thread(void *arg);
-void stop_client_threads(client_info_t *client);
 
 // Packet processing functions
-int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **data, size_t *len, uint32_t *sender_id);
-void process_decrypted_packet(client_info_t *client, packet_type_t type, void *data, size_t len);
 
 // Client initialization
 void initialize_client_info(client_info_t *client);

@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/debug/stats.h>
@@ -81,8 +82,7 @@
 #include "main.h"
 #include "../main.h" // For should_exit() and signal_exit() API
 #include "common/session/server_like.h"
-#include "events.h"
-#include "crypto.h"
+#include "connections.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
@@ -99,7 +99,6 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/tcp/server.h>
-#include <ascii-chat/network/websocket/server.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/consensus/handoff.h>
 #include <ascii-chat/discovery/strings.h>
@@ -227,7 +226,7 @@ static_cond_t g_shutdown_cond = STATIC_COND_INIT;
  */
 rate_limiter_t *g_rate_limiter = NULL;
 
-// TCP server is now owned by session_server_like; access via session_server_like_get_tcp_server().
+// TCP server is now owned by session_server_like; access via session_server_like_get_network_server().
 
 // WebSocket server is now owned by session_server_like; access via session_server_like_get_websocket_server().
 
@@ -245,7 +244,6 @@ static time_t g_server_start_time = 0;
  * Tracks when status was last displayed to avoid excessive updates.
  * Used by status screen thread to track frame timing.
  */
-static uint64_t g_last_status_update = 0; // Microseconds from platform_get_monotonic_time_us()
 
 // Status screen thread, keyboard thread, and SPSC queue are now owned by session_server_like.
 
@@ -502,19 +500,7 @@ static void server_handle_sigint(int sig) {
   // static const char sigint_msg[] = "SIGINT received - shutting down server...\n";
   // platform_write_all(STDERR_FILENO, sigint_msg, sizeof(sigint_msg) - 1);
 
-  // The event-loop timer observes this flag and closes its listening sockets.
-  tcp_server_t *tcp = session_server_like_get_tcp_server();
-  if (tcp)
-    atomic_store_bool(&tcp->running, false);
-
-  // STEP 3b: Signal WebSocket server to stop
-  // Without this, lws_service() could block for up to 50ms before checking the running flag.
-  // websocket_server_cancel_service() is async-signal-safe (uses only atomic operations).
-  websocket_server_t *ws = session_server_like_get_websocket_server();
-  if (ws) {
-    atomic_store_u64(&ws->running, false);
-    websocket_server_cancel_service(ws);
-  }
+  network_server_request_stop(session_server_like_get_network_server());
 
   // STEP 4: DO NOT access client data structures in signal handler
   // Signal handlers CANNOT safely use mutexes, rwlocks, or access complex data structures
@@ -529,8 +515,6 @@ static void server_handle_sigint(int sig) {
   // NOTE: Do NOT call log_destroy() here - it's not async-signal-safe
   // The main thread will handle cleanup when it detects g_should_exit
 }
-
-// bind_and_listen() function removed - now using lib/network/tcp_server abstraction
 
 /* ============================================================================
  * WebRTC Callbacks
@@ -713,16 +697,13 @@ static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t
   }
   participant_str[32] = '\0';
 
-  // Add client to server (calls add_transport_client internally)
-  // For WebRTC DataChannel: start threads immediately (crypto already handled by ACDS)
-  client_info_t *client = add_transport_client(server_ctx, transport, participant_str, true);
-  if (!client) {
-    log_error("Failed to add WebRTC client for participant %s", participant_str);
+  asciichat_error_t result = network_server_adopt(server_ctx->network_server, transport, participant_str, true);
+  if (result != ASCIICHAT_OK) {
+    log_error("Cannot adopt authenticated peer: %s", asciichat_error_string(result));
     acip_transport_destroy(transport);
-    return;
+  } else {
+    log_info("Authenticated WebRTC connection adopted for %s", participant_str);
   }
-
-  log_debug("Successfully added WebRTC client ID=%s for participant %s", client->client_id, participant_str);
 }
 
 /**
@@ -945,77 +926,25 @@ static void on_acds_pong(void *ctx) {
   log_debug("ACDS keepalive: Received PONG from ACDS server");
 }
 
+static asciichat_error_t acds_signaling_packet(network_connection_t *connection, packet_type_t type,
+                                               const void *payload, size_t length, void *arg) {
+  (void)arg;
+  if ((unsigned)type == CONSENSUS_HANDOFF_PACKET) {
+    consensus_handoff_message_t message;
+    return consensus_handoff_decode(payload, length, &message);
+  }
+  const acip_client_callbacks_t callbacks = {.on_webrtc_sdp = on_webrtc_sdp_server,
+                                             .on_webrtc_ice = on_webrtc_ice_server,
+                                             .on_ping = on_acds_ping,
+                                             .on_pong = on_acds_pong};
+  return acip_handle_client_packet(network_connection_transport(connection), type, payload, length, &callbacks);
+}
 static void *acds_receive_thread(void *arg) {
   (void)arg;
-
-  log_debug("ACDS receive thread started");
-
-  // Configure callbacks for WebRTC signaling packets and keepalive
-  acip_client_callbacks_t callbacks = {
-      .on_ascii_frame = NULL,
-      .on_audio = NULL,
-      .on_webrtc_sdp = on_webrtc_sdp_server,
-      .on_webrtc_ice = on_webrtc_ice_server,
-      .on_session_joined = NULL,
-      .on_ping = on_acds_ping,
-      .on_pong = on_acds_pong,
-      .app_ctx = NULL,
-  };
-
-  // Receive loop - just handle incoming packets
-  // Keepalive is handled by separate ping thread
-  while (!atomic_load_bool(&g_should_exit)) {
-    if (!g_acds_transport) {
-      log_warn("ACDS transport is NULL, exiting receive thread");
-      break;
-    }
-
-    asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
-    packet_envelope_t envelope = {0};
-    asciichat_error_t result = acip_client_receive_packet(g_acds_transport, &envelope);
-    if (result == ASCIICHAT_OK) {
-      if ((unsigned)envelope.type == CONSENSUS_HANDOFF_PACKET) {
-        // A fixed server keeps hosting while discovery participants prepare a successor.
-        consensus_handoff_message_t message;
-        result = consensus_handoff_decode(envelope.data, envelope.len, &message);
-      } else {
-        result = acip_handle_client_packet(g_acds_transport, envelope.type, envelope.data, envelope.len, &callbacks);
-      }
-    }
-    if (envelope.allocated_buffer)
-      buffer_release(envelope.allocated_buffer);
-
-    if (result == ASCIICHAT_OK) {
-      ASSERT_NO_ERRNO_SINCE(receive_scope);
-      asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_HANDLED);
-    }
-    if (result != ASCIICHAT_OK) {
-      // Check error context to see if connection actually closed
-      asciichat_error_context_t err_ctx;
-      bool has_context = HAS_ERRNO(&err_ctx);
-
-      // Timeouts are normal when there are no packets - just continue waiting
-      if (result == ERROR_NETWORK_TIMEOUT) {
-        asciichat_errno_scope_end(receive_scope, ASCIICHAT_ERRNO_DISMISSED);
-        continue;
-      }
-
-      if (result == ERROR_NETWORK) {
-        log_warn("ACDS connection error: %s", has_context ? err_ctx.context_message : "unknown");
-        break;
-      }
-
-      // Other errors - exit thread
-      log_error("ACDS receive error: %s, exiting receive thread", asciichat_error_string(result));
-      break;
-    }
-  }
-
-  if (atomic_load_bool(&g_should_exit)) {
-    log_debug("ACDS receive thread exiting (server shutdown)");
-  } else {
-    log_warn("ACDS receive thread exiting unexpectedly");
-  }
+  const network_connection_callbacks_t callbacks = {.packet = acds_signaling_packet};
+  asciichat_error_t result = network_connection_run(g_acds_client->connection, &callbacks, NULL);
+  if (result != ASCIICHAT_OK && !atomic_load_bool(&g_should_exit))
+    log_warn("Discovery signaling connection stopped: %s", asciichat_error_string(result));
   return NULL;
 }
 
@@ -1028,7 +957,7 @@ static void *acds_receive_thread(void *arg) {
 // WebSocket server thread wrapper and status screen thread are now in session_server_like.
 
 /* ============================================================================
- * Client Handler Thread (for tcp_server integration)
+ * Discovery signaling callbacks
  * ============================================================================
  */
 
@@ -1041,75 +970,6 @@ static void *acds_receive_thread(void *arg) {
  * @param arg Pointer to websocket_client_context_t
  * @return NULL (thread exit value)
  */
-static void *websocket_client_handler(void *arg) {
-  websocket_client_context_t *ctx = (websocket_client_context_t *)arg;
-  if (!ctx) {
-    log_error("WebSocket client handler: NULL context");
-    return NULL;
-  }
-
-  log_info("WebSocket client connected from %s:%d", ctx->client_ip, ctx->client_port);
-  log_debug("[WS_HANDLER] ===== ENTRY: WebSocket client handler called for %s:%d =====", ctx->client_ip,
-            ctx->client_port);
-
-  // Extract server context from user_data
-  server_context_t *server_ctx = (server_context_t *)ctx->user_data;
-  if (!server_ctx) {
-    log_error("WebSocket client handler: NULL server context");
-    if (ctx->transport) {
-      acip_transport_destroy(ctx->transport);
-    }
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-
-  // STEP 1: Add client first (creates client structure WITHOUT starting threads yet)
-  log_debug("[WS_HANDLER] STEP 1: Calling add_transport_client()...");
-  client_info_t *client = add_transport_client(server_ctx, ctx->transport, ctx->client_ip, false);
-  if (!client) {
-    log_error("[WS_HANDLER] FAILED: add_transport_client returned NULL");
-    if (ctx->transport) {
-      acip_transport_destroy(ctx->transport);
-    }
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-
-  // Transport ownership transferred to client structure - don't destroy it here
-  ctx->transport = NULL;
-
-  client->transport_encrypted = ctx->is_secure;
-  const uint64_t previous_receive_timeout_ns = client->transport->receive_timeout_ns;
-  client->transport->receive_timeout_ns = 30ULL * NS_PER_SEC_INT;
-  unsigned step = 0;
-  bool ready = false;
-  while (!ready) {
-    packet_type_t type;
-    void *payload = NULL, *allocated = NULL;
-    size_t length = 0;
-    asciichat_error_t result = packet_receive_via_transport(client->transport, &type, &payload, &length, &allocated);
-    if (result == ASCIICHAT_OK)
-      result = server_crypto_event(client, &step, type, payload, length, &ready);
-    if (allocated)
-      buffer_release(allocated);
-    if (result != ASCIICHAT_OK) {
-      acip_send_error(client->transport, result, "Security negotiation rejected");
-      // Keep the transport alive until the service thread sends the rejection.
-      asciichat_errno_scope_t flush_scope = asciichat_errno_scope_begin();
-      (void)acip_websocket_transport_flush(client->transport, NS_PER_SEC_INT);
-      asciichat_errno_scope_end(flush_scope, ASCIICHAT_ERRNO_DISMISSED);
-      acip_transport_close(client->transport);
-      remove_client(server_ctx, client->client_id);
-      SAFE_FREE(ctx);
-      return NULL;
-    }
-  }
-  client->transport->receive_timeout_ns = previous_receive_timeout_ns;
-  if (start_transport_client_threads(server_ctx, client->client_id) != 0)
-    remove_client(server_ctx, client->client_id);
-  SAFE_FREE(ctx);
-  return NULL;
-}
 
 /* ============================================================================
  * Main Function
@@ -1303,52 +1163,59 @@ static server_context_t g_server_ctx;
 /* ============================================================================
  * Status screen callback (populates ui_status_t from server state)
  * ============================================================================ */
+typedef struct {
+  stats_view_t *view;
+  unsigned active, queued;
+} server_stats_visit_t;
+static void server_stats_connection(network_connection_t *connection, void *arg) {
+  server_stats_visit_t *visit = arg;
+  server_connection_state_t *state = network_connection_context(connection);
+  client_info_t *client = state ? atomic_ptr_load(&state->client) : NULL;
+  if (!client || !atomic_load_bool(&client->event_ready))
+    return;
+  ++visit->active;
+  acip_outbound_stats_t outbound = {0};
+  acip_transport_t *transport = network_connection_transport(connection);
+  if (transport->outbound)
+    acip_outbound_snapshot(transport, &outbound);
+  size_t queued = outbound.application_bytes + outbound.backend_bytes;
+  if (queued)
+    ++visit->queued;
+  if (!visit->view->page)
+    return;
+  mutex_lock(&client->client_state_mutex);
+  uint64_t received =
+      client->incoming_video_buffer ? atomic_load_u64(&client->incoming_video_buffer->total_frames_received) : 0;
+  unsigned width = client->width, height = client->height;
+  mutex_unlock(&client->client_state_mutex);
+  stats_view_add(visit->view, "%-16.16s %ux%u  %8llu  %8llu  %8llu / %zu", client->client_id, width, height,
+                 (unsigned long long)atomic_load_u64(&client->frames_sent_count), (unsigned long long)received,
+                 (unsigned long long)outbound.dropped, queued);
+}
 static void server_stats_provider(stats_view_t *view, void *unused) {
   (void)unused;
-  unsigned active = 0, queued = 0;
+  server_stats_visit_t visit = {.view = view};
   if (view->page) {
     stats_view_add(view, "");
-    stats_view_add(view, "SERVER CLIENTS   dimensions    sent    received    video drops / audio queue");
+    stats_view_add(view, "SERVER CLIENTS   dimensions    sent    received    outbound drops / queued bytes");
   }
-  rwlock_rdlock(&g_client_manager_rwlock);
-  for (int i = 0; i < MAX_CLIENTS; ++i) {
-    client_info_t *client = &g_client_manager.clients[i];
-    if (!atomic_load_bool(&client->active))
-      continue;
-    active++;
-    if (client->outgoing_video_buffer && atomic_load_bool(&client->outgoing_video_buffer->new_frame_available))
-      queued++;
-    if (!view->page)
-      continue;
-    mutex_lock(&client->client_state_mutex);
-    uint64_t received =
-        client->incoming_video_buffer ? atomic_load_u64(&client->incoming_video_buffer->total_frames_received) : 0;
-    unsigned width = client->width, height = client->height;
-    mutex_unlock(&client->client_state_mutex);
-    video_frame_stats_t video = {0};
-    if (client->outgoing_video_buffer)
-      video_frame_get_stats(client->outgoing_video_buffer, &video);
-    size_t audio_depth = client->audio_queue ? packet_queue_size(client->audio_queue) : 0;
-    stats_view_add(view, "%-16.16s %ux%u  %8llu  %8llu  %8llu / %zu", client->client_id, width, height,
-                   (unsigned long long)atomic_load_u64(&client->frames_sent_count), (unsigned long long)received,
-                   (unsigned long long)video.dropped_frames, audio_depth);
-  }
-  rwlock_rdunlock(&g_client_manager_rwlock);
-  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_CONNECTIONS_ACTIVE, active);
-  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_VIDEO_QUEUE_DEPTH, queued);
-  stats_view_add(view, "Connected clients: %u", active);
+  network_server_foreach(session_server_like_get_network_server(), server_stats_connection, &visit);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_CONNECTIONS_ACTIVE, visit.active);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_VIDEO_QUEUE_DEPTH, visit.queued);
+  stats_view_add(view, "Connected clients: %u", visit.active);
 }
 
 static void server_status_fn(void *user_data, ui_status_t *out_status) {
   (void)user_data;
 
-  tcp_server_t *tcp = session_server_like_get_tcp_server();
+  network_server_t *tcp = session_server_like_get_network_server();
   if (!tcp) {
     return;
   }
 
-  ui_status_gather(tcp, g_session_string, tcp->config.ipv4_address, tcp->config.ipv6_address, GET_OPTION(port),
-                   g_server_start_time, "Server", g_session_is_mdns_only, out_status);
+  ui_status_gather(tcp, g_session_string, network_server_config(tcp)->ipv4_address,
+                   network_server_config(tcp)->ipv6_address, GET_OPTION(port), g_server_start_time, "Server",
+                   g_session_is_mdns_only, out_status);
 }
 
 /* ============================================================================
@@ -1438,12 +1305,12 @@ static asciichat_error_t server_init_h265(void) {
   return ASCIICHAT_OK;
 }
 
-static void server_init_session_host(tcp_server_t *tcp, int port) {
+static void server_init_session_host(network_server_t *tcp, int port) {
   // Session Host Creation (for discovery mode support)
   // Create session_host to track clients in a transport-agnostic way.
   if (!atomic_load_bool(&g_should_exit)) {
-    const char *ipv4_address = tcp->config.ipv4_address;
-    const char *ipv6_address = tcp->config.ipv6_address;
+    const char *ipv4_address = network_server_config(tcp)->ipv4_address;
+    const char *ipv6_address = network_server_config(tcp)->ipv6_address;
 
     session_host_config_t host_config = {
         .port = port,
@@ -1628,9 +1495,8 @@ static void server_start_discovery_keepalive(void) {
   // Keep ACDS connection alive for WebRTC signaling relay
   log_debug("Server staying connected to ACDS for signaling relay");
 
-  // Create ACDS transport wrapper for sending signaling packets
-  g_acds_transport =
-      acip_tcp_transport_create("transport_acds_server", g_acds_client->socket, g_acds_client->transport->crypto_ctx);
+  // Signaling shares the authenticated connection and its ordered send scheduler.
+  g_acds_transport = g_acds_client->transport;
   if (!g_acds_transport) {
     log_error("Failed to create ACDS transport wrapper");
   } else {
@@ -1733,21 +1599,19 @@ static void server_init_webrtc(void) {
     const char *server_address = GET_OPTION(address);
     bool bind_webrtc_to_server_address = server_address && server_address[0] &&
                                          strcmp(server_address, "0.0.0.0") != 0 && strcmp(server_address, "::") != 0;
-    webrtc_peer_manager_config_t pm_config = {
-        .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
-        // Honor an explicitly selected server interface for ICE. With a
-        // wildcard bind, let libdatachannel gather candidates on all interfaces.
-        .bind_address = bind_webrtc_to_server_address ? server_address : NULL,
-        .stun_servers = stun_servers,
-        .stun_count = stun_count,
-        .turn_servers = turn_servers,
-        .turn_count = turn_count,
-        .relay_only = GET_OPTION(webrtc_relay_only),
-        .turn_username = turn_auth_username,
-        .turn_credential = turn_auth_credential,
-        .on_transport_ready = on_webrtc_transport_ready,
-        .user_data = &g_server_ctx
-    };
+    webrtc_peer_manager_config_t pm_config = {.role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
+                                              // Honor an explicitly selected server interface for ICE. With a
+                                              // wildcard bind, let libdatachannel gather candidates on all interfaces.
+                                              .bind_address = bind_webrtc_to_server_address ? server_address : NULL,
+                                              .stun_servers = stun_servers,
+                                              .stun_count = stun_count,
+                                              .turn_servers = turn_servers,
+                                              .turn_count = turn_count,
+                                              .relay_only = GET_OPTION(webrtc_relay_only),
+                                              .turn_username = turn_auth_username,
+                                              .turn_credential = turn_auth_credential,
+                                              .on_transport_ready = on_webrtc_transport_ready,
+                                              .user_data = &g_server_ctx};
 
     // Configure signaling callbacks for relaying SDP/ICE via ACDS
     webrtc_signaling_callbacks_t signaling_callbacks = {
@@ -1892,9 +1756,9 @@ static void server_tick_fn(void *user_data) {
   if (result != ASCIICHAT_OK) {
     log_error("WebRTC ready dispatch failed: %s", asciichat_error_string(result));
     atomic_store_bool(&g_should_exit, true);
-    tcp_server_t *tcp = session_server_like_get_tcp_server();
+    network_server_t *tcp = session_server_like_get_network_server();
     if (tcp)
-      atomic_store_bool(&tcp->running, false);
+      network_server_request_stop(tcp);
   }
 }
 
@@ -1903,13 +1767,13 @@ static asciichat_error_t server_init_fn(void *user_data) {
   int port = GET_OPTION(port);
 
   // Get TCP server from server_like (it's already initialized at this point)
-  tcp_server_t *tcp = session_server_like_get_tcp_server();
+  network_server_t *tcp = session_server_like_get_network_server();
   if (!tcp) {
     return SET_ERRNO(ERROR_INVALID_STATE, "TCP server not available from server_like");
   }
 
   // Point server context at the server_like-owned TCP server
-  g_server_ctx.tcp_server = tcp;
+  g_server_ctx.network_server = tcp;
 
   // A local mapping behind upstream NAT must not suppress WebRTC discovery.
   nat_upnp_context_t *upnp_ctx = session_server_like_get_upnp_ctx();
@@ -1965,7 +1829,6 @@ static asciichat_error_t server_init_fn(void *user_data) {
 
   // Initialize status screen timestamps
   g_server_start_time = time(NULL);
-  g_last_status_update = platform_get_monotonic_time_us();
 
   stats_runtime_set_provider(server_stats_provider, NULL);
   log_debug("Server init_fn complete");
@@ -1975,23 +1838,6 @@ static asciichat_error_t server_init_fn(void *user_data) {
 /* ============================================================================
  * Mode-specific cleanup callback
  * ============================================================================ */
-static void server_close_client_sockets(void) {
-  // Close all client sockets immediately to unblock receive threads.
-  // Only do this if initialization succeeded and created the rwlock.
-  log_debug("Closing all client sockets to unblock receive threads...");
-  if (g_client_manager_rwlock_initialized) {
-    rwlock_wrlock(&g_client_manager_rwlock);
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      client_info_t *client = &g_client_manager.clients[i];
-      if (client->client_id[0] != '\0' && client->socket != INVALID_SOCKET_VALUE) {
-        socket_close(client->socket);
-        client->socket = INVALID_SOCKET_VALUE;
-      }
-    }
-    rwlock_wrunlock(&g_client_manager_rwlock);
-  }
-}
-
 static void server_stop_workers(void) {
   // Stop and destroy server worker thread pool (stats logger, etc.)
   if (g_server_worker_pool) {
@@ -2106,6 +1952,8 @@ static void server_stop_discovery(void) {
     log_debug("ACDS ping thread joined");
   }
 
+  if (g_acds_client && g_acds_client->connection)
+    network_connection_request_stop(g_acds_client->connection);
   if (g_acds_receive_thread_started) {
     log_debug("Joining ACDS receive thread");
     asciichat_thread_join(&g_acds_receive_thread, NULL);
@@ -2123,7 +1971,6 @@ static void server_stop_discovery(void) {
   // Clean up ACDS transport wrapper
   if (g_acds_transport) {
     log_debug("Destroying ACDS transport wrapper");
-    acip_transport_destroy(g_acds_transport);
     g_acds_transport = NULL;
   }
 
@@ -2146,8 +1993,6 @@ static void server_cleanup_fn(void *user_data) {
   // Wake up any threads that might be blocked on condition variables
   // (like packet queues) to ensure responsive shutdown
   static_cond_broadcast(&g_shutdown_cond);
-
-  server_close_client_sockets();
 
   log_debug("Signaling all clients to stop (sockets closed, g_should_exit set)...");
 
@@ -2244,7 +2089,7 @@ int server_main(void) {
   // Initialize static server context (populated further in server_init_fn)
   // H.265 context is initialized in server_init_fn, not here
   g_server_ctx = (server_context_t){
-      .tcp_server = NULL, // Set in server_init_fn after TCP server is ready
+      .network_server = NULL, // Set in server_init_fn after TCP server is ready
       .rate_limiter = g_rate_limiter,
       .client_manager = &g_client_manager,
       .client_manager_rwlock = &g_client_manager_rwlock,
@@ -2269,14 +2114,10 @@ int server_main(void) {
       .cleanup_user_data = NULL,
       .status_fn = server_status_fn,
       .status_user_data = NULL,
-      .tcp_event_handler = server_event_accept,
-      .tcp_user_data = &g_server_ctx,
-      .websocket =
-          {
-              .enabled = true,
-              .handler = websocket_client_handler,
-              .user_data = &g_server_ctx,
-          },
+      .connections = server_network_callbacks,
+      .connection_user_data = &g_server_ctx,
+      .websocket_enabled = true,
+      .partial_timeout_ms = 30000,
       .mdns =
           {
               .enabled = !GET_OPTION(no_mdns_advertise),

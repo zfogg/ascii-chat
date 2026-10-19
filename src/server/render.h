@@ -13,7 +13,7 @@ void *client_audio_render_thread(void *arg);
 
 // Render thread lifecycle management
 int create_client_render_threads(server_context_t *server_ctx, client_info_t *client);
-void stop_client_render_threads(client_info_t *client);
+asciichat_error_t stop_client_render_threads(client_info_t *client);
 
 // Render timing control - match platform-specific client FPS for optimal performance
 #ifdef _WIN32

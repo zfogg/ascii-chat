@@ -13,7 +13,7 @@
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/audio/client_pipeline.h>
-#include <ascii-chat/network/connection_attempt.h>
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/video/h265/encoder.h>
 
@@ -29,7 +29,8 @@ typedef struct {
 
 /* Mutable state belongs to one attempt. Application devices and UI outlive it. */
 struct client_connection {
-  connection_attempt_context_t attempt;
+  network_connection_t *network;
+  acip_transport_t *transport;
   // Application resources are borrowed explicitly by this connection.
   session_capture_ctx_t *capture_context;
   session_display_ctx_t *display_context;
@@ -50,7 +51,6 @@ struct client_connection {
   bool audio_queue_mutex_initialized;
   bool audio_queue_cond_initialized;
   atomic_t stop_requested;
-  socket_t sockfd;
   atomic_t connection_active;
   atomic_t remote_error;
   atomic_t connection_lost;

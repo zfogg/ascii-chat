@@ -180,74 +180,18 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
   const char *reason_str = reason[0] != '\0' ? reason : "Protocol violation";
   const char *client_id = client->client_id;
 
-  socket_t socket_snapshot = INVALID_SOCKET_VALUE;
-  const crypto_context_t *crypto_ctx = NULL;
-  acip_transport_t *transport_snapshot = NULL;
-
-  mutex_lock(&client->client_state_mutex);
-  if (client->socket != INVALID_SOCKET_VALUE) {
-    socket_snapshot = client->socket;
-    if (client->crypto_initialized) {
-      crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-    }
-  }
-  mutex_unlock(&client->client_state_mutex);
-
-  // Get transport reference for WebSocket clients
-  mutex_lock(&client->send_mutex);
-  transport_snapshot = client->transport;
-  mutex_unlock(&client->send_mutex);
-
-  // NOTE: Disconnecting a client due to the client's own bad behavior isn't an
-  // error for us, it's desired behavior for us, so we simply warn and do not
-  // have a need for asciichat_errno here.
   log_warn("Disconnecting client %s due to protocol violation: %s", client_id, reason_str);
-
-  if (socket_snapshot != INVALID_SOCKET_VALUE) {
-    // Protect socket writes with send_mutex to prevent race with send_thread.
-    // This receive_thread and send_thread both write to same socket.
     mutex_lock(&client->send_mutex);
-
-    asciichat_error_t log_result =
-        log_network_message(socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_ERROR,
-                            REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, "Protocol violation: %s", reason_str);
-    if (log_result != ASCIICHAT_OK) {
-      log_warn("Failed to send remote log to client %s: %s", client_id, asciichat_error_string(log_result));
-    }
-
-    asciichat_error_t send_result = packet_send_error(socket_snapshot, crypto_ctx, ERROR_NETWORK_PROTOCOL, reason_str);
-    if (send_result != ASCIICHAT_OK) {
-      log_warn("Failed to send error packet to client %s: %s", client_id, asciichat_error_string(send_result));
-    }
-
+    if (client->transport)
+      acip_send_error(client->transport, ERROR_NETWORK_PROTOCOL, reason_str);
     mutex_unlock(&client->send_mutex);
-  } else if (transport_snapshot) {
-    // For WebSocket clients, try to send error via transport
-    log_debug("Sending error to WebSocket client %s via transport", client_id);
-    acip_send_error(transport_snapshot, ERROR_NETWORK_PROTOCOL, reason_str);
-  }
-
-  APP_CALLBACK_VOID(platform_pump_events);
-  platform_sleep_ms(500);
 
   log_debug("Setting active=false in disconnect_client_for_bad_data (client_id=%s, reason=%s)", client_id, reason_str);
   atomic_store_bool(&client->active, false);
   atomic_store_bool(&client->shutting_down, true);
-  atomic_store_bool(&client->send_thread_running, false);
+  network_connection_request_stop(client->network_connection);
   atomic_store_bool(&client->video_render_thread_running, false);
   atomic_store_bool(&client->audio_render_thread_running, false);
-
-  if (client->audio_queue) {
-    packet_queue_stop(client->audio_queue);
-  }
-
-  mutex_lock(&client->client_state_mutex);
-  if (client->socket != INVALID_SOCKET_VALUE) {
-    socket_shutdown(client->socket, 2);
-    socket_close(client->socket);
-    client->socket = INVALID_SOCKET_VALUE;
-  }
-  mutex_unlock(&client->client_state_mutex);
 }
 
 /* ============================================================================
@@ -322,7 +266,7 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
            client->can_send_video, client->can_send_audio, client->wants_stretch);
 
   // Notify client of successful join (encrypted channel)
-  if (client->socket != INVALID_SOCKET_VALUE) {
+  if (client->transport != NULL) {
     log_info_client(client, "Joined as '%s' (video=%s, audio=%s)", client->display_name,
                     client->can_send_video ? "yes" : "no", client->can_send_audio ? "yes" : "no");
   }
@@ -576,8 +520,7 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
   const char *streams = (stream_type & STREAM_TYPE_VIDEO) && (stream_type & STREAM_TYPE_AUDIO)
                             ? "video+audio"
                             : ((stream_type & STREAM_TYPE_VIDEO) ? "video" : "audio");
-  // Only send remote log to TCP clients (WebSocket clients have invalid socket)
-  if (client->socket != INVALID_SOCKET_VALUE) {
+  if (client->transport != NULL) {
     log_info_client(client, "Stream started: %s", streams);
   }
 }
@@ -649,8 +592,7 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
   const char *streams = (stream_type & STREAM_TYPE_VIDEO) && (stream_type & STREAM_TYPE_AUDIO)
                             ? "video+audio"
                             : ((stream_type & STREAM_TYPE_VIDEO) ? "video" : "audio");
-  // Only send remote log to TCP clients (WebSocket clients have invalid socket)
-  if (client->socket != INVALID_SOCKET_VALUE) {
+  if (client->transport != NULL) {
     log_info_client(client, "Stream stopped: %s", streams);
   }
 }
@@ -775,7 +717,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     if (atomic_cas_bool(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %s auto-enabled video stream (received IMAGE_FRAME)", client->client_id);
       // Notify client that their first video frame was received
-      if (client->socket != INVALID_SOCKET_VALUE) {
+      if (client->transport != NULL) {
         log_info_client(client, "First video frame received - streaming active");
       }
     }
@@ -800,7 +742,8 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   uint32_t img_width = NET_TO_HOST_U32(img_width_net);
   uint32_t img_height = NET_TO_HOST_U32(img_height_net);
 
-  log_debug_every(US_PER_SEC_INT, "IMAGE_FRAME packet: width=%u, height=%u, payload_len=%zu", img_width, img_height, len);
+  log_debug_every(US_PER_SEC_INT, "IMAGE_FRAME packet: width=%u, height=%u, payload_len=%zu", img_width, img_height,
+                  len);
 
   // Validate dimensions using image utility functions
   if (image_validate_dimensions((size_t)img_width, (size_t)img_height) != ASCIICHAT_OK) {
@@ -969,7 +912,7 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
   bool was_sending_video = atomic_exchange_bool(&client->is_sending_video, true);
   if (!was_sending_video) {
     log_info("Client %s auto-enabled H.265 video stream (received IMAGE_FRAME_H265)", client->client_id);
-    if (client->socket != INVALID_SOCKET_VALUE) {
+    if (client->transport != NULL) {
       log_info_client(client, "First H.265 video frame received - streaming active");
     }
   }
@@ -1763,7 +1706,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
            client->terminal_caps.wants_padding);
 
   // Send capabilities acknowledgment to client
-  if (client->socket != INVALID_SOCKET_VALUE) {
+  if (client->transport != NULL) {
     log_info_client(client, "Terminal configured: %ux%u, %s, %s mode, %u fps", client->width, client->height,
                     terminal_color_level_name(client->terminal_caps.color_level),
                     (client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK

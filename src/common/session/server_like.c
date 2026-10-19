@@ -34,13 +34,7 @@
  * Static State
  * ============================================================================ */
 
-static tcp_server_t g_tcp_server;
-static bool g_tcp_server_initialized = false;
-
-static websocket_server_t g_websocket_server;
-static bool g_websocket_initialized = false;
-static asciichat_thread_t g_websocket_thread;
-static bool g_websocket_thread_started = false;
+static network_server_t *g_network_server;
 
 static asciichat_mdns_t *g_mdns_ctx = NULL;
 static nat_upnp_context_t *g_upnp_ctx = NULL;
@@ -80,7 +74,6 @@ static session_server_like_status_fn g_status_fn = NULL;
 static void *g_status_user_data = NULL;
 
 /** Stored config pointer (valid during session_server_like_run scope). */
-static const session_server_like_config_t *g_config = NULL;
 
 /* ============================================================================
  * Signal Handler
@@ -135,7 +128,7 @@ static void *status_screen_thread_func(void *arg) {
       log_search_exit_mode(false);
 
     // Call mode's status callback to populate status data
-    // Use direct static pointers instead of g_config to avoid stale reference during shutdown
+    // Use direct static pointers for callbacks to avoid stale reference during shutdown
     if (g_status_fn) {
       ui_status_t status;
       memset(&status, 0, sizeof(status));
@@ -163,21 +156,8 @@ static void *status_screen_thread_func(void *arg) {
  * WebSocket Server Thread
  * ============================================================================ */
 
-static void *websocket_server_thread_wrapper(void *arg) {
-  websocket_server_t *server = (websocket_server_t *)arg;
-  asciichat_error_t result = websocket_server_run(server);
-  if (result != ASCIICHAT_OK) {
-    log_error("WebSocket server thread exited with error");
-  }
-  return NULL;
-}
-
-/* ============================================================================
- * Accessors
- * ============================================================================ */
-
-tcp_server_t *session_server_like_get_tcp_server(void) {
-  return g_tcp_server_initialized ? &g_tcp_server : NULL;
+network_server_t *session_server_like_get_network_server(void) {
+  return g_network_server;
 }
 
 asciichat_mdns_t *session_server_like_get_mdns_ctx(void) {
@@ -186,10 +166,6 @@ asciichat_mdns_t *session_server_like_get_mdns_ctx(void) {
 
 nat_upnp_context_t *session_server_like_get_upnp_ctx(void) {
   return g_upnp_ctx;
-}
-
-websocket_server_t *session_server_like_get_websocket_server(void) {
-  return g_websocket_thread_started ? &g_websocket_server : NULL;
 }
 
 /* ============================================================================
@@ -241,133 +217,6 @@ bool session_server_like_shutdown_requested(void) {
  * Shared Handshake
  * ============================================================================ */
 
-static asciichat_error_t session_server_like_handshake_impl(crypto_handshake_context_t *ctx,
-                                                            acip_transport_t *transport, bool transport_secure) {
-  if (!ctx || !transport) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "handshake context or transport is NULL");
-  }
-
-  asciichat_error_t result;
-
-  // Step 0: Receive PROTOCOL_VERSION from client
-  {
-    packet_type_t pkt_type;
-    void *pkt_data = NULL;
-    size_t pkt_len = 0;
-    void *alloc_buffer = NULL;
-
-    result = packet_receive_via_transport(transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
-    if (result != ASCIICHAT_OK) {
-      log_warn("Failed to receive PROTOCOL_VERSION from client");
-      return result;
-    }
-
-    if (pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
-      log_warn("Expected PROTOCOL_VERSION, got packet type %u", pkt_type);
-      buffer_release(alloc_buffer);
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected PROTOCOL_VERSION packet");
-    }
-
-    if (pkt_len != sizeof(protocol_version_packet_t)) {
-      buffer_release(alloc_buffer);
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid protocol version size");
-    }
-    uint8_t mode = ((protocol_version_packet_t *)pkt_data)->supports_encryption;
-    buffer_release(alloc_buffer);
-    result = crypto_policy_check_mode(transport_secure, GET_OPTION(encrypt_enabled), GET_OPTION(no_encrypt),
-                                      ctx->require_client_auth, mode);
-    if (result != ASCIICHAT_OK)
-      return result;
-    if (mode == ACIP_CRYPTO_NONE) {
-      ctx->state = CRYPTO_HANDSHAKE_DISABLED;
-      return ASCIICHAT_OK;
-    }
-    ctx->crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
-    log_debug("Received PROTOCOL_VERSION from client");
-  }
-
-  // Step 1: Send crypto parameters
-  result = crypto_handshake_server_send_parameters(ctx, transport);
-  if (result != ASCIICHAT_OK) {
-    log_warn("Crypto parameters send failed");
-    return result;
-  }
-
-  // Step 2: Key exchange (send server key)
-  result = crypto_handshake_server_start(ctx, transport);
-  if (result != ASCIICHAT_OK) {
-    log_warn("Crypto handshake start failed");
-    return result;
-  }
-
-  // Step 3: Receive client key exchange response, send auth challenge
-  {
-    packet_type_t pkt_type;
-    void *pkt_data = NULL;
-    size_t pkt_len = 0;
-    void *alloc_buffer = NULL;
-
-    result = packet_receive_via_transport(transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
-    if (result != ASCIICHAT_OK) {
-      log_warn("Failed to receive KEY_EXCHANGE_RESPONSE");
-      return result;
-    }
-
-    result = crypto_handshake_server_auth_challenge(ctx, transport, pkt_type, pkt_data, pkt_len);
-    buffer_release(alloc_buffer);
-
-    if (result != ASCIICHAT_OK) {
-      log_warn("Crypto auth challenge failed");
-      return result;
-    }
-  }
-
-  // Step 4: Complete handshake (skip if already complete from auth challenge)
-  if (ctx->state != CRYPTO_HANDSHAKE_READY) {
-    packet_type_t pkt_type;
-    void *pkt_data = NULL;
-    size_t pkt_len = 0;
-    void *alloc_buffer = NULL;
-
-    result = packet_receive_via_transport(transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
-    if (result != ASCIICHAT_OK) {
-      log_warn("Failed to receive AUTH_RESPONSE");
-      return result;
-    }
-
-    result = crypto_handshake_server_complete(ctx, transport, pkt_type, pkt_data, pkt_len);
-    buffer_release(alloc_buffer);
-
-    if (result != ASCIICHAT_OK) {
-      log_warn("Crypto handshake completion failed");
-      return result;
-    }
-  }
-
-  log_info("Crypto handshake complete");
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx, acip_transport_t *transport,
-                                                bool transport_secure) {
-  if (!ctx || !transport) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "handshake context or transport is NULL");
-  }
-
-  // Crypto key generation and signing can exceed the normal one-second packet
-  // polling interval on slower or busy peers. Keep the longer deadline scoped
-  // to the handshake so idle-session polling remains responsive.
-  const uint64_t previous_receive_timeout_ns = transport->receive_timeout_ns;
-  transport->receive_timeout_ns = 30ULL * NS_PER_SEC_INT;
-  asciichat_error_t result = session_server_like_handshake_impl(ctx, transport, transport_secure);
-  transport->receive_timeout_ns = previous_receive_timeout_ns;
-  return result;
-}
-
-/* ============================================================================
- * Main Entry Point
- * ============================================================================ */
-
 asciichat_error_t session_server_like_run(const session_server_like_config_t *config) {
   if (!config) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "config is NULL");
@@ -378,11 +227,10 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   if (!config->interrupt_fn) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "interrupt_fn is NULL");
   }
-  if (!config->tcp_event_handler) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "tcp_event_handler is NULL");
+  if (!config->connections.packet) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "connection packet callback is NULL");
   }
 
-  g_config = config;
   asciichat_error_t result = ASCIICHAT_OK;
 
   /* === 1. Keepawake === */
@@ -421,24 +269,30 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   bool ipv4_has_value = (address && strlen(address) > 0);
   bool ipv6_has_value = (address6 && strlen(address6) > 0);
 
-  tcp_server_config_t tcp_config = {
+  network_server_config_t tcp_config = {
       .port = port,
       .ipv4_address = ipv4_has_value ? address : NULL,
       .ipv6_address = ipv6_has_value ? address6 : NULL,
       .bind_ipv4 = ipv4_has_value || !ipv6_has_value,
       .bind_ipv6 = ipv6_has_value || !ipv4_has_value,
-      .event_handler = config->tcp_event_handler,
-      .tick_fn = config->tick_fn,
-      .tick_user_data = config->tick_user_data,
-      .user_data = config->tcp_user_data,
+      .callbacks = config->connections,
+      .max_payload = config->max_payload,
+      .partial_timeout_ms = config->partial_timeout_ms,
+      .idle_timeout_ms = config->idle_timeout_ms,
+      .websocket_enabled = config->websocket_enabled,
+      .websocket_port = GET_OPTION(websocket_port),
+      .tls_cert_path = GET_OPTION(websocket_tls_cert),
+      .tls_key_path = GET_OPTION(websocket_tls_key),
+      .tick = config->tick_fn,
+      .tick_context = config->tick_user_data,
+      .user_data = config->connection_user_data,
   };
 
-  result = tcp_server_init(&g_tcp_server, &tcp_config);
+  result = network_server_create(&tcp_config, &g_network_server);
   if (result != ASCIICHAT_OK) {
     log_error("Failed to initialize TCP server on port %d", port);
     goto cleanup;
   }
-  g_tcp_server_initialized = true;
   log_info("TCP server initialized on port %d", port);
 
   /* === 5. UPnP port mapping === */
@@ -489,28 +343,6 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     }
   }
 
-  /* === 7. WebSocket server construction (thread deferred until after mode init) === */
-
-  if (config->websocket.enabled) {
-    websocket_server_config_t ws_config = {
-        .port = GET_OPTION(websocket_port),
-        .client_handler = config->websocket.handler,
-        .user_data = config->websocket.user_data,
-        .tls_cert_path = GET_OPTION(websocket_tls_cert),
-        .tls_key_path = GET_OPTION(websocket_tls_key),
-    };
-
-    memset(&g_websocket_server, 0, sizeof(g_websocket_server));
-    asciichat_error_t ws_result = websocket_server_init(&g_websocket_server, &ws_config);
-    if (ws_result != ASCIICHAT_OK) {
-      log_warn("Failed to initialize WebSocket server - browser clients will not be supported");
-    } else {
-      g_websocket_initialized = true;
-      log_info("WebSocket server initialized on port %d (event loop deferred until after mode init)",
-               GET_OPTION(websocket_port));
-    }
-  }
-
   /* === 8. Mode-specific init === */
 
   result = config->init_fn(config->init_user_data);
@@ -521,17 +353,15 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
 
   /* === 8b. WebSocket event loop thread start (after mode init succeeds) === */
 
-  if (g_websocket_initialized && !atomic_load_u64(&g_shutdown_requested)) {
-    if (asciichat_thread_create(&g_websocket_thread, "websocket_event_loop", websocket_server_thread_wrapper,
-                                &g_websocket_server) == 0) {
-      g_websocket_thread_started = true;
-      log_info("WebSocket event loop thread started");
-    } else {
-      log_error("Failed to start WebSocket event loop thread");
-    }
+  if (!atomic_load_u64(&g_shutdown_requested)) {
+    result = network_server_start(g_network_server);
+    if (result != ASCIICHAT_OK)
+      goto cleanup;
+  } else {
+    goto cleanup;
   }
 
-  if (upnp_requested && g_websocket_thread_started) {
+  if (upnp_requested && network_server_websocket_enabled(g_network_server)) {
     // WebSocket binds independently of the raw TCP listener's address.
     asciichat_errno_scope_t ws_mapping_scope = asciichat_errno_scope_begin();
     if (nat_upnp_open((uint16_t)GET_OPTION(websocket_port), "ascii-chat WebSocket", &g_ws_upnp_ctx) != ASCIICHAT_OK) {
@@ -562,7 +392,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     if ((status_opt && terminal_is_interactive()) || (status_explicit && status_opt)) {
       atomic_store_bool(&g_status_should_exit, false);
 
-      // Store callback and user data for status thread (avoids reliance on g_config lifetime)
+      // Store callback and user data for status thread for the status worker
       g_status_fn = config->status_fn;
       g_status_user_data = config->status_user_data;
 
@@ -583,7 +413,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   /* === 10. TCP accept loop (blocks) === */
 
   log_info("Server accepting connections on port %d", port);
-  result = tcp_server_run(&g_tcp_server);
+  result = network_server_run(g_network_server);
   if (result != ASCIICHAT_OK) {
     log_error("TCP server exited with error");
   }
@@ -591,7 +421,6 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   /* === CLEANUP === */
 
 cleanup:
-  g_config = NULL;
   if (g_upnp_thread_started) {
     atomic_store_bool(&g_upnp_stop, true);
     asciichat_thread_join(&g_upnp_thread, NULL);
@@ -619,35 +448,16 @@ cleanup:
   }
   ui_status_log_destroy();
 
-  /* 12. Stop WebSocket server (only if thread was started, i.e., init succeeded) */
-  if (g_websocket_thread_started) {
-    atomic_store_bool(&g_websocket_server.running, false);
-    websocket_server_cancel_service(&g_websocket_server);
-    int ws_join = asciichat_thread_join_timeout(&g_websocket_thread, NULL, 500 * NS_PER_MS_INT);
-    if (ws_join != 0) {
-      log_warn("WebSocket event loop thread did not exit within 500ms");
-    }
-    g_websocket_thread_started = false;
-  }
+  asciichat_error_t stopped = network_server_stop(g_network_server);
+  if (stopped != ASCIICHAT_OK)
+    return stopped;
 
   /* 13. Mode-specific cleanup (only call if config provided) */
   if (config && config->cleanup_fn) {
     config->cleanup_fn(config->cleanup_user_data);
   }
 
-  /* 14. Destroy WebSocket server (only if successfully initialized) */
-  if (g_websocket_initialized) {
-    websocket_server_destroy(&g_websocket_server);
-    g_websocket_initialized = false;
-    log_debug("WebSocket server destroyed");
-  }
-
-  /* 15. Destroy TCP server */
-  if (g_tcp_server_initialized) {
-    tcp_server_destroy(&g_tcp_server);
-    g_tcp_server_initialized = false;
-    log_debug("TCP server destroyed");
-  }
+  network_server_destroy(&g_network_server);
 
   /* 17. mDNS cleanup */
   if (g_mdns_ctx) {

@@ -53,7 +53,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/rgba/image.h>
 
@@ -213,7 +213,7 @@ session_host_t *session_host_create(const session_host_config_t *config);
  *
  * @ingroup session
  */
-void session_host_destroy(session_host_t *host);
+asciichat_error_t session_host_destroy(session_host_t *host);
 
 /** @} */
 
@@ -242,7 +242,7 @@ asciichat_error_t session_host_start(session_host_t *host);
  *
  * @ingroup session
  */
-void session_host_stop(session_host_t *host);
+asciichat_error_t session_host_stop(session_host_t *host);
 
 /**
  * @brief Check if host is running
@@ -275,7 +275,7 @@ bool session_host_is_running(session_host_t *host);
  *
  * @ingroup session
  */
-uint32_t session_host_add_client(session_host_t *host, socket_t socket, const char *ip, int port);
+uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transport, const char *ip, int port);
 
 /**
  * @brief Add a memory participant (host's own media)
@@ -532,3 +532,5 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
                                               const void *data, size_t len);
 /** Run one shared host video cycle without starting a thread. */
 asciichat_error_t session_host_render_video(session_host_t *host);
+
+asciichat_error_t session_host_accept_peer(session_host_t *, acip_transport_t *);

@@ -8,6 +8,8 @@
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/audio/opus.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/util/time.h>
 #include <stdlib.h>
 #include <ascii-chat/util/endian.h>
@@ -115,14 +117,19 @@ static int test_thread_join(asciichat_thread_t *thread, void **result) {
     workers--;
   return error;
 }
-static acip_transport_t *test_tcp_transport_create_owned(const char *name, socket_t socket, crypto_context_t *crypto) {
-  if (fail_tcp_transport) {
-    SET_ERRNO(ERROR_MEMORY, "Injected TCP wrapper allocation failure");
-    return NULL;
-  }
-  return acip_tcp_transport_create_owned(name, socket, crypto);
+static asciichat_error_t test_connection_open(const char *name, const char *address, uint16_t port,
+                                              network_connection_t **out, connection_endpoint_t *endpoint) {
+  if (fail_tcp_transport)
+    return SET_ERRNO(ERROR_MEMORY, "Injected connection allocation failure");
+  return network_connection_open(name, address, port, out, endpoint);
 }
-#define acip_tcp_transport_create_owned test_tcp_transport_create_owned
+static asciichat_error_t fixture_start(asciichat_thread_t *thread, void *(*fn)(void *), void *context) {
+  return asciichat_thread_create(thread, "participant_fixture", fn, context);
+}
+static asciichat_error_t fixture_join(asciichat_thread_t *thread) {
+  return asciichat_thread_join(thread, NULL);
+}
+#define network_connection_open test_connection_open
 #define session_capture_create test_capture_create
 #define session_capture_destroy test_capture_destroy
 #define session_capture_read_frame test_read_frame
@@ -171,8 +178,56 @@ static void *destroy_from_foreign_thread(void *context) {
   return NULL;
 }
 
+typedef struct {
+  network_server_t *server;
+  atomic_t video, audio, closed;
+  const char *password;
+} network_fixture_t;
+static asciichat_error_t fixture_open(network_connection_t *c, void *arg) {
+  network_fixture_t *fixture = arg;
+  network_negotiation_t *n = SAFE_CALLOC(1, sizeof(*n), network_negotiation_t *);
+  network_connection_set_context(c, n);
+  asciichat_error_t result = network_connection_prepare_security(c, true, fixture->password);
+  if (result != ASCIICHAT_OK)
+    return result;
+  *n = (network_negotiation_t){.protocol = NETWORK_PROTOCOL_MEDIA,
+                               .handshake = network_connection_handshake(c),
+                               .initialized = true,
+                               .forbid_encryption = true,
+                               .password = fixture->password,
+                               .require_auth = true};
+  return ASCIICHAT_OK;
+}
+static asciichat_error_t fixture_packet(network_connection_t *c, packet_type_t type, const void *data, size_t len,
+                                        void *arg) {
+  network_fixture_t *f = arg;
+  if (network_connection_state(c) == NETWORK_NEGOTIATING) {
+    network_negotiation_t *n = network_connection_context(c);
+    asciichat_error_t result = network_negotiation_receive(n, network_connection_transport(c), type, data, len);
+    if (result == ASCIICHAT_OK && n->ready)
+      network_connection_ready(c);
+    return result;
+  }
+  if (type == PACKET_TYPE_IMAGE_FRAME)
+    atomic_fetch_add_int(&f->video, 1);
+  if (type == PACKET_TYPE_AUDIO_OPUS_BATCH)
+    atomic_fetch_add_int(&f->audio, 1);
+  return ASCIICHAT_OK;
+}
+static void fixture_closed(network_connection_t *c, void *arg) {
+  atomic_fetch_add_int(&((network_fixture_t *)arg)->closed, 1);
+  network_negotiation_t *n = network_connection_context(c);
+  SAFE_FREE(n);
+}
+static void *fixture_run(void *arg) {
+  network_server_run(((network_fixture_t *)arg)->server);
+  return NULL;
+}
+
 int main(void) {
+  log_init(NULL, LOG_WARN, false, false);
   log_set_terminal_output(true);
+  CHECK(platform_setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1") == 0);
   CHECK(socket_init() == ASCIICHAT_OK);
   options_t options = options_t_new();
   CHECK(options_state_init() == ASCIICHAT_OK);
@@ -220,10 +275,9 @@ int main(void) {
     CHECK(session_participant_start_audio(p) == ASCIICHAT_OK);
     CHECK(workers == 2 && session_participant_is_video_active(p) && session_participant_is_audio_active(p));
     CHECK(session_participant_set_transport(p, NULL, SESSION_TRANSPORT_BORROWED) == ERROR_INVALID_STATE);
-    acip_transport_t *unchanged = &transport;
-    session_transport_ownership_t unchanged_ownership = SESSION_TRANSPORT_OWNED;
-    CHECK(session_participant_take_transport(p, &unchanged, &unchanged_ownership) == ERROR_INVALID_STATE);
-    CHECK(unchanged == &transport && unchanged_ownership == SESSION_TRANSPORT_OWNED);
+    network_connection_t *unchanged = (network_connection_t *)&transport;
+    CHECK(session_participant_take_connection(p, &unchanged) == ERROR_INVALID_STATE);
+    CHECK(unchanged == (network_connection_t *)&transport);
     int before = atomic_load_int(&packets);
     for (int i = 0; i < 200 && atomic_load_int(&packets) < before + 4; i++)
       platform_sleep_ms(1);
@@ -287,60 +341,57 @@ int main(void) {
   owned = NULL;
   CHECK(transports_destroyed == 2);
   clean();
-  // A real TCP connection uses the same ACIP media send path as borrowed transports.
-  socket_t listener = socket_create("participant-test-listener", AF_INET, SOCK_STREAM, 0);
-  CHECK(listener != INVALID_SOCKET_VALUE);
+  // Exercise real establishment, negotiation, media and retained fallback ownership.
+  options.no_encrypt = true;
+  CHECK(options_state_set(&options) == ASCIICHAT_OK);
+  socket_t probe = socket_create("participant-port", AF_INET, SOCK_STREAM, 0);
+  CHECK(probe != INVALID_SOCKET_VALUE);
   struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  CHECK(socket_bind(listener, (struct sockaddr *)&address, sizeof(address)) == 0);
-  CHECK(socket_listen(listener, 4) == 0);
+  CHECK(socket_bind(probe, (struct sockaddr *)&address, sizeof(address)) == 0);
   socklen_t address_size = sizeof(address);
-  CHECK(socket_getsockname(listener, (struct sockaddr *)&address, &address_size) == 0);
+  CHECK(socket_getsockname(probe, (struct sockaddr *)&address, &address_size) == 0);
+  socket_close(probe);
   config.address = "127.0.0.1";
   config.port = NET_TO_HOST_U16(address.sin_port);
+  config.password = "participant-fixture-password";
+  network_fixture_t fixture = {.password = config.password};
+  network_server_config_t server_config = {
+      .port = config.port,
+      .ipv4_address = "127.0.0.1",
+      .bind_ipv4 = true,
+      .callbacks = {.open = fixture_open, .packet = fixture_packet, .closed = fixture_closed},
+      .user_data = &fixture};
+  CHECK(network_server_create(&server_config, &fixture.server) == ASCIICHAT_OK);
+  CHECK(network_server_start(fixture.server) == ASCIICHAT_OK);
+  asciichat_thread_t server_thread;
+  CHECK(fixture_start(&server_thread, fixture_run, &fixture) == ASCIICHAT_OK);
   session_participant_t *tcp_participant = session_participant_create(&config);
   fail_tcp_transport = true;
   CHECK(session_participant_connect(tcp_participant) == ERROR_MEMORY);
   CHECK(!session_participant_is_connected(tcp_participant));
   CHECK(!session_participant_has_transport(tcp_participant));
-  CHECK(session_participant_get_socket(tcp_participant) == INVALID_SOCKET_VALUE);
-  socket_t rejected = socket_accept(listener, NULL, NULL, "rejected-wrapper");
-  CHECK(rejected != INVALID_SOCKET_VALUE);
-  socket_close(rejected);
   fail_tcp_transport = false;
   for (int cycle = 0; cycle < 2; cycle++) {
     CHECK(session_participant_connect(tcp_participant) == ASCIICHAT_OK);
     acip_transport_t *tcp = session_participant_get_transport(tcp_participant);
     CHECK(tcp && acip_transport_get_type(tcp) == ACIP_TRANSPORT_TCP);
-    socket_t owned_socket = acip_transport_get_socket(tcp);
     CHECK(session_participant_connect(tcp_participant) == ASCIICHAT_OK);
     CHECK(session_participant_get_transport(tcp_participant) == tcp);
-    acip_transport_t *taken = NULL;
-    session_transport_ownership_t ownership = SESSION_TRANSPORT_BORROWED;
-    CHECK(session_participant_take_transport(tcp_participant, &taken, &ownership) == ASCIICHAT_OK);
-    CHECK(taken == tcp && ownership == SESSION_TRANSPORT_OWNED);
+    network_connection_t *taken = NULL;
+    CHECK(session_participant_take_connection(tcp_participant, &taken) == ASCIICHAT_OK);
+    CHECK(network_connection_transport(taken) == tcp);
     CHECK(!session_participant_has_transport(tcp_participant));
     CHECK(session_participant_set_transport(tcp_participant, &transport, SESSION_TRANSPORT_BORROWED) == ASCIICHAT_OK);
-    CHECK(session_participant_set_transport(tcp_participant, NULL, SESSION_TRANSPORT_BORROWED) == ASCIICHAT_OK);
-    CHECK(!session_participant_has_transport(tcp_participant));
-    CHECK(session_participant_set_transport(tcp_participant, taken, ownership) == ASCIICHAT_OK);
-    socket_t peer = socket_accept(listener, NULL, NULL, "participant-test-peer");
-    CHECK(peer != INVALID_SOCKET_VALUE);
-    acip_transport_t *receiver = acip_tcp_transport_create("participant-test-receiver", peer, NULL);
-    CHECK(receiver);
-    receiver->receive_timeout_ns = 2 * NS_PER_SEC_INT;
+    CHECK(session_participant_set_connection(tcp_participant, &taken) == ASCIICHAT_OK);
+    CHECK(!taken);
+    int video_before = atomic_load_int(&fixture.video), audio_before = atomic_load_int(&fixture.audio);
     CHECK(session_participant_start_video(tcp_participant) == ASCIICHAT_OK);
     CHECK(session_participant_start_audio(tcp_participant) == ASCIICHAT_OK);
-    bool video_received = false, audio_received = false;
-    for (int packet = 0; packet < 100 && !(video_received && audio_received); packet++) {
-      packet_type_t type;
-      void *payload = NULL, *allocation = NULL;
-      size_t length = 0;
-      CHECK(packet_receive_via_transport(receiver, &type, &payload, &length, &allocation) == ASCIICHAT_OK);
-      video_received |= type == PACKET_TYPE_IMAGE_FRAME;
-      audio_received |= type == PACKET_TYPE_AUDIO_OPUS_BATCH;
-      buffer_release(allocation);
-    }
-    CHECK(video_received && audio_received);
+    for (int i = 0; i < 2000 && (atomic_load_int(&fixture.video) == video_before ||
+                                 atomic_load_int(&fixture.audio) == audio_before);
+         ++i)
+      platform_sleep_ms(1);
+    CHECK(atomic_load_int(&fixture.video) > video_before && atomic_load_int(&fixture.audio) > audio_before);
     session = SAFE_CALLOC(1, sizeof(*session), discovery_session_t *);
     CHECK(mutex_init(&session->nat_quality_mutex, "test_tcp_nat_quality") == ASCIICHAT_OK);
     session->participant_ctx = tcp_participant;
@@ -361,7 +412,7 @@ int main(void) {
     CHECK(atomic_load_int(&audio_packets) > audio_before_switch);
     CHECK(cycle == 1 || atomic_load_int(&video_packets) > video_before_switch);
     CHECK(session->host_control_transport == tcp);
-    CHECK(session->host_control_ownership == SESSION_TRANSPORT_OWNED);
+    CHECK(session->host_control_connection);
     CHECK(session_participant_get_transport(tcp_participant) == owned);
     int destroyed_before_release = transports_destroyed;
     CHECK(release_participant_transport(session) == ASCIICHAT_OK);
@@ -372,19 +423,20 @@ int main(void) {
       session->participant_ctx = NULL;
       session_participant_disconnect(tcp_participant);
       CHECK(!session_participant_has_transport(tcp_participant));
-      CHECK(session_participant_get_socket(tcp_participant) == INVALID_SOCKET_VALUE);
     }
     discovery_session_destroy(session);
     session = NULL;
-    struct sockaddr_storage closed_address;
-    socklen_t closed_size = sizeof(closed_address);
-    CHECK(socket_getsockname(owned_socket, (struct sockaddr *)&closed_address, &closed_size) != 0);
-    acip_transport_destroy(receiver);
-    socket_close(peer);
+    uint64_t close_deadline = time_get_ns() + 2 * NS_PER_SEC_INT;
+    while (atomic_load_int(&fixture.closed) < cycle + 1 && time_get_ns() < close_deadline)
+      platform_sleep_ms(1);
+    CHECK(atomic_load_int(&fixture.closed) == cycle + 1);
     clean();
   }
   tcp_participant = NULL;
-  socket_close(listener);
+  network_server_request_stop(fixture.server);
+  CHECK(fixture_join(&server_thread) == ASCIICHAT_OK);
+  CHECK(network_server_stop(fixture.server) == ASCIICHAT_OK);
+  network_server_destroy(&fixture.server);
   // Async host startup tokens cannot reactivate a stopped or replaced stream.
   session_av_state_t *state = session_av_state_create();
   CHECK(state && session_av_state_generation(state) == 0);
