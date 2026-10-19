@@ -34,7 +34,7 @@ vi.mock("@ascii-chat/shared/wasm", () => ({
   isWasmReady: () => true,
 }));
 vi.mock("../../src/wasm/dist/mirror.js", () => ({ default: vi.fn() }));
-vi.mock("../../src/components", () => ({
+vi.mock("../../src/components/shared/BinarySettings", () => ({
   BinarySettings: ({
     config,
     onChange,
@@ -57,11 +57,19 @@ vi.mock("../../src/components", () => ({
       </button>
     </>
   ),
+}));
+vi.mock("@ascii-chat/shared/components/AsciiRenderer", () => ({
   AsciiRenderer: ({ uiLoading }: { uiLoading: boolean }) => (
     <div data-testid="renderer">{uiLoading ? "splash" : "frame"}</div>
   ),
+}));
+vi.mock("../../src/components/AsciiChatWebHead", () => ({
   AsciiChatWebHead: () => null,
+}));
+vi.mock("../../src/components/VideoUploadModal", () => ({
   VideoUploadModal: () => null,
+}));
+vi.mock("../../src/components/PageLayout", () => ({
   PageLayout: ({
     header,
     renderer,
@@ -74,6 +82,8 @@ vi.mock("../../src/components", () => ({
       {renderer}
     </>
   ),
+}));
+vi.mock("../../src/components/ModeHeader", () => ({
   ModeHeader: ({
     settingsPanel,
     controlBar,
@@ -95,9 +105,12 @@ vi.mock("../../src/components", () => ({
     </>
   ),
 }));
-vi.mock("../../src/hooks", () => ({
+vi.mock("../../src/hooks/useWasmOptions", () => ({
   applyMirrorWasmSettings: backend.applySettings,
   setMirrorWasmDimensions: vi.fn(),
+}));
+vi.mock("../../src/hooks/useClientLike", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/hooks/useClientLike")>()),
   useClientLike: () => {
     const [running, setRunning] = useState(backend.file);
     const [source, setSource] = useState<symbol | null>(
@@ -134,6 +147,8 @@ vi.mock("../../src/hooks", () => ({
       }, []),
     };
   },
+}));
+vi.mock("../../src/hooks/useMirrorWebcam", () => ({
   useMirrorWebcam: ({
     setIsWebcamRunning,
     setMediaSource,
@@ -151,41 +166,6 @@ vi.mock("../../src/hooks", () => ({
     cancelStart: vi.fn(),
   }),
 }));
-
-// Mirror imports these modules directly so production can split route bundles.
-vi.mock("../../src/components/shared/BinarySettings", async () => ({
-  BinarySettings: (await import("../../src/components")).BinarySettings,
-}));
-vi.mock("@ascii-chat/shared/components/AsciiRenderer", async () => ({
-  AsciiRenderer: (await import("../../src/components")).AsciiRenderer,
-}));
-vi.mock("../../src/components/AsciiChatWebHead", async () => ({
-  AsciiChatWebHead: (await import("../../src/components")).AsciiChatWebHead,
-}));
-vi.mock("../../src/components/VideoUploadModal", async () => ({
-  VideoUploadModal: (await import("../../src/components")).VideoUploadModal,
-}));
-vi.mock("../../src/components/PageLayout", async () => ({
-  PageLayout: (await import("../../src/components")).PageLayout,
-}));
-vi.mock("../../src/components/ModeHeader", async () => ({
-  ModeHeader: (await import("../../src/components")).ModeHeader,
-}));
-vi.mock("../../src/hooks/useWasmOptions", async () => {
-  const hooks = await import("../../src/hooks");
-  return {
-    applyMirrorWasmSettings: hooks.applyMirrorWasmSettings,
-    setMirrorWasmDimensions: hooks.setMirrorWasmDimensions,
-  };
-});
-vi.mock("../../src/hooks/useClientLike", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../src/hooks/useClientLike")>()),
-  useClientLike: (await import("../../src/hooks")).useClientLike,
-}));
-vi.mock("../../src/hooks/useMirrorWebcam", async () => ({
-  useMirrorWebcam: (await import("../../src/hooks")).useMirrorWebcam,
-}));
-
 vi.mock("../../src/hooks/useMirrorFile", () => ({
   useMirrorFile: ({ stopWebcam }: { stopWebcam: () => void }) => ({
     kind: backend.file ? "video" : null,
