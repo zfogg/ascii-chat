@@ -2,6 +2,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/ui/session.h>
 #include <ascii-chat/session/session_log_buffer.h>
+#include <stdio.h>
 #include <string.h>
 
 typedef struct {
@@ -9,6 +10,29 @@ typedef struct {
   double seconds;
   const char *text;
 } view_fixture_t;
+
+Test(session_ui, two_media_sessions_present_every_jittered_60fps_frame) {
+  ui_session_t *sessions[] = {ui_session_create(), ui_session_create()};
+  for (unsigned client = 0; client < 2; client++) {
+    cr_assert_not_null(sessions[client]);
+    ui_session_resize(sessions[client], 80, 30);
+  }
+  for (unsigned frame = 0; frame < 120; frame++) {
+    uint64_t now = 1000000000ULL + (uint64_t)frame * 1000000000ULL / 60;
+    now = frame % 2 ? now + 700000 : now - 700000;
+    for (unsigned client = 0; client < 2; client++) {
+      char text[80];
+      snprintf(text, sizeof(text), "client %u changing frame %u", client, frame);
+      cr_assert_eq(ui_session_media(sessions[client], text, strlen(text)), ASCIICHAT_OK);
+      const char *presented = ui_session_tick(sessions[client], now);
+      cr_assert_not_null(presented, "Client %u dropped frame %u", client, frame);
+      cr_assert_not_null(strstr(presented, text));
+      cr_assert_null(ui_session_tick(sessions[client], now + 1), "Idle ticks must not duplicate media frames");
+    }
+  }
+  for (unsigned client = 0; client < 2; client++)
+    ui_session_destroy(sessions[client]);
+}
 
 static void draw(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation, void *context) {
   (void)size;
