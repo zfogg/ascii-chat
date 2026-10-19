@@ -26,7 +26,7 @@ void ob_reserve(outbuf_t *ob, size_t need) {
   if (need > SIZE_MAX - ob->len)
     FATAL(ERROR_MEMORY, "Output buffer size overflow");
   size_t required = ob->len + need;
-  if (required <= ob->cap)
+  if (ob->cap && required <= ob->cap)
     return;
   size_t capacity = ob->cap ? ob->cap : 4096;
   while (capacity < required) {

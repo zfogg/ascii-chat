@@ -95,7 +95,7 @@ typedef struct {
 /**
  * @brief Reserve buffer space for upcoming writes
  * @param ob Output buffer structure (must not be NULL)
- * @param need Minimum bytes needed (must be > 0)
+ * @param need Minimum bytes needed (zero initializes an unallocated buffer)
  *
  * Ensures the buffer has at least 'need' bytes of available space.
  * Automatically expands the buffer if necessary. Buffer grows exponentially
