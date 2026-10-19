@@ -202,7 +202,7 @@ test("two camera clients upload at 60 FPS and preserve fresh received content", 
       pages.map(async (client) => {
         await camera(client);
         await client.goto(
-          "/client?serverUrl=ws%3A%2F%2F127.0.0.1%3A38425&connect=true&encoding=raw",
+          "/client?serverUrl=ws%3A%2F%2F127.0.0.1%3A38425&connect=true&encoding=raw&settings=true",
         );
         await client.waitForFunction(
           () =>
@@ -235,6 +235,33 @@ test("two camera clients upload at 60 FPS and preserve fresh received content", 
         `client ${i + 1} fresh canvas FPS`,
       ).toBeGreaterThanOrEqual(rate("sourceChanged") * 0.9);
     }
+    await page.evaluate(() => {
+      (
+        window as unknown as { cameraCadence: { rate: number } }
+      ).cameraCadence.rate = 20;
+    });
+    const uploadLimit = page.getByRole("slider", {
+      name: "Camera upload frame rate",
+      exact: true,
+    });
+    await expect(uploadLimit).toHaveValue("20", { timeout: 12000 });
+    await expect(
+      page.getByRole("slider", { name: "Frame rate", exact: true }),
+    ).toHaveValue("60");
+    const slowBefore = await measure(page);
+    await page.waitForTimeout(5000);
+    const slowAfter = await measure(page);
+    const seconds = (slowAfter.now - slowBefore.now) / 1000;
+    console.log("20 FPS camera with 60 FPS peer", slowBefore, slowAfter);
+    expect((slowAfter.uploaded - slowBefore.uploaded) / seconds).toBeLessThan(
+      23,
+    );
+    expect(
+      (slowAfter.uploaded - slowBefore.uploaded) / seconds,
+    ).toBeGreaterThan(17);
+    expect(
+      (slowAfter.sourceChanged - slowBefore.sourceChanged) / seconds,
+    ).toBeGreaterThan(45);
   } finally {
     await second.close();
     await server.stop();
