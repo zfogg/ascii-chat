@@ -485,11 +485,6 @@ static asciichat_error_t write_string(const option_parsed_value_t *parsed, const
       SAFE_STRNCPY(field_ptr, final_value, meta->field_size);
     }
 
-    // Auto-enable encryption for crypto.key, crypto.password, crypto.keyfile
-    if (strstr(meta->toml_key, "crypto.key") != NULL || strstr(meta->toml_key, "crypto.password") != NULL ||
-        strstr(meta->toml_key, "crypto.keyfile") != NULL) {
-      opts->encrypt_enabled = 1;
-    }
   } else {
     SAFE_STRNCPY(field_ptr, final_value, meta->field_size);
   }
@@ -887,10 +882,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       }
 
       opts->no_encrypt = no_encrypt_val;
-      if (no_encrypt_val) {
-        // When no_encrypt is enabled, automatically disable encrypt_enabled
-        opts->encrypt_enabled = false;
-      }
+
       option_set_flags[i] = true;
       continue;
     }
@@ -1102,7 +1094,8 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   // whitelist validator, which quite correctly rejects paths whose parent
   // directory has not been created yet but should not turn that normal case
   // into a configuration error.
-  if (!strict && access(config_path_expanded, F_OK) != 0 && errno == ENOENT) {
+  if (!strict && platform_access(config_path_expanded, PLATFORM_ACCESS_EXISTS) != 0 && errno == ENOENT) {
+    SAFE_FREE(config_path_expanded);
     return ASCIICHAT_OK;
   }
   asciichat_error_t validate_result =

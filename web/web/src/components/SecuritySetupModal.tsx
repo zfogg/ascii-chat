@@ -21,7 +21,6 @@ import type {
 interface Props {
   open: boolean;
   settings: CryptoSettings;
-  defaultEncryptionEnabled: boolean;
   onClose: () => void;
   onSave: (settings: CryptoSettings) => void;
 }
@@ -44,13 +43,7 @@ function newId(): string {
   return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 }
 
-export function SecuritySetupModal({
-  open,
-  settings,
-  defaultEncryptionEnabled,
-  onClose,
-  onSave,
-}: Props) {
+export function SecuritySetupModal({ open, settings, onClose, onSave }: Props) {
   const [draft, setDraft] = useState(() => readCryptoUrl(settings));
   const [privateName, setPrivateName] = useUrlState("privateName", "");
   const [privateContents, setPrivateContents] = useState(
@@ -84,9 +77,11 @@ export function SecuritySetupModal({
   const [addingPrivateKey, setAddingPrivateKey] = useState(false);
   const [addingVerificationKey, setAddingVerificationKey] = useState(false);
 
-  useEffect(() => {
+  const [previousInputs, setPreviousInputs] = useState({ open, settings });
+  if (previousInputs.open !== open || previousInputs.settings !== settings) {
+    setPreviousInputs({ open, settings });
     if (open) setDraft(readCryptoUrl(settings));
-  }, [open, settings]);
+  }
 
   useEffect(() => {
     if (open) {
@@ -116,8 +111,6 @@ export function SecuritySetupModal({
 
   if (!open) return null;
 
-  const effectiveEncryption =
-    draft.customEncryption ?? defaultEncryptionEnabled;
   const update = (changes: Partial<CryptoSettings>) =>
     setDraft((current) => ({ ...current, ...changes }));
 
@@ -360,22 +353,33 @@ export function SecuritySetupModal({
                     peer.
                   </small>
                   <small>
-                    If you&apos;re using WebRTC or WSS, you probably won&apos;t
-                    need this for privacy because those transports are already
-                    encrypted. You can still use authentication to verify
-                    identities.
+                    Automatic enables ACIP encryption for WS and for password
+                    authentication. WSS uses TLS by default. Disabled keeps
+                    authentication available without ACIP payload encryption.
                   </small>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={effectiveEncryption}
+                <select
                   aria-label="ascii-chat's custom end-to-end encryption"
-                  className="crypto-switch"
-                  onClick={() =>
-                    update({ customEncryption: !effectiveEncryption })
+                  value={
+                    draft.customEncryption === null
+                      ? "auto"
+                      : draft.customEncryption
+                        ? "on"
+                        : "off"
                   }
-                />
+                  onChange={(event) =>
+                    update({
+                      customEncryption:
+                        event.target.value === "auto"
+                          ? null
+                          : event.target.value === "on",
+                    })
+                  }
+                >
+                  <option value="auto">Automatic</option>
+                  <option value="on">Enabled</option>
+                  <option value="off">Disabled</option>
+                </select>
               </div>
 
               <div className="crypto-toggle-row">

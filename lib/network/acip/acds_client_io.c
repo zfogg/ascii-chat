@@ -1,0 +1,278 @@
+#include <ascii-chat/crypto/policy.h>
+/**
+ * @file network/acip/client.c
+ * @brief ACIP client-side protocol implementation
+ * @ingroup acip
+ *
+ * Provides client-side ACIP protocol implementation for:
+ * - Session discovery and management
+ * - WebRTC signaling relay
+ * - String reservation (future)
+ *
+ * ACIP (ascii-chat IP Protocol) is the wire protocol for session
+ * discovery and WebRTC signaling. ACDS is the reference server implementation.
+ */
+
+#include <ascii-chat/network/acip/acds_protocol.h>
+#include <ascii-chat/buffer.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/crypto/handshake/client.h>
+#include <ascii-chat/log/log.h>
+#include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/parallel_connect.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/debug/named.h>
+
+#include <ascii-chat/network/errors.h>
+#include <string.h>
+#include <time.h>
+#include <errno.h>
+
+static asciichat_error_t acds_client_handshake(acds_client_t *client) {
+  asciichat_error_t result = crypto_handshake_init("acds_client", &client->handshake_ctx, false);
+  if (result != ASCIICHAT_OK)
+    return result;
+  crypto_policy_t policy = client->config.security_policy;
+  policy.transport_secure = false; // This connector opens TCP.
+  if (client->config.identity_key && client->config.identity_key[0]) {
+    result = parse_private_key(client->config.identity_key, &client->handshake_ctx.client_private_key);
+    if (result != ASCIICHAT_OK)
+      return result;
+    client->handshake_ctx.client_public_key.type = KEY_TYPE_ED25519;
+    memcpy(client->handshake_ctx.client_public_key.key, client->handshake_ctx.client_private_key.public_key,
+           sizeof(client->handshake_ctx.client_private_key.public_key));
+    policy.has_identity = true;
+  }
+  uint8_t mode;
+  result = crypto_policy_resolve(&policy, &mode);
+  if (result != ASCIICHAT_OK)
+    return result;
+  client->handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
+  result = acds_handshake_begin(client->transport, mode);
+  if (mode == ACIP_CRYPTO_NONE)
+    return result;
+  while (result == ASCIICHAT_OK && client->handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
+    packet_type_t type;
+    void *payload = NULL, *allocation = NULL;
+    size_t length = 0;
+    result = packet_receive_via_transport(client->transport, &type, &payload, &length, &allocation);
+    if (result == ASCIICHAT_OK)
+      result = acds_handshake_receive(&client->handshake_ctx, client->transport, type, payload, length);
+    buffer_release(allocation);
+  }
+  if (result == ASCIICHAT_OK)
+    client->transport->crypto_ctx = &client->handshake_ctx.crypto_ctx;
+  return result;
+}
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <netdb.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/select.h>
+#include <fcntl.h>
+#endif
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+void acds_client_config_init_defaults(acds_client_config_t *config) {
+  if (!config) {
+    return;
+  }
+
+  memset(config, 0, sizeof(*config));
+  SAFE_STRNCPY(config->server_address, "127.0.0.1", sizeof(config->server_address));
+  config->server_port = ACIP_DISCOVERY_DEFAULT_PORT;
+  config->timeout_ms = 5 * MS_PER_SEC_INT;
+}
+
+// ============================================================================
+// Connection Management
+// ============================================================================
+
+asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_config_t *config) {
+  if (!client || !config) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "client or config is NULL");
+  }
+
+  memset(client, 0, sizeof(*client));
+  memcpy(&client->config, config, sizeof(acds_client_config_t));
+  client->socket = INVALID_SOCKET_VALUE;
+  client->connected = false;
+
+  // Resolve server address (supports both hostnames and IP addresses, IPv4 and IPv6)
+  struct addrinfo hints;
+  struct addrinfo *result = NULL;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;     // IPv4 or IPv6
+  hints.ai_socktype = SOCK_STREAM; // TCP
+
+  char port_str[16];
+  safe_snprintf(port_str, sizeof(port_str), "%d", config->server_port);
+
+  log_debug("ACDS: Resolving address '%s:%s'...", config->server_address, port_str);
+  int gai_result = getaddrinfo(config->server_address, port_str, &hints, &result);
+  if (gai_result != 0) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to resolve server address '%s': %s", config->server_address,
+                     gai_strerror(gai_result));
+  }
+  log_debug("ACDS: Address resolved successfully");
+  freeaddrinfo(result);
+
+  // Use parallel_connect to attempt IPv4 and IPv6 connections concurrently
+  parallel_connect_config_t pconn_config = {
+      .hostname = config->server_address,
+      .port = config->server_port,
+      .timeout_ms = config->timeout_ms,
+      .should_exit_callback = config->should_exit_callback,
+      .callback_data = config->callback_data,
+  };
+
+  asciichat_error_t pconn_result = parallel_connect(&pconn_config, &client->socket);
+  if (pconn_result == ASCIICHAT_OK) {
+    client->connected = true;
+
+    client->transport = acip_tcp_transport_create("acds_client_transport", client->socket, NULL);
+    if (!client->transport) {
+      socket_close(client->socket);
+      client->socket = INVALID_SOCKET_VALUE;
+      client->connected = false;
+      return SET_ERRNO(ERROR_NETWORK, "Failed to create ACDS transport");
+    }
+
+    asciichat_error_t handshake_result = acds_client_handshake(client);
+    if (handshake_result != ASCIICHAT_OK) {
+      acip_transport_destroy(client->transport);
+      client->transport = NULL;
+      socket_close(client->socket);
+      client->socket = INVALID_SOCKET_VALUE;
+      client->connected = false;
+      return handshake_result;
+    }
+
+    /* Register ACDS client with named registry */
+    char acds_name[64];
+    snprintf(acds_name, sizeof(acds_name), "acds_client:%s:%d", config->server_address, config->server_port);
+    NAMED_REGISTER(client, acds_name, "acds_client_t", "0x%tx", NULL);
+
+    log_info("Connected to ACDS server at %s:%d", config->server_address, config->server_port);
+    return ASCIICHAT_OK;
+  }
+
+  return pconn_result;
+}
+
+void acds_client_disconnect(acds_client_t *client) {
+  if (!client) {
+    return;
+  }
+
+  if (client->socket != INVALID_SOCKET_VALUE) {
+    if (client->transport) {
+      acip_transport_destroy(client->transport);
+      client->transport = NULL;
+    }
+    crypto_handshake_destroy(&client->handshake_ctx);
+    socket_close(client->socket);
+    client->socket = INVALID_SOCKET_VALUE;
+  }
+
+  client->connected = false;
+  log_debug("Disconnected from ACDS server");
+}
+
+// ============================================================================
+// Session Management
+// ============================================================================
+
+static asciichat_error_t client_protocol_send(void *data, packet_type_t type, const void *payload, size_t length) {
+  acds_client_t *client = data;
+  return packet_send_via_transport(client->transport, type, payload, length, 0);
+}
+static asciichat_error_t client_protocol_receive(acds_client_t *client, acds_protocol_t *protocol) {
+  packet_type_t type;
+  void *payload = NULL, *allocation = NULL;
+  size_t length = 0;
+  asciichat_error_t result = packet_receive_via_transport(client->transport, &type, &payload, &length, &allocation);
+  if (result == ASCIICHAT_OK)
+    result = acds_protocol_receive(protocol, type, payload, length);
+  buffer_release(allocation);
+  return result;
+}
+asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_create_params_t *params,
+                                      acds_session_create_result_t *result) {
+  if (!client || !client->connected || !params || !result)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery create parameters");
+  acds_protocol_t protocol;
+  acds_protocol_init(&protocol, client_protocol_send, client);
+  asciichat_error_t error = acds_protocol_create(&protocol, params, 0, 0);
+  if (error == ASCIICHAT_OK)
+    error = client_protocol_receive(client, &protocol);
+  if (error == ASCIICHAT_OK) {
+    memset(result, 0, sizeof(*result));
+    SAFE_STRNCPY(result->session_string, protocol.name, sizeof(result->session_string));
+    memcpy(result->session_id, protocol.created.session_id, sizeof(result->session_id));
+    result->expires_at = protocol.created.expires_at;
+  }
+  acds_protocol_destroy(&protocol);
+  return error;
+}
+asciichat_error_t acds_session_lookup(acds_client_t *client, const char *name, acds_session_lookup_result_t *result) {
+  if (!client || !client->connected || !name || !result)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery lookup parameters");
+  acds_protocol_t protocol;
+  acds_protocol_init(&protocol, client_protocol_send, client);
+  asciichat_error_t error = acds_protocol_lookup(&protocol, name);
+  if (error == ASCIICHAT_OK)
+    error = client_protocol_receive(client, &protocol);
+  if (error == ASCIICHAT_OK) {
+    memset(result, 0, sizeof(*result));
+    result->found = protocol.info.found;
+    if (result->found) {
+      memcpy(result->session_id, protocol.info.session_id, sizeof(result->session_id));
+      memcpy(result->host_pubkey, protocol.info.host_pubkey, sizeof(result->host_pubkey));
+      result->capabilities = protocol.info.capabilities;
+      result->max_participants = protocol.info.max_participants;
+      result->current_participants = protocol.info.current_participants;
+      result->has_password = protocol.info.has_password;
+      result->created_at = protocol.info.created_at;
+      result->expires_at = protocol.info.expires_at;
+      result->require_server_verify = protocol.info.require_server_verify;
+      result->require_client_verify = protocol.info.require_client_verify;
+    }
+  }
+  acds_protocol_destroy(&protocol);
+  return error;
+}
+asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_join_params_t *params,
+                                    acds_session_join_result_t *result) {
+  if (!client || !client->connected || !params || !result)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery join parameters");
+  acds_protocol_t protocol;
+  acds_protocol_init(&protocol, client_protocol_send, client);
+  memset(result, 0, sizeof(*result));
+  asciichat_error_t error = acds_protocol_join(&protocol, params);
+  if (error == ASCIICHAT_OK)
+    error = client_protocol_receive(client, &protocol);
+  result->success = protocol.joined.success;
+  result->error_code = protocol.joined.error_code;
+  SAFE_STRNCPY(result->error_message, protocol.joined.error_message, sizeof(result->error_message));
+  if (error == ASCIICHAT_OK) {
+    memcpy(result->participant_id, protocol.joined.participant_id, sizeof(result->participant_id));
+    memcpy(result->session_id, protocol.joined.session_id, sizeof(result->session_id));
+    result->session_type = protocol.joined.session_type;
+    SAFE_STRNCPY(result->server_address, protocol.joined.server_address, sizeof(result->server_address));
+    result->server_port = protocol.joined.server_port;
+  }
+  acds_protocol_destroy(&protocol);
+  return error;
+}

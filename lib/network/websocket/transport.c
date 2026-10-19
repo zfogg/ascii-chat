@@ -29,6 +29,7 @@
  */
 
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/util/endian.h>
@@ -442,14 +443,16 @@ void websocket_transport_write_pending(struct lws *wsi, websocket_transport_data
   /* lws suppresses writable callbacks until previously buffered output is
    * consumed. Keep one owner until this completion boundary, or connection
    * teardown; elapsed service-loop iterations are not a completion signal. */
-  buffer_release(ws_data->inflight_buffer);
   websocket_recv_msg_t msg = {0};
   mutex_lock(&ws_data->send_mutex);
+  buffer_release(ws_data->inflight_buffer);
+  ws_data->inflight_buffer = NULL;
   bool available = ringbuffer_read(ws_data->send_queue, &msg);
+  if (available)
+    ws_data->inflight_buffer = msg.data;
   mutex_unlock(&ws_data->send_mutex);
   if (!available)
     return;
-  ws_data->inflight_buffer = msg.data;
   int written = lws_write(wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
   if (written < 0 || (size_t)written < msg.len) {
     mutex_lock(&ws_data->state_mutex);
@@ -552,64 +555,32 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, buffer_domain_t *domain, const void *data, size_t len,
                                                    const void **out_data, size_t *out_len,
                                                    uint8_t **out_encrypted_packet, size_t *out_encrypted_size) {
-  // Check if encryption is needed (matching tcp_send logic)
-  const void *send_data = data;
-  size_t send_len = len;
-  uint8_t *encrypted_packet = NULL;
-  size_t encrypted_packet_size = 0;
-
-  if (len >= sizeof(packet_header_t) && transport->crypto_ctx && crypto_is_ready(transport->crypto_ctx)) {
-    const packet_header_t *header = (const packet_header_t *)data;
-    uint16_t packet_type = NET_TO_HOST_U16(header->type);
-
-    if (!packet_is_handshake_type((packet_type_t)packet_type)) {
-      // Encrypt the entire packet (header + payload)
-      size_t ciphertext_size = len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-      uint8_t *ciphertext = buffer_alloc(domain, ciphertext_size);
-      if (!ciphertext) {
-        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ciphertext buffer for WebSocket");
-      }
-
-      size_t ciphertext_len;
-      crypto_result_t result =
-          crypto_encrypt(transport->crypto_ctx, data, len, ciphertext, ciphertext_size, &ciphertext_len);
-      if (result != CRYPTO_OK) {
-        buffer_release(ciphertext);
-        return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt WebSocket packet: %s", crypto_result_to_string(result));
-      }
-
-      // Build PACKET_TYPE_ENCRYPTED wrapper: header + ciphertext
-      size_t total_encrypted_size = sizeof(packet_header_t) + ciphertext_len;
-      encrypted_packet = buffer_alloc(domain, total_encrypted_size);
-      if (!encrypted_packet) {
-        buffer_release(ciphertext);
-        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate encrypted packet buffer");
-      }
-
-      packet_header_t encrypted_header;
-      encrypted_header.magic = HOST_TO_NET_U64(PACKET_MAGIC);
-      encrypted_header.type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED);
-      encrypted_header.length = HOST_TO_NET_U32((uint32_t)ciphertext_len);
-      encrypted_header.crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, ciphertext_len));
-      encrypted_header.client_id = 0;
-
-      memcpy(encrypted_packet, &encrypted_header, sizeof(encrypted_header));
-      memcpy(encrypted_packet + sizeof(encrypted_header), ciphertext, ciphertext_len);
-      buffer_release(ciphertext);
-
-      send_data = encrypted_packet;
-      send_len = total_encrypted_size;
-      encrypted_packet_size = total_encrypted_size;
-
-      log_dev_every(1000000, "WebSocket: encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED, %zu bytes)",
-                    packet_type, send_len);
-    }
+  *out_data = data;
+  *out_len = len;
+  *out_encrypted_packet = NULL;
+  *out_encrypted_size = 0;
+  socket_buffer_t slice = {data, len};
+  acip_packet_plan_t plan;
+  asciichat_error_t result = acip_packet_plan(transport->crypto_ctx, &slice, 1, &plan);
+  if (result != ASCIICHAT_OK || !plan.encrypt)
+    return result;
+  size_t capacity = sizeof(packet_header_t) + plan.ciphertext_capacity;
+  uint8_t *packet = buffer_alloc(domain, capacity);
+  if (!packet)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate WebSocket ciphertext");
+  packet_header_t header;
+  size_t length = 0;
+  result = acip_packet_encrypt(transport->crypto_ctx, &plan, domain, packet + sizeof(header), plan.ciphertext_capacity,
+                               &header, &length);
+  if (result != ASCIICHAT_OK) {
+    buffer_release(packet);
+    return result;
   }
-
-  *out_data = send_data;
-  *out_len = send_len;
-  *out_encrypted_packet = encrypted_packet;
-  *out_encrypted_size = encrypted_packet_size;
+  memcpy(packet, &header, sizeof(header));
+  *out_data = packet;
+  *out_len = sizeof(header) + length;
+  *out_encrypted_packet = packet;
+  *out_encrypted_size = *out_len;
   return ASCIICHAT_OK;
 }
 
@@ -1140,6 +1111,24 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   return SET_ERRNO(ERROR_NETWORK, "Unexpected exit from fragment reassembly loop");
 }
 
+asciichat_error_t acip_websocket_transport_flush(acip_transport_t *transport, uint64_t timeout_ns) {
+  if (!transport || acip_transport_get_type(transport) != ACIP_TRANSPORT_WEBSOCKET)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Expected WebSocket transport");
+  websocket_transport_data_t *ws_data = transport->impl_data;
+  uint64_t started = time_get_ns();
+  while (acip_transport_is_connected(transport)) {
+    mutex_lock(&ws_data->send_mutex);
+    bool drained = ringbuffer_is_empty(ws_data->send_queue) && !ws_data->inflight_buffer;
+    mutex_unlock(&ws_data->send_mutex);
+    if (drained)
+      return ASCIICHAT_OK;
+    if (time_get_ns() - started >= timeout_ns)
+      return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "WebSocket send queue did not drain");
+    platform_sleep_us(1000);
+  }
+  return SET_ERRNO(ERROR_NETWORK, "WebSocket closed before send queue drained");
+}
+
 static asciichat_error_t websocket_close(acip_transport_t *transport) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
   uint64_t now_ns = time_get_ns();
@@ -1186,6 +1175,10 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
   // wake from cond_timedwait() after the structure has been freed.
   cond_broadcast(&ws_data->recv_cond);
   cond_broadcast(&ws_data->state_cond);
+
+  // The server event thread closes rejected connections in its writable callback.
+  if (!ws_data->owns_context && ws_data->context)
+    lws_cancel_service(ws_data->context);
 
   log_info("WebSocket transport closed, wsi=%p", (void *)ws_data->wsi);
   return ASCIICHAT_OK;

@@ -6,6 +6,7 @@
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/status.h>
+#include <ascii-chat/network/tcp/server.h>
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/log/search.h>
@@ -86,113 +87,6 @@ asciichat_error_t ui_status_gather(tcp_server_t *server, const char *session_str
   return ASCIICHAT_OK;
 }
 
-/**
- * @brief Truncate text to fit within display_width
- *
- * Truncates a plain text string to fit within max_display_width, with ellipsis.
- * Tests progressively shorter substrings until one fits.
- */
-/**
- * @brief Render server status header (callback for terminal_screen)
- *
- * Renders exactly 4 lines:
- * - Line 1: Top border
- * - Line 2: Title + client count + uptime
- * - Line 3: Session string + addresses
- * - Line 4: Bottom border
- *
- * Lines are truncated if they exceed terminal width.
- */
-static void render_ui_status_header(frame_buffer_t *buf, terminal_size_t term_size, void *user_data) {
-  const ui_status_t *status = (const ui_status_t *)user_data;
-  if (!status) {
-    return;
-  }
-
-  // Calculate uptime
-  time_t now = time(NULL);
-  time_t uptime_secs = now - status->start_time;
-  int uptime_hours = uptime_secs / SEC_PER_HOUR;
-  int uptime_mins = (uptime_secs % SEC_PER_HOUR) / SEC_PER_MIN;
-  int uptime_secs_rem = uptime_secs % 60;
-
-  // Line 1: Top border
-  frame_buffer_printf(buf, "\033[1;36m━");
-  for (int i = 1; i < term_size.cols - 1; i++) {
-    frame_buffer_printf(buf, "━");
-  }
-  frame_buffer_printf(buf, "\033[0m\n");
-
-  // Line 2: Title + Stats (centered)
-  char status_line[512];
-  char status_line_truncated[512];
-  char status_line_colored[600];
-  char uptime_str[12];
-  format_uptime_hms(uptime_hours, uptime_mins, uptime_secs_rem, uptime_str, sizeof(uptime_str));
-  snprintf(status_line, sizeof(status_line), "ascii-chat %s | 👥 %zu | ⏱️ %s", status->mode_name,
-           status->connected_count, uptime_str);
-
-  // Truncate if needed (ANSI-aware)
-  truncate_with_ellipsis(status_line, status_line_truncated, sizeof(status_line_truncated), term_size.cols - 2);
-  snprintf(status_line_colored, sizeof(status_line_colored), "\033[1;36m%s\033[0m", status_line_truncated);
-
-  int padding = display_center_horizontal(status_line_truncated, term_size.cols);
-  for (int i = 0; i < padding; i++) {
-    frame_buffer_printf(buf, " ");
-  }
-  frame_buffer_printf(buf, "%s\n", status_line_colored);
-
-  // Line 3: Session + Addresses (centered)
-  char addr_line[512];
-  char addr_line_truncated[512];
-  int pos = 0;
-  if (status->session_string[0] != '\0') {
-    pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, "🔗 %s", status->session_string);
-  }
-  if (status->ipv4_bound && pos < (int)sizeof(addr_line) - 30) {
-    if (pos > 0) {
-      pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, " | ");
-    }
-    // Extract IP and get type
-    char ipv4_only[64];
-    if (extract_ip_from_address(status->ipv4_address, ipv4_only, sizeof(ipv4_only)) == 0) {
-      const char *type = get_ip_type_string(ipv4_only);
-      pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, "%s (%s)", status->ipv4_address, type);
-    } else {
-      pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, "%s", status->ipv4_address);
-    }
-  }
-  if (status->ipv6_bound && pos < (int)sizeof(addr_line) - 30) {
-    if (pos > 0) {
-      pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, " | ");
-    }
-    // Extract IP and get type
-    char ipv6_only[64];
-    if (extract_ip_from_address(status->ipv6_address, ipv6_only, sizeof(ipv6_only)) == 0) {
-      const char *type = get_ip_type_string(ipv6_only);
-      snprintf(addr_line + pos, sizeof(addr_line) - pos, "%s (%s)", status->ipv6_address, type);
-    } else {
-      snprintf(addr_line + pos, sizeof(addr_line) - pos, "%s", status->ipv6_address);
-    }
-  }
-
-  // Truncate if needed (ANSI-aware)
-  truncate_with_ellipsis(addr_line, addr_line_truncated, sizeof(addr_line_truncated), term_size.cols - 2);
-
-  int addr_padding = display_center_horizontal(addr_line_truncated, term_size.cols);
-  for (int i = 0; i < addr_padding; i++) {
-    frame_buffer_printf(buf, " ");
-  }
-  frame_buffer_printf(buf, "%s\n", addr_line_truncated);
-
-  // Line 4: Bottom border
-  frame_buffer_printf(buf, "\033[1;36m━");
-  for (int i = 1; i < term_size.cols - 1; i++) {
-    frame_buffer_printf(buf, "━");
-  }
-  frame_buffer_printf(buf, "\033[0m\n");
-}
-
 void ui_status_display(const ui_status_t *status) {
   if (!status) {
     return;
@@ -228,7 +122,7 @@ void ui_status_display(const ui_status_t *status) {
       .user_data_size = sizeof(*status),
       .minimum_cols = 20,
       .fixed_header_lines = 4,
-      .render_header = render_ui_status_header,
+      .render_header = ui_status_render_header,
       .user_data = (void *)status,
       .show_logs = true,
   };
@@ -275,7 +169,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
       .user_data_size = sizeof(*status),
       .minimum_cols = 20,
       .fixed_header_lines = 4,
-      .render_header = render_ui_status_header,
+      .render_header = ui_status_render_header,
       .user_data = (void *)status,
       .show_logs = true,
   };
@@ -298,10 +192,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
     }
   }
 
-  // Cleanup keyboard
-  if (keyboard_enabled) {
-    keyboard_destroy();
-  }
+  // Keyboard ownership lasts until session shutdown, including between status frames.
 
   return !should_exit_status; // Return false if user wants to exit
 }

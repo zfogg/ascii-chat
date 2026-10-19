@@ -120,15 +120,13 @@ export function useSearch(manPages: ManPage[]) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    if (!searchQuery.trim()) {
-      void performSearch("");
-      return;
-    }
-
-    setSearching(true);
-    searchTimeoutRef.current = setTimeout(() => {
-      void performSearch(searchQuery);
-    }, 500);
+    searchTimeoutRef.current = setTimeout(
+      () => {
+        setSearching(Boolean(searchQuery.trim()));
+        void performSearch(searchQuery);
+      },
+      searchQuery.trim() ? 500 : 0,
+    );
 
     return () => {
       if (searchTimeoutRef.current) {

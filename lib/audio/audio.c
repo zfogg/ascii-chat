@@ -1738,6 +1738,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     return ASCIICHAT_OK;
   }
 
+  atomic_store_bool(&ctx->shutting_down, false);
   bool media_audio = ctx->capture_media_source && media_source_has_audio(ctx->capture_media_source);
   ctx->test_audio_playback_position = 0;
   if (GET_OPTION(test_audio) || !audio_should_enable_microphone(GET_OPTION(audio_capture_source), media_audio))

@@ -20,7 +20,7 @@
  * after that, enabling concurrent access from multiple threads.
  */
 typedef struct pcre2_singleton {
-  lifecycle_t lc;               ///< Per-object compilation lifecycle (UNINITIALIZED → INITIALIZED)
+  lifecycle_t lc;               ///< Per-object compilation lifecycle (UNINITIALIZED â†’ INITIALIZED)
   atomic_t code;                ///< Compiled regex (lazy init, atomic pointer as uint64_t)
   pcre2_jit_stack *jit_stack;   ///< JIT stack for performance
   char *pattern;                ///< Pattern string (owned by singleton, dynamically allocated)
@@ -138,18 +138,18 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
     return NULL;
   }
 
-  /* Attempt JIT compilation (non-fatal if fails) */
-  int jit_rc = PCRE2_ERROR_JIT_BADOPTION;
-  if (!SAFE_GETENV("ASCII_CHAT_PCRE2_DISABLE_JIT")) {
-    jit_rc = pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
-  }
-  if (jit_rc < 0) {
-    log_debug("PCRE2 JIT compilation not available (code %d), using interpreted mode", jit_rc);
-  } else {
-    /* Create JIT stack for pattern execution */
-    singleton->jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
-    if (!singleton->jit_stack) {
-      log_warn("Failed to create JIT stack for PCRE2 regex");
+  /* JIT is optional; builds such as WebAssembly use the interpreter. */
+  uint32_t jit_available = 0;
+  if (!SAFE_GETENV("ASCII_CHAT_PCRE2_DISABLE_JIT") &&
+      pcre2_config(PCRE2_CONFIG_JIT, &jit_available) == 0 && jit_available) {
+    int jit_rc = pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
+    if (jit_rc < 0) {
+      log_debug("PCRE2 JIT compilation failed (code %d), using interpreted mode", jit_rc);
+    } else {
+      singleton->jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
+      if (!singleton->jit_stack) {
+        log_warn("Failed to create JIT stack for PCRE2 regex");
+      }
     }
   }
 

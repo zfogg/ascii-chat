@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/handshake/common.h>
 /**
  * @file discovery/session.h
  * @brief Discovery session flow management
@@ -160,6 +161,7 @@ typedef struct {
 
   // ACDS connection
   acip_transport_t *acds_transport; ///< Persistent transport for ACDS communication
+  crypto_handshake_context_t acds_handshake; ///< Owns signaling keys until disconnect
   uint64_t last_acds_keepalive_ns;  ///< Last keepalive sent to the discovery service
   char acds_address[64];
   uint16_t acds_port;
@@ -216,6 +218,8 @@ typedef struct {
   // Role contexts (only one is active at a time)
   session_host_t *host_ctx;
   session_participant_t *participant_ctx;
+  acip_transport_t *host_control_transport; ///< Host control connection retained during WebRTC media.
+  session_transport_ownership_t host_control_ownership; ///< Ownership transferred with the control connection.
 
   // Callbacks for state changes
   void (*on_state_change)(discovery_state_t new_state, void *user_data);

@@ -13,6 +13,7 @@ import {
 import type { AsciiRendererHandle } from "../components";
 import { fillTestPatternAudioSamples } from "../testPattern";
 import { useTestPattern } from "./useTestPattern";
+import { VideoFrameClock } from "./videoFrameClock";
 
 interface UseMirrorRenderLoopParams {
   isWebcamRunning: boolean;
@@ -30,6 +31,10 @@ interface UseMirrorRenderLoopParams {
   streamRef: MutableRefObject<MediaStream | null>;
   animation?: "matrix" | "waveform" | "fft";
   animationEnabled?: boolean;
+  mediaVideoRef?: RefObject<HTMLVideoElement | null> | undefined;
+  onMediaFps?: (fps: number) => void;
+  mediaRevision?: unknown;
+  fileActive?: boolean;
 }
 
 let loopCounter = 0;
@@ -46,6 +51,10 @@ export function useMirrorRenderLoop({
   streamRef,
   animation,
   animationEnabled,
+  mediaVideoRef,
+  onMediaFps,
+  mediaRevision,
+  fileActive = false,
 }: UseMirrorRenderLoopParams) {
   const testPattern = useTestPattern();
   const prevDepsRef = useRef<{
@@ -95,8 +104,22 @@ export function useMirrorRenderLoop({
 
     let isActive = true;
     let currentRafHandle = 0;
-    const testMode = testPattern.enabled;
+    const testMode = testPattern.enabled && !fileActive;
     let lastFrameTime = performance.now();
+    const mediaVideo = mediaVideoRef?.current;
+    const presented: number[] = [];
+    const fpsTimer =
+      mediaVideo && onMediaFps
+        ? window.setInterval(() => {
+            const cutoff = performance.now() - 1000;
+            while (presented.length && presented[0]! < cutoff)
+              presented.shift();
+            onMediaFps(presented.length);
+          }, 250)
+        : undefined;
+    let videoHandle = 0;
+    let pendingVideoFrame = false;
+    const mediaClock = new VideoFrameClock();
     let lastConversionTime = 0;
     const audioSamples = new Float32Array(1024);
     let audioContext: AudioContext | null = null;
@@ -149,6 +172,9 @@ export function useMirrorRenderLoop({
                 { source: "microphone", mode: animation },
               )
             : "";
+        // Files and still images have no microphone stream. Keep rendering
+        // their pixels when no audio analyser is available.
+        if (!testMode && !analyser) frame = captureFrame();
       } else if (testMode) {
         // Generate synthetic test frame
         const canvas = canvasRef.current;
@@ -209,7 +235,8 @@ export function useMirrorRenderLoop({
       win["__lastAnsiFrameCount"] =
         ((win["__lastAnsiFrameCount"] as number) || 0) + 1;
 
-      rendererRef.current!.writeFrame(asciiArt);
+      if (rendererRef.current!.writeFrame(asciiArt) && mediaVideo)
+        presented.push(performance.now());
 
       debugCountRef.current++;
     };
@@ -223,6 +250,13 @@ export function useMirrorRenderLoop({
           console.debug(`[${loopId}] Frame ${frameCount}`);
         }
 
+        if (mediaVideo?.requestVideoFrameCallback) {
+          if (pendingVideoFrame) {
+            pendingVideoFrame = false;
+            renderFrame();
+          }
+          return;
+        }
         const elapsed = time - lastFrameTime;
         const interval = frameIntervalRef.current;
         // requestAnimationFrame timestamps can fall a fraction of a millisecond
@@ -257,12 +291,28 @@ export function useMirrorRenderLoop({
     };
 
     lastFrameTime = performance.now();
+    const videoFrame = (_now: number, metadata: VideoFrameCallbackMetadata) => {
+      if (!isActive || !mediaVideo) return;
+      videoHandle = mediaVideo.requestVideoFrameCallback(videoFrame);
+      // Pace against the media timeline, including fractional and variable FPS.
+      // Never count a duplicate decoded frame or burst to catch up after a stall.
+      if (mediaClock.accept(metadata.mediaTime, frameIntervalRef.current)) {
+        pendingVideoFrame = true;
+      }
+    };
+    const usesVideoClock = !!mediaVideo?.requestVideoFrameCallback;
+    if (usesVideoClock && mediaVideo.paused && mediaVideo.readyState >= 2)
+      renderFrame();
+    if (usesVideoClock)
+      videoHandle = mediaVideo.requestVideoFrameCallback(videoFrame);
     const rafHandle = requestAnimationFrame(animationFrameRef);
     currentRafHandle = rafHandle;
 
     return () => {
       console.debug(`[${loopId}] Cleanup - stopping render loop`);
       isActive = false;
+      window.clearInterval(fpsTimer);
+      if (videoHandle) mediaVideo?.cancelVideoFrameCallback(videoHandle);
       cancelAnimationFrame(rafHandle);
       cancelAnimationFrame(currentRafHandle);
       void audioContext?.close();
@@ -280,5 +330,9 @@ export function useMirrorRenderLoop({
     animationEnabled,
     streamRef,
     testPattern,
+    mediaVideoRef,
+    onMediaFps,
+    mediaRevision,
+    fileActive,
   ]);
 }

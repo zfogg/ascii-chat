@@ -575,6 +575,9 @@ int debug_sync_rwlock_wrunlock(rwlock_t *lock, const char *file_name, int line_n
 
 int debug_sync_cond_wait(cond_t *cond, mutex_t *mutex, const char *file_name, int line_number,
                          const char *function_name) {
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
   cond_on_wait(cond, mutex, file_name, line_number, function_name);
   int result = cond_wait_impl(cond, mutex);
 #ifndef NDEBUG
@@ -585,6 +588,9 @@ int debug_sync_cond_wait(cond_t *cond, mutex_t *mutex, const char *file_name, in
 
 int debug_sync_cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns, const char *file_name, int line_number,
                               const char *function_name) {
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
   cond_on_wait(cond, mutex, file_name, line_number, function_name);
   int result = cond_timedwait_impl(cond, mutex, timeout_ns);
 #ifndef NDEBUG

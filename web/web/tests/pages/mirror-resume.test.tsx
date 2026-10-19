@@ -14,11 +14,16 @@ import { DEFAULT_SETTINGS } from "../../src/utils/defaultSettings";
 
 const backend = vi.hoisted(() => ({
   ready: false,
+  file: false,
+  loading: false,
+  cameraReady: null as Promise<void> | null,
+  suspended: vi.fn(),
   start: vi.fn(),
   stop: vi.fn(),
 }));
 vi.mock("@ascii-chat/shared/hooks", () => ({
   useTestPattern: () => ({ enabled: false }),
+  useCanvasCapture: () => ({ captureFrame: vi.fn() }),
 }));
 vi.mock("@ascii-chat/shared/wasm", () => ({
   getMirrorModule: () => null,
@@ -28,18 +33,38 @@ vi.mock("@ascii-chat/shared/wasm", () => ({
 vi.mock("../../src/wasm/dist/mirror.js", () => ({ default: vi.fn() }));
 vi.mock("../../src/components", () => ({
   BinarySettings: () => null,
-  AsciiRenderer: () => null,
+  AsciiRenderer: ({ uiLoading }: { uiLoading: boolean }) => (
+    <div data-testid="renderer">{uiLoading ? "splash" : "frame"}</div>
+  ),
   AsciiChatWebHead: () => null,
   VideoUploadModal: () => null,
-  PageLayout: ({ header }: { header: React.ReactNode }) => header,
+  PageLayout: ({
+    header,
+    renderer,
+  }: {
+    header: React.ReactNode;
+    renderer: React.ReactNode;
+  }) => (
+    <>
+      {header}
+      {renderer}
+    </>
+  ),
   ModeHeader: ({
     controlBar,
   }: {
-    controlBar: { onStartWebcam: () => void; onStopWebcam: () => void };
+    controlBar: {
+      onStartWebcam: () => void;
+      onStopWebcam: () => void;
+      statusControls: React.ReactNode;
+      fps: number;
+    };
   }) => (
     <>
       <button onClick={controlBar.onStartWebcam}>Start</button>
       <button onClick={controlBar.onStopWebcam}>Stop</button>
+      {controlBar.statusControls}
+      <span data-testid="fps">{controlBar.fps}</span>
     </>
   ),
 }));
@@ -48,8 +73,10 @@ vi.mock("../../src/hooks", () => ({
   setMirrorWasmDimensions: vi.fn(),
   useMirrorRenderLoop: vi.fn(),
   useClientLike: () => {
-    const [running, setRunning] = useState(false);
-    const [source, setSource] = useState<symbol | null>(null);
+    const [running, setRunning] = useState(backend.file);
+    const [source, setSource] = useState<symbol | null>(
+      backend.file ? MediaSourceType.FILE : null,
+    );
     const ref = useRef(null);
     return {
       videoRef: ref,
@@ -72,6 +99,7 @@ vi.mock("../../src/hooks", () => ({
       },
       wasmInitialized: backend.ready,
       setFps: vi.fn(),
+      fps: 66,
       stopWebcam: useCallback(() => {
         backend.stop();
         setRunning(false);
@@ -87,15 +115,28 @@ vi.mock("../../src/hooks", () => ({
   }) => ({
     startWebcam: async () => {
       backend.start();
+      await backend.cameraReady;
       setMediaSource(MediaSourceType.WEBCAM);
       setIsWebcamRunning(true);
+      return true;
     },
-    startVideoFile: vi.fn(),
+    cancelStart: vi.fn(),
+  }),
+}));
+vi.mock("../../src/hooks/useMirrorFile", () => ({
+  useMirrorFile: ({ stopWebcam }: { stopWebcam: () => void }) => ({
+    kind: backend.file ? "video" : null,
+    loading: backend.loading,
+    setSuspended: backend.suspended,
+    stop: stopWebcam,
   }),
 }));
 beforeEach(() => {
   vi.clearAllMocks();
   backend.ready = false;
+  backend.file = false;
+  backend.loading = false;
+  backend.cameraReady = null;
   history.replaceState({}, "", "/mirror");
 });
 afterEach(cleanup);
@@ -123,4 +164,29 @@ test("manual playback is recorded for the next refresh", async () => {
   backend.start.mockClear();
   render(<MirrorPage />);
   await waitFor(() => expect(backend.start).toHaveBeenCalledOnce());
+});
+
+test("switching from media retains its frame while the camera opens", async () => {
+  backend.ready = true;
+  backend.file = true;
+  let ready!: () => void;
+  backend.cameraReady = new Promise<void>((resolve) => {
+    ready = resolve;
+  });
+  render(<MirrorPage />);
+  const toggle = screen.getByRole("button", { name: "Toggle Media" });
+  fireEvent.click(toggle);
+  expect(backend.suspended).toHaveBeenLastCalledWith(true);
+  expect(screen.getByTestId("renderer").textContent).toBe("frame");
+  expect(toggle.getAttribute("aria-pressed")).toBe("true");
+  await act(async () => ready());
+  expect(toggle.getAttribute("aria-pressed")).toBe("false");
+  expect(screen.getByTestId("renderer").textContent).toBe("frame");
+});
+
+test("loading media does not report splash animation frames as video FPS", () => {
+  backend.ready = true;
+  backend.loading = true;
+  render(<MirrorPage />);
+  expect(screen.getByTestId("fps").textContent).toBe("0");
 });

@@ -1,7 +1,17 @@
+import { SessionInvite } from "../components/SessionInvite";
 import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
 import { useAutoGridSize } from "../hooks/useAutoGridSize";
 import { useUrlState } from "../hooks/useUrlState";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { AnimatedPanel, PanelChevron } from "../components/AnimatedPanel";
+import { fetchSessionStrings } from "@ascii-chat/shared/utils";
 
 // Extend Window interface for frame metrics
 declare global {
@@ -63,7 +73,6 @@ import {
 import { buildCapabilitiesPacket } from "../network";
 import { buildStreamStartPacket } from "../network";
 import { AudioPipeline } from "../audio";
-import { getConnectionSecurityLines } from "../network/connectionSecurity";
 import { SecuritySetupModal } from "../components/SecuritySetupModal";
 import {
   getActivePassword,
@@ -99,6 +108,25 @@ export function ClientPage({
     (connectionRequested || (!discoveryMode && isTestMode())) &&
     (!discoveryMode || !!params.get("session")?.trim());
   const [sessionName, setSessionName] = useUrlState("session", "");
+  const [creatingSession, setCreatingSession] = useState(false);
+  const [createdSession, setCreatedSession] = useState("");
+  const [sessionNamePlaceholder, setSessionNamePlaceholder] = useState("");
+  const sessionNameRequest = useRef<Promise<string[]> | null>(null);
+  useEffect(() => {
+    if (!discoveryMode) return;
+    let cancelled = false;
+    sessionNameRequest.current ??= fetchSessionStrings(1);
+    void sessionNameRequest.current
+      .then(([name]) => {
+        if (!cancelled) setSessionNamePlaceholder(name || "Enter session name");
+      })
+      .catch(() => {
+        if (!cancelled) setSessionNamePlaceholder("Enter session name");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [discoveryMode]);
   const [sessionPassword, setSessionPassword] = useUrlState(
     "sessionPassword",
     "",
@@ -127,12 +155,6 @@ export function ClientPage({
     "crypto",
     false,
   );
-  let signalingUsesWss = false;
-  try {
-    signalingUsesWss = new URL(signalingUrl).protocol === "wss:";
-  } catch {
-    // The URL field will show validation through the normal connection error.
-  }
   const discoveryCryptoOptions = useMemo<ClientCryptoOptions>(() => {
     const options: ClientCryptoOptions = {};
     if (cryptoSettings.authenticationEnabled) {
@@ -147,13 +169,21 @@ export function ClientPage({
     if (expected) options.expectedServerPublicKeyText = expected;
     return options;
   }, [cryptoSettings]);
-  const discoveryHasAuthMaterial =
-    !!discoveryCryptoOptions.password ||
-    !!discoveryCryptoOptions.identityPrivateKeyText ||
-    !!discoveryCryptoOptions.expectedServerPublicKeyText;
+  const peerCryptoOptions = useMemo<ClientCryptoOptions>(() => {
+    const options: ClientCryptoOptions = {};
+    if (discoveryCryptoOptions.password)
+      options.password = discoveryCryptoOptions.password;
+    if (discoveryCryptoOptions.identityPrivateKeyText)
+      options.identityPrivateKeyText =
+        discoveryCryptoOptions.identityPrivateKeyText;
+    const expected = cryptoSettings.skipServerVerification
+      ? undefined
+      : getActiveVerificationKey(cryptoSettings, "client-server");
+    if (expected) options.expectedServerPublicKeyText = expected;
+    return options;
+  }, [cryptoSettings, discoveryCryptoOptions]);
   const discoveryApplicationEncryption =
-    (cryptoSettings.customEncryption ?? !signalingUsesWss) ||
-    discoveryHasAuthMaterial;
+    cryptoSettings.customEncryption ?? undefined;
   const [stunUrls, setStunUrls] = useUrlState(
     "stunUrls",
     "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302",
@@ -219,11 +249,20 @@ export function ClientPage({
     () =>
       discoveryMode
         ? {
+            createSession: creatingSession,
+            onCreated: (name: string) => {
+              setSessionName(name);
+              setCreatedSession(name);
+              setCreatingSession(false);
+            },
             sessionName: sessionName.trim(),
             password: sessionPassword,
             signalingUrl,
-            applicationEncryption: discoveryApplicationEncryption,
-            cryptoOptions: discoveryCryptoOptions,
+            ...(discoveryApplicationEncryption === undefined
+              ? {}
+              : { applicationEncryption: discoveryApplicationEncryption }),
+            cryptoOptions: peerCryptoOptions,
+            signalingCryptoOptions: discoveryCryptoOptions,
             iceTransportPolicy: connectionRoute,
             turnUsername,
             turnCredential,
@@ -239,11 +278,14 @@ export function ClientPage({
         : undefined,
     [
       discoveryMode,
+      creatingSession,
       sessionName,
+      setSessionName,
       sessionPassword,
       signalingUrl,
       discoveryApplicationEncryption,
       discoveryCryptoOptions,
+      peerCryptoOptions,
       stunUrls,
       turnUrls,
       connectionRoute,
@@ -271,13 +313,6 @@ export function ClientPage({
     "serverUrl",
     params.get("testServerUrl") || "ws://localhost:27226",
   );
-  let usesWss = false;
-  try {
-    usesWss =
-      new URL(discoveryMode ? signalingUrl : serverUrl).protocol === "wss:";
-  } catch {
-    // The URL field will show validation through the normal connection error.
-  }
   const connectionCryptoTarget: VerificationKeyTarget = discoveryMode
     ? "discovery-service"
     : "client-server";
@@ -295,18 +330,9 @@ export function ClientPage({
     if (expected) options.expectedServerPublicKeyText = expected;
     return options;
   }, [cryptoSettings, connectionCryptoTarget]);
-  const connectionHasAuthMaterial =
-    !!connectionCryptoOptions.password ||
-    !!connectionCryptoOptions.identityPrivateKeyText ||
-    !!connectionCryptoOptions.expectedServerPublicKeyText;
-  const applicationEncryption =
-    (cryptoSettings.customEncryption ?? !usesWss) || connectionHasAuthMaterial;
-  const connectionSecurityLines = getConnectionSecurityLines(
-    discoveryMode ? signalingUrl : serverUrl,
-    discoveryMode,
-    applicationEncryption,
-  );
+  const applicationEncryption = cryptoSettings.customEncryption ?? undefined;
   const [showSettings, setShowSettings] = useUrlState("settings", false);
+  const connectionSettingsId = useId();
   const [connectionSettingsOpen, setConnectionSettingsOpen] = useUrlState(
     "connectionSettings",
     false,
@@ -341,7 +367,6 @@ export function ClientPage({
   const latestFrameRef = useRef<AsciiFrame | null>(null);
 
   const renderLoopStartTimeRef = useRef<number>(0);
-  const renderedFrameCountRef = useRef(0);
 
   const frameHashesRef = useRef<Record<string, number>>({});
   const renderTimingRef = useRef({
@@ -373,7 +398,6 @@ export function ClientPage({
   const {
     clientRef,
     status,
-    publicKey,
     connectionState,
     error,
     setError,
@@ -381,7 +405,7 @@ export function ClientPage({
     handleDisconnect,
   } = useClientConnection({
     autoConnect: false,
-    applicationEncryption,
+    ...(applicationEncryption === undefined ? {} : { applicationEncryption }),
     cryptoOptions: connectionCryptoOptions,
     ...(discovery ? { discovery } : {}),
     onAudioPacket,
@@ -472,7 +496,10 @@ export function ClientPage({
       pendingConnectRef.current = false;
       void connectToServer()
         .catch(() => {})
-        .finally(() => setConnecting(false));
+        .finally(() => {
+          setConnecting(false);
+          setCreatingSession(false);
+        });
     }, 350);
 
     return () => {
@@ -492,37 +519,6 @@ export function ClientPage({
     setError,
     terminalDimensions,
   ]);
-
-  // Count frames the renderer successfully consumes, not RAF callbacks or
-  // packets that are still waiting in the receive queue. Static images can
-  // still be rendered at full frame rate when adjacent pixels are identical.
-  useEffect(() => {
-    if (connectionState !== ConnectionState.CONNECTED) {
-      setFps(0);
-      return;
-    }
-
-    setFps(0);
-    const frameCount = () => renderedFrameCountRef.current;
-    let previousFrameCount = frameCount();
-    let previousTime = performance.now();
-    const intervalId = window.setInterval(() => {
-      const now = performance.now();
-      const currentFrameCount = frameCount();
-      const elapsedSeconds = (now - previousTime) / 1000;
-      setFps(
-        elapsedSeconds > 0
-          ? Math.round(
-              (currentFrameCount - previousFrameCount) / elapsedSeconds,
-            )
-          : 0,
-      );
-      previousFrameCount = currentFrameCount;
-      previousTime = now;
-    }, 1000);
-
-    return () => window.clearInterval(intervalId);
-  }, [connectionState]);
 
   // Client and Discovery render through the same mirror WASM module as
   // /mirror. Apply the settings as soon as that renderer is ready instead of
@@ -571,7 +567,9 @@ export function ClientPage({
     setMicEnabled(false);
   }, []);
   const disconnectMedia = useCallback(() => {
+    setCreatingSession(false);
     setConnectionRequested(false);
+    setCreatedSession("");
     setConnecting(false);
     pendingConnectRef.current = false;
     discoveryJoinGenerationRef.current++;
@@ -675,7 +673,9 @@ export function ClientPage({
       if (!client) throw new Error("Connect before resuming the audio stream");
       client.sendPacket(PacketType.STREAM_START, buildStreamStartPacket(true));
       audioStreamStartedRef.current = true;
-      await audioRef.current.startCapture();
+      const pipeline = audioRef.current;
+      await pipeline.startCapture();
+      if (audioRef.current !== pipeline || !pipeline.captureActive) return;
       micEnabledRef.current = true;
       setMicEnabled(true);
     } catch (error) {
@@ -822,7 +822,7 @@ export function ClientPage({
           if (!drewFrame) {
             return;
           }
-          renderedFrameCountRef.current++;
+
           const timing = renderTimingRef.current;
           const renderedAt = performance.now();
           if (!timing.windowStart) timing.windowStart = renderedAt;
@@ -985,7 +985,18 @@ export function ClientPage({
     }
   };
 
+  const createSession = () => {
+    setCreatingSession(true);
+    setCreatedSession("");
+    setError("");
+    pendingConnectRef.current = true;
+    discoveryJoinGenerationRef.current++;
+    setRendererRequested(true);
+    setConnecting(true);
+  };
+
   const settingsDisabled =
+    creatingSession ||
     connecting ||
     connectionState === ConnectionState.CONNECTING ||
     connectionState === ConnectionState.HANDSHAKE ||
@@ -1091,13 +1102,16 @@ export function ClientPage({
                             setSessionName(event.target.value)
                           }
                           className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full"
-                          placeholder="blue-mountain-tiger"
+                          placeholder={sessionNamePlaceholder}
                         />
                       </label>
                     </Tooltip>
                     <Tooltip text={disabledSettingsHelp} className="contents">
                       <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                        Session password
+                        <HelpLabel
+                          label="Session password"
+                          text="Leave blank for no password."
+                        />
                         <input
                           aria-label="Session password"
                           disabled={settingsDisabled}
@@ -1126,27 +1140,44 @@ export function ClientPage({
                     >
                       Join session
                     </button>
-                    {(connecting ||
+                    <button
+                      type="button"
+                      disabled={settingsDisabled}
+                      onClick={createSession}
+                      className="border border-blue-600 bg-blue-600 text-white enabled:cursor-pointer enabled:hover:bg-blue-700 enabled:hover:border-blue-700 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {creatingSession ? "Creating session…" : "Create session"}
+                    </button>
+                    {(creatingSession ||
+                      connecting ||
                       connectionState === ConnectionState.CONNECTED) && (
                       <button
                         type="button"
                         onClick={disconnectMedia}
                         className="border border-red-700 bg-red-700 text-white cursor-pointer hover:bg-red-800 hover:border-red-800 rounded px-3 py-2"
                       >
-                        {connecting ? "Cancel" : "Disconnect"}
+                        {creatingSession || connecting
+                          ? "Cancel"
+                          : "Disconnect"}
                       </button>
                     )}
-                    <div className="flex items-center gap-3 w-full min-w-0">
-                      <details
-                        className="flex-shrink-0"
-                        open={connectionSettingsOpen}
-                        onToggle={(event) =>
-                          setConnectionSettingsOpen(event.currentTarget.open)
+                    <div className="w-full min-w-0">
+                      <button
+                        type="button"
+                        aria-expanded={connectionSettingsOpen}
+                        aria-controls={connectionSettingsId}
+                        onClick={() =>
+                          setConnectionSettingsOpen((open) => !open)
                         }
+                        className="flex items-center gap-2 cursor-pointer"
                       >
-                        <summary className="cursor-pointer">
-                          Connection settings
-                        </summary>
+                        <PanelChevron open={connectionSettingsOpen} />
+                        Connection settings
+                      </button>
+                      <AnimatedPanel
+                        open={connectionSettingsOpen}
+                        id={connectionSettingsId}
+                      >
                         <div className="flex flex-col gap-2 mt-2">
                           <Tooltip
                             text={disabledSettingsHelp}
@@ -1262,7 +1293,7 @@ export function ClientPage({
                             </div>
                           </fieldset>
                         </div>
-                      </details>
+                      </AnimatedPanel>
                     </div>
                     {error && (
                       <p
@@ -1274,6 +1305,13 @@ export function ClientPage({
                       </p>
                     )}
                   </form>
+                  {createdSession && (
+                    <SessionInvite
+                      sessionName={createdSession}
+                      signalingUrl={signalingUrl}
+                      sessionPassword={sessionPassword}
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col">
@@ -1301,12 +1339,12 @@ export function ClientPage({
                         />
                       </label>
                     </Tooltip>
-                    <Tooltip
-                      text="Uses the ascii-chat custom crypto handshake. This must match the server password."
-                      className="contents"
-                    >
+                    <Tooltip text={disabledSettingsHelp} className="contents">
                       <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
-                        Crypto password
+                        <HelpLabel
+                          label="Crypto password"
+                          text="Leave blank for no password. If the server requires a password, enter the same password here."
+                        />
                         <input
                           aria-label="Crypto password"
                           type="password"
@@ -1362,29 +1400,6 @@ export function ClientPage({
                         Connect
                       </button>
                     )}
-                    <div className="flex items-center gap-3 w-full min-w-0">
-                      <details
-                        className="flex-shrink-0"
-                        open={connectionSettingsOpen}
-                        onToggle={(event) =>
-                          setConnectionSettingsOpen(event.currentTarget.open)
-                        }
-                      >
-                        <summary className="cursor-pointer">
-                          Connection settings
-                        </summary>
-                        <div className="mt-2 text-sm text-terminal-8 space-y-1">
-                          {connectionSecurityLines.map(({ label, value }) => (
-                            <p key={label}>
-                              {label}: {value}
-                            </p>
-                          ))}
-                          {publicKey && (
-                            <p className="break-all">Client key: {publicKey}</p>
-                          )}
-                        </div>
-                      </details>
-                    </div>
                     {error && (
                       <p
                         role="alert"
@@ -1445,9 +1460,9 @@ export function ClientPage({
               rows={settings.height}
               onDimensionsChange={handleDimensionsChange}
               initializeOptions={false}
-              {...(discoveryMode ? {} : { onFpsChange: setFps })}
+              onFpsChange={setFps}
               error={discoveryMode ? rendererError : error || rendererError}
-              showFps={isWebcamRunning}
+              showFps
               connectionState={connectionState}
               wasmModuleReady={rendererReady}
             />
@@ -1457,7 +1472,6 @@ export function ClientPage({
       <SecuritySetupModal
         open={securityModalOpen}
         settings={cryptoSettings}
-        defaultEncryptionEnabled={!usesWss}
         onClose={() => {
           writeCryptoUrl(cryptoSettings);
           setSecurityModalOpen(false);

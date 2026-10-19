@@ -46,6 +46,32 @@ interface AsciiChatWasmExports {
 
 // Type definition for the Emscripten module
 interface ClientModuleExports {
+  _peer_crypto_create(
+    server: number,
+    encryption: number,
+    password: number,
+    identity: number,
+    expected: number,
+  ): number;
+  _peer_crypto_destroy(peer: number): void;
+  _peer_crypto_ready(peer: number): number;
+  _peer_crypto_error(): number;
+  _peer_crypto_send(peer: number, data: number, length: number): number;
+  _peer_crypto_receive(peer: number, data: number, length: number): number;
+  _peer_crypto_output_data(peer: number): number;
+  _peer_crypto_output_size(peer: number): number;
+  _peer_crypto_output_pop(peer: number): void;
+  _peer_crypto_received_data(peer: number): number;
+  _peer_crypto_received_size(peer: number): number;
+  _session_av_state_create(): number;
+  _session_av_state_destroy(handle: number): void;
+  _session_av_state_generation(handle: number): number;
+  _session_av_state_begin(handle: number): number;
+  _session_av_state_complete(handle: number, generation: number): number;
+  _session_av_state_is_current(handle: number, generation: number): number;
+  _session_av_state_is_active(handle: number): number;
+  _session_av_state_begin_stop(handle: number): void;
+  _session_av_state_finish_stop(handle: number): void;
   _client_init_with_args(args_string: number): number;
   _client_cleanup(): void;
   _client_configure_crypto_options(
@@ -124,12 +150,20 @@ interface ClientModuleExports {
   _free(ptr: number): void;
 }
 
-interface ClientModule {
+interface ClientModule extends ClientModuleExports {
+  _client_resolve_crypto_policy(secure: number, encryption: number): number;
+  _client_handshake_begin(): number;
+  _client_handshake_receive(
+    type: number,
+    payload: number,
+    length: number,
+  ): number;
   HEAP16: Int16Array;
-  _client_acds_join_request(
-    session: number,
-    password: number,
-    output: number,
+  _client_acds_handshake_begin(encrypted: number): number;
+  _client_acds_handshake_receive(
+    type: number,
+    payload: number,
+    length: number,
   ): number;
   _client_opus_encoder_init(
     sampleRate: number,
@@ -205,6 +239,7 @@ interface ClientModule {
 }
 
 export interface ClientCryptoOptions {
+  allowedClientPublicKeyText?: string;
   password?: string;
   identityPrivateKeyText?: string;
   expectedServerPublicKeyText?: string;
@@ -418,6 +453,7 @@ export async function ensureWasmModuleLoaded(): Promise<void> {
 /** Set browser authentication and identity-verification inputs for the next handshake. */
 export async function configureClientCrypto(
   options: ClientCryptoOptions,
+  configure?: (password: number, identity: number, expected: number) => number,
 ): Promise<void> {
   if (!wasmModule || !clientInitialized)
     throw new Error("Initialize the WASM client before configuring crypto");
@@ -455,7 +491,7 @@ export async function configureClientCrypto(
       wasmModule.HEAPU8.set(expectedServerPublicKey, expectedServerPtr);
     }
     if (
-      wasmModule._client_configure_crypto_options(
+      (configure ?? wasmModule._client_configure_crypto_options)(
         passwordPtr,
         identityPtr,
         expectedServerPtr,
@@ -1395,4 +1431,105 @@ export function isWasmReady(): boolean {
  */
 export function getClientModule(): ClientModule | null {
   return wasmModule;
+}
+
+/** Uses the shared C policy after configureClientCrypto has installed credentials. */
+export function resolveCryptoPolicy(
+  serverUrl: string,
+  encryption?: boolean,
+): number {
+  if (!wasmModule) throw new Error("WASM client is not initialized");
+  const mode = wasmModule._client_resolve_crypto_policy(
+    new URL(serverUrl).protocol === "wss:" ? 1 : 0,
+    encryption === undefined ? -1 : encryption ? 1 : 0,
+  );
+  if (mode < 0) throw new Error("Invalid crypto policy");
+  return mode;
+}
+
+/** Separate ACIP context for one media peer; signaling retains its own context. */
+export class PeerCryptoSession {
+  private constructor(
+    private handle: number,
+    private send: (packet: Uint8Array) => void,
+  ) {}
+
+  static async create(
+    options: ClientCryptoOptions,
+    encryption: boolean | undefined,
+    server: boolean,
+    send: (packet: Uint8Array) => void,
+  ): Promise<PeerCryptoSession> {
+    let handle = 0;
+    const credentials = { ...options };
+    if (server) {
+      delete credentials.expectedServerPublicKeyText;
+      if (options.allowedClientPublicKeyText)
+        credentials.expectedServerPublicKeyText =
+          options.allowedClientPublicKeyText;
+    }
+    await configureClientCrypto(credentials, (password, identity, expected) => {
+      handle = wasmModule!._peer_crypto_create(
+        server ? 1 : 0,
+        encryption === undefined ? -1 : encryption ? 1 : 0,
+        password,
+        identity,
+        expected,
+      );
+      return handle ? 0 : -1;
+    });
+    return new PeerCryptoSession(handle, send);
+  }
+
+  get ready(): boolean {
+    return !!this.handle && !!wasmModule!._peer_crypto_ready(this.handle);
+  }
+
+  flush(): void {
+    while (this.handle) {
+      const pointer = wasmModule!._peer_crypto_output_data(this.handle);
+      if (!pointer) break;
+      const length = wasmModule!._peer_crypto_output_size(this.handle);
+      const packet = wasmModule!.HEAPU8.slice(pointer, pointer + length);
+      wasmModule!._peer_crypto_output_pop(this.handle);
+      this.send(packet);
+    }
+  }
+
+  private input(packet: Uint8Array, receive: boolean): void {
+    if (!this.handle) throw new Error("Peer crypto session is closed");
+    const pointer = wasmModule!._malloc(packet.length);
+    if (!pointer) throw new Error("Cannot allocate peer crypto packet");
+    try {
+      wasmModule!.HEAPU8.set(packet, pointer);
+      const result = receive
+        ? wasmModule!._peer_crypto_receive(this.handle, pointer, packet.length)
+        : wasmModule!._peer_crypto_send(this.handle, pointer, packet.length);
+      if (result !== 0)
+        throw new Error(
+          wasmModule!.UTF8ToString(wasmModule!._peer_crypto_error()),
+        );
+    } finally {
+      wasmModule!._free(pointer);
+    }
+    this.flush();
+  }
+
+  receive(packet: Uint8Array): Uint8Array | null {
+    this.input(packet, true);
+    const pointer = wasmModule!._peer_crypto_received_data(this.handle);
+    const length = wasmModule!._peer_crypto_received_size(this.handle);
+    return pointer && length
+      ? wasmModule!.HEAPU8.slice(pointer, pointer + length)
+      : null;
+  }
+
+  sendPacket(packet: Uint8Array): void {
+    this.input(packet, false);
+  }
+
+  close(): void {
+    if (this.handle) wasmModule!._peer_crypto_destroy(this.handle);
+    this.handle = 0;
+  }
 }

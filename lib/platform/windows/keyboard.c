@@ -190,6 +190,8 @@ keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
  * ============================================================================ */
 
 keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_opts_t *opts) {
+  if (opts && opts->key != KEY_NONE)
+    return keyboard_apply_key(opts);
   // Validate options
   if (!opts || !opts->buffer || !opts->len || !opts->cursor) {
     return LINE_EDIT_NO_INPUT;

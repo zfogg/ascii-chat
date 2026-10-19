@@ -6,14 +6,12 @@
 import { SocketBridge } from "./SocketBridge";
 import type { PacketTransport } from "./Transport";
 import {
+  getClientModule,
+  resolveCryptoPolicy,
   initClientWasm,
   cleanupClientWasm,
   generateKeypair,
   setServerAddress,
-  handleCryptoParameters,
-  handleKeyExchangeInit,
-  handleAuthChallenge,
-  handleHandshakeComplete,
   registerSendPacketCallback,
   encryptPacket,
   decryptPacket,
@@ -50,11 +48,10 @@ export class ClientConnection {
   private socket: (PacketTransport & { connect(): Promise<void> }) | null =
     null;
   private transportState = ConnectionState.DISCONNECTED;
+  private cryptoMode = 0;
+  private discoveryAccepted = false;
   private get usesApplicationEncryption(): boolean {
-    return (
-      this.options.applicationEncryption ??
-      new URL(this.options.serverUrl).protocol !== "wss:"
-    );
+    return (this.cryptoMode & 1) !== 0;
   }
   private clientPublicKey: string | null = null;
   private onStateChangeCallback: ConnectionStateChangeCallback | null = null;
@@ -83,6 +80,10 @@ export class ClientConnection {
     await initClientWasm(initOptions);
     if (this.isUserDisconnecting) return;
     await configureClientCrypto(this.options.cryptoOptions || {});
+    this.cryptoMode = resolveCryptoPolicy(
+      this.options.serverUrl,
+      this.options.applicationEncryption,
+    );
     console.log("[ClientConnection] WASM init complete");
 
     // Register callback so WASM can send raw packets back through WebSocket
@@ -156,7 +157,10 @@ export class ClientConnection {
           console.log("[ClientConnection] SocketBridge reconnecting...");
           this.onStateChangeCallback?.(ConnectionState.CONNECTING);
         } else if (state === "closed") {
-          this.transportState = ConnectionState.DISCONNECTED;
+          this.transportState =
+            this.isUserDisconnecting || this.wasEverConnected
+              ? ConnectionState.DISCONNECTED
+              : ConnectionState.ERROR;
           console.log("[ClientConnection] WebSocket closed");
           if (this.isUserDisconnecting) {
             console.log("[ClientConnection] User-initiated disconnect");
@@ -170,7 +174,7 @@ export class ClientConnection {
             console.log(
               "[ClientConnection] Disconnected before ever connecting",
             );
-            this.onStateChangeCallback?.(ConnectionState.DISCONNECTED);
+            this.onStateChangeCallback?.(ConnectionState.ERROR);
           }
         }
       },
@@ -178,21 +182,14 @@ export class ClientConnection {
 
     console.log("[ClientConnection] Waiting for WebSocket to connect...");
     await this.socket.connect();
-    if (!this.usesApplicationEncryption) return;
-    console.log("[ClientConnection] WebSocket connected!");
-
-    // Wait for server to initiate handshake
-    // Server will send CRYPTO_KEY_EXCHANGE_INIT first
-    console.log("[ClientConnection] Setting state to HANDSHAKE");
-    this.onStateChangeCallback?.(ConnectionState.HANDSHAKE);
-    console.log("[ClientConnection] Connect complete");
   }
 
   private async handleSocketOpen(): Promise<void> {
+    this.discoveryAccepted = false;
     const isReconnection = this.socketHasEverOpened;
     this.socketHasEverOpened = true;
 
-    if (isReconnection && this.usesApplicationEncryption) {
+    if (isReconnection) {
       // Pause packet handling before resetting WASM. On reconnect the server
       // must not receive PROTOCOL_VERSION until the new crypto context and its
       // packet callback are ready to process the handshake response.
@@ -214,6 +211,10 @@ export class ClientConnection {
       try {
         await initClientWasm(reinitOptions);
         await configureClientCrypto(this.options.cryptoOptions || {});
+        this.cryptoMode = resolveCryptoPolicy(
+          this.options.serverUrl,
+          this.options.applicationEncryption,
+        );
         this.clientPublicKey = await generateKeypair();
         setServerAddress(serverHost, serverPort);
         registerSendPacketCallback((rawPacket: Uint8Array) => {
@@ -235,22 +236,28 @@ export class ClientConnection {
 
     if (this.isUserDisconnecting || !this.socket?.isConnected()) return;
 
-    if (this.options.discoveryHandshake) {
-      const version = new Uint8Array(16);
-      new DataView(version.buffer).setUint16(0, 1, false);
-      version[4] = this.usesApplicationEncryption ? 1 : 0;
-      this.socket.send(
-        serializePacket(PacketType.PROTOCOL_VERSION, version, 0),
-      );
+    try {
+      const module = getClientModule();
+      if (!module) throw new Error("WASM client unavailable");
+      const result = this.options.discoveryHandshake
+        ? module._client_acds_handshake_begin(this.cryptoMode)
+        : module._client_handshake_begin();
+      if (result) throw new Error("Could not begin security negotiation");
+    } catch {
+      this.socket.close();
+      this.transportState = ConnectionState.ERROR;
+      this.onStateChangeCallback?.(ConnectionState.ERROR);
+      return;
     }
-
-    if (!this.usesApplicationEncryption) {
+    // Discovery's TLS-only protocol has no version acknowledgement.
+    if (this.options.discoveryHandshake && this.cryptoMode === 0) {
       this.transportState = ConnectionState.CONNECTED;
       this.wasEverConnected = true;
       this.onStateChangeCallback?.(ConnectionState.CONNECTED);
       return;
     }
 
+    this.transportState = ConnectionState.CONNECTING;
     this.onStateChangeCallback?.(ConnectionState.CONNECTING);
   }
 
@@ -306,73 +313,47 @@ export class ClientConnection {
       const HEADER_SIZE = 22; // sizeof(packet_header_t): magic(8) + type(2) + length(4) + crc32(4) + client_id(4)
       const payload = rawPacket.slice(HEADER_SIZE);
 
-      // Handle handshake packets using WASM callbacks
-      if (parsed.type === PacketType.CRYPTO_PARAMETERS) {
-        // Server sends crypto parameters first to negotiate key sizes
-        console.log(
-          "[ClientConnection] Processing CRYPTO_PARAMETERS from server",
-        );
-        handleCryptoParameters(rawPacket);
-        return;
-      }
-
-      if (parsed.type === PacketType.CRYPTO_KEY_EXCHANGE_INIT) {
-        // console.error(
-        //   `[ClientConnection] >>> Dispatching ${name} to WASM handleKeyExchangeInit (raw ${rawPacket.length} bytes)`,
-        // );
-        handleKeyExchangeInit(rawPacket);
-        // console.error(
-        //   `[ClientConnection] <<< WASM handleKeyExchangeInit returned OK`,
-        // );
-        this.onStateChangeCallback?.(ConnectionState.HANDSHAKE);
-        return;
-      }
-
-      if (parsed.type === PacketType.CRYPTO_AUTH_CHALLENGE) {
-        // console.error(
-        //   `[ClientConnection] >>> Dispatching ${name} to WASM handleAuthChallenge (raw ${rawPacket.length} bytes)`,
-        // );
-        handleAuthChallenge(rawPacket);
-        // console.error(
-        //   `[ClientConnection] <<< WASM handleAuthChallenge returned OK`,
-        // );
-        return;
-      }
-
+      // TLS-only discovery starts application traffic without a version ACK.
+      // A policy rejection must stop retries before its first application reply.
       if (
-        parsed.type === PacketType.CRYPTO_HANDSHAKE_COMPLETE ||
-        parsed.type === PacketType.CRYPTO_SERVER_AUTH_RESP ||
-        parsed.type === PacketType.CRYPTO_AUTH_FAILED
-      ) {
-        // console.error(
-        //   `[ClientConnection] >>> Dispatching ${name} to WASM handleHandshakeComplete (raw ${rawPacket.length} bytes)`,
-        // );
+        this.options.discoveryHandshake &&
+        !this.discoveryAccepted &&
+        parsed.type === PacketType.ERROR_MESSAGE
+      )
+        throw new Error("Discovery security policy rejected");
+
+      if (this.transportState !== ConnectionState.CONNECTED) {
+        const module = getClientModule()!;
+        const ptr = module._malloc(payload.length || 1);
         try {
-          handleHandshakeComplete(rawPacket);
-        } catch (error) {
-          this.onStateChangeCallback?.(ConnectionState.ERROR);
-          throw error;
+          if (!ptr) throw new Error("Could not allocate handshake packet");
+          module.HEAPU8.set(payload, ptr);
+          const result = this.options.discoveryHandshake
+            ? module._client_acds_handshake_receive(
+                parsed.type,
+                ptr,
+                payload.length,
+              )
+            : module._client_handshake_receive(
+                parsed.type,
+                ptr,
+                payload.length,
+              );
+          if (result) throw new Error("Security handshake rejected");
+          const next = getConnectionState();
+          if (next === ConnectionState.CONNECTED) {
+            this.discoveryAccepted = true;
+            this.wasEverConnected = true;
+            this.transportState = ConnectionState.CONNECTED;
+          }
+          this.onStateChangeCallback?.(next);
+        } finally {
+          module._free(ptr);
         }
-        // console.error(
-        //   `[ClientConnection] <<< WASM handleHandshakeComplete returned OK - transitioning to CONNECTED`,
-        // );
-        this.wasEverConnected = true; // Mark that we've successfully connected at least once
-        // Note: Don't start heartbeat here - it interferes with ACIP protocol
-        // The protocol exchange will complete and normal operation will resume
-        this.onStateChangeCallback?.(ConnectionState.CONNECTED);
         return;
       }
 
-      // Allow SERVER_STATE packets during any state (they arrive early in connection)
-      if (parsed.type === PacketType.SERVER_STATE) {
-        // console.error(
-        //   `[ClientConnection] >>> Got SERVER_STATE packet during ${ConnectionState[getConnectionState()]} state - processing anyway`,
-        // );
-        // Dispatch to callback but don't require CONNECTED state
-        const payload = rawPacket.slice(22); // Skip header
-        this.onPacketCallback?.(parsed, payload);
-        return;
-      }
+      this.discoveryAccepted = true;
 
       // For non-handshake packets during handshake, log a warning
       const state = this.getState();
@@ -454,14 +435,23 @@ export class ClientConnection {
             error instanceof Error ? error.stack : String(error),
           );
           console.error("[ClientConnection] ========== END ERROR ==========");
+          throw error;
         }
         return;
       }
 
-      // Non-encrypted, non-handshake packet in connected state - pass through
+      if (this.usesApplicationEncryption)
+        throw new Error("Plaintext application packet on encrypted connection");
+
+      // Auth-only and TLS-only sessions send plaintext ACIP payloads.
       this.onPacketCallback?.(parsed, payload);
     } catch (error) {
       console.error("[ClientConnection] Failed to handle packet:", error);
+      if (!this.isUserDisconnecting) {
+        this.socket?.close();
+        this.transportState = ConnectionState.ERROR;
+        this.onStateChangeCallback?.(ConnectionState.ERROR);
+      }
     }
   }
 
@@ -473,6 +463,8 @@ export class ClientConnection {
   }
 
   sendPacket(packetType: number, payload: Uint8Array): void {
+    if (this.transportState !== ConnectionState.CONNECTED)
+      throw new Error("Security negotiation is not complete");
     if (!this.socket || !this.socket.isConnected()) {
       const name = packetTypeName(packetType);
       throw new Error(
@@ -556,57 +548,9 @@ export class ClientConnection {
     }
   }
 
-  /**
-   * Send ACIP protocol control packets UNENCRYPTED
-   * Used for CLIENT_CAPABILITIES and STREAM_START which must be sent before encryption is fully setup
-   * This bypasses the encryption wrapper that's normally used for application-layer packets
-   */
+  /** Setup packets follow the same negotiated policy as media packets. */
   sendUnencryptedAcipPacket(packetType: number, payload: Uint8Array): void {
-    if (!this.socket || !this.socket.isConnected()) {
-      const name = packetTypeName(packetType);
-      throw new Error(
-        `Not connected to server (cannot send ${name} type=${packetType})`,
-      );
-    }
-
-    const name = packetTypeName(packetType);
-    console.log(
-      `[ClientConnection] sendUnencryptedAcipPacket() called: type=${packetType} (${name}), payload_size=${payload.length}`,
-    );
-    console.log(
-      `[ClientConnection] Payload hex: [${Array.from(payload.slice(0, 32))
-        .map((b) => `0x${b.toString(16).padStart(2, "0")}`)
-        .join(" ")}]${payload.length > 32 ? "..." : ""}`,
-    );
-
-    try {
-      const state = getConnectionState();
-      console.log(
-        `[ClientConnection] Sending unencrypted ACIP packet in state: ${state} (${ConnectionState[state]})`,
-      );
-
-      // Send the packet directly WITHOUT encryption
-      // This is used for protocol control packets (CLIENT_CAPABILITIES, STREAM_START)
-      // that must be sent as plain ACIP packets before crypto is fully established
-      const packet = serializePacket(packetType, payload, 0);
-      console.error(
-        `[ClientConnection] >>> SEND unencrypted ACIP packet type=${packetType} (${name}) total_len=${packet.length} payload_len=${payload.length}`,
-      );
-      this.socket.send(packet);
-      console.log(
-        `[ClientConnection] Unencrypted ACIP ${name} packet sent to WebSocket`,
-      );
-    } catch (error) {
-      console.error(
-        `[ClientConnection] Failed to send unencrypted ACIP ${name} packet:`,
-        error,
-      );
-      console.error(
-        `[ClientConnection] Error stack:`,
-        error instanceof Error ? error.stack : String(error),
-      );
-      throw error;
-    }
+    this.sendPacket(packetType, payload);
   }
 
   /**
@@ -634,9 +578,9 @@ export class ClientConnection {
    * Get current connection state
    */
   getState(): ConnectionState {
-    return this.usesApplicationEncryption
-      ? getConnectionState()
-      : this.transportState;
+    if (this.transportState === ConnectionState.ERROR)
+      return ConnectionState.ERROR;
+    return this.transportState;
   }
 
   /**

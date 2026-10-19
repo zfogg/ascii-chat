@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <stdlib.h>
+#include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/util/path.h>
@@ -57,4 +58,10 @@ Test(regex_fallback, settings_parse_without_jit) {
   cr_assert(parse_color_setting("true", &setting, NULL));
   cr_assert_eq(setting, COLOR_SETTING_TRUE);
   cr_assert_not(parse_color_setting("invalid", &setting, NULL));
+}
+
+Test(regex_fallback, session_strings_validate_without_jit) {
+  cr_assert(is_session_string("happy-cat-dog"));
+  cr_assert_not(is_session_string("happy--dog"));
+  cr_assert_not(is_session_string("happy-cat-dog-extra"));
 }

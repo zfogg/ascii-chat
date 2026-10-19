@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/policy.h>
 /**
  * @file server_like.c
  * @brief Unified lifecycle for server-like modes (server, discovery-service)
@@ -120,7 +121,6 @@ static void *status_screen_thread_func(void *arg) {
   log_debug("Status screen thread started (target %u FPS)", fps);
 
   int output_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO;
-  bool keyboard_enabled = platform_isatty(STDIN_FILENO) && platform_isatty(output_fd);
 
   // Stderr is the status output when stdout is redirected; retain it in that
   // case. The presentation controller suppresses competing terminal log writes.
@@ -129,50 +129,10 @@ static void *status_screen_thread_func(void *arg) {
     stderr_redirect = platform_stderr_redirect_to_null();
   }
 
-  bool skip_next_slash = false;
-  bool grep_was_just_cancelled = false;
-
   while (!atomic_load_bool(&g_status_should_exit)) {
     uint64_t frame_start = platform_get_monotonic_time_us();
-
-    // Check if SIGINT handler cancelled grep mode
-    if (log_search_check_signal_cancel()) {
+    if (log_search_check_signal_cancel())
       log_search_exit_mode(false);
-      grep_was_just_cancelled = true;
-    }
-
-    // Process keyboard input
-    if (keyboard_enabled) {
-      grep_was_just_cancelled = false;
-
-      keyboard_key_t key = ui_input_read_key(UI_SCREEN_STATUS);
-      while (key != KEY_NONE && !grep_was_just_cancelled) {
-        if (skip_next_slash && key == '/') {
-          skip_next_slash = false;
-          key = ui_input_read_key(UI_SCREEN_STATUS);
-          continue;
-        }
-        skip_next_slash = false;
-
-        if (log_search_should_handle(key)) {
-          bool was_not_in_grep = !log_search_is_entering();
-          bool was_in_grep = log_search_is_entering();
-
-          log_search_handle_key(key);
-
-          if (was_not_in_grep && log_search_is_entering() && key == '/') {
-            skip_next_slash = true;
-          }
-
-          if (was_in_grep && !log_search_is_entering()) {
-            grep_was_just_cancelled = true;
-            break;
-          }
-        }
-
-        key = ui_input_read_key(UI_SCREEN_STATUS);
-      }
-    }
 
     // Call mode's status callback to populate status data
     // Use direct static pointers instead of g_config to avoid stale reference during shutdown
@@ -282,7 +242,7 @@ bool session_server_like_shutdown_requested(void) {
  * ============================================================================ */
 
 static asciichat_error_t session_server_like_handshake_impl(crypto_handshake_context_t *ctx,
-                                                            acip_transport_t *transport) {
+                                                            acip_transport_t *transport, bool transport_secure) {
   if (!ctx || !transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "handshake context or transport is NULL");
   }
@@ -308,7 +268,21 @@ static asciichat_error_t session_server_like_handshake_impl(crypto_handshake_con
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected PROTOCOL_VERSION packet");
     }
 
+    if (pkt_len != sizeof(protocol_version_packet_t)) {
+      buffer_release(alloc_buffer);
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid protocol version size");
+    }
+    uint8_t mode = ((protocol_version_packet_t *)pkt_data)->supports_encryption;
     buffer_release(alloc_buffer);
+    result = crypto_policy_check_mode(transport_secure, GET_OPTION(encrypt_enabled), GET_OPTION(no_encrypt),
+                                      ctx->require_client_auth, mode);
+    if (result != ASCIICHAT_OK)
+      return result;
+    if (mode == ACIP_CRYPTO_NONE) {
+      ctx->state = CRYPTO_HANDSHAKE_DISABLED;
+      return ASCIICHAT_OK;
+    }
+    ctx->crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
     log_debug("Received PROTOCOL_VERSION from client");
   }
 
@@ -374,7 +348,8 @@ static asciichat_error_t session_server_like_handshake_impl(crypto_handshake_con
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx, acip_transport_t *transport) {
+asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx, acip_transport_t *transport,
+                                                bool transport_secure) {
   if (!ctx || !transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "handshake context or transport is NULL");
   }
@@ -384,7 +359,7 @@ asciichat_error_t session_server_like_handshake(crypto_handshake_context_t *ctx,
   // to the handshake so idle-session polling remains responsive.
   const uint64_t previous_receive_timeout_ns = transport->receive_timeout_ns;
   transport->receive_timeout_ns = 30ULL * NS_PER_SEC_INT;
-  asciichat_error_t result = session_server_like_handshake_impl(ctx, transport);
+  asciichat_error_t result = session_server_like_handshake_impl(ctx, transport, transport_secure);
   transport->receive_timeout_ns = previous_receive_timeout_ns;
   return result;
 }

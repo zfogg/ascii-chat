@@ -982,7 +982,7 @@ Test(config_sections, crypto_no_encrypt) {
   options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->no_encrypt, 1, "No encrypt should be set");
-  cr_assert_eq(opts->encrypt_enabled, 0, "Encryption should be disabled by no_encrypt");
+  cr_assert_eq(opts->encrypt_enabled, 1, "Preserve explicit encryption for conflict validation");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1010,7 +1010,7 @@ Test(config_sections, crypto_key_auto_enables_encryption) {
   options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_str_eq(opts->encrypt_key, "gpg:ABCD1234", "Crypto key should be set");
-  cr_assert_eq(opts->encrypt_enabled, 1, "Encryption should be auto-enabled when key provided");
+  cr_assert_eq(opts->encrypt_enabled, 0, "Keys must not force payload encryption");
 
   unlink(config_path);
   SAFE_FREE(config_path);

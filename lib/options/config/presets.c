@@ -359,32 +359,20 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // ============================================================================
   // Encryption & Authentication Conflicts
   // ============================================================================
-  // Cannot use both --encrypt and --no-encrypt
+  // Reject contradictory CLI requests before initializing transport security.
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
-  options_builder_add_dependency_conflicts(b, "no-encrypt", "key",
-                                           "Cannot use --no-encrypt with --key (key requires encryption)");
-  options_builder_add_dependency_conflicts(b, "no-encrypt", "password",
-                                           "Cannot use --no-encrypt with --password (password requires encryption)");
-  options_builder_add_dependency_conflicts(
-      b, "no-encrypt", "client-keys",
-      "Cannot use --no-encrypt with --client-keys (key validation requires encryption)");
-  options_builder_add_dependency_conflicts(
-      b, "no-encrypt", "server-key", "Cannot use --no-encrypt with --server-key (key validation requires encryption)");
 
-  // Cannot use --no-auth with authentication material (--key, --password, --client-keys, --server-key)
+  // Authentication material conflicts with explicitly disabling authentication.
   options_builder_add_dependency_conflicts(b, "no-auth", "key",
                                            "Cannot use --no-auth with --key (key requires authentication)");
   options_builder_add_dependency_conflicts(b, "no-auth", "password",
                                            "Cannot use --no-auth with --password (password requires authentication)");
-  options_builder_add_dependency_conflicts(
-      b, "no-auth", "client-keys", "Cannot use --no-auth with --client-keys (key list requires authentication)");
-  options_builder_add_dependency_conflicts(
-      b, "no-auth", "server-key", "Cannot use --no-auth with --server-key (verification requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "client-keys",
+                                           "Cannot use --no-auth with --client-keys (key list requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "server-key",
+                                           "Cannot use --no-auth with --server-key (verification requires authentication)");
 
-  // Cannot use --key with --server-key (both server-side key options)
-  options_builder_add_dependency_conflicts(
-      b, "key", "server-key",
-      "Cannot use --key with --server-key (--key is server identity, --server-key is client-side)");
+  // Identity and verification keys can be combined, including with --no-encrypt.
 
   // ============================================================================
   // Compression Conflicts

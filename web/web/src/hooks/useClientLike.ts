@@ -62,7 +62,7 @@ export interface UseClientLikeReturn {
 
   // Handlers
   handleDimensionsChange: (dims: { cols: number; rows: number }) => void;
-  stopWebcam: () => void;
+  stopWebcam: (preserveFrame?: boolean) => void;
   setWasmDimensions: (cols: number, rows: number) => void;
 
   // Debug refs
@@ -190,7 +190,7 @@ export function useClientLike(
   );
 
   // Stop webcam or video file playback
-  const stopWebcam = useCallback(() => {
+  const stopWebcam = useCallback((preserveFrame = false) => {
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
@@ -204,7 +204,8 @@ export function useClientLike(
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.srcObject = null;
-      videoRef.current.src = "";
+      videoRef.current.removeAttribute("src");
+      videoRef.current.load();
     }
 
     if (objectUrlRef.current) {
@@ -212,7 +213,7 @@ export function useClientLike(
       objectUrlRef.current = null;
     }
 
-    rendererRef.current?.clear();
+    if (!preserveFrame) rendererRef.current?.clear();
     setIsWebcamRunning(false);
     setMediaSource(null);
   }, []);

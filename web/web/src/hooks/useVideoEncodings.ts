@@ -56,7 +56,9 @@ export function useVideoEncodings({
   const [supportedEncodings, setSupportedEncodings] = useState<
     AvailableVideoEncoding[]
   >(["raw"]);
-  const [loading, setLoading] = useState(true);
+  const [resolvedConfig, setResolvedConfig] = useState<string | null>(null);
+  const configurationKey = `${width}:${height}:${fps}`;
+  const loading = resolvedConfig !== configurationKey;
   useEffect(() => {
     const refresh = () => setChoice(readPreference());
     window.addEventListener(VIDEO_ENCODING_CHANGED, refresh);
@@ -70,7 +72,6 @@ export function useVideoEncodings({
   }, []);
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     void Promise.all(
       (["hevc", "h264"] as const).map(async (codec) => ({
         codec,
@@ -86,12 +87,12 @@ export function useVideoEncodings({
           .map((result) => result.codec),
         "raw",
       ]);
-      setLoading(false);
+      setResolvedConfig(configurationKey);
     });
     return () => {
       cancelled = true;
     };
-  }, [width, height, fps]);
+  }, [width, height, fps, configurationKey]);
   const bestEncoding = supportedEncodings[0]!;
   const selectedEncoding =
     choice.preference === "auto" ? bestEncoding : choice.preference;

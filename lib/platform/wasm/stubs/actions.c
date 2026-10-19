@@ -71,8 +71,7 @@ void platform_disable_keepawake(void) {
 #include <ascii-chat/platform/keyboard.h>
 
 keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_opts_t *opts) {
-  (void)opts;
-  return LINE_EDIT_NO_INPUT; // No input available in WASM
+  return keyboard_apply_key(opts);
 }
 
 keyboard_key_t keyboard_read_nonblocking(void) {

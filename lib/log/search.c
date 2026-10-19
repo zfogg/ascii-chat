@@ -126,24 +126,16 @@ static bool validate_pcre2_pattern(const char *input) {
 asciichat_error_t log_search_init(void) {
   // Use lifecycle API for unified initialization
   if (!lifecycle_init_once(&g_log_search_lifecycle)) {
-    // Already initialized, acquire mutex lock and return
-    mutex_lock(&g_search_state.mutex);
+    // Already initialized.
     return ASCIICHAT_OK;
   }
 
-  // Winner of init_once - initialize mutex and state
-  g_log_search_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
-  g_log_search_lifecycle.sync.mutex = &g_search_state.mutex;
-  lifecycle_init(&g_log_search_lifecycle, "log_search");
-
-  mutex_lock(&g_search_state.mutex);
-
-  // Initialize state (careful not to destroy the mutex!)
-  // Save the mutex before clearing state
-  mutex_t saved_mutex = g_search_state.mutex;
   memset(&g_search_state, 0, sizeof(g_search_state));
-  // Restore the mutex
-  g_search_state.mutex = saved_mutex;
+  if (mutex_init(&g_search_state.mutex, "log_search") != 0) {
+    lifecycle_init_abort(&g_log_search_lifecycle);
+    return SET_ERRNO(ERROR_THREAD, "Cannot initialize log search");
+  }
+  mutex_lock(&g_search_state.mutex);
 
   // Check if there are CLI --grep patterns to use
   const char *cli_pattern = grep_get_last_pattern();
@@ -206,6 +198,7 @@ void log_search_destroy(void) {
   }
 
   mutex_unlock(&g_search_state.mutex);
+  mutex_destroy(&g_search_state.mutex);
 }
 
 /* ============================================================================
@@ -288,7 +281,7 @@ void log_search_enter_mode(void) {
 void log_search_exit_mode(bool accept) {
   mutex_lock(&g_search_state.mutex);
 
-  if (g_search_state.mode != LOG_SEARCH_MODE_ENTERING) {
+  if (g_search_state.mode == LOG_SEARCH_MODE_INACTIVE || (accept && g_search_state.mode != LOG_SEARCH_MODE_ENTERING)) {
     mutex_unlock(&g_search_state.mutex);
     return;
   }
@@ -529,6 +522,12 @@ asciichat_error_t log_search_handle_key(keyboard_key_t key) {
  * ========================================================================== */
 
 asciichat_error_t log_search_gather_and_filter_logs(session_log_entry_t **out_entries, size_t *out_count) {
+  session_log_buffer_t *logs = log_get_history_buffer();
+  return log_search_filter_buffer(logs ? logs : log_get_session_log_buffer(), out_entries, out_count);
+}
+
+asciichat_error_t log_search_filter_buffer(session_log_buffer_t *log_buf, session_log_entry_t **out_entries,
+                                           size_t *out_count) {
   if (!out_entries || !out_count) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "out_entries and out_count must not be NULL");
   }
@@ -540,7 +539,6 @@ asciichat_error_t log_search_gather_and_filter_logs(session_log_entry_t **out_en
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate log buffer");
   }
 
-  session_log_buffer_t *log_buf = log_get_session_log_buffer();
   size_t buffer_count = session_log_buffer_get_recent(log_buf, buffer_entries, SESSION_LOG_BUFFER_SIZE);
 
   // Check if filtering is active (either regex patterns or fixed string)
@@ -654,7 +652,7 @@ asciichat_error_t log_search_gather_and_filter_logs(session_log_entry_t **out_en
         }
 
         // Match against plain message (without ANSI codes)
-        int rc = pcre2_jit_match(code, (PCRE2_SPTR)plain_message, message_len, 0, 0, match_data, NULL);
+        int rc = pcre2_match(code, (PCRE2_SPTR)plain_message, message_len, 0, 0, match_data, NULL);
         if (rc >= 0) {
           matches = true;
           break;
@@ -835,7 +833,7 @@ bool log_search_get_match_info(const char *message, size_t *out_match_start, siz
           continue;
         }
 
-        int rc = pcre2_jit_match(code, (PCRE2_SPTR)message, message_len, 0, 0, match_data, NULL);
+        int rc = pcre2_match(code, (PCRE2_SPTR)message, message_len, 0, 0, match_data, NULL);
         if (rc >= 0) {
           matches = true;
           PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);

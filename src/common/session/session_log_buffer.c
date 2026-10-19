@@ -108,13 +108,10 @@ size_t session_log_buffer_get_recent(session_log_buffer_t *buf, session_log_entr
   size_t write_pos = atomic_load_u64(&buf->write_pos);
   uint64_t total_entries = atomic_load_u64(&buf->sequence);
 
-  size_t start_pos = write_pos;
-  size_t entries_to_check = SESSION_LOG_BUFFER_SIZE;
-
-  if (total_entries < SESSION_LOG_BUFFER_SIZE) {
-    start_pos = 0;
-    entries_to_check = write_pos;
-  }
+  size_t entries_to_check = total_entries < SESSION_LOG_BUFFER_SIZE ? (size_t)total_entries : SESSION_LOG_BUFFER_SIZE;
+  if (entries_to_check > max_count)
+    entries_to_check = max_count;
+  size_t start_pos = (write_pos + SESSION_LOG_BUFFER_SIZE - entries_to_check) % SESSION_LOG_BUFFER_SIZE;
 
   size_t count = 0;
   for (size_t i = 0; i < entries_to_check && count < max_count; i++) {

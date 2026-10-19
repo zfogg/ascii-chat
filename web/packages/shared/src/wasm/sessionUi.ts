@@ -65,6 +65,11 @@ export class SessionUi {
   key(key: string): number {
     const special: Record<string, number> = {
       Escape: 27,
+      Enter: 13,
+      Backspace: 127,
+      Delete: 260,
+      Home: 261,
+      End: 262,
       ArrowUp: 256,
       ArrowDown: 257,
       ArrowLeft: 258,

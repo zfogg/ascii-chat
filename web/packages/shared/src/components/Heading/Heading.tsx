@@ -1,5 +1,5 @@
 import type { HTMLAttributes } from "react";
-import { createElement, useEffect, useState } from "react";
+import { createElement, useCallback, useState } from "react";
 import { useHeadingContext } from "./useHeadingContext";
 
 /**
@@ -41,18 +41,21 @@ export function Heading({
   const baseId =
     id || (typeof children === "string" ? slugify(children) : undefined);
 
-  // Register with context to ensure uniqueness
-  useEffect(() => {
-    if (!baseId) {
-      return undefined;
-    }
+  // Register when the heading enters the DOM and release its ID on detach.
+  const register = useCallback(
+    (element: HTMLHeadingElement | null) => {
+      if (!baseId || !element) {
+        return undefined;
+      }
 
-    const uniqueId = headingContext.registerHeading(baseId);
-    setFinalId(uniqueId);
-    return () => {
-      headingContext.unregisterHeading(uniqueId);
-    };
-  }, [baseId, headingContext]);
+      const uniqueId = headingContext.registerHeading(baseId);
+      setFinalId(uniqueId);
+      return () => {
+        headingContext.unregisterHeading(uniqueId);
+      };
+    },
+    [baseId, headingContext],
+  );
 
   const combinedClassName = `${baseClass} ${className}`.trim();
 
@@ -83,6 +86,7 @@ export function Heading({
     {
       className: combinedClassName,
       id: finalId,
+      ref: register,
       ...props,
     },
     content,

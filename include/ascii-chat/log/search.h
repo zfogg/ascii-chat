@@ -137,6 +137,8 @@ asciichat_error_t log_search_handle_key(keyboard_key_t key);
  * If no log file or read error: Falls back to in-memory buffer only.
  */
 asciichat_error_t log_search_gather_and_filter_logs(session_log_entry_t **out_entries, size_t *out_count);
+asciichat_error_t log_search_filter_buffer(session_log_buffer_t *logs, session_log_entry_t **out_entries,
+                                           size_t *out_count);
 
 /**
  * @brief Render grep input line at bottom of screen

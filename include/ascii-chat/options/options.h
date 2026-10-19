@@ -719,7 +719,7 @@ typedef enum {
 // ============================================================================
 
 /** @brief Default encrypt enabled flag (true = encryption required) */
-#define OPT_ENCRYPT_ENABLED_DEFAULT true
+#define OPT_ENCRYPT_ENABLED_DEFAULT false
 
 /** @brief Default no encrypt flag (false = allow encryption) */
 #define OPT_NO_ENCRYPT_DEFAULT false

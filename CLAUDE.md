@@ -120,32 +120,6 @@ ascii-chat binary has four primary modes:
 5. **discovery** - The mode that connects via session string via a discovery-service instance. ascii-chat binary runs as
    this mode by default when you don't pass a mode as a first positional argument.
 
-## Gastown
-
-If you are the gastown mayor, use the `gt` binary.
-
-https://github.com/steveyegge/gastown
-
-### Workflow:
-
-Work like this if you are the mayor:
-
-#### 1. As the mayor, create a convoy with bead IDs
-
-gt convoy create "Feature X" gt-abc12 gt-def34 --notify --human
-
-#### 2. Assign work to an agent
-
-gt sling gt-abc12 myproject
-
-#### 3. Track progress
-
-gt convoy list
-
-#### 4. Monitor agents
-
-gt agents
-
 ## Debugging Flags
 
 ### Snapshot Mode (Single Frame Capture)
@@ -713,45 +687,47 @@ All comments in code are important by nature. Write them in a professional, matt
 
 ### CMake Best Practices
 
-**CRITICAL: Never wrap required dependencies in `if(FOUND)` guards in cmake.**
+Required dependencies must be resolved at configure time and linked wherever their
+symbols are used. Do not wrap required linking in `if(FOO_FOUND)` guards that
+silently omit a library. Use `find_package(... REQUIRED)` or the dependency
+module's explicit failure checks.
 
-This is a C project. If the C code uses symbols from a library, those symbols MUST be linked. There is no way to conditionally compile away the symbols — they're either in the code or they're not.
+The dependency configuration lives in `cmake/deps/Dependencies.cmake` and its
+included modules. `vcpkg.json` records managed packages and version overrides;
+source-built dependencies also have configuration in `cmake/deps/`. Consult these
+files for platform-specific requirements and pinned versions.
 
-Spurious `if(FOUND)` guards around linking create silent failures:
+The native build uses:
 
-- Cmake finds the package ✓
-- Code compiles ✓
-- But linking is skipped (if condition somehow fails) ✗
-- Undefined symbols at runtime OR different behavior in CI with different environments
+- **Networking and security:** libuv, libsodium, OpenSSL, BearSSL,
+  libdatachannel, libwebsockets, miniupnpc, and mdns.
+- **Audio:** PortAudio, Opus, FFTW3, and WebRTC Audio Processing (AEC3),
+  with Abseil support.
+- **Media and compression:** FFmpeg (`avcodec`, `avformat`, `avutil`,
+  `swscale`, and `swresample`), x264/x265 encoder support, and zstd.
+- **Data and configuration:** PCRE2, SQLite3, yyjson, tomlc17, and uthash.
+- **Terminal rendering:** libvterm, FreeType2, and Fontconfig where supported.
 
-**All project dependencies are non-optional.** This includes:
+Requirements vary by platform and build target:
 
-- PCRE2, libsodium, BearSSL, yyjson — used unconditionally in multiple modules
-- FFmpeg, libwebsockets — required for musl static builds
-- PortAudio, Opus, JACK — audio pipeline components
-- libdatachannel, OpenSSL — networking and crypto
+- ALSA is a Linux audio dependency; JACK is an optional PortAudio backend.
+- miniupnpc supports automatic port mapping with a graceful fallback when
+  unavailable; follow its dependency module's platform-specific checks.
+- mimalloc is controlled by `USE_MIMALLOC` and is skipped on iOS.
+- libexecinfo supplies backtrace support for musl builds.
+- Criterion is a test dependency on supported Unix platforms, not Windows.
+- Platform libraries, source-build support libraries, and codec dependencies
+  are selected by the corresponding CMake modules. Native, WASM, iOS,
+  static, and shared builds do not all link the same libraries.
 
-**The only legitimate conditionals for dependencies:**
-
-- `if(JACK_FOUND)` — JACK is optional system audio backend (PortAudio may or may not use it)
-- Platform checks: `if(WIN32)`, `if(APPLE)`, `if(NOT WIN32)`
-- Build type checks: `if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")`, `if(USE_MUSL)`
-- Runtime checks: `if(TARGET ...)`, `if(DEFINED ...)`, `if(BUILD_SHARED_LIBS)` (actual build variants)
-
-**Correct pattern:** Link required deps unconditionally after they're found:
+Conditionals are appropriate for actual platform, feature, target, and build
+variants. Optional discovery must correspond to a supported fallback or disabled
+code path; it must not hide a missing dependency used by compiled code.
 
 ```cmake
-# ✅ CORRECT - find checks error if not found, linking is unconditional
 find_package(PCRE2 REQUIRED)
 target_link_libraries(my-target ${PCRE2_LIBRARIES})
-
-# ❌ WRONG - silent failure if PCRE2_FOUND somehow becomes false
-if(PCRE2_FOUND)
-    target_link_libraries(my-target ${PCRE2_LIBRARIES})
-endif()
 ```
-
-The `REQUIRED` keyword on `find_package()` is the found-check. It fails at config time if the package is missing. That's the right place for it.
 
 ### Git Workflow
 

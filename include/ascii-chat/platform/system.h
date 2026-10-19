@@ -757,6 +757,12 @@ ssize_t platform_write(int fd, const void *buf, size_t count);
 /** Duplicate a file descriptor, retaining its current destination across stdio redirection. */
 int platform_dup(int fd);
 
+/** Get the file descriptor associated with a stream. */
+int platform_fileno(FILE *stream);
+
+/** Redirect a descriptor to the same destination as another descriptor. */
+asciichat_error_t platform_dup2(int source_fd, int target_fd);
+
 /**
  * @brief Find which binary(ies) contain a given address
  *

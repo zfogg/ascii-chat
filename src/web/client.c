@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/policy.h>
 /**
  * @file client_wasm.c
  * @brief WASM entry point for ascii-chat client mode
@@ -39,6 +40,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/handshake/client.h>
+#include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/handshake/common.h>
@@ -122,6 +124,8 @@ static acip_transport_t g_wasm_transport = {.methods = &wasm_transport_methods, 
 static crypto_handshake_context_t g_crypto_handshake_ctx = {0};
 static bool g_initialized = false;
 static bool g_handshake_complete = false;
+static uint8_t g_crypto_mode = ACIP_CRYPTO_ENCRYPT;
+static bool g_version_received = false;
 static char g_crypto_password[256] = {0};
 static uint8_t g_client_identity_key[crypto_sign_SECRETKEYBYTES] = {0};
 static uint8_t g_expected_server_identity_key[crypto_sign_PUBLICKEYBYTES] = {0};
@@ -336,7 +340,9 @@ int client_get_crypto_error_message(char *output, size_t output_size) {
  */
 EMSCRIPTEN_KEEPALIVE
 int client_init_with_args(const char *args_json) {
-
+  // The module, renderers, and allocator outlive individual connections.
+  if (g_initialized)
+    return 0;
   // Parse space-separated arguments
   char *args_copy = NULL;
   char *argv[64] = {NULL};
@@ -348,10 +354,6 @@ int client_init_with_args(const char *args_json) {
   // Initialize options (sets up RCU, defaults, etc.)
   asciichat_error_t err = options_init(argc, argv);
   free(args_copy);
-
-  if (g_initialized) {
-    return -1;
-  }
 
   // Initialize platform layer
   err = platform_init();
@@ -387,54 +389,20 @@ void client_cleanup(void) {
   memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
 
   g_handshake_complete = false;
+  g_wasm_transport.crypto_ctx = NULL;
   g_connection_state = CONNECTION_STATE_DISCONNECTED;
-  g_initialized = false;
   sodium_memzero(g_crypto_password, sizeof(g_crypto_password));
   sodium_memzero(g_client_identity_key, sizeof(g_client_identity_key));
   sodium_memzero(g_expected_server_identity_key, sizeof(g_expected_server_identity_key));
   g_has_client_identity_key = false;
   g_has_expected_server_identity_key = false;
-  options_state_destroy();
-  buffer_system_cleanup();
-  platform_destroy();
+  // Keep module-wide options and buffer domains alive while browser renderers
+  // still reference them. Connection cleanup only resets authentication state.
 }
 
 // ============================================================================
 // Cryptography API
 // ============================================================================
-
-/** Build a signed ACDS join request without exporting the ephemeral signing key. */
-EMSCRIPTEN_KEEPALIVE
-asciichat_error_t client_acds_join_request(const char *session, const char *password, uint8_t *output) {
-  if (!session || !password || !output || strlen(session) == 0 || strlen(session) > 47 || strlen(password) > 127) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery session or password");
-  }
-  uint8_t public_key[crypto_sign_PUBLICKEYBYTES];
-  uint8_t secret_key[crypto_sign_SECRETKEYBYTES];
-  if (crypto_sign_keypair(public_key, secret_key) != 0) {
-    return SET_ERRNO(ERROR_CRYPTO, "Failed to create discovery identity");
-  }
-  memset(output, 0, 282);
-  size_t session_len = strlen(session);
-  output[0] = (uint8_t)session_len;
-  memcpy(output + 1, session, session_len);
-  memcpy(output + 49, public_key, sizeof(public_key));
-  uint64_t timestamp = (uint64_t)emscripten_date_now();
-  // Packed ACDS structs use host (little-endian) fields; signatures use network order.
-  memcpy(output + 145, &timestamp, sizeof(timestamp));
-  uint8_t message[9 + 48];
-  message[0] = (uint8_t)6004;
-  for (size_t i = 0; i < 8; ++i)
-    message[1 + i] = (uint8_t)(timestamp >> (56 - i * 8));
-  memcpy(message + 9, session, session_len);
-  int result = crypto_sign_detached(output + 81, NULL, message, 9 + session_len, secret_key);
-  sodium_memzero(secret_key, sizeof(secret_key));
-  if (result != 0)
-    return SET_ERRNO(ERROR_CRYPTO, "Failed to sign discovery join");
-  output[153] = password[0] != '\0';
-  memcpy(output + 154, password, strlen(password));
-  return ASCIICHAT_OK;
-}
 
 /**
  * Generate client keypair for handshake
@@ -1058,4 +1026,83 @@ void client_opus_decoder_cleanup(void) {
     opus_decoder_destroy(g_opus_decoder);
     g_opus_decoder = NULL;
   }
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_begin(uint8_t mode) {
+  g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
+  return acds_handshake_begin(&g_wasm_transport, mode);
+}
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_receive(uint32_t type, const void *payload, size_t length) {
+  asciichat_error_t result = acds_handshake_receive(&g_crypto_handshake_ctx, &g_wasm_transport, type, payload, length);
+  if (result != ASCIICHAT_OK) { g_connection_state = CONNECTION_STATE_ERROR; return result; }
+  if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
+    g_handshake_complete = true;
+    g_wasm_transport.crypto_ctx = &g_crypto_handshake_ctx.crypto_ctx;
+    g_connection_state = CONNECTION_STATE_CONNECTED;
+  } else { g_connection_state = CONNECTION_STATE_HANDSHAKE; }
+  return ASCIICHAT_OK;
+}
+
+/** Resolve browser inputs through the same policy as native and mobile clients. */
+EMSCRIPTEN_KEEPALIVE int client_resolve_crypto_policy(bool secure, int encryption) {
+  crypto_policy_t policy = {
+      .transport_secure = secure,
+      .encrypt = encryption == 1,
+      .no_encrypt = encryption == 0,
+      .has_password = g_crypto_password[0] != '\0',
+      .has_identity = g_has_client_identity_key,
+      .has_verification_key = g_has_expected_server_identity_key,
+  };
+  uint8_t mode;
+  if (crypto_policy_resolve(&policy, &mode) != ASCIICHAT_OK)
+    return -1;
+  g_crypto_mode = mode;
+  return mode;
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_handshake_begin(void) {
+  g_connection_state = CONNECTION_STATE_CONNECTING;
+  g_version_received = false;
+  g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
+  return acds_handshake_begin(&g_wasm_transport, g_crypto_mode);
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_handshake_receive(uint32_t type, const void *payload, size_t length) {
+  if (!g_version_received && type != PACKET_TYPE_PROTOCOL_VERSION)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected server protocol version first");
+  if (type == PACKET_TYPE_PROTOCOL_VERSION) {
+    if (g_version_received)
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Duplicate server protocol version");
+    if (!payload || length != sizeof(protocol_version_packet_t))
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid server protocol version");
+    const protocol_version_packet_t *version = payload;
+    if (NET_TO_HOST_U16(version->protocol_version) != 1 || version->supports_encryption != g_crypto_mode)
+      return SET_ERRNO(ERROR_CRYPTO, "Server rejected requested security policy");
+    g_version_received = true;
+    if (g_crypto_mode == ACIP_CRYPTO_NONE) {
+      g_connection_state = CONNECTION_STATE_CONNECTED;
+      return ASCIICHAT_OK;
+    }
+    crypto_capabilities_packet_t caps = {0};
+    caps.supported_kex_algorithms = HOST_TO_NET_U16(KEX_ALGO_X25519);
+    caps.supported_auth_algorithms = HOST_TO_NET_U16(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
+    caps.supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305 | CIPHER_ALGO_NONE);
+    caps.preferred_kex = KEX_ALGO_X25519;
+    caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(g_crypto_mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
+    caps.preferred_cipher = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
+    caps.requires_verification = g_has_expected_server_identity_key;
+    asciichat_error_t result =
+        packet_send_via_transport(&g_wasm_transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &caps, sizeof(caps), 0);
+    if (result != ASCIICHAT_OK || !g_has_expected_server_identity_key)
+      return result;
+    return packet_send_via_transport(&g_wasm_transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, g_expected_server_identity_key,
+                                     sizeof(g_expected_server_identity_key), 0);
+  }
+  if (type == PACKET_TYPE_CRYPTO_PARAMETERS) {
+    if (!payload || length != sizeof(crypto_parameters_packet_t) ||
+        (((const crypto_parameters_packet_t *)payload)->selected_cipher != CIPHER_ALGO_NONE) !=
+            ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode))
+      return SET_ERRNO(ERROR_CRYPTO, "Server changed requested payload encryption");
+  }
+  return client_acds_handshake_receive(type, payload, length);
 }

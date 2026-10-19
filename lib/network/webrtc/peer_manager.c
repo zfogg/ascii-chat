@@ -14,10 +14,12 @@
 #include <ascii-chat/network/webrtc/peer_manager.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/uthash.h>
 #include <string.h>
 
@@ -29,6 +31,10 @@ typedef struct {
   uint8_t session_id[16];              ///< Session UUID
   webrtc_peer_connection_t *pc;        ///< WebRTC peer connection
   webrtc_data_channel_t *dc;           ///< WebRTC data channel
+  acip_security_t *security;           ///< Owned until transferred to the transport
+  atomic_t security_ready;
+  atomic_t handshake_started_ns;
+  atomic_ptr_t pending_transport;      ///< Owned until authenticated and handed to the application
   bool is_connected;                   ///< DataChannel opened
   bool remote_sdp_attempted;            ///< A remote description was applied or attempted
   bool remote_description_set;          ///< libdatachannel has installed the remote SDP and ICE transport
@@ -177,6 +183,9 @@ static void remove_peer_locked(webrtc_peer_manager_t *manager, peer_entry_t *pee
   }
 
   HASH_DEL(manager->peers, peer);
+  acip_transport_t *pending = atomic_ptr_exchange(&peer->pending_transport, NULL);
+  if (pending)
+    acip_transport_destroy(pending);
 
   if (peer->dc) {
     webrtc_datachannel_destroy(peer->dc);
@@ -185,12 +194,30 @@ static void remove_peer_locked(webrtc_peer_manager_t *manager, peer_entry_t *pee
     webrtc_peer_connection_destroy(peer->pc);
   }
 
+  if (peer->security) {
+    acip_security_cleanup(peer->security);
+    SAFE_FREE(peer->security);
+  }
   SAFE_FREE(peer);
 }
 
 // =============================================================================
 // WebRTC Callbacks
 // =============================================================================
+
+static void on_peer_security_ready(acip_transport_t *transport, void *user_data) {
+  peer_entry_t *peer = user_data;
+  webrtc_peer_manager_t *manager = peer->manager;
+  atomic_store_bool(&peer->security_ready, true);
+  if (manager->config.on_transport_ready) {
+    acip_transport_t *pending = atomic_ptr_exchange(&peer->pending_transport, NULL);
+    if (!pending)
+      return;
+    peer->is_connected = true;
+    manager->config.on_transport_ready(pending, peer->participant_id, manager->config.user_data);
+  }
+  (void)transport;
+}
 
 /**
  * @brief DataChannel open callback - wrap in ACIP transport
@@ -214,28 +241,26 @@ static void on_datachannel_open(webrtc_data_channel_t *dc, void *user_data) {
     log_debug("Updated peer->dc from DataChannel callback (dc=%p)", (void *)peer->dc);
   }
 
-  // Create ACIP transport wrapper
-  acip_transport_t *transport = acip_webrtc_transport_create(peer->pc, peer->dc, manager->config.crypto_ctx);
+  acip_security_t *security = peer->security;
+  if (!security)
+    return;
+  acip_transport_t *transport =
+      acip_webrtc_transport_create_secure(peer->pc, peer->dc, security, on_peer_security_ready, peer);
   if (!transport) {
-    log_error("Failed to create ACIP transport for WebRTC DataChannel");
     return;
   }
-
-  log_debug("Transport created, checking callback: on_transport_ready=%p, user_data=%p",
-            (void *)manager->config.on_transport_ready, manager->config.user_data);
-
-  // Notify application
-  if (manager->config.on_transport_ready) {
-    log_debug("Calling on_transport_ready callback");
-    manager->config.on_transport_ready(transport, peer->participant_id, manager->config.user_data);
-    log_debug("Callback completed");
-  } else {
-    // No callback - clean up transport
-    log_warn("No on_transport_ready callback registered, cleaning up transport");
-    acip_transport_destroy(transport);
+  peer->security = NULL;
+  atomic_ptr_store(&peer->pending_transport, transport);
+  atomic_store_u64(&peer->handshake_started_ns, time_get_ns());
+  if (atomic_load_bool(&peer->security_ready)) {
+    on_peer_security_ready(transport, peer);
+    return;
   }
-
-  peer->is_connected = true;
+  asciichat_error_t result = security->handshake.is_server ? ASCIICHAT_OK : acip_security_start(security, transport);
+  if (result != ASCIICHAT_OK) {
+    log_error("Cannot start WebRTC peer security: %s", asciichat_error_string(result));
+    webrtc_peer_connection_close(peer->pc);
+  }
 }
 
 /**
@@ -346,7 +371,7 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
   }
 
   // Allocate peer entry
-  peer_entry_t *peer = SAFE_MALLOC(sizeof(peer_entry_t), peer_entry_t *);
+  peer_entry_t *peer = SAFE_CALLOC(1, sizeof(peer_entry_t), peer_entry_t *);
   if (!peer) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate peer entry");
   }
@@ -360,6 +385,17 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
   peer->remote_description_set = false;
   peer->gathering_timeout_reported = false;
   peer->manager = manager;
+  peer->security = SAFE_CALLOC(1, sizeof(acip_security_t), acip_security_t *);
+  if (!peer->security) {
+    SAFE_FREE(peer);
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate peer security");
+  }
+  asciichat_error_t security_result = acip_security_init_options(peer->security, manager->role == WEBRTC_ROLE_CREATOR);
+  if (security_result != ASCIICHAT_OK) {
+    SAFE_FREE(peer->security);
+    SAFE_FREE(peer);
+    return security_result;
+  }
 
   // Create WebRTC configuration
   webrtc_config_t webrtc_config = {
@@ -384,6 +420,10 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
   // Create peer connection
   asciichat_error_t result = webrtc_create_peer_connection(&webrtc_config, &peer->pc);
   if (result != ASCIICHAT_OK) {
+    if (peer->security) {
+      acip_security_cleanup(peer->security);
+      SAFE_FREE(peer->security);
+    }
     SAFE_FREE(peer);
     return SET_ERRNO(result, "Failed to create WebRTC peer connection");
   }
@@ -395,6 +435,10 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
     result = webrtc_create_datachannel(peer->pc, "acip", &peer->dc);
     if (result != ASCIICHAT_OK) {
       webrtc_peer_connection_destroy(peer->pc);
+      if (peer->security) {
+        acip_security_cleanup(peer->security);
+        SAFE_FREE(peer->security);
+      }
       SAFE_FREE(peer);
       return SET_ERRNO(result, "Failed to create WebRTC data channel");
     }
@@ -411,6 +455,10 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
     if (result != ASCIICHAT_OK) {
       webrtc_datachannel_destroy(peer->dc);
       webrtc_peer_connection_destroy(peer->pc);
+      if (peer->security) {
+        acip_security_cleanup(peer->security);
+        SAFE_FREE(peer->security);
+      }
       SAFE_FREE(peer);
       return SET_ERRNO(result, "Failed to set datachannel callbacks");
     }
@@ -782,7 +830,10 @@ int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager,
       log_warn("ICE gathering exceeded %ums; keeping peer alive while trickle ICE continues", timeout_ms);
     }
 
-    if (connection_state == WEBRTC_STATE_FAILED || connection_state == WEBRTC_STATE_CLOSED) {
+    uint64_t handshake_started = atomic_load_u64(&peer->handshake_started_ns);
+    bool handshake_expired = handshake_started && !atomic_load_bool(&peer->security_ready) &&
+                             time_elapsed_ns(handshake_started, time_get_ns()) > 30 * NS_PER_SEC_INT;
+    if (handshake_expired || connection_state == WEBRTC_STATE_FAILED || connection_state == WEBRTC_STATE_CLOSED) {
       webrtc_gathering_state_t state = webrtc_get_gathering_state(peer->pc);
 
       log_error("WebRTC negotiation failed for peer (participant_id=%02x%02x%02x%02x..., timeout=%ums, "

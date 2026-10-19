@@ -39,7 +39,8 @@
  * @param client_id Client ID to include in packet header
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
+static asciichat_error_t transport_sendv_impl(acip_transport_t *transport, const socket_buffer_t *buffers,
+                                              size_t count) {
   if (!transport || !transport->methods || !buffers || !count || count > SOCKET_IOV_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport vectors");
   size_t total = 0;
@@ -71,6 +72,17 @@ asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket
   asciichat_error_t result = acip_transport_send(transport, packet, total);
   buffer_release(packet);
   return result;
+}
+
+asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
+  asciichat_error_t result = transport_sendv_impl(transport, buffers, count);
+  if (result == ASCIICHAT_OK)
+    return result;
+  log_error("ACIP packet send failed: %s", asciichat_error_string(result));
+  // A local preparation failure can drop one frame without ending the session.
+  // ERROR_MESSAGE sanitizes these failures to fatal ERROR_INTERNAL at the peer;
+  // leave protocol-level rejection notifications to callers that intend to stop.
+  return SET_ERRNO(result, "ACIP packet send failed: %s", asciichat_error_string(result));
 }
 
 asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet_type_t type,
@@ -283,7 +295,7 @@ asciichat_error_t acip_send_error(acip_transport_t *transport, uint32_t error_co
 
   // Allocate buffer for header + message
   size_t total_size = sizeof(header) + msg_len;
-  uint8_t *buffer = buffer_alloc(NULL, total_size);
+  uint8_t *buffer = buffer_alloc(buffer_control_domain(), total_size);
   if (!buffer) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer");
   }

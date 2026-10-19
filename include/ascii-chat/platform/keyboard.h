@@ -301,5 +301,7 @@ typedef enum {
  * @ingroup platform
  */
 keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_opts_t *opts);
+/** Apply a decoded key without platform I/O. */
+keyboard_line_edit_result_t keyboard_apply_key(keyboard_line_edit_opts_t *opts);
 
 /** @} */

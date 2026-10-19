@@ -229,8 +229,7 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
   snprintf(view->mode, sizeof(view->mode), "%s", g_mode);
   view->sampled_ns = snapshot->sampled_ns;
   if (!view->page) {
-    stats_view_add(view, "Uptime %.1fs",
-                   (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9);
+    stats_view_add(view, "Uptime %.1fs", (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9);
     stats_view_add(view, "%-28s %14s %14s", "PIPELINE / NETWORK", "TOTAL", "PER SECOND");
     for (int i = 0; i < STATS_COUNTER_COUNT; ++i) {
       if (!snapshot->capabilities.counters[i])
@@ -248,8 +247,7 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
     for (int i = 0; i < STATS_DURATION_COUNT; ++i) {
       if (!snapshot->capabilities.durations[i])
         continue;
-      if (i == STATS_DURATION_ASCII_CONVERT && strcmp(g_mode, "client") == 0 &&
-          !snapshot->durations[i].observations)
+      if (i == STATS_DURATION_ASCII_CONVERT && strcmp(g_mode, "client") == 0 && !snapshot->durations[i].observations)
         stats_view_add(view, "%-28s %14s %14s", "ascii_convert", "n/a (server)", "n/a");
       else if (i == STATS_DURATION_CONNECTION_SETUP && snapshot->durations[i].observations)
         stats_view_add(view, "%-28s %14.3f %14.3f", "connection_setup (last)",
@@ -358,7 +356,11 @@ static void *stats_worker(void *unused) {
     bool server_like = strcmp(g_mode, "server") == 0 || strcmp(g_mode, "discovery-service") == 0;
     if (g_keyboard && (active || (server_like && state.screen < 0))) {
       keyboard_key_t key = ui_input_read_key(UI_SCREEN_STATS);
-      if (active && (key == '=' || key == KEY_ESCAPE)) {
+      if (active && key == ']') {
+        stats_runtime_toggle();
+        active = false;
+        ui_controller_toggle_logs();
+      } else if (active && (key == '=' || key == KEY_ESCAPE)) {
         atomic_store_bool_impl(&g_active, false);
         active = false;
       } else if (!active && key == '=') {
@@ -399,8 +401,7 @@ static void *stats_worker(void *unused) {
       view.selected = selected;
       view.offset = 0;
       if (active)
-        ui_controller_submit(UI_SCREEN_STATS, g_fd, stats_minimum(&view), stats_render, &view,
-                             sizeof(view));
+        ui_controller_submit(UI_SCREEN_STATS, g_fd, stats_minimum(&view), stats_render, &view, sizeof(view));
       if (print_due) {
         print_summary(&snapshot, &rates);
         next_print = now + (uint64_t)g_interval * NS_PER_SEC_INT;

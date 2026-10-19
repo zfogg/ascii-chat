@@ -14,7 +14,7 @@ export default function DocsHub() {
     ]);
   }, []);
 
-  // Color palette for randomization
+  // Stable section colors across rerenders
   const colorOptions = [
     { colorClass: "accent-purple", textClass: "text-purple-300" },
     { colorClass: "accent-pink", textClass: "text-pink-300" },
@@ -28,31 +28,27 @@ export default function DocsHub() {
     { colorClass: "accent-red", textClass: "text-red-300" },
   ];
 
-  const getRandomColor = () => {
-    return colorOptions[Math.floor(Math.random() * colorOptions.length)];
-  };
-
   const docSections = [
     {
       icon: "⚙️",
       title: "Configuration",
       description: "Config files, options, color schemes, shell completions",
       to: "/docs/configuration",
-      ...getRandomColor(),
+      ...colorOptions[0],
     },
     {
       icon: "🎥",
       title: "Hardware",
       description: "Webcams, microphones, speakers, keyboard shortcuts",
       to: "/docs/hardware",
-      ...getRandomColor(),
+      ...colorOptions[1],
     },
     {
       icon: "🖥️",
       title: "Terminal",
       description: "Color modes, dimensions, UTF-8, terminal capabilities",
       to: "/docs/terminal",
-      ...getRandomColor(),
+      ...colorOptions[2],
     },
     {
       icon: "🎨",
@@ -60,56 +56,56 @@ export default function DocsHub() {
       description:
         "Render modes, palettes, color filters, animations, framerate",
       to: "/docs/display",
-      ...getRandomColor(),
+      ...colorOptions[3],
     },
     {
       icon: "🎬",
       title: "Media Files and URLs",
       description: "Local files, remote URLs, YouTube, live streams, FFmpeg",
       to: "/docs/media",
-      ...getRandomColor(),
+      ...colorOptions[4],
     },
     {
       icon: "🌐",
       title: "Network",
       description: "Connections, discovery service, NAT traversal, protocols",
       to: "/docs/network",
-      ...getRandomColor(),
+      ...colorOptions[5],
     },
     {
       icon: "📸",
       title: "Snapshot Mode",
       description: "Single-frame capture, scripting, automation examples",
       to: "/docs/snapshot",
-      ...getRandomColor(),
+      ...colorOptions[6],
     },
     {
       icon: "🔐",
       title: "Crypto & Security",
       description: "Encryption, authentication, SSH keys, security flags, TOFU",
       to: "/docs/crypto",
-      ...getRandomColor(),
+      ...colorOptions[7],
     },
     {
       icon: "📖",
       title: "ascii-chat(1)",
       description: "Complete man page with all command-line options",
       to: "/man1",
-      ...getRandomColor(),
+      ...colorOptions[8],
     },
     {
       icon: "📋",
       title: "ascii-chat(5)",
       description: "File format and configuration syntax documentation",
       to: "/man5",
-      ...getRandomColor(),
+      ...colorOptions[9],
     },
     {
       icon: "📚",
       title: "ascii-chat-*(3)",
       description: "Source code documentation for ascii-chat and libasciichat",
       to: "/man3",
-      ...getRandomColor(),
+      ...colorOptions[0],
     },
     {
       icon: "🗺️",
@@ -117,7 +113,7 @@ export default function DocsHub() {
       description:
         "Interactive diagrams: options pipeline, media, render-file, network protocol, crypto handshake, discovery",
       to: "/docs/architecture",
-      ...getRandomColor(),
+      ...colorOptions[1],
     },
   ];
 

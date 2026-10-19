@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { type RefObject, useCallback, useEffect, useRef } from "react";
 import { getMirrorModule, type MirrorModule } from "../../wasm/mirror";
 import {
@@ -58,7 +59,9 @@ export function useInitAsciiRenderer({
   );
   const observedContainerSizeRef = useRef({ width: 0, height: 0 });
   const requestedGridRef = useRef({ columns, rows });
-  requestedGridRef.current = { columns, rows };
+  useLayoutEffect(() => {
+    requestedGridRef.current = { columns, rows };
+  }, [columns, rows]);
   const currentMatrixModeRef = useRef<boolean>(false);
 
   // Rebuild and apply args with current settings from WASM state

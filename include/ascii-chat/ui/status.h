@@ -20,7 +20,9 @@
 
 #include <time.h>
 #include "../common.h"
-#include "../network/tcp/server.h"
+#include <ascii-chat/ui/frame_buffer.h>
+#include <ascii-chat/platform/terminal.h>
+typedef struct tcp_server tcp_server_t;
 
 /**
  * @brief Status information for server/discovery service modes
@@ -37,8 +39,12 @@ typedef struct {
   bool ipv6_bound;           ///< Whether IPv6 socket is bound
   bool session_is_mdns_only; ///< Whether session is mDNS-only or ACDS
   time_t start_time;         ///< Server start time (for uptime calculation)
+  const char *detail;        ///< Optional client controls in the address row
   const char *mode_name;     ///< Mode name (e.g., "Server", "Discovery Service")
 } ui_status_t;
+
+/** The same four-line status header in every host. */
+void ui_status_render_header(frame_buffer_t *buffer, terminal_size_t size, void *status);
 
 /**
  * @brief Gather current status information

@@ -32,7 +32,7 @@ asciichat_error_t crypto_handshake_server_send_parameters(crypto_handshake_conte
 
   params.selected_kex = KEX_ALGO_X25519;
   params.selected_auth = has_identity_key ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
-  params.selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
+  params.selected_cipher = ctx->crypto_ctx.encrypt_data ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
   params.verification_enabled = ctx->require_client_auth ? 1 : 0;
   params.kex_public_key_size = ctx->crypto_ctx.public_key_size;
   params.shared_secret_size = CRYPTO_SHARED_KEY_SIZE;
@@ -376,7 +376,9 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
   } else if (client_sent_identity) {
     // No whitelist checking - just store the client's Ed25519 key for later
     // (Already stored at line 313-314, but keep this for clarity)
-    ctx->client_ed25519_key_verified = false;
+    // Discovery can require proof of identity without restricting which identities may join.
+    // require_client_auth ensured that the signature was verified above.
+    ctx->client_ed25519_key_verified = ctx->require_client_auth && ctx->allow_unlisted_client_identity;
   }
 
   // Set peer's X25519 encryption key - this also derives the shared secret

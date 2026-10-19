@@ -8,8 +8,6 @@ import {
 } from "../../src/network/WebRTCSession";
 import {
   AcdsType,
-  lookupRequest,
-  parseJoined,
   parseSignal,
   signalPacket,
 } from "../../src/network/acdsProtocol";
@@ -17,6 +15,7 @@ import {
 const signalingHarness = vi.hoisted(() => ({
   current: null as null | {
     emit(state: number): void;
+    packet(type: number, payload: Uint8Array): void;
     sendPacket: ReturnType<typeof vi.fn>;
     options: {
       applicationEncryption?: boolean;
@@ -28,6 +27,9 @@ const signalingHarness = vi.hoisted(() => ({
 vi.mock("../../src/network/ClientConnection", () => ({
   ClientConnection: class {
     private stateCallback: ((state: number) => void) | null = null;
+    private packetCallback:
+      | ((packet: { type: number }, payload: Uint8Array) => void)
+      | null = null;
 
     constructor(
       public options: {
@@ -40,7 +42,14 @@ vi.mock("../../src/network/ClientConnection", () => ({
     onStateChange(callback: (state: number) => void) {
       this.stateCallback = callback;
     }
-    onPacketReceived() {}
+    onPacketReceived(
+      callback: (packet: { type: number }, payload: Uint8Array) => void,
+    ) {
+      this.packetCallback = callback;
+    }
+    packet(type: number, payload: Uint8Array) {
+      this.packetCallback?.({ type }, payload);
+    }
     connect() {
       return Promise.resolve();
     }
@@ -54,6 +63,23 @@ vi.mock("../../src/network/ClientConnection", () => ({
     }
   },
 }));
+
+vi.mock("../../src/network/DiscoveryProtocol", async () => {
+  const { SessionRejectedError } =
+    await import("../../src/network/acdsProtocol");
+  return {
+    DiscoveryProtocol: class {
+      constructor(private send: (type: number, payload: Uint8Array) => void) {}
+      enter() {
+        this.send(AcdsType.LOOKUP, new Uint8Array());
+      }
+      receive() {
+        throw new SessionRejectedError("Session rejected by shared C protocol");
+      }
+      close() {}
+    },
+  };
+});
 
 function channel() {
   return {
@@ -181,6 +207,49 @@ describe("Discovery connection settings", () => {
 });
 
 describe("WebRTC signaling reconnects", () => {
+  it("keeps media credentials separate from discovery-service credentials", () => {
+    new WebRTCSession({
+      sessionName: "blue-mountain-tiger",
+      password: "media-password",
+      signalingUrl: "wss://localhost",
+      applicationEncryption: true,
+      cryptoOptions: {
+        password: "media-password",
+        expectedServerPublicKeyText: "media-key",
+      },
+      stunServers: [],
+      turnServers: [],
+    });
+    expect(
+      signalingHarness.current!.options.applicationEncryption,
+    ).toBeUndefined();
+    expect(signalingHarness.current!.options).not.toHaveProperty(
+      "cryptoOptions",
+    );
+  });
+
+  it.each([AcdsType.INFO, AcdsType.JOINED, AcdsType.END])(
+    "stops retrying rejected/ended session response %s",
+    async (type) => {
+      const session = new WebRTCSession({
+        sessionName: "blue-mountain-tiger",
+        password: "",
+        signalingUrl: "ws://localhost",
+        stunServers: [],
+        turnServers: [],
+      });
+      const result = session.connect();
+      const rejected = expect(result).rejects.toThrow();
+      signalingHarness.current!.emit(ConnectionState.CONNECTED);
+      signalingHarness.current!.packet(
+        type,
+        new Uint8Array(type === AcdsType.JOINED ? 519 : 72),
+      );
+      await rejected;
+      expect(session.canReconnect).toBe(false);
+      expect(session.getState()).toBe(ConnectionState.ERROR);
+    },
+  );
   it("enables protocol negotiation and the transport-appropriate encryption default", () => {
     new WebRTCSession({
       sessionName: "blue-mountain-tiger",
@@ -214,7 +283,7 @@ describe("WebRTC signaling reconnects", () => {
     expect(signaling.sendPacket).toHaveBeenCalledTimes(1);
     expect(signaling.sendPacket).toHaveBeenLastCalledWith(
       AcdsType.LOOKUP,
-      lookupRequest(options.sessionName),
+      expect.any(Uint8Array),
     );
 
     signaling.emit(ConnectionState.CONNECTING);
@@ -412,21 +481,6 @@ describe("WebRTC ACIP framing", () => {
 });
 
 describe("ACDS wire compatibility", () => {
-  it("encodes fixed lookup and parses the native fixed JOINED response", () => {
-    expect(lookupRequest("blue-mountain-tiger").length).toBe(49);
-    expect(() => lookupRequest("bad name")).toThrow();
-    const bytes = new Uint8Array(519);
-    bytes[0] = 1;
-    bytes[130] = 2;
-    bytes[146] = 3;
-    bytes[162] = 4;
-    bytes[196] = 1;
-    expect(parseJoined(bytes).hostId[0]).toBe(4);
-    bytes[178] = 1;
-    bytes[179] = 5;
-    expect(parseJoined(bytes).hostId[0]).toBe(5);
-    expect(() => parseJoined(bytes.slice(0, 518))).toThrow("Truncated");
-  });
   it("accepts the host answer and rejects a different sender", () => {
     const local = {
       participantId: new Uint8Array(16).fill(1),

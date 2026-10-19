@@ -1,17 +1,16 @@
+import { DiscoveryProtocol } from "./DiscoveryProtocol";
 import { ClientConnection } from "./ClientConnection";
 import { WebRTCBridge } from "./WebRTCBridge";
 import type { ClientSession } from "./Transport";
 import {
   AcdsType,
-  lookupRequest,
-  joinRequest,
-  parseJoined,
+  SessionRejectedError,
   parseSignal,
   signalPacket,
-  readString,
   type JoinedSession,
 } from "./acdsProtocol";
 import {
+  PeerCryptoSession,
   ConnectionState,
   PacketType,
   parsePacket,
@@ -21,9 +20,13 @@ import {
 import type { ClientCryptoOptions } from "../wasm/client";
 
 export interface DiscoveryOptions {
+  createSession?: boolean;
+  onCreated?: (name: string) => void;
   sessionName: string;
   password: string;
   signalingUrl: string;
+  signalingApplicationEncryption?: boolean;
+  signalingCryptoOptions?: ClientCryptoOptions;
   applicationEncryption?: boolean;
   cryptoOptions?: ClientCryptoOptions;
   stunServers: string[];
@@ -69,10 +72,13 @@ export function discoveryRTCConfiguration(
 
 /** Signaling stays on ACDS; all media travels on the peer's DTLS DataChannel. */
 export class WebRTCSession implements ClientSession {
+  canReconnect = true;
   readonly transportType = "webrtc" as const;
+  private discovery: DiscoveryProtocol | null = null;
   private signaling: ClientConnection;
   private peer: RTCPeerConnection | null = null;
   private bridge: WebRTCBridge | null = null;
+  private peerCrypto: PeerCryptoSession | null = null;
   private joined: JoinedSession | null = null;
   private state = ConnectionState.DISCONNECTED;
   private stateCallback: ((state: ConnectionState) => void) | null = null;
@@ -111,11 +117,11 @@ export class WebRTCSession implements ClientSession {
   ) {
     this.signaling = new ClientConnection({
       serverUrl: options.signalingUrl,
-      ...(options.applicationEncryption === undefined
+      ...(options.signalingApplicationEncryption === undefined
         ? {}
-        : { applicationEncryption: options.applicationEncryption }),
-      ...(options.cryptoOptions
-        ? { cryptoOptions: options.cryptoOptions }
+        : { applicationEncryption: options.signalingApplicationEncryption }),
+      ...(options.signalingCryptoOptions
+        ? { cryptoOptions: options.signalingCryptoOptions }
         : {}),
       // Plain ws:// signaling uses the ACIP crypto handshake; wss:// relies on
       // TLS when ACDS does not require client identity authentication.
@@ -136,7 +142,6 @@ export class WebRTCSession implements ClientSession {
       throw new Error(
         "Provide both TURN username and password, or leave both blank.",
       );
-    lookupRequest(this.options.sessionName);
     this.setState(ConnectionState.CONNECTING);
     this.options.onProgress?.("Connecting to discovery service");
     const connected = new Promise<void>((resolve, reject) => {
@@ -160,9 +165,14 @@ export class WebRTCSession implements ClientSession {
         this.lookedUp = true;
         this.options.onProgress?.("Looking up session");
         try {
-          this.signaling.sendPacket(
-            AcdsType.LOOKUP,
-            lookupRequest(this.options.sessionName),
+          this.discovery?.close();
+          this.discovery = new DiscoveryProtocol((type, payload) =>
+            this.signaling.sendPacket(type, payload),
+          );
+          this.discovery.enter(
+            false,
+            this.options.sessionName,
+            this.options.password,
           );
         } catch (error) {
           this.fail(error);
@@ -210,26 +220,9 @@ export class WebRTCSession implements ClientSession {
     type: number,
     payload: Uint8Array,
   ): Promise<void> {
-    if (type === AcdsType.INFO) {
-      if (payload.length < 72) throw new Error("Truncated session information");
-      if (!payload[0]) throw new Error("Session not found");
-      if (payload[52] !== 1)
-        throw new Error(
-          "This session does not offer WebRTC. Start the native server with --webrtc.",
-        );
-      if (payload[70] || payload[71])
-        throw new Error(
-          "This session requires identity verification that this browser client does not yet support.",
-        );
-      if (payload[53] && !this.options.password)
-        throw new Error("This session requires a password");
-      this.options.onProgress?.("Joining session");
-      this.signaling.sendPacket(
-        AcdsType.JOIN,
-        joinRequest(this.options.sessionName, this.options.password),
-      );
-    } else if (type === AcdsType.JOINED) {
-      this.joined = parseJoined(payload);
+    const snapshot = this.discovery?.receive(type, payload);
+    if (snapshot?.state === 6 && !this.joined) {
+      this.joined = snapshot.joined;
       this.options.onProgress?.("Negotiating WebRTC connection");
       this.peer = new RTCPeerConnection(
         discoveryRTCConfiguration(this.options, this.joined),
@@ -282,6 +275,24 @@ export class WebRTCSession implements ClientSession {
         negotiated: true,
         id: 0,
       });
+      this.peerCrypto = await PeerCryptoSession.create(
+        {
+          ...this.options.cryptoOptions,
+          password:
+            this.options.cryptoOptions?.password || this.options.password,
+        },
+        this.options.applicationEncryption,
+        false,
+        (packet) => {
+          if (!this.bridge) throw new Error("WebRTC bridge is not ready");
+          this.bridge.send(packet);
+        },
+      );
+      if (this.closed) {
+        this.peerCrypto.close();
+        this.peerCrypto = null;
+        return;
+      }
       channel.onopen = () => {
         if (this.closed) {
           channel.close();
@@ -292,11 +303,10 @@ export class WebRTCSession implements ClientSession {
           channel,
           (bytes) => {
             try {
+              const decoded = this.peerCrypto!.receive(bytes);
+              if (!decoded) return;
+              bytes = decoded;
               const packet = parsePacket(bytes);
-              if (packet.type === PacketType.ENCRYPTED)
-                throw new Error(
-                  "Unexpected custom encryption on WebRTC transport",
-                );
               if (packet.type === PacketType.PING)
                 this.sendPacket(PacketType.PONG, bytes.slice(22));
               else {
@@ -334,6 +344,11 @@ export class WebRTCSession implements ClientSession {
           (error) => this.fail(error),
           this.peer?.sctp?.maxMessageSize,
         );
+        try {
+          this.peerCrypto!.flush();
+        } catch (error) {
+          this.fail(error);
+        }
       };
       channel.onclose = () => {
         if (!this.closed) this.fail(new Error("WebRTC DataChannel closed"));
@@ -393,13 +408,6 @@ export class WebRTCSession implements ClientSession {
           await this.peer.addIceCandidate(candidate);
         else this.pendingIce.push(candidate);
       }
-    } else if (type === AcdsType.END || type === AcdsType.ERROR) {
-      throw new Error(
-        type === AcdsType.END
-          ? "Session ended"
-          : readString(payload, 2, 256) ||
-              "Discovery service rejected the request",
-      );
     }
   }
 
@@ -416,6 +424,7 @@ export class WebRTCSession implements ClientSession {
     if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
     this.disconnectedTimer = null;
     const failure = error instanceof Error ? error : new Error(String(error));
+    if (failure instanceof SessionRejectedError) this.canReconnect = false;
     this.rejectConnect?.(failure);
     this.rejectConnect = null;
     this.disconnect();
@@ -429,11 +438,18 @@ export class WebRTCSession implements ClientSession {
   sendPacket(type: number, payload: Uint8Array): void {
     if (!this.bridge || this.state !== ConnectionState.CONNECTED)
       throw new Error("WebRTC is not connected");
-    // DTLS provides encryption; ACIP media packets carry no custom encryption wrapper.
-    this.bridge.send(
-      serializePacket(type, payload, 0),
-      type === PacketType.IMAGE_FRAME,
-    );
+    // Drop replaceable media before encryption advances the peer's nonce.
+    if (
+      type === PacketType.IMAGE_FRAME &&
+      this.bridge.getBufferedAmount() > 256 * 1024
+    )
+      return;
+    try {
+      this.peerCrypto!.sendPacket(serializePacket(type, payload, 0));
+    } catch (error) {
+      this.fail(error);
+      throw error;
+    }
   }
   sendUnencryptedAcipPacket(type: number, payload: Uint8Array): void {
     this.sendPacket(type, payload);
@@ -460,21 +476,16 @@ export class WebRTCSession implements ClientSession {
     this.clearTimer();
     this.rejectConnect?.(new Error("Connection cancelled"));
     this.rejectConnect = null;
-    if (
-      this.joined &&
-      this.signaling.getState() === ConnectionState.CONNECTED
-    ) {
-      try {
-        const leave = new Uint8Array(32);
-        leave.set(this.joined.sessionId);
-        leave.set(this.joined.participantId, 16);
-        this.signaling.sendPacket(AcdsType.LEAVE, leave);
-      } catch {
-        /* The discovery socket may already be closed. */
-      }
+    try {
+      this.discovery?.close();
+    } catch {
+      /* Signaling may already be closed. */
     }
+    this.discovery = null;
     this.bridge?.close();
     this.bridge = null;
+    this.peerCrypto?.close();
+    this.peerCrypto = null;
     if (this.peer) {
       this.peer.onconnectionstatechange = null;
       this.peer.onicecandidate = null;

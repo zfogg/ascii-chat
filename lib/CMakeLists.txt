@@ -27,6 +27,7 @@ set(CORE_SRCS
     ${LIB_DIR}/log/asan.c
     # ui/
     ${LIB_DIR}/ui/session.c
+    ${LIB_DIR}/ui/session_status.c
     ${LIB_DIR}/ui/session_input.c
     ${LIB_DIR}/ui/session_help.c
     ${LIB_DIR}/ui/session_splash.c
@@ -127,6 +128,7 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/session/render.c
     ${CMAKE_SOURCE_DIR}/src/common/session/settings.c
     ${CMAKE_SOURCE_DIR}/src/common/session/audio.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/av_state.c
     ${CMAKE_SOURCE_DIR}/src/common/session/participant.c
     ${CMAKE_SOURCE_DIR}/src/common/session/host.c
     ${CMAKE_SOURCE_DIR}/src/common/session/keyboard_handler.c
@@ -138,6 +140,14 @@ set(CORE_SRCS
     # Third-party: tomlc17
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
 )
+
+if(WIN32)
+    # The upstream TOML parser uses portable C stdio rather than MSVC's secure CRT extensions.
+    set_source_files_properties(
+        "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c"
+        PROPERTIES COMPILE_DEFINITIONS _CRT_SECURE_NO_WARNINGS
+    )
+endif()
 
 # Named registry, mutex tracking, backtrace, and sync always included (required for all builds)
 # These provide debug implementations for DEBUG builds, stubs for RELEASE builds

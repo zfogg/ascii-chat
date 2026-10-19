@@ -3,6 +3,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/terminal.h>
 #include <stddef.h>
+#include <ascii-chat/video/anim/controller.h>
 
 /** Maximum complete frame size accepted by the presenter, including cursor controls. */
 #define UI_CONTROLLER_MAX_FRAME_BYTES (16 * 1024 * 1024)
@@ -13,6 +14,7 @@ typedef enum {
   UI_SCREEN_MEDIA,
   UI_SCREEN_SPLASH,
   UI_SCREEN_RENDER_PROGRESS,
+  UI_SCREEN_LOGS,
   UI_SCREEN_HELP,
   UI_SCREEN_STATS,
   UI_SCREEN_SYNC,
@@ -40,6 +42,8 @@ void ui_controller_restore_terminal(void);
 void ui_controller_redraw(void);
 /** Show volume feedback for 1.5 seconds after a volume or mute control is used. */
 void ui_controller_show_volume(void);
+void ui_controller_toggle_logs(void);
+void ui_controller_hide_logs(void);
 /** Atomic query, safe for interrupt handling. */
 bool ui_controller_is_blocked(void);
 /** Lock-free query for console logging, including logs from rendering callbacks. */
@@ -67,3 +71,6 @@ asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_siz
                                         size_t len);
 
 asciichat_error_t ui_controller_printf(int fd, const char *format, ...);
+
+/** Animation sample owned by the common runtime during a presentation callback. */
+const animation_sample_t *ui_controller_animation_sample(void);
