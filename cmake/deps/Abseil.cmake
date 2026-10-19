@@ -11,121 +11,28 @@
 #   - ABSEIL_INCLUDE_DIRS: Abseil include directories (PARENT_SCOPE)
 # =============================================================================
 
-# iOS build: Build from source
-if(PLATFORM_IOS)
-    message(STATUS "Configuring ${BoldBlue}Abseil-cpp${ColorReset} from source (iOS cross-compile)...")
 
-    include(ExternalProject)
-
-    set(ABSEIL_PREFIX "${IOS_DEPS_CACHE_DIR}/abseil")
-    set(ABSEIL_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/abseil-build")
-
-    if(NOT EXISTS "${ABSEIL_PREFIX}/lib/libabsl_base.a")
-        message(STATUS "  Abseil library not found in cache, will build from source")
-
-        # Get iOS SDK path
-        if(BUILD_IOS_SIM)
-            set(LDC_IOS_PLATFORM SIMULATOR64)
-        else()
-            set(LDC_IOS_PLATFORM OS)
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
+if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
+    function(asciichat_build_abseil)
+        asciichat_dependency_defaults()
+        set(ABSL_BUILD_TESTING OFF)
+        set(ABSL_PROPAGATE_CXX_STD ON)
+        if(WIN32)
+            # Upstream's DLL exports also apply to GNU-style Clang with the MSVC ABI.
+            set(ABSL_BUILD_MONOLITHIC_SHARED_LIBS ${BUILD_SHARED_LIBS})
         endif()
-
-        set(ABSEIL_TOOLCHAIN "${CMAKE_SOURCE_DIR}/cmake/toolchains/LibwebsocketsIOS.cmake")
-
-        ExternalProject_Add(abseil-ios
+        FetchContent_Declare(asciichat_abseil
+            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_abseil"
+            EXCLUDE_FROM_ALL
             URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20250814.1.tar.gz
             URL_HASH SHA256=1692f77d1739bacf3f94337188b78583cf09bab7e420d2dc6c5605a4f86785a1
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            PREFIX ${ABSEIL_BUILD_DIR}
-            STAMP_DIR ${ABSEIL_BUILD_DIR}/stamps
-            UPDATE_DISCONNECTED 1
-            BUILD_ALWAYS 0
-            CMAKE_ARGS
-                -DCMAKE_TOOLCHAIN_FILE=${ABSEIL_TOOLCHAIN}
-                -DIOS_PLATFORM=${LDC_IOS_PLATFORM}
-                -DIOS_DEPLOYMENT_TARGET=16.0
-                -DIOS_DEPS_CACHE_DIR=${IOS_DEPS_CACHE_DIR}
-                -DCMAKE_BUILD_TYPE=Release
-                -DCMAKE_INSTALL_PREFIX=${ABSEIL_PREFIX}
-                -DBUILD_SHARED_LIBS=OFF
-                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                -DCMAKE_CXX_STANDARD=17
-            INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${ABSEIL_PREFIX}
-            BUILD_BYPRODUCTS
-                ${ABSEIL_PREFIX}/lib/libabsl_base.a
-                ${ABSEIL_PREFIX}/lib/libabsl_strings.a
-            LOG_DOWNLOAD TRUE
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}Abseil${ColorReset} library found in iOS cache: ${BoldMagenta}${ABSEIL_PREFIX}/lib/libabsl_base.a${ColorReset}")
-        add_custom_target(abseil-ios)
-    endif()
-
-    set(ABSEIL_LIBRARIES "${ABSEIL_PREFIX}/lib")
-    set(ABSEIL_INCLUDE_DIRS "${ABSEIL_PREFIX}/include")
-    message(STATUS "${BoldGreen}✓${ColorReset} Abseil (iOS): ${ABSEIL_PREFIX}/lib")
-    return()
-endif()
-
-# Musl build: Build from source
-if(USE_MUSL)
-    message(STATUS "Configuring ${BoldBlue}Abseil-cpp${ColorReset} from source (musl)...")
-
-    include(ExternalProject)
-
-    set(ABSEIL_PREFIX "${MUSL_DEPS_DIR_STATIC}/abseil")
-    set(ABSEIL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/abseil-build")
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
-        set(ABSEIL_MUSL_TARGET "aarch64-linux-musl")
-    else()
-        set(ABSEIL_MUSL_TARGET "x86_64-linux-musl")
-    endif()
-
-    # Only add external project if library doesn't exist
-    if(NOT EXISTS "${ABSEIL_PREFIX}/lib/libabsl_base.a")
-        message(STATUS "  Abseil library not found in cache, will build from source")
-        ExternalProject_Add(abseil-musl
-            URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20250814.1.tar.gz
-            URL_HASH SHA256=1692f77d1739bacf3f94337188b78583cf09bab7e420d2dc6c5605a4f86785a1
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            PREFIX ${ABSEIL_BUILD_DIR}
-            STAMP_DIR ${ABSEIL_BUILD_DIR}/stamps
-            UPDATE_DISCONNECTED 1
-            BUILD_ALWAYS 0
-            CMAKE_ARGS
-                -DCMAKE_C_COMPILER=${MUSL_GCC}
-                -DCMAKE_CXX_COMPILER=clang++
-                -DCMAKE_CXX_STANDARD=17
-                -DCMAKE_BUILD_TYPE=Release
-                -DCMAKE_INSTALL_PREFIX=${ABSEIL_PREFIX}
-                -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
-                -DBUILD_SHARED_LIBS=OFF
-                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                -DCMAKE_C_FLAGS=-O3\ -fPIC
-                -DCMAKE_CXX_FLAGS=-O3\ -fPIC\ -target\ ${ABSEIL_MUSL_TARGET}\ -stdlib=libc++
-            INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${ABSEIL_PREFIX}
-            BUILD_BYPRODUCTS
-                ${ABSEIL_PREFIX}/lib/libabsl_base.a
-                ${ABSEIL_PREFIX}/lib/libabsl_strings.a
-            LOG_DOWNLOAD TRUE
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}Abseil${ColorReset} library found in cache: ${BoldMagenta}${ABSEIL_PREFIX}/lib/libabsl_base.a${ColorReset}")
-        # Create a dummy target so dependencies can reference it
-        add_custom_target(abseil-musl)
-    endif()
-
-    set(ABSEIL_LIBRARIES "${ABSEIL_PREFIX}/lib")
-    set(ABSEIL_INCLUDE_DIRS "${ABSEIL_PREFIX}/include")
-
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+        FetchContent_MakeAvailable(asciichat_abseil)
+        set(ABSEIL_INCLUDE_DIRS "${asciichat_abseil_SOURCE_DIR}" PARENT_SCOPE)
+    endfunction()
+    asciichat_build_abseil()
+    set(ABSEIL_LIBRARIES absl::base absl::strings)
     return()
 endif()
 

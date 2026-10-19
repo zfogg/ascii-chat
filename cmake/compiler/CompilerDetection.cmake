@@ -122,18 +122,15 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
     endif()
 endif()
 
-# Clear Windows-specific CMake flags for native Clang builds
-if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
-    # CMake automatically adds MSVC runtime flags even for Clang, clear them
-    set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreaded "")
-    set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDLL "")
-    set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDebug "")
-    set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDebugDLL "")
-
-    # Clear the runtime library setting that adds -D_DEBUG -D_DLL -D_MT
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "")
-
-    message(STATUS "Cleared CMake Windows runtime flags for ${BoldGreen}Clang-only${ColorReset} build")
+# Clang with the MSVC ABI needs CMake's normal CRT selection, including for DLLs.
+if(WIN32 AND CMAKE_C_SIMULATE_ID STREQUAL "MSVC" AND NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
+    if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
+        # Windows ASan uses the release DLL CRT even in debug configurations.
+        set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
+    elseif(VCPKG_TARGET_TRIPLET MATCHES "-static$" OR
+           (NOT VCPKG_TARGET_TRIPLET AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS))
+        set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded)
+    endif()
 endif()
 
 # =============================================================================

@@ -22,8 +22,16 @@ if(NOT WEBRTC_AEC3_SOURCE_DIR)
     message(FATAL_ERROR "WEBRTC_AEC3_SOURCE_DIR not provided to patch script")
 endif()
 
+# Newer Abseil headers no longer provide this standard header transitively.
+set(_reverb_header "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/aec3/reverb_model_estimator.h")
+file(READ "${_reverb_header}" _reverb_contents)
+if(NOT _reverb_contents MATCHES "#include <memory>")
+    string(REPLACE "#include <array>" "#include <array>\n#include <memory>" _reverb_contents "${_reverb_contents}")
+    file(WRITE "${_reverb_header}" "${_reverb_contents}")
+endif()
+
 # Check if patches have already been applied to avoid unnecessary rewrites
-set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v8")
+set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v9")
 if(EXISTS "${WEBRTC_PATCH_MARKER}")
     message(STATUS "WebRTC AEC3 patches already applied, skipping")
     return()
@@ -263,7 +271,11 @@ else()
 endif()
 
 # Try to find system Abseil (vcpkg, Homebrew, apt, etc.)
-find_package(absl QUIET CONFIG)
+if(TARGET absl::base)
+    set(absl_FOUND TRUE)
+else()
+    find_package(absl QUIET CONFIG)
+endif()
 
 if(absl_FOUND)
     message(STATUS "WebRTC AEC3: Using system Abseil")

@@ -1,0 +1,11 @@
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
+function(asciichat_build_utf8proc)
+    asciichat_dependency_defaults()
+    set(UTF8PROC_ENABLE_TESTING OFF)
+    set(UTF8PROC_INSTALL ON)
+    get_filename_component(_source "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../../deps/ascii-chat-deps/utf8proc" ABSOLUTE)
+    # Keep upstream's install rules for the library, headers and package metadata.
+    add_subdirectory("${_source}" "${CMAKE_BINARY_DIR}/_deps/utf8proc")
+endfunction()
+asciichat_build_utf8proc()
+set(UTF8PROC_LIBRARIES utf8proc)

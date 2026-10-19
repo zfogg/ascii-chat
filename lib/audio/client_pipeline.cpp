@@ -66,7 +66,7 @@ extern "C" {
 // For AEC3 metrics reporting
 #include <ascii-chat/audio/analysis.h>
 
-#include <opus/opus.h>
+#include <opus.h>
 #include <string.h>
 
 // Prevent stdatomic.h from defining conflicting macros in C++ context

@@ -1,0 +1,11 @@
+set(_file "${X265_SOURCE_DIR}/source/CMakeLists.txt")
+file(READ "${_file}" _contents)
+set(_original "${_contents}")
+string(REPLACE "cmake_policy(SET CMP0054 OLD)" "cmake_policy(SET CMP0054 NEW)" _contents "${_contents}")
+string(REPLACE "cmake_policy(SET CMP0025 OLD)" "cmake_policy(SET CMP0025 NEW)" _contents "${_contents}")
+string(REGEX REPLACE "add_definitions\\(-std=gnu\\+\\+(98|11)\\)" "" _contents "${_contents}")
+# Upstream's global uninstall target collides with other embedded projects.
+string(REPLACE "add_custom_target(uninstall" "add_custom_target(asciichat-x265-uninstall" _contents "${_contents}")
+if(NOT _contents STREQUAL _original)
+    file(WRITE "${_file}" "${_contents}")
+endif()

@@ -34,6 +34,7 @@
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Vcpkg.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libuv.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Utf8proc.cmake)
 
 # =============================================================================
 # Platform-Specific Configuration (EARLY - needed by other dependencies)
@@ -66,6 +67,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Opus.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/FFTW.cmake)
 
 # WebRTC Audio Processing - Production-grade echo cancellation with AEC3
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Abseil.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
 
 # OpenSSL - SSL/TLS library (required by libdatachannel, libwebsockets, and TURN credentials)
@@ -111,9 +113,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/FFmpeg.cmake)
 
 # libexecinfo - Backtrace support (musl only)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libexecinfo.cmake)
-
-# Abseil - Google C++ library (WebRTC dependency)
-include(${CMAKE_SOURCE_DIR}/cmake/deps/Abseil.cmake)
 
 # FreeType2 - Font rasterization for render-file
 include(${CMAKE_SOURCE_DIR}/cmake/deps/FreeType2.cmake)

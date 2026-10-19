@@ -15,185 +15,39 @@
 #   - ZLIB::zlib - Imported target (if created)
 # =============================================================================
 
-# =============================================================================
-# iOS: Build from source for iOS cross-compilation
-# =============================================================================
-if(PLATFORM_IOS)
-    message(STATUS "Configuring ${BoldBlue}zlib${ColorReset} from source (iOS cross-compile)...")
 
-    set(ZLIB_PREFIX "${IOS_DEPS_CACHE_DIR}/zlib")
-    set(ZLIB_INCLUDE_DIR "${ZLIB_PREFIX}/include")
-    set(ZLIB_LIBRARY "${ZLIB_PREFIX}/lib/libz.a")
-
-    if(NOT EXISTS "${ZLIB_LIBRARY}")
-        message(STATUS "  zlib library not found in cache, will build from source")
-
-        set(ZLIB_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/zlib-build")
-        file(MAKE_DIRECTORY "${ZLIB_BUILD_DIR}")
-
-        # Get iOS SDK path
-        if(BUILD_IOS_SIM)
-            execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
+if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
+    function(asciichat_build_zlib)
+        asciichat_dependency_defaults()
+        set(ZLIB_BUILD_EXAMPLES OFF)
+        FetchContent_Declare(asciichat_zlib
+            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_zlib"
+            EXCLUDE_FROM_ALL
+            URL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+            URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+        FetchContent_MakeAvailable(asciichat_zlib)
+        if(BUILD_SHARED_LIBS)
+            set(_target zlib)
         else()
-            execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+            set(_target zlibstatic)
         endif()
-
-        message(STATUS "  Downloading zlib 1.3.1...")
-        file(DOWNLOAD
-            "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"
-            "${ZLIB_BUILD_DIR}/zlib-1.3.1.tar.gz"
-            TIMEOUT 30
-            SHOW_PROGRESS
-        )
-
-        message(STATUS "  Extracting zlib...")
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E tar xzf zlib-1.3.1.tar.gz
-            WORKING_DIRECTORY "${ZLIB_BUILD_DIR}"
-            RESULT_VARIABLE EXTRACT_RESULT
-        )
-        if(NOT EXTRACT_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to extract zlib")
-        endif()
-
-        message(STATUS "  Configuring and building zlib for iOS...")
-        execute_process(
-            COMMAND bash -c "cd '${ZLIB_BUILD_DIR}/zlib-1.3.1' && \
-                    CC=clang \
-                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0' \
-                    LDFLAGS='-isysroot ${IOS_SDK_PATH} -arch arm64' \
-                    ./configure --prefix='${ZLIB_PREFIX}' --static && \
-                    make -j && make install"
-            RESULT_VARIABLE BUILD_RESULT
-            OUTPUT_VARIABLE BUILD_OUTPUT
-            ERROR_VARIABLE BUILD_ERROR
-        )
-        if(NOT BUILD_RESULT EQUAL 0)
-            message(FATAL_ERROR "zlib iOS build failed:\n${BUILD_ERROR}")
-        endif()
-    else()
-        message(STATUS "  ${BoldBlue}zlib${ColorReset} library found in iOS cache: ${BoldMagenta}${ZLIB_LIBRARY}${ColorReset}")
-    endif()
-
+        # Bridge consumers using FindZLIB without adding zlib to their install exports.
+        add_library(ZLIB::ZLIB INTERFACE IMPORTED GLOBAL)
+        set_target_properties(ZLIB::ZLIB PROPERTIES
+            SYSTEM FALSE
+            INTERFACE_LINK_LIBRARIES ${_target}
+            INTERFACE_INCLUDE_DIRECTORIES "${asciichat_zlib_BINARY_DIR};${asciichat_zlib_SOURCE_DIR}")
+        add_library(asciichat-zlib ALIAS ZLIB::ZLIB)
+        add_library(ZLIB::zlib ALIAS ZLIB::ZLIB)
+        set(ZLIB_INCLUDE_DIR "${asciichat_zlib_BINARY_DIR};${asciichat_zlib_SOURCE_DIR}" PARENT_SCOPE)
+    endfunction()
+    asciichat_build_zlib()
     set(ZLIB_FOUND TRUE)
-
-    # Create imported target
-    if(NOT TARGET ZLIB::zlib)
-        add_library(ZLIB::zlib STATIC IMPORTED GLOBAL)
-        set_target_properties(ZLIB::zlib PROPERTIES
-            IMPORTED_LOCATION "${ZLIB_LIBRARY}"
-            INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
-        )
-    endif()
-
-    message(STATUS "${BoldGreen}✓${ColorReset} zlib (iOS): ${ZLIB_LIBRARY}")
-    return()
-endif()
-
-# =============================================================================
-# musl: Build from source
-# =============================================================================
-if(USE_MUSL)
-    message(STATUS "Configuring ${BoldBlue}zlib${ColorReset} from source (musl)...")
-
-    set(ZLIB_PREFIX "${MUSL_DEPS_DIR_STATIC}/zlib")
-    set(ZLIB_INCLUDE_DIR "${ZLIB_PREFIX}/include")
-    set(ZLIB_LIBRARY "${ZLIB_PREFIX}/lib/libz.a")
-
-    if(NOT EXISTS "${ZLIB_LIBRARY}")
-        message(STATUS "  zlib library not found in cache, will build from source")
-
-        # Download zlib source manually first - GitHub archive endpoint has non-deterministic hashes
-        # So we download, verify, and let ExternalProject use the cached file
-        set(ZLIB_DOWNLOAD_DIR "${MUSL_DEPS_DIR_STATIC}/zlib-src")
-        set(ZLIB_TARBALL "${ZLIB_DOWNLOAD_DIR}/zlib-1.3.1.tar.gz")
-        set(ZLIB_EXTRACTED "${ZLIB_DOWNLOAD_DIR}/zlib-1.3.1")
-
-        file(MAKE_DIRECTORY "${ZLIB_DOWNLOAD_DIR}")
-
-        if(NOT EXISTS "${ZLIB_EXTRACTED}")
-            if(NOT EXISTS "${ZLIB_TARBALL}")
-                message(STATUS "  Downloading zlib 1.3.1...")
-                # Use official zlib source from GitHub releases (not archive endpoint)
-                file(DOWNLOAD
-                    "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"
-                    "${ZLIB_TARBALL}"
-                    TIMEOUT 30
-                    STATUS DOWNLOAD_STATUS
-                    SHOW_PROGRESS
-                )
-                list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-                if(NOT STATUS_CODE EQUAL 0)
-                    list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
-                    message(WARNING "Failed to download from releases endpoint: ${ERROR_MSG}")
-                    message(STATUS "  Attempting fallback: downloading from archive endpoint...")
-                    # Fallback to archive endpoint without hash verification
-                    file(DOWNLOAD
-                        "https://github.com/madler/zlib/archive/refs/tags/v1.3.1.tar.gz"
-                        "${ZLIB_TARBALL}"
-                        TIMEOUT 30
-                        STATUS DOWNLOAD_STATUS
-                        SHOW_PROGRESS
-                    )
-                    list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-                    if(NOT STATUS_CODE EQUAL 0)
-                        list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
-                        message(FATAL_ERROR "Failed to download zlib from both endpoints: ${ERROR_MSG}")
-                    endif()
-                endif()
-            endif()
-
-            message(STATUS "  Extracting zlib...")
-            execute_process(
-                COMMAND ${CMAKE_COMMAND} -E tar xzf "${ZLIB_TARBALL}"
-                WORKING_DIRECTORY "${ZLIB_DOWNLOAD_DIR}"
-                RESULT_VARIABLE EXTRACT_RESULT
-                OUTPUT_VARIABLE EXTRACT_OUTPUT
-                ERROR_VARIABLE EXTRACT_ERROR
-            )
-            if(NOT EXTRACT_RESULT EQUAL 0)
-                message(FATAL_ERROR "Failed to extract zlib: ${EXTRACT_ERROR}")
-            endif()
-        endif()
-
-        ExternalProject_Add(zlib-musl
-            SOURCE_DIR "${ZLIB_EXTRACTED}"
-            DOWNLOAD_COMMAND ""
-            UPDATE_COMMAND ""
-            STAMP_DIR ${MUSL_DEPS_DIR_STATIC}/zlib-build/stamps
-            UPDATE_DISCONNECTED 1
-            BUILD_ALWAYS 0
-            CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} <SOURCE_DIR>/configure --prefix=${ZLIB_PREFIX} --static
-            BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j
-            INSTALL_COMMAND make install
-            BUILD_BYPRODUCTS ${ZLIB_LIBRARY}
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}zlib${ColorReset} library found in cache: ${BoldMagenta}${ZLIB_LIBRARY}${ColorReset}")
-        add_custom_target(zlib-musl)
-    endif()
-
-    set(ZLIB_FOUND TRUE)
-    set(ZLIB_LIBRARY "${ZLIB_LIBRARY}")
-    set(ZLIB_INCLUDE_DIR "${ZLIB_INCLUDE_DIR}")
-
-    # Create imported target for zlib to match system find_package behavior
-    if(NOT TARGET ZLIB::zlib)
-        add_library(ZLIB::zlib STATIC IMPORTED GLOBAL)
-        set_target_properties(ZLIB::zlib PROPERTIES
-            IMPORTED_LOCATION "${ZLIB_LIBRARY}"
-            INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
-        )
-    endif()
-
-    # Create placeholder directories so CMake validation doesn't fail at configure time
-    file(MAKE_DIRECTORY "${ZLIB_INCLUDE_DIR}")
-
-    message(STATUS "${BoldGreen}✓${ColorReset} zlib (musl): ${ZLIB_LIBRARY}")
+    set(ZLIB_LIBRARY asciichat-zlib)
+    set(ZLIB_LIBRARIES asciichat-zlib)
+    set(ZLIB_INCLUDE_DIRS ${ZLIB_INCLUDE_DIR})
     return()
 endif()
 

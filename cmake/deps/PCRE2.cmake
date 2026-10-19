@@ -26,188 +26,45 @@
 #   - PCRE2_FOUND: Whether PCRE2 was found
 # =============================================================================
 
-# iOS build: Build from source for iOS cross-compilation
-if(PLATFORM_IOS)
-    message(STATUS "Configuring ${BoldBlue}PCRE2${ColorReset} from source (iOS cross-compile)...")
 
-    include(ExternalProject)
-
-    set(PCRE2_PREFIX "${IOS_DEPS_CACHE_DIR}/pcre2")
-    set(PCRE2_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/pcre2-build")
-
-    # Get actual iOS SDK path using xcrun
-    if(BUILD_IOS_SIM)
-        execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-    else()
-        execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-    endif()
-
-    if(NOT EXISTS "${PCRE2_PREFIX}/lib/libpcre2-8.a")
-        message(STATUS "  PCRE2 library not found in cache, will build from source")
-
-        ExternalProject_Add(pcre2-ios
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
+if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
+    function(asciichat_build_pcre2)
+        asciichat_dependency_defaults()
+        set(BUILD_STATIC_LIBS ON)
+        if(BUILD_SHARED_LIBS)
+            set(BUILD_STATIC_LIBS OFF)
+        endif()
+        set(PCRE2_BUILD_PCRE2_8 ON)
+        set(PCRE2_BUILD_PCRE2_16 OFF)
+        set(PCRE2_BUILD_PCRE2_32 OFF)
+        set(PCRE2_BUILD_PCRE2GREP OFF)
+        set(PCRE2_BUILD_TESTS OFF)
+        set(PCRE2_STATIC_PIC ON)
+        if(EMSCRIPTEN)
+            set(PCRE2_SUPPORT_JIT OFF)
+        endif()
+        FetchContent_Declare(asciichat_pcre2
+            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_pcre2"
+            EXCLUDE_FROM_ALL
             URL https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-10.47.tar.gz
             URL_HASH SHA256=409c443549b13b216da40049850a32f3e6c57d4224ab11553ab5a786878a158e
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            PREFIX ${PCRE2_BUILD_DIR}
-            STAMP_DIR ${PCRE2_BUILD_DIR}/stamps
-            UPDATE_DISCONNECTED 1
-            BUILD_ALWAYS 0
-            CONFIGURE_COMMAND
-                <SOURCE_DIR>/configure
-                --prefix=${PCRE2_PREFIX}
-                --enable-static
-                --disable-shared
-                --enable-pcre2-8
-                --disable-pcre2-16
-                --disable-pcre2-32
-                --disable-maintainer-mode
-                --with-pic
-                --host=arm-apple-darwin
-                CC=clang
-                CFLAGS=-O2\ -fPIC\ -isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64\ -miphoneos-version-min=16.0
-                LDFLAGS=-isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64
-            BUILD_COMMAND make -j
-            INSTALL_COMMAND make install
-            BUILD_BYPRODUCTS ${PCRE2_PREFIX}/lib/libpcre2-8.a
-            LOG_DOWNLOAD TRUE
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}PCRE2${ColorReset} library found in cache: ${BoldMagenta}${PCRE2_PREFIX}/lib/libpcre2-8.a${ColorReset}")
-        add_custom_target(pcre2-ios)
-    endif()
-
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+        FetchContent_MakeAvailable(asciichat_pcre2)
+        if(BUILD_SHARED_LIBS)
+            set(_target pcre2-8-shared)
+        else()
+            set(_target pcre2-8-static)
+        endif()
+        set(PCRE2_LIBRARIES ${_target} PARENT_SCOPE)
+        set(PCRE2_INCLUDE_DIRS "${asciichat_pcre2_BINARY_DIR}/interface" PARENT_SCOPE)
+    endfunction()
+    asciichat_build_pcre2()
     set(PCRE2_FOUND TRUE)
-    set(PCRE2_LIBRARIES "${PCRE2_PREFIX}/lib/libpcre2-8.a")
-    set(PCRE2_INCLUDE_DIRS "${PCRE2_PREFIX}/include")
-
-    message(STATUS "${BoldGreen}✓${ColorReset} PCRE2 configured (iOS cross-compile): ${PCRE2_PREFIX}/lib/libpcre2-8.a")
-
-    return()
-endif()
-
-# Handle WASM/Emscripten builds - PCRE2 is built from source
-if(DEFINED EMSCRIPTEN)
-    message(STATUS "Configuring ${BoldBlue}PCRE2${ColorReset} from source (WASM)...")
-
-    if(CMAKE_HOST_WIN32)
-        set(PCRE2_CONFIGURE_COMMAND "${ASCIICHAT_BASH_EXECUTABLE}" <SOURCE_DIR>/configure)
-        set(PCRE2_WASM_CC "CC=emcc.bat")
-    else()
-        set(PCRE2_CONFIGURE_COMMAND <SOURCE_DIR>/configure)
-        set(PCRE2_WASM_CC "CC=emcc")
-    endif()
-
-    include(${CMAKE_CURRENT_LIST_DIR}/../utils/WasmAutotools.cmake)
-    asciichat_wasm_make_commands(PCRE2_WASM_BUILD_COMMAND PCRE2_WASM_INSTALL_COMMAND)
-
-    include(ExternalProject)
-    include(FetchContent)
-    FetchContent_Declare(pcre2-src
-        URL https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-10.47.tar.gz
-        URL_HASH SHA256=409c443549b13b216da40049850a32f3e6c57d4224ab11553ab5a786878a158e
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/pcre2-src"
-        # Keep PCRE2's CMake project from deleting the Autotools-generated headers.
-        SOURCE_SUBDIR asciichat-autotools
-        UPDATE_DISCONNECTED ON
-    )
-    FetchContent_MakeAvailable(pcre2-src)
-
-    set(PCRE2_PREFIX "${FETCHCONTENT_BASE_DIR}/pcre2-wasm")
-    set(PCRE2_BUILD_DIR "${FETCHCONTENT_BASE_DIR}/pcre2-wasm-build")
-
-    if(NOT EXISTS "${PCRE2_PREFIX}/lib/libpcre2-8.a")
-        message(STATUS "  PCRE2 library not found in cache, will build from source")
-
-        ExternalProject_Add(pcre2-wasm
-            SOURCE_DIR ${pcre2-src_SOURCE_DIR}
-            BUILD_IN_SOURCE 1
-            PREFIX ${PCRE2_BUILD_DIR}
-            STAMP_DIR ${PCRE2_BUILD_DIR}/stamps
-            BUILD_ALWAYS 0
-            CONFIGURE_COMMAND
-                ${PCRE2_CONFIGURE_COMMAND}
-                --prefix=${PCRE2_PREFIX}
-                --host=wasm32-emscripten
-                --enable-static
-                --disable-shared
-                --enable-pcre2-8
-                --disable-pcre2-16
-                --disable-pcre2-32
-                --disable-maintainer-mode
-                --with-pic
-                ${PCRE2_WASM_CC}
-                CFLAGS=-O2\ -fPIC
-                LDFLAGS=--no-entry
-            BUILD_COMMAND ${PCRE2_WASM_BUILD_COMMAND}
-            INSTALL_COMMAND ${PCRE2_WASM_INSTALL_COMMAND}
-            BUILD_BYPRODUCTS ${PCRE2_PREFIX}/lib/libpcre2-8.a
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}PCRE2${ColorReset} library found in cache: ${BoldMagenta}${PCRE2_PREFIX}/lib/libpcre2-8.a${ColorReset}")
-        add_custom_target(pcre2-wasm)
-    endif()
-
-    set(PCRE2_FOUND TRUE)
-    set(PCRE2_LIBRARIES "${PCRE2_PREFIX}/lib/libpcre2-8.a")
-    set(PCRE2_INCLUDE_DIRS "${PCRE2_PREFIX}/include")
-
-    message(STATUS "${BoldGreen}✓${ColorReset} PCRE2 (WASM): ${BoldCyan}libpcre2-8${ColorReset}")
-    return()
-endif()
-
-# Handle musl builds - PCRE2 is built from source
-if(USE_MUSL)
-    message(STATUS "Configuring ${BoldBlue}PCRE2${ColorReset} from source...")
-
-    set(PCRE2_PREFIX "${MUSL_DEPS_DIR_STATIC}/pcre2")
-    set(PCRE2_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/pcre2-build")
-
-    # Only add external project if library doesn't exist
-    if(NOT EXISTS "${PCRE2_PREFIX}/lib/libpcre2-8.a")
-        message(STATUS "  PCRE2 library not found in cache, will build from source")
-        ExternalProject_Add(pcre2-musl
-            URL https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-10.47.tar.gz
-            URL_HASH SHA256=409c443549b13b216da40049850a32f3e6c57d4224ab11553ab5a786878a158e
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            PREFIX ${PCRE2_BUILD_DIR}
-            STAMP_DIR ${PCRE2_BUILD_DIR}/stamps
-            UPDATE_DISCONNECTED 1
-            BUILD_ALWAYS 0
-            CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --host=x86_64-linux-gnu --prefix=${PCRE2_PREFIX} --enable-static --disable-shared --enable-pcre2-8 --disable-pcre2-16 --disable-pcre2-32 --disable-maintainer-mode
-            BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j
-            INSTALL_COMMAND make install
-            BUILD_BYPRODUCTS ${PCRE2_PREFIX}/lib/libpcre2-8.a
-            LOG_DOWNLOAD TRUE
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-            LOG_INSTALL TRUE
-            LOG_OUTPUT_ON_FAILURE TRUE
-        )
-    else()
-        message(STATUS "  ${BoldBlue}PCRE2${ColorReset} library found in cache: ${BoldMagenta}${PCRE2_PREFIX}/lib/libpcre2-8.a${ColorReset}")
-        # Create a dummy target so dependencies can reference it
-        add_custom_target(pcre2-musl)
-    endif()
-
-    set(PCRE2_FOUND TRUE)
-    set(PCRE2_LIBRARIES "${PCRE2_PREFIX}/lib/libpcre2-8.a")
-    set(PCRE2_INCLUDE_DIRS "${PCRE2_PREFIX}/include")
     return()
 endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
-
-# On macOS, prefer Homebrew PCRE2 over system PCRE2 for consistency
 if(APPLE AND NOT USE_MUSL)
     if(HOMEBREW_PREFIX AND EXISTS "${HOMEBREW_PREFIX}/opt/pcre2/lib/pkgconfig/libpcre2-8.pc")
         set(ENV{PKG_CONFIG_PATH} "${HOMEBREW_PREFIX}/opt/pcre2/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")

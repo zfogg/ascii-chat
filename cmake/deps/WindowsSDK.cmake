@@ -9,7 +9,6 @@
 #   3. Validates SDK has required components (ucrt, um, shared headers)
 #   4. Configures include and library paths
 #   5. Finds MSVC runtime libraries (required for Clang linking)
-#   6. Overrides CMake's incorrect Windows-Clang platform settings
 #
 # Prerequisites (must be set before including this file):
 #   - WIN32: Platform detection variable
@@ -20,7 +19,6 @@
 #   - WIN_ARCH: Architecture (x64 or x86)
 #   - include_directories(): Configured with SDK headers
 #   - link_directories(): Configured with SDK and MSVC libraries
-#   - CMAKE_C_LINK_EXECUTABLE: Modified to fix Clang linking
 # =============================================================================
 
 if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
@@ -275,70 +273,6 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
             "================================================================================")
     endif()
 
-    # Override CMake's Windows-Clang platform settings that add -nostartfiles -nostdlib
-    # These flags prevent AddressSanitizer from linking correctly (ASan needs CRT startup)
-    # CMake automatically adds these in the Windows-Clang toolchain but they're incorrect for our use case
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-        # Clear the CMake flags that cause -nostartfiles -nostdlib to be added
-        # Must override both C and CXX versions since CMake may use either for linking
-        set(CMAKE_C_CREATE_SHARED_LIBRARY "<CMAKE_C_COMPILER> <CMAKE_SHARED_LIBRARY_C_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS> <SONAME_FLAG><TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
-        set(CMAKE_C_CREATE_SHARED_MODULE "${CMAKE_C_CREATE_SHARED_LIBRARY}")
-        set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_C_COMPILER> <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
-
-        # Also override CXX linking rules (ascii-chat uses C++ for linking shared libs)
-        set(CMAKE_CXX_CREATE_SHARED_LIBRARY "<CMAKE_CXX_COMPILER> <CMAKE_SHARED_LIBRARY_CXX_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS> <SONAME_FLAG><TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
-        set(CMAKE_CXX_CREATE_SHARED_MODULE "${CMAKE_CXX_CREATE_SHARED_LIBRARY}")
-        set(CMAKE_CXX_LINK_EXECUTABLE "<CMAKE_CXX_COMPILER> <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
-
-        # Configure CRT linking for Clang on Windows
-        # External libraries (WebRTC Abseil, FFmpeg) need CRT symbols
-        set(CMAKE_MSVC_RUNTIME_LIBRARY "")
-
-        # Build the list of required CRT libraries based on build type
-        # Use full paths from the Windows SDK and MSVC directories we already located
-        #
-        # For Release builds, use static CRT (libcmt, libvcruntime, libucrt) to match
-        # WebRTC which is also built with static CRT.
-        #
-        # For Debug/Dev builds: use RELEASE DLL CRT (/MD, not /MDd).
-        # Two reasons:
-        # 1. ASan (Debug builds) does NOT support debug CRT - debug CRT's heap tracking
-        #    interferes with ASan's malloc/free interposition, causing bad-free errors.
-        #    See: https://learn.microsoft.com/en-us/cpp/sanitizers/asan-runtime
-        # 2. vcpkg x64-windows packages use release CRT. Mixing debug CRT in our binary
-        #    with release CRT in vcpkg DLLs causes heap corruption from CRT mismatch.
-        #
-        # For Release builds: use static CRT to match WebRTC.
-        set(UCRT_LIB_DIR "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/${WIN_ARCH}")
-        if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-            set(WIN_CRT_LIBS
-                "${UCRT_LIB_DIR}/ucrt.lib"
-                "${MSVC_LIB_DIR}/vcruntime.lib"
-                "${MSVC_LIB_DIR}/msvcrt.lib"
-                "${MSVC_LIB_DIR}/legacy_stdio_definitions.lib"
-            )
-        else()
-            # Release builds: use static CRT to match WebRTC
-            set(WIN_CRT_LIBS
-                "${UCRT_LIB_DIR}/libucrt.lib"
-                "${MSVC_LIB_DIR}/libvcruntime.lib"
-                "${MSVC_LIB_DIR}/libcmt.lib"
-                "${MSVC_LIB_DIR}/legacy_stdio_definitions.lib"
-            )
-        endif()
-
-        # Add CRT libraries to all link operations via add_link_options
-        # This ensures they're linked for both shared libs and executables
-        foreach(_crt_lib ${WIN_CRT_LIBS})
-            if(EXISTS "${_crt_lib}")
-                add_link_options("${_crt_lib}")
-            else()
-                message(WARNING "CRT library not found: ${_crt_lib}")
-            endif()
-        endforeach()
-
-        message(STATUS "Overrode CMake Windows-Clang linking rules to prevent -nostartfiles -nostdlib")
-        message(STATUS "Configured CRT linking: ${WIN_CRT_LIBS}")
-    endif()
+    # Keep CMake's Windows-Clang linker rules and CRT selection for all targets.
 
 endif()
