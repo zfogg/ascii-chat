@@ -50,7 +50,7 @@ if(TEST_EMISSION)
     set(emission_sources
         lib/video/ascii/scalar/foreground.c lib/video/ascii/scalar/background.c
         lib/video/ascii/scalar/halfblock.c lib/video/ascii/output_buffer.c
-        lib/video/ascii/render.c lib/video/ascii/sgr.c lib/video/ascii/common.c lib/video/ascii/palette.c
+        lib/video/ascii/simd/cells.c lib/video/ascii/render.c lib/video/ascii/sgr.c lib/video/ascii/common.c lib/video/ascii/palette.c
         lib/video/terminal/ansi.c
         lib/video/ascii/simd/dispatch.c lib/platform/cpu.c
         lib/lifecycle.c lib/atomic.c lib/platform/rwlock.c
@@ -65,16 +65,37 @@ if(TEST_EMISSION)
             target_sources(emission-test PRIVATE
                 "${REPO_ROOT}/lib/video/ascii/${name}/luminance.c"
                 "${REPO_ROOT}/lib/video/ascii/${name}/mono.c"
-                "${REPO_ROOT}/lib/video/ascii/${name}/color.c")
+                "${REPO_ROOT}/lib/video/ascii/${name}/color.c"
+                "${REPO_ROOT}/lib/video/ascii/${name}/halfblock.c")
         endif()
     endforeach()
-    if(ENABLE_SIMD_NEON)
-        target_sources(emission-test PRIVATE "${REPO_ROOT}/lib/video/ascii/neon/halfblock.c")
-    endif()
+    foreach(isa SSE2 SSSE3 AVX2 NEON SVE)
+        if(ENABLE_SIMD_${isa})
+            string(TOLOWER "${isa}" name)
+            if(isa STREQUAL "SVE")
+                set(flags -march=armv8-a+sve)
+            elseif(isa STREQUAL "NEON")
+                set(flags -march=armv8-a)
+            else()
+                set(flags -m${name})
+            endif()
+            foreach(kind mono color halfblock)
+                set_source_files_properties("${REPO_ROOT}/lib/video/ascii/${name}/${kind}.c"
+                    PROPERTIES COMPILE_OPTIONS "${flags};-fno-lto")
+            endforeach()
+        endif()
+    endforeach()
     add_test(NAME simd-emission COMMAND emission-test)
     add_executable(emission-benchmark benchmark_emission.c emission_runtime.c)
     get_target_property(emission_target_sources emission-test SOURCES)
     list(FILTER emission_target_sources EXCLUDE REGEX "ascii_emission_test.c|emission_runtime.c")
+    add_executable(halfblock-benchmark benchmark_halfblock.c emission_runtime.c ${emission_target_sources})
+    target_include_directories(halfblock-benchmark PRIVATE "${REPO_ROOT}/include" "${REPO_ROOT}/deps")
+    target_compile_definitions(halfblock-benchmark PRIVATE NDEBUG _GNU_SOURCE)
+    target_compile_options(halfblock-benchmark PRIVATE -ffunction-sections -fdata-sections)
+    target_link_options(halfblock-benchmark PRIVATE -Wl,--gc-sections
+        -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc)
+    target_link_libraries(halfblock-benchmark PRIVATE m pthread)
     set(EMISSION_BENCHMARK_BASELINE "" CACHE PATH "Optional original renderer source tree for before/after measurement")
     if(EMISSION_BENCHMARK_BASELINE)
         target_include_directories(emission-benchmark BEFORE PRIVATE "${EMISSION_BENCHMARK_BASELINE}/include")

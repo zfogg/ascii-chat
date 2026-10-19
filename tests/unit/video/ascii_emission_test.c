@@ -6,6 +6,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/video/ascii/sgr.h>
+#include <ascii-chat/video/ascii/simd/cells.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
@@ -236,6 +237,142 @@ Test(ascii_emission, all_backends_terminal_cells, .timeout = 120) {
   }
 }
 
+Test(ascii_emission, simd_pixel_stages_and_tails, .timeout = 120) {
+  uint8_t rgb[3 * 258 + 1], luma[258];
+  uint32_t packed[258], expected[258], actual[260], table[64], fg[258], bg[258];
+  for (size_t i = 0; i < sizeof(rgb); ++i)
+    rgb[i] = (uint8_t)(i * 37 + i / 5);
+  for (size_t i = 0; i < 258; ++i)
+    luma[i] = (uint8_t)(i * 43);
+  for (size_t i = 0; i < 64; ++i)
+    table[i] = 0xf0800000u + (uint32_t)i * 0x10203u;
+  for (size_t b = 0; b < sizeof(backends) / sizeof(backends[0]); ++b) {
+    if ((platform_cpu_features() & backends[b].feature) != backends[b].feature)
+      continue;
+    const simd_cells_t *ops = simd_cells_for_luminance(backends[b].luma);
+    if (b)
+      cr_assert(ops != simd_cells_for_luminance(simd_luminance_scalar));
+    for (size_t n = 0; n <= 257; ++n) {
+      actual[0] = actual[n + 1] = 0xdeadbeef;
+      simd_pack_scalar(rgb + 1, expected, n);
+      ops->pack(rgb + 1, actual + 1, n);
+      cr_assert_eq(memcmp(expected, actual + 1, n * sizeof(*expected)), 0);
+      cr_assert_eq(actual[0], 0xdeadbeef);
+      cr_assert_eq(actual[n + 1], 0xdeadbeef);
+      memcpy(packed, expected, n * sizeof(*packed));
+      simd_lookup_scalar(luma, table, expected, n);
+      ops->lookup(luma, table, actual + 1, n);
+      cr_assert_eq(memcmp(expected, actual + 1, n * sizeof(*expected)), 0);
+      for (unsigned colors = 16; colors <= 256; colors *= 16) {
+        simd_quantize_scalar(packed, expected, n, colors);
+        ops->quantize(packed, actual + 1, n, colors);
+        cr_assert_eq(memcmp(expected, actual + 1, n * sizeof(*expected)), 0);
+      }
+      cr_assert_eq(actual[0], 0xdeadbeef);
+      cr_assert_eq(actual[n + 1], 0xdeadbeef);
+      for (size_t cut = 1; cut <= n; ++cut) {
+        for (size_t j = 0; j < n; ++j) {
+          packed[j] = 0x80706050;
+          fg[j] = 0x112233;
+          bg[j] = UINT32_MAX;
+        }
+        if (cut < n) {
+          if (cut % 3 == 0)
+            packed[cut] ^= 1;
+          else if (cut % 3 == 1)
+            fg[cut] ^= 1;
+          else
+            bg[cut] ^= 1;
+        }
+        cr_assert_eq(ops->run(packed, fg, bg, n), cut);
+      }
+    }
+    // Cartesian color boundaries exercise exact nearest-palette ties.
+    const uint8_t edges[] = {0,   1,   47,  48,  63,  64,  95,  115, 116, 127, 128, 135,
+                             155, 156, 175, 192, 195, 196, 215, 235, 236, 254, 255};
+    size_t used = 0;
+    for (size_t r = 0; r < sizeof(edges); ++r)
+      for (size_t g = 0; g < sizeof(edges); ++g)
+        for (size_t blue = 0; blue < sizeof(edges); ++blue) {
+          packed[used++] = ((uint32_t)edges[r] << 16) | ((uint32_t)edges[g] << 8) | edges[blue];
+          if (used == 258 || (r + 1 == sizeof(edges) && g + 1 == sizeof(edges) && blue + 1 == sizeof(edges))) {
+            for (unsigned colors = 16; colors <= 256; colors *= 16) {
+              simd_quantize_scalar(packed, expected, used, colors);
+              ops->quantize(packed, actual, used, colors);
+              cr_assert_eq(memcmp(expected, actual, used * sizeof(*expected)), 0);
+            }
+            used = 0;
+          }
+        }
+  }
+}
+
+Test(ascii_emission, all_simd_halfblock_modes, .timeout = 120) {
+  const int widths[] = {1, 2, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 127, 129, 257};
+  for (size_t wi = 0; wi < sizeof(widths) / sizeof(widths[0]); ++wi) {
+    int width = widths[wi], stride = width * 3 + 7;
+    for (int height = 1; height <= 5; ++height) {
+      uint8_t *rgb = SAFE_MALLOC((size_t)stride * height, uint8_t *);
+      memset(rgb, 0xa5, (size_t)stride * height);
+      for (int y = 0; y < height; ++y)
+        for (int x = 0; x < width; ++x) {
+          uint8_t *pixel = rgb + (size_t)y * stride + 3 * x;
+          unsigned value = (unsigned)(x / 23 + y * 7);
+          pixel[0] = x % 7 == 0 ? 0 : (uint8_t)(value * 37);
+          pixel[1] = x % 7 == 0 ? 0 : (uint8_t)(value * 71);
+          pixel[2] = x % 7 == 0 ? 0 : (uint8_t)(value * 13);
+        }
+      size_t cells_count = (size_t)width * ((height + 1) / 2);
+      terminal_cell_t *expected = SAFE_CALLOC(cells_count, sizeof(*expected), terminal_cell_t *);
+      terminal_cell_t *actual = SAFE_CALLOC(cells_count, sizeof(*actual), terminal_cell_t *);
+      for (ascii_color_t mode = ASCII_COLOR_NONE; mode <= ASCII_COLOR_TRUE; ++mode) {
+        char *reference = ascii_render_halfblocks(rgb, width, height, stride, mode, &simd_cells_scalar);
+        cr_assert_not_null(reference);
+        decode(reference, expected, width, (height + 1) / 2, mode != ASCII_COLOR_NONE);
+        for (int y = 0; y < height; y += 2)
+          for (int x = 0; x < width; ++x) {
+            const uint8_t *top = rgb + (size_t)y * stride + 3 * x;
+            const uint8_t *bottom = y + 1 < height ? top + stride : top;
+            terminal_cell_t cell = expected[(y / 2) * width + x];
+            unsigned yt = (76u * top[0] + 150u * top[1] + 29u * top[2]) >> 8;
+            unsigned yb = (76u * bottom[0] + 150u * bottom[1] + 29u * bottom[2]) >> 8;
+            bool padding = mode == ASCII_COLOR_NONE ? yt < 16 && yb < 16
+                                                    : !(top[0] | top[1] | top[2] | bottom[0] | bottom[1] | bottom[2]);
+            if (padding) {
+              cr_assert_eq(cell.glyph[0], ' ');
+              cr_assert_eq(cell.fg, -1);
+              cr_assert_eq(cell.bg, -1);
+            } else if (mode == ASCII_COLOR_TRUE) {
+              cr_assert_eq(cell.fg, (top[0] << 16) | (top[1] << 8) | top[2]);
+              cr_assert_eq(cell.bg, (bottom[0] << 16) | (bottom[1] << 8) | bottom[2]);
+            } else if (mode != ASCII_COLOR_NONE) {
+              int fg = mode == ASCII_COLOR_16 ? rgb_to_16color(top[0], top[1], top[2])
+                                              : rgb_to_256color(top[0], top[1], top[2]);
+              int bg = mode == ASCII_COLOR_16 ? rgb_to_16color(bottom[0], bottom[1], bottom[2])
+                                              : rgb_to_256color(bottom[0], bottom[1], bottom[2]);
+              cr_assert_eq(cell.fg, fg);
+              cr_assert_eq(cell.bg, bg);
+            }
+          }
+        for (size_t b = 0; b < sizeof(backends) / sizeof(backends[0]); ++b) {
+          if ((platform_cpu_features() & backends[b].feature) != backends[b].feature)
+            continue;
+          char *result =
+              ascii_render_halfblocks(rgb, width, height, stride, mode, simd_cells_for_luminance(backends[b].luma));
+          cr_assert_not_null(result);
+          decode(result, actual, width, (height + 1) / 2, mode != ASCII_COLOR_NONE);
+          cr_assert_eq(memcmp(expected, actual, cells_count * sizeof(*expected)), 0);
+          SAFE_FREE(result);
+        }
+        SAFE_FREE(reference);
+      }
+      SAFE_FREE(actual);
+      SAFE_FREE(expected);
+      SAFE_FREE(rgb);
+    }
+  }
+}
+
 Test(ascii_emission, unicode_run_and_row_contract) {
   outbuf_t out = {.cap = 1, .buf = SAFE_MALLOC(1, char *)};
   emit_glyph_run(&out, "\xe2\x96\x88", 3, 4);
@@ -302,6 +439,9 @@ Test(ascii_emission, rejects_invalid_input) {
   rgb_pixel_t pixel = {0};
   image_t image = {.pixels = &pixel, .w = -1, .h = 1};
   cr_assert_null(ascii_render(&image, "@", ASCII_COLOR_TRUE, false, false, simd_luminance_scalar));
+  uint8_t half_pixel[3] = {0};
+  cr_assert_null(ascii_render_halfblocks(half_pixel, 1, 1, 0, ASCII_COLOR_TRUE, NULL));
+  cr_assert_null(ascii_render_halfblocks(half_pixel, 1, 1, 2, ASCII_COLOR_TRUE, &simd_cells_scalar));
   image.w = 1;
   cr_assert_null(ascii_render(&image, "", ASCII_COLOR_TRUE, false, false, simd_luminance_scalar));
   cr_assert_null(ascii_render(&image, "@", ASCII_COLOR_TRUE, false, false, NULL));
@@ -324,6 +464,8 @@ int main(int argc, char **argv) {
       printf("Testing %s terminal emission\n", backends[b].name);
   }
   ascii_emission_all_backends_terminal_cells();
+  ascii_emission_simd_pixel_stages_and_tails();
+  ascii_emission_all_simd_halfblock_modes();
   ascii_emission_unicode_run_and_row_contract();
   ascii_emission_halfblock_odd_height_padding_and_colors();
   ascii_emission_sgr_encoders_and_compatibility();

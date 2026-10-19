@@ -56,3 +56,19 @@ void sve_caches_destroy(void);
 #endif /* SIMD_SUPPORT_SVE */
 
 /** @} */
+
+#if SIMD_SUPPORT_SVE
+char *rgb_to_truecolor_halfblocks_sve(const uint8_t *rgb, int width, int height, int stride);
+#endif
+
+#if SIMD_SUPPORT_SVE
+char *rgb_to_256color_halfblocks_sve(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif
+
+#if SIMD_SUPPORT_SVE
+char *rgb_to_16color_halfblocks_sve(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif
+
+#if SIMD_SUPPORT_SVE
+char *rgb_to_halfblocks_sve(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif

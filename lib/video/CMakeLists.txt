@@ -58,7 +58,8 @@ set(SIMD_SRCS
 
 # ISA flags apply in the directory that creates ascii-chat-simd (the root).
 # Source options also exclude these files from unity builds and shared PCHs.
-list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/ascii/simd/dispatch.c)
+list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/ascii/simd/dispatch.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/simd/cells.c)
 foreach(isa SSE2 SSSE3 AVX2 NEON SVE)
     if(NOT ENABLE_SIMD_${isa})
         continue()
@@ -66,9 +67,10 @@ foreach(isa SSE2 SSSE3 AVX2 NEON SVE)
     string(TOLOWER "${isa}" name)
     set(isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/luminance.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/mono.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/color.c)
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/color.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/${name}/halfblock.c)
     if(isa STREQUAL "NEON")
-        list(APPEND isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/common.c ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/halfblock.c)
+        list(APPEND isa_sources ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/common.c)
         if(ASCIICHAT_IS_ARM64)
             set(isa_flags -march=armv8-a)
         else()

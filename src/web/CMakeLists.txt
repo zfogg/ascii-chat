@@ -225,6 +225,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/ascii/output_buffer.c
     ${LIB_ROOT}/video/ascii/sgr.c
     ${LIB_ROOT}/video/ascii/render.c
+    ${LIB_ROOT}/video/ascii/simd/cells.c
     ${LIB_ROOT}/video/ascii/simd/dispatch.c
     ${LIB_ROOT}/platform/cpu.c
     ${LIB_ROOT}/video/ascii/common.c

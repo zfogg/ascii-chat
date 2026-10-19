@@ -1,9 +1,27 @@
 # Shared ASCII terminal emission
 
-All scalar and SIMD entry points use `ascii_render()` in
-`lib/video/ascii/render.c`. SSE2, SSSE3, AVX2, NEON, and SVE supply
-only their RGB24-to-luminance kernel. Runtime selection and scalar tails keep
-the existing CPU/OS safety checks. ISA-specific types never cross this boundary.
+The shared row driver and ANSI emitter live in `lib/video/ascii/render.c`.
+SSE2, SSSE3, AVX2, NEON, and SVE each supply vector stages for luminance, RGB
+packing, palette lookup, exact indexed-color quantization, run comparison, and
+half-block classification. Runtime selection keeps the CPU/OS safety checks;
+only incomplete fixed-width vector tails use the scalar stages. ISA types do
+not cross the callback boundary in `simd/cells.h`.
+
+The architecture `mono.c`, `color.c`, and `halfblock.c` files instantiate their
+vector implementations from `simd/lookup.c`, `simd/quantize.c`, and `simd/pack.c`,
+with per-file ISA flags and no unity/PCH mixing. The shared math expresses one
+color contract using vector operations; it does not call the scalar renderer
+for complete SIMD blocks. The retained NEON table lookup uses `tbl`, NEON
+half-block input uses interleaved `ld3`, x86 uses byte shuffles/gathers where
+available, and SVE uses predicated scalable loads and comparisons.
+
+SSE2 has no byte shuffle or gather: palette lookup uses parallel comparisons
+against ranges of equal UTF-8 keys. SSSE3 uses byte-shuffle tables, AVX2 uses
+32-bit gathers, NEON uses four 64-entry byte tables, and SVE uses predicated
+gather loads. Color quantization computes exact palette distances in parallel,
+including lower-index tie breaking. Floyd-Steinberg error diffusion remains
+sequential because each pixel changes subsequent pixels; packing, palette
+lookup, and run comparison still use the selected SIMD backend in that mode.
 
 ## Cell and row contract
 
@@ -25,11 +43,14 @@ the existing CPU/OS safety checks. ISA-specific types never cross this boundary.
 - Dynamic buffer growth checks arithmetic and handles even a one-byte initial
   capacity. The shared renderer reserves a checked worst-case capacity including
   UTF-8, both colors, row endings, and the terminator.
-- Half-block modes use the same buffer, glyph-run, SGR, and row-ending helpers.
-  NEON delegates to the canonical half-block implementation because those cells
-  take their two RGB colors directly, without a luminance transformation.
-  Odd heights duplicate the final source row. All-black padding resets colors
-  and emits spaces. These specialized half-block rules are unchanged.
+- Every backend has truecolor, 256-color, 16-color, and monochrome half-block
+  entry points. The row driver invokes that backend's vector RGB packing,
+  indexed-color quantization, transparency/shade classification, and run
+  comparison stages. The capability-aware application path selects them at
+  runtime for every color mode. Scalar-named half-block functions explicitly
+  select the scalar reference, rather than hiding a runtime SIMD selection.
+  Odd heights duplicate the final source row. All-black colored padding resets
+  colors and emits spaces; monochrome keeps the existing dark-pixel threshold.
 - Invalid images, empty palettes, and missing kernels return NULL with error
   context. Returned buffers belong to the caller and use `SAFE_FREE`.
 
@@ -58,8 +79,11 @@ SGR, REP, UTF-8, and row boundaries and checks the resulting cells. It explicitl
 calls every CPU-supported backend, including lower-priority x86 variants. Cases
 cover widths 1 through 257 around vector boundaries, three-row images, noisy
 colors, long runs, alternating colors, ASCII and Unicode palettes, foreground
-and background modes, 16-color dithering, odd-height half-blocks, encoder size
-boundaries, and buffer growth from one byte.
+and background modes, 16-color dithering, every half-block color mode, odd
+heights, padded strides, encoder size boundaries, and buffer growth from one
+byte. Stage tests independently compare every backend's packing, lookup,
+quantization, and run callbacks against scalar results for every tail length
+through 257 and a Cartesian set of palette boundaries.
 
 Local validation on 2026-10-18:
 
@@ -69,6 +93,12 @@ Local validation on 2026-10-18:
   shared and x86 renderer sources pass native Clang syntax checking.
 - ARM64 under QEMU 6.2: NEON and SVE cell equivalence passes at SVE vector lengths
   16, 32, 64, 128, and 256 bytes; a cortex-a53 run checks NEON without SVE.
+- Instruction audits find vector instructions in packing, lookup, quantization,
+  run comparison, and half-block classification for all five backends. Repeat
+  with `python tests/simd/audit_cells.py build-emission/emission-test avx2`;
+  for ARM pass `--objdump aarch64-linux-gnu-objdump` and backend `neon` or `sve`.
+  Sample instructions for every stage are recorded in `instructions-x86.txt`
+  and `instructions-arm.txt` alongside the CSV reports.
 - Physical ARM hardware performance is not measured here; emulator throughput
   is not a hardware benchmark.
 
@@ -87,11 +117,20 @@ and two patterns (40-pixel runs and changing colors). The host is an AMD Ryzen 7
 vector length, 64 bytes. Concurrent dependency builds and emulation make these
 single-run timings approximate; they are not stable regression thresholds.
 Allocation counts include malloc/calloc/realloc calls after warming caches.
+SIMD is not uniformly faster for these small frames: indexed-color paths benefit
+from vector quantization, while some small/truecolor paths pay extra preparation
+and dispatch costs. The raw results include those slower cases.
+The `halfblock-x86.csv` and `halfblock-arm.csv` reports compare all four
+half-block modes across every supported backend using the same workload.
+Build and run `halfblock-benchmark` to repeat those measurements. The prior
+half-block renderer had only a NEON-specific truecolor entry point; the other
+ISA/color-mode combinations are new.
 
-The new renderer uses two allocations per frame (output and luminance scratch)
-for every backend. The former SIMD implementations sometimes used one, while
-others grew their output buffers. The shared path trades that scratch allocation
-for one tested luminance/output boundary and a checked output capacity.
+The new renderer uses two allocations per frame (output and vector row scratch)
+for every backend. The scratch allocation holds packed pixels and prepared
+cell columns for the vector stages. The former SIMD implementations sometimes
+used one allocation, while others grew their output buffers. The shared path
+uses a checked output capacity and one reusable row scratch allocation.
 
 The baseline cannot supply valid performance comparisons for every backend:
 

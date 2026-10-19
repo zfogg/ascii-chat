@@ -1,3 +1,4 @@
+#include <ascii-chat/video/ascii/render.h>
 /**
  * @file video/ascii.c
  * @ingroup video
@@ -179,15 +180,8 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
     // Check for half-block mode first
     if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK) {
       const uint8_t *rgb_data = (const uint8_t *)resized->pixels;
-#if SIMD_SUPPORT_NEON
-      // Use NEON half-block renderer (optimized SIMD path)
-      log_dev("Using NEON halfblock renderer");
-      ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized->w, resized->h, 0);
-#else
-      // Fallback to scalar halfblock renderer (works on all platforms)
-      log_dev("Using scalar halfblock renderer (NEON not available)");
-      ascii = rgb_to_truecolor_halfblocks_scalar(rgb_data, resized->w, resized->h, 0);
-#endif
+      ascii = ascii_render_halfblocks(rgb_data, resized->w, resized->h, 0, ASCII_COLOR_TRUE,
+                                      simd_cells_for_luminance(simd_backend()->luminance));
     } else {
       // Standard color modes (foreground/background)
       bool use_background = (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND);
@@ -798,15 +792,19 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     const uint8_t *rgb_data = (const uint8_t *)image->pixels;
     switch (color_level) {
     case TERM_COLOR_TRUECOLOR:
-      return rgb_to_truecolor_halfblocks_scalar(rgb_data, image->w, image->h, 0);
+      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_TRUE,
+                                     simd_cells_for_luminance(simd_backend()->luminance));
     case TERM_COLOR_256:
-      return rgb_to_256color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_256,
+                                     simd_cells_for_luminance(simd_backend()->luminance));
     case TERM_COLOR_16:
-      return rgb_to_16color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_16,
+                                     simd_cells_for_luminance(simd_backend()->luminance));
     case TERM_COLOR_NONE:
     case TERM_COLOR_AUTO:
     default:
-      return rgb_to_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+      return ascii_render_halfblocks(rgb_data, image->w, image->h, 0, ASCII_COLOR_NONE,
+                                     simd_cells_for_luminance(simd_backend()->luminance));
     }
   }
 
