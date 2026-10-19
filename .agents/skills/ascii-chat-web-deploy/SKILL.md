@@ -23,7 +23,8 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 
    ```bash
    git fetch origin
-   git checkout --detach origin/master
+   git switch master
+   git merge --ff-only origin/master
    git merge origin/deploy-web-www
    git merge origin/deploy-web-web
    git merge origin/deploy-web-discovery
@@ -32,7 +33,9 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 
    Run each merge only when needed; preserve all release-branch commits rather than replacing the branch or force-pushing it.
 
-2. From the reconciled `master`, bring the intended remote commit to the matching release branch:
+2. Validate the browser artifacts using the conditional Release-build procedure below, commit any regenerated canonical artifacts, and push `master`. Do not advance release branches until validation passes.
+
+3. From the reconciled `master`, bring the intended remote commit to the matching release branch:
 
    ```bash
    git fetch origin
@@ -41,9 +44,9 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 
    Replace `<site>` with `www`, `web`, or `discovery`. Do not force-push a release branch.
 
-3. Confirm the matching GitHub Actions run succeeds before treating the release as deployed. The deployment must use pnpm; do not substitute npm, Docker, or a manual Vercel Git deployment.
+4. Confirm the matching GitHub Actions run succeeds before treating the release as deployed. The deployment must use pnpm; do not substitute npm, Docker, or a manual Vercel Git deployment.
 
-4. Open the public URL directly and take a fresh screenshot/accessibility check. For the web client, test direct deep links such as `/mirror`, `/client`, and `/discovery`, not just in-app navigation.
+5. Open the public URL directly and take a fresh screenshot/accessibility check. For the web client, test direct deep links such as `/mirror`, `/client`, and `/discovery`, not just in-app navigation.
 
 ## Build and routing notes
 
@@ -59,7 +62,22 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
   | `DISCOVERY_TURN_SERVERS` | Comma-separated `turn:host:port` URLs. Whitespace around commas is ignored; bare `host:port` remains accepted for compatibility. | `turn:turn.ascii-chat.com:3478` |
 
   STUN and TURN default to port `3478` over UDP when omitted. Use `stuns:host[:port]` or `turns:host[:port]` for TLS; status functions probe those endpoints over TLS and default omitted ports to `5349`. These non-secret values are exposed to the frontend at Vite build time, and Vercel functions use the same values at runtime. `DISCOVERY_STATUS_TURN_USERNAME` and `DISCOVERY_STATUS_TURN_PASSWORD` remain server-only credentials for authenticated TURN probes.
-- If a release includes C/C++/header/CMake changes that affect the browser modules (`src/web`, `lib`, `include`, `cmake`, or the root `CMakeLists.txt`), rebuild the checked-in WASM assets before releasing: `cd web/web && pnpm run wasm:build`. Commit the regenerated mirror and client JavaScript/WASM binaries plus `manifest.json` in both `web/web/src/wasm/dist/` and `web/web/public/wasm/`. The script verifies the source hash, so a stale prebuilt module must not be deployed.
+### Conditional WASM Release builds
+
+- Compile `mirror-web` / `client-web` and generate their JavaScript glue **only when needed**: canonical artifacts are missing, source or artifact hash validation fails, relevant compiler/build settings changed, or their Release-build provenance cannot be established. A frontend-only, documentation, or skill change does not by itself require regenerating WASM or its JavaScript. Never rewrite the manifest to make stale binaries appear current.
+- First run `node web/web/scripts/wasm-build.mjs --publish-only` from the repository root. This checks the current source hash and every canonical artifact hash, then copies the verified assets to runtime URLs; it does not compile WASM or generate JavaScript glue. Reuse passing artifacts when their Release provenance is known.
+- When regeneration is necessary, use the **main worktree**, with CMake build type **Release**, and the dedicated `./build_release/` directory. Keep the main worktree on `master`; use `codex/` branches for separate agent worktrees. Do not delete or repurpose an existing native build directory. If `build_release` already contains a native Release configuration exposing the WASM targets, build those targets there; verify its nested WASM cache also says `Release`.
+- For an absent build directory, configure the standalone browser project with Emscripten and Ninja:
+
+  ```bash
+  emcmake cmake -S src/web -B build_release -G Ninja -DCMAKE_BUILD_TYPE=Release
+  cmake --build build_release --config Release --target mirror-web client-web
+  ```
+
+  Confirm `CMAKE_BUILD_TYPE:STRING=Release` in the effective WASM `CMakeCache.txt` before publishing. Never publish Debug artifacts. CMake's incremental build determines which objects and generated glue actually need regeneration.
+- Publish the successful build using `ASCII_CHAT_WASM_BUILD_DIR=build_release node web/web/scripts/wasm-build.mjs` (in PowerShell, set `$env:ASCII_CHAT_WASM_BUILD_DIR = 'build_release'` first). The script resolves that directory from the repository root and supports standalone outputs or the native build's `web/` outputs. Re-run `--publish-only` afterward to verify the final source/artifact hashes.
+- Commit regenerated `mirror.js`, `mirror.wasm`, `client.js`, `client.wasm`, and `manifest.json` only in `web/web/src/wasm/dist/`. `web/web/public/wasm/` contains ignored runtime copies; do not force-add them. Record the Release configuration and build directory in the artifact commit message so subsequent deployments can establish provenance and skip unnecessary compilation.
+
 - For a local web build, use pnpm. If the isolated worktree has no dependencies, report that limitation rather than installing unrelated dependencies into the user's checkout.
 
 ## Domains and DNS
