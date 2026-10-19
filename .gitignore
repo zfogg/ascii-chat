@@ -99,3 +99,5 @@ massif.out*
 # Gas Town (added by gt)
 __pycache__/
 .tmp/
+
+/work/
