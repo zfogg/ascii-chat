@@ -49,16 +49,18 @@
  * @date September 2025
  */
 
-#ifdef _WIN32
-#pragma pack(push, 1)
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/platform/terminal.h>
+
+// Keep dependency structures at their normal alignment; only image types are packed.
+#ifdef _WIN32
+#pragma pack(push, 1)
+#endif
 
 /* ============================================================================
  * Data Structures
@@ -307,9 +309,6 @@ char *image_print_color(const image_t *p, const char *palette);
  * Capability-Aware ASCII Conversion Functions
  * @{
  */
-
-// Capability-aware image printing functions
-#include <ascii-chat/platform/terminal.h>
 
 /**
  * @brief Print image with terminal capability awareness
