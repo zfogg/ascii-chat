@@ -44,14 +44,14 @@ asciichat_error_t terminal_fd_reader_create(int fd, int frame_height, terminal_f
   reader->eof_reached = false;
   reader->first_frame_processed = false;
 
-  log_debug("terminal_fd_reader: created with fd=%d, frame height %d (width auto-detect)", fd, frame_height);
+  log_debug("created with fd=%d, frame height %d (width auto-detect)", fd, frame_height);
   *out = reader;
   return ASCIICHAT_OK;
 }
 
 asciichat_error_t terminal_fd_reader_next(terminal_fd_reader_t *reader, char **out_frame) {
   if (!reader || !out_frame) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to terminal_fd_reader_next");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   if (reader->eof_reached) {
@@ -76,8 +76,7 @@ asciichat_error_t terminal_fd_reader_next(terminal_fd_reader_t *reader, char **o
 
       // If we read some lines but not a complete frame, that's ok - return partial
       if (frame_pos > 0) {
-        log_debug("terminal_fd_reader: EOF reached after %d/%d lines, returning partial frame", line_num,
-                  reader->frame_height);
+        log_debug("EOF reached after %d/%d lines, returning partial frame", line_num, reader->frame_height);
         // Remove trailing newline from last line if present
         if (frame_pos > 0 && frame_data[frame_pos - 1] == '\n') {
           frame_pos--;
@@ -94,7 +93,7 @@ asciichat_error_t terminal_fd_reader_next(terminal_fd_reader_t *reader, char **o
     // Append line to frame
     size_t line_len = strlen(line);
     if (frame_pos + line_len >= frame_capacity) {
-      log_warn("terminal_fd_reader: frame buffer overflow, line %d too large", line_num);
+      log_warn("frame buffer overflow, line %d too large", line_num);
       // Realloc and continue
       frame_capacity *= 2;
       char *new_frame = SAFE_MALLOC(frame_capacity, char *);
@@ -130,11 +129,11 @@ asciichat_error_t terminal_fd_reader_next(terminal_fd_reader_t *reader, char **o
       reader->frame_width = display_width(frame_data);
     }
 
-    log_info("terminal_fd_reader: detected frame width %d from first frame", reader->frame_width);
+    log_info("detected frame width %d from first frame", reader->frame_width);
   }
 
   *out_frame = frame_data;
-  log_debug_every(NS_PER_SEC_INT, "terminal_fd_reader: read frame (%zu bytes, %dx%d)", frame_pos, reader->frame_width,
+  log_debug_every(NS_PER_SEC_INT, "read frame (%zu bytes, %dx%d)", frame_pos, reader->frame_width,
                   reader->frame_height);
   return ASCIICHAT_OK;
 }

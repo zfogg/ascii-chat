@@ -133,8 +133,7 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, uint64_
     int result = socket_poll(&pfd, 1, effective_timeout_ns);
     if (result <= 0) {
       if (result == 0) {
-        SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "send_with_timeout timed out after %llu nanoseconds",
-                      (unsigned long long)timeout_ns);
+        SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "timed out after %llu nanoseconds", (unsigned long long)timeout_ns);
         return -1;
       }
       if (network_handle_select_error(result)) {
@@ -145,7 +144,7 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, uint64_
 
     // Check if socket is ready for writing
     if (!(pfd.revents & POLLOUT)) {
-      SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "send_with_timeout socket not ready for writing after poll");
+      SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "socket not ready for writing after poll");
       return -1;
     }
 
@@ -233,7 +232,7 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
       }
     }
     if (pfd.revents & (POLLERR | POLLNVAL)) {
-      SET_ERRNO(ERROR_NETWORK, "recv_with_timeout poll reported socket flags 0x%x", pfd.revents);
+      SET_ERRNO(ERROR_NETWORK, "poll reported socket flags 0x%x", pfd.revents);
       return -1;
     }
     // A drained asynchronous writer may close while readable bytes remain.
@@ -311,7 +310,7 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
 
   // Check if socket is still valid before attempting accept
   if (listenfd == INVALID_SOCKET_VALUE) {
-    SET_ERRNO(ERROR_NETWORK, "accept_with_timeout: listening socket is closed");
+    SET_ERRNO(ERROR_NETWORK, "listening socket is closed");
     return -1;
   }
 
@@ -325,7 +324,7 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
       // During shutdown, don't log this as an error since it's expected behavior
       SET_ERRNO(ERROR_NETWORK, "Network operation failed");
     } else {
-      SET_ERRNO_SYS(ERROR_NETWORK_BIND, "accept_with_timeout accept failed: %s", socket_get_error_string());
+      SET_ERRNO_SYS(ERROR_NETWORK_BIND, "accept failed: %s", socket_get_error_string());
     }
     return -1;
   }

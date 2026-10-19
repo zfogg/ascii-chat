@@ -584,7 +584,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   // Check pixel count overflow
   size_t pixel_count_check = 0;
   if (checked_size_mul((size_t)width, (size_t)height, &pixel_count_check) != ASCIICHAT_OK) {
-    log_error("webcam_read_context: dimensions overflow: %u x %u", width, height);
+    log_error("dimensions overflow: %u x %u", width, height);
     IMFMediaBuffer_Unlock(buffer);
     IMFMediaBuffer_Release(buffer);
     IMFSample_Release(sample);
@@ -594,7 +594,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   // Check pixel buffer size overflow
   size_t pixel_buffer_size = 0;
   if (checked_size_mul(pixel_count_check, sizeof(rgb_pixel_t), &pixel_buffer_size) != ASCIICHAT_OK) {
-    log_error("webcam_read_context: pixel buffer overflow: %zu pixels", pixel_count_check);
+    log_error("pixel buffer overflow: %zu pixels", pixel_count_check);
     IMFMediaBuffer_Unlock(buffer);
     IMFMediaBuffer_Release(buffer);
     IMFSample_Release(sample);
@@ -678,7 +678,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "webcam_get_dimensions: invalid parameters");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   }
 
   *width = ctx->width;
@@ -688,7 +688,7 @@ asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *
 
 asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsigned int *out_count) {
   if (!out_devices || !out_count) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "webcam_list_devices: invalid parameters");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   }
 
   *out_devices = NULL;

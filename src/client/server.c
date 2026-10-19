@@ -231,7 +231,7 @@ acip_transport_t *server_connection_get_transport(client_connection_t *connectio
  * @ingroup client_connection
  */
 void server_connection_set_transport(client_connection_t *connection, acip_transport_t *transport) {
-  log_debug("[TRANSPORT_LIFECYCLE] server_connection_set_transport() called with transport=%p", (void *)transport);
+  log_debug("transport=%p", (void *)transport);
 
   log_debug("[TRANSPORT_LIFECYCLE] Setting g_client_transport to %p", (void *)transport);
   connection->attempt.connection.transport = transport;
@@ -253,8 +253,6 @@ void server_connection_set_transport(client_connection_t *connection, acip_trans
     atomic_store_bool(&connection->connection_active, false);
     log_debug("[TRANSPORT_LIFECYCLE] Server connection transport cleared and marked inactive");
   }
-
-  log_debug("[TRANSPORT_LIFECYCLE] server_connection_set_transport() completed");
 }
 
 /**
@@ -396,7 +394,7 @@ asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_t
 
   // Check connection status and get transport reference
   if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
-    log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() check failed: active=%s, transport=%p",
+    log_debug("Transport check failed: active=%s, transport=%p",
               atomic_load_bool(&connection->connection_active) ? "true" : "false",
               (void *)connection->attempt.connection.transport);
     mutex_unlock(&connection->send_mutex);
@@ -405,8 +403,8 @@ asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_t
 
   // Get transport reference - transport has its own internal synchronization
   acip_transport_t *transport = connection->attempt.connection.transport;
-  log_debug_every(LOG_RATE_SLOW, "[TRANSPORT_LIFECYCLE] threaded_send_packet() using transport=%p, is_connected=%s",
-                  (void *)transport, acip_transport_is_connected(transport) ? "true" : "false");
+  log_debug_every(LOG_RATE_SLOW, "Using transport=%p, is_connected=%s", (void *)transport,
+                  acip_transport_is_connected(transport) ? "true" : "false");
 
   // Network I/O happens while holding mutex to prevent concurrent socket writes
   asciichat_error_t result = packet_send_via_transport(transport, type, data, len, 0);
@@ -416,7 +414,7 @@ asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_t
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
-    log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() send failed");
+    log_debug("Packet send failed");
     if (!network_error_is_local_rejection(result))
       server_connection_lost(connection);
     return result;

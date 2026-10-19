@@ -1110,7 +1110,7 @@ asciichat_error_t platform_restore_timer_resolution(void) {
  */
 int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size) {
   if (!executable || !argv) {
-    log_error("platform_execute_subprocess: invalid parameters");
+    log_error("invalid parameters");
     return -1;
   }
 

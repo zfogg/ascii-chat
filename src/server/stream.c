@@ -267,17 +267,16 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
   }
 
   // Process frames (expensive operations)
-  log_dev_every(5 * NS_PER_MS_INT, "collect_video_sources: Processing %d snapshots", snapshot_count);
+  log_dev_every(5 * NS_PER_MS_INT, "Processing %d snapshots", snapshot_count);
   for (int i = 0; i < snapshot_count && source_count < max_sources; i++) {
     client_snapshot_t *snap = &client_snapshots[i];
 
     if (!snap->is_active) {
-      log_dev_every(5 * NS_PER_MS_INT, "collect_video_sources: Skipping inactive client %s", snap->client_id);
+      log_dev_every(5 * NS_PER_MS_INT, "Skipping inactive client %s", snap->client_id);
       continue;
     }
 
-    log_dev_every(5 * NS_PER_MS_INT, "collect_video_sources: Client %s: is_sending_video=%d", snap->client_id,
-                  snap->is_sending_video);
+    log_dev_every(5 * NS_PER_MS_INT, "Client %s: is_sending_video=%d", snap->client_id, snap->is_sending_video);
 
     SAFE_STRNCPY(sources[source_count].client_id, snap->client_id, sizeof(sources[source_count].client_id) - 1);
     sources[source_count].image = NULL; // Will be set if video is available
@@ -821,8 +820,8 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
   // Keep cell dimensions here so the frame and Matrix overlay fit the client grid.
 
   // DEBUG: Log dimensions being used for ASCII conversion
-  log_dev_every(LOG_RATE_SLOW, "convert_composite_to_ascii: composite=%dx%d, terminal=%dx%d (mode=%d)", composite->w,
-                composite->h, width, height, caps_snapshot.render_mode);
+  log_dev_every(LOG_RATE_SLOW, "composite=%dx%d, terminal=%dx%d (mode=%d)", composite->w, composite->h, width, height,
+                caps_snapshot.render_mode);
 
   // Pass full terminal dimensions so ascii_convert_with_capabilities can fit the image correctly
   // with proper CHAR_ASPECT correction. The composite may have been pre-fitted in pixel space,
@@ -995,9 +994,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   }
 
   if (!out_size || width == 0 || height == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM,
-              "Invalid parameters for create_mixed_ascii_frame_for_client: width=%u, height=%u, out_size=%p", width,
-              height, out_size);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: width=%u, height=%u, out_size=%p", width, height, out_size);
     return NULL;
   }
 
@@ -1142,8 +1139,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
       *out_size = ascii_len;
     }
 
-    log_dev_every(LOG_RATE_SLOW, "create_mixed_ascii_frame_for_client: Final frame size=%zu bytes for client %s",
-                  *out_size, target_client_id);
+    log_dev_every(LOG_RATE_SLOW, "Final frame size=%zu bytes for client %s", *out_size, target_client_id);
 
     // Debug: Log the last 50 bytes of the frame to see what's really there
     if (*out_size >= 50) {

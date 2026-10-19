@@ -34,7 +34,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   // Instead, we regenerate the OpenPGP signature using GPG (Ed25519 is deterministic).
   (void)signature;
 
-  log_debug("gpg_verify_detached_ed25519: Verifying signature with key ID %s using gpg --verify", key_id);
+  log_debug("Verifying signature with key ID %s using gpg --verify", key_id);
 
   // To verify with GPG, we need to:
   // 1. Reconstruct the OpenPGP signature packet from the raw R||S signature
@@ -144,7 +144,7 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   // See libgcrypt/tests/t-ed25519.c line 246-251.
   err = gcry_sexp_build(&s_pubkey, NULL, "(public-key (ecc (curve Ed25519) (flags eddsa) (q %b)))", 32, public_key);
   if (err) {
-    log_error("gpg_verify_signature: Failed to build public key S-expression: %s", gcry_strerror(err));
+    log_error("Failed to build public key S-expression: %s", gcry_strerror(err));
     return -1;
   }
 
@@ -152,7 +152,7 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   // Signature is 64 bytes: first 32 bytes are R, last 32 bytes are S
   err = gcry_sexp_build(&s_sig, NULL, "(sig-val (eddsa (r %b) (s %b)))", 32, signature, 32, signature + 32);
   if (err) {
-    log_error("gpg_verify_signature: Failed to build signature S-expression: %s", gcry_strerror(err));
+    log_error("Failed to build signature S-expression: %s", gcry_strerror(err));
     gcry_sexp_release(s_pubkey);
     return -1;
   }
@@ -164,7 +164,7 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   // GPG agent's internal format is different - this is the correct libgcrypt API usage.
   err = gcry_sexp_build(&s_data, NULL, "(data (value %b))", message_len, message);
   if (err) {
-    log_error("gpg_verify_signature: Failed to build data S-expression: %s", gcry_strerror(err));
+    log_error("Failed to build data S-expression: %s", gcry_strerror(err));
     gcry_sexp_release(s_pubkey);
     gcry_sexp_release(s_sig);
     return -1;
@@ -185,10 +185,10 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
     safe_snprintf(msg_hex + i * 2, 3, "%02x", message[i]);
   }
 
-  log_debug("gpg_verify_signature: pubkey=%s", pubkey_hex);
-  log_debug("gpg_verify_signature: R=%s", r_hex);
-  log_debug("gpg_verify_signature: S=%s", s_hex);
-  log_debug("gpg_verify_signature: msg=%s (len=%zu)", msg_hex, message_len);
+  log_debug("pubkey=%s", pubkey_hex);
+  log_debug("R=%s", r_hex);
+  log_debug("S=%s", s_hex);
+  log_debug("msg=%s (len=%zu)", msg_hex, message_len);
 
   // Verify the signature
   err = gcry_pk_verify(s_sig, s_data, s_pubkey);
@@ -199,11 +199,11 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   gcry_sexp_release(s_data);
 
   if (err) {
-    log_debug("gpg_verify_signature: Signature verification failed: %s", gcry_strerror(err));
+    log_debug("Signature verification failed: %s", gcry_strerror(err));
     return -1;
   }
 
-  log_debug("gpg_verify_signature: Signature verified successfully");
+  log_debug("Signature verified successfully");
   return 0;
 #else
   // Explicitly mark parameters as unused when libgcrypt is not available
@@ -211,7 +211,7 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   (void)message;
   (void)message_len;
   (void)signature;
-  log_error("gpg_verify_signature: libgcrypt not available");
+  log_error("libgcrypt not available");
   return -1;
 #endif
 }
@@ -220,11 +220,11 @@ int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_
                                      size_t message_len, const char *expected_key_id) {
   // Validate inputs
   if (!signature || signature_len == 0 || signature_len > 512) {
-    log_error("gpg_verify_signature_with_binary: Invalid signature (expected 1-512 bytes, got %zu)", signature_len);
+    log_error("Invalid signature (expected 1-512 bytes, got %zu)", signature_len);
     return -1;
   }
   if (!message || message_len == 0) {
-    log_error("gpg_verify_signature_with_binary: Invalid message");
+    log_error("Invalid message");
     return -1;
   }
 

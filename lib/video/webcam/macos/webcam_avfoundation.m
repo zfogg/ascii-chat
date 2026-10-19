@@ -673,7 +673,7 @@ asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *
 
 asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsigned int *out_count) {
   if (!out_devices || !out_count) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "webcam_list_devices: invalid parameters");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   }
 
   *out_devices = NULL;

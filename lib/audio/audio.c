@@ -507,7 +507,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
 
   audio_context_t *ctx = (audio_context_t *)userData;
   if (!ctx) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "duplex_callback: ctx is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "ctx is NULL");
     return paAbort;
   }
 
@@ -837,8 +837,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       }
       // Apply volume scaling if not at 100%
       if (speaker_volume != 1.0f) {
-        log_debug_every(48000, "OUTPUT_CALLBACK: Applying volume %.0f%% to %zu samples", speaker_volume * 100.0,
-                        samples_read);
+        log_debug_every(48000, "Applying volume %.0f%% to %zu samples", speaker_volume * 100.0, samples_read);
         for (size_t i = 0; i < samples_read; i++) {
           output[i] *= speaker_volume;
         }
@@ -1491,7 +1490,7 @@ size_t audio_ring_buffer_available_write(audio_ring_buffer_t *rb) {
 }
 
 asciichat_error_t audio_init(audio_context_t *ctx) {
-  log_debug("audio_init: starting, ctx=%p", (void *)ctx);
+  log_debug("starting, ctx=%p", (void *)ctx);
   if (!ctx) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx is NULL");
   }
@@ -1662,7 +1661,7 @@ void audio_destroy(audio_context_t *ctx) {
 
     // Ensure worker thread is stopped even if streams weren't running
     if (ctx->worker_running) {
-      log_debug("Stopping worker thread during audio_destroy");
+      log_debug("Stopping worker thread");
       atomic_store_bool(&ctx->worker_should_stop, true);
       cond_signal(&ctx->worker_cond); // Wake up worker if waiting
       asciichat_thread_join(&ctx->worker_thread, NULL);
@@ -2259,7 +2258,7 @@ asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer,
 static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_devices, unsigned int *out_count,
                                                      bool list_inputs) {
   if (!out_devices || !out_count) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "audio_list_devices: invalid parameters");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   }
 
   *out_devices = NULL;

@@ -38,7 +38,7 @@
  */
 static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   if (!key_id || !public_key_out) {
-    log_error("Invalid arguments to gpg_export_public_key");
+    log_error("Invalid arguments");
     return -1;
   }
 
@@ -247,7 +247,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
 
 int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygrip_out) {
   if (!key_id || !public_key_out) {
-    log_error("Invalid arguments to gpg_get_public_key");
+    log_error("Invalid arguments");
     return -1;
   }
 

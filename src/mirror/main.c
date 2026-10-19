@@ -258,16 +258,16 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
   (void)user_data; // Unused
 
   js_mirror_log("mirror_run: ENTRY");
-  log_info("mirror_run: CALLED - capture=%p display=%p", (void *)capture, (void *)display);
+  log_info("capture=%p display=%p", (void *)capture, (void *)display);
 
   // Get the render loop's should_exit callback from session_client_like
   bool (*render_should_exit)(void *) = session_client_like_get_render_should_exit();
   if (!render_should_exit) {
-    log_error("mirror_run: render_should_exit callback not initialized");
+    log_error("render_should_exit callback not initialized");
     return SET_ERRNO(ERROR_INVALID_STATE, "Render should_exit callback not initialized");
   }
 
-  log_info("mirror_run: Calling session_render_loop in synchronous mode");
+  log_info("Calling session_render_loop in synchronous mode");
   // Run the unified render loop with keyboard support using synchronous mode
   // Pass capture context directly (not as callbacks) for proper frame capture
   asciichat_error_t result = session_render_loop(capture, // Capture context (synchronous mode)
@@ -277,7 +277,7 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
                                                  NULL,                    // No sleep callback (built-in FPS limiting)
                                                  mirror_keyboard_handler, // Keyboard handler
                                                  display); // Pass display as user_data for help screen toggle
-  log_info("mirror_run: session_render_loop returned with result=%d", result);
+  log_info("session_render_loop returned with result=%d", result);
   return result;
 }
 
@@ -297,7 +297,6 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
  * @return 0 on success, non-zero error code on failure
  */
 int mirror_main(void) {
-  log_info("[MIRROR] main ENTRY");
 
   // Configure mode-specific session settings
   session_client_like_config_t config = {
@@ -310,7 +309,7 @@ int mirror_main(void) {
 
   // Run shared initialization/teardown with mode-specific loop
   asciichat_error_t result = session_client_like_run(&config);
-  log_info("mirror_main: session_client_like_run returned with result=%d", result);
+  log_info("session_client_like_run returned with result=%d", result);
 
   if (result != ASCIICHAT_OK) {
     log_set_terminal_output(true);

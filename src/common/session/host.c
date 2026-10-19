@@ -200,7 +200,7 @@ typedef struct session_host {
 
 session_host_t *session_host_create(const session_host_config_t *config) {
   if (!config) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_host_create: NULL config");
+    SET_ERRNO(ERROR_INVALID_PARAM, "NULL config");
     return NULL;
   }
 
@@ -971,7 +971,7 @@ asciichat_error_t session_host_render_video(session_host_t *host) {
 static void *host_render_thread(void *arg) {
   session_host_t *host = (session_host_t *)arg;
   if (!host) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "host_render_thread: invalid host");
+    SET_ERRNO(ERROR_INVALID_PARAM, "invalid host");
     return NULL;
   }
 
@@ -1112,7 +1112,7 @@ static void *host_render_thread(void *arg) {
 
 asciichat_error_t session_host_start(session_host_t *host) {
   if (!host || !host->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_start: invalid host");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid host");
   }
 
   if (host->running) {
@@ -1392,7 +1392,7 @@ uint32_t session_host_add_memory_participant(session_host_t *host) {
 
 asciichat_error_t session_host_inject_frame(session_host_t *host, uint32_t participant_id, const image_t *frame) {
   if (!host || !host->initialized || !frame) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_inject_frame: invalid parameters");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   }
 
   mutex_lock(&host->clients_mutex);
@@ -1438,7 +1438,7 @@ asciichat_error_t session_host_inject_frame(session_host_t *host, uint32_t parti
 asciichat_error_t session_host_inject_audio(session_host_t *host, uint32_t participant_id, const float *samples,
                                             size_t count) {
   if (!host || !host->initialized || !samples || count == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_inject_audio: invalid parameters");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   }
 
   mutex_lock(&host->clients_mutex);
@@ -1480,7 +1480,7 @@ asciichat_error_t session_host_inject_audio(session_host_t *host, uint32_t parti
 
 asciichat_error_t session_host_remove_client(session_host_t *host, uint32_t client_id) {
   if (!host || !host->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_remove_client: invalid host");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid host");
   }
 
   mutex_lock(&host->clients_mutex);
@@ -1524,7 +1524,7 @@ asciichat_error_t session_host_remove_client(session_host_t *host, uint32_t clie
 
 asciichat_error_t session_host_find_client(session_host_t *host, uint32_t client_id, session_host_client_info_t *info) {
   if (!host || !host->initialized || !info) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_find_client: invalid parameter");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameter");
   }
 
   mutex_lock(&host->clients_mutex);
@@ -1578,11 +1578,11 @@ int session_host_get_client_ids(session_host_t *host, uint32_t *ids, int max_ids
 
 asciichat_error_t session_host_broadcast_frame(session_host_t *host, const char *frame) {
   if (!host || !host->initialized || !frame) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_broadcast_frame: invalid parameter");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameter");
   }
 
   if (!host->running) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_host_broadcast_frame: not running");
+    return SET_ERRNO(ERROR_INVALID_STATE, "not running");
   }
 
   // Broadcast ASCII frame to all connected clients
@@ -1613,11 +1613,11 @@ asciichat_error_t session_host_broadcast_frame(session_host_t *host, const char 
 
 asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_id, const char *frame) {
   if (!host || !host->initialized || !frame) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_send_frame: invalid parameter");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameter");
   }
 
   if (!host->running) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_host_send_frame: not running");
+    return SET_ERRNO(ERROR_INVALID_STATE, "not running");
   }
 
   // Send ASCII frame to specific client
@@ -1639,7 +1639,7 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
   }
   mutex_unlock(&host->clients_mutex);
 
-  return SET_ERRNO(ERROR_NOT_FOUND, "session_host_send_frame: client %u not found", client_id);
+  return SET_ERRNO(ERROR_NOT_FOUND, "client %u not found", client_id);
 }
 
 /* ============================================================================
@@ -1648,7 +1648,7 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
 
 asciichat_error_t session_host_set_display(session_host_t *host, struct session_display_ctx *display) {
   if (!host || !host->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_set_display: invalid host");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid host");
   }
 
   host->display_context = display;
@@ -1661,7 +1661,7 @@ asciichat_error_t session_host_set_display(session_host_t *host, struct session_
 
 asciichat_error_t session_host_start_render(session_host_t *host) {
   if (!host || !host->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_start_render: invalid host");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid host");
   }
 
   // Discovery mode starts the shared host renderer without passing through
@@ -1669,7 +1669,7 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
   ascii_simd_init();
 
   if (!host->running) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "session_host_start_render: not running");
+    return SET_ERRNO(ERROR_INVALID_STATE, "not running");
   }
 
   if (host->render_thread_running) {
@@ -1771,8 +1771,7 @@ asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32
   // Find client with matching ID
   for (int i = 0; i < host->max_clients; i++) {
     if (host->clients[i].active && host->clients[i].client_id == client_id) {
-      log_info("session_host_set_client_transport: Setting transport=%p for client %u (was=%p)", transport, client_id,
-               host->clients[i].transport);
+      log_info("Setting transport=%p for client %u (was=%p)", transport, client_id, host->clients[i].transport);
 
       host->clients[i].transport = transport;
 

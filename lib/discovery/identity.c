@@ -127,7 +127,7 @@ asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[
 
 void acds_identity_fingerprint(const uint8_t public_key[32], char fingerprint[65]) {
   if (!public_key || !fingerprint) {
-    log_error("acds_identity_fingerprint: NULL parameters");
+    log_error("NULL parameters");
     return;
   }
 

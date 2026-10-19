@@ -109,13 +109,13 @@ static uint32_t mutate_glyph(uint32_t codepoint, int col, int row, float time) {
 
 digital_rain_t *digital_rain_init(int num_columns, int num_rows) {
   if (num_columns <= 0 || num_rows <= 0) {
-    log_error("digital_rain_init: invalid dimensions %dx%d", num_columns, num_rows);
+    log_error("invalid dimensions %dx%d", num_columns, num_rows);
     return NULL;
   }
 
   digital_rain_t *rain = SAFE_CALLOC(1, sizeof(digital_rain_t), digital_rain_t *);
   if (!rain) {
-    log_error("digital_rain_init: failed to allocate context");
+    log_error("failed to allocate context");
     return NULL;
   }
 
@@ -125,7 +125,7 @@ digital_rain_t *digital_rain_init(int num_columns, int num_rows) {
   // Allocate column state array
   rain->columns = SAFE_CALLOC((size_t)num_columns, sizeof(digital_rain_column_t), digital_rain_column_t *);
   if (!rain->columns) {
-    log_error("digital_rain_init: failed to allocate column array");
+    log_error("failed to allocate column array");
     SAFE_FREE(rain);
     return NULL;
   }
@@ -134,7 +134,7 @@ digital_rain_t *digital_rain_init(int num_columns, int num_rows) {
   size_t grid_size = (size_t)num_columns * (size_t)num_rows;
   rain->previous_brightness = SAFE_CALLOC(grid_size, sizeof(float), float *);
   if (!rain->previous_brightness) {
-    log_error("digital_rain_init: failed to allocate brightness array");
+    log_error("failed to allocate brightness array");
     SAFE_FREE(rain->columns);
     SAFE_FREE(rain);
     return NULL;
@@ -380,7 +380,7 @@ char *digital_rain_apply(digital_rain_t *rain, const char *frame, float delta_ti
 
 char *digital_rain_render_at(digital_rain_t *rain, const char *frame, float seconds) {
   if (!rain || !frame) {
-    log_error("digital_rain_apply: NULL parameter");
+    log_error("NULL parameter");
     return NULL;
   }
 

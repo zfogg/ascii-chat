@@ -188,7 +188,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
     if (*endptr == '\0' && errno == 0 && port_val > 0 && port_val <= 65535) {
       stun_port = (uint16_t)port_val;
     } else {
-      log_error("nat_probe_via_stun: Invalid STUN port: %s", colon + 1);
+      log_error("Invalid STUN port: %s", colon + 1);
     }
   }
 

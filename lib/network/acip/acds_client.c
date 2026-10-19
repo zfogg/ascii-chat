@@ -39,7 +39,7 @@
 asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[64], uint64_t timestamp, uint8_t capabilities,
                                            uint8_t max_participants, uint8_t signature_out[64]) {
   if (!identity_seckey || !signature_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter to acds_sign_session_create");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
 
   // Build message: type (1 byte) || timestamp (8 bytes) || capabilities (1 byte) || max_participants (1 byte)
@@ -68,7 +68,7 @@ asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[32], 
                                              uint8_t capabilities, uint8_t max_participants,
                                              const uint8_t signature[64]) {
   if (!identity_pubkey || !signature) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter to acds_verify_session_create");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
 
   // Build message: type (1 byte) || timestamp (8 bytes) || capabilities (1 byte) || max_participants (1 byte)
@@ -95,7 +95,7 @@ asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[32], 
 asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[64], uint64_t timestamp,
                                          const char *session_string, uint8_t signature_out[64]) {
   if (!identity_seckey || !session_string || !signature_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter to acds_sign_session_join");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
 
   size_t session_len = strlen(session_string);
@@ -130,7 +130,7 @@ asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[64], uint
 asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[32], uint64_t timestamp,
                                            const char *session_string, const uint8_t signature[64]) {
   if (!identity_pubkey || !session_string || !signature) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter to acds_verify_session_join");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
 
   size_t session_len = strlen(session_string);

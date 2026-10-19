@@ -210,16 +210,16 @@ void client_crypto_set_mode(client_connection_t *connection, uint8_t mode) {
  * @ingroup client_crypto
  */
 int client_crypto_init(client_connection_t *connection) {
-  log_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
+  log_debug("Starting crypto initialization");
 
   // Reset if already initialized (allows reinit on reconnection)
   if (lifecycle_reset(&connection->crypto_lc)) {
-    log_debug("CLIENT_CRYPTO_INIT: Already initialized, resetting for reinit");
+    log_debug("Already initialized, resetting for reinit");
     crypto_handshake_destroy(&connection->crypto_ctx);
   }
 
-  log_debug("CLIENT_CRYPTO_INIT: Initializing crypto handshake context");
-  log_debug("CLIENT_CRYPTO_INIT: crypto_mode=%d (NONE=0, ENCRYPT=1, AUTH=2, FULL=3)", connection->crypto_mode);
+  log_debug("Initializing crypto handshake context");
+  log_debug("crypto_mode=%d (NONE=0, ENCRYPT=1, AUTH=2, FULL=3)", connection->crypto_mode);
 
   // Check if we have an SSH key, password, or neither
   int result;
@@ -246,10 +246,10 @@ int client_crypto_init(client_connection_t *connection) {
     }
 
     // Parse key (handles SSH files and gpg:keyid format)
-    log_debug("CLIENT_CRYPTO_INIT: Loading private key for authentication: %s", encrypt_key);
+    log_debug("Loading private key for authentication: %s", encrypt_key);
     if (parse_private_key(encrypt_key, &private_key) == ASCIICHAT_OK) {
       log_debug("Successfully parsed SSH private key");
-      log_debug("CLIENT_CRYPTO_INIT: Parsed key type=%d, KEY_TYPE_ED25519=%d", private_key.type, KEY_TYPE_ED25519);
+      log_debug("Parsed key type=%d, KEY_TYPE_ED25519=%d", private_key.type, KEY_TYPE_ED25519);
       is_ssh_key = true;
     } else {
       NOTICE(DANGER, "IDENTITY KEY COULD NOT BE LOADED", "Failed to parse SSH key file: %s", encrypt_key);
@@ -266,7 +266,7 @@ int client_crypto_init(client_connection_t *connection) {
 
   if (is_ssh_key) {
     // Use SSH private key for authentication
-    log_debug("CLIENT_CRYPTO_INIT: Using SSH key for authentication");
+    log_debug("Using SSH key for authentication");
 
     // Initialize crypto context (generates ephemeral X25519 keys)
     result = crypto_handshake_init("crypto_client_local", &connection->crypto_ctx, false); // false = client
@@ -291,10 +291,9 @@ int client_crypto_init(client_connection_t *connection) {
       if (key_id_len == 8 || key_id_len == 16 || key_id_len == 40) {
         SAFE_STRNCPY(connection->crypto_ctx.client_gpg_key_id, key_id,
                      sizeof(connection->crypto_ctx.client_gpg_key_id));
-        log_debug("CLIENT_CRYPTO_INIT: Extracted client GPG key ID (%zu chars): %s", key_id_len,
-                  connection->crypto_ctx.client_gpg_key_id);
+        log_debug("Extracted client GPG key ID (%zu chars): %s", key_id_len, connection->crypto_ctx.client_gpg_key_id);
       } else {
-        log_warn("CLIENT_CRYPTO_INIT: Invalid GPG key ID length: %zu (expected 8, 16, or 40)", key_id_len);
+        log_warn("Invalid GPG key ID length: %zu (expected 8, 16, or 40)", key_id_len);
         connection->crypto_ctx.client_gpg_key_id[0] = '\0';
       }
     } else {
@@ -310,7 +309,7 @@ int client_crypto_init(client_connection_t *connection) {
 
     // If password is also provided, derive password key for dual authentication
     if (strlen(password) > 0) {
-      log_debug("CLIENT_CRYPTO_INIT: Password also provided, deriving password key");
+      log_debug("Password also provided, deriving password key");
       crypto_result_t crypto_result = crypto_derive_password_key(&connection->crypto_ctx.crypto_ctx, password);
       if (crypto_result != CRYPTO_OK) {
         log_error("Failed to derive password key: %s", crypto_result_to_string(crypto_result));
@@ -322,7 +321,7 @@ int client_crypto_init(client_connection_t *connection) {
 
   } else if (strlen(GET_OPTION(password)) > 0) {
     // Password provided - use password-based initialization
-    log_debug("CLIENT_CRYPTO_INIT: Using password authentication");
+    log_debug("Using password authentication");
     result = crypto_handshake_init_with_password("crypto_client_local", &connection->crypto_ctx, false,
                                                  GET_OPTION(password)); // false = client
     if (result != ASCIICHAT_OK) {
@@ -330,7 +329,7 @@ int client_crypto_init(client_connection_t *connection) {
     }
   } else {
     // No password or SSH key - use standard initialization with random keys
-    log_debug("CLIENT_CRYPTO_INIT: Using standard initialization");
+    log_debug("Using standard initialization");
     result = crypto_handshake_init("crypto_client_local", &connection->crypto_ctx, false); // false = client
     if (result != ASCIICHAT_OK) {
       FATAL(result, "Failed to initialize crypto handshake");
@@ -339,12 +338,12 @@ int client_crypto_init(client_connection_t *connection) {
 
   if (client_connection_checkpoint("crypto") != ASCIICHAT_OK)
     return -1;
-  log_debug("CLIENT_CRYPTO_INIT: crypto_handshake_init succeeded");
+  log_debug("crypto_handshake_init succeeded");
 
   // Set up server connection info for known_hosts
   SAFE_STRNCPY(connection->crypto_ctx.server_hostname, address, sizeof(connection->crypto_ctx.server_hostname) - 1);
   const char *server_ip = server_connection_get_ip(connection);
-  log_debug("CLIENT_CRYPTO_INIT: server_connection_get_ip() returned: '%s'", server_ip ? server_ip : "NULL");
+  log_debug("server_connection_get_ip() returned: '%s'", server_ip ? server_ip : "NULL");
   SAFE_STRNCPY(connection->crypto_ctx.server_ip, server_ip ? server_ip : "",
                sizeof(connection->crypto_ctx.server_ip) - 1);
 
@@ -352,8 +351,7 @@ int client_crypto_init(client_connection_t *connection) {
   // otherwise use the port from options (TCP/default path)
   int connection_port = server_connection_get_port(connection);
   connection->crypto_ctx.server_port = (uint16_t)(connection_port > 0 ? connection_port : port);
-  log_debug("CLIENT_CRYPTO_INIT: Set server_ip='%s', server_port=%u", connection->crypto_ctx.server_ip,
-            connection->crypto_ctx.server_port);
+  log_debug("Set server_ip='%s', server_port=%u", connection->crypto_ctx.server_ip, connection->crypto_ctx.server_port);
 
   // Configure server key verification if specified
   if (strlen(server_key) > 0) {
@@ -430,7 +428,7 @@ int client_crypto_init(client_connection_t *connection) {
   lifecycle_init(&connection->crypto_lc, "client_crypto");
 
   log_debug("Client crypto handshake initialized");
-  log_debug("CLIENT_CRYPTO_INIT: Initialization complete");
+  log_debug("Initialization complete");
   return 0;
 }
 
@@ -472,7 +470,7 @@ asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_
     STOP_TIMER("client_crypto_handshake");
     return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Crypto protocol negotiation failed");
   }
-  log_debug("CLIENT_CRYPTO_HANDSHAKE: Protocol version sent successfully");
+  log_debug("Protocol version sent successfully");
 
   // Step 0b: Receive server's protocol version
   packet_type_t packet_type;
@@ -535,7 +533,7 @@ asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_
   }
 
   // Step 0c: Send crypto capabilities to server
-  log_debug("CLIENT_CRYPTO_HANDSHAKE: Sending crypto capabilities");
+  log_debug("Sending crypto capabilities");
   crypto_capabilities_packet_t client_caps = {0};
   client_caps.supported_kex_algorithms = HOST_TO_NET_U16(KEX_ALGO_X25519);
   client_caps.supported_auth_algorithms = HOST_TO_NET_U16(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
@@ -553,10 +551,10 @@ asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_
     STOP_TIMER("client_crypto_handshake");
     return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Crypto protocol negotiation failed");
   }
-  log_debug("CLIENT_CRYPTO_HANDSHAKE: Crypto capabilities sent successfully");
+  log_debug("Crypto capabilities sent successfully");
 
   // Step 0d: Receive server's crypto parameters
-  log_debug("CLIENT_CRYPTO_HANDSHAKE: Receiving server crypto parameters");
+  log_debug("Receiving server crypto parameters");
   payload = NULL;
   alloc_buffer = NULL;
   payload_len = 0;
@@ -630,12 +628,12 @@ asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_
     return SET_ERRNO(ERROR_CRYPTO_AUTH, "Crypto authentication requirements not satisfied");
   }
 
-  log_debug("CLIENT_CRYPTO_HANDSHAKE: Protocol negotiation completed successfully");
+  log_debug("Protocol negotiation completed successfully");
 
   // Step 0.5: Send CRYPTO_CLIENT_HELLO with expected server key (multi-key support)
   // This allows the server to select the correct identity key from g_server_identity_keys[]
   if (connection->crypto_ctx.verify_server_key && strlen(connection->crypto_ctx.expected_server_key) > 0) {
-    log_debug("CLIENT_CRYPTO_HANDSHAKE: Sending expected server key to support multi-key selection");
+    log_debug("Sending expected server key to support multi-key selection");
 
     // Parse expected server key to get the Ed25519 public key
     public_key_t expected_keys[MAX_CLIENTS];
@@ -665,7 +663,7 @@ asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_
   }
 
   // Step 1: Receive server's public key and send our public key
-  log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting key exchange");
+  log_debug("Starting key exchange");
   {
     packet_type_t packet_type;
     void *payload = NULL;
@@ -691,7 +689,7 @@ asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_
 #endif
     return SET_ERRNO((asciichat_error_t)result, "Crypto key exchange failed");
   }
-  log_debug("CLIENT_CRYPTO_HANDSHAKE: Key exchange completed successfully");
+  log_debug("Key exchange completed successfully");
 
   // SECURITY: Warn when server requires client verification but client has no identity key
   bool client_has_identity = (connection->crypto_ctx.client_public_key.type == KEY_TYPE_ED25519);
@@ -733,7 +731,7 @@ asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_
 
   // Step 2: Receive auth challenge and send response
   log_debug("CLIENT_CRYPTO: Sending auth response to server...");
-  log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting auth response");
+  log_debug("Starting auth response");
   {
     packet_type_t packet_type;
     void *payload = NULL;
@@ -755,7 +753,7 @@ asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_
     return SET_ERRNO((asciichat_error_t)result, "Crypto authentication failed");
   }
   log_debug("CLIENT_CRYPTO: Auth response sent successfully");
-  log_debug("CLIENT_CRYPTO_HANDSHAKE: Auth response completed successfully");
+  log_debug("Auth response completed successfully");
 
   // Check if handshake completed during auth response (no authentication needed)
   if (connection->crypto_ctx.state == CRYPTO_HANDSHAKE_READY) {
@@ -769,7 +767,7 @@ asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_
   }
 
   // Step 3: Receive handshake complete message
-  log_debug("CLIENT_CRYPTO_HANDSHAKE: Waiting for handshake complete message");
+  log_debug("Waiting for handshake complete message");
   {
     packet_type_t packet_type;
     void *payload = NULL;
@@ -796,7 +794,7 @@ asciichat_error_t client_crypto_handshake(client_connection_t *connection, acip_
   transport->crypto_ctx = (crypto_context_t *)crypto_client_get_context(connection);
 
   STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "client_crypto_handshake", "Crypto handshake completed successfully");
-  log_debug("CLIENT_CRYPTO_HANDSHAKE: Handshake completed successfully, state=%d", connection->crypto_ctx.state);
+  log_debug("Handshake completed successfully, state=%d", connection->crypto_ctx.state);
   return ASCIICHAT_OK;
 }
 

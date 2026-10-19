@@ -59,38 +59,38 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
                                       session_sleep_for_frame_fn sleep_cb, session_keyboard_handler_fn keyboard_handler,
                                       void *user_data) {
   // Validate required parameters
-  log_info("[SESSION_RENDER_LOOP] START: capture=%p, display=%p, mode=%s", (void *)capture, (void *)display,
+  log_info("capture=%p, display=%p, mode=%s", (void *)capture, (void *)display,
            capture ? "SYNCHRONOUS" : "EVENT-DRIVEN");
 
   if (!display) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_render_loop: display context is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "display context is NULL");
     return ERROR_INVALID_PARAM;
   }
 
   if (!should_exit) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_render_loop: should_exit callback is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "should_exit callback is NULL");
     return ERROR_INVALID_PARAM;
   }
 
   // Validate mode: either capture context OR custom callbacks, not both
   if (!capture && !capture_cb) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_render_loop: must provide either capture context or capture callback");
+    SET_ERRNO(ERROR_INVALID_PARAM, "must provide either capture context or capture callback");
     return ERROR_INVALID_PARAM;
   }
 
   if (capture && capture_cb) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_render_loop: cannot provide both capture context and capture callback");
+    SET_ERRNO(ERROR_INVALID_PARAM, "cannot provide both capture context and capture callback");
     return ERROR_INVALID_PARAM;
   }
 
   // In event-driven mode, both capture_cb and sleep_cb must be provided together
   if (capture_cb && !sleep_cb) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_render_loop: capture_cb requires sleep_cb (must provide both or neither)");
+    SET_ERRNO(ERROR_INVALID_PARAM, "capture_cb requires sleep_cb (must provide both or neither)");
     return ERROR_INVALID_PARAM;
   }
 
   if (sleep_cb && !capture_cb) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_render_loop: sleep_cb requires capture_cb (must provide both or neither)");
+    SET_ERRNO(ERROR_INVALID_PARAM, "sleep_cb requires capture_cb (must provide both or neither)");
     return ERROR_INVALID_PARAM;
   }
 
@@ -121,7 +121,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     return run_err == ASCIICHAT_OK ? drain_err : run_err;
   } else {
-    log_warn("[SESSION_RENDER_LOOP] capture is NULL - will not use pipeline (capture_cb=%p)", (void *)capture_cb);
+    log_warn("capture is NULL - will not use pipeline (capture_cb=%p)", (void *)capture_cb);
   }
 
   // Snapshot mode state tracking
@@ -130,15 +130,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   uint64_t frames_rendered_since_first = 0; // Track frames rendered after first frame (for snapshot delay)
   // NOTE: g_snapshot_first_frame_rendered is set by display.c when first frame is rendered via platform_write_all()
 
-  log_info("session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s snapshot_delay=%.2f",
-           (void *)display, (void *)capture, (void *)capture_cb, snapshot_mode ? "YES" : "NO",
-           snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
-  log_info("session_render_loop: About to enter main loop, should_exit fn check...");
+  log_info("display=%p capture=%p capture_cb=%p snapshot_mode=%s snapshot_delay=%.2f", (void *)display, (void *)capture,
+           (void *)capture_cb, snapshot_mode ? "YES" : "NO", snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
   if (should_exit(user_data)) {
-    log_warn("session_render_loop: EXIT signal already set at entry, aborting render loop");
+    log_warn("EXIT signal already set at entry, aborting render loop");
     return ASCIICHAT_OK;
   }
-  log_info("session_render_loop: OK to proceed with main loop");
 
   // Keyboard input initialization (if keyboard handler is provided)
   // Disable keyboard only in snapshot mode
@@ -149,8 +146,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Pause mode state tracking (for pause/unpause transitions in event-driven mode)
   bool initial_paused_frame_rendered = false;
   bool is_paused = false;
-  log_info("render_loop: Keyboard setup - handler=%p snapshot=%s enabled=%s", (void *)keyboard_handler,
-           snapshot_mode ? "YES" : "NO", keyboard_enabled ? "YES" : "NO");
+  log_info("Keyboard setup - handler=%p snapshot=%s enabled=%s", (void *)keyboard_handler, snapshot_mode ? "YES" : "NO",
+           keyboard_enabled ? "YES" : "NO");
 
   // Log TTY detection status for debugging keyboard issues
   log_info("TTY Status: stdin_tty=%d stdout_tty=%d interactive=%d keyboard_enabled=%d", terminal_is_stdin_tty(),
@@ -167,7 +164,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   asciichat_error_t capture_result = ASCIICHAT_OK;
   // Main render loop
-  log_debug("session_render_loop: entering main loop");
   int loop_iteration = 0;
   log_info("[RENDER_LOOP_START] snapshot_mode=%s, snapshot_delay=%.2f", snapshot_mode ? "YES" : "NO",
            snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
@@ -200,7 +196,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     log_info("[LOOP_ITER] iteration=%d, snapshot_done=%s, frame_count=%lu", loop_iteration,
              snapshot_done ? "YES" : "NO", frame_count);
     if (loop_iteration % 60 == 0) {
-      log_debug("session_render_loop: iteration %d, should_exit check returning false", loop_iteration);
+      log_debug("iteration %d, should_exit check returning false", loop_iteration);
     }
     // Snapshot mode: exit at start of iteration if done
     // This prevents frame 2+ from being captured when snapshot_delay has elapsed
@@ -210,7 +206,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       break;
     }
 
-    log_debug_every(US_PER_SEC_INT, "session_render_loop: frame %lu", frame_count);
+    log_debug_every(US_PER_SEC_INT, "frame %lu", frame_count);
     // Frame timing - measure total time to maintain target FPS
     frame_start_ns = time_get_ns();
 
@@ -260,7 +256,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     uint64_t pre_render_ns = 0, post_render_ns = 0;
 
     if (ascii_frame) {
-      log_debug_every(US_PER_SEC_INT, "render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
+      log_debug_every(US_PER_SEC_INT, "ascii_frame ready (len=%zu)", strlen(ascii_frame));
 
       // Always attempt to render frames; the display context will handle filtering based on:
       // - TTY mode: render all frames with cursor control (even in snapshot mode, for animation)
@@ -280,8 +276,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         START_TIMER("render_frame");
 
         if (frame_count <= 5 || frame_count % 10 == 0) {
-          log_info("RENDER_LOOP: Frame %lu - calling session_display_render_frame, display=%p",
-                   (unsigned long)frame_count, (void *)display);
+          log_info("Frame %lu - calling session_display_render_frame, display=%p", (unsigned long)frame_count,
+                   (void *)display);
         }
 
         // Check if SIGINT handler cancelled help mode (Ctrl+C while help is open).

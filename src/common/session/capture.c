@@ -502,7 +502,7 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
 
 image_t *session_capture_process_for_transmission(session_capture_ctx_t *ctx, image_t *frame) {
   if (!ctx || !frame) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_capture_process_for_transmission: NULL parameter");
+    SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
     return NULL;
   }
 

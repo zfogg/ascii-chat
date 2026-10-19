@@ -79,7 +79,7 @@ asciichat_error_t platform_mkdir(const char *path, int mode) {
   (void)mode; // Windows doesn't use Unix-style permissions
 
   if (!path) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path to platform_mkdir");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path");
   }
 
   if (CreateDirectoryA(path, NULL)) {
@@ -102,13 +102,13 @@ asciichat_error_t platform_mkdir(const char *path, int mode) {
 asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
   (void)mode; // Windows ignores POSIX permission modes
   if (!path || path[0] == '\0') {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path to platform_mkdir_recursive");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path");
   }
 
   char tmp[512];
   size_t len = strlen(path);
   if (len >= sizeof(tmp)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Path too long for platform_mkdir_recursive: %zu", len);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Path too long: %zu", len);
   }
 
   SAFE_STRNCPY(tmp, path, sizeof(tmp) - 1);
@@ -157,7 +157,7 @@ asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
 
 asciichat_error_t platform_stat(const char *path, platform_stat_t *stat_out) {
   if (!path || !stat_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to platform_stat");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   WIN32_FILE_ATTRIBUTE_DATA fad;
@@ -246,7 +246,7 @@ int platform_delete_temp_file(const char *path) {
 
 asciichat_error_t platform_mkdtemp(char *path_out, size_t path_size, const char *prefix) {
   if (!path_out || path_size < 32 || !prefix) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for platform_mkdtemp");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   char temp_dir[MAX_PATH];
@@ -405,7 +405,7 @@ asciichat_error_t platform_validate_key_file_permissions(const char *key_path) {
 
 asciichat_error_t platform_find_config_file(const char *filename, config_file_list_t *list_out) {
   if (!filename || !list_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to platform_find_config_file");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   // Initialize output list

@@ -61,19 +61,19 @@ void image_destroy(image_t *image) {
 
 void image_clear(image_t *p) {
   if (!p || !p->pixels) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_clear: p or p->pixels is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "p or p->pixels is NULL");
     return;
   }
   // Check for integer overflow before multiplication.
   unsigned long w_ul = (unsigned long)p->w;
   unsigned long h_ul = (unsigned long)p->h;
   if (w_ul > 0 && h_ul > ULONG_MAX / w_ul) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_clear: dimensions overflow: %d x %d", p->w, p->h);
+    SET_ERRNO(ERROR_INVALID_PARAM, "dimensions overflow: %d x %d", p->w, p->h);
     return;
   }
   unsigned long pixel_count = w_ul * h_ul;
   if (pixel_count > ULONG_MAX / sizeof(rgb_pixel_t)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_clear: buffer size overflow");
+    SET_ERRNO(ERROR_INVALID_PARAM, "buffer size overflow");
     return;
   }
   size_t clear_size = pixel_count * sizeof(rgb_pixel_t);
@@ -82,7 +82,7 @@ void image_clear(image_t *p) {
 
 image_t *image_new_copy(const image_t *source) {
   if (!source) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_copy: source is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "source is NULL");
     return NULL;
   }
 
@@ -112,7 +112,7 @@ inline rgb_pixel_t *image_pixel(image_t *p, const int x, const int y) {
 
 void image_resize(const image_t *s, image_t *d) {
   if (!s || !d) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_resize: s or d is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "s or d is NULL");
     return;
   }
 
@@ -123,7 +123,7 @@ void image_resize(const image_t *s, image_t *d) {
 // access
 void image_resize_interpolation(const image_t *source, image_t *dest) {
   if (!source || !dest || !source->pixels || !dest->pixels) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to image_resize_interpolation");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
     return;
   }
 
@@ -198,16 +198,15 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
 #if !defined(NDEBUG) && !defined(__FAST_MATH__)
   if (!isfinite(red) || !isfinite(green) || !isfinite(blue)) {
     log_error("Invalid weight values (non-finite): red=%f, green=%f, blue=%f", red, green, blue);
-    SET_ERRNO(ERROR_INVALID_PARAM, "precalc_rgb_palettes: non-finite weight values");
+    SET_ERRNO(ERROR_INVALID_PARAM, "non-finite weight values");
     return;
   }
 #endif
 
   if (red < min_weight || red > max_weight || green < min_weight || green > max_weight || blue < min_weight ||
       blue > max_weight) {
-    log_warn(
-        "precalc_rgb_palettes: Weight values out of expected range: red=%f, green=%f, blue=%f (clamping to safe range)",
-        red, green, blue);
+    log_warn("Weight values out of expected range: red=%f, green=%f, blue=%f (clamping to safe range)", red, green,
+             blue);
   }
 
   // Clamp weights to safe range to prevent overflow

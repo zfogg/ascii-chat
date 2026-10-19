@@ -29,7 +29,7 @@
  */
 asciichat_error_t platform_mkdir(const char *path, int mode) {
   if (!path) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path to platform_mkdir");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path");
   }
 
   if (mkdir(path, mode) == -1) {
@@ -54,13 +54,13 @@ asciichat_error_t platform_mkdir(const char *path, int mode) {
  */
 asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
   if (!path || path[0] == '\0') {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path to platform_mkdir_recursive");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path");
   }
 
   char tmp[512];
   size_t len = strlen(path);
   if (len >= sizeof(tmp)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Path too long for platform_mkdir_recursive: %zu", len);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Path too long: %zu", len);
   }
 
   strncpy(tmp, path, sizeof(tmp) - 1);
@@ -101,7 +101,7 @@ asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
  */
 asciichat_error_t platform_stat(const char *path, platform_stat_t *stat_out) {
   if (!path || !stat_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to platform_stat");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   struct stat sb;
@@ -179,7 +179,7 @@ int platform_delete_temp_file(const char *path) {
 
 asciichat_error_t platform_mkdtemp(char *path_out, size_t path_size, const char *prefix) {
   if (!path_out || path_size < 32 || !prefix) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for platform_mkdtemp");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   /* Create temp directory template with PID for concurrent process safety */
@@ -423,7 +423,7 @@ static asciichat_error_t get_xdg_config_dirs(char ***dirs_out, size_t *count_out
  */
 asciichat_error_t platform_find_config_file(const char *filename, config_file_list_t *list_out) {
   if (!filename || !list_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to platform_find_config_file");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   // Initialize output list

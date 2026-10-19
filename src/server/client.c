@@ -662,7 +662,7 @@ static void server_client_send_webrtc_state(client_info_t *client, const char *n
 client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip,
                                     bool start_threads) {
   if (!server_ctx || !transport || !client_ip) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to add_transport_client");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
     return NULL;
   }
 
@@ -754,13 +754,13 @@ client_info_t *add_transport_client(server_context_t *server_ctx, acip_transport
   // transport queues those incoming packets until the receive thread begins.
   // WebSocket callers still defer this until their crypto setup is complete.
   if (start_threads) {
-    log_debug("[ADD_TRANSPORT_CLIENT] Starting client threads after initialization for %s", new_client_id);
+    log_debug("Starting client threads after initialization for %s", new_client_id);
     if (start_client_threads(server_ctx, client) != 0) {
       log_error("Failed to start threads for transport client %s", new_client_id);
       return NULL;
     }
   } else {
-    log_debug("[ADD_TRANSPORT_CLIENT] Deferring client thread startup for %s until crypto setup", new_client_id);
+    log_debug("Deferring client thread startup for %s until crypto setup", new_client_id);
   }
 
   return client;
@@ -2103,7 +2103,7 @@ void broadcast_server_state_to_all_clients(void) {
   if (lock_time_ns > 1 * NS_PER_MS_INT) {
     char duration_str[32];
     time_pretty((uint64_t)((double)lock_time_ns), -1, duration_str, sizeof(duration_str));
-    log_warn("broadcast_server_state: rwlock_rdlock took %s", duration_str);
+    log_warn("rwlock_rdlock took %s", duration_str);
   }
 
   // Count active clients and snapshot client data while holding lock
@@ -2216,7 +2216,7 @@ void broadcast_server_state_to_all_clients(void) {
   if (lock_held_ns > 1 * NS_PER_MS_INT) {
     char duration_str[32];
     time_pretty((uint64_t)((double)lock_held_ns), -1, duration_str, sizeof(duration_str));
-    log_warn("broadcast_server_state: rwlock held for %s (includes network I/O)", duration_str);
+    log_warn("rwlock held for %s (includes network I/O)", duration_str);
   }
 }
 
@@ -2258,7 +2258,7 @@ void stop_client_threads(client_info_t *client) {
   }
 
   // Signal threads to stop
-  log_debug("Setting active=false in stop_client_threads (client_id=%s)", client->client_id);
+  log_debug("Setting active=false (client_id=%s)", client->client_id);
   atomic_store_bool(&client->active, false);
   atomic_store_bool(&client->send_thread_running, false);
 
