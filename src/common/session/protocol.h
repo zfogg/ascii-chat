@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ascii-chat/network/acip/client.h>
+#include <ascii-chat/platform/terminal.h>
 
 /* Callbacks borrow decoded buffers for the duration of the call. Device and UI
  * ownership remain with the mode; one receive worker owns this protocol state. */
@@ -33,3 +34,13 @@ void session_protocol_init(session_protocol_t *protocol, acip_transport_t *trans
 asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet_type_t type, const void *payload,
                                             size_t length);
 asciichat_error_t session_protocol_receive(session_protocol_t *protocol);
+
+/* Shared packet construction for initial join and subsequent dimension updates. */
+void session_protocol_build_capabilities(unsigned short width, unsigned short height,
+                                         terminal_capabilities_packet_t *packet);
+typedef asciichat_error_t (*session_protocol_send_capabilities_fn)(const terminal_capabilities_packet_t *packet,
+                                                                   void *context);
+/* Call on the connection owner thread. UI publishes automatic dimensions through options.
+ * Each connection retains its own last successfully advertised size; failed sends are retried. */
+asciichat_error_t session_protocol_update_dimensions(terminal_size_t *advertised,
+                                                     session_protocol_send_capabilities_fn send, void *context);

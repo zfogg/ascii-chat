@@ -3,6 +3,7 @@
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
+#include <ascii-chat/options/rcu.h>
 #include <ascii-chat/network/compression.h>
 
 #define CHECK(expr)                                                                                                    \
@@ -57,7 +58,44 @@ static asciichat_error_t send_vectors(acip_transport_t *transport, const socket_
   return ASCIICHAT_OK;
 }
 
+typedef struct {
+  unsigned calls;
+  bool fail;
+  terminal_capabilities_packet_t packet;
+} dimensions_sink_t;
+static asciichat_error_t send_dimensions(const terminal_capabilities_packet_t *packet, void *context) {
+  dimensions_sink_t *sink = context;
+  sink->calls++;
+  sink->packet = *packet;
+  return sink->fail ? ERROR_NETWORK : ASCIICHAT_OK;
+}
+static void test_dimensions(void) {
+  CHECK(options_state_init() == ASCIICHAT_OK);
+  CHECK(options_set_int("width", 80) == ASCIICHAT_OK);
+  CHECK(options_set_int("height", 24) == ASCIICHAT_OK);
+  terminal_size_t client = {0}, discovery = {0};
+  dimensions_sink_t sinks[2] = {0};
+  CHECK(session_protocol_update_dimensions(&client, send_dimensions, &sinks[0]) == ASCIICHAT_OK);
+  CHECK(session_protocol_update_dimensions(&discovery, send_dimensions, &sinks[1]) == ASCIICHAT_OK);
+  CHECK(sinks[0].calls == 1 && sinks[1].calls == 1);
+  CHECK(NET_TO_HOST_U16(sinks[1].packet.width) == 80 && NET_TO_HOST_U16(sinks[1].packet.height) == 24);
+  CHECK(session_protocol_update_dimensions(&client, send_dimensions, &sinks[0]) == ASCIICHAT_OK);
+  CHECK(sinks[0].calls == 1);
+  CHECK(options_set_int("width", 100) == ASCIICHAT_OK);
+  sinks[0].fail = true;
+  CHECK(session_protocol_update_dimensions(&client, send_dimensions, &sinks[0]) == ERROR_NETWORK);
+  CHECK(client.cols == 80);
+  CHECK(session_protocol_update_dimensions(&discovery, send_dimensions, &sinks[1]) == ASCIICHAT_OK);
+  CHECK(discovery.cols == 100 && client.cols == 80);
+  CHECK(NET_TO_HOST_U16(sinks[1].packet.width) == 100 && NET_TO_HOST_U16(sinks[1].packet.height) == 24);
+  sinks[0].fail = false;
+  CHECK(session_protocol_update_dimensions(&client, send_dimensions, &sinks[0]) == ASCIICHAT_OK);
+  CHECK(client.cols == 100 && sinks[0].calls == 3);
+  options_state_destroy();
+}
+
 void test_session_protocol(void) {
+  test_dimensions();
   sink_t sinks[2] = {0};
   const acip_transport_methods_t methods = {.sendv = send_vectors};
   acip_transport_t transports[2] = {{.methods = &methods, .impl_data = &sinks[0]},

@@ -355,6 +355,10 @@ static void discovery_keyboard_handler(session_capture_ctx_t *capture, int key, 
  * @param user_data Unused (NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  */
+static asciichat_error_t discovery_send_capabilities(const terminal_capabilities_packet_t *packet, void *context) {
+  return acip_send_capabilities(context, packet, sizeof(*packet));
+}
+
 static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_display_ctx_t *display,
                                        void *user_data) {
   (void)user_data; // Unused
@@ -528,25 +532,10 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
           acip_send_client_join(transport, CLIENT_CAP_VIDEO | CLIENT_CAP_COLOR | (enable_audio ? CLIENT_CAP_AUDIO : 0));
       if (result != ASCIICHAT_OK)
         return result;
-      terminal_capabilities_t caps = detect_terminal_capabilities();
-      terminal_capabilities_packet_t packet = {0};
-      packet.capabilities = HOST_TO_NET_U32(caps.capabilities);
-      packet.color_level = HOST_TO_NET_U32(caps.color_level);
-      packet.color_count = HOST_TO_NET_U32(caps.color_count);
-      packet.render_mode = HOST_TO_NET_U32(caps.render_mode);
-      packet.width = HOST_TO_NET_U16(GET_OPTION(width) > 0 ? GET_OPTION(width) : 80);
-      packet.height = HOST_TO_NET_U16(GET_OPTION(height) > 0 ? GET_OPTION(height) : 24);
-      packet.palette_type = HOST_TO_NET_U32(GET_OPTION(palette_type));
-      packet.utf8_support = caps.utf8_support ? 1 : 0;
-      int desired_fps = GET_OPTION(fps) > 0 ? GET_OPTION(fps) : caps.desired_fps;
-      if (desired_fps <= 0) {
-        desired_fps = DEFAULT_MAX_FPS;
-      }
-      packet.desired_fps = (uint8_t)(desired_fps > 144 ? 144 : desired_fps);
-      packet.wants_padding = caps.wants_padding ? 1 : 0;
-      packet.detection_reliable = caps.detection_reliable;
-      SAFE_STRNCPY(packet.term_type, caps.term_type, sizeof(packet.term_type));
-      SAFE_STRNCPY(packet.colorterm, caps.colorterm, sizeof(packet.colorterm));
+      terminal_size_t advertised = {.cols = GET_OPTION(width) > 0 ? GET_OPTION(width) : 80,
+                                    .rows = GET_OPTION(height) > 0 ? GET_OPTION(height) : 24};
+      terminal_capabilities_packet_t packet;
+      session_protocol_build_capabilities(advertised.cols, advertised.rows, &packet);
       result = acip_send_capabilities(transport, &packet, sizeof(packet));
       if (result != ASCIICHAT_OK)
         return result;
@@ -609,6 +598,9 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
         goto media_cleanup;
       while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport) &&
              atomic_load_bool(&receiver.running)) {
+        result = session_protocol_update_dimensions(&advertised, discovery_send_capabilities, transport);
+        if (result != ASCIICHAT_OK)
+          break;
         keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
         if (key != KEY_NONE)
           session_handle_keyboard_input(capture, display, key);

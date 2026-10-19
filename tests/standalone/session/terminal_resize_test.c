@@ -5,6 +5,9 @@
 #include <windows.h>
 #include <io.h>
 #include <fcntl.h>
+#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/platform/system.h>
 
 #define CHECK(expr)                                                                                                    \
   do {                                                                                                                 \
@@ -12,6 +15,18 @@
       FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                   \
   } while (0)
 
+static void render(terminal_size_t size, const void *snapshot) {
+  (void)size;
+  (void)snapshot;
+}
+static void await_dimensions(int width, int height) {
+  for (int i = 0; i < 200; ++i) {
+    if (GET_OPTION(width) == width && GET_OPTION(height) == height)
+      return;
+    platform_sleep_ms(10);
+  }
+  CHECK(GET_OPTION(width) == width && GET_OPTION(height) == height);
+}
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
   HANDLE buffer = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
@@ -40,6 +55,20 @@ int main(void) {
   CHECK(terminal_resize_poll(&watcher, fd, NULL) == ERROR_INVALID_PARAM);
   _close(pipe_fds[0]);
   _close(pipe_fds[1]);
+  CHECK(options_state_init() == ASCIICHAT_OK);
+  CHECK(options_set_bool("auto_width", true) == ASCIICHAT_OK);
+  CHECK(options_set_bool("auto_height", true) == ASCIICHAT_OK);
+  CHECK(ui_controller_submit(UI_SCREEN_MEDIA, fd, (terminal_size_t){.cols = 1, .rows = 1}, render, "frame", 6) ==
+        ASCIICHAT_OK);
+  await_dimensions(50, 20);
+  CHECK(SetConsoleWindowInfo(buffer, TRUE, &first));
+  await_dimensions(40, 15);
+  CHECK(options_set_bool("auto_width", false) == ASCIICHAT_OK);
+  CHECK(SetConsoleWindowInfo(buffer, TRUE, &second));
+  await_dimensions(40, 20);
+  ui_controller_remove(UI_SCREEN_MEDIA);
+  ui_controller_shutdown();
+  options_state_destroy();
   _close(fd);
   log_destroy();
   return 0;

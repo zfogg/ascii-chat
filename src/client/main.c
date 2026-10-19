@@ -66,6 +66,7 @@
 
 #include <ascii-chat/ui/notice.h>
 #include <ascii-chat/ui/controller.h>
+#include "session/protocol.h"
 
 #include "main.h"
 #include "../main.h" // Global exit API
@@ -319,6 +320,10 @@ static bool client_should_reconnect(asciichat_error_t last_error, int attempt_nu
  * @param user_data Unused (NULL)
  * @return ASCIICHAT_OK if successful, error code if connection failed
  */
+static asciichat_error_t client_send_capabilities(const terminal_capabilities_packet_t *packet, void *context) {
+  return threaded_send_packet(context, PACKET_TYPE_CLIENT_CAPABILITIES, packet, sizeof(*packet));
+}
+
 static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, session_display_ctx_t *display,
                                             void *user_data) {
   (void)capture;   // Provided by session_client_like, used by protocol threads
@@ -354,29 +359,17 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     log_info("Reconnected");
   }
 
-  terminal_resize_watcher_t resize = {.size = {.cols = GET_OPTION(width), .rows = GET_OPTION(height)}};
+  terminal_size_t advertised = {0};
 
   // Monitor connection until it breaks or shutdown is requested
   bool snapshot_check_logged_once = false;
   uint64_t last_progress_log_ns = 0;
   while (!should_exit() && server_connection_is_active(connection)) {
-    if (terminal_is_stdout_tty() && (GET_OPTION(auto_width) || GET_OPTION(auto_height))) {
-      bool changed = false;
-      asciichat_errno_scope_t resize_errors = asciichat_errno_scope_begin();
-      asciichat_error_t resize_result = terminal_resize_poll(&resize, STDOUT_FILENO, &changed);
-      asciichat_errno_scope_end(resize_errors, ASCIICHAT_ERRNO_DISMISSED);
-      if (resize_result == ASCIICHAT_OK && changed) {
-        unsigned short width = GET_OPTION(auto_width) ? resize.size.cols : GET_OPTION(width);
-        unsigned short height = GET_OPTION(auto_height) ? resize.size.rows : GET_OPTION(height);
-        if (GET_OPTION(auto_width))
-          options_set_int("width", width);
-        if (GET_OPTION(auto_height))
-          options_set_int("height", height);
-        if (threaded_send_terminal_size_with_auto_detect(connection, width, height) == ASCIICHAT_OK) {
-          display_full_reset();
-          log_set_terminal_output(false);
-        }
-      }
+    terminal_size_t previous = advertised;
+    if (session_protocol_update_dimensions(&advertised, client_send_capabilities, connection) == ASCIICHAT_OK &&
+        (previous.cols != advertised.cols || previous.rows != advertised.rows)) {
+      display_full_reset();
+      log_set_terminal_output(false);
     }
     if (client_protocol_connection_lost(connection)) {
       log_debug("Connection lost detected");

@@ -59,6 +59,7 @@
 #include <ascii-chat/ui/notice.h>
 
 #include "server.h"
+#include "session/protocol.h"
 #include "main.h"
 #include "../main.h" // Global exit API
 #include "crypto.h"
@@ -765,96 +766,9 @@ asciichat_error_t threaded_send_stream_start_packet(client_connection_t *connect
  */
 asciichat_error_t threaded_send_terminal_size_with_auto_detect(client_connection_t *connection, unsigned short width,
                                                                unsigned short height) {
-  // Log the dimensions being sent to server (helps debug dimension mismatch issues)
-  log_debug("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height,
-            GET_OPTION(auto_width), GET_OPTION(auto_height));
-
-  // Connection and transport availability is checked by threaded_send_packet()
-
-  // Build terminal capabilities packet locally
-  // Detect terminal capabilities automatically
-  terminal_capabilities_t caps = detect_terminal_capabilities();
-
-  // Set wants_padding based on snapshot mode and TTY status
-  // Disable padding when:
-  // - In snapshot mode (one frame and exit)
-  // - When stdout is not a TTY (piped/redirected output)
-  // Enable padding for interactive terminal sessions
-  bool is_snapshot_mode = GET_OPTION(snapshot_mode);
-  bool is_interactive = terminal_is_interactive();
-  caps.wants_padding = is_interactive && !is_snapshot_mode;
-
-  log_debug("Client capabilities: wants_padding=%d (snapshot=%d, interactive=%d, stdin_tty=%d, stdout_tty=%d)",
-            caps.wants_padding, is_snapshot_mode, is_interactive, terminal_is_stdin_tty(), terminal_is_stdout_tty());
-
-  // Apply user's color mode override
-  caps = apply_color_mode_override(caps);
-
-  // Check if detection was reliable, use fallback only for auto-detection
-  if (!caps.detection_reliable && GET_OPTION(color_mode) == COLOR_MODE_AUTO) {
-    log_warn("Terminal capability detection not reliable, using fallback");
-    SAFE_MEMSET(&caps, sizeof(caps), 0, sizeof(caps));
-    caps.color_level = TERM_COLOR_NONE;
-    caps.color_count = 2;
-    caps.capabilities = 0;
-    SAFE_STRNCPY(caps.term_type, "unknown", sizeof(caps.term_type));
-    SAFE_STRNCPY(caps.colorterm, "", sizeof(caps.colorterm));
-    caps.detection_reliable = 0;
-    // Preserve wants_padding even in fallback mode
-    caps.wants_padding = is_interactive && !is_snapshot_mode;
-  }
-
-  // Convert to network packet format with proper byte order
-  terminal_capabilities_packet_t net_packet;
-  net_packet.capabilities = HOST_TO_NET_U32(caps.capabilities);
-  net_packet.color_level = HOST_TO_NET_U32(caps.color_level);
-  net_packet.color_count = HOST_TO_NET_U32(caps.color_count);
-  net_packet.render_mode = HOST_TO_NET_U32(caps.render_mode);
-  net_packet.width = HOST_TO_NET_U16(width);
-  net_packet.height = HOST_TO_NET_U16(height);
-  net_packet.palette_type = HOST_TO_NET_U32(GET_OPTION(palette_type));
-  net_packet.utf8_support = HOST_TO_NET_U32(caps.utf8_support ? 1 : 0);
-
-  const options_t *opts = options_get();
-  if (GET_OPTION(palette_type) == PALETTE_CUSTOM && GET_OPTION(palette_custom_set)) {
-    const char *palette_custom = opts && opts->palette_custom_set ? opts->palette_custom : "";
-    SAFE_STRNCPY(net_packet.palette_custom, palette_custom, sizeof(net_packet.palette_custom));
-    net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
-  } else {
-    SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));
-  }
-
-  // Set desired FPS
-  int fps = GET_OPTION(fps);
-  if (fps > 0) {
-    net_packet.desired_fps = (uint8_t)(fps > 144 ? 144 : fps);
-  } else {
-    net_packet.desired_fps = caps.desired_fps;
-  }
-
-  if (net_packet.desired_fps == 0) {
-    net_packet.desired_fps = DEFAULT_MAX_FPS;
-  }
-
-  SAFE_STRNCPY(net_packet.term_type, caps.term_type, sizeof(net_packet.term_type));
-  net_packet.term_type[sizeof(net_packet.term_type) - 1] = '\0';
-
-  SAFE_STRNCPY(net_packet.colorterm, caps.colorterm, sizeof(net_packet.colorterm));
-  net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
-
-  net_packet.detection_reliable = caps.detection_reliable;
-  // Send UTF-8 support flag: true for AUTO (default) and TRUE settings, false for FALSE setting
-  net_packet.utf8_support = (GET_OPTION(force_utf8) != UTF8_SETTING_FALSE) ? 1 : 0;
-
-  // Set wants_padding flag (1=padding enabled, 0=no padding for snapshot/piped modes)
-  net_packet.wants_padding = caps.wants_padding ? 1 : 0;
-
-  // Set codec capabilities (client supports all codecs by default)
-  net_packet.codec_capabilities_video = HOST_TO_NET_U32(VIDEO_CODEC_CAP_ALL);
-  net_packet.codec_capabilities_audio = HOST_TO_NET_U32(AUDIO_CODEC_CAP_ALL);
-
-  // Use threaded_send_packet() which handles encryption
-  return threaded_send_packet(connection, PACKET_TYPE_CLIENT_CAPABILITIES, &net_packet, sizeof(net_packet));
+  terminal_capabilities_packet_t packet;
+  session_protocol_build_capabilities(width, height, &packet);
+  return threaded_send_packet(connection, PACKET_TYPE_CLIENT_CAPABILITIES, &packet, sizeof(packet));
 }
 
 /**
