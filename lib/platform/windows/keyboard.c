@@ -58,8 +58,8 @@ asciichat_error_t keyboard_init(void) {
   //          no echo (no ENABLE_ECHO_INPUT)
   //          but keep ENABLE_PROCESSED_INPUT to handle Ctrl+C
   DWORD new_mode = g_original_console_mode;
-  new_mode &= ~ENABLE_LINE_INPUT; // Disable line buffering
-  new_mode &= ~ENABLE_ECHO_INPUT; // Disable echo
+  new_mode &= ~(DWORD)ENABLE_LINE_INPUT; // Disable line buffering
+  new_mode &= ~(DWORD)ENABLE_ECHO_INPUT; // Disable echo
   // Keep ENABLE_PROCESSED_INPUT for Ctrl+C signal handling
 
   if (!SetConsoleMode(g_console_input, new_mode)) {

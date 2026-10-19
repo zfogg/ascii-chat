@@ -76,6 +76,17 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
                 if(NOT _pch_existing)
                     target_precompile_headers(${_pch_target} PRIVATE ${_ascii_chat_pch_headers})
                 endif()
+                get_target_property(_pch_launcher ${_pch_target} C_COMPILER_LAUNCHER)
+                if(USE_CCACHE AND _pch_launcher MATCHES "ccache" AND CMAKE_C_COMPILER_ID MATCHES "Clang")
+                    # ccache cannot inspect macro definitions or time macros in a PCH.
+                    # Keep this relaxation local to targets that actually use PCH.
+                    set_property(TARGET ${_pch_target} PROPERTY C_COMPILER_LAUNCHER
+                        "${CMAKE_COMMAND}" -E env "CCACHE_SLOPPINESS=pch_defines,time_macros"
+                        ${_pch_launcher})
+                    target_compile_options(${_pch_target} PRIVATE
+                        "$<$<COMPILE_LANGUAGE:C>:-Xclang>"
+                        "$<$<COMPILE_LANGUAGE:C>:-fno-pch-timestamp>")
+                endif()
             endif()
         endforeach()
 

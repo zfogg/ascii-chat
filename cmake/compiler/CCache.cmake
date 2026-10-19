@@ -6,8 +6,8 @@
 #
 # Configuration:
 # - USE_CCACHE: Option to enable/disable ccache (default: ON)
-# - Automatically skips if compiler launcher is already set (e.g., by Homebrew LLVM)
-# - Configures ccache with optimal settings (2GB cache, compression level 6)
+# - Preserves custom launchers and configures existing ccache launchers
+# - Uses a 12GB cache and fast compression without changing global configuration
 #
 # Must be included AFTER project() to configure compiler launcher.
 # =============================================================================
@@ -22,11 +22,6 @@ if(USE_CCACHE)
         if(NOT CMAKE_C_COMPILER_LAUNCHER)
             set(CMAKE_C_COMPILER_LAUNCHER "${ASCIICHAT_CCACHE_EXECUTABLE}" CACHE STRING "C compiler launcher" FORCE)
             message(STATUS "${BoldGreen}Using ccache: ${ASCIICHAT_CCACHE_EXECUTABLE}${ColorReset}")
-
-            # Configure ccache for optimal performance
-            execute_process(COMMAND ${ASCIICHAT_CCACHE_EXECUTABLE} --set-config max_size=2G)
-            execute_process(COMMAND ${ASCIICHAT_CCACHE_EXECUTABLE} --set-config compression=true)
-            execute_process(COMMAND ${ASCIICHAT_CCACHE_EXECUTABLE} --set-config compression_level=6)
         else()
             message(STATUS "Compiler launcher already set: ${BoldCyan}${CMAKE_C_COMPILER_LAUNCHER}${ColorReset}")
         endif()
@@ -37,5 +32,18 @@ if(USE_CCACHE)
         else()
             message(STATUS "${BoldYellow}ccache${ColorReset} not found - install with: ${Cyan}sudo ${BoldBlue}pacman${ColorReset} -S ${BoldBlue}ccache${ColorReset}")
         endif()
+    endif()
+endif()
+
+# LLVM setup may already have selected ccache before this module runs.
+# Apply project settings to existing launchers as well as newly selected ones.
+if(USE_CCACHE AND CMAKE_C_COMPILER_LAUNCHER MATCHES "ccache")
+    set(_asciichat_ccache_launcher
+        "${CMAKE_COMMAND}" -E env
+        "CCACHE_MAXSIZE=12G" "CCACHE_COMPRESS=true" "CCACHE_COMPRESSLEVEL=1"
+        "${ASCIICHAT_CCACHE_EXECUTABLE}")
+    set(CMAKE_C_COMPILER_LAUNCHER "${_asciichat_ccache_launcher}" CACHE STRING "C compiler launcher" FORCE)
+    if(NOT CMAKE_CXX_COMPILER_LAUNCHER OR CMAKE_CXX_COMPILER_LAUNCHER MATCHES "ccache")
+        set(CMAKE_CXX_COMPILER_LAUNCHER "${_asciichat_ccache_launcher}" CACHE STRING "C++ compiler launcher" FORCE)
     endif()
 endif()

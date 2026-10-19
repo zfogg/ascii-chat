@@ -1,5 +1,8 @@
 # Issue 507: Windows verification
 
+This report preserves the original implementation cohort. See the
+[merge and review follow-up](review-follow-up/README.md) for the later revision.
+
 The native executable and shared library, source fingerprint, commands, one-second
 presentation samples, congestion results, and WASM artifact hashes are recorded in
 [results.json](results.json). All runs used this worktree's rebuilt binaries.
