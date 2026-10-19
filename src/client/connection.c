@@ -40,8 +40,40 @@ static void attempt_set_mode(void *context, uint8_t mode) {
 static int attempt_init(void *context) {
   return client_crypto_init(context);
 }
+typedef struct {
+  client_connection_t *connection;
+  acip_transport_t *transport;
+  atomic_t finished;
+} handshake_watch_t;
+
+static void *watch_handshake(void *context) {
+  handshake_watch_t *watch = context;
+  while (!atomic_load_bool(&watch->finished)) {
+    if (should_exit() || atomic_load_bool(&watch->connection->stop_requested)) {
+      acip_transport_interrupt(watch->transport);
+      break;
+    }
+    platform_sleep_us(10 * US_PER_MS_INT);
+  }
+  return NULL;
+}
+
 static asciichat_error_t attempt_handshake(void *context, acip_transport_t *transport) {
-  return client_crypto_handshake(context, transport);
+  // The attempt retains the transport until this watcher has joined, including
+  // on handshake failure. Signal handlers only publish the application flag.
+  handshake_watch_t watch = {.connection = context, .transport = transport};
+  atomic_store_bool(&watch.finished, false);
+  asciichat_thread_t worker;
+  asciichat_error_t result = asciichat_thread_create(&worker, "handshake_stop", watch_handshake, &watch);
+  if (result != ASCIICHAT_OK)
+    return result;
+  result = client_crypto_handshake(context, transport);
+  atomic_store_bool(&watch.finished, true);
+  while (asciichat_thread_join(&worker, NULL) != ASCIICHAT_OK) {
+    log_warn("Retaining handshake watcher until it joins");
+    platform_sleep_us(10 * US_PER_MS_INT);
+  }
+  return result;
 }
 static bool attempt_is_ready(void *context) {
   return crypto_client_is_ready(context);

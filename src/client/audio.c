@@ -404,8 +404,7 @@ void audio_process_received_samples(client_connection_t *connection, const float
   memcpy(audio_buffer, samples, (size_t)num_samples * sizeof(float));
 
   // DEBUG: Log what we're writing to playback buffer (with first 4 samples to verify audio integrity)
-  int recv_count = 0;
-  recv_count++;
+  int recv_count = ++connection->audio_receive_count;
   if (recv_count <= 10 || recv_count % 50 == 0) {
     float peak = 0.0f;
     for (int i = 0; i < num_samples; i++) {
@@ -485,6 +484,12 @@ static void *audio_capture_thread_func(void *arg) {
   double max_encode_ns = 0;
   double max_queue_ns = 0;
   uint64_t timing_loop_count = 0;
+  int total_reads = 0;
+  int norm_count = 0;
+  int read_count = 0;
+  int encode_count = 0;
+  int batch_send_count = 0;
+  int timeout_flush_count = 0;
 
 // Opus frame size: 960 samples = 20ms @ 48kHz (must match pipeline config)
 #define OPUS_FRAME_SAMPLES 960
@@ -496,22 +501,6 @@ static void *audio_capture_thread_func(void *arg) {
 #define CAPTURE_READ_SIZE (OPUS_FRAME_SAMPLES * 4)
 
   float audio_buffer[CAPTURE_READ_SIZE];
-  bool wav_dumpers_initialized = false;
-
-  // Initialize WAV dumpers only once (file handles persist)
-  if (!wav_dumpers_initialized && wav_dump_enabled()) {
-    char tmp[PLATFORM_MAX_PATH_LENGTH];
-    if (platform_get_temp_dir(tmp, sizeof(tmp))) {
-      char path[PLATFORM_MAX_PATH_LENGTH];
-      safe_snprintf(path, sizeof(path), "%s/audio_capture_raw.wav", tmp);
-      g_wav_capture_raw = wav_writer_open(path, AUDIO_SAMPLE_RATE, 1);
-      safe_snprintf(path, sizeof(path), "%s/audio_capture_processed.wav", tmp);
-      g_wav_capture_processed = wav_writer_open(path, AUDIO_SAMPLE_RATE, 1);
-      log_debug("Audio debugging enabled: dumping to %s/audio_capture_*.wav", tmp);
-    }
-    wav_dumpers_initialized = true;
-  }
-
   // Accumulator for building complete Opus frames
   float opus_frame_buffer[OPUS_FRAME_SAMPLES];
   int opus_frame_samples_collected = 0;
@@ -592,7 +581,6 @@ static void *audio_capture_thread_func(void *arg) {
     int samples_read = to_read;
 
     // Log every 10 reads to see if we're getting samples
-    int total_reads = 0;
     total_reads++;
     if (total_reads % 10 == 0) {
       log_debug("Audio capture loop iteration #%d: available=%d, samples_read=%d", total_reads, available,
@@ -616,7 +604,6 @@ static void *audio_capture_thread_func(void *arg) {
         for (int i = 0; i < samples_read; i++) {
           audio_buffer[i] *= gain;
         }
-        int norm_count = 0;
         norm_count++;
         if (norm_count <= 5 || norm_count % 100 == 0) {
           log_debug("Input normalization #%d: peak=%.4f, gain=%.4f", norm_count, peak, gain);
@@ -629,7 +616,6 @@ static void *audio_capture_thread_func(void *arg) {
       }
 
       // DEBUG: Log EVERY read to see what we're getting from the ring buffer
-      int read_count = 0;
       read_count++;
       float sum_squares = 0.0f;
       for (int i = 0; i < samples_read && i < 10; i++) {
@@ -675,7 +661,6 @@ static void *audio_capture_thread_func(void *arg) {
           int opus_len = client_audio_pipeline_capture(connection->audio_pipeline, opus_frame_buffer,
                                                        OPUS_FRAME_SAMPLES, opus_packet, OPUS_MAX_PACKET_SIZE);
 
-          int encode_count = 0;
           encode_count++;
           double opus_elapsed_ns = STOP_TIMER("opus_encode");
           if (encode_count % 50 == 0) {
@@ -728,7 +713,6 @@ static void *audio_capture_thread_func(void *arg) {
 
       // Queue batch for async sending (non-blocking - sender thread handles network I/O)
       if (batch_frame_count > 0) {
-        int batch_send_count = 0;
         batch_send_count++;
 
         START_TIMER("audio_queue_packet");
@@ -794,7 +778,6 @@ static void *audio_capture_thread_func(void *arg) {
         uint64_t elapsed_ns = time_elapsed_ns(batch_start_time_ns, now_ns);
 
         if (elapsed_ns >= BATCH_TIMEOUT_NS) {
-          int timeout_flush_count = 0;
           timeout_flush_count++;
 
           long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
@@ -919,6 +902,19 @@ int audio_client_init() {
     return -1;
   }
   log_debug("DEBUG: audio_init() completed successfully");
+
+  // Initialize WAV dumpers only once (file handles persist)
+  if (wav_dump_enabled()) {
+    char tmp[PLATFORM_MAX_PATH_LENGTH];
+    if (platform_get_temp_dir(tmp, sizeof(tmp))) {
+      char path[PLATFORM_MAX_PATH_LENGTH];
+      safe_snprintf(path, sizeof(path), "%s/audio_capture_raw.wav", tmp);
+      g_wav_capture_raw = wav_writer_open(path, AUDIO_SAMPLE_RATE, 1);
+      safe_snprintf(path, sizeof(path), "%s/audio_capture_processed.wav", tmp);
+      g_wav_capture_processed = wav_writer_open(path, AUDIO_SAMPLE_RATE, 1);
+      log_debug("Audio debugging enabled: dumping to %s/audio_capture_*.wav", tmp);
+    }
+  }
 
   lifecycle_init_commit(&g_audio_client_init_lc);
 

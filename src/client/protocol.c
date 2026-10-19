@@ -544,8 +544,8 @@ static void handle_audio_opus_packet(client_connection_t *connection, const void
 
   double total_ns = STOP_TIMER("audio_packet_total");
 
-  int timing_count = 0;
-  if (++timing_count % 100 == 0) {
+  int timing_count = ++connection->audio_timing_count;
+  if (timing_count % 100 == 0) {
     char decode_str[32], process_str[32], total_str[32];
     time_pretty((uint64_t)decode_ns, -1, decode_str, sizeof(decode_str));
     time_pretty((uint64_t)process_ns, -1, process_str, sizeof(process_str));

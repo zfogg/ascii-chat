@@ -35,6 +35,8 @@ struct client_connection {
   audio_context_t *audio_context;
   atomic_t display_first_frame;
   int receive_frame_count;
+  int audio_receive_count;
+  int audio_timing_count;
   fps_t frame_fps_tracker;
   bool frame_fps_tracker_initialized;
   uint32_t frame_last_width;

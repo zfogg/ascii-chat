@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
 import os
 from pathlib import Path
+import socket
 import subprocess
 import sys
 import tempfile
@@ -31,7 +32,7 @@ def wait_count(service, message, count, timeout=25):
 
 
 def client_options(destination):
-    return [destination, "--test-pattern", "--video-codec", "raw", "--audio=true", "--test-audio", "--no-audio-playback",
+    return [destination, "--no-keepawake", "--test-pattern", "--video-codec", "raw", "--audio=true", "--test-audio", "--no-audio-playback",
             "--width", "40", "--height", "12", "--fps", "10", "--splash-screen=false"]
 
 
@@ -89,7 +90,15 @@ def reconnect(binary, directory, websocket):
     try:
         server = Service(binary, directory, f"{prefix}-server-0", "server", server_options(tcp, ws))
         server.wait_for("Server accepting connections")
-        client = Service(binary, directory, f"{prefix}-persistent", "client", client_options(destination))
+        previous_dump = os.environ.get("ASCIICHAT_DUMP_AUDIO")
+        os.environ["ASCIICHAT_DUMP_AUDIO"] = "1"
+        try:
+            client = Service(binary, directory, f"{prefix}-persistent", "client", client_options(destination))
+        finally:
+            if previous_dump is None:
+                os.environ.pop("ASCIICHAT_DUMP_AUDIO", None)
+            else:
+                os.environ["ASCIICHAT_DUMP_AUDIO"] = previous_dump
         for cycle in range(3):
             wait_count(client, "CLIENT_CONNECTION_RUNNING", cycle + 1)
             # Prove the connection sent real video before forcing peer loss.
@@ -113,6 +122,7 @@ def reconnect(binary, directory, websocket):
         client.stop()
         server = None
         text = client.text()
+        assert text.count("Audio debugging enabled: dumping to") == 1, text[-5000:]
         assert text.count("CLIENT_CONNECTION_RELEASED") >= 4, text[-5000:]
         assert text.count("CLIENT_CONNECTION_CREATED: workers=0 frames=0") == text.count("CLIENT_CONNECTION_RELEASED"), text[-5000:]
         # A timed join may retain a worker temporarily. Final cleanup must
@@ -127,6 +137,31 @@ def reconnect(binary, directory, websocket):
             stop_peer(server)
 
 
+def stalled_handshake(binary, directory):
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        listener.settimeout(15)
+        client = Service(binary, directory, "stalled-handshake", "client",
+                         [*client_options(f"127.0.0.1:{listener.getsockname()[1]}"),
+                          "--reconnect-attempts", "0"])
+        try:
+            with listener.accept()[0] as peer:
+                # Keep the peer open and silent while the real client waits for crypto.
+                client.wait_for("Performing crypto handshake with server")
+                started = time.monotonic()
+                interrupt(client.process)
+                wait_count(client, "CLIENT_CONNECTION_RELEASED", 1, timeout=5)
+                assert time.monotonic() - started < 5
+                client.process.wait(timeout=20)
+            print("PASS: silent TCP handshake connection released within five seconds", flush=True)
+        finally:
+            if client.process.poll() is None:
+                client.process.kill()
+                client.process.wait()
+            client.stream.close()
+
+
 def main():
     binary = Path(sys.argv[1]).resolve()
     output = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else None
@@ -134,6 +169,7 @@ def main():
         output.mkdir(parents=True, exist_ok=True)
     with nullcontext(str(output)) if output else tempfile.TemporaryDirectory(prefix="ascii-connection-owner-") as tmp:
         directory = Path(tmp)
+        stalled_handshake(binary, directory)
         tcp, ws = free_port(), free_port()
         with running(binary, directory, "failure-server", "server", server_options(tcp, ws)) as server:
             server.wait_for("Server accepting connections")
