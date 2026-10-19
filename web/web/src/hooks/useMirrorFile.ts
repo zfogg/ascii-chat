@@ -5,6 +5,8 @@ import {
   useState,
   type RefObject,
 } from "react";
+import { drawFaceFollow } from "../../../packages/shared/src/capture/faceFollow";
+import type { BinarySettingsConfig } from "../components";
 import { useCanvasCapture } from "@ascii-chat/shared/hooks";
 import { MediaSourceType } from "./useClientLike";
 import type { MediaSource } from "./useClientLike";
@@ -13,6 +15,7 @@ import { playMedia } from "../utils/playMedia";
 import type { StreamPlayback } from "../utils/streamMedia";
 
 interface Options {
+  settings?: BinarySettingsConfig;
   videoRef: RefObject<HTMLVideoElement | null>;
   captureWidth?: number;
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -25,6 +28,7 @@ interface Options {
 
 /** One owner for file URLs, pending loads, GIF timing, and audible video playback. */
 export function useMirrorFile({
+  settings,
   videoRef,
   captureWidth = 640,
   canvasRef,
@@ -49,7 +53,12 @@ export function useMirrorFile({
   const release = useRef<(() => void) | null>(null);
   const picture = useRef<((elapsed: number) => CanvasImageSource) | null>(null);
   const clock = useRef({ start: 0, elapsed: 0, paused: false });
-  const { captureFrame: capture } = useCanvasCapture(videoRef, canvasRef);
+  const { captureFrame: capture } = useCanvasCapture(
+    videoRef,
+    canvasRef,
+    false,
+    settings,
+  );
 
   const dispose = useCallback(() => {
     owner.current?.abort();
@@ -263,7 +272,7 @@ export function useMirrorFile({
       timing.elapsed + (timing.paused ? 0 : performance.now() - timing.start);
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(picture.current(elapsed), 0, 0, canvas.width, canvas.height);
+    drawFaceFollow(ctx, picture.current(elapsed), canvas);
     return capture(false);
   }, [canvasRef, capture]);
 

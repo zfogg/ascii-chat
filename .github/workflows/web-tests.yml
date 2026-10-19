@@ -52,6 +52,16 @@ jobs:
         if: matrix.suite == 'playwright'
         run: vp exec playwright install --with-deps chromium
 
+      - name: Prepare moving-face camera and fallback fixtures
+        if: matrix.suite == 'playwright'
+        working-directory: .
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --yes ffmpeg
+          fi
+          python3 tests/scripts/create_face_follow_fixture.py
+
       - name: Run focused browser checks
         if: matrix.suite == 'playwright'
         run: vp run test:e2e:ci

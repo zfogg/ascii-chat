@@ -196,6 +196,7 @@ export function MirrorPage() {
   }, [cancelWebcamStart]);
 
   const fileMedia = useMirrorFile({
+    settings,
     videoRef: fileVideoRef,
     captureWidth: terminalDimensions.cols * 4,
     canvasRef: fileCanvasRef,

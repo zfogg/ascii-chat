@@ -1,12 +1,29 @@
 import { defineConfig } from "vite-plus";
 import react from "@vitejs/plugin-react";
 import sitemap from "vite-plugin-sitemap";
-import { execSync } from "child_process";
-import { copyFileSync, mkdirSync } from "fs";
+import { execFileSync, execSync } from "child_process";
+import { copyFileSync, mkdirSync, readFileSync } from "fs";
+import { createHash } from "node:crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+execFileSync(
+  process.execPath,
+  [path.resolve(__dirname, "../web/scripts/wasm-build.mjs"), "--publish-only"],
+  { stdio: "inherit" },
+);
+const wasmDirectory = path.resolve(__dirname, "../web/src/wasm/dist");
+const wasmVersion = createHash("sha256")
+  .update(readFileSync(path.join(wasmDirectory, "manifest.json")))
+  .digest("hex")
+  .slice(0, 32);
+const wasmFiles = [
+  "mirror.js",
+  "mirror.wasm",
+  "face-follow.js",
+  "face-follow.wasm",
+];
 
 const getCommitSha = () => {
   // Check deployment platform environment variables in order
@@ -38,6 +55,7 @@ console.log("[vite.config.js] Commit SHA:", commitSha);
 export default defineConfig({
   define: {
     __COMMIT_SHA__: JSON.stringify(commitSha),
+    __WASM_ASSET_BASE__: JSON.stringify(`/wasm/${wasmVersion}/`),
   },
   resolve: {
     alias: {
@@ -83,17 +101,29 @@ export default defineConfig({
     react(),
     {
       name: "ensure-outdir",
+      configureServer(server) {
+        server.middlewares.use((request, response, next) => {
+          const pathname = new URL(request.url || "/", "http://localhost")
+            .pathname;
+          const name = pathname.replace(/^\/wasm\/(?:[a-f0-9]{32}\/)?/, "");
+          if (!pathname.startsWith("/wasm/") || !wasmFiles.includes(name))
+            return next();
+          response.setHeader(
+            "Content-Type",
+            name.endsWith(".wasm") ? "application/wasm" : "text/javascript",
+          );
+          response.end(readFileSync(path.join(wasmDirectory, name)));
+        });
+      },
       closeBundle() {
-        mkdirSync("dist", { recursive: true });
-        mkdirSync("dist/wasm", { recursive: true });
-        copyFileSync(
-          path.resolve(__dirname, "../web/src/wasm/dist/mirror.js"),
-          path.resolve(__dirname, "dist/wasm/mirror.js"),
-        );
-        copyFileSync(
-          path.resolve(__dirname, "../web/src/wasm/dist/mirror.wasm"),
-          path.resolve(__dirname, "dist/wasm/mirror.wasm"),
-        );
+        for (const destination of ["dist/wasm", `dist/wasm/${wasmVersion}`]) {
+          mkdirSync(destination, { recursive: true });
+          for (const name of wasmFiles)
+            copyFileSync(
+              path.join(wasmDirectory, name),
+              path.join(destination, name),
+            );
+        }
       },
     },
     sitemap({

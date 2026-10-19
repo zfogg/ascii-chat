@@ -1,9 +1,11 @@
 {
-  "sourceHash": "9403eb349aba523e1f75e746d5cb21680233a637f2b4fd37bf157fc0102fc268",
+  "sourceHash": "813fa19954c20e3b2e6b3957eedfbdf9736424eb49706d0086199c152c6305f5",
   "files": {
-    "mirror.js": "e0c5bd61c69e05fd79acbbcbfb401e98260b53e77b1f10caea205b5628f62cac",
-    "mirror.wasm": "d3509e0cbfd83d18d994e3d806498ee093da6162b0ea5a6897c109a11ac6fc1d",
-    "client.js": "c18c8ec5f567345c3c37a0f1af2ed8ab526d07cfb8f664ffa457f90a7db0d01f",
-    "client.wasm": "f7adcc73a06da55c07783893080349fb844ef2164092585a519e61369a5e2aff"
+    "mirror.js": "b607bb7d9a5df29e6a2220bf6a1adef72932057cfba23f69ac19debb463341df",
+    "mirror.wasm": "026ddf1010a543e9a77ab59f3aec5947f1eaff000463c7534823d8c14d59f953",
+    "client.js": "bc16894b8357882bf8c35a4098b399b8609e1853c857b935e1d0340eac425ff9",
+    "client.wasm": "4b464c782ea56fdb52169cf767cd0df17749cccca38b982376adc7b5dc1e5f53",
+    "face-follow.js": "f0d3d0b4e4a50a731d074581bdc3a9d48106420b340d943029c347d009d46ecb",
+    "face-follow.wasm": "a777274f995c0c2224bd04041892eedbe593fa5c2db1289787a1ec923a707943"
   }
 }
