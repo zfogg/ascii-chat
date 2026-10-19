@@ -488,6 +488,10 @@ export function ClientPage({
       pendingConnectRef.current = true;
       setRendererRequested(true);
       setConnecting(true);
+    } else if (!requestedConnection && previousStartupRequest.current) {
+      pendingConnectRef.current = false;
+      discoveryJoinGenerationRef.current++;
+      setConnecting(false);
     }
     previousStartupRequest.current = requestedConnection;
   }, [requestedConnection, connectionState]);

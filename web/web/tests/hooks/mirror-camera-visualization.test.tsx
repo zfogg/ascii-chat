@@ -259,3 +259,34 @@ test("a transient busy camera is retried by the same startup request", async () 
   });
   expect(getUserMedia).toHaveBeenCalledTimes(2);
 });
+
+test("cancelling pending startup releases a late stream instead of reviving capture", async () => {
+  const { params, source, camera, mic } = setup();
+  params.isWebcamRunning = false;
+  params.streamRef.current = null;
+  let finish!: (stream: MediaStream) => void;
+  const getUserMedia = vi.fn(
+    () =>
+      new Promise<MediaStream>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: { getUserMedia },
+  });
+  const hook = renderHook(() => useMirrorWebcam(params));
+  let pending!: Promise<boolean>;
+  await act(async () => {
+    pending = hook.result.current.startWebcam();
+  });
+  await waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce());
+  await act(async () => {
+    hook.result.current.cancelStart();
+    expect(await pending).toBe(false);
+  });
+  await act(async () => finish(source));
+  expect(camera.stop).toHaveBeenCalledOnce();
+  expect(mic.stop).toHaveBeenCalledOnce();
+  expect(params.setIsWebcamRunning).not.toHaveBeenCalledWith(true);
+});

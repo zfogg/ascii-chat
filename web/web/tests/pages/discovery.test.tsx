@@ -552,3 +552,33 @@ it.each([false, true])(
     await waitFor(() => expect(backend.connect).toHaveBeenCalledOnce());
   },
 );
+
+it.each([false, true])(
+  "removing connect=true cancels pending startup for discovery=%s",
+  async (discoveryMode) => {
+    history.replaceState(
+      {},
+      "",
+      discoveryMode
+        ? "/discovery?connect=true&session=blue-mountain-tiger"
+        : "/client?connect=true",
+    );
+    render(<ClientPage discoveryMode={discoveryMode} />, {
+      wrapper: HeadingProvider,
+    });
+    act(() => {
+      history.replaceState(
+        {},
+        "",
+        discoveryMode
+          ? "/discovery?connect=false&session=blue-mountain-tiger"
+          : "/client?connect=false",
+      );
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    });
+    expect(backend.connect).not.toHaveBeenCalled();
+  },
+);

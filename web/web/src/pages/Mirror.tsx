@@ -286,10 +286,15 @@ export function MirrorPage() {
 
   useEffect(() => {
     // URL navigation can reuse the mounted page rather than initialize refs.
-    if (playing !== previousStartupPlaying.current)
+    if (playing !== previousStartupPlaying.current) {
       resumePending.current = playing;
+      if (!playing) {
+        cancelStart();
+        stopWebcam();
+      }
+    }
     previousStartupPlaying.current = playing;
-  }, [playing]);
+  }, [playing, cancelStart, stopWebcam]);
 
   useEffect(() => {
     if (

@@ -20,6 +20,7 @@ const backend = vi.hoisted(() => ({
   loading: false,
   cameraReady: null as Promise<void> | null,
   suspended: vi.fn(),
+  cancelStart: vi.fn(),
   start: vi.fn(),
   stop: vi.fn(),
 }));
@@ -163,7 +164,7 @@ vi.mock("../../src/hooks/useMirrorWebcam", () => ({
       setIsWebcamRunning(true);
       return true;
     },
-    cancelStart: vi.fn(),
+    cancelStart: backend.cancelStart,
   }),
 }));
 vi.mock("../../src/hooks/useMirrorFile", () => ({
@@ -290,4 +291,19 @@ test("a manual start does not launch a second camera while permission is pending
   expect(backend.start).toHaveBeenCalledOnce();
   await act(async () => ready());
   expect(backend.start).toHaveBeenCalledOnce();
+});
+
+test("removing playing=true cancels pending startup and stops acquired media", async () => {
+  backend.ready = true;
+  backend.cameraReady = new Promise<void>(() => {});
+  history.replaceState({}, "", "/mirror?playing=true");
+  render(<MirrorPage />);
+  await waitFor(() => expect(backend.start).toHaveBeenCalledOnce());
+  const stops = backend.stop.mock.calls.length;
+  act(() => {
+    history.replaceState({}, "", "/mirror?playing=false");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+  expect(backend.cancelStart).toHaveBeenCalled();
+  expect(backend.stop).toHaveBeenCalledTimes(stops + 1);
 });
