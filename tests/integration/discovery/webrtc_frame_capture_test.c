@@ -303,16 +303,16 @@ Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cle
   if (g_acds_pid == 0) {
     // Child: Start ACDS with fresh database (with 10 second timeout)
     (void)setpgid(0, 0);
-    freopen(ACDS_LOG_PATH, "w", stderr);
     freopen(ACDS_LOG_PATH, "w", stdout);
-    execlp("timeout", "timeout", "30", binary_path, "discovery-service", "127.0.0.1", "::", "--port", "27325",
-           "--database", ACDS_DB_PATH, NULL);
+    dup2(STDOUT_FILENO, STDERR_FILENO);
+    execlp("timeout", "timeout", "45", binary_path, "--no-check-update", "discovery-service", "127.0.0.1",
+           "::", "--port", "27325", "--database", ACDS_DB_PATH, "--status-screen=false", NULL);
     exit(1); // Should not reach here
   }
 
   // Wait for ACDS to be ready (check for "Listening on" in log) with 10 second timeout
   sleep(1);
-  int acds_ready = wait_for_pattern(ACDS_LOG_PATH, "Listening on", 500); // 500 * 100ms = 50 seconds
+  int acds_ready = wait_for_pattern(ACDS_LOG_PATH, "Listening on", 100);
   if (!acds_ready) {
     log_error("ACDS failed to start within 10 seconds, killing process");
     kill_and_wait(g_acds_pid, "acds");
@@ -330,17 +330,17 @@ Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cle
   if (g_server_pid == 0) {
     // Child: Start server (receives video from clients, doesn't capture)
     (void)setpgid(0, 0);
-    freopen(SERVER_LOG_PATH, "w", stderr);
     freopen(SERVER_LOG_PATH, "w", stdout);
-    execlp("timeout", "timeout", "30", binary_path, "--log-level", "debug", "server", "0.0.0.0", "::", "--port",
-           "27224", "--discovery", "--discovery-expose-ip", "--discovery-service", "127.0.0.1",
+    dup2(STDOUT_FILENO, STDERR_FILENO);
+    execlp("timeout", "timeout", "45", binary_path, "--no-check-update", "--log-level", "debug", "server", "0.0.0.0",
+           "::", "--port", "27224", "--discovery", "--discovery-expose-ip", "--discovery-service", "127.0.0.1",
            "--discovery-service-port", "27325", "--status-screen=false", NULL);
     exit(1); // Should not reach here
   }
 
   // Wait for server to register and get session string with 10 second timeout
   sleep(2);
-  int server_ready = wait_for_pattern(SERVER_LOG_PATH, "Session String:", 500); // 500 * 100ms = 50 seconds
+  int server_ready = wait_for_pattern(SERVER_LOG_PATH, "Session String:", 100);
   if (!server_ready) {
     log_error("Server failed to register with ACDS within 10 seconds, killing processes");
     kill_and_wait(g_server_pid, "server");
@@ -369,19 +369,21 @@ Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cle
   // complete; give the peer several seconds to connect before taking the frame.
   // Route logs to a file so stdout remains available for the rendered frame.
   char client_cmd[512];
-  snprintf(
-      client_cmd, sizeof(client_cmd),
-      "timeout 10 %s --log-file /tmp/client_test.log \"%s\" --snapshot --snapshot-delay 5 --test-pattern "
-      "--discovery-service 127.0.0.1 --discovery-service-port 27325 --prefer-webrtc > %s 2>/tmp/client_test_stderr.log",
-      binary_path, session_string, CLIENT_OUTPUT_PATH);
+  snprintf(client_cmd, sizeof(client_cmd),
+           "timeout 20 %s --no-check-update --log-file /tmp/client_test.log \"%s\" --snapshot --snapshot-delay 5 "
+           "--test-pattern "
+           "--discovery-service 127.0.0.1 --discovery-service-port 27325 --prefer-webrtc --port 27234 > %s "
+           "2>/tmp/client_test_stderr.log",
+           binary_path, session_string, CLIENT_OUTPUT_PATH);
 
   int client_result = system(client_cmd);
-  log_debug("Client command exit status: %d", WEXITSTATUS(client_result));
+  cr_assert(client_result != -1 && WIFEXITED(client_result), "Client should exit normally");
+  cr_assert_eq(WEXITSTATUS(client_result), 0, "Client should complete its WebRTC snapshot successfully");
 
   // Discovery participant mode intentionally does not render a terminal frame;
   // it hands the established WebRTC transport to the media session. Verify the
   // transport transition directly in the client log instead of stdout.
-  int media_active = wait_for_pattern(CLIENT_LOG_PATH, "WebRTC Media Channel ACTIVE", 500);
+  int media_active = wait_for_pattern(CLIENT_LOG_PATH, "WebRTC Media Channel ACTIVE", 1);
   cr_assert(media_active, "Client should establish the WebRTC media channel");
 
   // Cleanup will be done automatically by .fini = cleanup_processes

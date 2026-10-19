@@ -101,6 +101,7 @@
 #include <ascii-chat/network/tcp/server.h>
 #include <ascii-chat/network/websocket/server.h>
 #include <ascii-chat/network/acip/acds_client.h>
+#include <ascii-chat/network/consensus/handoff.h>
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/thread_pool.h>
@@ -970,7 +971,19 @@ static void *acds_receive_thread(void *arg) {
     }
 
     asciichat_errno_scope_t receive_scope = asciichat_errno_scope_begin();
-    asciichat_error_t result = acip_client_receive_and_dispatch(g_acds_transport, &callbacks);
+    packet_envelope_t envelope = {0};
+    asciichat_error_t result = acip_client_receive_packet(g_acds_transport, &envelope);
+    if (result == ASCIICHAT_OK) {
+      if ((unsigned)envelope.type == CONSENSUS_HANDOFF_PACKET) {
+        // A fixed server keeps hosting while discovery participants prepare a successor.
+        consensus_handoff_message_t message;
+        result = consensus_handoff_decode(envelope.data, envelope.len, &message);
+      } else {
+        result = acip_handle_client_packet(g_acds_transport, envelope.type, envelope.data, envelope.len, &callbacks);
+      }
+    }
+    if (envelope.allocated_buffer)
+      buffer_release(envelope.allocated_buffer);
 
     if (result == ASCIICHAT_OK) {
       ASSERT_NO_ERRNO_SINCE(receive_scope);

@@ -561,7 +561,7 @@ int main(int argc, char **argv) {
     ++f->generated[stage];
     uint32_t seed = (uint32_t)++frame_number;
     for (size_t i = 0; i < 160 * 90 * 3; ++i) {
-      seed = seed * 1664525U + 1013904223U;
+      seed = (uint32_t)((uint64_t)seed * 1664525U + 1013904223U);
       rgb[i] = (uint8_t)(seed >> 24);
     }
     length = capacity;
