@@ -111,7 +111,7 @@ function(apply_patch)
         WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
         RESULT_VARIABLE PATCH_CHECK_RESULT
         OUTPUT_QUIET
-        ERROR_QUIET
+        ERROR_VARIABLE PATCH_CHECK_ERROR
     )
 
     if(PATCH_CHECK_RESULT EQUAL 0)
@@ -128,12 +128,22 @@ function(apply_patch)
             file(WRITE "${PATCH_MARKER}" "${PATCH_DESCRIPTION}\nApplied: ${PATCH_PATCH_FILE}\n")
             set(${RESULT_VAR} TRUE PARENT_SCOPE)
         else()
-            message(WARNING "  Failed to apply ${DEP_NAME} patch #${PATCH_PATCH_NUM}: ${PATCH_ERROR}")
-            set(${RESULT_VAR} FALSE PARENT_SCOPE)
+            message(FATAL_ERROR "Failed to apply ${DEP_NAME} patch #${PATCH_PATCH_NUM}: ${PATCH_ERROR}")
         endif()
     else()
-        # Patch already applied or not needed
-        message(STATUS "  ${DEP_NAME} patch #${PATCH_PATCH_NUM} already applied or not needed")
+        execute_process(
+            COMMAND git apply --reverse --check "${PATCH_PATCH_FILE}"
+            WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
+            RESULT_VARIABLE PATCH_REVERSE_RESULT
+            OUTPUT_QUIET
+            ERROR_VARIABLE PATCH_REVERSE_ERROR
+        )
+        if(NOT PATCH_REVERSE_RESULT EQUAL 0)
+            message(FATAL_ERROR
+                "Cannot apply or verify ${DEP_NAME} patch #${PATCH_PATCH_NUM}: ${PATCH_PATCH_FILE}\n"
+                "Forward check: ${PATCH_CHECK_ERROR}\nReverse check: ${PATCH_REVERSE_ERROR}")
+        endif()
+        message(STATUS "  ${DEP_NAME} patch #${PATCH_PATCH_NUM} already applied")
         file(WRITE "${PATCH_MARKER}" "${PATCH_DESCRIPTION}\nSkipped (already applied)\n")
         set(${RESULT_VAR} TRUE PARENT_SCOPE)
     endif()

@@ -857,6 +857,13 @@ endif()
 # =============================================================================
 # Test Shared Library
 # =============================================================================
+if(BUILD_TESTS)
+    add_test(NAME cmake-patching
+        COMMAND "${CMAKE_COMMAND}" "-DPATCH_TEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/patching"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patching.cmake")
+    set_tests_properties(cmake-patching PROPERTIES LABELS "unit" TIMEOUT 30)
+endif()
+
 # Available when shared library is built (skipped for musl and Linux Release non-musl)
 if(TARGET ascii-chat-shared)
     add_executable(test-source-paths EXCLUDE_FROM_ALL integration/source_paths.c)

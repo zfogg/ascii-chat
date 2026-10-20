@@ -1,0 +1,62 @@
+cmake_minimum_required(VERSION 3.30)
+get_filename_component(_repo_root "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+
+if(PATCH_TEST_CHILD)
+    set(ASCIICHAT_DEPS_CACHE_ROOT "${PATCH_TEST_CACHE}")
+    include("${_repo_root}/cmake/utils/Patching.cmake")
+    apply_patch(TARGET_DIR "${PATCH_TEST_SOURCE}" PATCH_FILE "${PATCH_TEST_PATCH}"
+        PATCH_NUM 0 DESCRIPTION "patch regression")
+    return()
+endif()
+
+if(NOT PATCH_TEST_BINARY_DIR)
+    message(FATAL_ERROR "PATCH_TEST_BINARY_DIR is required")
+endif()
+find_program(_git git REQUIRED)
+string(RANDOM LENGTH 12 ALPHABET 0123456789abcdef _id)
+set(_root "${PATCH_TEST_BINARY_DIR}/${_id}")
+set(_source "${_root}/dependency")
+set(_patch "${_root}/change.patch")
+file(MAKE_DIRECTORY "${_source}" "${_root}/cache")
+execute_process(COMMAND "${_git}" init -q "${_source}" COMMAND_ERROR_IS_FATAL ANY)
+file(WRITE "${_source}/file.txt" "before\n")
+set(_valid_patch "--- a/file.txt\n+++ b/file.txt\n@@ -1 +1 @@\n-before\n+after\n")
+file(WRITE "${_patch}" "${_valid_patch}")
+
+function(run_patch expect_success)
+    execute_process(COMMAND "${CMAKE_COMMAND}" -DPATCH_TEST_CHILD=ON
+        "-DPATCH_TEST_SOURCE=${_source}" "-DPATCH_TEST_PATCH=${_patch}"
+        "-DPATCH_TEST_CACHE=${_root}/cache" -P "${CMAKE_CURRENT_LIST_FILE}"
+        RESULT_VARIABLE _result OUTPUT_VARIABLE _out ERROR_VARIABLE _err)
+    if(expect_success AND NOT _result EQUAL 0)
+        message(FATAL_ERROR "Patch unexpectedly failed: ${_out}\n${_err}")
+    elseif(NOT expect_success AND _result EQUAL 0)
+        message(FATAL_ERROR "Invalid patch was accepted")
+    elseif(NOT expect_success AND NOT _err MATCHES "Cannot apply or verify")
+        message(FATAL_ERROR "Unexpected rejection: ${_out}\n${_err}")
+    endif()
+endfunction()
+
+run_patch(TRUE)
+file(READ "${_source}/file.txt" _contents)
+if(NOT _contents STREQUAL "after\n")
+    message(FATAL_ERROR "Patch did not update its source")
+endif()
+run_patch(TRUE)
+
+# A restored marker must not mask a fresh dependency checkout.
+file(WRITE "${_source}/file.txt" "before\n")
+run_patch(TRUE)
+file(READ "${_source}/file.txt" _contents)
+if(NOT _contents STREQUAL "after\n")
+    message(FATAL_ERROR "Stale marker prevented patch reapplication")
+endif()
+
+file(REMOVE "${_root}/cache/dependency.patch_0")
+run_patch(TRUE)
+file(WRITE "${_patch}" "not a patch\n")
+run_patch(FALSE)
+file(WRITE "${_patch}" "${_valid_patch}")
+file(WRITE "${_source}/file.txt" "different upstream content\n")
+run_patch(FALSE)
+message(STATUS "Patch application, idempotence, stale markers, and invalid-input rejection passed")
