@@ -80,6 +80,13 @@ const char *get_username_env(void) {
  * @return 0 on success, error code on failure
  */
 asciichat_error_t platform_init(void) {
+  // Console writes and stdio both contain UTF-8, including startup and final
+  // notices. Keep the console decoder consistent through the entire process.
+  if (GetConsoleOutputCP() && !SetConsoleOutputCP(CP_UTF8))
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Cannot enable UTF-8 console output");
+  if (GetConsoleCP() && !SetConsoleCP(CP_UTF8))
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Cannot enable UTF-8 console input");
+
   // Set binary mode for stdin/stdout to handle raw data
   _setmode(_fileno(stdin), _O_BINARY);
   _setmode(_fileno(stdout), _O_BINARY);

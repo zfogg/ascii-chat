@@ -52,7 +52,7 @@ def check_capture_emulator():
 
 
 class Terminal:
-    def __init__(self, argv, rows=12, cols=19, terminal_replies=False):
+    def __init__(self, argv, rows=12, cols=19, terminal_replies=False, code_page=65001):
         self.terminal_replies = terminal_replies
         self.query_tail = ""
         self.screen = CaptureScreen(cols, rows)
@@ -63,7 +63,7 @@ class Terminal:
             from winpty import PtyProcess
 
             # Match a UTF-8 terminal, including its console code page.
-            command = "chcp 65001>nul & " + subprocess.list2cmdline(argv)
+            command = f"chcp {code_page}>nul & " + subprocess.list2cmdline(argv)
             self.process = PtyProcess.spawn(
                 ["cmd.exe", "/d", "/c", command], dimensions=(rows, cols)
             )
@@ -101,7 +101,11 @@ class Terminal:
                     queries = self.query_tail + chunk
                     query = "\x1b]11;?\x1b\\"
                     for _ in range(queries.count(query)):
-                        self.write("\x1b]11;rgb:0000/0000/0000\x1b\\")
+                        try:
+                            self.write("\x1b]11;rgb:0000/0000/0000\x1b\\")
+                        except (EOFError, OSError):
+                            # A queued query can outlive the exiting PTY child.
+                            pass
                     self.query_tail = queries[-(len(query) - 1):]
             except queue.Empty:
                 pass

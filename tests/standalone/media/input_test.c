@@ -132,6 +132,16 @@ int main(void) {
   feed("\033]11;rgb:0000/0000/0000\a-");
   CHECK(fake_keyboard() == KEY_NONE);
   CHECK(fake_keyboard() == '-');
+  feed("\033\033]11;rgb:1717/1717/1717\033\\o");
+  CHECK(fake_keyboard() == KEY_ESCAPE);
+  CHECK(fake_keyboard() == 'o');
+  feed("\033]11;rgb:1717/");
+  CHECK(fake_keyboard() == KEY_NONE);
+  platform_sleep_ms(75);
+  CHECK(fake_keyboard() == KEY_NONE);
+  feed("1717/1717\a-");
+  CHECK(fake_keyboard() == KEY_NONE);
+  CHECK(fake_keyboard() == '-');
   feed("\033[A\033[3;5~");
   CHECK(fake_keyboard() == KEY_UP);
   CHECK(fake_keyboard() == KEY_CTRL_DELETE);
