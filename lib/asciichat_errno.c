@@ -579,7 +579,7 @@ void asciichat_error_stats_print(void) {
       log_plain("  %s: %" PRIu64, asciichat_error_string((asciichat_error_t)i), stats.error_counts[i]);
 }
 
-void asciichat_print_error_context(const asciichat_error_context_t *context) {
+static void print_error_context(const asciichat_error_context_t *context, bool include_backtrace) {
   if (!context || context->code == ASCIICHAT_OK)
     return;
   bool previous = g_recording;
@@ -596,7 +596,7 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
     log_plain("  System error: %d", context->system_errno);
   if (context->has_wsa_error)
     log_plain("  WSA error: %d", context->wsa_error);
-  if (context->backtrace.count > 0) {
+  if (context->backtrace.count > 0 && include_backtrace) {
     backtrace_t trace = context->backtrace;
     trace.symbols = NULL;
     trace.tried_symbolize = false;
@@ -606,6 +606,10 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
     backtrace_t_free(&trace);
   }
   g_recording = previous;
+}
+
+void asciichat_print_error_context(const asciichat_error_context_t *context) {
+  print_error_context(context, true);
 }
 
 void asciichat_errno_print_stacks(void) {
@@ -694,7 +698,10 @@ void asciichat_errno_print_chain(uint64_t id, uint64_t error_id) {
   log_plain("Failure chain (outer context -> root cause):");
   for (size_t i = 0; i < count && error_id; ++i) {
     if (frames[i].error_id == error_id) {
-      asciichat_print_error_context(&frames[i]);
+      // Automatic error logs keep their full cause metadata at normal verbosity.
+      // Symbolization can launch external tools and is reserved for Debug logs;
+      // explicit stack reports above still include backtraces at every level.
+      print_error_context(&frames[i], log_get_level() <= LOG_DEBUG);
       error_id = frames[i].cause_id;
     }
   }
