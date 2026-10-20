@@ -33,6 +33,14 @@ case "$PLATFORM" in
             echo "$NEEDED"
             exit 1
         fi
+        PROGRAM_HEADERS=$("$AUDIT_TOOL" --program-headers "$BINARY") || {
+            echo "ERROR: llvm-readelf failed to inspect program headers for $BINARY"
+            exit 1
+        }
+        if printf '%s\n' "$PROGRAM_HEADERS" | grep -Eq '(^|[[:space:]])INTERP([[:space:]]|$)'; then
+            echo "ERROR: Release executable has an ELF interpreter"
+            exit 1
+        fi
         echo -e "${GREEN}✓ Binary has no dynamic ELF dependencies${RESET}"
         exit 0
         ;;

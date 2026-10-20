@@ -1,0 +1,4 @@
+interface:
+  display_name: "ascii-chat CLI Release"
+  short_description: "Publish and verify static CLI releases"
+  default_prompt: "Use $ascii-chat-cli-release to publish and verify the next ascii-chat CLI release."

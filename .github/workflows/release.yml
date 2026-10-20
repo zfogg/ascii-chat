@@ -588,6 +588,9 @@ jobs:
           fi
           cmake --build build_release --target package
 
+      - name: Smoke test macOS release executable
+        run: ./build_release/bin/ascii-chat --version
+
       - name: Verify macOS development package contains the static library
         shell: bash
         run: |
@@ -822,6 +825,8 @@ jobs:
       - name: Verify static Windows release packages
         shell: pwsh
         run: |
+          & ./build_release/bin/ascii-chat.exe --version
+          if ($LASTEXITCODE -ne 0) { throw "Release executable --version failed: $LASTEXITCODE" }
           $version = "${{ needs.create-release.outputs.version }}".TrimStart("v")
           $arch = "${{ matrix.arch }}"
           $runtimeZip = "build_release/ascii-chat-$version-Windows-$arch.zip"
