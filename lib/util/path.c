@@ -515,31 +515,24 @@ char *get_log_dir(void) {
 }
 
 char *get_discovery_database_dir(void) {
-#ifdef _WIN32
-  // Windows: Try %PROGRAMDATA%\ascii-chat\ first, then fall back to user directories
-  const char *program_data = platform_getenv("PROGRAMDATA");
-  if (program_data && program_data[0] != '\0') {
-    size_t len = strlen(program_data) + strlen("\\ascii-chat\\") + 1;
-    char *system_dir = SAFE_MALLOC(len, char *);
-    if (system_dir) {
-      safe_snprintf(system_dir, len, "%s\\ascii-chat\\", program_data);
-
-      // Try to create directory recursively with public permissions (755 equivalent)
-      asciichat_error_t mkdir_result = platform_mkdir_recursive(system_dir, 0755);
-      if (mkdir_result == ASCIICHAT_OK) {
-        // Directory exists or was created - check if writable
-        if (platform_access(system_dir, PLATFORM_ACCESS_WRITE) == 0) {
-          return system_dir; // System-wide location is writable
-        }
+  platform_directory_list_t data_dirs = {0};
+  if (platform_get_data_dir_candidates(&data_dirs) == ASCIICHAT_OK) {
+    for (size_t i = 0; i < data_dirs.count; i++) {
+      platform_directory_candidate_t *candidate = &data_dirs.candidates[i];
+      if (platform_mkdir_recursive(candidate->path, candidate->mode) == ASCIICHAT_OK &&
+          platform_access(candidate->path, PLATFORM_ACCESS_WRITE) == 0) {
+        char *selected_dir = candidate->path;
+        candidate->path = NULL;
+        platform_directory_list_destroy(&data_dirs);
+        return selected_dir;
       }
-      SAFE_FREE(system_dir);
     }
   }
+  platform_directory_list_destroy(&data_dirs);
 
-  // Fall back to user data directory
+  // Fall back to the platform's per-user application data directory.
   char *data_dir = get_data_dir();
   if (data_dir) {
-    // Try to create the directory recursively
     asciichat_error_t mkdir_result = platform_mkdir_recursive(data_dir, DIR_PERM_PRIVATE);
     if (mkdir_result == ASCIICHAT_OK) {
       if (platform_access(data_dir, PLATFORM_ACCESS_WRITE) == 0) {
@@ -550,63 +543,6 @@ char *get_discovery_database_dir(void) {
   }
 
   return NULL;
-#else
-  // Unix: Try ${INSTALL_PREFIX}/var/ascii-chat/ first (system-wide, Homebrew-aware)
-  // This uses the baked-in install prefix from paths.h (e.g., /opt/homebrew or /usr/local)
-  const char *prefix = ASCIICHAT_INSTALL_PREFIX;
-  size_t system_len = strlen(prefix) + strlen("/var/ascii-chat/") + 1;
-  char *system_dir = SAFE_MALLOC(system_len, char *);
-  if (system_dir) {
-    safe_snprintf(system_dir, system_len, "%s/var/ascii-chat/", prefix);
-
-    // Try to create directory recursively with public permissions (755) for system-wide use
-    // platform_mkdir_recursive creates parent directories as needed
-    asciichat_error_t mkdir_result = platform_mkdir_recursive(system_dir, 0755);
-    if (mkdir_result == ASCIICHAT_OK) {
-      // Directory exists or was created - check if writable
-      if (platform_access(system_dir, PLATFORM_ACCESS_WRITE) == 0) {
-        return system_dir; // System-wide location is writable
-      }
-    }
-    SAFE_FREE(system_dir);
-  }
-
-#ifdef __APPLE__
-  // On macOS, /usr/local is typically user-writable (set up by Homebrew)
-  // Try it if the install prefix is different (e.g., /opt/homebrew on Apple Silicon)
-  if (strcmp(prefix, "/usr/local") != 0) {
-    const char *usr_local_path = "/usr/local/var/ascii-chat/";
-    size_t usr_local_len = strlen(usr_local_path) + 1;
-    char *usr_local_dir = SAFE_MALLOC(usr_local_len, char *);
-    if (usr_local_dir) {
-      safe_snprintf(usr_local_dir, usr_local_len, "%s", usr_local_path);
-
-      asciichat_error_t mkdir_result = platform_mkdir_recursive(usr_local_dir, 0755);
-      if (mkdir_result == ASCIICHAT_OK) {
-        if (platform_access(usr_local_dir, PLATFORM_ACCESS_WRITE) == 0) {
-          return usr_local_dir; // /usr/local is writable
-        }
-      }
-      SAFE_FREE(usr_local_dir);
-    }
-  }
-#endif
-
-  // Fall back to user data directory (XDG_DATA_HOME or ~/.local/share/ascii-chat/)
-  char *data_dir = get_data_dir();
-  if (data_dir) {
-    // Try to create the directory recursively
-    asciichat_error_t mkdir_result = platform_mkdir_recursive(data_dir, DIR_PERM_PRIVATE);
-    if (mkdir_result == ASCIICHAT_OK) {
-      if (platform_access(data_dir, PLATFORM_ACCESS_WRITE) == 0) {
-        return data_dir;
-      }
-    }
-    SAFE_FREE(data_dir);
-  }
-
-  return NULL;
-#endif
 }
 
 bool path_normalize_copy(const char *path, char *out, size_t out_len) {

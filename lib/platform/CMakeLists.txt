@@ -95,7 +95,7 @@ elseif(PLATFORM_POSIX)
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/process_title.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/keepawake.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/font.c
-            ${CMAKE_CURRENT_SOURCE_DIR}/macos/filesystem.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/macos/filesystem.m
             ${CMAKE_SOURCE_DIR}/lib/video/webcam/macos/webcam_avfoundation.m
         )
     elseif(PLATFORM_LINUX)

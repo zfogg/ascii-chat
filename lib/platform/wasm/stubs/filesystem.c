@@ -104,3 +104,12 @@ int platform_access(const char *pathname, int mode) {
 char *platform_get_data_dir(void) {
   return NULL; // No data directory in WASM
 }
+
+asciichat_error_t platform_get_data_dir_candidates(platform_directory_list_t *list_out) {
+  if (!list_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "list_out cannot be NULL");
+  }
+  list_out->candidates = NULL;
+  list_out->count = 0;
+  return ASCIICHAT_OK;
+}

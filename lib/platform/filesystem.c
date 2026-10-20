@@ -14,6 +14,18 @@
 #include <string.h>
 #include <stdio.h>
 
+void platform_directory_list_destroy(platform_directory_list_t *list) {
+  if (!list) {
+    return;
+  }
+
+  for (size_t i = 0; i < list->count; i++) {
+    SAFE_FREE(list->candidates[i].path);
+  }
+  SAFE_FREE(list->candidates);
+  list->count = 0;
+}
+
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif

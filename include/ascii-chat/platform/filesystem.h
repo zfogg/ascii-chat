@@ -238,6 +238,22 @@ typedef struct {
 } platform_stat_t;
 
 /**
+ * @brief Ordered list of platform-specific application directories
+ *
+ * Each path is freshly allocated and includes a trailing path separator.
+ * The entries are ordered from most to least preferred.
+ */
+typedef struct {
+  char *path;
+  int mode;
+} platform_directory_candidate_t;
+
+typedef struct {
+  platform_directory_candidate_t *candidates;
+  size_t count;
+} platform_directory_list_t;
+
+/**
  * @brief Get file statistics
  *
  * Retrieves metadata about a file without following symbolic links.
@@ -746,6 +762,35 @@ char *platform_get_config_dir(void);
  * @ingroup platform
  */
 char *platform_get_data_dir(void);
+
+/**
+ * @brief Get application data directory candidates
+ *
+ * Platform-specific implementations return conventional application data
+ * locations for ascii-chat, ordered from most to least preferred:
+ *   - Linux: ${ASCIICHAT_INSTALL_PREFIX}/var/ascii-chat/
+ *   - macOS: user and local-domain Application Support directories, followed
+ *     by ${ASCIICHAT_INSTALL_PREFIX}/var/ascii-chat/ and /usr/local/var/ascii-chat/
+ *   - Windows: %PROGRAMDATA%\ascii-chat\
+ *
+ * Each candidate includes the permissions to use when creating it. This
+ * function only resolves paths; callers create directories and check access.
+ *
+ * @param list_out List populated with allocated paths
+ * @return ASCIICHAT_OK on success, or an error code on invalid input or
+ *         allocation failure
+ *
+ * @note An unavailable platform directory is represented by an empty list.
+ * @note Caller must release the list with platform_directory_list_destroy().
+ */
+asciichat_error_t platform_get_data_dir_candidates(platform_directory_list_t *list_out);
+
+/**
+ * @brief Release paths returned by platform_get_data_dir_candidates()
+ *
+ * @param list List to release; may be NULL
+ */
+void platform_directory_list_destroy(platform_directory_list_t *list);
 
 // ============================================================================
 // File I/O Operations

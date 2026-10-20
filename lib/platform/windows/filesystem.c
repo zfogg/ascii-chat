@@ -551,6 +551,37 @@ char *platform_get_data_dir(void) {
   return NULL;
 }
 
+asciichat_error_t platform_get_data_dir_candidates(platform_directory_list_t *list_out) {
+  if (!list_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "list_out cannot be NULL");
+  }
+
+  list_out->candidates = NULL;
+  list_out->count = 0;
+
+  const char *program_data = platform_getenv("PROGRAMDATA");
+  if (!program_data || program_data[0] == '\0') {
+    return ASCIICHAT_OK;
+  }
+
+  list_out->candidates = SAFE_CALLOC(1, sizeof(*list_out->candidates), platform_directory_candidate_t *);
+  if (!list_out->candidates) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate system data directory list");
+  }
+
+  size_t len = strlen(program_data) + strlen("\\ascii-chat\\") + 1;
+  list_out->candidates[0].path = SAFE_MALLOC(len, char *);
+  if (!list_out->candidates[0].path) {
+    platform_directory_list_destroy(list_out);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate system data directory path");
+  }
+
+  safe_snprintf(list_out->candidates[0].path, len, "%s\\ascii-chat\\", program_data);
+  list_out->candidates[0].mode = 0755;
+  list_out->count = 1;
+  return ASCIICHAT_OK;
+}
+
 // ============================================================================
 // Platform Path Utilities
 // ============================================================================
