@@ -223,6 +223,8 @@ runs:
         token: ${{ inputs.codecov-token }}
         files: ${{ inputs.coverage-files }}
         disable_search: true
+        # gcovr already used the matching LLVM tool and merged every counter.
+        plugins: noop
         flags: |-
           ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||

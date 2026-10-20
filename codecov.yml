@@ -6,11 +6,11 @@ codecov:
   # Use the default branch from Git
   branch: master
   # Use Codecov's default relative age limit; "12h" is parsed as noon.
-  # Wait for unit, integration, and performance coverage uploads
+  # Wait for three unit, two integration, and two performance coverage uploads.
   notify:
     # Enable GitHub PR comments with coverage details
     require_ci_to_pass: false
-    after_n_builds: 5
+    after_n_builds: 7
 
 # Coverage configuration
 coverage:

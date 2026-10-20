@@ -178,8 +178,6 @@ jobs:
             # Force Criterion tests in Release mode for CI testing
             # Must use ASCIICHAT_FORCE_CRITERION_TESTS (cache option) not BUILD_CRITERION_TESTS (regular variable)
             cmake_args+=(-DASCIICHAT_FORCE_CRITERION_TESTS=ON)
-            # Disable coverage for Release builds (github preset has it ON by default)
-            cmake_args+=(-DASCIICHAT_ENABLE_COVERAGE=OFF)
             # Skip hardening validation (linker checks may fail in CI environment)
             cmake_args+=(-DASCIICHAT_SKIP_HARDENING_VALIDATION=ON)
           fi
@@ -245,8 +243,8 @@ jobs:
 
           echo "Unit tests completed successfully"
 
-      - name: Generate coverage report (debug builds only)
-        if: always() && matrix.build_type == 'debug'
+      - name: Generate coverage report
+        if: always()
         uses: ./.github/actions/generate-coverage
         with:
           os-type: ${{ matrix.os-name }}
@@ -295,7 +293,7 @@ jobs:
           criterion-xml-dir: build/Testing/criterion-xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
-          upload-coverage: ${{ matrix.build_type == 'debug' && 'true' || 'false' }}
+          upload-coverage: "true"
 
       - name: Upload test results
         if: always()
@@ -304,6 +302,7 @@ jobs:
           name: test-results-${{ runner.os }}-${{ matrix.build_type }}
           path: |
             unit-tests-*.log
+            build/coverage.xml
             build/Testing/criterion-xml/*.xml
           retention-days: 7
 
@@ -468,6 +467,7 @@ jobs:
           name: integration-test-results-${{ runner.os }}
           path: |
             integration-tests-*.log
+            build/coverage.xml
             build/Testing/criterion-xml/*.xml
             build/backpressure/
             /tmp/webrtc_e2e_*.log
@@ -632,6 +632,7 @@ jobs:
           name: performance-test-results-${{ runner.os }}
           path: |
             performance-tests-*.log
+            build/coverage.xml
             build/Testing/criterion-xml/*.xml
           retention-days: 7
 
