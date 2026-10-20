@@ -562,11 +562,14 @@ void ui_sync_render(terminal_size_t size) {
     if (!measure)
       ui_controller_write(g_sync_fd, line, strlen(line));
     snprintf(line, sizeof(line),
-             "%s0/Esc%s close | %s?%s help | %sLeft/Right%s page | %sUp/Down%s select | %sHome/End%s first/last",
+             "%s0%s/%sEsc%s close | %s?%s help | %sLeft%s/%sRight%s page | %sUp%s/%sDown%s select | "
+             "%sHome%s/%sEnd%s first/last",
+             sync_color(LOG_COLOR_FATAL), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN),
+             sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET),
              sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN),
              sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET),
              sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN),
-             sync_color(LOG_COLOR_RESET));
+             sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET));
     sync_write_line(line, size.cols, false, measure);
     if (measure) {
       terminal_size_t minimum = {.cols = measured_width + 1, .rows = fixed_rows + 1};

@@ -115,7 +115,7 @@ static void build_help_line(char *output, size_t output_size, const char *conten
   int content_available = max_width - 4;
 
   // Truncate content if needed (ANSI-aware, with ellipsis indicator)
-  char truncated[256];
+  char truncated[2048];
   truncate_with_ellipsis(content, truncated, sizeof(truncated), content_available);
 
   int content_width = display_width(truncated);
@@ -150,6 +150,40 @@ static const char *status_indicator(bool enabled) {
   return enabled ? colored_string(ENABLED_COLOR, "O") : colored_string(DISABLED_COLOR, "X");
 }
 
+// Only the binding prefix is a key; separators and descriptions keep the foreground.
+static void color_help_text(const char *text, size_t key_end, bool fps_keys, bool use_color, char *output,
+                            size_t capacity) {
+  size_t used = 0;
+  for (size_t i = 0; text[i] && used + 128 < capacity;) {
+    if (text[i] == '\033' && text[i + 1] == '[') {
+      do {
+        output[used++] = text[i++];
+      } while (text[i] && !(text[i - 1] >= '@' && text[i - 1] <= '~' && text[i - 1] != '['));
+      continue;
+    }
+    bool number = text[i] >= '0' && text[i] <= '9';
+    bool key = (i < key_end && text[i] != ' ' && text[i] != '/' && text[i] != '(' && text[i] != ')') ||
+               (fps_keys && (text[i] == '-' || text[i] == '='));
+    if (use_color && (number || key)) {
+      size_t start = i++;
+      if (number) {
+        while (text[i] >= '0' && text[i] <= '9')
+          ++i;
+      } else {
+        while (i < key_end && text[i] && text[i] != ' ' && text[i] != '/' && text[i] != ')' &&
+               !(text[i] >= '0' && text[i] <= '9'))
+          ++i;
+      }
+      used += snprintf(output + used, capacity - used, "%s%.*s%s",
+                       log_level_color(number ? LOG_COLOR_FATAL : LOG_COLOR_WARN), (int)(i - start), text + start,
+                       log_level_color(LOG_COLOR_RESET));
+    } else {
+      output[used++] = text[i++];
+    }
+  }
+  output[used] = '\0';
+}
+
 /**
  * @brief Helper to append a help line to the buffer
  */
@@ -159,7 +193,7 @@ static void append_help_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE, 
     return;
   }
 
-  char line_buf[256];
+  char line_buf[2048];
   int remaining = BUFFER_SIZE - *buf_pos;
 
   int written = snprintf(buffer + *buf_pos, remaining, "\033[%d;%dH", start_row + *current_row, start_col + 1);
@@ -178,6 +212,9 @@ static void append_help_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE, 
 
 char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser, terminal_size_t *minimum) {
   int term_width = size.cols, term_height = size.rows;
+  terminal_color_mode_t mode = GET_OPTION(color_mode);
+  bool use_color = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
+                   (mode != TERM_COLOR_AUTO || detect_terminal_capabilities().color_level != TERM_COLOR_NONE);
   const char *navigation[] = {
       "Navigation & Control:",
       "─────────────────────",
@@ -346,9 +383,14 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
   for (int i = 0; i < content_rows; ++i) {
     const char *lhs = i < left_count ? left[i] : "";
     const char *rhs = i < settings_count ? settings[i] : "";
-    char columns[512];
+    char colored_left[1024], colored_right[1024], columns[2048];
+    const char *binding_end = i >= 2 ? strstr(lhs, "  ") : NULL;
+    color_help_text(lhs, binding_end ? (size_t)(binding_end - lhs) : 0, lhs[0] == '-', use_color, colored_left,
+                    sizeof(colored_left));
+    const char *key_end = rhs[0] == '(' ? strchr(rhs, ')') : NULL;
+    color_help_text(rhs, key_end ? (size_t)(key_end - rhs) : 0, false, use_color, colored_right, sizeof(colored_right));
     int padding = left_width - display_width(lhs) + column_gap;
-    snprintf(columns, sizeof(columns), "%s%*s%s", lhs, padding, "", rhs);
+    snprintf(columns, sizeof(columns), "%s%*s%s", colored_left, padding, "", colored_right);
     append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, columns);
   }
 
@@ -356,7 +398,10 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "");
 
   // Footer
-  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Press ? to close");
+  char footer[256];
+  snprintf(footer, sizeof(footer), "Press %s?%s to close", use_color ? log_level_color(LOG_COLOR_WARN) : "",
+           use_color ? log_level_color(LOG_COLOR_RESET) : "");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, footer);
 
   // Bottom border
   int remaining_buf = BUFFER_SIZE - buf_pos;
