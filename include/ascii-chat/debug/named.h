@@ -161,6 +161,23 @@ const char *named_update_name(uintptr_t key, const char *new_base_name);
  */
 const char *named_get(uintptr_t key);
 
+/** Copied display metadata; never contains pointers into a live registry entry. */
+typedef struct {
+  char name[256];
+  char type[64];
+  char format[64];
+} named_metadata_t;
+
+/**
+ * Copy display metadata from a per-thread snapshot. Stable registrations need
+ * no registry lock, including misses. Registration/removal invalidates snapshots.
+ * Returns false if absent, busy, or the metadata exceeds the output buffers.
+ * These copies identify objects; they do not pin objects for dereferencing.
+ */
+bool named_metadata_copy(uintptr_t key, named_metadata_t *output);
+bool named_fd_metadata_copy(int fd, named_metadata_t *output);
+bool named_packet_metadata_copy(int packet_type, named_metadata_t *output);
+
 /**
  * @brief Look up the registered type for a resource
  * @param key The resource key
@@ -174,7 +191,7 @@ const char *named_get(uintptr_t key);
  */
 const char *named_get_type(uintptr_t key);
 
-/** Check a type prefix under one try-read lock; false if absent, uninitialized or busy. */
+/** Check a type prefix in copied metadata; false if absent, uninitialized or busy. */
 bool named_registry_has_type(const char *type, size_t length);
 
 /**

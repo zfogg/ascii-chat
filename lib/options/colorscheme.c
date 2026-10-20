@@ -28,6 +28,7 @@
  * ============================================================================ */
 
 static color_scheme_t g_active_scheme = {0};
+static _Atomic uint64_t g_scheme_revision = 1;
 static lifecycle_t g_colorscheme_lifecycle = LIFECYCLE_INIT;
 
 /* Mutex for color scheme compilation - used by both colorscheme.c and logging.c */
@@ -309,6 +310,7 @@ asciichat_error_t colorscheme_init(void) {
   }
 
   memcpy(&g_active_scheme, pastel, sizeof(color_scheme_t));
+  atomic_fetch_add(&g_scheme_revision, 1);
 
   /* Mark as initialized */
   lifecycle_init(&g_colorscheme_lifecycle, "colorscheme");
@@ -347,6 +349,7 @@ void colorscheme_destroy(void) {
 
   mutex_lock(&g_colorscheme_mutex);
   memset(&g_active_scheme, 0, sizeof(color_scheme_t));
+  atomic_fetch_add(&g_scheme_revision, 1);
 
   /* Mark as uninitialized */
   lifecycle_shutdown(&g_colorscheme_lifecycle);
@@ -372,7 +375,15 @@ const color_scheme_t *colorscheme_get_active_scheme(void) {
     colorscheme_init();
   }
 
-  return &g_active_scheme;
+  static _Thread_local color_scheme_t snapshot;
+  static _Thread_local uint64_t revision;
+  if (revision != atomic_load(&g_scheme_revision)) {
+    mutex_lock(&g_colorscheme_mutex);
+    memcpy(&snapshot, &g_active_scheme, sizeof(snapshot));
+    revision = atomic_load(&g_scheme_revision);
+    mutex_unlock(&g_colorscheme_mutex);
+  }
+  return &snapshot;
 }
 
 asciichat_error_t colorscheme_set_active_scheme(const char *name) {
@@ -404,6 +415,7 @@ asciichat_error_t colorscheme_set_active_scheme(const char *name) {
 
   mutex_lock(&g_colorscheme_mutex);
   memcpy(&g_active_scheme, &scheme, sizeof(color_scheme_t));
+  atomic_fetch_add(&g_scheme_revision, 1);
   mutex_unlock(&g_colorscheme_mutex);
 
   log_debug("Switched to color scheme: %s", name);
@@ -901,14 +913,21 @@ void colorscheme_current_palette(colorscheme_palette_t *palette, terminal_color_
   memset(palette, 0, sizeof(*palette));
   g_resolving_palette = true;
   palette->background = current_background();
+  static _Thread_local colorscheme_palette_t cached;
+  static _Thread_local terminal_color_mode_t cached_mode;
+  static _Thread_local uint64_t cached_revision;
+  uint64_t revision = atomic_load(&g_scheme_revision);
+  if (cached_revision == revision && cached_mode == mode && cached.background == palette->background) {
+    *palette = cached;
+    g_resolving_palette = false;
+    return;
+  }
   const color_scheme_t *active = colorscheme_get_active_scheme();
   rgb_pixel_t colors[8];
-  mutex_lock(&g_colorscheme_mutex);
   memcpy(colors,
          palette->background == TERM_BACKGROUND_LIGHT && active->has_light_variant ? active->log_colors_light
                                                                                    : active->log_colors_dark,
          sizeof(colors));
-  mutex_unlock(&g_colorscheme_mutex);
   for (int i = 0; i < 9; ++i) {
     char *code = i == 8 ? palette->foreground : palette->codes[i];
     rgb_pixel_t rgb = colors[i == 8 ? 7 : i];
@@ -925,6 +944,9 @@ void colorscheme_current_palette(colorscheme_palette_t *palette, terminal_color_
       safe_snprintf(code, 32, "\033[%um", index < 8 ? 30 + index : 90 + index - 8);
     }
   }
+  cached = *palette;
+  cached_mode = mode;
+  cached_revision = revision;
   g_resolving_palette = false;
 }
 
@@ -934,6 +956,7 @@ void colorscheme_apply(const color_scheme_t *scheme) {
   colorscheme_get_active_scheme();
   mutex_lock(&g_colorscheme_mutex);
   memmove(&g_active_scheme, scheme, sizeof(g_active_scheme));
+  atomic_fetch_add(&g_scheme_revision, 1);
   mutex_unlock(&g_colorscheme_mutex);
 }
 

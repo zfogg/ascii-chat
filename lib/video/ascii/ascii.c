@@ -248,6 +248,15 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
                                           const terminal_capabilities_t *caps, const bool use_aspect_ratio,
                                           const bool stretch, const char *palette_chars, const bool contain) {
 
+  return ascii_convert_with_capabilities_workspace(original, width, height, caps, use_aspect_ratio, stretch,
+                                                   palette_chars, contain, NULL);
+}
+
+char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t width, const ssize_t height,
+                                               const terminal_capabilities_t *caps, const bool use_aspect_ratio,
+                                               const bool stretch, const char *palette_chars, const bool contain,
+                                               image_t **workspace) {
+
   if (original == NULL || caps == NULL) {
     log_error("Invalid parameters for ascii_convert_with_capabilities");
     return NULL;
@@ -294,7 +303,15 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
   // PROFILING: Time image allocation and resize
   uint64_t prof_alloc_start_ns = time_get_ns();
 
-  image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
+  if (workspace && *workspace && ((*workspace)->w != resized_width || (*workspace)->h != resized_height)) {
+    image_destroy(*workspace);
+    *workspace = NULL;
+  }
+  image_t *resized = workspace ? *workspace : NULL;
+  if (!resized)
+    resized = image_new((size_t)resized_width, (size_t)resized_height);
+  if (workspace)
+    *workspace = resized;
   if (!resized) {
     log_error("Failed to allocate resized image");
     return NULL;
@@ -382,7 +399,8 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
 
   if (!ascii) {
     log_error("Failed to convert image to ASCII using terminal capabilities");
-    image_destroy(resized);
+    if (!workspace)
+      image_destroy(resized);
     return NULL;
   }
 
@@ -391,7 +409,8 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
     log_error("Capability-aware ASCII conversion returned empty string (resized dimensions: %dx%d)", resized->w,
               resized->h);
     SAFE_FREE(ascii);
-    image_destroy(resized);
+    if (!workspace)
+      image_destroy(resized);
     return NULL;
   }
 
@@ -415,7 +434,8 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
   log_dev("ASCII_BREAKDOWN: alloc=%s, resize=%s, print=%s, pad=%s (total=%s)", alloc_str, resize_str, print_str,
           pad_str, total_str);
 
-  image_destroy(resized);
+  if (!workspace)
+    image_destroy(resized);
 
   return ascii_padded;
 }

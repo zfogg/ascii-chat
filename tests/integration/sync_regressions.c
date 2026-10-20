@@ -9,6 +9,7 @@
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/sync.h>
 #include <ascii-chat/util/time.h>
@@ -21,6 +22,8 @@ static mutex_t test_mutex;
 static cond_t test_cond;
 static atomic_bool trylock_clean;
 static rwlock_t *registry_lock;
+static mutex_t *scheme_mutex;
+static mutex_t *memory_mutex;
 static int objects[600];
 static unsigned seen;
 
@@ -49,6 +52,10 @@ static void count_entry(uintptr_t key, const char *name, void *unused) {
   (void)unused;
   if (key >= (uintptr_t)objects && key < (uintptr_t)(objects + 600))
     ++seen;
+  if (strstr(name, "debug_memory."))
+    memory_mutex = (mutex_t *)key;
+  if (strstr(name, "colorscheme."))
+    scheme_mutex = (mutex_t *)key;
   if (strstr(name, "named_registry_lock"))
     registry_lock = (rwlock_t *)key;
 }
@@ -212,10 +219,39 @@ int main(int argc, char **argv) {
     CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
     CHECK(seen == 600);
     CHECK(registry_lock != NULL);
+    CHECK(colorscheme_init() == ASCIICHAT_OK);
+    color_scheme_t scheme = *colorscheme_get_active_scheme();
+    colorscheme_palette_t palette;
+    colorscheme_current_palette(&palette, TERM_COLOR_TRUECOLOR);
+    CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
+    CHECK(scheme_mutex);
+    seen = 600;
+    uint64_t color_locks = scheme_mutex->lock_count;
+    for (unsigned i = 0; i < 1000; ++i) {
+      colorscheme_current_palette(&palette, TERM_COLOR_TRUECOLOR);
+      CHECK(colorscheme_get_active_scheme()->log_colors_dark[0].r == scheme.log_colors_dark[0].r);
+    }
+    CHECK(scheme_mutex->lock_count == color_locks);
+    scheme.log_colors_dark[0] = (rgb_pixel_t){1, 2, 3};
+    scheme.log_colors_light[0] = (rgb_pixel_t){1, 2, 3};
+    colorscheme_apply(&scheme);
+    colorscheme_current_palette(&palette, TERM_COLOR_TRUECOLOR);
+    CHECK(strcmp(palette.codes[0], "\033[38;2;1;2;3m") == 0);
+    colorscheme_current_palette(&palette, TERM_COLOR_NONE);
+    CHECK(palette.codes[0][0] == '\0');
 #ifndef NDEBUG
+    CHECK(memory_mutex);
+    uint64_t memory_locks = memory_mutex->lock_count;
+    for (unsigned i = 0; i < 100; ++i)
+      mutex_stack_detect_deadlocks();
+    CHECK(memory_mutex->lock_count == memory_locks);
     uint64_t scans_before = registry_lock->rdlock_count;
     debug_sync_check_cond_deadlocks();
     CHECK(registry_lock->rdlock_count == scans_before + 2);
+    scans_before = registry_lock->rdlock_count;
+    for (unsigned i = 0; i < 100; ++i)
+      debug_sync_check_cond_deadlocks();
+    CHECK(registry_lock->rdlock_count == scans_before);
 #endif
     asciichat_thread_t holder;
     CHECK(asciichat_thread_create(&holder, "registry_holder", hold_registry, NULL) == ASCIICHAT_OK);
@@ -310,11 +346,17 @@ int main(int argc, char **argv) {
     CHECK(!named_registry_has_type("regression_typ", strlen("regression_typ")));
     CHECK(!named_registry_has_type(NULL, 1));
     CHECK(!named_registry_has_type("", 0));
-    // Even a miss through the entire registry takes one lock, with no
-    // metadata snapshot allocations or recursive per-entry lookups.
+    // Warm metadata reads and unknown addresses must not touch the registry.
     uint64_t lookups_before = registry_lock->rdlock_count;
     CHECK(!named_registry_has_type("unregistered_type", strlen("unregistered_type")));
-    CHECK(registry_lock->rdlock_count == lookups_before + 1);
+    named_metadata_t metadata;
+    for (unsigned i = 0; i < 1000; ++i) {
+      CHECK(named_metadata_copy((uintptr_t)&type_fixture, &metadata));
+      CHECK(strstr(metadata.name, "type_fixture") != NULL);
+      CHECK(!strcmp(metadata.type, "regression_type"));
+      CHECK(!named_metadata_copy((uintptr_t)&objects[i % 600], &metadata));
+    }
+    CHECK(registry_lock->rdlock_count == lookups_before);
     char formatted[512];
     char message[128];
     safe_snprintf(message, sizeof(message), "fixture=0x%tx", (ptrdiff_t)&type_fixture);
@@ -322,6 +364,21 @@ int main(int argc, char **argv) {
     CHECK(strstr(formatted, "regression_type/type_fixture") != NULL);
     named_unregister((uintptr_t)&type_fixture);
     CHECK(!named_registry_has_type("regression_type", strlen("regression_type")));
+    CHECK(!named_metadata_copy((uintptr_t)&type_fixture, &metadata));
+    // Previously copied strings survive removal, and address reuse invalidates
+    // both positive and negative cache entries.
+    CHECK(!strcmp(metadata.type, "regression_type"));
+    named_register((uintptr_t)&type_fixture, "replacement", "replacement_type", "0x%tx", __FILE__, __LINE__, __func__,
+                   0);
+    CHECK(named_metadata_copy((uintptr_t)&type_fixture, &metadata));
+    CHECK(strstr(metadata.name, "replacement") != NULL);
+    CHECK(!strcmp(metadata.type, "replacement_type"));
+    named_register((uintptr_t)&type_fixture, "latest_alias", "replacement_type", "0x%tx", __FILE__, __LINE__, __func__,
+                   0);
+    CHECK(named_metadata_copy((uintptr_t)&type_fixture, &metadata));
+    CHECK(strstr(metadata.name, "latest_alias") != NULL);
+    named_unregister((uintptr_t)&type_fixture);
+    CHECK(!named_metadata_copy((uintptr_t)&type_fixture, &metadata));
 #endif
     log_info("PASS registry capacity, contention, and mutex tracking");
   }

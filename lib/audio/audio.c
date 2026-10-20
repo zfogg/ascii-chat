@@ -196,7 +196,12 @@ static void *audio_worker_thread(void *arg) {
     // timeout also drives software-only recording and recovers lost wakeups.
     mutex_lock(&ctx->worker_mutex);
     uint64_t wait_start_ns = time_get_ns();
-    int wait_result = cond_timedwait(&ctx->worker_cond, &ctx->worker_mutex, WORKER_TIMEOUT_MS * NS_PER_MS_INT);
+    // Local media playback maintains 150 ms of queued audio. Refill below
+    // 100 ms instead of waking for every callback or 10 ms timeout. Capture
+    // and software-only transmission retain their 10 ms processing cadence.
+    bool buffered_media = ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media && ctx->output_stream;
+    int timeout_ms = buffered_media ? 100 : WORKER_TIMEOUT_MS;
+    int wait_result = cond_timedwait(&ctx->worker_cond, &ctx->worker_mutex, timeout_ms * NS_PER_MS_INT);
     double wait_time_ns = (double)time_elapsed_ns(wait_start_ns, time_get_ns());
     mutex_unlock(&ctx->worker_mutex);
     total_wait_ns += wait_time_ns;
@@ -882,8 +887,11 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
     }
   }
 
-  // STEP 3: Signal worker
-  cond_signal(&ctx->worker_cond);
+  // STEP 3: Signal worker when local playback needs a refill. Other audio
+  // paths still notify on every callback to preserve capture/AEC latency.
+  bool buffered_media = ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media;
+  if (!buffered_media || audio_ring_buffer_available_read(ctx->playback_buffer) <= 4800)
+    cond_signal(&ctx->worker_cond);
 
   return paContinue;
 }

@@ -11,6 +11,7 @@
 #include "ascii-chat/debug/named.h"
 #include "ascii-chat/platform/rwlock.h"
 #include "ascii-chat/platform/string.h"
+#include "ascii-chat/platform/thread.h"
 #include <ascii-chat/uthash.h>
 #include "ascii-chat/log/log.h"
 #include "ascii-chat/util/path.h"
@@ -87,6 +88,139 @@ static named_registry_t g_named_registry = {
     .lifecycle = LIFECYCLE_INIT,
 };
 
+// Writers publish a revision while holding entries_lock. Readers only load it;
+// their snapshots own all display strings and never retain object pointers.
+static _Atomic uint64_t g_metadata_revision = 1;
+static tls_key_t g_metadata_tls;
+static bool g_metadata_tls_ready;
+
+typedef struct {
+  uintptr_t key;
+  bool valid;
+  named_metadata_t metadata;
+} named_metadata_entry_t;
+
+typedef struct {
+  uint64_t revision;
+  size_t count;
+  size_t capacity;
+  named_metadata_entry_t *entries;
+} named_metadata_cache_t;
+static _Thread_local named_metadata_cache_t *g_thread_metadata;
+
+static void metadata_cache_destroy(void *data) {
+  named_metadata_cache_t *cache = data;
+  if (cache) {
+    if (g_thread_metadata == cache)
+      g_thread_metadata = NULL;
+    UNTRACKED_FREE(cache->entries);
+    UNTRACKED_FREE(cache);
+  }
+}
+
+static int metadata_compare(const void *left, const void *right) {
+  uintptr_t a = ((const named_metadata_entry_t *)left)->key;
+  uintptr_t b = ((const named_metadata_entry_t *)right)->key;
+  return (a > b) - (a < b);
+}
+
+static bool metadata_copy_entry(const named_entry_t *entry, named_metadata_t *output) {
+  const char *name = entry->name ? entry->name : "?";
+  const char *type = entry->type ? entry->type : "object";
+  const char *format = entry->format_spec ? entry->format_spec : "0x%tx";
+  if (strlen(name) >= sizeof(output->name) || strlen(type) >= sizeof(output->type) ||
+      strlen(format) >= sizeof(output->format))
+    return false;
+  memcpy(output->name, name, strlen(name) + 1);
+  memcpy(output->type, type, strlen(type) + 1);
+  memcpy(output->format, format, strlen(format) + 1);
+  return true;
+}
+
+static named_metadata_cache_t *metadata_snapshot(void) {
+  if (!g_metadata_tls_ready || !lifecycle_is_initialized(&g_named_registry.lifecycle))
+    return NULL;
+  named_metadata_cache_t *cache = g_thread_metadata;
+  if (cache && cache->revision == atomic_load(&g_metadata_revision))
+    return cache;
+  if (!cache) {
+    cache = UNTRACKED_MALLOC(sizeof(*cache), named_metadata_cache_t *);
+    if (!cache)
+      return NULL;
+    memset(cache, 0, sizeof(*cache));
+    if (ascii_tls_set(g_metadata_tls, cache) != 0) {
+      metadata_cache_destroy(cache);
+      return NULL;
+    }
+    g_thread_metadata = cache;
+  }
+  bool acquired = false;
+  if (rwlock_tryrdlock(&g_named_registry.entries_lock, &acquired) != ASCIICHAT_OK || !acquired)
+    return NULL;
+  size_t required = HASH_COUNT(g_named_registry.entries);
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  if (required > cache->capacity) {
+    if (required > SIZE_MAX / sizeof(*cache->entries))
+      return NULL;
+    named_metadata_entry_t *entries = UNTRACKED_MALLOC(required * sizeof(*entries), named_metadata_entry_t *);
+    if (!entries)
+      return NULL;
+    UNTRACKED_FREE(cache->entries);
+    cache->entries = entries;
+    cache->capacity = required;
+  }
+  if (rwlock_tryrdlock(&g_named_registry.entries_lock, &acquired) != ASCIICHAT_OK || !acquired)
+    return NULL;
+  if (HASH_COUNT(g_named_registry.entries) > cache->capacity) {
+    rwlock_rdunlock(&g_named_registry.entries_lock);
+    return NULL;
+  }
+  cache->count = 0;
+  for (named_entry_t *entry = g_named_registry.entries; entry; entry = entry->hh.next) {
+    // An initializer and owner can register the same address. Keep the latest
+    // hash entry, matching HASH_FIND, rather than returning an older alias.
+    named_entry_t *latest = NULL;
+    HASH_FIND(hh, g_named_registry.entries, &entry->key, sizeof(entry->key), latest);
+    if (latest != entry)
+      continue;
+    named_metadata_entry_t *copy = &cache->entries[cache->count++];
+    copy->key = entry->key;
+    copy->valid = metadata_copy_entry(entry, &copy->metadata);
+  }
+  cache->revision = atomic_load(&g_metadata_revision);
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  if (cache->count > 1)
+    qsort(cache->entries, cache->count, sizeof(*cache->entries), metadata_compare);
+  return cache;
+}
+
+bool named_metadata_copy(uintptr_t key, named_metadata_t *output) {
+  if (!output)
+    return false;
+  named_metadata_cache_t *cache = metadata_snapshot();
+  if (!cache) {
+    // Keep names available if TLS/allocation is unavailable. No borrowed
+    // strings escape this fallback either.
+    if (!lifecycle_is_initialized(&g_named_registry.lifecycle))
+      return false;
+    bool acquired = false;
+    if (rwlock_tryrdlock(&g_named_registry.entries_lock, &acquired) != ASCIICHAT_OK || !acquired)
+      return false;
+    named_entry_t *entry = NULL;
+    HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
+    bool copied = entry && metadata_copy_entry(entry, output);
+    rwlock_rdunlock(&g_named_registry.entries_lock);
+    return copied;
+  }
+  named_metadata_entry_t lookup = {.key = key};
+  const named_metadata_entry_t *entry =
+      cache->count ? bsearch(&lookup, cache->entries, cache->count, sizeof(*cache->entries), metadata_compare) : NULL;
+  if (!entry || !entry->valid)
+    return false;
+  *output = entry->metadata;
+  return true;
+}
+
 asciichat_error_t named_init(void) {
   // Idempotent: if already initialized, return success
   if (lifecycle_is_initialized(&g_named_registry.lifecycle)) {
@@ -102,6 +236,8 @@ asciichat_error_t named_init(void) {
     return ASCIICHAT_OK; // Continue even if rwlock init fails
   }
 
+  g_metadata_tls_ready = ascii_tls_key_create(&g_metadata_tls, metadata_cache_destroy) == 0;
+  atomic_fetch_add(&g_metadata_revision, 1);
   lifecycle_init_commit(&g_named_registry.lifecycle);
   return ASCIICHAT_OK;
 }
@@ -124,8 +260,16 @@ void named_destroy(void) {
     free(entry);
   }
   g_named_registry.entries_lock.name = NULL;
+  atomic_fetch_add(&g_metadata_revision, 1);
   rwlock_wrunlock(&g_named_registry.entries_lock);
   rwlock_destroy(&g_named_registry.entries_lock);
+  if (g_metadata_tls_ready) {
+    void *cache = g_thread_metadata;
+    ascii_tls_set(g_metadata_tls, NULL);
+    metadata_cache_destroy(cache);
+    ascii_tls_key_delete(g_metadata_tls);
+    g_metadata_tls_ready = false;
+  }
 }
 
 /**
@@ -229,6 +373,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
   log_dev("[NAMED_REGISTER_LOCK_1] About to acquire entries_lock for key=%p type=%s", (void *)key, type);
   rwlock_wrlock(&g_named_registry.entries_lock);
   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+  atomic_fetch_add(&g_metadata_revision, 1);
   rwlock_wrunlock(&g_named_registry.entries_lock);
   log_dev("[NAMED_REGISTER_LOCK_4] ✅ Released entries_lock");
 
@@ -271,6 +416,7 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
   // Only hold lock for the hash table operation
   rwlock_wrlock(&g_named_registry.entries_lock);
   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+  atomic_fetch_add(&g_metadata_revision, 1);
   rwlock_wrunlock(&g_named_registry.entries_lock);
 
   return entry->name;
@@ -284,6 +430,7 @@ void named_unregister(uintptr_t key) {
   rwlock_wrlock(&g_named_registry.entries_lock);
   named_entry_t *entry = NULL;
   HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
+  bool changed = entry != NULL;
   // A primitive may be registered again with a parent-qualified name. Retire
   // every entry before its owner releases the object.
   while (entry) {
@@ -300,6 +447,8 @@ void named_unregister(uintptr_t key) {
     free(entry);
     HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
   }
+  if (changed)
+    atomic_fetch_add(&g_metadata_revision, 1);
   rwlock_wrunlock(&g_named_registry.entries_lock);
 }
 
@@ -323,20 +472,17 @@ const char *named_get(uintptr_t key) {
 }
 
 bool named_registry_has_type(const char *type, size_t length) {
-  if (!type || !length || !lifecycle_is_initialized(&g_named_registry.lifecycle))
+  if (!type || !length)
     return false;
-  bool acquired = false;
-  if (rwlock_tryrdlock(&g_named_registry.entries_lock, &acquired) != ASCIICHAT_OK || !acquired)
+  named_metadata_cache_t *cache = metadata_snapshot();
+  if (!cache)
     return false;
-  bool found = false;
-  for (named_entry_t *entry = g_named_registry.entries; entry; entry = entry->hh.next) {
-    if (entry->type && strlen(entry->type) == length && memcmp(entry->type, type, length) == 0) {
-      found = true;
-      break;
-    }
+  for (size_t i = 0; i < cache->count; ++i) {
+    const named_metadata_entry_t *entry = &cache->entries[i];
+    if (entry->valid && strlen(entry->metadata.type) == length && memcmp(entry->metadata.type, type, length) == 0)
+      return true;
   }
-  rwlock_rdunlock(&g_named_registry.entries_lock);
-  return found;
+  return false;
 }
 
 const char *named_get_type(uintptr_t key) {
@@ -523,6 +669,14 @@ static inline uintptr_t encode_pkt_type_key(int pkt_type) {
   return ((uintptr_t)-1 - 100000U - (unsigned int)pkt_type);
 }
 
+bool named_fd_metadata_copy(int fd, named_metadata_t *output) {
+  return fd >= 0 && named_metadata_copy(encode_fd_key(fd), output);
+}
+
+bool named_packet_metadata_copy(int packet_type, named_metadata_t *output) {
+  return packet_type >= 0 && named_metadata_copy(encode_pkt_type_key(packet_type), output);
+}
+
 const char *named_register_fd(int fd, const char *name, const char *file, int line, const char *func) {
   if (fd < 0) {
     return "?";
@@ -552,6 +706,7 @@ const char *named_register_fd(int fd, const char *name, const char *file, int li
   // Only hold lock for the hash table operation
   rwlock_wrlock(&g_named_registry.entries_lock);
   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+  atomic_fetch_add(&g_metadata_revision, 1);
   rwlock_wrunlock(&g_named_registry.entries_lock);
 
   return entry->name;
@@ -616,6 +771,7 @@ const char *named_register_packet_type(int pkt_type, const char *file, int line,
   // Only hold lock for the hash table operation
   rwlock_wrlock(&g_named_registry.entries_lock);
   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+  atomic_fetch_add(&g_metadata_revision, 1);
   rwlock_wrunlock(&g_named_registry.entries_lock);
 
   return entry->name;

@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
+import time
 
 from terminal_ui import Terminal
 from server_lifecycle import Service, free_port, server_options
@@ -60,7 +61,7 @@ def check_colors(term, text):
     assert term.screen.buffer[1][zero].fg == "e85d6f"
     assert term.screen.buffer[3][0].fg == "65ace1"
     assert term.screen.buffer[term.screen.lines - 3][0].fg == "f09664"
-    assert term.screen.buffer[term.screen.lines - 1][0].fg == "f0cc91"
+    assert term.screen.buffer[term.screen.lines - 1][0].fg == "c8a0d8"
 
 
 def expect_sync(term, predicate, description):
@@ -82,9 +83,20 @@ def wait_video(term, name):
 
 def check_activity(rows, artifacts, name):
     activity = {}
-    for primitive in ("named_registry_lock", "worker_mutex", "timer_manager"):
-        row = next(row for row in rows if re.search(r"\b" + primitive + r"\.\d+\b", row))
-        activity[primitive] = list(map(float, row.split()[-3:-1]))
+    for primitive in ("named_registry_lock", "worker_mutex", "timer_manager", "colorscheme", "display", "buffer_domain", "debug_memory", "queue_not_empty"):
+        matches = [list(map(float, row.split()[-3:-1])) for row in rows
+                   if re.search(r"\b" + primitive + r"\.\d+\b", row)]
+        if not matches and name != "mirror" and primitive in ("display", "queue_not_empty"):
+            continue
+        assert matches, (name, primitive)
+        activity[primitive] = [max(values) for values in zip(*matches)]
+    assert max(activity["named_registry_lock"]) < 15, activity
+    assert max(activity["colorscheme"]) < 1, activity
+    if name == "mirror":
+        assert max(activity["display"]) < 150, activity
+        assert max(activity["buffer_domain"]) < 5, activity
+        assert max(activity["debug_memory"]) < 180, activity
+        assert max(activity["queue_not_empty"]) < 90, activity
     # The worker is signaled by devices and has a 10 ms fallback; each condition
     # wait releases/reacquires its mutex in addition to the outer lock/unlock.
     assert max(activity["worker_mutex"]) < 700, activity
@@ -133,6 +145,17 @@ def inspect(term, artifacts, name, required):
     check_colors(term, text)
     term.write("\x1b[H")
     expect_sync(term, lambda t: "item 1/" in t, "Home before resize")
+    if name == "mirror":
+        term.resize(30, 160)
+        term.write("\x1b[H")
+        expect_sync(term, lambda t: "item 1/" in t, "Hotspot capture Home")
+        term.write("\x1b[C" * 4)
+        text = expect_sync(term, lambda t: "page 5/" in t and "debug_memory." in t and "display." in t,
+                           "Missing hotspot page")
+        term.pump(1)
+        if artifacts:
+            capture(term, artifacts, "mirror-hotspots")
+        term.write("\x1b[H")
     term.resize(22, 160)
     expect_sync(term, lambda t: "page 1/" in t and "Terminal too small" not in t, "Resize did not recover")
     term.write("\x1b[B" * 6)
@@ -145,6 +168,29 @@ def inspect(term, artifacts, name, required):
     assert text.splitlines()[-4].startswith("─" * 159), text
     if artifacts:
         capture(term, artifacts, name + "-end")
+    if name == "mirror":
+        # The first resumed sample spans the hidden interval; subsequent samples
+        # include the visible inspector's own 4 Hz registry snapshot.
+        term.write("0")
+        before = wait_video(term, name)
+        term.expect(lambda t: t != before, "Hidden inspector stopped video")
+        term.pump(10)
+        term.write("0")
+        deadline = time.monotonic() + 2
+        hidden_rate = None
+        while time.monotonic() < deadline:
+            resumed = term.pump(0.01)
+            row = next((r for r in resumed.splitlines() if "named_registry_lock." in r), None)
+            if (row and "Live" in resumed and "STALE" not in resumed and
+                    resumed.splitlines()[-1].startswith("0/Esc")):
+                rates = list(map(float, row.split()[-3:-1]))
+                if max(rates) < 2:
+                    hidden_rate = rates
+                    if artifacts:
+                        capture(term, artifacts, "mirror-first-resumed-sample")
+                    break
+        assert hidden_rate is not None, resumed
+        print(f"PASS mirror registry across hidden rendering interval: {hidden_rate}", flush=True)
     term.write("\x1b[H")
     expect_sync(term, lambda t: "item 1/" in t and t.splitlines()[4].startswith(">"), "Home did not select first item")
     term.write("\x1b[B" * 6)

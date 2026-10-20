@@ -101,6 +101,11 @@ typedef struct session_display_ctx {
 
   /** @brief Digital rain effect context (NULL if disabled) */
   digital_rain_t *digital_rain;
+  image_t *resize_workspace;
+  image_t *flip_workspace;
+  image_t *filter_workspace;
+  char *tty_frame_buffer;
+  size_t tty_frame_capacity;
 
   /** @brief Last frame timestamp for digital rain delta time calculation */
   uint64_t last_frame_time_ns;
@@ -114,6 +119,17 @@ typedef struct session_display_ctx {
   /** @brief Stdin frame reader for ASCII-to-video rendering (borrowed ref, not owned) */
   terminal_fd_reader_t *stdin_reader;
 } session_display_ctx_t;
+
+// Display conversion and submission have a single owner, so scratch images can be reused.
+static image_t *display_image_workspace(image_t **workspace, int width, int height) {
+  if (*workspace && ((*workspace)->w != width || (*workspace)->h != height)) {
+    image_destroy(*workspace);
+    *workspace = NULL;
+  }
+  if (!*workspace)
+    *workspace = image_new((size_t)width, (size_t)height);
+  return *workspace;
+}
 
 /* ============================================================================
  * Internal Helper Functions
@@ -400,6 +416,11 @@ void session_display_destroy(session_display_ctx_t *ctx) {
     ctx->digital_rain = NULL;
   }
 
+  image_destroy(ctx->resize_workspace);
+  image_destroy(ctx->flip_workspace);
+  image_destroy(ctx->filter_workspace);
+  ctx->resize_workspace = ctx->flip_workspace = ctx->filter_workspace = NULL;
+  SAFE_FREE(ctx->tty_frame_buffer);
   ctx->initialized = false;
 
   // Clear the cached display context in splash state to prevent use-after-free
@@ -591,7 +612,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 
   if ((flip_x_enabled || flip_y_enabled) && image->w > 1 && image->h > 1 && image->pixels) {
     uint64_t t_flip_alloc_start = time_get_ns();
-    flipped_image = image_new((size_t)image->w, (size_t)image->h);
+    flipped_image = display_image_workspace(&ctx->flip_workspace, image->w, image->h);
     uint64_t t_flip_alloc_end = time_get_ns();
 
     if (flipped_image) {
@@ -650,7 +671,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   image_t *filtered_image = NULL;
   if (color_filter != COLOR_FILTER_NONE && color_filter != COLOR_FILTER_RAINBOW) {
     // Create a copy to avoid modifying the original
-    filtered_image = image_new((size_t)display_image->w, (size_t)display_image->h);
+    filtered_image = display_image_workspace(&ctx->filter_workspace, display_image->w, display_image->h);
     if (filtered_image && filtered_image->pixels && display_image->pixels) {
       memcpy(filtered_image->pixels, display_image->pixels,
              (size_t)display_image->w * (size_t)display_image->h * sizeof(rgb_pixel_t));
@@ -668,8 +689,8 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 
   uint64_t t_convert_start = time_get_ns();
   // Call the standard ASCII conversion using the filtered (or original) image
-  char *result = ascii_convert_with_capabilities(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio,
-                                                 stretch, ctx->palette_chars);
+  char *result = ascii_convert_with_capabilities_workspace(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio,
+                                                 stretch, ctx->palette_chars, false, &ctx->resize_workspace);
   uint64_t t_convert_end = time_get_ns();
 
   // Apply rainbow color filter to ANSI output by replacing RGB values
@@ -714,13 +735,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   }
 
   uint64_t t_cleanup_start = time_get_ns();
-  // Clean up flipped and filtered images if created
-  if (filtered_image) {
-    image_destroy(filtered_image);
-  }
-  if (flipped_image) {
-    image_destroy(flipped_image);
-  }
+  // Scratch images remain owned by the display until resize or teardown.
   uint64_t t_cleanup_end = time_get_ns();
 
   // Log total breakdown with actual measured times
@@ -921,7 +936,11 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     size_t cursor_seq_len = 3;
     size_t total_size = cursor_seq_len + frame_len;
 
-    char *frame_buffer = SAFE_MALLOC(total_size, char *);
+    if (ctx->tty_frame_capacity < total_size) {
+      ctx->tty_frame_buffer = SAFE_REALLOC(ctx->tty_frame_buffer, total_size, char *);
+      ctx->tty_frame_capacity = total_size;
+    }
+    char *frame_buffer = ctx->tty_frame_buffer;
     if (frame_buffer) {
       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
@@ -941,7 +960,7 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
         log_debug("SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii) - Timer started");
       }
 
-      SAFE_FREE(frame_buffer);
+      // The UI controller copies the submission before this workspace is reused.
     }
 
     // Live presentation owns terminal writes on its worker. Draining here

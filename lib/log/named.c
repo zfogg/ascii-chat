@@ -325,10 +325,8 @@ static int parse_decimal_digits(const char *start, const char **end) {
 
 static bool write_formatted_packet_type(int pkt_value, const char *name, char *output, size_t output_size,
                                         size_t *out_pos) {
-  const char *fmt_spec = named_get_packet_type_format_spec(pkt_value);
-  if (!fmt_spec) {
-    fmt_spec = "%d";
-  }
+  named_metadata_t metadata;
+  const char *fmt_spec = named_packet_metadata_copy(pkt_value, &metadata) ? metadata.format : "%d";
 
   char id_buffer[64];
   int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
@@ -352,10 +350,8 @@ static bool write_formatted_packet_type(int pkt_value, const char *name, char *o
 }
 
 static bool write_formatted_fd(int fd_value, const char *name, char *output, size_t output_size, size_t *out_pos) {
-  const char *fmt_spec = named_get_fd_format_spec(fd_value);
-  if (!fmt_spec) {
-    fmt_spec = "%d";
-  }
+  named_metadata_t metadata;
+  const char *fmt_spec = named_fd_metadata_copy(fd_value, &metadata) ? metadata.format : "%d";
 
   char id_buffer[64];
   int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
@@ -408,10 +404,8 @@ static bool type_equals_inside_parens(const char *p, const char *message) {
 
 static bool write_formatted_type_equals(int pkt_value, const char *name, char *output, size_t output_size,
                                         size_t *out_pos) {
-  const char *fmt_spec = named_get_packet_type_format_spec(pkt_value);
-  if (!fmt_spec) {
-    fmt_spec = "%d";
-  }
+  named_metadata_t metadata;
+  const char *fmt_spec = named_packet_metadata_copy(pkt_value, &metadata) ? metadata.format : "%d";
 
   char id_buffer[64];
   int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
@@ -485,14 +479,11 @@ static bool try_format_hex_address(const char *message, const char *hex_start, c
   bool has_type_prefix = (prefix_type != NULL && prefix_start != hex_start);
 
   /* Check if address is registered */
-  const char *name = named_get(address);
-  const char *type = named_get_type(address);
-
-  if (name && type) {
-    const char *fmt_spec = named_get_format_spec(address);
-    if (!fmt_spec) {
-      fmt_spec = "0x%tx";
-    }
+  named_metadata_t metadata;
+  if (named_metadata_copy(address, &metadata)) {
+    const char *name = metadata.name;
+    const char *type = metadata.type;
+    const char *fmt_spec = metadata.format;
 
     char id_buffer[128];
     int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, (ptrdiff_t)address);
@@ -683,7 +674,8 @@ int log_named_format_message(const char *message, char *output, size_t output_si
 
       /* Check if this is a registered packet type */
       if (!is_already_formatted && digit_count > 0 && has_packet_type_prefix(message, int_start)) {
-        const char *name = named_get_packet_type(fd_value);
+        named_metadata_t metadata;
+        const char *name = named_packet_metadata_copy(fd_value, &metadata) ? metadata.name : NULL;
         if (name) {
           const char *prefix_start = find_packet_type_prefix_start(message, int_start);
           size_t prefix_len = int_start - prefix_start;
@@ -704,16 +696,12 @@ int log_named_format_message(const char *message, char *output, size_t output_si
 
       /* Check if this is a registered file descriptor */
       if (!is_already_formatted && digit_count > 0 && has_fd_prefix(message, int_start)) {
-        const char *name = named_get_fd(fd_value);
+        named_metadata_t metadata;
+        const char *name = named_fd_metadata_copy(fd_value, &metadata) ? metadata.name : NULL;
         const char *reg_type = NULL;
-
-        /* Fallback: check main registry for sockets registered via NAMED_REGISTER_SOCKET
-         * (which uses raw integer key, not FD namespace encoding) */
-        if (!name) {
-          name = named_get((uintptr_t)(intptr_t)fd_value);
-          if (name) {
-            reg_type = named_get_type((uintptr_t)(intptr_t)fd_value);
-          }
+        if (!name && named_metadata_copy((uintptr_t)(intptr_t)fd_value, &metadata)) {
+          name = metadata.name;
+          reg_type = metadata.type;
         }
 
         if (name) {
@@ -854,7 +842,8 @@ int log_named_format_message(const char *message, char *output, size_t output_si
           int pkt_value = parse_decimal_digits(digit_end, &digit_end);
 
           if (pkt_value > 0) {
-            const char *name = named_get_packet_type(pkt_value);
+            named_metadata_t metadata;
+            const char *name = named_packet_metadata_copy(pkt_value, &metadata) ? metadata.name : NULL;
             if (name && write_formatted_type_equals(pkt_value, name, output, output_size, &out_pos)) {
               p = digit_end;
               any_transformed = true;

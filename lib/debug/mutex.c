@@ -576,20 +576,39 @@ static void update_deadlock_state(const uintptr_t *mutexes, int count) {
  * - Reports all threads involved in the cycle
  */
 void mutex_stack_detect_deadlocks(void) {
-  mutex_stack_entry_t **all_stacks = NULL;
-  int *stack_counts = NULL;
-  int thread_count = 0;
-
-  if (mutex_stack_get_all_threads(&all_stacks, &stack_counts, &thread_count) != 0) {
+  // Fixed scratch avoids allocating one list per thread on every 100 ms scan.
+  // Skip a busy snapshot rather than interfering with the threads being observed.
+  static thread_lock_stack_t snapshots[MAX_THREADS];
+  static thread_id_t ids[MAX_THREADS];
+  static atomic_flag sampling = ATOMIC_FLAG_INIT;
+  if (atomic_flag_test_and_set(&sampling))
+    return;
+  uint64_t expected = 0;
+  if (!atomic_compare_exchange_strong(&g_registry_guard.impl, &expected, 1)) {
+    atomic_flag_clear(&sampling);
     return;
   }
-
-  // Analyze copies instead of stacks changing concurrently on other threads.
-  thread_lock_stack_t *snapshots = SAFE_CALLOC(thread_count, sizeof(thread_lock_stack_t), thread_lock_stack_t *);
-  for (int i = 0; i < thread_count; i++) {
-    snapshots[i].depth = stack_counts[i];
-    if (stack_counts[i] > 0)
-      memcpy(snapshots[i].stack, all_stacks[i], stack_counts[i] * sizeof(mutex_stack_entry_t));
+  int thread_count = atomic_load_int_impl(&g_thread_registry_count);
+  bool complete = true;
+  for (int i = 0; i < thread_count; ++i) {
+    thread_lock_stack_t *src = g_thread_registry[i].stack;
+    ids[i] = g_thread_registry[i].thread_id;
+    snapshots[i].depth = 0;
+    if (!src)
+      continue;
+    expected = 0;
+    if (!atomic_compare_exchange_strong(&src->guard.impl, &expected, 1)) {
+      complete = false;
+      break;
+    }
+    snapshots[i].depth = src->depth;
+    memcpy(snapshots[i].stack, src->stack, (size_t)src->depth * sizeof(mutex_stack_entry_t));
+    atomic_store(&src->guard.impl, 0);
+  }
+  atomic_store(&g_registry_guard.impl, 0);
+  if (!complete) {
+    atomic_flag_clear(&sampling);
+    return;
   }
 
   // Check each thread for deadlock conditions
@@ -605,7 +624,7 @@ void mutex_stack_detect_deadlocks(void) {
       log_error("%s", colored_string(LOG_COLOR_ERROR, "╔═══════════════════════════════════════════════════════════╗"));
       log_error("%s", colored_string(LOG_COLOR_ERROR, "║  ⚠️  DEADLOCK DETECTED: Same-thread Recursive Lock  ⚠️  ║"));
       log_error("%s", colored_string(LOG_COLOR_ERROR, "╚═══════════════════════════════════════════════════════════╝"));
-      log_error("  Thread Address:        0x%lx", (unsigned long)g_thread_registry[i].thread_id);
+      log_error("  Thread Address:        0x%lx", (unsigned long)ids[i]);
       log_error("  Mutex:                 0x%lx", waiting_for);
       log_error("  Issue:                 Thread attempts recursive lock on non-recursive mutex");
       continue;
@@ -656,9 +675,9 @@ void mutex_stack_detect_deadlocks(void) {
         uintptr_t current_waiting = thread_waiting_for_mutex(current_stack);
 
         char thread_name[256], mutex_name[256], held_by_name[256];
-        NAMED_GET_BY_PTR((uintptr_t)g_thread_registry[thread_idx].thread_id, thread_name, sizeof(thread_name));
+        NAMED_GET_BY_PTR((uintptr_t)ids[thread_idx], thread_name, sizeof(thread_name));
         NAMED_GET_BY_PTR((uintptr_t)current_waiting, mutex_name, sizeof(mutex_name));
-        NAMED_GET_BY_PTR((uintptr_t)g_thread_registry[next_thread_idx].thread_id, held_by_name, sizeof(held_by_name));
+        NAMED_GET_BY_PTR((uintptr_t)ids[next_thread_idx], held_by_name, sizeof(held_by_name));
 
         msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "  T%d: %s waits for %s (held by %s)%s",
                             k + 1, thread_name, mutex_name, held_by_name, k < cycle_len - 1 ? "\n" : "");
@@ -671,8 +690,7 @@ void mutex_stack_detect_deadlocks(void) {
     }
   }
 
-  SAFE_FREE(snapshots);
-  mutex_stack_free_all_threads(all_stacks, stack_counts, thread_count);
+  atomic_flag_clear(&sampling);
 }
 
 // ============================================================================
@@ -682,6 +700,7 @@ void mutex_stack_detect_deadlocks(void) {
 #ifndef NDEBUG
 
 #define COND_DEADLOCK_THRESHOLD_NS (5ULL * 1000000000ULL) // 5 seconds
+static _Atomic uint64_t g_next_cond_check_ns;
 
 typedef struct {
   uint64_t waiting_count;
@@ -785,7 +804,9 @@ static void copy_cond_deadlock_entry(uintptr_t key, uint64_t generation, const c
  *
  * Scans all registered condition variables and logs warnings for any that
  * have been waiting without signal for longer than COND_DEADLOCK_THRESHOLD_NS.
- * Called periodically by the debug thread (every 100ms).
+ * The debug thread polls this deadline every 100ms. A new wait cannot become
+ * stuck before the five-second threshold, so healthy conditions need no
+ * registry scans between deadlines. Existing waits set an earlier deadline.
  *
  * Skips checks during shutdown to avoid accessing freed memory.
  *
@@ -795,6 +816,9 @@ void debug_sync_check_cond_deadlocks(void) {
   if (debug_sync_is_cleanup_in_progress()) {
     return;
   }
+  uint64_t now = time_get_ns();
+  if (now < atomic_load(&g_next_cond_check_ns))
+    return;
   bool completed = false;
   size_t required = 0;
   cond_deadlock_batch_t batch = {0};
@@ -809,8 +833,24 @@ void debug_sync_check_cond_deadlocks(void) {
   size_t capacity = required;
   if (named_registry_try_snapshot(capacity, &required, &completed, copy_cond_deadlock_entry, &batch) == ASCIICHAT_OK &&
       completed) {
-    for (size_t i = 0; i < batch.count; ++i)
-      cond_deadlock_check_snapshot(&batch.entries[i].state, batch.entries[i].name);
+    uint64_t next = now + COND_DEADLOCK_THRESHOLD_NS;
+    for (size_t i = 0; i < batch.count; ++i) {
+      const cond_deadlock_snapshot_t *state = &batch.entries[i].state;
+      const char *name = batch.entries[i].name;
+      cond_deadlock_check_snapshot(state, name);
+      if (state->waiting_count && !strstr(name, "task_available")) {
+        uint64_t due = state->last_wait_time_ns + COND_DEADLOCK_THRESHOLD_NS;
+        // A recent signal already rules out this wait. Repeated warnings for
+        // an actually stuck condition retain their existing 500 ms cadence.
+        if (state->last_signal_time_ns < state->last_wait_time_ns || !state->last_signal_time_ns) {
+          if (due <= now)
+            due = now + 500 * NS_PER_MS_INT;
+          if (due < next)
+            next = due;
+        }
+      }
+    }
+    atomic_store(&g_next_cond_check_ns, next);
   }
   UNTRACKED_FREE(batch.entries);
 }
@@ -822,6 +862,9 @@ void debug_sync_check_cond_deadlocks(void) {
 // ============================================================================
 
 int mutex_stack_init(void) {
+#ifndef NDEBUG
+  atomic_store(&g_next_cond_check_ns, 0);
+#endif
   // No initialization needed - registry uses lock-free atomic operations
   return 0;
 }

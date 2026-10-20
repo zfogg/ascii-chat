@@ -182,17 +182,11 @@ static void capture_thread_name(uint64_t tid, char *thread_name_buf, size_t buf_
     return;
   }
 
-  // Try to look up thread name from registry using the tid directly
-  const char *name = named_get((uintptr_t)tid);
-  if (name) {
-    // Found a registered name, format it with the type
-    safe_snprintf(thread_name_buf, buf_size, "thread/%s", name);
-  } else {
-    // Not registered - format using NAMED_GET_BY_INT
-    char tid_buf[64];
-    NAMED_GET_BY_INT(tid, tid_buf, sizeof(tid_buf));
-    safe_snprintf(thread_name_buf, buf_size, "thread/%s", tid_buf);
-  }
+  named_metadata_t metadata;
+  if (named_metadata_copy((uintptr_t)tid, &metadata))
+    safe_snprintf(thread_name_buf, buf_size, "thread/%s", metadata.name);
+  else
+    safe_snprintf(thread_name_buf, buf_size, "thread/0x%tx", (ptrdiff_t)tid);
 }
 
 static bool should_ignore_allocation(const char *file, int line, uint64_t tid, size_t size) {

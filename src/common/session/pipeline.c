@@ -34,7 +34,10 @@ extern bool g_snapshot_first_frame_rendered;
  * Frame Type & Queue
  * ============================================================================ */
 
+typedef struct frame_slot_s frame_slot_t;
+
 typedef struct {
+  frame_slot_t *slot; // Exclusive until free_frame publishes the slot back to capture.
   const uint8_t *pixels; // Immutable owning reference shared by display and encoding
   int w, h;
   uint64_t source_epoch, frame_serial;
@@ -42,6 +45,14 @@ typedef struct {
   uint64_t captured_ns; // wall-clock timestamp
   uint64_t acquisition_started_ns;
 } pipeline_frame_t;
+
+struct frame_slot_s {
+  pipeline_frame_t frame;
+  _Atomic bool busy;
+  size_t capacity;
+};
+
+#define PIPELINE_FRAME_SLOTS 3
 
 // Thread-safe bounded queue (ring buffer)
 typedef struct frame_queue_s {
@@ -159,32 +170,67 @@ static void frame_queue_flush(frame_queue_t *q, void (*free_fn)(void *)) {
  * Frame Helpers
  * ============================================================================ */
 
-static pipeline_frame_t *make_frame_copy(const image_t *src) {
-  pipeline_frame_t *f = SAFE_CALLOC(1, sizeof(*f), pipeline_frame_t *);
-  f->w = src->w;
-  f->h = src->h;
-  f->captured_ns = time_get_ns();
+static pipeline_frame_t *make_frame_copy(const image_t *src, frame_slot_t *slots) {
   if (src->w <= 0 || src->h <= 0 || (size_t)src->w > SIZE_MAX / sizeof(rgb_pixel_t) / (size_t)src->h) {
-    SAFE_FREE(f);
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pipeline frame dimensions");
     return NULL;
   }
   size_t bytes = (size_t)src->w * (size_t)src->h * sizeof(rgb_pixel_t);
-  void *pixels = buffer_alloc(NULL, bytes);
-  if (!pixels) {
-    SAFE_FREE(f);
-    return NULL;
+  pipeline_frame_t *f = NULL;
+  if (slots) {
+    for (size_t i = 0; i < PIPELINE_FRAME_SLOTS; ++i) {
+      bool expected = false;
+      if (atomic_compare_exchange_strong_explicit(&slots[i].busy, &expected, true,
+                                                  memory_order_acquire, memory_order_relaxed)) {
+        f = &slots[i].frame;
+        f->slot = &slots[i];
+        if (slots[i].capacity < bytes) {
+          buffer_release(f->pixels);
+          f->pixels = NULL;
+          slots[i].capacity = 0;
+        }
+        break;
+      }
+    }
   }
-  memcpy(pixels, src->pixels, bytes);
-  f->pixels = pixels;
+  if (!f)
+    f = SAFE_CALLOC(1, sizeof(*f), pipeline_frame_t *);
+  if (!f->pixels) {
+    f->pixels = buffer_alloc(NULL, bytes);
+    if (!f->pixels) {
+      if (f->slot)
+        atomic_store_explicit(&f->slot->busy, false, memory_order_release);
+      else
+        SAFE_FREE(f);
+      return NULL;
+    }
+    if (f->slot)
+      f->slot->capacity = bytes;
+  }
+  f->w = src->w;
+  f->h = src->h;
+  f->captured_ns = time_get_ns();
+  memcpy((void *)f->pixels, src->pixels, bytes);
   return f;
 }
 
 static void free_frame(pipeline_frame_t *f) {
   if (!f)
     return;
+  if (f->slot) {
+    atomic_store_explicit(&f->slot->busy, false, memory_order_release);
+    return;
+  }
   buffer_release(f->pixels);
   SAFE_FREE(f);
+}
+
+static void frame_slots_destroy(frame_slot_t *slots) {
+  for (size_t i = 0; i < PIPELINE_FRAME_SLOTS; ++i) {
+    buffer_release(slots[i].frame.pixels);
+    slots[i].frame.pixels = NULL;
+    slots[i].capacity = 0;
+  }
 }
 
 // Generic wrapper for frame_queue_flush that matches the expected void (*)(void *) signature
@@ -222,6 +268,7 @@ struct session_pipeline_s {
   session_should_exit_fn should_exit;
   void *input_data;
 
+  frame_slot_t frame_slots[PIPELINE_FRAME_SLOTS];
   frame_queue_t *display_queue;
   frame_queue_t *encode_queue;
 
@@ -285,7 +332,7 @@ static void *pipeline_capture_thread(void *arg) {
     }
 
     // Copy frame
-    pipeline_frame_t *frame = make_frame_copy(img);
+    pipeline_frame_t *frame = make_frame_copy(img, pipeline->has_render_file ? NULL : pipeline->frame_slots);
     if (!frame) {
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
       continue;
@@ -447,6 +494,8 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   }
 
   session_pipeline_t *p = SAFE_CALLOC(1, sizeof(*p), session_pipeline_t *);
+  for (size_t i = 0; i < PIPELINE_FRAME_SLOTS; ++i)
+    atomic_init(&p->frame_slots[i].busy, false);
   p->capture = capture;
   p->display = display;
   p->display_queue = frame_queue_create(1, "display");
@@ -540,7 +589,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     log_debug_every(US_PER_SEC_INT, "[PIPELINE_DEBUG] should_exit=%d, stop=%d", exit_check,
                     atomic_load_bool(&pipeline->stop));
 
-    pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 1 * NS_PER_MS_INT);
+    pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 100 * NS_PER_MS_INT);
 
     if (!frame) {
       if (atomic_load_bool(&pipeline->capture_finished) && frame_queue_count(pipeline->display_queue) == 0)
@@ -652,6 +701,7 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
   frame_queue_flush(pipeline->display_queue, free_frame_generic);
   frame_queue_flush(pipeline->encode_queue, free_frame_generic);
 
+  frame_slots_destroy(pipeline->frame_slots);
   frame_queue_destroy(pipeline->display_queue);
   frame_queue_destroy(pipeline->encode_queue);
   NAMED_UNREGISTER(&pipeline->capture_finished);

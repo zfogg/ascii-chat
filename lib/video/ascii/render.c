@@ -188,7 +188,7 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
   frame->width = (size_t)image->w;
   for (size_t i = 0; i < 64; ++i)
     memcpy(frame->table + i, cache->cache64[i].utf8_bytes, cache->cache64[i].byte_len);
-  frame->scratch = SAFE_MALLOC(bytes, uint32_t *);
+  frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
   frame->packed = frame->scratch;
   frame->index = frame->packed + frame->width;
   frame->glyph = frame->index + frame->width;
@@ -217,7 +217,8 @@ void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool backgro
   emit_row_end(&frame->output, mode != ASCII_COLOR_NONE, more_rows);
 }
 char *ascii_frame_finish(ascii_frame_t *frame) {
-  SAFE_FREE(frame->scratch);
+  if (frame->scratch != frame->inline_scratch)
+    SAFE_FREE(frame->scratch);
   ob_term(&frame->output);
   return frame->output.buf;
 }
@@ -240,7 +241,7 @@ asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb
   frame->output.cap = capacity;
   frame->output.buf = SAFE_MALLOC(capacity, char *);
   frame->width = (size_t)width;
-  frame->scratch = SAFE_MALLOC(bytes, uint32_t *);
+  frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
   frame->packed = frame->scratch;
   frame->index = frame->packed + width;
   frame->glyph = frame->index + width;

@@ -26,6 +26,9 @@ typedef struct {
   uint32_t table[64];
   uint32_t *scratch, *packed, *index, *glyph, *fg, *bg;
   uint8_t *luma;
+  // A terminal row normally fits on the stack; unusually wide images retain
+  // the heap fallback. Each invocation owns its scratch, including reentry.
+  _Alignas(64) uint32_t inline_scratch[512 * 6];
 } ascii_frame_t;
 asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, const char *palette);
 void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows,
