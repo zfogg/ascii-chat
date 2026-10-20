@@ -178,6 +178,9 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
   const char *content = frame_buffer_get_content(body);
   size_t length = frame_buffer_get_length(body);
   for (size_t i = 0; i < length; ++i) {
+    // Normalize CRLF before erasing the line; erasing after CR removes its text.
+    if (content[i] == '\r' && i + 1 < length && content[i + 1] == '\n')
+      continue;
     if (content[i] == '\n')
       frame_buffer_printf(output, "\033[K\r");
     frame_buffer_append(output, content + i, 1);

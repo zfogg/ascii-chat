@@ -1188,7 +1188,7 @@ static void server_stats_provider(stats_view_t *view, void *unused) {
   server_stats_visit_t visit = {.view = view};
   if (view->page) {
     stats_view_add(view, "");
-    stats_view_add(view, "SERVER CLIENTS   dimensions    sent    received    outbound drops / queued bytes");
+    stats_view_add_header(view, "SERVER CLIENTS   dimensions    sent    received    outbound drops / queued bytes");
   }
   network_server_foreach(session_server_like_get_network_server(), server_stats_connection, &visit);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_CONNECTIONS_ACTIVE, visit.active);

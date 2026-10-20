@@ -7,6 +7,7 @@ typedef struct stats_peer stats_peer_t;
 typedef struct {
   char mode[32];
   char lines[STATS_VIEW_LINES][160];
+  bool headings[STATS_VIEW_LINES];
   unsigned count;
   unsigned offset;
   unsigned page;
@@ -22,6 +23,7 @@ void stats_runtime_stop(void);
 stats_scope_t *stats_runtime_scope(void);
 void stats_runtime_set_provider(stats_provider_fn provider, void *data);
 void stats_view_add(stats_view_t *view, const char *format, ...);
+void stats_view_add_header(stats_view_t *view, const char *format, ...);
 void stats_runtime_toggle(void);
 bool stats_runtime_active(void);
 stats_peer_t *stats_runtime_peer_open(const char *transport);

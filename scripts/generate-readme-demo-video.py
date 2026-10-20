@@ -10,7 +10,7 @@ The terminal recording is retained alongside logs, sampled screen text, chapter
 images, commands, and timings in --work-dir. No desktop/camera recording or
 GitHub upload occurs. The source media is rendered by the actual native binary;
 Pillow only rasterizes its terminal output. Requires a debug build for 0/= TUIs
-and the 4/z shortcuts (face follow / Zalgo) for uninterrupted effect changes.
+and the w/z shortcuts (face follow / Zalgo) for uninterrupted effect changes.
 """
 
 from __future__ import annotations
@@ -94,9 +94,9 @@ The opening plays normally for 7 seconds, starting at --media-file-start.
 --segment-duration-scale lengthens feature chapters without changing the music's
 speed. Try 1.8 and 2.2 for approximately 1:55 and 2:20 feature tours.
 --speed retimes the completed movie (including music and every chapter).
-Dimensions are output pixels. Art, splash, and TUIs all use 8x16 character
-cells by default: 104x40 cells at 838x640, fitting GitHub's 838px desktop README
-width. The complete terminal grid is centered without cropping or zooming.
+Dimensions are output pixels. Art uses 8x16 character cells by default:
+104x40 cells at 838x640, fitting GitHub's 838px desktop README width. TUIs use
+at least 110 columns, with their complete grid scaled to fit without cropping.
 --optimize (on by default) automatically uses two-pass H.264, a 9.5 MB ceiling,
 and 96k stereo AAC. --optimize=false disables the size ceiling and uses CRF 16.
 --target-size-mb overrides the ceiling only when --optimize is enabled.
@@ -157,7 +157,7 @@ def chapters(scale=1.0):
         Chapter("half-block", 1, "--render-mode half-block", "r"),
         Chapter("matrix", 2, "--matrix", "r1"),
         Chapter("zalgo", 2, "--zalgo 8", "1z"),
-        Chapter("face-follow", 3, "--face-follow", "z4"),
+        Chapter("face-follow", 3, "--face-follow", "zw"),
     ]
     for chapter in result:
         if chapter.name != "intro":
@@ -176,6 +176,8 @@ def tui_chapters(scale=1.0):
         Chapter("outro", 2, "ascii-chat / video calls in your terminal", resize=None),
     ]
     for chapter in result:
+        if chapter.label.startswith('"'):
+            chapter.label = "Keyboard shortcut: " + chapter.label
         chapter.seconds *= scale
     return result
 
@@ -564,7 +566,7 @@ def record(args, main):
             evidence["main"].append({**asdict(c), "start": now, "end": now + c.seconds, "cols": args.cols, "rows": args.rows, "cell_scale": args.art_cell_scale})
             p.wait(max(0, c.seconds - (time.monotonic() - p.start - now)))
             scheduled += c.seconds
-        p.send("4")
+        p.send("w")
         p.wait(.15)
         outro = tui_chapters(args.segment_duration_scale)[-1]
         start = time.monotonic() - p.start
@@ -573,8 +575,7 @@ def record(args, main):
         p.wait(outro.seconds)
     finally:
         p.close()
-    # The native TUIs need more than 26 columns. A separate full-grid capture
-    # preserves readable UI text while every media chapter keeps large glyphs.
+    # The sync inspector needs 110 columns. Fit its complete grid to the canvas.
     p = Terminal(native_command(args, "ui", ["--file", str(args.work_dir / "face-performance.mkv"), "--pause"], False,
                                 args.ui_cols, args.ui_rows), args.ui_cols, args.ui_rows, args.work_dir / "ui.cast.jsonl.gz")
     try:
@@ -592,7 +593,7 @@ def record(args, main):
             start = time.monotonic() - p.start
             evidence["ui"].append({**asdict(c), "start": start, "end": start + c.seconds,
                                    "cols": c.resize[0] if c.resize else args.ui_cols,
-                                   "rows": c.resize[1] if c.resize else args.ui_rows, "cell_scale": 1})
+                                   "rows": c.resize[1] if c.resize else args.ui_rows, "cell_scale": 1, "fit_grid": True})
             print(f"  {start:5.1f}s  {c.name}", flush=True)
             p.wait(c.seconds)
         p.resize(args.ui_cols, args.ui_rows)
@@ -683,14 +684,16 @@ class Rasterizer:
             draw.text((x, baseline + shift), mark, font=marks_font, anchor="ls", fill=255)
         return mask
 
-    def draw(self, screen, label, cell_scale=1):
+    def draw(self, screen, label, cell_scale=1, fit_grid=False):
         args = self.args
-        image = self.Image.new("RGB", (args.width, args.height), "#0c0c0c")
-        draw = self.ImageDraw.Draw(image)
         cell_w, cell_h = CELL_W * cell_scale, CELL_H * cell_scale
-        if screen.columns * cell_w > args.width or screen.lines * cell_h > args.height:
+        width, height = screen.columns * cell_w, screen.lines * cell_h
+        if not fit_grid and (width > args.width or height > args.height):
             raise ValueError("Complete terminal grid must fit the video canvas; refusing to crop")
-        dx, dy = (args.width - screen.columns * cell_w) // 2, (args.height - screen.lines * cell_h) // 2
+        canvas_w, canvas_h = max(args.width, width), max(args.height, height)
+        image = self.Image.new("RGB", (canvas_w, canvas_h), "#0c0c0c")
+        draw = self.ImageDraw.Draw(image)
+        dx, dy = (canvas_w - width) // 2, (canvas_h - height) // 2
         glyphs = []
         for y, row in screen.buffer.items():
             for x, char in row.items():
@@ -705,6 +708,12 @@ class Rasterizer:
         for px, py, char, fg in glyphs:
             mask = self.mask(char, cell_scale)
             image.paste(fg, (px, py - cell_h, px + cell_w * 2, py + cell_h * 2), mask)
+        if image.size != (args.width, args.height):
+            image.thumbnail((args.width, args.height), self.Image.Resampling.LANCZOS)
+            fitted = self.Image.new("RGB", (args.width, args.height), "#0c0c0c")
+            fitted.paste(image, ((args.width - image.width) // 2, (args.height - image.height) // 2))
+            image = fitted
+            draw = self.ImageDraw.Draw(image)
         if args.opt_text_overlay and label:
             box = draw.textbbox((0, 0), label, font=self.label_font)
             w, h = box[2] - box[0], box[3] - box[1]
@@ -845,13 +854,17 @@ def verify_zalgo_capture(args, evidence):
     return result
 
 
-def render_capture(args, name, selected, raster):
+def render_capture(args, name, selected, raster, cached=()):
     screen, stream = replay_terminal(args.cols, args.rows)
     iterator = iter(events(args.work_dir / (name + ".cast.jsonl.gz")))
     pending = next(iterator, None)
     outputs = []
     elapsed = 0.0
     for chapter in selected:
+        if chapter["name"] in cached:
+            elapsed += chapter["seconds"]
+            outputs.append(args.work_dir / (chapter["name"] + ".mp4"))
+            continue
         print("Rendering " + chapter["name"] + "...", flush=True)
         target_cols, target_rows = chapter["cols"], chapter["rows"]
         if screen.columns != target_cols or screen.lines != target_rows:
@@ -875,9 +888,13 @@ def render_capture(args, name, selected, raster):
                     changed = stream.feed(pending[2]) or changed
                     pending = next(iterator, None)
                 if changed or last_image is None:
-                    last_image = raster.draw(screen, chapter["label"], chapter.get("cell_scale", 1))
+                    last_image = raster.draw(screen, chapter["label"], chapter.get("cell_scale", 1), chapter.get("fit_grid", False))
                 encoder.stdin.write(last_image.tobytes())
                 if index == count // 2:
+                    if chapter["name"] == "splash" and not any("__" in line for line in screen.display):
+                        raise RuntimeError("Splash logo is missing; inspect native CRLF composition")
+                    if chapter["name"] == "sync" and any("Terminal too small" in line for line in screen.display):
+                        raise RuntimeError("Sync inspector does not fit; increase the TUI terminal width")
                     if chapter["name"] == "outro" and any("ascii-chat Keyboard Shortcuts" in line for line in screen.display):
                         raise RuntimeError("Outro still shows keyboard help; inspect the recording's resize/input timing")
                     last_image.save(args.work_dir / (chapter["name"] + ".png"))
@@ -893,12 +910,13 @@ def render_capture(args, name, selected, raster):
 
 def fingerprint(args):
     # Encoding-only options can change while reusing the exact same recording.
-    return {"recipe": 8, "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+    return {"recipe": 9, "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
             "dll_sha256": hashlib.sha256(args.binary.with_name("asciichat.dll").read_bytes()).hexdigest() if os.name == "nt" else None,
             "media": str(args.media_file), "media_sha256": hashlib.sha256(args.media_file.read_bytes()).hexdigest(),
             "face": str(args.face_file), "face_sha256": hashlib.sha256(args.face_file.read_bytes()).hexdigest() if args.face_file else FACE_URL,
             "start": args.media_file_start, "cols": args.cols, "rows": args.rows, "ui_cols": args.ui_cols, "ui_rows": args.ui_rows, "art_cell_scale": args.art_cell_scale,
-            "chapters": [asdict(c) for c in chapters(args.segment_duration_scale) + tui_chapters(args.segment_duration_scale)]}
+            "chapters": [{k: v for k, v in asdict(c).items() if k != "label"}
+                         for c in chapters(args.segment_duration_scale) + tui_chapters(args.segment_duration_scale)]}
 
 
 def audio_quality(args):
@@ -954,7 +972,7 @@ def assemble(args, files, evidence):
     quality = audio_quality(args)
     manifest = {"options": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
                 "output_probe": result, "recording": evidence, "face_source": FACE_URL,
-                "commands": COMMANDS, "audio_quality": quality, "raster_version": 7, "chapters": [p.stem for p in files]}
+                "commands": COMMANDS, "audio_quality": quality, "raster_version": 8, "chapters": [p.stem for p in files]}
     (args.work_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     (args.work_dir / (args.output.stem + ".manifest.json")).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"\nReady: {args.output}\n{result['format']['duration']} seconds / {args.output_fps:g} fps / {int(result['format']['size']) / 1e6:.2f} MB", flush=True)
@@ -971,8 +989,8 @@ def main():
         parser().error("use even pixel dimensions of at least 688x448 so the terminal has at least 86x28 cells")
     if args.output.suffix.lower() != ".mp4":
         parser().error("--output must end in .mp4 (GitHub-compatible H.264/AAC)")
-    args.ui_cols, args.ui_rows = args.width // CELL_W, args.height // CELL_H
-    args.cols, args.rows = args.ui_cols // args.art_cell_scale, args.ui_rows // args.art_cell_scale
+    args.ui_cols, args.ui_rows = max(110, args.width // CELL_W), args.height // CELL_H
+    args.cols, args.rows = args.width // CELL_W // args.art_cell_scale, args.ui_rows // args.art_cell_scale
     if args.cols < 20 or args.rows < 10:
         parser().error("native art requires at least 20 columns and 10 rows; increase pixel dimensions or reduce --art-cell-scale")
     main_chapters = chapters(args.segment_duration_scale)
@@ -1003,6 +1021,9 @@ def main():
     evidence_file = args.work_dir / "recording.json"
     if args.reuse_capture:
         saved = json.loads(evidence_file.read_text(encoding="utf-8"))
+        # Overlay wording does not change the native keyboard performance.
+        for chapter in saved["fingerprint"]["chapters"]:
+            chapter.pop("label", None)
         if saved["fingerprint"] != json.loads(json.dumps(identity)):
             raise ValueError("Saved recording settings do not match; omit --reuse-capture or choose its original binary/media/dimensions/start")
         evidence = saved["evidence"]
@@ -1010,6 +1031,9 @@ def main():
         prepare(args, main_chapters)
         evidence = record(args, main_chapters)
         evidence_file.write_text(json.dumps({"fingerprint": identity, "evidence": evidence}, indent=2), encoding="utf-8")
+    labels = {c.name: c.label for c in main_chapters + tui_chapters(args.segment_duration_scale)}
+    for chapter in evidence["main"] + evidence["ui"]:
+        chapter["label"] = labels[chapter["name"]]
     verify_zalgo_capture(args, evidence)
     # Find clean splash frames from its actual output, before normal media.
     # The logo's first box-drawing output follows initialization diagnostics.
@@ -1018,30 +1042,36 @@ def main():
     if len(splash_times) < 2:
         raise RuntimeError("No complete rainbow splash captured; inspect main.cast.jsonl.gz")
     splash_start, splash_end = splash_times[0], splash_times[-1]
-    splash = {"name": "splash", "label": "ascii-chat / terminal video, reimagined", "seconds": 3 * args.segment_duration_scale,
-              "start": splash_start + .03, "end": splash_end, "cols": args.ui_cols, "rows": args.ui_rows, "cell_scale": 1}
+    splash = {"name": "splash", "label": "ascii-chat - video chat in your terminal", "seconds": 3 * args.segment_duration_scale,
+              "start": splash_start + .03, "end": splash_end, "cols": args.ui_cols, "rows": args.ui_rows, "cell_scale": 1, "fit_grid": True}
     selected = [splash] + evidence["main"]
     insert = 1 + len(main_chapters)
     expected_names = [c["name"] for c in selected]
     expected_names[insert:insert] = [c["name"] for c in evidence["patterns"] + evidence["ui"]]
     files = None
+    cached = set()
     manifest_path = args.work_dir / "manifest.json"
     if args.reuse_capture and manifest_path.is_file():
         previous = json.loads(manifest_path.read_text(encoding="utf-8"))
         raster_options = ("width", "height", "cols", "rows", "ui_cols", "ui_rows", "art_cell_scale", "font", "opt_text_overlay")
         current = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}
         candidates = [args.work_dir / (name + ".mp4") for name in expected_names]
-        if (previous.get("raster_version") == 7 and previous["recording"] == evidence and previous["chapters"] == expected_names and
+        if (previous.get("raster_version") == 8 and previous["chapters"] == expected_names and
+                all(previous["options"].get(k) == current[k] for k in raster_options)):
+            old = {c["name"]: c for key in ("main", "ui", "patterns") for c in previous["recording"][key]}
+            cached = {c["name"] for c in selected + evidence["patterns"] + evidence["ui"]
+                      if old.get(c["name"]) == c and (args.work_dir / (c["name"] + ".mp4")).is_file()}
+        if (previous.get("raster_version") == 8 and previous["recording"] == evidence and previous["chapters"] == expected_names and
                 all(previous["options"].get(k) == current[k] for k in raster_options) and
                 all(p.is_file() for p in candidates)):
             print("Reusing rendered chapters; applying export settings...", flush=True)
             files = candidates
     if files is None:
-        files = render_capture(args, "main", selected, raster)
+        files = render_capture(args, "main", selected, raster, cached)
         patterns = []
         for c in evidence["patterns"]:
-            patterns += render_capture(args, c["name"], [c], raster)
-        patterns += render_capture(args, "ui", evidence["ui"], raster)
+            patterns += render_capture(args, c["name"], [c], raster, cached)
+        patterns += render_capture(args, "ui", evidence["ui"], raster, cached)
         files[insert:insert] = patterns
     assemble(args, files, evidence)
 

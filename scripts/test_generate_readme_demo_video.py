@@ -21,6 +21,39 @@ SPEC.loader.exec_module(demo)
 
 
 class ReadmeDemoTests(unittest.TestCase):
+    def test_shortcut_overlays_have_prefix_and_fit_the_readme_canvas(self):
+        args = demo.parser().parse_args([])
+        raster = demo.Rasterizer(args)
+        chapters = demo.tui_chapters()
+        for chapter in chapters[:5]:
+            self.assertTrue(chapter.label.startswith('Keyboard shortcut: "'), chapter.label)
+            self.assertLess(raster.label_font.getlength(chapter.label) + 36, args.width)
+        for chapter in chapters[5:]:
+            self.assertFalse(chapter.label.startswith('Keyboard shortcut: '))
+
+    def test_unchanged_chapters_reuse_video_without_running_ffmpeg(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with gzip.open(root / 'main.cast.jsonl.gz', 'wt', encoding='utf-8'):
+                pass
+            movie = root / 'intro.mp4'
+            movie.write_bytes(b'cached movie')
+            args = SimpleNamespace(work_dir=root, cols=104, rows=40)
+            with patch.object(demo.subprocess, 'Popen', side_effect=AssertionError('Cached chapter re-encoded')):
+                self.assertEqual(demo.render_capture(args, 'main', [{'name': 'intro', 'seconds': 7}], None, {'intro'}), [movie])
+
+    def test_wider_tui_fits_entire_grid_without_cropping_its_corners(self):
+        from PIL import ImageChops, Image
+        args = demo.parser().parse_args([])
+        raster = demo.Rasterizer(args)
+        screen, stream = demo.replay_terminal(110, 40)
+        stream.feed("\x1b[1;1HM\x1b[1;110HM\x1b[40;1HM\x1b[40;110HM")
+        image = raster.draw(screen, "", fit_grid=True)
+        self.assertEqual(image.size, (838, 640))
+        for x, y in ((0, 0), (808, 0), (0, 600), (808, 600)):
+            corner = image.crop((x, y, x + 30, y + 40))
+            self.assertIsNotNone(ImageChops.difference(corner, Image.new("RGB", corner.size, "#0c0c0c")).getbbox())
+
     def test_media_fit_preserves_all_source_corners_with_padding(self):
         from PIL import Image, ImageDraw
         with tempfile.TemporaryDirectory() as directory:
@@ -216,7 +249,7 @@ class ReadmeDemoTests(unittest.TestCase):
             self.assertEqual(plan["optimize"], optimized)
             self.assertEqual(plan["target_size_mb"], 9.5 if optimized else None)
             self.assertEqual(plan["terminal"], [104, 40])
-            self.assertEqual(plan["ui_terminal"], [104, 40])
+            self.assertEqual(plan["ui_terminal"], [110, 40])
             self.assertEqual(plan["art_cell_scale"], 1)
 
     def test_bad_dimensions_and_output_fail_before_side_effects(self):
@@ -247,7 +280,7 @@ class ReadmeDemoTests(unittest.TestCase):
                 elif key == "f": filter_index = (filter_index + 1) % 13
                 elif key == "r": render_mode = (render_mode + 1) % 3
                 elif key == "z": zalgo = not zalgo
-                elif key == "4": face = not face
+                elif key == "w": face = not face
             if chapter.name == "waveform": self.assertEqual(animation, "2")
             if chapter.name.startswith("filter-"):
                 names = ("none", "black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow")

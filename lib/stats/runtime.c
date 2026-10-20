@@ -14,6 +14,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <math.h>
+#include <ctype.h>
+#include <stdlib.h>
 #include <ascii-chat/options/options.h>
 #include <string.h>
 
@@ -64,18 +66,29 @@ void stats_runtime_toggle(void) {
     atomic_store_bool_impl(&g_active, !stats_runtime_active());
 }
 
-void stats_view_add(stats_view_t *view, const char *format, ...) {
+static void stats_view_vadd(stats_view_t *view, bool heading, const char *format, va_list args) {
   if (view->count >= STATS_VIEW_LINES)
     return;
-  va_list args;
-  va_start(args, format);
   vsnprintf(view->lines[view->count], sizeof(view->lines[0]), format, args);
-  va_end(args);
   // Provider labels must never inject terminal controls.
   for (char *p = view->lines[view->count]; *p; ++p)
     if ((unsigned char)*p < 32 || (unsigned char)*p > 126)
       *p = '?';
-  view->count++;
+  view->headings[view->count++] = heading;
+}
+
+void stats_view_add(stats_view_t *view, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  stats_view_vadd(view, false, format, args);
+  va_end(args);
+}
+
+void stats_view_add_header(stats_view_t *view, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  stats_view_vadd(view, true, format, args);
+  va_end(args);
 }
 
 void stats_runtime_set_provider(stats_provider_fn provider, void *data) {
@@ -192,17 +205,46 @@ static terminal_size_t stats_minimum(const stats_view_t *view) {
   return (terminal_size_t){.cols = (int)width, .rows = (int)view->count + 6};
 }
 
+static void stats_render_text(frame_buffer_t *buffer, const char *text, bool heading, bool color) {
+  const char *base = color ? (heading ? log_level_color(LOG_COLOR_DEBUG) : "\033[39m") : "";
+  frame_buffer_printf(buffer, "%s", base);
+  for (const char *p = text; *p;) {
+    char *end;
+    if (isdigit((unsigned char)*p)) {
+      (void)strtod(p, &end);
+      frame_buffer_printf(buffer, "%s%.*s%s", color ? log_level_color(LOG_COLOR_FATAL) : "", (int)(end - p), p, base);
+      p = end;
+    } else if ((p == text || !isalnum((unsigned char)p[-1])) &&
+               ((!strncmp(p, "enabled", 7) && !isalnum((unsigned char)p[7])) ||
+                (!strncmp(p, "disabled", 8) && !isalnum((unsigned char)p[8])))) {
+      bool enabled = *p == 'e';
+      int length = enabled ? 7 : 8;
+      frame_buffer_printf(buffer, "%s%.*s%s", color ? log_level_color(enabled ? LOG_COLOR_INFO : LOG_COLOR_ERROR) : "",
+                          length, p, base);
+      p += length;
+    } else {
+      frame_buffer_append(buffer, p++, 1);
+    }
+  }
+  frame_buffer_printf(buffer, "%s", color ? "\033[39m" : "");
+}
+
 static void stats_render(terminal_size_t size, const void *data) {
   const stats_view_t *view = data;
   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols + 64);
   if (!buffer)
     return;
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  terminal_color_mode_t mode = GET_OPTION(color_mode);
+  bool color = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
+               (mode != TERM_COLOR_AUTO || caps.color_level != TERM_COLOR_NONE);
+  const char *blue = color ? log_level_color(LOG_COLOR_DEBUG) : "";
   frame_buffer_cursor_home(buffer);
-  frame_buffer_printf(buffer, "\033[1m%s  ASCII-CHAT / %-20s  LIVE STATS\033[0m\033[K\n",
-                      log_level_color(LOG_COLOR_DEBUG), view->mode);
-  frame_buffer_printf(buffer, "  %s\033[K\n",
-                      view->page ? "CONNECTIONS & MODE DETAILS" : "OVERVIEW / rates over ~1 second");
-  frame_buffer_render_border(buffer, size.cols, log_level_color(LOG_COLOR_DEBUG));
+  frame_buffer_printf(buffer, "\033[1m%s  ASCII-CHAT / %-20s  LIVE STATS\033[0m\033[K\n", blue, view->mode);
+  frame_buffer_printf(buffer, "  ");
+  stats_render_text(buffer, view->page ? "CONNECTIONS & MODE DETAILS" : "OVERVIEW / rates over ~1 second", true, color);
+  frame_buffer_printf(buffer, "\033[K\n");
+  frame_buffer_render_border(buffer, size.cols, blue);
   unsigned available = size.rows > 6 ? (unsigned)size.rows - 6 : 0;
   unsigned remaining = view->offset < view->count ? view->count - view->offset : 0;
   unsigned visible = remaining < available ? remaining : available;
@@ -215,13 +257,16 @@ static void stats_render(terminal_size_t size, const void *data) {
       continue;
     }
     unsigned index = view->offset + i - top;
-    frame_buffer_printf(buffer, "%*s%s%.*s\033[0m\033[K\n", left, "",
-                        view->page && index == view->selected ? "\033[7m" : "", (int)width, view->lines[index]);
+    frame_buffer_printf(buffer, "%*s%s", left, "", view->page && index == view->selected ? "\033[7m" : "");
+    stats_render_text(buffer, view->lines[index], view->headings[index], color);
+    frame_buffer_printf(buffer, "\033[0m\033[K\n");
   }
-  frame_buffer_render_border(buffer, size.cols, log_level_color(LOG_COLOR_DEBUG));
+  frame_buffer_render_border(buffer, size.cols, blue);
   char footer[160];
   stats_footer(view, footer, sizeof(footer));
-  frame_buffer_printf(buffer, "  %.*s\033[K", size.cols - 3, footer);
+  frame_buffer_printf(buffer, "  ");
+  stats_render_text(buffer, footer, false, color);
+  frame_buffer_printf(buffer, "\033[K");
   ui_controller_write(g_fd, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
   frame_buffer_destroy(buffer);
 }
@@ -231,7 +276,7 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
   view->sampled_ns = snapshot->sampled_ns;
   if (!view->page) {
     stats_view_add(view, "Uptime %.1fs", (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9);
-    stats_view_add(view, "%-28s %14s %14s", "PIPELINE / NETWORK", "TOTAL", "PER SECOND");
+    stats_view_add_header(view, "%-28s %14s %14s", "PIPELINE / NETWORK", "TOTAL", "PER SECOND");
     for (int i = 0; i < STATS_COUNTER_COUNT; ++i) {
       if (!snapshot->capabilities.counters[i])
         continue;
@@ -244,7 +289,7 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
                        "warming up");
     }
     stats_view_add(view, "");
-    stats_view_add(view, "%-28s %14s %14s", "TIMINGS", "MEAN/LAST ms", "LIFETIME MAX");
+    stats_view_add_header(view, "%-28s %14s %14s", "TIMINGS", "MEAN/LAST ms", "LIFETIME MAX");
     for (int i = 0; i < STATS_DURATION_COUNT; ++i) {
       if (!snapshot->capabilities.durations[i])
         continue;
@@ -265,7 +310,7 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
     stats_view_add(view, "");
     for (int i = 0; i < STATS_GAUGE_COUNT; ++i)
       if (snapshot->capabilities.gauges[i])
-        stats_view_add(view, "%-28s %14llu", stats_gauge_descriptor(i)->name, (unsigned long long)snapshot->gauges[i]);
+        stats_view_add(view, "%s: %llu", stats_gauge_descriptor(i)->name, (unsigned long long)snapshot->gauges[i]);
     uint64_t source_width = atomic_load_u64_impl(&g_media_width);
     if (source_width) {
       stats_view_add(view, "Source: %llux%llu   Output: %ux%u   Target: %d fps", (unsigned long long)source_width,
@@ -289,8 +334,8 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
   mutex_lock(&g_peers_mutex);
   unsigned peers = 0;
   if (view->page)
-    stats_view_add(view, "%-5s %-12s %12s %12s %10s %10s", "ID", "TRANSPORT", "TX bytes/s", "RX bytes/s", "TX fps",
-                   "RX fps");
+    stats_view_add_header(view, "%-5s %-12s %12s %12s %10s %10s", "ID", "TRANSPORT", "TX bytes/s", "RX bytes/s",
+                          "TX fps", "RX fps");
   for (unsigned i = 0; i < 64; ++i) {
     stats_peer_t *peer = g_peers[i];
     if (!peer)
