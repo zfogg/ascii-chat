@@ -73,6 +73,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install gcovr==8.6
       - run: python .github/scripts/test_generate_coverage.py
+      - run: python .github/scripts/test_prepare_coverage_upload.py
       - run: python .github/scripts/test_criterion_to_junit.py
 
   unit-tests:
@@ -293,7 +294,7 @@ jobs:
           criterion-xml-dir: build/Testing/criterion-xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
-          upload-coverage: "true"
+          upload-coverage: "false"
 
       - name: Upload test results
         if: always()
@@ -458,7 +459,7 @@ jobs:
           criterion-xml-dir: build/Testing/criterion-xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
-          upload-coverage: "true"
+          upload-coverage: "false"
 
       - name: Upload integration test results
         if: always()
@@ -623,7 +624,7 @@ jobs:
           criterion-xml-dir: build/Testing/criterion-xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
-          upload-coverage: "true"
+          upload-coverage: "false"
 
       - name: Upload performance test artifacts
         if: always()
@@ -635,6 +636,45 @@ jobs:
             build/coverage.xml
             build/Testing/criterion-xml/*.xml
           retention-days: 7
+
+  coverage:
+    name: Publish complete coverage
+    needs: [unit-tests, integration-tests, performance-tests]
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*test-results-*'
+          path: coverage-reports
+      - name: Require all seven coverage reports
+        id: coverage
+        run: python .github/scripts/prepare-coverage-upload.py coverage-reports
+      - name: Preserve complete coverage inputs and summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: complete-coverage
+          path: |
+            coverage-reports/**/coverage.xml
+            coverage-reports/summary.json
+          retention-days: 7
+      - name: Install pinned Codecov CLI
+        run: python -m pip install codecov-cli==11.3.1
+      - name: Upload complete coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          binary: codecovcli
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ${{ steps.coverage.outputs.files }}
+          disable_search: true
+          plugins: noop
+          flags: coverage
+          name: complete-native-suite
+          fail_ci_if_error: true
 
   memory-tests:
     runs-on: ubuntu-latest

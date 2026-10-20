@@ -500,7 +500,7 @@ The documentation is automatically generated from source code using Doxygen and 
 #### Testing Framework
 
 - **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
-- **Coverage**: Codecov merges the Ubuntu and macOS unit, integration, and performance reports. Download `coverage.xml` from each test job's artifacts to inspect the measured line and branch coverage. The badge uses Codecov's coverage metric, which counts partially covered branches as uncovered lines; it can be lower than gcovr's executed-line percentage.
+- **Coverage**: CI publishes one Codecov upload after all seven Ubuntu and macOS unit, integration, and performance reports are present. Download the `complete-coverage` artifact for the original reports and a summary of executed-line coverage. The badge uses Codecov's coverage metric, which counts partially covered branches as uncovered lines; it can be lower than gcovr's executed-line percentage.
 - **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
 - **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
 
