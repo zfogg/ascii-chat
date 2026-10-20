@@ -19,6 +19,34 @@ SPEC.loader.exec_module(demo)
 
 
 class ReadmeDemoTests(unittest.TestCase):
+    def test_static_screen_does_not_lose_trailing_text(self):
+        screen, replay = demo.replay_terminal(40, 3)
+        replay.feed("Terminal too small\r\nResize to continue")
+        self.assertEqual(screen.display[1].strip(), "Resize to continue")
+
+    def test_zalgo_at_right_margin_does_not_wrap_or_skip_rows(self):
+        import unicodedata
+        screen, stream = demo.replay_terminal(8, 3)
+        rows = ["A" * 8 + "\u0334\u0325\u0308", "B" * 8 + "\u0301\u0336", "C" * 8 + "\u0324"]
+        stream.feed("\x1b[?2026h" + "\r\n".join(rows) + "\x1b[?2026l")
+        plain = ["".join(c for c in unicodedata.normalize("NFD", row) if not unicodedata.combining(c)) for row in screen.display]
+        self.assertEqual(plain, ["AAAAAAAA", "BBBBBBBB", "CCCCCCCC"])
+        self.assertEqual((screen.cursor.x, screen.cursor.y), (8, 2))
+
+    def test_native_rep_runs_preserve_full_rows_and_wrap(self):
+        screen, stream = demo.replay_terminal(8, 3)
+        stream.feed("\x1b[?2026hABCDEFGH\r\n12\x1b[6b\r\nZ\x1b[7b\x1b[?2026l")
+        self.assertEqual(screen.display, ["ABCDEFGH", "12222222", "ZZZZZZZZ"])
+
+    def test_rep_split_across_reads_and_current_rendition(self):
+        screen, stream = demo.replay_terminal(8, 2)
+        for text in ("\x1b[?2026h\x1b[31mX\x1b[32m\x1b[", "7", "b\x1b[?2026l"):
+            stream.feed(text)
+        self.assertEqual(screen.display[0], "XXXXXXXX")
+        self.assertEqual(screen.buffer[0][0].fg, "red")
+        self.assertEqual(screen.buffer[0][7].fg, "green")
+        self.assertEqual(screen.cursor.x, 8)
+
     def test_encoded_audio_rejects_clipping_and_silence(self):
         with tempfile.TemporaryDirectory() as directory:
             args = SimpleNamespace(ffmpeg="ffmpeg", output=Path(directory) / "demo.mp4", work_dir=Path(directory))
@@ -77,7 +105,7 @@ class ReadmeDemoTests(unittest.TestCase):
                                  "--speed", "1.1", "--media-file-start", "0:28", "--opt-text-overlay=true", "--optimize=false",
                                  "--binary", "unused", "--media-file", "unused", "--face-file", "unused", "--font", "unused",
                                  "--ffmpeg", "unused", "--ffprobe", "unused", "--output", "unused.mp4", "--work-dir", "unused",
-                                 "--reuse-capture"], capture_output=True, text=True, check=True)
+                                 "--segment-duration-scale", "1.8", "--reuse-capture"], capture_output=True, text=True, check=True)
         plan = json.loads(result.stdout)
         self.assertEqual(plan["terminal"], [200, 56])
         self.assertEqual(plan["output_pixels"], [1600, 900])
@@ -85,8 +113,18 @@ class ReadmeDemoTests(unittest.TestCase):
         self.assertEqual(plan["media_start"], 28)
         self.assertTrue(plan["overlay"])
         self.assertFalse(plan["optimize"])
-        baseline = 3 + 6 + sum(c.seconds for c in demo.chapters() + demo.tui_chapters())
+        baseline = 9 * 1.8 + sum(c.seconds for c in demo.chapters(1.8) + demo.tui_chapters(1.8))
         self.assertAlmostEqual(plan["seconds"], baseline / 1.1)
+
+    def test_longer_tours_keep_opening_at_normal_speed_and_end_on_live_video(self):
+        for scale, duration in [(1.8, 111.4), (2.0, 123), (2.2, 134.6)]:
+            chapters = demo.chapters(scale)
+            self.assertEqual(chapters[0].name, "normal")
+            self.assertEqual(chapters[0].seconds, 7)
+            self.assertNotIn("fast", [c.name for c in chapters])
+            self.assertAlmostEqual(9 * scale + sum(c.seconds for c in chapters + demo.tui_chapters(scale)), duration)
+            self.assertEqual(demo.tui_chapters(scale)[-1].name, "outro")
+            self.assertEqual(demo.tui_chapters(scale)[-1].keys, "?")
 
     def test_bad_dimensions_and_output_fail_before_side_effects(self):
         for flags in [["--width", "1279"], ["--height", "400"], ["--output", "out.gif"]]:
@@ -95,7 +133,7 @@ class ReadmeDemoTests(unittest.TestCase):
 
     def test_exact_effect_durations_and_restored_state(self):
         chapters = demo.chapters()
-        self.assertEqual(sum(c.seconds for c in chapters if c.name.startswith("filter-")), 3)
+        self.assertEqual(sum(c.seconds for c in chapters if c.name.startswith("filter-")), 12)
         self.assertEqual(sum(c.seconds for c in chapters if c.name in ("flip-x", "flip-xy", "flip-y", "unflip")), 3)
         self.assertEqual(sum(c.seconds for c in chapters if c.name in ("foreground", "background", "half-block")), 3)
         self.assertEqual(chapters[-1].name, "face-follow")

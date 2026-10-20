@@ -30,6 +30,7 @@ import sys
 import threading
 import time
 import urllib.request
+import unicodedata
 from dataclasses import asdict, dataclass
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -87,7 +88,9 @@ def parser():
   python scripts/generate-readme-demo-video.py --width 1600 --height 900 --optimize=false
   python scripts/generate-readme-demo-video.py --dry-run
 
-The opening plays 3x faster for 3 seconds, then returns to normal speed.
+The opening plays normally for 7 seconds, starting at --media-file-start.
+--segment-duration-scale lengthens feature chapters without changing the music's
+speed. Try 1.8 and 2.2 for approximately 1:51 and 2:15 feature tours.
 --speed retimes the completed movie (including music and every chapter).
 Dimensions are output pixels: the terminal gets floor(width/8) columns and
 floor(height/16) rows, centered in the output. 1280x720 gives 160x45 cells.
@@ -104,6 +107,7 @@ This script never edits README.md, commits media, or uploads anything.
     p.add_argument("--width", type=int, default=1280, help="output width in pixels; also determines CLI columns")
     p.add_argument("--height", type=int, default=720, help="output height in pixels; also determines CLI rows")
     p.add_argument("--speed", type=positive, default=1.0, help="whole-movie playback rate; 1.1 is 10%% faster")
+    p.add_argument("--segment-duration-scale", type=positive, default=2.0, help="feature/TUI dwell-time multiplier; opening stays 7 seconds")
     p.add_argument("--opt-text-overlay", type=boolean, nargs="?", const=True, default=False, metavar="BOOL", help="label featured flags/keys at bottom center")
     p.add_argument("--optimize", type=boolean, nargs="?", const=True, default=True, metavar="BOOL", help="FFmpeg slow CRF 20 / AAC 160k; false uses CRF 16 / AAC 192k")
     p.add_argument("--output", type=Path, default=ROOT / "readme-demo.mp4", help="review movie (not committed)")
@@ -125,18 +129,17 @@ class Chapter:
     resize: tuple[int, int] | None = None
 
 
-def chapters():
+def chapters(scale=1.0):
     result = [
-        Chapter("fast", 3, "Default rendering / media 3x"),
-        Chapter("normal", 4, "Default rendering / media 1x"),
+        Chapter("normal", 7, "Default rendering / media 1x"),
         Chapter("flip-x", .75, "--flip-x", "x"),
         Chapter("flip-xy", .75, "--flip-x --flip-y", "y"),
         Chapter("flip-y", .75, "--flip-y", "x"),
         Chapter("unflip", .75, "Default rendering", "y"),
     ]
     filters = ("black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow")
-    for i, color in enumerate(filters):
-        result.append(Chapter("filter-" + color, 3 / len(filters), "--color-filter " + color, "f"))
+    for color in filters:
+        result.append(Chapter("filter-" + color, 1, "--color-filter " + color, "f"))
     result += [
         Chapter("waveform", 2, "--waveform --audio-source media", "f2"),
         Chapter("fft", 2, "--fft --audio-source media", "23"),
@@ -147,11 +150,14 @@ def chapters():
         Chapter("zalgo", 2, "--zalgo 8", "1z"),
         Chapter("face-follow", 3, "--face-follow", "z4"),
     ]
+    for chapter in result:
+        if chapter.name != "normal":
+            chapter.seconds *= scale
     return result
 
 
-def tui_chapters():
-    return [
+def tui_chapters(scale=1.0):
+    result = [
         Chapter("open-media", 3, '"o" / Drop, paste, or open media', "o"),
         Chapter("logs", 3, '"]" / Session logs', "\x1b]"),
         Chapter("statistics", 3, '"=" / Live statistics', "]="),
@@ -160,6 +166,9 @@ def tui_chapters():
         Chapter("too-small", 3, "Responsive TUI / resize to continue", resize=(58, 12)),
         Chapter("outro", 2, "ascii-chat / video calls in your terminal", "?", resize=None),
     ]
+    for chapter in result:
+        chapter.seconds *= scale
+    return result
 
 
 COMMANDS = []
@@ -200,32 +209,27 @@ def prepare(args, main):
         raise ValueError("--media-file must include music/audio for the waveform and FFT chapters")
     length = sum(c.seconds for c in main)
     # Preserve extra music for the inserted patterns and final TUIs.
-    music_length = length + 6 + sum(c.seconds for c in tui_chapters())
-    required = args.media_file_start + 9 + music_length - 3
+    music_length = length + 6 * args.segment_duration_scale + sum(c.seconds for c in tui_chapters(args.segment_duration_scale))
+    required = args.media_file_start + music_length
     if float(info["format"]["duration"]) < required:
         raise ValueError(f"Media is too short after --media-file-start; need through {required:.2f} seconds")
-    face_start = length - 3
+    face_seconds = main[-1].seconds
+    face_start = length - face_seconds
     # All dog-video effects share one uninterrupted native capture. The face
     # source is opened through the real media picker after that performance.
     graph = (
-        "[0:v]split=2[v0][v1];[0:a]asplit=2[a0][a1];"
-        "[v0]trim=duration=9,setpts=(PTS-STARTPTS)/3,fps=33,scale=640:360,setsar=1[vfast];"
-        "[v1]trim=start=9,setpts=PTS-STARTPTS,fps=33,scale=640:360,setsar=1[vnormal];"
-        "[a0]atrim=duration=9,asetpts=PTS-STARTPTS,atempo=1.5,atempo=2[afast];"
-        "[a1]atrim=start=9,asetpts=PTS-STARTPTS[anormal];"
-        "[vfast][afast][vnormal][anormal]concat=n=2:v=1:a=1[vall][aall];"
-        f"[vall]trim=duration={music_length},setpts=PTS-STARTPTS[v];"
+        f"[0:v]trim=duration={music_length},setpts=PTS-STARTPTS,fps=33,scale=640:360,setsar=1[v];"
         # Stereo-to-mono analysis can add 3 dB on correlated channels. Keep
         # headroom through time stretching, downmixing, and final AAC encoding.
-        f"[aall]atrim=duration={music_length},asetpts=PTS-STARTPTS,volume=0.5[a]"
+        f"[0:a]atrim=duration={music_length},asetpts=PTS-STARTPTS,volume=0.5[a]"
     )
     run([args.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-filter_complex_threads", "2", "-ss", args.media_file_start, "-i", args.media_file,
-         "-i", face, "-filter_complex", graph, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "fast",
+         "-filter_complex", graph, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "fast",
          "-threads", "4", "-crf", "16", "-pix_fmt", "yuv420p", "-c:a", "pcm_f32le", work / "performance.mkv"])
     run([args.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-filter_complex_threads", "2", "-i", face,
          "-ss", face_start, "-i", work / "performance.mkv", "-filter_complex",
-         "[0:v]trim=duration=3,setpts=PTS-STARTPTS,fps=33,scale=640:360:force_original_aspect_ratio=decrease,"
-         "pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,tpad=stop_mode=clone:stop_duration=30[v]",
+         f"[0:v]trim=duration={face_seconds},setpts=PTS-STARTPTS,fps=33,scale=640:360:force_original_aspect_ratio=decrease,"
+         f"pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,tpad=stop_mode=clone:stop_duration={music_length}[v]",
          "-map", "[v]", "-map", "1:a", "-c:v", "libx264", "-preset", "fast", "-threads", "2", "-crf", "16",
          "-pix_fmt", "yuv420p", "-c:a", "pcm_f32le", "-shortest", work / "face-performance.mkv"])
     return face
@@ -370,7 +374,7 @@ def record(args, main):
     evidence = {"main": [], "patterns": []}
     try:
         # Let initialization finish, recording all real splash frames. The edit
-        # selects its cleanest two seconds and stretches that animation to 3s.
+        # selects its cleanest animation and stretches it to the splash dwell.
         p.wait_log(args.work_dir / "main.log", "Paused (--pause flag)")
         p.wait(.15)
         evidence["splash_end"] = time.monotonic() - p.start
@@ -403,9 +407,12 @@ def record(args, main):
             p.wait(max(0, c.seconds - (time.monotonic() - p.start - now)))
             scheduled += c.seconds
         p.send("4")
-        for c in tui_chapters():
+        for c in tui_chapters(args.segment_duration_scale):
             if c.name == "outro":
                 p.resize(args.cols, args.rows)
+                # The undersized help screen covers input. Wait for the resize
+                # to uncover it before sending its close key, or that key is lost.
+                p.wait(.4)
             if c.resize:
                 p.resize(*c.resize)
             for key in c.keys:
@@ -428,8 +435,9 @@ def record(args, main):
             p.wait_log(args.work_dir / (name + ".log"), "Pipeline created successfully, running main loop")
             p.wait(.3)
             start = time.monotonic() - p.start
-            p.wait(3)
-            evidence["patterns"].append({"name": name, "start": start, "end": start + 3, "seconds": 3,
+            seconds = 3 * args.segment_duration_scale
+            p.wait(seconds)
+            evidence["patterns"].append({"name": name, "start": start, "end": start + seconds, "seconds": seconds,
                                          "label": f"--test-pattern={pattern}", "cols": args.cols, "rows": args.rows})
         finally:
             p.close()
@@ -453,7 +461,11 @@ class Rasterizer:
         self.Image, self.ImageDraw = Image, ImageDraw
         self.args = args
         self.font = ImageFont.truetype(str(find_font(args)), 13)
-        self.label_font = ImageFont.truetype(str(find_font(args)), 19)
+        # JetBrains Mono Nerd Font lacks several Zalgo combining marks.
+        # Pillow does not perform the font fallback a real terminal provides.
+        marks_font = Path("C:/Windows/Fonts/consola.ttf")
+        self.marks_font = ImageFont.truetype(str(marks_font), 13) if os.name == "nt" and marks_font.is_file() else self.font
+        self.label_font = ImageFont.truetype(str(find_font(args)), 22)
         self.colors = {"default": "#dedede", "black": "#0c0c0c", "red": "#e06c75", "green": "#98c379", "brown": "#e5c07b", "blue": "#61afef", "magenta": "#c678dd", "cyan": "#56b6c2", "white": "#dcdfe4", "brightblack": "#676e7b", "brightred": "#ff757f", "brightgreen": "#b9e68c", "brightbrown": "#ffd68a", "brightblue": "#82baff", "brightmagenta": "#e3a1f6", "brightcyan": "#83e2ea", "brightwhite": "#ffffff"}
 
     def color(self, value, background=False):
@@ -465,7 +477,8 @@ class Rasterizer:
     def mask(self, char):
         # Extra vertical room retains Zalgo's combining marks across cell rows.
         mask = self.Image.new("L", (CELL_W * 2, CELL_H * 3))
-        self.ImageDraw.Draw(mask).text((0, CELL_H - 1), char, font=self.font, fill=255)
+        font = self.marks_font if any(unicodedata.combining(c) for c in char) else self.font
+        self.ImageDraw.Draw(mask).text((0, CELL_H - 1), char, font=font, fill=255)
         return mask
 
     def draw(self, screen, label):
@@ -516,8 +529,14 @@ class TerminalReplay:
         while True:
             match = re.search(r"\x1b\[\?2026([hl])", self.pending)
             if not match:
-                # Retain a possible escape sequence split across PTY reads.
-                complete, self.pending = self.pending[:-16], self.pending[-16:]
+                # Retain only a possible synchronized-update marker prefix.
+                # Keeping arbitrary trailing text truncates static TUIs that
+                # emit nothing further until their next input event.
+                markers = ("\x1b[?2026h", "\x1b[?2026l")
+                suffix = max((n for n in range(1, min(len(self.pending), 8) + 1)
+                              if any(marker.startswith(self.pending[-n:]) for marker in markers)), default=0)
+                complete = self.pending[:-suffix] if suffix else self.pending
+                self.pending = self.pending[-suffix:] if suffix else ""
                 if self.frame is not None:
                     self.frame += complete
                 elif complete:
@@ -538,10 +557,52 @@ class TerminalReplay:
                 changed = True
 
 
-def render_capture(args, name, selected, raster):
+def replay_terminal(cols, rows):
+    """pyte omits ECMA-48 REP, which native ASCII RLE uses for long runs."""
     import pyte
-    screen = pyte.Screen(args.cols, args.rows)
-    stream = TerminalReplay(pyte.Stream(screen))
+    from wcwidth import wcwidth
+
+    class RecordingScreen(pyte.Screen):
+        def reset(self):
+            super().reset()
+            self.last_graphic = ""
+
+        def draw(self, data):
+            # pyte wraps before testing character width. A combining mark
+            # following the rightmost cell must stay on that cell, preserving
+            # pending auto-wrap until the next spacing character.
+            if data.isascii():
+                super().draw(data)
+                if data:
+                    self.last_graphic = data[-1]
+                return
+            for char in data:
+                if (wcwidth(char) == 0 and unicodedata.combining(char) and self.cursor.x == self.columns):
+                    line = self.buffer[self.cursor.y]
+                    last = line[self.columns - 1]
+                    line[self.columns - 1] = last._replace(data=unicodedata.normalize("NFC", last.data + char))
+                    self.dirty.add(self.cursor.y)
+                else:
+                    super().draw(char)
+                if wcwidth(char) > 0:
+                    self.last_graphic = char
+                elif self.last_graphic and (unicodedata.combining(char) or char == "\ufe0f"):
+                    self.last_graphic += char
+
+        def repeat_character(self, count=1):
+            if self.last_graphic:
+                self.draw(self.last_graphic * max(1, count))
+
+    class RecordingStream(pyte.Stream):
+        csi = {**pyte.Stream.csi, "b": "repeat_character"}
+        events = pyte.Stream.events | {"repeat_character"}
+
+    screen = RecordingScreen(cols, rows)
+    return screen, TerminalReplay(RecordingStream(screen))
+
+
+def render_capture(args, name, selected, raster):
+    screen, stream = replay_terminal(args.cols, args.rows)
     iterator = iter(events(args.work_dir / (name + ".cast.jsonl.gz")))
     pending = next(iterator, None)
     outputs = []
@@ -557,8 +618,8 @@ def render_capture(args, name, selected, raster):
                    "-preset", "ultrafast", "-threads", "2", "-crf", "14", "-pix_fmt", "yuv420p", str(file)]
         COMMANDS.append(command)
         encoder = subprocess.Popen(command, stdin=subprocess.PIPE)
-        # Quantize chapter boundaries cumulatively: twelve 0.25s filters must
-        # total exactly 99 frames, rather than rounding each to eight frames.
+        # Quantize chapter boundaries cumulatively so fractional dwell times
+        # do not accumulate a frame of timing error at every transition.
         count = max(1, round((elapsed + chapter["seconds"]) * FPS) - round(elapsed * FPS))
         elapsed += chapter["seconds"]
         last_image = None
@@ -573,6 +634,8 @@ def render_capture(args, name, selected, raster):
                     last_image = raster.draw(screen, chapter["label"])
                 encoder.stdin.write(last_image.tobytes())
                 if index == count // 2:
+                    if chapter["name"] == "outro" and any("ascii-chat Keyboard Shortcuts" in line for line in screen.display):
+                        raise RuntimeError("Outro still shows keyboard help; inspect the recording's resize/input timing")
                     last_image.save(args.work_dir / (chapter["name"] + ".png"))
                     (args.work_dir / (chapter["name"] + ".txt")).write_text("\n".join(screen.display), encoding="utf-8")
         finally:
@@ -586,12 +649,12 @@ def render_capture(args, name, selected, raster):
 
 def fingerprint(args):
     # Encoding-only options can change while reusing the exact same recording.
-    return {"recipe": 3, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+    return {"recipe": 4, "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
             "dll_sha256": hashlib.sha256(args.binary.with_name("asciichat.dll").read_bytes()).hexdigest() if os.name == "nt" else None,
             "media": str(args.media_file), "media_sha256": hashlib.sha256(args.media_file.read_bytes()).hexdigest(),
             "face": str(args.face_file), "face_sha256": hashlib.sha256(args.face_file.read_bytes()).hexdigest() if args.face_file else FACE_URL,
             "start": args.media_file_start, "cols": args.cols, "rows": args.rows,
-            "chapters": [asdict(c) for c in chapters() + tui_chapters()]}
+            "chapters": [asdict(c) for c in chapters(args.segment_duration_scale) + tui_chapters(args.segment_duration_scale)]}
 
 
 def audio_quality(args):
@@ -612,10 +675,10 @@ def assemble(args, files, evidence):
     # Relative names avoid FFmpeg's platform-specific escaping of drive paths.
     concat.write_text("".join(f"file '{p.name}'\n" for p in files), encoding="utf-8")
     length = sum(float(probe(p, args)["format"]["duration"]) for p in files)
-    # Silence under splash, then the same accelerated/normal music used by the
+    # Silence under splash, then the same normal-speed music used by the
     # native audio visualizer. Music continues smoothly beneath patterns/TUIs.
     graph = (f"[0:v]setpts=(PTS-STARTPTS)/{args.speed},fps={FPS}[v];"
-             f"[1:a]adelay=3000:all=1,apad,atrim=duration={length},asetpts=PTS-STARTPTS,"
+             f"[1:a]adelay={round(3000 * args.segment_duration_scale)}:all=1,apad,atrim=duration={length},asetpts=PTS-STARTPTS,"
              f"{atempo(args.speed)},alimiter=limit=0.84:level=false:latency=true,afade=t=out:st={max(0, length / args.speed - 1.5)}:d=1.5[a]")
     run([args.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-filter_complex_threads", "2", "-f", "concat", "-safe", "0", "-i", concat,
          "-i", args.work_dir / "performance.mkv", "-filter_complex", graph, "-map", "[v]", "-map", "[a]",
@@ -630,7 +693,7 @@ def assemble(args, files, evidence):
     quality = audio_quality(args)
     manifest = {"options": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
                 "output_probe": result, "recording": evidence, "face_source": FACE_URL,
-                "commands": COMMANDS, "audio_quality": quality, "chapters": [p.stem for p in files]}
+                "commands": COMMANDS, "audio_quality": quality, "raster_version": 5, "chapters": [p.stem for p in files]}
     (args.work_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"\nReady: {args.output}\n{result['format']['duration']} seconds / 33 fps / {int(result['format']['size']) / 1e6:.2f} MB", flush=True)
     print(f"Chapter images, text, logs, recordings and manifest: {args.work_dir}", flush=True)
@@ -643,12 +706,12 @@ def main():
     if args.output.suffix.lower() != ".mp4":
         parser().error("--output must end in .mp4 (GitHub-compatible H.264/AAC)")
     args.cols, args.rows = args.width // CELL_W, args.height // CELL_H
-    main_chapters = chapters()
+    main_chapters = chapters(args.segment_duration_scale)
     if args.dry_run:
         print(json.dumps({"fps": FPS, "terminal": [args.cols, args.rows], "output_pixels": [args.width, args.height],
                           "speed": args.speed, "optimize": args.optimize, "overlay": args.opt_text_overlay,
-                          "media_start": args.media_file_start, "chapters": [asdict(c) for c in main_chapters + tui_chapters()],
-                          "seconds": (3 + sum(c.seconds for c in main_chapters + tui_chapters()) + 6) / args.speed}, indent=2))
+                          "media_start": args.media_file_start, "chapters": [asdict(c) for c in main_chapters + tui_chapters(args.segment_duration_scale)],
+                          "seconds": (9 * args.segment_duration_scale + sum(c.seconds for c in main_chapters + tui_chapters(args.segment_duration_scale))) / args.speed}, indent=2))
         return
     for name in ("binary", "media_file", "work_dir", "output", "face_file", "font"):
         if getattr(args, name) is not None:
@@ -683,7 +746,7 @@ def main():
     if len(splash_times) < 2:
         raise RuntimeError("No complete rainbow splash captured; inspect main.cast.jsonl.gz")
     splash_start, splash_end = splash_times[0], splash_times[-1]
-    splash = {"name": "splash", "label": "ascii-chat / terminal video, reimagined", "seconds": 3,
+    splash = {"name": "splash", "label": "ascii-chat / terminal video, reimagined", "seconds": 3 * args.segment_duration_scale,
               "start": splash_start + .03, "end": splash_end, "cols": args.cols, "rows": args.rows}
     selected = [splash] + evidence["main"]
     insert = 1 + len(main_chapters)
@@ -696,7 +759,7 @@ def main():
         raster_options = ("width", "height", "cols", "rows", "font", "opt_text_overlay")
         current = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}
         candidates = [args.work_dir / (name + ".mp4") for name in expected_names]
-        if (previous["recording"] == evidence and previous["chapters"] == expected_names and
+        if (previous.get("raster_version") == 5 and previous["recording"] == evidence and previous["chapters"] == expected_names and
                 all(previous["options"].get(k) == current[k] for k in raster_options) and
                 all(p.is_file() for p in candidates)):
             print("Reusing rendered chapters; applying export settings...", flush=True)
