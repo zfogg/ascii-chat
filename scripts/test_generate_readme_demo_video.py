@@ -229,7 +229,7 @@ class ReadmeDemoTests(unittest.TestCase):
         self.assertFalse(plan["optimize"])
         baseline = 10 + 15 * 1.8 + sum(c.seconds for c in demo.chapters(1.8) + demo.tui_chapters(1.8))
         self.assertAlmostEqual(plan["seconds"], baseline / 1.1)
-        self.assertEqual([c['seconds'] for c in plan['call']], [2, 2, 2, 4])
+        self.assertEqual([c['seconds'] for c in plan['call']], [1.5, 1.5, 1.5, 5.5])
 
     def test_call_audio_inserts_silence_and_resumes_music_at_the_same_sample(self):
         import array
@@ -284,6 +284,7 @@ class ReadmeDemoTests(unittest.TestCase):
             for client in terminals[1:]:
                 self.assertIn('client', client.command)
                 self.assertIn('--audio=false', client.command)
+                self.assertEqual(client.command[client.command.index('--render-mode') + 1], 'half-block')
                 self.assertEqual(client.command[client.command.index('--volume') + 1], '0')
                 self.assertEqual(client.command[client.command.index('--microphone-volume') + 1], '0')
                 self.assertIn('Connected', client.markers)
@@ -298,7 +299,7 @@ class ReadmeDemoTests(unittest.TestCase):
         self.assertIn('exactly four', result.stderr)
 
     def test_longer_tours_keep_opening_at_normal_speed_and_end_on_live_video(self):
-        for scale, duration in [(1.8, 115.45), (2.0, 127.5), (2.2, 139.55)]:
+        for scale, duration in [(1.8, 110.05), (2.0, 121.5), (2.2, 132.95)]:
             chapters = demo.chapters(scale)
             self.assertEqual(chapters[0].name, "intro")
             self.assertEqual(chapters[0].seconds, 7)
@@ -331,7 +332,8 @@ class ReadmeDemoTests(unittest.TestCase):
         self.assertFalse(any("Default rendering" in c.label for c in chapters))
         self.assertEqual(sum(c.seconds for c in chapters if c.name in ("flip-x", "flip-xy", "flip-y")), 2.25)
         self.assertEqual(sum(c.seconds for c in chapters if c.name in ("foreground", "background", "half-block")), 3)
-        self.assertEqual(chapters[-1].name, "face-follow")
+        self.assertEqual(chapters[-1].name, "zalgo")
+        self.assertNotIn("face-follow", [c.name for c in chapters])
         # Simulate the actual mutually exclusive animation keys, checking the
         # labels describe the state that is on screen, not just the last key.
         animation = None
@@ -356,8 +358,67 @@ class ReadmeDemoTests(unittest.TestCase):
             if chapter.name == "fft": self.assertEqual(animation, "3")
             if chapter.name == "matrix": self.assertEqual(animation, "1")
             if chapter.name == "zalgo": self.assertTrue(zalgo)
+        self.assertTrue(zalgo)
+        zalgo = not zalgo  # The recording closes the effect with z.
         self.assertEqual((animation, flip_x, flip_y, filter_index, render_mode, zalgo, face),
-                         (None, False, False, 0, 0, False, True))
+                         (None, False, False, 0, 0, False, False))
+
+    def test_overlay_stays_above_hovered_video_player_controls(self):
+        from PIL import ImageChops, Image
+        for width, height in ((688, 448), (838, 640), (1600, 900)):
+            args = demo.parser().parse_args(['--opt-text-overlay', '--width', str(width), '--height', str(height)])
+            screen, _ = demo.replay_terminal(width // 8, height // 16)
+            image = demo.Rasterizer(args).draw(screen, 'Keyboard shortcut: "=" / Live statistics')
+            box = ImageChops.difference(image, Image.new('RGB', image.size, '#0c0c0c')).getbbox()
+            self.assertGreaterEqual((height - box[3]) * min(1, 838 / width), 80)
+            self.assertGreater(box[1], height // 2)
+
+    def test_legacy_face_is_omitted_and_the_outro_uses_clean_intro_footage(self):
+        evidence = {'main': [
+            {'name': 'intro', 'start': 2, 'end': 9, 'seconds': 7},
+            {'name': 'face-follow', 'start': 40, 'end': 45, 'seconds': 5},
+            {'name': 'outro', 'start': 45, 'end': 48.6, 'seconds': 3.6}]}
+        demo.omit_legacy_face(evidence)
+        self.assertEqual([c['name'] for c in evidence['main']], ['intro', 'outro'])
+        self.assertEqual(evidence['outro_capture'], 'intro')
+        self.assertEqual(evidence['main'][-1]['end'], 9)
+        self.assertAlmostEqual(evidence['main'][-1]['start'], 5.4)
+
+    def test_legacy_capture_migration_keeps_binary_and_grid_validation(self):
+        current = {'recipe': 10, 'binary_sha256': 'abc', 'cols': 104, 'chapters': [{'name': 'intro'}]}
+        saved = {**current, 'recipe': 9, 'face': 'legacy', 'face_sha256': 'old',
+                 'chapters': [{'name': 'intro', 'label': ''}, {'name': 'face-follow'}]}
+        self.assertTrue(demo.compatible_fingerprint(saved, current))
+        self.assertFalse(demo.compatible_fingerprint(saved, {**current, 'cols': 80}))
+        self.assertFalse(demo.compatible_fingerprint(saved, {**current, 'binary_sha256': 'different'}))
+
+    def test_fresh_capture_ends_zalgo_and_keeps_ok_go_for_the_outro_and_tuis(self):
+        terminals = []
+        class FakeTerminal:
+            def __init__(self, command, cols, rows, capture):
+                self.command, self.sent = command, []
+                self.start = demo.time.monotonic()
+                terminals.append(self)
+            def wait_log(self, path, marker):
+                return 0
+            def wait(self, seconds):
+                pass
+            def send(self, keys):
+                self.sent.append(keys)
+            def resize(self, cols, rows):
+                pass
+            def close(self):
+                pass
+        with tempfile.TemporaryDirectory() as directory:
+            args = SimpleNamespace(binary=Path('ascii-chat'), work_dir=Path(directory), cols=104, rows=40,
+                                   ui_cols=110, ui_rows=40, art_cell_scale=1, segment_duration_scale=1.8)
+            with patch.object(demo, 'Terminal', FakeTerminal):
+                evidence = demo.record(args, demo.chapters(1.8))
+            self.assertEqual(terminals[0].sent[-1], 'z')
+            self.assertNotIn('w', terminals[0].sent)
+            self.assertFalse(any('face-' in value for t in terminals for value in t.command))
+            self.assertTrue(any(value.endswith('performance.mkv') for value in terminals[1].command))
+            self.assertNotIn('face-follow', [c['name'] for c in evidence['main']])
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ The terminal recording is retained alongside logs, sampled screen text, chapter
 images, commands, and timings in --work-dir. No desktop/camera recording or
 GitHub upload occurs. The source media is rendered by the actual native binary;
 Pillow only rasterizes its terminal output. Requires a debug build for 0/= TUIs
-and the w/z shortcuts (face follow / Zalgo) for uninterrupted effect changes.
+and the z shortcut (Zalgo) for uninterrupted effect changes.
 """
 
 from __future__ import annotations
@@ -37,17 +37,18 @@ import unicodedata
 from dataclasses import asdict, dataclass
 
 ROOT = Path(__file__).resolve().parents[1]
-FACE_URL = (
-    "https://raw.githubusercontent.com/opencv/opencv_extra/"
-    "cb09893cc0d1147787b254597cb78c5ae854185a/"
-    "testdata/cv/tracking/faceocc2/data/faceocc2.webm"
-)
 FPS = 33
 CELL_W, CELL_H = 8, 16
-CALL_SOURCES = tuple(
-    "https://media.xiph.org/video/derf/y4m/" + name + "_qcif.y4m"
-    for name in ("grandma", "suzie", "carphone", "foreman")
+CALL_SOURCES = (
+    "https://media.xiph.org/video/derf/webm/Johnny_1280x720_60.webm",
+    "https://media.xiph.org/video/derf/webm/vidyo4_720p_60fps.webm",
+    "https://media.xiph.org/video/derf/webm/KristenAndSara_1280x720_60.webm",
+    "https://media.xiph.org/video/derf/y4m/foreman_qcif.y4m",
 )
+# Frame a single head and shoulders in each source before the native client
+# renders it. The captured ASCII terminal grid is always retained in full.
+CALL_CROPS = ("crop=550:424:310:20", "crop=650:500:180:180", "crop=550:424:730:120", None)
+OVERLAY_BOTTOM_MARGIN = 100
 
 
 def boolean(value):
@@ -97,7 +98,7 @@ def parser():
 
 The opening plays normally for 7 seconds, starting at --media-file-start.
 --segment-duration-scale lengthens feature chapters without changing the music's
-speed. Try 1.8 and 2.2 for approximately 2:05 and 2:30 feature tours.
+speed. Try 1.8 and 2.2 for approximately 2:00 and 2:23 feature tours.
 --speed retimes the completed movie (including music and every chapter).
 Dimensions are output pixels. Art uses 8x16 character cells by default:
 104x40 cells at 838x640, fitting GitHub's 838px desktop README width. TUIs use
@@ -106,9 +107,9 @@ at least 110 columns, with their complete grid scaled to fit without cropping.
 and 96k stereo AAC. --optimize=false disables the size ceiling and uses CRF 16.
 --target-size-mb overrides the ceiling only when --optimize is enabled.
 --output-fps 16.5 discards alternate captured frames without speeding up music.
-The default face clip is OpenCV's single-face faceocc2 tracking sample.
 Before the TUIs, four real clients join a local encrypted call for 10 seconds.
-That section is silent; its four talking-head samples are cached from Xiph.org.
+That section is silent; its four talking-head samples are cached from Xiph.org,
+framed to show faces clearly, and rendered with native half-block color cells.
 Repeat --call-media-file four times to use your own clips instead.
 MP4/H.264 + AAC + faststart is intended for GitHub video attachments. Upload
 the reviewed result to GitHub and place its attachment URL in the README.
@@ -117,7 +118,7 @@ This script never edits README.md, commits media, or uploads anything.
     )
     p.add_argument("--binary", type=Path, default=ROOT / "build/bin" / ("ascii-chat.exe" if os.name == "nt" else "ascii-chat"), help="native debug binary")
     p.add_argument("--media-file", type=Path, default=ROOT / "web/www/public/assets/demo-video-white-knuckles.webm", help="OK Go video with an audio track")
-    p.add_argument("--face-file", type=Path, help="single-face video; otherwise download pinned OpenCV sample to work directory")
+    p.add_argument("--face-file", type=Path, help=argparse.SUPPRESS)  # Legacy capture compatibility.
     p.add_argument("--call-media-file", type=Path, action="append", metavar="FILE", help="one participant's video; provide exactly four, or download Xiph talking-head samples")
     p.add_argument("--media-file-start", type=timestamp, default="0:00", metavar="M:SS", help="starting position in the original music video")
     p.add_argument("--width", type=int, default=838, help="output width in pixels; also determines CLI columns")
@@ -166,7 +167,6 @@ def chapters(scale=1.0):
         Chapter("half-block", 1, "--render-mode half-block", "r"),
         Chapter("matrix", 2, "--matrix", "r1"),
         Chapter("zalgo", 2, "--zalgo 8", "1z"),
-        Chapter("face-follow", 3, "--face-follow", "zw"),
     ]
     for chapter in result:
         if chapter.name != "intro":
@@ -225,13 +225,6 @@ def media_fit_filter(cols, rows):
 
 def prepare(args, main):
     work = args.work_dir
-    face = args.face_file or work / "faceocc2.webm"
-    if not face.is_file():
-        if args.face_file:
-            raise ValueError(f"Face video does not exist: {face}")
-        print("Downloading pinned OpenCV face tracking sample...", flush=True)
-        with urllib.request.urlopen(FACE_URL, timeout=60) as response, face.open("wb") as out:
-            shutil.copyfileobj(response, out)
     info = probe(args.media_file, args)
     if not any(s["codec_type"] == "audio" for s in info["streams"]):
         raise ValueError("--media-file must include music/audio for the waveform and FFT chapters")
@@ -241,10 +234,7 @@ def prepare(args, main):
     required = args.media_file_start + music_length
     if float(info["format"]["duration"]) < required:
         raise ValueError(f"Media is too short after --media-file-start; need through {required:.2f} seconds")
-    face_seconds = main[-1].seconds
-    face_start = length - face_seconds
-    # All dog-video effects share one uninterrupted native capture. The face
-    # source is opened through the real media picker after that performance.
+    # All dog-video effects share one uninterrupted native capture.
     graph = (
         f"[0:v]trim=duration={music_length},setpts=PTS-STARTPTS,fps=33,{media_fit_filter(args.cols, args.rows)}[v];"
         # Stereo-to-mono analysis can add 3 dB on correlated channels. Keep
@@ -254,13 +244,6 @@ def prepare(args, main):
     run([args.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-filter_complex_threads", "2", "-ss", args.media_file_start, "-i", args.media_file,
          "-filter_complex", graph, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "fast",
          "-threads", "4", "-crf", "16", "-pix_fmt", "yuv420p", "-c:a", "pcm_f32le", work / "performance.mkv"])
-    run([args.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-filter_complex_threads", "2", "-i", face,
-         "-ss", face_start, "-i", work / "performance.mkv", "-filter_complex",
-         f"[0:v]trim=duration={face_seconds},setpts=PTS-STARTPTS,fps=33,{media_fit_filter(args.cols, args.rows)},"
-         f"tpad=stop_mode=clone:stop_duration={music_length}[v]",
-         "-map", "[v]", "-map", "1:a", "-c:v", "libx264", "-preset", "fast", "-threads", "2", "-crf", "16",
-         "-pix_fmt", "yuv420p", "-c:a", "pcm_f32le", "-shortest", work / "face-performance.mkv"])
-    return face
 
 
 class WindowsTerminal:
@@ -523,8 +506,8 @@ def native_command(args, name, source, splash, cols=None, rows=None):
 
 
 def call_chapters():
-    return [Chapter(f"call-{i}", 4 if i == 4 else 2,
-                    f"Video call: {i} participant{'s' if i != 1 else ''}") for i in range(1, 5)]
+    return [Chapter(f"call-{i}", 5.5 if i == 4 else 1.5,
+                    "4-person call (muted)" if i == 4 else f"Group call: {i}/4") for i in range(1, 5)]
 
 
 def unused_port():
@@ -547,7 +530,7 @@ def prepare_call(args):
                 urllib.request.urlretrieve(url, temporary)
                 temporary.replace(path)
             sources.append(path)
-    identity = {"recipe": 1, "binary": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+    identity = {"recipe": 3, "binary": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
                 "dll": hashlib.sha256(args.binary.with_name("asciichat.dll").read_bytes()).hexdigest() if os.name == "nt" else None,
                 "cols": args.cols, "rows": args.rows,
                 "sources": [{"path": str(p.resolve()), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in sources]}
@@ -555,14 +538,18 @@ def prepare_call(args):
     if args.reuse_capture and cache.exists():
         saved = json.loads(cache.read_text(encoding="utf-8"))
         if saved["fingerprint"] == identity:
+            for recorded, chapter in zip(saved["evidence"]["chapters"], call_chapters()):
+                recorded["label"] = chapter.label
             return saved["evidence"]
     files = []
     for index, source in enumerate(sources, 1):
         target = directory / f"participant-{index}.mp4"
-        # A six-second loop keeps Foreman facing the camera before his camera
-        # pans away. Padding preserves the complete source within every tile.
-        run([args.ffmpeg, "-v", "error", "-y", "-i", source, "-t", "6", "-an",
-             "-vf", f"{media_fit_filter(args.cols, args.rows)},fps={FPS}",
+        crop = CALL_CROPS[index - 1] if args.call_media_file is None else None
+        framing = (crop + "," if crop else "") + "eq=contrast=1.15:brightness=0.04,"
+        # Keep Foreman facing the lens before his camera pans away. Other
+        # clips play their full ten-second conversation before looping.
+        run([args.ffmpeg, "-v", "error", "-y", "-i", source, "-t", "6" if index == 4 and args.call_media_file is None else "10", "-an",
+             "-vf", f"{framing}{media_fit_filter(args.cols, args.rows)},fps={FPS}",
              "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p", target])
         if any(s["codec_type"] == "audio" for s in probe(target, args)["streams"]):
             raise RuntimeError("Call input unexpectedly contains audio")
@@ -601,7 +588,7 @@ def record_call(args, files):
                               "--password", "readme-demo-local-call", "--file", str(file), "--loop",
                               "--audio=false", "--audio-source", "media", "--volume", "0", "--microphone-volume", "0", "--video-codec", "raw",
                               "--width", str(args.cols), "--height", str(args.rows), "--fps", str(FPS),
-                              "--utf8", "true", "--color-mode", "truecolor", "--splash-screen=false"]
+                              "--utf8", "true", "--color-mode", "truecolor", "--render-mode", "half-block", "--splash-screen=false"]
             client = Terminal(command, args.cols, args.rows,
                               args.work_dir / ("call.cast.jsonl.gz" if index == 1 else f"call-client-{index}.cast.jsonl.gz"), automated)
             terminals.append(client)
@@ -666,26 +653,10 @@ def record(args, main):
                 p.send(" ")
                 p.wait(.08)
                 now = scheduled = time.monotonic() - p.start
-            if c.name == "face-follow":
-                # Explicitly load the face rather than assume a slow terminal
-                # reached a particular video PTS on a wall-clock deadline. The
-                # picker also clears combining marks left by Windows ConPTY.
-                face_path = str(args.work_dir / "face-performance.mkv")
-                p.resize(args.ui_cols, args.ui_rows)
-                p.wait(.2)
-                p.send("o")
-                p.wait(.15)
-                p.send("\x1b[200~" + face_path + "\x1b[201~")
-                p.wait(.1)
-                p.send("\r")
-                p.wait_log(args.work_dir / "main.log", "Opened media: " + face_path)
-                p.resize(args.cols, args.rows)
-                p.wait(.25)
-                now = scheduled = time.monotonic() - p.start
             evidence["main"].append({**asdict(c), "start": now, "end": now + c.seconds, "cols": args.cols, "rows": args.rows, "cell_scale": args.art_cell_scale})
             p.wait(max(0, c.seconds - (time.monotonic() - p.start - now)))
             scheduled += c.seconds
-        p.send("w")
+        p.send("z")
         p.wait(.15)
         outro = tui_chapters(args.segment_duration_scale)[-1]
         start = time.monotonic() - p.start
@@ -695,7 +666,7 @@ def record(args, main):
     finally:
         p.close()
     # The sync inspector needs 110 columns. Fit its complete grid to the canvas.
-    p = Terminal(native_command(args, "ui", ["--file", str(args.work_dir / "face-performance.mkv"), "--pause"], False,
+    p = Terminal(native_command(args, "ui", ["--file", str(args.work_dir / "performance.mkv"), "--pause"], False,
                                 args.ui_cols, args.ui_rows), args.ui_cols, args.ui_rows, args.work_dir / "ui.cast.jsonl.gz")
     try:
         p.wait_log(args.work_dir / "ui.log", "Paused (--pause flag)")
@@ -836,7 +807,10 @@ class Rasterizer:
         if args.opt_text_overlay and label:
             box = draw.textbbox((0, 0), label, font=self.label_font)
             w, h = box[2] - box[0], box[3] - box[1]
-            x, y = (args.width - w) // 2, args.height - h - 25
+            # Reserve the same visible margin when a larger export is scaled
+            # down to the README's desktop player width.
+            margin = max(OVERLAY_BOTTOM_MARGIN, round(args.width * OVERLAY_BOTTOM_MARGIN / 838))
+            x, y = (args.width - w) // 2, args.height - h - margin
             draw.rounded_rectangle((x - 18, y - 10, x + w + 18, y + h + 12), radius=9, fill="#101923", outline="#42596d", width=1)
             draw.text((x, y - box[1]), label, font=self.label_font, fill="#f1f6fb")
         return image
@@ -1029,13 +1003,36 @@ def render_capture(args, name, selected, raster, cached=()):
 
 def fingerprint(args):
     # Encoding-only options can change while reusing the exact same recording.
-    return {"recipe": 9, "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+    return {"recipe": 10, "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
             "dll_sha256": hashlib.sha256(args.binary.with_name("asciichat.dll").read_bytes()).hexdigest() if os.name == "nt" else None,
             "media": str(args.media_file), "media_sha256": hashlib.sha256(args.media_file.read_bytes()).hexdigest(),
-            "face": str(args.face_file), "face_sha256": hashlib.sha256(args.face_file.read_bytes()).hexdigest() if args.face_file else FACE_URL,
             "start": args.media_file_start, "cols": args.cols, "rows": args.rows, "ui_cols": args.ui_cols, "ui_rows": args.ui_rows, "art_cell_scale": args.art_cell_scale,
             "chapters": [{k: v for k, v in asdict(c).items() if k != "label"}
                          for c in chapters(args.segment_duration_scale) + tui_chapters(args.segment_duration_scale)]}
+
+
+def compatible_fingerprint(saved, current):
+    saved = json.loads(json.dumps(saved))
+    if saved.get("recipe") == 9:
+        saved["recipe"] = 10
+        saved.pop("face", None)
+        saved.pop("face_sha256", None)
+        saved["chapters"] = [c for c in saved["chapters"] if c["name"] != "face-follow"]
+    for chapter in saved["chapters"]:
+        chapter.pop("label", None)
+    return saved == json.loads(json.dumps(current))
+
+
+def omit_legacy_face(evidence):
+    if any(c["name"] == "face-follow" for c in evidence["main"]):
+        evidence["main"] = [c for c in evidence["main"] if c["name"] != "face-follow"]
+        # The legacy outro also contains that face. End with clean dog-video
+        # footage from the introduction rather than replaying the face clip.
+        intro = next(c for c in evidence["main"] if c["name"] == "intro")
+        outro = next(c for c in evidence["main"] if c["name"] == "outro")
+        outro["end"] = intro["end"]
+        outro["start"] = outro["end"] - outro["seconds"]
+        evidence["outro_capture"] = "intro"
 
 
 def audio_quality(args):
@@ -1108,9 +1105,9 @@ def assemble(args, files, evidence):
         raise RuntimeError("Encoder exceeded requested size budget; inspect manifest/encode logs")
     quality = audio_quality(args)
     manifest = {"options": option_values(args),
-                "output_probe": result, "recording": evidence, "face_source": FACE_URL,
+                "output_probe": result, "recording": evidence,
                 "silent_call": {"start": call_start / args.speed, "seconds": call_seconds / args.speed},
-                "commands": COMMANDS, "audio_quality": quality, "raster_version": 8, "chapters": [p.stem for p in files]}
+                "commands": COMMANDS, "audio_quality": quality, "raster_version": 9, "chapters": [p.stem for p in files]}
     (args.work_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     (args.work_dir / (args.output.stem + ".manifest.json")).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"\nReady: {args.output}\n{result['format']['duration']} seconds / {args.output_fps:g} fps / {int(result['format']['size']) / 1e6:.2f} MB", flush=True)
@@ -1167,11 +1164,10 @@ def main():
     if args.reuse_capture:
         saved = json.loads(evidence_file.read_text(encoding="utf-8"))
         # Overlay wording does not change the native keyboard performance.
-        for chapter in saved["fingerprint"]["chapters"]:
-            chapter.pop("label", None)
-        if saved["fingerprint"] != json.loads(json.dumps(identity)):
+        if not compatible_fingerprint(saved["fingerprint"], identity):
             raise ValueError("Saved recording settings do not match; omit --reuse-capture or choose its original binary/media/dimensions/start")
         evidence = saved["evidence"]
+        omit_legacy_face(evidence)
     else:
         prepare(args, main_chapters)
         evidence = record(args, main_chapters)
@@ -1203,19 +1199,23 @@ def main():
         raster_options = ("width", "height", "cols", "rows", "ui_cols", "ui_rows", "art_cell_scale", "font", "opt_text_overlay")
         current = option_values(args)
         candidates = [args.work_dir / (name + ".mp4") for name in expected_names]
-        if (previous.get("raster_version") == 8 and
+        if (previous.get("raster_version") == 9 and
                 all(previous["options"].get(k) == current[k] for k in raster_options)):
             old = {c["name"]: c for key in ("main", "ui", "patterns") for c in previous["recording"][key]}
             old.update({c["name"]: c for c in previous["recording"].get("call", {}).get("chapters", [])})
             cached = {c["name"] for c in selected + extras
                       if old.get(c["name"]) == c and (args.work_dir / (c["name"] + ".mp4")).is_file()}
-        if (previous.get("raster_version") == 8 and previous["recording"] == evidence and previous["chapters"] == expected_names and
+        if (previous.get("raster_version") == 9 and previous["recording"] == evidence and previous["chapters"] == expected_names and
                 all(previous["options"].get(k) == current[k] for k in raster_options) and
                 all(p.is_file() for p in candidates)):
             print("Reusing rendered chapters; applying export settings...", flush=True)
             files = candidates
     if files is None:
-        files = render_capture(args, "main", selected, raster, cached)
+        main_selection = [c for c in selected if not (c["name"] == "outro" and evidence.get("outro_capture"))]
+        files = render_capture(args, "main", main_selection, raster, cached)
+        if evidence.get("outro_capture"):
+            outro = next(c for c in selected if c["name"] == "outro")
+            files += render_capture(args, "main", [outro], raster, cached)
         patterns = []
         for c in evidence["patterns"]:
             patterns += render_capture(args, c["name"], [c], raster, cached)
