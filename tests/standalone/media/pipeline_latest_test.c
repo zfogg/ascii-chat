@@ -70,6 +70,30 @@ int main(void) {
     SAFE_FREE(owned);
     SAFE_FREE(reused);
   }
+  outbuf_t output = {0};
+  // Every color/render mode and a wide fallback must match the owned API.
+  for (int render = 0; render < 3; ++render) {
+    caps.render_mode = render;
+    for (int color = TERM_COLOR_NONE; color <= TERM_COLOR_TRUECOLOR; ++color) {
+      caps.color_level = color;
+      for (size_t i = 0; i < sizeof(widths) / sizeof(widths[0]); ++i) {
+        char *owned = ascii_convert_with_capabilities_fit(source, widths[i], 6, &caps, true, false, " .:#", false);
+        char *borrowed = ascii_convert_with_buffers(source, widths[i], 6, &caps, true, false, " .:#", false,
+                                                    &workspace, &output);
+        CHECK(owned && borrowed && borrowed == output.buf && strcmp(owned, borrowed) == 0);
+        SAFE_FREE(owned);
+      }
+    }
+  }
+  char *buffer = output.buf;
+  caps.render_mode = RENDER_MODE_FOREGROUND;
+  caps.color_level = TERM_COLOR_TRUECOLOR;
+  for (unsigned i = 0; i < 1000; ++i) {
+    source->pixels[0].r = (uint8_t)i;
+    CHECK(ascii_convert_with_buffers(source, 20, 6, &caps, true, false, " .:#", false,
+                                     &workspace, &output) == buffer);
+  }
+  SAFE_FREE(output.buf);
   image_destroy(workspace);
   image_destroy(source);
   return 0;

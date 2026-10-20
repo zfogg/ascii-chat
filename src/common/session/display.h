@@ -356,6 +356,9 @@ void session_display_reset_first_frame(session_display_ctx_t *ctx);
  * @ingroup session
  */
 char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t *image);
+/** Single display owner; result must be released before its next conversion. */
+char *session_display_convert_to_ascii_reuse(session_display_ctx_t *ctx, const image_t *image);
+void session_display_release_ascii(session_display_ctx_t *ctx, char *ascii);
 
 /** @} */
 

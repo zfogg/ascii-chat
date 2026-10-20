@@ -257,6 +257,15 @@ char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t
                                                const bool stretch, const char *palette_chars, const bool contain,
                                                image_t **workspace) {
 
+  return ascii_convert_with_buffers(original, width, height, caps, use_aspect_ratio, stretch, palette_chars,
+                                    contain, workspace, NULL);
+}
+
+char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const ssize_t height,
+                                               const terminal_capabilities_t *caps, const bool use_aspect_ratio,
+                                               const bool stretch, const char *palette_chars, const bool contain,
+                                               image_t **workspace, outbuf_t *output) {
+
   if (original == NULL || caps == NULL) {
     log_error("Invalid parameters for ascii_convert_with_capabilities");
     return NULL;
@@ -386,7 +395,9 @@ char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t
   }
 
   // Use the capability-aware image printing function with client's palette
+  outbuf_t *previous_output = ascii_render_set_output_target(output);
   char *ascii = image_print_with_capabilities(resized, caps, palette_chars);
+  ascii_render_set_output_target(previous_output);
 
   uint64_t prof_print_end_ns = time_get_ns();
 
@@ -408,7 +419,8 @@ char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t
   if (ascii_len == 0) {
     log_error("Capability-aware ASCII conversion returned empty string (resized dimensions: %dx%d)", resized->w,
               resized->h);
-    SAFE_FREE(ascii);
+    if (!output)
+      SAFE_FREE(ascii);
     if (!workspace)
       image_destroy(resized);
     return NULL;

@@ -36,8 +36,10 @@ instead of polling every millisecond. Three reusable frame slots keep capture,
 queued and displayed images distinct; recording retains shared owning buffers.
 Display-owned resize/flip/filter images and terminal assembly storage are reused
 until dimensions/capacity change. Typical render rows use invocation-local stack
-scratch, with a heap fallback for widths above 512. ASCII output and immutable
-UI submissions retain their owned allocations and memory tracking.
+scratch, with a heap fallback for widths above 512. Mirror reuses its ASCII output
+buffer. Three reference-counted UI snapshot slots copy each submission directly
+into owned storage; an in-flight reader prevents its slot from being reused.
+Capacity growth, effects and recording retain tracked allocation paths.
 
 Local file playback refills its 150 ms audio queue below 100 ms instead of waking
 on every device callback. Capture/AEC and software-only transmission keep their
@@ -60,7 +62,8 @@ cells as PNG/text, raw ANSI, logs and per-mode activity JSON. These controlled
 
 Native regressions cover cache removal/reuse, empty lookups, zero-lock warm
 palette reads, allocation-free deadlock scans, frame-slot ownership, resize
-workspace output equivalence (including wide heap fallback), non-consuming input
+workspace output equivalence (including wide heap fallback), 1,000 warmed ASCII
+conversions and UI submissions with an older snapshot held in flight, non-consuming input
 probes, Escape timing, paste/editor routing and zero-lock idle UI queries.
 
 A verified 15 FPS mirror sample, with the inspector open, measured approximately:
@@ -74,13 +77,13 @@ A verified 15 FPS mirror sample, with the inspector open, measured approximately
 | display | 47 |
 | ffmpeg_prefetch | 80 |
 | queue_not_empty | 16 |
-| debug_memory | 93 |
+| debug_memory | 0 after warm-up |
 | worker_mutex | 31-39 |
 | ui_controller | 31 |
 | ui_input | 0 |
 
-The display queue performs roughly three acquisitions per video frame, and
-tracked ASCII output/UI ownership accounts for roughly six memory operations
-per frame. Connected client/discovery workloads additionally own network and
+The display queue performs roughly three acquisitions per video frame. Warm
+mirror rendering no longer allocates ASCII output or UI snapshots per frame.
+Connected client/discovery workloads additionally own network and
 audio buffers; the zero mirror buffer-domain result is not a claim about those
 transport paths.

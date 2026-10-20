@@ -101,6 +101,7 @@ typedef struct session_display_ctx {
 
   /** @brief Digital rain effect context (NULL if disabled) */
   digital_rain_t *digital_rain;
+  outbuf_t ascii_workspace;
   image_t *resize_workspace;
   image_t *flip_workspace;
   image_t *filter_workspace;
@@ -421,6 +422,7 @@ void session_display_destroy(session_display_ctx_t *ctx) {
   image_destroy(ctx->filter_workspace);
   ctx->resize_workspace = ctx->flip_workspace = ctx->filter_workspace = NULL;
   SAFE_FREE(ctx->tty_frame_buffer);
+  SAFE_FREE(ctx->ascii_workspace.buf);
   ctx->initialized = false;
 
   // Clear the cached display context in splash state to prevent use-after-free
@@ -544,7 +546,7 @@ bool session_display_has_render_file(session_display_ctx_t *ctx) {
  * Session Display ASCII Conversion Functions
  * ============================================================================ */
 
-char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t *image) {
+static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, bool reuse) {
   uint64_t stats_start = time_get_ns();
   if (!ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "ctx is NULL");
@@ -612,7 +614,8 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 
   if ((flip_x_enabled || flip_y_enabled) && image->w > 1 && image->h > 1 && image->pixels) {
     uint64_t t_flip_alloc_start = time_get_ns();
-    flipped_image = display_image_workspace(&ctx->flip_workspace, image->w, image->h);
+    flipped_image = ctx->render_file ? image_new(image->w, image->h)
+                                    : display_image_workspace(&ctx->flip_workspace, image->w, image->h);
     uint64_t t_flip_alloc_end = time_get_ns();
 
     if (flipped_image) {
@@ -671,7 +674,8 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   image_t *filtered_image = NULL;
   if (color_filter != COLOR_FILTER_NONE && color_filter != COLOR_FILTER_RAINBOW) {
     // Create a copy to avoid modifying the original
-    filtered_image = display_image_workspace(&ctx->filter_workspace, display_image->w, display_image->h);
+    filtered_image = ctx->render_file ? image_new(display_image->w, display_image->h)
+                                     : display_image_workspace(&ctx->filter_workspace, display_image->w, display_image->h);
     if (filtered_image && filtered_image->pixels && display_image->pixels) {
       memcpy(filtered_image->pixels, display_image->pixels,
              (size_t)display_image->w * (size_t)display_image->h * sizeof(rgb_pixel_t));
@@ -688,9 +692,12 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   uint64_t t_filter_end = time_get_ns();
 
   uint64_t t_convert_start = time_get_ns();
+  // Recording converts concurrently on its encoder thread and retains owned output.
+  outbuf_t *output = reuse && !ctx->render_file && color_filter == COLOR_FILTER_NONE && !matrix_rain_enabled
+                         ? &ctx->ascii_workspace : NULL;
   // Call the standard ASCII conversion using the filtered (or original) image
-  char *result = ascii_convert_with_capabilities_workspace(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio,
-                                                 stretch, ctx->palette_chars, false, &ctx->resize_workspace);
+  char *result = ascii_convert_with_buffers(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio,
+                                                 stretch, ctx->palette_chars, false, ctx->render_file ? NULL : &ctx->resize_workspace, output);
   uint64_t t_convert_end = time_get_ns();
 
   // Apply rainbow color filter to ANSI output by replacing RGB values
@@ -736,6 +743,10 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 
   uint64_t t_cleanup_start = time_get_ns();
   // Scratch images remain owned by the display until resize or teardown.
+  if (ctx->render_file) {
+    image_destroy(filtered_image);
+    image_destroy(flipped_image);
+  }
   uint64_t t_cleanup_end = time_get_ns();
 
   // Log total breakdown with actual measured times
@@ -802,6 +813,19 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   }
   SAFE_FREE(visualization_frame);
   session_display_write_ascii(ctx, frame_data);
+}
+
+char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t *image) {
+  return convert_to_ascii(ctx, image, false);
+}
+
+char *session_display_convert_to_ascii_reuse(session_display_ctx_t *ctx, const image_t *image) {
+  return convert_to_ascii(ctx, image, true);
+}
+
+void session_display_release_ascii(session_display_ctx_t *ctx, char *ascii) {
+  if (!ctx || ascii != ctx->ascii_workspace.buf)
+    SAFE_FREE(ascii);
 }
 
 void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *ascii, bool fresh) {
@@ -937,8 +961,13 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     size_t total_size = cursor_seq_len + frame_len;
 
     if (ctx->tty_frame_capacity < total_size) {
-      ctx->tty_frame_buffer = SAFE_REALLOC(ctx->tty_frame_buffer, total_size, char *);
-      ctx->tty_frame_capacity = total_size;
+      size_t capacity = ctx->tty_frame_capacity ? ctx->tty_frame_capacity : 4096;
+      while (capacity < total_size && capacity <= SIZE_MAX / 2)
+        capacity *= 2;
+      if (capacity < total_size)
+        capacity = total_size;
+      ctx->tty_frame_buffer = SAFE_REALLOC(ctx->tty_frame_buffer, capacity, char *);
+      ctx->tty_frame_capacity = capacity;
     }
     char *frame_buffer = ctx->tty_frame_buffer;
     if (frame_buffer) {

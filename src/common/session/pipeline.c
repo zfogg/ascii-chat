@@ -613,7 +613,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
       // Convert to ASCII
       image_t tmp = {.w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels};
       uint64_t conversion_started_ns = time_get_ns();
-      char *ascii = session_display_convert_to_ascii(pipeline->display, &tmp);
+      char *ascii = session_display_convert_to_ascii_reuse(pipeline->display, &tmp);
       uint64_t converted_ns = time_get_ns();
       double read_ms = (double)(frame->captured_ns - frame->acquisition_started_ns) / NS_PER_MS_INT;
       double queue_ms = (double)(conversion_started_ns - frame->captured_ns) / NS_PER_MS_INT;
@@ -636,7 +636,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
                     (double)(published_ns - acquisition_started_ns) / NS_PER_MS_INT, fresh, read_ms, queue_ms,
                     convert_ms, (double)(published_ns - converted_ns) / NS_PER_MS_INT);
         }
-        SAFE_FREE(ascii);
+        session_display_release_ascii(pipeline->display, ascii);
       } else {
         log_error_every(US_PER_SEC_INT, "Failed to convert captured frame to ASCII; skipping display frame");
       }

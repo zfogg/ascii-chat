@@ -100,7 +100,7 @@ def check_activity(rows, artifacts, name):
         assert max(activity["ui_input"]) < 5, activity
         assert max(activity["worker_mutex"]) < 100, activity
         assert max(activity["buffer_domain"]) < 5, activity
-        assert max(activity["debug_memory"]) < 180, activity
+        assert max(activity["debug_memory"]) < 1, activity
         assert max(activity["queue_not_empty"]) < 90, activity
     # The worker is signaled by devices and has a 10 ms fallback; each condition
     # wait releases/reacquires its mutex in addition to the outer lock/unlock.
@@ -153,7 +153,8 @@ def inspect(term, artifacts, name, required):
     if name == "mirror":
         term.resize(30, 160)
         term.write("\x1b[H")
-        expect_sync(term, lambda t: "item 1/" in t, "Hotspot capture Home")
+        expect_sync(term, lambda t: "item 1/" in t and
+                    f"page 1/{(selected(t)[1] + 21) // 22}" in t, "Hotspot capture Home after resize")
         term.write("\x1b[C" * 4)
         text = expect_sync(term, lambda t: "page 5/" in t and "debug_memory." in t and "display." in t,
                            "Missing hotspot page")

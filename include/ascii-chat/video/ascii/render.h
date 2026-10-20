@@ -22,6 +22,7 @@ char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int str
 /** Prepared row storage shared by ISA-owned processing loops. No pixel work occurs here. */
 typedef struct {
   outbuf_t output;
+  outbuf_t *output_target;
   size_t width;
   uint32_t table[64];
   uint32_t *scratch, *packed, *index, *glyph, *fg, *bg;
@@ -52,3 +53,8 @@ DECLARE_HALF_PROCESSOR(avx2);
 DECLARE_HALF_PROCESSOR(neon);
 DECLARE_HALF_PROCESSOR(sve);
 #undef DECLARE_HALF_PROCESSOR
+
+/** Internal one-shot output target, consumed by the next frame initializer.
+ * Returns the prior target so capability conversion can restore its scope.
+ */
+outbuf_t *ascii_render_set_output_target(outbuf_t *target);

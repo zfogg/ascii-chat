@@ -244,6 +244,31 @@ int main(int argc, char **argv) {
     CHECK(await_flag(&entered));
     ui_controller_finish(STDOUT_FILENO, "\nUI FINISHED\n", 13);
     ui_controller_shutdown();
+
+    // Hold an old media callback in flight while replacing the current frame.
+    // Warm all three slots, then verify publishing fixed-size frames allocates nothing.
+    atomic_store(&entered, false);
+    atomic_store(&proceed, false);
+    CHECK(ui_controller_submit(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, slow_render, snapshot,
+                               sizeof(snapshot)) == ASCIICHAT_OK);
+    CHECK(await_flag(&entered));
+    const char media[] = "frame stays immutable";
+    for (unsigned i = 0; i < 8; ++i)
+      CHECK(ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, media, sizeof(media)) == ASCIICHAT_OK);
+#ifndef NDEBUG
+    bool found = false;
+    CHECK(named_registry_for_each(count_entry, NULL, &found) == ASCIICHAT_OK && found);
+    CHECK(memory_mutex);
+    uint64_t media_memory_locks = memory_mutex->lock_count;
+#endif
+    for (unsigned i = 0; i < 1000; ++i)
+      CHECK(ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, media, sizeof(media)) == ASCIICHAT_OK);
+#ifndef NDEBUG
+    CHECK(memory_mutex->lock_count == media_memory_locks);
+#endif
+    atomic_store(&proceed, true);
+    ui_controller_remove(UI_SCREEN_MEDIA);
+    ui_controller_shutdown();
   } else {
     for (unsigned i = 0; i < 600; ++i)
       CHECK(named_register((uintptr_t)&objects[i], "regression_entry", "test", "%p", __FILE__, __LINE__, __func__, 0) !=

@@ -32,12 +32,31 @@ typedef struct {
   int fd;
 } screen_terminal_t;
 
+typedef struct media_snapshot_slot media_snapshot_slot_t;
+
 typedef struct {
   _Atomic unsigned references;
+  media_snapshot_slot_t *slot;
   screen_terminal_t *terminal;
   uint64_t frame_id, submitted_ns, acquisition_started_ns;
   _Alignas(max_align_t) char data[];
 } screen_snapshot_t;
+
+struct media_snapshot_slot {
+  _Atomic bool busy;
+  screen_snapshot_t *snapshot;
+  size_t capacity;
+};
+static media_snapshot_slot_t g_media_snapshots[3];
+
+typedef struct {
+  int fd;
+  bool media;
+  terminal_size_t dimensions;
+  size_t len;
+  const char *text;
+} text_snapshot_t;
+static void render_text(terminal_size_t size, const void *data);
 
 typedef struct screen {
   struct screen *next;
@@ -319,7 +338,60 @@ static void release_terminal(screen_terminal_t *terminal) {
 static void release_snapshot(screen_snapshot_t *snapshot) {
   if (snapshot && atomic_fetch_sub(&snapshot->references, 1) == 1) {
     release_terminal(snapshot->terminal);
-    SAFE_FREE(snapshot);
+    snapshot->terminal = NULL;
+    if (snapshot->slot)
+      atomic_store_explicit(&snapshot->slot->busy, false, memory_order_release);
+    else
+      SAFE_FREE(snapshot);
+  }
+}
+
+static screen_snapshot_t *allocate_snapshot(ui_screen_t screen, size_t bytes) {
+  media_snapshot_slot_t *slot = NULL;
+  if (screen == UI_SCREEN_MEDIA) {
+    for (size_t i = 0; i < 3; ++i) {
+      bool expected = false;
+      if (atomic_compare_exchange_strong_explicit(&g_media_snapshots[i].busy, &expected, true,
+                                                  memory_order_acquire, memory_order_relaxed)) {
+        slot = &g_media_snapshots[i];
+        break;
+      }
+    }
+  }
+  screen_snapshot_t *copy;
+  if (slot) {
+    if (slot->capacity < bytes) {
+      size_t capacity = slot->capacity ? slot->capacity : 4096;
+      while (capacity < bytes && capacity <= SIZE_MAX / 2)
+        capacity *= 2;
+      if (capacity < bytes)
+        capacity = bytes;
+      slot->snapshot = SAFE_REALLOC(slot->snapshot, capacity, screen_snapshot_t *);
+      slot->capacity = capacity;
+    }
+    copy = slot->snapshot;
+  } else {
+    copy = SAFE_MALLOC(bytes, screen_snapshot_t *);
+  }
+  if (!copy) {
+    if (slot)
+      atomic_store(&slot->busy, false);
+    return NULL;
+  }
+  atomic_init(&copy->references, 1);
+  copy->slot = slot;
+  copy->terminal = NULL;
+  return copy;
+}
+
+static void destroy_media_snapshots(void) {
+  for (size_t i = 0; i < 3; ++i) {
+    bool expected = false;
+    if (atomic_compare_exchange_strong(&g_media_snapshots[i].busy, &expected, true)) {
+      SAFE_FREE(g_media_snapshots[i].snapshot);
+      g_media_snapshots[i].capacity = 0;
+      atomic_store(&g_media_snapshots[i].busy, false);
+    }
   }
 }
 
@@ -798,19 +870,24 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   asciichat_error_t err = controller_start();
   if (err != ASCIICHAT_OK)
     return err;
-  if (bytes > SIZE_MAX - sizeof(screen_snapshot_t))
+  size_t payload = render == render_text ? ((const text_snapshot_t *)snapshot)->len : 0;
+  if (bytes > SIZE_MAX - sizeof(screen_snapshot_t) || payload > SIZE_MAX - sizeof(screen_snapshot_t) - bytes)
     return SET_ERRNO(ERROR_MEMORY, "UI snapshot is too large");
-  screen_snapshot_t *copy = SAFE_MALLOC(sizeof(*copy) + bytes, screen_snapshot_t *);
+  screen_snapshot_t *copy = allocate_snapshot(screen, sizeof(*copy) + bytes + payload);
   if (!copy)
     return SET_ERRNO(ERROR_MEMORY, "Cannot copy UI snapshot");
-  atomic_init(&copy->references, 1);
   memcpy(copy->data, snapshot, bytes);
+  if (payload) {
+    text_snapshot_t *text = (text_snapshot_t *)copy->data;
+    text->text = copy->data + bytes;
+    memcpy((char *)text->text, ((const text_snapshot_t *)snapshot)->text, payload);
+  }
   uint64_t prepared_ns = time_get_ns();
   mutex_lock(&g_mutex);
   uint64_t locked_ns = time_get_ns();
   if (g_finished) {
     mutex_unlock(&g_mutex);
-    SAFE_FREE(copy);
+    release_snapshot(copy);
     return ASCIICHAT_OK;
   }
   copy->frame_id = screen == UI_SCREEN_MEDIA && fresh_frame ? ++g_media_frame_id : 0;
@@ -831,14 +908,14 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     int retained_fd = platform_dup(fd);
     if (retained_fd < 0) {
       mutex_unlock(&g_mutex);
-      SAFE_FREE(copy);
+      release_snapshot(copy);
       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot retain UI output descriptor");
     }
     copy->terminal = SAFE_MALLOC(sizeof(*copy->terminal), screen_terminal_t *);
     if (!copy->terminal) {
       platform_close(retained_fd);
       mutex_unlock(&g_mutex);
-      SAFE_FREE(copy);
+      release_snapshot(copy);
       return SET_ERRNO(ERROR_MEMORY, "Cannot retain UI terminal ownership");
     }
     atomic_init(&copy->terminal->references, 1);
@@ -946,14 +1023,6 @@ ui_presentation_state_t ui_controller_state(void) {
   }
   return state;
 }
-
-typedef struct {
-  int fd;
-  bool media;
-  terminal_size_t dimensions;
-  size_t len;
-  char text[];
-} text_snapshot_t;
 
 // Bound REP expansion to one terminal row before allocating its expanded text.
 static char *expand_media_row(const char *row, size_t length, int columns) {
@@ -1070,18 +1139,12 @@ static asciichat_error_t present_text(ui_screen_t screen, int fd, terminal_size_
   uint64_t entered_ns = time_get_ns();
   if (!data || !len || len > UI_CONTROLLER_MAX_FRAME_BYTES)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI frame");
-  text_snapshot_t *text = SAFE_MALLOC(sizeof(*text) + len, text_snapshot_t *);
-  if (!text)
-    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate UI frame");
-  text->fd = fd;
-  text->media = screen == UI_SCREEN_MEDIA;
-  text->dimensions = (terminal_size_t){.cols = GET_OPTION(width), .rows = GET_OPTION(height)};
-  text->len = len;
-  memcpy(text->text, data, len);
+  text_snapshot_t text = {.fd = fd, .media = screen == UI_SCREEN_MEDIA,
+                          .dimensions = {.cols = GET_OPTION(width), .rows = GET_OPTION(height)},
+                          .len = len, .text = data};
   uint64_t prepared_ns = time_get_ns();
-  asciichat_error_t err = submit_screen(screen, fd, minimum, render_text, text, sizeof(*text) + len, NULL, fresh);
+  asciichat_error_t err = submit_screen(screen, fd, minimum, render_text, &text, sizeof(text), NULL, fresh);
   uint64_t submitted_ns = time_get_ns();
-  SAFE_FREE(text);
   uint64_t finished_ns = time_get_ns();
   if (screen == UI_SCREEN_MEDIA && finished_ns - entered_ns > 50 * NS_PER_MS_INT)
     log_debug_every(US_PER_SEC_INT, "UI_TEXT_STAGE: prepare_ms=%.2f submit_ms=%.2f free_ms=%.2f",
@@ -1106,6 +1169,7 @@ void ui_controller_shutdown(void) {
   for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
     release_screen(&g_screens[i], i == UI_SCREEN_NOTICE);
   }
+  destroy_media_snapshots();
   cond_destroy(&g_render_requested);
   cond_destroy(&g_render_done);
   mutex_destroy(&g_mutex);

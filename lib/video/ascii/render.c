@@ -11,6 +11,29 @@
 #include <limits.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
 
+static _Thread_local outbuf_t *g_output_target;
+
+outbuf_t *ascii_render_set_output_target(outbuf_t *target) {
+  outbuf_t *previous = g_output_target;
+  g_output_target = target;
+  return previous;
+}
+
+static void prepare_output(ascii_frame_t *frame, size_t capacity, outbuf_t *target) {
+  frame->output_target = target;
+  if (target) {
+    if (target->cap < capacity) {
+      target->buf = SAFE_REALLOC(target->buf, capacity, char *);
+      target->cap = capacity;
+    }
+    frame->output = *target;
+    frame->output.len = 0;
+  } else {
+    frame->output.cap = capacity;
+    frame->output.buf = SAFE_MALLOC(capacity, char *);
+  }
+}
+
 static void emit_color(outbuf_t *out, ascii_color_t mode, bool background, int value) {
   if (mode == ASCII_COLOR_TRUE) {
     if (background)
@@ -169,6 +192,7 @@ char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int str
 }
 
 asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, const char *palette) {
+  outbuf_t *target = ascii_render_set_output_target(NULL);
   memset(frame, 0, sizeof(*frame));
   if (!image || !image->pixels || image->w <= 0 || image->h <= 0 || !palette || !palette[0])
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image or palette");
@@ -183,8 +207,7 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
   utf8_palette_cache_t *cache = get_utf8_palette_cache(palette);
   if (!cache)
     return ERROR_INVALID_PARAM;
-  frame->output.cap = capacity;
-  frame->output.buf = SAFE_MALLOC(capacity, char *);
+  prepare_output(frame, capacity, target);
   frame->width = (size_t)image->w;
   for (size_t i = 0; i < 64; ++i)
     memcpy(frame->table + i, cache->cache64[i].utf8_bytes, cache->cache64[i].byte_len);
@@ -220,11 +243,14 @@ char *ascii_frame_finish(ascii_frame_t *frame) {
   if (frame->scratch != frame->inline_scratch)
     SAFE_FREE(frame->scratch);
   ob_term(&frame->output);
+  if (frame->output_target)
+    *frame->output_target = frame->output;
   return frame->output.buf;
 }
 
 asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride,
                                         ascii_color_t mode) {
+  outbuf_t *target = ascii_render_set_output_target(NULL);
   memset(frame, 0, sizeof(*frame));
   size_t row_bytes, extent, bytes, capacity;
   if (!rgb || width <= 0 || height <= 0 || mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE ||
@@ -238,8 +264,7 @@ asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb
       checked_size_mul(capacity, 48u, &capacity) != ASCIICHAT_OK ||
       checked_size_add(capacity, 1u, &capacity) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid half-block stride or size");
-  frame->output.cap = capacity;
-  frame->output.buf = SAFE_MALLOC(capacity, char *);
+  prepare_output(frame, capacity, target);
   frame->width = (size_t)width;
   frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
   frame->packed = frame->scratch;
