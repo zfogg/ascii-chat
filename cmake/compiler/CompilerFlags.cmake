@@ -256,6 +256,11 @@ function(configure_debug_build_flags BUILD_TYPE)
     # Windows-specific debug info formats
     if(WIN32)
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+            # Let LLD merge CodeView type records using compiler-provided hashes.
+            check_c_compiler_flag("-gcodeview-ghash" ASCIICHAT_SUPPORTS_CODEVIEW_GHASH)
+            if(ASCIICHAT_SUPPORTS_CODEVIEW_GHASH)
+                target_compile_options(asciichat-project-options INTERFACE -gcodeview-ghash)
+            endif()
             if(BUILD_TYPE STREQUAL "Debug")
                 # CodeView debug format for Debug mode
                 target_compile_options(asciichat-project-options INTERFACE -gcodeview)
