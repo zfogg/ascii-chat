@@ -26,7 +26,11 @@ int main(int argc, char **argv) {
   for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
     char absolute[4096];
     safe_snprintf(absolute, sizeof(absolute), "%s/%s", ASCIICHAT_SOURCE_ROOT, paths[i]);
-    CHECK(strcmp(extract_project_relative_path(absolute), paths[i]) == 0);
+    if (ASCIICHAT_SOURCE_ROOT[0]) {
+      CHECK(strcmp(extract_project_relative_path(absolute), paths[i]) == 0);
+    } else {
+      CHECK(extract_project_relative_path(absolute) == absolute);
+    }
     CHECK(extract_project_relative_path(paths[i]) == paths[i]);
 
     // CMake uses forward slashes; __FILE__ on Windows can use backslashes.
@@ -34,11 +38,15 @@ int main(int argc, char **argv) {
       if (*p == '/')
         *p = '\\';
     }
-    CHECK(extract_project_relative_path(absolute) == absolute + strlen(ASCIICHAT_SOURCE_ROOT) + 1);
+    if (ASCIICHAT_SOURCE_ROOT[0]) {
+      CHECK(extract_project_relative_path(absolute) == absolute + strlen(ASCIICHAT_SOURCE_ROOT) + 1);
+    }
 #ifdef _WIN32
     for (size_t j = 0; j < strlen(ASCIICHAT_SOURCE_ROOT); j++)
       absolute[j] = (char)toupper((unsigned char)absolute[j]);
-    CHECK(extract_project_relative_path(absolute) == absolute + strlen(ASCIICHAT_SOURCE_ROOT) + 1);
+    if (ASCIICHAT_SOURCE_ROOT[0]) {
+      CHECK(extract_project_relative_path(absolute) == absolute + strlen(ASCIICHAT_SOURCE_ROOT) + 1);
+    }
 #endif
   }
 
