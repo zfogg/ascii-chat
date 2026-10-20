@@ -1486,11 +1486,12 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
     if (addr_int >= base && addr_int < end) {
       strncpy_s(matches[count].path, PLATFORM_MAX_PATH_LENGTH, mod_path, PLATFORM_MAX_PATH_LENGTH - 1);
       matches[count].path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
-      matches[count].file_offset = addr_int - base;
+      matches[count].symbolizer_address = addr_int - base;
+      matches[count].relative_address = true;
 
 #ifndef NDEBUG
       log_debug("[Windows EnumProcessModules] addr=%p matches %s (offset=%lx, base=%p)", addr, mod_path,
-                matches[count].file_offset, (void *)base);
+                matches[count].symbolizer_address, (void *)base);
 #endif
       count++;
     }

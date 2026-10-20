@@ -786,8 +786,10 @@ asciichat_error_t platform_dup2(int source_fd, int target_fd);
 typedef struct {
   /** Path to the binary (exe, .so, dylib, DLL, etc.) */
   char path[PLATFORM_MAX_PATH_LENGTH];
-  /** File offset within the binary (for symbolizer) */
-  uintptr_t file_offset;
+  /** Address to pass to the symbolizer */
+  uintptr_t symbolizer_address;
+  /** Whether symbolizer_address is relative to the image base */
+  bool relative_address;
 } platform_binary_match_t;
 
 /**
@@ -796,9 +798,9 @@ typedef struct {
  * platform_binary_match_t matches[2];
  * int count = get_binary_file_address_offsets(backtrace_address, matches, 2);
  * for (int i = 0; i < count; i++) {
- *     // Call llvm-symbolizer with matches[i].path and matches[i].file_offset
- *     printf("Address %p is in %s at offset %lx\n",
- *            backtrace_address, matches[i].path, matches[i].file_offset);
+ *     // Call llvm-symbolizer with matches[i].path and matches[i].symbolizer_address
+ *     printf("Address %p is in %s at symbolizer address %lx\n",
+ *            backtrace_address, matches[i].path, matches[i].symbolizer_address);
  * }
  * @endcode
  *
