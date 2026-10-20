@@ -112,13 +112,16 @@ def check_client(binary, directory, destination, name, extra=()):
     env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
     env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
                    APPDATA=str(directory), XDG_CONFIG_HOME=str(directory))
-    result = subprocess.run(
-        [str(binary), "--no-check-update", "--log-file", str(directory / (name + ".log")), "client", destination,
+    log = directory / (name + ".log")
+    command = [str(binary), "--no-check-update", "--log-file", str(log), "client", destination,
          "--test-pattern", "--video-codec", "raw", "--audio=false", "--snapshot",
          "--snapshot-delay", "0", "--width", "40", "--height", "12",
-         "--color-mode", "none", "--splash-screen=false", *extra],
-        cwd=directory, env=env, capture_output=True, timeout=30,
-    )
+         "--color-mode", "none", "--splash-screen=false", *extra]
+    try:
+        result = subprocess.run(command, cwd=directory, env=env, capture_output=True, timeout=30)
+    except subprocess.TimeoutExpired as error:
+        text = log.read_text(encoding="utf-8", errors="replace") if log.exists() else "No client log"
+        raise AssertionError(f"{name} timed out: {text[-12000:]}") from error
     if result.returncode != 0 or len(result.stdout.strip()) < 100:
         raise AssertionError(f"{name} failed ({result.returncode}): {result.stderr.decode(errors='replace')[-2000:]}")
 

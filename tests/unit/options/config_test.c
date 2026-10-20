@@ -1416,6 +1416,7 @@ Test(config, multiple_loads_accumulate_correctly) {
 
   asciichat_error_t result2 = config_load_and_apply(true, config_path2, false, &backup);
   cr_assert_eq(result2, ASCIICHAT_OK, "Second config load should succeed");
+  opts = options_get();
   // Port flag was reset in config_load_and_apply, so this is tricky to test
   // Let's just verify both loads succeeded
   cr_assert_eq(opts->webcam_index, 3, "Webcam index should be 3 after second load");
@@ -1521,6 +1522,7 @@ Test(config, integer_vs_string_port) {
 
   asciichat_error_t result2 = config_load_and_apply(true, config_path2, false, &backup);
   cr_assert_eq(result2, ASCIICHAT_OK, "String port should succeed");
+  opts = options_get();
   cr_assert_eq(opts->port, 5678, "String port should be parsed and applied");
 
   unlink(config_path2);

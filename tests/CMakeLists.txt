@@ -252,6 +252,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # Native UI fixture has its own main and is driven by the tmux harness.
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/ui_native_probe.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/sync_regressions.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/source_paths.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/client_like_lifecycle.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_multiclient_test.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/video_pipeline_test.c
@@ -843,7 +844,12 @@ if(TARGET ascii-chat-shared)
         LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
         add_test(NAME source-paths COMMAND test-source-paths "${CMAKE_CURRENT_BINARY_DIR}/source-paths.log")
-        set_tests_properties(source-paths PROPERTIES TIMEOUT 30)
+        set_tests_properties(source-paths PROPERTIES LABELS "integration" TIMEOUT 30)
+        foreach(test_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${test_build_target})
+                add_dependencies(${test_build_target} test-source-paths)
+            endif()
+        endforeach()
     endif()
 
     add_executable(test-sync-regressions EXCLUDE_FROM_ALL integration/sync_regressions.c)
@@ -1103,7 +1109,9 @@ endif()
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
     add_test(NAME event-io-integration COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/event_io.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(event-io-integration PROPERTIES LABELS "integration" TIMEOUT 180)
+    # The admission stress fixture opens 90 peers and performs serial crypto
+    # handshakes. Give it the same isolation as the Criterion process fixtures.
+    set_tests_properties(event-io-integration PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
 endif()
 
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
