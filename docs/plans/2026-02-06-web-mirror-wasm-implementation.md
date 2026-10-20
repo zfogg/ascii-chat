@@ -144,15 +144,15 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 
 **Files:**
 
-- Create: `lib/platform/wasm/threading.c`
+- Create: `lib/platform/wasm/thread.c`
 
-**Step 1: Create threading.c**
+**Step 1: Create thread.c**
 
-Create `lib/platform/wasm/threading.c`:
+Create `lib/platform/wasm/thread.c`:
 
 ```c
 /**
- * @file platform/wasm/threading.c
+ * @file platform/wasm/thread.c
  * @brief Threading abstraction for WASM/Emscripten using pthreads
  */
 
@@ -213,13 +213,13 @@ int asciichat_thread_equal(asciichat_thread_t t1, asciichat_thread_t t2) {
 
 **Step 2: Verify file created**
 
-Run: `ls -la lib/platform/wasm/threading.c`
+Run: `ls -la lib/platform/wasm/thread.c`
 Expected: File exists, ~1.2KB
 
 **Step 3: Commit**
 
 ```bash
-git add lib/platform/wasm/threading.c
+git add lib/platform/wasm/thread.c
 git commit -m "feat(wasm): Add threading platform abstraction
 
 Implement mutex and thread functions using Emscripten pthreads.
@@ -775,7 +775,7 @@ set(WASM_SOURCES
 
     # Platform layer (WASM-specific)
     ${REPO_ROOT}/lib/platform/wasm/terminal.c
-    ${REPO_ROOT}/lib/platform/wasm/threading.c
+    ${REPO_ROOT}/lib/platform/wasm/thread.c
     ${REPO_ROOT}/lib/platform/wasm/environment.c
     ${REPO_ROOT}/lib/platform/wasm/time.c
     ${REPO_ROOT}/lib/platform/wasm/init.c

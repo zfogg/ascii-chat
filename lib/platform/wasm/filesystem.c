@@ -1,6 +1,6 @@
 /**
- * @file platform/wasm/stubs/filesystem.c
- * @brief File operation stubs for WASM
+ * @file platform/wasm/filesystem.c
+ * @brief Filesystem abstraction for WASM
  * @ingroup platform
  */
 
@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include <stdarg.h>
 #include <stdarg.h>
 #include <fcntl.h>
 

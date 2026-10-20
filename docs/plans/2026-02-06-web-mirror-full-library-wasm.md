@@ -162,7 +162,7 @@ set(WASM_SOURCES
 
     # Platform layer (WASM-specific - NEW)
     ${REPO_ROOT}/lib/platform/wasm/terminal.c
-    ${REPO_ROOT}/lib/platform/wasm/threading.c
+    ${REPO_ROOT}/lib/platform/wasm/thread.c
     ${REPO_ROOT}/lib/platform/wasm/environment.c
     ${REPO_ROOT}/lib/platform/wasm/time.c
     ${REPO_ROOT}/lib/platform/wasm/init.c
@@ -319,7 +319,7 @@ export async function initMirrorWasm(xtermInstance: Terminal): Promise<MirrorWas
 ### Threading Implementation
 
 ```c
-// lib/platform/wasm/threading.c
+// lib/platform/wasm/thread.c
 #include <ascii-chat/platform/abstraction.h>
 #include <pthread.h>
 
@@ -693,7 +693,7 @@ set(WASM_SOURCES
 
     # Platform layer (WASM-specific)
     ${REPO_ROOT}/lib/platform/wasm/terminal.c
-    ${REPO_ROOT}/lib/platform/wasm/threading.c
+    ${REPO_ROOT}/lib/platform/wasm/thread.c
     ${REPO_ROOT}/lib/platform/wasm/environment.c
     ${REPO_ROOT}/lib/platform/wasm/time.c
     ${REPO_ROOT}/lib/platform/wasm/init.c

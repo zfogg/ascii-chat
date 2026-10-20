@@ -116,25 +116,24 @@ set(WEB_SRC_MIRROR
 # Platform abstraction layer for WASM
 set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/init.c
-    ${LIB_ROOT}/platform/process_title.c
     ${LIB_ROOT}/platform/wasm/terminal.c
-    ${LIB_ROOT}/platform/wasm/threading.c
+    ${LIB_ROOT}/platform/wasm/thread.c
+    ${LIB_ROOT}/platform/wasm/filesystem.c
     ${LIB_ROOT}/platform/wasm/system.c        # Provides real platform_write() override for xterm.js
     ${LIB_ROOT}/platform/wasm/time.c
     ${LIB_ROOT}/platform/wasm/string.c
     ${LIB_ROOT}/platform/wasm/lifecycle.c
+    ${LIB_ROOT}/platform/process_title.c
+    ${LIB_ROOT}/platform/filesystem.c
     ${LIB_ROOT}/platform/wasm/stubs/util.c
     ${LIB_ROOT}/platform/wasm/stubs/actions.c
-    ${LIB_ROOT}/platform/wasm/stubs/terminal.c
     ${LIB_ROOT}/platform/wasm/stubs/manpage.c
-    ${LIB_ROOT}/platform/wasm/stubs/filesystem.c  # Provides filesystem stubs (platform_write removed)
     ${LIB_ROOT}/platform/wasm/stubs/video.c
     ${LIB_ROOT}/platform/wasm/stubs/mode_defaults.c
     ${LIB_ROOT}/platform/wasm/stubs/backtrace.c
     ${LIB_ROOT}/platform/wasm/stubs/log.c
     ${LIB_ROOT}/platform/wasm/stubs/audio.c
     ${LIB_ROOT}/platform/wasm/stubs/network.c
-    ${LIB_ROOT}/platform/wasm/stubs/threading.c
     ${LIB_ROOT}/platform/wasm/stubs/misc.c
     ${LIB_ROOT}/platform/wasm/stubs/comprehensive.c
     ${LIB_ROOT}/platform/wasm/ffmpeg_decoder.c

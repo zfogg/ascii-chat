@@ -93,9 +93,6 @@ void terminal_stop_resize_detection(void) {}
 /* Known hosts stubs */
 void known_hosts_destroy(void) {}
 
-/* Platform cleanup stubs */
-void platform_cleanup_binary_path_cache(void) {}
-
 asciichat_error_t platform_restore_timer_resolution(void) {
   return ASCIICHAT_OK;
 }

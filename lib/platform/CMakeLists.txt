@@ -15,24 +15,9 @@ set(PLATFORM_SRCS_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/terminal.c
 )
 
-if(NOT EMSCRIPTEN)
-    list(APPEND PLATFORM_SRCS_COMMON ${CMAKE_CURRENT_SOURCE_DIR}/event.c)
-endif()
+list(APPEND PLATFORM_SRCS_COMMON ${CMAKE_CURRENT_SOURCE_DIR}/event.c)
 
-if(EMSCRIPTEN)
-    # WebAssembly / Emscripten build - check this FIRST before PLATFORM_POSIX
-    set(PLATFORM_SRCS
-        ${PLATFORM_SRCS_COMMON}
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/system.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/backtrace.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/init.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/lifecycle.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/string.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/threading.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/time.c
-        ${CMAKE_SOURCE_DIR}/lib/video/webcam/wasm/webcam_wasm.c
-    )
-elseif(WIN32)
+if(WIN32)
     set(PLATFORM_SRCS
         ${PLATFORM_SRCS_COMMON}
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/thread.c

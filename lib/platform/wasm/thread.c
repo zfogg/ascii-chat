@@ -1,5 +1,5 @@
 /**
- * @file platform/wasm/threading.c
+ * @file platform/wasm/thread.c
  * @brief Threading abstraction for WASM/Emscripten using pthreads
  * @ingroup platform
  */
@@ -121,4 +121,61 @@ void *ascii_tls_get(tls_key_t key) {
 
 int ascii_tls_set(tls_key_t key, void *value) {
   return pthread_setspecific(key, value);
+}
+
+int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uint64_t timeout_ns) {
+  (void)thread;
+  (void)retval;
+  (void)timeout_ns;
+  return 0;
+}
+
+bool asciichat_thread_is_initialized(asciichat_thread_t *thread) {
+  (void)thread;
+  return true;
+}
+
+typedef void thread_pool_t;
+
+thread_pool_t *thread_pool_create(int num_threads) {
+  (void)num_threads;
+  return NULL;
+}
+
+void thread_pool_destroy(thread_pool_t *pool) {
+  (void)pool;
+}
+
+int cond_init(cond_t *cond, const char *name) {
+  (void)cond;
+  (void)name;
+  return 0;
+}
+
+int cond_destroy(cond_t *cond) {
+  (void)cond;
+  return 0;
+}
+
+int cond_signal(cond_t *cond) {
+  (void)cond;
+  return 0;
+}
+
+int cond_broadcast(cond_t *cond) {
+  (void)cond;
+  return 0;
+}
+
+int cond_wait_impl(cond_t *cond, mutex_t *mutex) {
+  (void)cond;
+  (void)mutex;
+  return 0;
+}
+
+int cond_timedwait_impl(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
+  (void)cond;
+  (void)mutex;
+  (void)timeout_ns;
+  return 0;
 }

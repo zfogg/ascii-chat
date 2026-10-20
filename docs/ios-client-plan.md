@@ -688,7 +688,7 @@ elseif(EMSCRIPTEN)
     # WASM gets shared stubs + its own stubs + its own implementations
     list(APPEND PLATFORM_SOURCES ${PLATFORM_STUBS_SOURCES})
     list(APPEND PLATFORM_SOURCES
-        lib/platform/wasm/threading.c      # No-op mutexes (WASM-specific!)
+        lib/platform/wasm/thread.c         # No-op mutexes (WASM-specific!)
         lib/platform/wasm/terminal.c       # EM_JS to xterm.js (WASM-specific!)
         lib/platform/wasm/console.c        # EM_JS to browser console
         lib/platform/wasm/system.c
@@ -696,7 +696,7 @@ elseif(EMSCRIPTEN)
         lib/platform/wasm/string.c
         lib/platform/wasm/init.c
         lib/platform/wasm/stubs/crypto.c   # Auto-accept (WASM-specific!)
-        lib/platform/wasm/stubs/filesystem.c
+        lib/platform/wasm/filesystem.c
         lib/platform/wasm/stubs/log.c
     )
 endif()
@@ -827,7 +827,7 @@ void ios_render_bridge_destroy(void) {
 In `lib/platform/ios/system.c`, override `platform_write()` (not `platform_write_all()`).
 `platform_write_all()` is defined in the shared `lib/platform/system.c` and calls
 `platform_write()` in a loop — overriding at the inner function is the correct layer,
-and matches what the WASM layer does in `lib/platform/wasm/stubs/filesystem.c`.
+and matches what the WASM layer does in `lib/platform/wasm/filesystem.c`.
 
 ```c
 // lib/platform/ios/system.c

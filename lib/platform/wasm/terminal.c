@@ -8,6 +8,9 @@
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common/limits.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/terminal/fd/reader.h>
+#include <ascii-chat/ui/controller.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -60,6 +63,40 @@ int platform_get_terminal_size(int *cols, int *rows) {
   *cols = js_get_terminal_cols();
   *rows = js_get_terminal_rows();
   return 0;
+}
+
+asciichat_error_t terminal_get_size_fd(int fd, terminal_size_t *size) {
+  (void)fd;
+  return terminal_get_size(size);
+}
+
+asciichat_error_t terminal_get_size(terminal_size_t *size) {
+  (void)size;
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "Terminal operations not supported in WASM");
+}
+
+asciichat_error_t terminal_cursor_hide(void) {
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t terminal_cursor_show(void) {
+  return ASCIICHAT_OK;
+}
+
+unsigned short int terminal_get_effective_width(void) {
+  int width = GET_OPTION(width);
+  if (width > 0) {
+    return (unsigned short int)width;
+  }
+  return OPT_WIDTH_DEFAULT;
+}
+
+unsigned short int terminal_get_effective_height(void) {
+  int height = GET_OPTION(height);
+  if (height > 0) {
+    return (unsigned short int)height;
+  }
+  return OPT_HEIGHT_DEFAULT;
 }
 
 // Color mode detection - not needed for WASM mirror mode
@@ -253,5 +290,40 @@ asciichat_error_t terminal_move_cursor_relative(int offset) {
     }
   }
 
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t terminal_fd_reader_create(int fd, int frame_height, terminal_fd_reader_t **out) {
+  (void)fd;
+  (void)frame_height;
+  if (out)
+    *out = NULL;
+  return ASCIICHAT_OK;
+}
+
+void terminal_fd_reader_destroy(terminal_fd_reader_t *reader) {
+  (void)reader;
+}
+
+asciichat_error_t terminal_fd_reader_next(terminal_fd_reader_t *reader, char **out_frame) {
+  (void)reader;
+  if (out_frame)
+    *out_frame = NULL;
+  return ASCIICHAT_OK;
+}
+
+bool ui_controller_is_presenting(void) {
+  return false;
+}
+
+bool ui_controller_is_owner(void) {
+  return false;
+}
+
+asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
+  if (!data || !len)
+    return ASCIICHAT_OK;
+  if (platform_write_all(fd, data, len) != len)
+    return SET_ERRNO(ERROR_FILE_OPERATION, "Failed to write browser log output");
   return ASCIICHAT_OK;
 }
