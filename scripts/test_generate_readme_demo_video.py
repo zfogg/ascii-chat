@@ -21,6 +21,37 @@ SPEC.loader.exec_module(demo)
 
 
 class ReadmeDemoTests(unittest.TestCase):
+    def test_media_fit_preserves_all_source_corners_with_padding(self):
+        from PIL import Image, ImageDraw
+        with tempfile.TemporaryDirectory() as directory:
+            source, fitted = Path(directory) / "source.png", Path(directory) / "fitted.png"
+            image = Image.new("RGB", (320, 180), "#333333")
+            draw = ImageDraw.Draw(image)
+            colors = ((255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0))
+            for (x, y), color in zip(((0, 0), (300, 0), (0, 160), (300, 160)), colors):
+                draw.rectangle((x, y, x + 19, y + 19), fill=color)
+            image.save(source)
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(source), "-vf", demo.media_fit_filter(104, 40), str(fitted)], check=True)
+            image = Image.open(fitted).convert("RGB")
+            self.assertEqual(image.size, (832, 640))
+            self.assertEqual(image.getpixel((400, 0)), (0, 0, 0))
+            for point, color in zip(((10, 96), (822, 96), (10, 544), (822, 544)), colors):
+                self.assertEqual(image.getpixel(point), color)
+
+    def test_full_grid_corners_fit_and_oversized_grids_are_rejected(self):
+        from PIL import ImageChops, Image
+        args = demo.parser().parse_args([])
+        raster = demo.Rasterizer(args)
+        screen, stream = demo.replay_terminal(104, 40)
+        stream.feed("\x1b[1;1HM\x1b[1;104HM\x1b[40;1HM\x1b[40;104HM")
+        image = raster.draw(screen, "")
+        for x, y in ((3, 0), (827, 0), (3, 624), (827, 624)):
+            corner = image.crop((x, y, x + 8, y + 16))
+            self.assertIsNotNone(ImageChops.difference(corner, Image.new("RGB", corner.size, "#0c0c0c")).getbbox())
+        screen.resize(lines=41, columns=104)
+        with self.assertRaisesRegex(ValueError, "refusing to crop"):
+            raster.draw(screen, "")
+
     def test_zalgo_audit_checks_all_frames_including_corruption_after_midpoint(self):
         with tempfile.TemporaryDirectory() as directory:
             args = SimpleNamespace(work_dir=Path(directory), cols=8, rows=3)
@@ -152,7 +183,7 @@ class ReadmeDemoTests(unittest.TestCase):
                                  "--ffmpeg", "unused", "--ffprobe", "unused", "--output", "unused.mp4", "--work-dir", "unused",
                                  "--segment-duration-scale", "1.8", "--output-fps", "16.5", "--target-size-mb", "9.5", "--reuse-capture"], capture_output=True, text=True, check=True)
         plan = json.loads(result.stdout)
-        self.assertEqual(plan["terminal"], [50, 14])
+        self.assertEqual(plan["terminal"], [200, 56])
         self.assertEqual(plan["ui_terminal"], [200, 56])
         self.assertEqual(plan["output_pixels"], [1600, 900])
         self.assertEqual(plan["fps"], 33)
@@ -184,9 +215,9 @@ class ReadmeDemoTests(unittest.TestCase):
             plan = json.loads(result.stdout)
             self.assertEqual(plan["optimize"], optimized)
             self.assertEqual(plan["target_size_mb"], 9.5 if optimized else None)
-            self.assertEqual(plan["terminal"], [26, 10])
+            self.assertEqual(plan["terminal"], [104, 40])
             self.assertEqual(plan["ui_terminal"], [104, 40])
-            self.assertEqual(plan["art_cell_scale"], 4)
+            self.assertEqual(plan["art_cell_scale"], 1)
 
     def test_bad_dimensions_and_output_fail_before_side_effects(self):
         for flags in [["--width", "1279"], ["--height", "400"], ["--output", "out.gif"], ["--output-fps", "34"]]:

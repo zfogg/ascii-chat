@@ -94,9 +94,9 @@ The opening plays normally for 7 seconds, starting at --media-file-start.
 --segment-duration-scale lengthens feature chapters without changing the music's
 speed. Try 1.8 and 2.2 for approximately 1:55 and 2:20 feature tours.
 --speed retimes the completed movie (including music and every chapter).
-Dimensions are output pixels. The default 4x character cells give a 26x10 art
-grid at 838x640; the splash and TUIs use a separate 104x40 grid. This makes art
-characters four times larger while fitting GitHub's 838px desktop README width.
+Dimensions are output pixels. Art, splash, and TUIs all use 8x16 character
+cells by default: 104x40 cells at 838x640, fitting GitHub's 838px desktop README
+width. The complete terminal grid is centered without cropping or zooming.
 --optimize (on by default) automatically uses two-pass H.264, a 9.5 MB ceiling,
 and 96k stereo AAC. --optimize=false disables the size ceiling and uses CRF 16.
 --target-size-mb overrides the ceiling only when --optimize is enabled.
@@ -113,7 +113,7 @@ This script never edits README.md, commits media, or uploads anything.
     p.add_argument("--media-file-start", type=timestamp, default="0:00", metavar="M:SS", help="starting position in the original music video")
     p.add_argument("--width", type=int, default=838, help="output width in pixels; also determines CLI columns")
     p.add_argument("--height", type=int, default=640, help="output height in pixels; also determines CLI rows")
-    p.add_argument("--art-cell-scale", type=int, choices=(1, 2, 3, 4), default=4, help="art character size multiplier; 4 uses 75%% fewer columns/rows than 1 on the same canvas")
+    p.add_argument("--art-cell-scale", type=int, choices=(1, 2, 3, 4), default=1, help="art character size multiplier; 1 matches TUI text (default); 4 uses 75%% fewer columns/rows")
     p.add_argument("--output-fps", type=positive, default=33.0, help="export frame rate, at most 33; capture stays at 33 fps")
     p.add_argument("--target-size-mb", type=positive, default=9.5, help="decimal MB ceiling for --optimize; ignored with --optimize=false")
     p.add_argument("--speed", type=positive, default=1.0, help="whole-movie playback rate; 1.1 is 10%% faster")
@@ -204,6 +204,14 @@ def atempo(speed):
     return ",".join(filters + [f"atempo={speed:.10g}"])
 
 
+def media_fit_filter(cols, rows):
+    # Match the terminal's physical aspect ratio before native cover rendering.
+    # Padding preserves the complete source instead of cropping its edges.
+    width, height = cols * CELL_W, rows * CELL_H
+    return (f"scale={width}:{height}:force_original_aspect_ratio=decrease:force_divisible_by=2,"
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1")
+
+
 def prepare(args, main):
     work = args.work_dir
     face = args.face_file or work / "faceocc2.webm"
@@ -227,7 +235,7 @@ def prepare(args, main):
     # All dog-video effects share one uninterrupted native capture. The face
     # source is opened through the real media picker after that performance.
     graph = (
-        f"[0:v]trim=duration={music_length},setpts=PTS-STARTPTS,fps=33,scale=640:360,setsar=1[v];"
+        f"[0:v]trim=duration={music_length},setpts=PTS-STARTPTS,fps=33,{media_fit_filter(args.cols, args.rows)}[v];"
         # Stereo-to-mono analysis can add 3 dB on correlated channels. Keep
         # headroom through time stretching, downmixing, and final AAC encoding.
         f"[0:a]atrim=duration={music_length},asetpts=PTS-STARTPTS,volume=0.5[a]"
@@ -237,8 +245,8 @@ def prepare(args, main):
          "-threads", "4", "-crf", "16", "-pix_fmt", "yuv420p", "-c:a", "pcm_f32le", work / "performance.mkv"])
     run([args.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-filter_complex_threads", "2", "-i", face,
          "-ss", face_start, "-i", work / "performance.mkv", "-filter_complex",
-         f"[0:v]trim=duration={face_seconds},setpts=PTS-STARTPTS,fps=33,scale=640:360:force_original_aspect_ratio=decrease,"
-         f"pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,tpad=stop_mode=clone:stop_duration={music_length}[v]",
+         f"[0:v]trim=duration={face_seconds},setpts=PTS-STARTPTS,fps=33,{media_fit_filter(args.cols, args.rows)},"
+         f"tpad=stop_mode=clone:stop_duration={music_length}[v]",
          "-map", "[v]", "-map", "1:a", "-c:v", "libx264", "-preset", "fast", "-threads", "2", "-crf", "16",
          "-pix_fmt", "yuv420p", "-c:a", "pcm_f32le", "-shortest", work / "face-performance.mkv"])
     return face
@@ -680,6 +688,8 @@ class Rasterizer:
         image = self.Image.new("RGB", (args.width, args.height), "#0c0c0c")
         draw = self.ImageDraw.Draw(image)
         cell_w, cell_h = CELL_W * cell_scale, CELL_H * cell_scale
+        if screen.columns * cell_w > args.width or screen.lines * cell_h > args.height:
+            raise ValueError("Complete terminal grid must fit the video canvas; refusing to crop")
         dx, dy = (args.width - screen.columns * cell_w) // 2, (args.height - screen.lines * cell_h) // 2
         glyphs = []
         for y, row in screen.buffer.items():
@@ -883,7 +893,7 @@ def render_capture(args, name, selected, raster):
 
 def fingerprint(args):
     # Encoding-only options can change while reusing the exact same recording.
-    return {"recipe": 7, "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+    return {"recipe": 8, "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
             "dll_sha256": hashlib.sha256(args.binary.with_name("asciichat.dll").read_bytes()).hexdigest() if os.name == "nt" else None,
             "media": str(args.media_file), "media_sha256": hashlib.sha256(args.media_file.read_bytes()).hexdigest(),
             "face": str(args.face_file), "face_sha256": hashlib.sha256(args.face_file.read_bytes()).hexdigest() if args.face_file else FACE_URL,
