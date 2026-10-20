@@ -17,6 +17,7 @@ def check_span(term, label, span, color):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary', type=Path, required=True)
+    parser.add_argument('--artifacts', type=Path)
     args = parser.parse_args()
     previous = os.environ.copy()
     with tempfile.TemporaryDirectory(prefix='ascii-key-colors-') as directory:
@@ -29,7 +30,7 @@ def main():
             for mode in ('truecolor', 'none'):
                 term = Terminal([str(args.binary.resolve()), '--no-check-update', '--log-file', str(root / 'app.log'),
                                  'mirror', '--test-pattern', '1', '--audio=false', '--splash-screen=false',
-                                 '--color-mode', mode], rows=55, cols=180)
+                                 '--color-mode', mode], rows=36, cols=110)
                 try:
                     term.pump(2)
                     term.write('?')
@@ -38,16 +39,41 @@ def main():
                     number = 'c8a0d8' if mode == 'truecolor' else 'default'
                     for label, span, color in (
                         ('m / M', 'm', key), ('m / M', 'M', key), ('m / M', '/', 'default'),
-                        ('Close overlay / Quit app', '/', 'default'), ('Esc     Close', 'Esc', key),
+                        ('Close overlay / Quit app', '/', 'default'), ('Esc    Close', 'Esc', key),
                         ('(1) Matrix', '1', number), ('(1) Matrix', '(', 'default'),
                         ('(z) Zalgo', 'z', key), ('Volume :', '100', number),
                         ('Volume up/down (10%)', '10', number), ('Press ? to close', '?', key),
-                        ('- FPS counter', '-', key), ('= Live statistics', '=', key),
+                        ('-      FPS counter', '-', key), ('=      Live statistics', '=', key),
+                        ('FPS counter', 'FPS counter', 'default'),
+                        ('Live statistics', 'Live statistics', 'default'),
                     ):
                         # Volume is a value after the label, rather than part of it.
                         if label == 'Volume :':
                             label = next(line.strip() for line in term.screen.display if label in line)
                         check_span(term, label, span, color)
+                    descriptions = ('Toggle this help screen', 'Toggle application logs',
+                                    'Close overlay / Quit app', 'Open media path or URL',
+                                    'Open from clipboard', 'Queue dropped/pasted media',
+                                    'Previous/next media (restart)', 'Mute/Unmute audio',
+                                    'Volume up/down (10%)', 'Cycle color mode', 'Cycle color filter',
+                                    'Flip webcam horizontally', 'Flip webcam vertically', 'Cycle render mode',
+                                    'FPS counter', 'Live statistics', 'Print current sync primitive state')
+                    positions = [next((row, line.index(label)) for row, line in enumerate(term.screen.display)
+                                      if label in line) for label in descriptions]
+                    assert len({col for _, col in positions}) == 1, positions
+                    fps_row = positions[-3][0]
+                    assert positions[1][0] == fps_row - 1, positions
+                    assert positions[-2][0] == fps_row + 1, positions
+                    assert '=' not in term.screen.display[fps_row], term.screen.display[fps_row]
+                    # The longest binding occupies five cells, followed by two spaces.
+                    check_span(term, '< / >  Previous', '  ', 'default')
+                    for label in ('Current Settings:', 'Animations (number key toggle):'):
+                        row = next(line for line in term.screen.display if label in line)
+                        assert row.index(label) == row.index('║') + 3 + max(
+                            7 + len(description) for description in descriptions) + 2, row
+                    if args.artifacts and mode == 'truecolor':
+                        from sync_tui_modes import capture
+                        capture(term, args.artifacts, 'keyboard-help-aligned')
                     term.write('0')
                     term.expect(lambda text: 'Home/End' in text and 'Keyboard Shortcuts' not in text,
                                 'Missing sync footer')

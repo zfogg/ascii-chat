@@ -151,8 +151,7 @@ static const char *status_indicator(bool enabled) {
 }
 
 // Only the binding prefix is a key; separators and descriptions keep the foreground.
-static void color_help_text(const char *text, size_t key_end, bool fps_keys, bool use_color, char *output,
-                            size_t capacity) {
+static void color_help_text(const char *text, size_t key_end, bool use_color, char *output, size_t capacity) {
   size_t used = 0;
   for (size_t i = 0; text[i] && used + 128 < capacity;) {
     if (text[i] == '\033' && text[i + 1] == '[') {
@@ -162,8 +161,7 @@ static void color_help_text(const char *text, size_t key_end, bool fps_keys, boo
       continue;
     }
     bool number = text[i] >= '0' && text[i] <= '9';
-    bool key = (i < key_end && text[i] != ' ' && text[i] != '/' && text[i] != '(' && text[i] != ')') ||
-               (fps_keys && (text[i] == '-' || text[i] == '='));
+    bool key = i < key_end && text[i] != ' ' && text[i] != '/' && text[i] != '(' && text[i] != ')';
     if (use_color && (number || key)) {
       size_t start = i++;
       if (number) {
@@ -218,26 +216,27 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
   const char *navigation[] = {
       "Navigation & Control:",
       "─────────────────────",
-      "?       Toggle this help screen",
-      "]       Toggle application logs",
-      "Esc     Close overlay / Quit app",
-      browser ? NULL : "o       Open media path or URL",
-      browser ? NULL : "v       Open from clipboard",
-      browser ? NULL : "Paste   Queue dropped/pasted media",
-      browser ? NULL : "< / >   Previous/next media (restart)",
-      has_media ? "Space   Play/Pause (files only)" : NULL,
-      has_media ? "[       Toggle Media Playback" : NULL,
-      has_media ? "← / →   Seek backward/forward 30s" : NULL,
-      "m / M   Mute/Unmute audio",
-      "↑ / ↓   Volume up/down (10%)",
-      "c / C   Cycle color mode",
-      "f / F   Cycle color filter",
-      "x / X   Flip webcam horizontally",
-      "y / Y   Flip webcam vertically",
-      "r / R   Cycle render mode",
-      browser ? "- FPS counter" : "- FPS counter   = Live statistics",
+      "?      Toggle this help screen",
+      "Esc    Close overlay / Quit app",
+      browser ? NULL : "o      Open media path or URL",
+      browser ? NULL : "v      Open from clipboard",
+      browser ? NULL : "Paste  Queue dropped/pasted media",
+      browser ? NULL : "< / >  Previous/next media (restart)",
+      has_media ? "Space  Play/Pause (files only)" : NULL,
+      has_media ? "[      Toggle Media Playback" : NULL,
+      has_media ? "← / →  Seek backward/forward 30s" : NULL,
+      "m / M  Mute/Unmute audio",
+      "↑ / ↓  Volume up/down (10%)",
+      "c / C  Cycle color mode",
+      "f / F  Cycle color filter",
+      "x / X  Flip webcam horizontally",
+      "y / Y  Flip webcam vertically",
+      "r / R  Cycle render mode",
+      "]      Toggle application logs",
+      "-      FPS counter",
+      browser ? NULL : "=      Live statistics",
 #ifndef NDEBUG
-      browser ? NULL : "`       Print current sync primitive state",
+      browser ? NULL : "`      Print current sync primitive state",
 #endif
   };
   char settings[20][256] = {"Current Settings:", "─────────────────"};
@@ -283,7 +282,7 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
     if (width > right_width)
       right_width = width;
   }
-  const int column_gap = 4;
+  const int column_gap = 2;
   int box_width = left_width + column_gap + right_width + 6;
 
   // Calculate centering position (true mathematical centering)
@@ -385,10 +384,9 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
     const char *rhs = i < settings_count ? settings[i] : "";
     char colored_left[1024], colored_right[1024], columns[2048];
     const char *binding_end = i >= 2 ? strstr(lhs, "  ") : NULL;
-    color_help_text(lhs, binding_end ? (size_t)(binding_end - lhs) : 0, lhs[0] == '-', use_color, colored_left,
-                    sizeof(colored_left));
+    color_help_text(lhs, binding_end ? (size_t)(binding_end - lhs) : 0, use_color, colored_left, sizeof(colored_left));
     const char *key_end = rhs[0] == '(' ? strchr(rhs, ')') : NULL;
-    color_help_text(rhs, key_end ? (size_t)(key_end - rhs) : 0, false, use_color, colored_right, sizeof(colored_right));
+    color_help_text(rhs, key_end ? (size_t)(key_end - rhs) : 0, use_color, colored_right, sizeof(colored_right));
     int padding = left_width - display_width(lhs) + column_gap;
     snprintf(columns, sizeof(columns), "%s%*s%s", colored_left, padding, "", colored_right);
     append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, columns);
