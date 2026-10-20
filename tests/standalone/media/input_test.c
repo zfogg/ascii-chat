@@ -121,6 +121,17 @@ int main(void) {
   CLEAR_ERRNO();
 
   keyboard_stream_reset();
+  uint64_t previous_reply = keyboard_stream_terminal_reply_ns();
+  feed("\033]11;rgb:ffff/");
+  CHECK(fake_keyboard() == KEY_NONE);
+  CHECK(keyboard_stream_terminal_reply_ns() == previous_reply);
+  feed("ffff/ffff\033\\o");
+  CHECK(fake_keyboard() == KEY_NONE);
+  CHECK(keyboard_stream_terminal_reply_ns() > previous_reply);
+  CHECK(fake_keyboard() == 'o');
+  feed("\033]11;rgb:0000/0000/0000\a-");
+  CHECK(fake_keyboard() == KEY_NONE);
+  CHECK(fake_keyboard() == '-');
   feed("\033[A\033[3;5~");
   CHECK(fake_keyboard() == KEY_UP);
   CHECK(fake_keyboard() == KEY_CTRL_DELETE);

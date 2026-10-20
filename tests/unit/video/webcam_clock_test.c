@@ -21,3 +21,16 @@ Test(webcam_clock, faster_delivery_and_clock_restarts_establish_a_new_origin) {
   cr_assert_eq(webcam_frame_clock_age(&clock, 10000, 100), 0);
   cr_assert_eq(webcam_frame_clock_age(&clock, 20000, 1000100), 0);
 }
+
+Test(webcam_clock, flushing_a_drifting_clock_allows_new_frames_again) {
+  webcam_frame_clock_t clock = {0};
+  webcam_frame_clock_age(&clock, 0, 1000000000);
+  for (unsigned i = 1; i <= 200; ++i)
+    webcam_frame_clock_age(&clock, i * INT64_C(100000), 1000000000 + i * UINT64_C(20000000));
+  cr_assert_gt(webcam_frame_clock_age(&clock, 20100000, 5020000000), 33000000);
+  // The caller flushes queued reader samples before establishing a new origin.
+  webcam_frame_clock_reset(&clock);
+  cr_assert_not(clock.initialized);
+  cr_assert_eq(webcam_frame_clock_age(&clock, 20200000, 5040000000), 0);
+  cr_assert_eq(webcam_frame_clock_age(&clock, 20400000, 5060000000), 0);
+}

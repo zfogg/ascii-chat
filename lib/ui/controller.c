@@ -20,6 +20,10 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/platform/keyboard_stream.h>
+#include <ascii-chat/video/ascii/rle.h>
+#include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/debug/named.h>
 
 typedef struct {
@@ -30,7 +34,7 @@ typedef struct {
 typedef struct {
   _Atomic unsigned references;
   screen_terminal_t *terminal;
-  uint64_t frame_id, submitted_ns;
+  uint64_t frame_id, submitted_ns, acquisition_started_ns;
   _Alignas(max_align_t) char data[];
 } screen_snapshot_t;
 
@@ -151,6 +155,11 @@ static void publish_screen_locked(void) {
 static bool g_redraw;
 static bool g_finished;
 static uint64_t g_media_frame_id;
+static _Thread_local uint64_t g_acquisition_started_ns;
+
+void ui_controller_frame_acquired_at(uint64_t started_ns) {
+  g_acquisition_started_ns = started_ns;
+}
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
 static _Thread_local fps_counter_t *g_fps;
@@ -316,6 +325,9 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
   g_animation = animation;
   g_render_volume = view->volume;
   view->fresh = fps_counter_frame_begin_id(g_fps, view->active == UI_SCREEN_MEDIA ? view->screen->owned->frame_id : 0);
+  // Paint the reserved cells before the art, which never writes over them.
+  // This remains visible on terminals without synchronized-output support.
+  fps_counter_render(g_fps, view->screen->fd, size.cols, true);
   view->screen->render(size, view->screen->snapshot);
   // Compose overlays before publishing the frame, so replacing the media cannot
   // expose an intermediate frame with its counter erased.
@@ -333,8 +345,35 @@ static void *presentation_main(void *unused) {
   bool was_sync = false;
   uint64_t last_volume_until = 0;
   bool volume_was_visible = false;
+  uint64_t reply_requested_ns = 0, reply_frame_ns = 0, reply_frame_id = 0, reply_written_ns = 0;
+  int reply_support = 0;
+  bool awaiting_reply = false;
   while (!atomic_load_bool(&g_presentation_stop_requested)) {
-    uint64_t refresh_deadline = time_get_ns() + 16 * NS_PER_MS_INT;
+    uint64_t iteration_started_ns = time_get_ns();
+    uint64_t refresh_deadline = iteration_started_ns + 16 * NS_PER_MS_INT;
+    uint64_t replied_ns = keyboard_stream_terminal_reply_ns();
+    if (reply_requested_ns && replied_ns >= reply_requested_ns) {
+      reply_support = 1;
+      if (awaiting_reply) {
+        fps_counter_frame_end(g_fps, replied_ns);
+        log_debug("TERMINAL_ACK: id=%llu response_ms=%.2f capture_to_terminal_ms=%.2f",
+                  (unsigned long long)reply_frame_id, (double)(replied_ns - reply_requested_ns) / NS_PER_MS_INT,
+                  reply_frame_ns ? (double)(replied_ns - reply_frame_ns) / NS_PER_MS_INT : 0);
+      }
+      awaiting_reply = false;
+    }
+    if (awaiting_reply && reply_support == 0 && iteration_started_ns - reply_requested_ns > 500 * NS_PER_MS_INT) {
+      // Classic consoles need no remote acknowledgement and may not answer OSC.
+      reply_support = -1;
+      awaiting_reply = false;
+      fps_counter_frame_end(g_fps, reply_written_ns);
+    }
+    if (awaiting_reply && ui_controller_current_screen() == UI_SCREEN_MEDIA && !shutdown_is_requested()) {
+      // Keep only the latest mailbox frame while the frontend parses output.
+      // Input and modal screens remain independent of this backpressure.
+      platform_sleep_ms(2);
+      continue;
+    }
     // This path must remain independent of producers, including one stuck
     // holding the controller mutex. It reads only the collector's mailbox.
     if (ui_sync_is_visible() && ui_controller_current_screen() >= 0 &&
@@ -395,6 +434,7 @@ static void *presentation_main(void *unused) {
         ui_session_render(g_session, &hidden, time_get_ns());
         goto frame_complete;
       }
+      uint64_t geometry_done_ns = time_get_ns();
       terminal_size_t size = watcher.size;
       mutex_lock(&g_mutex);
       g_size = size;
@@ -456,7 +496,9 @@ static void *presentation_main(void *unused) {
                             : (active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS ? 16 * NS_PER_MS_INT : 0),
           .draw = draw_native_view,
           .context = &context};
+      uint64_t compose_started_ns = time_get_ns();
       const char *output = ui_session_render(g_session, &view, now);
+      uint64_t composed_ns = time_get_ns();
       bool covered = ui_session_is_covered(g_session);
       atomic_store_bool(&g_blocked, covered);
       if (covered && !was_covered)
@@ -464,19 +506,45 @@ static void *presentation_main(void *unused) {
       if (output) {
         stats_media_begin(context.fresh && context.drew);
         asciichat_error_t written = ui_controller_write(screen->fd, output, ui_session_frame_length(g_session));
+        uint64_t write_done_ns = time_get_ns();
         if (context.fresh && context.drew) {
           fps_counter_write_begin(g_fps);
           asciichat_error_t drained = terminal_flush(screen->fd);
           fps_counter_write_end(g_fps, drained == ASCIICHAT_OK);
           if (written != ASCIICHAT_OK || drained != ASCIICHAT_OK)
             CLEAR_ERRNO();
-          else
-            log_debug_every(US_PER_SEC_INT, "FRAME_PRESENT: id=%llu submit_to_draw_ms=%.2f",
-                            (unsigned long long)screen->owned->frame_id,
-                            (double)(time_get_ns() - screen->owned->submitted_ns) / NS_PER_MS_INT);
+          else {
+            uint64_t completed_ns = time_get_ns();
+            log_debug("FRAME_PRESENT: id=%llu submit_to_stdout_ms=%.2f acquired_ns=%llu submitted_ns=%llu "
+                      "completed_ns=%llu capture_to_stdout_ms=%.2f mailbox_ms=%.2f geometry_ms=%.2f "
+                      "compose_ms=%.2f write_ms=%.2f drain_ms=%.2f bytes=%zu cols=%d rows=%d",
+                      (unsigned long long)screen->owned->frame_id,
+                      (double)(completed_ns - screen->owned->submitted_ns) / NS_PER_MS_INT,
+                      (unsigned long long)screen->owned->acquisition_started_ns,
+                      (unsigned long long)screen->owned->submitted_ns, (unsigned long long)completed_ns,
+                      screen->owned->acquisition_started_ns
+                          ? (double)(completed_ns - screen->owned->acquisition_started_ns) / NS_PER_MS_INT
+                          : 0,
+                      (double)(compose_started_ns - screen->owned->submitted_ns) / NS_PER_MS_INT,
+                      (double)(geometry_done_ns - iteration_started_ns) / NS_PER_MS_INT,
+                      (double)(composed_ns - compose_started_ns) / NS_PER_MS_INT,
+                      (double)(write_done_ns - composed_ns) / NS_PER_MS_INT,
+                      (double)(completed_ns - write_done_ns) / NS_PER_MS_INT, ui_session_frame_length(g_session),
+                      size.cols, size.rows);
+          }
         }
         stats_media_end();
-        if (context.drew)
+        if (context.fresh && context.drew && written == ASCIICHAT_OK && reply_support >= 0) {
+          // OSC 11 is answered by the frontend, unlike a local console-buffer query.
+          // One outstanding query bounds the downstream renderer queue to one frame.
+          reply_requested_ns = time_get_ns();
+          reply_frame_ns = screen->owned->acquisition_started_ns;
+          reply_frame_id = screen->owned->frame_id;
+          reply_written_ns = reply_requested_ns;
+          static const char query[] = "\033]11;?\033\\";
+          awaiting_reply = ui_controller_write(screen->fd, query, sizeof(query) - 1) == ASCIICHAT_OK;
+        }
+        if (context.drew && !awaiting_reply)
           fps_counter_frame_end(g_fps, time_get_ns());
       }
       if (!covered && !context.drew)
@@ -645,6 +713,7 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   }
   copy->frame_id = screen == UI_SCREEN_MEDIA && fresh_frame ? ++g_media_frame_id : 0;
   copy->submitted_ns = time_get_ns();
+  copy->acquisition_started_ns = screen == UI_SCREEN_MEDIA ? g_acquisition_started_ns : 0;
   screen_t *slot = &g_screens[screen];
   bool queue_notice = screen == UI_SCREEN_NOTICE && slot->render;
   if (slot->render && !queue_notice) {
@@ -783,8 +852,58 @@ typedef struct {
   char text[];
 } text_snapshot_t;
 
+// Bound REP expansion to one terminal row before allocating its expanded text.
+static char *expand_media_row(const char *row, size_t length, int columns) {
+  size_t repeats = 0;
+  for (const char *p = row, *end = row + length; p < end;) {
+    if (*p != '\033') {
+      ++p;
+      continue;
+    }
+    const char *next = ansi_skip_escape(p, end);
+    if (next <= p)
+      return NULL;
+    if (next - p >= 3 && p[1] == '[' && next[-1] == 'b') {
+      size_t count = 0;
+      for (const char *digit = p + 2; digit < next - 1; ++digit) {
+        if (*digit < '0' || *digit > '9' || count > (size_t)columns / 10)
+          return NULL;
+        count = count * 10 + (size_t)(*digit - '0');
+        if (count > (size_t)columns)
+          return NULL;
+      }
+      if (!count || count > (size_t)columns - repeats)
+        return NULL;
+      repeats += count;
+    }
+    p = next;
+  }
+  return ansi_expand_rle(row, length);
+}
+
 static void render_text(terminal_size_t size, const void *data) {
   const text_snapshot_t *text = data;
+  if (text->media && !GET_OPTION(snapshot_mode) && GET_OPTION(fps_counter) && size.cols >= 7 &&
+      text->dimensions.cols <= size.cols && text->dimensions.rows <= size.rows) {
+    const char *newline = memchr(text->text, '\n', text->len);
+    size_t first_bytes = newline ? (size_t)(newline - text->text) : text->len;
+    // Expand REP before clipping, so a repeated glyph cannot cross the counter.
+    char *first = expand_media_row(text->text, first_bytes, size.cols);
+    if (first) {
+      size_t prefix = utf8_prefix_bytes_for_width(first, strlen(first), size.cols - 7);
+      ui_controller_write(text->fd, first, prefix);
+      SAFE_FREE(first);
+    } else {
+      ui_controller_printf(text->fd, "\033[1;1H\033[%dX", size.cols - 7);
+    }
+    if (newline) {
+      ui_controller_write(text->fd, "\033[0m\033[2;1H", 10);
+      ui_controller_write(text->fd, newline + 1, text->len - first_bytes - 1);
+    }
+    if (g_render_volume)
+      append_volume(g_capture, size);
+    return;
+  }
   if (!text->media || GET_OPTION(snapshot_mode) ||
       (text->dimensions.cols <= size.cols && text->dimensions.rows <= size.rows) ||
       !platform_isatty(g_render_fd >= 0 ? g_render_fd : text->fd)) {
@@ -816,8 +935,11 @@ static void render_text(terminal_size_t size, const void *data) {
       size_t length = (size_t)((newline ? newline : end) - cursor);
       memcpy(line, cursor, length);
       line[length] = '\0';
-      truncate_with_ellipsis(line, clipped, text->len + 32, size.cols - 1);
-      frame_buffer_printf(buffer, "\033[%d;1H\033[2K", row);
+      bool reserved_counter = row == 1 && GET_OPTION(fps_counter) && size.cols >= 7;
+      char *expanded = expand_media_row(line, length, text->dimensions.cols);
+      truncate_with_ellipsis(expanded ? expanded : "", clipped, text->len + 32, size.cols - (reserved_counter ? 7 : 1));
+      SAFE_FREE(expanded);
+      frame_buffer_printf(buffer, reserved_counter ? "\033[%d;1H" : "\033[%d;1H\033[2K", row);
       frame_buffer_append(buffer, clipped, strlen(clipped));
       cursor += length + (newline ? 1 : 0);
     }

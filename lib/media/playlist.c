@@ -16,13 +16,15 @@ asciichat_error_t media_playlist_append(media_playlist_t *list, const char *path
     if (strlen(normalized) + 7 >= sizeof(absolute))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Media URL is too long");
     snprintf(absolute, sizeof(absolute), "http://%s", normalized);
-    memcpy(normalized, absolute, strlen(absolute) + 1);
+    const size_t absolute_bytes = strlen(absolute) + 1;
+    memcpy(normalized, absolute, absolute_bytes);
   }
   if (strcmp(normalized, "-") == 0 && list->count)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Stdin must be the only playlist artifact");
   if (list->count && strcmp(list->paths[0], "-") == 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Stdin must be the only playlist artifact");
-  memcpy(list->paths[list->count], normalized, strlen(normalized) + 1);
+  const size_t normalized_bytes = strlen(normalized) + 1;
+  memcpy(list->paths[list->count], normalized, normalized_bytes);
   list->urls[list->count++] = url;
   return ASCIICHAT_OK;
 }
@@ -72,8 +74,8 @@ asciichat_error_t media_playlist_parse(const char *text, media_playlist_t *list)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Media artifact is too long");
     memcpy(argument, start, bytes);
     argument[bytes] = '\0';
-    bool url =
-        strstr(argument, "://") && strncmp(argument + (argument[0] == '\'' || argument[0] == '"'), "file://", 7) != 0;
+    bool url = strstr(argument, "://") &&
+               strncmp(argument + (argument[0] == '\'' || argument[0] == '"'), "file://", sizeof("file://") - 1) != 0;
     asciichat_error_t result = media_playlist_append(&parsed, argument, url);
     if (result != ASCIICHAT_OK)
       return result;

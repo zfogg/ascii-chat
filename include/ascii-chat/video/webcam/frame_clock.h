@@ -10,6 +10,11 @@ typedef struct {
   bool initialized;
 } webcam_frame_clock_t;
 
+/** Re-establish the mapping after the reader's queued samples have been flushed. */
+static inline void webcam_frame_clock_reset(webcam_frame_clock_t *clock) {
+  *clock = (webcam_frame_clock_t){0};
+}
+
 /** Age above the fastest observed delivery; reset on either clock discontinuity. */
 static inline uint64_t webcam_frame_clock_age(webcam_frame_clock_t *clock, int64_t sample, uint64_t wall) {
   if (!clock->initialized || sample < clock->previous || wall < clock->wall) {

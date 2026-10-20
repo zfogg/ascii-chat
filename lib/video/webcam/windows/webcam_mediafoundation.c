@@ -566,8 +566,14 @@ read_latest:
     ++discarded;
     if (discarded < 120 && time_get_ns() - request_ns < 100 * NS_PER_MS_INT)
       goto read_latest;
-    log_debug_every(US_PER_SEC_INT, "CAMERA_FRAME: backlog_ms=%.2f discarded=%u (drain budget exhausted)", backlog_ms,
-                    discarded);
+    // A clock running slower than monotonic time cannot catch up by draining.
+    // Empty the reader before rebasing, so a new origin never hides queued frames.
+    HRESULT flushed = IMFSourceReader_Flush(ctx->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM);
+    if (SUCCEEDED(flushed))
+      webcam_frame_clock_reset(&ctx->clock);
+    log_debug_every(US_PER_SEC_INT,
+                    "CAMERA_FRAME: backlog_ms=%.2f discarded=%u (drain budget exhausted, flush=0x%08lx)", backlog_ms,
+                    discarded, flushed);
     return NULL;
   }
   UINT64 device_time;
@@ -577,8 +583,8 @@ read_latest:
     if (system_time >= 0 && device_time <= (UINT64)system_time)
       device_age_ms = (double)((UINT64)system_time - device_time) / 10000.0;
   }
-  log_debug_every(US_PER_SEC_INT, "CAMERA_FRAME: backlog_ms=%.2f read_ms=%.2f discarded=%u device_age_ms=%.2f",
-                  backlog_ms, elapsed_ms, discarded, device_age_ms);
+  log_debug("CAMERA_FRAME: backlog_ms=%.2f read_ms=%.2f discarded=%u device_age_ms=%.2f", backlog_ms, elapsed_ms,
+            discarded, device_age_ms);
 
   // Get the media buffer from the sample
   IMFMediaBuffer *buffer = NULL;
@@ -711,6 +717,10 @@ read_latest:
   IMFMediaBuffer_Release(buffer);
   IMFSample_Release(sample);
 
+  uint64_t complete_ns = time_get_ns();
+  log_debug("CAMERA_COPY: request_ns=%llu sample_ns=%llu complete_ns=%llu read_ms=%.2f copy_ms=%.2f",
+            (unsigned long long)request_ns, (unsigned long long)wall_ns, (unsigned long long)complete_ns,
+            (double)(wall_ns - request_ns) / NS_PER_MS_INT, (double)(complete_ns - wall_ns) / NS_PER_MS_INT);
   return img;
 }
 

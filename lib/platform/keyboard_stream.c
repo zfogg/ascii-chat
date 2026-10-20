@@ -1,8 +1,14 @@
 #include <ascii-chat/platform/keyboard_stream.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
+#include <ascii-chat/atomic.h>
 
-static char sequence[32];
+static char sequence[128];
+static atomic_t terminal_reply_ns = {0};
+
+uint64_t keyboard_stream_terminal_reply_ns(void) {
+  return atomic_load_u64(&terminal_reply_ns);
+}
 static size_t length;
 static uint64_t started;
 static bool pasting;
@@ -35,8 +41,17 @@ keyboard_key_t keyboard_stream_read(int (*read_byte)(void)) {
     sequence[length] = '\0';
     if (length == 1)
       continue;
-    if (length == 2 && byte == '[')
+    if (length == 2 && (byte == '[' || byte == ']'))
       continue;
+    if (length >= 3 && sequence[1] == ']' && !pasting) {
+      bool complete = byte == 7 || (byte == '\\' && sequence[length - 2] == 27);
+      if (!complete)
+        continue;
+      if (!strncmp(sequence, "\033]11;rgb:", 9))
+        atomic_store_u64(&terminal_reply_ns, time_get_ns());
+      length = 0;
+      return KEY_NONE;
+    }
     if (length >= 3 && ((byte >= '0' && byte <= '9') || byte == ';'))
       continue;
     keyboard_key_t key = KEY_NONE;

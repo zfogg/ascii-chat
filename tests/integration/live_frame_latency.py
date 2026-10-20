@@ -69,7 +69,7 @@ def main():
         content = log.read_text(encoding="utf-8")
         assert "[PIPELINE_ENCODE] Starting encode thread" not in content, "Live preview started a recording queue"
         acquired = [float(v) for v in re.findall(r"LIVE_FRAME: capture_to_publish_ms=([0-9.]+)", content)]
-        presented = [float(v) for v in re.findall(r"FRAME_PRESENT: id=\d+ submit_to_draw_ms=([0-9.]+)", content)]
+        presented = [float(v) for v in re.findall(r"FRAME_PRESENT: id=\d+ submit_to_stdout_ms=([0-9.]+)", content)]
         camera_age = [float(v) for v in re.findall(r"CAMERA_FRAME: backlog_ms=([0-9.]+) read_ms", content)]
         driver_age = [float(v) for v in re.findall(r"device_age_ms=([0-9.]+)", content)]
         assert len(acquired) >= 3 and len(presented) >= 3, "Insufficient completed-frame timing samples"
@@ -84,7 +84,7 @@ def main():
         result = (f"PASS {'webcam' if args.webcam else 'test-pattern'}: "
                   f"displayed_fps_median={statistics.median(rates):.1f} "
                   f"capture_to_publish_p95_ms={p95(acquired):.2f} "
-                  f"publish_to_draw_p95_ms={p95(presented):.2f} "
+                  f"publish_to_stdout_p95_ms={p95(presented):.2f} "
                   f"camera_backlog_max_ms={max(camera_age, default=0):.2f} "
                   f"driver_age_p95_ms={p95(driver_age) if driver_age else 'unavailable'}\n")
         (args.artifacts / "result.txt").write_text(result, encoding="utf-8")

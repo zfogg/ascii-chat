@@ -90,3 +90,42 @@ it (`device_age_ms=-1` means unavailable). `LIVE_FRAME` separates acquisition,
 queue wait, conversion, and publication; `FRAME_PRESENT` measures submission
 through completed terminal output. These software timings do not measure monitor
 scanout or the camera's exposure time.
+
+## Native terminal backpressure and frame tracing
+
+A completed stdout write does not mean a terminal frontend has displayed it.
+On a large terminal, each truecolor frame can be hundreds of KB. Sending the next
+frame as soon as Windows accepts the previous one lets a frontend accumulate old
+frames even when the C capture and presentation queues keep only the latest frame.
+
+The native presenter sends an OSC 11 read-only color query after a fresh media
+frame. When the terminal supports this query, its reply establishes that the
+frontend has consumed the preceding output. Only one frame can await a reply;
+capture continues and replaces the latest mailbox snapshot while presentation
+waits. Input and modal screens remain responsive during that wait. FPS counts
+completed, acknowledged fresh frames; retained redraws never count. Terminals
+that do not answer the initial probe fall back to completed local writes.
+
+The counter's seven cells on the first row are reserved during every media write.
+This keeps it visible while a terminal without synchronized output support draws
+parts of a frame, rather than erasing it and restoring it only after the art ends.
+
+With `--log-level debug --log-file PATH`, each frame now records acquisition and
+copy timing (`CAMERA_FRAME`, `CAMERA_COPY`), pipeline read/queue/conversion and
+publication (`LIVE_FRAME`), and completed output (`FRAME_PRESENT`, including
+`capture_to_stdout_ms`, geometry, composition, write, drain, dimensions and bytes).
+`TERMINAL_ACK` separately records frontend response and capture-to-frontend age.
+These measurements do not claim to measure monitor scanout.
+
+The FPS check now uses a 286 by 73 terminal and checks intermediate 4 KB chunks,
+as well as complete frames and toggle-off behavior. The frontend emulator replies
+after parsing output, so its own rendering speed applies backpressure too:
+
+```powershell
+python tests/integration/frame_presentation.py --binary build/bin/ascii-chat.exe --artifacts build/frame-presentation
+python tests/integration/terminal_backpressure.py --binary build/bin/ascii-chat.exe --artifacts build/terminal-backpressure
+```
+
+The backpressure regression delays replies, holds one for 800 ms, verifies that
+no additional media frame is queued, checks responsive open-prompt input during
+the hold, and asserts that the FPS count follows actual completed presentations.

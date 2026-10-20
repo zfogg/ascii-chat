@@ -52,7 +52,9 @@ def check_capture_emulator():
 
 
 class Terminal:
-    def __init__(self, argv, rows=12, cols=19):
+    def __init__(self, argv, rows=12, cols=19, terminal_replies=False):
+        self.terminal_replies = terminal_replies
+        self.query_tail = ""
         self.screen = CaptureScreen(cols, rows)
         self.stream = CaptureStream(self.screen)
         self.output = queue.Queue()
@@ -95,6 +97,12 @@ class Terminal:
                 chunk = self.output.get(timeout=0.02)
                 self.raw.append(chunk)
                 self.stream.feed(chunk)
+                if self.terminal_replies:
+                    queries = self.query_tail + chunk
+                    query = "\x1b]11;?\x1b\\"
+                    for _ in range(queries.count(query)):
+                        self.write("\x1b]11;rgb:0000/0000/0000\x1b\\")
+                    self.query_tail = queries[-(len(query) - 1):]
             except queue.Empty:
                 pass
         return "\n".join(self.screen.display)

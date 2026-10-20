@@ -577,14 +577,15 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
       if (ascii) {
         if (epoch == session_capture_source_epoch(pipeline->capture)) {
+          ui_controller_frame_acquired_at(acquisition_started_ns);
           session_display_write_ascii_frame(pipeline->display, ascii, fresh);
+          ui_controller_frame_acquired_at(0);
           uint64_t published_ns = time_get_ns();
           session_capture_complete_open(pipeline->capture, epoch);
-          log_debug_every(US_PER_SEC_INT,
-                          "LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d read_ms=%.2f queue_ms=%.2f convert_ms=%.2f "
-                          "publish_ms=%.2f",
-                          (double)(published_ns - acquisition_started_ns) / NS_PER_MS_INT, fresh, read_ms, queue_ms,
-                          convert_ms, (double)(published_ns - converted_ns) / NS_PER_MS_INT);
+          log_debug("LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d read_ms=%.2f queue_ms=%.2f convert_ms=%.2f "
+                    "publish_ms=%.2f",
+                    (double)(published_ns - acquisition_started_ns) / NS_PER_MS_INT, fresh, read_ms, queue_ms,
+                    convert_ms, (double)(published_ns - converted_ns) / NS_PER_MS_INT);
         }
         SAFE_FREE(ascii);
       } else {
