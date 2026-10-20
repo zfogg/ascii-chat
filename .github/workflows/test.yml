@@ -120,6 +120,7 @@ jobs:
 
       - name: Clean test executables and libraries only
         run: |
+          rm -f build/coverage.xml build/Testing/ctest-results.xml
           # Only clean test executables and old libraries
           # Keep CMakeCache.txt and CMakeFiles to preserve configure cache across build type changes
           rm -rf build/bin/test_*
@@ -351,6 +352,7 @@ jobs:
 
       - name: Clear stale integration executables and libraries
         run: |
+          rm -f build/coverage.xml build/Testing/ctest-results.xml
           # macOS debug symbol bundles matching these paths are directories.
           rm -rf build/bin/test_* build/bin/ascii-chat build/bin/ascii-chat.dSYM build/lib/libasciichat*
 
@@ -509,6 +511,7 @@ jobs:
 
       - name: Clean test executables and libraries only
         run: |
+          rm -f build/coverage.xml build/Testing/ctest-results.xml
           # Only clean test executables and old libraries
           # Keep CMakeCache.txt and CMakeFiles to preserve configure cache
           rm -rf build/bin/test_*
