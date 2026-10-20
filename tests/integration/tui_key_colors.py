@@ -43,27 +43,34 @@ def main():
                         ('(1) Matrix', '1', number), ('(1) Matrix', '(', 'default'),
                         ('(z) Zalgo', 'z', key), ('Volume :', '100', number),
                         ('Volume up/down (10%)', '10', number), ('Press ? to close', '?', key),
-                        ('-      FPS counter', '-', key), ('=      Live statistics', '=', key),
+                        ('-      FPS counter', '-', key), ('=      Running app statistics TUI', '=', key),
+                        ('0      C code sync primitives TUI', '0', number),
                         ('FPS counter', 'FPS counter', 'default'),
-                        ('Live statistics', 'Live statistics', 'default'),
+                        ('Running app statistics TUI', 'Running app statistics TUI', 'default'),
                     ):
                         # Volume is a value after the label, rather than part of it.
                         if label == 'Volume :':
                             label = next(line.strip() for line in term.screen.display if label in line)
                         check_span(term, label, span, color)
-                    descriptions = ('Toggle this help screen', 'Toggle application logs',
-                                    'Close overlay / Quit app', 'Open media path or URL',
+                    descriptions = ('Toggle this help screen TUI', 'Live log viewer/searcher TUI',
+                                    'Close overlay / Quit app', 'TUI to open media from path or url',
                                     'Open from clipboard', 'Queue dropped/pasted media',
                                     'Previous/next media (restart)', 'Mute/Unmute audio',
                                     'Volume up/down (10%)', 'Cycle color mode', 'Cycle color filter',
                                     'Flip webcam horizontally', 'Flip webcam vertically', 'Cycle render mode',
-                                    'FPS counter', 'Live statistics', 'Print current sync primitive state')
+                                    'FPS counter', 'Running app statistics TUI', 'Print current sync primitive state',
+                                    'C code sync primitives TUI')
                     positions = [next((row, line.index(label)) for row, line in enumerate(term.screen.display)
                                       if label in line) for label in descriptions]
                     assert len({col for _, col in positions}) == 1, positions
-                    fps_row = positions[-3][0]
-                    assert positions[1][0] == fps_row - 1, positions
-                    assert positions[-2][0] == fps_row + 1, positions
+                    fps_row = next(row for row, line in enumerate(term.screen.display) if 'FPS counter' in line)
+                    group = ('TUI to open media from path or url', 'Live log viewer/searcher TUI',
+                             'Running app statistics TUI', 'C code sync primitives TUI')
+                    group_rows = [next(row for row, line in enumerate(term.screen.display) if label in line)
+                                  for label in group]
+                    assert group_rows == list(range(group_rows[0], group_rows[0] + len(group))), group_rows
+                    assert group_rows[0] > fps_row
+                    assert '(0)' not in '\n'.join(term.screen.display)
                     assert '=' not in term.screen.display[fps_row], term.screen.display[fps_row]
                     # The longest binding occupies five cells, followed by two spaces.
                     check_span(term, '< / >  Previous', '  ', 'default')

@@ -56,7 +56,7 @@ def exercise(term, name, artifacts):
     term.write("?")
     term.expect(lambda s: "Keyboard Shortcuts" in s and "/: search logs" not in s,
                 "Help did not replace logs")
-    assert "Toggle application logs" in term.pump(.2)
+    assert "Live log viewer/searcher TUI" in term.pump(.2)
     term.write("]")
     term.expect(lambda s: "/: search logs" in s and "Keyboard Shortcuts" not in s,
                 "Logs did not replace help")
@@ -108,7 +108,7 @@ def main():
                 print("PASS client startup: rainbow splash, no automatic logs, explicit toggle and restoration", flush=True)
             finally:
                 startup.close()
-        mirror = Terminal(base + ["--log-file", str(root / "mirror.log"), "mirror"] + common, rows=30, cols=140)
+        mirror = Terminal(base + ["--log-file", str(root / "mirror.log"), "mirror"] + common, rows=40, cols=140)
         try:
             exercise(mirror, "mirror", args.artifacts)
         finally:
@@ -129,7 +129,7 @@ def main():
                     if time.monotonic() > deadline:
                         raise
             client = Terminal(base + ["--log-file", str(root / "client.log"), "client", "127.0.0.1", "--port", str(port), "--no-encrypt", "--no-auth"] + common,
-                              rows=30, cols=140)
+                              rows=40, cols=140)
             try:
                 exercise(client, "client", args.artifacts)
             finally:

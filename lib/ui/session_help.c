@@ -216,9 +216,8 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
   const char *navigation[] = {
       "Navigation & Control:",
       "─────────────────────",
-      "?      Toggle this help screen",
+      "?      Toggle this help screen TUI",
       "Esc    Close overlay / Quit app",
-      browser ? NULL : "o      Open media path or URL",
       browser ? NULL : "v      Open from clipboard",
       browser ? NULL : "Paste  Queue dropped/pasted media",
       browser ? NULL : "< / >  Previous/next media (restart)",
@@ -232,11 +231,15 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
       "x / X  Flip webcam horizontally",
       "y / Y  Flip webcam vertically",
       "r / R  Cycle render mode",
-      "]      Toggle application logs",
       "-      FPS counter",
-      browser ? NULL : "=      Live statistics",
 #ifndef NDEBUG
       browser ? NULL : "`      Print current sync primitive state",
+#endif
+      browser ? NULL : "o      TUI to open media from path or url",
+      "]      Live log viewer/searcher TUI",
+      browser ? NULL : "=      Running app statistics TUI",
+#ifndef NDEBUG
+      browser ? NULL : "0      C code sync primitives TUI",
 #endif
   };
   char settings[20][256] = {"Current Settings:", "─────────────────"};
@@ -261,10 +264,6 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
   snprintf(settings[settings_count++], sizeof(settings[0]), "(4) Face follow : %s",
            status_indicator(GET_OPTION(face_follow)));
   snprintf(settings[settings_count++], sizeof(settings[0]), "(z) Zalgo intensity : %d", GET_OPTION(zalgo));
-#ifndef NDEBUG
-  if (!browser)
-    snprintf(settings[settings_count++], sizeof(settings[0]), "(0) Sync primitives / deadlocks");
-#endif
   snprintf(settings[settings_count++], sizeof(settings[0]), "(-) FPS Counter : %s",
            status_indicator(GET_OPTION(fps_counter)));
   const char *left[sizeof(navigation) / sizeof(navigation[0])];
