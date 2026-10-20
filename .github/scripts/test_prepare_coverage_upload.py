@@ -26,6 +26,7 @@ class CompleteCoverageTests(unittest.TestCase):
             f'<line number="2" hits="{second}"/>'
             '</lines></class></classes></package></packages></coverage>'
         )
+        (report.parent / "ctest-results.xml").write_text('<testsuite><testcase name="example"/></testsuite>')
         return report
 
     def test_single_performance_report_cannot_publish_one_percent_snapshot(self):
@@ -56,6 +57,13 @@ class CompleteCoverageTests(unittest.TestCase):
         duplicate = self.root / upload.EXPECTED_ARTIFACTS[0] / "coverage.xml"
         duplicate.write_text("duplicate")
         with self.assertRaisesRegex(ValueError, "found 2"):
+            upload.prepare(self.root)
+
+    def test_counters_without_completed_test_run_are_rejected(self):
+        for name in upload.EXPECTED_ARTIFACTS:
+            self.write_shard(name)
+        (self.root / upload.EXPECTED_ARTIFACTS[0] / "build/ctest-results.xml").unlink()
+        with self.assertRaisesRegex(ValueError, "Missing completed CTest"):
             upload.prepare(self.root)
 
 

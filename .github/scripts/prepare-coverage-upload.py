@@ -32,7 +32,13 @@ def prepare(directory):
             raise ValueError(f"Expected one coverage.xml for {name}, found {len(matches)}; refusing partial upload")
         report = matches[0]
         covered, valid = coverage_report.validate_report(report)
-        shards[name] = {"covered": covered, "valid": valid}
+        junit = list((directory / name).rglob("ctest-results.xml"))
+        if len(junit) != 1:
+            raise ValueError(f"Missing completed CTest results for {name}; refusing partial upload")
+        cases = ET.parse(junit[0]).findall(".//testcase")
+        if not cases:
+            raise ValueError(f"No tests ran for {name}; refusing partial upload")
+        shards[name] = {"covered": covered, "valid": valid, "test_binaries": len(cases)}
         reports.append(report)
         for entry in ET.parse(report).findall(".//class"):
             filename = entry.get("filename")

@@ -240,7 +240,7 @@ jobs:
           # Several unit binaries mutate process-global options and logging
           # state. Run them serially so one test process cannot perturb
           # another on the same CI worker.
-          ctest --test-dir build --label-regex "^unit$" --output-on-failure --parallel 1 | tee unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
+          ctest --test-dir build --label-regex "^unit$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 1 | tee unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
 
           echo "Unit tests completed successfully"
 
@@ -304,6 +304,7 @@ jobs:
           path: |
             unit-tests-*.log
             build/coverage.xml
+            build/Testing/ctest-results.xml
             build/Testing/criterion-xml/*.xml
           retention-days: 7
 
@@ -422,7 +423,7 @@ jobs:
 
           # Run integration tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
-          ctest --test-dir build --label-regex "^integration$" --output-on-failure --parallel 0 | tee integration-tests-${{ matrix.os-name }}.log
+          ctest --test-dir build --label-regex "^integration$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 0 | tee integration-tests-${{ matrix.os-name }}.log
 
           echo "Integration tests completed successfully"
 
@@ -469,6 +470,7 @@ jobs:
           path: |
             integration-tests-*.log
             build/coverage.xml
+            build/Testing/ctest-results.xml
             build/Testing/criterion-xml/*.xml
             build/backpressure/
             /tmp/webrtc_e2e_*.log
@@ -587,7 +589,7 @@ jobs:
           # Run performance tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
           set -o pipefail
-          ctest --test-dir build --label-regex "^performance$" --output-on-failure --parallel 0 | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          ctest --test-dir build --label-regex "^performance$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 0 | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Performance tests completed successfully"
 
@@ -634,6 +636,7 @@ jobs:
           path: |
             performance-tests-*.log
             build/coverage.xml
+            build/Testing/ctest-results.xml
             build/Testing/criterion-xml/*.xml
           retention-days: 7
 
@@ -660,6 +663,7 @@ jobs:
           name: complete-coverage
           path: |
             coverage-reports/**/coverage.xml
+            coverage-reports/**/ctest-results.xml
             coverage-reports/summary.json
           retention-days: 7
       - name: Install pinned Codecov CLI
