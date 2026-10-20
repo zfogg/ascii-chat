@@ -227,9 +227,9 @@ class ReadmeDemoTests(unittest.TestCase):
         self.assertEqual(plan["media_start"], 28)
         self.assertTrue(plan["overlay"])
         self.assertFalse(plan["optimize"])
-        baseline = 10 + 15 * 1.8 + sum(c.seconds for c in demo.chapters(1.8) + demo.tui_chapters(1.8))
+        baseline = 14 + 15 * 1.8 + sum(c.seconds for c in demo.chapters(1.8) + demo.tui_chapters(1.8))
         self.assertAlmostEqual(plan["seconds"], baseline / 1.1)
-        self.assertEqual([c['seconds'] for c in plan['call']], [1.5, 1.5, 1.5, 5.5])
+        self.assertEqual([c['seconds'] for c in plan['call']], [1.5, 1.5, 1.5, 9.5])
 
     def test_call_audio_inserts_silence_and_resumes_music_at_the_same_sample(self):
         import array
@@ -253,9 +253,9 @@ class ReadmeDemoTests(unittest.TestCase):
         self.assertEqual(rms(1.1, 1.9), 0)
         self.assertGreater(rms(2.1, 2.4), .001)
 
-    def test_call_uses_four_different_sources_and_ten_second_join_sequence(self):
+    def test_call_uses_four_different_sources_and_fourteen_second_join_sequence(self):
         self.assertEqual(len(set(demo.CALL_SOURCES)), 4)
-        self.assertEqual(sum(c.seconds for c in demo.call_chapters()), 10)
+        self.assertEqual(sum(c.seconds for c in demo.call_chapters()), 14)
         self.assertEqual([c.name for c in demo.call_chapters()], ['call-1', 'call-2', 'call-3', 'call-4'])
 
     def test_call_keeps_four_muted_native_clients_connected_to_one_server(self):

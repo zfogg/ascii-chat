@@ -98,7 +98,7 @@ def parser():
 
 The opening plays normally for 7 seconds, starting at --media-file-start.
 --segment-duration-scale lengthens feature chapters without changing the music's
-speed. Try 1.8 and 2.2 for approximately 2:00 and 2:23 feature tours.
+speed. Try 1.8 and 2.2 for approximately 2:04 and 2:27 feature tours.
 --speed retimes the completed movie (including music and every chapter).
 Dimensions are output pixels. Art uses 8x16 character cells by default:
 104x40 cells at 838x640, fitting GitHub's 838px desktop README width. TUIs use
@@ -107,7 +107,7 @@ at least 110 columns, with their complete grid scaled to fit without cropping.
 and 96k stereo AAC. --optimize=false disables the size ceiling and uses CRF 16.
 --target-size-mb overrides the ceiling only when --optimize is enabled.
 --output-fps 16.5 discards alternate captured frames without speeding up music.
-Before the TUIs, four real clients join a local encrypted call for 10 seconds.
+Before the TUIs, four real clients join a local encrypted call for 14 seconds.
 That section is silent; its four talking-head samples are cached from Xiph.org,
 framed to show faces clearly, and rendered with the client's default settings.
 Repeat --call-media-file four times to use your own clips instead.
@@ -506,7 +506,7 @@ def native_command(args, name, source, splash, cols=None, rows=None):
 
 
 def call_chapters():
-    return [Chapter(f"call-{i}", 5.5 if i == 4 else 1.5,
+    return [Chapter(f"call-{i}", 9.5 if i == 4 else 1.5,
                     "4-person call (muted)" if i == 4 else f"Group call: {i}/4") for i in range(1, 5)]
 
 
@@ -530,7 +530,7 @@ def prepare_call(args):
                 urllib.request.urlretrieve(url, temporary)
                 temporary.replace(path)
             sources.append(path)
-    identity = {"recipe": 4, "binary": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+    identity = {"recipe": 5, "chapter_seconds": [c.seconds for c in call_chapters()], "binary": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
                 "dll": hashlib.sha256(args.binary.with_name("asciichat.dll").read_bytes()).hexdigest() if os.name == "nt" else None,
                 "cols": args.cols, "rows": args.rows,
                 "sources": [{"path": str(p.resolve()), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in sources]}
@@ -1142,7 +1142,7 @@ def main():
                           "call": [asdict(c) for c in call_chapters()],
                           "speed": args.speed, "optimize": args.optimize, "overlay": args.opt_text_overlay,
                           "media_start": args.media_file_start, "chapters": [asdict(c) for c in main_chapters + tui_chapters(args.segment_duration_scale)],
-                          "seconds": (10 + 15 * args.segment_duration_scale + sum(c.seconds for c in main_chapters + tui_chapters(args.segment_duration_scale))) / args.speed}, indent=2))
+                          "seconds": (sum(c.seconds for c in call_chapters()) + 15 * args.segment_duration_scale + sum(c.seconds for c in main_chapters + tui_chapters(args.segment_duration_scale))) / args.speed}, indent=2))
         return
     for name in ("binary", "media_file", "work_dir", "output", "face_file", "font"):
         if getattr(args, name) is not None:
