@@ -516,8 +516,9 @@ void ui_sync_render(terminal_size_t size) {
              : limited       ? " | wait tracker capacity reached"
                              : "");
     sync_write_numbers(line, size.cols, measure);
-    snprintf(line, sizeof(line), " %-8s %-*s %-12s  %13s %6s %6s %7s %12s", "Type", name_width, "Name", "State/value",
-             "Total Actions", "L/s", "U/s", "Change/s", "Total Wait");
+    snprintf(line, sizeof(line), "%s %-8s %-*s %-12s  %13s %6s %6s %7s %12s%s", sync_color(LOG_COLOR_GREY), "Type",
+             name_width, "Name", "State/value",
+             "Total Actions", "L/s", "U/s", "Change/s", "Total Wait", sync_color(LOG_COLOR_RESET));
     sync_write_line(line, size.cols, true, measure);
     sync_separator(size.cols, measure);
     for (size_t i = 0; i < count; ++i) {
