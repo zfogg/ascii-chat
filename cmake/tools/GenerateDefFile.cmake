@@ -1,51 +1,17 @@
 # Generate a Windows .def file from object files for DLL export
 cmake_minimum_required(VERSION 3.30)
 
-# Check required parameters
-if(NOT DEFINED NM_TOOL)
-    message(FATAL_ERROR "NM_TOOL is not defined")
-endif()
-if(NOT DEFINED BUILD_DIR)
-    message(FATAL_ERROR "BUILD_DIR is not defined")
-endif()
-if(NOT DEFINED MODULE_TARGETS)
-    message(FATAL_ERROR "MODULE_TARGETS is not defined")
-endif()
-if(NOT DEFINED OUTPUT_FILE)
-    message(FATAL_ERROR "OUTPUT_FILE is not defined")
-endif()
-if(NOT DEFINED LIBRARY_NAME)
-    message(FATAL_ERROR "LIBRARY_NAME is not defined")
-endif()
-
-# Convert MODULE_TARGETS from comma-separated string to list
-string(REPLACE "," ";" MODULE_LIST "${MODULE_TARGETS}")
-message(STATUS "Module targets: ${MODULE_LIST}")
-
-# Find object files only from library modules (not from ascii-chat executable)
-# Exclude deps/ directories as those may contain objects that aren't actually linked
-set(OBJ_FILES)
-foreach(module ${MODULE_LIST})
-    message(STATUS "Searching for: ${BUILD_DIR}/CMakeFiles/${module}.dir/*.obj")
-    file(GLOB_RECURSE module_objs "${BUILD_DIR}/CMakeFiles/${module}.dir/*.obj")
-
-    # Filter out deps/ subdirectories
-    set(filtered_objs)
-    foreach(obj ${module_objs})
-        string(FIND "${obj}" "/deps/" has_deps_slash)
-        string(FIND "${obj}" "\\deps\\" has_deps_backslash)
-        if(has_deps_slash EQUAL -1 AND has_deps_backslash EQUAL -1)
-            list(APPEND filtered_objs "${obj}")
-        endif()
-    endforeach()
-
-    list(LENGTH filtered_objs module_obj_count)
-    message(STATUS "  Found ${module_obj_count} object files for ${module} (after excluding deps/)")
-    list(APPEND OBJ_FILES ${filtered_objs})
+# Use the active target object list. Directory scans retain stale exports after
+# a source is removed or renamed in an incremental build.
+foreach(required NM_TOOL OBJECT_LIST_FILE OUTPUT_FILE LIBRARY_NAME)
+    if(NOT DEFINED ${required})
+        message(FATAL_ERROR "${required} is not defined")
+    endif()
 endforeach()
-
+file(STRINGS "${OBJECT_LIST_FILE}" OBJ_FILES)
+list(FILTER OBJ_FILES EXCLUDE REGEX "[/\\\\]deps[/\\\\]")
 if(NOT OBJ_FILES)
-    message(FATAL_ERROR "No object files found for modules: ${MODULE_TARGETS}")
+    message(FATAL_ERROR "No active library object files in ${OBJECT_LIST_FILE}")
 endif()
 
 list(LENGTH OBJ_FILES obj_count)

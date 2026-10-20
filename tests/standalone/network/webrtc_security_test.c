@@ -1,6 +1,7 @@
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/network/acip/security.h>
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/crc32.h>
@@ -156,6 +157,7 @@ static void exchange_unused_outer_crc(endpoint_t *sender, endpoint_t *receiver) 
 }
 
 static void fixture(uint8_t mode, const char *password, bool identity, int rejection) {
+  network_connection_t *server_owner = NULL, *client_owner = NULL;
   endpoint_t server = {0}, client = {0};
   server.other = &client;
   client.other = &server;
@@ -206,6 +208,12 @@ static void fixture(uint8_t mode, const char *password, bool identity, int rejec
   } else {
     await_flag(&server.ready);
     await_flag(&client.ready);
+    CHECK(network_connection_adopt(server.transport, &server_owner) == ASCIICHAT_OK);
+    CHECK(network_connection_adopt(client.transport, &client_owner) == ASCIICHAT_OK);
+    CHECK(network_connection_handshake(server_owner) == &server.security->handshake);
+    CHECK(network_connection_handshake(client_owner) == &client.security->handshake);
+    CHECK(network_connection_crypto_mode(server_owner) == mode);
+    CHECK(network_connection_crypto_mode(client_owner) == mode);
     exchange(&client, &server);
     exchange(&server, &client);
     if (ACIP_CRYPTO_HAS_ENCRYPT(mode)) {
@@ -213,8 +221,14 @@ static void fixture(uint8_t mode, const char *password, bool identity, int rejec
       exchange_unused_outer_crc(&server, &client);
     }
   }
-  acip_transport_destroy(client.transport);
-  acip_transport_destroy(server.transport);
+  if (client_owner)
+    network_connection_destroy(&client_owner);
+  else
+    acip_transport_destroy(client.transport);
+  if (server_owner)
+    network_connection_destroy(&server_owner);
+  else
+    acip_transport_destroy(server.transport);
   webrtc_datachannel_destroy(client.dc);
   webrtc_datachannel_destroy(server.dc);
   webrtc_peer_connection_destroy(client.pc);

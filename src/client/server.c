@@ -78,7 +78,6 @@
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/connection_endpoint.h>
-#include <ascii-chat/network/connection_factory.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
@@ -163,8 +162,7 @@ int server_connection_init(client_connection_t *connection) {
   connection->send_mutex_initialized = true;
 
   // Initialize connection state
-  connection->sockfd = INVALID_SOCKET_VALUE;
-  connection->attempt.connection.transport = NULL;
+  connection->transport = NULL;
   atomic_store_bool(&connection->connection_active, false);
   atomic_store_bool(&connection->connection_lost, false);
   connection->my_client_id = 0;
@@ -192,21 +190,7 @@ int server_connection_init(client_connection_t *connection) {
 bool server_connection_is_active(client_connection_t *connection) {
   if (!connection)
     return false;
-  // For TCP: check socket validity
-  // For WebRTC: socket is INVALID_SOCKET_VALUE but transport exists
-  return atomic_load_bool(&connection->connection_active) &&
-         (connection->sockfd != INVALID_SOCKET_VALUE || connection->attempt.connection.transport != NULL);
-}
-
-/**
- * @brief Get current socket file descriptor
- *
- * @return Socket file descriptor or INVALID_SOCKET_VALUE if disconnected
- *
- * @ingroup client_connection
- */
-socket_t server_connection_get_socket(client_connection_t *connection) {
-  return connection->sockfd;
+  return atomic_load_bool(&connection->connection_active) && connection->transport != NULL;
 }
 
 /**
@@ -217,42 +201,14 @@ socket_t server_connection_get_socket(client_connection_t *connection) {
  * @ingroup client_connection
  */
 acip_transport_t *server_connection_get_transport(client_connection_t *connection) {
-  return connection->attempt.connection.transport;
+  return connection->transport;
 }
 
-/**
- * @brief Set ACIP transport instance from connection fallback
- *
- * Used to integrate the transport from the 3-stage connection fallback orchestrator
- * (TCP → STUN → TURN) into the server connection management layer.
- *
- * @param transport Transport instance created by connection_attempt_with_fallback()
- *
- * @ingroup client_connection
- */
 void server_connection_set_transport(client_connection_t *connection, acip_transport_t *transport) {
-  log_debug("transport=%p", (void *)transport);
-
-  log_debug("[TRANSPORT_LIFECYCLE] Setting g_client_transport to %p", (void *)transport);
-  connection->attempt.connection.transport = transport;
-
-  // Mark connection as active when transport is set
-  if (transport) {
-    log_debug("[TRANSPORT_LIFECYCLE] Transport is non-NULL, extracting socket...");
-    connection->sockfd = acip_transport_get_socket(transport);
-    log_debug("[TRANSPORT_LIFECYCLE] Socket extracted: %d from transport=%p", (int)connection->sockfd,
-              (void *)transport);
-
-    atomic_store_bool(&connection->connection_active, true);
-    atomic_store_bool(&connection->connection_lost, false); // Reset lost flag for new connection
-    log_debug("[TRANSPORT_LIFECYCLE] Server connection transport set and marked active (transport=%p, sockfd=%d, "
-              "is_connected=%s)",
-              (void *)transport, (int)connection->sockfd, acip_transport_is_connected(transport) ? "true" : "false");
-  } else {
-    connection->sockfd = INVALID_SOCKET_VALUE;
-    atomic_store_bool(&connection->connection_active, false);
-    log_debug("[TRANSPORT_LIFECYCLE] Server connection transport cleared and marked inactive");
-  }
+  connection->transport = transport;
+  atomic_store_bool(&connection->connection_active, transport != NULL);
+  if (transport)
+    atomic_store_bool(&connection->connection_lost, false);
 }
 
 /**
@@ -333,7 +289,7 @@ void server_connection_shutdown(client_connection_t *connection) {
     return;
   atomic_store_bool(&connection->connection_active, false);
   atomic_store_bool(&connection->connection_lost, true);
-  session_connection_interrupt_transport(connection->attempt.connection.transport);
+  session_connection_interrupt_transport(connection->transport);
 }
 
 /**
@@ -393,18 +349,17 @@ asciichat_error_t threaded_send_packet(client_connection_t *connection, packet_t
   mutex_lock(&connection->send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
-    log_debug("Transport check failed: active=%s, transport=%p",
-              atomic_load_bool(&connection->connection_active) ? "true" : "false",
-              (void *)connection->attempt.connection.transport);
+  if (!atomic_load_bool(&connection->connection_active) || !connection->transport) {
+    log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() check failed: active=%s, transport=%p",
+              atomic_load_bool(&connection->connection_active) ? "true" : "false", (void *)connection->transport);
     mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
   // Get transport reference - transport has its own internal synchronization
-  acip_transport_t *transport = connection->attempt.connection.transport;
-  log_debug_every(LOG_RATE_SLOW, "Using transport=%p, is_connected=%s", (void *)transport,
-                  acip_transport_is_connected(transport) ? "true" : "false");
+  acip_transport_t *transport = connection->transport;
+  log_debug_every(LOG_RATE_SLOW, "[TRANSPORT_LIFECYCLE] threaded_send_packet() using transport=%p, is_connected=%s",
+                  (void *)transport, acip_transport_is_connected(transport) ? "true" : "false");
 
   // Network I/O happens while holding mutex to prevent concurrent socket writes
   asciichat_error_t result = packet_send_via_transport(transport, type, data, len, 0);
@@ -443,13 +398,13 @@ asciichat_error_t threaded_send_audio_batch_packet(client_connection_t *connecti
   mutex_lock(&connection->send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
+  if (!atomic_load_bool(&connection->connection_active) || !connection->transport) {
     mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active");
   }
 
   // Get transport reference - transport has its own internal synchronization
-  acip_transport_t *transport = connection->attempt.connection.transport;
+  acip_transport_t *transport = connection->transport;
 
   // Network I/O happens while holding mutex to prevent concurrent socket writes
   asciichat_error_t result = acip_send_audio_batch(transport, samples, (uint32_t)num_samples, (uint32_t)batch_count);
@@ -487,13 +442,13 @@ asciichat_error_t threaded_send_audio_opus(client_connection_t *connection, cons
   mutex_lock(&connection->send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
+  if (!atomic_load_bool(&connection->connection_active) || !connection->transport) {
     mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
   // Get transport reference - transport has its own internal synchronization
-  acip_transport_t *transport = connection->attempt.connection.transport;
+  acip_transport_t *transport = connection->transport;
   mutex_unlock(&connection->send_mutex);
 
   // Build Opus packet with header (outside mutex - no blocking I/O yet)
@@ -552,13 +507,13 @@ asciichat_error_t threaded_send_audio_opus_batch(client_connection_t *connection
   mutex_lock(&connection->send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load_bool(&connection->connection_active) || !connection->attempt.connection.transport) {
+  if (!atomic_load_bool(&connection->connection_active) || !connection->transport) {
     mutex_unlock(&connection->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
   // Get transport reference - transport has its own internal synchronization
-  acip_transport_t *transport = connection->attempt.connection.transport;
+  acip_transport_t *transport = connection->transport;
 
   // Network I/O happens while holding mutex to prevent concurrent socket writes
   // Opus uses 20ms frames at 48kHz (960 samples = 20ms)
@@ -809,13 +764,10 @@ asciichat_error_t threaded_send_client_join_packet(client_connection_t *connecti
   if (send_result == 0) {
     mutex_lock(&connection->send_mutex);
     bool active = atomic_load_u64(&connection->connection_active);
-    socket_t socket_snapshot = connection->sockfd;
-    const crypto_context_t *crypto_ctx =
-        crypto_client_is_ready(connection) ? crypto_client_get_context(connection) : NULL;
-    if (active && socket_snapshot != INVALID_SOCKET_VALUE) {
-      (void)log_network_message(
-          socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_INFO, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER,
-          "CLIENT_JOIN sent (display=\"%s\", capabilities=0x%x)", join_packet.display_name, capabilities);
+    if (active && connection->transport) {
+      log_net_message(connection->transport, LOG_INFO, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, __FILE__, __LINE__,
+                      __func__, "CLIENT_JOIN sent (display=\"%s\", capabilities=0x%x)", join_packet.display_name,
+                      capabilities);
     }
     mutex_unlock(&connection->send_mutex);
   }

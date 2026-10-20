@@ -3,9 +3,11 @@
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/acip/send.h>
+#include "session/host.h"
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/path.h>
 #include <stdlib.h>
 
 #define CHECK(condition)                                                                                               \
@@ -90,17 +92,15 @@ static void *discovery_session_server(void *data) {
   packet_type_t response_type = server->scenario == 1 ? PACKET_TYPE_PONG : PACKET_TYPE_PROTOCOL_VERSION;
   size_t response_size = server->scenario == 2 ? 1 : sizeof(version);
   CHECK(packet_send(socket, response_type, &version, response_size) == ASCIICHAT_OK);
-  if (server->scenario == 0) {
-    CHECK(receive_packet(socket, &type, &payload, &len) == ASCIICHAT_OK);
-    CHECK(type == PACKET_TYPE_CRYPTO_CAPABILITIES && len == sizeof(crypto_capabilities_packet_t));
-    buffer_release(payload);
-    payload = NULL;
-  }
   socket_close(socket);
   return NULL;
 }
 
 static void discovery_session_check_tcp(int scenario) {
+  char *config_dir = get_config_dir();
+  const char *test_home = SAFE_GETENV("ASCII_CHAT_TEST_HOME");
+  CHECK(config_dir && test_home && strncmp(config_dir, test_home, strlen(test_home)) == 0);
+  SAFE_FREE(config_dir);
   discovery_session_server_t server = {.scenario = scenario};
   server.listener = socket_create("discovery-test-listener", AF_INET, SOCK_STREAM, 0);
   CHECK(server.listener != INVALID_SOCKET_VALUE);
@@ -110,21 +110,35 @@ static void discovery_session_check_tcp(int scenario) {
   CHECK(socket_listen(server.listener, 1) == 0);
   socklen_t len = sizeof(address);
   CHECK(socket_getsockname(server.listener, (struct sockaddr *)&address, &len) == 0);
-  asciichat_thread_t thread;
-  CHECK(asciichat_thread_create(&thread, "discovery-test-server", discovery_session_server, &server) == 0);
   discovery_session_t session = discovery_session_fixture(DISCOVERY_STATE_CONNECTING_HOST);
   SAFE_STRNCPY(session.host_address, "127.0.0.1", sizeof(session.host_address));
   session.host_port = NET_TO_HOST_U16(address.sin_port);
-  CHECK(discovery_session_step(&session, 0) == ASCIICHAT_OK);
-  CHECK(session.participant_ctx);
   if (scenario == 0) {
-    CHECK(session.state == DISCOVERY_STATE_ACTIVE);
+    // The positive case completes the real shared host's security negotiation.
+    socket_close(server.listener);
+    session_host_config_t config = {.port = session.host_port, .ipv4_address = "127.0.0.1", .max_clients = 1};
+    session_host_t *host = session_host_create(&config);
+    CHECK(host && session_host_start(host) == ASCIICHAT_OK);
+    asciichat_error_t result = discovery_session_step(&session, 0);
+    if (result != ASCIICHAT_OK) {
+      asciichat_error_context_t error;
+      log_error("Host connection result %d: %s", result,
+                HAS_ERRNO(&error) ? error.context_message : "no error context");
+    }
+    CHECK(result == ASCIICHAT_OK);
+    CHECK(session.state == DISCOVERY_STATE_ACTIVE && session.participant_ctx);
     CHECK(session_participant_is_connected(session.participant_ctx));
-  } else {
-    CHECK(session.state == DISCOVERY_STATE_FAILED && session.error == ERROR_NETWORK);
-    CHECK(!session_participant_is_connected(session.participant_ctx));
-    CHECK(discovery_session_step(&session, 0) == ERROR_NETWORK);
+    session_participant_destroy(session.participant_ctx);
+    CHECK(session_host_destroy(host) == ASCIICHAT_OK);
+    return;
   }
+  asciichat_thread_t thread;
+  CHECK(asciichat_thread_create(&thread, "discovery-test-server", discovery_session_server, &server) == 0);
+  asciichat_error_t result = discovery_session_step(&session, 0);
+  CHECK(session.participant_ctx);
+  CHECK(result != ASCIICHAT_OK && session.state == DISCOVERY_STATE_FAILED && session.error == result);
+  CHECK(!session_participant_is_connected(session.participant_ctx));
+  CHECK(discovery_session_step(&session, 0) == result);
   CHECK(asciichat_thread_join(&thread, NULL) == 0);
   session_participant_destroy(session.participant_ctx);
   session.participant_ctx = NULL;
@@ -191,6 +205,11 @@ int main(void) {
   CHECK(discovery_session_step(&session, 0) == ERROR_MEMORY);
 
   // Keepalive precedes dispatch even for ended sessions, and updates only on success.
+  // Some monotonic clocks start at process initialization, so establish enough
+  // history before constructing an overdue timestamp by subtraction.
+  uint64_t elapsed = time_get_ns();
+  if (elapsed < 5 * NS_PER_SEC_INT)
+    platform_sleep_ns(5 * NS_PER_SEC_INT - elapsed + NS_PER_MS_INT);
   session = discovery_session_fixture(DISCOVERY_STATE_ENDED);
   session.acds_transport = &transport;
   session.last_acds_keepalive_ns = time_get_ns() - 5 * NS_PER_SEC_INT;

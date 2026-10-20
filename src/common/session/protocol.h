@@ -34,17 +34,15 @@ typedef struct {
 
 void session_protocol_init(session_protocol_t *protocol, acip_transport_t *transport, session_protocol_media_t media,
                            acip_client_callbacks_t control);
-/* Dispatch borrows its payload. Receive releases the packet allocation on every path.
- * Timeouts/incomplete reads are returned to the caller for its scheduling policy. */
+/* Dispatch borrows its payload from the shared connection executor. */
 asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet_type_t type, const void *payload,
                                             size_t length);
-asciichat_error_t session_protocol_receive(session_protocol_t *protocol);
 
 /* Physical capability advertisement for the initial join. */
 void session_protocol_build_capabilities(unsigned short width, unsigned short height,
                                          terminal_capabilities_packet_t *packet);
 typedef asciichat_error_t (*session_protocol_send_settings_fn)(const options_t *values, uint32_t request,
-                                                               void *context);
+                                                                   void *context);
 /* Call on the connection owner thread. UI publishes automatic dimensions through options.
  * Each connection retains its own last successfully advertised size; failed sends are retried. */
 asciichat_error_t session_protocol_update_settings(terminal_size_t *advertised, uint64_t *advertised_revision,

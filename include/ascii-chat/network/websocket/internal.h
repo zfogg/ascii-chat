@@ -73,6 +73,8 @@ typedef struct {
   // Graceful shutdown flag for thread-safe destruction
   // When destroying the transport, this flag is set to true to signal all threads
   // to exit send/recv operations before mutexes are destroyed.
+  atomic_t server_handler_owned;
+  atomic_t server_detached;
   atomic_t is_destroying; ///< True when destruction has started
 
 } websocket_transport_data_t;

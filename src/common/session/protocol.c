@@ -196,18 +196,6 @@ asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet
   return result;
 }
 
-asciichat_error_t session_protocol_receive(session_protocol_t *protocol) {
-  if (!protocol || !protocol->transport)
-    return SET_ERRNO(ERROR_INVALID_STATE, "Participant protocol has no transport");
-  packet_envelope_t envelope = {0};
-  asciichat_error_t result = acip_client_receive_packet(protocol->transport, &envelope);
-  if (result == ASCIICHAT_OK)
-    result = session_protocol_dispatch(protocol, envelope.type, envelope.data, envelope.len);
-  if (envelope.allocated_buffer)
-    buffer_release(envelope.allocated_buffer);
-  return result;
-}
-
 void session_protocol_build_capabilities(unsigned short width, unsigned short height,
                                          terminal_capabilities_packet_t *packet) {
   const options_t *opts = options_get();

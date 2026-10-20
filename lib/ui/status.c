@@ -6,7 +6,7 @@
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/status.h>
-#include <ascii-chat/network/tcp/server.h>
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/log/search.h>
@@ -52,7 +52,7 @@ void ui_status_log_clear(void) {
 // Status Display
 // ============================================================================
 
-asciichat_error_t ui_status_gather(tcp_server_t *server, const char *session_string, const char *ipv4_address,
+asciichat_error_t ui_status_gather(network_server_t *server, const char *session_string, const char *ipv4_address,
                                    const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
                                    bool session_is_mdns_only, ui_status_t *out_status) {
   if (!server || !out_status || !mode_name) {
@@ -82,7 +82,7 @@ asciichat_error_t ui_status_gather(tcp_server_t *server, const char *session_str
   out_status->start_time = start_time;
   out_status->mode_name = mode_name;
   out_status->session_is_mdns_only = session_is_mdns_only;
-  out_status->connected_count = tcp_server_get_client_count(server);
+  out_status->connected_count = network_server_connection_count(server);
 
   return ASCIICHAT_OK;
 }
@@ -197,7 +197,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
   return !should_exit_status; // Return false if user wants to exit
 }
 
-void ui_status_update(tcp_server_t *server, const char *session_string, const char *ipv4_address,
+void ui_status_update(network_server_t *server, const char *session_string, const char *ipv4_address,
                       const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
                       bool session_is_mdns_only, uint64_t *last_update_ns) {
   if (!server || !last_update_ns) {

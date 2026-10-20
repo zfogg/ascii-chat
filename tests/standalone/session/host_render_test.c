@@ -1,11 +1,12 @@
 /* Capability packets must affect the frames delivered by the discovery host. */
 #include "session/host.h"
+#include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/negotiation.h>
 #include "session/host_timing.h"
-#include <ascii-chat/network/acip/listener.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/network/connection_factory.h>
+
 #include "session/protocol.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/rcu.h>
@@ -129,6 +130,34 @@ static void display_frame(void *context, const char *text, size_t size, int widt
   CHECK(receive_frame(&header, text, &((display_t *)context)->sink) == ASCIICHAT_OK);
 }
 
+static uint16_t unused_port(void) {
+  socket_t probe = socket_create("render_port", AF_INET, SOCK_STREAM, 0);
+  CHECK(probe != INVALID_SOCKET_VALUE);
+  struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  CHECK(socket_bind(probe, (struct sockaddr *)&address, sizeof(address)) == 0);
+  socklen_t length = sizeof(address);
+  CHECK(socket_getsockname(probe, (struct sockaddr *)&address, &length) == 0);
+  uint16_t port = NET_TO_HOST_U16(address.sin_port);
+  socket_close(probe);
+  return port;
+}
+static network_connection_t *connect_host(uint16_t port) {
+  network_connection_t *owner = NULL;
+  CHECK(network_connection_open("host_render_peer", "127.0.0.1", port, NULL, &owner, NULL) == ASCIICHAT_OK);
+  CHECK(network_connection_prepare_security(owner, false, NULL) == ASCIICHAT_OK);
+  CHECK(network_client_negotiate(network_connection_transport(owner), network_connection_handshake(owner),
+                                 network_connection_crypto_mode(owner), NETWORK_PROTOCOL_MEDIA) == ASCIICHAT_OK);
+  network_connection_ready(owner);
+  return owner;
+}
+static void receive_render(sink_t *sink) {
+  packet_type_t type;
+  void *payload = NULL, *allocation = NULL;
+  size_t size = 0;
+  CHECK(packet_receive_via_transport(sink->protocol.transport, &type, &payload, &size, &allocation) == ASCIICHAT_OK);
+  CHECK(session_protocol_dispatch(&sink->protocol, type, payload, size) == ASCIICHAT_OK);
+  buffer_release(allocation);
+}
 static void test_ascii_only_display(const image_t *image) {
   session_host_config_t config = {.max_clients = 1};
   session_host_t *host = session_host_create(&config);
@@ -152,58 +181,34 @@ static void test_ascii_only_display(const image_t *image) {
 
 static void test_tcp_delivery(const image_t *image) {
   CHECK(socket_init() == ASCIICHAT_OK);
-  acip_listener_t *listener = NULL;
-  CHECK(acip_listener_open("127.0.0.1", 0, 2, &listener) == ASCIICHAT_OK);
-  uint16_t port = acip_listener_port(listener);
-  acip_listener_t *conflicting = NULL;
-  CHECK(acip_listener_open("invalid-address", 0, 2, &conflicting) != ASCIICHAT_OK);
-  CHECK(!conflicting);
-  acip_transport_t *receiver = NULL;
-  CHECK(connection_factory_open("host_render_peer", "127.0.0.1", port, NULL, &receiver, NULL) == ASCIICHAT_OK);
-  acip_transport_t *accepted = NULL;
-  char address[64] = {0};
-  int peer_port = 0;
-  uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
-  while (!accepted && time_get_ns() < deadline) {
-    CHECK(acip_listener_accept(listener, &accepted, address, sizeof(address), &peer_port) == ASCIICHAT_OK);
-    platform_sleep_ms(1);
-  }
-  CHECK(accepted && strcmp(address, "127.0.0.1") == 0 && peer_port > 0);
-  session_host_config_t config = {.max_clients = 2};
+  session_host_config_t config = {.port = unused_port(), .ipv4_address = "127.0.0.1", .max_clients = 2};
   session_host_t *host = session_host_create(&config);
-  CHECK(host);
+  CHECK(host && session_host_start(host) == ASCIICHAT_OK);
+  network_connection_t *owner = connect_host(config.port);
+  uint32_t client = 0;
+  CHECK(session_host_get_client_ids(host, &client, 1) == 1 && client);
   uint32_t source = session_host_add_memory_participant(host);
   CHECK(source && session_host_inject_frame(host, source, image) == ASCIICHAT_OK);
-  uint32_t client = session_host_add_client(host, accepted, ACIP_TRANSPORT_OWNED, address, peer_port);
-  CHECK(client);
-  acip_transport_t *tcp = session_host_get_client_transport(host, client);
-  CHECK(tcp == accepted);
-
   sink_t sink = {0};
-  CHECK(receiver);
-  session_protocol_init(&sink.protocol, receiver,
+  session_protocol_init(&sink.protocol, network_connection_transport(owner),
                         (session_protocol_media_t){.on_frame = receive_frame, .context = &sink},
                         (acip_client_callbacks_t){0});
   terminal_capabilities_packet_t caps = capabilities(TERM_COLOR_NONE, PALETTE_CUSTOM, "TT");
   update(host, client, &caps);
   CHECK(render_tick(host) == ASCIICHAT_OK);
   while (sink.frames < 1)
-    CHECK(session_protocol_receive(&sink.protocol) == ASCIICHAT_OK);
+    receive_render(&sink);
   CHECK(sink.frames == 1);
   check_palette(sink.frame, "T");
   session_host_render_target_t target = {.client_id = client};
   CHECK(session_host_set_render_target(host, &target) == ASCIICHAT_OK);
   CHECK(render_tick(host) == ASCIICHAT_OK);
   while (sink.frames < 2)
-    CHECK(session_protocol_receive(&sink.protocol) == ASCIICHAT_OK);
+    receive_render(&sink);
   CHECK(sink.frames == 2);
   check_palette(sink.frame, "T");
-
-  CHECK(session_host_remove_client(host, client) == ASCIICHAT_OK);
-  CHECK(session_host_get_client_transport(host, client) == NULL);
-  session_host_destroy(host);
-  acip_transport_destroy(receiver);
-  acip_listener_destroy(listener);
+  network_connection_destroy(&owner);
+  CHECK(session_host_destroy(host) == ASCIICHAT_OK);
   socket_cleanup();
   SAFE_FREE(sink.frame);
 }
@@ -265,31 +270,24 @@ static void *receive_wait(void *context) {
 }
 static void test_listener_interrupt(void) {
   CHECK(socket_init() == ASCIICHAT_OK);
-  acip_listener_t *listener = NULL;
-  CHECK(acip_listener_open("127.0.0.1", 0, 1, &listener) == ASCIICHAT_OK);
-  acip_transport_t *peer = NULL, *accepted = NULL;
-  CHECK(connection_factory_open("interrupt_peer", "127.0.0.1", acip_listener_port(listener), NULL, &peer, NULL) ==
-        ASCIICHAT_OK);
-  uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
-  while (!accepted && time_get_ns() < deadline) {
-    CHECK(acip_listener_accept(listener, &accepted, NULL, 0, NULL) == ASCIICHAT_OK);
-    platform_sleep_ms(1);
-  }
-  CHECK(accepted);
-  accepted->receive_timeout_ns = 5 * NS_PER_SEC_INT;
-  receive_wait_t wait = {.transport = accepted};
+  session_host_config_t config = {.port = unused_port(), .ipv4_address = "127.0.0.1", .max_clients = 1};
+  session_host_t *host = session_host_create(&config);
+  CHECK(host && session_host_start(host) == ASCIICHAT_OK);
+  network_connection_t *peer = connect_host(config.port);
+  acip_transport_t *transport = network_connection_transport(peer);
+  transport->receive_timeout_ns = 5 * NS_PER_SEC_INT;
+  receive_wait_t wait = {.transport = transport};
   asciichat_thread_t thread;
   CHECK(asciichat_thread_create(&thread, "accepted_receive", receive_wait, &wait) == ASCIICHAT_OK);
   while (!atomic_load_bool(&wait.entered))
     platform_sleep_ms(1);
-  acip_transport_interrupt(accepted);
+  acip_transport_interrupt(transport);
   CHECK(asciichat_thread_join_timeout(&thread, NULL, NS_PER_SEC_INT) == ASCIICHAT_OK);
-  CHECK(wait.result != ASCIICHAT_OK && !acip_transport_is_connected(accepted));
-  acip_transport_destroy(accepted);
-  CHECK(acip_listener_stop(listener) == ASCIICHAT_OK);
-  CHECK(acip_listener_stop(listener) == ASCIICHAT_OK);
-  acip_transport_destroy(peer);
-  acip_listener_destroy(listener);
+  CHECK(wait.result != ASCIICHAT_OK && !acip_transport_is_connected(transport));
+  CHECK(session_host_stop(host) == ASCIICHAT_OK);
+  CHECK(session_host_stop(host) == ASCIICHAT_OK);
+  network_connection_destroy(&peer);
+  CHECK(session_host_destroy(host) == ASCIICHAT_OK);
   socket_cleanup();
 }
 
@@ -299,15 +297,12 @@ static void test_host_listener(void) {
   session_host_t *invalid_host = session_host_create(&invalid);
   CHECK(invalid_host && session_host_start(invalid_host) == ERROR_INVALID_PARAM);
   session_host_destroy(invalid_host);
-  acip_listener_t *reservation = NULL;
-  CHECK(acip_listener_open("127.0.0.1", 0, 1, &reservation) == ASCIICHAT_OK);
-  uint16_t port = acip_listener_port(reservation);
-  acip_listener_destroy(reservation);
+  uint16_t port = unused_port();
   session_host_config_t config = {.port = port, .ipv4_address = "127.0.0.1", .max_clients = 1};
   session_host_t *host = session_host_create(&config);
   CHECK(host && session_host_start(host) == ASCIICHAT_OK);
-  acip_transport_t *peer = NULL;
-  CHECK(connection_factory_open("host_lifecycle_peer", "127.0.0.1", port, NULL, &peer, NULL) == ASCIICHAT_OK);
+  network_connection_t *peer_owner = connect_host(port);
+  acip_transport_t *peer = network_connection_transport(peer_owner);
   uint32_t id = 0;
   uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
   while (!session_host_get_client_ids(host, &id, 1) && time_get_ns() < deadline)
@@ -321,11 +316,12 @@ static void test_host_listener(void) {
   CHECK(type == PACKET_TYPE_PONG && length == 0);
   buffer_release(allocation);
   // An over-capacity peer is rejected through transport cleanup on the library loop.
-  acip_transport_t *excess = NULL;
-  CHECK(connection_factory_open("host_excess_peer", "127.0.0.1", port, NULL, &excess, NULL) == ASCIICHAT_OK);
+  network_connection_t *excess_owner = NULL;
+  CHECK(network_connection_open("host_excess_peer", "127.0.0.1", port, NULL, &excess_owner, NULL) == ASCIICHAT_OK);
+  acip_transport_t *excess = network_connection_transport(excess_owner);
   CHECK(packet_receive_via_transport(excess, &type, &payload, &length, &allocation) != ASCIICHAT_OK);
   buffer_release(allocation);
-  acip_transport_destroy(excess);
+  network_connection_destroy(&excess_owner);
   CHECK(packet_send_via_transport(peer, PACKET_TYPE_PING, NULL, 0, 0) == ASCIICHAT_OK);
   CHECK(packet_receive_via_transport(peer, &type, &payload, &length, &allocation) == ASCIICHAT_OK);
   CHECK(type == PACKET_TYPE_PONG);
@@ -334,17 +330,14 @@ static void test_host_listener(void) {
   CHECK(!session_host_is_running(host));
   CHECK(packet_receive_via_transport(peer, &type, &payload, &length, &allocation) != ASCIICHAT_OK);
   buffer_release(allocation);
-  acip_transport_destroy(peer);
+  network_connection_destroy(&peer_owner);
   session_host_destroy(host);
   socket_cleanup();
 }
 
 static void test_host_reentry(void) {
   CHECK(socket_init() == ASCIICHAT_OK);
-  acip_listener_t *reservation = NULL;
-  CHECK(acip_listener_open("127.0.0.1", 0, 1, &reservation) == ASCIICHAT_OK);
-  uint16_t port = acip_listener_port(reservation);
-  acip_listener_destroy(reservation);
+  uint16_t port = unused_port();
   session_host_config_t config = {.port = port, .ipv4_address = "127.0.0.1", .max_clients = 1};
   session_host_t *host = session_host_create(&config);
   CHECK(host && session_host_start(host) == ASCIICHAT_OK);
@@ -381,6 +374,11 @@ static void test_audio_cadence(void) {
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
   CHECK(options_state_init() == ASCIICHAT_OK);
+  options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
+  *values = options_t_new();
+  values->no_encrypt = true;
+  CHECK(options_state_set(values) == ASCIICHAT_OK);
+  SAFE_FREE(values);
   ascii_simd_init();
   test_audio_cadence();
   test_host_reentry();

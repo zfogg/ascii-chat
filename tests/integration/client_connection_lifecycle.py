@@ -147,8 +147,10 @@ def stalled_handshake(binary, directory):
                           "--reconnect-attempts", "0"])
         try:
             with listener.accept()[0] as peer:
-                # Keep the peer open and silent while the real client waits for crypto.
-                client.wait_for("Performing crypto handshake with server")
+                # Observe the client's protocol bytes, then keep the peer silent
+                # while the common connection negotiation waits for a response.
+                peer.settimeout(5)
+                assert peer.recv(4096), "Client did not begin protocol negotiation"
                 started = time.monotonic()
                 interrupt(client.process)
                 wait_count(client, "CLIENT_CONNECTION_RELEASED", 1, timeout=5)

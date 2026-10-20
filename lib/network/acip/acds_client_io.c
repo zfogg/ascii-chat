@@ -21,7 +21,8 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/send.h>
-#include <ascii-chat/network/parallel_connect.h>
+#include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
@@ -33,40 +34,26 @@
 #include <errno.h>
 
 static asciichat_error_t acds_client_handshake(acds_client_t *client) {
-  asciichat_error_t result = crypto_handshake_init("acds_client", &client->handshake_ctx, false);
+  client->handshake_ctx = network_connection_handshake(client->connection);
+  asciichat_error_t result = crypto_handshake_init("acds_client", client->handshake_ctx, false);
   if (result != ASCIICHAT_OK)
     return result;
   crypto_policy_t policy = client->config.security_policy;
-  policy.transport_secure = false; // This connector opens TCP.
+  policy.transport_secure = network_connection_secure(client->connection);
   if (client->config.identity_key && client->config.identity_key[0]) {
-    result = parse_private_key(client->config.identity_key, &client->handshake_ctx.client_private_key);
+    result = parse_private_key(client->config.identity_key, &client->handshake_ctx->client_private_key);
     if (result != ASCIICHAT_OK)
       return result;
-    client->handshake_ctx.client_public_key.type = KEY_TYPE_ED25519;
-    memcpy(client->handshake_ctx.client_public_key.key, client->handshake_ctx.client_private_key.public_key,
-           sizeof(client->handshake_ctx.client_private_key.public_key));
+    client->handshake_ctx->client_public_key.type = KEY_TYPE_ED25519;
+    memcpy(client->handshake_ctx->client_public_key.key, client->handshake_ctx->client_private_key.public_key,
+           sizeof(client->handshake_ctx->client_private_key.public_key));
     policy.has_identity = true;
   }
   uint8_t mode;
   result = crypto_policy_resolve(&policy, &mode);
   if (result != ASCIICHAT_OK)
     return result;
-  client->handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
-  result = acds_handshake_begin(client->transport, mode);
-  if (mode == ACIP_CRYPTO_NONE)
-    return result;
-  while (result == ASCIICHAT_OK && client->handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
-    packet_type_t type;
-    void *payload = NULL, *allocation = NULL;
-    size_t length = 0;
-    result = packet_receive_via_transport(client->transport, &type, &payload, &length, &allocation);
-    if (result == ASCIICHAT_OK)
-      result = acds_handshake_receive(&client->handshake_ctx, client->transport, type, payload, length);
-    buffer_release(allocation);
-  }
-  if (result == ASCIICHAT_OK)
-    client->transport->crypto_ctx = &client->handshake_ctx.crypto_ctx;
-  return result;
+  return network_client_negotiate(client->transport, client->handshake_ctx, mode, NETWORK_PROTOCOL_DISCOVERY);
 }
 
 #ifdef _WIN32
@@ -106,58 +93,27 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
 
   memset(client, 0, sizeof(*client));
   memcpy(&client->config, config, sizeof(acds_client_config_t));
-  client->socket = INVALID_SOCKET_VALUE;
   client->connected = false;
 
-  // Resolve server address (supports both hostnames and IP addresses, IPv4 and IPv6)
-  struct addrinfo hints;
-  struct addrinfo *result = NULL;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;     // IPv4 or IPv6
-  hints.ai_socktype = SOCK_STREAM; // TCP
-
-  char port_str[16];
-  safe_snprintf(port_str, sizeof(port_str), "%d", config->server_port);
-
-  log_debug("ACDS: Resolving address '%s:%s'...", config->server_address, port_str);
-  int gai_result = getaddrinfo(config->server_address, port_str, &hints, &result);
-  if (gai_result != 0) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to resolve server address '%s': %s", config->server_address,
-                     gai_strerror(gai_result));
-  }
-  log_debug("ACDS: Address resolved successfully");
-  freeaddrinfo(result);
-
-  // Use parallel_connect to attempt IPv4 and IPv6 connections concurrently
-  parallel_connect_config_t pconn_config = {
-      .hostname = config->server_address,
-      .port = config->server_port,
-      .timeout_ms = config->timeout_ms,
-      .should_exit_callback = config->should_exit_callback,
-      .callback_data = config->callback_data,
-  };
-
-  asciichat_error_t pconn_result = parallel_connect(&pconn_config, &client->socket);
+  network_connect_config_t settings = {.timeout_ms = config->timeout_ms,
+                                       .should_exit_callback = config->should_exit_callback,
+                                       .callback_data = config->callback_data};
+  asciichat_error_t pconn_result = network_connection_open("acds", config->server_address, config->server_port,
+                                                           &settings, &client->connection, NULL);
   if (pconn_result == ASCIICHAT_OK) {
     client->connected = true;
-
-    client->transport = acip_tcp_transport_create("acds_client_transport", client->socket, NULL);
-    if (!client->transport) {
-      socket_close(client->socket);
-      client->socket = INVALID_SOCKET_VALUE;
-      client->connected = false;
-      return SET_ERRNO(ERROR_NETWORK, "Failed to create ACDS transport");
-    }
+    client->transport = network_connection_transport(client->connection);
 
     asciichat_error_t handshake_result = acds_client_handshake(client);
     if (handshake_result != ASCIICHAT_OK) {
-      acip_transport_destroy(client->transport);
+      network_connection_destroy(&client->connection);
       client->transport = NULL;
-      socket_close(client->socket);
-      client->socket = INVALID_SOCKET_VALUE;
       client->connected = false;
+      client->handshake_ctx = NULL;
       return handshake_result;
     }
+
+    network_connection_ready(client->connection);
 
     /* Register ACDS client with named registry */
     char acds_name[64];
@@ -176,15 +132,9 @@ void acds_client_disconnect(acds_client_t *client) {
     return;
   }
 
-  if (client->socket != INVALID_SOCKET_VALUE) {
-    if (client->transport) {
-      acip_transport_destroy(client->transport);
-      client->transport = NULL;
-    }
-    crypto_handshake_destroy(&client->handshake_ctx);
-    socket_close(client->socket);
-    client->socket = INVALID_SOCKET_VALUE;
-  }
+  network_connection_destroy(&client->connection);
+  client->transport = NULL;
+  client->handshake_ctx = NULL;
 
   client->connected = false;
   log_debug("Disconnected from ACDS server");

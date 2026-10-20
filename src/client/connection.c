@@ -1,3 +1,4 @@
+#include <ascii-chat/network/negotiation.h>
 #include "connection_internal.h"
 #include "server.h"
 #include "audio.h"
@@ -10,6 +11,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
+#include <ascii-chat/options/options.h>
 
 static void client_interrupt(void *context);
 static asciichat_error_t client_join(void *context);
@@ -28,60 +30,6 @@ asciichat_error_t client_connection_checkpoint(const char *stage) {
   return ASCIICHAT_OK;
 }
 
-static void attempt_set_ip(void *context, const char *ip) {
-  server_connection_set_ip(context, ip);
-}
-static void attempt_set_port(void *context, int port) {
-  server_connection_set_port(context, port);
-}
-static void attempt_set_mode(void *context, uint8_t mode) {
-  client_crypto_set_mode(context, mode);
-}
-static int attempt_init(void *context) {
-  return client_crypto_init(context);
-}
-typedef struct {
-  client_connection_t *connection;
-  acip_transport_t *transport;
-  atomic_t finished;
-} handshake_watch_t;
-
-static void *watch_handshake(void *context) {
-  handshake_watch_t *watch = context;
-  while (!atomic_load_bool(&watch->finished)) {
-    if (should_exit() || atomic_load_bool(&watch->connection->stop_requested)) {
-      acip_transport_interrupt(watch->transport);
-      break;
-    }
-    platform_sleep_us(10 * US_PER_MS_INT);
-  }
-  return NULL;
-}
-
-static asciichat_error_t attempt_handshake(void *context, acip_transport_t *transport) {
-  // The attempt retains the transport until this watcher has joined, including
-  // on handshake failure. Signal handlers only publish the application flag.
-  handshake_watch_t watch = {.connection = context, .transport = transport};
-  atomic_store_bool(&watch.finished, false);
-  asciichat_thread_t worker;
-  asciichat_error_t result = asciichat_thread_create(&worker, "handshake_stop", watch_handshake, &watch);
-  if (result != ASCIICHAT_OK)
-    return result;
-  result = client_crypto_handshake(context, transport);
-  atomic_store_bool(&watch.finished, true);
-  while (asciichat_thread_join(&worker, NULL) != ASCIICHAT_OK) {
-    log_warn("Retaining handshake watcher until it joins");
-    platform_sleep_us(10 * US_PER_MS_INT);
-  }
-  return result;
-}
-static bool attempt_is_ready(void *context) {
-  return crypto_client_is_ready(context);
-}
-static const crypto_context_t *attempt_get_context(void *context) {
-  return crypto_client_get_context(context);
-}
-
 asciichat_error_t client_connection_create(client_connection_t **out) {
   if (!out) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Missing client connection output");
@@ -92,13 +40,8 @@ asciichat_error_t client_connection_create(client_connection_t **out) {
   client_connection_t *connection = *out;
   session_connection_init(&connection->lifecycle,
                           (session_connection_ops_t){client_interrupt, client_join, client_release}, connection);
-  connection->sockfd = INVALID_SOCKET_VALUE;
   connection->crypto_mode = ACIP_CRYPTO_ENCRYPT;
-  asciichat_error_t result = connection_context_init(&connection->attempt);
-  connection->attempt.context = connection;
-  connection->attempt.ops =
-      (connection_attempt_ops_t){attempt_set_ip,    attempt_set_port, attempt_set_mode,   attempt_init,
-                                 attempt_handshake, attempt_is_ready, attempt_get_context};
+  asciichat_error_t result = ASCIICHAT_OK;
   if (result == ASCIICHAT_OK && server_connection_init(connection) != 0)
     result = ERROR_THREAD;
   if (result == ASCIICHAT_OK)
@@ -124,14 +67,24 @@ asciichat_error_t client_connection_start(client_connection_t *connection, const
   if (!connection || atomic_load_int(&connection->lifecycle.state) != SESSION_CONNECTION_STARTING) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection is not ready for startup");
   }
-  asciichat_error_t result = connection_attempt_tcp(&connection->attempt, address, port);
+  connection_endpoint_t endpoint;
+  asciichat_error_t result = network_connection_open("client", address, port, NULL, &connection->network, &endpoint);
   if (result != ASCIICHAT_OK)
     return result;
+  connection->transport = network_connection_transport(connection->network);
+  server_connection_set_ip(connection, endpoint.host);
+  server_connection_set_port(connection, endpoint.port);
+  result = client_crypto_init(connection);
+  if (result != ASCIICHAT_OK)
+    return result;
+  result = network_client_negotiate(connection->transport, connection->crypto_ctx, connection->crypto_mode,
+                                    NETWORK_PROTOCOL_MEDIA);
+  if (result != ASCIICHAT_OK)
+    return result;
+  network_connection_ready(connection->network);
   if (should_exit())
     return SET_ERRNO(ERROR_NETWORK, "Connection startup interrupted");
-  if (!connection->attempt.connection.transport)
-    return SET_ERRNO(ERROR_NETWORK, "Connection has no transport");
-  server_connection_set_transport(connection, connection->attempt.connection.transport);
+  server_connection_set_transport(connection, connection->transport);
   result = client_connection_checkpoint("transport");
   if (result != ASCIICHAT_OK)
     return result;
@@ -197,15 +150,12 @@ static void client_release(void *context) {
   connection->audio_pipeline = NULL;
   h265_encoder_destroy(connection->video_encoder);
   connection->video_encoder = NULL;
-  /* The handle destroys the transport and its event/client owner, quiescing
-   * callbacks before releasing the crypto state referenced by the transport. */
+  /* The shared owner drains callbacks before releasing transport and security. */
   log_debug("CLIENT_CONNECTION_TRANSPORT_CLEANUP");
-  connection_context_cleanup(&connection->attempt);
+  network_connection_destroy(&connection->network);
   log_debug("CLIENT_CONNECTION_TRANSPORT_RELEASED");
-  connection->attempt.connection.transport = NULL;
-  connection->sockfd = INVALID_SOCKET_VALUE;
-  crypto_client_cleanup(connection);
-  NAMED_UNREGISTER(&connection->crypto_ctx);
+  connection->transport = NULL;
+  connection->crypto_ctx = NULL;
 }
 
 asciichat_error_t client_connection_destroy(client_connection_t **owner) {

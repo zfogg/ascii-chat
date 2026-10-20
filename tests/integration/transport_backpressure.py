@@ -12,7 +12,10 @@ import re
 import subprocess
 import time
 import platform
+import sys
 from datetime import datetime, timezone
+
+sys.stdout.reconfigure(encoding='utf-8')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--binary', type=Path, required=True)

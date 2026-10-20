@@ -60,6 +60,14 @@ function(copy_windows_dlls TARGET_NAME)
                 "${DLL_SOURCE_DIR}/*.dll"
             )
 
+            foreach(_runtime IN LISTS ASCIICHAT_WEBRTC_RUNTIME_DLLS)
+                get_filename_component(_runtime_name "${_runtime}" NAME)
+                list(REMOVE_ITEM VCPKG_DLLS "${_runtime_name}")
+                get_filename_component(_runtime_dir "${_runtime}" DIRECTORY)
+                copy_dlls_post_build(TARGET ${TARGET_NAME} NAMES "${_runtime_name}"
+                    SOURCE_DIR "${_runtime_dir}" COMMENT "matching WebRTC sanitizer runtime")
+            endforeach()
+
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc-debug.dll.pdb)
             else()
@@ -127,15 +135,10 @@ function(copy_windows_dlls TARGET_NAME)
 
         # FFmpeg DLLs are from .deps-cache, not vcpkg
         if(DEFINED ASCIICHAT_DEPS_CACHE_DIR)
-            set(FFMPEG_DLL_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/bin")
-            # Try versioned directory name if generic doesn't exist
-            if(NOT EXISTS "${FFMPEG_DLL_DIR}")
-                file(GLOB _ffmpeg_dirs "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg-*/bin")
-                list(LENGTH _ffmpeg_dirs _ffmpeg_dirs_len)
-                if(_ffmpeg_dirs_len GREATER 0)
-                    list(GET _ffmpeg_dirs 0 FFMPEG_DLL_DIR)
-                endif()
-            endif()
+            # Copy the runtime matching the libraries selected at configure time.
+            list(GET FFMPEG_LIBRARY_DIRS 0 _ffmpeg_library_dir)
+            get_filename_component(_ffmpeg_prefix "${_ffmpeg_library_dir}" DIRECTORY)
+            set(FFMPEG_DLL_DIR "${_ffmpeg_prefix}/bin")
             if(EXISTS "${FFMPEG_DLL_DIR}")
                 file(GLOB FFMPEG_DLL_PATHS "${FFMPEG_DLL_DIR}/av*.dll" "${FFMPEG_DLL_DIR}/sw*.dll")
                 set(FFMPEG_DLLS "")

@@ -357,7 +357,6 @@ set(LIB_SRC_CLIENT_NETWORK
     ${LIB_ROOT}/network/errors.c
     ${LIB_ROOT}/network/frame_validator.c
     ${LIB_ROOT}/network/acip/send.c
-    ${LIB_ROOT}/network/acip/listener.c
     ${LIB_ROOT}/network/acip/prepare.c
     ${LIB_ROOT}/network/acip/security.c
 )

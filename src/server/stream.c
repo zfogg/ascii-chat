@@ -1243,60 +1243,8 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
  * @see packet_queue_push_copy() For underlying queue implementation
  * @see asciichat_crc32() For checksum generation
  */
-// REMOVED: queue_ascii_frame_for_client - video now uses double buffer directly in client->outgoing_video_buffer
 
-/**
- * @brief Queue audio data for delivery to specific client
- *
- * Queues mixed audio data for delivery to a specific client. This is a
- * simple wrapper around the packet queue system for audio delivery.
- *
- * AUDIO PIPELINE INTEGRATION:
- * ============================
- * - Called by audio mixing threads after combining multiple client streams
- * - Audio data is already in final format (float samples, mixed)
- * - No additional processing required at this stage
- *
- * PACKET DETAILS:
- * ===============
- * - Uses PACKET_TYPE_AUDIO_BATCH packet type
- * - Audio data is raw float samples bundled together
- * - Batch format reduces packet overhead ~32x
- * - Sample rate and format determined by audio system
- *
- * DELIVERY CHARACTERISTICS:
- * =========================
- * - Higher priority than video packets (lower latency)
- * - Uses client's audio packet queue
- * - Send thread prioritizes audio over video
- * - Queue overflow drops oldest audio to maintain real-time
- *
- * ERROR HANDLING:
- * ===============
- * - Invalid parameters: Return -1 immediately
- * - Queue overflow: Handled by packet queue (drops old data)
- * - Client shutdown: Graceful failure
- *
- * @param client Target client for audio delivery
- * @param audio_data Mixed audio samples (float format)
- * @param data_size Size of audio data in bytes
- *
- * @return 0 on successful queuing, -1 on error
- *
- * @note Audio has priority over video in send thread
- * @note Real-time audio requires queue overflow handling
- * @see packet_queue_push_copy() For underlying queue implementation
- * @see mixer.c For audio mixing implementation
- */
-int queue_audio_for_client(client_info_t *client, const void *audio_data, size_t data_size) {
-  if (!client || !client->audio_queue || !audio_data || data_size == 0) {
-    return -1;
-  }
 
-  return packet_queue_push_copy(client->audio_queue, PACKET_TYPE_AUDIO_BATCH, audio_data, data_size, 0) == ASCIICHAT_OK
-             ? 0
-             : -1;
-}
 
 /**
  * @brief Check if any connected clients are currently sending video

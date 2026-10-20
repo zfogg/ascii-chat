@@ -224,14 +224,6 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
 
 /* ===== Connection stubs ===== */
 
-typedef void tcp_client_t;
-
-asciichat_error_t connection_attempt_tcp(const char *address, int port) {
-  (void)address;
-  (void)port;
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "TCP not supported in WASM");
-}
-
 /* ===== WAV file output stubs ===== */
 
 bool wav_dump_enabled(void) {

@@ -61,6 +61,7 @@ class CoverageReportTests(unittest.TestCase):
         script.write_text(
             f'set(CMAKE_SOURCE_DIR "{repository.as_posix()}")\n'
             f'set(ASCIICHAT_DEPS_CACHE_DIR "{(self.root / "deps").as_posix()}")\n'
+            f'set(FFMPEG_LIBRARY_DIRS "{(dll_dir.parent / "lib").as_posix()}")\n'
             'set(WIN32 TRUE)\nunset(ENV{VCPKG_ROOT})\n'
             'include("${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake")\n'
             'include("${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake")\n'

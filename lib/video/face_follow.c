@@ -15,7 +15,7 @@ void face_follow_init(face_follow_state_t *state) {
   state->crop = state->target = full_frame();
 }
 
-static float overlap(face_follow_rect_t a, face_follow_rect_t b) {
+static float face_follow_overlap(face_follow_rect_t a, face_follow_rect_t b) {
   float w = fmaxf(0, fminf(a.x + a.w, b.x + b.w) - fmaxf(a.x, b.x));
   float h = fmaxf(0, fminf(a.y + a.h, b.y + b.h) - fmaxf(a.y, b.y));
   float intersection = w * h;
@@ -37,7 +37,7 @@ void face_follow_observe(face_follow_state_t *state, const face_follow_detection
       float dx = cx - (state->face.x + state->face.w * 0.5f);
       float dy = cy - (state->face.y + state->face.h * 0.5f);
       float distance = sqrtf(dx * dx + dy * dy);
-      float match = overlap(box, state->face);
+      float match = face_follow_overlap(box, state->face);
       // A bystander must not steal the crop while the selected subject is absent.
       if (match < 0.08f && distance > fmaxf(0.12f, state->face.w * 0.8f))
         continue;

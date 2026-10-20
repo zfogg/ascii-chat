@@ -102,13 +102,12 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/network/network.h>
-#include <ascii-chat/network/tcp/client.h>
 #include <ascii-chat/network/client.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/client.h>
-#include "connection_state.h"
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/app_callbacks.h>
 
@@ -495,17 +494,6 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
 }
 
 int client_main(void) {
-
-  // Register client crypto callbacks for TCP connection path
-  // The TCP path in lib/network/connection_attempt.c relies on these callbacks
-  // to handle cryptographic operations and key exchange
-  static const app_callbacks_t client_crypto_callbacks = {
-      .should_exit = should_exit,
-      .signal_exit = signal_exit,
-      .platform_get_monotonic_time_us = platform_get_monotonic_time_us,
-      .platform_sleep_ms = platform_sleep_ms,
-  };
-  app_callbacks_register(&client_crypto_callbacks);
 
   // Initialize client-specific systems (NOT shared with session_client_like)
   // This includes application devices and the application client context.

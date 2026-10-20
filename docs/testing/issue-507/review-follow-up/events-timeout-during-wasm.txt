@@ -1,0 +1,18 @@
+Event I/O logs: C:\Users\zachf\AppData\Local\Temp\ascii-event-io-pc907ruf
+Traceback (most recent call last):
+  File "C:\Users\zachf\.codex\worktrees\issue-507-unified-networking\ascii-chat\tests\integration\event_io.py", line 179, in <module>
+    main()
+  File "C:\Users\zachf\.codex\worktrees\issue-507-unified-networking\ascii-chat\tests\integration\event_io.py", line 172, in main
+    reject_client(binary, directory, endpoint, f"whitelist-rejected-{protocol}", ["--server-key", str(pinned)])
+  File "C:\Users\zachf\.codex\worktrees\issue-507-unified-networking\ascii-chat\tests\integration\event_io.py", line 19, in reject_client
+    result = subprocess.run(
+             ^^^^^^^^^^^^^^^
+  File "C:\Users\zachf\scoop\apps\python\current\Lib\subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\zachf\scoop\apps\python\current\Lib\subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\zachf\scoop\apps\python\current\Lib\subprocess.py", line 1630, in _communicate
+    raise TimeoutExpired(self.args, orig_timeout)
+subprocess.TimeoutExpired: Command '['C:\\Users\\zachf\\.codex\\worktrees\\issue-507-unified-networking\\ascii-chat\\build\\bin\\ascii-chat.exe', '--no-check-update', '--log-file', 'C:\\Users\\zachf\\AppData\\Local\\Temp\\ascii-event-io-pc907ruf\\whitelist-rejected-tcp.log', 'client', '127.0.0.1:64848', '--test-pattern', '--audio=false', '--snapshot', '--snapshot-delay', '0', '--width', '40', '--height', '12', '--splash-screen=false', '--reconnect-attempts', '0', '--server-key', 'C:\\Users\\zachf\\AppData\\Local\\Temp\\ascii-event-io-pc907ruf\\server-identity.pub']' timed out after 20 seconds

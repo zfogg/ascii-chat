@@ -1,3 +1,4 @@
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/common.h>
 #pragma once
 
@@ -127,10 +128,10 @@ typedef struct {
  */
 typedef struct {
   acds_client_config_t config;
-  socket_t socket;                          ///< TCP socket to ACDS server
-  bool connected;                           ///< Connection status
-  acip_transport_t *transport;              ///< Transport used for the initial crypto handshake
-  crypto_handshake_context_t handshake_ctx; ///< ACDS crypto handshake state
+  bool connected;              ///< Connection status
+  acip_transport_t *transport; ///< Transport used for the initial crypto handshake
+  network_connection_t *connection;
+  crypto_handshake_context_t *handshake_ctx; ///< Borrowed from connection owner
 } acds_client_t;
 
 // ============================================================================

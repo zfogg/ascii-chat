@@ -1193,8 +1193,7 @@ void debug_memory_report(void) {
               }
             }
           }
-          if (line_colon && line_colon > relative_key &&
-              SAFE_SSCANF(line_colon + 1, "%d", &line) == 1 &&
+          if (line_colon && line_colon > relative_key && SAFE_SSCANF(line_colon + 1, "%d", &line) == 1 &&
               SAFE_SSCANF(last_colon + 1, "%" SCNu64, &tid) == 1) {
             size_t file_len = (size_t)(line_colon - relative_key);
             SAFE_MEMCPY(file, sizeof(file), relative_key, file_len);

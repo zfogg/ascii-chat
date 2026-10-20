@@ -1,8 +1,9 @@
 #pragma once
 #include <ascii-chat/network/consensus/handoff.h>
-#include <ascii-chat/platform/event.h>
+#include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/negotiation.h>
 
-void acds_event_accept(platform_event_stream_t *, void *);
+extern const network_connection_callbacks_t acds_network_callbacks;
 
 /**
  * @file acds/server.h
@@ -31,10 +32,8 @@ void acds_event_accept(platform_event_stream_t *, void *);
 #include <stdbool.h>
 #include <sqlite3.h>
 #include <ascii-chat/atomic.h>
-#include <ascii-chat/network/tcp/server.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/websocket/server.h>
 #include <ascii-chat/options/options.h> // For MAX_IDENTITY_KEYS
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/crypto/handshake/common.h>
@@ -44,9 +43,9 @@ void acds_event_accept(platform_event_stream_t *, void *);
 /**
  * @brief Per-client connection data
  *
- * Stored in tcp_server client registry to track which session and
+ * Stored in network connection registry to track which session and
  * participant this connection represents. Used by signaling relay
- * to map participant_id → socket for message delivery.
+ * to map participant_id to connection for message delivery.
  *
  * Multi-Key Session Creation Protocol:
  * =====================================
@@ -67,8 +66,7 @@ typedef struct {
   bool joined_session;        ///< Whether client has successfully joined a session
 
   // Crypto handshake state
-  crypto_handshake_context_t handshake_ctx; ///< Handshake context for encrypted communication
-  bool handshake_complete;                  ///< Whether crypto handshake has completed
+  network_negotiation_t negotiation;
 
   // Multi-key session creation state
   bool in_multikey_session_create;                     ///< True during multi-key SESSION_CREATE sequence
@@ -78,7 +76,6 @@ typedef struct {
 
   // Transport abstraction
   acip_transport_t *transport; ///< Persistent transport for this client connection
-  int registry_id;             ///< Socket or synthetic ID used in tcp_server registry
 
   // Protocol state
   bool session_established; ///< True after SESSION_CREATE/SESSION_JOIN completes; handler exits loop
@@ -117,7 +114,7 @@ typedef struct {
  * directly in SQLite as the single source of truth.
  */
 typedef struct {
-  tcp_server_t *tcp_server; ///< TCP server (owned by server_like)
+  network_server_t *network_server; ///< Network runtime owned by server_like
   mutex_t handoff_mutex;
   struct acds_handoff_entry *handoffs;
 
@@ -167,24 +164,3 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
  * @param server Server structure to clean up
  */
 void acds_server_shutdown(acds_server_t *server);
-
-/**
- * @brief Per-client connection handler (thread entry point)
- *
- * Processes ACIP packets from a connected client. Handles crypto
- * handshake, then dispatches packets to session/signaling handlers.
- *
- * @param arg Pointer to client connection context
- * @return NULL (thread exit value)
- */
-
-/**
- * @brief WebSocket client handler (thread entry point)
- *
- * Processes ACIP packets from a WebSocket client connection.
- * Similar to TCP handler but uses transport-based APIs for crypto handshake.
- *
- * @param arg Pointer to websocket_client_context_t
- * @return NULL (thread exit value)
- */
-void *acds_websocket_client_handler(void *arg);

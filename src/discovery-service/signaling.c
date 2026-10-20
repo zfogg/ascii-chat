@@ -1,13 +1,5 @@
-/**
- * @file acds/signaling.c
- * @brief 🎬 WebRTC SDP/ICE signaling relay implementation
- *
- * Pure relay server for WebRTC signaling - no media processing.
- * Relays SDP offers/answers and ICE candidates between participants
- * using participant_id → socket mapping from tcp_server client registry.
- *
- * Session validation uses SQLite database lookups.
- */
+/* Discovery signaling through pinned connection-registry visits.
+ * Sends run outside the registry mutex while participant state remains alive. */
 
 #include "discovery-service/signaling.h"
 #include "discovery-service/server.h"
@@ -42,18 +34,18 @@ static bool uuid_equals(const uint8_t a[16], const uint8_t b[16]) {
  */
 typedef struct {
   const uint8_t *target_participant_id; ///< Participant to find
-  socket_t found_socket;                ///< Socket if found
   packet_type_t type;
   const void *packet;
   size_t length;
   asciichat_error_t result;
-  bool found; ///< Whether client was found
+  bool found;                           ///< Whether client was found
 } find_client_context_t;
 
 /**
- * @brief Callback for tcp_server_foreach_client to find participant socket
+ * @brief Find a participant through a pinned registry visit
  */
-static void find_participant_callback(socket_t socket, void *client_data, void *user_arg) {
+static void find_participant_callback(network_connection_t *connection, void *user_arg) {
+  void *client_data = network_connection_context(connection);
   find_client_context_t *ctx = (find_client_context_t *)user_arg;
 
   if (!client_data) {
@@ -67,9 +59,8 @@ static void find_participant_callback(socket_t socket, void *client_data, void *
 
   // Check if participant_id matches
   if (uuid_equals(acds_data->participant_id, ctx->target_participant_id)) {
-    ctx->found_socket = socket;
     ctx->found = true;
-    // Keep the registry read lock through send so disconnect cannot free the transport.
+    // The registry visitor pins the connection through packet admission.
     ctx->result = packet_send_via_transport(acds_data->transport, ctx->type, ctx->packet, ctx->length, 0);
   }
 }
@@ -87,10 +78,10 @@ typedef struct {
 } broadcast_context_t;
 
 /**
- * @brief Callback for tcp_server_foreach_client to broadcast to session
+ * @brief Send to a participant through a pinned registry visit
  */
-static void broadcast_callback(socket_t socket, void *client_data, void *user_arg) {
-  (void)socket; // Suppress unused parameter warning - use transport instead
+static void broadcast_callback(network_connection_t *connection, void *user_arg) {
+  void *client_data = network_connection_context(connection);
   broadcast_context_t *ctx = (broadcast_context_t *)user_arg;
 
   if (!client_data) {
@@ -127,23 +118,23 @@ static void broadcast_callback(socket_t socket, void *client_data, void *user_ar
 
   // Send packet through transport (not raw socket)
   log_debug("★ BROADCAST_CALLBACK: sending packet_type=%u to participant=%02x%02x...", ctx->packet_type,
-            acds_data->participant_id[0], acds_data->participant_id[1]);
+           acds_data->participant_id[0], acds_data->participant_id[1]);
   asciichat_error_t result =
       packet_send_via_transport(acds_data->transport, ctx->packet_type, ctx->packet, ctx->packet_len, 0);
   if (result == ASCIICHAT_OK) {
     ctx->sent_count++;
     log_debug("★ BROADCAST_CALLBACK: successfully sent to participant=%02x%02x...", acds_data->participant_id[0],
-              acds_data->participant_id[1]);
+             acds_data->participant_id[1]);
   } else {
     log_warn("★ BROADCAST_CALLBACK_FAILED: Failed to send to participant=%02x%02x...: %s", acds_data->participant_id[0],
              acds_data->participant_id[1], asciichat_error_string(result));
   }
 }
 
-asciichat_error_t signaling_relay_sdp(sqlite3 *db, tcp_server_t *tcp_server, const acip_webrtc_sdp_t *sdp,
+asciichat_error_t signaling_relay_sdp(sqlite3 *db, network_server_t *network_server, const acip_webrtc_sdp_t *sdp,
                                       size_t total_packet_len) {
-  if (!db || !tcp_server || !sdp) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "db, tcp_server, or sdp is NULL");
+  if (!db || !network_server || !sdp) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, network server, or sdp is NULL");
   }
 
   /* Find session by UUID using database lookup */
@@ -162,18 +153,17 @@ asciichat_error_t signaling_relay_sdp(sqlite3 *db, tcp_server_t *tcp_server, con
   if (is_broadcast_uuid(sdp->recipient_id)) {
     // Broadcast to all participants in session (except sender)
     log_debug("Broadcasting SDP to all participants in session (excluding sender)");
-    return signaling_broadcast(db, tcp_server, sdp->session_id, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len,
+    return signaling_broadcast(db, network_server, sdp->session_id, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len,
                                sdp->sender_id);
   } else {
     // Unicast to specific recipient
     find_client_context_t ctx = {.target_participant_id = sdp->recipient_id,
-                                 .found_socket = INVALID_SOCKET_VALUE,
                                  .found = false,
                                  .type = PACKET_TYPE_ACIP_WEBRTC_SDP,
                                  .packet = sdp,
                                  .length = total_packet_len};
 
-    tcp_server_foreach_client(tcp_server, find_participant_callback, &ctx);
+    network_server_foreach(network_server, find_participant_callback, &ctx);
 
     if (!ctx.found) {
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Recipient participant not found (may be offline)");
@@ -185,16 +175,16 @@ asciichat_error_t signaling_relay_sdp(sqlite3 *db, tcp_server_t *tcp_server, con
       return SET_ERRNO(ERROR_NETWORK, "Failed to send SDP packet to recipient");
     }
 
-    log_debug("Relayed SDP from sender to recipient (socket=%d)", ctx.found_socket);
+    log_debug("Relayed SDP to participant");
   }
 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, const acip_webrtc_ice_t *ice,
+asciichat_error_t signaling_relay_ice(sqlite3 *db, network_server_t *network_server, const acip_webrtc_ice_t *ice,
                                       size_t total_packet_len) {
-  if (!db || !tcp_server || !ice) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "db, tcp_server, or ice is NULL");
+  if (!db || !network_server || !ice) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, network server, or ice is NULL");
   }
 
   /* Find session by UUID using database lookup */
@@ -208,18 +198,17 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, con
   if (is_broadcast_uuid(ice->recipient_id)) {
     // Broadcast to all participants in session (except sender)
     log_debug("Broadcasting ICE candidate to all participants in session (excluding sender)");
-    return signaling_broadcast(db, tcp_server, ice->session_id, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len,
+    return signaling_broadcast(db, network_server, ice->session_id, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len,
                                ice->sender_id);
   } else {
     // Unicast to specific recipient
     find_client_context_t ctx = {.target_participant_id = ice->recipient_id,
-                                 .found_socket = INVALID_SOCKET_VALUE,
                                  .found = false,
                                  .type = PACKET_TYPE_ACIP_WEBRTC_ICE,
                                  .packet = ice,
                                  .length = total_packet_len};
 
-    tcp_server_foreach_client(tcp_server, find_participant_callback, &ctx);
+    network_server_foreach(network_server, find_participant_callback, &ctx);
 
     if (!ctx.found) {
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Recipient participant not found (may be offline)");
@@ -231,21 +220,21 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, con
       return SET_ERRNO(ERROR_NETWORK, "Failed to send ICE packet to recipient");
     }
 
-    log_debug("Relayed ICE candidate from sender to recipient (socket=%d)", ctx.found_socket);
+    log_debug("Relayed ICE candidate to participant");
   }
 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, const uint8_t session_id[16],
+asciichat_error_t signaling_broadcast(sqlite3 *db, network_server_t *network_server, const uint8_t session_id[16],
                                       packet_type_t packet_type, const void *packet, size_t packet_len,
                                       const uint8_t *exclude_participant_id) {
-  if (!db || !tcp_server || !session_id || !packet) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "db, tcp_server, session_id, or packet is NULL");
+  if (!db || !network_server || !session_id || !packet) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, network server, session_id, or packet is NULL");
   }
 
   log_debug("★ SIGNALING_BROADCAST_START: packet_type=%u, packet_len=%zu, session=%02x%02x...", packet_type, packet_len,
-            session_id[0], session_id[1]);
+           session_id[0], session_id[1]);
   if (exclude_participant_id) {
     log_debug("★ SIGNALING_BROADCAST: excluding participant=%02x%02x...", exclude_participant_id[0],
               exclude_participant_id[1]);
@@ -266,7 +255,7 @@ asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, con
                              .packet_len = packet_len,
                              .sent_count = 0};
 
-  tcp_server_foreach_client(tcp_server, broadcast_callback, &ctx);
+  network_server_foreach(network_server, broadcast_callback, &ctx);
 
   if (ctx.sent_count == 0) {
     log_warn("★ SIGNALING_BROADCAST_COMPLETE: sent to 0 participants (all offline or not joined yet)");
@@ -277,10 +266,10 @@ asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, con
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t signaling_relay_network_quality(sqlite3 *db, tcp_server_t *tcp_server,
+asciichat_error_t signaling_relay_network_quality(sqlite3 *db, network_server_t *network_server,
                                                   const acip_nat_quality_t *quality, size_t total_packet_len) {
-  if (!db || !tcp_server || !quality) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "db, tcp_server, or quality is NULL");
+  if (!db || !network_server || !quality) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, network server, or quality is NULL");
   }
 
   // Validate packet size
@@ -303,6 +292,6 @@ asciichat_error_t signaling_relay_network_quality(sqlite3 *db, tcp_server_t *tcp
 
   // Broadcast to all participants in session (except sender)
   log_debug("Broadcasting NETWORK_QUALITY to all participants in session (excluding sender)");
-  return signaling_broadcast(db, tcp_server, session_id, PACKET_TYPE_ACIP_NETWORK_QUALITY, quality, total_packet_len,
-                             sender_id);
+  return signaling_broadcast(db, network_server, session_id, PACKET_TYPE_ACIP_NETWORK_QUALITY, quality,
+                             total_packet_len, sender_id);
 }

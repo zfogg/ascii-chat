@@ -1,0 +1,361 @@
+#include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/acip/acds_client.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/backpressure.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/network/webrtc/webrtc.h>
+#include <ascii-chat/buffer.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/log/log.h>
+#include <string.h>
+
+#define CHECK(expr)                                                                                                    \
+  do {                                                                                                                 \
+    if (!(expr))                                                                                                       \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                   \
+  } while (0)
+
+typedef struct {
+  network_server_t *server;
+  atomic_t opened, packets, closing, closed, fail_closing;
+  bool reject, stall;
+  asciichat_error_t result;
+} fixture_t;
+
+static asciichat_error_t opened(network_connection_t *connection, void *arg) {
+  fixture_t *f = arg;
+  CHECK(network_connection_transport(connection));
+  network_connection_set_context(connection, f);
+  atomic_fetch_add_int(&f->opened, 1);
+  if (f->reject)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Injected partial startup failure");
+  if (!f->stall)
+    network_connection_ready(connection);
+  return ASCIICHAT_OK;
+}
+static asciichat_error_t packet(network_connection_t *connection, packet_type_t type, const void *data, size_t length,
+                                void *arg) {
+  fixture_t *f = arg;
+  CHECK(network_connection_context(connection) == f);
+  CHECK(type == PACKET_TYPE_PING && length == sizeof(uint64_t));
+  atomic_fetch_add_int(&f->packets, 1);
+  return packet_send_via_transport(network_connection_transport(connection), PACKET_TYPE_PONG, data, length, 0);
+}
+static asciichat_error_t closing(network_connection_t *connection, void *arg) {
+  fixture_t *f = arg;
+  CHECK(network_connection_transport(connection));
+  CHECK(network_connection_context(connection) == f);
+  atomic_fetch_add_int(&f->closing, 1);
+  if (atomic_load_bool(&f->fail_closing))
+    return SET_ERRNO(ERROR_THREAD, "Injected producer join failure");
+  return ASCIICHAT_OK;
+}
+static void closed(network_connection_t *connection, void *arg) {
+  fixture_t *f = arg;
+  CHECK(!network_connection_transport(connection));
+  CHECK(network_connection_state(connection) == NETWORK_CLOSED);
+  atomic_fetch_add_int(&f->closed, 1);
+}
+static void *run(void *arg) {
+  fixture_t *f = arg;
+  f->result = network_server_run(f->server);
+  return NULL;
+}
+static uint16_t unused_port(void) {
+  socket_t probe = socket_create("port_probe", AF_INET, SOCK_STREAM, 0);
+  CHECK(probe != INVALID_SOCKET_VALUE);
+  struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  CHECK(socket_bind(probe, (struct sockaddr *)&address, sizeof(address)) == 0);
+  socklen_t length = sizeof(address);
+  CHECK(socket_getsockname(probe, (struct sockaddr *)&address, &length) == 0);
+  uint16_t port = NET_TO_HOST_U16(address.sin_port);
+  socket_close(probe);
+  return port;
+}
+static void upgrade_websocket(socket_t peer, uint16_t port) {
+  char request[512];
+  safe_snprintf(request, sizeof(request),
+                "GET / HTTP/1.1\r\nHost: 127.0.0.1:%u\r\nUpgrade: websocket\r\n"
+                "Connection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n"
+                "Sec-WebSocket-Protocol: acip\r\n\r\n",
+                port);
+  socket_buffer_t bytes = {request, strlen(request)};
+  CHECK(socket_sendv_all(peer, &bytes, 1, NS_PER_SEC_INT) == ASCIICHAT_OK);
+  CHECK(socket_set_timeout(peer, 2 * NS_PER_SEC_INT) == 0);
+  char response[1024] = {0};
+  size_t used = 0;
+  while (!strstr(response, "\r\n\r\n")) {
+    ssize_t count = socket_recv(peer, response + used, sizeof(response) - used - 1, 0);
+    CHECK(count > 0);
+    used += (size_t)count;
+    response[used] = '\0';
+    CHECK(used < sizeof(response) - 1);
+  }
+  CHECK(strstr(response, " 101 "));
+}
+static void wait_count(atomic_t *count, int expected) {
+  uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
+  while (atomic_load_int(count) < expected && time_get_ns() < deadline)
+    platform_sleep_ms(1);
+  CHECK(atomic_load_int(count) == expected);
+}
+static void stop_visit(network_connection_t *connection, void *arg) {
+  fixture_t *f = arg;
+  CHECK(network_connection_context(connection) == f);
+  network_connection_request_stop(connection);
+  // A registry visitor pins application state even while the close path runs.
+  platform_sleep_ms(20);
+  CHECK(network_connection_context(connection) == f);
+}
+typedef struct rtc_endpoint {
+  struct rtc_endpoint *other;
+  webrtc_peer_connection_t *pc;
+  webrtc_data_channel_t *dc;
+  atomic_t opened;
+} rtc_endpoint_t;
+static void rtc_description(webrtc_peer_connection_t *pc, const char *sdp, const char *type, void *arg) {
+  (void)pc;
+  rtc_endpoint_t *endpoint = arg;
+  CHECK(webrtc_set_remote_description(endpoint->other->pc, sdp, type) == ASCIICHAT_OK);
+}
+static void rtc_candidate(webrtc_peer_connection_t *pc, const char *candidate, const char *mid, void *arg) {
+  (void)pc;
+  rtc_endpoint_t *endpoint = arg;
+  CHECK(webrtc_add_remote_candidate(endpoint->other->pc, candidate, mid) == ASCIICHAT_OK);
+}
+static void rtc_opened(webrtc_data_channel_t *dc, void *arg) {
+  rtc_endpoint_t *endpoint = arg;
+  endpoint->dc = dc;
+  atomic_store_int(&endpoint->opened, 1);
+}
+static void rtc_pair(rtc_endpoint_t endpoints[2]) {
+  for (int i = 0; i < 2; ++i) {
+    endpoints[i].other = &endpoints[1 - i];
+    webrtc_config_t config = {.bind_address = "127.0.0.1",
+                              .on_local_description = rtc_description,
+                              .on_local_candidate = rtc_candidate,
+                              .on_datachannel_open = rtc_opened,
+                              .user_data = &endpoints[i]};
+    CHECK(webrtc_create_peer_connection(&config, &endpoints[i].pc) == ASCIICHAT_OK);
+  }
+  CHECK(webrtc_create_datachannel(endpoints[0].pc, "acip", &endpoints[0].dc) == ASCIICHAT_OK);
+  CHECK(webrtc_create_offer(endpoints[0].pc) == ASCIICHAT_OK);
+  for (int i = 0; i < 2; ++i)
+    wait_count(&endpoints[i].opened, 1);
+}
+static void rtc_cleanup(rtc_endpoint_t endpoints[2]) {
+  for (int i = 0; i < 2; ++i) {
+    if (endpoints[i].dc)
+      webrtc_datachannel_destroy(endpoints[i].dc);
+    if (endpoints[i].pc)
+      webrtc_peer_connection_destroy(endpoints[i].pc);
+  }
+}
+static void scenario(int backend, bool reject, bool stall, int corrupt, bool retained) {
+  bool websocket = backend == 1, rtc = backend == 2;
+  rtc_endpoint_t endpoints[2] = {0};
+  log_warn("Connection scenario: backend=%d reject=%d stall=%d corrupt=%d", backend, reject, stall, corrupt);
+  fixture_t f = {.reject = reject, .stall = stall};
+  atomic_store_bool(&f.fail_closing, retained);
+  uint16_t tcp = unused_port(), ws = unused_port();
+  while (ws == tcp)
+    ws = unused_port();
+  network_server_config_t config = {.port = tcp,
+                                    .ipv4_address = "127.0.0.1",
+                                    .bind_ipv4 = true,
+                                    .websocket_enabled = !rtc,
+                                    .websocket_port = ws,
+                                    .max_connections = 4,
+                                    .handshake_timeout_ms = 250,
+                                    .partial_timeout_ms = 250,
+                                    .callbacks = {opened, packet, closing, closed},
+                                    .user_data = &f};
+  CHECK(network_server_create(&config, &f.server) == ASCIICHAT_OK);
+  CHECK(network_server_start(f.server) == ASCIICHAT_OK);
+  asciichat_thread_t thread;
+  CHECK(asciichat_thread_create(&thread, "connection_fixture", run, &f) == ASCIICHAT_OK);
+  platform_sleep_ms(50);
+  char endpoint[128];
+  safe_snprintf(endpoint, sizeof(endpoint), "%s://127.0.0.1:%u", websocket ? "ws" : "tcp", websocket ? ws : tcp);
+  network_connection_t *client = NULL;
+  socket_t fragmented = INVALID_SOCKET_VALUE;
+  asciichat_error_t open_result = ASCIICHAT_OK;
+  if (rtc) {
+    rtc_pair(endpoints);
+    acip_transport_t *remote = acip_webrtc_transport_create(endpoints[1].pc, endpoints[1].dc, NULL);
+    CHECK(remote);
+    CHECK(network_server_adopt(f.server, remote, "local-rtc-peer", true) == ASCIICHAT_OK);
+    acip_transport_t *local = acip_webrtc_transport_create(endpoints[0].pc, endpoints[0].dc, NULL);
+    CHECK(local);
+    CHECK(network_connection_adopt(local, &client) == ASCIICHAT_OK);
+  } else if (corrupt == 2) {
+    fragmented = socket_create("fragmented_peer", AF_INET, SOCK_STREAM, 0);
+    CHECK(fragmented != INVALID_SOCKET_VALUE);
+    struct sockaddr_in address = {.sin_family = AF_INET,
+                                  .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK),
+                                  .sin_port = HOST_TO_NET_U16(websocket ? ws : tcp)};
+    CHECK(socket_connect(fragmented, (struct sockaddr *)&address, sizeof(address)) == 0);
+    if (websocket)
+      upgrade_websocket(fragmented, ws);
+  } else {
+    open_result = network_connection_open("connection_test", endpoint, tcp, NULL, &client, NULL);
+  }
+  CHECK(open_result == ASCIICHAT_OK || (reject && open_result == ERROR_NETWORK_CONNECT));
+  wait_count(&f.opened, 1);
+  uint64_t partial_started = time_get_ns();
+  if (!reject && !stall) {
+    uint64_t payload = 42;
+    if (corrupt) {
+      packet_header_t header = {.magic = HOST_TO_NET_U64(corrupt == 1 ? 0 : PACKET_MAGIC),
+                                .type = HOST_TO_NET_U16(PACKET_TYPE_PING)};
+      acip_transport_t *transport = network_connection_transport(client);
+      if (rtc) {
+        CHECK(webrtc_datachannel_send(endpoints[0].dc, (const uint8_t *)&header, corrupt == 2 ? 5 : sizeof(header)) ==
+              ASCIICHAT_OK);
+      } else if (corrupt == 2) {
+        uint8_t frame[11] = {0x82, 0x85, 0, 0, 0, 0};
+        memcpy(frame + 6, &header, 5);
+        socket_buffer_t partial = {websocket ? (const void *)frame : (const void *)&header,
+                                   websocket ? sizeof(frame) : 5};
+        CHECK(socket_sendv_all(fragmented, &partial, 1, NS_PER_SEC_INT) == ASCIICHAT_OK);
+      } else {
+        CHECK(acip_transport_send(transport, &header, corrupt == 2 ? 5 : sizeof(header)) == ASCIICHAT_OK);
+      }
+    } else {
+      acip_transport_t *transport = network_connection_transport(client);
+      CHECK(packet_send_via_transport(transport, PACKET_TYPE_PING, &payload, sizeof(payload), 0) == ASCIICHAT_OK);
+      wait_count(&f.packets, 1);
+      packet_type_t type;
+      void *data = NULL, *allocation = NULL;
+      size_t length = 0;
+      CHECK(packet_receive_via_transport(transport, &type, &data, &length, &allocation) == ASCIICHAT_OK);
+      CHECK(type == PACKET_TYPE_PONG && length == sizeof(payload) && !memcmp(data, &payload, length));
+      buffer_release(allocation);
+      network_server_foreach(f.server, stop_visit, &f);
+    }
+  }
+  if (retained) {
+    wait_count(&f.closing, 1);
+    CHECK(atomic_load_int(&f.closed) == 0);
+    CHECK(network_server_connection_count(f.server) == 1);
+    network_server_request_stop(f.server);
+    CHECK(asciichat_thread_join(&thread, NULL) == ASCIICHAT_OK);
+    CHECK(network_server_stop(f.server) == ERROR_THREAD);
+    network_server_destroy(&f.server);
+    CHECK(f.server); // Failed joins preserve the owning runtime and dependencies.
+    atomic_store_bool(&f.fail_closing, false);
+    CHECK(network_server_stop(f.server) == ASCIICHAT_OK);
+    CHECK(atomic_load_int(&f.closed) == 1);
+    network_connection_destroy(&client);
+    network_server_destroy(&f.server);
+    CHECK(!f.server);
+    rtc_cleanup(endpoints);
+    return;
+  }
+  wait_count(&f.closed, 1);
+  if (corrupt == 2)
+    CHECK(time_get_ns() - partial_started >= 200 * NS_PER_MS_INT);
+  CHECK(atomic_load_int(&f.closing) == 1);
+  CHECK(atomic_load_int(&f.packets) == (!reject && !stall && !corrupt ? 1 : 0));
+  uint64_t drained = time_get_ns() + 2 * NS_PER_SEC_INT;
+  while (network_server_connection_count(f.server) && time_get_ns() < drained)
+    platform_sleep_ms(1);
+  CHECK(network_server_connection_count(f.server) == 0);
+  network_connection_destroy(&client);
+  network_connection_destroy(&client);
+  if (fragmented != INVALID_SOCKET_VALUE)
+    socket_close(fragmented);
+  network_server_request_stop(f.server);
+  CHECK(asciichat_thread_join(&thread, NULL) == ASCIICHAT_OK);
+  CHECK(f.result == ASCIICHAT_OK);
+  CHECK(network_server_stop(f.server) == ASCIICHAT_OK);
+  network_server_destroy(&f.server);
+  CHECK(!f.server);
+  rtc_cleanup(endpoints);
+}
+typedef struct {
+  unsigned calls;
+  unsigned cancel_after;
+} cancellation_t;
+
+static bool cancel_connect(void *data) {
+  cancellation_t *cancel = data;
+  CHECK(cancel);
+  return ++cancel->calls >= cancel->cancel_after;
+}
+
+static void establishment_controls(void) {
+  cancellation_t cancel = {.cancel_after = 1};
+  network_connect_config_t config = {
+      .timeout_ms = 120, .should_exit_callback = cancel_connect, .callback_data = &cancel};
+  network_connection_t *connection = NULL;
+  CHECK(network_connection_open("cancelled", "tcp://127.0.0.1", 1, &config, &connection, NULL) != ASCIICHAT_OK);
+  CHECK(cancel.calls == 1 && !connection);
+  cancel.calls = 0;
+  CHECK(network_connection_open("cancelled", "ws://127.0.0.1:1", 1, &config, &connection, NULL) != ASCIICHAT_OK);
+  CHECK(cancel.calls == 1 && !connection);
+
+  acds_client_config_t discovery;
+  acds_client_config_init_defaults(&discovery);
+  discovery.timeout_ms = config.timeout_ms;
+  discovery.should_exit_callback = cancel_connect;
+  discovery.callback_data = &cancel;
+  acds_client_t client;
+  cancel.calls = 0;
+  CHECK(acds_client_connect(&client, &discovery) != ASCIICHAT_OK);
+  CHECK(cancel.calls == 1 && !client.connected && !client.connection && !client.transport);
+
+  // A listening TCP peer that never upgrades must obey the WebSocket deadline.
+  socket_t listener = socket_create("stalled_upgrade", AF_INET, SOCK_STREAM, 0);
+  CHECK(listener != INVALID_SOCKET_VALUE);
+  struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  CHECK(socket_bind(listener, (struct sockaddr *)&address, sizeof(address)) == 0);
+  CHECK(socket_listen(listener, 16) == 0);
+  socklen_t length = sizeof(address);
+  CHECK(socket_getsockname(listener, (struct sockaddr *)&address, &length) == 0);
+  char endpoint[128];
+  safe_snprintf(endpoint, sizeof(endpoint), "ws://127.0.0.1:%u", NET_TO_HOST_U16(address.sin_port));
+  config.should_exit_callback = NULL;
+  uint64_t start = time_get_ns();
+  CHECK(network_connection_open("deadline", endpoint, 1, &config, &connection, NULL) != ASCIICHAT_OK);
+  uint64_t elapsed = time_get_ns() - start;
+  CHECK(elapsed >= 100 * NS_PER_MS_INT && elapsed < 2 * NS_PER_SEC_INT && !connection);
+  cancel = (cancellation_t){.cancel_after = 4};
+  config.timeout_ms = 5000;
+  config.should_exit_callback = cancel_connect;
+  start = time_get_ns();
+  CHECK(network_connection_open("cancel_upgrade", endpoint, 1, &config, &connection, NULL) != ASCIICHAT_OK);
+  CHECK(cancel.calls >= 4 && time_get_ns() - start < 2 * NS_PER_SEC_INT && !connection);
+  socket_close(listener);
+}
+
+int main(void) {
+  log_init(NULL, LOG_WARN, false, false);
+  asciichat_errno_suppress(true);
+  CHECK(socket_init() == ASCIICHAT_OK);
+  establishment_controls();
+  for (int websocket = 0; websocket < 2; ++websocket) {
+    scenario(websocket, false, false, 0, false);
+    scenario(websocket, true, false, 0, false);
+    scenario(websocket, false, true, 0, false);
+    scenario(websocket, false, false, 1, false);
+    scenario(websocket, false, false, 2, false);
+    scenario(websocket, false, false, 0, true);
+  }
+  CHECK(webrtc_init() == ASCIICHAT_OK);
+  scenario(2, false, false, 0, false);
+  scenario(2, true, false, 0, false);
+  scenario(2, false, false, 1, false);
+  scenario(2, false, false, 2, false);
+  scenario(2, false, false, 0, true);
+  webrtc_destroy();
+  socket_cleanup();
+  buffer_stats_t stats;
+  buffer_domain_stats(buffer_default_domain(), &stats);
+  CHECK(stats.outstanding == 0);
+  buffer_system_cleanup();
+  CHECK(buffer_process_reserved() == 0);
+  log_destroy();
+  return 0;
+}
