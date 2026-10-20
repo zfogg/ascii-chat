@@ -203,6 +203,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <ascii-chat/media/playlist.h>
 #include <stdio.h>
 #include "../platform/terminal.h"
 #include <ascii-chat/video/ascii/palette.h>
@@ -1026,6 +1027,7 @@ typedef struct options_state {
   // ============================================================================
   // Media File Streaming Options
   // ============================================================================
+  media_playlist_t media_playlist;    ///< Ordered CLI artifacts shared with live media input
   char media_file[OPTIONS_BUFF_SIZE]; ///< Media file path or "-" for stdin
   char media_url[OPTIONS_BUFF_SIZE];  ///< Network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over media_file
   bool media_loop;                    ///< Loop media file playback

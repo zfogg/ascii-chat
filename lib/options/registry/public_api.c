@@ -88,6 +88,9 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
                                       entry->metadata.enum_descriptions);
     options_builder_set_input_type(builder, entry->long_name, entry->metadata.input_type);
 
+    if (entry->type == OPTION_TYPE_STRING && entry->parse_fn)
+      options_builder_set_string_parser(builder, entry->parse_fn);
+
     // Set mode bitmask on the last added descriptor
     options_builder_set_mode_bitmask(builder, entry->mode_bitmask);
 

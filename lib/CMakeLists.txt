@@ -10,6 +10,8 @@ endif()
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
 set(CORE_SRCS
+    ${LIB_DIR}/media/input.c
+    ${LIB_DIR}/media/playlist.c
     ${LIB_DIR}/common.c
     ${LIB_DIR}/asciichat_errno.c
     ${LIB_DIR}/atomic.c

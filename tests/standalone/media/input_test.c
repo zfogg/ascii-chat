@@ -168,8 +168,8 @@ int main(void) {
   CHECK(strcmp(pasted, "movie.mp4") == 0);
   feed("\033[200~one.mp4\ntwo.mp4\033[201~");
   CHECK(input_read_event() == KEY_PASTE);
-  CHECK(ui_input_take_paste(pasted, sizeof(pasted)) != ASCIICHAT_OK);
-  CLEAR_ERRNO();
+  CHECK(ui_input_take_paste(pasted, sizeof(pasted)) == ASCIICHAT_OK);
+  CHECK(strcmp(pasted, "one.mp4\ntwo.mp4") == 0);
   static char oversized[8300];
   memcpy(oversized, "\033[200~", 6);
   memset(oversized + 6, 'm', 8200);
@@ -227,7 +227,7 @@ int main(void) {
   feed("\r");
   CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_MEDIA_SUBMIT);
   CHECK(ui_input_media_take(pasted, sizeof(pasted)) == ASCIICHAT_OK);
-  CHECK(strcmp(pasted, "caf\xc3\xa9 video.mp4") == 0);
+  CHECK(strcmp(pasted, "\"caf\xc3\xa9 video.mp4\"") == 0);
   CHECK(ui_input_media_begin("") == ASCIICHAT_OK);
   g_sync_keys[g_sync_key_head] = 'v';
   g_sync_key_count = 1;
@@ -236,6 +236,22 @@ int main(void) {
   feed("\r");
   CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_MEDIA_SUBMIT);
   CHECK(ui_input_media_take(pasted, sizeof(pasted)) == ASCIICHAT_OK);
+  CHECK(ui_input_media_begin("") == ASCIICHAT_OK);
+  feed("\"C:\\Videos\\first movie.mp4\" ");
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  CHECK(strcmp(g_media_editor.buffer, "\"C:\\Videos\\first movie.mp4\"") == 0);
+  feed(" "); // A terminal may deliver the drop separator in its next input record.
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  CHECK(g_media_editor.cursor == strlen(g_media_editor.buffer));
+  CHECK(g_media_editor.buffer[g_media_editor.cursor - 1] == '"');
+  feed("\"C:\\Videos\\second.mp4\" ");
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+  CHECK(strchr(g_media_editor.buffer, '\n'));
+  feed("\r");
+  CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_MEDIA_SUBMIT);
+  CHECK(ui_input_media_take(pasted, sizeof(pasted)) == ASCIICHAT_OK);
+  media_playlist_t dropped = {0};
+  CHECK(media_playlist_parse(pasted, &dropped) == ASCIICHAT_OK && dropped.count == 2);
   /* Search input, including media shortcut letters and Escape, belongs to the logs screen. */
   search_entering = true;
   test_screen = UI_SCREEN_LOGS;

@@ -982,6 +982,12 @@ void options_builder_add_descriptor(options_builder_t *builder, const option_des
   builder->descriptors[builder->num_descriptors++] = *descriptor;
 }
 
+void options_builder_set_string_parser(options_builder_t *builder, bool (*parser)(const char *, void *, char **)) {
+  if (builder && builder->num_descriptors &&
+      builder->descriptors[builder->num_descriptors - 1].type == OPTION_TYPE_STRING)
+    builder->descriptors[builder->num_descriptors - 1].parse_fn = parser;
+}
+
 void options_builder_set_mode_bitmask(options_builder_t *builder, option_mode_bitmask_t mode_bitmask) {
   if (!builder || builder->num_descriptors == 0) {
     SET_ERRNO(ERROR_INVALID_STATE, "Builder is NULL or has no descriptors");

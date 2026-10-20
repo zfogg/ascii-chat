@@ -384,3 +384,8 @@ uint64_t session_capture_source_epoch(session_capture_ctx_t *ctx);
 uint64_t session_capture_frame_serial(session_capture_ctx_t *ctx);
 /** Reveal the committed source after its first frame has been published or transmitted. */
 void session_capture_complete_open(session_capture_ctx_t *ctx, uint64_t epoch);
+
+/** Replace the current playlist with quoted paths or URLs. */
+asciichat_error_t session_capture_open_playlist(session_capture_ctx_t *ctx, const char *text);
+/** Queue a relative playlist change on the capture owner. */
+void session_capture_skip_media(session_capture_ctx_t *ctx, int direction);

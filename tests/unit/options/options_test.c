@@ -1400,3 +1400,27 @@ Test(options_errors, custom_validator_does_not_reuse_stale_errno) {
   cr_assert_str_eq(error.context_message, "Option '--test' failed validation");
   asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
 }
+
+Test(options, repeated_media_arguments_share_one_ordered_playlist) {
+  char *argv[] = {"program",          "mirror", "--file", "first.mp4", "--url", "https://example.com/second.webm",
+                  "--file=third.mp4", NULL};
+  optind = 1;
+  cr_assert_eq(options_init(7, argv), ASCIICHAT_OK);
+  const options_t *opts = options_get();
+  cr_assert_eq(opts->media_playlist.count, 3);
+  cr_assert_str_eq(opts->media_playlist.paths[0], "first.mp4");
+  cr_assert_str_eq(opts->media_playlist.paths[1], "https://example.com/second.webm");
+  cr_assert_str_eq(opts->media_playlist.paths[2], "third.mp4");
+  cr_assert_str_eq(opts->media_file, "first.mp4");
+  cr_assert_str_empty(opts->media_url);
+}
+
+Test(options, url_first_playlist_does_not_gain_file_priority) {
+  char *argv[] = {"program", "mirror", "--url=https://example.com/first.webm", "-f", "second.mp4", NULL};
+  optind = 1;
+  cr_assert_eq(options_init(5, argv), ASCIICHAT_OK);
+  const options_t *opts = options_get();
+  cr_assert_eq(opts->media_playlist.count, 2);
+  cr_assert_str_eq(opts->media_url, "https://example.com/first.webm");
+  cr_assert_str_empty(opts->media_file);
+}

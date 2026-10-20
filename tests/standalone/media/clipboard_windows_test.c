@@ -66,10 +66,10 @@ int main(void) {
   files = true;
   file_count = 1;
   CHECK(platform_clipboard_read(output, sizeof(output)) == ASCIICHAT_OK);
-  CHECK(strcmp(output, "C:\\Videos\\caf\xc3\xa9 movie.mp4") == 0 && !opened);
+  CHECK(strcmp(output, "\"C:\\Videos\\caf\xc3\xa9 movie.mp4\"") == 0 && !opened);
   file_count = 2;
-  CHECK(platform_clipboard_read(output, sizeof(output)) != ASCIICHAT_OK && !opened);
-  CLEAR_ERRNO();
+  CHECK(platform_clipboard_read(output, sizeof(output)) == ASCIICHAT_OK && !opened);
+  CHECK(strchr(output, '\n'));
   files = false;
   CHECK(platform_clipboard_read(output, 4) != ASCIICHAT_OK && !opened);
   CLEAR_ERRNO();

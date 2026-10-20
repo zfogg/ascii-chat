@@ -180,7 +180,24 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     fd = g_render_fd;
   fps_counter_write_begin(g_fps);
   uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
-  bool complete = platform_write_all(fd, data, len) == len;
+  size_t written = 0;
+  while (written < len) {
+    // A pending editor or overlay supersedes the remainder of a media frame.
+    // Bound each console write so a large frame cannot delay that transition.
+    if (g_stats_media && ui_controller_current_screen() != UI_SCREEN_MEDIA)
+      break;
+    size_t count = len - written;
+    if (g_stats_media && count > 4096) {
+      count = 4096;
+      while (count && ((unsigned char)data[written + count] & 0xc0) == 0x80)
+        --count;
+    }
+    size_t sent = platform_write_all(fd, data + written, count);
+    written += sent;
+    if (sent != count)
+      break;
+  }
+  bool complete = written == len;
   if (g_stats_media) {
     g_stats_write_ns += time_get_ns() - stats_start;
     g_stats_writes++;
@@ -395,7 +412,8 @@ static void *presentation_main(void *unused) {
           .screen = active,
           .minimum = screen->minimum,
           .dirty = screen->dirty || volume_changed,
-          .refresh_ns = active == UI_SCREEN_LOGS ? 100 * NS_PER_MS_INT
+          .refresh_ns = active == UI_SCREEN_PROMPT ? 50 * NS_PER_MS_INT
+                        : active == UI_SCREEN_LOGS ? 100 * NS_PER_MS_INT
                         : active == UI_SCREEN_RENDER_PROGRESS
                             ? 125 * NS_PER_MS_INT
                             : (active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS ? 16 * NS_PER_MS_INT : 0),
@@ -672,11 +690,13 @@ ui_presentation_state_t ui_controller_state(void) {
   state.screen = selected_screen_locked();
   if (state.screen >= 0) {
     screen_t *screen = &g_screens[state.screen];
-    terminal_size_t size = {0};
-    if (state.screen == UI_SCREEN_PROMPT && terminal_get_size_fd(screen->fd, &size) == ASCIICHAT_OK)
+    // Geometry belongs to the presentation owner. A keyboard poll must never
+    // wait for a console RPC behind pending terminal output while holding the
+    // controller mutex.
+    terminal_size_t size = g_size;
+    if (state.screen == UI_SCREEN_PROMPT)
       screen->minimum.rows = ui_prompt_required_rows(screen->snapshot, size.cols);
-    state.covered = !platform_isatty(screen->fd) || terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK ||
-                    size.cols <= 0 || size.rows <= 0 || ui_too_small(size, screen->minimum);
+    state.covered = size.cols <= 0 || size.rows <= 0 || ui_too_small(size, screen->minimum);
   }
   mutex_unlock(&g_mutex);
   return state;

@@ -1320,3 +1320,6 @@ int options_format_default_value(option_type_t type, const void *default_value, 
  */
 const char *find_similar_option_with_mode(const char *unknown_opt, const options_config_t *config,
                                           option_mode_bitmask_t current_mode_bitmask);
+
+/** Set the CLI parser for the last added string option; environment strings remain scalar. */
+void options_builder_set_string_parser(options_builder_t *builder, bool (*parser)(const char *, void *, char **));

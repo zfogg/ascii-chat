@@ -216,6 +216,10 @@ static bool frame_is_valid(const pipeline_frame_t *f) {
 struct session_pipeline_s {
   asciichat_thread_t capture_tid;
   asciichat_thread_t encode_tid;
+  asciichat_thread_t input_tid;
+  session_keyboard_handler_fn keyboard_handler;
+  session_should_exit_fn should_exit;
+  void *input_data;
 
   frame_queue_t *display_queue;
   frame_queue_t *encode_queue;
@@ -494,6 +498,20 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   return ASCIICHAT_OK;
 }
 
+// Input has its own bounded poll cadence; ASCII conversion and terminal output
+// must never determine when an interactive command is consumed.
+static void *pipeline_input_thread(void *data) {
+  session_pipeline_t *pipeline = data;
+  while (!atomic_load_bool(&pipeline->stop) && !pipeline->should_exit(pipeline->input_data)) {
+    keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
+    if (key != KEY_NONE)
+      pipeline->keyboard_handler(pipeline->capture, (int)key, pipeline->input_data);
+    else
+      platform_sleep_ms(2);
+  }
+  return NULL;
+}
+
 asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, session_should_exit_fn should_exit,
                                             session_keyboard_handler_fn keyboard_handler, void *user_data) {
   if (!pipeline || !should_exit) {
@@ -503,7 +521,14 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
   log_debug("[PIPELINE_MAIN] Starting main thread loop");
   if (keyboard_handler && !GET_OPTION(snapshot_mode)) {
     asciichat_error_t keyboard_result = keyboard_init();
-    log_debug("Pipeline keyboard initialization: %d", keyboard_result);
+    if (keyboard_result != ASCIICHAT_OK)
+      return keyboard_result;
+    pipeline->keyboard_handler = keyboard_handler;
+    pipeline->should_exit = should_exit;
+    pipeline->input_data = user_data;
+    if (asciichat_thread_create(&pipeline->input_tid, "pipeline_input", pipeline_input_thread, pipeline) !=
+        ASCIICHAT_OK)
+      return SET_ERRNO(ERROR_THREAD, "Cannot start responsive session input");
   }
 
   // Snapshot duration is owned by the capture thread. It records the first
@@ -518,16 +543,6 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
     uint64_t pop_time_ns = time_get_ns();
     pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 1 * NS_PER_MS_INT);
-
-    // Pause stops frame production, so keep polling the keyboard on queue
-    // timeouts or there would be no way to resume playback.
-    if (keyboard_handler) {
-      keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
-      if (key != KEY_NONE) {
-        log_debug("PIPELINE_KEYBOARD: Received key=%d", key);
-        keyboard_handler(pipeline->capture, (int)key, user_data);
-      }
-    }
 
     if (!frame) {
       if (atomic_load_bool(&pipeline->capture_finished) && frame_queue_count(pipeline->display_queue) == 0)
@@ -548,7 +563,8 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
                     (void *)frame->pixels, frame->w, frame->h, (unsigned long long)pop_time_ns);
 
     // Check if help screen is active - if so, don't render ASCII frames
-    bool help_is_active = pipeline->display && keyboard_help_is_active(pipeline->display);
+    int screen = ui_controller_current_screen();
+    bool help_is_active = screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_HELP || screen == UI_SCREEN_LOGS;
 
     if (!help_is_active) {
       log_debug_every(US_PER_SEC_INT, "[PIPELINE_MAIN_RENDER] Converting frame to ASCII: %dx%d", frame->w, frame->h);
@@ -580,6 +596,9 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
   log_debug("[PIPELINE_MAIN] Main loop exiting, signaling threads to stop");
   atomic_store_bool(&pipeline->stop, true);
+  if (asciichat_thread_is_initialized(&pipeline->input_tid) &&
+      asciichat_thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_THREAD, "Cannot join session input thread");
 
   return ASCIICHAT_OK;
 }
@@ -609,6 +628,9 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
     mutex_unlock(&pipeline->encode_queue->mu);
   }
 
+  if (asciichat_thread_is_initialized(&pipeline->input_tid) &&
+      asciichat_thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_THREAD, "Cannot join session input thread during shutdown");
   session_display_begin_drain(pipeline->display, 0, false);
 
   // A timeout must never let the owner free memory still referenced by a worker.

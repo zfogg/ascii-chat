@@ -24,6 +24,7 @@
 #include <ascii-chat/ui/notice.h>
 #include <ascii-chat/platform/clipboard.h>
 #include <ascii-chat/media/input.h>
+#include <ascii-chat/media/playlist.h>
 #include <ascii-chat/log/search.h>
 
 #ifndef NDEBUG
@@ -209,15 +210,18 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     char pasted[8192];
     if (ui_input_take_paste(pasted, sizeof(pasted)) == ASCIICHAT_OK)
       for (const unsigned char *p = (const unsigned char *)pasted; *p; ++p)
-        ui_session_logs_key((keyboard_key_t)*p);
+        ui_session_logs_key((keyboard_key_t)(*p >= 32 && *p != 127 ? *p : ' '));
     CLEAR_ERRNO();
+    return;
+  }
+  if (!text_entry && (key == '<' || key == '>')) {
+    session_capture_skip_media(capture, key == '>' ? 1 : -1);
     return;
   }
   if (!text_entry && key == KEY_ESCAPE && session_capture_cancel_open(capture))
     return;
   if (!text_entry && (key == KEY_MEDIA_SUBMIT || key == KEY_PASTE || key == 'o' || key == 'O' || key == 15 ||
                       key == 'v' || key == 'V')) {
-    log_debug("Media input requested: key=%d", key);
     char input[8192] = {0}, normalized[8192];
     asciichat_error_t result = ASCIICHAT_OK;
     if (key == KEY_MEDIA_SUBMIT)
@@ -228,16 +232,17 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
       result = platform_clipboard_read(input, sizeof(input));
     if (result == ASCIICHAT_OK) {
       if (key != KEY_MEDIA_SUBMIT && input[0]) {
-        result = media_input_normalize(input, normalized, sizeof(normalized));
+        media_playlist_t list;
+        result = media_playlist_parse(input, &list);
+        if (result == ASCIICHAT_OK)
+          result = media_playlist_format(&list, normalized, sizeof(normalized));
         if (result == ASCIICHAT_OK)
           memcpy(input, normalized, strlen(normalized) + 1);
       }
       if (result == ASCIICHAT_OK && key != KEY_MEDIA_SUBMIT)
         result = ui_input_media_begin(input);
       if (result == ASCIICHAT_OK && key == KEY_MEDIA_SUBMIT)
-        result = media_input_normalize(input, normalized, sizeof(normalized));
-      if (result == ASCIICHAT_OK && key == KEY_MEDIA_SUBMIT)
-        result = session_capture_open_media(capture, normalized);
+        result = session_capture_open_playlist(capture, input);
     }
     if (key == KEY_MEDIA_SUBMIT)
       ui_prompt_remove();

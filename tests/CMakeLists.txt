@@ -535,6 +535,20 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             set(_test_ctest_timeout 120)
         endif()
 
+        if(test_exe_name STREQUAL "test_unit_options_options")
+            # The CLI suite launches many sanitized parse/help cases. Preserve
+            # their case deadlines while allowing the complete suite to finish.
+            set(_test_ctest_timeout 120)
+        endif()
+
+        if(test_exe_name STREQUAL "test_unit_discovery_session_registry")
+            # Durable SQLite fixtures compete for fsync when their cases run
+            # concurrently. Keep each case's deadline and serialize the suite
+            # so late completions cannot race BoxFort's timeout notifications.
+            set(_test_criterion_jobs 1)
+            set(_test_ctest_timeout 120)
+        endif()
+
         if(test_exe_name MATCHES "stream_resolution_e2e")
             # This suite runs many serial network cases with bounded per-request timeouts.
             set(_test_ctest_timeout 600)
@@ -1435,5 +1449,18 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN)
     set_tests_properties(media-pipeline PROPERTIES LABELS "unit" TIMEOUT 30)
     if(TARGET tests)
         add_dependencies(tests test-media-pipeline)
+    endif()
+endif()
+
+if(BUILD_TESTS AND WIN32)
+    add_executable(test-audio-priority standalone/media/audio_priority_test.c)
+    target_link_libraries(test-audio-priority PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-audio-priority PRIVATE ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-audio-priority)
+    set_target_properties(test-audio-priority PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_test(NAME audio-priority COMMAND test-audio-priority)
+    set_tests_properties(audio-priority PROPERTIES LABELS "integration" TIMEOUT 90)
+    if(TARGET tests)
+        add_dependencies(tests test-audio-priority)
     endif()
 endif()

@@ -31,6 +31,8 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/frame_buffer.h>
+#include <ascii-chat/ui/prompt.h>
+#include <ascii-chat/media/playlist.h>
 #include <ascii-chat/ui/notice.h>
 #include <ascii-chat/common/shutdown.h>
 
@@ -60,6 +62,9 @@ struct session_capture_ctx {
   bool media_locks_ready, loader_created, loader_done;
   asciichat_thread_t loader;
   atomic_t load_cancel;
+  atomic_t playlist_skip;
+  media_playlist_t playlist, load_playlist;
+  bool advance_failed;
   atomic_t source_epoch, frame_serial, awaiting_presentation;
   media_source_t *loaded_source;
   image_t *loaded_frame, *initial_frame;
@@ -270,6 +275,13 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     return NULL;
   }
   ctx->media_locks_ready = true;
+  if (config->type == MEDIA_SOURCE_FILE && config->path) {
+    media_playlist_t configured = GET_OPTION(media_playlist);
+    if (configured.count && strcmp(configured.paths[0], config->path) == 0)
+      ctx->playlist = configured;
+    else if (media_playlist_append(&ctx->playlist, config->path, strstr(config->path, "://") != NULL) != ASCIICHAT_OK)
+      CLEAR_ERRNO();
+  }
 
   // Store configuration
   ctx->target_fps = config->target_fps > 0 ? config->target_fps : 60;
@@ -340,7 +352,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   }
 
   // Enable loop if requested (only for file sources)
-  if (config->loop && config->type == MEDIA_SOURCE_FILE) {
+  if (config->loop && config->type == MEDIA_SOURCE_FILE && ctx->playlist.count <= 1) {
     media_source_set_loop(ctx->source, true);
   }
 
@@ -460,8 +472,7 @@ static void render_media_loading(terminal_size_t size, const void *data) {
   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
   if (!buffer)
     return;
-  const char *text = "\033[H\033[2JLoading media...\r\nEsc cancels; current playback continues.";
-  frame_buffer_append(buffer, text, strlen(text));
+  ui_media_panel_render(buffer, size, "Loading media...", "Esc cancels; current playback continues.", NULL, 0);
   ui_controller_write(STDERR_FILENO, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
   frame_buffer_destroy(buffer);
 }
@@ -472,7 +483,7 @@ static void *load_media_worker(void *data) {
   media_source_t *source = media_source_create_interruptible(MEDIA_SOURCE_FILE, ctx->load_path, load_cancelled, ctx);
   if (source) {
     media_source_set_exit_callback(source, load_cancelled, ctx);
-    media_source_set_loop(source, GET_OPTION(media_loop));
+    media_source_set_loop(source, GET_OPTION(media_loop) && ctx->load_playlist.count <= 1);
     if (media_source_start_video(source) != ASCIICHAT_OK) {
       media_source_destroy(source);
       source = NULL;
@@ -527,7 +538,8 @@ bool session_capture_cancel_open(session_capture_ctx_t *ctx) {
   return busy;
 }
 
-asciichat_error_t session_capture_open_media(session_capture_ctx_t *ctx, const char *path) {
+static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const media_playlist_t *list, size_t index) {
+  const char *path = list->paths[index];
   if (!ctx || !ctx->media_locks_ready || !path || strlen(path) >= sizeof(ctx->load_path))
     return SET_ERRNO(ERROR_INVALID_STATE, "Local capture is unavailable");
   size_t limit = strstr(path, "://") ? sizeof(((options_t *)0)->media_url) : sizeof(((options_t *)0)->media_file);
@@ -538,12 +550,14 @@ asciichat_error_t session_capture_open_media(session_capture_ctx_t *ctx, const c
     mutex_unlock(&ctx->load_mutex);
     return SET_ERRNO(ERROR_INVALID_STATE, "Previous media load is still active; Escape cancels loading");
   }
+  ctx->load_playlist = *list;
+  ctx->load_playlist.index = index;
   snprintf(ctx->load_path, sizeof(ctx->load_path), "%s", path);
   ctx->loader_done = false;
   atomic_store_bool(&ctx->awaiting_presentation, false);
   atomic_store_bool(&ctx->load_cancel, false);
   asciichat_error_t progress = ui_controller_submit(
-      UI_SCREEN_RENDER_PROGRESS, STDERR_FILENO, (terminal_size_t){.cols = 40, .rows = 4}, render_media_loading, "", 1);
+      UI_SCREEN_RENDER_PROGRESS, STDERR_FILENO, (terminal_size_t){.cols = 40, .rows = 8}, render_media_loading, "", 1);
   if (progress != ASCIICHAT_OK) {
     mutex_unlock(&ctx->load_mutex);
     return progress;
@@ -556,6 +570,21 @@ asciichat_error_t session_capture_open_media(session_capture_ctx_t *ctx, const c
   ctx->loader_created = true;
   mutex_unlock(&ctx->load_mutex);
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t session_capture_open_media(session_capture_ctx_t *ctx, const char *path) {
+  media_playlist_t list = {0};
+  asciichat_error_t result = media_playlist_append(&list, path, path && strstr(path, "://") != NULL);
+  return result == ASCIICHAT_OK ? capture_load_playlist(ctx, &list, 0) : result;
+}
+asciichat_error_t session_capture_open_playlist(session_capture_ctx_t *ctx, const char *text) {
+  media_playlist_t list = {0};
+  asciichat_error_t result = media_playlist_parse(text, &list);
+  return result == ASCIICHAT_OK ? capture_load_playlist(ctx, &list, 0) : result;
+}
+void session_capture_skip_media(session_capture_ctx_t *ctx, int direction) {
+  if (ctx && (direction == -1 || direction == 1))
+    atomic_store_u64(&ctx->playlist_skip, direction > 0 ? 1 : 2);
 }
 
 /* Only the capture owner commits replacements, between frame reads. */
@@ -580,9 +609,11 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   ctx->loaded_source = NULL;
   image_t *first = ctx->loaded_frame;
   ctx->loaded_frame = NULL;
+  media_playlist_t loaded_playlist = ctx->load_playlist;
   bool cancelled = atomic_load_bool(&ctx->load_cancel);
   mutex_unlock(&ctx->load_mutex);
   if (cancelled || !replacement) {
+    ctx->advance_failed = true;
     ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
     if (first)
       image_destroy(first);
@@ -700,6 +731,8 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   options_set_string("media_file", url ? "" : path);
   options_set_bool("media_from_stdin", false);
   mutex_lock(&ctx->load_mutex);
+  ctx->playlist = loaded_playlist;
+  ctx->advance_failed = false;
   atomic_fetch_add_u64(&ctx->source_epoch, 1);
   atomic_store_bool(&ctx->awaiting_presentation, !ctx->loader_created);
   mutex_unlock(&ctx->load_mutex);
@@ -718,6 +751,27 @@ void session_capture_unlock_source(session_capture_ctx_t *ctx) {
 
 static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
   capture_commit_media(ctx);
+  mutex_lock(&ctx->load_mutex);
+  bool loading = ctx->loader_created;
+  mutex_unlock(&ctx->load_mutex);
+  if (!loading) {
+    uint64_t skip = atomic_exchange_u64(&ctx->playlist_skip, 0);
+    bool ended =
+        ctx->source && media_source_get_type(ctx->source) == MEDIA_SOURCE_FILE && media_source_at_end(ctx->source);
+    size_t next;
+    bool adjacent = media_playlist_adjacent(&ctx->playlist, skip == 2 ? -1 : 1, &next);
+    if (!skip && ended && !adjacent && GET_OPTION(media_loop) && ctx->playlist.count > 1) {
+      next = 0;
+      adjacent = true;
+    }
+    if ((skip || (ended && !ctx->advance_failed)) && adjacent) {
+      if (capture_load_playlist(ctx, &ctx->playlist, next) != ASCIICHAT_OK) {
+        ctx->advance_failed = true;
+        LOG_ERRNO_IF_SET("Cannot advance media playlist");
+        CLEAR_ERRNO();
+      }
+    }
+  }
   if (!ctx || !ctx->initialized || !ctx->source) {
     return NULL;
   }
@@ -967,6 +1021,13 @@ bool session_capture_at_end(session_capture_ctx_t *ctx) {
     return true;
   }
 
+  mutex_lock(&ctx->load_mutex);
+  bool pending = ctx->loader_created;
+  mutex_unlock(&ctx->load_mutex);
+  size_t next;
+  if (pending || (!ctx->advance_failed && (media_playlist_adjacent(&ctx->playlist, 1, &next) ||
+                                           (GET_OPTION(media_loop) && ctx->playlist.count > 1))))
+    return false;
   if (media_source_get_type(ctx->source) == MEDIA_SOURCE_FILE && !GET_OPTION(snapshot_mode) &&
       !GET_OPTION(render_file)[0])
     return false;

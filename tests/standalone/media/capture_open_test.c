@@ -137,6 +137,24 @@ int main(int argc, char **argv) {
   finish_load(ctx);
   CHECK(ctx->source == active && audio.capture_media_source == active && audio_running);
   CHECK(starts == 9 && stops == 9);
+  // A playlist uses the same loader and audio handoff as a single replacement.
+  // Revisiting an item creates a fresh decoder at the start.
+  media_playlist_t list = {0};
+  CHECK(media_playlist_append(&list, argv[1], false) == ASCIICHAT_OK);
+  CHECK(media_playlist_append(&list, argv[1], false) == ASCIICHAT_OK);
+  char quoted[1024];
+  CHECK(media_playlist_format(&list, quoted, sizeof(quoted)) == ASCIICHAT_OK);
+  CHECK(session_capture_open_playlist(ctx, quoted) == ASCIICHAT_OK);
+  finish_load(ctx);
+  CHECK(ctx->playlist.count == 2 && ctx->playlist.index == 0);
+  active = ctx->source;
+  CHECK(capture_load_playlist(ctx, &ctx->playlist, 1) == ASCIICHAT_OK);
+  finish_load(ctx);
+  CHECK(ctx->playlist.index == 1 && ctx->source != active);
+  CHECK(media_source_get_position(ctx->source) < 0.1);
+  CHECK(capture_load_playlist(ctx, &ctx->playlist, 0) == ASCIICHAT_OK);
+  finish_load(ctx);
+  CHECK(ctx->playlist.index == 0 && media_source_get_position(ctx->source) < 0.1);
   session_capture_set_audio_context(ctx, NULL);
   audio_running = false;
   audio.capture_media_source = NULL;

@@ -3,6 +3,7 @@
 #include <ascii-chat/ui/sync.h>
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/prompt.h>
+#include <ascii-chat/media/playlist.h>
 #include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/common.h>
@@ -49,7 +50,7 @@ typedef struct {
   char buffer[8192];
   size_t length, cursor;
   uint64_t deadline;
-  bool active, submitted;
+  bool active, submitted, pasted;
 } input_editor_t;
 static input_editor_t g_media_editor;
 
@@ -154,7 +155,8 @@ static keyboard_key_t input_read_event(void) {
       g_text_count = count - 1;
       return key;
     }
-    if (key < 32 || key > 255 || key == 127 || g_paste_length + 1 >= sizeof(g_paste))
+    if ((key < 32 && key != '\n' && key != '\r' && key != '\t') || key > 255 || key == 127 ||
+        g_paste_length + 1 >= sizeof(g_paste))
       g_paste_invalid = true;
     else
       g_paste[g_paste_length++] = (char)key;
@@ -197,7 +199,7 @@ asciichat_error_t ui_input_take_paste(char *buffer, size_t capacity) {
   mutex_lock(&g_input_mutex);
   asciichat_error_t result = ASCIICHAT_OK;
   if (g_paste_invalid || g_paste_length >= capacity || !utf8_is_valid(g_paste))
-    result = SET_ERRNO(ERROR_INVALID_PARAM, "Paste one path or URL without control characters (maximum 8191 bytes)");
+    result = SET_ERRNO(ERROR_INVALID_PARAM, "Paste media paths or URLs without terminal controls (maximum 8191 bytes)");
   else
     memcpy(buffer, g_paste, g_paste_length + 1);
   g_paste_length = 0;
@@ -263,21 +265,29 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
       return KEY_MEDIA_SUBMIT;
     } else if (key != KEY_NONE) {
       if (key == KEY_PASTE) {
-        if (!g_paste_invalid && utf8_is_valid(g_paste) &&
-            g_media_editor.length + g_paste_length < sizeof(g_media_editor.buffer)) {
-          memmove(g_media_editor.buffer + g_media_editor.cursor + g_paste_length,
-                  g_media_editor.buffer + g_media_editor.cursor, g_media_editor.length - g_media_editor.cursor + 1);
-          memcpy(g_media_editor.buffer + g_media_editor.cursor, g_paste, g_paste_length);
-          g_media_editor.cursor += g_paste_length;
-          g_media_editor.length += g_paste_length;
+        if (!g_paste_invalid && utf8_is_valid(g_paste)) {
+          media_playlist_t items = {0}, added = {0};
+          bool valid = !g_media_editor.length || media_playlist_parse(g_media_editor.buffer, &items) == ASCIICHAT_OK;
+          if (valid && media_playlist_parse(g_paste, &added) == ASCIICHAT_OK) {
+            for (size_t i = 0; i < added.count && valid; ++i)
+              valid = media_playlist_append(&items, added.paths[i], added.urls[i]) == ASCIICHAT_OK;
+            char formatted[sizeof(g_media_editor.buffer)];
+            if (valid && media_playlist_format(&items, formatted, sizeof(formatted)) == ASCIICHAT_OK) {
+              memcpy(g_media_editor.buffer, formatted, strlen(formatted) + 1);
+              g_media_editor.length = g_media_editor.cursor = strlen(formatted);
+            }
+          }
+          CLEAR_ERRNO();
         }
         g_paste_ready = false;
-      } else {
+        g_media_editor.pasted = true;
+      } else if (!(key == ' ' && g_media_editor.pasted && g_media_editor.cursor == g_media_editor.length)) {
+        g_media_editor.pasted = false;
         input_editor_key(g_media_editor.buffer, sizeof(g_media_editor.buffer), &g_media_editor.length,
                          &g_media_editor.cursor, key);
       }
-      if (ui_prompt_present("Open media: path or URL\nEnter loads; Escape cancels", g_media_editor.buffer,
-                            g_media_editor.cursor) != ASCIICHAT_OK) {
+      if (ui_prompt_present("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels",
+                            g_media_editor.buffer, g_media_editor.cursor) != ASCIICHAT_OK) {
         g_media_editor.active = false;
         ui_prompt_remove();
         CLEAR_ERRNO();
@@ -405,7 +415,8 @@ asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, si
       continue;
     if (key == KEY_PASTE) {
       char pasted[8192];
-      if (ui_input_take_paste(pasted, sizeof(pasted)) == ASCIICHAT_OK && strlen(pasted) + len < max_len) {
+      if (ui_input_take_paste(pasted, sizeof(pasted)) == ASCIICHAT_OK && !strpbrk(pasted, "\r\n\t") &&
+          strlen(pasted) + len < max_len) {
         size_t bytes = strlen(pasted);
         memmove(buffer + cursor + bytes, buffer + cursor, len - cursor + 1);
         memcpy(buffer + cursor, pasted, bytes);
@@ -450,8 +461,9 @@ asciichat_error_t ui_input_media_begin(const char *text) {
   memcpy(g_media_editor.buffer, text, strlen(text) + 1);
   g_media_editor.length = g_media_editor.cursor = strlen(text);
   g_media_editor.deadline = ui_input_deadline(120);
-  asciichat_error_t result = ui_prompt_present("Open media: path or URL\nEnter loads; Escape cancels",
-                                               g_media_editor.buffer, g_media_editor.cursor);
+  asciichat_error_t result =
+      ui_prompt_present("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels",
+                        g_media_editor.buffer, g_media_editor.cursor);
   g_media_editor.active = result == ASCIICHAT_OK;
   mutex_unlock(&g_input_mutex);
   return result;

@@ -333,6 +333,8 @@ static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const
 }
 
 static asciichat_error_t apply_cli_string(void *field, const char *opt_value, const option_descriptor_t *desc) {
+  if (desc->parse_fn)
+    return apply_cli_callback(field, opt_value, desc);
   // Reject empty strings for certain important options like --key
   if (opt_value && opt_value[0] == '\0' && desc && desc->long_name) {
     if (strcmp(desc->long_name, "key") == 0) {

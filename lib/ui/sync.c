@@ -126,6 +126,14 @@ static void *sync_collect_main(void *unused) {
   uint64_t next_sample = 0;
   while (!atomic_load(&g_sync_stop)) {
     ui_input_poll_sync();
+    // Poll the debug shortcut while hidden, but collect registry and waiter
+    // snapshots only for the visible overlay. The pairwise rate comparisons
+    // otherwise compete with live capture and input throughout the session.
+    if (!atomic_load(&g_sync_visible)) {
+      next_sample = 0;
+      platform_sleep_ns(10 * NS_PER_MS_INT);
+      continue;
+    }
     uint64_t now = time_get_ns();
     if (now >= next_sample) {
       next_sample = now + 250 * NS_PER_MS_INT;

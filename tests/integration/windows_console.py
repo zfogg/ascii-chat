@@ -51,6 +51,8 @@ class WindowsConsole:
         startup = subprocess.STARTUPINFO()
         startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startup.wShowWindow = subprocess.SW_HIDE
+        # A second child must not inherit the parent fixture's Ctrl+C ignore flag.
+        self.kernel.SetConsoleCtrlHandler(None, False)
         self.process = subprocess.Popen(argv, startupinfo=startup, creationflags=subprocess.CREATE_NEW_CONSOLE)
         self.kernel.FreeConsole()
         for _ in range(100):
@@ -61,6 +63,8 @@ class WindowsConsole:
             self.process.terminate()
             raise OSError("Cannot attach test console")
         self.kernel.SetConsoleCtrlHandler(None, True)
+        assert self.kernel.SetConsoleCP(65001)
+        assert self.kernel.SetConsoleOutputCP(65001)
         handle = self._open("CONOUT$")
         try:
             info = BufferInfo()
@@ -88,6 +92,7 @@ class WindowsConsole:
         try:
             info = BufferInfo()
             assert self.kernel.GetConsoleScreenBufferInfo(handle, c.byref(info))
+            self.cursor = (info.cursor.X - info.window.Left, info.cursor.Y - info.window.Top)
             cols = info.window.Right - info.window.Left + 1
             rows = info.window.Bottom - info.window.Top + 1
             cells = (Cell * (cols * rows))()
@@ -104,6 +109,21 @@ class WindowsConsole:
             text = "\n".join(self.screen.display)
             self.raw.append(text)
             return text
+        finally:
+            self.kernel.CloseHandle(handle)
+
+    def read_text(self):
+        """Read visible text without allocating a styled Python object per cell."""
+        self.kernel.ReadConsoleOutputCharacterW.argtypes = [w.HANDLE, w.LPWSTR, w.DWORD, Coord, c.POINTER(w.DWORD)]
+        handle = self._open("CONOUT$")
+        try:
+            info = BufferInfo()
+            assert self.kernel.GetConsoleScreenBufferInfo(handle, c.byref(info))
+            count = info.size.X * (info.window.Bottom - info.window.Top + 1)
+            text = c.create_unicode_buffer(count + 1)
+            read = w.DWORD()
+            assert self.kernel.ReadConsoleOutputCharacterW(handle, text, count, Coord(0, info.window.Top), c.byref(read))
+            return text[:read.value]
         finally:
             self.kernel.CloseHandle(handle)
 

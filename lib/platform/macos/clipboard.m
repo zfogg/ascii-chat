@@ -1,5 +1,6 @@
 #include <ascii-chat/platform/clipboard.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/media/playlist.h>
 #include <TargetConditionals.h>
 #if TARGET_OS_OSX
 #import <AppKit/AppKit.h>
@@ -14,9 +15,16 @@ asciichat_error_t platform_clipboard_read(char *output, size_t capacity) {
                                           options:@{
                                             NSPasteboardURLReadingFileURLsOnlyKey : @YES
                                           }];
-    if ([files count] > 1)
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Copy one media file at a time");
-    NSString *text = [files count] ? [(NSURL *)files[0] path] : [board stringForType:NSPasteboardTypeString];
+    if ([files count]) {
+      media_playlist_t list = {0};
+      for (NSURL *file in files) {
+        asciichat_error_t result = media_playlist_append(&list, [[file path] UTF8String], false);
+        if (result != ASCIICHAT_OK)
+          return result;
+      }
+      return media_playlist_format(&list, output, capacity);
+    }
+    NSString *text = [board stringForType:NSPasteboardTypeString];
     const char *utf8 = [text UTF8String];
     if (!utf8 || !*utf8)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Clipboard contains no text or copied file");

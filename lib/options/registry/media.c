@@ -40,6 +40,30 @@ static bool validate_render_font_size(const void *opts_struct) {
   return true;
 }
 
+// CLI arguments append to one ordered list. Environment/config strings retain
+// their ordinary precedence and are used as a single-item fallback at capture.
+static bool parse_media_argument(const char *arg, void *field, bool url, char **error) {
+  options_t *opts =
+      (options_t *)((char *)field - (url ? offsetof(options_t, media_url) : offsetof(options_t, media_file)));
+  asciichat_error_t result = media_playlist_append(&opts->media_playlist, arg, url);
+  if (result != ASCIICHAT_OK) {
+    if (error)
+      *error = platform_strdup("Invalid media artifact or playlist limit exceeded");
+    return false;
+  }
+  if (opts->media_playlist.count == 1) {
+    opts->media_file[0] = opts->media_url[0] = '\0';
+    SAFE_STRNCPY(url ? opts->media_url : opts->media_file, opts->media_playlist.paths[0], OPTIONS_BUFF_SIZE);
+  }
+  return true;
+}
+static bool parse_media_file(const char *arg, void *field, char **error) {
+  return parse_media_argument(arg, field, false, error);
+}
+static bool parse_media_url(const char *arg, void *field, char **error) {
+  return parse_media_argument(arg, field, true, error);
+}
+
 // ============================================================================
 // MEDIA CATEGORY - Media file and stream options
 // ============================================================================
@@ -51,14 +75,15 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, media_file),
      "",
      0,
-     "Stream from media file or stdin (use '-' for stdin). Supported formats: see man ffmpeg-formats; codecs: see man "
+     "Append a media file to the playback playlist (repeat --file/--url in order). Stream from media file or stdin "
+     "(use '-' for stdin). Supported formats: see man ffmpeg-formats; codecs: see man "
      "ffmpeg-codecs.",
      "MEDIA",
      NULL,
      false,
      "ASCII_CHAT_FILE",
      NULL,
-     NULL,
+     parse_media_file,
      false,
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
@@ -70,7 +95,8 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, media_url),
      "",
      0,
-     "Stream from network URL. Direct HTTP/HTTPS/RTSP streams use FFmpeg; complex sites (YouTube, TikTok, etc.) use "
+     "Append a network URL to the playback playlist (repeat --file/--url in order). Direct HTTP/HTTPS/RTSP streams use "
+     "FFmpeg; complex sites (YouTube, TikTok, etc.) use "
      "yt-dlp. Supported formats: see man ffmpeg-formats; codecs: see man ffmpeg-codecs; sites: yt-dlp "
      "https://github.com/yt-dlp/yt-dlp/blob/master/README.md#supported-sites.",
      "MEDIA",
@@ -78,7 +104,7 @@ const registry_entry_t g_media_entries[] = {
      false,
      "ASCII_CHAT_URL",
      NULL,
-     NULL,
+     parse_media_url,
      false,
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
@@ -90,7 +116,7 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, media_loop),
      &default_media_loop_value,
      sizeof(bool),
-     "Loop media file playback (not supported for --url).",
+     "Loop single media or repeat the complete playlist.",
      "MEDIA",
      NULL,
      false,

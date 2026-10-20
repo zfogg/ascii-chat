@@ -106,9 +106,11 @@ static int keyboard_raw_read(void) {
       key = repeated;
       --repeated.wRepeatCount;
     } else {
-      DWORD available = 0, read = 0;
+      DWORD read = 0;
       INPUT_RECORD event;
-      if (!GetNumberOfConsoleInputEvents(g_console_input, &available) || !available ||
+      // The input handle is waitable. An idle poll can stay in the kernel
+      // instead of queueing a console RPC behind high-volume frame output.
+      if (WaitForSingleObject(g_console_input, 0) != WAIT_OBJECT_0 ||
           !ReadConsoleInputW(g_console_input, &event, 1, &read) || !read)
         return 0;
       if (event.EventType != KEY_EVENT || !event.Event.KeyEvent.bKeyDown)

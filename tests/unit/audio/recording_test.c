@@ -329,6 +329,9 @@ Test(recording, file_audio_worker_feeds_transmission_playback_and_recording, .ti
   uint64_t started = time_get_ns();
   audio_recording_start(recording, started);
   wait_for_captured_samples(&ctx, 960);
+  platform_sleep_ns(300 * NS_PER_MS_INT);
+  cr_assert_leq(audio_ring_buffer_available_read(ctx.capture_buffer), AUDIO_JITTER_HIGH_WATER_MARK,
+                "An undrained local monitor queue must stay below the overflow/logging threshold");
   float energy = recorded_energy_since(started);
   cr_assert_gt(energy, 1.0f, "Recorded file audio must contain the tone, not only a silent track");
   cr_assert_eq(audio_stop_duplex(&ctx), ASCIICHAT_OK);
