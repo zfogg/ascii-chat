@@ -34,6 +34,8 @@ macOS uses `--preset release`, `ASCIICHAT_SHARED_DEPS=OFF`, and `ASCIICHAT_ENFOR
 
 Generated version headers may read `VERSION` or `PROJECT_VERSION_OVERRIDE` independently of `PROJECT_VERSION_FROM_GIT`; inspect `cmake/install/Version.cmake`. For pre-tag builds set a matching environment override and check reported version and package names. Clear it when switching candidates. Final verification must use the tag's exact version.
 
+For Homebrew static archives, include their complete `pkg-config --static` dependency closure and resolve third-party libraries to explicit `.a` files. Formula options vary across runners: macOS ARM FreeType required Brotli in v0.14.1 while the Intel host's formula did not. Do not replace a missing static dependency with a dylib or assume the local formula's dependency list is universal.
+
 ## Static audits and execution
 
 Run `cmake/utils/check_static_linking.sh BINARY PLATFORM AUDIT_TOOL` (macOS needs no third argument). It runs after linking with release enforcement; rerun on extracted final assets.

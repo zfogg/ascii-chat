@@ -90,6 +90,23 @@ elseif(APPLE)
             message(FATAL_ERROR "macOS Release requires the static Homebrew FreeType archive (libfreetype.a)")
         endif()
         set(FREETYPE_LIBRARIES "${FREETYPE_STATIC_ARCHIVE}")
+        if(NOT PkgConfig_FOUND OR NOT FREETYPE_STATIC_LIBRARIES)
+            message(FATAL_ERROR "macOS static FreeType requires its pkg-config dependency metadata")
+        endif()
+        # Homebrew can enable optional codecs such as Brotli. Link the static
+        # closure advertised by the installed formula rather than a fixed list.
+        foreach(_dependency IN LISTS FREETYPE_STATIC_LIBRARIES)
+            if(_dependency STREQUAL "freetype")
+                continue()
+            elseif(_dependency MATCHES "^(bz2|z|m|iconv)$")
+                list(APPEND FREETYPE_LIBRARIES "${_dependency}")
+            else()
+                find_file(_freetype_${_dependency}_archive NAMES "lib${_dependency}.a"
+                    PATHS ${FREETYPE_STATIC_LIBRARY_DIRS}
+                    NO_DEFAULT_PATH REQUIRED)
+                list(APPEND FREETYPE_LIBRARIES "${_freetype_${_dependency}_archive}")
+            endif()
+        endforeach()
     endif()
 
     message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: ${FREETYPE_LIBRARIES}")
