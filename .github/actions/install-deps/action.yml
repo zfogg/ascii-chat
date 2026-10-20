@@ -705,7 +705,7 @@ runs:
         Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_TARGET_TRIPLET=arm64-windows-static"
         Write-Host "Set vcpkg triplet to arm64-windows-static for Windows ARM64"
 
-    - name: Setup vcpkg and install packages (Windows)
+    - name: Setup vcpkg (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
       run: |
@@ -723,11 +723,10 @@ runs:
         # Bootstrap vcpkg
         Write-Host "Bootstrapping vcpkg..."
         & "$vcpkgDir\bootstrap-vcpkg.bat" -disableMetrics
+        if ($LASTEXITCODE -ne 0) { throw "Could not bootstrap vcpkg" }
 
-        # Install packages from vcpkg.json manifest
-        Write-Host "Installing packages from vcpkg.json..."
-        $vcpkgExe = "$vcpkgDir\vcpkg.exe"
-        & $vcpkgExe install --triplet=$env:VCPKG_DEFAULT_TRIPLET
+        # CMake installs the manifest into its configured build directory.
+        # A separate checkout-root install bypasses the restored build cache.
 
         # Set VCPKG_ROOT for CMake
         Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$vcpkgDir"
