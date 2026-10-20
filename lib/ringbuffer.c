@@ -11,6 +11,7 @@
 #include <ascii-chat/util/math.h> // For power-of-two utilities
 #include <ascii-chat/util/bits.h> // For is_power_of_two, next_power_of_two
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/debug/named.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,12 +47,18 @@ ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
   rb->is_power_of_two = true;
   rb->capacity_mask = actual_capacity - 1;
   /* Atomic fields are zero-initialized by SAFE_CALLOC */
+  NAMED_REGISTER_ATOMIC(&rb->head, "ringbuffer.head", NULL);
+  NAMED_REGISTER_ATOMIC(&rb->tail, "ringbuffer.tail", NULL);
+  NAMED_REGISTER_ATOMIC(&rb->size, "ringbuffer.size", NULL);
 
   return rb;
 }
 
 void ringbuffer_destroy(ringbuffer_t *rb) {
   if (rb) {
+    NAMED_UNREGISTER(&rb->head);
+    NAMED_UNREGISTER(&rb->tail);
+    NAMED_UNREGISTER(&rb->size);
     SAFE_FREE(rb->buffer);
     SAFE_FREE(rb);
   }

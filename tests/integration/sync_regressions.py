@@ -40,21 +40,58 @@ def main():
                 if mode == "deadlock":
                     text = terminal.expect(lambda text: "2 mutexes in wait cycles" in text, "Missing circular wait")
                     rows = text.splitlines()
-                    assert "cycle_a" in rows[3] and "DEADLOCK" in rows[3], text
-                    assert "cycle_b" in rows[4] and "DEADLOCK" in rows[4], text
+                    assert "cycle_a" in rows[4] and "DEADLOCK" in rows[4], text
+                    assert "cycle_b" in rows[5] and "DEADLOCK" in rows[5], text
                     terminal.write("\x1b[C")
                     terminal.expect(lambda text: "page 2/" in text, "Right advances a page")
                     terminal.write("\x1b[D")
                     terminal.expect(lambda text: "page 1/" in text, "Left returns a page")
                     terminal.write("\x1b[B")
-                    terminal.expect(lambda text: text.splitlines()[4].startswith(">mutex"), "Down selects next row")
+                    terminal.expect(lambda text: text.splitlines()[5].startswith(">mutex"), "Down selects next row")
                     terminal.write("\x1b[A")
-                    terminal.expect(lambda text: text.splitlines()[3].startswith(">mutex"), "Up selects previous row")
+                    terminal.expect(lambda text: text.splitlines()[4].startswith(">mutex"), "Up selects previous row")
+                    # Start away from row zero: Home/End must move both the
+                    # selection and page, including repeated presses.
+                    terminal.write("\x1b[B" * 6)
+                    terminal.expect(lambda text: "item 7/" in text, "Select seventh item")
+                    terminal.write("\x1b[D")
+                    terminal.expect(lambda text: "item 7/" in text, "Left on first page preserves selection")
                     terminal.write("\x1b[F")
                     last_page = terminal.expect(lambda text: "named_registry_lock" in text, "Cannot reach final page")
+                    total = int(re.search(r"(\d+) objects", last_page).group(1))
+                    terminal.expect(lambda text: f"item {total}/{total}" in text, "End selects last item")
+                    terminal.write("\x1b[F")
+                    terminal.expect(lambda text: f"item {total}/{total}" in text, "End remains at last item")
                     assert last_page.splitlines()[2].index("State/value") == state_column, last_page
                     terminal.write("\x1b[H")
-                    terminal.expect(lambda text: "cycle_a" in text and "DEADLOCK" in text, "Missing named cycle detail")
+                    terminal.expect(lambda text: "item 1/" in text and text.splitlines()[4].startswith(">mutex"),
+                                    "Home selects first item")
+                    terminal.write("\x1b[B" * 6 + "\x1b[H")
+                    terminal.expect(lambda text: "item 1/" in text, "Home resets selection on first page")
+                    terminal.write("\x1b[H")
+                    terminal.expect(lambda text: "item 1/" in text, "Home remains at first item")
+                    terminal.write("\x1b[B" * 22)
+                    terminal.expect(lambda text: "page 2/" in text and "item 23/" in text,
+                                    "Down crosses the page boundary")
+                    terminal.write("\x1b[A")
+                    terminal.expect(lambda text: "page 1/" in text and "item 22/" in text,
+                                    "Up crosses back to previous page")
+                    terminal.write("\x1b[H")
+                    terminal.expect(lambda text: "item 1/" in text, "Home restores first item")
+                    # The snapshot grows beyond both the old registry limits
+                    # and one terminal page; every registered fixture is reachable.
+                    fixtures = set()
+                    pages = int(re.search(r"page 1/(\d+)", terminal.pump()).group(1))
+                    for page in range(1, pages + 1):
+                        text = terminal.expect(lambda t: f"page {page}/{pages}" in t, "Missing inventory page")
+                        # ConPTY can deliver the changed header before the body.
+                        text = terminal.pump(0.5)
+                        fixtures.update(re.findall(r"sync_fixture_value\.\d+", "\n".join(text.splitlines()[4:-4])))
+                        if page < pages:
+                            terminal.write("\x1b[C")
+                    assert len(fixtures) == 600, (len(fixtures), sorted(fixtures))
+                    terminal.write("\x1b[H")
+                    terminal.expect(lambda text: "item 1/" in text, "Home restores inventory start")
                 else:
                     terminal.expect(lambda text: "STALE: collection unavailable" in text, "Missing stale sample status")
                     before = terminal.pump()

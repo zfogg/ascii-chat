@@ -1,3 +1,4 @@
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/atomic.h>
 /**
@@ -180,6 +181,41 @@ static void calculate_optimal_dimensions(ssize_t original_width, ssize_t origina
  * Session Capture Lifecycle Functions
  * ============================================================================ */
 
+static void capture_sync_entries(session_capture_ctx_t *ctx, bool add) {
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->load_cancel, "capture.load_cancel", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->load_cancel);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->playlist_skip, "capture.playlist_skip", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->playlist_skip);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->source_epoch, "capture.source_epoch", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->source_epoch);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->frame_serial, "capture.frame_serial", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->frame_serial);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->awaiting_presentation, "capture.awaiting_presentation", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->awaiting_presentation);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->toggle_media, "capture.toggle_media", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->toggle_media);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->redraw_media, "capture.redraw_media", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->redraw_media);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->non_media_active, "capture.non_media_active", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->non_media_active);
+}
+
 session_capture_ctx_t *session_mirror_capture_create(const session_capture_config_t *config) {
   // Mirror capture requires a config with media source info
   if (!config) {
@@ -216,6 +252,7 @@ session_capture_ctx_t *session_network_capture_create(uint32_t target_fps) {
 
   ctx->start_time_ns = time_get_ns();
   ctx->initialized = true;
+  capture_sync_entries(ctx, true);
 
   log_debug("Created network capture context (no local media source)");
   return ctx;
@@ -401,6 +438,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   ctx->start_time_ns = time_get_ns();
 
   ctx->initialized = true;
+  capture_sync_entries(ctx, true);
   return ctx;
 }
 
@@ -450,6 +488,7 @@ void session_capture_destroy(session_capture_ctx_t *ctx) {
   }
 
   ctx->initialized = false;
+  capture_sync_entries(ctx, false);
   SAFE_FREE(ctx);
 }
 

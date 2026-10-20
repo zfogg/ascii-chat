@@ -1,4 +1,5 @@
 #include <ascii-chat/ui/input.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/stats/runtime.h>
 /**
  * @file discovery/main.c
@@ -533,6 +534,8 @@ role_dispatch:
           &receiver.connection,
           (session_connection_ops_t){discovery_media_interrupt, discovery_media_join, discovery_media_release},
           &receiver);
+      NAMED_REGISTER_ATOMIC(&receiver.running, "discovery.media_running", NULL);
+      NAMED_REGISTER_ATOMIC(&receiver.connection.state, "discovery.media_state", NULL);
       if (enable_audio) {
         result = audio_init(&audio);
         if (result != ASCIICHAT_OK)
@@ -651,6 +654,8 @@ role_dispatch:
         LOG_ERRNO_IF_SET("Waiting for discovery media workers");
         platform_sleep_ms(10);
       }
+      NAMED_UNREGISTER(&receiver.running);
+      NAMED_UNREGISTER(&receiver.connection.state);
       if (!should_exit() && g_discovery->session_type == SESSION_TYPE_WEBRTC) {
         if (!g_discovery->handoff_pending) {
           g_discovery->state = DISCOVERY_STATE_MIGRATING;

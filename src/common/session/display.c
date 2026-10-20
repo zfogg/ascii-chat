@@ -1,3 +1,4 @@
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/video/ascii/zalgo.h>
 #include <ascii-chat/stats/runtime.h>
 /**
@@ -170,6 +171,21 @@ asciichat_error_t session_display_init_render_file(session_display_ctx_t *ctx, u
   return ASCIICHAT_OK;
 }
 
+static void display_sync_entries(session_display_ctx_t *ctx, bool add) {
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->first_frame, "display.first_frame", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->first_frame);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->output_failed, "display.output_failed", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->output_failed);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->keyboard_help_active, "display.keyboard_help_active", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->keyboard_help_active);
+}
+
 session_display_ctx_t *session_display_create(const session_display_config_t *config) {
   if (GET_OPTION(zalgo) > 0 && (GET_OPTION(force_utf8) == UTF8_SETTING_FALSE ||
                                 (GET_OPTION(force_utf8) == UTF8_SETTING_AUTO && terminal_is_stdout_tty() &&
@@ -211,6 +227,19 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Presentation follows stdout. Opening a separate controlling terminal can
   // fail under ConPTY even though stdout is an interactive console.
   ctx->has_tty = terminal_is_stdout_tty();
+  if (ctx->has_tty) {
+    // Retain the terminal before decoder/audio workers redirect process stdio
+    // through LOG_IO. The first media submission must remain interactive too.
+    int output = platform_dup(STDOUT_FILENO);
+    if (output >= 0 && platform_isatty(output)) {
+      if (ctx->tty_info.owns_fd && ctx->tty_info.fd >= 0)
+        platform_close(ctx->tty_info.fd);
+      ctx->tty_info.fd = output;
+      ctx->tty_info.owns_fd = true;
+    } else if (output >= 0) {
+      platform_close(output);
+    }
+  }
   if (ctx->has_tty && (ctx->tty_info.fd < 0 || !platform_isatty(ctx->tty_info.fd))) {
     if (ctx->tty_info.owns_fd && ctx->tty_info.fd >= 0)
       platform_close(ctx->tty_info.fd);
@@ -324,11 +353,12 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->initialized = true;
   if (ctx->has_tty && !ctx->snapshot_mode) {
     const char initial[] = "\033[H";
-    (void)ui_controller_present_retained(UI_SCREEN_MEDIA, STDOUT_FILENO,
+    (void)ui_controller_present_retained(UI_SCREEN_MEDIA, ctx->tty_info.fd,
                                          (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS},
                                          initial, sizeof(initial) - 1);
   }
 
+  display_sync_entries(ctx, true);
   return ctx;
 }
 
@@ -383,6 +413,7 @@ void session_display_destroy(session_display_ctx_t *ctx) {
   // when worker threads try to access the display after it's been freed
   splash_clear_display_context();
 
+  display_sync_entries(ctx, false);
   SAFE_FREE(ctx);
 }
 

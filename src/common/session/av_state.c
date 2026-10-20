@@ -1,5 +1,6 @@
 #include "session/av_state.h"
 #include <ascii-chat/common.h>
+#include <ascii-chat/debug/named.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -8,10 +9,15 @@
 #endif
 
 EMSCRIPTEN_KEEPALIVE session_av_state_t *session_av_state_create(void) {
-  return SAFE_CALLOC(1, sizeof(session_av_state_t), session_av_state_t *);
+  session_av_state_t *state = SAFE_CALLOC(1, sizeof(session_av_state_t), session_av_state_t *);
+  if (state)
+    NAMED_REGISTER_ATOMIC(&state->phase, "session_av.phase", NULL);
+  return state;
 }
 
 EMSCRIPTEN_KEEPALIVE void session_av_state_destroy(session_av_state_t *state) {
+  if (state)
+    NAMED_UNREGISTER(&state->phase);
   SAFE_FREE(state);
 }
 

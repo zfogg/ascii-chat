@@ -1,5 +1,6 @@
 /** Native regressions for diagnostic snapshots and UI callback ownership. */
 #include <ascii-chat/common.h>
+#include <ascii-chat/audio/audio.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -21,6 +22,12 @@ static atomic_bool trylock_clean;
 static rwlock_t *registry_lock;
 static int objects[600];
 static unsigned seen;
+
+#ifndef NDEBUG
+static void inspect_atomic(uintptr_t key, void *value) {
+  *(uint64_t *)value = atomic_load(&((atomic_t *)key)->impl);
+}
+#endif
 
 #define CHECK(expr)                                                                                                    \
   do {                                                                                                                 \
@@ -129,16 +136,28 @@ int main(int argc, char **argv) {
       atomic_store_u64(&sync_values[i], i);
       NAMED_REGISTER_ATOMIC(&sync_values[i], "sync_fixture_value", NULL);
     }
+    // Re-registering with an owner-qualified name must not add another object
+    // to the inspector's inventory.
+    NAMED_REGISTER_ATOMIC(&sync_values[0], "sync_fixture_value", NULL);
     CHECK(named_registry_for_each(count_entry, NULL, &(bool){false}) == ASCIICHAT_OK);
-    CHECK(ui_controller_present(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){20, 5}, "SYNC FIXTURE READY", 18) ==
+    CHECK(ui_controller_present(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){20, 5}, "SYNC PREPARING", 14) ==
           ASCIICHAT_OK);
     platform_sleep_ns(NS_PER_SEC_INT);
     if (!strcmp(argv[1], "stale")) {
       CHECK(registry_lock != NULL);
+      // A stale sample must first have been collected while the overlay is
+      // visible; hidden sessions intentionally do not sample the registry.
+      ui_sync_handle_key(KEY_0);
+      platform_sleep_ns(NS_PER_SEC_INT);
+      ui_sync_handle_key(KEY_0);
+      CHECK(ui_controller_present(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){20, 5}, "SYNC FIXTURE READY",
+                                  18) == ASCIICHAT_OK);
       rwlock_wrlock(registry_lock);
       for (;;)
         platform_sleep_ns(NS_PER_SEC_INT);
     }
+    CHECK(ui_controller_present(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){20, 5}, "SYNC FIXTURE READY", 18) ==
+          ASCIICHAT_OK);
     CHECK(mutex_init(&cycle_a, "cycle_a") == 0);
     CHECK(mutex_init(&cycle_b, "cycle_b") == 0);
     mutex_lock(&cycle_a);
@@ -257,6 +276,26 @@ int main(int argc, char **argv) {
     mutex_unlock(&test_mutex);
     cond_destroy(&test_cond);
     mutex_destroy(&test_mutex);
+    ringbuffer_t *queue = ringbuffer_create(sizeof(int), 8);
+    CHECK(queue != NULL);
+    uintptr_t queue_keys[] = {(uintptr_t)&queue->head, (uintptr_t)&queue->tail, (uintptr_t)&queue->size};
+    uint64_t observed;
+    for (size_t i = 0; i < 3; ++i)
+      CHECK(named_registry_read(queue_keys[i], "atomic", inspect_atomic, &observed));
+    ringbuffer_destroy(queue);
+    for (size_t i = 0; i < 3; ++i)
+      CHECK(!named_registry_read(queue_keys[i], "atomic", inspect_atomic, &observed));
+    audio_ring_buffer_t *audio = audio_ring_buffer_create();
+    CHECK(audio != NULL);
+    uintptr_t audio_keys[] = {(uintptr_t)&audio->write_index,          (uintptr_t)&audio->read_index,
+                              (uintptr_t)&audio->discard_pending,      (uintptr_t)&audio->discard_to_index,
+                              (uintptr_t)&audio->jitter_buffer_filled, (uintptr_t)&audio->crossfade_samples_remaining,
+                              (uintptr_t)&audio->crossfade_fade_in,    (uintptr_t)&audio->underrun_count};
+    for (size_t i = 0; i < 8; ++i)
+      CHECK(named_registry_read(audio_keys[i], "atomic", inspect_atomic, &observed));
+    audio_ring_buffer_destroy(audio);
+    for (size_t i = 0; i < 8; ++i)
+      CHECK(!named_registry_read(audio_keys[i], "atomic", inspect_atomic, &observed));
 #endif
     log_info("PASS registry capacity, contention, and mutex tracking");
   }

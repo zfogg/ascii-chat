@@ -1,3 +1,4 @@
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/network/consensus/handoff.h>
 #include <ascii-chat/crypto/policy.h>
@@ -192,6 +193,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   log_debug("Discovery session created (initiator=%d, acds=%s:%u)", session->is_initiator, session->acds_address,
             session->acds_port);
 
+  NAMED_REGISTER_ATOMIC(&session->liveness.last_pong_received_ms, "discovery.last_pong_received_ms", NULL);
   return session;
 }
 
@@ -296,6 +298,7 @@ asciichat_error_t discovery_session_destroy(discovery_session_t *session) {
   // Destroy NAT quality mutex
   mutex_destroy(&session->nat_quality_mutex);
 
+  NAMED_UNREGISTER(&session->liveness.last_pong_received_ms);
   SAFE_FREE(session);
   return ASCIICHAT_OK;
 }

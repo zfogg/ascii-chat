@@ -13,6 +13,65 @@
 #include <string.h>
 #include <ascii-chat/options/options.h>
 
+static void client_sync_entries(client_connection_t *ctx, bool add) {
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->display_first_frame, "client.display_first_frame", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->display_first_frame);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->lifecycle.state, "client.lifecycle.state", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->lifecycle.state);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->stop_requested, "client.stop_requested", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->stop_requested);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->connection_active, "client.connection_active", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->connection_active);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->remote_error, "client.remote_error", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->remote_error);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->connection_lost, "client.connection_lost", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->connection_lost);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->data_thread_exited, "client.data_thread_exited", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->data_thread_exited);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->frames_rendered, "client.frames_rendered", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->frames_rendered);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->snapshot_first_frame_time_ns, "client.snapshot_first_frame_time_ns", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->snapshot_first_frame_time_ns);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->capture_thread_exited, "client.capture_thread_exited", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->capture_thread_exited);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->audio_capture_thread_exited, "client.audio_capture_thread_exited", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->audio_capture_thread_exited);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->audio_sender_should_exit, "client.audio_sender_should_exit", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->audio_sender_should_exit);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->audio_sender_exited, "client.audio_sender_exited", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->audio_sender_exited);
+  if (add)
+    NAMED_REGISTER_ATOMIC(&ctx->ping_thread_exited, "client.ping_thread_exited", NULL);
+  else
+    NAMED_UNREGISTER(&ctx->ping_thread_exited);
+}
+
 static void client_interrupt(void *context);
 static asciichat_error_t client_join(void *context);
 static void client_release(void *context);
@@ -38,6 +97,7 @@ asciichat_error_t client_connection_create(client_connection_t **out) {
   if (!*out)
     return SET_ERRNO(ERROR_MEMORY, "Could not allocate client connection");
   client_connection_t *connection = *out;
+  client_sync_entries(connection, true);
   session_connection_init(&connection->lifecycle,
                           (session_connection_ops_t){client_interrupt, client_join, client_release}, connection);
   connection->crypto_mode = ACIP_CRYPTO_ENCRYPT;
@@ -171,6 +231,7 @@ asciichat_error_t client_connection_destroy(client_connection_t **owner) {
   if (connection->send_mutex_initialized)
     mutex_destroy(&connection->send_mutex);
   log_info("CLIENT_CONNECTION_RELEASED");
+  client_sync_entries(connection, false);
   SAFE_FREE(*owner);
   *owner = NULL;
   return ASCIICHAT_OK;

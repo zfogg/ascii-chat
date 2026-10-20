@@ -1074,6 +1074,7 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
     return NULL;
   }
 
+  audio_ring_buffer_register_atomics(rb, "audio_ring_buffer");
   return rb;
 }
 
@@ -1120,6 +1121,7 @@ void audio_ring_buffer_register_atomics(audio_ring_buffer_t *rb, const char *con
   // Ring buffer indices (lock-free producer-consumer)
   NAMED_REGISTER_ATOMIC(&rb->write_index, "write_index_producer_position", (uintptr_t)(const void *)(rb));
   NAMED_REGISTER_ATOMIC(&rb->read_index, "read_index_consumer_position", (uintptr_t)(const void *)(rb));
+  NAMED_REGISTER_ATOMIC(&rb->discard_pending, "discard_pending", (uintptr_t)(const void *)(rb));
   NAMED_REGISTER_ATOMIC(&rb->discard_to_index, "discard_to_index_producer_position", (uintptr_t)(const void *)(rb));
 
   // Jitter buffer state management
@@ -1140,6 +1142,7 @@ void audio_ring_buffer_unregister_atomics(audio_ring_buffer_t *rb) {
 
   NAMED_UNREGISTER(&rb->write_index);
   NAMED_UNREGISTER(&rb->read_index);
+  NAMED_UNREGISTER(&rb->discard_pending);
   NAMED_UNREGISTER(&rb->discard_to_index);
   NAMED_UNREGISTER(&rb->jitter_buffer_filled);
   NAMED_UNREGISTER(&rb->crossfade_samples_remaining);

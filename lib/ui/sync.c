@@ -10,6 +10,8 @@
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/options/options.h>
 #include <stdatomic.h>
 #include <inttypes.h>
 #include <string.h>
@@ -40,14 +42,16 @@ typedef struct {
 static sync_sample_t g_sync_samples[3] = {
     {.busy = ATOMIC_FLAG_INIT}, {.busy = ATOMIC_FLAG_INIT}, {.busy = ATOMIC_FLAG_INIT}};
 static _Atomic int g_sync_published = -1;
-static _Atomic int g_sync_page;
 static _Atomic int g_sync_selected;
+static _Atomic int g_sync_page_size = 1;
+static _Atomic int g_sync_total;
 static _Atomic bool g_sync_visible;
 static _Atomic bool g_sync_stop;
 static atomic_flag g_sync_starting = ATOMIC_FLAG_INIT;
 static bool g_sync_started;
 static asciichat_thread_t g_sync_thread;
 static int g_sync_fd = -1;
+static _Thread_local bool g_sync_use_color, g_sync_use_utf8;
 
 static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file,
                           int line, void *data) {
@@ -55,7 +59,19 @@ static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, 
   if (!type || (strcmp(type, "mutex") && strcmp(type, "rwlock") && strcmp(type, "cond") && strcmp(type, "atomic") &&
                 strcmp(type, "atomic_ptr")))
     return;
-  sync_row_t *r = &sample->rows[sample->count++];
+  // Initializers and their owning resources can both register the same
+  // primitive. Show its latest name once, rather than counting aliases.
+  sync_row_t *r = NULL;
+  for (size_t i = 0; i < sample->count; ++i) {
+    if (sample->rows[i].key != key)
+      continue;
+    if (sample->rows[i].generation >= generation)
+      return;
+    r = &sample->rows[i];
+    break;
+  }
+  if (!r)
+    r = &sample->rows[sample->count++];
   memset(r, 0, sizeof(*r));
   r->key = key;
   r->generation = generation;
@@ -109,12 +125,27 @@ static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, 
   }
 }
 
+static const char *sync_short_name(const sync_row_t *row) {
+  const char *name = strrchr(row->name, '#');
+  return name ? name + 1 : row->name;
+}
+
+static void sync_row_label(const sync_row_t *row, char *label, size_t capacity) {
+  const char *name = sync_short_name(row);
+  if (name != row->name)
+    snprintf(label, capacity, "%s.%" PRIu64, name, row->generation);
+  else
+    snprintf(label, capacity, "%s", name);
+}
+
 static int sync_compare_rows(const void *a, const void *b) {
   const sync_row_t *x = a, *y = b;
   if (x->cycle != y->cycle)
     return x->cycle ? -1 : 1;
   int result = strcmp(x->type, y->type);
-  return result ? result : strcmp(x->name, y->name);
+  if (!result)
+    result = strcmp(sync_short_name(x), sync_short_name(y));
+  return result ? result : x->generation < y->generation ? -1 : x->generation > y->generation;
 }
 
 static double sync_rate(uint64_t current, uint64_t previous, double seconds) {
@@ -261,33 +292,41 @@ keyboard_key_t ui_sync_handle_key(keyboard_key_t key) {
     atomic_store(&g_sync_visible, false);
     return key == ']' || (key == KEY_QUESTION && ui_controller_current_screen() != UI_SCREEN_HELP) ? key : KEY_NONE;
   }
-  if (key == KEY_RIGHT)
-    atomic_fetch_add(&g_sync_page, 1);
-  if (key == KEY_LEFT && atomic_load(&g_sync_page) > 0)
-    atomic_fetch_sub(&g_sync_page, 1);
+  int selected = atomic_load(&g_sync_selected);
+  int last = atomic_load(&g_sync_total) - 1;
+  int step = atomic_load(&g_sync_page_size);
+  if (key == KEY_RIGHT && last >= 0 && selected / step < last / step)
+    selected += step;
+  if (key == KEY_LEFT && selected >= step)
+    selected -= step;
   if (key == KEY_DOWN)
-    atomic_fetch_add(&g_sync_selected, 1);
-  if (key == KEY_UP && atomic_load(&g_sync_selected) > 0)
-    atomic_fetch_sub(&g_sync_selected, 1);
+    ++selected;
+  if (key == KEY_UP)
+    --selected;
   if (key == KEY_HOME)
-    atomic_store(&g_sync_page, 0);
+    selected = 0;
   if (key == KEY_END)
-    atomic_store(&g_sync_page, INT_MAX);
+    selected = last;
+  atomic_store(&g_sync_selected, selected < 0 ? 0 : selected > last && last >= 0 ? last : selected);
   return key == 'q' || key == 3 ? key : KEY_NONE;
 }
 
+static const char *sync_color(log_color_t color) {
+  return g_sync_use_color ? log_level_color(color) : "";
+}
+
 static const char *sync_rate_color(double rate) {
-  return log_level_color(rate >= 60   ? LOG_COLOR_ERROR
-                         : rate >= 10 ? LOG_COLOR_WARN
-                         : rate > 0   ? LOG_COLOR_INFO
-                                      : LOG_COLOR_DEBUG);
+  return sync_color(rate >= 60   ? LOG_COLOR_ERROR
+                    : rate >= 10 ? LOG_COLOR_WARN
+                    : rate > 0   ? LOG_COLOR_INFO
+                                 : LOG_COLOR_DEBUG);
 }
 
 static void sync_write_line(const char *text, int columns, bool newline, int *measured_width) {
   char output[2048];
   size_t used = 0;
   int visible = 0;
-  const char *prefix = "\033[2K";
+  const char *prefix = "\033[0m\033[2K";
   memcpy(output, prefix, strlen(prefix));
   used = strlen(prefix);
   for (size_t i = 0; text[i] && used + 16 < sizeof(output);) {
@@ -301,8 +340,16 @@ static void sync_write_line(const char *text, int columns, bool newline, int *me
     } else {
       if (!measured_width && visible >= columns - 1)
         break;
-      output[used++] = text[i++];
-      ++visible;
+      int bytes = utf8_next_char_bytes(text + i, strlen(text + i));
+      if (bytes <= 0)
+        break;
+      int width = utf8_display_width_n(text + i, bytes);
+      if (!measured_width && visible + width > columns - 1)
+        break;
+      memcpy(output + used, text + i, bytes);
+      used += bytes;
+      i += bytes;
+      visible += width;
     }
   }
   if (measured_width) {
@@ -316,28 +363,91 @@ static void sync_write_line(const char *text, int columns, bool newline, int *me
   ui_controller_write(g_sync_fd, output, used);
 }
 
+// Header/detail numbers share the log palette, including hexadecimal addresses.
+static void sync_color_numbers(const char *text, char *output, size_t capacity) {
+  size_t used = 0;
+  for (const char *p = text; *p && used + 128 < capacity;) {
+    if (p[0] == '\033' && p[1] == '[') {
+      output[used++] = *p++;
+      output[used++] = *p++;
+      while (*p && !(*p >= '@' && *p <= '~'))
+        output[used++] = *p++;
+      if (*p)
+        output[used++] = *p++;
+    } else if (*p >= '0' && *p <= '9') {
+      char *end;
+      double value;
+      if (p[0] == '0' && p[1] == 'x')
+        value = (double)strtoull(p, &end, 16);
+      else
+        value = strtod(p, &end);
+      used += snprintf(output + used, capacity - used, "%s%.*s%s",
+                       sync_color(value == 0 ? LOG_COLOR_ERROR : LOG_COLOR_FATAL), (int)(end - p), p,
+                       sync_color(LOG_COLOR_RESET));
+      p = end;
+    } else {
+      output[used++] = *p++;
+    }
+  }
+  output[used] = '\0';
+}
+
+static void sync_write_numbers(const char *text, int columns, int *measure) {
+  char output[2048];
+  sync_color_numbers(text, output, sizeof(output));
+  sync_write_line(output, columns, true, measure);
+}
+
+static void sync_separator(int columns, int *measure) {
+  if (measure)
+    return;
+  char line[2048];
+  size_t used = snprintf(line, sizeof(line), "%s", sync_color(LOG_COLOR_DEBUG));
+  const char *cell = g_sync_use_utf8 ? "─" : "-";
+  for (int i = 0; i < columns - 1 && used + 8 < sizeof(line); ++i) {
+    memcpy(line + used, cell, strlen(cell));
+    used += strlen(cell);
+  }
+  line[used] = '\0';
+  sync_write_line(line, columns, true, NULL);
+}
+
 void ui_sync_render(terminal_size_t size) {
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  terminal_color_mode_t mode = GET_OPTION(color_mode);
+  g_sync_use_color = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
+                     (mode != TERM_COLOR_AUTO || caps.color_level != TERM_COLOR_NONE);
+  utf8_setting_t utf8 = GET_OPTION(force_utf8);
+  g_sync_use_utf8 = utf8 == UTF8_SETTING_TRUE || (utf8 == UTF8_SETTING_AUTO && caps.utf8_support);
   // Copy only the visible page before terminal writes; the collector never
   // waits for output, and the renderer never waits for collection.
   sync_row_t rows[128];
   size_t count = 0, total = 0, cycles = 0;
+  size_t mutexes = 0, conditions = 0, rwlocks = 0, atomics = 0;
   uint64_t sampled = 0;
   bool waits_complete = false, limited = false;
-  enum { header_rows = 3, detail_rows = 2, footer_rows = 1 };
+  enum { header_rows = 4, detail_rows = 3, footer_rows = 1 };
   const int fixed_rows = header_rows + detail_rows + footer_rows;
   int name_width = (int)strlen("Name");
   int per_page = size.rows > fixed_rows ? size.rows - fixed_rows : 1;
   if (per_page > 128)
     per_page = 128;
-  int page = atomic_load(&g_sync_page), pages = 1;
+  atomic_store(&g_sync_page_size, per_page);
+  int selected = atomic_load(&g_sync_selected);
+  int page = 0, pages = 1;
   int slot = atomic_load(&g_sync_published);
   if (slot >= 0 && !atomic_flag_test_and_set(&g_sync_samples[slot].busy)) {
     sync_sample_t *s = &g_sync_samples[slot];
     total = s->count;
+    atomic_store(&g_sync_total, total > INT_MAX ? INT_MAX : (int)total);
+    if ((size_t)selected >= total) {
+      int previous = selected;
+      selected = total ? (int)total - 1 : 0;
+      // Do not overwrite a key received while the renderer copies a sample.
+      atomic_compare_exchange_strong(&g_sync_selected, &previous, selected);
+    }
     pages = total ? (int)((total + per_page - 1) / per_page) : 1;
-    if (page >= pages)
-      page = pages - 1;
-    atomic_store(&g_sync_page, page);
+    page = selected / per_page;
     size_t first = (size_t)page * per_page;
     count = total > first ? total - first : 0;
     if (count > (size_t)per_page)
@@ -346,9 +456,14 @@ void ui_sync_render(terminal_size_t size) {
       memcpy(rows, s->rows + first, count * sizeof(*rows));
     for (size_t i = 0; i < total; ++i) {
       cycles += s->rows[i].cycle;
-      const char *name = strrchr(s->rows[i].name, '#');
-      name = name ? name + 1 : s->rows[i].name;
-      int width = (int)strlen(name);
+      const char *type = s->rows[i].type;
+      mutexes += !strcmp(type, "mutex");
+      conditions += !strcmp(type, "cond");
+      rwlocks += !strcmp(type, "rwlock");
+      atomics += !strncmp(type, "atomic", 6);
+      char label[288];
+      sync_row_label(&s->rows[i], label, sizeof(label));
+      int width = (int)strlen(label);
       if (width > name_width)
         name_width = width;
     }
@@ -358,37 +473,39 @@ void ui_sync_render(terminal_size_t size) {
     atomic_flag_clear(&s->busy);
   }
   uint64_t now = time_get_ns();
-  int selected = atomic_load(&g_sync_selected);
+  selected %= per_page;
   if ((size_t)selected >= count)
     selected = count ? (int)count - 1 : 0;
-  atomic_store(&g_sync_selected, selected);
   int measured_width = 0;
   for (int pass = 0; pass < 2; ++pass) {
     int *measure = pass == 0 ? &measured_width : NULL;
     char line[1024];
     if (!measure)
       ui_controller_write(g_sync_fd, "\033[H", 3);
-    snprintf(line, sizeof(line), "Sync primitives | %zu objects | page %d/%d | sample age %.1fs", total, page + 1,
-             pages, sampled ? (double)(now - sampled) / NS_PER_SEC_INT : 0.0);
-    sync_write_line(line, size.cols, true, measure);
-    snprintf(line, sizeof(line), "%s%s | %zu mutexes in wait cycles%s", cycles ? log_level_color(LOG_COLOR_ERROR) : "",
+    snprintf(line, sizeof(line), "Sync primitives | %zu objects | page %d/%d | item %zu/%zu | age %.1fs", total,
+             page + 1, pages, count ? (size_t)page * per_page + selected + 1 : 0, total,
+             sampled ? (double)(now - sampled) / NS_PER_SEC_INT : 0.0);
+    sync_write_numbers(line, size.cols, measure);
+    snprintf(line, sizeof(line), "%s%s | M=%zu RW=%zu C=%zu A=%zu | %zu mutexes in wait cycles%s",
+             cycles ? sync_color(LOG_COLOR_ERROR) : "",
              !sampled                         ? "Waiting for registry"
              : now - sampled > NS_PER_SEC_INT ? "STALE: collection unavailable"
-                                              : "Live",
-             cycles,
+                                              : "Live registered",
+             mutexes, rwlocks, conditions, atomics, cycles,
              !waits_complete ? " | wait tracker busy"
              : limited       ? " | wait tracker capacity reached"
                              : "");
-    sync_write_line(line, size.cols, true, measure);
+    sync_write_numbers(line, size.cols, measure);
     snprintf(line, sizeof(line), " %-8s %-*s %-18s %6s %6s %7s", "Type", name_width, "Name", "State/value", "L/s",
              "U/s", "Change/s");
     sync_write_line(line, size.cols, true, measure);
+    sync_separator(size.cols, measure);
     for (size_t i = 0; i < count; ++i) {
       sync_row_t *r = &rows[i];
       // Parent names may be media paths; keep the primitive visible in the table.
       // The detail row identifies the source location and address.
-      const char *name = strrchr(r->name, '#');
-      name = name ? name + 1 : r->name;
+      char name[288];
+      sync_row_label(r, name, sizeof(name));
       char state[128];
       if (!strcmp(r->type, "mutex"))
         snprintf(state, sizeof(state), "%s t=%" PRIxPTR " w=%u",
@@ -408,23 +525,34 @@ void ui_sync_render(terminal_size_t size) {
                r->change_rate, r->cycle ? " DEADLOCK" : "");
       sync_write_line(line, size.cols, true, measure);
     }
-    snprintf(line, sizeof(line), "\033[J\033[%d;1H", size.rows > 2 ? size.rows - 2 : 1);
+    snprintf(line, sizeof(line), "\033[J\033[%d;1H", size.rows > 3 ? size.rows - 3 : 1);
     if (!measure)
       ui_controller_write(g_sync_fd, line, strlen(line));
+    sync_separator(size.cols, measure);
     if (count) {
       sync_row_t *r = &rows[selected];
-      snprintf(line, sizeof(line), "%s:%d @0x%" PRIxPTR, r->file, r->line, r->key);
+      snprintf(line, sizeof(line), "%d @0x%" PRIxPTR, r->line, r->key);
+      char numbers[512];
+      sync_color_numbers(line, numbers, sizeof(numbers));
+      snprintf(line, sizeof(line), "%s%s%s:%s", sync_color(LOG_COLOR_DEV), r->file, sync_color(LOG_COLOR_RESET),
+               numbers);
       sync_write_line(line, size.cols, true, measure);
       snprintf(line, sizeof(line),
                "owner=0x%" PRIxPTR " waiter=0x%" PRIxPTR " | value=%" PRIu64 " | last operation %.2fs ago%s", r->owner,
                r->waiter, r->value, r->last_ns ? (double)(now - r->last_ns) / NS_PER_SEC_INT : 0.0,
                r->cycle ? " DEADLOCK" : "");
-      sync_write_line(line, size.cols, true, measure);
+      sync_write_numbers(line, size.cols, measure);
     }
     snprintf(line, sizeof(line), "\033[%d;1H", size.rows);
     if (!measure)
       ui_controller_write(g_sync_fd, line, strlen(line));
-    sync_write_line("0/Esc close | ? help | Left/Right page | Up/Down detail | Home/End", size.cols, false, measure);
+    snprintf(line, sizeof(line),
+             "%s0/Esc%s close | %s?%s help | %sLeft/Right%s page | %sUp/Down%s select | %sHome/End%s first/last",
+             sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN),
+             sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET),
+             sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN),
+             sync_color(LOG_COLOR_RESET));
+    sync_write_line(line, size.cols, false, measure);
     if (measure) {
       terminal_size_t minimum = {.cols = measured_width + 1, .rows = fixed_rows + 1};
       if (ui_too_small(size, minimum)) {
