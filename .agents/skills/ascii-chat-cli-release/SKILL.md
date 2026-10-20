@@ -38,7 +38,7 @@ Use the returned `body` in the published release body. Preserve useful download 
 
 ### Improvements breakdown
 
-Publish a section titled **`Improvements breakdown`** immediately above the GitHub-generated changelist for every release. Explain what changed for users since the previous successful published release; group related work into readable topics rather than rewriting commit subjects or listing PR titles.
+Publish a section titled **`Improvements breakdown: $OLD_VERSION -> $NEW_VERSION`** immediately above the GitHub-generated changelist for every release. Substitute the previous successful published release tag and final release tag, including their `v` prefixes; for example, `## Improvements breakdown: v0.13.5 -> v0.14.5`. Explain what changed for users between those versions; group related work into readable topics rather than rewriting commit subjects or listing PR titles.
 
 - Review every commit in `PREVIOUS_SUCCESSFUL_TAG..FINAL_TAG`, including direct commits and follow-up fixes. Inspect relevant pinned source diffs and substantive commit messages. Exclude later master commits and uncommitted work.
 - Review PRs and issues opened, closed, or otherwise active during the interval, including older issues closed then. Read descriptions, relevant discussions/reviews, and closure context. Verify landed work against tag ancestry and final code: a closed PR may be unmerged, an open issue may have shipped implementation, and an issue closure may merely recognize existing behavior. Do not turn proposals or review suggestions into release claims.
