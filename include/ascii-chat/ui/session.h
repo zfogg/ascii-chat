@@ -66,6 +66,8 @@ int ui_session_select_screen(uint32_t visible_screens);
 const char *ui_session_render(ui_session_t *session, const ui_session_view_t *view, uint64_t now_ns);
 bool ui_session_is_covered(const ui_session_t *session);
 size_t ui_session_frame_length(const ui_session_t *session);
+/** Next visible animation deadline, or UINT64_MAX while animation is paused/hidden. */
+uint64_t ui_session_next_frame_ns(const ui_session_t *session);
 ui_session_t *ui_session_create(void);
 void ui_session_destroy(ui_session_t *session);
 void ui_session_resize(ui_session_t *session, int cols, int rows);

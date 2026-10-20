@@ -74,6 +74,20 @@ def main():
                     if args.artifacts and mode == 'truecolor':
                         from sync_tui_modes import capture
                         capture(term, args.artifacts, 'keyboard-help-aligned')
+                        from PIL import Image
+                        import time
+                        frames, timestamps = [], []
+                        for index in range(12):
+                            term.pump(0.08)
+                            timestamps.append(time.monotonic())
+                            name = f'keyboard-help-frame-{index:02d}'
+                            capture(term, args.artifacts, name)
+                            with Image.open(args.artifacts / f'{name}.png') as image:
+                                frames.append(image.copy())
+                        durations = [round((later - earlier) * 1000)
+                                     for earlier, later in zip(timestamps, timestamps[1:])]
+                        frames[0].save(args.artifacts / 'keyboard-help-animated.gif', save_all=True,
+                                       append_images=frames[1:], duration=durations + durations[-1:], loop=0)
                     term.write('0')
                     term.expect(lambda text: 'Home/End' in text and 'Keyboard Shortcuts' not in text,
                                 'Missing sync footer')

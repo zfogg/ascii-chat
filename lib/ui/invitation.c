@@ -24,7 +24,7 @@ static void centered_line(frame_buffer_t *buf, const char *text, int len, int co
       frame_buffer_printf(buf, "%c", text[i]);
     }
   }
-  frame_buffer_printf(buf, "\033[K\n");
+  frame_buffer_printf(buf, "\033[K\r\n");
 }
 
 void invitation_render_logo(frame_buffer_t *buf, int cols, int frame, bool colors, bool compact) {

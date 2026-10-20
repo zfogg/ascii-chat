@@ -594,6 +594,9 @@ static void *presentation_main(void *unused) {
           .context = &context};
       uint64_t compose_started_ns = time_get_ns();
       const char *output = ui_session_render(g_session, &view, now);
+      uint64_t animation_deadline = ui_session_next_frame_ns(g_session);
+      if (active == UI_SCREEN_HELP && animation_deadline < refresh_deadline)
+        refresh_deadline = animation_deadline;
       uint64_t composed_ns = time_get_ns();
       bool covered = ui_session_is_covered(g_session);
       atomic_store_bool(&g_blocked, covered);

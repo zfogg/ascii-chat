@@ -3,6 +3,7 @@
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/ui/too_small.h>
+#include <ascii-chat/ui/invitation.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/string.h>
@@ -147,6 +148,10 @@ size_t ui_session_frame_length(const ui_session_t *s) {
   return length ? length - 1 : 0;
 }
 
+uint64_t ui_session_next_frame_ns(const ui_session_t *s) {
+  return s && s->animation.started ? s->splash.animation.next_frame_ns : UINT64_MAX;
+}
+
 const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, uint64_t now_ns) {
   if (!s || !view)
     return NULL;
@@ -157,7 +162,7 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
                     s->size.rows != s->presented_size.rows || view->minimum.cols != s->minimum.cols ||
                     view->minimum.rows != s->minimum.rows;
   s->covered = covered;
-  bool visible = view->screen == UI_SCREEN_SPLASH && !covered;
+  bool visible = (view->screen == UI_SCREEN_SPLASH || view->screen == UI_SCREEN_HELP) && !covered;
   if (visible != s->animation.visible) {
     // Account for the elapsed interval under the old visibility before changing
     // it, so resuming after an idle modal does not advance a paused animation.
@@ -169,7 +174,7 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
     return NULL;
   if (view->screen < 0 || !view->draw)
     return NULL;
-  bool animated = view->screen == UI_SCREEN_SPLASH && s->splash.animation.changed;
+  bool animated = visible && s->splash.animation.changed;
   bool refresh = view->refresh_ns && now_ns - s->last_render_ns >= view->refresh_ns;
   if (covered ? !(transition || s->dirty) : !(transition || s->dirty || view->dirty || animated || refresh))
     return NULL;
@@ -184,8 +189,17 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
   }
   if (covered)
     ui_too_small_render(s->frame, s->size, view->minimum);
-  else
+  else {
+    if (view->screen == UI_SCREEN_HELP) {
+      int top = (s->size.rows - view->minimum.rows) / 2;
+      terminal_color_mode_t mode = GET_OPTION(color_mode);
+      bool colors = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
+                    (mode != TERM_COLOR_AUTO || detect_terminal_capabilities().color_level != TERM_COLOR_NONE);
+      frame_buffer_printf(s->frame, "\033[%d;1H", top + 1);
+      invitation_render_logo(s->frame, s->size.cols, (int)(s->splash.animation.seconds * 60), colors, false);
+    }
     view->draw(s->frame, s->size, &s->splash.animation, view->context);
+  }
   frame_buffer_append(s->frame, "\0", 1);
   return frame_buffer_get_content(s->frame);
 }
@@ -248,8 +262,7 @@ static void draw_media(frame_buffer_t *output, terminal_size_t size, const anima
 const char *ui_session_tick(ui_session_t *s, uint64_t now_ns) {
   if (!s)
     return NULL;
-  if (!s->dirty && !s->show_logs &&
-      ((s->help && s->active == UI_SCREEN_HELP) || (!s->help && !s->loading && s->active == UI_SCREEN_MEDIA)))
+  if (!s->dirty && !s->show_logs && !s->help && !s->loading && s->active == UI_SCREEN_MEDIA)
     return NULL;
   uint32_t visible = 1u << UI_SCREEN_MEDIA;
   if (s->loading)
@@ -259,7 +272,7 @@ const char *ui_session_tick(ui_session_t *s, uint64_t now_ns) {
   if (s->help)
     visible |= 1u << UI_SCREEN_HELP;
   ui_session_view_t view = {
-      .screen = ui_session_select_screen(visible), .minimum = {1, 1}, .clear = true, .context = s};
+      .screen = ui_session_select_screen(visible), .minimum = {1, 1}, .clear = !s->help, .context = s};
   char *help = NULL;
   if (view.screen == UI_SCREEN_HELP) {
     help = ui_session_help_render(s->size, true, true, &view.minimum);

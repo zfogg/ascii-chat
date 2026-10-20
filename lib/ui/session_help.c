@@ -296,11 +296,13 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
   // The submitted layout carries the height measured while building its rows.
   int box_height = (left_count > settings_count ? left_count : settings_count) + 6;
 
-  // Vertical centering with dynamic box height
-  int start_row = (term_height - box_height) / 2;
+  // Center the four-row logo, one-row gap, and help box as one layout.
+  const int logo_height = 5;
+  int start_row = (term_height - box_height - logo_height) / 2;
   if (start_row < 0) {
     start_row = 0;
   }
+  start_row += logo_height;
 
   // Build help screen content
   const size_t BUFFER_SIZE = 8192; // Increased from 4096 to ensure all content fits
@@ -433,6 +435,6 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
   }
 
 #undef APPEND
-  *minimum = (terminal_size_t){.cols = box_width, .rows = current_row};
+  *minimum = (terminal_size_t){.cols = box_width, .rows = current_row + logo_height};
   return buffer;
 }

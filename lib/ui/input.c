@@ -36,7 +36,7 @@ void ui_input_timeout_report(unsigned seconds, const char *consequence) {
 static lifecycle_t g_input_lifecycle = LIFECYCLE_INIT;
 static mutex_t g_input_mutex;
 static mutex_t g_input_prompt_mutex;
-static bool g_input_was_covered;
+static _Atomic bool g_input_was_covered;
 static keyboard_key_t g_sync_keys[256];
 static unsigned g_sync_key_head, g_sync_key_count;
 static bool g_switch_pending;
@@ -62,7 +62,8 @@ static input_editor_t g_media_editor;
 
 // Publish only whether routing work remains; the actual queues stay serialized.
 static void input_unlock(void) {
-  atomic_store(&g_input_buffered, g_sync_key_count || g_text_count || g_paste_ready || g_pasting || g_media_editor.active);
+  atomic_store(&g_input_buffered,
+               g_sync_key_count || g_text_count || g_paste_ready || g_pasting || g_media_editor.active);
   mutex_unlock(&g_input_mutex);
 }
 
@@ -249,8 +250,14 @@ void ui_input_poll_sync(void) {
 }
 
 keyboard_key_t ui_input_read_key(ui_screen_t screen) {
-  if (!input_initialize() || !input_ready())
+  if (!input_initialize())
     return KEY_NONE;
+  if (!input_ready()) {
+    // Once recovery has an empty input queue, the next key is a fresh action.
+    if (atomic_load(&g_input_was_covered) && !ui_controller_state().covered)
+      atomic_store(&g_input_was_covered, false);
+    return KEY_NONE;
+  }
   ui_presentation_state_t state = ui_controller_state();
   mutex_lock(&g_input_mutex);
   // The previous event has now been dispatched by the session. Background

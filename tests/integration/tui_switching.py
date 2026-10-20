@@ -109,32 +109,34 @@ def main():
                 preserved()
                 term.screen.preserved = []
 
-            def quiet_help():
+            def animated_help():
                 term.pump(0.3)
                 before = len(term.raw)
                 term.pump(2)
-                assert len(term.raw) == before, "Idle help was repainted without a setting or resize change"
+                frames = ''.join(term.raw[before:]).count('ascii-chat Keyboard Shortcuts')
+                assert 60 <= frames <= 150, f"Help animation cadence outside 30-75 FPS: {frames / 2:.1f}"
+                print(f"PASS live help cadence: {frames / 2:.1f} frames/s", flush=True)
                 preserved()
 
             term.write("?")
             expect_screen("?")
             term.pump(0.3)
-            watch("Keyboard Shortcuts")
-            quiet_help()
+            watch("Keyboard Shortcuts", "Toggle this help screen", "Press ? to close", "\\__,_|___/")
+            animated_help()
             before_volume = next(line for line in term.screen.display if "Volume :" in line)
             term.write("\x1b[B")
             term.expect(lambda t: "Volume :" in t and before_volume not in t, "Help did not reflect changed volume")
-            quiet_help()
+            animated_help()
             stop_watch()
             term.resize(57, 182)
             expect_screen("?")
             term.pump(0.5)
-            watch("Keyboard Shortcuts")
-            quiet_help()
+            watch("Keyboard Shortcuts", "Toggle this help screen", "Press ? to close", "\\__,_|___/")
+            animated_help()
             stop_watch()
             term.resize(55, 180)
             term.pump(0.5)
-            print("PASS idle help emits no terminal output, settings update in place, resize recovers", flush=True)
+            print("PASS help animates at frame cadence without erasing logo or box; settings/resize recover", flush=True)
 
             term.write("0")
             term.expect(lambda t: "Sync primitives |" in t and "0/Esc close" in t, "Missing sync footer")
