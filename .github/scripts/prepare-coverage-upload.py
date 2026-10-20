@@ -38,7 +38,12 @@ def prepare(directory):
         cases = ET.parse(junit[0]).findall(".//testcase")
         if not cases:
             raise ValueError(f"No tests ran for {name}; refusing partial upload")
-        shards[name] = {"covered": covered, "valid": valid, "test_binaries": len(cases)}
+        criterion_cases = sum(len(ET.parse(path).findall(".//testcase"))
+                              for path in (directory / name).rglob("criterion-xml/*.xml"))
+        if not criterion_cases:
+            raise ValueError(f"No Criterion cases ran for {name}; refusing zero-test coverage upload")
+        shards[name] = {"covered": covered, "valid": valid, "test_binaries": len(cases),
+                        "criterion_cases": criterion_cases}
         reports.append(report)
         for entry in ET.parse(report).findall(".//class"):
             filename = entry.get("filename")

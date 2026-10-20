@@ -38,8 +38,15 @@ function(asciichat_apply_project_settings directory)
             # including legacy ignored headers from older build configurations.
             target_include_directories("${_target}" BEFORE PRIVATE "${PROJECT_BINARY_DIR}/generated")
             if(ASCIICHAT_ENABLE_IPO)
-                set_property(TARGET "${_target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-                set_property(TARGET "${_target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
+                # Preserve target opt-outs, including Criterion test registration.
+                get_property(_ipo_default_set TARGET "${_target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION SET)
+                foreach(_config RELEASE RELWITHDEBINFO)
+                    get_property(_ipo_config_set TARGET "${_target}"
+                        PROPERTY "INTERPROCEDURAL_OPTIMIZATION_${_config}" SET)
+                    if(NOT _ipo_default_set AND NOT _ipo_config_set)
+                        set_property(TARGET "${_target}" PROPERTY "INTERPROCEDURAL_OPTIMIZATION_${_config}" TRUE)
+                    endif()
+                endforeach()
             endif()
             # LINK_LIBRARIES is private and also supports older plain signatures.
             set_property(TARGET "${_target}" APPEND PROPERTY LINK_LIBRARIES
