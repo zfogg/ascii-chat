@@ -288,6 +288,19 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 void log_terminal_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...);
 
 /**
+ * @brief Write an already-formatted message to the terminal without logging it to a file
+ * @param level Severity used for terminal routing and JSON output
+ * @param colored_message Message containing semantic ANSI colors
+ * @param plain_message Equivalent message without ANSI colors
+ *
+ * Preserves caller-supplied semantic coloring for terminal output while using
+ * the plain version for filtering, JSON, and non-color terminals. The message
+ * is still routed through the UI controller and terminal ownership checks.
+ * @ingroup logging
+ */
+void log_terminal_preformatted_msg(log_level_t level, const char *colored_message, const char *plain_message);
+
+/**
  * @brief Plain logging without timestamps or levels
  * @param fmt Format string (printf-style)
  * @param ... Format arguments

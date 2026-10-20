@@ -1393,6 +1393,64 @@ void log_terminal_msg(log_level_t level, const char *file, int line, const char 
   va_end(args);
 }
 
+void log_terminal_preformatted_msg(log_level_t level, const char *colored_message, const char *plain_message) {
+  if (!colored_message || !plain_message || !lifecycle_is_initialized(&g_log.lifecycle)) {
+    return;
+  }
+  if (level < (log_level_t)atomic_load_u64(&g_log.level)) {
+    return;
+  }
+
+  bool presenting = ui_controller_is_presenting();
+  int fd = presenting ? STDERR_FILENO : terminal_choose_log_fd(level);
+  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd);
+  if (!presenting) {
+    atomic_store(&g_terminal_log_colors, use_colors);
+  }
+
+  const char *terminal_message = use_colors ? colored_message : plain_message;
+  session_log_buffer_append(g_history, terminal_message);
+  atomic_fetch_add_u64_impl(&g_session_log_readers, 1);
+  session_log_buffer_t *buffer = (session_log_buffer_t *)atomic_ptr_load(&g_log.session_log_buffer);
+  if (buffer && buffer != g_history) {
+    session_log_buffer_append(buffer, terminal_message);
+  }
+  atomic_fetch_sub_u64_impl(&g_session_log_readers, 1);
+
+  if (presenting || !atomic_load_u64(&g_log.terminal_output_enabled)) {
+    return;
+  }
+  if (atomic_load_u64(&g_log.terminal_locked)) {
+    uint64_t owner = atomic_load_u64(&g_log.terminal_owner_thread);
+    if (owner != (uint64_t)asciichat_thread_self()) {
+      return;
+    }
+  }
+
+  int json_fd = atomic_load_int(&g_log.json_file);
+  if (json_fd >= 0) {
+    uint64_t time_ns = time_get_realtime_ns();
+    log_json_write(fd, level, time_ns, __FILE__, __LINE__, __func__, plain_message);
+    return;
+  }
+
+  size_t match_start = 0;
+  size_t match_len = 0;
+  if (!grep_should_output(plain_message, &match_start, &match_len)) {
+    return;
+  }
+
+  const char *output = terminal_message;
+  if (use_colors && match_len > 0 && log_get_color_array() != NULL) {
+    output = grep_highlight_colored(colored_message, plain_message, match_start, match_len);
+  }
+  size_t output_len = strlen(output);
+  ui_controller_write(fd, output, output_len);
+  if (output_len == 0 || output[output_len - 1] != '\n') {
+    ui_controller_write(fd, "\n", 1);
+  }
+}
+
 void log_plain_msg(const char *fmt, ...) {
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;

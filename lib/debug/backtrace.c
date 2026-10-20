@@ -97,13 +97,8 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
   // Try to format header using the logging system's template with color
   log_template_t *format = log_get_template();
   if (format) {
-    // Color the label with WARN color for terminal output
-    const char *colored_label_ptr = colored_string(LOG_COLOR_WARN, label);
-    char colored_label_buf[256];
-    SAFE_STRNCPY(colored_label_buf, colored_label_ptr, sizeof(colored_label_buf));
-
     int len = log_template_apply(format, log_header_buf, sizeof(log_header_buf), LOG_WARN, timestamp, __FILE__,
-                                 __LINE__, __func__, tid_val, colored_label_buf, true, time_ns);
+                                 __LINE__, __func__, tid_val, label, true, time_ns);
     if (len > 0) {
       // Successfully formatted with logging template
       colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
@@ -154,7 +149,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
     safe_snprintf(frame_num_str, sizeof(frame_num_str), "%d", frame_num);
 
     // Get colored frame number - copy to temp buffer to avoid rotating buffer issues
-    const char *colored_num_ptr = colored_string(LOG_COLOR_GREY, frame_num_str);
+    const char *colored_num_ptr = colored_string(LOG_COLOR_FATAL, frame_num_str);
     char colored_num_buf[256];
     SAFE_STRNCPY(colored_num_buf, colored_num_ptr, sizeof(colored_num_buf));
 
@@ -228,7 +223,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
       while (*file_start && *file_start == ' ')
         file_start++;
 
-      char *file_colon = strchr(file_start, ':');
+      char *file_colon = strrchr(file_start, ':');
       if (file_colon) {
         int filename_len = file_colon - file_start;
         char filename[512];
@@ -241,7 +236,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
         SAFE_STRNCPY(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf));
 
         const char *line_num = file_colon + 1;
-        const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
+        const char *colored_line_ptr = colored_string(LOG_COLOR_FATAL, line_num);
         char colored_line_buf[512];
         SAFE_STRNCPY(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf));
 
@@ -257,7 +252,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
       SAFE_MEMCPY(func_name, sizeof(func_name), s, func_copy_len);
       func_name[func_copy_len] = '\0';
 
-      const char *colored_func_ptr = colored_string(LOG_COLOR_DEV, func_name);
+      const char *colored_func_ptr = colored_string(LOG_COLOR_RESET, func_name);
       char colored_func_buf[512];
       SAFE_STRNCPY(colored_func_buf, colored_func_ptr, sizeof(colored_func_buf));
       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
@@ -284,7 +279,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
           while (*file_start && *file_start == ' ')
             file_start++;
 
-          char *colon_pos = strchr(file_start, ':');
+          char *colon_pos = strrchr(file_start, ':');
           if (colon_pos) {
             int filename_len = colon_pos - file_start;
             char filename[512];
@@ -297,7 +292,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
             SAFE_STRNCPY(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf));
 
             const char *line_num = colon_pos + 1;
-            const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
+            const char *colored_line_ptr = colored_string(LOG_COLOR_FATAL, line_num);
             char colored_line_buf[512];
             SAFE_STRNCPY(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf));
 
@@ -328,8 +323,8 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
     frame_num++;
   }
 
-  // Output backtrace through logging system (no direct fprintf to avoid ANSI codes in captured output)
-  log_warn("%s", plain_buffer);
+  // Preserve semantic terminal colors while keeping filtering, JSON, and log files ANSI-free.
+  log_terminal_preformatted_msg(LOG_WARN, colored_buffer, plain_buffer);
   log_file_msg("%s", plain_buffer);
 }
 
