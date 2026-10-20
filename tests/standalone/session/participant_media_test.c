@@ -139,6 +139,18 @@ static void *test_audio_context(session_audio_ctx_t *ctx) {
   (void)ctx;
   return NULL;
 }
+
+static uint64_t test_capture_epoch(session_capture_ctx_t *ctx) {
+  (void)ctx;
+  return 0;
+}
+static void test_capture_complete_open(session_capture_ctx_t *ctx, uint64_t epoch) {
+  (void)ctx;
+  (void)epoch;
+}
+
+#define session_capture_source_epoch test_capture_epoch
+#define session_capture_complete_open test_capture_complete_open
 #define session_capture_set_audio_context test_capture_audio
 #define session_audio_get_context test_audio_context
 #define session_capture_create test_capture_create
@@ -467,13 +479,4 @@ int main(void) {
   options_state_destroy();
   log_info("PASS: six startup failures, 20 real-worker cycles, media packets, cleanup, async cancellation");
   return 0;
-}
-
-uint64_t session_capture_source_epoch(session_capture_ctx_t *ctx) {
-  (void)ctx;
-  return 0;
-}
-void session_capture_complete_open(session_capture_ctx_t *ctx, uint64_t epoch) {
-  (void)ctx;
-  (void)epoch;
 }

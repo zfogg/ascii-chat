@@ -156,6 +156,8 @@ static bool g_redraw;
 static bool g_finished;
 static uint64_t g_media_frame_id;
 static _Thread_local uint64_t g_acquisition_started_ns;
+static _Thread_local bool g_probe_frame;
+static _Thread_local uint64_t g_probe_requested_ns;
 
 void ui_controller_frame_acquired_at(uint64_t started_ns) {
   g_acquisition_started_ns = started_ns;
@@ -164,11 +166,13 @@ static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
 static _Thread_local fps_counter_t *g_fps;
 static _Thread_local bool g_stats_media, g_stats_failed;
-static _Thread_local uint64_t g_stats_write_ns, g_stats_writes;
+static _Thread_local uint64_t g_stats_write_ns, g_stats_writes, g_stats_max_chunk_ns, g_stats_chunks;
 static void stats_media_begin(bool media) {
   g_stats_media = media;
   g_stats_failed = false;
-  g_stats_write_ns = g_stats_writes = 0;
+  g_stats_write_ns = g_stats_writes = g_stats_max_chunk_ns = g_stats_chunks = 0;
+  g_probe_frame = false;
+  g_probe_requested_ns = 0;
 }
 static void stats_media_end(void) {
   if (g_stats_media && g_stats_writes) {
@@ -177,6 +181,18 @@ static void stats_media_end(void) {
                       g_stats_failed ? STATS_COUNTER_FRAMES_DROPPED : STATS_COUNTER_FRAMES_PRESENTED, 1);
   }
   g_stats_media = false;
+}
+
+static size_t write_output_chunk(int fd, const void *data, size_t length) {
+  uint64_t started_ns = g_stats_media ? time_get_ns() : 0;
+  size_t written = platform_write_all(fd, data, length);
+  if (g_stats_media) {
+    uint64_t elapsed_ns = time_get_ns() - started_ns;
+    if (elapsed_ns > g_stats_max_chunk_ns)
+      g_stats_max_chunk_ns = elapsed_ns;
+    ++g_stats_chunks;
+  }
+  return written;
 }
 
 asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
@@ -197,7 +213,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   // Terminals supporting synchronized output present the art and its overlays
   // together, even when a large UTF-8 frame requires several writes.
   bool synchronized = g_stats_media && g_render_snapshot;
-  bool started = !synchronized || platform_write_all(fd, "\033[?2026h", 8) == 8;
+  bool started = !synchronized || write_output_chunk(fd, "\033[?2026h", 8) == 8;
   size_t written = 0;
   while (started && written < len) {
     // A pending editor or overlay supersedes the remainder of a media frame.
@@ -205,18 +221,25 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     if (g_stats_media && ui_controller_current_screen() != UI_SCREEN_MEDIA)
       break;
     size_t count = len - written;
-    if (g_stats_media && count > 16384) {
-      count = 16384;
+    if (g_stats_media && count > 65536) {
+      count = 65536;
       while (count && ((unsigned char)data[written + count] & 0xc0) == 0x80)
         --count;
     }
-    size_t sent = platform_write_all(fd, data + written, count);
+    size_t sent = write_output_chunk(fd, data + written, count);
     written += sent;
     if (sent != count)
       break;
   }
   // End the update even when input superseded the frame halfway through.
-  bool ended = !synchronized || platform_write_all(fd, "\033[?2026l", 8) == 8;
+  static const char end_with_query[] = "\033[?2026l\033]11;?\033\\";
+  bool probe = synchronized && g_probe_frame && written == len && started;
+  if (probe)
+    g_probe_requested_ns = time_get_ns();
+  size_t end_length = probe ? sizeof(end_with_query) - 1 : 8;
+  bool ended = !synchronized || write_output_chunk(fd, end_with_query, end_length) == end_length;
+  if (!ended)
+    g_probe_requested_ns = 0;
   bool complete = written == len && started && ended;
   if (g_stats_media) {
     g_stats_write_ns += time_get_ns() - stats_start;
@@ -505,44 +528,47 @@ static void *presentation_main(void *unused) {
         fps_counter_reset(g_fps);
       if (output) {
         stats_media_begin(context.fresh && context.drew);
+        g_probe_frame = context.fresh && context.drew && reply_support >= 0;
         asciichat_error_t written = ui_controller_write(screen->fd, output, ui_session_frame_length(g_session));
         uint64_t write_done_ns = time_get_ns();
         if (context.fresh && context.drew) {
           fps_counter_write_begin(g_fps);
-          asciichat_error_t drained = terminal_flush(screen->fd);
+          // A frontend reply drains the complete update. A local console query
+          // adds an RPC without establishing any stronger completion boundary.
+          asciichat_error_t drained = g_probe_requested_ns ? ASCIICHAT_OK : terminal_flush(screen->fd);
           fps_counter_write_end(g_fps, drained == ASCIICHAT_OK);
           if (written != ASCIICHAT_OK || drained != ASCIICHAT_OK)
             CLEAR_ERRNO();
           else {
             uint64_t completed_ns = time_get_ns();
-            log_debug("FRAME_PRESENT: id=%llu submit_to_stdout_ms=%.2f acquired_ns=%llu submitted_ns=%llu "
-                      "completed_ns=%llu capture_to_stdout_ms=%.2f mailbox_ms=%.2f geometry_ms=%.2f "
-                      "compose_ms=%.2f write_ms=%.2f drain_ms=%.2f bytes=%zu cols=%d rows=%d",
-                      (unsigned long long)screen->owned->frame_id,
-                      (double)(completed_ns - screen->owned->submitted_ns) / NS_PER_MS_INT,
-                      (unsigned long long)screen->owned->acquisition_started_ns,
-                      (unsigned long long)screen->owned->submitted_ns, (unsigned long long)completed_ns,
-                      screen->owned->acquisition_started_ns
-                          ? (double)(completed_ns - screen->owned->acquisition_started_ns) / NS_PER_MS_INT
-                          : 0,
-                      (double)(compose_started_ns - screen->owned->submitted_ns) / NS_PER_MS_INT,
-                      (double)(geometry_done_ns - iteration_started_ns) / NS_PER_MS_INT,
-                      (double)(composed_ns - compose_started_ns) / NS_PER_MS_INT,
-                      (double)(write_done_ns - composed_ns) / NS_PER_MS_INT,
-                      (double)(completed_ns - write_done_ns) / NS_PER_MS_INT, ui_session_frame_length(g_session),
-                      size.cols, size.rows);
+            log_debug(
+                "FRAME_PRESENT: id=%llu submit_to_stdout_ms=%.2f acquired_ns=%llu submitted_ns=%llu "
+                "completed_ns=%llu capture_to_stdout_ms=%.2f mailbox_ms=%.2f geometry_ms=%.2f "
+                "compose_ms=%.2f write_ms=%.2f drain_ms=%.2f max_chunk_ms=%.2f chunks=%llu bytes=%zu cols=%d rows=%d",
+                (unsigned long long)screen->owned->frame_id,
+                (double)(completed_ns - screen->owned->submitted_ns) / NS_PER_MS_INT,
+                (unsigned long long)screen->owned->acquisition_started_ns,
+                (unsigned long long)screen->owned->submitted_ns, (unsigned long long)completed_ns,
+                screen->owned->acquisition_started_ns
+                    ? (double)(completed_ns - screen->owned->acquisition_started_ns) / NS_PER_MS_INT
+                    : 0,
+                (double)(compose_started_ns - screen->owned->submitted_ns) / NS_PER_MS_INT,
+                (double)(geometry_done_ns - iteration_started_ns) / NS_PER_MS_INT,
+                (double)(composed_ns - compose_started_ns) / NS_PER_MS_INT,
+                (double)(write_done_ns - composed_ns) / NS_PER_MS_INT,
+                (double)(completed_ns - write_done_ns) / NS_PER_MS_INT, (double)g_stats_max_chunk_ns / NS_PER_MS_INT,
+                (unsigned long long)g_stats_chunks, ui_session_frame_length(g_session), size.cols, size.rows);
           }
         }
         stats_media_end();
-        if (context.fresh && context.drew && written == ASCIICHAT_OK && reply_support >= 0) {
-          // OSC 11 is answered by the frontend, unlike a local console-buffer query.
-          // One outstanding query bounds the downstream renderer queue to one frame.
-          reply_requested_ns = time_get_ns();
-          reply_frame_ns = screen->owned->acquisition_started_ns;
-          reply_frame_id = screen->owned->frame_id;
-          reply_written_ns = reply_requested_ns;
-          static const char query[] = "\033]11;?\033\\";
-          awaiting_reply = ui_controller_write(screen->fd, query, sizeof(query) - 1) == ASCIICHAT_OK;
+        if (g_probe_frame) {
+          awaiting_reply = written == ASCIICHAT_OK && g_probe_requested_ns != 0;
+          if (awaiting_reply) {
+            reply_requested_ns = g_probe_requested_ns;
+            reply_frame_ns = screen->owned->acquisition_started_ns;
+            reply_frame_id = screen->owned->frame_id;
+            reply_written_ns = time_get_ns();
+          }
         }
         if (context.drew && !awaiting_reply)
           fps_counter_frame_end(g_fps, time_get_ns());

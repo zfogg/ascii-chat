@@ -405,11 +405,9 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
     return NULL;
   }
 
-  char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
-  SAFE_FREE(ascii);
-
-  char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
-  SAFE_FREE(ascii_width_padded);
+  // Pixel fitting already produced the complete viewport. Return that buffer
+  // directly instead of allocating two identical copies for zero padding.
+  char *ascii_padded = ascii;
 
   uint64_t prof_pad_end_ns = time_get_ns();
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "ascii_padding",
@@ -423,6 +421,9 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
   time_pretty(pad_time_ns, -1, pad_str, sizeof(pad_str));
   uint64_t total_time_ns = (alloc_time_us + resize_time_us + print_time_us) * 1000 + pad_time_ns;
   time_pretty(total_time_ns, -1, total_str, sizeof(total_str));
+  log_debug("ASCII_STAGE: alloc_ms=%.3f resize_ms=%.3f glyph_ms=%.3f padding_ms=%.3f bytes=%zu",
+            (double)alloc_time_us / 1000, (double)resize_time_us / 1000, (double)print_time_us / 1000,
+            (double)pad_time_ns / NS_PER_MS_INT, strlen(ascii_padded));
   log_dev("ASCII_BREAKDOWN: alloc=%s, resize=%s, print=%s, pad=%s (total=%s)", alloc_str, resize_str, print_str,
           pad_str, total_str);
 

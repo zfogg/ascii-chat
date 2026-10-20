@@ -19,6 +19,7 @@
 #include <mfidl.h>
 #include <mfreadwrite.h>
 #include <mferror.h>
+#include <libswscale/swscale.h>
 
 // Windows Media Foundation webcam implementation
 // Note: MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING and
@@ -33,6 +34,8 @@ struct webcam_context_t {
   BOOL com_initialized;
   image_t *cached_frame; // Reusable frame buffer (allocated once, reused for each read)
   webcam_frame_clock_t clock;
+  struct SwsContext *rgb_converter;
+  int stride;
 };
 
 static HRESULT enumerate_devices_and_print(void) {
@@ -114,6 +117,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   cam->mf_initialized = FALSE;
   cam->com_initialized = FALSE;
   cam->cached_frame = NULL;
+  cam->rgb_converter = NULL;
+  cam->stride = 0;
   cam->clock = (webcam_frame_clock_t){0};
 
   HRESULT hr;
@@ -296,6 +301,9 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       IMFMediaType_Release(nativeType);
   }
   if (bestType) {
+    GUID subtype = {0};
+    IMFMediaType_GetGUID(bestType, &MF_MT_SUBTYPE, &subtype);
+    log_info("Selected webcam native subtype: 0x%08lx", (unsigned long)subtype.Data1);
     hr = IMFSourceReader_SetCurrentMediaType(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, bestType);
     IMFMediaType_Release(bestType);
     if (FAILED(hr)) {
@@ -327,7 +335,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     IMFMediaType_Release(rgbType);
 
     if (SUCCEEDED(hr)) {
-      log_info("Successfully requested RGB32 output at native capture dimensions");
+      log_info("Requested RGB32 output at native capture dimensions");
     } else {
       log_warn("Could not configure RGB32 webcam output: 0x%08x", hr);
       result = SET_ERRNO(ERROR_WEBCAM, "Could not configure RGB32 webcam output: 0x%08x", hr);
@@ -344,7 +352,12 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     if (SUCCEEDED(hr)) {
       cam->width = (int)(frameSize >> 32);
       cam->height = (int)(frameSize & 0xFFFFFFFF);
-      log_info("Media Foundation webcam opened: %dx%d", cam->width, cam->height);
+      UINT32 stride = 0;
+      if (SUCCEEDED(IMFMediaType_GetUINT32(currentType, &MF_MT_DEFAULT_STRIDE, &stride)))
+        cam->stride = (int)stride;
+      else
+        cam->stride = cam->width * 4;
+      log_info("Media Foundation webcam opened: %dx%d stride=%d", cam->width, cam->height, cam->stride);
       UINT64 actualRate = 0;
       if (SUCCEEDED(IMFMediaType_GetUINT64(currentType, &MF_MT_FRAME_RATE, &actualRate)) && (UINT32)actualRate) {
         log_info("Negotiated webcam capture rate: %.3f FPS", (double)(actualRate >> 32) / (UINT32)actualRate);
@@ -361,6 +374,9 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     cam->height = 480;
     log_warn("Could not get media type, using default 640x480");
   }
+
+  if (!cam->stride)
+    cam->stride = cam->width * 4;
 
   DWORD streamIndex, flags;
   LONGLONG timestamp;
@@ -474,6 +490,8 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
       ctx->com_initialized = FALSE;
     }
     // Free cached frame if it was allocated
+    sws_freeContext(ctx->rgb_converter);
+    ctx->rgb_converter = NULL;
     if (ctx->cached_frame) {
       image_destroy(ctx->cached_frame);
       ctx->cached_frame = NULL;
@@ -661,56 +679,30 @@ read_latest:
 
   image_t *img = ctx->cached_frame;
 
-  // Copy RGB32 data (BGRA order in Media Foundation)
-  // Media Foundation converts YUV->RGB32 via GPU-accelerated pipeline
-  // RGB32 format is 4 bytes per pixel: B, G, R, A (we ignore alpha)
-
-  LARGE_INTEGER copy_start, copy_end;
-  QueryPerformanceCounter(&copy_start);
-
-  UINT32 pixel_count = width * height;
-  BYTE *src = bufferData;
-  rgb_pixel_t *dst = img->pixels;
-
-  // Optimized pixel copy - process 4 pixels at a time
-  UINT32 i;
-  for (i = 0; i + 4 <= pixel_count; i += 4) {
-    // Pixel 0
-    dst[0].b = src[0];
-    dst[0].g = src[1];
-    dst[0].r = src[2];
-    // Pixel 1
-    dst[1].b = src[4];
-    dst[1].g = src[5];
-    dst[1].r = src[6];
-    // Pixel 2
-    dst[2].b = src[8];
-    dst[2].g = src[9];
-    dst[2].r = src[10];
-    // Pixel 3
-    dst[3].b = src[12];
-    dst[3].g = src[13];
-    dst[3].r = src[14];
-
-    src += 16; // 4 pixels * 4 bytes
-    dst += 4;
+  // Use FFmpeg's runtime-selected SIMD converter instead of a per-pixel C copy.
+  // Keep the context across frames, including changes in capture dimensions.
+  ctx->rgb_converter = sws_getCachedContext(ctx->rgb_converter, (int)width, (int)height, AV_PIX_FMT_BGRA, (int)width,
+                                            (int)height, AV_PIX_FMT_RGB24, SWS_POINT, NULL, NULL, NULL);
+  size_t stride_bytes = (size_t)(ctx->stride < 0 ? -(int64_t)ctx->stride : ctx->stride);
+  if (!ctx->rgb_converter || stride_bytes < (size_t)width * 4 || bufferLength < stride_bytes * height) {
+    IMFMediaBuffer_Unlock(buffer);
+    IMFMediaBuffer_Release(buffer);
+    IMFSample_Release(sample);
+    SET_ERRNO(ERROR_WEBCAM, "Invalid webcam RGB buffer or converter");
+    return NULL;
   }
-
-  // Handle remaining pixels
-  for (; i < pixel_count; i++) {
-    dst->b = src[0];
-    dst->g = src[1];
-    dst->r = src[2];
-    src += 4;
-    dst++;
+  const uint8_t *first_row = bufferData + (ctx->stride < 0 ? stride_bytes * (height - 1) : 0);
+  const uint8_t *input[4] = {first_row};
+  const int input_stride[4] = {ctx->stride};
+  uint8_t *output[4] = {(uint8_t *)img->pixels};
+  const int output_stride[4] = {(int)width * 3};
+  if (sws_scale(ctx->rgb_converter, input, input_stride, 0, (int)height, output, output_stride) != (int)height) {
+    IMFMediaBuffer_Unlock(buffer);
+    IMFMediaBuffer_Release(buffer);
+    IMFSample_Release(sample);
+    SET_ERRNO(ERROR_WEBCAM, "Could not convert webcam RGB buffer");
+    return NULL;
   }
-
-  QueryPerformanceCounter(&copy_end);
-  double copy_ms = ((double)(copy_end.QuadPart - copy_start.QuadPart)) * 1000.0 / (double)freq.QuadPart;
-
-  char copy_duration_str[32];
-  time_pretty((uint64_t)(copy_ms * 1e6), -1, copy_duration_str, sizeof(copy_duration_str));
-  log_debug_every(5 * NS_PER_SEC_INT, "Pixel copy took %s (%u pixels)", copy_duration_str, pixel_count);
 
   // Unlock and cleanup
   IMFMediaBuffer_Unlock(buffer);
@@ -718,9 +710,10 @@ read_latest:
   IMFSample_Release(sample);
 
   uint64_t complete_ns = time_get_ns();
-  log_debug("CAMERA_COPY: request_ns=%llu sample_ns=%llu complete_ns=%llu read_ms=%.2f copy_ms=%.2f",
+  log_debug("CAMERA_COPY: request_ns=%llu sample_ns=%llu complete_ns=%llu read_ms=%.2f copy_ms=%.2f device_age_ms=%.2f",
             (unsigned long long)request_ns, (unsigned long long)wall_ns, (unsigned long long)complete_ns,
-            (double)(wall_ns - request_ns) / NS_PER_MS_INT, (double)(complete_ns - wall_ns) / NS_PER_MS_INT);
+            (double)(wall_ns - request_ns) / NS_PER_MS_INT, (double)(complete_ns - wall_ns) / NS_PER_MS_INT,
+            device_age_ms);
   return img;
 }
 

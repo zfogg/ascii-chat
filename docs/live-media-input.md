@@ -129,3 +129,38 @@ python tests/integration/terminal_backpressure.py --binary build/bin/ascii-chat.
 The backpressure regression delays replies, holds one for 800 ms, verifies that
 no additional media frame is queued, checks responsive open-prompt input during
 the hold, and asserts that the FPS count follows actual completed presentations.
+
+### Timing a native webcam preview
+
+For performance measurements, use an optimized build with symbols. The default
+Debug configuration deliberately disables optimization and inlining; it is useful
+for sanitizer checks, but adds significant cost to per-cell ANSI generation.
+
+```powershell
+cmake --preset default -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build --target ascii-chat
+build/bin/ascii-chat.exe --log-level debug --log-file build/frame-timings.log mirror --fps-counter
+python tests/integration/frame_timing_report.py build/frame-timings.log
+```
+
+Keep the terminal frontend, viewport size, render mode, color mode, and machine
+load consistent when comparing runs. Measure the actual frontend, rather than
+substituting a hidden console or timing writes to a file. Compile before starting
+the measurement.
+
+`ASCII_STAGE` separates allocation, resize, glyph/ANSI generation, and padding.
+`FRAME_PRESENT` includes the number of output chunks and the longest chunk's
+write time. The presenter combines the frontend query with the synchronized
+update's closing write; a supported frontend's reply replaces the redundant local
+console flush. Each media payload write is bounded to 64 KB so input can supersede
+an update between chunks.
+
+The report retains the original capture-request-to-terminal measurement. It also
+joins frame IDs with camera sample timestamps to report sample-arrival-to-terminal
+age and, where available, camera-device-timestamp-to-terminal age. The latter
+includes the device age reported by Media Foundation. Unknown device timestamps
+are excluded. The coverage entry shows the capture interval retained in the log;
+check it because automatic log rotation can discard the start of a long run.
+These boundaries distinguish waiting for the next capture from
+processing a captured sample; none measures monitor scanout or independently
+verifies the camera's physical exposure timestamp.

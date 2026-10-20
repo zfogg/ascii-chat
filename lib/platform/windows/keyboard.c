@@ -96,6 +96,8 @@ static int keyboard_raw_read(void) {
   static int next, count;
   static wchar_t high;
   static KEY_EVENT_RECORD repeated;
+  static INPUT_RECORD events[128];
+  static DWORD event_next, event_count;
   if (next < count)
     return utf8[next++];
   if (!lifecycle_is_initialized(&g_keyboard_lc))
@@ -106,13 +108,16 @@ static int keyboard_raw_read(void) {
       key = repeated;
       --repeated.wRepeatCount;
     } else {
-      DWORD read = 0;
-      INPUT_RECORD event;
-      // The input handle is waitable. An idle poll can stay in the kernel
-      // instead of queueing a console RPC behind high-volume frame output.
-      if (WaitForSingleObject(g_console_input, 0) != WAIT_OBJECT_0 ||
-          !ReadConsoleInputW(g_console_input, &event, 1, &read) || !read)
-        return 0;
+      // A frontend reply arrives as a burst of key events. Drain that burst in
+      // one console RPC instead of round-tripping once for every reply byte.
+      if (event_next == event_count) {
+        event_next = event_count = 0;
+        if (WaitForSingleObject(g_console_input, 0) != WAIT_OBJECT_0 ||
+            !ReadConsoleInputW(g_console_input, events, sizeof(events) / sizeof(events[0]), &event_count) ||
+            !event_count)
+          return 0;
+      }
+      INPUT_RECORD event = events[event_next++];
       if (event.EventType != KEY_EVENT || !event.Event.KeyEvent.bKeyDown)
         continue;
       key = event.Event.KeyEvent;

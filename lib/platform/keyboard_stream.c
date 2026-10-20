@@ -2,6 +2,7 @@
 #include <ascii-chat/util/time.h>
 #include <string.h>
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/log/log.h>
 
 static char sequence[128];
 static atomic_t terminal_reply_ns = {0};
@@ -47,8 +48,11 @@ keyboard_key_t keyboard_stream_read(int (*read_byte)(void)) {
       bool complete = byte == 7 || (byte == '\\' && sequence[length - 2] == 27);
       if (!complete)
         continue;
-      if (!strncmp(sequence, "\033]11;rgb:", 9))
-        atomic_store_u64(&terminal_reply_ns, time_get_ns());
+      if (!strncmp(sequence, "\033]11;rgb:", 9)) {
+        uint64_t completed_ns = time_get_ns();
+        atomic_store_u64(&terminal_reply_ns, completed_ns);
+        log_debug("TERMINAL_REPLY: parse_ms=%.3f bytes=%zu", (double)(completed_ns - started) / NS_PER_MS_INT, length);
+      }
       length = 0;
       return KEY_NONE;
     }
