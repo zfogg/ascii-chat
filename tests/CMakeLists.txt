@@ -862,6 +862,10 @@ if(BUILD_TESTS)
         COMMAND "${CMAKE_COMMAND}" "-DPATCH_TEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/patching"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patching.cmake")
     set_tests_properties(cmake-patching PROPERTIES LABELS "unit" TIMEOUT 30)
+    add_test(NAME cmake-version
+        COMMAND "${CMAKE_COMMAND}" "-DVERSION_TEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/version"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.cmake")
+    set_tests_properties(cmake-version PROPERTIES LABELS "unit" TIMEOUT 180)
 endif()
 
 # Available when shared library is built (skipped for musl and Linux Release non-musl)

@@ -303,7 +303,8 @@ jobs:
         run: |
           # Use /usr prefix for Linux (FHS compliance, matches DEB/RPM packages)
           # This ensures paths.h has the correct prefix baked in for system config
-          cmake --preset release -DCMAKE_INSTALL_PREFIX=/usr -DUSE_MUSL=ON -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON -DASCIICHAT_SIMD_MODE=auto -DASCIICHAT_RELEASE_CPU_TUNE=portable
+          RELEASE_TAG="${{ needs.create-release.outputs.version }}"
+          cmake --preset release -DPROJECT_VERSION_FROM_GIT="${RELEASE_TAG#v}" -DCMAKE_INSTALL_PREFIX=/usr -DUSE_MUSL=ON -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON -DASCIICHAT_SIMD_MODE=auto -DASCIICHAT_RELEASE_CPU_TUNE=portable
 
       - name: Save CMake dependency cache
         if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
@@ -321,7 +322,7 @@ jobs:
           # shared-lib not available on Linux (static FFmpeg can't link into .so)
           cmake --build build_release --target docs
 
-          ./build_release/bin/ascii-chat --version
+          cmake -DEXECUTABLE="$PWD/build_release/bin/ascii-chat" -DEXPECTED_VERSION="${{ needs.create-release.outputs.version }}" -P cmake/scripts/VerifyReleaseVersion.cmake
 
           # Run CPack with verbose output to diagnose DEB/RPM generation issues
           cd build_release
@@ -589,7 +590,7 @@ jobs:
           cmake --build build_release --target package
 
       - name: Smoke test macOS release executable
-        run: ./build_release/bin/ascii-chat --version
+        run: cmake -DEXECUTABLE="$PWD/build_release/bin/ascii-chat" -DEXPECTED_VERSION="${{ needs.create-release.outputs.version }}" -P cmake/scripts/VerifyReleaseVersion.cmake
 
       - name: Verify macOS development package contains the static library
         shell: bash
@@ -828,7 +829,7 @@ jobs:
       - name: Verify static Windows release packages
         shell: pwsh
         run: |
-          & ./build_release/bin/ascii-chat.exe --version
+          cmake "-DEXECUTABLE=$PWD/build_release/bin/ascii-chat.exe" "-DEXPECTED_VERSION=${{ needs.create-release.outputs.version }}" -P cmake/scripts/VerifyReleaseVersion.cmake
           if ($LASTEXITCODE -ne 0) { throw "Release executable --version failed: $LASTEXITCODE" }
           $version = "${{ needs.create-release.outputs.version }}".TrimStart("v")
           $arch = "${{ matrix.arch }}"

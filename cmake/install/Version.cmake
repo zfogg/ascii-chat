@@ -79,6 +79,10 @@ macro(version_detect)
     # If PROJECT_VERSION_FROM_GIT was already provided via command-line or VERSION env var,
     # skip git detection and use the provided version
     if(DEFINED PROJECT_VERSION_FROM_GIT AND PROJECT_VERSION_FROM_GIT MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
+        # Preserve an explicit configure-time version in the build-time header.
+        # Git detection below also sets PROJECT_VERSION_FROM_GIT, so remember
+        # whether the caller supplied it before that detection runs.
+        set(ASCIICHAT_EXPLICIT_VERSION "${PROJECT_VERSION_FROM_GIT}")
         set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
         set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
         set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
@@ -220,6 +224,8 @@ if(DEFINED ENV{VERSION} AND NOT \"\$ENV{VERSION}\" STREQUAL \"0.0.0\")
     set(OVERRIDE_VERSION \"\$ENV{VERSION}\")
 elseif(DEFINED ENV{PROJECT_VERSION_OVERRIDE})
     set(OVERRIDE_VERSION \"\$ENV{PROJECT_VERSION_OVERRIDE}\")
+elseif(NOT \"${ASCIICHAT_EXPLICIT_VERSION}\" STREQUAL \"\")
+    set(OVERRIDE_VERSION \"${ASCIICHAT_EXPLICIT_VERSION}\")
 elseif(NOT \"${ASCIICHAT_SOURCE_COMMIT}\" STREQUAL \"\")
     set(OVERRIDE_VERSION \"${PROJECT_VERSION}\")
 endif()
@@ -245,7 +251,6 @@ if(DEFINED OVERRIDE_VERSION AND NOT OVERRIDE_VERSION STREQUAL \"\")
         else()
             set(GIT_VERSION_STRING \"\")
             set(GIT_VERSION_SUFFIX \"\")
-            set(GIT_COMMIT_HASH \"docker-build\")
         endif()
     else()
         message(FATAL_ERROR \"Invalid VERSION/PROJECT_VERSION_OVERRIDE format: \${OVERRIDE_VERSION} (expected X.Y.Z)\")
