@@ -53,7 +53,7 @@ void backtrace_t_free(backtrace_t *bt) {
   bt->tried_symbolize = false;
 }
 
-void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
+void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
                      backtrace_frame_filter_t filter) {
   if (!bt || !bt->symbols || bt->count <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid backtrace params");
@@ -98,7 +98,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
     safe_snprintf(frame_num_str, sizeof(frame_num_str), "%d", frame_num);
 
     // Get colored frame number - copy to temp buffer to avoid rotating buffer issues
-    const char *colored_num_ptr = colored_string(LOG_COLOR_FATAL, frame_num_str);
+    const char *colored_num_ptr = colored_string(LOG_COLOR_ERROR, frame_num_str);
     char colored_num_buf[256];
     SAFE_STRNCPY(colored_num_buf, colored_num_ptr, sizeof(colored_num_buf));
 
@@ -273,16 +273,16 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
   }
 
   // Preserve semantic terminal colors while keeping filtering, JSON, and log files ANSI-free.
-  log_colored_msg(LOG_WARN, colored_buffer, plain_buffer);
+  log_colored_msg(level, colored_buffer, plain_buffer);
 }
 
-void backtrace_print_many(const char *label, const backtrace_t *bts, int count) {
+void backtrace_print_many(log_level_t level, const char *label, const backtrace_t *bts, int count) {
   if (!bts || count <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: bts is NULL or count <= 0");
     return;
   }
   for (int i = 0; i < count; i++) {
-    backtrace_print(label, &bts[i], 0, 0, NULL);
+    backtrace_print(level, label, &bts[i], 0, 0, NULL);
   }
 }
 
@@ -332,19 +332,19 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
   return offset;
 }
 
-void backtrace_log_frames(int num_frames, int skip_frames) {
+void backtrace_log_frames(log_level_t level, int num_frames, int skip_frames) {
   backtrace_t bt;
   backtrace_capture_and_symbolize(&bt);
-  backtrace_print("Backtrace", &bt, skip_frames, num_frames, NULL);
+  backtrace_print(level, "Backtrace", &bt, skip_frames, num_frames, NULL);
   backtrace_t_free(&bt);
 }
 
-void backtrace_print_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
-                             backtrace_frame_filter_t filter) {
+void backtrace_print_symbols(log_level_t level, const char *label, char **symbols, int count, int skip_frames,
+                             int max_frames, backtrace_frame_filter_t filter) {
   backtrace_t bt = {0};
   bt.symbols = symbols;
   bt.count = count;
-  backtrace_print(label, &bt, skip_frames, max_frames, filter);
+  backtrace_print(level, label, &bt, skip_frames, max_frames, filter);
 }
 
 #endif // NDEBUG
@@ -365,8 +365,9 @@ void backtrace_t_free(backtrace_t *bt) {
   // No-op in release builds
 }
 
-void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
+void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
                      backtrace_frame_filter_t filter) {
+  (void)level;
   (void)label;
   (void)bt;
   (void)skip_frames;
@@ -375,7 +376,8 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
   // No-op in release builds
 }
 
-void backtrace_print_many(const char *label, const backtrace_t *bts, int count) {
+void backtrace_print_many(log_level_t level, const char *label, const backtrace_t *bts, int count) {
+  (void)level;
   (void)label;
   (void)bts;
   (void)count;
@@ -395,7 +397,8 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
   return 0;
 }
 
-void backtrace_log_frames(int num_frames, int skip_frames) {
+void backtrace_log_frames(log_level_t level, int num_frames, int skip_frames) {
+  (void)level;
   (void)num_frames;
   (void)skip_frames;
   // No-op in release builds

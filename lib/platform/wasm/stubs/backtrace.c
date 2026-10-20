@@ -41,8 +41,9 @@ void backtrace_symbolize(backtrace_t *bt) {
 
 typedef bool (*backtrace_frame_filter_t)(const char *frame);
 
-void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
+void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
                      backtrace_frame_filter_t filter) {
+  (void)level;
   (void)label;
   (void)bt;
   (void)skip_frames;
