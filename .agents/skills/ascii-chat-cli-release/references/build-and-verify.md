@@ -14,6 +14,8 @@ Set `CC=clang`, `CXX=clang++`, the candidate CLI version, and the highest verifi
 
 Linux in Ubuntu 24.04 Docker with musl and CI prerequisites:
 
+Keep build outputs on a Linux volume. Prefer a source snapshot on the Linux filesystem too: Windows bind-mount reads can make Doxygen take minutes even when the same inputs finish quickly natively. Record the snapshot commit and any release fixes copied into it.
+
 ```sh
 cmake --preset release -B build_release_CANDIDATE_linux \
   -DCMAKE_INSTALL_PREFIX=/usr -DUSE_MUSL=ON \
