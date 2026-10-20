@@ -414,7 +414,7 @@ jobs:
 
       - name: Build and run integration tests
         run: |
-          cmake --build build
+          cmake --build build --target all tests-criterion-build
           if [ "${{ matrix.os-name }}" = "macos" ]; then
             export ASAN_SYMBOLIZER_PATH="$(brew --prefix llvm)/bin/llvm-symbolizer"
           fi
