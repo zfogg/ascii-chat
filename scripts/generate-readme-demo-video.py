@@ -92,12 +92,14 @@ def parser():
 
 The opening plays normally for 7 seconds, starting at --media-file-start.
 --segment-duration-scale lengthens feature chapters without changing the music's
-speed. Try 1.8 and 2.2 for approximately 1:51 and 2:15 feature tours.
+speed. Try 1.8 and 2.2 for approximately 1:55 and 2:20 feature tours.
 --speed retimes the completed movie (including music and every chapter).
-Dimensions are output pixels: the terminal gets floor(width/8) columns and
-floor(height/16) rows, centered in the output. 838x472 gives 104x29 cells and
-fits the 838px desktop GitHub README content area after its side padding.
---target-size-mb 9.5 enables two-pass H.264 with a 96k AAC soundtrack.
+Dimensions are output pixels. The default 4x character cells give a 26x10 art
+grid at 838x640; the splash and TUIs use a separate 104x40 grid. This makes art
+characters four times larger while fitting GitHub's 838px desktop README width.
+--optimize (on by default) automatically uses two-pass H.264, a 9.5 MB ceiling,
+and 96k stereo AAC. --optimize=false disables the size ceiling and uses CRF 16.
+--target-size-mb overrides the ceiling only when --optimize is enabled.
 --output-fps 16.5 discards alternate captured frames without speeding up music.
 The default face clip is OpenCV's single-face faceocc2 tracking sample.
 MP4/H.264 + AAC + faststart is intended for GitHub video attachments. Upload
@@ -110,13 +112,14 @@ This script never edits README.md, commits media, or uploads anything.
     p.add_argument("--face-file", type=Path, help="single-face video; otherwise download pinned OpenCV sample to work directory")
     p.add_argument("--media-file-start", type=timestamp, default="0:00", metavar="M:SS", help="starting position in the original music video")
     p.add_argument("--width", type=int, default=838, help="output width in pixels; also determines CLI columns")
-    p.add_argument("--height", type=int, default=472, help="output height in pixels; also determines CLI rows")
+    p.add_argument("--height", type=int, default=640, help="output height in pixels; also determines CLI rows")
+    p.add_argument("--art-cell-scale", type=int, choices=(1, 2, 3, 4), default=4, help="art character size multiplier; 4 uses 75%% fewer columns/rows than 1 on the same canvas")
     p.add_argument("--output-fps", type=positive, default=33.0, help="export frame rate, at most 33; capture stays at 33 fps")
-    p.add_argument("--target-size-mb", type=positive, help="decimal MB ceiling; two-pass H.264 and 96k AAC, with muxing headroom")
+    p.add_argument("--target-size-mb", type=positive, default=9.5, help="decimal MB ceiling for --optimize; ignored with --optimize=false")
     p.add_argument("--speed", type=positive, default=1.0, help="whole-movie playback rate; 1.1 is 10%% faster")
     p.add_argument("--segment-duration-scale", type=positive, default=2.0, help="feature/TUI dwell-time multiplier; opening stays 7 seconds")
     p.add_argument("--opt-text-overlay", type=boolean, nargs="?", const=True, default=False, metavar="BOOL", help="label featured flags/keys at bottom center")
-    p.add_argument("--optimize", type=boolean, nargs="?", const=True, default=True, metavar="BOOL", help="FFmpeg slow CRF 20 / AAC 160k; false uses CRF 16 / AAC 192k")
+    p.add_argument("--optimize", type=boolean, nargs="?", const=True, default=True, metavar="BOOL", help="automatically fit below 10 MB with two-pass H.264 / 96k AAC; false uses uncapped CRF 16 / 192k AAC")
     p.add_argument("--output", type=Path, default=ROOT / "readme-demo.mp4", help="review movie (not committed)")
     p.add_argument("--work-dir", type=Path, default=ROOT / ".tmp/readme-demo-video", help="retained captures, sources, chapters, and evidence")
     p.add_argument("--font", type=Path, help="monospaced TrueType/OpenType font; otherwise find JetBrains Mono, Consolas, or DejaVu Sans Mono")
@@ -138,17 +141,16 @@ class Chapter:
 
 def chapters(scale=1.0):
     result = [
-        Chapter("normal", 7, "Default rendering / media 1x"),
+        Chapter("intro", 7, ""),
         Chapter("flip-x", .75, "--flip-x", "x"),
         Chapter("flip-xy", .75, "--flip-x --flip-y", "y"),
         Chapter("flip-y", .75, "--flip-y", "x"),
-        Chapter("unflip", .75, "Default rendering", "y"),
     ]
-    filters = ("black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow")
+    filters = ("green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow")
     for color in filters:
-        result.append(Chapter("filter-" + color, 1, "--color-filter " + color, "f"))
+        result.append(Chapter("filter-" + color, 1, "--color-filter " + color, "yfff" if color == "green" else "f"))
     result += [
-        Chapter("waveform", 2, "--waveform --audio-source media", "f2"),
+        Chapter("waveform", 2, "--waveform --audio-source media", "ff2"),
         Chapter("fft", 2, "--fft --audio-source media", "23"),
         Chapter("foreground", 1, "--render-mode foreground", "3"),
         Chapter("background", 1, "--render-mode background", "r"),
@@ -158,7 +160,7 @@ def chapters(scale=1.0):
         Chapter("face-follow", 3, "--face-follow", "z4"),
     ]
     for chapter in result:
-        if chapter.name != "normal":
+        if chapter.name != "intro":
             chapter.seconds *= scale
     return result
 
@@ -171,7 +173,7 @@ def tui_chapters(scale=1.0):
         Chapter("sync", 3, '"0" / C sync primitives and deadlocks', "=0"),
         Chapter("help", 3, '"?" / Keyboard help', "0?"),
         Chapter("too-small", 3, "Responsive TUI / resize to continue", resize=(58, 12)),
-        Chapter("outro", 2, "ascii-chat / video calls in your terminal", "?", resize=None),
+        Chapter("outro", 2, "ascii-chat / video calls in your terminal", resize=None),
     ]
     for chapter in result:
         chapter.seconds *= scale
@@ -216,7 +218,7 @@ def prepare(args, main):
         raise ValueError("--media-file must include music/audio for the waveform and FFT chapters")
     length = sum(c.seconds for c in main)
     # Preserve extra music for the inserted patterns and final TUIs.
-    music_length = length + 6 * args.segment_duration_scale + sum(c.seconds for c in tui_chapters(args.segment_duration_scale))
+    music_length = length + 12 * args.segment_duration_scale + sum(c.seconds for c in tui_chapters(args.segment_duration_scale))
     required = args.media_file_start + music_length
     if float(info["format"]["duration"]) < required:
         raise ValueError(f"Media is too short after --media-file-start; need through {required:.2f} seconds")
@@ -488,12 +490,12 @@ class Terminal:
             raise RuntimeError(self.problem)
 
 
-def native_command(args, name, source, splash):
+def native_command(args, name, source, splash, cols=None, rows=None):
     # The binary appends logs. A fresh file makes readiness markers unambiguous
     # when re-recording in the same work directory.
     (args.work_dir / (name + ".log")).write_text("", encoding="utf-8")
     return [str(args.binary), "--log-file", str(args.work_dir / (name + ".log")), "--log-level", "info", "mirror",
-            *source, "--width", str(args.cols), "--height", str(args.rows), "--fps", str(FPS),
+            *source, "--width", str(cols or args.cols), "--height", str(rows or args.rows), "--fps", str(FPS),
             "--utf8", "true", "--color-mode", "truecolor", "--splash-screen=" + str(splash).lower(),
             # Analysis uses decoded media before speaker gain. Silence the live
             # monitor while recording; mux the clean source soundtrack later.
@@ -502,14 +504,16 @@ def native_command(args, name, source, splash):
 
 def record(args, main):
     path = args.work_dir / "main.cast.jsonl.gz"
-    p = Terminal(native_command(args, "main", ["--file", str(args.work_dir / "performance.mkv"), "--pause"], True), args.cols, args.rows, path)
-    evidence = {"main": [], "patterns": []}
+    p = Terminal(native_command(args, "main", ["--file", str(args.work_dir / "performance.mkv"), "--pause"], True), args.ui_cols, args.ui_rows, path)
+    evidence = {"main": [], "ui": [], "patterns": []}
     try:
         # Let initialization finish, recording all real splash frames. The edit
         # selects its cleanest animation and stretches it to the splash dwell.
         p.wait_log(args.work_dir / "main.log", "Paused (--pause flag)")
         p.wait(.15)
         evidence["splash_end"] = time.monotonic() - p.start
+        p.resize(args.cols, args.rows)
+        p.wait(.3)
         p.send(" ")
         evidence["play"] = p.wait_log(args.work_dir / "main.log", "@handle_keyboard_input(): Playing")
         scheduled = evidence["play"]
@@ -517,34 +521,59 @@ def record(args, main):
             now = scheduled
             p.wait(max(0, now - (time.monotonic() - p.start)))
             print(f"  {now:5.1f}s  {c.name}", flush=True)
+            skip_filters = c.keys.count("f") > 1
+            if skip_filters:
+                # Cut these paused transitions out, so skipped filters never
+                # flash in the export and the soundtrack remains continuous.
+                p.send(" ")
+                p.wait(.06)
             for key in c.keys:
                 p.send(key)
                 # Distinct events allow a frame to observe adjacent toggles.
                 if len(c.keys) > 1:
                     p.wait(.025)
+            if skip_filters:
+                p.wait(.06)
+                p.send(" ")
+                p.wait(.08)
+                now = scheduled = time.monotonic() - p.start
             if c.name == "face-follow":
                 # Explicitly load the face rather than assume a slow terminal
                 # reached a particular video PTS on a wall-clock deadline. The
                 # picker also clears combining marks left by Windows ConPTY.
                 face_path = str(args.work_dir / "face-performance.mkv")
+                p.resize(args.ui_cols, args.ui_rows)
+                p.wait(.2)
                 p.send("o")
                 p.wait(.15)
                 p.send("\x1b[200~" + face_path + "\x1b[201~")
                 p.wait(.1)
                 p.send("\r")
                 p.wait_log(args.work_dir / "main.log", "Opened media: " + face_path)
+                p.resize(args.cols, args.rows)
                 p.wait(.25)
                 now = scheduled = time.monotonic() - p.start
-            evidence["main"].append({**asdict(c), "start": now, "end": now + c.seconds, "cols": args.cols, "rows": args.rows})
+            evidence["main"].append({**asdict(c), "start": now, "end": now + c.seconds, "cols": args.cols, "rows": args.rows, "cell_scale": args.art_cell_scale})
             p.wait(max(0, c.seconds - (time.monotonic() - p.start - now)))
             scheduled += c.seconds
         p.send("4")
-        for c in tui_chapters(args.segment_duration_scale):
-            if c.name == "outro":
-                p.resize(args.cols, args.rows)
-                # The undersized help screen covers input. Wait for the resize
-                # to uncover it before sending its close key, or that key is lost.
-                p.wait(.4)
+        p.wait(.15)
+        outro = tui_chapters(args.segment_duration_scale)[-1]
+        start = time.monotonic() - p.start
+        evidence["main"].append({**asdict(outro), "start": start, "end": start + outro.seconds,
+                                 "cols": args.cols, "rows": args.rows, "cell_scale": args.art_cell_scale})
+        p.wait(outro.seconds)
+    finally:
+        p.close()
+    # The native TUIs need more than 26 columns. A separate full-grid capture
+    # preserves readable UI text while every media chapter keeps large glyphs.
+    p = Terminal(native_command(args, "ui", ["--file", str(args.work_dir / "face-performance.mkv"), "--pause"], False,
+                                args.ui_cols, args.ui_rows), args.ui_cols, args.ui_rows, args.work_dir / "ui.cast.jsonl.gz")
+    try:
+        p.wait_log(args.work_dir / "ui.log", "Paused (--pause flag)")
+        p.send(" ")
+        p.wait_log(args.work_dir / "ui.log", "@handle_keyboard_input(): Playing")
+        for c in tui_chapters(args.segment_duration_scale)[:-1]:
             if c.resize:
                 p.resize(*c.resize)
             for key in c.keys:
@@ -553,11 +582,15 @@ def record(args, main):
             # Cut input/resize propagation out of the final montage.
             p.wait(.3)
             start = time.monotonic() - p.start
-            evidence["main"].append({**asdict(c), "start": start, "end": start + c.seconds,
-                                     "cols": c.resize[0] if c.resize else args.cols,
-                                     "rows": c.resize[1] if c.resize else args.rows})
+            evidence["ui"].append({**asdict(c), "start": start, "end": start + c.seconds,
+                                   "cols": c.resize[0] if c.resize else args.ui_cols,
+                                   "rows": c.resize[1] if c.resize else args.ui_rows, "cell_scale": 1})
             print(f"  {start:5.1f}s  {c.name}", flush=True)
             p.wait(c.seconds)
+        p.resize(args.ui_cols, args.ui_rows)
+        p.wait(.4)
+        p.send("?")
+        p.wait(.15)
     finally:
         p.close()
     for pattern in (0, 1):
@@ -567,10 +600,10 @@ def record(args, main):
             p.wait_log(args.work_dir / (name + ".log"), "Pipeline created successfully, running main loop")
             p.wait(.3)
             start = time.monotonic() - p.start
-            seconds = 3 * args.segment_duration_scale
+            seconds = 6 * args.segment_duration_scale
             p.wait(seconds)
             evidence["patterns"].append({"name": name, "start": start, "end": start + seconds, "seconds": seconds,
-                                         "label": f"--test-pattern={pattern}", "cols": args.cols, "rows": args.rows})
+                                         "label": f"--test-pattern={pattern}", "cols": args.cols, "rows": args.rows, "cell_scale": args.art_cell_scale})
         finally:
             p.close()
     return evidence
@@ -591,12 +624,15 @@ class Rasterizer:
     def __init__(self, args):
         from PIL import Image, ImageDraw, ImageFont
         self.Image, self.ImageDraw = Image, ImageDraw
+        self.ImageFont = ImageFont
         self.args = args
-        self.font = ImageFont.truetype(str(find_font(args)), 13)
+        self.font_path = find_font(args)
+        self.font = ImageFont.truetype(str(self.font_path), 13)
         # JetBrains Mono Nerd Font lacks several Zalgo combining marks.
         # Pillow does not perform the font fallback a real terminal provides.
         marks_font = Path("C:/Windows/Fonts/consola.ttf")
-        self.marks_font = ImageFont.truetype(str(marks_font), 13) if os.name == "nt" and marks_font.is_file() else self.font
+        self.marks_path = marks_font if os.name == "nt" and marks_font.is_file() else self.font_path
+        self.marks_font = ImageFont.truetype(str(self.marks_path), 13)
         self.label_font = ImageFont.truetype(str(find_font(args)), 22)
         self.colors = {"default": "#dedede", "black": "#0c0c0c", "red": "#e06c75", "green": "#98c379", "brown": "#e5c07b", "blue": "#61afef", "magenta": "#c678dd", "cyan": "#56b6c2", "white": "#dcdfe4", "brightblack": "#676e7b", "brightred": "#ff757f", "brightgreen": "#b9e68c", "brightbrown": "#ffd68a", "brightblue": "#82baff", "brightmagenta": "#e3a1f6", "brightcyan": "#83e2ea", "brightwhite": "#ffffff"}
 
@@ -605,15 +641,21 @@ class Rasterizer:
             return "#0c0c0c"
         return "#" + value if re.fullmatch("[0-9a-fA-F]{6}", value) else self.colors.get(value, "#dedede")
 
+    @functools.lru_cache(maxsize=4)
+    def fonts(self, scale):
+        return (self.ImageFont.truetype(str(self.font_path), 13 * scale),
+                self.ImageFont.truetype(str(self.marks_path), 13 * scale))
+
     @functools.lru_cache(maxsize=8192)
-    def mask(self, char):
+    def mask(self, char, scale=1):
         # Extra vertical room retains Zalgo's combining marks across cell rows.
-        mask = self.Image.new("L", (CELL_W * 2, CELL_H * 3))
+        mask = self.Image.new("L", (CELL_W * 2 * scale, CELL_H * 3 * scale))
+        font, marks_font = self.fonts(scale)
         draw = self.ImageDraw.Draw(mask)
         decomposed = unicodedata.normalize("NFD", char)
         base = "".join(c for c in decomposed if not unicodedata.combining(c))
-        baseline = CELL_H + 13
-        draw.text((0, baseline), base, font=self.font, anchor="ls", fill=255)
+        baseline = (CELL_H + 13) * scale
+        draw.text((0, baseline), base, font=font, anchor="ls", fill=255)
         above = below = 0
         for mark in decomposed:
             kind = unicodedata.combining(mark)
@@ -621,37 +663,38 @@ class Rasterizer:
                 continue
             # Draw marks independently: BASIC Pillow layout advances combining
             # glyphs and switching the entire cell font moves its baseline.
-            box = draw.textbbox((0, baseline), mark, font=self.marks_font, anchor="ls")
-            x = (CELL_W - (box[2] - box[0])) // 2 - box[0]
+            box = draw.textbbox((0, baseline), mark, font=marks_font, anchor="ls")
+            x = (CELL_W * scale - (box[2] - box[0])) // 2 - box[0]
             shift = 0
             if kind == 230:
-                shift = baseline - 10 - above * 2 - box[3]
+                shift = baseline - 10 * scale - above * 2 * scale - box[3]
                 above += 1
             elif kind == 220:
-                shift = baseline + 1 + below * 2 - box[1]
+                shift = baseline + scale + below * 2 * scale - box[1]
                 below += 1
-            draw.text((x, baseline + shift), mark, font=self.marks_font, anchor="ls", fill=255)
+            draw.text((x, baseline + shift), mark, font=marks_font, anchor="ls", fill=255)
         return mask
 
-    def draw(self, screen, label):
+    def draw(self, screen, label, cell_scale=1):
         args = self.args
         image = self.Image.new("RGB", (args.width, args.height), "#0c0c0c")
         draw = self.ImageDraw.Draw(image)
-        dx, dy = (args.width - screen.columns * CELL_W) // 2, (args.height - screen.lines * CELL_H) // 2
+        cell_w, cell_h = CELL_W * cell_scale, CELL_H * cell_scale
+        dx, dy = (args.width - screen.columns * cell_w) // 2, (args.height - screen.lines * cell_h) // 2
         glyphs = []
         for y, row in screen.buffer.items():
             for x, char in row.items():
                 fg, bg = self.color(char.fg), self.color(char.bg, True)
                 if char.reverse:
                     fg, bg = bg, fg
-                px, py = dx + x * CELL_W, dy + y * CELL_H
+                px, py = dx + x * cell_w, dy + y * cell_h
                 if bg != "#0c0c0c":
-                    draw.rectangle((px, py, px + CELL_W - 1, py + CELL_H - 1), fill=bg)
+                    draw.rectangle((px, py, px + cell_w - 1, py + cell_h - 1), fill=bg)
                 if char.data.strip():
                     glyphs.append((px, py, char.data, fg))
         for px, py, char, fg in glyphs:
-            mask = self.mask(char)
-            image.paste(fg, (px, py - CELL_H, px + CELL_W * 2, py + CELL_H * 2), mask)
+            mask = self.mask(char, cell_scale)
+            image.paste(fg, (px, py - cell_h, px + cell_w * 2, py + cell_h * 2), mask)
         if args.opt_text_overlay and label:
             box = draw.textbbox((0, 0), label, font=self.label_font)
             w, h = box[2] - box[0], box[3] - box[1]
@@ -822,7 +865,7 @@ def render_capture(args, name, selected, raster):
                     changed = stream.feed(pending[2]) or changed
                     pending = next(iterator, None)
                 if changed or last_image is None:
-                    last_image = raster.draw(screen, chapter["label"])
+                    last_image = raster.draw(screen, chapter["label"], chapter.get("cell_scale", 1))
                 encoder.stdin.write(last_image.tobytes())
                 if index == count // 2:
                     if chapter["name"] == "outro" and any("ascii-chat Keyboard Shortcuts" in line for line in screen.display):
@@ -840,11 +883,11 @@ def render_capture(args, name, selected, raster):
 
 def fingerprint(args):
     # Encoding-only options can change while reusing the exact same recording.
-    return {"recipe": 6, "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+    return {"recipe": 7, "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
             "dll_sha256": hashlib.sha256(args.binary.with_name("asciichat.dll").read_bytes()).hexdigest() if os.name == "nt" else None,
             "media": str(args.media_file), "media_sha256": hashlib.sha256(args.media_file.read_bytes()).hexdigest(),
             "face": str(args.face_file), "face_sha256": hashlib.sha256(args.face_file.read_bytes()).hexdigest() if args.face_file else FACE_URL,
-            "start": args.media_file_start, "cols": args.cols, "rows": args.rows,
+            "start": args.media_file_start, "cols": args.cols, "rows": args.rows, "ui_cols": args.ui_cols, "ui_rows": args.ui_rows, "art_cell_scale": args.art_cell_scale,
             "chapters": [asdict(c) for c in chapters(args.segment_duration_scale) + tui_chapters(args.segment_duration_scale)]}
 
 
@@ -874,7 +917,7 @@ def assemble(args, files, evidence):
              f"{atempo(args.speed)},alimiter=limit=0.84:level=false:latency=true,afade=t=out:st={max(0, length / args.speed - 1.5)}:d=1.5[a]")
     encode = ["-preset", "slow" if args.optimize else "fast", "-crf", "20" if args.optimize else "16"]
     audio_rate, sample_rate = ("160k" if args.optimize else "192k"), "48000"
-    if args.target_size_mb:
+    if args.optimize and args.target_size_mb:
         bitrate = int(args.target_size_mb * 1e6 * .97 * 8 / (length / args.speed)) - 96000
         if bitrate < 100000:
             raise ValueError("Size budget is too small for this duration; use a larger --target-size-mb")
@@ -896,12 +939,12 @@ def assemble(args, files, evidence):
     audio = next(s for s in result["streams"] if s["codec_type"] == "audio")
     if not math.isclose(float(Fraction(video["avg_frame_rate"])), args.output_fps) or audio["codec_name"] != "aac":
         raise RuntimeError("Output verification failed: expected requested frame rate and AAC audio")
-    if args.target_size_mb and int(result["format"]["size"]) > args.target_size_mb * 1e6:
+    if args.optimize and args.target_size_mb and int(result["format"]["size"]) > args.target_size_mb * 1e6:
         raise RuntimeError("Encoder exceeded requested size budget; inspect manifest/encode logs")
     quality = audio_quality(args)
     manifest = {"options": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
                 "output_probe": result, "recording": evidence, "face_source": FACE_URL,
-                "commands": COMMANDS, "audio_quality": quality, "raster_version": 6, "chapters": [p.stem for p in files]}
+                "commands": COMMANDS, "audio_quality": quality, "raster_version": 7, "chapters": [p.stem for p in files]}
     (args.work_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     (args.work_dir / (args.output.stem + ".manifest.json")).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"\nReady: {args.output}\n{result['format']['duration']} seconds / {args.output_fps:g} fps / {int(result['format']['size']) / 1e6:.2f} MB", flush=True)
@@ -910,19 +953,26 @@ def assemble(args, files, evidence):
 
 def main():
     args = parser().parse_args()
+    if not args.optimize:
+        args.target_size_mb = None
     if args.output_fps > FPS:
         parser().error("--output-fps cannot exceed the 33 fps capture rate")
     if args.width < 688 or args.height < 448 or args.width % 2 or args.height % 2:
         parser().error("use even pixel dimensions of at least 688x448 so the terminal has at least 86x28 cells")
     if args.output.suffix.lower() != ".mp4":
         parser().error("--output must end in .mp4 (GitHub-compatible H.264/AAC)")
-    args.cols, args.rows = args.width // CELL_W, args.height // CELL_H
+    args.ui_cols, args.ui_rows = args.width // CELL_W, args.height // CELL_H
+    args.cols, args.rows = args.ui_cols // args.art_cell_scale, args.ui_rows // args.art_cell_scale
+    if args.cols < 20 or args.rows < 10:
+        parser().error("native art requires at least 20 columns and 10 rows; increase pixel dimensions or reduce --art-cell-scale")
     main_chapters = chapters(args.segment_duration_scale)
     if args.dry_run:
         print(json.dumps({"fps": FPS, "output_fps": args.output_fps, "target_size_mb": args.target_size_mb, "terminal": [args.cols, args.rows], "output_pixels": [args.width, args.height],
+                          "ui_terminal": [args.ui_cols, args.ui_rows], "art_cell_scale": args.art_cell_scale,
+                          "test_patterns": [{"name": f"pattern-{i}", "seconds": 6 * args.segment_duration_scale} for i in (0, 1)],
                           "speed": args.speed, "optimize": args.optimize, "overlay": args.opt_text_overlay,
                           "media_start": args.media_file_start, "chapters": [asdict(c) for c in main_chapters + tui_chapters(args.segment_duration_scale)],
-                          "seconds": (9 * args.segment_duration_scale + sum(c.seconds for c in main_chapters + tui_chapters(args.segment_duration_scale))) / args.speed}, indent=2))
+                          "seconds": (15 * args.segment_duration_scale + sum(c.seconds for c in main_chapters + tui_chapters(args.segment_duration_scale))) / args.speed}, indent=2))
         return
     for name in ("binary", "media_file", "work_dir", "output", "face_file", "font"):
         if getattr(args, name) is not None:
@@ -959,19 +1009,19 @@ def main():
         raise RuntimeError("No complete rainbow splash captured; inspect main.cast.jsonl.gz")
     splash_start, splash_end = splash_times[0], splash_times[-1]
     splash = {"name": "splash", "label": "ascii-chat / terminal video, reimagined", "seconds": 3 * args.segment_duration_scale,
-              "start": splash_start + .03, "end": splash_end, "cols": args.cols, "rows": args.rows}
+              "start": splash_start + .03, "end": splash_end, "cols": args.ui_cols, "rows": args.ui_rows, "cell_scale": 1}
     selected = [splash] + evidence["main"]
     insert = 1 + len(main_chapters)
     expected_names = [c["name"] for c in selected]
-    expected_names[insert:insert] = [c["name"] for c in evidence["patterns"]]
+    expected_names[insert:insert] = [c["name"] for c in evidence["patterns"] + evidence["ui"]]
     files = None
     manifest_path = args.work_dir / "manifest.json"
     if args.reuse_capture and manifest_path.is_file():
         previous = json.loads(manifest_path.read_text(encoding="utf-8"))
-        raster_options = ("width", "height", "cols", "rows", "font", "opt_text_overlay")
+        raster_options = ("width", "height", "cols", "rows", "ui_cols", "ui_rows", "art_cell_scale", "font", "opt_text_overlay")
         current = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}
         candidates = [args.work_dir / (name + ".mp4") for name in expected_names]
-        if (previous.get("raster_version") == 6 and previous["recording"] == evidence and previous["chapters"] == expected_names and
+        if (previous.get("raster_version") == 7 and previous["recording"] == evidence and previous["chapters"] == expected_names and
                 all(previous["options"].get(k) == current[k] for k in raster_options) and
                 all(p.is_file() for p in candidates)):
             print("Reusing rendered chapters; applying export settings...", flush=True)
@@ -981,6 +1031,7 @@ def main():
         patterns = []
         for c in evidence["patterns"]:
             patterns += render_capture(args, c["name"], [c], raster)
+        patterns += render_capture(args, "ui", evidence["ui"], raster)
         files[insert:insert] = patterns
     assemble(args, files, evidence)
 

@@ -59,9 +59,10 @@ class ReadmeDemoTests(unittest.TestCase):
         from PIL import ImageChops
         args = demo.parser().parse_args([])
         raster = demo.Rasterizer(args)
-        for base in "MWNkol;,:0123":
-            for marks in ("\u0334\u0301\u0325", "\u0335\u0303\u0310\u0324\u0329", "\u0338\u0330\u030a"):
-                self.assertIsNone(ImageChops.subtract(raster.mask(base), raster.mask(base + marks)).getbbox())
+        for scale in (1, 4):
+            for base in "MWNkol;,:0123":
+                for marks in ("\u0334\u0301\u0325", "\u0335\u0303\u0310\u0324\u0329", "\u0338\u0330\u030a"):
+                    self.assertIsNone(ImageChops.subtract(raster.mask(base, scale), raster.mask(base + marks, scale)).getbbox())
 
     def test_static_screen_does_not_lose_trailing_text(self):
         screen, replay = demo.replay_terminal(40, 3)
@@ -151,26 +152,41 @@ class ReadmeDemoTests(unittest.TestCase):
                                  "--ffmpeg", "unused", "--ffprobe", "unused", "--output", "unused.mp4", "--work-dir", "unused",
                                  "--segment-duration-scale", "1.8", "--output-fps", "16.5", "--target-size-mb", "9.5", "--reuse-capture"], capture_output=True, text=True, check=True)
         plan = json.loads(result.stdout)
-        self.assertEqual(plan["terminal"], [200, 56])
+        self.assertEqual(plan["terminal"], [50, 14])
+        self.assertEqual(plan["ui_terminal"], [200, 56])
         self.assertEqual(plan["output_pixels"], [1600, 900])
         self.assertEqual(plan["fps"], 33)
         self.assertEqual(plan["output_fps"], 16.5)
-        self.assertEqual(plan["target_size_mb"], 9.5)
+        self.assertAlmostEqual(plan["test_patterns"][0]["seconds"], 10.8)
+        self.assertAlmostEqual(plan["test_patterns"][1]["seconds"], 10.8)
+        self.assertIsNone(plan["target_size_mb"])
         self.assertEqual(plan["media_start"], 28)
         self.assertTrue(plan["overlay"])
         self.assertFalse(plan["optimize"])
-        baseline = 9 * 1.8 + sum(c.seconds for c in demo.chapters(1.8) + demo.tui_chapters(1.8))
+        baseline = 15 * 1.8 + sum(c.seconds for c in demo.chapters(1.8) + demo.tui_chapters(1.8))
         self.assertAlmostEqual(plan["seconds"], baseline / 1.1)
 
     def test_longer_tours_keep_opening_at_normal_speed_and_end_on_live_video(self):
-        for scale, duration in [(1.8, 111.4), (2.0, 123), (2.2, 134.6)]:
+        for scale, duration in [(1.8, 115.45), (2.0, 127.5), (2.2, 139.55)]:
             chapters = demo.chapters(scale)
-            self.assertEqual(chapters[0].name, "normal")
+            self.assertEqual(chapters[0].name, "intro")
             self.assertEqual(chapters[0].seconds, 7)
+            self.assertEqual(chapters[0].label, "")
             self.assertNotIn("fast", [c.name for c in chapters])
-            self.assertAlmostEqual(9 * scale + sum(c.seconds for c in chapters + demo.tui_chapters(scale)), duration)
+            self.assertNotIn("unflip", [c.name for c in chapters])
+            self.assertAlmostEqual(15 * scale + sum(c.seconds for c in chapters + demo.tui_chapters(scale)), duration)
             self.assertEqual(demo.tui_chapters(scale)[-1].name, "outro")
-            self.assertEqual(demo.tui_chapters(scale)[-1].keys, "?")
+            self.assertEqual(demo.tui_chapters(scale)[-1].keys, "")
+
+    def test_optimization_defaults_automatically_budget_for_free_github_uploads(self):
+        for flags, optimized in [([], True), (["--optimize=false"], False)]:
+            result = subprocess.run([sys.executable, str(SCRIPT), "--dry-run", *flags], capture_output=True, text=True, check=True)
+            plan = json.loads(result.stdout)
+            self.assertEqual(plan["optimize"], optimized)
+            self.assertEqual(plan["target_size_mb"], 9.5 if optimized else None)
+            self.assertEqual(plan["terminal"], [26, 10])
+            self.assertEqual(plan["ui_terminal"], [104, 40])
+            self.assertEqual(plan["art_cell_scale"], 4)
 
     def test_bad_dimensions_and_output_fail_before_side_effects(self):
         for flags in [["--width", "1279"], ["--height", "400"], ["--output", "out.gif"], ["--output-fps", "34"]]:
@@ -179,8 +195,10 @@ class ReadmeDemoTests(unittest.TestCase):
 
     def test_exact_effect_durations_and_restored_state(self):
         chapters = demo.chapters()
-        self.assertEqual(sum(c.seconds for c in chapters if c.name.startswith("filter-")), 12)
-        self.assertEqual(sum(c.seconds for c in chapters if c.name in ("flip-x", "flip-xy", "flip-y", "unflip")), 3)
+        self.assertEqual(sum(c.seconds for c in chapters if c.name.startswith("filter-")), 9)
+        self.assertFalse({"filter-black", "filter-white", "filter-rainbow"} & {c.name for c in chapters})
+        self.assertFalse(any("Default rendering" in c.label for c in chapters))
+        self.assertEqual(sum(c.seconds for c in chapters if c.name in ("flip-x", "flip-xy", "flip-y")), 2.25)
         self.assertEqual(sum(c.seconds for c in chapters if c.name in ("foreground", "background", "half-block")), 3)
         self.assertEqual(chapters[-1].name, "face-follow")
         # Simulate the actual mutually exclusive animation keys, checking the
@@ -200,6 +218,10 @@ class ReadmeDemoTests(unittest.TestCase):
                 elif key == "z": zalgo = not zalgo
                 elif key == "4": face = not face
             if chapter.name == "waveform": self.assertEqual(animation, "2")
+            if chapter.name.startswith("filter-"):
+                names = ("none", "black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow")
+                self.assertEqual(chapter.name, "filter-" + names[filter_index])
+                self.assertFalse(flip_x or flip_y)
             if chapter.name == "fft": self.assertEqual(animation, "3")
             if chapter.name == "matrix": self.assertEqual(animation, "1")
             if chapter.name == "zalgo": self.assertTrue(zalgo)
