@@ -284,7 +284,10 @@ class ReadmeDemoTests(unittest.TestCase):
             for client in terminals[1:]:
                 self.assertIn('client', client.command)
                 self.assertIn('--audio=false', client.command)
-                self.assertEqual(client.command[client.command.index('--render-mode') + 1], 'half-block')
+                self.assertNotIn('--render-mode', client.command)
+                self.assertNotIn('--color-mode', client.command)
+                self.assertNotIn('--color-filter', client.command)
+                self.assertNotIn('--utf8', client.command)
                 self.assertEqual(client.command[client.command.index('--volume') + 1], '0')
                 self.assertEqual(client.command[client.command.index('--microphone-volume') + 1], '0')
                 self.assertIn('Connected', client.markers)

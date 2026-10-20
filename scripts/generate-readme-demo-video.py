@@ -109,7 +109,7 @@ and 96k stereo AAC. --optimize=false disables the size ceiling and uses CRF 16.
 --output-fps 16.5 discards alternate captured frames without speeding up music.
 Before the TUIs, four real clients join a local encrypted call for 10 seconds.
 That section is silent; its four talking-head samples are cached from Xiph.org,
-framed to show faces clearly, and rendered with native half-block color cells.
+framed to show faces clearly, and rendered with the client's default settings.
 Repeat --call-media-file four times to use your own clips instead.
 MP4/H.264 + AAC + faststart is intended for GitHub video attachments. Upload
 the reviewed result to GitHub and place its attachment URL in the README.
@@ -530,7 +530,7 @@ def prepare_call(args):
                 urllib.request.urlretrieve(url, temporary)
                 temporary.replace(path)
             sources.append(path)
-    identity = {"recipe": 3, "binary": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+    identity = {"recipe": 4, "binary": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
                 "dll": hashlib.sha256(args.binary.with_name("asciichat.dll").read_bytes()).hexdigest() if os.name == "nt" else None,
                 "cols": args.cols, "rows": args.rows,
                 "sources": [{"path": str(p.resolve()), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in sources]}
@@ -588,7 +588,7 @@ def record_call(args, files):
                               "--password", "readme-demo-local-call", "--file", str(file), "--loop",
                               "--audio=false", "--audio-source", "media", "--volume", "0", "--microphone-volume", "0", "--video-codec", "raw",
                               "--width", str(args.cols), "--height", str(args.rows), "--fps", str(FPS),
-                              "--utf8", "true", "--color-mode", "truecolor", "--render-mode", "half-block", "--splash-screen=false"]
+                              "--splash-screen=false"]
             client = Terminal(command, args.cols, args.rows,
                               args.work_dir / ("call.cast.jsonl.gz" if index == 1 else f"call-client-{index}.cast.jsonl.gz"), automated)
             terminals.append(client)
