@@ -38,12 +38,6 @@ ascii-chat — video chat in your terminal (with audio):
 
 https://github.com/user-attachments/assets/954e7a2b-977d-4684-899c-e55c61abab50
 
-[Original 2013 demo](images/archive/readme-monochrome.gif)
-
-ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a call:
-
-![Animated demonstration: multi-client](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExMHFwczNjY3Fudndmb2kxajJxMmY0aG8ycHc5N29pbDh6czBrdXVreSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/68F2r2pduHugH5sXa5/giphy.gif)
-
 ## Code Coverage
 
 [![codecov](https://codecov.io/gh/zfogg/ascii-chat/graph/badge.svg?token=Nkt0GBDMIH)](https://codecov.io/gh/zfogg/ascii-chat)
