@@ -10,6 +10,12 @@ signals/broadcasts for conditions, and tracked loads/stores/CAS/RMW uses for
 atomics (including unchanged stores and failed CAS). Inspector reads do not
 add to atomic totals. Counts use decimal compact notation such as `57.4k`
 and `1.3m`, rounded to one decimal place with trailing `.0` omitted.
+`Total Wait` is elapsed wall-clock time with at least one thread inside a
+condition wait, including current waits. Overlapping waiters count once, idle
+intervals add nothing, and non-condition rows show `-`. It includes reacquiring
+the associated mutex before the wait returns. Timing snapshots never acquire
+that mutex. Names are capped at 30 columns; the selected full name appears in
+the footer. State/value uses 12 columns, followed by a two-space break.
 
 ## Metadata and diagnostics
 

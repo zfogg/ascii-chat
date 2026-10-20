@@ -447,6 +447,34 @@ int main(int argc, char **argv) {
     CHECK(cond_timedwait(&test_cond, &test_mutex, NS_PER_MS_INT) == ETIMEDOUT);
     CHECK(atomic_load_u64(&test_cond.waiting_count) == 0);
     mutex_unlock(&test_mutex);
+    // Two real waiters share one wall-clock interval, not two thread-seconds.
+    uint64_t completed_wait = test_cond.total_wait_ns;
+    asciichat_thread_t overlapping[2];
+    for (unsigned i = 0; i < 2; ++i)
+      CHECK(asciichat_thread_create(&overlapping[i], "overlap_waiter", wait_for_condition, NULL) == ASCIICHAT_OK);
+    deadline = time_get_ns() + NS_PER_SEC_INT;
+    while (atomic_load_u64(&test_cond.waiting_count) != 2 && time_get_ns() < deadline)
+      platform_sleep_ms(1);
+    mutex_lock(&test_mutex);
+    CHECK(atomic_load_u64(&test_cond.waiting_count) == 2);
+    uint64_t wait_started = test_cond.wait_started_ns, total_wait = 0;
+    CHECK(wait_started);
+    uint64_t query_now = time_get_ns();
+    CHECK(cond_total_wait_ns(&test_cond, query_now, &total_wait));
+    CHECK(total_wait == completed_wait + query_now - wait_started);
+    CHECK(cond_total_wait_ns(&test_cond, query_now + NS_PER_SEC_INT, &total_wait));
+    CHECK(total_wait == completed_wait + query_now + NS_PER_SEC_INT - wait_started);
+    cond_broadcast(&test_cond);
+    mutex_unlock(&test_mutex);
+    for (unsigned i = 0; i < 2; ++i)
+      CHECK(asciichat_thread_join(&overlapping[i], NULL) == ASCIICHAT_OK);
+    CHECK(test_cond.wait_started_ns == 0);
+    completed_wait = test_cond.total_wait_ns;
+    CHECK(cond_total_wait_ns(&test_cond, time_get_ns() + NS_PER_SEC_INT, &total_wait));
+    CHECK(total_wait == completed_wait);
+    atomic_fetch_add(&test_cond.wait_revision, 1);
+    CHECK(!cond_total_wait_ns(&test_cond, time_get_ns(), &total_wait));
+    atomic_fetch_add(&test_cond.wait_revision, 1);
     cond_destroy(&test_cond);
     mutex_destroy(&test_mutex);
     ringbuffer_t *queue = ringbuffer_create(sizeof(int), 8);

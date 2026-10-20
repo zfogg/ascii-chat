@@ -40,8 +40,44 @@ void cond_on_wait(cond_t *cond, mutex_t *mutex, const char *file, int line, cons
   cond->last_wait_func = func;
   asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
   cond->last_waiting_key = asciichat_thread_to_key(current_thread);
-  atomic_fetch_add_u64(&cond->waiting_count, 1);
+  // Entry/exit accounting is serialized by the caller-held associated mutex.
+  atomic_fetch_add(&cond->wait_revision, 1);
+  if (atomic_fetch_add_u64(&cond->waiting_count, 1) == 0)
+    cond->wait_started_ns = cond->last_wait_time_ns;
+  atomic_fetch_add(&cond->wait_revision, 1);
   cond->wait_count++;
+}
+
+void cond_on_wait_end(cond_t *cond) {
+  atomic_fetch_add(&cond->wait_revision, 1);
+  if (atomic_fetch_sub_u64(&cond->waiting_count, 1) == 1) {
+    uint64_t started = cond->wait_started_ns;
+    uint64_t now = time_get_ns();
+    if (started && now >= started)
+      cond->total_wait_ns += now - started;
+    cond->wait_started_ns = 0;
+  }
+  atomic_fetch_add(&cond->wait_revision, 1);
+}
+
+// Bounded reads never acquire the condition's associated mutex.
+bool cond_total_wait_ns(const cond_t *cond, uint64_t now_ns, uint64_t *total_ns) {
+  if (!cond || !total_ns)
+    return false;
+  for (unsigned attempt = 0; attempt < 4; ++attempt) {
+    uint64_t revision = cond->wait_revision;
+    if (revision & 1)
+      continue;
+    uint64_t total = cond->total_wait_ns;
+    uint64_t started = cond->wait_started_ns;
+    if (revision != cond->wait_revision)
+      continue;
+    if (started && now_ns >= started)
+      total += now_ns - started;
+    *total_ns = total;
+    return true;
+  }
+  return false;
 }
 
 /**

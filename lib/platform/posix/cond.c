@@ -41,6 +41,9 @@ int cond_init(cond_t *cond, const char *name) {
     cond->last_wait_file = NULL;
     cond->last_wait_line = 0;
     cond->last_wait_func = NULL;
+    cond->total_wait_ns = 0;
+    cond->wait_started_ns = 0;
+    cond->wait_revision = 0;
     cond->wait_count = 0;
     cond->signal_count = 0;
     cond->broadcast_count = 0;

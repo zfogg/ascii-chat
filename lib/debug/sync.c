@@ -579,7 +579,7 @@ int debug_sync_cond_wait(cond_t *cond, mutex_t *mutex, const char *file_name, in
   cond_on_wait(cond, mutex, file_name, line_number, function_name);
   int result = cond_wait_impl(cond, mutex);
 #ifndef NDEBUG
-  atomic_fetch_sub_u64(&cond->waiting_count, 1);
+  cond_on_wait_end(cond);
 #endif
   return result;
 }
@@ -592,7 +592,7 @@ int debug_sync_cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns,
   cond_on_wait(cond, mutex, file_name, line_number, function_name);
   int result = cond_timedwait_impl(cond, mutex, timeout_ns);
 #ifndef NDEBUG
-  atomic_fetch_sub_u64(&cond->waiting_count, 1);
+  cond_on_wait_end(cond);
 #endif
   return result;
 }

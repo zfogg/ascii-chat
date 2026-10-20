@@ -49,6 +49,9 @@ typedef struct {
   _Atomic(const char *) last_wait_file;     ///< Callsite file of most recent cond_wait (for deadlock detection)
   _Atomic(int) last_wait_line;              ///< Callsite line of most recent cond_wait (for deadlock detection)
   _Atomic(const char *) last_wait_func;     ///< Callsite function of most recent cond_wait (for deadlock detection)
+  _Atomic(uint64_t) total_wait_ns;          ///< Completed wall-clock intervals with at least one waiter
+  _Atomic(uint64_t) wait_started_ns;        ///< Start of the current nonempty waiter interval
+  _Atomic(uint64_t) wait_revision;          ///< Consistent nonblocking timing snapshots
   _Atomic(uint64_t) wait_count;             ///< Total wait calls
   _Atomic(uint64_t) signal_count;           ///< Total signal calls
   _Atomic(uint64_t) broadcast_count;        ///< Total broadcast calls
@@ -73,6 +76,9 @@ typedef struct {
   _Atomic(const char *) last_wait_file;     ///< Callsite file of most recent cond_wait (for deadlock detection)
   _Atomic(int) last_wait_line;              ///< Callsite line of most recent cond_wait (for deadlock detection)
   _Atomic(const char *) last_wait_func;     ///< Callsite function of most recent cond_wait (for deadlock detection)
+  _Atomic(uint64_t) total_wait_ns;          ///< Completed wall-clock intervals with at least one waiter
+  _Atomic(uint64_t) wait_started_ns;        ///< Start of the current nonempty waiter interval
+  _Atomic(uint64_t) wait_revision;          ///< Consistent nonblocking timing snapshots
   _Atomic(uint64_t) wait_count;             ///< Total wait calls
   _Atomic(uint64_t) signal_count;           ///< Total signal calls
   _Atomic(uint64_t) broadcast_count;        ///< Total broadcast calls
@@ -187,6 +193,10 @@ int cond_broadcast(cond_t *cond);
  */
 #ifndef NDEBUG
 void cond_on_wait(cond_t *cond, mutex_t *mutex, const char *file, int line, const char *func);
+/** Finish wait accounting after the associated mutex has been reacquired. */
+void cond_on_wait_end(cond_t *cond);
+/** Nonblocking snapshot of union wall-clock wait time, including current waiters. */
+bool cond_total_wait_ns(const cond_t *cond, uint64_t now_ns, uint64_t *total_ns);
 #else
 #define cond_on_wait(cond, mutex, file, line, func) ((void)0)
 #endif

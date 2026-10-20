@@ -35,30 +35,31 @@ def main():
                 terminal.write("0")
                 text = terminal.expect(lambda text: "Sync primitives" in text and "sync_fixture_value" in text,
                                        "Sync screen did not open with the main thread blocked")
-                assert re.search(r"buffer\.process_reserved_bytes\.\d+\s+0x", text), text
+                assert re.search(r"buffer\.process_reserved_[^\s]*\s+0x", text), text
                 state_column = text.splitlines()[2].index("State/value")
                 if mode == "deadlock":
                     text = terminal.expect(lambda text: "2 mutexes in wait cycles" in text, "Missing circular wait")
                     text = terminal.expect(lambda t: re.search(
-                        r"zzz_rate_hot[^\n]*\s[1-9][0-9]*\.[0-9]\s+[0-9.]+\s+-\s*$", t, re.M) is not None,
+                        r"zzz_rate_hot[^\n]*\s[1-9][0-9]*\.[0-9]\s+[0-9.]+\s+-\s+-\s*$", t, re.M) is not None,
                         "Missing warmed activity rates")
                     rows = text.splitlines()
                     assert "cycle_a" in rows[4] and "DEADLOCK" in rows[4], text
                     assert "cycle_b" in rows[5] and "DEADLOCK" in rows[5], text
                     body = rows[6:-4]
-                    rates = [sum(map(float, row.split()[-3:-1])) for row in body if row.strip()]
+                    rates = [sum(map(float, row.split()[-4:-2])) for row in body if row.strip()]
                     assert rates == sorted(rates, reverse=True), text
                     assert next(i for i, r in enumerate(body) if "zzz_rate_hot" in r) < next(
                         i for i, r in enumerate(body) if "aaa_rate_warm" in r), text
-                    assert "Change/s" in rows[2], text
-                    assert all(row.split()[-1] == "-" for row in rows[4:-4]
+                    assert "Change/s" in rows[2] and rows[2].rstrip().endswith("Total Wait"), text
+                    assert all(r.split()[-1] == "-" for r in rows[4:-4] if r.strip()), text
+                    assert all(row.split()[-2] == "-" for row in rows[4:-4]
                                if re.match(r"[ >]*(?:mutex|rwlock|cond)\s", row) and "DEADLOCK" not in row), text
                     assert "Total Actions" in rows[2], text
                     total_row = next(row for row in rows[4:-4] if "aaa_total_uses." in row)
-                    assert total_row.split()[-4] == "9", text
-                    assert float(total_row.split()[-1]) == 0, text
+                    assert total_row.split()[-5] == "9", text
+                    assert float(total_row.split()[-2]) == 0, text
                     atomic_row = next(row for row in rows[4:-4] if "aaa_rate_counter." in row)
-                    assert float(atomic_row.split()[-1]) > 0, text
+                    assert float(atomic_row.split()[-2]) > 0, text
                     print("PASS deadlocks first, descending L/s+U/s, atomic totals and change rates")
                     if len(sys.argv) > 2:
                         from sync_tui_modes import capture
@@ -113,7 +114,7 @@ def main():
                             text = terminal.pump(0.2)
                             pointer_row = next((r for r in text.splitlines()[4:-4] if "aaa_pointer_uses." in r), None)
                             if pointer_row:
-                                assert pointer_row.split()[-4] == "7", text
+                                assert pointer_row.split()[-5] == "7", text
                                 pointer_total_seen = True
                             fixtures.update(re.findall(r"sync_fixture_value\.\d+", "\n".join(text.splitlines()[4:-4])))
                         if page < pages:

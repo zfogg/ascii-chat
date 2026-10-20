@@ -24,12 +24,12 @@
 
 typedef struct {
   uintptr_t key, owner, waiter;
-  uint64_t generation, value, locks, unlocks, changes, actions, last_ns;
+  uint64_t generation, value, locks, unlocks, changes, actions, last_ns, wait_ns;
   double lock_rate, unlock_rate, change_rate;
   char name[256], type[24], file[160];
   int line;
   unsigned waiters;
-  bool cycle;
+  bool cycle, wait_known;
 } sync_row_t;
 
 typedef struct {
@@ -112,6 +112,7 @@ static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, 
     r->unlocks = m->signal_count + m->broadcast_count;
     r->last_ns = m->last_wait_time_ns;
     r->owner = m->last_waiting_key;
+    r->wait_known = cond_total_wait_ns(m, time_get_ns(), &r->wait_ns);
   } else if (!strcmp(type, "atomic")) {
     const atomic_t *m = (const atomic_t *)key;
     r->value = atomic_load(&m->impl);
@@ -489,6 +490,8 @@ void ui_sync_render(terminal_size_t size) {
     limited = s->limited;
     atomic_flag_clear(&s->busy);
   }
+  if (name_width > 30)
+    name_width = 30;
   uint64_t now = time_get_ns();
   selected %= per_page;
   if ((size_t)selected >= count)
@@ -513,8 +516,8 @@ void ui_sync_render(terminal_size_t size) {
              : limited       ? " | wait tracker capacity reached"
                              : "");
     sync_write_numbers(line, size.cols, measure);
-    snprintf(line, sizeof(line), " %-8s %-*s %-18s %13s %6s %6s %7s", "Type", name_width, "Name", "State/value",
-             "Total Actions", "L/s", "U/s", "Change/s");
+    snprintf(line, sizeof(line), " %-8s %-*s %-12s  %13s %6s %6s %7s %12s", "Type", name_width, "Name", "State/value",
+             "Total Actions", "L/s", "U/s", "Change/s", "Total Wait");
     sync_write_line(line, size.cols, true, measure);
     sync_separator(size.cols, measure);
     for (size_t i = 0; i < count; ++i) {
@@ -523,8 +526,35 @@ void ui_sync_render(terminal_size_t size) {
       // The detail row identifies the source location and address.
       char name[288];
       sync_row_label(r, name, sizeof(name));
+      if (strlen(name) > (size_t)name_width) {
+        const char *suffix = strrchr(name, '.');
+        size_t suffix_bytes = suffix && strspn(suffix + 1, "0123456789") == strlen(suffix + 1)
+                                  ? strlen(suffix) : 0;
+        if (suffix_bytes >= (size_t)name_width - 1)
+          suffix_bytes = 0;
+        size_t used = 0;
+        int columns = 0;
+        while (name[used]) {
+          int bytes = utf8_next_char_bytes(name + used, strlen(name + used));
+          if (bytes <= 0)
+            break;
+          int width = utf8_display_width_n(name + used, bytes);
+          if (columns + width > name_width - 1 - (int)suffix_bytes)
+            break;
+          used += bytes;
+          columns += width;
+        }
+        name[used++] = '~';
+        if (suffix_bytes) {
+          memmove(name + used, suffix, suffix_bytes);
+          used += suffix_bytes;
+        }
+        name[used] = '\0';
+      }
       char state[128];
-      if (!strcmp(r->type, "mutex"))
+      if (r->cycle)
+        snprintf(state, sizeof(state), "DEADLOCK");
+      else if (!strcmp(r->type, "mutex"))
         snprintf(state, sizeof(state), "%s t=%" PRIxPTR " w=%u",
                  r->cycle   ? "CYCLE"
                  : r->owner ? "HELD"
@@ -536,6 +566,9 @@ void ui_sync_render(terminal_size_t size) {
         snprintf(state, sizeof(state), "waiting=%" PRIu64, r->value);
       else
         snprintf(state, sizeof(state), "0x%" PRIx64 " (%" PRIu64 ")", r->value, r->value);
+      // Prefer the complete hex value over a clipped redundant decimal copy.
+      if (!strncmp(r->type, "atomic", 6) && strlen(state) > 12)
+        snprintf(state, sizeof(state), "0x%" PRIx64, r->value);
       char actions[32];
       format_number_compact(r->actions, actions, sizeof(actions));
       char changes[64];
@@ -543,11 +576,18 @@ void ui_sync_render(terminal_size_t size) {
         snprintf(changes, sizeof(changes), "%s%7.1f", sync_rate_color(r->change_rate), r->change_rate);
       else
         snprintf(changes, sizeof(changes), "%s%7s", sync_color(LOG_COLOR_RESET), "-");
-      snprintf(line, sizeof(line), "%c%-8.8s %-*s %-18.18s %s%13s %s%6.1f %s%6.1f %s\033[0m%s",
+      char wait[32] = "-";
+      if (!strcmp(r->type, "cond")) {
+        if (r->wait_known)
+          snprintf(wait, sizeof(wait), "%.2fs", (double)r->wait_ns / NS_PER_SEC_INT);
+        else
+          snprintf(wait, sizeof(wait), "busy");
+      }
+      snprintf(line, sizeof(line), "%c%-8.8s %-*s %-12.12s  %s%13s %s%6.1f %s%6.1f %s\033[0m %s%12s\033[0m",
                (int)i == selected ? '>' : ' ', r->type, name_width, name, state,
                sync_color(r->actions ? LOG_COLOR_FATAL : LOG_COLOR_ERROR), actions, sync_rate_color(r->lock_rate),
                r->lock_rate, sync_rate_color(r->unlock_rate), r->unlock_rate, changes,
-               r->cycle ? " DEADLOCK" : "");
+               sync_color(r->wait_ns ? LOG_COLOR_FATAL : LOG_COLOR_RESET), wait);
       sync_write_line(line, size.cols, true, measure);
     }
     if (!measure) {
@@ -565,8 +605,11 @@ void ui_sync_render(terminal_size_t size) {
       snprintf(line, sizeof(line), "%d @0x%" PRIxPTR, r->line, r->key);
       char numbers[512];
       sync_color_numbers(line, numbers, sizeof(numbers));
-      snprintf(line, sizeof(line), "%s%s%s:%s", sync_color(LOG_COLOR_DEV), r->file, sync_color(LOG_COLOR_RESET),
-               numbers);
+      char full_name[288], colored_name[640];
+      sync_row_label(r, full_name, sizeof(full_name));
+      sync_color_numbers(full_name, colored_name, sizeof(colored_name));
+      snprintf(line, sizeof(line), "%s%s%s:%s | %s", sync_color(LOG_COLOR_DEV), r->file, sync_color(LOG_COLOR_RESET),
+               numbers, colored_name);
       sync_write_line(line, size.cols, true, measure);
       snprintf(line, sizeof(line),
                "owner=0x%" PRIxPTR " waiter=0x%" PRIxPTR " | value=%" PRIu64 " | last operation %.2fs ago%s", r->owner,

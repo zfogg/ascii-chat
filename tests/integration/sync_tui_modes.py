@@ -85,7 +85,7 @@ def check_activity(rows, artifacts, name):
     activity = {}
     for primitive in ("named_registry_lock", "worker_mutex", "timer_manager", "colorscheme", "display",
                       "buffer_domain", "debug_memory", "queue_not_empty", "ui_controller", "ui_input", "ffmpeg_prefetch"):
-        matches = [list(map(float, row.split()[-3:-1])) for row in rows
+        matches = [list(map(float, row.split()[-4:-2])) for row in rows
                    if re.search(r"\b" + primitive + r"\.\d+\b", row)]
         if not matches and name != "mirror" and primitive in ("display", "queue_not_empty"):
             continue
@@ -145,7 +145,14 @@ def inspect(term, artifacts, name, required):
     assert not any("audio_recording." in row for row in inventory), name
     assert any("media_paused." in row for row in inventory), name
     for primitive in required:
-        assert primitive in "\n".join(inventory), (name, primitive, text)
+        assert primitive[:25] in "\n".join(inventory), (name, primitive, text)
+    assert text.splitlines()[2].rstrip().endswith("Total Wait"), text
+    for row in inventory:
+        fields = row.split()
+        if fields and fields[0].lstrip(">") == "cond":
+            assert re.fullmatch(r"[0-9]+\.[0-9]+s|busy", fields[-1]), row
+        elif fields:
+            assert fields[-1] == "-", row
     check_activity(inventory, artifacts, name)
     types = re.search(r"M=(\d+) RW=(\d+) C=(\d+) A=(\d+)", text)
     assert types and sum(map(int, types.groups())) == selected(text)[1], text
@@ -207,7 +214,7 @@ def inspect(term, artifacts, name, required):
             row = next((r for r in resumed.splitlines() if "named_registry_lock." in r), None)
             if (row and "Live" in resumed and "STALE" not in resumed and
                     resumed.splitlines()[-1].startswith("0/Esc")):
-                rates = list(map(float, row.split()[-3:-1]))
+                rates = list(map(float, row.split()[-4:-2]))
                 if max(rates) < 2:
                     hidden_rate = rates
                     if artifacts:
