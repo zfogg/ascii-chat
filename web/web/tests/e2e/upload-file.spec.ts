@@ -25,7 +25,7 @@ for (const mode of ["mirror", "client", "discovery"]) {
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await upload.click();
     const file =
-      process.env.UPLOAD_TEST_FILE ??
+      process.env["UPLOAD_TEST_FILE"] ??
       path.resolve("tests/fixtures/media/tone.mp4");
     await page.getByLabel("Choose media file").setInputFiles(file);
     await expect(page.getByRole("dialog")).toHaveCount(0);

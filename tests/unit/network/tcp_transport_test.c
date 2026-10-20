@@ -97,7 +97,7 @@ Test(tcp_transport, discovery_rejections_preserve_codes) {
   for (int operation = 0; operation < 3; ++operation) {
     int sockets[2];
     cr_assert_eq(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
-    acds_client_t client = {.socket = sockets[0], .connected = true};
+    acds_client_t client = {.connected = true};
     client.transport = acip_tcp_transport_create("discovery-rejection", sockets[0], NULL);
     cr_assert_not_null(client.transport);
     cr_assert_eq(acip_server_send_error(sockets[1], ACIP_ERROR_RATE_LIMITED, "private server context"), ASCIICHAT_OK);
@@ -130,7 +130,7 @@ Test(tcp_transport, discovery_joined_rejection_is_failure) {
   cr_assert_eq(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
   acip_session_joined_t wire = {.success = 0, .error_code = ACIP_ERROR_INVALID_PASSWORD};
   cr_assert_eq(packet_send(sockets[1], PACKET_TYPE_ACIP_SESSION_JOINED, &wire, sizeof(wire)), ASCIICHAT_OK);
-  acds_client_t client = {.socket = sockets[0], .connected = true};
+  acds_client_t client = {.connected = true};
   client.transport = acip_tcp_transport_create("discovery-join-rejection", sockets[0], NULL);
   cr_assert_not_null(client.transport);
   acds_session_join_params_t params = {.session_string = "blue-mountain-tiger"};
@@ -149,7 +149,8 @@ Test(tcp_transport, error_response_hides_internal_details) {
   cr_assert_eq(packet_send_error(sockets[0], NULL, ERROR_FILE_NOT_FOUND, "private/path and subprocess details"),
                ASCIICHAT_OK);
   packet_envelope_t envelope = {0};
-  cr_assert_eq(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT), ASCIICHAT_OK);
+  cr_assert_eq(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT),
+               PACKET_RECV_SUCCESS);
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
   cr_assert_eq(packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t),

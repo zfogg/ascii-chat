@@ -44,7 +44,7 @@ class Native {
   closed: Promise<void>;
   constructor(info: TestInfo, name: string, args: string[]) {
     const binary =
-      process.env.ASCII_CHAT_TEST_BINARY ||
+      process.env["ASCII_CHAT_TEST_BINARY"] ||
       resolve("../../build/bin/ascii-chat.exe");
     this.log = createWriteStream(info.outputPath(`${name}.log`));
     const home = info.outputPath("config");
@@ -54,7 +54,7 @@ class Native {
       [
         "--no-check-update",
         "--log-level",
-        process.env.ASCII_CHAT_TEST_LOG_LEVEL || "info",
+        process.env["ASCII_CHAT_TEST_LOG_LEVEL"] || "info",
         ...args,
       ],
       {

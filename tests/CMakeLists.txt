@@ -1002,6 +1002,11 @@ endif()
 # The lifecycle probe takes scenario names, not Criterion command-line options.
 if(BUILD_TESTS)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    if(NOT WIN32)
+        add_test(NAME websocket-dependency-probes COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/standalone/websocket_probes/run.py)
+        set_tests_properties(websocket-dependency-probes PROPERTIES LABELS "unit;build" TIMEOUT 60)
+    endif()
     add_executable(test-client-like-lifecycle integration/client_like_lifecycle.c)
     if(TARGET ascii-chat-shared)
         target_link_libraries(test-client-like-lifecycle PRIVATE ascii-chat-shared)

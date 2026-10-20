@@ -132,13 +132,14 @@ async function startCapture(
   vi.stubGlobal("cancelAnimationFrame", vi.fn());
   const sendPacket = vi.fn();
   const setError = vi.fn();
+  let transportState = ConnectionState.CONNECTED;
   const options = {
     terminalDimensions: { cols: 80, rows: 24 },
     clientRef: {
       current: {
         sendPacket,
         sendUnencryptedAcipPacket: vi.fn(),
-        getState: () => ConnectionState.CONNECTED,
+        getState: () => transportState,
       } as unknown as ClientSession,
     },
     connectionState: ConnectionState.CONNECTED,
@@ -175,6 +176,9 @@ async function startCapture(
     });
   };
   return {
+    setTransportState: (state: ConnectionState) => {
+      transportState = state;
+    },
     receiveFps: () =>
       sendPacket.mock.calls.find(
         ([type]) => type === PacketType.CLIENT_CAPABILITIES,
@@ -195,6 +199,17 @@ it("advertises the receive FPS independently of a saved low camera upload limit"
 });
 
 for (const path of ["track", "video-callback", "poll"] as const) {
+  it(`${path}: stops sending immediately when transport closes before React updates`, async () => {
+    const capture = await startCapture(path, 60);
+    await capture.deliver(0, 1000);
+    expect(capture.sent()).toBe(1);
+    capture.setTransportState(ConnectionState.DISCONNECTED);
+    await capture.deliver(1 / 60, 1017);
+    capture.setTransportState(ConnectionState.HANDSHAKE);
+    await capture.deliver(2 / 60, 1034);
+    expect(capture.sent()).toBe(1);
+  });
+
   it(`${path}: preserves 60 FPS despite callback jitter and rounded arrival times`, async () => {
     const capture = await startCapture(path, 60);
     for (let frame = 0; frame < 120; frame++) {

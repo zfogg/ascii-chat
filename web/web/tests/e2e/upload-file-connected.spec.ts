@@ -7,17 +7,18 @@ import { getRandomPort, waitForPort } from "./server-fixture";
 test.use({ viewport: { width: 1600, height: 1000 } });
 
 const proof = path.resolve(
-  process.env.UPLOAD_PROOF_DIR ?? "../../build/upload-connected-proof",
+  process.env["UPLOAD_PROOF_DIR"] ?? "../../build/upload-connected-proof",
 );
 const binary =
-  process.env.ASCII_CHAT_TEST_BINARY ??
+  process.env["ASCII_CHAT_TEST_BINARY"] ??
   path.resolve(
     `../../build/bin/ascii-chat${process.platform === "win32" ? ".exe" : ""}`,
   );
 const media =
-  process.env.UPLOAD_TEST_FILE ?? path.resolve("tests/fixtures/media/tone.mp4");
+  process.env["UPLOAD_TEST_FILE"] ??
+  path.resolve("tests/fixtures/media/tone.mp4");
 
-const seekTime = Number(process.env.UPLOAD_TEST_SEEK_SECONDS ?? "1");
+const seekTime = Number(process.env["UPLOAD_TEST_SEEK_SECONDS"] ?? "1");
 
 for (const mode of ["client", "discovery", "mirror"]) {
   test(`Upload File /${mode}: recognizable file frames ${mode === "mirror" ? "locally" : "through a live server"}`, async ({

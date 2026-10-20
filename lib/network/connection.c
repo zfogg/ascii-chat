@@ -8,6 +8,7 @@
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/parallel_connect.h>
 #include <ascii-chat/app_callbacks.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/security.h>
