@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
 spec = importlib.util.spec_from_file_location("coverage_report", Path(__file__).with_name("generate-coverage.py"))
@@ -48,6 +49,18 @@ class CoverageReportTests(unittest.TestCase):
     def test_missing_counters_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "No matching"):
             coverage_report.generate(self.root, self.root, self.report)
+
+    def test_compiler_cache_types_include_explicit_command_line_selection(self):
+        compiler = self.root / "clang"
+        llvm_cov = self.root / "llvm-cov"
+        compiler.touch()
+        llvm_cov.touch()
+        for cache_type in ("FILEPATH", "STRING", "UNINITIALIZED"):
+            with self.subTest(cache_type=cache_type):
+                (self.root / "CMakeCache.txt").write_text(f"CMAKE_C_COMPILER:{cache_type}={compiler}\n")
+                with patch.object(coverage_report.subprocess, "check_output",
+                                  side_effect=["clang version 22.1.0", "LLVM version 22.1.0"]):
+                    self.assertEqual(coverage_report.find_llvm_cov(self.root), str(llvm_cov))
 
     @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja"), "Requires CMake, Ninja and Clang")
     def test_project_ipo_defaults_preserve_criterion_target_opt_out(self):

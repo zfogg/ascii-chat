@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 
 def find_llvm_cov(build):
     cache = (build / "CMakeCache.txt").read_text()
-    match = re.search(r"^CMAKE_C_COMPILER:(?:FILEPATH|STRING)=(.+)$", cache, re.MULTILINE)
+    match = re.search(r"^CMAKE_C_COMPILER:(?:FILEPATH|STRING|UNINITIALIZED)=(.+)$", cache, re.MULTILINE)
     if not match:
         raise ValueError("CMakeCache.txt does not identify the C compiler")
     compiler = Path(match.group(1)).resolve()
