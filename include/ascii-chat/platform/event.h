@@ -15,6 +15,7 @@ typedef void (*platform_event_task_fn)(void *arg);
 typedef void (*platform_event_read_fn)(platform_event_stream_t *, const void *, size_t, void *);
 typedef void (*platform_event_close_fn)(void *, asciichat_error_t);
 typedef void (*platform_event_write_fn)(void *, asciichat_error_t);
+typedef void (*platform_event_queue_fn)(void *, size_t);
 typedef void (*platform_event_accept_fn)(platform_event_stream_t *, void *);
 typedef void (*platform_event_work_fn)(void *);
 typedef void (*platform_event_work_done_fn)(platform_event_stream_t *, void *, bool closing);
@@ -57,6 +58,10 @@ void platform_event_stream_set_zerocopy(platform_event_stream_t *, bool enabled)
 asciichat_error_t platform_event_stream_deadline(platform_event_stream_t *, uint64_t timeout_ms);
 asciichat_error_t platform_event_stream_peer(platform_event_stream_t *, struct sockaddr_storage *, socklen_t *);
 size_t platform_event_stream_queued_bytes(const platform_event_stream_t *);
+/** Publish queued-byte changes without polling the stream. Configure before
+ * producers start. Invoked under the stream lock; only publish atomic state,
+ * never call stream/transport APIs. Context remains alive through on_close. */
+void platform_event_stream_observe_queue(platform_event_stream_t *, platform_event_queue_fn, void *);
 /** Run blocking application work outside the loop. One job per stream at a time;
  * reads pause until done runs on the loop. Stream lifetime includes this job.
  * write(), request_close(), and queued_bytes() are thread-safe while the caller

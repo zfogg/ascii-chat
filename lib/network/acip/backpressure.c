@@ -27,7 +27,7 @@ typedef struct outbound_packet {
 typedef struct {
   uint16_t type;
   uint32_t stream;
-  bool needs_keyframe;
+  _Atomic(bool) needs_keyframe;
 } outbound_stream_t;
 
 struct acip_outbound {
@@ -37,9 +37,11 @@ struct acip_outbound {
   asciichat_thread_t worker;
   bool stopping, failed;
   outbound_packet_t *head;
+  outbound_packet_t *recycled;
+  size_t recycled_count;
   size_t count, bytes, active_bytes;
   outbound_stream_t streams[OUTBOUND_MAX_STREAMS];
-  size_t stream_count;
+  _Atomic(size_t) stream_count;
   acip_outbound_stats_t stats;
 };
 
@@ -53,12 +55,24 @@ static outbound_stream_t *stream_state(acip_outbound_t *out, uint16_t type, uint
       return &out->streams[i];
   if (out->stream_count == OUTBOUND_MAX_STREAMS)
     return NULL;
-  outbound_stream_t *stream = &out->streams[out->stream_count++];
+  size_t index = out->stream_count;
+  outbound_stream_t *stream = &out->streams[index];
   *stream = (outbound_stream_t){.type = type, .stream = id, .needs_keyframe = true};
+  // Publish immutable identity only after initialization. The keyframe bit is
+  // atomic so the capture worker can query it without locking the packet queue.
+  out->stream_count = index + 1;
   return stream;
 }
 
-static void packet_free(outbound_packet_t *packet) {
+// Keep a small connection-owned working set instead of visiting the global
+// allocator and buffer domain for every media packet. All access holds mutex.
+static void packet_free(acip_outbound_t *out, outbound_packet_t *packet) {
+  if (!out->stopping && !out->failed && out->recycled_count < 8 && buffer_capacity(packet->data) <= 256 * 1024) {
+    packet->next = out->recycled;
+    out->recycled = packet;
+    ++out->recycled_count;
+    return;
+  }
   buffer_release(packet->data);
   SAFE_FREE(packet);
 }
@@ -83,7 +97,7 @@ static void discard_stream(acip_outbound_t *out, const outbound_packet_t *video)
       out->bytes -= packet->cost;
       --out->count;
       ++out->stats.dropped;
-      packet_free(packet);
+      packet_free(out, packet);
     } else {
       link = &packet->next;
     }
@@ -116,7 +130,7 @@ static void fail_queue(acip_outbound_t *out) {
       p->result = ERROR_NETWORK;
       p->done = true;
     } else {
-      packet_free(p);
+      packet_free(out, p);
     }
   }
   cond_broadcast(&out->changed);
@@ -169,10 +183,10 @@ static void *outbound_worker(void *arg) {
     if (p->wait) {
       p->result = result;
       p->done = true;
+      cond_broadcast(&out->changed);
     } else {
-      packet_free(p);
+      packet_free(out, p);
     }
-    cond_broadcast(&out->changed);
     if (result != ASCIICHAT_OK) {
       fail_queue(out);
       break;
@@ -191,11 +205,11 @@ asciichat_error_t acip_outbound_create(acip_transport_t *transport) {
   if (transport->outbound)
     return ASCIICHAT_OK;
   acip_outbound_t *out = SAFE_CALLOC(1, sizeof(*out), acip_outbound_t *);
-  if (mutex_init(&out->mutex, "outbound") != ASCIICHAT_OK) {
+  if (mutex_init(&out->mutex, "connection_outgoing_packet_queue") != ASCIICHAT_OK) {
     SAFE_FREE(out);
     return GET_ERRNO();
   }
-  if (cond_init(&out->changed, "outbound_changed") != ASCIICHAT_OK) {
+  if (cond_init(&out->changed, "outgoing_packet_ready_or_done") != ASCIICHAT_OK) {
     mutex_destroy(&out->mutex);
     SAFE_FREE(out);
     return GET_ERRNO();
@@ -226,6 +240,11 @@ void acip_outbound_destroy(acip_transport_t *transport) {
   asciichat_thread_join(&out->worker, NULL);
   mutex_lock(&out->mutex);
   fail_queue(out);
+  while (out->recycled) {
+    outbound_packet_t *p = out->recycled;
+    out->recycled = p->next;
+    packet_free(out, p);
+  }
   mutex_unlock(&out->mutex);
   cond_destroy(&out->changed);
   mutex_destroy(&out->mutex);
@@ -298,9 +317,20 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
     mutex_unlock(&out->mutex);
     return ASCIICHAT_OK;
   }
-  outbound_packet_t *p = SAFE_MALLOC(sizeof(*p), outbound_packet_t *);
+  outbound_packet_t **cached = &out->recycled;
+  while (*cached && ((*cached)->wait != info.wait || buffer_capacity((*cached)->data) < size))
+    cached = &(*cached)->next;
+  outbound_packet_t *p = *cached;
+  uint8_t *storage = NULL;
+  if (p) {
+    *cached = p->next;
+    --out->recycled_count;
+    storage = p->data;
+  } else {
+    p = SAFE_MALLOC(sizeof(*p), outbound_packet_t *);
+  }
   *p = info;
-  p->data = buffer_alloc(info.wait ? buffer_control_domain() : NULL, size);
+  p->data = storage ? storage : buffer_alloc(info.wait ? buffer_control_domain() : NULL, size);
   if (!p->data) {
     SAFE_FREE(p);
     mutex_unlock(&out->mutex);
@@ -324,6 +354,7 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
   }
   while (*link && (!priority || !(*link)->video))
     link = &(*link)->next;
+  bool was_empty = out->head == NULL;
   p->next = *link;
   *link = p;
   out->bytes += info.cost;
@@ -335,13 +366,14 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
   if (stream && info.keyframe)
     stream->needs_keyframe = false;
   *admission = ACIP_ADMISSION_ACCEPTED;
-  cond_broadcast(&out->changed);
+  if (was_empty)
+    cond_broadcast(&out->changed);
   asciichat_error_t result = ASCIICHAT_OK;
   if (info.wait) {
     while (!p->done)
       cond_wait(&out->changed, &out->mutex);
     result = p->result;
-    packet_free(p);
+    packet_free(out, p);
   }
   mutex_unlock(&out->mutex);
   return result == ASCIICHAT_OK ? result : SET_ERRNO(result, "Outbound submission failed");
@@ -368,9 +400,9 @@ bool acip_outbound_needs_keyframe(acip_transport_t *transport, uint16_t type, ui
   if (!transport || !transport->outbound)
     return false;
   acip_outbound_t *out = transport->outbound;
-  mutex_lock(&out->mutex);
-  outbound_stream_t *stream = stream_state(out, type, id);
-  bool needed = !stream || stream->needs_keyframe;
-  mutex_unlock(&out->mutex);
-  return needed;
+  size_t count = out->stream_count;
+  for (size_t i = 0; i < count; ++i)
+    if (out->streams[i].type == type && out->streams[i].stream == id)
+      return out->streams[i].needs_keyframe;
+  return true;
 }

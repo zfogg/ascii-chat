@@ -34,7 +34,7 @@ typedef struct buffer_header {
   size_t length;
   size_t charge;
   size_t alignment;
-  size_t references;
+  _Atomic(size_t) references;
   uint64_t returned_at;
   unsigned bin;
 } buffer_header_t;
@@ -127,7 +127,8 @@ asciichat_error_t buffer_domain_create(const buffer_domain_config_t *config, buf
   domain->config = config ? *config : defaults;
   if (!domain->config.limit_bytes)
     domain->config.limit_bytes = BUFFER_DOMAIN_LIMIT;
-  if (mutex_init(&domain->mutex, "buffer_domain") != 0) {
+  if (mutex_init(&domain->mutex,
+                 domain->config.control ? "reserved_control_buffer_pool" : "shared_media_buffer_pool") != 0) {
     atomic_fetch_sub_u64(&process_bytes, sizeof(*domain));
     SAFE_FREE(domain);
     return SET_ERRNO(ERROR_THREAD, "Cannot initialize buffer domain mutex");
@@ -294,15 +295,17 @@ const void *buffer_share(const void *data) {
   if (!data)
     return NULL;
   buffer_header_t *node = header(data);
-  mutex_lock(&node->domain->mutex);
-  if (node->references == 0 || node->references == SIZE_MAX) {
-    mutex_unlock(&node->domain->mutex);
-    SET_ERRNO(ERROR_INVALID_STATE, "Invalid buffer reference count");
-    return NULL;
+  size_t references = atomic_load(&node->references);
+  while (references && references != SIZE_MAX) {
+    if (atomic_compare_exchange_weak(&node->references, &references, references + 1))
+      return data;
   }
-  node->references++;
-  mutex_unlock(&node->domain->mutex);
-  return data;
+  SET_ERRNO(ERROR_INVALID_STATE, "Invalid buffer reference count");
+  return NULL;
+}
+
+bool buffer_is_unique(const void *data) {
+  return data && atomic_load(&header(data)->references) == 1;
 }
 
 void buffer_unref(const void *data) {
@@ -310,16 +313,17 @@ void buffer_unref(const void *data) {
     return;
   buffer_header_t *node = header(data);
   buffer_domain_t *domain = node->domain;
-  mutex_lock(&domain->mutex);
-  if (!node->references) {
-    mutex_unlock(&domain->mutex);
+  size_t references = atomic_load(&node->references);
+  while (references && !atomic_compare_exchange_weak(&node->references, &references, references - 1)) {
+  }
+  if (!references) {
     SET_ERRNO(ERROR_INVALID_STATE, "Buffer has already been released");
     return;
   }
-  if (--node->references) {
-    mutex_unlock(&domain->mutex);
+  if (references > 1) {
     return;
   }
+  mutex_lock(&domain->mutex);
   domain->stats.outstanding--;
   domain->stats.live_bytes -= node->charge;
   domain->stats.requested_bytes -= node->length;

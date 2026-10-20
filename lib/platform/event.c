@@ -37,11 +37,15 @@ struct platform_event_stream {
   uv_async_t output;
   uv_mutex_t mutex;
   struct event_write *first, *last, *active;
+  struct event_write *recycled;
+  size_t recycled_count;
   bool zerocopy;
   platform_event_read_fn read;
   platform_event_close_fn close;
   void *arg;
   size_t queued;
+  platform_event_queue_fn queue_changed;
+  void *queue_context;
   size_t writes;
   unsigned handles;
   bool closing;
@@ -85,6 +89,12 @@ static void stream_closed(uv_handle_t *handle) {
     return;
   if (stream->close)
     stream->close(stream->arg, stream->reason);
+  while (stream->recycled) {
+    event_write_t *write = stream->recycled;
+    stream->recycled = write->next;
+    socket_send_buffer_free(&write->storage);
+    SAFE_FREE(write);
+  }
   uv_mutex_destroy(&stream->mutex);
   --stream->owner->streams;
   SAFE_FREE(stream);
@@ -106,6 +116,8 @@ void platform_event_stream_close(platform_event_stream_t *stream, asciichat_erro
     event_write_t *next = pending->next;
     uv_mutex_lock(&stream->mutex);
     stream->queued -= pending->size;
+    if (stream->queue_changed)
+      stream->queue_changed(stream->queue_context, stream->queued);
     --stream->writes;
     uv_mutex_unlock(&stream->mutex);
     if (pending->done)
@@ -453,16 +465,29 @@ asciichat_error_t platform_event_listen(platform_event_loop_t *loop, socket_t *s
 static void write_complete(uv_write_t *request, int status) {
   event_write_t *write = request->data;
   platform_event_stream_t *stream = write->stream;
+  platform_event_write_fn done = write->done;
+  void *context = write->arg;
   uv_timer_stop(&stream->output_timer);
   stream->active = NULL;
   uv_mutex_lock(&stream->mutex);
   stream->queued -= write->size;
+  if (stream->queue_changed)
+    stream->queue_changed(stream->queue_context, stream->queued);
   --stream->writes;
+  bool recycle =
+      !stream->closing && stream->recycled_count < 8 && !write->storage.mapped && write->storage.capacity <= 256 * 1024;
+  if (recycle) {
+    write->next = stream->recycled;
+    stream->recycled = write;
+    ++stream->recycled_count;
+  }
   uv_mutex_unlock(&stream->mutex);
-  if (write->done)
-    write->done(write->arg, status < 0 ? ERROR_NETWORK : ASCIICHAT_OK);
-  socket_send_buffer_free(&write->storage);
-  SAFE_FREE(write);
+  if (done)
+    done(context, status < 0 ? ERROR_NETWORK : ASCIICHAT_OK);
+  if (!recycle) {
+    socket_send_buffer_free(&write->storage);
+    SAFE_FREE(write);
+  }
   if (status < 0)
     platform_event_stream_close(stream, ERROR_NETWORK);
   else if (!stream->closing)
@@ -608,15 +633,27 @@ asciichat_error_t platform_event_stream_write(platform_event_stream_t *stream, c
     uv_mutex_unlock(&stream->mutex);
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Asynchronous output queue full");
   }
-  event_write_t *write = SAFE_MALLOC(sizeof(*write), event_write_t *);
-  *write = (event_write_t){.stream = stream, .done = done, .arg = arg, .size = size};
-  if (stream->zerocopy && size >= SOCKET_ZEROCOPY_THRESHOLD) {
+  bool mapped = stream->zerocopy && size >= SOCKET_ZEROCOPY_THRESHOLD;
+  event_write_t **cached = &stream->recycled;
+  while (*cached && (mapped || (*cached)->storage.capacity < size))
+    cached = &(*cached)->next;
+  event_write_t *write = *cached;
+  socket_send_buffer_t storage = {0};
+  if (write) {
+    *cached = write->next;
+    --stream->recycled_count;
+    storage = write->storage;
+  } else {
+    write = SAFE_MALLOC(sizeof(*write), event_write_t *);
+  }
+  *write = (event_write_t){.stream = stream, .done = done, .arg = arg, .size = size, .storage = storage};
+  if (!write->storage.data && mapped) {
     if (socket_send_buffer_alloc(size, &write->storage) != ASCIICHAT_OK) {
       SAFE_FREE(write);
       uv_mutex_unlock(&stream->mutex);
       return SET_ERRNO(ERROR_MEMORY, "Async copy avoidance exceeds process buffer budget");
     }
-  } else {
+  } else if (!write->storage.data) {
     write->storage.data = buffer_alloc(NULL, size);
     write->storage.capacity = size;
   }
@@ -633,6 +670,8 @@ asciichat_error_t platform_event_stream_write(platform_event_stream_t *stream, c
     offset += buffers[i].len;
   }
   stream->queued += size;
+  if (stream->queue_changed)
+    stream->queue_changed(stream->queue_context, stream->queued);
   ++stream->writes;
   if (stream->last)
     stream->last->next = write;
@@ -651,6 +690,18 @@ size_t platform_event_stream_queued_bytes(const platform_event_stream_t *stream)
   size_t bytes = stream->queued;
   uv_mutex_unlock((uv_mutex_t *)&stream->mutex);
   return bytes;
+}
+
+void platform_event_stream_observe_queue(platform_event_stream_t *stream, platform_event_queue_fn observer,
+                                         void *context) {
+  if (!stream)
+    return;
+  uv_mutex_lock(&stream->mutex);
+  stream->queue_changed = observer;
+  stream->queue_context = context;
+  if (observer)
+    observer(context, stream->queued);
+  uv_mutex_unlock(&stream->mutex);
 }
 
 typedef struct {

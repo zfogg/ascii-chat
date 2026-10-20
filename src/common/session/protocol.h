@@ -3,6 +3,7 @@
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/settings.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/buffer.h>
 
 /* Callbacks borrow decoded buffers for the duration of the call. Device and UI
  * ownership remain with the mode; one receive worker owns this protocol state. */
@@ -13,6 +14,7 @@ typedef struct {
                                    void *context);
   void (*on_audio_packet)(size_t length, void *context);
   void *context;
+  buffer_workspace_t *frame_workspace; // Optional; receive worker owns it through callback completion.
 } session_protocol_media_t;
 
 typedef struct {

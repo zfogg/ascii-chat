@@ -7,6 +7,7 @@
 #include <ascii-chat/audio/audio.h>
 
 #include <ascii-chat/common.h>
+#include <ascii-chat/buffer.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/thread_pool.h>
@@ -60,6 +61,8 @@ struct client_connection {
   mutex_t send_mutex;
   crypto_handshake_context_t *crypto_ctx; // Borrowed from network until its users join.
   h265_encoder_t *volatile video_encoder;
+  buffer_workspace_t encoded_video_workspace; // Owned exclusively by the capture worker.
+  buffer_workspace_t decoded_ascii_workspace; // Owned exclusively by the receive worker.
   atomic_t data_thread_exited;
   atomic_t frames_rendered;
   atomic_t snapshot_first_frame_time_ns;
@@ -76,6 +79,7 @@ struct client_connection {
   cond_t audio_send_queue_cond;
   lifecycle_t audio_send_queue_lc;
   bool audio_sender_thread_created;
+  bool audio_send_direct; // The transport already owns an asynchronous outbound queue.
   atomic_t audio_sender_should_exit;
   atomic_t audio_sender_exited;
   bool ping_thread_created;

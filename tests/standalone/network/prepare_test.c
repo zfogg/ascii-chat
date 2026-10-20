@@ -78,6 +78,36 @@ static void fixtures(void) {
             CRYPTO_OK);
       CHECK(acip_packet_encrypt(&crypto, &plan, NULL, ciphertext, sizeof(ciphertext), &outer, &length) == ASCIICHAT_OK);
       CHECK(length == expected_length && memcmp(ciphertext, expected, length) == 0);
+      // Exclusive wire buffers decrypt in place, while shared wire owners
+      // retain unchanged ciphertext and use the allocation fallback.
+      for (unsigned mode = 0; mode < 3; ++mode) {
+        size_t wire_size = sizeof(outer) + length;
+        uint8_t *wire = buffer_alloc(NULL, wire_size);
+        CHECK(wire);
+        memcpy(wire, &outer, sizeof(outer));
+        memcpy(wire + sizeof(outer), ciphertext, length);
+        const void *shared = mode == 1 ? buffer_share(wire) : NULL;
+        if (mode == 2)
+          wire[wire_size - 1] ^= 1;
+        packet_envelope_t envelope = {.type = PACKET_TYPE_ENCRYPTED,
+                                      .data = wire + sizeof(outer),
+                                      .len = length,
+                                      .allocated_buffer = wire,
+                                      .allocated_size = wire_size};
+        asciichat_error_t result = packet_decrypt_envelope(&envelope, &peer);
+        if (mode == 2) {
+          CHECK(result == ERROR_CRYPTO && envelope.allocated_buffer == wire);
+          CLEAR_ERRNO_ALL();
+        } else {
+          CHECK(result == ASCIICHAT_OK);
+          CHECK((envelope.allocated_buffer == wire) == (mode == 0));
+          CHECK(envelope.len == 9 && memcmp(envelope.data, "123456789", 9) == 0);
+          if (shared)
+            CHECK(memcmp((const uint8_t *)shared + sizeof(outer), ciphertext, length) == 0);
+        }
+        buffer_release(shared);
+        buffer_release(envelope.allocated_buffer);
+      }
       CHECK(NET_TO_HOST_U64(outer.magic) == PACKET_MAGIC && NET_TO_HOST_U16(outer.type) == PACKET_TYPE_ENCRYPTED);
       CHECK(NET_TO_HOST_U32(outer.length) == length && outer.client_id == 0);
       CHECK(NET_TO_HOST_U32(outer.crc32) == asciichat_crc32(ciphertext, length));
@@ -173,6 +203,35 @@ static void tcp_fixture(bool async, bool encrypted) {
 
 // The Python fixture echoes WebSocket messages; decrypt here to verify the exact
 // production transport envelope, including the original header and client ID.
+static void retained_async_receive(void) {
+  socket_t sockets[2];
+  socket_pair(sockets);
+  crypto_context_t crypto, peer;
+  crypto_pair(&crypto, &peer);
+  acip_transport_t *sender = acip_tcp_transport_create("retained-send", sockets[0], &crypto);
+  acip_transport_t *receiver = acip_async_tcp_client_create(&sockets[1], &peer);
+  CHECK(sender && receiver);
+  void *owners[12] = {0};
+  for (unsigned i = 0; i < 12; ++i) {
+    uint8_t value = (uint8_t)(42 + i);
+    CHECK(packet_send_via_transport(sender, PACKET_TYPE_PING, &value, 1, 0) == ASCIICHAT_OK);
+    void *data = NULL;
+    size_t length = 0;
+    CHECK(acip_transport_recv(receiver, &data, &length, &owners[i]) == ASCIICHAT_OK);
+    CHECK(length == sizeof(packet_header_t) + 1 && data == owners[i]);
+    // More owners than cache slots: no live receiver reference may be reused.
+    for (unsigned j = 0; j <= i; ++j)
+      CHECK(((uint8_t *)owners[j])[sizeof(packet_header_t)] == 42 + j);
+  }
+  for (unsigned i = 0; i < 12; ++i)
+    buffer_release(owners[i]);
+  acip_transport_destroy(receiver);
+  acip_transport_destroy(sender);
+  socket_close(sockets[0]);
+  crypto_destroy(&crypto);
+  crypto_destroy(&peer);
+}
+
 static void websocket_fixture(const char *url) {
   crypto_context_t crypto, peer;
   crypto_pair(&crypto, &peer);
@@ -207,6 +266,7 @@ int main(int argc, char **argv) {
     websocket_fixture(argv[1]);
   } else {
     fixtures();
+    retained_async_receive();
     for (int async = 0; async < 2; ++async)
       for (int encrypted = 0; encrypted < 2; ++encrypted)
         tcp_fixture(async != 0, encrypted != 0);

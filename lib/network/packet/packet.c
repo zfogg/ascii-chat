@@ -835,9 +835,15 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
   uint8_t *ciphertext = (uint8_t *)envelope->data;
   size_t ciphertext_len = envelope->len;
 
-  // Allocate plaintext buffer with extra space for decryption
-  size_t plaintext_size = ciphertext_len + 1024;
-  uint8_t *plaintext = buffer_alloc(NULL, plaintext_size);
+  crypto_context_t *crypto = crypto_ctx;
+  // Secretbox supports overlapping ciphertext/plaintext. Keep the nonce ahead
+  // of the destination until authentication and decryption have finished.
+  bool reuse = envelope->allocated_buffer && buffer_is_unique(envelope->allocated_buffer) &&
+               ciphertext == (uint8_t *)envelope->allocated_buffer + sizeof(packet_header_t) &&
+               ciphertext_len >= crypto->nonce_size + crypto->mac_size &&
+               envelope->allocated_size >= sizeof(packet_header_t) + ciphertext_len;
+  size_t plaintext_size = reuse ? ciphertext_len - crypto->nonce_size : ciphertext_len + 1024;
+  uint8_t *plaintext = reuse ? ciphertext + crypto->nonce_size : buffer_alloc(NULL, plaintext_size);
   if (!plaintext) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate plaintext buffer for decryption");
   }
@@ -847,12 +853,14 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
       crypto_decrypt(crypto_ctx, ciphertext, ciphertext_len, plaintext, plaintext_size, &plaintext_len);
 
   if (result != CRYPTO_OK) {
-    buffer_release(plaintext);
+    if (!reuse)
+      buffer_release(plaintext);
     return SET_ERRNO(ERROR_CRYPTO, "Failed to decrypt packet: %s", crypto_result_to_string(result));
   }
 
   if (plaintext_len < sizeof(packet_header_t)) {
-    buffer_release(plaintext);
+    if (!reuse)
+      buffer_release(plaintext);
     return SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
   }
 
@@ -863,11 +871,17 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
 
   // Validate inner packet length
   if (inner_len != plaintext_len - sizeof(packet_header_t)) {
-    buffer_release(plaintext);
+    if (!reuse)
+      buffer_release(plaintext);
     return SET_ERRNO(ERROR_CRYPTO, "Inner packet length mismatch: header=%u, actual=%zu", inner_len,
                      plaintext_len - sizeof(packet_header_t));
   }
 
+  if (reuse) {
+    memmove(envelope->allocated_buffer, plaintext, plaintext_len);
+    plaintext = envelope->allocated_buffer;
+    plaintext_size = envelope->allocated_size;
+  }
   // Free the original encrypted buffer if it's different from plaintext
   if (envelope->allocated_buffer && envelope->allocated_buffer != plaintext) {
     buffer_release(envelope->allocated_buffer);

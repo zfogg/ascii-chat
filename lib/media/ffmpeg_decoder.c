@@ -359,11 +359,12 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       continue;
     }
 
+    int decode_result = 0;
     // Read packets until we get a video frame - read_frame_mutex HELD
     while (true) {
       int ret;
       if (decoder->video_draining) {
-        ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
+        ret = decode_result = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
         if (ret == AVERROR_EOF) {
           atomic_store_bool(&decoder->eof_reached, true);
           reached_eof = true;
@@ -373,19 +374,19 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           break;
         }
       } else {
-        ret = av_read_frame(decoder->format_ctx, decoder->packet);
+        ret = decode_result = av_read_frame(decoder->format_ctx, decoder->packet);
         if (ret < 0) {
           if (ret != AVERROR_EOF) {
             break;
           }
 
-          ret = avcodec_send_packet(decoder->video_codec_ctx, NULL);
+          ret = decode_result = avcodec_send_packet(decoder->video_codec_ctx, NULL);
           decoder->video_draining = true;
           if (ret < 0 && ret != AVERROR_EOF) {
             break;
           }
 
-          ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
+          ret = decode_result = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
           if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) {
             atomic_store_bool(&decoder->eof_reached, true);
             reached_eof = true;
@@ -402,7 +403,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           }
 
           // Send packet to decoder
-          ret = avcodec_send_packet(decoder->video_codec_ctx, decoder->packet);
+          ret = decode_result = avcodec_send_packet(decoder->video_codec_ctx, decoder->packet);
           av_packet_unref(decoder->packet);
 
           if (ret == AVERROR(EAGAIN))
@@ -413,7 +414,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           }
 
           // Receive decoded frame
-          ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
+          ret = decode_result = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
           if (ret == AVERROR(EAGAIN)) {
             continue; // Need more packets
           } else if (ret < 0) {
@@ -559,7 +560,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     }
     if (!frame_decoded && !reached_eof && !interrupted) {
       if (!asciichat_errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
-        SET_ERRNO(ERROR_MEDIA_DECODE, "Background video decoding failed");
+        SET_ERRNO(ERROR_MEDIA_DECODE, "Background video decoding failed (FFmpeg result %d)", decode_result);
         if (!asciichat_errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
           decoder->prefetch_failure.code = ERROR_MEDIA_DECODE;
           SAFE_STRNCPY(decoder->prefetch_failure.context_message, "Background video decoding failed",
@@ -1576,6 +1577,11 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   ++decoder->seek_generation;
   // Serialize codec and partial-audio state with the existing packet reader.
   mutex_lock(&decoder->read_frame_mutex);
+  // The old reader has stopped. Holding both guards prevents another read;
+  // the seek must not cancel its own I/O through the interrupt callback.
+  decoder->seeking_in_progress = false;
+  if (decoder->format_ctx->pb && decoder->format_ctx->pb->error == AVERROR_EXIT)
+    decoder->format_ctx->pb->error = 0;
 
   // Convert seconds to FFmpeg time base units (AV_TIME_BASE = 1,000,000)
   int64_t target_ts = (int64_t)(timestamp_sec * AV_TIME_BASE);

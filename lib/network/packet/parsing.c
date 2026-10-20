@@ -69,7 +69,7 @@ static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
       return NULL;
     }
 
-    log_debug("Decompressed frame: %zu -> %u bytes", frame_data_len, original_size);
+    log_debug_every(US_PER_SEC_INT, "Decompressed frame: %zu -> %u bytes", frame_data_len, original_size);
   } else {
     // Uncompressed frame - validate size
     if (frame_data_len != original_size) {
@@ -123,7 +123,7 @@ asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, si
                        asciichat_error_string(decompress_result));
     }
 
-    log_debug("Decompressed frame to buffer: %zu -> %u bytes", frame_data_len, original_size);
+    log_debug_every(US_PER_SEC_INT, "Decompressed frame to buffer: %zu -> %u bytes", frame_data_len, original_size);
   } else {
     // Uncompressed frame - validate size
     if (frame_data_len != original_size) {
@@ -136,6 +136,25 @@ asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, si
   }
 
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t packet_decode_frame_data_workspace(buffer_workspace_t *workspace, const void *data, size_t length,
+                                                     bool compressed, uint32_t original_size, uint32_t compressed_size) {
+  if (!workspace || original_size > PACKET_MAX_FRAME_SIZE)
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid decoded ASCII workspace size: %u", original_size);
+  uint64_t started = time_get_ns();
+  asciichat_error_t result = buffer_workspace_reserve(workspace, NULL, (size_t)original_size + 1);
+  if (result == ASCIICHAT_OK)
+    result = packet_decode_frame_data_buffer(data, length, compressed, workspace->data,
+                                             buffer_capacity(workspace->data), original_size, compressed_size);
+  if (result == ASCIICHAT_OK) {
+    ((char *)workspace->data)[original_size] = '\0';
+    workspace->length = original_size;
+  }
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_DECODE, time_get_ns() - started);
+  stats_counter_add(stats_runtime_scope(),
+                    result == ASCIICHAT_OK ? STATS_COUNTER_FRAMES_DECODED : STATS_COUNTER_FRAMES_DROPPED, 1);
+  return result;
 }
 
 asciichat_error_t packet_validate_frame_dimensions(uint32_t width, uint32_t height, size_t *out_rgb_size) {

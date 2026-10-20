@@ -620,9 +620,9 @@ asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connect
   mutex_unlock(&connection->send_mutex);
 #endif
   size_t output_buffer_size = 5 + ((size_t)width * height * 3) + 65536;
-  uint8_t *output_buffer = buffer_alloc(NULL, output_buffer_size);
-  if (!output_buffer)
+  if (buffer_workspace_reserve(&connection->encoded_video_workspace, NULL, output_buffer_size) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate video output buffer: %zu bytes", output_buffer_size);
+  uint8_t *output_buffer = connection->encoded_video_workspace.data;
 
   // h265_encode already writes the five-byte ACIP envelope for either codec.
   size_t total_size = output_buffer_size;
@@ -630,7 +630,6 @@ asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connect
       h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data, output_buffer, &total_size);
   if (encode_result != ASCIICHAT_OK || total_size == 0) {
     *encoding_failed = encode_result != ASCIICHAT_OK;
-    buffer_release(output_buffer);
     return encode_result;
   }
 
@@ -644,7 +643,6 @@ asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connect
   if (!transport || !server_connection_is_active(connection)) {
     mutex_unlock(&connection->send_mutex);
     log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_5] Transport unavailable, releasing mutex");
-    buffer_release(output_buffer);
     return SET_ERRNO(ERROR_NETWORK, "Transport unavailable");
   }
 
@@ -659,8 +657,7 @@ asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connect
   mutex_unlock(&connection->send_mutex);
   log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_8] ✅ Released g_send_mutex");
 
-  buffer_release(output_buffer);
-  log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_9] ✅ Freed output buffer");
+  log_debug_every(US_PER_SEC_INT, "[H265_SEND_FRAME_9] Retained video output workspace");
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {

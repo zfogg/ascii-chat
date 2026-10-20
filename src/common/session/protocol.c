@@ -22,8 +22,16 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
     protocol->callback_result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid participant ASCII frame length");
     return;
   }
-  char *text =
-      packet_decode_frame_data_malloc(data, length, compressed, header->original_size, header->compressed_size);
+  char *text;
+  if (protocol->media.frame_workspace) {
+    protocol->callback_result = packet_decode_frame_data_workspace(
+        protocol->media.frame_workspace, data, length, compressed, header->original_size, header->compressed_size);
+    if (protocol->callback_result != ASCIICHAT_OK)
+      return;
+    text = protocol->media.frame_workspace->data;
+  } else {
+    text = packet_decode_frame_data_malloc(data, length, compressed, header->original_size, header->compressed_size);
+  }
   if (!text) {
     protocol->callback_result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Could not decode participant ASCII frame");
     return;
@@ -35,7 +43,8 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
     if (protocol->media.on_frame)
       protocol->callback_result = protocol->media.on_frame(header, text, protocol->media.context);
   }
-  SAFE_FREE(text);
+  if (!protocol->media.frame_workspace)
+    SAFE_FREE(text);
 }
 
 static void receive_samples(const audio_batch_packet_t *header, const float *samples, size_t count, void *context) {

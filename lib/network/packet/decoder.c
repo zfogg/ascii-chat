@@ -39,11 +39,12 @@ asciichat_error_t packet_decoder_feed(packet_decoder_t *decoder, const void *dat
         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid incremental packet header");
       }
       decoder->size = sizeof(header) + payload;
-      decoder->packet = buffer_alloc(NULL, decoder->size);
-      if (!decoder->packet) {
+      buffer_workspace_t workspace = {.data = decoder->packet};
+      if (buffer_workspace_reserve(&workspace, NULL, decoder->size) != ASCIICHAT_OK) {
         decoder->failed = true;
         return SET_ERRNO(ERROR_MEMORY, "Incremental packet exceeds buffer budget");
       }
+      decoder->packet = workspace.data;
       memcpy(decoder->packet, &header, sizeof(header));
       decoder->used = sizeof(header);
     }
@@ -63,8 +64,7 @@ asciichat_error_t packet_decoder_feed(packet_decoder_t *decoder, const void *dat
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Incremental packet CRC mismatch");
     }
     asciichat_error_t result = emit(decoder->packet, decoder->size, arg);
-    buffer_release(decoder->packet);
-    decoder->packet = NULL;
+    // The callback borrows this storage; retain it for the next framed packet.
     decoder->header_used = decoder->used = decoder->size = 0;
     if (result != ASCIICHAT_OK) {
       decoder->failed = true;

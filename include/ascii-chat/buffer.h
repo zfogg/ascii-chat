@@ -76,6 +76,9 @@ size_t buffer_size(const void *data);
 asciichat_error_t buffer_set_size(void *data, size_t size);
 /** Acquire another immutable reference while an existing reference is held. */
 const void *buffer_share(const void *data);
+/** Test exclusive ownership while retaining a reference. Only the owner may
+ * publish new references while using this result to modify/recycle storage. */
+bool buffer_is_unique(const void *data);
 /** Low-level release for ownership passed by value. Prefer buffer_release(). */
 void buffer_unref(const void *data);
 /** Release and clear a typed pointer lvalue; evaluates the lvalue once. */

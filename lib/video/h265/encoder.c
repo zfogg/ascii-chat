@@ -352,7 +352,7 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
     log_error("avcodec_receive_packet failed: %d (EAGAIN=%d)", recv_ret, AVERROR(EAGAIN));
     return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to receive encoded packet");
   }
-  log_debug("Got packet: size=%d", (int)encoder->packet->size);
+  log_debug_every(US_PER_SEC_INT, "Got encoded packet: size=%d", (int)encoder->packet->size);
 
   uint8_t flags = 0;
   if (encoder->packet->flags & AV_PKT_FLAG_KEY) {

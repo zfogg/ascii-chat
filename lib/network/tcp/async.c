@@ -19,7 +19,7 @@ typedef struct async_packet {
 typedef struct {
   platform_event_stream_t *stream;
   mutex_t mutex;
-  bool closed;
+  _Atomic(bool) closed;
   platform_event_loop_t *loop;
   asciichat_thread_t thread;
   bool thread_started;
@@ -28,7 +28,12 @@ typedef struct {
   cond_t received;
   packet_decoder_t decoder;
   async_packet_t *head, *tail;
-  size_t received_bytes, received_count;
+  async_packet_t *recycled;
+  size_t recycled_count;
+  size_t received_bytes;
+  _Atomic(size_t) received_count;
+  buffer_workspace_t ciphertext;
+  _Atomic(size_t) queued_wire_bytes;
   bool packet_received;
   atomic_t interrupted;
 } async_tcp_t;
@@ -49,17 +54,16 @@ static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_b
   if (!plan.encrypt) {
     result = platform_event_stream_write(tcp->stream, buffers, count, NULL, NULL);
   } else {
-    uint8_t *ciphertext = buffer_alloc(plan.domain, plan.ciphertext_capacity);
-    if (!ciphertext) {
+    if (buffer_workspace_reserve(&tcp->ciphertext, plan.domain, plan.ciphertext_capacity) != ASCIICHAT_OK) {
       mutex_unlock(&tcp->mutex);
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate async ciphertext");
     }
+    uint8_t *ciphertext = tcp->ciphertext.data;
     size_t length = 0;
     packet_header_t outer;
     result = acip_packet_encrypt(transport->crypto_ctx, &plan, plan.domain, ciphertext, plan.ciphertext_capacity,
                                  &outer, &length);
     if (result == ERROR_MEMORY) {
-      buffer_release(ciphertext);
       mutex_unlock(&tcp->mutex);
       return result;
     }
@@ -68,7 +72,6 @@ static asciichat_error_t async_sendv(acip_transport_t *transport, const socket_b
       // The event stream copies the vectors before returning.
       result = platform_event_stream_write(tcp->stream, wire, 2, NULL, NULL);
     }
-    buffer_release(ciphertext);
   }
   if (result != ASCIICHAT_OK) {
     // Encryption sequence may already have advanced. Never continue this stream.
@@ -121,7 +124,6 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
     tcp->tail = NULL;
   tcp->received_bytes -= packet->size;
   --tcp->received_count;
-  mutex_unlock(&tcp->mutex);
   packet_header_t header;
   memcpy(&header, packet->data, sizeof(header));
   packet_envelope_t envelope = {.type = NET_TO_HOST_U16(header.type),
@@ -129,9 +131,7 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
                                 .len = packet->size - sizeof(header),
                                 .allocated_buffer = packet->data,
                                 .allocated_size = packet->size};
-  SAFE_FREE(packet);
   asciichat_error_t result = ASCIICHAT_OK;
-  mutex_lock(&tcp->mutex);
   if (envelope.type == PACKET_TYPE_ENCRYPTED) {
     result = packet_decrypt_envelope(&envelope, transport->crypto_ctx);
     if (result == ASCIICHAT_OK) {
@@ -142,6 +142,17 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
     }
   } else if (transport->crypto_ctx && transport->crypto_ctx->encrypt_data && !packet_is_handshake_type(envelope.type)) {
     result = SET_ERRNO(ERROR_CRYPTO, "Unexpected plaintext packet");
+  }
+  if (result == ASCIICHAT_OK && tcp->recycled_count < 8 && buffer_capacity(envelope.allocated_buffer) <= 256 * 1024) {
+    // Retain an owner while the receiver borrows its own reference. Only
+    // recycle this slot once the receiver releases that reference.
+    packet->data = envelope.allocated_buffer;
+    buffer_share(packet->data);
+    packet->next = tcp->recycled;
+    tcp->recycled = packet;
+    ++tcp->recycled_count;
+  } else {
+    SAFE_FREE(packet);
   }
   mutex_unlock(&tcp->mutex);
   if (result != ASCIICHAT_OK) {
@@ -169,15 +180,14 @@ void acip_async_tcp_transport_detach(acip_transport_t *transport) {
   async_tcp_t *tcp = transport->impl_data;
   mutex_lock(&tcp->mutex);
   tcp->closed = true;
+  platform_event_stream_observe_queue(tcp->stream, NULL, NULL);
   tcp->stream = NULL;
   mutex_unlock(&tcp->mutex);
 }
 
 static bool async_connected(acip_transport_t *transport) {
   async_tcp_t *tcp = transport->impl_data;
-  mutex_lock(&tcp->mutex);
   bool connected = !tcp->closed && !atomic_load_bool(&tcp->interrupted);
-  mutex_unlock(&tcp->mutex);
   return connected;
 }
 static acip_transport_type_t async_type(acip_transport_t *transport) {
@@ -190,13 +200,14 @@ static socket_t async_socket(acip_transport_t *transport) {
 }
 static bool async_pending(acip_transport_t *transport) {
   async_tcp_t *tcp = transport->impl_data;
-  mutex_lock(&tcp->mutex);
-  bool pending = tcp->head != NULL || tcp->closed || atomic_load_bool(&tcp->interrupted);
-  mutex_unlock(&tcp->mutex);
+  bool pending = tcp->received_count != 0 || tcp->closed || atomic_load_bool(&tcp->interrupted);
   return pending;
 }
 static void async_destroy(acip_transport_t *transport) {
   async_tcp_t *tcp = transport->impl_data;
+  mutex_lock(&tcp->mutex);
+  platform_event_stream_observe_queue(tcp->stream, NULL, NULL);
+  mutex_unlock(&tcp->mutex);
   if (tcp->queued_receive && !tcp->loop) {
     mutex_lock(&tcp->mutex);
     if (tcp->stream)
@@ -221,8 +232,15 @@ static void async_destroy(acip_transport_t *transport) {
       buffer_release(packet->data);
       SAFE_FREE(packet);
     }
+    while (tcp->recycled) {
+      async_packet_t *packet = tcp->recycled;
+      tcp->recycled = packet->next;
+      buffer_release(packet->data);
+      SAFE_FREE(packet);
+    }
     cond_destroy(&tcp->received);
   }
+  buffer_workspace_destroy(&tcp->ciphertext);
   mutex_destroy(&tcp->mutex);
 }
 static void async_interrupt(acip_transport_t *transport) {
@@ -253,16 +271,18 @@ bool acip_async_tcp_transport_is(const acip_transport_t *transport) {
 
 size_t acip_async_tcp_transport_queued(acip_transport_t *transport) {
   async_tcp_t *tcp = transport->impl_data;
-  mutex_lock(&tcp->mutex);
-  size_t queued = platform_event_stream_queued_bytes(tcp->stream);
-  mutex_unlock(&tcp->mutex);
-  return queued;
+  return tcp->queued_wire_bytes;
+}
+
+static void queue_changed(void *context, size_t bytes) {
+  async_tcp_t *tcp = context;
+  tcp->queued_wire_bytes = bytes;
 }
 
 acip_transport_t *acip_async_tcp_transport_create(platform_event_stream_t *stream, crypto_context_t *crypto) {
   acip_transport_t *transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
   async_tcp_t *tcp = SAFE_CALLOC(1, sizeof(*tcp), async_tcp_t *);
-  if (mutex_init(&tcp->mutex, "async_tcp_send") != ASCIICHAT_OK) {
+  if (mutex_init(&tcp->mutex, "tcp_packet_io_lifetime_guard") != ASCIICHAT_OK) {
     SAFE_FREE(tcp);
     SAFE_FREE(transport);
     return NULL;
@@ -276,6 +296,7 @@ acip_transport_t *acip_async_tcp_transport_create(platform_event_stream_t *strea
     acip_transport_destroy(transport);
     return NULL;
   }
+  platform_event_stream_observe_queue(stream, queue_changed, tcp);
   return transport;
 }
 
@@ -286,15 +307,26 @@ static asciichat_error_t client_packet(const void *data, size_t length, void *ar
     mutex_unlock(&tcp->mutex);
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Async client receive queue full");
   }
-  async_packet_t *packet = SAFE_CALLOC(1, sizeof(*packet), async_packet_t *);
+  async_packet_t **cached = &tcp->recycled;
+  while (*cached && (!buffer_is_unique((*cached)->data) || buffer_capacity((*cached)->data) < length))
+    cached = &(*cached)->next;
+  async_packet_t *packet = *cached;
+  if (packet) {
+    *cached = packet->next;
+    --tcp->recycled_count;
+    packet->next = NULL;
+  } else {
+    packet = SAFE_CALLOC(1, sizeof(*packet), async_packet_t *);
+    packet->data = buffer_alloc(NULL, length);
+  }
   packet->size = length;
-  packet->data = buffer_alloc(NULL, length);
   if (!packet->data) {
     SAFE_FREE(packet);
     mutex_unlock(&tcp->mutex);
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate async receive packet");
   }
   memcpy(packet->data, data, length);
+  bool was_empty = tcp->head == NULL;
   if (tcp->tail)
     tcp->tail->next = packet;
   else
@@ -303,7 +335,8 @@ static asciichat_error_t client_packet(const void *data, size_t length, void *ar
   tcp->received_bytes += length;
   ++tcp->received_count;
   tcp->packet_received = true;
-  cond_signal(&tcp->received);
+  if (was_empty)
+    cond_signal(&tcp->received);
   mutex_unlock(&tcp->mutex);
   return ASCIICHAT_OK;
 }
@@ -360,6 +393,7 @@ acip_transport_t *acip_async_tcp_client_create(socket_t *socket, crypto_context_
   }
   asciichat_error_t result = platform_event_stream_adopt(tcp->loop, socket, &tcp->stream);
   if (result == ASCIICHAT_OK) {
+    platform_event_stream_observe_queue(tcp->stream, queue_changed, tcp);
     result = platform_event_stream_start(tcp->stream, client_read, client_closed, tcp);
   }
   if (result == ASCIICHAT_OK)
@@ -384,6 +418,7 @@ acip_transport_t *acip_async_tcp_accepted_create(platform_event_stream_t *stream
     return NULL;
   async_tcp_t *tcp = transport->impl_data;
   if (cond_init(&tcp->received, "accepted_receive") != ASCIICHAT_OK) {
+    platform_event_stream_observe_queue(tcp->stream, NULL, NULL);
     tcp->stream = NULL;
     tcp->closed = true;
     acip_transport_destroy(transport);

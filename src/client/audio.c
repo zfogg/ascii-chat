@@ -161,6 +161,13 @@ static wav_writer_t *g_wav_playback_received = NULL;
  */
 static int audio_queue_packet(client_connection_t *connection, const uint8_t *opus_data, size_t opus_size,
                               const uint16_t *frame_sizes, int frame_count) {
+  if (connection->audio_send_direct) {
+    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    asciichat_error_t result =
+        threaded_send_audio_opus_batch(connection, opus_data, opus_size, frame_sizes, frame_count);
+    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    return result == ASCIICHAT_OK ? 0 : -1;
+  }
   if (!lifecycle_is_initialized(&connection->audio_send_queue_lc) || !opus_data || opus_size == 0) {
     return -1;
   }
@@ -294,6 +301,12 @@ asciichat_error_t audio_sender_init(client_connection_t *connection) {
   lifecycle_init(&connection->audio_send_queue_lc, "audio_queue");
   if (client_connection_checkpoint("audio-queue") != ASCIICHAT_OK)
     return ERROR_THREAD;
+  if (connection->transport && connection->transport->outbound) {
+    // Admission copies bounded audio into the transport queue without socket I/O.
+    connection->audio_send_direct = true;
+    atomic_store_bool(&connection->audio_sender_exited, true);
+    return client_connection_checkpoint("audio-sender");
+  }
   asciichat_error_t result =
       thread_pool_spawn(connection->client_worker_pool, audio_sender_thread_func, connection, 5, "audio_sender");
   if (result != ASCIICHAT_OK)
@@ -470,7 +483,7 @@ static void *audio_capture_thread_func(void *arg) {
   fps_t fps_tracker = {0};
   bool fps_tracker_initialized = false;
   if (!fps_tracker_initialized) {
-    fps_init(&fps_tracker, 50, "AUDIO_TX");
+    fps_init(&fps_tracker, 25, "AUDIO_TX"); // Two 20 ms Opus frames per network batch.
     fps_tracker_initialized = true;
   }
 
@@ -708,7 +721,8 @@ static void *audio_capture_thread_func(void *arg) {
       }
 
       // Queue batch for async sending (non-blocking - sender thread handles network I/O)
-      if (batch_frame_count > 0) {
+      if (batch_frame_count >= 2 ||
+          (batch_frame_count > 0 && time_get_ns() - batch_start_time_ns >= BATCH_TIMEOUT_NS)) {
         batch_send_count++;
 
         uint64_t audio_queue_packet_start_ns = time_get_ns();
@@ -1025,9 +1039,9 @@ void audio_stop_thread(client_connection_t *connection) {
   log_debug("[AUDIO_STOP] Signaling audio worker thread to stop");
   atomic_store_bool(&connection->audio_context->worker_should_stop, true);
   // Wake up the worker thread if it's waiting on condition variable
-  mutex_lock(&connection->audio_context->worker_mutex);
-  cond_signal(&connection->audio_context->worker_cond);
-  mutex_unlock(&connection->audio_context->worker_mutex);
+  mutex_lock(&connection->audio_context->audio_processing_wait_guard);
+  cond_signal(&connection->audio_context->audio_processing_wakeup);
+  mutex_unlock(&connection->audio_context->audio_processing_wait_guard);
   log_debug("[AUDIO_STOP] Worker thread stop signal sent");
 
   // Signal audio sender thread to exit first.

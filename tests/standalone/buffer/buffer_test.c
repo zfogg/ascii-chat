@@ -54,10 +54,13 @@ static void allocation_contracts(void) {
   large = buffer_alloc(domain, 32768);
   CHECK(large == address); /* A smaller returned buffer cannot hide this bin. */
   memset(large, 0xab, 32768);
+  CHECK(buffer_is_unique(large));
   const void *shared = buffer_share(large);
   CHECK(shared == large);
+  CHECK(!buffer_is_unique(large));
   CHECK(buffer_set_size(large, 4) != ASCIICHAT_OK);
   buffer_release(large);
+  CHECK(buffer_is_unique(shared));
   CHECK(((const unsigned char *)shared)[0] == 0xab);
   buffer_domain_close(&domain);
   CHECK(domain == NULL);
@@ -392,11 +395,40 @@ static void websocket_control_reserve_contract(void) {
   lws_context_destroy(context);
 }
 
-int main(void) {
+static void *share_worker(void *data) {
+  for (unsigned i = 0; i < 10000; ++i) {
+    const void *shared = buffer_share(data);
+    CHECK(shared && ((const unsigned char *)shared)[0] == 42);
+    buffer_release(shared);
+  }
+  return NULL;
+}
+
+static void concurrent_references(void) {
+  void *data = buffer_alloc(NULL, 128);
+  CHECK(data);
+  memset(data, 42, 128);
+  asciichat_thread_t threads[4];
+  for (unsigned i = 0; i < 4; ++i)
+    CHECK(asciichat_thread_create(&threads[i], "buffer-share", share_worker, data) == ASCIICHAT_OK);
+  for (unsigned i = 0; i < 4; ++i)
+    CHECK(asciichat_thread_join(&threads[i], NULL) == ASCIICHAT_OK);
+  CHECK(buffer_is_unique(data));
+  buffer_release(data);
+}
+
+int main(int argc, char **argv) {
   log_init(NULL, LOG_WARN, false, false);
   buffer_system_init();
   allocation_contracts();
   workspace_contracts();
+  concurrent_references();
+  if (argc == 2 && strcmp(argv[1], "--references-only") == 0) {
+    concurrent_contracts();
+    buffer_system_cleanup();
+    CHECK(buffer_process_reserved() == 0);
+    return 0;
+  }
   queue_contracts();
   concurrent_contracts();
   concurrent_queue_contracts();

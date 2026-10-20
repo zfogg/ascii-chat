@@ -211,6 +211,8 @@ static void client_release(void *context) {
   connection->audio_pipeline = NULL;
   h265_encoder_destroy(connection->video_encoder);
   connection->video_encoder = NULL;
+  buffer_workspace_destroy(&connection->encoded_video_workspace);
+  buffer_workspace_destroy(&connection->decoded_ascii_workspace);
   /* The shared owner drains callbacks before releasing transport and security. */
   log_debug("CLIENT_CONNECTION_TRANSPORT_CLEANUP");
   network_connection_destroy(&connection->network);

@@ -40,6 +40,12 @@ static void decoder_tests(void) {
     CHECK(!packet_decoder_pending(&decoder));
   }
   CHECK(packets == sizeof(wire) + 1);
+  buffer_stats_t before, after;
+  buffer_domain_stats(buffer_default_domain(), &before);
+  for (unsigned i = 0; i < 100; ++i)
+    CHECK(packet_decoder_feed(&decoder, wire, sizeof(wire), count_packet, NULL) == ASCIICHAT_OK);
+  buffer_domain_stats(buffer_default_domain(), &after);
+  CHECK(before.allocations == after.allocations && before.hits == after.hits);
   uint8_t batch[sizeof(wire) * 2];
   memcpy(batch, wire, sizeof(wire));
   memcpy(batch + sizeof(wire), wire, sizeof(wire));
@@ -68,7 +74,15 @@ typedef struct {
   unsigned accepted, closed, completions, jobs;
   bool expire, cancel, push, zerocopy, acknowledged, drain;
   socket_io_stats_t stats;
+  _Atomic(size_t) queued_bytes, peak_queued_bytes;
 } fixture_t;
+
+static void queue_observed(void *arg, size_t bytes) {
+  fixture_t *fixture = arg;
+  fixture->queued_bytes = bytes;
+  if (bytes > fixture->peak_queued_bytes)
+    fixture->peak_queued_bytes = bytes;
+}
 
 static void write_done(void *arg, asciichat_error_t result) {
   fixture_t *fixture = arg;
@@ -107,12 +121,16 @@ static void closed(void *arg, asciichat_error_t result) {
   fixture_t *fixture = arg;
   CHECK(result == (fixture->cancel ? ERROR_NETWORK : fixture->expire ? ERROR_NETWORK_TIMEOUT : ASCIICHAT_OK));
   ++fixture->closed;
+  CHECK(fixture->queued_bytes == 0);
+  if (fixture->completions)
+    CHECK(fixture->peak_queued_bytes > 0);
   platform_event_loop_stop(fixture->loop);
 }
 static void accepted(platform_event_stream_t *stream, void *arg) {
   fixture_t *fixture = arg;
   ++fixture->accepted;
   fixture->stream = stream;
+  platform_event_stream_observe_queue(stream, queue_observed, fixture);
   if (!fixture->zerocopy)
     platform_event_stream_set_zerocopy(stream, false);
   CHECK(platform_event_stream_start(stream, read_data, closed, fixture) == ASCIICHAT_OK);

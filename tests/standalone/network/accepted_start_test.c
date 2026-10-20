@@ -28,8 +28,15 @@ static void record_transport_destroy(acip_transport_t *transport) {
 
 size_t test_async_tcp_transport_queued(acip_transport_t *transport);
 
+static void observe_fake_stream(platform_event_stream_t *stream, platform_event_queue_fn observer, void *context) {
+  (void)stream;
+  if (observer)
+    observer(context, 0);
+}
+
 // Exercise the production constructor with a startup failure that retains its close callback.
 #define platform_event_stream_start fail_stream_start
+#define platform_event_stream_observe_queue observe_fake_stream
 #define platform_event_stream_close record_stream_close
 #define acip_transport_destroy record_transport_destroy
 #define acip_async_tcp_transport_create test_async_tcp_transport_create

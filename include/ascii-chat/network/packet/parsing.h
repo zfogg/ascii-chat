@@ -72,6 +72,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <ascii-chat/buffer.h>
 #include "../../common.h"
 #include "../../audio/audio.h"
 #include "../../util/endian.h"
@@ -146,6 +147,9 @@ char *packet_decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
 asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
                                                   void *output_buffer, size_t output_size, uint32_t original_size,
                                                   uint32_t compressed_size);
+/** Decode into caller-owned reusable storage, including a trailing NUL. */
+asciichat_error_t packet_decode_frame_data_workspace(buffer_workspace_t *workspace, const void *data, size_t length,
+                                                     bool compressed, uint32_t original_size, uint32_t compressed_size);
 
 /** @} */
 

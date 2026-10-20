@@ -337,6 +337,29 @@ static const char *sync_rate_color(double rate) {
                                  : LOG_COLOR_DEBUG);
 }
 
+// Only the presentation worker writes this storage. Diagnostic rendering must
+// remain usable even when the allocator or another subsystem mutex is stuck.
+static char g_sync_output[64 * 1024];
+static size_t g_sync_output_used;
+
+static void sync_flush(void) {
+  if (g_sync_output_used) {
+    ui_controller_write(g_sync_fd, g_sync_output, g_sync_output_used);
+    g_sync_output_used = 0;
+  }
+}
+
+static void sync_write(const char *text, size_t length) {
+  if (length > sizeof(g_sync_output) - g_sync_output_used)
+    sync_flush();
+  if (length > sizeof(g_sync_output)) {
+    ui_controller_write(g_sync_fd, text, length);
+    return;
+  }
+  memcpy(g_sync_output + g_sync_output_used, text, length);
+  g_sync_output_used += length;
+}
+
 static void sync_write_line(const char *text, int columns, bool newline, int *measured_width) {
   char output[2048];
   size_t used = 0;
@@ -375,7 +398,7 @@ static void sync_write_line(const char *text, int columns, bool newline, int *me
   const char *suffix = newline ? "\033[0m\033[K\r\n" : "\033[0m\033[K";
   memcpy(output + used, suffix, strlen(suffix));
   used += strlen(suffix);
-  ui_controller_write(g_sync_fd, output, used);
+  sync_write(output, used);
 }
 
 // Header/detail numbers share the log palette, including hexadecimal addresses.
@@ -501,7 +524,7 @@ void ui_sync_render(terminal_size_t size) {
     int *measure = pass == 0 ? &measured_width : NULL;
     char line[1024];
     if (!measure)
-      ui_controller_write(g_sync_fd, "\033[H", 3);
+      sync_write("\033[?2026h\033[H", 11);
     snprintf(line, sizeof(line), "Sync primitives | %zu objects | page %d/%d | item %zu/%zu | age %.1fs", total,
              page + 1, pages, count ? (size_t)page * per_page + selected + 1 : 0, total,
              sampled ? (double)(now - sampled) / NS_PER_SEC_INT : 0.0);
@@ -595,10 +618,10 @@ void ui_sync_render(terminal_size_t size) {
       // Clear only unused table rows, leaving the live footer in place.
       for (int row = header_rows + (int)count + 1; row < size.rows - 3; ++row) {
         snprintf(line, sizeof(line), "\033[%d;1H\033[K", row);
-        ui_controller_write(g_sync_fd, line, strlen(line));
+        sync_write(line, strlen(line));
       }
       snprintf(line, sizeof(line), "\033[%d;1H", size.rows > 3 ? size.rows - 3 : 1);
-      ui_controller_write(g_sync_fd, line, strlen(line));
+      sync_write(line, strlen(line));
     }
     sync_separator(size.cols, measure);
     if (count) {
@@ -619,11 +642,11 @@ void ui_sync_render(terminal_size_t size) {
       sync_write_numbers(line, size.cols, measure);
     } else if (!measure) {
       snprintf(line, sizeof(line), "\033[%d;1H\033[K\033[%d;1H\033[K", size.rows - 2, size.rows - 1);
-      ui_controller_write(g_sync_fd, line, strlen(line));
+      sync_write(line, strlen(line));
     }
     snprintf(line, sizeof(line), "\033[%d;1H", size.rows);
     if (!measure)
-      ui_controller_write(g_sync_fd, line, strlen(line));
+      sync_write(line, strlen(line));
     snprintf(line, sizeof(line),
              "%s0%s/%sEsc%s close | %s?%s help | %sLeft%s/%sRight%s page | %sUp%s/%sDown%s select | "
              "%sHome%s/%sEnd%s first/last",
@@ -644,6 +667,8 @@ void ui_sync_render(terminal_size_t size) {
       }
     }
   }
+  sync_write("\033[?2026l", 8);
+  sync_flush();
 }
 
 #else

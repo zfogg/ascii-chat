@@ -176,7 +176,8 @@ static void *webcam_capture_thread_func(void *arg) {
   bool fps_tracker_initialized = false;
   uint64_t capture_frame_count = 0;
   uint64_t last_capture_frame_time_ns = 0;
-  image_t *last_frame = NULL; // Cache last frame to render when paused
+  image_t *transmission_frame = NULL; // Capture worker owns reusable network pixels.
+  image_t *last_frame = NULL;         // Borrows transmission_frame for paused playback.
   const char *video_codec = GET_OPTION(video_codec);
   bool automatic_codec = strcmp(video_codec, "auto") == 0;
   video_codec_t selected_codec = strcmp(video_codec, "raw") == 0    ? VIDEO_CODEC_RGBA
@@ -229,7 +230,6 @@ static void *webcam_capture_thread_func(void *arg) {
       } else if (session_capture_at_end(connection->capture_context)) {
         // Check if we've reached end of file for media sources
         log_debug("Media source reached end of file");
-        image_destroy(last_frame);
         last_frame = NULL;
         break; // Exit capture loop - end of media
       } else {
@@ -242,20 +242,15 @@ static void *webcam_capture_thread_func(void *arg) {
     // Track frame for FPS reporting
     fps_frame_ns(&fps_tracker, time_get_ns(), "webcam frame captured");
 
-    // Process frame for network transmission using session library
-    // session_capture_process_for_transmission() returns a new image that we own
-    // NOTE: The original 'image' is owned by media_source - do NOT free it!
-    image_t *processed_image = session_capture_process_for_transmission(connection->capture_context, image);
-    if (!processed_image) {
-      SET_ERRNO(ERROR_INVALID_STATE, "Failed to process frame for transmission");
-      // NOTE: Do NOT free 'image' - it's owned by capture context
+    // Copy/resize into capture-owned storage; the media source retains its input.
+    if (session_capture_process_for_transmission_into(connection->capture_context, image, &transmission_frame) !=
+        ASCIICHAT_OK)
       continue;
-    }
+    image_t *processed_image = transmission_frame;
 
     // Check connection before sending
     if (!server_connection_is_active(connection)) {
       log_warn("Connection lost before sending, stopping video transmission");
-      image_destroy(processed_image);
       break;
     }
 
@@ -263,7 +258,6 @@ static void *webcam_capture_thread_func(void *arg) {
     acip_transport_t *transport = server_connection_get_transport(connection);
     if (!transport || !server_connection_is_active(connection)) {
       log_warn("Transport became unavailable during capture, stopping transmission");
-      image_destroy(processed_image);
       break;
     }
 
@@ -306,14 +300,12 @@ static void *webcam_capture_thread_func(void *arg) {
                 asciichat_error_format(NULL, send_result));
       asciichat_errno_request_exit(send_result);
       signal_exit();
-      image_destroy(processed_image);
       break;
     }
 
     // If send failed due to connection loss, break out of loop
     if (send_result != ASCIICHAT_OK && !server_connection_is_active(connection)) {
       log_debug("Connection lost during send, stopping transmission");
-      image_destroy(processed_image);
       break;
     }
     uint64_t send_duration_ns = time_elapsed_ns(send_start_ns, time_get_ns());
@@ -321,14 +313,12 @@ static void *webcam_capture_thread_func(void *arg) {
     if (send_result != ASCIICHAT_OK && network_error_is_local_rejection(send_result)) {
       LOG_ERRNO_IF_SET("Dropping locally rejected video frame");
       asciichat_errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
-      image_destroy(processed_image);
       continue;
     }
     if (send_result != ASCIICHAT_OK) {
       log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME_%s send failed %s after %.1fms, closing connection", codec_name,
                 asciichat_error_format(NULL, send_result), (double)send_duration_ns / 1e6);
       server_connection_lost(connection);
-      image_destroy(processed_image);
       break;
     }
 
@@ -342,16 +332,8 @@ static void *webcam_capture_thread_func(void *arg) {
     log_debug_every(LOG_RATE_NORMAL, "CAPTURE_FRAME_SENT: IMAGE_FRAME_%s delivered to server in %.1fms", codec_name,
                     (double)send_duration_ns / 1e6);
 
-    // Cache last frame for rendering when paused
-    // Make a copy since the original is owned by media_source
-    if (last_frame) {
-      image_destroy(last_frame);
-    }
-    last_frame = image_new(processed_image->w, processed_image->h);
-    if (last_frame) {
-      memcpy(last_frame->pixels, processed_image->pixels,
-             (size_t)processed_image->w * (size_t)processed_image->h * sizeof(rgb_pixel_t));
-    }
+    // Keep the processed workspace itself for pause; no second image copy.
+    last_frame = processed_image;
 
     // FPS tracking - frame successfully captured and sent
     capture_frame_count++;
@@ -378,9 +360,6 @@ static void *webcam_capture_thread_func(void *arg) {
                      late_ms, expected_ms, actual_ms, actual_fps);
     }
 
-    // Clean up processed frame
-    image_destroy(processed_image);
-    processed_image = NULL;
 
     // Yield to reduce CPU usage
     platform_sleep_us(1 * US_PER_MS_INT); // 1ms
@@ -390,11 +369,9 @@ static void *webcam_capture_thread_func(void *arg) {
   log_debug("Webcam capture thread stopped");
 #endif
 
-  // Clean up cached frame before thread exit
-  if (last_frame) {
-    image_destroy(last_frame);
-    last_frame = NULL;
-  }
+  image_destroy(transmission_frame);
+  transmission_frame = NULL;
+  last_frame = NULL;
 
   log_debug("CAPTURE_THREAD_EXIT: About to mark thread as exited");
   atomic_store_bool(&connection->capture_thread_exited, true);

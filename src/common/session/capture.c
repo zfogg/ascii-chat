@@ -985,51 +985,35 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
   return frame;
 }
 
+asciichat_error_t session_capture_process_for_transmission_into(session_capture_ctx_t *ctx, image_t *frame,
+                                                                image_t **output) {
+  if (!ctx || !frame || !output)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing transmission frame or workspace");
+  ssize_t width = frame->w, height = frame->h;
+  if (ctx->resize_for_network)
+    calculate_optimal_dimensions(frame->w, frame->h, SESSION_MAX_FRAME_WIDTH, SESSION_MAX_FRAME_HEIGHT, &width,
+                                 &height);
+  if (!*output || (*output)->w != width || (*output)->h != height) {
+    image_t *replacement = image_new(width, height);
+    if (!replacement)
+      return SET_ERRNO(ERROR_MEMORY, "Cannot reserve transmission image workspace");
+    image_destroy(*output);
+    *output = replacement;
+  }
+  if (frame != *output) {
+    if (frame->w == width && frame->h == height)
+      memcpy((*output)->pixels, frame->pixels, (size_t)width * (size_t)height * sizeof(rgb_pixel_t));
+    else
+      image_resize(frame, *output);
+  }
+  return ASCIICHAT_OK;
+}
+
 image_t *session_capture_process_for_transmission(session_capture_ctx_t *ctx, image_t *frame) {
-  if (!ctx || !frame) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
+  image_t *output = NULL;
+  if (session_capture_process_for_transmission_into(ctx, frame, &output) != ASCIICHAT_OK)
     return NULL;
-  }
-
-  // If resize is not enabled, just create a copy
-  if (!ctx->resize_for_network) {
-    image_t *copy = image_new(frame->w, frame->h);
-    if (!copy) {
-      SET_ERRNO(ERROR_MEMORY, "Failed to allocate image copy");
-      return NULL;
-    }
-    memcpy(copy->pixels, frame->pixels, (size_t)frame->w * (size_t)frame->h * sizeof(rgb_pixel_t));
-    return copy;
-  }
-
-  // Calculate optimal dimensions for network transmission
-  ssize_t resized_width, resized_height;
-  calculate_optimal_dimensions(frame->w, frame->h, SESSION_MAX_FRAME_WIDTH, SESSION_MAX_FRAME_HEIGHT, &resized_width,
-                               &resized_height);
-
-  // Check if resizing is actually needed
-  if (frame->w == resized_width && frame->h == resized_height) {
-    // No resizing needed - create a copy
-    image_t *copy = image_new(frame->w, frame->h);
-    if (!copy) {
-      SET_ERRNO(ERROR_MEMORY, "Failed to allocate image copy");
-      return NULL;
-    }
-    memcpy(copy->pixels, frame->pixels, (size_t)frame->w * (size_t)frame->h * sizeof(rgb_pixel_t));
-    return copy;
-  }
-
-  // Create new image for resized frame
-  image_t *resized = image_new(resized_width, resized_height);
-  if (!resized) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate resized image buffer");
-    return NULL;
-  }
-
-  // Perform resizing operation
-  image_resize(frame, resized);
-
-  return resized;
+  return output;
 }
 
 void session_capture_sleep_for_fps(session_capture_ctx_t *ctx) {

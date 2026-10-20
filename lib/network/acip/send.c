@@ -237,14 +237,16 @@ asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const 
   if (frame_count > MAX_PACKET_SIZE / sizeof(uint16_t) || opus_len > MAX_PACKET_SIZE)
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Opus batch too large");
   size_t sizes_len = (size_t)frame_count * sizeof(uint16_t);
-  uint16_t *sizes = buffer_alloc(NULL, sizes_len);
+  uint16_t inline_sizes[8];
+  uint16_t *sizes = frame_count <= 8 ? inline_sizes : buffer_alloc(NULL, sizes_len);
   if (!sizes)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate Opus lengths");
   for (uint32_t i = 0; i < frame_count; ++i)
     sizes[i] = HOST_TO_NET_U16(frame_sizes[i]);
   socket_buffer_t slices[] = {{header, sizeof(header)}, {sizes, sizes_len}, {opus_data, opus_len}};
   asciichat_error_t result = packet_send_via_transportv(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, slices, 3, 0);
-  buffer_release(sizes);
+  if (sizes != inline_sizes)
+    buffer_release(sizes);
   return result;
 }
 

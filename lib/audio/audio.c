@@ -194,16 +194,26 @@ static void *audio_worker_thread(void *arg) {
 
     // The device callback wakes the producer after consumption. The bounded
     // timeout also drives software-only recording and recovers lost wakeups.
-    mutex_lock(&ctx->worker_mutex);
     uint64_t wait_start_ns = time_get_ns();
     // Local media playback maintains 150 ms of queued audio. Refill below
     // 100 ms instead of waking for every callback or 10 ms timeout. Capture
     // and software-only transmission retain their 10 ms processing cadence.
     bool buffered_media = ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media && ctx->output_stream;
-    int timeout_ms = buffered_media ? 100 : WORKER_TIMEOUT_MS;
-    int wait_result = cond_timedwait(&ctx->worker_cond, &ctx->worker_mutex, timeout_ms * NS_PER_MS_INT);
+    bool transmitted_media = ctx->capture_media_source && ctx->playback_only && !ctx->monitor_local_media;
+    int timeout_ms = buffered_media ? 100 : transmitted_media ? 20 : WORKER_TIMEOUT_MS;
+    int wait_result;
+    if (transmitted_media) {
+      // This producer follows the media clock, not device callbacks. A bounded
+      // 20 ms sleep also bounds stop latency without a wakeup mutex round trip.
+      platform_sleep_us(20 * US_PER_MS_INT);
+      wait_result = 1;
+    } else {
+      mutex_lock(&ctx->audio_processing_wait_guard);
+      wait_result =
+          cond_timedwait(&ctx->audio_processing_wakeup, &ctx->audio_processing_wait_guard, timeout_ms * NS_PER_MS_INT);
+      mutex_unlock(&ctx->audio_processing_wait_guard);
+    }
     double wait_time_ns = (double)time_elapsed_ns(wait_start_ns, time_get_ns());
-    mutex_unlock(&ctx->worker_mutex);
     total_wait_ns += wait_time_ns;
     if (wait_time_ns > max_wait_ns)
       max_wait_ns = wait_time_ns;
@@ -271,7 +281,7 @@ static void *audio_worker_thread(void *arg) {
       bool local_playback = use_media && ctx->monitor_local_media && ctx->output_stream;
       size_t queued = local_playback ? audio_ring_buffer_available_read(ctx->playback_buffer) : 0;
       size_t refill = queued < 7200 ? 7200 - queued : 0;
-      uint64_t due = local_playback ? media_samples + refill : (now - media_start_ns) / 1000000ULL * 48;
+      uint64_t due = local_playback ? media_samples + refill : (now - media_start_ns) / (20 * NS_PER_MS_INT) * 960;
       float media[960];
       while (media_samples < due) {
         size_t count = due - media_samples > 960 ? 960 : (size_t)(due - media_samples);
@@ -644,7 +654,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
 
   // STEP 4: Signal worker thread (non-blocking, ~0.1ms)
   // Worker wakes up, processes batch, writes back to processed buffers
-  cond_signal(&ctx->worker_cond);
+  cond_signal(&ctx->audio_processing_wakeup);
 
   // Log callback timing and playback stats periodically
   double callback_time_ns = (double)time_elapsed_ns(callback_start_ns, time_get_ns());
@@ -772,7 +782,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
     if (resample_output && framesPerBuffer > AUDIO_FRAMES_PER_BUFFER) {
       log_warn_every(LOG_RATE_FAST, "Output callback block too large to resample safely (%lu frames)", framesPerBuffer);
       SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
-      cond_signal(&ctx->worker_cond);
+      cond_signal(&ctx->audio_processing_wakeup);
       return paContinue;
     }
 
@@ -784,7 +794,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       if (source_request > source_capacity) {
         log_warn_every(LOG_RATE_FAST, "Output resample request exceeds callback buffer (%zu samples)", source_request);
         SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
-        cond_signal(&ctx->worker_cond);
+        cond_signal(&ctx->audio_processing_wakeup);
         return paContinue;
       }
     }
@@ -890,8 +900,9 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
   // STEP 3: Signal worker when local playback needs a refill. Other audio
   // paths still notify on every callback to preserve capture/AEC latency.
   bool buffered_media = ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media;
-  if (!buffered_media || audio_ring_buffer_available_read(ctx->playback_buffer) <= 4800)
-    cond_signal(&ctx->worker_cond);
+  if ((!ctx->playback_only || ctx->monitor_local_media) &&
+      (!buffered_media || audio_ring_buffer_available_read(ctx->playback_buffer) <= 4800))
+    cond_signal(&ctx->audio_processing_wakeup);
 
   return paContinue;
 }
@@ -1015,7 +1026,7 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
           resample_capture_block(ctx, input, num_samples, normalized, sizeof(normalized) / sizeof(normalized[0]));
       if (output_samples == 0) {
         log_warn_every(LOG_RATE_FAST, "Input callback block too large to resample safely (%zu samples)", num_samples);
-        cond_signal(&ctx->worker_cond);
+        cond_signal(&ctx->audio_processing_wakeup);
         return paContinue;
       }
       capture = normalized;
@@ -1043,7 +1054,7 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
   }
 
   // STEP 3: Signal worker thread
-  cond_signal(&ctx->worker_cond);
+  cond_signal(&ctx->audio_processing_wakeup);
 
   return paContinue;
 }
@@ -1583,7 +1594,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   }
 
   // Initialize worker thread infrastructure
-  if (mutex_init(&ctx->worker_mutex, "audio_worker_mutex") != 0) {
+  if (mutex_init(&ctx->audio_processing_wait_guard, "audio_processing_wait_guard") != 0) {
     audio_ring_buffer_destroy(ctx->processed_playback_rb);
     audio_ring_buffer_destroy(ctx->raw_render_rb);
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
@@ -1593,8 +1604,8 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize worker mutex");
   }
 
-  if (cond_init(&ctx->worker_cond, "audio_worker_cond") != 0) {
-    mutex_destroy(&ctx->worker_mutex);
+  if (cond_init(&ctx->audio_processing_wakeup, "audio_processing_wakeup") != 0) {
+    mutex_destroy(&ctx->audio_processing_wait_guard);
     audio_ring_buffer_destroy(ctx->processed_playback_rb);
     audio_ring_buffer_destroy(ctx->raw_render_rb);
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
@@ -1607,8 +1618,8 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   // Allocate pre-allocated worker buffers (avoid malloc in worker loop)
   ctx->worker_capture_batch = SAFE_MALLOC(WORKER_BATCH_SAMPLES * sizeof(float), float *);
   if (!ctx->worker_capture_batch) {
-    cond_destroy(&ctx->worker_cond);
-    mutex_destroy(&ctx->worker_mutex);
+    cond_destroy(&ctx->audio_processing_wakeup);
+    mutex_destroy(&ctx->audio_processing_wait_guard);
     audio_ring_buffer_destroy(ctx->processed_playback_rb);
     audio_ring_buffer_destroy(ctx->raw_render_rb);
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
@@ -1621,8 +1632,8 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   ctx->worker_render_batch = SAFE_MALLOC(WORKER_BATCH_SAMPLES * sizeof(float), float *);
   if (!ctx->worker_render_batch) {
     SAFE_FREE(ctx->worker_capture_batch);
-    cond_destroy(&ctx->worker_cond);
-    mutex_destroy(&ctx->worker_mutex);
+    cond_destroy(&ctx->audio_processing_wakeup);
+    mutex_destroy(&ctx->audio_processing_wait_guard);
     audio_ring_buffer_destroy(ctx->processed_playback_rb);
     audio_ring_buffer_destroy(ctx->raw_render_rb);
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
@@ -1636,8 +1647,8 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   if (!ctx->worker_playback_batch) {
     SAFE_FREE(ctx->worker_render_batch);
     SAFE_FREE(ctx->worker_capture_batch);
-    cond_destroy(&ctx->worker_cond);
-    mutex_destroy(&ctx->worker_mutex);
+    cond_destroy(&ctx->audio_processing_wakeup);
+    mutex_destroy(&ctx->audio_processing_wait_guard);
     audio_ring_buffer_destroy(ctx->processed_playback_rb);
     audio_ring_buffer_destroy(ctx->raw_render_rb);
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
@@ -1662,8 +1673,9 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
 
   /* Register audio context's sync primitives with hierarchical naming */
   NAMED_REGISTER_MUTEX(&ctx->state_mutex, "state_mutex", (uintptr_t)(const void *)(ctx));
-  NAMED_REGISTER_MUTEX(&ctx->worker_mutex, "worker_mutex", (uintptr_t)(const void *)(ctx));
-  NAMED_REGISTER_COND(&ctx->worker_cond, "worker_cond", (uintptr_t)(const void *)(ctx));
+  NAMED_REGISTER_MUTEX(&ctx->audio_processing_wait_guard, "audio_processing_wait_guard",
+                       (uintptr_t)(const void *)(ctx));
+  NAMED_REGISTER_COND(&ctx->audio_processing_wakeup, "audio_processing_wakeup", (uintptr_t)(const void *)(ctx));
   NAMED_REGISTER_ATOMIC(&ctx->worker_should_stop, "worker_should_stop", (uintptr_t)(const void *)(ctx));
   NAMED_REGISTER_ATOMIC(&ctx->shutting_down, "shutting_down", (uintptr_t)(const void *)(ctx));
 
@@ -1698,7 +1710,7 @@ void audio_destroy(audio_context_t *ctx) {
     if (ctx->worker_running) {
       log_debug("Stopping worker thread");
       atomic_store_bool(&ctx->worker_should_stop, true);
-      cond_signal(&ctx->worker_cond); // Wake up worker if waiting
+      cond_signal(&ctx->audio_processing_wakeup); // Wake up worker if waiting
       asciichat_thread_join(&ctx->worker_thread, NULL);
       ctx->worker_running = false;
     }
@@ -1719,8 +1731,8 @@ void audio_destroy(audio_context_t *ctx) {
     SAFE_FREE(ctx->worker_playback_batch);
 
     // Destroy worker synchronization primitives
-    cond_destroy(&ctx->worker_cond);
-    mutex_destroy(&ctx->worker_mutex);
+    cond_destroy(&ctx->audio_processing_wakeup);
+    mutex_destroy(&ctx->audio_processing_wait_guard);
 
     ctx->initialized = false;
 
@@ -2186,7 +2198,7 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
   if (ctx->worker_running) {
     log_debug("Stopping worker thread");
     atomic_store_bool(&ctx->worker_should_stop, true);
-    cond_signal(&ctx->worker_cond); // Wake up worker if waiting
+    cond_signal(&ctx->audio_processing_wakeup); // Wake up worker if waiting
     asciichat_thread_join(&ctx->worker_thread, NULL);
     ctx->worker_running = false;
     log_debug("Worker thread stopped successfully");

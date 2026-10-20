@@ -191,10 +191,14 @@ void test_session_protocol(void) {
   acip_transport_t transports[2] = {{.methods = &methods, .impl_data = &sinks[0]},
                                     {.methods = &methods, .impl_data = &sinks[1]}};
   session_protocol_t protocols[2];
+  buffer_workspace_t ascii_workspace = {0};
   for (int i = 0; i < 2; i++) {
     session_protocol_init(&protocols[i], &transports[i],
-                          (session_protocol_media_t){
-                              .on_frame = frame, .on_samples = samples, .decode_opus = decode, .context = &sinks[i]},
+                          (session_protocol_media_t){.on_frame = frame,
+                                                     .on_samples = samples,
+                                                     .decode_opus = decode,
+                                                     .context = &sinks[i],
+                                                     .frame_workspace = i == 0 ? &ascii_workspace : NULL},
                           (acip_client_callbacks_t){.on_pong = pong, .app_ctx = &sinks[i]});
   }
   uint8_t payload[256];
@@ -224,6 +228,13 @@ void test_session_protocol(void) {
   CHECK(session_protocol_dispatch(&protocols[1], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed) ==
         ASCIICHAT_OK);
   CHECK(sinks[1].frames == 1);
+  buffer_stats_t before, after;
+  buffer_domain_stats(buffer_default_domain(), &before);
+  for (unsigned i = 0; i < 100; ++i)
+    CHECK(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed) ==
+          ASCIICHAT_OK);
+  buffer_domain_stats(buffer_default_domain(), &after);
+  CHECK(before.allocations == after.allocations && before.hits == after.hits);
   CHECK(session_protocol_dispatch(&protocols[1], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed - 1) ==
         ERROR_NETWORK_PROTOCOL);
   CLEAR_ERRNO();
@@ -265,6 +276,7 @@ void test_session_protocol(void) {
   CHECK(sinks[0].pongs == 1 && sinks[1].pongs == 0);
   CHECK(session_protocol_dispatch(&protocols[1], PACKET_TYPE_PONG, NULL, 0) == ASCIICHAT_OK);
   CHECK(sinks[1].controls == 1 && sinks[0].controls == 0);
+  buffer_workspace_destroy(&ascii_workspace);
   log_info("PASS: shared participant protocol, compressed frames, CRC, PCM, Opus bounds, error propagation and owner "
            "isolation");
 }

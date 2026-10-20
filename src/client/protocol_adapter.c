@@ -162,10 +162,10 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const asc
   // by both client and host/discovery modes for consistent metrics
 
   // Render ASCII art frame (display_render_frame will apply effects like --matrix)
-  log_debug("🎬 CALLING_DISPLAY_RENDER: frame_data=%p len=%zu, calling display_render_frame()", frame_data,
-            strlen(frame_data));
+  log_debug_every(US_PER_SEC_INT, "CALLING_DISPLAY_RENDER: frame_data=%p len=%zu, calling display_render_frame()",
+                  frame_data, strlen(frame_data));
   display_render_frame(connection, frame_data);
-  log_debug("🎬 DISPLAY_RENDER_RETURNED: frame was rendered");
+  log_debug_every(US_PER_SEC_INT, "DISPLAY_RENDER_RETURNED: frame was rendered");
 }
 
 static bool handle_error_message_packet(client_connection_t *connection, const void *data, size_t len) {
@@ -339,7 +339,8 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
                                                    .on_samples = client_play_samples,
                                                    .decode_opus = client_decode_opus,
                                                    .on_audio_packet = client_track_audio,
-                                                   .context = connection},
+                                                   .context = connection,
+                                                   .frame_workspace = &connection->decoded_ascii_workspace},
                         control);
 
   // Reset display state for new connection

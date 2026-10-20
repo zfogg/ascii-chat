@@ -144,8 +144,8 @@ typedef struct {
 
   // Worker thread for heavy processing (AEC3, filters)
   asciichat_thread_t worker_thread; ///< Worker thread for audio processing
-  mutex_t worker_mutex;             ///< Mutex protecting worker state
-  cond_t worker_cond;               ///< Condition variable for worker signaling
+  mutex_t audio_processing_wait_guard; ///< Coordinates device-worker sleep with shutdown
+  cond_t audio_processing_wakeup;      ///< Capture/AEC work, monitor refill, or shutdown notification
   bool worker_running;              ///< True if worker thread is running
   atomic_t worker_should_stop;      ///< Signal worker thread to exit
 
