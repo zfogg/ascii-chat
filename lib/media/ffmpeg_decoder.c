@@ -102,7 +102,8 @@ struct ffmpeg_decoder_t {
   _Atomic bool prefetch_failed;
   bool prefetch_thread_running; ///< Whether prefetch thread is active
   _Atomic bool prefetch_should_stop;    ///< Signal to stop prefetch thread
-  bool seeking_in_progress;     ///< Signal to pause prefetch thread during seek
+  _Atomic bool seeking_in_progress;     ///< Signal to pause prefetch thread during seek
+  _Atomic uint64_t seek_generation; ///< Detect seeks before and after packet reads
   cond_t prefetch_cond;         ///< Condition variable for pausing during seek
   mutex_t prefetch_mutex;       ///< Protect prefetch state and FFmpeg decoder access
   mutex_t read_frame_mutex;     ///< Protect av_read_frame() calls from video and audio threads
@@ -336,12 +337,14 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     // next frame. Seek completion and shutdown also signal this condition.
     while (!decoder->prefetch_should_stop &&
            (atomic_load_bool(&decoder->eof_reached) || decoder->seeking_in_progress ||
-            decoder->prefetch_frame_ready || (use_image_a ? decoder->buffer_a_in_use : decoder->buffer_b_in_use)))
+            decoder->prefetch_frame_ready || (decoder->buffer_a_in_use && decoder->buffer_b_in_use)))
       cond_wait(&decoder->prefetch_cond, &decoder->prefetch_mutex);
     if (decoder->prefetch_should_stop) {
       break;
     }
 
+    use_image_a = !decoder->buffer_a_in_use;
+    uint64_t generation = decoder->seek_generation;
     uint64_t read_start_ns = time_get_ns();
     bool frame_decoded = false;
     bool reached_eof = false;
@@ -350,6 +353,11 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     // Release prefetch mutex but hold read_frame_mutex to prevent concurrent av_read_frame() calls from audio thread
     mutex_unlock(&decoder->prefetch_mutex);
     mutex_lock(&decoder->read_frame_mutex);
+    if (generation != decoder->seek_generation || decoder->seeking_in_progress) {
+      mutex_unlock(&decoder->read_frame_mutex);
+      mutex_lock(&decoder->prefetch_mutex);
+      continue;
+    }
 
     // Read packets until we get a video frame - read_frame_mutex HELD
     while (true) {
@@ -543,7 +551,12 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     mutex_lock(&decoder->prefetch_mutex);
 
     // Mutex now held - update prefetch state
-    bool interrupted = decoder->prefetch_should_stop || decoder->seeking_in_progress;
+    bool obsolete = generation != decoder->seek_generation;
+    bool interrupted = decoder->prefetch_should_stop || decoder->seeking_in_progress || obsolete;
+    if (obsolete) {
+      frame_decoded = false;
+      reached_eof = false;
+    }
     if (!frame_decoded && !reached_eof && !interrupted) {
       if (!asciichat_errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
         SET_ERRNO(ERROR_MEDIA_DECODE, "Background video decoding failed");
@@ -566,8 +579,6 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       decoder->current_prefetch_image = decode_buffer;
       atomic_store_explicit(&decoder->prefetch_frame_ready, true, memory_order_release);
 
-      // Switch to the other buffer for next iteration (MUST use boolean flag, not pointer comparison)
-      use_image_a = !use_image_a;
     } else if (!reached_eof && !interrupted) {
       // A decoder error terminates prefetch; EOF waits for rewind above.
       break;
@@ -1421,6 +1432,7 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
     return 0;
   }
 
+  mutex_lock(&decoder->read_frame_mutex);
   size_t samples_written = 0;
 
   // First, drain any buffered samples
@@ -1439,15 +1451,13 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
 
     if (samples_written >= num_samples) {
       decoder->audio_samples_read += samples_written;
+      mutex_unlock(&decoder->read_frame_mutex);
       return samples_written;
     }
   }
 
   // Read more packets to fill the request
   static uint64_t packet_count = 0;
-
-  // Lock read_frame_mutex to prevent concurrent av_read_frame() calls from video prefetch thread
-  mutex_lock(&decoder->read_frame_mutex);
 
   while (samples_written < num_samples) {
     int ret = av_read_frame(decoder->format_ctx, decoder->packet);
@@ -1519,9 +1529,6 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
   }
 
 audio_read_done:
-  // Release read_frame_mutex now that av_read_frame() is done
-  mutex_unlock(&decoder->read_frame_mutex);
-
   // Flush resampler buffer if we haven't filled the full request
   // The resampler may have buffered samples that need to be output
   if (samples_written < num_samples && atomic_load_bool(&decoder->eof_reached)) {
@@ -1535,6 +1542,7 @@ audio_read_done:
 
   // Update sample-based position tracking
   decoder->audio_samples_read += samples_written;
+  mutex_unlock(&decoder->read_frame_mutex);
 
   return samples_written;
 }
@@ -1548,48 +1556,7 @@ bool ffmpeg_decoder_has_audio(ffmpeg_decoder_t *decoder) {
  * ============================================================================ */
 
 asciichat_error_t ffmpeg_decoder_rewind(ffmpeg_decoder_t *decoder) {
-  if (!decoder) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing decoder for rewind");
-  }
-
-  if (decoder->is_stdin) {
-    return ERROR_NOT_SUPPORTED; // Cannot seek stdin
-  }
-
-  // Serialize the seek and codec reset with packet decoding.
-  bool has_video = decoder->video_stream_idx >= 0;
-  if (has_video)
-    mutex_lock(&decoder->read_frame_mutex);
-
-  // Flush codec buffers
-  if (decoder->video_codec_ctx) {
-    avcodec_flush_buffers(decoder->video_codec_ctx);
-  }
-  if (decoder->audio_codec_ctx) {
-    avcodec_flush_buffers(decoder->audio_codec_ctx);
-  }
-
-  // Seek to beginning
-  if (av_seek_frame(decoder->format_ctx, -1, 0, AVSEEK_FLAG_BACKWARD) < 0) {
-    if (has_video)
-      mutex_unlock(&decoder->read_frame_mutex);
-    return SET_ERRNO(ERROR_MEDIA_SEEK, "Failed to seek to beginning");
-  }
-
-  decoder->video_draining = false;
-  decoder->audio_buffer_offset = 0;
-  decoder->last_video_pts = -1.0;
-  decoder->last_audio_pts = -1.0;
-  decoder->audio_samples_read = 0; // Reset sample counter to 0
-
-  atomic_store_bool(&decoder->eof_reached, false);
-  if (has_video) {
-    mutex_unlock(&decoder->read_frame_mutex);
-    mutex_lock(&decoder->prefetch_mutex);
-    cond_signal(&decoder->prefetch_cond);
-    mutex_unlock(&decoder->prefetch_mutex);
-  }
-  return ASCIICHAT_OK;
+  return ffmpeg_decoder_seek_to_timestamp(decoder, 0);
 }
 
 asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, double timestamp_sec) {
@@ -1606,6 +1573,9 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
 
   // Set flag to pause prefetch thread via condition variable
   decoder->seeking_in_progress = true;
+  ++decoder->seek_generation;
+  // Serialize codec and partial-audio state with the existing packet reader.
+  mutex_lock(&decoder->read_frame_mutex);
 
   // Convert seconds to FFmpeg time base units (AV_TIME_BASE = 1,000,000)
   int64_t target_ts = (int64_t)(timestamp_sec * AV_TIME_BASE);
@@ -1620,6 +1590,7 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
 
   if (seek_ret < 0) {
     decoder->seeking_in_progress = false;
+    mutex_unlock(&decoder->read_frame_mutex);
     cond_signal(&decoder->prefetch_cond);
     mutex_unlock(&decoder->prefetch_mutex);
     return SET_ERRNO(ERROR_MEDIA_SEEK, "Failed to seek to timestamp %.2f seconds", timestamp_sec);
@@ -1647,15 +1618,11 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   // Set audio_samples_read to match the seek target so position tracking works correctly
   decoder->audio_samples_read = (uint64_t)(timestamp_sec * decoder->audio_sample_rate);
 
-  // Reset current_read_buffer and mark both buffers as not in use
-  // After seeking, the prefetch thread may reallocate buffers, so current_read_buffer
-  // could point to freed memory. Clear it so the next read doesn't try to release stale pointers.
-  decoder->current_read_buffer = NULL;
-  decoder->buffer_a_in_use = false;
-  decoder->buffer_b_in_use = false;
+  // The consumer retains its image across seeks until it takes a replacement.
 
   // Resume prefetch thread
   decoder->seeking_in_progress = false;
+  mutex_unlock(&decoder->read_frame_mutex);
   cond_signal(&decoder->prefetch_cond);
 
   // Release mutex - prefetch thread can resume

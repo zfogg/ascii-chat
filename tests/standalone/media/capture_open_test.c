@@ -4,11 +4,13 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/recording.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/face_follow_image.h>
+#include <math.h>
 
 #define CHECK(expr)                                                                                                    \
   do {                                                                                                                 \
@@ -89,12 +91,14 @@ static void finish_load(session_capture_ctx_t *ctx) {
   CHECK(!ctx->loader_created);
 }
 #ifndef NDEBUG
-static mutex_t *prefetch_mutex;
+static mutex_t *prefetch_mutex, *recording_mutex;
 static void find_prefetch(uintptr_t key, uint64_t generation, const char *name, const char *type,
                           const char *file, int line, void *data) {
   (void)generation; (void)file; (void)line; (void)data;
   if (!strcmp(type, "mutex") && strstr(name, "ffmpeg_prefetch."))
     prefetch_mutex = (mutex_t *)key;
+  if (!strcmp(type, "mutex") && strstr(name, "audio_recording."))
+    recording_mutex = (mutex_t *)key;
 }
 
 #endif
@@ -103,6 +107,58 @@ static void *toggle_pause_many(void *data) {
   for (unsigned i = 0; i < 10001; ++i)
     media_source_toggle_pause(data);
   return NULL;
+}
+
+static atomic_bool submitting;
+static void *record_many(void *unused) {
+  (void)unused;
+  const float samples[4] = {0.25f, 0.25f, 0.25f, 0.25f};
+  while (atomic_load(&submitting))
+    audio_recording_submit(AUDIO_RECORDING_MEDIA, samples, 4, time_get_ns());
+  return NULL;
+}
+
+static void check_recording_fast_path(void) {
+  audio_recording_t *recording = NULL;
+  CHECK(audio_recording_create(&recording) == ASCIICHAT_OK);
+#ifndef NDEBUG
+  size_t required = 0;
+  bool complete = false;
+  CHECK(named_registry_try_snapshot(SIZE_MAX, &required, &complete, find_prefetch, NULL) == ASCIICHAT_OK && complete);
+  CHECK(recording_mutex);
+  uint64_t locks = recording_mutex->lock_count;
+#endif
+  const float samples[4] = {0.25f, 0.25f, 0.25f, 0.25f};
+  for (unsigned i = 0; i < 10000; ++i)
+    audio_recording_submit(AUDIO_RECORDING_MEDIA, samples, 4, NS_PER_SEC_INT);
+#ifndef NDEBUG
+  CHECK(recording_mutex->lock_count == locks);
+#endif
+  audio_recording_start(recording, NS_PER_SEC_INT);
+  audio_recording_submit(AUDIO_RECORDING_MEDIA, samples, 4, NS_PER_SEC_INT);
+  float output[4];
+  audio_recording_read(recording, output, 4);
+  CHECK(!memcmp(output, samples, sizeof(output)));
+  audio_recording_destroy(recording);
+#ifndef NDEBUG
+  locks = recording_mutex->lock_count;
+#endif
+  for (unsigned i = 0; i < 10000; ++i)
+    audio_recording_submit(AUDIO_RECORDING_MEDIA, samples, 4, NS_PER_SEC_INT);
+#ifndef NDEBUG
+  CHECK(recording_mutex->lock_count == locks);
+#endif
+  atomic_store(&submitting, true);
+  asciichat_thread_t producer;
+  CHECK(asciichat_thread_create(&producer, "recording_submitter", record_many, NULL) == ASCIICHAT_OK);
+  for (unsigned i = 0; i < 5; ++i) {
+    CHECK(audio_recording_create(&recording) == ASCIICHAT_OK);
+    audio_recording_start(recording, time_get_ns());
+    platform_sleep_ms(2);
+    audio_recording_destroy(recording);
+  }
+  atomic_store(&submitting, false);
+  CHECK(asciichat_thread_join(&producer, NULL) == ASCIICHAT_OK);
 }
 
 static void check_atomic_pause(void) {
@@ -126,6 +182,45 @@ static void check_atomic_pause(void) {
   CHECK(!media_source_is_paused(source));
   CHECK(media_source_read_video(source) != NULL);
   media_source_destroy(source);
+}
+
+static atomic_bool audio_reading, stop_audio_reads;
+static void *read_audio_during_seeks(void *data) {
+  ffmpeg_decoder_t *decoder = data;
+  float samples[37];
+  while (!atomic_load(&stop_audio_reads)) {
+    size_t count = ffmpeg_decoder_read_audio_samples(decoder, samples, 37);
+    for (size_t i = 0; i < count; ++i)
+      CHECK(isfinite(samples[i]));
+    if (count)
+      atomic_store(&audio_reading, true);
+    else if (ffmpeg_decoder_at_end(decoder))
+      CHECK(ffmpeg_decoder_rewind(decoder) == ASCIICHAT_OK);
+  }
+  return NULL;
+}
+
+static void check_audio_seek_serialization(const char *path) {
+  ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
+  CHECK(decoder);
+  atomic_store(&audio_reading, false);
+  atomic_store(&stop_audio_reads, false);
+  asciichat_thread_t reader;
+  CHECK(asciichat_thread_create(&reader, "seek_audio_reader", read_audio_during_seeks, decoder) == ASCIICHAT_OK);
+  uint64_t deadline = time_get_ns() + NS_PER_SEC_INT;
+  while (!atomic_load(&audio_reading) && time_get_ns() < deadline)
+    platform_sleep_ms(1);
+  CHECK(atomic_load(&audio_reading));
+  for (unsigned i = 0; i < 20; ++i) {
+    CHECK(ffmpeg_decoder_seek_to_timestamp(decoder, (i % 2) * 0.25) == ASCIICHAT_OK);
+    platform_sleep_ms(1);
+  }
+  atomic_store(&stop_audio_reads, true);
+  CHECK(asciichat_thread_join(&reader, NULL) == ASCIICHAT_OK);
+  CHECK(ffmpeg_decoder_seek_to_timestamp(decoder, 0) == ASCIICHAT_OK);
+  float resumed[37];
+  CHECK(ffmpeg_decoder_read_audio_samples(decoder, resumed, 37) > 0);
+  ffmpeg_decoder_destroy(decoder);
 }
 
 static unsigned drain_video(ffmpeg_decoder_t *decoder) {
@@ -187,6 +282,20 @@ static void check_prefetch_notifications(const char *path) {
     CHECK(ffmpeg_decoder_rewind(decoder) == ASCIICHAT_OK);
     CHECK(drain_video(decoder) == 30);
   }
+  CHECK(ffmpeg_decoder_seek_to_timestamp(decoder, 0) == ASCIICHAT_OK);
+  image_t *held = NULL;
+  uint64_t deadline = time_get_ns() + NS_PER_SEC_INT;
+  while (!held && time_get_ns() < deadline) {
+    held = ffmpeg_decoder_read_video_frame(decoder);
+    platform_sleep_ms(1);
+  }
+  CHECK(held && held->pixels);
+  held->pixels[0].r ^= 0xff;
+  rgb_pixel_t retained = held->pixels[0];
+  CHECK(ffmpeg_decoder_seek_to_timestamp(decoder, 0) == ASCIICHAT_OK);
+  platform_sleep_ms(30);
+  CHECK(!memcmp(&held->pixels[0], &retained, sizeof(retained)));
+  CHECK(drain_video(decoder) == 30);
   platform_sleep_ms(20);
   uint64_t started = time_get_ns();
   ffmpeg_decoder_stop_prefetch(decoder);
@@ -194,6 +303,11 @@ static void check_prefetch_notifications(const char *path) {
   CHECK(time_get_ns() - started < NS_PER_SEC_INT);
   CHECK(ffmpeg_decoder_start_prefetch(decoder) == ASCIICHAT_OK);
   CHECK(ffmpeg_decoder_seek_to_timestamp(decoder, 0) == ASCIICHAT_OK);
+  CHECK(drain_video(decoder) == 30);
+  for (unsigned i = 0; i < 10; ++i) {
+    CHECK(ffmpeg_decoder_seek_to_timestamp(decoder, 0) == ASCIICHAT_OK);
+    platform_sleep_ms(2);
+  }
   CHECK(drain_video(decoder) == 30);
   CHECK(ffmpeg_decoder_seek_to_timestamp(decoder, 0) == ASCIICHAT_OK);
   platform_sleep_ms(100);
@@ -290,8 +404,10 @@ int main(int argc, char **argv) {
   audio.capture_media_source = NULL;
   session_capture_destroy(ctx);
   ui_controller_shutdown();
+  check_recording_fast_path();
   check_atomic_pause();
   check_prefetch_notifications(argv[1]);
+  check_audio_seek_serialization(argv[1]);
   options_state_destroy();
   return 0;
 }

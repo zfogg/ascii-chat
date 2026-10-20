@@ -3,6 +3,7 @@
 #include <ascii-chat/platform/memory.h>
 #include <math.h>
 #include <string.h>
+#include <stdatomic.h>
 
 #define RECORDING_RATE 48000ULL
 #define RECORDING_CAPACITY (RECORDING_RATE * 30)
@@ -18,12 +19,13 @@ struct audio_recording {
 
 static static_mutex_t recording_mutex = STATIC_MUTEX_INIT;
 static audio_recording_t *active_recording;
+static _Atomic bool recording_accepts_samples;
 
 asciichat_error_t audio_recording_create(audio_recording_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing recording output");
   *out = NULL;
-  static_mutex_lock(&recording_mutex);
+  static_mutex_lock_named(&recording_mutex, "audio_recording");
   if (active_recording) {
     static_mutex_unlock(&recording_mutex);
     return SET_ERRNO(ERROR_INVALID_STATE, "A session recording is already active");
@@ -39,9 +41,11 @@ asciichat_error_t audio_recording_create(audio_recording_t **out) {
 void audio_recording_destroy(audio_recording_t *recording) {
   if (!recording)
     return;
-  static_mutex_lock(&recording_mutex);
-  if (active_recording == recording)
+  static_mutex_lock_named(&recording_mutex, "audio_recording");
+  if (active_recording == recording) {
+    atomic_store_explicit(&recording_accepts_samples, false, memory_order_release);
     active_recording = NULL;
+  }
   SAFE_FREE(recording->mix);
   SAFE_FREE(recording);
   static_mutex_unlock(&recording_mutex);
@@ -50,18 +54,21 @@ void audio_recording_destroy(audio_recording_t *recording) {
 void audio_recording_start(audio_recording_t *recording, uint64_t epoch_ns) {
   if (!recording)
     return;
-  static_mutex_lock(&recording_mutex);
+  static_mutex_lock_named(&recording_mutex, "audio_recording");
   if (!recording->started) {
     recording->epoch_ns = epoch_ns;
     recording->started = true;
+    atomic_store_explicit(&recording_accepts_samples, true, memory_order_release);
   }
   static_mutex_unlock(&recording_mutex);
 }
 
 void audio_recording_submit(audio_recording_source_t source, const float *samples, size_t count, uint64_t start_ns) {
-  if (!samples || source < 0 || source >= AUDIO_RECORDING_SOURCE_COUNT)
+  // This is only a hint: the locked pointer/state check protects destruction.
+  if (!atomic_load_explicit(&recording_accepts_samples, memory_order_acquire) ||
+      !samples || !count || source < 0 || source >= AUDIO_RECORDING_SOURCE_COUNT)
     return;
-  static_mutex_lock(&recording_mutex);
+  static_mutex_lock_named(&recording_mutex, "audio_recording");
   audio_recording_t *recording = active_recording;
   if (!recording || !recording->started) {
     static_mutex_unlock(&recording_mutex);
@@ -87,7 +94,7 @@ void audio_recording_submit(audio_recording_source_t source, const float *sample
 void audio_recording_read(audio_recording_t *recording, float *samples, size_t count) {
   if (!recording || !samples)
     return;
-  static_mutex_lock(&recording_mutex);
+  static_mutex_lock_named(&recording_mutex, "audio_recording");
   for (size_t i = 0; i < count; i++) {
     size_t slot = recording->read_position++ % RECORDING_CAPACITY;
     float sample = recording->mix[slot];

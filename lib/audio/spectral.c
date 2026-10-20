@@ -79,7 +79,7 @@ asciichat_error_t spectral_create(const spectral_config_t *c, spectral_processor
   if (!p)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate spectral processor");
   p->config = *c;
-  static_mutex_lock(&planner_lock);
+  static_mutex_lock_named(&planner_lock, "fftw_planner");
   p->forward = fftw_plan_dft_r2c_1d(c->fft_size, p->time, p->frequency, FFTW_ESTIMATE);
   p->inverse = fftw_plan_dft_c2r_1d(c->fft_size, p->frequency, p->restored, FFTW_ESTIMATE);
   static_mutex_unlock(&planner_lock);
@@ -97,7 +97,7 @@ asciichat_error_t spectral_create(const spectral_config_t *c, spectral_processor
 void spectral_destroy(spectral_processor_t *p) {
   if (!p)
     return;
-  static_mutex_lock(&planner_lock);
+  static_mutex_lock_named(&planner_lock, "fftw_planner");
   if (p->forward)
     fftw_destroy_plan(p->forward);
   if (p->inverse)

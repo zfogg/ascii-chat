@@ -44,6 +44,15 @@ handoff lock. Each delivered frame normally needs one consumer pair, one
 producer pair, and a condition wait release/reacquire pair. Rewind explicitly
 wakes EOF sleepers. Pause state is a registered atomic flag, with CAS toggles
 to preserve concurrent pause-key changes; pause queries acquire no mutex.
+The source-level seek mutex was only used by audio readers, so it did not
+exclude seeks. Seek/reset now uses the decoder packet mutex, covering buffered
+audio too. A seek generation discards pre-seek video decode completions while
+preserving the current consumer image until its replacement arrives.
+
+Inactive recording submissions return before locking. When recording is active,
+`audio_recording` protects the mixer and its lifetime; the atomic fast-path hint
+is always checked again under that lock. Other static locks are named
+`audio_visualization_history` and `fftw_planner` for their actual purposes.
 
 Mirror's latest-frame queue waits for notification with a bounded 100 ms timeout
 instead of polling every millisecond. Three reusable frame slots keep capture,

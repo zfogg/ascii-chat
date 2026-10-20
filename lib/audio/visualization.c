@@ -101,7 +101,7 @@ void audio_visualization_submit(audio_visualization_source_t source, const float
   if ((!GET_OPTION(waveform) && !GET_OPTION(fft)) || !samples || source < AUDIO_VISUALIZATION_SOURCE_MIC ||
       source > AUDIO_VISUALIZATION_SOURCE_REMOTE)
     return;
-  static_mutex_lock(&history_mutex);
+  static_mutex_lock_named(&history_mutex, "audio_visualization_history");
   size_t position = write_position[source];
   for (size_t i = 0; i < count; i++) {
     float sample = samples[i];
@@ -119,7 +119,7 @@ void audio_visualization_read(audio_visualization_source_t source, float *sample
     memset(samples, 0, count * sizeof(float));
     return;
   }
-  static_mutex_lock(&history_mutex);
+  static_mutex_lock_named(&history_mutex, "audio_visualization_history");
   size_t available_count = count < VISUALIZATION_HISTORY ? count : VISUALIZATION_HISTORY;
   size_t output_offset = count - available_count;
   for (size_t i = 0; i < count; i++)

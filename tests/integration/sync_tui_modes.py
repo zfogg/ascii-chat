@@ -141,6 +141,8 @@ def inspect(term, artifacts, name, required):
         if page < pages:
             term.write("\x1b[C")
     assert not any("pause_mutex." in row for row in inventory), name
+    assert not any("seek_access_mutex." in row or "static_mutex." in row for row in inventory), name
+    assert not any("audio_recording." in row for row in inventory), name
     assert any("media_paused." in row for row in inventory), name
     for primitive in required:
         assert primitive in "\n".join(inventory), (name, primitive, text)

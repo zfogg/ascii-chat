@@ -52,7 +52,6 @@ struct media_source_t {
 
   // Thread synchronization
   mutex_t decoder_mutex;     ///< Protects shared decoder access (YouTube URLs)
-  mutex_t seek_access_mutex; ///< Protects decoder access during seeks
 
   // Cached paths
   char *file_path;            ///< File path (for FILE type)
@@ -211,14 +210,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     return NULL;
   }
 
-  // Initialize mutex for protecting decoder access during seeks (prevents race conditions)
-  if (mutex_init(&source->seek_access_mutex, "media_seek") != 0) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to initialize seek access mutex");
-    mutex_destroy(&source->decoder_mutex);
-    SAFE_FREE(source);
-    return NULL;
-  }
-
   switch (type) {
   case MEDIA_SOURCE_WEBCAM: {
     // Parse webcam index from path (if provided)
@@ -242,7 +233,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
              asciichat_error_format(NULL, webcam_error));
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
 
       // Add media-level context while preserving the webcam failure as its cause.
@@ -264,7 +254,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       SET_ERRNO(ERROR_INVALID_PARAM, "File path is required for FILE source");
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -280,13 +269,11 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       log_debug("Failed to resolve URL %s", asciichat_error_format(NULL, resolve_err));
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
     if (cancel && cancel(data)) {
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -306,7 +293,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       SAFE_FREE(source->original_youtube_url);
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -325,7 +311,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       SAFE_FREE(source->original_youtube_url);
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -344,7 +329,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -362,7 +346,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       SAFE_FREE(source->original_youtube_url);
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -383,7 +366,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       log_error("Failed to open stdin for video input");
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -399,7 +381,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -413,7 +394,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       source->video_decoder = NULL;
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -437,7 +417,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown media source type: %d", type);
     // Destroy mutexes before freeing source
     mutex_destroy(&source->decoder_mutex);
-    mutex_destroy(&source->seek_access_mutex);
     SAFE_FREE(source);
     return NULL;
   }
@@ -468,7 +447,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
   /* Register media source's sync primitives with hierarchical naming */
   NAMED_REGISTER_MUTEX(&source->decoder_mutex, "decoder_mutex", (uintptr_t)(const void *)(source));
   NAMED_REGISTER_ATOMIC(&source->is_paused, "media_paused", source);
-  NAMED_REGISTER_MUTEX(&source->seek_access_mutex, "seek_access_mutex", (uintptr_t)(const void *)(source));
 
   return source;
 }
@@ -510,7 +488,6 @@ void media_source_destroy(media_source_t *source) {
 
   // Destroy mutexes
   mutex_destroy(&source->decoder_mutex);
-  mutex_destroy(&source->seek_access_mutex);
 
   SAFE_FREE(source);
 }
@@ -713,9 +690,6 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
       return 0;
     }
 
-    // Lock seek_access_mutex to prevent audio callback from reading during seek
-    mutex_lock(&source->seek_access_mutex);
-
     // Lock shared decoder if YouTube URL (protect against concurrent video thread access)
     if (source->is_shared_decoder) {
       mutex_lock(&source->decoder_mutex);
@@ -752,9 +726,6 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
     if (source->is_shared_decoder) {
       mutex_unlock(&source->decoder_mutex);
     }
-
-    // Release seek_access_mutex
-    mutex_unlock(&source->seek_access_mutex);
 
     return samples_read;
   }

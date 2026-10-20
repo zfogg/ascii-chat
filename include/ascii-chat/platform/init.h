@@ -15,6 +15,7 @@
  */
 
 #include "../platform/abstraction.h"
+#include "../debug/named.h"
 
 // ============================================================================
 // Static Initialization Helpers
@@ -111,7 +112,7 @@ typedef struct {
 // clang-format on
 
 // Lazy initialization functions
-static inline void static_mutex_lock(static_mutex_t *m) {
+static inline void static_mutex_lock_named(static_mutex_t *m, const char *name) {
 #if PLATFORM_WINDOWS
   // Use InterlockedCompareExchange for thread-safe lazy init with proper synchronization
   // Pattern: First thread sets flag to 1, initializes, then sets to 2
@@ -119,7 +120,7 @@ static inline void static_mutex_lock(static_mutex_t *m) {
   LONG prev = InterlockedCompareExchange(&m->initialized, 1, 0);
   if (prev == 0) {
     // We won the race - initialize the mutex
-    mutex_init(&m->mutex, "static_mutex");
+    mutex_init(&m->mutex, name);
     // Memory barrier to ensure init is visible before flag update
     MemoryBarrier();
     InterlockedExchange(&m->initialized, 2);
@@ -131,16 +132,28 @@ static inline void static_mutex_lock(static_mutex_t *m) {
   }
   // prev == 2 means already initialized, proceed directly
 #else
-  // POSIX: Handle fork() by checking initialized flag atomically
-  // After fork(), child process must reinitialize the mutex
-  // Use atomic operations for thread-safe detection
-  if (__atomic_load_n(&m->initialized, __ATOMIC_ACQUIRE) == 0) {
-    // Mutex needs initialization (either never initialized or reset after fork)
-    mutex_init(&m->mutex, "static_mutex");
-    __atomic_store_n(&m->initialized, 1, __ATOMIC_RELEASE);
+  // Register a statically initialized native mutex once, without reinitializing it.
+  int state = __atomic_load_n(&m->initialized, __ATOMIC_ACQUIRE);
+  if (state != 2) {
+    int expected = state;
+    if (state >= 0 && __atomic_compare_exchange_n(&m->initialized, &expected, -1, false,
+                                                __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+      if (state == 0)
+        mutex_init(&m->mutex, name);
+      else
+        m->mutex.name = NAMED_REGISTER_MUTEX(&m->mutex, name, NULL);
+      __atomic_store_n(&m->initialized, 2, __ATOMIC_RELEASE);
+    } else {
+      while (__atomic_load_n(&m->initialized, __ATOMIC_ACQUIRE) != 2) {
+      }
+    }
   }
 #endif
   mutex_lock(&m->mutex);
+}
+
+static inline void static_mutex_lock(static_mutex_t *m) {
+  static_mutex_lock_named(m, "static_mutex");
 }
 
 static inline void static_mutex_unlock(static_mutex_t *m) {
