@@ -153,7 +153,7 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
   bool changed = s->active != view->screen;
   s->active = view->screen;
   bool covered = view->screen >= 0 && ui_too_small(s->size, view->minimum);
-  bool transition = changed || s->dirty || covered != s->covered || s->size.cols != s->presented_size.cols ||
+  bool transition = changed || covered != s->covered || s->size.cols != s->presented_size.cols ||
                     s->size.rows != s->presented_size.rows || view->minimum.cols != s->minimum.cols ||
                     view->minimum.rows != s->minimum.rows;
   s->covered = covered;
@@ -171,7 +171,7 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
     return NULL;
   bool animated = view->screen == UI_SCREEN_SPLASH && s->splash.animation.changed;
   bool refresh = view->refresh_ns && now_ns - s->last_render_ns >= view->refresh_ns;
-  if (covered ? !transition : !(transition || view->dirty || animated || refresh))
+  if (covered ? !(transition || s->dirty) : !(transition || s->dirty || view->dirty || animated || refresh))
     return NULL;
   s->dirty = false;
   s->presented_size = s->size;

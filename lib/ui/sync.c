@@ -329,7 +329,7 @@ static void sync_write_line(const char *text, int columns, bool newline, int *me
   char output[2048];
   size_t used = 0;
   int visible = 0;
-  const char *prefix = "\033[0m\033[2K";
+  const char *prefix = "\033[0m";
   memcpy(output, prefix, strlen(prefix));
   used = strlen(prefix);
   for (size_t i = 0; text[i] && used + 16 < sizeof(output);) {
@@ -360,7 +360,7 @@ static void sync_write_line(const char *text, int columns, bool newline, int *me
       *measured_width = visible;
     return;
   }
-  const char *suffix = newline ? "\033[0m\r\n" : "\033[0m";
+  const char *suffix = newline ? "\033[0m\033[K\r\n" : "\033[0m\033[K";
   memcpy(output + used, suffix, strlen(suffix));
   used += strlen(suffix);
   ui_controller_write(g_sync_fd, output, used);
@@ -439,7 +439,10 @@ void ui_sync_render(terminal_size_t size) {
   int selected = atomic_load(&g_sync_selected);
   int page = 0, pages = 1;
   int slot = atomic_load(&g_sync_published);
-  if (slot >= 0 && !atomic_flag_test_and_set(&g_sync_samples[slot].busy)) {
+  if (slot >= 0) {
+    // Keep the last complete screen if collection is reusing this mailbox.
+    if (atomic_flag_test_and_set(&g_sync_samples[slot].busy))
+      return;
     sync_sample_t *s = &g_sync_samples[slot];
     total = s->count;
     atomic_store(&g_sync_total, total > INT_MAX ? INT_MAX : (int)total);
@@ -528,9 +531,15 @@ void ui_sync_render(terminal_size_t size) {
                r->change_rate, r->cycle ? " DEADLOCK" : "");
       sync_write_line(line, size.cols, true, measure);
     }
-    snprintf(line, sizeof(line), "\033[J\033[%d;1H", size.rows > 3 ? size.rows - 3 : 1);
-    if (!measure)
+    if (!measure) {
+      // Clear only unused table rows, leaving the live footer in place.
+      for (int row = header_rows + (int)count + 1; row < size.rows - 3; ++row) {
+        snprintf(line, sizeof(line), "\033[%d;1H\033[K", row);
+        ui_controller_write(g_sync_fd, line, strlen(line));
+      }
+      snprintf(line, sizeof(line), "\033[%d;1H", size.rows > 3 ? size.rows - 3 : 1);
       ui_controller_write(g_sync_fd, line, strlen(line));
+    }
     sync_separator(size.cols, measure);
     if (count) {
       sync_row_t *r = &rows[selected];
@@ -545,6 +554,9 @@ void ui_sync_render(terminal_size_t size) {
                r->waiter, r->value, r->last_ns ? (double)(now - r->last_ns) / NS_PER_SEC_INT : 0.0,
                r->cycle ? " DEADLOCK" : "");
       sync_write_numbers(line, size.cols, measure);
+    } else if (!measure) {
+      snprintf(line, sizeof(line), "\033[%d;1H\033[K\033[%d;1H\033[K", size.rows - 2, size.rows - 1);
+      ui_controller_write(g_sync_fd, line, strlen(line));
     }
     snprintf(line, sizeof(line), "\033[%d;1H", size.rows);
     if (!measure)

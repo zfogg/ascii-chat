@@ -16,6 +16,7 @@
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/options/runtime.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -237,7 +238,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
   // Terminals supporting synchronized output present the art and its overlays
   // together, even when a large UTF-8 frame requires several writes.
-  bool synchronized = g_stats_media && g_render_snapshot;
+  bool synchronized = g_render_snapshot != NULL;
   bool started = !synchronized || write_output_chunk(fd, "\033[?2026h", 8) == 8;
   size_t written = 0;
   while (started && written < len) {
@@ -394,6 +395,7 @@ static void *presentation_main(void *unused) {
   bool was_sync = false;
   uint64_t last_volume_until = 0;
   bool volume_was_visible = false;
+  uint64_t help_revision = 0;
   uint64_t reply_requested_ns = 0, reply_frame_ns = 0, reply_frame_id = 0, reply_written_ns = 0;
   int reply_support = 0;
   bool awaiting_reply = false;
@@ -501,7 +503,7 @@ static void *presentation_main(void *unused) {
         redraw = true;
       volume_was_visible = volume_visible;
       last_volume_until = volume_until;
-      bool show_fps = active == UI_SCREEN_HELP || (active == UI_SCREEN_MEDIA && GET_OPTION(fps_counter));
+      bool show_fps = active == UI_SCREEN_MEDIA && GET_OPTION(fps_counter);
       redraw |= fps_counter_set_visible(g_fps, show_fps);
       bool was_covered = ui_session_is_covered(g_session);
       if (changed || was_covered)
@@ -534,15 +536,23 @@ static void *presentation_main(void *unused) {
         release_snapshot(retired);
       }
       native_view_t context = {.screen = screen, .active = active, .volume = volume_visible, .fresh = false};
+      bool help_changed = false;
+      if (active == UI_SCREEN_HELP) {
+        uint64_t revision = options_revision();
+        help_changed = revision != help_revision;
+        help_revision = revision;
+      }
       ui_session_view_t view = {
           .screen = active,
           .minimum = screen->minimum,
-          .dirty = screen->dirty || volume_changed,
+          .dirty = screen->dirty || volume_changed || help_changed,
           .refresh_ns = active == UI_SCREEN_PROMPT ? 50 * NS_PER_MS_INT
                         : active == UI_SCREEN_LOGS ? 100 * NS_PER_MS_INT
                         : active == UI_SCREEN_RENDER_PROGRESS
                             ? 125 * NS_PER_MS_INT
-                            : (active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS ? 16 * NS_PER_MS_INT : 0),
+                            : (active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS && active != UI_SCREEN_HELP
+                                   ? 16 * NS_PER_MS_INT
+                                   : 0),
           .draw = draw_native_view,
           .context = &context};
       uint64_t compose_started_ns = time_get_ns();

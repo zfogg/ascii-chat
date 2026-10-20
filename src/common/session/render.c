@@ -291,9 +291,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
         bool help_is_active = display && keyboard_help_is_active(display);
 
-        if (help_is_active) {
-          keyboard_help_render(display);
-        } else {
+        if (!help_is_active) {
           session_display_render_frame(display, ascii_frame);
         }
 

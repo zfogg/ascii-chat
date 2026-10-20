@@ -15,6 +15,25 @@ from terminal_ui import CaptureScreen, Terminal
 
 MARKER = "Q"
 original_draw = CaptureScreen.draw
+original_erase_display = CaptureScreen.erase_in_display
+original_erase_line = CaptureScreen.erase_in_line
+
+
+def check_preserved(screen):
+    for row, col, label in getattr(screen, "preserved", ()):
+        actual = "".join(screen.buffer[row][col + i].data for i in range(len(label)))
+        if actual != label:
+            screen.preservation_failures.append((row, label, actual))
+
+
+def observe_erase_display(self, *args, **kwargs):
+    original_erase_display(self, *args, **kwargs)
+    check_preserved(self)
+
+
+def observe_erase_line(self, *args, **kwargs):
+    original_erase_line(self, *args, **kwargs)
+    check_preserved(self)
 
 
 def observe_draw(self, data):
@@ -23,9 +42,12 @@ def observe_draw(self, data):
         self.media_leaks.append(data)
     self.media_probe_tail = probe[-7:]
     original_draw(self, data)
+    check_preserved(self)
 
 
 CaptureScreen.draw = observe_draw
+CaptureScreen.erase_in_display = observe_erase_display
+CaptureScreen.erase_in_line = observe_erase_line
 
 
 def main():
@@ -73,6 +95,77 @@ def main():
                 assert not term.screen.media_leaks, f"Media appeared between TUIs: {term.screen.media_leaks[:2]}"
 
             media_visible(timeout=30)
+            def watch(*labels):
+                term.screen.preservation_failures = []
+                term.screen.preserved = []
+                for label in labels:
+                    row = next(i for i, line in enumerate(term.screen.display) if label in line)
+                    term.screen.preserved.append((row, term.screen.display[row].index(label), label))
+
+            def preserved():
+                assert not term.screen.preservation_failures, term.screen.preservation_failures[:3]
+
+            def stop_watch():
+                preserved()
+                term.screen.preserved = []
+
+            def quiet_help():
+                term.pump(0.3)
+                before = len(term.raw)
+                term.pump(2)
+                assert len(term.raw) == before, "Idle help was repainted without a setting or resize change"
+                preserved()
+
+            term.write("?")
+            expect_screen("?")
+            term.pump(0.3)
+            watch("Keyboard Shortcuts")
+            quiet_help()
+            before_volume = next(line for line in term.screen.display if "Volume :" in line)
+            term.write("\x1b[B")
+            term.expect(lambda t: "Volume :" in t and before_volume not in t, "Help did not reflect changed volume")
+            quiet_help()
+            stop_watch()
+            term.resize(57, 182)
+            expect_screen("?")
+            term.pump(0.5)
+            watch("Keyboard Shortcuts")
+            quiet_help()
+            stop_watch()
+            term.resize(55, 180)
+            term.pump(0.5)
+            print("PASS idle help emits no terminal output, settings update in place, resize recovers", flush=True)
+
+            term.write("0")
+            term.expect(lambda t: "Sync primitives |" in t and "0/Esc close" in t, "Missing sync footer")
+            term.pump(0.3)
+            watch("Sync primitives |", "0/Esc close")
+            before = len(term.raw)
+            term.pump(2)
+            assert len(term.raw) > before, "Live sync data stopped refreshing"
+            term.write("\x1b[F")
+            term.pump(0.5)
+            term.write("\x1b[H")
+            term.pump(0.5)
+            stop_watch()
+            print("PASS sync heading/footer never erased during live updates or page changes", flush=True)
+
+            for key, label in (("]", "] / Esc: close"), ("o", "Open media:")):
+                term.write(key)
+                expect_screen(key)
+                term.pump(0.3)
+                watch(label)
+                term.pump(2)
+                if key == "o":
+                    term.write("abc")
+                    term.expect(lambda t: "> abc" in t, "Media input did not accept text")
+                    term.write("\x7f\x7f")
+                    term.expect(lambda t: "> a" in t and "> abc" not in t, "Deleted media text was left on screen")
+                stop_watch()
+            term.write("o")
+            media_visible()
+            print("PASS logs/media picker preserve headings while refreshing and editing", flush=True)
+
             for source, target in itertools.permutations(labels, 2):
                 term.write(source)
                 expect_screen(source)

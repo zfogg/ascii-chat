@@ -21,7 +21,7 @@ typedef struct {
 static void media_center_line(frame_buffer_t *buffer, const char *text, int row, int cols) {
   int width = utf8_display_width(text);
   int col = (cols - width) / 2 + 1;
-  frame_buffer_printf(buffer, "\033[%d;%dH", row, col > 0 ? col : 1);
+  frame_buffer_printf(buffer, "\033[%d;1H%*s", row, col > 1 ? col - 1 : 0, "");
   int used = 0;
   for (const char *p = text; *p;) {
     int bytes = utf8_next_char_bytes(p, strlen(p));
@@ -33,6 +33,18 @@ static void media_center_line(frame_buffer_t *buffer, const char *text, int row,
     frame_buffer_append(buffer, p, (size_t)bytes);
     used += cells;
     p += bytes;
+  }
+  frame_buffer_append(buffer, "\033[K", 3);
+}
+
+static void media_panel_clear_background(frame_buffer_t *buffer, terminal_size_t size, int top, int logo_rows,
+                                         int shown) {
+  for (int row = 1; row <= size.rows; ++row) {
+    bool logo = row >= top && row < top + logo_rows;
+    bool heading = row == top + logo_rows + 1 || row == top + logo_rows + 2;
+    bool input = row >= top + logo_rows + 4 && row < top + logo_rows + 4 + shown;
+    if (!logo && !heading && !input)
+      frame_buffer_printf(buffer, "\033[%d;1H\033[K", row);
   }
 }
 
@@ -61,15 +73,17 @@ void ui_media_panel_render(frame_buffer_t *buffer, terminal_size_t size, const c
   if (top < 1)
     top = 1;
   bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd());
-  frame_buffer_append(buffer, "\033[0m\033[H\033[2J\033[?25l", 17);
+  frame_buffer_append(buffer, "\033[0m\033[H\033[?25l", 13);
   frame_buffer_printf(buffer, "\033[%d;1H", top);
   const animation_sample_t *sample = ui_controller_animation_sample();
   int tick = sample ? (int)(sample->seconds * 60) : (int)((time_get_ns() / NS_PER_MS_INT / 16) % 100000);
   invitation_render_logo(buffer, size.cols, tick, colors, compact);
   media_center_line(buffer, title, top + logo_rows + 1, size.cols);
   media_center_line(buffer, instruction, top + logo_rows + 2, size.cols);
-  if (!text)
+  if (!text) {
+    media_panel_clear_background(buffer, size, top, logo_rows, 0);
     return;
+  }
   int width = size.cols - 6;
   if (width > 76)
     width = 76;
@@ -114,7 +128,7 @@ void ui_media_panel_render(frame_buffer_t *buffer, terminal_size_t size, const c
       }
       if (active_line)
         cursor_col = col + 2 + prefix + utf8_display_width_n(start, (size_t)(anchor - start));
-      frame_buffer_printf(buffer, "\033[%d;%dH%s", top + logo_rows + 4 + number - first, col,
+      frame_buffer_printf(buffer, "\033[%d;1H%*s%s", top + logo_rows + 4 + number - first, col - 1, "",
                           active_line ? "> " : "  ");
       if (prefix)
         frame_buffer_printf(buffer, "%c...", *line);
@@ -130,10 +144,12 @@ void ui_media_panel_render(frame_buffer_t *buffer, terminal_size_t size, const c
         used += cells;
         start += bytes;
       }
+      frame_buffer_append(buffer, "\033[K", 3);
     }
     ++number;
     line = *end ? end + 1 : NULL;
   }
+  media_panel_clear_background(buffer, size, top, logo_rows, shown);
   frame_buffer_printf(buffer, "\033[%d;%dH\033[?25h", top + logo_rows + 4 + (int)cursor_line - first, cursor_col);
 }
 

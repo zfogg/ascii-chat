@@ -50,8 +50,6 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
     session_capture_redraw_media(capture);
     if (key == KEY_UP || key == KEY_DOWN || key == 'm' || key == 'M')
       ui_controller_show_volume();
-    if (display && keyboard_help_is_active(display))
-      keyboard_help_render(display);
     return;
   }
 
@@ -189,11 +187,6 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
       log_info("UNKNOWN KEY: code=%d (0x%02x) char='%c'", key, key, (key >= 32 && key < 127) ? key : '?');
     }
     break;
-  }
-
-  // Re-render help screen if it's active to show updated settings
-  if (display && keyboard_help_is_active(display)) {
-    keyboard_help_render(display);
   }
 }
 

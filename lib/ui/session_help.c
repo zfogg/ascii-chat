@@ -281,9 +281,8 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
     }                                                                                                                  \
   } while (0)
 
-  // Clear screen and position cursor
-  APPEND("\033[2J"); // Clear screen
-  APPEND("\033[H");  // Cursor to home
+  // The session clears on entry or layout changes; settings repaint in place.
+  APPEND("\033[H");
 
   // Build help screen with proper spacing using UTF-8 width-aware padding
   char line_buf[256];

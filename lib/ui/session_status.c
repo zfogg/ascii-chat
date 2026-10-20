@@ -177,14 +177,10 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
   frame_buffer_printf(output, "\033[H%s", config->hide_cursor ? "\033[?25l" : "\033[?25h");
   const char *content = frame_buffer_get_content(body);
   size_t length = frame_buffer_get_length(body);
-  bool start_line = true;
   for (size_t i = 0; i < length; ++i) {
-    if (start_line)
-      frame_buffer_printf(output, "\033[2K");
     if (content[i] == '\n')
-      frame_buffer_append(output, "\r", 1);
+      frame_buffer_printf(output, "\033[K\r");
     frame_buffer_append(output, content + i, 1);
-    start_line = content[i] == '\n';
   }
   if (entering) {
     mutex_t *mutex = log_search_get_mutex();
@@ -193,7 +189,7 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
     int cursor = log_search_get_cursor_position();
     // Keep the edit cursor visible even when a pattern exceeds the viewport.
     int offset = cursor >= size.cols - 2 ? cursor - (size.cols - 3) : 0;
-    frame_buffer_printf(output, "\033[%d;1H\033[2K/%.*s\033[%d;%dH", size.rows, size.cols - 2,
+    frame_buffer_printf(output, "\033[%d;1H/%.*s\033[K\033[%d;%dH", size.rows, size.cols - 2,
                         pattern ? pattern + offset : "", size.rows, cursor - offset + 2);
     mutex_unlock(mutex);
   } else if (config->show_logs) {
