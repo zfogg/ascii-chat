@@ -239,6 +239,16 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     # (shared library and tests both link to the same object files, compiled once)
     add_library(${MODULE_NAME} OBJECT ${MODULE_SRCS})
 
+    if(WIN32 AND ASCIICHAT_ENABLE_UNITY_BUILDS)
+        set_target_properties(${MODULE_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 4)
+        # Keep vendored code separate so export filtering retains its source paths.
+        foreach(_module_source IN ITEMS ${MODULE_SRCS})
+            if(_module_source MATCHES "[/\\\\]deps[/\\\\]")
+                set_source_files_properties(${_module_source} PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+            endif()
+        endforeach()
+    endif()
+
     # Musl builds expose libsodium headers through the generated dependency
     # prefix. Every module includes common headers, which in turn include
     # sodium.h, so the external project must finish installing its headers

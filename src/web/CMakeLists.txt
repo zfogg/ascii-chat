@@ -27,6 +27,11 @@ endif()
 # Export compile commands for IDE integration
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if(EMSCRIPTEN)
+    find_program(ASCIICHAT_CCACHE_EXECUTABLE NAMES ccache)
+    include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/compiler/CCache.cmake")
+endif()
+
 # Required for Emscripten
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)

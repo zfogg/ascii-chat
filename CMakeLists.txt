@@ -477,57 +477,10 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
     endif()
 endif()
 
-# Create custom targets to build WASM from main project
-# Only define if src/CMakeLists hasn't already defined them
-if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
-    set(WASM_BUILD_DIR "${CMAKE_BINARY_DIR}/web")
-
-    add_custom_target(mirror-web
-        COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target mirror-web
-        COMMENT "Building mirror-web WASM module"
-        BYPRODUCTS "${WASM_BUILD_DIR}/mirror.js" "${WASM_BUILD_DIR}/mirror.wasm"
-        USES_TERMINAL
-        VERBATIM
-    )
-
-    add_custom_target(face-follow-web
-        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target face-follow-web
-        COMMENT "Building Face Follow detector worker"
-        VERBATIM)
-
-    add_custom_target(client-web
-        COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target client-web
-        COMMENT "Building client-web WASM module"
-        BYPRODUCTS "${WASM_BUILD_DIR}/client.js" "${WASM_BUILD_DIR}/client.wasm"
-        USES_TERMINAL
-        VERBATIM
-    )
-
-    # web target: only rebuild if outputs don't exist
-    if(EXISTS "${WASM_BUILD_DIR}/mirror.js" AND EXISTS "${WASM_BUILD_DIR}/mirror.wasm" AND EXISTS "${WASM_BUILD_DIR}/client.js" AND EXISTS "${WASM_BUILD_DIR}/client.wasm")
-        add_custom_target(web
-            COMMAND ${CMAKE_COMMAND} -E echo_append ""
-            COMMENT "WASM modules up to date"
-            BYPRODUCTS "${WASM_BUILD_DIR}/mirror.js" "${WASM_BUILD_DIR}/mirror.wasm" "${WASM_BUILD_DIR}/client.js" "${WASM_BUILD_DIR}/client.wasm"
-        )
-    else()
-        add_custom_target(web
-            COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target web
-            COMMENT "Building all WASM modules"
-            BYPRODUCTS "${WASM_BUILD_DIR}/mirror.js" "${WASM_BUILD_DIR}/mirror.wasm" "${WASM_BUILD_DIR}/client.js" "${WASM_BUILD_DIR}/client.wasm"
-            DEPENDS mirror-web client-web face-follow-web
-            USES_TERMINAL
-            VERBATIM
-        )
-    endif()
-
-    message(STATUS "WASM targets configured:")
-    message(STATUS "  mirror-web - Build mirror mode WASM only")
-    message(STATUS "  client-web - Build client mode WASM only")
-    message(STATUS "  web        - Build all WASM modules")
-
-    # Mark targets as defined to prevent re-definition
-    set(WASM_TARGETS_DEFINED TRUE)
+# Reuse the same locked parent targets when the src directory did not define them.
+if(EMSCRIPTEN_TOOLCHAIN_FILE)
+    include("${CMAKE_SOURCE_DIR}/cmake/targets/Wasm.cmake")
+    asciichat_add_wasm_targets("${CMAKE_BINARY_DIR}/web")
 endif()
 
 if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)

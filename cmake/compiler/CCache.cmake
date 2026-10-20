@@ -35,13 +35,39 @@ if(USE_CCACHE)
     endif()
 endif()
 
-# LLVM setup may already have selected ccache before this module runs.
-# Apply project settings to existing launchers as well as newly selected ones.
-if(USE_CCACHE AND CMAKE_C_COMPILER_LAUNCHER MATCHES "ccache")
-    set(_asciichat_ccache_launcher
+# Emscripten runs a Python driver (a batch entry point on Windows). Wrap its
+# underlying Clang invocation so ccache sees a native compiler executable.
+if(USE_CCACHE AND EMSCRIPTEN AND ASCIICHAT_CCACHE_EXECUTABLE)
+    set(_asciichat_wasm_cache_launcher
         "${CMAKE_COMMAND}" -E env
         "CCACHE_MAXSIZE=12G" "CCACHE_COMPRESS=true" "CCACHE_COMPRESSLEVEL=1"
-        "${ASCIICHAT_CCACHE_EXECUTABLE}")
+        "EM_COMPILER_WRAPPER=${ASCIICHAT_CCACHE_EXECUTABLE}")
+    foreach(_language C CXX)
+        if(NOT CMAKE_${_language}_COMPILER_LAUNCHER OR
+           CMAKE_${_language}_COMPILER_LAUNCHER MATCHES "ccache")
+            set(CMAKE_${_language}_COMPILER_LAUNCHER "${_asciichat_wasm_cache_launcher}"
+                CACHE STRING "${_language} compiler launcher" FORCE)
+        endif()
+    endforeach()
+endif()
+
+# LLVM setup may already have selected ccache before this module runs.
+# Apply project settings to existing launchers as well as newly selected ones.
+if(USE_CCACHE AND NOT EMSCRIPTEN AND CMAKE_C_COMPILER_LAUNCHER MATCHES "ccache")
+    execute_process(COMMAND "${ASCIICHAT_CCACHE_EXECUTABLE}" --help
+        OUTPUT_VARIABLE _asciichat_ccache_help ERROR_QUIET)
+    if(_asciichat_ccache_help MATCHES "KEY=VALUE")
+        # Native configuration arguments avoid an extra CMake process per file.
+        set(_asciichat_ccache_launcher "${ASCIICHAT_CCACHE_EXECUTABLE}"
+            "max_size=12G" "compression=true" "compression_level=1")
+        set(ASCIICHAT_CCACHE_KEY_VALUE_SUPPORTED TRUE)
+    else()
+        set(_asciichat_ccache_launcher
+            "${CMAKE_COMMAND}" -E env
+            "CCACHE_MAXSIZE=12G" "CCACHE_COMPRESS=true" "CCACHE_COMPRESSLEVEL=1"
+            "${ASCIICHAT_CCACHE_EXECUTABLE}")
+        set(ASCIICHAT_CCACHE_KEY_VALUE_SUPPORTED FALSE)
+    endif()
     set(CMAKE_C_COMPILER_LAUNCHER "${_asciichat_ccache_launcher}" CACHE STRING "C compiler launcher" FORCE)
     if(NOT CMAKE_CXX_COMPILER_LAUNCHER OR CMAKE_CXX_COMPILER_LAUNCHER MATCHES "ccache")
         set(CMAKE_CXX_COMPILER_LAUNCHER "${_asciichat_ccache_launcher}" CACHE STRING "C++ compiler launcher" FORCE)

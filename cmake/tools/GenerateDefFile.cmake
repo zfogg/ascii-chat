@@ -19,57 +19,42 @@ message(STATUS "Scanning ${obj_count} object files from library modules")
 
 message(STATUS "Generating .def file: ${OUTPUT_FILE}")
 
-# Extract all public symbols from object files
-set(ALL_SYMBOLS "")
-foreach(OBJ_FILE ${OBJ_FILES})
-    execute_process(
-        COMMAND ${NM_TOOL} --format=just-symbols --extern-only --defined-only "${OBJ_FILE}"
-        OUTPUT_VARIABLE NM_OUTPUT
-        ERROR_QUIET
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-
-    # Request only symbol names. The default and POSIX llvm-nm record layouts
-    # differ across Windows toolchain versions.
-    string(REPLACE "\r\n" "\n" NM_OUTPUT "${NM_OUTPUT}")
-    string(REPLACE "\r" "\n" NM_OUTPUT "${NM_OUTPUT}")
-    string(REPLACE "\n" ";" NM_LINES "${NM_OUTPUT}")
-    foreach(NM_LINE ${NM_LINES})
-        string(STRIP "${NM_LINE}" NM_LINE)
-        set(SYMBOL_NAME "")
-        if(NM_LINE MATCHES "^([^ \t]+)$")
-            set(SYMBOL_NAME "${CMAKE_MATCH_1}")
-        endif()
-        if(SYMBOL_NAME)
-            list(APPEND ALL_SYMBOLS "${SYMBOL_NAME}")
-        endif()
-    endforeach()
+# A response file avoids the Windows command-line limit and starts llvm-nm once.
+# PCH entries in TARGET_OBJECTS are compiler inputs, not exportable object files.
+list(FILTER OBJ_FILES INCLUDE REGEX "\\.(obj|o)$")
+if(NOT OBJ_FILES)
+    message(FATAL_ERROR "No exportable object files in ${OBJECT_LIST_FILE}")
+endif()
+set(_nm_response "")
+foreach(OBJ_FILE IN LISTS OBJ_FILES)
+    file(TO_CMAKE_PATH "${OBJ_FILE}" _nm_object)
+    string(APPEND _nm_response "\"${_nm_object}\"\n")
 endforeach()
+set(_nm_response_file "${OUTPUT_FILE}.objects.rsp")
+file(WRITE "${_nm_response_file}" "${_nm_response}")
+execute_process(
+    COMMAND "${NM_TOOL}" --format=just-symbols --extern-only --defined-only "@${_nm_response_file}"
+    OUTPUT_VARIABLE NM_OUTPUT
+    ERROR_VARIABLE NM_ERROR
+    RESULT_VARIABLE NM_RESULT
+)
+if(NOT NM_RESULT STREQUAL "0")
+    message(FATAL_ERROR "Symbol extraction failed (${NM_RESULT}): ${NM_ERROR}")
+endif()
+string(REPLACE "\r\n" "\n" NM_OUTPUT "${NM_OUTPUT}")
+string(REPLACE "\r" "\n" NM_OUTPUT "${NM_OUTPUT}")
+string(REPLACE "\n" ";" ALL_SYMBOLS "${NM_OUTPUT}")
+list(TRANSFORM ALL_SYMBOLS STRIP)
+# Multiple inputs add filename headings; only accept symbol-name lines.
+list(FILTER ALL_SYMBOLS INCLUDE REGEX "^[^ \t]+$")
+list(FILTER ALL_SYMBOLS EXCLUDE REGEX ":$")
 
-# Remove duplicates and sort
+# Filter compiler/runtime, SDK, C++ and debug symbols before deduplication.
+list(FILTER ALL_SYMBOLS EXCLUDE REGEX "^(__imp_|__real[@_]|__xmm@|__ymm@|_?GLOBAL__|DW\\.|_fltused|_tls_|__security|__guard|GS_|_RTC|\\?|^\\.|___|CLSID_|IID_|GUID_|KSPROPERTYSETID_|MF[A-Z_]|MR_|ME[A-Z]|IN6_|_CT\\?|_CTA[0-9]|_TI[0-9]|__local_stdio|__sanitizer_|_Avx2|_Check_memory)")
 list(REMOVE_DUPLICATES ALL_SYMBOLS)
 list(SORT ALL_SYMBOLS)
-
-# Write .def file
-file(WRITE "${OUTPUT_FILE}" "LIBRARY ${LIBRARY_NAME}\nEXPORTS\n")
-set(EXPORT_COUNT 0)
-foreach(SYMBOL ${ALL_SYMBOLS})
-    # Skip symbols that shouldn't be exported:
-    # - Compiler/runtime internals (__imp_, __real_, __security, etc.)
-    # - Windows API/SDK symbols (CLSID_, IID_, GUID_, MF*, KSPR*, ME*, IN6_, etc.)
-    # - C++ name mangling (?)
-    # - Debug symbols (DW.)
-    # Filter out symbols that shouldn't be exported:
-    # - Compiler/runtime internals (__imp_, __real_, __security, etc.)
-    # - Windows SDK/Media Foundation symbols (MF*, MR_*, CLSID_, IID_, GUID_, etc.)
-    # - C++ name mangling (?)
-    # - Debug symbols (DW.)
-    # - CRT internals (_CT, _CTA, _TI, __local_stdio, _snprintf, etc.)
-    # - Sanitizer internals (__sanitizer_*)
-    if(NOT SYMBOL MATCHES "^(__imp_|__real[@_]|__xmm@|__ymm@|_?GLOBAL__|DW\\.|_fltused|_tls_|__security|__guard|GS_|_RTC|\\?|^\\.|___|CLSID_|IID_|GUID_|KSPROPERTYSETID_|MF[A-Z_]|MR_|ME[A-Z]|IN6_|_CT\\?|_CTA[0-9]|_TI[0-9]|__local_stdio|__sanitizer_|_Avx2|_Check_memory)")
-        file(APPEND "${OUTPUT_FILE}" "    ${SYMBOL}\n")
-        math(EXPR EXPORT_COUNT "${EXPORT_COUNT} + 1")
-    endif()
-endforeach()
-
+list(LENGTH ALL_SYMBOLS EXPORT_COUNT)
+list(TRANSFORM ALL_SYMBOLS PREPEND "    ")
+list(JOIN ALL_SYMBOLS "\n" _def_exports)
+file(WRITE "${OUTPUT_FILE}" "LIBRARY ${LIBRARY_NAME}\nEXPORTS\n${_def_exports}\n")
 message(STATUS "Generated ${OUTPUT_FILE} with ${EXPORT_COUNT} exported symbols")

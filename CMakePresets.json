@@ -207,6 +207,20 @@
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
+      "name": "windows-unity",
+      "displayName": "Windows Debug (unity)",
+      "description": "Sanitized Debug build with project library and application sources compiled in batches",
+      "inherits": "default",
+      "cacheVariables": {
+        "ASCIICHAT_ENABLE_UNITY_BUILDS": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
       "name": "windows-release",
       "displayName": "Windows Release (vcpkg)",
       "description": "Windows Release build using vcpkg static libraries (x64-windows-static by default; override for other architectures)",
@@ -289,6 +303,11 @@
     {
       "name": "windows-release",
       "configurePreset": "windows-release"
+    },
+    {
+      "name": "windows-unity",
+      "configurePreset": "windows-unity",
+      "targets": ["ascii-chat"]
     },
     {
       "name": "relwithdebinfo",

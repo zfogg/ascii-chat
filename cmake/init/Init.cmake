@@ -87,6 +87,19 @@ elseif(CPU_CORES LESS 1)
     set(CPU_CORES ${_ASCII_CPU_FALLBACK})
 endif()
 
+# Hyperthreads increased clean-build time on Windows in the native Clang tests.
+# A Ninja pool also applies to subsequent build invocations; configure-time
+# environment changes alone do not persist into a new terminal process.
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_GENERATOR MATCHES "^Ninja"
+   AND NOT DEFINED CMAKE_JOB_POOL_COMPILE AND NOT DEFINED ENV{CMAKE_BUILD_PARALLEL_LEVEL})
+    cmake_host_system_information(RESULT _ascii_physical_cores QUERY NUMBER_OF_PHYSICAL_CORES)
+    if(_ascii_physical_cores MATCHES "^[1-9][0-9]*$")
+        set_property(GLOBAL APPEND PROPERTY JOB_POOLS asciichat_compile=${_ascii_physical_cores})
+        set(CMAKE_JOB_POOL_COMPILE asciichat_compile)
+        message(STATUS "Ninja compile jobs: ${_ascii_physical_cores} (physical cores)")
+    endif()
+endif()
+
 # Set parallel build level automatically if not already set
 if(NOT DEFINED ENV{CMAKE_BUILD_PARALLEL_LEVEL})
     set(ENV{CMAKE_BUILD_PARALLEL_LEVEL} ${CPU_CORES})
