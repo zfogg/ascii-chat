@@ -67,7 +67,8 @@ static _Thread_local screen_snapshot_t *g_render_snapshot;
 static _Thread_local terminal_size_t g_render_size;
 static terminal_size_t g_size = {.cols = 80, .rows = 24};
 static int g_active = -1;
-static _Atomic int g_published_screen = -1;
+static _Atomic int g_interactive_screen = -1;
+static _Atomic int g_background_screen = -1;
 static atomic_t g_volume_until = {0};
 static _Thread_local bool g_render_volume;
 static _Thread_local bool g_volume_caps_valid;
@@ -139,19 +140,41 @@ static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
 }
 
 int ui_controller_current_screen(void) {
-  return atomic_load(&g_published_screen);
+  int background = atomic_load(&g_background_screen);
+  int interactive = atomic_load(&g_interactive_screen);
+  return background > interactive ? background : interactive;
+}
+
+static bool interactive_screen(int screen) {
+  return screen == UI_SCREEN_HELP || screen == UI_SCREEN_LOGS || screen == UI_SCREEN_SYNC || screen == UI_SCREEN_PROMPT;
+}
+
+int ui_controller_interactive_screen(void) {
+  return atomic_load(&g_interactive_screen);
+}
+
+void ui_controller_select_interactive(int screen) {
+  atomic_store(&g_interactive_screen, screen);
 }
 
 static int selected_screen_locked(void) {
   uint32_t visible = 0;
+  int interactive = ui_controller_interactive_screen();
   for (int i = 0; i < UI_SCREEN_COUNT; ++i)
-    if (g_screens[i].render)
+    if (g_screens[i].render && (!interactive_screen(i) || i == interactive))
       visible |= 1u << i;
-  return ui_session_select_screen(visible);
+  int selected = ui_session_select_screen(visible);
+  // Sync presents from its independent mailbox. Never fall through to media
+  // if it was selected after the presentation loop checked that mailbox.
+  return interactive == UI_SCREEN_SYNC && selected < UI_SCREEN_SYNC ? -1 : selected;
 }
 
 static void publish_screen_locked(void) {
-  atomic_store(&g_published_screen, selected_screen_locked());
+  uint32_t background = 0;
+  for (int i = 0; i < UI_SCREEN_COUNT; ++i)
+    if (g_screens[i].render && !interactive_screen(i))
+      background |= 1u << i;
+  atomic_store(&g_background_screen, ui_session_select_screen(background));
   cond_signal(&g_render_requested);
 }
 static bool g_redraw;
@@ -290,7 +313,8 @@ void ui_controller_finish(int fd, const char *data, size_t len) {
     g_finished = true;
     memcpy(retired, g_screens, sizeof(retired));
     memset(g_screens, 0, sizeof(g_screens));
-    atomic_store(&g_published_screen, -1);
+    atomic_store(&g_background_screen, -1);
+    ui_controller_select_interactive(-1);
     cond_signal(&g_render_requested);
     uint64_t pending = g_render_started;
     while (!g_render_snapshot && g_render_completed < pending)
@@ -597,7 +621,7 @@ static void *presentation_main(void *unused) {
     // animations, terminal geometry and idle FPS counters; rendering time is
     // part of the interval rather than an additional delay after each frame.
     mutex_lock(&g_mutex);
-    int pending_screen = atomic_load(&g_published_screen);
+    int pending_screen = ui_controller_current_screen();
     bool pending = g_redraw || pending_screen != g_active || (pending_screen >= 0 && g_screens[pending_screen].dirty);
     uint64_t now = time_get_ns();
     if (!pending && !atomic_load_bool(&g_presentation_stop_requested) && now < refresh_deadline)
@@ -799,6 +823,8 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   atomic_store_bool(&g_live, true);
   *slot = (screen_t){
       .owned = copy, .snapshot = copy->data, .render = render, .minimum = minimum, .fd = output_fd, .dirty = true};
+  if (interactive_screen(screen))
+    ui_controller_select_interactive(screen);
   publish_screen_locked();
   mutex_unlock(&g_mutex);
   uint64_t published_ns = time_get_ns();
@@ -830,6 +856,8 @@ void ui_controller_remove(ui_screen_t screen) {
     return;
   }
   screen_snapshot_t *retired = g_screens[screen].owned;
+  int expected = screen;
+  atomic_compare_exchange_strong(&g_interactive_screen, &expected, -1);
   uint64_t pending = g_rendering_screen == (int)screen ? g_render_started : 0;
   screen_t *next = g_screens[screen].next;
   if (next) {
@@ -1035,6 +1063,8 @@ void ui_controller_shutdown(void) {
   cond_destroy(&g_render_done);
   mutex_destroy(&g_mutex);
   atomic_store_bool(&g_live, false);
+  atomic_store(&g_background_screen, -1);
+  ui_controller_select_interactive(-1);
   NAMED_UNREGISTER(&g_live);
   NAMED_UNREGISTER(&g_presentation_stop_requested);
   NAMED_UNREGISTER(&g_blocked);

@@ -17,17 +17,35 @@ static void render_help_snapshot(terminal_size_t size, const void *data) {
   }
 }
 
-void keyboard_help_render(session_display_ctx_t *ctx) {
-  if (!ctx || !keyboard_help_is_active(ctx))
+static void show_help(session_display_ctx_t *ctx) {
+  if (!ctx)
     return;
   terminal_size_t size = ui_controller_size(), minimum;
   const char *url = GET_OPTION(media_url), *file = GET_OPTION(media_file);
   char *text = ui_session_help_render(size, (url && *url) || (file && *file), false, &minimum);
   if (!text)
     return;
-  if (!ui_controller_is_owner() && !GET_OPTION(snapshot_mode))
+  if (!GET_OPTION(snapshot_mode))
     (void)ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, minimum, render_help_snapshot, &ctx, sizeof(ctx));
   else
     session_display_write_raw(ctx, text, strlen(text));
   SAFE_FREE(text);
+}
+
+void keyboard_help_toggle(session_display_ctx_t *ctx) {
+  if (!ctx) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
+    return;
+  }
+  if (keyboard_help_is_active(ctx))
+    ui_controller_remove(UI_SCREEN_HELP);
+  else
+    show_help(ctx);
+}
+
+void keyboard_help_render(session_display_ctx_t *ctx) {
+  // The retained callback reads settings and geometry on each presentation.
+  // Refreshing it must not select help again after input switched to another TUI.
+  if (ctx && keyboard_help_is_active(ctx))
+    ui_controller_redraw();
 }

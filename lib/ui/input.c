@@ -39,6 +39,11 @@ static mutex_t g_input_prompt_mutex;
 static bool g_input_was_covered;
 static keyboard_key_t g_sync_keys[256];
 static unsigned g_sync_key_head, g_sync_key_count;
+static bool g_switch_pending;
+
+static bool input_switch_key(keyboard_key_t key) {
+  return key == KEY_QUESTION || key == ']' || key == 'o' || key == 'O' || key == 15;
+}
 
 static bool g_pasting, g_paste_invalid, g_paste_ready;
 static char g_paste[8192];
@@ -188,6 +193,7 @@ static bool input_initialize(void) {
     }
     NAMED_REGISTER_ATOMIC(&g_input_lifecycle.state, "ui_input_lifecycle", NULL);
     g_input_was_covered = false;
+    g_switch_pending = false;
     lifecycle_init_commit(&g_input_lifecycle);
   }
   return lifecycle_is_initialized(&g_input_lifecycle);
@@ -213,13 +219,19 @@ void ui_input_poll_sync(void) {
 #ifndef NDEBUG
   if (!input_initialize() || mutex_trylock(&g_input_mutex) != 0)
     return;
+  if (g_switch_pending) {
+    mutex_unlock(&g_input_mutex);
+    return;
+  }
   int screen = ui_controller_current_screen();
   if (screen >= 0 && screen <= UI_SCREEN_SYNC && !ui_controller_is_blocked()) {
     keyboard_key_t key = input_read_event();
     if (key != KEY_PASTE && !log_search_is_entering())
       key = ui_sync_handle_key(key);
-    if (key && g_sync_key_count < 256)
+    if (key && g_sync_key_count < 256) {
       g_sync_keys[(g_sync_key_head + g_sync_key_count++) % 256] = key;
+      g_switch_pending = input_switch_key(key);
+    }
   }
   mutex_unlock(&g_input_mutex);
 #endif
@@ -230,6 +242,9 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     return KEY_NONE;
   ui_presentation_state_t state = ui_controller_state();
   mutex_lock(&g_input_mutex);
+  // The previous event has now been dispatched by the session. Background
+  // polling must not overtake a pending switch with the next shortcut.
+  g_switch_pending = false;
   if (state.screen == UI_SCREEN_NOTICE) {
     g_paste_ready = false;
     g_sync_key_count = 0;
@@ -253,6 +268,19 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
       return KEY_NONE;
     }
     keyboard_key_t key = input_next_key();
+    bool switch_screen = input_switch_key(key);
+#ifndef NDEBUG
+    switch_screen |= key == KEY_0;
+#endif
+    if (switch_screen) {
+      // Keep the old prompt on screen until its replacement is published.
+      g_media_editor.active = false;
+      if (key == KEY_0)
+        key = ui_sync_handle_key(key);
+      g_switch_pending = input_switch_key(key);
+      mutex_unlock(&g_input_mutex);
+      return key;
+    }
     if (key == KEY_ESCAPE || key == 3 || ui_input_expired(g_media_editor.deadline)) {
       if (key == KEY_PASTE)
         g_paste_ready = false;
@@ -332,6 +360,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     stats_runtime_toggle();
     key = KEY_NONE;
   }
+  g_switch_pending |= input_switch_key(key);
   mutex_unlock(&g_input_mutex);
   return key;
 }

@@ -1,7 +1,11 @@
 # Sync primitive inspector
 
 In a debug build, press `0` during a session to open the live inspector.
-Press `0` or Escape to return to the underlying screen.
+Press `0` or Escape to return to ASCII art. The `0` inspector, `?` keyboard help,
+`]` logs and `o` media input replace each other. Switching directly between them
+does not expose a media frame, and closing one never restores an older TUI.
+In the media editor these keys switch screens; paste paths or URLs containing
+shortcut characters to insert them as text.
 
 - Up/Down select the previous/next object, crossing page boundaries.
 - Left/Right move one page, preserving the row where possible and clamping at the endpoints.
@@ -44,6 +48,7 @@ Run the native regressions and live-mode checks with:
 cmake --build build --target ascii-chat test-sync-regressions
 python tests/integration/sync_regressions.py build/bin/test-sync-regressions.exe
 python tests/integration/sync_tui_modes.py --binary build/bin/ascii-chat.exe --artifacts build/sync-tui-evidence
+python tests/integration/tui_switching.py --binary build/bin/ascii-chat.exe
 ```
 
 The live-mode test uses generated video/audio and loopback services. Its optional

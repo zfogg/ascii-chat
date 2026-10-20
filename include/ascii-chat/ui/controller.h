@@ -58,6 +58,9 @@ typedef struct {
 ui_presentation_state_t ui_controller_state(void);
 /** Last published screen priority; does not acquire application locks. */
 int ui_controller_current_screen(void);
+/** One interactive screen replaces the previous one; sync can switch without application locks. */
+int ui_controller_interactive_screen(void);
+void ui_controller_select_interactive(int screen);
 
 /** Final output sink. Live screen writes must originate in a presentation callback.
  * Other terminal text is suppressed while a screen owns the terminal; non-TTY output remains synchronous.

@@ -18,7 +18,7 @@
  * - Real-time updates of option values (no network latency)
  *
  * **Threading:**
- * - Keyboard help state: Atomic bool for lock-free access
+ * - Keyboard help state: Shared atomic interactive-screen selection
  * - Terminal writes: Serialized via session_display_write_raw()
  * - Option reads: Lock-free via RCU (GET_OPTION macro)
  *
@@ -45,7 +45,7 @@ typedef struct session_display_ctx session_display_ctx_t;
  * help is displayed and frame rendering is suppressed. Network reception
  * continues in the background.
  *
- * @note Thread-safe: Uses atomic bool for lock-free toggle
+ * @note Shares the controller selection with logs, sync and media input
  * @ingroup session
  */
 void keyboard_help_toggle(session_display_ctx_t *ctx);

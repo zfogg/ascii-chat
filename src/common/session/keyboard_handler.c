@@ -63,21 +63,14 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
   switch (action) {
   // ===== HELP SCREEN TOGGLE =====
   case UI_ACTION_LOGS: {
-    if (display && keyboard_help_is_active(display)) {
-      keyboard_help_toggle(display);
-      ui_controller_remove(UI_SCREEN_HELP);
-    }
     ui_controller_toggle_logs();
     break;
   }
   case UI_ACTION_HELP: {
-    ui_controller_hide_logs();
     log_info("✓✓✓ USER PRESSED ? KEY - HELP SCREEN TOGGLE ✓✓✓");
     if (display) {
       log_info("Toggling help screen (display=%p)", (void *)display);
       keyboard_help_toggle(display);
-      // Render help screen immediately so user sees it
-      keyboard_help_render(display);
       log_info("✓ Help screen toggle complete");
     } else {
       log_error("Cannot toggle help - display context is NULL");
@@ -222,6 +215,10 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     return;
   if (!text_entry && (key == KEY_MEDIA_SUBMIT || key == KEY_PASTE || key == 'o' || key == 'O' || key == 15 ||
                       key == 'v' || key == 'V')) {
+    if ((key == 'o' || key == 'O' || key == 15) && ui_controller_interactive_screen() == UI_SCREEN_PROMPT) {
+      ui_prompt_remove();
+      return;
+    }
     char input[8192] = {0}, normalized[8192];
     asciichat_error_t result = ASCIICHAT_OK;
     if (key == KEY_MEDIA_SUBMIT)

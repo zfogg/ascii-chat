@@ -49,6 +49,9 @@ def selected(text):
 
 
 def check_colors(term, text):
+    # ConPTY can deliver a new header before the footer. Check a complete frame
+    # rather than the arbitrary point where a timed inventory capture stopped.
+    text = expect_sync(term, lambda t: True, "Incomplete sync frame before palette checks")
     # Default log palette: blue rules, red zeroes, purple values, orange
     # filename, and yellow key names. Check the captured terminal cells.
     first_number = re.search(r"\d+ objects", text.splitlines()[0]).start()

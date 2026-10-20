@@ -45,7 +45,6 @@ static _Atomic int g_sync_published = -1;
 static _Atomic int g_sync_selected;
 static _Atomic int g_sync_page_size = 1;
 static _Atomic int g_sync_total;
-static _Atomic bool g_sync_visible;
 static _Atomic bool g_sync_stop;
 static atomic_flag g_sync_starting = ATOMIC_FLAG_INIT;
 static bool g_sync_started;
@@ -160,7 +159,7 @@ static void *sync_collect_main(void *unused) {
     // Poll the debug shortcut while hidden, but collect registry and waiter
     // snapshots only for the visible overlay. The pairwise rate comparisons
     // otherwise compete with live capture and input throughout the session.
-    if (!atomic_load(&g_sync_visible)) {
+    if (!ui_sync_is_visible()) {
       next_sample = 0;
       platform_sleep_ns(10 * NS_PER_MS_INT);
       continue;
@@ -270,12 +269,13 @@ void ui_sync_stop(void) {
     g_sync_samples[i].capacity = g_sync_samples[i].count = 0;
   }
   atomic_store(&g_sync_published, -1);
-  atomic_store(&g_sync_visible, false);
+  if (ui_sync_is_visible())
+    ui_controller_select_interactive(-1);
   g_sync_started = false;
 }
 
 bool ui_sync_is_visible(void) {
-  return atomic_load(&g_sync_visible);
+  return ui_controller_interactive_screen() == UI_SCREEN_SYNC;
 }
 int ui_sync_output_fd(void) {
   return g_sync_fd;
@@ -283,14 +283,17 @@ int ui_sync_output_fd(void) {
 
 keyboard_key_t ui_sync_handle_key(keyboard_key_t key) {
   if (key == KEY_0) {
-    atomic_store(&g_sync_visible, !atomic_load(&g_sync_visible));
+    ui_controller_select_interactive(ui_sync_is_visible() ? -1 : UI_SCREEN_SYNC);
     return KEY_NONE;
   }
   if (!ui_sync_is_visible())
     return key;
-  if (key == KEY_ESCAPE || key == KEY_QUESTION || key == ']') {
-    atomic_store(&g_sync_visible, false);
-    return key == ']' || (key == KEY_QUESTION && ui_controller_current_screen() != UI_SCREEN_HELP) ? key : KEY_NONE;
+  // Leave sync selected until the replacement has a complete snapshot.
+  if (key == KEY_QUESTION || key == ']' || key == 'o' || key == 'O' || key == 15)
+    return key;
+  if (key == KEY_ESCAPE) {
+    ui_controller_select_interactive(-1);
+    return KEY_NONE;
   }
   int selected = atomic_load(&g_sync_selected);
   int last = atomic_load(&g_sync_total) - 1;

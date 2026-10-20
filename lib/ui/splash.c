@@ -283,13 +283,11 @@ static void *splash_monitor_thread(void *arg) {
       if (ui_controller_current_screen() == UI_SCREEN_LOGS && ui_session_logs_key(key)) {
         // Search consumed the key.
       } else if (key == ']') {
-        ui_controller_remove(UI_SCREEN_HELP);
         ui_controller_toggle_logs();
       } else if (key == KEY_QUESTION || (key == KEY_ESCAPE && ui_controller_current_screen() == UI_SCREEN_HELP)) {
         if (ui_controller_current_screen() == UI_SCREEN_HELP) {
           ui_controller_remove(UI_SCREEN_HELP);
         } else {
-          ui_controller_hide_logs();
           terminal_size_t minimum;
           char *text = ui_session_help_render(ui_controller_size(), false, false, &minimum);
           if (text) {

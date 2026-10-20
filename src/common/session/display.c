@@ -15,6 +15,7 @@
 
 #include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/ui/controller.h>
+#include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/app_callbacks.h>
 #include "session/display.h"
 #include "session/render.h"
@@ -98,9 +99,6 @@ typedef struct session_display_ctx {
   /** @brief Audio context for playback (borrowed, not owned) */
   void *audio_ctx;
 
-  /** @brief Keyboard help active flag (toggled with '?') - atomic for thread-safe access */
-  atomic_t keyboard_help_active;
-
   /** @brief Digital rain effect context (NULL if disabled) */
   digital_rain_t *digital_rain;
 
@@ -180,10 +178,6 @@ static void display_sync_entries(session_display_ctx_t *ctx, bool add) {
     NAMED_REGISTER_ATOMIC(&ctx->output_failed, "display.output_failed", NULL);
   else
     NAMED_UNREGISTER(&ctx->output_failed);
-  if (add)
-    NAMED_REGISTER_ATOMIC(&ctx->keyboard_help_active, "display.keyboard_help_active", NULL);
-  else
-    NAMED_UNREGISTER(&ctx->keyboard_help_active);
 }
 
 session_display_ctx_t *session_display_create(const session_display_config_t *config) {
@@ -219,7 +213,6 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->render_fps = config->render_fps;
   atomic_store_bool(&ctx->first_frame, true);
   atomic_store_bool(&ctx->output_failed, false);
-  atomic_store_bool(&ctx->keyboard_help_active, false);
 
   // Get TTY info for direct terminal access
   ctx->tty_info = get_current_tty();
@@ -819,7 +812,7 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   }
 
   // Suppress frame rendering when help screen is active
-  if (atomic_load_bool(&ctx->keyboard_help_active)) {
+  if (ui_controller_interactive_screen() == UI_SCREEN_HELP) {
     return;
   }
 
@@ -1179,21 +1172,6 @@ asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const 
  * ============================================================================ */
 
 /**
- * @brief Toggle keyboard help on/off (implemented in display.c for struct access)
- */
-void keyboard_help_toggle(session_display_ctx_t *ctx) {
-  if (!ctx) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
-    return;
-  }
-
-  bool current = atomic_load_bool(&ctx->keyboard_help_active);
-  atomic_store_bool(&ctx->keyboard_help_active, !current);
-  if (current)
-    ui_controller_remove(UI_SCREEN_HELP);
-}
-
-/**
  * @brief Check if keyboard help is currently active (implemented in display.c for struct access)
  */
 // Global reference to current display context (used by signal handlers)
@@ -1245,7 +1223,7 @@ bool keyboard_help_is_active(session_display_ctx_t *ctx) {
     return false;
   }
 
-  return atomic_load_bool(&ctx->keyboard_help_active);
+  return ui_controller_interactive_screen() == UI_SCREEN_HELP;
 }
 
 // Global accessor for signal handlers (called from Ctrl+C handler)
@@ -1253,7 +1231,7 @@ bool keyboard_help_is_active(session_display_ctx_t *ctx) {
 // if help is active even in snapshot mode)
 bool keyboard_help_is_active_global(void) {
   session_display_ctx_t *ctx = get_current_display_ctx();
-  return ctx && !ui_controller_is_blocked() && atomic_load_bool(&ctx->keyboard_help_active);
+  return ctx && !ui_controller_is_blocked() && (ui_controller_interactive_screen() == UI_SCREEN_HELP);
 }
 
 void keyboard_help_toggle_global(void) {
