@@ -16,6 +16,7 @@
 #define LOG_COLORIZE_H
 
 #include <stddef.h>
+#include <stdbool.h>
 
 /**
  * @brief Colorize a log message for terminal output
@@ -31,5 +32,8 @@
  * @note Only colorizes if output is going to TTY, otherwise returns message unchanged
  */
 const char *colorize_log_message(const char *message);
+
+/** Apply an already-selected color policy without querying the terminal. */
+const char *colorize_log_message_with_color(const char *message, bool enabled);
 
 #endif

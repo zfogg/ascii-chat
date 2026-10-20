@@ -295,6 +295,7 @@ Test(recording, microphone_worker_copies_audio_without_draining_transmission, .t
   audio_context_t ctx = {0};
   cr_assert_eq(audio_init(&ctx), ASCIICHAT_OK);
   ctx.playback_only = true;
+  ctx.monitor_local_media = true;
   float mic[960];
   for (int i = 0; i < 960; i++)
     mic[i] = 0.25f * sinf(2.0f * 3.14159265f * 440.0f * i / 48000.0f);
@@ -305,6 +306,12 @@ Test(recording, microphone_worker_copies_audio_without_draining_transmission, .t
   audio_recording_start(recording, started);
   cr_assert_eq(audio_ring_buffer_write(ctx.raw_capture_rb, mic, 960), ASCIICHAT_OK);
   wait_for_captured_samples(&ctx, 960);
+  for (unsigned i = 0; i < 25; ++i) {
+    cr_assert_eq(audio_ring_buffer_write(ctx.raw_capture_rb, mic, 480), ASCIICHAT_OK);
+    platform_sleep_ns(10 * NS_PER_MS_INT);
+  }
+  cr_assert_leq(audio_ring_buffer_available_read(ctx.capture_buffer), AUDIO_JITTER_HIGH_WATER_MARK,
+                "An undrained microphone monitor queue must not enter the overflow/logging path");
   float energy = recorded_energy_since(started);
   cr_assert_gt(energy, 1.0f, "Mic energy %f, sensitivity %f, queued %zu", energy, GET_OPTION(microphone_sensitivity),
                audio_ring_buffer_available_read(ctx.capture_buffer));
@@ -326,6 +333,7 @@ Test(recording, file_audio_worker_feeds_transmission_playback_and_recording, .ti
   audio_recording_destroy(recording);
   cr_assert_eq(audio_recording_create(&recording), ASCIICHAT_OK);
   cr_assert_eq(audio_start_duplex(&ctx), ASCIICHAT_OK);
+  cr_assert_not(ctx.playback_buffer->jitter_buffer_enabled, "Local PCM must retain every decoded sample");
   uint64_t started = time_get_ns();
   audio_recording_start(recording, started);
   wait_for_captured_samples(&ctx, 960);
@@ -338,6 +346,28 @@ Test(recording, file_audio_worker_feeds_transmission_playback_and_recording, .ti
   audio_destroy(&ctx);
   media_source_destroy(source);
   platform_delete_temp_file(path);
+}
+
+Test(recording, remote_audio_selection_retains_network_jitter_buffer, .timeout = 10) {
+  char path[1024];
+  create_audio_fixture(path, sizeof(path));
+  media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, path);
+  cr_assert_not_null(source);
+  options_t options = *options_get();
+  options.audio_capture_source = AUDIO_CAPTURE_SOURCE_REMOTE;
+  options_state_set(&options);
+  audio_context_t ctx = {0};
+  cr_assert_eq(audio_init(&ctx), ASCIICHAT_OK);
+  ctx.capture_media_source = source;
+  ctx.monitor_local_media = true;
+  ctx.playback_only = true;
+  cr_assert_eq(audio_start_duplex(&ctx), ASCIICHAT_OK);
+  bool jitter_enabled = ctx.playback_buffer->jitter_buffer_enabled;
+  cr_assert_eq(audio_stop_duplex(&ctx), ASCIICHAT_OK);
+  audio_destroy(&ctx);
+  media_source_destroy(source);
+  platform_delete_temp_file(path);
+  cr_assert(jitter_enabled, "Remote audio needs network jitter recovery");
 }
 
 Test(recording, media_audio_recording_runs_without_input_or_output_devices, .timeout = 10) {

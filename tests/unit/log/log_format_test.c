@@ -13,6 +13,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/format.h>
+#include <ascii-chat/log/colorize.h>
 #include <ascii-chat/util/time.h>
 
 /* ============================================================================
@@ -31,6 +32,32 @@ void teardown_test_logging(void) {
 }
 
 TestSuite(log_format, .init = setup_test_logging, .fini = teardown_test_logging);
+
+Test(log_format, nested_color_fields_respect_the_callers_policy) {
+  bool saved_passed = g_color_flag_passed, saved_value = g_color_flag_value;
+  g_color_flag_passed = g_color_flag_value = true;
+  log_template_t *format = log_template_parse("%color(INFO,%message)", false);
+  cr_assert_not_null(format);
+  char output[512];
+  cr_assert_gt(log_template_apply(format, output, sizeof(output), LOG_INFO, "00:00:00", "test.c", 1, "test", 1,
+                                  "value 123 ms", false, 0),
+               0);
+  cr_assert_str_eq(output, "value 123 ms", "Plain file formatting must bypass global terminal color detection");
+  cr_assert_gt(log_template_apply(format, output, sizeof(output), LOG_INFO, "00:00:00", "test.c", 1, "test", 1,
+                                  "value 123 ms", true, 0),
+               0);
+  cr_assert_not_null(strstr(output, "\033["));
+  log_template_free(format);
+  g_color_flag_passed = saved_passed;
+  g_color_flag_value = saved_value;
+}
+
+Test(log_format, semantic_colorization_accepts_an_explicit_policy_without_a_tty) {
+  const char *message = "value 123 ms";
+  cr_assert_eq(colorize_log_message_with_color(message, false), message);
+  cr_assert_not_null(strstr(colorize_log_message_with_color(message, true), "\033["));
+  cr_assert_null(colorize_log_message_with_color(NULL, true));
+}
 
 /* ============================================================================
  * Time Format Validation Tests

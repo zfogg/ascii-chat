@@ -506,16 +506,30 @@ static bool is_key_value_pair(const char *str, size_t pos, size_t *key_end, size
  * Only applies colors if output is going to a TTY (not piped/redirected).
  * Only colorizes text that is not already colored (in reset state).
  */
+static void append_colored_token(char *output, size_t capacity, size_t *position, log_color_t color, const char *text) {
+  const char *start = log_level_color(color);
+  const char *reset = log_level_color(LOG_COLOR_RESET);
+  size_t start_len = start ? strlen(start) : 0, text_len = strlen(text), reset_len = reset ? strlen(reset) : 0;
+  if (*position >= capacity || start_len + text_len + reset_len >= capacity - *position)
+    return;
+  if (start_len)
+    memcpy(output + *position, start, start_len);
+  *position += start_len;
+  memcpy(output + *position, text, text_len);
+  *position += text_len;
+  if (reset_len)
+    memcpy(output + *position, reset, reset_len);
+  *position += reset_len;
+}
+
 const char *colorize_log_message(const char *message) {
-  if (!message) {
+  if (!message)
     return message;
-  }
+  return colorize_log_message_with_color(message, terminal_should_color_output(STDOUT_FILENO));
+}
 
-  // Check if colors should be used based on TTY status (same as ASCII art)
-  // Colors are only applied when output is actually a TTY
-  bool should_colorize = terminal_should_color_output(STDOUT_FILENO);
-
-  if (!should_colorize) {
+const char *colorize_log_message_with_color(const char *message, bool enabled) {
+  if (!message || !enabled) {
     return message;
   }
 
@@ -550,27 +564,17 @@ const char *colorize_log_message(const char *message) {
       char value_buf[512];
       safe_snprintf(value_buf, sizeof(value_buf), "%.*s", (int)value_len, message + value_start);
 
-      // Color the key (magenta)
-      const char *colored_key = colored_string(LOG_COLOR_FATAL, key_buf);
-      size_t colored_key_len = strlen(colored_key);
-
       // Check if we have enough space for key + equals + value
-      // (accounting for ANSI codes which will be added by colored_string)
-      if (out_pos + colored_key_len + 1 + value_len + 100 < max_size) {
-        memcpy(output + out_pos, colored_key, colored_key_len);
-        out_pos += colored_key_len;
+      // including the bounded color prefixes and resets.
+      if (out_pos + key_len + 1 + value_len + 100 < max_size) {
+        append_colored_token(output, max_size, &out_pos, LOG_COLOR_FATAL, key_buf);
 
         // Add uncolored equals sign
         output[out_pos++] = '=';
 
         // Determine value color and add colored value
         log_color_t value_color = get_value_color(value_buf);
-        const char *colored_value = colored_string(value_color, value_buf);
-        size_t colored_value_len = strlen(colored_value);
-        if (out_pos + colored_value_len < max_size) {
-          memcpy(output + out_pos, colored_value, colored_value_len);
-          out_pos += colored_value_len;
-        }
+        append_colored_token(output, max_size, &out_pos, value_color, value_buf);
       }
       i = value_end - 1;
       continue;
@@ -582,12 +586,7 @@ const char *colorize_log_message(const char *message) {
       char pattern_buf[256];
       safe_snprintf(pattern_buf, sizeof(pattern_buf), "%.*s", (int)pattern_len, message + i);
 
-      const char *colored = colored_string(LOG_COLOR_GREY, pattern_buf);
-      size_t colored_len = strlen(colored);
-      if (out_pos + colored_len < max_size) {
-        memcpy(output + out_pos, colored, colored_len);
-        out_pos += colored_len;
-      }
+      append_colored_token(output, max_size, &out_pos, LOG_COLOR_GREY, pattern_buf);
       i = end_pos - 1;
       continue;
     }
@@ -598,12 +597,7 @@ const char *colorize_log_message(const char *message) {
       char path_buf[512];
       safe_snprintf(path_buf, sizeof(path_buf), "%.*s", (int)path_len, message + i);
 
-      const char *colored = colored_string(LOG_COLOR_DEBUG, path_buf);
-      size_t colored_len = strlen(colored);
-      if (out_pos + colored_len < max_size) {
-        memcpy(output + out_pos, colored, colored_len);
-        out_pos += colored_len;
-      }
+      append_colored_token(output, max_size, &out_pos, LOG_COLOR_DEBUG, path_buf);
       i = end_pos - 1;
       continue;
     }
@@ -614,12 +608,7 @@ const char *colorize_log_message(const char *message) {
       char var_buf[256];
       safe_snprintf(var_buf, sizeof(var_buf), "%.*s", (int)var_len, message + i);
 
-      const char *colored = colored_string(LOG_COLOR_GREY, var_buf);
-      size_t colored_len = strlen(colored);
-      if (out_pos + colored_len < max_size) {
-        memcpy(output + out_pos, colored, colored_len);
-        out_pos += colored_len;
-      }
+      append_colored_token(output, max_size, &out_pos, LOG_COLOR_GREY, var_buf);
       i = end_pos - 1;
       continue;
     }
@@ -630,12 +619,7 @@ const char *colorize_log_message(const char *message) {
       char url_buf[2048];
       safe_snprintf(url_buf, sizeof(url_buf), "%.*s", (int)url_len, message + i);
 
-      const char *colored = colored_string(LOG_COLOR_INFO, url_buf);
-      size_t colored_len = strlen(colored);
-      if (out_pos + colored_len < max_size) {
-        memcpy(output + out_pos, colored, colored_len);
-        out_pos += colored_len;
-      }
+      append_colored_token(output, max_size, &out_pos, LOG_COLOR_INFO, url_buf);
       i = end_pos - 1;
       continue;
     }

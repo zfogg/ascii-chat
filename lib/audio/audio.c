@@ -118,7 +118,11 @@ static void audio_publish_local_capture(audio_context_t *ctx, float *samples, si
     if (ctx->monitor_local_media)
       audio_ring_buffer_write(ctx->playback_buffer, media, (int)read);
   }
-  audio_ring_buffer_write(ctx->capture_buffer, samples, (int)count);
+  // Mirror may record and visualize the microphone without a transmission
+  // consumer. Do not repeatedly overflow and log from that undrained queue.
+  if (!ctx->monitor_local_media ||
+      audio_ring_buffer_available_read(ctx->capture_buffer) + count <= AUDIO_JITTER_HIGH_WATER_MARK)
+    audio_ring_buffer_write(ctx->capture_buffer, samples, (int)count);
 }
 
 /**
@@ -1764,7 +1768,11 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   if (ctx->playback_buffer) {
     // Local decoded PCM is paced by the speaker callback and has no network
     // clock to reconcile. Keep its samples exact across callback boundaries.
-    ctx->playback_buffer->jitter_buffer_enabled = !(media_audio && ctx->playback_only && ctx->monitor_local_media);
+    audio_capture_source_t selection = GET_OPTION(audio_capture_source);
+    bool local_media_selected = selection == AUDIO_CAPTURE_SOURCE_AUTO || selection == AUDIO_CAPTURE_SOURCE_MEDIA ||
+                                selection == AUDIO_CAPTURE_SOURCE_BOTH;
+    ctx->playback_buffer->jitter_buffer_enabled =
+        !(media_audio && ctx->playback_only && ctx->monitor_local_media && local_media_selected);
     audio_ring_buffer_clear(ctx->playback_buffer);
   }
 

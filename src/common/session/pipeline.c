@@ -40,6 +40,7 @@ typedef struct {
   uint64_t source_epoch, frame_serial;
   bool fresh;
   uint64_t captured_ns; // wall-clock timestamp
+  uint64_t acquisition_started_ns;
 } pipeline_frame_t;
 
 // Thread-safe bounded queue (ring buffer)
@@ -269,6 +270,7 @@ static void *pipeline_capture_thread(void *arg) {
   uint64_t previous_serial = 0;
   while (!atomic_load_bool(&pipeline->stop)) {
     asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
+    uint64_t acquisition_started_ns = time_get_ns();
     image_t *img = session_capture_read_frame(pipeline->capture);
 
     if (!img) {
@@ -282,15 +284,13 @@ static void *pipeline_capture_thread(void *arg) {
       continue;
     }
 
-    // Respect configured FPS
-    session_capture_sleep_for_fps(pipeline->capture);
-
     // Copy frame
     pipeline_frame_t *frame = make_frame_copy(img);
     if (!frame) {
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
       continue;
     }
+    frame->acquisition_started_ns = acquisition_started_ns;
 
     frame->source_epoch = session_capture_source_epoch(pipeline->capture);
     frame->frame_serial = session_capture_frame_serial(pipeline->capture);
@@ -302,13 +302,12 @@ static void *pipeline_capture_thread(void *arg) {
     atomic_cas_u64(&pipeline->first_frame_ns, &zero, frame->captured_ns);
 
     // Fan out: display queue (fast, can drop), encode queue (slow, keep all)
-    pipeline_frame_t *display_copy = SAFE_MALLOC(sizeof(*display_copy), pipeline_frame_t *);
-    memcpy(display_copy, frame, sizeof(*display_copy));
-    display_copy->pixels = buffer_share(frame->pixels);
-
-    uint64_t push_time_ns = time_get_ns();
-    log_debug_every(US_PER_SEC_INT, "[PIPELINE_CAPTURE_PUSH_DISPLAY] Pushing %dx%d frame to display_queue at %llu ns",
-                    display_copy->w, display_copy->h, (unsigned long long)push_time_ns);
+    pipeline_frame_t *display_copy = frame;
+    if (pipeline->has_render_file) {
+      display_copy = SAFE_MALLOC(sizeof(*display_copy), pipeline_frame_t *);
+      memcpy(display_copy, frame, sizeof(*display_copy));
+      display_copy->pixels = buffer_share(frame->pixels);
+    }
     pipeline_frame_t *retired = frame_queue_replace_latest(pipeline->display_queue, display_copy);
     if (retired) {
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
@@ -334,10 +333,11 @@ static void *pipeline_capture_thread(void *arg) {
         pipeline->frames_accepted++;
         log_debug_every(60 * US_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue");
       }
-    } else {
-      log_debug_every(5 * US_PER_SEC_INT, "Video recording is disabled");
-      free_frame(frame);
     }
+
+    // Publish the acquired image before pacing the next acquisition. Sleeping
+    // with an already captured frame adds a full interval to live latency.
+    session_capture_sleep_for_fps(pipeline->capture);
 
     // Check snapshot mode elapsed time AFTER queueing frame (ensure at least 1 frame is queued)
     if (snapshot_mode) {
@@ -460,10 +460,9 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   if (media_source_uses_webcam(source) || media_source_get_type(source) == MEDIA_SOURCE_FILE)
     session_display_set_render_live_timing(display);
 
-  // Enable encode thread if render_file is available
-  // Note: has_file can be true even if render_file creation failed (ctx->render_file exists)
-  // OR if render_fps is explicitly set for playback speed control
-  p->has_render_file = render_fps > 0 || has_file;
+  // Playback FPS also has a default when no recording was requested. It must
+  // not enable the encoder's lossless queue for a live-only session.
+  p->has_render_file = has_file;
   log_debug("[PIPELINE_CREATE] render_fps=%.1f, has_file=%d, has_render_file=%d", render_fps, has_file ? 1 : 0,
             p->has_render_file ? 1 : 0);
 
@@ -541,7 +540,6 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     log_debug_every(US_PER_SEC_INT, "[PIPELINE_DEBUG] should_exit=%d, stop=%d", exit_check,
                     atomic_load_bool(&pipeline->stop));
 
-    uint64_t pop_time_ns = time_get_ns();
     pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 1 * NS_PER_MS_INT);
 
     if (!frame) {
@@ -558,31 +556,35 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
       continue;
     }
 
-    // Log frame pop with timestamp
-    log_debug_every(US_PER_SEC_INT, "[PIPELINE_MAIN_POP] frame=%p, pixels=%p, w=%d, h=%d at %llu ns", (void *)frame,
-                    (void *)frame->pixels, frame->w, frame->h, (unsigned long long)pop_time_ns);
-
     // Check if help screen is active - if so, don't render ASCII frames
     int screen = ui_controller_current_screen();
     bool help_is_active = screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_HELP || screen == UI_SCREEN_LOGS;
 
     if (!help_is_active) {
-      log_debug_every(US_PER_SEC_INT, "[PIPELINE_MAIN_RENDER] Converting frame to ASCII: %dx%d", frame->w, frame->h);
       // Convert to ASCII
       image_t tmp = {.w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels};
+      uint64_t conversion_started_ns = time_get_ns();
       char *ascii = session_display_convert_to_ascii(pipeline->display, &tmp);
+      uint64_t converted_ns = time_get_ns();
+      double read_ms = (double)(frame->captured_ns - frame->acquisition_started_ns) / NS_PER_MS_INT;
+      double queue_ms = (double)(conversion_started_ns - frame->captured_ns) / NS_PER_MS_INT;
+      double convert_ms = (double)(converted_ns - conversion_started_ns) / NS_PER_MS_INT;
       uint64_t epoch = frame->source_epoch;
       bool fresh = frame->fresh;
-      uint64_t capture_age = time_get_ns() - frame->captured_ns;
+      uint64_t acquisition_started_ns = frame->acquisition_started_ns;
       free_frame(frame);
       frame = NULL;
 
       if (ascii) {
         if (epoch == session_capture_source_epoch(pipeline->capture)) {
           session_display_write_ascii_frame(pipeline->display, ascii, fresh);
+          uint64_t published_ns = time_get_ns();
           session_capture_complete_open(pipeline->capture, epoch);
-          log_debug_every(US_PER_SEC_INT, "LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d",
-                          (double)capture_age / NS_PER_MS_INT, fresh);
+          log_debug_every(US_PER_SEC_INT,
+                          "LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d read_ms=%.2f queue_ms=%.2f convert_ms=%.2f "
+                          "publish_ms=%.2f",
+                          (double)(published_ns - acquisition_started_ns) / NS_PER_MS_INT, fresh, read_ms, queue_ms,
+                          convert_ms, (double)(published_ns - converted_ns) / NS_PER_MS_INT);
         }
         SAFE_FREE(ascii);
       } else {

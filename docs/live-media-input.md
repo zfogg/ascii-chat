@@ -72,3 +72,21 @@ On Windows, `media_audio_continuity.py` additionally requires NumPy and
 PyAudioWPatch. Pass `--binary`, `--media`, and `--artifacts` to compare actual speaker
 loopback against an FFmpeg-decoded reference. Captured audio stays in the local
 artifact directory.
+
+To trace native frame freshness and verify the FPS overlay on every complete
+terminal update, run:
+
+```powershell
+python tests/integration/live_frame_latency.py --binary build/bin/ascii-chat.exe --webcam --with-audio --duration 125 --check-input --artifacts build/live-frame-latency
+python tests/integration/live_frame_latency.py --binary build/bin/ascii-chat.exe --webcam --fps 5 --duration 15 --artifacts build/throttled-camera
+python tests/integration/frame_presentation.py --binary build/bin/ascii-chat.exe --artifacts build/frame-presentation
+```
+
+The first check also measures `o` responsiveness after sustained rendering. The
+throttled run checks that the camera backend discards queued old samples instead
+of replaying them. On Windows, `CAMERA_FRAME` logs include backlog relative to the
+fastest delivery and the driver timestamp's frame age when the driver supplies
+it (`device_age_ms=-1` means unavailable). `LIVE_FRAME` separates acquisition,
+queue wait, conversion, and publication; `FRAME_PRESENT` measures submission
+through completed terminal output. These software timings do not measure monitor
+scanout or the camera's exposure time.

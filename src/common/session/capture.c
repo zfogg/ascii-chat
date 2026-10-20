@@ -64,7 +64,7 @@ struct session_capture_ctx {
   atomic_t load_cancel;
   atomic_t playlist_skip;
   media_playlist_t playlist, load_playlist;
-  bool advance_failed;
+  bool advance_failed, load_is_advance;
   atomic_t source_epoch, frame_serial, awaiting_presentation;
   media_source_t *loaded_source;
   image_t *loaded_frame, *initial_frame;
@@ -538,7 +538,8 @@ bool session_capture_cancel_open(session_capture_ctx_t *ctx) {
   return busy;
 }
 
-static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const media_playlist_t *list, size_t index) {
+static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const media_playlist_t *list, size_t index,
+                                               bool automatic) {
   const char *path = list->paths[index];
   if (!ctx || !ctx->media_locks_ready || !path || strlen(path) >= sizeof(ctx->load_path))
     return SET_ERRNO(ERROR_INVALID_STATE, "Local capture is unavailable");
@@ -552,6 +553,7 @@ static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const
   }
   ctx->load_playlist = *list;
   ctx->load_playlist.index = index;
+  ctx->load_is_advance = automatic;
   snprintf(ctx->load_path, sizeof(ctx->load_path), "%s", path);
   ctx->loader_done = false;
   atomic_store_bool(&ctx->awaiting_presentation, false);
@@ -575,12 +577,12 @@ static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const
 asciichat_error_t session_capture_open_media(session_capture_ctx_t *ctx, const char *path) {
   media_playlist_t list = {0};
   asciichat_error_t result = media_playlist_append(&list, path, path && strstr(path, "://") != NULL);
-  return result == ASCIICHAT_OK ? capture_load_playlist(ctx, &list, 0) : result;
+  return result == ASCIICHAT_OK ? capture_load_playlist(ctx, &list, 0, false) : result;
 }
 asciichat_error_t session_capture_open_playlist(session_capture_ctx_t *ctx, const char *text) {
   media_playlist_t list = {0};
   asciichat_error_t result = media_playlist_parse(text, &list);
-  return result == ASCIICHAT_OK ? capture_load_playlist(ctx, &list, 0) : result;
+  return result == ASCIICHAT_OK ? capture_load_playlist(ctx, &list, 0, false) : result;
 }
 void session_capture_skip_media(session_capture_ctx_t *ctx, int direction) {
   if (ctx && (direction == -1 || direction == 1))
@@ -611,9 +613,10 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   ctx->loaded_frame = NULL;
   media_playlist_t loaded_playlist = ctx->load_playlist;
   bool cancelled = atomic_load_bool(&ctx->load_cancel);
+  bool automatic = ctx->load_is_advance;
   mutex_unlock(&ctx->load_mutex);
   if (cancelled || !replacement) {
-    ctx->advance_failed = true;
+    ctx->advance_failed |= automatic;
     ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
     if (first)
       image_destroy(first);
@@ -626,6 +629,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   }
   audio_context_t *audio = ctx->audio_ctx;
   if (audio && audio_stop_duplex(audio) != ASCIICHAT_OK) {
+    ctx->advance_failed |= automatic;
     ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
     if (first)
       image_destroy(first);
@@ -647,6 +651,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
     if (audio->capture_buffer)
       audio_ring_buffer_clear(audio->capture_buffer);
     if (audio_start_duplex(audio) != ASCIICHAT_OK) {
+      ctx->advance_failed |= automatic;
       ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
       LOG_ERRNO_IF_SET("Cannot start replacement audio; restoring previous source");
       CLEAR_ERRNO();
@@ -765,8 +770,8 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
       adjacent = true;
     }
     if ((skip || (ended && !ctx->advance_failed)) && adjacent) {
-      if (capture_load_playlist(ctx, &ctx->playlist, next) != ASCIICHAT_OK) {
-        ctx->advance_failed = true;
+      if (capture_load_playlist(ctx, &ctx->playlist, next, !skip) != ASCIICHAT_OK) {
+        ctx->advance_failed |= !skip;
         LOG_ERRNO_IF_SET("Cannot advance media playlist");
         CLEAR_ERRNO();
       }

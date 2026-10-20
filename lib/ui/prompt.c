@@ -178,6 +178,8 @@ static void render_prompt(terminal_size_t size, const void *data) {
 }
 
 static int prompt_fd(void) {
+  if (ui_controller_is_presenting())
+    return STDERR_FILENO; // The controller inherits the active screen's retained terminal.
   return platform_isatty(STDERR_FILENO) ? STDERR_FILENO : STDOUT_FILENO;
 }
 
