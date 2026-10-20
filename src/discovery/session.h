@@ -370,6 +370,9 @@ asciichat_error_t discovery_session_start_ring_round(discovery_session_t *sessio
  */
 asciichat_error_t discovery_session_check_host_alive(discovery_session_t *session);
 
+/** Record a host reply using the same clock as liveness deadlines. */
+void discovery_session_host_pong(discovery_session_t *session);
+
 /**
  * @brief Handle host disconnect with automatic failover to future host
  * @param session Session context

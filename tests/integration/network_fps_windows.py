@@ -5,6 +5,7 @@ Requires: python -m pip install pywinpty
 Measures the application's completed-presentation FPS overlay, with normal logging.
 """
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -84,6 +85,8 @@ def unused_port():
 def run(options, transport):
     output = options.output / transport
     output.mkdir(parents=True, exist_ok=True)
+    for suffix in ['ascii-chat', 'AppData/Roaming/ascii-chat', '.config/ascii-chat']:
+        (output / suffix).mkdir(parents=True, exist_ok=True)
     env = {key: value for key, value in os.environ.items() if not key.startswith('ASCII_CHAT_')}
     env.update(ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1',
                ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y', TERM='xterm-256color', HOME=str(output),
@@ -190,6 +193,9 @@ def run(options, transport):
         while time.monotonic() < deadline:
             assert client.isalive(), 'Client exited during measurement'
             assert all(p.poll() is None for p in servers), 'Fixture exited during measurement'
+            if transport == 'discovery-tcp':
+                server_log = (output / 'server.log').read_text(encoding='utf-8', errors='replace')
+                assert 'Authenticated WebRTC connection adopted' not in server_log, 'TCP case adopted WebRTC'
             positive = next((t for t, value in samples if value > 0), None)
             if first_frame is None and positive is not None:
                 first_frame = positive
@@ -204,23 +210,31 @@ def run(options, transport):
             if measurement_start <= elapsed < measurement_start + options.seconds:
                 buckets[int(elapsed - measurement_start)] = value
         values = list(buckets.values())
+        server_log = (output / 'server.log').read_text(encoding='utf-8', errors='replace')
+        client_log = (output / 'client.log').read_text(encoding='utf-8', errors='replace')
+        assert 'DISCOVERY IDENTITY UNAVAILABLE' not in client_log, 'Discovery identity fixture was not initialized'
+        observed = sorted(set(int(value) for value in
+                              re.findall(r'Added new transport client [^\n]+type=(\d+),', server_log)))
+        expected = {'tcp': 1, 'discovery-tcp': 1, 'websocket': 2, 'webrtc': 3}[transport]
         result = dict(transport=transport, priority=options.priority, target_fps=options.fps, width=options.width, height=options.height,
                       samples_by_second=buckets, commands=commands, first_frame_s=first_frame,
+                      observed_transport_types=observed, expected_transport_type=expected,
+                      binary_sha256=hashlib.sha256(options.binary.read_bytes()).hexdigest(),
                       median_fps=statistics.median(values) if values else 0, minimum_fps=min(values) if values else 0,
                       maximum_fps=max(values) if values else 0)
         (output / 'result.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
         (output / 'terminal.ansi').write_text(tail[0], encoding='utf-8')
         print(json.dumps({k: v for k, v in result.items() if k != 'commands'}), flush=True)
+        assert observed == [expected], f'Unexpected media transport: expected {expected}, observed {observed}'
         assert len(values) >= options.seconds * .8, 'Insufficient sustained FPS samples'
         assert statistics.median(values) >= options.fps * .98, 'Median presentation FPS below target'
         assert sum(value >= options.fps * .95 for value in values) >= len(values) * .9, 'Unstable presentation FPS'
-        server_log = (output / 'server.log').read_text(encoding='utf-8', errors='replace')
         assert 'state=changing' in server_log, 'Server did not observe changing client video'
         if transport == 'webrtc':
             assert 'Authenticated WebRTC connection adopted' in server_log
         elif transport == 'discovery-tcp':
             assert 'Authenticated WebRTC connection adopted' not in server_log, 'TCP case adopted WebRTC'
-            assert 'type=1' in server_log, 'TCP transport was not observed'
+            assert re.search(r'Added new transport client [^\n]+type=1,', server_log), 'TCP media admission was not observed'
     finally:
         try:
             if client:

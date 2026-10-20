@@ -4,6 +4,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/acip/send.h>
 #include "session/host.h"
+#include "session/protocol.h"
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
@@ -63,6 +64,33 @@ static asciichat_error_t discovery_session_receive(acip_transport_t *transport, 
 static discovery_session_t discovery_session_fixture(discovery_state_t state) {
   return (discovery_session_t){
       .state = state, .on_state_change = discovery_session_transition, .handoff_last_sample_ms = now_ms};
+}
+static void discovery_test_pong(void *context) {
+  discovery_session_host_pong(context);
+}
+
+static void discovery_check_pong_clock(acip_transport_t *transport) {
+  discovery_session_t session = discovery_session_fixture(DISCOVERY_STATE_ACTIVE);
+  session_participant_config_t config = {.address = "127.0.0.1", .port = 1};
+  session.participant_ctx = session_participant_create(&config);
+  CHECK(session.participant_ctx);
+  session.liveness.ping_interval_ms = 5000;
+  session.liveness.timeout_ms = 10000;
+  session.liveness.max_failures = 3;
+  session_protocol_t protocol;
+  session_protocol_init(&protocol, transport, (session_protocol_media_t){0},
+                        (acip_client_callbacks_t){.on_pong = discovery_test_pong, .app_ctx = &session});
+  for (int reply = 0; reply < 4; ++reply) {
+    session.liveness.last_ping_sent_ms = now_ms;
+    session.liveness.ping_in_flight = true;
+    session.liveness.consecutive_failures = 2;
+    CHECK(session_protocol_dispatch(&protocol, PACKET_TYPE_PONG, NULL, 0) == ASCIICHAT_OK);
+    CHECK(atomic_load_u64(&session.liveness.last_pong_received_ms) == now_ms);
+    CHECK(discovery_session_check_host_alive(&session) == ASCIICHAT_OK);
+    CHECK(!session.liveness.ping_in_flight && session.liveness.consecutive_failures == 0);
+    now_ms += 15000;
+  }
+  session_participant_destroy(session.participant_ctx);
 }
 static asciichat_error_t discovery_session_step(discovery_session_t *session, int64_t timeout_ns) {
   session->callback_user_data = session;
@@ -188,6 +216,7 @@ int main(void) {
                                       .is_connected = discovery_session_connected,
                                       .has_pending_data = discovery_session_pending};
   acip_transport_t transport = {.methods = &methods};
+  discovery_check_pong_clock(&transport);
 
   CHECK(discovery_session_process(NULL, 0) == ERROR_INVALID_PARAM);
   discovery_session_t session = discovery_session_fixture((discovery_state_t)-1);

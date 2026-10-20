@@ -183,8 +183,7 @@ static asciichat_error_t discovery_decode_opus(const void *data, size_t length, 
 }
 
 static void discovery_host_pong(void *arg) {
-  discovery_session_t *session = arg;
-  atomic_store_u64(&session->liveness.last_pong_received_ms, time_get_ns() / NS_PER_MS_INT);
+  discovery_session_host_pong(arg);
 }
 
 static asciichat_error_t discovery_media_packet(network_connection_t *network, packet_type_t type, const void *payload,

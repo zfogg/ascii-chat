@@ -1317,7 +1317,16 @@ static asciichat_error_t join_session(discovery_session_t *session) {
 
   // Store session type and WebRTC credentials (if WebRTC)
   session->session_type = joined->session_type;
-  if (joined->session_type == SESSION_TYPE_WEBRTC) {
+  if (GET_OPTION(no_webrtc)) {
+    if (!joined->server_address[0] || joined->server_port == 0) {
+      set_error(session, ERROR_NETWORK, "Direct TCP requires a disclosed host endpoint; WebRTC is disabled");
+      buffer_release(alloc_buffer);
+      return SET_ERRNO(ERROR_NETWORK, "Direct TCP requires a disclosed host endpoint; WebRTC is disabled");
+    }
+    session->session_type = SESSION_TYPE_DIRECT_TCP;
+    log_info("Discovery connection route: direct TCP (--no-webrtc)");
+  }
+  if (session->session_type == SESSION_TYPE_WEBRTC) {
     // WebRTC signaling addresses peers by participant ID, so a private server
     // address must not send the client through TCP/NAT host election. The
     // session initiator is the host for server-created sessions and is already
@@ -1326,11 +1335,11 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     memcpy(session->host_id, host_id, sizeof(session->host_id));
     session->is_host = memcmp(session->host_id, session->participant_id, sizeof(session->host_id)) == 0;
   }
-  if (GET_OPTION(webrtc_relay_only) && joined->session_type != SESSION_TYPE_WEBRTC) {
+  if (GET_OPTION(webrtc_relay_only) && session->session_type != SESSION_TYPE_WEBRTC) {
     buffer_release(alloc_buffer);
     return SET_ERRNO(ERROR_INVALID_STATE, "Relay only requires a WebRTC session");
   }
-  if (joined->session_type == 1) { // SESSION_TYPE_WEBRTC
+  if (session->session_type == SESSION_TYPE_WEBRTC) {
     SAFE_STRNCPY(session->turn_username, joined->turn_username, sizeof(session->turn_username));
     SAFE_STRNCPY(session->turn_password, joined->turn_password, sizeof(session->turn_password));
     log_info("WebRTC session detected - TURN username: %s", session->turn_username);
@@ -1346,7 +1355,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   }
 
   // Check if host is already established
-  if (joined->session_type != SESSION_TYPE_WEBRTC && joined->server_address[0] && joined->server_port > 0) {
+  if (session->session_type != SESSION_TYPE_WEBRTC && joined->server_address[0] && joined->server_port > 0) {
     // Host exists - connect directly
     SAFE_STRNCPY(session->host_address, joined->server_address, sizeof(session->host_address));
     session->host_port = joined->server_port;
@@ -1365,7 +1374,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   // WebRTC peers connect through ACDS signaling and never need the host's IP
   // address. Use the host participant ID returned above when the address is
   // intentionally hidden.
-  if (joined->session_type == SESSION_TYPE_WEBRTC && session->host_id[0]) {
+  if (session->session_type == SESSION_TYPE_WEBRTC && session->host_id[0]) {
     if (session->is_host) {
       log_info("WebRTC participant is the session host; starting host transport");
       set_state(session, DISCOVERY_STATE_STARTING_HOST);
@@ -2095,6 +2104,11 @@ asciichat_error_t discovery_session_start_ring_round(discovery_session_t *sessio
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing discovery session");
   session->handoff_last_sample_ms = 0;
   return discovery_handoff_sample(session);
+}
+
+void discovery_session_host_pong(discovery_session_t *session) {
+  if (session)
+    atomic_store_u64(&session->liveness.last_pong_received_ms, session_get_current_time_ms());
 }
 
 asciichat_error_t discovery_session_check_host_alive(discovery_session_t *session) {

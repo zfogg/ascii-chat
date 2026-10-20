@@ -331,7 +331,9 @@ static asciichat_error_t discovery_client_negotiate(acip_transport_t *transport,
     return ASCIICHAT_OK;
   }
   uint64_t deadline = time_get_ns() + 30 * NS_PER_SEC_INT;
-  for (unsigned step = 0; step < 3 && ctx->state != CRYPTO_HANDSHAKE_READY; ++step) {
+  // Discovery sends parameters before key exchange. An identity-bearing client
+  // also receives an auth request and acknowledgment before reaching readiness.
+  for (unsigned step = 0; step < 4 && ctx->state != CRYPTO_HANDSHAKE_READY; ++step) {
     packet_type_t type;
     void *payload = NULL, *allocation = NULL;
     size_t length = 0;

@@ -46,7 +46,7 @@ kernel.FreeConsole()
 
 
 class Service:
-    def __init__(self, binary, directory, name, mode, options):
+    def __init__(self, binary, directory, name, mode, options, environment=None):
         self.log = directory / (name + ".log")
         self.output = directory / (name + ".txt")
         # A reused output directory must not satisfy readiness from an older run.
@@ -61,6 +61,7 @@ class Service:
         env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
         env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
                    APPDATA=str(directory), XDG_CONFIG_HOME=str(directory))
+        env.update(environment or {})
         self.process = subprocess.Popen(
             [str(binary), "--no-check-update", "--log-file", str(self.log), "--log-level", "debug", mode, *options],
             cwd=directory, stdout=self.stream, stderr=subprocess.STDOUT, env=env, **flags,
