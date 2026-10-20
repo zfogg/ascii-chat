@@ -499,6 +499,7 @@ component_management:
         - "lib/video/ascii/neon/**/*"
         - "lib/video/ascii/sve/**/*"
       flag_regexes:
+        - "coverage"
         - "ascii-chat-(tests|integration|performance).*"
       statuses:
         - type: project
