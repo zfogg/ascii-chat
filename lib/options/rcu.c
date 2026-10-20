@@ -541,12 +541,14 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(color_mode, OPTIONS_VALUE_INT, "color-mode"),
     FIELD(color_filter, OPTIONS_VALUE_INT, "color-filter"),
     FIELD(render_mode, OPTIONS_VALUE_INT, "render-mode"),
+    FIELD(zalgo, OPTIONS_VALUE_INT, "zalgo"),
     FIELD(log_level, OPTIONS_VALUE_INT, "log-level"),
     FIELD(palette_type, OPTIONS_VALUE_INT, "palette"),
     FIELD(no_compress, OPTIONS_VALUE_BOOL, "no-compress"),
     FIELD(encode_audio, OPTIONS_VALUE_BOOL, "encode-audio"),
     FIELD(flip_x, OPTIONS_VALUE_BOOL, "flip-x"),
     FIELD(flip_y, OPTIONS_VALUE_BOOL, "flip-y"),
+    FIELD(face_follow, OPTIONS_VALUE_BOOL, "face-follow"),
     FIELD(test_pattern, OPTIONS_VALUE_BOOL, "test-pattern"),
     FIELD(no_audio_mixer, OPTIONS_VALUE_BOOL, "no-audio-mixer"),
     FIELD(show_capabilities, OPTIONS_VALUE_BOOL, "show-capabilities"),
@@ -649,6 +651,9 @@ static asciichat_error_t validate_field(const runtime_field_t *field, const opti
                                                     : *(const double *)ptr;
     if (!isfinite(value))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Nonfinite option '%s'", field->name);
+    // Zero disables Zalgo at runtime; the CLI's explicit intensity starts at one.
+    if (!strcmp(field->name, "zalgo") && value == 0)
+      return ASCIICHAT_OK;
     if (entry && (entry->metadata.numeric_range.min || entry->metadata.numeric_range.max) &&
         (value < entry->metadata.numeric_range.min || value > entry->metadata.numeric_range.max))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' is out of range", field->name);

@@ -246,6 +246,19 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
     return UI_ACTION_SETTINGS;
   }
 
+  case '4': {
+    if (options_toggle("face_follow") == ASCIICHAT_OK)
+      log_info("Face follow: %s", GET_OPTION(face_follow) ? "enabled" : "disabled");
+    return UI_ACTION_SETTINGS;
+  }
+
+  case 'z':
+  case 'Z': {
+    if (options_set_int("zalgo", GET_OPTION(zalgo) ? 0 : 8) == ASCIICHAT_OK)
+      log_info("Zalgo intensity: %d", GET_OPTION(zalgo));
+    return UI_ACTION_SETTINGS;
+  }
+
   // ===== FPS COUNTER TOGGLE =====
   case KEY_MINUS: {
     bool current = (bool)GET_OPTION(fps_counter);

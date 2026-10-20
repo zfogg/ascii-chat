@@ -203,7 +203,7 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
       browser ? NULL : "`       Print current sync primitive state",
 #endif
   };
-  char settings[18][256] = {"Current Settings:", "─────────────────"};
+  char settings[20][256] = {"Current Settings:", "─────────────────"};
   char volume_bar[32];
   format_volume_bar(GET_OPTION(speakers_volume), volume_bar, sizeof(volume_bar));
   snprintf(settings[2], sizeof(settings[2]), "Audio  : %s", status_indicator(GET_OPTION(audio_enabled)));
@@ -222,6 +222,9 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
            status_indicator(GET_OPTION(waveform)));
   snprintf(settings[settings_count++], sizeof(settings[0]), "(3) Audio Frequencies (FFT) : %s",
            status_indicator(GET_OPTION(fft)));
+  snprintf(settings[settings_count++], sizeof(settings[0]), "(4) Face follow : %s",
+           status_indicator(GET_OPTION(face_follow)));
+  snprintf(settings[settings_count++], sizeof(settings[0]), "(z) Zalgo intensity : %d", GET_OPTION(zalgo));
 #ifndef NDEBUG
   if (!browser)
     snprintf(settings[settings_count++], sizeof(settings[0]), "(0) Sync primitives / deadlocks");

@@ -11,6 +11,7 @@
 
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/ui/session.h>
 #include <ascii-chat/asciichat_errno.h>
 
 /**
@@ -25,6 +26,28 @@ static void teardown(void) {
 }
 
 TestSuite(rcu_validation, .init = setup, .fini = teardown);
+
+Test(rcu_validation, face_follow_and_zalgo_keyboard_round_trip) {
+  double volume = 1.0;
+  cr_assert_eq(options_set_bool("face_follow", false), ASCIICHAT_OK);
+  cr_assert_eq(options_set_int("zalgo", 0), ASCIICHAT_OK);
+  cr_assert_eq(ui_session_key((keyboard_key_t)'4', &volume), UI_ACTION_SETTINGS);
+  cr_assert(GET_OPTION(face_follow));
+  cr_assert_eq(ui_session_key((keyboard_key_t)'z', &volume), UI_ACTION_SETTINGS);
+  cr_assert_eq(GET_OPTION(zalgo), 8);
+  ui_session_key((keyboard_key_t)'4', &volume);
+  ui_session_key((keyboard_key_t)'Z', &volume);
+  cr_assert_not(GET_OPTION(face_follow));
+  cr_assert_eq(GET_OPTION(zalgo), 0);
+}
+
+Test(rcu_validation, zalgo_rejects_invalid_runtime_intensity) {
+  cr_assert_eq(options_set_int("zalgo", 8), ASCIICHAT_OK);
+  cr_assert_neq(options_set_int("zalgo", -1), ASCIICHAT_OK);
+  cr_assert_eq(GET_OPTION(zalgo), 8);
+  cr_assert_neq(options_set_int("zalgo", 11), ASCIICHAT_OK);
+  cr_assert_eq(GET_OPTION(zalgo), 8);
+}
 
 // ============================================================================
 // Integer Field Validation Tests
