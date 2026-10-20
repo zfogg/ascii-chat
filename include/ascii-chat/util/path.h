@@ -105,6 +105,19 @@
 const char *extract_project_relative_path(const char *file);
 
 /**
+ * @brief Return a pointer to the last components of a path
+ * @param path Path using slash or backslash separators
+ * @param component_count Maximum number of trailing components to retain
+ * @return Pointer into path at the first retained component
+ *
+ * The filename counts as one component. For example, a component count of 5
+ * retains at most four parent directories and the filename.
+ *
+ * @note Does not allocate, modify the input, or access the filesystem.
+ */
+const char *path_last_components(const char *path, size_t component_count);
+
+/**
  * @brief Expand path with tilde (~) support
  * @param path Path to expand (may contain ~, must not be NULL)
  * @return Expanded path (must be freed by caller), or NULL on failure

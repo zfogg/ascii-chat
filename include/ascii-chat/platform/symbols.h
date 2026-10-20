@@ -83,6 +83,27 @@
 
 #include "../common.h"
 
+/**
+ * @brief Check whether a module belongs to ascii-chat
+ * @param module_name Module basename or path
+ */
+bool symbol_module_is_project(const char *module_name);
+
+/**
+ * @brief Format a source path for a symbolized frame
+ * @param module_name Module basename or path
+ * @param source_path Source path reported by debug information
+ * @param output Destination buffer
+ * @param output_size Destination buffer size
+ * @param external Output set to true when the source belongs to external code
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Project sources use repository-relative paths. External sources retain at
+ * most four parent directories and the filename.
+ */
+asciichat_error_t symbol_format_source_path(const char *module_name, const char *source_path, char *output,
+                                            size_t output_size, bool *external);
+
 /* ============================================================================
  * Symbol Cache Lifecycle
  * @{

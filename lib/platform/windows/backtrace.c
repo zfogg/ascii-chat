@@ -19,6 +19,26 @@ static bool symbol_has_details(const char *symbol) {
   return symbol && (strstr(symbol, "()") != NULL || strstr(symbol, "(unknown function)") != NULL);
 }
 
+static const char *module_name_for_address(HANDLE process, DWORD64 address, char *module_name,
+                                           size_t module_name_size) {
+  DWORD64 module_base = SymGetModuleBase64(process, address);
+  if (module_base == 0) {
+    return NULL;
+  }
+
+  char module_path[MAX_PATH];
+  if (!GetModuleFileNameA((HMODULE)(uintptr_t)module_base, module_path, sizeof(module_path))) {
+    return NULL;
+  }
+
+  const char *basename = strrchr(module_path, '\\');
+  if (!basename) {
+    basename = strrchr(module_path, '/');
+  }
+  SAFE_STRNCPY(module_name, basename ? basename + 1 : module_path, module_name_size);
+  return module_name;
+}
+
 int platform_backtrace(void **buffer, int size) {
   if (!buffer || size <= 0) {
     return 0;
@@ -156,15 +176,25 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     DWORD line_displacement = 0;
     BOOL line_result = SymGetLineFromAddr64(process, (DWORD64)addr, &line_displacement, &line_info);
 
+    char module_name[MAX_PATH] = {0};
+    const char *resolved_module = module_name_for_address(process, (DWORD64)addr, module_name, sizeof(module_name));
+
     // Format the result
     char symbol_buffer[512];
     if (sym_result) {
       if (line_result) {
-        const char *source_path = extract_project_relative_path(line_info.FileName);
-        snprintf(symbol_buffer, sizeof(symbol_buffer), "%s() (%s:%ld)", symbol_info->Name, source_path,
-                 line_info.LineNumber);
+        char source_path[512];
+        bool external = false;
+        if (symbol_format_source_path(resolved_module, line_info.FileName, source_path, sizeof(source_path),
+                                      &external) != ASCIICHAT_OK) {
+          SAFE_STRNCPY(source_path, "unknown", sizeof(source_path));
+        }
+        snprintf(symbol_buffer, sizeof(symbol_buffer), "%s%s%s%s() (%s:%ld)%s", resolved_module ? "[" : "",
+                 resolved_module ? resolved_module : "", resolved_module ? "] " : "", symbol_info->Name, source_path,
+                 line_info.LineNumber, external ? " (external code)" : "");
       } else {
-        snprintf(symbol_buffer, sizeof(symbol_buffer), "%s()", symbol_info->Name);
+        snprintf(symbol_buffer, sizeof(symbol_buffer), "%s%s%s%s()", resolved_module ? "[" : "",
+                 resolved_module ? resolved_module : "", resolved_module ? "] " : "", symbol_info->Name);
       }
     } else {
       snprintf(symbol_buffer, sizeof(symbol_buffer), "[0x%p]", addr);

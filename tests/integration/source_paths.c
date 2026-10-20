@@ -1,6 +1,7 @@
 /** Regressions for source paths in log headers and memory reports. */
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/memory.h>
+#include <ascii-chat/platform/symbols.h>
 #include <ascii-chat/source_root.h>
 #include <ascii-chat/util/path.h>
 #include <ctype.h>
@@ -57,6 +58,33 @@ int main(int argc, char **argv) {
   CHECK(strcmp(extract_project_relative_path(""), "") == 0);
   CHECK(strcmp(extract_project_relative_path(ASCIICHAT_SOURCE_ROOT), ASCIICHAT_SOURCE_ROOT) == 0);
   CHECK(strcmp(extract_project_relative_path("Z:\\external\\file.c"), "Z:\\external\\file.c") == 0);
+  CHECK(
+      strcmp(path_last_components("D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", 5),
+             "crt\\vcstartup\\src\\startup\\exe_common.inl") == 0);
+  CHECK(strcmp(path_last_components("vendor/runtime/file.c", 5), "vendor/runtime/file.c") == 0);
+
+  CHECK(symbol_module_is_project("ascii-chat.exe"));
+  CHECK(symbol_module_is_project("libasciichat.0.3.0.dylib"));
+  CHECK(symbol_module_is_project("asciichat.dll"));
+  CHECK(!symbol_module_is_project("ucrtbase.dll"));
+
+  char display_path[512];
+  bool external_source = false;
+  CHECK(symbol_format_source_path("ucrtbase.dll",
+                                  "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl",
+                                  display_path, sizeof(display_path), &external_source) == ASCIICHAT_OK);
+  CHECK(external_source);
+  CHECK(strcmp(display_path, "crt\\vcstartup\\src\\startup\\exe_common.inl") == 0);
+  CHECK(symbol_format_source_path("ascii-chat.exe",
+                                  "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl",
+                                  display_path, sizeof(display_path), &external_source) == ASCIICHAT_OK);
+  CHECK(external_source);
+  CHECK(strcmp(display_path, "crt\\vcstartup\\src\\startup\\exe_common.inl") == 0);
+
+  char too_small[4];
+  CHECK(symbol_format_source_path("ucrtbase.dll", "vendor/runtime/file.c", too_small, sizeof(too_small),
+                                  &external_source) == ERROR_BUFFER_OVERFLOW);
+  CLEAR_ERRNO();
 
   // Exercise the actual log header renderer with absolute src/ and lib/ paths.
   log_msg(LOG_DEBUG, ASCIICHAT_SOURCE_ROOT "/src/path_fixture.c", 123, "source_fixture", "src path fixture");

@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <ascii-chat/atomic.h>
 
 #ifndef _WIN32
@@ -37,6 +38,67 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/log/log.h>
+
+static bool ascii_case_equal(const char *left, const char *right) {
+  while (*left && *right) {
+    if (tolower((unsigned char)*left) != tolower((unsigned char)*right)) {
+      return false;
+    }
+    left++;
+    right++;
+  }
+  return *left == '\0' && *right == '\0';
+}
+
+bool symbol_module_is_project(const char *module_name) {
+  if (!module_name || !*module_name) {
+    return false;
+  }
+
+  const char *basename = module_name;
+  for (const char *cursor = module_name; *cursor; cursor++) {
+    if (*cursor == '/' || *cursor == '\\') {
+      basename = cursor + 1;
+    }
+  }
+
+  static const char *project_modules[] = {"ascii-chat",      "ascii-chat.exe",   "asciichat.dll",     "libasciichat.a",
+                                          "libasciichat.so", "libasciichat.dll", "libasciichat.dylib"};
+  for (size_t i = 0; i < sizeof(project_modules) / sizeof(project_modules[0]); i++) {
+    if (ascii_case_equal(basename, project_modules[i])) {
+      return true;
+    }
+  }
+
+  // Installed Unix libraries may carry an ABI or full version in the name.
+  return strncmp(basename, "libasciichat.", strlen("libasciichat.")) == 0 &&
+         (strstr(basename, ".so") != NULL || strstr(basename, ".dylib") != NULL);
+}
+
+static bool source_path_is_absolute(const char *path) {
+  return path && ((isalpha((unsigned char)path[0]) && path[1] == ':' && (path[2] == '/' || path[2] == '\\')) ||
+                  path[0] == '/' || path[0] == '\\');
+}
+
+asciichat_error_t symbol_format_source_path(const char *module_name, const char *source_path, char *output,
+                                            size_t output_size, bool *external) {
+  if (!output || output_size == 0 || !external) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid symbol source path output: output=%p, output_size=%zu, external=%p",
+                     (void *)output, output_size, (void *)external);
+  }
+
+  const char *path = source_path ? source_path : "unknown";
+  const char *project_relative = extract_project_relative_path(path);
+  *external = !symbol_module_is_project(module_name) || (project_relative == path && source_path_is_absolute(path));
+  path = *external ? path_last_components(path, 5) : project_relative;
+  size_t required_size = strlen(path) + 1;
+  if (required_size > output_size) {
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Symbol source path requires %zu bytes, buffer size is %zu", required_size,
+                     output_size);
+  }
+  memcpy(output, path, required_size);
+  return ASCIICHAT_OK;
+}
 
 // ============================================================================
 // Constants
@@ -471,7 +533,7 @@ void symbol_cache_print_stats(void) {
  * @param addr Original address (for fallback display)
  * @return Formatted symbol string (caller must free), or NULL on error
  */
-static char *parse_llvm_symbolizer_result(FILE *fp, void *addr) {
+static char *parse_llvm_symbolizer_result(FILE *fp, void *addr, const char *module_name) {
   char func_name[512] = "??";
   char file_location[512] = "??:0";
   char blank_line[8];
@@ -499,13 +561,11 @@ static char *parse_llvm_symbolizer_result(FILE *fp, void *addr) {
     *last_colon = '\0';
   }
 
-  // Extract relative path and COPY IT IMMEDIATELY
-  // IMPORTANT: extract_project_relative_path uses a static buffer internally.
-  // SAFE_MALLOC's debug memory tracking also calls extract_project_relative_path,
-  // which would overwrite the static buffer. So we must copy before allocating.
-  const char *rel_path_tmp = extract_project_relative_path(file_location);
   char rel_path[512];
-  SAFE_STRNCPY(rel_path, rel_path_tmp, sizeof(rel_path));
+  bool external = false;
+  if (symbol_format_source_path(module_name, file_location, rel_path, sizeof(rel_path), &external) != ASCIICHAT_OK) {
+    SAFE_STRNCPY(rel_path, "unknown", sizeof(rel_path));
+  }
 
   // Allocate result buffer (AFTER copying rel_path to local storage)
   char *result = SAFE_MALLOC(1024, char *);
@@ -529,11 +589,11 @@ static char *parse_llvm_symbolizer_result(FILE *fp, void *addr) {
   if (!has_func && !has_file) {
     SAFE_SNPRINTF(result, 1024, "%p", addr);
   } else if (has_func && has_file) {
-    SAFE_SNPRINTF(result, 1024, "%s() (%s)", clean_func, rel_path);
+    SAFE_SNPRINTF(result, 1024, "%s() (%s)%s", clean_func, rel_path, external ? " (external code)" : "");
   } else if (has_func) {
     SAFE_SNPRINTF(result, 1024, "%s()", clean_func);
   } else {
-    SAFE_SNPRINTF(result, 1024, "%s (unknown function)", rel_path);
+    SAFE_SNPRINTF(result, 1024, "%s (unknown function)%s", rel_path, external ? " (external code)" : "");
   }
 
   return result;
@@ -683,7 +743,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     // Parse results in order
     for (int j = 0; j < groups[g].count; j++) {
       int orig_idx = groups[g].original_indices[j];
-      char *parsed = parse_llvm_symbolizer_result(fp, buffer[orig_idx]);
+      char *parsed = parse_llvm_symbolizer_result(fp, buffer[orig_idx], binary_name);
 
       if (parsed) {
         // Prepend binary name in brackets
@@ -818,13 +878,16 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
     func_name[strcspn(func_name, "\n")] = '\0';
     file_line[strcspn(file_line, "\n")] = '\0';
 
-    // Extract relative path and COPY IT IMMEDIATELY
-    // IMPORTANT: extract_project_relative_path uses a static buffer internally.
-    // SAFE_MALLOC's debug memory tracking also calls extract_project_relative_path,
-    // which would overwrite the static buffer. So we must copy before allocating.
-    const char *rel_path_tmp = extract_project_relative_path(file_line);
+    const char *exe_name = strrchr(exe_path, '/');
+    if (!exe_name) {
+      exe_name = strrchr(exe_path, '\\');
+    }
+    exe_name = exe_name ? exe_name + 1 : exe_path;
     char rel_path[512];
-    SAFE_STRNCPY(rel_path, rel_path_tmp, sizeof(rel_path));
+    bool external = false;
+    if (symbol_format_source_path(exe_name, file_line, rel_path, sizeof(rel_path), &external) != ASCIICHAT_OK) {
+      SAFE_STRNCPY(rel_path, "unknown", sizeof(rel_path));
+    }
 
     // Allocate result buffer (AFTER copying rel_path to local storage)
     result[i] = SAFE_MALLOC(1024, char *);
@@ -839,16 +902,16 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
     } else if (has_func && has_file) {
       // Best case - both function and file:line known
       if (strstr(rel_path, ":") != NULL) {
-        SAFE_SNPRINTF(result[i], 1024, "%s in %s()", rel_path, func_name);
+        SAFE_SNPRINTF(result[i], 1024, "%s in %s()%s", rel_path, func_name, external ? " (external code)" : "");
       } else {
-        SAFE_SNPRINTF(result[i], 1024, "%s() at %s", func_name, rel_path);
+        SAFE_SNPRINTF(result[i], 1024, "%s() at %s%s", func_name, rel_path, external ? " (external code)" : "");
       }
     } else if (has_func) {
       // Function known but file unknown (common for library functions)
       SAFE_SNPRINTF(result[i], 1024, "%s() at %p", func_name, buffer[i]);
     } else {
       // File known but function unknown (rare)
-      SAFE_SNPRINTF(result[i], 1024, "%s (unknown function)", rel_path);
+      SAFE_SNPRINTF(result[i], 1024, "%s (unknown function)%s", rel_path, external ? " (external code)" : "");
     }
   }
 

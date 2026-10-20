@@ -107,6 +107,8 @@ void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt
     char colored_symbol[2048] = {0};
     const char *s = symbol;
     int colored_sym_offset = 0;
+    bool external_source = strstr(symbol, " (external code)") != NULL;
+    bool has_source_path = false;
 
     // Color binary name between brackets
     if (*s == '[') {
@@ -174,6 +176,7 @@ void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt
 
       char *file_colon = strrchr(file_start, ':');
       if (file_colon) {
+        has_source_path = true;
         int filename_len = file_colon - file_start;
         char filename[512];
         size_t filename_copy_len = MIN((size_t)filename_len, sizeof(filename) - 1);
@@ -230,6 +233,7 @@ void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt
 
           char *colon_pos = strrchr(file_start, ':');
           if (colon_pos) {
+            has_source_path = true;
             int filename_len = colon_pos - file_start;
             char filename[512];
             size_t filename_copy_len = MIN((size_t)filename_len, sizeof(filename) - 1);
@@ -260,6 +264,15 @@ void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt
       SAFE_STRNCPY(colored_addr_buf, colored_addr_ptr, sizeof(colored_addr_buf));
       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
                                           sizeof(colored_symbol) - colored_sym_offset, "%s", colored_addr_buf);
+    }
+
+    if (external_source && has_source_path) {
+      const char *colored_external_ptr = colored_string(LOG_COLOR_GREY, "(external code)");
+      char colored_external_buf[256];
+      SAFE_STRNCPY(colored_external_buf, colored_external_ptr, sizeof(colored_external_buf));
+      colored_sym_offset +=
+          safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - (size_t)colored_sym_offset, " %s",
+                        colored_external_buf);
     }
 
     // Format colored buffer: "  [colored_num] colored_symbol\n"

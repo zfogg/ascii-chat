@@ -373,6 +373,32 @@ const char *extract_project_relative_path(const char *file) {
   return file;
 }
 
+const char *path_last_components(const char *path, size_t component_count) {
+  if (!path || component_count == 0) {
+    return path;
+  }
+
+  const char *cursor = path + strlen(path);
+  size_t components_seen = 0;
+  while (cursor > path) {
+    cursor--;
+    if (*cursor != '/' && *cursor != '\\') {
+      continue;
+    }
+
+    // Treat repeated separators as one boundary.
+    while (cursor > path && (cursor[-1] == '/' || cursor[-1] == '\\')) {
+      cursor--;
+    }
+    components_seen++;
+    if (components_seen == component_count) {
+      return cursor + 1;
+    }
+  }
+
+  return path;
+}
+
 char *expand_path(const char *path) {
   if (path[0] == PATH_TILDE) {
     const char *home = platform_get_home_dir();
