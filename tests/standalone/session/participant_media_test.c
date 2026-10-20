@@ -131,6 +131,16 @@ static asciichat_error_t fixture_join(asciichat_thread_t *thread) {
   return asciichat_thread_join(thread, NULL);
 }
 #define network_connection_open test_connection_open
+static void test_capture_audio(session_capture_ctx_t *ctx, void *audio) {
+  (void)ctx;
+  (void)audio;
+}
+static void *test_audio_context(session_audio_ctx_t *ctx) {
+  (void)ctx;
+  return NULL;
+}
+#define session_capture_set_audio_context test_capture_audio
+#define session_audio_get_context test_audio_context
 #define session_capture_create test_capture_create
 #define session_capture_destroy test_capture_destroy
 #define session_capture_read_frame test_read_frame
@@ -457,4 +467,13 @@ int main(void) {
   options_state_destroy();
   log_info("PASS: six startup failures, 20 real-worker cycles, media packets, cleanup, async cancellation");
   return 0;
+}
+
+uint64_t session_capture_source_epoch(session_capture_ctx_t *ctx) {
+  (void)ctx;
+  return 0;
+}
+void session_capture_complete_open(session_capture_ctx_t *ctx, uint64_t epoch) {
+  (void)ctx;
+  (void)epoch;
 }

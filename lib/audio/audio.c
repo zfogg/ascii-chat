@@ -118,7 +118,11 @@ static void audio_publish_local_capture(audio_context_t *ctx, float *samples, si
     if (ctx->monitor_local_media)
       audio_ring_buffer_write(ctx->playback_buffer, media, (int)read);
   }
-  audio_ring_buffer_write(ctx->capture_buffer, samples, (int)count);
+  // Mirror may record and visualize the microphone without a transmission
+  // consumer. Do not repeatedly overflow and log from that undrained queue.
+  if (!ctx->monitor_local_media ||
+      audio_ring_buffer_available_read(ctx->capture_buffer) + count <= AUDIO_JITTER_HIGH_WATER_MARK)
+    audio_ring_buffer_write(ctx->capture_buffer, samples, (int)count);
 }
 
 /**
@@ -148,6 +152,11 @@ static void audio_publish_local_capture(audio_context_t *ctx, float *samples, si
  */
 static void *audio_worker_thread(void *arg) {
   audio_context_t *ctx = (audio_context_t *)arg;
+  if (ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media) {
+    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    (void)asciichat_thread_set_realtime_priority();
+    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+  }
   log_debug("Audio worker thread started (batch size: %d frames = %d samples)", WORKER_BATCH_FRAMES,
             WORKER_BATCH_SAMPLES);
 
@@ -181,28 +190,16 @@ static void *audio_worker_thread(void *arg) {
     loop_count++;
     uint64_t loop_start_ns = time_get_ns();
 
-    // For output-only mode, don't wait for signal - just write continuously
-    // For duplex/input modes, wait for signal from callback
-    bool is_output_only = ctx->output_stream && !ctx->input_stream && !ctx->duplex_stream;
-
-    int wait_result = 1; // Default: timeout (will trigger processing for output-only)
-    if (!is_output_only) {
-      // Wait for signal from callback or timeout
-      mutex_lock(&ctx->worker_mutex);
-      uint64_t wait_start_ns = time_get_ns();
-      wait_result = cond_timedwait(&ctx->worker_cond, &ctx->worker_mutex, WORKER_TIMEOUT_MS * NS_PER_MS_INT);
-      double wait_time_ns = (double)time_elapsed_ns(wait_start_ns, time_get_ns());
-      mutex_unlock(&ctx->worker_mutex);
-
-      total_wait_ns += wait_time_ns;
-      if (wait_time_ns > max_wait_ns)
-        max_wait_ns = wait_time_ns;
-    } else {
-      // Output-only mode: no wait needed, callback handles audio delivery
-      // Just sleep briefly to avoid busy-looping
-      Pa_Sleep(5);
-      wait_result = 1;
-    }
+    // The device callback wakes the producer after consumption. The bounded
+    // timeout also drives software-only recording and recovers lost wakeups.
+    mutex_lock(&ctx->worker_mutex);
+    uint64_t wait_start_ns = time_get_ns();
+    int wait_result = cond_timedwait(&ctx->worker_cond, &ctx->worker_mutex, WORKER_TIMEOUT_MS * NS_PER_MS_INT);
+    double wait_time_ns = (double)time_elapsed_ns(wait_start_ns, time_get_ns());
+    mutex_unlock(&ctx->worker_mutex);
+    total_wait_ns += wait_time_ns;
+    if (wait_time_ns > max_wait_ns)
+      max_wait_ns = wait_time_ns;
 
     // Check shutdown flag
     if (atomic_load_bool(&ctx->worker_should_stop)) {
@@ -261,7 +258,13 @@ static void *audio_worker_thread(void *arg) {
     bool use_mic = !test_audio && audio_should_enable_microphone(selection, has_media);
     if (test_audio || (use_media && !use_mic)) {
       uint64_t now = time_get_ns();
-      uint64_t due = (now - media_start_ns) / 1000000ULL * 48;
+      // Local playback follows device consumption, not an unbounded wall-clock
+      // catch-up burst. Keep 150 ms of decoded PCM ready without dropping or
+      // stretching samples through the network jitter controller.
+      bool local_playback = use_media && ctx->monitor_local_media && ctx->output_stream;
+      size_t queued = local_playback ? audio_ring_buffer_available_read(ctx->playback_buffer) : 0;
+      size_t refill = queued < 7200 ? 7200 - queued : 0;
+      uint64_t due = local_playback ? media_samples + refill : (now - media_start_ns) / 1000000ULL * 48;
       float media[960];
       while (media_samples < due) {
         size_t count = due - media_samples > 960 ? 960 : (size_t)(due - media_samples);
@@ -275,8 +278,11 @@ static void *audio_worker_thread(void *arg) {
         audio_recording_submit(AUDIO_RECORDING_MEDIA, media, count,
                                media_start_ns + media_samples * 1000000000ULL / 48000);
         audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MEDIA, media, count);
-        // Mirror monitoring has no network sender to drain a capture queue.
-        if (!test_audio || !ctx->monitor_local_media)
+        // Keep transmission available, but avoid overrunning an undrained
+        // local-monitor queue once it is full.
+        if ((!test_audio || !ctx->monitor_local_media) &&
+            (!ctx->monitor_local_media ||
+             audio_ring_buffer_available_read(ctx->capture_buffer) + count <= AUDIO_JITTER_HIGH_WATER_MARK))
           audio_ring_buffer_write(ctx->capture_buffer, media, (int)count);
         if (!test_audio && ctx->monitor_local_media)
           audio_ring_buffer_write(ctx->playback_buffer, media, (int)count);
@@ -485,9 +491,23 @@ static void audio_monitor_test(audio_context_t *ctx, float *output, size_t count
   }
 }
 
+// Only PortAudio callback threads need real-time scheduling. Raising the caller
+// of audio_start_duplex instead promotes the video/render or capture owner and
+// can starve both keyboard input and the actual audio device callbacks.
+static void audio_callback_prepare(void) {
+  static _Thread_local bool prepared;
+  if (!prepared) {
+    prepared = true;
+    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    (void)asciichat_thread_set_realtime_priority();
+    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+  }
+}
+
 static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                            const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags,
                            void *userData) {
+  audio_callback_prepare();
   (void)timeInfo;
 
   static uint64_t duplex_invoke_count = 0;
@@ -701,6 +721,7 @@ void resample_linear(const float *src, size_t src_samples, float *dst, size_t ds
 static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                            const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags,
                            void *userData) {
+  audio_callback_prepare();
   (void)inputBuffer;
   (void)timeInfo;
 
@@ -928,6 +949,7 @@ static size_t resample_capture_block(audio_context_t *ctx, const float *input, s
 
 static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                           const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
+  audio_callback_prepare();
   (void)outputBuffer;
   (void)timeInfo;
 
@@ -1743,6 +1765,16 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   if (GET_OPTION(test_audio) || !audio_should_enable_microphone(GET_OPTION(audio_capture_source), media_audio))
     ctx->playback_only = true;
   bool media_only = GET_OPTION(test_audio) || (media_audio && ctx->playback_only);
+  if (ctx->playback_buffer) {
+    // Local decoded PCM is paced by the speaker callback and has no network
+    // clock to reconcile. Keep its samples exact across callback boundaries.
+    audio_capture_source_t selection = GET_OPTION(audio_capture_source);
+    bool local_media_selected = selection == AUDIO_CAPTURE_SOURCE_AUTO || selection == AUDIO_CAPTURE_SOURCE_MEDIA ||
+                                selection == AUDIO_CAPTURE_SOURCE_BOTH;
+    ctx->playback_buffer->jitter_buffer_enabled =
+        !(media_audio && ctx->playback_only && ctx->monitor_local_media && local_media_selected);
+    audio_ring_buffer_clear(ctx->playback_buffer);
+  }
 
   // Media-only recording can run through the software worker without an audio
   // device. Initialize PortAudio opportunistically so monitoring still works
@@ -1890,12 +1922,13 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     bool output_ok = false;
     double actual_output_rate = 0;
     if (has_output) {
-      // Use the device's native rate first so conversion stays explicit and stateful.
+      // Local media already supplies 48 kHz PCM. Prefer that rate to avoid
+      // unnecessary application resampling; retain native-rate fallback.
       double native_rate = outputInfo->defaultSampleRate;
       if (native_rate <= 0.0) {
         native_rate = AUDIO_SAMPLE_RATE;
       }
-      double preferred_rate = native_rate;
+      double preferred_rate = media_audio && ctx->monitor_local_media ? AUDIO_SAMPLE_RATE : native_rate;
       double fallback_rate = (preferred_rate == AUDIO_SAMPLE_RATE) ? native_rate : AUDIO_SAMPLE_RATE;
 
       log_debug("Attempting output at native rate %.0f Hz (fallback %.0f Hz)", preferred_rate, fallback_rate);
@@ -2084,13 +2117,6 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     log_info("Full-duplex stream started (single callback, perfect AEC3 timing)");
   }
 start_worker:
-
-  {
-    asciichat_errno_scope_t priority_scope = asciichat_errno_scope_begin();
-    if (audio_set_realtime_priority() != ASCIICHAT_OK)
-      log_warn("Audio realtime priority unavailable; continuing at normal priority");
-    asciichat_errno_scope_end(priority_scope, ASCIICHAT_ERRNO_HANDLED);
-  }
 
   // Start worker thread for heavy audio processing
   if (!ctx->worker_running) {

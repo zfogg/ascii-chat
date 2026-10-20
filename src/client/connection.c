@@ -140,6 +140,7 @@ static void client_release(void *context) {
   client_connection_t *connection = context;
   audio_context_t *audio = connection->audio_context;
   audio_sender_finalize(connection);
+  session_capture_set_audio_context(connection->capture_context, NULL);
   if (audio && audio->initialized) {
     audio_set_pipeline(audio, NULL);
     audio_ring_buffer_clear(audio->capture_buffer);

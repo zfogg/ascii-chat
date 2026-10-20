@@ -447,6 +447,8 @@ role_dispatch:
         log_debug_every(5 * NS_PER_SEC_INT, "Captured frame, injecting into host");
         // Inject host's frame into mixer for broadcasting
         result = session_host_inject_frame(host, host_participant_id, frame);
+        if (result == ASCIICHAT_OK)
+          session_capture_complete_open(capture, session_capture_source_epoch(capture));
         if (result != ASCIICHAT_OK) {
           LOG_ERRNO_IF_SET("Failed to inject host frame");
           break;
@@ -536,6 +538,7 @@ role_dispatch:
         if (result != ASCIICHAT_OK)
           goto media_cleanup;
         receiver.audio = &audio;
+        session_capture_set_audio_context(capture, &audio);
         media_source_t *local_source = (media_source_t *)session_capture_get_media_source(capture);
         bool has_media_audio = media_source_has_audio(local_source);
         audio.capture_media_source = local_source;
@@ -617,6 +620,8 @@ role_dispatch:
         }
         if (processing_end == processing_start)
           processing_end = time_get_ns();
+        if (frame && result == ASCIICHAT_OK)
+          session_capture_complete_open(capture, session_capture_source_epoch(capture));
         uint64_t signaling_start = send_end;
         // The capture scheduler owns the wait; signaling must not add another
         // sleep to the media frame deadline.
@@ -639,6 +644,7 @@ role_dispatch:
         session_capture_sleep_for_fps(capture);
       }
     media_cleanup:
+      session_capture_set_audio_context(capture, NULL);
       /* These workers borrow stack audio/display state. Retain it and retry a
        * failed join before returning to the application/media cleanup. */
       while (session_connection_stop(&receiver.connection) != ASCIICHAT_OK) {

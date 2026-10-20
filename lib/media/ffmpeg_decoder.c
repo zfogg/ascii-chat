@@ -129,8 +129,8 @@ struct ffmpeg_decoder_t {
   int audio_sample_rate;       ///< Audio sample rate (Hz)
 
   // Exit signal callback (for graceful shutdown during blocking I/O)
-  bool (*should_exit_callback)(void *user_data); ///< Callback to check if app should exit
-  void *exit_callback_user_data;                 ///< User data for exit callback
+  _Atomic(bool (*)(void *)) should_exit_callback; ///< Callback to check if app should exit
+  _Atomic(void *) exit_callback_user_data;        ///< User data for exit callback
 };
 
 /* ============================================================================
@@ -303,7 +303,9 @@ static int ffmpeg_interrupt_callback(void *opaque) {
 
   // Interrupt av_read_frame() if application is shutting down
   // This allows Ctrl+C to abort blocking I/O operations like YouTube HTTP requests
-  if (decoder->should_exit_callback && decoder->should_exit_callback(decoder->exit_callback_user_data)) {
+  bool (*cancel)(void *) = decoder->should_exit_callback;
+  void *data = decoder->exit_callback_user_data;
+  if (cancel && cancel(data)) {
     return 1;
   }
 
@@ -677,6 +679,10 @@ static asciichat_error_t open_optional_codec_context(AVFormatContext *format, en
  * ============================================================================ */
 
 ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
+  return ffmpeg_decoder_create_interruptible(path, NULL, NULL);
+}
+
+ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*cancel)(void *), void *data) {
   if (!path) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Path is NULL");
     return NULL;
@@ -698,6 +704,15 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   }
 
   memset(decoder, 0, sizeof(*decoder));
+  decoder->should_exit_callback = cancel;
+  decoder->exit_callback_user_data = data;
+  decoder->format_ctx = avformat_alloc_context();
+  if (!decoder->format_ctx) {
+    SAFE_FREE(decoder);
+    return NULL;
+  }
+  decoder->format_ctx->interrupt_callback.callback = ffmpeg_interrupt_callback;
+  decoder->format_ctx->interrupt_callback.opaque = decoder;
   decoder->video_stream_idx = -1;
   decoder->audio_stream_idx = -1;
   decoder->last_video_pts = -1.0;
@@ -1391,8 +1406,8 @@ void ffmpeg_decoder_set_exit_callback(ffmpeg_decoder_t *decoder, bool (*should_e
   if (!decoder) {
     return;
   }
-  decoder->should_exit_callback = should_exit_callback;
   decoder->exit_callback_user_data = user_data;
+  decoder->should_exit_callback = should_exit_callback;
 }
 
 bool ffmpeg_decoder_is_prefetch_running(ffmpeg_decoder_t *decoder) {

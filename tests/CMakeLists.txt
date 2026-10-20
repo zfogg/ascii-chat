@@ -527,6 +527,29 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             set(_test_ctest_timeout 120)
         endif()
 
+        # BoxFort's concurrent timeout queue can lose pending requests when
+        # different deadlines are inserted. These suites mix per-case timeouts
+        # with the default limit; serialize them to retain every timeout and
+        # allow LeakSanitizer to check the runner without suppressions.
+        if(test_exe_name MATCHES "^test_unit_(audio_recording|stats_stats)$")
+            set(_test_criterion_jobs 1)
+            set(_test_ctest_timeout 120)
+        endif()
+
+        if(test_exe_name STREQUAL "test_unit_options_options")
+            # The CLI suite launches many sanitized parse/help cases. Preserve
+            # their case deadlines while allowing the complete suite to finish.
+            set(_test_ctest_timeout 120)
+        endif()
+
+        if(test_exe_name STREQUAL "test_unit_discovery_session_registry")
+            # Durable SQLite fixtures compete for fsync when their cases run
+            # concurrently. Keep each case's deadline and serialize the suite
+            # so late completions cannot race BoxFort's timeout notifications.
+            set(_test_criterion_jobs 1)
+            set(_test_ctest_timeout 120)
+        endif()
+
         if(test_exe_name MATCHES "stream_resolution_e2e")
             # This suite runs many serial network cases with bounded per-request timeouts.
             set(_test_ctest_timeout 600)
@@ -1460,5 +1483,72 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
                 PROPERTIES ENVIRONMENT_MODIFICATION
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin;PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin;PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
         endif()
+    endif()
+endif()
+
+# Shared parser and production UI paste collector; no camera, clipboard mutation, or Criterion required.
+if(BUILD_TESTS AND NOT EMSCRIPTEN)
+    add_executable(test-media-input standalone/media/input_test.c)
+    target_link_libraries(test-media-input PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-media-input PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-media-input)
+    set_target_properties(test-media-input PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_test(NAME media-input COMMAND test-media-input)
+    set_tests_properties(media-input PROPERTIES LABELS "unit" TIMEOUT 30)
+    if(TARGET tests)
+        add_dependencies(tests test-media-input)
+    endif()
+endif()
+
+if(BUILD_TESTS AND NOT EMSCRIPTEN)
+    add_executable(test-media-capture-open standalone/media/capture_open_test.c)
+    target_link_libraries(test-media-capture-open PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-media-capture-open PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-media-capture-open)
+    set_target_properties(test-media-capture-open PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_test(NAME media-capture-open COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/media_capture_open.py $<TARGET_FILE:test-media-capture-open>)
+    set_tests_properties(media-capture-open PROPERTIES LABELS "integration" TIMEOUT 90 SKIP_RETURN_CODE 77)
+    if(TARGET tests)
+        add_dependencies(tests test-media-capture-open)
+    endif()
+endif()
+
+if(BUILD_TESTS AND WIN32)
+    add_executable(test-media-clipboard standalone/media/clipboard_windows_test.c)
+    target_link_libraries(test-media-clipboard PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-media-clipboard PRIVATE ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-media-clipboard)
+    set_target_properties(test-media-clipboard PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_test(NAME media-clipboard COMMAND test-media-clipboard)
+    set_tests_properties(media-clipboard PROPERTIES LABELS "unit" TIMEOUT 30)
+    if(TARGET tests)
+        add_dependencies(tests test-media-clipboard)
+    endif()
+endif()
+
+if(BUILD_TESTS AND NOT EMSCRIPTEN)
+    add_executable(test-media-pipeline standalone/media/pipeline_latest_test.c)
+    target_link_libraries(test-media-pipeline PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-media-pipeline PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-media-pipeline)
+    set_target_properties(test-media-pipeline PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_test(NAME media-pipeline COMMAND test-media-pipeline)
+    set_tests_properties(media-pipeline PROPERTIES LABELS "unit" TIMEOUT 30)
+    if(TARGET tests)
+        add_dependencies(tests test-media-pipeline)
+    endif()
+endif()
+
+if(BUILD_TESTS AND WIN32)
+    add_executable(test-audio-priority standalone/media/audio_priority_test.c)
+    target_link_libraries(test-audio-priority PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-audio-priority PRIVATE ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-audio-priority)
+    set_target_properties(test-audio-priority PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_test(NAME audio-priority COMMAND test-audio-priority)
+    set_tests_properties(audio-priority PROPERTIES LABELS "integration" TIMEOUT 90)
+    if(TARGET tests)
+        add_dependencies(tests test-audio-priority)
     endif()
 endif()

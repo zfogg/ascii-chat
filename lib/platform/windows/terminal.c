@@ -527,8 +527,16 @@ asciichat_error_t terminal_set_buffering(bool line_buffered) {
  * @return 0 on success, -1 on failure
  */
 asciichat_error_t terminal_flush(int fd) {
-  (void)fd; // Windows console APIs operate on stdout, not arbitrary file descriptors
-  return fflush(stdout);
+  HANDLE output = (HANDLE)_get_osfhandle(fd);
+  DWORD mode;
+  if (output == INVALID_HANDLE_VALUE || !GetConsoleMode(output, &mode))
+    return ASCIICHAT_OK;
+  // A synchronous console query is ordered after preceding output writes.
+  // fflush(stdout) cannot drain writes made through a retained descriptor.
+  CONSOLE_SCREEN_BUFFER_INFO info;
+  if (!GetConsoleScreenBufferInfo(output, &info))
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Cannot drain terminal output");
+  return ASCIICHAT_OK;
 }
 
 /**

@@ -203,6 +203,13 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   return decoder;
 }
 
+ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*cancel)(void *), void *data) {
+  if (cancel && cancel(data)) return NULL;
+  ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
+  if (decoder) ffmpeg_decoder_set_exit_callback(decoder, cancel, data);
+  return decoder;
+}
+
 ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "stdin decoder not supported in WASM"), NULL;
 }

@@ -47,7 +47,7 @@
  * - ASCII/UTF-8 characters: Raw character code (1-26, 33-127)
  *
  * @note UTF-8 multibyte sequences are not currently supported in return values.
- *       Regular ASCII input (0-127) is returned as-is; all other bytes return KEY_NONE.
+ *       Input is returned as UTF-8 bytes; paste boundaries are separate events.
  *
  * @ingroup platform
  */
@@ -63,17 +63,21 @@ typedef enum {
   KEY_HOME = 261,        ///< Home key (move to start of line)
   KEY_END = 262,         ///< End key (move to end of line)
   KEY_CTRL_DELETE = 263, ///< Ctrl+Delete (delete word forward)
-  KEY_MINUS = '-',       ///< '-' key - toggle FPS counter
-  KEY_0 = '0',           ///< '0' key - toggle sync debug screen
-  KEY_1 = '1',           ///< '1' key - toggle matrix rain effect
-  KEY_2 = '2',           ///< '2' key - toggle audio waveform
-  KEY_3 = '3',           ///< '3' key - toggle audio frequency display
-  KEY_C = 'c',           ///< 'c' key - cycle color modes
-  KEY_R = 'r',           ///< 'r' key - cycle render modes
-  KEY_M = 'm',           ///< 'm' key - toggle mute
-  KEY_F = 'f',           ///< 'f' key - flip webcam
-  KEY_QUESTION = '?',    ///< '?' key - show help screen
-  KEY_BACKTICK = '`',    ///< '`' key - print lock state (debug builds)
+  KEY_PASTE_BEGIN = 264,
+  KEY_PASTE_END = 265,
+  KEY_PASTE = 266,
+  KEY_MEDIA_SUBMIT = 267, ///< Nonblocking media prompt submitted
+  KEY_MINUS = '-',        ///< '-' key - toggle FPS counter
+  KEY_0 = '0',            ///< '0' key - toggle sync debug screen
+  KEY_1 = '1',            ///< '1' key - toggle matrix rain effect
+  KEY_2 = '2',            ///< '2' key - toggle audio waveform
+  KEY_3 = '3',            ///< '3' key - toggle audio frequency display
+  KEY_C = 'c',            ///< 'c' key - cycle color modes
+  KEY_R = 'r',            ///< 'r' key - cycle render modes
+  KEY_M = 'm',            ///< 'm' key - toggle mute
+  KEY_F = 'f',            ///< 'f' key - flip webcam
+  KEY_QUESTION = '?',     ///< '?' key - show help screen
+  KEY_BACKTICK = '`',     ///< '`' key - print lock state (debug builds)
 } keyboard_key_t;
 
 /* ============================================================================
@@ -143,12 +147,12 @@ void keyboard_destroy(void);
  * - Special keys: KEY_ESCAPE, KEY_SPACE
  * - ASCII characters: Returned as raw character codes (a-z, A-Z, 0-9, etc.)
  * - Control keys: Ctrl+C, Ctrl+Z, and other control sequences (codes 1-31)
- * - UTF-8: Not currently supported (non-ASCII bytes return KEY_NONE)
+ * - UTF-8: Multibyte characters are returned one byte at a time
  *
  * **Platform behavior:**
  * - POSIX: Uses select() with zero timeout on stdin for non-blocking check
  * - POSIX: Parses ESC escape sequences for arrow keys (ESC [ A/B/C/D)
- * - POSIX: 50ms timeout per escape sequence byte to distinguish ESC key from sequences
+ * - POSIX: 50ms escape-sequence deadline to distinguish ESC from sequences
  * - Windows: Uses _kbhit() and _getch() for non-blocking input
  * - Windows: Handles 0xE0 and 0x00 extended key prefixes for arrow keys
  * - Windows: Arrow key mappings: 72/up, 80/down, 75/left, 77/right

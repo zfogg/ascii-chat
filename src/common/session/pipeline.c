@@ -37,7 +37,10 @@ extern bool g_snapshot_first_frame_rendered;
 typedef struct {
   const uint8_t *pixels; // Immutable owning reference shared by display and encoding
   int w, h;
+  uint64_t source_epoch, frame_serial;
+  bool fresh;
   uint64_t captured_ns; // wall-clock timestamp
+  uint64_t acquisition_started_ns;
 } pipeline_frame_t;
 
 // Thread-safe bounded queue (ring buffer)
@@ -115,6 +118,18 @@ static void *frame_queue_pop(frame_queue_t *q, uint64_t timeout_ns) {
   cond_signal(&q->not_full);
   mutex_unlock(&q->mu);
   return item;
+}
+
+static void *frame_queue_replace_latest(frame_queue_t *q, void *item) {
+  mutex_lock(&q->mu);
+  void *retired = q->count ? q->slots[q->head] : NULL;
+  q->head = 0;
+  q->tail = 0;
+  q->count = 1;
+  q->slots[0] = item;
+  cond_signal(&q->not_empty);
+  mutex_unlock(&q->mu);
+  return retired;
 }
 
 static int frame_queue_count(frame_queue_t *q) {
@@ -202,6 +217,10 @@ static bool frame_is_valid(const pipeline_frame_t *f) {
 struct session_pipeline_s {
   asciichat_thread_t capture_tid;
   asciichat_thread_t encode_tid;
+  asciichat_thread_t input_tid;
+  session_keyboard_handler_fn keyboard_handler;
+  session_should_exit_fn should_exit;
+  void *input_data;
 
   frame_queue_t *display_queue;
   frame_queue_t *encode_queue;
@@ -248,8 +267,10 @@ static void *pipeline_capture_thread(void *arg) {
         (unsigned long long)g_snapshot_actual_duration_ms, snapshot_delay);
   }
 
+  uint64_t previous_serial = 0;
   while (!atomic_load_bool(&pipeline->stop)) {
     asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
+    uint64_t acquisition_started_ns = time_get_ns();
     image_t *img = session_capture_read_frame(pipeline->capture);
 
     if (!img) {
@@ -263,37 +284,37 @@ static void *pipeline_capture_thread(void *arg) {
       continue;
     }
 
-    // Respect configured FPS
-    session_capture_sleep_for_fps(pipeline->capture);
-
     // Copy frame
     pipeline_frame_t *frame = make_frame_copy(img);
     if (!frame) {
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
       continue;
     }
+    frame->acquisition_started_ns = acquisition_started_ns;
+
+    frame->source_epoch = session_capture_source_epoch(pipeline->capture);
+    frame->frame_serial = session_capture_frame_serial(pipeline->capture);
+    frame->fresh = frame->frame_serial != previous_serial;
+    previous_serial = frame->frame_serial;
 
     // Record first frame timestamp for snapshot timer
     uint64_t zero = 0;
     atomic_cas_u64(&pipeline->first_frame_ns, &zero, frame->captured_ns);
 
     // Fan out: display queue (fast, can drop), encode queue (slow, keep all)
-    pipeline_frame_t *display_copy = SAFE_MALLOC(sizeof(*display_copy), pipeline_frame_t *);
-    memcpy(display_copy, frame, sizeof(*display_copy));
-    display_copy->pixels = buffer_share(frame->pixels);
-
-    uint64_t push_time_ns = time_get_ns();
-    log_debug_every(US_PER_SEC_INT, "[PIPELINE_CAPTURE_PUSH_DISPLAY] Pushing %dx%d frame to display_queue at %llu ns",
-                    display_copy->w, display_copy->h, (unsigned long long)push_time_ns);
-    if (!frame_queue_push(pipeline->display_queue, display_copy, 0)) {
-      // Non-blocking: drop if queue full
-      log_warn_every(US_PER_SEC_INT, "[PIPELINE_CAPTURE_DROP] Display queue full, dropping frame");
+    pipeline_frame_t *display_copy = frame;
+    if (pipeline->has_render_file) {
+      display_copy = SAFE_MALLOC(sizeof(*display_copy), pipeline_frame_t *);
+      memcpy(display_copy, frame, sizeof(*display_copy));
+      display_copy->pixels = buffer_share(frame->pixels);
+    }
+    pipeline_frame_t *retired = frame_queue_replace_latest(pipeline->display_queue, display_copy);
+    if (retired) {
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
-      free_frame(display_copy);
-    } else {
-      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENQUEUED, 1);
+      free_frame(retired);
     }
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENQUEUED, 1);
 
     if (pipeline->has_render_file) {
       // Encode all captured frames, including frames before display rendering starts
@@ -312,10 +333,11 @@ static void *pipeline_capture_thread(void *arg) {
         pipeline->frames_accepted++;
         log_debug_every(60 * US_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue");
       }
-    } else {
-      log_debug_every(5 * US_PER_SEC_INT, "Video recording is disabled");
-      free_frame(frame);
     }
+
+    // Publish the acquired image before pacing the next acquisition. Sleeping
+    // with an already captured frame adds a full interval to live latency.
+    session_capture_sleep_for_fps(pipeline->capture);
 
     // Check snapshot mode elapsed time AFTER queueing frame (ensure at least 1 frame is queued)
     if (snapshot_mode) {
@@ -427,7 +449,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   session_pipeline_t *p = SAFE_CALLOC(1, sizeof(*p), session_pipeline_t *);
   p->capture = capture;
   p->display = display;
-  p->display_queue = frame_queue_create(4, "display");
+  p->display_queue = frame_queue_create(1, "display");
   p->encode_queue = frame_queue_create(256, "encode"); // Large buffer for slow encoding
 
   // Check if display has render_file configured (will be checked in encode thread)
@@ -438,10 +460,9 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   if (media_source_uses_webcam(source) || media_source_get_type(source) == MEDIA_SOURCE_FILE)
     session_display_set_render_live_timing(display);
 
-  // Enable encode thread if render_file is available
-  // Note: has_file can be true even if render_file creation failed (ctx->render_file exists)
-  // OR if render_fps is explicitly set for playback speed control
-  p->has_render_file = render_fps > 0 || has_file;
+  // Playback FPS also has a default when no recording was requested. It must
+  // not enable the encoder's lossless queue for a live-only session.
+  p->has_render_file = has_file;
   log_debug("[PIPELINE_CREATE] render_fps=%.1f, has_file=%d, has_render_file=%d", render_fps, has_file ? 1 : 0,
             p->has_render_file ? 1 : 0);
 
@@ -476,6 +497,20 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   return ASCIICHAT_OK;
 }
 
+// Input has its own bounded poll cadence; ASCII conversion and terminal output
+// must never determine when an interactive command is consumed.
+static void *pipeline_input_thread(void *data) {
+  session_pipeline_t *pipeline = data;
+  while (!atomic_load_bool(&pipeline->stop) && !pipeline->should_exit(pipeline->input_data)) {
+    keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
+    if (key != KEY_NONE)
+      pipeline->keyboard_handler(pipeline->capture, (int)key, pipeline->input_data);
+    else
+      platform_sleep_ms(2);
+  }
+  return NULL;
+}
+
 asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, session_should_exit_fn should_exit,
                                             session_keyboard_handler_fn keyboard_handler, void *user_data) {
   if (!pipeline || !should_exit) {
@@ -483,6 +518,17 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
   }
 
   log_debug("[PIPELINE_MAIN] Starting main thread loop");
+  if (keyboard_handler && !GET_OPTION(snapshot_mode)) {
+    asciichat_error_t keyboard_result = keyboard_init();
+    if (keyboard_result != ASCIICHAT_OK)
+      return keyboard_result;
+    pipeline->keyboard_handler = keyboard_handler;
+    pipeline->should_exit = should_exit;
+    pipeline->input_data = user_data;
+    if (asciichat_thread_create(&pipeline->input_tid, "pipeline_input", pipeline_input_thread, pipeline) !=
+        ASCIICHAT_OK)
+      return SET_ERRNO(ERROR_THREAD, "Cannot start responsive session input");
+  }
 
   // Snapshot duration is owned by the capture thread. It records the first
   // captured frame and marks capture_finished at its duration limit.
@@ -494,18 +540,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     log_debug_every(US_PER_SEC_INT, "[PIPELINE_DEBUG] should_exit=%d, stop=%d", exit_check,
                     atomic_load_bool(&pipeline->stop));
 
-    uint64_t pop_time_ns = time_get_ns();
     pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 1 * NS_PER_MS_INT);
-
-    // Pause stops frame production, so keep polling the keyboard on queue
-    // timeouts or there would be no way to resume playback.
-    if (keyboard_handler) {
-      keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
-      if (key != KEY_NONE) {
-        log_debug("PIPELINE_KEYBOARD: Received key=%d", key);
-        keyboard_handler(pipeline->capture, (int)key, user_data);
-      }
-    }
 
     if (!frame) {
       if (atomic_load_bool(&pipeline->capture_finished) && frame_queue_count(pipeline->display_queue) == 0)
@@ -521,24 +556,37 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
       continue;
     }
 
-    // Log frame pop with timestamp
-    log_debug_every(US_PER_SEC_INT, "[PIPELINE_MAIN_POP] frame=%p, pixels=%p, w=%d, h=%d at %llu ns", (void *)frame,
-                    (void *)frame->pixels, frame->w, frame->h, (unsigned long long)pop_time_ns);
-
     // Check if help screen is active - if so, don't render ASCII frames
-    bool help_is_active = pipeline->display && keyboard_help_is_active(pipeline->display);
+    int screen = ui_controller_current_screen();
+    bool help_is_active = screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_HELP || screen == UI_SCREEN_LOGS;
 
     if (!help_is_active) {
-      log_debug_every(US_PER_SEC_INT, "[PIPELINE_MAIN_RENDER] Converting frame to ASCII: %dx%d", frame->w, frame->h);
       // Convert to ASCII
       image_t tmp = {.w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels};
+      uint64_t conversion_started_ns = time_get_ns();
       char *ascii = session_display_convert_to_ascii(pipeline->display, &tmp);
+      uint64_t converted_ns = time_get_ns();
+      double read_ms = (double)(frame->captured_ns - frame->acquisition_started_ns) / NS_PER_MS_INT;
+      double queue_ms = (double)(conversion_started_ns - frame->captured_ns) / NS_PER_MS_INT;
+      double convert_ms = (double)(converted_ns - conversion_started_ns) / NS_PER_MS_INT;
+      uint64_t epoch = frame->source_epoch;
+      bool fresh = frame->fresh;
+      uint64_t acquisition_started_ns = frame->acquisition_started_ns;
       free_frame(frame);
       frame = NULL;
 
       if (ascii) {
-        // Write ASCII to terminal
-        session_display_write_ascii(pipeline->display, ascii);
+        if (epoch == session_capture_source_epoch(pipeline->capture)) {
+          ui_controller_frame_acquired_at(acquisition_started_ns);
+          session_display_write_ascii_frame(pipeline->display, ascii, fresh);
+          ui_controller_frame_acquired_at(0);
+          uint64_t published_ns = time_get_ns();
+          session_capture_complete_open(pipeline->capture, epoch);
+          log_debug("LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d read_ms=%.2f queue_ms=%.2f convert_ms=%.2f "
+                    "publish_ms=%.2f",
+                    (double)(published_ns - acquisition_started_ns) / NS_PER_MS_INT, fresh, read_ms, queue_ms,
+                    convert_ms, (double)(published_ns - converted_ns) / NS_PER_MS_INT);
+        }
         SAFE_FREE(ascii);
       } else {
         log_error_every(US_PER_SEC_INT, "Failed to convert captured frame to ASCII; skipping display frame");
@@ -551,6 +599,9 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
   log_debug("[PIPELINE_MAIN] Main loop exiting, signaling threads to stop");
   atomic_store_bool(&pipeline->stop, true);
+  if (asciichat_thread_is_initialized(&pipeline->input_tid) &&
+      asciichat_thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_THREAD, "Cannot join session input thread");
 
   return ASCIICHAT_OK;
 }
@@ -580,6 +631,9 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
     mutex_unlock(&pipeline->encode_queue->mu);
   }
 
+  if (asciichat_thread_is_initialized(&pipeline->input_tid) &&
+      asciichat_thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_THREAD, "Cannot join session input thread during shutdown");
   session_display_begin_drain(pipeline->display, 0, false);
 
   // A timeout must never let the owner free memory still referenced by a worker.

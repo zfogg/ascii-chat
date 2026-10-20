@@ -74,3 +74,10 @@ asciichat_error_t ui_controller_printf(int fd, const char *format, ...);
 
 /** Animation sample owned by the common runtime during a presentation callback. */
 const animation_sample_t *ui_controller_animation_sample(void);
+
+/** Redraw retained media without treating it as a newly acquired frame for FPS. */
+asciichat_error_t ui_controller_present_retained(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data,
+                                                 size_t len);
+
+/** Carry the acquisition start time with the next media snapshot on this producer thread. */
+void ui_controller_frame_acquired_at(uint64_t started_ns);

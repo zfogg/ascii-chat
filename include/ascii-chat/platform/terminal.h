@@ -368,7 +368,7 @@ asciichat_error_t terminal_set_buffering(bool line_buffered);
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * Forces all buffered output to be written to the terminal immediately.
- * Ensures that all pending terminal output is displayed before continuing.
+ * This drains local output only; a remote terminal frontend may still be processing it.
  *
  * @note This function calls fsync/flush operations on the file descriptor.
  * @note Useful for ensuring output is visible before blocking operations.

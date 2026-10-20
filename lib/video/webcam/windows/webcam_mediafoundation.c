@@ -8,6 +8,7 @@
 
 #define COBJMACROS
 #include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/video/webcam/frame_clock.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/overflow.h>
@@ -31,6 +32,7 @@ struct webcam_context_t {
   BOOL mf_initialized;
   BOOL com_initialized;
   image_t *cached_frame; // Reusable frame buffer (allocated once, reused for each read)
+  webcam_frame_clock_t clock;
 };
 
 static HRESULT enumerate_devices_and_print(void) {
@@ -112,6 +114,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   cam->mf_initialized = FALSE;
   cam->com_initialized = FALSE;
   cam->cached_frame = NULL;
+  cam->clock = (webcam_frame_clock_t){0};
 
   HRESULT hr;
   IMFAttributes *attr = NULL;
@@ -195,8 +198,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     goto error;
   }
 
-  // Create source reader with GPU-accelerated video processing (Windows 8+)
-  // This enables automatic YUV->RGB conversion with hardware acceleration
+  // The basic converter handles progressive camera YUV -> RGB without the
+  // advanced processor's frame-rate conversion and temporal buffering.
   IMFAttributes *readerAttrs = NULL;
   hr = MFCreateAttributes(&readerAttrs, 1);
   if (FAILED(hr)) {
@@ -206,12 +209,14 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     goto error;
   }
 
-  // Enable advanced video processing for GPU-accelerated YUV->RGB conversion (Windows 8+)
-  // This is the recommended attribute for webcam capture with format conversion
-  hr = IMFAttributes_SetUINT32(readerAttrs, &MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING, TRUE);
+  hr = IMFAttributes_SetUINT32(readerAttrs, &MF_SOURCE_READER_ENABLE_VIDEO_PROCESSING, TRUE);
   if (FAILED(hr)) {
-    log_warn("Failed to set advanced video processing attribute: 0x%08x", hr);
+    log_warn("Failed to set video processing attribute: 0x%08x", hr);
   }
+
+  hr = IMFAttributes_SetUINT32(readerAttrs, &MF_LOW_LATENCY, TRUE);
+  if (FAILED(hr))
+    log_debug("Webcam source reader does not accept low-latency mode: 0x%08x", hr);
 
   hr = MFCreateSourceReaderFromMediaSource(cam->device, readerAttrs, &cam->reader);
   log_info("MFCreateSourceReaderFromMediaSource returned: 0x%08x, readerAttrs=%p", hr, (void *)readerAttrs);
@@ -243,10 +248,12 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     goto error;
   }
 
-  // Prefer the highest advertised capture rate, then the mode closest to 640x480.
+  // Prefer camera modes within the ASCII capture pixel budget, then their
+  // highest advertised rate and the size closest to 640x480.
   IMFMediaType *bestType = NULL;
   UINT32 bestNumerator = 0, bestDenominator = 1;
   UINT64 bestDistance = UINT64_MAX;
+  UINT64 bestSize = ((UINT64)640 << 32) | 480;
   for (DWORD index = 0;; index++) {
     IMFMediaType *nativeType = NULL;
     hr =
@@ -265,11 +272,15 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       UINT64 pixels = width * height;
       UINT64 distance = pixels > 640 * 480 ? pixels - 640 * 480 : 640 * 480 - pixels;
       if (numerator && denominator) {
-        log_info("Webcam supported mode: %llux%llu at %.3f FPS", (unsigned long long)width, (unsigned long long)height,
-                 (double)numerator / denominator);
+        log_dev("Webcam supported mode: %llux%llu at %.3f FPS", (unsigned long long)width, (unsigned long long)height,
+                (double)numerator / denominator);
         UINT64 candidate = (UINT64)numerator * bestDenominator;
         UINT64 best = (UINT64)bestNumerator * denominator;
-        if (candidate > best || (candidate == best && distance < bestDistance)) {
+        bool within_budget = pixels <= 640 * 480;
+        bool best_within_budget = (bestSize >> 32) * (UINT32)bestSize <= 640 * 480;
+        if (!bestType || (within_budget && !best_within_budget) ||
+            (within_budget == best_within_budget &&
+             (candidate > best || (candidate == best && distance < bestDistance)))) {
           if (bestType)
             IMFMediaType_Release(bestType);
           bestType = nativeType;
@@ -277,6 +288,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
           bestNumerator = numerator;
           bestDenominator = denominator;
           bestDistance = distance;
+          bestSize = nativeSize;
         }
       }
     }
@@ -290,13 +302,11 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       log_warn("Could not select fastest webcam mode: 0x%08x", hr);
       bestNumerator = 0;
     } else {
-      log_info("Selected webcam maximum capture rate: %.3f FPS", (double)bestNumerator / bestDenominator);
+      log_info("Selected webcam capture rate: %.3f FPS", (double)bestNumerator / bestDenominator);
     }
   }
 
-  // Request RGB32 output format (BGRA) at 640x480 resolution
-  // Combined with MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING, this enables
-  // GPU-accelerated YUV->RGB conversion
+  // Preserve native geometry so color conversion does not require a scaler.
   IMFMediaType *rgbType = NULL;
   hr = MFCreateMediaType(&rgbType);
   if (SUCCEEDED(hr)) {
@@ -306,12 +316,10 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       IMFMediaType_SetUINT64(rgbType, &MF_MT_FRAME_RATE, ((UINT64)bestNumerator << 32) | bestDenominator);
     }
 
-    // Request 640x480 resolution (we only need 480x270 max for ascii-chat)
-    // This dramatically reduces pixel copy overhead (307,200 vs 8,294,400 pixels)
-    UINT64 frameSize = ((UINT64)640 << 32) | (UINT64)480;
+    UINT64 frameSize = bestSize;
     hr = IMFMediaType_SetUINT64(rgbType, &MF_MT_FRAME_SIZE, frameSize);
     if (FAILED(hr)) {
-      log_warn("Could not set frame size to 640x480: 0x%08x", hr);
+      log_warn("Could not set native frame size: 0x%08x", hr);
     }
 
     // Use partial type - let MF fill in other details
@@ -319,7 +327,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     IMFMediaType_Release(rgbType);
 
     if (SUCCEEDED(hr)) {
-      log_info("Successfully requested RGB32 output format at 640x480");
+      log_info("Successfully requested RGB32 output at native capture dimensions");
     } else {
       log_warn("Could not configure RGB32 webcam output: 0x%08x", hr);
       result = SET_ERRNO(ERROR_WEBCAM, "Could not configure RGB32 webcam output: 0x%08x", hr);
@@ -371,6 +379,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   // Clean up the test sample if we got one
   if (sample) {
+    webcam_frame_clock_age(&cam->clock, timestamp, time_get_ns());
     IMFSample_Release(sample);
   }
 
@@ -483,10 +492,14 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   IMFSample *sample = NULL;
   DWORD streamIndex, flags;
   LONGLONG timestamp;
+  uint64_t request_ns = time_get_ns();
+  unsigned discarded = 0;
 
   // Timing diagnostic: measure ReadSample duration
   LARGE_INTEGER freq, start, end;
   QueryPerformanceFrequency(&freq);
+read_latest:
+  sample = NULL;
   QueryPerformanceCounter(&start);
 
   // Read a sample from the source reader
@@ -541,6 +554,37 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     }
     return NULL;
   }
+
+  uint64_t wall_ns = time_get_ns();
+  double backlog_ms = (double)webcam_frame_clock_age(&ctx->clock, timestamp, wall_ns) / NS_PER_MS_INT;
+  if (backlog_ms > 33.0) {
+    // ReadSample consumes queued capture samples. Low-latency mode alone does
+    // not discard samples left behind by throttling or expensive frame work.
+    // Skip their RGB conversion and keep the input thread independently live.
+    IMFSample_Release(sample);
+    sample = NULL;
+    ++discarded;
+    if (discarded < 120 && time_get_ns() - request_ns < 100 * NS_PER_MS_INT)
+      goto read_latest;
+    // A clock running slower than monotonic time cannot catch up by draining.
+    // Empty the reader before rebasing, so a new origin never hides queued frames.
+    HRESULT flushed = IMFSourceReader_Flush(ctx->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM);
+    if (SUCCEEDED(flushed))
+      webcam_frame_clock_reset(&ctx->clock);
+    log_debug_every(US_PER_SEC_INT,
+                    "CAMERA_FRAME: backlog_ms=%.2f discarded=%u (drain budget exhausted, flush=0x%08lx)", backlog_ms,
+                    discarded, flushed);
+    return NULL;
+  }
+  UINT64 device_time;
+  double device_age_ms = -1;
+  if (SUCCEEDED(IMFSample_GetUINT64(sample, &MFSampleExtension_DeviceTimestamp, &device_time))) {
+    LONGLONG system_time = MFGetSystemTime();
+    if (system_time >= 0 && device_time <= (UINT64)system_time)
+      device_age_ms = (double)((UINT64)system_time - device_time) / 10000.0;
+  }
+  log_debug("CAMERA_FRAME: backlog_ms=%.2f read_ms=%.2f discarded=%u device_age_ms=%.2f", backlog_ms, elapsed_ms,
+            discarded, device_age_ms);
 
   // Get the media buffer from the sample
   IMFMediaBuffer *buffer = NULL;
@@ -673,6 +717,10 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   IMFMediaBuffer_Release(buffer);
   IMFSample_Release(sample);
 
+  uint64_t complete_ns = time_get_ns();
+  log_debug("CAMERA_COPY: request_ns=%llu sample_ns=%llu complete_ns=%llu read_ms=%.2f copy_ms=%.2f",
+            (unsigned long long)request_ns, (unsigned long long)wall_ns, (unsigned long long)complete_ns,
+            (double)(wall_ns - request_ns) / NS_PER_MS_INT, (double)(complete_ns - wall_ns) / NS_PER_MS_INT);
   return img;
 }
 

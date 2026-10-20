@@ -21,6 +21,7 @@ Test(fps_counter, inactivity_and_clock_reset) {
   fps_counter_tick_at(counter, 0);
   fps_counter_tick_at(counter, 10000000);
   cr_assert_float_eq(fps_counter_get_at(counter, 10000000), 100, 0.01);
+  cr_assert_lt(fps_counter_get_at(counter, 1010000000), 2);
   cr_assert_eq(fps_counter_get_at(counter, 2010000000), 0);
   fps_counter_tick_at(counter, 3000000000);
   cr_assert_eq(fps_counter_get_at(counter, 3000000000), 0);
@@ -53,10 +54,38 @@ Test(fps_counter, presentation_counts_only_complete_frames) {
   fps_counter_write_begin(counter);
   fps_counter_write_end(counter, true);
   fps_counter_frame_end(counter, 50000000);
-  cr_assert_float_eq(fps_counter_get_at(counter, 50000000), 25, 0.01);
+  cr_assert_float_eq(fps_counter_get_at(counter, 50000000), 20, 0.01);
   cr_assert(fps_counter_set_visible(counter, true));
   fps_counter_reset(counter);
   cr_assert_not(fps_counter_set_visible(counter, true));
   cr_assert(fps_counter_set_visible(counter, false));
+  fps_counter_destroy(counter);
+}
+
+Test(fps_counter, acquired_frame_ids_exclude_redraws_and_failed_presentations) {
+  fps_counter_t *counter = fps_counter_create();
+  for (unsigned i = 0; i < 3; ++i) {
+    cr_assert(fps_counter_frame_begin_id(counter, i + 1));
+    fps_counter_write_begin(counter);
+    fps_counter_write_end(counter, true);
+    fps_counter_frame_end(counter, i * 100000000ULL);
+    // Identical pixels in a new acquired frame still count; reusing an ID does not.
+    cr_assert_not(fps_counter_frame_begin_id(counter, i + 1));
+    fps_counter_write_begin(counter);
+    fps_counter_write_end(counter, true);
+    fps_counter_frame_end(counter, i * 100000000ULL + 1000000ULL);
+  }
+  cr_assert_float_eq(fps_counter_get_at(counter, 200000000ULL), 10, 0.01);
+  cr_assert_not(fps_counter_frame_begin_id(counter, 0));
+  fps_counter_frame_end(counter, 202000000ULL);
+  cr_assert(fps_counter_frame_begin_id(counter, 4));
+  fps_counter_write_begin(counter);
+  fps_counter_write_end(counter, false);
+  fps_counter_frame_end(counter, 203000000ULL);
+  cr_assert(fps_counter_frame_begin_id(counter, 4));
+  fps_counter_write_begin(counter);
+  fps_counter_write_end(counter, true);
+  fps_counter_frame_end(counter, 300000000ULL);
+  cr_assert_float_eq(fps_counter_get_at(counter, 300000000ULL), 10, 0.01);
   fps_counter_destroy(counter);
 }

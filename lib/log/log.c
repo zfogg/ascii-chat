@@ -70,7 +70,7 @@ __attribute__((weak)) void platform_log_hook(log_level_t level, const char *mess
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 // Console logs never draw over a live screen, even from its rendering callback.
 static void log_terminal_printf(int fd, const char *format, ...) {
-  if (ui_controller_is_presenting() && (ui_controller_is_owner() || platform_isatty(fd)))
+  if (ui_controller_is_presenting())
     return;
   char buffer[16384];
   va_list args;
@@ -917,6 +917,8 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
 /* Helper: Write colored log entry to terminal (lock-free)
  * Uses atomic loads for state checks, skips output if terminal is locked by another thread
  */
+static _Atomic bool g_terminal_log_colors;
+
 static void write_to_terminal_atomic(log_level_t level, const char *timestamp, const char *file, int line,
                                      const char *func, const char *fmt, va_list args, uint64_t time_nanoseconds,
                                      bool capture_history) {
@@ -927,9 +929,14 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   }
 
   // Choose output file descriptor using unified routing logic
-  int fd = terminal_choose_log_fd(level);
+  bool presenting = ui_controller_is_presenting();
+  int fd = presenting ? STDERR_FILENO : terminal_choose_log_fd(level);
   FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
-  bool use_colors = terminal_should_color_output(fd);
+  // Captured session logs still need formatting, but detecting the console
+  // again would block their producer behind the presentation worker's writes.
+  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd);
+  if (!presenting)
+    atomic_store(&g_terminal_log_colors, use_colors);
 
   // Format message first (needed for status screen capture even if terminal output disabled)
   char msg_buffer[LOG_MSG_BUFFER_SIZE];
@@ -995,6 +1002,11 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   }
 
   atomic_fetch_sub_u64_impl(&g_session_log_readers, 1);
+
+  // The session now owns this log entry. Do not filter or flush a suppressed
+  // stdio write: fflush can wait on console/stdio activity on another thread.
+  if (presenting)
+    return;
 
   // Check if terminal output is enabled (atomic load)
   bool is_enabled = atomic_load_u64(&g_log.terminal_output_enabled);
@@ -1219,7 +1231,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     }
 
     // Terminal output (check with atomic loads)
-    if (atomic_load_u64(&g_log.terminal_output_enabled) && !atomic_load_bool(&g_log.terminal_locked)) {
+    if (atomic_load_u64(&g_log.terminal_output_enabled) && !atomic_load_bool(&g_log.terminal_locked) &&
+        !ui_controller_is_presenting()) {
       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
       uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);

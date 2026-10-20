@@ -372,3 +372,20 @@ void session_capture_toggle_media(session_capture_ctx_t *ctx);
 bool session_capture_media_active(session_capture_ctx_t *ctx);
 
 void session_capture_redraw_media(session_capture_ctx_t *ctx);
+
+asciichat_error_t session_capture_open_media(session_capture_ctx_t *ctx, const char *path);
+bool session_capture_cancel_open(session_capture_ctx_t *ctx);
+/** Serialize decoder controls with capture-owner replacement. */
+void session_capture_lock_source(session_capture_ctx_t *ctx);
+void session_capture_unlock_source(session_capture_ctx_t *ctx);
+
+/** Source identity and successful acquisition count; retained redraws do not advance the serial. */
+uint64_t session_capture_source_epoch(session_capture_ctx_t *ctx);
+uint64_t session_capture_frame_serial(session_capture_ctx_t *ctx);
+/** Reveal the committed source after its first frame has been published or transmitted. */
+void session_capture_complete_open(session_capture_ctx_t *ctx, uint64_t epoch);
+
+/** Replace the current playlist with quoted paths or URLs. */
+asciichat_error_t session_capture_open_playlist(session_capture_ctx_t *ctx, const char *text);
+/** Queue a relative playlist change on the capture owner. */
+void session_capture_skip_media(session_capture_ctx_t *ctx, int direction);

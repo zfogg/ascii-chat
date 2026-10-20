@@ -383,3 +383,5 @@ double ffmpeg_decoder_get_duration(ffmpeg_decoder_t *decoder);
 double ffmpeg_decoder_get_position(ffmpeg_decoder_t *decoder);
 
 /** @} */
+
+ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*cancel)(void *), void *data);

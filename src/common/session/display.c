@@ -327,9 +327,9 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->initialized = true;
   if (ctx->has_tty && !ctx->snapshot_mode) {
     const char initial[] = "\033[H";
-    (void)ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO,
-                                (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, initial,
-                                sizeof(initial) - 1);
+    (void)ui_controller_present_retained(UI_SCREEN_MEDIA, STDOUT_FILENO,
+                                         (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS},
+                                         initial, sizeof(initial) - 1);
   }
 
   return ctx;
@@ -569,7 +569,6 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   const image_t *display_image = image;
 
   if ((flip_x_enabled || flip_y_enabled) && image->w > 1 && image->h > 1 && image->pixels) {
-    START_TIMER("image_flip");
     uint64_t t_flip_alloc_start = time_get_ns();
     flipped_image = image_new((size_t)image->w, (size_t)image->h);
     uint64_t t_flip_alloc_end = time_get_ns();
@@ -620,8 +619,6 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
               (t_flip_alloc_end - t_flip_alloc_start) / 1000, (t_flip_memcpy_end - t_flip_memcpy_start) / 1000,
               (t_flip_reverse_end - t_flip_reverse_start) / 1000, flip_x_enabled, flip_y_enabled);
     }
-    STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 3 * NS_PER_MS_INT, "image_flip",
-                             "IMAGE_FLIP: Flip complete (%.2f ms)");
   }
   uint64_t t_flip_end = time_get_ns();
 
@@ -650,11 +647,8 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 
   uint64_t t_convert_start = time_get_ns();
   // Call the standard ASCII conversion using the filtered (or original) image
-  START_TIMER("ascii_convert_with_capabilities");
   char *result = ascii_convert_with_capabilities(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio,
                                                  stretch, ctx->palette_chars);
-  STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "ascii_convert_with_capabilities",
-                           "ASCII_CONVERT: Conversion complete (%.2f ms)");
   uint64_t t_convert_end = time_get_ns();
 
   // Apply rainbow color filter to ANSI output by replacing RGB values
@@ -700,22 +694,20 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 
   uint64_t t_cleanup_start = time_get_ns();
   // Clean up flipped and filtered images if created
-  START_TIMER("ascii_convert_cleanup");
   if (filtered_image) {
     image_destroy(filtered_image);
   }
   if (flipped_image) {
     image_destroy(flipped_image);
   }
-  STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "ascii_convert_cleanup",
-                           "ASCII_CONVERT_CLEANUP: Cleanup complete (%.2f ms)");
   uint64_t t_cleanup_end = time_get_ns();
 
   // Log total breakdown with actual measured times
-  log_dev("CONVERT_TIMING: flip=%llu us, filter=%llu us, convert=%llu us, cleanup=%llu us, TOTAL=%llu us",
-          (t_flip_end - t_flip_start) / 1000, (t_filter_end - t_filter_start) / 1000,
-          (t_convert_end - t_convert_start) / 1000, (t_cleanup_end - t_cleanup_start) / 1000,
-          (t_cleanup_end - t_flip_start) / 1000);
+  log_dev_every(US_PER_SEC_INT,
+                "CONVERT_TIMING: flip=%llu us, filter=%llu us, convert=%llu us, cleanup=%llu us, TOTAL=%llu us",
+                (t_flip_end - t_flip_start) / 1000, (t_filter_end - t_filter_start) / 1000,
+                (t_convert_end - t_convert_start) / 1000, (t_cleanup_end - t_cleanup_start) / 1000,
+                (t_cleanup_end - t_flip_start) / 1000);
 
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - stats_start);
   stats_counter_add(stats_runtime_scope(), result ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
@@ -775,7 +767,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   session_display_write_ascii(ctx, frame_data);
 }
 
-void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) {
+void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *ascii, bool fresh) {
   if (!ctx || !ctx->initialized) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL or uninitialized");
     return;
@@ -893,7 +885,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   // Output routing logic
   bool use_tty_control = ctx->has_tty && (!ctx->snapshot_mode || terminal_is_interactive());
 
-  START_TIMER("frame_write");
+  uint64_t frame_write_started_ns = time_get_ns();
 
   // Increment shared frame counter for both client and host rendering
   // This metric is used by debug scripts to measure FPS across all modes
@@ -903,8 +895,8 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
 
   if (use_tty_control) {
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
-    const char *cursor_home_sequence = "\033[H\033[3J"; // 7 bytes total
-    size_t cursor_seq_len = 7;
+    const char *cursor_home_sequence = "\033[H";
+    size_t cursor_seq_len = 3;
     size_t total_size = cursor_seq_len + frame_len;
 
     char *frame_buffer = SAFE_MALLOC(total_size, char *);
@@ -912,13 +904,13 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
 
-      log_debug("FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout", total_size, cursor_seq_len,
-                frame_len);
-      asciichat_error_t presented = ui_controller_present(
+      log_debug_every(US_PER_SEC_INT, "FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout",
+                      total_size, cursor_seq_len, frame_len);
+      asciichat_error_t presented = (fresh ? ui_controller_present : ui_controller_present_retained)(
           UI_SCREEN_MEDIA, ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO,
           (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, frame_buffer, total_size);
       ssize_t written = presented == ASCIICHAT_OK ? (ssize_t)total_size : -1;
-      log_debug("FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)", written, total_size);
+      log_debug_every(US_PER_SEC_INT, "FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)", written, total_size);
 
       // Start snapshot timer on first ASCII frame rendered
       if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
@@ -991,8 +983,8 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   }
 
 cleanup_frame:
-  STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "frame_write",
-                           "FRAME_WRITE: Write and flush complete (%.2f ms)");
+  log_dev_every(3 * US_PER_SEC_INT, "FRAME_WRITE: Published in %.2f ms",
+                (double)(time_get_ns() - frame_write_started_ns) / NS_PER_MS_INT);
 
   // Clean up digital rain result if allocated
   SAFE_FREE(plain_frame);
@@ -1255,4 +1247,8 @@ void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, do
 
   log_debug("  -> Passing duration %.3f to render_file encoder", actual_duration_sec);
   render_file_set_snapshot_actual_duration(ctx->render_file, actual_duration_sec);
+}
+
+void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) {
+  session_display_write_ascii_frame(ctx, ascii, true);
 }

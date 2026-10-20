@@ -295,6 +295,9 @@ static void *webcam_capture_thread_func(void *arg) {
       selected_codec = selected_codec == VIDEO_CODEC_H265 ? VIDEO_CODEC_H264 : VIDEO_CODEC_RGBA;
       encoding_failed = false;
     }
+    if (send_result == ASCIICHAT_OK)
+      session_capture_complete_open(connection->capture_context,
+                                    session_capture_source_epoch(connection->capture_context));
     const char *codec_name = selected_codec == VIDEO_CODEC_H265   ? "H265"
                              : selected_codec == VIDEO_CODEC_H264 ? "H264"
                                                                   : "RAW";

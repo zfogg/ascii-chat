@@ -19,6 +19,13 @@
 #include <ascii-chat/platform/terminal.h>
 #include <string.h>
 #include <signal.h>
+#include <ascii-chat/ui/input.h>
+#include <ascii-chat/ui/prompt.h>
+#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/platform/clipboard.h>
+#include <ascii-chat/media/input.h>
+#include <ascii-chat/media/playlist.h>
+#include <ascii-chat/log/search.h>
 
 #ifndef NDEBUG
 #include <ascii-chat/debug/sync.h>
@@ -35,7 +42,7 @@ static double g_mute_saved_volume = 1.0;
  * Keyboard Handler
  * ============================================================================ */
 
-void session_handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
+static void handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
   if (ui_controller_current_screen() == UI_SCREEN_LOGS && ui_session_logs_key(key))
     return;
   ui_session_action_t action = ui_session_key(key, &g_mute_saved_volume);
@@ -195,4 +202,59 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   if (display && keyboard_help_is_active(display)) {
     keyboard_help_render(display);
   }
+}
+
+void session_handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
+  bool text_entry = log_search_is_entering();
+  if (text_entry && key == KEY_PASTE) {
+    char pasted[8192];
+    if (ui_input_take_paste(pasted, sizeof(pasted)) == ASCIICHAT_OK)
+      for (const unsigned char *p = (const unsigned char *)pasted; *p; ++p)
+        ui_session_logs_key((keyboard_key_t)(*p >= 32 && *p != 127 ? *p : ' '));
+    CLEAR_ERRNO();
+    return;
+  }
+  if (!text_entry && (key == '<' || key == '>')) {
+    session_capture_skip_media(capture, key == '>' ? 1 : -1);
+    return;
+  }
+  if (!text_entry && key == KEY_ESCAPE && session_capture_cancel_open(capture))
+    return;
+  if (!text_entry && (key == KEY_MEDIA_SUBMIT || key == KEY_PASTE || key == 'o' || key == 'O' || key == 15 ||
+                      key == 'v' || key == 'V')) {
+    char input[8192] = {0}, normalized[8192];
+    asciichat_error_t result = ASCIICHAT_OK;
+    if (key == KEY_MEDIA_SUBMIT)
+      result = ui_input_media_take(input, sizeof(input));
+    else if (key == KEY_PASTE)
+      result = ui_input_take_paste(input, sizeof(input));
+    else if (key == 'v' || key == 'V')
+      result = platform_clipboard_read(input, sizeof(input));
+    if (result == ASCIICHAT_OK) {
+      if (key != KEY_MEDIA_SUBMIT && input[0]) {
+        media_playlist_t list;
+        result = media_playlist_parse(input, &list);
+        if (result == ASCIICHAT_OK)
+          result = media_playlist_format(&list, normalized, sizeof(normalized));
+        if (result == ASCIICHAT_OK)
+          memcpy(input, normalized, strlen(normalized) + 1);
+      }
+      if (result == ASCIICHAT_OK && key != KEY_MEDIA_SUBMIT)
+        result = ui_input_media_begin(input);
+      if (result == ASCIICHAT_OK && key == KEY_MEDIA_SUBMIT)
+        result = session_capture_open_playlist(capture, input);
+    }
+    if (key == KEY_MEDIA_SUBMIT)
+      ui_prompt_remove();
+    if (result != ASCIICHAT_OK) {
+      asciichat_error_context_t error;
+      if (HAS_ERRNO(&error))
+        NOTICE(WARNING, "MEDIA INPUT", "%s", error.context_message);
+      CLEAR_ERRNO();
+    }
+    return;
+  }
+  session_capture_lock_source(capture);
+  handle_keyboard_input(capture, display, key);
+  session_capture_unlock_source(capture);
 }

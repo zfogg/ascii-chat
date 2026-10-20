@@ -95,3 +95,6 @@ void fps_counter_frame_end(fps_counter_t *counter, uint64_t now);
 void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redrawn);
 
 /** @} */
+
+/** Count an acquired frame ID once, after its complete write. Zero denotes a UI-only redraw. */
+bool fps_counter_frame_begin_id(fps_counter_t *counter, uint64_t frame_id);

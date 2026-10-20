@@ -189,6 +189,11 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
  * ============================================================================ */
 
 media_source_t *media_source_create(media_source_type_t type, const char *path) {
+  return media_source_create_interruptible(type, path, NULL, NULL);
+}
+
+media_source_t *media_source_create_interruptible(media_source_type_t type, const char *path, bool (*cancel)(void *),
+                                                  void *data) {
   media_source_t *source = SAFE_MALLOC(sizeof(media_source_t), media_source_t *);
   if (!source) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate media source");
@@ -292,6 +297,13 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       SAFE_FREE(source);
       return NULL;
     }
+    if (cancel && cancel(data)) {
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
+      SAFE_FREE(source);
+      return NULL;
+    }
     effective_path = resolved_url;
     log_debug("Using resolved URL for playback");
 
@@ -317,10 +329,11 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     // Always use separate decoders for video and audio
     // This allows independent read rates and avoids lock contention
     asciichat_errno_scope_t decoder_scope = asciichat_errno_checkpoint();
-    source->video_decoder = ffmpeg_decoder_create(effective_path);
+    source->video_decoder = ffmpeg_decoder_create_interruptible(effective_path, cancel, data);
     if (!source->video_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: video decoder could not open input");
-      NOTICE(WARNING, "MEDIA COULD NOT BE OPENED", "Failed to open media file for video: %s", effective_path);
+      if (!cancel)
+        NOTICE(WARNING, "MEDIA COULD NOT BE OPENED", "Failed to open media file for video: %s", effective_path);
       LOG_ERRNO_IF_SET("Media initialization failed");
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
@@ -355,7 +368,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     ASSERT_NO_ERRNO_SINCE(prefetch_scope);
     asciichat_errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
     decoder_scope = asciichat_errno_checkpoint();
-    source->audio_decoder = ffmpeg_decoder_create(effective_path);
+    source->audio_decoder = ffmpeg_decoder_create_interruptible(effective_path, cancel, data);
     if (!source->audio_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: audio decoder could not open input");
       LOG_ERRNO_IF_SET("Media initialization failed");

@@ -20,11 +20,21 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/platform/keyboard_stream.h>
+#include <ascii-chat/video/ascii/rle.h>
+#include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/debug/named.h>
 
 typedef struct {
   _Atomic unsigned references;
   int fd;
+} screen_terminal_t;
+
+typedef struct {
+  _Atomic unsigned references;
+  screen_terminal_t *terminal;
+  uint64_t frame_id, submitted_ns, acquisition_started_ns;
   _Alignas(max_align_t) char data[];
 } screen_snapshot_t;
 
@@ -144,6 +154,12 @@ static void publish_screen_locked(void) {
 }
 static bool g_redraw;
 static bool g_finished;
+static uint64_t g_media_frame_id;
+static _Thread_local uint64_t g_acquisition_started_ns;
+
+void ui_controller_frame_acquired_at(uint64_t started_ns) {
+  g_acquisition_started_ns = started_ns;
+}
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
 static _Thread_local fps_counter_t *g_fps;
@@ -172,13 +188,36 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   }
   // Logging may call this while holding subsystem locks; never wait for a
   // renderer callback here. Live screens already capture logs in their model.
-  if (!g_owner && atomic_load_bool(&g_live) && platform_isatty(fd))
+  if (!g_owner && atomic_load_bool(&g_live))
     return ASCIICHAT_OK;
   if (g_owner && g_render_fd >= 0)
     fd = g_render_fd;
   fps_counter_write_begin(g_fps);
   uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
-  bool complete = platform_write_all(fd, data, len) == len;
+  // Terminals supporting synchronized output present the art and its overlays
+  // together, even when a large UTF-8 frame requires several writes.
+  bool synchronized = g_stats_media && g_render_snapshot;
+  bool started = !synchronized || platform_write_all(fd, "\033[?2026h", 8) == 8;
+  size_t written = 0;
+  while (started && written < len) {
+    // A pending editor or overlay supersedes the remainder of a media frame.
+    // Bound each console write so a large frame cannot delay that transition.
+    if (g_stats_media && ui_controller_current_screen() != UI_SCREEN_MEDIA)
+      break;
+    size_t count = len - written;
+    if (g_stats_media && count > 16384) {
+      count = 16384;
+      while (count && ((unsigned char)data[written + count] & 0xc0) == 0x80)
+        --count;
+    }
+    size_t sent = platform_write_all(fd, data + written, count);
+    written += sent;
+    if (sent != count)
+      break;
+  }
+  // End the update even when input superseded the frame halfway through.
+  bool ended = !synchronized || platform_write_all(fd, "\033[?2026l", 8) == 8;
+  bool complete = written == len && started && ended;
   if (g_stats_media) {
     g_stats_write_ns += time_get_ns() - stats_start;
     g_stats_writes++;
@@ -188,9 +227,16 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   return complete ? ASCIICHAT_OK : ERROR_FILE_OPERATION;
 }
 
+static void release_terminal(screen_terminal_t *terminal) {
+  if (terminal && atomic_fetch_sub(&terminal->references, 1) == 1) {
+    platform_close(terminal->fd);
+    SAFE_FREE(terminal);
+  }
+}
+
 static void release_snapshot(screen_snapshot_t *snapshot) {
   if (snapshot && atomic_fetch_sub(&snapshot->references, 1) == 1) {
-    platform_close(snapshot->fd);
+    release_terminal(snapshot->terminal);
     SAFE_FREE(snapshot);
   }
 }
@@ -269,6 +315,7 @@ typedef struct {
   int active;
   bool volume;
   bool drew;
+  bool fresh;
 } native_view_t;
 
 static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
@@ -277,8 +324,14 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
   g_capture = output;
   g_animation = animation;
   g_render_volume = view->volume;
-  fps_counter_frame_begin(g_fps, view->active == UI_SCREEN_MEDIA || view->active == UI_SCREEN_HELP);
+  view->fresh = fps_counter_frame_begin_id(g_fps, view->active == UI_SCREEN_MEDIA ? view->screen->owned->frame_id : 0);
+  // Paint the reserved cells before the art, which never writes over them.
+  // This remains visible on terminals without synchronized-output support.
+  fps_counter_render(g_fps, view->screen->fd, size.cols, true);
   view->screen->render(size, view->screen->snapshot);
+  // Compose overlays before publishing the frame, so replacing the media cannot
+  // expose an intermediate frame with its counter erased.
+  fps_counter_render(g_fps, view->screen->fd, size.cols, true);
   g_render_volume = false;
   g_animation = NULL;
   g_capture = NULL;
@@ -292,8 +345,35 @@ static void *presentation_main(void *unused) {
   bool was_sync = false;
   uint64_t last_volume_until = 0;
   bool volume_was_visible = false;
+  uint64_t reply_requested_ns = 0, reply_frame_ns = 0, reply_frame_id = 0, reply_written_ns = 0;
+  int reply_support = 0;
+  bool awaiting_reply = false;
   while (!atomic_load_bool(&g_presentation_stop_requested)) {
-    uint64_t refresh_deadline = time_get_ns() + 16 * NS_PER_MS_INT;
+    uint64_t iteration_started_ns = time_get_ns();
+    uint64_t refresh_deadline = iteration_started_ns + 16 * NS_PER_MS_INT;
+    uint64_t replied_ns = keyboard_stream_terminal_reply_ns();
+    if (reply_requested_ns && replied_ns >= reply_requested_ns) {
+      reply_support = 1;
+      if (awaiting_reply) {
+        fps_counter_frame_end(g_fps, replied_ns);
+        log_debug("TERMINAL_ACK: id=%llu response_ms=%.2f capture_to_terminal_ms=%.2f",
+                  (unsigned long long)reply_frame_id, (double)(replied_ns - reply_requested_ns) / NS_PER_MS_INT,
+                  reply_frame_ns ? (double)(replied_ns - reply_frame_ns) / NS_PER_MS_INT : 0);
+      }
+      awaiting_reply = false;
+    }
+    if (awaiting_reply && reply_support == 0 && iteration_started_ns - reply_requested_ns > 500 * NS_PER_MS_INT) {
+      // Classic consoles need no remote acknowledgement and may not answer OSC.
+      reply_support = -1;
+      awaiting_reply = false;
+      fps_counter_frame_end(g_fps, reply_written_ns);
+    }
+    if (awaiting_reply && ui_controller_current_screen() == UI_SCREEN_MEDIA && !shutdown_is_requested()) {
+      // Keep only the latest mailbox frame while the frontend parses output.
+      // Input and modal screens remain independent of this backpressure.
+      platform_sleep_ms(2);
+      continue;
+    }
     // This path must remain independent of producers, including one stuck
     // holding the controller mutex. It reads only the collector's mailbox.
     if (ui_sync_is_visible() && ui_controller_current_screen() >= 0 &&
@@ -347,13 +427,14 @@ static void *presentation_main(void *unused) {
       terminal_resize_watcher_t watcher = {.size = previous_size};
       bool resized = false;
       // Observe physical changes once for all modes; consumers use the published dimensions.
-      if (!platform_isatty(screen->fd) || terminal_resize_poll(&watcher, screen->fd, &resized) != ASCIICHAT_OK) {
+      if (terminal_resize_poll(&watcher, screen->fd, &resized) != ASCIICHAT_OK) {
         // A minimized or detached terminal has no usable drawing area.
         atomic_store_bool(&g_blocked, true);
         const ui_session_view_t hidden = {.screen = -1};
         ui_session_render(g_session, &hidden, time_get_ns());
         goto frame_complete;
       }
+      uint64_t geometry_done_ns = time_get_ns();
       terminal_size_t size = watcher.size;
       mutex_lock(&g_mutex);
       g_size = size;
@@ -387,30 +468,86 @@ static void *presentation_main(void *unused) {
       ui_session_resize(g_session, size.cols, size.rows);
       if (redraw)
         ui_session_redraw(g_session);
-      native_view_t context = {.screen = screen, .active = active, .volume = volume_visible};
+      if (active == UI_SCREEN_MEDIA) {
+        // Console geometry queries can block while capture continues. Take the
+        // latest mailbox snapshot after those queries instead of drawing the
+        // image retained before them.
+        screen_snapshot_t *retired = NULL;
+        mutex_lock(&g_mutex);
+        if (g_screens[active].owned && g_screens[active].owned != frame.owned) {
+          retired = frame.owned;
+          frame = g_screens[active];
+          atomic_fetch_add(&frame.owned->references, 1);
+          g_screens[active].dirty = false;
+          g_render_snapshot = frame.owned;
+        }
+        mutex_unlock(&g_mutex);
+        release_snapshot(retired);
+      }
+      native_view_t context = {.screen = screen, .active = active, .volume = volume_visible, .fresh = false};
       ui_session_view_t view = {
           .screen = active,
           .minimum = screen->minimum,
           .dirty = screen->dirty || volume_changed,
-          .refresh_ns = active == UI_SCREEN_LOGS ? 100 * NS_PER_MS_INT
+          .refresh_ns = active == UI_SCREEN_PROMPT ? 50 * NS_PER_MS_INT
+                        : active == UI_SCREEN_LOGS ? 100 * NS_PER_MS_INT
                         : active == UI_SCREEN_RENDER_PROGRESS
                             ? 125 * NS_PER_MS_INT
                             : (active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS ? 16 * NS_PER_MS_INT : 0),
           .draw = draw_native_view,
           .context = &context};
+      uint64_t compose_started_ns = time_get_ns();
       const char *output = ui_session_render(g_session, &view, now);
+      uint64_t composed_ns = time_get_ns();
       bool covered = ui_session_is_covered(g_session);
       atomic_store_bool(&g_blocked, covered);
       if (covered && !was_covered)
         fps_counter_reset(g_fps);
       if (output) {
-        stats_media_begin(active == UI_SCREEN_MEDIA && context.drew);
-        ui_controller_write(screen->fd, output, ui_session_frame_length(g_session));
+        stats_media_begin(context.fresh && context.drew);
+        asciichat_error_t written = ui_controller_write(screen->fd, output, ui_session_frame_length(g_session));
+        uint64_t write_done_ns = time_get_ns();
+        if (context.fresh && context.drew) {
+          fps_counter_write_begin(g_fps);
+          asciichat_error_t drained = terminal_flush(screen->fd);
+          fps_counter_write_end(g_fps, drained == ASCIICHAT_OK);
+          if (written != ASCIICHAT_OK || drained != ASCIICHAT_OK)
+            CLEAR_ERRNO();
+          else {
+            uint64_t completed_ns = time_get_ns();
+            log_debug("FRAME_PRESENT: id=%llu submit_to_stdout_ms=%.2f acquired_ns=%llu submitted_ns=%llu "
+                      "completed_ns=%llu capture_to_stdout_ms=%.2f mailbox_ms=%.2f geometry_ms=%.2f "
+                      "compose_ms=%.2f write_ms=%.2f drain_ms=%.2f bytes=%zu cols=%d rows=%d",
+                      (unsigned long long)screen->owned->frame_id,
+                      (double)(completed_ns - screen->owned->submitted_ns) / NS_PER_MS_INT,
+                      (unsigned long long)screen->owned->acquisition_started_ns,
+                      (unsigned long long)screen->owned->submitted_ns, (unsigned long long)completed_ns,
+                      screen->owned->acquisition_started_ns
+                          ? (double)(completed_ns - screen->owned->acquisition_started_ns) / NS_PER_MS_INT
+                          : 0,
+                      (double)(compose_started_ns - screen->owned->submitted_ns) / NS_PER_MS_INT,
+                      (double)(geometry_done_ns - iteration_started_ns) / NS_PER_MS_INT,
+                      (double)(composed_ns - compose_started_ns) / NS_PER_MS_INT,
+                      (double)(write_done_ns - composed_ns) / NS_PER_MS_INT,
+                      (double)(completed_ns - write_done_ns) / NS_PER_MS_INT, ui_session_frame_length(g_session),
+                      size.cols, size.rows);
+          }
+        }
         stats_media_end();
-        if (context.drew)
+        if (context.fresh && context.drew && written == ASCIICHAT_OK && reply_support >= 0) {
+          // OSC 11 is answered by the frontend, unlike a local console-buffer query.
+          // One outstanding query bounds the downstream renderer queue to one frame.
+          reply_requested_ns = time_get_ns();
+          reply_frame_ns = screen->owned->acquisition_started_ns;
+          reply_frame_id = screen->owned->frame_id;
+          reply_written_ns = reply_requested_ns;
+          static const char query[] = "\033]11;?\033\\";
+          awaiting_reply = ui_controller_write(screen->fd, query, sizeof(query) - 1) == ASCIICHAT_OK;
+        }
+        if (context.drew && !awaiting_reply)
           fps_counter_frame_end(g_fps, time_get_ns());
       }
-      if (!covered)
+      if (!covered && !context.drew)
         fps_counter_render(g_fps, screen->fd, size.cols, context.drew);
     }
   frame_complete:
@@ -501,8 +638,10 @@ static asciichat_error_t controller_start(void) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
-                                       const void *snapshot, size_t bytes) {
+static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
+                                       const void *snapshot, size_t bytes, screen_terminal_t *retained_terminal,
+                                       bool fresh_frame) {
+  uint64_t entered_ns = time_get_ns();
   if (screen < 0 || screen >= UI_SCREEN_COUNT || !render || !snapshot || !bytes || minimum.cols <= 0 ||
       minimum.rows <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI screen snapshot");
@@ -513,8 +652,28 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
     live = g_screens[screen].render != NULL;
     mutex_unlock(&g_mutex);
   }
+  // New modal slots inherit the live terminal instead of process stdio, which
+  // an audio/decoder worker can temporarily redirect through LOG_IO.
+  if (!live && !retained_terminal && lifecycle_is_initialized(&g_lifecycle) &&
+      (screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_RENDER_PROGRESS || screen == UI_SCREEN_NOTICE)) {
+    screen_terminal_t *inherited = NULL;
+    mutex_lock(&g_mutex);
+    int active = selected_screen_locked();
+    if (active >= 0) {
+      inherited = g_screens[active].owned->terminal;
+      atomic_fetch_add(&inherited->references, 1);
+    }
+    mutex_unlock(&g_mutex);
+    if (inherited) {
+      asciichat_error_t result =
+          submit_screen(screen, inherited->fd, minimum, render, snapshot, bytes, inherited, fresh_frame);
+      release_terminal(inherited);
+      return result;
+    }
+  }
   // Batch output and finite snapshots retain their synchronous output semantics.
-  if ((!live && !platform_isatty(fd)) || (GET_OPTION(snapshot_mode) && screen != UI_SCREEN_RENDER_PROGRESS)) {
+  if ((!live && !retained_terminal && !platform_isatty(fd)) ||
+      (GET_OPTION(snapshot_mode) && screen != UI_SCREEN_RENDER_PROGRESS)) {
     bool previous_owner = g_owner;
     int previous_fd = g_render_fd;
     terminal_size_t detected = {0};
@@ -544,21 +703,46 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
     return SET_ERRNO(ERROR_MEMORY, "Cannot copy UI snapshot");
   atomic_init(&copy->references, 1);
   memcpy(copy->data, snapshot, bytes);
+  uint64_t prepared_ns = time_get_ns();
   mutex_lock(&g_mutex);
+  uint64_t locked_ns = time_get_ns();
   if (g_finished) {
     mutex_unlock(&g_mutex);
     SAFE_FREE(copy);
     return ASCIICHAT_OK;
   }
+  copy->frame_id = screen == UI_SCREEN_MEDIA && fresh_frame ? ++g_media_frame_id : 0;
+  copy->submitted_ns = time_get_ns();
+  copy->acquisition_started_ns = screen == UI_SCREEN_MEDIA ? g_acquisition_started_ns : 0;
   screen_t *slot = &g_screens[screen];
   bool queue_notice = screen == UI_SCREEN_NOTICE && slot->render;
-  int output_fd = platform_dup(slot->render && !queue_notice ? slot->fd : fd);
-  if (output_fd < 0) {
-    mutex_unlock(&g_mutex);
-    SAFE_FREE(copy);
-    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot retain UI output descriptor");
+  if (slot->render && !queue_notice) {
+    // The terminal belongs to the live slot, not to each incoming image.
+    // Duplicating/closing a Windows console handle per frame introduces console
+    // RPCs on producers and can serialize them behind ongoing presentation.
+    copy->terminal = slot->owned->terminal;
+    atomic_fetch_add(&copy->terminal->references, 1);
+  } else if (retained_terminal) {
+    copy->terminal = retained_terminal;
+    atomic_fetch_add(&copy->terminal->references, 1);
+  } else {
+    int retained_fd = platform_dup(fd);
+    if (retained_fd < 0) {
+      mutex_unlock(&g_mutex);
+      SAFE_FREE(copy);
+      return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot retain UI output descriptor");
+    }
+    copy->terminal = SAFE_MALLOC(sizeof(*copy->terminal), screen_terminal_t *);
+    if (!copy->terminal) {
+      platform_close(retained_fd);
+      mutex_unlock(&g_mutex);
+      SAFE_FREE(copy);
+      return SET_ERRNO(ERROR_MEMORY, "Cannot retain UI terminal ownership");
+    }
+    atomic_init(&copy->terminal->references, 1);
+    copy->terminal->fd = retained_fd;
   }
-  copy->fd = output_fd;
+  int output_fd = copy->terminal->fd;
   if (queue_notice) {
     size_t pending = 1;
     screen_t *tail = slot;
@@ -567,15 +751,13 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
       ++pending;
     }
     if (pending >= 64) {
-      platform_close(output_fd);
-      SAFE_FREE(copy);
+      release_snapshot(copy);
       mutex_unlock(&g_mutex);
       return SET_ERRNO(ERROR_BUFFER_FULL, "UI notice queue is full");
     }
     screen_t *queued = SAFE_CALLOC(1, sizeof(*queued), screen_t *);
     if (!queued) {
-      platform_close(output_fd);
-      SAFE_FREE(copy);
+      release_snapshot(copy);
       mutex_unlock(&g_mutex);
       return SET_ERRNO(ERROR_MEMORY, "Cannot allocate queued UI notice");
     }
@@ -591,8 +773,23 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
       .owned = copy, .snapshot = copy->data, .render = render, .minimum = minimum, .fd = output_fd, .dirty = true};
   publish_screen_locked();
   mutex_unlock(&g_mutex);
+  uint64_t published_ns = time_get_ns();
   release_snapshot(retired);
-  return ui_sync_start(fd);
+  uint64_t retired_ns = time_get_ns();
+  asciichat_error_t sync_result = ui_sync_start(fd);
+  uint64_t finished_ns = time_get_ns();
+  if (screen == UI_SCREEN_MEDIA && finished_ns - entered_ns > 50 * NS_PER_MS_INT)
+    log_debug_every(
+        US_PER_SEC_INT, "UI_SUBMIT_STAGE: build_ms=%.2f lock_ms=%.2f publish_ms=%.2f retire_ms=%.2f sync_ms=%.2f",
+        (double)(prepared_ns - entered_ns) / NS_PER_MS_INT, (double)(locked_ns - prepared_ns) / NS_PER_MS_INT,
+        (double)(published_ns - locked_ns) / NS_PER_MS_INT, (double)(retired_ns - published_ns) / NS_PER_MS_INT,
+        (double)(finished_ns - retired_ns) / NS_PER_MS_INT);
+  return sync_result;
+}
+
+asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
+                                       const void *snapshot, size_t bytes) {
+  return submit_screen(screen, fd, minimum, render, snapshot, bytes, NULL, true);
 }
 
 void ui_controller_remove(ui_screen_t screen) {
@@ -635,11 +832,13 @@ ui_presentation_state_t ui_controller_state(void) {
   state.screen = selected_screen_locked();
   if (state.screen >= 0) {
     screen_t *screen = &g_screens[state.screen];
-    terminal_size_t size = {0};
-    if (state.screen == UI_SCREEN_PROMPT && terminal_get_size_fd(screen->fd, &size) == ASCIICHAT_OK)
+    // Geometry belongs to the presentation owner. A keyboard poll must never
+    // wait for a console RPC behind pending terminal output while holding the
+    // controller mutex.
+    terminal_size_t size = g_size;
+    if (state.screen == UI_SCREEN_PROMPT)
       screen->minimum.rows = ui_prompt_required_rows(screen->snapshot, size.cols);
-    state.covered = !platform_isatty(screen->fd) || terminal_get_size_fd(screen->fd, &size) != ASCIICHAT_OK ||
-                    size.cols <= 0 || size.rows <= 0 || ui_too_small(size, screen->minimum);
+    state.covered = size.cols <= 0 || size.rows <= 0 || ui_too_small(size, screen->minimum);
   }
   mutex_unlock(&g_mutex);
   return state;
@@ -653,10 +852,61 @@ typedef struct {
   char text[];
 } text_snapshot_t;
 
+// Bound REP expansion to one terminal row before allocating its expanded text.
+static char *expand_media_row(const char *row, size_t length, int columns) {
+  size_t repeats = 0;
+  for (const char *p = row, *end = row + length; p < end;) {
+    if (*p != '\033') {
+      ++p;
+      continue;
+    }
+    const char *next = ansi_skip_escape(p, end);
+    if (next <= p)
+      return NULL;
+    if (next - p >= 3 && p[1] == '[' && next[-1] == 'b') {
+      size_t count = 0;
+      for (const char *digit = p + 2; digit < next - 1; ++digit) {
+        if (*digit < '0' || *digit > '9' || count > (size_t)columns / 10)
+          return NULL;
+        count = count * 10 + (size_t)(*digit - '0');
+        if (count > (size_t)columns)
+          return NULL;
+      }
+      if (!count || count > (size_t)columns - repeats)
+        return NULL;
+      repeats += count;
+    }
+    p = next;
+  }
+  return ansi_expand_rle(row, length);
+}
+
 static void render_text(terminal_size_t size, const void *data) {
   const text_snapshot_t *text = data;
-  if (!text->media || GET_OPTION(snapshot_mode) || !platform_isatty(g_render_fd >= 0 ? g_render_fd : text->fd) ||
-      (text->dimensions.cols <= size.cols && text->dimensions.rows <= size.rows)) {
+  if (text->media && !GET_OPTION(snapshot_mode) && GET_OPTION(fps_counter) && size.cols >= 7 &&
+      text->dimensions.cols <= size.cols && text->dimensions.rows <= size.rows) {
+    const char *newline = memchr(text->text, '\n', text->len);
+    size_t first_bytes = newline ? (size_t)(newline - text->text) : text->len;
+    // Expand REP before clipping, so a repeated glyph cannot cross the counter.
+    char *first = expand_media_row(text->text, first_bytes, size.cols);
+    if (first) {
+      size_t prefix = utf8_prefix_bytes_for_width(first, strlen(first), size.cols - 7);
+      ui_controller_write(text->fd, first, prefix);
+      SAFE_FREE(first);
+    } else {
+      ui_controller_printf(text->fd, "\033[1;1H\033[%dX", size.cols - 7);
+    }
+    if (newline) {
+      ui_controller_write(text->fd, "\033[0m\033[2;1H", 10);
+      ui_controller_write(text->fd, newline + 1, text->len - first_bytes - 1);
+    }
+    if (g_render_volume)
+      append_volume(g_capture, size);
+    return;
+  }
+  if (!text->media || GET_OPTION(snapshot_mode) ||
+      (text->dimensions.cols <= size.cols && text->dimensions.rows <= size.rows) ||
+      !platform_isatty(g_render_fd >= 0 ? g_render_fd : text->fd)) {
     if (text->media && g_render_volume) {
       frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
       if (buffer) {
@@ -685,8 +935,11 @@ static void render_text(terminal_size_t size, const void *data) {
       size_t length = (size_t)((newline ? newline : end) - cursor);
       memcpy(line, cursor, length);
       line[length] = '\0';
-      truncate_with_ellipsis(line, clipped, text->len + 32, size.cols - 1);
-      frame_buffer_printf(buffer, "\033[%d;1H\033[2K", row);
+      bool reserved_counter = row == 1 && GET_OPTION(fps_counter) && size.cols >= 7;
+      char *expanded = expand_media_row(line, length, text->dimensions.cols);
+      truncate_with_ellipsis(expanded ? expanded : "", clipped, text->len + 32, size.cols - (reserved_counter ? 7 : 1));
+      SAFE_FREE(expanded);
+      frame_buffer_printf(buffer, reserved_counter ? "\033[%d;1H" : "\033[%d;1H\033[2K", row);
       frame_buffer_append(buffer, clipped, strlen(clipped));
       cursor += length + (newline ? 1 : 0);
     }
@@ -709,8 +962,9 @@ void ui_controller_redraw(void) {
   mutex_unlock(&g_mutex);
 }
 
-asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data,
-                                        size_t len) {
+static asciichat_error_t present_text(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data, size_t len,
+                                      bool fresh) {
+  uint64_t entered_ns = time_get_ns();
   if (!data || !len || len > UI_CONTROLLER_MAX_FRAME_BYTES)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI frame");
   text_snapshot_t *text = SAFE_MALLOC(sizeof(*text) + len, text_snapshot_t *);
@@ -721,8 +975,16 @@ asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_siz
   text->dimensions = (terminal_size_t){.cols = GET_OPTION(width), .rows = GET_OPTION(height)};
   text->len = len;
   memcpy(text->text, data, len);
-  asciichat_error_t err = ui_controller_submit(screen, fd, minimum, render_text, text, sizeof(*text) + len);
+  uint64_t prepared_ns = time_get_ns();
+  asciichat_error_t err = submit_screen(screen, fd, minimum, render_text, text, sizeof(*text) + len, NULL, fresh);
+  uint64_t submitted_ns = time_get_ns();
   SAFE_FREE(text);
+  uint64_t finished_ns = time_get_ns();
+  if (screen == UI_SCREEN_MEDIA && finished_ns - entered_ns > 50 * NS_PER_MS_INT)
+    log_debug_every(US_PER_SEC_INT, "UI_TEXT_STAGE: prepare_ms=%.2f submit_ms=%.2f free_ms=%.2f",
+                    (double)(prepared_ns - entered_ns) / NS_PER_MS_INT,
+                    (double)(submitted_ns - prepared_ns) / NS_PER_MS_INT,
+                    (double)(finished_ns - submitted_ns) / NS_PER_MS_INT);
   return err;
 }
 
@@ -792,4 +1054,13 @@ void ui_controller_toggle_logs(void) {
                            &snapshot, sizeof(snapshot));
   if (result != ASCIICHAT_OK)
     log_warn("Cannot show application logs: %d", result);
+}
+
+asciichat_error_t ui_controller_present(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data,
+                                        size_t len) {
+  return present_text(screen, fd, minimum, data, len, true);
+}
+asciichat_error_t ui_controller_present_retained(ui_screen_t screen, int fd, terminal_size_t minimum, const char *data,
+                                                 size_t len) {
+  return present_text(screen, fd, minimum, data, len, false);
 }

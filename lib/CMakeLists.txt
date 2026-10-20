@@ -1,3 +1,8 @@
+# AppKit supplies native desktop clipboard access; it is unavailable on iOS.
+if(APPLE AND NOT PLATFORM_IOS)
+    set(ASCIICHAT_CLIPBOARD_FRAMEWORK "-framework AppKit")
+endif()
+
 # lib/ - Core application infrastructure
 # Sources from: log/, logging/, options/, discovery/, debug/, ui/
 
@@ -5,6 +10,8 @@
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
 set(CORE_SRCS
+    ${LIB_DIR}/media/input.c
+    ${LIB_DIR}/media/playlist.c
     ${LIB_DIR}/common.c
     ${LIB_DIR}/asciichat_errno.c
     ${LIB_DIR}/atomic.c
@@ -412,6 +419,7 @@ else()
     if(PLATFORM_DARWIN)
         target_link_libraries(ascii-chat-platform PRIVATE
             "-framework CoreFoundation"
+            ${ASCIICHAT_CLIPBOARD_FRAMEWORK}
             ${FOUNDATION_FRAMEWORK}
             ${AVFOUNDATION_FRAMEWORK}
             ${COREMEDIA_FRAMEWORK}
@@ -1115,6 +1123,7 @@ add_library(ascii-chat-shared SHARED
         target_link_libraries(ascii-chat-shared PRIVATE
             ${PORTAUDIO_LIBRARIES}
             "-framework CoreFoundation"
+            ${ASCIICHAT_CLIPBOARD_FRAMEWORK}
             ${COREAUDIO_FRAMEWORK}
             ${AUDIOUNIT_FRAMEWORK}
             ${AUDIOTOOLBOX_FRAMEWORK}
@@ -1271,6 +1280,7 @@ else()
         target_link_libraries(ascii-chat-shared PRIVATE
             ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
             "-framework CoreFoundation"
+            ${ASCIICHAT_CLIPBOARD_FRAMEWORK}
             ${COREMEDIA_FRAMEWORK} ${COREVIDEO_FRAMEWORK}
             ${COREAUDIO_FRAMEWORK} ${AUDIOUNIT_FRAMEWORK} ${AUDIOTOOLBOX_FRAMEWORK}
             ${CORESERVICES_FRAMEWORK} ${IOKIT_FRAMEWORK}
@@ -1624,6 +1634,7 @@ elseif(APPLE)
     target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
         ${FOUNDATION_FRAMEWORK}
         "-framework CoreFoundation"
+            ${ASCIICHAT_CLIPBOARD_FRAMEWORK}
         ${AVFOUNDATION_FRAMEWORK}
         ${COREMEDIA_FRAMEWORK}
         ${COREVIDEO_FRAMEWORK}

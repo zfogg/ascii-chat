@@ -101,7 +101,7 @@ int utf8_display_width_n(const char *str, size_t max_bytes) {
 size_t utf8_char_count(const char *str) {
   if (!str) {
     SET_ERRNO(ERROR_INVALID_PARAM, "str is NULL");
-    return -1; // SIZE_MAX
+    return SIZE_MAX;
   }
 
   size_t count = 0;
@@ -110,7 +110,7 @@ size_t utf8_char_count(const char *str) {
     uint32_t codepoint;
     int decode_len = utf8_decode(p, &codepoint);
     if (decode_len < 0) {
-      return -1; // SIZE_MAX - Invalid UTF-8
+      return SIZE_MAX; // Invalid UTF-8
     }
     count++;
     p += decode_len;
@@ -124,7 +124,7 @@ bool utf8_is_valid(const char *str) {
     return false;
   }
   // Reuse utf8_char_count to validate without duplicating loop
-  return utf8_char_count(str) != (size_t)-1;
+  return utf8_char_count(str) != SIZE_MAX;
 }
 
 bool utf8_is_ascii_only(const char *str) {
@@ -159,7 +159,7 @@ size_t utf8_to_codepoints(const char *str, uint32_t *out_codepoints, size_t max_
     uint32_t codepoint;
     int decode_len = utf8_decode(p, &codepoint);
     if (decode_len < 0) {
-      return -1; // SIZE_MAX - Invalid UTF-8
+      return SIZE_MAX; // Invalid UTF-8
     }
     out_codepoints[count++] = codepoint;
     p += decode_len;

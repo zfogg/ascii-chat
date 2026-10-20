@@ -737,6 +737,7 @@ static asciichat_error_t client_like_cleanup_session(const session_client_like_c
 
   // Stop streams before releasing the local media source.
   if (state->audio_ctx) {
+    session_capture_set_audio_context(state->capture, NULL);
     audio_stop_duplex(state->audio_ctx);
     audio_destroy(state->audio_ctx);
     SAFE_FREE(state->audio_ctx);

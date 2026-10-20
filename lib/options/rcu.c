@@ -599,6 +599,7 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(discovery_database_path, OPTIONS_VALUE_STRING, "discovery-database-path"),
     FIELD(log_file, OPTIONS_VALUE_STRING, "log-file"),
     FIELD(media_file, OPTIONS_VALUE_STRING, "media-file"),
+    FIELD(media_url, OPTIONS_VALUE_STRING, "media-url"),
     FIELD(palette_custom, OPTIONS_VALUE_STRING, "palette-chars"),
     FIELD(stun_servers, OPTIONS_VALUE_STRING, "stun-servers"),
     FIELD(turn_servers, OPTIONS_VALUE_STRING, "turn-servers"),

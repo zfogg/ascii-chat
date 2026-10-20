@@ -427,6 +427,8 @@ static void *participant_video_capture_thread(void *arg) {
       if (err != ASCIICHAT_OK) {
         log_warn_every(5 * US_PER_SEC_INT, "Failed to send video frame: %d", err);
       }
+      if (err == ASCIICHAT_OK)
+        session_capture_complete_open(p->video_capture, session_capture_source_epoch(p->video_capture));
       image_destroy(processed);
     }
 
@@ -610,6 +612,7 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
   void *source = p->video_capture ? session_capture_get_media_source(p->video_capture) : NULL;
   p->audio_uses_video = source != NULL;
   session_audio_set_capture_source(p->audio_capture, source);
+  session_capture_set_audio_context(p->video_capture, session_audio_get_context(p->audio_capture));
 
   // Start audio capture and playback
   asciichat_error_t err = session_audio_start_duplex(p->audio_capture);
@@ -654,6 +657,7 @@ void session_participant_stop_audio(session_participant_t *p) {
     p->audio_thread_created = false;
   }
   if (p->audio_capture) {
+    session_capture_set_audio_context(p->video_capture, NULL);
     session_audio_destroy(p->audio_capture);
     p->audio_capture = NULL;
   }

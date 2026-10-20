@@ -41,6 +41,42 @@ Test(mixer, independent_listener_audio_and_self_exclusion) {
     audio_ring_buffer_destroy(buffers[i]);
 }
 
+Test(mixer, listener_exclusion_and_activation_across_mask_words) {
+  enum { SOURCES = 65 };
+  mixer_t *mixer = mixer_create(SOURCES, 48000);
+  cr_assert_not_null(mixer);
+  audio_ring_buffer_t *buffers[SOURCES];
+  char ids[SOURCES][32];
+  float input[480], output[480];
+  for (unsigned i = 0; i < 480; ++i)
+    input[i] = 0.1f;
+  for (unsigned i = 0; i < SOURCES; ++i) {
+    snprintf(ids[i], sizeof(ids[i]), "mask-source-%u", i);
+    buffers[i] = audio_ring_buffer_create_for_capture();
+    cr_assert_not_null(buffers[i]);
+    cr_assert_eq(mixer_add_source(mixer, ids[i], buffers[i]), i);
+    mixer_set_source_active(mixer, ids[i], i == 64);
+  }
+  cr_assert_eq(audio_ring_buffer_write(buffers[64], input, 480), ASCIICHAT_OK);
+  cr_assert_eq(mixer_process_excluding_source(mixer, output, 480, fnv1a_hash_string(ids[0])), 480);
+  for (unsigned i = 0; i < 480; ++i)
+    cr_assert_gt(output[i], 0.05f, "Source 64 must reach a listener in word zero");
+  mixer_process_excluding_source(mixer, output, 480, fnv1a_hash_string(ids[64]));
+  for (unsigned i = 0; i < 480; ++i)
+    cr_assert_float_eq(output[i], 0, 0.00001f, "Source 64 must not hear itself");
+  mixer_set_source_active(mixer, ids[64], false);
+  cr_assert_eq(mixer_process_excluding_source(mixer, output, 480, fnv1a_hash_string(ids[0])), 0);
+  mixer_set_source_active(mixer, ids[0], true);
+  cr_assert_eq(audio_ring_buffer_write(buffers[0], input, 480), ASCIICHAT_OK);
+  mixer_remove_source(mixer, ids[64]);
+  cr_assert_eq(mixer_process_excluding_source(mixer, output, 480, fnv1a_hash_string(ids[1])), 480);
+  for (unsigned i = 0; i < 480; ++i)
+    cr_assert_gt(output[i], 0.05f, "Removing source 64 must not clear source zero's bit");
+  mixer_destroy(mixer);
+  for (unsigned i = 0; i < SOURCES; ++i)
+    audio_ring_buffer_destroy(buffers[i]);
+}
+
 // Custom init function
 void mixer_test_init(void) {}
 

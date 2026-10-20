@@ -643,7 +643,7 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
       /* Apply colorize_log_message() for number/unit/hex highlighting, then format named objects */
       if (message) {
         const char *formatted_msg = log_named_format_or_original(message);
-        const char *colorized_msg = use_colors ? colorize_log_message(formatted_msg) : formatted_msg;
+        const char *colorized_msg = colorize_log_message_with_color(formatted_msg, use_colors);
         written = safe_snprintf(p, remaining + 1, "%s", colorized_msg);
       }
       break;
@@ -703,11 +703,11 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
         break;
       }
 
-      /* Apply color to rendered content using colored_string */
-      const char *colored_content = colored_string(color, content_buf);
-
-      /* Copy colored content to output buffer */
-      written = safe_snprintf(p, remaining + 1, "%s", colored_content);
+      // The caller already selected colors. Respect that policy for both file
+      // and session logs instead of asking the console again for every field.
+      const char *start = use_colors ? log_level_color(color) : "";
+      const char *reset = use_colors ? log_level_color(LOG_COLOR_RESET) : "";
+      written = safe_snprintf(p, remaining + 1, "%s%s%s", start ? start : "", content_buf, reset ? reset : "");
       break;
     }
 
