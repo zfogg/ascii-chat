@@ -2,6 +2,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/platform/symbols.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/source_root.h>
 #include <ascii-chat/util/path.h>
 #include <ctype.h>
@@ -74,12 +75,21 @@ int main(int argc, char **argv) {
                                   "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl",
                                   display_path, sizeof(display_path), &external_source) == ASCIICHAT_OK);
   CHECK(external_source);
-  CHECK(strcmp(display_path, "crt\\vcstartup\\src\\startup\\exe_common.inl") == 0);
+  const char *truncation_prefix = terminal_supports_utf8() ? "\xE2\x80\xA6\\" : "...\\";
+  char expected_external_path[512];
+  safe_snprintf(expected_external_path, sizeof(expected_external_path),
+                "%scrt\\vcstartup\\src\\startup\\exe_common.inl", truncation_prefix);
+  CHECK(strcmp(display_path, expected_external_path) == 0);
   CHECK(symbol_format_source_path("ascii-chat.exe",
                                   "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl",
                                   display_path, sizeof(display_path), &external_source) == ASCIICHAT_OK);
   CHECK(external_source);
-  CHECK(strcmp(display_path, "crt\\vcstartup\\src\\startup\\exe_common.inl") == 0);
+  CHECK(strcmp(display_path, expected_external_path) == 0);
+
+  CHECK(symbol_format_source_path("ucrtbase.dll", "vendor/runtime/file.c", display_path, sizeof(display_path),
+                                  &external_source) == ASCIICHAT_OK);
+  CHECK(external_source);
+  CHECK(strcmp(display_path, "vendor/runtime/file.c") == 0);
 
   char too_small[4];
   CHECK(symbol_format_source_path("ucrtbase.dll", "vendor/runtime/file.c", too_small, sizeof(too_small),

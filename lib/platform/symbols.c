@@ -34,6 +34,7 @@
 #include <ascii-chat/uthash.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/lifecycle.h>
@@ -90,13 +91,22 @@ asciichat_error_t symbol_format_source_path(const char *module_name, const char 
   const char *path = source_path ? source_path : "unknown";
   const char *project_relative = extract_project_relative_path(path);
   *external = !symbol_module_is_project(module_name) || (project_relative == path && source_path_is_absolute(path));
-  path = *external ? path_last_components(path, 5) : project_relative;
-  size_t required_size = strlen(path) + 1;
+  const char *display_path = *external ? path_last_components(path, 5) : project_relative;
+  bool truncated = *external && display_path != path;
+  size_t prefix_size = truncated ? 4 : 0; // Ellipsis plus the omitted path separator.
+  size_t required_size = prefix_size + strlen(display_path) + 1;
   if (required_size > output_size) {
     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Symbol source path requires %zu bytes, buffer size is %zu", required_size,
                      output_size);
   }
-  memcpy(output, path, required_size);
+
+  if (truncated) {
+    memcpy(output, terminal_supports_utf8() ? "\xE2\x80\xA6" : "...", 3);
+    output[3] = display_path[-1];
+    memcpy(output + prefix_size, display_path, strlen(display_path) + 1);
+  } else {
+    memcpy(output, display_path, required_size);
+  }
   return ASCIICHAT_OK;
 }
 
