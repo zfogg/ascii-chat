@@ -288,17 +288,34 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 void log_terminal_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...);
 
 /**
- * @brief Write an already-formatted message to the terminal without logging it to a file
+ * @brief Write semantically colored terminal text and an ANSI-free log equivalent
  * @param level Severity used for terminal routing and JSON output
  * @param colored_message Message containing semantic ANSI colors
  * @param plain_message Equivalent message without ANSI colors
  *
  * Preserves caller-supplied semantic coloring for terminal output while using
- * the plain version for filtering, JSON, and non-color terminals. The message
- * is still routed through the UI controller and terminal ownership checks.
+ * the plain version for filtering, file/mmap logging, JSON, and non-color
+ * terminals. Both representations are routed as one logical log entry.
  * @ingroup logging
  */
-void log_terminal_preformatted_msg(log_level_t level, const char *colored_message, const char *plain_message);
+void log_colored_msg_impl(log_level_t level, const char *file, int line, const char *func, const char *colored_message,
+                          const char *plain_message);
+#define log_colored_msg(level, colored_message, plain_message)                                                         \
+  log_colored_msg_impl((level), __FILE__, __LINE__, __func__, (colored_message), (plain_message))
+
+/**
+ * @brief Write semantically colored terminal text without persistent logging
+ * @param level Severity used for terminal routing and JSON console output
+ * @param colored_message Message containing semantic ANSI colors
+ * @param plain_message Equivalent message without ANSI colors
+ *
+ * This is the terminal-only counterpart to log_colored_msg().
+ * @ingroup logging
+ */
+void log_terminal_colored_msg_impl(log_level_t level, const char *file, int line, const char *func,
+                                   const char *colored_message, const char *plain_message);
+#define log_terminal_colored_msg(level, colored_message, plain_message)                                                \
+  log_terminal_colored_msg_impl((level), __FILE__, __LINE__, __func__, (colored_message), (plain_message))
 
 /**
  * @brief Plain logging without timestamps or levels

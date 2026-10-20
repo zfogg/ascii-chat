@@ -7,12 +7,9 @@
 #include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/platform/backtrace.h>
-#include <ascii-chat/platform/system.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/log/format.h>
 #include <ascii-chat/util/string.h>
 #include <stdio.h>
-#include <time.h>
 #include <string.h>
 
 void backtrace_capture(backtrace_t *bt) {
@@ -74,59 +71,11 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
     end = start + max_frames;
   }
 
-  // Build backtrace in two versions: colored for terminal, plain for log file
+  // Build the message in two versions; log_colored_msg() adds the normal log header.
   char colored_buffer[16384] = {0};
   char plain_buffer[16384] = {0};
-  int colored_offset = 0;
-  int plain_offset = 0;
-
-  // Format log header using logging system's template
-  char log_header_buf[512] = {0};
-  time_t now = time(NULL);
-  struct tm tm_info = {0};
-  platform_localtime(&now, &tm_info);
-  char timestamp[32];
-  strftime(timestamp, sizeof(timestamp), "%H:%M:%S", &tm_info);
-
-  thread_id_t tid = asciichat_thread_self();
-  uint64_t tid_val = (uintptr_t)tid;
-
-  // Get current time in nanoseconds for template formatting
-  uint64_t time_ns = platform_get_monotonic_time_us() * 1000ULL;
-
-  // Try to format header using the logging system's template with color
-  log_template_t *format = log_get_template();
-  if (format) {
-    int len = log_template_apply(format, log_header_buf, sizeof(log_header_buf), LOG_WARN, timestamp, __FILE__,
-                                 __LINE__, __func__, tid_val, label, true, time_ns);
-    if (len > 0) {
-      // Successfully formatted with logging template
-      colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                      "%s\n", log_header_buf);
-    } else {
-      // Fallback: manual formatting if template fails
-      safe_snprintf(log_header_buf, sizeof(log_header_buf), "[%s] [WARN] [tid:%llu] %s: %s", timestamp, tid_val,
-                    __func__, label);
-      const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
-      char colored_header_buf[512];
-      SAFE_STRNCPY(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf));
-      colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                      "%s\n", colored_header_buf);
-    }
-  } else {
-    // Fallback: manual formatting if no template available
-    safe_snprintf(log_header_buf, sizeof(log_header_buf), "[%s] [WARN] [tid:%llu] %s: %s", timestamp, tid_val, __func__,
-                  label);
-    const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
-    char colored_header_buf[512];
-    SAFE_STRNCPY(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf));
-    colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                    "%s\n", colored_header_buf);
-  }
-
-  // Add plain label header for log file
-  plain_offset +=
-      safe_snprintf(plain_buffer + plain_offset, sizeof(plain_buffer) - (size_t)plain_offset, "%s\n", label);
+  int colored_offset = safe_snprintf(colored_buffer, sizeof(colored_buffer), "%s\n", label);
+  int plain_offset = safe_snprintf(plain_buffer, sizeof(plain_buffer), "%s\n", label);
 
   // Build backtrace frames with colored output for terminal, plain for log
   int frame_num = 0;
@@ -324,8 +273,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
   }
 
   // Preserve semantic terminal colors while keeping filtering, JSON, and log files ANSI-free.
-  log_terminal_preformatted_msg(LOG_WARN, colored_buffer, plain_buffer);
-  log_file_msg("%s", plain_buffer);
+  log_colored_msg(LOG_WARN, colored_buffer, plain_buffer);
 }
 
 void backtrace_print_many(const char *label, const backtrace_t *bts, int count) {
