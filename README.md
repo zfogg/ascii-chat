@@ -36,7 +36,7 @@ desktop environment at all to video chat with ascii-chat. (\*)
 
 ascii-chat — video chat in your terminal (with audio):
 
-https://github.com/user-attachments/assets/954e7a2b-977d-4684-899c-e55c61abab50
+https://github.com/user-attachments/assets/eb01f8f8-94ac-4f21-bb22-dba4a37443c6
 
 ## Code Coverage
 

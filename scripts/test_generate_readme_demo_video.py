@@ -227,8 +227,75 @@ class ReadmeDemoTests(unittest.TestCase):
         self.assertEqual(plan["media_start"], 28)
         self.assertTrue(plan["overlay"])
         self.assertFalse(plan["optimize"])
-        baseline = 15 * 1.8 + sum(c.seconds for c in demo.chapters(1.8) + demo.tui_chapters(1.8))
+        baseline = 10 + 15 * 1.8 + sum(c.seconds for c in demo.chapters(1.8) + demo.tui_chapters(1.8))
         self.assertAlmostEqual(plan["seconds"], baseline / 1.1)
+        self.assertEqual([c['seconds'] for c in plan['call']], [2, 2, 2, 4])
+
+    def test_call_audio_inserts_silence_and_resumes_music_at_the_same_sample(self):
+        import array
+        import math
+        import shutil
+        if not shutil.which('ffmpeg'):
+            self.skipTest('FFmpeg unavailable')
+        args = SimpleNamespace(segment_duration_scale=0, speed=1)
+        # Input 1 is the soundtrack; use an independent graph to exercise the
+        # exact production edit and verify the encoded sample boundary.
+        graph = demo.soundtrack_filter(args, 3, 1, 1).replace('[1:a]', '[0:a]')
+        raw = subprocess.check_output(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i',
+                                      'sine=frequency=440:sample_rate=44100:duration=2',
+                                      '-filter_complex', graph, '-map', '[a]', '-t', '3',
+                                      '-f', 'f32le', '-ac', '2', '-'])
+        samples = array.array('f', raw)
+        def rms(start, end):
+            portion = samples[int(start * 88200):int(end * 88200)]
+            return math.sqrt(sum(x*x for x in portion) / len(portion))
+        self.assertGreater(rms(.2, .7), .01)
+        self.assertEqual(rms(1.1, 1.9), 0)
+        self.assertGreater(rms(2.1, 2.4), .001)
+
+    def test_call_uses_four_different_sources_and_ten_second_join_sequence(self):
+        self.assertEqual(len(set(demo.CALL_SOURCES)), 4)
+        self.assertEqual(sum(c.seconds for c in demo.call_chapters()), 10)
+        self.assertEqual([c.name for c in demo.call_chapters()], ['call-1', 'call-2', 'call-3', 'call-4'])
+
+    def test_call_keeps_four_muted_native_clients_connected_to_one_server(self):
+        terminals = []
+        class FakeTerminal:
+            def __init__(self, command, cols, rows, capture, env):
+                self.command, self.closed = command, False
+                self.start = demo.time.monotonic()
+                self.markers = []
+                terminals.append(self)
+            def wait_log(self, path, marker):
+                self.markers.append(marker)
+            def wait(self, seconds):
+                pass
+            def alive(self):
+                return not self.closed
+            def close(self):
+                self.closed = True
+        with tempfile.TemporaryDirectory() as directory:
+            args = SimpleNamespace(binary=Path('ascii-chat'), work_dir=Path(directory), cols=104, rows=40, art_cell_scale=1)
+            with patch.object(demo, 'Terminal', FakeTerminal):
+                evidence = demo.record_call(args, [Path(f'person-{i}.mp4') for i in range(4)])
+            self.assertEqual(len(terminals), 5)
+            self.assertIn('server', terminals[0].command)
+            self.assertEqual(terminals[0].markers[1:], [f'now {i} clients' for i in range(1, 5)])
+            for client in terminals[1:]:
+                self.assertIn('client', client.command)
+                self.assertIn('--audio=false', client.command)
+                self.assertEqual(client.command[client.command.index('--volume') + 1], '0')
+                self.assertEqual(client.command[client.command.index('--microphone-volume') + 1], '0')
+                self.assertIn('Connected', client.markers)
+            self.assertTrue(all(t.closed for t in terminals))
+            self.assertTrue(evidence['muted'])
+            self.assertEqual(evidence['participants'], 4)
+
+    def test_call_media_requires_exactly_four_existing_files(self):
+        result = subprocess.run([sys.executable, str(SCRIPT), '--dry-run', '--call-media-file', 'unused'],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('exactly four', result.stderr)
 
     def test_longer_tours_keep_opening_at_normal_speed_and_end_on_live_video(self):
         for scale, duration in [(1.8, 115.45), (2.0, 127.5), (2.2, 139.55)]:

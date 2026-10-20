@@ -27,6 +27,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import threading
@@ -43,6 +44,10 @@ FACE_URL = (
 )
 FPS = 33
 CELL_W, CELL_H = 8, 16
+CALL_SOURCES = tuple(
+    "https://media.xiph.org/video/derf/y4m/" + name + "_qcif.y4m"
+    for name in ("grandma", "suzie", "carphone", "foreman")
+)
 
 
 def boolean(value):
@@ -92,7 +97,7 @@ def parser():
 
 The opening plays normally for 7 seconds, starting at --media-file-start.
 --segment-duration-scale lengthens feature chapters without changing the music's
-speed. Try 1.8 and 2.2 for approximately 1:55 and 2:20 feature tours.
+speed. Try 1.8 and 2.2 for approximately 2:05 and 2:30 feature tours.
 --speed retimes the completed movie (including music and every chapter).
 Dimensions are output pixels. Art uses 8x16 character cells by default:
 104x40 cells at 838x640, fitting GitHub's 838px desktop README width. TUIs use
@@ -102,6 +107,9 @@ and 96k stereo AAC. --optimize=false disables the size ceiling and uses CRF 16.
 --target-size-mb overrides the ceiling only when --optimize is enabled.
 --output-fps 16.5 discards alternate captured frames without speeding up music.
 The default face clip is OpenCV's single-face faceocc2 tracking sample.
+Before the TUIs, four real clients join a local encrypted call for 10 seconds.
+That section is silent; its four talking-head samples are cached from Xiph.org.
+Repeat --call-media-file four times to use your own clips instead.
 MP4/H.264 + AAC + faststart is intended for GitHub video attachments. Upload
 the reviewed result to GitHub and place its attachment URL in the README.
 This script never edits README.md, commits media, or uploads anything.
@@ -110,6 +118,7 @@ This script never edits README.md, commits media, or uploads anything.
     p.add_argument("--binary", type=Path, default=ROOT / "build/bin" / ("ascii-chat.exe" if os.name == "nt" else "ascii-chat"), help="native debug binary")
     p.add_argument("--media-file", type=Path, default=ROOT / "web/www/public/assets/demo-video-white-knuckles.webm", help="OK Go video with an audio track")
     p.add_argument("--face-file", type=Path, help="single-face video; otherwise download pinned OpenCV sample to work directory")
+    p.add_argument("--call-media-file", type=Path, action="append", metavar="FILE", help="one participant's video; provide exactly four, or download Xiph talking-head samples")
     p.add_argument("--media-file-start", type=timestamp, default="0:00", metavar="M:SS", help="starting position in the original music video")
     p.add_argument("--width", type=int, default=838, help="output width in pixels; also determines CLI columns")
     p.add_argument("--height", type=int, default=640, help="output height in pixels; also determines CLI rows")
@@ -409,9 +418,10 @@ class WindowsTerminal:
 class Terminal:
     """A separate real PTY, never the user's active console or webcam session."""
 
-    def __init__(self, command, cols, rows, capture):
+    def __init__(self, command, cols, rows, capture, env_overrides=None):
         env = {**os.environ, "TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "C.UTF-8", "LOG_LEVEL": "INFO"}
         env.pop("ASCII_CHAT_LOG_LEVEL", None)
+        env.update(env_overrides or {})
         COMMANDS.append(command)
         if os.name == "nt":
             self.child = WindowsTerminal(command, cols, rows, env)
@@ -510,6 +520,115 @@ def native_command(args, name, source, splash, cols=None, rows=None):
             # Analysis uses decoded media before speaker gain. Silence the live
             # monitor while recording; mux the clean source soundtrack later.
             "--audio=true" if "--file" in source else "--audio=false", "--audio-source", "media", "--volume", "0"]
+
+
+def call_chapters():
+    return [Chapter(f"call-{i}", 4 if i == 4 else 2,
+                    f"Video call: {i} participant{'s' if i != 1 else ''}") for i in range(1, 5)]
+
+
+def unused_port():
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        return listener.getsockname()[1]
+
+
+def prepare_call(args):
+    directory = args.work_dir / "call-sources"
+    directory.mkdir(exist_ok=True)
+    sources = args.call_media_file
+    if sources is None:
+        sources = []
+        for url in CALL_SOURCES:
+            path = directory / url.rsplit("/", 1)[-1]
+            if not path.exists():
+                temporary = path.with_suffix(".download")
+                print(f"Downloading call sample: {url}", flush=True)
+                urllib.request.urlretrieve(url, temporary)
+                temporary.replace(path)
+            sources.append(path)
+    identity = {"recipe": 1, "binary": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+                "dll": hashlib.sha256(args.binary.with_name("asciichat.dll").read_bytes()).hexdigest() if os.name == "nt" else None,
+                "cols": args.cols, "rows": args.rows,
+                "sources": [{"path": str(p.resolve()), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in sources]}
+    cache = args.work_dir / "call.recording.json"
+    if args.reuse_capture and cache.exists():
+        saved = json.loads(cache.read_text(encoding="utf-8"))
+        if saved["fingerprint"] == identity:
+            return saved["evidence"]
+    files = []
+    for index, source in enumerate(sources, 1):
+        target = directory / f"participant-{index}.mp4"
+        # A six-second loop keeps Foreman facing the camera before his camera
+        # pans away. Padding preserves the complete source within every tile.
+        run([args.ffmpeg, "-v", "error", "-y", "-i", source, "-t", "6", "-an",
+             "-vf", f"{media_fit_filter(args.cols, args.rows)},fps={FPS}",
+             "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p", target])
+        if any(s["codec_type"] == "audio" for s in probe(target, args)["streams"]):
+            raise RuntimeError("Call input unexpectedly contains audio")
+        files.append(target)
+    evidence = record_call(args, files)
+    evidence["sources"] = identity["sources"]
+    evidence["source_collection"] = "https://media.xiph.org/video/derf/" if args.call_media_file is None else None
+    cache.write_text(json.dumps({"fingerprint": identity, "evidence": evidence}, indent=2), encoding="utf-8")
+    return evidence
+
+
+def record_call(args, files):
+    tcp, websocket = unused_port(), unused_port()
+    while websocket == tcp:
+        websocket = unused_port()
+    terminals, commands, selected = [], [], []
+    server_log = args.work_dir / "call-server.log"
+    server_log.write_text("", encoding="utf-8")
+    base = [str(args.binary), "--no-check-update"]
+    server_command = base + ["--log-file", str(server_log), "--log-level", "debug", "server", "127.0.0.1",
+                             "--port", str(tcp), "--websocket-port", str(websocket), "--status-screen=false",
+                             "--password", "readme-demo-local-call"]
+    try:
+        # Debug-build automation avoids interactive TOFU prompts and modifying
+        # the user's known_hosts. The loopback call remains encrypted.
+        automated = {"CLAUDECODE": "1"}
+        server = Terminal(server_command, args.cols, args.rows, args.work_dir / "call-server.cast.jsonl.gz", automated)
+        terminals.append(server)
+        commands.append(server_command)
+        server.wait_log(server_log, "Server accepting connections")
+        observer = None
+        for index, (file, chapter) in enumerate(zip(files, call_chapters()), 1):
+            log = args.work_dir / f"call-client-{index}.log"
+            log.write_text("", encoding="utf-8")
+            command = base + ["--log-file", str(log), "--log-level", "info", "client", f"127.0.0.1:{tcp}",
+                              "--password", "readme-demo-local-call", "--file", str(file), "--loop",
+                              "--audio=false", "--audio-source", "media", "--volume", "0", "--microphone-volume", "0", "--video-codec", "raw",
+                              "--width", str(args.cols), "--height", str(args.rows), "--fps", str(FPS),
+                              "--utf8", "true", "--color-mode", "truecolor", "--splash-screen=false"]
+            client = Terminal(command, args.cols, args.rows,
+                              args.work_dir / ("call.cast.jsonl.gz" if index == 1 else f"call-client-{index}.cast.jsonl.gz"), automated)
+            terminals.append(client)
+            commands.append(command)
+            observer = observer or client
+            client.wait_log(log, "Connected")
+            server.wait_log(server_log, f"now {index} clients")
+            # Keep earlier participants connected and rendering throughout.
+            # Trim only startup latency, holding each settled native layout.
+            observer.wait(1)
+            start = time.monotonic() - observer.start
+            selected.append({**asdict(chapter), "start": start, "end": start + chapter.seconds,
+                             "cols": args.cols, "rows": args.rows, "cell_scale": args.art_cell_scale})
+            print(f"  Call: {index} connected participant(s)", flush=True)
+            observer.wait(chapter.seconds)
+            if any(not terminal.alive() for terminal in terminals):
+                raise RuntimeError("A call participant exited during the scene")
+        return {"chapters": selected, "commands": commands, "muted": True, "participants": 4}
+    finally:
+        cleanup_errors = []
+        for terminal in reversed(terminals):
+            try:
+                terminal.close()
+            except Exception as error:
+                cleanup_errors.append(error)
+        if cleanup_errors and sys.exc_info()[0] is None:
+            raise RuntimeError(f"Call cleanup failed: {cleanup_errors}")
 
 
 def record(args, main):
@@ -932,17 +1051,35 @@ def audio_quality(args):
     return {"peak_dbfs": float(peak[1]), "rms_dbfs": float(rms[1])}
 
 
+def soundtrack_filter(args, length, call_start, call_seconds):
+    # Insert actual silence and resume the music afterward, preserving the
+    # earlier waveform/FFT alignment. Short edge fades prevent edit clicks.
+    return (f"[1:a]adelay={round(3000 * args.segment_duration_scale)}:all=1,apad,"
+            f"atrim=duration={length - call_seconds},asetpts=PTS-STARTPTS,asplit=2[pre][post];"
+            f"[pre]atrim=end={call_start},afade=t=out:st={max(0, call_start - .04)}:d=0.04[before];"
+            f"anullsrc=r=44100:cl=stereo,atrim=duration={call_seconds}[silent];"
+            f"[post]atrim=start={call_start},asetpts=PTS-STARTPTS,afade=t=in:d=0.04[after];"
+            f"[before][silent][after]concat=n=3:v=0:a=1,{atempo(args.speed)},"
+            f"alimiter=limit=0.84:level=false:latency=true,"
+            f"afade=t=out:st={max(0, length / args.speed - 1.5)}:d=1.5[a]")
+
+
+def option_values(args):
+    return json.loads(json.dumps(vars(args), default=str))
+
+
 def assemble(args, files, evidence):
     concat = args.work_dir / "concat.txt"
     # Relative names avoid FFmpeg's platform-specific escaping of drive paths.
     concat.write_text("".join(f"file '{p.name}'\n" for p in files), encoding="utf-8")
-    length = sum(float(probe(p, args)["format"]["duration"]) for p in files)
-    # Silence under splash, then the same normal-speed music used by the
-    # native audio visualizer. Music continues smoothly beneath patterns/TUIs.
+    durations = [float(probe(p, args)["format"]["duration"]) for p in files]
+    length = sum(durations)
+    call_indices = [i for i, p in enumerate(files) if p.stem.startswith("call-")]
+    call_start = sum(durations[:call_indices[0]])
+    call_seconds = sum(durations[i] for i in call_indices)
+    # Silence under splash and the call; retain clean source music elsewhere.
     video_filter = f"setpts=(PTS-STARTPTS)/{args.speed},fps={args.output_fps}"
-    graph = (f"[0:v]{video_filter}[v];"
-             f"[1:a]adelay={round(3000 * args.segment_duration_scale)}:all=1,apad,atrim=duration={length},asetpts=PTS-STARTPTS,"
-             f"{atempo(args.speed)},alimiter=limit=0.84:level=false:latency=true,afade=t=out:st={max(0, length / args.speed - 1.5)}:d=1.5[a]")
+    graph = f"[0:v]{video_filter}[v];" + soundtrack_filter(args, length, call_start, call_seconds)
     encode = ["-preset", "slow" if args.optimize else "fast", "-crf", "20" if args.optimize else "16"]
     audio_rate, sample_rate = ("160k" if args.optimize else "192k"), "48000"
     if args.optimize and args.target_size_mb:
@@ -970,8 +1107,9 @@ def assemble(args, files, evidence):
     if args.optimize and args.target_size_mb and int(result["format"]["size"]) > args.target_size_mb * 1e6:
         raise RuntimeError("Encoder exceeded requested size budget; inspect manifest/encode logs")
     quality = audio_quality(args)
-    manifest = {"options": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
+    manifest = {"options": option_values(args),
                 "output_probe": result, "recording": evidence, "face_source": FACE_URL,
+                "silent_call": {"start": call_start / args.speed, "seconds": call_seconds / args.speed},
                 "commands": COMMANDS, "audio_quality": quality, "raster_version": 8, "chapters": [p.stem for p in files]}
     (args.work_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     (args.work_dir / (args.output.stem + ".manifest.json")).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -981,6 +1119,12 @@ def assemble(args, files, evidence):
 
 def main():
     args = parser().parse_args()
+    if args.call_media_file is not None:
+        if len(args.call_media_file) != 4:
+            parser().error("provide exactly four --call-media-file arguments")
+        args.call_media_file = [p.resolve() for p in args.call_media_file]
+        if any(not p.is_file() for p in args.call_media_file):
+            parser().error("each --call-media-file must exist")
     if not args.optimize:
         args.target_size_mb = None
     if args.output_fps > FPS:
@@ -998,9 +1142,10 @@ def main():
         print(json.dumps({"fps": FPS, "output_fps": args.output_fps, "target_size_mb": args.target_size_mb, "terminal": [args.cols, args.rows], "output_pixels": [args.width, args.height],
                           "ui_terminal": [args.ui_cols, args.ui_rows], "art_cell_scale": args.art_cell_scale,
                           "test_patterns": [{"name": f"pattern-{i}", "seconds": 6 * args.segment_duration_scale} for i in (0, 1)],
+                          "call": [asdict(c) for c in call_chapters()],
                           "speed": args.speed, "optimize": args.optimize, "overlay": args.opt_text_overlay,
                           "media_start": args.media_file_start, "chapters": [asdict(c) for c in main_chapters + tui_chapters(args.segment_duration_scale)],
-                          "seconds": (15 * args.segment_duration_scale + sum(c.seconds for c in main_chapters + tui_chapters(args.segment_duration_scale))) / args.speed}, indent=2))
+                          "seconds": (10 + 15 * args.segment_duration_scale + sum(c.seconds for c in main_chapters + tui_chapters(args.segment_duration_scale))) / args.speed}, indent=2))
         return
     for name in ("binary", "media_file", "work_dir", "output", "face_file", "font"):
         if getattr(args, name) is not None:
@@ -1031,6 +1176,7 @@ def main():
         prepare(args, main_chapters)
         evidence = record(args, main_chapters)
         evidence_file.write_text(json.dumps({"fingerprint": identity, "evidence": evidence}, indent=2), encoding="utf-8")
+    evidence["call"] = prepare_call(args)
     labels = {c.name: c.label for c in main_chapters + tui_chapters(args.segment_duration_scale)}
     for chapter in evidence["main"] + evidence["ui"]:
         chapter["label"] = labels[chapter["name"]]
@@ -1047,19 +1193,21 @@ def main():
     selected = [splash] + evidence["main"]
     insert = 1 + len(main_chapters)
     expected_names = [c["name"] for c in selected]
-    expected_names[insert:insert] = [c["name"] for c in evidence["patterns"] + evidence["ui"]]
+    extras = evidence["patterns"] + evidence["call"]["chapters"] + evidence["ui"]
+    expected_names[insert:insert] = [c["name"] for c in extras]
     files = None
     cached = set()
     manifest_path = args.work_dir / "manifest.json"
     if args.reuse_capture and manifest_path.is_file():
         previous = json.loads(manifest_path.read_text(encoding="utf-8"))
         raster_options = ("width", "height", "cols", "rows", "ui_cols", "ui_rows", "art_cell_scale", "font", "opt_text_overlay")
-        current = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}
+        current = option_values(args)
         candidates = [args.work_dir / (name + ".mp4") for name in expected_names]
-        if (previous.get("raster_version") == 8 and previous["chapters"] == expected_names and
+        if (previous.get("raster_version") == 8 and
                 all(previous["options"].get(k) == current[k] for k in raster_options)):
             old = {c["name"]: c for key in ("main", "ui", "patterns") for c in previous["recording"][key]}
-            cached = {c["name"] for c in selected + evidence["patterns"] + evidence["ui"]
+            old.update({c["name"]: c for c in previous["recording"].get("call", {}).get("chapters", [])})
+            cached = {c["name"] for c in selected + extras
                       if old.get(c["name"]) == c and (args.work_dir / (c["name"] + ".mp4")).is_file()}
         if (previous.get("raster_version") == 8 and previous["recording"] == evidence and previous["chapters"] == expected_names and
                 all(previous["options"].get(k) == current[k] for k in raster_options) and
@@ -1071,6 +1219,7 @@ def main():
         patterns = []
         for c in evidence["patterns"]:
             patterns += render_capture(args, c["name"], [c], raster, cached)
+        patterns += render_capture(args, "call", evidence["call"]["chapters"], raster, cached)
         patterns += render_capture(args, "ui", evidence["ui"], raster, cached)
         files[insert:insert] = patterns
     assemble(args, files, evidence)
