@@ -3,6 +3,7 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
+#include <ascii-chat/debug/atomic.h>
 #include <ascii-chat/log/named.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/cond.h>
@@ -13,6 +14,7 @@
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/sync.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/format.h>
 #include <stdatomic.h>
 #include <string.h>
 #include <errno.h>
@@ -135,6 +137,25 @@ static void self_remove(terminal_size_t size, const void *data) {
 #ifndef NDEBUG
 static mutex_t cycle_a, cycle_b;
 static atomic_t sync_values[600];
+static mutex_t rate_hot, rate_warm;
+static atomic_t rate_value, total_value;
+static atomic_ptr_t total_pointer;
+static void *rate_worker(void *unused) {
+  (void)unused;
+  for (;;) {
+    for (unsigned i = 0; i < 40; ++i) {
+      mutex_lock(&rate_hot);
+      mutex_unlock(&rate_hot);
+      if (i % 2 == 0) {
+        mutex_lock(&rate_warm);
+        mutex_unlock(&rate_warm);
+      }
+    }
+    atomic_fetch_add_u64(&rate_value, 1);
+    platform_sleep_ns(10 * NS_PER_MS_INT);
+  }
+  return NULL;
+}
 static void *cycle_worker(void *unused) {
   (void)unused;
   mutex_lock(&cycle_b);
@@ -146,7 +167,28 @@ static void *cycle_worker(void *unused) {
 
 int main(int argc, char **argv) {
   CHECK(argc == 3);
+  const struct { uint64_t value; const char *text; } compact_cases[] = {
+      {0, "0"}, {100, "100"}, {999, "999"}, {1000, "1k"}, {1050, "1.1k"},
+      {57400, "57.4k"}, {203200, "203.2k"}, {1300000, "1.3m"}, {124400000, "124.4m"},
+      {UINT64_C(7300000000), "7.3b"}, {UINT64_C(800200000000000), "800.2t"},
+      {999949, "999.9k"}, {999950, "1m"}, {UINT64_C(999950000000), "1t"}, {UINT64_MAX, "18.4e"}};
+  for (size_t i = 0; i < sizeof(compact_cases) / sizeof(compact_cases[0]); ++i) {
+    char text[32];
+    format_number_compact(compact_cases[i].value, text, sizeof(text));
+    CHECK(!strcmp(text, compact_cases[i].text));
+  }
+  char short_buffer[3] = {'x', 'x', 'x'};
+  format_number_compact(57400, short_buffer, sizeof(short_buffer));
+  CHECK(!strcmp(short_buffer, "57"));
+  format_number_compact(1, short_buffer, 0);
+  CHECK(!strcmp(short_buffer, "57"));
+  format_number_compact(1, short_buffer, 1);
+  CHECK(short_buffer[0] == '\0');
+  format_number_compact(1, NULL, 1);
   CHECK(asciichat_shared_init(argv[2], false, false) == ASCIICHAT_OK);
+#ifndef NDEBUG
+  debug_atomic_init();
+#endif
   char *options[] = {"sync-regressions", "--no-check-update", "mirror", NULL};
   CHECK(options_init(3, options) == ASCIICHAT_OK);
 #ifndef NDEBUG
@@ -177,6 +219,30 @@ int main(int argc, char **argv) {
     }
     CHECK(ui_controller_present(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){20, 5}, "SYNC FIXTURE READY", 18) ==
           ASCIICHAT_OK);
+    CHECK(mutex_init(&rate_hot, "zzz_rate_hot") == ASCIICHAT_OK);
+    CHECK(mutex_init(&rate_warm, "aaa_rate_warm") == ASCIICHAT_OK);
+    NAMED_REGISTER_ATOMIC(&rate_value, "aaa_rate_counter", NULL);
+    NAMED_REGISTER_ATOMIC(&total_value, "aaa_total_uses", NULL);
+    for (unsigned i = 0; i < 3; ++i)
+      atomic_store_u64(&total_value, 7);
+    (void)atomic_load_u64(&total_value);
+    (void)atomic_load_u64(&total_value);
+    (void)atomic_fetch_add_u64(&total_value, 0);
+    uint64_t old = 8;
+    CHECK(!atomic_cas_u64(&total_value, &old, 7));
+    CHECK(atomic_cas_u64(&total_value, &old, 7));
+    (void)atomic_exchange_u64(&total_value, 7);
+    NAMED_REGISTER_ATOMIC_PTR(&total_pointer, "aaa_pointer_uses", NULL);
+    atomic_ptr_store(&total_pointer, NULL);
+    atomic_ptr_store(&total_pointer, NULL);
+    (void)atomic_ptr_load(&total_pointer);
+    (void)atomic_ptr_load(&total_pointer);
+    void *old_pointer = &objects[0];
+    CHECK(!atomic_ptr_cas(&total_pointer, &old_pointer, NULL));
+    CHECK(atomic_ptr_cas(&total_pointer, &old_pointer, NULL));
+    (void)atomic_ptr_exchange(&total_pointer, NULL);
+    asciichat_thread_t rates;
+    CHECK(asciichat_thread_create(&rates, "rate_worker", rate_worker, NULL) == ASCIICHAT_OK);
     CHECK(mutex_init(&cycle_a, "cycle_a") == 0);
     CHECK(mutex_init(&cycle_b, "cycle_b") == 0);
     mutex_lock(&cycle_a);

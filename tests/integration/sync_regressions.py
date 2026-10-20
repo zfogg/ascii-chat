@@ -19,7 +19,7 @@ def main():
         log = str(Path(directory) / "sync.log")
         result = subprocess.run([binary, "sync", log], capture_output=True, timeout=20)
         assert result.returncode == 0, result.stderr.decode(errors="replace")
-        print("PASS registry capacity, nonblocking contention, mutex/condition tracking and atomic changes")
+        print("PASS compact number formatting, registry capacity, nonblocking contention, mutex/condition tracking and atomic changes")
         terminal = Terminal([binary, "ui", log], rows=30, cols=100)
         try:
             terminal.expect(lambda text: "PASS UI OWNERSHIP" in text,
@@ -39,9 +39,30 @@ def main():
                 state_column = text.splitlines()[2].index("State/value")
                 if mode == "deadlock":
                     text = terminal.expect(lambda text: "2 mutexes in wait cycles" in text, "Missing circular wait")
+                    text = terminal.expect(lambda t: re.search(
+                        r"zzz_rate_hot[^\n]*\s[1-9][0-9]*\.[0-9]\s+[0-9.]+\s+-\s*$", t, re.M) is not None,
+                        "Missing warmed activity rates")
                     rows = text.splitlines()
                     assert "cycle_a" in rows[4] and "DEADLOCK" in rows[4], text
                     assert "cycle_b" in rows[5] and "DEADLOCK" in rows[5], text
+                    body = rows[6:-4]
+                    rates = [sum(map(float, row.split()[-3:-1])) for row in body if row.strip()]
+                    assert rates == sorted(rates, reverse=True), text
+                    assert next(i for i, r in enumerate(body) if "zzz_rate_hot" in r) < next(
+                        i for i, r in enumerate(body) if "aaa_rate_warm" in r), text
+                    assert "Change/s" in rows[2], text
+                    assert all(row.split()[-1] == "-" for row in rows[4:-4]
+                               if re.match(r"[ >]*(?:mutex|rwlock|cond)\s", row) and "DEADLOCK" not in row), text
+                    assert "Total Actions" in rows[2], text
+                    total_row = next(row for row in rows[4:-4] if "aaa_total_uses." in row)
+                    assert total_row.split()[-4] == "9", text
+                    assert float(total_row.split()[-1]) == 0, text
+                    atomic_row = next(row for row in rows[4:-4] if "aaa_rate_counter." in row)
+                    assert float(atomic_row.split()[-1]) > 0, text
+                    print("PASS deadlocks first, descending L/s+U/s, atomic totals and change rates")
+                    if len(sys.argv) > 2:
+                        from sync_tui_modes import capture
+                        capture(terminal, Path(sys.argv[2]), "deadlocks-first")
                     terminal.write("\x1b[C")
                     terminal.expect(lambda text: "page 2/" in text, "Right advances a page")
                     terminal.write("\x1b[D")
@@ -57,7 +78,7 @@ def main():
                     terminal.write("\x1b[D")
                     terminal.expect(lambda text: "item 7/" in text, "Left on first page preserves selection")
                     terminal.write("\x1b[F")
-                    last_page = terminal.expect(lambda text: "named_registry_lock" in text, "Cannot reach final page")
+                    last_page = terminal.expect(lambda text: re.search(r"item (\d+)/\1(?:\s|$)", text) is not None, "Cannot reach final page")
                     total = int(re.search(r"(\d+) objects", last_page).group(1))
                     terminal.expect(lambda text: f"item {total}/{total}" in text, "End selects last item")
                     terminal.write("\x1b[F")
@@ -81,6 +102,7 @@ def main():
                     # The snapshot grows beyond both the old registry limits
                     # and one terminal page; every registered fixture is reachable.
                     fixtures = set()
+                    pointer_total_seen = False
                     pages = int(re.search(r"page 1/(\d+)", terminal.pump()).group(1))
                     for page in range(1, pages + 1):
                         text = terminal.expect(lambda t: f"page {page}/{pages}" in t, "Missing inventory page")
@@ -89,9 +111,14 @@ def main():
                         # every one of the 600 distinct names must still appear.
                         for _ in range(4):
                             text = terminal.pump(0.2)
+                            pointer_row = next((r for r in text.splitlines()[4:-4] if "aaa_pointer_uses." in r), None)
+                            if pointer_row:
+                                assert pointer_row.split()[-4] == "7", text
+                                pointer_total_seen = True
                             fixtures.update(re.findall(r"sync_fixture_value\.\d+", "\n".join(text.splitlines()[4:-4])))
                         if page < pages:
                             terminal.write("\x1b[C")
+                    assert pointer_total_seen, "Missing cumulative pointer operations"
                     assert len(fixtures) == 600, (len(fixtures), sorted(fixtures))
                     terminal.write("\x1b[H")
                     terminal.expect(lambda text: "item 1/" in text, "Home restores inventory start")

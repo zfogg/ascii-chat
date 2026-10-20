@@ -37,6 +37,7 @@
  */
 
 #include <stddef.h>
+#include <stdint.h>
 
 /* ============================================================================
  * Byte Formatting Functions
@@ -85,3 +86,10 @@
 void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity);
 
 /** @} */
+
+/** Format a decimal count with lowercase k/m/b/t/p/e suffixes.
+ * Uses at most one rounded decimal place, omitting a trailing .0.
+ * Values below 1,000 stay exact; rounded 1,000-unit values promote a tier.
+ * Output is NUL-terminated when capacity is nonzero; NULL output is ignored.
+ */
+void format_number_compact(uint64_t value, char *out, size_t out_capacity);

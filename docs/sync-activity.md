@@ -2,7 +2,14 @@
 
 Counts measure operations, not time spent blocked or kernel system calls.
 For conditions, L/s means waits and U/s means signals plus broadcasts; they
-are not a balanced lock/unlock pair.
+are not a balanced lock/unlock pair. `Change/s` counts actual atomic value
+changes; other primitive types show `-`. Rows sort by L/s + U/s descending,
+with mutexes in detected wait cycles always first. Ties sort by type and name.
+`Total Actions` is cumulative: acquisitions plus releases for locks, waits plus
+signals/broadcasts for conditions, and tracked loads/stores/CAS/RMW uses for
+atomics (including unchanged stores and failed CAS). Inspector reads do not
+add to atomic totals. Counts use decimal compact notation such as `57.4k`
+and `1.3m`, rounded to one decimal place with trailing `.0` omitted.
 
 ## Metadata and diagnostics
 

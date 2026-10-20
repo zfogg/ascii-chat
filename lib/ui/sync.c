@@ -10,6 +10,7 @@
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/format.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/options/options.h>
 #include <stdatomic.h>
@@ -23,7 +24,7 @@
 
 typedef struct {
   uintptr_t key, owner, waiter;
-  uint64_t generation, value, locks, unlocks, changes, last_ns;
+  uint64_t generation, value, locks, unlocks, changes, actions, last_ns;
   double lock_rate, unlock_rate, change_rate;
   char name[256], type[24], file[160];
   int line;
@@ -115,13 +116,19 @@ static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, 
     const atomic_t *m = (const atomic_t *)key;
     r->value = atomic_load(&m->impl);
     r->changes = m->change_count;
+    r->actions = atomic_load(&m->load_count) + atomic_load(&m->store_count) +
+                 atomic_load(&m->cas_count) + atomic_load(&m->fetch_count);
     r->last_ns = m->last_store_time_ns;
   } else {
     const atomic_ptr_t *m = (const atomic_ptr_t *)key;
     r->value = (uintptr_t)atomic_load(&m->impl);
     r->changes = m->change_count;
+    r->actions = atomic_load(&m->load_count) + atomic_load(&m->store_count) +
+                 atomic_load(&m->cas_count) + atomic_load(&m->exchange_count);
     r->last_ns = m->last_store_time_ns;
   }
+  if (strncmp(type, "atomic", 6))
+    r->actions = r->locks + r->unlocks;
 }
 
 static const char *sync_short_name(const sync_row_t *row) {
@@ -141,6 +148,10 @@ static int sync_compare_rows(const void *a, const void *b) {
   const sync_row_t *x = a, *y = b;
   if (x->cycle != y->cycle)
     return x->cycle ? -1 : 1;
+  double x_activity = x->lock_rate + x->unlock_rate;
+  double y_activity = y->lock_rate + y->unlock_rate;
+  if (x_activity != y_activity)
+    return x_activity > y_activity ? -1 : 1;
   int result = strcmp(x->type, y->type);
   if (!result)
     result = strcmp(sync_short_name(x), sync_short_name(y));
@@ -502,8 +513,8 @@ void ui_sync_render(terminal_size_t size) {
              : limited       ? " | wait tracker capacity reached"
                              : "");
     sync_write_numbers(line, size.cols, measure);
-    snprintf(line, sizeof(line), " %-8s %-*s %-18s %6s %6s %7s", "Type", name_width, "Name", "State/value", "L/s",
-             "U/s", "Change/s");
+    snprintf(line, sizeof(line), " %-8s %-*s %-18s %13s %6s %6s %7s", "Type", name_width, "Name", "State/value",
+             "Total Actions", "L/s", "U/s", "Change/s");
     sync_write_line(line, size.cols, true, measure);
     sync_separator(size.cols, measure);
     for (size_t i = 0; i < count; ++i) {
@@ -525,10 +536,18 @@ void ui_sync_render(terminal_size_t size) {
         snprintf(state, sizeof(state), "waiting=%" PRIu64, r->value);
       else
         snprintf(state, sizeof(state), "0x%" PRIx64 " (%" PRIu64 ")", r->value, r->value);
-      snprintf(line, sizeof(line), "%c%-8.8s %-*s %-18.18s %s%6.1f %s%6.1f %s%7.1f\033[0m%s",
-               (int)i == selected ? '>' : ' ', r->type, name_width, name, state, sync_rate_color(r->lock_rate),
-               r->lock_rate, sync_rate_color(r->unlock_rate), r->unlock_rate, sync_rate_color(r->change_rate),
-               r->change_rate, r->cycle ? " DEADLOCK" : "");
+      char actions[32];
+      format_number_compact(r->actions, actions, sizeof(actions));
+      char changes[64];
+      if (!strncmp(r->type, "atomic", 6))
+        snprintf(changes, sizeof(changes), "%s%7.1f", sync_rate_color(r->change_rate), r->change_rate);
+      else
+        snprintf(changes, sizeof(changes), "%s%7s", sync_color(LOG_COLOR_RESET), "-");
+      snprintf(line, sizeof(line), "%c%-8.8s %-*s %-18.18s %s%13s %s%6.1f %s%6.1f %s\033[0m%s",
+               (int)i == selected ? '>' : ' ', r->type, name_width, name, state,
+               sync_color(r->actions ? LOG_COLOR_FATAL : LOG_COLOR_ERROR), actions, sync_rate_color(r->lock_rate),
+               r->lock_rate, sync_rate_color(r->unlock_rate), r->unlock_rate, changes,
+               r->cycle ? " DEADLOCK" : "");
       sync_write_line(line, size.cols, true, measure);
     }
     if (!measure) {

@@ -155,19 +155,27 @@ def inspect(term, artifacts, name, required):
         term.write("\x1b[H")
         expect_sync(term, lambda t: "item 1/" in t and
                     f"page 1/{(selected(t)[1] + 21) // 22}" in t, "Hotspot capture Home after resize")
-        term.write("\x1b[C" * 4)
-        text = expect_sync(term, lambda t: "page 5/" in t and "debug_memory." in t and "display." in t,
-                           "Missing hotspot page")
-        term.pump(1)
-        if artifacts:
-            capture(term, artifacts, "mirror-hotspots")
+        # Activity sorting moves rows between pages; find the memory tracker
+        # from each freshly acknowledged page instead of assuming a type group.
+        pages = int(re.search(r"page 1/(\d+)", term.pump()).group(1))
+        for page in range(1, pages + 1):
+            text = expect_sync(term, lambda t: f"page {page}/" in t, "Missing hotspot page")
+            if "debug_memory." in text:
+                term.pump(1)
+                if artifacts:
+                    capture(term, artifacts, "mirror-hotspots")
+                break
+            if page < pages:
+                term.write("\x1b[C")
+        else:
+            raise AssertionError("Memory tracker missing from activity-sorted inventory")
         term.write("\x1b[H")
     term.resize(22, 160)
     expect_sync(term, lambda t: "page 1/" in t and "Terminal too small" not in t, "Resize did not recover")
     term.write("\x1b[B" * 6)
     expect_sync(term, lambda t: "item 7/" in t, "Seventh item not selected")
     term.write("\x1b[F")
-    text = expect_sync(term, lambda t: (selected(t)[0] == selected(t)[1] and ">rwlock" in t and "utf8_cache" in t)
+    text = expect_sync(term, lambda t: (selected(t)[0] == selected(t)[1])
                        if "item " in t else False,
                        "End did not select last item")
     text = term.pump(0.5)
@@ -175,6 +183,12 @@ def inspect(term, artifacts, name, required):
     if artifacts:
         capture(term, artifacts, name + "-end")
     if name == "mirror":
+        # Keep the full inventory visible while measuring: the registry row
+        # moves when its rate drops across the hidden interval.
+        term.resize(144, 160)
+        term.write("\x1b[H")
+        expect_sync(term, lambda t: "named_registry_lock." in t and
+                    f"page 1/{(selected(t)[1] + 127) // 128}" in t, "Registry sample inventory")
         # The first resumed sample spans the hidden interval; subsequent samples
         # include the visible inspector's own 4 Hz registry snapshot.
         term.write("0")
@@ -197,6 +211,9 @@ def inspect(term, artifacts, name, required):
                     break
         assert hidden_rate is not None, resumed
         print(f"PASS mirror registry across hidden rendering interval: {hidden_rate}", flush=True)
+        term.resize(22, 160)
+        expect_sync(term, lambda t: "page 1/" in t and
+                    f"page 1/{(selected(t)[1] + 13) // 14}" in t, "Restore navigation geometry")
     term.write("\x1b[H")
     expect_sync(term, lambda t: "item 1/" in t and t.splitlines()[4].startswith(">"), "Home did not select first item")
     term.write("\x1b[B" * 6)
