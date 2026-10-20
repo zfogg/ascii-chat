@@ -619,14 +619,15 @@ role_dispatch:
         if (processing_end == processing_start)
           processing_end = time_get_ns();
         uint64_t signaling_start = send_end;
-        result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
+        // The capture scheduler owns the wait; signaling must not add another
+        // sleep to the media frame deadline.
+        result = discovery_session_process(g_discovery, 0);
         uint64_t signaling_end = time_get_ns();
         if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT)
           break;
         uint64_t event_start = time_get_ns();
         APP_CALLBACK_VOID(platform_pump_events);
         uint64_t event_end = time_get_ns();
-        uint64_t interval = NS_PER_SEC_INT / (GET_OPTION(fps) > 0 ? GET_OPTION(fps) : 30);
         uint64_t elapsed = time_get_ns() - iteration_start;
         if (elapsed > 50 * NS_PER_MS_INT) {
           log_warn_every(US_PER_SEC_INT,
@@ -636,8 +637,7 @@ role_dispatch:
                          (double)(processing_end - processing_start) / 1e6, (double)(send_end - send_start) / 1e6,
                          (double)(signaling_end - signaling_start) / 1e6, (double)(event_end - event_start) / 1e6);
         }
-        if (elapsed < interval)
-          platform_sleep_ns(interval - elapsed);
+        session_capture_sleep_for_fps(capture);
       }
     media_cleanup:
       /* These workers borrow stack audio/display state. Retain it and retry a

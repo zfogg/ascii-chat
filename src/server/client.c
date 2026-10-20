@@ -341,7 +341,8 @@ static void server_client_initialize_transport_slot(server_context_t *server_ctx
   client->port = 0; // transport doesn't use port numbers
   atomic_store_bool(&client->active, true);
   client->server_ctx = server_ctx; // Store server context for receive thread cleanup
-  log_info("Added new transport client %s from %s (transport=%p, slot=%d)", new_client_id, client_ip, transport, slot);
+  log_info("Added new transport client %s from %s (transport=%p, type=%d, slot=%d)", new_client_id, client_ip,
+           transport, (int)acip_transport_get_type(transport), slot);
   atomic_store_bool(&client->shutting_down, false);
   atomic_store_u64(&client->last_sent_grid_sources, 0); // Send thread updates this
   log_debug("transport client slot assigned: client_id=%s assigned to slot %d", client->client_id, slot);

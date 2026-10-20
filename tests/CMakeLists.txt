@@ -1002,6 +1002,16 @@ endif()
 # The lifecycle probe takes scenario names, not Criterion command-line options.
 if(BUILD_TESTS)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    set(_dependency_paths_args)
+    if(WIN32)
+        list(APPEND _dependency_paths_args
+            --nmake "${ASCIICHAT_NMAKE_EXECUTABLE}"
+            --clang-cl "${ASCIICHAT_CLANG_CL_EXECUTABLE}"
+            --llvm-lib "${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
+    endif()
+    add_test(NAME dependency-paths COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/standalone/dependency_paths/run.py ${_dependency_paths_args})
+    set_tests_properties(dependency-paths PROPERTIES LABELS "unit;build" TIMEOUT 60)
     if(NOT WIN32)
         add_test(NAME websocket-dependency-probes COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/standalone/websocket_probes/run.py)
@@ -1039,7 +1049,7 @@ endif()
 if(BUILD_TESTS)
     add_executable(test-discovery-session-process standalone/discovery/session_process_test.c)
     if(TARGET ascii-chat-shared)
-        target_link_libraries(test-discovery-session-process PRIVATE ascii-chat-shared)
+        target_link_libraries(test-discovery-session-process PRIVATE ascii-chat-shared ${MIMALLOC_LIBRARIES})
     else()
         target_link_libraries(test-discovery-session-process PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     endif()

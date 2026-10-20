@@ -1,5 +1,11 @@
 # PR 531: merge and review follow-up verification
 
+Correction: the original case labeled `discovery-tcp` below did not disable
+automatic WebRTC selection. A later reproduction selected WebRTC, so those
+historical rows do not establish TCP-specific stability. The follow-up harness
+forces `--no-webrtc`, exposes the fixture's host endpoint, and verifies the
+accepted media transport. Original measurements remain preserved as recorded.
+
 The native runtime cohort below was captured before the final compiler CI repairs:
 an explicit buffer header, a namespaced static face-follow helper, linked dependency
 feature probes, and migration of stale Criterion fixture fields. Its original

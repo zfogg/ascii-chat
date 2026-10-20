@@ -133,6 +133,8 @@ def run(options, transport):
                              '--discovery-service', '127.0.0.1', '--discovery-service-port', str(acds)]
             if transport == 'webrtc':
                 server_flags += ['--webrtc']
+            else:
+                server_flags += ['--discovery-expose-ip']
         host = server('server', server_flags, 'info')
         if transport in ('webrtc', 'discovery-tcp'):
             deadline = time.monotonic() + 25
@@ -151,6 +153,8 @@ def run(options, transport):
                      '--password', 'fps-test-password']
             if transport == 'webrtc':
                 flags += ['--prefer-webrtc']
+            else:
+                flags += ['--no-webrtc']
         else:
             time.sleep(1)
             flags = ['client', f'{"tcp" if transport == "tcp" else "ws"}://127.0.0.1:{tcp if transport == "tcp" else ws}',
@@ -214,6 +218,9 @@ def run(options, transport):
         assert 'state=changing' in server_log, 'Server did not observe changing client video'
         if transport == 'webrtc':
             assert 'Authenticated WebRTC connection adopted' in server_log
+        elif transport == 'discovery-tcp':
+            assert 'Authenticated WebRTC connection adopted' not in server_log, 'TCP case adopted WebRTC'
+            assert 'type=1' in server_log, 'TCP transport was not observed'
     finally:
         try:
             if client:
