@@ -1,6 +1,8 @@
 """Run with python -m unittest discover -s scripts -p test_generate_readme_demo_video.py."""
 
 import argparse
+import codecs
+import gzip
 import importlib.util
 import json
 from pathlib import Path
@@ -19,6 +21,48 @@ SPEC.loader.exec_module(demo)
 
 
 class ReadmeDemoTests(unittest.TestCase):
+    def test_zalgo_audit_checks_all_frames_including_corruption_after_midpoint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args = SimpleNamespace(work_dir=Path(directory), cols=8, rows=3)
+            evidence = {"main": [{"name": "zalgo", "start": 0, "end": 1}]}
+            good = "\x1b[?2026h\x1b[H" + "\r\n".join(c * 8 + "\u0334" for c in "ABC") + "\x1b[?2026l"
+            def write(last):
+                with gzip.open(args.work_dir / "main.cast.jsonl.gz", "wt", encoding="utf-8") as out:
+                    for index, frame in enumerate([good, good, last]):
+                        out.write(json.dumps([index / 3, "out", frame]) + "\n")
+            write(good)
+            self.assertEqual(demo.verify_zalgo_capture(args, evidence)["decorated_frames_checked"], 3)
+            write(good.replace("A", "\ufffd", 1))
+            with self.assertRaisesRegex(RuntimeError, "replacement characters"):
+                demo.verify_zalgo_capture(args, evidence)
+
+    def test_pipe_reads_preserve_utf8_characters_split_between_buffers(self):
+        chunks = iter([b"M\xcc", b"\xb4\xcc", b"\x81\r\n"])
+        class Pipe:
+            def ReadFile(self, handle, buffer, size, count, overlapped):
+                chunk = next(chunks, b"")
+                buffer.raw = chunk + b"\0" * (size - len(chunk))
+                count._obj.value = len(chunk)
+                return bool(chunk)
+        child = demo.WindowsTerminal.__new__(demo.WindowsTerminal)
+        child.k, child.output = Pipe(), None
+        child.decoder = codecs.getincrementaldecoder("utf-8")("strict")
+        text = ""
+        try:
+            while True:
+                text += child.read()
+        except EOFError:
+            pass
+        self.assertEqual(text, "M\u0334\u0301\r\n")
+
+    def test_zalgo_marks_never_move_or_replace_base_glyph_pixels(self):
+        from PIL import ImageChops
+        args = demo.parser().parse_args([])
+        raster = demo.Rasterizer(args)
+        for base in "MWNkol;,:0123":
+            for marks in ("\u0334\u0301\u0325", "\u0335\u0303\u0310\u0324\u0329", "\u0338\u0330\u030a"):
+                self.assertIsNone(ImageChops.subtract(raster.mask(base), raster.mask(base + marks)).getbbox())
+
     def test_static_screen_does_not_lose_trailing_text(self):
         screen, replay = demo.replay_terminal(40, 3)
         replay.feed("Terminal too small\r\nResize to continue")
@@ -105,11 +149,13 @@ class ReadmeDemoTests(unittest.TestCase):
                                  "--speed", "1.1", "--media-file-start", "0:28", "--opt-text-overlay=true", "--optimize=false",
                                  "--binary", "unused", "--media-file", "unused", "--face-file", "unused", "--font", "unused",
                                  "--ffmpeg", "unused", "--ffprobe", "unused", "--output", "unused.mp4", "--work-dir", "unused",
-                                 "--segment-duration-scale", "1.8", "--reuse-capture"], capture_output=True, text=True, check=True)
+                                 "--segment-duration-scale", "1.8", "--output-fps", "16.5", "--target-size-mb", "9.5", "--reuse-capture"], capture_output=True, text=True, check=True)
         plan = json.loads(result.stdout)
         self.assertEqual(plan["terminal"], [200, 56])
         self.assertEqual(plan["output_pixels"], [1600, 900])
         self.assertEqual(plan["fps"], 33)
+        self.assertEqual(plan["output_fps"], 16.5)
+        self.assertEqual(plan["target_size_mb"], 9.5)
         self.assertEqual(plan["media_start"], 28)
         self.assertTrue(plan["overlay"])
         self.assertFalse(plan["optimize"])
@@ -127,7 +173,7 @@ class ReadmeDemoTests(unittest.TestCase):
             self.assertEqual(demo.tui_chapters(scale)[-1].keys, "?")
 
     def test_bad_dimensions_and_output_fail_before_side_effects(self):
-        for flags in [["--width", "1279"], ["--height", "400"], ["--output", "out.gif"]]:
+        for flags in [["--width", "1279"], ["--height", "400"], ["--output", "out.gif"], ["--output-fps", "34"]]:
             result = subprocess.run([sys.executable, str(SCRIPT), "--dry-run", *flags], capture_output=True, text=True)
             self.assertEqual(result.returncode, 2)
 

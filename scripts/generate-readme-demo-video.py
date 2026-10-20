@@ -3,7 +3,7 @@
 
 Dependencies: Python 3.10+, Pillow, pyte, FFmpeg/ffprobe, and pywinpty on Windows
 or pexpect on Unix. Install Python packages with:
-    python -m pip install Pillow pyte pywinpty   # Windows
+    python -m pip install Pillow pyte "pywinpty>=3.0.5"  # Windows
     python -m pip install Pillow pyte pexpect    # Linux/macOS
 
 The terminal recording is retained alongside logs, sampled screen text, chapter
@@ -16,7 +16,9 @@ and the 4/z shortcuts (face follow / Zalgo) for uninterrupted effect changes.
 from __future__ import annotations
 
 import argparse
+import codecs
 import functools
+from fractions import Fraction
 import gzip
 import hashlib
 import json
@@ -93,7 +95,10 @@ The opening plays normally for 7 seconds, starting at --media-file-start.
 speed. Try 1.8 and 2.2 for approximately 1:51 and 2:15 feature tours.
 --speed retimes the completed movie (including music and every chapter).
 Dimensions are output pixels: the terminal gets floor(width/8) columns and
-floor(height/16) rows, centered in the output. 1280x720 gives 160x45 cells.
+floor(height/16) rows, centered in the output. 838x472 gives 104x29 cells and
+fits the 838px desktop GitHub README content area after its side padding.
+--target-size-mb 9.5 enables two-pass H.264 with a 96k AAC soundtrack.
+--output-fps 16.5 discards alternate captured frames without speeding up music.
 The default face clip is OpenCV's single-face faceocc2 tracking sample.
 MP4/H.264 + AAC + faststart is intended for GitHub video attachments. Upload
 the reviewed result to GitHub and place its attachment URL in the README.
@@ -104,8 +109,10 @@ This script never edits README.md, commits media, or uploads anything.
     p.add_argument("--media-file", type=Path, default=ROOT / "web/www/public/assets/demo-video-white-knuckles.webm", help="OK Go video with an audio track")
     p.add_argument("--face-file", type=Path, help="single-face video; otherwise download pinned OpenCV sample to work directory")
     p.add_argument("--media-file-start", type=timestamp, default="0:00", metavar="M:SS", help="starting position in the original music video")
-    p.add_argument("--width", type=int, default=1280, help="output width in pixels; also determines CLI columns")
-    p.add_argument("--height", type=int, default=720, help="output height in pixels; also determines CLI rows")
+    p.add_argument("--width", type=int, default=838, help="output width in pixels; also determines CLI columns")
+    p.add_argument("--height", type=int, default=472, help="output height in pixels; also determines CLI rows")
+    p.add_argument("--output-fps", type=positive, default=33.0, help="export frame rate, at most 33; capture stays at 33 fps")
+    p.add_argument("--target-size-mb", type=positive, help="decimal MB ceiling; two-pass H.264 and 96k AAC, with muxing headroom")
     p.add_argument("--speed", type=positive, default=1.0, help="whole-movie playback rate; 1.1 is 10%% faster")
     p.add_argument("--segment-duration-scale", type=positive, default=2.0, help="feature/TUI dwell-time multiplier; opening stays 7 seconds")
     p.add_argument("--opt-text-overlay", type=boolean, nargs="?", const=True, default=False, metavar="BOOL", help="label featured flags/keys at bottom center")
@@ -235,6 +242,158 @@ def prepare(args, main):
     return face
 
 
+class WindowsTerminal:
+    """Read ConPTY bytes with one UTF-8 decoder across every pipe boundary.
+
+    pywinpty's underlying reader converts each pipe buffer separately, replacing
+    split combining marks with two spacing replacement characters. Those extra
+    cells wrap Zalgo rows. Keep the original bytes until a code point is complete.
+    """
+
+    def __init__(self, command, cols, rows, env):
+        import ctypes as c
+        from ctypes import wintypes as w
+
+        class Coord(c.Structure):
+            _fields_ = [("X", c.c_short), ("Y", c.c_short)]
+
+        class Startup(c.Structure):
+            _fields_ = [("cb", w.DWORD), ("reserved", w.LPWSTR), ("desktop", w.LPWSTR), ("title", w.LPWSTR),
+                        ("x", w.DWORD), ("y", w.DWORD), ("xsize", w.DWORD), ("ysize", w.DWORD),
+                        ("xchars", w.DWORD), ("ychars", w.DWORD), ("fill", w.DWORD), ("flags", w.DWORD),
+                        ("show", w.WORD), ("reserved_size", w.WORD), ("reserved_bytes", c.c_void_p),
+                        ("stdin", w.HANDLE), ("stdout", w.HANDLE), ("stderr", w.HANDLE)]
+
+        class StartupEx(c.Structure):
+            _fields_ = [("startup", Startup), ("attributes", c.c_void_p)]
+
+        class Process(c.Structure):
+            _fields_ = [("process", w.HANDLE), ("thread", w.HANDLE), ("pid", w.DWORD), ("tid", w.DWORD)]
+
+        k = self.k = c.WinDLL("kernel32", use_last_error=True)
+        # Use the same modern console host distributed with pywinpty, but read
+        # its pipes as bytes ourselves. Older OS console hosts also mismeasure
+        # stacked combining marks before their output reaches our decoder.
+        import winpty
+        console_dll = Path(winpty.__file__).parent / "conpty.dll"
+        if not console_dll.is_file():
+            raise ValueError("Install pywinpty>=3.0.5 for its bundled conpty.dll and OpenConsole.exe")
+        self.console_library = c.WinDLL(str(console_dll), use_last_error=True)
+        for name in ("CreatePseudoConsole", "ResizePseudoConsole", "ClosePseudoConsole"):
+            setattr(k, name, getattr(self.console_library, "Conpty" + name))
+        signatures = {
+            "CreatePipe": ([c.POINTER(w.HANDLE), c.POINTER(w.HANDLE), c.c_void_p, w.DWORD], w.BOOL),
+            "CloseHandle": ([w.HANDLE], w.BOOL),
+            "CreatePseudoConsole": ([Coord, w.HANDLE, w.HANDLE, w.DWORD, c.POINTER(w.HANDLE)], c.c_long),
+            "ResizePseudoConsole": ([w.HANDLE, Coord], c.c_long),
+            "ClosePseudoConsole": ([w.HANDLE], None),
+            "InitializeProcThreadAttributeList": ([c.c_void_p, w.DWORD, w.DWORD, c.POINTER(c.c_size_t)], w.BOOL),
+            "UpdateProcThreadAttribute": ([c.c_void_p, w.DWORD, c.c_size_t, c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p], w.BOOL),
+            "DeleteProcThreadAttributeList": ([c.c_void_p], None),
+            "CreateProcessW": ([w.LPCWSTR, w.LPWSTR, c.c_void_p, c.c_void_p, w.BOOL, w.DWORD, c.c_void_p, w.LPCWSTR, c.POINTER(StartupEx), c.POINTER(Process)], w.BOOL),
+            "ReadFile": ([w.HANDLE, c.c_void_p, w.DWORD, c.POINTER(w.DWORD), c.c_void_p], w.BOOL),
+            "WriteFile": ([w.HANDLE, c.c_void_p, w.DWORD, c.POINTER(w.DWORD), c.c_void_p], w.BOOL),
+            "GetExitCodeProcess": ([w.HANDLE, c.POINTER(w.DWORD)], w.BOOL),
+            "TerminateProcess": ([w.HANDLE, w.UINT], w.BOOL),
+        }
+        for name, (types, result) in signatures.items():
+            getattr(k, name).argtypes, getattr(k, name).restype = types, result
+        self.coord, self.decoder = Coord, codecs.getincrementaldecoder("utf-8")("strict")
+        self.input, self.output, self.console, self.process = None, None, None, None
+        self.closed = False
+        handles = []
+        attributes = None
+        try:
+            input_read, input_write, output_read, output_write = (w.HANDLE() for _ in range(4))
+            for reader, writer in ((input_read, input_write), (output_read, output_write)):
+                if not k.CreatePipe(c.byref(reader), c.byref(writer), None, 0):
+                    raise c.WinError(c.get_last_error())
+                handles.extend((reader.value, writer.value))
+            self.input, self.output = input_write.value, output_read.value
+            console = w.HANDLE()
+            if k.CreatePseudoConsole(Coord(cols, rows), input_read, output_write, 0, c.byref(console)) < 0:
+                raise RuntimeError("CreatePseudoConsole failed")
+            self.console = console.value
+            size = c.c_size_t()
+            k.InitializeProcThreadAttributeList(None, 1, 0, c.byref(size))
+            attributes = c.create_string_buffer(size.value)
+            if not k.InitializeProcThreadAttributeList(attributes, 1, 0, c.byref(size)):
+                raise c.WinError(c.get_last_error())
+            if not k.UpdateProcThreadAttribute(attributes, 0, 0x20016, self.console, c.sizeof(w.HANDLE), None, None):
+                raise c.WinError(c.get_last_error())
+            startup = StartupEx()
+            startup.startup.cb, startup.attributes = c.sizeof(StartupEx), c.addressof(attributes)
+            # Null standard handles let ConPTY supply console handles even
+            # when this recorder's own stdout is redirected to a log file.
+            startup.startup.flags = 0x100  # STARTF_USESTDHANDLES
+            process = Process()
+            environment = c.create_unicode_buffer("\0".join(f"{key}={value}" for key, value in sorted(env.items(), key=lambda item: item[0].upper())) + "\0\0")
+            if not k.CreateProcessW(None, c.create_unicode_buffer(subprocess.list2cmdline(command)), None, None, False,
+                                    0x80000 | 0x400, environment, str(ROOT), c.byref(startup), c.byref(process)):
+                raise c.WinError(c.get_last_error())
+            self.process, self.pid = process.process, process.pid
+            k.CloseHandle(process.thread)
+        except BaseException:
+            for handle in handles:
+                k.CloseHandle(handle)
+            if self.console:
+                k.ClosePseudoConsole(self.console)
+            raise
+        finally:
+            if attributes:
+                k.DeleteProcThreadAttributeList(attributes)
+        k.CloseHandle(input_read)
+        k.CloseHandle(output_write)
+
+    def read(self, size=65536):
+        import ctypes as c
+        from ctypes import wintypes as w
+        buffer, count = c.create_string_buffer(size), w.DWORD()
+        while True:
+            if not self.k.ReadFile(self.output, buffer, size, c.byref(count), None) or count.value == 0:
+                tail = self.decoder.decode(b"", final=True)
+                if tail:
+                    return tail
+                raise EOFError()
+            text = self.decoder.decode(buffer.raw[:count.value])
+            if text:
+                return text
+
+    def write(self, text):
+        import ctypes as c
+        from ctypes import wintypes as w
+        data, count = text.encode("utf-8"), w.DWORD()
+        while data:
+            if not self.k.WriteFile(self.input, data, len(data), c.byref(count), None):
+                raise c.WinError(c.get_last_error())
+            data = data[count.value:]
+
+    def isalive(self):
+        import ctypes as c
+        from ctypes import wintypes as w
+        code = w.DWORD()
+        return bool(self.process and self.k.GetExitCodeProcess(self.process, c.byref(code)) and code.value == 259)
+
+    def setwinsize(self, rows, cols):
+        if self.k.ResizePseudoConsole(self.console, self.coord(cols, rows)) < 0:
+            raise RuntimeError("ResizePseudoConsole failed")
+
+    def terminate(self, force=True):
+        if self.isalive():
+            self.k.TerminateProcess(self.process, 1)
+
+    def close(self, force=True):
+        if self.console:
+            self.k.ClosePseudoConsole(self.console)
+            self.console = None
+        for name in ("input", "output", "process"):
+            handle = getattr(self, name)
+            if handle:
+                self.k.CloseHandle(handle)
+                setattr(self, name, None)
+        self.closed = True
+
+
 class Terminal:
     """A separate real PTY, never the user's active console or webcam session."""
 
@@ -243,24 +402,11 @@ class Terminal:
         env.pop("ASCII_CHAT_LOG_LEVEL", None)
         COMMANDS.append(command)
         if os.name == "nt":
-            from winpty import PtyProcess
+            self.child = WindowsTerminal(command, cols, rows, env)
         else:
             from pexpect import spawn
-            PtyProcess = None
-        self.child = (PtyProcess.spawn(command, cwd=str(ROOT), env=env, dimensions=(rows, cols)) if PtyProcess else
-                      spawn(command[0], command[1:], cwd=str(ROOT), env=env, dimensions=(rows, cols), encoding="utf-8", codec_errors="replace", timeout=None))
+            self.child = spawn(command[0], command[1:], cwd=str(ROOT), env=env, dimensions=(rows, cols), encoding="utf-8", codec_errors="strict", timeout=None)
         self.start = time.monotonic()
-        self.process_handle = None
-        if os.name == "nt":
-            import ctypes
-            self.kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-            self.kernel32.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
-            self.kernel32.OpenProcess.restype = ctypes.c_void_p
-            self.kernel32.GetExitCodeProcess.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
-            self.kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
-            self.process_handle = self.kernel32.OpenProcess(0x1000, False, self.child.pid)
-            if not self.process_handle:
-                raise ctypes.WinError(ctypes.get_last_error())
         self.capture = capture
         self.problem = None
         self.thread = threading.Thread(target=self.read, daemon=True)
@@ -273,6 +419,8 @@ class Terminal:
                     text = self.child.read(65536) if os.name == "nt" else self.child.read_nonblocking(65536, timeout=None)
                     if not text:
                         break
+                    if "\ufffd" in text:
+                        raise RuntimeError("Terminal capture contains replacement characters; refusing to render corrupted UTF-8")
                     event = [time.monotonic() - self.start, "out", text]
                     out.write(json.dumps(event, ensure_ascii=True) + "\n")
                     # ConPTY asks terminal capabilities; answer as a dark VT terminal.
@@ -308,12 +456,6 @@ class Terminal:
             time.sleep(min(.02, max(0, deadline - time.monotonic())))
 
     def alive(self):
-        if self.process_handle:
-            import ctypes
-            code = ctypes.c_ulong()
-            if not self.kernel32.GetExitCodeProcess(self.process_handle, ctypes.byref(code)):
-                raise ctypes.WinError(ctypes.get_last_error())
-            return code.value == 259  # STILL_ACTIVE
         return self.child.isalive()
 
     def wait_log(self, path, marker, timeout=30):
@@ -331,29 +473,19 @@ class Terminal:
                     self.send("\x03")
                 except (EOFError, OSError):
                     pass
-            # Keep draining output until native cleanup completes. Closing the
-            # ConPTY pipe first races pywinpty's later process signal on Windows.
+            # Keep the reader draining while native cleanup finishes.
             deadline = time.monotonic() + 10
             while self.alive() and time.monotonic() < deadline:
                 self.thread.join(.1)
-        finally:
             if self.alive():
-                try:
-                    self.child.terminate(force=True)
-                except OSError:
-                    # pywinpty closes the pipe before signaling the process;
-                    # it can exit between that close and os.kill on Windows.
-                    if self.alive():
-                        raise
-            # pywinpty can report its proxy alive after the actual process has
-            # exited. Do not signal an already terminated Windows process.
-            if not self.alive():
-                self.child.closed = True
+                self.child.terminate(force=True)
+        finally:
             self.child.close(force=True)
             self.thread.join(3)
-            if self.process_handle:
-                self.kernel32.CloseHandle(self.process_handle)
-                self.process_handle = None
+        if self.thread.is_alive():
+            raise RuntimeError("Terminal reader did not finish draining its recording")
+        if self.problem:
+            raise RuntimeError(self.problem)
 
 
 def native_command(args, name, source, splash):
@@ -477,8 +609,28 @@ class Rasterizer:
     def mask(self, char):
         # Extra vertical room retains Zalgo's combining marks across cell rows.
         mask = self.Image.new("L", (CELL_W * 2, CELL_H * 3))
-        font = self.marks_font if any(unicodedata.combining(c) for c in char) else self.font
-        self.ImageDraw.Draw(mask).text((0, CELL_H - 1), char, font=font, fill=255)
+        draw = self.ImageDraw.Draw(mask)
+        decomposed = unicodedata.normalize("NFD", char)
+        base = "".join(c for c in decomposed if not unicodedata.combining(c))
+        baseline = CELL_H + 13
+        draw.text((0, baseline), base, font=self.font, anchor="ls", fill=255)
+        above = below = 0
+        for mark in decomposed:
+            kind = unicodedata.combining(mark)
+            if not kind:
+                continue
+            # Draw marks independently: BASIC Pillow layout advances combining
+            # glyphs and switching the entire cell font moves its baseline.
+            box = draw.textbbox((0, baseline), mark, font=self.marks_font, anchor="ls")
+            x = (CELL_W - (box[2] - box[0])) // 2 - box[0]
+            shift = 0
+            if kind == 230:
+                shift = baseline - 10 - above * 2 - box[3]
+                above += 1
+            elif kind == 220:
+                shift = baseline + 1 + below * 2 - box[1]
+                below += 1
+            draw.text((x, baseline + shift), mark, font=self.marks_font, anchor="ls", fill=255)
         return mask
 
     def draw(self, screen, label):
@@ -601,6 +753,45 @@ def replay_terminal(cols, rows):
     return screen, TerminalReplay(RecordingStream(screen))
 
 
+def verify_zalgo_capture(args, evidence):
+    """Check every complete decorated frame, including intermittent failures."""
+    chapter = next(c for c in evidence["main"] if c["name"] == "zalgo")
+    pending, frame, checked = "", None, 0
+    strip = lambda value: "".join(c for c in unicodedata.normalize("NFD", value) if not unicodedata.combining(c))
+    for when, _, text in events(args.work_dir / "main.cast.jsonl.gz"):
+        if when < chapter["start"] - .5:
+            continue
+        if when > chapter["end"]:
+            break
+        if "\ufffd" in text:
+            raise RuntimeError("Zalgo capture contains replacement characters")
+        pending += text
+        while (match := re.search(r"\x1b\[\?2026([hl])", pending)):
+            before, pending = pending[:match.start()], pending[match.end():]
+            if frame is not None:
+                frame += before
+            if match[1] == "h":
+                frame = ""
+            elif frame is not None:
+                if when >= chapter["start"] and any(unicodedata.combining(c) for c in frame):
+                    expected = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", frame).splitlines()
+                    if len(expected) != args.rows or any(len(strip(row)) != args.cols for row in expected):
+                        raise RuntimeError(f"Zalgo source rows wrap at {when:.3f}s; inspect terminal capture")
+                    screen, stream = replay_terminal(args.cols, args.rows)
+                    stream.feed("\x1b[?2026h" + frame + "\x1b[?2026l")
+                    if any(strip(actual) != strip(wanted) for actual, wanted in zip(screen.display, expected)):
+                        raise RuntimeError(f"Zalgo replay moved base glyph rows at {when:.3f}s")
+                    checked += 1
+                frame = None
+    if not checked:
+        raise RuntimeError("No complete decorated Zalgo frames available to verify")
+    result = {"decorated_frames_checked": checked, "columns": args.cols, "rows": args.rows,
+              "replacement_characters": 0, "misplaced_rows": 0}
+    (args.work_dir / "zalgo-verification.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    print(f"Verified {checked} Zalgo frames: complete rows and stable base glyph positions", flush=True)
+    return result
+
+
 def render_capture(args, name, selected, raster):
     screen, stream = replay_terminal(args.cols, args.rows)
     iterator = iter(events(args.work_dir / (name + ".cast.jsonl.gz")))
@@ -649,7 +840,7 @@ def render_capture(args, name, selected, raster):
 
 def fingerprint(args):
     # Encoding-only options can change while reusing the exact same recording.
-    return {"recipe": 4, "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+    return {"recipe": 6, "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
             "dll_sha256": hashlib.sha256(args.binary.with_name("asciichat.dll").read_bytes()).hexdigest() if os.name == "nt" else None,
             "media": str(args.media_file), "media_sha256": hashlib.sha256(args.media_file.read_bytes()).hexdigest(),
             "face": str(args.face_file), "face_sha256": hashlib.sha256(args.face_file.read_bytes()).hexdigest() if args.face_file else FACE_URL,
@@ -677,38 +868,58 @@ def assemble(args, files, evidence):
     length = sum(float(probe(p, args)["format"]["duration"]) for p in files)
     # Silence under splash, then the same normal-speed music used by the
     # native audio visualizer. Music continues smoothly beneath patterns/TUIs.
-    graph = (f"[0:v]setpts=(PTS-STARTPTS)/{args.speed},fps={FPS}[v];"
+    video_filter = f"setpts=(PTS-STARTPTS)/{args.speed},fps={args.output_fps}"
+    graph = (f"[0:v]{video_filter}[v];"
              f"[1:a]adelay={round(3000 * args.segment_duration_scale)}:all=1,apad,atrim=duration={length},asetpts=PTS-STARTPTS,"
              f"{atempo(args.speed)},alimiter=limit=0.84:level=false:latency=true,afade=t=out:st={max(0, length / args.speed - 1.5)}:d=1.5[a]")
+    encode = ["-preset", "slow" if args.optimize else "fast", "-crf", "20" if args.optimize else "16"]
+    audio_rate, sample_rate = ("160k" if args.optimize else "192k"), "48000"
+    if args.target_size_mb:
+        bitrate = int(args.target_size_mb * 1e6 * .97 * 8 / (length / args.speed)) - 96000
+        if bitrate < 100000:
+            raise ValueError("Size budget is too small for this duration; use a larger --target-size-mb")
+        pass_log = args.work_dir / ("size-pass-" + args.output.stem)
+        preset = "slow" if args.optimize else "fast"
+        print(f"Two-pass size target: {args.target_size_mb} MB / video {bitrate / 1000:.0f}k / audio 96k / {args.output_fps:g} fps", flush=True)
+        run([args.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", concat,
+             "-vf", video_filter, "-an", "-c:v", "libx264", "-threads", "4", "-preset", preset, "-pix_fmt", "yuv420p",
+             "-b:v", bitrate, "-pass", "1", "-passlogfile", pass_log, "-f", "null", os.devnull])
+        encode = ["-preset", preset, "-b:v", bitrate, "-pass", "2", "-passlogfile", pass_log]
+        audio_rate, sample_rate = "96k", "44100"
     run([args.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-filter_complex_threads", "2", "-f", "concat", "-safe", "0", "-i", concat,
          "-i", args.work_dir / "performance.mkv", "-filter_complex", graph, "-map", "[v]", "-map", "[a]",
-         "-c:v", "libx264", "-preset", "slow" if args.optimize else "fast", "-crf", "20" if args.optimize else "16",
-         "-threads", "4", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k" if args.optimize else "192k", "-ar", "48000",
+         "-c:v", "libx264", *encode,
+         "-threads", "4", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", audio_rate, "-ar", sample_rate,
          "-movflags", "+faststart", "-t", f"{length / args.speed:.8f}", args.output])
     result = probe(args.output, args)
     video = next(s for s in result["streams"] if s["codec_type"] == "video")
     audio = next(s for s in result["streams"] if s["codec_type"] == "audio")
-    if video["avg_frame_rate"] != "33/1" or audio["codec_name"] != "aac":
-        raise RuntimeError("Output verification failed: expected 33fps video and AAC audio")
+    if not math.isclose(float(Fraction(video["avg_frame_rate"])), args.output_fps) or audio["codec_name"] != "aac":
+        raise RuntimeError("Output verification failed: expected requested frame rate and AAC audio")
+    if args.target_size_mb and int(result["format"]["size"]) > args.target_size_mb * 1e6:
+        raise RuntimeError("Encoder exceeded requested size budget; inspect manifest/encode logs")
     quality = audio_quality(args)
     manifest = {"options": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
                 "output_probe": result, "recording": evidence, "face_source": FACE_URL,
-                "commands": COMMANDS, "audio_quality": quality, "raster_version": 5, "chapters": [p.stem for p in files]}
+                "commands": COMMANDS, "audio_quality": quality, "raster_version": 6, "chapters": [p.stem for p in files]}
     (args.work_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"\nReady: {args.output}\n{result['format']['duration']} seconds / 33 fps / {int(result['format']['size']) / 1e6:.2f} MB", flush=True)
+    (args.work_dir / (args.output.stem + ".manifest.json")).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    print(f"\nReady: {args.output}\n{result['format']['duration']} seconds / {args.output_fps:g} fps / {int(result['format']['size']) / 1e6:.2f} MB", flush=True)
     print(f"Chapter images, text, logs, recordings and manifest: {args.work_dir}", flush=True)
 
 
 def main():
     args = parser().parse_args()
-    if args.width < 960 or args.height < 576 or args.width % 2 or args.height % 2:
-        parser().error("use even pixel dimensions of at least 960x576 so every TUI fits")
+    if args.output_fps > FPS:
+        parser().error("--output-fps cannot exceed the 33 fps capture rate")
+    if args.width < 688 or args.height < 448 or args.width % 2 or args.height % 2:
+        parser().error("use even pixel dimensions of at least 688x448 so the terminal has at least 86x28 cells")
     if args.output.suffix.lower() != ".mp4":
         parser().error("--output must end in .mp4 (GitHub-compatible H.264/AAC)")
     args.cols, args.rows = args.width // CELL_W, args.height // CELL_H
     main_chapters = chapters(args.segment_duration_scale)
     if args.dry_run:
-        print(json.dumps({"fps": FPS, "terminal": [args.cols, args.rows], "output_pixels": [args.width, args.height],
+        print(json.dumps({"fps": FPS, "output_fps": args.output_fps, "target_size_mb": args.target_size_mb, "terminal": [args.cols, args.rows], "output_pixels": [args.width, args.height],
                           "speed": args.speed, "optimize": args.optimize, "overlay": args.opt_text_overlay,
                           "media_start": args.media_file_start, "chapters": [asdict(c) for c in main_chapters + tui_chapters(args.segment_duration_scale)],
                           "seconds": (9 * args.segment_duration_scale + sum(c.seconds for c in main_chapters + tui_chapters(args.segment_duration_scale))) / args.speed}, indent=2))
@@ -739,6 +950,7 @@ def main():
         prepare(args, main_chapters)
         evidence = record(args, main_chapters)
         evidence_file.write_text(json.dumps({"fingerprint": identity, "evidence": evidence}, indent=2), encoding="utf-8")
+    verify_zalgo_capture(args, evidence)
     # Find clean splash frames from its actual output, before normal media.
     # The logo's first box-drawing output follows initialization diagnostics.
     splash_times = [t for t, _, text in events(args.work_dir / "main.cast.jsonl.gz")
@@ -759,7 +971,7 @@ def main():
         raster_options = ("width", "height", "cols", "rows", "font", "opt_text_overlay")
         current = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}
         candidates = [args.work_dir / (name + ".mp4") for name in expected_names]
-        if (previous.get("raster_version") == 5 and previous["recording"] == evidence and previous["chapters"] == expected_names and
+        if (previous.get("raster_version") == 6 and previous["recording"] == evidence and previous["chapters"] == expected_names and
                 all(previous["options"].get(k) == current[k] for k in raster_options) and
                 all(p.is_file() for p in candidates)):
             print("Reusing rendered chapters; applying export settings...", flush=True)
