@@ -65,7 +65,7 @@ class CoverageReportTests(unittest.TestCase):
             'set(WIN32 TRUE)\nunset(ENV{VCPKG_ROOT})\n'
             'include("${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake")\n'
             'include("${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake")\n'
-            'function(copy_dlls_post_build)\n'
+            'function(stage_dlls_for_target)\n'
             '  cmake_parse_arguments(ARG "" "TARGET;SOURCE_DIR;COMMENT" "NAMES" ${ARGN})\n'
             '  foreach(name IN LISTS ARG_NAMES)\n'
             f'    file(COPY "${{ARG_SOURCE_DIR}}/${{name}}" DESTINATION "{(self.root / "staged").as_posix()}")\n'
