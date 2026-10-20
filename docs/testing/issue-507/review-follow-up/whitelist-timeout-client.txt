@@ -1,0 +1,89 @@
+[19:07:48.498266] [DEBUG] [thread/78428] lib/log/log.c:1773@log_redetect_terminal_capabilities(): Terminal capabilities: color_level=0, capabilities=0x8, utf8=yes, fps=60
+[19:07:48.507660] [DEBUG] [thread/78428] lib/options/options.c:2193@options_init(): starting with argc=20, argv[0]=C:\Users\zachf\.codex\worktrees\issue-507-unified-networking\ascii-chat\build\bin\ascii-chat.exe, argv[1]=--no-check-update
+[19:07:48.529429] [WARN ] [thread/78428] lib/debug/memory.c:429@debug_malloc(): lib/platform/windows/string.c:77:78428 — 256 live allocations, possible memory accumulation at site (total: 3553 bytes, this alloc: 25 bytes)
+[19:07:48.534560] [DEBUG] [thread/78428] lib/options/options.c:1536@parse_mode_options(): About to parse options_config with mode_bitmask=2, mode_argc=16
+[19:07:48.535618] [DEBUG] [thread/78428] lib/options/parsing/parsers.c:696@parse_client_address(): Processing argument: '127.0.0.1:64848'
+[19:07:48.536644] [DEBUG] [thread/78428] lib/options/parsing/parsers.c:723@parse_client_address(): is_session_string('127.0.0.1:64848') = false
+[19:07:48.537860] [DEBUG] [thread/78428] lib/options/parsing/parsers.c:734@parse_client_address(): Parsing as server address (not a session string)
+[19:07:48.539392] [DEBUG] [thread/78428] lib/options/parsing/parsers.c:854@parse_client_address(): Set address='127.0.0.1', port=64848
+[19:07:48.540230] [DEBUG] [thread/78428] lib/options/options.c:1539@parse_mode_options(): options_config_parse returned: 0
+[19:07:48.540962] [DEBUG] [thread/78428] lib/options/options.c:1583@publish_options_for_validation(): Publishing parsed options to RCU before validation
+[19:07:48.541743] [DEBUG] [thread/78428] lib/options/options.c:1590@publish_options_for_validation(): Successfully published options to RCU
+[19:07:48.542487] [DEBUG] [thread/78428] lib/options/options.c:1832@apply_screen_defaults(): Auto-disabled status screen (non-interactive terminal or CLAUDECODE set)
+[19:07:48.543421] [DEBUG] [thread/78428] lib/options/options.c:1888@validate_parsed_options(): ★ VALIDATE_OPTIONS_AND_REPORT: About to call
+[19:07:48.544383] [DEBUG] [thread/78428] lib/options/options.c:1890@validate_parsed_options(): ★ VALIDATE_OPTIONS_AND_REPORT: Returned with result=0
+[19:07:48.545800] [DEBUG] [thread/78428] lib/options/options.c:1909@finalize_mode_defaults(): ★ APPLY_MODE_SPECIFIC: About to call
+[19:07:48.546529] [DEBUG] [thread/78428] lib/options/options.c:1911@finalize_mode_defaults(): ★ APPLY_MODE_SPECIFIC: Done
+[19:07:48.547200] [DEBUG] [thread/78428] lib/options/options.c:2295@options_init(): ★ OPTIONS_CONFIG_DESTROY: About to call
+[19:07:48.547947] [DEBUG] [thread/78428] lib/options/options.c:2298@options_init(): ★ OPTIONS_CONFIG_DESTROY: Done
+[19:07:48.573068] [DEBUG] [thread/78428] lib/options/options.c:2300@options_init(): ★ STAGE 7: Starting post-processing
+[19:07:48.573797] [DEBUG] [thread/78428] lib/options/options.c:1953@finalize_dimensions(): ★ STAGE 7.2: About to update dimensions
+[19:07:48.574543] [DEBUG] [thread/78428] lib/options/common.c:658@update_dimensions_to_terminal_size(): Final dimensions: 40x12
+[19:07:48.577115] [DEBUG] [thread/78428] lib/options/colorscheme.c:406@colorscheme_set_active_scheme(): Switched to color scheme: pastel
+[19:07:48.674114] [DEBUG] [thread/78428] lib/options/options.c:2179@apply_logging_color_scheme(): Color scheme applied: pastel
+[19:07:48.733483] [INFO ] [thread/78428] src/common/session/capture.c:298@session_capture_create(): Audio capture enabled: file has no audio, using microphone fallback
+[19:07:48.741599] [INFO ] [thread/78428] src/common/session/client_like.c:171@client_like_setup_terminal_logging(): [CLIENT_LIKE_RUN] render_file_early= (ptr=0000127BF42B2FE1)
+[19:07:48.752562] [INFO ] [thread/78428] src/common/session/client_like.c:358@client_like_configure_media_capture(): Using test pattern
+[19:07:48.753725] [INFO ] [thread/78428] src/common/session/client_like.c:565@client_like_create_local_capture(): [MIRROR_CHECK] stdin_render_mode=0, capture=00001251F42A0440
+[19:07:48.754535] [INFO ] [thread/78428] src/common/session/client_like.c:844@session_client_like_run(): [MARKER] Audio setup complete at line 614
+[19:07:48.755581] [INFO ] [thread/78428] src/common/session/client_like.c:845@session_client_like_run(): [SETUP_COMPLETE] All setup complete, about to start connection loop
+[19:07:48.756933] [INFO ] [thread/78428] src/common/session/client_like.c:626@client_like_run_session_attempts(): [CLIENT_LIKE_LOOP] Starting connection loop, max_attempts=0
+[19:07:48.758609] [INFO ] [thread/78428] src/client/connection.c:62@client_connection_create(): CLIENT_CONNECTION_CREATED: workers=0 frames=0
+[19:07:48.853658] [INFO ] [thread/78164] lib/network/parallel_connect.c:150@attempt_connection_thread(): PCONN: [IPv4] Won the race! Setting as winner
+[19:07:48.857767] [INFO ] [thread/78428] lib/network/parallel_connect.c:321@parallel_connect(): PCONN: Successfully connected to 127.0.0.1:64848
+[19:07:48.868625] [INFO ] [thread/78428] lib/debug/sync.c:491@debug_sync_print_state(): SYNC_STATE:
+[19:07:48.869750] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex colorscheme.0: lock=289.346 ms unlock=193.258 ms [FREE]
+[19:07:48.870711] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex debug_memory.1: lock=121.4 µs unlock=97.9 µs [FREE]
+[19:07:48.871673] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex log_buffer.2: lock=8.682 ms unlock=8.68 ms [FREE]
+[19:07:48.872613] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex options_write.6: lock=290.5 ms unlock=290.441 ms [FREE]
+[19:07:48.873512] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex deferred_free.7: lock=290.477 ms unlock=290.477 ms [FREE]
+[19:07:48.874427] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex debug_stats.8: lock=15.591 ms unlock=15.589 ms [FREE]
+[19:07:48.875497] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex debug_sync.9: lock=23.311 ms unlock=23.31 ms [FREE]
+[19:07:48.876742] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex debug_errno.10: lock=22.066 ms unlock=22.065 ms [FREE]
+[19:07:48.877725] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex stats_peers.13: lock=8.63 ms unlock=8.629 ms [FREE]
+[19:07:48.878684] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex discovery_splash.18: lock=114.01 ms unlock=114.009 ms [FREE]
+[19:07:48.879523] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   RWLock named_registry_lock.0: rdlock=7.7 µs wrlock=515.5 µs unlock=8.3 µs  [READ_LOCKED=1]
+[19:07:48.880347] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   RWLock utf8_cache.3: rdlock=115.454 ms wrlock=115.447 ms unlock=115.355 ms   [FREE]
+[19:07:48.881177] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Cond debug_stats.0: wait=15.967 ms   [WAITING=1 threads, last=0x121c4]
+[19:07:48.882294] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Cond debug_sync.1: wait=23.698 ms   [WAITING=1 threads, last=0xec8c]
+[19:07:48.883370] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Cond debug_errno.2: wait=22.453 ms   [WAITING=1 threads, last=0xf068]
+[19:07:48.884182] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Atomic application_exit_flag.0: load=14.533 ms  [ops: load=4 store=0 cas=0/0 fetch=0]
+[19:07:48.885126] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Atomic buffer.process_reserved_bytes.1: load=360.602 ms store=360.602 ms [ops: load=2 store=0 cas=2/2 fetch=0]
+[19:07:48.885920] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():
+[19:07:48.887052] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state(): Thread Lock Stacks:
+[19:07:48.889611] [INFO ] [thread/78428] lib/debug/sync.c:491@debug_sync_print_state(): SYNC_STATE:
+[19:07:48.890569] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex colorscheme.0: lock=310.466 ms unlock=214.378 ms [FREE]
+[19:07:48.891614] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex debug_memory.1: lock=87.1 µs unlock=67.4 µs [FREE]
+[19:07:48.892528] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex log_buffer.2: lock=560.8 µs unlock=558.2 µs [FREE]
+[19:07:48.909510] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex options_write.6: lock=311.534 ms unlock=311.475 ms [FREE]
+[19:07:48.910443] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex deferred_free.7: lock=311.5 ms unlock=311.5 ms [FREE]
+[19:07:48.919570] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex debug_stats.8: lock=36.612 ms unlock=36.611 ms [FREE]
+[19:07:48.920935] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex debug_sync.9: lock=44.333 ms unlock=44.331 ms [FREE]
+[19:07:48.921968] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex debug_errno.10: lock=43.088 ms unlock=43.087 ms [FREE]
+[19:07:48.922961] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex stats_peers.13: lock=29.653 ms unlock=29.653 ms [FREE]
+[19:07:48.925529] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex discovery_splash.18: lock=135.028 ms unlock=135.028 ms [FREE]
+[19:07:48.935007] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Mutex outbound.25: lock=19.591 ms unlock=19.585 ms [FREE]
+[19:07:48.936398] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   RWLock named_registry_lock.0: rdlock=2.4 µs wrlock=21.565 ms unlock=3.5 µs  [READ_LOCKED=1]
+[19:07:48.937256] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   RWLock utf8_cache.3: rdlock=136.501 ms wrlock=136.494 ms unlock=136.401 ms   [FREE]
+[19:07:48.938462] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Cond debug_stats.0: wait=36.99 ms   [WAITING=1 threads, last=0x121c4]
+[19:07:48.939440] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Cond debug_sync.1: wait=44.711 ms   [WAITING=1 threads, last=0xec8c]
+[19:07:48.940500] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Cond debug_errno.2: wait=43.462 ms   [WAITING=1 threads, last=0xf068]
+[19:07:48.941526] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Cond outbound_changed.4: wait=19.898 ms   [WAITING=1 threads, last=0x9f20]
+[19:07:48.954120] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Atomic application_exit_flag.0: load=35.532 ms  [ops: load=4 store=0 cas=0/0 fetch=0]
+[19:07:48.955127] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():   Atomic buffer.process_reserved_bytes.1: load=381.592 ms store=381.592 ms [ops: load=2 store=0 cas=2/2 fetch=0]
+[19:07:48.956053] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state():
+[19:07:48.956928] [INFO ] [thread/78428] lib/debug/sync.c:497@debug_sync_print_state(): Thread Lock Stacks:
+[19:07:49.193521] [INFO ] [thread/78428] lib/crypto/handshake/client.c:225@crypto_handshake_client_key_exchange(): Server identity key verified against --server-key (1 key(s) checked)
+[19:07:49.194757] [WARN ] [thread/78428] lib/crypto/handshake/client.c:250@crypto_handshake_client_key_exchange(): Skipping known_hosts checking (CLAUDECODE set in debug build)
+[19:07:49.196287] [INFO ] [thread/78428] lib/crypto/key_identity/display.c:84@key_identity_announce(): VERIFIED SERVER PUBLIC IDENTITY
+Ed25519 public key
+SHA256:21fe31dfa154a261626bf854046fd2271b7bed4b6abe45aa58877ef47f9721b9
+[19:07:49.203329] [ERROR] [thread/78428] src/client/main.c:351@client_run_attempt(): Connection attempt failed
+[19:07:49.204377] [INFO ] [thread/78428] lib/log/logging.c:@log_plain_msg(): Failure chain (outer context -> root cause):
+[19:07:49.204801] [INFO ] [thread/78428] lib/log/logging.c:@log_plain_msg():   Error #2 thread=78428/1 code=60 cause=#0 age=0.001s
+[19:07:49.205517] [INFO ] [thread/78428] lib/log/logging.c:@log_plain_msg():   Server requires client key authentication (whitelist)
+Please provide --key with your authorized Ed25519 key
+[19:07:49.206364] [INFO ] [thread/78428] lib/log/logging.c:@log_plain_msg():   lib/crypto/handshake/client.c:773 in crypto_handshake_client_auth_response()
+[19:07:54.245266] [WARN ] [thread/60556] lib/debug/mutex.c:763@cond_deadlock_check_callback(): Stuck cond 'outbound_changed.4': 1 thread(s) waiting 5.05 s with no signal (most recent waiter: 0x9f20)
+  wait entered at lib/network/acip/backpressure.c:133 outbound_worker()
+  associated mutex: 0000125DF42A0088 (cannot safely inspect without lock ownership)
