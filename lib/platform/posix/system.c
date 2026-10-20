@@ -606,7 +606,7 @@ static void crash_handler(int sig, siginfo_t *info, void *context) {
     // Only capture backtraces in Debug builds
     log_error("*** CRASH DETECTED ***\nSignal: %d (%s)\nSignal Info: si_code=%d, si_addr=%p", sig, signal_name,
               info->si_code, info->si_addr);
-    backtrace_log_frames(0, 1);
+    backtrace_log_frames(LOG_ERROR, 0, 1);
 #else
     log_error("*** CRASH DETECTED ***\nSignal: %d (%s)\nSignal Info: si_code=%d, si_addr=%p\nBacktrace disabled in "
               "Release builds",
@@ -616,7 +616,7 @@ static void crash_handler(int sig, siginfo_t *info, void *context) {
 #ifndef NDEBUG
     // Only capture backtraces in Debug builds
     log_error("*** CRASH DETECTED ***\nSignal: %d (%s)", sig, signal_name);
-    backtrace_log_frames(0, 1);
+    backtrace_log_frames(LOG_ERROR, 0, 1);
 #else
     log_error("*** CRASH DETECTED ***\nSignal: %d (%s)\nBacktrace disabled in Release builds", sig, signal_name);
 #endif

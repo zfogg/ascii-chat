@@ -545,8 +545,8 @@ static char *parse_llvm_symbolizer_result(FILE *fp, void *addr) {
  * @param size Number of addresses
  * @return Array of symbol strings (must be freed by caller)
  *
- * On macOS, handles ASLR by calculating file offsets and grouping addresses by binary.
- * On other platforms, uses runtime addresses directly with the main executable.
+ * Groups addresses by binary and by the platform-selected address convention.
+ * PE/COFF uses image-relative addresses; ELF and Mach-O use virtual addresses.
  */
 static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   if (size <= 0 || !buffer) {
@@ -573,7 +573,8 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   // Works identically on Linux, macOS, and Windows
   typedef struct {
     char binary_path[PLATFORM_MAX_PATH_LENGTH];
-    uintptr_t file_offsets[64]; // Max addresses per binary
+    bool relative_addresses;
+    uintptr_t addresses[64]; // Max addresses per binary
     int original_indices[64];
     int count;
   } binary_group_t;
@@ -597,7 +598,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     // Find or create group for this binary
     int group_idx = -1;
     for (int g = 0; g < num_groups; g++) {
-      if (strcmp(groups[g].binary_path, match.path) == 0) {
+      if (strcmp(groups[g].binary_path, match.path) == 0 && groups[g].relative_addresses == match.relative_address) {
         group_idx = g;
         break;
       }
@@ -606,12 +607,13 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     if (group_idx < 0 && num_groups < 8) {
       group_idx = num_groups++;
       SAFE_STRNCPY(groups[group_idx].binary_path, match.path, sizeof(groups[group_idx].binary_path));
+      groups[group_idx].relative_addresses = match.relative_address;
       groups[group_idx].count = 0;
     }
 
     if (group_idx >= 0 && groups[group_idx].count < 64) {
       int idx = groups[group_idx].count++;
-      groups[group_idx].file_offsets[idx] = match.file_offset;
+      groups[group_idx].addresses[idx] = match.symbolizer_address;
       groups[group_idx].original_indices[idx] = i;
     }
   }
@@ -640,12 +642,13 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
 
     // Build command with all addresses for this binary
     char cmd[8192];
-    int offset = safe_snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e %s ",
-                               symbolizer_cmd, escaped_binary_path);
+    int offset =
+        safe_snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames %s-e %s ", symbolizer_cmd,
+                      groups[g].relative_addresses ? "--relative-address " : "", escaped_binary_path);
 
     for (int j = 0; j < groups[g].count && offset < (int)sizeof(cmd) - 32; j++) {
       int n =
-          safe_snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%lx ", (unsigned long)groups[g].file_offsets[j]);
+          safe_snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%lx ", (unsigned long)groups[g].addresses[j]);
       if (n > 0) {
         offset += n;
       }

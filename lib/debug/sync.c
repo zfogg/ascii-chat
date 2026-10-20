@@ -702,7 +702,7 @@ void debug_sync_poll(void) {
     backtrace_capture(&trace);
     backtrace_symbolize(&trace);
     if (trace.symbols)
-      backtrace_print("Diagnostics worker backtrace", &trace, 0, 0, NULL);
+      backtrace_print(LOG_INFO, "Diagnostics worker backtrace", &trace, 0, 0, NULL);
     backtrace_t_free(&trace);
   }
 }

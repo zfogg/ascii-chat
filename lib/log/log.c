@@ -1386,6 +1386,104 @@ void log_terminal_msg(log_level_t level, const char *file, int line, const char 
   va_end(args);
 }
 
+static void log_colored_msg_internal(log_level_t level, const char *file, int line, const char *func,
+                                     const char *colored_message, const char *plain_message, bool persist) {
+  if (!colored_message || !plain_message || !lifecycle_is_initialized(&g_log.lifecycle)) {
+    return;
+  }
+  if (level < (log_level_t)atomic_load_u64(&g_log.level)) {
+    return;
+  }
+
+  bool presenting = ui_controller_is_presenting();
+  int fd = presenting ? STDERR_FILENO : terminal_choose_log_fd(level);
+  bool use_colors = presenting ? atomic_load(&g_terminal_log_colors) : terminal_should_color_output(fd);
+  if (!presenting) {
+    atomic_store(&g_terminal_log_colors, use_colors);
+  }
+
+  char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+  uint64_t time_ns = time_get_realtime_ns();
+  get_current_time_formatted(time_buf);
+
+  char colored_header[512] = {0};
+  char plain_header[512] = {0};
+  if (format_log_header(colored_header, sizeof(colored_header), level, time_buf, file, line, func, use_colors,
+                        time_ns) < 0) {
+    colored_header[0] = '\0';
+  }
+  if (format_log_header(plain_header, sizeof(plain_header), level, time_buf, file, line, func, false, time_ns) < 0) {
+    plain_header[0] = '\0';
+  }
+
+  char colored_entry[16896];
+  char plain_entry[16896];
+  safe_snprintf(colored_entry, sizeof(colored_entry), "%s%s", colored_header, colored_message);
+  safe_snprintf(plain_entry, sizeof(plain_entry), "%s%s", plain_header, plain_message);
+
+  int json_fd = atomic_load_int(&g_log.json_file);
+  if (persist && json_fd >= 0) {
+    log_json_write(json_fd, level, time_ns, file, line, func, plain_message);
+  } else if (persist && log_mmap_is_active()) {
+    log_mmap_write(level, file, line, func, "%s", plain_message);
+  } else if (persist) {
+    int file_fd = atomic_load_int(&g_log.file);
+    if (file_fd >= 0 && file_fd != STDERR_FILENO) {
+      write_to_log_file_atomic(plain_entry, (int)strlen(plain_entry), NULL);
+    }
+  }
+
+  const char *terminal_message = use_colors ? colored_entry : plain_entry;
+  session_log_buffer_append(g_history, json_fd >= 0 ? plain_message : terminal_message);
+  atomic_fetch_add_u64_impl(&g_session_log_readers, 1);
+  session_log_buffer_t *buffer = (session_log_buffer_t *)atomic_ptr_load(&g_log.session_log_buffer);
+  if (buffer && buffer != g_history) {
+    session_log_buffer_append(buffer, json_fd >= 0 ? plain_message : terminal_message);
+  }
+  atomic_fetch_sub_u64_impl(&g_session_log_readers, 1);
+
+  if (presenting || !atomic_load_u64(&g_log.terminal_output_enabled)) {
+    return;
+  }
+  if (atomic_load_u64(&g_log.terminal_locked)) {
+    uint64_t owner = atomic_load_u64(&g_log.terminal_owner_thread);
+    if (owner != (uint64_t)asciichat_thread_self()) {
+      return;
+    }
+  }
+
+  if (json_fd >= 0) {
+    log_json_write(fd, level, time_ns, file, line, func, plain_message);
+    return;
+  }
+
+  size_t match_start = 0;
+  size_t match_len = 0;
+  if (!grep_should_output(plain_entry, &match_start, &match_len)) {
+    return;
+  }
+
+  const char *output = terminal_message;
+  if (use_colors && match_len > 0 && log_get_color_array() != NULL) {
+    output = grep_highlight_colored(colored_entry, plain_entry, match_start, match_len);
+  }
+  size_t output_len = strlen(output);
+  ui_controller_write(fd, output, output_len);
+  if (output_len == 0 || output[output_len - 1] != '\n') {
+    ui_controller_write(fd, "\n", 1);
+  }
+}
+
+void log_colored_msg_impl(log_level_t level, const char *file, int line, const char *func, const char *colored_message,
+                          const char *plain_message) {
+  log_colored_msg_internal(level, file, line, func, colored_message, plain_message, true);
+}
+
+void log_terminal_colored_msg_impl(log_level_t level, const char *file, int line, const char *func,
+                                   const char *colored_message, const char *plain_message) {
+  log_colored_msg_internal(level, file, line, func, colored_message, plain_message, false);
+}
+
 void log_plain_msg(const char *fmt, ...) {
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;

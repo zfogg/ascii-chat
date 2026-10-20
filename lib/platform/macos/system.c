@@ -12,39 +12,11 @@
 #include <string.h>
 
 /**
- * @brief Get size of mach-O image from header
- *
- * Walks the load commands to calculate total image size.
- * Returns 0 if header is invalid.
- */
-static uint64_t get_image_size_from_header(const struct mach_header_64 *header) {
-  if (!header || header->magic != MH_MAGIC_64) {
-    return 0;
-  }
-
-  uint64_t size = 0;
-  const struct load_command *cmd = (const struct load_command *)(header + 1);
-
-  for (uint32_t i = 0; i < header->ncmds; i++) {
-    if (cmd->cmd == LC_SEGMENT_64) {
-      const struct segment_command_64 *seg = (const struct segment_command_64 *)cmd;
-      uint64_t seg_end = seg->vmaddr + seg->vmsize;
-      if (seg_end > size) {
-        size = seg_end;
-      }
-    }
-    cmd = (const struct load_command *)((uintptr_t)cmd + cmd->cmdsize);
-  }
-
-  return size;
-}
-
-/**
  * @brief Get binary that contains address on macOS via dyld
  *
  * Iterates through dyld-loaded images to find which one contains
- * the given runtime address. Returns the file offset within that image,
- * which is passed to llvm-symbolizer for symbol resolution.
+ * the given runtime address. Returns its preferred virtual address with
+ * the dyld ASLR slide removed, which llvm-symbolizer expects for Mach-O.
  *
  * @param addr Runtime address from backtrace
  * @param matches Output array for matches (path, offset, is_project_lib)
@@ -65,27 +37,32 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
       continue;
     }
 
-    // Calculate image size from mach header
-    uint64_t image_size = get_image_size_from_header(header);
-    if (image_size == 0) {
+    if (header->magic != MH_MAGIC_64) {
       continue;
     }
 
-    // Base address is header address + slide
-    uintptr_t base = (uintptr_t)header + slide;
-    uintptr_t end = base + image_size;
+    const struct load_command *cmd = (const struct load_command *)(header + 1);
+    for (uint32_t command_index = 0; command_index < header->ncmds; command_index++) {
+      if (cmd->cmd == LC_SEGMENT_64) {
+        const struct segment_command_64 *segment = (const struct segment_command_64 *)cmd;
+        uintptr_t loaded_start = (uintptr_t)(segment->vmaddr + slide);
+        uintptr_t loaded_end = loaded_start + (uintptr_t)segment->vmsize;
 
-    // Check if address falls within this image
-    if (addr_int >= base && addr_int < end) {
-      strncpy(matches[count].path, image_name, PLATFORM_MAX_PATH_LENGTH - 1);
-      matches[count].path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
-      matches[count].file_offset = addr_int - base;
+        if (addr_int >= loaded_start && addr_int < loaded_end) {
+          strncpy(matches[count].path, image_name, PLATFORM_MAX_PATH_LENGTH - 1);
+          matches[count].path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
+          matches[count].symbolizer_address = addr_int - (uintptr_t)slide;
+          matches[count].relative_address = false;
 
 #ifndef NDEBUG
-      log_debug("[macOS dyld] addr=%p matches %s (offset=%lx, base=%p, slide=%ld)", addr, image_name,
-                matches[count].file_offset, (void *)base, slide);
+          log_debug("[macOS dyld] addr=%p matches %s (preferred=%lx, slide=%ld)", addr, image_name,
+                    matches[count].symbolizer_address, slide);
 #endif
-      count++;
+          count++;
+          break;
+        }
+      }
+      cmd = (const struct load_command *)((uintptr_t)cmd + cmd->cmdsize);
     }
   }
 

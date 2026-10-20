@@ -6,11 +6,18 @@
 
 #include <ascii-chat/platform/backtrace.h>
 #include <ascii-chat/platform/symbols.h>
+#include <ascii-chat/util/path.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 #include <windows.h>
 #include <dbghelp.h>
 #include "context_regs.h"
+
+static SRWLOCK g_dbghelp_lock = SRWLOCK_INIT;
+
+static bool symbol_has_details(const char *symbol) {
+  return symbol && (strstr(symbol, "()") != NULL || strstr(symbol, "(unknown function)") != NULL);
+}
 
 int platform_backtrace(void **buffer, int size) {
   if (!buffer || size <= 0) {
@@ -94,23 +101,39 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     return NULL;
   }
 
-  // Try to resolve each address
+  // Resolve the complete trace in one symbolizer process. An unresolved lookup
+  // is returned as a printable address, so it must not suppress the PDB fallback.
+  char **cache_results = symbol_cache_resolve_batch(buffer, size);
+  bool needs_dbghelp = false;
   for (int i = 0; i < size; i++) {
-    void *addr = buffer[i];
+    symbols[i] = NULL;
+    if (cache_results && symbol_has_details(cache_results[i])) {
+      symbols[i] = platform_strdup(cache_results[i]);
+    }
+    needs_dbghelp |= symbols[i] == NULL;
+  }
+  symbol_cache_free_symbols(cache_results);
 
-    // First, try the symbol cache (llvm-symbolizer / addr2line)
-    char **cache_result = symbol_cache_resolve_batch(&addr, 1);
-    if (cache_result && cache_result[0]) {
-      symbols[i] = platform_strdup(cache_result[0]);
-      symbol_cache_free_symbols(cache_result);
-      if (symbols[i]) {
-        continue;
-      }
+  HANDLE process = GetCurrentProcess();
+  BOOL dbghelp_ready = FALSE;
+  BOOL dbghelp_owned = FALSE;
+  if (needs_dbghelp) {
+    AcquireSRWLockExclusive(&g_dbghelp_lock);
+    SymSetOptions(SymGetOptions() | SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES |
+                  SYMOPT_FAIL_CRITICAL_ERRORS | SYMOPT_NO_PROMPTS);
+    dbghelp_owned = SymInitialize(process, NULL, TRUE);
+    dbghelp_ready = dbghelp_owned || GetLastError() == ERROR_INVALID_PARAMETER;
+  }
+
+  for (int i = 0; i < size; i++) {
+    if (symbols[i]) {
+      continue;
     }
 
+    void *addr = buffer[i];
+
     // Fall back to Windows SymFromAddr
-    HANDLE process = GetCurrentProcess();
-    if (!SymInitialize(process, NULL, TRUE)) {
+    if (!dbghelp_ready) {
       symbols[i] = platform_strdup("[?] (SymInitialize failed)");
       continue;
     }
@@ -137,7 +160,8 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     char symbol_buffer[512];
     if (sym_result) {
       if (line_result) {
-        snprintf(symbol_buffer, sizeof(symbol_buffer), "%s() (%s:%ld)", symbol_info->Name, line_info.FileName,
+        const char *source_path = extract_project_relative_path(line_info.FileName);
+        snprintf(symbol_buffer, sizeof(symbol_buffer), "%s() (%s:%ld)", symbol_info->Name, source_path,
                  line_info.LineNumber);
       } else {
         snprintf(symbol_buffer, sizeof(symbol_buffer), "%s()", symbol_info->Name);
@@ -147,7 +171,13 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     }
 
     symbols[i] = platform_strdup(symbol_buffer);
-    SymCleanup(process);
+  }
+
+  if (needs_dbghelp) {
+    if (dbghelp_owned) {
+      SymCleanup(process);
+    }
+    ReleaseSRWLockExclusive(&g_dbghelp_lock);
   }
 
   // Null-terminate the array

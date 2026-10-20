@@ -38,7 +38,7 @@
  * if (result != ASCIICHAT_OK) {
  *     backtrace_t bt;
  *     backtrace_capture_and_symbolize(&bt);
- *     backtrace_print("Error backtrace", &bt, 0, 5, NULL);
+ *     backtrace_print(LOG_ERROR, "Error backtrace", &bt, 0, 5, NULL);
  *     backtrace_t_free(&bt);
  *     return result;
  * }
@@ -52,7 +52,7 @@
  * backtrace_capture_and_symbolize(&alloc_trace);
  * // ... store trace in allocation metadata ...
  * // On leak detection (exit time):
- * backtrace_print("Leaked from", &alloc_trace, 0, 0, NULL);
+ * backtrace_print(LOG_WARN, "Leaked from", &alloc_trace, 0, 0, NULL);
  * @endcode
  *
  * ### Filtering: Skip Framework Frames
@@ -66,7 +66,7 @@
  *
  * backtrace_t bt;
  * backtrace_capture_and_symbolize(&bt);
- * backtrace_print("Application trace", &bt, 0, 10, skip_internal_frames);
+ * backtrace_print(LOG_INFO, "Application trace", &bt, 0, 10, skip_internal_frames);
  * @endcode
  *
  * ### Buffer Formatting: Log-Safe Output
@@ -106,6 +106,7 @@ extern "C" {
 
 /* backtrace_t is defined in asciichat_errno.h to avoid circular includes */
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/log/types.h>
 
 /**
  * @brief Frame filter callback for selective frame inclusion
@@ -181,6 +182,7 @@ void backtrace_t_free(backtrace_t *bt);
  * ...
  * ```
  *
+ * @param level Log severity for the entire backtrace entry
  * @param label Header label (e.g., "Backtrace", "Leak trace", "Assertion failure")
  * @param bt Backtrace to print (must not be NULL, must be symbolized via backtrace_capture_and_symbolize)
  * @param skip_frames Number of frames to skip from start (0 = include all, 1 = skip first frame, etc.)
@@ -196,7 +198,7 @@ void backtrace_t_free(backtrace_t *bt);
  *
  * @see backtrace_format() for buffer-based output (safe for log system)
  */
-void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
+void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
                      backtrace_frame_filter_t filter);
 
 /**
@@ -204,11 +206,12 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
  *
  * Convenience function for iterating and printing multiple backtrace_t entries.
  *
+ * @param level Log severity for every backtrace entry
  * @param label Header label for all backtraces
  * @param bts Array of backtrace structures
  * @param count Number of backtraces to print
  */
-void backtrace_print_many(const char *label, const backtrace_t *bts, int count);
+void backtrace_print_many(log_level_t level, const char *label, const backtrace_t *bts, int count);
 
 /**
  * @brief Format backtrace to buffer (plain ASCII, no colors)
@@ -267,6 +270,7 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
  *   [-1] crypto_handshake_server_complete() (lib/crypto/handshake.c:1471)
  *   [0] server_crypto_handshake() (src/server/crypto.c:511)
  *
+ * @param level Log severity for the backtrace entry
  * @param label Header label (e.g., "Backtrace", "Call stack")
  * @param symbols Array of pre-resolved symbol strings
  * @param count Number of symbols in the array
@@ -276,15 +280,16 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
  *
  * @ingroup debug_util
  */
-void backtrace_print_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
-                             backtrace_frame_filter_t filter);
+void backtrace_print_symbols(log_level_t level, const char *label, char **symbols, int count, int skip_frames,
+                             int max_frames, backtrace_frame_filter_t filter);
 
 /**
  * @brief Log N backtrace frames with function name, line number, and file
  *
- * Captures and logs the backtrace at debug level, showing the function name,
- * file path, and line number for each frame.
+ * Captures and logs the backtrace at the requested severity, showing the
+ * function name, file path, and line number for each frame.
  *
+ * @param level Log severity for the backtrace entry
  * @param num_frames Number of frames to capture and log (0 = all available)
  * @param skip_frames Number of frames to skip from the top (e.g., skip this function itself)
  *
@@ -293,12 +298,11 @@ void backtrace_print_symbols(const char *label, char **symbols, int count, int s
  *   [1] caller_function() at src/caller.c:123
  *   [2] main() at src/main.c:999
  *
- * @note Uses log_debug() for output
  * @note Call with skip_frames=1 to skip the platform_log_backtrace_frames() call itself
  *
  * @ingroup debug_util
  */
-void backtrace_log_frames(int num_frames, int skip_frames);
+void backtrace_log_frames(log_level_t level, int num_frames, int skip_frames);
 
 #ifdef __cplusplus
 }

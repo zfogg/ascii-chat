@@ -40,6 +40,16 @@ int main(int argc, char **argv) {
 #endif
   }
 
+#ifdef _WIN32
+  CHECK(strcmp(extract_project_relative_path("C:\\src\\client\\main.c"), "src\\client\\main.c") == 0);
+  CHECK(strcmp(extract_project_relative_path("C:\\lib\\debug\\backtrace.c"), "lib\\debug\\backtrace.c") == 0);
+  CHECK(strcmp(extract_project_relative_path("C:\\tests\\integration\\source_paths.c"),
+               "tests\\integration\\source_paths.c") == 0);
+  CHECK(strcmp(extract_project_relative_path("C:/include/ascii-chat/util/path.h"), "include/ascii-chat/util/path.h") ==
+        0);
+  CHECK(strcmp(extract_project_relative_path("C:\\library\\external.c"), "C:\\library\\external.c") == 0);
+#endif
+
   char sibling[4096];
   safe_snprintf(sibling, sizeof(sibling), "%s-other/src/main.c", ASCIICHAT_SOURCE_ROOT);
   CHECK(extract_project_relative_path(sibling) == sibling);
@@ -76,11 +86,15 @@ int main(int argc, char **argv) {
   CHECK(!ferror(report));
   fclose(report);
   contents[length] = '\0';
+#ifndef NDEBUG
+  // Debug log headers include source locations; optimized builds use the
+  // compact log format but still exercise the path utility checks above.
   CHECK(strstr(contents, "src/path_fixture.c:123") != NULL);
   CHECK(strstr(contents, "lib/path_fixture.c:456") != NULL);
   CHECK(strstr(contents, "lib\\windows_fixture.c:321") != NULL);
   CHECK(strstr(contents, ASCIICHAT_SOURCE_ROOT "/src/path_fixture.c") == NULL);
   CHECK(strstr(contents, ASCIICHAT_SOURCE_ROOT "/lib/path_fixture.c") == NULL);
+#endif
   CHECK(strstr(contents, "<key:") == NULL);
 #ifdef DEBUG_MEMORY
   CHECK(strstr(contents, "src/path_fixture.c:123 [") != NULL);

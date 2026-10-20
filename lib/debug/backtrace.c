@@ -7,12 +7,9 @@
 #include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/platform/backtrace.h>
-#include <ascii-chat/platform/system.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/log/format.h>
 #include <ascii-chat/util/string.h>
 #include <stdio.h>
-#include <time.h>
 #include <string.h>
 
 void backtrace_capture(backtrace_t *bt) {
@@ -56,7 +53,7 @@ void backtrace_t_free(backtrace_t *bt) {
   bt->tried_symbolize = false;
 }
 
-void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
+void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
                      backtrace_frame_filter_t filter) {
   if (!bt || !bt->symbols || bt->count <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid backtrace params");
@@ -74,64 +71,11 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
     end = start + max_frames;
   }
 
-  // Build backtrace in two versions: colored for terminal, plain for log file
+  // Build the message in two versions; log_colored_msg() adds the normal log header.
   char colored_buffer[16384] = {0};
   char plain_buffer[16384] = {0};
-  int colored_offset = 0;
-  int plain_offset = 0;
-
-  // Format log header using logging system's template
-  char log_header_buf[512] = {0};
-  time_t now = time(NULL);
-  struct tm tm_info = {0};
-  platform_localtime(&now, &tm_info);
-  char timestamp[32];
-  strftime(timestamp, sizeof(timestamp), "%H:%M:%S", &tm_info);
-
-  thread_id_t tid = asciichat_thread_self();
-  uint64_t tid_val = (uintptr_t)tid;
-
-  // Get current time in nanoseconds for template formatting
-  uint64_t time_ns = platform_get_monotonic_time_us() * 1000ULL;
-
-  // Try to format header using the logging system's template with color
-  log_template_t *format = log_get_template();
-  if (format) {
-    // Color the label with WARN color for terminal output
-    const char *colored_label_ptr = colored_string(LOG_COLOR_WARN, label);
-    char colored_label_buf[256];
-    SAFE_STRNCPY(colored_label_buf, colored_label_ptr, sizeof(colored_label_buf));
-
-    int len = log_template_apply(format, log_header_buf, sizeof(log_header_buf), LOG_WARN, timestamp, __FILE__,
-                                 __LINE__, __func__, tid_val, colored_label_buf, true, time_ns);
-    if (len > 0) {
-      // Successfully formatted with logging template
-      colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                      "%s\n", log_header_buf);
-    } else {
-      // Fallback: manual formatting if template fails
-      safe_snprintf(log_header_buf, sizeof(log_header_buf), "[%s] [WARN] [tid:%llu] %s: %s", timestamp, tid_val,
-                    __func__, label);
-      const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
-      char colored_header_buf[512];
-      SAFE_STRNCPY(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf));
-      colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                      "%s\n", colored_header_buf);
-    }
-  } else {
-    // Fallback: manual formatting if no template available
-    safe_snprintf(log_header_buf, sizeof(log_header_buf), "[%s] [WARN] [tid:%llu] %s: %s", timestamp, tid_val, __func__,
-                  label);
-    const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
-    char colored_header_buf[512];
-    SAFE_STRNCPY(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf));
-    colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                    "%s\n", colored_header_buf);
-  }
-
-  // Add plain label header for log file
-  plain_offset +=
-      safe_snprintf(plain_buffer + plain_offset, sizeof(plain_buffer) - (size_t)plain_offset, "%s\n", label);
+  int colored_offset = safe_snprintf(colored_buffer, sizeof(colored_buffer), "%s\n", label);
+  int plain_offset = safe_snprintf(plain_buffer, sizeof(plain_buffer), "%s\n", label);
 
   // Build backtrace frames with colored output for terminal, plain for log
   int frame_num = 0;
@@ -154,7 +98,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
     safe_snprintf(frame_num_str, sizeof(frame_num_str), "%d", frame_num);
 
     // Get colored frame number - copy to temp buffer to avoid rotating buffer issues
-    const char *colored_num_ptr = colored_string(LOG_COLOR_GREY, frame_num_str);
+    const char *colored_num_ptr = colored_string(LOG_COLOR_ERROR, frame_num_str);
     char colored_num_buf[256];
     SAFE_STRNCPY(colored_num_buf, colored_num_ptr, sizeof(colored_num_buf));
 
@@ -228,7 +172,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
       while (*file_start && *file_start == ' ')
         file_start++;
 
-      char *file_colon = strchr(file_start, ':');
+      char *file_colon = strrchr(file_start, ':');
       if (file_colon) {
         int filename_len = file_colon - file_start;
         char filename[512];
@@ -241,7 +185,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
         SAFE_STRNCPY(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf));
 
         const char *line_num = file_colon + 1;
-        const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
+        const char *colored_line_ptr = colored_string(LOG_COLOR_FATAL, line_num);
         char colored_line_buf[512];
         SAFE_STRNCPY(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf));
 
@@ -257,7 +201,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
       SAFE_MEMCPY(func_name, sizeof(func_name), s, func_copy_len);
       func_name[func_copy_len] = '\0';
 
-      const char *colored_func_ptr = colored_string(LOG_COLOR_DEV, func_name);
+      const char *colored_func_ptr = colored_string(LOG_COLOR_RESET, func_name);
       char colored_func_buf[512];
       SAFE_STRNCPY(colored_func_buf, colored_func_ptr, sizeof(colored_func_buf));
       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
@@ -284,7 +228,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
           while (*file_start && *file_start == ' ')
             file_start++;
 
-          char *colon_pos = strchr(file_start, ':');
+          char *colon_pos = strrchr(file_start, ':');
           if (colon_pos) {
             int filename_len = colon_pos - file_start;
             char filename[512];
@@ -297,7 +241,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
             SAFE_STRNCPY(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf));
 
             const char *line_num = colon_pos + 1;
-            const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
+            const char *colored_line_ptr = colored_string(LOG_COLOR_FATAL, line_num);
             char colored_line_buf[512];
             SAFE_STRNCPY(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf));
 
@@ -328,18 +272,17 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
     frame_num++;
   }
 
-  // Output backtrace through logging system (no direct fprintf to avoid ANSI codes in captured output)
-  log_warn("%s", plain_buffer);
-  log_file_msg("%s", plain_buffer);
+  // Preserve semantic terminal colors while keeping filtering, JSON, and log files ANSI-free.
+  log_colored_msg(level, colored_buffer, plain_buffer);
 }
 
-void backtrace_print_many(const char *label, const backtrace_t *bts, int count) {
+void backtrace_print_many(log_level_t level, const char *label, const backtrace_t *bts, int count) {
   if (!bts || count <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: bts is NULL or count <= 0");
     return;
   }
   for (int i = 0; i < count; i++) {
-    backtrace_print(label, &bts[i], 0, 0, NULL);
+    backtrace_print(level, label, &bts[i], 0, 0, NULL);
   }
 }
 
@@ -389,19 +332,19 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
   return offset;
 }
 
-void backtrace_log_frames(int num_frames, int skip_frames) {
+void backtrace_log_frames(log_level_t level, int num_frames, int skip_frames) {
   backtrace_t bt;
   backtrace_capture_and_symbolize(&bt);
-  backtrace_print("Backtrace", &bt, skip_frames, num_frames, NULL);
+  backtrace_print(level, "Backtrace", &bt, skip_frames, num_frames, NULL);
   backtrace_t_free(&bt);
 }
 
-void backtrace_print_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
-                             backtrace_frame_filter_t filter) {
+void backtrace_print_symbols(log_level_t level, const char *label, char **symbols, int count, int skip_frames,
+                             int max_frames, backtrace_frame_filter_t filter) {
   backtrace_t bt = {0};
   bt.symbols = symbols;
   bt.count = count;
-  backtrace_print(label, &bt, skip_frames, max_frames, filter);
+  backtrace_print(level, label, &bt, skip_frames, max_frames, filter);
 }
 
 #endif // NDEBUG
@@ -422,8 +365,9 @@ void backtrace_t_free(backtrace_t *bt) {
   // No-op in release builds
 }
 
-void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
+void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
                      backtrace_frame_filter_t filter) {
+  (void)level;
   (void)label;
   (void)bt;
   (void)skip_frames;
@@ -432,7 +376,8 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
   // No-op in release builds
 }
 
-void backtrace_print_many(const char *label, const backtrace_t *bts, int count) {
+void backtrace_print_many(log_level_t level, const char *label, const backtrace_t *bts, int count) {
+  (void)level;
   (void)label;
   (void)bts;
   (void)count;
@@ -452,7 +397,8 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
   return 0;
 }
 
-void backtrace_log_frames(int num_frames, int skip_frames) {
+void backtrace_log_frames(log_level_t level, int num_frames, int skip_frames) {
+  (void)level;
   (void)num_frames;
   (void)skip_frames;
   // No-op in release builds

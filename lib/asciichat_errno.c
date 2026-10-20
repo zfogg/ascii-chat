@@ -627,7 +627,7 @@ static void print_error_context(const asciichat_error_context_t *context, bool i
     trace.tried_symbolize = false;
     backtrace_symbolize(&trace);
     if (trace.symbols)
-      backtrace_print("Error backtrace", &trace, 0, 0, NULL);
+      backtrace_print(LOG_ERROR, "Error backtrace", &trace, 0, 0, NULL);
     backtrace_t_free(&trace);
   }
   g_recording = previous;
