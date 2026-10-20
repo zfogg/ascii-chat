@@ -40,6 +40,7 @@ static bool g_input_was_covered;
 static keyboard_key_t g_sync_keys[256];
 static unsigned g_sync_key_head, g_sync_key_count;
 static bool g_switch_pending;
+static _Atomic bool g_input_buffered;
 
 static bool input_switch_key(keyboard_key_t key) {
   return key == KEY_QUESTION || key == ']' || key == 'o' || key == 'O' || key == 15;
@@ -58,6 +59,16 @@ typedef struct {
   bool active, submitted, pasted;
 } input_editor_t;
 static input_editor_t g_media_editor;
+
+// Publish only whether routing work remains; the actual queues stay serialized.
+static void input_unlock(void) {
+  atomic_store(&g_input_buffered, g_sync_key_count || g_text_count || g_paste_ready || g_pasting || g_media_editor.active);
+  mutex_unlock(&g_input_mutex);
+}
+
+static bool input_ready(void) {
+  return atomic_load(&g_input_buffered) || keyboard_input_available();
+}
 
 static void input_editor_key(char *buffer, size_t max_len, size_t *length, size_t *position, keyboard_key_t key) {
   size_t len = *length, cursor = *position;
@@ -211,16 +222,16 @@ asciichat_error_t ui_input_take_paste(char *buffer, size_t capacity) {
   g_paste_length = 0;
   g_paste[0] = '\0';
   g_paste_ready = false;
-  mutex_unlock(&g_input_mutex);
+  input_unlock();
   return result;
 }
 
 void ui_input_poll_sync(void) {
 #ifndef NDEBUG
-  if (!input_initialize() || mutex_trylock(&g_input_mutex) != 0)
+  if (!input_initialize() || !input_ready() || mutex_trylock(&g_input_mutex) != 0)
     return;
   if (g_switch_pending) {
-    mutex_unlock(&g_input_mutex);
+    input_unlock();
     return;
   }
   int screen = ui_controller_current_screen();
@@ -233,12 +244,12 @@ void ui_input_poll_sync(void) {
       g_switch_pending = input_switch_key(key);
     }
   }
-  mutex_unlock(&g_input_mutex);
+  input_unlock();
 #endif
 }
 
 keyboard_key_t ui_input_read_key(ui_screen_t screen) {
-  if (!input_initialize())
+  if (!input_initialize() || !input_ready())
     return KEY_NONE;
   ui_presentation_state_t state = ui_controller_state();
   mutex_lock(&g_input_mutex);
@@ -253,7 +264,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
       g_paste_ready = false;
     if (notice_key == KEY_ESCAPE || notice_key == '\r' || notice_key == '\n' || notice_key == 'q' || notice_key == 3)
       ui_controller_remove(UI_SCREEN_NOTICE);
-    mutex_unlock(&g_input_mutex);
+    input_unlock();
     return notice_key == 'q' || notice_key == 3 ? notice_key : KEY_NONE;
   }
   if (screen == UI_SCREEN_MEDIA && g_media_editor.active && state.screen == UI_SCREEN_PROMPT) {
@@ -264,7 +275,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
         g_paste_ready = false;
       }
       g_input_was_covered = state.covered;
-      mutex_unlock(&g_input_mutex);
+      input_unlock();
       return KEY_NONE;
     }
     keyboard_key_t key = input_next_key();
@@ -278,7 +289,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
       if (key == KEY_0)
         key = ui_sync_handle_key(key);
       g_switch_pending = input_switch_key(key);
-      mutex_unlock(&g_input_mutex);
+      input_unlock();
       return key;
     }
     if (key == KEY_ESCAPE || key == 3 || ui_input_expired(g_media_editor.deadline)) {
@@ -289,7 +300,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     } else if (key == '\r' || key == '\n') {
       g_media_editor.active = false;
       g_media_editor.submitted = true;
-      mutex_unlock(&g_input_mutex);
+      input_unlock();
       return KEY_MEDIA_SUBMIT;
     } else if (key != KEY_NONE) {
       if (key == KEY_PASTE) {
@@ -321,7 +332,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
         CLEAR_ERRNO();
       }
     }
-    mutex_unlock(&g_input_mutex);
+    input_unlock();
     return KEY_NONE;
   }
   bool active = state.screen < 0 || state.screen == (int)screen ||
@@ -361,7 +372,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     key = KEY_NONE;
   }
   g_switch_pending |= input_switch_key(key);
-  mutex_unlock(&g_input_mutex);
+  input_unlock();
   return key;
 }
 
@@ -494,7 +505,7 @@ asciichat_error_t ui_input_media_begin(const char *text) {
       ui_prompt_present("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels",
                         g_media_editor.buffer, g_media_editor.cursor);
   g_media_editor.active = result == ASCIICHAT_OK;
-  mutex_unlock(&g_input_mutex);
+  input_unlock();
   return result;
 }
 
@@ -508,6 +519,6 @@ asciichat_error_t ui_input_media_take(char *output, size_t capacity) {
   else
     memcpy(output, g_media_editor.buffer, g_media_editor.length + 1);
   g_media_editor.submitted = false;
-  mutex_unlock(&g_input_mutex);
+  input_unlock();
   return result;
 }

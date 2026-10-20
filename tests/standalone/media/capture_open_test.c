@@ -1,6 +1,8 @@
 /** Real loader workers/decoders with controlled audio ownership and load failures. */
 #include "session/capture.h"
 #include <ascii-chat/media/source.h>
+#include <ascii-chat/media/ffmpeg_decoder.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/platform/thread.h>
@@ -86,9 +88,72 @@ static void finish_load(session_capture_ctx_t *ctx) {
   session_capture_unlock_source(ctx);
   CHECK(!ctx->loader_created);
 }
+#ifndef NDEBUG
+static mutex_t *prefetch_mutex;
+static void find_prefetch(uintptr_t key, uint64_t generation, const char *name, const char *type,
+                          const char *file, int line, void *data) {
+  (void)generation; (void)file; (void)line; (void)data;
+  if (!strcmp(type, "mutex") && strstr(name, "ffmpeg_prefetch."))
+    prefetch_mutex = (mutex_t *)key;
+}
+
+#endif
+
+static unsigned drain_video(ffmpeg_decoder_t *decoder) {
+  unsigned frames = 0;
+  uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
+  for (;;) {
+    image_t *frame = NULL;
+    asciichat_error_context_t failure;
+    ffmpeg_frame_status_t status = ffmpeg_decoder_poll_video(decoder, &frame, &failure);
+    CHECK(status != FFMPEG_FRAME_FAILED);
+    if (status == FFMPEG_FRAME_EOF)
+      return frames;
+    if (status == FFMPEG_FRAME_READY) {
+      CHECK(frame && frame->pixels);
+      ++frames;
+    } else {
+      platform_sleep_ms(1);
+    }
+    CHECK(time_get_ns() < deadline);
+  }
+}
+
+static void check_prefetch_notifications(const char *path) {
+  ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
+  CHECK(decoder);
+  CHECK(ffmpeg_decoder_start_prefetch(decoder) == ASCIICHAT_OK);
+  // Leave a frame pending: the producer should sleep without touching its mutex.
+  platform_sleep_ms(100);
+#ifndef NDEBUG
+  size_t required = 0;
+  bool complete = false;
+  CHECK(named_registry_try_snapshot(SIZE_MAX, &required, &complete, find_prefetch, NULL) == ASCIICHAT_OK && complete);
+  CHECK(prefetch_mutex);
+  uint64_t locks = prefetch_mutex->lock_count;
+  platform_sleep_ms(100);
+  CHECK(prefetch_mutex->lock_count == locks);
+#endif
+  CHECK(drain_video(decoder) == 30);
+  platform_sleep_ms(20);
+  uint64_t started = time_get_ns();
+  ffmpeg_decoder_stop_prefetch(decoder);
+  CHECK(!ffmpeg_decoder_is_prefetch_running(decoder));
+  CHECK(time_get_ns() - started < NS_PER_SEC_INT);
+  CHECK(ffmpeg_decoder_start_prefetch(decoder) == ASCIICHAT_OK);
+  CHECK(ffmpeg_decoder_seek_to_timestamp(decoder, 0) == ASCIICHAT_OK);
+  CHECK(drain_video(decoder) == 30);
+  CHECK(ffmpeg_decoder_seek_to_timestamp(decoder, 0) == ASCIICHAT_OK);
+  platform_sleep_ms(100);
+  started = time_get_ns();
+  ffmpeg_decoder_destroy(decoder);
+  CHECK(time_get_ns() - started < NS_PER_SEC_INT);
+}
+
 int main(int argc, char **argv) {
   CHECK(argc == 2);
   log_init(NULL, LOG_ERROR, false, false);
+  CHECK(named_init() == ASCIICHAT_OK);
   options_t options = options_t_new();
   options.audio_capture_source = AUDIO_CAPTURE_SOURCE_MEDIA;
   CHECK(options_state_init() == ASCIICHAT_OK);
@@ -173,6 +238,7 @@ int main(int argc, char **argv) {
   audio.capture_media_source = NULL;
   session_capture_destroy(ctx);
   ui_controller_shutdown();
+  check_prefetch_notifications(argv[1]);
   options_state_destroy();
   return 0;
 }

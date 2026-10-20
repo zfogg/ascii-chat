@@ -23,6 +23,9 @@ static void feed(const char *text) {
   bytes = (const unsigned char *)text;
   available = strlen(text);
 }
+static bool fake_input_available(void) {
+  return keyboard_stream_ready(raw_byte);
+}
 static keyboard_key_t fake_keyboard(void) {
   return keyboard_stream_read(raw_byte);
 }
@@ -68,6 +71,7 @@ static bool fake_cancel(session_capture_ctx_t *capture) {
 
 /* Exercise production input and session routing with deterministic terminal state. */
 #define keyboard_read_nonblocking fake_keyboard
+#define keyboard_input_available fake_input_available
 #define ui_controller_state fake_state
 #define ui_controller_current_screen fake_screen
 #define ui_prompt_present fake_present
@@ -85,6 +89,7 @@ static bool fake_cancel(session_capture_ctx_t *capture) {
 #undef ui_controller_current_screen
 #undef ui_controller_state
 #undef keyboard_read_nonblocking
+#undef keyboard_input_available
 
 static void normalize(const char *input, const char *expected) {
   char output[1024];
@@ -119,6 +124,23 @@ int main(void) {
   char small[4];
   CHECK(media_input_normalize("movie.mp4", small, sizeof(small)) != ASCIICHAT_OK);
   CLEAR_ERRNO();
+
+  keyboard_stream_reset();
+  feed("ab\033[A");
+  for (int i = 0; i < 100; ++i)
+    CHECK(fake_input_available());
+  CHECK(fake_keyboard() == 'a');
+  CHECK(fake_input_available());
+  CHECK(fake_keyboard() == 'b');
+  CHECK(fake_input_available());
+  CHECK(fake_keyboard() == KEY_UP);
+  CHECK(!fake_input_available());
+  feed("\033");
+  CHECK(!fake_input_available());
+  platform_sleep_ms(60);
+  CHECK(fake_input_available());
+  CHECK(fake_keyboard() == KEY_ESCAPE);
+  CHECK(!fake_input_available());
 
   keyboard_stream_reset();
   uint64_t previous_reply = keyboard_stream_terminal_reply_ns();
@@ -288,6 +310,18 @@ int main(void) {
   session_handle_keyboard_input(NULL, NULL, KEY_PASTE);
   CHECK(search_keys == strlen(search) + 6);
   CHECK(!g_paste_ready);
+  feed("");
+  CHECK(!input_ready());
+#ifndef NDEBUG
+  uint64_t idle_locks = g_input_mutex.lock_count;
+#endif
+  for (unsigned i = 0; i < 1000; ++i) {
+    CHECK(ui_input_read_key(UI_SCREEN_MEDIA) == KEY_NONE);
+    ui_input_poll_sync();
+  }
+#ifndef NDEBUG
+  CHECK(g_input_mutex.lock_count == idle_locks);
+#endif
   ui_input_shutdown();
   return 0;
 }

@@ -24,6 +24,7 @@ static atomic_bool trylock_clean;
 static rwlock_t *registry_lock;
 static mutex_t *scheme_mutex;
 static mutex_t *memory_mutex;
+static mutex_t *controller_mutex;
 static int objects[600];
 static unsigned seen;
 
@@ -58,6 +59,16 @@ static void count_entry(uintptr_t key, const char *name, void *unused) {
     scheme_mutex = (mutex_t *)key;
   if (strstr(name, "named_registry_lock"))
     registry_lock = (rwlock_t *)key;
+}
+
+static void find_controller(uintptr_t key, uint64_t generation, const char *name, const char *type,
+                            const char *file, int line, void *data) {
+  (void)generation;
+  (void)file;
+  (void)line;
+  (void)data;
+  if (strcmp(type, "mutex") == 0 && strstr(name, "ui_controller."))
+    controller_mutex = (mutex_t *)key;
 }
 
 static void *hold_registry(void *unused) {
@@ -193,11 +204,33 @@ int main(int argc, char **argv) {
     CHECK(ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){20, 5}, slow_render, snapshot,
                                sizeof(snapshot)) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
+#ifndef NDEBUG
+    bool completed = false;
+    size_t required = 0;
+    CHECK(named_registry_try_snapshot(SIZE_MAX, &required, &completed, find_controller, NULL) == ASCIICHAT_OK && completed);
+    CHECK(controller_mutex);
+    uint64_t query_locks = controller_mutex->lock_count;
+#endif
+    for (unsigned i = 0; i < 1000; ++i) {
+      CHECK(ui_controller_state().screen == UI_SCREEN_HELP);
+      CHECK(ui_controller_size().cols > 0);
+    }
+#ifndef NDEBUG
+    CHECK(controller_mutex->lock_count == query_locks);
+#endif
+    CHECK(!ui_controller_state().covered);
+    CHECK(ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){200, 200}, slow_render, snapshot,
+                               sizeof(snapshot)) == ASCIICHAT_OK);
+    CHECK(ui_controller_state().covered);
+    ui_controller_select_interactive(UI_SCREEN_SYNC);
+    CHECK(ui_controller_state().screen == -1);
+    ui_controller_select_interactive(UI_SCREEN_HELP);
     uint64_t start = time_get_ns();
     CHECK(ui_controller_state().screen == UI_SCREEN_HELP);
     CHECK(ui_controller_present(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){20, 5}, "replacement", 11) ==
           ASCIICHAT_OK);
     CHECK(time_get_ns() - start < 500 * NS_PER_MS_INT);
+    CHECK(!ui_controller_state().covered);
     asciichat_thread_t remover;
     CHECK(asciichat_thread_create(&remover, "remove_screen", remove_screen, NULL) == ASCIICHAT_OK);
     platform_sleep_ns(50 * NS_PER_MS_INT);
@@ -224,14 +257,20 @@ int main(int argc, char **argv) {
     colorscheme_palette_t palette;
     colorscheme_current_palette(&palette, TERM_COLOR_TRUECOLOR);
     CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
+#ifndef NDEBUG
     CHECK(scheme_mutex);
+#endif
     seen = 600;
+#ifndef NDEBUG
     uint64_t color_locks = scheme_mutex->lock_count;
+#endif
     for (unsigned i = 0; i < 1000; ++i) {
       colorscheme_current_palette(&palette, TERM_COLOR_TRUECOLOR);
       CHECK(colorscheme_get_active_scheme()->log_colors_dark[0].r == scheme.log_colors_dark[0].r);
     }
+#ifndef NDEBUG
     CHECK(scheme_mutex->lock_count == color_locks);
+#endif
     scheme.log_colors_dark[0] = (rgb_pixel_t){1, 2, 3};
     scheme.log_colors_light[0] = (rgb_pixel_t){1, 2, 3};
     colorscheme_apply(&scheme);

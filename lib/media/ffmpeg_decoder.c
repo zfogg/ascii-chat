@@ -100,7 +100,7 @@ struct ffmpeg_decoder_t {
   bool prefetch_frame_ready;          ///< Whether current_prefetch_image has valid data
   asciichat_error_context_t prefetch_failure;
   bool prefetch_thread_running; ///< Whether prefetch thread is active
-  bool prefetch_should_stop;    ///< Signal to stop prefetch thread
+  _Atomic bool prefetch_should_stop;    ///< Signal to stop prefetch thread
   bool seeking_in_progress;     ///< Signal to pause prefetch thread during seek
   cond_t prefetch_cond;         ///< Condition variable for pausing during seek
   mutex_t prefetch_mutex;       ///< Protect prefetch state and FFmpeg decoder access
@@ -331,45 +331,15 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
   while (true) {
     mutex_lock(&decoder->prefetch_mutex);
 
-    // Check if thread should stop
-    bool should_stop = decoder->prefetch_should_stop;
-    if (should_stop) {
+    // The consumer releases the previous image and wakes us when taking the
+    // next frame. Seek completion and shutdown also signal this condition.
+    while (!decoder->prefetch_should_stop &&
+           (atomic_load_bool(&decoder->eof_reached) || decoder->seeking_in_progress ||
+            decoder->prefetch_frame_ready || (use_image_a ? decoder->buffer_a_in_use : decoder->buffer_b_in_use)))
+      cond_wait(&decoder->prefetch_cond, &decoder->prefetch_mutex);
+    if (decoder->prefetch_should_stop) {
       mutex_unlock(&decoder->prefetch_mutex);
       break;
-    }
-
-    // EOF is temporary for looping files; keep the worker available for rewind.
-    if (atomic_load_bool(&decoder->eof_reached)) {
-      mutex_unlock(&decoder->prefetch_mutex);
-      platform_sleep_us(1 * US_PER_MS_INT);
-      continue;
-    }
-
-    // Pause if seek is in progress - wait for signal to continue
-    // cond_wait automatically releases and re-acquires mutex
-    while (decoder->seeking_in_progress) {
-      cond_wait(&decoder->prefetch_cond, &decoder->prefetch_mutex);
-    }
-
-    // Mutex is re-acquired after cond_wait - KEEP IT HELD
-
-    // Keep at most one decoded frame pending. Without this check, the producer
-    // can overwrite current_prefetch_image repeatedly and reach EOF before the
-    // consumer has observed the intervening frames.
-    if (decoder->prefetch_frame_ready) {
-      mutex_unlock(&decoder->prefetch_mutex);
-      platform_sleep_us(1 * US_PER_MS_INT);
-      continue;
-    }
-
-    // Check if the buffer we want to use is still in use by the main thread
-    // If so, skip this iteration and try again later
-    bool buffer_in_use = use_image_a ? decoder->buffer_a_in_use : decoder->buffer_b_in_use;
-    if (buffer_in_use) {
-      // Can't use this buffer yet - main thread is still rendering it
-      mutex_unlock(&decoder->prefetch_mutex);
-      platform_sleep_us(1 * US_PER_MS_INT); // 1ms - brief sleep before retry
-      continue;
     }
 
     uint64_t read_start_ns = time_get_ns();
@@ -1196,6 +1166,7 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
   if (decoder->prefetch_thread_running) {
     mutex_lock(&decoder->prefetch_mutex);
     decoder->prefetch_should_stop = true;
+    cond_signal(&decoder->prefetch_cond);
     mutex_unlock(&decoder->prefetch_mutex);
 
     // Wait for thread to finish
@@ -1331,6 +1302,7 @@ static image_t *take_prefetched_frame(ffmpeg_decoder_t *decoder) {
     }
 
     decoder->current_read_buffer = frame;
+    cond_signal(&decoder->prefetch_cond);
     mutex_unlock(&decoder->prefetch_mutex);
 
     // Use the prefetched frame
@@ -1391,14 +1363,17 @@ void ffmpeg_decoder_stop_prefetch(ffmpeg_decoder_t *decoder) {
     return;
   }
 
+  mutex_lock(&decoder->prefetch_mutex);
   decoder->prefetch_should_stop = true;
+  cond_signal(&decoder->prefetch_cond);
+  mutex_unlock(&decoder->prefetch_mutex);
   // Wait up to 2 seconds for thread to stop
   // The interrupt callback should cause av_read_frame to abort quickly
-  asciichat_thread_join_timeout(&decoder->prefetch_thread, NULL, 2000 * NS_PER_MS_INT);
-
-  // Mark thread as stopped regardless of join result
-  // (if join succeeded: cleanup was done; if timeout: will be cleaned up on restart)
-  decoder->prefetch_thread_running = false;
+  if (asciichat_thread_join_timeout(&decoder->prefetch_thread, NULL, 2000 * NS_PER_MS_INT) == ASCIICHAT_OK)
+    decoder->prefetch_thread_running = false;
+  // A timed-out worker remains owned and must be joined by decoder destruction.
+  else
+    log_warn("Video prefetch thread is still stopping");
 }
 
 void ffmpeg_decoder_set_exit_callback(ffmpeg_decoder_t *decoder, bool (*should_exit_callback)(void *),

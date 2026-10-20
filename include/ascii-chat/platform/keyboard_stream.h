@@ -3,6 +3,8 @@
 /** Decode a nonblocking UTF-8 byte stream and terminal escape sequences. */
 keyboard_key_t keyboard_stream_read(int (*read_byte)(void));
 void keyboard_stream_reset(void);
+/** Decode available bytes and retain the next event without consuming it. */
+bool keyboard_stream_ready(int (*read_byte)(void));
 
 /** Last complete OSC 11 reply received from the terminal frontend. */
 uint64_t keyboard_stream_terminal_reply_ns(void);

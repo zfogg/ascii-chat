@@ -1,31 +1,86 @@
 # Sync inspector activity
 
-Lock/unlock counts measure operations, not time spent blocked. The debug build
-also includes the cost of observing and formatting those operations.
+Counts measure operations, not time spent blocked or kernel system calls.
+For conditions, L/s means waits and U/s means signals plus broadcasts; they
+are not a balanced lock/unlock pair.
 
-The log formatter validates a registered type under one nonblocking read lock.
-It does not copy the registry and lock again for each object. This query follows
-registration and removal immediately, without a stale type cache.
+## Metadata and diagnostics
 
-The background condition deadlock checker previously enumerated every registered
-object and took another registry lock per object every 100 ms, even for non-condition
-objects. It now uses two try-read locks per scan: size the batch, then copy condition
-state and names while their objects are protected. Checks and logging run after
-unlocking. A growing or busy registry defers that scan to the next cycle.
+Logging and allocation attribution use per-thread copies of registry metadata.
+An atomic revision invalidates each copy after registration/removal. Warm hits,
+misses and type checks do not acquire the registry rwlock. Copies own their
+strings; they never pin objects or authorize dereferencing cached addresses.
+Actual object-state snapshots retain the registry's lifetime protection.
 
-Rendering already measures allocation, resize, glyph conversion, padding and
-frame timing with local timestamps. Those measurements avoid global named timer
-records. The client audio sender and encoder likewise use local timestamps.
-The shared timer API remains available for timers that actually need names or
-cross-thread start/stop.
+The condition checker scans at the five-second stuck-wait threshold, scheduling
+earlier existing-wait deadlines and retrying busy snapshots. Already-stuck
+conditions retain their 500 ms warning cadence. It takes two registry read
+locks per completed scan. The mutex cycle detector still checks every 100 ms,
+using fixed, serialized scratch storage instead of allocating lists per thread.
 
-The audio worker still wakes immediately on device and network notifications.
-Its recovery/software-source timeout is 10 ms, matching an AEC frame, instead of
-polling every 1 ms. A condition wait releases and reacquires its mutex, so one
-worker iteration can account for two locks and two unlocks in the inspector.
+The visible inspector takes a protected registry snapshot four times per second.
+With it hidden, the controlled mirror run averages 0.4 registry acquisitions/sec
+from condition checks. Opening it adds approximately four acquisitions/sec.
 
-`tests/integration/sync_tui_modes.py` checks steady-state worker/timer rates in
-mirror, client and discovery while exercising generated video/audio. Its optional
-artifact directory includes the captured inventory and per-mode activity JSON.
-These are controlled workload checks; device callbacks, logging verbosity and
-media/network rates affect the numbers in other sessions.
+## Rendering and input
+
+Colorscheme readers cache a thread-owned scheme and compiled palette, invalidated
+by the scheme revision, output mode and detected terminal background. Applying a
+scheme still serializes writes and appears on the next read.
+
+FFmpeg prefetch waits on frame consumption, seek completion and shutdown
+notifications instead of polling every millisecond, including at EOF.
+
+Mirror's latest-frame queue waits for notification with a bounded 100 ms timeout
+instead of polling every millisecond. Three reusable frame slots keep capture,
+queued and displayed images distinct; recording retains shared owning buffers.
+Display-owned resize/flip/filter images and terminal assembly storage are reused
+until dimensions/capacity change. Typical render rows use invocation-local stack
+scratch, with a heap fallback for widths above 512. ASCII output and immutable
+UI submissions retain their owned allocations and memory tracking.
+
+Local file playback refills its 150 ms audio queue below 100 ms instead of waking
+on every device callback. Capture/AEC and software-only transmission keep their
+10 ms cadence. Audio callbacks still wake immediately when more data is needed.
+
+Controller geometry and screen coverage are atomically published for input readers; queries
+never borrow a screen snapshot or acquire its mutex. Empty input probes decode
+terminal replies and retain the next key in order before taking the routing
+mutex. Buffered keys, paste state and editor deadlines still use serialized
+routing. Mirror's idle input cadence is 10 ms; static presentation geometry
+checks are bounded at 100 ms and new frames wake presentation immediately.
+
+## Verification
+
+`tests/integration/sync_tui_modes.py` checks inventories, navigation, resizing,
+colors and activity in mirror, connected client and discovery modes, with
+generated changing video and audio. Its artifact directory contains actual PTY
+cells as PNG/text, raw ANSI, logs and per-mode activity JSON. These controlled
+15 FPS results vary with device callbacks, workload and logging verbosity.
+
+Native regressions cover cache removal/reuse, empty lookups, zero-lock warm
+palette reads, allocation-free deadlock scans, frame-slot ownership, resize
+workspace output equivalence (including wide heap fallback), non-consuming input
+probes, Escape timing, paste/editor routing and zero-lock idle UI queries.
+
+A verified 15 FPS mirror sample, with the inspector open, measured approximately:
+
+| Primitive | Acquisitions/sec (or condition waits/sec) |
+| --- | ---: |
+| named_registry_lock | 4 (0.4-0.5 across a hidden interval) |
+| colorscheme | 0 |
+| buffer_domain | 0 |
+| timer_manager | 0 |
+| display | 47 |
+| ffmpeg_prefetch | 80 |
+| queue_not_empty | 16 |
+| debug_memory | 93 |
+| worker_mutex | 31-39 |
+| ui_controller | 31 |
+| ui_input | 0 |
+
+The display queue performs roughly three acquisitions per video frame, and
+tracked ASCII output/UI ownership accounts for roughly six memory operations
+per frame. Connected client/discovery workloads additionally own network and
+audio buffers; the zero mirror buffer-domain result is not a claim about those
+transport paths.

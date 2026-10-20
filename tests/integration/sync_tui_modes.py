@@ -83,7 +83,8 @@ def wait_video(term, name):
 
 def check_activity(rows, artifacts, name):
     activity = {}
-    for primitive in ("named_registry_lock", "worker_mutex", "timer_manager", "colorscheme", "display", "buffer_domain", "debug_memory", "queue_not_empty"):
+    for primitive in ("named_registry_lock", "worker_mutex", "timer_manager", "colorscheme", "display",
+                      "buffer_domain", "debug_memory", "queue_not_empty", "ui_controller", "ui_input", "ffmpeg_prefetch"):
         matches = [list(map(float, row.split()[-3:-1])) for row in rows
                    if re.search(r"\b" + primitive + r"\.\d+\b", row)]
         if not matches and name != "mirror" and primitive in ("display", "queue_not_empty"):
@@ -94,6 +95,10 @@ def check_activity(rows, artifacts, name):
     assert max(activity["colorscheme"]) < 1, activity
     if name == "mirror":
         assert max(activity["display"]) < 150, activity
+        assert max(activity["ffmpeg_prefetch"]) < 180, activity
+        assert max(activity["ui_controller"]) < 100, activity
+        assert max(activity["ui_input"]) < 5, activity
+        assert max(activity["worker_mutex"]) < 100, activity
         assert max(activity["buffer_domain"]) < 5, activity
         assert max(activity["debug_memory"]) < 180, activity
         assert max(activity["queue_not_empty"]) < 90, activity

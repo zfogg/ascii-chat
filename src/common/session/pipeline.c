@@ -555,7 +555,7 @@ static void *pipeline_input_thread(void *data) {
     if (key != KEY_NONE)
       pipeline->keyboard_handler(pipeline->capture, (int)key, pipeline->input_data);
     else
-      platform_sleep_ms(2);
+      platform_sleep_ms(10);
   }
   return NULL;
 }

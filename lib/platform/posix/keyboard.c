@@ -209,6 +209,10 @@ bool keyboard_query_background(uint8_t *r, uint8_t *g, uint8_t *b) {
          keyboard_stream_query_background(keyboard_raw_read, send_background_query, r, g, b);
 }
 
+bool keyboard_input_available(void) {
+  return keyboard_stream_ready(keyboard_raw_read);
+}
+
 keyboard_key_t keyboard_read_nonblocking(void) {
   return keyboard_stream_read(keyboard_raw_read);
 }

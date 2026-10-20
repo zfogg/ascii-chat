@@ -171,6 +171,8 @@ void keyboard_destroy(void);
  * @ingroup platform
  */
 keyboard_key_t keyboard_read_nonblocking(void);
+/** Nonblocking readiness probe. Retains decoded events in order for the next reader. */
+bool keyboard_input_available(void);
 
 /**
  * @brief Read keyboard input with timeout

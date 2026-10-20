@@ -204,6 +204,19 @@ static keyboard_key_t keyboard_stream_read_unlocked(int (*read_byte)(void)) {
   return KEY_NONE;
 }
 
+bool keyboard_stream_ready(int (*read_byte)(void)) {
+  if (!parser_try_lock())
+    return false;
+  if (!deferred_count) {
+    keyboard_key_t key = keyboard_stream_read_unlocked(read_byte);
+    if (key != KEY_NONE)
+      deferred[(deferred_head + deferred_count++) % 1024] = key;
+  }
+  bool ready = deferred_count != 0;
+  parser_unlock();
+  return ready;
+}
+
 keyboard_key_t keyboard_stream_read(int (*read_byte)(void)) {
   if (!parser_try_lock())
     return KEY_NONE;

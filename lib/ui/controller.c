@@ -66,7 +66,37 @@ static _Thread_local bool g_owner;
 static _Thread_local int g_render_fd = -1;
 static _Thread_local screen_snapshot_t *g_render_snapshot;
 static _Thread_local terminal_size_t g_render_size;
-static terminal_size_t g_size = {.cols = 80, .rows = 24};
+// Input readers need geometry and minimums, never a borrowed screen snapshot.
+static _Atomic uint64_t g_size = UINT64_C(80) | (UINT64_C(24) << 32);
+// Lower bits identify published slots; upper bits identify covered slots.
+static _Atomic uint64_t g_input_state;
+_Static_assert(UI_SCREEN_COUNT <= 32, "Input publication reserves 32 bits per screen mask");
+
+static uint64_t pack_size(terminal_size_t size) {
+  return (uint32_t)size.cols | ((uint64_t)(uint32_t)size.rows << 32);
+}
+
+static terminal_size_t unpack_size(uint64_t packed) {
+  return (terminal_size_t){.cols = (int)(uint32_t)packed, .rows = (int)(uint32_t)(packed >> 32)};
+}
+
+static void publish_input_state_locked(void) {
+  terminal_size_t size = unpack_size(atomic_load(&g_size));
+  uint64_t state = 0;
+  for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
+    if (!g_screens[i].render)
+      continue;
+    terminal_size_t minimum = g_screens[i].minimum;
+    if (i == UI_SCREEN_PROMPT)
+      minimum.rows = ui_prompt_required_rows(g_screens[i].snapshot, size.cols);
+    state |= UINT64_C(1) << i;
+    if (size.cols <= 0 || size.rows <= 0 || ui_too_small(size, minimum))
+      state |= UINT64_C(1) << (i + 32);
+  }
+  if (atomic_load(&g_input_state) != state)
+    atomic_store(&g_input_state, state);
+}
+
 static int g_active = -1;
 static _Atomic int g_interactive_screen = -1;
 static _Atomic int g_background_screen = -1;
@@ -171,11 +201,14 @@ static int selected_screen_locked(void) {
 }
 
 static void publish_screen_locked(void) {
+  publish_input_state_locked();
   uint32_t background = 0;
   for (int i = 0; i < UI_SCREEN_COUNT; ++i)
     if (g_screens[i].render && !interactive_screen(i))
       background |= 1u << i;
-  atomic_store(&g_background_screen, ui_session_select_screen(background));
+  int selected = ui_session_select_screen(background);
+  if (atomic_load(&g_background_screen) != selected)
+    atomic_store(&g_background_screen, selected);
   cond_signal(&g_render_requested);
 }
 static bool g_redraw;
@@ -345,9 +378,7 @@ terminal_size_t ui_controller_size(void) {
     return g_render_size;
   terminal_size_t size = {.cols = 80, .rows = 24};
   if (lifecycle_is_initialized(&g_lifecycle)) {
-    mutex_lock(&g_mutex);
-    size = g_size;
-    mutex_unlock(&g_mutex);
+    size = unpack_size(atomic_load(&g_size));
   } else {
     terminal_size_t detected = {0};
     if (terminal_get_size(&detected) == ASCIICHAT_OK && detected.cols > 0 && detected.rows > 0)
@@ -457,7 +488,10 @@ static void *presentation_main(void *unused) {
     g_active = active;
     bool redraw = g_redraw;
     g_redraw = false;
-    terminal_size_t previous_size = g_size;
+    terminal_size_t previous_size = unpack_size(atomic_load(&g_size));
+    if ((active == UI_SCREEN_MEDIA || active == UI_SCREEN_HELP || active == UI_SCREEN_STATS) &&
+        time_get_ns() >= atomic_load_u64(&g_volume_until))
+      refresh_deadline = iteration_started_ns + 100 * NS_PER_MS_INT;
     screen_t frame = {0};
     if (active >= 0 && !g_finished && (!shutdown_is_requested() || active == UI_SCREEN_RENDER_PROGRESS)) {
       frame = g_screens[active];
@@ -487,9 +521,12 @@ static void *presentation_main(void *unused) {
       }
       uint64_t geometry_done_ns = time_get_ns();
       terminal_size_t size = watcher.size;
-      mutex_lock(&g_mutex);
-      g_size = size;
-      mutex_unlock(&g_mutex);
+      if (size.cols != previous_size.cols || size.rows != previous_size.rows) {
+        mutex_lock(&g_mutex);
+        atomic_store(&g_size, pack_size(size));
+        publish_input_state_locked();
+        mutex_unlock(&g_mutex);
+      }
       g_render_size = size;
       if (active == UI_SCREEN_PROMPT)
         screen->minimum.rows = ui_prompt_required_rows(screen->snapshot, size.cols);
@@ -894,19 +931,16 @@ ui_presentation_state_t ui_controller_state(void) {
   ui_presentation_state_t state = {.screen = -1};
   if (!lifecycle_is_initialized(&g_lifecycle))
     return state;
-  mutex_lock(&g_mutex);
-  state.screen = selected_screen_locked();
-  if (state.screen >= 0) {
-    screen_t *screen = &g_screens[state.screen];
-    // Geometry belongs to the presentation owner. A keyboard poll must never
-    // wait for a console RPC behind pending terminal output while holding the
-    // controller mutex.
-    terminal_size_t size = g_size;
-    if (state.screen == UI_SCREEN_PROMPT)
-      screen->minimum.rows = ui_prompt_required_rows(screen->snapshot, size.cols);
-    state.covered = size.cols <= 0 || size.rows <= 0 || ui_too_small(size, screen->minimum);
+  state.screen = ui_controller_current_screen();
+  if (state.screen >= 0 && state.screen < UI_SCREEN_COUNT) {
+    uint64_t published = atomic_load(&g_input_state);
+    // Sync has an independent mailbox instead of a controller slot. Treat an
+    // unpublished slot as absent so the session can dispatch queued switches.
+    if (!(published & (UINT64_C(1) << state.screen)))
+      state.screen = -1;
+    else
+      state.covered = (published & (UINT64_C(1) << (state.screen + 32))) != 0;
   }
-  mutex_unlock(&g_mutex);
   return state;
 }
 
