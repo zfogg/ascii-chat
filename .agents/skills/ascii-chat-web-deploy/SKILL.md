@@ -65,7 +65,7 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 
 ### Conditional WASM Release builds
 
-- Compile `mirror-web`, `client-web`, and `face-follow-web` and generate their JavaScript glue **only when needed**: canonical artifacts are missing, source or artifact hash validation fails, relevant compiler/build settings changed, or their Release-build provenance cannot be established. A frontend-only, documentation, or skill change does not by itself require regenerating WASM or its JavaScript. Never rewrite the manifest to make stale binaries appear current.
+- Compile `mirror-web` and `client-web` and generate their JavaScript glue **only when needed**: canonical artifacts are missing, source or artifact hash validation fails, relevant compiler/build settings changed, or their Release-build provenance cannot be established. A frontend-only, documentation, or skill change does not by itself require regenerating WASM or its JavaScript. Never rewrite the manifest to make stale binaries appear current.
 - First run `vp exec node web/web/scripts/wasm-build.mjs --publish-only` from the repository root. This checks the current source hash and every canonical artifact hash, then copies the verified assets to runtime URLs; it does not compile WASM or generate JavaScript glue. Reuse passing artifacts when their Release provenance is known.
 - When regeneration is necessary, use the **main worktree** and `./build/`, with the effective WASM CMake build type set to **Release**. Keep the main worktree on `master`; use `codex/` branches for separate agent worktrees. Dependency build/install directories are separated by build type, so a separate `build_release/` tree is unnecessary. Preserve the native configuration: a native Debug cache in `build/` can drive the independent Release WASM configuration in `build/web/`. Verify the nested cache rather than inferring the WASM build type from the native cache or directory name.
 - If `build/web/CMakeCache.txt` already says `Release`, build all browser targets through the shared parent target. Parent WASM targets share a directory lock, including across separate build commands, so they cannot run competing Ninja processes in `build/web/`:
@@ -78,14 +78,14 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 
   ```bash
   emcmake cmake -S src/web -B build/web -G Ninja -DCMAKE_BUILD_TYPE=Release -DPARENT_CMAKE_BINARY_DIR="<absolute-repository-path>/build"
-  cmake --build build/web --config Release --target mirror-web client-web face-follow-web
+  cmake --build build/web --config Release --target mirror-web client-web
   ```
 
   The parent build must contain `generated/data/fonts/default.c` and `matrix_resurrected.c`; reuse verified generated fonts or generate them with the repository font targets first. On the current Windows Emscripten SDK, `-DCMAKE_EXE_LINKER_FLAGS=-sMALLOC=emmalloc` avoids the bundled dlmalloc/Clang alias incompatibility. Use `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` only when the dependency cache is already populated.
 
   Confirm `CMAKE_BUILD_TYPE:STRING=Release` in the effective WASM `CMakeCache.txt` before publishing. Never publish Debug artifacts. CMake's incremental build determines which objects and generated glue actually need regeneration.
-- After the build succeeds, publish its outputs using `ASCII_CHAT_WASM_ARTIFACT_DIR=build/web vp exec node web/web/scripts/wasm-build.mjs` from the repository root (in PowerShell, set `$env:ASCII_CHAT_WASM_ARTIFACT_DIR = 'build/web'` first). This copies the completed outputs into the canonical artifact directory without invoking another build. Use this option only after verifying that all three Release targets built successfully from the current sources. Re-run `--publish-only` afterward to verify the final source/artifact hashes.
-- Commit regenerated `mirror.js`, `mirror.wasm`, `client.js`, `client.wasm`, `face-follow.js`, `face-follow.wasm`, and `manifest.json` only in `web/web/src/wasm/dist/`. `web/web/public/wasm/` contains ignored runtime copies; do not force-add them. Record the Release configuration and build directory in the artifact commit message so subsequent deployments can establish provenance and skip unnecessary compilation.
+- After the build succeeds, publish its outputs using `ASCII_CHAT_WASM_ARTIFACT_DIR=build/web vp exec node web/web/scripts/wasm-build.mjs` from the repository root (in PowerShell, set `$env:ASCII_CHAT_WASM_ARTIFACT_DIR = 'build/web'` first). This copies the completed outputs into the canonical artifact directory without invoking another build. Use this option only after verifying that both Release targets built successfully from the current sources. Re-run `--publish-only` afterward to verify the final source/artifact hashes.
+- Commit regenerated `mirror.js`, `mirror.wasm`, `client.js`, `client.wasm`, and `manifest.json` only in `web/web/src/wasm/dist/`. `web/web/public/wasm/` contains ignored runtime copies; do not force-add them. Record the Release configuration and build directory in the artifact commit message so subsequent deployments can establish provenance and skip unnecessary compilation.
 
 - For local installation, checks, tests, and builds, follow `web/AGENTS.md` and use the `vp` wrappers. GitHub deployment workflows use pnpm.
 

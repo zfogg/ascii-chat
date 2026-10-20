@@ -222,6 +222,7 @@ export default function MirrorDemoWidget({
       locateFile: (path: string) => `${wasmBaseUrl}/wasm/${path}`,
       mainScriptUrlOrBlob: `${wasmBaseUrl}/wasm/mirror.js`,
       initialArgs,
+      pthreadPoolSize: 0,
     });
 
     setWasmReady(true);

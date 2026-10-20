@@ -18,12 +18,7 @@ const wasmVersion = createHash("sha256")
   .update(readFileSync(path.join(wasmDirectory, "manifest.json")))
   .digest("hex")
   .slice(0, 32);
-const wasmFiles = [
-  "mirror.js",
-  "mirror.wasm",
-  "face-follow.js",
-  "face-follow.wasm",
-];
+const wasmFiles = ["mirror.js", "mirror.wasm"];
 
 const getCommitSha = () => {
   // Check deployment platform environment variables in order

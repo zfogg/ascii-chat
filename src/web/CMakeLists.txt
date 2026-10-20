@@ -432,12 +432,20 @@ target_include_directories(wasm-common PRIVATE
 # Apply sanitizers
 apply_sanitizers_to_target(wasm-common)
 
+set(WEB_SRC_FACE_FOLLOW
+    ${CMAKE_CURRENT_SOURCE_DIR}/face_follow.c
+    ${LIB_ROOT}/video/face_follow.c
+)
+include(${_cmake_dir}/deps/FaceDetection.cmake)
+
 # Create WASM mirror module
 add_executable(mirror-web
     ${WEB_SRC_MIRROR}
     ${LIB_SRC_MIRROR_ONLY}
+    ${WEB_SRC_FACE_FOLLOW}
     $<TARGET_OBJECTS:wasm-common>
 )
+ascii_chat_add_face_detector(mirror-web)
 
 # Apply EMSCRIPTEN_BUILD and mode-specific define
 target_compile_definitions(mirror-web PRIVATE
@@ -448,7 +456,7 @@ target_compile_definitions(mirror-web PRIVATE
 
 # Enable Emscripten's pthread support and SIMD for video processing
 target_compile_options(mirror-web PRIVATE -pthread -msimd128 -sUSE_FREETYPE=1)
-target_link_options(mirror-web PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
+target_link_options(mirror-web PRIVATE -pthread -sUSE_PTHREADS=1 "-sPTHREAD_POOL_SIZE=Module['pthreadPoolSize']??4" -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
 
 # Link dependencies with explicit library paths for wasm-ld
 
@@ -495,8 +503,10 @@ add_executable(client-web
     ${WEB_SRC_CLIENT}
     ${LIB_SRC_CLIENT_CRYPTO}
     ${LIB_SRC_CLIENT_NETWORK}
+    ${WEB_SRC_FACE_FOLLOW}
     $<TARGET_OBJECTS:wasm-common>
 )
+ascii_chat_add_face_detector(client-web)
 
 # Apply EMSCRIPTEN_BUILD and mode-specific define
 target_compile_definitions(client-web PRIVATE
@@ -508,7 +518,7 @@ target_compile_definitions(client-web PRIVATE
 # Enable Emscripten's pthread support and FreeType, add library search paths
 target_compile_options(client-web PRIVATE -pthread -sUSE_FREETYPE=1)
 target_link_options(client-web PRIVATE
-    -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1
+    -pthread -sUSE_PTHREADS=1 "-sPTHREAD_POOL_SIZE=Module['pthreadPoolSize']??4" -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1
 )
 
 # Add library search paths if needed
@@ -548,6 +558,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _mirror_render_audio_visualization
     _mirror_free_string
     _get_help_text
+    _face_web_input _face_web_reset _face_web_detect _face_web_tick
     # Terminal renderer functions (libvterm + FreeType)
     _term_renderer_create
     _term_renderer_set_zalgo
@@ -624,6 +635,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _client_parse_gpg_private_key_binary
     _client_parse_gpg_public_key_binary
     _client_get_crypto_error_message
+    _face_web_input _face_web_reset _face_web_detect _face_web_tick
     # Terminal renderer functions (libvterm + FreeType)
     _term_renderer_create
     _term_renderer_set_zalgo
@@ -744,7 +756,6 @@ if(BUILD_WEB)
         COMMENT "Copying client WASM files to web/src/wasm/dist/"
     )
 
-# Combined WASM target; the face worker is added after its target is defined.
     add_custom_target(web
         DEPENDS mirror-web client-web
         COMMENT "All WASM modules built"
@@ -755,29 +766,6 @@ endif()
 # Enable SIMD at compilation, not only linking, for the pixel compositor.
 set_source_files_properties("${LIB_ROOT}/media/render/terminal.c"
     PROPERTIES COMPILE_OPTIONS "-msimd128")
-
-# Face detection runs in an independent browser worker, sharing the native controller and model.
-include(${_cmake_dir}/deps/FaceDetection.cmake)
-add_executable(face-follow-web ${CMAKE_CURRENT_SOURCE_DIR}/face_follow.c ${LIB_ROOT}/video/face_follow.c)
-ascii_chat_add_face_detector(face-follow-web)
-set_target_properties(face-follow-web PROPERTIES OUTPUT_NAME "face-follow" SUFFIX ".js")
-target_compile_options(face-follow-web PRIVATE -O3)
-target_link_options(face-follow-web PRIVATE --no-entry -O3
-    -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createFaceFollow
-    -sENVIRONMENT=worker -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=2097152
-    "-sEXPORTED_RUNTIME_METHODS=['HEAPU8','HEAPF32']")
-
-if(BUILD_WEB)
-    add_dependencies(web face-follow-web)
-    add_custom_command(TARGET face-follow-web POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../web/web/src/wasm/dist
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_CURRENT_BINARY_DIR}/face-follow.js
-            ${CMAKE_CURRENT_BINARY_DIR}/face-follow.wasm
-            ${CMAKE_SOURCE_DIR}/../../web/web/src/wasm/dist/
-        COMMENT "Copying face-follow WASM files to web/src/wasm/dist/"
-    )
-endif()
 
 if(EMSCRIPTEN)
     enable_testing()

@@ -8,6 +8,7 @@ import {
   writeFileSync,
   copyFileSync,
   readdirSync,
+  rmSync,
 } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, relative } from "node:path";
@@ -17,14 +18,8 @@ const app = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = resolve(app, "../..");
 const output = resolve(app, "src/wasm/dist");
 const publicOutput = resolve(app, "public/wasm");
-const files = [
-  "mirror.js",
-  "mirror.wasm",
-  "client.js",
-  "client.wasm",
-  "face-follow.js",
-  "face-follow.wasm",
-];
+const files = ["mirror.js", "mirror.wasm", "client.js", "client.wasm"];
+const removedFiles = ["face-follow.js", "face-follow.wasm"];
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 function sourceHash() {
   const digest = createHash("sha256");
@@ -79,7 +74,7 @@ if (
     manifest.sourceHash !== sourceHash()
   ) {
     throw new Error(
-      "Prebuilt WASM is stale. Rebuild mirror-web, client-web, and face-follow-web.",
+      "Prebuilt WASM is stale. Rebuild mirror-web and client-web.",
     );
   }
   for (const file of files) {
@@ -92,14 +87,7 @@ if (
   if (!artifactDirectory)
     execFileSync(
       "cmake",
-      [
-        "--build",
-        build,
-        "--target",
-        "mirror-web",
-        "client-web",
-        "face-follow-web",
-      ],
+      ["--build", build, "--target", "mirror-web", "client-web"],
       { stdio: "inherit" },
     );
   const source = artifactDirectory
@@ -128,6 +116,15 @@ if (
   );
 }
 mkdirSync(publicOutput, { recursive: true });
+for (const directory of [
+  publicOutput,
+  ...readdirSync(publicOutput, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => resolve(publicOutput, entry.name)),
+]) {
+  for (const file of removedFiles)
+    rmSync(resolve(directory, file), { force: true });
+}
 const version = hash(readFileSync(manifestPath)).slice(0, 32);
 const versionedOutput = resolve(publicOutput, version);
 mkdirSync(versionedOutput, { recursive: true });
@@ -138,4 +135,4 @@ for (const destination of [versionedOutput, publicOutput]) {
     copyFileSync(resolve(output, file), resolve(destination, file));
   copyFileSync(manifestPath, resolve(destination, "manifest.json"));
 }
-console.log("Verified and published mirror/client/face-follow WASM artifacts.");
+console.log("Verified and published mirror/client WASM artifacts.");

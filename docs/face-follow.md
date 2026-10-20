@@ -72,10 +72,12 @@ embedded model in `deps/libfacedetection`. No OpenCV, external model download, o
 cloud inference is required. `lib/video/face_follow.c` implements the shared
 controller; a narrow C++ adapter isolates the detector from C consumers.
 
-The additional Emscripten target is `face-follow-web`. The normal
-`web/web/scripts/wasm-build.mjs` build/publish workflow includes its JS/WASM files
-in the verified, versioned artifact set. The fingerprint includes vendored C++
-sources and model weights as well as the existing C/WASM sources.
+The existing `mirror-web` and `client-web` modules both export the browser face
+controller and detector API. The Face Follow worker loads `mirror.js` with no
+prewarmed pthread pool, so detection stays off the render loop without requiring
+a third WASM artifact. The normal `web/web/scripts/wasm-build.mjs` workflow
+publishes only the verified mirror/client files. Its fingerprint includes the
+vendored C++ sources and model weights as well as the existing C/WASM sources.
 
 ## Repeatable visual verification
 

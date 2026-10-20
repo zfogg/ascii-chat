@@ -139,6 +139,7 @@ export async function initMirrorWasm(
     locateFile?: (path: string) => string;
     mainScriptUrlOrBlob?: string;
     initialArgs?: string[];
+    pthreadPoolSize?: number;
   },
 ): Promise<void> {
   if (wasmModule) {
@@ -159,6 +160,9 @@ export async function initMirrorWasm(
   }
   if (options?.mainScriptUrlOrBlob) {
     moduleOverrides["mainScriptUrlOrBlob"] = options.mainScriptUrlOrBlob;
+  }
+  if (options?.pthreadPoolSize !== undefined) {
+    moduleOverrides["pthreadPoolSize"] = options.pthreadPoolSize;
   }
 
   try {
