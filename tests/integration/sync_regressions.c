@@ -3,6 +3,7 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
+#include <ascii-chat/log/named.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/platform/rwlock.h>
@@ -211,11 +212,17 @@ int main(int argc, char **argv) {
     CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
     CHECK(seen == 600);
     CHECK(registry_lock != NULL);
+#ifndef NDEBUG
+    uint64_t scans_before = registry_lock->rdlock_count;
+    debug_sync_check_cond_deadlocks();
+    CHECK(registry_lock->rdlock_count == scans_before + 2);
+#endif
     asciichat_thread_t holder;
     CHECK(asciichat_thread_create(&holder, "registry_holder", hold_registry, NULL) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
     uint64_t start = time_get_ns();
     CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && !completed);
+    CHECK(!named_registry_has_type("test", 4));
     uint64_t elapsed = time_get_ns() - start;
     atomic_store(&proceed, true);
     CHECK(asciichat_thread_join(&holder, NULL) == ASCIICHAT_OK);
@@ -296,6 +303,25 @@ int main(int argc, char **argv) {
     audio_ring_buffer_destroy(audio);
     for (size_t i = 0; i < 8; ++i)
       CHECK(!named_registry_read(audio_keys[i], "atomic", inspect_atomic, &observed));
+    int type_fixture;
+    named_register((uintptr_t)&type_fixture, "type_fixture", "regression_type", "0x%tx", __FILE__, __LINE__, __func__,
+                   0);
+    CHECK(named_registry_has_type("regression_type_suffix", strlen("regression_type")));
+    CHECK(!named_registry_has_type("regression_typ", strlen("regression_typ")));
+    CHECK(!named_registry_has_type(NULL, 1));
+    CHECK(!named_registry_has_type("", 0));
+    // Even a miss through the entire registry takes one lock, with no
+    // metadata snapshot allocations or recursive per-entry lookups.
+    uint64_t lookups_before = registry_lock->rdlock_count;
+    CHECK(!named_registry_has_type("unregistered_type", strlen("unregistered_type")));
+    CHECK(registry_lock->rdlock_count == lookups_before + 1);
+    char formatted[512];
+    char message[128];
+    safe_snprintf(message, sizeof(message), "fixture=0x%tx", (ptrdiff_t)&type_fixture);
+    CHECK(log_named_format_message(message, formatted, sizeof(formatted)) > 0);
+    CHECK(strstr(formatted, "regression_type/type_fixture") != NULL);
+    named_unregister((uintptr_t)&type_fixture);
+    CHECK(!named_registry_has_type("regression_type", strlen("regression_type")));
 #endif
     log_info("PASS registry capacity, contention, and mutex tracking");
   }

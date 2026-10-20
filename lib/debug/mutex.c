@@ -708,20 +708,11 @@ static void copy_cond_deadlock_state(uintptr_t key, void *data) {
 }
 
 /**
- * @brief Callback for checking condition variable deadlocks
- * @param key Registry key of the primitive
+ * @brief Check copied condition state after releasing the registry lock
+ * @param cond Protected copy of the condition state
  * @param name Human-readable name of the primitive
- * @param user_data Unused
  */
-static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *user_data) {
-  (void)user_data; // Unused
-
-  cond_deadlock_snapshot_t snapshot;
-  if (!named_registry_read(key, "cond", copy_cond_deadlock_state, &snapshot)) {
-    return;
-  }
-
-  const cond_deadlock_snapshot_t *cond = &snapshot;
+static void cond_deadlock_check_snapshot(const cond_deadlock_snapshot_t *cond, const char *name) {
   if (cond->waiting_count == 0) {
     return; // No threads waiting, nothing to check
   }
@@ -766,6 +757,29 @@ static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *
 // Forward declare function from sync.c to check cleanup status
 extern bool debug_sync_is_cleanup_in_progress(void);
 
+typedef struct {
+  cond_deadlock_snapshot_t state;
+  char name[256];
+} cond_deadlock_entry_t;
+
+typedef struct {
+  cond_deadlock_entry_t *entries;
+  size_t count;
+} cond_deadlock_batch_t;
+
+static void copy_cond_deadlock_entry(uintptr_t key, uint64_t generation, const char *name, const char *type,
+                                     const char *file, int line, void *data) {
+  (void)generation;
+  (void)file;
+  (void)line;
+  if (!type || strcmp(type, "cond") != 0)
+    return;
+  cond_deadlock_batch_t *batch = data;
+  cond_deadlock_entry_t *entry = &batch->entries[batch->count++];
+  copy_cond_deadlock_state(key, &entry->state);
+  safe_snprintf(entry->name, sizeof(entry->name), "%s", name ? name : "?");
+}
+
 /**
  * @brief Check all condition variables for deadlocks
  *
@@ -781,8 +795,24 @@ void debug_sync_check_cond_deadlocks(void) {
   if (debug_sync_is_cleanup_in_progress()) {
     return;
   }
-  bool completed;
-  (void)named_registry_for_each(cond_deadlock_check_callback, NULL, &completed);
+  bool completed = false;
+  size_t required = 0;
+  cond_deadlock_batch_t batch = {0};
+  if (named_registry_try_snapshot(0, &required, &completed, copy_cond_deadlock_entry, &batch) != ASCIICHAT_OK ||
+      !required || required > SIZE_MAX / sizeof(*batch.entries))
+    return;
+  // Registry metadata must not re-enter allocation tracking. Object state and
+  // names are copied while pinned, and diagnostics run after releasing the lock.
+  batch.entries = UNTRACKED_MALLOC(required * sizeof(*batch.entries), cond_deadlock_entry_t *);
+  if (!batch.entries)
+    return;
+  size_t capacity = required;
+  if (named_registry_try_snapshot(capacity, &required, &completed, copy_cond_deadlock_entry, &batch) == ASCIICHAT_OK &&
+      completed) {
+    for (size_t i = 0; i < batch.count; ++i)
+      cond_deadlock_check_snapshot(&batch.entries[i].state, batch.entries[i].name);
+  }
+  UNTRACKED_FREE(batch.entries);
 }
 
 #endif // NDEBUG

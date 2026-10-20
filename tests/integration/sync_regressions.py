@@ -84,9 +84,12 @@ def main():
                     pages = int(re.search(r"page 1/(\d+)", terminal.pump()).group(1))
                     for page in range(1, pages + 1):
                         text = terminal.expect(lambda t: f"page {page}/{pages}" in t, "Missing inventory page")
-                        # ConPTY can deliver the changed header before the body.
-                        text = terminal.pump(0.5)
-                        fixtures.update(re.findall(r"sync_fixture_value\.\d+", "\n".join(text.splitlines()[4:-4])))
+                        # ConPTY can expose a partially repainted row even on a
+                        # steady page. Collect successive views of this page;
+                        # every one of the 600 distinct names must still appear.
+                        for _ in range(4):
+                            text = terminal.pump(0.2)
+                            fixtures.update(re.findall(r"sync_fixture_value\.\d+", "\n".join(text.splitlines()[4:-4])))
                         if page < pages:
                             terminal.write("\x1b[C")
                     assert len(fixtures) == 600, (len(fixtures), sorted(fixtures))

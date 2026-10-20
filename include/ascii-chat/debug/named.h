@@ -174,6 +174,9 @@ const char *named_get(uintptr_t key);
  */
 const char *named_get_type(uintptr_t key);
 
+/** Check a type prefix under one try-read lock; false if absent, uninitialized or busy. */
+bool named_registry_has_type(const char *type, size_t length);
+
 /**
  * @brief Get the format specifier for a registered named object
  * @param key The resource key

@@ -100,7 +100,9 @@ void audio_terminate_portaudio_final(void) {
 // AEC processes complete 480-sample blocks; the worker buffers must hold at least one block.
 #define WORKER_BATCH_FRAMES 480
 #define WORKER_BATCH_SAMPLES (WORKER_BATCH_FRAMES * AUDIO_CHANNELS)
-#define WORKER_TIMEOUT_MS 1 // Wake up every 1ms to keep up with 48kHz playback (was 3ms)
+// Device callbacks signal after capture/consumption. The fallback follows the
+// 10 ms AEC frame cadence for software sources and missed notifications.
+#define WORKER_TIMEOUT_MS 10
 
 static void audio_publish_local_capture(audio_context_t *ctx, float *samples, size_t count, bool use_media) {
   uint64_t now = time_get_ns();

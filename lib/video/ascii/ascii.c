@@ -292,7 +292,6 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
   }
 
   // PROFILING: Time image allocation and resize
-  START_TIMER("image_alloc");
   uint64_t prof_alloc_start_ns = time_get_ns();
 
   image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
@@ -304,10 +303,7 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
   image_clear(resized);
 
   uint64_t prof_alloc_end_ns = time_get_ns();
-  STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "image_alloc",
-                           "IMAGE_ALLOC: Alloc+clear complete (%.2f ms)");
 
-  START_TIMER("image_resize");
   uint64_t prof_resize_start_ns = prof_alloc_end_ns;
 
   if (use_aspect_ratio && !stretch) {
@@ -321,8 +317,6 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
   }
 
   uint64_t prof_resize_end_ns = time_get_ns();
-  STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "image_resize",
-                           "IMAGE_RESIZE: Resize complete (%.2f ms)");
 
   // Check original image before resize (validate dimensions to prevent integer overflow)
   int orig_black = 0, orig_total = 0;
@@ -375,19 +369,15 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
   }
 
   // Use the capability-aware image printing function with client's palette
-  START_TIMER("image_print_with_capabilities");
   char *ascii = image_print_with_capabilities(resized, caps, palette_chars);
 
   uint64_t prof_print_end_ns = time_get_ns();
-  STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "image_print_with_capabilities",
-                           "IMAGE_PRINT: Print complete (%.2f ms)");
 
   uint64_t alloc_time_us = time_ns_to_us(time_elapsed_ns(prof_alloc_start_ns, prof_alloc_end_ns));
   uint64_t resize_time_us = time_ns_to_us(time_elapsed_ns(prof_resize_start_ns, prof_resize_end_ns));
   uint64_t print_time_us = time_ns_to_us(time_elapsed_ns(prof_print_start_ns, prof_print_end_ns));
 
   // PROFILING: Time padding
-  START_TIMER("ascii_padding");
   uint64_t prof_pad_start_ns = time_get_ns();
 
   if (!ascii) {
@@ -410,8 +400,6 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
   char *ascii_padded = ascii;
 
   uint64_t prof_pad_end_ns = time_get_ns();
-  STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "ascii_padding",
-                           "ASCII_PADDING: Padding complete (%.2f ms)");
 
   uint64_t pad_time_ns = time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns);
   char alloc_str[32], resize_str[32], print_str[32], pad_str[32], total_str[32];

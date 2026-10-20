@@ -240,10 +240,10 @@ static void *audio_sender_thread_func(void *arg) {
 
     // Send packet (may block on network I/O - that's OK, we're not in capture thread)
     asciichat_errno_scope_t send_scope = asciichat_errno_scope_begin();
-    START_TIMER("network_send_audio");
+    uint64_t network_send_audio_start_ns = time_get_ns();
     asciichat_error_t send_result =
         threaded_send_audio_opus_batch(connection, packet.data, packet.size, packet.frame_sizes, packet.frame_count);
-    double send_time_ns = STOP_TIMER("network_send_audio");
+    double send_time_ns = (double)time_elapsed_ns(network_send_audio_start_ns, time_get_ns());
 
     send_count++;
     if (send_result != ASCIICHAT_OK) {
@@ -516,18 +516,16 @@ static void *audio_capture_thread_func(void *arg) {
   bool batch_has_data = false;
 
   while (!should_exit() && !server_connection_is_lost(connection)) {
-    START_TIMER("audio_capture_loop_iteration");
+    uint64_t audio_capture_loop_iteration_start_ns = time_get_ns();
     timing_loop_count++;
 
     if (!server_connection_is_active(connection)) {
-      STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
-      platform_sleep_us(100 * US_PER_MS_INT);     // Wait for connection
+      platform_sleep_us(100 * US_PER_MS_INT); // Wait for connection
       continue;
     }
 
     // Check if pipeline is ready
     if (!connection->audio_pipeline) {
-      STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
       platform_sleep_us(100 * US_PER_MS_INT);
       continue;
     }
@@ -554,8 +552,7 @@ static void *audio_capture_thread_func(void *arg) {
       // Sleep briefly to reduce CPU usage when idle
       // 5ms polling = 200 times/sec, fast enough to catch audio promptly
       // Note: 50ms was causing 872ms gaps in audio transmission!
-      STOP_TIMER("audio_capture_loop_iteration"); // Must stop before loop repeats
-      platform_sleep_us(5 * US_PER_MS_INT);       // 5ms (was 50ms - caused huge gaps!)
+      platform_sleep_us(5 * US_PER_MS_INT); // 5ms (was 50ms - caused huge gaps!)
       continue;
     }
 
@@ -563,9 +560,9 @@ static void *audio_capture_thread_func(void *arg) {
     // This prevents buffer overflow when processing is slower than capture
     int to_read = (available < CAPTURE_READ_SIZE) ? available : CAPTURE_READ_SIZE;
 
-    START_TIMER("audio_read_samples");
+    uint64_t audio_read_samples_start_ns = time_get_ns();
     asciichat_error_t read_result = audio_read_samples(connection->audio_context, audio_buffer, to_read);
-    double read_time_ns = STOP_TIMER("audio_read_samples");
+    double read_time_ns = (double)time_elapsed_ns(audio_read_samples_start_ns, time_get_ns());
 
     total_read_ns += read_time_ns;
     if (read_time_ns > max_read_ns)
@@ -573,8 +570,7 @@ static void *audio_capture_thread_func(void *arg) {
 
     if (read_result != ASCIICHAT_OK) {
       log_error("Failed to read audio samples from ring buffer");
-      STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
-      platform_sleep_us(5 * US_PER_MS_INT);       // 5ms (error path - was 50ms, caused gaps!)
+      platform_sleep_us(5 * US_PER_MS_INT); // 5ms (error path - was 50ms, caused gaps!)
       continue;
     }
 
@@ -657,12 +653,12 @@ static void *audio_capture_thread_func(void *arg) {
           // Process through pipeline: AEC, filters, AGC, noise gate, Opus encode
           uint8_t opus_packet[OPUS_MAX_PACKET_SIZE];
 
-          START_TIMER("opus_encode");
+          uint64_t opus_encode_start_ns = time_get_ns();
           int opus_len = client_audio_pipeline_capture(connection->audio_pipeline, opus_frame_buffer,
                                                        OPUS_FRAME_SAMPLES, opus_packet, OPUS_MAX_PACKET_SIZE);
 
           encode_count++;
-          double opus_elapsed_ns = STOP_TIMER("opus_encode");
+          double opus_elapsed_ns = (double)time_elapsed_ns(opus_encode_start_ns, time_get_ns());
           if (encode_count % 50 == 0) {
             if (opus_elapsed_ns >= 0.0) {
               char _duration_str[32];
@@ -715,10 +711,10 @@ static void *audio_capture_thread_func(void *arg) {
       if (batch_frame_count > 0) {
         batch_send_count++;
 
-        START_TIMER("audio_queue_packet");
+        uint64_t audio_queue_packet_start_ns = time_get_ns();
         int queue_result =
             audio_queue_packet(connection, batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
-        double queue_time_ns = STOP_TIMER("audio_queue_packet");
+        double queue_time_ns = (double)time_elapsed_ns(audio_queue_packet_start_ns, time_get_ns());
 
         total_queue_ns += queue_time_ns;
         if (queue_time_ns > max_queue_ns)
@@ -744,7 +740,7 @@ static void *audio_capture_thread_func(void *arg) {
       }
 
       // Log overall loop iteration time periodically
-      double loop_time_ns = STOP_TIMER("audio_capture_loop_iteration");
+      double loop_time_ns = (double)time_elapsed_ns(audio_capture_loop_iteration_start_ns, time_get_ns());
       total_loop_ns += loop_time_ns;
       if (loop_time_ns > max_loop_ns)
         max_loop_ns = loop_time_ns;
@@ -805,7 +801,7 @@ static void *audio_capture_thread_func(void *arg) {
       platform_sleep_us(1 * US_PER_MS_INT); // 1ms
     } else {
       // Track loop time even when no samples processed
-      double loop_time_ns = STOP_TIMER("audio_capture_loop_iteration");
+      double loop_time_ns = (double)time_elapsed_ns(audio_capture_loop_iteration_start_ns, time_get_ns());
       total_loop_ns += loop_time_ns;
       if (loop_time_ns > max_loop_ns)
         max_loop_ns = loop_time_ns;

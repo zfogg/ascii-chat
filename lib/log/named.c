@@ -33,30 +33,8 @@
  * Queries the registry programmatically to ensure the type is actually registered,
  * preventing false positives on random "word/word" text patterns.
  */
-struct type_check_context {
-  const char *type_to_find;
-  size_t type_len;
-  bool found;
-};
-
-static void check_type_callback(uintptr_t key, const char *name, void *user_data) {
-  (void)key;  /* unused */
-  (void)name; /* unused */
-  struct type_check_context *ctx = (struct type_check_context *)user_data;
-
-  if (!ctx->found) {
-    const char *type = named_get_type(key);
-    if (type && strlen(type) == ctx->type_len && strncmp(type, ctx->type_to_find, ctx->type_len) == 0) {
-      ctx->found = true;
-    }
-  }
-}
-
 static bool is_type_in_registry(const char *type_str, size_t type_len) {
-  struct type_check_context ctx = {.type_to_find = type_str, .type_len = type_len, .found = false};
-
-  bool completed = false;
-  return named_registry_for_each(check_type_callback, &ctx, &completed) == ASCIICHAT_OK && completed && ctx.found;
+  return named_registry_has_type(type_str, type_len);
 }
 
 /**

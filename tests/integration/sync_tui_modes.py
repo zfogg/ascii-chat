@@ -77,6 +77,21 @@ def wait_video(term, name):
     return term.expect(video, f"{name}: no media output", timeout=60)
 
 
+def check_activity(rows, artifacts, name):
+    activity = {}
+    for primitive in ("named_registry_lock", "worker_mutex", "timer_manager"):
+        row = next(row for row in rows if re.search(r"\b" + primitive + r"\.\d+\b", row))
+        activity[primitive] = list(map(float, row.split()[-3:-1]))
+    # The worker is signaled by devices and has a 10 ms fallback; each condition
+    # wait releases/reacquires its mutex in addition to the outer lock/unlock.
+    assert max(activity["worker_mutex"]) < 700, activity
+    # Local hot-path profiling must not allocate global named timer records.
+    assert max(activity["timer_manager"]) < 1, activity
+    if artifacts:
+        (artifacts / f"{name}-activity.json").write_text(json.dumps(activity, indent=2), encoding="utf-8")
+    print(f"PASS {name} steady lock/unlock rates: {activity}", flush=True)
+
+
 def inspect(term, artifacts, name, required):
     # Prove rendering precedes the overlay, and continues when it closes.
     before = wait_video(term, name)
@@ -93,7 +108,8 @@ def inspect(term, artifacts, name, required):
                        f"page 1/{(selected(t)[1] + 127) // 128}" in t and
                        t.splitlines()[-1].startswith("0/Esc"),
                        f"{name}: no inventory after resize")
-    text = term.pump(0.4)
+    # Let the rate sampler leave startup/resize activity behind.
+    text = term.pump(3)
     pages = int(re.search(r"page 1/(\d+)", text).group(1))
     inventory = []
     for page in range(1, pages + 1):
@@ -106,6 +122,7 @@ def inspect(term, artifacts, name, required):
             term.write("\x1b[C")
     for primitive in required:
         assert primitive in "\n".join(inventory), (name, primitive, text)
+    check_activity(inventory, artifacts, name)
     types = re.search(r"M=(\d+) RW=(\d+) C=(\d+) A=(\d+)", text)
     assert types and sum(map(int, types.groups())) == selected(text)[1], text
     # Both separators span columns with one cell per character.
@@ -118,8 +135,10 @@ def inspect(term, artifacts, name, required):
     term.write("\x1b[B" * 6)
     expect_sync(term, lambda t: "item 7/" in t, "Seventh item not selected")
     term.write("\x1b[F")
-    text = expect_sync(term, lambda t: selected(t)[0] == selected(t)[1] if "item " in t else False,
+    text = expect_sync(term, lambda t: (selected(t)[0] == selected(t)[1] and ">rwlock" in t and "utf8_cache" in t)
+                       if "item " in t else False,
                        "End did not select last item")
+    text = term.pump(0.5)
     assert text.splitlines()[-4].startswith("─" * 159), text
     if artifacts:
         capture(term, artifacts, name + "-end")
@@ -129,6 +148,7 @@ def inspect(term, artifacts, name, required):
     expect_sync(term, lambda t: "item 7/" in t, "Could not select seventh entry again")
     term.write("\x1b[H")
     text = expect_sync(term, lambda t: "item 1/" in t and t.splitlines()[4].startswith(">"), "Home failed on first page")
+    text = term.pump(0.5)
     if artifacts:
         capture(term, artifacts, name + "-home")
     term.write("\x1b[B" * 14)
@@ -230,10 +250,13 @@ def main():
             host.wait_for("Session created:")
             session = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())[1]
             client = terminal("client", ["client", f"127.0.0.1:{tcp}", "--password", "sync-test-password"])
+            wait_video(client, "client")
+            # Join while the discovered session is fresh, before spending time
+            # on the conventional client's navigation and resize checks.
+            participant = terminal("discovery", [session, *discovery, "--no-webrtc", "--password", "sync-test-password"])
+            wait_video(participant, "discovery")
             results["client"] = inspect(client, args.artifacts, "client",
                                         ["client.frames_rendered", "client.audio_sender_exited", "capture.frame_serial"])
-            # Keep the conventional client streaming video/audio to the discovery participant.
-            participant = terminal("discovery", [session, *discovery, "--no-webrtc", "--password", "sync-test-password"])
             results["discovery"] = inspect(participant, args.artifacts, "discovery",
                                            ["discovery.media_running", "discovery.last_pong_received_ms", "capture.frame_serial"])
             client.pump(1)

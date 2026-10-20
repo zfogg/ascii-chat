@@ -274,7 +274,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
         // Profile: render frame
         pre_render_ns = time_get_ns();
-        START_TIMER("render_frame");
 
         if (frame_count <= 5 || frame_count % 10 == 0) {
           log_info("Frame %lu - calling session_display_render_frame, display=%p", (unsigned long)frame_count,
@@ -306,8 +305,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           log_debug_every(US_PER_SEC_INT, "[SNAPSHOT] Frame rendered: frames_rendered_since_first=%lu",
                           frames_rendered_since_first);
         }
-
-        STOP_TIMER("render_frame");
       }
 
       // Keyboard input polling (if enabled) - MUST come before snapshot exit check so help screen can be toggled
@@ -315,9 +312,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Only enable keyboard if BOTH stdin AND stdout are TTYs to avoid buffering issues
       // when tcsetattr() modifies the tty line discipline
       if (keyboard_enabled && keyboard_handler) {
-        START_TIMER("keyboard_read_%lu", (unsigned long)frame_count);
+        uint64_t keyboard_start_ns = time_get_ns();
         keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
-        double keyboard_elapsed_ns = STOP_TIMER("keyboard_read_%lu", (unsigned long)frame_count);
+        double keyboard_elapsed_ns = (double)time_elapsed_ns(keyboard_start_ns, time_get_ns());
         if (keyboard_elapsed_ns >= 0.0) {
           char _duration_str[32];
           time_pretty((uint64_t)keyboard_elapsed_ns, -1, _duration_str, sizeof(_duration_str));

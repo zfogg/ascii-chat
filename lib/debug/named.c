@@ -322,6 +322,23 @@ const char *named_get(uintptr_t key) {
   return result;
 }
 
+bool named_registry_has_type(const char *type, size_t length) {
+  if (!type || !length || !lifecycle_is_initialized(&g_named_registry.lifecycle))
+    return false;
+  bool acquired = false;
+  if (rwlock_tryrdlock(&g_named_registry.entries_lock, &acquired) != ASCIICHAT_OK || !acquired)
+    return false;
+  bool found = false;
+  for (named_entry_t *entry = g_named_registry.entries; entry; entry = entry->hh.next) {
+    if (entry->type && strlen(entry->type) == length && memcmp(entry->type, type, length) == 0) {
+      found = true;
+      break;
+    }
+  }
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  return found;
+}
+
 const char *named_get_type(uintptr_t key) {
   if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
     return NULL;
