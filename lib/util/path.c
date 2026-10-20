@@ -325,12 +325,14 @@ const char *extract_project_relative_path(const char *file) {
 
   const char *root = ASCIICHAT_SOURCE_ROOT;
   size_t i = 0;
+  bool root_matches = true;
   for (; root[i]; i++) {
     unsigned char source_char = (unsigned char)root[i];
     unsigned char file_char = (unsigned char)file[i];
     if (source_char == '/' || source_char == '\\') {
       if (file_char != '/' && file_char != '\\') {
-        return file;
+        root_matches = false;
+        break;
       }
     } else {
 #ifdef _WIN32
@@ -339,15 +341,35 @@ const char *extract_project_relative_path(const char *file) {
 #else
       if (source_char != file_char) {
 #endif
-        return file;
+        root_matches = false;
+        break;
       }
     }
   }
 
   // Match a whole directory, not a sibling whose name starts with the root.
-  if (i > 0 && (file[i] == '/' || file[i] == '\\')) {
+  if (root_matches && i > 0 && (file[i] == '/' || file[i] == '\\')) {
     return file + i + 1;
   }
+
+#ifdef _WIN32
+  // -ffile-prefix-map removes the checkout prefix from release debug records.
+  // CodeView/DbgHelp can anchor those relative records at the current drive
+  // root, producing paths such as C:\lib\debug\backtrace.c. Recognize only
+  // project source-tree roots so genuine external paths remain absolute.
+  if (isalpha((unsigned char)file[0]) && file[1] == ':' && (file[2] == '/' || file[2] == '\\')) {
+    const char *relative = file + 3;
+    static const char *project_roots[] = {"src", "lib", "tests", "include"};
+    for (size_t root_index = 0; root_index < sizeof(project_roots) / sizeof(project_roots[0]); root_index++) {
+      const char *project_root = project_roots[root_index];
+      size_t root_length = strlen(project_root);
+      if (_strnicmp(relative, project_root, root_length) == 0 &&
+          (relative[root_length] == '/' || relative[root_length] == '\\')) {
+        return relative;
+      }
+    }
+  }
+#endif
   return file;
 }
 

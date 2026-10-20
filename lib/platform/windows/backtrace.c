@@ -6,6 +6,7 @@
 
 #include <ascii-chat/platform/backtrace.h>
 #include <ascii-chat/platform/symbols.h>
+#include <ascii-chat/util/path.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 #include <windows.h>
@@ -159,7 +160,8 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     char symbol_buffer[512];
     if (sym_result) {
       if (line_result) {
-        snprintf(symbol_buffer, sizeof(symbol_buffer), "%s() (%s:%ld)", symbol_info->Name, line_info.FileName,
+        const char *source_path = extract_project_relative_path(line_info.FileName);
+        snprintf(symbol_buffer, sizeof(symbol_buffer), "%s() (%s:%ld)", symbol_info->Name, source_path,
                  line_info.LineNumber);
       } else {
         snprintf(symbol_buffer, sizeof(symbol_buffer), "%s()", symbol_info->Name);
