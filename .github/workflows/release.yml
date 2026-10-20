@@ -602,7 +602,10 @@ jobs:
             echo "::error::Missing development archive: $archive"
             exit 1
           fi
-          if ! tar -tzf "$archive" | grep -Eq '(^|/)libasciichat\.a$'; then
+          listing="$(mktemp)"
+          trap 'rm -f "$listing"' EXIT
+          tar -tzf "$archive" > "$listing"
+          if ! grep -Eq '(^|/)libasciichat\.a$' "$listing"; then
             echo "::error::Development archive does not contain static libasciichat.a"
             exit 1
           fi
