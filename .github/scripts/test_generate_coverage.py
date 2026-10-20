@@ -65,18 +65,24 @@ class CoverageReportTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja"), "Requires CMake, Ninja and Clang")
     def test_project_ipo_defaults_preserve_criterion_target_opt_out(self):
         module = Path(__file__).resolve().parents[2] / "cmake/compiler/ProjectSettings.cmake"
+        (self.root / "cmake/compiler").mkdir(parents=True)
+        shutil.copy(module.parent / "CPUDetection.cmake", self.root / "cmake/compiler/CPUDetection.cmake")
         (self.root / "main.c").write_text("int main(void) { return 0; }\n")
         (self.root / "tests").mkdir()
         (self.root / "tests/CMakeLists.txt").write_text(
             'add_executable(criterion_fixture ../main.c)\n'
             'set_target_properties(criterion_fixture PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF '
             'INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)\n'
+            'set_property(TARGET criterion_fixture PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)\n'
             'add_executable(general_opt_out ../main.c)\n'
             'set_property(TARGET general_opt_out PROPERTY INTERPROCEDURAL_OPTIMIZATION OFF)\n'
         )
         (self.root / "CMakeLists.txt").write_text(
             'cmake_minimum_required(VERSION 3.24)\nproject(fixture C)\n'
             f'include("{module.as_posix()}")\nset(ASCIICHAT_ENABLE_IPO ON)\n'
+            f'include("{(module.parent / "CompilerFlags.cmake").as_posix()}")\n'
+            'set(ASCIICHAT_ENABLE_COVERAGE ON)\n'
+            'configure_release_flags(FALSE TRUE FALSE FALSE FALSE)\n'
             'add_executable(ascii-chat main.c)\nadd_subdirectory(tests)\n'
             'asciichat_finalize_project_settings()\n'
             'get_target_property(normal_release ascii-chat INTERPROCEDURAL_OPTIMIZATION_RELEASE)\n'
@@ -91,6 +97,9 @@ class CoverageReportTests(unittest.TestCase):
         subprocess.run(["cmake", "-S", str(self.root), "-B", str(build), "-G", "Ninja",
                         f"-DCMAKE_C_COMPILER={shutil.which('clang')}", "-DCMAKE_BUILD_TYPE=Release"], check=True)
         self.assertEqual((build / "ipo.txt").read_text(), "TRUE;TRUE;OFF;OFF;OFF")
+        for target, stripped in (("ascii-chat", True), ("criterion_fixture", False)):
+            commands = subprocess.check_output(["ninja", "-C", str(build), "-t", "commands", target], text=True)
+            self.assertEqual("-Wl,--gc-sections" in commands, stripped)
 
     @unittest.skipUnless(shutil.which("cmake"), "Requires CMake")
     def test_windows_ffmpeg_copy_uses_installed_dll_versions(self):
