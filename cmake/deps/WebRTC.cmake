@@ -6,6 +6,15 @@ endif()
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
 function(asciichat_build_aec3)
     asciichat_dependency_defaults()
+    # The dependency patch and its child targets need the target architecture,
+    # including Windows cross builds where the host processor is misleading.
+    set(ASCIICHAT_TARGET_ARM64 OFF)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64|AARCH64)$"
+       OR VCPKG_TARGET_TRIPLET MATCHES "^arm64-"
+       OR CMAKE_C_COMPILER_TARGET MATCHES "^(aarch64|arm64)"
+       OR CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
+        set(ASCIICHAT_TARGET_ARM64 ON)
+    endif()
     # AEC3 exposes static component libraries that are embedded in the public library.
     set(BUILD_SHARED_LIBS OFF)
     set(CMAKE_CXX_STANDARD 17)

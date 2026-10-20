@@ -313,8 +313,9 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
               log_warn("Device does not support %u FPS - using maximum available %.0f FPS", target_fps,
                        maxRange.maxFrameRate);
             } @catch (NSException *exception) {
-              log_warn("AVFoundation: Device rejected maximum frame rate configuration: %s; using its default frame rate",
-                       [[exception reason] UTF8String]);
+              log_warn(
+                  "AVFoundation: Device rejected maximum frame rate configuration: %s; using its default frame rate",
+                  [[exception reason] UTF8String]);
             }
           } else {
             log_warn("Could not determine device FPS capabilities, using device default");

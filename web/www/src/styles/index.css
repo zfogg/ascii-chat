@@ -2,7 +2,7 @@
 @import "@ascii-chat/shared/styles/base.css";
 
 @source ".";
-@source "../../packages/shared/src";
+@source "../../../packages/shared/src";
 
 :root {
   --header-height: 65px;
@@ -34,7 +34,7 @@
 
 @layer components {
   .demo-widget-container {
-    height: var(--demo-widget-height, 36vh);
+    height: var(--demo-widget-height, 400px);
     min-height: var(--demo-widget-min-height, 180px);
     width: 100%;
     aspect-ratio: 16 / 9;

@@ -96,27 +96,6 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
                                              const void *pixel_data, uint32_t width, uint32_t height);
 
 /**
- * @brief Announce client join to server (client → server)
- *
- * Notifies server that client is ready to participate in session.
- *
- * @param transport Transport instance
- * @param capabilities Client capability bitmask (video, audio, etc.)
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t acip_send_client_join(acip_transport_t *transport, uint8_t capabilities);
-
-/**
- * @brief Notify server of client leaving (client → server)
- *
- * Clean disconnect notification to server.
- *
- * @param transport Transport instance
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t acip_send_client_leave(acip_transport_t *transport);
-
-/**
  * @brief Request to start media streaming (client → server)
  *
  * Notifies server that client wants to start sending video/audio.

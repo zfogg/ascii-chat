@@ -180,74 +180,18 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
   const char *reason_str = reason[0] != '\0' ? reason : "Protocol violation";
   const char *client_id = client->client_id;
 
-  socket_t socket_snapshot = INVALID_SOCKET_VALUE;
-  const crypto_context_t *crypto_ctx = NULL;
-  acip_transport_t *transport_snapshot = NULL;
-
-  mutex_lock(&client->client_state_mutex);
-  if (client->socket != INVALID_SOCKET_VALUE) {
-    socket_snapshot = client->socket;
-    if (client->crypto_initialized) {
-      crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-    }
-  }
-  mutex_unlock(&client->client_state_mutex);
-
-  // Get transport reference for WebSocket clients
-  mutex_lock(&client->send_mutex);
-  transport_snapshot = client->transport;
-  mutex_unlock(&client->send_mutex);
-
-  // NOTE: Disconnecting a client due to the client's own bad behavior isn't an
-  // error for us, it's desired behavior for us, so we simply warn and do not
-  // have a need for asciichat_errno here.
   log_warn("Disconnecting client %s due to protocol violation: %s", client_id, reason_str);
-
-  if (socket_snapshot != INVALID_SOCKET_VALUE) {
-    // Protect socket writes with send_mutex to prevent race with send_thread.
-    // This receive_thread and send_thread both write to same socket.
-    mutex_lock(&client->send_mutex);
-
-    asciichat_error_t log_result =
-        log_network_message(socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_ERROR,
-                            REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, "Protocol violation: %s", reason_str);
-    if (log_result != ASCIICHAT_OK) {
-      log_warn("Failed to send remote log to client %s: %s", client_id, asciichat_error_string(log_result));
-    }
-
-    asciichat_error_t send_result = packet_send_error(socket_snapshot, crypto_ctx, ERROR_NETWORK_PROTOCOL, reason_str);
-    if (send_result != ASCIICHAT_OK) {
-      log_warn("Failed to send error packet to client %s: %s", client_id, asciichat_error_string(send_result));
-    }
-
-    mutex_unlock(&client->send_mutex);
-  } else if (transport_snapshot) {
-    // For WebSocket clients, try to send error via transport
-    log_debug("Sending error to WebSocket client %s via transport", client_id);
-    acip_send_error(transport_snapshot, ERROR_NETWORK_PROTOCOL, reason_str);
-  }
-
-  APP_CALLBACK_VOID(platform_pump_events);
-  platform_sleep_ms(500);
+  mutex_lock(&client->send_mutex);
+  if (client->transport)
+    acip_send_error(client->transport, ERROR_NETWORK_PROTOCOL, reason_str);
+  mutex_unlock(&client->send_mutex);
 
   log_debug("Setting active=false (client_id=%s, reason=%s)", client_id, reason_str);
   atomic_store_bool(&client->active, false);
   atomic_store_bool(&client->shutting_down, true);
-  atomic_store_bool(&client->send_thread_running, false);
+  network_connection_request_stop(client->network_connection);
   atomic_store_bool(&client->video_render_thread_running, false);
   atomic_store_bool(&client->audio_render_thread_running, false);
-
-  if (client->audio_queue) {
-    packet_queue_stop(client->audio_queue);
-  }
-
-  mutex_lock(&client->client_state_mutex);
-  if (client->socket != INVALID_SOCKET_VALUE) {
-    socket_shutdown(client->socket, 2);
-    socket_close(client->socket);
-    client->socket = INVALID_SOCKET_VALUE;
-  }
-  mutex_unlock(&client->client_state_mutex);
 }
 
 /* ============================================================================
@@ -322,7 +266,7 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
            client->can_send_video, client->can_send_audio, client->wants_stretch);
 
   // Notify client of successful join (encrypted channel)
-  if (client->socket != INVALID_SOCKET_VALUE) {
+  if (client->transport != NULL) {
     log_info_client(client, "Joined as '%s' (video=%s, audio=%s)", client->display_name,
                     client->can_send_video ? "yes" : "no", client->can_send_audio ? "yes" : "no");
   }
@@ -576,8 +520,7 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
   const char *streams = (stream_type & STREAM_TYPE_VIDEO) && (stream_type & STREAM_TYPE_AUDIO)
                             ? "video+audio"
                             : ((stream_type & STREAM_TYPE_VIDEO) ? "video" : "audio");
-  // Only send remote log to TCP clients (WebSocket clients have invalid socket)
-  if (client->socket != INVALID_SOCKET_VALUE) {
+  if (client->transport != NULL) {
     log_info_client(client, "Stream started: %s", streams);
   }
 }
@@ -649,8 +592,7 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
   const char *streams = (stream_type & STREAM_TYPE_VIDEO) && (stream_type & STREAM_TYPE_AUDIO)
                             ? "video+audio"
                             : ((stream_type & STREAM_TYPE_VIDEO) ? "video" : "audio");
-  // Only send remote log to TCP clients (WebSocket clients have invalid socket)
-  if (client->socket != INVALID_SOCKET_VALUE) {
+  if (client->transport != NULL) {
     log_info_client(client, "Stream stopped: %s", streams);
   }
 }
@@ -775,7 +717,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     if (atomic_cas_bool(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %s auto-enabled video stream (received IMAGE_FRAME)", client->client_id);
       // Notify client that their first video frame was received
-      if (client->socket != INVALID_SOCKET_VALUE) {
+      if (client->transport != NULL) {
         log_info_client(client, "First video frame received - streaming active");
       }
     }
@@ -970,7 +912,7 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
   bool was_sending_video = atomic_exchange_bool(&client->is_sending_video, true);
   if (!was_sending_video) {
     log_info("Client %s auto-enabled H.265 video stream (received IMAGE_FRAME_H265)", client->client_id);
-    if (client->socket != INVALID_SOCKET_VALUE) {
+    if (client->transport != NULL) {
       log_info_client(client, "First H.265 video frame received - streaming active");
     }
   }
@@ -1579,204 +1521,88 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
  * ============================================================================
  */
 
+/** Publish prepared values while holding the client's state mutex. */
+static void publish_render_settings(client_info_t *client) {
+  const acip_render_settings_t *state = &client->render_settings;
+  client->width = state->width;
+  client->height = state->height;
+  client->terminal_caps = state->caps;
+  memcpy(client->client_palette_chars, state->palette, sizeof(state->palette));
+  memcpy(client->client_luminance_palette, state->luminance, sizeof(state->luminance));
+  client->client_palette_len = state->palette_length;
+  client->client_palette_type = state->caps.palette_type;
+  client->client_palette_initialized = true;
+  client->has_terminal_caps = true;
+  log_info("Client %s render settings: width=%u height=%u color=%u filter=%u palette=%u mode=%u fps=%u matrix=%u "
+           "revision=%u",
+           client->client_id, state->width, state->height, state->caps.color_level, state->caps.color_filter,
+           state->caps.palette_type, state->caps.render_mode, state->caps.desired_fps,
+           (state->caps.capabilities & TERM_CAP_MATRIX_RAIN) != 0, state->revision);
+}
+
 /**
- * @brief Process CLIENT_CAPABILITIES packet - configure client-specific rendering
- *
- * This packet contains detailed information about the client's terminal
- * capabilities and preferences. The server uses this data to generate
- * appropriately formatted ASCII art and ANSI escape sequences.
- *
- * PACKET STRUCTURE EXPECTED:
- * - terminal_capabilities_packet_t containing:
- *   - width, height: Terminal dimensions in characters
- *   - capabilities: Bitmask of terminal features
- *   - color_level: ANSI color support level (1, 8, 16, 256, 24-bit)
- *   - color_count: Number of supported colors
- *   - render_mode: Foreground, background, or half-block rendering
- *   - term_type: $TERM environment variable value
- *   - colorterm: $COLORTERM environment variable value
- *   - utf8_support: Whether terminal supports UTF-8
- *   - palette_type: ASCII character palette preference
- *   - palette_custom: Custom character set if PALETTE_CUSTOM
- *
- * STATE CHANGES PERFORMED:
- * - Updates client dimensions (width, height)
- * - Stores complete terminal capabilities structure
- * - Initializes per-client ASCII palette cache
- * - Sets client->has_terminal_caps = true
- *
- * PALETTE INITIALIZATION:
- * The function performs critical palette setup:
- * 1. Determines character set based on palette_type
- * 2. Handles custom palettes if provided
- * 3. Generates luminance-to-character mapping
- * 4. Caches results for fast ASCII generation
- *
- * THREAD SAFETY:
- * - All client state updates are mutex-protected
- * - Uses client->client_state_mutex for atomicity
- * - Safe to call concurrently with render threads
- *
- * VALIDATION PERFORMED:
- * - Packet size matches expected structure
- * - String fields are safely copied with bounds checking
- * - Palette initialization is verified
- * - Network byte order conversion
- *
- * ERROR HANDLING:
- * - Invalid packets are logged and ignored
- * - Palette initialization failures use server defaults
- * - Missing capabilities default to safe values
- *
- * INTEGRATION IMPACT:
- * - render.c uses capabilities for ASCII generation
- * - Color output depends on client's color_level
- * - Character selection uses initialized palette
- *
- * @param client Target client whose capabilities are being configured
- * @param data Packet payload containing terminal_capabilities_packet_t
- * @param len Size of packet payload in bytes
- *
- * @note This packet is typically sent once after CLIENT_JOIN
- * @note Capabilities can be updated during the session
- * @note Changes affect all subsequent ASCII frame generation
- * @see initialize_client_palette() For palette setup details
- * @see terminal_color_level_name() For color level descriptions
+ * Bootstrap a viewer's rendering state from its initial terminal capabilities.
+ * Later advertisements update codecs while SETTINGS_SYNC owns live preferences.
+ * Publish under the client mutex, then send the initial effective settings unlocked.
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
-  const char *client_id = client->client_id;
-  log_debug("[CAPS_HANDLER] 🟢 CAPS_RECEIVED: client_id=%s, data_ptr=%p, len=%zu bytes", client_id, data, len);
-
-  log_debug("[CAPS_HANDLER] Step 1: Validating packet size (expected=%zu, actual=%zu)",
-            sizeof(terminal_capabilities_packet_t), len);
-  VALIDATE_PACKET_SIZE(client, data, len, sizeof(terminal_capabilities_packet_t), "CLIENT_CAPABILITIES");
-  log_debug("[CAPS_HANDLER] ✅ Size validation passed");
-
-  const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
-
-  // Extract and validate dimensions
-  uint16_t width = NET_TO_HOST_U16(caps->width);
-  uint16_t height = NET_TO_HOST_U16(caps->height);
-  log_debug("[CAPS_HANDLER] 📐 DIMENSIONS: width=%u, height=%u", width, height);
-
-  log_debug("[CAPS_HANDLER] Step 2: Validating width (value=%u, must be nonzero)", width);
-  VALIDATE_NONZERO(client, width, "width", "CLIENT_CAPABILITIES");
-  log_debug("[CAPS_HANDLER] ✅ Width nonzero check passed");
-
-  log_debug("[CAPS_HANDLER] Step 3: Validating height (value=%u, must be nonzero)", height);
-  VALIDATE_NONZERO(client, height, "height", "CLIENT_CAPABILITIES");
-  log_debug("[CAPS_HANDLER] ✅ Height nonzero check passed");
-
-  log_debug("[CAPS_HANDLER] Step 4: Validating width range (value=%u, range=1-4096)", width);
-  VALIDATE_RANGE(client, width, 1, 4096, "width", "CLIENT_CAPABILITIES");
-  log_debug("[CAPS_HANDLER] ✅ Width range check passed");
-
-  log_debug("[CAPS_HANDLER] Step 5: Validating height range (value=%u, range=1-4096)", height);
-  VALIDATE_RANGE(client, height, 1, 4096, "height", "CLIENT_CAPABILITIES");
-  log_debug("[CAPS_HANDLER] ✅ Height range check passed");
-
-  // Extract and validate color level (0=none, 1=16, 2=256, 3=truecolor)
-  uint32_t color_level = NET_TO_HOST_U32(caps->color_level);
-  log_debug("[CAPS_HANDLER] Step 6: Validating color_level (value=%u, range=0-3)", color_level);
-  VALIDATE_RANGE(client, color_level, 0, 3, "color_level", "CLIENT_CAPABILITIES");
-  log_debug("[CAPS_HANDLER] ✅ Color level check passed");
-
-  // Extract and validate render mode (0=foreground, 1=background, 2=half-block)
-  uint32_t render_mode = NET_TO_HOST_U32(caps->render_mode);
-  log_debug("[CAPS_HANDLER] Step 7: Validating render_mode (value=%u, range=0-2)", render_mode);
-  VALIDATE_RANGE(client, render_mode, 0, 2, "render_mode", "CLIENT_CAPABILITIES");
-  log_debug("[CAPS_HANDLER] ✅ Render mode check passed");
-
-  // Extract and validate palette type (0-5 are valid, 5=PALETTE_CUSTOM)
-  uint32_t palette_type = NET_TO_HOST_U32(caps->palette_type);
-  log_debug("[CAPS_HANDLER] Step 8: Validating palette_type (value=%u, range=0-5)", palette_type);
-  VALIDATE_RANGE(client, palette_type, 0, 5, "palette_type", "CLIENT_CAPABILITIES");
-  log_debug("[CAPS_HANDLER] ✅ Palette type check passed");
-
-  // Validate desired FPS (1-144)
-  log_debug("[CAPS_HANDLER] Step 9: Validating desired_fps (value=%u, range=1-144)", caps->desired_fps);
-  VALIDATE_RANGE(client, caps->desired_fps, 1, 144, "desired_fps", "CLIENT_CAPABILITIES");
-  log_debug("[CAPS_HANDLER] ✅ FPS check passed");
-
+  if (!data || len != sizeof(terminal_capabilities_packet_t)) {
+    disconnect_client_for_bad_data(client, "Invalid capabilities size");
+    return;
+  }
+  terminal_capabilities_packet_t packet;
+  memcpy(&packet, data, sizeof(packet));
   mutex_lock(&client->client_state_mutex);
-
-  client->width = width;
-  client->height = height;
-
-  log_debug("Client %s dimensions: %ux%u, desired_fps=%u", client->client_id, client->width, client->height,
-            caps->desired_fps);
-
-  client->terminal_caps.capabilities = NET_TO_HOST_U32(caps->capabilities);
-  client->terminal_caps.color_level = color_level;
-  client->terminal_caps.color_count = NET_TO_HOST_U32(caps->color_count);
-  client->terminal_caps.render_mode = render_mode;
-  client->terminal_caps.detection_reliable = caps->detection_reliable;
-  client->terminal_caps.wants_background = (render_mode == RENDER_MODE_BACKGROUND);
-
-  SAFE_STRNCPY(client->terminal_caps.term_type, caps->term_type, sizeof(client->terminal_caps.term_type));
-  SAFE_STRNCPY(client->terminal_caps.colorterm, caps->colorterm, sizeof(client->terminal_caps.colorterm));
-
-  client->terminal_caps.utf8_support = NET_TO_HOST_U32(caps->utf8_support);
-  client->terminal_caps.palette_type = palette_type;
-  SAFE_STRNCPY(client->terminal_caps.palette_custom, caps->palette_custom,
-               sizeof(client->terminal_caps.palette_custom));
-
-  client->terminal_caps.desired_fps = caps->desired_fps;
-  client->terminal_caps.color_filter = (color_filter_t)caps->color_filter;
-
-  // Extract wants_padding flag (1=padding enabled, 0=no padding for snapshot/piped modes)
-  client->terminal_caps.wants_padding = (caps->wants_padding != 0);
-
-  const char *custom_chars =
-      (client->terminal_caps.palette_type == PALETTE_CUSTOM && client->terminal_caps.palette_custom[0])
-          ? client->terminal_caps.palette_custom
-          : NULL;
-
-  if (initialize_client_palette((palette_type_t)client->terminal_caps.palette_type, custom_chars,
-                                client->client_palette_chars, &client->client_palette_len,
-                                client->client_luminance_palette) == 0) {
-    client->client_palette_type = (palette_type_t)client->terminal_caps.palette_type;
-    client->client_palette_initialized = true;
-    log_info("Client %s palette initialized: type=%u, %zu chars, utf8=%u", client->client_id,
-             client->terminal_caps.palette_type, client->client_palette_len, client->terminal_caps.utf8_support);
-  } else {
-    SET_ERRNO(ERROR_INVALID_STATE, "Failed to initialize palette for client %s", client->client_id);
-    client->client_palette_initialized = false;
+  client->codec_capabilities_video = NET_TO_HOST_U32(packet.codec_capabilities_video);
+  client->codec_capabilities_audio = NET_TO_HOST_U32(packet.codec_capabilities_audio);
+  // Encoder changes advertise codec support without overwriting live preferences.
+  if (client->has_terminal_caps) {
+    mutex_unlock(&client->client_state_mutex);
+    return;
   }
-
-  // Extract and store codec capabilities
-  client->codec_capabilities_video = NET_TO_HOST_U32(caps->codec_capabilities_video);
-  client->codec_capabilities_audio = NET_TO_HOST_U32(caps->codec_capabilities_audio);
-  log_info("Client %s codec capabilities: video=0x%x audio=0x%x", client->client_id, client->codec_capabilities_video,
-           client->codec_capabilities_audio);
-
-  client->has_terminal_caps = true;
-
-  log_info("Client %s capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, "
-           "render_mode=%s, reliable=%s, fps=%u, wants_padding=%d",
-           client->client_id, client->width, client->height,
-           terminal_color_level_name(client->terminal_caps.color_level), client->terminal_caps.color_count,
-           client->terminal_caps.capabilities, client->terminal_caps.term_type, client->terminal_caps.colorterm,
-           (client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
-                ? "half-block"
-                : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
-           client->terminal_caps.detection_reliable ? "yes" : "no", client->terminal_caps.desired_fps,
-           client->terminal_caps.wants_padding);
-
-  // Send capabilities acknowledgment to client
-  if (client->socket != INVALID_SOCKET_VALUE) {
-    log_info_client(client, "Terminal configured: %ux%u, %s, %s mode, %u fps", client->width, client->height,
-                    terminal_color_level_name(client->terminal_caps.color_level),
-                    (client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
-                         ? "half-block"
-                         : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
-                    client->terminal_caps.desired_fps);
+  client->render_settings.fps_limit = GET_OPTION(fps) > 0 ? GET_OPTION(fps) : 144;
+  asciichat_error_t result = acip_render_settings_capabilities(&client->render_settings, &packet);
+  if (result == ASCIICHAT_OK) {
+    publish_render_settings(client);
+    log_info("Client %s rendering configured: %ux%u, color=%u, palette=%u, mode=%u, fps=%u", client->client_id,
+             client->width, client->height, client->terminal_caps.color_level, client->terminal_caps.palette_type,
+             client->terminal_caps.render_mode, client->terminal_caps.desired_fps);
   }
-
   mutex_unlock(&client->client_state_mutex);
+  if (result != ASCIICHAT_OK)
+    disconnect_client_for_bad_data(client, "Invalid render capabilities");
+  else {
+    uint8_t query[ACIP_SETTINGS_HEADER_SIZE];
+    size_t query_length;
+    acip_settings_header_t header = {.schema = 1, .expected_revision = UINT32_MAX};
+    if (acip_settings_encode(&header, "", query, sizeof(query), &query_length) == ASCIICHAT_OK)
+      (void)handle_runtime_settings(client, query, query_length);
+  }
+}
 
-  log_debug("[CAPS_HANDLER] ✅ CAPS_COMPLETE: client_id=%s - all validations passed, capabilities stored",
-            client->client_id);
+asciichat_error_t handle_runtime_settings(client_info_t *client, const void *data, size_t length) {
+  uint8_t reply[ACIP_SETTINGS_MAX_SIZE];
+  size_t reply_length = 0;
+  mutex_lock(&client->client_state_mutex);
+  if (!client->has_terminal_caps || atomic_load_bool(&client->shutting_down)) {
+    mutex_unlock(&client->client_state_mutex);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Settings require an active bootstrapped viewer");
+  }
+  asciichat_error_t result =
+      acip_settings_request(&client->render_settings, data, length, reply, sizeof(reply), &reply_length);
+  if (result == ASCIICHAT_OK)
+    publish_render_settings(client);
+  mutex_unlock(&client->client_state_mutex);
+  if (result == ASCIICHAT_OK) {
+    // Teardown takes this mutex before releasing the transport.
+    mutex_lock(&client->send_mutex);
+    if (atomic_load_bool(&client->shutting_down) || !client->transport)
+      result = SET_ERRNO(ERROR_INVALID_STATE, "Viewer is shutting down");
+    else
+      result = packet_send_via_transport(client->transport, PACKET_TYPE_ACIP_SETTINGS_ACK, reply, reply_length, 0);
+    mutex_unlock(&client->send_mutex);
+  }
+  return result;
 }
 
 /**

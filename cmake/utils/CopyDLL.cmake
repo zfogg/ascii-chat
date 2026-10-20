@@ -100,10 +100,10 @@ function(copy_dlls)
     endforeach()
 endfunction()
 
-# Copy DLLs as a POST_BUILD step for a target
+# Stage DLLs as incremental outputs required by a target
 #
 # Usage:
-#   copy_dlls_post_build(
+#   stage_dlls_for_target(
 #       TARGET ascii-chat
 #       NAMES zstd.dll portaudio.dll libsodium.dll
 #       SOURCE_DIR "${VCPKG_BIN}"
@@ -111,36 +111,54 @@ endfunction()
 #   )
 #
 # Parameters:
-#   TARGET     - Target to attach POST_BUILD commands to
+#   TARGET     - Target that requires the staged runtime files
 #   NAMES      - List of DLL filenames (without path)
 #   SOURCE_DIR - Directory containing the DLLs
 #   COMMENT    - Description suffix (optional)
-function(copy_dlls_post_build)
+function(stage_dlls_for_target)
     cmake_parse_arguments(ARG "" "TARGET;SOURCE_DIR;COMMENT" "NAMES" ${ARGN})
 
     if(NOT ARG_TARGET)
-        message(FATAL_ERROR "copy_dlls_post_build: TARGET is required")
+        message(FATAL_ERROR "stage_dlls_for_target: TARGET is required")
     endif()
     if(NOT ARG_NAMES)
-        message(FATAL_ERROR "copy_dlls_post_build: NAMES is required")
+        message(FATAL_ERROR "stage_dlls_for_target: NAMES is required")
     endif()
     if(NOT ARG_SOURCE_DIR)
-        message(FATAL_ERROR "copy_dlls_post_build: SOURCE_DIR is required")
+        message(FATAL_ERROR "stage_dlls_for_target: SOURCE_DIR is required")
     endif()
 
-    foreach(_name IN LISTS ARG_NAMES)
-        if(ARG_COMMENT)
-            set(_comment "Copying ${_name} ${ARG_COMMENT}")
-        else()
-            set(_comment "Copying ${_name}")
-        endif()
+    if(NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+        message(FATAL_ERROR "stage_dlls_for_target: CMAKE_RUNTIME_OUTPUT_DIRECTORY is required")
+    endif()
 
-        add_custom_command(TARGET ${ARG_TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${ARG_SOURCE_DIR}/${_name}"
-                "$<TARGET_FILE_DIR:${ARG_TARGET}>/"
-            COMMENT "${_comment}"
-            VERBATIM
-        )
+    set(_sources "")
+    set(_outputs "")
+    foreach(_name IN LISTS ARG_NAMES)
+        list(APPEND _sources "${ARG_SOURCE_DIR}/${_name}")
+        list(APPEND _outputs "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${_name}")
     endforeach()
+
+    list(LENGTH ARG_NAMES _dll_count)
+    if(ARG_COMMENT)
+        set(_comment "Staging ${_dll_count} runtime files ${ARG_COMMENT}")
+    else()
+        set(_comment "Staging ${_dll_count} runtime files")
+    endif()
+
+    # Use one process for the directory batch. Declared outputs also avoid
+    # rechecking unchanged runtime files after every executable relink.
+    add_custom_command(
+        OUTPUT ${_outputs}
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_sources} "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/"
+        COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${_outputs}
+        DEPENDS ${_sources}
+        COMMENT "${_comment}"
+        VERBATIM
+    )
+
+    string(MD5 _copy_id "${ARG_TARGET};${ARG_SOURCE_DIR};${ARG_NAMES}")
+    set(_copy_target "${ARG_TARGET}-stage-runtime-${_copy_id}")
+    add_custom_target(${_copy_target} DEPENDS ${_outputs})
+    add_dependencies(${ARG_TARGET} ${_copy_target})
 endfunction()

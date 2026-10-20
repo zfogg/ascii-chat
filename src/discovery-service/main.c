@@ -45,19 +45,7 @@ static acds_server_t g_server;
 static void acds_interrupt_fn(int sig) {
   (void)sig;
 
-  tcp_server_t *tcp = session_server_like_get_tcp_server();
-  if (tcp) {
-    atomic_store_bool(&tcp->running, false);
-    // Event listeners close on their owner loop; legacy listeners interrupt select().
-    if (!tcp->config.event_handler && tcp->listen_socket != INVALID_SOCKET_VALUE) {
-      socket_close(tcp->listen_socket);
-      tcp->listen_socket = INVALID_SOCKET_VALUE;
-    }
-    if (!tcp->config.event_handler && tcp->listen_socket6 != INVALID_SOCKET_VALUE) {
-      socket_close(tcp->listen_socket6);
-      tcp->listen_socket6 = INVALID_SOCKET_VALUE;
-    }
-  }
+  network_server_request_stop(session_server_like_get_network_server());
 }
 
 static void acds_stats_provider(stats_view_t *view, void *data) {
@@ -317,10 +305,10 @@ static void acds_cleanup_fn(void *user_data) {
 
 static void acds_status_fn(void *user_data, ui_status_t *status) {
   (void)user_data;
-  tcp_server_t *tcp = session_server_like_get_tcp_server();
+  network_server_t *tcp = session_server_like_get_network_server();
   if (tcp)
-    ui_status_gather(tcp, NULL, tcp->config.ipv4_address, tcp->config.ipv6_address, GET_OPTION(port),
-                     g_server.stats.start_time, "Discovery Service", false, status);
+    ui_status_gather(tcp, NULL, network_server_config(tcp)->ipv4_address, network_server_config(tcp)->ipv6_address,
+                     GET_OPTION(port), g_server.stats.start_time, "Discovery Service", false, status);
 }
 
 int acds_main(void) {
@@ -337,17 +325,12 @@ int acds_main(void) {
       .status_fn = acds_status_fn,
       .status_user_data = NULL,
 
-      // TCP handler
-      .tcp_event_handler = acds_event_accept,
-      .tcp_user_data = &g_server,
-
-      // WebSocket
-      .websocket =
-          {
-              .enabled = true,
-              .handler = acds_websocket_client_handler,
-              .user_data = &g_server,
-          },
+      .connections = acds_network_callbacks,
+      .connection_user_data = &g_server,
+      .websocket_enabled = true,
+      .max_payload = CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES + 1024,
+      .partial_timeout_ms = 5000,
+      .idle_timeout_ms = 60000,
 
       // mDNS
       .mdns =

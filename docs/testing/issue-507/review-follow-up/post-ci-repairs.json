@@ -1,0 +1,93 @@
+{
+  "generated_at_utc": "2026-10-20T00:22:41.088604+00:00",
+  "native_core": {
+    "command": [
+      "C:/Users/zachf/scoop/apps/cmake/current/bin/ctest.exe",
+      "--test-dir",
+      "build",
+      "-R",
+      "^(network-connections|network-events|webrtc-security|session-connections|transport-backpressure|participant-media|peer-ready|crypto-policy|host-render|runtime-settings|review-findings|discovery-session-process)$",
+      "--output-on-failure"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 100.141,
+    "binary_path": "C:\\Users\\zachf\\.codex\\worktrees\\issue-507-unified-networking\\ascii-chat\\build\\bin\\ascii-chat.exe",
+    "build_configuration": "Debug",
+    "binary_sha256": "84fdcb73da3be855810182214c5e1d7b46435f63a49dedbf27a29dd0030ae9b2",
+    "library_sha256": "8c7ece1c2f77e2575ace07759284b329b508f911051eea2ae4389bac5b40f5a3"
+  },
+  "final_release_binary_sha256": "9c9585045dc0ae62633fce5dde5941d31e961a8f7be3204fbfd684b1ad31943e",
+  "final_release_library_sha256": null,
+  "final_release_linkage": "Application library linked into executable; external vcpkg dependencies remain dynamic",
+  "linux_compile_checks": [
+    "Criterion TCP/discovery fixture",
+    "shared connection translation unit without PCH",
+    "combined face-follow and test-pattern unity translation unit"
+  ],
+  "linux_dependency_probe": "-- The C compiler identification is Clang 23.1.1\n-- Detecting C compiler ABI info\n-- Detecting C compiler ABI info - done\n-- Check for working C compiler: /usr/sbin/clang - skipped\n-- Detecting C compile features\n-- Detecting C compile features - done\n-- Looking for malloc\n-- Looking for malloc - found\n-- Looking for asciichat_missing_platform_api\n-- Looking for asciichat_missing_platform_api - not found\n-- Configuring done (2.9s)\n-- Generating done (0.1s)\n-- Build files have been written to: /tmp/ascii-lws-probes-i99pf553/build\nPASS: WebSocket dependency probes link and reject unavailable platform APIs",
+  "browser": {
+    "stats": {
+      "startTime": "2026-10-20T00:21:05.408Z",
+      "duration": 51851.97,
+      "expected": 2,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "frame_intervals": [
+      {
+        "name": "client-0",
+        "frames_in_five_seconds": 272
+      },
+      {
+        "name": "client-1",
+        "frames_in_five_seconds": 296
+      },
+      {
+        "name": "discovery",
+        "frames_in_five_seconds": 285
+      }
+    ],
+    "wasm_manifest": {
+      "sourceHash": "649e1b564bd1f0675570740dd69013fad3231777a73ce02c8c9915b2e56345aa",
+      "files": {
+        "mirror.js": "dab77969724783d6b699e56315ee04f44cd07c8fc0ea83661ac3388b1dfa46d4",
+        "mirror.wasm": "11536b2d60a9b76483b1b1053614a8ad64f7b6a94b1bdcce819141cc7c459049",
+        "client.js": "cbe2a802cbc7e8c814b3fae64fcae9802d992245163f095518f175130f58a2cc",
+        "client.wasm": "5b0eaa6c02bef76a4a2652840ccaad8de2fe02ab7ad15a3bc4a4c4783752a78c",
+        "face-follow.js": "79dedb6cf7d6d3c45cb332da5bbdcfee3f91724d5829cc88108a6ad66b8e2070",
+        "face-follow.wasm": "1f4c8ff7a3374dd95bbb2e3d5cfbc20e08c2bca5bf98eaa4ca5e25d78d17c52b"
+      }
+    },
+    "host_render_smoke": "PASS: WASM local and remote targets honor independent settings and live updates without duplicate frames"
+  },
+  "prior_runtime_cohort": "results.json; its original hashes and measurements are preserved, including discovery stability failures",
+  "known_baseline_windows_release_failure": {
+    "master_sha": "ef5ce2c1a16aa2907fdae4cb5d281c99ec6ab1cf",
+    "master_job": "https://github.com/zfogg/ascii-chat/actions/runs/39338174856/job/118352806499",
+    "pr_job": "https://github.com/zfogg/ascii-chat/actions/runs/39341603212/job/118364220245",
+    "error": "BearSSL source build fails during configure at cmake/deps/BearSSL.cmake:275 on both master and this PR; Windows validation uses dynamic dependencies."
+  },
+  "final_web_unit_tests": 379,
+  "browser_disconnect_fix": "Capture and encoder callbacks check their current session state and ownership before sending; stale React state cannot send on a disconnected or negotiating transport.",
+  "failed_browser_probe": "The pre-fix /client reconnect run emitted Security negotiation is not complete from capture callbacks; /discovery passed. The existing error assertion caught the race. Three regression tests cover immediate transport closure before React updates.",
+  "intermediate_browser_probe": "A rerun overlapped source edits/hot reload and parallel unit testing: /client rendered 180 frames on its first five-second interval and 41 on reconnect, failing the unchanged >100-frame gate; /discovery passed with 284. The final run uses settled source and no parallel unit run.",
+  "prior_web_unit_run": {
+    "total": 379,
+    "passed": 378,
+    "failed": 1,
+    "failures": [
+      {
+        "file": "DeviceSetupModal.test.tsx",
+        "test": "Device setup with unavailable inputs reselecting a failed Camera retries it and leaves its Retry button available after another failure",
+        "message": "Error: Unable to find role=\"button\" and name \"Retry camera\""
+      }
+    ],
+    "note": "The first full run overlapped browser tests and used default worker concurrency. The final run limits unit workers to two with unchanged assertions."
+  },
+  "linux_functional_ci_limit": {
+    "job": "https://github.com/zfogg/ascii-chat/actions/runs/39346833480/job/118381352960",
+    "error": "Configure stops at cmake/deps/Opus.cmake:71: OPUS_HEADER_INCLUDE_DIR cannot locate opus.h; tests do not execute.",
+    "source": "Opus.cmake matches master 482821446698d8f6a07a5451aaf2c361b0d031be; baseline job reproduction not claimed."
+  }
+}

@@ -248,7 +248,8 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     if (!msg.data)
       break;
     memcpy(msg.data, wrtc->partial + offset, packet_len);
-    if (asciichat_crc32(msg.data + sizeof(header), payload_len) != NET_TO_HOST_U32(header.crc32)) {
+    if (NET_TO_HOST_U16(header.type) != PACKET_TYPE_ENCRYPTED &&
+        asciichat_crc32(msg.data + sizeof(header), payload_len) != NET_TO_HOST_U32(header.crc32)) {
       buffer_release(msg.data);
       mutex_unlock(&wrtc->queue_mutex);
       log_error("WebRTC packet checksum failed");
@@ -280,9 +281,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
                                   .allocated_size = msg.len};
     crypto_context_t *crypto = wrtc->transport->crypto_ctx;
     asciichat_error_t result = ASCIICHAT_OK;
-    if (asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(header.crc32)) {
-      result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid WebRTC packet checksum");
-    } else if (envelope.type == PACKET_TYPE_ENCRYPTED) {
+    if (envelope.type == PACKET_TYPE_ENCRYPTED) {
       if (!crypto || !crypto->encrypt_data || !crypto_is_ready(crypto))
         result = SET_ERRNO(ERROR_CRYPTO, "Unexpected encrypted WebRTC packet");
       else
@@ -551,11 +550,19 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
 static asciichat_error_t webrtc_recv(acip_transport_t *transport, void **buffer, size_t *out_len,
                                      void **out_allocated_buffer) {
   webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)transport->impl_data;
+  uint64_t started = time_get_ns();
+  uint64_t timeout = transport->receive_timeout_ns ? transport->receive_timeout_ns : NS_PER_SEC_INT;
 
   mutex_lock(&wrtc->queue_mutex);
 
   // Block until message arrives or connection closes
   while (ringbuffer_is_empty(wrtc->recv_queue)) {
+    uint64_t elapsed = time_get_ns() - started;
+    if (elapsed >= timeout) {
+      bool partial = wrtc->partial_len != 0;
+      mutex_unlock(&wrtc->queue_mutex);
+      return SET_ERRNO(partial ? ERROR_NETWORK_INCOMPLETE : ERROR_NETWORK_TIMEOUT, "WebRTC receive deadline expired");
+    }
     if (!webrtc_transport_is_connected_impl(wrtc)) {
       mutex_unlock(&wrtc->queue_mutex);
       return SET_ERRNO(ERROR_NETWORK, "Connection closed while waiting for data");
@@ -565,7 +572,7 @@ static asciichat_error_t webrtc_recv(acip_transport_t *transport, void **buffer,
     // Peer-connection state changes do not necessarily produce a DataChannel
     // callback. Periodically recheck the peer state so a lost connection can
     // leave this blocking receive path and let its owner clean up.
-    cond_timedwait(&wrtc->queue_cond, &wrtc->queue_mutex, 250 * NS_PER_MS_INT);
+    cond_timedwait(&wrtc->queue_cond, &wrtc->queue_mutex, MIN(timeout - elapsed, 250 * NS_PER_MS_INT));
     if (ringbuffer_is_empty(wrtc->recv_queue) && wrtc->partial_len) {
       bool expired = time_elapsed_ns(wrtc->partial_since_ns, time_get_ns()) >= 5 * NS_PER_SEC_INT;
       mutex_unlock(&wrtc->queue_mutex);
@@ -760,6 +767,12 @@ static const acip_transport_methods_t webrtc_methods = {
     .has_pending_data = webrtc_has_pending_data,
     .destroy_impl = webrtc_destroy_impl,
 };
+
+acip_security_t *acip_webrtc_transport_security(acip_transport_t *transport) {
+  if (!transport || transport->methods != &webrtc_methods || !transport->impl_data)
+    return NULL;
+  return ((webrtc_transport_data_t *)transport->impl_data)->security;
+}
 
 // =============================================================================
 // WebRTC Transport Creation

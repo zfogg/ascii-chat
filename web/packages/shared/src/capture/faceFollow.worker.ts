@@ -17,8 +17,11 @@ let dimensions = "";
 let lastFrame = 0;
 const ready = (async () => {
   const base = new URL(__WASM_ASSET_BASE__, self.location.origin).href;
-  const factory = await import(/* @vite-ignore */ `${base}face-follow.js`);
-  module = await factory.default({ locateFile: (file: string) => base + file });
+  const factory = await import(/* @vite-ignore */ `${base}mirror.js`);
+  module = await factory.default({
+    locateFile: (file: string) => base + file,
+    pthreadPoolSize: 0,
+  });
   module!._face_web_reset();
   return module!;
 })();

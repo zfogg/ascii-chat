@@ -799,36 +799,20 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
     return NULL;
   }
 
-  // Snapshot terminal capabilities WITHOUT holding rwlock
-  // Terminal caps are set once during handshake and never change, so this is safe
-  bool has_terminal_caps_snapshot = render_client->has_terminal_caps;
-  if (!has_terminal_caps_snapshot) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Per-client %s: Terminal capabilities not received", target_client_id);
+  mutex_lock(&render_client->client_state_mutex);
+  bool ready = render_client->has_terminal_caps && render_client->client_palette_initialized;
+  acip_render_settings_t rendering = render_client->render_settings;
+  mutex_unlock(&render_client->client_state_mutex);
+  if (!ready) {
+    SET_ERRNO(ERROR_TERMINAL, "Client rendering is not configured");
     return NULL;
   }
-
-  terminal_capabilities_t caps_snapshot = render_client->terminal_caps;
-
-  if (!render_client->client_palette_initialized) {
-    SET_ERRNO(ERROR_TERMINAL, "Client %s palette not initialized - cannot render frame", target_client_id);
-    return NULL;
-  }
-
-  // Render with client's custom palette using enhanced capabilities
-  // Palette data is stable after initialization, so no locking needed
-  // The converter expands terminal rows into half-block samples itself.
-  // Keep cell dimensions here so the frame and Matrix overlay fit the client grid.
-
-  // DEBUG: Log dimensions being used for ASCII conversion
-  log_dev_every(LOG_RATE_SLOW, "composite=%dx%d, terminal=%dx%d (mode=%d)", composite->w, composite->h, width, height,
-                caps_snapshot.render_mode);
-
-  // Pass full terminal dimensions so ascii_convert_with_capabilities can fit the image correctly
-  // with proper CHAR_ASPECT correction. The composite may have been pre-fitted in pixel space,
-  // but ascii_convert will handle terminal character aspect ratio properly when aspect_ratio=true.
+  terminal_capabilities_t caps_snapshot = rendering.caps;
+  width = rendering.width;
+  height = rendering.height;
   uint64_t convert_start_ns = time_get_ns();
-  char *ascii_frame = ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false,
-                                                      render_client->client_palette_chars);
+  char *ascii_frame =
+      ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false, rendering.palette);
   uint64_t convert_end_ns = time_get_ns();
   uint64_t convert_duration_ns = convert_end_ns - convert_start_ns;
 
@@ -1259,60 +1243,8 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
  * @see packet_queue_push_copy() For underlying queue implementation
  * @see asciichat_crc32() For checksum generation
  */
-// REMOVED: queue_ascii_frame_for_client - video now uses double buffer directly in client->outgoing_video_buffer
 
-/**
- * @brief Queue audio data for delivery to specific client
- *
- * Queues mixed audio data for delivery to a specific client. This is a
- * simple wrapper around the packet queue system for audio delivery.
- *
- * AUDIO PIPELINE INTEGRATION:
- * ============================
- * - Called by audio mixing threads after combining multiple client streams
- * - Audio data is already in final format (float samples, mixed)
- * - No additional processing required at this stage
- *
- * PACKET DETAILS:
- * ===============
- * - Uses PACKET_TYPE_AUDIO_BATCH packet type
- * - Audio data is raw float samples bundled together
- * - Batch format reduces packet overhead ~32x
- * - Sample rate and format determined by audio system
- *
- * DELIVERY CHARACTERISTICS:
- * =========================
- * - Higher priority than video packets (lower latency)
- * - Uses client's audio packet queue
- * - Send thread prioritizes audio over video
- * - Queue overflow drops oldest audio to maintain real-time
- *
- * ERROR HANDLING:
- * ===============
- * - Invalid parameters: Return -1 immediately
- * - Queue overflow: Handled by packet queue (drops old data)
- * - Client shutdown: Graceful failure
- *
- * @param client Target client for audio delivery
- * @param audio_data Mixed audio samples (float format)
- * @param data_size Size of audio data in bytes
- *
- * @return 0 on successful queuing, -1 on error
- *
- * @note Audio has priority over video in send thread
- * @note Real-time audio requires queue overflow handling
- * @see packet_queue_push_copy() For underlying queue implementation
- * @see mixer.c For audio mixing implementation
- */
-int queue_audio_for_client(client_info_t *client, const void *audio_data, size_t data_size) {
-  if (!client || !client->audio_queue || !audio_data || data_size == 0) {
-    return -1;
-  }
 
-  return packet_queue_push_copy(client->audio_queue, PACKET_TYPE_AUDIO_BATCH, audio_data, data_size, 0) == ASCIICHAT_OK
-             ? 0
-             : -1;
-}
 
 /**
  * @brief Check if any connected clients are currently sending video

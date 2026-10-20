@@ -1,6 +1,12 @@
+import { useMirrorFile } from "../hooks/useMirrorFile";
+import { MediaSourceType } from "../hooks/useClientLike";
+import {
+  useEngineSettings,
+  renderPreferences,
+} from "../hooks/useEngineSettings";
 import { FramePresentationScheduler } from "../network/FramePresentationScheduler";
 import { SessionInvite } from "../components/SessionInvite";
-import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
+import { sessionUiMedia } from "../utils/sessionUi";
 import { useAutoGridSize } from "../hooks/useAutoGridSize";
 import { useCameraFrameRate } from "../hooks/useCameraFrameRate";
 import { useRenderSettings } from "../hooks/useRenderSettings";
@@ -47,7 +53,9 @@ import {
 } from "../wasm/client";
 import {
   adoptMirrorWasmModule,
+  getMirrorModule,
   resetAdoptedMirrorWasmModule,
+  convertFrameToAscii,
   renderAudioVisualization,
   submitAudioVisualizationSamples,
 } from "@ascii-chat/shared/wasm";
@@ -74,7 +82,6 @@ import {
   useClientConnection,
   useWebcamStream,
 } from "../hooks";
-import { buildCapabilitiesPacket } from "../network";
 import { buildStreamStartPacket } from "../network";
 import { AudioPipeline } from "../audio";
 import { SecuritySetupModal } from "../components/SecuritySetupModal";
@@ -409,6 +416,8 @@ export function ClientPage({
   const {
     clientRef,
     status,
+    renderSettingsStatus,
+    sendRenderSettings,
     connectionState,
     error,
     setError,
@@ -579,28 +588,95 @@ export function ClientPage({
   );
 
   // Use webcam stream hook
-  const { startWebcam, stopWebcam, isWebcamRunning } = useWebcamStream({
-    includeAudio: audioEnabled,
-    terminalDimensions,
-    clientRef,
-    connectionState,
-    settings: cameraSettings,
-    receiveFps: settings.targetFps,
-    captureFrame,
-    canvasRef,
-    videoRef,
-    frameIntervalRef: cameraFrameInterval,
-    lastFrameTimeRef: cameraLastFrameTime,
-    frameQueueRef,
+  const { startWebcam, stopWebcam, isWebcamRunning, sendFileFrame } =
+    useWebcamStream({
+      includeAudio: audioEnabled,
+      terminalDimensions,
+      clientRef,
+      connectionState,
+      settings: cameraSettings,
+      receiveFps: settings.targetFps,
+      captureFrame,
+      canvasRef,
+      videoRef,
+      frameIntervalRef: cameraFrameInterval,
+      lastFrameTimeRef: cameraLastFrameTime,
+      frameQueueRef,
+      setError,
+    });
+  const fileVideoRef = useRef<HTMLVideoElement>(null);
+  const fileCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [fileRunning, setFileRunning] = useState(false);
+  const ignoreMediaSource = useCallback(() => {}, []);
+  const stopCaptureForFile = useCallback(() => {
+    stopWebcam();
+    setFileRunning(false);
+  }, [stopWebcam]);
+  const fileMedia = useMirrorFile({
+    settings,
+    videoRef: fileVideoRef,
+    canvasRef: fileCanvasRef,
+    stopWebcam: stopCaptureForFile,
+    cancelStart: ignoreMediaSource,
+    setIsWebcamRunning: setFileRunning,
+    setMediaSource: ignoreMediaSource,
     setError,
   });
+  const { stop: stopFile, setSuspended: suspendFile } = fileMedia;
+  const fileSelected = !!fileMedia.fileName;
+  const fileCaptureRef = useRef({
+    fileMedia,
+    sendFileFrame,
+    contentFit,
+    rendererReady,
+  });
+  fileCaptureRef.current = {
+    fileMedia,
+    sendFileFrame,
+    contentFit,
+    rendererReady,
+  };
+  useEffect(() => {
+    if (!fileRunning) return;
+    if (connectionState === ConnectionState.CONNECTED) {
+      clientRef.current?.sendPacket(
+        PacketType.STREAM_START,
+        buildStreamStartPacket(false),
+      );
+    }
+    const timer = window.setInterval(() => {
+      const current = fileCaptureRef.current;
+      const frame = current.fileMedia.captureFrame();
+      const canvas = fileCanvasRef.current;
+      if (!frame || !canvas) return;
+      current.sendFileFrame(frame, canvas);
+      if (
+        connectionState !== ConnectionState.CONNECTED &&
+        current.rendererReady
+      ) {
+        const ascii = convertFrameToAscii(
+          frame.data,
+          frame.width,
+          frame.height,
+          current.contentFit === "cover" ? "cover" : "contain",
+        );
+        if (ascii) rendererRef.current?.writeFrame(ascii);
+      }
+    }, 1000 / settings.targetFps);
+    return () => window.clearInterval(timer);
+  }, [fileRunning, connectionState, clientRef, settings.targetFps]);
   const handleDeviceSetupOpenChange = useCallback(
     (open: boolean) => {
       if (open) stopWebcam();
+      suspendFile(open);
       setDeviceSetupOpen(open);
     },
-    [stopWebcam],
+    [stopWebcam, suspendFile],
   );
+
+  useEffect(() => {
+    getMirrorModule()?._wasm_ui_audio(Number(audioEnabled || micEnabled));
+  }, [audioEnabled, micEnabled, connectionState, rendererReady]);
 
   const closeAudio = useCallback(() => {
     audioRef.current?.close();
@@ -703,6 +779,8 @@ export function ClientPage({
             }
           },
         });
+      const ui = getMirrorModule();
+      if (ui) audioRef.current.setVolume(ui._wasm_ui_volume());
       if (speakers) await audioRef.current.enablePlayback();
       const client = clientRef.current;
       if (!client) throw new Error("Connect before starting the audio stream");
@@ -743,35 +821,13 @@ export function ClientPage({
     (dims: { cols: number; rows: number }) => {
       frameQueueRef.current = [];
       setTerminalDimensions(dims);
-
-      // If connected, send updated dimensions to server
-      if (clientRef.current && connectionState === ConnectionState.CONNECTED) {
-        try {
-          const payload = buildCapabilitiesPacket(
-            dims.cols,
-            dims.rows,
-            settings.targetFps,
-            settings.colorMode,
-            settings.colorFilter,
-            settings.palette,
-            settings.paletteChars,
-            settings.matrixRain,
-            clientRef.current.videoCodecCapabilities,
-            settings.renderMode,
-          );
-          clientRef.current.sendPacket(PacketType.CLIENT_CAPABILITIES, payload);
-        } catch (err) {
-          console.error("[Client] Failed to send capabilities on resize:", err);
-        }
-      }
     },
-    [connectionState, settings, clientRef],
+    [],
   );
 
-  // The native server renders each client's ASCII stream according to its
-  // advertised capabilities. Re-send them when the live settings panel
-  // changes so color, palette, filter, and FPS updates take effect without a
-  // reconnect.
+  useEngineSettings(rendererReady, settings, setSettings);
+
+  // Send each live rendering update through the shared settings transaction.
   useEffect(() => {
     if (
       connectionState !== ConnectionState.CONNECTED ||
@@ -780,30 +836,28 @@ export function ClientPage({
       !clientRef.current
     )
       return;
-    try {
-      clientRef.current.sendPacket(
-        PacketType.CLIENT_CAPABILITIES,
-        buildCapabilitiesPacket(
-          terminalDimensions.cols,
-          terminalDimensions.rows,
-          settings.targetFps,
-          settings.colorMode,
-          settings.colorFilter,
-          settings.palette,
-          settings.paletteChars,
-          settings.matrixRain,
-          clientRef.current.videoCodecCapabilities,
-          settings.renderMode,
-        ),
-      );
-    } catch (err) {
-      console.error("[Client] Failed to apply live capabilities:", err);
-    }
-  }, [clientRef, connectionState, settings, terminalDimensions]);
+    const timer = setTimeout(() => {
+      try {
+        sendRenderSettings(
+          renderPreferences(terminalDimensions.cols, terminalDimensions.rows),
+        );
+      } catch (err) {
+        console.error("[Client] Failed to apply rendering settings:", err);
+      }
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [
+    clientRef,
+    connectionState,
+    settings,
+    terminalDimensions,
+    sendRenderSettings,
+  ]);
 
   // Expose frame count for testing
   useEffect(() => {
     const metrics = {
+      lastRenderedFrame: window.__clientFrameMetrics?.lastRenderedFrame ?? "",
       rendered: frameCountRef.current,
       received: receivedFrameCountRef.current,
       changedReceived: changedReceivedFrameCountRef.current,
@@ -1001,6 +1055,7 @@ export function ClientPage({
       setWebcamDisabledByUser(false);
       return;
     }
+    if (fileSelected) return;
     if (deviceSetupOpen) {
       webcamAutoStartedRef.current = false;
       return;
@@ -1023,6 +1078,7 @@ export function ClientPage({
     webcamDisabledByUser,
     audioVisualization,
     deviceSetupOpen,
+    fileSelected,
   ]);
 
   const disableWebcam = useCallback(() => {
@@ -1031,9 +1087,10 @@ export function ClientPage({
   }, [stopWebcam]);
 
   const enableWebcam = useCallback(() => {
+    stopFile();
     setWebcamDisabledByUser(false);
     if (!audioVisualization) void startWebcam();
-  }, [startWebcam, audioVisualization]);
+  }, [startWebcam, audioVisualization, stopFile]);
 
   const getStatusDotColor = () => {
     switch (connectionState) {
@@ -1120,6 +1177,8 @@ export function ClientPage({
         description="Connect to an ascii-chat server. Real-time encrypted video chat rendered as ASCII art in your browser."
         url={`${SITES.WEB}/client`}
       />
+      <video ref={fileVideoRef} playsInline style={{ display: "none" }} />
+      <canvas ref={fileCanvasRef} style={{ display: "none" }} />
       <PageLayout
         videoRef={videoRef}
         canvasRef={canvasRef}
@@ -1128,15 +1187,22 @@ export function ClientPage({
             showSettings={showSettings}
             onDeviceSetupOpenChange={handleDeviceSetupOpenChange}
             settingsPanel={
-              <BinarySettings
-                cameraFps={cameraFps}
-                separateCameraFps
-                config={settings}
-                onChange={setSettings}
-                mode={AsciiChatMode.CLIENT}
-                contentFit={contentFit}
-                onContentFitChange={setContentFit}
-              />
+              <>
+                {renderSettingsStatus && (
+                  <p role="status" className="px-4 py-2 text-sm">
+                    {renderSettingsStatus}
+                  </p>
+                )}
+                <BinarySettings
+                  cameraFps={cameraFps}
+                  separateCameraFps
+                  config={settings}
+                  onChange={setSettings}
+                  mode={AsciiChatMode.CLIENT}
+                  contentFit={contentFit}
+                  onContentFitChange={setContentFit}
+                />
+              </>
             }
             connectionPanel={
               discoveryMode ? (
@@ -1229,7 +1295,9 @@ export function ClientPage({
                       onClick={createSession}
                       className="border border-blue-600 bg-blue-600 text-white enabled:cursor-pointer enabled:hover:bg-blue-700 enabled:hover:border-blue-700 rounded px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {creatingSession ? "Creating session…" : "Create session"}
+                      {creatingSession
+                        ? "Creating sessionÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦"
+                        : "Create session"}
                     </button>
                     {(creatingSession ||
                       connecting ||
@@ -1501,7 +1569,18 @@ export function ClientPage({
             }
             controlBar={{
               title: discoveryMode ? "Discovery mode" : "Client mode",
-              status,
+              status: fileSelected
+                ? `${fileMedia.status} ${fileMedia.fileName}`
+                : status,
+              onFileSelect: (file) => {
+                setRendererRequested(true);
+                void fileMedia.start(file);
+              },
+              onStopWebcam: fileSelected ? fileMedia.stop : undefined,
+              mediaSource: fileSelected
+                ? MediaSourceType.FILE
+                : MediaSourceType.WEBCAM,
+              videoRef: fileSelected ? fileVideoRef : undefined,
               isHost:
                 !!createdSession &&
                 connectionState === ConnectionState.CONNECTED,
@@ -1509,7 +1588,8 @@ export function ClientPage({
               dimensions: terminalDimensions,
               fps,
               targetFps: settings.targetFps,
-              isWebcamRunning,
+              isWebcamRunning:
+                fileRunning || fileMedia.loading || isWebcamRunning,
               showConnectionButton: false,
               onSettingsClick: () => setShowSettings((open) => !open),
               showSettingsButton: true,
@@ -1538,9 +1618,10 @@ export function ClientPage({
                   : undefined
               }
               onUiAction={(event) => {
-                if (event.action === 1 || event.action === 7)
-                  setSettings(sessionUiSettings(event, settings));
-                sessionUiMedia(event, videoRef.current);
+                sessionUiMedia(
+                  event,
+                  fileSelected ? fileVideoRef.current : videoRef.current,
+                );
                 audioRef.current?.setVolume(event.module._wasm_ui_volume());
                 if (event.action === 3) disconnectMedia();
               }}

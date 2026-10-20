@@ -5,9 +5,8 @@ set(APP_SRCS
     # Server mode
     ${CMAKE_CURRENT_SOURCE_DIR}/server/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/server/client.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/server/events.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/server/connections.c
     ${CMAKE_CURRENT_SOURCE_DIR}/server/protocol.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/server/crypto.c
     ${CMAKE_CURRENT_SOURCE_DIR}/server/stream.c
     ${CMAKE_CURRENT_SOURCE_DIR}/server/render.c
     ${CMAKE_CURRENT_SOURCE_DIR}/server/stats.c
@@ -692,7 +691,7 @@ endif()
 include(${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake)
 # Copy DLL dependencies to bin directory on Windows (for non-static builds)
 # Skip for static Release builds where all deps are linked into the executable
-if(WIN32 AND _use_shared_lib)
+if(WIN32)
     copy_windows_dlls(ascii-chat)
 endif()
 # Check static linking for Release builds
@@ -852,53 +851,8 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
     endif()
 endif()
 
-# Mirror mode WASM target
-# Note: Configuration happens once during cmake configure phase (see above)
-# Build-time targets only run the build step, never reconfigure
-if(NOT TARGET mirror-web)
-    add_custom_target(mirror-web
-        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
-        COMMENT "Building WASM mirror module"
-        DEPENDS generate_fonts
-        USES_TERMINAL
-        VERBATIM
-    )
-endif()
-
-# Client mode WASM target
-if(NOT TARGET client-web)
-    add_custom_target(client-web
-        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
-        COMMENT "Building WASM client module"
-        DEPENDS generate_fonts
-        USES_TERMINAL
-        VERBATIM
-    )
-endif()
-
-if(NOT TARGET face-follow-web)
-    add_custom_target(face-follow-web
-        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target face-follow-web
-        COMMENT "Building Face Follow detector worker"
-        USES_TERMINAL
-        VERBATIM
-    )
-endif()
-
-# Combined WASM target (builds renderer, client, and detector worker)
-if(NOT TARGET web)
-    add_custom_target(web
-        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
-        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
-        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target face-follow-web
-        COMMENT "Building all WASM modules"
-        DEPENDS generate_fonts
-        USES_TERMINAL
-        VERBATIM
-    )
-
-    set(WASM_TARGETS_DEFINED TRUE CACHE BOOL "WASM targets have been defined" FORCE)
-endif()
+include("${CMAKE_SOURCE_DIR}/cmake/targets/Wasm.cmake")
+asciichat_add_wasm_targets("${WASM_BUILD_DIR}")
 
 message(STATUS "WASM targets configured:")
 message(STATUS "  mirror-web - Build mirror mode WASM only")

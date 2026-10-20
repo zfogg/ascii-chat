@@ -54,11 +54,30 @@ function(copy_windows_dlls TARGET_NAME)
 
             # Copy every vcpkg runtime DLL. Keeping a hand-written list misses
             # transitive dependencies (for example FreeType's PNG/Brotli DLLs).
-            # FFmpeg is not installed by vcpkg on Windows and is handled below.
             file(GLOB VCPKG_DLLS
                 RELATIVE "${DLL_SOURCE_DIR}"
                 "${DLL_SOURCE_DIR}/*.dll"
             )
+
+            set(_webrtc_runtime_dir_ids "")
+            foreach(_runtime IN LISTS ASCIICHAT_WEBRTC_RUNTIME_DLLS)
+                get_filename_component(_runtime_name "${_runtime}" NAME)
+                list(REMOVE_ITEM VCPKG_DLLS "${_runtime_name}")
+                get_filename_component(_runtime_dir "${_runtime}" DIRECTORY)
+                string(MD5 _runtime_dir_id "${_runtime_dir}")
+                list(APPEND _webrtc_runtime_dir_ids "${_runtime_dir_id}")
+                set(_webrtc_runtime_dir_${_runtime_dir_id} "${_runtime_dir}")
+                list(APPEND _webrtc_runtime_names_${_runtime_dir_id} "${_runtime_name}")
+            endforeach()
+            list(REMOVE_DUPLICATES _webrtc_runtime_dir_ids)
+            foreach(_runtime_dir_id IN LISTS _webrtc_runtime_dir_ids)
+                stage_dlls_for_target(
+                    TARGET ${TARGET_NAME}
+                    NAMES ${_webrtc_runtime_names_${_runtime_dir_id}}
+                    SOURCE_DIR "${_webrtc_runtime_dir_${_runtime_dir_id}}"
+                    COMMENT "matching WebRTC sanitizer runtime"
+                )
+            endforeach()
 
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc-debug.dll.pdb)
@@ -66,25 +85,21 @@ function(copy_windows_dlls TARGET_NAME)
                 set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc.dll.pdb)
             endif()
 
-            copy_dlls_post_build(
+            stage_dlls_for_target(
                 TARGET ${TARGET_NAME}
                 NAMES ${VCPKG_DLLS}
                 SOURCE_DIR "${DLL_SOURCE_DIR}"
                 COMMENT "from vcpkg"
             )
 
-            # Copy PDBs for debugging
-            foreach(PDB_NAME ${VCPKG_PDBS})
-                add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                        "${DLL_SOURCE_DIR}/${PDB_NAME}"
-                        "$<TARGET_FILE_DIR:${TARGET_NAME}>/"
-                    COMMENT "Copying ${PDB_NAME} from vcpkg"
-                    VERBATIM
-                )
-            endforeach()
+            stage_dlls_for_target(
+                TARGET ${TARGET_NAME}
+                NAMES ${VCPKG_PDBS}
+                SOURCE_DIR "${DLL_SOURCE_DIR}"
+                COMMENT "from vcpkg"
+            )
 
-            message(STATUS "DLL/PDB copying: using ${BoldCyan}cmake -E copy${ColorReset} from ${BoldBlue}${DLL_SOURCE_DIR}${ColorReset}")
+            message(STATUS "DLL/PDB staging: using ${BoldCyan}cmake -E copy${ColorReset} from ${BoldBlue}${DLL_SOURCE_DIR}${ColorReset}")
 
             # vcpkg Debug DLLs use the MSVC Debug CRT, which is not on PATH.
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -102,7 +117,7 @@ function(copy_windows_dlls TARGET_NAME)
                     if(_msvc_debug_crt_dirs)
                         list(SORT _msvc_debug_crt_dirs COMPARE NATURAL ORDER DESCENDING)
                         list(GET _msvc_debug_crt_dirs 0 _msvc_debug_crt_dir)
-                        copy_dlls_post_build(
+                        stage_dlls_for_target(
                             TARGET ${TARGET_NAME}
                             NAMES msvcp140d.dll vcruntime140d.dll vcruntime140_1d.dll
                             SOURCE_DIR "${_msvc_debug_crt_dir}"
@@ -113,7 +128,7 @@ function(copy_windows_dlls TARGET_NAME)
 
                 set(_ucrt_debug_dir "${WINDOWS_KITS_DIR}/bin/${WINDOWS_SDK_VERSION}/${_debug_crt_arch}/ucrt")
                 if(EXISTS "${_ucrt_debug_dir}/ucrtbased.dll")
-                    copy_dlls_post_build(
+                    stage_dlls_for_target(
                         TARGET ${TARGET_NAME}
                         NAMES ucrtbased.dll
                         SOURCE_DIR "${_ucrt_debug_dir}"
@@ -122,28 +137,31 @@ function(copy_windows_dlls TARGET_NAME)
                 endif()
             endif()
         else()
-            message(STATUS "DLL/PDB copying: ${BoldYellow}skipped${ColorReset} (vcpkg not configured)")
+            message(STATUS "DLL/PDB staging: ${BoldYellow}skipped${ColorReset} (vcpkg not configured)")
         endif()
 
-        # FFmpeg DLLs are from .deps-cache, not vcpkg
+        # Stage FFmpeg separately only when it came from outside vcpkg. When
+        # vcpkg supplied it, the active configuration's DLLs were included in
+        # the complete runtime batch above.
         if(DEFINED ASCIICHAT_DEPS_CACHE_DIR)
-            set(FFMPEG_DLL_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/bin")
-            # Try versioned directory name if generic doesn't exist
-            if(NOT EXISTS "${FFMPEG_DLL_DIR}")
-                file(GLOB _ffmpeg_dirs "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg-*/bin")
-                list(LENGTH _ffmpeg_dirs _ffmpeg_dirs_len)
-                if(_ffmpeg_dirs_len GREATER 0)
-                    list(GET _ffmpeg_dirs 0 FFMPEG_DLL_DIR)
-                endif()
+            # Copy the runtime matching the libraries selected at configure time.
+            list(GET FFMPEG_LIBRARY_DIRS 0 _ffmpeg_library_dir)
+            get_filename_component(_ffmpeg_prefix "${_ffmpeg_library_dir}" DIRECTORY)
+            set(FFMPEG_DLL_DIR "${_ffmpeg_prefix}/bin")
+            set(_ffmpeg_is_from_vcpkg FALSE)
+            if(DEFINED VCPKG_INSTALLED)
+                cmake_path(IS_PREFIX VCPKG_INSTALLED "${FFMPEG_DLL_DIR}" NORMALIZE _ffmpeg_is_from_vcpkg)
             endif()
-            if(EXISTS "${FFMPEG_DLL_DIR}")
+            if(_ffmpeg_is_from_vcpkg)
+                message(STATUS "FFmpeg DLLs: included in vcpkg runtime staging")
+            elseif(EXISTS "${FFMPEG_DLL_DIR}")
                 file(GLOB FFMPEG_DLL_PATHS "${FFMPEG_DLL_DIR}/av*.dll" "${FFMPEG_DLL_DIR}/sw*.dll")
                 set(FFMPEG_DLLS "")
                 foreach(FFMPEG_DLL_PATH IN LISTS FFMPEG_DLL_PATHS)
                     get_filename_component(FFMPEG_DLL_NAME "${FFMPEG_DLL_PATH}" NAME)
                     list(APPEND FFMPEG_DLLS "${FFMPEG_DLL_NAME}")
                 endforeach()
-                copy_dlls_post_build(
+                stage_dlls_for_target(
                     TARGET ${TARGET_NAME}
                     NAMES ${FFMPEG_DLLS}
                     SOURCE_DIR "${FFMPEG_DLL_DIR}"

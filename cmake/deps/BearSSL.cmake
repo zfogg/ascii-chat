@@ -245,26 +245,17 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
                 message(FATAL_ERROR "No archiver found (llvm-lib or lib.exe). Required for building BearSSL on Windows.")
             endif()
 
-            # Build BearSSL at configure time using PowerShell to avoid MAKEFLAGS issues
-            # PowerShell provides a clean environment without inheriting bash/make variables
+            # Run nmake directly with a clean make environment. Keep quotes in
+            # its tool macros because nmake expands them into shell commands.
             set(BEARSSL_LOG_FILE "${BEARSSL_BUILD_DIR}/bearssl-build.log")
 
             # Ensure obj directory exists
             file(MAKE_DIRECTORY "${BEARSSL_SOURCE_DIR}/build/obj")
 
-            # Convert paths to Windows format for nmake
-            file(TO_NATIVE_PATH "${BEARSSL_SOURCE_DIR}" BEARSSL_SOURCE_DIR_NATIVE)
-            file(TO_NATIVE_PATH "${NMAKE_EXECUTABLE}" NMAKE_NATIVE)
-            file(TO_NATIVE_PATH "${CLANG_CL_EXECUTABLE}" CLANG_CL_NATIVE)
-            file(TO_NATIVE_PATH "${BEARSSL_AR_EXECUTABLE}" AR_NATIVE)
-
             execute_process(
-                COMMAND powershell -NoProfile -Command "
-                    $env:MAKEFLAGS = $null;
-                    $env:NMAKEFLAGS = $null;
-                    Set-Location '${BEARSSL_SOURCE_DIR_NATIVE}';
-                    & '${NMAKE_NATIVE}' /F mk\\NMake.mk CC='${CLANG_CL_NATIVE}' AR='${AR_NATIVE}' lib
-                "
+                COMMAND "${CMAKE_COMMAND}" -E env --unset=MAKEFLAGS --unset=NMAKEFLAGS
+                    "${NMAKE_EXECUTABLE}" /F mk/NMake.mk
+                    "CC=\"${CLANG_CL_EXECUTABLE}\"" "AR=\"${BEARSSL_AR_EXECUTABLE}\"" lib
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
                 RESULT_VARIABLE BEARSSL_BUILD_RESULT
                 OUTPUT_FILE "${BEARSSL_LOG_FILE}"
@@ -272,7 +263,14 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
             )
 
             if(NOT BEARSSL_BUILD_RESULT EQUAL 0)
-                message(FATAL_ERROR "${BoldRed}BearSSL build failed${ColorReset}. Check log: ${BEARSSL_LOG_FILE}")
+                file(STRINGS "${BEARSSL_LOG_FILE}" BEARSSL_BUILD_LOG)
+                list(LENGTH BEARSSL_BUILD_LOG BEARSSL_LOG_LENGTH)
+                if(BEARSSL_LOG_LENGTH GREATER 40)
+                    math(EXPR BEARSSL_LOG_START "${BEARSSL_LOG_LENGTH} - 40")
+                    list(SUBLIST BEARSSL_BUILD_LOG ${BEARSSL_LOG_START} 40 BEARSSL_BUILD_LOG)
+                endif()
+                list(JOIN BEARSSL_BUILD_LOG "\n" BEARSSL_BUILD_LOG)
+                message(FATAL_ERROR "${BoldRed}BearSSL build failed${ColorReset}:\n${BEARSSL_BUILD_LOG}\nFull log: ${BEARSSL_LOG_FILE}")
             endif()
 
             # Copy built library to cache

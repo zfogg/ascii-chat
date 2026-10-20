@@ -4,6 +4,7 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/errno.h>
+#include <ascii-chat/platform/symbols.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/debug/errno.h>
@@ -429,6 +430,42 @@ static int pending_signal_probe(void) {
 }
 #endif
 
+static void diagnostic_verbosity_contract(void) {
+  CHECK(symbol_cache_init() == ASCIICHAT_OK);
+  SET_ERRNO(ERROR_CRYPTO_AUTH, "Rejected authentication fixture");
+  asciichat_error_context_t context;
+  CHECK(HAS_ERRNO(&context));
+  // One real frame is enough to exercise symbolization without a large report.
+  if (context.backtrace.count > 1)
+    context.backtrace.count = 1;
+  CLEAR_ERRNO_ALL();
+  CHECK(asciichat_errno_import(&context) == ERROR_CRYPTO_AUTH);
+  CHECK(HAS_ERRNO(&context));
+  uint64_t hits_before, misses_before, hits_after, misses_after;
+  symbol_cache_get_stats(&hits_before, &misses_before, NULL);
+  log_set_level(LOG_INFO);
+  asciichat_errno_print_chain(context.thread_id, context.error_id);
+  symbol_cache_get_stats(&hits_after, &misses_after, NULL);
+  CHECK(hits_after == hits_before && misses_after == misses_before);
+  CHECK(GET_ERRNO() == ERROR_CRYPTO_AUTH);
+#if !defined(_WIN32) && (!defined(NDEBUG) || defined(ENABLE_ERRNO_BACKTRACES))
+  CHECK(context.backtrace.count > 0);
+  // Explicit reports retain full diagnostics even at normal log verbosity.
+  asciichat_print_error_context(&context);
+  symbol_cache_get_stats(&hits_after, &misses_after, NULL);
+  CHECK(hits_after + misses_after > hits_before + misses_before);
+  hits_before = hits_after;
+  misses_before = misses_after;
+  log_set_level(LOG_DEBUG);
+  asciichat_errno_print_chain(context.thread_id, context.error_id);
+  symbol_cache_get_stats(&hits_after, &misses_after, NULL);
+  CHECK(hits_after + misses_after > hits_before + misses_before);
+#endif
+  CLEAR_ERRNO_ALL();
+  symbol_cache_destroy();
+  log_set_level(LOG_WARN);
+}
+
 int main(int argc, char **argv) {
   log_init(NULL, LOG_WARN, false, false);
   asciichat_errno_suppress(true);
@@ -442,6 +479,7 @@ int main(int argc, char **argv) {
   if (argc > 1 && strcmp(argv[1], "--signal-stacks") == 0)
     return pending_signal_probe();
 #endif
+  diagnostic_verbosity_contract();
   network_recovery_contract();
   peek_contract();
   stack_contract();

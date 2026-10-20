@@ -73,21 +73,33 @@ function(apply_patch)
     # Result variable name
     set(RESULT_VAR "${DEP_NAME}_PATCH_${PATCH_PATCH_NUM}_APPLIED")
 
-    # Check if this specific patch was already applied
+    # Marker files can outlive a reset or replacement of the dependency source.
+    # Only trust the marker when the patch is still present in the working tree.
     if(EXISTS "${PATCH_MARKER}")
-        # Patch already applied, just ensure assume-unchanged is set
-        if(PATCH_ASSUME_UNCHANGED)
-            foreach(FILE_PATH ${PATCH_ASSUME_UNCHANGED})
-                execute_process(
-                    COMMAND git update-index --assume-unchanged "${FILE_PATH}"
-                    WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
-                    OUTPUT_QUIET
-                    ERROR_QUIET
-                )
-            endforeach()
+        execute_process(
+            COMMAND git apply --reverse --check "${PATCH_PATCH_FILE}"
+            WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
+            RESULT_VARIABLE PATCH_PRESENT_RESULT
+            OUTPUT_QUIET
+            ERROR_QUIET
+        )
+
+        if(PATCH_PRESENT_RESULT EQUAL 0)
+            if(PATCH_ASSUME_UNCHANGED)
+                foreach(FILE_PATH ${PATCH_ASSUME_UNCHANGED})
+                    execute_process(
+                        COMMAND git update-index --assume-unchanged "${FILE_PATH}"
+                        WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
+                        OUTPUT_QUIET
+                        ERROR_QUIET
+                    )
+                endforeach()
+            endif()
+            set(${RESULT_VAR} TRUE PARENT_SCOPE)
+            return()
         endif()
-        set(${RESULT_VAR} TRUE PARENT_SCOPE)
-        return()
+
+        message(STATUS "  ${DEP_NAME} patch #${PATCH_PATCH_NUM} marker is stale; reapplying")
     endif()
 
     # Log what we're doing

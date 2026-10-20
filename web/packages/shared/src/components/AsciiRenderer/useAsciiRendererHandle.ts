@@ -402,13 +402,18 @@ export function useAsciiRendererHandle({
         lastFrameChangedRef.current = false;
         const ui = ensureUi();
         if (!ui) return false;
-        ui.media(ansiString);
-        // Keep the newest frame while help/loading owns presentation.
-        const frame = ui.tick(performance.now());
-        if (frame === null) return true;
-        const painted = paintFrame(frame);
-        if (!painted) ui.redraw();
-        return painted;
+        try {
+          ui.media(ansiString);
+          // Keep the newest frame while help/loading owns presentation.
+          const frame = ui.tick(performance.now());
+          if (frame === null) return true;
+          const painted = paintFrame(frame);
+          if (!painted) ui.redraw();
+          return painted;
+        } catch (error) {
+          console.error("[AsciiRenderer] Frame rejected:", error);
+          return false;
+        }
       },
 
       getLastFrameChanged() {

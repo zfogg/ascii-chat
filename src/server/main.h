@@ -42,7 +42,7 @@
 
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/network/rate_limit/rate_limit.h>
-#include <ascii-chat/network/tcp/server.h>
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/crypto/key_types.h>
 #include "session/host.h"
@@ -151,7 +151,7 @@ extern size_t g_num_whitelisted_clients;
  * @brief Server context - encapsulates all server state
  *
  * This structure holds all server-wide state that was previously stored in
- * global variables. It's passed to client handlers via tcp_server user_data,
+ * global variables. It's passed to client handlers via network runtime callback context,
  * reducing global state and improving modularity.
  *
  * DESIGN RATIONALE:
@@ -163,16 +163,16 @@ extern size_t g_num_whitelisted_clients;
  *
  * LIFETIME:
  * =========
- * - Created in server_main() before tcp_server_init()
- * - Passed to tcp_server via config.user_data
+ * - Created in server_main() before network_server_create()
+ * - Passed to the network runtime via config.user_data
  * - Available to client handlers via tcp_client_context_t.user_data
- * - Destroyed in server_main() after tcp_server_destroy()
+ * - Destroyed in server_main() after network_server_destroy()
  *
  * @ingroup server_main
  */
 typedef struct server_context_t {
-  // TCP server instance
-  tcp_server_t *tcp_server; ///< TCP server managing connections
+  // Connection runtime
+  network_server_t *network_server; ///< Shared connection runtime
 
   // Rate limiting
   rate_limiter_t *rate_limiter; ///< Connection and packet rate limiter

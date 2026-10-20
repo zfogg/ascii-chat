@@ -1,3 +1,4 @@
+import { applyAudioOutputDevice } from "@ascii-chat/shared/devices/mediaDevicePreferences";
 import { AVState } from "../wasm/AVState";
 import { OpusEncoder } from "./OpusEncoder";
 import { AudioCapture } from "./AudioCapture";
@@ -313,19 +314,10 @@ export class AudioPipeline {
   }
   async setSpeakerDevice(deviceId: string): Promise<void> {
     if (!this.context || !deviceId) return;
-    const contextWithSink = this.context as AudioContext & {
-      setSinkId?: (sinkId: string) => Promise<void>;
-    };
-    if (!contextWithSink.setSinkId) {
-      if (deviceId !== "default")
-        throw new Error("This browser does not support speaker selection.");
-      return;
-    }
     const context = this.context;
-    const setSinkId = contextWithSink.setSinkId.bind(contextWithSink);
     const operation = this.speakerChangeQueue.then(async () => {
       if (this.context !== context) return;
-      await setSinkId(deviceId);
+      await applyAudioOutputDevice(context, deviceId);
     });
     this.speakerChangeQueue = operation.catch(() => undefined);
     await operation;

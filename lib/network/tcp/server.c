@@ -113,13 +113,6 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
   atomic_store_bool(&server->running, true);
   server->config = *config; // Copy config
 
-  // Initialize client registry
-  server->clients = NULL; // uthash starts with NULL
-  server->cleanup_fn = NULL;
-  if (rwlock_init(&server->clients_rwlock, "clients") != 0) {
-    return SET_ERRNO(ERROR_THREAD, "Failed to initialize clients read-write lock");
-  }
-
   // Determine which IP versions to bind
   bool should_bind_ipv4 = config->bind_ipv4;
   bool should_bind_ipv6 = config->bind_ipv6;
@@ -146,6 +139,7 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
 
   // Ensure at least one socket bound successfully
   if (server->listen_socket == INVALID_SOCKET_VALUE && server->listen_socket6 == INVALID_SOCKET_VALUE) {
+    NAMED_UNREGISTER(&server->running);
     return SET_ERRNO(ERROR_NETWORK_BIND, "Failed to bind any sockets (IPv4 and IPv6 both failed)");
   }
 
@@ -155,7 +149,6 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
   NAMED_REGISTER(server, port_name, "tcp_server", "0x%tx", NULL);
 
   /* Register server's sync primitives with hierarchical naming */
-  NAMED_REGISTER_RWLOCK(&server->clients_rwlock, "clients_rwlock", (uintptr_t)(const void *)(server));
   NAMED_REGISTER_ATOMIC(&server->running, "is_running", (uintptr_t)(const void *)(server));
 
   return ASCIICHAT_OK;
@@ -226,144 +219,7 @@ void tcp_server_destroy(tcp_server_t *server) {
     server->listen_socket6 = INVALID_SOCKET_VALUE;
   }
 
-  // Clean up client registry
-  rwlock_wrlock(&server->clients_rwlock);
-
-  tcp_client_entry_t *entry = NULL, *tmp = NULL;
-  HASH_ITER(hh, server->clients, entry, tmp) {
-    // Call cleanup callback if set
-    if (server->cleanup_fn && entry->client_data) {
-      server->cleanup_fn(entry->client_data);
-    }
-
-    HASH_DEL(server->clients, entry);
-    SAFE_FREE(entry);
-  }
-  server->clients = NULL;
-
-  rwlock_wrunlock(&server->clients_rwlock);
-  rwlock_destroy(&server->clients_rwlock);
-
-  // Note: This function does NOT wait for client threads to exit
-  // Caller is responsible for thread lifecycle management
-
-  log_debug("TCP server shutdown complete");
-}
-
-// ============================================================================
-// Client Management Functions
-// ============================================================================
-
-void tcp_server_set_cleanup_callback(tcp_server_t *server, tcp_client_cleanup_fn cleanup_fn) {
-  if (!server) {
-    return;
-  }
-  server->cleanup_fn = cleanup_fn;
-}
-
-asciichat_error_t tcp_server_add_client(tcp_server_t *server, socket_t socket, void *client_data) {
-  if (!server) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "server is NULL");
-  }
-
-  if (socket == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "socket is invalid");
-  }
-
-  // Allocate new entry
-  tcp_client_entry_t *entry = SAFE_MALLOC(sizeof(tcp_client_entry_t), tcp_client_entry_t *);
-  if (!entry) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate client entry");
-  }
-
-  entry->socket = socket;
-  entry->client_data = client_data;
-
-  // Add to hash table (thread-safe with write lock)
-  rwlock_wrlock(&server->clients_rwlock);
-  HASH_ADD(hh, server->clients, socket, sizeof(socket_t), entry);
-  rwlock_wrunlock(&server->clients_rwlock);
-
-  log_debug("Added client socket=%d to registry", socket);
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t tcp_server_remove_client(tcp_server_t *server, socket_t socket) {
-  if (!server) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "server is NULL");
-  }
-
-  rwlock_wrlock(&server->clients_rwlock);
-
-  tcp_client_entry_t *entry = NULL;
-  HASH_FIND(hh, server->clients, &socket, sizeof(socket_t), entry);
-
-  if (!entry) {
-    rwlock_wrunlock(&server->clients_rwlock);
-    // Already removed (e.g., during shutdown) - this is fine
-    log_debug("Client socket=%d already removed from registry", socket);
-    return ASCIICHAT_OK;
-  }
-
-  // Call cleanup callback if set
-  if (server->cleanup_fn && entry->client_data) {
-    server->cleanup_fn(entry->client_data);
-  }
-
-  HASH_DEL(server->clients, entry);
-  SAFE_FREE(entry);
-
-  rwlock_wrunlock(&server->clients_rwlock);
-
-  log_debug("Removed client socket=%d from registry", socket);
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t tcp_server_get_client(tcp_server_t *server, socket_t socket, void **out_data) {
-  if (!server || !out_data) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "server or out_data is NULL");
-  }
-
-  rwlock_rdlock(&server->clients_rwlock);
-
-  tcp_client_entry_t *entry = NULL;
-  HASH_FIND(hh, server->clients, &socket, sizeof(socket_t), entry);
-
-  if (!entry) {
-    *out_data = NULL;
-    rwlock_rdunlock(&server->clients_rwlock);
-    return SET_ERRNO(ERROR_INVALID_STATE, "Client socket=%d not in registry", socket);
-  }
-
-  *out_data = entry->client_data;
-  rwlock_rdunlock(&server->clients_rwlock);
-
-  return ASCIICHAT_OK;
-}
-
-void tcp_server_foreach_client(tcp_server_t *server, tcp_client_foreach_fn callback, void *user_arg) {
-  if (!server || !callback) {
-    return;
-  }
-
-  rwlock_rdlock(&server->clients_rwlock);
-
-  tcp_client_entry_t *entry, *tmp;
-  HASH_ITER(hh, server->clients, entry, tmp) {
-    callback(entry->socket, entry->client_data, user_arg);
-  }
-
-  rwlock_rdunlock(&server->clients_rwlock);
-}
-
-size_t tcp_server_get_client_count(tcp_server_t *server) {
-  if (!server) {
-    return 0;
-  }
-
-  rwlock_rdlock(&server->clients_rwlock);
-  size_t count = HASH_COUNT(server->clients);
-  rwlock_rdunlock(&server->clients_rwlock);
-
-  return count;
+  log_debug("TCP listener shutdown complete");
+  NAMED_UNREGISTER(&server->running);
+  NAMED_UNREGISTER(server);
 }

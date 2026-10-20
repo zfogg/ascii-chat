@@ -3,10 +3,10 @@ import { afterEach, expect, it, vi } from "vite-plus/test";
 import {
   setFastExposure,
   supportsFastExposure,
-} from "../../src/utils/cameraExposure";
+} from "@ascii-chat/shared/devices/cameraExposure";
 import { useCameraExposure } from "../../src/hooks/useCameraExposure";
 
-vi.mock("../../src/utils/cameraExposure", () => ({
+vi.mock("@ascii-chat/shared/devices/cameraExposure", () => ({
   supportsFastExposure: vi.fn(() => true),
   setFastExposure: vi.fn(async () => {}),
 }));
@@ -63,3 +63,24 @@ it.each([null, {} as MediaStreamTrack])(
     expect(hook.result.current.error).toBe("");
   },
 );
+
+it("applies supported-track preferences, reports failure, recovers and resets on cleanup", async () => {
+  vi.mocked(supportsFastExposure).mockReturnValue(true);
+  vi.mocked(setFastExposure).mockReset().mockResolvedValue(undefined);
+  const track = {} as MediaStreamTrack;
+  const hook = renderHook(() => useCameraExposure(track));
+  await waitFor(() =>
+    expect(setFastExposure).toHaveBeenCalledWith(track, false),
+  );
+  vi.mocked(setFastExposure).mockImplementation(async (_track, enabled) => {
+    if (enabled) throw new Error("exposure failed");
+  });
+  act(() => hook.result.current.select(true));
+  await waitFor(() =>
+    expect(hook.result.current.error).toBe("exposure failed"),
+  );
+  act(() => hook.result.current.select(false));
+  await waitFor(() => expect(hook.result.current.error).toBe(""));
+  hook.unmount();
+  expect(setFastExposure).toHaveBeenLastCalledWith(track, false);
+});

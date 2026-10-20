@@ -41,7 +41,7 @@ typedef svint32_t vec_t;
 #endif
 typedef int32_t vec_t __attribute__((vector_size(LANES * 4)));
 static inline vec_t broadcast(int32_t n) {
-  vec_t v;
+  vec_t v = {0};
   for (unsigned j = 0; j < LANES; ++j)
     v[j] = n;
   return v;

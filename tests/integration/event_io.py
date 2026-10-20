@@ -3,10 +3,29 @@ from pathlib import Path
 import base64
 import socket
 import struct
+import os
+import subprocess
 import sys
 import tempfile
 
 from server_lifecycle import check_client, free_port, running, server_options
+
+
+def reject_client(binary, directory, destination, name, extra):
+    env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
+    env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
+               APPDATA=str(directory), XDG_CONFIG_HOME=str(directory))
+    log = directory / (name + ".log")
+    result = subprocess.run(
+        [str(binary), "--no-check-update", "--log-file", str(log), "client", destination,
+         "--test-pattern", "--audio=false", "--snapshot", "--snapshot-delay", "0",
+         "--width", "40", "--height", "12", "--splash-screen=false", "--reconnect-attempts", "0", *extra],
+        cwd=directory, env=env, capture_output=True, timeout=20,
+    )
+    text = log.read_text(encoding="utf-8", errors="replace")
+    assert result.returncode != 0 and not result.stdout.strip(), f"{name}: rejected peer rendered output"
+    assert "CLIENT_CONNECTION_RUNNING" not in text, f"{name}: rejected peer became active"
+    assert "CLIENT_CONNECTION_RELEASED" in text, f"{name}: failed startup retained its owner"
 
 
 def crc32c(data):
@@ -105,6 +124,11 @@ def main():
         with running(binary, directory, name, "server", server_options(port, ws_port) + options) as server:
             server.wait_for("TCP event backend:")
             check_client(binary, directory, f"127.0.0.1:{port}", name + "-client", options)
+            check_client(binary, directory, f"ws://127.0.0.1:{ws_port}", name + "-ws-client", options)
+            if name == "password":
+                for protocol, endpoint in [("tcp", f"127.0.0.1:{port}"), ("ws", f"ws://127.0.0.1:{ws_port}")]:
+                    reject_client(binary, directory, endpoint, f"password-rejected-{protocol}", ["--password", "wrong-password"])
+                    check_client(binary, directory, endpoint, f"password-recovered-{protocol}", options)
     # Public RFC 8032 test vector, used only as a local fixture.
     public = bytes.fromhex("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a")
     identity = directory / "server-identity"
@@ -128,13 +152,26 @@ def main():
     config = directory / "ascii-chat"
     config.mkdir(exist_ok=True)
     known_hosts = config / "known_hosts"
-    known_hosts.write_text(f"127.0.0.1:{port} x25519 {public.hex()} ascii-chat\n")
+    known_hosts.write_text(f"127.0.0.1:{port} x25519 {public.hex()} ascii-chat\n" +
+                          f"127.0.0.1:{ws_port} x25519 {public.hex()} ascii-chat\n")
     known_hosts.chmod(0o600)
     with running(binary, directory, "identity", "server",
                  server_options(port, ws_port) + ["--key", str(identity)]) as server:
         server.wait_for("TCP event backend:")
         legacy_identity_handshake(port)
         check_client(binary, directory, f"127.0.0.1:{port}", "pinned-client", ["--server-key", str(pinned)])
+        check_client(binary, directory, f"ws://127.0.0.1:{ws_port}", "pinned-ws-client", ["--server-key", str(pinned)])
+    port, ws_port = free_port(), free_port()
+    with known_hosts.open("a") as trust:
+        trust.write(f"127.0.0.1:{port} x25519 {public.hex()} ascii-chat\n" +
+                    f"127.0.0.1:{ws_port} x25519 {public.hex()} ascii-chat\n")
+    with running(binary, directory, "whitelist", "server",
+                 server_options(port, ws_port) + ["--key", str(identity), "--client-keys", str(pinned)]) as server:
+        server.wait_for("TCP event backend:")
+        for protocol, endpoint in [("tcp", f"127.0.0.1:{port}"), ("ws", f"ws://127.0.0.1:{ws_port}")]:
+            reject_client(binary, directory, endpoint, f"whitelist-rejected-{protocol}", ["--server-key", str(pinned)])
+            check_client(binary, directory, endpoint, f"whitelist-accepted-{protocol}",
+                         ["--key", str(identity), "--server-key", str(pinned)])
     print("PASS: stalled peers, crypto modes, automatic copy avoidance, WebSocket, reconnects, shutdown", flush=True)
 
 

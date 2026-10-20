@@ -779,7 +779,6 @@ static const int default_websocket_port_value = OPT_WEBSOCKET_PORT_SERVER_DEFAUL
 static const int default_webcam_index_value = OPT_WEBCAM_INDEX_DEFAULT;
 static const bool default_flip_x_value = OPT_FLIP_X_DEFAULT;
 static const bool default_flip_y_value = OPT_FLIP_Y_DEFAULT;
-static const bool default_test_pattern_value = OPT_TEST_PATTERN_DEFAULT;
 static const int default_color_value = OPT_COLOR_DEFAULT;
 static const int default_color_mode_value = OPT_COLOR_MODE_DEFAULT;
 static const int default_color_filter_value = OPT_COLOR_FILTER_DEFAULT;
@@ -1091,7 +1090,7 @@ typedef struct options_state {
   unsigned short int verbose_level;     ///< Verbosity level (stackable -V)
   bool snapshot_mode;                   ///< Snapshot mode (one frame and exit)
   double snapshot_delay;                ///< Snapshot delay in seconds
-  int zalgo;                           ///< Combining-mark intensity (0 = disabled, 1-10 = enabled)
+  int zalgo;                            ///< Combining-mark intensity (0 = disabled, 1-10 = enabled)
   bool matrix_rain;                     ///< Matrix digital rain effect (false = disabled)
   bool fps_counter;                     ///< Show FPS counter overlay in top-right corner
   bool strip_ansi;                      ///< Strip ANSI escape sequences

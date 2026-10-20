@@ -137,6 +137,37 @@ asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet
   if (!protocol || (!payload && length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant protocol packet");
   protocol->callback_result = ASCIICHAT_OK;
+  if (type == PACKET_TYPE_ACIP_SETTINGS_ACK) {
+    acip_settings_header_t header;
+    const char *json;
+    size_t json_length;
+    asciichat_error_t result = acip_settings_decode(payload, length, &header, &json, &json_length);
+    if (result != ASCIICHAT_OK)
+      return result;
+    if ((header.request && header.request < protocol->settings_request) ||
+        header.revision < protocol->settings_revision)
+      return ASCIICHAT_OK;
+    options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
+              *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+    acip_render_settings_options(&protocol->effective_render_settings, current);
+    result = options_prepare_json(current, json, json_length, candidate, true);
+    if (result == ASCIICHAT_OK)
+      result = acip_render_settings_prepare(&protocol->effective_render_settings, candidate);
+    SAFE_FREE(current);
+    SAFE_FREE(candidate);
+    if (result != ASCIICHAT_OK)
+      return result;
+    protocol->effective_render_settings.revision = header.revision;
+    if (header.request)
+      protocol->settings_request = header.request;
+    protocol->settings_revision = header.revision;
+    protocol->settings_status = header.status;
+    if (header.status)
+      log_warn("Remote rendering update rejected (request=%u, status=%u)", header.request, header.status);
+    else
+      log_info("Remote rendering update accepted (request=%u, revision=%u)", header.request, header.revision);
+    return ASCIICHAT_OK;
+  }
   acip_client_callbacks_t media = {.on_ascii_frame = receive_frame,
                                    .on_audio_batch = receive_samples,
                                    .on_audio_opus_batch = receive_opus_batch,
@@ -165,23 +196,12 @@ asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet
   return result;
 }
 
-asciichat_error_t session_protocol_receive(session_protocol_t *protocol) {
-  if (!protocol || !protocol->transport)
-    return SET_ERRNO(ERROR_INVALID_STATE, "Participant protocol has no transport");
-  packet_envelope_t envelope = {0};
-  asciichat_error_t result = acip_client_receive_packet(protocol->transport, &envelope);
-  if (result == ASCIICHAT_OK)
-    result = session_protocol_dispatch(protocol, envelope.type, envelope.data, envelope.len);
-  if (envelope.allocated_buffer)
-    buffer_release(envelope.allocated_buffer);
-  return result;
-}
-
 void session_protocol_build_capabilities(unsigned short width, unsigned short height,
                                          terminal_capabilities_packet_t *packet) {
+  const options_t *opts = options_get();
   // Log the dimensions being sent to server (helps debug dimension mismatch issues)
-  log_debug("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height,
-            GET_OPTION(auto_width), GET_OPTION(auto_height));
+  log_debug("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height, opts->auto_width,
+            opts->auto_height);
 
   // Connection and transport availability is checked by threaded_send_packet()
 
@@ -194,7 +214,7 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
   // - In snapshot mode (one frame and exit)
   // - When stdout is not a TTY (piped/redirected output)
   // Enable padding for interactive terminal sessions
-  bool is_snapshot_mode = GET_OPTION(snapshot_mode);
+  bool is_snapshot_mode = opts->snapshot_mode;
   bool is_interactive = terminal_is_interactive();
   caps.wants_padding = is_interactive && !is_snapshot_mode;
 
@@ -205,7 +225,7 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
   caps = apply_color_mode_override(caps);
 
   // Check if detection was reliable, use fallback only for auto-detection
-  if (!caps.detection_reliable && GET_OPTION(color_mode) == COLOR_MODE_AUTO) {
+  if (!caps.detection_reliable && opts->color_mode == COLOR_MODE_AUTO) {
     log_warn("Terminal capability detection not reliable, using fallback");
     SAFE_MEMSET(&caps, sizeof(caps), 0, sizeof(caps));
     caps.color_level = TERM_COLOR_NONE;
@@ -220,17 +240,21 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
 
   // Convert to network packet format with proper byte order
   terminal_capabilities_packet_t net_packet = {0};
+  if (opts->matrix_rain)
+    caps.capabilities |= TERM_CAP_MATRIX_RAIN;
+  else
+    caps.capabilities &= ~(uint32_t)TERM_CAP_MATRIX_RAIN;
   net_packet.capabilities = HOST_TO_NET_U32(caps.capabilities);
   net_packet.color_level = HOST_TO_NET_U32(caps.color_level);
   net_packet.color_count = HOST_TO_NET_U32(caps.color_count);
-  net_packet.render_mode = HOST_TO_NET_U32(caps.render_mode);
+  net_packet.render_mode = HOST_TO_NET_U32(opts->render_mode);
+  net_packet.color_filter = (uint8_t)opts->color_filter;
   net_packet.width = HOST_TO_NET_U16(width);
   net_packet.height = HOST_TO_NET_U16(height);
-  net_packet.palette_type = HOST_TO_NET_U32(GET_OPTION(palette_type));
+  net_packet.palette_type = HOST_TO_NET_U32(opts->palette_type);
   net_packet.utf8_support = HOST_TO_NET_U32(caps.utf8_support ? 1 : 0);
 
-  const options_t *opts = options_get();
-  if (GET_OPTION(palette_type) == PALETTE_CUSTOM && GET_OPTION(palette_custom_set)) {
+  if (opts->palette_type == PALETTE_CUSTOM && opts->palette_custom_set) {
     const char *palette_custom = opts && opts->palette_custom_set ? opts->palette_custom : "";
     SAFE_STRNCPY(net_packet.palette_custom, palette_custom, sizeof(net_packet.palette_custom));
     net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
@@ -239,7 +263,7 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
   }
 
   // Set desired FPS
-  int fps = GET_OPTION(fps);
+  int fps = opts->fps;
   if (fps > 0) {
     net_packet.desired_fps = (uint8_t)(fps > 144 ? 144 : fps);
   } else {
@@ -258,7 +282,7 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
 
   net_packet.detection_reliable = caps.detection_reliable;
   // Send UTF-8 support flag: true for AUTO (default) and TRUE settings, false for FALSE setting
-  net_packet.utf8_support = (GET_OPTION(force_utf8) != UTF8_SETTING_FALSE) ? 1 : 0;
+  net_packet.utf8_support = (opts->force_utf8 != UTF8_SETTING_FALSE) ? 1 : 0;
 
   // Set wants_padding flag (1=padding enabled, 0=no padding for snapshot/piped modes)
   net_packet.wants_padding = caps.wants_padding ? 1 : 0;
@@ -270,17 +294,32 @@ void session_protocol_build_capabilities(unsigned short width, unsigned short he
   *packet = net_packet;
 }
 
-asciichat_error_t session_protocol_update_dimensions(terminal_size_t *advertised,
-                                                     session_protocol_send_capabilities_fn send, void *context) {
-  if (!advertised || !send)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Dimension update requires state and a send callback");
-  terminal_size_t size = {.cols = GET_OPTION(width), .rows = GET_OPTION(height)};
-  if (size.cols <= 0 || size.rows <= 0 || (size.cols == advertised->cols && size.rows == advertised->rows))
+asciichat_error_t session_protocol_update_settings(terminal_size_t *advertised, uint64_t *advertised_revision,
+                                                   session_protocol_send_settings_fn send, void *context) {
+  if (!advertised || !advertised_revision || !send)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Settings update requires state and a send callback");
+  if (advertised->cols > 0 && advertised->rows > 0 && *advertised_revision == options_revision())
     return ASCIICHAT_OK;
-  terminal_capabilities_packet_t packet;
-  session_protocol_build_capabilities(size.cols, size.rows, &packet);
-  asciichat_error_t result = send(&packet, context);
-  if (result == ASCIICHAT_OK)
+  options_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot), options_snapshot_t *);
+  asciichat_error_t result = options_read_snapshot(snapshot);
+  if (result != ASCIICHAT_OK) {
+    SAFE_FREE(snapshot);
+    return result;
+  }
+  terminal_size_t size = {.cols = snapshot->values.width, .rows = snapshot->values.height};
+  if (size.cols <= 0 || size.rows <= 0) {
+    SAFE_FREE(snapshot);
+    return ASCIICHAT_OK;
+  }
+  if (snapshot->values.color_mode == TERM_COLOR_AUTO) {
+    terminal_capabilities_t caps = detect_terminal_capabilities();
+    snapshot->values.color_mode = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;
+  }
+  result = send(&snapshot->values, (uint32_t)snapshot->revision, context);
+  if (result == ASCIICHAT_OK) {
     *advertised = size;
+    *advertised_revision = snapshot->revision;
+  }
+  SAFE_FREE(snapshot);
   return result;
 }

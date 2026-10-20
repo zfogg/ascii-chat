@@ -1,3 +1,4 @@
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/crypto/handshake/common.h>
 /**
  * @file discovery/session.h
@@ -69,7 +70,7 @@ typedef struct {
  */
 typedef struct {
   uint64_t last_ping_sent_ms;     ///< Timestamp of last ping sent (monotonic)
-  uint64_t last_pong_received_ms; ///< Timestamp of last pong received (monotonic)
+  atomic_t last_pong_received_ms; ///< Timestamp of last pong received (monotonic)
   uint32_t consecutive_failures;  ///< Number of consecutive ping failures
   uint32_t max_failures;          ///< Threshold for triggering migration (default: 3)
   uint64_t ping_interval_ms;      ///< Time between pings (default: 3000ms)
@@ -158,9 +159,9 @@ typedef struct {
   size_t num_identity_keys;                        ///< Number of identity keys loaded
 
   // ACDS connection
-  acip_transport_t *acds_transport;          ///< Persistent transport for ACDS communication
-  crypto_handshake_context_t acds_handshake; ///< Owns signaling keys until disconnect
-  uint64_t last_acds_keepalive_ns;           ///< Last keepalive sent to the discovery service
+  network_connection_t *acds_connection;
+  acip_transport_t *acds_transport; ///< Persistent transport for ACDS communication
+  uint64_t last_acds_keepalive_ns;  ///< Last keepalive sent to the discovery service
   char acds_address[64];
   uint16_t acds_port;
   char acds_url[512]; ///< ACDS WebSocket URL (ws:// or wss://, if set uses WebSocket instead of TCP)
@@ -221,8 +222,8 @@ typedef struct {
   // Role contexts (only one is active at a time)
   session_host_t *host_ctx;
   session_participant_t *participant_ctx;
-  acip_transport_t *host_control_transport;          ///< Host control connection retained during WebRTC media.
-  acip_transport_ownership_t host_control_ownership; ///< Ownership transferred with the control connection.
+  acip_transport_t *host_control_transport;      ///< Host control connection retained during WebRTC media.
+  network_connection_t *host_control_connection; ///< Ownership transferred with the control connection.
 
   // Callbacks for state changes
   void (*on_state_change)(discovery_state_t new_state, void *user_data);
@@ -368,6 +369,9 @@ asciichat_error_t discovery_session_start_ring_round(discovery_session_t *sessio
  * @return ASCIICHAT_OK if host alive, error if disconnected
  */
 asciichat_error_t discovery_session_check_host_alive(discovery_session_t *session);
+
+/** Record a host reply using the same clock as liveness deadlines. */
+void discovery_session_host_pong(discovery_session_t *session);
 
 /**
  * @brief Handle host disconnect with automatic failover to future host

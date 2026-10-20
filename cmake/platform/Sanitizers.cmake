@@ -397,7 +397,7 @@ function(fix_macos_asan_runtime)
             list(GET CLANG_VERSION_DIRS 0 CLANG_VERSION_DIR)
             get_filename_component(CLANG_VERSION_NAME "${CLANG_VERSION_DIR}" NAME)
             # Explicitly link against the correct ASan runtime from LLVM
-            add_link_options(-L${_llvm_lib_dir}/clang/${CLANG_VERSION_NAME}/lib/darwin)
+            target_link_options(asciichat-project-options INTERFACE -L${_llvm_lib_dir}/clang/${CLANG_VERSION_NAME}/lib/darwin)
             # NOTE: Don't add -rpath explicitly - clang automatically adds it when using -fsanitize
             message(STATUS "Using ASan runtime from: ${_llvm_lib_dir}/clang/${CLANG_VERSION_NAME}/lib/darwin")
         endif()
@@ -424,10 +424,8 @@ function(apply_sanitizers_to_target TARGET_NAME)
 
     # Windows-specific: Link ASan import library FIRST (must be earliest in import table)
     if(WIN32 AND ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB)
-        # Use LINK_LIBRARIES instead of target_link_libraries to ensure it comes first
-        # But since this is a per-target function, we need to use target_link_libraries
-        # and hope the linker respects the order (it usually does with modern linkers)
-        target_link_libraries(${TARGET_NAME} PRIVATE "${ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB}")
+        # Prepend before inherited CRT link options so ASan initializes first.
+        target_link_options(${TARGET_NAME} BEFORE PRIVATE "${ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB}")
 
         # Link the runtime thunk with /wholearchive
         if(ASCIICHAT_ASAN_RUNTIME_THUNK_LIB)

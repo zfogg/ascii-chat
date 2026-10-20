@@ -22,6 +22,5 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
 bool any_clients_sending_video(void);
 
 // Queue management for streaming (video now uses double buffer directly)
-int queue_audio_for_client(client_info_t *client, const void *audio_data, size_t data_size);
 
 // Legacy frame cache removed - using video_frame.c double buffering only

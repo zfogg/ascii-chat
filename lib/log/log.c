@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/send.h>
 /**
  * @file log.c
  * @ingroup logging
@@ -195,7 +196,7 @@ const char *get_level_string_padded(log_level_t level) {
   // Verify length
   if (strlen(result) != 5) {
     log_terminal_printf(STDERR_FILENO, "ERROR: get_level_string_padded() returned non-5-char string: '%s' (len=%zu)\n",
-                        result, strlen(result));
+                         result, strlen(result));
   }
   return result;
 }
@@ -212,7 +213,7 @@ const char *get_level_string_padded(log_level_t level) {
   do {                                                                                                                 \
     asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                    \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);               \
+    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);              \
     int _log_fd = atomic_load_int(&g_log.file);                                                                        \
     platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
     platform_write(_log_fd, message, strlen(message));                                                                 \
@@ -224,7 +225,7 @@ const char *get_level_string_padded(log_level_t level) {
   do {                                                                                                                 \
     asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);               \
+    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);              \
     int _log_fd = atomic_load_int(&g_log.file);                                                                        \
     platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
     platform_write(_log_fd, message, strlen(message));                                                                 \
@@ -1257,14 +1258,14 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
           const char **colors = log_get_color_array();
           if (colors) {
             log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s%s%s\n", header_buffer,
-                                colors[LOG_COLOR_RESET], colorized_msg, colors[LOG_COLOR_RESET]);
+                                 colors[LOG_COLOR_RESET], colorized_msg, colors[LOG_COLOR_RESET]);
           } else {
             log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s\n", header_buffer,
-                                colorized_msg);
+                                 colorized_msg);
           }
         } else {
           log_terminal_printf(output_stream == stdout ? STDOUT_FILENO : STDERR_FILENO, "%s%s\n", header_buffer,
-                              msg_buffer);
+                               msg_buffer);
         }
         (void)fflush(output_stream);
       }
@@ -1693,16 +1694,14 @@ static const char *log_network_direction_label(remote_log_direction_t direction)
   }
 }
 
-static asciichat_error_t log_network_message_internal(socket_t sockfd, const struct crypto_context_t *crypto_ctx,
-                                                      log_level_t level, remote_log_direction_t direction,
-                                                      const char *file, int line, const char *func, const char *fmt,
-                                                      va_list args) {
+asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t level, remote_log_direction_t direction,
+                                  const char *file, int line, const char *func, const char *fmt, ...) {
   if (!fmt) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Format string is NULL");
   }
 
   va_list args_copy;
-  va_copy(args_copy, args);
+  va_start(args_copy, fmt);
   asciichat_errno_scope_t format_scope = asciichat_errno_checkpoint();
   char *formatted = format_message(fmt, args_copy);
   va_end(args_copy);
@@ -1717,11 +1716,11 @@ static asciichat_error_t log_network_message_internal(socket_t sockfd, const str
   }
 
   asciichat_error_t send_result = ASCIICHAT_OK;
-  if (sockfd == INVALID_SOCKET_VALUE) {
-    send_result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket descriptor");
-    log_msg(LOG_WARN, file, line, func, "Skipping remote log message: invalid socket descriptor");
+  if (!transport) {
+    send_result = SET_ERRNO(ERROR_INVALID_PARAM, "Missing log transport");
+    log_msg(LOG_WARN, file, line, func, "Skipping remote log message: transport unavailable");
   } else {
-    send_result = packet_send_remote_log(sockfd, (const crypto_context_t *)crypto_ctx, level, direction, 0, formatted);
+    send_result = acip_send_remote_log(transport, level, direction, formatted);
     if (send_result != ASCIICHAT_OK) {
       log_msg(LOG_WARN, file, line, func, "Failed to send remote log message: %s", asciichat_error_string(send_result));
     }
@@ -1732,27 +1731,6 @@ static asciichat_error_t log_network_message_internal(socket_t sockfd, const str
 
   SAFE_FREE(formatted);
   return send_result;
-}
-
-asciichat_error_t log_network_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
-                                      remote_log_direction_t direction, const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  asciichat_error_t result =
-      log_network_message_internal(sockfd, crypto_ctx, level, direction, NULL, 0, NULL, fmt, args);
-  va_end(args);
-  return result;
-}
-
-asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
-                                  remote_log_direction_t direction, const char *file, int line, const char *func,
-                                  const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  asciichat_error_t result =
-      log_network_message_internal(sockfd, crypto_ctx, level, direction, file, line, func, fmt, args);
-  va_end(args);
-  return result;
 }
 
 /* ============================================================================

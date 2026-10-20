@@ -104,7 +104,12 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   const streamRef = useRef<MediaStream | null>(null);
   const videoEncoderRef = useRef<VideoUploadEncoder | null>(null);
   const webcamCaptureLoopRef = useRef<
-    ((drawVideo?: boolean, sourceCanvas?: HTMLCanvasElement) => void) | null
+    | ((
+        drawVideo?: boolean,
+        sourceCanvas?: HTMLCanvasElement,
+        fileFrame?: { data: Uint8Array; width: number; height: number },
+      ) => void)
+    | null
   >(null);
   const captureTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const testPatternSourceRef = useRef<TestPatternVideoSource | null>(null);
@@ -126,8 +131,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       // frame over the remaining participants until the connection closes.
       if (
         wasRunning &&
-        connectionState === ConnectionState.CONNECTED &&
-        clientRef.current
+        clientRef.current?.getState() === ConnectionState.CONNECTED
       ) {
         try {
           clientRef.current.sendUnencryptedAcipPacket(
@@ -167,7 +171,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       frameQueueRef.current = [];
       setIsWebcamRunning(false);
     });
-  }, [clientRef, connectionState, frameQueueRef, videoRef, avState]);
+  }, [clientRef, frameQueueRef, videoRef, avState]);
 
   const configureUpload = useCallback(
     async (
@@ -177,7 +181,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       after?: CompressedVideoEncoding,
     ) => {
       const conn = clientRef.current;
-      if (!conn) return;
+      if (!conn || conn.getState() !== ConnectionState.CONNECTED) return;
       const encoder = conn.sendVideoFrame
         ? null
         : await createEncoder(
@@ -185,7 +189,12 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
             height,
             settings.targetFps,
             (chunk, codec) => {
-              if (!avState.current(generation) || !captureReadyRef.current)
+              if (
+                !avState.current(generation) ||
+                !captureReadyRef.current ||
+                clientRef.current !== conn ||
+                conn.getState() !== ConnectionState.CONNECTED
+              )
                 return;
               conn.sendPacket(
                 codec === "hevc"
@@ -201,7 +210,11 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
             },
             after,
           );
-      if (!avState.current(generation)) {
+      if (
+        !avState.current(generation) ||
+        clientRef.current !== conn ||
+        conn.getState() !== ConnectionState.CONNECTED
+      ) {
         encoder?.destroy();
         return;
       }
@@ -250,22 +263,25 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     const sendOneFrame = (
       drawVideo = true,
       sourceCanvas?: HTMLCanvasElement,
+      fileFrame?: { data: Uint8Array; width: number; height: number },
     ) => {
       const now = performance.now();
 
       // Call captureAndSendFrame through ref to get the latest version
       const conn = clientRef.current;
       if (
-        captureReadyRef.current &&
+        (captureReadyRef.current || fileFrame) &&
         conn &&
-        connectionState === ConnectionState.CONNECTED
+        conn.getState() === ConnectionState.CONNECTED
       ) {
         if ((conn.getBufferedAmount?.() ?? 0) > 256 * 1024) return;
-        const frame = captureFrame(
-          drawVideo,
-          sourceCanvas,
-          !videoEncoderRef.current && !conn.sendVideoFrame,
-        );
+        const frame =
+          fileFrame ??
+          captureFrame(
+            drawVideo,
+            sourceCanvas,
+            !videoEncoderRef.current && !conn.sendVideoFrame,
+          );
         if (frame && frame.data) {
           captureLoopFrameCountRef.current++;
           const frameHash = computeFrameHash(frame.data);
@@ -375,7 +391,6 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     captureFrame,
     configureUpload,
     encodingPreference,
-    connectionState,
     clientRef,
     canvasRef,
     setError,
@@ -1045,5 +1060,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     startWebcam,
     stopWebcam,
     isWebcamRunning,
+    sendFileFrame: (
+      frame: { data: Uint8Array; width: number; height: number },
+      canvas: HTMLCanvasElement,
+    ) => webcamCaptureLoopRef.current?.(false, canvas, frame),
   };
 }

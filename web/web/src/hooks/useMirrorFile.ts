@@ -1,3 +1,4 @@
+import { MAX_MEDIA_FILE_SIZE } from "../utils/mediaUpload";
 import {
   useCallback,
   useEffect,
@@ -84,6 +85,10 @@ export function useMirrorFile({
 
   const start = useCallback(
     async (file: File) => {
+      if (file.size > MAX_MEDIA_FILE_SIZE) {
+        setError("Files must be 8 GB or smaller.");
+        return;
+      }
       stop();
       const controller = new AbortController();
       owner.current = controller;

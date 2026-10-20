@@ -58,6 +58,7 @@ size_t FN(simd_run_)(const uint32_t *glyph, const uint32_t *fg, const uint32_t *
   size_t i = 0;
   for (; HAS_BLOCK; i += LANES) {
     BEGIN_BLOCK;
+    (void)active;
     vec_t ga = LOAD(glyph + i), fa = LOAD(fg + i), ba = LOAD(bg + i);
 #if defined(SIMD_CELL_SVE)
     svbool_t equal =

@@ -1,3 +1,5 @@
+import { RenderSettingsControl, SETTINGS_ACK } from "../network/RenderSettings";
+import type { RuntimeValues } from "@ascii-chat/shared/wasm";
 import { useLayoutEffect } from "react";
 import { BrowserHostSession } from "../network/BrowserHostSession";
 import { useVideoEncodings } from "./useVideoEncodings";
@@ -91,6 +93,21 @@ export function useClientConnection(options: UseClientConnectionOptions) {
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState<string>("");
   const [wasmInitialized, setWasmInitialized] = useState(false);
+  const [renderSettingsStatus, setRenderSettingsStatus] = useState("");
+  const renderControl = useRef<RenderSettingsControl | null>(null);
+  const renderTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sendRenderSettings = useCallback((values: RuntimeValues) => {
+    if (!renderControl.current) return false;
+    renderControl.current.send(values);
+    setRenderSettingsStatus("Applying rendering settings…");
+    if (renderTimeout.current) clearTimeout(renderTimeout.current);
+    renderTimeout.current = setTimeout(
+      () =>
+        setRenderSettingsStatus("The server did not confirm these settings."),
+      5000,
+    );
+    return true;
+  }, []);
 
   const reconnectAttemptRef = useRef<number>(0);
   const receivedFrameHashRef = useRef<string | null>(null);
@@ -151,7 +168,14 @@ export function useClientConnection(options: UseClientConnectionOptions) {
         if (discovery)
           autoReconnectEnabledRef.current = !discovery.createSession;
 
+        renderControl.current = new RenderSettingsControl(conn);
+        setRenderSettingsStatus("");
         conn.onStateChange((state) => {
+          if (state === ConnectionState.CONNECTING) {
+            renderControl.current = new RenderSettingsControl(conn);
+            if (renderTimeout.current) clearTimeout(renderTimeout.current);
+            setRenderSettingsStatus("");
+          }
           onConnectionStateChange?.(state);
           const stateName = STATE_NAMES[state] || "Unknown";
           console.log(`[Client] State change: ${state} (${stateName})`);
@@ -259,11 +283,23 @@ export function useClientConnection(options: UseClientConnectionOptions) {
         });
 
         conn.onPacketReceived((parsed, decryptedPayload) => {
+          if (clientRef.current !== conn) return;
           if (
             parsed.type === PacketType.AUDIO_BATCH ||
             parsed.type === PacketType.AUDIO_OPUS_BATCH
           ) {
             onAudioPacket?.(parsed.type, decryptedPayload);
+          }
+          if (parsed.type === SETTINGS_ACK) {
+            const result = renderControl.current?.receive(decryptedPayload);
+            if (result) {
+              if (renderTimeout.current) clearTimeout(renderTimeout.current);
+              setRenderSettingsStatus(
+                result.status
+                  ? "The server rejected these rendering settings."
+                  : `Rendering settings applied · ${result.values["fps"]} FPS`,
+              );
+            }
           }
           if (parsed.type === PacketType.ASCII_FRAME) {
             receivedFrameCountRef.current++;
@@ -309,6 +345,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                 );
 
               window.__clientFrameMetrics = {
+                lastRenderedFrame:
+                  window.__clientFrameMetrics?.lastRenderedFrame ?? "",
                 rendered: frameCountRef.current,
                 received: receivedFrameCountRef.current,
                 changedReceived: changedReceivedFrameCountRef.current,
@@ -460,6 +498,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
 
   useEffect(
     () => () => {
+      if (renderTimeout.current) clearTimeout(renderTimeout.current);
       clientRef.current?.disconnect();
       clientRef.current = null;
     },
@@ -468,6 +507,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
 
   return {
     clientRef,
+    renderSettingsStatus,
+    sendRenderSettings,
     status,
     publicKey,
     connectionState,

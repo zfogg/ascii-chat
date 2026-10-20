@@ -1,4 +1,38 @@
 #include <ascii-chat/crypto/policy.h>
+#include <emscripten.h>
+#include <ascii-chat/common.h>
+#include <string.h>
+#include <ascii-chat/network/acip/settings.h>
+
+static acip_render_settings_t remote_render_settings;
+
+/** Effective remote state is separate from this participant's saved preferences. */
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_settings_receive(const void *payload, size_t length) {
+  acip_settings_header_t header;
+  const char *json;
+  size_t json_length;
+  asciichat_error_t result = acip_settings_decode(payload, length, &header, &json, &json_length);
+  if (result != ASCIICHAT_OK)
+    return result;
+  options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
+            *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+  acip_render_settings_options(&remote_render_settings, current);
+  result = options_prepare_json(current, json, json_length, candidate, true);
+  if (result == ASCIICHAT_OK)
+    result = acip_render_settings_prepare(&remote_render_settings, candidate);
+  if (result == ASCIICHAT_OK)
+    remote_render_settings.revision = header.revision;
+  SAFE_FREE(current);
+  SAFE_FREE(candidate);
+  return result;
+}
+EMSCRIPTEN_KEEPALIVE char *client_settings_values(void) {
+  options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
+  acip_render_settings_options(&remote_render_settings, values);
+  char *json = options_values_json(values, true);
+  SAFE_FREE(values);
+  return json;
+}
 /**
  * @file client_wasm.c
  * @brief WASM entry point for ascii-chat client mode
@@ -52,12 +86,14 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/font.h>
 
 /* Browser terminal rendering reads the embedded font directly from WASM memory. */
-const unsigned char *get_font_default_ptr(void) {
-  return GET_OPTION(matrix_rain) ? g_font_matrix_resurrected : g_font_default;
+const unsigned char *get_font_default_ptr(int selection) {
+  bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
+  return matrix ? g_font_matrix_resurrected : g_font_default;
 }
 
-unsigned int get_font_default_size(void) {
-  return (unsigned int)(GET_OPTION(matrix_rain) ? g_font_matrix_resurrected_size : g_font_default_size);
+unsigned int get_font_default_size(int selection) {
+  bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
+  return (unsigned int)(matrix ? g_font_matrix_resurrected_size : g_font_default_size);
 }
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer.h>
@@ -393,6 +429,7 @@ int client_init_with_args(const char *args_json) {
 
 EMSCRIPTEN_KEEPALIVE
 void client_cleanup(void) {
+  remote_render_settings = (acip_render_settings_t){0};
   asciichat_errno_destroy();
 
   // Clean up crypto handshake context

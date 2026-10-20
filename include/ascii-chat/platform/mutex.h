@@ -36,16 +36,16 @@
  * @ingroup platform
  */
 typedef struct {
-    CRITICAL_SECTION impl;   ///< Underlying Windows critical section
-    const char *name;        ///< Human-readable name for named registry (all builds)
+  CRITICAL_SECTION impl; ///< Underlying Windows critical section
+  const char *name;      ///< Human-readable name for named registry (all builds)
 #ifndef NDEBUG
-    _Atomic(uint64_t) last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
-    _Atomic(uint64_t) last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
-    _Atomic(uintptr_t) currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
-    _Atomic(uint64_t) lock_count;            ///< Total lock acquisitions
-    _Atomic(uint64_t) unlock_count;          ///< Total unlocks
-    _Atomic(uint64_t) trylock_count;         ///< Total trylock attempts
-    _Atomic(uint64_t) trylock_success_count; ///< Successful trylocks
+  _Atomic(uint64_t) last_lock_time_ns;      ///< Timestamp of last lock acquisition (nanoseconds)
+  _Atomic(uint64_t) last_unlock_time_ns;    ///< Timestamp of last unlock (nanoseconds)
+  _Atomic(uintptr_t) currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
+  _Atomic(uint64_t) lock_count;             ///< Total lock acquisitions
+  _Atomic(uint64_t) unlock_count;           ///< Total unlocks
+  _Atomic(uint64_t) trylock_count;          ///< Total trylock attempts
+  _Atomic(uint64_t) trylock_success_count;  ///< Successful trylocks
 #endif
 } mutex_t;
 #else
@@ -55,16 +55,16 @@ typedef struct {
  * @ingroup platform
  */
 typedef struct {
-    pthread_mutex_t impl;    ///< Underlying POSIX mutex
-    const char *name;        ///< Human-readable name for named registry (all builds)
+  pthread_mutex_t impl; ///< Underlying POSIX mutex
+  const char *name;     ///< Human-readable name for named registry (all builds)
 #ifndef NDEBUG
-    _Atomic(uint64_t) last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
-    _Atomic(uint64_t) last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
-    _Atomic(uintptr_t) currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
-    _Atomic(uint64_t) lock_count;            ///< Total lock acquisitions
-    _Atomic(uint64_t) unlock_count;          ///< Total unlocks
-    _Atomic(uint64_t) trylock_count;         ///< Total trylock attempts
-    _Atomic(uint64_t) trylock_success_count; ///< Successful trylocks
+  _Atomic(uint64_t) last_lock_time_ns;      ///< Timestamp of last lock acquisition (nanoseconds)
+  _Atomic(uint64_t) last_unlock_time_ns;    ///< Timestamp of last unlock (nanoseconds)
+  _Atomic(uintptr_t) currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
+  _Atomic(uint64_t) lock_count;             ///< Total lock acquisitions
+  _Atomic(uint64_t) unlock_count;           ///< Total unlocks
+  _Atomic(uint64_t) trylock_count;          ///< Total trylock attempts
+  _Atomic(uint64_t) trylock_success_count;  ///< Successful trylocks
 #endif
 } mutex_t;
 #endif
@@ -253,7 +253,8 @@ int mutex_unlock_impl(mutex_t *mutex);
 #define mutex_trylock(mutex) mutex_trylock_impl(mutex)
 #else
 #define mutex_trylock(mutex)                                                                                           \
-  (debug_sync_is_initialized() ? debug_sync_mutex_trylock(mutex, __FILE__, __LINE__, __func__) : mutex_trylock_impl(mutex))
+  (debug_sync_is_initialized() ? debug_sync_mutex_trylock(mutex, __FILE__, __LINE__, __func__)                         \
+                               : mutex_trylock_impl(mutex))
 #endif
 
 /**
@@ -271,7 +272,8 @@ int mutex_unlock_impl(mutex_t *mutex);
 #define mutex_unlock(mutex) mutex_unlock_impl(mutex)
 #else
 #define mutex_unlock(mutex)                                                                                            \
-  (debug_sync_is_initialized() ? debug_sync_mutex_unlock(mutex, __FILE__, __LINE__, __func__) : mutex_unlock_impl(mutex))
+  (debug_sync_is_initialized() ? debug_sync_mutex_unlock(mutex, __FILE__, __LINE__, __func__)                          \
+                               : mutex_unlock_impl(mutex))
 #endif
 
 /** @} */ /* Mutex Locking Macros */

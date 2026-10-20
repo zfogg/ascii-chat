@@ -14,6 +14,38 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <stdlib.h>
+#include <ascii-chat/options/runtime.h>
+#include <ascii-chat/common.h>
+
+EMSCRIPTEN_KEEPALIVE double wasm_options_revision(void) {
+  return (double)options_revision();
+}
+EMSCRIPTEN_KEEPALIVE double wasm_options_retired_count(void) {
+  return (double)options_retired_snapshot_count();
+}
+EMSCRIPTEN_KEEPALIVE asciichat_error_t wasm_options_patch(const char *json, double expected_revision) {
+  return options_apply_json(json, json ? strlen(json) : 0,
+                            expected_revision < 0 ? OPTIONS_REVISION_ANY : (uint64_t)expected_revision,
+                            OPTIONS_ORIGIN_LOCAL, NULL);
+}
+EMSCRIPTEN_KEEPALIVE char *wasm_options_values(void) {
+  options_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot), options_snapshot_t *);
+  char *json = NULL;
+  if (options_read_snapshot(snapshot) == ASCIICHAT_OK) {
+    char *values = options_values_json(&snapshot->values, false);
+    if (values) {
+      size_t size = strlen(values) + 96;
+      json = SAFE_MALLOC(size, char *);
+      snprintf(json, size, "{\"revision\":%llu,\"values\":%s}", (unsigned long long)snapshot->revision, values);
+      SAFE_FREE(values);
+    }
+  }
+  SAFE_FREE(snapshot);
+  return json;
+}
+EMSCRIPTEN_KEEPALIVE void wasm_options_release(char *json) {
+  SAFE_FREE(json);
+}
 
 // ============================================================================
 // Dimension Accessors

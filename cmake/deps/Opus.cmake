@@ -69,5 +69,5 @@ find_dependency_library(
 
 # Match the header layout exported by Opus::opus and pkg-config.
 find_path(OPUS_HEADER_INCLUDE_DIR NAMES opus.h
-    HINTS ${OPUS_INCLUDE_DIRS} PATH_SUFFIXES opus NO_DEFAULT_PATH REQUIRED)
+    HINTS ${OPUS_INCLUDE_DIRS} PATH_SUFFIXES opus REQUIRED)
 set(OPUS_INCLUDE_DIRS "${OPUS_HEADER_INCLUDE_DIR}")

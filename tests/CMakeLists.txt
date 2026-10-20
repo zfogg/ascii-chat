@@ -252,6 +252,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # Native UI fixture has its own main and is driven by the tmux harness.
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/ui_native_probe.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/sync_regressions.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/source_paths.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/client_like_lifecycle.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_multiclient_test.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/video_pipeline_test.c
@@ -858,6 +859,22 @@ endif()
 # =============================================================================
 # Available when shared library is built (skipped for musl and Linux Release non-musl)
 if(TARGET ascii-chat-shared)
+    add_executable(test-source-paths EXCLUDE_FROM_ALL integration/source_paths.c)
+    target_link_libraries(test-source-paths PRIVATE ascii-chat-shared)
+    apply_sanitizers_to_target(test-source-paths)
+    target_include_directories(test-source-paths PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    set_target_properties(test-source-paths PROPERTIES
+        LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS)
+        add_test(NAME source-paths COMMAND test-source-paths "${CMAKE_CURRENT_BINARY_DIR}/source-paths.log")
+        set_tests_properties(source-paths PROPERTIES LABELS "integration" TIMEOUT 30)
+        foreach(test_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${test_build_target})
+                add_dependencies(${test_build_target} test-source-paths)
+            endif()
+        endforeach()
+    endif()
+
     add_executable(test-sync-regressions EXCLUDE_FROM_ALL integration/sync_regressions.c)
     target_link_libraries(test-sync-regressions PRIVATE ascii-chat-shared)
     apply_sanitizers_to_target(test-sync-regressions)
@@ -1014,6 +1031,21 @@ endif()
 # The lifecycle probe takes scenario names, not Criterion command-line options.
 if(BUILD_TESTS)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    set(_dependency_paths_args)
+    if(WIN32)
+        list(APPEND _dependency_paths_args
+            --nmake "${ASCIICHAT_NMAKE_EXECUTABLE}"
+            --clang-cl "${ASCIICHAT_CLANG_CL_EXECUTABLE}"
+            --llvm-lib "${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
+    endif()
+    add_test(NAME dependency-paths COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/standalone/dependency_paths/run.py ${_dependency_paths_args})
+    set_tests_properties(dependency-paths PROPERTIES LABELS "unit;build" TIMEOUT 60)
+    if(NOT WIN32)
+        add_test(NAME websocket-dependency-probes COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/standalone/websocket_probes/run.py)
+        set_tests_properties(websocket-dependency-probes PROPERTIES LABELS "unit;build" TIMEOUT 60)
+    endif()
     add_executable(test-client-like-lifecycle integration/client_like_lifecycle.c)
     if(TARGET ascii-chat-shared)
         target_link_libraries(test-client-like-lifecycle PRIVATE ascii-chat-shared)
@@ -1046,7 +1078,7 @@ endif()
 if(BUILD_TESTS)
     add_executable(test-discovery-session-process standalone/discovery/session_process_test.c)
     if(TARGET ascii-chat-shared)
-        target_link_libraries(test-discovery-session-process PRIVATE ascii-chat-shared)
+        target_link_libraries(test-discovery-session-process PRIVATE ascii-chat-shared ${MIMALLOC_LIBRARIES})
     else()
         target_link_libraries(test-discovery-session-process PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     endif()
@@ -1066,11 +1098,16 @@ if(BUILD_TESTS)
             add_dependencies(${test_build_target} test-discovery-session-process)
         endif()
     endforeach()
-    add_test(NAME discovery-session-process COMMAND test-discovery-session-process)
+    add_test(NAME discovery-session-process COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_SOURCE_DIR}/tests/integration/discovery_session_process.py
+        $<TARGET_FILE:test-discovery-session-process>)
     set_tests_properties(discovery-session-process PROPERTIES LABELS "integration" TIMEOUT 60)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
+    add_test(NAME discovery-direct-tcp COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/discovery_direct_tcp.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(discovery-direct-tcp PROPERTIES LABELS "integration" TIMEOUT 90)
     foreach(test_build_target tests tests-criterion-build tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} ascii-chat)
@@ -1095,7 +1132,9 @@ endif()
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
     add_test(NAME event-io-integration COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/event_io.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(event-io-integration PROPERTIES LABELS "integration" TIMEOUT 180)
+    # The admission stress fixture opens 90 peers and performs serial crypto
+    # handshakes. Give it the same isolation as the Criterion process fixtures.
+    set_tests_properties(event-io-integration PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
 endif()
 
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
@@ -1167,6 +1206,24 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
         endif()
         if(TARGET tests)
             add_dependencies(tests test-network-events)
+        endif()
+    endif()
+    add_executable(test-network-connections EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/connection_test.c)
+    target_link_libraries(test-network-connections PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET})
+    apply_sanitizers_to_target(test-network-connections)
+    target_include_directories(test-network-connections PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    set_target_properties(test-network-connections PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS)
+        add_test(NAME network-connections COMMAND test-network-connections)
+        set_tests_properties(network-connections PROPERTIES TIMEOUT 60)
+        if(WIN32)
+            set_property(TEST network-connections PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+                "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
+        endif()
+        if(TARGET tests)
+            add_dependencies(tests test-network-connections)
         endif()
     endif()
 endif()
@@ -1255,6 +1312,37 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
 endif()
 
 # Fault injection around real participant workers; runs without Criterion on Windows too.
+if(BUILD_TESTS AND NOT EMSCRIPTEN)
+    add_executable(test-review-findings standalone/review_findings_test.c)
+    target_link_libraries(test-review-findings PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-review-findings PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    if(WIN32)
+        target_link_libraries(test-review-findings PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-review-findings)
+    set_target_properties(test-review-findings PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(TARGET tests)
+        add_dependencies(tests test-review-findings)
+    endif()
+    add_test(NAME review-findings COMMAND test-review-findings)
+    set_tests_properties(review-findings PROPERTIES LABELS "unit" TIMEOUT 60)
+    add_executable(test-runtime-settings standalone/options/runtime_test.c)
+    target_link_libraries(test-runtime-settings PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-runtime-settings PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    if(WIN32)
+        target_link_libraries(test-runtime-settings PRIVATE ws2_32)
+    endif()
+    apply_sanitizers_to_target(test-runtime-settings)
+    set_target_properties(test-runtime-settings PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(TARGET tests)
+        add_dependencies(tests test-runtime-settings)
+    endif()
+    add_test(NAME runtime-settings COMMAND test-runtime-settings)
+    set_tests_properties(runtime-settings PROPERTIES LABELS "unit" TIMEOUT 60)
+endif()
+
 if(BUILD_TESTS)
     add_executable(test-participant-media standalone/session/participant_media_test.c)
     target_link_libraries(test-participant-media PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})

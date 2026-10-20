@@ -403,16 +403,9 @@ int platform_unsetenv(const char *name) {
 }
 
 void platform_raise_fd_limit(unsigned int limit) {
-  // Windows doesn't have a per-process fd limit like POSIX. The CRT default
-  // is 8192 handles which is sufficient for most use cases. If needed,
-  // _setmaxstdio() can raise the CRT stdio limit (max 8192).
-  if (limit > 0 && limit > 512) {
-    int current_max = _getmaxstdio();
-    if ((int)limit > current_max) {
-      int cap = limit > 8192 ? 8192 : (int)limit;
-      _setmaxstdio(cap);
-    }
-  }
+  // Winsock handles do not consume CRT stdio descriptors. There is no POSIX
+  // descriptor limit to raise, and resizing the FILE table does not help sockets.
+  (void)limit;
 }
 
 // ============================================================================

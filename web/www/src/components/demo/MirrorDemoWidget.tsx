@@ -1,3 +1,16 @@
+import { DeviceSetupModal } from "@ascii-chat/shared/components/DeviceSetupModal";
+import {
+  getMediaDevicePreferences,
+  cameraConstraints,
+  microphoneConstraints,
+  applyAudioOutputDevice,
+  MEDIA_DEVICE_PREFERENCES_CHANGED,
+  type MediaDevicePreferencesChange,
+} from "@ascii-chat/shared/devices/mediaDevicePreferences";
+import { acquireMediaStream } from "@ascii-chat/shared/devices/acquireMediaStream";
+import { playMedia } from "@ascii-chat/shared/devices/playMedia";
+import { reportCameraTrack } from "@ascii-chat/shared/capture/cameraRate";
+import { useCameraExposure } from "@ascii-chat/shared/hooks/useCameraExposure";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   initMirrorWasm,
@@ -37,6 +50,7 @@ import { registerActiveDemo, unregisterActiveDemo } from "./activeDemo";
 import type { DemoOption } from "./types";
 
 interface MirrorDemoWidgetProps {
+  webcamOnly?: boolean;
   demoVideo?: { src: string; title: string; href: string };
   demoOptions?: DemoOption[];
   defaultOptionIndex?: number;
@@ -109,6 +123,7 @@ function applyDemoOption(
 }
 
 export default function MirrorDemoWidget({
+  webcamOnly = false,
   demoVideo = {
     src: "/assets/demo-video-white-knuckles.webm",
     title: "OK Go — White Knuckles",
@@ -116,7 +131,7 @@ export default function MirrorDemoWidget({
   },
   demoOptions,
   defaultOptionIndex = 0,
-  height = "36vh",
+  height = "400px",
   minHeight = 200,
   showHeader = true,
   showDebugLogs = import.meta.env.MODE !== "production",
@@ -124,6 +139,10 @@ export default function MirrorDemoWidget({
   columns,
   rows,
 }: MirrorDemoWidgetProps) {
+  const [deviceSetupOpen, setDeviceSetupOpen] = useState(false);
+  const [cameraTrack, setCameraTrack] = useState<MediaStreamTrack | null>(null);
+  useCameraExposure(cameraTrack);
+  const acquisitionRef = useRef<AbortController | null>(null);
   const [source, setSource] = useState<MediaSource>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,10 +176,13 @@ export default function MirrorDemoWidget({
   const audioOutputConnectedRef = useRef(false);
   const audioDiagnosticLoggedRef = useRef(false);
 
-  const { captureFrame } = useCanvasCapture(videoRef, canvasRef);
-
   const selectedOption =
     demoOptions?.find((o) => o.id === selectedOptionId) ?? null;
+
+  const { captureFrame } = useCanvasCapture(videoRef, canvasRef, false, {
+    faceFollow: selectedOption?.settings.faceFollow ?? false,
+    faceFollowDebug: selectedOption?.settings.faceFollowDebug ?? false,
+  });
 
   const addDebugLog = useCallback((msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -200,12 +222,17 @@ export default function MirrorDemoWidget({
       locateFile: (path: string) => `${wasmBaseUrl}/wasm/${path}`,
       mainScriptUrlOrBlob: `${wasmBaseUrl}/wasm/mirror.js`,
       initialArgs,
+      pthreadPoolSize: 0,
     });
 
     setWasmReady(true);
   }, [addDebugLog, demoOptions, defaultOptionIndex, selectedOption]);
 
   const stop = useCallback(() => {
+    acquisitionRef.current?.abort();
+    acquisitionRef.current = null;
+    setCameraTrack(null);
+    setLoading(false);
     if (frameIntervalRef.current) {
       clearInterval(frameIntervalRef.current);
       frameIntervalRef.current = null;
@@ -246,38 +273,43 @@ export default function MirrorDemoWidget({
 
   const startWebcam = useCallback(async () => {
     stop();
+    const owner = new AbortController();
+    acquisitionRef.current = owner;
     rendererRef.current?.clear();
     setLoading(true);
     setError(null);
     try {
       registerActiveDemo(stop);
       await initWasm();
+      owner.signal.throwIfAborted();
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: "user",
+      const preferences = getMediaDevicePreferences();
+      const stream = await acquireMediaStream(
+        {
+          video: cameraConstraints(preferences.cameraId, {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: "user",
+          }),
+          audio: false,
         },
-        audio: false,
-      });
+        owner.signal,
+      );
 
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await new Promise<void>((resolve) => {
-          videoRef.current!.addEventListener(
-            "loadedmetadata",
-            () => {
-              if (canvasRef.current) {
-                canvasRef.current.width = 640;
-                canvasRef.current.height = 480;
-              }
-              resolve();
-            },
-            { once: true },
-          );
-        });
+        await playMedia(videoRef.current, owner.signal);
+        if (canvasRef.current) {
+          canvasRef.current.width = videoRef.current.videoWidth;
+          canvasRef.current.height = videoRef.current.videoHeight;
+        }
+      }
+      owner.signal.throwIfAborted();
+      const track = stream.getVideoTracks()[0];
+      if (track) {
+        reportCameraTrack(track);
+        setCameraTrack(track);
       }
 
       const sourceFlipX = true;
@@ -292,11 +324,15 @@ export default function MirrorDemoWidget({
       sourceRef.current = MediaSourceType.WEBCAM;
       setSource(MediaSourceType.WEBCAM);
     } catch (err) {
+      if (owner.signal.aborted) return;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+
       setError(
         `Camera access failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     } finally {
-      setLoading(false);
+      if (acquisitionRef.current === owner) setLoading(false);
     }
   }, [initWasm, stop, applySelectedOption, termDims]);
 
@@ -333,6 +369,10 @@ export default function MirrorDemoWidget({
       analyser.disconnect(audioContext.destination);
       audioOutputConnectedRef.current = false;
     }
+    await applyAudioOutputDevice(
+      audioContext,
+      getMediaDevicePreferences().speakerId,
+    );
     await audioContext.resume();
   }, []);
 
@@ -350,6 +390,8 @@ export default function MirrorDemoWidget({
 
   const startMicrophone = useCallback(async () => {
     stop();
+    const owner = new AbortController();
+    acquisitionRef.current = owner;
     rendererRef.current?.clear();
     setLoading(true);
     setError(null);
@@ -357,12 +399,19 @@ export default function MirrorDemoWidget({
     try {
       registerActiveDemo(stop);
       await initWasm();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: false,
-      });
+      owner.signal.throwIfAborted();
+      const stream = await acquireMediaStream(
+        {
+          audio: microphoneConstraints(
+            getMediaDevicePreferences().microphoneId,
+          ),
+          video: false,
+        },
+        owner.signal,
+      );
       streamRef.current = stream;
       await ensureAudioCapture(false);
+      owner.signal.throwIfAborted();
       microphoneSourceRef.current =
         audioContextRef.current!.createMediaStreamSource(stream);
       microphoneSourceRef.current.connect(audioInputRef.current!);
@@ -373,13 +422,14 @@ export default function MirrorDemoWidget({
       sourceRef.current = MediaSourceType.MICROPHONE;
       setSource(MediaSourceType.MICROPHONE);
     } catch (err) {
+      if (owner.signal.aborted) return;
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
       setError(
         `Microphone access failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     } finally {
-      setLoading(false);
+      if (acquisitionRef.current === owner) setLoading(false);
     }
   }, [stop, initWasm, ensureAudioCapture, applySelectedOption, termDims]);
 
@@ -471,6 +521,10 @@ export default function MirrorDemoWidget({
         }
 
         addDebugLog("Playing video...");
+        await applyAudioOutputDevice(
+          videoRef.current,
+          getMediaDevicePreferences().speakerId,
+        );
         await videoRef.current.play();
         addDebugLog("Video playing, unmuting...");
         videoRef.current.muted = false;
@@ -705,6 +759,42 @@ export default function MirrorDemoWidget({
   ]);
 
   useEffect(() => {
+    const changed = (event: Event) => {
+      const detail = (event as CustomEvent<MediaDevicePreferencesChange>)
+        .detail;
+      const keys = detail?.changedKeys;
+      if (
+        sourceRef.current === MediaSourceType.WEBCAM &&
+        (!keys || keys.includes("cameraId"))
+      )
+        void startWebcam();
+      else if (
+        sourceRef.current === MediaSourceType.MICROPHONE &&
+        (!keys || keys.includes("microphoneId"))
+      )
+        void startMicrophone();
+      if (!keys || keys.includes("speakerId")) {
+        const target = audioContextRef.current ?? videoRef.current;
+        if (target)
+          void applyAudioOutputDevice(
+            target,
+            getMediaDevicePreferences().speakerId,
+          ).catch((cause) => setError(String(cause)));
+      }
+    };
+    const stored = (event: StorageEvent) => {
+      if (event.key === "ascii-chat.media-devices" || event.key === null)
+        changed(event);
+    };
+    window.addEventListener(MEDIA_DEVICE_PREFERENCES_CHANGED, changed);
+    window.addEventListener("storage", stored);
+    return () => {
+      window.removeEventListener(MEDIA_DEVICE_PREFERENCES_CHANGED, changed);
+      window.removeEventListener("storage", stored);
+    };
+  }, [startWebcam, startMicrophone]);
+
+  useEffect(() => {
     const stopFn = stop;
     return () => {
       stopFn();
@@ -731,7 +821,7 @@ export default function MirrorDemoWidget({
     selectedOption?.settings.waveform || selectedOption?.settings.fft;
 
   return (
-    <div className="mb-8">
+    <div className="mb-8" data-demo-widget>
       {showHeader && (
         <Heading level={3} className="heading-3 text-green-300 mb-3">
           🎮 Try it right now
@@ -860,17 +950,19 @@ export default function MirrorDemoWidget({
                     {loading ? "Loading..." : "Webcam"}
                   </button>
                 )}
-                <button
-                  onClick={startDemo}
-                  disabled={loading}
-                  className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {loading
-                    ? "Loading..."
-                    : isAudioVisualization
-                      ? "Demo Audio"
-                      : "Demo Video"}
-                </button>
+                {!webcamOnly && (
+                  <button
+                    onClick={startDemo}
+                    disabled={loading}
+                    className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {loading
+                      ? "Loading..."
+                      : isAudioVisualization
+                        ? "Demo Audio"
+                        : "Demo Video"}
+                  </button>
+                )}
               </div>
               {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
             </div>
@@ -958,17 +1050,32 @@ export default function MirrorDemoWidget({
         </div>
       )}
 
-      <p className="text-gray-600 text-xs mt-2 sm:text-right">
-        {isAudioVisualization ? "Demo audio:" : "Demo video:"}{" "}
-        <a
-          href={demoVideo.href}
-          className="text-gray-500 hover:text-gray-400 underline"
-          target="_blank"
-          rel="noopener noreferrer"
+      {!webcamOnly && (
+        <p className="text-gray-600 text-xs mt-2 sm:text-right">
+          {isAudioVisualization ? "Demo audio:" : "Demo video:"}{" "}
+          <a
+            href={demoVideo.href}
+            className="text-gray-500 hover:text-gray-400 underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {demoVideo.title}
+          </a>
+        </p>
+      )}
+      <p className="mt-2 text-xs sm:text-right">
+        <button
+          type="button"
+          className="cursor-pointer text-gray-200 underline hover:text-white"
+          onClick={() => setDeviceSetupOpen(true)}
         >
-          {demoVideo.title}
-        </a>
+          Device setup
+        </button>
       </p>
+      <DeviceSetupModal
+        open={deviceSetupOpen}
+        onClose={() => setDeviceSetupOpen(false)}
+      />
     </div>
   );
 }

@@ -134,8 +134,8 @@ set(VCPKG_INCLUDE_PATH "${_vcpkg_installed_dir}/include")
 
 # Set CMake paths to use the selected triplet
 set(CMAKE_PREFIX_PATH "${_vcpkg_installed_dir}" ${CMAKE_PREFIX_PATH})
-include_directories("${VCPKG_INCLUDE_PATH}")
-link_directories("${VCPKG_LIB_PATH}")
+target_include_directories(asciichat-project-includes INTERFACE "${VCPKG_INCLUDE_PATH}")
+target_link_directories(asciichat-project-options INTERFACE "${VCPKG_LIB_PATH}")
 
 message(STATUS "vcpkg: Include path: ${VCPKG_INCLUDE_PATH}")
 message(STATUS "vcpkg: Library path: ${VCPKG_LIB_PATH}")

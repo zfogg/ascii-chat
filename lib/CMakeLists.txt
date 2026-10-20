@@ -246,6 +246,16 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     # (shared library and tests both link to the same object files, compiled once)
     add_library(${MODULE_NAME} OBJECT ${MODULE_SRCS})
 
+    if(WIN32 AND ASCIICHAT_ENABLE_UNITY_BUILDS)
+        set_target_properties(${MODULE_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 4)
+        # Keep vendored code separate so export filtering retains its source paths.
+        foreach(_module_source IN ITEMS ${MODULE_SRCS})
+            if(_module_source MATCHES "[/\\\\]deps[/\\\\]")
+                set_source_files_properties(${_module_source} PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+            endif()
+        endforeach()
+    endif()
+
     # Musl builds expose libsodium headers through the generated dependency
     # prefix. Every module includes common headers, which in turn include
     # sodium.h, so the external project must finish installing its headers
@@ -518,6 +528,10 @@ ascii_chat_add_face_detector(ascii-chat-video)
 # Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging
 target_link_directories(ascii-chat-video PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(ascii-chat-video PRIVATE ${FFMPEG_LIBRARIES})
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # V4L2 capture uses swscale and needs generated FFmpeg headers before compiling.
+    target_link_libraries(ascii-chat-platform PRIVATE ${FFMPEG_LIBRARIES})
+endif()
 if(VTERM_MUSL_TARGET)
     add_dependencies(ascii-chat-video ${VTERM_MUSL_TARGET})
 endif()
@@ -667,6 +681,7 @@ endif()
 if(USE_MUSL)
     target_link_libraries(ascii-chat-core PRIVATE ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a)
     add_dependencies(ascii-chat-core libexecinfo-musl)
+    add_dependencies(ascii-chat-platform libexecinfo-musl)
 endif()
 
 # mimalloc for core
@@ -878,6 +893,11 @@ add_library(ascii-chat-shared SHARED
     # Set RPATH on shared library so it can find dependencies at runtime
     # This ensures transitive dependencies (like custom FFmpeg) are found
     if(APPLE OR UNIX)
+        if(APPLE)
+            set(_shared_origin "@loader_path")
+        else()
+            set(_shared_origin "\$ORIGIN")
+        endif()
         if(CMAKE_BUILD_TYPE STREQUAL "Release")
             # Release builds: use only relative paths to avoid embedded developer paths
             # Copy FFmpeg libraries to lib/ directory alongside shared library
@@ -909,10 +929,7 @@ add_library(ascii-chat-shared SHARED
             endif()
         endif()
 
-        # Convert list to colon-separated string for linker -rpath flag
-        string(REPLACE ";" ":" _shared_rpath_str "${_shared_rpath_list}")
-
-        # Set both BUILD_RPATH and linker flags to ensure RPATH is embedded
+        # Let CMake encode each runtime search path for the platform linker.
         if(CMAKE_BUILD_TYPE STREQUAL "Release")
             # Release: use only our explicit RPATH, don't add linked library paths automatically
             set_target_properties(ascii-chat-shared PROPERTIES
@@ -925,15 +942,10 @@ add_library(ascii-chat-shared SHARED
             # Non-Release: allow automatic RPATH for development
             set_target_properties(ascii-chat-shared PROPERTIES
                 BUILD_RPATH "${_shared_rpath_list}"
+                INSTALL_RPATH "${_shared_origin};${CMAKE_BUILD_RPATH}"
                 SKIP_BUILD_RPATH FALSE
                 INSTALL_RPATH_USE_LINK_PATH TRUE
             )
-        endif()
-        # Also use linker flag to ensure RPATH is properly embedded
-        if(APPLE)
-            target_link_options(ascii-chat-shared PRIVATE "LINKER:-rpath,${_shared_rpath_str}")
-        else()
-            target_link_options(ascii-chat-shared PRIVATE "LINKER:-rpath=${_shared_rpath_str}")
         endif()
     endif()
 
@@ -977,16 +989,18 @@ add_library(ascii-chat-shared SHARED
             list(APPEND _export_object_dependencies $<TARGET_OBJECTS:${_module}>)
         endforeach()
 
+        set(_export_object_manifest "${CMAKE_CURRENT_BINARY_DIR}/asciichat-export-objects-$<CONFIG>.txt")
+        file(GENERATE OUTPUT "${_export_object_manifest}" CONTENT "$<JOIN:${_export_object_dependencies},\n>\n")
+
         add_custom_command(
             OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
             COMMAND ${CMAKE_COMMAND}
                 -DNM_TOOL=${CMAKE_NM}
-                -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
-                -DMODULE_TARGETS=${MODULE_TARGETS_STR}
+                -DOBJECT_LIST_FILE=${_export_object_manifest}
                 -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
                 -DLIBRARY_NAME=asciichat
                 -P ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
-            DEPENDS ${MODULE_TARGETS} ${_export_object_dependencies} ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
+            DEPENDS ${MODULE_TARGETS} ${_export_object_dependencies} ${_export_object_manifest} ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
             COMMENT "Generating Windows .def file from object files"
             VERBATIM
         )
@@ -1513,6 +1527,7 @@ add_custom_command(
     # Depend on the object files themselves as well as their object-library
     # targets so rebuilt objects refresh the combined archive.
     DEPENDS ${STATIC_LIB_MODULES} ${OBJECT_EXPR_LIST} ${OBJECT_LIST_FILE}
+        ${CMAKE_SOURCE_DIR}/cmake/scripts/create_static_archive.cmake
     COMMENT "Creating static archive with unique object names (eliminates duplicates)"
     VERBATIM
 )

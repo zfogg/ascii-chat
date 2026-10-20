@@ -458,23 +458,11 @@ char *format_message(const char *format, va_list args);
  */
 size_t get_current_time_formatted(char *time_buf);
 
-/**
- * @brief Send a formatted log message over the network.
- * @param sockfd Destination socket
- * @param crypto_ctx Optional crypto context for encryption (NULL if not ready)
- * @param level Log severity used for remote and local logging
- * @param direction Remote log direction metadata
- * @param fmt Format string (printf-style)
- * @param ... Format arguments
- * @return ASCIICHAT_OK on success, error code otherwise
- */
-asciichat_error_t log_network_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
-                                      remote_log_direction_t direction, const char *fmt, ...);
+struct acip_transport;
 
 /**
  * @brief Log a message to all destinations (network, file, and terminal).
- * @param sockfd Destination socket
- * @param crypto_ctx Optional crypto context for encryption (NULL if not ready)
+ * @param transport Destination connection transport
  * @param level Log severity used for remote and local logging
  * @param direction Remote log direction metadata
  * @param file Source file name (or NULL to omit)
@@ -484,9 +472,8 @@ asciichat_error_t log_network_message(socket_t sockfd, const struct crypto_conte
  * @param ... Format arguments
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
-                                  remote_log_direction_t direction, const char *file, int line, const char *func,
-                                  const char *fmt, ...);
+asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t level, remote_log_direction_t direction,
+                                  const char *file, int line, const char *func, const char *fmt, ...);
 
 /**
  * @name Logging Macros

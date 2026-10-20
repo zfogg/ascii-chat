@@ -56,7 +56,7 @@ typedef enum {
  * Combines init/shutdown state with mutex or rwlock initialization.
  */
 typedef struct {
-  atomic_t state;               ///< lifecycle_state_t enum value
+  atomic_t state;                  ///< lifecycle_state_t enum value
   lifecycle_sync_type_t sync_type; ///< Type of sync primitive (if any)
   union {
     mutex_t *mutex;   ///< Pointer to mutex (if sync_type == LIFECYCLE_SYNC_MUTEX)
@@ -65,21 +65,18 @@ typedef struct {
 } lifecycle_t;
 
 /// Static initializer for module-global lifecycle variables (no sync primitive)
-#define LIFECYCLE_INIT                                                                                                 \
-  {                                                                                                                    \
-    .state = {.impl = LIFECYCLE_UNINITIALIZED}, .sync_type = LIFECYCLE_SYNC_NONE, .sync = {0}                          \
-  }
+#define LIFECYCLE_INIT {.state = {.impl = LIFECYCLE_UNINITIALIZED}, .sync_type = LIFECYCLE_SYNC_NONE, .sync = {0}}
 
 /// Static initializer for lifecycle with mutex
 #define LIFECYCLE_INIT_MUTEX(m)                                                                                        \
   {                                                                                                                    \
-    .state = {.impl = LIFECYCLE_UNINITIALIZED}, .sync_type = LIFECYCLE_SYNC_MUTEX, .sync = {.mutex = (m) }             \
+    .state = {.impl = LIFECYCLE_UNINITIALIZED}, .sync_type = LIFECYCLE_SYNC_MUTEX, .sync = {.mutex = (m)}              \
   }
 
 /// Static initializer for lifecycle with rwlock
 #define LIFECYCLE_INIT_RWLOCK(r)                                                                                       \
   {                                                                                                                    \
-    .state = {.impl = LIFECYCLE_UNINITIALIZED}, .sync_type = LIFECYCLE_SYNC_RWLOCK, .sync = {.rwlock = (r) }           \
+    .state = {.impl = LIFECYCLE_UNINITIALIZED}, .sync_type = LIFECYCLE_SYNC_RWLOCK, .sync = {.rwlock = (r)}            \
   }
 
 /**

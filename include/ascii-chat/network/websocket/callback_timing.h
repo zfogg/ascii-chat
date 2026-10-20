@@ -23,10 +23,10 @@
  * Tracks invocation counts, timestamps, and durations for a single callback type.
  */
 typedef struct {
-  atomic_t count;           // Total invocations
-  atomic_t last_ns;         // Last callback timestamp (nanoseconds)
-  atomic_t min_interval_ns; // Minimum interval between callbacks
-  atomic_t max_interval_ns; // Maximum interval between callbacks
+  atomic_t count;             // Total invocations
+  atomic_t last_ns;           // Last callback timestamp (nanoseconds)
+  atomic_t min_interval_ns;   // Minimum interval between callbacks
+  atomic_t max_interval_ns;   // Maximum interval between callbacks
   atomic_t total_duration_ns; // Cumulative callback duration
 } websocket_callback_stats_t;
 

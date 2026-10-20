@@ -1,0 +1,12 @@
+include_guard(GLOBAL)
+
+# Source locations belong to the build checkout, independently of the runtime cwd.
+function(asciichat_configure_source_root source_root binary_root)
+    string(REPLACE "\\" "/" ASCIICHAT_SOURCE_ROOT "${source_root}")
+    string(REPLACE "\"" "\\\"" ASCIICHAT_SOURCE_ROOT "${ASCIICHAT_SOURCE_ROOT}")
+    configure_file(
+        "${source_root}/include/ascii-chat/source_root.h.in"
+        "${binary_root}/generated/ascii-chat/source_root.h"
+        @ONLY
+    )
+endfunction()

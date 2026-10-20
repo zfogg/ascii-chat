@@ -8,6 +8,10 @@ media byte rates are achieved throughput, not available capacity; a sender times
 alone does not establish RTT, and gaps on a reliable transport do not measure UDP
 loss. Earlier examples using those interpretations are superseded.
 
+Runtime rendering settings now follow [runtime settings](runtime-settings.md).
+The original broadcast-settings proposal below is historical: rendering is scoped
+to each viewer, and all live updates use the shared settings request/result API.
+
 ## Philosophy
 
 ascii-chat should be as simple as making a phone call. Today, users need to understand server/client architecture, port forwarding, and NAT traversal to have a video call. The new **Discovery Mode** changes this:

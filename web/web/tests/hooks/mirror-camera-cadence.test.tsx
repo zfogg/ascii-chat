@@ -6,9 +6,8 @@ import { DEFAULT_SETTINGS } from "../../src/utils/defaultSettings";
 vi.mock("@ascii-chat/shared/hooks", () => ({
   useTestPattern: () => ({ enabled: false }),
 }));
-vi.mock("@ascii-chat/shared/wasm", () => ({
-  isWasmReady: () => false,
-  isOptionsInitialized: () => true,
+vi.mock("../../src/hooks/useWasmOptions", () => ({
+  applyMirrorWasmSettings: () => true,
 }));
 
 afterEach(() => {

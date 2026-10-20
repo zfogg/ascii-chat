@@ -351,6 +351,17 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
         set(OPENSSL_BUILD_SHARED ON)
     endif()
 
+    set(OPENSSL_CONFIGURE_PREFIX "${OPENSSL_PREFIX}")
+    set(OPENSSL_INSTALL_ARGS)
+    if(NOT OPENSSL_BUILD_SHARED)
+        # Runtime defaults must not name a disposable build checkout. Stage the
+        # conventional prefix under the dependency cache using DESTDIR.
+        set(OPENSSL_CONFIGURE_PREFIX "/usr/local")
+        set(OPENSSL_STAGING_ROOT "${OPENSSL_PREFIX}")
+        set(OPENSSL_PREFIX "${OPENSSL_STAGING_ROOT}/usr/local")
+        list(APPEND OPENSSL_INSTALL_ARGS "DESTDIR=${OPENSSL_STAGING_ROOT}")
+    endif()
+
     # Detect target architecture for OpenSSL Configure.
     # Important: Check APPLE first so arm64 Macs don't get classified as linux-aarch64.
     if(APPLE)
@@ -371,7 +382,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
     endif()
     set(OPENSSL_LIBDIR "lib")
 
-    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};no_asm=${OPENSSL_NO_ASM};shared=${OPENSSL_BUILD_SHARED};version=${OPENSSL_VERSION}")
+    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};no_asm=${OPENSSL_NO_ASM};shared=${OPENSSL_BUILD_SHARED};version=${OPENSSL_VERSION};prefix=${OPENSSL_CONFIGURE_PREFIX}")
 
     if(OPENSSL_BUILD_SHARED)
         set(_OPENSSL_EXPECTED_SSL_LIB "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl${CMAKE_SHARED_LIBRARY_SUFFIX}")
@@ -439,7 +450,8 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
         # Configure OpenSSL
         set(OPENSSL_CONFIGURE_ARGS
             ${OPENSSL_TARGET}
-            --prefix=${OPENSSL_PREFIX}
+            --prefix=${OPENSSL_CONFIGURE_PREFIX}
+            --openssldir=/etc/ssl
             --libdir=lib
             no-tests
             -fPIC
@@ -485,7 +497,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
         # Install OpenSSL
         message(STATUS "  Installing OpenSSL...")
         execute_process(
-            COMMAND make install_sw
+            COMMAND make install_sw ${OPENSSL_INSTALL_ARGS}
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE INSTALL_RESULT
         )

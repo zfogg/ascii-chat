@@ -1,4 +1,8 @@
 import {
+  cameraConstraints,
+  microphoneConstraints,
+} from "@ascii-chat/shared/devices/mediaDevicePreferences";
+import {
   type MutableRefObject,
   type RefObject,
   useCallback,
@@ -9,17 +13,7 @@ import {
 import { acquireMediaStream } from "../utils/acquireMediaStream";
 import type { BinarySettingsConfig } from "../components";
 import { type MediaSource, MediaSourceType } from "./useClientLike";
-import {
-  isOptionsInitialized,
-  isWasmReady,
-  setColorFilter,
-  setColorMode,
-  setFlipX,
-  setMatrixRain,
-  setPalette,
-  setPaletteChars,
-} from "@ascii-chat/shared/wasm";
-import { mapColorFilterToWasm, mapColorModeToWasm } from "../utils";
+import { applyMirrorWasmSettings } from "./useWasmOptions";
 import { useTestPattern } from "@ascii-chat/shared/hooks";
 import {
   cameraAcquisitionFps,
@@ -112,63 +106,8 @@ export function useMirrorWebcam({
       console.log(
         `[Mirror] startWebcam: entering try block at ${tryStartTime.toFixed(0)}ms`,
       );
-      console.time("[Mirror] WASM settings");
-      const wasmReady = isWasmReady();
-      const optsInit = isOptionsInitialized();
-      console.log(
-        `[Mirror] WASM ready=${wasmReady}, options initialized=${optsInit} at ${performance.now().toFixed(0)}ms`,
-      );
-      if (wasmReady && optsInit) {
-        console.log(
-          `[Mirror] Applying WASM settings at ${performance.now().toFixed(0)}ms`,
-        );
-        // Apply WASM settings but don't fail if any individual setter fails
-        // The webcam should start regardless of color settings
-        try {
-          const beforeColorMode = performance.now();
-          console.log(
-            `[Mirror] BEFORE setColorMode at ${beforeColorMode.toFixed(0)}ms`,
-          );
-          setColorMode(mapColorModeToWasm(settings.colorMode));
-          console.log(
-            `[Mirror] AFTER setColorMode at ${performance.now().toFixed(0)}ms (${performance.now() - beforeColorMode}ms)`,
-          );
-        } catch (err) {
-          console.warn("[Mirror] Failed to set color mode:", err);
-        }
-        try {
-          setColorFilter(mapColorFilterToWasm(settings.colorFilter));
-        } catch (err) {
-          console.warn("[Mirror] Failed to set color filter:", err);
-        }
-        try {
-          setPalette(settings.palette);
-        } catch (err) {
-          console.warn("[Mirror] Failed to set palette:", err);
-        }
-        if (settings.palette === "custom" && settings.paletteChars) {
-          try {
-            setPaletteChars(settings.paletteChars);
-          } catch (err) {
-            console.warn("[Mirror] Failed to set palette chars:", err);
-          }
-        }
-        try {
-          setMatrixRain(settings.matrixRain ?? false);
-        } catch (err) {
-          console.warn("[Mirror] Failed to set matrix rain:", err);
-        }
-        try {
-          setFlipX(settings.flipX ?? true);
-        } catch (err) {
-          console.warn("[Mirror] Failed to set flip X:", err);
-        }
-      } else if (!isOptionsInitialized()) {
-        console.warn(
-          "[Mirror] WASM options not yet initialized, skipping settings",
-        );
-      }
-      console.timeEnd("[Mirror] WASM settings");
+      if (!applyMirrorWasmSettings(settings))
+        throw new Error("Renderer settings are not initialized");
 
       // Check for test mode via query parameter
       console.log(`[Mirror] Checking test mode at ${performance.now()}`);
@@ -197,18 +136,15 @@ export function useMirrorWebcam({
       const mediaConstraints: MediaStreamConstraints = {
         video: audioOnly
           ? false
-          : {
+          : cameraConstraints(cameraId, {
               width: { ideal: 1280 },
               height: { ideal: 720 },
               frameRate: { ideal: cameraAcquisitionFps() },
               facingMode: "user",
-              ...(cameraId ? { deviceId: { exact: cameraId } } : {}),
-            },
+            }),
         // Keep the microphone track available so waveform/FFT can be enabled
         // after the camera has started, without requiring a reconnect.
-        audio: devicePreferences.microphoneId
-          ? { deviceId: { exact: devicePreferences.microphoneId } }
-          : true,
+        audio: microphoneConstraints(devicePreferences.microphoneId),
       };
       let stream: MediaStream | undefined;
       for (let attempt = 0; ; attempt++) {

@@ -31,7 +31,7 @@ if(NOT _reverb_contents MATCHES "#include <memory>")
 endif()
 
 # Check if patches have already been applied to avoid unnecessary rewrites
-set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v9")
+set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v10")
 if(EXISTS "${WEBRTC_PATCH_MARKER}")
     message(STATUS "WebRTC AEC3 patches already applied, skipping")
     return()

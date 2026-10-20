@@ -73,6 +73,9 @@ asciichat_error_t consensus_handoff_join(consensus_handoff_t *s, const uint8_t i
   return ASCIICHAT_OK;
 }
 void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[16]) {
+  // The incumbent can leave before its first measurement creates a peer entry.
+  if (memcmp(s->host, id, 16) == 0)
+    s->host_lost = true;
   for (size_t i = 0; i < s->count; ++i) {
     if (memcmp(s->peers[i].id, id, 16) != 0)
       continue;
@@ -113,6 +116,8 @@ asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consen
     if (elapsed == 0)
       elapsed = 1;
     p->valid = elapsed <= 5000;
+    if (p->valid)
+      p->rejected = false;
     p->upload_kbps = (uint32_t)((uint64_t)CONSENSUS_HANDOFF_PROBE_BYTES * 8 / elapsed);
     p->measured_ms = now;
   } else if (m->kind == HANDOFF_READY || m->kind == HANDOFF_REJECT) {
@@ -151,6 +156,8 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
       s->ready = false;
       s->failure_deadline_ms = 0;
       s->failure_announced = false;
+      for (size_t i = 0; i < s->count; ++i)
+        s->peers[i].rejected = false;
       memset(s->successor, 0, 16);
       return true;
     }

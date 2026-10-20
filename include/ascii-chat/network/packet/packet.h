@@ -801,8 +801,8 @@ PACKED_ATTR /** @endcond */ auth_failure_packet_t;
  * Bitmask values for optional protocol features.
  * Used in protocol negotiation to enable advanced capabilities.
  */
-#define FEATURE_RLE_ENCODING 0x01 /**< @brief Run-length encoding support */
-#define FEATURE_DELTA_FRAMES 0x02 /**< @brief Delta frame encoding (future) */
+#define FEATURE_RLE_ENCODING 0x01                /**< @brief Run-length encoding support */
+#define FEATURE_DELTA_FRAMES 0x02                /**< @brief Delta frame encoding (future) */
 #define PROTOCOL_FEATURE_RECOVERABLE_ERRORS 0x04 /**< Peer accepts nonfatal audio error notifications */
 
 /** @} */

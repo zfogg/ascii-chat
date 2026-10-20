@@ -3,7 +3,8 @@ if(PLATFORM_IOS AND NOT BUILD_EXECUTABLES)
     return()
 endif()
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
-if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
+if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE
+   OR (APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS))
     function(asciichat_build_vterm)
         asciichat_dependency_defaults()
         FetchContent_Declare(libvterm-src
@@ -23,7 +24,8 @@ if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_
                 COMMAND "${CMAKE_COMMAND}" "-DPERL=${PERL_EXECUTABLE}"
                     "-DGENERATOR=${_vterm_source}/tbl2inc_c.pl" "-DINPUT=${_table}" "-DOUTPUT=${_output}"
                     -P "${CMAKE_CURRENT_LIST_DIR}/../scripts/GenerateVtermEncoding.cmake"
-                DEPENDS "${_table}" "${_vterm_source}/tbl2inc_c.pl" VERBATIM)
+                DEPENDS "${_table}" "${_vterm_source}/tbl2inc_c.pl"
+                    "${CMAKE_CURRENT_LIST_DIR}/../scripts/GenerateVtermEncoding.cmake" VERBATIM)
             list(APPEND _generated "${_output}")
         endforeach()
         file(GLOB _sources CONFIGURE_DEPENDS "${_vterm_source}/src/*.c")
@@ -33,6 +35,10 @@ if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_
         add_library(asciichat-vterm ${_sources} "${_vterm_binary}/encoding.c" ${_generated})
         target_include_directories(asciichat-vterm PUBLIC "${_vterm_source}/include"
             PRIVATE "${_vterm_source}/src" "${_vterm_binary}")
+        if(WIN32)
+            # Upstream uses the portable C string APIs, not Microsoft's secure CRT variants.
+            target_compile_definitions(asciichat-vterm PRIVATE _CRT_SECURE_NO_WARNINGS)
+        endif()
         if(EMSCRIPTEN)
             target_compile_options(asciichat-vterm PRIVATE -msimd128)
         endif()

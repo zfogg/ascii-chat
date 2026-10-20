@@ -11,9 +11,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/crypto/crypto.h>
-#include <ascii-chat/platform/socket.h>
-typedef struct acip_transport acip_transport_t;
 
 typedef struct {
   // Exit signals
@@ -24,15 +21,6 @@ typedef struct {
   uint64_t (*platform_get_monotonic_time_us)(void);
   void (*platform_sleep_ms)(unsigned int ms);
   void (*platform_pump_events)(void);
-
-  // Server/client crypto setup
-  void (*server_connection_set_ip)(const char *ip);
-  void (*server_connection_set_port)(int port);
-  void (*client_crypto_set_mode)(uint8_t mode);
-  int (*client_crypto_init)(void);
-  asciichat_error_t (*client_crypto_handshake)(acip_transport_t *transport);
-  bool (*crypto_client_is_ready)(void);
-  const crypto_context_t *(*crypto_client_get_context)(void);
 
   // Audio
   void (*audio_stop_thread)(void);
@@ -75,16 +63,6 @@ const app_callbacks_t *app_callbacks_get(void);
   })
 
 /**
- * Call a void(void) callback and return int
- * Usage: int result = APP_CALLBACK_INT(client_crypto_init)
- */
-#define APP_CALLBACK_INT(callback_name)                                                                                \
-  ({                                                                                                                   \
-    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-    (__cb && __cb->callback_name) ? __cb->callback_name() : -1;                                                        \
-  })
-
-/**
  * Call a uint64_t(void) callback
  * Usage: uint64_t now = APP_CALLBACK_UINT64(platform_get_monotonic_time_us)
  */
@@ -93,28 +71,6 @@ const app_callbacks_t *app_callbacks_get(void);
     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
     (__cb && __cb->callback_name) ? __cb->callback_name() : 0ULL;                                                      \
   })
-
-/**
- * Call an asciichat_error_t(acip_transport_t *) callback
- * Usage: asciichat_error_t result = APP_CALLBACK_ERROR_TRANSPORT(client_crypto_handshake, transport)
- */
-#define APP_CALLBACK_ERROR_TRANSPORT(callback_name, transport)                                                         \
-  ({                                                                                                                   \
-    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-    (__cb && __cb->callback_name) ? __cb->callback_name(transport) : ERROR_INVALID_STATE;                              \
-  })
-
-/**
- * Call a void(uint8_t) callback
- * Usage: APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, mode)
- */
-#define APP_CALLBACK_VOID_UINT8(callback_name, value)                                                                  \
-  do {                                                                                                                 \
-    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-    if (__cb && __cb->callback_name) {                                                                                 \
-      __cb->callback_name(value);                                                                                      \
-    }                                                                                                                  \
-  } while (0)
 
 /**
  * Call a void(unsigned int) callback
@@ -127,39 +83,5 @@ const app_callbacks_t *app_callbacks_get(void);
       __cb->callback_name(value);                                                                                      \
     }                                                                                                                  \
   } while (0)
-
-/**
- * Call a void(const char *) callback
- * Usage: APP_CALLBACK_VOID_STR(server_connection_set_ip, ip_addr)
- */
-#define APP_CALLBACK_VOID_STR(callback_name, value)                                                                    \
-  do {                                                                                                                 \
-    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-    if (__cb && __cb->callback_name) {                                                                                 \
-      __cb->callback_name(value);                                                                                      \
-    }                                                                                                                  \
-  } while (0)
-
-/**
- * Call a void(int) callback
- * Usage: APP_CALLBACK_VOID_INT(server_connection_set_port, port)
- */
-#define APP_CALLBACK_VOID_INT(callback_name, value)                                                                    \
-  do {                                                                                                                 \
-    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-    if (__cb && __cb->callback_name) {                                                                                 \
-      __cb->callback_name(value);                                                                                      \
-    }                                                                                                                  \
-  } while (0)
-
-/**
- * Get a pointer return value from callback
- * Usage: const crypto_context_t *ctx = APP_CALLBACK_PTR(crypto_client_get_context)
- */
-#define APP_CALLBACK_PTR(callback_name)                                                                                \
-  ({                                                                                                                   \
-    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-    (__cb && __cb->callback_name) ? __cb->callback_name() : NULL;                                                      \
-  })
 
 #endif

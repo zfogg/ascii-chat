@@ -176,6 +176,9 @@ void options_state_destroy(void);
  */
 const options_t *options_get(void);
 
+/** Number of retired borrowed snapshots retained until shutdown. */
+size_t options_retired_snapshot_count(void);
+
 /**
  * @brief Clean up schema resources
  *

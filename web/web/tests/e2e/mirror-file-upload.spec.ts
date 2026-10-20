@@ -6,7 +6,7 @@ interface PlaybackVideo extends HTMLVideoElement {
 }
 
 async function upload(page: Page, name: string) {
-  await page.getByRole("button", { name: "Upload Video", exact: true }).click();
+  await page.getByRole("button", { name: "Upload File", exact: true }).click();
   await page
     .getByLabel("Choose media file")
     .setInputFiles(path.resolve("tests/fixtures/media", name));

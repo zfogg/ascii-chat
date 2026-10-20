@@ -22,10 +22,13 @@ asciichat_error_t acip_security_receive(acip_security_t *security, acip_transpor
                                         const void *payload, size_t length);
 
 /** Initialize a peer from native CLI options; cleanup releases owned credentials. */
-asciichat_error_t acip_security_init_options(acip_security_t *security, bool server);
+asciichat_error_t acip_security_init_options(acip_security_t *security, bool server, bool transport_secure,
+                                             const char *password);
 void acip_security_cleanup(acip_security_t *security);
 
 /** Transfer security ownership on success. Ready fires only after negotiation. */
 acip_transport_t *acip_webrtc_transport_create_secure(struct webrtc_peer_connection *peer,
                                                       struct webrtc_data_channel *channel, acip_security_t *security,
                                                       void (*on_ready)(acip_transport_t *, void *), void *user_data);
+/** Borrow security already owned by an authenticated peer transport. */
+acip_security_t *acip_webrtc_transport_security(acip_transport_t *transport);

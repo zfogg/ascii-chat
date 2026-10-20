@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/settings.h>
 #include "connection_internal.h"
 /**
  * @file main.c
@@ -101,13 +102,12 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/network/network.h>
-#include <ascii-chat/network/tcp/client.h>
 #include <ascii-chat/network/client.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/client.h>
-#include "connection_state.h"
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/app_callbacks.h>
 
@@ -320,8 +320,9 @@ static bool client_should_reconnect(asciichat_error_t last_error, int attempt_nu
  * @param user_data Unused (NULL)
  * @return ASCIICHAT_OK if successful, error code if connection failed
  */
-static asciichat_error_t client_send_capabilities(const terminal_capabilities_packet_t *packet, void *context) {
-  return threaded_send_packet(context, PACKET_TYPE_CLIENT_CAPABILITIES, packet, sizeof(*packet));
+static asciichat_error_t client_send_settings(const options_t *values, uint32_t request, void *context) {
+  return acip_settings_send(server_connection_get_transport((client_connection_t *)context), values, request,
+                            UINT32_MAX);
 }
 
 static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, session_display_ctx_t *display,
@@ -362,10 +363,11 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
   // Monitor connection until it breaks or shutdown is requested
   bool snapshot_check_logged_once = false;
   uint64_t last_progress_log_ns = 0;
+  uint64_t advertised_revision = OPTIONS_REVISION_ANY;
   while (!should_exit() && server_connection_is_active(connection)) {
     terminal_size_t previous = connection->advertised_dimensions;
-    if (session_protocol_update_dimensions(&connection->advertised_dimensions, client_send_capabilities, connection) ==
-            ASCIICHAT_OK &&
+    if (session_protocol_update_settings(&connection->advertised_dimensions, &advertised_revision, client_send_settings,
+                                         connection) == ASCIICHAT_OK &&
         (previous.cols != connection->advertised_dimensions.cols ||
          previous.rows != connection->advertised_dimensions.rows)) {
       display_full_reset();
@@ -492,17 +494,6 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
 }
 
 int client_main(void) {
-
-  // Register client crypto callbacks for TCP connection path
-  // The TCP path in lib/network/connection_attempt.c relies on these callbacks
-  // to handle cryptographic operations and key exchange
-  static const app_callbacks_t client_crypto_callbacks = {
-      .should_exit = should_exit,
-      .signal_exit = signal_exit,
-      .platform_get_monotonic_time_us = platform_get_monotonic_time_us,
-      .platform_sleep_ms = platform_sleep_ms,
-  };
-  app_callbacks_register(&client_crypto_callbacks);
 
   // Initialize client-specific systems (NOT shared with session_client_like)
   // This includes application devices and the application client context.

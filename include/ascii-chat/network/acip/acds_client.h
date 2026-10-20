@@ -1,3 +1,4 @@
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/common.h>
 #pragma once
 
@@ -111,9 +112,9 @@ typedef bool (*parallel_connect_should_exit_fn)(void *user_data);
  * @brief ACDS client connection configuration
  */
 typedef struct {
-  char server_address[256]; ///< ACDS server address (e.g., "discovery.ascii.chat" or "127.0.0.1")
-  uint16_t server_port;     ///< ACDS server port (default: 27225)
-  uint32_t timeout_ms;      ///< Connection timeout in milliseconds
+  char server_address[256];        ///< ACDS server address (e.g., "discovery.ascii.chat" or "127.0.0.1")
+  uint16_t server_port;            ///< ACDS server port (default: 27225)
+  uint32_t timeout_ms;             ///< Connection timeout in milliseconds
   crypto_policy_t security_policy; ///< Signaling policy, independent of peer media policy
   const char *identity_key;        ///< Optional private identity key path, borrowed during connect
 
@@ -127,10 +128,10 @@ typedef struct {
  */
 typedef struct {
   acds_client_config_t config;
-  socket_t socket;                          ///< TCP socket to ACDS server
-  bool connected;                           ///< Connection status
-  acip_transport_t *transport;              ///< Transport used for the initial crypto handshake
-  crypto_handshake_context_t handshake_ctx; ///< ACDS crypto handshake state
+  bool connected;              ///< Connection status
+  acip_transport_t *transport; ///< Transport used for the initial crypto handshake
+  network_connection_t *connection;
+  crypto_handshake_context_t *handshake_ctx; ///< Borrowed from connection owner
 } acds_client_t;
 
 // ============================================================================

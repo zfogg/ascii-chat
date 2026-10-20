@@ -1,4 +1,5 @@
 import type { SessionUiModule } from "./sessionUi";
+import { resetRuntimeOptions } from "./common/runtimeOptions";
 // Shared TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
 // Decoupled from Emscripten factory location — callers provide the factory.
@@ -56,8 +57,8 @@ interface MirrorModuleExports {
   _term_renderer_get_rows(r: number): number;
   _term_renderer_destroy(r: number): void;
   // Embedded font data
-  _get_font_default_ptr(): number;
-  _get_font_default_size(): number;
+  _get_font_default_ptr(selection: number): number;
+  _get_font_default_size(selection: number): number;
   HEAPF32: Float32Array;
   // Memory management
   _malloc(size: number): number;
@@ -115,12 +116,16 @@ let wasmModule: MirrorModule | null = null;
  * points. Reusing it avoids starting a second Emscripten pthread runtime.
  */
 export function adoptMirrorWasmModule(module: MirrorModule): void {
+  if (wasmModule !== module) resetRuntimeOptions(module);
   wasmModule = module;
+  initializeOptions(createOptionAccessor(module));
 }
 
 /** Clear a client module reference before its owning client runtime is cleaned up. */
 export function resetAdoptedMirrorWasmModule(): void {
+  if (wasmModule) resetRuntimeOptions(wasmModule);
   wasmModule = null;
+  cleanupOptions();
 }
 
 /**
@@ -134,6 +139,7 @@ export async function initMirrorWasm(
     locateFile?: (path: string) => string;
     mainScriptUrlOrBlob?: string;
     initialArgs?: string[];
+    pthreadPoolSize?: number;
   },
 ): Promise<void> {
   if (wasmModule) {
@@ -154,6 +160,9 @@ export async function initMirrorWasm(
   }
   if (options?.mainScriptUrlOrBlob) {
     moduleOverrides["mainScriptUrlOrBlob"] = options.mainScriptUrlOrBlob;
+  }
+  if (options?.pthreadPoolSize !== undefined) {
+    moduleOverrides["pthreadPoolSize"] = options.pthreadPoolSize;
   }
 
   try {
@@ -197,6 +206,7 @@ export async function initMirrorWasm(
     // Initialize shared options module with option accessor
     // This allows React components to call setColorMode, setPalette, etc.
     const optionsAccessor = createOptionAccessor(wasmModule);
+    resetRuntimeOptions(wasmModule);
     initializeOptions(optionsAccessor);
 
     // Expose WASM module to window for JavaScript access (e.g., tooltips)

@@ -102,7 +102,8 @@ extern "C" {
  *
  * @ingroup audio
  */
-#define MIXER_MAX_SOURCES PARTICIPANT_LIMIT // Increased to match MAX_CLIENTS
+#define MIXER_MAX_SOURCES PARTICIPANT_LIMIT
+#define MIXER_MASK_WORDS ((MIXER_MAX_SOURCES + 63) / 64)
 
 /**
  * @brief Number of samples processed per audio frame
@@ -341,8 +342,8 @@ typedef struct {
   /** @brief Array of active flags (true if source is active) */
   bool *source_active;
 
-  /** @brief Bitset of active sources (word i/64, bit i%64, O(1) exclusion) */
-  uint64_t active_sources_mask[(MIXER_MAX_SOURCES + 63) / 64];
+  /** @brief Bitset of active sources (bit i = source i is active, O(1) iteration) */
+  uint64_t active_sources_mask[MIXER_MASK_WORDS];
   /** @brief Hash table mapping client_id → mixer source index (uses hash function for strings) */
   uint8_t source_id_to_index[256];
   /** @brief Client ID strings stored at each hash index for collision detection */

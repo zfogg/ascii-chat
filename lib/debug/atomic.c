@@ -19,13 +19,13 @@
 #include <stdio.h>
 #include <string.h>
 
-static _Atomic bool g_atomic_debug_initialized = false;
-
 // ============================================================================
 // Debug Initialization/Shutdown
 // ============================================================================
 
 #ifndef NDEBUG
+
+static _Atomic bool g_atomic_debug_initialized = false;
 
 void debug_atomic_init(void) {
   g_atomic_debug_initialized = true;

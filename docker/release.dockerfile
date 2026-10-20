@@ -24,14 +24,18 @@ COPY . /build/
 RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve
 
-# Build release-musl static binary - reuse pre-configured build from deps stage
+# Refresh the dependency image's configure cache against the current toolchain.
+# Downloaded dependency sources remain cached outside the build tree.
 # Create minimal .git structure so Ninja/CMake dependencies are satisfied
 # Clean release builds show just version without dev/commit info
 RUN cd /build && \
     mkdir -p .git && \
     touch .git/HEAD .git/index && \
-    PROJECT_VERSION_OVERRIDE=${VERSION} \
-    SOURCE_COMMIT="${SOURCE_COMMIT}" \
+    export PROJECT_VERSION_OVERRIDE="${VERSION}" && \
+    cmake --fresh --preset release-musl \
+        -DUSE_MUSL=ON \
+        -DASCIICHAT_ENABLE_ANALYZERS=OFF \
+        -DASCIICHAT_LIB_VERSION=${LIB_VERSION} && \
     cmake --build build_release && \
     cmake --install build_release --prefix /tmp/install --component Runtime && \
     strip /tmp/install/bin/ascii-chat

@@ -12,9 +12,11 @@ export default defineConfig({
     "session-ui.spec.ts",
     "mirror-file-upload.spec.ts",
     "wasm-assets.spec.ts",
+    "runtime-settings.spec.ts",
     "face-follow.spec.ts",
   ],
-  grepInvert: /connected web client shows its C network logs/,
+  grepInvert:
+    /connected web client shows its C network logs|native host applies live browser settings/,
   workers: 1,
   timeout: 60_000,
   retries: 0,

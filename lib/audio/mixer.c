@@ -243,7 +243,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   SAFE_MEMSET(mixer->source_active, active_size, 0, active_size);
 
   // OPTIMIZATION 1: Initialize bitset optimization structures
-  SAFE_MEMSET(mixer->active_sources_mask, sizeof(mixer->active_sources_mask), 0, sizeof(mixer->active_sources_mask));
+  memset(mixer->active_sources_mask, 0, sizeof(mixer->active_sources_mask)); // No sources active initially
   for (int i = 0; i < 256; i++) {
     mixer->source_id_to_index[i] = MIXER_HASH_INVALID;
   }
@@ -398,7 +398,7 @@ int mixer_add_source(mixer_t *mixer, const char *client_id, audio_ring_buffer_t 
   mixer->num_sources++;
 
   // OPTIMIZATION 1: Update bitset optimization structures
-  mixer->active_sources_mask[slot / 64] |= (UINT64_C(1) << (slot % 64)); // Set bit for this slot
+  mixer->active_sources_mask[slot / 64] |= (1ULL << (slot % 64)); // Set bit for this slot
   // Hash table optimization disabled for string-based client_ids (linear search is acceptable for small mixer sizes)
 
   rwlock_wrunlock(&mixer->source_lock);
@@ -429,7 +429,7 @@ void mixer_remove_source(mixer_t *mixer, const char *client_id) {
       mixer->num_sources--;
 
       // OPTIMIZATION 1: Update bitset optimization structures
-      mixer->active_sources_mask[i / 64] &= ~(UINT64_C(1) << (i % 64)); // Clear bit for this slot
+      mixer->active_sources_mask[i / 64] &= ~(1ULL << (i % 64)); // Clear bit for this slot
       // Hash table optimization disabled for string-based client_ids
 
       // Reset ducking state for this source
@@ -459,9 +459,9 @@ void mixer_set_source_active(mixer_t *mixer, const char *client_id, bool active)
 
       // OPTIMIZATION 1: Update bitset for active state change
       if (active) {
-        mixer->active_sources_mask[i / 64] |= (UINT64_C(1) << (i % 64)); // Set bit
+        mixer->active_sources_mask[i / 64] |= (1ULL << (i % 64)); // Set bit
       } else {
-        mixer->active_sources_mask[i / 64] &= ~(UINT64_C(1) << (i % 64)); // Clear bit
+        mixer->active_sources_mask[i / 64] &= ~(1ULL << (i % 64)); // Clear bit
       }
 
       rwlock_wrunlock(&mixer->source_lock);
@@ -645,35 +645,17 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   }
   if (exclude_index != MIXER_HASH_INVALID)
     mixer_distribute_samples(mixer);
-  uint64_t active_mask[(MIXER_MAX_SOURCES + 63) / 64];
+  uint64_t active_mask[MIXER_MASK_WORDS];
   memcpy(active_mask, mixer->active_sources_mask, sizeof(active_mask));
-
-  bool valid_exclude = (exclude_index < MIXER_MAX_SOURCES && exclude_index != MIXER_HASH_INVALID);
-
-  if (valid_exclude) {
-    // Apply exclusion to prevent echo feedback
-    unsigned word = exclude_index / 64;
-    uint64_t before = active_mask[word];
-    active_mask[word] &= ~(UINT64_C(1) << (exclude_index % 64));
-
-    // DIAGNOSTIC: Log which client was excluded and which remain active
-    log_dev_every(
-        4500 * US_PER_MS_INT,
-        "MIXER EXCLUSION: exclude_client=%u, exclude_index=%u, active_mask_before=0x%llx, active_mask_after=0x%llx",
-        exclude_client_id, exclude_index, (unsigned long long)before, (unsigned long long)active_mask[word]);
-  } else {
-    // DIAGNOSTIC: Failed to exclude - log why
-    log_dev_every(4500 * US_PER_MS_INT,
-                  "MIXER EXCLUSION FAILED: exclude_client=%u, exclude_index=%u (valid=%d), lookup_id=%u",
-                  exclude_client_id, exclude_index, valid_exclude,
-                  (exclude_index < MIXER_MAX_SOURCES && exclude_index != 0xFF) ? mixer->source_ids[exclude_index] : 0);
-  }
+  bool valid_exclude = exclude_index < mixer->max_sources && exclude_index != MIXER_HASH_INVALID;
+  if (valid_exclude)
+    active_mask[exclude_index / 64] &= ~(1ULL << (exclude_index % 64));
+  bool any_active = false;
+  for (size_t word = 0; word < MIXER_MASK_WORDS; ++word)
+    any_active |= active_mask[word] != 0;
 
   // Fast check: any sources to mix?
   int spectral_slot = valid_exclude ? exclude_index : mixer->max_sources;
-  bool any_active = false;
-  for (size_t word = 0; word < sizeof(active_mask) / sizeof(active_mask[0]); ++word)
-    any_active |= active_mask[word] != 0;
   if (!any_active && !mixer->spectral[spectral_slot]) {
     rwlock_wrunlock(&mixer->source_lock);
 #ifndef NDEBUG
@@ -698,9 +680,9 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
     // OPTIMIZATION 1: Iterate only over active sources using bitset
     size_t word = 0;
-    uint64_t current_mask = active_mask[word];
+    uint64_t current_mask = active_mask[0];
     while (source_count < MIXER_MAX_SOURCES) {
-      while (!current_mask && word + 1 < sizeof(active_mask) / sizeof(active_mask[0]))
+      while (!current_mask && word + 1 < MIXER_MASK_WORDS)
         current_mask = active_mask[++word];
       if (!current_mask)
         break;

@@ -126,7 +126,7 @@ typedef void (*webrtc_datachannel_error_callback_t)(webrtc_data_channel_t *dc, c
  * @brief WebRTC configuration
  */
 typedef struct {
-  const char *bind_address; ///< Optional local interface address for ICE sockets
+  const char *bind_address;    ///< Optional local interface address for ICE sockets
   stun_server_t *stun_servers; ///< Array of STUN servers
   size_t stun_count;           ///< Number of STUN servers
   turn_server_t *turn_servers; ///< Array of TURN servers
@@ -144,7 +144,7 @@ typedef struct {
   webrtc_datachannel_message_callback_t on_datachannel_message;
   webrtc_datachannel_error_callback_t on_datachannel_error;
 
-  void *user_data; ///< Passed to all callbacks
+  void *user_data;      ///< Passed to all callbacks
   bool port_forwarding; ///< Opt-in UDP mapping before ICE gathering (native peers only)
 } webrtc_config_t;
 

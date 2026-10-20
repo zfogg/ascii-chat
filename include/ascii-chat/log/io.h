@@ -29,9 +29,9 @@ extern "C" {
  * @brief Opaque handle for IO capture state
  */
 typedef struct {
-  int saved_stdout_fd;  ///< Saved stdout file descriptor
-  int saved_stderr_fd;  ///< Saved stderr file descriptor
-  FILE *output;         ///< Temporary capture file, deleted on close
+  int saved_stdout_fd; ///< Saved stdout file descriptor
+  int saved_stderr_fd; ///< Saved stderr file descriptor
+  FILE *output;        ///< Temporary capture file, deleted on close
 } log_io_t;
 
 /**
@@ -80,11 +80,11 @@ void log_io_stop(log_io_t capture, const char *prefix);
  * @note Prefix and block are only evaluated once
  * @note Variables in the enclosing scope are accessible in the block
  */
-#define LOG_IO(prefix, block)                                                 \
-  do {                                                                        \
-    log_io_t _log_io = log_io_start();                                       \
-    block;                                                                    \
-    log_io_stop(_log_io, (prefix));                                         \
+#define LOG_IO(prefix, block)                                                                                          \
+  do {                                                                                                                 \
+    log_io_t _log_io = log_io_start();                                                                                 \
+    block;                                                                                                             \
+    log_io_stop(_log_io, (prefix));                                                                                    \
   } while (0)
 
 #ifdef __cplusplus

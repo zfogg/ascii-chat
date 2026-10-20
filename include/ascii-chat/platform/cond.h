@@ -37,21 +37,21 @@
  * @ingroup platform
  */
 typedef struct {
-    CONDITION_VARIABLE impl; ///< Underlying Windows condition variable
-    const char *name;        ///< Human-readable name for named registry (all builds)
-    atomic_t waiting_count;        ///< Number of threads currently waiting (functional - needed for all builds)
+  CONDITION_VARIABLE impl; ///< Underlying Windows condition variable
+  const char *name;        ///< Human-readable name for named registry (all builds)
+  atomic_t waiting_count;  ///< Number of threads currently waiting (functional - needed for all builds)
 #ifndef NDEBUG
-    _Atomic(uint64_t) last_signal_time_ns;  ///< Timestamp of last signal (nanoseconds)
-    _Atomic(uint64_t) last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
-    _Atomic(uint64_t) last_wait_time_ns;    ///< Timestamp of last wait (nanoseconds)
-    _Atomic(uintptr_t) last_waiting_key;     ///< Registry key of most recent waiter
-    _Atomic(mutex_t *) last_wait_mutex;       ///< Associated mutex at most recent wait (for deadlock detection)
-    _Atomic(const char *) last_wait_file;     ///< Callsite file of most recent cond_wait (for deadlock detection)
-    _Atomic(int) last_wait_line;      ///< Callsite line of most recent cond_wait (for deadlock detection)
-    _Atomic(const char *) last_wait_func;     ///< Callsite function of most recent cond_wait (for deadlock detection)
-    _Atomic(uint64_t) wait_count;            ///< Total wait calls
-    _Atomic(uint64_t) signal_count;          ///< Total signal calls
-    _Atomic(uint64_t) broadcast_count;       ///< Total broadcast calls
+  _Atomic(uint64_t) last_signal_time_ns;    ///< Timestamp of last signal (nanoseconds)
+  _Atomic(uint64_t) last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
+  _Atomic(uint64_t) last_wait_time_ns;      ///< Timestamp of last wait (nanoseconds)
+  _Atomic(uintptr_t) last_waiting_key;      ///< Registry key of most recent waiter
+  _Atomic(mutex_t *) last_wait_mutex;       ///< Associated mutex at most recent wait (for deadlock detection)
+  _Atomic(const char *) last_wait_file;     ///< Callsite file of most recent cond_wait (for deadlock detection)
+  _Atomic(int) last_wait_line;              ///< Callsite line of most recent cond_wait (for deadlock detection)
+  _Atomic(const char *) last_wait_func;     ///< Callsite function of most recent cond_wait (for deadlock detection)
+  _Atomic(uint64_t) wait_count;             ///< Total wait calls
+  _Atomic(uint64_t) signal_count;           ///< Total signal calls
+  _Atomic(uint64_t) broadcast_count;        ///< Total broadcast calls
 #endif
 } cond_t;
 #else
@@ -61,21 +61,21 @@ typedef struct {
  * @ingroup platform
  */
 typedef struct {
-    pthread_cond_t impl;     ///< Underlying POSIX condition variable
-    const char *name;        ///< Human-readable name for named registry (all builds)
-    atomic_t waiting_count;        ///< Number of threads currently waiting (functional - needed for all builds)
+  pthread_cond_t impl;    ///< Underlying POSIX condition variable
+  const char *name;       ///< Human-readable name for named registry (all builds)
+  atomic_t waiting_count; ///< Number of threads currently waiting (functional - needed for all builds)
 #ifndef NDEBUG
-    _Atomic(uint64_t) last_signal_time_ns;  ///< Timestamp of last signal (nanoseconds)
-    _Atomic(uint64_t) last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
-    _Atomic(uint64_t) last_wait_time_ns;    ///< Timestamp of last wait (nanoseconds)
-    _Atomic(uintptr_t) last_waiting_key;     ///< Registry key of most recent waiter
-    _Atomic(mutex_t *) last_wait_mutex;       ///< Associated mutex at most recent wait (for deadlock detection)
-    _Atomic(const char *) last_wait_file;     ///< Callsite file of most recent cond_wait (for deadlock detection)
-    _Atomic(int) last_wait_line;      ///< Callsite line of most recent cond_wait (for deadlock detection)
-    _Atomic(const char *) last_wait_func;     ///< Callsite function of most recent cond_wait (for deadlock detection)
-    _Atomic(uint64_t) wait_count;            ///< Total wait calls
-    _Atomic(uint64_t) signal_count;          ///< Total signal calls
-    _Atomic(uint64_t) broadcast_count;       ///< Total broadcast calls
+  _Atomic(uint64_t) last_signal_time_ns;    ///< Timestamp of last signal (nanoseconds)
+  _Atomic(uint64_t) last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
+  _Atomic(uint64_t) last_wait_time_ns;      ///< Timestamp of last wait (nanoseconds)
+  _Atomic(uintptr_t) last_waiting_key;      ///< Registry key of most recent waiter
+  _Atomic(mutex_t *) last_wait_mutex;       ///< Associated mutex at most recent wait (for deadlock detection)
+  _Atomic(const char *) last_wait_file;     ///< Callsite file of most recent cond_wait (for deadlock detection)
+  _Atomic(int) last_wait_line;              ///< Callsite line of most recent cond_wait (for deadlock detection)
+  _Atomic(const char *) last_wait_func;     ///< Callsite function of most recent cond_wait (for deadlock detection)
+  _Atomic(uint64_t) wait_count;             ///< Total wait calls
+  _Atomic(uint64_t) signal_count;           ///< Total signal calls
+  _Atomic(uint64_t) broadcast_count;        ///< Total broadcast calls
 #endif
 } cond_t;
 #endif
@@ -194,7 +194,8 @@ void cond_on_wait(cond_t *cond, mutex_t *mutex, const char *file, int line, cons
 // Forward declare debug_sync functions (only in debug builds)
 #ifndef NDEBUG
 int debug_sync_cond_wait(cond_t *cond, mutex_t *mutex, const char *file, int line, const char *func);
-int debug_sync_cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns, const char *file, int line, const char *func);
+int debug_sync_cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns, const char *file, int line,
+                              const char *func);
 bool debug_sync_is_initialized(void);
 #endif
 
@@ -298,9 +299,8 @@ void cond_log_state(const cond_t *cond, const char *file, int line, const char *
 #define cond_timedwait(cond, mutex, timeout_ns) cond_timedwait_impl(cond, mutex, timeout_ns)
 #else
 #define cond_timedwait(cond, mutex, timeout_ns)                                                                        \
-  (debug_sync_is_initialized()                                                                                         \
-     ? debug_sync_cond_timedwait(cond, mutex, timeout_ns, __FILE__, __LINE__, __func__)                               \
-     : cond_timedwait_impl(cond, mutex, timeout_ns))
+  (debug_sync_is_initialized() ? debug_sync_cond_timedwait(cond, mutex, timeout_ns, __FILE__, __LINE__, __func__)      \
+                               : cond_timedwait_impl(cond, mutex, timeout_ns))
 #endif
 
 /** @} */ /* Condition Variable Wait Macros */

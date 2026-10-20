@@ -1,3 +1,4 @@
+#include <ascii-chat/network/acip/settings.h>
 /**
  * @file session/participant.c
  * @brief 👤 Client-side session participation implementation
@@ -23,10 +24,12 @@
 #include "session/audio.h"
 #include "session/av_state.h"
 #include <ascii-chat/network/acip/client.h>
-#include <ascii-chat/network/connection_factory.h>
+#include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/opus.h>
 
@@ -73,6 +76,7 @@ typedef struct session_participant {
 
   /** @brief Selected transport used by all media workers. */
   struct acip_transport *transport;
+  network_connection_t *network;
 
   /** @brief Responsibility for releasing the selected transport. */
   acip_transport_ownership_t transport_ownership;
@@ -91,6 +95,8 @@ typedef struct session_participant {
 
   /** @brief Current session settings */
   session_settings_t settings;
+  mutex_t settings_mutex;
+  uint32_t settings_request;
 
   /** @brief Video capture context (for webcam/file media) */
   session_capture_ctx_t *video_capture;
@@ -177,6 +183,10 @@ session_participant_t *session_participant_create(const session_participant_conf
 
   // Initialize settings
   session_settings_init(&p->settings);
+  if (mutex_init(&p->settings_mutex, "participant_settings") != 0) {
+    SAFE_FREE(p);
+    return NULL;
+  }
 
   participant_connection_init(p);
   p->initialized = true;
@@ -200,6 +210,7 @@ void session_participant_destroy(session_participant_t *p) {
   memset(p->server_key, 0, sizeof(p->server_key));
 
   p->initialized = false;
+  mutex_destroy(&p->settings_mutex);
   SAFE_FREE(p);
 }
 
@@ -230,17 +241,33 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
 
   participant_connection_init(p);
 
-  acip_transport_t *transport = NULL;
-  asciichat_error_t result =
-      connection_factory_open("session_participant", p->address, p->port, NULL, &transport, NULL);
+  asciichat_error_t result = network_connection_open("participant", p->address, p->port, NULL, &p->network, NULL);
+  if (result != ASCIICHAT_OK)
+    return result;
+  p->transport = network_connection_transport(p->network);
+  p->transport_ownership = ACIP_TRANSPORT_OWNED;
+  result = network_connection_prepare_security(p->network, false, p->password[0] ? p->password : NULL);
+  if (result == ASCIICHAT_OK) {
+    crypto_handshake_context_t *ctx = network_connection_handshake(p->network);
+    if (p->server_key[0]) {
+      ctx->verify_server_key = true;
+      SAFE_STRNCPY(ctx->expected_server_key, p->server_key, sizeof(ctx->expected_server_key));
+    }
+    result =
+        network_client_negotiate(p->transport, ctx, network_connection_crypto_mode(p->network), NETWORK_PROTOCOL_MEDIA);
+  }
   if (result != ASCIICHAT_OK) {
-    if (p->callbacks.on_error)
-      p->callbacks.on_error(p, result, "Failed to connect to server", p->user_data);
+    network_connection_destroy(&p->network);
+    p->transport = NULL;
     return result;
   }
-  p->transport = transport;
-  p->transport_ownership = ACIP_TRANSPORT_OWNED;
+  network_connection_ready(p->network);
+  log_debug("session_participant_connect: setting p->connected=true");
 
+  mutex_lock(&p->settings_mutex);
+  p->settings_request = 0;
+  p->settings.version = 0;
+  mutex_unlock(&p->settings_mutex);
   session_connection_start(&p->connection);
   p->connected = true;
   p->client_id = 0; // Will be assigned by server
@@ -288,8 +315,7 @@ static asciichat_error_t participant_join(void *context) {
 
 static void participant_release(void *context) {
   session_participant_t *p = context;
-  if (p->transport && p->transport_ownership == ACIP_TRANSPORT_OWNED)
-    acip_transport_destroy(p->transport);
+  network_connection_destroy(&p->network);
   p->transport = NULL;
   p->transport_ownership = ACIP_TRANSPORT_BORROWED;
   p->connected = false;
@@ -331,7 +357,9 @@ asciichat_error_t session_participant_get_settings(session_participant_t *p, ses
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameter");
   }
 
+  mutex_lock(&p->settings_mutex);
   memcpy(settings, &p->settings, sizeof(session_settings_t));
+  mutex_unlock(&p->settings_mutex);
   return ASCIICHAT_OK;
 }
 
@@ -344,9 +372,22 @@ asciichat_error_t session_participant_request_settings(session_participant_t *p,
     return SET_ERRNO(ERROR_INVALID_STATE, "not connected");
   }
 
-  // TODO: Send settings update request to server
-
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "not implemented yet");
+  options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
+  session_settings_to_options(settings, values);
+  if (values->color_mode == TERM_COLOR_AUTO) {
+    terminal_capabilities_t caps = detect_terminal_capabilities();
+    values->color_mode = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;
+  }
+  acip_render_settings_t prepared = {0};
+  asciichat_error_t result = acip_render_settings_prepare(&prepared, values);
+  if (result == ASCIICHAT_OK) {
+    mutex_lock(&p->settings_mutex);
+    uint32_t request = ++p->settings_request;
+    mutex_unlock(&p->settings_mutex);
+    result = acip_settings_send(p->transport, values, request, UINT32_MAX);
+  }
+  SAFE_FREE(values);
+  return result;
 }
 
 /* ============================================================================
@@ -655,7 +696,16 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
   if (result != ASCIICHAT_OK)
     return result;
   participant_connection_init(p);
+  if (transport && ownership == ACIP_TRANSPORT_OWNED) {
+    result = network_connection_adopt(transport, &p->network);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
   p->transport = transport;
+  mutex_lock(&p->settings_mutex);
+  p->settings_request = 0;
+  p->settings.version = 0;
+  mutex_unlock(&p->settings_mutex);
   p->transport_ownership = transport ? ownership : ACIP_TRANSPORT_BORROWED;
   if (transport) {
     result = session_connection_start(&p->connection);
@@ -667,19 +717,35 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t session_participant_take_transport(session_participant_t *p, acip_transport_t **transport,
-                                                     acip_transport_ownership_t *ownership) {
-  if (!p || !p->initialized || !transport || !ownership)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport transfer parameters");
+asciichat_error_t session_participant_take_connection(session_participant_t *p, network_connection_t **connection) {
+  if (!p || !p->initialized || !connection)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing participant connection output");
   if (session_av_state_should_run(&p->video) || session_av_state_should_run(&p->audio) || p->video_thread_created ||
       p->audio_thread_created)
-    return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before transferring its transport");
-  *transport = p->transport;
-  *ownership = p->transport_ownership;
+    return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before transferring its connection");
+  if (!p->network)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Participant does not own a connection");
+  *connection = p->network;
+  p->network = NULL;
   p->transport = NULL;
   p->transport_ownership = ACIP_TRANSPORT_BORROWED;
   p->connected = false;
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t session_participant_set_connection(session_participant_t *p, network_connection_t **owner) {
+  if (!owner || !*owner)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing participant connection");
+  asciichat_error_t result = session_participant_set_transport(p, NULL, ACIP_TRANSPORT_BORROWED);
+  if (result != ASCIICHAT_OK)
+    return result;
+  p->network = *owner;
+  *owner = NULL;
+  p->transport = network_connection_transport(p->network);
+  p->transport_ownership = ACIP_TRANSPORT_OWNED;
+  result = session_connection_start(&p->connection);
+  p->connected = result == ASCIICHAT_OK && acip_transport_is_connected(p->transport);
+  return result;
 }
 
 acip_transport_t *session_participant_get_transport(session_participant_t *p) {
@@ -696,4 +762,43 @@ bool session_participant_has_transport(session_participant_t *p) {
   }
 
   return p->transport != NULL;
+}
+
+network_connection_t *session_participant_connection(session_participant_t *p) {
+  return p ? p->network : NULL;
+}
+
+asciichat_error_t session_participant_receive_settings(session_participant_t *p, const void *payload, size_t length) {
+  if (!p || !p->initialized)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant");
+  acip_settings_header_t header;
+  const char *json;
+  size_t json_length;
+  asciichat_error_t result = acip_settings_decode(payload, length, &header, &json, &json_length);
+  if (result != ASCIICHAT_OK)
+    return result;
+  mutex_lock(&p->settings_mutex);
+  if ((header.request && header.request != p->settings_request) || header.revision < p->settings.version) {
+    mutex_unlock(&p->settings_mutex);
+    return ASCIICHAT_OK;
+  }
+  options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
+            *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+  session_settings_to_options(&p->settings, current);
+  result = options_prepare_json(current, json, json_length, candidate, true);
+  if (result == ASCIICHAT_OK) {
+    session_settings_from_values(candidate, &p->settings);
+    p->settings.version = header.revision;
+  }
+  session_settings_t effective = p->settings;
+  SAFE_FREE(current);
+  SAFE_FREE(candidate);
+  mutex_unlock(&p->settings_mutex);
+  if (result != ASCIICHAT_OK)
+    return result;
+  if (header.status && p->callbacks.on_error)
+    p->callbacks.on_error(p, (asciichat_error_t)header.status, "Remote rendering update rejected", p->user_data);
+  if (p->callbacks.on_settings_changed)
+    p->callbacks.on_settings_changed(p, &effective, p->user_data);
+  return ASCIICHAT_OK;
 }

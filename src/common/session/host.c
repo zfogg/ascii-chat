@@ -1,3 +1,5 @@
+#include <ascii-chat/network/acip/settings.h>
+#include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/audio/recording.h>
@@ -14,6 +16,9 @@
  */
 
 #include "session/host.h"
+#include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/negotiation.h>
+#include "session/host_timing.h"
 #include "session/display.h"
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/common.h>
@@ -26,7 +31,6 @@
 #include <ascii-chat/network/client.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/acip/listener.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/util/endian.h>
@@ -61,6 +65,7 @@
 typedef struct {
   participant_type_t participant_type; // NETWORK or MEMORY
   uint32_t client_id;
+  network_connection_t *connection;
   char ip_address[64];
   int port;
   bool active;
@@ -69,10 +74,12 @@ typedef struct {
   uint64_t connected_at;
   uint16_t render_width;
   uint16_t render_height;
-  terminal_capabilities_t render_caps;
-  char palette_chars[256];
+  acip_render_settings_t rendering;
+  digital_rain_t *rain;
+  uint64_t next_video_deadline;
+  double rain_time;
 
-  /** @brief Active ACIP transport. Externally supplied transports are borrowed. */
+  /** @brief Transport borrowed from the connection owner or browser bridge. */
   struct acip_transport *transport;
   acip_transport_ownership_t transport_ownership;
 
@@ -81,9 +88,24 @@ typedef struct {
 
   /** @brief Incoming audio ringbuffer (written by receive loop, read by render thread) */
   ringbuffer_t *incoming_audio;
+  opus_codec_t *opus_decoder;
+  opus_codec_t *opus_encoder;
+  float audio_frame[960];
 } session_host_client_t;
 
 static void host_client_release_transport(session_host_client_t *client) {
+  if (client->opus_decoder) {
+    opus_codec_destroy(client->opus_decoder);
+    client->opus_decoder = NULL;
+  }
+  if (client->opus_encoder) {
+    opus_codec_destroy(client->opus_encoder);
+    client->opus_encoder = NULL;
+  }
+  if (client->rain) {
+    digital_rain_destroy(client->rain);
+    client->rain = NULL;
+  }
   if (client->transport_ownership == ACIP_TRANSPORT_OWNED)
     acip_transport_destroy(client->transport);
   client->transport = NULL;
@@ -134,8 +156,12 @@ typedef struct session_host {
   bool display_logging_disabled;
   uint64_t snapshot_first_frame_ns;
 
-  /** @brief Native connection admission; accepted peers are ACIP transports. */
-  acip_listener_t *listener;
+  /** @brief IPv4 listen socket */
+  network_server_t *network_server;
+
+  /** @brief IPv6 listen socket */
+  asciichat_thread_t network_thread;
+  bool network_thread_started;
 
   /** @brief Server is running */
   bool running;
@@ -152,18 +178,6 @@ typedef struct session_host {
   /** @brief Client list mutex */
   mutex_t clients_mutex;
 
-  /** @brief Accept thread handle */
-  asciichat_thread_t accept_thread;
-
-  /** @brief Accept thread is running */
-  bool accept_thread_running;
-
-  /** @brief Receive thread handle */
-  asciichat_thread_t receive_thread;
-
-  /** @brief Receive thread is running */
-  bool receive_thread_running;
-
   /** @brief Render thread handle (for video mixing and audio distribution) */
   asciichat_thread_t render_thread;
 
@@ -172,12 +186,6 @@ typedef struct session_host {
 
   /** @brief Audio context for mixing (host only) */
   session_audio_ctx_t *audio_ctx;
-
-  /** @brief Opus decoder for decoding incoming Opus audio */
-  opus_codec_t *opus_decoder;
-
-  /** @brief Opus encoder for encoding mixed audio for broadcast */
-  opus_codec_t *opus_encoder;
 
   /** @brief Context is initialized */
   bool initialized;
@@ -241,17 +249,12 @@ session_host_t *session_host_create(const session_host_config_t *config) {
   return host;
 }
 
-void session_host_destroy(session_host_t *host) {
-  if (!host) {
-    return;
-  }
-
-  // Stop if running
-  if (host->running) {
-    session_host_stop(host);
-    if (host->running)
-      return;
-  }
+asciichat_error_t session_host_destroy(session_host_t *host) {
+  if (!host)
+    return ASCIICHAT_OK;
+  asciichat_error_t result = session_host_stop(host);
+  if (result != ASCIICHAT_OK)
+    return result;
 
   // Clean up audio resources
   if (host->audio_ctx) {
@@ -260,13 +263,6 @@ void session_host_destroy(session_host_t *host) {
 #endif
     host->audio_ctx = NULL;
   }
-  if (host->opus_decoder) {
-    opus_codec_destroy(host->opus_decoder);
-    host->opus_decoder = NULL;
-  }
-
-  acip_listener_destroy(host->listener);
-  host->listener = NULL;
 
   // Free client array and per-client resources
   if (host->clients) {
@@ -293,38 +289,13 @@ void session_host_destroy(session_host_t *host) {
   host->initialized = false;
   acip_frame_workspace_destroy(&host->frame_workspace);
   SAFE_FREE(host);
+  return ASCIICHAT_OK;
 }
 
 /* ============================================================================
  * Session Host Server Control Functions
  * ============================================================================ */
 
-static void *accept_loop_thread(void *arg) {
-  session_host_t *host = arg;
-  while (host->accept_thread_running && host->running) {
-    acip_transport_t *transport = NULL;
-    char address[64];
-    int port = 0;
-    asciichat_error_t result = acip_listener_accept(host->listener, &transport, address, sizeof(address), &port);
-    if (result != ASCIICHAT_OK) {
-      log_error("Transport admission failed: %d", result);
-      break;
-    }
-    if (transport && !session_host_add_client(host, transport, ACIP_TRANSPORT_OWNED, address, port))
-      acip_transport_destroy(transport);
-    platform_sleep_ms(1);
-  }
-  return NULL;
-}
-
-/**
- * @brief Receive loop thread - continuously receive packets from connected clients
- * @param arg session_host_t pointer
- * @return NULL
- *
- * This thread runs in a loop listening for packets from all connected clients.
- * When a packet arrives, it processes it based on the packet type.
- */
 asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t client_id, packet_type_t ptype,
                                               const void *data, size_t len) {
   if (!host || !host->initialized || (!data && len))
@@ -415,8 +386,14 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
         // Find client and decode audio
         mutex_lock(&host->clients_mutex);
         for (int j = 0; j < host->max_clients; j++) {
-          if (host->clients[j].client_id == client_id && host->clients[j].incoming_audio && host->opus_decoder) {
-            // Decode each Opus frame and write to ringbuffer
+          if (host->clients[j].client_id == client_id && host->clients[j].active && host->clients[j].incoming_audio) {
+            if (!host->clients[j].opus_decoder)
+              host->clients[j].opus_decoder = opus_codec_create_decoder(48000);
+            if (!host->clients[j].opus_decoder) {
+              mutex_unlock(&host->clients_mutex);
+              return SET_ERRNO(ERROR_AUDIO, "Failed to initialize participant decoder");
+            }
+            // Each participant owns an independent predictive Opus stream.
             const uint8_t *current_frame = opus_frames;
             for (uint32_t k = 0; k < batch_frame_count; k++) {
               uint16_t frame_size_net = 0;
@@ -428,9 +405,10 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
               if (frame_size > 0) {
                 // Allocate buffer for decoded samples
                 float decoded_samples[960]; // Max 20ms @ 48kHz
-                int decoded_count =
-                    opus_codec_decode(host->opus_decoder, current_frame, (int)frame_size, decoded_samples, 960);
+                int decoded_count = opus_codec_decode(host->clients[j].opus_decoder, current_frame, (int)frame_size,
+                                                      decoded_samples, 960);
                 if (decoded_count > 0) {
+                  host->clients[j].audio_active = true;
                   // Write samples to ringbuffer one at a time
                   for (int s = 0; s < decoded_count; s++) {
                     ringbuffer_write(host->clients[j].incoming_audio, &decoded_samples[s]);
@@ -462,58 +440,55 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
     break;
 
   case PACKET_TYPE_CLIENT_CAPABILITIES:
-    if (data && len >= sizeof(terminal_capabilities_packet_t)) {
-      terminal_capabilities_packet_t caps;
-      memcpy(&caps, data, sizeof(caps));
-      uint16_t width = NET_TO_HOST_U16(caps.width);
-      uint16_t height = NET_TO_HOST_U16(caps.height);
-      if (width > 0 && height > 0) {
-        mutex_lock(&host->clients_mutex);
-        for (int j = 0; j < host->max_clients; j++) {
-          if (host->clients[j].active && host->clients[j].client_id == client_id) {
-            host->clients[j].render_width = width;
-            host->clients[j].render_height = height;
-            terminal_capabilities_t *render_caps = &host->clients[j].render_caps;
-            uint32_t color_level = NET_TO_HOST_U32(caps.color_level);
-            render_caps->color_level =
-                color_level <= TERM_COLOR_TRUECOLOR ? (terminal_color_mode_t)color_level : TERM_COLOR_NONE;
-            uint32_t render_mode = NET_TO_HOST_U32(caps.render_mode);
-            render_caps->render_mode =
-                render_mode <= RENDER_MODE_HALF_BLOCK ? (render_mode_t)render_mode : RENDER_MODE_FOREGROUND;
-            render_caps->wants_background = render_caps->render_mode == RENDER_MODE_BACKGROUND;
-            render_caps->utf8_support = NET_TO_HOST_U32(caps.utf8_support) != 0;
-            render_caps->color_filter =
-                caps.color_filter < COLOR_FILTER_COUNT ? (color_filter_t)caps.color_filter : COLOR_FILTER_NONE;
-
-            uint32_t palette_type = NET_TO_HOST_U32(caps.palette_type);
-            palette_type_t palette = palette_type > PALETTE_UNSET && palette_type < PALETTE_COUNT
-                                         ? (palette_type_t)palette_type
-                                         : PALETTE_STANDARD;
-            palette = select_compatible_palette(palette, render_caps->utf8_support);
-            const char *chars = NULL;
-            if (palette == PALETTE_CUSTOM) {
-              // Network strings must be terminated before validation or copying.
-              if (memchr(caps.palette_custom, '\0', sizeof(caps.palette_custom)) &&
-                  validate_palette_chars(caps.palette_custom, strlen(caps.palette_custom)) &&
-                  (render_caps->utf8_support ||
-                   !palette_requires_utf8_encoding(caps.palette_custom, strlen(caps.palette_custom)))) {
-                chars = caps.palette_custom;
-              } else {
-                palette = PALETTE_STANDARD;
-              }
-            }
-            if (!chars)
-              chars = get_builtin_palette(palette)->chars;
-            render_caps->palette_type = palette;
-            SAFE_STRNCPY(host->clients[j].palette_chars, chars, sizeof(host->clients[j].palette_chars));
-            log_info("Client %u requested render dimensions %ux%u", client_id, width, height);
-            break;
-          }
-        }
-        mutex_unlock(&host->clients_mutex);
+  case PACKET_TYPE_ACIP_SETTINGS_SYNC: {
+    uint8_t reply[ACIP_SETTINGS_MAX_SIZE];
+    size_t reply_length = 0;
+    asciichat_error_t result = ASCIICHAT_OK;
+    session_host_client_t *target = NULL;
+    mutex_lock(&host->clients_mutex);
+    for (int j = 0; j < host->max_clients; ++j) {
+      if (host->clients[j].active && host->clients[j].client_id == client_id) {
+        target = &host->clients[j];
+        break;
       }
     }
-    break;
+    if (!target)
+      result = SET_ERRNO(ERROR_INVALID_STATE, "Unknown settings participant");
+    else if (ptype == PACKET_TYPE_CLIENT_CAPABILITIES) {
+      if (!data || len != sizeof(terminal_capabilities_packet_t))
+        result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid capabilities");
+      else {
+        terminal_capabilities_packet_t packet;
+        memcpy(&packet, data, sizeof(packet));
+        if (target->rendering.width) {
+          // Codec advertisements cannot change an established viewer's settings.
+          mutex_unlock(&host->clients_mutex);
+          return ASCIICHAT_OK;
+        }
+        result = acip_render_settings_capabilities(&target->rendering, &packet);
+        if (result == ASCIICHAT_OK) {
+          uint8_t query[ACIP_SETTINGS_HEADER_SIZE];
+          size_t query_length;
+          acip_settings_header_t header = {.schema = 1, .expected_revision = UINT32_MAX};
+          result = acip_settings_encode(&header, "", query, sizeof(query), &query_length);
+          if (result == ASCIICHAT_OK)
+            result =
+                acip_settings_request(&target->rendering, query, query_length, reply, sizeof(reply), &reply_length);
+        }
+      }
+    } else if (!target->rendering.revision)
+      result = SET_ERRNO(ERROR_INVALID_STATE, "Settings received before capabilities");
+    else
+      result = acip_settings_request(&target->rendering, data, len, reply, sizeof(reply), &reply_length);
+    if (target && result == ASCIICHAT_OK) {
+      target->render_width = target->rendering.width;
+      target->render_height = target->rendering.height;
+      if (reply_length)
+        result = packet_send_via_transport(target->transport, PACKET_TYPE_ACIP_SETTINGS_ACK, reply, reply_length, 0);
+    }
+    mutex_unlock(&host->clients_mutex);
+    return result;
+  }
 
   case PACKET_TYPE_STREAM_STOP:
     log_info("Client %u stopped streaming", client_id);
@@ -521,6 +496,7 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
     for (int j = 0; j < host->max_clients; j++) {
       if (host->clients[j].client_id == client_id) {
         host->clients[j].video_active = false;
+        host->clients[j].audio_active = false;
         break;
       }
     }
@@ -544,38 +520,6 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
   }
 
   return ASCIICHAT_OK;
-}
-
-static void *receive_loop_thread(void *arg) {
-  session_host_t *host = arg;
-  while (host->receive_thread_running && host->running) {
-    mutex_lock(&host->clients_mutex);
-    for (int i = 0; i < host->max_clients; ++i) {
-      session_host_client_t *client = &host->clients[i];
-      acip_transport_t *transport = client->transport;
-      if (!client->active || !transport || !acip_transport_has_pending_data(transport))
-        continue;
-      packet_type_t type;
-      void *payload = NULL, *allocation = NULL;
-      size_t size = 0;
-      uint32_t id = client->client_id;
-      asciichat_error_t result = packet_receive_via_transport(transport, &type, &payload, &size, &allocation);
-      if (result == ASCIICHAT_OK)
-        stats_runtime_packet(transport->stats_peer, type, size, false, true);
-      mutex_unlock(&host->clients_mutex);
-      if (result == ASCIICHAT_OK)
-        session_host_receive_packet(host, id, type, payload, size);
-      else if (result != ERROR_NETWORK_TIMEOUT) {
-        log_debug("Client %u transport disconnected: %d", id, result);
-        session_host_remove_client(host, id);
-      }
-      buffer_release(allocation);
-      mutex_lock(&host->clients_mutex);
-    }
-    mutex_unlock(&host->clients_mutex);
-    platform_sleep_ms(1);
-  }
-  return NULL;
 }
 
 static char *host_create_video_grid(session_host_t *host, int count, int width, int height,
@@ -668,8 +612,10 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
       if (recipient) {
         if (!recipient->active || !recipient->transport)
           continue;
-        caps = recipient->render_caps;
-        palette = recipient->palette_chars;
+        if (!recipient->rendering.revision)
+          continue;
+        caps = recipient->rendering.caps;
+        palette = recipient->rendering.palette;
         if (recipient->render_width > 0 && recipient->render_height > 0) {
           width = recipient->render_width;
           height = recipient->render_height;
@@ -677,6 +623,21 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
       }
       if (!palette)
         continue;
+      if (!caps.utf8_support) {
+        if (caps.render_mode == RENDER_MODE_HALF_BLOCK)
+          caps.render_mode = RENDER_MODE_FOREGROUND;
+        if (palette_requires_utf8_encoding(palette, strlen(palette)))
+          palette = get_builtin_palette(PALETTE_STANDARD)->chars;
+      }
+      uint64_t now = time_get_ns();
+      if (recipient && caps.desired_fps > 0) {
+        uint64_t interval = NS_PER_SEC_INT / caps.desired_fps;
+        if (recipient->next_video_deadline && now < recipient->next_video_deadline)
+          continue;
+        if (!recipient->next_video_deadline || now - recipient->next_video_deadline > interval * 2)
+          recipient->next_video_deadline = now;
+        recipient->next_video_deadline += interval;
+      }
       int cached = 0;
       while (cached < grid_count &&
              (grids[cached].width != width || grids[cached].height != height ||
@@ -696,12 +657,41 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
       host_grid_t *grid = &grids[cached];
       if (!grid->frame)
         continue;
+      char *rain_frame = NULL;
+      const char *output = grid->frame;
+      size_t output_size = grid->size;
+      if (recipient) {
+        if (caps.capabilities & TERM_CAP_MATRIX_RAIN) {
+          if (recipient->rain && (recipient->rain->num_columns != width || recipient->rain->num_rows != height)) {
+            digital_rain_destroy(recipient->rain);
+            recipient->rain = NULL;
+          }
+          if (!recipient->rain) {
+            recipient->rain = digital_rain_init(width, height);
+            recipient->rain_time = (double)now / NS_PER_SEC_INT;
+          }
+          if (recipient->rain) {
+            double seconds = (double)now / NS_PER_SEC_INT;
+            digital_rain_set_color_from_filter(recipient->rain, caps.color_filter);
+            rain_frame = digital_rain_apply(recipient->rain, grid->frame, (float)(seconds - recipient->rain_time));
+            recipient->rain_time = seconds;
+            if (rain_frame) {
+              output = rain_frame;
+              output_size = strlen(rain_frame);
+            }
+          }
+        } else if (recipient->rain) {
+          digital_rain_destroy(recipient->rain);
+          recipient->rain = NULL;
+        }
+      }
       if (!recipient) {
-        host->render_target.render_frame(host->render_target.context, grid->frame, grid->size, width, height);
+        host->render_target.render_frame(host->render_target.context, output, output_size, width, height);
       } else {
-        acip_send_ascii_frame(recipient->transport, &host->frame_workspace, grid->frame, grid->size, width, height,
+        acip_send_ascii_frame(recipient->transport, &host->frame_workspace, output, output_size, width, height,
                               "session-host");
       }
+      SAFE_FREE(rain_frame);
     }
     for (int i = 0; i < grid_count; ++i)
       SAFE_FREE(grids[i].frame);
@@ -717,6 +707,61 @@ asciichat_error_t session_host_render_video(session_host_t *host) {
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t session_host_render_audio(session_host_t *host) {
+  if (!host || !host->initialized)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid host");
+  uint64_t mix_start = time_get_ns();
+  double total[960] = {0};
+  asciichat_error_t result = ASCIICHAT_OK;
+  mutex_lock(&host->clients_mutex);
+  // Drain each source once. Keep unclipped samples so mix-minus can subtract
+  // the recipient before clipping without leaking its voice into the output.
+  for (int i = 0; i < host->max_clients; i++) {
+    session_host_client_t *client = &host->clients[i];
+    memset(client->audio_frame, 0, sizeof(client->audio_frame));
+    if (!client->active || !client->audio_active || !client->incoming_audio)
+      continue;
+    for (int j = 0; j < 960; j++) {
+      if (ringbuffer_read(client->incoming_audio, &client->audio_frame[j]))
+        total[j] += client->audio_frame[j];
+    }
+  }
+  for (int i = 0; i < host->max_clients; i++) {
+    session_host_client_t *client = &host->clients[i];
+    if (!client->active || !client->transport)
+      continue;
+    if (!client->opus_encoder)
+      client->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+    if (!client->opus_encoder) {
+      result = SET_ERRNO(ERROR_AUDIO, "Failed to initialize participant encoder");
+      continue;
+    }
+    float mixed[960];
+    for (int j = 0; j < 960; j++) {
+      float sample = (float)(total[j] - client->audio_frame[j]);
+      mixed[j] = sample > 1.0f ? 1.0f : sample < -1.0f ? -1.0f : sample;
+    }
+    uint8_t opus_buffer[1000];
+    size_t opus_len = opus_codec_encode(client->opus_encoder, mixed, 960, opus_buffer, sizeof(opus_buffer));
+    if (opus_len > 0) {
+      uint16_t frame_sizes[1] = {(uint16_t)opus_len};
+      asciichat_error_t sent =
+          acip_send_audio_opus_batch(client->transport, opus_buffer, opus_len, frame_sizes, 1, 48000, 20);
+      if (sent != ASCIICHAT_OK)
+        log_warn("Failed to send mixed audio to client %u", client->client_id);
+    }
+  }
+  mutex_unlock(&host->clients_mutex);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_AUDIO_MIX, time_get_ns() - mix_start);
+#ifndef __EMSCRIPTEN__
+  float recorded[960];
+  for (int j = 0; j < 960; j++)
+    recorded[j] = total[j] > 1.0 ? 1.0f : total[j] < -1.0 ? -1.0f : (float)total[j];
+  audio_recording_submit(AUDIO_RECORDING_REMOTE, recorded, 960, time_get_ns());
+#endif
+  return result;
+}
+
 static void *host_render_thread(void *arg) {
   session_host_t *host = (session_host_t *)arg;
   if (!host) {
@@ -730,7 +775,7 @@ static void *host_render_thread(void *arg) {
                           GET_OPTION(splash_screen) && terminal_is_interactive() && terminal_is_stdout_tty();
   host->snapshot_first_frame_ns = 0;
   uint64_t last_video_render_ns = 0;
-  uint64_t last_audio_render_ns = 0;
+  uint64_t audio_deadline_ns = 0;
 
   while (host->render_thread_running && host->running) {
     uint64_t now_ns = time_get_ns();
@@ -767,78 +812,18 @@ static void *host_render_thread(void *arg) {
       break;
     }
 
-    // AUDIO RENDERING (100 FPS = 10ms)
-    if (time_elapsed_ns(last_audio_render_ns, now_ns) >= NS_PER_MS_INT * 10) {
+    // Audio consumes one 20 ms Opus frame per tick.
+    while (session_host_audio_due(&audio_deadline_ns, now_ns)) {
       // Mix audio from all participants
       // 1. Read samples from each participant's incoming_audio ringbuffer
       // 2. Mix into output buffer (simple addition with clipping)
       // 3. Encode with Opus
       // 4. Broadcast mixed audio via av_send_audio_opus_batch()
 
-      if (host->audio_ctx && host->opus_encoder) {
-        uint64_t mix_start = time_get_ns();
-        float mixed_audio[960]; // 20ms @ 48kHz
-        memset(mixed_audio, 0, sizeof(mixed_audio));
-
-        // Lock clients mutex to safely read audio buffers
-        mutex_lock(&host->clients_mutex);
-        for (int i = 0; i < host->max_clients; i++) {
-          if (!host->clients[i].active || !host->clients[i].audio_active) {
-            continue;
-          }
-
-          if (!host->clients[i].incoming_audio) {
-            continue;
-          }
-
-          // Read audio samples one-by-one from this participant's ringbuffer
-          // ringbuffer_read() reads one element (1 float) per call
-          for (int j = 0; j < 960; j++) {
-            float sample = 0.0f;
-            if (ringbuffer_read(host->clients[i].incoming_audio, &sample)) {
-              // Successfully read a sample
-              mixed_audio[j] += sample;
-              // Clip to [-1.0, 1.0] to prevent distortion
-              if (mixed_audio[j] > 1.0f) {
-                mixed_audio[j] = 1.0f;
-              } else if (mixed_audio[j] < -1.0f) {
-                mixed_audio[j] = -1.0f;
-              }
-            }
-            // If ringbuffer is empty, sample remains 0.0f and that's fine
-          }
-        }
-        mutex_unlock(&host->clients_mutex);
-
-        stats_duration_record(stats_runtime_scope(), STATS_DURATION_AUDIO_MIX, time_get_ns() - mix_start);
-        audio_recording_submit(AUDIO_RECORDING_REMOTE, mixed_audio, 960, time_get_ns());
-
-        // Encode to Opus
-        uint8_t opus_buffer[1000];
-        size_t opus_len = opus_codec_encode(host->opus_encoder, mixed_audio, 960, opus_buffer, sizeof(opus_buffer));
-
-        // Only broadcast audio if we have network-connected clients (not memory participants)
-        if (opus_len > 0) {
-          uint16_t frame_sizes[1] = {(uint16_t)opus_len};
-          mutex_lock(&host->clients_mutex);
-          for (int i = 0; i < host->max_clients; i++) {
-            if (!host->clients[i].active) {
-              continue;
-            }
-            if (host->clients[i].transport) {
-              asciichat_error_t audio_result = acip_send_audio_opus_batch(host->clients[i].transport, opus_buffer,
-                                                                          opus_len, frame_sizes, 1, 48000, 20);
-              if (audio_result != ASCIICHAT_OK) {
-                log_warn("Failed to send mixed audio to client %u", host->clients[i].client_id);
-              }
-            }
-          }
-          mutex_unlock(&host->clients_mutex);
-        }
-      }
+      if (session_host_render_audio(host) != ASCIICHAT_OK)
+        log_warn("Host audio rendering failed");
 
       log_debug_every(NS_PER_MS_INT, "Audio render cycle");
-      last_audio_render_ns = now_ns;
     }
 
     // Small sleep to prevent busy-loop
@@ -850,101 +835,153 @@ static void *host_render_thread(void *arg) {
   return NULL;
 }
 
-asciichat_error_t session_host_start(session_host_t *host) {
-  if (!host || !host->initialized) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid host");
-  }
-
-  if (host->running) {
-    return ASCIICHAT_OK; // Already running
-  }
-  if (host->port > UINT16_MAX)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Host port is outside the transport endpoint range");
-
-  const char *address = host->ipv4_address;
-  asciichat_error_t result =
-      acip_listener_open(address[0] ? address : NULL, host->port, host->max_clients, &host->listener);
-  if (result != ASCIICHAT_OK) {
-    if (host->callbacks.on_error)
-      host->callbacks.on_error(host, result, "Failed to open transport listener", host->user_data);
+#ifndef __EMSCRIPTEN__
+typedef struct {
+  uint32_t client_id;
+  network_negotiation_t negotiation;
+  private_key_t identity;
+} host_connection_t;
+static asciichat_error_t host_connection_open(network_connection_t *connection, void *arg) {
+  session_host_t *host = arg;
+  host_connection_t *client = SAFE_CALLOC(1, sizeof(*client), host_connection_t *);
+  if (!client)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate host connection");
+  network_connection_set_context(connection, client);
+  client->client_id = session_host_add_client(host, network_connection_transport(connection), ACIP_TRANSPORT_BORROWED,
+                                              network_connection_peer(connection), 0);
+  if (!client->client_id)
+    return SET_ERRNO(ERROR_SESSION_FULL, "Host has no participant capacity");
+  mutex_lock(&host->clients_mutex);
+  for (int i = 0; i < host->max_clients; ++i)
+    if (host->clients[i].client_id == client->client_id)
+      host->clients[i].connection = connection;
+  mutex_unlock(&host->clients_mutex);
+  if (network_connection_state(connection) == NETWORK_READY)
+    return ASCIICHAT_OK;
+  asciichat_error_t result = network_connection_prepare_security(connection, true, host->password);
+  if (result != ASCIICHAT_OK)
     return result;
-  }
-  host->running = true;
-  host->accept_thread_running = true;
-  result = asciichat_thread_create(&host->accept_thread, "host_accept", accept_loop_thread, host);
-  if (result != ASCIICHAT_OK) {
-    host->accept_thread_running = false;
-    session_host_stop(host);
-    if (host->callbacks.on_error)
-      host->callbacks.on_error(host, ERROR_THREAD, "Failed to start transport admission", host->user_data);
-    return SET_ERRNO(ERROR_THREAD, "Failed to start transport admission");
-  }
-  host->receive_thread_running = true;
-  result = asciichat_thread_create(&host->receive_thread, "host_recv", receive_loop_thread, host);
-  if (result != ASCIICHAT_OK) {
-    host->receive_thread_running = false;
-    session_host_stop(host);
-    if (host->callbacks.on_error)
-      host->callbacks.on_error(host, ERROR_THREAD, "Failed to start transport reception", host->user_data);
-    return SET_ERRNO(ERROR_THREAD, "Failed to start transport reception");
-  }
-
-  // Spawn render thread (optional - can be started later)
-  // This thread handles video mixing and audio distribution
+  crypto_handshake_context_t *ctx = network_connection_handshake(connection);
+  client->identity = ctx->server_private_key;
+  client->negotiation = (network_negotiation_t){.protocol = NETWORK_PROTOCOL_MEDIA,
+                                                .handshake = ctx,
+                                                .identity_keys = &client->identity,
+                                                .identity_key_count = client->identity.type == KEY_TYPE_ED25519 ? 1 : 0,
+                                                .whitelist = ctx->client_whitelist,
+                                                .whitelist_count = ctx->num_whitelisted_clients,
+                                                .initialized = true,
+                                                .password = host->password,
+                                                .secure = network_connection_secure(connection),
+                                                .require_auth = ctx->has_password || ctx->require_client_auth,
+                                                .require_identity = ctx->require_client_auth,
+                                                .require_encryption = GET_OPTION(encrypt_enabled),
+                                                .forbid_encryption = GET_OPTION(no_encrypt)};
   return ASCIICHAT_OK;
 }
-
-void session_host_stop(session_host_t *host) {
-  if (!host || !host->initialized || !host->running) {
-    return;
+static asciichat_error_t host_connection_packet(network_connection_t *connection, packet_type_t type,
+                                                const void *payload, size_t length, void *arg) {
+  host_connection_t *client = network_connection_context(connection);
+  if (network_connection_state(connection) == NETWORK_NEGOTIATING) {
+    asciichat_error_t result = network_negotiation_receive(
+        &client->negotiation, network_connection_transport(connection), type, payload, length);
+    if (result == ASCIICHAT_OK && client->negotiation.ready)
+      network_connection_ready(connection);
+    return result;
   }
-
-  if (acip_listener_stop(host->listener) != ASCIICHAT_OK)
-    return;
-  host->running = false;
-
-  // Stop render thread if running
+  return session_host_receive_packet(arg, client->client_id, type, payload, length);
+}
+static asciichat_error_t host_connection_closing(network_connection_t *connection, void *arg) {
+  session_host_t *host = arg;
+  host_connection_t *client = network_connection_context(connection);
+  if (!client || !client->client_id)
+    return ASCIICHAT_OK;
+  mutex_lock(&host->clients_mutex);
+  for (int i = 0; i < host->max_clients; ++i)
+    if (host->clients[i].client_id == client->client_id)
+      host->clients[i].connection = NULL;
+  mutex_unlock(&host->clients_mutex);
+  return session_host_remove_client(host, client->client_id);
+}
+static void host_connection_closed(network_connection_t *connection, void *arg) {
+  (void)arg;
+  host_connection_t *client = network_connection_context(connection);
+  SAFE_FREE(client);
+}
+static void *host_network_run(void *arg) {
+  session_host_t *host = arg;
+  network_server_run(host->network_server);
+  return NULL;
+}
+#endif
+asciichat_error_t session_host_start(session_host_t *host) {
+  if (!host || !host->initialized)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session host");
+  if (host->running)
+    return ASCIICHAT_OK;
+  if (host->port > UINT16_MAX)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Host port is outside the transport endpoint range");
+#ifdef __EMSCRIPTEN__
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "Browser hosts accept browser-managed connections");
+#else
+  network_server_config_t config = {
+      .port = host->port,
+      .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "0.0.0.0",
+      .bind_ipv4 = true,
+      .max_connections = host->max_clients,
+      .partial_timeout_ms = 30000,
+      .callbacks = {host_connection_open, host_connection_packet, host_connection_closing, host_connection_closed},
+      .user_data = host};
+  asciichat_error_t result = network_server_create(&config, &host->network_server);
+  if (result == ASCIICHAT_OK)
+    result = network_server_start(host->network_server);
+  if (result == ASCIICHAT_OK)
+    result = asciichat_thread_create(&host->network_thread, "host_network", host_network_run, host);
+  if (result != ASCIICHAT_OK) {
+    network_server_destroy(&host->network_server);
+    return result;
+  }
+  host->network_thread_started = true;
+  host->running = true;
+  return ASCIICHAT_OK;
+#endif
+}
+asciichat_error_t session_host_stop(session_host_t *host) {
+  if (!host || !host->initialized)
+    return ASCIICHAT_OK;
   if (host->render_thread_running) {
     host->render_thread_running = false;
-    asciichat_thread_join(&host->render_thread, NULL);
-    log_info("Render thread joined");
-  }
-
-  // Stop transport reception before releasing clients.
-  if (host->receive_thread_running) {
-    host->receive_thread_running = false;
-    asciichat_thread_join(&host->receive_thread, NULL);
-    log_info("Receive loop thread joined");
-  }
-
-  // Join admission after the listener has stopped.
-  if (host->accept_thread_running) {
-    host->accept_thread_running = false;
-    asciichat_thread_join(&host->accept_thread, NULL);
-    log_info("Accept loop thread joined");
-  }
-
-  // Disconnect all clients
-  mutex_lock(&host->clients_mutex);
-  for (int i = 0; i < host->max_clients; i++) {
-    if (host->clients[i].active) {
-      // Invoke callback
-      if (host->callbacks.on_client_leave) {
-        host->callbacks.on_client_leave(host, host->clients[i].client_id, host->user_data);
-      }
-
-      host_client_release_transport(&host->clients[i]);
-
-      host->clients[i].active = false;
+    asciichat_error_t result = asciichat_thread_join(&host->render_thread, NULL);
+    if (result != ASCIICHAT_OK) {
+      host->render_thread_running = true;
+      return result;
     }
   }
-  host->client_count = 0;
-  mutex_unlock(&host->clients_mutex);
-
-  acip_listener_destroy(host->listener);
-  host->listener = NULL;
-
+#ifndef __EMSCRIPTEN__
+  network_server_request_stop(host->network_server);
+  if (host->network_thread_started) {
+    asciichat_error_t result = asciichat_thread_join(&host->network_thread, NULL);
+    if (result != ASCIICHAT_OK)
+      return result;
+    host->network_thread_started = false;
+  }
+  asciichat_error_t result = network_server_stop(host->network_server);
+  if (result != ASCIICHAT_OK)
+    return result;
+  network_server_destroy(&host->network_server);
+#endif
   host->running = false;
+  return ASCIICHAT_OK;
+}
+asciichat_error_t session_host_accept_peer(session_host_t *host, acip_transport_t *transport) {
+#ifndef __EMSCRIPTEN__
+  if (!host || !host->network_server)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Host network is not running");
+  return network_server_adopt(host->network_server, transport, "peer", true);
+#else
+  (void)host;
+  (void)transport;
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "Browser peers use the browser host bridge");
+#endif
 }
 
 bool session_host_is_running(session_host_t *host) {
@@ -984,6 +1021,7 @@ uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transpo
     if (!host->clients[i].active) {
       host->clients[i].participant_type = PARTICIPANT_TYPE_NETWORK;
       host->clients[i].client_id = host->next_client_id++;
+      host->clients[i].connection = NULL;
       if (ip) {
         SAFE_STRNCPY(host->clients[i].ip_address, ip, sizeof(host->clients[i].ip_address));
       }
@@ -996,9 +1034,9 @@ uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transpo
       host->clients[i].transport_ownership = ACIP_TRANSPORT_BORROWED;
       host->clients[i].render_width = 0;
       host->clients[i].render_height = 0;
-      host->clients[i].render_caps = (terminal_capabilities_t){
-          .color_level = TERM_COLOR_TRUECOLOR, .utf8_support = true, .render_mode = RENDER_MODE_FOREGROUND};
-      SAFE_STRNCPY(host->clients[i].palette_chars, PALETTE_CHARS_STANDARD, sizeof(host->clients[i].palette_chars));
+      memset(&host->clients[i].rendering, 0, sizeof(host->clients[i].rendering));
+      host->clients[i].rendering.fps_limit = 60;
+      host->clients[i].next_video_deadline = 0;
 
       // Allocate media buffers
       host->clients[i].incoming_video = image_new(480, 270);                        // Network-optimal size (HD preview)
@@ -1220,6 +1258,13 @@ asciichat_error_t session_host_remove_client(session_host_t *host, uint32_t clie
       }
       mutex_lock(&host->clients_mutex);
 
+#ifndef __EMSCRIPTEN__
+      if (host->clients[i].connection) {
+        network_connection_request_stop(host->clients[i].connection);
+        mutex_unlock(&host->clients_mutex);
+        return ASCIICHAT_OK;
+      }
+#endif
       host_client_release_transport(&host->clients[i]);
 
       // Clean up media buffers
@@ -1365,9 +1410,13 @@ asciichat_error_t session_host_set_render_target(session_host_t *host, const ses
   if (!host || !host->initialized) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid host");
   }
-  if (target && ((target->client_id && (target->get_config || target->render_frame)) ||
-                 (!target->client_id && (!target->get_config || !target->render_frame))))
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Local rendering requires a client or a complete display backend");
+  if (target) {
+    bool has_backend = target->get_config || target->render_frame;
+    bool complete_backend = target->get_config && target->render_frame;
+    bool valid_target = target->client_id ? !has_backend : complete_backend;
+    if (!valid_target)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Local rendering requires a client or a complete display backend");
+  }
 
   mutex_lock(&host->clients_mutex);
   if (target && target->client_id) {
@@ -1461,32 +1510,6 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
     }
   }
 
-  // Create Opus decoder for decoding incoming Opus audio (48kHz)
-  if (!host->opus_decoder) {
-    host->opus_decoder = opus_codec_create_decoder(48000);
-    if (!host->opus_decoder) {
-#ifndef __EMSCRIPTEN__
-      session_audio_destroy(host->audio_ctx);
-#endif
-      host->audio_ctx = NULL;
-      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus decoder");
-    }
-  }
-
-  // Create Opus encoder for encoding mixed audio for broadcast (48kHz, VOIP mode, 24kbps)
-  if (!host->opus_encoder) {
-    host->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
-    if (!host->opus_encoder) {
-      opus_codec_destroy(host->opus_decoder);
-      host->opus_decoder = NULL;
-#ifndef __EMSCRIPTEN__
-      session_audio_destroy(host->audio_ctx);
-#endif
-      host->audio_ctx = NULL;
-      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus encoder");
-    }
-  }
-
   // Spawn render thread
   host->render_thread_running = true;
   if (asciichat_thread_create(&host->render_thread, "render", host_render_thread, host) != 0) {
@@ -1520,14 +1543,6 @@ void session_host_stop_render(session_host_t *host) {
     session_audio_destroy(host->audio_ctx);
 #endif
     host->audio_ctx = NULL;
-  }
-  if (host->opus_decoder) {
-    opus_codec_destroy(host->opus_decoder);
-    host->opus_decoder = NULL;
-  }
-  if (host->opus_encoder) {
-    opus_codec_destroy(host->opus_encoder);
-    host->opus_encoder = NULL;
   }
 
   log_info("Host render thread stopped");

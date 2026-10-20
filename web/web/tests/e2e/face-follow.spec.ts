@@ -60,7 +60,34 @@ test.describe("live webcam", () => {
       expect(draw).toHaveLength(8);
       // The sampled source rectangle is smaller than the camera frame, before C receives its pixels.
       expect(draw![2]! / 640).toBeLessThan(0.75);
-      expect(draw![6]! / draw![7]!).toBeCloseTo(640 / 480, 2);
+      expect(draw![2]! / draw![3]!).toBeCloseTo(640 / 480, 2);
+      // Release WASM supplies detections; the outline must reach the rendered ASCII pixels.
+      const redPixels = (selector: string) =>
+        page.locator(selector).evaluate((element) => {
+          const canvas = element as HTMLCanvasElement;
+          const pixels = canvas
+            .getContext("2d")!
+            .getImageData(0, 0, canvas.width, canvas.height).data;
+          let count = 0;
+          for (let i = 0; i < pixels.length; i += 4)
+            if (pixels[i]! > 200 && pixels[i + 1]! < 40 && pixels[i + 2]! < 40)
+              count++;
+          return count;
+        });
+      await expect
+        .poll(() => redPixels("canvas[data-face-follow]"))
+        .toBeGreaterThan(100);
+      await expect
+        .poll(() => redPixels("canvas.ascii-canvas"))
+        .toBeGreaterThan(10);
+      await page.getByRole("button", { name: "Settings", exact: true }).click();
+      await expect(
+        page.getByRole("button", { name: /Face Follow.*(debug|outlined)/i }),
+      ).toHaveCount(0);
+      await page.getByRole("button", { name: "Settings", exact: true }).click();
+      await expect
+        .poll(() => redPixels("canvas.ascii-canvas"))
+        .toBeGreaterThan(10);
       await testInfo.attach("camera-framing", {
         body: JSON.stringify({ crop, draw }),
         contentType: "application/json",
@@ -102,7 +129,7 @@ test("real detector follows a moving face, retains its subject, widens on loss a
   );
   test.setTimeout(90_000);
   await page.goto("/mirror?faceFollow&faceFollowDebug");
-  await page.getByRole("button", { name: "Upload Video", exact: true }).click();
+  await page.getByRole("button", { name: "Upload File", exact: true }).click();
   await page.getByLabel("Choose media file").setInputFiles(fixture);
   await expect(page.locator("canvas[data-face-follow]")).toHaveCount(1, {
     timeout: 30_000,
@@ -220,7 +247,7 @@ test("seated shifts hold the view, a brief lean is ignored, and a sustained move
   const seated = path.resolve("../../artifacts/face-follow/seated.mp4");
   test.skip(!existsSync(seated), "Generate the seated fixture first");
   await page.goto("/mirror?faceFollow&faceFollowDebug");
-  await page.getByRole("button", { name: "Upload Video", exact: true }).click();
+  await page.getByRole("button", { name: "Upload File", exact: true }).click();
   await page.getByLabel("Choose media file").setInputFiles(seated);
   await expect(page.locator("canvas[data-face-follow]")).toHaveCount(1, {
     timeout: 30_000,
@@ -283,7 +310,7 @@ test("settings panel toggles real framing and the setting survives reload", asyn
   await expect(
     page.getByRole("button", { name: /Face Follow Debug/i }),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Upload Video", exact: true }).click();
+  await page.getByRole("button", { name: "Upload File", exact: true }).click();
   await page.getByLabel("Choose media file").setInputFiles(fixture);
   await expect(page.locator("canvas[data-face-follow]")).toHaveCount(1, {
     timeout: 30_000,

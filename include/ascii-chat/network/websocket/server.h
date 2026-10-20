@@ -79,12 +79,12 @@ typedef void *(*websocket_client_handler_fn)(void *arg);
  * Contains all information needed to handle a WebSocket client connection.
  */
 typedef struct {
-  acip_transport_t *transport;   ///< ACIP transport for this client
-  char client_ip[64];            ///< Client IP address (for logging/rate limiting)
-  int client_port;               ///< Client port
-  void *user_data;               ///< User-provided data from server config
-  bool is_secure;                ///< True if connection is using TLS (wss://)
-  bool auth_required;            ///< True if client authentication is required
+  acip_transport_t *transport; ///< ACIP transport for this client
+  char client_ip[64];          ///< Client IP address (for logging/rate limiting)
+  int client_port;             ///< Client port
+  void *user_data;             ///< User-provided data from server config
+  bool is_secure;              ///< True if connection is using TLS (wss://)
+  bool auth_required;          ///< True if client authentication is required
 } websocket_client_context_t;
 
 /**
@@ -105,7 +105,7 @@ struct websocket_server {
   struct lws_context *context;         ///< libwebsockets context
   websocket_client_handler_fn handler; ///< Client handler function
   void *user_data;                     ///< User data for handlers
-  atomic_t running;                 ///< Server running flag
+  atomic_t running;                    ///< Server running flag
   int port;                            ///< Listening port
   bool tls_enabled;                    ///< True when this listener is configured with TLS credentials
   struct thread_pool *handler_pool;    ///< Thread pool for queueing handler work

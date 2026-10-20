@@ -116,3 +116,50 @@ Test(handoff, accepts_128_members_and_rejects_129th) {
   consensus_handoff_leave(&s, first);
   cr_assert_eq(consensus_handoff_join(&s, extra), ASCIICHAT_OK);
 }
+
+Test(handoff, incumbent_leaves_before_first_sample) {
+  consensus_handoff_t s;
+  consensus_handoff_init(&s, session_id, host_id);
+  consensus_handoff_join(&s, fast_id);
+  sample(&s, fast_id, 100, 110, 1);
+  consensus_handoff_message_t action;
+  cr_assert(consensus_handoff_tick(&s, 111, &action));
+  action.kind = HANDOFF_READY;
+  cr_assert_eq(consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 112), ASCIICHAT_OK);
+  consensus_handoff_leave(&s, host_id);
+  cr_assert(consensus_handoff_tick(&s, 113, &action));
+  cr_assert_eq(action.kind, HANDOFF_COMMIT);
+}
+
+Test(handoff, rejected_peer_can_succeed_in_later_handoff) {
+  consensus_handoff_t s = setup();
+  consensus_handoff_message_t action;
+  sample(&s, slow_id, 100, 300, 1);
+  sample(&s, fast_id, 100, 110, 1);
+  cr_assert(consensus_handoff_tick(&s, 301, &action));
+  action.kind = HANDOFF_REJECT;
+  cr_assert_eq(consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 302), ASCIICHAT_OK);
+  cr_assert(consensus_handoff_tick(&s, 303, &action));
+  action.kind = HANDOFF_READY;
+  cr_assert_eq(consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 304), ASCIICHAT_OK);
+  consensus_handoff_leave(&s, host_id);
+  cr_assert(consensus_handoff_tick(&s, 305, &action));
+  cr_assert_eq(action.kind, HANDOFF_COMMIT);
+  consensus_handoff_leave(&s, slow_id);
+  cr_assert(consensus_handoff_tick(&s, 306, &action));
+  cr_assert_eq(action.kind, HANDOFF_PREPARE);
+  cr_assert_eq(memcmp(action.participant, fast_id, 16), 0);
+}
+
+Test(handoff, fresh_measurement_retries_a_transient_preparation_failure) {
+  consensus_handoff_t s = setup();
+  consensus_handoff_message_t action;
+  sample(&s, fast_id, 100, 110, 1);
+  cr_assert(consensus_handoff_tick(&s, 111, &action));
+  action.kind = HANDOFF_REJECT;
+  cr_assert_eq(consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 112), ASCIICHAT_OK);
+  cr_assert_not(consensus_handoff_tick(&s, 113, &action));
+  sample(&s, fast_id, 2000, 2010, 2);
+  cr_assert(consensus_handoff_tick(&s, 2011, &action));
+  cr_assert_eq(action.kind, HANDOFF_PREPARE);
+}

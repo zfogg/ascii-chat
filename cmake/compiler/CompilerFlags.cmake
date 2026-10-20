@@ -80,7 +80,7 @@ function(add_compiler_flag_if_supported flag)
     string(MAKE_C_IDENTIFIER "HAVE_CFLAG_${flag}" flag_var)
     check_c_compiler_flag("${flag}" ${flag_var})
     if(${flag_var})
-        add_compile_options(${flag})
+        target_compile_options(asciichat-project-options INTERFACE ${flag})
     endif()
 endfunction()
 
@@ -89,7 +89,7 @@ function(add_linker_flag_if_supported flag)
     string(MAKE_C_IDENTIFIER "HAVE_LFLAG_${flag}" flag_var)
     check_linker_flag(C "${flag}" ${flag_var})
     if(${flag_var})
-        add_link_options(${flag})
+        target_link_options(asciichat-project-options INTERFACE ${flag})
     endif()
 endfunction()
 
@@ -108,17 +108,17 @@ function(configure_base_compiler_flags)
     # If CLANG_RESOURCE_DIR is set (when building LibTooling tools like defer),
     # pass it to the compiler so clang can find its builtin headers
     if(DEFINED CLANG_RESOURCE_DIR AND CLANG_RESOURCE_DIR)
-        add_compile_options(-resource-dir "${CLANG_RESOURCE_DIR}")
+        target_compile_options(asciichat-project-options INTERFACE -resource-dir "${CLANG_RESOURCE_DIR}")
     endif()
 
     # Base warning flags for Clang/GCC compilers
     # -Wall: Enable common warnings
     # -Wextra: Enable extra warnings
-    add_compile_options(-Wall -Wextra)
+    target_compile_options(asciichat-project-options INTERFACE -Wall -Wextra)
 
     # Essential safety warnings (always enabled)
     # Keep it simple - just the important stuff that catches real bugs
-    add_compile_options(
+    target_compile_options(asciichat-project-options INTERFACE
         -Wformat=2                # Extra format string security checks
         -Wwrite-strings           # Warn when string literals could be written to
         -Wnull-dereference        # Warn about potential null pointer dereferences
@@ -127,13 +127,13 @@ function(configure_base_compiler_flags)
 
     # Clang-specific warnings
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-        add_compile_options(
+        target_compile_options(asciichat-project-options INTERFACE
             -Wconditional-uninitialized  # Warn about potentially uninitialized variables
             -Widiomatic-parentheses   # Warn about confusing precedence without parentheses
         )
 
         # Disable noisy Clang warnings
-        add_compile_options(
+        target_compile_options(asciichat-project-options INTERFACE
             -Wno-comma                                       # Too noisy with comma operator in macros/third-party
             -Wno-format-nonliteral                           # False positives in variadic format functions
             -Wno-incompatible-pointer-types-discards-qualifiers  # Pragmatic const handling
@@ -142,7 +142,7 @@ function(configure_base_compiler_flags)
 
     # GCC-specific warnings
     if(CMAKE_C_COMPILER_ID MATCHES "GNU")
-        add_compile_options(
+        target_compile_options(asciichat-project-options INTERFACE
             -Wlogical-op              # Warn about suspicious logical operations
             -Wduplicated-cond         # Warn about duplicated if-else conditions
             -Wduplicated-branches     # Warn about identical if/else branches
@@ -153,7 +153,7 @@ function(configure_base_compiler_flags)
     # Enable frame pointers for better backtraces (required for musl + libexecinfo)
     # Frame pointers help with stack traces and debugging, but disable in Release for performance
     if(ASCIICHAT_SUPPORTS_NO_OMIT_FRAME_POINTER AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-        add_compile_options(-fno-omit-frame-pointer)
+        target_compile_options(asciichat-project-options INTERFACE -fno-omit-frame-pointer)
         message(STATUS "${BoldGreen}Frame pointers${ColorReset} enabled for backtraces")
     endif()
 endfunction()
@@ -173,9 +173,9 @@ function(configure_lld_linker)
                 ERROR_QUIET
             )
             if(LLD_CHECK_RESULT EQUAL 0)
-                add_link_options(-fuse-ld=lld)
+                target_link_options(asciichat-project-options INTERFACE -fuse-ld=lld)
                 if(PLATFORM_LINUX)
-                    add_link_options("LINKER:--allow-multiple-definition")
+                    target_link_options(asciichat-project-options INTERFACE "LINKER:--allow-multiple-definition")
                 endif()
                 message(STATUS "Using ${BoldCyan}LLD linker${ColorReset} (${ASCIICHAT_LLD_EXECUTABLE})")
             else()
@@ -216,13 +216,13 @@ function(configure_debug_memory USE_MIMALLOC_ARG USE_MUSL_ARG)
     elseif(USE_MIMALLOC_ARG)
         message(STATUS "DEBUG_MEMORY disabled - using ${BoldBlue}mimalloc${ColorReset}'s memory tracking instead")
         # Enable mimalloc debugging features (MI_DEBUG will be set per-target to avoid conflicts)
-        add_definitions(-DUSE_MIMALLOC_DEBUG)
+        target_compile_definitions(asciichat-project-options INTERFACE USE_MIMALLOC_DEBUG)
         set(MIMALLOC_DEBUG_LEVEL 2 PARENT_SCOPE)  # MI_DEBUG level 2: basic checks + internal assertions
     elseif(USE_MUSL_ARG)
         message(STATUS "${BoldYellow}DEBUG_MEMORY${ColorReset} disabled - ${BoldBlue}musl${ColorReset}'s strict aliasing is incompatible with DEBUG_MEMORY macros")
     else()
         # Enable DEBUG_MEMORY only when no conflicts exist
-        add_definitions(-DDEBUG_MEMORY)
+        target_compile_definitions(asciichat-project-options INTERFACE DEBUG_MEMORY)
         message(STATUS "${BoldGreen}DEBUG_MEMORY${ColorReset} enabled for detailed memory leak tracking")
     endif()
 endfunction()
@@ -232,37 +232,42 @@ endfunction()
 #   BUILD_TYPE - "Debug", "Dev", or "Sanitize"
 function(configure_debug_build_flags BUILD_TYPE)
     # Enhanced debug info with macro definitions
-    add_compile_options(-g3 -O0 -DDEBUG)
+    target_compile_options(asciichat-project-options INTERFACE -g3 -O0 -DDEBUG)
 
     # Better debugging experience
-    add_compile_options(
+    target_compile_options(asciichat-project-options INTERFACE
         -fno-inline                           # Disable inlining for easier stepping
         -fno-eliminate-unused-debug-types     # Keep all debug types
     )
 
     # Clang-specific debug enhancements
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-        add_compile_options(
+        target_compile_options(asciichat-project-options INTERFACE
             -fstandalone-debug                # Full debug info even for headers
             -gcolumn-info                     # Include column information
         )
     endif()
 
     # Stack protection in debug builds (helps catch buffer overflows early)
-    add_compile_options(-fstack-protector-strong)
+    target_compile_options(asciichat-project-options INTERFACE -fstack-protector-strong)
 
     # LLD linker setup moved to configure_lld_linker() — called for all build types
 
     # Windows-specific debug info formats
     if(WIN32)
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+            # Let LLD merge CodeView type records using compiler-provided hashes.
+            check_c_compiler_flag("-gcodeview-ghash" ASCIICHAT_SUPPORTS_CODEVIEW_GHASH)
+            if(ASCIICHAT_SUPPORTS_CODEVIEW_GHASH)
+                target_compile_options(asciichat-project-options INTERFACE -gcodeview-ghash)
+            endif()
             if(BUILD_TYPE STREQUAL "Debug")
                 # CodeView debug format for Debug mode
-                add_compile_options(-gcodeview)
+                target_compile_options(asciichat-project-options INTERFACE -gcodeview)
             elseif(BUILD_TYPE STREQUAL "Dev" OR BUILD_TYPE STREQUAL "Sanitize")
                 # Dev mode: Use -g2 for full debug info and ensure PDB generation
-                add_compile_options(-g2 -gcodeview)
-                add_link_options(-Wl,/DEBUG:FULL)
+                target_compile_options(asciichat-project-options INTERFACE -g2 -gcodeview)
+                target_link_options(asciichat-project-options INTERFACE -Wl,/DEBUG:FULL)
                 message(STATUS "Dev build: Enabled PDB generation with full debug info")
             endif()
         endif()
@@ -292,7 +297,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         set(WITH_DEBUG_INFO ${ARGV5})
     endif()
 
-    add_definitions(-DNDEBUG)
+    target_compile_definitions(asciichat-project-options INTERFACE NDEBUG)
 
     # Disable debug info generation in release builds to prevent path embedding
     # This ensures no debug symbols or paths are embedded in release binaries
@@ -300,11 +305,11 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
         if(WITH_DEBUG_INFO)
             # RelWithDebInfo: Keep debug symbols but still optimize
-            add_compile_options(-g)
+            target_compile_options(asciichat-project-options INTERFACE -g)
             message(STATUS "Release build with debug info: keeping debug symbols")
         else()
             # Release: No debug info
-            add_compile_options(-g0)
+            target_compile_options(asciichat-project-options INTERFACE -g0)
         endif()
     endif()
 
@@ -322,7 +327,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
                 check_c_compiler_flag("-ffat-lto-objects" ASCIICHAT_SUPPORTS_FFAT_LTO_OBJECTS)
             endif()
             if(ASCIICHAT_SUPPORTS_FFAT_LTO_OBJECTS)
-                add_compile_options(-ffat-lto-objects)
+                target_compile_options(asciichat-project-options INTERFACE -ffat-lto-objects)
                 message(STATUS "Release build: embedding native code in LTO objects (-ffat-lto-objects)")
             else()
                 message(WARNING "Release build: compiler does not support -ffat-lto-objects; static archives may contain pure LLVM bitcode")
@@ -336,25 +341,25 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # CPU-aware optimization flags
     # For RelWithDebInfo, use -O2 instead of -O3 to maintain better debug info quality
     if(WITH_DEBUG_INFO)
-        add_compile_options(-O2 -funroll-loops -fstrict-aliasing -ftree-vectorize -pipe)
+        target_compile_options(asciichat-project-options INTERFACE -O2 -funroll-loops -fstrict-aliasing -ftree-vectorize -pipe)
         # Keep frame pointers in RelWithDebInfo for better backtraces
-        add_compile_options(-fno-omit-frame-pointer)
+        target_compile_options(asciichat-project-options INTERFACE -fno-omit-frame-pointer)
     else()
-        add_compile_options(-O3 -funroll-loops -fstrict-aliasing -ftree-vectorize -pipe)
+        target_compile_options(asciichat-project-options INTERFACE -O3 -funroll-loops -fstrict-aliasing -ftree-vectorize -pipe)
 
         if(ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS)
-            add_compile_options(-fno-omit-frame-pointer)
+            target_compile_options(asciichat-project-options INTERFACE -fno-omit-frame-pointer)
         else()
-            add_compile_options(-fomit-frame-pointer)
+            target_compile_options(asciichat-project-options INTERFACE -fomit-frame-pointer)
         endif()
 
         # Additional safe optimizations
-        add_compile_options(
+        target_compile_options(asciichat-project-options INTERFACE
             -foptimize-sibling-calls     # Optimize tail recursion
         )
 
         if(ASCIICHAT_RELEASE_ENABLE_FAST_MATH)
-            add_compile_options(
+            target_compile_options(asciichat-project-options INTERFACE
                 -fno-math-errno              # Don't set errno for math functions (faster)
                 -fno-signed-zeros            # Allow optimizations that ignore sign of zero
                 -freciprocal-math            # Allow reciprocal approximations
@@ -368,7 +373,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
 
         # GCC-specific optimizations (GCC has more aggressive tree/loop opts than Clang)
         if(CMAKE_C_COMPILER_ID MATCHES "GNU")
-            add_compile_options(
+            target_compile_options(asciichat-project-options INTERFACE
                 -ftree-loop-distribution     # Loop distribution optimization
                 -fgcse-after-reload          # Global common subexpression elimination after reload
                 -fpredictive-commoning       # Predictive commoning optimization
@@ -388,7 +393,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             check_c_compiler_flag("-mllvm -polly" COMPILER_SUPPORTS_POLLY)
 
             if(COMPILER_SUPPORTS_POLLY)
-                add_compile_options(-mllvm -polly)  # Enable Polly loop optimizer
+                target_compile_options(asciichat-project-options INTERFACE -mllvm -polly)  # Enable Polly loop optimizer
             endif()
 
             # Additional Clang optimizations
@@ -396,7 +401,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             # - macOS: Not supported (causes warning with Homebrew clang)
             # - Windows: Unused (not a shared library platform for this flag)
             if(PLATFORM_LINUX)
-                add_compile_options(-fno-semantic-interposition)  # Allow inlining across DSO boundaries
+                target_compile_options(asciichat-project-options INTERFACE -fno-semantic-interposition)  # Allow inlining across DSO boundaries
             endif()
             # Note: -fvisibility=hidden is applied per-target in Executables.cmake (not globally)
             # This allows shared libraries to use -fvisibility=default while executables use hidden
@@ -449,7 +454,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     endif()
 
     if(__asciichat_cpu_flags)
-        add_compile_options(${__asciichat_cpu_flags})
+        target_compile_options(asciichat-project-options INTERFACE ${__asciichat_cpu_flags})
         if(NOT ASCIICHAT_RELEASE_CPU_TUNE STREQUAL "portable")
             list(JOIN __asciichat_cpu_flags ", " __asciichat_cpu_flags_joined)
             message(STATUS "Release CPU tuning: ${BoldCyan}${ASCIICHAT_RELEASE_CPU_TUNE}${ColorReset} (${__asciichat_cpu_flags_joined})")
@@ -466,29 +471,29 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
 
     if(APPLE)
         if(ASCIICHAT_SUPPORTS_DEAD_STRIP_DYLIBS)
-            add_link_options(-Wl,-dead_strip_dylibs)
+            target_link_options(asciichat-project-options INTERFACE -Wl,-dead_strip_dylibs)
         endif()
     elseif(WIN32)
         if(ASCIICHAT_SUPPORTS_DYNAMICBASE)
-            add_link_options("LINKER:/dynamicbase")
+            target_link_options(asciichat-project-options INTERFACE "LINKER:/dynamicbase")
         endif()
         if(ASCIICHAT_SUPPORTS_NXCOMPAT)
-            add_link_options("LINKER:/nxcompat")
+            target_link_options(asciichat-project-options INTERFACE "LINKER:/nxcompat")
         endif()
         if(ASCIICHAT_SUPPORTS_HIGHENTROPY_VA)
-            add_link_options("LINKER:/highentropyva")
+            target_link_options(asciichat-project-options INTERFACE "LINKER:/highentropyva")
         endif()
         if(ASCIICHAT_SUPPORTS_GUARD_CF)
-            add_link_options("LINKER:/guard:cf")
+            target_link_options(asciichat-project-options INTERFACE "LINKER:/guard:cf")
         endif()
         if(ASCIICHAT_SUPPORTS_BREPRO)
-            add_link_options("LINKER:/Brepro")
+            target_link_options(asciichat-project-options INTERFACE "LINKER:/Brepro")
         endif()
         if(ASCIICHAT_SUPPORTS_SPECTRE_MITIGATION)
-            add_compile_options(/Qspectre)
+            target_compile_options(asciichat-project-options INTERFACE /Qspectre)
         endif()
     elseif(ASCIICHAT_SUPPORTS_PACK_REL_RELOCS)
-        add_link_options(-Wl,-z,pack-relative-relocs)
+        target_link_options(asciichat-project-options INTERFACE -Wl,-z,pack-relative-relocs)
     endif()
 
     # Link-time optimization is applied per-target in Executables.cmake
@@ -499,18 +504,18 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # Dead Code Elimination (all platforms)
     # =============================================================================
     # Requires -ffunction-sections -fdata-sections to separate each function/data into sections
-    add_compile_options(-ffunction-sections -fdata-sections)
+    target_compile_options(asciichat-project-options INTERFACE -ffunction-sections -fdata-sections)
 
     if(PLATFORM_LINUX)
         # GNU ld: Use --gc-sections to remove unused sections
-        add_link_options(-Wl,--gc-sections)
+        target_link_options(asciichat-project-options INTERFACE -Wl,--gc-sections)
     elseif(APPLE)
         # Apple ld: Use -dead_strip to remove unused sections
-        add_link_options(-Wl,-dead_strip)
+        target_link_options(asciichat-project-options INTERFACE -Wl,-dead_strip)
     elseif(WIN32)
         # MSVC linker: Use /OPT:REF and /OPT:ICF for dead code elimination and COMDAT folding
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-            add_link_options(-Wl,/OPT:REF -Wl,/OPT:ICF)
+            target_link_options(asciichat-project-options INTERFACE -Wl,/OPT:REF -Wl,/OPT:ICF)
         endif()
     endif()
 
@@ -519,15 +524,15 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # =============================================================================
     if(NOT WIN32)
         if(ASCIICHAT_SUPPORTS_STACK_PROTECTOR_STRONG)
-            add_compile_options(-fstack-protector-strong)
+            target_compile_options(asciichat-project-options INTERFACE -fstack-protector-strong)
         endif()
         if(ASCIICHAT_SUPPORTS_STACK_CLASH_PROTECTION AND PLATFORM_LINUX)
-            add_compile_options(-fstack-clash-protection)
+            target_compile_options(asciichat-project-options INTERFACE -fstack-clash-protection)
         endif()
     endif()
 
     # All platforms: Alignment optimizations
-    add_compile_options(-falign-loops=32 -falign-functions=32 -fmerge-all-constants)
+    target_compile_options(asciichat-project-options INTERFACE -falign-loops=32 -falign-functions=32 -fmerge-all-constants)
 
     # Security hardening for Unix-like platforms
     if(NOT WIN32)
@@ -535,7 +540,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             # PIE assumes executable TLS access, including after ThinLTO imports.
             # Keep library objects (including vendored libraries) PIC so they can
             # link into shared libraries. Executable linker flags are set separately.
-            add_compile_options("$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-fPIE>")
+            target_compile_options(asciichat-project-options INTERFACE "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-fPIE>")
 
             if(USE_MUSL)
                 # Static-PIE for musl builds (combines static linking with ASLR)
@@ -545,10 +550,10 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
                 # RELRO and NOW flags for security (applies to all targets)
                 if(PLATFORM_LINUX)
                     if(ASCIICHAT_SUPPORTS_RELRO)
-                        add_link_options(-Wl,-z,relro)
+                        target_link_options(asciichat-project-options INTERFACE -Wl,-z,relro)
                     endif()
                     if(ASCIICHAT_SUPPORTS_NOW)
-                        add_link_options(-Wl,-z,now)
+                        target_link_options(asciichat-project-options INTERFACE -Wl,-z,now)
                     endif()
                 endif()
             endif()
@@ -559,9 +564,9 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             # Intel CET (Control-flow Enforcement Technology)
             if(ASCIICHAT_SUPPORTS_CFI_FULL)
                 if(CMAKE_C_COMPILER_ID MATCHES "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "8.0")
-                    add_compile_options(-fcf-protection=full)
+                    target_compile_options(asciichat-project-options INTERFACE -fcf-protection=full)
                 elseif(CMAKE_C_COMPILER_ID MATCHES "Clang" AND CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "7.0")
-                    add_compile_options(-fcf-protection=full)
+                    target_compile_options(asciichat-project-options INTERFACE -fcf-protection=full)
                 endif()
             endif()
         endif()
@@ -570,27 +575,27 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         if(PLATFORM_LINUX)
             # Stack clash protection (GCC 8+, Clang 11+) - not supported on macOS (causes warning)
             if(ASCIICHAT_SUPPORTS_STACK_CLASH_PROTECTION)
-                add_compile_options(-fstack-clash-protection)
+                target_compile_options(asciichat-project-options INTERFACE -fstack-clash-protection)
             endif()
-            add_compile_options(-fno-plt -fno-semantic-interposition)
-            add_link_options(-fno-plt)
+            target_compile_options(asciichat-project-options INTERFACE -fno-plt -fno-semantic-interposition)
+            target_link_options(asciichat-project-options INTERFACE -fno-plt)
 
             # Fortify source for additional runtime checks (not compatible with musl)
             # Undefine first to avoid redefinition warnings when makepkg/CFLAGS already set it
             if(NOT USE_MUSL)
-                add_compile_options("-Wp,-U_FORTIFY_SOURCE")
-                add_definitions(-D_FORTIFY_SOURCE=3)
+                target_compile_options(asciichat-project-options INTERFACE "-Wp,-U_FORTIFY_SOURCE")
+                target_compile_definitions(asciichat-project-options INTERFACE _FORTIFY_SOURCE=3)
             else()
                 # Musl doesn't provide __*_chk fortify wrappers
                 # Use -Wp, prefix to pass directly to preprocessor, overriding makepkg's -Wp,-D_FORTIFY_SOURCE=3
-                add_compile_options("-Wp,-U_FORTIFY_SOURCE" "-Wp,-D_FORTIFY_SOURCE=0")
+                target_compile_options(asciichat-project-options INTERFACE "-Wp,-U_FORTIFY_SOURCE" "-Wp,-D_FORTIFY_SOURCE=0")
             endif()
         endif()
 
         # macOS-specific security features
         if(PLATFORM_DARWIN)
             # Fortify source (level 2 is safer for macOS)
-            add_definitions(-D_FORTIFY_SOURCE=2)
+            target_compile_definitions(asciichat-project-options INTERFACE _FORTIFY_SOURCE=2)
         endif()
     endif()
 endfunction()
@@ -598,7 +603,7 @@ endfunction()
 # Configure coverage instrumentation (can be combined with any build type)
 function(configure_coverage_flags)
     message(STATUS "Coverage instrumentation enabled")
-    add_definitions(-DCOVERAGE_BUILD)
-    add_compile_options(--coverage -fprofile-arcs -ftest-coverage)
-    add_link_options(--coverage)
+    target_compile_definitions(asciichat-project-options INTERFACE COVERAGE_BUILD)
+    target_compile_options(asciichat-project-options INTERFACE --coverage -fprofile-arcs -ftest-coverage)
+    target_link_options(asciichat-project-options INTERFACE --coverage)
 endfunction()

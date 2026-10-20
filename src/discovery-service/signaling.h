@@ -14,7 +14,7 @@
 #include <sqlite3.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/acip/acds.h>
-#include <ascii-chat/network/tcp/server.h>
+#include <ascii-chat/network/connection.h>
 
 /**
  * @brief Relay SDP offer/answer to recipient
@@ -23,12 +23,12 @@
  * in the session if recipient_id is all zeros.
  *
  * @param db SQLite database handle (for session validation)
- * @param tcp_server TCP server with client registry
+ * @param server Shared connection registry
  * @param sdp SDP packet to relay (with variable-length SDP data following struct)
  * @param total_packet_len Total packet length including variable data
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t signaling_relay_sdp(sqlite3 *db, tcp_server_t *tcp_server, const acip_webrtc_sdp_t *sdp,
+asciichat_error_t signaling_relay_sdp(sqlite3 *db, network_server_t *network_server, const acip_webrtc_sdp_t *sdp,
                                       size_t total_packet_len);
 
 /**
@@ -38,12 +38,12 @@ asciichat_error_t signaling_relay_sdp(sqlite3 *db, tcp_server_t *tcp_server, con
  * in the session if recipient_id is all zeros.
  *
  * @param db SQLite database handle (for session validation)
- * @param tcp_server TCP server with client registry
+ * @param server Shared connection registry
  * @param ice ICE packet to relay (with variable-length candidate data following struct)
  * @param total_packet_len Total packet length including variable data
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, const acip_webrtc_ice_t *ice,
+asciichat_error_t signaling_relay_ice(sqlite3 *db, network_server_t *network_server, const acip_webrtc_ice_t *ice,
                                       size_t total_packet_len);
 
 /**
@@ -53,12 +53,12 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, con
  * Used during NAT negotiation phase to help peers determine optimal host.
  *
  * @param db SQLite database handle (for session validation)
- * @param tcp_server TCP server with client registry
+ * @param server Shared connection registry
  * @param quality NAT quality packet (includes session_id and participant_id)
  * @param total_packet_len Total packet length
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t signaling_relay_network_quality(sqlite3 *db, tcp_server_t *tcp_server,
+asciichat_error_t signaling_relay_network_quality(sqlite3 *db, network_server_t *network_server,
                                                   const acip_nat_quality_t *quality, size_t total_packet_len);
 
 /**
@@ -68,7 +68,7 @@ asciichat_error_t signaling_relay_network_quality(sqlite3 *db, tcp_server_t *tcp
  * Used internally by SDP/ICE relay when recipient_id is all zeros.
  *
  * @param db SQLite database handle (for session validation)
- * @param tcp_server TCP server with client registry
+ * @param server Shared connection registry
  * @param session_id Session UUID
  * @param packet_type Packet type to send
  * @param packet Packet data to broadcast
@@ -76,6 +76,6 @@ asciichat_error_t signaling_relay_network_quality(sqlite3 *db, tcp_server_t *tcp
  * @param exclude_participant_id Participant to exclude (NULL = no exclusion, typically sender)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, const uint8_t session_id[16],
+asciichat_error_t signaling_broadcast(sqlite3 *db, network_server_t *network_server, const uint8_t session_id[16],
                                       packet_type_t packet_type, const void *packet, size_t packet_len,
                                       const uint8_t *exclude_participant_id);

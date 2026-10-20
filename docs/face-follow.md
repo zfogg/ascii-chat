@@ -53,6 +53,11 @@ Debug native builds accept `--face-follow-debug`, which draws a red square aroun
 the selected detected face. It can also be used alone to inspect detection
 without enabling automatic zoom. Release native builds omit this CLI option.
 
+Outline rendering remains available in Release builds, including the deployed
+WASM modules. Only the native CLI option is debug-build-only. The website's
+webcam demo offers **Face Follow (outlined face)** between **Face Follow** and
+**Full Frame**; returning to either other mode removes the outline.
+
 The browser equivalent is `?faceFollow&faceFollowDebug`, with no debug toggle in
 the Settings panel. Debugging is opt-in and the square is included in the rendered
 image. Debug capture canvases expose normalized crop/face coordinates and
@@ -67,10 +72,12 @@ embedded model in `deps/libfacedetection`. No OpenCV, external model download, o
 cloud inference is required. `lib/video/face_follow.c` implements the shared
 controller; a narrow C++ adapter isolates the detector from C consumers.
 
-The additional Emscripten target is `face-follow-web`. The normal
-`web/web/scripts/wasm-build.mjs` build/publish workflow includes its JS/WASM files
-in the verified, versioned artifact set. The fingerprint includes vendored C++
-sources and model weights as well as the existing C/WASM sources.
+The existing `mirror-web` and `client-web` modules both export the browser face
+controller and detector API. The Face Follow worker loads `mirror.js` with no
+prewarmed pthread pool, so detection stays off the render loop without requiring
+a third WASM artifact. The normal `web/web/scripts/wasm-build.mjs` workflow
+publishes only the verified mirror/client files. Its fingerprint includes the
+vendored C++ sources and model weights as well as the existing C/WASM sources.
 
 ## Repeatable visual verification
 

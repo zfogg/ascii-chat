@@ -306,7 +306,6 @@ asciichat_error_t platform_event_stream_start(platform_event_stream_t *stream, p
   int status = uv_send_buffer_size((uv_handle_t *)&stream->tcp, &send_buffer);
   if (status < 0)
     return event_error(status, "Bound stream send buffer");
-
   return platform_event_stream_resume(stream);
 }
 

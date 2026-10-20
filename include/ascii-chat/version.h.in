@@ -4,6 +4,8 @@
 
 #pragma once
 
+// CMake substitutions must remain intact until the header is configured.
+// clang-format off
 #define ASCII_CHAT_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
 #define ASCII_CHAT_VERSION_MINOR @PROJECT_VERSION_MINOR@
 #define ASCII_CHAT_VERSION_PATCH @PROJECT_VERSION_PATCH@
@@ -15,6 +17,7 @@
 #define ASCII_CHAT_OS "@VERSION_OS@"
 #define ASCII_CHAT_BUILD_DATE "@BUILD_DATE@"
 #define ASCII_CHAT_REPO_HASH "@REPO_HASH@"
+// clang-format on
 
 // Full version string like "v0.2.0-42+gf811525" (nvim-style)
 // On clean release tags, this will be just "v0.3.0" without trailing dash
@@ -24,14 +27,21 @@
 #define ASCII_CHAT_DESCRIPTION_EMOJI_L "💻📸"
 #define ASCII_CHAT_DESCRIPTION_EMOJI_R "🔡💬"
 #define ASCII_CHAT_DESCRIPTION_TEXT "Video chat in your terminal"
-#define ASCII_CHAT_DESCRIPTION ASCII_CHAT_DESCRIPTION_EMOJI_L " " ASCII_CHAT_DESCRIPTION_TEXT " " ASCII_CHAT_DESCRIPTION_EMOJI_R
+#define ASCII_CHAT_DESCRIPTION                                                                                         \
+  ASCII_CHAT_DESCRIPTION_EMOJI_L " " ASCII_CHAT_DESCRIPTION_TEXT " " ASCII_CHAT_DESCRIPTION_EMOJI_R
 
 // Full build info string used everywhere: "ascii-chat v0.2.0-... built on OS (yyyy-mm-dd, BuildType)"
-#define ASCII_CHAT_BUILD_INFO_STRING "ascii-chat " ASCII_CHAT_VERSION_FULL " built on " ASCII_CHAT_OS " (" ASCII_CHAT_BUILD_DATE ", " ASCII_CHAT_BUILD_TYPE ")"
+#define ASCII_CHAT_BUILD_INFO_STRING                                                                                   \
+  "ascii-chat " ASCII_CHAT_VERSION_FULL " built on " ASCII_CHAT_OS " (" ASCII_CHAT_BUILD_DATE                          \
+  ", " ASCII_CHAT_BUILD_TYPE ")"
 
-#define ASCII_CHAT_DOT_COMMENT_STRING ASCII_CHAT_BUILD_INFO_STRING "\n" ASCII_CHAT_DESCRIPTION "\n" "https://github.com/zfogg/ascii-chat"
+#define ASCII_CHAT_DOT_COMMENT_STRING                                                                                  \
+  ASCII_CHAT_BUILD_INFO_STRING "\n" ASCII_CHAT_DESCRIPTION "\n"                                                        \
+                               "https://github.com/zfogg/ascii-chat"
 
-#define ASCII_CHAT_DOT_ASCII_CHAT_STRING ASCII_CHAT_DOT_COMMENT_STRING "\n" "coded with 🖤 by Zachary Fogg <me@zfo.gg>"
+#define ASCII_CHAT_DOT_ASCII_CHAT_STRING                                                                               \
+  ASCII_CHAT_DOT_COMMENT_STRING "\n"                                                                                   \
+                                "coded with 🖤 by Zachary Fogg <me@zfo.gg>"
 
 // Runtime version accessors
 const char *ascii_chat_get_version(void);
@@ -45,9 +55,9 @@ const char *ascii_chat_get_build_info(void);
  * @brief Parsed semantic version structure
  */
 typedef struct {
-  int major; ///< Major version (0 to INT_MAX)
-  int minor; ///< Minor version (0 to INT_MAX)
-  int patch; ///< Patch version (0 to INT_MAX)
+  int major;  ///< Major version (0 to INT_MAX)
+  int minor;  ///< Minor version (0 to INT_MAX)
+  int patch;  ///< Patch version (0 to INT_MAX)
   bool valid; ///< True if parsing succeeded
 } semantic_version_t;
 

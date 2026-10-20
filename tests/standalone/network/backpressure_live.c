@@ -530,6 +530,7 @@ int main(int argc, char **argv) {
   size_t capacity = 160 * 90 * 3 + 65536;
   uint8_t *rgb = SAFE_MALLOC(160 * 90 * 3, uint8_t *), *payload = SAFE_MALLOC(capacity, uint8_t *);
   uint64_t frame_number = 0;
+  uint64_t audio_sequence = 0;
   uint16_t type = !encoded                    ? PACKET_TYPE_IMAGE_FRAME
                   : !strcmp(encoding, "h264") ? PACKET_TYPE_IMAGE_FRAME_H264
                                               : PACKET_TYPE_IMAGE_FRAME_H265;
@@ -571,16 +572,23 @@ int main(int argc, char **argv) {
         ++f->recovery_requests;
       if (slow_needs_keyframe || acip_outbound_needs_keyframe(healthy->sender, type, 0))
         h265_encoder_request_keyframe(encoder);
-      CHECK(h265_encode(encoder, 160, 90, rgb, payload, &length) == ASCIICHAT_OK && length);
+      CHECK(h265_encode(encoder, 160, 90, rgb, payload, &length) == ASCIICHAT_OK);
+      // Encoder startup can consume input before producing its first packet.
+      // Exercise congestion with complete encoded packets, as the media path does.
+      if (!length)
+        continue;
     } else {
       image_frame_packet_t image = {.width = HOST_TO_NET_U32(80), .height = HOST_TO_NET_U32(45)};
       length = sizeof(image) + 80 * 45 * 3;
       memcpy(payload, &image, sizeof(image));
       memcpy(payload + sizeof(image), rgb, 80 * 45 * 3);
     }
-    // Legal filler NAL units make codec wire load deterministic across encoder
-    // bitrate defaults. The receiver still decodes the actual encoded picture.
-    if (encoded && length < 16 * 1024 - 8) {
+    // Legal filler NAL units bound codec wire load independently of bitrate
+    // defaults. Vary their length to distinguish otherwise identical encoded
+    // pictures in the CRC-to-capture-time index over this fixture's lifetime.
+    // The receiver still decodes the actual encoded picture.
+    size_t padded_length = 16 * 1024 + frame_number;
+    if (encoded && length < padded_length - 8) {
       payload[length++] = 0;
       payload[length++] = 0;
       payload[length++] = 0;
@@ -588,8 +596,9 @@ int main(int argc, char **argv) {
       payload[length++] = type == PACKET_TYPE_IMAGE_FRAME_H264 ? 12 : (38 << 1);
       if (type == PACKET_TYPE_IMAGE_FRAME_H265)
         payload[length++] = 1;
-      memset(payload + length, 0xff, 16 * 1024 - length - 1);
-      length = 16 * 1024;
+      CHECK(padded_length <= capacity);
+      memset(payload + length, 0xff, padded_length - length - 1);
+      length = padded_length;
       payload[length - 1] = 0x80;
     }
     uint32_t crc = asciichat_crc32(payload, length);
@@ -612,7 +621,7 @@ int main(int argc, char **argv) {
     CHECK(packet_send_via_transport(f->sender, PACKET_TYPE_PING, NULL, 0, 0) == ASCIICHAT_OK);
     if (frame_number % 15 == 0) {
       uint8_t audio[16] = {0};
-      uint64_t sequence = frame_number / 15;
+      uint64_t sequence = ++audio_sequence;
       memcpy(audio, &sequence, sizeof(sequence));
       CHECK(packet_send_via_transport(f->sender, PACKET_TYPE_AUDIO_BATCH, audio, sizeof(audio), 0) == ASCIICHAT_OK);
     }

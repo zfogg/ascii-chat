@@ -1,5 +1,6 @@
+import { useEngineSettings } from "../hooks/useEngineSettings";
 import { useLayoutEffect } from "react";
-import { sessionUiSettings, sessionUiMedia } from "../utils/sessionUi";
+import { sessionUiMedia } from "../utils/sessionUi";
 import { MediaSourceType } from "../hooks/useClientLike";
 import { useUrlState } from "../hooks/useUrlState";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
@@ -16,7 +17,6 @@ import { AsciiRenderer } from "@ascii-chat/shared/components/AsciiRenderer";
 import { PageLayout } from "../components/PageLayout";
 import { ModeHeader } from "../components/ModeHeader";
 import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
-import { VideoUploadModal } from "../components/VideoUploadModal";
 import type { BinarySettingsConfig } from "../components";
 import { AsciiChatMode } from "../utils";
 import {
@@ -41,7 +41,6 @@ export function MirrorPage() {
   useLayoutEffect(() => {
     playingRef.current = playing;
   }, [playing]);
-  const [showUploadModal, setShowUploadModal] = useState(false);
   const [wasmModule, setWasmModule] = useState(() => {
     return getMirrorModule();
   });
@@ -168,6 +167,8 @@ export function MirrorPage() {
     },
     [setSettings, settings.flipX, settings.flipY, setMediaFlipX, setMediaFlipY],
   );
+
+  useEngineSettings(wasmInitialized, settings, handleSettingsChange);
 
   // Webcam start logic and auto-start effects
   const pendingWebcamSwitch = useRef<object | null>(null);
@@ -420,7 +421,7 @@ export function MirrorPage() {
                 void startWebcam();
               },
               onStopWebcam: stopPlayback,
-              onUploadClick: () => setShowUploadModal(true),
+              onFileSelect: handleVideoFileSelect,
               videoRef: undefined,
               status: isStarting
                 ? "Starting webcam..."
@@ -528,10 +529,6 @@ export function MirrorPage() {
                   : "Choose a camera or media file to begin")
               }
               onUiAction={(event) => {
-                if (event.action === 1 || event.action === 7)
-                  handleSettingsChange(
-                    sessionUiSettings(event, contentSettings),
-                  );
                 if (event.key === "[") toggleMedia();
                 else if (event.action === 6 && fileActive)
                   fileMedia.togglePause();
@@ -561,14 +558,6 @@ export function MirrorPage() {
             />
           );
         })()}
-        modal={
-          <VideoUploadModal
-            isOpen={showUploadModal}
-            onClose={() => setShowUploadModal(false)}
-            onFileSelect={handleVideoFileSelect}
-            allowImages
-          />
-        }
       />
     </>
   );

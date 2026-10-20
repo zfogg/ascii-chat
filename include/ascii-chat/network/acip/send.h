@@ -137,7 +137,6 @@ asciichat_error_t acip_send_ping(acip_transport_t *transport);
 asciichat_error_t acip_send_pong(acip_transport_t *transport);
 
 // Client control functions moved to lib/network/acip/client.h:
-// - acip_send_client_join, acip_send_client_leave
 // - acip_send_stream_start, acip_send_stream_stop
 // - acip_send_capabilities, acip_send_protocol_version
 //
@@ -200,4 +199,3 @@ asciichat_error_t acip_send_session_info(acip_transport_t *transport, const acip
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t acip_send_session_joined(acip_transport_t *transport, const acip_session_joined_t *response);
-
