@@ -95,7 +95,7 @@ def check_activity(rows, artifacts, name):
     assert max(activity["colorscheme"]) < 1, activity
     if name == "mirror":
         assert max(activity["display"]) < 150, activity
-        assert max(activity["ffmpeg_prefetch"]) < 180, activity
+        assert max(activity["ffmpeg_prefetch"]) < 60, activity
         assert max(activity["ui_controller"]) < 100, activity
         assert max(activity["ui_input"]) < 5, activity
         assert max(activity["worker_mutex"]) < 100, activity
@@ -140,6 +140,8 @@ def inspect(term, artifacts, name, required):
             capture(term, artifacts, f"{name}-inventory-{page}")
         if page < pages:
             term.write("\x1b[C")
+    assert not any("pause_mutex." in row for row in inventory), name
+    assert any("media_paused." in row for row in inventory), name
     for primitive in required:
         assert primitive in "\n".join(inventory), (name, primitive, text)
     check_activity(inventory, artifacts, name)

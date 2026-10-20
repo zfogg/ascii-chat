@@ -39,7 +39,7 @@ struct media_source_t {
   media_source_type_t type; ///< Type of media source (webcam, file, stdin, test)
   bool loop_enabled;        ///< Whether to loop playback (for files)
   bool audio_only;          ///< File audio uses the selected webcam for video
-  bool is_paused;           ///< Whether playback is paused
+  atomic_t is_paused;       ///< Independently published playback pause flag
 
   // Webcam context (for WEBCAM and TEST types)
   webcam_context_t *webcam_ctx;    ///< Webcam context (NULL for non-webcam types)
@@ -53,7 +53,6 @@ struct media_source_t {
   // Thread synchronization
   mutex_t decoder_mutex;     ///< Protects shared decoder access (YouTube URLs)
   mutex_t seek_access_mutex; ///< Protects decoder access during seeks
-  mutex_t pause_mutex;       ///< Protects pause state
 
   // Cached paths
   char *file_path;            ///< File path (for FILE type)
@@ -203,7 +202,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
   memset(source, 0, sizeof(*source));
   source->type = type;
   source->loop_enabled = false;
-  source->is_paused = false;
+  atomic_store_bool(&source->is_paused, false);
 
   // Initialize mutex for protecting shared decoder access (for YouTube URLs)
   if (mutex_init(&source->decoder_mutex, "media_decoder") != 0) {
@@ -212,19 +211,10 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     return NULL;
   }
 
-  // Initialize mutex for protecting pause state (accessed from keyboard and video threads)
-  if (mutex_init(&source->pause_mutex, "media_pause") != 0) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to initialize pause mutex");
-    mutex_destroy(&source->decoder_mutex);
-    SAFE_FREE(source);
-    return NULL;
-  }
-
   // Initialize mutex for protecting decoder access during seeks (prevents race conditions)
   if (mutex_init(&source->seek_access_mutex, "media_seek") != 0) {
     SET_ERRNO(ERROR_MEMORY, "Failed to initialize seek access mutex");
     mutex_destroy(&source->decoder_mutex);
-    mutex_destroy(&source->pause_mutex);
     SAFE_FREE(source);
     return NULL;
   }
@@ -252,7 +242,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
              asciichat_error_format(NULL, webcam_error));
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->pause_mutex);
       mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
 
@@ -275,7 +264,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       SET_ERRNO(ERROR_INVALID_PARAM, "File path is required for FILE source");
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->pause_mutex);
       mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
@@ -292,14 +280,12 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       log_debug("Failed to resolve URL %s", asciichat_error_format(NULL, resolve_err));
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->pause_mutex);
       mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
     if (cancel && cancel(data)) {
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->pause_mutex);
       mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
@@ -320,7 +306,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       SAFE_FREE(source->original_youtube_url);
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->pause_mutex);
       mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
@@ -340,7 +325,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       SAFE_FREE(source->original_youtube_url);
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->pause_mutex);
       mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
@@ -360,7 +344,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->pause_mutex);
       mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
@@ -379,7 +362,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       SAFE_FREE(source->original_youtube_url);
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->pause_mutex);
       mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
@@ -401,7 +383,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       log_error("Failed to open stdin for video input");
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->pause_mutex);
       mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
@@ -418,7 +399,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->pause_mutex);
       mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
@@ -433,7 +413,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
       source->video_decoder = NULL;
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
-      mutex_destroy(&source->pause_mutex);
       mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
@@ -458,7 +437,6 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown media source type: %d", type);
     // Destroy mutexes before freeing source
     mutex_destroy(&source->decoder_mutex);
-    mutex_destroy(&source->pause_mutex);
     mutex_destroy(&source->seek_access_mutex);
     SAFE_FREE(source);
     return NULL;
@@ -489,7 +467,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
 
   /* Register media source's sync primitives with hierarchical naming */
   NAMED_REGISTER_MUTEX(&source->decoder_mutex, "decoder_mutex", (uintptr_t)(const void *)(source));
-  NAMED_REGISTER_MUTEX(&source->pause_mutex, "pause_mutex", (uintptr_t)(const void *)(source));
+  NAMED_REGISTER_ATOMIC(&source->is_paused, "media_paused", source);
   NAMED_REGISTER_MUTEX(&source->seek_access_mutex, "seek_access_mutex", (uintptr_t)(const void *)(source));
 
   return source;
@@ -528,9 +506,10 @@ void media_source_destroy(media_source_t *source) {
   test_pattern_destroy(source->test_pattern);
   source->test_pattern = NULL;
 
+  NAMED_UNREGISTER(&source->is_paused);
+
   // Destroy mutexes
   mutex_destroy(&source->decoder_mutex);
-  mutex_destroy(&source->pause_mutex);
   mutex_destroy(&source->seek_access_mutex);
 
   SAFE_FREE(source);
@@ -580,9 +559,7 @@ image_t *media_source_read_video(media_source_t *source) {
   }
 
   // Check pause state (thread-safe)
-  mutex_lock(&source->pause_mutex);
-  bool is_paused = source->is_paused;
-  mutex_unlock(&source->pause_mutex);
+  bool is_paused = atomic_load_bool(&source->is_paused);
 
   // Return NULL immediately if paused (maintaining position)
   if (is_paused) {
@@ -715,9 +692,7 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
   }
 
   // Check pause state (thread-safe)
-  mutex_lock(&source->pause_mutex);
-  bool is_paused = source->is_paused;
-  mutex_unlock(&source->pause_mutex);
+  bool is_paused = atomic_load_bool(&source->is_paused);
 
   // Return silence immediately if paused (maintaining position)
   if (is_paused) {
@@ -1063,37 +1038,30 @@ void media_source_pause(media_source_t *source) {
   if (!source) {
     return;
   }
-  mutex_lock(&source->pause_mutex);
-  source->is_paused = true;
-  mutex_unlock(&source->pause_mutex);
+  atomic_store_bool(&source->is_paused, true);
 }
 
 void media_source_resume(media_source_t *source) {
   if (!source) {
     return;
   }
-  mutex_lock(&source->pause_mutex);
-  source->is_paused = false;
-  mutex_unlock(&source->pause_mutex);
+  atomic_store_bool(&source->is_paused, false);
 }
 
 bool media_source_is_paused(media_source_t *source) {
   if (!source) {
     return false;
   }
-  mutex_lock(&source->pause_mutex);
-  bool paused = source->is_paused;
-  mutex_unlock(&source->pause_mutex);
-  return paused;
+  return atomic_load_bool(&source->is_paused);
 }
 
 void media_source_toggle_pause(media_source_t *source) {
   if (!source) {
     return;
   }
-  mutex_lock(&source->pause_mutex);
-  source->is_paused = !source->is_paused;
-  mutex_unlock(&source->pause_mutex);
+  bool paused = atomic_load_bool(&source->is_paused);
+  while (!atomic_cas_bool(&source->is_paused, &paused, !paused)) {
+  }
 }
 
 void media_source_set_audio_context(media_source_t *source, void *audio_ctx) {

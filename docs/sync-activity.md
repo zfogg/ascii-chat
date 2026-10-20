@@ -36,7 +36,14 @@ by the scheme revision, output mode and detected terminal background. Applying a
 scheme still serializes writes and appears on the next read.
 
 FFmpeg prefetch waits on frame consumption, seek completion and shutdown
-notifications instead of polling every millisecond, including at EOF.
+notifications instead of polling every millisecond, including at EOF. Empty
+consumer polls read atomic readiness/error flags without taking the mutex.
+The producer publishes and checks its next wait predicate in one protected
+section; its only release/reacquire around work keeps decoding outside the
+handoff lock. Each delivered frame normally needs one consumer pair, one
+producer pair, and a condition wait release/reacquire pair. Rewind explicitly
+wakes EOF sleepers. Pause state is a registered atomic flag, with CAS toggles
+to preserve concurrent pause-key changes; pause queries acquire no mutex.
 
 Mirror's latest-frame queue waits for notification with a bounded 100 ms timeout
 instead of polling every millisecond. Three reusable frame slots keep capture,
@@ -82,7 +89,7 @@ A verified 15 FPS mirror sample, with the inspector open, measured approximately
 | buffer_domain | 0 |
 | timer_manager | 0 |
 | display | 47 |
-| ffmpeg_prefetch | 80 |
+| ffmpeg_prefetch | about 45 |
 | queue_not_empty | 16 |
 | debug_memory | 0 after warm-up |
 | worker_mutex | 31-39 |

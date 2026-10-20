@@ -99,6 +99,35 @@ static void find_prefetch(uintptr_t key, uint64_t generation, const char *name, 
 
 #endif
 
+static void *toggle_pause_many(void *data) {
+  for (unsigned i = 0; i < 10001; ++i)
+    media_source_toggle_pause(data);
+  return NULL;
+}
+
+static void check_atomic_pause(void) {
+  media_source_t *source = media_source_create(MEDIA_SOURCE_TEST, NULL);
+  CHECK(source && !media_source_is_paused(source));
+  media_source_pause(source);
+  CHECK(media_source_is_paused(source));
+  CHECK(media_source_read_video(source) == NULL);
+  float silence[32];
+  for (size_t i = 0; i < 32; ++i)
+    silence[i] = 1;
+  CHECK(media_source_read_audio(source, silence, 32) == 32);
+  for (size_t i = 0; i < 32; ++i)
+    CHECK(silence[i] == 0);
+  media_source_resume(source);
+  asciichat_thread_t toggles[2];
+  for (size_t i = 0; i < 2; ++i)
+    CHECK(asciichat_thread_create(&toggles[i], "pause_toggles", toggle_pause_many, source) == ASCIICHAT_OK);
+  for (size_t i = 0; i < 2; ++i)
+    CHECK(asciichat_thread_join(&toggles[i], NULL) == ASCIICHAT_OK);
+  CHECK(!media_source_is_paused(source));
+  CHECK(media_source_read_video(source) != NULL);
+  media_source_destroy(source);
+}
+
 static unsigned drain_video(ffmpeg_decoder_t *decoder) {
   unsigned frames = 0;
   uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
@@ -122,19 +151,42 @@ static unsigned drain_video(ffmpeg_decoder_t *decoder) {
 static void check_prefetch_notifications(const char *path) {
   ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
   CHECK(decoder);
+#ifndef NDEBUG
+  size_t required = 0;
+  bool complete = false;
+  prefetch_mutex = NULL;
+  CHECK(named_registry_try_snapshot(SIZE_MAX, &required, &complete, find_prefetch, NULL) == ASCIICHAT_OK && complete);
+  CHECK(prefetch_mutex);
+  uint64_t locks = prefetch_mutex->lock_count;
+#endif
+  // A decoder without a running producer has no frame; polling is read-only.
+  for (unsigned i = 0; i < 10000; ++i) {
+    image_t *frame = NULL;
+    asciichat_error_context_t failure;
+    CHECK(ffmpeg_decoder_poll_video(decoder, &frame, &failure) == FFMPEG_FRAME_WAITING);
+    CHECK(!frame);
+  }
+#ifndef NDEBUG
+  CHECK(prefetch_mutex->lock_count == locks);
+#endif
   CHECK(ffmpeg_decoder_start_prefetch(decoder) == ASCIICHAT_OK);
   // Leave a frame pending: the producer should sleep without touching its mutex.
   platform_sleep_ms(100);
 #ifndef NDEBUG
-  size_t required = 0;
-  bool complete = false;
-  CHECK(named_registry_try_snapshot(SIZE_MAX, &required, &complete, find_prefetch, NULL) == ASCIICHAT_OK && complete);
-  CHECK(prefetch_mutex);
-  uint64_t locks = prefetch_mutex->lock_count;
+  locks = prefetch_mutex->lock_count;
   platform_sleep_ms(100);
   CHECK(prefetch_mutex->lock_count == locks);
 #endif
   CHECK(drain_video(decoder) == 30);
+#ifndef NDEBUG
+  CHECK(prefetch_mutex->lock_count - locks <= 3 * 30 + 12);
+#endif
+  // EOF sleeps too: rewinding must explicitly wake the waiting producer.
+  for (unsigned i = 0; i < 3; ++i) {
+    platform_sleep_ms(20);
+    CHECK(ffmpeg_decoder_rewind(decoder) == ASCIICHAT_OK);
+    CHECK(drain_video(decoder) == 30);
+  }
   platform_sleep_ms(20);
   uint64_t started = time_get_ns();
   ffmpeg_decoder_stop_prefetch(decoder);
@@ -238,6 +290,7 @@ int main(int argc, char **argv) {
   audio.capture_media_source = NULL;
   session_capture_destroy(ctx);
   ui_controller_shutdown();
+  check_atomic_pause();
   check_prefetch_notifications(argv[1]);
   options_state_destroy();
   return 0;
