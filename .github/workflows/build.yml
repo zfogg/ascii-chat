@@ -203,6 +203,7 @@ jobs:
           # Disable tests - Criterion doesn't work well on Windows
           $cmakeArgs = @(
             "--preset", "windows-release",
+            "-B", "build_release",
             "-DASCIICHAT_ENABLE_ANALYZERS=OFF",
             "-DASCIICHAT_ENABLE_TESTS=OFF",
             "-DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg-static-triplet }}"
