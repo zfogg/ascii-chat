@@ -24,6 +24,17 @@ typedef struct {
 #define ASCIICHAT_ERRNO_MAX_FRAMES 1024
 #define ASCIICHAT_ERRNO_HISTORY_SIZE 128
 
+/** Format "message: description (code=N)"; NULL/empty message returns
+ * only "description (code=N)". Allocation-free and thread-local;
+ * the returned string survives the next seven calls on this thread. Copy it
+ * for longer storage. Message text is limited to ASCIICHAT_ERRNO_MESSAGE_MAX-1
+ * bytes; the code and meaning are retained. An existing matching suffix is not
+ * duplicated. This is plain text: use SET_ERRNO(code, "%s", formatted), never
+ * pass formatted text as the printf format. SET_ERRNO already logs code/meaning
+ * automatically, so callers normally supply only their contextual message.
+ */
+const char *asciichat_error_format(const char *message, asciichat_error_t code);
+
 /** A self-contained value snapshot. Source locations refer to static compiler
  * strings; messages and raw addresses are copied. Printing symbolizes and frees
  * a private backtrace. Struct assignment is safe; no destroy call is needed.

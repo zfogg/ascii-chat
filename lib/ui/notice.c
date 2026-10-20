@@ -4,22 +4,42 @@
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 
 static _Thread_local ui_notice_severity_t g_prompt_severity = UI_NOTICE_INFO;
 
+static _Thread_local colorscheme_palette_t notice_palette;
+
 static const char *notice_color(ui_notice_severity_t severity) {
   switch (severity) {
   case UI_NOTICE_FATAL:
-    return "\033[1;35m";
+    return notice_palette.codes[LOG_COLOR_FATAL];
   case UI_NOTICE_DANGER:
-    return "\033[1;31m";
+    return notice_palette.codes[LOG_COLOR_ERROR];
   case UI_NOTICE_WARNING:
-    return "\033[1;33m";
+    return notice_palette.codes[LOG_COLOR_WARN];
+  case UI_NOTICE_SUCCESS:
+    return notice_palette.codes[LOG_COLOR_INFO];
   default:
-    return "\033[1;37m";
+    return notice_palette.foreground;
+  }
+}
+
+static const char *notice_label(ui_notice_severity_t severity) {
+  switch (severity) {
+  case UI_NOTICE_FATAL:
+    return "FATAL";
+  case UI_NOTICE_DANGER:
+    return "ERROR";
+  case UI_NOTICE_WARNING:
+    return "WARNING";
+  case UI_NOTICE_SUCCESS:
+    return "SUCCESS";
+  default:
+    return "INFO";
   }
 }
 
@@ -34,8 +54,13 @@ static void border(frame_buffer_t *buffer, int width, const char *left, const ch
 
 int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severity_t severity, int cols, bool unicode,
                      bool color) {
+  if (buffer && color)
+    colorscheme_current_palette(&notice_palette, (terminal_color_mode_t)log_get_color_mode());
   if (!text)
     text = "";
+  const char *body = text;
+  text = notice_label(severity);
+  bool rendering_label = true;
   const char *text_end = text + strlen(text);
   // Reserve the final column to avoid terminal autowrap at the right border.
   int width = cols > 81 ? 80 : cols - 1;
@@ -43,11 +68,14 @@ int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severit
   int content = boxed ? width - 4 : (cols > 2 ? cols - 1 : 2);
   const char *side = unicode ? "║" : "|";
   if (buffer && color)
-    frame_buffer_printf(buffer, "%s", notice_color(severity));
+    frame_buffer_printf(buffer, "\033[1m%s", notice_color(severity));
   if (boxed)
     border(buffer, width, unicode ? "╔" : "+", unicode ? "═" : "-", unicode ? "╗" : "+");
   int rows = boxed ? 2 : 0;
   const char *art_end = NULL;
+  const char *word_end = NULL;
+  bool title_word = false;
+  bool first_letter = false;
   do {
     // The Keymask formatter identifies complete plain-text blocks; input ANSI
     // escapes still pass through the normal control-character sanitization.
@@ -75,7 +103,32 @@ int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severit
       if (buffer) {
         if (control)
           frame_buffer_append(buffer, "?", 1);
-        else
+        else if (!rendering_label && !neutral) {
+          if (!word_end || text >= word_end) {
+            word_end = text;
+            title_word = (*text >= 'A' && *text <= 'Z') || (*text >= 'a' && *text <= 'z');
+            first_letter = true;
+            while (*word_end && *word_end != ' ' && *word_end != '\n' && *word_end != '\t') {
+              unsigned char c = (unsigned char)*word_end;
+              bool letter = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+              bool punctuation = strchr(",.;:!?", c) && (!word_end[1] || word_end[1] == ' ' || word_end[1] == '\n');
+              if (!letter && !punctuation)
+                title_word = false;
+              ++word_end;
+            }
+          }
+          if (title_word && bytes == 1) {
+            char c = *text;
+            if (first_letter && c >= 'a' && c <= 'z')
+              c -= 'a' - 'A';
+            else if (!first_letter && c >= 'A' && c <= 'Z')
+              c += 'a' - 'A';
+            first_letter = false;
+            frame_buffer_append(buffer, &c, 1);
+          } else {
+            frame_buffer_append(buffer, text, (size_t)bytes);
+          }
+        } else
           frame_buffer_append(buffer, text, (size_t)bytes);
       }
       used += cells;
@@ -83,7 +136,7 @@ int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severit
     }
     if (buffer) {
       if (color && neutral)
-        frame_buffer_printf(buffer, "%s", notice_color(severity));
+        frame_buffer_printf(buffer, "\033[1m%s", notice_color(severity));
       if (boxed)
         frame_buffer_printf(buffer, "%*s %s", content - used, "", side);
       frame_buffer_append(buffer, "\n", 1);
@@ -91,7 +144,18 @@ int ui_notice_render(frame_buffer_t *buffer, const char *text, ui_notice_severit
     ++rows;
     if (*text == '\n')
       ++text;
-  } while (*text);
+    if (!*text) {
+      if (!rendering_label)
+        break;
+      if (boxed) {
+        border(buffer, width, unicode ? "╠" : "+", unicode ? "═" : "-", unicode ? "╣" : "+");
+        ++rows;
+      }
+      rendering_label = false;
+      text = body;
+      text_end = text + strlen(text);
+    }
+  } while (true);
   if (boxed)
     border(buffer, width, unicode ? "╚" : "+", unicode ? "═" : "-", unicode ? "╝" : "+");
   if (buffer && color)
@@ -149,8 +213,10 @@ static void render_notice(terminal_size_t size, const void *data) {
     stop = newline ? newline + 1 : end;
   }
   ui_controller_write(STDERR_FILENO, "\033[H\033[2J", 7);
-  if (notice->color)
+  if (notice->color) {
+    ui_controller_write(STDERR_FILENO, "\033[1m", 4);
     ui_controller_write(STDERR_FILENO, notice_color(notice->severity), strlen(notice_color(notice->severity)));
+  }
   ui_controller_write(STDERR_FILENO, start, (size_t)(stop - start));
   if (notice->color)
     ui_controller_write(STDERR_FILENO, "\033[0m", 4);
@@ -202,7 +268,11 @@ bool ui_notice_confirm(ui_notice_severity_t severity, const char *text, unsigned
   ui_notice_severity_t previous = g_prompt_severity;
   g_prompt_severity = severity;
   if (terminal_can_prompt_user())
-    log_msg(severity >= UI_NOTICE_DANGER ? LOG_ERROR : LOG_WARN, __FILE__, __LINE__, __func__, "%s", text);
+    log_msg(severity == UI_NOTICE_FATAL     ? LOG_FATAL
+            : severity == UI_NOTICE_DANGER  ? LOG_ERROR
+            : severity == UI_NOTICE_WARNING ? LOG_WARN
+                                            : LOG_INFO,
+            __FILE__, __LINE__, __func__, "%s", text);
   else
     ui_notice_log(severity, __FILE__, __LINE__, __func__, "CONFIRMATION REQUIRED", "%s", text);
   bool accepted = platform_prompt_yes_no_timeout(text, false, timeout_seconds);

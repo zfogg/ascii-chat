@@ -264,7 +264,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
         mutex_unlock(&wrtc->queue_mutex);
         asciichat_error_context_t error;
         log_error("WebRTC peer handshake failed: %s",
-                  HAS_ERRNO(&error) ? error.context_message : asciichat_error_string(result));
+                  HAS_ERRNO(&error) ? error.context_message : asciichat_error_format(NULL, result));
         webrtc_abort(wrtc);
         return;
       }
@@ -300,7 +300,7 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     if (result != ASCIICHAT_OK) {
       buffer_release(envelope.allocated_buffer);
       mutex_unlock(&wrtc->queue_mutex);
-      log_error("WebRTC packet rejected: %s", asciichat_error_string(result));
+      log_error("WebRTC packet rejected: %s", asciichat_error_format(NULL, result));
       webrtc_abort(wrtc);
       return;
     }

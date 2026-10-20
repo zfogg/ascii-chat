@@ -277,7 +277,10 @@ keyboard_key_t ui_sync_handle_key(keyboard_key_t key) {
 }
 
 static const char *sync_rate_color(double rate) {
-  return rate >= 60 ? "\033[31m" : rate >= 10 ? "\033[33m" : rate > 0 ? "\033[32m" : "\033[34m";
+  return log_level_color(rate >= 60   ? LOG_COLOR_ERROR
+                         : rate >= 10 ? LOG_COLOR_WARN
+                         : rate > 0   ? LOG_COLOR_INFO
+                                      : LOG_COLOR_DEBUG);
 }
 
 static void sync_write_line(const char *text, int columns, bool newline, int *measured_width) {
@@ -368,7 +371,7 @@ void ui_sync_render(terminal_size_t size) {
     snprintf(line, sizeof(line), "Sync primitives | %zu objects | page %d/%d | sample age %.1fs", total, page + 1,
              pages, sampled ? (double)(now - sampled) / NS_PER_SEC_INT : 0.0);
     sync_write_line(line, size.cols, true, measure);
-    snprintf(line, sizeof(line), "%s%s | %zu mutexes in wait cycles%s", cycles ? "\033[31m" : "",
+    snprintf(line, sizeof(line), "%s%s | %zu mutexes in wait cycles%s", cycles ? log_level_color(LOG_COLOR_ERROR) : "",
              !sampled                         ? "Waiting for registry"
              : now - sampled > NS_PER_SEC_INT ? "STALE: collection unavailable"
                                               : "Live",

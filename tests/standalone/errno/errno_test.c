@@ -466,6 +466,59 @@ static void diagnostic_verbosity_contract(void) {
   log_set_level(LOG_WARN);
 }
 
+static void *formatted_error_worker(void *data) {
+  const char *name = data;
+  for (unsigned i = 0; i < 1000; ++i) {
+    const char *text = asciichat_error_format(name, ERROR_NETWORK);
+    platform_sleep_ns(1000);
+    CHECK(strncmp(text, name, strlen(name)) == 0);
+    CHECK(strstr(text, "(code=") != NULL);
+  }
+  return NULL;
+}
+
+static void formatted_error_contract(void) {
+  CHECK(strcmp(asciichat_error_format("Camera unavailable", ERROR_WEBCAM_IN_USE),
+               "Camera unavailable: Webcam in use by another application (code=21)") == 0);
+  CHECK(strcmp(asciichat_error_format(NULL, ERROR_WEBCAM_IN_USE), asciichat_error_format("", ERROR_WEBCAM_IN_USE)) ==
+        0);
+  const char *first = asciichat_error_format("100% complete %s %n", ERROR_INTERNAL);
+  char copy[ASCIICHAT_ERRNO_MESSAGE_MAX + 256];
+  snprintf(copy, sizeof(copy), "%s", first);
+  CHECK(strcmp(asciichat_error_format(first, ERROR_INTERNAL), copy) == 0);
+  CHECK(strstr(first, "100% complete %s %n") != NULL);
+  for (unsigned i = 0; i < 6; ++i)
+    (void)asciichat_error_format(NULL, ERROR_NETWORK);
+  CHECK(strcmp(first, copy) == 0);
+  char long_message[ASCIICHAT_ERRNO_MESSAGE_MAX * 2];
+  memset(long_message, 'x', sizeof(long_message) - 1);
+  long_message[sizeof(long_message) - 1] = '\0';
+  CHECK(strstr(asciichat_error_format(long_message, ERROR_WEBCAM_IN_USE), "(code=21)") != NULL);
+  CHECK(strstr(asciichat_error_format(NULL, (asciichat_error_t)9999), "(code=9999)") != NULL);
+  CHECK(strstr(asciichat_error_format(NULL, ASCIICHAT_OK), "(code=0)") != NULL);
+  CHECK(strcmp(asciichat_error_format(asciichat_error_string(ERROR_INTERNAL), ERROR_INTERNAL),
+               asciichat_error_format(NULL, ERROR_INTERNAL)) == 0);
+  for (int code = 0; code <= 115; ++code)
+    CHECK(strstr(asciichat_error_format(NULL, (asciichat_error_t)code),
+                 asciichat_error_string((asciichat_error_t)code)) != NULL);
+  char unicode_message[ASCIICHAT_ERRNO_MESSAGE_MAX + 8];
+  memset(unicode_message, 'x', ASCIICHAT_ERRNO_MESSAGE_MAX - 2);
+  memcpy(unicode_message + ASCIICHAT_ERRNO_MESSAGE_MAX - 2, "\xc3\xa9\xc3\xa9", 5);
+  CHECK(strstr(asciichat_error_format(unicode_message, ERROR_INTERNAL), "\xc3") == NULL);
+
+  SET_ERRNO(ERROR_INTERNAL, "%s", asciichat_error_format("100% complete %s %n", ERROR_INTERNAL));
+  asciichat_error_context_t context;
+  CHECK(HAS_ERRNO(&context));
+  CHECK(strstr(context.context_message, "100% complete %s %n") != NULL);
+  CHECK(GET_ERRNO() == ERROR_INTERNAL);
+  CLEAR_ERRNO();
+  asciichat_thread_t first_thread, second_thread;
+  CHECK(asciichat_thread_create(&first_thread, "format-a", formatted_error_worker, "first") == ASCIICHAT_OK);
+  CHECK(asciichat_thread_create(&second_thread, "format-b", formatted_error_worker, "second") == ASCIICHAT_OK);
+  CHECK(asciichat_thread_join(&first_thread, NULL) == ASCIICHAT_OK);
+  CHECK(asciichat_thread_join(&second_thread, NULL) == ASCIICHAT_OK);
+}
+
 int main(int argc, char **argv) {
   log_init(NULL, LOG_WARN, false, false);
   asciichat_errno_suppress(true);
@@ -485,6 +538,7 @@ int main(int argc, char **argv) {
   stack_contract();
   scopes_and_history();
   capacity_contract();
+  formatted_error_contract();
   cross_thread_contract();
   cross_thread_history_timing();
   concurrency_contract();

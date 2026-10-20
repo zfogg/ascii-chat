@@ -139,7 +139,7 @@ static void *discovery_audio_send_thread(void *user_data) {
     uint16_t frame_size = (uint16_t)size;
     asciichat_error_t result = acip_send_audio_opus_batch(ctx->transport, encoded, size, &frame_size, 1, 48000, 20);
     if (result != ASCIICHAT_OK) {
-      log_warn("Discovery audio send failed: %d", result);
+      log_warn("Discovery audio send failed %s", asciichat_error_format(NULL, result));
       atomic_store_bool(&ctx->running, false);
       break;
     }
@@ -268,7 +268,7 @@ static void on_discovery_error(asciichat_error_t error, const char *message, voi
   SAFE_STRNCPY(ui->error, message ? message : "Unknown discovery error", sizeof(ui->error));
   ui->error_code = error;
   mutex_unlock(&ui->mutex);
-  log_error("Discovery error (%d): %s", error, message ? message : "Unknown discovery error");
+  log_error("%s", asciichat_error_format(message ? message : "Unknown discovery error", error));
   signal_exit();
 }
 
@@ -342,7 +342,7 @@ role_dispatch:
     }
     result = discovery_session_process(g_discovery, 50 * NS_PER_MS_INT);
     if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
-      log_error("Discovery session process failed: %d", result);
+      log_error("Discovery session process failed %s", asciichat_error_format(NULL, result));
       return result;
     }
 
@@ -461,7 +461,7 @@ role_dispatch:
       asciichat_errno_scope_t process_scope = asciichat_errno_scope_begin();
       result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
       if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
-        log_error("Discovery session process failed: %d", result);
+        log_error("Discovery session process failed %s", asciichat_error_format(NULL, result));
         break;
       }
 
@@ -809,7 +809,7 @@ int discovery_main(void) {
   if (session_result != ASCIICHAT_OK || discovery_error[0]) {
     log_set_terminal_output(true);
     NOTICE(WARNING, "DISCOVERY FAILED", "Discovery failed: %s",
-           discovery_error[0] ? discovery_error : asciichat_error_string(session_result));
+           discovery_error[0] ? discovery_error : asciichat_error_format(NULL, session_result));
     if (session_result == ASCIICHAT_OK)
       session_result = discovery_error_code;
   }

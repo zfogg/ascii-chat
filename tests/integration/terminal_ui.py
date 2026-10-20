@@ -54,6 +54,7 @@ def check_capture_emulator():
 class Terminal:
     def __init__(self, argv, rows=12, cols=19, terminal_replies=False, code_page=65001):
         self.terminal_replies = terminal_replies
+        self.background_reply = "\x1b]11;rgb:0000/0000/0000\x1b\\"
         self.query_tail = ""
         self.screen = CaptureScreen(cols, rows)
         self.stream = CaptureStream(self.screen)
@@ -102,7 +103,7 @@ class Terminal:
                     query = "\x1b]11;?\x1b\\"
                     for _ in range(queries.count(query)):
                         try:
-                            self.write("\x1b]11;rgb:0000/0000/0000\x1b\\")
+                            self.write(self.background_reply)
                         except (EOFError, OSError):
                             # A queued query can outlive the exiting PTY child.
                             pass

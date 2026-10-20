@@ -3,6 +3,59 @@
 #include <string.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/platform/system.h>
+
+static atomic_t parser_guard = {0};
+static atomic_t background_rgb = {0};
+static atomic_t background_ns = {0};
+static keyboard_key_t deferred[1024];
+static unsigned deferred_head, deferred_count;
+static bool querying_background;
+
+static bool parser_try_lock(void) {
+  int expected = 0;
+  return atomic_cas_int_impl(&parser_guard, &expected, 1);
+}
+
+static void parser_unlock(void) {
+  atomic_store_int_impl(&parser_guard, 0);
+}
+
+static bool parse_background(const char *text, uint32_t *rgb) {
+  uint32_t value = 0;
+  for (unsigned channel = 0; channel < 3; ++channel) {
+    unsigned component = 0, digits = 0;
+    while (*text) {
+      unsigned digit;
+      if (*text >= '0' && *text <= '9')
+        digit = (unsigned)(*text - '0');
+      else if (*text >= 'a' && *text <= 'f')
+        digit = (unsigned)(*text - 'a' + 10);
+      else if (*text >= 'A' && *text <= 'F')
+        digit = (unsigned)(*text - 'A' + 10);
+      else
+        break;
+      if (++digits > 4)
+        return false;
+      component = component * 16 + digit;
+      ++text;
+    }
+    if (!digits)
+      return false;
+    if (channel < 2) {
+      if (*text++ != '/')
+        return false;
+    } else if (*text != 7 && !(*text == 27 && text[1] == '\\'))
+      return false;
+    if (digits == 1)
+      component *= 17;
+    else if (digits > 2)
+      component >>= 4 * (digits - 2);
+    value = (value << 8) | component;
+  }
+  *rgb = value;
+  return true;
+}
 
 static char sequence[128];
 static atomic_t terminal_reply_ns = {0};
@@ -19,13 +72,17 @@ static bool osc_escape;
 static keyboard_key_t queued_key;
 
 void keyboard_stream_reset(void) {
+  while (!parser_try_lock())
+    platform_sleep_ms(1);
+  deferred_head = deferred_count = 0;
   length = 0;
   pasting = false;
   pending_escape = discarding_osc = osc_escape = false;
   queued_key = KEY_NONE;
+  parser_unlock();
 }
 
-keyboard_key_t keyboard_stream_read(int (*read_byte)(void)) {
+static keyboard_key_t keyboard_stream_read_unlocked(int (*read_byte)(void)) {
   if (queued_key != KEY_NONE) {
     keyboard_key_t key = queued_key;
     queued_key = KEY_NONE;
@@ -95,7 +152,14 @@ keyboard_key_t keyboard_stream_read(int (*read_byte)(void)) {
       if (!strncmp(sequence, "\033]11;rgb:", 9)) {
         uint64_t completed_ns = time_get_ns();
         atomic_store_u64(&terminal_reply_ns, completed_ns);
-        log_debug("TERMINAL_REPLY: parse_ms=%.3f bytes=%zu", (double)(completed_ns - started) / NS_PER_MS_INT, length);
+        uint32_t rgb;
+        if (parse_background(sequence + 9, &rgb)) {
+          atomic_store_u64(&background_rgb, rgb);
+          atomic_store_u64(&background_ns, completed_ns);
+        }
+        if (!querying_background)
+          log_debug("TERMINAL_REPLY: parse_ms=%.3f bytes=%zu", (double)(completed_ns - started) / NS_PER_MS_INT,
+                    length);
       }
       length = 0;
       bool escape = pending_escape;
@@ -138,4 +202,64 @@ keyboard_key_t keyboard_stream_read(int (*read_byte)(void)) {
     return key;
   }
   return KEY_NONE;
+}
+
+keyboard_key_t keyboard_stream_read(int (*read_byte)(void)) {
+  if (!parser_try_lock())
+    return KEY_NONE;
+  keyboard_key_t key;
+  if (deferred_count) {
+    key = deferred[deferred_head];
+    deferred_head = (deferred_head + 1) % 1024;
+    --deferred_count;
+  } else {
+    key = keyboard_stream_read_unlocked(read_byte);
+  }
+  parser_unlock();
+  return key;
+}
+
+bool keyboard_stream_query_background(int (*read_byte)(void), bool (*send_query)(void), uint8_t *r, uint8_t *g,
+                                      uint8_t *b) {
+  if (!r || !g || !b || !read_byte || !send_query)
+    return false;
+  uint64_t deadline = time_get_ns() + 100 * NS_PER_MS_INT;
+  while (!parser_try_lock()) {
+    if (time_get_ns() >= deadline)
+      return false;
+    platform_sleep_ms(1);
+  }
+  uint64_t before = atomic_load_u64(&background_ns);
+  querying_background = true;
+  bool received = false;
+  if (deferred_count < 1024 && send_query()) {
+    do {
+      keyboard_key_t key = keyboard_stream_read_unlocked(read_byte);
+      if (key != KEY_NONE)
+        deferred[(deferred_head + deferred_count++) % 1024] = key;
+      if (atomic_load_u64(&background_ns) > before) {
+        uint64_t rgb = atomic_load_u64(&background_rgb);
+        *r = (uint8_t)(rgb >> 16);
+        *g = (uint8_t)(rgb >> 8);
+        *b = (uint8_t)rgb;
+        received = true;
+        break;
+      }
+      if (key == KEY_NONE)
+        platform_sleep_ms(1);
+    } while (deferred_count < 1024 && time_get_ns() < deadline);
+  }
+  querying_background = false;
+  parser_unlock();
+  return received;
+}
+
+bool keyboard_stream_background(uint8_t *r, uint8_t *g, uint8_t *b) {
+  if (!atomic_load_u64(&background_ns))
+    return false;
+  uint64_t rgb = atomic_load_u64(&background_rgb);
+  *r = (uint8_t)(rgb >> 16);
+  *g = (uint8_t)(rgb >> 8);
+  *b = (uint8_t)rgb;
+  return true;
 }

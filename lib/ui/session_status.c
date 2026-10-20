@@ -24,7 +24,7 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   int uptime_secs_rem = uptime_secs % 60;
 
   // Line 1: Top border
-  frame_buffer_printf(buf, "\033[1;36m━");
+  frame_buffer_printf(buf, "\033[1m%s━", log_level_color(LOG_COLOR_DEBUG));
   for (int i = 1; i < term_size.cols - 1; i++) {
     frame_buffer_printf(buf, "━");
   }
@@ -44,7 +44,8 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
 
   // Truncate if needed (ANSI-aware)
   truncate_with_ellipsis(status_line, status_line_truncated, sizeof(status_line_truncated), term_size.cols - 2);
-  snprintf(status_line_colored, sizeof(status_line_colored), "\033[1;36m%s\033[0m", status_line_truncated);
+  snprintf(status_line_colored, sizeof(status_line_colored), "\033[1m%s%s\033[0m", log_level_color(LOG_COLOR_DEBUG),
+           status_line_truncated);
 
   int padding = display_center_horizontal(status_line_truncated, term_size.cols);
   for (int i = 0; i < padding; i++) {
@@ -99,7 +100,7 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   frame_buffer_printf(buf, "%s\n", addr_line_truncated);
 
   // Line 4: Bottom border
-  frame_buffer_printf(buf, "\033[1;36m━");
+  frame_buffer_printf(buf, "\033[1m%s━", log_level_color(LOG_COLOR_DEBUG));
   for (int i = 1; i < term_size.cols - 1; i++) {
     frame_buffer_printf(buf, "━");
   }

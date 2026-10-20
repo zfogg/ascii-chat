@@ -443,7 +443,7 @@ void splash_wait_for_animation(void) {
   // The monitor clears is_running after retiring its presentation snapshot.
   asciichat_error_t err = asciichat_thread_join(&g_splash_state.monitor_thread, NULL);
   if (err != ASCIICHAT_OK) {
-    log_warn("Splash animation join failed: %s", asciichat_error_string(err));
+    log_warn("Splash animation join failed: %s", asciichat_error_format(NULL, err));
     return;
   }
   atomic_store_bool(&g_splash_state.thread_created, false);

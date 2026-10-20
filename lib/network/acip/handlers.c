@@ -739,7 +739,8 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
   asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
 
   if (result != ASCIICHAT_OK) {
-    log_error("❌ [HANDLER_ERROR] Handler failed: type=%d (%s), result=%d", type, g_packet_type_name(type), result);
+    log_error("❌ [HANDLER_ERROR] Handler failed: type=%d (%s), result=%s", type, g_packet_type_name(type),
+              asciichat_error_format(NULL, result));
   } else {
     log_dev("HANDLER_COMPLETE: type=%d (%s), payload=%zu bytes", type, g_packet_type_name(type), payload_len);
   }

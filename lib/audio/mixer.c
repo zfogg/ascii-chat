@@ -382,7 +382,7 @@ int mixer_add_source(mixer_t *mixer, const char *client_id, audio_ring_buffer_t 
   }
   asciichat_error_t strcpy_result = SAFE_STRCPY((char *)mixer->source_ids[slot], client_id_len, client_id);
   if (strcpy_result != ASCIICHAT_OK) {
-    log_error("Mixer: Failed to copy client_id: %s", asciichat_error_string(strcpy_result));
+    log_error("Mixer: Failed to copy client_id: %s", asciichat_error_format(NULL, strcpy_result));
     SAFE_FREE(mixer->source_ids[slot]);
     mixer->source_buffers[slot] = NULL;
     rwlock_wrunlock(&mixer->source_lock);

@@ -309,7 +309,7 @@ static void stream_read(platform_event_stream_t *stream, const void *data, size_
 }
 static void stream_closed(void *arg, asciichat_error_t reason) {
   network_connection_t *c = arg;
-  log_debug("TCP connection %s closed: %s", c->peer, asciichat_error_string(reason));
+  log_debug("TCP connection %s closed: %s", c->peer, asciichat_error_format(NULL, reason));
   c->result = reason;
   acip_async_tcp_transport_detach(c->transport);
   c->stream = NULL;
@@ -376,7 +376,7 @@ static void *connection_receive(void *arg) {
     buffer_release(allocation);
     asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
-  log_debug("Connection %s receive stopped: %s", c->peer, asciichat_error_string(result));
+  log_debug("Connection %s receive stopped: %s", c->peer, asciichat_error_format(NULL, result));
   acip_transport_close(c->transport);
   c->result = result;
   if (c->server) {

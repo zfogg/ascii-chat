@@ -86,7 +86,29 @@ typedef struct {
   const char *codes_16[8];        /**< Array of 16-color ANSI code strings */
   const char *codes_256[8];       /**< Array of 256-color ANSI code strings */
   const char *codes_truecolor[8]; /**< Array of 24-bit truecolor ANSI code strings */
+  char foreground_16[16];         /**< Scheme neutral text color, not an ANSI reset */
+  char foreground_256[24];
+  char foreground_truecolor[32];
 } compiled_color_scheme_t;
+
+/** A caller-owned palette: no shared string lifetime or allocation. */
+typedef struct {
+  char codes[8][32];
+  char foreground[32];
+  terminal_background_t background;
+} colorscheme_palette_t;
+
+/** Resolve the active scheme and current terminal theme/depth.
+ * Queries are asynchronous and coalesced across threads for 250ms. The
+ * returned palette uses the latest decoded reply and never waits for input.
+ * Terminal replies and ordinary keyboard input share the keyboard decoder.
+ */
+void colorscheme_current_palette(colorscheme_palette_t *palette, terminal_color_mode_t mode);
+terminal_background_t colorscheme_current_background(void);
+/** Theme-adaptive neutral search highlight, with contrast against the last RGB reply. */
+uint8_t colorscheme_highlight_background(void);
+/** Publish a complete scheme for all logging and UI consumers. */
+void colorscheme_apply(const color_scheme_t *scheme);
 
 /* ============================================================================
  * Color System API

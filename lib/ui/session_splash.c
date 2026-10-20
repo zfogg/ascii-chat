@@ -19,7 +19,7 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
   }
 
   const char *tagline = "Video chat in your terminal";
-  frame_buffer_render_border(buf, term_size.cols, "\033[1;36m");
+  frame_buffer_render_border(buf, term_size.cols, log_level_color(LOG_COLOR_DEBUG));
   invitation_render_logo(buf, term_size.cols - 1, (int)(ctx->animation.seconds * 60), ctx->use_colors, false);
 
   // Line 6: Tagline (centered, truncated if too long)
@@ -103,5 +103,5 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
   frame_buffer_printf(buf, "%s\n", plain_connection);
 
   // Line 9 (or 8 if no update): Bottom border
-  frame_buffer_render_border(buf, term_size.cols, "\033[1;36m");
+  frame_buffer_render_border(buf, term_size.cols, log_level_color(LOG_COLOR_DEBUG));
 }

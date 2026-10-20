@@ -19,6 +19,7 @@
 #include "session/render.h"
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/options/options.h>
@@ -65,7 +66,6 @@ typedef struct session_display_ctx {
 
   /** @brief Detected terminal capabilities */
   terminal_capabilities_t caps;
-  int visualization_color_mode;
 
   /** @brief Palette character string for rendering */
   char palette_chars[256];
@@ -162,7 +162,7 @@ asciichat_error_t session_display_init_render_file(session_display_ctx_t *ctx, u
   asciichat_error_t err =
       render_file_create(render_file_opt, width, height, (int)encoder_fps, GET_OPTION(render_theme), &ctx->render_file);
   if (err != ASCIICHAT_OK) {
-    log_error("render-file: Failed to create encoder with error %d", err);
+    log_error("render-file: Failed to create encoder %s", asciichat_error_format(NULL, err));
     return err;
   }
 
@@ -231,9 +231,6 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
 
   // Detect terminal capabilities
   ctx->caps = detect_terminal_capabilities();
-  // Resolve the theme before rendering; OSC queries consume terminal input.
-  ctx->visualization_color_mode =
-      terminal_has_dark_background() ? AUDIO_VISUALIZATION_COLOR_BRIGHTER : AUDIO_VISUALIZATION_COLOR_DARKER;
 
   // Set wants_padding based on terminal output mode
   // Enable padding for all rendering modes (including snapshot) to center output
@@ -320,7 +317,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   if (!config->defer_render_file) {
     asciichat_error_t render_err = session_display_init_render_file(ctx, config->render_fps);
     if (render_err != ASCIICHAT_OK) {
-      log_error("render-file: Initialization failed with error %d", render_err);
+      log_error("render-file: Initialization failed %s", asciichat_error_format(NULL, render_err));
     }
   }
 
@@ -722,7 +719,8 @@ static char *session_display_create_visualization_frame(session_display_ctx_t *c
   unsigned int width = terminal_get_effective_width();
   unsigned int height = terminal_get_effective_height();
   bool use_color = ctx->caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
-  int color_mode = ctx->visualization_color_mode;
+  int color_mode = colorscheme_current_background() == TERM_BACKGROUND_DARK ? AUDIO_VISUALIZATION_COLOR_BRIGHTER
+                                                                            : AUDIO_VISUALIZATION_COLOR_DARKER;
   audio_source_t selected_audio = GET_OPTION(audio_source);
   audio_visualization_source_t visual_source = AUDIO_VISUALIZATION_SOURCE_MIX;
   if (selected_audio == AUDIO_SOURCE_MEDIA)
@@ -761,7 +759,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     render_file_set_live_timing(ctx->render_file);
     asciichat_error_t err = render_file_write_frame(ctx->render_file, render_frame, time_get_ns());
     if (err != ASCIICHAT_OK)
-      log_warn_every(5 * US_PER_SEC_INT, "Recording received frame failed: %s", asciichat_error_string(err));
+      log_warn_every(5 * US_PER_SEC_INT, "Recording received frame failed: %s", asciichat_error_format(NULL, err));
   }
   SAFE_FREE(visualization_frame);
   session_display_write_ascii(ctx, frame_data);
@@ -841,7 +839,7 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
       display_frame = zalgo_frame;
       frame_len = strlen(zalgo_frame);
     } else {
-      log_warn_every(5 * US_PER_SEC_INT, "Cannot apply Zalgo: %s", asciichat_error_string(err));
+      log_warn_every(5 * US_PER_SEC_INT, "Cannot apply Zalgo: %s", asciichat_error_format(NULL, err));
     }
   }
 
@@ -1044,7 +1042,7 @@ asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RECORDING_FRAMES, 1);
   SAFE_FREE(visualization_frame);
   if (fe != ASCIICHAT_OK) {
-    log_warn_every(5 * US_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
+    log_warn_every(5 * US_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_format(NULL, fe));
   }
 
   SAFE_FREE(ascii);

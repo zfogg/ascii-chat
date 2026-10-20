@@ -746,7 +746,7 @@ static void ssh_private_key_cache_in_agent(const char *key_path, const private_k
     log_debug("Successfully added key to ssh-agent - password will not be required on next run");
   } else {
     // Non-fatal: key is already decrypted and loaded, just won't be cached in agent
-    log_warn("Failed to add key to ssh-agent (non-fatal): %s", asciichat_error_string(agent_result));
+    log_warn("Failed to add key to ssh-agent (non-fatal): %s", asciichat_error_format(NULL, agent_result));
     log_warn("You can manually add it with: ssh-add %s", key_path);
   }
 }

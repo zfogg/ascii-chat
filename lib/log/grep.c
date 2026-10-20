@@ -14,6 +14,7 @@
  */
 
 #include <ascii-chat/log/grep.h>
+#include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/lifecycle.h>
@@ -32,32 +33,6 @@
 #else
 #include <sched.h>
 #endif
-
-/**
- * @brief Highlight colors that adapt to terminal theme
- *
- * Highlight colors are chosen based on the detected terminal theme:
- * - Dark theme: Dark grey (70) provides subtle highlighting on dark backgrounds
- * - Light theme: Light grey (200) provides subtle highlighting on light backgrounds
- */
-#define HIGHLIGHT_DARK_BG 70   // Dark grey for dark theme backgrounds
-#define HIGHLIGHT_LIGHT_BG 200 // Light grey for light theme backgrounds
-
-/**
- * @brief Minimum color difference threshold (0-255 scale)
- *
- * If the background color is too close to the highlight color (within this distance),
- * use high-contrast black or white instead for readability.
- */
-#define MIN_HIGHLIGHT_DISTANCE 40
-
-/**
- * @brief Calculate luminance from RGB (0-255 scale)
- * Uses ITU-R BT.709 formula for relative luminance
- */
-static inline float calculate_luminance(uint8_t r, uint8_t g, uint8_t b) {
-  return (0.2126f * r + 0.7152f * g + 0.0722f * b) / 255.0f;
-}
 
 /**
  * @brief Single filter pattern with all its settings
@@ -98,9 +73,6 @@ static struct {
   int saved_pattern_capacity;     ///< Allocated capacity for saved
   bool saved_enabled;             ///< Saved enabled state
 
-  // Cached highlight color (avoid querying terminal every render)
-  uint8_t cached_highlight_r, cached_highlight_g, cached_highlight_b;
-  uint64_t last_color_query_us;
 } g_filter_state = {
     .patterns = NULL,
     .pattern_count = 0,
@@ -116,10 +88,6 @@ static struct {
     .saved_pattern_count = 0,
     .saved_pattern_capacity = 0,
     .saved_enabled = false,
-    .cached_highlight_r = 70,
-    .cached_highlight_g = 70,
-    .cached_highlight_b = 70,
-    .last_color_query_us = 0,
 };
 
 /**
@@ -138,66 +106,9 @@ static void create_match_data_key(void) {
   ascii_tls_key_create(&g_filter_state.match_data_key, destroy_match_data);
 }
 
-/**
- * @brief Get highlight color that adapts to terminal theme (with caching)
- *
- * Determines the best highlight color based on the detected terminal theme
- * (dark or light background). Caches results to avoid terminal I/O on every
- * render, which would interfere with keyboard input during interactive grep.
- * Theme detection is cached and refreshed every 2 seconds.
- */
+/** Resolve search highlighting through the shared live theme service. */
 static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
-  // Get current time for cache validation
-  uint64_t now_us = platform_get_monotonic_time_us();
-  uint64_t cache_age_us = now_us - g_filter_state.last_color_query_us;
-
-  // Use cached color if recent (refresh every 2 seconds)
-  if (cache_age_us < 2 * US_PER_SEC_INT) {
-    *r = g_filter_state.cached_highlight_r;
-    *g = g_filter_state.cached_highlight_g;
-    *b = g_filter_state.cached_highlight_b;
-    return;
-  }
-
-  // Query terminal color (only every 2 seconds)
-  // Note: Skip querying during interactive grep mode to avoid PTY state issues
-  // that can cause spurious ESC bytes in stdin
-  uint8_t bg_r = 0, bg_g = 0, bg_b = 0;
-  bool has_bg_color = log_search_is_active() ? false : terminal_query_background_color(&bg_r, &bg_g, &bg_b);
-
-  bool is_dark;
-  if (has_bg_color) {
-    // Calculate luminance from actual background color
-    float luminance = calculate_luminance(bg_r, bg_g, bg_b);
-    is_dark = (luminance < 0.5f); // Dark if luminance < 50%
-  } else {
-    // Fall back to heuristic detection
-    is_dark = terminal_has_dark_background();
-  }
-
-  // Choose highlight: dark bg = dark highlight, light bg = light highlight
-  uint8_t grey = is_dark ? HIGHLIGHT_DARK_BG : HIGHLIGHT_LIGHT_BG;
-
-  // If we have the actual background color, check if it's too close to our grey
-  if (has_bg_color) {
-    uint8_t bg_grey = (uint8_t)((bg_r + bg_g + bg_b) / 3);
-    int distance = abs((int)bg_grey - (int)grey);
-
-    // If background is too close to our grey, use black/white for maximum contrast
-    if (distance < MIN_HIGHLIGHT_DISTANCE) {
-      grey = is_dark ? 0 : 255; // Black for dark terminals, white for light
-    }
-  }
-
-  // Cache the result
-  g_filter_state.cached_highlight_r = grey;
-  g_filter_state.cached_highlight_g = grey;
-  g_filter_state.cached_highlight_b = grey;
-  g_filter_state.last_color_query_us = now_us;
-
-  *r = grey;
-  *g = grey;
-  *b = grey;
+  *r = *g = *b = colorscheme_highlight_background();
 }
 
 /**

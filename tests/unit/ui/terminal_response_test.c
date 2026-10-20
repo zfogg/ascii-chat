@@ -109,3 +109,59 @@ Test(terminal_response, terminator_at_buffer_boundary_preserves_next_key) {
   }
   cr_assert_eq(key, 'o');
 }
+
+static const char *query_reply;
+static bool send_test_query(void) {
+  input = query_reply;
+  return true;
+}
+
+Test(terminal_response, background_queries_refresh_and_preserve_shortcuts) {
+  keyboard_stream_reset();
+  const char *replies[] = {"o\033]11;rgb:ffff/ffff/ffff\033\\q", "o\033]11;rgb:00/00/00\aq", "o\033]11;rgb:f/f/f\aq",
+                           "o\033]11;rgb:0000/0000/0000\aq"};
+  for (unsigned i = 0; i < 4; ++i) {
+    query_reply = replies[i];
+    uint8_t r, g, b;
+    cr_assert(keyboard_stream_query_background(next_byte, send_test_query, &r, &g, &b));
+    cr_assert_eq(r, i % 2 ? 0 : 255);
+    cr_assert_eq(g, r);
+    cr_assert_eq(b, r);
+    cr_assert_eq(keyboard_stream_read(next_byte), 'o');
+    cr_assert_eq(keyboard_stream_read(next_byte), 'q');
+  }
+}
+
+Test(terminal_response, background_query_timeout_does_not_reuse_a_previous_reply) {
+  keyboard_stream_reset();
+  uint8_t r = 12, g = 34, b = 56;
+  query_reply = "\033]11;rgb:ffff/ffff/ffff\a";
+  cr_assert(keyboard_stream_query_background(next_byte, send_test_query, &r, &g, &b));
+  query_reply = "o\033]11;rgb:invalid/0000/0000\a";
+  r = 12;
+  g = 34;
+  b = 56;
+  cr_assert_not(keyboard_stream_query_background(next_byte, send_test_query, &r, &g, &b));
+  cr_assert_eq(r, 12);
+  cr_assert_eq(g, 34);
+  cr_assert_eq(b, 56);
+  cr_assert_eq(keyboard_stream_read(next_byte), 'o');
+}
+
+Test(terminal_response, background_snapshot_never_consumes_shortcuts) {
+  keyboard_stream_reset();
+  input = "\033]11;rgb:12/34/56\ao";
+  uint8_t r = 0, g = 0, b = 0;
+  // Reading the snapshot cannot consume even a complete pending reply.
+  keyboard_stream_background(&r, &g, &b);
+  cr_assert_eq(keyboard_stream_read(next_byte), KEY_NONE);
+  cr_assert_eq(keyboard_stream_read(next_byte), 'o');
+  cr_assert(keyboard_stream_background(&r, &g, &b));
+  cr_assert_eq(r, 0x12);
+  cr_assert_eq(g, 0x34);
+  cr_assert_eq(b, 0x56);
+  input = "q";
+  for (unsigned i = 0; i < 10; ++i)
+    cr_assert(keyboard_stream_background(&r, &g, &b));
+  cr_assert_eq(keyboard_stream_read(next_byte), 'q');
+}

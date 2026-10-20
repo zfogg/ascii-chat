@@ -5,7 +5,13 @@
 #include <ascii-chat/ui/frame_buffer.h>
 #include <stdbool.h>
 
-typedef enum { UI_NOTICE_INFO, UI_NOTICE_WARNING, UI_NOTICE_DANGER, UI_NOTICE_FATAL } ui_notice_severity_t;
+typedef enum {
+  UI_NOTICE_INFO,
+  UI_NOTICE_WARNING,
+  UI_NOTICE_DANGER,
+  UI_NOTICE_FATAL,
+  UI_NOTICE_SUCCESS
+} ui_notice_severity_t;
 
 /** Append a complete box, or measure it when buffer is NULL. Returns its row count.
  * Text is plain UTF-8. Terminal control characters are made visible, never executed.

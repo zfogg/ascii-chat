@@ -184,7 +184,8 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
   log_info("[WS_TIMING] Handler for type=%d took %s (result=%d)", envelope.type, handler_duration_str, dispatch_result);
 
   if (dispatch_result != ASCIICHAT_OK) {
-    log_error("❌ [FRAME_DISPATCH_FAILED] Handler returned error for type=%d: %d", envelope.type, dispatch_result);
+    log_error("❌ [FRAME_DISPATCH_FAILED] Handler returned error for type=%d: %s", envelope.type,
+              asciichat_error_format(NULL, dispatch_result));
   } else {
     log_info("✅ [FRAME_DISPATCH_SUCCESS] Handler completed successfully for type=%d", envelope.type);
   }

@@ -1,3 +1,4 @@
+#include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/buffer.h>
 /**
  * @file media/render/renderer.c
@@ -77,7 +78,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   double font_size_pt = GET_OPTION(render_font_size);
   term_renderer_theme_t resolved_theme = (term_renderer_theme_t)theme;
   if (resolved_theme == TERM_RENDERER_THEME_AUTO) {
-    resolved_theme = terminal_has_dark_background() ? TERM_RENDERER_THEME_DARK : TERM_RENDERER_THEME_LIGHT;
+    resolved_theme =
+        colorscheme_current_background() == TERM_BACKGROUND_DARK ? TERM_RENDERER_THEME_DARK : TERM_RENDERER_THEME_LIGHT;
     log_debug("auto theme resolved to %s", resolved_theme == TERM_RENDERER_THEME_DARK ? "dark" : "light");
   }
 
@@ -94,7 +96,7 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 
   asciichat_error_t err = term_renderer_create(&tr_cfg, &ctx->renderer);
   if (err != ASCIICHAT_OK) {
-    log_error("term_renderer_create failed: %s", asciichat_error_string(err));
+    log_error("term_renderer_create failed: %s", asciichat_error_format(NULL, err));
     SAFE_FREE(ctx);
     return err;
   }
@@ -105,7 +107,7 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 
   err = ffmpeg_encoder_create(output_path, actual_width_px, actual_height_px, fps, &ctx->encoder);
   if (err != ASCIICHAT_OK) {
-    log_error("ffmpeg_encoder_create failed: %s", asciichat_error_string(err));
+    log_error("ffmpeg_encoder_create failed: %s", asciichat_error_format(NULL, err));
     term_renderer_destroy(ctx->renderer);
     SAFE_FREE(ctx);
     return err;
@@ -176,7 +178,7 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
 
   asciichat_error_t err = term_renderer_feed(ctx->renderer, ansi_frame, frame_len);
   if (err != ASCIICHAT_OK) {
-    log_warn("term_renderer_feed failed: %s", asciichat_error_string(err));
+    log_warn("term_renderer_feed failed: %s", asciichat_error_format(NULL, err));
     return err;
   }
 
@@ -213,7 +215,7 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
 
   err = ffmpeg_encoder_write_frame(ctx->encoder, pixels_copy, pitch, captured_ns);
   if (err != ASCIICHAT_OK) {
-    log_warn("ffmpeg_encoder_write_frame failed: %s", asciichat_error_string(err));
+    log_warn("ffmpeg_encoder_write_frame failed: %s", asciichat_error_format(NULL, err));
   }
 
   // The encoder consumes the view synchronously; retain storage for the next frame.

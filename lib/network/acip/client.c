@@ -67,7 +67,7 @@ asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet
       log_debug("[ACIP_RECV] Receive timed out while waiting for signaling data");
     } else {
       stats_runtime_packet(transport->stats_peer, 0, 0, false, false);
-      log_error("[ACIP_RECV] ❌ RECV_FAILED: error code %d", recv_result);
+      log_error("[ACIP_RECV] ❌ RECV_FAILED: %s", asciichat_error_format(NULL, recv_result));
     }
     if (allocated_buffer)
       buffer_release(allocated_buffer);
@@ -210,7 +210,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
   log_dev("[ACIP_SEND_H265_4] h265_encode returned: %d, encoded_size=%zu", encode_result, encoded_size);
 
   if (encode_result != ASCIICHAT_OK) {
-    log_error("H.265 encoding failed: %s", asciichat_error_string(encode_result));
+    log_error("H.265 encoding failed: %s", asciichat_error_format(NULL, encode_result));
     buffer_release(output_buffer);
     return encode_result;
   }

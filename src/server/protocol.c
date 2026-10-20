@@ -978,7 +978,8 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
                                                                    &frame_width, &frame_height, &rgba_size);
 
   if (decode_result != ASCIICHAT_OK) {
-    log_error("H.265 decoding failed for client %s: %s", client->client_id, asciichat_error_string(decode_result));
+    log_error("H.265 decoding failed for client %s: %s", client->client_id,
+              asciichat_error_format(NULL, decode_result));
     SAFE_FREE(rgba_buf);
     disconnect_client_for_bad_data(client, "H.265 frame decode error");
     return;
@@ -1063,7 +1064,7 @@ void handle_audio_packet(client_info_t *client, const void *data, size_t len) {
   const float *samples = (const float *)data;
   asciichat_error_t result = audio_ring_buffer_write(client->incoming_audio_buffer, samples, num_samples);
   if (result != ASCIICHAT_OK) {
-    log_error("Failed to write audio samples to buffer: %s", asciichat_error_string(result));
+    log_error("Failed to write audio samples to buffer: %s", asciichat_error_format(NULL, result));
   }
 }
 
@@ -1234,7 +1235,7 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   if (client->incoming_audio_buffer) {
     asciichat_error_t write_result = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
     if (write_result != ASCIICHAT_OK) {
-      log_error("Failed to write decoded audio batch to buffer: %s", asciichat_error_string(write_result));
+      log_error("Failed to write decoded audio batch to buffer: %s", asciichat_error_format(NULL, write_result));
     }
   }
 
@@ -1414,7 +1415,8 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   if (client->incoming_audio_buffer && total_decoded > 0) {
     asciichat_error_t result = audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, total_decoded);
     if (result != ASCIICHAT_OK) {
-      log_error("Client %s: Failed to write decoded audio to buffer: %d", client->client_id, result);
+      log_error("Client %s: Failed to write decoded audio to buffer: %s", client->client_id,
+                asciichat_error_format(NULL, result));
     }
   }
 
@@ -1511,7 +1513,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
     asciichat_error_t write_result =
         audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, decoded_count);
     if (write_result != ASCIICHAT_OK) {
-      log_error("Failed to write decoded Opus samples to buffer: %s", asciichat_error_string(write_result));
+      log_error("Failed to write decoded Opus samples to buffer: %s", asciichat_error_format(NULL, write_result));
     }
   }
 }

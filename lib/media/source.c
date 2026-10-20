@@ -248,8 +248,8 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     asciichat_error_t webcam_error = webcam_init_context(&source->webcam_ctx, index);
     if (webcam_error != ASCIICHAT_OK) {
       // Webcam init failed - log and cleanup
-      NOTICE(WARNING, "CAMERA UNAVAILABLE", "Failed to initialize webcam device %u (error code: %d)", index,
-             webcam_error);
+      NOTICE(WARNING, "CAMERA UNAVAILABLE", "Failed to initialize webcam device %u: %s", index,
+             asciichat_error_format(NULL, webcam_error));
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
       mutex_destroy(&source->pause_mutex);
@@ -289,7 +289,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     log_debug("Resolving URL: %s", path);
     asciichat_error_t resolve_err = media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url));
     if (resolve_err != ASCIICHAT_OK) {
-      log_debug("Failed to resolve URL (error: %d)", resolve_err);
+      log_debug("Failed to resolve URL %s", asciichat_error_format(NULL, resolve_err));
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
       mutex_destroy(&source->pause_mutex);
@@ -333,7 +333,8 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     if (!source->video_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: video decoder could not open input");
       if (!cancel)
-        NOTICE(WARNING, "MEDIA COULD NOT BE OPENED", "Failed to open media file for video: %s", effective_path);
+        NOTICE(WARNING, "MEDIA COULD NOT BE OPENED", "Failed to open media file for video: %s: %s", effective_path,
+               asciichat_error_format(NULL, ERROR_MEDIA_OPEN));
       LOG_ERRNO_IF_SET("Media initialization failed");
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
@@ -354,7 +355,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
                                          ? ffmpeg_decoder_start_prefetch(source->video_decoder)
                                          : ASCIICHAT_OK;
     if (prefetch_err != ASCIICHAT_OK) {
-      log_error("Failed to start video prefetch thread: %s", asciichat_error_string(prefetch_err));
+      log_error("Failed to start video prefetch thread: %s", asciichat_error_format(NULL, prefetch_err));
       ffmpeg_decoder_destroy(source->video_decoder);
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
@@ -412,7 +413,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
                                          ? ffmpeg_decoder_start_prefetch(source->video_decoder)
                                          : ASCIICHAT_OK;
     if (prefetch_err != ASCIICHAT_OK) {
-      log_error("Failed to start stdin video prefetch thread: %s", asciichat_error_string(prefetch_err));
+      log_error("Failed to start stdin video prefetch thread: %s", asciichat_error_format(NULL, prefetch_err));
       ffmpeg_decoder_destroy(source->video_decoder);
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
@@ -948,7 +949,8 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     char video_seek_str[32];
     time_pretty(video_seek_ns, -1, video_seek_str, sizeof(video_seek_str));
     if (video_err != ASCIICHAT_OK) {
-      log_warn("Video seek to %.2f failed: error code %d (took %s)", timestamp_sec, video_err, video_seek_str);
+      log_warn("Video seek to %.2f failed %s (took %s)", timestamp_sec, asciichat_error_format(NULL, video_err),
+               video_seek_str);
       result = video_err;
     } else {
       log_debug("Video SEEK: %.2f Ã¢â€ â€™ %.2f sec (target %.2f, took %s)", video_pos_before, video_pos_after,
@@ -969,7 +971,8 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     char audio_seek_str[32];
     time_pretty(audio_seek_ns, -1, audio_seek_str, sizeof(audio_seek_str));
     if (audio_err != ASCIICHAT_OK) {
-      log_warn("Audio seek to %.2f failed: error code %d (took %s)", timestamp_sec, audio_err, audio_seek_str);
+      log_warn("Audio seek to %.2f failed %s (took %s)", timestamp_sec, asciichat_error_format(NULL, audio_err),
+               audio_seek_str);
       result = audio_err;
     } else {
       log_debug("Audio SEEK COMPLETE: %.2f Ã¢â€ â€™ %.2f sec (target %.2f, took %s)", audio_pos_before, audio_pos_after,

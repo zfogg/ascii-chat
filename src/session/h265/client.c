@@ -90,7 +90,7 @@ asciichat_error_t h265_client_init_media_source(h265_client_context_t *ctx, h265
     }
     asciichat_error_t strcpy_result = SAFE_STRCPY(ctx->source_location, source_len, source_location);
     if (strcpy_result != ASCIICHAT_OK) {
-      log_error("Failed to copy source location string: %s", asciichat_error_string(strcpy_result));
+      log_error("Failed to copy source location string: %s", asciichat_error_format(NULL, strcpy_result));
       SAFE_FREE(ctx->source_location);
       return strcpy_result;
     }

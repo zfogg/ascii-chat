@@ -370,6 +370,12 @@ const char *log_level_color(log_color_t color);
  */
 const char **log_get_color_array(void);
 
+/** Theme- and capability-aware neutral text color from the active scheme. */
+const char *log_get_foreground_color(void);
+
+/** Current detected terminal color depth, shared by UI components. */
+int log_get_color_mode(void);
+
 /**
  * @brief Re-detect terminal capabilities after logging is initialized
  *

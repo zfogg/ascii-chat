@@ -198,10 +198,11 @@ static void stats_render(terminal_size_t size, const void *data) {
   if (!buffer)
     return;
   frame_buffer_cursor_home(buffer);
-  frame_buffer_printf(buffer, "\033[1;36m  ASCII-CHAT / %-20s  LIVE STATS\033[0m\033[K\n", view->mode);
+  frame_buffer_printf(buffer, "\033[1m%s  ASCII-CHAT / %-20s  LIVE STATS\033[0m\033[K\n",
+                      log_level_color(LOG_COLOR_DEBUG), view->mode);
   frame_buffer_printf(buffer, "  %s\033[K\n",
                       view->page ? "CONNECTIONS & MODE DETAILS" : "OVERVIEW / rates over ~1 second");
-  frame_buffer_render_border(buffer, size.cols, "\033[36m");
+  frame_buffer_render_border(buffer, size.cols, log_level_color(LOG_COLOR_DEBUG));
   unsigned available = size.rows > 6 ? (unsigned)size.rows - 6 : 0;
   unsigned remaining = view->offset < view->count ? view->count - view->offset : 0;
   unsigned visible = remaining < available ? remaining : available;
@@ -217,7 +218,7 @@ static void stats_render(terminal_size_t size, const void *data) {
     frame_buffer_printf(buffer, "%*s%s%.*s\033[0m\033[K\n", left, "",
                         view->page && index == view->selected ? "\033[7m" : "", (int)width, view->lines[index]);
   }
-  frame_buffer_render_border(buffer, size.cols, "\033[36m");
+  frame_buffer_render_border(buffer, size.cols, log_level_color(LOG_COLOR_DEBUG));
   char footer[160];
   stats_footer(view, footer, sizeof(footer));
   frame_buffer_printf(buffer, "  %.*s\033[K", size.cols - 3, footer);

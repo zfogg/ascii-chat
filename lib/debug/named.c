@@ -45,7 +45,7 @@ static char *entry_strdup(const char *s) {
   if (dup) {
     asciichat_error_t strcpy_result = SAFE_STRCPY(dup, len, s);
     if (strcpy_result != ASCIICHAT_OK) {
-      log_error("Failed to duplicate string: %s", asciichat_error_string(strcpy_result));
+      log_error("Failed to duplicate string: %s", asciichat_error_format(NULL, strcpy_result));
       free(dup);
       return NULL;
     }

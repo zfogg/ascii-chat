@@ -132,7 +132,7 @@ static void monitor_host_migrations(acds_server_t *server, uint64_t migration_ti
     if (still_migrating)
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
     if (result != ASCIICHAT_OK) {
-      log_warn("Failed to clear host for timed-out migration: %s", asciichat_error_string(result));
+      log_warn("Failed to clear host for timed-out migration: %s", asciichat_error_format(NULL, result));
     }
 
     // Remove this migration from tracking (shift remaining entries down)
@@ -175,7 +175,7 @@ static void *cleanup_thread_func(void *arg) {
       for (acds_handoff_entry_t *entry = server->handoffs; entry; entry = entry->next) {
         asciichat_error_t tick_result = acds_handoff_tick(server, &entry->state);
         if (tick_result != ASCIICHAT_OK)
-          log_warn("Periodic handoff failed: %d", tick_result);
+          log_warn("Periodic handoff failed %s", asciichat_error_format(NULL, tick_result));
       }
       mutex_unlock(&server->handoff_mutex);
       platform_sleep_ms(100); // Sleep 100ms at a time for responsive shutdown
@@ -451,7 +451,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     } else {
       // Error - send error response using proper error code
       acip_send_error(transport, create_result, "Failed to create session");
-      log_warn("Session creation failed for %s: %s", client_ip, asciichat_error_string(create_result));
+      log_warn("Session creation failed for %s: %s", client_ip, asciichat_error_format(NULL, create_result));
     }
 
     // Clear multi-key state
@@ -529,7 +529,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     } else {
       // Error - send error response using proper error code
       acip_send_error(transport, create_result, "Failed to create session");
-      log_warn("Session creation failed for %s: %s", client_ip, asciichat_error_string(create_result));
+      log_warn("Session creation failed for %s: %s", client_ip, asciichat_error_format(NULL, create_result));
     }
 
     // Clear multi-key state
@@ -675,7 +675,7 @@ static void acds_on_session_lookup(const acip_session_lookup_t *req, acip_transp
     log_info("Session lookup for '%s' from %s: %s", session_string, client_ip, resp.found ? "found" : "not found");
   } else {
     acip_send_error(transport, lookup_result, "Session lookup failed");
-    log_warn("Session lookup failed for %s: %s", client_ip, asciichat_error_string(lookup_result));
+    log_warn("Session lookup failed for %s: %s", client_ip, asciichat_error_format(NULL, lookup_result));
   }
 }
 
@@ -806,7 +806,7 @@ static asciichat_error_t acds_remove_client_from_session(acds_server_t *server, 
     consensus_handoff_leave(handoff, client_data->participant_id);
     asciichat_error_t handoff_result = acds_handoff_tick(server, handoff);
     if (handoff_result != ASCIICHAT_OK)
-      log_warn("Handoff after departure failed: %d", handoff_result);
+      log_warn("Handoff after departure failed %s", asciichat_error_format(NULL, handoff_result));
     if (!handoff->count) {
       acds_handoff_entry_t **link = &server->handoffs;
       while (*link && &(*link)->state != handoff)
@@ -834,7 +834,7 @@ static asciichat_error_t acds_remove_client_from_session(acds_server_t *server, 
                                  PACKET_TYPE_ACIP_PARTICIPANT_LEFT, &participant_left, sizeof(participant_left),
                                  client_data->participant_id);
     if (result != ASCIICHAT_OK) {
-      log_warn("Failed to notify peers that participant left: %s", asciichat_error_string(result));
+      log_warn("Failed to notify peers that participant left: %s", asciichat_error_format(NULL, result));
     }
     session_entry_destroy(session);
   }
@@ -862,7 +862,7 @@ static void acds_on_session_leave(const acip_session_leave_t *req, acip_transpor
     log_info("Client %s left session", client_ip);
   } else {
     acip_send_error(transport, leave_result, asciichat_error_string(leave_result));
-    log_warn("Session leave failed for %s: %s", client_ip, asciichat_error_string(leave_result));
+    log_warn("Session leave failed for %s: %s", client_ip, asciichat_error_format(NULL, leave_result));
   }
 }
 
@@ -877,7 +877,7 @@ static void acds_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t payload_len,
   asciichat_error_t relay_result = signaling_relay_sdp(server->db, server->network_server, sdp, payload_len);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "SDP relay failed");
-    log_warn("SDP relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
+    log_warn("SDP relay failed from %s: %s", client_ip, asciichat_error_format(NULL, relay_result));
   }
 }
 
@@ -892,7 +892,7 @@ static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t payload_len,
   asciichat_error_t relay_result = signaling_relay_ice(server->db, server->network_server, ice, payload_len);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "ICE relay failed");
-    log_warn("ICE relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
+    log_warn("ICE relay failed from %s: %s", client_ip, asciichat_error_format(NULL, relay_result));
   }
 }
 
@@ -915,7 +915,7 @@ static void acds_on_network_quality(const void *payload, size_t payload_len, aci
       signaling_relay_network_quality(server->db, server->network_server, quality, payload_len);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "NETWORK_QUALITY relay failed");
-    log_warn("NETWORK_QUALITY relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
+    log_warn("NETWORK_QUALITY relay failed from %s: %s", client_ip, asciichat_error_format(NULL, relay_result));
   } else {
     log_debug_every(US_PER_SEC_INT, "★ ACDS_ON_NETWORK_QUALITY: relay completed successfully for %s", client_ip);
   }
@@ -951,7 +951,7 @@ static void acds_on_host_announcement(const acip_host_announcement_t *announceme
 
   if (result != ASCIICHAT_OK) {
     acip_send_error(transport, result, "Failed to update session host");
-    log_warn("HOST_ANNOUNCEMENT failed from %s: %s", client_ip, asciichat_error_string(result));
+    log_warn("HOST_ANNOUNCEMENT failed from %s: %s", client_ip, asciichat_error_format(NULL, result));
     return;
   }
 
@@ -975,7 +975,7 @@ static void acds_on_host_lost(const acip_host_lost_t *host_lost, acip_transport_
   asciichat_error_t result = database_session_start_migration(server->db, host_lost->session_id);
   if (result != ASCIICHAT_OK) {
     acip_send_error(transport, result, "Failed to start host migration");
-    log_warn("HOST_LOST failed from %s: %s", client_ip, asciichat_error_string(result));
+    log_warn("HOST_LOST failed from %s: %s", client_ip, asciichat_error_format(NULL, result));
     return;
   }
 

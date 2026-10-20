@@ -196,6 +196,19 @@ static int keyboard_raw_read(void) {
   return read(fd, &byte, 1) == 1 ? byte : 0;
 }
 
+bool keyboard_is_initialized(void) {
+  return lifecycle_is_initialized(&g_keyboard_lc);
+}
+
+static bool send_background_query(void) {
+  return platform_write_all(STDERR_FILENO, "\033]11;?\033\\", 8) == 8;
+}
+
+bool keyboard_query_background(uint8_t *r, uint8_t *g, uint8_t *b) {
+  return keyboard_is_initialized() &&
+         keyboard_stream_query_background(keyboard_raw_read, send_background_query, r, g, b);
+}
+
 keyboard_key_t keyboard_read_nonblocking(void) {
   return keyboard_stream_read(keyboard_raw_read);
 }

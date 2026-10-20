@@ -221,7 +221,7 @@ static void render_update_prompt(terminal_size_t size, const void *data) {
   // Title (bold yellow)
   {
     char title_content[256];
-    snprintf(title_content, sizeof(title_content), "\033[1;33mUpdate Available\033[0m");
+    snprintf(title_content, sizeof(title_content), "\033[1m%sUpdate Available\033[0m", log_level_color(LOG_COLOR_WARN));
     append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, title_content);
   }
 
@@ -241,7 +241,7 @@ static void render_update_prompt(terminal_size_t size, const void *data) {
   // Latest version (green)
   {
     char line[256];
-    snprintf(line, sizeof(line), "Latest  : \033[32m%s\033[0m", result.latest_version);
+    snprintf(line, sizeof(line), "Latest  : %s%s\033[0m", log_level_color(LOG_COLOR_INFO), result.latest_version);
     append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
   }
 
@@ -278,7 +278,8 @@ static void render_update_prompt(terminal_size_t size, const void *data) {
   // Prompt (grey)
   {
     char line[256];
-    snprintf(line, sizeof(line), "\033[90m[Y] update [N] continue (%us: continue)\033[0m", 10u);
+    snprintf(line, sizeof(line), "%s[Y] update [N] continue (%us: continue)\033[0m", log_level_color(LOG_COLOR_GREY),
+             10u);
     append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
   }
 

@@ -1887,7 +1887,7 @@ static asciichat_error_t validate_parsed_options(options_t *opts, options_config
   // Validate options
   log_debug("★ VALIDATE_OPTIONS_AND_REPORT: About to call");
   asciichat_error_t result = validate_options_and_report(config, opts);
-  log_debug("★ VALIDATE_OPTIONS_AND_REPORT: Returned with result=%d", result);
+  log_debug("★ VALIDATE_OPTIONS_AND_REPORT: Returned with result=%s", asciichat_error_format(NULL, result));
   if (result != ASCIICHAT_OK) {
     return result;
   }

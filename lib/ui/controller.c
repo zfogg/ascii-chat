@@ -121,10 +121,12 @@ static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
   for (int row = 0; row < height; ++row) {
     int level = height - row;
     bool lit = level <= filled;
-    int shade = level * 3 <= height ? 31 : (level * 3 <= height * 2 ? 33 : 32);
+    log_color_t shade = level * 3 <= height       ? LOG_COLOR_ERROR
+                        : level * 3 <= height * 2 ? LOG_COLOR_WARN
+                                                  : LOG_COLOR_INFO;
     frame_buffer_printf(buffer, "\033[%d;%dH", top + row, col);
     if (color)
-      frame_buffer_printf(buffer, "\033[%dm", lit ? shade : 90);
+      frame_buffer_printf(buffer, "%s", log_level_color(lit ? shade : LOG_COLOR_GREY));
     const char *cells = utf8 ? (lit ? "██" : "░░") : (lit ? "##" : "..");
     frame_buffer_printf(buffer, " %s \033[0m", cells);
   }

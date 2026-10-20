@@ -19,6 +19,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+#include <stdatomic.h>
+#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/platform/keyboard_stream.h>
 
 /* ============================================================================
  * Global State
@@ -563,6 +566,16 @@ asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, termi
   const rgb_pixel_t *colors = (background == TERM_BACKGROUND_LIGHT && scheme->has_light_variant)
                                   ? scheme->log_colors_light
                                   : scheme->log_colors_dark;
+  // Slot 7 stores the scheme's neutral RGB value, although log entries compile
+  // that slot as an ANSI reset. Notices need its actual foreground color.
+  rgb_pixel_t foreground = colors[7];
+  uint8_t foreground_index = rgb_to_16color(foreground.r, foreground.g, foreground.b);
+  safe_snprintf(compiled->foreground_16, sizeof(compiled->foreground_16), "\033[%dm",
+                foreground_index < 8 ? 30 + foreground_index : 90 + foreground_index - 8);
+  safe_snprintf(compiled->foreground_256, sizeof(compiled->foreground_256), "\033[38;5;%dm",
+                rgb_to_256color(foreground.r, foreground.g, foreground.b));
+  rgb_to_truecolor_ansi(foreground.r, foreground.g, foreground.b, compiled->foreground_truecolor,
+                        sizeof(compiled->foreground_truecolor));
   /* Helper: allocate and format a color code string */
   char temp_buf[128];
 
@@ -834,4 +847,103 @@ asciichat_error_t options_colorscheme_init_early(int argc, const char *const arg
   }
 
   return ASCIICHAT_OK;
+}
+
+/* A single query services all logging and UI threads. Never hold the scheme
+ * mutex during terminal I/O: the input path can itself produce log messages. */
+static atomic_flag g_background_query = ATOMIC_FLAG_INIT;
+static atomic_uint_fast64_t g_background_checked_us;
+static atomic_int g_live_background = TERM_BACKGROUND_DARK;
+static _Thread_local bool g_resolving_palette;
+
+static terminal_background_t current_background(void) {
+  const char *override = SAFE_GETENV("TERM_BACKGROUND");
+  if (override && platform_strcasecmp(override, "light") == 0)
+    return TERM_BACKGROUND_LIGHT;
+  if (override && platform_strcasecmp(override, "dark") == 0)
+    return TERM_BACKGROUND_DARK;
+#if !defined(__EMSCRIPTEN__)
+  bool keyboard = keyboard_is_initialized();
+  uint8_t r, g, b;
+  if (keyboard && keyboard_stream_background(&r, &g, &b))
+    atomic_store(&g_live_background,
+                 (0.2126 * r + 0.7152 * g + 0.0722 * b) < 127.5 ? TERM_BACKGROUND_DARK : TERM_BACKGROUND_LIGHT);
+#endif
+  if (!platform_isatty(STDERR_FILENO))
+    return (terminal_background_t)atomic_load(&g_live_background);
+  uint64_t now = platform_get_monotonic_time_us();
+  uint64_t checked = atomic_load(&g_background_checked_us);
+  if ((!checked || now - checked >= 250000) && !atomic_flag_test_and_set(&g_background_query)) {
+#if !defined(__EMSCRIPTEN__)
+    if (keyboard) {
+      // Rendering and logging must never wait for an unsupported terminal.
+      // Its normal input pump decodes the reply and publishes the new RGB.
+      (void)platform_write_all(STDERR_FILENO, "\033]11;?\033\\", 8);
+    }
+#else
+    atomic_store(&g_live_background, detect_terminal_background());
+#endif
+    atomic_store(&g_background_checked_us, platform_get_monotonic_time_us());
+    atomic_flag_clear(&g_background_query);
+  }
+  return (terminal_background_t)atomic_load(&g_live_background);
+}
+
+terminal_background_t colorscheme_current_background(void) {
+  return current_background();
+}
+
+void colorscheme_current_palette(colorscheme_palette_t *palette, terminal_color_mode_t mode) {
+  if (!palette)
+    return;
+  if (g_resolving_palette)
+    return;
+  memset(palette, 0, sizeof(*palette));
+  g_resolving_palette = true;
+  palette->background = current_background();
+  const color_scheme_t *active = colorscheme_get_active_scheme();
+  rgb_pixel_t colors[8];
+  mutex_lock(&g_colorscheme_mutex);
+  memcpy(colors,
+         palette->background == TERM_BACKGROUND_LIGHT && active->has_light_variant ? active->log_colors_light
+                                                                                   : active->log_colors_dark,
+         sizeof(colors));
+  mutex_unlock(&g_colorscheme_mutex);
+  for (int i = 0; i < 9; ++i) {
+    char *code = i == 8 ? palette->foreground : palette->codes[i];
+    rgb_pixel_t rgb = colors[i == 8 ? 7 : i];
+    if (mode == TERM_COLOR_NONE)
+      continue;
+    if (i == 7)
+      safe_snprintf(code, 32, "\033[0m");
+    else if (mode >= TERM_COLOR_TRUECOLOR)
+      rgb_to_truecolor_ansi(rgb.r, rgb.g, rgb.b, code, 32);
+    else if (mode >= TERM_COLOR_256)
+      safe_snprintf(code, 32, "\033[38;5;%dm", rgb_to_256color(rgb.r, rgb.g, rgb.b));
+    else {
+      unsigned index = rgb_to_16color(rgb.r, rgb.g, rgb.b);
+      safe_snprintf(code, 32, "\033[%um", index < 8 ? 30 + index : 90 + index - 8);
+    }
+  }
+  g_resolving_palette = false;
+}
+
+void colorscheme_apply(const color_scheme_t *scheme) {
+  if (!scheme)
+    return;
+  colorscheme_get_active_scheme();
+  mutex_lock(&g_colorscheme_mutex);
+  memmove(&g_active_scheme, scheme, sizeof(g_active_scheme));
+  mutex_unlock(&g_colorscheme_mutex);
+}
+
+uint8_t colorscheme_highlight_background(void) {
+  bool dark = colorscheme_current_background() == TERM_BACKGROUND_DARK;
+  uint8_t grey = dark ? 70 : 200;
+#if !defined(__EMSCRIPTEN__)
+  uint8_t r, g, b;
+  if (keyboard_is_initialized() && keyboard_stream_background(&r, &g, &b) && abs((int)((r + g + b) / 3) - grey) < 40)
+    grey = dark ? 0 : 255;
+#endif
+  return grey;
 }

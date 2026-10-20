@@ -103,7 +103,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     log_info("[SESSION_RENDER_LOOP_SYNCHRONOUS] pipeline_create returned: %d (pipeline=%p)", pipeline_err,
              (void *)pipeline);
     if (pipeline_err != ASCIICHAT_OK) {
-      log_error("[SESSION_RENDER_LOOP_SYNCHRONOUS] Pipeline creation failed: %d", pipeline_err);
+      log_error("[SESSION_RENDER_LOOP_SYNCHRONOUS] Pipeline creation failed %s",
+                asciichat_error_format(NULL, pipeline_err));
       return pipeline_err;
     }
     log_info("[SESSION_RENDER_LOOP_SYNCHRONOUS] Pipeline created successfully, running main loop...");

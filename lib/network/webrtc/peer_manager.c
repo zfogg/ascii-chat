@@ -119,7 +119,7 @@ static asciichat_error_t apply_pending_ice_candidates(webrtc_peer_manager_t *man
       // A candidate queued before a retry offer can belong to the previous ICE
       // generation. Discard that candidate, but keep processing the new SDP and
       // the remaining trickled candidates.
-      log_warn("Discarding queued ICE candidate rejected by the new SDP: %s", asciichat_error_string(result));
+      log_warn("Discarding queued ICE candidate rejected by the new SDP: %s", asciichat_error_format(NULL, result));
     }
 
     *link = pending->next;
@@ -281,7 +281,7 @@ static void on_datachannel_open(webrtc_data_channel_t *dc, void *user_data) {
   }
   asciichat_error_t result = security->handshake.is_server ? ASCIICHAT_OK : acip_security_start(security, transport);
   if (result != ASCIICHAT_OK) {
-    log_error("Cannot start WebRTC peer security: %s", asciichat_error_string(result));
+    log_error("Cannot start WebRTC peer security: %s", asciichat_error_format(NULL, result));
     webrtc_peer_connection_close(peer->pc);
   }
 }
@@ -309,7 +309,7 @@ static void on_local_description(webrtc_peer_connection_t *pc, const char *sdp, 
       manager->signaling.send_sdp(peer->session_id, peer->participant_id, type, sdp, manager->signaling.user_data);
 
   if (result != ASCIICHAT_OK) {
-    log_error("Failed to send SDP via signaling: %s", asciichat_error_string(result));
+    log_error("Failed to send SDP via signaling: %s", asciichat_error_format(NULL, result));
   }
 }
 
@@ -340,7 +340,7 @@ static void on_local_candidate(webrtc_peer_connection_t *pc, const char *candida
       manager->signaling.send_ice(peer->session_id, peer->participant_id, candidate, mid, manager->signaling.user_data);
 
   if (result != ASCIICHAT_OK) {
-    log_error("Failed to send ICE candidate via signaling: %s", asciichat_error_string(result));
+    log_error("Failed to send ICE candidate via signaling: %s", asciichat_error_format(NULL, result));
   }
 }
 

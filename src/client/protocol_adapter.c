@@ -174,11 +174,11 @@ static bool handle_error_message_packet(client_connection_t *connection, const v
 
   asciichat_error_t parse_result = packet_parse_error_message(data, len, &remote_error, message, sizeof(message), NULL);
   if (parse_result != ASCIICHAT_OK) {
-    log_error("Failed to parse error packet from server: %s", asciichat_error_string(parse_result));
+    log_error("Failed to parse error packet from server: %s", asciichat_error_format(NULL, parse_result));
     return false;
   }
 
-  log_error("Server reported error %d (%s): %s", remote_error, asciichat_error_string(remote_error), message);
+  log_error("Server reported %s", asciichat_error_format(message, remote_error));
   remote_error = network_error_public_code(remote_error);
   asciichat_errno_scope_t notification = asciichat_errno_scope_begin();
   SET_ERRNO(remote_error, "Server notification: %s", asciichat_error_string(remote_error));
@@ -208,7 +208,7 @@ static void handle_remote_log_packet(const void *data, size_t len) {
   asciichat_error_t parse_result =
       packet_parse_remote_log(data, len, &remote_level, &direction, &flags, message, sizeof(message), NULL);
   if (parse_result != ASCIICHAT_OK) {
-    log_error("Failed to parse remote log packet from server: %s", asciichat_error_string(parse_result));
+    log_error("Failed to parse remote log packet from server: %s", asciichat_error_format(NULL, parse_result));
     return;
   }
 
@@ -566,7 +566,7 @@ static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, v
   asciichat_error_t result = webrtc_peer_manager_handle_sdp(g_peer_manager, sdp);
 
   if (result != ASCIICHAT_OK) {
-    log_error("Failed to handle WebRTC SDP: %s", asciichat_error_string(result));
+    log_error("Failed to handle WebRTC SDP: %s", asciichat_error_format(NULL, result));
   }
 }
 
@@ -586,7 +586,7 @@ static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, v
   asciichat_error_t result = webrtc_peer_manager_handle_ice(g_peer_manager, ice);
 
   if (result != ASCIICHAT_OK) {
-    log_error("Failed to handle WebRTC ICE: %s", asciichat_error_string(result));
+    log_error("Failed to handle WebRTC ICE: %s", asciichat_error_format(NULL, result));
   }
 }
 

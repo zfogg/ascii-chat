@@ -473,7 +473,7 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
     log_debug("★ SEND_NETWORK_QUALITY_SUCCESS: Sent to ACDS (NAT tier: %d, upload: %u Kbps)",
               nat_compute_tier(&our_quality), our_quality.upload_kbps);
   } else {
-    log_error("★ SEND_NETWORK_QUALITY_FAILED: Failed with error %d", send_result);
+    log_error("★ SEND_NETWORK_QUALITY_FAILED: %s", asciichat_error_format(NULL, send_result));
   }
 
   return send_result;
@@ -503,8 +503,8 @@ __attribute__((unused)) static asciichat_error_t receive_network_quality_from_ac
   asciichat_error_t result = acds_receive_packet(session->acds_transport, &ptype, &data, &len, &alloc_buffer);
 
   if (result != ASCIICHAT_OK) {
-    log_error("★ RECEIVE_NETWORK_QUALITY_FAILED: packet_receive_via_transport returned %d: %s", result,
-              asciichat_error_string(result));
+    log_error("★ RECEIVE_NETWORK_QUALITY_FAILED: packet_receive_via_transport returned %s",
+              asciichat_error_format(NULL, result));
     buffer_release(alloc_buffer);
     return result;
   }
@@ -842,7 +842,7 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
   if (session->is_host && session->host_ctx) {
     asciichat_error_t result = session_host_accept_peer(session->host_ctx, transport);
     if (result != ASCIICHAT_OK) {
-      log_error("Cannot admit host peer: %s", asciichat_error_string(result));
+      log_error("Cannot admit host peer: %s", asciichat_error_format(NULL, result));
       acip_transport_destroy(transport);
     }
   } else if (session->participant_ctx) {
@@ -1414,7 +1414,7 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
   // Connect to ACDS
   asciichat_error_t result = connect_to_acds(session);
   if (result != ASCIICHAT_OK) {
-    log_error("connect_to_acds FAILED - result=%d", result);
+    log_error("connect_to_acds FAILED %s", asciichat_error_format(NULL, result));
     set_state(session, DISCOVERY_STATE_FAILED);
     return result;
   }
@@ -1434,7 +1434,7 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
 
   result = crypto_handshake_init("discovery_client", handshake_ctx, false);
   if (result != ASCIICHAT_OK) {
-    log_error("Handshake init failed - %s", asciichat_error_string(result));
+    log_error("Handshake init failed - %s", asciichat_error_format(NULL, result));
     set_error(session, result, "Crypto handshake init failed");
     return result;
   }
@@ -1536,7 +1536,7 @@ static asciichat_error_t discovery_session_wait_for_peer(discovery_session_t *se
     } else if (recv_result == ERROR_NETWORK_TIMEOUT) {
       // Timeout is normal, just return
     } else {
-      log_debug("Packet receive error while waiting for peer: %d", recv_result);
+      log_debug("Packet receive error while waiting for peer %s", asciichat_error_format(NULL, recv_result));
     }
   } else {
     // Fallback to sleep if no timeout or invalid transport
@@ -1631,7 +1631,7 @@ static asciichat_error_t discovery_session_select_host(discovery_session_t *sess
         set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
       }
     } else {
-      log_error("Failed to determine negotiation result: %d", result);
+      log_error("Failed to determine negotiation result %s", asciichat_error_format(NULL, result));
       set_error(session, result, "Host election failed");
     }
   }

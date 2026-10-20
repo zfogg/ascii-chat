@@ -692,7 +692,7 @@ static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t
 
   asciichat_error_t result = network_server_adopt(server_ctx->network_server, transport, participant_str, true);
   if (result != ASCIICHAT_OK) {
-    log_error("Cannot adopt authenticated peer: %s", asciichat_error_string(result));
+    log_error("Cannot adopt authenticated peer: %s", asciichat_error_format(NULL, result));
     acip_transport_destroy(transport);
   } else {
     log_info("Authenticated WebRTC connection adopted for %s", participant_str);
@@ -735,7 +735,7 @@ static void on_webrtc_sdp_server(const acip_webrtc_sdp_t *sdp, size_t total_len,
 
   if (result != ASCIICHAT_OK) {
     log_error("Failed to handle remote SDP from participant %.8s...: %s", (const char *)sdp->sender_id,
-              asciichat_error_string(result));
+              asciichat_error_format(NULL, result));
   }
 }
 
@@ -772,7 +772,7 @@ static void on_webrtc_ice_server(const acip_webrtc_ice_t *ice, size_t total_len,
 
   if (result != ASCIICHAT_OK) {
     log_error("Failed to handle remote ICE candidate from participant %02x%02x%02x%02x...: %s", ice->sender_id[0],
-              ice->sender_id[1], ice->sender_id[2], ice->sender_id[3], asciichat_error_string(result));
+              ice->sender_id[1], ice->sender_id[2], ice->sender_id[3], asciichat_error_format(NULL, result));
   }
 }
 
@@ -874,7 +874,7 @@ static void *acds_ping_thread(void *arg) {
       if (ping_result == ASCIICHAT_OK) {
         log_debug("ACDS keepalive: Sent periodic PING");
       } else {
-        log_warn("ACDS keepalive: Failed to send PING: %s", asciichat_error_string(ping_result));
+        log_warn("ACDS keepalive: Failed to send PING: %s", asciichat_error_format(NULL, ping_result));
       }
     }
 
@@ -935,7 +935,7 @@ static void *acds_receive_thread(void *arg) {
   const network_connection_callbacks_t callbacks = {.packet = acds_signaling_packet};
   asciichat_error_t result = network_connection_run(g_acds_client->connection, &callbacks, NULL);
   if (result != ASCIICHAT_OK && !atomic_load_bool(&g_should_exit))
-    log_warn("Discovery signaling connection stopped: %s", asciichat_error_string(result));
+    log_warn("Discovery signaling connection stopped: %s", asciichat_error_format(NULL, result));
   return NULL;
 }
 
@@ -1468,7 +1468,7 @@ static void server_join_discovery_session(const acds_session_create_params_t *pa
   acds_session_join_result_t join_result = {0};
   asciichat_error_t join_err = acds_session_join(g_acds_client, &join_params, &join_result);
   if (join_err != ASCIICHAT_OK || !join_result.success) {
-    log_error("Failed to join own session: %s (error: %s)", asciichat_error_string(join_err),
+    log_error("Failed to join own session: %s (error: %s)", asciichat_error_format(NULL, join_err),
               join_result.error_message[0] ? join_result.error_message : "unknown");
     // Continue anyway - this is not fatal for Direct TCP sessions
   } else {
@@ -1567,7 +1567,7 @@ static void server_init_webrtc(void) {
   // Initialize WebRTC library (libdatachannel)
   asciichat_error_t webrtc_init_result = webrtc_init();
   if (webrtc_init_result != ASCIICHAT_OK) {
-    log_error("Failed to initialize WebRTC library: %s", asciichat_error_string(webrtc_init_result));
+    log_error("Failed to initialize WebRTC library: %s", asciichat_error_format(NULL, webrtc_init_result));
     g_webrtc_peer_manager = NULL;
   } else {
     log_debug("WebRTC library initialized successfully");
@@ -1612,7 +1612,7 @@ static void server_init_webrtc(void) {
     // Create peer_manager
     asciichat_error_t pm_result = webrtc_peer_manager_create(&pm_config, &signaling_callbacks, &g_webrtc_peer_manager);
     if (pm_result != ASCIICHAT_OK) {
-      log_error("Failed to create WebRTC peer_manager: %s", asciichat_error_string(pm_result));
+      log_error("Failed to create WebRTC peer_manager: %s", asciichat_error_format(NULL, pm_result));
       g_webrtc_peer_manager = NULL;
     } else {
       log_debug("WebRTC peer_manager initialized successfully");
@@ -1672,7 +1672,7 @@ static void server_register_discovery(server_discovery_startup_t *startup, int p
   asciichat_error_t acds_connect_result = acds_client_connect(g_acds_client, &acds_config);
   if (acds_connect_result != ASCIICHAT_OK) {
     log_error("Failed to connect to ACDS server at %s:%d: %s", acds_server, acds_port,
-              asciichat_error_string(acds_connect_result));
+              asciichat_error_format(NULL, acds_connect_result));
     return;
   }
   acds_session_create_params_t create_params = {0};
@@ -1746,7 +1746,7 @@ static void server_tick_fn(void *user_data) {
   (void)user_data;
   asciichat_error_t result = webrtc_peer_manager_dispatch_ready(g_webrtc_peer_manager);
   if (result != ASCIICHAT_OK) {
-    log_error("WebRTC ready dispatch failed: %s", asciichat_error_string(result));
+    log_error("WebRTC ready dispatch failed: %s", asciichat_error_format(NULL, result));
     atomic_store_bool(&g_should_exit, true);
     network_server_t *tcp = session_server_like_get_network_server();
     if (tcp)

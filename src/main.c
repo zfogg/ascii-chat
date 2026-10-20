@@ -770,7 +770,8 @@ int main(int argc, char *argv[]) {
     if (HAS_ERRNO(&error_ctx)) {
       NOTICE(WARNING, "INVALID OPTIONS", "%s", error_ctx.context_message);
     } else {
-      NOTICE(WARNING, "OPTIONS INITIALIZATION FAILED", "Failed to initialize options (error code: %d)", options_result);
+      NOTICE(WARNING, "OPTIONS INITIALIZATION FAILED", "Failed to initialize options %s",
+             asciichat_error_format(NULL, options_result));
     }
 
     // Clean up options state before exiting
@@ -821,7 +822,7 @@ int main(int argc, char *argv[]) {
         asciichat_error_t strcpy_result =
             SAFE_STRCPY(&json_filename_buf[len - 4], sizeof(json_filename_buf) - (len - 4), ".json");
         if (strcpy_result != ASCIICHAT_OK) {
-          log_error("Failed to write .json extension: %s", asciichat_error_string(strcpy_result));
+          log_error("Failed to write .json extension: %s", asciichat_error_format(NULL, strcpy_result));
         }
       } else {
         // File doesn't end with .log - just append .json
@@ -1041,7 +1042,7 @@ int main(int argc, char *argv[]) {
     }
     asciichat_errno_scope_end(title_scope, ASCIICHAT_ERRNO_DISMISSED);
   } else {
-    log_debug("Process title initialization was unavailable (error %d)", title_init_result);
+    log_debug("Process title initialization was unavailable %s", asciichat_error_format(NULL, title_init_result));
   }
   asciichat_error_t stats_result = stats_runtime_start(mode->name, (unsigned)GET_OPTION(stats_interval));
   if (stats_result != ASCIICHAT_OK)

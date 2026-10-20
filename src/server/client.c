@@ -150,12 +150,11 @@ static void handle_client_error_packet(client_info_t *client, const void *data, 
   const char *client_id = client ? client->client_id : "unknown";
 
   if (parse_result != ASCIICHAT_OK) {
-    log_warn("Failed to parse error packet from client %s: %s", client_id, asciichat_error_string(parse_result));
+    log_warn("Failed to parse error packet from client %s: %s", client_id, asciichat_error_format(NULL, parse_result));
     return;
   }
 
-  log_error("Client %s reported error %d (%s): %s", client_id, reported_error, asciichat_error_string(reported_error),
-            message);
+  log_error("Client %s reported %s", client_id, asciichat_error_format(message, reported_error));
 }
 
 /**
@@ -307,7 +306,8 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   // Send initial server state via ACIP transport
   asciichat_error_t packet_result = acip_send_server_state(client->transport, &net_state);
   if (packet_result != ASCIICHAT_OK) {
-    log_warn("Failed to send initial server state to client %s: %s", client_id, asciichat_error_string(packet_result));
+    log_warn("Failed to send initial server state to client %s: %s", client_id,
+             asciichat_error_format(NULL, packet_result));
   } else {
     log_debug("Sent initial server state to client %s: %u connected clients", client_id, state.connected_client_count);
   }
@@ -553,7 +553,7 @@ static asciichat_error_t server_client_begin_removal(server_context_t *server_ct
         log_debug("Client %s not found in session_host (likely failed crypto before registration)", client_id);
       } else {
         log_warn("Failed to unregister client %s from session_host: %s", client_id,
-                 asciichat_error_string(session_result));
+                 asciichat_error_format(NULL, session_result));
       }
     } else {
       log_debug("Client %s unregistered from session_host", client_id);
@@ -1242,7 +1242,7 @@ static void acip_server_on_audio_batch(const audio_batch_packet_t *header, const
     asciichat_error_t write_result =
         audio_ring_buffer_write(client->incoming_audio_buffer, (float *)samples, num_samples);
     if (write_result != ASCIICHAT_OK) {
-      log_error("Failed to write decoded audio batch to buffer: %s", asciichat_error_string(write_result));
+      log_error("Failed to write decoded audio batch to buffer: %s", asciichat_error_format(NULL, write_result));
     }
   }
 }

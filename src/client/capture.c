@@ -303,7 +303,7 @@ static void *webcam_capture_thread_func(void *arg) {
                                                                   : "RAW";
     if (encoding_failed) {
       log_error("%s video encoding failed (%s). Use --video-codec auto for fallback or --video-codec raw.", codec_name,
-                asciichat_error_string(send_result));
+                asciichat_error_format(NULL, send_result));
       asciichat_errno_request_exit(send_result);
       signal_exit();
       image_destroy(processed_image);
@@ -325,8 +325,8 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
     if (send_result != ASCIICHAT_OK) {
-      log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME_%s send error=%d (%s) after %.1fms, closing connection",
-                codec_name, send_result, asciichat_error_string(send_result), (double)send_duration_ns / 1e6);
+      log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME_%s send failed %s after %.1fms, closing connection", codec_name,
+                asciichat_error_format(NULL, send_result), (double)send_duration_ns / 1e6);
       server_connection_lost(connection);
       image_destroy(processed_image);
       break;
@@ -470,9 +470,9 @@ int capture_init() {
     // Check if there's already an error set (e.g., ERROR_WEBCAM_IN_USE)
     asciichat_error_context_t failure;
     asciichat_error_t existing_error = asciichat_errno_peek_since(create_scope, &failure) ? failure.code : ASCIICHAT_OK;
-    log_debug("session_capture_create failed, GET_ERRNO() returned: %d", existing_error);
+    log_debug("session_capture_create failed %s", asciichat_error_format(NULL, existing_error));
     if (existing_error != ASCIICHAT_OK) {
-      log_debug("Returning existing error code %d", existing_error);
+      log_debug("Returning existing error %s", asciichat_error_format(NULL, existing_error));
       return existing_error;
     }
     SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize capture source");

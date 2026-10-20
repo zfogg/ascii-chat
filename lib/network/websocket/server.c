@@ -665,7 +665,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       if (asciichat_errno_peek_since(scope, &error)) {
         log_error("WebSocket writable callback request failed: %s", error.context_message);
       } else {
-        log_error("WebSocket writable callback request failed: %s", asciichat_error_string(result));
+        log_error("WebSocket writable callback request failed: %s", asciichat_error_format(NULL, result));
       }
     }
     asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);

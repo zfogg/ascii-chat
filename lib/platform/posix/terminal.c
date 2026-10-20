@@ -1,3 +1,4 @@
+#include <ascii-chat/platform/keyboard.h>
 /**
  * @file platform/posix/terminal.c
  * @ingroup platform
@@ -942,6 +943,8 @@ bool terminal_has_dark_background(void) {
  * Query terminal background color using OSC 11
  */
 bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b) {
+  if (keyboard_is_initialized())
+    return keyboard_query_background(bg_r, bg_g, bg_b);
   // Try to open /dev/tty directly (works even when stdin/stdout are redirected)
   int tty_fd = open("/dev/tty", O_RDWR);
   if (tty_fd < 0) {

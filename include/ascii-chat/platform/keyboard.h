@@ -309,3 +309,7 @@ keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_op
 keyboard_line_edit_result_t keyboard_apply_key(keyboard_line_edit_opts_t *opts);
 
 /** @} */
+
+/** Background queries share the keyboard decoder when it owns terminal input. */
+bool keyboard_is_initialized(void);
+bool keyboard_query_background(uint8_t *r, uint8_t *g, uint8_t *b);

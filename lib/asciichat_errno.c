@@ -61,6 +61,30 @@ static bool g_tls_ready;
 static PLATFORM_THREAD_LOCAL bool g_recording;
 static PLATFORM_THREAD_LOCAL bool g_suppress_logging;
 
+const char *asciichat_error_format(const char *message, asciichat_error_t code) {
+  static PLATFORM_THREAD_LOCAL char buffers[8][ASCIICHAT_ERRNO_MESSAGE_MAX + 256];
+  static PLATFORM_THREAD_LOCAL unsigned next;
+  char *output = buffers[next++ % 8];
+  char suffix[256];
+  snprintf(suffix, sizeof(suffix), "%s (code=%d)", asciichat_error_string(code), code);
+  if (!message || !*message || !strcmp(message, asciichat_error_string(code))) {
+    snprintf(output, sizeof(buffers[0]), "%s", suffix);
+  } else {
+    size_t length = strlen(message);
+    size_t suffix_length = strlen(suffix);
+    if (length >= suffix_length && !strcmp(message + length - suffix_length, suffix))
+      snprintf(output, sizeof(buffers[0]), "%s", message);
+    else {
+      size_t limit = length < ASCIICHAT_ERRNO_MESSAGE_MAX ? length : ASCIICHAT_ERRNO_MESSAGE_MAX - 1;
+      // Do not cut a UTF-8 character in half when shortening the message.
+      while (limit && ((unsigned char)message[limit] & 0xc0) == 0x80)
+        --limit;
+      snprintf(output, sizeof(buffers[0]), "%.*s: %s", (int)limit, message, suffix);
+    }
+  }
+  return output;
+}
+
 static void registry_lock(void) {
   int expected = 0;
   while (!atomic_cas_int_impl(&g_guard, &expected, 1))
@@ -276,7 +300,7 @@ static asciichat_error_t set_formatted(asciichat_error_t code, const char *file,
 #endif
   push_context(&context);
   if (!g_suppress_logging) {
-    log_debug("%s (code: %d, meaning: %s)%s", context.context_message, code, asciichat_error_string(code),
+    log_debug("%s%s", asciichat_error_format(context.context_message, code),
               context.message_truncated ? " [message truncated]" : "");
   }
   g_recording = false;
@@ -588,7 +612,8 @@ static void print_error_context(const asciichat_error_context_t *context, bool i
   log_plain("  Error #%" PRIu64 " thread=%" PRIu64 "/%" PRIu64 " code=%d cause=#%" PRIu64 " age=%.3fs",
             context->error_id, context->thread_id, context->generation, context->code, context->cause_id,
             now >= context->created_ns ? (double)(now - context->created_ns) / 1e9 : 0.0);
-  log_plain("  %s%s", context->context_message, context->message_truncated ? " [truncated]" : "");
+  log_plain("  %s%s", asciichat_error_format(context->context_message, context->code),
+            context->message_truncated ? " [truncated]" : "");
   if (context->file)
     log_plain("  %s:%d in %s()", extract_project_relative_path(context->file), context->line,
               context->function ? context->function : "?");
@@ -673,8 +698,9 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   va_start(args, format);
   vsnprintf(message, sizeof(message), format ? format : "", args);
   va_end(args);
-  NOTICE(FATAL, "FATAL ERROR", "%s\nExit code: %d (%s)", message, code, asciichat_error_string(code));
-  log_error("Fatal: %s (code=%d at %s:%d in %s)", message, code, file ? file : "?", line, function ? function : "?");
+  NOTICE(FATAL, "FATAL ERROR", "%s", asciichat_error_format(message, code));
+  log_error("Fatal: %s (at %s:%d in %s)", asciichat_error_format(message, code), file ? file : "?", line,
+            function ? function : "?");
   asciichat_errno_print_stacks();
   g_recording = previous;
 #ifdef EMSCRIPTEN_BUILD

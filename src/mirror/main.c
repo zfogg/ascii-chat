@@ -312,7 +312,7 @@ int mirror_main(void) {
 
   if (result != ASCIICHAT_OK) {
     log_set_terminal_output(true);
-    NOTICE(WARNING, "MIRROR FAILED", "Mirror mode failed with error code: %d", result);
+    NOTICE(WARNING, "MIRROR FAILED", "%s", asciichat_error_format("Mirror mode failed", result));
   }
 
   return (int)result;

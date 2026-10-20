@@ -1,3 +1,4 @@
+#include <ascii-chat/platform/keyboard.h>
 /**
  * @file platform/windows/terminal.c
  * @ingroup platform
@@ -1203,6 +1204,8 @@ bool terminal_has_dark_background(void) {
  * Modern Windows terminals (Windows Terminal, ConEmu) support this
  */
 bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b) {
+  if (keyboard_is_initialized())
+    return keyboard_query_background(bg_r, bg_g, bg_b);
   // Try to open CON device for direct terminal access
   HANDLE hConsole = CreateFileA("CONIN$", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                                 OPEN_EXISTING, 0, NULL);

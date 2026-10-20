@@ -127,7 +127,7 @@ static void broadcast_callback(network_connection_t *connection, void *user_arg)
              acds_data->participant_id[1]);
   } else {
     log_warn("★ BROADCAST_CALLBACK_FAILED: Failed to send to participant=%02x%02x...: %s", acds_data->participant_id[0],
-             acds_data->participant_id[1], asciichat_error_string(result));
+             acds_data->participant_id[1], asciichat_error_format(NULL, result));
   }
 }
 

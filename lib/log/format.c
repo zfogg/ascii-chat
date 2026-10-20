@@ -69,7 +69,7 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
   }
   asciichat_error_t strcpy_result = SAFE_STRCPY(result->original, format_len, format_str);
   if (strcpy_result != ASCIICHAT_OK) {
-    log_error("Failed to copy format string: %s", asciichat_error_string(strcpy_result));
+    log_error("Failed to copy format string: %s", asciichat_error_format(NULL, strcpy_result));
     free(result->original);
     free(result);
     return NULL;
