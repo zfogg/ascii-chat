@@ -31,11 +31,13 @@ Test(rcu_validation, face_follow_and_zalgo_keyboard_round_trip) {
   double volume = 1.0;
   cr_assert_eq(options_set_bool("face_follow", false), ASCIICHAT_OK);
   cr_assert_eq(options_set_int("zalgo", 0), ASCIICHAT_OK);
-  cr_assert_eq(ui_session_key((keyboard_key_t)'4', &volume), UI_ACTION_SETTINGS);
+  cr_assert_eq(ui_session_key((keyboard_key_t)'4', &volume), UI_ACTION_NONE);
+  cr_assert_not(GET_OPTION(face_follow));
+  cr_assert_eq(ui_session_key((keyboard_key_t)'w', &volume), UI_ACTION_SETTINGS);
   cr_assert(GET_OPTION(face_follow));
   cr_assert_eq(ui_session_key((keyboard_key_t)'z', &volume), UI_ACTION_SETTINGS);
   cr_assert_eq(GET_OPTION(zalgo), 8);
-  ui_session_key((keyboard_key_t)'4', &volume);
+  ui_session_key((keyboard_key_t)'W', &volume);
   ui_session_key((keyboard_key_t)'Z', &volume);
   cr_assert_not(GET_OPTION(face_follow));
   cr_assert_eq(GET_OPTION(zalgo), 0);

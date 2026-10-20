@@ -46,6 +46,7 @@ def main():
                         ('-      FPS counter', '-', key), ('=      Running app statistics TUI', '=', key),
                         ('0      C code sync primitives TUI', '0', number),
                         ('FPS counter', 'FPS counter', 'default'),
+                        ('w / W', 'w', key), ('w / W', 'W', key), ('w / W', '/', 'default'),
                         ('Running app statistics TUI', 'Running app statistics TUI', 'default'),
                     ):
                         # Volume is a value after the label, rather than part of it.
@@ -57,7 +58,7 @@ def main():
                                     'Open from clipboard', 'Queue dropped/pasted media',
                                     'Previous/next media (restart)', 'Mute/Unmute audio',
                                     'Volume up/down (10%)', 'Cycle color mode', 'Cycle color filter',
-                                    'Flip webcam horizontally', 'Flip webcam vertically', 'Cycle render mode',
+                                    'Flip webcam horizontally', 'Flip webcam vertically', 'Toggle Face Follow', 'Cycle render mode',
                                     'FPS counter', 'Running app statistics TUI', 'Print current sync primitive state',
                                     'C code sync primitives TUI')
                     positions = [next((row, line.index(label)) for row, line in enumerate(term.screen.display)

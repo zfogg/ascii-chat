@@ -89,6 +89,27 @@ def main():
         assert deadline(session) == 2**64 - 1
         assert tick(session, now + 1_000_000_000) is None
         print('PASS shared compositor: too-small pauses animation; resize resumes; closing help stops redraws')
+        key(session, ord('?'))
+        now += 2_000_000_000
+        resize(session, 110, 48)
+
+        def face_status():
+            nonlocal now
+            now += 20_000_000
+            stream.feed(tick(session, now).decode())
+            return next(line.split('Face Follow :', 1)[1].strip().split()[0]
+                        for line in screen.display if 'Face Follow :' in line)
+
+        assert face_status() == 'X'
+        key(session, ord('w'))
+        assert face_status() == 'O'
+        key(session, ord('4'))
+        assert face_status() == 'O', 'Removed 4 binding still toggles Face Follow'
+        key(session, ord('W'))
+        assert face_status() == 'X'
+        assert any('w / W  Toggle Face Follow' in line for line in screen.display)
+        assert not any('(4) Face' in line for line in screen.display)
+        print('PASS shared input: w/W toggle Face Follow; 4 has no effect; setting is outside animations')
     finally:
         destroy(session)
         destroy_options()

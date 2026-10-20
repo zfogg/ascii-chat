@@ -246,7 +246,8 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
     return UI_ACTION_SETTINGS;
   }
 
-  case '4': {
+  case 'w':
+  case 'W': {
     if (options_toggle("face_follow") == ASCIICHAT_OK)
       log_info("Face follow: %s", GET_OPTION(face_follow) ? "enabled" : "disabled");
     return UI_ACTION_SETTINGS;

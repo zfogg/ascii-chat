@@ -230,6 +230,7 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
       "f / F  Cycle color filter",
       "x / X  Flip webcam horizontally",
       "y / Y  Flip webcam vertically",
+      "w / W  Toggle Face Follow",
       "r / R  Cycle render mode",
       "-      FPS counter",
 #ifndef NDEBUG
@@ -252,6 +253,7 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
   snprintf(settings[6], sizeof(settings[6]), "Render : %s", render_mode_to_string(GET_OPTION(render_mode)));
   snprintf(settings[7], sizeof(settings[7]), "Flip   : rows=%s cols=%s", status_indicator(GET_OPTION(flip_y)),
            status_indicator(GET_OPTION(flip_x)));
+  snprintf(settings[8], sizeof(settings[8]), "Face Follow : %s", status_indicator(GET_OPTION(face_follow)));
   int settings_count = 9;
   snprintf(settings[settings_count++], sizeof(settings[0]), "Animations (number key toggle):");
   snprintf(settings[settings_count++], sizeof(settings[0]), "───────────────────────────────");
@@ -261,8 +263,6 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
            status_indicator(GET_OPTION(waveform)));
   snprintf(settings[settings_count++], sizeof(settings[0]), "(3) Audio Frequencies (FFT) : %s",
            status_indicator(GET_OPTION(fft)));
-  snprintf(settings[settings_count++], sizeof(settings[0]), "(4) Face follow : %s",
-           status_indicator(GET_OPTION(face_follow)));
   snprintf(settings[settings_count++], sizeof(settings[0]), "(z) Zalgo intensity : %d", GET_OPTION(zalgo));
   snprintf(settings[settings_count++], sizeof(settings[0]), "(-) FPS Counter : %s",
            status_indicator(GET_OPTION(fps_counter)));
