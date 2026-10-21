@@ -1946,10 +1946,10 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
     if (!desc->validate)
       continue;
 
-    asciichat_errno_scope_t validation_scope = asciichat_errno_checkpoint();
+    asciichat_errno_scope_t validation_scope = errno_checkpoint();
     if (!desc->validate(options_struct)) {
       asciichat_error_context_t error;
-      if (asciichat_errno_peek_since(validation_scope, &error))
+      if (errno_peek_since(validation_scope, &error))
         return error.code;
       return SET_ERRNO(ERROR_USAGE, "Option '--%s' failed validation", desc->long_name);
     }

@@ -31,7 +31,7 @@ Test(regex_fallback, valid_and_invalid_ports_without_jit) {
   cr_assert_eq(port, 0);
   cr_assert_neq(parse_port("65536", &port), ASCIICHAT_OK);
   cr_assert_neq(parse_port("invalid", &port), ASCIICHAT_OK);
-  asciichat_clear_errno();
+  errno_clear();
 }
 
 Test(regex_fallback, urls_validate_and_parse_without_jit) {

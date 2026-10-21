@@ -162,10 +162,10 @@ static wav_writer_t *g_wav_playback_received = NULL;
 static int audio_queue_packet(client_connection_t *connection, const uint8_t *opus_data, size_t opus_size,
                               const uint16_t *frame_sizes, int frame_count) {
   if (connection->audio_send_direct) {
-    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t scope = errno_scope_begin();
     asciichat_error_t result =
         threaded_send_audio_opus_batch(connection, opus_data, opus_size, frame_sizes, frame_count);
-    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
     return result == ASCIICHAT_OK ? 0 : -1;
   }
   if (!lifecycle_is_initialized(&connection->audio_send_queue_lc) || !opus_data || opus_size == 0) {
@@ -246,7 +246,7 @@ static void *audio_sender_thread_func(void *arg) {
     mutex_unlock(&connection->audio_send_queue_mutex);
 
     // Send packet (may block on network I/O - that's OK, we're not in capture thread)
-    asciichat_errno_scope_t send_scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t send_scope = errno_scope_begin();
     uint64_t network_send_audio_start_ns = time_get_ns();
     asciichat_error_t send_result =
         threaded_send_audio_opus_batch(connection, packet.data, packet.size, packet.frame_sizes, packet.frame_count);
@@ -257,10 +257,10 @@ static void *audio_sender_thread_func(void *arg) {
       LOG_ERRNO_IF_SET("Failed to send audio packet");
       if (!network_error_is_local_rejection(send_result))
         break;
-      asciichat_errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
+      errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
     } else {
       ASSERT_NO_ERRNO_SINCE(send_scope);
-      asciichat_errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
+      errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
     }
     if (send_result == ASCIICHAT_OK && send_count % 50 == 0) {
       char duration_str[32];

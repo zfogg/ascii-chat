@@ -14,8 +14,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   (void)fmt;
 }
 
-asciichat_error_t asciichat_set_errno_with_message(asciichat_error_t code, const char *file, int line,
-                                                   const char *function, const char *format, ...) {
+asciichat_error_t errno_set_with_message(asciichat_error_t code, const char *file, int line, const char *function,
+                                         const char *format, ...) {
   (void)file;
   (void)line;
   (void)function;

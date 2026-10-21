@@ -79,16 +79,16 @@ static inline void network_recovery_contract(void) {
   SET_ERRNO(ERROR_SESSION_FULL, "original admission failure");
   asciichat_error_context_t admission;
   CHECK(HAS_ERRNO(&admission));
-  asciichat_errno_scope_t notify = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t notify = errno_scope_begin();
   CHECK(packet_send_error(INVALID_SOCKET_VALUE, NULL, ERROR_SESSION_FULL, "Session full") != ASCIICHAT_OK);
-  asciichat_errno_scope_end(notify, ASCIICHAT_ERRNO_HANDLED);
+  errno_scope_end(notify, ASCIICHAT_ERRNO_HANDLED);
   asciichat_error_context_t preserved;
   CHECK(HAS_ERRNO(&preserved) && preserved.error_id == admission.error_id);
   bool allowed = true;
-  asciichat_errno_scope_t limit_scope = asciichat_errno_checkpoint();
+  asciichat_errno_scope_t limit_scope = errno_checkpoint();
   CHECK(check_and_record_rate_limit(NULL, "127.0.0.1", RATE_EVENT_CONNECTION, &allowed) == ERROR_INVALID_PARAM);
   CHECK(!allowed);
-  CHECK(asciichat_errno_peek_since(limit_scope, &preserved));
+  CHECK(errno_peek_since(limit_scope, &preserved));
   CHECK(strstr(preserved.context_message, "Invalid rate limiter") != NULL);
   CLEAR_ERRNO_ALL();
   rate_limiter_t *limiter = rate_limiter_create_memory();
@@ -126,15 +126,15 @@ static inline void network_recovery_contract(void) {
 static inline void peek_contract(void) {
   CLEAR_ERRNO_ALL();
   SET_ERRNO(ERROR_AUDIO, "old unrelated failure");
-  asciichat_errno_scope_t operation = asciichat_errno_checkpoint();
+  asciichat_errno_scope_t operation = errno_checkpoint();
   asciichat_error_context_t snapshot;
-  CHECK(!asciichat_errno_peek_since(operation, &snapshot));
+  CHECK(!errno_peek_since(operation, &snapshot));
   SET_ERRNO(ERROR_MEDIA_DECODE, "current operation");
-  CHECK(asciichat_errno_peek_since(operation, &snapshot));
+  CHECK(errno_peek_since(operation, &snapshot));
   CHECK(snapshot.code == ERROR_MEDIA_DECODE);
   CHECK(strcmp(snapshot.context_message, "current operation") == 0);
   CLEAR_ERRNO();
-  CHECK(!asciichat_errno_peek_since(operation, &snapshot));
+  CHECK(!errno_peek_since(operation, &snapshot));
   CHECK(GET_ERRNO() == ERROR_AUDIO);
   CLEAR_ERRNO_ALL();
 }
@@ -148,7 +148,7 @@ static inline void stack_contract(void) {
   CHECK(argument == 1);
   asciichat_error_context_t root, copy;
   CHECK(HAS_ERRNO(&root));
-  asciichat_errno_scope_t checkpoint = asciichat_errno_checkpoint();
+  asciichat_errno_scope_t checkpoint = errno_checkpoint();
   SET_ERRNO(ERROR_CRYPTO, "wrapper");
   CHECK(HAS_ERRNO_CODE(ERROR_NETWORK));
   CHECK(HAS_ERRNO_CODE_TID(root.thread_id, ERROR_CRYPTO));
@@ -156,8 +156,8 @@ static inline void stack_contract(void) {
   CHECK(HAS_ERRNO_CODE_SINCE(checkpoint, ERROR_CRYPTO));
   CHECK(!HAS_ERRNO_CODE_SINCE(checkpoint, ERROR_NETWORK));
   CHECK(copy.error_id > root.error_id);
-  CHECK(!asciichat_clear_errno_if_top(root.thread_id, root.generation, root.error_id));
-  CHECK(asciichat_clear_errno_if_top(copy.thread_id, copy.generation, copy.error_id));
+  CHECK(!errno_clear_if_top(root.thread_id, root.generation, root.error_id));
+  CHECK(errno_clear_if_top(copy.thread_id, copy.generation, copy.error_id));
   CHECK(GET_ERRNO() == ERROR_NETWORK);
   CLEAR_ERRNO();
   CHECK(GET_ERRNO() == ASCIICHAT_OK);
@@ -166,9 +166,9 @@ static inline void stack_contract(void) {
   SET_ERRNO(ASCIICHAT_OK, "not an error");
   CHECK(!HAS_ERRNO(NULL));
 
-  asciichat_set_errno_with_system_error(ERROR_NETWORK, __FILE__, __LINE__, __func__, 42);
+  errno_set_with_system_error(ERROR_NETWORK, __FILE__, __LINE__, __func__, 42);
   CHECK(HAS_ERRNO(&copy) && copy.has_system_error && copy.system_errno == 42);
-  asciichat_set_errno_with_wsa_error(ERROR_NETWORK, __FILE__, __LINE__, __func__, 10054);
+  errno_set_with_wsa_error(ERROR_NETWORK, __FILE__, __LINE__, __func__, 10054);
   CHECK(HAS_ERRNO(&copy) && copy.has_wsa_error && !copy.has_system_error && copy.wsa_error == 10054);
   SET_ERRNO(ERROR_CONFIG, "plain");
   CHECK(HAS_ERRNO(&copy) && !copy.has_wsa_error && !copy.has_system_error);
@@ -187,30 +187,30 @@ static inline void scopes_and_history(void) {
   SET_ERRNO(ERROR_AUDIO, "unrelated older failure");
   asciichat_error_context_t outer, propagated;
   CHECK(HAS_ERRNO(&outer));
-  asciichat_errno_scope_t successful_query = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t successful_query = errno_scope_begin();
   ASSERT_NO_ERRNO_SINCE(successful_query);
-  asciichat_errno_scope_end(successful_query, ASCIICHAT_ERRNO_DISMISSED);
+  errno_scope_end(successful_query, ASCIICHAT_ERRNO_DISMISSED);
   SET_ERRNO(ERROR_NETWORK, "failure after successful optional query");
   CHECK(HAS_ERRNO(&propagated) && propagated.cause_id == outer.error_id);
   CLEAR_ERRNO();
-  asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
-  CHECK(asciichat_errno_scope_is_clean(scope));
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  CHECK(errno_scope_is_clean(scope));
   SET_ERRNO(ERROR_MEDIA_OPEN, "yt-dlp attempt");
   CHECK(HAS_ERRNO_CODE_SINCE(scope, ERROR_MEDIA_OPEN));
   CHECK(!HAS_ERRNO_CODE_SINCE(scope, ERROR_AUDIO));
-  CHECK(!asciichat_errno_scope_is_clean(scope));
+  CHECK(!errno_scope_is_clean(scope));
   asciichat_error_context_t attempt;
   CHECK(HAS_ERRNO(&attempt));
-  asciichat_errno_scope_t nested = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t nested = errno_scope_begin();
   SET_ERRNO(ERROR_NETWORK, "nested attempt");
-  asciichat_errno_scope_end(nested, ASCIICHAT_ERRNO_HANDLED);
+  errno_scope_end(nested, ASCIICHAT_ERRNO_HANDLED);
   CHECK(HAS_ERRNO_CODE(ERROR_MEDIA_OPEN));
   platform_sleep_ns(NS_PER_MS_INT);
-  asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   ASSERT_NO_ERRNO_SINCE(scope);
   CHECK(GET_ERRNO() == ERROR_AUDIO);
   asciichat_errno_history_t history[8];
-  CHECK(asciichat_errno_history_snapshot(history, 8) >= 2);
+  CHECK(errno_history_snapshot(history, 8) >= 2);
   CHECK(history[0].context.error_id == attempt.error_id);
   CHECK(history[0].outcome == ASCIICHAT_ERRNO_DISMISSED);
   CHECK(history[0].resolved_ns >= history[0].context.created_ns);
@@ -218,12 +218,12 @@ static inline void scopes_and_history(void) {
 
   SET_ERRNO(ERROR_CONFIG, "old registration");
   CHECK(HAS_ERRNO(&attempt));
-  asciichat_errno_destroy();
+  errno_destroy();
   SET_ERRNO(ERROR_CONFIG, "new registration");
   asciichat_error_context_t next;
   CHECK(HAS_ERRNO(&next) && next.generation != attempt.generation);
-  CHECK(!asciichat_clear_errno_if_top(next.thread_id, attempt.generation, next.error_id));
-  asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  CHECK(!errno_clear_if_top(next.thread_id, attempt.generation, next.error_id));
+  errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   CHECK(HAS_ERRNO(NULL));
   CLEAR_ERRNO_ALL();
 }
@@ -237,14 +237,14 @@ static inline void capacity_contract(void) {
     SET_ERRNO(ERROR_NETWORK, "attempt %d", i);
   uint64_t tid = thread_current_id();
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-  CHECK(asciichat_errno_snapshot(tid, frames, ASCIICHAT_ERRNO_MAX_DEPTH) == ASCIICHAT_ERRNO_MAX_DEPTH);
+  CHECK(errno_snapshot(tid, frames, ASCIICHAT_ERRNO_MAX_DEPTH) == ASCIICHAT_ERRNO_MAX_DEPTH);
   CHECK(frames[ASCIICHAT_ERRNO_MAX_DEPTH - 1].error_id == root.error_id);
   CHECK(strcmp(frames[0].context_message, "attempt 255") == 0);
-  CHECK(asciichat_errno_snapshot(tid, frames, 1) == ASCIICHAT_ERRNO_MAX_DEPTH);
+  CHECK(errno_snapshot(tid, frames, 1) == ASCIICHAT_ERRNO_MAX_DEPTH);
   CHECK(asciichat_error_stats_get().dropped_errors > 0);
   CLEAR_ERRNO_ALL();
   CHECK(asciichat_error_stats_get().pending_errors == 0);
-  CHECK(asciichat_errno_history_snapshot(NULL, 0) == ASCIICHAT_ERRNO_HISTORY_SIZE);
+  CHECK(errno_history_snapshot(NULL, 0) == ASCIICHAT_ERRNO_HISTORY_SIZE);
   CHECK(asciichat_error_stats_get().overwritten_history > 0);
 }
 
@@ -257,7 +257,7 @@ typedef struct {
 
 static inline void *held_error_worker(void *arg) {
   worker_data_t *data = arg;
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   data->tid = thread_current_id();
   for (int i = 0; i < (data->overflow ? ASCIICHAT_ERRNO_MAX_DEPTH : 1); ++i)
     SET_ERRNO(ERROR_NETWORK, "worker %d", i);
@@ -275,7 +275,7 @@ static inline void cross_thread_contract(void) {
   while (!atomic_load_bool_impl(&data.ready))
     platform_sleep_ns(NS_PER_MS_INT);
   asciichat_error_context_t snapshot;
-  CHECK(asciichat_has_thread_errno(data.tid, &snapshot));
+  CHECK(errno_has_thread_error(data.tid, &snapshot));
   CHECK(HAS_ERRNO_CODE_TID(data.tid, ERROR_NETWORK));
   SET_ERRNO(ERROR_AUDIO, "caller error");
   CLEAR_ERRNO_ALL();
@@ -286,10 +286,10 @@ static inline void cross_thread_contract(void) {
   CHECK(strcmp(snapshot.context_message, "worker 0") == 0);
   atomic_store_bool_impl(&data.release, true);
   CHECK(thread_join(&thread, NULL) == 0);
-  asciichat_errno_scope_t import_scope = asciichat_errno_checkpoint();
-  CHECK(asciichat_errno_import(&snapshot) == ERROR_NETWORK);
+  asciichat_errno_scope_t import_scope = errno_checkpoint();
+  CHECK(errno_import(&snapshot) == ERROR_NETWORK);
   asciichat_error_context_t imported;
-  CHECK(asciichat_errno_peek_since(import_scope, &imported));
+  CHECK(errno_peek_since(import_scope, &imported));
   CHECK(imported.error_id != snapshot.error_id && imported.cause_id == snapshot.error_id);
   CHECK(imported.thread_id == thread_current_id());
   CHECK(strcmp(imported.context_message, snapshot.context_message) == 0);
@@ -312,12 +312,12 @@ static inline void cross_thread_contract(void) {
 
 static inline void *stress_worker(void *arg) {
   atomic_t *done = arg;
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   for (int i = 0; i < 1000; ++i) {
-    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t scope = errno_scope_begin();
     SET_ERRNO(ERROR_NETWORK, "root %d", i);
     SET_ERRNO(ERROR_MEDIA_OPEN, "wrapper %d", i);
-    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   }
   atomic_fetch_add_int_impl(done, 1);
   return NULL;
@@ -325,7 +325,7 @@ static inline void *stress_worker(void *arg) {
 
 static inline void *publish_during_clear(void *arg) {
   worker_data_t *data = arg;
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   data->tid = thread_current_id();
   atomic_store_bool_impl(&data->ready, true);
   while (!atomic_load_bool_impl(&data->release))
@@ -340,11 +340,11 @@ static inline void cross_thread_history_timing(void) {
     platform_sleep_ns(NS_PER_MS_INT);
   for (int i = 0; i < 2000; ++i) {
     asciichat_error_context_t top;
-    if (asciichat_has_thread_errno(data.tid, &top))
-      asciichat_clear_errno_if_top(data.tid, top.generation, top.error_id);
+    if (errno_has_thread_error(data.tid, &top))
+      errno_clear_if_top(data.tid, top.generation, top.error_id);
     CLEAR_ERRNO_ALL_TID(data.tid);
     asciichat_errno_history_t history[8];
-    size_t count = asciichat_errno_history_snapshot(history, 8);
+    size_t count = errno_history_snapshot(history, 8);
     for (size_t j = 0; j < count && j < sizeof(history) / sizeof(history[0]); ++j)
       CHECK(history[j].resolved_ns >= history[j].context.created_ns);
   }
@@ -359,7 +359,7 @@ static inline void concurrency_contract(void) {
     CHECK(acthread_create(&threads[i], "errno-stress", stress_worker, &done) == 0);
   while (atomic_load_int_impl(&done) < 8) {
     asciichat_errno_history_t history[4];
-    size_t count = asciichat_errno_history_snapshot(history, 4);
+    size_t count = errno_history_snapshot(history, 4);
     for (size_t j = 0; j < count && j < sizeof(history) / sizeof(history[0]); ++j)
       CHECK(history[j].resolved_ns >= history[j].context.created_ns);
     platform_sleep_ns(NS_PER_MS_INT);
@@ -379,7 +379,7 @@ static inline void concurrency_contract(void) {
   CHECK(asciichat_error_stats_get().pending_errors <= ASCIICHAT_ERRNO_MAX_FRAMES);
   for (size_t i = 0; i < 20; ++i) {
     asciichat_error_context_t contexts[ASCIICHAT_ERRNO_MAX_DEPTH];
-    size_t depth = asciichat_errno_snapshot(data[i].tid, contexts, ASCIICHAT_ERRNO_MAX_DEPTH);
+    size_t depth = errno_snapshot(data[i].tid, contexts, ASCIICHAT_ERRNO_MAX_DEPTH);
     CHECK(depth >= 2);
     CHECK(strcmp(contexts[0].context_message, "worker 63") == 0);
     CHECK(strcmp(contexts[depth - 1].context_message, "worker 0") == 0);
@@ -431,8 +431,8 @@ static inline int pending_signal_probe(void) {
   atomic_store_bool_impl(&probe_release, true);
   CHECK(thread_join(&first, NULL) == 0);
   CHECK(thread_join(&second, NULL) == 0);
-  asciichat_errno_destroy();
-  asciichat_errno_shutdown();
+  errno_destroy();
+  errno_shutdown();
   return 0;
 }
 #endif
@@ -446,12 +446,12 @@ static inline void diagnostic_verbosity_contract(void) {
   if (context.backtrace.count > 1)
     context.backtrace.count = 1;
   CLEAR_ERRNO_ALL();
-  CHECK(asciichat_errno_import(&context) == ERROR_CRYPTO_AUTH);
+  CHECK(errno_import(&context) == ERROR_CRYPTO_AUTH);
   CHECK(HAS_ERRNO(&context));
   uint64_t hits_before, misses_before, hits_after, misses_after;
   symbol_cache_get_stats(&hits_before, &misses_before, NULL);
   log_set_level(LOG_INFO);
-  asciichat_errno_print_chain(context.thread_id, context.error_id);
+  errno_print_chain(context.thread_id, context.error_id);
   symbol_cache_get_stats(&hits_after, &misses_after, NULL);
   CHECK(hits_after == hits_before && misses_after == misses_before);
   CHECK(GET_ERRNO() == ERROR_CRYPTO_AUTH);
@@ -464,7 +464,7 @@ static inline void diagnostic_verbosity_contract(void) {
   hits_before = hits_after;
   misses_before = misses_after;
   log_set_level(LOG_DEBUG);
-  asciichat_errno_print_chain(context.thread_id, context.error_id);
+  errno_print_chain(context.thread_id, context.error_id);
   symbol_cache_get_stats(&hits_after, &misses_after, NULL);
   CHECK(hits_after + misses_after > hits_before + misses_before);
 #endif

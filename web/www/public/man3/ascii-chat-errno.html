@@ -83,38 +83,38 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>asciichat_set_errno</b> (<b>asciichat_error_t</b> code,
+<p class="Pp">void <b>errno_set</b> (<b>asciichat_error_t</b> code,
     const char *file, int line, const char *function, const char
     *context_message)
   <br/>
   Set error code with basic context. void
-    <b>asciichat_set_errno_with_message</b> (<b>asciichat_error_t</b> code,
+    <b>errno_set_with_message</b> (<b>asciichat_error_t</b> code,
     const char *file, int line, const char *function, const char *format,...)
   <br/>
   Set error code with formatted message. void
-    <b>asciichat_set_errno_with_system_error</b> (<b>asciichat_error_t</b> code,
+    <b>errno_set_with_system_error</b> (<b>asciichat_error_t</b> code,
     const char *file, int line, const char *function, int sys_errno)
   <br/>
   Set error code with system error (errno). void
-    <b>asciichat_set_errno_with_system_error_and_message</b>
+    <b>errno_set_with_system_error_and_message</b>
     (<b>asciichat_error_t</b> code, const char *file, int line, const char
     *function, int sys_errno, const char *format,...)
   <br/>
   Set error code with system error and formatted message. void
-    <b>asciichat_set_errno_with_wsa_error</b> (<b>asciichat_error_t</b> code,
+    <b>errno_set_with_wsa_error</b> (<b>asciichat_error_t</b> code,
     const char *file, int line, const char *function, int wsa_error)
   <br/>
   Set error code with Windows socket error (WSA error). <b>bool</b>
-    <b>asciichat_has_errno</b> (<b>asciichat_error_context_t</b> *context)
+    <b>errno_has</b> (<b>asciichat_error_context_t</b> *context)
   <br/>
   Check if error occurred and get full context. <b>bool</b>
-    <b>asciichat_has_wsa_error</b> (void)
+    <b>errno_has_wsa_error</b> (void)
   <br/>
-  Check if current error has WSA error code. void <b>asciichat_clear_errno</b>
+  Check if current error has WSA error code. void <b>errno_clear</b>
     (void)
   <br/>
   Clear the current error state. <b>asciichat_error_t</b>
-    <b>asciichat_get_errno</b> (void)
+    <b>errno_get</b> (void)
   <br/>
   Get current error code. void <b>asciichat_fatal_with_context</b>
     (<b>asciichat_error_t</b> code, const char *file, int line, const char
@@ -139,18 +139,18 @@
     <b>asciichat_error_stats_get</b> (void)
   <br/>
   Get current error statistics. <b>asciichat_error_t</b>
-    <b>asciichat_get_thread_error</b> (int <b>thread_id</b>)
+    <b>errno_get_thread_error</b> (int <b>thread_id</b>)
   <br/>
   Get error code for a specific thread. void <b>asciichat_set_thread_error</b>
     (int <b>thread_id</b>, <b>asciichat_error_t</b> code)
   <br/>
-  Set error code for a specific thread. void <b>asciichat_clear_thread_error</b>
+  Set error code for a specific thread. void <b>errno_clear_thread_error</b>
     (int <b>thread_id</b>)
   <br/>
-  Clear error code for a specific thread. void <b>asciichat_errno_suppress</b>
+  Clear error code for a specific thread. void <b>errno_suppress</b>
     (<b>bool</b> suppress)
   <br/>
-  Suppress error logging and reporting. void <b>asciichat_errno_destroy</b>
+  Suppress error logging and reporting. void <b>errno_destroy</b>
     (void)
   <br/>
   Cleanup error system resources.
@@ -452,7 +452,7 @@ Stack trace (11 frames):
   CLEAR_ERRNO()</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>asciichat_clear_errno()</pre>
+<pre>errno_clear()</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Clear the current error state.</p>
@@ -466,7 +466,7 @@ Stack trace (11 frames):
   GET_ERRNO()</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>asciichat_get_errno()</pre>
+<pre>errno_get()</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Get current error code (0 if no error).</p>
@@ -481,7 +481,7 @@ Stack trace (11 frames):
   HAS_ERRNO( var)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>asciichat_has_errno(var)</pre>
+<pre>errno_has(var)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Check if an error occurred and get full context.</p>
@@ -503,7 +503,7 @@ Stack trace (11 frames):
   SET_ERRNO( code, context_msg, ...)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>(asciichat_set_errno_with_message(code, __FILE__, __LINE__, __func__, context_msg, ##__VA_ARGS__),                   \
+<pre>(errno_set_with_message(code, __FILE__, __LINE__, __func__, context_msg, ##__VA_ARGS__),                   \
 <br/>
  log_error(&quot;SET_ERRNO: &quot; context_msg &quot; (code: %d, meaning: %s)&quot;, ##__VA_ARGS__, code, asciichat_error_string(code)), \
 <br/>
@@ -522,7 +522,7 @@ Stack trace (11 frames):
 <p class="Pp">Definition at line <b>316</b> of file
   <b>asciichat_errno.h</b>.</p>
 <pre>316 #define SET_ERRNO(code, context_msg, ...)                                                                              \
-317   (asciichat_set_errno_with_message(code, __FILE__, __LINE__, __func__, context_msg, ##__VA_ARGS__),                   \
+317   (errno_set_with_message(code, __FILE__, __LINE__, __func__, context_msg, ##__VA_ARGS__),                   \
 318    log_error(&quot;SET_ERRNO: &quot; context_msg &quot; (code: %d, meaning: %s)&quot;, ##__VA_ARGS__, code, asciichat_error_string(code)), \
 319    (code))</pre>
 <pre></pre>
@@ -961,7 +961,7 @@ Stack trace (11 frames):
   SET_ERRNO_SYS( code, context_msg, ...)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>(asciichat_set_errno_with_system_error_and_message(code, __FILE__, __LINE__, __func__, platform_get_last_error(),    \
+<pre>(errno_set_with_system_error_and_message(code, __FILE__, __LINE__, __func__, platform_get_last_error(),    \
 <br/>
                                                    context_msg, ##__VA_ARGS__),                                      \
 <br/>
@@ -984,7 +984,7 @@ Stack trace (11 frames):
 <p class="Pp">Definition at line <b>340</b> of file
   <b>asciichat_errno.h</b>.</p>
 <pre>340 #define SET_ERRNO_SYS(code, context_msg, ...)                                                                          \
-341   (asciichat_set_errno_with_system_error_and_message(code, __FILE__, __LINE__, __func__, platform_get_last_error(),    \
+341   (errno_set_with_system_error_and_message(code, __FILE__, __LINE__, __func__, platform_get_last_error(),    \
 342                                                      context_msg, ##__VA_ARGS__),                                      \
 343    log_error(&quot;SETERRNO_SYS: &quot; context_msg &quot; (code: %d - %s, system error: %d - %s)&quot;, ##__VA_ARGS__, code,              \
 344              asciichat_error_string(code), platform_get_last_error(), platform_strerror(platform_get_last_error())),   \
@@ -1012,8 +1012,8 @@ Stack trace (11 frames):
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void_asciichat_clear_errno_(void_)"><a class="permalink" href="#void_asciichat_clear_errno_(void_)">void
-  asciichat_clear_errno (void )</a></h2>
+<h2 class="Ss" id="void_errno_clear_(void_)"><a class="permalink" href="#void_errno_clear_(void_)">void
+  errno_clear (void )</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
 <p class="Pp">Clear the current error state. Clears the thread-local error
@@ -1058,8 +1058,8 @@ Stack trace (11 frames):
     <b>SAFE_FREE</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_asciichat_clear_thread_error_(int_thread_id)"><a class="permalink" href="#void_asciichat_clear_thread_error_(int_thread_id)">void
-  asciichat_clear_thread_error (int thread_id)</a></h2>
+<h2 class="Ss" id="void_errno_clear_thread_error_(int_thread_id)"><a class="permalink" href="#void_errno_clear_thread_error_(int_thread_id)">void
+  errno_clear_thread_error (int thread_id)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
 <p class="Pp">Clear error code for a specific thread.</p>
@@ -1087,8 +1087,8 @@ Stack trace (11 frames):
     <b>valid</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_asciichat_errno_destroy_(void_)"><a class="permalink" href="#void_asciichat_errno_destroy_(void_)">void
-  asciichat_errno_destroy (void )</a></h2>
+<h2 class="Ss" id="void_errno_destroy_(void_)"><a class="permalink" href="#void_errno_destroy_(void_)">void
+  errno_destroy (void )</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
 <p class="Pp">Cleanup error system resources. Cleans up error system resources
@@ -1127,8 +1127,8 @@ Stack trace (11 frames):
     <b>stats_logger_thread()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_asciichat_errno_suppress_("><a class="permalink" href="#void_asciichat_errno_suppress_(">void
-  asciichat_errno_suppress (<b>bool</b> suppress)</a></h2>
+<h2 class="Ss" id="void_errno_suppress_("><a class="permalink" href="#void_errno_suppress_(">void
+  errno_suppress (<b>bool</b> suppress)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
 <p class="Pp">Suppress error logging and reporting.</p>
@@ -1328,7 +1328,7 @@ Stack trace (11 frames):
 <p class="Pp">References <b>lifecycle_init()</b>,
     <b>lifecycle_is_initialized()</b>, <b>mutex_init()</b>, <b>mutex_lock</b>,
     <b>mutex_unlock</b>, and <b>time_get_realtime_ns()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_set_errno()</b>.</p>
+<p class="Pp">Referenced by <b>errno_set()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_error_stats_reset_(void_)"><a class="permalink" href="#void_asciichat_error_stats_reset_(void_)">void
@@ -1446,7 +1446,7 @@ Stack trace (11 frames):
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> asciichat_get_errno (void )</h2>
+<h2 class="Ss"><b>asciichat_error_t</b> errno_get (void )</h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
 <p class="Pp">Get current error code.</p>
@@ -1474,7 +1474,7 @@ Stack trace (11 frames):
 <p class="Pp">References <b>asciichat_errno_context</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> asciichat_get_thread_error (int
+<h2 class="Ss"><b>asciichat_error_t</b> errno_get_thread_error (int
   thread_id)</h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
@@ -1510,7 +1510,7 @@ Stack trace (11 frames):
     <b>thread_id</b>, and <b>valid</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> asciichat_has_errno (<b>asciichat_error_context_t</b>
+<h2 class="Ss"><b>bool</b> errno_has (<b>asciichat_error_context_t</b>
   * context)</h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
@@ -1555,7 +1555,7 @@ Stack trace (11 frames):
     <b>ASCIICHAT_OK</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> asciichat_has_wsa_error (void )</h2>
+<h2 class="Ss"><b>bool</b> errno_has_wsa_error (void )</h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
 <p class="Pp">Check if current error has WSA error code.</p>
@@ -1666,8 +1666,8 @@ Stack trace (11 frames):
 <p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_asciichat_set_errno_("><a class="permalink" href="#void_asciichat_set_errno_(">void
-  asciichat_set_errno (<b>asciichat_error_t</b> code, const char * file, int
+<h2 class="Ss" id="void_errno_set_("><a class="permalink" href="#void_errno_set_(">void
+  errno_set (<b>asciichat_error_t</b> code, const char * file, int
   line, const char * function, const char * context_message)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
@@ -1758,14 +1758,14 @@ Stack trace (11 frames):
     <b>asciichat_error_stats_record()</b>, <b>backtrace_t_free()</b>,
     <b>log_error</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>,
     and <b>time_get_realtime_ns()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_set_errno_with_message()</b>,
-    <b>asciichat_set_errno_with_system_error()</b>,
-    <b>asciichat_set_errno_with_system_error_and_message()</b>, and
-    <b>asciichat_set_errno_with_wsa_error()</b>.</p>
+<p class="Pp">Referenced by <b>errno_set_with_message()</b>,
+    <b>errno_set_with_system_error()</b>,
+    <b>errno_set_with_system_error_and_message()</b>, and
+    <b>errno_set_with_wsa_error()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_asciichat_set_errno_with_message_("><a class="permalink" href="#void_asciichat_set_errno_with_message_(">void
-  asciichat_set_errno_with_message (<b>asciichat_error_t</b> code, const char *
+<h2 class="Ss" id="void_errno_set_with_message_("><a class="permalink" href="#void_errno_set_with_message_(">void
+  errno_set_with_message (<b>asciichat_error_t</b> code, const char *
   file, int line, const char * function, const char * format, ...)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
@@ -1804,7 +1804,7 @@ Stack trace (11 frames):
 169   va_start(args, format);
 170 
 171   char *context_message = format_message(format, args);
-172   asciichat_set_errno(code, file, line, function, context_message);
+172   errno_set(code, file, line, function, context_message);
 173 
 174   if (context_message) {
 175     SAFE_FREE(context_message);
@@ -1814,12 +1814,12 @@ Stack trace (11 frames):
 179 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>, <b>asciichat_set_errno()</b>,
+<p class="Pp">References <b>args</b>, <b>errno_set()</b>,
     <b>format_message()</b>, and <b>SAFE_FREE</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_asciichat_set_errno_with_system_error_("><a class="permalink" href="#void_asciichat_set_errno_with_system_error_(">void
-  asciichat_set_errno_with_system_error (<b>asciichat_error_t</b> code, const
+<h2 class="Ss" id="void_errno_set_with_system_error_("><a class="permalink" href="#void_errno_set_with_system_error_(">void
+  errno_set_with_system_error (<b>asciichat_error_t</b> code, const
   char * file, int line, const char * function, int sys_errno)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
@@ -1852,18 +1852,18 @@ Stack trace (11 frames):
 <p class="Pp">Definition at line <b>181</b> of file
   <b>asciichat_errno.c</b>.</p>
 <pre>182                                                           {
-183   asciichat_set_errno(code, file, line, function, NULL);
+183   errno_set(code, file, line, function, NULL);
 184   asciichat_errno_context.system_errno = sys_errno;
 185   asciichat_errno_context.has_system_error = true;
 186 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_errno_context</b>, and
-    <b>asciichat_set_errno()</b>.</p>
+    <b>errno_set()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_asciichat_set_errno_with_system_error_and_message_("><a class="permalink" href="#void_asciichat_set_errno_with_system_error_and_message_(">void
-  asciichat_set_errno_with_system_error_and_message (<b>asciichat_error_t</b>
+<h2 class="Ss" id="void_errno_set_with_system_error_and_message_("><a class="permalink" href="#void_errno_set_with_system_error_and_message_(">void
+  errno_set_with_system_error_and_message (<b>asciichat_error_t</b>
   code, const char * file, int line, const char * function, int sys_errno, const
   char * format, ...)</a></h2>
 <p class="Pp">#include
@@ -1905,7 +1905,7 @@ Stack trace (11 frames):
 191   va_start(args, format);
 192 
 193   char *context_message = format_message(format, args);
-194   asciichat_set_errno(code, file, line, function, context_message);
+194   errno_set(code, file, line, function, context_message);
 195   asciichat_errno_context.system_errno = sys_errno;
 196   asciichat_errno_context.has_system_error = true;
 197 
@@ -1918,12 +1918,12 @@ Stack trace (11 frames):
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>asciichat_errno_context</b>,
-    <b>asciichat_set_errno()</b>, <b>format_message()</b>, and
+    <b>errno_set()</b>, <b>format_message()</b>, and
   <b>SAFE_FREE</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_asciichat_set_errno_with_wsa_error_("><a class="permalink" href="#void_asciichat_set_errno_with_wsa_error_(">void
-  asciichat_set_errno_with_wsa_error (<b>asciichat_error_t</b> code, const char
+<h2 class="Ss" id="void_errno_set_with_wsa_error_("><a class="permalink" href="#void_errno_set_with_wsa_error_(">void
+  errno_set_with_wsa_error (<b>asciichat_error_t</b> code, const char
   * file, int line, const char * function, int wsa_error)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
@@ -1952,14 +1952,14 @@ Stack trace (11 frames):
 <p class="Pp">Definition at line <b>205</b> of file
   <b>asciichat_errno.c</b>.</p>
 <pre>206                                                        {
-207   asciichat_set_errno(code, file, line, function, NULL);
+207   errno_set(code, file, line, function, NULL);
 208   asciichat_errno_context.wsa_error = wsa_error;
 209   asciichat_errno_context.has_wsa_error = true;
 210 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_errno_context</b>, and
-    <b>asciichat_set_errno()</b>.</p>
+    <b>errno_set()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_set_thread_error_(int_thread_id,_"><a class="permalink" href="#void_asciichat_set_thread_error_(int_thread_id,_">void
@@ -2029,7 +2029,7 @@ Stack trace (11 frames):
 </div>
 <p class="Pp">Definition at line <b>43</b> of file <b>asciichat_errno.c</b>.</p>
 <p class="Pp">Referenced by <b>accept_with_timeout()</b>, and
-    <b>asciichat_set_errno()</b>.</p>
+    <b>errno_set()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">__thread <b>asciichat_error_context_t</b> asciichat_errno_context
@@ -2060,13 +2060,13 @@ Stack trace (11 frames):
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>accept_with_timeout()</b>,
-    <b>asciichat_clear_errno()</b>, <b>asciichat_errno_destroy()</b>,
-    <b>asciichat_fatal_with_context()</b>, <b>asciichat_get_errno()</b>,
-    <b>asciichat_has_errno()</b>, <b>asciichat_has_wsa_error()</b>,
-    <b>asciichat_set_errno()</b>,
-    <b>asciichat_set_errno_with_system_error()</b>,
-    <b>asciichat_set_errno_with_system_error_and_message()</b>, and
-    <b>asciichat_set_errno_with_wsa_error()</b>.</p>
+    <b>errno_clear()</b>, <b>errno_destroy()</b>,
+    <b>asciichat_fatal_with_context()</b>, <b>errno_get()</b>,
+    <b>errno_has()</b>, <b>errno_has_wsa_error()</b>,
+    <b>errno_set()</b>,
+    <b>errno_set_with_system_error()</b>,
+    <b>errno_set_with_system_error_and_message()</b>, and
+    <b>errno_set_with_wsa_error()</b>.</p>
 </section>
 </section>
 <section class="Sh">

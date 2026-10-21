@@ -180,20 +180,20 @@ static bool handle_error_message_packet(client_connection_t *connection, const v
 
   log_error("Server reported %s", asciichat_error_format(message, remote_error));
   remote_error = network_error_public_code(remote_error);
-  asciichat_errno_scope_t notification = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t notification = errno_scope_begin();
   SET_ERRNO(remote_error, "Server notification: %s", asciichat_error_string(remote_error));
   if (network_error_action(remote_error) == NETWORK_ERROR_CONTINUE) {
     log_warn("Server audio unavailable; continuing video");
-    asciichat_errno_scope_end(notification, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(notification, ASCIICHAT_ERRNO_HANDLED);
     return true;
   }
   server_connection_set_remote_error(connection, remote_error);
   if (network_error_action(remote_error) == NETWORK_ERROR_STOP) {
-    asciichat_errno_request_exit(remote_error);
+    errno_request_exit(remote_error);
     signal_exit();
   }
   log_warn("Server rejected this connection; closing it");
-  asciichat_errno_scope_end(notification, ASCIICHAT_ERRNO_HANDLED);
+  errno_scope_end(notification, ASCIICHAT_ERRNO_HANDLED);
   server_connection_shutdown(connection);
   server_connection_lost(connection);
   return true;
@@ -308,7 +308,7 @@ static void *data_reception_thread_func(void *arg) {
   } else if (!should_exit()) {
     if (result == ERROR_CRYPTO) {
       NOTICE(DANGER, "ENCRYPTION POLICY VIOLATION", "Server violated the encryption policy; closing connection.");
-      asciichat_errno_request_exit(ERROR_CRYPTO);
+      errno_request_exit(ERROR_CRYPTO);
       signal_exit();
     }
     server_connection_lost(connection);

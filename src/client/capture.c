@@ -210,11 +210,11 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Read frame using session capture library
-    asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
+    asciichat_errno_scope_t frame_scope = errno_checkpoint();
     image_t *image = session_capture_read_frame(connection->capture_context);
     asciichat_error_context_t capture_failure;
-    if (!image && asciichat_errno_peek_since(frame_scope, &capture_failure)) {
-      asciichat_errno_request_exit(capture_failure.code);
+    if (!image && errno_peek_since(frame_scope, &capture_failure)) {
+      errno_request_exit(capture_failure.code);
       signal_exit();
       break;
     }
@@ -263,7 +263,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     uint64_t send_start_ns = time_get_ns();
 
-    asciichat_errno_scope_t send_scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t send_scope = errno_scope_begin();
     asciichat_error_t send_result;
     bool encoding_failed = false;
     for (;;) {
@@ -272,18 +272,18 @@ static void *webcam_capture_thread_func(void *arg) {
                                                 (uint32_t)processed_image->h, 1);
         break;
       }
-      asciichat_errno_scope_t encode_scope = asciichat_errno_scope_begin();
+      asciichat_errno_scope_t encode_scope = errno_scope_begin();
       send_result = threaded_send_image_frame_encoded(connection, processed_image->pixels, (uint32_t)processed_image->w,
                                                       (uint32_t)processed_image->h, selected_codec, &encoding_failed);
       if (!encoding_failed || !automatic_codec || send_result == ERROR_MEMORY) {
         if (send_result == ASCIICHAT_OK)
-          asciichat_errno_scope_end(encode_scope, ASCIICHAT_ERRNO_HANDLED);
+          errno_scope_end(encode_scope, ASCIICHAT_ERRNO_HANDLED);
         break;
       }
       log_warn("%s encoding failed; automatic video is switching to %s",
                selected_codec == VIDEO_CODEC_H265 ? "HEVC" : "H.264",
                selected_codec == VIDEO_CODEC_H265 ? "H.264" : "raw");
-      asciichat_errno_scope_end(encode_scope, ASCIICHAT_ERRNO_DISMISSED);
+      errno_scope_end(encode_scope, ASCIICHAT_ERRNO_DISMISSED);
       h265_encoder_destroy(connection->video_encoder);
       connection->video_encoder = NULL;
       selected_codec = selected_codec == VIDEO_CODEC_H265 ? VIDEO_CODEC_H264 : VIDEO_CODEC_RGBA;
@@ -298,7 +298,7 @@ static void *webcam_capture_thread_func(void *arg) {
     if (encoding_failed) {
       log_error("%s video encoding failed (%s). Use --video-codec auto for fallback or --video-codec raw.", codec_name,
                 asciichat_error_format(NULL, send_result));
-      asciichat_errno_request_exit(send_result);
+      errno_request_exit(send_result);
       signal_exit();
       break;
     }
@@ -312,7 +312,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     if (send_result != ASCIICHAT_OK && network_error_is_local_rejection(send_result)) {
       LOG_ERRNO_IF_SET("Dropping locally rejected video frame");
-      asciichat_errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
+      errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
       continue;
     }
     if (send_result != ASCIICHAT_OK) {
@@ -323,7 +323,7 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     ASSERT_NO_ERRNO_SINCE(send_scope);
-    asciichat_errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
     if (send_duration_ns > 500 * NS_PER_MS_INT) {
       log_warn("⚠️  SLOW_FRAME_SEND: %.1fms to send %ux%u %s frame (may indicate full send buffer)",
                (double)send_duration_ns / 1e6, processed_image->w, processed_image->h, codec_name);
@@ -441,12 +441,12 @@ int capture_init() {
   config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
 
   // Create capture context using session library
-  asciichat_errno_scope_t create_scope = asciichat_errno_checkpoint();
+  asciichat_errno_scope_t create_scope = errno_checkpoint();
   g_capture_capture_ctx = session_capture_create(&config);
   if (!g_capture_capture_ctx) {
     // Check if there's already an error set (e.g., ERROR_WEBCAM_IN_USE)
     asciichat_error_context_t failure;
-    asciichat_error_t existing_error = asciichat_errno_peek_since(create_scope, &failure) ? failure.code : ASCIICHAT_OK;
+    asciichat_error_t existing_error = errno_peek_since(create_scope, &failure) ? failure.code : ASCIICHAT_OK;
     log_debug("session_capture_create failed %s", asciichat_error_format(NULL, existing_error));
     if (existing_error != ASCIICHAT_OK) {
       log_debug("Returning existing error %s", asciichat_error_format(NULL, existing_error));

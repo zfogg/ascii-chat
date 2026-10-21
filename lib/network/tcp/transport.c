@@ -136,7 +136,7 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
 
   uint64_t receive_timeout_ns =
       transport->receive_timeout_ns != 0 ? transport->receive_timeout_ns : RECV_TIMEOUT * NS_PER_SEC_INT;
-  asciichat_errno_scope_t receive_scope = asciichat_errno_checkpoint();
+  asciichat_errno_scope_t receive_scope = errno_checkpoint();
   packet_recv_result_t result = receive_packet_secure_with_timeout(tcp->sockfd, transport->crypto_ctx,
                                                                    enforce_encryption, &envelope, receive_timeout_ns);
   log_debug("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, -1=eof, -2=error, -3=security), data_size=%zu",

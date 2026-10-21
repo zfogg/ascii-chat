@@ -32,9 +32,9 @@ asciichat_error_t debug_errno_init(void) {
 }
 static void debug_errno_print_errno(void) {
   log_info("Errno stacks:");
-  asciichat_errno_print_stacks();
-  asciichat_errno_print_history();
-  asciichat_errno_print_hash_stats();
+  errno_print_stacks();
+  errno_print_history();
+  errno_print_hash_stats();
 }
 void debug_errno_print(void) {
   debug_errno_print_errno();

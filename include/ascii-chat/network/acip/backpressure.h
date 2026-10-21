@@ -34,6 +34,8 @@ void acip_outbound_destroy(acip_transport_t *transport);
 /** Copy plaintext before returning ACCEPTED; congestion never changes encryption state.
  * Handshake/control submissions except ping/pong wait for backend submission so crypto/setup barriers hold.
  * Success describes local admission/submission, never receiver delivery.
+ * A terminal backend failure retains its status and errno context for waiting
+ * and subsequent producers. Congestion remains a nonfatal admission outcome.
  */
 asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
                                         acip_admission_t *admission);

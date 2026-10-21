@@ -84,38 +84,38 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>asciichat_set_errno</b> (<b>asciichat_error_t</b> code,
+<p class="Pp">void <b>errno_set</b> (<b>asciichat_error_t</b> code,
     const char *file, int line, const char *function, const char
     *context_message)
   <br/>
   Set error code with basic context. void
-    <b>asciichat_set_errno_with_message</b> (<b>asciichat_error_t</b> code,
+    <b>errno_set_with_message</b> (<b>asciichat_error_t</b> code,
     const char *file, int line, const char *function, const char *format,...)
   <br/>
   Set error code with formatted message. void
-    <b>asciichat_set_errno_with_system_error</b> (<b>asciichat_error_t</b> code,
+    <b>errno_set_with_system_error</b> (<b>asciichat_error_t</b> code,
     const char *file, int line, const char *function, int sys_errno)
   <br/>
   Set error code with system error (errno). void
-    <b>asciichat_set_errno_with_system_error_and_message</b>
+    <b>errno_set_with_system_error_and_message</b>
     (<b>asciichat_error_t</b> code, const char *file, int line, const char
     *function, int sys_errno, const char *format,...)
   <br/>
   Set error code with system error and formatted message. void
-    <b>asciichat_set_errno_with_wsa_error</b> (<b>asciichat_error_t</b> code,
+    <b>errno_set_with_wsa_error</b> (<b>asciichat_error_t</b> code,
     const char *file, int line, const char *function, int wsa_error)
   <br/>
   Set error code with Windows socket error (WSA error). <b>bool</b>
-    <b>asciichat_has_errno</b> (<b>asciichat_error_context_t</b> *context)
+    <b>errno_has</b> (<b>asciichat_error_context_t</b> *context)
   <br/>
   Check if error occurred and get full context. <b>bool</b>
-    <b>asciichat_has_wsa_error</b> (void)
+    <b>errno_has_wsa_error</b> (void)
   <br/>
-  Check if current error has WSA error code. void <b>asciichat_clear_errno</b>
+  Check if current error has WSA error code. void <b>errno_clear</b>
     (void)
   <br/>
   Clear the current error state. <b>asciichat_error_t</b>
-    <b>asciichat_get_errno</b> (void)
+    <b>errno_get</b> (void)
   <br/>
   Get current error code. void <b>asciichat_fatal_with_context</b>
     (<b>asciichat_error_t</b> code, const char *file, int line, const char
@@ -140,18 +140,18 @@
     <b>asciichat_error_stats_get</b> (void)
   <br/>
   Get current error statistics. <b>asciichat_error_t</b>
-    <b>asciichat_get_thread_error</b> (int <b>thread_id</b>)
+    <b>errno_get_thread_error</b> (int <b>thread_id</b>)
   <br/>
   Get error code for a specific thread. void <b>asciichat_set_thread_error</b>
     (int <b>thread_id</b>, <b>asciichat_error_t</b> code)
   <br/>
-  Set error code for a specific thread. void <b>asciichat_clear_thread_error</b>
+  Set error code for a specific thread. void <b>errno_clear_thread_error</b>
     (int <b>thread_id</b>)
   <br/>
-  Clear error code for a specific thread. void <b>asciichat_errno_suppress</b>
+  Clear error code for a specific thread. void <b>errno_suppress</b>
     (<b>bool</b> suppress)
   <br/>
-  Suppress error logging and reporting. void <b>asciichat_errno_destroy</b>
+  Suppress error logging and reporting. void <b>errno_destroy</b>
     (void)
   <br/>
   Cleanup error system resources.

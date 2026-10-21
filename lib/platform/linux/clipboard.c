@@ -11,14 +11,14 @@ asciichat_error_t platform_clipboard_read(char *output, size_t capacity) {
   const char *x11_files[] = {"xclip", "-selection", "clipboard", "-out", "-target", "text/uri-list", NULL};
   const char *x11_text[] = {"xclip", "-selection", "clipboard", "-out", NULL};
   const char **commands[] = {wayland_files, wayland_text, x11_files, x11_text};
-  asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t scope = errno_scope_begin();
   for (size_t i = 0; i < 4; ++i) {
     output[0] = '\0';
     if (platform_execute_subprocess(commands[i][0], commands[i], output, capacity) == 0 && output[0]) {
-      asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+      errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
       return ASCIICHAT_OK;
     }
   }
-  asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   return SET_ERRNO(ERROR_GENERAL, "Cannot read clipboard; install wl-clipboard or xclip, or paste into Open media");
 }
