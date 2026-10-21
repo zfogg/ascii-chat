@@ -21,6 +21,26 @@
 // Validators
 // ============================================================================
 
+#ifndef __EMSCRIPTEN__
+static const bool default_render_kitty_value = false;
+
+static bool validate_kitty_output(const void *data) {
+  const options_t *opts = data;
+  bool kitty = opts->render_kitty || strcmp(opts->render_file, "--kitty") == 0;
+  if (kitty && !opts->snapshot_mode) {
+    SET_ERRNO(ERROR_USAGE, "Kitty graphics output requires --snapshot");
+    return false;
+  }
+  if (opts->render_kitty && (strcmp(opts->render_file, "-") == 0 || strcmp(opts->render_file, "pipe:") == 0)) {
+    SET_ERRNO(ERROR_USAGE, "Kitty graphics and binary media cannot share stdout");
+    return false;
+  }
+  return true;
+}
+#else
+#define validate_kitty_output NULL
+#endif
+
 static bool validate_video_codec(const void *opts_struct) {
   const options_t *opts = (const options_t *)opts_struct;
   if (strcmp(opts->video_codec, "auto") == 0 || strcmp(opts->video_codec, "hevc") == 0 ||
@@ -204,6 +224,27 @@ const registry_entry_t g_media_entries[] = {
 
 #define RENDER_FILE_MODES (OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY)
 
+#ifndef __EMSCRIPTEN__
+    {"render-kitty",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, render_kitty),
+     &default_render_kitty_value,
+     sizeof(bool),
+     "Display a snapshot using Kitty graphics (requires --snapshot). Combine with --render-file to save it.",
+     "MEDIA",
+     NULL,
+     false,
+     "ASCII_CHAT_RENDER_KITTY",
+     validate_kitty_output,
+     NULL,
+     false,
+     false,
+     RENDER_FILE_MODES,
+     {0},
+     NULL},
+#endif
+
     {"render-file",
      '\0',
      OPTION_TYPE_STRING,
@@ -217,7 +258,7 @@ const registry_entry_t g_media_entries[] = {
      "PATH",
      false,
      "ASCII_CHAT_RENDER_FILE",
-     NULL,
+     validate_kitty_output,
      NULL,
      false,
      false,
