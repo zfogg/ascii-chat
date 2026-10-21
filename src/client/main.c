@@ -444,7 +444,6 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     }
 
     if (!should_exit()) {
-      session_display_reset_first_frame(display);
       splash_intro_start(display);
       log_debug("Connection lost, preparing for reconnection attempt");
     }

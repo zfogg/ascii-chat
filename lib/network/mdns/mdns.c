@@ -177,6 +177,7 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
                                         .type = MDNS_RECORDTYPE_SRV,
                                         .data.srv = {.name = {mdns->host, strlen(mdns->host)}, .port = service->port}};
   mdns->additional_count = 1;
+  asciichat_errno_scope_t route_scope = errno_checkpoint();
   socket_t route = socket_create("mdns_route", AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (route != INVALID_SOCKET_VALUE) {
     struct sockaddr_in multicast = {
@@ -189,6 +190,7 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
           (mdns_record_t){.name = {mdns->host, strlen(mdns->host)}, .type = MDNS_RECORDTYPE_A, .data.a.addr = local};
     socket_close(route);
   }
+  errno_scope_end(route_scope, ASCIICHAT_ERRNO_DISMISSED);
   for (size_t i = 0; i < service->txt_count; ++i) {
     SAFE_STRNCPY(mdns->txt[i], service->txt_records[i], sizeof(mdns->txt[i]));
     char *value = strchr(mdns->txt[i], '=');
@@ -247,7 +249,7 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
   size_t offset = name_offset;
   mdns_string_extract(data, size, &offset, discovery.type, sizeof(discovery.type) - 1);
   const char *suffix = strstr(discovery.type, mdns->query_service);
-  if (!suffix || suffix == discovery.type || suffix[-1] != '.')
+  if (!suffix || suffix == discovery.type || suffix[-1] != '.' || strcmp(suffix, mdns->query_service) != 0)
     return 0;
   safe_snprintf(discovery.name, sizeof(discovery.name), "%.*s", (int)(suffix - discovery.type - 1), discovery.type);
   mdns_record_srv_t srv =
