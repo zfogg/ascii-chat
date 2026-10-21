@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "implementationCommit": "353fbe007f666f26411b8152608efd0abf916286",
+  "implementationCommit": "bd4869c10c3aafd4c1ba5c79635f1d501f48d4a1",
   "environment": {
     "os": "Windows x64",
     "nativeCompiler": "Clang 23.1.3 / Ninja Debug",
@@ -18,8 +18,8 @@
     }
   },
   "nativeFiles": {
-    "ascii-chat.exe": "cd51b7f974d83905f50f6ff687c4c7af6a20d722ef940a96af324c304a8029c9",
-    "asciichat.dll": "f066f3df475b0ea88b8e9e0e4675e8e3f1fb8e144520789dc2c16d63f0632d5d"
+    "ascii-chat.exe": "700b40d14780754de446833c83c3372c2ee5bfc4bea96dab12d3ecfe9b8b7988",
+    "asciichat.dll": "c86848ec4fc45d9645faf23dc681c619ac68b95a64627e263686b1c90eab8402"
   },
   "limits": [
     "Decoded PCM and playback submission, not physical speaker output or perceptual quality.",
@@ -33,6 +33,8 @@
       "passed": true,
       "losses": 3,
       "dwell": 30000,
+      "nativeFps": 20,
+      "promotionDelayMs": 0,
       "rounds": [
         {
           "round": 0,
@@ -43,8 +45,8 @@
                 "state": "succeeded",
                 "local": "host",
                 "remote": "host",
-                "bytesSent": 8622322,
-                "bytesReceived": 1867946
+                "bytesSent": 8040254,
+                "bytesReceived": 0
               }
             ],
             [
@@ -53,81 +55,93 @@
                 "state": "succeeded",
                 "local": "host",
                 "remote": "host",
-                "bytesSent": 7681072,
-                "bytesReceived": 1592218
+                "bytesSent": 7285280,
+                "bytesReceived": 1532627
               }
             ]
           ],
           "measurements": [
             {
               "before": {
-                "audio": 1712,
-                "last": 37987.90500000119,
-                "unique": 689,
+                "audio": 1600,
+                "totalAudio": 1600,
+                "delayedStarts": 0,
+                "last": 37577.12999999523,
+                "unique": 645,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1800,
-                "last": 39748.64500001073,
-                "unique": 723,
+                "audio": 1691,
+                "totalAudio": 1691,
+                "delayedStarts": 0,
+                "last": 39578.07999999821,
+                "unique": 682,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1828,
-                "last": 41119.640000000596,
-                "unique": 736,
+                "audio": 1720,
+                "totalAudio": 1727,
+                "delayedStarts": 0,
+                "last": 55093.17000000179,
+                "unique": 696,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 2535.204999998212,
-              "maxGapMs": 2535.204999998212,
-              "recoveryObservedMs": 3233,
+              "interruptionMs": 16782,
+              "maxGapMs": 16782,
+              "recoveryObservedMs": 17674,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "host",
                   "remote": "host",
-                  "bytesSent": 42919,
-                  "bytesReceived": 129700
+                  "bytesSent": 33842,
+                  "bytesReceived": 139116
                 }
               ]
             },
             {
               "before": {
-                "audio": 1524,
-                "last": 33579.185000002384,
-                "unique": 611,
+                "audio": 1409,
+                "totalAudio": 1409,
+                "delayedStarts": 0,
+                "last": 33673.20499999821,
+                "unique": 576,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1612,
-                "last": 35339.159999996424,
-                "unique": 647,
+                "audio": 1500,
+                "totalAudio": 1500,
+                "delayedStarts": 0,
+                "last": 35679.04000000656,
+                "unique": 613,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1642,
-                "last": 36731.98000000417,
-                "unique": 658,
+                "audio": 1529,
+                "totalAudio": 1529,
+                "delayedStarts": 0,
+                "last": 51191.864999994636,
+                "unique": 624,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 2584.5750000029802,
-              "maxGapMs": 2584.5750000029802,
-              "recoveryObservedMs": 3240,
+              "interruptionMs": 16902.365000009537,
+              "maxGapMs": 16902.365000009537,
+              "recoveryObservedMs": 17597,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "host",
                   "remote": "host",
-                  "bytesSent": 141868,
-                  "bytesReceived": 43373
+                  "bytesSent": 139116,
+                  "bytesReceived": 33842
                 }
               ]
             }
@@ -142,8 +156,8 @@
                 "state": "succeeded",
                 "local": "host",
                 "remote": "host",
-                "bytesSent": 8596346,
-                "bytesReceived": 1827251
+                "bytesSent": 8957638,
+                "bytesReceived": 1945162
               }
             ],
             [
@@ -152,81 +166,93 @@
                 "state": "succeeded",
                 "local": "host",
                 "remote": "host",
-                "bytesSent": 7609014,
-                "bytesReceived": 1572606
+                "bytesSent": 7636763,
+                "bytesReceived": 1592611
               }
             ]
           ],
           "measurements": [
             {
               "before": {
-                "audio": 3303,
-                "last": 70410.26999999583,
-                "unique": 1323,
+                "audio": 3224,
+                "totalAudio": 3248,
+                "delayedStarts": 0,
+                "last": 87289.90999999642,
+                "unique": 1319,
                 "migrations": 1,
                 "error": ""
               },
               "committed": {
-                "audio": 3388,
-                "last": 72110.21999999881,
-                "unique": 1357,
+                "audio": 3298,
+                "totalAudio": 3322,
+                "delayedStarts": 0,
+                "last": 88771.16500000656,
+                "unique": 1348,
                 "migrations": 2,
                 "error": ""
               },
               "after": {
-                "audio": 3414,
-                "last": 73108.27500000596,
-                "unique": 1369,
+                "audio": 3326,
+                "totalAudio": 3355,
+                "delayedStarts": 0,
+                "last": 90004.78499999642,
+                "unique": 1361,
                 "migrations": 2,
                 "error": ""
               },
-              "interruptionMs": 2120.125,
-              "maxGapMs": 2120.125,
-              "recoveryObservedMs": 2759,
+              "interruptionMs": 2075.8050000071526,
+              "maxGapMs": 2075.8050000071526,
+              "recoveryObservedMs": 2790,
               "selectedPairs": [
                 {
                   "peer": 2,
                   "state": "succeeded",
                   "local": "host",
                   "remote": "host",
-                  "bytesSent": 39399,
-                  "bytesReceived": 141147
+                  "bytesSent": 40651,
+                  "bytesReceived": 153841
                 }
               ]
             },
             {
               "before": {
-                "audio": 1506,
-                "last": 32945.090000003576,
+                "audio": 1492,
+                "totalAudio": 1492,
+                "delayedStarts": 0,
+                "last": 34663.79500000179,
                 "unique": 605,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1591,
-                "last": 34645.42499999702,
-                "unique": 639,
+                "audio": 1566,
+                "totalAudio": 1566,
+                "delayedStarts": 0,
+                "last": 36144.63000001013,
+                "unique": 635,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1617,
-                "last": 35643.640000000596,
-                "unique": 650,
+                "audio": 1592,
+                "totalAudio": 1592,
+                "delayedStarts": 0,
+                "last": 37299.53000000119,
+                "unique": 645,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 2198.2249999940395,
-              "maxGapMs": 2198.2249999940395,
-              "recoveryObservedMs": 2761,
+              "interruptionMs": 2161.5850000083447,
+              "maxGapMs": 2161.5850000083447,
+              "recoveryObservedMs": 2711,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "host",
                   "remote": "host",
-                  "bytesSent": 141147,
-                  "bytesReceived": 39399
+                  "bytesSent": 140963,
+                  "bytesReceived": 36895
                 }
               ]
             }
@@ -241,8 +267,8 @@
                 "state": "succeeded",
                 "local": "host",
                 "remote": "host",
-                "bytesSent": 8716415,
-                "bytesReceived": 1847999
+                "bytesSent": 8751927,
+                "bytesReceived": 1902025
               }
             ],
             [
@@ -251,96 +277,110 @@
                 "state": "succeeded",
                 "local": "host",
                 "remote": "host",
-                "bytesSent": 7682627,
-                "bytesReceived": 1584926
+                "bytesSent": 7551272,
+                "bytesReceived": 1553345
               }
             ]
           ],
           "measurements": [
             {
               "before": {
-                "audio": 3319,
-                "last": 70083.10500000417,
-                "unique": 1328,
+                "audio": 3306,
+                "totalAudio": 3306,
+                "delayedStarts": 0,
+                "last": 72718.81000000238,
+                "unique": 1330,
                 "migrations": 1,
                 "error": ""
               },
               "committed": {
-                "audio": 3389,
-                "last": 71543.53999999166,
-                "unique": 1356,
+                "audio": 3376,
+                "totalAudio": 3376,
+                "delayedStarts": 0,
+                "last": 74119.33000001311,
+                "unique": 1357,
                 "migrations": 2,
                 "error": ""
               },
               "after": {
-                "audio": 3419,
-                "last": 72384.52499999106,
+                "audio": 3402,
+                "totalAudio": 3406,
+                "delayedStarts": 0,
+                "last": 76575.38500000536,
                 "unique": 1369,
                 "migrations": 2,
                 "error": ""
               },
-              "interruptionMs": 1665.984999999404,
-              "maxGapMs": 1665.984999999404,
-              "recoveryObservedMs": 2365,
+              "interruptionMs": 3279.4300000071526,
+              "maxGapMs": 3279.4300000071526,
+              "recoveryObservedMs": 3925,
               "selectedPairs": [
                 {
                   "peer": 2,
                   "state": "succeeded",
                   "local": "host",
                   "remote": "host",
-                  "bytesSent": 43262,
-                  "bytesReceived": 153853
+                  "bytesSent": 36337,
+                  "bytesReceived": 128978
                 }
               ]
             },
             {
               "before": {
-                "audio": 1522,
-                "last": 33463.810000002384,
-                "unique": 610,
+                "audio": 1486,
+                "totalAudio": 1486,
+                "delayedStarts": 0,
+                "last": 34265.20999999344,
+                "unique": 594,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1592,
-                "last": 34924.25999999046,
-                "unique": 638,
+                "audio": 1556,
+                "totalAudio": 1556,
+                "delayedStarts": 0,
+                "last": 35664.76999999583,
+                "unique": 622,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1622,
-                "last": 35786.56999999285,
-                "unique": 649,
+                "audio": 1582,
+                "totalAudio": 1582,
+                "delayedStarts": 0,
+                "last": 38122.609999999404,
+                "unique": 632,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 1728.5399999916553,
-              "maxGapMs": 1728.5399999916553,
-              "recoveryObservedMs": 2380,
+              "interruptionMs": 3362.515000000596,
+              "maxGapMs": 3362.515000000596,
+              "recoveryObservedMs": 3908,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "host",
                   "remote": "host",
-                  "bytesSent": 154217,
-                  "bytesReceived": 43466
+                  "bytesSent": 128978,
+                  "bytesReceived": 36337
                 }
               ]
             }
           ]
         }
       ],
-      "started": "2026-10-21T06:52:38.854Z",
-      "completed": "2026-10-21T06:54:37.783Z",
-      "localArtifactDirectory": ".tmp/handoff-final-dlmalloc-direct"
+      "started": "2026-10-21T07:36:09.847Z",
+      "completed": "2026-10-21T07:38:28.064Z",
+      "localArtifactDirectory": ".tmp/handoff-tip-direct"
     },
     {
       "scenario": "browser-audio-relay",
       "passed": true,
       "losses": 3,
       "dwell": 30000,
+      "nativeFps": 20,
+      "promotionDelayMs": 0,
       "rounds": [
         {
           "round": 0,
@@ -351,8 +391,8 @@
                 "state": "succeeded",
                 "local": "relay",
                 "remote": "relay",
-                "bytesSent": 8674115,
-                "bytesReceived": 1889282
+                "bytesSent": 8036420,
+                "bytesReceived": 1742704
               }
             ],
             [
@@ -361,81 +401,93 @@
                 "state": "succeeded",
                 "local": "relay",
                 "remote": "relay",
-                "bytesSent": 7675366,
-                "bytesReceived": 1611877
+                "bytesSent": 6952619,
+                "bytesReceived": 1477913
               }
             ]
           ],
           "measurements": [
             {
               "before": {
-                "audio": 1722,
-                "last": 38901.17500001192,
-                "unique": 687,
+                "audio": 1554,
+                "totalAudio": 1570,
+                "delayedStarts": 0,
+                "last": 41440.310000002384,
+                "unique": 630,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1812,
-                "last": 40694.27000001073,
-                "unique": 723,
+                "audio": 1624,
+                "totalAudio": 1640,
+                "delayedStarts": 0,
+                "last": 42843.42499999702,
+                "unique": 659,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1838,
-                "last": 41619.94500000775,
-                "unique": 737,
+                "audio": 1651,
+                "totalAudio": 1674,
+                "delayedStarts": 0,
+                "last": 53725.375,
+                "unique": 672,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 2041.094999998808,
-              "maxGapMs": 2041.094999998808,
-              "recoveryObservedMs": 2796,
+              "interruptionMs": 11616.930000007153,
+              "maxGapMs": 11616.930000007153,
+              "recoveryObservedMs": 12365,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "relay",
                   "remote": "relay",
-                  "bytesSent": 39049,
-                  "bytesReceived": 141475
+                  "bytesSent": 39918,
+                  "bytesReceived": 141216
                 }
               ]
             },
             {
               "before": {
-                "audio": 1514,
-                "last": 33745.28000000119,
-                "unique": 613,
+                "audio": 1381,
+                "totalAudio": 1381,
+                "delayedStarts": 0,
+                "last": 33773.60499998927,
+                "unique": 549,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1604,
-                "last": 35544.40500000119,
-                "unique": 649,
+                "audio": 1452,
+                "totalAudio": 1452,
+                "delayedStarts": 0,
+                "last": 35196.185000002384,
+                "unique": 578,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1631,
-                "last": 36471.82500000298,
-                "unique": 660,
+                "audio": 1480,
+                "totalAudio": 1480,
+                "delayedStarts": 0,
+                "last": 46081.375,
+                "unique": 588,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 2247.1649999916553,
-              "maxGapMs": 2247.1649999916553,
-              "recoveryObservedMs": 2788,
+              "interruptionMs": 11768.320000007749,
+              "maxGapMs": 11768.320000007749,
+              "recoveryObservedMs": 12403,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "relay",
                   "remote": "relay",
-                  "bytesSent": 141475,
-                  "bytesReceived": 39049
+                  "bytesSent": 141814,
+                  "bytesReceived": 42906
                 }
               ]
             }
@@ -450,8 +502,8 @@
                 "state": "succeeded",
                 "local": "relay",
                 "remote": "relay",
-                "bytesSent": 8565201,
-                "bytesReceived": 1843385
+                "bytesSent": 9110090,
+                "bytesReceived": 1992252
               }
             ],
             [
@@ -460,81 +512,93 @@
                 "state": "succeeded",
                 "local": "relay",
                 "remote": "relay",
-                "bytesSent": 7639522,
-                "bytesReceived": 1594341
+                "bytesSent": 7580833,
+                "bytesReceived": 1623153
               }
             ]
           ],
           "measurements": [
             {
               "before": {
-                "audio": 3304,
-                "last": 70358.59000000358,
-                "unique": 1324,
+                "audio": 3245,
+                "totalAudio": 3245,
+                "delayedStarts": 0,
+                "last": 82731.81999999285,
+                "unique": 1291,
                 "migrations": 1,
                 "error": ""
               },
               "committed": {
-                "audio": 3397,
-                "last": 72212.20000000298,
-                "unique": 1361,
+                "audio": 3335,
+                "totalAudio": 3335,
+                "delayedStarts": 0,
+                "last": 84572.43500000238,
+                "unique": 1328,
                 "migrations": 2,
                 "error": ""
               },
               "after": {
-                "audio": 3425,
-                "last": 73305.59999999404,
-                "unique": 1378,
+                "audio": 3365,
+                "totalAudio": 3373,
+                "delayedStarts": 0,
+                "last": 86325.57500000298,
+                "unique": 1343,
                 "migrations": 2,
                 "error": ""
               },
-              "interruptionMs": 2106.0399999916553,
-              "maxGapMs": 2106.0399999916553,
-              "recoveryObservedMs": 3026,
+              "interruptionMs": 2871.890000000596,
+              "maxGapMs": 2871.890000000596,
+              "recoveryObservedMs": 3665,
               "selectedPairs": [
                 {
                   "peer": 2,
                   "state": "succeeded",
                   "local": "relay",
                   "remote": "relay",
-                  "bytesSent": 44736,
-                  "bytesReceived": 179098
+                  "bytesSent": 44074,
+                  "bytesReceived": 159105
                 }
               ]
             },
             {
               "before": {
-                "audio": 1511,
-                "last": 33189.07500000298,
-                "unique": 607,
+                "audio": 1503,
+                "totalAudio": 1503,
+                "delayedStarts": 0,
+                "last": 35003.48000000417,
+                "unique": 611,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1604,
-                "last": 35049.125,
-                "unique": 644,
+                "audio": 1593,
+                "totalAudio": 1593,
+                "delayedStarts": 0,
+                "last": 36841.85500000417,
+                "unique": 648,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1633,
-                "last": 36147.015000000596,
-                "unique": 655,
+                "audio": 1623,
+                "totalAudio": 1623,
+                "delayedStarts": 0,
+                "last": 38583.45999999344,
+                "unique": 660,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 2306.7999999970198,
-              "maxGapMs": 2306.7999999970198,
-              "recoveryObservedMs": 3025,
+              "interruptionMs": 2998.484999999404,
+              "maxGapMs": 2998.484999999404,
+              "recoveryObservedMs": 3660,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "relay",
                   "remote": "relay",
-                  "bytesSent": 179198,
-                  "bytesReceived": 47538
+                  "bytesSent": 159105,
+                  "bytesReceived": 43924
                 }
               ]
             }
@@ -549,8 +613,8 @@
                 "state": "succeeded",
                 "local": "relay",
                 "remote": "relay",
-                "bytesSent": 8700704,
-                "bytesReceived": 1884236
+                "bytesSent": 8546173,
+                "bytesReceived": 1878680
               }
             ],
             [
@@ -559,96 +623,110 @@
                 "state": "succeeded",
                 "local": "relay",
                 "remote": "relay",
-                "bytesSent": 7663781,
-                "bytesReceived": 1599397
+                "bytesSent": 7595271,
+                "bytesReceived": 1591378
               }
             ]
           ],
           "measurements": [
             {
               "before": {
-                "audio": 3329,
-                "last": 70282.04500000179,
+                "audio": 3012,
+                "totalAudio": 3228,
+                "delayedStarts": 0,
+                "last": 73435.7349999994,
                 "unique": 1331,
                 "migrations": 1,
                 "error": ""
               },
               "committed": {
-                "audio": 3396,
-                "last": 71682.99500000477,
-                "unique": 1358,
+                "audio": 3100,
+                "totalAudio": 3316,
+                "delayedStarts": 0,
+                "last": 75474.32500000298,
+                "unique": 1368,
                 "migrations": 2,
                 "error": ""
               },
               "after": {
-                "audio": 3425,
-                "last": 72628.95000000298,
-                "unique": 1373,
+                "audio": 3130,
+                "totalAudio": 3352,
+                "delayedStarts": 0,
+                "last": 76400.83499999344,
+                "unique": 1381,
                 "migrations": 2,
                 "error": ""
               },
-              "interruptionMs": 1648.0199999958277,
-              "maxGapMs": 1648.0199999958277,
-              "recoveryObservedMs": 2440,
+              "interruptionMs": 2266.9749999940395,
+              "maxGapMs": 2266.9749999940395,
+              "recoveryObservedMs": 2842,
               "selectedPairs": [
                 {
                   "peer": 2,
                   "state": "succeeded",
                   "local": "relay",
                   "remote": "relay",
-                  "bytesSent": 43262,
-                  "bytesReceived": 153771
+                  "bytesSent": 42899,
+                  "bytesReceived": 154282
                 }
               ]
             },
             {
               "before": {
-                "audio": 1518,
-                "last": 33099.86999998987,
-                "unique": 612,
+                "audio": 1428,
+                "totalAudio": 1429,
+                "delayedStarts": 0,
+                "last": 33565.17499999702,
+                "unique": 589,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1585,
-                "last": 34500.914999991655,
-                "unique": 639,
+                "audio": 1516,
+                "totalAudio": 1517,
+                "delayedStarts": 0,
+                "last": 35566.139999985695,
+                "unique": 625,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1610,
-                "last": 35368.57500000298,
-                "unique": 646,
+                "audio": 1546,
+                "totalAudio": 1547,
+                "delayedStarts": 0,
+                "last": 36501.625,
+                "unique": 637,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 1794.5750000029802,
-              "maxGapMs": 1794.5750000029802,
-              "recoveryObservedMs": 2310,
+              "interruptionMs": 2356.094999998808,
+              "maxGapMs": 2356.094999998808,
+              "recoveryObservedMs": 2846,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "relay",
                   "remote": "relay",
-                  "bytesSent": 128601,
-                  "bytesReceived": 36222
+                  "bytesSent": 154282,
+                  "bytesReceived": 42899
                 }
               ]
             }
           ]
         }
       ],
-      "started": "2026-10-21T06:52:38.854Z",
-      "completed": "2026-10-21T06:54:38.587Z",
-      "localArtifactDirectory": ".tmp/handoff-final-dlmalloc-relay"
+      "started": "2026-10-21T07:36:09.850Z",
+      "completed": "2026-10-21T07:38:26.596Z",
+      "localArtifactDirectory": ".tmp/handoff-tip-relay"
     },
     {
       "scenario": "mixed-audio-direct",
       "passed": true,
       "losses": 3,
       "dwell": 30000,
+      "nativeFps": 20,
+      "promotionDelayMs": 0,
       "rounds": [
         {
           "round": 0,
@@ -659,7 +737,7 @@
                 "state": "succeeded",
                 "local": "host",
                 "remote": "host",
-                "bytesSent": 8731021,
+                "bytesSent": 11030976,
                 "bytesReceived": 0
               }
             ],
@@ -669,7 +747,7 @@
                 "state": "succeeded",
                 "local": "host",
                 "remote": "host",
-                "bytesSent": 7775746,
+                "bytesSent": 7759947,
                 "bytesReceived": 0
               }
             ]
@@ -677,73 +755,85 @@
           "measurements": [
             {
               "before": {
-                "audio": 1686,
-                "last": 37103.910000011325,
-                "unique": 690,
+                "audio": 2058,
+                "totalAudio": 2177,
+                "delayedStarts": 0,
+                "last": 47194.18000000715,
+                "unique": 871,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1686,
-                "last": 37103.910000011325,
-                "unique": 690,
+                "audio": 2058,
+                "totalAudio": 2177,
+                "delayedStarts": 0,
+                "last": 47194.18000000715,
+                "unique": 871,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1715,
-                "last": 37985.40500000119,
-                "unique": 704,
+                "audio": 2088,
+                "totalAudio": 2214,
+                "delayedStarts": 0,
+                "last": 48085.87000000477,
+                "unique": 885,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 203.20499999821186,
-              "maxGapMs": 203.20499999821186,
-              "recoveryObservedMs": 940,
+              "interruptionMs": 173.22499999403954,
+              "maxGapMs": 173.22499999403954,
+              "recoveryObservedMs": 945,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "host",
                   "remote": "host",
-                  "bytesSent": 42975,
-                  "bytesReceived": 153910
+                  "bytesSent": 43272,
+                  "bytesReceived": 154010
                 }
               ]
             },
             {
               "before": {
                 "audio": 1529,
-                "last": 33374.859999999404,
-                "unique": 614,
+                "totalAudio": 1529,
+                "delayedStarts": 0,
+                "last": 34060.99499998987,
+                "unique": 619,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
                 "audio": 1529,
-                "last": 33374.859999999404,
-                "unique": 614,
+                "totalAudio": 1529,
+                "delayedStarts": 0,
+                "last": 34060.99499998987,
+                "unique": 619,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1554,
-                "last": 34156.57999999821,
-                "unique": 623,
+                "audio": 1559,
+                "totalAudio": 1559,
+                "delayedStarts": 0,
+                "last": 34953.25999999046,
+                "unique": 631,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 315.5049999952316,
-              "maxGapMs": 315.5049999952316,
-              "recoveryObservedMs": 830,
+              "interruptionMs": 316.68000000715256,
+              "maxGapMs": 316.68000000715256,
+              "recoveryObservedMs": 944,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "host",
                   "remote": "host",
-                  "bytesSent": 128656,
-                  "bytesReceived": 35981
+                  "bytesSent": 154010,
+                  "bytesReceived": 43272
                 }
               ]
             }
@@ -758,8 +848,8 @@
                 "state": "succeeded",
                 "local": "host",
                 "remote": "host",
-                "bytesSent": 8492542,
-                "bytesReceived": 1813475
+                "bytesSent": 8556818,
+                "bytesReceived": 1833626
               }
             ],
             [
@@ -768,81 +858,93 @@
                 "state": "succeeded",
                 "local": "host",
                 "remote": "host",
-                "bytesSent": 7692660,
-                "bytesReceived": 1595522
+                "bytesSent": 7691840,
+                "bytesReceived": 1595352
               }
             ]
           ],
           "measurements": [
             {
               "before": {
-                "audio": 3213,
-                "last": 67357.34999999404,
-                "unique": 1274,
+                "audio": 3216,
+                "totalAudio": 3216,
+                "delayedStarts": 0,
+                "last": 68332.39999999106,
+                "unique": 1297,
                 "migrations": 1,
                 "error": ""
               },
               "committed": {
-                "audio": 3280,
-                "last": 68697.64999999106,
-                "unique": 1300,
+                "audio": 3265,
+                "totalAudio": 3265,
+                "delayedStarts": 0,
+                "last": 69311.82999999821,
+                "unique": 1316,
                 "migrations": 2,
                 "error": ""
               },
               "after": {
-                "audio": 3310,
-                "last": 69516.89999999106,
-                "unique": 1313,
+                "audio": 3294,
+                "totalAudio": 3298,
+                "delayedStarts": 0,
+                "last": 70228.97999998927,
+                "unique": 1329,
                 "migrations": 2,
                 "error": ""
               },
-              "interruptionMs": 1521.734999999404,
-              "maxGapMs": 1521.734999999404,
-              "recoveryObservedMs": 2221,
+              "interruptionMs": 1262.6000000089407,
+              "maxGapMs": 1262.6000000089407,
+              "recoveryObservedMs": 1959,
               "selectedPairs": [
                 {
                   "peer": 2,
                   "state": "succeeded",
                   "local": "host",
                   "remote": "host",
-                  "bytesSent": 44108,
-                  "bytesReceived": 154161
+                  "bytesSent": 42450,
+                  "bytesReceived": 153958
                 }
               ]
             },
             {
               "before": {
-                "audio": 1528,
-                "last": 32581.605000004172,
-                "unique": 598,
+                "audio": 1514,
+                "totalAudio": 1514,
+                "delayedStarts": 0,
+                "last": 32808.17000000179,
+                "unique": 611,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1595,
-                "last": 33921.60500000417,
-                "unique": 624,
+                "audio": 1563,
+                "totalAudio": 1563,
+                "delayedStarts": 0,
+                "last": 33787.47499999404,
+                "unique": 631,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1620,
-                "last": 34621.92000000179,
-                "unique": 634,
+                "audio": 1588,
+                "totalAudio": 1588,
+                "delayedStarts": 0,
+                "last": 34606.46999999881,
+                "unique": 640,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 1563.984999999404,
-              "maxGapMs": 1563.984999999404,
-              "recoveryObservedMs": 2094,
+              "interruptionMs": 1333.4599999934435,
+              "maxGapMs": 1333.4599999934435,
+              "recoveryObservedMs": 1849,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "host",
                   "remote": "host",
-                  "bytesSent": 128667,
-                  "bytesReceived": 37080
+                  "bytesSent": 128654,
+                  "bytesReceived": 35404
                 }
               ]
             }
@@ -857,8 +959,8 @@
                 "state": "succeeded",
                 "local": "host",
                 "remote": "host",
-                "bytesSent": 8546093,
-                "bytesReceived": 1825384
+                "bytesSent": 8652136,
+                "bytesReceived": 1859404
               }
             ],
             [
@@ -867,103 +969,123 @@
                 "state": "succeeded",
                 "local": "host",
                 "remote": "host",
-                "bytesSent": 7643910,
-                "bytesReceived": 1579682
+                "bytesSent": 7672826,
+                "bytesReceived": 1587342
               }
             ]
           ],
           "measurements": [
             {
               "before": {
-                "audio": 3286,
-                "last": 68141.23000000417,
-                "unique": 1301,
+                "audio": 3265,
+                "totalAudio": 3266,
+                "delayedStarts": 0,
+                "last": 68508.09499999881,
+                "unique": 1316,
                 "migrations": 1,
                 "error": ""
               },
               "committed": {
-                "audio": 3375,
-                "last": 69920.79500000179,
-                "unique": 1337,
+                "audio": 3321,
+                "totalAudio": 3322,
+                "delayedStarts": 0,
+                "last": 69627.57500000298,
+                "unique": 1339,
                 "migrations": 2,
                 "error": ""
               },
               "after": {
-                "audio": 3400,
-                "last": 70666.60500000417,
-                "unique": 1348,
+                "audio": 3350,
+                "totalAudio": 3354,
+                "delayedStarts": 0,
+                "last": 70519.00499999523,
+                "unique": 1350,
                 "migrations": 2,
                 "error": ""
               },
-              "interruptionMs": 1987.3149999976158,
-              "maxGapMs": 1987.3149999976158,
-              "recoveryObservedMs": 2579,
+              "interruptionMs": 1391.2750000059605,
+              "maxGapMs": 1391.2750000059605,
+              "recoveryObservedMs": 2104,
               "selectedPairs": [
                 {
                   "peer": 2,
                   "state": "succeeded",
                   "local": "host",
                   "remote": "host",
-                  "bytesSent": 37745,
-                  "bytesReceived": 128891
+                  "bytesSent": 34876,
+                  "bytesReceived": 114092
                 }
               ]
             },
             {
               "before": {
-                "audio": 1520,
-                "last": 32825.289999991655,
-                "unique": 611,
+                "audio": 1510,
+                "totalAudio": 1518,
+                "delayedStarts": 0,
+                "last": 33008.125,
+                "unique": 612,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1609,
-                "last": 34604.94499999285,
-                "unique": 647,
+                "audio": 1566,
+                "totalAudio": 1574,
+                "delayedStarts": 0,
+                "last": 34126.86999998987,
+                "unique": 634,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1634,
-                "last": 35352.51999999583,
-                "unique": 657,
+                "audio": 1596,
+                "totalAudio": 1604,
+                "delayedStarts": 0,
+                "last": 35040.14499999583,
+                "unique": 646,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 2051.7600000053644,
-              "maxGapMs": 2051.7600000053644,
-              "recoveryObservedMs": 2579,
+              "interruptionMs": 1456.529999986291,
+              "maxGapMs": 1456.529999986291,
+              "recoveryObservedMs": 2112,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "host",
                   "remote": "host",
-                  "bytesSent": 128891,
-                  "bytesReceived": 37899
+                  "bytesSent": 114092,
+                  "bytesReceived": 34876
                 }
               ]
             }
           ]
         }
       ],
-      "started": "2026-10-21T06:54:38.186Z",
+      "started": "2026-10-21T07:38:28.883Z",
       "nativeSource": {
-        "audio": 26,
-        "last": 3320.670000001788,
-        "unique": 15,
+        "audio": 417,
+        "totalAudio": 439,
+        "delayedStarts": 0,
+        "last": 12433.695000007749,
+        "unique": 179,
         "migrations": 0,
-        "error": ""
+        "error": "",
+        "observationMs": 8000,
+        "decodedBlocks": 401,
+        "nonSilentBlocks": 389,
+        "nonSilentFraction": 0.970074812967581
       },
-      "completed": "2026-10-21T06:56:28.661Z",
-      "localArtifactDirectory": ".tmp/handoff-final-dlmalloc-direct"
+      "completed": "2026-10-21T07:40:30.039Z",
+      "localArtifactDirectory": ".tmp/handoff-tip-direct"
     },
     {
       "scenario": "mixed-audio-relay",
       "passed": true,
       "losses": 3,
       "dwell": 30000,
+      "nativeFps": 20,
+      "promotionDelayMs": 0,
       "rounds": [
         {
           "round": 0,
@@ -974,8 +1096,8 @@
                 "state": "succeeded",
                 "local": "relay",
                 "remote": "relay",
-                "bytesSent": 8921166,
-                "bytesReceived": 2093463
+                "bytesSent": 11278409,
+                "bytesReceived": 2778177
               }
             ],
             [
@@ -984,81 +1106,93 @@
                 "state": "succeeded",
                 "local": "relay",
                 "remote": "relay",
-                "bytesSent": 7792241,
-                "bytesReceived": 1757716
+                "bytesSent": 7774824,
+                "bytesReceived": 1750512
               }
             ]
           ],
           "measurements": [
             {
               "before": {
-                "audio": 1702,
-                "last": 38252.26999999583,
-                "unique": 702,
+                "audio": 2071,
+                "totalAudio": 2218,
+                "delayedStarts": 0,
+                "last": 48987.29000000656,
+                "unique": 876,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1702,
-                "last": 38252.26999999583,
-                "unique": 702,
+                "audio": 2071,
+                "totalAudio": 2218,
+                "delayedStarts": 0,
+                "last": 48987.29000000656,
+                "unique": 876,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1731,
-                "last": 39133.33499999344,
-                "unique": 717,
+                "audio": 2101,
+                "totalAudio": 2255,
+                "delayedStarts": 0,
+                "last": 49923.70499999821,
+                "unique": 891,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 161.93000000715256,
-              "maxGapMs": 179.03999999165535,
-              "recoveryObservedMs": 944,
+              "interruptionMs": 220.73000000417233,
+              "maxGapMs": 220.73000000417233,
+              "recoveryObservedMs": 985,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "relay",
                   "remote": "relay",
-                  "bytesSent": 43187,
-                  "bytesReceived": 153868
+                  "bytesSent": 44246,
+                  "bytesReceived": 154113
                 }
               ]
             },
             {
               "before": {
                 "audio": 1530,
-                "last": 33893.45999999344,
-                "unique": 614,
+                "totalAudio": 1530,
+                "delayedStarts": 0,
+                "last": 34869.36500000954,
+                "unique": 615,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
                 "audio": 1530,
-                "last": 33893.45999999344,
-                "unique": 614,
+                "totalAudio": 1530,
+                "delayedStarts": 0,
+                "last": 34869.36500000954,
+                "unique": 615,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
                 "audio": 1560,
-                "last": 34775.81999999285,
-                "unique": 626,
+                "totalAudio": 1560,
+                "delayedStarts": 0,
+                "last": 35806.97500000894,
+                "unique": 627,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 310.375,
-              "maxGapMs": 310.375,
-              "recoveryObservedMs": 944,
+              "interruptionMs": 365.5199999958277,
+              "maxGapMs": 365.5199999958277,
+              "recoveryObservedMs": 985,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "relay",
                   "remote": "relay",
-                  "bytesSent": 154058,
-                  "bytesReceived": 43187
+                  "bytesSent": 154113,
+                  "bytesReceived": 44246
                 }
               ]
             }
@@ -1073,8 +1207,8 @@
                 "state": "succeeded",
                 "local": "relay",
                 "remote": "relay",
-                "bytesSent": 8584082,
-                "bytesReceived": 1831153
+                "bytesSent": 8533275,
+                "bytesReceived": 1822026
               }
             ],
             [
@@ -1083,81 +1217,93 @@
                 "state": "succeeded",
                 "local": "relay",
                 "remote": "relay",
-                "bytesSent": 7735665,
-                "bytesReceived": 1608180
+                "bytesSent": 7697933,
+                "bytesReceived": 1599516
               }
             ]
           ],
           "measurements": [
             {
               "before": {
-                "audio": 3231,
-                "last": 68251.23999999464,
-                "unique": 1295,
+                "audio": 3218,
+                "totalAudio": 3218,
+                "delayedStarts": 0,
+                "last": 69107.57000000775,
+                "unique": 1290,
                 "migrations": 1,
                 "error": ""
               },
               "committed": {
-                "audio": 3306,
-                "last": 69896.84000000358,
-                "unique": 1327,
+                "audio": 3278,
+                "totalAudio": 3278,
+                "delayedStarts": 0,
+                "last": 70348.07000000775,
+                "unique": 1315,
                 "migrations": 2,
                 "error": ""
               },
               "after": {
-                "audio": 3332,
-                "last": 70717.03499999642,
-                "unique": 1341,
+                "audio": 3308,
+                "totalAudio": 3315,
+                "delayedStarts": 0,
+                "last": 71288.29000000656,
+                "unique": 1330,
                 "migrations": 2,
                 "error": ""
               },
-              "interruptionMs": 1826.1700000017881,
-              "maxGapMs": 1826.1700000017881,
-              "recoveryObservedMs": 2514,
+              "interruptionMs": 1463.1449999958277,
+              "maxGapMs": 1463.1449999958277,
+              "recoveryObservedMs": 2250,
               "selectedPairs": [
                 {
                   "peer": 2,
                   "state": "succeeded",
                   "local": "relay",
                   "remote": "relay",
-                  "bytesSent": 40299,
-                  "bytesReceived": 141075
+                  "bytesSent": 43256,
+                  "bytesReceived": 154038
                 }
               ]
             },
             {
               "before": {
-                "audio": 1532,
-                "last": 32857.164999991655,
+                "audio": 1524,
+                "totalAudio": 1524,
+                "delayedStarts": 0,
+                "last": 32707.590000003576,
                 "unique": 612,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1607,
-                "last": 34500.140000000596,
-                "unique": 643,
+                "audio": 1584,
+                "totalAudio": 1584,
+                "delayedStarts": 0,
+                "last": 33948.060000002384,
+                "unique": 637,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1633,
-                "last": 35323.37000000477,
-                "unique": 653,
+                "audio": 1614,
+                "totalAudio": 1614,
+                "delayedStarts": 0,
+                "last": 34890.04500000179,
+                "unique": 648,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 1969.515000000596,
-              "maxGapMs": 1969.515000000596,
-              "recoveryObservedMs": 2514,
+              "interruptionMs": 1613.015000000596,
+              "maxGapMs": 1613.015000000596,
+              "recoveryObservedMs": 2247,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "relay",
                   "remote": "relay",
-                  "bytesSent": 141075,
-                  "bytesReceived": 40299
+                  "bytesSent": 154212,
+                  "bytesReceived": 43256
                 }
               ]
             }
@@ -1172,8 +1318,8 @@
                 "state": "succeeded",
                 "local": "relay",
                 "remote": "relay",
-                "bytesSent": 8521469,
-                "bytesReceived": 1822835
+                "bytesSent": 8613134,
+                "bytesReceived": 1838228
               }
             ],
             [
@@ -1182,97 +1328,115 @@
                 "state": "succeeded",
                 "local": "relay",
                 "remote": "relay",
-                "bytesSent": 7658985,
-                "bytesReceived": 1597776
+                "bytesSent": 7728134,
+                "bytesReceived": 1605683
               }
             ]
           ],
           "measurements": [
             {
               "before": {
-                "audio": 3289,
-                "last": 68722.24500000477,
+                "audio": 3280,
+                "totalAudio": 3280,
+                "delayedStarts": 0,
+                "last": 68454.16000001132,
                 "unique": 1316,
                 "migrations": 1,
                 "error": ""
               },
               "committed": {
-                "audio": 3356,
-                "last": 70064.03000000119,
-                "unique": 1343,
+                "audio": 3343,
+                "totalAudio": 3343,
+                "delayedStarts": 0,
+                "last": 69714.16500000656,
+                "unique": 1341,
                 "migrations": 2,
                 "error": ""
               },
               "after": {
-                "audio": 3381,
-                "last": 70872.46999999881,
-                "unique": 1356,
+                "audio": 3373,
+                "totalAudio": 3384,
+                "delayedStarts": 0,
+                "last": 74049.00500001013,
+                "unique": 1358,
                 "migrations": 2,
                 "error": ""
               },
-              "interruptionMs": 1551.875,
-              "maxGapMs": 1551.875,
-              "recoveryObservedMs": 2222,
+              "interruptionMs": 4799.879999995232,
+              "maxGapMs": 4799.879999995232,
+              "recoveryObservedMs": 5665,
               "selectedPairs": [
                 {
                   "peer": 2,
                   "state": "succeeded",
                   "local": "relay",
                   "remote": "relay",
-                  "bytesSent": 36069,
-                  "bytesReceived": 128857
+                  "bytesSent": 44519,
+                  "bytesReceived": 154314
                 }
               ]
             },
             {
               "before": {
-                "audio": 1512,
-                "last": 32668.69999998808,
-                "unique": 606,
+                "audio": 1518,
+                "totalAudio": 1518,
+                "delayedStarts": 0,
+                "last": 32773.909999996424,
+                "unique": 611,
                 "migrations": 0,
                 "error": ""
               },
               "committed": {
-                "audio": 1579,
-                "last": 34010.29999999702,
-                "unique": 633,
+                "audio": 1581,
+                "totalAudio": 1581,
+                "delayedStarts": 0,
+                "last": 34034.984999999404,
+                "unique": 636,
                 "migrations": 1,
                 "error": ""
               },
               "after": {
-                "audio": 1604,
-                "last": 34822.284999996424,
-                "unique": 643,
+                "audio": 1612,
+                "totalAudio": 1612,
+                "delayedStarts": 0,
+                "last": 38365.82500000298,
+                "unique": 648,
                 "migrations": 1,
                 "error": ""
               },
-              "interruptionMs": 1677.3950000107288,
-              "maxGapMs": 1677.3950000107288,
-              "recoveryObservedMs": 2227,
+              "interruptionMs": 4992.230000004172,
+              "maxGapMs": 4992.230000004172,
+              "recoveryObservedMs": 5665,
               "selectedPairs": [
                 {
                   "peer": 1,
                   "state": "succeeded",
                   "local": "relay",
                   "remote": "relay",
-                  "bytesSent": 128857,
-                  "bytesReceived": 35899
+                  "bytesSent": 154488,
+                  "bytesReceived": 44365
                 }
               ]
             }
           ]
         }
       ],
-      "started": "2026-10-21T06:54:39.488Z",
+      "started": "2026-10-21T07:38:28.963Z",
       "nativeSource": {
-        "audio": 28,
-        "last": 3813.2150000035763,
-        "unique": 15,
+        "audio": 422,
+        "totalAudio": 429,
+        "delayedStarts": 0,
+        "last": 13207.680000007153,
+        "unique": 172,
         "migrations": 0,
-        "error": ""
+        "error": "",
+        "observationMs": 8000,
+        "decodedBlocks": 402,
+        "nonSilentBlocks": 397,
+        "nonSilentFraction": 0.9875621890547264
       },
-      "completed": "2026-10-21T06:56:31.489Z",
-      "localArtifactDirectory": ".tmp/handoff-final-dlmalloc-relay"
+      "completed": "2026-10-21T07:40:35.491Z",
+      "localArtifactDirectory": ".tmp/handoff-tip-relay"
     },
     {
       "scenario": "native-audio-direct",
@@ -1282,95 +1446,454 @@
       "rounds": [
         {
           "round": 0,
-          "successor": "1a83853a",
+          "successor": "0b9efe9c",
           "observations": [
             {
-              "participant": "5f396810",
+              "participant": "c08f61c0",
               "before": {
                 "blocks": 1375,
                 "samples": 1320000,
-                "atNs": 34086955000,
-                "maxGapNs": 552731700
+                "atNs": 35195399500,
+                "maxGapNs": 600549400
               },
               "firstAfter": {
                 "blocks": 1,
                 "samples": 960,
-                "atNs": 38036564700,
+                "atNs": 37348060900,
                 "maxGapNs": 0
               },
-              "interruptionUpperBoundMs": 3949.6097,
-              "recoveryObservedMs": 4443,
+              "interruptionUpperBoundMs": 2152.6614,
+              "recoveryObservedMs": 2842,
               "after": {
                 "blocks": 50,
                 "samples": 48000,
-                "atNs": 38987927000,
-                "maxGapNs": 158603400
+                "atNs": 38458778800,
+                "maxGapNs": 160388100
               }
             }
           ]
         },
         {
           "round": 1,
-          "successor": "5f396810",
+          "successor": "c08f61c0",
           "observations": [
             {
-              "participant": "bc47f011",
+              "participant": "5e69ace8",
               "before": {
-                "blocks": 1350,
-                "samples": 1296000,
-                "atNs": 39094795900,
-                "maxGapNs": 600212600
+                "blocks": 1375,
+                "samples": 1320000,
+                "atNs": 34498485000,
+                "maxGapNs": 856236800
               },
               "firstAfter": {
                 "blocks": 1,
                 "samples": 960,
-                "atNs": 40795416000,
+                "atNs": 36786973800,
                 "maxGapNs": 0
               },
-              "interruptionUpperBoundMs": 1700.6201,
-              "recoveryObservedMs": 2758,
+              "interruptionUpperBoundMs": 2288.4888,
+              "recoveryObservedMs": 3046,
               "after": {
                 "blocks": 50,
                 "samples": 48000,
-                "atNs": 41745131400,
-                "maxGapNs": 157996600
+                "atNs": 37760268500,
+                "maxGapNs": 161491500
               }
             }
           ]
         },
         {
           "round": 2,
-          "successor": "bc47f011",
+          "successor": "5e69ace8",
           "observations": [
             {
-              "participant": "c60ac31b",
+              "participant": "ba874b6b",
               "before": {
-                "blocks": 1325,
-                "samples": 1272000,
-                "atNs": 34037710100,
-                "maxGapNs": 1355364400
+                "blocks": 1425,
+                "samples": 1368000,
+                "atNs": 35100571900,
+                "maxGapNs": 605800000
               },
               "firstAfter": {
                 "blocks": 1,
                 "samples": 960,
-                "atNs": 36112974400,
+                "atNs": 38236704000,
                 "maxGapNs": 0
               },
-              "interruptionUpperBoundMs": 2075.2643,
-              "recoveryObservedMs": 2784,
+              "interruptionUpperBoundMs": 3136.1321,
+              "recoveryObservedMs": 4091,
               "after": {
                 "blocks": 50,
                 "samples": 48000,
-                "atNs": 37054945400,
-                "maxGapNs": 163128000
+                "atNs": 39245298600,
+                "maxGapNs": 158788800
               }
             }
           ]
         }
       ],
-      "started": "2026-10-21T06:50:31.585Z",
-      "completed": "2026-10-21T06:52:36.921Z",
-      "localArtifactDirectory": ".tmp/handoff-native-monotonic"
+      "started": "2026-10-21T07:36:09.848Z",
+      "completed": "2026-10-21T07:38:14.948Z",
+      "localArtifactDirectory": ".tmp/handoff-tip-native"
+    },
+    {
+      "scenario": "mixed-audio-relay-slow-video-and-promotion",
+      "passed": true,
+      "losses": 3,
+      "dwell": 30000,
+      "nativeFps": 1,
+      "promotionDelayMs": 7000,
+      "rounds": [
+        {
+          "round": 0,
+          "beforeRoutes": [
+            [
+              {
+                "peer": 0,
+                "state": "succeeded",
+                "local": "relay",
+                "remote": "relay",
+                "bytesSent": 11603246,
+                "bytesReceived": 3128996
+              }
+            ],
+            [
+              {
+                "peer": 0,
+                "state": "succeeded",
+                "local": "relay",
+                "remote": "relay",
+                "bytesSent": 6850575,
+                "bytesReceived": 1768905
+              }
+            ]
+          ],
+          "measurements": [
+            {
+              "before": {
+                "audio": 2198,
+                "totalAudio": 2476,
+                "delayedStarts": 0,
+                "last": 57559.55499999225,
+                "unique": 829,
+                "migrations": 0,
+                "error": ""
+              },
+              "committed": {
+                "audio": 2198,
+                "totalAudio": 2476,
+                "delayedStarts": 1,
+                "last": 57559.55499999225,
+                "unique": 829,
+                "migrations": 1,
+                "error": ""
+              },
+              "after": {
+                "audio": 2228,
+                "totalAudio": 2517,
+                "delayedStarts": 1,
+                "last": 65744.26999999583,
+                "unique": 846,
+                "migrations": 1,
+                "error": ""
+              },
+              "interruptionMs": 7344.625,
+              "maxGapMs": 7344.625,
+              "recoveryObservedMs": 8304,
+              "selectedPairs": [
+                {
+                  "peer": 1,
+                  "state": "succeeded",
+                  "local": "relay",
+                  "remote": "relay",
+                  "bytesSent": 50559,
+                  "bytesReceived": 154782
+                }
+              ]
+            },
+            {
+              "before": {
+                "audio": 1533,
+                "totalAudio": 1534,
+                "delayedStarts": 0,
+                "last": 40165.07500000298,
+                "unique": 558,
+                "migrations": 0,
+                "error": ""
+              },
+              "committed": {
+                "audio": 1533,
+                "totalAudio": 1534,
+                "delayedStarts": 0,
+                "last": 40165.07500000298,
+                "unique": 558,
+                "migrations": 1,
+                "error": ""
+              },
+              "after": {
+                "audio": 1565,
+                "totalAudio": 1566,
+                "delayedStarts": 0,
+                "last": 48386.40500000119,
+                "unique": 572,
+                "migrations": 1,
+                "error": ""
+              },
+              "interruptionMs": 7532.329999998212,
+              "maxGapMs": 7532.329999998212,
+              "recoveryObservedMs": 8294,
+              "selectedPairs": [
+                {
+                  "peer": 1,
+                  "state": "succeeded",
+                  "local": "relay",
+                  "remote": "relay",
+                  "bytesSent": 167578,
+                  "bytesReceived": 51029
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "round": 1,
+          "beforeRoutes": [
+            [
+              {
+                "peer": 1,
+                "state": "succeeded",
+                "local": "relay",
+                "remote": "relay",
+                "bytesSent": 8458620,
+                "bytesReceived": 1881453
+              }
+            ],
+            [
+              {
+                "peer": 0,
+                "state": "succeeded",
+                "local": "relay",
+                "remote": "relay",
+                "bytesSent": 7475980,
+                "bytesReceived": 1588498
+              }
+            ]
+          ],
+          "measurements": [
+            {
+              "before": {
+                "audio": 3235,
+                "totalAudio": 3236,
+                "delayedStarts": 0,
+                "last": 82715.52000001073,
+                "unique": 1238,
+                "migrations": 1,
+                "error": ""
+              },
+              "committed": {
+                "audio": 3333,
+                "totalAudio": 3334,
+                "delayedStarts": 1,
+                "last": 84812.43000000715,
+                "unique": 1276,
+                "migrations": 2,
+                "error": ""
+              },
+              "after": {
+                "audio": 3360,
+                "totalAudio": 3369,
+                "delayedStarts": 1,
+                "last": 93961.24500000477,
+                "unique": 1291,
+                "migrations": 2,
+                "error": ""
+              },
+              "interruptionMs": 10472.089999988675,
+              "maxGapMs": 10472.089999988675,
+              "recoveryObservedMs": 11296,
+              "selectedPairs": [
+                {
+                  "peer": 2,
+                  "state": "succeeded",
+                  "local": "relay",
+                  "remote": "relay",
+                  "bytesSent": 44111,
+                  "bytesReceived": 166690
+                }
+              ]
+            },
+            {
+              "before": {
+                "audio": 1486,
+                "totalAudio": 1487,
+                "delayedStarts": 0,
+                "last": 33384.260000005364,
+                "unique": 601,
+                "migrations": 0,
+                "error": ""
+              },
+              "committed": {
+                "audio": 1582,
+                "totalAudio": 1584,
+                "delayedStarts": 0,
+                "last": 35473.96999999881,
+                "unique": 638,
+                "migrations": 1,
+                "error": ""
+              },
+              "after": {
+                "audio": 1610,
+                "totalAudio": 1612,
+                "delayedStarts": 0,
+                "last": 44613.910000011325,
+                "unique": 650,
+                "migrations": 1,
+                "error": ""
+              },
+              "interruptionMs": 10607.739999994636,
+              "maxGapMs": 10607.739999994636,
+              "recoveryObservedMs": 11303,
+              "selectedPairs": [
+                {
+                  "peer": 1,
+                  "state": "succeeded",
+                  "local": "relay",
+                  "remote": "relay",
+                  "bytesSent": 166690,
+                  "bytesReceived": 44111
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "beforeRoutes": [
+            [
+              {
+                "peer": 1,
+                "state": "succeeded",
+                "local": "relay",
+                "remote": "relay",
+                "bytesSent": 8988340,
+                "bytesReceived": 1979075
+              }
+            ],
+            [
+              {
+                "peer": 0,
+                "state": "succeeded",
+                "local": "relay",
+                "remote": "relay",
+                "bytesSent": 7485088,
+                "bytesReceived": 1591803
+              }
+            ]
+          ],
+          "measurements": [
+            {
+              "before": {
+                "audio": 3273,
+                "totalAudio": 3297,
+                "delayedStarts": 0,
+                "last": 80504.00500001013,
+                "unique": 1345,
+                "migrations": 1,
+                "error": ""
+              },
+              "committed": {
+                "audio": 3339,
+                "totalAudio": 3363,
+                "delayedStarts": 1,
+                "last": 81866.09499999881,
+                "unique": 1371,
+                "migrations": 2,
+                "error": ""
+              },
+              "after": {
+                "audio": 3367,
+                "totalAudio": 3401,
+                "delayedStarts": 1,
+                "last": 91725.61500000954,
+                "unique": 1386,
+                "migrations": 2,
+                "error": ""
+              },
+              "interruptionMs": 10487.004999995232,
+              "maxGapMs": 10487.004999995232,
+              "recoveryObservedMs": 11275,
+              "selectedPairs": [
+                {
+                  "peer": 2,
+                  "state": "succeeded",
+                  "local": "relay",
+                  "remote": "relay",
+                  "bytesSent": 45496,
+                  "bytesReceived": 159023
+                }
+              ]
+            },
+            {
+              "before": {
+                "audio": 1444,
+                "totalAudio": 1444,
+                "delayedStarts": 0,
+                "last": 34952.375,
+                "unique": 602,
+                "migrations": 0,
+                "error": ""
+              },
+              "committed": {
+                "audio": 1510,
+                "totalAudio": 1510,
+                "delayedStarts": 0,
+                "last": 36313.87000000477,
+                "unique": 628,
+                "migrations": 1,
+                "error": ""
+              },
+              "after": {
+                "audio": 1535,
+                "totalAudio": 1535,
+                "delayedStarts": 0,
+                "last": 46055.840000003576,
+                "unique": 637,
+                "migrations": 1,
+                "error": ""
+              },
+              "interruptionMs": 10630.585000008345,
+              "maxGapMs": 10630.585000008345,
+              "recoveryObservedMs": 11164,
+              "selectedPairs": [
+                {
+                  "peer": 1,
+                  "state": "succeeded",
+                  "local": "relay",
+                  "remote": "relay",
+                  "bytesSent": 128929,
+                  "bytesReceived": 38256
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "started": "2026-10-21T07:36:09.847Z",
+      "nativeSource": {
+        "audio": 321,
+        "totalAudio": 431,
+        "delayedStarts": 0,
+        "last": 16497.890000000596,
+        "unique": 126,
+        "migrations": 0,
+        "error": "",
+        "observationMs": 8000,
+        "decodedBlocks": 401,
+        "nonSilentBlocks": 291,
+        "nonSilentFraction": 0.7256857855361596
+      },
+      "completed": "2026-10-21T07:38:51.222Z",
+      "localArtifactDirectory": ".tmp/handoff-tip-slow"
     }
   ]
 }

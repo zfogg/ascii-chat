@@ -148,7 +148,7 @@ now retains the logical admission recipient during that call; the focused
 worker regression checks delivery and rejection of unknown recipients.
 
 
-Validation on Windows x64, Clang/Ninja and Chrome 155 executed all five rows
+Validation on Windows x64, Clang/Ninja and Chrome 155 executed all six rows
 below with three real host process losses per session and 30-second dwell
 periods. Browser runs used the rebuilt source-matched Release WASM bundle.
 Both browser observers recovered new changing video and non-silent decoded
@@ -158,11 +158,12 @@ verified selected relay-to-relay pairs carrying bytes before and after loss.
 
 | Scenario | Host losses | Callback interruption upper bound | Recovery observation |
 | --- | ---: | ---: | ---: |
-| browser-audio-direct | 3 | 1.67–2.58 s | 2.37–3.24 s |
-| browser-audio-relay | 3 | 1.65–2.31 s | 2.31–3.03 s |
-| mixed-audio-direct | 3 | 0.20–2.05 s | 0.83–2.58 s |
-| mixed-audio-relay | 3 | 0.16–1.97 s | 0.94–2.51 s |
-| native-audio-direct | 3 | 1.70–3.95 s | 2.76–4.44 s |
+| browser-audio-direct | 3 | 2.08–16.90 s | 2.71–17.67 s |
+| browser-audio-relay | 3 | 2.27–11.77 s | 2.84–12.40 s |
+| mixed-audio-direct | 3 | 0.17–1.46 s | 0.94–2.11 s |
+| mixed-audio-relay | 3 | 0.22–4.99 s | 0.98–5.67 s |
+| native-audio-direct | 3 | 2.15–3.14 s | 2.84–4.09 s |
+| mixed-audio-relay-slow-video-and-promotion | 3 | 7.34–10.63 s | 8.29–11.30 s |
 
 [Result JSON](validation/handoff-audio-2026-10-21/results.json) records counters,
 selected pairs, timestamps, binary hashes and the WASM manifest. Final
@@ -192,10 +193,29 @@ Playwright runtime-init regression exercises `initClientWasm` before cleanup
 so asset-only checks cannot miss that failure. Publication verifies the
 source fingerprint and each generated file hash.
 
-Additional production repairs retain the probe sequence and avoid an immediate
-extra probe when a participant becomes host (ACDS replay/rate limits remain
-unchanged), preserve healthy ACDS signaling while a failed media queue enters its
+Additional production repairs transfer the live probe protocol and its five-second
+clock into the promoted host, preserving sequence, generation and freshness during
+slow runtime initialization (ACDS replay/rate limits remain unchanged), preserve healthy ACDS signaling while a failed media queue enters its
 bounded successor wait (queue congestion limits remain unchanged), send native
 SERVER_STATE only after peer negotiation is ready, and inject native host audio
-into its local memory participant with capture owned and cleaned up by the host
-role.
+into its local memory participant on an independent capture worker, joined before
+the host role destroys its capture context. Audio draining is independent of video
+frame rate. Adopted browser startup has a 30-second deadline; readiness cancels it.
+
+The final relay stress row sets `HANDOFF_NATIVE_FPS=1` and
+`HANDOFF_PROMOTION_DELAY_MS=7000`. An eight-second exclusive native-source
+observation decoded 401 blocks, including 291 non-silent blocks (72.6 percent),
+before introducing another browser sender. Every injected loss produced exactly
+one host commit while the promoted worker start was delayed seven seconds.
+The longer measured interruptions in that row include the intentional delay.
+A fake-clock regression also holds runtime initialization for twelve seconds and
+verifies uninterrupted five-second probing; lifecycle tests cover ready and hung
+startup cleanup. All 388 web unit tests in 56 files passed.
+
+These runtime results use implementation commit
+`bd4869c10c3aafd4c1ba5c79635f1d501f48d4a1`. The synthetic PR merge against
+master `b1090964d6898fa2525289936a6c535a696efa1b` changes additional hashed
+C sources and correctly fails prebuilt-WASM freshness validation. Rebuild and
+revalidate the bundle after integrating those source changes; these measurements
+do not certify that synthetic merge. macOS amd64 CI configuration also failed
+while resolving ffmpeg.org, before compiling the changed source.
