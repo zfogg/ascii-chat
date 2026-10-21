@@ -562,18 +562,6 @@ export function ClientPage({
     terminalDimensions,
   ]);
 
-  // Client and Discovery render through the same mirror WASM module as
-  // /mirror. Apply the settings as soon as that renderer is ready instead of
-  // waiting for the unrelated protocol WASM module to initialize.
-  useEffect(() => {
-    if (!rendererReady) return;
-    try {
-      applyMirrorWasmSettings(settings);
-    } catch (err) {
-      console.error("Failed to apply renderer settings:", err);
-    }
-  }, [rendererReady, settings]);
-
   // Update frame interval when target FPS changes
   useEffect(() => {
     frameIntervalRef.current = 1000 / settings.targetFps;
@@ -624,6 +612,18 @@ export function ClientPage({
   });
   const { stop: stopFile, setSuspended: suspendFile } = fileMedia;
   const fileSelected = !!fileMedia.fileName;
+  // Client and Discovery render through the same mirror WASM module as
+  // /mirror. Apply the settings as soon as that renderer is ready instead of
+  // waiting for the unrelated protocol WASM module to initialize.
+  useEffect(() => {
+    if (!rendererReady) return;
+    try {
+      applyMirrorWasmSettings(settings, fileSelected);
+    } catch (err) {
+      console.error("Failed to apply renderer settings:", err);
+    }
+  }, [rendererReady, settings, fileSelected]);
+
   const fileCaptureRef = useRef({
     fileMedia,
     sendFileFrame,

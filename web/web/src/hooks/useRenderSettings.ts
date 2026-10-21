@@ -1,17 +1,15 @@
 import {
+  useState,
   useCallback,
   useMemo,
   useRef,
   useLayoutEffect,
   type SetStateAction,
 } from "react";
+import { getMirrorModule, runtimeOptions } from "@ascii-chat/shared/wasm";
 import type { BinarySettingsConfig } from "../components";
 import { DEFAULT_SETTINGS } from "../utils/defaultSettings";
 import { useUrlState } from "./useUrlState";
-
-function defaultFlip(settings: BinarySettingsConfig): boolean {
-  return !settings.animationEnabled || settings.animation === "matrix";
-}
 
 /** Source defaults apply until the user explicitly chooses an orientation. */
 export function useRenderSettings() {
@@ -43,12 +41,14 @@ export function useRenderSettings() {
     false,
     (restored) => ({ ...restored, flipX: DEFAULT_SETTINGS.flipX ?? true }),
   );
+  const [appliedFlip, setAppliedFlip] = useState(stored.flipX ?? true);
   const settings = useMemo(
     () => ({
       ...stored,
-      flipX: preference === "auto" ? defaultFlip(stored) : preference === "on",
+      flipX: preference === "auto" ? appliedFlip : preference === "on",
+      flipXExplicit: preference !== "auto",
     }),
-    [stored, preference],
+    [stored, preference, appliedFlip],
   );
   const current = useRef({ settings, preference });
   useLayoutEffect(() => {
@@ -59,12 +59,26 @@ export function useRenderSettings() {
       const { settings, preference } = current.current;
       const next = typeof action === "function" ? action(settings) : action;
       if (next === settings) return;
-      const changedFlip = next.flipX !== settings.flipX;
+      const module = getMirrorModule();
+      const engine = module
+        ? runtimeOptions(module).getSnapshot().values
+        : null;
+      const engineEcho = engine && next.flipX === !!engine["flip_x"];
+      const changedFlip =
+        (next.flipX !== settings.flipX &&
+          (!engineEcho || !!engine?.["flip_x_explicit"])) ||
+        (next.flipXExplicit === true && preference === "auto");
       const selected = changedFlip ? (next.flipX ? "on" : "off") : preference;
       if (changedFlip) setPreference(selected);
-      const flipX = selected === "auto" ? defaultFlip(next) : selected === "on";
-      current.current = { settings: { ...next, flipX }, preference: selected };
-      setStored({ ...next, flipX: DEFAULT_SETTINGS.flipX ?? true });
+      const flipX =
+        selected === "auto" ? (next.flipX ?? true) : selected === "on";
+      current.current = {
+        settings: { ...next, flipX, flipXExplicit: selected !== "auto" },
+        preference: selected,
+      };
+      setAppliedFlip(flipX);
+      const { flipXExplicit: _explicit, ...storedNext } = next;
+      setStored({ ...storedNext, flipX: DEFAULT_SETTINGS.flipX ?? true });
     },
     [setPreference, setStored],
   );

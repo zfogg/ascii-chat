@@ -25,6 +25,47 @@ static void *writer(void *argument) {
   return NULL;
 }
 
+static void test_flip_defaults(void) {
+  CHECK(GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+  for (int i = 0; i < 3; ++i) {
+    CHECK(options_set_bool("media_input", true) == ASCIICHAT_OK);
+    CHECK(!GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+    CHECK(options_set_bool("media_input", false) == ASCIICHAT_OK);
+    CHECK(GET_OPTION(flip_x));
+    CHECK(options_set_bool("waveform", true) == ASCIICHAT_OK);
+    CHECK(!GET_OPTION(flip_x));
+    CHECK(options_set_bool("fft", true) == ASCIICHAT_OK);
+    CHECK(!GET_OPTION(flip_x));
+    CHECK(options_set_bool("fft", false) == ASCIICHAT_OK);
+    CHECK(GET_OPTION(flip_x));
+  }
+  options_edit_t invalid[] = {{.name = "flip_x", .type = OPTIONS_VALUE_BOOL, .value.boolean = false},
+                              {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = 0}};
+  options_patch_t patch = {.edits = invalid, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
+  CHECK(options_apply_patch(&patch, NULL) != ASCIICHAT_OK);
+  CLEAR_ERRNO();
+  CHECK(GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+  // An explicit assignment of the current value still selects an orientation.
+  CHECK(options_set_bool("flip_x", true) == ASCIICHAT_OK);
+  CHECK(GET_OPTION(flip_x_explicit));
+  CHECK(options_set_bool("media_input", true) == ASCIICHAT_OK);
+  CHECK(options_set_bool("waveform", true) == ASCIICHAT_OK);
+  CHECK(GET_OPTION(flip_x));
+  CHECK(options_set_bool("flip_x", false) == ASCIICHAT_OK);
+  CHECK(options_set_bool("media_input", false) == ASCIICHAT_OK);
+  CHECK(options_set_bool("waveform", false) == ASCIICHAT_OK);
+  CHECK(!GET_OPTION(flip_x));
+  CHECK(options_set_bool("flip_x_explicit", false) != ASCIICHAT_OK);
+  CLEAR_ERRNO();
+  CHECK(GET_OPTION(flip_x_explicit));
+  options_t defaults = options_t_new();
+  CHECK(options_state_set(&defaults) == ASCIICHAT_OK);
+  CHECK(!GET_OPTION(flip_x) && GET_OPTION(flip_x_explicit));
+  options_state_destroy();
+  CHECK(options_state_init() == ASCIICHAT_OK);
+  CHECK(GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+}
+
 static void test_transactions(void) {
   CHECK(options_set_int("color_mode", TERM_COLOR_AUTO) == ASCIICHAT_OK);
   CHECK(options_set_int("width", 80) == ASCIICHAT_OK);
@@ -129,6 +170,7 @@ static void test_remote(void) {
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
   CHECK(options_state_init() == ASCIICHAT_OK);
+  test_flip_defaults();
   test_transactions();
   test_remote();
   options_state_destroy();

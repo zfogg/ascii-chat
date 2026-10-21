@@ -26,68 +26,36 @@ test("bare Face Follow query flags persist independently and explicit false disa
   expect(restored.result.current[0].faceFollow).toBe(false);
   expect(restored.result.current[0].faceFollowDebug).toBe(true);
 });
-test("automatic defaults follow modes until an explicit choice, which survives switching and reload", () => {
+test("source switches wait for C defaults and explicit choices persist", () => {
   const hook = renderHook(useRenderSettings);
-  const mode = (
-    animation: "matrix" | "waveform" | "fft",
-    animationEnabled = true,
-  ) =>
-    act(() =>
-      hook.result.current[1]((s) => ({ ...s, animation, animationEnabled })),
-    );
-  const flip = () =>
-    act(() => hook.result.current[1]((s) => ({ ...s, flipX: !s.flipX })));
+  expect(hook.result.current[0].flipXExplicit).toBe(false);
+  act(() =>
+    hook.result.current[1]((s) => ({
+      ...s,
+      animationEnabled: true,
+      animation: "waveform",
+    })),
+  );
+  // Source selection alone does not calculate an orientation in JavaScript.
   expect(hook.result.current[0].flipX).toBe(true);
-  mode("waveform");
-  expect(hook.result.current[0].flipX).toBe(false);
-  mode("matrix");
-  expect(hook.result.current[0].flipX).toBe(true);
-  mode("waveform");
-  flip();
-  for (const animation of ["matrix", "fft", "waveform"] as const) {
-    mode(animation);
-    expect(hook.result.current[0].flipX).toBe(true);
-  }
-  mode("matrix", false);
-  expect(hook.result.current[0].flipX).toBe(true);
-  flip();
-  mode("waveform");
-  mode("matrix", false);
+  expect(hook.result.current[0].flipXExplicit).toBe(false);
+  act(() => hook.result.current[1]((s) => ({ ...s, flipX: false })));
+  expect(hook.result.current[0].flipXExplicit).toBe(true);
+  act(() => hook.result.current[1]((s) => ({ ...s, animationEnabled: false })));
   expect(hook.result.current[0].flipX).toBe(false);
   hook.unmount();
   const restored = renderHook(useRenderSettings);
   expect(restored.result.current[0].flipX).toBe(false);
-  act(() =>
-    restored.result.current[1]((s) => ({
-      ...s,
-      animationEnabled: true,
-      animation: "matrix",
-    })),
-  );
-  expect(restored.result.current[0].flipX).toBe(false);
+  expect(restored.result.current[0].flipXExplicit).toBe(true);
 });
-test("automatic waveform default remains automatic after reload", () => {
+
+test("automatic source URLs do not serialize an explicit orientation", () => {
   window.history.replaceState(
     null,
     "",
     "/mirror?animationEnabled=true&animation=waveform",
   );
-  const first = renderHook(useRenderSettings);
-  expect(first.result.current[0].flipX).toBe(false);
-  first.unmount();
-  const second = renderHook(useRenderSettings);
-  act(() =>
-    second.result.current[1]((s) => ({ ...s, animationEnabled: false })),
-  );
-  expect(second.result.current[0].flipX).toBe(true);
-});
-test("existing explicit waveform links carry the choice into webcam", () => {
-  window.history.replaceState(
-    null,
-    "",
-    "/mirror?animationEnabled=true&animation=waveform&waveformFlipX=true",
-  );
-  const { result } = renderHook(useRenderSettings);
-  act(() => result.current[1]((s) => ({ ...s, animationEnabled: false })));
-  expect(result.current[0].flipX).toBe(true);
+  const hook = renderHook(useRenderSettings);
+  expect(hook.result.current[0].flipXExplicit).toBe(false);
+  expect(new URLSearchParams(window.location.search).has("flipX")).toBe(false);
 });

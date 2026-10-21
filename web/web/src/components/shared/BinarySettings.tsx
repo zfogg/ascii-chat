@@ -44,6 +44,7 @@ export interface BinarySettingsConfig {
   faceFollow?: boolean;
   faceFollowDebug?: boolean;
   flipX?: boolean;
+  flipXExplicit?: boolean;
   flipY?: boolean;
   renderMode?: number;
 }
