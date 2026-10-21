@@ -365,7 +365,7 @@ export function ClientPage({
 
   // Settings state (must be declared before hooks that use it)
   // Discovery shares the native server cadence and targets display refresh.
-  const [settings, setSettings] = useRenderSettings();
+  const [settings, setSettings, receiveSettings] = useRenderSettings();
   const [captureFps, setCaptureFps] = useUrlState("captureFps", 60);
   const cameraSettings = useMemo(
     () => ({ ...settings, targetFps: captureFps }),
@@ -612,17 +612,10 @@ export function ClientPage({
   });
   const { stop: stopFile, setSuspended: suspendFile } = fileMedia;
   const fileSelected = !!fileMedia.fileName;
-  // Client and Discovery render through the same mirror WASM module as
-  // /mirror. Apply the settings as soon as that renderer is ready instead of
-  // waiting for the unrelated protocol WASM module to initialize.
-  useEffect(() => {
-    if (!rendererReady) return;
-    try {
-      applyMirrorWasmSettings(settings, fileSelected);
-    } catch (err) {
-      console.error("Failed to apply renderer settings:", err);
-    }
-  }, [rendererReady, settings, fileSelected]);
+  const applyWasmSettings = useCallback(
+    (next: BinarySettingsConfig) => applyMirrorWasmSettings(next, fileSelected),
+    [fileSelected],
+  );
 
   const fileCaptureRef = useRef({
     fileMedia,
@@ -825,7 +818,12 @@ export function ClientPage({
     [],
   );
 
-  useEngineSettings(rendererReady, settings, setSettings);
+  useEngineSettings(
+    rendererReady,
+    settings,
+    receiveSettings,
+    applyWasmSettings,
+  );
 
   // Send each live rendering update through the shared settings transaction.
   useEffect(() => {

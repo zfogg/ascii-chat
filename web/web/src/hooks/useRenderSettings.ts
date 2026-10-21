@@ -6,7 +6,6 @@ import {
   useLayoutEffect,
   type SetStateAction,
 } from "react";
-import { getMirrorModule, runtimeOptions } from "@ascii-chat/shared/wasm";
 import type { BinarySettingsConfig } from "../components";
 import { DEFAULT_SETTINGS } from "../utils/defaultSettings";
 import { useUrlState } from "./useUrlState";
@@ -54,33 +53,44 @@ export function useRenderSettings() {
   useLayoutEffect(() => {
     current.current = { settings, preference };
   }, [settings, preference]);
-  const setSettings = useCallback(
-    (action: SetStateAction<BinarySettingsConfig>) => {
-      const { settings, preference } = current.current;
-      const next = typeof action === "function" ? action(settings) : action;
-      if (next === settings) return;
-      const module = getMirrorModule();
-      const engine = module
-        ? runtimeOptions(module).getSnapshot().values
-        : null;
-      const engineEcho = engine && next.flipX === !!engine["flip_x"];
-      const changedFlip =
-        (next.flipX !== settings.flipX &&
-          (!engineEcho || !!engine?.["flip_x_explicit"])) ||
-        (next.flipXExplicit === true && preference === "auto");
-      const selected = changedFlip ? (next.flipX ? "on" : "off") : preference;
-      if (changedFlip) setPreference(selected);
-      const flipX =
-        selected === "auto" ? (next.flipX ?? true) : selected === "on";
+  const commitSettings = useCallback(
+    (next: BinarySettingsConfig, selected: string) => {
+      const flipX = next.flipX ?? true;
       current.current = {
         settings: { ...next, flipX, flipXExplicit: selected !== "auto" },
         preference: selected,
       };
+      setPreference(selected);
       setAppliedFlip(flipX);
       const { flipXExplicit: _explicit, ...storedNext } = next;
       setStored({ ...storedNext, flipX: DEFAULT_SETTINGS.flipX ?? true });
     },
     [setPreference, setStored],
   );
-  return [settings, setSettings] as const;
+  // Only user edits select an orientation. C readbacks use a separate receiver.
+  const setSettings = useCallback(
+    (action: SetStateAction<BinarySettingsConfig>) => {
+      const { settings, preference } = current.current;
+      const next = typeof action === "function" ? action(settings) : action;
+      if (next === settings) return;
+      const selected =
+        next.flipX !== settings.flipX
+          ? next.flipX
+            ? "on"
+            : "off"
+          : preference;
+      commitSettings(next, selected);
+    },
+    [commitSettings],
+  );
+  const receiveSettings = useCallback(
+    (next: BinarySettingsConfig) => {
+      commitSettings(
+        next,
+        next.flipXExplicit ? (next.flipX ? "on" : "off") : "auto",
+      );
+    },
+    [commitSettings],
+  );
+  return [settings, setSettings, receiveSettings] as const;
 }

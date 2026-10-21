@@ -28,6 +28,7 @@ export function acknowledgeEngineSettings(
     if (changed(name) || (animationChanged && animations.includes(name)))
       next[name] = values[name]!;
   }
+  if (values["flip_x_explicit"]) next["flip_x"] = values["flip_x"]!;
   submitted.set(store, next);
 }
 

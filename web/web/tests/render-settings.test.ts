@@ -59,3 +59,33 @@ test("automatic source URLs do not serialize an explicit orientation", () => {
   expect(hook.result.current[0].flipXExplicit).toBe(false);
   expect(new URLSearchParams(window.location.search).has("flipX")).toBe(false);
 });
+
+test("engine readbacks retain C selection metadata while user edits choose explicitly", () => {
+  const hook = renderHook(useRenderSettings);
+  act(() =>
+    hook.result.current[2]({
+      ...hook.result.current[0],
+      flipX: false,
+      flipXExplicit: false,
+    }),
+  );
+  expect(hook.result.current[0].flipX).toBe(false);
+  expect(hook.result.current[0].flipXExplicit).toBe(false);
+  expect(
+    new URLSearchParams(window.location.search).has("horizontalFlip"),
+  ).toBe(false);
+  act(() => hook.result.current[1]((s) => ({ ...s, flipX: true })));
+  expect(hook.result.current[0].flipXExplicit).toBe(true);
+  act(() =>
+    hook.result.current[2]({
+      ...hook.result.current[0],
+      flipX: false,
+      flipXExplicit: true,
+    }),
+  );
+  expect(hook.result.current[0].flipX).toBe(false);
+  expect(hook.result.current[0].flipXExplicit).toBe(true);
+  expect(
+    new URLSearchParams(window.location.search).get("horizontalFlip"),
+  ).toBe("off");
+});
