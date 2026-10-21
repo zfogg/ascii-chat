@@ -230,6 +230,8 @@ static void test_rendered_frame_validation(void) {
       "abc\033[38;2;256;0;0md",
       "abc\033[38;5md",
       "abc\033[1;2;3;4;5;6;7;8;9;0;0;0;0;0;0;0;0md",
+      "\033[8mabcd",
+      "\033[31mabcd",
       "abc\033[2Jd",
       "abc\033[2;2Hd",
       "abc\xc0\xaf",
@@ -269,6 +271,7 @@ static void test_rendered_frame_validation(void) {
   CLEAR_ERRNO();
   rendering.caps.render_mode = RENDER_MODE_HALF_BLOCK;
   cr_assert_eq(session_frame_validate_contract("▀▄█ ", strlen("▀▄█ "), 4, 1, &rendering, 0), ASCIICHAT_OK);
+  cr_assert_eq(session_frame_validate_contract("░▒▓█", strlen("░▒▓█"), 4, 1, &rendering, 0), ASCIICHAT_OK);
   rendering.caps.render_mode = RENDER_MODE_BACKGROUND;
   cr_assert_eq(session_frame_validate_contract("    ", 4, 4, 1, &rendering, 0), ASCIICHAT_OK);
   cr_assert_eq(session_frame_validate_contract("abcd", 4, 4, 1, &rendering, 0), ERROR_NETWORK_PROTOCOL);

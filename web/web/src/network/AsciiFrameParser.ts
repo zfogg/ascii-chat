@@ -72,7 +72,8 @@ export function parseAsciiFrame(payload: Uint8Array): AsciiFrame {
   let offset = ASCII_FRAME_HEADER_SIZE;
   let metadata = payload.subarray(offset, offset);
   if (flags & FrameFlags.RENDER_CONTRACT) {
-    if (payload.length - offset < 20) throw new Error("Truncated frame contract");
+    if (payload.length - offset < 20)
+      throw new Error("Truncated frame contract");
     const paletteBytes = view.getUint32(offset + 16, false);
     if (paletteBytes > 255 || payload.length - offset - 20 < paletteBytes)
       throw new Error("Truncated frame contract palette");
@@ -93,11 +94,16 @@ export function parseAsciiFrame(payload: Uint8Array): AsciiFrame {
     throw new Error(err);
   }
 
-  const encodedFrame = payload.subarray(
-    offset,
-    offset + encodedSize,
+  const encodedFrame = payload.subarray(offset, offset + encodedSize);
+  const frameBytes = validateReceivedFrame(
+    encodedFrame,
+    width,
+    height,
+    checksum,
+    flags,
+    metadata,
+    originalSize,
   );
-  const frameBytes = validateReceivedFrame(encodedFrame, width, height, checksum, flags, metadata, originalSize);
   const decoder = new TextDecoder("utf-8", { fatal: true });
   const ansiString = decoder.decode(frameBytes);
 

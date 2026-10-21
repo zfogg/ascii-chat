@@ -493,6 +493,11 @@ Test(host_render, recipient_settings_and_delivery, .timeout = 60) {
   update(host, ids[2], &caps[2]);
   cr_assert_eq(render_tick(host), ASCIICHAT_OK);
   cr_assert(strstr(sinks[2].frame, "\xe2\x96\x80"));
+  caps[2].color_level = HOST_TO_NET_U32(TERM_COLOR_NONE);
+  update(host, ids[2], &caps[2]);
+  cr_assert_eq(render_tick(host), ASCIICHAT_OK);
+  cr_assert(strstr(sinks[2].frame, "░") || strstr(sinks[2].frame, "▒") || strstr(sinks[2].frame, "▓") ||
+            strstr(sinks[2].frame, "█"));
 
   // Invalid runtime transactions leave all recipients' last committed values intact.
   for (int i = 0; i < 3; ++i) {

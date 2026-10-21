@@ -19,6 +19,8 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_settings_receive(const void *paylo
     return result;
   options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
             *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+  // Browser capability packets and the shared renderer always support UTF-8.
+  remote_render_settings.caps.utf8_support = true;
   acip_render_settings_options(&remote_render_settings, current);
   result = options_prepare_json(current, json, json_length, candidate, true);
   if (result == ASCIICHAT_OK)

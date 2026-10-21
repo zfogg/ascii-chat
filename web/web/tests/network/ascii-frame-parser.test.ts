@@ -9,11 +9,22 @@ import { validateReceivedFrame } from "../../src/wasm/client";
 // These tests exercise wire framing only. Actual content policy is exercised
 // against the shared C validator by the native corpus and real WASM/browser tests.
 vi.mock("../../src/wasm/client", () => ({
-  validateReceivedFrame: vi.fn((bytes: Uint8Array, _w: number, _h: number, _crc: number, flags: number, _metadata: Uint8Array, size: number) => {
-    const output = flags & 2 ? decompress(bytes) : bytes;
-    if (output.length !== size) throw new Error("Decompressed ASCII frame size mismatch");
-    return output;
-  }),
+  validateReceivedFrame: vi.fn(
+    (
+      bytes: Uint8Array,
+      _w: number,
+      _h: number,
+      _crc: number,
+      flags: number,
+      _metadata: Uint8Array,
+      size: number,
+    ) => {
+      const output = flags & 2 ? decompress(bytes) : bytes;
+      if (output.length !== size)
+        throw new Error("Decompressed ASCII frame size mismatch");
+      return output;
+    },
+  ),
 }));
 import {
   parseAsciiFrame,
@@ -47,8 +58,12 @@ function buildFramePayload(
 
 describe("AsciiFrameParser", () => {
   it("fails closed when the shared C content validator rejects", () => {
-    vi.mocked(validateReceivedFrame).mockImplementationOnce(() => { throw new Error("Invalid received rendered frame"); });
-    expect(() => parseAsciiFrame(buildFramePayload(4, 1, "abcd"))).toThrow("Invalid received rendered frame");
+    vi.mocked(validateReceivedFrame).mockImplementationOnce(() => {
+      throw new Error("Invalid received rendered frame");
+    });
+    expect(() => parseAsciiFrame(buildFramePayload(4, 1, "abcd"))).toThrow(
+      "Invalid received rendered frame",
+    );
   });
 
   it("passes a bounded versioned contract to C without decoding its policy in JS", () => {
@@ -62,8 +77,12 @@ describe("AsciiFrameParser", () => {
     payload.set(new TextEncoder().encode("abcd"), 44);
     payload.set(legacy.subarray(24), 48);
     expect(parseAsciiFrame(payload).ansiString).toBe("abcd");
-    expect(vi.mocked(validateReceivedFrame).mock.lastCall?.[5]).toEqual(payload.subarray(24, 48));
-    expect(() => parseAsciiFrame(payload.subarray(0, 46))).toThrow("Truncated frame contract palette");
+    expect(vi.mocked(validateReceivedFrame).mock.lastCall?.[5]).toEqual(
+      payload.subarray(24, 48),
+    );
+    expect(() => parseAsciiFrame(payload.subarray(0, 46))).toThrow(
+      "Truncated frame contract palette",
+    );
   });
 
   it("should export header size constant", () => {
@@ -184,7 +203,9 @@ describe("AsciiFrameParser", () => {
   });
 
   it("rejects empty frame data before allocation", () => {
-    expect(() => parseAsciiFrame(buildFramePayload(0, 0, ""))).toThrow("decoded byte budget");
+    expect(() => parseAsciiFrame(buildFramePayload(0, 0, ""))).toThrow(
+      "decoded byte budget",
+    );
   });
 
   it("should handle large dimensions", () => {

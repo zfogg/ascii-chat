@@ -8,10 +8,11 @@
 /* Current network renderer emits SGR, REP and newline-separated complete rows.
  * A leading cursor home is accepted for older renderers; arbitrary cursor
  * movement, OSC/DCS/APC, queries and private modes are not frame content. */
-static bool valid_sgr(const uint32_t *p, size_t n) {
+static bool valid_sgr(const uint32_t *p, size_t n, bool *neutral) {
   for (size_t i = 0; i < n; ++i) {
     uint32_t v = p[i];
     if (v == 38 || v == 48) {
+      *neutral = false;
       if (++i >= n)
         return false;
       unsigned count = p[i] == 2 ? 3 : p[i] == 5 ? 1 : 0;
@@ -23,6 +24,10 @@ static bool valid_sgr(const uint32_t *p, size_t n) {
     } else if (!(v <= 9 || (v >= 22 && v <= 29) || (v >= 30 && v <= 37) || v == 39 || (v >= 40 && v <= 47) || v == 49 ||
                  (v >= 90 && v <= 97) || (v >= 100 && v <= 107))) {
       return false;
+    } else if (v == 0) {
+      *neutral = true;
+    } else if (!((v >= 22 && v <= 29) || v == 39 || v == 49)) {
+      *neutral = false;
     }
   }
   return true;
@@ -63,7 +68,7 @@ asciichat_error_t session_frame_validate_contract(const char *text, size_t lengt
     }
   }
   uint32_t row = 0, col = 0, previous_width = 0, marks = 0;
-  bool ended_row = false, can_repeat = false;
+  bool ended_row = false, can_repeat = false, neutral_sgr = true;
   for (size_t i = 0; i < length;) {
     unsigned char c = (unsigned char)text[i];
     if (c == 0x1b) {
@@ -92,7 +97,7 @@ asciichat_error_t session_frame_validate_contract(const char *text, size_t lengt
       if (i - start >= 64)
         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Frame escape exceeds byte bound");
       char command = text[i++];
-      if (command == 'm' && valid_sgr(params, count))
+      if (command == 'm' && valid_sgr(params, count, &neutral_sgr))
         continue;
       if (command == 'H' && start == 0 && count <= 2 && params[0] <= 1 && params[count - 1] <= 1)
         continue;
@@ -126,7 +131,7 @@ asciichat_error_t session_frame_validate_contract(const char *text, size_t lengt
     if (settings && cp != ' ') {
       bool allowed = false;
       if (settings->caps.render_mode == RENDER_MODE_HALF_BLOCK)
-        allowed = cp == 0x2580 || cp == 0x2584 || cp == 0x2588;
+        allowed = cp == 0x2580 || cp == 0x2584 || cp == 0x2588 || (cp >= 0x2591 && cp <= 0x2593);
       else {
         if (cp < 128)
           allowed = ascii_allowed[cp];
@@ -168,6 +173,8 @@ asciichat_error_t session_frame_validate_contract(const char *text, size_t lengt
     }
     i += (size_t)bytes;
   }
+  if (!neutral_sgr)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Frame leaves terminal attributes active");
   if (!ended_row && col == width)
     ++row;
   if (row != height || (!ended_row && col != width))

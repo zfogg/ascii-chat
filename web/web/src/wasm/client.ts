@@ -46,8 +46,22 @@ interface AsciiChatWasmExports {
 
 // Type definition for the Emscripten module
 interface ClientModuleExports {
-  _client_decode_frame_data(encoded: number, encodedLength: number, output: number, outputLength: number): number;
-  _client_validate_frame(text: number, length: number, width: number, height: number, checksum: number, flags: number, metadata: number, metadataLength: number): number;
+  _client_decode_frame_data(
+    encoded: number,
+    encodedLength: number,
+    output: number,
+    outputLength: number,
+  ): number;
+  _client_validate_frame(
+    text: number,
+    length: number,
+    width: number,
+    height: number,
+    checksum: number,
+    flags: number,
+    metadata: number,
+    metadataLength: number,
+  ): number;
   _peer_crypto_create(
     server: number,
     encryption: number,
@@ -1509,10 +1523,23 @@ export class PeerCryptoSession {
 }
 
 /** Wire decoding stays in the transport adapter; rendered-frame policy lives in C. */
-export function validateReceivedFrame(bytes: Uint8Array, width: number, height: number, checksum: number,
-                                      flags: number, metadata: Uint8Array, originalSize: number): Uint8Array {
+export function validateReceivedFrame(
+  bytes: Uint8Array,
+  width: number,
+  height: number,
+  checksum: number,
+  flags: number,
+  metadata: Uint8Array,
+  originalSize: number,
+): Uint8Array {
   if (!wasmModule) throw new Error("Client frame validator is unavailable");
-  if (!bytes.length || bytes.length > 16 * 1024 * 1024 || !originalSize || originalSize > 16 * 1024 * 1024 || metadata.length > 275)
+  if (
+    !bytes.length ||
+    bytes.length > 16 * 1024 * 1024 ||
+    !originalSize ||
+    originalSize > 16 * 1024 * 1024 ||
+    metadata.length > 275
+  )
     throw new Error("Received frame allocation exceeds byte budget");
   const text = wasmModule._malloc(bytes.length);
   const compressed = (flags & 2) !== 0;
@@ -1527,11 +1554,28 @@ export function validateReceivedFrame(bytes: Uint8Array, width: number, height: 
   try {
     wasmModule.HEAPU8.set(bytes, text);
     if (contract) wasmModule.HEAPU8.set(metadata, contract);
-    if (compressed && wasmModule._client_decode_frame_data(text, bytes.length, output, originalSize) !== 0)
+    if (
+      compressed &&
+      wasmModule._client_decode_frame_data(
+        text,
+        bytes.length,
+        output,
+        originalSize,
+      ) !== 0
+    )
       throw new Error("Decompressed ASCII frame size mismatch");
-    const result = wasmModule._client_validate_frame(output, originalSize, width, height, checksum, flags,
-                                                    contract, metadata.length);
-    if (result !== 0) throw new Error(`Invalid received rendered frame (errno ${result})`);
+    const result = wasmModule._client_validate_frame(
+      output,
+      originalSize,
+      width,
+      height,
+      checksum,
+      flags,
+      contract,
+      metadata.length,
+    );
+    if (result !== 0)
+      throw new Error(`Invalid received rendered frame (errno ${result})`);
     return wasmModule.HEAPU8.slice(output, output + originalSize);
   } finally {
     wasmModule._free(text);

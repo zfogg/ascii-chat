@@ -188,6 +188,7 @@ static void receive_error(const error_packet_t *header, const char *message, voi
 void session_protocol_init(session_protocol_t *protocol, acip_transport_t *transport, session_protocol_media_t media,
                            acip_client_callbacks_t control) {
   *protocol = (session_protocol_t){.transport = transport, .media = media, .control = control};
+  protocol->effective_render_settings.caps.utf8_support = GET_OPTION(force_utf8) != UTF8_SETTING_FALSE;
 }
 
 asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet_type_t type, const void *payload,

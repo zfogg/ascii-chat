@@ -255,8 +255,12 @@ asciichat_error_t acip_send_ascii_frame_contract(acip_transport_t *transport, ac
   header.flags =
       HOST_TO_NET_U32((is_compressed ? FRAME_FLAG_IS_COMPRESSED : 0) | (settings ? FRAME_FLAG_RENDER_CONTRACT : 0));
 
-  socket_buffer_t slices[] = {{&header, sizeof(header)}, {contract, contract_length}, {payload_data, payload_size}};
-  asciichat_error_t result = packet_send_via_transportv(transport, PACKET_TYPE_ASCII_FRAME, slices, 3, 0);
+  socket_buffer_t slices[3] = {{&header, sizeof(header)}};
+  size_t count = 1;
+  if (contract_length)
+    slices[count++] = (socket_buffer_t){contract, contract_length};
+  slices[count++] = (socket_buffer_t){payload_data, payload_size};
+  asciichat_error_t result = packet_send_via_transportv(transport, PACKET_TYPE_ASCII_FRAME, slices, count, 0);
   return result;
 }
 
