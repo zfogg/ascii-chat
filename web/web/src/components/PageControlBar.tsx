@@ -93,7 +93,7 @@ export function PageControlBar({
       className={`${compactVerticalSpacing ? "px-0 py-0 border-0" : "px-4 py-3 border-b border-terminal-8"} flex-shrink-0`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 min-w-0 max-w-full">
           {statusDotColor && (
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${statusDotColor}`} />
@@ -125,7 +125,7 @@ export function PageControlBar({
           )}
           {fps !== undefined && showBandwidth && <BandwidthMeter />}
           {statusControls && (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
               {statusControls}
             </div>
           )}

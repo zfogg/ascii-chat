@@ -1,6 +1,8 @@
 import type { ClientLikeKind } from "../../wasm/assetUrl";
 
 export interface AsciiRendererHandle {
+  /** The presented C/WASM raster; null until painted and during resize replacement. */
+  getCanvas(): HTMLCanvasElement | null;
   writeFrame(
     ansiString: string,
     dimensions?: { cols: number; rows: number },
