@@ -16,6 +16,7 @@
 #include <string.h>
 #include <ascii-chat/ui/render_progress.h>
 #include <ascii-chat/audio/recording.h>
+#include <ascii-chat/media/kitty/image.h>
 
 struct render_file_ctx_s {
   buffer_workspace_t pixels;
@@ -30,6 +31,8 @@ struct render_file_ctx_s {
   uint64_t last_frame_index;
   uint64_t audio_target;
   bool live_timing;
+  bool kitty;
+  bool kitty_only;
   uint32_t audio_sample_rate; // 48000 Hz
   int fps;
   float *audio_read_buf; // Temporary buffer for reading audio samples
@@ -38,9 +41,29 @@ struct render_file_ctx_s {
 
 asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme,
                                      render_file_ctx_t **out) {
+  if (!output_path || !out || cols <= 0 || rows <= 0)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing render output, grid, or context");
+  *out = NULL;
   log_info("output_path=%s, cols=%d, rows=%d, fps=%d, theme=%d, out=%p", output_path ? output_path : "(null)", cols,
            rows, fps, theme, (void *)out);
   render_file_ctx_t *ctx = SAFE_CALLOC(1, sizeof(*ctx), render_file_ctx_t *);
+  ctx->kitty_only = strcmp(output_path, "--kitty") == 0;
+  ctx->kitty = ctx->kitty_only || GET_OPTION(render_kitty);
+  if (ctx->kitty && !GET_OPTION(snapshot_mode)) {
+    SAFE_FREE(ctx);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Kitty graphics output requires --snapshot");
+  }
+  if (ctx->kitty && (strcmp(output_path, "-") == 0 || strcmp(output_path, "pipe:") == 0)) {
+    SAFE_FREE(ctx);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Kitty graphics and binary media cannot share stdout");
+  }
+  const char *term = SAFE_GETENV("TERM");
+  if (ctx->kitty && terminal_is_stdout_tty() &&
+      (!term || strcmp(term, "dumb") == 0 || strcmp(term, "linux") == 0 || strcmp(term, "vt100") == 0)) {
+    SAFE_FREE(ctx);
+    return SET_ERRNO(ERROR_NOT_SUPPORTED,
+                     "Kitty graphics require a capable terminal; redirect stdout to export the protocol");
+  }
 
   // Resolve font spec → platform-appropriate file path, family name, or bundled data.
   char font_spec[512] = {0};
@@ -105,6 +128,12 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   log_info("GRID DIMENSIONS: %ux%u cells -> PIXEL DIMENSIONS: %dx%d px", cols, rows, actual_width_px, actual_height_px);
   log_debug("term_renderer created (%dx%d cells, %dx%d px)", cols, rows, actual_width_px, actual_height_px);
 
+  if (ctx->kitty_only) {
+    ctx->fps = fps;
+    NAMED_REGISTER_CONTEXT(ctx, "render_file_ctx", output_path, NULL);
+    *out = ctx;
+    return ASCIICHAT_OK;
+  }
   err = ffmpeg_encoder_create(output_path, actual_width_px, actual_height_px, fps, &ctx->encoder);
   if (err != ASCIICHAT_OK) {
     log_error("ffmpeg_encoder_create failed: %s", asciichat_error_format(NULL, err));
@@ -136,7 +165,7 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   NAMED_REGISTER_CONTEXT(ctx, "render_file_ctx", output_path, NULL);
 
   bool binary_stdout = strcmp(output_path, "-") == 0 || strcmp(output_path, "pipe:") == 0;
-  ctx->progress = render_progress_create(!binary_stdout, output_path);
+  ctx->progress = render_progress_create(!binary_stdout && !ctx->kitty, output_path);
   *out = ctx;
   return ASCIICHAT_OK;
 }
@@ -144,7 +173,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 void render_file_set_live_timing(render_file_ctx_t *ctx) {
   if (ctx) {
     ctx->live_timing = true;
-    ffmpeg_encoder_set_live_timing(ctx->encoder);
+    if (ctx->encoder)
+      ffmpeg_encoder_set_live_timing(ctx->encoder);
   }
 }
 
@@ -180,6 +210,10 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
   if (err != ASCIICHAT_OK) {
     log_warn("term_renderer_feed failed: %s", asciichat_error_format(NULL, err));
     return err;
+  }
+  if (ctx->kitty_only) {
+    ctx->frames_written++;
+    return ASCIICHAT_OK;
   }
 
   const uint8_t *pixels = term_renderer_pixels(ctx->renderer);
@@ -293,6 +327,11 @@ asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
   if (ctx->error != ASCIICHAT_OK)
     err = ctx->error;
   render_progress_destroy(ctx->progress);
+  if (err == ASCIICHAT_OK && ctx->kitty && ctx->frames_written == 0)
+    err = SET_ERRNO(ERROR_MEDIA_INIT, "No snapshot was rendered for Kitty output");
+  if (err == ASCIICHAT_OK && ctx->kitty && ctx->frames_written > 0)
+    err = kitty_image_write(stdout, term_renderer_pixels(ctx->renderer), term_renderer_width_px(ctx->renderer),
+                            term_renderer_height_px(ctx->renderer), term_renderer_pitch(ctx->renderer));
   term_renderer_destroy(ctx->renderer);
   buffer_workspace_destroy(&ctx->pixels);
   SAFE_FREE(ctx->audio_read_buf);

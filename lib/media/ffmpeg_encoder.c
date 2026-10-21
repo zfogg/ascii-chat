@@ -10,6 +10,8 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/options.h>
 #include <string.h>
+#include <ascii-chat/util/stdout_writer.h>
+#include <ascii-chat/platform/abstraction.h>
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
@@ -49,6 +51,7 @@ struct ffmpeg_encoder_s {
   enum AVPixelFormat target_pix_fmt; // RGB24 for images, YUV420P for video
   int has_audio_stream;              // Whether audio stream was created
   int is_stdout_pipe;                // Whether writing to stdout (non-seekable)
+  FILE *stdout_stream;               // Retained before LOG_IO temporarily redirects stdio
   uint64_t previous_captured_ns;     // Previous frame's capture timestamp (for snapshot mode)
   double snapshot_actual_duration;   // Actual wall-clock duration in snapshot mode (seconds)
   uint64_t snapshot_elapsed_ns;      // Current elapsed time in snapshot mode for dynamic frame duration
@@ -558,17 +561,72 @@ static asciichat_error_t encoder_init_video_frames(ffmpeg_encoder_t *enc) {
   return ASCIICHAT_OK;
 }
 
+#if LIBAVFORMAT_VERSION_MAJOR >= 61
+static int encoder_stdout_write(void *opaque, const uint8_t *data, int size) {
+#else
+static int encoder_stdout_write(void *opaque, uint8_t *data, int size) {
+#endif
+  if (size < 0)
+    return AVERROR(EINVAL);
+  return stdout_writer_write(opaque, data, (size_t)size) == ASCIICHAT_OK ? size : AVERROR(EIO);
+}
+
+static void encoder_log_callback(void *context, int level, const char *format, va_list args) {
+  (void)context;
+  if (level > av_log_get_level())
+    return;
+  char message[2048];
+  vsnprintf(message, sizeof(message), format, args);
+  if (level <= AV_LOG_ERROR)
+    log_error("ffmpeg: %s", message);
+  else if (level <= AV_LOG_WARNING)
+    log_warn("ffmpeg: %s", message);
+  else
+    log_debug("ffmpeg: %s", message);
+}
+
+static void encoder_close_io(ffmpeg_encoder_t *enc) {
+  if (!enc->fmt_ctx->pb)
+    return;
+  if (enc->is_stdout_pipe) {
+    av_freep(&enc->fmt_ctx->pb->buffer);
+    avio_context_free(&enc->fmt_ctx->pb);
+    if (enc->stdout_stream) {
+      fclose(enc->stdout_stream);
+      enc->stdout_stream = NULL;
+    }
+  } else {
+    avio_closep(&enc->fmt_ctx->pb);
+  }
+}
+
 static asciichat_error_t encoder_open_output(ffmpeg_encoder_t *enc, const char *output_path, AVDictionary *opts) {
   int ret;
   // Open output file or stdout
   if (!(enc->fmt_ctx->oformat->flags & AVFMT_NOFILE)) {
-    // For stdout output, use "pipe:1" (FFmpeg's standard for writing to stdout)
     const char *open_path = output_path;
-    if (output_path && strcmp(output_path, "-") == 0) {
-      open_path = "pipe:1"; // Use pipe:1 for stdout
-      log_debug("ffmpeg: Redirecting '-' to 'pipe:1' for stdout output");
+    if (enc->is_stdout_pipe) {
+      int fd = platform_dup(STDOUT_FILENO);
+      if (fd >= 0) {
+        enc->stdout_stream = platform_fdopen("render stdout", fd, "wb");
+        if (!enc->stdout_stream)
+          platform_close(fd);
+      }
+      uint8_t *buffer = av_malloc(32768);
+      if (buffer && enc->stdout_stream)
+        enc->fmt_ctx->pb = avio_alloc_context(buffer, 32768, 1, enc->stdout_stream, NULL, encoder_stdout_write, NULL);
+      if (!enc->fmt_ctx->pb) {
+        av_free(buffer);
+        if (enc->stdout_stream) {
+          fclose(enc->stdout_stream);
+          enc->stdout_stream = NULL;
+        }
+      }
+      ret = enc->fmt_ctx->pb ? 0 : AVERROR(ENOMEM);
+      enc->fmt_ctx->flags |= AVFMT_FLAG_CUSTOM_IO;
+    } else {
+      ret = avio_open(&enc->fmt_ctx->pb, open_path, AVIO_FLAG_WRITE);
     }
-    ret = avio_open(&enc->fmt_ctx->pb, open_path, AVIO_FLAG_WRITE);
     if (ret < 0) {
       sws_freeContext(enc->sws_ctx);
       av_frame_free(&enc->frame);
@@ -585,7 +643,7 @@ static asciichat_error_t encoder_open_output(ffmpeg_encoder_t *enc, const char *
   LOG_IO("ffmpeg", { ret = avformat_write_header(enc->fmt_ctx, &opts); });
   av_dict_free(&opts); // Free options after use
   if (ret < 0) {
-    avio_closep(&enc->fmt_ctx->pb);
+    encoder_close_io(enc);
     sws_freeContext(enc->sws_ctx);
     av_frame_free(&enc->frame);
     av_frame_free(&enc->frame_encoded);
@@ -621,6 +679,12 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
 
   if (!output_path || !out || width_px <= 0 || height_px <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
+  if (strcmp(output_path, "pipe:") == 0)
+    output_path = "-";
+  // Codec workers can log after LOG_IO restores the process descriptors.
+  // The session logger routes diagnostics to stderr when binary stdout is active.
+  if (strcmp(output_path, "-") == 0)
+    av_log_set_callback(encoder_log_callback);
 
   // Use default FPS if not specified (0 from config means "use default")
   if (fps <= 0) {
@@ -1158,9 +1222,13 @@ static asciichat_error_t encoder_finalize_output(ffmpeg_encoder_t *enc) {
 
   // Close output file
   if (enc->fmt_ctx && !(enc->fmt_ctx->oformat->flags & AVFMT_NOFILE)) {
-    int close_ret = avio_closep(&enc->fmt_ctx->pb);
-    if (close_ret < 0)
-      result = SET_ERRNO(ERROR_FILE_OPERATION, "Cannot close recording: %d", close_ret);
+    if (enc->is_stdout_pipe) {
+      encoder_close_io(enc);
+    } else {
+      int close_ret = avio_closep(&enc->fmt_ctx->pb);
+      if (close_ret < 0)
+        result = SET_ERRNO(ERROR_FILE_OPERATION, "Cannot close recording: %d", close_ret);
+    }
   }
 
   return result;

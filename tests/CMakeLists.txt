@@ -1642,6 +1642,12 @@ if(BUILD_TESTS AND UNIX AND NOT APPLE AND TARGET ascii-chat)
     endif()
 endif()
 
+if(BUILD_TESTS AND UNIX AND TARGET ascii-chat)
+    add_test(NAME kitty-output COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_SOURCE_DIR}/tests/integration/kitty_output.py --binary $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(kitty-output PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
+endif()
+
 # Preserve each suite's existing category while making all migrated contracts selectable.
 get_property(contract_tests DIRECTORY PROPERTY ASCIICHAT_CONTRACT_TESTS)
 foreach(contract_test IN LISTS contract_tests)
