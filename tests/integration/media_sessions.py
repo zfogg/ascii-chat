@@ -68,6 +68,8 @@ class MediaSessions(unittest.TestCase):
         frame = self.run_snapshot("--config", str(path), "mirror", "--file", str(self.image),
                                   "--snapshot", "--snapshot-delay", "0", "--splash-screen=false",
                                   "--color-mode", "none", "--palette", "custom", "--palette-chars", " .#")
+        frame = re.sub(rb"(.)\x1b\[(\d+)b", lambda match: match[1] * (min(int(match[2]), 500) + 1), frame)
+        frame = re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]", b"", frame)
         rows = [line for line in frame.splitlines() if b"#" in line and set(line) <= set(b" .#")]
         self.assertTrue(rows, "The generated configuration did not produce a rendered frame")
         self.assertTrue(all(len(line) == 37 for line in rows), rows)
