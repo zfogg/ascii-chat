@@ -149,7 +149,7 @@ Test(option_documentation, parser_preserves_manual_merge_and_unmarked_section_co
 Test(option_documentation, mode_names_and_groff_escaping_are_stable) {
   cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_SERVER | OPTION_MODE_CLIENT), "server"));
   cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_BINARY | OPTION_MODE_MIRROR), "global"));
-  cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_DISCOVERY_SERVICE), "discovery-service"));
+  cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_DISCOVERY_SVC), "discovery-service"));
   cr_assert_not_null(strstr(escape_groff_special("--file"), "\\-"));
   options_config_t *config = documentation_config();
   cr_assert_eq(options_config_generate_manpage_template(NULL, "x", NULL, NULL, "x"), ERROR_INVALID_PARAM);
