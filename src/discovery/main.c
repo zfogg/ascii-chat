@@ -88,6 +88,8 @@ typedef struct {
   asciichat_error_t result;
   audio_context_t *audio;
   client_audio_pipeline_t *audio_pipeline;
+  uint64_t observed_audio_blocks, observed_audio_samples, observed_audio_ns, observed_audio_gap_ns;
+  uint64_t observed_video_frames;
 } discovery_video_receiver_t;
 
 static void discovery_media_interrupt(void *context) {
@@ -153,6 +155,11 @@ static asciichat_error_t discovery_present_frame(const ascii_frame_packet_t *hea
   discovery_video_receiver_t *receiver = context;
   (void)header;
   session_display_render_frame(receiver->display, text);
+  if (GET_OPTION(test_audio) && text && text[0]) {
+    receiver->observed_video_frames++;
+    if (receiver->observed_video_frames == 1 || receiver->observed_video_frames % 25 == 0)
+      log_info("Discovery decoded video: frames=%llu", (unsigned long long)receiver->observed_video_frames);
+  }
   return ASCIICHAT_OK;
 }
 
@@ -160,6 +167,11 @@ static asciichat_error_t discovery_play_samples(const float *samples, size_t cou
   discovery_video_receiver_t *receiver = context;
   if (!receiver->audio)
     return ASCIICHAT_OK;
+  size_t observed_count = count;
+  double energy = 0;
+  if (GET_OPTION(test_audio))
+    for (size_t i = 0; i < count; ++i)
+      energy += (double)samples[i] * samples[i];
   while (count) {
     size_t chunk = count > 5760 ? 5760 : count;
     asciichat_error_t result = audio_write_samples(receiver->audio, samples, (int)chunk);
@@ -167,6 +179,21 @@ static asciichat_error_t discovery_play_samples(const float *samples, size_t cou
       return result;
     samples += chunk;
     count -= chunk;
+  }
+  // Test-source diagnostics observe remote decoded PCM only, after successful
+  // playback submission. Local test monitoring never reaches this callback.
+  if (GET_OPTION(test_audio) && observed_count && energy / observed_count >= 0.000025) {
+    uint64_t now = time_get_ns();
+    if (receiver->observed_audio_ns && now - receiver->observed_audio_ns > receiver->observed_audio_gap_ns)
+      receiver->observed_audio_gap_ns = now - receiver->observed_audio_ns;
+    receiver->observed_audio_ns = now;
+    receiver->observed_audio_samples += observed_count;
+    receiver->observed_audio_blocks++;
+    if (receiver->observed_audio_blocks == 1 || receiver->observed_audio_blocks % 25 == 0)
+      log_info("Discovery decoded remote audio: blocks=%llu samples=%llu at_ns=%llu max_gap_ns=%llu",
+               (unsigned long long)receiver->observed_audio_blocks,
+               (unsigned long long)receiver->observed_audio_samples, (unsigned long long)now,
+               (unsigned long long)receiver->observed_audio_gap_ns);
   }
   return ASCIICHAT_OK;
 }

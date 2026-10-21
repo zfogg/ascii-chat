@@ -23,11 +23,31 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function until(read, timeout = 30000, description = "condition") {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
-    const value = await read();
+    const value = await bounded(
+      read,
+      Math.max(1, deadline - Date.now()),
+      description,
+    );
     if (value) return value;
     await delay(100);
   }
   throw new Error(`Timed out waiting for ${description}`);
+}
+async function bounded(read, timeout = 30000, description = "operation") {
+  let timer;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(read),
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("Timed out waiting for " + description)),
+          timeout,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 let ordinal = 0;
 function native(args, name) {
@@ -52,16 +72,16 @@ function native(args, name) {
       stdio: ["ignore", "ignore", "pipe"],
     },
   );
-  let stderr = "";
   child.stderr.on("data", (bytes) => {
-    stderr += bytes.toString();
     fs.appendFileSync(`${log}.stderr`, bytes);
   });
   child.on("exit", (code, signal) =>
     fs.writeFileSync(`${log}.exit.json`, JSON.stringify({ code, signal })),
   );
   const read = () =>
-    (fs.existsSync(log) ? fs.readFileSync(log, "utf8") : "") + stderr;
+    // Keep offsets chronological: stderr is archived separately and can repeat
+    // the same messages. Concatenating it shifts old entries past saved offsets.
+    fs.existsSync(log) ? fs.readFileSync(log, "utf8") : "";
   return { child, read, log };
 }
 const launch = {
@@ -429,6 +449,7 @@ async function scenario(kind) {
   }
 }
 export {
+  bounded,
   chromium,
   native,
   launch,

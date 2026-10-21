@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import {
+  bounded,
   chromium,
   native,
   launch,
@@ -111,15 +112,20 @@ for (const [index, kind] of (
     browsers.push(server);
     const browser = await chromium.connect(server.wsEndpoint());
     const p = await page(browser, `${label}-${browsers.length}`);
-    await p.evaluate(
-      ({ create, sessionName, base, config }) =>
-        window.handoffProbe.start(
-          create,
-          sessionName || "",
-          `ws://127.0.0.1:${base + 1}`,
-          config,
+    await bounded(
+      () =>
+        p.evaluate(
+          ({ create, sessionName, base, config }) =>
+            window.handoffProbe.start(
+              create,
+              sessionName || "",
+              `ws://127.0.0.1:${base + 1}`,
+              config,
+            ),
+          { create, sessionName, base, config },
         ),
-      { create, sessionName, base, config },
+      45000,
+      "browser session startup",
     );
     await until(() => p.evaluate(() => window.handoffProbe.participant));
     participants.push(p);
@@ -274,10 +280,14 @@ for (const [index, kind] of (
     result.error = error.stack;
     result.participants = await Promise.all(
       participants.map(async (p) => ({
-        ...(await snapshot(p).catch(() => ({}))),
-        status: await p
-          .evaluate(() => window.handoffProbe.status)
-          .catch(String),
+        ...(await bounded(() => snapshot(p), 1000, "failure snapshot").catch(
+          () => ({}),
+        )),
+        status: await bounded(
+          () => p.evaluate(() => window.handoffProbe.status),
+          1000,
+          "failure status",
+        ).catch(String),
       })),
     );
     throw error;
