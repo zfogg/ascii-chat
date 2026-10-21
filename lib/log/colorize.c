@@ -507,8 +507,8 @@ static bool is_key_value_pair(const char *str, size_t pos, size_t *key_end, size
  * Only colorizes text that is not already colored (in reset state).
  */
 static void append_colored_token(char *output, size_t capacity, size_t *position, log_color_t color, const char *text) {
-  const char *start = log_level_color(color);
-  const char *reset = log_level_color(LOG_COLOR_RESET);
+  const char *start = log_level_color_for_output(color, true);
+  const char *reset = log_level_color_for_output(LOG_COLOR_RESET, true);
   size_t start_len = start ? strlen(start) : 0, text_len = strlen(text), reset_len = reset ? strlen(reset) : 0;
   if (*position >= capacity || start_len + text_len + reset_len >= capacity - *position)
     return;

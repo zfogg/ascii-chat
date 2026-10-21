@@ -705,8 +705,8 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
 
       // The caller already selected colors. Respect that policy for both file
       // and session logs instead of asking the console again for every field.
-      const char *start = use_colors ? log_level_color(color) : "";
-      const char *reset = use_colors ? log_level_color(LOG_COLOR_RESET) : "";
+      const char *start = log_level_color_for_output(color, use_colors);
+      const char *reset = log_level_color_for_output(LOG_COLOR_RESET, use_colors);
       written = safe_snprintf(p, remaining + 1, "%s%s%s", start ? start : "", content_buf, reset ? reset : "");
       break;
     }

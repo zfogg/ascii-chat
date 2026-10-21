@@ -479,7 +479,7 @@ asciichat_error_t colorscheme_load_from_file(const char *path, color_scheme_t *s
     /* Parse dark mode colors */
     toml_datum_t dark_section = toml_get(colors_section, "dark");
     if (dark_section.type == TOML_TABLE) {
-      const char *color_names[] = {"dev", "debug", "warn", "info", "error", "fatal", "grey", "reset"};
+      const char *color_names[] = {"dev", "debug", "info", "warn", "error", "fatal", "grey", "reset"};
       for (int i = 0; i < 8; i++) {
         toml_datum_t color_value = toml_get(dark_section, color_names[i]);
         if (color_value.type == TOML_STRING) {
@@ -493,7 +493,7 @@ asciichat_error_t colorscheme_load_from_file(const char *path, color_scheme_t *s
     toml_datum_t light_section = toml_get(colors_section, "light");
     if (light_section.type == TOML_TABLE) {
       scheme->has_light_variant = true;
-      const char *color_names[] = {"dev", "debug", "warn", "info", "error", "fatal", "grey", "reset"};
+      const char *color_names[] = {"dev", "debug", "info", "warn", "error", "fatal", "grey", "reset"};
       for (int i = 0; i < 8; i++) {
         toml_datum_t color_value = toml_get(light_section, color_names[i]);
         if (color_value.type == TOML_STRING) {
@@ -528,6 +528,12 @@ asciichat_error_t parse_hex_color(const char *hex, uint8_t *r, uint8_t *g, uint8
   /* Validate hex string length */
   if (strlen(hex) != 6) {
     return SET_ERRNO(ERROR_CONFIG, "Invalid hex color (must be #RRGGBB): %s", hex);
+  }
+
+  for (size_t i = 0; i < 6; ++i) {
+    if (!((hex[i] >= '0' && hex[i] <= '9') || (hex[i] >= 'a' && hex[i] <= 'f') || (hex[i] >= 'A' && hex[i] <= 'F'))) {
+      return SET_ERRNO(ERROR_CONFIG, "Invalid hex color format: %s", hex);
+    }
   }
 
   /* Parse hex digits */
@@ -679,7 +685,7 @@ asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char 
                           scheme.name, scheme.description);
 
   /* Dark mode colors */
-  const char *color_names[] = {"dev", "debug", "warn", "info", "error", "fatal", "grey", "reset"};
+  const char *color_names[] = {"dev", "debug", "info", "warn", "error", "fatal", "grey", "reset"};
   offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "[colors.dark]\n");
 
   for (int i = 0; i < 8; i++) {
