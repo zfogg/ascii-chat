@@ -503,6 +503,15 @@ export class WebRTCSession implements ClientSession {
   }
 
   private outbound: OutboundQueue | null = null;
+  getUploadFeedback() {
+    if (this.promoted) return this.promoted.getUploadFeedback();
+    const snapshot = this.outbound?.snapshot();
+    return {
+      bufferedBytes: this.getBufferedAmount(),
+      oldestFrameAgeMs: snapshot?.oldestFrameAgeMs ?? 0,
+      droppedFrames: snapshot?.dropped ?? 0,
+    };
+  }
   needsKeyframe(type: number): boolean {
     return (
       this.promoted?.needsKeyframe(type) ??

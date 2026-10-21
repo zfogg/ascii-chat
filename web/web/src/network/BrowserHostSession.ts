@@ -404,6 +404,22 @@ export class BrowserHostSession implements ClientSession {
       ),
     );
   }
+  getUploadFeedback() {
+    const snapshots = Array.from(this.peers.values(), (peer) =>
+      peer.outbound?.snapshot(),
+    );
+    return {
+      bufferedBytes: this.getBufferedAmount(),
+      oldestFrameAgeMs: Math.max(
+        0,
+        ...snapshots.map((snapshot) => snapshot?.oldestFrameAgeMs ?? 0),
+      ),
+      droppedFrames: snapshots.reduce(
+        (sum, snapshot) => sum + (snapshot?.dropped ?? 0),
+        0,
+      ),
+    };
+  }
   onStateChange(callback: (state: ConnectionState) => void) {
     this.stateCallback = callback;
   }

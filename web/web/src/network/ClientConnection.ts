@@ -415,6 +415,15 @@ export class ClientConnection {
     );
   }
 
+  getUploadFeedback() {
+    const snapshot = this.outbound?.snapshot();
+    return {
+      bufferedBytes: this.getBufferedAmount(),
+      oldestFrameAgeMs: snapshot?.oldestFrameAgeMs ?? 0,
+      droppedFrames: snapshot?.dropped ?? 0,
+    };
+  }
+
   private outbound: OutboundQueue | null = null;
 
   needsKeyframe(type: number): boolean {
