@@ -1532,17 +1532,20 @@ export function validateReceivedFrame(
   metadata: Uint8Array,
   originalSize: number,
 ): Uint8Array {
-  if (!wasmModule) throw new Error("Client frame validator is unavailable");
   if (
     !bytes.length ||
     bytes.length > 16 * 1024 * 1024 ||
-    !originalSize ||
+    !Number.isSafeInteger(originalSize) ||
+    originalSize <= 0 ||
     originalSize > 16 * 1024 * 1024 ||
     metadata.length > 275
   )
     throw new Error("Received frame allocation exceeds byte budget");
-  const text = wasmModule._malloc(bytes.length);
   const compressed = (flags & 2) !== 0;
+  if (!compressed && bytes.length !== originalSize)
+    throw new Error("Uncompressed frame size mismatch");
+  if (!wasmModule) throw new Error("Client frame validator is unavailable");
+  const text = wasmModule._malloc(bytes.length);
   const output = compressed ? wasmModule._malloc(originalSize) : text;
   const contract = metadata.length ? wasmModule._malloc(metadata.length) : 0;
   if (!text || !output || (metadata.length && !contract)) {
