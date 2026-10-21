@@ -1660,3 +1660,37 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32)
             $<TARGET_FILE:ascii-chat>)
     set_tests_properties(discovery-webrtc PROPERTIES LABELS "integration" TIMEOUT 120 RUN_SERIAL TRUE)
 endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat)
+    add_test(NAME options-init COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/options_init.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(options-init PROPERTIES LABELS "unit" TIMEOUT 180)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat-shared)
+    set(shared_api_tests options-metadata)
+    add_test(NAME options-metadata COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/options_metadata.py $<TARGET_FILE:ascii-chat-shared>)
+    find_program(ASCIICHAT_TEST_SSH_KEYGEN ssh-keygen)
+    if(ASCIICHAT_TEST_SSH_KEYGEN)
+        add_test(NAME ssh-private-key-parser COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/ssh_private_key_parser.py $<TARGET_FILE:ascii-chat-shared>)
+        list(APPEND shared_api_tests ssh-private-key-parser)
+    endif()
+    find_program(ASCIICHAT_TEST_FFMPEG ffmpeg)
+    find_program(ASCIICHAT_TEST_FFPROBE ffprobe)
+    if(ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TEST_FFPROBE)
+        add_test(NAME encoder-audio-flush COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/encoder_audio_flush.py $<TARGET_FILE:ascii-chat-shared>)
+        list(APPEND shared_api_tests encoder-audio-flush)
+    endif()
+    foreach(api_test IN LISTS shared_api_tests)
+        set_tests_properties(${api_test} PROPERTIES LABELS "unit" TIMEOUT 120)
+        # Python hosts the instrumented library, so load ASan before Python's allocator.
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ASCIICHAT_SANITIZER_COMPILE_FLAGS MATCHES "fsanitize=address"
+           AND EXISTS "${ASAN_RUNTIME_LIBRARY}")
+            set_property(TEST ${api_test} APPEND PROPERTY ENVIRONMENT
+                "LD_PRELOAD=${ASAN_RUNTIME_LIBRARY}" "PYTHONMALLOC=malloc")
+        endif()
+    endforeach()
+endif()
