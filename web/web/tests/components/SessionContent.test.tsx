@@ -12,7 +12,7 @@ it("keeps the renderer mounted but hidden until loading completes", () => {
   expect(screen.getByRole("region").getAttribute("aria-busy")).toBe("true");
   expect(canvas.parentElement?.getAttribute("aria-hidden")).toBe("true");
   expect(screen.getByRole("status").textContent).toContain(
-    "Preparing your ASCII view",
+    "Preparing your view",
   );
   rerender(
     <SessionContent loading={false}>

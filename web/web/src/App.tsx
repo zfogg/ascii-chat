@@ -27,9 +27,7 @@ export function App() {
         key={pathname}
         fallback={<SessionContent error="Page loading failed" />}
       >
-        <Suspense
-          fallback={<SessionContent title="Opening your ASCII workspace" />}
-        >
+        <Suspense fallback={<SessionContent title="Opening your workspace" />}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/mirror" element={<MirrorPage />} />

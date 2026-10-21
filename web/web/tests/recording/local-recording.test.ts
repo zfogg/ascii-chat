@@ -85,6 +85,21 @@ const canvas = () =>
   }) as unknown as HTMLCanvasElement;
 const audio = () => new Stream([microphone]) as unknown as MediaStream;
 
+it("holds the last presented raster while resizing clears the source canvas", () => {
+  const owner = new LocalRecording(vi.fn(), vi.fn());
+  const displayed = canvas();
+  let ready = true;
+  owner.start(displayed, audio(), () => (ready ? displayed : null));
+  expect(drawImage).toHaveBeenCalledOnce();
+  ready = false;
+  vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](16);
+  expect(drawImage).toHaveBeenCalledOnce();
+  ready = true;
+  vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](32);
+  expect(drawImage).toHaveBeenCalledTimes(2);
+  owner.dispose();
+});
+
 it("copies only displayed pixels and waits for the final encoded chunk", async () => {
   const state = vi.fn();
   const owner = new LocalRecording(state, vi.fn());

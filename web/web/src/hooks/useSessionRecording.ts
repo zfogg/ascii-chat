@@ -54,9 +54,9 @@ export function useSessionRecording(options: Options) {
     setState("starting");
     try {
       const canvas = latest.current.rendererRef.current?.getCanvas();
-      if (!canvas)
+      if (!latest.current.rendererRef.current)
         throw new Error("Wait for the ASCII renderer before recording.");
-      if (!recordingMimeType() || !canvas.captureStream)
+      if (!recordingMimeType() || (canvas && !canvas.captureStream))
         throw new Error("This browser cannot record ASCII video with audio.");
       if (latest.current.prepare && !(await latest.current.prepare()))
         throw new Error("Connect before recording session audio.");
@@ -69,6 +69,24 @@ export function useSessionRecording(options: Options) {
         return;
       }
       pipeline.setRecordingMedia(latest.current.fileElement());
+      // Starting changes header geometry. Let layout/ResizeObserver commit and
+      // wait for the C raster, rather than encoding the cleared resize surface.
+      const readCanvas = () =>
+        latest.current.rendererRef.current?.getCanvas() ?? null;
+      const deadline = performance.now() + 5_000;
+      let displayed: HTMLCanvasElement | null;
+      do {
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => resolve()),
+        );
+        if (!current()) {
+          pipeline.stopRecording();
+          return;
+        }
+        displayed = readCanvas();
+      } while (!displayed && performance.now() < deadline);
+      if (!displayed)
+        throw new Error("Wait for an ASCII frame before recording.");
       const recorder = new LocalRecording(
         (next) => {
           if (mounted.current) setState(next);
@@ -78,7 +96,7 @@ export function useSessionRecording(options: Options) {
         },
       );
       owner.current = recorder;
-      recorder.start(canvas, stream);
+      recorder.start(displayed, stream, readCanvas);
       const result = await recorder.completed();
       if (owner.current !== recorder) return;
       pipeline.stopRecording();

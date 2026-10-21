@@ -47,7 +47,7 @@ for (const viewport of [
       try {
         await page.goto(`/${mode}`, { waitUntil: "domcontentloaded" });
         await expect(
-          page.getByText("Opening your ASCII workspace", { exact: true }),
+          page.getByText("Opening your workspace", { exact: true }),
         ).toBeVisible();
         await centeredInContent(page);
         await page.screenshot({
@@ -58,7 +58,7 @@ for (const viewport of [
         release();
       }
       await expect(
-        page.getByText("Opening your ASCII workspace", { exact: true }),
+        page.getByText("Opening your workspace", { exact: true }),
       ).not.toBeVisible();
     });
 
@@ -90,7 +90,7 @@ for (const viewport of [
           if (await connect.isVisible()) await connect.click();
         }
         await expect(
-          page.getByText("Preparing your ASCII view", { exact: true }),
+          page.getByText("Preparing your view", { exact: true }),
         ).toBeVisible();
         await centeredInContent(page);
         await expect(
@@ -104,7 +104,7 @@ for (const viewport of [
         release();
       }
       await expect(
-        page.getByText("Preparing your ASCII view", { exact: true }),
+        page.getByText("Preparing your view", { exact: true }),
       ).not.toBeVisible({ timeout: 45000 });
     });
   }

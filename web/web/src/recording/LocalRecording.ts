@@ -40,7 +40,11 @@ export class LocalRecording {
   ) {}
 
   /** Copy the displayed raster and clone bus audio; leave source tracks owned by callers. */
-  start(canvas: HTMLCanvasElement, audio: MediaStream): void {
+  start(
+    canvas: HTMLCanvasElement,
+    audio: MediaStream,
+    readCanvas = () => canvas as HTMLCanvasElement | null,
+  ): void {
     if (this.disposed || this.recorder) throw new Error("Recording is busy");
     const mimeType = recordingMimeType();
     if (!mimeType || typeof canvas.captureStream !== "function")
@@ -57,18 +61,23 @@ export class LocalRecording {
     if (!context)
       throw new Error("Cannot copy the ASCII canvas for recording.");
     const paint = () => {
+      const displayed = readCanvas();
+      if (!displayed) {
+        this.frame = requestAnimationFrame(paint);
+        return;
+      }
       context.fillStyle = "black";
       context.fillRect(0, 0, output.width, output.height);
       const fit = Math.min(
-        output.width / canvas.width,
-        output.height / canvas.height,
+        output.width / displayed.width,
+        output.height / displayed.height,
       );
-      const width = canvas.width * fit;
-      const height = canvas.height * fit;
+      const width = displayed.width * fit;
+      const height = displayed.height * fit;
       context.imageSmoothingEnabled = false;
       if (width && height)
         context.drawImage(
-          canvas,
+          displayed,
           (output.width - width) / 2,
           (output.height - height) / 2,
           width,

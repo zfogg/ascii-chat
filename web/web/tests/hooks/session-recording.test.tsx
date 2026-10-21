@@ -73,6 +73,25 @@ const options = () => ({
   enabled: true,
 });
 
+it("waits for the replacement raster before starting the encoder", async () => {
+  const configured = options();
+  const canvas = configured.rendererRef.current.getCanvas();
+  let ready = false;
+  configured.rendererRef.current.getCanvas = () => (ready ? canvas : null);
+  const { result } = renderHook(() => useSessionRecording(configured));
+  act(() => {
+    void result.current.start();
+  });
+  await waitFor(() => expect(pipeline.startRecording).toHaveBeenCalledOnce());
+  expect(fixture.start).not.toHaveBeenCalled();
+  expect(result.current.error).toBe("");
+  ready = true;
+  await waitFor(() => expect(fixture.start).toHaveBeenCalledOnce());
+  await act(async () => {
+    fixture.complete(null);
+  });
+});
+
 it("keeps one encoder through repeated starts, waits for final data, and revokes downloads on unmount", async () => {
   const { result, unmount } = renderHook(() => useSessionRecording(options()));
   act(() => {

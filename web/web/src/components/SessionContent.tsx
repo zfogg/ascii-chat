@@ -5,7 +5,7 @@ export function SessionContent({
   children,
   loading = true,
   error,
-  title = "Preparing your ASCII view",
+  title = "Preparing your view",
 }: {
   children?: ReactNode;
   loading?: boolean;

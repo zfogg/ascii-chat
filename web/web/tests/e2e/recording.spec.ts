@@ -116,6 +116,44 @@ function decode(path: string, frequencies: number[], projectionStart = 1) {
   expect(
     new Set(frames.map((line) => line.split(",").at(-1)!.trim())).size,
   ).toBeGreaterThan(8);
+  // Inputs stay bright through startup: a cleared resize surface must never
+  // replace an already presented ASCII frame in the opening second.
+  const opening = spawnSync(
+    "ffmpeg",
+    [
+      "-v",
+      "error",
+      "-i",
+      path,
+      "-t",
+      "1",
+      "-vf",
+      "scale=160:90",
+      "-fps_mode",
+      "passthrough",
+      "-f",
+      "rawvideo",
+      "-pix_fmt",
+      "gray",
+      "-",
+    ],
+    { windowsHide: true, maxBuffer: 20 * 1024 * 1024 },
+  );
+  expect(opening.status, opening.stderr?.toString()).toBe(0);
+  const openingMeans: number[] = [];
+  for (let offset = 0; offset < opening.stdout.length; offset += 160 * 90) {
+    const pixels = opening.stdout.subarray(offset, offset + 160 * 90);
+    openingMeans.push(
+      pixels.reduce((sum, value) => sum + value, 0) / pixels.length,
+    );
+  }
+  const openingMedian = [...openingMeans].sort((a, b) => a - b)[
+    Math.floor(openingMeans.length / 2)
+  ]!;
+  expect(
+    Math.min(...openingMeans),
+    JSON.stringify(openingMeans),
+  ).toBeGreaterThan(openingMedian * 0.2);
   const raw = spawnSync(
     "ffmpeg",
     [
@@ -211,6 +249,7 @@ function decode(path: string, frequencies: number[], projectionStart = 1) {
     rms,
     amplitudes,
     noiseFloor,
+    openingMeans,
   };
 }
 

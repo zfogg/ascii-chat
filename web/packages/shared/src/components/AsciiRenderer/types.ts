@@ -1,7 +1,7 @@
 import type { ClientLikeKind } from "../../wasm/assetUrl";
 
 export interface AsciiRendererHandle {
-  /** The displayed C/WASM raster, never the source-video capture canvas. */
+  /** The presented C/WASM raster; null until painted and during resize replacement. */
   getCanvas(): HTMLCanvasElement | null;
   writeFrame(
     ansiString: string,
