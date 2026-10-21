@@ -26,6 +26,36 @@ static asciichat_error_t close_backend(acip_transport_t *transport) {
   return ASCIICHAT_OK;
 }
 static const acip_transport_methods_t methods = {.send = backend_send, .close = close_backend, .queued_bytes = queued};
+
+typedef struct {
+  atomic_t entered, interrupted, closing, overlaps, closes;
+} shutdown_backend_t;
+
+static void interrupt_shutdown_backend(acip_transport_t *transport) {
+  atomic_store_bool(&((shutdown_backend_t *)transport->impl_data)->interrupted, true);
+}
+
+static asciichat_error_t blocked_shutdown_send(acip_transport_t *transport, const void *data, size_t size) {
+  (void)data;
+  (void)size;
+  shutdown_backend_t *backend = transport->impl_data;
+  atomic_store_bool(&backend->entered, true);
+  while (!atomic_load_bool(&backend->interrupted))
+    platform_sleep_ms(1);
+  return ERROR_NETWORK;
+}
+
+static asciichat_error_t close_shutdown_backend(acip_transport_t *transport) {
+  shutdown_backend_t *backend = transport->impl_data;
+  if (atomic_fetch_add_u64(&backend->closing, 1))
+    atomic_store_bool(&backend->overlaps, true);
+  interrupt_shutdown_backend(transport);
+  // Give the interrupted send time to fail and attempt its own backend close.
+  platform_sleep_ms(30);
+  atomic_fetch_add_u64(&backend->closes, 1);
+  atomic_fetch_sub_u64(&backend->closing, 1);
+  return ASCIICHAT_OK;
+}
 static acip_transport_t *create(void) {
   acip_transport_t *transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
   transport->methods = &methods;
@@ -59,6 +89,24 @@ static void await_submitted(acip_transport_t *transport, uint64_t expected) {
     cr_assert(time_get_ns() - start < 2 * NS_PER_SEC_INT);
     platform_sleep_ms(1);
   }
+}
+
+Test(transport_backpressure, destruction_serializes_backend_close_after_a_blocked_send_fails) {
+  static const acip_transport_methods_t shutdown_methods = {
+      .send = blocked_shutdown_send, .close = close_shutdown_backend, .interrupt = interrupt_shutdown_backend};
+  shutdown_backend_t backend = {0};
+  acip_transport_t transport = {.methods = &shutdown_methods, .impl_data = &backend};
+  cr_assert_eq(acip_outbound_create(&transport), ASCIICHAT_OK);
+  cr_assert_eq(submit(&transport, PACKET_TYPE_IMAGE_FRAME, 0, 100, false), ACIP_ADMISSION_ACCEPTED);
+  uint64_t started = time_get_ns();
+  while (!atomic_load_bool(&backend.entered)) {
+    cr_assert(time_get_ns() - started < 2 * NS_PER_SEC_INT);
+    platform_sleep_ms(1);
+  }
+  acip_outbound_destroy(&transport);
+  cr_assert_null(transport.outbound);
+  cr_assert_eq(atomic_load_u64(&backend.closes), 2);
+  cr_assert_not(atomic_load_bool(&backend.overlaps), "Destructor and worker must never close a backend concurrently");
 }
 typedef struct {
   acip_transport_t *transport;
