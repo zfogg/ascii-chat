@@ -31,3 +31,10 @@ two concurrent control producers, later admission after failure, preserved syste
 errno/source context, and congestion recovery without closing the backend.
 The TCP unit suite additionally verifies system-cause propagation from a real
 closed socket through the production send backend and outbound worker.
+
+Merging current master for CI exposed a missing WASM definition of the existing
+`terminal_get_effective_color_mode` API, now called by logging. The browser
+terminal implementation returns its explicit color option or AUTO, consistent
+with its existing always-color-capable output. This small compatibility fix is
+needed to rebuild the source-fingerprinted Release bundle; no logging/parser
+implementation from #535 is changed by this PR.
