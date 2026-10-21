@@ -229,7 +229,7 @@
 <p class="Pp"><b>Value:</b></p>
 <pre>do {                                                                                                                 \
 <br/>
-  asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
+  errno_set_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
 <br/>
   static const char *msg_header = &quot;CRITICAL LOGGING SYSTEM ERROR: &quot;;                                                 \
 <br/>
@@ -250,7 +250,7 @@
 <p class="Pp">Definition at line <b>201</b> of file <b>log/log.c</b>.</p>
 <pre>201 #define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
 202   do {                                                                                                                 \
-203     asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
+203     errno_set_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
 204     static const char *msg_header = &quot;CRITICAL LOGGING SYSTEM ERROR: &quot;;                                                 \
 205     safe_fprintf(stderr, &quot;%s %s\n&quot;, colored_string(LOG_COLOR_ERROR, msg_header), message);                             \
 206     int _log_fd = atomic_load_int(&amp;g_log.file);                                                                        \

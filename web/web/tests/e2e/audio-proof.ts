@@ -13,6 +13,7 @@ declare global {
       samples: number;
       renders: number;
       lastFrame: string;
+      lastMode: string;
     };
     outputProof?: { rms: number; peak: number; graphs: number };
   }
@@ -28,6 +29,7 @@ export async function observeAudioVisualization(page: Page) {
       samples: 0,
       renders: 0,
       lastFrame: "",
+      lastMode: "",
     });
     const submit = module._mirror_submit_audio_samples;
     module._mirror_submit_audio_samples = (
@@ -48,6 +50,17 @@ export async function observeAudioVisualization(page: Page) {
       proof.samples += count;
       return submit(pointer, count, source);
     };
+    let selectedMode = "";
+    for (const [setter, mode] of [
+      ["_set_waveform", "waveform"],
+      ["_set_fft", "fft"],
+    ] as const) {
+      const original = module[setter];
+      module[setter] = (enabled: number) => {
+        if (enabled) selectedMode = mode;
+        return original(enabled);
+      };
+    }
     const render = module._mirror_render_audio_visualization;
     module._mirror_render_audio_visualization = (
       width: number,
@@ -57,6 +70,7 @@ export async function observeAudioVisualization(page: Page) {
       const pointer = render(width, height, source);
       if (pointer) {
         proof.lastFrame = module.UTF8ToString(pointer);
+        proof.lastMode = selectedMode;
         proof.renders++;
       }
       return pointer;
@@ -106,6 +120,9 @@ export async function selectAudioVisualization(
   await settings.click();
   if (!(await selection.isVisible()))
     await page.getByRole("button", { name: "Animation", exact: true }).click();
+  const previousRenders = await page.evaluate(
+    () => window.audioProof?.renders ?? 0,
+  );
   await selection.selectOption(mode);
   await expect
     .poll(() => new URL(page.url()).searchParams.get("animation"))
@@ -118,7 +135,10 @@ export async function selectAudioVisualization(
     .toBeGreaterThan(0.03);
   await expect
     .poll(() => page.evaluate(() => window.audioProof?.renders ?? 0))
-    .toBeGreaterThan(2);
+    .toBeGreaterThan(previousRenders + 2);
+  await expect
+    .poll(() => page.evaluate(() => window.audioProof?.lastMode))
+    .toBe(mode);
   await expect
     .poll(() => page.evaluate(() => window.audioProof?.lastFrame.length ?? 0))
     .toBeGreaterThan(100);

@@ -2,9 +2,9 @@
 
 int main(int argc, char **argv) {
   log_init(NULL, LOG_WARN, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   if (argc > 1 && strcmp(argv[1], "--assert-leak") == 0) {
-    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t scope = errno_scope_begin();
     SET_ERRNO(ERROR_NETWORK, "unresolved");
     ASSERT_NO_ERRNO_SINCE(scope);
     return 0;

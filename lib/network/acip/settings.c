@@ -134,7 +134,7 @@ asciichat_error_t acip_settings_request(acip_render_settings_t *state, const voi
   asciichat_error_t result = acip_settings_decode(payload, length, &header, &json, &json_length);
   if (result != ASCIICHAT_OK)
     return result;
-  asciichat_errno_scope_t request_scope = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t request_scope = errno_scope_begin();
   options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
             *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
   acip_render_settings_options(state, current);
@@ -150,7 +150,7 @@ asciichat_error_t acip_settings_request(acip_render_settings_t *state, const voi
   header.status = result;
   header.revision = state->revision;
   // The rejection is represented by the response status, preserving older errors.
-  asciichat_errno_scope_end(request_scope, ASCIICHAT_ERRNO_HANDLED);
+  errno_scope_end(request_scope, ASCIICHAT_ERRNO_HANDLED);
   acip_render_settings_options(state, current);
   char *effective = options_values_json(current, true);
   asciichat_error_t encoded =

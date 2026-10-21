@@ -218,13 +218,13 @@ static asciichat_error_t negotiation_read(acip_transport_t *transport, uint64_t 
     if (now >= deadline)
       return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "Connection negotiation deadline expired");
     transport->receive_timeout_ns = MIN(deadline - now, 100 * NS_PER_MS_INT);
-    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t scope = errno_scope_begin();
     asciichat_error_t result = packet_receive_via_transport(transport, type, payload, length, allocation);
     if (result == ERROR_NETWORK_TIMEOUT || result == ERROR_NETWORK_INCOMPLETE) {
-      asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+      errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
       continue;
     }
-    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
     if (result == ASCIICHAT_OK && *type == PACKET_TYPE_ERROR_MESSAGE)
       result = network_error_decode(*type, *payload, *length);
     return result;

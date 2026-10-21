@@ -249,7 +249,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
   }
 
   case MEDIA_SOURCE_FILE: {
-    asciichat_errno_scope_t media_scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t media_scope = errno_scope_begin();
     if (!path || path[0] == '\0') {
       SET_ERRNO(ERROR_INVALID_PARAM, "File path is required for FILE source");
       // Destroy mutexes before freeing source
@@ -299,7 +299,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
 
     // Always use separate decoders for video and audio
     // This allows independent read rates and avoids lock contention
-    asciichat_errno_scope_t decoder_scope = asciichat_errno_checkpoint();
+    asciichat_errno_scope_t decoder_scope = errno_checkpoint();
     source->video_decoder = ffmpeg_decoder_create_interruptible(effective_path, cancel, data);
     if (!source->video_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: video decoder could not open input");
@@ -319,7 +319,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
 
     // Start prefetch only when a video stream exists.
     // This thread continuously reads frames into a buffer so the render loop never blocks
-    asciichat_errno_scope_t prefetch_scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t prefetch_scope = errno_scope_begin();
     asciichat_error_t prefetch_err = ffmpeg_decoder_has_video(source->video_decoder)
                                          ? ffmpeg_decoder_start_prefetch(source->video_decoder)
                                          : ASCIICHAT_OK;
@@ -334,8 +334,8 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     }
 
     ASSERT_NO_ERRNO_SINCE(prefetch_scope);
-    asciichat_errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
-    decoder_scope = asciichat_errno_checkpoint();
+    errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
+    decoder_scope = errno_checkpoint();
     source->audio_decoder = ffmpeg_decoder_create_interruptible(effective_path, cancel, data);
     if (!source->audio_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: audio decoder could not open input");
@@ -353,7 +353,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
 
     ASSERT_NO_ERRNO_SINCE(decoder_scope);
     // Both decoders succeeded: failed extraction/prefetch attempts are resolved.
-    asciichat_errno_scope_end(media_scope, ASCIICHAT_ERRNO_DISMISSED);
+    errno_scope_end(media_scope, ASCIICHAT_ERRNO_DISMISSED);
     ASSERT_NO_ERRNO_SINCE(media_scope);
     log_debug("Media source: URL resolved to stream (separate video/audio decoders)");
     break;
@@ -371,7 +371,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     }
 
     // Start prefetch thread for stdin video frames
-    asciichat_errno_scope_t prefetch_scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t prefetch_scope = errno_scope_begin();
     asciichat_error_t prefetch_err = ffmpeg_decoder_has_video(source->video_decoder)
                                          ? ffmpeg_decoder_start_prefetch(source->video_decoder)
                                          : ASCIICHAT_OK;
@@ -386,7 +386,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     }
 
     ASSERT_NO_ERRNO_SINCE(prefetch_scope);
-    asciichat_errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
     source->audio_decoder = ffmpeg_decoder_create_stdin();
     if (!source->audio_decoder) {
       log_error("Failed to open stdin for audio input");

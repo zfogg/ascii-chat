@@ -131,9 +131,12 @@ async function installPicker(page: Page) {
         throw new DOMException("cancelled", "NotAllowedError");
       }
       const canvas = document.createElement("canvas");
-      canvas.width = 640;
-      canvas.height = 360;
+      // Functional media proof uses a small real capture. Native transport
+      // tests cover throughput independently of concurrent browser/CI load.
+      canvas.width = 320;
+      canvas.height = 180;
       const context = canvas.getContext("2d")!;
+      context.scale(0.5, 0.5);
       const draw = () => {
         context.fillStyle = "red";
         context.fillRect(0, 0, 640, 360);
@@ -748,6 +751,8 @@ for (const mode of ["client", "discovery"]) {
     const query = new URLSearchParams({
       flipX: "false",
       colorMode: "truecolor",
+      // Exercise media correctness independently of the native throughput soak.
+      targetFps: "15",
       encoding: process.env["ASCII_CHAT_SCREEN_ENCODING"] ?? "raw",
     });
     try {

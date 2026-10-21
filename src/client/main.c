@@ -476,7 +476,7 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
   if (result != ASCIICHAT_OK) {
     return result;
   }
-  asciichat_errno_scope_t attempt_errors = asciichat_errno_checkpoint();
+  asciichat_errno_scope_t attempt_errors = errno_checkpoint();
   result = client_run_attempt(capture, display, connection);
   asciichat_error_t cleanup = client_connection_destroy(&connection);
   while (cleanup != ASCIICHAT_OK) {
@@ -487,7 +487,7 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
   }
   if (should_exit() && result == ERROR_NETWORK) {
     // Local cancellation can arrive while a remote disconnect is being cleaned up.
-    asciichat_errno_scope_end(attempt_errors, ASCIICHAT_ERRNO_DISMISSED);
+    errno_scope_end(attempt_errors, ASCIICHAT_ERRNO_DISMISSED);
     return ASCIICHAT_OK;
   }
   return result;
@@ -497,7 +497,7 @@ int client_main(void) {
 
   // Initialize client-specific systems (NOT shared with session_client_like)
   // This includes application devices and the application client context.
-  asciichat_errno_scope_t init_scope = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t init_scope = errno_scope_begin();
   int init_result = initialize_client_systems();
   if (init_result != 0) {
 #ifndef NDEBUG
@@ -522,7 +522,7 @@ int client_main(void) {
       log_debug("Successfully initialized with test pattern fallback");
 
       // Clear the error state since we successfully recovered
-      asciichat_errno_scope_end(init_scope, ASCIICHAT_ERRNO_DISMISSED);
+      errno_scope_end(init_scope, ASCIICHAT_ERRNO_DISMISSED);
       ASSERT_NO_ERRNO_SINCE(init_scope);
     } else
 #endif
@@ -537,7 +537,7 @@ int client_main(void) {
     }
   } else {
     ASSERT_NO_ERRNO_SINCE(init_scope);
-    asciichat_errno_scope_end(init_scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(init_scope, ASCIICHAT_ERRNO_HANDLED);
   }
 
   // Register cleanup function for graceful shutdown

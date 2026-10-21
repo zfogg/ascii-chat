@@ -83,7 +83,7 @@ void mixer_test_init(void) {}
 // Custom fini function to cleanup asciichat_errno for all mixer test suites
 void mixer_test_fini(void) {
   // Clear any error state left by tests
-  asciichat_clear_errno();
+  errno_clear();
 }
 
 // Use TestSuite directly with custom init and fini to cleanup error state

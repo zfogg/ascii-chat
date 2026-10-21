@@ -858,7 +858,7 @@
  * buffer_system_cleanup(); // Free owned buffers
  * platform_disable_keepawake();
  * symbol_cache_destroy();
- * asciichat_errno_destroy();
+ * errno_destroy();
  * options_state_destroy();
  * log_destroy();
  * @endcode

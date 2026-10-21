@@ -222,12 +222,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // EVENT-DRIVEN MODE: Frames come from callbacks
     // Both sleep_cb and capture_cb are guaranteed non-NULL by validation above
     sleep_cb(user_data);
-    asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
+    asciichat_errno_scope_t frame_scope = errno_checkpoint();
     image = capture_cb(user_data);
 
     if (!image) {
       asciichat_error_context_t failure;
-      if (asciichat_errno_peek_since(frame_scope, &failure)) {
+      if (errno_peek_since(frame_scope, &failure)) {
         capture_result = failure.code;
         break;
       }

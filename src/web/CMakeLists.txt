@@ -551,7 +551,7 @@ apply_sanitizers_to_target(client-web)
 # Exported functions for mirror module (main() entry point via main_wasm.c)
 set(EXPORTED_FUNCTIONS_MIRROR
     _wasm_capture_transform_required _wasm_capture_transform_rgba
-    _asciichat_errno_print_stacks _asciichat_errno_print_history
+    _errno_print_stacks _errno_print_history
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     # Frame processing for JavaScript control
     _mirror_init_with_args
@@ -623,7 +623,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _peer_crypto_output_pop
     _peer_crypto_received_data
     _peer_crypto_received_size
-    _asciichat_errno_print_stacks _asciichat_errno_print_history
+    _errno_print_stacks _errno_print_history
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     _browser_handoff_encode _browser_handoff_decode
     _browser_host_create _browser_host_destroy _browser_host_add_client _browser_host_remove_client

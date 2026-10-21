@@ -166,9 +166,9 @@ bool terminal_should_color_output(int fd) {
   return true; // WASM mirror mode supports color
 }
 
-// Browser capabilities are managed by JavaScript; preserve the configured
-// color mode for callers that resolve AUTO against those capabilities.
 terminal_color_mode_t terminal_get_effective_color_mode(void) {
+  // Browser output supports color; retain the explicit option or AUTO so the
+  // caller can resolve it using the JavaScript-managed terminal capabilities.
   return GET_OPTION(color_mode);
 }
 

@@ -205,7 +205,7 @@ const char *get_level_string_padded(log_level_t level) {
 #ifdef NDEBUG
 #define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
   do {                                                                                                                 \
-    asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                    \
+    errno_set_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                              \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
     log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);               \
     int _log_fd = atomic_load_int(&g_log.file);                                                                        \
@@ -217,7 +217,7 @@ const char *get_level_string_padded(log_level_t level) {
 #else
 #define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
   do {                                                                                                                 \
-    asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
+    errno_set_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                               \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
     log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);               \
     int _log_fd = atomic_load_int(&g_log.file);                                                                        \
@@ -1786,13 +1786,13 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
 
   va_list args_copy;
   va_start(args_copy, fmt);
-  asciichat_errno_scope_t format_scope = asciichat_errno_checkpoint();
+  asciichat_errno_scope_t format_scope = errno_checkpoint();
   char *formatted = format_message(fmt, args_copy);
   va_end(args_copy);
 
   if (!formatted) {
     asciichat_error_context_t current;
-    asciichat_error_t current_error = asciichat_errno_peek_since(format_scope, &current) ? current.code : ASCIICHAT_OK;
+    asciichat_error_t current_error = errno_peek_since(format_scope, &current) ? current.code : ASCIICHAT_OK;
     if (current_error == ASCIICHAT_OK) {
       current_error = SET_ERRNO(ERROR_MEMORY, "Failed to format network log message");
     }

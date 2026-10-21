@@ -48,7 +48,9 @@ Run the screen-sharing browser scenarios from `web/web` with
 vp exec playwright test --config tests/e2e/screen-sharing.config.ts
 ```
 
-The live network scenarios use raw uploads by default. Set
+The live network scenarios use a 320x180 capture and a 15 FPS receive target
+for functional media assertions; native transport tests cover throughput separately.
+They use raw uploads by default. Set
 `ASCII_CHAT_SCREEN_ENCODING=h264` to exercise the same two-participant checks
 through the browser's H.264 encoder; the test verifies the selected codec.
 This requires a browser/device that supports the requested WebCodecs configuration;

@@ -357,12 +357,12 @@ static void *connection_receive(void *arg) {
     }
     void *data = NULL, *allocation = NULL;
     size_t length = 0;
-    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t scope = errno_scope_begin();
     result = acip_transport_recv(c->transport, &data, &length, &allocation);
     if (result == ERROR_NETWORK_TIMEOUT || result == ERROR_NETWORK_INCOMPLETE) {
       if (result == ERROR_NETWORK_INCOMPLETE && !c->partial_since)
         c->partial_since = time_get_ns();
-      asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+      errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
       buffer_release(allocation);
       result = ASCIICHAT_OK;
       continue;
@@ -374,7 +374,7 @@ static void *connection_receive(void *arg) {
       result = c->result;
     }
     buffer_release(allocation);
-    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
   log_debug("Connection %s receive stopped: %s", c->peer, asciichat_error_format(NULL, result));
   acip_transport_close(c->transport);

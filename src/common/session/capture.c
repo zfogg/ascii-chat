@@ -332,13 +332,13 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   ctx->file_has_audio = false;
 
   // Create media source from config type and path
-  asciichat_errno_scope_t create_scope = asciichat_errno_checkpoint();
+  asciichat_errno_scope_t create_scope = errno_checkpoint();
   ctx->source = media_source_create(config->type, config->path);
 
   if (!ctx->source) {
     // Preserve existing error if set, otherwise set generic error
     asciichat_error_context_t failure;
-    asciichat_error_t existing_error = asciichat_errno_peek_since(create_scope, &failure) ? failure.code : ASCIICHAT_OK;
+    asciichat_error_t existing_error = errno_peek_since(create_scope, &failure) ? failure.code : ASCIICHAT_OK;
     if (existing_error == ASCIICHAT_OK) {
       SET_ERRNO(ERROR_MEDIA_INIT, "Failed to create media source");
     }
@@ -518,7 +518,7 @@ static void render_media_loading(terminal_size_t size, const void *data) {
 
 static void *load_media_worker(void *data) {
   session_capture_ctx_t *ctx = data;
-  asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t scope = errno_scope_begin();
   media_source_t *source = media_source_create_interruptible(MEDIA_SOURCE_FILE, ctx->load_path, load_cancelled, ctx);
   if (source) {
     media_source_set_exit_callback(source, load_cancelled, ctx);
@@ -532,7 +532,7 @@ static void *load_media_worker(void *data) {
   if (source && media_source_has_video(source)) {
     uint64_t deadline = time_get_ns() + 15 * NS_PER_SEC_INT;
     while (!load_cancelled(ctx) && time_get_ns() < deadline) {
-      asciichat_errno_scope_t read_scope = asciichat_errno_checkpoint();
+      asciichat_errno_scope_t read_scope = errno_checkpoint();
       image_t *frame = media_source_read_video(source);
       if (frame) {
         first = image_new(frame->w, frame->h);
@@ -541,7 +541,7 @@ static void *load_media_worker(void *data) {
         break;
       }
       asciichat_error_context_t read_failure;
-      if (asciichat_errno_peek_since(read_scope, &read_failure) || media_source_at_end(source))
+      if (errno_peek_since(read_scope, &read_failure) || media_source_at_end(source))
         break;
       platform_sleep_ms(1);
     }
@@ -552,9 +552,9 @@ static void *load_media_worker(void *data) {
   }
   asciichat_error_context_t failure;
   char error[512] = "Could not open media";
-  if (!source && asciichat_errno_peek_since(scope, &failure))
+  if (!source && errno_peek_since(scope, &failure))
     snprintf(error, sizeof(error), "%s", failure.context_message);
-  asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   mutex_lock(&ctx->load_mutex);
   ctx->loaded_source = source;
   ctx->loaded_frame = first;
