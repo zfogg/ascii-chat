@@ -33,6 +33,10 @@ The outbound helper is now outbound_record_failure_and_fail_pending: it retains
 the first terminal cause, rejects later admissions, drains queued owners, and
 wakes pending producers. The real TCP regression verifies EPIPE, socket_sendv's
 source/message, tcp_sendv's wrapper, and their producer-local causal link.
+The coordinated teardown correction interrupts active I/O, joins the outbound
+worker, then closes its backend. This prevents the destructor and a failed-send
+worker from concurrently joining a WebSocket service thread. A focused shutdown
+contract covers serialization of those backend close calls.
 
 Regression coverage in `tests/contracts/network/backpressure_test.c` checks
 unsupported and fatal backend errors, timeout status with unrelated diagnostics,
