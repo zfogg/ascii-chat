@@ -567,6 +567,20 @@ static int encoder_stdout_write(void *opaque, const uint8_t *data, int size) {
   return stdout_writer_write(opaque, data, (size_t)size) == ASCIICHAT_OK ? size : AVERROR(EIO);
 }
 
+static void encoder_log_callback(void *context, int level, const char *format, va_list args) {
+  (void)context;
+  if (level > av_log_get_level())
+    return;
+  char message[2048];
+  vsnprintf(message, sizeof(message), format, args);
+  if (level <= AV_LOG_ERROR)
+    log_error("ffmpeg: %s", message);
+  else if (level <= AV_LOG_WARNING)
+    log_warn("ffmpeg: %s", message);
+  else
+    log_debug("ffmpeg: %s", message);
+}
+
 static void encoder_close_io(ffmpeg_encoder_t *enc) {
   if (!enc->fmt_ctx->pb)
     return;
@@ -663,6 +677,10 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   if (strcmp(output_path, "pipe:") == 0)
     output_path = "-";
+  // Codec workers can log after LOG_IO restores the process descriptors.
+  // The session logger routes diagnostics to stderr when binary stdout is active.
+  if (strcmp(output_path, "-") == 0)
+    av_log_set_callback(encoder_log_callback);
 
   // Use default FPS if not specified (0 from config means "use default")
   if (fps <= 0) {

@@ -79,9 +79,12 @@ def main():
         assert not failed_save.stdout, "Failed output must not display a successful snapshot"
         rejected = subprocess.run([binary, "mirror", "--render-file=--kitty"], capture_output=True, env=env, timeout=15)
         assert rejected.returncode != 0 and b"snapshot" in rejected.stderr.lower()
-        video = launch(["--render-file=-"]).stdout
-        assert video[4:8] == b"ftyp", repr(video[:100])
-        check_mp4_boxes(video)
+        # Repeat fresh processes so delayed codec startup diagnostics cannot hide
+        # behind a successful earlier encoder initialization.
+        for _ in range(3):
+            video = launch(["--render-file=-"]).stdout
+            assert video[4:8] == b"ftyp", repr(video[:100])
+            check_mp4_boxes(video)
         output = root / "stdout.mp4"
         output.write_bytes(video)
         subprocess.run(["ffmpeg", "-v", "error", "-i", str(output), "-f", "null", "-"], check=True)
