@@ -1,6 +1,89 @@
 import { expect, test, type Page } from "./browser-fixture";
 import { spawn, type ChildProcess } from "node:child_process";
+import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
 import { getRandomPort, waitForPort } from "./server-fixture";
+
+const manifestText = readFileSync(
+  new URL("../../src/wasm/dist/manifest.json", import.meta.url),
+  "utf8",
+);
+const manifest = JSON.parse(manifestText) as {
+  sourceHash: string;
+  files: Record<string, string>;
+};
+const artifactVersion = createHash("sha256")
+  .update(manifestText)
+  .digest("hex")
+  .slice(0, 32);
+
+test("rebuilt client executes full C initialization with matching versioned assets", async ({
+  page,
+}, info) => {
+  const initLogs: string[] = [];
+  const assets: Promise<{
+    url: string;
+    file: string;
+    version: string;
+    hash: string;
+  }>[] = [];
+  page.on("console", (message) => {
+    if (message.text().includes("_client_init_with_args"))
+      initLogs.push(message.text());
+  });
+  page.on("response", (response) => {
+    const match = new URL(response.url()).pathname.match(
+      /\/wasm\/([^/]+)\/(client\.(?:js|wasm))$/,
+    );
+    if (match)
+      assets.push(
+        response.body().then((body) => ({
+          url: response.url(),
+          version: match[1]!,
+          file: match[2]!,
+          hash: createHash("sha256").update(body).digest("hex"),
+        })),
+      );
+  });
+  await page.goto("/client");
+  try {
+    await page.evaluate(async () => {
+      const path = "/src/wasm/client.ts";
+      const { initClientWasm } = await import(path);
+      await initClientWasm({ width: 80, height: 24 });
+    });
+    expect(initLogs).toContain(
+      "[Client WASM] _client_init_with_args returned: 0",
+    );
+    const served = await Promise.all(assets);
+    for (const file of ["client.js", "client.wasm"]) {
+      expect(served).toContainEqual(
+        expect.objectContaining({
+          file,
+          version: artifactVersion,
+          hash: manifest.files[file],
+        }),
+      );
+    }
+  } finally {
+    const evidence = JSON.stringify(
+      {
+        sourceHash: manifest.sourceHash,
+        artifactVersion,
+        served: await Promise.all(assets),
+        initLogs,
+      },
+      null,
+      2,
+    );
+    const proofPath = info.outputPath("client-init-artifacts.json");
+    writeFileSync(proofPath, evidence);
+    await info.attach("client-init-artifacts.json", {
+      path: proofPath,
+      contentType: "application/json",
+    });
+  }
+});
 
 interface DisplayTest {
   streams: MediaStream[];
@@ -173,6 +256,13 @@ test("Mirror renders display ASCII, cancels, replaces, ends and restores the mic
   expect(microphone).toBeTruthy();
   await page.getByRole("button", { name: "Share screen", exact: true }).click();
   await expect(page.getByText("Sharing screen · video only")).toBeVisible();
+  await page
+    .getByLabel("ASCII terminal. Press question mark for keyboard settings.")
+    .focus();
+  await page.keyboard.press("[");
+  await expect(page.getByText("Sharing screen · video only")).not.toBeVisible();
+  await page.getByRole("button", { name: "Share screen", exact: true }).click();
+  await expect(page.getByText("Sharing screen · video only")).toBeVisible();
   await page.evaluate(() => {
     const track = window.displayTest.streams.at(-1)!.getVideoTracks()[0]!;
     track.stop();
@@ -183,6 +273,35 @@ test("Mirror renders display ASCII, cancels, replaces, ends and restores the mic
     page.getByRole("button", { name: "Share screen", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Stop", exact: true }).click();
+});
+
+test("Mirror shares display video when microphone permission is denied", async ({
+  page,
+}) => {
+  await installPicker(page);
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      throw new DOMException("No microphone", "NotAllowedError");
+    };
+  });
+  await page.goto("/mirror");
+  await page.getByRole("button", { name: "Share screen", exact: true }).click();
+  await expect(page.getByText("Sharing screen · video only")).toBeVisible();
+  await expect.poll(() => redPixels(page)).toBeGreaterThan(1000);
+  expect(
+    await page
+      .locator("video[autoplay]")
+      .evaluate(
+        (element) =>
+          (
+            (element as HTMLVideoElement).srcObject as MediaStream
+          ).getAudioTracks().length,
+      ),
+  ).toBe(0);
+  await page.getByRole("button", { name: "Stop sharing", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Start Webcam", exact: true }),
+  ).toBeVisible();
 });
 
 test("Mirror screen sharing from idle returns to idle, and file sharing restores the file", async ({
@@ -238,6 +357,20 @@ for (const mode of ["client", "discovery"]) {
       "Set ASCII_CHAT_TEST_BINARY to a compatible native executable",
     );
     const processes: ChildProcess[] = [];
+    const clientInitLogs: string[] = [];
+    const clientAssets: string[] = [];
+    page.on("console", (message) => {
+      if (message.text().includes("_client_init_with_args"))
+        clientInitLogs.push(message.text());
+    });
+    page.on("request", (request) => {
+      if (
+        /\/wasm\/[^/]+\/client\.(js|wasm)$/.test(
+          new URL(request.url()).pathname,
+        )
+      )
+        clientAssets.push(request.url());
+    });
     let output = "";
     const start = (args: string[]) => {
       const child = spawn(binary!, args, { windowsHide: true });
@@ -333,6 +466,34 @@ for (const mode of ["client", "discovery"]) {
       await expect(
         page.getByRole("button", { name: "Disconnect", exact: true }),
       ).toBeVisible({ timeout: 45000 });
+      expect(clientInitLogs).toContain(
+        "[Client WASM] _client_init_with_args returned: 0",
+      );
+      for (const file of ["client.js", "client.wasm"])
+        expect(
+          clientAssets.some(
+            (url) =>
+              new URL(url).pathname === `/wasm/${artifactVersion}/${file}`,
+          ),
+        ).toBe(true);
+      const initProofPath = info.outputPath(`${mode}-client-init.json`);
+      writeFileSync(
+        initProofPath,
+        JSON.stringify(
+          {
+            sourceHash: manifest.sourceHash,
+            artifactVersion,
+            clientInitLogs,
+            clientAssets,
+          },
+          null,
+          2,
+        ),
+      );
+      await info.attach(`${mode}-client-init.json`, {
+        path: initProofPath,
+        contentType: "application/json",
+      });
       await page
         .getByRole("button", { name: "Enable speakers", exact: true })
         .click();

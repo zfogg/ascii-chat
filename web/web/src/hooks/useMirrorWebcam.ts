@@ -165,16 +165,26 @@ export function useMirrorWebcam({
             stream = providedStream;
             acquiredStream = stream;
             if (!retainedAudio.length) {
-              const microphone = await acquireMediaStream(
-                {
-                  video: false,
-                  audio: microphoneConstraints(devicePreferences.microphoneId),
-                },
-                owner.signal,
-              );
-              microphone
-                .getAudioTracks()
-                .forEach((track) => stream!.addTrack(track));
+              try {
+                const microphone = await acquireMediaStream(
+                  {
+                    video: false,
+                    audio: microphoneConstraints(
+                      devicePreferences.microphoneId,
+                    ),
+                  },
+                  owner.signal,
+                );
+                microphone
+                  .getAudioTracks()
+                  .forEach((track) => stream!.addTrack(track));
+              } catch (cause) {
+                if (owner.signal.aborted) throw cause;
+                console.warn(
+                  "[Mirror] Microphone unavailable; sharing display video only",
+                  cause,
+                );
+              }
             }
           } else if (audioOnly && retainedAudio.length) {
             // Reattach the retained microphone below without requesting an

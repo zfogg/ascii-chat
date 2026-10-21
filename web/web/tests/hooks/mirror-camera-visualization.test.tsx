@@ -186,6 +186,35 @@ test("an idle display share acquires microphone audio separately from display vi
   unmount();
 });
 
+test.each(["NotAllowedError", "NotFoundError"])(
+  "display video survives microphone %s",
+  async (name) => {
+    const { params } = setup();
+    params.streamRef.current = null;
+    Object.assign(params.videoRef.current, { readyState: 1 });
+    const display = track("video"),
+      shared = stream([display]);
+    const getUserMedia = vi
+      .fn()
+      .mockRejectedValue(new DOMException("No microphone", name));
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia },
+    });
+    const { result, unmount } = renderHook(() =>
+      useMirrorWebcam({ ...params, isWebcamRunning: false }),
+    );
+    await act(async () =>
+      expect(await result.current.startWebcam(shared)).toBe(true),
+    );
+    expect(display.stop).not.toHaveBeenCalled();
+    expect(params.streamRef.current!.getAudioTracks()).toHaveLength(0);
+    expect(params.setMediaSource).toHaveBeenCalledWith(MediaSourceType.SCREEN);
+    expect(params.setError).toHaveBeenLastCalledWith("");
+    unmount();
+  },
+);
+
 test.each(["waveform", "fft"] as const)(
   "restore %s from display reuses the retained microphone without media acquisition",
   async (animation) => {

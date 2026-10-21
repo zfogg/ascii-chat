@@ -1,0 +1,46 @@
+{
+  "sourceHash": "8403fddc84213bbfeec6d4816a3cb2bbb010f217b13e97c94285fa44cc35f355",
+  "artifactVersion": "42fc82aebd176afd9e823f4ae2e1ec15",
+  "served": [
+    {
+      "url": "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+      "version": "42fc82aebd176afd9e823f4ae2e1ec15",
+      "file": "client.js",
+      "hash": "62f8b76b83cec347fc7e80347be7f8788b1bcaef6e7392b05f26a483b9cacc92"
+    },
+    {
+      "url": "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.wasm",
+      "version": "42fc82aebd176afd9e823f4ae2e1ec15",
+      "file": "client.wasm",
+      "hash": "9451a17d87ddc5beefd4d3e59a9fecd5b64c751163a15aa135bf03f76cd118ad"
+    },
+    {
+      "url": "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+      "version": "42fc82aebd176afd9e823f4ae2e1ec15",
+      "file": "client.js",
+      "hash": "62f8b76b83cec347fc7e80347be7f8788b1bcaef6e7392b05f26a483b9cacc92"
+    },
+    {
+      "url": "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+      "version": "42fc82aebd176afd9e823f4ae2e1ec15",
+      "file": "client.js",
+      "hash": "62f8b76b83cec347fc7e80347be7f8788b1bcaef6e7392b05f26a483b9cacc92"
+    },
+    {
+      "url": "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+      "version": "42fc82aebd176afd9e823f4ae2e1ec15",
+      "file": "client.js",
+      "hash": "62f8b76b83cec347fc7e80347be7f8788b1bcaef6e7392b05f26a483b9cacc92"
+    },
+    {
+      "url": "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+      "version": "42fc82aebd176afd9e823f4ae2e1ec15",
+      "file": "client.js",
+      "hash": "62f8b76b83cec347fc7e80347be7f8788b1bcaef6e7392b05f26a483b9cacc92"
+    }
+  ],
+  "initLogs": [
+    "[Client WASM] Calling _client_init_with_args...",
+    "[Client WASM] _client_init_with_args returned: 0"
+  ]
+}

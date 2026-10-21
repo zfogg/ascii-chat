@@ -226,6 +226,7 @@ export function MirrorPage() {
   });
 
   const { release: releaseScreen } = screenCapture;
+  const { stop: stopScreen } = screenCapture;
   const fileActive = mediaSource === MediaSourceType.FILE;
   const cameraFps = useCameraFrameRate(
     settings,
@@ -251,8 +252,11 @@ export function MirrorPage() {
     [contentSettings, mediaSource, screenCapture.revision],
   );
   const toggleMedia = useCallback(() => {
+    if (!fileMedia.kind) {
+      stopScreen();
+      return;
+    }
     releaseScreen();
-    if (!fileMedia.kind) return;
     if (fileActive && !pendingWebcamSwitch.current) {
       const request = {};
       pendingWebcamSwitch.current = request;
@@ -274,6 +278,7 @@ export function MirrorPage() {
   }, [
     fileMedia,
     releaseScreen,
+    stopScreen,
     fileActive,
     startWebcam,
     cancelStart,

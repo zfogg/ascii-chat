@@ -157,8 +157,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
-        displayStreamRef.current = null;
       }
+      displayStreamRef.current = null;
       testPatternSourceRef.current?.stop();
       testPatternSourceRef.current = null;
 
@@ -629,6 +629,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     const generation = avState.begin();
     if (!generation) return false;
     startingRef.current = true;
+    let captureStarted = false;
     try {
       validateEncoding();
       setError("");
@@ -949,6 +950,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       }
 
       console.log("[Client] Webcam started successfully");
+      captureStarted = true;
       return true;
     } catch (err) {
       const errMsg = `Failed to start webcam: ${String(err)}`;
@@ -981,6 +983,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         });
       return false;
     } finally {
+      if (!captureStarted && displayStreamRef.current === providedStream)
+        displayStreamRef.current = null;
       cancelMetadataRef.current?.();
       startingRef.current = false;
       if (!mountedRef.current) avState.dispose();

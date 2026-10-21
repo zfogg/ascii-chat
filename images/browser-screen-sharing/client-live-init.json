@@ -1,0 +1,22 @@
+{
+  "sourceHash": "8403fddc84213bbfeec6d4816a3cb2bbb010f217b13e97c94285fa44cc35f355",
+  "artifactVersion": "42fc82aebd176afd9e823f4ae2e1ec15",
+  "clientInitLogs": [
+    "[Client WASM] Calling _client_init_with_args...",
+    "[Client WASM] _client_init_with_args returned: 0"
+  ],
+  "clientAssets": [
+    "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+    "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+    "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+    "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+    "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+    "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.wasm",
+    "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+    "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+    "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+    "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+    "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.js",
+    "http://localhost:4196/wasm/42fc82aebd176afd9e823f4ae2e1ec15/client.wasm"
+  ]
+}
