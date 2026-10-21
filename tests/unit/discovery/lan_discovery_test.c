@@ -231,4 +231,3 @@ Test(ui_mdns, query_with_long_timeout) {
 
   ui_mdns_free_results(servers);
 }
-
