@@ -74,24 +74,24 @@ export function MirrorPage() {
   const fileCanvasRef = useRef<HTMLCanvasElement>(null);
   const ignoreMediaFps = useCallback(() => {}, []);
   const fileSourceRef = useRef(false);
-  const [mediaFlipX, setMediaFlipX] = useUrlState("mediaFlipX", false);
   const [mediaFlipY, setMediaFlipY] = useUrlState("mediaFlipY", false);
-  const mediaFlipRef = useRef({ flipX: mediaFlipX, flipY: mediaFlipY });
+  const mediaFlipYRef = useRef(mediaFlipY);
   useLayoutEffect(() => {
-    mediaFlipRef.current = { flipX: mediaFlipX, flipY: mediaFlipY };
-  }, [mediaFlipX, mediaFlipY]);
+    mediaFlipYRef.current = mediaFlipY;
+  }, [mediaFlipY]);
   const applyWasmSettings = useCallback((settings: BinarySettingsConfig) => {
     applyMirrorWasmSettings(
       fileSourceRef.current
         ? {
             ...settings,
-            ...mediaFlipRef.current,
+            flipY: mediaFlipYRef.current,
             animationEnabled:
               !!settings.animationEnabled && settings.animation === "matrix",
             matrixRain:
               !!settings.animationEnabled && settings.animation === "matrix",
           }
         : settings,
+      fileSourceRef.current,
     );
   }, []);
 
@@ -136,38 +136,18 @@ export function MirrorPage() {
   useEffect(() => {
     fileSourceRef.current = mediaSource === MediaSourceType.FILE;
     if (wasmInitialized) applyWasmSettings(settings);
-  }, [
-    mediaSource,
-    wasmInitialized,
-    settings,
-    applyWasmSettings,
-    mediaFlipX,
-    mediaFlipY,
-  ]);
+  }, [mediaSource, wasmInitialized, settings, applyWasmSettings, mediaFlipY]);
 
-  // Handle settings change
   const handleSettingsChange = useCallback(
-    (newSettings: BinarySettingsConfig) => {
+    (next: BinarySettingsConfig) => {
       if (fileSourceRef.current) {
-        mediaFlipRef.current = {
-          flipX: !!newSettings.flipX,
-          flipY: !!newSettings.flipY,
-        };
-        setMediaFlipX(!!newSettings.flipX);
-        setMediaFlipY(!!newSettings.flipY);
-        setSettings({
-          ...newSettings,
-          flipX: settings.flipX ?? true,
-          flipY: settings.flipY ?? false,
-        });
-      } else {
-        setSettings(newSettings);
-      }
-      // The settings effect applies the resolved per-mode flip preference to C.
+        mediaFlipYRef.current = !!next.flipY;
+        setMediaFlipY(!!next.flipY);
+        setSettings({ ...next, flipY: settings.flipY ?? false });
+      } else setSettings(next);
     },
-    [setSettings, settings.flipX, settings.flipY, setMediaFlipX, setMediaFlipY],
+    [setSettings, setMediaFlipY, settings.flipY],
   );
-
   useEngineSettings(wasmInitialized, settings, handleSettingsChange);
 
   // Webcam start logic and auto-start effects
@@ -222,11 +202,8 @@ export function MirrorPage() {
       ),
   );
   const contentSettings = useMemo(
-    () =>
-      fileActive
-        ? { ...settings, flipX: mediaFlipX, flipY: mediaFlipY }
-        : settings,
-    [fileActive, settings, mediaFlipX, mediaFlipY],
+    () => (fileActive ? { ...settings, flipY: mediaFlipY } : settings),
+    [fileActive, settings, mediaFlipY],
   );
   const toggleMedia = useCallback(() => {
     if (!fileMedia.kind) return;

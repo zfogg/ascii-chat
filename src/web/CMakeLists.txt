@@ -144,6 +144,8 @@ set(PLATFORM_SRC
 # Uses the cross-platform terminal renderer instead of WASM-specific implementation
 set(WASM_RENDERER_SRC
     ${LIB_ROOT}/video/ascii/zalgo.c
+    ${LIB_ROOT}/media/playlist.c
+    ${LIB_ROOT}/media/input.c
     ${LIB_ROOT}/media/render/terminal.c
 )
 

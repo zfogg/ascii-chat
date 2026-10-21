@@ -483,13 +483,8 @@ typedef enum {
 /** @brief Default FPS counter overlay flag (false = disabled) */
 #define OPT_FPS_COUNTER_DEFAULT false
 
-/** @brief Default horizontal flip state (true = horizontally flipped)
- * macOS webcams default to flipped (mirrored), other platforms default to normal */
-#ifdef __APPLE__
+/** @brief Webcam input is mirrored unless an orientation is explicitly selected. */
 #define OPT_FLIP_X_DEFAULT true
-#else
-#define OPT_FLIP_X_DEFAULT false
-#endif
 
 /** @brief Default vertical flip state (false = no vertical flip) */
 #define OPT_FLIP_Y_DEFAULT false
@@ -1050,7 +1045,9 @@ typedef struct options_state {
   bool fps_explicitly_set;          ///< True if FPS was explicitly configured by the user
   bool face_follow;                 ///< Automatically frame and follow the selected face
   bool face_follow_debug;           ///< Developer diagnostic face outline
-  bool flip_x;                      ///< Flip video horizontally (X-axis). Ignored for webcam on macOS
+  bool flip_x;                      ///< Effective horizontal orientation
+  bool flip_x_explicit;             ///< User selected an orientation for this process lifetime
+  bool media_input;                 ///< Active input is a file/URL rather than the webcam
   bool flip_y;                      ///< Flip video vertically (Y-axis)
 
   // ============================================================================
@@ -1806,3 +1803,6 @@ extern uint64_t g_snapshot_first_capture_ns;        // Timestamp when first fram
 extern uint64_t g_snapshot_actual_duration_ms;      // Actual wall-clock duration in ms when snapshot timeout reached
 
 /** @} */
+
+/** Resolve source defaults without turning them into a user selection. */
+void options_resolve_flip_x(options_t *opts);

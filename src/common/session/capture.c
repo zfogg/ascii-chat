@@ -771,6 +771,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   if (previous)
     media_source_destroy(previous);
   bool url = strstr(path, "://") != NULL;
+  options_set_bool("media_input", true);
   options_set_string("media_url", url ? path : "");
   options_set_string("media_file", url ? "" : path);
   options_set_bool("media_from_stdin", false);
@@ -1163,6 +1164,7 @@ void session_capture_toggle_media(session_capture_ctx_t *ctx) {
   // Swap UI preferences in input order so a following animation key applies to
   // the newly selected mode even before the capture thread switches devices.
   ctx->non_media_requested = !ctx->non_media_requested;
+  options_set_bool("media_input", !ctx->non_media_requested);
   if (ctx->non_media_requested) {
     options_set_bool("matrix_rain", ctx->saved_matrix);
     options_set_bool("waveform", ctx->saved_waveform);

@@ -235,21 +235,23 @@ test("loading media does not report splash animation frames as video FPS", () =>
   expect(screen.getByTestId("fps").textContent).toBe("0");
 });
 
-test("media flips start off, reach WASM and remain independent of webcam flips", async () => {
+test("horizontal orientation is shared across sources while media vertical flip stays independent", async () => {
   backend.ready = true;
   backend.file = true;
   render(<MirrorPage />);
   const horizontal = screen.getByRole("button", { name: "Horizontal" });
   const vertical = screen.getByRole("button", { name: "Vertical" });
-  expect(horizontal.getAttribute("aria-pressed")).toBe("false");
+  expect(horizontal.getAttribute("aria-pressed")).toBe("true");
   expect(vertical.getAttribute("aria-pressed")).toBe("false");
   fireEvent.click(vertical);
   expect(backend.applySettings).toHaveBeenLastCalledWith(
-    expect.objectContaining({ flipX: false, flipY: true }),
+    expect.objectContaining({ flipX: true, flipY: true }),
+    true,
   );
   fireEvent.click(horizontal);
   expect(backend.applySettings).toHaveBeenLastCalledWith(
-    expect.objectContaining({ flipX: true, flipY: true }),
+    expect.objectContaining({ flipX: false, flipY: true }),
+    true,
   );
   await act(async () =>
     fireEvent.click(screen.getByRole("button", { name: "Toggle Media" })),
@@ -257,15 +259,17 @@ test("media flips start off, reach WASM and remain independent of webcam flips",
   expect(vertical.getAttribute("aria-pressed")).toBe("false");
   expect(backend.applySettings).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      flipX: DEFAULT_SETTINGS.flipX,
+      flipX: false,
       flipY: DEFAULT_SETTINGS.flipY,
     }),
+    false,
   );
   fireEvent.click(screen.getByRole("button", { name: "Toggle Media" }));
   expect(vertical.getAttribute("aria-pressed")).toBe("true");
-  expect(horizontal.getAttribute("aria-pressed")).toBe("true");
+  expect(horizontal.getAttribute("aria-pressed")).toBe("false");
   expect(backend.applySettings).toHaveBeenLastCalledWith(
-    expect.objectContaining({ flipX: true, flipY: true }),
+    expect.objectContaining({ flipX: false, flipY: true }),
+    true,
   );
 });
 

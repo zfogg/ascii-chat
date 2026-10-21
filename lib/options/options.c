@@ -1463,8 +1463,7 @@ static void load_options_config(options_t *opts, asciichat_mode_t detected_mode,
   asciichat_error_t config_publish_result = options_state_set(opts);
   (void)config_publish_result; // Suppress unused variable warning
   // Load config files - now uses detected_mode directly for bitmask validation
-  // Save flip_x and flip_y as they should not be reset by config files
-  bool saved_flip_x_from_config = opts->flip_x;
+  // Preserve the existing vertical flip configuration behavior.
   bool saved_flip_y_from_config = opts->flip_y;
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, false, opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
@@ -1472,8 +1471,7 @@ static void load_options_config(options_t *opts, asciichat_mode_t detected_mode,
   // Restore binary-level options (don't let config override command-line options)
   restore_binary_level(opts, &binary_before_config);
 
-  // Restore flip_x and flip_y - config shouldn't override the defaults
-  opts->flip_x = saved_flip_x_from_config;
+  // Preserve the existing vertical flip default.
   opts->flip_y = saved_flip_y_from_config;
 }
 
@@ -1487,6 +1485,8 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   // Save flip_x and flip_y before applying defaults (should not be reset by defaults)
   bool saved_flip_x = opts->flip_x;
   bool saved_flip_y = opts->flip_y;
+  if (SAFE_GETENV("ASCII_CHAT_FLIP_X"))
+    opts->flip_x = OPT_FLIP_X_DEFAULT;
   // Apply defaults from unified config
   asciichat_error_t defaults_result = options_config_set_defaults(config, opts);
   if (defaults_result != ASCIICHAT_OK) {
@@ -1521,7 +1521,10 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
 
   // Restore flip_x and flip_y - they should keep the values from options_t_new()
   // unless explicitly set by the user (but defaults shouldn't override them)
-  opts->flip_x = saved_flip_x;
+  if (!SAFE_GETENV("ASCII_CHAT_FLIP_X"))
+    opts->flip_x = saved_flip_x;
+  if (cli_flip_x)
+    opts->flip_x = false;
   opts->flip_y = saved_flip_y;
 
   // Restore detected_mode before parsing so mode validation works.
@@ -1542,8 +1545,9 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   if (cli_no_encrypt && !cli_encrypt && opts->no_encrypt)
     opts->encrypt_enabled = false;
   // Restore flip_x and flip_y - they should keep their values unless explicitly overridden
-  if (!cli_flip_x)
+  if (!cli_flip_x && !SAFE_GETENV("ASCII_CHAT_FLIP_X"))
     opts->flip_x = saved_flip_x_for_parse;
+  opts->flip_x_explicit |= cli_flip_x || SAFE_GETENV("ASCII_CHAT_FLIP_X") != NULL;
   if (!cli_flip_y)
     opts->flip_y = saved_flip_y_for_parse;
   // json is already restored via the call to options_state_set which calls restore_binary_level
@@ -2100,17 +2104,8 @@ static asciichat_error_t finalize_media_options(options_t *opts) {
 }
 
 static asciichat_error_t publish_final_options(options_t *opts, asciichat_mode_t detected_mode, int mode_index) {
-  // Adjust flip_x default: if --file or --url is provided, default flip_x to false
-  // (file/URL content is typically not horizontally flipped, unlike webcam)
-  js_log_options("Before flip_x check");
-  if ((opts->media_file[0] != '\0' || opts->media_url[0] != '\0') && opts->flip_x) {
-    js_log_options("In flip_x adjustment");
-    opts->flip_x = false;
-    js_log_options("flip_x set to false");
-    log_debug("flip_x auto-adjusted to false for media file/URL");
-    js_log_options("After log_debug for flip_x");
-  }
-  js_log_options("After flip_x check");
+  opts->media_input = opts->media_file[0] != '\0' || opts->media_url[0] != '\0';
+  options_resolve_flip_x(opts);
 
   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
@@ -2326,4 +2321,9 @@ cleanup:
   }
   SAFE_FREE(mode_args.allocated);
   return result;
+}
+
+void options_resolve_flip_x(options_t *opts) {
+  if (!opts->flip_x_explicit)
+    opts->flip_x = !opts->media_input && !opts->waveform && !opts->fft;
 }

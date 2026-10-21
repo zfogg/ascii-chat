@@ -127,7 +127,7 @@ describe("browser preference transactions", () => {
   });
   it("preserves an intervening C keyboard change when another UI field changes", () => {
     const c = createEngine();
-    const settings = { ...DEFAULT_SETTINGS, flipX: true };
+    const settings = { ...DEFAULT_SETTINGS, flipX: true, flipXExplicit: true };
     expect(applyMirrorWasmSettings(settings)).toBe(true);
     c.change();
     applyMirrorWasmSettings({ ...settings, targetFps: 30 });

@@ -40,8 +40,21 @@ export function useEngineSettings(
     if (snapshot && store && snapshot !== store.getSnapshot()) return;
     const old = previous.current;
     previous.current = snapshot;
-    if (!old || !snapshot || old === snapshot) return;
+    if (!snapshot || old === snapshot) return;
     const { settings, onChange } = current.current;
+    if (!old) {
+      if (
+        typeof snapshot.values["flip_x"] === "boolean" &&
+        (!settings.flipXExplicit || snapshot.values["flip_x_explicit"]) &&
+        settings.flipX !== !!snapshot.values["flip_x"]
+      )
+        onChange({
+          ...settings,
+          flipX: !!snapshot.values["flip_x"],
+          flipXExplicit: !!snapshot.values["flip_x_explicit"],
+        });
+      return;
+    }
     const values = snapshot.values;
     const next = { ...settings };
     const changed = (name: string) => old.values[name] !== values[name];
@@ -93,6 +106,8 @@ export function useEngineSettings(
     if (changed("palette_custom"))
       next.paletteChars = String(values["palette_custom"]);
     if (changed("flip_x")) next.flipX = !!values["flip_x"];
+    if (changed("flip_x_explicit"))
+      next.flipXExplicit = !!values["flip_x_explicit"];
     if (changed("flip_y")) next.flipY = !!values["flip_y"];
     if (changed("fps")) next.targetFps = numeric("fps");
     if (["matrix_rain", "waveform", "fft"].some(changed)) {

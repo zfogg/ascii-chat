@@ -33,6 +33,7 @@ export function acknowledgeEngineSettings(
 
 export function applyMirrorWasmSettings(
   settings: BinarySettingsConfig,
+  mediaInput?: boolean,
 ): boolean {
   if (!isWasmReady() || !isOptionsInitialized()) return false;
   const module = getMirrorModule();
@@ -61,7 +62,8 @@ export function applyMirrorWasmSettings(
     matrix_rain: enabled && animation === "matrix",
     waveform: enabled && animation === "waveform",
     fft: enabled && animation === "fft",
-    flip_x: settings.flipX ?? false,
+    ...(settings.flipXExplicit ? { flip_x: settings.flipX ?? false } : {}),
+    ...(mediaInput !== undefined ? { media_input: mediaInput } : {}),
     flip_y: settings.flipY ?? false,
     fps: settings.targetFps,
   };

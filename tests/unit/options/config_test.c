@@ -460,6 +460,7 @@ Test(config_sections, client_webcam_settings) {
   const options_t *opts = options_get();
   cr_assert_eq(opts->webcam_index, 2, "Webcam index should be set to 2");
   cr_assert_eq(opts->flip_x, false, "Flip X should be false");
+  cr_assert(opts->flip_x_explicit, "A configured orientation must override source defaults");
 
   unlink(config_path);
   SAFE_FREE(config_path);

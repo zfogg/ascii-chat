@@ -453,6 +453,10 @@ asciichat_error_t options_state_set(const options_t *opts) {
   options_t *next = SAFE_MALLOC(sizeof(*next), options_t *);
   *next = *opts;
   options_t *previous = atomic_ptr_load(&g_options);
+  if (previous->flip_x_explicit && !next->flip_x_explicit)
+    next->flip_x = previous->flip_x;
+  next->flip_x_explicit |= previous->flip_x_explicit;
+  options_resolve_flip_x(next);
   atomic_ptr_store(&g_options, next);
   ++g_revision;
   g_origin = OPTIONS_ORIGIN_CONFIG;
@@ -547,6 +551,8 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(no_compress, OPTIONS_VALUE_BOOL, "no-compress"),
     FIELD(encode_audio, OPTIONS_VALUE_BOOL, "encode-audio"),
     FIELD(flip_x, OPTIONS_VALUE_BOOL, "flip-x"),
+    FIELD(flip_x_explicit, OPTIONS_VALUE_BOOL, "flip-x-explicit"),
+    FIELD(media_input, OPTIONS_VALUE_BOOL, "media-input"),
     FIELD(flip_y, OPTIONS_VALUE_BOOL, "flip-y"),
     FIELD(face_follow, OPTIONS_VALUE_BOOL, "face-follow"),
     FIELD(test_pattern, OPTIONS_VALUE_BOOL, "test-pattern"),
@@ -678,6 +684,8 @@ static asciichat_error_t edit_candidate(options_t *candidate, const options_edit
   const runtime_field_t *field = find_field(edit->name);
   if (!field || field->type != edit->type)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unknown option or wrong type: %s", edit->name ? edit->name : "(null)");
+  if (!strcmp(field->name, "flip_x_explicit"))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Horizontal flip selection state is read-only");
   char *ptr = (char *)candidate + field->offset;
   switch (edit->type) {
   case OPTIONS_VALUE_INT: {
@@ -702,6 +710,8 @@ static asciichat_error_t edit_candidate(options_t *candidate, const options_edit
       memcpy(ptr, &integer, sizeof(integer));
     } else
       memcpy(ptr, &value, sizeof(value));
+    if (!strcmp(field->name, "flip_x"))
+      candidate->flip_x_explicit = true;
     // An animation selection is one coherent change, including its exclusions.
     if (value &&
         (!strcmp(field->name, "matrix_rain") || !strcmp(field->name, "waveform") || !strcmp(field->name, "fft"))) {
@@ -763,6 +773,8 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
     if (error != ASCIICHAT_OK)
       return error;
   }
+  candidate->flip_x_explicit |= current->flip_x_explicit;
+  options_resolve_flip_x(candidate);
   return ASCIICHAT_OK;
 }
 
@@ -951,7 +963,8 @@ char *options_values_json(const options_t *values, bool remote_only) {
   for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i) {
     const runtime_field_t *field = &runtime_fields[i];
     bool exposed = options_remote_render_field(field->name);
-    if (!remote_only && (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_y") ||
+    if (!remote_only && (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_x_explicit") ||
+                         !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") ||
                          !strcmp(field->name, "waveform") || !strcmp(field->name, "fft") ||
                          !strcmp(field->name, "fps_counter") || !strcmp(field->name, "speakers_volume") ||
                          !strcmp(field->name, "microphone_sensitivity") || !strcmp(field->name, "audio_enabled")))
