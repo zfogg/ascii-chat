@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include <ascii-chat/network/mdns/mdns.h>
+#include <ascii-chat/network/mdns/discovery.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/time.h>
@@ -73,7 +74,19 @@ Test(mdns_integration, real_answers_survive_invalid_replacement_and_own_caller_r
     cr_assert_eq(asciichat_mdns_update(query, 50), ASCIICHAT_OK);
   cr_assert_eq(found.port, 32123, "A registered service must answer real network queries");
   cr_assert_str_eq(found.host, "owned-host.local.");
+  cr_assert_str_eq(found.txt, "session_string=owned-session");
   cr_assert_str_not_empty(found.ipv4);
+  int server_count = 0;
+  ui_mdns_server_t *servers = discovery_mdns_query(800, 20, true, &server_count);
+  bool session_found = false;
+  for (int i = 0; i < server_count; ++i) {
+    if (servers[i].port == 32123 && strncmp(servers[i].name, "owned-lan-fixture-", 18) == 0) {
+      cr_assert_str_eq(servers[i].session_string, "owned-session");
+      session_found = true;
+    }
+  }
+  cr_assert(session_found, "The UI discovery result must retain session TXT metadata");
+  discovery_mdns_destroy(servers);
   cr_assert_eq(asciichat_mdns_unadvertise(advertiser, "owned-lan-fixture"), ASCIICHAT_OK);
   asciichat_mdns_destroy(advertiser);
   asciichat_mdns_destroy(query);

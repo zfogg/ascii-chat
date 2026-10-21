@@ -55,12 +55,13 @@ void ui_mdns_log_append(const char *message);
  * @brief Discovered server information from mDNS
  */
 typedef struct {
-  char name[256];    ///< Service instance name (e.g., "swift-river-canyon")
-  char address[256]; ///< Server address (IPv4, IPv6, or hostname)
-  uint16_t port;     ///< Server port number
-  char ipv4[16];     ///< IPv4 address (if available)
-  char ipv6[46];     ///< IPv6 address (if available)
-  uint32_t ttl;      ///< TTL remaining (seconds)
+  char name[256];           ///< Service instance name (e.g., "swift-river-canyon")
+  char session_string[256]; ///< Session identity advertised in TXT metadata
+  char address[256];        ///< Server address (IPv4, IPv6, or hostname)
+  uint16_t port;            ///< Server port number
+  char ipv4[16];            ///< IPv4 address (if available)
+  char ipv6[46];            ///< IPv6 address (if available)
+  uint32_t ttl;             ///< TTL remaining (seconds)
 } ui_mdns_server_t;
 
 /**

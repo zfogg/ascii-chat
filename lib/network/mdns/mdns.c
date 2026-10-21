@@ -37,6 +37,8 @@ struct asciichat_mdns_t {
   char txt[16][512];
   mdns_record_t ptr, additional[18];
   size_t additional_count;
+  asciichat_mdns_discovery_t discovered[64];
+  size_t discovered_count;
   uint16_t query_id; /**< Current query ID */
 };
 
@@ -241,8 +243,8 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
 
   // A complete SRV answer binds one instance to a host and port. PTR/A/TXT
   // records alone are never exposed as selectable, port-zero servers.
-  if ((entry != MDNS_ENTRYTYPE_ANSWER && entry != MDNS_ENTRYTYPE_ADDITIONAL) || rtype != MDNS_RECORDTYPE_SRV || !ttl ||
-      record_length < 7)
+  if ((entry != MDNS_ENTRYTYPE_ANSWER && entry != MDNS_ENTRYTYPE_ADDITIONAL) ||
+      (rtype != MDNS_RECORDTYPE_SRV && rtype != MDNS_RECORDTYPE_TXT) || !ttl)
     return 0;
   asciichat_mdns_discovery_t discovery = {0};
   discovery.ttl = ttl;
@@ -252,6 +254,31 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
   if (!suffix || suffix == discovery.type || suffix[-1] != '.' || strcmp(suffix, mdns->query_service) != 0)
     return 0;
   safe_snprintf(discovery.name, sizeof(discovery.name), "%.*s", (int)(suffix - discovery.type - 1), discovery.type);
+  size_t index = 0;
+  while (index < mdns->discovered_count && strcmp(mdns->discovered[index].type, discovery.type) != 0)
+    ++index;
+  if (index == mdns->discovered_count) {
+    if (index == sizeof(mdns->discovered) / sizeof(mdns->discovered[0]))
+      return 0;
+    mdns->discovered[index] = discovery;
+    ++mdns->discovered_count;
+  }
+  asciichat_mdns_discovery_t *cached = &mdns->discovered[index];
+  if (rtype == MDNS_RECORDTYPE_TXT) {
+    mdns_record_txt_t records[16];
+    size_t count = mdns_record_parse_txt(data, size, record_offset, record_length, records, 16);
+    for (size_t i = 0; i < count; ++i) {
+      if (records[i].key.length == strlen("session_string") &&
+          memcmp(records[i].key.str, "session_string", records[i].key.length) == 0 && records[i].value.length < 256)
+        safe_snprintf(cached->txt, sizeof(cached->txt), "session_string=%.*s", (int)records[i].value.length,
+                      records[i].value.str);
+    }
+    if (cached->port)
+      mdns->callback(cached, mdns->callback_data);
+    return 0;
+  }
+  if (record_length < 7)
+    return 0;
   mdns_record_srv_t srv =
       mdns_record_parse_srv(data, size, record_offset, record_length, discovery.host, sizeof(discovery.host) - 1);
   if (!srv.port || !srv.name.length)
@@ -263,7 +290,9 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
     const uint8_t *ip = (const uint8_t *)&((const struct sockaddr_in *)from)->sin_addr;
     safe_snprintf(discovery.ipv4, sizeof(discovery.ipv4), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
   }
-  mdns->callback(&discovery, mdns->callback_data);
+  SAFE_STRNCPY(discovery.txt, cached->txt, sizeof(discovery.txt));
+  *cached = discovery;
+  mdns->callback(cached, mdns->callback_data);
 
   (void)sock;
   (void)query_id;
@@ -294,6 +323,7 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
                 service_type[service_type_len - 1] == '.' ? "" : ".");
   mdns->callback = callback;
   mdns->callback_data = user_data;
+  mdns->discovered_count = 0;
 
   log_info("Starting mDNS query for: %s", service_type);
 
