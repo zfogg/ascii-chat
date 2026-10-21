@@ -101,7 +101,7 @@ static void *webrtc_mapping_worker(void *arg) {
 static void webrtc_mapping_close(webrtc_peer_connection_t *pc) {
   if (pc->mapping_thread_started) {
     atomic_store_bool(&pc->mapping_stop, true);
-    asciichat_thread_join(&pc->mapping_thread, NULL);
+    thread_join(&pc->mapping_thread, NULL);
     pc->mapping_thread_started = false;
   }
   nat_upnp_close(&pc->mapping);
@@ -157,7 +157,7 @@ static void webrtc_mapping_prepare(webrtc_peer_connection_t *pc, rtcConfiguratio
     return;
   }
   atomic_store_bool(&pc->mapping_stop, false);
-  if (asciichat_thread_create(&pc->mapping_thread, "webrtc_mapping", webrtc_mapping_worker, pc) != 0) {
+  if (acthread_create(&pc->mapping_thread, "webrtc_mapping", webrtc_mapping_worker, pc) != 0) {
     webrtc_mapping_close(pc);
     return;
   }

@@ -521,7 +521,7 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   atomic_store_u64(&p->first_frame_ns, 0);
 
   // Start capture thread
-  if (asciichat_thread_create(&p->capture_tid, "pipeline_capture", pipeline_capture_thread, p) != 0) {
+  if (acthread_create(&p->capture_tid, "pipeline_capture", pipeline_capture_thread, p) != 0) {
     frame_queue_destroy(p->display_queue);
     frame_queue_destroy(p->encode_queue);
     NAMED_UNREGISTER(&p->capture_finished);
@@ -531,9 +531,9 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
 
   // Start encode thread only if render_file is active
   if (p->has_render_file) {
-    if (asciichat_thread_create(&p->encode_tid, "pipeline_encode", pipeline_encode_thread, p) != 0) {
+    if (acthread_create(&p->encode_tid, "pipeline_encode", pipeline_encode_thread, p) != 0) {
       atomic_store_bool(&p->stop, true);
-      asciichat_thread_join(&p->capture_tid, NULL);
+      thread_join(&p->capture_tid, NULL);
       frame_queue_destroy(p->display_queue);
       frame_queue_destroy(p->encode_queue);
       NAMED_UNREGISTER(&p->capture_finished);
@@ -574,7 +574,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     pipeline->keyboard_handler = keyboard_handler;
     pipeline->should_exit = should_exit;
     pipeline->input_data = user_data;
-    if (asciichat_thread_create(&pipeline->input_tid, "pipeline_input", pipeline_input_thread, pipeline) !=
+    if (acthread_create(&pipeline->input_tid, "pipeline_input", pipeline_input_thread, pipeline) !=
         ASCIICHAT_OK)
       return SET_ERRNO(ERROR_THREAD, "Cannot start responsive session input");
   }
@@ -648,8 +648,8 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
   log_debug("[PIPELINE_MAIN] Main loop exiting, signaling threads to stop");
   atomic_store_bool(&pipeline->stop, true);
-  if (asciichat_thread_is_initialized(&pipeline->input_tid) &&
-      asciichat_thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
+  if (thread_is_initialized(&pipeline->input_tid) &&
+      thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_THREAD, "Cannot join session input thread");
 
   return ASCIICHAT_OK;
@@ -680,20 +680,20 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
     mutex_unlock(&pipeline->encode_queue->mu);
   }
 
-  if (asciichat_thread_is_initialized(&pipeline->input_tid) &&
-      asciichat_thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
+  if (thread_is_initialized(&pipeline->input_tid) &&
+      thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_THREAD, "Cannot join session input thread during shutdown");
   session_display_begin_drain(pipeline->display, 0, false);
 
   // A timeout must never let the owner free memory still referenced by a worker.
   // Capture observes stop; encode drains its queue and exits once capture is done.
-  if (asciichat_thread_is_initialized(&pipeline->capture_tid)) {
-    if (asciichat_thread_join(&pipeline->capture_tid, NULL) != 0)
+  if (thread_is_initialized(&pipeline->capture_tid)) {
+    if (thread_join(&pipeline->capture_tid, NULL) != 0)
       return SET_ERRNO(ERROR_THREAD, "Cannot join pipeline capture thread");
   }
   session_display_begin_drain(pipeline->display, pipeline->frames_accepted, true);
-  if (asciichat_thread_is_initialized(&pipeline->encode_tid)) {
-    if (asciichat_thread_join(&pipeline->encode_tid, NULL) != 0)
+  if (thread_is_initialized(&pipeline->encode_tid)) {
+    if (thread_join(&pipeline->encode_tid, NULL) != 0)
       return SET_ERRNO(ERROR_THREAD, "Cannot join pipeline encode thread");
   }
 

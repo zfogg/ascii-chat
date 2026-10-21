@@ -235,7 +235,7 @@ static inline void capacity_contract(void) {
   CHECK(HAS_ERRNO(&root));
   for (int i = 0; i < ASCIICHAT_ERRNO_MAX_DEPTH * 4; ++i)
     SET_ERRNO(ERROR_NETWORK, "attempt %d", i);
-  uint64_t tid = asciichat_thread_current_id();
+  uint64_t tid = thread_current_id();
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
   CHECK(errno_snapshot(tid, frames, ASCIICHAT_ERRNO_MAX_DEPTH) == ASCIICHAT_ERRNO_MAX_DEPTH);
   CHECK(frames[ASCIICHAT_ERRNO_MAX_DEPTH - 1].error_id == root.error_id);
@@ -258,7 +258,7 @@ typedef struct {
 static inline void *held_error_worker(void *arg) {
   worker_data_t *data = arg;
   errno_suppress(true);
-  data->tid = asciichat_thread_current_id();
+  data->tid = thread_current_id();
   for (int i = 0; i < (data->overflow ? ASCIICHAT_ERRNO_MAX_DEPTH : 1); ++i)
     SET_ERRNO(ERROR_NETWORK, "worker %d", i);
   atomic_store_bool_impl(&data->ready, true);
@@ -271,7 +271,7 @@ static inline void *held_error_worker(void *arg) {
 static inline void cross_thread_contract(void) {
   worker_data_t data = {0};
   asciichat_thread_t thread;
-  CHECK(asciichat_thread_create(&thread, "errno-test", held_error_worker, &data) == 0);
+  CHECK(acthread_create(&thread, "errno-test", held_error_worker, &data) == 0);
   while (!atomic_load_bool_impl(&data.ready))
     platform_sleep_ns(NS_PER_MS_INT);
   asciichat_error_context_t snapshot;
@@ -285,13 +285,13 @@ static inline void cross_thread_contract(void) {
   CHECK(!HAS_ERRNO_CODE_TID(data.tid, ERROR_NETWORK));
   CHECK(strcmp(snapshot.context_message, "worker 0") == 0);
   atomic_store_bool_impl(&data.release, true);
-  CHECK(asciichat_thread_join(&thread, NULL) == 0);
+  CHECK(thread_join(&thread, NULL) == 0);
   asciichat_errno_scope_t import_scope = errno_checkpoint();
   CHECK(errno_import(&snapshot) == ERROR_NETWORK);
   asciichat_error_context_t imported;
   CHECK(errno_peek_since(import_scope, &imported));
   CHECK(imported.error_id != snapshot.error_id && imported.cause_id == snapshot.error_id);
-  CHECK(imported.thread_id == asciichat_thread_current_id());
+  CHECK(imported.thread_id == thread_current_id());
   CHECK(strcmp(imported.context_message, snapshot.context_message) == 0);
   CHECK(imported.backtrace.symbols == NULL);
   CLEAR_ERRNO_ALL();
@@ -301,11 +301,11 @@ static inline void cross_thread_contract(void) {
 
   asciichat_error_stats_t before = asciichat_error_stats_get();
   memset(&data, 0, sizeof(data));
-  CHECK(asciichat_thread_create(&thread, "errno-exit-test", held_error_worker, &data) == 0);
+  CHECK(acthread_create(&thread, "errno-exit-test", held_error_worker, &data) == 0);
   while (!atomic_load_bool_impl(&data.ready))
     platform_sleep_ns(NS_PER_MS_INT);
   atomic_store_bool_impl(&data.release, true);
-  CHECK(asciichat_thread_join(&thread, NULL) == 0);
+  CHECK(thread_join(&thread, NULL) == 0);
   CHECK(!HAS_ERRNO_CODE_TID(data.tid, ERROR_NETWORK));
   CHECK(asciichat_error_stats_get().registered_threads == before.registered_threads);
 }
@@ -326,7 +326,7 @@ static inline void *stress_worker(void *arg) {
 static inline void *publish_during_clear(void *arg) {
   worker_data_t *data = arg;
   errno_suppress(true);
-  data->tid = asciichat_thread_current_id();
+  data->tid = thread_current_id();
   atomic_store_bool_impl(&data->ready, true);
   while (!atomic_load_bool_impl(&data->release))
     SET_ERRNO(ERROR_NETWORK, "concurrent publication");
@@ -335,7 +335,7 @@ static inline void *publish_during_clear(void *arg) {
 static inline void cross_thread_history_timing(void) {
   worker_data_t data = {0};
   asciichat_thread_t thread;
-  CHECK(asciichat_thread_create(&thread, "errno-history-race", publish_during_clear, &data) == 0);
+  CHECK(acthread_create(&thread, "errno-history-race", publish_during_clear, &data) == 0);
   while (!atomic_load_bool_impl(&data.ready))
     platform_sleep_ns(NS_PER_MS_INT);
   for (int i = 0; i < 2000; ++i) {
@@ -349,14 +349,14 @@ static inline void cross_thread_history_timing(void) {
       CHECK(history[j].resolved_ns >= history[j].context.created_ns);
   }
   atomic_store_bool_impl(&data.release, true);
-  CHECK(asciichat_thread_join(&thread, NULL) == 0);
+  CHECK(thread_join(&thread, NULL) == 0);
 }
 
 static inline void concurrency_contract(void) {
   asciichat_thread_t threads[8];
   atomic_t done = {0};
   for (size_t i = 0; i < 8; ++i)
-    CHECK(asciichat_thread_create(&threads[i], "errno-stress", stress_worker, &done) == 0);
+    CHECK(acthread_create(&threads[i], "errno-stress", stress_worker, &done) == 0);
   while (atomic_load_int_impl(&done) < 8) {
     asciichat_errno_history_t history[4];
     size_t count = errno_history_snapshot(history, 4);
@@ -365,14 +365,14 @@ static inline void concurrency_contract(void) {
     platform_sleep_ns(NS_PER_MS_INT);
   }
   for (size_t i = 0; i < 8; ++i)
-    CHECK(asciichat_thread_join(&threads[i], NULL) == 0);
+    CHECK(thread_join(&threads[i], NULL) == 0);
   CHECK(asciichat_error_stats_get().pending_errors == 0);
 
   worker_data_t data[20] = {0};
   asciichat_thread_t held[20];
   for (size_t i = 0; i < 20; ++i) {
     data[i].overflow = true;
-    CHECK(asciichat_thread_create(&held[i], "errno-budget", held_error_worker, &data[i]) == 0);
+    CHECK(acthread_create(&held[i], "errno-budget", held_error_worker, &data[i]) == 0);
     while (!atomic_load_bool_impl(&data[i].ready))
       platform_sleep_ns(NS_PER_MS_INT);
   }
@@ -390,7 +390,7 @@ static inline void concurrency_contract(void) {
     atomic_store_bool_impl(&data[i].release, true);
   }
   for (size_t i = 0; i < 20; ++i)
-    CHECK(asciichat_thread_join(&held[i], NULL) == 0);
+    CHECK(thread_join(&held[i], NULL) == 0);
   CHECK(asciichat_error_stats_get().pending_errors == 0);
 }
 
@@ -415,8 +415,8 @@ static inline int pending_signal_probe(void) {
   log_set_level(LOG_INFO);
   CHECK(platform_signal(SIGUSR1, probe_signal) != SIG_ERR);
   asciichat_thread_t first, second;
-  CHECK(asciichat_thread_create(&first, "errno_producer_a", probe_producer, "producer-a") == 0);
-  CHECK(asciichat_thread_create(&second, "errno_producer_b", probe_producer, "producer-b") == 0);
+  CHECK(acthread_create(&first, "errno_producer_a", probe_producer, "producer-a") == 0);
+  CHECK(acthread_create(&second, "errno_producer_b", probe_producer, "producer-b") == 0);
   while (atomic_load_u64(&probe_ready) != 2)
     platform_sleep_ns(NS_PER_MS_INT);
   CHECK(debug_errno_start_thread() == ASCIICHAT_OK);
@@ -429,8 +429,8 @@ static inline int pending_signal_probe(void) {
   debug_errno_destroy();
   CHECK(asciichat_error_stats_get().pending_errors == 4);
   atomic_store_bool_impl(&probe_release, true);
-  CHECK(asciichat_thread_join(&first, NULL) == 0);
-  CHECK(asciichat_thread_join(&second, NULL) == 0);
+  CHECK(thread_join(&first, NULL) == 0);
+  CHECK(thread_join(&second, NULL) == 0);
   errno_destroy();
   errno_shutdown();
   return 0;
@@ -520,8 +520,8 @@ static inline void formatted_error_contract(void) {
   CHECK(GET_ERRNO() == ERROR_INTERNAL);
   CLEAR_ERRNO();
   asciichat_thread_t first_thread, second_thread;
-  CHECK(asciichat_thread_create(&first_thread, "format-a", formatted_error_worker, "first") == ASCIICHAT_OK);
-  CHECK(asciichat_thread_create(&second_thread, "format-b", formatted_error_worker, "second") == ASCIICHAT_OK);
-  CHECK(asciichat_thread_join(&first_thread, NULL) == ASCIICHAT_OK);
-  CHECK(asciichat_thread_join(&second_thread, NULL) == ASCIICHAT_OK);
+  CHECK(acthread_create(&first_thread, "format-a", formatted_error_worker, "first") == ASCIICHAT_OK);
+  CHECK(acthread_create(&second_thread, "format-b", formatted_error_worker, "second") == ASCIICHAT_OK);
+  CHECK(thread_join(&first_thread, NULL) == ASCIICHAT_OK);
+  CHECK(thread_join(&second_thread, NULL) == ASCIICHAT_OK);
 }

@@ -1379,8 +1379,8 @@ endif()
 # Note: log_debug/log_info/log_error are macros that call log_msg
 set(ASCIICHAT_REQUIRED_SYMBOLS
     "log_msg"
-    "asciichat_thread_create"
-    "asciichat_thread_join"
+    "acthread_create"
+    "thread_join"
     "mutex_init"
     "mutex_lock"
     "mutex_unlock"
@@ -1453,8 +1453,8 @@ endif()  # End if(_build_shared_lib) - closes shared library configuration
 if(NOT ASCIICHAT_REQUIRED_SYMBOLS)
     set(ASCIICHAT_REQUIRED_SYMBOLS
         "log_msg"
-        "asciichat_thread_create"
-        "asciichat_thread_join"
+        "acthread_create"
+        "thread_join"
         "mutex_init"
         "mutex_lock"
         "mutex_unlock"

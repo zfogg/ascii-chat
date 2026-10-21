@@ -317,7 +317,7 @@ const char *named_describe(uintptr_t key, const char *type_hint);
  *
  * This function is defined in lib/platform/posix/thread.c or lib/platform/windows/thread.c
  */
-uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
+uintptr_t thread_to_key(asciichat_thread_t thread);
 
 // ============================================================================
 // Convenience Macros — Pointer-based Registration
@@ -811,7 +811,7 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * In release builds (NDEBUG), this is a no-op.
  */
 #define NAMED_REGISTER_THREAD(thread, name, parent_ptr)                                                                \
-  named_register(asciichat_thread_to_key((thread)), (name), "thread", "0x%tx", __FILE__, __LINE__, __func__,           \
+  named_register(thread_to_key((thread)), (name), "thread", "0x%tx", __FILE__, __LINE__, __func__,           \
                  (uintptr_t)(const void *)(parent_ptr))
 
 /**
@@ -819,7 +819,7 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * @param thread asciichat_thread_t handle (NOT a pointer)
  * @ingroup debug_named
  */
-#define NAMED_UNREGISTER_THREAD(thread) named_unregister(asciichat_thread_to_key((thread)))
+#define NAMED_UNREGISTER_THREAD(thread) named_unregister(thread_to_key((thread)))
 
 // ============================================================================
 // Type-Specific Description Macros
@@ -897,7 +897,7 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * @ingroup debug_named
  *
  * This is a function (not a macro) to handle the opaque asciichat_thread_t type
- * properly, converting it through asciichat_thread_to_key().
+ * properly, converting it through thread_to_key().
  */
 const char *named_describe_thread(void *thread);
 

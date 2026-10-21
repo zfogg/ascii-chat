@@ -545,7 +545,7 @@ asciichat_error_t session_participant_start_video(session_participant_t *p) {
   }
 
   // Spawn video capture thread (media source is ready in ctx)
-  if (asciichat_thread_create(&p->video_capture_thread, "video_capture", participant_video_capture_thread, p) != 0) {
+  if (acthread_create(&p->video_capture_thread, "video_capture", participant_video_capture_thread, p) != 0) {
     log_error("Failed to spawn video capture thread");
     session_participant_stop_video(p);
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn video capture thread");
@@ -566,7 +566,7 @@ void session_participant_stop_video(session_participant_t *p) {
     return;
   session_av_state_begin_stop(&p->video);
   if (p->video_thread_created) {
-    if (asciichat_thread_join(&p->video_capture_thread, NULL) != 0) {
+    if (thread_join(&p->video_capture_thread, NULL) != 0) {
       log_error("Failed to join video capture worker; retaining its resources");
       return;
     }
@@ -633,7 +633,7 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
   }
 
   // Spawn audio capture thread
-  if (asciichat_thread_create(&p->audio_capture_thread, "audio_capture", participant_audio_capture_thread, p) != 0) {
+  if (acthread_create(&p->audio_capture_thread, "audio_capture", participant_audio_capture_thread, p) != 0) {
     log_error("Failed to spawn audio capture thread");
     session_participant_stop_audio(p);
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn audio capture thread");
@@ -650,7 +650,7 @@ void session_participant_stop_audio(session_participant_t *p) {
     return;
   session_av_state_begin_stop(&p->audio);
   if (p->audio_thread_created) {
-    if (asciichat_thread_join(&p->audio_capture_thread, NULL) != 0) {
+    if (thread_join(&p->audio_capture_thread, NULL) != 0) {
       log_error("Failed to join audio capture worker; retaining its resources");
       return;
     }

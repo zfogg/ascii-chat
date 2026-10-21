@@ -1395,7 +1395,7 @@ if (result != OK) {
     &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b><b>Value:</b><b></b></p>
 <pre>do {                                                                                                                 \
 <br/>
-  if (asciichat_thread_create(&amp;(thread), (func), (arg)) != 0) {                                                      \
+  if (acthread_create(&amp;(thread), (func), (arg)) != 0) {                                                      \
 <br/>
     log_error(&quot;Failed to create thread: %s&quot;, #func);                                                                 \
 <br/>
@@ -1420,7 +1420,7 @@ if (result != OK) {
 <p class="Pp">Definition at line <b>522</b> of file <b>common.h</b>.</p>
 <pre>522 #define THREAD_CREATE_OR_RETURN(thread, func, arg)                                                                     \
 523   do {                                                                                                                 \
-524     if (asciichat_thread_create(&amp;(thread), (func), (arg)) != 0) {                                                      \
+524     if (acthread_create(&amp;(thread), (func), (arg)) != 0) {                                                      \
 525       log_error(&quot;Failed to create thread: %s&quot;, #func);                                                                 \
 526       return -1;                                                                                                       \
 527     }                                                                                                                  \

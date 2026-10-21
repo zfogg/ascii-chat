@@ -522,7 +522,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   // Start background camera thread
   asciichat_error_t thread_err =
-      asciichat_thread_create(&context->camera_thread, "webcam_camera", webcam_camera_thread_func, context);
+      acthread_create(&context->camera_thread, "webcam_camera", webcam_camera_thread_func, context);
   if (thread_err != ASCIICHAT_OK) {
     lifecycle_shutdown(&context->async_lifecycle);
     for (int i = 0; i < context->buffer_count; i++) {
@@ -567,7 +567,7 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
   // Stop camera thread by shutting down lifecycle
   if (lifecycle_shutdown(&ctx->async_lifecycle)) {
     // This caller won the shutdown race, join the thread
-    asciichat_thread_join(&ctx->camera_thread, NULL);
+    thread_join(&ctx->camera_thread, NULL);
     log_debug("Camera background thread joined");
   }
 

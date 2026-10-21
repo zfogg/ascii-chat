@@ -137,7 +137,7 @@
 430   atomic_store_u64(&amp;p-&gt;first_frame_ns, 0);
 431 
 432   // Start capture thread
-433   if (asciichat_thread_create(&amp;p-&gt;capture_tid, &quot;pipeline_capture&quot;, pipeline_capture_thread, p) != 0) {
+433   if (acthread_create(&amp;p-&gt;capture_tid, &quot;pipeline_capture&quot;, pipeline_capture_thread, p) != 0) {
 434     frame_queue_destroy(p-&gt;display_queue);
 435     frame_queue_destroy(p-&gt;encode_queue);
 436     SAFE_FREE(p);
@@ -146,9 +146,9 @@
 439 
 440   // Start encode thread only if render_file is active
 441   if (p-&gt;has_render_file) {
-442     if (asciichat_thread_create(&amp;p-&gt;encode_tid, &quot;pipeline_encode&quot;, pipeline_encode_thread, p) != 0) {
+442     if (acthread_create(&amp;p-&gt;encode_tid, &quot;pipeline_encode&quot;, pipeline_encode_thread, p) != 0) {
 443       atomic_store_bool(&amp;p-&gt;stop, true);
-444       asciichat_thread_join(&amp;p-&gt;capture_tid, NULL);
+444       thread_join(&amp;p-&gt;capture_tid, NULL);
 445       frame_queue_destroy(p-&gt;display_queue);
 446       frame_queue_destroy(p-&gt;encode_queue);
 447       SAFE_FREE(p);
@@ -161,8 +161,8 @@
 454 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
-    <b>asciichat_thread_join</b>, <b>atomic_store_bool()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
+    <b>thread_join</b>, <b>atomic_store_bool()</b>,
     <b>atomic_store_u64()</b>, <b>session_pipeline_s::capture</b>,
     <b>session_pipeline_s::capture_tid</b>, <b>session_pipeline_s::display</b>,
     <b>session_pipeline_s::display_queue</b>,
@@ -215,16 +215,16 @@
 584   }
 585 
 586   // Drain and wait for capture thread with 1 second timeout
-587   if (asciichat_thread_is_initialized(&amp;pipeline-&gt;capture_tid)) {
-588     int join_result = asciichat_thread_join_timeout(&amp;pipeline-&gt;capture_tid, NULL, 1000 * NS_PER_MS_INT);
+587   if (thread_is_initialized(&amp;pipeline-&gt;capture_tid)) {
+588     int join_result = thread_join_timeout(&amp;pipeline-&gt;capture_tid, NULL, 1000 * NS_PER_MS_INT);
 589     if (join_result != 0) {
 590       log_warn(&quot;[PIPELINE] Capture thread join timed out or failed (result=%d)&quot;, join_result);
 591     }
 592   }
 593 
 594   // Drain and wait for encode thread with 1 second timeout
-595   if (asciichat_thread_is_initialized(&amp;pipeline-&gt;encode_tid)) {
-596     int join_result = asciichat_thread_join_timeout(&amp;pipeline-&gt;encode_tid, NULL, 1000 * NS_PER_MS_INT);
+595   if (thread_is_initialized(&amp;pipeline-&gt;encode_tid)) {
+596     int join_result = thread_join_timeout(&amp;pipeline-&gt;encode_tid, NULL, 1000 * NS_PER_MS_INT);
 597     if (join_result != 0) {
 598       log_warn(&quot;[PIPELINE] Encode thread join timed out or failed (result=%d)&quot;, join_result);
 599     }
@@ -244,8 +244,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_is_initialized()</b>,
-    <b>asciichat_thread_join_timeout()</b>, <b>atomic_store_bool()</b>,
+    <b>thread_is_initialized()</b>,
+    <b>thread_join_timeout()</b>, <b>atomic_store_bool()</b>,
     <b>session_pipeline_s::capture_tid</b>, <b>cond_broadcast()</b>,
     <b>session_pipeline_s::display_queue</b>,
     <b>session_pipeline_s::encode_queue</b>,

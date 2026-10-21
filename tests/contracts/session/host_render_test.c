@@ -145,6 +145,20 @@ static network_connection_t *connect_host(uint16_t port) {
                                         network_connection_crypto_mode(owner), NETWORK_PROTOCOL_MEDIA),
                ASCIICHAT_OK);
   network_connection_ready(owner);
+  // A ready host must acknowledge admission before clients send capabilities
+  // or stream control. Drain and validate that packet before ping/interrupt tests.
+  packet_type_t type = 0;
+  void *payload = NULL, *allocation = NULL;
+  size_t length = 0;
+  cr_assert_eq(packet_receive_via_transport(network_connection_transport(owner), &type, &payload, &length, &allocation),
+               ASCIICHAT_OK);
+  cr_assert_eq(type, PACKET_TYPE_SERVER_STATE);
+  cr_assert_eq(length, sizeof(server_state_packet_t));
+  server_state_packet_t state;
+  memcpy(&state, payload, sizeof(state));
+  cr_assert_eq(NET_TO_HOST_U32(state.connected_client_count), 1);
+  cr_assert_eq(NET_TO_HOST_U32(state.active_client_count), 1);
+  buffer_release(allocation);
   return owner;
 }
 static void receive_render(sink_t *sink) {
@@ -276,11 +290,11 @@ static void test_listener_interrupt(void) {
   transport->receive_timeout_ns = 5 * NS_PER_SEC_INT;
   receive_wait_t wait = {.transport = transport};
   asciichat_thread_t thread;
-  cr_assert_eq(asciichat_thread_create(&thread, "accepted_receive", receive_wait, &wait), ASCIICHAT_OK);
+  cr_assert_eq(acthread_create(&thread, "accepted_receive", receive_wait, &wait), ASCIICHAT_OK);
   while (!atomic_load_bool(&wait.entered))
     platform_sleep_ms(1);
   acip_transport_interrupt(transport);
-  cr_assert_eq(asciichat_thread_join_timeout(&thread, NULL, NS_PER_SEC_INT), ASCIICHAT_OK);
+  cr_assert_eq(thread_join_timeout(&thread, NULL, NS_PER_SEC_INT), ASCIICHAT_OK);
   cr_assert(wait.result != ASCIICHAT_OK && !acip_transport_is_connected(transport));
   cr_assert_eq(session_host_stop(host), ASCIICHAT_OK);
   cr_assert_eq(session_host_stop(host), ASCIICHAT_OK);

@@ -1295,7 +1295,7 @@
 1230   } else {
 1231     log_debug(&quot;THREAD_CREATE: WebRTC/WebSocket render video thread for client %s&quot;, client-&gt;client_id);
 1232     video_result =
-1233         asciichat_thread_create(&amp;client-&gt;video_render_thread, thread_name, client_video_render_thread, client);
+1233         acthread_create(&amp;client-&gt;video_render_thread, thread_name, client_video_render_thread, client);
 1234   }
 1235 
 1236   if (video_result != ASCIICHAT_OK) {
@@ -1315,7 +1315,7 @@
 1250   } else {
 1251     log_debug(&quot;THREAD_CREATE: WebRTC/WebSocket render audio thread for client %s&quot;, client-&gt;client_id);
 1252     audio_result =
-1253         asciichat_thread_create(&amp;client-&gt;audio_render_thread, thread_name, client_audio_render_thread, client);
+1253         acthread_create(&amp;client-&gt;audio_render_thread, thread_name, client_audio_render_thread, client);
 1254   }
 1255   if (audio_result != ASCIICHAT_OK) {
 1256     // Clean up video thread (atomic operation, no mutex needed)
@@ -1336,7 +1336,7 @@
 1271 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
     <b>atomic_store_bool()</b>, <b>client_info::audio_render_thread</b>,
     <b>client_info::audio_render_thread_running</b>,
     <b>client_audio_render_thread()</b>, <b>client_info::client_id</b>,
@@ -1397,7 +1397,7 @@
 </ul>
 <p class="Pp">DETERMINISTIC CLEANUP:</p>
 <ul class="Bl-bullet">
-  <li><b>asciichat_thread_join()</b> waits for complete thread exit</li>
+  <li><b>thread_join()</b> waits for complete thread exit</li>
   <li>All thread resources are properly released</li>
   <li>No zombie threads or resource leaks</li>
 </ul>
@@ -1456,7 +1456,7 @@
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent"><b>create_client_render_threads()</b> For thread creation
 <p class="Pp"></p>
-<p class="Pp"><b>asciichat_thread_join()</b> For platform-specific joining</p>
+<p class="Pp"><b>thread_join()</b> For platform-specific joining</p>
 </div>
 <p class="Pp">Definition at line <b>1354</b> of file <b>server/render.c</b>.</p>
 <pre>1354                                                        {
@@ -1475,22 +1475,22 @@
 1367   // During shutdown, don't wait forever for threads to join
 1368   bool is_shutting_down = atomic_load_bool(&amp;g_should_exit);
 1369 
-1370   if (asciichat_thread_is_initialized(&amp;client-&gt;video_render_thread)) {
+1370   if (thread_is_initialized(&amp;client-&gt;video_render_thread)) {
 1371     log_debug(&quot;Joining video render thread for client %u&quot;, client-&gt;client_id);
 1372     int result;
 1373     if (is_shutting_down) {
 1374       // During shutdown, don't timeout - wait for thread to exit
 1375       // Timeouts mask the real problem: threads that are still running
 1376       log_debug(&quot;Shutdown mode: joining video render thread for client %u (no timeout)&quot;, client-&gt;client_id);
-1377       result = asciichat_thread_join(&amp;client-&gt;video_render_thread, NULL);
+1377       result = thread_join(&amp;client-&gt;video_render_thread, NULL);
 1378       if (result != 0) {
 1379         log_warn(&quot;Video render thread for client %u failed to join during shutdown: %s&quot;, client-&gt;client_id,
 1380                  SAFE_STRERROR(result));
 1381       }
 1382     } else {
-1383       log_debug(&quot;Calling asciichat_thread_join for video thread of client %u&quot;, client-&gt;client_id);
-1384       result = asciichat_thread_join(&amp;client-&gt;video_render_thread, NULL);
-1385       log_debug(&quot;asciichat_thread_join returned %d for video thread of client %u&quot;, result, client-&gt;client_id);
+1383       log_debug(&quot;Calling thread_join for video thread of client %u&quot;, client-&gt;client_id);
+1384       result = thread_join(&amp;client-&gt;video_render_thread, NULL);
+1385       log_debug(&quot;thread_join returned %d for video thread of client %u&quot;, result, client-&gt;client_id);
 1386     }
 1387 
 1388     if (result == 0) {
@@ -1506,22 +1506,22 @@
 1398       }
 1399     }
 1400     // Clear thread handle safely using platform abstraction
-1401     asciichat_thread_init(&amp;client-&gt;video_render_thread);
+1401     thread_init(&amp;client-&gt;video_render_thread);
 1402   }
 1403 
-1404   if (asciichat_thread_is_initialized(&amp;client-&gt;audio_render_thread)) {
+1404   if (thread_is_initialized(&amp;client-&gt;audio_render_thread)) {
 1405     int result;
 1406     if (is_shutting_down) {
 1407       // During shutdown, don't timeout - wait for thread to exit
 1408       // Timeouts mask the real problem: threads that are still running
 1409       log_debug(&quot;Shutdown mode: joining audio render thread for client %u (no timeout)&quot;, client-&gt;client_id);
-1410       result = asciichat_thread_join(&amp;client-&gt;audio_render_thread, NULL);
+1410       result = thread_join(&amp;client-&gt;audio_render_thread, NULL);
 1411       if (result != 0) {
 1412         log_warn(&quot;Audio render thread for client %u failed to join during shutdown: %s&quot;, client-&gt;client_id,
 1413                  SAFE_STRERROR(result));
 1414       }
 1415     } else {
-1416       result = asciichat_thread_join(&amp;client-&gt;audio_render_thread, NULL);
+1416       result = thread_join(&amp;client-&gt;audio_render_thread, NULL);
 1417     }
 1418 
 1419     if (result == 0) {
@@ -1537,7 +1537,7 @@
 1429       }
 1430     }
 1431     // Clear thread handle safely using platform abstraction
-1432     asciichat_thread_init(&amp;client-&gt;audio_render_thread);
+1432     thread_init(&amp;client-&gt;audio_render_thread);
 1433   }
 1434 
 1435   // DO NOT destroy the mutex here - client.c will handle it
@@ -1549,8 +1549,8 @@
 1441 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_init()</b>,
-    <b>asciichat_thread_is_initialized()</b>, <b>asciichat_thread_join</b>,
+<p class="Pp">References <b>thread_init()</b>,
+    <b>thread_is_initialized()</b>, <b>thread_join</b>,
     <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
     <b>client_info::audio_render_thread</b>,
     <b>client_info::audio_render_thread_running</b>,

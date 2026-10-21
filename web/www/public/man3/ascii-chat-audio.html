@@ -1137,7 +1137,7 @@ opus_codec_destroy(decoder);</pre>
 1342       log_debug(&quot;Stopping worker thread during audio_destroy&quot;);
 1343       atomic_store_bool(&amp;ctx-&gt;worker_should_stop, true);
 1344       cond_signal(&amp;ctx-&gt;worker_cond); // Wake up worker if waiting
-1345       asciichat_thread_join(&amp;ctx-&gt;worker_thread, NULL);
+1345       thread_join(&amp;ctx-&gt;worker_thread, NULL);
 1346       ctx-&gt;worker_running = false;
 1347     }
 1348 
@@ -1171,7 +1171,7 @@ opus_codec_destroy(decoder);</pre>
 1376 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join</b>,
+<p class="Pp">References <b>thread_join</b>,
     <b>atomic_store_bool()</b>, <b>audio_ring_buffer_destroy()</b>,
     <b>audio_stop_duplex()</b>, <b>audio_context_t::capture_buffer</b>,
     <b>cond_destroy()</b>, <b>cond_signal()</b>,
@@ -2454,7 +2454,7 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
   <b>lib/audio/audio.c</b>.</p>
 <pre>2030                                                     {
 2031   // Delegate to platform abstraction layer
-2032   asciichat_error_t result = asciichat_thread_set_realtime_priority();
+2032   asciichat_error_t result = thread_set_realtime_priority();
 2033   if (result == ASCIICHAT_OK) {
 2034     log_debug(&quot;&#x2713; Audio thread real-time priority set successfully&quot;);
 2035   }
@@ -2463,7 +2463,7 @@ log_debug(&quot;Audio batch: %u frames at %u Hz, %u channels&quot;,
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_set_realtime_priority()</b>, and <b>log_debug</b>.</p>
+    <b>thread_set_realtime_priority()</b>, and <b>log_debug</b>.</p>
 <p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
 </section>
 <section class="Ss">
@@ -2927,7 +2927,7 @@ if (enable_mic) {
 1751   // Start worker thread for heavy audio processing
 1752   if (!ctx-&gt;worker_running) {
 1753     atomic_store_bool(&amp;ctx-&gt;worker_should_stop, false);
-1754     if (asciichat_thread_create(&amp;ctx-&gt;worker_thread, &quot;audio_worker&quot;, audio_worker_thread, ctx) != 0) {
+1754     if (acthread_create(&amp;ctx-&gt;worker_thread, &quot;audio_worker&quot;, audio_worker_thread, ctx) != 0) {
 1755       // Failed to create worker thread - stop streams and cleanup
 1756       if (ctx-&gt;duplex_stream) {
 1757         LOG_IO(&quot;portaudio&quot;, {
@@ -2967,7 +2967,7 @@ if (enable_mic) {
 1791 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
     <b>atomic_store_bool()</b>, <b>AUDIO_CHANNELS</b>,
     <b>AUDIO_FRAMES_PER_BUFFER</b>,
     <b>audio_ring_buffer_create_for_capture()</b>,
@@ -3022,7 +3022,7 @@ if (enable_mic) {
 1802     log_debug(&quot;Stopping worker thread&quot;);
 1803     atomic_store_bool(&amp;ctx-&gt;worker_should_stop, true);
 1804     cond_signal(&amp;ctx-&gt;worker_cond); // Wake up worker if waiting
-1805     asciichat_thread_join(&amp;ctx-&gt;worker_thread, NULL);
+1805     thread_join(&amp;ctx-&gt;worker_thread, NULL);
 1806     ctx-&gt;worker_running = false;
 1807     log_debug(&quot;Worker thread stopped successfully&quot;);
 1808   }
@@ -3112,7 +3112,7 @@ if (enable_mic) {
 1892 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_join</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>thread_join</b>,
     <b>atomic_store_bool()</b>, <b>audio_ring_buffer_clear()</b>,
     <b>audio_ring_buffer_destroy()</b>, <b>cond_signal()</b>,
     <b>audio_context_t::duplex_stream</b>, <b>ERROR_INVALID_STATE</b>,

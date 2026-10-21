@@ -349,7 +349,7 @@ debug_sync_destroy();         // Destroy system</pre>
 697 
 698   // Use a timeout join to ensure we don't deadlock, but still unregister the thread
 699   // The debug thread should exit quickly after should_exit is set above
-700   int join_result = asciichat_thread_join_timeout(&amp;g_debug_thread, NULL, 1000000000ULL); // 1 second timeout
+700   int join_result = thread_join_timeout(&amp;g_debug_thread, NULL, 1000000000ULL); // 1 second timeout
 701   if (join_result == 0) {
 702     log_debug(&quot;[DEBUG_SYNC_CLEANUP] Thread joined successfully&quot;);
 703   } else if (join_result == -2) {
@@ -361,7 +361,7 @@ debug_sync_destroy();         // Destroy system</pre>
 709 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join_timeout()</b>,
+<p class="Pp">References <b>thread_join_timeout()</b>,
     <b>atomic_store_bool()</b>, <b>cond_signal()</b>, and <b>log_debug</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
     <b>debug_sync_destroy()</b>, and <b>session_client_like_run()</b>.</p>
@@ -800,11 +800,11 @@ void critical_section(void) {
 <p class="Pp">Definition at line <b>640</b> of file <b>sync.c</b>.</p>
 <pre>640                                          {
 641   // Save main thread ID for memory reporting (call very early)
-642   g_debug_main_thread_id = asciichat_thread_current_id();
+642   g_debug_main_thread_id = thread_current_id();
 643 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_current_id()</b>.</p>
+<p class="Pp">References <b>thread_current_id()</b>.</p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">
@@ -886,12 +886,12 @@ debug_sync_destroy();</pre>
 664   }
 665 
 666   atomic_store_bool(&amp;g_debug_state_request.should_exit, false);
-667   int err = asciichat_thread_create(&amp;g_debug_thread, &quot;debug_sync&quot;, debug_print_thread_fn, NULL);
+667   int err = acthread_create(&amp;g_debug_thread, &quot;debug_sync&quot;, debug_print_thread_fn, NULL);
 668   return err;
 669 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>acthread_create</b>,
     <b>atomic_store_bool()</b>, <b>cond_init()</b>, and <b>mutex_init()</b>.</p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>

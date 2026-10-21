@@ -66,7 +66,7 @@ vi.mock("../../src/network/ClientConnection", () => ({
     getState() {
       return ConnectionState.DISCONNECTED;
     }
-    disconnect() {}
+    disconnect = vi.fn();
     emit(state: number) {
       this.stateCallback?.(state);
     }
@@ -556,14 +556,22 @@ describe("handoff with queued media", () => {
   });
   it("uses the promoted host's queue and recovery state", () => {
     const session = new WebRTCSession(options);
+    const feedback = {
+      bufferedBytes: 123,
+      oldestFrameAgeMs: 80,
+      droppedFrames: 7,
+    };
     const host = {
       getBufferedAmount: () => 123,
+      getUploadFeedback: vi.fn(() => feedback),
       needsKeyframe: vi.fn(() => false),
       sendPacket: vi.fn(),
       disconnect: vi.fn(),
     };
     Reflect.set(session, "promoted", host);
     expect(session.getBufferedAmount()).toBe(123);
+    expect(session.getUploadFeedback()).toBe(feedback);
+    expect(host.getUploadFeedback).toHaveBeenCalledOnce();
     expect(session.needsKeyframe(PacketType.IMAGE_FRAME_H264)).toBe(false);
     const payload = new Uint8Array([1]);
     session.sendPacket(PacketType.IMAGE_FRAME_H264, payload);
@@ -573,4 +581,44 @@ describe("handoff with queued media", () => {
     );
     session.disconnect();
   });
+});
+
+it("retains signaling after the audio congestion deadline and bounds successor recovery", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+  const session = new WebRTCSession({
+    sessionName: "blue-mountain-tiger",
+    password: "",
+    signalingUrl: "ws://localhost",
+    stunServers: [],
+    turnServers: [],
+  });
+  const signaling = signalingHarness.current as unknown as {
+    disconnect: ReturnType<typeof vi.fn>;
+  };
+  const media = session as unknown as {
+    state: ConnectionState;
+    bridge: object;
+    peerCrypto: object;
+  };
+  const bridgeClosed = vi.fn(),
+    cryptoClosed = vi.fn();
+  media.state = ConnectionState.CONNECTED;
+  media.bridge = { getBufferedAmount: () => 1024, close: bridgeClosed };
+  media.peerCrypto = { sendPacket: vi.fn(), close: cryptoClosed };
+  try {
+    session.sendPacket(PacketType.AUDIO_OPUS_BATCH, new Uint8Array(32));
+    await vi.advanceTimersByTimeAsync(5004);
+    expect(bridgeClosed).toHaveBeenCalledOnce();
+    expect(cryptoClosed).toHaveBeenCalledOnce();
+    expect(session.getState()).toBe(ConnectionState.CONNECTING);
+    expect(signaling.disconnect).not.toHaveBeenCalled();
+    // Audio's five-second congestion bound remains enforced; the failed
+    // queue closes, and the independent successor wait is still finite.
+    await vi.advanceTimersByTimeAsync(15000);
+    expect(session.getState()).toBe(ConnectionState.ERROR);
+    expect(signaling.disconnect).toHaveBeenCalledOnce();
+  } finally {
+    session.disconnect();
+    vi.useRealTimers();
+  }
 });

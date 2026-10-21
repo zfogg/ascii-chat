@@ -21,7 +21,7 @@ static uint64_t g_debug_stats_memory_deadline;
 static uint64_t g_debug_stats_memory_interval;
 
 void debug_stats_set_main_thread_id(void) {
-  g_debug_stats_main_thread = asciichat_thread_current_id();
+  g_debug_stats_main_thread = thread_current_id();
 }
 uint64_t debug_stats_get_main_thread_id(void) {
   return g_debug_stats_main_thread;
@@ -115,7 +115,7 @@ asciichat_error_t debug_stats_start_thread(void) {
       debug_stats_set_memory_report_interval((uint64_t)(opts->debug_memory_report_interval * NS_PER_SEC_INT));
   }
 #ifndef EMSCRIPTEN_BUILD
-  if (asciichat_thread_create(&g_debug_stats_thread, "debug_stats", debug_stats_worker, NULL) != 0)
+  if (acthread_create(&g_debug_stats_thread, "debug_stats", debug_stats_worker, NULL) != 0)
     return SET_ERRNO(ERROR_THREAD, "Cannot start diagnostics worker");
 #endif
   g_debug_stats_started = true;
@@ -131,7 +131,7 @@ void debug_stats_cleanup_thread(void) {
   mutex_unlock(&g_debug_stats_mutex);
 #ifndef EMSCRIPTEN_BUILD
   // Join fully: diagnostic data must not be destroyed while a reader is alive.
-  if (asciichat_thread_join(&g_debug_stats_thread, NULL) != 0)
+  if (thread_join(&g_debug_stats_thread, NULL) != 0)
     FATAL(ERROR_THREAD, "Cannot join diagnostics worker");
 #endif
   g_debug_stats_started = false;

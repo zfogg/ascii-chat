@@ -150,7 +150,7 @@ static void check_recording_fast_path(void) {
 #endif
   atomic_store(&submitting, true);
   asciichat_thread_t producer;
-  CHECK(asciichat_thread_create(&producer, "recording_submitter", record_many, NULL) == ASCIICHAT_OK);
+  CHECK(acthread_create(&producer, "recording_submitter", record_many, NULL) == ASCIICHAT_OK);
   for (unsigned i = 0; i < 5; ++i) {
     CHECK(audio_recording_create(&recording) == ASCIICHAT_OK);
     audio_recording_start(recording, time_get_ns());
@@ -158,7 +158,7 @@ static void check_recording_fast_path(void) {
     audio_recording_destroy(recording);
   }
   atomic_store(&submitting, false);
-  CHECK(asciichat_thread_join(&producer, NULL) == ASCIICHAT_OK);
+  CHECK(thread_join(&producer, NULL) == ASCIICHAT_OK);
 }
 
 static void check_atomic_pause(void) {
@@ -176,9 +176,9 @@ static void check_atomic_pause(void) {
   media_source_resume(source);
   asciichat_thread_t toggles[2];
   for (size_t i = 0; i < 2; ++i)
-    CHECK(asciichat_thread_create(&toggles[i], "pause_toggles", toggle_pause_many, source) == ASCIICHAT_OK);
+    CHECK(acthread_create(&toggles[i], "pause_toggles", toggle_pause_many, source) == ASCIICHAT_OK);
   for (size_t i = 0; i < 2; ++i)
-    CHECK(asciichat_thread_join(&toggles[i], NULL) == ASCIICHAT_OK);
+    CHECK(thread_join(&toggles[i], NULL) == ASCIICHAT_OK);
   CHECK(!media_source_is_paused(source));
   CHECK(media_source_read_video(source) != NULL);
   media_source_destroy(source);
@@ -206,7 +206,7 @@ static void check_audio_seek_serialization(const char *path) {
   atomic_store(&audio_reading, false);
   atomic_store(&stop_audio_reads, false);
   asciichat_thread_t reader;
-  CHECK(asciichat_thread_create(&reader, "seek_audio_reader", read_audio_during_seeks, decoder) == ASCIICHAT_OK);
+  CHECK(acthread_create(&reader, "seek_audio_reader", read_audio_during_seeks, decoder) == ASCIICHAT_OK);
   uint64_t deadline = time_get_ns() + NS_PER_SEC_INT;
   while (!atomic_load(&audio_reading) && time_get_ns() < deadline)
     platform_sleep_ms(1);
@@ -216,7 +216,7 @@ static void check_audio_seek_serialization(const char *path) {
     platform_sleep_ms(1);
   }
   atomic_store(&stop_audio_reads, true);
-  CHECK(asciichat_thread_join(&reader, NULL) == ASCIICHAT_OK);
+  CHECK(thread_join(&reader, NULL) == ASCIICHAT_OK);
   CHECK(ffmpeg_decoder_seek_to_timestamp(decoder, 0) == ASCIICHAT_OK);
   float resumed[37];
   CHECK(ffmpeg_decoder_read_audio_samples(decoder, resumed, 37) > 0);

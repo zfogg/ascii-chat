@@ -47,8 +47,8 @@ void rwlock_on_wrlock(rwlock_t *rwlock) {
   if (!rwlock)
     return;
   rwlock->last_wrlock_time_ns = time_get_ns();
-  asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
-  rwlock->write_held_by_key = asciichat_thread_to_key(current_thread);
+  asciichat_thread_t current_thread = (asciichat_thread_t)thread_current_id();
+  rwlock->write_held_by_key = thread_to_key(current_thread);
   rwlock->wrlock_count++;
 }
 
@@ -66,8 +66,8 @@ void rwlock_on_unlock(rwlock_t *rwlock) {
     return;
   rwlock->last_unlock_time_ns = time_get_ns();
   rwlock->unlock_count++;
-  asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
-  uintptr_t current_key = asciichat_thread_to_key(current_thread);
+  asciichat_thread_t current_thread = (asciichat_thread_t)thread_current_id();
+  uintptr_t current_key = thread_to_key(current_thread);
   if (rwlock->write_held_by_key == current_key) {
     rwlock->write_held_by_key = 0;
   } else if (atomic_load_u64(&rwlock->read_lock_count) > 0) {

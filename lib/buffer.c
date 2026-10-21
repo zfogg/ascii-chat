@@ -388,20 +388,26 @@ void buffer_domain_log_stats(buffer_domain_t *domain, const char *name) {
 }
 
 void buffer_system_init(void) {
-  if (lifecycle_init_once(&default_lifecycle)) {
-    if (buffer_domain_create(NULL, &default_domain) != ASCIICHAT_OK) {
-      lifecycle_init_abort(&default_lifecycle);
+  for (;;) {
+    if (lifecycle_init_once(&default_lifecycle))
+      break;
+    if (lifecycle_is_initialized(&default_lifecycle) || lifecycle_is_dead(&default_lifecycle))
       return;
-    }
-    buffer_domain_config_t control = {BUFFER_CONTROL_RESERVE, 1024 * 1024, 5000000000ULL, true};
-    if (buffer_domain_create(&control, &control_domain) != ASCIICHAT_OK) {
-      buffer_domain_close(&default_domain);
-      lifecycle_init_abort(&default_lifecycle);
-      return;
-    }
-    NAMED_REGISTER_ATOMIC(&process_bytes, "buffer.process_reserved_bytes", NULL);
-    lifecycle_init_commit(&default_lifecycle);
+    // Another caller must finish publishing both domains before allocations use them.
+    platform_sleep_us(100);
   }
+  if (buffer_domain_create(NULL, &default_domain) != ASCIICHAT_OK) {
+    lifecycle_init_abort(&default_lifecycle);
+    return;
+  }
+  buffer_domain_config_t control = {BUFFER_CONTROL_RESERVE, 1024 * 1024, 5000000000ULL, true};
+  if (buffer_domain_create(&control, &control_domain) != ASCIICHAT_OK) {
+    buffer_domain_close(&default_domain);
+    lifecycle_init_abort(&default_lifecycle);
+    return;
+  }
+  NAMED_REGISTER_ATOMIC(&process_bytes, "buffer.process_reserved_bytes", NULL);
+  lifecycle_init_commit(&default_lifecycle);
 }
 
 buffer_domain_t *buffer_default_domain(void) {

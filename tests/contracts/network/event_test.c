@@ -190,7 +190,7 @@ static void event_test(bool expire, bool cancel, bool push, bool zerocopy, bool 
                    (ASCIICHAT_OK));
   cr_assert_worker((listener) == (INVALID_SOCKET_VALUE));
   asciichat_thread_t thread;
-  cr_assert_worker((asciichat_thread_create(&thread, "event_test", run_loop, &fixture)) == (ASCIICHAT_OK));
+  cr_assert_worker((acthread_create(&thread, "event_test", run_loop, &fixture)) == (ASCIICHAT_OK));
   socket_t client = socket_create("event-test-client", AF_INET, SOCK_STREAM, 0);
   if (push && expire) {
     int receive_buffer = 4096;
@@ -225,7 +225,7 @@ static void event_test(bool expire, bool cancel, bool push, bool zerocopy, bool 
     cr_assert_worker(recv_with_timeout(client, &byte, 1, 5 * NS_PER_SEC_INT) <= 0);
     CLEAR_ERRNO_ALL();
   }
-  cr_assert_worker((asciichat_thread_join(&thread, NULL)) == (ASCIICHAT_OK));
+  cr_assert_worker((thread_join(&thread, NULL)) == (ASCIICHAT_OK));
   cr_assert_worker(fixture.accepted == 1 && fixture.closed == 1);
   cr_assert_worker((fixture.completions) == ((push ? (expire ? 1 : 3) : cancel ? 256 : fixture.jobs)));
   if (push && !expire) {

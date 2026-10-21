@@ -8,6 +8,7 @@
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/atomic.h>
 #include <string.h>
 #include <ascii-chat/video/rgba/video_frame.h>
@@ -178,12 +179,12 @@ static void concurrent_contracts(void) {
   cr_assert_eq(buffer_domain_create(&config, &stress.domain), ASCIICHAT_OK);
   atomic_store_u64(&stress.running, 4);
   asciichat_thread_t workers[4], trimmer;
-  cr_assert_eq(asciichat_thread_create(&trimmer, "buffer-trim", trim_worker, &stress), 0);
+  cr_assert_eq(acthread_create(&trimmer, "buffer-trim", trim_worker, &stress), 0);
   for (unsigned i = 0; i < 4; i++)
-    cr_assert_eq(asciichat_thread_create(&workers[i], "buffer-allocate", allocate_worker, &stress), 0);
+    cr_assert_eq(acthread_create(&workers[i], "buffer-allocate", allocate_worker, &stress), 0);
   for (unsigned i = 0; i < 4; i++)
-    cr_assert_eq(asciichat_thread_join(&workers[i], NULL), 0);
-  cr_assert_eq(asciichat_thread_join(&trimmer, NULL), 0);
+    cr_assert_eq(thread_join(&workers[i], NULL), 0);
+  cr_assert_eq(thread_join(&trimmer, NULL), 0);
   buffer_stats_t stats;
   buffer_domain_stats(stress.domain, &stats);
   cr_assert(!stats.outstanding && !stats.live_bytes && !stats.requested_bytes);
@@ -249,11 +250,11 @@ static void concurrent_queue_contracts(void) {
   producer_t producers[2] = {{stress, 0}, {stress, 1000}};
   asciichat_thread_t threads[4];
   for (unsigned i = 0; i < 2; i++) {
-    cr_assert_eq(asciichat_thread_create(&threads[i], "queue-producer", queue_producer, &producers[i]), 0);
-    cr_assert_eq(asciichat_thread_create(&threads[i + 2], "queue-consumer", queue_consumer, stress), 0);
+    cr_assert_eq(acthread_create(&threads[i], "queue-producer", queue_producer, &producers[i]), 0);
+    cr_assert_eq(acthread_create(&threads[i + 2], "queue-consumer", queue_consumer, stress), 0);
   }
   for (unsigned i = 0; i < 4; i++)
-    cr_assert_eq(asciichat_thread_join(&threads[i], NULL), 0);
+    cr_assert_eq(thread_join(&threads[i], NULL), 0);
   cr_assert_eq(atomic_load_u64(&stress->consumed), 2000);
   packet_queue_destroy(stress->queue);
   SAFE_FREE(stress);
@@ -427,11 +428,73 @@ static void concurrent_references(void) {
   memset(data, 42, 128);
   asciichat_thread_t threads[4];
   for (unsigned i = 0; i < 4; ++i)
-    cr_assert_eq(asciichat_thread_create(&threads[i], "buffer-share", share_worker, data), ASCIICHAT_OK);
+    cr_assert_eq(acthread_create(&threads[i], "buffer-share", share_worker, data), ASCIICHAT_OK);
   for (unsigned i = 0; i < 4; ++i)
-    cr_assert_eq(asciichat_thread_join(&threads[i], NULL), ASCIICHAT_OK);
+    cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
   cr_assert(buffer_is_unique(data));
   buffer_release(data);
+}
+
+typedef struct {
+  _Atomic(unsigned) *ready;
+  _Atomic(bool) *start;
+  asciichat_error_t media_result;
+  asciichat_error_t control_result;
+} cold_start_worker_t;
+
+static void *allocate_on_cold_start(void *arg) {
+  cold_start_worker_t *worker = arg;
+  atomic_fetch_add(worker->ready, 1);
+  while (!atomic_load(worker->start))
+    platform_sleep_us(100);
+  void *media = NULL;
+  void *control = NULL;
+  worker->media_result = buffer_acquire(NULL, 4096, BUFFER_DEFAULT_ALIGNMENT, &media);
+  buffer_domain_t *domain = buffer_control_domain();
+  worker->control_result =
+      domain ? buffer_acquire(domain, 64, BUFFER_DEFAULT_ALIGNMENT, &control) : ERROR_INVALID_STATE;
+  buffer_release(media);
+  buffer_release(control);
+  return NULL;
+}
+
+static void concurrent_cold_start(void) {
+  enum { WORKERS = 16, ROUNDS = 8 };
+  for (unsigned round = 0; round < ROUNDS; ++round) {
+    buffer_system_cleanup();
+    _Atomic(unsigned) ready = 0;
+    _Atomic(bool) start = false;
+    cold_start_worker_t workers[WORKERS] = {0};
+    asciichat_thread_t threads[WORKERS];
+    for (unsigned i = 0; i < WORKERS; ++i) {
+      workers[i].ready = &ready;
+      workers[i].start = &start;
+      workers[i].media_result = ERROR_INVALID_STATE;
+      workers[i].control_result = ERROR_INVALID_STATE;
+      cr_assert_eq(acthread_create(&threads[i], "buffer-cold-start", allocate_on_cold_start, &workers[i]),
+                   ASCIICHAT_OK);
+    }
+    uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
+    while (atomic_load(&ready) != WORKERS && time_get_ns() < deadline)
+      platform_sleep_us(100);
+    bool all_ready = atomic_load(&ready) == WORKERS;
+    atomic_store(&start, true);
+    for (unsigned i = 0; i < WORKERS; ++i)
+      cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
+    cr_assert(all_ready, "Cold-start workers failed to reach the start barrier");
+    for (unsigned i = 0; i < WORKERS; ++i) {
+      cr_assert_eq(workers[i].media_result, ASCIICHAT_OK, "Media allocation failed in round %u worker %u", round, i);
+      cr_assert_eq(workers[i].control_result, ASCIICHAT_OK, "Control allocation failed in round %u worker %u", round,
+                   i);
+    }
+    buffer_stats_t stats;
+    buffer_domain_stats(buffer_default_domain(), &stats);
+    cr_assert_eq(stats.outstanding, 0);
+    cr_assert_eq(stats.failures, 0);
+    buffer_domain_stats(buffer_control_domain(), &stats);
+    cr_assert_eq(stats.outstanding, 0);
+    cr_assert_eq(stats.failures, 0);
+  }
 }
 
 static void setup(void) {
@@ -489,4 +552,8 @@ Test(buffer_ownership, client_admission_respects_process_budget) {
 
 Test(buffer_ownership, websocket_control_reserve_contract) {
   websocket_control_reserve_contract();
+}
+
+Test(buffer_ownership, concurrent_cold_start) {
+  concurrent_cold_start();
 }

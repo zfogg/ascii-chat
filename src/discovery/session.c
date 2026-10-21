@@ -249,7 +249,7 @@ asciichat_error_t discovery_session_destroy(discovery_session_t *session) {
   // The detector borrows the session and mutex; retain both on a timed join failure.
   if (session->nat_detection_thread_started) {
     asciichat_error_t join_result =
-        asciichat_thread_join_timeout(&session->nat_detection_thread, NULL, 500 * NS_PER_MS_INT);
+        thread_join_timeout(&session->nat_detection_thread, NULL, 500 * NS_PER_MS_INT);
     if (join_result != ASCIICHAT_OK)
       return SET_ERRNO(ERROR_THREAD, "NAT detection worker still owns discovery session");
     session->nat_detection_thread_started = false;
@@ -410,7 +410,7 @@ static asciichat_error_t gather_nat_quality(discovery_session_t *session, nat_qu
     log_debug("★ STARTING_NAT_DETECTION_THREAD: Starting background NAT detection");
     session->nat_detection_in_progress = true;
 
-    int thread_result = asciichat_thread_create(&session->nat_detection_thread, "nat_detection",
+    int thread_result = acthread_create(&session->nat_detection_thread, "nat_detection",
                                                 nat_detection_thread_fn, (void *)session);
     if (thread_result == 0) {
       session->nat_detection_thread_started = true;

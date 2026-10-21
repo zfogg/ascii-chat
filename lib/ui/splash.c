@@ -381,7 +381,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
     return 0;
   }
 
-  int err = asciichat_thread_create(&g_splash_state.monitor_thread, "splash_monitor", splash_monitor_thread, NULL);
+  int err = acthread_create(&g_splash_state.monitor_thread, "splash_monitor", splash_monitor_thread, NULL);
   if (err != ASCIICHAT_OK) {
     log_warn("Failed to create splash monitor thread: error=%d", err);
     atomic_store_bool(&g_splash_state.thread_created, false);
@@ -439,7 +439,7 @@ void splash_wait_for_animation(void) {
   }
 
   // The monitor clears is_running after retiring its presentation snapshot.
-  asciichat_error_t err = asciichat_thread_join(&g_splash_state.monitor_thread, NULL);
+  asciichat_error_t err = thread_join(&g_splash_state.monitor_thread, NULL);
   if (err != ASCIICHAT_OK) {
     log_warn("Splash animation join failed: %s", asciichat_error_format(NULL, err));
     return;

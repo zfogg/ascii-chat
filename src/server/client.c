@@ -607,8 +607,8 @@ static void server_client_reset_slot_locked(const char *client_id, server_client
   // Use exponential backoff for thread termination verification
   int retry_count = 0;
   const int max_retries = 5;
-  while (retry_count < max_retries && (asciichat_thread_is_initialized(&removal->client->video_render_thread) ||
-                                       asciichat_thread_is_initialized(&removal->client->audio_render_thread))) {
+  while (retry_count < max_retries && (thread_is_initialized(&removal->client->video_render_thread) ||
+                                       thread_is_initialized(&removal->client->audio_render_thread))) {
     // Exponential backoff: 10ms, 20ms, 40ms, 80ms, 160ms
     uint32_t delay_ms = 10 * (1 << retry_count);
     log_warn("Client %s: Some threads still appear initialized (attempt %d/%d), waiting %ums", client_id,

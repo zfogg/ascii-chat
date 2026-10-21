@@ -201,10 +201,10 @@ Test(transport_backpressure, concurrent_streams_obey_budget_and_keep_control) {
   producer_t producers[4];
   for (uint32_t i = 0; i < 4; ++i) {
     producers[i] = (producer_t){concurrent, i};
-    cr_assert_eq(asciichat_thread_create(&threads[i], "outbound_producer", produce, &producers[i]), ASCIICHAT_OK);
+    cr_assert_eq(acthread_create(&threads[i], "outbound_producer", produce, &producers[i]), ASCIICHAT_OK);
   }
   for (size_t i = 0; i < 4; ++i)
-    cr_assert_eq(asciichat_thread_join(&threads[i], NULL), ASCIICHAT_OK);
+    cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
   cr_assert_eq(submit(concurrent, PACKET_TYPE_PING, 0, 1, false), ACIP_ADMISSION_ACCEPTED);
   cr_assert_eq(acip_outbound_snapshot(concurrent, &stats), ASCIICHAT_OK);
   cr_assert(stats.accepted == 1001 && stats.dropped >= 996);
@@ -258,7 +258,7 @@ static void check_backend_failure(asciichat_error_t code, bool omit_context, boo
   failing_producer_t producers[2] = {{.transport = transport}, {.transport = transport}};
   asciichat_thread_t threads[2];
   for (size_t i = 0; i < 2; ++i)
-    cr_assert_eq(asciichat_thread_create(&threads[i], "failing_control", submit_control, &producers[i]), ASCIICHAT_OK);
+    cr_assert_eq(acthread_create(&threads[i], "failing_control", submit_control, &producers[i]), ASCIICHAT_OK);
   uint64_t start = time_get_ns();
   for (;;) {
     acip_outbound_stats_t stats;
@@ -270,7 +270,7 @@ static void check_backend_failure(asciichat_error_t code, bool omit_context, boo
   }
   atomic_store_u64(&backend->bytes, 0);
   for (size_t i = 0; i < 2; ++i) {
-    cr_assert_eq(asciichat_thread_join(&threads[i], NULL), ASCIICHAT_OK);
+    cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
     cr_assert_eq(producers[i].result, code);
     cr_assert(producers[i].has_cause);
     cr_assert_eq(producers[i].cause.code, code);

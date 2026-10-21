@@ -544,7 +544,7 @@ const char *named_describe(uintptr_t key, const char *type_hint) {
 }
 
 const char *named_describe_thread(void *thread) {
-  uintptr_t key = asciichat_thread_to_key((asciichat_thread_t)thread);
+  uintptr_t key = thread_to_key((asciichat_thread_t)thread);
   return named_describe(key, "thread");
 }
 

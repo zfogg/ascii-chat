@@ -156,7 +156,7 @@ static void *audio_worker_thread(void *arg) {
   audio_context_t *ctx = (audio_context_t *)arg;
   if (ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media) {
     asciichat_errno_scope_t scope = errno_scope_begin();
-    (void)asciichat_thread_set_realtime_priority();
+    (void)thread_set_realtime_priority();
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
   log_debug("Audio worker thread started (batch size: %d frames = %d samples)", WORKER_BATCH_FRAMES,
@@ -516,7 +516,7 @@ static void audio_callback_prepare(void) {
   if (!prepared) {
     prepared = true;
     asciichat_errno_scope_t scope = errno_scope_begin();
-    (void)asciichat_thread_set_realtime_priority();
+    (void)thread_set_realtime_priority();
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
 }
@@ -1711,7 +1711,7 @@ void audio_destroy(audio_context_t *ctx) {
       log_debug("Stopping worker thread");
       atomic_store_bool(&ctx->worker_should_stop, true);
       cond_signal(&ctx->audio_processing_wakeup); // Wake up worker if waiting
-      asciichat_thread_join(&ctx->worker_thread, NULL);
+      thread_join(&ctx->worker_thread, NULL);
       ctx->worker_running = false;
     }
 
@@ -2146,7 +2146,7 @@ start_worker:
   // Start worker thread for heavy audio processing
   if (!ctx->worker_running) {
     atomic_store_bool(&ctx->worker_should_stop, false);
-    if (asciichat_thread_create(&ctx->worker_thread, "audio_worker", audio_worker_thread, ctx) != 0) {
+    if (acthread_create(&ctx->worker_thread, "audio_worker", audio_worker_thread, ctx) != 0) {
       // Failed to create worker thread - stop streams and cleanup
       if (ctx->duplex_stream) {
         LOG_IO("portaudio", {
@@ -2199,7 +2199,7 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
     log_debug("Stopping worker thread");
     atomic_store_bool(&ctx->worker_should_stop, true);
     cond_signal(&ctx->audio_processing_wakeup); // Wake up worker if waiting
-    asciichat_thread_join(&ctx->worker_thread, NULL);
+    thread_join(&ctx->worker_thread, NULL);
     ctx->worker_running = false;
     log_debug("Worker thread stopped successfully");
   }
@@ -2416,7 +2416,7 @@ asciichat_error_t audio_dequantize_samples(const uint8_t *samples_ptr, uint32_t 
 
 asciichat_error_t audio_set_realtime_priority(void) {
   // Delegate to platform abstraction layer
-  asciichat_error_t result = asciichat_thread_set_realtime_priority();
+  asciichat_error_t result = thread_set_realtime_priority();
   if (result == ASCIICHAT_OK) {
     log_debug("✓ Audio thread real-time priority set successfully");
   }

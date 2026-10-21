@@ -38,8 +38,8 @@ void cond_on_wait(cond_t *cond, mutex_t *mutex, const char *file, int line, cons
   cond->last_wait_file = file;
   cond->last_wait_line = line;
   cond->last_wait_func = func;
-  asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
-  cond->last_waiting_key = asciichat_thread_to_key(current_thread);
+  asciichat_thread_t current_thread = (asciichat_thread_t)thread_current_id();
+  cond->last_waiting_key = thread_to_key(current_thread);
   // Entry/exit accounting is serialized by the caller-held associated mutex.
   atomic_fetch_add(&cond->wait_revision, 1);
   if (atomic_fetch_add_u64(&cond->waiting_count, 1) == 0)

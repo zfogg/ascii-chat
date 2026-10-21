@@ -170,7 +170,7 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
   cr_assert_eq(network_server_create(&config, &f.server), ASCIICHAT_OK);
   cr_assert_eq(network_server_start(f.server), ASCIICHAT_OK);
   asciichat_thread_t thread;
-  cr_assert_eq(asciichat_thread_create(&thread, "connection_fixture", run, &f), ASCIICHAT_OK);
+  cr_assert_eq(acthread_create(&thread, "connection_fixture", run, &f), ASCIICHAT_OK);
   platform_sleep_ms(50);
   char endpoint[128];
   safe_snprintf(endpoint, sizeof(endpoint), "%s://127.0.0.1:%u", websocket ? "ws" : "tcp", websocket ? ws : tcp);
@@ -237,7 +237,7 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
     cr_assert_eq(atomic_load_int(&f.closed), 0);
     cr_assert_eq(network_server_connection_count(f.server), 1);
     network_server_request_stop(f.server);
-    cr_assert_eq(asciichat_thread_join(&thread, NULL), ASCIICHAT_OK);
+    cr_assert_eq(thread_join(&thread, NULL), ASCIICHAT_OK);
     cr_assert_eq(network_server_stop(f.server), ERROR_THREAD);
     network_server_destroy(&f.server);
     cr_assert(f.server); // Failed joins preserve the owning runtime and dependencies.
@@ -264,7 +264,7 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
   if (fragmented != INVALID_SOCKET_VALUE)
     socket_close(fragmented);
   network_server_request_stop(f.server);
-  cr_assert_eq(asciichat_thread_join(&thread, NULL), ASCIICHAT_OK);
+  cr_assert_eq(thread_join(&thread, NULL), ASCIICHAT_OK);
   cr_assert_eq(f.result, ASCIICHAT_OK);
   cr_assert_eq(network_server_stop(f.server), ASCIICHAT_OK);
   network_server_destroy(&f.server);

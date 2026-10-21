@@ -816,7 +816,7 @@
 284     // 5. Calling tcp_server_remove_client() on disconnect
 285     // 6. Closing socket and freeing ctx
 286     asciichat_thread_t thread;
-287     if (asciichat_thread_create(&amp;thread, &quot;tcp_client&quot;, server-&gt;config.client_handler, ctx) != 0) {
+287     if (acthread_create(&amp;thread, &quot;tcp_client&quot;, server-&gt;config.client_handler, ctx) != 0) {
 288       log_error(&quot;Failed to create client handler thread for %s&quot;, client_ip);
 289       SAFE_FREE(ctx);
 290       socket_close(client_socket);
@@ -834,7 +834,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>tcp_server_config_t::accept_timeout_sec</b>,
     <b>tcp_client_context_t::addr</b>, <b>tcp_client_context_t::addr_len</b>,
-    <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+    <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
     <b>atomic_load_bool()</b>, <b>tcp_server_config_t::client_handler</b>,
     <b>tcp_client_context_t::client_socket</b>, <b>tcp_server::config</b>,
     <b>EINTR</b>, <b>ERROR_INVALID_PARAM</b>, <b>format_ip_address()</b>,
@@ -926,7 +926,7 @@
 566     // This is a hack to allow reusing tcp_server_spawn_thread for WebRTC
 567     // In the future, consider a unified thread management system
 568     asciichat_thread_t temp_thread;
-569     asciichat_error_t result = asciichat_thread_create(&amp;temp_thread, &quot;tcp_worker&quot;, thread_func, thread_arg);
+569     asciichat_error_t result = acthread_create(&amp;temp_thread, &quot;tcp_worker&quot;, thread_func, thread_arg);
 570     if (result != ASCIICHAT_OK) {
 571       return result;
 572     }
@@ -964,7 +964,7 @@
 604 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
     <b>tcp_server::clients</b>, <b>tcp_server::clients_rwlock</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
     <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>, <b>rwlock_rdlock</b>,

@@ -415,7 +415,7 @@ static void setup(fixture_t *f, const char *transport, bool slow) {
     f->context = lws_create_context(&info);
     CHECK(f->context);
     atomic_store_bool(&f->running, true);
-    CHECK(asciichat_thread_create(&f->service_thread, "websocket_receiver", websocket_receiver_loop, f) ==
+    CHECK(acthread_create(&f->service_thread, "websocket_receiver", websocket_receiver_loop, f) ==
           ASCIICHAT_OK);
     f->proxy_target = address;
     struct sockaddr_in proxy_address;
@@ -424,7 +424,7 @@ static void setup(fixture_t *f, const char *transport, bool slow) {
     CHECK(socket_setsockopt(f->proxy_listener, SOL_SOCKET, SO_RCVBUF, &receive_size, sizeof(receive_size)) == 0);
     CHECK(socket_listen(f->proxy_listener, 1) == 0);
     atomic_store_bool(&f->proxy_running, true);
-    CHECK(asciichat_thread_create(&f->proxy_thread, "tcp_proxy", tcp_proxy_loop, f) == ASCIICHAT_OK);
+    CHECK(acthread_create(&f->proxy_thread, "tcp_proxy", tcp_proxy_loop, f) == ASCIICHAT_OK);
     char url[128];
     safe_snprintf(url, sizeof(url), "ws://127.0.0.1:%u", NET_TO_HOST_U16(proxy_address.sin_port));
     f->sender = acip_websocket_client_transport_create("backpressure", url, NULL);
@@ -439,7 +439,7 @@ static void setup(fixture_t *f, const char *transport, bool slow) {
     f->relay = bound_socket(SOCK_DGRAM, &address);
     socket_set_nonblocking(f->relay, true);
     atomic_store_bool(&f->running, true);
-    CHECK(asciichat_thread_create(&f->relay_thread, "test_udp_relay", relay_loop, f) == ASCIICHAT_OK);
+    CHECK(acthread_create(&f->relay_thread, "test_udp_relay", relay_loop, f) == ASCIICHAT_OK);
     for (int i = 0; i < 2; ++i) {
       endpoint_t *e = &f->endpoints[i];
       e->fixture = f;
@@ -479,10 +479,10 @@ static void teardown(fixture_t *f, const char *transport) {
   acip_transport_destroy(f->sender);
   if (f->context) {
     atomic_store_bool(&f->proxy_running, false);
-    asciichat_thread_join(&f->proxy_thread, NULL);
+    thread_join(&f->proxy_thread, NULL);
     atomic_store_bool(&f->running, false);
     lws_cancel_service(f->context);
-    asciichat_thread_join(&f->service_thread, NULL);
+    thread_join(&f->service_thread, NULL);
     lws_context_destroy(f->context);
   }
   if (f->receiver != INVALID_SOCKET_VALUE)
@@ -493,7 +493,7 @@ static void teardown(fixture_t *f, const char *transport) {
     for (int i = 0; i < 2; ++i)
       webrtc_peer_connection_destroy(f->endpoints[i].pc);
     atomic_store_bool(&f->running, false);
-    asciichat_thread_join(&f->relay_thread, NULL);
+    thread_join(&f->relay_thread, NULL);
     socket_close(f->relay);
   }
   packet_decoder_reset(&f->decoder);

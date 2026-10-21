@@ -41,12 +41,12 @@
  * This function wraps user thread functions to ensure proper cleanup
  * (like mutex stack cleanup) happens before the thread terminates.
  *
- * @param arg Pointer to asciichat_thread_wrapper_t allocated by asciichat_thread_create
+ * @param arg Pointer to asciichat_thread_wrapper_t allocated by acthread_create
  * @return Return value from user thread function
  *
  * @internal
  */
-void *asciichat_thread_wrapper_impl(void *arg) {
+void *thread_wrapper_impl(void *arg) {
   asciichat_thread_wrapper_t *wrapper = (asciichat_thread_wrapper_t *)arg;
   if (!wrapper) {
     log_debug("[THREAD] Wrapper is NULL, exiting immediately");
@@ -86,7 +86,7 @@ void *asciichat_thread_wrapper_impl(void *arg) {
  * @param arg Argument to pass to thread function
  * @return 0 on success, error code on failure
  */
-int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *(*func)(void *), void *arg) {
+int acthread_create(asciichat_thread_t *thread, const char *name, void *(*func)(void *), void *arg) {
   // Allocate wrapper structure to hold user's function and argument
   asciichat_thread_wrapper_t *wrapper = SAFE_MALLOC(sizeof(asciichat_thread_wrapper_t), asciichat_thread_wrapper_t *);
   if (!wrapper) {
@@ -97,7 +97,7 @@ int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *
   wrapper->user_arg = arg;
 
   // Create thread with wrapper function, passing wrapper as argument
-  int err = pthread_create(thread, NULL, asciichat_thread_wrapper_impl, (void *)wrapper);
+  int err = pthread_create(thread, NULL, thread_wrapper_impl, (void *)wrapper);
   if (err == 0 && name && thread) {
     NAMED_REGISTER_THREAD(*thread, name, NULL);
   } else if (err != 0) {
@@ -114,14 +114,14 @@ int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *
  * @param retval Pointer to store thread return value (can be NULL)
  * @return 0 on success, error code on failure
  */
-int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
+int thread_join(asciichat_thread_t *thread, void **retval) {
   int result = pthread_join(*thread, retval);
   if (result == 0) {
     // Unregister thread from debug naming registry before clearing handle
     NAMED_UNREGISTER_THREAD(*thread);
 
     // Clear the handle after successful join to match Windows behavior
-    // This allows asciichat_thread_is_initialized() to correctly return false
+    // This allows thread_is_initialized() to correctly return false
     memset(thread, 0, sizeof(asciichat_thread_t));
   }
   return result;
@@ -134,7 +134,7 @@ int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
  * @param timeout_ms Timeout in milliseconds
  * @return 0 on success, -2 on timeout, -1 on error
  */
-int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uint64_t timeout_ns) {
+int thread_join_timeout(asciichat_thread_t *thread, void **retval, uint64_t timeout_ns) {
   (void)timeout_ns; // Unused on macOS - suppress warning
 // POSIX doesn't have pthread_timedjoin_np on all systems
 // Use pthread_tryjoin_np with polling as fallback
@@ -211,7 +211,7 @@ int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uin
  * Automatically cleans up thread-local error context before exiting.
  * This prevents memory leaks from error messages allocated in thread-local storage.
  */
-void asciichat_thread_exit(void *retval) {
+void thread_exit(void *retval) {
   // Clean up thread-local error context to prevent leaks
   errno_clear();
 
@@ -223,13 +223,13 @@ void asciichat_thread_exit(void *retval) {
  * @param thread Pointer to thread to detach
  * @return 0 on success, error code on failure
  */
-int asciichat_thread_detach(asciichat_thread_t *thread) {
-  if (!thread || !asciichat_thread_is_initialized(thread)) {
+int thread_detach(asciichat_thread_t *thread) {
+  if (!thread || !thread_is_initialized(thread)) {
     return SET_ERRNO(ERROR_THREAD, "Invalid thread handle for detach operation");
   }
   int result = pthread_detach(*thread);
   if (result == 0) {
-    asciichat_thread_init(thread);
+    thread_init(thread);
   }
   return result;
 }
@@ -238,7 +238,7 @@ int asciichat_thread_detach(asciichat_thread_t *thread) {
  * @brief Get the current thread's ID
  * @return Thread ID structure for current thread
  */
-thread_id_t asciichat_thread_self(void) {
+thread_id_t thread_self(void) {
   return pthread_self();
 }
 
@@ -248,7 +248,7 @@ thread_id_t asciichat_thread_self(void) {
  * @param t2 Second thread ID
  * @return Non-zero if equal, 0 if different
  */
-int asciichat_thread_equal(thread_id_t t1, thread_id_t t2) {
+int thread_equal(thread_id_t t1, thread_id_t t2) {
   return pthread_equal(t1, t2);
 }
 
@@ -256,18 +256,18 @@ int asciichat_thread_equal(thread_id_t t1, thread_id_t t2) {
  * @brief Get current thread ID as a 64-bit integer
  * @return Current thread ID as uint64_t
  */
-uint64_t asciichat_thread_current_id(void) {
+uint64_t thread_current_id(void) {
   return (uint64_t)pthread_self();
 }
 
-bool asciichat_thread_is_initialized(asciichat_thread_t *thread) {
+bool thread_is_initialized(asciichat_thread_t *thread) {
   if (!thread)
     return false;
   // On POSIX, check if thread handle is non-zero
   return (*thread != 0);
 }
 
-void asciichat_thread_init(asciichat_thread_t *thread) {
+void thread_init(asciichat_thread_t *thread) {
   if (thread) {
     memset(thread, 0, sizeof(asciichat_thread_t)); // On POSIX, zero-init the pthread_t
   }
@@ -322,7 +322,7 @@ int ascii_tls_set(tls_key_t key, void *value) {
  * Uses SCHED_FIFO with priority 80 for Linux/POSIX systems.
  * Requires CAP_SYS_NICE capability or appropriate rtprio resource limit.
  */
-asciichat_error_t asciichat_thread_set_realtime_priority(void) {
+asciichat_error_t thread_set_realtime_priority(void) {
 #ifdef __APPLE__
   // macOS: Use thread_policy_set for real-time scheduling
   thread_time_constraint_policy_data_t policy;
@@ -353,7 +353,7 @@ asciichat_error_t asciichat_thread_set_realtime_priority(void) {
 #endif
 }
 
-uintptr_t asciichat_thread_to_key(asciichat_thread_t thread) {
+uintptr_t thread_to_key(asciichat_thread_t thread) {
   return (uintptr_t)thread;
 }
 

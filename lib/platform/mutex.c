@@ -30,8 +30,8 @@ void mutex_on_lock(mutex_t *mutex) {
   if (!mutex)
     return;
   mutex->last_lock_time_ns = time_get_ns();
-  asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
-  mutex->currently_held_by_key = asciichat_thread_to_key(current_thread);
+  asciichat_thread_t current_thread = (asciichat_thread_t)thread_current_id();
+  mutex->currently_held_by_key = thread_to_key(current_thread);
   mutex->lock_count++;
 }
 
@@ -69,8 +69,8 @@ void mutex_on_trylock(mutex_t *mutex, bool success) {
   if (success) {
     mutex->trylock_success_count++;
     mutex->last_lock_time_ns = time_get_ns();
-    asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
-    mutex->currently_held_by_key = asciichat_thread_to_key(current_thread);
+    asciichat_thread_t current_thread = (asciichat_thread_t)thread_current_id();
+    mutex->currently_held_by_key = thread_to_key(current_thread);
   }
 }
 

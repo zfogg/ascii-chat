@@ -216,7 +216,7 @@ static void on_peer_security_ready(acip_transport_t *transport, void *user_data)
 asciichat_error_t webrtc_peer_manager_dispatch_ready(webrtc_peer_manager_t *manager) {
   if (!manager)
     return ASCIICHAT_OK;
-  if (!asciichat_thread_equal(manager->owner_thread, asciichat_thread_self()))
+  if (!thread_equal(manager->owner_thread, thread_self()))
     return SET_ERRNO(ERROR_INVALID_STATE, "Ready transport dispatch requires the manager owner thread");
   if (!manager->config.on_transport_ready)
     return ASCIICHAT_OK;
@@ -526,7 +526,7 @@ asciichat_error_t webrtc_peer_manager_create(const webrtc_peer_manager_config_t 
   memcpy(&manager->config, config, sizeof(*config));
   memcpy(&manager->signaling, signaling_callbacks, sizeof(*signaling_callbacks));
   manager->role = config->role;
-  manager->owner_thread = asciichat_thread_self();
+  manager->owner_thread = thread_self();
   manager->peers = NULL;
   manager->pending_ice = NULL;
   manager->pending_ice_count = 0;

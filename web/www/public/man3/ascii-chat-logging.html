@@ -2715,12 +2715,12 @@
 793   while (!atomic_cas_bool(&amp;g_log.terminal_locked, &amp;expected, true)) {
 794     // Retry if CAS failed
 795   }
-796   atomic_store_u64(&amp;g_log.terminal_owner_thread, (uint64_t)asciichat_thread_self());
+796   atomic_store_u64(&amp;g_log.terminal_owner_thread, (uint64_t)thread_self());
 797   return expected;
 798 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_self</b>, <b>atomic_cas_bool()</b>,
+<p class="Pp">References <b>thread_self</b>, <b>atomic_cas_bool()</b>,
     <b>atomic_load_bool()</b>, and <b>atomic_store_u64()</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
     <b>client_main()</b>, <b>prompt_password()</b>,
@@ -3518,7 +3518,7 @@
 1271   }
 1272   if (atomic_load_u64(&amp;g_log.terminal_locked)) {
 1273     uint64_t owner = atomic_load_u64(&amp;g_log.terminal_owner_thread);
-1274     if (owner != (uint64_t)asciichat_thread_self()) {
+1274     if (owner != (uint64_t)thread_self()) {
 1275       return;
 1276     }
 1277   }
@@ -3549,7 +3549,7 @@
 1302 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>, <b>asciichat_thread_self</b>,
+<p class="Pp">References <b>args</b>, <b>thread_self</b>,
     <b>atomic_load_int()</b>, <b>atomic_load_u64()</b>,
     <b>colorize_log_message()</b>, <b>get_current_time_formatted()</b>,
     <b>lifecycle_is_initialized()</b>, <b>LOG_INFO</b>, <b>log_json_write()</b>,
@@ -4453,7 +4453,7 @@ int len = log_template_apply(fmt, output, sizeof(output),
 580 
 581     case LOG_FORMAT_TNAME: {
 582       asciichat_thread_t thread = (asciichat_thread_t)tid;
-583       uintptr_t key = asciichat_thread_to_key(thread);
+583       uintptr_t key = thread_to_key(thread);
 584       const char *tname = named_get(key);
 585       if (tname) {
 586         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, tname);
@@ -4618,7 +4618,7 @@ int len = log_template_apply(fmt, output, sizeof(output),
 745 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_to_key()</b>,
+<p class="Pp">References <b>thread_to_key()</b>,
     <b>colored_string()</b>, <b>colorize_log_message()</b>,
     <b>extract_project_relative_path()</b>, <b>get_level_string_padded()</b>,
     <b>log_format_spec_t::literal</b>, <b>log_format_spec_t::literal_len</b>,

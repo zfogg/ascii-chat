@@ -371,7 +371,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   if (g_upnp_ctx || g_ws_upnp_ctx) {
     atomic_store_bool(&g_upnp_stop, false);
     atomic_store_bool(&g_upnp_ready, false);
-    if (asciichat_thread_create(&g_upnp_thread, "upnp_renewal", upnp_renewal_thread, NULL) == 0) {
+    if (acthread_create(&g_upnp_thread, "upnp_renewal", upnp_renewal_thread, NULL) == 0) {
       g_upnp_thread_started = true;
     } else {
       log_warn("NAT: could not start lease renewal; removing the temporary mapping");
@@ -394,7 +394,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
       g_status_fn = config->status_fn;
       g_status_user_data = config->status_user_data;
 
-      if (asciichat_thread_create(&g_status_screen_thread, "status_screen", status_screen_thread_func, NULL) == 0) {
+      if (acthread_create(&g_status_screen_thread, "status_screen", status_screen_thread_func, NULL) == 0) {
         g_status_screen_thread_started = true;
         log_info("Status screen thread started");
       } else {
@@ -421,7 +421,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
 cleanup:
   if (g_upnp_thread_started) {
     atomic_store_bool(&g_upnp_stop, true);
-    asciichat_thread_join(&g_upnp_thread, NULL);
+    thread_join(&g_upnp_thread, NULL);
     g_upnp_thread_started = false;
   }
 
@@ -436,7 +436,7 @@ cleanup:
   /* 11. Stop status screen */
   if (g_status_screen_thread_started) {
     atomic_store_bool(&g_status_should_exit, true);
-    int join_result = asciichat_thread_join_timeout(&g_status_screen_thread, NULL, 2000 * NS_PER_MS_INT);
+    int join_result = thread_join_timeout(&g_status_screen_thread, NULL, 2000 * NS_PER_MS_INT);
     if (join_result != 0) {
       log_warn("Status screen thread did not exit within 2s");
     }

@@ -6403,7 +6403,7 @@ fps_counter_destroy(fps);</pre>
 857 
 858   // Spawn accept loop thread
 859   host-&gt;accept_thread_running = true;
-860   if (asciichat_thread_create(&amp;host-&gt;accept_thread, &quot;accept&quot;, accept_loop_thread, host) != 0) {
+860   if (acthread_create(&amp;host-&gt;accept_thread, &quot;accept&quot;, accept_loop_thread, host) != 0) {
 861     log_error(&quot;Failed to spawn accept loop thread&quot;);
 862     host-&gt;accept_thread_running = false;
 863     if (host-&gt;callbacks.on_error) {
@@ -6417,11 +6417,11 @@ fps_counter_destroy(fps);</pre>
 871 
 872   // Spawn receive loop thread
 873   host-&gt;receive_thread_running = true;
-874   if (asciichat_thread_create(&amp;host-&gt;receive_thread, &quot;host_recv&quot;, receive_loop_thread, host) != 0) {
+874   if (acthread_create(&amp;host-&gt;receive_thread, &quot;host_recv&quot;, receive_loop_thread, host) != 0) {
 875     log_error(&quot;Failed to spawn receive loop thread&quot;);
 876     host-&gt;receive_thread_running = false;
 877     host-&gt;accept_thread_running = false;
-878     asciichat_thread_join(&amp;host-&gt;accept_thread, NULL);
+878     thread_join(&amp;host-&gt;accept_thread, NULL);
 879     if (host-&gt;callbacks.on_error) {
 880       host-&gt;callbacks.on_error(host, ERROR_THREAD, &quot;Failed to spawn receive loop thread&quot;, host-&gt;user_data);
 881     }
@@ -6439,7 +6439,7 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host::accept_thread</b>,
     <b>session_host::accept_thread_running</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_create</b>, <b>asciichat_thread_join</b>,
+    <b>acthread_create</b>, <b>thread_join</b>,
     <b>session_host::callbacks</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>ERROR_NETWORK_BIND</b>, <b>ERROR_THREAD</b>, <b>GET_ERRNO</b>,
     <b>session_host::initialized</b>, <b>INVALID_SOCKET_VALUE</b>,
@@ -6518,7 +6518,7 @@ fps_counter_destroy(fps);</pre>
 1409 
 1410   // Spawn render thread
 1411   host-&gt;render_thread_running = true;
-1412   if (asciichat_thread_create(&amp;host-&gt;render_thread, &quot;render&quot;, host_render_thread, host) != 0) {
+1412   if (acthread_create(&amp;host-&gt;render_thread, &quot;render&quot;, host_render_thread, host) != 0) {
 1413     log_error(&quot;Failed to spawn render thread&quot;);
 1414     host-&gt;render_thread_running = false;
 1415     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn render thread&quot;);
@@ -6529,7 +6529,7 @@ fps_counter_destroy(fps);</pre>
 1420 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
     <b>session_host::audio_ctx</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>ERROR_INVALID_STATE</b>, <b>ERROR_THREAD</b>,
     <b>session_host::initialized</b>, <b>log_error</b>, <b>log_info</b>,
@@ -6559,21 +6559,21 @@ fps_counter_destroy(fps);</pre>
 898   // Stop render thread if running
 899   if (host-&gt;render_thread_running) {
 900     host-&gt;render_thread_running = false;
-901     asciichat_thread_join(&amp;host-&gt;render_thread, NULL);
+901     thread_join(&amp;host-&gt;render_thread, NULL);
 902     log_info(&quot;Render thread joined&quot;);
 903   }
 904 
 905   // Stop receive loop thread (reads from client sockets)
 906   if (host-&gt;receive_thread_running) {
 907     host-&gt;receive_thread_running = false;
-908     asciichat_thread_join(&amp;host-&gt;receive_thread, NULL);
+908     thread_join(&amp;host-&gt;receive_thread, NULL);
 909     log_info(&quot;Receive loop thread joined&quot;);
 910   }
 911 
 912   // Stop accept loop thread (before closing listen socket)
 913   if (host-&gt;accept_thread_running) {
 914     host-&gt;accept_thread_running = false;
-915     asciichat_thread_join(&amp;host-&gt;accept_thread, NULL);
+915     thread_join(&amp;host-&gt;accept_thread, NULL);
 916     log_info(&quot;Accept loop thread joined&quot;);
 917   }
 918 
@@ -6614,7 +6614,7 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host::accept_thread</b>,
     <b>session_host::accept_thread_running</b>,
-    <b>session_host_client_t::active</b>, <b>asciichat_thread_join</b>,
+    <b>session_host_client_t::active</b>, <b>thread_join</b>,
     <b>session_host::callbacks</b>, <b>session_host::client_count</b>,
     <b>session_host_client_t::client_id</b>, <b>session_host::clients</b>,
     <b>session_host::clients_mutex</b>, <b>session_host::initialized</b>,
@@ -6653,7 +6653,7 @@ fps_counter_destroy(fps);</pre>
 1432   host-&gt;render_thread_running = false;
 1433 
 1434   // Wait for thread to complete
-1435   asciichat_thread_join(&amp;host-&gt;render_thread, NULL);
+1435   thread_join(&amp;host-&gt;render_thread, NULL);
 1436 
 1437   // Clean up audio resources
 1438   if (host-&gt;audio_ctx) {
@@ -6673,7 +6673,7 @@ fps_counter_destroy(fps);</pre>
 1452 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join</b>,
+<p class="Pp">References <b>thread_join</b>,
     <b>session_host::audio_ctx</b>, <b>session_host::initialized</b>,
     <b>log_info</b>, <b>opus_codec_destroy()</b>,
     <b>session_host::opus_decoder</b>, <b>session_host::opus_encoder</b>,
@@ -7532,7 +7532,7 @@ fps_counter_destroy(fps);</pre>
 689 
 690   // Spawn audio capture thread
 691   p-&gt;audio_capture_running = true;
-692   if (asciichat_thread_create(&amp;p-&gt;audio_capture_thread, &quot;audio_capture&quot;, participant_audio_capture_thread, p) != 0) {
+692   if (acthread_create(&amp;p-&gt;audio_capture_thread, &quot;audio_capture&quot;, participant_audio_capture_thread, p) != 0) {
 693     log_error(&quot;Failed to spawn audio capture thread&quot;);
 694     p-&gt;audio_capture_running = false;
 695     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn audio capture thread&quot;);
@@ -7543,7 +7543,7 @@ fps_counter_destroy(fps);</pre>
 700 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
     <b>session_participant::audio_capture</b>,
     <b>session_participant::audio_capture_running</b>,
     <b>session_participant::audio_capture_thread</b>,
@@ -7660,7 +7660,7 @@ fps_counter_destroy(fps);</pre>
 619 
 620   // Spawn video capture thread (media source is ready in ctx)
 621   p-&gt;video_capture_running = true;
-622   if (asciichat_thread_create(&amp;p-&gt;video_capture_thread, &quot;video_capture&quot;, participant_video_capture_thread, p) != 0) {
+622   if (acthread_create(&amp;p-&gt;video_capture_thread, &quot;video_capture&quot;, participant_video_capture_thread, p) != 0) {
 623     log_error(&quot;Failed to spawn video capture thread&quot;);
 624     p-&gt;video_capture_running = false;
 625     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn video capture thread&quot;);
@@ -7671,7 +7671,7 @@ fps_counter_destroy(fps);</pre>
 630 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
     <b>session_participant::connected</b>,
     <b>session_participant::enable_video</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>ERROR_INVALID_STATE</b>, <b>ERROR_THREAD</b>,
@@ -7734,7 +7734,7 @@ fps_counter_destroy(fps);</pre>
 712   p-&gt;audio_capture_running = false;
 713 
 714   // Wait for thread to complete
-715   asciichat_thread_join(&amp;p-&gt;audio_capture_thread, NULL);
+715   thread_join(&amp;p-&gt;audio_capture_thread, NULL);
 716 
 717   // Stop audio streams
 718   if (p-&gt;audio_capture) {
@@ -7745,7 +7745,7 @@ fps_counter_destroy(fps);</pre>
 723 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join</b>,
+<p class="Pp">References <b>thread_join</b>,
     <b>session_participant::audio_capture</b>,
     <b>session_participant::audio_capture_running</b>,
     <b>session_participant::audio_capture_thread</b>,
@@ -7806,13 +7806,13 @@ fps_counter_destroy(fps);</pre>
 642   p-&gt;video_capture_running = false;
 643 
 644   // Wait for thread to complete
-645   asciichat_thread_join(&amp;p-&gt;video_capture_thread, NULL);
+645   thread_join(&amp;p-&gt;video_capture_thread, NULL);
 646 
 647   log_info(&quot;Video capture stopped&quot;);
 648 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join</b>,
+<p class="Pp">References <b>thread_join</b>,
     <b>session_participant::initialized</b>, <b>log_info</b>,
     <b>session_participant::video_capture_running</b>, and
     <b>session_participant::video_capture_thread</b>.</p>
@@ -9028,7 +9028,7 @@ int main(void) {
 679     return 0;
 680   }
 681 
-682   int err = asciichat_thread_create(&amp;g_splash_state.anim_thread, &quot;splash_anim&quot;, splash_animation_thread, NULL);
+682   int err = acthread_create(&amp;g_splash_state.anim_thread, &quot;splash_anim&quot;, splash_animation_thread, NULL);
 683   if (err != ASCIICHAT_OK) {
 684     log_warn(&quot;Failed to create splash animation thread: error=%d&quot;, err);
 685     atomic_store_bool(&amp;g_splash_state.thread_created, false);
@@ -9039,7 +9039,7 @@ int main(void) {
 690 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
     <b>atomic_cas_bool()</b>, <b>atomic_store_bool()</b>, <b>log_warn</b>,
     <b>platform_isatty()</b>, <b>splash_log_clear()</b>,
     <b>splash_log_init()</b>, <b>splash_should_display()</b>,
@@ -9302,11 +9302,11 @@ int main(void) {
 749       atomic_store_bool(&amp;g_splash_state.should_stop, true);
 750       // During shutdown, use a short timeout (100ms)
 751       uint64_t timeout_ns = 100LL * NS_PER_MS_INT;
-752       (void)asciichat_thread_join_timeout(&amp;g_splash_state.anim_thread, NULL, timeout_ns);
+752       (void)thread_join_timeout(&amp;g_splash_state.anim_thread, NULL, timeout_ns);
 753     } else {
 754       // Normal operation: wait indefinitely for the animation thread to finish
 755       // This ensures splash animation is 100% done before ASCII art rendering starts
-756       asciichat_error_t err = asciichat_thread_join(&amp;g_splash_state.anim_thread, NULL);
+756       asciichat_error_t err = thread_join(&amp;g_splash_state.anim_thread, NULL);
 757       if (err == ASCIICHAT_OK) {
 758         log_dev(&quot;[SPLASH_WAIT] Animation thread exited cleanly&quot;);
 759       } else {
@@ -9326,8 +9326,8 @@ int main(void) {
 773 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_join</b>,
-    <b>asciichat_thread_join_timeout()</b>, <b>atomic_load_bool()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>thread_join</b>,
+    <b>thread_join_timeout()</b>, <b>atomic_load_bool()</b>,
     <b>atomic_store_bool()</b>, <b>log_dev</b>, <b>log_warn</b>,
     <b>NS_PER_MS_INT</b>, <b>shutdown_is_requested()</b>,
     <b>terminal_clear_screen()</b>, <b>terminal_cursor_home()</b>, and
@@ -9628,13 +9628,13 @@ int main(void) {
     <b>update_banner_wait_for_check()</b> later to join.</p>
 <p class="Pp">Definition at line <b>351</b> of file <b>update_banner.c</b>.</p>
 <pre>351                                      {
-352   if (asciichat_thread_create(&amp;g_update_thread, &quot;update_check&quot;, update_check_thread_func, NULL) == 0) {
+352   if (acthread_create(&amp;g_update_thread, &quot;update_check&quot;, update_check_thread_func, NULL) == 0) {
 353     g_update_thread_started = true;
 354   }
 355 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create</b>.</p>
+<p class="Pp">References <b>acthread_create</b>.</p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">
@@ -9650,19 +9650,19 @@ int main(void) {
 358   if (!g_update_thread_started) {
 359     return;
 360   }
-361   int ret = asciichat_thread_join_timeout(&amp;g_update_thread, NULL, 5LL * NS_PER_SEC_INT);
+361   int ret = thread_join_timeout(&amp;g_update_thread, NULL, 5LL * NS_PER_SEC_INT);
 362   if (ret != 0) {
 363     // Timeout &#x2014; thread is still alive. Do a blocking join to avoid orphaning it.
 364     // The thread has bounded runtime (DNS + HTTP both have timeouts) so this won't hang.
 365     log_warn(&quot;Update check thread did not finish within 5s, waiting for completion&quot;);
-366     asciichat_thread_join(&amp;g_update_thread, NULL);
+366     thread_join(&amp;g_update_thread, NULL);
 367   }
 368   g_update_thread_started = false;
 369 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join</b>,
-    <b>asciichat_thread_join_timeout()</b>, <b>log_warn</b>, and
+<p class="Pp">References <b>thread_join</b>,
+    <b>thread_join_timeout()</b>, <b>log_warn</b>, and
     <b>NS_PER_SEC_INT</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
