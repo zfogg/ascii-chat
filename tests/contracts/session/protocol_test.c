@@ -22,6 +22,14 @@ static asciichat_error_t frame(const ascii_frame_packet_t *header, const char *t
   return ASCIICHAT_OK;
 }
 
+static asciichat_error_t redirected_frame(const ascii_frame_packet_t *header, const char *text, void *context) {
+  cr_assert_eq(header->width, 110);
+  cr_assert_eq(header->height, 70);
+  cr_assert_eq(strlen(text), 70 * 111);
+  ((sink_t *)context)->frames++;
+  return ASCIICHAT_OK;
+}
+
 static asciichat_error_t samples(const float *data, size_t count, void *context) {
   sink_t *sink = context;
   if (sink->fail_audio)
@@ -426,6 +434,29 @@ void test_session_protocol(void) {
   cr_assert_eq(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + 4),
                ASCIICHAT_OK);
   cr_assert_eq(sinks[0].frames, 2);
+  // A redirected snapshot may exceed the controller's synthetic80x24 fallback.
+  // Effective output dimensions still bound it; there is no physical viewport.
+  cr_assert_eq(options_set_int("width", 110), ASCIICHAT_OK);
+  cr_assert_eq(options_set_int("height", 70), ASCIICHAT_OK);
+  const size_t large_length = 70 * 111;
+  uint8_t *large = SAFE_MALLOC(sizeof(header) + large_length, uint8_t *);
+  for (size_t row = 0; row < 70; ++row) {
+    memset(large + sizeof(header) + row * 111, ' ', 110);
+    large[sizeof(header) + row * 111 + 110] = '\n';
+  }
+  ascii_frame_packet_t large_header = {.width = HOST_TO_NET_U32(110),
+                                       .height = HOST_TO_NET_U32(70),
+                                       .original_size = HOST_TO_NET_U32(large_length),
+                                       .checksum =
+                                           HOST_TO_NET_U32(asciichat_crc32(large + sizeof(header), large_length))};
+  memcpy(large, &large_header, sizeof(header));
+  protocols[0].media.on_frame = redirected_frame;
+  cr_assert_eq(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, large, sizeof(header) + large_length),
+               ASCIICHAT_OK);
+  cr_assert_eq(sinks[0].frames, 3);
+  cr_assert_eq(protocols[0].frames_skipped_viewport, 1);
+  SAFE_FREE(large);
+  protocols[0].media.on_frame = frame;
   protocols[0].media.terminal_output = false;
   options_state_destroy();
   payload[sizeof(header)] ^= 1;

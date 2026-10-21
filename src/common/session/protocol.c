@@ -78,7 +78,10 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
     // A valid old frame may arrive after a resize/settings update. Skip it
     // without disconnecting the transport or disturbing audio and recovery.
     if (protocol->media.terminal_output) {
-      terminal_size_t viewport = ui_controller_size();
+      // Redirected snapshots have no physical viewport; the UI fallback is
+      // not a bound on their explicitly configured or default output size.
+      terminal_size_t viewport =
+          (ui_controller_is_presenting() || terminal_is_stdout_tty()) ? ui_controller_size() : (terminal_size_t){0};
       uint32_t width = terminal_get_effective_width(), height = terminal_get_effective_height();
       if ((viewport.cols > 0 && header->width > (uint32_t)viewport.cols) ||
           (viewport.rows > 0 && header->height > (uint32_t)viewport.rows) || header->width > width ||
