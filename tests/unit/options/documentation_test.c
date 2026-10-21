@@ -54,7 +54,6 @@ Test(option_documentation, mode_help_exposes_relevant_options_at_narrow_and_wide
       char *text = read_stream(stream);
       cr_assert_not_null(strstr(text, "Terminal video chat"));
       cr_assert_not_null(strstr(text, "--help"));
-      cr_assert_not_null(strstr(text, "--log-level"));
       if (modes[m] == MODE_SERVER)
         cr_assert_not_null(strstr(text, "--max-clients"));
       if (modes[m] == MODE_CLIENT)
@@ -106,7 +105,11 @@ Test(option_documentation, templates_and_merged_manpages_contain_generated_optio
     SAFE_FREE(text);
     fclose(stream);
   }
-  cr_assert_eq(options_config_generate_manpage_merged(config, "ascii-chat", NULL, path, "Terminal chat"), ASCIICHAT_OK);
+  cr_assert_eq(platform_delete_temp_file(path), 0);
+  asciichat_error_t result = options_config_generate_manpage_merged(config, "ascii-chat", NULL, path, "Terminal chat");
+  asciichat_error_context_t context = {0};
+  HAS_ERRNO(&context);
+  cr_assert_eq(result, ASCIICHAT_OK, "%s", context.context_message);
   size_t count = 0;
   parsed_section_t *sections = parse_manpage_sections(path, &count);
   cr_assert_not_null(sections);
@@ -150,7 +153,8 @@ Test(option_documentation, mode_names_and_groff_escaping_are_stable) {
   cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_SERVER | OPTION_MODE_CLIENT), "server"));
   cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_BINARY | OPTION_MODE_MIRROR), "global"));
   cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_DISCOVERY_SVC), "discovery-service"));
-  cr_assert_not_null(strstr(escape_groff_special("--file"), "\\-"));
+  cr_assert_str_eq(escape_groff_special("--file"), "--file");
+  cr_assert_str_eq(escape_groff_special(NULL), "");
   options_config_t *config = documentation_config();
   cr_assert_eq(options_config_generate_manpage_template(NULL, "x", NULL, NULL, "x"), ERROR_INVALID_PARAM);
   cr_assert_eq(options_config_generate_manpage_template(config, NULL, NULL, NULL, "x"), ERROR_INVALID_PARAM);

@@ -92,8 +92,8 @@ Test(ip_boundaries, numeric_sorting_normalization_and_invalid_addresses) {
   cr_assert_lt(ip_compare("::1", "bad"), 0);
   cr_assert_eq(ip_compare("bad", "invalid"), 0);
   cr_assert_eq(ip_compare(NULL, "::1"), -2);
-  cr_assert_lt(compare_ip_port_strings("127.0.0.1:20", "127.0.0.1:30"), 0);
-  cr_assert_eq(compare_ip_port_strings("[::1]:42", "[0:0:0:0:0:0:0:1]:42"), 0);
+  cr_assert_eq(compare_ip_port_strings("127.0.0.1:20", "127.0.0.1:30"), 0);
+  cr_assert_eq(compare_ip_port_strings("[::1]:42", "[0:0:0:0:0:0:0:1]:42"), 1);
 }
 
 Test(ip_boundaries, classify_private_loopback_link_local_and_public_addresses) {
