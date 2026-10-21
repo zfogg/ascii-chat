@@ -262,7 +262,8 @@ endfunction()
 # Windows uses PE format (no .comment section)
 # macOS uses Mach-O format (no .comment section)
 # Also ensure no debug info paths are embedded
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
+# Coverage runtimes need embedded counter paths to write their gcda files.
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_ENABLE_COVERAGE)
     # Use centralized executables from FindPrograms.cmake
     set(STRIP_EXECUTABLE "${ASCIICHAT_STRIP_EXECUTABLE}")
     set(OBJCOPY_EXECUTABLE "${ASCIICHAT_OBJCOPY_EXECUTABLE}")
