@@ -488,7 +488,7 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
   session->sdp_length = strlen(sdp_string);
 
   // Parse line by line
-  char line_buffer[512];
+  char line_buffer[sizeof(session->sdp_string)];
   SAFE_STRNCPY(line_buffer, sdp_string, sizeof(line_buffer));
 
   char *saveptr = NULL;
