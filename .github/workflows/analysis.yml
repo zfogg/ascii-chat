@@ -5,6 +5,13 @@ on:
   push:
     branches: [main, master]
     paths:
+      - "include/**"
+      - "deps/**"
+      - "vcpkg-overlay/**"
+      - "vcpkg*.json"
+      - ".gitmodules"
+      - ".github/actions/**"
+      - ".github/workflows/ci-preflight.yml"
       - "**.c"
       - "**.h"
       - "**.cpp"
@@ -17,6 +24,13 @@ on:
   pull_request:
     branches: ["*"]
     paths:
+      - "include/**"
+      - "deps/**"
+      - "vcpkg-overlay/**"
+      - "vcpkg*.json"
+      - ".gitmodules"
+      - ".github/actions/**"
+      - ".github/workflows/ci-preflight.yml"
       - "**.c"
       - "**.h"
       - "**.cpp"
@@ -27,12 +41,20 @@ on:
       - "cmake/**"
       - ".github/workflows/analysis.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   CC: clang
   CXX: clang++
 
 jobs:
+  preflight:
+    uses: ./.github/workflows/ci-preflight.yml
+
   static-analysis:
+    needs: preflight
     runs-on: ubuntu-latest
 
     steps:
@@ -107,28 +129,3 @@ jobs:
           ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
           ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
-
-  format-check:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          fetch-tags: true
-          submodules: true
-
-      - name: Install clang-format
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format
-
-      - name: Check code formatting
-        run: |
-          # Keep the check actionable while the legacy tree is migrated: format
-          # only C/C++ files introduced or modified by this push/PR.
-          git diff --name-only --diff-filter=ACMR HEAD^ HEAD -- \
-            'src/**/*.c' 'src/**/*.h' 'lib/**/*.c' 'lib/**/*.h' \
-            'tests/**/*.c' 'tests/**/*.h' \
-            | xargs --no-run-if-empty clang-format --dry-run -Werror
