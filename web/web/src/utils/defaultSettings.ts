@@ -1,5 +1,9 @@
 import type { BinarySettingsConfig } from "../components";
 
+export const DEFAULT_PALETTE_CHARS = "   ...',;:clodxkO0KXNWM";
+
+export const PALETTE_INPUT_DEBOUNCE_MS = 750;
+
 export const DEFAULT_SETTINGS: BinarySettingsConfig = {
   width: 0,
   height: 0,
@@ -7,7 +11,7 @@ export const DEFAULT_SETTINGS: BinarySettingsConfig = {
   colorMode: "truecolor",
   colorFilter: "none",
   palette: "standard",
-  paletteChars: " =#░░▒▒▓▓██",
+  paletteChars: DEFAULT_PALETTE_CHARS,
   matrixRain: false,
   zalgo: 0,
   animationEnabled: false,

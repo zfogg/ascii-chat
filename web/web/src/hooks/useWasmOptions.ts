@@ -8,6 +8,7 @@ import {
 } from "@ascii-chat/shared/wasm";
 import type { BinarySettingsConfig } from "../components";
 import { mapColorFilterToWasm, mapColorModeToWasm } from "../utils";
+import { DEFAULT_PALETTE_CHARS } from "../utils/defaultSettings";
 
 // Compare UI submissions with prior submissions, so an unrelated UI edit cannot
 // overwrite an engine change that React has not observed yet.
@@ -59,7 +60,7 @@ export function applyMirrorWasmSettings(
     ),
     render_mode: settings.renderMode ?? 0,
     palette_type: palettes[settings.palette],
-    palette_custom: settings.paletteChars || " =#░░▒▒▓▓██",
+    palette_custom: settings.paletteChars || DEFAULT_PALETTE_CHARS,
     matrix_rain: enabled && animation === "matrix",
     waveform: enabled && animation === "waveform",
     fft: enabled && animation === "fft",
