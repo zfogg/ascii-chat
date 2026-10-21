@@ -45,3 +45,4 @@ subprocess.run([
     str(output / "seated.mp4"),
 ], check=True)
 print(f"Source: {url}\nFixture: {output / 'scenarios.mp4'}\nCamera: {output / 'webcam.y4m'}")
+# Temporary CI path-filter smoke test; this branch will not merge.

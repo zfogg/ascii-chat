@@ -331,3 +331,4 @@ jobs:
             build_release/bin/ascii-chat*
             build_release/lib/*
           retention-days: 7
+# Temporary CI scheduling smoke test; this branch will not merge.
