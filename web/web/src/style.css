@@ -36,6 +36,7 @@
 .recording-details {
   display: grid;
   min-width: 0;
+  overflow: hidden;
   line-height: 1rem;
   height: 2rem;
 }

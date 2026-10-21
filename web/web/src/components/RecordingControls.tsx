@@ -14,7 +14,11 @@ export function RecordingControls({
 }) {
   const active = recording.state !== "idle";
   return (
-    <div className="recording-controls text-xs" aria-label="Local recording">
+    <div
+      className="recording-controls text-xs"
+      role="group"
+      aria-label="Local recording"
+    >
       <button
         type="button"
         title="Save the displayed ASCII with enabled microphone, current file/screen audio and received peers. Speaker monitoring is independent. Recordings stay on this device."
