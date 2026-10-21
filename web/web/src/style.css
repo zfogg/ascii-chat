@@ -7,6 +7,36 @@
 @source ".";
 @source "../../packages/shared/src";
 
+/* Recording text and downloads occupy the same slots in every state. Reserve
+   their width before capture starts so the header cannot resize the raster. */
+.recording-controls {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.5rem;
+  width: 27rem;
+  max-width: 100%;
+  flex: none;
+  min-width: 0;
+}
+.recording-button {
+  width: 100%;
+  white-space: nowrap;
+}
+.recording-details {
+  min-width: 0;
+  line-height: 1rem;
+}
+.recording-message {
+  height: 2rem;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.recording-download {
+  height: 1rem;
+  white-space: nowrap;
+}
+
 .session-content-box {
   position: relative;
   display: flex;

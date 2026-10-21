@@ -261,6 +261,38 @@ async function record(
   during?: () => Promise<void>,
   finish?: () => Promise<void>,
 ) {
+  const checkLayout = !during && !finish;
+  if (checkLayout) {
+    await page.waitForTimeout(500);
+    await page.screenshot({
+      path: info.outputPath(`${name}-idle.png`),
+      fullPage: true,
+    });
+    await page.evaluate(() => {
+      const proof = window as unknown as {
+        recordingLayout: number[][];
+        stopRecordingLayout: () => void;
+      };
+      proof.recordingLayout = [];
+      let frame = 0;
+      const measure = () => {
+        const canvas =
+          document.querySelector<HTMLCanvasElement>(".ascii-canvas")!;
+        const box = canvas.getBoundingClientRect();
+        proof.recordingLayout.push([
+          box.x,
+          box.y,
+          box.width,
+          box.height,
+          canvas.width,
+          canvas.height,
+        ]);
+        frame = requestAnimationFrame(measure);
+      };
+      measure();
+      proof.stopRecordingLayout = () => cancelAnimationFrame(frame);
+    });
+  }
   await page.getByRole("button", { name: "Record ASCII", exact: true }).click();
   await expect(
     page.getByText("Recording locally", { exact: false }),
@@ -281,6 +313,25 @@ async function record(
     exact: true,
   });
   await expect(link).toBeVisible();
+  if (checkLayout) {
+    await page.waitForTimeout(400);
+    const geometry = await page.evaluate(() => {
+      const proof = window as unknown as {
+        recordingLayout: number[][];
+        stopRecordingLayout: () => void;
+      };
+      proof.stopRecordingLayout();
+      return proof.recordingLayout;
+    });
+    writeFileSync(
+      info.outputPath(`${name}-layout.json`),
+      JSON.stringify(geometry),
+    );
+    expect(
+      new Set(geometry.map((box) => JSON.stringify(box))).size,
+      "canvas geometry from idle through download",
+    ).toBe(1);
+  }
   const download = page.waitForEvent("download");
   await link.click();
   const saved = await download;
@@ -366,6 +417,24 @@ test("Mirror exports changing ASCII and screen/microphone audio without local mo
   await expect(
     page.getByRole("button", { name: "Record ASCII", exact: true }),
   ).toBeVisible();
+});
+
+test("mobile recording reserves header space through start, stop and download", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await input(page);
+  await page.goto(
+    "/mirror?width=80&height=24&targetFps=15&colorMode=truecolor",
+  );
+  await page.getByRole("button", { name: "Share screen", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Enable microphone", exact: true })
+    .click();
+  await record(page, "mobile-header", info, [440, 880]);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390);
 });
 
 test("Mirror records muted file audio across screen replacement and source restoration", async ({
