@@ -187,7 +187,7 @@ static void *websocket_service_thread(void *arg) {
   int loop_count = 0;
   uint64_t last_service_call = 0; // Force lws_service() on first iteration
 
-  while (ws_data->service_running) {
+  while (!atomic_load_bool(&ws_data->is_destroying)) {
     loop_count++;
 
     // Check if we're destroying FIRST before doing anything else
@@ -1104,26 +1104,9 @@ static void websocket_interrupt(acip_transport_t *transport) {
 }
 
 static asciichat_error_t websocket_close(acip_transport_t *transport) {
-  websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
   websocket_interrupt(transport);
-  // Client contexts are exclusive; server contexts close on their writable callback.
-  // Receive and outbound workers can close concurrently after a peer disconnect.
-  mutex_lock(&ws_data->state_mutex);
-  while (ws_data->service_joining)
-    cond_wait(&ws_data->state_cond, &ws_data->state_mutex);
-  if (ws_data->service_running) {
-    ws_data->service_joining = true;
-    mutex_unlock(&ws_data->state_mutex);
-    asciichat_error_t result = thread_join(&ws_data->service_thread, NULL);
-    mutex_lock(&ws_data->state_mutex);
-    if (result == ASCIICHAT_OK)
-      ws_data->service_running = false;
-    ws_data->service_joining = false;
-    cond_broadcast(&ws_data->state_cond);
-    mutex_unlock(&ws_data->state_mutex);
-    return result;
-  }
-  mutex_unlock(&ws_data->state_mutex);
+  // Close can run concurrently from failed-send and connection-stop paths.
+  // Only destroy_impl owns the service-thread join, after backend users stop.
   return ASCIICHAT_OK;
 }
 
@@ -1243,8 +1226,8 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   // Stop service thread (client-side only)
   if (ws_data->service_running) {
     log_debug("Stopping WebSocket service thread");
-    ws_data->service_running = false;
     thread_join(&ws_data->service_thread, NULL);
+    ws_data->service_running = false;
     log_debug("WebSocket service thread stopped");
   }
 
