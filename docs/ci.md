@@ -1,10 +1,11 @@
 # Continuous integration
 
 Pull requests and pushes run Linux native validation automatically. Build,
-Test Suite, Code Analysis, Security, Markdown Linting and container publication
+Test Suite, Code Analysis, Security and Markdown Linting
 cancel superseded runs for the same workflow and PR or branch. Closing a PR
 cancels its remaining validation runs; deployment and publication workflows are
-excluded from that cleanup.
+excluded from that cleanup. Container publication finishes its active run while
+keeping only the latest pending run.
 
 Native compilation waits for workflow validation, patch whitespace and changed
 C/C++ formatting checks. Browser tests wait for web type/lint and unit checks.
