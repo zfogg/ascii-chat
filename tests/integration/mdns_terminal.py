@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""Real mDNS advertisements, terminal navigation, and same-address reconnect.
+
+Run with a native binary and pyte/pexpect (pywinpty on Windows). --artifacts
+captures terminal cells and raw ANSI externally; Pillow adds PNG captures.
+"""
+import argparse
+import os
+from pathlib import Path
+import re
+import shutil
+import sys
+import tempfile
+import time
+
+try:
+    from terminal_ui import Terminal, free_port
+except ImportError as error:
+    print(f"SKIP: terminal prerequisites unavailable: {error}")
+    raise SystemExit(77)
+from server_lifecycle import Service
+
+
+def capture(term, directory, name):
+    if directory is None:
+        return
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / f"{name}.txt").write_text("\n".join(term.screen.display), encoding="utf-8")
+    (directory / f"{name}.ansi").write_text("".join(term.raw), encoding="utf-8")
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except ImportError:
+        return
+    try:
+        font = ImageFont.truetype(os.environ.get("TERMINAL_CAPTURE_FONT", "DejaVuSansMono.ttf"), 16)
+    except OSError:
+        font = ImageFont.load_default(size=16)
+    image = Image.new("RGB", (term.screen.columns * 10 + 24, term.screen.lines * 21 + 24), "#10151c")
+    draw = ImageDraw.Draw(image)
+    for row, text in enumerate(term.screen.display):
+        for column, character in enumerate(text):
+            draw.text((12 + column * 10, 12 + row * 21), character, font=font, fill="#e1e8ed")
+    image.save(directory / f"{name}.png")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--binary", type=Path, required=True)
+    parser.add_argument("--artifacts", type=Path)
+    args = parser.parse_args()
+    binary = args.binary.resolve()
+    with tempfile.TemporaryDirectory(prefix="ascii-mdns-") as temporary:
+        root = Path(temporary)
+        ports = [free_port(), free_port()]
+        services, terminals = [], []
+
+        def server(index, name):
+            service = Service(binary, root, name, "server", ["0.0.0.0", "--port", str(ports[index]),
+                "--websocket-port", str(free_port()), "--status-screen=false"])
+            services.append(service)
+            service.wait_for("Server accepting connections")
+            service.wait_for("mDNS: Server advertised")
+            return service
+
+        def client(name, destination=None):
+            command = [str(binary), "--no-check-update", "--log-file", str(root / f"{name}.log"),
+                "--log-level", "debug", "client"]
+            if destination:
+                command.append(destination)
+            command += ["--test-pattern", "--audio=false", "--video-codec", "raw", "--fps", "5",
+                        "--splash-screen=true", "--reconnect-attempts", "-1"]
+            term = Terminal(command, rows=24, cols=110)
+            terminals.append(term)
+            return term
+
+        def log_wait(name, message, timeout=20):
+            deadline = time.monotonic() + timeout
+            while time.monotonic() < deadline:
+                path = root / f"{name}.log"
+                text = path.read_text(errors="replace") if path.exists() else ""
+                if message in text:
+                    return text
+                for term in terminals:
+                    term.pump(.02)
+            raise AssertionError(f"Missing {message!r}: {text[-3000:]}")
+
+        try:
+            first = server(0, "first")
+            term = client("picker")
+            term.expect(lambda text: "LAN servers" in text and str(ports[0]) in text, "Automatic LAN picker missing")
+            assert "Using test pattern mode" not in (root / "picker.log").read_text(errors="replace")
+            capture(term, args.artifacts, "initial-server")
+            second = server(1, "second")
+            term.write("r")
+            text = term.expect(lambda text: all(str(port) in text for port in ports), "Refresh omitted new server")
+            term.write("j")
+            term.expect(lambda text: "> [2]" in text, "j did not move selection")
+            capture(term, args.artifacts, "highlighted-selection")
+            term.write("k")
+            term.expect(lambda text: "> [1]" in text, "k did not move selection")
+            term.write("\x1b[B")
+            term.expect(lambda text: "> [2]" in text, "Down arrow did not move selection")
+            term.resize(4, 44)
+            term.expect(lambda text: "> [2]" in text, "Selected row lost on resize")
+            capture(term, args.artifacts, "small-terminal")
+            term.resize(2, 20)
+            term.expect(lambda text: "too small" in text.lower(), "Tiny terminal warning missing")
+            term.write("\r")
+            term.pump(.2)
+            term.resize(24, 110)
+            text = term.expect(lambda text: "> [2]" in text, "Covered Enter selected a server")
+            chosen_line = next(line for line in text.splitlines() if "> [2]" in line)
+            chosen = next(index for index, port in enumerate(ports) if str(port) in chosen_line)
+            term.write("\r")
+            log_wait("picker", "Selected server")
+            selected_service = [first, second][chosen]
+            selected_service.wait_for("announced video stream")
+            selected_service.stop()
+            services.remove(selected_service)
+            log_wait("picker", "Connection failed, retrying")
+            text = term.pump(.5)
+            assert "LAN servers" not in text, text
+            capture(term, args.artifacts, "reconnect-splash")
+            replacement = server(chosen, "replacement")
+            replacement.wait_for("announced video stream")
+            assert (root / "picker.log").read_text(errors="replace").count("Selected server") == 1
+            term.interrupt()
+            term.close()
+            terminals.remove(term)
+            print("PASS automatic discovery, refresh, arrows/j/k, resize/covered input, selection and same-address reconnect")
+
+            cancelled = client("cancelled")
+            cancelled.expect(lambda text: "LAN servers" in text, "Cancellation picker missing")
+            cancelled.write("q")
+            cancelled.expect(lambda text: not cancelled.process.isalive(), "Cancellation did not exit")
+            assert "Using test pattern mode" not in (root / "cancelled.log").read_text(errors="replace")
+            explicit = client("explicit", f"127.0.0.1:{ports[chosen]}")
+            replacement.wait_for("announced video stream")
+            log_wait("explicit", "Using test pattern mode")
+            assert "LAN servers" not in "".join(explicit.raw)
+            explicit.interrupt()
+            print("PASS cancellation precedes media; explicit destination bypasses LAN picker")
+        finally:
+            if args.artifacts:
+                args.artifacts.mkdir(parents=True, exist_ok=True)
+                for path in root.glob("*.log"):
+                    shutil.copyfile(path, args.artifacts / path.name)
+            for term in terminals:
+                term.close()
+            for service in services:
+                service.stop()
+
+
+if __name__ == "__main__":
+    main()

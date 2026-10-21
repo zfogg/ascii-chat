@@ -1098,6 +1098,12 @@ if(BUILD_TESTS)
             $<TARGET_FILE:test-client-like-lifecycle>)
     set_tests_properties(client-like-lifecycle PROPERTIES
         LABELS "integration" TIMEOUT 120)
+    add_test(NAME mdns-terminal
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/mdns_terminal.py
+            --binary $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(mdns-terminal PROPERTIES
+        LABELS "integration;terminal" TIMEOUT 180 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
 endif()
 
 # Exercises the production discovery state machine without external services.

@@ -127,7 +127,8 @@ void asciichat_mdns_destroy(asciichat_mdns_t *mdns);
  * @param service Service to advertise
  * @return ASCIICHAT_OK on success, error code otherwise
  *
- * @note The service structure should remain valid until unadvertised
+ * @note Copies service records; caller storage may be released after return.
+ * One service is owned per context. Re-advertising replaces it after joining its worker.
  */
 asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciichat_mdns_service_t *service);
 
