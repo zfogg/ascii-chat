@@ -228,7 +228,6 @@ const char *get_level_string_padded(log_level_t level) {
   } while (0)
 #endif
 
-
 size_t get_current_time_formatted(char *time_buf) {
   /* Get wall-clock time in nanoseconds */
   uint64_t ts_ns = time_get_realtime_ns();
@@ -1913,6 +1912,15 @@ const char *log_level_color(log_color_t color) {
     return colors[color];
   }
   return colors[LOG_COLOR_RESET]; /* Return reset color if invalid */
+}
+
+const char *log_level_color_for_output(log_color_t color, bool enabled) {
+  if (!enabled)
+    return "";
+  static _Thread_local colorscheme_palette_t palette;
+  terminal_color_mode_t mode = (terminal_color_mode_t)log_get_color_mode();
+  colorscheme_current_palette(&palette, mode == TERM_COLOR_NONE ? TERM_COLOR_16 : mode);
+  return palette.codes[color >= 0 && color <= LOG_COLOR_RESET ? color : LOG_COLOR_RESET];
 }
 
 /* ============================================================================
