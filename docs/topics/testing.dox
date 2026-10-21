@@ -98,7 +98,7 @@
  *
  * Examples you can look at:
  * - `tests/unit/ascii_test.c`: Testing ASCII conversion functions
- * - `tests/standalone/buffer/buffer_test.c`: Testing buffer domain allocation
+ * - `tests/contracts/buffer/buffer_test.c`: Testing buffer domain allocation
  * - `tests/unit/crypto_test.c`: Testing cryptographic operations
  * - `tests/unit/palette_test.c`: Testing palette management
  *
@@ -521,7 +521,7 @@
  * - `tests/unit/ringbuffer_test.c`: FIFO ordering property
  * - `tests/unit/mixer_test.c`: Audio bounds property
  * - `tests/unit/ascii_test.c`: Image size property
- * - `tests/standalone/buffer/buffer_test.c`: Ownership, budgets, alignment, cache reuse, and concurrent queue transfers
+ * - `tests/contracts/buffer/buffer_test.c`: Ownership, budgets, alignment, cache reuse, and concurrent queue transfers
  * - `tests/unit/aspect_ratio_test.c`: Aspect ratio preservation
  *
  * @section testing_logging Test Logging Macros

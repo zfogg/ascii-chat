@@ -1,3 +1,4 @@
+#include <criterion/criterion.h>
 /** Production participant lifecycle with deterministic device/startup failures and real workers. */
 #include "session/participant.h"
 #include "session/capture.h"
@@ -15,13 +16,6 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/buffer.h>
 
-#define CHECK(c)                                                                                                       \
-  do {                                                                                                                 \
-    if (!(c)) {                                                                                                        \
-      log_error("CHECK failed: %s at %d", #c, __LINE__);                                                               \
-      abort();                                                                                                         \
-    }                                                                                                                  \
-  } while (0)
 static int fail_stage, capture_count, audio_count, codec_count, workers;
 static bool fail_join;
 static bool fail_tcp_transport;
@@ -39,7 +33,7 @@ static session_capture_ctx_t *test_capture_create(const session_capture_config_t
   return (session_capture_ctx_t *)SAFE_CALLOC(1, 1, char *);
 }
 static void test_capture_destroy(session_capture_ctx_t *ctx) {
-  CHECK(workers == 0);
+  cr_assert_eq(workers, 0);
   capture_count--;
   SAFE_FREE(ctx);
 }
@@ -69,7 +63,7 @@ static session_audio_ctx_t *test_audio_create(bool host) {
   return (session_audio_ctx_t *)SAFE_CALLOC(1, 1, char *);
 }
 static void test_audio_destroy(session_audio_ctx_t *ctx) {
-  CHECK(workers <= 1); // Video may still be running; audio has already joined.
+  cr_assert(workers <= 1); // Video may still be running; audio has already joined.
   audio_count--;
   SAFE_FREE(ctx);
 }
@@ -93,7 +87,7 @@ static opus_codec_t *test_codec_create(opus_application_t app, int rate, int bit
     return NULL;
   }
   opus_codec_t *codec = opus_codec_create_encoder(app, rate, bitrate);
-  CHECK(codec);
+  cr_assert(codec);
   codec_count++;
   return codec;
 }
@@ -177,9 +171,9 @@ static bool connected(acip_transport_t *transport) {
 }
 static asciichat_error_t test_transport_send(acip_transport_t *transport, const void *data, size_t len) {
   (void)transport;
-  CHECK(data && len);
+  cr_assert(data && len);
   atomic_fetch_add_int(&packets, 1);
-  CHECK(len >= sizeof(packet_header_t));
+  cr_assert(len >= sizeof(packet_header_t));
   const packet_header_t *header = data;
   uint16_t type = NET_TO_HOST_U16(header->type);
   if (type == PACKET_TYPE_IMAGE_FRAME)
@@ -189,7 +183,7 @@ static asciichat_error_t test_transport_send(acip_transport_t *transport, const 
   return ASCIICHAT_OK;
 }
 static void clean(void) {
-  CHECK(!workers && !capture_count && !audio_count && !codec_count);
+  cr_assert(!workers && !capture_count && !audio_count && !codec_count);
 }
 static void destroy_transport_impl(acip_transport_t *transport) {
   (void)transport;
@@ -247,41 +241,42 @@ static void *fixture_run(void *arg) {
   return NULL;
 }
 
-int main(void) {
+Test(participant_media, startup_failures_and_worker_lifecycle, .timeout = 60) {
   log_init(NULL, LOG_WARN, false, false);
   log_set_terminal_output(true);
-  CHECK(platform_setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1") == 0);
-  CHECK(socket_init() == ASCIICHAT_OK);
+  cr_assert_eq(platform_setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1"), 0);
+  cr_assert_eq(socket_init(), ASCIICHAT_OK);
   options_t options = options_t_new();
-  CHECK(options_state_init() == ASCIICHAT_OK);
-  CHECK(options_state_set(&options) == ASCIICHAT_OK);
+  cr_assert_eq(options_state_init(), ASCIICHAT_OK);
+  cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
   frame = image_new(2, 2);
-  CHECK(frame);
+  cr_assert(frame);
   acip_transport_methods_t methods = {.send = test_transport_send, .is_connected = connected};
   acip_transport_t transport = {.methods = &methods};
   session_participant_config_t config = {.enable_video = true, .enable_audio = true};
   // Refusing cleanup on another thread must retain even a workerless owner.
   session_participant_t *retained = session_participant_create(&config);
-  CHECK(session_participant_set_transport(retained, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+  cr_assert_eq(session_participant_set_transport(retained, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
   asciichat_thread_t foreign;
-  CHECK(asciichat_thread_create(&foreign, "foreign_destroy", destroy_from_foreign_thread, retained) == ASCIICHAT_OK);
-  CHECK(asciichat_thread_join(&foreign, NULL) == ASCIICHAT_OK);
-  CHECK(retained->initialized && session_participant_get_transport(retained) == &transport);
-  CHECK(atomic_load_int(&retained->connection.state) == SESSION_CONNECTION_STOPPING);
+  cr_assert_eq(asciichat_thread_create(&foreign, "foreign_destroy", destroy_from_foreign_thread, retained),
+               ASCIICHAT_OK);
+  cr_assert_eq(asciichat_thread_join(&foreign, NULL), ASCIICHAT_OK);
+  cr_assert(retained->initialized && session_participant_get_transport(retained) == &transport);
+  cr_assert_eq(atomic_load_int(&retained->connection.state), SESSION_CONNECTION_STOPPING);
   session_participant_destroy(retained);
   clean();
-  CHECK(session_participant_start_video(NULL) == ERROR_INVALID_PARAM);
+  cr_assert_eq(session_participant_start_video(NULL), ERROR_INVALID_PARAM);
   session_participant_destroy(NULL);
   for (fail_stage = 1; fail_stage <= 6; fail_stage++) {
     session_participant_t *p = session_participant_create(&config);
-    CHECK(p);
-    CHECK(session_participant_start_video(p) == ERROR_INVALID_STATE);
-    CHECK(session_participant_set_transport(p, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
+    cr_assert(p);
+    cr_assert_eq(session_participant_start_video(p), ERROR_INVALID_STATE);
+    cr_assert_eq(session_participant_set_transport(p, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
     asciichat_error_t error = fail_stage <= 2 ? session_participant_start_video(p) : session_participant_start_audio(p);
-    CHECK(error == (fail_stage == 1 || fail_stage == 3 || fail_stage == 5 ? ERROR_MEMORY
-                    : fail_stage == 2 || fail_stage == 6                  ? ERROR_THREAD
-                                                                          : ERROR_INVALID_STATE));
-    CHECK(!session_participant_is_video_active(p) && !session_participant_is_audio_active(p));
+    cr_assert_eq(error, (fail_stage == 1 || fail_stage == 3 || fail_stage == 5 ? ERROR_MEMORY
+                         : fail_stage == 2 || fail_stage == 6                  ? ERROR_THREAD
+                                                                               : ERROR_INVALID_STATE));
+    cr_assert(!session_participant_is_video_active(p) && !session_participant_is_audio_active(p));
     clean();
     session_participant_disconnect(p);
     session_participant_disconnect(p);
@@ -291,25 +286,25 @@ int main(void) {
   fail_stage = 0;
   for (int cycle = 0; cycle < 20; cycle++) {
     session_participant_t *p = session_participant_create(&config);
-    CHECK(session_participant_set_transport(p, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
-    CHECK(session_participant_start_video(p) == ASCIICHAT_OK);
-    CHECK(session_participant_start_video(p) == ASCIICHAT_OK);
-    CHECK(session_participant_start_audio(p) == ASCIICHAT_OK);
-    CHECK(session_participant_start_audio(p) == ASCIICHAT_OK);
-    CHECK(workers == 2 && session_participant_is_video_active(p) && session_participant_is_audio_active(p));
-    CHECK(session_participant_set_transport(p, NULL, ACIP_TRANSPORT_BORROWED) == ERROR_INVALID_STATE);
+    cr_assert_eq(session_participant_set_transport(p, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
+    cr_assert_eq(session_participant_start_video(p), ASCIICHAT_OK);
+    cr_assert_eq(session_participant_start_video(p), ASCIICHAT_OK);
+    cr_assert_eq(session_participant_start_audio(p), ASCIICHAT_OK);
+    cr_assert_eq(session_participant_start_audio(p), ASCIICHAT_OK);
+    cr_assert(workers == 2 && session_participant_is_video_active(p) && session_participant_is_audio_active(p));
+    cr_assert_eq(session_participant_set_transport(p, NULL, ACIP_TRANSPORT_BORROWED), ERROR_INVALID_STATE);
     network_connection_t *unchanged = (network_connection_t *)&transport;
-    CHECK(session_participant_take_connection(p, &unchanged) == ERROR_INVALID_STATE);
-    CHECK(unchanged == (network_connection_t *)&transport);
+    cr_assert_eq(session_participant_take_connection(p, &unchanged), ERROR_INVALID_STATE);
+    cr_assert_eq(unchanged, (network_connection_t *)&transport);
     int before = atomic_load_int(&packets);
     for (int i = 0; i < 200 && atomic_load_int(&packets) < before + 4; i++)
       platform_sleep_ms(1);
-    CHECK(atomic_load_int(&packets) >= before + 4);
+    cr_assert(atomic_load_int(&packets) >= before + 4);
     if (cycle % 3 == 0) {
       session_participant_stop_video(p); // Joins audio before releasing its borrowed source.
       clean();
       session_participant_stop_video(p);
-      CHECK(session_participant_start_video(p) == ASCIICHAT_OK);
+      cr_assert_eq(session_participant_start_video(p), ASCIICHAT_OK);
     }
     if (cycle % 3 == 1)
       p->connected = false; // Partial/disconnected state still owns workers.
@@ -320,59 +315,59 @@ int main(void) {
     }
     session_participant_disconnect(p);
     clean();
-    CHECK(!session_participant_is_video_active(p) && !session_participant_is_audio_active(p));
+    cr_assert(!session_participant_is_video_active(p) && !session_participant_is_audio_active(p));
     session_participant_destroy(p);
     clean();
   }
-  CHECK(atomic_load_int(&video_packets) > 0 && atomic_load_int(&audio_packets) > 0);
+  cr_assert(atomic_load_int(&video_packets) > 0 && atomic_load_int(&audio_packets) > 0);
   // Discovery retains a borrowed transport until all workers join, then frees
   // it exactly once on teardown. A failed join permits retry without dangling pointers.
   discovery_session_t *session = SAFE_CALLOC(1, sizeof(*session), discovery_session_t *);
-  CHECK(mutex_init(&session->nat_quality_mutex, "test_nat_quality") == ASCIICHAT_OK);
+  cr_assert_eq(mutex_init(&session->nat_quality_mutex, "test_nat_quality"), ASCIICHAT_OK);
   session->participant_ctx = session_participant_create(&config);
   acip_transport_t *owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
   methods.destroy_impl = destroy_transport_impl;
   owned->methods = &methods;
-  CHECK(session_participant_set_transport(session->participant_ctx, owned, ACIP_TRANSPORT_OWNED) == ASCIICHAT_OK);
-  CHECK(session_participant_start_video(session->participant_ctx) == ASCIICHAT_OK);
-  CHECK(session_participant_start_audio(session->participant_ctx) == ASCIICHAT_OK);
+  cr_assert_eq(session_participant_set_transport(session->participant_ctx, owned, ACIP_TRANSPORT_OWNED), ASCIICHAT_OK);
+  cr_assert_eq(session_participant_start_video(session->participant_ctx), ASCIICHAT_OK);
+  cr_assert_eq(session_participant_start_audio(session->participant_ctx), ASCIICHAT_OK);
   fail_join = true;
   discovery_session_destroy(session);
-  CHECK(transports_destroyed == 0 && workers == 2);
-  CHECK(session_participant_get_transport(session->participant_ctx) == owned);
+  cr_assert(transports_destroyed == 0 && workers == 2);
+  cr_assert_eq(session_participant_get_transport(session->participant_ctx), owned);
   fail_join = false;
   discovery_session_destroy(session);
   session = NULL;
   owned = NULL;
-  CHECK(transports_destroyed == 1);
+  cr_assert_eq(transports_destroyed, 1);
   clean();
   session = SAFE_CALLOC(1, sizeof(*session), discovery_session_t *);
-  CHECK(mutex_init(&session->nat_quality_mutex, "test_nat_quality") == ASCIICHAT_OK);
+  cr_assert_eq(mutex_init(&session->nat_quality_mutex, "test_nat_quality"), ASCIICHAT_OK);
   session->participant_ctx = session_participant_create(&config);
   owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
   owned->methods = &methods;
-  CHECK(session_participant_set_transport(session->participant_ctx, owned, ACIP_TRANSPORT_OWNED) == ASCIICHAT_OK);
-  CHECK(session_participant_start_video(session->participant_ctx) == ASCIICHAT_OK);
-  CHECK(session_participant_start_audio(session->participant_ctx) == ASCIICHAT_OK);
+  cr_assert_eq(session_participant_set_transport(session->participant_ctx, owned, ACIP_TRANSPORT_OWNED), ASCIICHAT_OK);
+  cr_assert_eq(session_participant_start_video(session->participant_ctx), ASCIICHAT_OK);
+  cr_assert_eq(session_participant_start_audio(session->participant_ctx), ASCIICHAT_OK);
   // The same release operation is used before WebRTC recovery and host migration.
-  CHECK(release_participant_transport(session) == ASCIICHAT_OK);
-  CHECK(!session_participant_get_transport(session->participant_ctx));
-  CHECK(release_participant_transport(session) == ASCIICHAT_OK);
-  CHECK(transports_destroyed == 2);
+  cr_assert_eq(release_participant_transport(session), ASCIICHAT_OK);
+  cr_assert(!session_participant_get_transport(session->participant_ctx));
+  cr_assert_eq(release_participant_transport(session), ASCIICHAT_OK);
+  cr_assert_eq(transports_destroyed, 2);
   discovery_session_destroy(session);
   session = NULL;
   owned = NULL;
-  CHECK(transports_destroyed == 2);
+  cr_assert_eq(transports_destroyed, 2);
   clean();
   // Exercise real establishment, negotiation, media and retained fallback ownership.
   options.no_encrypt = true;
-  CHECK(options_state_set(&options) == ASCIICHAT_OK);
+  cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
   socket_t probe = socket_create("participant-port", AF_INET, SOCK_STREAM, 0);
-  CHECK(probe != INVALID_SOCKET_VALUE);
+  cr_assert_neq(probe, INVALID_SOCKET_VALUE);
   struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  CHECK(socket_bind(probe, (struct sockaddr *)&address, sizeof(address)) == 0);
+  cr_assert_eq(socket_bind(probe, (struct sockaddr *)&address, sizeof(address)), 0);
   socklen_t address_size = sizeof(address);
-  CHECK(socket_getsockname(probe, (struct sockaddr *)&address, &address_size) == 0);
+  cr_assert_eq(socket_getsockname(probe, (struct sockaddr *)&address, &address_size), 0);
   socket_close(probe);
   config.address = "127.0.0.1";
   config.port = NET_TO_HOST_U16(address.sin_port);
@@ -384,99 +379,101 @@ int main(void) {
       .bind_ipv4 = true,
       .callbacks = {.open = fixture_open, .packet = fixture_packet, .closed = fixture_closed},
       .user_data = &fixture};
-  CHECK(network_server_create(&server_config, &fixture.server) == ASCIICHAT_OK);
-  CHECK(network_server_start(fixture.server) == ASCIICHAT_OK);
+  cr_assert_eq(network_server_create(&server_config, &fixture.server), ASCIICHAT_OK);
+  cr_assert_eq(network_server_start(fixture.server), ASCIICHAT_OK);
   asciichat_thread_t server_thread;
-  CHECK(fixture_start(&server_thread, fixture_run, &fixture) == ASCIICHAT_OK);
+  cr_assert_eq(fixture_start(&server_thread, fixture_run, &fixture), ASCIICHAT_OK);
   session_participant_t *tcp_participant = session_participant_create(&config);
   fail_tcp_transport = true;
-  CHECK(session_participant_connect(tcp_participant) == ERROR_MEMORY);
-  CHECK(!session_participant_is_connected(tcp_participant));
-  CHECK(!session_participant_has_transport(tcp_participant));
+  cr_assert_eq(session_participant_connect(tcp_participant), ERROR_MEMORY);
+  cr_assert(!session_participant_is_connected(tcp_participant));
+  cr_assert(!session_participant_has_transport(tcp_participant));
   fail_tcp_transport = false;
   for (int cycle = 0; cycle < 2; cycle++) {
-    CHECK(session_participant_connect(tcp_participant) == ASCIICHAT_OK);
+    cr_assert_eq(session_participant_connect(tcp_participant), ASCIICHAT_OK);
     acip_transport_t *tcp = session_participant_get_transport(tcp_participant);
-    CHECK(tcp && acip_transport_get_type(tcp) == ACIP_TRANSPORT_TCP);
-    CHECK(session_participant_connect(tcp_participant) == ASCIICHAT_OK);
-    CHECK(session_participant_get_transport(tcp_participant) == tcp);
+    cr_assert(tcp && acip_transport_get_type(tcp) == ACIP_TRANSPORT_TCP);
+    cr_assert_eq(session_participant_connect(tcp_participant), ASCIICHAT_OK);
+    cr_assert_eq(session_participant_get_transport(tcp_participant), tcp);
     network_connection_t *taken = NULL;
-    CHECK(session_participant_take_connection(tcp_participant, &taken) == ASCIICHAT_OK);
-    CHECK(network_connection_transport(taken) == tcp);
-    CHECK(!session_participant_has_transport(tcp_participant));
-    CHECK(session_participant_set_transport(tcp_participant, &transport, ACIP_TRANSPORT_BORROWED) == ASCIICHAT_OK);
-    CHECK(session_participant_set_connection(tcp_participant, &taken) == ASCIICHAT_OK);
-    CHECK(!taken);
+    cr_assert_eq(session_participant_take_connection(tcp_participant, &taken), ASCIICHAT_OK);
+    cr_assert_eq(network_connection_transport(taken), tcp);
+    cr_assert(!session_participant_has_transport(tcp_participant));
+    cr_assert_eq(session_participant_set_transport(tcp_participant, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
+    cr_assert_eq(session_participant_set_connection(tcp_participant, &taken), ASCIICHAT_OK);
+    cr_assert(!taken);
     int video_before = atomic_load_int(&fixture.video), audio_before = atomic_load_int(&fixture.audio);
-    CHECK(session_participant_start_video(tcp_participant) == ASCIICHAT_OK);
-    CHECK(session_participant_start_audio(tcp_participant) == ASCIICHAT_OK);
+    cr_assert_eq(session_participant_start_video(tcp_participant), ASCIICHAT_OK);
+    cr_assert_eq(session_participant_start_audio(tcp_participant), ASCIICHAT_OK);
     for (int i = 0; i < 2000 && (atomic_load_int(&fixture.video) == video_before ||
                                  atomic_load_int(&fixture.audio) == audio_before);
          ++i)
       platform_sleep_ms(1);
-    CHECK(atomic_load_int(&fixture.video) > video_before && atomic_load_int(&fixture.audio) > audio_before);
+    cr_assert(atomic_load_int(&fixture.video) > video_before && atomic_load_int(&fixture.audio) > audio_before);
     session = SAFE_CALLOC(1, sizeof(*session), discovery_session_t *);
-    CHECK(mutex_init(&session->nat_quality_mutex, "test_tcp_nat_quality") == ASCIICHAT_OK);
+    cr_assert_eq(mutex_init(&session->nat_quality_mutex, "test_tcp_nat_quality"), ASCIICHAT_OK);
     session->participant_ctx = tcp_participant;
     owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
     owned->methods = &methods;
     // A failed restart still leaves the successfully attached transport owned.
     fail_stage = cycle == 1 ? 1 : 0;
-    CHECK(select_participant_transport(session, owned) == ASCIICHAT_OK);
+    cr_assert_eq(select_participant_transport(session, owned), ASCIICHAT_OK);
     fail_stage = 0;
-    CHECK(session_participant_is_video_active(tcp_participant) == (cycle == 0));
-    CHECK(session_participant_is_audio_active(tcp_participant));
+    cr_assert_eq(session_participant_is_video_active(tcp_participant), (cycle == 0));
+    cr_assert(session_participant_is_audio_active(tcp_participant));
     int audio_before_switch = atomic_load_int(&audio_packets);
     int video_before_switch = atomic_load_int(&video_packets);
     for (int i = 0; i < 200 && (atomic_load_int(&audio_packets) <= audio_before_switch ||
                                 (cycle == 0 && atomic_load_int(&video_packets) <= video_before_switch));
          ++i)
       platform_sleep_ms(1);
-    CHECK(atomic_load_int(&audio_packets) > audio_before_switch);
-    CHECK(cycle == 1 || atomic_load_int(&video_packets) > video_before_switch);
-    CHECK(session->host_control_transport == tcp);
-    CHECK(session->host_control_connection);
-    CHECK(session_participant_get_transport(tcp_participant) == owned);
+    cr_assert(atomic_load_int(&audio_packets) > audio_before_switch);
+    cr_assert(cycle == 1 || atomic_load_int(&video_packets) > video_before_switch);
+    cr_assert_eq(session->host_control_transport, tcp);
+    cr_assert(session->host_control_connection);
+    cr_assert_eq(session_participant_get_transport(tcp_participant), owned);
     int destroyed_before_release = transports_destroyed;
-    CHECK(release_participant_transport(session) == ASCIICHAT_OK);
-    CHECK(transports_destroyed == destroyed_before_release + 1);
-    CHECK(!session_participant_has_transport(tcp_participant));
-    CHECK(session->host_control_transport == tcp);
+    cr_assert_eq(release_participant_transport(session), ASCIICHAT_OK);
+    cr_assert_eq(transports_destroyed, destroyed_before_release + 1);
+    cr_assert(!session_participant_has_transport(tcp_participant));
+    cr_assert_eq(session->host_control_transport, tcp);
     if (cycle == 0) {
       session->participant_ctx = NULL;
       session_participant_disconnect(tcp_participant);
-      CHECK(!session_participant_has_transport(tcp_participant));
+      cr_assert(!session_participant_has_transport(tcp_participant));
     }
     discovery_session_destroy(session);
     session = NULL;
     uint64_t close_deadline = time_get_ns() + 2 * NS_PER_SEC_INT;
     while (atomic_load_int(&fixture.closed) < cycle + 1 && time_get_ns() < close_deadline)
       platform_sleep_ms(1);
-    CHECK(atomic_load_int(&fixture.closed) == cycle + 1);
+    cr_assert_eq(atomic_load_int(&fixture.closed), cycle + 1);
     clean();
   }
   tcp_participant = NULL;
   network_server_request_stop(fixture.server);
-  CHECK(fixture_join(&server_thread) == ASCIICHAT_OK);
-  CHECK(network_server_stop(fixture.server) == ASCIICHAT_OK);
+  cr_assert_eq(fixture_join(&server_thread), ASCIICHAT_OK);
+  cr_assert_eq(network_server_stop(fixture.server), ASCIICHAT_OK);
   network_server_destroy(&fixture.server);
-  // Async host startup tokens cannot reactivate a stopped or replaced stream.
-  session_av_state_t *state = session_av_state_create();
-  CHECK(state && session_av_state_generation(state) == 0);
-  uint32_t old = session_av_state_begin(state);
-  CHECK(old && !session_av_state_is_active(state) && !session_av_state_begin(state));
-  session_av_state_begin_stop(state);
-  CHECK(!session_av_state_complete(state, old));
-  session_av_state_finish_stop(state);
-  uint32_t next = session_av_state_begin(state);
-  CHECK(next != old && !session_av_state_complete(state, old));
-  CHECK(session_av_state_complete(state, next) && session_av_state_is_active(state));
-  session_av_state_begin_stop(state);
-  session_av_state_finish_stop(state);
-  CHECK(session_av_state_generation(state) == next);
-  session_av_state_destroy(state);
   image_destroy(frame);
   options_state_destroy();
   log_info("PASS: six startup failures, 20 real-worker cycles, media packets, cleanup, async cancellation");
-  return 0;
+}
+
+Test(participant_media, stale_startup_tokens_cannot_reactivate_streams) {
+  // Async host startup tokens cannot reactivate a stopped or replaced stream.
+  session_av_state_t *state = session_av_state_create();
+  cr_assert(state && session_av_state_generation(state) == 0);
+  uint32_t old = session_av_state_begin(state);
+  cr_assert(old && !session_av_state_is_active(state) && !session_av_state_begin(state));
+  session_av_state_begin_stop(state);
+  cr_assert(!session_av_state_complete(state, old));
+  session_av_state_finish_stop(state);
+  uint32_t next = session_av_state_begin(state);
+  cr_assert(next != old && !session_av_state_complete(state, old));
+  cr_assert(session_av_state_complete(state, next) && session_av_state_is_active(state));
+  session_av_state_begin_stop(state);
+  session_av_state_finish_stop(state);
+  cr_assert_eq(session_av_state_generation(state), next);
+  session_av_state_destroy(state);
 }

@@ -1,3 +1,4 @@
+#include <criterion/criterion.h>
 #include <ascii-chat/network/tcp/async.h>
 #include <ascii-chat/common.h>
 
@@ -16,8 +17,7 @@ static asciichat_error_t fail_stream_start(platform_event_stream_t *stream, plat
 
 static void record_stream_close(platform_event_stream_t *stream, asciichat_error_t reason) {
   (void)stream;
-  if (reason != ERROR_NETWORK)
-    FATAL(ERROR_ASSERTION_FAILED, "Unexpected startup close reason");
+  cr_assert_eq(reason, ERROR_NETWORK);
   ++close_requests;
 }
 
@@ -50,10 +50,11 @@ static void observe_fake_stream(platform_event_stream_t *stream, platform_event_
 void accepted_start_failure_test(void) {
   int stream_token;
   platform_event_stream_t *stream = (platform_event_stream_t *)&stream_token;
-  if (acip_async_tcp_accepted_create(stream) != NULL || close_requests != 1 || destroyed != 0 || !failed_close)
-    FATAL(ERROR_ASSERTION_FAILED, "Failed stream was admitted or destroyed before close completion");
+  cr_assert_null(acip_async_tcp_accepted_create(stream));
+  cr_assert_eq(close_requests, 1);
+  cr_assert_eq(destroyed, 0, "Transport must survive until close completion");
+  cr_assert_not_null(failed_close);
   failed_close(failed_arg, ERROR_NETWORK);
-  if (destroyed != 1)
-    FATAL(ERROR_ASSERTION_FAILED, "Failed accepted transport was not destroyed after close completion");
+  cr_assert_eq(destroyed, 1);
   CLEAR_ERRNO_ALL();
 }
