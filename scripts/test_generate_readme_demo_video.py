@@ -21,6 +21,76 @@ SPEC.loader.exec_module(demo)
 
 
 class ReadmeDemoTests(unittest.TestCase):
+    def test_defaults_match_the_published_edit(self):
+        args = demo.parser().parse_args([])
+        self.assertEqual((args.width, args.height, args.output_fps), (838, 640, 33))
+        self.assertEqual(args.segment_duration_scale, 1.8)
+        self.assertTrue(args.opt_text_overlay)
+        self.assertTrue(args.optimize)
+        self.assertEqual(args.target_size_mb, 9.5)
+        self.assertFalse(args.reuse_capture)
+        self.assertEqual(sum(c.seconds for c in demo.call_chapters()), 14)
+
+    def test_reproduction_command_is_complete_fresh_and_preserves_custom_inputs(self):
+        args = demo.parser().parse_args(['--binary', 'build dir/ascii-chat', '--media-file', 'music video.webm',
+                                        '--media-file-start', '0:28', '--speed', '1.1', '--output-fps', '16.5',
+                                        '--optimize=false', '--opt-text-overlay=false', '--reuse-capture',
+                                        *[part for i in range(4) for part in ('--call-media-file', f'person {i}.mp4')]])
+        with patch.object(demo, 'find_font', return_value=Path('fixed font.ttf')):
+            command = demo.reproduction_command(args)
+        self.assertNotIn('--reuse-capture', command)
+        reproduced = demo.parser().parse_args(command[2:])
+        self.assertEqual(reproduced.binary, args.binary)
+        self.assertEqual(reproduced.media_file, args.media_file)
+        self.assertEqual(reproduced.call_media_file, args.call_media_file)
+        self.assertEqual(reproduced.media_file_start, 28)
+        self.assertEqual(reproduced.font, Path('fixed font.ttf'))
+        self.assertEqual(reproduced.speed, 1.1)
+        self.assertEqual(reproduced.output_fps, 16.5)
+        self.assertFalse(reproduced.optimize)
+        self.assertFalse(reproduced.opt_text_overlay)
+        self.assertNotEqual(reproduced.work_dir, args.work_dir)
+        self.assertNotEqual(reproduced.output, args.output)
+
+    def test_native_environment_strips_flag_overrides_and_uses_a_capture_home(self):
+        with tempfile.TemporaryDirectory() as directory:
+            capture = Path(directory) / 'main.cast.jsonl.gz'
+            with patch.dict(demo.os.environ, {'ASCII_CHAT_RENDER_MODE': 'half-block', 'ASCII_CHAT_VOLUME': '2'}):
+                env = demo.recording_environment(capture, {'CLAUDECODE': '1'})
+            self.assertFalse(any(k.startswith('ASCII_CHAT_') for k in env))
+            self.assertEqual(env['APPDATA'], str(Path(directory) / 'runtime-home'))
+            self.assertEqual(env['XDG_CONFIG_HOME'], env['APPDATA'])
+            self.assertEqual(env['CLAUDECODE'], '1')
+
+    def test_export_verification_rejects_audible_or_frozen_or_halfblock_calls(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            args = SimpleNamespace(work_dir=root, output=root/'result.mp4', speed=1, output_fps=33,
+                                   width=838, height=640, ffmpeg='ffmpeg')
+            files = [root/(n+'.mp4') for n in ('intro','call-1','call-2','call-3','call-4','open-media','outro')]
+            durations = [7, 1.5, 1.5, 1.5, 9.5, 3, 2]
+            evidence = {'call': {'commands': [['server']] + [['client','--audio=false'] for _ in range(4)]}}
+            for i in range(1,5):
+                (root/f'call-{i}.txt').write_text('ASCII art', encoding='utf-8')
+            silent = SimpleNamespace(stderr='Overall\nPeak level dB: -inf\n')
+            with patch.object(demo.subprocess, 'run', return_value=silent), patch.object(
+                    demo.subprocess, 'check_output', return_value='0,frame,aaa\n1,frame,bbb\n'):
+                result = demo.verify_encoded_call(args, files, durations, evidence)
+            self.assertEqual(result['seconds'], 14)
+            self.assertEqual(result['distinct_panel_frames'], [2,2,2,2])
+            self.assertTrue(result['audio']['silent'])
+            json.dumps(result, allow_nan=False)
+            with patch.object(demo.subprocess, 'run', return_value=SimpleNamespace(stderr='Overall\nPeak level dB: -20\n')):
+                with self.assertRaisesRegex(RuntimeError, 'audible'):
+                    demo.verify_encoded_call(args, files, durations, evidence)
+            with patch.object(demo.subprocess, 'run', return_value=silent), patch.object(
+                    demo.subprocess, 'check_output', return_value='0,frame,same\n1,frame,same\n'):
+                with self.assertRaisesRegex(RuntimeError, 'frozen'):
+                    demo.verify_encoded_call(args, files, durations, evidence)
+            (root/'call-4.txt').write_text('\u2580', encoding='utf-8')
+            with self.assertRaisesRegex(RuntimeError, 'half-block'):
+                demo.verify_encoded_call(args, files, durations, evidence)
+
     def test_shortcut_overlays_have_prefix_and_fit_the_readme_canvas(self):
         args = demo.parser().parse_args([])
         raster = demo.Rasterizer(args)

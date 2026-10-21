@@ -21,6 +21,7 @@ import functools
 from fractions import Fraction
 import gzip
 import hashlib
+import importlib.metadata
 import json
 import math
 import os
@@ -114,6 +115,23 @@ Repeat --call-media-file four times to use your own clips instead.
 MP4/H.264 + AAC + faststart is intended for GitHub video attachments. Upload
 the reviewed result to GitHub and place its attachment URL in the README.
 This script never edits README.md, commits media, or uploads anything.
+
+Run without --reuse-capture to generate everything from scratch. Defaults match
+the published edit: 838x640, 33 fps, 1.8x chapter dwell, captions, a muted
+14-second call, and the 9.5 MB size budget. A built debug binary, FFmpeg/ffprobe,
+and the Python dependencies listed at the top of this file are prerequisites.
+No helper scripts or pre-existing terminal recordings are required.
+
+Edit chapters(), tui_chapters(), and call_chapters() to change the timeline;
+CALL_SOURCES/CALL_CROPS choose and frame the default participants. The call uses
+default ASCII rendering. --speed retimes the complete edit after recording.
+
+Each run verifies the encoded video and silent call, saves encoded screenshots
+and a contact sheet in work-dir/review/, and writes verification.json plus a
+manifest with tool versions, input/font hashes, and the exact command line.
+Run work-dir/reproduce.py for a fresh recording in a separate output directory.
+Live terminal timing and different tool/font versions can change individual
+frames; reproduction preserves the recipe, not a byte-identical MP4.
 """,
     )
     p.add_argument("--binary", type=Path, default=ROOT / "build/bin" / ("ascii-chat.exe" if os.name == "nt" else "ascii-chat"), help="native debug binary")
@@ -127,8 +145,8 @@ This script never edits README.md, commits media, or uploads anything.
     p.add_argument("--output-fps", type=positive, default=33.0, help="export frame rate, at most 33; capture stays at 33 fps")
     p.add_argument("--target-size-mb", type=positive, default=9.5, help="decimal MB ceiling for --optimize; ignored with --optimize=false")
     p.add_argument("--speed", type=positive, default=1.0, help="whole-movie playback rate; 1.1 is 10%% faster")
-    p.add_argument("--segment-duration-scale", type=positive, default=2.0, help="feature/TUI dwell-time multiplier; opening stays 7 seconds")
-    p.add_argument("--opt-text-overlay", type=boolean, nargs="?", const=True, default=False, metavar="BOOL", help="label featured flags/keys at bottom center")
+    p.add_argument("--segment-duration-scale", type=positive, default=1.8, help="feature/TUI dwell-time multiplier; opening stays 7 seconds")
+    p.add_argument("--opt-text-overlay", type=boolean, nargs="?", const=True, default=True, metavar="BOOL", help="label featured flags/keys at bottom center")
     p.add_argument("--optimize", type=boolean, nargs="?", const=True, default=True, metavar="BOOL", help="automatically fit below 10 MB with two-pass H.264 / 96k AAC; false uses uncapped CRF 16 / 192k AAC")
     p.add_argument("--output", type=Path, default=ROOT / "readme-demo.mp4", help="review movie (not committed)")
     p.add_argument("--work-dir", type=Path, default=ROOT / ".tmp/readme-demo-video", help="retained captures, sources, chapters, and evidence")
@@ -398,13 +416,23 @@ class WindowsTerminal:
         self.closed = True
 
 
+def recording_environment(capture, overrides=None):
+    # Native user settings must not silently change the scripted rendering,
+    # gain, shortcuts, identity keys, or capture device on a later run.
+    home = capture.parent / "runtime-home"
+    home.mkdir(exist_ok=True)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_")}
+    env.update(TERM="xterm-256color", COLORTERM="truecolor", LANG="C.UTF-8", LOG_LEVEL="INFO",
+               HOME=str(home), USERPROFILE=str(home), APPDATA=str(home), XDG_CONFIG_HOME=str(home))
+    env.update(overrides or {})
+    return env
+
+
 class Terminal:
     """A separate real PTY, never the user's active console or webcam session."""
 
     def __init__(self, command, cols, rows, capture, env_overrides=None):
-        env = {**os.environ, "TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "C.UTF-8", "LOG_LEVEL": "INFO"}
-        env.pop("ASCII_CHAT_LOG_LEVEL", None)
-        env.update(env_overrides or {})
+        env = recording_environment(capture, env_overrides)
         COMMANDS.append(command)
         if os.name == "nt":
             self.child = WindowsTerminal(command, cols, rows, env)
@@ -497,7 +525,7 @@ def native_command(args, name, source, splash, cols=None, rows=None):
     # The binary appends logs. A fresh file makes readiness markers unambiguous
     # when re-recording in the same work directory.
     (args.work_dir / (name + ".log")).write_text("", encoding="utf-8")
-    return [str(args.binary), "--log-file", str(args.work_dir / (name + ".log")), "--log-level", "info", "mirror",
+    return [str(args.binary), "--no-check-update", "--log-file", str(args.work_dir / (name + ".log")), "--log-level", "info", "mirror",
             *source, "--width", str(cols or args.cols), "--height", str(rows or args.rows), "--fps", str(FPS),
             "--utf8", "true", "--color-mode", "truecolor", "--splash-screen=" + str(splash).lower(),
             # Analysis uses decoded media before speaker gain. Silence the live
@@ -530,7 +558,7 @@ def prepare_call(args):
                 urllib.request.urlretrieve(url, temporary)
                 temporary.replace(path)
             sources.append(path)
-    identity = {"recipe": 5, "chapter_seconds": [c.seconds for c in call_chapters()], "binary": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+    identity = {"recipe": 5, "runtime_profile": "isolated-defaults-v1", "chapter_seconds": [c.seconds for c in call_chapters()], "binary": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
                 "dll": hashlib.sha256(args.binary.with_name("asciichat.dll").read_bytes()).hexdigest() if os.name == "nt" else None,
                 "cols": args.cols, "rows": args.rows,
                 "sources": [{"path": str(p.resolve()), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in sources]}
@@ -1003,7 +1031,7 @@ def render_capture(args, name, selected, raster, cached=()):
 
 def fingerprint(args):
     # Encoding-only options can change while reusing the exact same recording.
-    return {"recipe": 10, "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+    return {"recipe": 11, "runtime_profile": "isolated-defaults-v1", "segment_duration_scale": args.segment_duration_scale, "binary": str(args.binary), "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
             "dll_sha256": hashlib.sha256(args.binary.with_name("asciichat.dll").read_bytes()).hexdigest() if os.name == "nt" else None,
             "media": str(args.media_file), "media_sha256": hashlib.sha256(args.media_file.read_bytes()).hexdigest(),
             "start": args.media_file_start, "cols": args.cols, "rows": args.rows, "ui_cols": args.ui_cols, "ui_rows": args.ui_rows, "art_cell_scale": args.art_cell_scale,
@@ -1065,6 +1093,126 @@ def option_values(args):
     return json.loads(json.dumps(vars(args), default=str))
 
 
+def reproduction_command(args):
+    """Explicit fresh-run recipe; never depend on the original capture cache."""
+    command = [sys.executable, str(Path(__file__).resolve())]
+    for action in parser()._actions:
+        key = action.dest
+        if key in ("help", "dry_run", "reuse_capture", "face_file"):
+            continue
+        value = getattr(args, key)
+        if key == "font":
+            value = find_font(args)
+        elif key == "work_dir":
+            value = args.work_dir.with_name(args.work_dir.name + "-reproduced")
+        elif key == "output":
+            value = args.output.with_name(args.output.stem + "-reproduced.mp4")
+        flag = next(s for s in action.option_strings if s.startswith("--"))
+        if value is None:
+            continue
+        if isinstance(value, bool):
+            command.append(flag + "=" + str(value).lower())
+        elif isinstance(value, list):
+            for item in value:
+                command.extend([flag, str(item)])
+        else:
+            command.extend([flag, str(value)])
+    return command
+
+
+def provenance(args):
+    packages = {}
+    for name in ("Pillow", "pyte", "pywinpty" if os.name == "nt" else "pexpect"):
+        packages[name] = importlib.metadata.version(name)
+    fonts = [find_font(args)]
+    fallback = Path("C:/Windows/Fonts/consola.ttf")
+    if os.name == "nt" and fallback.is_file() and fallback not in fonts:
+        fonts.append(fallback)
+    return {"python": sys.version, "platform": sys.platform, "packages": packages,
+            "ffmpeg": subprocess.check_output([args.ffmpeg, "-version"], text=True).splitlines()[0],
+            "ffprobe": subprocess.check_output([args.ffprobe, "-version"], text=True).splitlines()[0],
+            "generator_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "inputs": fingerprint(args),
+            "fonts": [{"path": str(p), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in fonts]}
+
+
+def verify_encoded_call(args, files, durations, evidence):
+    names = [p.stem for p in files]
+    call_names = [c.name for c in call_chapters()]
+    expected = names.index(call_names[0])
+    if (names[expected:expected + 4] != call_names or names[expected + 4] != "open-media" or
+            "face-follow" in names or names[-1] != "outro"):
+        raise RuntimeError("Incorrect edit order: the complete call must immediately precede the TUIs")
+    commands = evidence["call"]["commands"]
+    if len(commands) != 5 or any("client" not in cmd or "--audio=false" not in cmd or
+                                any(flag in cmd for flag in ("--render-mode", "--color-mode", "--color-filter"))
+                                for cmd in commands[1:]):
+        raise RuntimeError("Expected four muted clients with default ASCII rendering")
+    for chapter in call_names:
+        text = (args.work_dir / (chapter + ".txt")).read_text(encoding="utf-8")
+        if "\ufffd" in text or any(c in text for c in ("\u2580", "\u2584")):
+            raise RuntimeError(f"{chapter} contains corrupted UTF-8 or half-block rendering")
+    call_start = sum(durations[:expected]) / args.speed
+    call_length = sum(durations[expected:expected + 4]) / args.speed
+    if abs(call_length - sum(c.seconds for c in call_chapters()) / args.speed) > 2 / args.output_fps:
+        raise RuntimeError("Encoded call does not match the scripted duration")
+    result = {"start": call_start, "seconds": call_length, "participants": 4, "default_ascii": True}
+    margin = max(.1 / args.speed, 2 / args.output_fps)
+    if call_length > 2 * margin:
+        command = [args.ffmpeg, "-hide_banner", "-nostats", "-ss", str(call_start + margin),
+                   "-t", str(call_length - 2 * margin), "-i", str(args.output), "-vn", "-af", "astats", "-f", "null", "-"]
+        COMMANDS.append(command)
+        measured = subprocess.run(command, capture_output=True, text=True, check=True)
+        (args.work_dir / "call-audio-quality.txt").write_text(measured.stderr, encoding="utf-8")
+        match = re.search(r"Peak level dB:\s*(-?inf|[-+\d.]+)", measured.stderr.rsplit("Overall", 1)[-1])
+        if not match or float(match[1]) > -75:
+            raise RuntimeError("The encoded call is audible; inspect call-audio-quality.txt")
+        result["audio"] = {"silent": True, "peak_dbfs": float(match[1]) if math.isfinite(float(match[1])) else None}
+    else:
+        result["audio"] = {"status": "too short to measure at this --speed/--output-fps"}
+    four = names.index("call-4")
+    start, seconds = sum(durations[:four]) / args.speed, durations[four] / args.speed
+    result["distinct_panel_frames"] = []
+    if seconds * min(8, args.output_fps) >= 3:
+        width, height = args.width // 2, args.height // 2
+        for x, y in ((0, 0), (width, 0), (0, height), (width, height)):
+            command = [args.ffmpeg, "-v", "error", "-ss", str(start), "-t", str(seconds), "-i", str(args.output),
+                       "-an", "-vf", f"crop={width}:{height}:{x}:{y},fps={min(8, args.output_fps)},scale=64:64",
+                       "-pix_fmt", "gray", "-f", "framemd5", "-"]
+            COMMANDS.append(command)
+            data = subprocess.check_output(command, text=True)
+            hashes = {line.rsplit(",", 1)[-1].strip() for line in data.splitlines() if line and not line.startswith("#")}
+            if len(hashes) < 2:
+                raise RuntimeError("An encoded call panel is frozen; inspect the review screenshots")
+            result["distinct_panel_frames"].append(len(hashes))
+    return result
+
+
+def export_review(args, files, durations):
+    from PIL import Image, ImageDraw
+    directory = args.work_dir / "review"
+    directory.mkdir(exist_ok=True)
+    thumb_w = min(419, args.width)
+    thumb_h = round(thumb_w * args.height / args.width)
+    sheet = Image.new("RGB", (thumb_w * 3, (thumb_h + 24) * math.ceil(len(files) / 3)), "#111111")
+    draw = ImageDraw.Draw(sheet)
+    offset, shots = 0., []
+    for index, (file, seconds) in enumerate(zip(files, durations)):
+        middle = (offset + seconds / 2) / args.speed
+        path = directory / (file.stem + ".png")
+        run([args.ffmpeg, "-v", "error", "-y", "-ss", middle, "-i", args.output, "-frames:v", "1", path])
+        with Image.open(path) as frame:
+            image = frame.convert("RGB").resize((thumb_w, thumb_h), Image.Resampling.LANCZOS)
+        x, y = index % 3 * thumb_w, index // 3 * (thumb_h + 24)
+        draw.text((x + 6, y + 3), f"{file.stem}  {middle:.2f}s", fill="white")
+        sheet.paste(image, (x, y + 24))
+        shots.append({"chapter": file.stem, "seconds": middle, "path": str(path)})
+        offset += seconds
+    contact = directory / "contact-sheet.png"
+    sheet.save(contact)
+    return {"contact_sheet": str(contact), "frames": shots}
+
+
 def assemble(args, files, evidence):
     concat = args.work_dir / "concat.txt"
     # Relative names avoid FFmpeg's platform-specific escaping of drive paths.
@@ -1101,12 +1249,26 @@ def assemble(args, files, evidence):
     audio = next(s for s in result["streams"] if s["codec_type"] == "audio")
     if not math.isclose(float(Fraction(video["avg_frame_rate"])), args.output_fps) or audio["codec_name"] != "aac":
         raise RuntimeError("Output verification failed: expected requested frame rate and AAC audio")
+    if (video["codec_name"] != "h264" or video["width"] != args.width or video["height"] != args.height or
+            abs(float(result["format"]["duration"]) - length / args.speed) > max(.08, 2 / args.output_fps)):
+        raise RuntimeError("Encoded video dimensions, codec, or duration differ from the recipe")
     if args.optimize and args.target_size_mb and int(result["format"]["size"]) > args.target_size_mb * 1e6:
         raise RuntimeError("Encoder exceeded requested size budget; inspect manifest/encode logs")
     quality = audio_quality(args)
+    print("Verifying encoded call and exporting review frames...", flush=True)
+    verification = {"status": "passed", "call": verify_encoded_call(args, files, durations, evidence),
+                    "audio_quality": quality, "output_sha256": hashlib.sha256(args.output.read_bytes()).hexdigest()}
+    review = export_review(args, files, durations)
+    command = reproduction_command(args)
+    (args.work_dir / "reproduce.py").write_text(
+        "# Generated by generate-readme-demo-video.py; records fresh without reusing captures.\n"
+        "import subprocess\nimport sys\n\nif __name__ == '__main__':\n"
+        "    subprocess.run([sys.executable, *" + repr(command[1:]) + "], check=True)\n", encoding="utf-8")
+    (args.work_dir / "verification.json").write_text(json.dumps(verification, indent=2), encoding="utf-8")
     manifest = {"options": option_values(args),
                 "output_probe": result, "recording": evidence,
                 "silent_call": {"start": call_start / args.speed, "seconds": call_seconds / args.speed},
+                "verification": verification, "review": review, "reproduction_command": command, "provenance": provenance(args),
                 "commands": COMMANDS, "audio_quality": quality, "raster_version": 9, "chapters": [p.stem for p in files]}
     (args.work_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     (args.work_dir / (args.output.stem + ".manifest.json")).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
