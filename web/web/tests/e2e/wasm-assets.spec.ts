@@ -7,6 +7,20 @@ const version = createHash("sha256")
   .digest("hex")
   .slice(0, 32);
 
+test("client runtime initializes after its versioned module loads", async ({
+  page,
+}) => {
+  await page.goto("/client");
+  await page.evaluate(async () => {
+    const moduleUrl = "/src/wasm/client.ts";
+    const { initClientWasm, cleanupClientWasm } = await import(
+      /* @vite-ignore */ moduleUrl
+    );
+    await initClientWasm({ width: 80, height: 24 });
+    cleanupClientWasm();
+  });
+});
+
 for (const [mode, url] of [
   ["mirror", "/mirror?test2&playing=true"],
   ["client", "/client"],

@@ -23,6 +23,8 @@ import {
   type ParsedPacket,
 } from "../wasm/client";
 
+const HOST_START_TIMEOUT_MS = 30_000;
+
 type Peer = {
   outbound?: OutboundQueue;
   pc: RTCPeerConnection;
@@ -85,7 +87,7 @@ export class BrowserHostSession implements ClientSession {
     void ready.catch(() => {});
     this.deadline = setTimeout(
       () => this.fail(new Error("Session creation timed out.")),
-      30000,
+      HOST_START_TIMEOUT_MS,
     );
     let requested = false;
     this.signaling.onStateChange((state) => {
@@ -126,10 +128,21 @@ export class BrowserHostSession implements ClientSession {
     options: DiscoveryOptions,
     signaling: ClientConnection,
     joined: JoinedSession,
+    handoff?: HandoffProtocol,
   ): BrowserHostSession {
     const host = new BrowserHostSession(options);
     host.signaling = signaling;
     host.joined = joined;
+    host.handoff = handoff ?? null;
+    host.deadline = setTimeout(
+      () => host.fail(new Error("Host initialization timed out.")),
+      HOST_START_TIMEOUT_MS,
+    );
+    handoff?.adopt(
+      (type, payload) => signaling.sendPacket(type, payload),
+      (id) => host.hostCommitted(id),
+      options.onProgress,
+    );
     signaling.onStateChange((state) => {
       if (!host.closed && state !== ConnectionState.CONNECTED)
         host.fail(new Error("Discovery connection closed."));
@@ -199,19 +212,20 @@ export class BrowserHostSession implements ClientSession {
     this.resolve?.();
     this.resolve = null;
     this.reject = null;
-    this.handoff = new HandoffProtocol(
+    this.handoff ??= new HandoffProtocol(
       this.joined!,
       (type, payload) => this.signaling.sendPacket(type, payload),
-      (id) => {
-        if (!id.every((value, i) => value === this.joined!.participantId[i]))
-          this.fail(
-            new Error(
-              "Another participant has taken over hosting. Rejoin the session.",
-            ),
-          );
-      },
+      (id) => this.hostCommitted(id),
       this.options.onProgress,
     );
+  }
+  private hostCommitted(id: Uint8Array): void {
+    if (!id.every((value, i) => value === this.joined!.participantId[i]))
+      this.fail(
+        new Error(
+          "Another participant has taken over hosting. Rejoin the session.",
+        ),
+      );
   }
   private async signal(type: number, payload: Uint8Array): Promise<void> {
     if (this.handoff?.receive(type, payload)) return;

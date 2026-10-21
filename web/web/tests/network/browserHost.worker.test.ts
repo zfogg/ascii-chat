@@ -4,7 +4,7 @@ const wasm = vi.hoisted(() => ({
     | undefined
     | ((id: number, bytes: Uint8Array) => void),
   _browser_host_create: () => 0,
-  _browser_host_add_client: () => 1,
+  _browser_host_add_client: vi.fn(() => 1),
   _browser_host_set_local_client: vi.fn(() => 0),
   _browser_host_render: vi.fn(() => 0),
   _browser_host_render_audio: vi.fn(() => 0),
@@ -69,4 +69,38 @@ it("pipelines two batches, bounds backlog, and resumes on acknowledgement withou
   // A due frame is produced by the ack task itself, without a timer wake-up.
   expect(batches()).toHaveLength(3);
   expect(vi.getTimerCount()).toBe(1);
+});
+
+it("delivers synchronous admission readiness to the logical client before C id registration", async () => {
+  vi.useFakeTimers();
+  const scope = { postMessage: vi.fn(), onmessage: undefined as any };
+  vi.stubGlobal("self", scope);
+  wasm._browser_host_render.mockImplementation(() => 0);
+  const readiness = new Uint8Array(22);
+  wasm._browser_host_add_client.mockImplementation(() => {
+    // session_host_set_client_transport sends SERVER_STATE before returning.
+    wasm.hostPacketCallback?.(41, readiness);
+    return 41;
+  });
+  await import("../../src/network/browserHost.worker");
+  const send = async (data: object) => {
+    scope.onmessage({ data });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+  };
+  await send({ kind: "init" });
+  await send({ kind: "add", id: 91 });
+  await vi.advanceTimersByTimeAsync(20);
+  const packets = scope.postMessage.mock.calls
+    .filter(([message]) => message.kind === "packets")
+    .flatMap(([message]) => message.packets);
+  expect(packets).toEqual([{ id: 91, bytes: readiness }]);
+  // Outside admission, unregistered C recipients must still be discarded.
+  wasm.hostPacketCallback?.(999, readiness);
+  await send({ kind: "presented" });
+  await vi.advanceTimersByTimeAsync(20);
+  expect(
+    scope.postMessage.mock.calls
+      .filter(([message]) => message.kind === "packets")
+      .flatMap(([message]) => message.packets),
+  ).toEqual(packets);
 });
