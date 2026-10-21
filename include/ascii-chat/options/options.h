@@ -1183,7 +1183,7 @@ typedef struct options_state {
   // ============================================================================
   char render_file[OPTIONS_BUFF_SIZE]; ///< Output file path (e.g. output.mp4)
 #ifndef __EMSCRIPTEN__
-  bool render_kitty;                  ///< Display a snapshot with Kitty graphics
+  bool render_kitty; ///< Display a snapshot with Kitty graphics
 #endif
   int render_theme;                    ///< 0=dark 1=light 2=auto
   char render_font[OPTIONS_BUFF_SIZE]; ///< Font family name or .ttf path (empty = platform default)

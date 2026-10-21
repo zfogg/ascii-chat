@@ -625,7 +625,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   if ((flip_x_enabled || flip_y_enabled) && image->w > 1 && image->h > 1 && image->pixels) {
     uint64_t t_flip_alloc_start = time_get_ns();
     flipped_image = ctx->render_file ? image_new(image->w, image->h)
-                                    : display_image_workspace(&ctx->flip_workspace, image->w, image->h);
+                                     : display_image_workspace(&ctx->flip_workspace, image->w, image->h);
     uint64_t t_flip_alloc_end = time_get_ns();
 
     if (flipped_image) {
@@ -684,8 +684,9 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   image_t *filtered_image = NULL;
   if (color_filter != COLOR_FILTER_NONE && color_filter != COLOR_FILTER_RAINBOW) {
     // Create a copy to avoid modifying the original
-    filtered_image = ctx->render_file ? image_new(display_image->w, display_image->h)
-                                     : display_image_workspace(&ctx->filter_workspace, display_image->w, display_image->h);
+    filtered_image = ctx->render_file
+                         ? image_new(display_image->w, display_image->h)
+                         : display_image_workspace(&ctx->filter_workspace, display_image->w, display_image->h);
     if (filtered_image && filtered_image->pixels && display_image->pixels) {
       memcpy(filtered_image->pixels, display_image->pixels,
              (size_t)display_image->w * (size_t)display_image->h * sizeof(rgb_pixel_t));
@@ -704,10 +705,12 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   uint64_t t_convert_start = time_get_ns();
   // Recording converts concurrently on its encoder thread and retains owned output.
   outbuf_t *output = reuse && !ctx->render_file && color_filter == COLOR_FILTER_NONE && !matrix_rain_enabled
-                         ? &ctx->ascii_workspace : NULL;
+                         ? &ctx->ascii_workspace
+                         : NULL;
   // Call the standard ASCII conversion using the filtered (or original) image
-  char *result = ascii_convert_with_buffers(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio,
-                                                 stretch, ctx->palette_chars, false, ctx->render_file ? NULL : &ctx->resize_workspace, output);
+  char *result =
+      ascii_convert_with_buffers(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio, stretch,
+                                 ctx->palette_chars, false, ctx->render_file ? NULL : &ctx->resize_workspace, output);
   uint64_t t_convert_end = time_get_ns();
 
   // Apply rainbow color filter to ANSI output by replacing RGB values
