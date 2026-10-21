@@ -188,11 +188,11 @@ static void test_participant_settings(void) {
 }
 
 static void test_rendered_frame_validation(void) {
-  cr_assert_eq(session_frame_validate(" ", 1, 0, 1), ERROR_NETWORK_PROTOCOL);
+  cr_assert_eq(session_frame_validate(" ", 1, 0, 1), ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
-  cr_assert_eq(session_frame_validate(" ", 1, 16384, 16384), ERROR_NETWORK_PROTOCOL);
+  cr_assert_eq(session_frame_validate(" ", 1, 16384, 16384), ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
-  cr_assert_eq(session_frame_validate(" ", (size_t)FRAME_RENDER_MAX_BYTES + 1, 1, 1), ERROR_NETWORK_PROTOCOL);
+  cr_assert_eq(session_frame_validate(" ", (size_t)FRAME_RENDER_MAX_BYTES + 1, 1, 1), ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
   struct {
     const char *text;
@@ -252,12 +252,12 @@ static void test_rendered_frame_validation(void) {
       "abc界",
   };
   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
-    cr_assert_eq(session_frame_validate(invalid[i], strlen(invalid[i]), 4, 1), ERROR_NETWORK_PROTOCOL,
+    cr_assert_eq(session_frame_validate(invalid[i], strlen(invalid[i]), 4, 1), ERROR_INVALID_FRAME,
                  "negative frame case %zu", i);
     CLEAR_ERRNO();
   }
   const char embedded[] = {'a', 'b', 'c', 'd', 0, 'x'};
-  cr_assert_eq(session_frame_validate(embedded, sizeof(embedded), 4, 1), ERROR_NETWORK_PROTOCOL);
+  cr_assert_eq(session_frame_validate(embedded, sizeof(embedded), 4, 1), ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
   // Every possible truncation of a color token and UTF-8 token is rejected;
   // buffers have no accessible NUL terminator requirement.
@@ -267,7 +267,7 @@ static void test_rendered_frame_validation(void) {
       char *bytes = SAFE_MALLOC(n + 4, char *);
       memcpy(bytes, "abcd", 4);
       memcpy(bytes + 4, tokens[t], n);
-      cr_assert_eq(session_frame_validate(bytes, n + 4, 4, 1), ERROR_NETWORK_PROTOCOL);
+      cr_assert_eq(session_frame_validate(bytes, n + 4, 4, 1), ERROR_INVALID_FRAME);
       SAFE_FREE(bytes);
       CLEAR_ERRNO();
     }
@@ -275,14 +275,14 @@ static void test_rendered_frame_validation(void) {
   SAFE_STRNCPY(rendering.palette, "é界e\xcc\x81", sizeof(rendering.palette));
   cr_assert_eq(session_frame_validate_contract("界é ", strlen("界é "), 4, 1, &rendering, 0), ASCIICHAT_OK);
   cr_assert_eq(session_frame_validate_contract("    ", 4, 4, 1, &rendering, 0), ASCIICHAT_OK);
-  cr_assert_eq(session_frame_validate_contract("XXXX", 4, 4, 1, &rendering, 0), ERROR_NETWORK_PROTOCOL);
+  cr_assert_eq(session_frame_validate_contract("XXXX", 4, 4, 1, &rendering, 0), ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
   rendering.caps.render_mode = RENDER_MODE_HALF_BLOCK;
   cr_assert_eq(session_frame_validate_contract("▀▄█ ", strlen("▀▄█ "), 4, 1, &rendering, 0), ASCIICHAT_OK);
   cr_assert_eq(session_frame_validate_contract("░▒▓█", strlen("░▒▓█"), 4, 1, &rendering, 0), ASCIICHAT_OK);
   rendering.caps.render_mode = RENDER_MODE_BACKGROUND;
   cr_assert_eq(session_frame_validate_contract("    ", 4, 4, 1, &rendering, 0), ASCIICHAT_OK);
-  cr_assert_eq(session_frame_validate_contract("abcd", 4, 4, 1, &rendering, 0), ERROR_NETWORK_PROTOCOL);
+  cr_assert_eq(session_frame_validate_contract("abcd", 4, 4, 1, &rendering, 0), ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
   rendering.caps.render_mode = RENDER_MODE_FOREGROUND;
   SAFE_STRNCPY(rendering.palette, ".", sizeof(rendering.palette));
@@ -296,12 +296,12 @@ static void test_rendered_frame_validation(void) {
   cr_assert_eq(frame_render_contract_decode(metadata, metadata_size, &decoded, &effects, &consumed), ASCIICHAT_OK);
   cr_assert(consumed == metadata_size && decoded.revision == 2 && !strcmp(decoded.palette, "."));
   for (size_t n = 0; n < metadata_size; ++n) {
-    cr_assert_eq(frame_render_contract_decode(metadata, n, &decoded, &effects, &consumed), ERROR_NETWORK_PROTOCOL);
+    cr_assert_eq(frame_render_contract_decode(metadata, n, &decoded, &effects, &consumed), ERROR_INVALID_FRAME);
     CLEAR_ERRNO();
   }
   metadata[3] = 2;
   cr_assert_eq(frame_render_contract_decode(metadata, metadata_size, &decoded, &effects, &consumed),
-               ERROR_NETWORK_PROTOCOL);
+               ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
   // Explicit wire contract is attached to the frame, not whichever settings
   // happen to be current when a queued frame is received.
@@ -332,18 +332,18 @@ static void test_rendered_frame_validation(void) {
   packet[sizeof(wire_header) + FRAME_RENDER_CONTRACT_HEADER] = 'X';
   cr_assert_eq(
       session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 4),
-      ERROR_NETWORK_PROTOCOL);
+      ERROR_INVALID_FRAME);
   cr_assert_eq(sink.frames, 1);
   CLEAR_ERRNO();
   packet[sizeof(wire_header) + FRAME_RENDER_CONTRACT_HEADER] = 'a';
   cr_assert_eq(
       session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 3),
-      ERROR_NETWORK_PROTOCOL);
+      ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
   packet[sizeof(wire_header) + 3] = 9; // Schema, never reinterpret as text/legacy.
   cr_assert_eq(
       session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 4),
-      ERROR_NETWORK_PROTOCOL);
+      ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
   packet[sizeof(wire_header) + 3] = 1;
   cr_assert_eq(
@@ -360,7 +360,7 @@ static void test_rendered_frame_validation(void) {
       bytes[i] = (char)(random >> 24);
     }
     asciichat_error_t result = session_frame_validate(bytes, n, 4, 1);
-    cr_assert(result == ASCIICHAT_OK || result == ERROR_NETWORK_PROTOCOL);
+    cr_assert(result == ASCIICHAT_OK || result == ERROR_INVALID_FRAME);
     CLEAR_ERRNO();
     cr_assert_eq(session_frame_validate("    ", 4, 4, 1), ASCIICHAT_OK);
   }
@@ -406,7 +406,7 @@ void test_session_protocol(void) {
   memcpy(payload + sizeof(hostile_header), hostile, sizeof(hostile) - 1);
   cr_assert_eq(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload,
                                          sizeof(hostile_header) + sizeof(hostile) - 1),
-               ERROR_NETWORK_PROTOCOL);
+               ERROR_INVALID_FRAME);
   cr_assert_eq(sinks[0].frames, 1);
   cr_assert_eq(protocols[0].frames_received, 1);
   CLEAR_ERRNO();
@@ -461,7 +461,7 @@ void test_session_protocol(void) {
   options_state_destroy();
   payload[sizeof(header)] ^= 1;
   cr_assert_eq(session_protocol_dispatch(&protocols[1], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + 4),
-               ERROR_NETWORK_PROTOCOL);
+               ERROR_INVALID_FRAME);
   cr_assert_eq(sinks[1].frames, 0);
   CLEAR_ERRNO();
   void *encoded = NULL;
@@ -503,7 +503,7 @@ void test_session_protocol(void) {
 
   cr_assert_eq(
       session_protocol_dispatch(&protocols[1], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed - 1),
-      ERROR_NETWORK_PROTOCOL);
+      ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
 
   audio_batch_packet_t audio = {.batch_count = HOST_TO_NET_U32(1),

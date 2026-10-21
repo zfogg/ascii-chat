@@ -37,7 +37,7 @@ asciichat_error_t session_frame_validate_contract(const char *text, size_t lengt
                                                   const acip_render_settings_t *settings, uint32_t effects) {
   if (!text || !length || !width || !height || width > 16384 || height > 16384 ||
       (uint64_t)width * height > FRAME_RENDER_MAX_BYTES || length > FRAME_RENDER_MAX_BYTES)
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid rendered frame bounds");
+    return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid rendered frame bounds");
   uint32_t palette[256];
   size_t palette_count = 0;
   bool ascii_allowed[128] = {0};
@@ -45,12 +45,12 @@ asciichat_error_t session_frame_validate_contract(const char *text, size_t lengt
   if (settings) {
     size_t n = strnlen(settings->palette, sizeof(settings->palette));
     if (!n || n == sizeof(settings->palette))
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid frame contract palette length");
+      return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid frame contract palette length");
     for (size_t i = 0; i < n;) {
       utf8proc_int32_t cp;
       utf8proc_ssize_t bytes = utf8proc_iterate((const uint8_t *)settings->palette + i, (utf8proc_ssize_t)(n - i), &cp);
       if (bytes <= 0 || cp < 32 || (cp >= 127 && cp <= 159) || utf8proc_charwidth(cp) < 0)
-        return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid frame contract palette UTF-8/control");
+        return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid frame contract palette UTF-8/control");
       if (cp < 128) {
         ascii_allowed[cp] = true;
         int group = digital_rain_glyph_group((uint32_t)cp);
@@ -74,28 +74,28 @@ asciichat_error_t session_frame_validate_contract(const char *text, size_t lengt
     if (c == 0x1b) {
       size_t start = i;
       if (length - i < 3 || text[++i] != '[')
-        return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unsupported frame escape at byte %zu", start);
+        return SET_ERRNO(ERROR_INVALID_FRAME, "Unsupported frame escape at byte %zu", start);
       ++i;
       uint32_t params[16] = {0};
       size_t count = 1;
       while (i < length && ((text[i] >= '0' && text[i] <= '9') || text[i] == ';')) {
         if (i - start >= 64)
-          return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Frame escape exceeds byte bound");
+          return SET_ERRNO(ERROR_INVALID_FRAME, "Frame escape exceeds byte bound");
         if (text[i] == ';') {
           if (++count > 16)
-            return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Too many frame escape parameters");
+            return SET_ERRNO(ERROR_INVALID_FRAME, "Too many frame escape parameters");
         } else {
           uint32_t digit = (uint32_t)(text[i] - '0');
           if (params[count - 1] > (16384 - digit) / 10)
-            return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Frame escape parameter exceeds bound");
+            return SET_ERRNO(ERROR_INVALID_FRAME, "Frame escape parameter exceeds bound");
           params[count - 1] = params[count - 1] * 10 + digit;
         }
         ++i;
       }
       if (i == length)
-        return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Truncated frame escape at byte %zu", start);
+        return SET_ERRNO(ERROR_INVALID_FRAME, "Truncated frame escape at byte %zu", start);
       if (i - start >= 64)
-        return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Frame escape exceeds byte bound");
+        return SET_ERRNO(ERROR_INVALID_FRAME, "Frame escape exceeds byte bound");
       char command = text[i++];
       if (command == 'm' && valid_sgr(params, count, &neutral_sgr))
         continue;
@@ -104,17 +104,17 @@ asciichat_error_t session_frame_validate_contract(const char *text, size_t lengt
       if (command == 'b' && count == 1 && previous_width && can_repeat && !ended_row) {
         uint32_t repeats = params[0] ? params[0] : 1;
         if (repeats > (width - col) / previous_width)
-          return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Frame REP exceeds row width at row %u", row + 1);
+          return SET_ERRNO(ERROR_INVALID_FRAME, "Frame REP exceeds row width at row %u", row + 1);
         col += repeats * previous_width;
         continue;
       }
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unsupported frame CSI at byte %zu", start);
+      return SET_ERRNO(ERROR_INVALID_FRAME, "Unsupported frame CSI at byte %zu", start);
     }
     if (c == '\r' || c == '\n') {
       if (c == '\r' && (i + 1 == length || text[++i] != '\n'))
-        return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Bare carriage return in frame");
+        return SET_ERRNO(ERROR_INVALID_FRAME, "Bare carriage return in frame");
       if (ended_row || col != width || row >= height)
-        return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Frame row %u has %u cells, expected %u", row + 1, col, width);
+        return SET_ERRNO(ERROR_INVALID_FRAME, "Frame row %u has %u cells, expected %u", row + 1, col, width);
       ++row;
       col = previous_width = marks = 0;
       can_repeat = false;
@@ -123,11 +123,11 @@ asciichat_error_t session_frame_validate_contract(const char *text, size_t lengt
       continue;
     }
     if (c < 0x20 || c == 0x7f || ended_row || row >= height)
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid frame control or row count at byte %zu", i);
+      return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid frame control or row count at byte %zu", i);
     utf8proc_int32_t cp;
     utf8proc_ssize_t bytes = utf8proc_iterate((const utf8proc_uint8_t *)text + i, (utf8proc_ssize_t)(length - i), &cp);
     if (bytes <= 0 || (cp >= 0x80 && cp <= 0x9f))
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid frame UTF-8/control at byte %zu", i);
+      return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid frame UTF-8/control at byte %zu", i);
     if (settings && cp != ' ') {
       bool allowed = false;
       if (settings->caps.render_mode == RENDER_MODE_HALF_BLOCK)
@@ -154,13 +154,13 @@ asciichat_error_t session_frame_validate_contract(const char *text, size_t lengt
       if ((effects & FRAME_RENDER_CONTRACT_GRID) && (cp == '_' || cp == '+' || cp == '|'))
         allowed = true;
       if (!allowed)
-        return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Off-palette frame glyph U+%04x at byte %zu", (unsigned)cp, i);
+        return SET_ERRNO(ERROR_INVALID_FRAME, "Off-palette frame glyph U+%04x at byte %zu", (unsigned)cp, i);
     }
     int cells = utf8proc_charwidth(cp);
     if (cells < 0 || (cells == 0 && (!previous_width || ++marks > 32)))
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid frame combining sequence at byte %zu", i);
+      return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid frame combining sequence at byte %zu", i);
     if ((uint32_t)cells > width - col)
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Frame row %u exceeds %u cells", row + 1, width);
+      return SET_ERRNO(ERROR_INVALID_FRAME, "Frame row %u exceeds %u cells", row + 1, width);
     col += (uint32_t)cells;
     if (cells) {
       previous_width = (uint32_t)cells;
@@ -174,11 +174,11 @@ asciichat_error_t session_frame_validate_contract(const char *text, size_t lengt
     i += (size_t)bytes;
   }
   if (!neutral_sgr)
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Frame leaves terminal attributes active");
+    return SET_ERRNO(ERROR_INVALID_FRAME, "Frame leaves terminal attributes active");
   if (!ended_row && col == width)
     ++row;
   if (row != height || (!ended_row && col != width))
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Frame geometry does not match %ux%u (%u rows, %u final cells)", width,
+    return SET_ERRNO(ERROR_INVALID_FRAME, "Frame geometry does not match %ux%u (%u rows, %u final cells)", width,
                      height, row, col);
   return ASCIICHAT_OK;
 }
@@ -190,7 +190,7 @@ asciichat_error_t session_frame_validate(const char *text, size_t length, uint32
 asciichat_error_t frame_render_contract_decode(const void *wire, size_t available, acip_render_settings_t *settings,
                                                uint32_t *effects, size_t *length) {
   if (!wire || !settings || !effects || !length || available < FRAME_RENDER_CONTRACT_HEADER)
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Truncated rendered frame contract");
+    return SET_ERRNO(ERROR_INVALID_FRAME, "Truncated rendered frame contract");
   uint32_t fields[5];
   memcpy(fields, wire, sizeof(fields));
   for (size_t i = 0; i < 5; ++i)
@@ -198,14 +198,14 @@ asciichat_error_t frame_render_contract_decode(const void *wire, size_t availabl
   if (fields[0] != FRAME_RENDER_CONTRACT_SCHEMA || fields[2] > RENDER_MODE_HALF_BLOCK ||
       (fields[3] & ~(FRAME_RENDER_CONTRACT_RAIN | FRAME_RENDER_CONTRACT_GRID)) || !fields[4] || fields[4] > 255 ||
       fields[4] > available - FRAME_RENDER_CONTRACT_HEADER)
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid rendered frame contract schema/mode/effects/palette length");
+    return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid rendered frame contract schema/mode/effects/palette length");
   memset(settings, 0, sizeof(*settings));
   settings->revision = fields[1];
   settings->caps.render_mode = (render_mode_t)fields[2];
   settings->palette_length = fields[4];
   memcpy(settings->palette, (const uint8_t *)wire + FRAME_RENDER_CONTRACT_HEADER, fields[4]);
   if (memchr(settings->palette, 0, fields[4]))
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Embedded NUL in rendered frame contract palette");
+    return SET_ERRNO(ERROR_INVALID_FRAME, "Embedded NUL in rendered frame contract palette");
   *effects = fields[3];
   *length = FRAME_RENDER_CONTRACT_HEADER + fields[4];
   return ASCIICHAT_OK;

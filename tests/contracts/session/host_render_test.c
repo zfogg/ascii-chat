@@ -1,6 +1,8 @@
 #include <criterion/criterion.h>
 /* Capability packets must affect the frames delivered by the discovery host. */
 #include "session/host.h"
+#include "session/display.h"
+#include "session/frame_validation.h"
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/negotiation.h>
 #include "session/host_timing.h"
@@ -577,5 +579,56 @@ Test(host_render, ascii_only_display) {
   for (int i = 0; i < image->w * image->h; ++i)
     image->pixels[i] = (rgb_pixel_t){.r = (uint8_t)(40 + i * 6), .g = 25, .b = 100};
   test_ascii_only_display(image);
+  image_destroy(image);
+}
+
+Test(host_render, mirror_output_validation) {
+  cr_assert_eq(options_set_int("width", 40), ASCIICHAT_OK);
+  cr_assert_eq(options_set_int("height", 12), ASCIICHAT_OK);
+  image_t *image = image_new(8, 4);
+  cr_assert_not_null(image);
+  for (int i = 0; i < image->w * image->h; ++i)
+    image->pixels[i] = (rgb_pixel_t){.r = 120, .g = 80, .b = 40};
+  session_display_config_t config = {
+      .snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = "XX", .color_mode = TERM_COLOR_NONE};
+  session_display_ctx_t *display = session_display_create(&config);
+  cr_assert_not_null(display);
+  for (int mode = RENDER_MODE_FOREGROUND; mode <= RENDER_MODE_HALF_BLOCK; ++mode) {
+    cr_assert_eq(options_set_int("render_mode", mode), ASCIICHAT_OK);
+    for (int color = TERM_COLOR_NONE; color <= TERM_COLOR_TRUECOLOR; ++color) {
+      cr_assert_eq(options_set_int("color_mode", color), ASCIICHAT_OK);
+      char *text = session_display_convert_to_ascii_reuse(display, image);
+      cr_assert_not_null(text, "mirror mode%d color%d rejected", mode, color);
+      cr_assert_eq(session_frame_validate(text, strlen(text), 40, 12), ASCIICHAT_OK);
+      session_display_release_ascii(display, text);
+    }
+  }
+  cr_assert_eq(options_set_int("render_mode", RENDER_MODE_FOREGROUND), ASCIICHAT_OK);
+  // Simulate a corrupted renderer palette after initialization. Mirror must
+  // discard the result before presentation, then recover on a valid next frame.
+  char *palette = (char *)session_display_get_palette_chars(display);
+  palette[0] = '\x1b';
+  palette[1] = 0;
+  CLEAR_ERRNO();
+  cr_assert_null(session_display_convert_to_ascii_reuse(display, image));
+  asciichat_error_context_t error = {0};
+  cr_assert(errno_has(&error));
+  cr_assert_eq(error.code, ERROR_INVALID_FRAME);
+  palette[0] = 'X';
+  palette[1] = 'X';
+  palette[2] = 0;
+  CLEAR_ERRNO();
+  char *recovered = session_display_convert_to_ascii_reuse(display, image);
+  cr_assert_not_null(recovered);
+  session_display_release_ascii(display, recovered);
+  session_display_destroy(display);
+  config.custom_palette = "界é";
+  display = session_display_create(&config);
+  cr_assert_not_null(display);
+  char *wide = session_display_convert_to_ascii_reuse(display, image);
+  cr_assert_not_null(wide);
+  cr_assert_eq(session_frame_validate(wide, strlen(wide), 40, 12), ASCIICHAT_OK);
+  session_display_release_ascii(display, wide);
+  session_display_destroy(display);
   image_destroy(image);
 }

@@ -3,8 +3,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Complete decoded NETWORK frame only. Never use this for trusted local output.
- * Geometry uses utf8proc display cells, matching the shared grid renderer. */
+/* Complete rendered text frames from local converters or network peers.
+ * Geometry uses utf8proc display cells, matching the shared grid renderer.
+ * Returns ERROR_INVALID_FRAME for malformed content. Binary image/video output
+ * and terminal UI control sequences are separate presentation surfaces. */
 asciichat_error_t session_frame_validate(const char *text, size_t length, uint32_t width, uint32_t height);
 
 #include <ascii-chat/network/render_contract.h>

@@ -1174,7 +1174,7 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_validate_frame(const char *text, s
                                                              uint32_t height, uint32_t checksum, uint32_t flags,
                                                              const void *metadata, size_t metadata_length) {
   if (flags & ~(FRAME_FLAG_RENDER_CONTRACT | FRAME_FLAG_IS_COMPRESSED | 1u))
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unknown browser frame flags");
+    return SET_ERRNO(ERROR_INVALID_FRAME, "Unknown browser frame flags");
   acip_render_settings_t settings;
   uint32_t effects = 0;
   bool contract = (flags & FRAME_FLAG_RENDER_CONTRACT) != 0;
@@ -1186,14 +1186,14 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_validate_frame(const char *text, s
     if (settings.revision && settings.revision == remote_render_settings.revision &&
         remote_render_settings.palette[0] && remote_render_settings.caps.utf8_support &&
         strcmp(settings.palette, remote_render_settings.palette) != 0)
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Browser frame palette contradicts acknowledged revision");
+      return SET_ERRNO(ERROR_INVALID_FRAME, "Browser frame palette contradicts acknowledged revision");
     if (consumed != metadata_length)
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Trailing browser frame contract bytes");
+      return SET_ERRNO(ERROR_INVALID_FRAME, "Trailing browser frame contract bytes");
   } else if (metadata_length) {
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected browser frame contract");
+    return SET_ERRNO(ERROR_INVALID_FRAME, "Unexpected browser frame contract");
   }
   if (!text || !length || length > FRAME_RENDER_MAX_BYTES || asciichat_crc32(text, length) != checksum)
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Browser frame length/checksum mismatch");
+    return SET_ERRNO(ERROR_INVALID_FRAME, "Browser frame length/checksum mismatch");
   return session_frame_validate_contract(text, length, width, height, contract ? &settings : NULL, effects);
 }
 
@@ -1201,8 +1201,6 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_decode_frame_data(const void *enco
                                                                 void *output, size_t output_length) {
   if (!encoded || !output || !encoded_length || encoded_length > FRAME_RENDER_MAX_BYTES || !output_length ||
       output_length > FRAME_RENDER_MAX_BYTES)
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid browser frame decompression bounds");
-  if (decompress_data_exact(encoded, encoded_length, output, output_length) != ASCIICHAT_OK)
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Decompressed ASCII frame size mismatch");
-  return ASCIICHAT_OK;
+    return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid browser frame decompression bounds");
+  return decompress_data_exact(encoded, encoded_length, output, output_length);
 }

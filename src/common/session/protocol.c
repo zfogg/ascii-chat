@@ -22,7 +22,7 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
   uint32_t effects = 0;
   bool has_contract = (header->flags & FRAME_FLAG_RENDER_CONTRACT) != 0;
   if (header->flags & ~(FRAME_FLAG_RENDER_CONTRACT | FRAME_FLAG_IS_COMPRESSED | 1u)) {
-    protocol->callback_result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unknown participant frame flags");
+    protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Unknown participant frame flags");
     return;
   }
   if (has_contract) {
@@ -36,7 +36,7 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
         protocol->effective_render_settings.palette[0] &&
         strcmp(contract.palette, protocol->effective_render_settings.palette) != 0 &&
         protocol->effective_render_settings.caps.utf8_support) {
-      protocol->callback_result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Frame palette contradicts acknowledged revision");
+      protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Frame palette contradicts acknowledged revision");
       return;
     }
   }
@@ -44,12 +44,12 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
   size_t expected = compressed ? header->compressed_size : header->original_size;
   if (!header->original_size || expected > FRAME_RENDER_MAX_BYTES || length != expected ||
       (compressed && !header->compressed_size) || (!compressed && header->compressed_size)) {
-    protocol->callback_result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid participant ASCII frame length");
+    protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Invalid participant ASCII frame length");
     return;
   }
   // Bound decoded work before allocation/decompression, matching the UI frame budget.
   if (header->original_size > FRAME_RENDER_MAX_BYTES) {
-    protocol->callback_result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Participant ASCII frame exceeds byte budget");
+    protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Participant ASCII frame exceeds byte budget");
     return;
   }
   asciichat_errno_scope_t decode_scope = errno_checkpoint();
@@ -67,11 +67,11 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
     asciichat_error_context_t cause;
     protocol->callback_result = errno_peek_since(decode_scope, &cause)
                                     ? cause.code
-                                    : SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Could not decode participant ASCII frame");
+                                    : SET_ERRNO(ERROR_INVALID_FRAME, "Could not decode participant ASCII frame");
     return;
   }
   if (asciichat_crc32(text, header->original_size) != header->checksum) {
-    protocol->callback_result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Participant ASCII frame checksum mismatch");
+    protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Participant ASCII frame checksum mismatch");
   } else if ((protocol->callback_result =
                   session_frame_validate_contract(text, header->original_size, header->width, header->height,
                                                   has_contract ? &contract : NULL, effects)) == ASCIICHAT_OK) {

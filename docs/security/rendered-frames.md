@@ -1,6 +1,8 @@
-# Received rendered frames
+# Rendered frame validation
 
 ACIP ASCII frames are network input. Native client and discovery sessions validate the entire decoded frame after length/CRC verification and before presentation callbacks, recording, snapshot completion or UI submission. Browser clients invoke the same C validator through WASM before decoding the accepted bytes as text. Browser zstd decoding has an explicit output capacity and requires the exact advertised output length.
+
+Native and browser mirror converters validate their completed ASCII frames with the same C policy before returning them for presentation. Local palette, mode, dimensions and effect state come from that conversion, and wide palettes use the existing display-cell composer. Binary Kitty/video export and terminal UI control sequences are separate output surfaces.
 
 ## Content contract
 
@@ -37,4 +39,4 @@ The frame-local contract detects self-inconsistency and accidental corruption. I
 
 Native terminal receivers compare validated geometry with effective render dimensions and the presenter's cached physical viewport. A valid oversized frame from an earlier resize/settings state is skipped, counted separately and does not close the connection or block audio. A later fitting frame resumes normally. The existing presenter retains responsibility for overlays and clipping at the actual write-time resize boundary. Snapshot/file output uses effective configured dimensions when there is no terminal viewport.
 
-Malformed frames return ERROR_NETWORK_PROTOCOL before presentation side effects. The connection owner decides whether to close/reconnect; the validator itself retains no poisoned parsing state. Browser frame rejection follows the existing dropped-frame error path. Trusted local output, including Kitty image export, never passes through this network validator.
+Malformed frames return ERROR_INVALID_FRAME before presentation side effects. The connection owner decides whether to close/reconnect; the validator itself retains no poisoned parsing state. Browser frame rejection follows the existing dropped-frame error path. Binary Kitty image export does not pass through the rendered-text validator.

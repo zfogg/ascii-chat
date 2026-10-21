@@ -177,6 +177,7 @@ message(STATUS "WASM: Using generated font at ${GENERATED_FONT_FILE}")
 
 # Library source files common to both mirror and client modes
 set(LIB_SRC_COMMON
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/frame_validation.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/av_state.c
     # Core
     ${LIB_ROOT}/common.c
@@ -355,7 +356,6 @@ set(LIB_SRC_CLIENT_CRYPTO
 )
 
 set(LIB_SRC_CLIENT_NETWORK
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/frame_validation.c
     ${LIB_ROOT}/network/network.c
     ${LIB_ROOT}/network/packet/packet.c
     ${LIB_ROOT}/network/packet/parsing.c

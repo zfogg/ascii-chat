@@ -18,6 +18,8 @@
 #include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/app_callbacks.h>
 #include "session/display.h"
+#include "session/frame_validation.h"
+#include <ascii-chat/util/utf8.h>
 #include "session/render.h"
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
@@ -754,6 +756,25 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
     log_dev("DIGITAL_RAIN: Effect applied (%s)", rain_str);
   }
 
+  // Validate the completed local frame using the same policy as received text.
+  // Wide palettes use the existing cell composer before the rectangular check.
+  if (result && (size_t)utf8_display_width(ctx->palette_chars) != utf8_char_count(ctx->palette_chars)) {
+    ascii_frame_source_t source = {.frame_data = result, .frame_size = strlen(result)};
+    size_t normalized_size;
+    char *rectangular = ascii_create_grid(&source, 1, width, height, &normalized_size);
+    session_display_release_ascii(ctx, result);
+    result = rectangular;
+  }
+  if (result) {
+    acip_render_settings_t rendering = {.caps = caps_copy};
+    SAFE_STRNCPY(rendering.palette, ctx->palette_chars, sizeof(rendering.palette));
+    uint32_t effects = ctx->digital_rain ? FRAME_RENDER_CONTRACT_RAIN : 0;
+    if (session_frame_validate_contract(result, strlen(result), width, height, &rendering, effects) != ASCIICHAT_OK) {
+      session_display_release_ascii(ctx, result);
+      result = NULL;
+    }
+  }
+
   uint64_t t_cleanup_start = time_get_ns();
   // Scratch images remain owned by the display until resize or teardown.
   if (ctx->render_file) {
@@ -792,11 +813,16 @@ static char *session_display_create_visualization_frame(session_display_ctx_t *c
     visual_source = AUDIO_VISUALIZATION_SOURCE_MIC;
   else if (selected_audio == AUDIO_SOURCE_CALL)
     visual_source = AUDIO_VISUALIZATION_SOURCE_REMOTE;
-  if (GET_OPTION(fft))
-    return audio_visualization_render_fft(width, height, visual_source, use_color, color_mode, GET_OPTION(flip_x),
-                                          GET_OPTION(flip_y));
-  return audio_visualization_render_waveform(width, height, visual_source, use_color, color_mode, GET_OPTION(flip_x),
-                                             GET_OPTION(flip_y));
+  char *text = GET_OPTION(fft)
+                   ? audio_visualization_render_fft(width, height, visual_source, use_color, color_mode,
+                                                    GET_OPTION(flip_x), GET_OPTION(flip_y))
+                   : audio_visualization_render_waveform(width, height, visual_source, use_color, color_mode,
+                                                         GET_OPTION(flip_x), GET_OPTION(flip_y));
+  if (text && session_frame_validate(text, strlen(text), width, height) != ASCIICHAT_OK) {
+    SAFE_FREE(text);
+    return NULL;
+  }
+  return text;
 }
 
 void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data) {

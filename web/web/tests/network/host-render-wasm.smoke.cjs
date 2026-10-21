@@ -22,12 +22,14 @@ const path = require("node:path");
       return res.end(
         `<html><style>body{background:#10141c;color:#e1e8ef;font:16px monospace;padding:24px}canvas{image-rendering:pixelated;border:1px solid #546479}</style><body><h1>Received frame validation</h1><p id="result">Browser host wire output validated and rendered by shared C</p><canvas id="frame"></canvas></body></html>`,
       );
-    const file =
-      req.url === "/client.js"
-        ? "client.js"
-        : req.url === "/client.wasm"
-          ? "client.wasm"
-          : null;
+    const file = [
+      "/client.js",
+      "/client.wasm",
+      "/mirror.js",
+      "/mirror.wasm",
+    ].includes(req.url)
+      ? req.url.slice(1)
+      : null;
     if (!file) {
       res.statusCode = 404;
       return res.end();
@@ -167,6 +169,10 @@ const path = require("node:path");
         );
         if ((result === 0) !== fixture.valid)
           throw new Error("C frame corpus failed: " + JSON.stringify(fixture));
+        if (result && result !== 87)
+          throw new Error(
+            "Malformed frame did not return ERROR_INVALID_FRAME: " + result,
+          );
         if (result) rejected++;
       }
       const decodeFrame = (packet) => {
@@ -511,6 +517,83 @@ const path = require("node:path");
         )
       )
         throw new Error("Older palette revision rejected");
+      const { default: createMirror } = await import("/mirror.js");
+      const mirror = await createMirror({
+        print: () => {},
+        printErr: () => {},
+        getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
+      });
+      const mirrorArgs = "mirror --width 40 --height 12 --log-level fatal";
+      const argsPointer = mirror._malloc(mirrorArgs.length + 1);
+      mirror.stringToUTF8(mirrorArgs, argsPointer, mirrorArgs.length + 1);
+      if (mirror._mirror_init_with_args(argsPointer))
+        throw new Error("mirror init failed");
+      mirror._free(argsPointer);
+      const rgba = new Uint8Array(8 * 4 * 4);
+      for (let i = 0; i < rgba.length; i += 4) rgba.set([120, 80, 40, 255], i);
+      const rgbaPointer = mirror._malloc(rgba.length);
+      mirror.HEAPU8.set(rgba, rgbaPointer);
+      let mirrorFrames = 0;
+      try {
+        for (const palette of ["XX", "界é"])
+          for (let mode = 0; mode <= 2; ++mode)
+            for (let color = 0; color <= 3; ++color) {
+              const json = JSON.stringify({
+                palette_custom: palette,
+                render_mode: mode,
+                color_mode: color,
+              });
+              const size = new TextEncoder().encode(json).length + 1;
+              const patchPointer = mirror._malloc(size);
+              mirror.stringToUTF8(json, patchPointer, size);
+              const patched = mirror._wasm_options_patch(patchPointer, -1);
+              mirror._free(patchPointer);
+              if (patched) throw new Error("mirror settings failed");
+              const output = mirror._mirror_convert_frame(rgbaPointer, 8, 4, 0);
+              if (!output)
+                throw new Error(
+                  "Mirror validator rejected mode " +
+                    mode +
+                    " color " +
+                    color +
+                    " palette " +
+                    palette,
+                );
+              try {
+                const bytes = new TextEncoder().encode(
+                  mirror.UTF8ToString(output),
+                );
+                let checksum = 0xffffffff;
+                for (const byte of bytes) {
+                  checksum ^= byte;
+                  for (let bit = 0; bit < 8; ++bit)
+                    checksum =
+                      (checksum >>> 1) ^ (checksum & 1 ? 0x82f63b78 : 0);
+                }
+                if (verify(bytes, 40, 12, ~checksum >>> 0, 0))
+                  throw new Error("Malformed accepted mirror output");
+                mirrorFrames++;
+              } finally {
+                mirror._mirror_free_string(output);
+              }
+            }
+        for (const fft of [false, true]) {
+          const json = JSON.stringify({ fft });
+          const pointer = mirror._malloc(json.length + 1);
+          mirror.stringToUTF8(json, pointer, json.length + 1);
+          const result = mirror._wasm_options_patch(pointer, -1);
+          mirror._free(pointer);
+          if (result) throw new Error("mirror audio settings failed");
+          const frame = mirror._mirror_render_audio_visualization(40, 12, 0);
+          if (!frame)
+            throw new Error("Mirror audio validation rejected valid output");
+          mirror._mirror_free_string(frame);
+        }
+      } finally {
+        mirror._free(rgbaPointer);
+        mirror._mirror_cleanup();
+      }
+      if (mirrorFrames !== 24) throw new Error("Missing mirror mode coverage");
       return {
         video: [first, updated],
         audioRms: Math.sqrt(audioEnergy / Math.max(1, audioSamples)),
@@ -553,7 +636,7 @@ const path = require("node:path");
     assert.match(updated[1], /\x1b\[38;2;/);
     assert.match(updated[1], /Y/);
     console.log(
-      "PASS: WASM local and remote targets honor independent settings and live updates without duplicate frames",
+      "PASS: shared C validates browser mirror modes/palettes/audio and local/remote host frames",
     );
   } finally {
     await browser.close();
