@@ -1,0 +1,41 @@
+name: Cancel closed PR CI
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel validation runs belonging to this PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Never check out or execute the pull request's code in this workflow.
+            const pr = context.payload.pull_request;
+            const validation = new Set([
+              'build.yml', 'test.yml', 'analysis.yml', 'security.yml',
+              'markdown.yml', 'web-tests.yml',
+            ]);
+            const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+              ...context.repo, event: 'pull_request', per_page: 100,
+              created: `>=${pr.created_at}`,
+            });
+            for (const run of runs) {
+              if (run.status === 'completed') continue;
+              const file = run.path.split('/').pop().split('@')[0];
+              if (!validation.has(file)) continue;
+              if (!run.pull_requests.some(p => p.number === pr.number)) continue;
+              try {
+                await github.rest.actions.cancelWorkflowRun({...context.repo, run_id: run.id});
+                core.info(`Canceled ${run.name}: ${run.html_url}`);
+              } catch (error) {
+                if (error.status !== 409) throw error;
+                core.info(`Run ${run.id} already finished.`);
+              }
+            }

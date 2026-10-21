@@ -4,12 +4,26 @@ on:
   push:
     branches:
       - master
-    paths-ignore:
-      - "**.md"
-      - "docs/**"
-      - "notes/**"
-      - "todo/**"
+    paths:
+      - "src/**"
+      - "lib/**"
+      - "include/**"
+      - "cmake/**"
+      - "deps/**"
+      - "vcpkg-overlay/**"
+      - "Dockerfile*"
+      - "docker/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "vcpkg.json"
+      - "vcpkg-configuration.json"
+      - ".gitmodules"
+      - ".github/workflows/package.yml"
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io
