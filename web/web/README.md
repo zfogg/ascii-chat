@@ -51,6 +51,8 @@ vp exec playwright test --config tests/e2e/screen-sharing.config.ts
 The live network scenarios use raw uploads by default. Set
 `ASCII_CHAT_SCREEN_ENCODING=h264` to exercise the same two-participant checks
 through the browser's H.264 encoder; the test verifies the selected codec.
+This requires a browser/device that supports the requested WebCodecs configuration;
+bundled Chromium on the current Windows validation host rejects that configuration.
 
 The tests replace only the picker with real canvas/video and Web Audio streams.
 They exercise the C renderer, audio worker/Opus processing, native servers, and

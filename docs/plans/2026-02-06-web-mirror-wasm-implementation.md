@@ -189,24 +189,24 @@ int mutex_trylock(mutex_t *mutex) {
 }
 
 // Thread creation (not used in mirror mode, but provided for completeness)
-int asciichat_thread_create(asciichat_thread_t *thread, void *(*start_routine)(void *), void *arg) {
+int acthread_create(asciichat_thread_t *thread, void *(*start_routine)(void *), void *arg) {
     if (!thread || !start_routine) return -1;
     return pthread_create(thread, NULL, start_routine, arg);
 }
 
-int asciichat_thread_join(asciichat_thread_t thread, void **retval) {
+int thread_join(asciichat_thread_t thread, void **retval) {
     return pthread_join(thread, retval);
 }
 
-int asciichat_thread_detach(asciichat_thread_t thread) {
+int thread_detach(asciichat_thread_t thread) {
     return pthread_detach(thread);
 }
 
-asciichat_thread_t asciichat_thread_self(void) {
+asciichat_thread_t thread_self(void) {
     return pthread_self();
 }
 
-int asciichat_thread_equal(asciichat_thread_t t1, asciichat_thread_t t2) {
+int thread_equal(asciichat_thread_t t1, asciichat_thread_t t2) {
     return pthread_equal(t1, t2);
 }
 ```

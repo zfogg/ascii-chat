@@ -921,7 +921,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   safe_snprintf(thread_name, sizeof(thread_name), "video_render_%s", client->client_id);
   asciichat_error_t video_result;
 
-  video_result = asciichat_thread_create(&client->video_render_thread, thread_name, client_video_render_thread, client);
+  video_result = acthread_create(&client->video_render_thread, thread_name, client_video_render_thread, client);
 
   if (video_result != ASCIICHAT_OK) {
     // Reset flag since thread creation failed
@@ -934,7 +934,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   safe_snprintf(thread_name, sizeof(thread_name), "audio_render_%s", client->client_id);
   asciichat_error_t audio_result;
 
-  audio_result = asciichat_thread_create(&client->audio_render_thread, thread_name, client_audio_render_thread, client);
+  audio_result = acthread_create(&client->audio_render_thread, thread_name, client_audio_render_thread, client);
   if (audio_result != ASCIICHAT_OK) {
     // Clean up video thread (atomic operation, no mutex needed)
     atomic_store_bool(&client->video_render_thread_running, false);
@@ -988,7 +988,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
  * - No forced thread termination (unsafe)
  *
  * DETERMINISTIC CLEANUP:
- * - asciichat_thread_join() waits for complete thread exit
+ * - thread_join() waits for complete thread exit
  * - All thread resources are properly released
  * - No zombie threads or resource leaks
  *
@@ -1032,24 +1032,24 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
  *
  * @warning Must be called before client structure deallocation
  * @see create_client_render_threads() For thread creation
- * @see asciichat_thread_join() For platform-specific joining
+ * @see thread_join() For platform-specific joining
  */
 asciichat_error_t stop_client_render_threads(client_info_t *client) {
   if (!client)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing render client");
   atomic_store_bool(&client->video_render_thread_running, false);
   atomic_store_bool(&client->audio_render_thread_running, false);
-  if (asciichat_thread_is_initialized(&client->video_render_thread)) {
-    asciichat_error_t result = asciichat_thread_join(&client->video_render_thread, NULL);
+  if (thread_is_initialized(&client->video_render_thread)) {
+    asciichat_error_t result = thread_join(&client->video_render_thread, NULL);
     if (result != ASCIICHAT_OK)
       return result;
-    asciichat_thread_init(&client->video_render_thread);
+    thread_init(&client->video_render_thread);
     }
-  if (asciichat_thread_is_initialized(&client->audio_render_thread)) {
-    asciichat_error_t result = asciichat_thread_join(&client->audio_render_thread, NULL);
+  if (thread_is_initialized(&client->audio_render_thread)) {
+    asciichat_error_t result = thread_join(&client->audio_render_thread, NULL);
     if (result != ASCIICHAT_OK)
       return result;
-    asciichat_thread_init(&client->audio_render_thread);
+    thread_init(&client->audio_render_thread);
     }
     return ASCIICHAT_OK;
 }

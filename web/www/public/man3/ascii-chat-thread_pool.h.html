@@ -344,7 +344,7 @@ thread_pool_destroy(server_pool);</pre>
 176     SAFE_SNPRINTF(entry-&gt;name, sizeof(entry-&gt;name), &quot;%s_worker_%zu&quot;, pool-&gt;name, i);
 177 
 178     // Create worker thread
-179     if (asciichat_thread_create(&amp;entry-&gt;thread, entry-&gt;name, thread_pool_worker_thread, pool) != 0) {
+179     if (acthread_create(&amp;entry-&gt;thread, entry-&gt;name, thread_pool_worker_thread, pool) != 0) {
 180       log_error(&quot;Failed to create worker thread %zu&quot;, i);
 181       SAFE_FREE(entry);
 182       thread_pool_destroy(pool);
@@ -374,7 +374,7 @@ thread_pool_destroy(server_pool);</pre>
 206 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create</b>, <b>cond_init()</b>,
+<p class="Pp">References <b>acthread_create</b>, <b>cond_init()</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
     <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>, <b>mutex_destroy()</b>,
     <b>mutex_init()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
@@ -678,7 +678,7 @@ thread_pool_destroy(server_pool);</pre>
 357 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
     <b>ERROR_THREAD</b>, <b>log_debug</b>, <b>mutex_lock</b>,
     <b>mutex_unlock</b>, <b>thread_pool_entry::name</b>,
@@ -726,7 +726,7 @@ thread_pool_destroy(server_pool);</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_join_timeout()</b>, <b>cond_broadcast()</b>,
+    <b>thread_join_timeout()</b>, <b>cond_broadcast()</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ETIMEDOUT</b>, <b>log_debug</b>,
     <b>log_warn</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
     <b>thread_pool_entry::name</b>, <b>thread_pool_entry::next</b>, <b>pool</b>,

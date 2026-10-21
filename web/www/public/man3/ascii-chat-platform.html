@@ -1201,47 +1201,47 @@
   Move cursor to home position (top-left). <b>asciichat_error_t</b>
     <b>terminal_clear_scrollback</b> (int fd)
   <br/>
-  Clear terminal scrollback buffer. void * <b>asciichat_thread_wrapper_impl</b>
+  Clear terminal scrollback buffer. void * <b>thread_wrapper_impl</b>
     (void *arg)
   <br/>
   Internal thread wrapper function that executes user code with cleanup. int
-    <b>asciichat_thread_create</b> (<b>asciichat_thread_t</b> *thread, const
+    <b>acthread_create</b> (<b>asciichat_thread_t</b> *thread, const
     char *name, void *(*func)(void *), void *arg)
   <br/>
-  Create a new named thread. int <b>asciichat_thread_join</b>
+  Create a new named thread. int <b>thread_join</b>
     (<b>asciichat_thread_t</b> *thread, void **retval)
   <br/>
   Wait for a thread to complete (blocking). int
-    <b>asciichat_thread_join_timeout</b> (<b>asciichat_thread_t</b> *thread,
+    <b>thread_join_timeout</b> (<b>asciichat_thread_t</b> *thread,
     void **retval, <b>uint64_t</b> timeout_ns)
   <br/>
-  Wait for a thread to complete with timeout. void <b>asciichat_thread_exit</b>
+  Wait for a thread to complete with timeout. void <b>thread_exit</b>
     (void *retval)
   <br/>
-  Exit the current thread. <b>thread_id_t</b> <b>asciichat_thread_self</b>
+  Exit the current thread. <b>thread_id_t</b> <b>thread_self</b>
     (void)
   <br/>
-  Get the current thread's ID. int <b>asciichat_thread_equal</b>
+  Get the current thread's ID. int <b>thread_equal</b>
     (<b>thread_id_t</b> t1, <b>thread_id_t</b> t2)
   <br/>
   Compare two thread IDs for equality. <b>uint64_t</b>
-    <b>asciichat_thread_current_id</b> (void)
+    <b>thread_current_id</b> (void)
   <br/>
   Get the current thread's unique numeric ID. <b>bool</b>
-    <b>asciichat_thread_is_initialized</b> (<b>asciichat_thread_t</b> *thread)
+    <b>thread_is_initialized</b> (<b>asciichat_thread_t</b> *thread)
   <br/>
   Check if a thread handle has been initialized. void
-    <b>asciichat_thread_init</b> (<b>asciichat_thread_t</b> *thread)
+    <b>thread_init</b> (<b>asciichat_thread_t</b> *thread)
   <br/>
   Initialize a thread handle to an uninitialized state. <b>asciichat_error_t</b>
-    <b>asciichat_thread_set_realtime_priority</b> (void)
+    <b>thread_set_realtime_priority</b> (void)
   <br/>
   Set the current thread to real-time priority. <b>asciichat_error_t</b>
     <b>thread_create_or_fail</b> (<b>asciichat_thread_t</b> *thread, void
     *(*func)(void *), void *arg, const char *thread_name, const char *client_id)
   <br/>
   Create a thread with standardized error handling and logging. uintptr_t
-    <b>asciichat_thread_to_key</b> (<b>asciichat_thread_t</b> thread)
+    <b>thread_to_key</b> (<b>asciichat_thread_t</b> thread)
   <br/>
   Convert a thread handle to a uintptr_t registry key. int
     <b>ascii_tls_key_create</b> (<b>tls_key_t</b> *key, void(*destructor)(void
@@ -3885,7 +3885,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_asciichat_thread_create_("><a class="permalink" href="#int_asciichat_thread_create_(">int
-  asciichat_thread_create (<b>asciichat_thread_t</b> * thread, const char *
+  acthread_create (<b>asciichat_thread_t</b> * thread, const char *
   name, void *(* func )(void *), void * arg)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
@@ -3916,7 +3916,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> asciichat_thread_current_id (void )</h2>
+<h2 class="Ss"><b>uint64_t</b> thread_current_id (void )</h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
 <p class="Pp">Get the current thread's unique numeric ID.</p>
@@ -3939,7 +3939,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_asciichat_thread_equal_("><a class="permalink" href="#int_asciichat_thread_equal_(">int
-  asciichat_thread_equal (<b>thread_id_t</b> t1, <b>thread_id_t</b> t2)</a></h2>
+  thread_equal (<b>thread_id_t</b> t1, <b>thread_id_t</b> t2)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
 <p class="Pp">Compare two thread IDs for equality.</p>
@@ -3958,7 +3958,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_thread_exit_(void_*_retval)"><a class="permalink" href="#void_asciichat_thread_exit_(void_*_retval)">void
-  asciichat_thread_exit (void * retval)</a></h2>
+  thread_exit (void * retval)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
 <p class="Pp">Exit the current thread.</p>
@@ -3970,7 +3970,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_thread_init_("><a class="permalink" href="#void_asciichat_thread_init_(">void
-  asciichat_thread_init (<b>asciichat_thread_t</b> * thread)</a></h2>
+  thread_init (<b>asciichat_thread_t</b> * thread)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
 <p class="Pp">Initialize a thread handle to an uninitialized state.</p>
@@ -3982,7 +3982,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
     <b>parallel_connect()</b>, and <b>stop_client_render_threads()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> asciichat_thread_is_initialized
+<h2 class="Ss"><b>bool</b> thread_is_initialized
   (<b>asciichat_thread_t</b> * thread)</h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
@@ -4005,7 +4005,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_asciichat_thread_join_("><a class="permalink" href="#int_asciichat_thread_join_(">int
-  asciichat_thread_join (<b>asciichat_thread_t</b> * thread, void **
+  thread_join (<b>asciichat_thread_t</b> * thread, void **
   retval)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
@@ -4027,7 +4027,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_asciichat_thread_join_timeout_("><a class="permalink" href="#int_asciichat_thread_join_timeout_(">int
-  asciichat_thread_join_timeout (<b>asciichat_thread_t</b> * thread, void **
+  thread_join_timeout (<b>asciichat_thread_t</b> * thread, void **
   retval, <b>uint64_t</b> timeout_ns)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
@@ -4060,7 +4060,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
   <b>update_banner_wait_for_check()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>thread_id_t</b> asciichat_thread_self (void )</h2>
+<h2 class="Ss"><b>thread_id_t</b> thread_self (void )</h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
 <p class="Pp">Get the current thread's ID.</p>
@@ -4076,7 +4076,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> asciichat_thread_set_realtime_priority
+<h2 class="Ss"><b>asciichat_error_t</b> thread_set_realtime_priority
   (void )</h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
@@ -4104,7 +4104,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 </section>
 <section class="Ss">
 <h2 class="Ss" id="uintptr_t_asciichat_thread_to_key_("><a class="permalink" href="#uintptr_t_asciichat_thread_to_key_(">uintptr_t
-  asciichat_thread_to_key (<b>asciichat_thread_t</b> thread)</a></h2>
+  thread_to_key (<b>asciichat_thread_t</b> thread)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
 <p class="Pp">Convert a thread handle to a uintptr_t registry key.</p>
@@ -4143,7 +4143,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_*_asciichat_thread_wrapper_impl_(void_*_arg)"><a class="permalink" href="#void_*_asciichat_thread_wrapper_impl_(void_*_arg)">void
-  * asciichat_thread_wrapper_impl (void * arg)</a></h2>
+  * thread_wrapper_impl (void * arg)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/thread.h</b>&gt;<b></b></p>
 <p class="Pp">Internal thread wrapper function that executes user code with
@@ -4153,7 +4153,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>arg</i> Pointer to <b>asciichat_thread_wrapper_t</b>
-  (allocated by thread_create)</div>
+  (allocated by acthread_create)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Return value from user thread function</div>
 </section>
@@ -4500,15 +4500,15 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 37   cond-&gt;last_wait_file = file;
 38   cond-&gt;last_wait_line = line;
 39   cond-&gt;last_wait_func = func;
-40   asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
-41   cond-&gt;last_waiting_key = asciichat_thread_to_key(current_thread);
+40   asciichat_thread_t current_thread = (asciichat_thread_t)thread_current_id();
+41   cond-&gt;last_waiting_key = thread_to_key(current_thread);
 42   atomic_fetch_add_u64(&amp;cond-&gt;waiting_count, 1);
 43   cond-&gt;wait_count++;
 44 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_current_id()</b>,
-    <b>asciichat_thread_to_key()</b>, <b>atomic_fetch_add_u64()</b>,
+<p class="Pp">References <b>thread_current_id()</b>,
+    <b>thread_to_key()</b>, <b>atomic_fetch_add_u64()</b>,
     <b>cond_t::last_wait_file</b>, <b>cond_t::last_wait_func</b>,
     <b>cond_t::last_wait_line</b>, <b>cond_t::last_wait_mutex</b>,
     <b>cond_t::last_wait_time_ns</b>, <b>cond_t::last_waiting_key</b>,
@@ -5341,14 +5341,14 @@ for (int i = 0; i &lt; count; i++) {
 <pre>29                                    {
 30   if (!mutex) return;
 31   mutex-&gt;last_lock_time_ns = time_get_ns();
-32   asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
-33   mutex-&gt;currently_held_by_key = asciichat_thread_to_key(current_thread);
+32   asciichat_thread_t current_thread = (asciichat_thread_t)thread_current_id();
+33   mutex-&gt;currently_held_by_key = thread_to_key(current_thread);
 34   mutex-&gt;lock_count++;
 35 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_current_id()</b>,
-    <b>asciichat_thread_to_key()</b>, <b>mutex</b>, and
+<p class="Pp">References <b>thread_current_id()</b>,
+    <b>thread_to_key()</b>, <b>mutex</b>, and
   <b>time_get_ns()</b>.</p>
 </section>
 <section class="Ss">
@@ -5376,14 +5376,14 @@ for (int i = 0; i &lt; count; i++) {
 66   if (success) {
 67     mutex-&gt;trylock_success_count++;
 68     mutex-&gt;last_lock_time_ns = time_get_ns();
-69     asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
-70     mutex-&gt;currently_held_by_key = asciichat_thread_to_key(current_thread);
+69     asciichat_thread_t current_thread = (asciichat_thread_t)thread_current_id();
+70     mutex-&gt;currently_held_by_key = thread_to_key(current_thread);
 71   }
 72 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_current_id()</b>,
-    <b>asciichat_thread_to_key()</b>, <b>mutex</b>, and
+<p class="Pp">References <b>thread_current_id()</b>,
+    <b>thread_to_key()</b>, <b>mutex</b>, and
   <b>time_get_ns()</b>.</p>
 </section>
 <section class="Ss">
@@ -9386,8 +9386,8 @@ platform_stderr_restore(handle);        // stderr restored
 63   if (!rwlock) return;
 64   rwlock-&gt;last_unlock_time_ns = time_get_ns();
 65   rwlock-&gt;unlock_count++;
-66   asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
-67   uintptr_t current_key = asciichat_thread_to_key(current_thread);
+66   asciichat_thread_t current_thread = (asciichat_thread_t)thread_current_id();
+67   uintptr_t current_key = thread_to_key(current_thread);
 68   if (rwlock-&gt;write_held_by_key == current_key) {
 69     rwlock-&gt;write_held_by_key = 0;
 70   } else if (atomic_load_u64(&amp;rwlock-&gt;read_lock_count) &gt; 0) {
@@ -9396,8 +9396,8 @@ platform_stderr_restore(handle);        // stderr restored
 73 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_current_id()</b>,
-    <b>asciichat_thread_to_key()</b>, <b>atomic_fetch_sub_u64()</b>,
+<p class="Pp">References <b>thread_current_id()</b>,
+    <b>thread_to_key()</b>, <b>atomic_fetch_sub_u64()</b>,
     <b>atomic_load_u64()</b>, <b>rwlock</b>, and <b>time_get_ns()</b>.</p>
 </section>
 <section class="Ss">
@@ -9422,14 +9422,14 @@ platform_stderr_restore(handle);        // stderr restored
 <pre>45                                         {
 46   if (!rwlock) return;
 47   rwlock-&gt;last_wrlock_time_ns = time_get_ns();
-48   asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
-49   rwlock-&gt;write_held_by_key = asciichat_thread_to_key(current_thread);
+48   asciichat_thread_t current_thread = (asciichat_thread_t)thread_current_id();
+49   rwlock-&gt;write_held_by_key = thread_to_key(current_thread);
 50   rwlock-&gt;wrlock_count++;
 51 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_current_id()</b>,
-    <b>asciichat_thread_to_key()</b>, <b>rwlock</b>, and
+<p class="Pp">References <b>thread_current_id()</b>,
+    <b>thread_to_key()</b>, <b>rwlock</b>, and
   <b>time_get_ns()</b>.</p>
 </section>
 <section class="Ss">
@@ -12286,7 +12286,7 @@ while (total_sent &lt; len) {
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM or
   ERROR_PLATFORM_INIT on failure</div>
-<p class="Pp">Wraps <b>asciichat_thread_create()</b> with unified error handling
+<p class="Pp">Wraps <b>acthread_create()</b> with unified error handling
     and logging. On success, logs at debug level. On failure, uses
     <b>SET_ERRNO()</b> to record error context and returns:</p>
 <ul class="Bl-bullet">
@@ -12306,7 +12306,7 @@ while (total_sent &lt; len) {
 17     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for thread creation&quot;);
 18   }
 19 
-20   int result = asciichat_thread_create(thread, thread_name, func, arg);
+20   int result = acthread_create(thread, thread_name, func, arg);
 21   if (result != 0) {
 22     return SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Failed to create %s thread for client %u (result=%d)&quot;, thread_name,
 23                      client_id, result);
@@ -12317,7 +12317,7 @@ while (total_sent &lt; len) {
 28 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ERROR_PLATFORM_INIT</b>, <b>log_debug</b>,
     and <b>SET_ERRNO</b>.</p>
 </section>

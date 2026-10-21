@@ -485,7 +485,7 @@ asciichat_error_t network_server_start(network_server_t *s) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Network server stopped before startup");
   if (s->websocket_initialized && !s->websocket_started) {
     asciichat_error_t result =
-        asciichat_thread_create(&s->websocket_thread, "websocket_io", websocket_run, &s->websocket);
+        acthread_create(&s->websocket_thread, "websocket_io", websocket_run, &s->websocket);
     if (result != ASCIICHAT_OK)
       return result;
     s->websocket_started = true;
@@ -518,7 +518,7 @@ asciichat_error_t network_server_stop(network_server_t *s) {
   if (s->websocket_started) {
     atomic_store_bool(&s->websocket.running, false);
     websocket_server_cancel_service(&s->websocket);
-    asciichat_error_t result = asciichat_thread_join(&s->websocket_thread, NULL);
+    asciichat_error_t result = thread_join(&s->websocket_thread, NULL);
     if (result != ASCIICHAT_OK)
       return result;
     s->websocket_started = false;

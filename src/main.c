@@ -503,7 +503,7 @@ int main(int argc, char *argv[]) {
 #ifdef _WIN32
   NAMED_REGISTER_THREAD(GetCurrentThread(), "main", NULL);
 #else
-  NAMED_REGISTER_THREAD((asciichat_thread_t)asciichat_thread_self(), "main", NULL);
+  NAMED_REGISTER_THREAD((asciichat_thread_t)thread_self(), "main", NULL);
 #endif
   // Also save main thread ID for memory reporting (must be very early)
   debug_stats_set_main_thread_id();

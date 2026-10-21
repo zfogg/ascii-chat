@@ -241,7 +241,7 @@
 176     SAFE_SNPRINTF(entry-&gt;name, sizeof(entry-&gt;name), &quot;%s_worker_%zu&quot;, pool-&gt;name, i);
 177 
 178     // Create worker thread
-179     if (asciichat_thread_create(&amp;entry-&gt;thread, entry-&gt;name, thread_pool_worker_thread, pool) != 0) {
+179     if (acthread_create(&amp;entry-&gt;thread, entry-&gt;name, thread_pool_worker_thread, pool) != 0) {
 180       log_error(&quot;Failed to create worker thread %zu&quot;, i);
 181       SAFE_FREE(entry);
 182       thread_pool_destroy(pool);
@@ -271,7 +271,7 @@
 206 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create</b>, <b>cond_init()</b>,
+<p class="Pp">References <b>acthread_create</b>, <b>cond_init()</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
     <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>, <b>mutex_destroy()</b>,
     <b>mutex_init()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
@@ -637,7 +637,7 @@
 339   }
 340 
 341   // Create thread
-342   if (asciichat_thread_create(&amp;entry-&gt;thread, entry-&gt;name, thread_func, thread_arg) != 0) {
+342   if (acthread_create(&amp;entry-&gt;thread, entry-&gt;name, thread_func, thread_arg) != 0) {
 343     // Save name before freeing entry
 344     char thread_name_copy[64];
 345     SAFE_STRNCPY(thread_name_copy, entry-&gt;name, sizeof(thread_name_copy));
@@ -672,7 +672,7 @@
 374 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
     <b>ERROR_THREAD</b>, <b>log_debug</b>, <b>mutex_lock</b>,
     <b>mutex_unlock</b>, <b>thread_pool_entry::name</b>,
@@ -750,7 +750,7 @@
 415     // Join thread with timeout to prevent hanging on stuck threads
 416     // If thread doesn't exit in 2 seconds, log warning and continue anyway
 417     // This prevents reconnection loop from being blocked by deadlocked workers
-418     int join_result = asciichat_thread_join_timeout(&amp;entry-&gt;thread, NULL, THREAD_JOIN_TIMEOUT_NS);
+418     int join_result = thread_join_timeout(&amp;entry-&gt;thread, NULL, THREAD_JOIN_TIMEOUT_NS);
 419     if (join_result != 0) {
 420       if (join_result == ETIMEDOUT) {
 421         log_warn(&quot;Thread '%s' (stop_id=%d) did not exit within 2s timeout - may be stuck. Continuing anyway.&quot;,
@@ -776,7 +776,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_join_timeout()</b>, <b>cond_broadcast()</b>,
+    <b>thread_join_timeout()</b>, <b>cond_broadcast()</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ETIMEDOUT</b>, <b>log_debug</b>,
     <b>log_warn</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
     <b>thread_pool_entry::name</b>, <b>thread_pool_entry::next</b>, <b>pool</b>,

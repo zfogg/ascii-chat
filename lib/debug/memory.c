@@ -240,7 +240,7 @@ static bool should_ignore_allocation(const char *file, int line, uint64_t tid, s
  * Get or create an allocation site cache entry (called while holding g_mem.mutex)
  */
 static alloc_site_t *get_or_create_site(const char *file, int line) {
-  uint64_t tid = asciichat_thread_current_id();
+  uint64_t tid = thread_current_id();
   const char *relative_file = extract_project_relative_path(file);
 
   char key[BUFFER_SIZE_SMALL + 32];
@@ -403,7 +403,7 @@ void *debug_malloc(size_t size, const char *file, int line) {
       const char *normalized_file = extract_project_relative_path(file);
       SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
-      block->tid = asciichat_thread_current_id();
+      block->tid = thread_current_id();
       capture_thread_name(block->tid, block->thread_name, sizeof(block->thread_name));
       block->next = g_mem.head;
       g_mem.head = block;
@@ -416,10 +416,10 @@ void *debug_malloc(size_t size, const char *file, int line) {
         site->total_count++;
         if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
           // Only warn if this allocation site is not suppressed (expected/benign allocations)
-          if (!should_ignore_allocation(normalized_file, line, asciichat_thread_current_id(), size)) {
+          if (!should_ignore_allocation(normalized_file, line, thread_current_id(), size)) {
             log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation at site (total: %zu bytes, this "
                      "alloc: %zu bytes)",
-                     normalized_file, line, asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
+                     normalized_file, line, thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
                      site->live_bytes, size);
           }
         }
@@ -470,7 +470,7 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
       const char *normalized_file = extract_project_relative_path(file);
       SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
-      block->tid = asciichat_thread_current_id();
+      block->tid = thread_current_id();
       capture_thread_name(block->tid, block->thread_name, sizeof(block->thread_name));
       block->next = g_mem.head;
       g_mem.head = block;
@@ -483,10 +483,10 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
         site->total_count++;
         if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
           // Only warn if this allocation site is not suppressed (expected/benign allocations)
-          if (!should_ignore_allocation(normalized_file, line, asciichat_thread_current_id(), size)) {
+          if (!should_ignore_allocation(normalized_file, line, thread_current_id(), size)) {
             log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation at site (total: %zu bytes, this "
                      "alloc: %zu bytes)",
-                     normalized_file, line, asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
+                     normalized_file, line, thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
                      site->live_bytes, size);
           }
         }
@@ -629,7 +629,7 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
       const char *normalized_file = extract_project_relative_path(file);
       SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
-      block->tid = asciichat_thread_current_id();
+      block->tid = thread_current_id();
       capture_thread_name(block->tid, block->thread_name, sizeof(block->thread_name));
       block->next = g_mem.head;
       g_mem.head = block;
@@ -642,10 +642,10 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
         site->total_count++;
         if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
           // Only warn if this allocation site is not suppressed (expected/benign allocations)
-          if (!should_ignore_allocation(normalized_file, line, asciichat_thread_current_id(), size)) {
+          if (!should_ignore_allocation(normalized_file, line, thread_current_id(), size)) {
             log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation at site (total: %zu bytes, this "
                      "alloc: %zu bytes)",
-                     normalized_file, line, asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
+                     normalized_file, line, thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
                      site->live_bytes, total);
           }
         }
@@ -817,7 +817,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
       SAFE_STRNCPY(curr->file, normalized_file, sizeof(curr->file) - 1);
       curr->file[sizeof(curr->file) - 1] = '\0';
       curr->line = line;
-      curr->tid = asciichat_thread_current_id();
+      curr->tid = thread_current_id();
       curr->size = size;
       curr->is_aligned = false;
 
@@ -829,7 +829,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
         new_site->total_count++;
         if (new_site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
           log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
-                   asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+                   thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
         }
       }
     } else {
@@ -842,7 +842,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
         const char *normalized_file = extract_project_relative_path(file);
         SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
         block->line = line;
-        block->tid = asciichat_thread_current_id();
+        block->tid = thread_current_id();
         block->next = g_mem.head;
         g_mem.head = block;
 
@@ -854,7 +854,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
           site->total_count++;
           if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
             log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
-                     asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+                     thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
           }
         }
       }
@@ -1339,7 +1339,7 @@ int debug_memory_thread_start(void) {
   }
 
   g_debug_memory_request.should_exit = false;
-  int err = asciichat_thread_create(&g_debug_memory_thread, "debug_memory", debug_memory_thread_fn, NULL);
+  int err = acthread_create(&g_debug_memory_thread, "debug_memory", debug_memory_thread_fn, NULL);
   return err;
 }
 
@@ -1369,7 +1369,7 @@ void debug_memory_thread_cleanup(void) {
 
   // Use timeout join to prevent indefinite hang if debug thread is stuck
   // Matches pattern used in debug_stats_cleanup_thread() which has 1 second timeout
-  int join_result = asciichat_thread_join_timeout(&g_debug_memory_thread, NULL, 1000000000ULL); // 1 second timeout
+  int join_result = thread_join_timeout(&g_debug_memory_thread, NULL, 1000000000ULL); // 1 second timeout
   if (join_result != 0) {
     // Thread didn't exit cleanly, but we still need to proceed with shutdown
     // Log a warning if logging is still available

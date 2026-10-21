@@ -197,10 +197,10 @@
 726   ascii_tls_set(g_tls_mutex_stack, NULL);
 727 
 728   // Update registry if this thread is registered
-729   thread_id_t current_thread = asciichat_thread_self();
+729   thread_id_t current_thread = thread_self();
 730   int count = atomic_load_int(&amp;g_thread_registry_count);
 731   for (int i = 0; i &lt; count; i++) {
-732     if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread) &amp;&amp; g_thread_registry[i].stack == stack) {
+732     if (thread_equal(g_thread_registry[i].thread_id, current_thread) &amp;&amp; g_thread_registry[i].stack == stack) {
 733       g_thread_registry[i].stack = NULL; // Mark as freed in registry
 734       break;
 735     }
@@ -212,7 +212,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_tls_get()</b>, <b>ascii_tls_set()</b>,
-    <b>asciichat_thread_equal</b>, <b>asciichat_thread_self</b>,
+    <b>thread_equal</b>, <b>thread_self</b>,
     <b>atomic_load_bool()</b>, <b>atomic_load_int()</b>, and
   <b>thread_id</b>.</p>
 <p class="Pp">Referenced by <b>debug_sync_final_cleanup()</b>.</p>

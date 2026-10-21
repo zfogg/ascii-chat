@@ -147,7 +147,7 @@ void stop_worker(void) {
 <p class="Pp"><b>Value:</b></p>
 <pre>do {                                                                                                                 \
 <br/>
-  if (asciichat_thread_create(&amp;(thread_var), (func), (arg)) != 0) {                                                  \
+  if (acthread_create(&amp;(thread_var), (func), (arg)) != 0) {                                                  \
 <br/>
     log_error(&quot;%s&quot;, (error_msg));                                                                                    \
 <br/>
@@ -183,7 +183,7 @@ void stop_worker(void) {
 <p class="Pp">Definition at line <b>97</b> of file <b>util/thread.h</b>.</p>
 <pre>97 #define THREAD_CREATE_OR_RETURN_VOID(thread_var, func, arg, error_msg)                                                 \
 98   do {                                                                                                                 \
-99     if (asciichat_thread_create(&amp;(thread_var), (func), (arg)) != 0) {                                                  \
+99     if (acthread_create(&amp;(thread_var), (func), (arg)) != 0) {                                                  \
 100       log_error(&quot;%s&quot;, (error_msg));                                                                                    \
 101       return;                                                                                                          \
 102     }                                                                                                                  \
@@ -195,7 +195,7 @@ void stop_worker(void) {
 <h2 class="Ss" id="_define_THREAD_CREATE_SAFE(_thread_var,__func,__arg)"><a class="permalink" href="#_define_THREAD_CREATE_SAFE(_thread_var,__func,__arg)">#define
   THREAD_CREATE_SAFE( thread_var, func, arg)</a></h2>
 <p class="Pp"><b>Value:</b></p>
-<pre>asciichat_thread_create(&amp;(thread_var), (func), (arg))</pre>
+<pre>acthread_create(&amp;(thread_var), (func), (arg))</pre>
 <pre></pre>
 <p class="Pp">Safely create a thread with error handling and logging. Does NOT
     set the created flag - caller must do that.</p>
@@ -208,9 +208,9 @@ void stop_worker(void) {
 <br/>
 <i>arg</i> Thread argument (void *)</div>
 <p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Return value from asciichat_thread_create (0 on
+<div class="Bd-indent">Return value from acthread_create (0 on
   success)</div>
-<p class="Pp">This is a direct call to asciichat_thread_create with no error
+<p class="Pp">This is a direct call to acthread_create with no error
     handling. Caller should check return value and log if needed.</p>
 <p class="Pp">Definition at line <b>76</b> of file <b>util/thread.h</b>.</p>
 </section>
@@ -236,7 +236,7 @@ void stop_worker(void) {
 <h2 class="Ss" id="_define_THREAD_JOIN(_thread_var)"><a class="permalink" href="#_define_THREAD_JOIN(_thread_var)">#define
   THREAD_JOIN( thread_var)</a></h2>
 <p class="Pp"><b>Value:</b></p>
-<pre>asciichat_thread_join(&amp;(thread_var), NULL)</pre>
+<pre>thread_join(&amp;(thread_var), NULL)</pre>
 <pre></pre>
 <p class="Pp">Join a thread without capturing its exit code. Simpler version
     when exit code is not needed.</p>
@@ -254,7 +254,7 @@ void stop_worker(void) {
 <h2 class="Ss" id="_define_THREAD_JOIN_SAFE(_thread_var,__exit_code)"><a class="permalink" href="#_define_THREAD_JOIN_SAFE(_thread_var,__exit_code)">#define
   THREAD_JOIN_SAFE( thread_var, exit_code)</a></h2>
 <p class="Pp"><b>Value:</b></p>
-<pre>asciichat_thread_join(&amp;(thread_var), (exit_code))</pre>
+<pre>thread_join(&amp;(thread_var), (exit_code))</pre>
 <pre></pre>
 <p class="Pp">Join a thread and wait for it to complete. Returns the thread's
     exit code in the output parameter.</p>

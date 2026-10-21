@@ -857,7 +857,8 @@ static asciichat_error_t host_connection_open(network_connection_t *connection, 
       host->clients[i].connection = connection;
   mutex_unlock(&host->clients_mutex);
   if (network_connection_state(connection) == NETWORK_READY)
-    return ASCIICHAT_OK;
+    return session_host_set_client_transport(host, client->client_id, network_connection_transport(connection),
+                                             ACIP_TRANSPORT_BORROWED);
   asciichat_error_t result = network_connection_prepare_security(connection, true, host->password);
   if (result != ASCIICHAT_OK)
     return result;
@@ -884,8 +885,13 @@ static asciichat_error_t host_connection_packet(network_connection_t *connection
   if (network_connection_state(connection) == NETWORK_NEGOTIATING) {
     asciichat_error_t result = network_negotiation_receive(
         &client->negotiation, network_connection_transport(connection), type, payload, length);
-    if (result == ASCIICHAT_OK && client->negotiation.ready)
+    if (result == ASCIICHAT_OK && client->negotiation.ready) {
       network_connection_ready(connection);
+      // Admission attaches the transport before security negotiation. Publish
+      // protocol readiness only now, so browser peers can begin STREAM_START.
+      return session_host_set_client_transport(arg, client->client_id, network_connection_transport(connection),
+                                               ACIP_TRANSPORT_BORROWED);
+    }
     return result;
   }
   return session_host_receive_packet(arg, client->client_id, type, payload, length);
@@ -935,7 +941,7 @@ asciichat_error_t session_host_start(session_host_t *host) {
   if (result == ASCIICHAT_OK)
     result = network_server_start(host->network_server);
   if (result == ASCIICHAT_OK)
-    result = asciichat_thread_create(&host->network_thread, "host_network", host_network_run, host);
+    result = acthread_create(&host->network_thread, "host_network", host_network_run, host);
   if (result != ASCIICHAT_OK) {
     network_server_destroy(&host->network_server);
     return result;
@@ -950,7 +956,7 @@ asciichat_error_t session_host_stop(session_host_t *host) {
     return ASCIICHAT_OK;
   if (host->render_thread_running) {
     host->render_thread_running = false;
-    asciichat_error_t result = asciichat_thread_join(&host->render_thread, NULL);
+    asciichat_error_t result = thread_join(&host->render_thread, NULL);
     if (result != ASCIICHAT_OK) {
       host->render_thread_running = true;
       return result;
@@ -959,7 +965,7 @@ asciichat_error_t session_host_stop(session_host_t *host) {
 #ifndef __EMSCRIPTEN__
   network_server_request_stop(host->network_server);
   if (host->network_thread_started) {
-    asciichat_error_t result = asciichat_thread_join(&host->network_thread, NULL);
+    asciichat_error_t result = thread_join(&host->network_thread, NULL);
     if (result != ASCIICHAT_OK)
       return result;
     host->network_thread_started = false;
@@ -1512,7 +1518,7 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
 
   // Spawn render thread
   host->render_thread_running = true;
-  if (asciichat_thread_create(&host->render_thread, "render", host_render_thread, host) != 0) {
+  if (acthread_create(&host->render_thread, "render", host_render_thread, host) != 0) {
     log_error("Failed to spawn render thread");
     host->render_thread_running = false;
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn render thread");
@@ -1535,7 +1541,7 @@ void session_host_stop_render(session_host_t *host) {
   host->render_thread_running = false;
 
   // Wait for thread to complete
-  asciichat_thread_join(&host->render_thread, NULL);
+  thread_join(&host->render_thread, NULL);
 
   // Clean up audio resources
   if (host->audio_ctx) {

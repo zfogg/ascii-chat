@@ -256,12 +256,12 @@ int main(int argc, char **argv) {
     CHECK(atomic_ptr_cas(&total_pointer, &old_pointer, NULL));
     (void)atomic_ptr_exchange(&total_pointer, NULL);
     asciichat_thread_t rates;
-    CHECK(asciichat_thread_create(&rates, "rate_worker", rate_worker, NULL) == ASCIICHAT_OK);
+    CHECK(acthread_create(&rates, "rate_worker", rate_worker, NULL) == ASCIICHAT_OK);
     CHECK(mutex_init(&cycle_a, "cycle_a") == 0);
     CHECK(mutex_init(&cycle_b, "cycle_b") == 0);
     mutex_lock(&cycle_a);
     asciichat_thread_t worker;
-    CHECK(asciichat_thread_create(&worker, "cycle_worker", cycle_worker, NULL) == ASCIICHAT_OK);
+    CHECK(acthread_create(&worker, "cycle_worker", cycle_worker, NULL) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
     // Intentional main/worker deadlock: the PTY test terminates this fixture.
     mutex_lock(&cycle_b);
@@ -312,11 +312,11 @@ int main(int argc, char **argv) {
     CHECK(time_get_ns() - start < 500 * NS_PER_MS_INT);
     CHECK(!ui_controller_state().covered);
     asciichat_thread_t remover;
-    CHECK(asciichat_thread_create(&remover, "remove_screen", remove_screen, NULL) == ASCIICHAT_OK);
+    CHECK(acthread_create(&remover, "remove_screen", remove_screen, NULL) == ASCIICHAT_OK);
     platform_sleep_ns(50 * NS_PER_MS_INT);
     CHECK(!atomic_load(&removed));
     atomic_store(&proceed, true);
-    CHECK(asciichat_thread_join(&remover, NULL) == ASCIICHAT_OK);
+    CHECK(thread_join(&remover, NULL) == ASCIICHAT_OK);
     CHECK(atomic_load(&removed));
     atomic_store(&entered, false);
     CHECK(ui_controller_submit(UI_SCREEN_HELP, STDOUT_FILENO, (terminal_size_t){20, 5}, self_remove, snapshot,
@@ -398,14 +398,14 @@ int main(int argc, char **argv) {
     CHECK(registry_lock->rdlock_count == scans_before);
 #endif
     asciichat_thread_t holder;
-    CHECK(asciichat_thread_create(&holder, "registry_holder", hold_registry, NULL) == ASCIICHAT_OK);
+    CHECK(acthread_create(&holder, "registry_holder", hold_registry, NULL) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
     uint64_t start = time_get_ns();
     CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && !completed);
     CHECK(!named_registry_has_type("test", 4));
     uint64_t elapsed = time_get_ns() - start;
     atomic_store(&proceed, true);
-    CHECK(asciichat_thread_join(&holder, NULL) == ASCIICHAT_OK);
+    CHECK(thread_join(&holder, NULL) == ASCIICHAT_OK);
     CHECK(elapsed < 500 * NS_PER_MS_INT);
     CHECK(seen == 600);
     CLEAR_ERRNO();
@@ -420,7 +420,7 @@ int main(int argc, char **argv) {
     CHECK(test_mutex.currently_held_by_key != 0);
 #endif
     atomic_store(&entered, false);
-    CHECK(asciichat_thread_create(&holder, "mutex_waiter", wait_for_mutex, NULL) == ASCIICHAT_OK);
+    CHECK(acthread_create(&holder, "mutex_waiter", wait_for_mutex, NULL) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
     bool pending = false;
     uint64_t deadline = time_get_ns() + NS_PER_SEC_INT;
@@ -436,12 +436,12 @@ int main(int argc, char **argv) {
       platform_sleep_ns(NS_PER_MS_INT);
     }
     mutex_unlock(&test_mutex);
-    CHECK(asciichat_thread_join(&holder, NULL) == ASCIICHAT_OK);
+    CHECK(thread_join(&holder, NULL) == ASCIICHAT_OK);
     CHECK(pending);
     CHECK(atomic_load(&trylock_clean));
     CHECK(cond_init(&test_cond, "regression_condition") == 0);
     atomic_store(&entered, false);
-    CHECK(asciichat_thread_create(&holder, "condition_waiter", wait_for_condition, NULL) == ASCIICHAT_OK);
+    CHECK(acthread_create(&holder, "condition_waiter", wait_for_condition, NULL) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
     mutex_lock(&test_mutex);
     mutex_stack_entry_t **stacks = NULL;
@@ -455,7 +455,7 @@ int main(int argc, char **argv) {
     CHECK(atomic_load_u64(&test_cond.waiting_count) == 1);
     cond_signal(&test_cond);
     mutex_unlock(&test_mutex);
-    CHECK(asciichat_thread_join(&holder, NULL) == ASCIICHAT_OK);
+    CHECK(thread_join(&holder, NULL) == ASCIICHAT_OK);
     CHECK(atomic_load_u64(&test_cond.waiting_count) == 0);
     mutex_lock(&test_mutex);
     CHECK(cond_timedwait(&test_cond, &test_mutex, NS_PER_MS_INT) == ETIMEDOUT);
@@ -465,7 +465,7 @@ int main(int argc, char **argv) {
     uint64_t completed_wait = test_cond.total_wait_ns;
     asciichat_thread_t overlapping[2];
     for (unsigned i = 0; i < 2; ++i)
-      CHECK(asciichat_thread_create(&overlapping[i], "overlap_waiter", wait_for_condition, NULL) == ASCIICHAT_OK);
+      CHECK(acthread_create(&overlapping[i], "overlap_waiter", wait_for_condition, NULL) == ASCIICHAT_OK);
     deadline = time_get_ns() + NS_PER_SEC_INT;
     while (atomic_load_u64(&test_cond.waiting_count) != 2 && time_get_ns() < deadline)
       platform_sleep_ms(1);
@@ -481,7 +481,7 @@ int main(int argc, char **argv) {
     cond_broadcast(&test_cond);
     mutex_unlock(&test_mutex);
     for (unsigned i = 0; i < 2; ++i)
-      CHECK(asciichat_thread_join(&overlapping[i], NULL) == ASCIICHAT_OK);
+      CHECK(thread_join(&overlapping[i], NULL) == ASCIICHAT_OK);
     CHECK(test_cond.wait_started_ns == 0);
     completed_wait = test_cond.total_wait_ns;
     CHECK(cond_total_wait_ns(&test_cond, time_get_ns() + NS_PER_SEC_INT, &total_wait));

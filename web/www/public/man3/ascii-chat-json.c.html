@@ -116,8 +116,8 @@
 273   uint64_t time_ns = time_get_realtime_ns();
 274   format_timestamp_microseconds(time_ns, timestamp_buf, sizeof(timestamp_buf));
 275 
-276   /* Get thread ID (note: asciichat_thread_current_id is assumed to be async-safe) */
-277   uint64_t tid = (uint64_t)asciichat_thread_current_id();
+276   /* Get thread ID (note: thread_current_id is assumed to be async-safe) */
+277   uint64_t tid = (uint64_t)thread_current_id();
 278 
 279   /* Format complete JSON object with timestamp */
 280   int written = snprintf(json_buffer, sizeof(json_buffer),
@@ -134,7 +134,7 @@
 291 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_current_id()</b>,
+<p class="Pp">References <b>thread_current_id()</b>,
     <b>extract_project_relative_path()</b>, <b>platform_write_all()</b>, and
     <b>time_get_realtime_ns()</b>.</p>
 <p class="Pp">Referenced by <b>log_console_impl()</b>.</p>
@@ -229,7 +229,7 @@
 126     yyjson_mut_obj_add_str(doc, header, &quot;level&quot;, log_level_to_string(level));
 127 
 128     /* Add thread ID */
-129     uint64_t tid = (uint64_t)asciichat_thread_current_id();
+129     uint64_t tid = (uint64_t)thread_current_id();
 130     yyjson_mut_obj_add_uint(doc, header, &quot;tid&quot;, tid);
 131 
 132     /* Add file (if not NULL) - normalize to project-relative path */
@@ -276,7 +276,7 @@
 173 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_current_id()</b>,
+<p class="Pp">References <b>thread_current_id()</b>,
     <b>extract_project_relative_path()</b>, and <b>platform_write()</b>.</p>
 <p class="Pp">Referenced by <b>log_msg()</b>, and <b>log_plain_msg()</b>.</p>
 </section>

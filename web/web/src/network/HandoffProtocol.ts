@@ -29,8 +29,8 @@ type Module = ReturnType<typeof getClientModule> & {
 /** Scheduling adapter. The C protocol owns wire validation; ACDS runs the shared C selector. */
 export class HandoffProtocol {
   private timer: ReturnType<typeof setInterval>;
-  private sequence = 0;
   private generation = 0;
+  private sequence = 0;
   private stopped = false;
   private prepared = false;
   constructor(
@@ -125,12 +125,28 @@ export class HandoffProtocol {
     }
     return true;
   }
-  close(): void {
-    this.stopped = true;
-    clearInterval(this.timer);
+  /** Transfer the live sampling clock while the new host engine initializes. */
+  adopt(
+    send: (type: number, data: Uint8Array) => void,
+    commit: (id: Uint8Array) => void,
+    progress?: (stage: string) => void,
+  ): void {
+    if (this.stopped)
+      throw new Error("Cannot adopt a stopped handoff protocol");
+    this.send = send;
+    this.commit = commit;
+    this.progress = progress;
+    this.releasePreparedHost();
+  }
+  private releasePreparedHost(): void {
     if (this.prepared) {
       (getClientModule() as Module | null)?._browser_host_destroy();
       this.prepared = false;
     }
+  }
+  close(): void {
+    this.stopped = true;
+    clearInterval(this.timer);
+    this.releasePreparedHost();
   }
 }

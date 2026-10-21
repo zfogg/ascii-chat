@@ -8,6 +8,7 @@ export interface PacketTransport {
 }
 
 export interface ClientSession {
+  getUploadFeedback?(): import("./UploadQuality").UploadFeedback;
   needsKeyframe?(type: number): boolean;
   readonly canReconnect?: boolean;
   /** Local host input does not cross a network and needs no codec round trip. */

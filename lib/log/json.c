@@ -126,7 +126,7 @@ void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const 
     yyjson_mut_obj_add_str(doc, header, "level", log_level_to_string(level));
 
     /* Add thread ID */
-    uint64_t tid = (uint64_t)asciichat_thread_current_id();
+    uint64_t tid = (uint64_t)thread_current_id();
     yyjson_mut_obj_add_uint(doc, header, "tid", tid);
 
     /* Add file (if not NULL) - normalize to project-relative path */
@@ -273,8 +273,8 @@ void log_json_async_safe(int fd, log_level_t level, const char *file, int line, 
   uint64_t time_ns = time_get_realtime_ns();
   format_timestamp_microseconds(time_ns, timestamp_buf, sizeof(timestamp_buf));
 
-  /* Get thread ID (note: asciichat_thread_current_id is assumed to be async-safe) */
-  uint64_t tid = (uint64_t)asciichat_thread_current_id();
+  /* Get thread ID (note: thread_current_id is assumed to be async-safe) */
+  uint64_t tid = (uint64_t)thread_current_id();
 
   /* Format complete JSON object with timestamp */
   int written = snprintf(json_buffer, sizeof(json_buffer),

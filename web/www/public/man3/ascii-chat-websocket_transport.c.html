@@ -463,7 +463,7 @@
 1697   // The service thread checks is_destroying and context validity before calling lws_service,
 1698   // so it's safe to start it right away without delays.
 1699   ws_data-&gt;service_running = true;
-1700   if (asciichat_thread_create(&amp;ws_data-&gt;service_thread, &quot;ws_service&quot;, websocket_service_thread, ws_data) != 0) {
+1700   if (acthread_create(&amp;ws_data-&gt;service_thread, &quot;ws_service&quot;, websocket_service_thread, ws_data) != 0) {
 1701     log_error(&quot;Failed to create WebSocket service thread&quot;);
 1702     ws_data-&gt;service_running = false;
 1703     lws_context_destroy(ws_data-&gt;context);
@@ -500,7 +500,7 @@
 1734 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>acthread_create</b>,
     <b>atomic_store_bool()</b>, <b>cond_destroy()</b>, <b>cond_init()</b>,
     <b>websocket_transport_data_t::connection_failed</b>,
     <b>websocket_transport_data_t::context</b>,

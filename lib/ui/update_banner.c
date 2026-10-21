@@ -368,7 +368,7 @@ static void *update_check_thread_func(void *arg) {
 }
 
 void update_banner_start_check(void) {
-  if (asciichat_thread_create(&g_update_thread, "update_check", update_check_thread_func, NULL) == 0) {
+  if (acthread_create(&g_update_thread, "update_check", update_check_thread_func, NULL) == 0) {
     g_update_thread_started = true;
   }
 }
@@ -377,12 +377,12 @@ void update_banner_wait_for_check(void) {
   if (!g_update_thread_started) {
     return;
   }
-  int ret = asciichat_thread_join_timeout(&g_update_thread, NULL, 5LL * NS_PER_SEC_INT);
+  int ret = thread_join_timeout(&g_update_thread, NULL, 5LL * NS_PER_SEC_INT);
   if (ret != 0) {
     // Timeout — thread is still alive. Do a blocking join to avoid orphaning it.
     // The thread has bounded runtime (DNS + HTTP both have timeouts) so this won't hang.
     log_warn("Update check thread did not finish within 5s, waiting for completion");
-    asciichat_thread_join(&g_update_thread, NULL);
+    thread_join(&g_update_thread, NULL);
   }
   g_update_thread_started = false;
 }

@@ -41,24 +41,24 @@ int mutex_unlock_impl(mutex_t *mutex) {
 }
 
 // Thread functions (not used in mirror mode, but provided for completeness)
-int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *(*start_routine)(void *), void *arg) {
+int acthread_create(asciichat_thread_t *thread, const char *name, void *(*start_routine)(void *), void *arg) {
   (void)name; // Unused in WASM - no thread registry
   return pthread_create(thread, NULL, start_routine, arg);
 }
 
-int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
+int thread_join(asciichat_thread_t *thread, void **retval) {
   return pthread_join(*thread, retval);
 }
 
-int asciichat_thread_detach(asciichat_thread_t *thread) {
+int thread_detach(asciichat_thread_t *thread) {
   return pthread_detach(*thread);
 }
 
-asciichat_thread_t asciichat_thread_self(void) {
+asciichat_thread_t thread_self(void) {
   return pthread_self();
 }
 
-int asciichat_thread_equal(asciichat_thread_t t1, asciichat_thread_t t2) {
+int thread_equal(asciichat_thread_t t1, asciichat_thread_t t2) {
   return pthread_equal(t1, t2);
 }
 
@@ -97,12 +97,12 @@ int rwlock_wrunlock_impl(rwlock_t *rwlock) {
 }
 
 // Convert thread handle to unique key for named registry lookups
-uintptr_t asciichat_thread_to_key(asciichat_thread_t thread) {
+uintptr_t thread_to_key(asciichat_thread_t thread) {
   return (uintptr_t)thread;
 }
 
 // Thread ID function
-uint64_t asciichat_thread_current_id(void) {
+uint64_t thread_current_id(void) {
   return (uint64_t)pthread_self();
 }
 
@@ -123,14 +123,14 @@ int ascii_tls_set(tls_key_t key, void *value) {
   return pthread_setspecific(key, value);
 }
 
-int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uint64_t timeout_ns) {
+int thread_join_timeout(asciichat_thread_t *thread, void **retval, uint64_t timeout_ns) {
   (void)thread;
   (void)retval;
   (void)timeout_ns;
   return 0;
 }
 
-bool asciichat_thread_is_initialized(asciichat_thread_t *thread) {
+bool thread_is_initialized(asciichat_thread_t *thread) {
   (void)thread;
   return true;
 }

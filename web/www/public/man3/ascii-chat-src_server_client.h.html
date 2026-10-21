@@ -1081,7 +1081,7 @@
 1805   }
 1806 
 1807   // Save this thread's ID so remove_client() can detect self-joins
-1808   client-&gt;receive_thread_id = asciichat_thread_self();
+1808   client-&gt;receive_thread_id = thread_self();
 1809 
 1810   log_debug(&quot;RECV_THREAD_DEBUG: Thread started, client=%p, client_id=%s, is_tcp=%d&quot;, (void *)client, client-&gt;client_id,
 1811             client-&gt;is_tcp_client);
@@ -1307,7 +1307,7 @@
 <p class="Pp">References <b>acip_server_receive_and_dispatch()</b>,
     <b>client_info::active</b>, <b>APP_CALLBACK_VOID</b>,
     <b>asciichat_errno_destroy()</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_self</b>, <b>atomic_load_bool()</b>,
+    <b>thread_self</b>, <b>atomic_load_bool()</b>,
     <b>atomic_store_bool()</b>, <b>client_info::audio_render_thread_running</b>,
     <b>buffer_pool_free()</b>, <b>client_info::client_id</b>,
     <b>asciichat_error_context_t::code</b>, <b>cond_signal()</b>,
@@ -1705,12 +1705,12 @@
 1437     log_debug(&quot;Stopping WebRTC client %s threads (receive and send)&quot;, client_id);
 1438 
 1439     // Join receive thread (but skip if called from the receive thread itself to avoid deadlock)
-1440     thread_id_t current_thread_id = asciichat_thread_self();
-1441     if (asciichat_thread_equal(current_thread_id, target_client-&gt;receive_thread_id)) {
+1440     thread_id_t current_thread_id = thread_self();
+1441     if (thread_equal(current_thread_id, target_client-&gt;receive_thread_id)) {
 1442       log_debug(&quot;remove_client() called from receive thread for client %s, skipping self-join&quot;, client_id);
 1443     } else {
 1444       void *recv_result = NULL;
-1445       asciichat_error_t recv_join_result = asciichat_thread_join(&amp;target_client-&gt;receive_thread, &amp;recv_result);
+1445       asciichat_error_t recv_join_result = thread_join(&amp;target_client-&gt;receive_thread, &amp;recv_result);
 1446       if (recv_join_result != ASCIICHAT_OK) {
 1447         log_warn(&quot;Failed to join receive thread for WebRTC client %s: error %d&quot;, client_id, recv_join_result);
 1448       } else {
@@ -1719,10 +1719,10 @@
 1451     }
 1452 
 1453     // Join dispatch thread (BEFORE destroying packet queues)
-1454     if (asciichat_thread_is_initialized(&amp;target_client-&gt;dispatch_thread)) {
+1454     if (thread_is_initialized(&amp;target_client-&gt;dispatch_thread)) {
 1455       atomic_store_bool(&amp;target_client-&gt;dispatch_thread_running, false);
 1456       void *dispatch_result = NULL;
-1457       asciichat_error_t dispatch_join_result = asciichat_thread_join(&amp;target_client-&gt;dispatch_thread, &amp;dispatch_result);
+1457       asciichat_error_t dispatch_join_result = thread_join(&amp;target_client-&gt;dispatch_thread, &amp;dispatch_result);
 1458       if (dispatch_join_result != ASCIICHAT_OK) {
 1459         log_warn(&quot;Failed to join dispatch thread for WebRTC client %s: error %d&quot;, client_id, dispatch_join_result);
 1460       } else {
@@ -1732,7 +1732,7 @@
 1464 
 1465     // Join send thread
 1466     void *send_result = NULL;
-1467     asciichat_error_t send_join_result = asciichat_thread_join(&amp;target_client-&gt;send_thread, &amp;send_result);
+1467     asciichat_error_t send_join_result = thread_join(&amp;target_client-&gt;send_thread, &amp;send_result);
 1468     if (send_join_result != ASCIICHAT_OK) {
 1469       log_warn(&quot;Failed to join send thread for WebRTC client %s: error %d&quot;, client_id, send_join_result);
 1470     } else {
@@ -1827,10 +1827,10 @@
 1559   // Use exponential backoff for thread termination verification
 1560   int retry_count = 0;
 1561   const int max_retries = 5;
-1562   while (retry_count &lt; max_retries &amp;&amp; (asciichat_thread_is_initialized(&amp;target_client-&gt;send_thread) ||
-1563                                        asciichat_thread_is_initialized(&amp;target_client-&gt;receive_thread) ||
-1564                                        asciichat_thread_is_initialized(&amp;target_client-&gt;video_render_thread) ||
-1565                                        asciichat_thread_is_initialized(&amp;target_client-&gt;audio_render_thread))) {
+1562   while (retry_count &lt; max_retries &amp;&amp; (thread_is_initialized(&amp;target_client-&gt;send_thread) ||
+1563                                        thread_is_initialized(&amp;target_client-&gt;receive_thread) ||
+1564                                        thread_is_initialized(&amp;target_client-&gt;video_render_thread) ||
+1565                                        thread_is_initialized(&amp;target_client-&gt;audio_render_thread))) {
 1566     // Exponential backoff: 10ms, 20ms, 40ms, 80ms, 160ms
 1567     uint32_t delay_ms = 10 * (1 &lt;&lt; retry_count);
 1568     log_warn(&quot;Client %s: Some threads still appear initialized (attempt %d/%d), waiting %ums&quot;, client_id,
@@ -1890,8 +1890,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_transport_destroy()</b>,
     <b>client_info::active</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_equal</b>, <b>asciichat_thread_is_initialized()</b>,
-    <b>asciichat_thread_join</b>, <b>asciichat_thread_self</b>,
+    <b>thread_equal</b>, <b>thread_is_initialized()</b>,
+    <b>thread_join</b>, <b>thread_self</b>,
     <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
     <b>client_info::audio_queue</b>, <b>client_info::audio_render_thread</b>,
     <b>broadcast_server_state_to_all_clients()</b>,
@@ -1977,22 +1977,22 @@
 2702   atomic_store_bool(&amp;client-&gt;send_thread_running, false);
 2703 
 2704   // Wait for threads to finish
-2705   if (asciichat_thread_is_initialized(&amp;client-&gt;send_thread)) {
-2706     asciichat_thread_join(&amp;client-&gt;send_thread, NULL);
+2705   if (thread_is_initialized(&amp;client-&gt;send_thread)) {
+2706     thread_join(&amp;client-&gt;send_thread, NULL);
 2707   }
-2708   if (asciichat_thread_is_initialized(&amp;client-&gt;receive_thread)) {
-2709     asciichat_thread_join(&amp;client-&gt;receive_thread, NULL);
+2708   if (thread_is_initialized(&amp;client-&gt;receive_thread)) {
+2709     thread_join(&amp;client-&gt;receive_thread, NULL);
 2710   }
 2711   // For async dispatch: stop dispatch thread if running
-2712   if (asciichat_thread_is_initialized(&amp;client-&gt;dispatch_thread)) {
+2712   if (thread_is_initialized(&amp;client-&gt;dispatch_thread)) {
 2713     atomic_store_bool(&amp;client-&gt;dispatch_thread_running, false);
-2714     asciichat_thread_join(&amp;client-&gt;dispatch_thread, NULL);
+2714     thread_join(&amp;client-&gt;dispatch_thread, NULL);
 2715   }
 2716 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>client_info::active</b>,
-    <b>asciichat_thread_is_initialized()</b>, <b>asciichat_thread_join</b>,
+    <b>thread_is_initialized()</b>, <b>thread_join</b>,
     <b>atomic_store_bool()</b>, <b>client_info::client_id</b>,
     <b>client_info::dispatch_thread</b>,
     <b>client_info::dispatch_thread_running</b>, <b>ERROR_INVALID_PARAM</b>,

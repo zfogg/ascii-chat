@@ -337,7 +337,7 @@ bool timer_is_initialized(void);
       char _timer_name_with_tid[280];                                                                                  \
       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
       snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), "%s_tid%llu", _timer_name_buf,                      \
-               (unsigned long long)asciichat_thread_current_id());                                                     \
+               (unsigned long long)thread_current_id());                                                     \
       (void)timer_start(_timer_name_with_tid);                                                                         \
     }                                                                                                                  \
   } while (0)
@@ -408,7 +408,7 @@ bool timer_is_initialized(void);
       char _timer_name_with_tid[280];                                                                                  \
       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
       snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), "%s_tid%llu", _timer_name_buf,                      \
-               (unsigned long long)asciichat_thread_current_id());                                                     \
+               (unsigned long long)thread_current_id());                                                     \
       _elapsed = timer_stop(_timer_name_with_tid);                                                                     \
     }                                                                                                                  \
     _elapsed;                                                                                                          \

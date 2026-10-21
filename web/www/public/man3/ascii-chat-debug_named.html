@@ -288,7 +288,7 @@
     <b>named_describe</b> (uintptr_t key, const char *type_hint)
   <br/>
   Format a description string for logging. uintptr_t
-    <b>asciichat_thread_to_key</b> (<b>asciichat_thread_t</b> thread)
+    <b>thread_to_key</b> (<b>asciichat_thread_t</b> thread)
   <br/>
   Convert a thread handle to a registry key. const char *
     <b>named_describe_thread</b> (void *thread)
@@ -1550,7 +1550,7 @@
   NAMED_REGISTER_THREAD( thread, name, parent_ptr)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>named_register(asciichat_thread_to_key((thread)), (name), &quot;thread&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre>named_register(thread_to_key((thread)), (name), &quot;thread&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Register a thread handle with name and automatic format
@@ -1567,7 +1567,7 @@
     (NDEBUG), this is a no-op.</p>
 <p class="Pp">Definition at line <b>764</b> of file <b>debug/named.h</b>.</p>
 <pre>764 #define NAMED_REGISTER_THREAD(thread, name, parent_ptr)                                                                 \
-765   named_register(asciichat_thread_to_key((thread)), (name), &quot;thread&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+765   named_register(thread_to_key((thread)), (name), &quot;thread&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
@@ -1824,7 +1824,7 @@
   NAMED_UNREGISTER_THREAD( thread)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>named_unregister(asciichat_thread_to_key((thread)))</pre>
+<pre>named_unregister(thread_to_key((thread)))</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Unregister a thread handle.</p>
@@ -1860,7 +1860,7 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="uintptr_t_asciichat_thread_to_key_("><a class="permalink" href="#uintptr_t_asciichat_thread_to_key_(">uintptr_t
-  asciichat_thread_to_key (<b>asciichat_thread_t</b> thread)</a></h2>
+  thread_to_key (<b>asciichat_thread_t</b> thread)</a></h2>
 <p class="Pp">#include
   &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
 <p class="Pp">Convert a thread handle to a registry key.</p>
@@ -1952,15 +1952,15 @@
 <div class="Bd-indent">Description string &quot;thread: name (0xID)&quot;</div>
 <p class="Pp">This is a function (not a macro) to handle the opaque
     <b>asciichat_thread_t</b> type properly, converting it through
-    <b>asciichat_thread_to_key()</b>.</p>
+    <b>thread_to_key()</b>.</p>
 <p class="Pp">Definition at line <b>384</b> of file <b>debug/named.c</b>.</p>
 <pre>384                                                 {
-385   uintptr_t key = asciichat_thread_to_key((asciichat_thread_t)thread);
+385   uintptr_t key = thread_to_key((asciichat_thread_t)thread);
 386   return named_describe(key, &quot;thread&quot;);
 387 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_to_key()</b>, and
+<p class="Pp">References <b>thread_to_key()</b>, and
     <b>named_describe()</b>.</p>
 </section>
 <section class="Ss">

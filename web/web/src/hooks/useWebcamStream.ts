@@ -279,6 +279,11 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         conn &&
         conn.getState() === ConnectionState.CONNECTED
       ) {
+        videoEncoderRef.current?.observeTransport(
+          conn.getUploadFeedback?.() ?? {
+            bufferedBytes: conn.getBufferedAmount?.() ?? 0,
+          },
+        );
         if ((conn.getBufferedAmount?.() ?? 0) > 256 * 1024) return;
         let frame =
           fileFrame ??

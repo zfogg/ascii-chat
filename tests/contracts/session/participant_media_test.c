@@ -98,7 +98,7 @@ static void test_codec_destroy(opus_codec_t *codec) {
 static int test_thread_create(asciichat_thread_t *thread, const char *name, void *(*fn)(void *), void *arg) {
   if (fail_stage == 2 || fail_stage == 6)
     return -1;
-  int result = asciichat_thread_create(thread, name, fn, arg);
+  int result = acthread_create(thread, name, fn, arg);
   if (!result)
     workers++;
   return result;
@@ -106,7 +106,7 @@ static int test_thread_create(asciichat_thread_t *thread, const char *name, void
 static int test_thread_join(asciichat_thread_t *thread, void **result) {
   if (fail_join)
     return -1;
-  int error = asciichat_thread_join(thread, result);
+  int error = thread_join(thread, result);
   if (!error)
     workers--;
   return error;
@@ -119,10 +119,10 @@ static asciichat_error_t test_connection_open(const char *name, const char *addr
   return network_connection_open(name, address, port, settings, out, endpoint);
 }
 static asciichat_error_t fixture_start(asciichat_thread_t *thread, void *(*fn)(void *), void *context) {
-  return asciichat_thread_create(thread, "participant_fixture", fn, context);
+  return acthread_create(thread, "participant_fixture", fn, context);
 }
 static asciichat_error_t fixture_join(asciichat_thread_t *thread) {
-  return asciichat_thread_join(thread, NULL);
+  return thread_join(thread, NULL);
 }
 #define network_connection_open test_connection_open
 static void test_capture_audio(session_capture_ctx_t *ctx, void *audio) {
@@ -160,8 +160,8 @@ static void test_capture_complete_open(session_capture_ctx_t *ctx, uint64_t epoc
 #define session_audio_read_captured test_audio_read
 #define opus_codec_create_encoder test_codec_create
 #define opus_codec_destroy test_codec_destroy
-#define asciichat_thread_create test_thread_create
-#define asciichat_thread_join test_thread_join
+#define acthread_create test_thread_create
+#define thread_join test_thread_join
 #include "session/participant.c"
 #include "../../../src/discovery/session.c"
 
@@ -258,9 +258,9 @@ Test(participant_media, startup_failures_and_worker_lifecycle, .timeout = 60) {
   session_participant_t *retained = session_participant_create(&config);
   cr_assert_eq(session_participant_set_transport(retained, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
   asciichat_thread_t foreign;
-  cr_assert_eq(asciichat_thread_create(&foreign, "foreign_destroy", destroy_from_foreign_thread, retained),
+  cr_assert_eq(acthread_create(&foreign, "foreign_destroy", destroy_from_foreign_thread, retained),
                ASCIICHAT_OK);
-  cr_assert_eq(asciichat_thread_join(&foreign, NULL), ASCIICHAT_OK);
+  cr_assert_eq(thread_join(&foreign, NULL), ASCIICHAT_OK);
   cr_assert(retained->initialized && session_participant_get_transport(retained) == &transport);
   cr_assert_eq(atomic_load_int(&retained->connection.state), SESSION_CONNECTION_STOPPING);
   session_participant_destroy(retained);

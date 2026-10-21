@@ -290,7 +290,7 @@ static asciichat_error_t set_formatted(asciichat_error_t code, const char *file,
   context.has_system_error = system;
   context.wsa_error = wsa;
   context.has_wsa_error = windows_socket;
-  context.thread_id = asciichat_thread_current_id();
+  context.thread_id = thread_current_id();
   context.timestamp = time_ns_to_us(time_get_realtime_ns());
   context.created_ns = time_get_ns();
   int length = vsnprintf(context.context_message, sizeof(context.context_message), format ? format : "", args);
@@ -365,7 +365,7 @@ bool asciichat_has_thread_errno(uint64_t id, asciichat_error_context_t *context)
   return found;
 }
 bool asciichat_has_errno(asciichat_error_context_t *context) {
-  return asciichat_has_thread_errno(asciichat_thread_current_id(), context);
+  return asciichat_has_thread_errno(thread_current_id(), context);
 }
 asciichat_error_t asciichat_get_thread_error(uint64_t id) {
   registry_lock();
@@ -375,7 +375,7 @@ asciichat_error_t asciichat_get_thread_error(uint64_t id) {
   return code;
 }
 asciichat_error_t asciichat_get_errno(void) {
-  return asciichat_get_thread_error(asciichat_thread_current_id());
+  return asciichat_get_thread_error(thread_current_id());
 }
 bool asciichat_has_wsa_error(void) {
   asciichat_error_context_t context;
@@ -401,7 +401,7 @@ bool asciichat_has_errno_code_tid(uint64_t id, asciichat_error_t code) {
   return found;
 }
 bool asciichat_has_errno_code(asciichat_error_t code) {
-  return asciichat_has_errno_code_tid(asciichat_thread_current_id(), code);
+  return asciichat_has_errno_code_tid(thread_current_id(), code);
 }
 bool asciichat_has_errno_code_since(asciichat_errno_scope_t scope, asciichat_error_t code) {
   registry_lock();
@@ -429,7 +429,7 @@ asciichat_error_t asciichat_errno_import(const asciichat_error_context_t *cause)
   g_recording = true;
   asciichat_error_context_t copy = *cause;
   copy.cause_id = cause->error_id;
-  copy.thread_id = asciichat_thread_current_id();
+  copy.thread_id = thread_current_id();
   copy.timestamp = time_ns_to_us(time_get_realtime_ns());
   copy.created_ns = time_get_ns();
   copy.backtrace.symbols = NULL;
@@ -457,11 +457,11 @@ void asciichat_clear_thread_errors(uint64_t id) {
   clear_thread(id, true);
 }
 void asciichat_clear_errno(void) {
-  clear_thread(asciichat_thread_current_id(), false);
+  clear_thread(thread_current_id(), false);
   platform_clear_error_state();
 }
 void asciichat_clear_errno_all(void) {
-  clear_thread(asciichat_thread_current_id(), true);
+  clear_thread(thread_current_id(), true);
   platform_clear_error_state();
 }
 bool asciichat_clear_errno_if_top(uint64_t id, uint64_t generation, uint64_t error_id) {
@@ -476,7 +476,7 @@ bool asciichat_clear_errno_if_top(uint64_t id, uint64_t generation, uint64_t err
   return matches;
 }
 static asciichat_errno_scope_t checkpoint(bool new_cause) {
-  asciichat_errno_scope_t scope = {.thread_id = asciichat_thread_current_id()};
+  asciichat_errno_scope_t scope = {.thread_id = thread_current_id()};
   registry_lock();
   error_thread_t *thread = register_current_locked(scope.thread_id);
   scope.generation = thread ? thread->generation : 0;
@@ -498,7 +498,7 @@ asciichat_errno_scope_t asciichat_errno_scope_begin(void) {
 void asciichat_errno_scope_end(asciichat_errno_scope_t scope, asciichat_errno_outcome_t outcome) {
   uint64_t now = time_get_ns();
   // Recovery runs on the offending thread. Cross-thread clearing has separate APIs.
-  if (scope.thread_id != asciichat_thread_current_id())
+  if (scope.thread_id != thread_current_id())
     return;
   registry_lock();
   error_thread_t *thread = find_thread(scope.thread_id);
@@ -535,7 +535,7 @@ void asciichat_errno_suppress(bool suppress) {
 }
 void asciichat_errno_destroy(void) {
   uint64_t now = time_get_ns();
-  uint64_t id = asciichat_thread_current_id();
+  uint64_t id = thread_current_id();
   registry_lock();
 #ifndef EMSCRIPTEN_BUILD
   if (g_tls_ready)

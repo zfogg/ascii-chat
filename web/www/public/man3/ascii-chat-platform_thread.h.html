@@ -71,46 +71,46 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void * <b>asciichat_thread_wrapper_impl</b> (void *arg)
+<p class="Pp">void * <b>thread_wrapper_impl</b> (void *arg)
   <br/>
   Internal thread wrapper function that executes user code with cleanup. int
-    <b>asciichat_thread_create</b> (<b>asciichat_thread_t</b> *thread, const
+    <b>acthread_create</b> (<b>asciichat_thread_t</b> *thread, const
     char *name, void *(*func)(void *), void *arg)
   <br/>
-  Create a new named thread. int <b>asciichat_thread_join</b>
+  Create a new named thread. int <b>thread_join</b>
     (<b>asciichat_thread_t</b> *thread, void **retval)
   <br/>
   Wait for a thread to complete (blocking). int
-    <b>asciichat_thread_join_timeout</b> (<b>asciichat_thread_t</b> *thread,
+    <b>thread_join_timeout</b> (<b>asciichat_thread_t</b> *thread,
     void **retval, <b>uint64_t</b> timeout_ns)
   <br/>
-  Wait for a thread to complete with timeout. void <b>asciichat_thread_exit</b>
+  Wait for a thread to complete with timeout. void <b>thread_exit</b>
     (void *retval)
   <br/>
-  Exit the current thread. <b>thread_id_t</b> <b>asciichat_thread_self</b>
+  Exit the current thread. <b>thread_id_t</b> <b>thread_self</b>
     (void)
   <br/>
-  Get the current thread's ID. int <b>asciichat_thread_equal</b>
+  Get the current thread's ID. int <b>thread_equal</b>
     (<b>thread_id_t</b> t1, <b>thread_id_t</b> t2)
   <br/>
   Compare two thread IDs for equality. <b>uint64_t</b>
-    <b>asciichat_thread_current_id</b> (void)
+    <b>thread_current_id</b> (void)
   <br/>
   Get the current thread's unique numeric ID. <b>bool</b>
-    <b>asciichat_thread_is_initialized</b> (<b>asciichat_thread_t</b> *thread)
+    <b>thread_is_initialized</b> (<b>asciichat_thread_t</b> *thread)
   <br/>
   Check if a thread handle has been initialized. void
-    <b>asciichat_thread_init</b> (<b>asciichat_thread_t</b> *thread)
+    <b>thread_init</b> (<b>asciichat_thread_t</b> *thread)
   <br/>
   Initialize a thread handle to an uninitialized state. <b>asciichat_error_t</b>
-    <b>asciichat_thread_set_realtime_priority</b> (void)
+    <b>thread_set_realtime_priority</b> (void)
   <br/>
   Set the current thread to real-time priority. <b>asciichat_error_t</b>
     <b>thread_create_or_fail</b> (<b>asciichat_thread_t</b> *thread, void
     *(*func)(void *), void *arg, const char *thread_name, const char *client_id)
   <br/>
   Create a thread with standardized error handling and logging. uintptr_t
-    <b>asciichat_thread_to_key</b> (<b>asciichat_thread_t</b> thread)
+    <b>thread_to_key</b> (<b>asciichat_thread_t</b> thread)
   <br/>
   Convert a thread handle to a uintptr_t registry key. int
     <b>ascii_tls_key_create</b> (<b>tls_key_t</b> *key, void(*destructor)(void

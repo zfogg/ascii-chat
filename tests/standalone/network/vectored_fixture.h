@@ -142,7 +142,7 @@ static inline void roundtrip(size_t len, bool encrypted, size_t iterations, bool
     payload[i] = (uint8_t)(i % 251);
   receive_context_t ctx = {receiver, payload, len, iterations};
   asciichat_thread_t thread;
-  CHECK(asciichat_thread_create(&thread, "vector-receiver", receive_packets, &ctx) == 0);
+  CHECK(acthread_create(&thread, "vector-receiver", receive_packets, &ctx) == 0);
   uint64_t *durations = buffer_alloc(NULL, iterations * sizeof(uint64_t));
   CHECK(durations);
   socket_io_stats_reset();
@@ -169,7 +169,7 @@ static inline void roundtrip(size_t len, bool encrypted, size_t iterations, bool
     }
     durations[i] = time_get_ns() - before;
   }
-  CHECK(asciichat_thread_join(&thread, NULL) == 0);
+  CHECK(thread_join(&thread, NULL) == 0);
   uint64_t elapsed = time_get_ns() - start;
   qsort(durations, iterations, sizeof(uint64_t), compare_u64);
   log_warn("network-bench mode=%s encrypted=%d bytes=%zu iterations=%zu MiB/s=%.2f p50_us=%.1f p95_us=%.1f p99_us=%.1f",
@@ -252,12 +252,12 @@ static inline void concurrent_senders(void) {
   receive_context_t send_ctx = {sender, payload, sizeof(payload), 24};
   receive_context_t recv_ctx = {receiver, payload, sizeof(payload), 96};
   asciichat_thread_t reader, writers[4];
-  CHECK(asciichat_thread_create(&reader, "concurrent-reader", receive_packets, &recv_ctx) == 0);
+  CHECK(acthread_create(&reader, "concurrent-reader", receive_packets, &recv_ctx) == 0);
   for (size_t i = 0; i < 4; ++i)
-    CHECK(asciichat_thread_create(&writers[i], "concurrent-writer", send_concurrent, &send_ctx) == 0);
+    CHECK(acthread_create(&writers[i], "concurrent-writer", send_concurrent, &send_ctx) == 0);
   for (size_t i = 0; i < 4; ++i)
-    CHECK(asciichat_thread_join(&writers[i], NULL) == 0);
-  CHECK(asciichat_thread_join(&reader, NULL) == 0);
+    CHECK(thread_join(&writers[i], NULL) == 0);
+  CHECK(thread_join(&reader, NULL) == 0);
   acip_transport_destroy(sender);
   acip_transport_destroy(receiver);
   crypto_destroy(&a);
@@ -282,12 +282,12 @@ static inline void full_duplex(void) {
   receive_context_t contexts[] = {{transports[0], payload, len, 8}, {transports[1], payload, len, 8}};
   asciichat_thread_t readers[2], writers[2];
   for (size_t i = 0; i < 2; ++i) {
-    CHECK(asciichat_thread_create(&readers[i], "duplex-receiver", receive_packets, &contexts[i]) == 0);
-    CHECK(asciichat_thread_create(&writers[i], "duplex-sender", send_concurrent, &contexts[i]) == 0);
+    CHECK(acthread_create(&readers[i], "duplex-receiver", receive_packets, &contexts[i]) == 0);
+    CHECK(acthread_create(&writers[i], "duplex-sender", send_concurrent, &contexts[i]) == 0);
   }
   for (size_t i = 0; i < 2; ++i) {
-    CHECK(asciichat_thread_join(&writers[i], NULL) == 0);
-    CHECK(asciichat_thread_join(&readers[i], NULL) == 0);
+    CHECK(thread_join(&writers[i], NULL) == 0);
+    CHECK(thread_join(&readers[i], NULL) == 0);
     acip_transport_destroy(transports[i]);
     crypto_destroy(&crypto[i]);
     socket_close(sockets[i]);

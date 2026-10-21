@@ -25,7 +25,7 @@ Test(debug_mutex, concurrent_stack_snapshots) {
   asciichat_thread_t writers[4];
   atomic_store(&stack_stress_running, true);
   for (int i = 0; i < 4; i++)
-    cr_assert_eq(asciichat_thread_create(&writers[i], "stack_stress", change_lock_stack, NULL), ASCIICHAT_OK);
+    cr_assert_eq(acthread_create(&writers[i], "stack_stress", change_lock_stack, NULL), ASCIICHAT_OK);
 
   for (int iteration = 0; iteration < 2000; iteration++) {
     mutex_stack_entry_t **stacks = NULL;
@@ -42,7 +42,7 @@ Test(debug_mutex, concurrent_stack_snapshots) {
 
   atomic_store(&stack_stress_running, false);
   for (int i = 0; i < 4; i++)
-    cr_assert_eq(asciichat_thread_join(&writers[i], NULL), ASCIICHAT_OK);
+    cr_assert_eq(thread_join(&writers[i], NULL), ASCIICHAT_OK);
 }
 
 static atomic_t cond_stress_running = {0};
@@ -59,7 +59,7 @@ Test(debug_mutex, concurrent_condition_destruction) {
   NAMED_REGISTER_ATOMIC(&cond_stress_running, "cond_stress_running", NULL);
   atomic_store_bool(&cond_stress_running, true);
   asciichat_thread_t monitor;
-  cr_assert_eq(asciichat_thread_create(&monitor, "cond_monitor", inspect_conditions, NULL), ASCIICHAT_OK);
+  cr_assert_eq(acthread_create(&monitor, "cond_monitor", inspect_conditions, NULL), ASCIICHAT_OK);
   for (int i = 0; i < 5000; ++i) {
     cond_t *cond = SAFE_CALLOC(1, sizeof(*cond), cond_t *);
     cr_assert_eq(cond_init(cond, "condition_lifetime"), 0);
@@ -67,7 +67,7 @@ Test(debug_mutex, concurrent_condition_destruction) {
     SAFE_FREE(cond);
   }
   atomic_store_bool(&cond_stress_running, false);
-  cr_assert_eq(asciichat_thread_join(&monitor, NULL), ASCIICHAT_OK);
+  cr_assert_eq(thread_join(&monitor, NULL), ASCIICHAT_OK);
   NAMED_UNREGISTER(&cond_stress_running);
 }
 #endif
