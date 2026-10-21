@@ -13,6 +13,33 @@
 // Use quiet logging for tests
 TestSuite(ip_utils);
 
+Test(ip_utils, mapped_addresses_round_trip_and_ipv6_formatting_rejects_invalid_inputs) {
+  char mapped[64], ipv4[16], expanded[64], compact[64];
+  const char *addresses[] = {"0.0.0.0", "127.0.0.1", "192.0.2.17", "255.255.255.255"};
+  for (size_t i = 0; i < sizeof(addresses) / sizeof(addresses[0]); ++i) {
+    cr_assert_eq(ipv4_to_ipv6_mapped(addresses[i], mapped, sizeof(mapped)), ASCIICHAT_OK);
+    cr_assert(is_ipv4_mapped_ipv6(mapped));
+    cr_assert_eq(extract_ipv4_from_mapped_ipv6(mapped, ipv4, sizeof(ipv4)), ASCIICHAT_OK);
+    cr_assert_str_eq(ipv4, addresses[i]);
+  }
+  cr_assert_eq(expand_ipv6("[2001:DB8::1]", expanded, sizeof(expanded)), ASCIICHAT_OK);
+  cr_assert_str_eq(expanded, "2001:0db8:0000:0000:0000:0000:0000:0001");
+  cr_assert_eq(compact_ipv6(expanded, compact, sizeof(compact)), ASCIICHAT_OK);
+  cr_assert_str_eq(compact, "2001:db8::1");
+  cr_assert_eq(canonicalize_ipv6("2001:db8::1", compact, 2), ERROR_NETWORK);
+  cr_assert_eq(extract_ipv4_from_mapped_ipv6("::ffff:192.0.2.17", ipv4, 2), ERROR_NETWORK);
+  cr_assert_eq(ipv4_to_ipv6_mapped(NULL, mapped, sizeof(mapped)), ERROR_INVALID_PARAM);
+  cr_assert_eq(ipv4_to_ipv6_mapped("256.0.0.1", mapped, sizeof(mapped)), ERROR_INVALID_PARAM);
+  cr_assert_eq(extract_ipv4_from_mapped_ipv6(NULL, ipv4, sizeof(ipv4)), ERROR_INVALID_PARAM);
+  cr_assert_eq(extract_ipv4_from_mapped_ipv6("2001:db8::1", ipv4, sizeof(ipv4)), ERROR_INVALID_PARAM);
+  const char *invalid[] = {NULL, "[bad", "not-an-ip"};
+  for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+    cr_assert_eq(expand_ipv6(invalid[i], expanded, sizeof(expanded)), ERROR_INVALID_PARAM);
+    cr_assert_eq(canonicalize_ipv6(invalid[i], compact, sizeof(compact)), ERROR_INVALID_PARAM);
+    cr_assert_not(is_ipv4_mapped_ipv6(invalid[i]));
+  }
+}
+
 Test(ip_utils, discovery_rejects_special_use_addresses_as_public_endpoints) {
   const char *non_public_v4[] = {
       "10.0.0.1", "172.31.255.255", "192.168.1.1", "127.0.0.2", "169.254.1.2",
