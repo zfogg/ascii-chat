@@ -6,7 +6,8 @@
     "nativeCompiler": "Clang 23.1.3 / Ninja Debug",
     "browser": "Chrome 155.0.8059.85",
     "wasmCompiler": "Emscripten 5.0.0 a7c5deabd7c88ba1c38ebe988112256775f944c6 / Release / dlmalloc",
-    "turn": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3 (local Docker UDP relay)"
+    "turn": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3 (local Docker UDP relay)",
+    "execution": "Four concurrent invocations on one host; browser/mixed cases sequential within each invocation; shared CPU/Chromium/coturn load may inflate timing."
   },
   "wasmManifest": {
     "sourceHash": "7c7fd4b430f946e1e3302128201c7a40badf201bc921e4fed8564855aef7defc",
@@ -372,7 +373,8 @@
       ],
       "started": "2026-10-21T07:56:14.994Z",
       "completed": "2026-10-21T07:58:19.197Z",
-      "localArtifactDirectory": ".tmp/handoff-integrated-direct"
+      "localArtifactDirectory": ".tmp/handoff-integrated-direct",
+      "signalingPortBase": 38200
     },
     {
       "scenario": "browser-audio-relay",
@@ -718,7 +720,8 @@
       ],
       "started": "2026-10-21T07:56:14.989Z",
       "completed": "2026-10-21T07:58:13.759Z",
-      "localArtifactDirectory": ".tmp/handoff-integrated-relay"
+      "localArtifactDirectory": ".tmp/handoff-integrated-relay",
+      "signalingPortBase": 38400
     },
     {
       "scenario": "mixed-audio-direct",
@@ -1077,7 +1080,8 @@
         "nonSilentFraction": 0.9675
       },
       "completed": "2026-10-21T08:00:20.245Z",
-      "localArtifactDirectory": ".tmp/handoff-integrated-direct"
+      "localArtifactDirectory": ".tmp/handoff-integrated-direct",
+      "signalingPortBase": 38200
     },
     {
       "scenario": "mixed-audio-relay",
@@ -1436,7 +1440,8 @@
         "nonSilentFraction": 0.9376558603491272
       },
       "completed": "2026-10-21T08:00:18.617Z",
-      "localArtifactDirectory": ".tmp/handoff-integrated-relay"
+      "localArtifactDirectory": ".tmp/handoff-integrated-relay",
+      "signalingPortBase": 38400
     },
     {
       "scenario": "native-audio-direct",
@@ -1534,7 +1539,8 @@
       ],
       "started": "2026-10-21T07:56:15.018Z",
       "completed": "2026-10-21T07:58:15.634Z",
-      "localArtifactDirectory": ".tmp/handoff-integrated-native"
+      "localArtifactDirectory": ".tmp/handoff-integrated-native",
+      "signalingPortBase": 38800
     },
     {
       "scenario": "mixed-audio-relay-slow-video-and-promotion",
@@ -1893,7 +1899,8 @@
         "nonSilentFraction": 0.6683291770573566
       },
       "completed": "2026-10-21T07:58:49.311Z",
-      "localArtifactDirectory": ".tmp/handoff-integrated-slow"
+      "localArtifactDirectory": ".tmp/handoff-integrated-slow",
+      "signalingPortBase": 38600
     }
   ],
   "integratedMaster": "b1090964d6898fa2525289936a6c535a696efa1b"

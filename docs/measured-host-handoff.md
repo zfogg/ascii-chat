@@ -150,7 +150,12 @@ worker regression checks delivery and rejection of unknown recipients.
 
 Validation on Windows x64, Clang/Ninja and Chrome 155 executed all six rows
 below with three real host process losses per session and 30-second dwell
-periods. Browser runs used the rebuilt source-matched Release WASM bundle.
+periods. Four invocations ran concurrently on one Windows host, sharing CPU,
+Chromium and local coturn resources; this shared load can lengthen measured
+interruptions. `HANDOFF_PORT` bases were 38200 (browser/mixed direct),
+38400 (browser/mixed relay), 38600 (slow mixed relay) and 38800 (native direct).
+Each browser/mixed invocation ran its two scenarios sequentially, with mixed
+using base + 20. Browser runs used the rebuilt source-matched Release WASM bundle.
 Both browser observers recovered new changing video and non-silent decoded
 audio after every commit. Mixed runs first proved native host audio while
 only one browser receiver was connected. Every forced-relay measurement
