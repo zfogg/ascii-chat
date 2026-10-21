@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
 spec = importlib.util.spec_from_file_location("coverage_report", Path(__file__).with_name("generate-coverage.py"))
@@ -49,6 +50,57 @@ class CoverageReportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "No matching"):
             coverage_report.generate(self.root, self.root, self.report)
 
+    def test_compiler_cache_types_include_explicit_command_line_selection(self):
+        compiler = self.root / "clang"
+        llvm_cov = self.root / "llvm-cov"
+        compiler.touch()
+        llvm_cov.touch()
+        for cache_type in ("FILEPATH", "STRING", "UNINITIALIZED"):
+            with self.subTest(cache_type=cache_type):
+                (self.root / "CMakeCache.txt").write_text(f"CMAKE_C_COMPILER:{cache_type}={compiler}\n")
+                with patch.object(coverage_report.subprocess, "check_output",
+                                  side_effect=["clang version 22.1.0", "LLVM version 22.1.0"]):
+                    self.assertEqual(coverage_report.find_llvm_cov(self.root), str(llvm_cov))
+
+    @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja"), "Requires CMake, Ninja and Clang")
+    def test_project_ipo_defaults_preserve_criterion_target_opt_out(self):
+        module = Path(__file__).resolve().parents[2] / "cmake/compiler/ProjectSettings.cmake"
+        (self.root / "cmake/compiler").mkdir(parents=True)
+        shutil.copy(module.parent / "CPUDetection.cmake", self.root / "cmake/compiler/CPUDetection.cmake")
+        (self.root / "main.c").write_text("int main(void) { return 0; }\n")
+        (self.root / "tests").mkdir()
+        (self.root / "tests/CMakeLists.txt").write_text(
+            'add_executable(criterion_fixture ../main.c)\n'
+            'set_target_properties(criterion_fixture PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF '
+            'INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)\n'
+            'set_property(TARGET criterion_fixture PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)\n'
+            'add_executable(general_opt_out ../main.c)\n'
+            'set_property(TARGET general_opt_out PROPERTY INTERPROCEDURAL_OPTIMIZATION OFF)\n'
+        )
+        (self.root / "CMakeLists.txt").write_text(
+            'cmake_minimum_required(VERSION 3.24)\nproject(fixture C)\n'
+            f'include("{module.as_posix()}")\nset(ASCIICHAT_ENABLE_IPO ON)\n'
+            f'include("{(module.parent / "CompilerFlags.cmake").as_posix()}")\n'
+            'set(ASCIICHAT_ENABLE_COVERAGE ON)\n'
+            'configure_release_flags(FALSE TRUE FALSE FALSE FALSE)\n'
+            'add_executable(ascii-chat main.c)\nadd_subdirectory(tests)\n'
+            'asciichat_finalize_project_settings()\n'
+            'get_target_property(normal_release ascii-chat INTERPROCEDURAL_OPTIMIZATION_RELEASE)\n'
+            'get_target_property(normal_relwithdebinfo ascii-chat INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO)\n'
+            'get_target_property(test_release criterion_fixture INTERPROCEDURAL_OPTIMIZATION_RELEASE)\n'
+            'get_target_property(test_relwithdebinfo criterion_fixture INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO)\n'
+            'get_target_property(general general_opt_out INTERPROCEDURAL_OPTIMIZATION)\n'
+            'file(WRITE "${CMAKE_BINARY_DIR}/ipo.txt" '
+            '"${normal_release};${normal_relwithdebinfo};${test_release};${test_relwithdebinfo};${general}")\n'
+        )
+        build = self.root / "build"
+        subprocess.run(["cmake", "-S", str(self.root), "-B", str(build), "-G", "Ninja",
+                        f"-DCMAKE_C_COMPILER={shutil.which('clang')}", "-DCMAKE_BUILD_TYPE=Release"], check=True)
+        self.assertEqual((build / "ipo.txt").read_text(), "TRUE;TRUE;OFF;OFF;OFF")
+        for target, stripped in (("ascii-chat", True), ("criterion_fixture", False)):
+            commands = subprocess.check_output(["ninja", "-C", str(build), "-t", "commands", target], text=True)
+            self.assertEqual("-Wl,--gc-sections" in commands, stripped)
+
     @unittest.skipUnless(shutil.which("cmake"), "Requires CMake")
     def test_windows_ffmpeg_copy_uses_installed_dll_versions(self):
         repository = Path(__file__).resolve().parents[2]
@@ -65,7 +117,7 @@ class CoverageReportTests(unittest.TestCase):
             'set(WIN32 TRUE)\nunset(ENV{VCPKG_ROOT})\n'
             'include("${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake")\n'
             'include("${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake")\n'
-            'function(copy_dlls_post_build)\n'
+            'function(stage_dlls_for_target)\n'
             '  cmake_parse_arguments(ARG "" "TARGET;SOURCE_DIR;COMMENT" "NAMES" ${ARGN})\n'
             '  foreach(name IN LISTS ARG_NAMES)\n'
             f'    file(COPY "${{ARG_SOURCE_DIR}}/${{name}}" DESTINATION "{(self.root / "staged").as_posix()}")\n'
