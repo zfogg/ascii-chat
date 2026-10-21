@@ -148,8 +148,14 @@ static asciichat_error_context_t backend_failure_detail(asciichat_errno_scope_t 
 
 static asciichat_error_t import_failure(const asciichat_error_context_t *cause,
                                         const asciichat_error_context_t *detail) {
-  if (detail->code != ASCIICHAT_OK)
+  if (detail->code != ASCIICHAT_OK && !cause->has_system_error && !cause->has_wsa_error) {
     asciichat_errno_import(detail);
+    // Recreate the wrapper at its original source location. Normal recording
+    // links it to the newly imported cause in this producer's registry; simply
+    // importing both would leave the wrapper pointing at the handled worker ID.
+    return asciichat_set_errno_with_message(cause->code, cause->file, cause->line, cause->function, "%s",
+                                            cause->context_message);
+  }
   return asciichat_errno_import(cause);
 }
 

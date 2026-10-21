@@ -234,6 +234,8 @@ static void check_backend_failure(asciichat_error_t code, bool omit_context, boo
       cr_assert_eq(producers[i].detail.system_errno, EPIPE);
       cr_assert_str_eq(producers[i].detail.function, "backend_send");
       cr_assert_str_eq(producers[i].detail.context_message, "Backend rejected outgoing packet");
+      if (wrap_context)
+        cr_assert_eq(producers[i].cause.cause_id, producers[i].detail.error_id);
     }
   }
   cr_assert_eq(atomic_load_u64(&backend->sent), 1); // No retry of a possibly partial packet.
@@ -242,7 +244,12 @@ static void check_backend_failure(asciichat_error_t code, bool omit_context, boo
   cr_assert_eq(later.result, code);
   cr_assert(later.has_cause);
   cr_assert_str_eq(later.cause.context_message, producers[0].cause.context_message);
-  cr_assert_eq(later.cause.cause_id, producers[0].cause.cause_id);
+  if (wrap_context) {
+    cr_assert_eq(later.cause.cause_id, later.detail.error_id);
+    cr_assert_eq(later.detail.cause_id, producers[0].detail.cause_id);
+  } else {
+    cr_assert_eq(later.cause.cause_id, producers[0].cause.cause_id);
+  }
   if (!omit_context)
     cr_assert_eq(later.detail.system_errno, EPIPE);
   acip_transport_destroy(transport);
