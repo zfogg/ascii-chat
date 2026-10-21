@@ -167,3 +167,29 @@ it("rejects unsupported recording before acquiring an audio graph", async () => 
   expect(result.current.error).toContain("cannot record");
   expect(ensureAudio).not.toHaveBeenCalled();
 });
+
+it("reports a source-switch failure consistently and finalizes the recording", async () => {
+  const base = options();
+  const media = document.createElement("video");
+  pipeline.setRecordingMedia.mockImplementation((element) => {
+    if (element) throw new Error("File audio is unavailable");
+  });
+  const { result, rerender } = renderHook(
+    ({ file }) =>
+      useSessionRecording({
+        ...base,
+        sourceRevision: file,
+        fileElement: () => (file ? media : null),
+      }),
+    { initialProps: { file: false } },
+  );
+  act(() => {
+    void result.current.start();
+  });
+  await waitFor(() => expect(result.current.state).toBe("recording"));
+  rerender({ file: true });
+  await waitFor(() =>
+    expect(result.current.error).toBe("File audio is unavailable"),
+  );
+  expect(fixture.stop).toHaveBeenCalledOnce();
+});

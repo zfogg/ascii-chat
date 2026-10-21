@@ -127,7 +127,8 @@ export function useSessionRecording(options: Options) {
       try {
         audio.current?.setRecordingMedia(latest.current.fileElement());
       } catch (cause) {
-        setError(String(cause));
+        if (mounted.current)
+          setError(cause instanceof Error ? cause.message : String(cause));
         void owner.current?.stop();
       }
     });

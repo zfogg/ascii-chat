@@ -1187,7 +1187,6 @@ export function ClientPage({
   const audioControls =
     connectionState === ConnectionState.CONNECTED ? (
       <>
-        <RecordingControls recording={recording} />
         {!screenCapture.active && (
           <button
             onClick={isWebcamRunning ? disableWebcam : enableWebcam}
@@ -1638,7 +1637,15 @@ export function ClientPage({
               onSettingsClick: () => setShowSettings((open) => !open),
               showSettingsButton: true,
               settingsOpen: showSettings,
-              statusControls: audioControls,
+              statusControls: (
+                <>
+                  <RecordingControls
+                    recording={recording}
+                    disabled={connectionState !== ConnectionState.CONNECTED}
+                  />
+                  {audioControls}
+                </>
+              ),
               uploadControls: (
                 <ScreenShareControls
                   capture={screenCapture}

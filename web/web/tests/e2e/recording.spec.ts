@@ -220,6 +220,7 @@ async function record(
   info: TestInfo,
   frequencies: number[],
   during?: () => Promise<void>,
+  finish?: () => Promise<void>,
 ) {
   await page.getByRole("button", { name: "Record ASCII", exact: true }).click();
   await expect(
@@ -231,9 +232,11 @@ async function record(
     path: info.outputPath(`${name}-recording.png`),
     fullPage: true,
   });
-  await page
-    .getByRole("button", { name: "Stop recording", exact: true })
-    .click();
+  if (finish) await finish();
+  else
+    await page
+      .getByRole("button", { name: "Stop recording", exact: true })
+      .click();
   const link = page.getByRole("link", {
     name: "Download recording",
     exact: true,
@@ -572,11 +575,35 @@ for (const mode of ["client", "discovery"] as const)
       }
       // No speakers are enabled on either peer; received recording is independent.
       await record(page, `${mode}-peer-a`, info, [440, 880, 660, 1320]);
-      await record(peer, `${mode}-peer-b`, info, [440, 880, 660, 1320]);
+      // End the call while recording: finalization and its download/error UI
+      // must remain reachable without joining a session again.
+      await record(
+        peer,
+        `${mode}-peer-b`,
+        info,
+        [440, 880, 660, 1320],
+        undefined,
+        async () => {
+          await peer
+            .getByRole("button", { name: "Disconnect", exact: true })
+            .click();
+        },
+      );
+      await expect(
+        peer.getByRole("button", { name: "Record ASCII", exact: true }),
+      ).toBeDisabled();
+      await expect(
+        peer.getByRole("link", { name: "Download recording", exact: true }),
+      ).toBeVisible();
       for (const participant of [page, peer])
-        await participant
-          .getByRole("button", { name: "Disconnect", exact: true })
-          .click();
+        if (
+          await participant
+            .getByRole("button", { name: "Disconnect", exact: true })
+            .isVisible()
+        )
+          await participant
+            .getByRole("button", { name: "Disconnect", exact: true })
+            .click();
       await peer.close();
     } finally {
       writeFileSync(info.outputPath("native.log"), output);
