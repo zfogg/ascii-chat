@@ -1197,6 +1197,18 @@ static asciichat_error_t parse_binary_options(options_t *opts, int argc, char **
           return ERROR_USAGE;
         }
       }
+      if (strcmp(argv[i], "--config") == 0 || strncmp(argv[i], "--config=", 9) == 0) {
+        const char *path = argv[i] + 9;
+        if (strcmp(argv[i], "--config") == 0) {
+          if (i + 1 >= argc || argv[i + 1][0] == '-')
+            return SET_ERRNO(ERROR_USAGE, "--config requires a file path");
+          path = argv[++i];
+        }
+        if (!path[0] || strlen(path) >= sizeof(opts->config_file))
+          return SET_ERRNO(ERROR_USAGE, "Invalid --config file path");
+        SAFE_STRNCPY(opts->config_file, path, sizeof(opts->config_file));
+        continue;
+      }
       // Handle -L and --log-file FILE (set log file path)
       if ((strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-file") == 0)) {
         if (i + 1 >= argc) {
