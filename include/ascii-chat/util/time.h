@@ -419,35 +419,38 @@ bool timer_is_initialized(void);
 // ============================================================================
 
 /**
- * @brief Format nanoseconds as pretty duration with spaces and configurable precision
+ * @brief Format nanoseconds as a compact duration with configurable sub-minute precision
  * @param nanoseconds Duration in nanoseconds
  * @param decimals Number of decimal places (0-9), or -1 for sensible defaults per range
  * @param buffer Output buffer for formatted string
  * @param buffer_size Size of output buffer
  * @return Number of characters written (excluding null terminator), or -1 on error
  *
- * Formats a duration with space-separated number and unit, with configurable precision.
- * Automatically strips trailing zeros and decimal points.
+ * Formats sub-minute durations without spaces between the number and unit.
+ * Strips trailing fractional zeros. Minutes and hours omit fractions; days omit seconds.
  *
  * Examples (with decimals=-1):
- * - 500 ns     → "500 ns"
- * - 3500 ns    → "3.5 µs"
- * - 1253000 ns → "1.253 ms"
- * - 2500000000 ns → "2.5 s"
- * - 83456000000000 ns → "1:23.456"  (minutes range, MM:SS.fraction)
+ * - 100 ns     → "100ns"
+ * - 3500 ns    → "3.5µs"
+ * - 255000000 ns → "255ms"
+ * - 2500000000 ns → "2.5s"
+ * - 83456000000 ns → "1:23"  (minutes range, M:SS)
  * - 7530000000000 ns → "2:05:30"   (hours range, H:MM:SS)
+ * - 3207240000000000 ns → "37d 2:54" (days range, Dd H:MM)
  *
  * Unit selection logic:
- * - [0, 1k) ns       → "NNN ns"
- * - [1k, 1M) ns      → "N.N µs" (up to 3 decimals)
- * - [1M, 1G) ns      → "N.NNN ms" (up to 3 decimals)
- * - [1G, 60G) ns     → "N.NN s" (up to 2 decimals)
- * - [60G, 3.6T) ns   → "M:SS.fraction" (colon notation, up to 3 decimals)
- * - [3.6T+) ns       → "H:MM:SS" (colon notation)
+ * - [0, 1k) ns       → "NNNns"
+ * - [1k, 1M) ns      → "N.Nµs" (up to 3 decimals)
+ * - [1M, 1G) ns      → "N.NNNms" (up to 3 decimals)
+ * - [1G, 60G) ns     → "N.NNs" (up to 2 decimals)
+ * - [60G, 3.6T) ns   → "M:SS"
+ * - [3.6T, 86.4T) ns → "H:MM:SS"
+ * - [86.4T+) ns      → "Dd H:MM"
  *
  * @note Buffer should be at least 32 bytes for all possible outputs
  * @note Thread-safe (no global state)
- * @note decimals=-1 uses appropriate defaults (3 for ns/µs/ms/colon, 2 for s)
+ * @note decimals=-1 uses appropriate defaults (3 for µs/ms, 2 for s)
+ * @note decimals applies only below one minute; larger durations truncate omitted fields
  * @note decimals=0 produces no decimal point
  *
  * @ingroup module_utilities

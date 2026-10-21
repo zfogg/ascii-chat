@@ -378,7 +378,7 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
 /**
  * Helper: Strip trailing zeros and decimal point from a formatted number
  * Modifies the string in-place, returns new length.
- * Stops at space (which indicates start of unit) or end of string.
+ * Stops at the first non-digit after the decimal point, preserving the unit suffix.
  */
 static int strip_trailing_zeros(char *str) {
   if (!str || !*str)
@@ -393,30 +393,16 @@ static int strip_trailing_zeros(char *str) {
   if (!decimal)
     return len; // No decimal point
 
-  // Find where the number ends (space indicates unit follows)
-  char *space = strchr(decimal, ' ');
-  int end_pos = space ? (int)(space - str) - 1 : len - 1;
-
-  // Strip trailing zeros from the fractional part
-  int pos = end_pos;
-  while (pos > (int)(decimal - str) && str[pos] == '0') {
-    pos--;
-  }
-
-  // If we end up at the decimal point itself, remove it too
-  if (pos == (int)(decimal - str)) {
-    pos--;
-  }
-
-  // Shift everything after pos (the unit) forward, or just null-terminate if no unit
-  if (space) {
-    // Move unit to new position
-    int space_idx = (int)(space - str);
-    memmove(str + pos + 1, str + space_idx, len - space_idx + 1);
-  } else {
-    // Just null-terminate
-    str[pos + 1] = '\0';
-  }
+  // Keep the unit suffix while removing zeros from the fractional digits.
+  char *suffix = decimal + 1;
+  while (*suffix >= '0' && *suffix <= '9')
+    ++suffix;
+  char *end = suffix;
+  while (end > decimal + 1 && end[-1] == '0')
+    --end;
+  if (end == decimal + 1)
+    end = decimal;
+  memmove(end, suffix, strlen(suffix) + 1);
 
   return (int)strlen(str);
 }
@@ -428,7 +414,7 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
 
   // Handle zero
   if (nanoseconds == 0) {
-    int written = safe_snprintf(buffer, buffer_size, "0 ns");
+    int written = safe_snprintf(buffer, buffer_size, "0ns");
     return (written < 0 || (size_t)written >= buffer_size) ? -1 : written;
   }
 
@@ -438,7 +424,7 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
     if (nanoseconds < NS_PER_MIN_INT) {
       actual_decimals = (nanoseconds < NS_PER_SEC_INT) ? 3 : 2; // ns/µs/ms or seconds
     } else {
-      actual_decimals = 3; // colon notation
+      actual_decimals = 0; // colon notation uses whole seconds
     }
   }
 
@@ -452,14 +438,14 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
 
   // Nanoseconds (< 1µs)
   if (nanoseconds < NS_PER_US_INT) {
-    written = safe_snprintf(buffer, buffer_size, "%llu ns", (unsigned long long)nanoseconds);
+    written = safe_snprintf(buffer, buffer_size, "%lluns", (unsigned long long)nanoseconds);
   }
   // Microseconds (< 1ms)
   else if (nanoseconds < NS_PER_MS_INT) {
     double us = (double)nanoseconds / NS_PER_US;
     char temp_buf[64];
     // Use a direct snprintf with large enough buffer first
-    snprintf(temp_buf, sizeof(temp_buf), "%.*f µs", actual_decimals, us);
+    snprintf(temp_buf, sizeof(temp_buf), "%.*fµs", actual_decimals, us);
     strip_trailing_zeros(temp_buf);
     written = (int)strlen(temp_buf);
     if (written > 0 && written < (int)buffer_size) {
@@ -472,7 +458,7 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
   else if (nanoseconds < NS_PER_SEC_INT) {
     double ms = (double)nanoseconds / NS_PER_MS;
     char temp_buf[64];
-    snprintf(temp_buf, sizeof(temp_buf), "%.*f ms", actual_decimals, ms);
+    snprintf(temp_buf, sizeof(temp_buf), "%.*fms", actual_decimals, ms);
     strip_trailing_zeros(temp_buf);
     written = (int)strlen(temp_buf);
     if (written > 0 && written < (int)buffer_size) {
@@ -485,7 +471,7 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
   else if (nanoseconds < NS_PER_MIN_INT) {
     double s = (double)nanoseconds / NS_PER_SEC;
     char temp_buf[64];
-    snprintf(temp_buf, sizeof(temp_buf), "%.*f s", actual_decimals, s);
+    snprintf(temp_buf, sizeof(temp_buf), "%.*fs", actual_decimals, s);
     strip_trailing_zeros(temp_buf);
     written = (int)strlen(temp_buf);
     if (written > 0 && written < (int)buffer_size) {
@@ -494,31 +480,17 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
       written = -1;
     }
   }
-  // Minutes (< 1 hour) - use colon notation: M:SS.frac
+  // Minutes omit fractions; days omit seconds.
   else if (nanoseconds < NS_PER_HOUR_INT) {
     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
-    uint64_t minutes = total_seconds / 60;
-    uint64_t seconds = total_seconds % 60;
-    uint64_t remainder_ns = nanoseconds % NS_PER_SEC_INT;
-    double fraction = (double)remainder_ns / NS_PER_SEC;
-
-    char temp_buf[64];
-    if (actual_decimals == 0) {
-      snprintf(temp_buf, sizeof(temp_buf), "%llu:%02llu", (unsigned long long)minutes, (unsigned long long)seconds);
-    } else {
-      snprintf(temp_buf, sizeof(temp_buf), "%llu:%02llu.%.*f", (unsigned long long)minutes, (unsigned long long)seconds,
-               actual_decimals, fraction);
-      strip_trailing_zeros(temp_buf);
-    }
-
-    written = (int)strlen(temp_buf);
-    if (written > 0 && written < (int)buffer_size) {
-      SAFE_STRNCPY(buffer, temp_buf, buffer_size);
-    } else {
-      written = -1;
-    }
+    written = safe_snprintf(buffer, buffer_size, "%llu:%02llu", (unsigned long long)(total_seconds / 60),
+                            (unsigned long long)(total_seconds % 60));
+  } else if (nanoseconds >= NS_PER_DAY_INT) {
+    uint64_t total_minutes = nanoseconds / NS_PER_MIN_INT;
+    written = safe_snprintf(buffer, buffer_size, "%llud %llu:%02llu", (unsigned long long)(total_minutes / (24 * 60)),
+                            (unsigned long long)((total_minutes / 60) % 24), (unsigned long long)(total_minutes % 60));
   }
-  // Hours+ - use colon notation: H:MM:SS or HH:MM:SS
+  // Hours use H:MM:SS.
   else {
     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
     uint64_t hours = total_seconds / 3600;

@@ -603,7 +603,7 @@ void ui_sync_render(terminal_size_t size) {
       char wait[32] = "-";
       if (!strcmp(r->type, "cond")) {
         if (r->wait_known)
-          snprintf(wait, sizeof(wait), "%.2fs", (double)r->wait_ns / NS_PER_SEC_INT);
+          time_pretty(r->wait_ns, -1, wait, sizeof(wait));
         else
           snprintf(wait, sizeof(wait), "busy");
       }

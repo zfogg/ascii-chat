@@ -152,7 +152,11 @@ def inspect(term, artifacts, name, required):
     for row in inventory:
         fields = row.split()
         if fields and fields[0].lstrip(">") == "cond":
-            assert re.fullmatch(r"[0-9]+\.[0-9]+s|busy", fields[-1]), row
+            duration = fields[-1]
+            if len(fields) > 1 and re.fullmatch(r"\d+d", fields[-2]):
+                duration = " ".join(fields[-2:])
+            assert re.fullmatch(r"\d+(?:\.\d+)?(?:ns|µs|ms|s)|\d+:\d{2}(?::\d{2})?|\d+d \d+:\d{2}|busy",
+                                duration), row
         elif fields:
             assert fields[-1] == "-", row
     check_activity(inventory, artifacts, name)

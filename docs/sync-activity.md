@@ -13,7 +13,10 @@ and `1.3m`, rounded to one decimal place with trailing `.0` omitted.
 `Total Wait` is elapsed wall-clock time with at least one thread inside a
 condition wait, including current waits. Overlapping waiters count once, idle
 intervals add nothing, and non-condition rows show `-`. It includes reacquiring
-the associated mutex before the wait returns. Timing snapshots never acquire
+the associated mutex before the wait returns. Durations use `time_pretty()`:
+`100ns`, `255ms`, `2.5s`, `1:23` for minutes, `2:05:30` for hours, and
+`37d 2:54` for days and hours/minutes. Trailing fractional zeros are omitted.
+Timing snapshots never acquire
 that mutex. Names are capped at 30 columns; the selected full name appears in
 the footer. State/value uses 12 columns, followed by a two-space break.
 
