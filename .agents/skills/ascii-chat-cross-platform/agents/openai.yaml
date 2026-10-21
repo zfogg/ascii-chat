@@ -1,0 +1,3 @@
+interface:
+  display_name: "ascii-chat cross-platform development"
+  short_description: "Use Linux Docker and macOS SSH from Windows"
