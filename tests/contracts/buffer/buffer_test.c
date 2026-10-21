@@ -8,6 +8,7 @@
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/atomic.h>
 #include <string.h>
 #include <ascii-chat/video/rgba/video_frame.h>
@@ -434,6 +435,68 @@ static void concurrent_references(void) {
   buffer_release(data);
 }
 
+typedef struct {
+  _Atomic(unsigned) *ready;
+  _Atomic(bool) *start;
+  asciichat_error_t media_result;
+  asciichat_error_t control_result;
+} cold_start_worker_t;
+
+static void *allocate_on_cold_start(void *arg) {
+  cold_start_worker_t *worker = arg;
+  atomic_fetch_add(worker->ready, 1);
+  while (!atomic_load(worker->start))
+    platform_sleep_us(100);
+  void *media = NULL;
+  void *control = NULL;
+  worker->media_result = buffer_acquire(NULL, 4096, BUFFER_DEFAULT_ALIGNMENT, &media);
+  buffer_domain_t *domain = buffer_control_domain();
+  worker->control_result =
+      domain ? buffer_acquire(domain, 64, BUFFER_DEFAULT_ALIGNMENT, &control) : ERROR_INVALID_STATE;
+  buffer_release(media);
+  buffer_release(control);
+  return NULL;
+}
+
+static void concurrent_cold_start(void) {
+  enum { WORKERS = 16, ROUNDS = 8 };
+  for (unsigned round = 0; round < ROUNDS; ++round) {
+    buffer_system_cleanup();
+    _Atomic(unsigned) ready = 0;
+    _Atomic(bool) start = false;
+    cold_start_worker_t workers[WORKERS] = {0};
+    asciichat_thread_t threads[WORKERS];
+    for (unsigned i = 0; i < WORKERS; ++i) {
+      workers[i].ready = &ready;
+      workers[i].start = &start;
+      workers[i].media_result = ERROR_INVALID_STATE;
+      workers[i].control_result = ERROR_INVALID_STATE;
+      cr_assert_eq(acthread_create(&threads[i], "buffer-cold-start", allocate_on_cold_start, &workers[i]),
+                   ASCIICHAT_OK);
+    }
+    uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
+    while (atomic_load(&ready) != WORKERS && time_get_ns() < deadline)
+      platform_sleep_us(100);
+    bool all_ready = atomic_load(&ready) == WORKERS;
+    atomic_store(&start, true);
+    for (unsigned i = 0; i < WORKERS; ++i)
+      cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
+    cr_assert(all_ready, "Cold-start workers failed to reach the start barrier");
+    for (unsigned i = 0; i < WORKERS; ++i) {
+      cr_assert_eq(workers[i].media_result, ASCIICHAT_OK, "Media allocation failed in round %u worker %u", round, i);
+      cr_assert_eq(workers[i].control_result, ASCIICHAT_OK, "Control allocation failed in round %u worker %u", round,
+                   i);
+    }
+    buffer_stats_t stats;
+    buffer_domain_stats(buffer_default_domain(), &stats);
+    cr_assert_eq(stats.outstanding, 0);
+    cr_assert_eq(stats.failures, 0);
+    buffer_domain_stats(buffer_control_domain(), &stats);
+    cr_assert_eq(stats.outstanding, 0);
+    cr_assert_eq(stats.failures, 0);
+  }
+}
+
 static void setup(void) {
   log_init(NULL, LOG_WARN, false, false);
   asciichat_errno_suppress(true);
@@ -489,4 +552,8 @@ Test(buffer_ownership, client_admission_respects_process_budget) {
 
 Test(buffer_ownership, websocket_control_reserve_contract) {
   websocket_control_reserve_contract();
+}
+
+Test(buffer_ownership, concurrent_cold_start) {
+  concurrent_cold_start();
 }
