@@ -15,6 +15,8 @@
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h>
 
 /* ============================================================================
  * Test Setup/Teardown
@@ -57,6 +59,19 @@ Test(log_format, semantic_colorization_accepts_an_explicit_policy_without_a_tty)
   cr_assert_eq(colorize_log_message_with_color(message, false), message);
   cr_assert_not_null(strstr(colorize_log_message_with_color(message, true), "\033["));
   cr_assert_null(colorize_log_message_with_color(NULL, true));
+}
+
+Test(log_format, explicit_monochrome_and_palette_modes_survive_caller_color_policy) {
+  options_t *options = SAFE_MALLOC(sizeof(*options), options_t *);
+  *options = *options_get();
+  options->color_mode = TERM_COLOR_NONE;
+  cr_assert_eq(options_state_set(options), ASCIICHAT_OK);
+  cr_assert_str_eq(log_level_color_for_output(LOG_COLOR_INFO, true), "");
+  options->color_mode = TERM_COLOR_256;
+  cr_assert_eq(options_state_set(options), ASCIICHAT_OK);
+  cr_assert_not_null(strstr(log_level_color_for_output(LOG_COLOR_INFO, true), "38;5;"));
+  cr_assert_str_eq(log_level_color_for_output(LOG_COLOR_INFO, false), "");
+  SAFE_FREE(options);
 }
 
 /* ============================================================================

@@ -781,6 +781,11 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
   for (size_t i = 0; i < metadata_count; i++) {
     const config_option_metadata_t *meta = &metadata[i];
 
+    toml_datum_t datum = toml_seek(toptab, meta->toml_key);
+    if (datum.type == TOML_UNKNOWN) {
+      continue; // Absent options do not impose mode restrictions.
+    }
+
     // Validate mode compatibility using mode_bitmask
     // If mode_bitmask is 0 or BINARY, option applies to all modes
     if (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY)) {
@@ -804,12 +809,6 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     // Skip if already set (avoid processing duplicates like log_file vs logging.log_file)
     if (option_set_flags[i]) {
       continue;
-    }
-
-    // Look up TOML value
-    toml_datum_t datum = toml_seek(toptab, meta->toml_key);
-    if (datum.type == TOML_UNKNOWN) {
-      continue; // Option not present in config
     }
 
     // Extract value based on type using handler

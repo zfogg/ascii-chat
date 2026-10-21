@@ -1628,6 +1628,20 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND AND TARGET ascii-chat-static)
     endforeach()
 endif()
 
+if(BUILD_TESTS AND UNIX AND NOT APPLE AND TARGET ascii-chat)
+    set(media_session_coverage_args)
+    if(ASCIICHAT_ENABLE_COVERAGE)
+        list(APPEND media_session_coverage_args --coverage-build)
+    endif()
+    add_test(NAME media-sessions COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_SOURCE_DIR}/tests/integration/media_sessions.py --binary $<TARGET_FILE:ascii-chat>
+        ${media_session_coverage_args})
+    set_tests_properties(media-sessions PROPERTIES LABELS "integration" TIMEOUT 150 RUN_SERIAL TRUE)
+    if(TARGET tests)
+        add_dependencies(tests ascii-chat)
+    endif()
+endif()
+
 # Preserve each suite's existing category while making all migrated contracts selectable.
 get_property(contract_tests DIRECTORY PROPERTY ASCIICHAT_CONTRACT_TESTS)
 foreach(contract_test IN LISTS contract_tests)
