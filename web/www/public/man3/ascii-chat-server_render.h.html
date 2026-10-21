@@ -594,14 +594,14 @@
 1118   }
 1119 
 1120   // Clean up thread-local error context before exit
-1121   asciichat_errno_destroy();
+1121   errno_destroy();
 1122 
 1123   return NULL;
 1124 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>client_info::active</b>, <b>adaptive_sleep_do()</b>,
-    <b>adaptive_sleep_init()</b>, <b>asciichat_errno_destroy()</b>,
+    <b>adaptive_sleep_init()</b>, <b>errno_destroy()</b>,
     <b>atomic_load_bool()</b>, <b>client_info::audio_queue</b>,
     <b>AUDIO_RENDER_FPS</b>, <b>client_info::audio_render_thread_running</b>,
     <b>audio_ring_buffer_read()</b>, <b>client_info::client_id</b>,
@@ -1134,7 +1134,7 @@
 646 #endif
 647 
 648   // Clean up thread-local error context before exit
-649   asciichat_errno_destroy();
+649   errno_destroy();
 650 
 651   return NULL;
 652 }</pre>
@@ -1144,7 +1144,7 @@
     <b>adaptive_sleep_init()</b>,
     <b>video_frame_buffer_t::allocated_buffer_size</b>,
     <b>any_clients_sending_video()</b>, <b>APP_CALLBACK_VOID</b>,
-    <b>asciichat_errno_destroy()</b>, <b>atomic_load_bool()</b>,
+    <b>errno_destroy()</b>, <b>atomic_load_bool()</b>,
     <b>atomic_store_bool()</b>, <b>video_frame_t::capture_timestamp_ns</b>,
     <b>client_info::client_id</b>, <b>create_mixed_ascii_frame_for_client()</b>,
     <b>video_frame_t::data</b>, <b>terminal_capabilities_t::desired_fps</b>,

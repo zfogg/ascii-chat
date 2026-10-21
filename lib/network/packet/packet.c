@@ -572,7 +572,7 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
 
   // Receive packet header
   packet_header_t header;
-  asciichat_errno_scope_t receive_scope = asciichat_errno_checkpoint();
+  asciichat_errno_scope_t receive_scope = errno_checkpoint();
   ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), timeout_ns);
 
   // Check for errors first (before comparing signed with unsigned)

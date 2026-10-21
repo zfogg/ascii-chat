@@ -2,7 +2,7 @@
 
 int main(int argc, char **argv) {
   log_init(NULL, LOG_WARN, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   CHECK(socket_init() == ASCIICHAT_OK);
   if (argc > 1 && (strcmp(argv[1], "--serve") == 0 || strcmp(argv[1], "--peer") == 0)) {
     peer_mode(argc, argv);

@@ -282,7 +282,7 @@ void asciichat_shared_destroy(void) {
   timer_system_destroy();
 
   // 11. Error context cleanup
-  asciichat_errno_destroy();
+  errno_destroy();
 
   // 12. Logging cleanup - free log format buffers and system state
   log_destroy();
@@ -320,7 +320,7 @@ void asciichat_shared_destroy(void) {
   options_state_destroy();
 
   // 18. Clean up errno context (allocated strings, backtrace symbols)
-  asciichat_errno_shutdown();
+  errno_shutdown();
 
 #ifndef NDEBUG
   // 19. Named registry - cleanup all registered thread names and debug entries

@@ -1860,7 +1860,7 @@
 2022   log_debug(&quot;Receive thread for client %s terminated&quot;, client_id_snapshot);
 2023 
 2024   // Clean up thread-local error context before exit
-2025   asciichat_errno_destroy();
+2025   errno_destroy();
 2026 
 2027   return NULL;
 2028 }</pre>
@@ -1868,7 +1868,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_server_receive_and_dispatch()</b>,
     <b>client_info::active</b>, <b>APP_CALLBACK_VOID</b>,
-    <b>asciichat_errno_destroy()</b>, <b>ASCIICHAT_OK</b>,
+    <b>errno_destroy()</b>, <b>ASCIICHAT_OK</b>,
     <b>thread_self</b>, <b>atomic_load_bool()</b>,
     <b>atomic_store_bool()</b>, <b>client_info::audio_render_thread_running</b>,
     <b>buffer_pool_free()</b>, <b>client_info::client_id</b>,
@@ -2394,7 +2394,7 @@
 2523   log_debug(&quot;Send thread for client %s terminated&quot;, client-&gt;client_id);
 2524 
 2525   // Clean up thread-local error context before exit
-2526   asciichat_errno_destroy();
+2526   errno_destroy();
 2527 
 2528   return NULL;
 2529 }</pre>
@@ -2403,7 +2403,7 @@
 <p class="Pp">References <b>acip_send_ascii_frame()</b>,
     <b>acip_send_audio_batch()</b>, <b>acip_send_audio_opus_batch()</b>,
     <b>acip_send_clear_console()</b>, <b>client_info::active</b>,
-    <b>asciichat_errno_destroy()</b>, <b>ASCIICHAT_OK</b>,
+    <b>errno_destroy()</b>, <b>ASCIICHAT_OK</b>,
     <b>atomic_fetch_add_u64()</b>, <b>atomic_load_bool()</b>,
     <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
     <b>client_info::audio_queue</b>, <b>AUDIO_SAMPLE_RATE</b>,

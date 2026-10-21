@@ -499,7 +499,7 @@ static void concurrent_cold_start(void) {
 
 static void setup(void) {
   log_init(NULL, LOG_WARN, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   buffer_system_init();
 }
 

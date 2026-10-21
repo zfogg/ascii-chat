@@ -3,6 +3,19 @@
 
 @tableofcontents
 
+@section errno_names Function namespace
+
+Public error-state operations use the errno_* namespace: errno_set and its
+formatted/system-error variants record failures; errno_has, errno_get, and
+errno_clear inspect and resolve them. Scope, snapshot, import, diagnostic, and
+shutdown operations share that prefix. SET_ERRNO and the other convenience
+macros forward to these functions.
+
+The function-symbol rename requires library consumers to rebuild. No legacy
+function aliases are exported. Existing error types, scope/history types,
+ASCIICHAT_ERRNO_* constants, and the asciichat_errno.h include path retain their
+names. General error formatting and statistics functions are unchanged.
+
 @section errno_contract Pending errors
 
 Each registered thread has a LIFO stack in a process-wide hash table. The main
@@ -18,7 +31,7 @@ ASCIICHAT_OK is never a match. Empty stacks and unknown thread IDs return false.
 CLEAR_ERRNO_TID(tid), CLEAR_ERRNO_ALL_TID(tid), and
 HAS_ERRNO_CODE_TID(tid, code) operate on a full-width platform thread ID.
 Unconditional TID operations target that ID's current registration. For an
-inspect-then-clear decision use asciichat_clear_errno_if_top(tid, generation,
+inspect-then-clear decision use errno_clear_if_top(tid, generation,
 error_id); an intervening push, clear, or ID reuse makes it return false.
 Remote clearing changes only application error state, never another thread's
 native errno. Automatic TLS destructors unregister exited native threads.
@@ -43,24 +56,24 @@ The offending thread owns recovery policy. Libraries record and return errors;
 application boundaries choose retry, dismissal, connection teardown, or shutdown.
 
 @code
-asciichat_errno_scope_t attempt = asciichat_errno_scope_begin();
+asciichat_errno_scope_t attempt = errno_scope_begin();
 asciichat_error_t result = try_connection();
 if (result == ERROR_NETWORK_TIMEOUT) {
-    asciichat_errno_scope_end(attempt, ASCIICHAT_ERRNO_DISMISSED);
+    errno_scope_end(attempt, ASCIICHAT_ERRNO_DISMISSED);
     // Retry; errors from before this attempt remain untouched.
 } else if (result != ASCIICHAT_OK) {
     LOG_ERRNO_IF_SET("Connection failed");
     return result;
 } else {
     ASSERT_NO_ERRNO_SINCE(attempt);
-    asciichat_errno_scope_end(attempt, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(attempt, ASCIICHAT_ERRNO_HANDLED);
 }
 @endcode
 
 HAS_ERRNO_CODE_SINCE(attempt, code) searches only frames newer than the checkpoint.
 Scopes use monotonically assigned IDs and a registration generation, not depth,
 so concurrent removals cannot cause unrelated older errors to be consumed.
-asciichat_errno_checkpoint() observes a suboperation without starting a new
+errno_checkpoint() observes a suboperation without starting a new
 causal chain; use it for propagation checks inside an existing attempt.
 Nested scopes resolve inner attempts independently. Starting an operation also
 sets a cause boundary: a new failure cannot cite an unrelated older operation.
@@ -70,7 +83,7 @@ errors unresolved in debug builds. It does not clear errors. ASSERT_NO_ERRNO
 checks the whole current stack. Explicitly resolve known recoverable failures
 before declaring success; do not blanket-clear caller errors.
 
-For a fatal worker decision, asciichat_errno_request_exit(code) retains the first
+For a fatal worker decision, errno_request_exit(code) retains the first
 nonzero process error independently of stack cleanup. Request normal application
 shutdown after recording the decision. Main returns that code after the mode has
 stopped its workers. FATAL remains available for unrecoverable startup failures.
@@ -187,12 +200,12 @@ with documented negative/status/count returns retain their own return contracts.
 
 @section errno_handoff Operation-local snapshots and worker handoff
 
-asciichat_errno_peek_since(checkpoint, &failure) copies the newest error from that
+errno_peek_since(checkpoint, &failure) copies the newest error from that
 operation, rejecting older frames and stale thread generations. Pointer-returning
 APIs use this to attribute failure without reusing unrelated pending errors.
 
 An operation can store this value snapshot under its own mutex, or publish it
-through a joined worker result. asciichat_errno_import(&failure) records a new
+through a joined worker result. errno_import(&failure) records a new
 caller-owned frame with the original error ID as its cause, retaining the copied
 message, source and raw backtrace even after worker exit or history eviction.
 It does not consume or clear the producer's errors. Import once when processing

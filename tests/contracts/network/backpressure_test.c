@@ -9,16 +9,30 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <string.h>
+#include <errno.h>
 
 typedef struct {
   atomic_t bytes, sent, closed;
+  asciichat_error_t failure;
+  bool omit_context;
+  bool wrap_context;
 } backend_t;
 static size_t queued(acip_transport_t *transport) {
   return (size_t)atomic_load_u64(&((backend_t *)transport->impl_data)->bytes);
 }
 static asciichat_error_t backend_send(acip_transport_t *transport, const void *data, size_t size) {
   cr_assert_worker(data && size >= sizeof(packet_header_t));
-  atomic_fetch_add_u64(&((backend_t *)transport->impl_data)->sent, 1);
+  backend_t *backend = transport->impl_data;
+  atomic_fetch_add_u64(&backend->sent, 1);
+  if (backend->failure != ASCIICHAT_OK) {
+    if (backend->omit_context) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Unrelated backend diagnostic");
+      return backend->failure;
+    }
+    errno_set_with_system_error_and_message(backend->failure, __FILE__, __LINE__, __func__, EPIPE,
+                                            "Backend rejected outgoing packet");
+    return backend->wrap_context ? SET_ERRNO(backend->failure, "Backend failure wrapper") : backend->failure;
+  }
   return ASCIICHAT_OK;
 }
 static asciichat_error_t close_backend(acip_transport_t *transport) {
@@ -122,7 +136,7 @@ static void *produce(void *arg) {
 
 Test(transport_backpressure, slow_peer_does_not_block_healthy_peer) {
   log_init(NULL, LOG_ERROR, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   acip_transport_t *slow = create(), *healthy = create();
   backend_t *backend = slow->impl_data;
   atomic_store_u64(&backend->bytes, 300000);
@@ -152,7 +166,7 @@ Test(transport_backpressure, slow_peer_does_not_block_healthy_peer) {
 
 Test(transport_backpressure, codec_recovery_requires_keyframe) {
   log_init(NULL, LOG_ERROR, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   backend_t *backend;
   acip_outbound_stats_t stats;
   for (int codec = 0; codec < 2; ++codec) {
@@ -179,7 +193,7 @@ Test(transport_backpressure, codec_recovery_requires_keyframe) {
 
 Test(transport_backpressure, concurrent_streams_obey_budget_and_keep_control) {
   log_init(NULL, LOG_ERROR, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   acip_outbound_stats_t stats;
   acip_transport_t *concurrent = create();
   atomic_store_u64(&((backend_t *)concurrent->impl_data)->bytes, 300000);
@@ -201,6 +215,170 @@ Test(transport_backpressure, concurrent_streams_obey_budget_and_keep_control) {
   buffer_stats_t buffers;
   buffer_domain_stats(buffer_default_domain(), &buffers);
   cr_assert_eq(buffers.outstanding, 0);
+  buffer_system_cleanup();
+  log_destroy();
+}
+
+typedef struct {
+  acip_transport_t *transport;
+  asciichat_error_t result;
+  asciichat_error_context_t cause;
+  asciichat_error_context_t detail;
+  bool has_cause;
+} failing_producer_t;
+
+static void *submit_control(void *arg) {
+  failing_producer_t *producer = arg;
+  packet_header_t header = {.type = HOST_TO_NET_U16(PACKET_TYPE_STREAM_START)};
+  socket_buffer_t buffer = {&header, sizeof(header)};
+  acip_admission_t admission;
+  // A caller's older failure must not replace the worker's failure snapshot.
+  SET_ERRNO(ERROR_INVALID_PARAM, "Old producer diagnostic");
+  asciichat_errno_scope_t scope = errno_checkpoint();
+  producer->result = acip_outbound_submitv(producer->transport, &buffer, 1, &admission);
+  producer->has_cause = errno_peek_since(scope, &producer->cause);
+  asciichat_error_context_t frames[3];
+  size_t count = errno_snapshot(scope.thread_id, frames, 3);
+  for (size_t i = 0; i < count && i < 3; ++i)
+    if (frames[i].error_id > scope.after_id && frames[i].has_system_error)
+      producer->detail = frames[i];
+  CLEAR_ERRNO_ALL();
+  return NULL;
+}
+
+static void check_backend_failure(asciichat_error_t code, bool omit_context, bool wrap_context) {
+  log_init(NULL, LOG_ERROR, false, false);
+  errno_suppress(true);
+  acip_transport_t *transport = create();
+  backend_t *backend = transport->impl_data;
+  backend->failure = code;
+  backend->omit_context = omit_context;
+  backend->wrap_context = wrap_context;
+  atomic_store_u64(&backend->bytes, 1); // Hold both controls until they are queued.
+  failing_producer_t producers[2] = {{.transport = transport}, {.transport = transport}};
+  asciichat_thread_t threads[2];
+  for (size_t i = 0; i < 2; ++i)
+    cr_assert_eq(acthread_create(&threads[i], "failing_control", submit_control, &producers[i]), ASCIICHAT_OK);
+  uint64_t start = time_get_ns();
+  for (;;) {
+    acip_outbound_stats_t stats;
+    cr_assert_eq(acip_outbound_snapshot(transport, &stats), ASCIICHAT_OK);
+    if (stats.accepted == 2)
+      break;
+    cr_assert(time_get_ns() - start < 2 * NS_PER_SEC_INT);
+    platform_sleep_ms(1);
+  }
+  atomic_store_u64(&backend->bytes, 0);
+  for (size_t i = 0; i < 2; ++i) {
+    cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
+    cr_assert_eq(producers[i].result, code);
+    cr_assert(producers[i].has_cause);
+    cr_assert_eq(producers[i].cause.code, code);
+    cr_assert_str_eq(producers[i].cause.context_message, omit_context   ? "Outbound backend submission failed"
+                                                         : wrap_context ? "Backend failure wrapper"
+                                                                        : "Backend rejected outgoing packet");
+    if (!omit_context) {
+      cr_assert(producers[i].detail.has_system_error);
+      cr_assert_eq(producers[i].detail.system_errno, EPIPE);
+      cr_assert_str_eq(producers[i].detail.function, "backend_send");
+      cr_assert_str_eq(producers[i].detail.context_message, "Backend rejected outgoing packet");
+      if (wrap_context)
+        cr_assert_eq(producers[i].cause.cause_id, producers[i].detail.error_id);
+    }
+  }
+  cr_assert_eq(atomic_load_u64(&backend->sent), 1); // No retry of a possibly partial packet.
+  failing_producer_t later = {.transport = transport};
+  submit_control(&later);
+  cr_assert_eq(later.result, code);
+  cr_assert(later.has_cause);
+  cr_assert_str_eq(later.cause.context_message, producers[0].cause.context_message);
+  if (wrap_context) {
+    cr_assert_eq(later.cause.cause_id, later.detail.error_id);
+    cr_assert_eq(later.detail.cause_id, producers[0].detail.cause_id);
+  } else {
+    cr_assert_eq(later.cause.cause_id, producers[0].cause.cause_id);
+  }
+  if (!omit_context)
+    cr_assert_eq(later.detail.system_errno, EPIPE);
+  acip_transport_destroy(transport);
+  buffer_system_cleanup();
+  log_destroy();
+}
+
+Test(transport_backpressure, unsupported_backend_preserves_failure_for_all_producers) {
+  check_backend_failure(ERROR_NOT_SUPPORTED, false, false);
+}
+
+Test(transport_backpressure, fatal_backend_preserves_failure_for_all_producers) {
+  check_backend_failure(ERROR_CRYPTO, false, false);
+}
+
+Test(transport_backpressure, backend_status_cannot_inherit_unrelated_context) {
+  check_backend_failure(ERROR_NETWORK_TIMEOUT, true, false);
+}
+
+Test(transport_backpressure, wrapped_backend_preserves_nested_system_error) {
+  check_backend_failure(ERROR_NETWORK, false, true);
+}
+
+Test(transport_backpressure, asynchronous_media_failure_reaches_next_producer) {
+  log_init(NULL, LOG_ERROR, false, false);
+  errno_suppress(true);
+  acip_transport_t *transport = create();
+  backend_t *backend = transport->impl_data;
+  backend->failure = ERROR_NOT_SUPPORTED;
+  cr_assert_eq(submit(transport, PACKET_TYPE_IMAGE_FRAME, 0, 1000, false), ACIP_ADMISSION_ACCEPTED);
+  uint64_t start = time_get_ns();
+  while (!atomic_load_bool(&backend->closed)) {
+    cr_assert(time_get_ns() - start < 2 * NS_PER_SEC_INT);
+    platform_sleep_ms(1);
+  }
+  failing_producer_t later = {.transport = transport};
+  submit_control(&later);
+  cr_assert_eq(later.result, ERROR_NOT_SUPPORTED);
+  cr_assert(later.has_cause);
+  cr_assert_str_eq(later.cause.context_message, "Backend rejected outgoing packet");
+  cr_assert_eq(atomic_load_u64(&backend->sent), 1);
+  acip_transport_destroy(transport);
+  buffer_system_cleanup();
+  log_destroy();
+}
+
+Test(transport_backpressure, expired_control_reports_timeout_without_backend_send, .timeout = 15) {
+  log_init(NULL, LOG_ERROR, false, false);
+  errno_suppress(true);
+  acip_transport_t *transport = create();
+  backend_t *backend = transport->impl_data;
+  atomic_store_u64(&backend->bytes, 1);
+  failing_producer_t producer = {.transport = transport};
+  submit_control(&producer);
+  cr_assert_eq(producer.result, ERROR_NETWORK_TIMEOUT);
+  cr_assert(producer.has_cause);
+  cr_assert_eq(producer.cause.code, ERROR_NETWORK_TIMEOUT);
+  cr_assert_str_eq(producer.cause.context_message, "Outbound reliable packet expired before submission");
+  cr_assert_eq(atomic_load_u64(&backend->sent), 0);
+  acip_transport_destroy(transport);
+  buffer_system_cleanup();
+  log_destroy();
+}
+
+Test(transport_backpressure, congestion_recovers_without_terminal_error) {
+  log_init(NULL, LOG_ERROR, false, false);
+  errno_suppress(true);
+  acip_transport_t *transport = create();
+  backend_t *backend = transport->impl_data;
+  atomic_store_u64(&backend->bytes, ACIP_OUTBOUND_BUDGET);
+  CLEAR_ERRNO_ALL();
+  asciichat_errno_scope_t scope = errno_checkpoint();
+  cr_assert_eq(submit(transport, PACKET_TYPE_IMAGE_FRAME, 0, 1000, false), ACIP_ADMISSION_CONGESTED);
+  cr_assert_not(errno_peek_since(scope, NULL));
+  cr_assert_not(atomic_load_bool(&backend->closed));
+  atomic_store_u64(&backend->bytes, 0);
+  cr_assert_eq(submit(transport, PACKET_TYPE_IMAGE_FRAME, 0, 1000, false), ACIP_ADMISSION_ACCEPTED);
+  await_submitted(transport, 1);
+  cr_assert_not(errno_peek_since(scope, NULL));
+  cr_assert_not(atomic_load_bool(&backend->closed));
+  acip_transport_destroy(transport);
   buffer_system_cleanup();
   log_destroy();
 }

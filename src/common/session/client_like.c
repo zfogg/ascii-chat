@@ -314,11 +314,11 @@ static uint32_t client_like_select_capture_fps(client_like_state_t *state) {
   // sources have no fixed FPS metadata, so they use the fallback below.
   if (state->capture_config.type == MEDIA_SOURCE_FILE || state->capture_config.type == MEDIA_SOURCE_STDIN) {
     log_debug("Probing media source FPS");
-    asciichat_errno_scope_t probe_scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t probe_scope = errno_scope_begin();
     state->probe_source = media_source_create(state->capture_config.type, state->capture_config.path);
     if (state->probe_source) {
       ASSERT_NO_ERRNO_SINCE(probe_scope);
-      asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
+      errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);
       double source_fps = media_source_get_video_fps(state->probe_source);
       // Keep conversion in range and never select zero after rounding.
       if (source_fps >= 0.5 && source_fps <= UINT32_MAX - 0.5) {
@@ -328,7 +328,7 @@ static uint32_t client_like_select_capture_fps(client_like_state_t *state) {
       }
       log_warn("Media source has no usable FPS, using default 60 FPS");
     } else {
-      asciichat_errno_scope_end(probe_scope, ASCIICHAT_ERRNO_DISMISSED);
+      errno_scope_end(probe_scope, ASCIICHAT_ERRNO_DISMISSED);
       log_warn("Failed to probe media source FPS, using default 60 FPS");
     }
   }
@@ -630,13 +630,13 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
     if (attempt > 1)
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RECONNECTS, 1);
 
-    asciichat_errno_scope_t attempt_scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t attempt_scope = errno_scope_begin();
     result = config->run_fn(state->capture, state->display, config->run_user_data);
 
     // Exit immediately if run_fn succeeded
     if (result == ASCIICHAT_OK) {
       ASSERT_NO_ERRNO_SINCE(attempt_scope);
-      asciichat_errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
+      errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
       // Connection succeeded - splash screen cleanup now happens when first frame renders
       // This ensures the splash stays visible during TCP/WebSocket/datachannel connection attempts
 
@@ -667,7 +667,7 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
     }
 
     LOG_ERRNO_IF_SET("Connection attempt failed; retrying");
-    asciichat_errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
 
     // Reconnection will happen - show splash screen during reconnection attempt
     // Reset first_frame flag so splash cleanup runs on next successful connection

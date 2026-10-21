@@ -491,7 +491,7 @@ static void *participant_audio_capture_thread(void *arg) {
 
 static asciichat_error_t participant_startup_error(asciichat_errno_scope_t checkpoint, const char *message) {
   asciichat_error_context_t cause;
-  asciichat_error_t code = asciichat_errno_peek_since(checkpoint, &cause) ? cause.code : ERROR_INVALID_STATE;
+  asciichat_error_t code = errno_peek_since(checkpoint, &cause) ? cause.code : ERROR_INVALID_STATE;
   return SET_ERRNO(code, "%s", message);
 }
 
@@ -535,7 +535,7 @@ asciichat_error_t session_participant_start_video(session_participant_t *p) {
       config.path = config.type == MEDIA_SOURCE_STDIN ? NULL : file;
     }
     config.loop = GET_OPTION(media_loop);
-    asciichat_errno_scope_t checkpoint = asciichat_errno_checkpoint();
+    asciichat_errno_scope_t checkpoint = errno_checkpoint();
     p->video_capture = session_capture_create(&config);
     if (!p->video_capture) {
       asciichat_error_t error = participant_startup_error(checkpoint, "Failed to create video capture context");
@@ -600,7 +600,7 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
 
   // Create audio capture context if not already created
   if (!p->audio_capture) {
-    asciichat_errno_scope_t checkpoint = asciichat_errno_checkpoint();
+    asciichat_errno_scope_t checkpoint = errno_checkpoint();
     p->audio_capture = session_audio_create(false); // false = participant mode (no mixing)
     if (!p->audio_capture) {
       asciichat_error_t error = participant_startup_error(checkpoint, "Failed to create audio capture context");
@@ -623,7 +623,7 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
 
   // Create Opus encoder for audio compression (48kHz, VOIP mode, 24 kbps)
   if (!p->opus_encoder) {
-    asciichat_errno_scope_t checkpoint = asciichat_errno_checkpoint();
+    asciichat_errno_scope_t checkpoint = errno_checkpoint();
     p->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
     if (!p->opus_encoder) {
       asciichat_error_t error = participant_startup_error(checkpoint, "Failed to create Opus encoder");
