@@ -68,12 +68,12 @@
  * @param thread_var Thread handle (asciichat_thread_t)
  * @param func Thread function pointer (void *(*)(void *))
  * @param arg Thread argument (void *)
- * @return Return value from asciichat_thread_create (0 on success)
+ * @return Return value from acthread_create (0 on success)
  *
- * This is a direct call to asciichat_thread_create with no error handling.
+ * This is a direct call to acthread_create with no error handling.
  * Caller should check return value and log if needed.
  */
-#define THREAD_CREATE_SAFE(thread_var, func, arg) asciichat_thread_create(&(thread_var), (func), (arg))
+#define THREAD_CREATE_SAFE(thread_var, func, arg) acthread_create(&(thread_var), (func), (arg))
 
 /**
  * Create a thread with automatic error handling and logging (void return version).
@@ -96,7 +96,7 @@
  */
 #define THREAD_CREATE_OR_RETURN_VOID(thread_var, func, arg, error_msg)                                                 \
   do {                                                                                                                 \
-    if (asciichat_thread_create(&(thread_var), (func), (arg)) != 0) {                                                  \
+    if (acthread_create(&(thread_var), (func), (arg)) != 0) {                                                  \
       log_error("%s", (error_msg));                                                                                    \
       return;                                                                                                          \
     }                                                                                                                  \
@@ -116,7 +116,7 @@
  * log_debug("Worker thread exited with code %p", exit_code);
  * @endcode
  */
-#define THREAD_JOIN_SAFE(thread_var, exit_code) asciichat_thread_join(&(thread_var), (exit_code))
+#define THREAD_JOIN_SAFE(thread_var, exit_code) thread_join(&(thread_var), (exit_code))
 
 /**
  * Join a thread without capturing its exit code.
@@ -129,7 +129,7 @@
  * THREAD_JOIN(g_worker_thread);
  * @endcode
  */
-#define THREAD_JOIN(thread_var) asciichat_thread_join(&(thread_var), NULL)
+#define THREAD_JOIN(thread_var) thread_join(&(thread_var), NULL)
 
 /**
  * Initialize a thread handle to an invalid/uninitialized state.

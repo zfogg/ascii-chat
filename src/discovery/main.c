@@ -98,13 +98,13 @@ static void discovery_media_interrupt(void *context) {
 static asciichat_error_t discovery_media_join(void *context) {
   discovery_video_receiver_t *receiver = context;
   if (receiver->receiver_started) {
-    asciichat_error_t result = asciichat_thread_join(&receiver->receiver_thread, NULL);
+    asciichat_error_t result = thread_join(&receiver->receiver_thread, NULL);
     if (result != ASCIICHAT_OK)
       return result;
     receiver->receiver_started = false;
   }
   if (receiver->audio_started) {
-    asciichat_error_t result = asciichat_thread_join(&receiver->audio_thread, NULL);
+    asciichat_error_t result = thread_join(&receiver->audio_thread, NULL);
     if (result != ASCIICHAT_OK)
       return result;
     receiver->audio_started = false;
@@ -563,13 +563,13 @@ role_dispatch:
         }
       }
       atomic_store_bool(&receiver.running, true);
-      result = asciichat_thread_create(&receiver.receiver_thread, "discovery_video_receive",
+      result = acthread_create(&receiver.receiver_thread, "discovery_video_receive",
                                        discovery_video_receive_thread, &receiver);
       if (result != ASCIICHAT_OK)
         goto media_cleanup;
       receiver.receiver_started = true;
       if (enable_audio) {
-        result = asciichat_thread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread,
+        result = acthread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread,
                                          &receiver);
         receiver.audio_started = result == ASCIICHAT_OK;
         if (!receiver.audio_started)

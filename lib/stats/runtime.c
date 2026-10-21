@@ -531,7 +531,7 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
   atomic_store_bool_impl(&g_stop, false);
   atomic_store_bool_impl(&g_active, false);
   g_started = true;
-  if (asciichat_thread_create(&g_worker, "stats", stats_worker, NULL) == 0)
+  if (acthread_create(&g_worker, "stats", stats_worker, NULL) == 0)
     return ASCIICHAT_OK;
   result = SET_ERRNO(ERROR_THREAD, "Cannot start stats worker");
   g_started = false;
@@ -553,7 +553,7 @@ void stats_runtime_stop(void) {
   if (!g_started)
     return;
   atomic_store_bool_impl(&g_stop, true);
-  asciichat_thread_join(&g_worker, NULL);
+  thread_join(&g_worker, NULL);
   ui_controller_shutdown();
   if (g_keyboard)
     keyboard_destroy();

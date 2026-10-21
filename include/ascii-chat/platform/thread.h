@@ -90,7 +90,7 @@ extern "C" {
 /**
  * @brief Internal thread wrapper for automatic cleanup
  *
- * This structure is used internally by asciichat_thread_create() to wrap
+ * This structure is used internally by acthread_create() to wrap
  * user thread functions with automatic cleanup (mutex stack cleanup, etc).
  * Users should not interact with this directly.
  *
@@ -108,12 +108,12 @@ typedef struct {
  * with automatic cleanup. It calls the user's thread function, then performs
  * cleanup operations (mutex stack cleanup) before exiting.
  *
- * @param arg Pointer to asciichat_thread_wrapper_t (allocated by thread_create)
+ * @param arg Pointer to asciichat_thread_wrapper_t (allocated by acthread_create)
  * @return Return value from user thread function
  *
  * @internal
  */
-void *asciichat_thread_wrapper_impl(void *arg);
+void *thread_wrapper_impl(void *arg);
 
 // ============================================================================
 // Thread Functions
@@ -136,7 +136,7 @@ void *asciichat_thread_wrapper_impl(void *arg);
  *
  * @ingroup platform
  */
-int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *(*func)(void *), void *arg);
+int acthread_create(asciichat_thread_t *thread, const char *name, void *(*func)(void *), void *arg);
 
 /**
  * @brief Wait for a thread to complete (blocking)
@@ -148,14 +148,14 @@ int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *
  *
  * @ingroup platform
  */
-int asciichat_thread_join(asciichat_thread_t *thread, void **retval);
+int thread_join(asciichat_thread_t *thread, void **retval);
 
 /**
  * @brief Detach a thread so its resources are reclaimed when it exits
  * @param thread Pointer to thread handle
  * @return 0 on success, non-zero on failure
  */
-int asciichat_thread_detach(asciichat_thread_t *thread);
+int thread_detach(asciichat_thread_t *thread);
 
 /**
  * @brief Wait for a thread to complete with timeout
@@ -169,7 +169,7 @@ int asciichat_thread_detach(asciichat_thread_t *thread);
  *
  * @ingroup platform
  */
-int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uint64_t timeout_ns);
+int thread_join_timeout(asciichat_thread_t *thread, void **retval, uint64_t timeout_ns);
 
 /**
  * @brief Exit the current thread
@@ -180,7 +180,7 @@ int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uin
  *
  * @ingroup platform
  */
-void asciichat_thread_exit(void *retval);
+void thread_exit(void *retval);
 
 /**
  * @brief Get the current thread's ID
@@ -190,7 +190,7 @@ void asciichat_thread_exit(void *retval);
  *
  * @ingroup platform
  */
-thread_id_t asciichat_thread_self(void);
+thread_id_t thread_self(void);
 
 /**
  * @brief Compare two thread IDs for equality
@@ -200,7 +200,7 @@ thread_id_t asciichat_thread_self(void);
  *
  * @ingroup platform
  */
-int asciichat_thread_equal(thread_id_t t1, thread_id_t t2);
+int thread_equal(thread_id_t t1, thread_id_t t2);
 
 /**
  * @brief Get the current thread's unique numeric ID
@@ -211,7 +211,7 @@ int asciichat_thread_equal(thread_id_t t1, thread_id_t t2);
  *
  * @ingroup platform
  */
-uint64_t asciichat_thread_current_id(void);
+uint64_t thread_current_id(void);
 
 /**
  * @brief Check if a thread handle has been initialized
@@ -220,7 +220,7 @@ uint64_t asciichat_thread_current_id(void);
  *
  * @ingroup platform
  */
-bool asciichat_thread_is_initialized(asciichat_thread_t *thread);
+bool thread_is_initialized(asciichat_thread_t *thread);
 
 /**
  * @brief Initialize a thread handle to an uninitialized state
@@ -231,7 +231,7 @@ bool asciichat_thread_is_initialized(asciichat_thread_t *thread);
  *
  * @ingroup platform
  */
-void asciichat_thread_init(asciichat_thread_t *thread);
+void thread_init(asciichat_thread_t *thread);
 
 /**
  * @brief Set the current thread to real-time priority
@@ -251,7 +251,7 @@ void asciichat_thread_init(asciichat_thread_t *thread);
  *
  * @ingroup platform
  */
-asciichat_error_t asciichat_thread_set_realtime_priority(void);
+asciichat_error_t thread_set_realtime_priority(void);
 
 /**
  * @brief Create a thread with standardized error handling and logging
@@ -262,7 +262,7 @@ asciichat_error_t asciichat_thread_set_realtime_priority(void);
  * @param client_id Client ID for error context in logs
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM or ERROR_PLATFORM_INIT on failure
  *
- * Wraps asciichat_thread_create() with unified error handling and logging.
+ * Wraps acthread_create() with unified error handling and logging.
  * On success, logs at debug level. On failure, uses SET_ERRNO() to record
  * error context and returns:
  * - ERROR_INVALID_PARAM if parameters are invalid
@@ -287,7 +287,7 @@ asciichat_error_t thread_create_or_fail(asciichat_thread_t *thread, void *(*func
  *
  * @ingroup platform
  */
-uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
+uintptr_t thread_to_key(asciichat_thread_t thread);
 
 // ============================================================================
 // Thread-Local Storage (TLS) Functions

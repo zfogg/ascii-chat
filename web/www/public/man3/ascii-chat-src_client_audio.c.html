@@ -790,7 +790,7 @@
 1087   if (g_audio_capture_thread_created &amp;&amp; atomic_load_bool(&amp;g_audio_capture_thread_exited)) {
 1088     log_debug(&quot;Previous audio capture thread exited, recreating&quot;);
 1089     // Use timeout to prevent indefinite blocking
-1090     int join_result = asciichat_thread_join_timeout(&amp;g_audio_capture_thread, NULL, 5000 * NS_PER_MS_INT);
+1090     int join_result = thread_join_timeout(&amp;g_audio_capture_thread, NULL, 5000 * NS_PER_MS_INT);
 1091     if (join_result != 0) {
 1092       log_warn(&quot;Audio capture thread join timed out after 5s - thread may be deadlocked, &quot;
 1093                &quot;forcing thread handle reset (stuck thread resources will not be cleaned up)&quot;);
@@ -818,7 +818,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_join_timeout()</b>, <b>atomic_load_bool()</b>,
+    <b>thread_join_timeout()</b>, <b>atomic_load_bool()</b>,
     <b>atomic_store_bool()</b>, <b>g_client_worker_pool</b>, <b>GET_OPTION</b>,
     <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>,
     <b>log_warn</b>, <b>NAMED_REGISTER_ATOMIC</b>, <b>NS_PER_MS_INT</b>, and

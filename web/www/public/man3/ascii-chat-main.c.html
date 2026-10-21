@@ -208,7 +208,7 @@
 499 #ifdef _WIN32
 500   NAMED_REGISTER_THREAD(GetCurrentThread(), &quot;main&quot;, NULL);
 501 #else
-502   NAMED_REGISTER_THREAD((asciichat_thread_t)asciichat_thread_self(), &quot;main&quot;, NULL);
+502   NAMED_REGISTER_THREAD((asciichat_thread_t)thread_self(), &quot;main&quot;, NULL);
 503 #endif
 504   // Also save main thread ID for memory reporting (must be very early)
 505   debug_sync_set_main_thread_id();
@@ -722,7 +722,7 @@
     <b>apply_palette_config()</b>, <b>ASCII_CHAT_BUILD_TYPE</b>,
     <b>ASCIICHAT_OK</b>, <b>asciichat_pcre2_cleanup_all()</b>,
     <b>asciichat_shared_destroy()</b>, <b>asciichat_shared_init()</b>,
-    <b>asciichat_thread_self</b>, <b>backtrace_print_simple()</b>,
+    <b>thread_self</b>, <b>backtrace_print_simple()</b>,
     <b>colorscheme_load_builtin()</b>,
     <b>asciichat_error_context_t::context_message</b>,
     <b>debug_atomic_init()</b>, <b>debug_memory_set_quiet_mode()</b>,

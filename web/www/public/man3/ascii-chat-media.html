@@ -1190,7 +1190,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 1089     mutex_unlock(&amp;decoder-&gt;prefetch_mutex);
 1090 
 1091     // Wait for thread to finish
-1092     asciichat_thread_join(&amp;decoder-&gt;prefetch_thread, NULL);
+1092     thread_join(&amp;decoder-&gt;prefetch_thread, NULL);
 1093     decoder-&gt;prefetch_thread_running = false;
 1094   }
 1095 
@@ -1262,7 +1262,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 1161 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join</b>,
+<p class="Pp">References <b>thread_join</b>,
     <b>ffmpeg_decoder_t::audio_buffer</b>,
     <b>ffmpeg_decoder_t::audio_codec_ctx</b>, <b>ffmpeg_decoder_t::avio_ctx</b>,
     <b>cond_destroy()</b>, <b>ffmpeg_decoder_t::current_image</b>,
@@ -2062,7 +2062,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 1231   // Reset stop flag and create thread
 1232   decoder-&gt;prefetch_should_stop = false;
 1233 
-1234   int thread_err = asciichat_thread_create(&amp;decoder-&gt;prefetch_thread, &quot;ffmpeg_prefetch&quot;,
+1234   int thread_err = acthread_create(&amp;decoder-&gt;prefetch_thread, &quot;ffmpeg_prefetch&quot;,
 1235                                            ffmpeg_decoder_prefetch_thread_func, decoder);
 1236   if (thread_err != 0) {
 1237     return SET_ERRNO(ERROR_THREAD, &quot;Failed to create video prefetch thread&quot;);
@@ -2073,7 +2073,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 1242 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>acthread_create</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ERROR_THREAD</b>,
     <b>ffmpeg_decoder_t::prefetch_image_a</b>,
     <b>ffmpeg_decoder_t::prefetch_image_b</b>,
@@ -2106,7 +2106,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 1252   decoder-&gt;prefetch_should_stop = true;
 1253   // Wait up to 2 seconds for thread to stop
 1254   // The interrupt callback should cause av_read_frame to abort quickly
-1255   asciichat_thread_join_timeout(&amp;decoder-&gt;prefetch_thread, NULL, 2000 * NS_PER_MS_INT);
+1255   thread_join_timeout(&amp;decoder-&gt;prefetch_thread, NULL, 2000 * NS_PER_MS_INT);
 1256 
 1257   // Mark thread as stopped regardless of join result
 1258   // (if join succeeded: cleanup was done; if timeout: will be cleaned up on restart)
@@ -2114,7 +2114,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 1260 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join_timeout()</b>,
+<p class="Pp">References <b>thread_join_timeout()</b>,
     <b>NS_PER_MS_INT</b>, <b>ffmpeg_decoder_t::prefetch_should_stop</b>,
     <b>ffmpeg_decoder_t::prefetch_thread</b>, and
     <b>ffmpeg_decoder_t::prefetch_thread_running</b>.</p>

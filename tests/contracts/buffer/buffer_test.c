@@ -178,12 +178,12 @@ static void concurrent_contracts(void) {
   cr_assert_eq(buffer_domain_create(&config, &stress.domain), ASCIICHAT_OK);
   atomic_store_u64(&stress.running, 4);
   asciichat_thread_t workers[4], trimmer;
-  cr_assert_eq(asciichat_thread_create(&trimmer, "buffer-trim", trim_worker, &stress), 0);
+  cr_assert_eq(acthread_create(&trimmer, "buffer-trim", trim_worker, &stress), 0);
   for (unsigned i = 0; i < 4; i++)
-    cr_assert_eq(asciichat_thread_create(&workers[i], "buffer-allocate", allocate_worker, &stress), 0);
+    cr_assert_eq(acthread_create(&workers[i], "buffer-allocate", allocate_worker, &stress), 0);
   for (unsigned i = 0; i < 4; i++)
-    cr_assert_eq(asciichat_thread_join(&workers[i], NULL), 0);
-  cr_assert_eq(asciichat_thread_join(&trimmer, NULL), 0);
+    cr_assert_eq(thread_join(&workers[i], NULL), 0);
+  cr_assert_eq(thread_join(&trimmer, NULL), 0);
   buffer_stats_t stats;
   buffer_domain_stats(stress.domain, &stats);
   cr_assert(!stats.outstanding && !stats.live_bytes && !stats.requested_bytes);
@@ -249,11 +249,11 @@ static void concurrent_queue_contracts(void) {
   producer_t producers[2] = {{stress, 0}, {stress, 1000}};
   asciichat_thread_t threads[4];
   for (unsigned i = 0; i < 2; i++) {
-    cr_assert_eq(asciichat_thread_create(&threads[i], "queue-producer", queue_producer, &producers[i]), 0);
-    cr_assert_eq(asciichat_thread_create(&threads[i + 2], "queue-consumer", queue_consumer, stress), 0);
+    cr_assert_eq(acthread_create(&threads[i], "queue-producer", queue_producer, &producers[i]), 0);
+    cr_assert_eq(acthread_create(&threads[i + 2], "queue-consumer", queue_consumer, stress), 0);
   }
   for (unsigned i = 0; i < 4; i++)
-    cr_assert_eq(asciichat_thread_join(&threads[i], NULL), 0);
+    cr_assert_eq(thread_join(&threads[i], NULL), 0);
   cr_assert_eq(atomic_load_u64(&stress->consumed), 2000);
   packet_queue_destroy(stress->queue);
   SAFE_FREE(stress);
@@ -427,9 +427,9 @@ static void concurrent_references(void) {
   memset(data, 42, 128);
   asciichat_thread_t threads[4];
   for (unsigned i = 0; i < 4; ++i)
-    cr_assert_eq(asciichat_thread_create(&threads[i], "buffer-share", share_worker, data), ASCIICHAT_OK);
+    cr_assert_eq(acthread_create(&threads[i], "buffer-share", share_worker, data), ASCIICHAT_OK);
   for (unsigned i = 0; i < 4; ++i)
-    cr_assert_eq(asciichat_thread_join(&threads[i], NULL), ASCIICHAT_OK);
+    cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
   cr_assert(buffer_is_unique(data));
   buffer_release(data);
 }

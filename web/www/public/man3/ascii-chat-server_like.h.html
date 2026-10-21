@@ -807,7 +807,7 @@
 554   /* === 8b. WebSocket event loop thread start (after mode init succeeds) === */
 555 
 556   if (g_websocket_initialized &amp;&amp; !atomic_load_u64(&amp;g_shutdown_requested)) {
-557     if (asciichat_thread_create(&amp;g_websocket_thread, &quot;websocket_event_loop&quot;, websocket_server_thread_wrapper,
+557     if (acthread_create(&amp;g_websocket_thread, &quot;websocket_event_loop&quot;, websocket_server_thread_wrapper,
 558                                 &amp;g_websocket_server) == 0) {
 559       g_websocket_thread_started = true;
 560       log_info(&quot;WebSocket event loop thread started&quot;);
@@ -829,7 +829,7 @@
 576       g_status_fn = config-&gt;status_fn;
 577       g_status_user_data = config-&gt;status_user_data;
 578 
-579       if (asciichat_thread_create(&amp;g_status_screen_thread, &quot;status_screen&quot;, status_screen_thread_func, NULL) == 0) {
+579       if (acthread_create(&amp;g_status_screen_thread, &quot;status_screen&quot;, status_screen_thread_func, NULL) == 0) {
 580         g_status_screen_thread_started = true;
 581         log_info(&quot;Status screen thread started&quot;);
 582       } else {
@@ -857,7 +857,7 @@
 604   /* 11. Stop status screen */
 605   if (g_status_screen_thread_started) {
 606     atomic_store_bool(&amp;g_status_should_exit, true);
-607     int join_result = asciichat_thread_join_timeout(&amp;g_status_screen_thread, NULL, 2000 * NS_PER_MS_INT);
+607     int join_result = thread_join_timeout(&amp;g_status_screen_thread, NULL, 2000 * NS_PER_MS_INT);
 608     if (join_result != 0) {
 609       log_warn(&quot;Status screen thread did not exit within 2s&quot;);
 610     }
@@ -871,7 +871,7 @@
 618   if (g_websocket_thread_started) {
 619     atomic_store_bool(&amp;g_websocket_server.running, false);
 620     websocket_server_cancel_service(&amp;g_websocket_server);
-621     int ws_join = asciichat_thread_join_timeout(&amp;g_websocket_thread, NULL, 500 * NS_PER_MS_INT);
+621     int ws_join = thread_join_timeout(&amp;g_websocket_thread, NULL, 500 * NS_PER_MS_INT);
 622     if (ws_join != 0) {
 623       log_warn(&quot;WebSocket event loop thread did not exit within 500ms&quot;);
 624     }
@@ -921,7 +921,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_mdns_destroy()</b>,
     <b>asciichat_mdns_init()</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_create</b>, <b>asciichat_thread_join_timeout()</b>,
+    <b>acthread_create</b>, <b>thread_join_timeout()</b>,
     <b>atomic_load_u64()</b>, <b>atomic_store_bool()</b>,
     <b>atomic_store_u64()</b>, <b>session_server_like_config::cleanup_fn</b>,
     <b>session_server_like_config::cleanup_user_data</b>,

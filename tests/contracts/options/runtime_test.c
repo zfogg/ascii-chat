@@ -95,13 +95,13 @@ static void test_transactions(void) {
   before = options_revision();
   asciichat_thread_t threads[4];
   for (int i = 0; i < 4; ++i)
-    cr_assert_eq(asciichat_thread_create(&threads[i], "settings_writer", writer, i % 2 ? "flip_x" : "flip_y"),
+    cr_assert_eq(acthread_create(&threads[i], "settings_writer", writer, i % 2 ? "flip_x" : "flip_y"),
                  ASCIICHAT_OK);
   while (atomic_load_int(&ready) != 4)
     time_sleep_ns(1000);
   atomic_store_int(&start, 1);
   for (int i = 0; i < 4; ++i)
-    cr_assert_eq(asciichat_thread_join(&threads[i], NULL), ASCIICHAT_OK);
+    cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
   cr_assert(!GET_OPTION(flip_x) && !GET_OPTION(flip_y));
   cr_assert_eq(options_revision(), before + 2004);
   cr_assert_eq(borrowed->width, 80);

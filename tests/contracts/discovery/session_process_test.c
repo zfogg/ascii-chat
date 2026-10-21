@@ -154,13 +154,13 @@ static void discovery_session_check_tcp(int scenario) {
     return;
   }
   asciichat_thread_t thread;
-  cr_assert_eq(asciichat_thread_create(&thread, "discovery-test-server", discovery_session_server, &server), 0);
+  cr_assert_eq(acthread_create(&thread, "discovery-test-server", discovery_session_server, &server), 0);
   asciichat_error_t result = discovery_session_step(&session, 0);
   cr_assert(session.participant_ctx);
   cr_assert(result != ASCIICHAT_OK && session.state == DISCOVERY_STATE_FAILED && session.error == result);
   cr_assert(!session_participant_is_connected(session.participant_ctx));
   cr_assert_eq(discovery_session_step(&session, 0), result);
-  cr_assert_eq(asciichat_thread_join(&thread, NULL), 0);
+  cr_assert_eq(thread_join(&thread, NULL), 0);
   session_participant_destroy(session.participant_ctx);
   session.participant_ctx = NULL;
   socket_close(server.listener);

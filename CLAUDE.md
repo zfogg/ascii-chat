@@ -242,7 +242,7 @@ Cross-platform support via abstraction:
 
 Key abstractions:
 
-- Threads: `asciichat_thread_t`, `asciichat_thread_create()`
+- Threads: `asciichat_thread_t`, `acthread_create()`
 - Mutexes: `mutex_t`, `mutex_init/lock/unlock()`
 - Sockets: `socket_t`, `socket_close()`, `INVALID_SOCKET_VALUE`
 - Safe wrappers: `SAFE_GETENV()`, `SAFE_STRERROR()`, `platform_open()`

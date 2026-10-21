@@ -215,7 +215,7 @@ asciichat_error_t acip_outbound_create(acip_transport_t *transport) {
     return GET_ERRNO();
   }
   out->transport = transport;
-  asciichat_error_t result = asciichat_thread_create(&out->worker, "outbound", outbound_worker, out);
+  asciichat_error_t result = acthread_create(&out->worker, "outbound", outbound_worker, out);
   if (result != ASCIICHAT_OK) {
     cond_destroy(&out->changed);
     mutex_destroy(&out->mutex);
@@ -237,7 +237,7 @@ void acip_outbound_destroy(acip_transport_t *transport) {
   /* The caller has quiesced producers. Interrupt a blocking legacy TCP write
    * before joining, while every backend resource is still alive. */
   transport->methods->close(transport);
-  asciichat_thread_join(&out->worker, NULL);
+  thread_join(&out->worker, NULL);
   mutex_lock(&out->mutex);
   fail_queue(out);
   while (out->recycled) {

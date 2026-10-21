@@ -67,7 +67,7 @@
  * listenfd6 = bind_and_listen(ipv6_address, AF_INET6, port);
  *
  * // 12. Start statistics logger thread
- * asciichat_thread_create(&g_stats_logger_thread, stats_logger_thread, NULL);
+ * acthread_create(&g_stats_logger_thread, stats_logger_thread, NULL);
  * @endcode
  *
  * @subsection server_main_connection_loop Main Connection Loop
@@ -88,7 +88,7 @@
  *
  *   // Process cleanup without holding lock
  *   for (int i = 0; i < cleanup_count; i++) {
- *     asciichat_thread_join(&cleanup_tasks[i].receive_thread, NULL);
+ *     thread_join(&cleanup_tasks[i].receive_thread, NULL);
  *     remove_client(cleanup_tasks[i].client_id);
  *   }
  *
@@ -217,7 +217,7 @@
  * rwlock_rdunlock(&g_client_manager_rwlock);
  *
  * // 4. Wait for stats logger thread
- * asciichat_thread_join(&g_stats_logger_thread, NULL);
+ * thread_join(&g_stats_logger_thread, NULL);
  *
  * // 5. Remove all clients (joins all worker threads)
  * for (int i = 0; i < client_count; i++) {

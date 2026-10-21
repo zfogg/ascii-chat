@@ -12,7 +12,7 @@ static void destroy_transport(acip_transport_t *transport) {
 }
 static const acip_transport_methods_t methods = {.destroy_impl = destroy_transport};
 static void ready(acip_transport_t *transport, const uint8_t id[16], void *context) {
-  cr_assert(context && asciichat_thread_equal(controlling_thread, asciichat_thread_self()));
+  cr_assert(context && thread_equal(controlling_thread, thread_self()));
   cr_assert(id[0] == 1 || id[0] == 2);
   callbacks++;
   acip_transport_destroy(transport);
@@ -56,7 +56,7 @@ static asciichat_error_t send_ice(const uint8_t session[16], const uint8_t recip
 }
 Test(peer_ready, dispatches_on_owner_and_releases_once, .timeout = 60) {
   log_init(NULL, LOG_WARN, false, false);
-  controlling_thread = asciichat_thread_self();
+  controlling_thread = thread_self();
   webrtc_peer_manager_t *manager = NULL;
   webrtc_peer_manager_config_t config = {.on_transport_ready = ready, .user_data = &manager};
   webrtc_signaling_callbacks_t signaling = {.send_sdp = send_sdp, .send_ice = send_ice};
@@ -64,16 +64,16 @@ Test(peer_ready, dispatches_on_owner_and_releases_once, .timeout = 60) {
   peer_entry_t *first = add_peer(manager, 1);
   peer_entry_t *second = add_peer(manager, 2);
   asciichat_thread_t worker;
-  cr_assert_eq(asciichat_thread_create(&worker, "publish_ready", publish_ready, first), ASCIICHAT_OK);
-  cr_assert_eq(asciichat_thread_join(&worker, NULL), ASCIICHAT_OK);
-  cr_assert_eq(asciichat_thread_create(&worker, "dispatch_foreign", dispatch_foreign, manager), ASCIICHAT_OK);
-  cr_assert_eq(asciichat_thread_join(&worker, NULL), ASCIICHAT_OK);
+  cr_assert_eq(acthread_create(&worker, "publish_ready", publish_ready, first), ASCIICHAT_OK);
+  cr_assert_eq(thread_join(&worker, NULL), ASCIICHAT_OK);
+  cr_assert_eq(acthread_create(&worker, "dispatch_foreign", dispatch_foreign, manager), ASCIICHAT_OK);
+  cr_assert_eq(thread_join(&worker, NULL), ASCIICHAT_OK);
   cr_assert(callbacks == 0 && atomic_ptr_load(&first->pending_transport));
   cr_assert_eq(webrtc_peer_manager_dispatch_ready(manager), ASCIICHAT_OK);
   cr_assert(callbacks == 1 && released == 1 && !atomic_ptr_load(&first->pending_transport));
   cr_assert(!second->is_connected && atomic_ptr_load(&second->pending_transport));
-  cr_assert_eq(asciichat_thread_create(&worker, "publish_ready", publish_ready, second), ASCIICHAT_OK);
-  cr_assert_eq(asciichat_thread_join(&worker, NULL), ASCIICHAT_OK);
+  cr_assert_eq(acthread_create(&worker, "publish_ready", publish_ready, second), ASCIICHAT_OK);
+  cr_assert_eq(thread_join(&worker, NULL), ASCIICHAT_OK);
   cr_assert_eq(webrtc_peer_manager_dispatch_ready(manager), ASCIICHAT_OK);
   cr_assert_eq(webrtc_peer_manager_dispatch_ready(manager), ASCIICHAT_OK);
   cr_assert(callbacks == 2 && released == 2);

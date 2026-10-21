@@ -1182,7 +1182,7 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
     mutex_unlock(&decoder->prefetch_mutex);
 
     // Wait for thread to finish
-    asciichat_thread_join(&decoder->prefetch_thread, NULL);
+    thread_join(&decoder->prefetch_thread, NULL);
     decoder->prefetch_thread_running = false;
   }
 
@@ -1338,7 +1338,7 @@ asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder) {
   memset(&decoder->prefetch_failure, 0, sizeof(decoder->prefetch_failure));
   atomic_store(&decoder->prefetch_failed, false);
 
-  int thread_err = asciichat_thread_create(&decoder->prefetch_thread, "ffmpeg_prefetch",
+  int thread_err = acthread_create(&decoder->prefetch_thread, "ffmpeg_prefetch",
                                            ffmpeg_decoder_prefetch_thread_func, decoder);
   if (thread_err != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to create video prefetch thread");
@@ -1362,7 +1362,7 @@ void ffmpeg_decoder_stop_prefetch(ffmpeg_decoder_t *decoder) {
   mutex_unlock(&decoder->prefetch_mutex);
   // Wait up to 2 seconds for thread to stop
   // The interrupt callback should cause av_read_frame to abort quickly
-  if (asciichat_thread_join_timeout(&decoder->prefetch_thread, NULL, 2000 * NS_PER_MS_INT) == ASCIICHAT_OK)
+  if (thread_join_timeout(&decoder->prefetch_thread, NULL, 2000 * NS_PER_MS_INT) == ASCIICHAT_OK)
     decoder->prefetch_thread_running = false;
   // A timed-out worker remains owned and must be joined by decoder destruction.
   else

@@ -232,8 +232,8 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
   asciichat_thread_t ipv4_thread;
   asciichat_thread_t ipv6_thread;
 
-  asciichat_thread_init(&ipv4_thread);
-  asciichat_thread_init(&ipv6_thread);
+  thread_init(&ipv4_thread);
+  thread_init(&ipv6_thread);
 
   // Start IPv4 attempt if available
   if (ipv4_addr) {
@@ -249,7 +249,7 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
     memcpy(&ipv4_attempt.addr, ipv4_addr->ai_addr, ipv4_addr->ai_addrlen);
     ipv4_attempt.addr_len = ipv4_addr->ai_addrlen;
 
-    asciichat_thread_create(&ipv4_thread, "connect_ipv4", attempt_connection_thread, &ipv4_attempt);
+    acthread_create(&ipv4_thread, "connect_ipv4", attempt_connection_thread, &ipv4_attempt);
   }
 
   // Start IPv6 attempt if available
@@ -266,7 +266,7 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
     memcpy(&ipv6_attempt.addr, ipv6_addr->ai_addr, ipv6_addr->ai_addrlen);
     ipv6_attempt.addr_len = ipv6_addr->ai_addrlen;
 
-    asciichat_thread_create(&ipv6_thread, "connect_ipv6", attempt_connection_thread, &ipv6_attempt);
+    acthread_create(&ipv6_thread, "connect_ipv6", attempt_connection_thread, &ipv6_attempt);
   }
 
   // Wait for winner or both to finish
@@ -291,11 +291,11 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
 
   // Join threads (must wait for both to complete before returning)
   // The threads access shared state on our stack, so we cannot return until they're done
-  if (asciichat_thread_is_initialized(&ipv4_thread)) {
-    asciichat_thread_join(&ipv4_thread, NULL);
+  if (thread_is_initialized(&ipv4_thread)) {
+    thread_join(&ipv4_thread, NULL);
   }
-  if (asciichat_thread_is_initialized(&ipv6_thread)) {
-    asciichat_thread_join(&ipv6_thread, NULL);
+  if (thread_is_initialized(&ipv6_thread)) {
+    thread_join(&ipv6_thread, NULL);
   }
 
   // Close any remaining sockets

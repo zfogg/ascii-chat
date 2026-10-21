@@ -816,7 +816,7 @@ bool log_lock_terminal(void) {
   while (!atomic_cas_bool(&g_log.terminal_locked, &expected, true)) {
     // Retry if CAS failed
   }
-  atomic_store_u64(&g_log.terminal_owner_thread, (uint64_t)asciichat_thread_self());
+  atomic_store_u64(&g_log.terminal_owner_thread, (uint64_t)thread_self());
   return expected;
 }
 
@@ -893,7 +893,7 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   }
 
   int written = log_template_apply(format_check, buffer, buffer_size, level, timestamp, file, line, func,
-                                   asciichat_thread_current_id(), "", use_colors, time_nanoseconds);
+                                   thread_current_id(), "", use_colors, time_nanoseconds);
   if (written < 0 || written >= (int)buffer_size) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     return -1;
@@ -952,7 +952,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   int plain_len = 0;
   if (format && lifecycle_is_initialized(&g_log.lifecycle)) { /* Double-check lifecycle is still active */
     plain_len = log_template_apply(format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line, func,
-                                   asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
+                                   thread_current_id(), clean_msg, false, time_nanoseconds);
   }
 
   /* For colored output, apply format with colors enabled */
@@ -961,7 +961,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     const log_template_t *format_check = g_log.format;
     if (format_check && lifecycle_is_initialized(&g_log.lifecycle)) { /* Re-verify lifecycle before use */
       colored_len = log_template_apply(format_check, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
-                                       line, func, asciichat_thread_current_id(), clean_msg, true, time_nanoseconds);
+                                       line, func, thread_current_id(), clean_msg, true, time_nanoseconds);
     }
     /* If applying with colors failed, fall back to plain text */
     if (colored_len <= 0) {
@@ -1010,7 +1010,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   // Check if terminal is locked by another thread
   if (atomic_load_u64(&g_log.terminal_locked)) {
     uint64_t owner = atomic_load_u64(&g_log.terminal_owner_thread);
-    if (owner != (uint64_t)asciichat_thread_self()) {
+    if (owner != (uint64_t)thread_self()) {
       // Terminal locked by another thread - return
       return;
     }
@@ -1089,7 +1089,7 @@ static void output_notice(log_level_t level, const char *file, int line, const c
   const log_template_t *format = g_log.format;
   int plain_len = format && plain_log_line
                       ? log_template_apply(format, plain_log_line, capacity, level, timestamp, file, line, func,
-                                           asciichat_thread_current_id(), text, false, time_ns)
+                                           thread_current_id(), text, false, time_ns)
                       : -1;
   size_t start = 0, length = 0;
   if (!GET_OPTION(quiet) &&
@@ -1440,7 +1440,7 @@ static void log_colored_msg_internal(log_level_t level, const char *file, int li
   }
   if (atomic_load_u64(&g_log.terminal_locked)) {
     uint64_t owner = atomic_load_u64(&g_log.terminal_owner_thread);
-    if (owner != (uint64_t)asciichat_thread_self()) {
+    if (owner != (uint64_t)thread_self()) {
       return;
     }
   }
@@ -1534,7 +1534,7 @@ void log_plain_msg(const char *fmt, ...) {
   }
   if (atomic_load_u64(&g_log.terminal_locked)) {
     uint64_t owner = atomic_load_u64(&g_log.terminal_owner_thread);
-    if (owner != (uint64_t)asciichat_thread_self()) {
+    if (owner != (uint64_t)thread_self()) {
       return;
     }
   }
@@ -1612,7 +1612,7 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
   }
   if (atomic_load_u64(&g_log.terminal_locked)) {
     uint64_t owner = atomic_load_u64(&g_log.terminal_owner_thread);
-    if (owner != (uint64_t)asciichat_thread_self()) {
+    if (owner != (uint64_t)thread_self()) {
       return;
     }
   }
@@ -1706,7 +1706,7 @@ static void log_plain_stdout_internal_atomic(const char *fmt, va_list args, bool
   }
   if (atomic_load_u64(&g_log.terminal_locked)) {
     uint64_t owner = atomic_load_u64(&g_log.terminal_owner_thread);
-    if (owner != (uint64_t)asciichat_thread_self()) {
+    if (owner != (uint64_t)thread_self()) {
       return;
     }
   }

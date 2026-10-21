@@ -139,10 +139,10 @@ Test(transport_backpressure, concurrent_streams_obey_budget_and_keep_control) {
   producer_t producers[4];
   for (uint32_t i = 0; i < 4; ++i) {
     producers[i] = (producer_t){concurrent, i};
-    cr_assert_eq(asciichat_thread_create(&threads[i], "outbound_producer", produce, &producers[i]), ASCIICHAT_OK);
+    cr_assert_eq(acthread_create(&threads[i], "outbound_producer", produce, &producers[i]), ASCIICHAT_OK);
   }
   for (size_t i = 0; i < 4; ++i)
-    cr_assert_eq(asciichat_thread_join(&threads[i], NULL), ASCIICHAT_OK);
+    cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
   cr_assert_eq(submit(concurrent, PACKET_TYPE_PING, 0, 1, false), ACIP_ADMISSION_ACCEPTED);
   cr_assert_eq(acip_outbound_snapshot(concurrent, &stats), ASCIICHAT_OK);
   cr_assert(stats.accepted == 1001 && stats.dropped >= 996);
