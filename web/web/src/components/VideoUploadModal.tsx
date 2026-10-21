@@ -83,7 +83,7 @@ export function VideoUploadModal({
     >
       <div className="p-6">
         <ModalTitle className="text-lg font-semibold text-terminal-fg mb-4">
-          Upload File
+          Upload file
         </ModalTitle>
 
         <div

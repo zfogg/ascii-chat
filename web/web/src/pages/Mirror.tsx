@@ -455,12 +455,14 @@ export function MirrorPage() {
                 : fileMedia.status
                   ? `${fileMedia.status} ${fileMedia.fileName}`
                   : fileMedia.fileName,
+              uploadControls: (
+                <ScreenShareControls
+                  capture={screenCapture}
+                  disabled={!wasmInitialized || isStarting}
+                />
+              ),
               statusControls: (
                 <>
-                  <ScreenShareControls
-                    capture={screenCapture}
-                    disabled={!wasmInitialized || isStarting}
-                  />
                   {fileMedia.loading && (
                     <button onClick={stopPlayback}>Cancel</button>
                   )}

@@ -161,9 +161,27 @@ export function useMirrorWebcam({
       for (let attempt = 0; ; attempt++) {
         owner.signal.throwIfAborted();
         try {
-          stream =
-            providedStream ??
-            (await acquireMediaStream(mediaConstraints, owner.signal));
+          if (providedStream) {
+            stream = providedStream;
+            acquiredStream = stream;
+            if (!retainedAudio.length) {
+              const microphone = await acquireMediaStream(
+                {
+                  video: false,
+                  audio: microphoneConstraints(devicePreferences.microphoneId),
+                },
+                owner.signal,
+              );
+              microphone
+                .getAudioTracks()
+                .forEach((track) => stream!.addTrack(track));
+            }
+          } else if (audioOnly && retainedAudio.length) {
+            // Reattach the retained microphone below without requesting an
+            // invalid getUserMedia({ video: false, audio: false }) stream.
+            stream = new MediaStream();
+          } else
+            stream = await acquireMediaStream(mediaConstraints, owner.signal);
           acquiredStream = stream;
           break;
         } catch (cause) {

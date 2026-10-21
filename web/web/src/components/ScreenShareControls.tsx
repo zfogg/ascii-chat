@@ -15,7 +15,7 @@ export function ScreenShareControls({ capture, disabled = false }: Props) {
     <span className="flex flex-wrap items-center gap-2">
       <button
         type="button"
-        className="border border-terminal-8 rounded px-3 py-1 cursor-pointer disabled:opacity-50"
+        className="px-4 py-2 bg-terminal-5 text-terminal-bg rounded hover:bg-terminal-13 text-sm font-medium cursor-pointer disabled:opacity-50"
         disabled={disabled || !capture.supported || capture.selecting}
         title={
           capture.supported
@@ -24,11 +24,7 @@ export function ScreenShareControls({ capture, disabled = false }: Props) {
         }
         onClick={() => void capture.start()}
       >
-        {capture.selecting
-          ? "Choosing screen..."
-          : capture.active
-            ? "Change shared screen"
-            : "Share screen"}
+        {capture.selecting ? "Choosing screen..." : "Share screen"}
       </button>
       {(capture.active || capture.selecting) && (
         <button

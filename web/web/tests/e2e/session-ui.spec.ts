@@ -390,7 +390,7 @@ test("C owns automatic horizontal orientation and the browser echoes it without 
     page.getByRole("button", { name: "Stop", exact: true }),
   ).toBeVisible();
   await orientation(true);
-  await page.getByRole("button", { name: "Upload File", exact: true }).click();
+  await page.getByRole("button", { name: "Upload file", exact: true }).click();
   await page
     .getByLabel("Choose media file")
     .setInputFiles("tests/fixtures/media/still.png");
@@ -448,7 +448,7 @@ for (const mode of ["client", "discovery"]) {
       }, moduleUrl);
     await expect(horizontal).toHaveAttribute("aria-pressed", "true");
     await page
-      .getByRole("button", { name: "Upload File", exact: true })
+      .getByRole("button", { name: "Upload file", exact: true })
       .click();
     await page
       .getByLabel("Choose media file")

@@ -79,6 +79,18 @@ async function fullPageProof(page: Page, file: string) {
     style.maxHeight = `${height}px`;
   });
   await expect.poll(() => redPixels(page)).toBeGreaterThan(1000);
+  const upload = page.getByRole("button", { name: "Upload file", exact: true });
+  const share = page.getByRole("button", { name: "Share screen", exact: true });
+  await expect(share).toHaveClass(/bg-terminal-5/);
+  expect(
+    await share.evaluate((button) =>
+      button.parentElement?.previousElementSibling?.textContent?.trim(),
+    ),
+  ).toBe("Upload file");
+  const uploadBox = await upload.boundingBox(),
+    shareBox = await share.boundingBox();
+  expect(shareBox!.x).toBeGreaterThanOrEqual(uploadBox!.x + uploadBox!.width);
+  expect(Math.abs(shareBox!.y - uploadBox!.y)).toBeLessThan(2);
   await page.screenshot({ path: file, fullPage: true });
   await surface.evaluate((element, style) => {
     if (style === null) element.removeAttribute("style");
@@ -112,12 +124,12 @@ test("Mirror renders display ASCII, cancels, replaces, ends and restores the mic
   await page.evaluate(() => {
     window.displayTest.cancel = true;
   });
-  await page.getByRole("button", { name: "Change shared screen" }).click();
+  await page.getByRole("button", { name: "Share screen", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Change shared screen" }),
+    page.getByRole("button", { name: "Share screen", exact: true }),
   ).toBeEnabled();
   await expect(page.getByText("Sharing screen · video only")).toBeVisible();
-  await page.getByRole("button", { name: "Change shared screen" }).click();
+  await page.getByRole("button", { name: "Share screen", exact: true }).click();
   await expect
     .poll(() => page.evaluate(() => window.displayTest.streams.length))
     .toBe(2);
@@ -129,6 +141,7 @@ test("Mirror renders display ASCII, cancels, replaces, ends and restores the mic
     )
     .toBe("ended");
   await page.getByRole("button", { name: "Stop sharing", exact: true }).click();
+  await expect(page.getByText("Sharing screen · video only")).not.toBeVisible();
   await expect(
     page.getByRole("button", { name: "Share screen", exact: true }),
   ).toBeVisible();
@@ -154,6 +167,7 @@ test("Mirror renders display ASCII, cancels, replaces, ends and restores the mic
     track.stop();
     track.dispatchEvent(new Event("ended"));
   });
+  await expect(page.getByText("Sharing screen · video only")).not.toBeVisible();
   await expect(
     page.getByRole("button", { name: "Share screen", exact: true }),
   ).toBeVisible();
@@ -184,7 +198,7 @@ test("Mirror screen sharing from idle returns to idle, and file sharing restores
     ctx.fillRect(0, 0, 320, 180);
     return canvas.toDataURL().split(",")[1]!;
   });
-  await page.getByRole("button", { name: "Upload File", exact: true }).click();
+  await page.getByRole("button", { name: "Upload file", exact: true }).click();
   await page.getByLabel("Choose media file").setInputFiles({
     name: "blue.png",
     mimeType: "image/png",

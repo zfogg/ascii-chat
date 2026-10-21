@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
 import { streamMedia } from "../../src/utils/streamMedia";
 import { MAX_MEDIA_FILE_SIZE } from "../../src/utils/mediaUpload";
 
-test("Upload File keeps an 8 GB native video out of the conversion heap", async () => {
+test("Upload file keeps an 8 GB native video out of the conversion heap", async () => {
   const file = new File(["mp4"], "large.mp4", { type: "video/mp4" });
   Object.defineProperty(file, "size", { value: MAX_MEDIA_FILE_SIZE });
   const result = await streamMedia(
@@ -17,7 +17,7 @@ test("Upload File keeps an 8 GB native video out of the conversion heap", async 
   expect(result).toBe(file);
 });
 
-test("Upload File rejects conversion inputs above 8 GB", async () => {
+test("Upload file rejects conversion inputs above 8 GB", async () => {
   const file = new File(["avi"], "large.avi");
   Object.defineProperty(file, "size", { value: MAX_MEDIA_FILE_SIZE + 1 });
   await expect(

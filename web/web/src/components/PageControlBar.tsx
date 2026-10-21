@@ -28,6 +28,7 @@ export interface PageControlBarProps {
   settingsOpen?: boolean | undefined;
   compactVerticalSpacing?: boolean | undefined;
   statusControls?: ReactNode | undefined;
+  uploadControls?: ReactNode | undefined;
 }
 
 export function PageControlBar({
@@ -54,6 +55,7 @@ export function PageControlBar({
   settingsOpen = false,
   compactVerticalSpacing = false,
   statusControls,
+  uploadControls,
 }: PageControlBarProps) {
   const getFpsColor = () => {
     if (fps === undefined || fps === null) return "text-terminal-8";
@@ -171,6 +173,7 @@ export function PageControlBar({
               </button>
             ))}
           {onFileSelect && <UploadFile onFileSelect={onFileSelect} />}
+          {uploadControls}
           {showConnectionButton && (
             <button
               onClick={onConnectionClick}

@@ -129,7 +129,7 @@ test("real detector follows a moving face, retains its subject, widens on loss a
   );
   test.setTimeout(90_000);
   await page.goto("/mirror?faceFollow&faceFollowDebug");
-  await page.getByRole("button", { name: "Upload File", exact: true }).click();
+  await page.getByRole("button", { name: "Upload file", exact: true }).click();
   await page.getByLabel("Choose media file").setInputFiles(fixture);
   await expect(page.locator("canvas[data-face-follow]")).toHaveCount(1, {
     timeout: 30_000,
@@ -247,7 +247,7 @@ test("seated shifts hold the view, a brief lean is ignored, and a sustained move
   const seated = path.resolve("../../artifacts/face-follow/seated.mp4");
   test.skip(!existsSync(seated), "Generate the seated fixture first");
   await page.goto("/mirror?faceFollow&faceFollowDebug");
-  await page.getByRole("button", { name: "Upload File", exact: true }).click();
+  await page.getByRole("button", { name: "Upload file", exact: true }).click();
   await page.getByLabel("Choose media file").setInputFiles(seated);
   await expect(page.locator("canvas[data-face-follow]")).toHaveCount(1, {
     timeout: 30_000,
@@ -310,7 +310,7 @@ test("settings panel toggles real framing and the setting survives reload", asyn
   await expect(
     page.getByRole("button", { name: /Face Follow Debug/i }),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Upload File", exact: true }).click();
+  await page.getByRole("button", { name: "Upload file", exact: true }).click();
   await page.getByLabel("Choose media file").setInputFiles(fixture);
   await expect(page.locator("canvas[data-face-follow]")).toHaveCount(1, {
     timeout: 30_000,

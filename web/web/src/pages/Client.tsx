@@ -1176,7 +1176,6 @@ export function ClientPage({
   const audioControls =
     connectionState === ConnectionState.CONNECTED ? (
       <>
-        <ScreenShareControls capture={screenCapture} />
         <button
           onClick={
             screenCapture.active
@@ -1652,6 +1651,12 @@ export function ClientPage({
               showSettingsButton: true,
               settingsOpen: showSettings,
               statusControls: audioControls,
+              uploadControls: (
+                <ScreenShareControls
+                  capture={screenCapture}
+                  disabled={connectionState !== ConnectionState.CONNECTED}
+                />
+              ),
             }}
           />
         }
