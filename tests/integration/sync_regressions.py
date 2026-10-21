@@ -4,11 +4,20 @@ Build: cmake --build build --target test-sync-regressions
 Run: python tests/integration/sync_regressions.py build/bin/test-sync-regressions.exe
 Requires the same pyte/pywinpty (Windows) or pexpect (POSIX) as terminal_ui.py.
 """
+import importlib.util
+import os
 import re
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+prerequisites = ["pyte"] + ([] if os.name == "nt" else ["pexpect"])
+missing = [name for name in prerequisites if importlib.util.find_spec(name) is None]
+if missing:
+    print("SKIP: sync terminal tests need " + ", ".join(missing) +
+          "; install tests/requirements-terminal.txt")
+    raise SystemExit(77)
 
 from terminal_ui import Terminal
 

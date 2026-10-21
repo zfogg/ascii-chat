@@ -1,0 +1,2 @@
+pyte==0.8.2
+pexpect==4.9.0; sys_platform != "win32"

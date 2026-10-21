@@ -1669,6 +1669,13 @@ endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat-shared)
     set(shared_api_tests options-metadata)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_test(NAME symbolizer-offline COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/symbolizer_offline.py
+            $<TARGET_FILE:ascii-chat-shared> --cc ${CMAKE_C_COMPILER})
+        set_tests_properties(symbolizer-offline PROPERTIES SKIP_RETURN_CODE 77)
+        list(APPEND shared_api_tests symbolizer-offline)
+    endif()
     add_test(NAME options-metadata COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/options_metadata.py $<TARGET_FILE:ascii-chat-shared>)
     find_program(ASCIICHAT_TEST_SSH_KEYGEN ssh-keygen)
@@ -1693,4 +1700,11 @@ if(BUILD_TESTS AND TARGET ascii-chat-shared)
                 "LD_PRELOAD=${ASAN_RUNTIME_LIBRARY}" "PYTHONMALLOC=malloc")
         endif()
     endforeach()
+endif()
+
+if(BUILD_TESTS AND TARGET test-sync-regressions AND NOT WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_test(NAME sync-ui-regressions COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/sync_regressions.py $<TARGET_FILE:test-sync-regressions>)
+    set_tests_properties(sync-ui-regressions PROPERTIES LABELS "integration" TIMEOUT 180
+        RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
 endif()

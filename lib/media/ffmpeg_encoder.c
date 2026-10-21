@@ -874,8 +874,8 @@ static asciichat_error_t encoder_prepare_audio_frame(ffmpeg_encoder_t *enc) {
   if (av_frame_make_writable(enc->audio_frame) < 0)
     return SET_ERRNO(ERROR_MEMORY, "Cannot make recording audio frame writable");
   const uint8_t *input[] = {(const uint8_t *)enc->audio_partial_buf};
-  int converted = swr_convert(enc->audio_swr_ctx, enc->audio_frame->data, enc->audio_frame_size,
-                              input, enc->audio_frame_size);
+  int converted =
+      swr_convert(enc->audio_swr_ctx, enc->audio_frame->data, enc->audio_frame_size, input, enc->audio_frame_size);
   if (converted < 0)
     return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot convert recording audio samples: %d", converted);
   enc->audio_frame->nb_samples = converted;
