@@ -15,6 +15,7 @@ typedef struct {
   atomic_t bytes, sent, closed;
   asciichat_error_t failure;
   bool omit_context;
+  bool wrap_context;
 } backend_t;
 static size_t queued(acip_transport_t *transport) {
   return (size_t)atomic_load_u64(&((backend_t *)transport->impl_data)->bytes);
@@ -28,8 +29,9 @@ static asciichat_error_t backend_send(acip_transport_t *transport, const void *d
       SET_ERRNO(ERROR_INVALID_STATE, "Unrelated backend diagnostic");
       return backend->failure;
     }
-    errno = EPIPE;
-    return SET_ERRNO_SYS(backend->failure, "Backend rejected outgoing packet");
+    asciichat_set_errno_with_system_error_and_message(backend->failure, __FILE__, __LINE__, __func__, EPIPE,
+                                                      "Backend rejected outgoing packet");
+    return backend->wrap_context ? SET_ERRNO(backend->failure, "Backend failure wrapper") : backend->failure;
   }
   return ASCIICHAT_OK;
 }
@@ -173,6 +175,7 @@ typedef struct {
   acip_transport_t *transport;
   asciichat_error_t result;
   asciichat_error_context_t cause;
+  asciichat_error_context_t detail;
   bool has_cause;
 } failing_producer_t;
 
@@ -186,17 +189,23 @@ static void *submit_control(void *arg) {
   asciichat_errno_scope_t scope = asciichat_errno_checkpoint();
   producer->result = acip_outbound_submitv(producer->transport, &buffer, 1, &admission);
   producer->has_cause = asciichat_errno_peek_since(scope, &producer->cause);
+  asciichat_error_context_t frames[3];
+  size_t count = asciichat_errno_snapshot(scope.thread_id, frames, 3);
+  for (size_t i = 0; i < count && i < 3; ++i)
+    if (frames[i].error_id > scope.after_id && frames[i].has_system_error)
+      producer->detail = frames[i];
   CLEAR_ERRNO_ALL();
   return NULL;
 }
 
-static void check_backend_failure(asciichat_error_t code, bool omit_context) {
+static void check_backend_failure(asciichat_error_t code, bool omit_context, bool wrap_context) {
   log_init(NULL, LOG_ERROR, false, false);
   asciichat_errno_suppress(true);
   acip_transport_t *transport = create();
   backend_t *backend = transport->impl_data;
   backend->failure = code;
   backend->omit_context = omit_context;
+  backend->wrap_context = wrap_context;
   atomic_store_u64(&backend->bytes, 1); // Hold both controls until they are queued.
   failing_producer_t producers[2] = {{.transport = transport}, {.transport = transport}};
   asciichat_thread_t threads[2];
@@ -217,12 +226,14 @@ static void check_backend_failure(asciichat_error_t code, bool omit_context) {
     cr_assert_eq(producers[i].result, code);
     cr_assert(producers[i].has_cause);
     cr_assert_eq(producers[i].cause.code, code);
-    cr_assert_str_eq(producers[i].cause.context_message,
-                     omit_context ? "Outbound backend submission failed" : "Backend rejected outgoing packet");
+    cr_assert_str_eq(producers[i].cause.context_message, omit_context   ? "Outbound backend submission failed"
+                                                         : wrap_context ? "Backend failure wrapper"
+                                                                        : "Backend rejected outgoing packet");
     if (!omit_context) {
-      cr_assert(producers[i].cause.has_system_error);
-      cr_assert_eq(producers[i].cause.system_errno, EPIPE);
-      cr_assert_str_eq(producers[i].cause.function, "backend_send");
+      cr_assert(producers[i].detail.has_system_error);
+      cr_assert_eq(producers[i].detail.system_errno, EPIPE);
+      cr_assert_str_eq(producers[i].detail.function, "backend_send");
+      cr_assert_str_eq(producers[i].detail.context_message, "Backend rejected outgoing packet");
     }
   }
   cr_assert_eq(atomic_load_u64(&backend->sent), 1); // No retry of a possibly partial packet.
@@ -232,21 +243,27 @@ static void check_backend_failure(asciichat_error_t code, bool omit_context) {
   cr_assert(later.has_cause);
   cr_assert_str_eq(later.cause.context_message, producers[0].cause.context_message);
   cr_assert_eq(later.cause.cause_id, producers[0].cause.cause_id);
+  if (!omit_context)
+    cr_assert_eq(later.detail.system_errno, EPIPE);
   acip_transport_destroy(transport);
   buffer_system_cleanup();
   log_destroy();
 }
 
 Test(transport_backpressure, unsupported_backend_preserves_failure_for_all_producers) {
-  check_backend_failure(ERROR_NOT_SUPPORTED, false);
+  check_backend_failure(ERROR_NOT_SUPPORTED, false, false);
 }
 
 Test(transport_backpressure, fatal_backend_preserves_failure_for_all_producers) {
-  check_backend_failure(ERROR_CRYPTO, false);
+  check_backend_failure(ERROR_CRYPTO, false, false);
 }
 
 Test(transport_backpressure, backend_status_cannot_inherit_unrelated_context) {
-  check_backend_failure(ERROR_NETWORK_TIMEOUT, true);
+  check_backend_failure(ERROR_NETWORK_TIMEOUT, true, false);
+}
+
+Test(transport_backpressure, wrapped_backend_preserves_nested_system_error) {
+  check_backend_failure(ERROR_NETWORK, false, true);
 }
 
 Test(transport_backpressure, asynchronous_media_failure_reaches_next_producer) {

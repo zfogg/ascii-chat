@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -11,6 +12,32 @@
 
 #ifndef _WIN32
 #include <sys/socket.h>
+
+Test(tcp_transport, send_failure_preserves_nested_system_context) {
+  int sockets[2];
+  cr_assert_eq(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
+  acip_transport_t *transport = acip_tcp_transport_create("send-failure-context", sockets[0], NULL);
+  cr_assert_not_null(transport);
+  socket_close(sockets[1]);
+  CLEAR_ERRNO_ALL();
+  asciichat_errno_scope_t scope = asciichat_errno_checkpoint();
+  cr_assert_eq(packet_send_via_transport(transport, PACKET_TYPE_STREAM_START, NULL, 0, 0), ERROR_NETWORK);
+  asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
+  size_t count = asciichat_errno_snapshot(scope.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+  bool found_system_cause = false;
+  for (size_t i = 0; i < count && i < ASCIICHAT_ERRNO_MAX_DEPTH; ++i) {
+    if (frames[i].error_id > scope.after_id && frames[i].has_system_error) {
+      cr_assert_neq(frames[i].system_errno, 0);
+      cr_assert_str_neq(frames[i].function, "tcp_sendv");
+      found_system_cause = true;
+    }
+  }
+  cr_assert(found_system_cause);
+  cr_assert_not(acip_transport_is_connected(transport));
+  acip_transport_destroy(transport);
+  socket_close(sockets[0]);
+  CLEAR_ERRNO_ALL();
+}
 
 Test(tcp_transport, peer_eof_marks_transport_disconnected) {
   int sockets[2];

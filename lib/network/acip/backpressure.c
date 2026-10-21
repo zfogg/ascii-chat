@@ -38,6 +38,7 @@ struct acip_outbound {
   bool stopping, failed;
   asciichat_error_t failure_code;
   asciichat_error_context_t failure;
+  asciichat_error_context_t failure_detail;
   outbound_packet_t *head;
   outbound_packet_t *recycled;
   size_t recycled_count;
@@ -121,11 +122,45 @@ static void expire_video(acip_outbound_t *out, uint64_t now) {
   }
 }
 
-static void fail_queue(acip_outbound_t *out, asciichat_error_t code, const asciichat_error_context_t *cause) {
+// Keep the terminal wrapper plus its relevant nested cause. Follow causal IDs,
+// not merely older registry entries, and never cross this send's checkpoint.
+static asciichat_error_context_t backend_failure_detail(asciichat_errno_scope_t scope,
+                                                        const asciichat_error_context_t *cause) {
+  asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
+  size_t count = asciichat_errno_snapshot(scope.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+  if (count > ASCIICHAT_ERRNO_MAX_DEPTH)
+    count = ASCIICHAT_ERRNO_MAX_DEPTH;
+  asciichat_error_context_t detail = {0};
+  uint64_t next = cause->cause_id;
+  for (size_t i = 0; i < count && next; ++i) {
+    if (frames[i].generation != scope.generation || frames[i].error_id <= scope.after_id)
+      continue;
+    if (frames[i].error_id != next)
+      continue;
+    if (!detail.has_system_error && !detail.has_wsa_error)
+      detail = frames[i];
+    else if (frames[i].has_system_error || frames[i].has_wsa_error)
+      detail = frames[i];
+    next = frames[i].cause_id;
+  }
+  return detail;
+}
+
+static asciichat_error_t import_failure(const asciichat_error_context_t *cause,
+                                        const asciichat_error_context_t *detail) {
+  if (detail->code != ASCIICHAT_OK)
+    asciichat_errno_import(detail);
+  return asciichat_errno_import(cause);
+}
+
+static void fail_queue(acip_outbound_t *out, asciichat_error_t code, const asciichat_error_context_t *cause,
+                       const asciichat_error_context_t *detail) {
   if (!out->failed) {
     out->failure_code = code;
     if (cause)
       out->failure = *cause;
+    if (detail)
+      out->failure_detail = *detail;
   }
   out->failed = true;
   while (out->head) {
@@ -162,7 +197,7 @@ static void *outbound_worker(void *arg) {
       asciichat_error_context_t cause;
       SET_ERRNO(ERROR_NETWORK_TIMEOUT, "Outbound reliable packet expired before submission");
       bool has_cause = asciichat_errno_peek_since(scope, &cause);
-      fail_queue(out, ERROR_NETWORK_TIMEOUT, has_cause ? &cause : NULL);
+      fail_queue(out, ERROR_NETWORK_TIMEOUT, has_cause ? &cause : NULL, NULL);
       asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
       break;
     }
@@ -184,12 +219,15 @@ static void *outbound_worker(void *arg) {
     asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
     asciichat_error_t result = out->transport->methods->send(out->transport, p->data, p->size);
     asciichat_error_context_t cause = {0};
+    asciichat_error_context_t detail = {0};
     if (result != ASCIICHAT_OK) {
       // Only this send's matching failure belongs to the submission. A backend
       // may return a status without context, or leave an unrelated nested error.
       if (!asciichat_errno_peek_since(scope, &cause) || cause.code != result) {
         SET_ERRNO(result, "Outbound backend submission failed");
         asciichat_errno_peek_since(scope, &cause);
+      } else {
+        detail = backend_failure_detail(scope, &cause);
       }
     }
     asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
@@ -209,7 +247,7 @@ static void *outbound_worker(void *arg) {
       packet_free(out, p);
     }
     if (result != ASCIICHAT_OK) {
-      fail_queue(out, result, &cause);
+      fail_queue(out, result, &cause, &detail);
       break;
     }
   }
@@ -260,7 +298,7 @@ void acip_outbound_destroy(acip_transport_t *transport) {
   transport->methods->close(transport);
   asciichat_thread_join(&out->worker, NULL);
   mutex_lock(&out->mutex);
-  fail_queue(out, ERROR_NETWORK, NULL);
+  fail_queue(out, ERROR_NETWORK, NULL, NULL);
   while (out->recycled) {
     outbound_packet_t *p = out->recycled;
     out->recycled = p->next;
@@ -311,8 +349,9 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
   if (out->stopping || out->failed) {
     asciichat_error_t code = out->failed ? out->failure_code : ERROR_NETWORK;
     asciichat_error_context_t cause = out->failure;
+    asciichat_error_context_t detail = out->failure_detail;
     mutex_unlock(&out->mutex);
-    return cause.code == code ? asciichat_errno_import(&cause) : SET_ERRNO(code, "Outbound connection closed");
+    return cause.code == code ? import_failure(&cause, &detail) : SET_ERRNO(code, "Outbound connection closed");
   }
   expire_video(out, info.created);
   outbound_stream_t *stream = info.encoded ? stream_state(out, info.type, info.stream) : NULL;
@@ -393,18 +432,21 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
     cond_broadcast(&out->changed);
   asciichat_error_t result = ASCIICHAT_OK;
   asciichat_error_context_t cause = {0};
+  asciichat_error_context_t detail = {0};
   if (info.wait) {
     while (!p->done)
       cond_wait(&out->changed, &out->mutex);
     result = p->result;
-    if (result != ASCIICHAT_OK)
+    if (result != ASCIICHAT_OK) {
       cause = out->failure;
+      detail = out->failure_detail;
+    }
     packet_free(out, p);
   }
   mutex_unlock(&out->mutex);
   if (result == ASCIICHAT_OK)
     return result;
-  return cause.code == result ? asciichat_errno_import(&cause) : SET_ERRNO(result, "Outbound submission failed");
+  return cause.code == result ? import_failure(&cause, &detail) : SET_ERRNO(result, "Outbound submission failed");
 }
 
 asciichat_error_t acip_outbound_snapshot(acip_transport_t *transport, acip_outbound_stats_t *stats) {

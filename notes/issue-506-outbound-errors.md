@@ -15,6 +15,12 @@ formatting changes in PR #535, capability negotiation (#269), and demos (#431).
 | `lib/network/tcp/transport.c`: `tcp_sendv`, `tcp_recv`; `lib/network/webrtc/transport.c`: `webrtc_send`, `webrtc_recv` | Some lower-level causes are wrapped as network failures. Deferred: partial writes, consumed crypto nonces, receive framing, and connection lifecycle need their own transport-specific behavioral qualification. This change preserves the status the backend actually returns; it never retries a possibly partial packet. |
 | `lib/network/network.c`: `send_with_timeout`, `recv_with_timeout`; `lib/network/webrtc/webrtc.c`: `webrtc_get_rtc_id`; WebSocket/library callbacks | Byte counts, IDs, EOF, and callback return conventions are genuine ABI semantics. Do not mechanically convert these to error enums. |
 
+Nested backend wrappers retain their relevant causal diagnostic (preferring system
+error metadata) alongside the terminal frame. Producer imports include both, so
+the real TCP send failure preserves its low-level system error and source as well
+as the transport wrapper. The fixture injects explicit system metadata through
+the errno API instead of depending on platform-specific error-state storage.
+
 No public structure, callback signature, platform ABI, boolean query, or count
 return changes. Cancellation/interrupt semantics remain a separate lifecycle
 concern; this patch adds no new cancellation status.
@@ -23,3 +29,5 @@ Regression coverage in `tests/contracts/network/backpressure_test.c` checks
 unsupported and fatal backend errors, timeout status with unrelated diagnostics,
 two concurrent control producers, later admission after failure, preserved system
 errno/source context, and congestion recovery without closing the backend.
+The TCP unit suite additionally verifies system-cause propagation from a real
+closed socket through the production send backend and outbound worker.
