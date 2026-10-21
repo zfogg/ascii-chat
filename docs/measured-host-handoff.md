@@ -170,14 +170,12 @@ verified selected relay-to-relay pairs carrying bytes before and after loss.
 | native-audio-direct | 3 | 1.56–2.12 s | 2.42–2.83 s |
 | mixed-audio-relay-slow-video-and-promotion | 3 | 7.14–9.11 s | 7.91–9.70 s |
 
-[Result JSON](validation/handoff-audio-2026-10-21/results.json) records counters,
-selected pairs, timestamps, binary hashes and the WASM manifest. Final
-[browser relay](validation/handoff-audio-2026-10-21/browser-relay-final.png) and
-[mixed relay](validation/handoff-audio-2026-10-21/mixed-relay-final.png)
-screenshots show recovered media and decoded audio sample counts. Local raw
-logs, screenshots and process exit evidence remain in the directories listed
-in the JSON. These results demonstrate recovery with interruptions, not
-seamless audio or general Internet reliability.
+Raw result JSON records counters, selected pairs, timestamps, binary hashes and
+the WASM manifest. Logs, screenshots and process exit evidence remain local
+test artifacts under `.tmp/handoff-integrated-{direct,relay,slow,native}`.
+Set `HANDOFF_ARTIFACTS` to retain equivalent evidence when reproducing the runs.
+These results demonstrate recovery with interruptions, not seamless audio or
+general Internet reliability.
 
 Run `web/web/tests/e2e/run-handoff-native-audio.mjs` for native-only audio.
 It keeps three live participants by adding a replacement between losses,
