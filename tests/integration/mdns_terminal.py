@@ -51,6 +51,11 @@ def main():
     binary = args.binary.resolve()
     with tempfile.TemporaryDirectory(prefix="ascii-mdns-") as temporary:
         root = Path(temporary)
+        for key in list(os.environ):
+            if key.startswith("ASCII_CHAT_"):
+                del os.environ[key]
+        os.environ.update(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root),
+                          XDG_CONFIG_HOME=str(root), TERM="xterm-256color")
         ports = [free_port(), free_port()]
         services, terminals = [], []
 
@@ -134,8 +139,13 @@ def main():
             cancelled.write("q")
             cancelled.expect(lambda text: not cancelled.process.isalive(), "Cancellation did not exit")
             assert "Using test pattern mode" not in (root / "cancelled.log").read_text(errors="replace")
+            before_explicit = replacement.text().count("announced video stream")
             explicit = client("explicit", f"127.0.0.1:{ports[chosen]}")
-            replacement.wait_for("announced video stream")
+            deadline = time.monotonic() + 20
+            while replacement.text().count("announced video stream") <= before_explicit:
+                if time.monotonic() >= deadline:
+                    raise AssertionError("Explicit client did not join the replacement server")
+                explicit.pump(.05)
             log_wait("explicit", "Using test pattern mode")
             assert "LAN servers" not in "".join(explicit.raw)
             explicit.interrupt()
