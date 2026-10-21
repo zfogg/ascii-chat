@@ -225,6 +225,22 @@ describe("HEVC uploads", () => {
       clock.mockRestore();
     }
   });
+  it("preserves requested cadence across slightly early timer callbacks", async () => {
+    let now = 0;
+    const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+    try {
+      const encoder = new H265Encoder(vi.fn());
+      await encoder.initialize(320, 240, 30);
+      for (let i = 0; i < 30; i++) {
+        now = (i * 1000) / 30 - (i % 2 ? 0.2 : 0);
+        encoder.encode(frame());
+      }
+      expect(FakeEncoder.instances[0]!.encode).toHaveBeenCalledTimes(30);
+      encoder.destroy();
+    } finally {
+      clock.mockRestore();
+    }
+  });
   it("does not resurrect an encoder stopped during probing", async () => {
     let resolve!: (value: {
       supported: boolean;

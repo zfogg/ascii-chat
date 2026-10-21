@@ -1,4 +1,5 @@
 import { UploadQuality, type UploadFeedback } from "./UploadQuality";
+import { VideoFrameClock } from "../../../packages/shared/src/hooks/videoFrameClock";
 /** Browser HEVC/AVC upload encoder. ACIP carries self-contained Annex B access units. */
 export interface VideoChunk {
   timestamp?: number;
@@ -23,7 +24,7 @@ export class VideoUploadEncoder {
   private resizing = false;
   private quality = new UploadQuality();
   private feedback: UploadFeedback = { bufferedBytes: 0 };
-  private lastEncoded = -Infinity;
+  private frameClock = new VideoFrameClock();
   private ceilingFps = 30;
   private scaleCanvas: OffscreenCanvas | null = null;
 
@@ -96,7 +97,7 @@ export class VideoUploadEncoder {
     this.quality = new UploadQuality();
     this.feedback = { bufferedBytes: 0 };
     this.quality.sample(performance.now(), this.feedback);
-    this.lastEncoded = -Infinity;
+    this.frameClock = new VideoFrameClock();
     return this.configure(width, height, fps);
   }
 
@@ -212,8 +213,8 @@ export class VideoUploadEncoder {
         });
       return;
     }
-    if (now - this.lastEncoded < 1000 / target.fps) return;
     if (this.encoder.encodeQueueSize >= 2) return;
+    if (!this.frameClock.accept(now / 1000, 1000 / target.fps)) return;
     let scaled: VideoFrame | null = null;
     try {
       if (
@@ -233,7 +234,6 @@ export class VideoUploadEncoder {
       this.encoder.encode(scaled ?? frame, {
         keyFrame: forceKeyframe || this.frameCount % 60 === 0,
       });
-      this.lastEncoded = now;
     } finally {
       scaled?.close();
     }
