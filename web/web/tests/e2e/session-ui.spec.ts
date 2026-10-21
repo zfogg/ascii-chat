@@ -464,3 +464,35 @@ for (const mode of ["client", "discovery"]) {
     await page.screenshot({ path: `artifacts/flip-c-policy-${mode}.png` });
   });
 }
+
+test("horizontal orientation startup commits saved choices before reading C", async ({
+  page,
+}) => {
+  for (const [query, flip] of [
+    ["animationEnabled=true&animation=waveform&horizontalFlip=on", true],
+    ["horizontalFlip=off", false],
+  ] as const) {
+    await page.goto(`/mirror?${query}`);
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    const state = () =>
+      page.evaluate(async (url) => {
+        const { getMirrorModule } = await import(url);
+        const m = getMirrorModule();
+        if (!m) return null;
+        const p = m._wasm_options_values();
+        try {
+          const values = JSON.parse(m.UTF8ToString(p)).values;
+          return [values.flip_x, values.flip_x_explicit];
+        } finally {
+          m._wasm_options_release(p);
+        }
+      }, moduleUrl);
+    await expect.poll(state).toEqual([flip, true]);
+    await expect(
+      page.getByRole("button", { name: /Flip Horizontal/ }),
+    ).toHaveAttribute("aria-pressed", String(flip));
+    await page.locator("canvas.ascii-canvas").focus();
+    await page.keyboard.press("2");
+    await expect.poll(state).toEqual([flip, true]);
+  }
+});

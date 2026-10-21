@@ -11,7 +11,10 @@ import {
   type RuntimeValues,
 } from "@ascii-chat/shared/wasm";
 import type { BinarySettingsConfig } from "../components";
-import { acknowledgeEngineSettings } from "./useWasmOptions";
+import {
+  acknowledgeEngineSettings,
+  applyMirrorWasmSettings,
+} from "./useWasmOptions";
 
 const emptySubscribe = () => () => {};
 const emptySnapshot = () => null;
@@ -21,6 +24,9 @@ export function useEngineSettings(
   ready: boolean,
   settings: BinarySettingsConfig,
   onChange: (settings: BinarySettingsConfig) => void,
+  applySettings: (
+    settings: BinarySettingsConfig,
+  ) => void = applyMirrorWasmSettings,
 ) {
   const module = ready ? getMirrorModule() : null;
   const store = module ? runtimeOptions(module) : null;
@@ -34,6 +40,13 @@ export function useEngineSettings(
   useLayoutEffect(() => {
     current.current = { settings, onChange };
   }, [settings, onChange]);
+  useLayoutEffect(() => {
+    previous.current = null;
+  }, [store]);
+  // Commit startup inputs and user edits before observing the resulting C state.
+  useLayoutEffect(() => {
+    if (ready) applySettings(settings);
+  }, [ready, settings, applySettings]);
   useEffect(() => {
     // Earlier layout/passive effects may already have published a newer revision.
     // React will render that snapshot next; do not echo the stale one into the UI.
@@ -42,22 +55,10 @@ export function useEngineSettings(
     previous.current = snapshot;
     if (!snapshot || old === snapshot) return;
     const { settings, onChange } = current.current;
-    if (!old) {
-      if (
-        typeof snapshot.values["flip_x"] === "boolean" &&
-        (!settings.flipXExplicit || snapshot.values["flip_x_explicit"]) &&
-        settings.flipX !== !!snapshot.values["flip_x"]
-      )
-        onChange({
-          ...settings,
-          flipX: !!snapshot.values["flip_x"],
-          flipXExplicit: !!snapshot.values["flip_x_explicit"],
-        });
-      return;
-    }
     const values = snapshot.values;
     const next = { ...settings };
-    const changed = (name: string) => old.values[name] !== values[name];
+    const changed = (name: string) =>
+      values[name] !== undefined && (!old || old.values[name] !== values[name]);
     if (store) acknowledgeEngineSettings(store, values, changed);
     const numeric = (name: string) => Number(values[name]);
     const colors: BinarySettingsConfig["colorMode"][] = [

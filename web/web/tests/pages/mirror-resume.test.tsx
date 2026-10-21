@@ -135,6 +135,7 @@ vi.mock("../../src/hooks/useClientLike", async (importOriginal) => ({
       setMediaSource: setSource,
       settings,
       setSettings,
+      receiveSettings: setSettings,
       terminalDimensions: {
         cols: backend.ready ? 80 : 0,
         rows: backend.ready ? 40 : 0,
