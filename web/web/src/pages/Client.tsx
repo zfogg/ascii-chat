@@ -1,3 +1,5 @@
+import { ScreenShareControls } from "../components/ScreenShareControls";
+import { useDisplayCapture } from "../hooks/useDisplayCapture";
 import { useMirrorFile } from "../hooks/useMirrorFile";
 import { MediaSourceType } from "../hooks/useClientLike";
 import {
@@ -576,22 +578,27 @@ export function ClientPage({
   );
 
   // Use webcam stream hook
-  const { startWebcam, stopWebcam, isWebcamRunning, sendFileFrame } =
-    useWebcamStream({
-      includeAudio: audioEnabled,
-      terminalDimensions,
-      clientRef,
-      connectionState,
-      settings: cameraSettings,
-      receiveFps: settings.targetFps,
-      captureFrame,
-      canvasRef,
-      videoRef,
-      frameIntervalRef: cameraFrameInterval,
-      lastFrameTimeRef: cameraLastFrameTime,
-      frameQueueRef,
-      setError,
-    });
+  const {
+    startWebcam,
+    startVideoStream,
+    stopWebcam,
+    isWebcamRunning,
+    sendFileFrame,
+  } = useWebcamStream({
+    includeAudio: audioEnabled,
+    terminalDimensions,
+    clientRef,
+    connectionState,
+    settings: cameraSettings,
+    receiveFps: settings.targetFps,
+    captureFrame,
+    canvasRef,
+    videoRef,
+    frameIntervalRef: cameraFrameInterval,
+    lastFrameTimeRef: cameraLastFrameTime,
+    frameQueueRef,
+    setError,
+  });
   const fileVideoRef = useRef<HTMLVideoElement>(null);
   const fileCanvasRef = useRef<HTMLCanvasElement>(null);
   const [fileRunning, setFileRunning] = useState(false);
@@ -612,6 +619,33 @@ export function ClientPage({
   });
   const { stop: stopFile, setSuspended: suspendFile } = fileMedia;
   const fileSelected = !!fileMedia.fileName;
+  const screenRestore = useRef<{ file: boolean; webcam: boolean } | null>(null);
+  const screenCapture = useDisplayCapture({
+    setError,
+    onStart: async (stream) => {
+      screenRestore.current ??= { file: fileRunning, webcam: isWebcamRunning };
+      setWebcamDisabledByUser(true);
+      suspendFile(true);
+      return startVideoStream(stream);
+    },
+    onStop: () => {
+      stopWebcam();
+      const previous = screenRestore.current;
+      screenRestore.current = null;
+      setWebcamDisabledByUser(!previous?.webcam);
+      if (previous?.file) suspendFile(false);
+      else if (previous?.webcam) void startVideoStream();
+    },
+  });
+  const { release: releaseDisplay } = screenCapture;
+  const releaseScreen = useCallback(() => {
+    screenRestore.current = null;
+    releaseDisplay();
+  }, [releaseDisplay]);
+  useEffect(() => {
+    if (connectionState !== ConnectionState.CONNECTED) releaseScreen();
+  }, [connectionState, releaseScreen]);
+
   const applyWasmSettings = useCallback(
     (next: BinarySettingsConfig) => applyMirrorWasmSettings(next, fileSelected),
     [fileSelected],
@@ -630,7 +664,7 @@ export function ClientPage({
     rendererReady,
   };
   useEffect(() => {
-    if (!fileRunning) return;
+    if (!fileRunning || screenCapture.active) return;
     if (connectionState === ConnectionState.CONNECTED) {
       clientRef.current?.sendPacket(
         PacketType.STREAM_START,
@@ -657,14 +691,23 @@ export function ClientPage({
       }
     }, 1000 / settings.targetFps);
     return () => window.clearInterval(timer);
-  }, [fileRunning, connectionState, clientRef, settings.targetFps]);
+  }, [
+    fileRunning,
+    connectionState,
+    clientRef,
+    settings.targetFps,
+    screenCapture.active,
+  ]);
   const handleDeviceSetupOpenChange = useCallback(
     (open: boolean) => {
-      if (open) stopWebcam();
+      if (open) {
+        releaseScreen();
+        stopWebcam();
+      }
       suspendFile(open);
       setDeviceSetupOpen(open);
     },
-    [stopWebcam, suspendFile],
+    [stopWebcam, suspendFile, releaseScreen],
   );
 
   useEffect(() => {
@@ -680,7 +723,7 @@ export function ClientPage({
   const cameraFps = useCameraFrameRate(
     cameraSettings,
     setCameraSettings,
-    isWebcamRunning,
+    isWebcamRunning && !screenCapture.active,
   );
   const disconnectMedia = useCallback(
     (event?: { preventDefault(): void }) => {
@@ -1053,12 +1096,12 @@ export function ClientPage({
       setWebcamDisabledByUser(false);
       return;
     }
-    if (fileSelected) return;
+    if (fileSelected || screenCapture.active || screenCapture.selecting) return;
     if (deviceSetupOpen) {
       webcamAutoStartedRef.current = false;
       return;
     }
-    if (audioVisualization) {
+    if (audioVisualization && !screenCapture.active) {
       if (webcamAutoStartedRef.current || isWebcamRunning) stopWebcam();
       webcamAutoStartedRef.current = false;
       return;
@@ -1077,18 +1120,22 @@ export function ClientPage({
     audioVisualization,
     deviceSetupOpen,
     fileSelected,
+    screenCapture.active,
+    screenCapture.selecting,
   ]);
 
   const disableWebcam = useCallback(() => {
+    releaseScreen();
     setWebcamDisabledByUser(true);
     stopWebcam();
-  }, [stopWebcam]);
+  }, [stopWebcam, releaseScreen]);
 
   const enableWebcam = useCallback(() => {
+    releaseScreen();
     stopFile();
     setWebcamDisabledByUser(false);
     if (!audioVisualization) void startWebcam();
-  }, [startWebcam, audioVisualization, stopFile]);
+  }, [startWebcam, audioVisualization, stopFile, releaseScreen]);
 
   const getStatusDotColor = () => {
     switch (connectionState) {
@@ -1129,11 +1176,22 @@ export function ClientPage({
   const audioControls =
     connectionState === ConnectionState.CONNECTED ? (
       <>
+        <ScreenShareControls capture={screenCapture} />
         <button
-          onClick={isWebcamRunning ? disableWebcam : enableWebcam}
+          onClick={
+            screenCapture.active
+              ? enableWebcam
+              : isWebcamRunning
+                ? disableWebcam
+                : enableWebcam
+          }
           className={`border rounded px-3 py-1 cursor-pointer text-white ${isWebcamRunning ? "border-red-700 bg-red-700 hover:bg-red-800" : "border-green-700 bg-green-700 hover:bg-green-800"}`}
         >
-          {isWebcamRunning ? "Disable webcam" : "Enable webcam"}
+          {screenCapture.active
+            ? "Switch to webcam"
+            : isWebcamRunning
+              ? "Disable webcam"
+              : "Enable webcam"}
         </button>
         <button
           onClick={() => {
@@ -1571,6 +1629,7 @@ export function ClientPage({
                 ? `${fileMedia.status} ${fileMedia.fileName}`
                 : status,
               onFileSelect: (file) => {
+                releaseScreen();
                 setRendererRequested(true);
                 void fileMedia.start(file);
               },

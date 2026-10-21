@@ -1,3 +1,5 @@
+import { ScreenShareControls } from "../components/ScreenShareControls";
+import { useDisplayCapture } from "../hooks/useDisplayCapture";
 import { useEngineSettings } from "../hooks/useEngineSettings";
 import { useLayoutEffect } from "react";
 import { sessionUiMedia } from "../utils/sessionUi";
@@ -196,13 +198,41 @@ export function MirrorPage() {
   });
 
   const { start: startFile, stop: stopFile } = fileMedia;
+  const screenRestore = useRef({ mediaSource, isWebcamRunning });
+  const screenCapture = useDisplayCapture({
+    setError,
+    onStart: async (stream) => {
+      if (mediaSource !== MediaSourceType.SCREEN)
+        screenRestore.current = { mediaSource, isWebcamRunning };
+      cancelStart();
+      fileMedia.setSuspended(true);
+      resumePending.current = false;
+      return startWebcam(stream);
+    },
+    onStop: () => {
+      if (
+        screenRestore.current.mediaSource === MediaSourceType.FILE &&
+        fileMedia.kind
+      ) {
+        stopWebcam(true);
+        setMediaSource(MediaSourceType.FILE);
+        setIsWebcamRunning(true);
+        fileMedia.setSuspended(false);
+      } else if (screenRestore.current.isWebcamRunning) {
+        // Keep the microphone alive while replacing the display video.
+        void startWebcam();
+      } else stopWebcam();
+    },
+  });
 
+  const { release: releaseScreen } = screenCapture;
   const fileActive = mediaSource === MediaSourceType.FILE;
   const cameraFps = useCameraFrameRate(
     settings,
     setSettings,
     isWebcamRunning &&
       !fileActive &&
+      !screenCapture.active &&
       !(
         settings.animationEnabled &&
         (settings.animation === "waveform" || settings.animation === "fft")
@@ -212,7 +242,16 @@ export function MirrorPage() {
     () => (fileActive ? { ...settings, flipY: mediaFlipY } : settings),
     [fileActive, settings, mediaFlipY],
   );
+  const captureRevision = useMemo(
+    () => ({
+      contentSettings,
+      mediaSource,
+      screenRevision: screenCapture.revision,
+    }),
+    [contentSettings, mediaSource, screenCapture.revision],
+  );
   const toggleMedia = useCallback(() => {
+    releaseScreen();
     if (!fileMedia.kind) return;
     if (fileActive && !pendingWebcamSwitch.current) {
       const request = {};
@@ -234,6 +273,7 @@ export function MirrorPage() {
     }
   }, [
     fileMedia,
+    releaseScreen,
     fileActive,
     startWebcam,
     cancelStart,
@@ -254,7 +294,7 @@ export function MirrorPage() {
     onMediaFps: setFps,
     fileActive,
     contentFit,
-    mediaRevision: contentSettings,
+    mediaRevision: captureRevision,
     captureFrame: fileActive
       ? fileMedia.captureFrame
       : optionsManager.captureFrame,
@@ -309,19 +349,21 @@ export function MirrorPage() {
   }, [isWebcamRunning, mediaSource, setPlaying]);
 
   const stopPlayback = useCallback(() => {
+    releaseScreen();
     resumePending.current = false;
     setPlaying(false);
     stopFile();
-  }, [setPlaying, stopFile]);
+  }, [setPlaying, stopFile, releaseScreen]);
 
   const handleVideoFileSelect = useCallback(
     (file: File) => {
+      releaseScreen();
       // A browser File cannot be reopened from a URL after refresh.
       resumePending.current = false;
       setPlaying(false);
       void startFile(file);
     },
-    [startFile, setPlaying],
+    [startFile, setPlaying, releaseScreen],
   );
 
   // Sync terminal dimensions to WASM module when they change
@@ -396,6 +438,7 @@ export function MirrorPage() {
                 : undefined,
               mediaSource,
               onStartWebcam: () => {
+                releaseScreen();
                 stopFile();
                 // This click already starts capture; its URL update must not
                 // start a second acquisition while permission is pending.
@@ -414,6 +457,10 @@ export function MirrorPage() {
                   : fileMedia.fileName,
               statusControls: (
                 <>
+                  <ScreenShareControls
+                    capture={screenCapture}
+                    disabled={!wasmInitialized || isStarting}
+                  />
                   {fileMedia.loading && (
                     <button onClick={stopPlayback}>Cancel</button>
                   )}
