@@ -32,6 +32,11 @@ const peer = (name, index) => {
   const args = peerArgs(name, base, base + 2 + index);
   args.splice(args.indexOf("--audio=false"), 1, "--test-audio");
   args.push("--speakers-volume", "0");
+  args.splice(
+    args.indexOf("--fps") + 1,
+    1,
+    String(process.env.HANDOFF_NATIVE_FPS || 20),
+  );
   const p = native(args, `native-audio-${index}`);
   processes.push(p);
   return p;

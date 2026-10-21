@@ -41,9 +41,19 @@ if (route === "relay")
     "Relay proof requires HANDOFF_TURN_URL/USERNAME/PASSWORD",
   );
 const config = { audio: true, ...turn };
+const nativeFps = Number(process.env.HANDOFF_NATIVE_FPS || 20);
+const promotionDelay = Number(process.env.HANDOFF_PROMOTION_DELAY_MS || 0);
+assert(Number.isInteger(nativeFps) && nativeFps >= 1 && nativeFps <= 120);
+assert(
+  Number.isInteger(promotionDelay) &&
+    promotionDelay >= 0 &&
+    promotionDelay <= 10000,
+);
 const snapshot = (p) =>
   p.evaluate(() => ({
     audio: window.handoffProbe.audioBlocks,
+    totalAudio: window.handoffProbe.decodedAudioBlocks,
+    delayedStarts: window.handoffDelayedPromotions || 0,
     last: window.handoffProbe.lastAudioAt,
     unique: window.handoffProbe.unique,
     migrations: window.handoffProbe.migrations,
@@ -99,6 +109,8 @@ for (const [index, kind] of (
     passed: false,
     losses,
     dwell,
+    nativeFps,
+    promotionDelayMs: promotionDelay,
     rounds: [],
     started: new Date().toISOString(),
   };
@@ -112,6 +124,27 @@ for (const [index, kind] of (
     browsers.push(server);
     const browser = await chromium.connect(server.wsEndpoint());
     const p = await page(browser, `${label}-${browsers.length}`);
+    if (promotionDelay)
+      await p.evaluate((delayMs) => {
+        const Original = window.Worker;
+        window.Worker = class extends Original {
+          constructor(url, options) {
+            super(url, options);
+            if (!String(url).includes("browserHost.worker")) return;
+            const send = this.postMessage.bind(this);
+            this.postMessage = (message, ...args) => {
+              if (
+                message?.kind === "init" &&
+                window.handoffProbe.migrations > 0
+              ) {
+                window.handoffDelayedPromotions =
+                  (window.handoffDelayedPromotions || 0) + 1;
+                setTimeout(() => send(message, ...args), delayMs);
+              } else send(message, ...args);
+            };
+          }
+        };
+      }, promotionDelay);
     await bounded(
       () =>
         p.evaluate(
@@ -177,6 +210,7 @@ for (const [index, kind] of (
     } else {
       const args = peerArgs("", base, base + 2);
       args.splice(args.indexOf("--audio=false"), 1, "--test-audio");
+      args.splice(args.indexOf("--fps") + 1, 1, String(nativeFps));
       if (route === "relay") {
         args.splice(
           args.indexOf("--turn-servers") + 1,
@@ -206,7 +240,29 @@ for (const [index, kind] of (
       // With only the native host and one browser, decoded remote PCM must
       // come from the native deterministic source, not another browser.
       await healthy(survivors[0].p);
-      result.nativeSource = await snapshot(survivors[0].p);
+      const before = await snapshot(survivors[0].p);
+      const observationMs = 8000;
+      await delay(observationMs);
+      const after = await snapshot(survivors[0].p);
+      const decodedBlocks = after.totalAudio - before.totalAudio;
+      const nonSilentBlocks = after.audio - before.audio;
+      assert(
+        decodedBlocks >= 160,
+        "Native source must deliver at least 20 decoded blocks per second",
+      );
+      // The deterministic signal contains intentional silence/noise envelopes;
+      // 30% still rejects the old 100 ms audio burst per 1 FPS video tick.
+      assert(
+        nonSilentBlocks / decodedBlocks >= 0.3,
+        "Native audio must continue independently of video cadence",
+      );
+      result.nativeSource = {
+        ...after,
+        observationMs,
+        decodedBlocks,
+        nonSilentBlocks,
+        nonSilentFraction: nonSilentBlocks / decodedBlocks,
+      };
     }
     survivors.push(await start(false));
     for (let round = 0; round < losses; round++) {
@@ -244,6 +300,7 @@ for (const [index, kind] of (
           const committed = await snapshot(p);
           await healthy(p, committed);
           const after = await snapshot(p);
+          assert.equal(after.migrations, before[i].migrations + 1, "Exactly one fenced commit must follow each injected host loss");
           const timing = await p.evaluate(
             ({ last, blocks }) => {
               const times = window.handoffProbe.audioTimes.slice(blocks);
@@ -270,6 +327,13 @@ for (const [index, kind] of (
           };
         }),
       );
+      if (promotionDelay)
+        assert(
+          measurements.some(
+            (m) => m.after.delayedStarts > m.before.delayedStarts,
+          ),
+          "Promotion delay must actually be injected",
+        );
       result.rounds.push({ round, beforeRoutes, measurements });
       host = successor;
       survivors = survivors.filter((p) => p !== successor);

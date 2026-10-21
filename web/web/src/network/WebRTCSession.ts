@@ -445,13 +445,13 @@ export class WebRTCSession implements ClientSession {
     this.closePeer();
     this.joined.hostId = id;
     if (id.every((value, i) => value === this.joined!.participantId[i])) {
-      const sequence = this.handoff?.close() ?? 0;
+      const handoff = this.handoff;
       this.handoff = null;
       this.promoted = BrowserHostSession.adopt(
         this.options,
         this.signaling,
         this.joined,
-        sequence,
+        handoff ?? undefined,
       );
       this.promoted.onPacketReceived((packet, payload) =>
         this.packetCallback?.(packet, payload),

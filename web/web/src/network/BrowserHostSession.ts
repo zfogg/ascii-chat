@@ -126,11 +126,17 @@ export class BrowserHostSession implements ClientSession {
     options: DiscoveryOptions,
     signaling: ClientConnection,
     joined: JoinedSession,
-    sequence = 0,
+    handoff?: HandoffProtocol,
   ): BrowserHostSession {
     const host = new BrowserHostSession(options);
     host.signaling = signaling;
     host.joined = joined;
+    host.handoff = handoff ?? null;
+    handoff?.adopt(
+      (type, payload) => signaling.sendPacket(type, payload),
+      (id) => host.hostCommitted(id),
+      options.onProgress,
+    );
     signaling.onStateChange((state) => {
       if (!host.closed && state !== ConnectionState.CONNECTED)
         host.fail(new Error("Discovery connection closed."));
@@ -140,10 +146,10 @@ export class BrowserHostSession implements ClientSession {
         .then(() => host.signal(packet.type, payload))
         .catch((error) => host.fail(error));
     });
-    host.queue = host.startHosting(sequence).catch((error) => host.fail(error));
+    host.queue = host.startHosting().catch((error) => host.fail(error));
     return host;
   }
-  private async startHosting(sequence = 0): Promise<void> {
+  private async startHosting(): Promise<void> {
     discoveryRTCConfiguration(this.options, this.joined!);
     this.runtime = new BrowserHostRuntime(
       (id, bytes) => {
@@ -200,20 +206,20 @@ export class BrowserHostSession implements ClientSession {
     this.resolve?.();
     this.resolve = null;
     this.reject = null;
-    this.handoff = new HandoffProtocol(
+    this.handoff ??= new HandoffProtocol(
       this.joined!,
       (type, payload) => this.signaling.sendPacket(type, payload),
-      (id) => {
-        if (!id.every((value, i) => value === this.joined!.participantId[i]))
-          this.fail(
-            new Error(
-              "Another participant has taken over hosting. Rejoin the session.",
-            ),
-          );
-      },
+      (id) => this.hostCommitted(id),
       this.options.onProgress,
-      sequence,
     );
+  }
+  private hostCommitted(id: Uint8Array): void {
+    if (!id.every((value, i) => value === this.joined!.participantId[i]))
+      this.fail(
+        new Error(
+          "Another participant has taken over hosting. Rejoin the session.",
+        ),
+      );
   }
   private async signal(type: number, payload: Uint8Array): Promise<void> {
     if (this.handoff?.receive(type, payload)) return;

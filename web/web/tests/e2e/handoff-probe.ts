@@ -27,6 +27,7 @@ interface ProbeOptions {
   iceTransportPolicy?: RTCIceTransportPolicy;
 }
 const probe = {
+  decodedAudioBlocks: 0,
   audioBlocks: 0,
   audioSamples: 0,
   lastAudioAt: 0,
@@ -135,6 +136,7 @@ const probe = {
           probe.error = String(error);
         },
         onPlaybackSamples(samples) {
+          probe.decodedAudioBlocks++;
           const rms = Math.sqrt(
             samples.reduce((sum, n) => sum + n * n, 0) / samples.length,
           );

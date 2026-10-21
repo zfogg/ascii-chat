@@ -126,6 +126,46 @@ static void discovery_media_release(void *context) {
   log_info("DISCOVERY_MEDIA_RELEASED: workers=0");
 }
 
+typedef struct {
+  session_host_t *host;
+  session_audio_ctx_t *audio;
+  uint32_t participant_id;
+  atomic_t running;
+  asciichat_thread_t thread;
+  bool started;
+  asciichat_error_t result;
+} discovery_host_audio_capture_t;
+
+static void *discovery_host_audio_capture(void *user_data) {
+  discovery_host_audio_capture_t *capture = user_data;
+  float samples[960];
+  while (atomic_load_bool(&capture->running) && !should_exit()) {
+    size_t count = session_audio_read_captured(capture->audio, samples, 960);
+    if (!count) {
+      platform_sleep_ns(NS_PER_MS_INT);
+      continue;
+    }
+    capture->result = session_host_inject_audio(capture->host, capture->participant_id, samples, count);
+    if (capture->result != ASCIICHAT_OK)
+      break;
+  }
+  atomic_store_bool(&capture->running, false);
+  return NULL;
+}
+
+static void discovery_host_audio_join(discovery_host_audio_capture_t *capture) {
+  atomic_store_bool(&capture->running, false);
+  if (!capture->started)
+    return;
+  // The worker borrows this role's stack and audio context. Retain both until
+  // the join succeeds, including error/shutdown paths.
+  while (asciichat_thread_join(&capture->thread, NULL) != ASCIICHAT_OK) {
+    log_warn_every(NS_PER_SEC_INT, "Waiting for native host audio capture worker to stop");
+    platform_sleep_ns(NS_PER_MS_INT);
+  }
+  capture->started = false;
+}
+
 static void *discovery_audio_send_thread(void *user_data) {
   discovery_video_receiver_t *ctx = user_data;
   float samples[960];
@@ -434,6 +474,7 @@ role_dispatch:
     // The native host is also a media source. Own its capture worker for this
     // role and feed the same memory participant used for local video.
     session_audio_ctx_t *host_audio = NULL;
+    discovery_host_audio_capture_t host_capture = {.host = host, .participant_id = host_participant_id};
     if (GET_OPTION(audio_enabled)) {
       host_audio = session_audio_create(true);
       if (!host_audio)
@@ -444,12 +485,22 @@ role_dispatch:
         session_audio_destroy(host_audio);
         return result;
       }
+      host_capture.audio = host_audio;
+      atomic_store_bool(&host_capture.running, true);
+      result = asciichat_thread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture,
+                                       &host_capture);
+      if (result != ASCIICHAT_OK) {
+        session_audio_destroy(host_audio);
+        return result;
+      }
+      host_capture.started = true;
       session_capture_set_audio_context(capture, session_audio_get_context(host_audio));
     }
 
     // Start the render thread (handles video mixing and ASCII rendering for display)
     result = session_host_start_render(host);
     if (result != ASCIICHAT_OK) {
+      discovery_host_audio_join(&host_capture);
       session_capture_set_audio_context(capture, NULL);
       session_audio_destroy(host_audio);
       log_error("Failed to start render thread: %d", result);
@@ -504,20 +555,8 @@ role_dispatch:
         log_debug_every(5 * NS_PER_SEC_INT, "No frame captured");
       }
 
-      if (host_audio) {
-        float samples[960];
-        // Drain up to 100 ms per video tick; audio must not run at video FPS.
-        for (int block = 0; block < 5; ++block) {
-          size_t count = session_audio_read_captured(host_audio, samples, 960);
-          if (!count)
-            break;
-          result = session_host_inject_audio(host, host_participant_id, samples, count);
-          if (result != ASCIICHAT_OK)
-            break;
-        }
-        if (result != ASCIICHAT_OK)
-          break;
-      }
+      if (host_capture.started && !atomic_load_bool(&host_capture.running))
+        break;
 
       // Keep discovery session responsive (NAT negotiations, migrations)
       asciichat_errno_scope_t process_scope = asciichat_errno_scope_begin();
@@ -539,6 +578,9 @@ role_dispatch:
     log_debug("Host role main loop exited (snapshot_mode=%d, first_frame_rendered=%d, session_active=%d)",
               snapshot_mode, g_snapshot_first_frame_rendered ? 1 : 0, discovery_session_is_active(g_discovery) ? 1 : 0);
 
+    discovery_host_audio_join(&host_capture);
+    if (result == ASCIICHAT_OK && host_capture.result != ASCIICHAT_OK)
+      result = SET_ERRNO(host_capture.result, "Native host audio capture worker failed");
     session_capture_set_audio_context(capture, NULL);
     session_audio_destroy(host_audio);
 

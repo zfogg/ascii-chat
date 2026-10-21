@@ -30,6 +30,7 @@ type Module = ReturnType<typeof getClientModule> & {
 export class HandoffProtocol {
   private timer: ReturnType<typeof setInterval>;
   private generation = 0;
+  private sequence = 0;
   private stopped = false;
   private prepared = false;
   constructor(
@@ -37,12 +38,9 @@ export class HandoffProtocol {
     private send: (type: number, data: Uint8Array) => void,
     private commit: (id: Uint8Array) => void,
     private progress?: (stage: string) => void,
-    private sequence = 0,
   ) {
     this.timer = setInterval(() => this.sample(), 5000);
-    // Promotion retains the authenticated participant and its probe cadence.
-    // An immediate extra sample can violate ACDS rate limiting.
-    if (!sequence) this.sample();
+    this.sample();
   }
   private frame(
     kind: number,
@@ -127,13 +125,28 @@ export class HandoffProtocol {
     }
     return true;
   }
-  close(): number {
-    this.stopped = true;
-    clearInterval(this.timer);
+  /** Transfer the live sampling clock while the new host engine initializes. */
+  adopt(
+    send: (type: number, data: Uint8Array) => void,
+    commit: (id: Uint8Array) => void,
+    progress?: (stage: string) => void,
+  ): void {
+    if (this.stopped)
+      throw new Error("Cannot adopt a stopped handoff protocol");
+    this.send = send;
+    this.commit = commit;
+    this.progress = progress;
+    this.releasePreparedHost();
+  }
+  private releasePreparedHost(): void {
     if (this.prepared) {
       (getClientModule() as Module | null)?._browser_host_destroy();
       this.prepared = false;
     }
-    return this.sequence;
+  }
+  close(): void {
+    this.stopped = true;
+    clearInterval(this.timer);
+    this.releasePreparedHost();
   }
 }
