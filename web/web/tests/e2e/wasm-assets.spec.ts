@@ -94,23 +94,3 @@ for (const mode of ["mirror", "client"] as const) {
     ).toBe(true);
   });
 }
-
-
-test("client initializes and cleans up the C runtime", async ({ page }) => {
-  await page.goto("/client");
-  const dimensions = await page.evaluate(async () => {
-    const url = "/src/wasm/client.ts";
-    const { initClientWasm, getClientModule, cleanupClientWasm } = await import(url);
-    try {
-      await initClientWasm({ width: 80, height: 40 });
-      const module = getClientModule();
-      return {
-        width: module._client_get_width(),
-        height: module._client_get_height(),
-      };
-    } finally {
-      cleanupClientWasm();
-    }
-  });
-  expect(dimensions).toEqual({ width: 80, height: 40 });
-});

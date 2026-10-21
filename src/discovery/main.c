@@ -159,7 +159,7 @@ static void discovery_host_audio_join(discovery_host_audio_capture_t *capture) {
     return;
   // The worker borrows this role's stack and audio context. Retain both until
   // the join succeeds, including error/shutdown paths.
-  while (asciichat_thread_join(&capture->thread, NULL) != ASCIICHAT_OK) {
+  while (thread_join(&capture->thread, NULL) != ASCIICHAT_OK) {
     log_warn_every(NS_PER_SEC_INT, "Waiting for native host audio capture worker to stop");
     platform_sleep_ns(NS_PER_MS_INT);
   }
@@ -487,7 +487,7 @@ role_dispatch:
       }
       host_capture.audio = host_audio;
       atomic_store_bool(&host_capture.running, true);
-      result = asciichat_thread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture,
+      result = acthread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture,
                                        &host_capture);
       if (result != ASCIICHAT_OK) {
         session_audio_destroy(host_audio);
