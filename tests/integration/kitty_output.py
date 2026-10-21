@@ -27,6 +27,22 @@ def reconstruct(data):
     return width, height, raw, len(packets)
 
 
+def check_mp4_boxes(data):
+    offset = 0
+    while offset < len(data):
+        assert len(data) - offset >= 8, "Trailing non-container bytes on binary stdout"
+        size = int.from_bytes(data[offset:offset + 4], "big")
+        kind = data[offset + 4:offset + 8]
+        assert kind in (b"ftyp", b"moov", b"moof", b"mdat", b"mfra", b"sidx", b"styp", b"free", b"skip"), kind
+        header = 8
+        if size == 1:
+            assert len(data) - offset >= 16
+            size = int.from_bytes(data[offset + 8:offset + 16], "big")
+            header = 16
+        assert header <= size <= len(data) - offset, (offset, size, len(data))
+        offset += size
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--binary", required=True)
@@ -65,6 +81,7 @@ def main():
         assert rejected.returncode != 0 and b"snapshot" in rejected.stderr.lower()
         video = launch(["--render-file=-"]).stdout
         assert video[4:8] == b"ftyp", repr(video[:100])
+        check_mp4_boxes(video)
         output = root / "stdout.mp4"
         output.write_bytes(video)
         subprocess.run(["ffmpeg", "-v", "error", "-i", str(output), "-f", "null", "-"], check=True)
