@@ -9,6 +9,7 @@ export const OUTBOUND_BUDGET = 8 * 1024 * 1024;
 const CONTROL_RESERVE = 512 * 1024;
 const AUDIO_RESERVE = 512 * 1024;
 const VIDEO_AGE_MS = 100;
+const RELIABLE_WIRE_WINDOW = 256 * 1024;
 
 type Entry = {
   packet: Uint8Array;
@@ -160,7 +161,15 @@ export class OutboundQueue {
           throw new Error(
             "Reliable outbound traffic exceeded its congestion deadline",
           );
-        if (this.backendBytes() !== 0) break;
+        const buffered = this.backendBytes();
+        // Background tabs may throttle the retry timer. Keep reliable traffic
+        // flowing inside a bounded wire window instead of waiting for every
+        // previous small packet to reach an exactly empty backend.
+        if (
+          buffered !== 0 &&
+          (entry.video || buffered + entry.packet.length > RELIABLE_WIRE_WINDOW)
+        )
+          break;
         this.deliver(entry.packet);
         this.queue.shift();
         this.bytes -= entry.cost;

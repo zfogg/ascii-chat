@@ -626,7 +626,8 @@ it("retains signaling after the audio congestion deadline and bounds successor r
   const bridgeClosed = vi.fn(),
     cryptoClosed = vi.fn();
   media.state = ConnectionState.CONNECTED;
-  media.bridge = { getBufferedAmount: () => 1024, close: bridgeClosed };
+  // Fill the bounded reliable wire window so admitted audio must remain queued.
+  media.bridge = { getBufferedAmount: () => 256 * 1024, close: bridgeClosed };
   media.peerCrypto = { sendPacket: vi.fn(), close: cryptoClosed };
   try {
     session.sendPacket(PacketType.AUDIO_OPUS_BATCH, new Uint8Array(32));

@@ -124,6 +124,25 @@ describe("plaintext outbound admission", () => {
         .map(([p]) => new DataView(p.buffer).getUint16(8, false)),
     ).toEqual([5001, 4001]);
   });
+  it("drains reliable audio within a bounded wire window without a foreground timer", () => {
+    vi.useFakeTimers();
+    let buffered = 64;
+    const failed = vi.fn();
+    const delivered = vi.fn((bytes: Uint8Array) => {
+      buffered += bytes.length;
+    });
+    const queue = new OutboundQueue(() => buffered, delivered, failed);
+    queues.push(queue);
+    const audio = Array.from({ length: 50 }, () => packet(4001, 200));
+    // Background tabs can delay timer callbacks. A small residual wire buffer
+    // must not prevent already-admitted reliable packets from draining now.
+    audio.forEach((bytes) => queue.submit(bytes));
+    expect(delivered.mock.calls.map(([bytes]) => bytes)).toEqual(audio);
+    expect(queue.snapshot().applicationBytes).toBe(0);
+    expect(buffered).toBeLessThan(256 * 1024);
+    expect(failed).not.toHaveBeenCalled();
+  });
+
   it("never silently drops admitted audio and fails a stalled reliable queue at its deadline", () => {
     let now = 0;
     const failed = vi.fn(),

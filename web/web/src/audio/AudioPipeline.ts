@@ -232,9 +232,13 @@ export class AudioPipeline {
     }
     this.stream = stream;
     this.source = this.context.createMediaStreamSource(stream);
-    await this.ensureCaptureGraph();
-    if (!this.avState.current(generation)) return;
-    this.source!.connect(this.processor!.node);
+    // A display transition may retire an in-flight processor. Rejoin the
+    // current graph instead of treating that transition as microphone failure.
+    do {
+      await this.ensureCaptureGraph();
+      if (!this.avState.current(generation) || this.closed) return;
+    } while (!this.processor);
+    this.source!.connect(this.processor.node);
     this.avState.complete(generation);
   }
 
@@ -288,6 +292,7 @@ export class AudioPipeline {
       return;
     }
     const generation = ++this.displayGeneration;
+    const hadDisplayAudio = this.displayStream !== null;
     this.displaySource?.disconnect();
     this.displaySource = null;
     this.displayStream = stream
@@ -296,7 +301,22 @@ export class AudioPipeline {
       ? stream
       : null;
     if (!this.displayStream) {
-      if (!this.source && !this.starting) this.releaseCaptureGraph();
+      if (!this.source) {
+        if (!this.starting) this.releaseCaptureGraph();
+        return;
+      }
+      if (!hadDisplayAudio || isTestMode()) return;
+      // Restore microphone-only enhancement after the display/music mix ends.
+      this.source.disconnect();
+      this.releaseCaptureGraph();
+      await this.ensureCaptureGraph();
+      if (
+        generation !== this.displayGeneration ||
+        this.closed ||
+        !this.processor
+      )
+        return;
+      this.source?.connect(this.processor.node);
       return;
     }
     await this.initializeAudio();

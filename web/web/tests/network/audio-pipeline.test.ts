@@ -7,6 +7,7 @@ import {
   vi,
 } from "vite-plus/test";
 import { AudioPipeline } from "../../src/audio/AudioPipeline";
+import { AudioCapture } from "../../src/audio/AudioCapture";
 import { AVState } from "../../src/wasm/AVState";
 import { PacketType } from "../../src/wasm/client";
 
@@ -156,6 +157,81 @@ describe("AudioPipeline", () => {
     expect(processor.onaudioprocess).toBeNull();
     pipeline.close();
     expect(displayTrack.stop).not.toHaveBeenCalled();
+  });
+
+  it("preserves a microphone starting while display replacement retires its processor", async () => {
+    vi.stubGlobal(
+      "MediaStream",
+      class {
+        constructor(private tracks: MediaStreamTrack[]) {}
+        getAudioTracks() {
+          return this.tracks;
+        }
+      },
+    );
+    type Capture = Awaited<ReturnType<typeof AudioCapture.create>>;
+    let firstReady!: (capture: Capture) => void;
+    let secondReady!: (capture: Capture) => void;
+    const retired = { node: node(), close: vi.fn() } as unknown as Capture;
+    const replacement = { node: node(), close: vi.fn() } as unknown as Capture;
+    const create = vi.mocked(AudioCapture.create);
+    create.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          firstReady = resolve;
+        }),
+    );
+    create.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          secondReady = resolve;
+        }),
+    );
+    const pipeline = new AudioPipeline();
+    const started = pipeline.startCapture().then(
+      () => true,
+      () => false,
+    );
+    await vi.waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    const display = pipeline.setDisplayStream({
+      getAudioTracks: () => [{ readyState: "live", stop: vi.fn() }],
+    } as unknown as MediaStream);
+    await vi.waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+    firstReady(retired);
+    await vi.waitFor(() => expect(retired.close).toHaveBeenCalledOnce());
+    secondReady(replacement);
+    await display;
+    expect(await started).toBe(true);
+    expect(pipeline.captureActive).toBe(true);
+    expect(getUserMedia).toHaveBeenCalledOnce();
+    expect(stopTrack).not.toHaveBeenCalled();
+    pipeline.close();
+  });
+
+  it("restores microphone enhancement after display audio stops", async () => {
+    vi.stubGlobal(
+      "MediaStream",
+      class {
+        constructor(private tracks: MediaStreamTrack[]) {}
+        getAudioTracks() {
+          return this.tracks;
+        }
+      },
+    );
+    const pipeline = new AudioPipeline();
+    const create = vi.mocked(AudioCapture.create);
+    await pipeline.startCapture();
+    expect(create.mock.calls.at(-1)![1].bypass).toBe(false);
+    await pipeline.setDisplayStream({
+      getAudioTracks: () => [{ readyState: "live", stop: vi.fn() }],
+    } as unknown as MediaStream);
+    expect(create.mock.calls.at(-1)![1].bypass).toBe(true);
+    await pipeline.setDisplayStream(null);
+    expect(create.mock.calls.at(-1)![1].bypass).toBe(false);
+    expect(pipeline.captureActive).toBe(true);
+    expect(getUserMedia).toHaveBeenCalledOnce();
+    expect(stopTrack).not.toHaveBeenCalled();
+    pipeline.close();
   });
 
   it("replaces display inputs without acquiring or stopping a microphone or owning display tracks", async () => {
