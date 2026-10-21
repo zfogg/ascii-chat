@@ -10,6 +10,8 @@
 #include "ascii-chat/platform/abstraction.h"
 #include <ascii-chat/util/display.h>
 #include "ascii-chat/common.h"
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/log/log.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -218,23 +220,26 @@ const char *frame_buffer_get_content(const frame_buffer_t *buf) {
   return buf->data;
 }
 
-void frame_buffer_render_border(frame_buffer_t *buf, int cols, const char *color) {
-  if (!buf || cols <= 0) {
+static void render_rule(frame_buffer_t *buf, int width, const char *color, bool use_utf8) {
+  if (!buf || width <= 0)
     return;
-  }
-
-  if (color) {
-    frame_buffer_printf(buf, "%s━", color);
-  } else {
-    frame_buffer_printf(buf, "━");
-  }
-  for (int i = 1; i < cols - 1; i++) {
-    frame_buffer_printf(buf, "━");
-  }
-  if (color) {
+  if (color)
+    frame_buffer_printf(buf, "%s", color);
+  for (int i = 0; i < width; ++i)
+    frame_buffer_printf(buf, "%s", use_utf8 ? "━" : "-");
+  if (color)
     frame_buffer_printf(buf, "\033[0m");
-  }
   frame_buffer_printf(buf, "\n");
+}
+
+void frame_buffer_render_border(frame_buffer_t *buf, int cols, const char *color) {
+  utf8_setting_t utf8 = GET_OPTION(force_utf8);
+  render_rule(buf, cols - 1, color,
+              utf8 == UTF8_SETTING_TRUE || (utf8 == UTF8_SETTING_AUTO && terminal_supports_utf8()));
+}
+
+void frame_buffer_render_divider(frame_buffer_t *buf, int width, bool use_utf8, bool use_colors) {
+  render_rule(buf, width, use_colors ? log_level_color(LOG_COLOR_DEBUG) : NULL, use_utf8);
 }
 
 int frame_buffer_render_centered(frame_buffer_t *buf, const char *text, int cols) {

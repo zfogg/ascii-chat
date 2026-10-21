@@ -2,6 +2,7 @@
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/too_small.h>
+#include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -117,15 +118,15 @@ static void sync_copy_row(uintptr_t key, uint64_t generation, const char *name, 
     const atomic_t *m = (const atomic_t *)key;
     r->value = atomic_load(&m->impl);
     r->changes = m->change_count;
-    r->actions = atomic_load(&m->load_count) + atomic_load(&m->store_count) +
-                 atomic_load(&m->cas_count) + atomic_load(&m->fetch_count);
+    r->actions = atomic_load(&m->load_count) + atomic_load(&m->store_count) + atomic_load(&m->cas_count) +
+                 atomic_load(&m->fetch_count);
     r->last_ns = m->last_store_time_ns;
   } else {
     const atomic_ptr_t *m = (const atomic_ptr_t *)key;
     r->value = (uintptr_t)atomic_load(&m->impl);
     r->changes = m->change_count;
-    r->actions = atomic_load(&m->load_count) + atomic_load(&m->store_count) +
-                 atomic_load(&m->cas_count) + atomic_load(&m->exchange_count);
+    r->actions = atomic_load(&m->load_count) + atomic_load(&m->store_count) + atomic_load(&m->cas_count) +
+                 atomic_load(&m->exchange_count);
     r->last_ns = m->last_store_time_ns;
   }
   if (strncmp(type, "atomic", 6))
@@ -440,13 +441,13 @@ static void sync_separator(int columns, int *measure) {
   if (measure)
     return;
   char line[2048];
-  size_t used = snprintf(line, sizeof(line), "%s", sync_color(LOG_COLOR_DEBUG));
-  const char *cell = g_sync_use_utf8 ? "─" : "-";
-  for (int i = 0; i < columns - 1 && used + 8 < sizeof(line); ++i) {
-    memcpy(line + used, cell, strlen(cell));
-    used += strlen(cell);
-  }
-  line[used] = '\0';
+  frame_buffer_t *buffer = frame_buffer_create(1, columns);
+  if (!buffer)
+    return;
+  frame_buffer_render_divider(buffer, columns - 1, g_sync_use_utf8, g_sync_use_color);
+  size_t length = frame_buffer_get_length(buffer);
+  snprintf(line, sizeof(line), "%.*s", (int)(length ? length - 1 : 0), frame_buffer_get_content(buffer));
+  frame_buffer_destroy(buffer);
   sync_write_line(line, columns, true, NULL);
 }
 
@@ -540,8 +541,8 @@ void ui_sync_render(terminal_size_t size) {
                              : "");
     sync_write_numbers(line, size.cols, measure);
     snprintf(line, sizeof(line), "%s %-8s %-*s %-12s  %13s %6s %6s %7s %12s%s", sync_color(LOG_COLOR_GREY), "Type",
-             name_width, "Name", "State/value",
-             "Total Actions", "L/s", "U/s", "Change/s", "Total Wait", sync_color(LOG_COLOR_RESET));
+             name_width, "Name", "State/value", "Total Actions", "L/s", "U/s", "Change/s", "Total Wait",
+             sync_color(LOG_COLOR_RESET));
     sync_write_line(line, size.cols, true, measure);
     sync_separator(size.cols, measure);
     for (size_t i = 0; i < count; ++i) {
@@ -552,8 +553,7 @@ void ui_sync_render(terminal_size_t size) {
       sync_row_label(r, name, sizeof(name));
       if (strlen(name) > (size_t)name_width) {
         const char *suffix = strrchr(name, '.');
-        size_t suffix_bytes = suffix && strspn(suffix + 1, "0123456789") == strlen(suffix + 1)
-                                  ? strlen(suffix) : 0;
+        size_t suffix_bytes = suffix && strspn(suffix + 1, "0123456789") == strlen(suffix + 1) ? strlen(suffix) : 0;
         if (suffix_bytes >= (size_t)name_width - 1)
           suffix_bytes = 0;
         size_t used = 0;

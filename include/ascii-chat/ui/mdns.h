@@ -138,22 +138,25 @@ void ui_mdns_free_results(ui_mdns_server_t *servers);
 /**
  * Interactive controller picker; Enter selects the highlighted row, Esc/q cancels.
  * Redirected input never chooses a server implicitly. Returns -1 when a terminal
- * is unavailable, or UI_MDNS_REFRESH when the user requests a new query.
+ * is unavailable.
  */
 int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count);
 
 /**
  * Shared controller list: arrows/j/k move, Enter selects, digits choose by number,
- * Esc/q cancels. Resizes retain the selection and scroll it into view. A refresh
- * request returns UI_MDNS_REFRESH for the caller to query and republish results.
+ * Esc/q cancels. Resizes retain the selection and scroll it into view.
  * Returns -1 without waiting when no interactive terminal is available.
  */
 int ui_mdns_select(const ui_mdns_server_t *servers, int count);
 
-/** Refresh requests return this value; cancellation returns -1. */
-#define UI_MDNS_REFRESH (-2)
 /** Select with a caller-owned absolute monotonic deadline, retained across refreshes. */
 int ui_mdns_select_until(const ui_mdns_server_t *servers, int count, uint64_t deadline);
+
+/** Background LAN discovery while choosing; copies the selected endpoint into chosen.
+ * Returns 0 on selection, -1 on cancellation. Selection follows endpoint identity
+ * as the list changes; the worker is stopped and joined before returning.
+ */
+int ui_mdns_select_live(const ui_mdns_server_t *servers, int count, uint64_t deadline, ui_mdns_server_t *chosen);
 
 /**
  * @brief Get best address representation for a discovered server

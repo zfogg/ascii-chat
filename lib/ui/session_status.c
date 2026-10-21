@@ -8,6 +8,7 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/options/options.h>
 #include <string.h>
 
 void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, void *user_data) {
@@ -24,11 +25,10 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   int uptime_secs_rem = uptime_secs % 60;
 
   // Line 1: Top border
-  frame_buffer_printf(buf, "\033[1m%s━", log_level_color(LOG_COLOR_DEBUG));
-  for (int i = 1; i < term_size.cols - 1; i++) {
-    frame_buffer_printf(buf, "━");
-  }
-  frame_buffer_printf(buf, "\033[0m\n");
+  utf8_setting_t utf8 = GET_OPTION(force_utf8);
+  bool unicode = utf8 == UTF8_SETTING_TRUE || (utf8 == UTF8_SETTING_AUTO && terminal_supports_utf8());
+  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd());
+  frame_buffer_render_divider(buf, term_size.cols - 1, unicode, colors);
 
   // Line 2: Title + Stats (centered)
   char status_line[512];
@@ -100,11 +100,7 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   frame_buffer_printf(buf, "%s\n", addr_line_truncated);
 
   // Line 4: Bottom border
-  frame_buffer_printf(buf, "\033[1m%s━", log_level_color(LOG_COLOR_DEBUG));
-  for (int i = 1; i < term_size.cols - 1; i++) {
-    frame_buffer_printf(buf, "━");
-  }
-  frame_buffer_printf(buf, "\033[0m\n");
+  frame_buffer_render_divider(buf, term_size.cols - 1, unicode, colors);
 }
 
 void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const terminal_screen_config_t *config,

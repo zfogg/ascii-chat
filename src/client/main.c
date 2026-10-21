@@ -520,29 +520,24 @@ static asciichat_error_t client_select_destination(void *user_data) {
     return ASCIICHAT_OK;
   }
   uint64_t deadline = ui_input_deadline(30);
-  int selected;
-  while ((selected = ui_mdns_select_until(servers, count, deadline)) == UI_MDNS_REFRESH) {
-    ui_mdns_free_results(servers);
-    servers = ui_mdns_query(&config, &count);
-  }
-  if (selected < 0) {
-    ui_mdns_free_results(servers);
+  ui_mdns_server_t selected;
+  int selection = ui_mdns_select_live(servers, count, deadline, &selected);
+  ui_mdns_free_results(servers);
+  if (selection < 0) {
     return SET_ERRNO(ERROR_NETWORK, "LAN server selection cancelled");
   }
   static char selected_address[OPTIONS_BUFF_SIZE];
-  SAFE_STRNCPY(selected_address, ui_mdns_get_best_address(&servers[selected]), sizeof(selected_address));
+  SAFE_STRNCPY(selected_address, ui_mdns_get_best_address(&selected), sizeof(selected_address));
   asciichat_error_t result = options_set_string("address", selected_address);
   if (result == ASCIICHAT_OK)
-    result = options_set_int("port", servers[selected].port);
+    result = options_set_int("port", selected.port);
   if (result != ASCIICHAT_OK) {
-    ui_mdns_free_results(servers);
     return result;
   }
   g_client_session.discovered_address = selected_address;
-  g_client_session.discovered_port = servers[selected].port;
-  log_debug("LAN discovery: Selected server '%s' at %s:%d", servers[selected].name, selected_address,
+  g_client_session.discovered_port = selected.port;
+  log_debug("LAN discovery: Selected server '%s' at %s:%d", selected.name, selected_address,
             g_client_session.discovered_port);
-  ui_mdns_free_results(servers);
   return ASCIICHAT_OK;
 }
 

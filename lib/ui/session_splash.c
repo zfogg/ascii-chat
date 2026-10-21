@@ -2,6 +2,7 @@
 #include <ascii-chat/ui/invitation.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/options/options.h>
 #include <ascii-chat/util/string.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,6 +12,8 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
   if (!ctx) {
     return;
   }
+  utf8_setting_t utf8 = GET_OPTION(force_utf8);
+  bool unicode = utf8 == UTF8_SETTING_TRUE || (utf8 == UTF8_SETTING_AUTO && terminal_supports_utf8());
 
   if (ctx->discovery.enabled) {
     invitation_render(buf, term_size, ctx->discovery.session_string, ctx->discovery.joining,
@@ -19,7 +22,7 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
   }
 
   const char *tagline = "Video chat in your terminal";
-  frame_buffer_render_border(buf, term_size.cols, log_level_color(LOG_COLOR_DEBUG));
+  frame_buffer_render_divider(buf, term_size.cols - 1, unicode, ctx->use_colors);
   invitation_render_logo(buf, term_size.cols - 1, (int)(ctx->animation.seconds * 60), ctx->use_colors, false);
 
   // Line 6: Tagline (centered, truncated if too long)
@@ -103,5 +106,5 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
   frame_buffer_printf(buf, "%s\n", plain_connection);
 
   // Line 9 (or 8 if no update): Bottom border
-  frame_buffer_render_border(buf, term_size.cols, log_level_color(LOG_COLOR_DEBUG));
+  frame_buffer_render_divider(buf, term_size.cols - 1, unicode, ctx->use_colors);
 }

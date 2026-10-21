@@ -70,9 +70,9 @@ def main():
             service.wait_for("mDNS: Server advertised")
             return service
 
-        def client(name, destination=None):
+        def client(name, destination=None, utf8="true", color="true"):
             command = [str(binary), "--no-check-update", "--log-file", str(root / f"{name}.log"),
-                "--log-level", "debug", "--color", "true", "client"]
+                "--log-level", "debug", "--color", color, "--utf8", utf8, "client"]
             if destination:
                 command.append(destination)
             command += ["--test-pattern", "--audio=false", "--video-codec", "raw", "--fps", "5",
@@ -110,10 +110,37 @@ def main():
             assert "Using test pattern mode" not in (root / "picker.log").read_text(errors="replace")
             capture(term, args.artifacts, "initial-server")
             second = server(1, "second")
-            term.write("r")
-            text = term.expect(lambda text: all(str(port) in text for port in ports), "Refresh omitted new server")
+            text = term.expect(lambda text: all(str(port) in text for port in ports), "Background refresh omitted new server")
+            second.stop()
+            services.remove(second)
+            term.expect(lambda text: str(ports[0]) in text and str(ports[1]) not in text,
+                        "Background refresh retained a withdrawn server")
+            second = server(1, "second-restarted")
+            text = term.expect(lambda text: all(str(port) in text for port in ports),
+                               "Background refresh omitted the restarted server")
+            assert "r: refresh" not in text
+            assert "ascii-chat | LAN servers" not in text
+            current = int(re.search(r"> \[(\d+)\]", text).group(1))
             term.write("j")
-            term.expect(lambda text: "> [2]" in text, "j did not move selection")
+            expected = 2 if current == 1 else 1
+            term.expect(lambda text: f"> [{expected}]" in text, "j did not move selection")
+            if expected == 1:
+                term.write("k")
+                term.expect(lambda text: "> [2]" in text, "k did not wrap selection")
+            rules = [row for row, line in enumerate(term.screen.display) if "━" in line]
+            assert len(rules) == 2, "Header and footer must each have a divider"
+            blue = next(term.screen.buffer[rules[0]][col].fg for col, char in enumerate(term.screen.display[rules[0]]) if char == "━")
+            selected_row = next(row for row, line in enumerate(term.screen.display) if "> [2]" in line)
+            selected_col = term.screen.display[selected_row].index(">")
+            assert term.screen.buffer[selected_row][selected_col].fg == blue
+            footer_row = next(row for row, line in enumerate(term.screen.display) if "Auto-refresh" in line)
+            footer = term.screen.display[footer_row]
+            slash = footer.index("/")
+            assert term.screen.buffer[footer_row][slash].fg == term.screen.buffer[footer_row][footer.index("move")].fg
+            assert term.screen.buffer[footer_row][slash - 1].fg != term.screen.buffer[footer_row][slash].fg
+            selected_port = next(port for port in ports if str(port) in next(line for line in term.screen.display if "> [2]" in line))
+            term.pump(1.8)
+            assert str(selected_port) in next(line for line in term.screen.display if "> [2]" in line), "Background refresh moved the selection"
             capture(term, args.artifacts, "highlighted-selection")
             term.write("k")
             term.expect(lambda text: "> [1]" in text, "k did not move selection")
@@ -149,8 +176,11 @@ def main():
             terminals.remove(term)
             print("PASS automatic discovery, refresh, arrows/j/k, resize/covered input, selection and same-address reconnect")
 
-            cancelled = client("cancelled")
+            cancelled = client("cancelled", utf8="false", color="false")
             cancelled.expect(lambda text: "LAN servers" in text, "Cancellation picker missing")
+            assert "━" not in "\n".join(cancelled.screen.display)
+            assert sum(line.strip().startswith("---") for line in cancelled.screen.display) == 2
+            capture(cancelled, args.artifacts, "ascii-fallback")
             cancelled.write("q")
             cancelled.expect(lambda text: not cancelled.process.isalive(), "Cancellation did not exit")
             assert "Using test pattern mode" not in (root / "cancelled.log").read_text(errors="replace")
