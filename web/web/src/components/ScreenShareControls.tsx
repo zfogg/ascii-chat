@@ -19,7 +19,7 @@ export function ScreenShareControls({ capture, disabled = false }: Props) {
         disabled={disabled || !capture.supported || capture.selecting}
         title={
           capture.supported
-            ? "Choose a tab, window, or desktop. Screen audio is not captured; microphone controls are unchanged."
+            ? "Choose a tab, window, or desktop. Audio is shared when offered by the browser picker."
             : "Screen sharing requires a supported browser and HTTPS or localhost"
         }
         onClick={() => void capture.start()}
@@ -34,11 +34,6 @@ export function ScreenShareControls({ capture, disabled = false }: Props) {
         >
           {capture.active ? "Stop sharing" : "Cancel screen selection"}
         </button>
-      )}
-      {capture.active && (
-        <span role="status" className="text-xs">
-          Sharing screen · video only
-        </span>
       )}
     </span>
   );

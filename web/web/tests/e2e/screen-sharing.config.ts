@@ -6,8 +6,10 @@ export default defineConfig({
   timeout: 90_000,
   reporter: "list",
   use: {
+    screenshot: "only-on-failure",
+    trace: "retain-on-failure",
     ...devices["Desktop Chrome"],
-    baseURL: "http://localhost:4196",
+    baseURL: "http://127.0.0.1:4196",
     viewport: { width: 1500, height: 1000 },
     permissions: ["camera", "microphone"],
     launchOptions: {
@@ -18,8 +20,8 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: "vp dev --port 4196 --strictPort",
-    url: "http://localhost:4196",
+    command: "vp dev --host 127.0.0.1 --port 4196 --strictPort",
+    url: "http://127.0.0.1:4196",
     reuseExistingServer: true,
   },
 });

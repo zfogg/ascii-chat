@@ -38,6 +38,7 @@ interface UseMirrorWebcamParams {
   wasmInitialized: boolean;
   isWebcamRunning: boolean;
   mediaSource?: MediaSource;
+  captureAudio?: boolean;
   terminalDimensions?: { cols: number; rows: number };
 }
 
@@ -67,6 +68,7 @@ export function useMirrorWebcam({
   wasmInitialized,
   isWebcamRunning,
   mediaSource,
+  captureAudio = true,
   terminalDimensions,
 }: UseMirrorWebcamParams) {
   const testPattern = useTestPattern();
@@ -135,10 +137,11 @@ export function useMirrorWebcam({
       console.time("[Mirror] getUserMedia (incl browser permission)");
       console.log("[Mirror] Calling getUserMedia...");
       const devicePreferences = getMediaDevicePreferences();
-      retainedAudio =
-        streamRef.current
-          ?.getAudioTracks()
-          .filter((track) => track.readyState === "live") ?? [];
+      retainedAudio = captureAudio
+        ? (streamRef.current
+            ?.getAudioTracks()
+            .filter((track) => track.readyState === "live") ?? [])
+        : [];
       const cameraId =
         audioOnly || providedStream ? "" : await resolveCameraDeviceId();
       if (generation !== startGenerationRef.current) return false;
@@ -153,9 +156,10 @@ export function useMirrorWebcam({
             }),
         // Keep the microphone track available so waveform/FFT can be enabled
         // after the camera has started, without requiring a reconnect.
-        audio: retainedAudio.length
-          ? false
-          : microphoneConstraints(devicePreferences.microphoneId),
+        audio:
+          !captureAudio || retainedAudio.length
+            ? false
+            : microphoneConstraints(devicePreferences.microphoneId),
       };
       let stream: MediaStream | undefined;
       for (let attempt = 0; ; attempt++) {
@@ -164,7 +168,7 @@ export function useMirrorWebcam({
           if (providedStream) {
             stream = providedStream;
             acquiredStream = stream;
-            if (!retainedAudio.length) {
+            if (captureAudio && !retainedAudio.length) {
               try {
                 const microphone = await acquireMediaStream(
                   {
@@ -186,7 +190,7 @@ export function useMirrorWebcam({
                 );
               }
             }
-          } else if (audioOnly && retainedAudio.length) {
+          } else if (audioOnly && (!captureAudio || retainedAudio.length)) {
             // Reattach the retained microphone below without requesting an
             // invalid getUserMedia({ video: false, audio: false }) stream.
             stream = new MediaStream();
@@ -324,6 +328,7 @@ export function useMirrorWebcam({
       return false;
     }
   }, [
+    captureAudio,
     audioOnly,
     testPattern.enabled,
     settings,

@@ -1,4 +1,8 @@
 import { ScreenShareControls } from "../components/ScreenShareControls";
+import { MediaAudioControls } from "../components/MediaAudioControls";
+import { useMediaAudio } from "../hooks/useMediaAudio";
+import { initClientWasm } from "../wasm/client";
+import { submitAudioVisualizationSamples } from "@ascii-chat/shared/wasm";
 import { useDisplayCapture } from "../hooks/useDisplayCapture";
 import { useEngineSettings } from "../hooks/useEngineSettings";
 import { useLayoutEffect } from "react";
@@ -115,6 +119,31 @@ export function MirrorPage() {
     firstFrameTimeRef,
   } = optionsManager;
 
+  const mediaAudio = useMediaAudio(() => ({
+    localOnly: true,
+    onError: (cause) => setError(cause.message),
+    onMicrophoneSamples: (samples) => {
+      if (isWasmReady()) submitAudioVisualizationSamples(samples, "microphone");
+    },
+  }));
+  const {
+    audioRef: audio,
+    audioEnabled: speakersEnabled,
+    micEnabled: microphoneEnabled,
+    audioLevels,
+    ensureAudio,
+    clearDisplayAudio,
+  } = mediaAudio;
+  const toggleMicrophone = () =>
+    mediaAudio.toggleMicrophone(async () => {
+      await initClientWasm({ width: 80, height: 24 });
+      return true;
+    });
+  const toggleSpeakers = async () => {
+    await mediaAudio.toggleSpeakers();
+    if (fileVideoRef.current) fileVideoRef.current.muted = speakersEnabled;
+  };
+
   const applyWasmSettings = useCallback(
     (next: BinarySettingsConfig) => {
       const file = mediaSource === MediaSourceType.FILE;
@@ -166,6 +195,7 @@ export function MirrorPage() {
     cancelStart: cancelWebcamStart,
     isStarting,
   } = useMirrorWebcam({
+    captureAudio: false,
     settings,
     videoRef,
     canvasRef,
@@ -201,15 +231,21 @@ export function MirrorPage() {
   const screenRestore = useRef({ mediaSource, isWebcamRunning });
   const screenCapture = useDisplayCapture({
     setError,
-    onStart: async (stream) => {
+    onStart: async (stream, current) => {
       if (mediaSource !== MediaSourceType.SCREEN)
         screenRestore.current = { mediaSource, isWebcamRunning };
       cancelStart();
       fileMedia.setSuspended(true);
       resumePending.current = false;
+      await ensureAudio().setDisplayStream(stream);
+      if (!current()) {
+        await audio.current?.setDisplayStream(null);
+        return false;
+      }
       return startWebcam(stream);
     },
     onStop: () => {
+      void audio.current?.setDisplayStream(null);
       if (
         screenRestore.current.mediaSource === MediaSourceType.FILE &&
         fileMedia.kind
@@ -225,8 +261,17 @@ export function MirrorPage() {
     },
   });
 
-  const { release: releaseScreen } = screenCapture;
+  const { release: releaseDisplay } = screenCapture;
+  const releaseScreen = useCallback(() => {
+    clearDisplayAudio();
+    releaseDisplay();
+  }, [clearDisplayAudio, releaseDisplay]);
   const { stop: stopScreen } = screenCapture;
+  useEffect(() => {
+    getMirrorModule()?._wasm_ui_audio(
+      Number(speakersEnabled || microphoneEnabled || screenCapture.active),
+    );
+  }, [speakersEnabled, microphoneEnabled, screenCapture.active]);
   const fileActive = mediaSource === MediaSourceType.FILE;
   const cameraFps = useCameraFrameRate(
     settings,
@@ -293,6 +338,7 @@ export function MirrorPage() {
 
   // Render loop that captures and converts frames to ASCII
   useMirrorRenderLoop({
+    externalAudio: true,
     cameraVideoRef: videoRef,
     isWebcamRunning: renderActive,
     terminalDimensions,
@@ -442,17 +488,19 @@ export function MirrorPage() {
                 ? { start: "Start Webcam", stop: "Cancel startup" }
                 : undefined,
               mediaSource,
-              onStartWebcam: () => {
-                releaseScreen();
-                stopFile();
-                // This click already starts capture; its URL update must not
-                // start a second acquisition while permission is pending.
-                previousStartupPlaying.current = true;
-                resumePending.current = false;
-                setPlaying(true);
-                void startWebcam();
-              },
-              onStopWebcam: stopPlayback,
+              onStartWebcam: screenCapture.active
+                ? undefined
+                : () => {
+                    releaseScreen();
+                    stopFile();
+                    // This click already starts capture; its URL update must not
+                    // start a second acquisition while permission is pending.
+                    previousStartupPlaying.current = true;
+                    resumePending.current = false;
+                    setPlaying(true);
+                    void startWebcam();
+                  },
+              onStopWebcam: screenCapture.active ? undefined : stopPlayback,
               onFileSelect: handleVideoFileSelect,
               videoRef: undefined,
               status: isStarting
@@ -468,6 +516,13 @@ export function MirrorPage() {
               ),
               statusControls: (
                 <>
+                  <MediaAudioControls
+                    speakers={speakersEnabled}
+                    microphone={microphoneEnabled}
+                    onSpeakers={() => void toggleSpeakers()}
+                    onMicrophone={() => void toggleMicrophone()}
+                    levels={audioLevels}
+                  />
                   {fileMedia.loading && (
                     <button onClick={stopPlayback}>Cancel</button>
                   )}

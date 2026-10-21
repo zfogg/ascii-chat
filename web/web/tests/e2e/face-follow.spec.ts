@@ -52,8 +52,16 @@ test.describe("live webcam", () => {
       await expect
         .poll(() => state(page).then((s) => s[2]), { timeout: 15_000 })
         .toBeLessThan(0.75);
-      const crop = await state(page);
-      expect((crop[7] ?? 0) / (crop[3] ?? 1)).toBeGreaterThan(0.55);
+      let crop: number[] = [];
+      await expect
+        .poll(
+          async () => {
+            crop = await state(page);
+            return (crop[7] ?? 0) / (crop[3] ?? 1);
+          },
+          { timeout: 15000 },
+        )
+        .toBeGreaterThan(0.55);
       const draw = await page.evaluate(
         () => (window as unknown as Record<string, number[]>)["__faceDraw"],
       );
@@ -110,6 +118,57 @@ async function state(page: Page): Promise<number[]> {
     );
 }
 
+test("screen capture honors user-enabled Face Follow and its debug view", async ({
+  page,
+}, testInfo) => {
+  const clip = path.resolve("../../artifacts/face-follow/seated.mp4");
+  test.skip(!existsSync(clip), "Generate the moving-face fixture first");
+  await page.route("**/display-face-fixture.mp4", (route) =>
+    route.fulfill({ path: clip, contentType: "video/mp4" }),
+  );
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getDisplayMedia = async () => {
+      const video = document.createElement("video");
+      video.src = "/display-face-fixture.mp4";
+      video.loop = true;
+      video.muted = true;
+      await video.play();
+      return (
+        video as HTMLVideoElement & { captureStream(): MediaStream }
+      ).captureStream();
+    };
+  });
+  await page.goto(
+    "/mirror?faceFollow=true&faceFollowDebug=true&horizontalFlip=on",
+  );
+  await page.getByRole("button", { name: "Share screen", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Stop sharing", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("canvas[data-face-follow]")).toHaveCount(1, {
+    timeout: 30000,
+  });
+  await expect
+    .poll(() => state(page).then((sample) => sample[8]), { timeout: 20000 })
+    .toBe(1);
+  await expect
+    .poll(() => state(page).then((sample) => sample[2]), { timeout: 20000 })
+    .toBeLessThan(0.75);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /Flip Horizontal/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: "Face Follow", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.screenshot({
+    path: testInfo.outputPath("screen-face-follow.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Stop sharing", exact: true }).click();
+});
+
 async function mediaTime(page: Page): Promise<number> {
   return page
     .locator("video")
@@ -118,6 +177,38 @@ async function mediaTime(page: Page): Promise<number> {
         ...videos.map((video) => (video as HTMLVideoElement).currentTime),
       ),
     );
+}
+
+declare global {
+  interface Window {
+    framingSamples?: { time: number; values: number[] }[];
+  }
+}
+
+async function observeFramingSamples(page: Page) {
+  await page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>(
+      "canvas[data-face-follow]",
+    )!;
+    const samples = (window.framingSamples = [] as {
+      time: number;
+      values: number[];
+    }[]);
+    new MutationObserver(() => {
+      samples.push({
+        time: Math.max(
+          ...Array.from(
+            document.querySelectorAll("video"),
+            (video) => video.currentTime,
+          ),
+        ),
+        values: JSON.parse(canvas.dataset["faceFollow"] ?? "[]") as number[],
+      });
+    }).observe(canvas, {
+      attributes: true,
+      attributeFilter: ["data-face-follow-tick"],
+    });
+  });
 }
 
 test("real detector follows a moving face, retains its subject, widens on loss and reacquires", async ({
@@ -154,13 +245,14 @@ test("real detector follows a moving face, retains its subject, widens on loss a
       attributeFilter: ["data-face-follow-tick"],
     });
   });
-  const samples: { time: number; values: number[] }[] = [];
+  // Sample actual controller updates in the browser. Host RPC/screenshot latency
+  // must not create holes in short acquisition/hold/grace windows.
+  await observeFramingSamples(page);
   let multipleScreenshot = false;
   let lostScreenshot = false;
   while ((await mediaTime(page)) < 17.5) {
     const time = await mediaTime(page);
     const values = await state(page);
-    samples.push({ time, values });
     if (!multipleScreenshot && time > 5 && (values[9] ?? 0) >= 2) {
       await page.screenshot({
         path: testInfo.outputPath("browser-multiple.png"),
@@ -175,6 +267,7 @@ test("real detector follows a moving face, retains its subject, widens on loss a
     }
     await page.waitForTimeout(100);
   }
+  const samples = await page.evaluate(() => window.framingSamples!);
   await testInfo.attach("framing-samples", {
     body: JSON.stringify(samples, null, 2),
     contentType: "application/json",
@@ -255,11 +348,10 @@ test("seated shifts hold the view, a brief lean is ignored, and a sustained move
   await expect
     .poll(() => state(page).then((s) => s[2]), { timeout: 15_000 })
     .toBeLessThan(0.75);
-  const samples: { time: number; values: number[] }[] = [];
+  await observeFramingSamples(page);
   let screenshot = false;
   while ((await mediaTime(page)) < 17) {
     const time = await mediaTime(page);
-    samples.push({ time, values: await state(page) });
     if (!screenshot && time > 11) {
       await page.screenshot({
         path: testInfo.outputPath("browser-seated-hold.png"),
@@ -268,6 +360,7 @@ test("seated shifts hold the view, a brief lean is ignored, and a sustained move
     }
     await page.waitForTimeout(100);
   }
+  const samples = await page.evaluate(() => window.framingSamples!);
   await testInfo.attach("seated-framing", {
     body: JSON.stringify(samples),
     contentType: "application/json",

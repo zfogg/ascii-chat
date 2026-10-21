@@ -7,7 +7,7 @@ import {
 } from "react";
 
 interface Options {
-  onStart: (stream: MediaStream) => Promise<unknown>;
+  onStart: (stream: MediaStream, current: () => boolean) => Promise<unknown>;
   onStop: () => void;
   setError: (message: string) => void;
 }
@@ -19,6 +19,7 @@ export function useDisplayCapture(options: Options) {
     callbacks.current = options;
   });
   const stream = useRef<MediaStream | null>(null);
+  const owned = useRef(new WeakMap<MediaStream, MediaStreamTrack[]>());
   const generation = useRef(0);
   const mounted = useRef(true);
   const pending = useRef(false);
@@ -34,7 +35,7 @@ export function useDisplayCapture(options: Options) {
     const previous = stream.current;
     stream.current = null;
     // A pipeline may have added its microphone to this stream. Never own it.
-    previous?.getVideoTracks().forEach((track) => track.stop());
+    if (previous) owned.current.get(previous)?.forEach((track) => track.stop());
     if (mounted.current) {
       setActive(false);
       setSelecting(false);
@@ -63,8 +64,9 @@ export function useDisplayCapture(options: Options) {
       // Call synchronously from the click to preserve transient user activation.
       selected = await navigator.mediaDevices.getDisplayMedia({
         video: true,
-        audio: false,
+        audio: true,
       });
+      owned.current.set(selected, selected.getTracks());
       if (request !== generation.current || !mounted.current) {
         selected.getTracks().forEach((track) => track.stop());
         return;
@@ -72,11 +74,6 @@ export function useDisplayCapture(options: Options) {
       const video = selected.getVideoTracks()[0];
       if (!video || video.readyState !== "live")
         throw new Error("No live display video was selected");
-      // Defensive cleanup if a browser returns audio despite audio:false.
-      selected.getAudioTracks().forEach((track) => {
-        track.stop();
-        selected!.removeTrack(track);
-      });
       const previous = stream.current;
       stream.current = selected;
       video.addEventListener(
@@ -88,12 +85,16 @@ export function useDisplayCapture(options: Options) {
       );
       let started: unknown;
       try {
-        started = await callbacks.current.onStart(selected);
+        started = await callbacks.current.onStart(
+          selected,
+          () => request === generation.current && mounted.current,
+        );
       } finally {
-        previous?.getVideoTracks().forEach((track) => track.stop());
+        if (previous)
+          owned.current.get(previous)?.forEach((track) => track.stop());
       }
       if (request !== generation.current || !mounted.current) {
-        selected.getVideoTracks().forEach((track) => track.stop());
+        owned.current.get(selected)?.forEach((track) => track.stop());
         return;
       }
       if (started === false || video.readyState !== "live")
@@ -128,5 +129,13 @@ export function useDisplayCapture(options: Options) {
       release();
     };
   }, [release]);
-  return { active, revision, selecting, supported, start, stop, release };
+  return {
+    active,
+    revision,
+    selecting,
+    supported,
+    start,
+    stop,
+    release,
+  };
 }

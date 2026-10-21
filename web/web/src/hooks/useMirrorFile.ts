@@ -57,7 +57,6 @@ export function useMirrorFile({
   const { captureFrame: capture } = useCanvasCapture(
     videoRef,
     canvasRef,
-    false,
     settings,
   );
 

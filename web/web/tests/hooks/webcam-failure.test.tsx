@@ -4,6 +4,15 @@ import { useWebcamStream } from "../../src/hooks/useWebcamStream";
 import { ConnectionState, PacketType } from "../../src/wasm/client";
 import { DEFAULT_SETTINGS } from "../../src/utils/defaultSettings";
 
+// These host lifecycle tests isolate C transforms; browser tests execute their
+// actual C policy and pixels through the raw upload path.
+vi.mock("../../src/utils/orientUpload", () => ({
+  orientUpload: (
+    _canvas: HTMLCanvasElement,
+    frame: { data: Uint8Array; width: number; height: number },
+  ) => frame,
+}));
+
 const media = vi.hoisted(() => ({
   cameraId: "selected-camera",
   pattern: vi.fn(),
@@ -77,6 +86,7 @@ it("a failed display startup does not leave the recovered camera marked as displ
       stream: {
         getTracks: () => [track],
         getVideoTracks: () => [track],
+        getAudioTracks: () => [],
       } as unknown as MediaStream,
     };
   };
@@ -181,6 +191,7 @@ it("rejects a camera stream with no video track and releases its tracks", async 
       getUserMedia: vi.fn().mockResolvedValue({
         getTracks: () => [{ stop }],
         getVideoTracks: () => [],
+        getAudioTracks: () => [],
       }),
     },
   });

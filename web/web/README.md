@@ -18,9 +18,50 @@ compiled to WASM using Emscripten, enabling real-time video chat with ASCII rend
 
 ## Development
 
+### Screen sharing
+
+On `/mirror`, `/client`, or `/discovery`, use **Share screen** beside **Upload
+file** to choose a tab, window, or desktop. **Stop sharing** restores the
+previous camera, file, or idle source. Cancelling the picker keeps the current
+source; replacing it, ending capture in the browser, or leaving the page stops
+the display tracks owned by that capture.
+
+The picker requests audio. Whether an audio track is available depends on the
+browser, operating system, selected source, and the picker's audio selection.
+Captured audio drives the existing waveform and FFT visualizations in every
+mode. Mirror never monitors captured screen audio locally, including when
+speakers are enabled. Client and Discovery mix it with an optional microphone
+into one C/WASM-processed Opus stream for the other participants. The microphone
+and speaker controls use `MediaAudioControls` and `useMediaAudio` in all three
+modes, with independent microphone, display-track, and playback ownership.
+
+User-enabled Face Follow and its debug view remain available for display input.
+C resolves automatic and explicit horizontal/vertical orientation. Local ASCII
+conversion applies that choice in C; uploads use the same C option store and a
+C pixel transform before either raw or compressed encoding. Canvas capture does
+not mirror pixels in JavaScript.
+
+Run the screen-sharing browser scenarios from `web/web` with
+`ASCII_CHAT_TEST_BINARY` pointing to a compatible native executable:
+
+```sh
+vp exec playwright test --config tests/e2e/screen-sharing.config.ts
+```
+
+The live network scenarios use raw uploads by default. Set
+`ASCII_CHAT_SCREEN_ENCODING=h264` to exercise the same two-participant checks
+through the browser's H.264 encoder; the test verifies the selected codec.
+
+The tests replace only the picker with real canvas/video and Web Audio streams.
+They exercise the C renderer, audio worker/Opus processing, native servers, and
+two browser participants per network mode. Screenshots and initialization/audio JSON
+evidence are test artifacts, not tracked repository assets. The browser CI suite
+also exercises display Face Follow using fixtures generated from the repository
+root with `python3 tests/scripts/create_face_follow_fixture.py`.
+
 ### Local media in Mirror
 
-Use **Upload Video** on `/mirror` to select or drop a video, animated GIF, or
+Use **Upload file** on `/mirror` to select or drop a video, animated GIF, or
 still image. Files remain in the browser. The browser decodes video and plays
 its synchronized audio; captured pixels go through the same C/WASM ASCII
 renderer as the webcam. Videos play once and hold their last frame; GIFs retain their looping animation.

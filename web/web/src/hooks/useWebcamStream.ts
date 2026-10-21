@@ -24,6 +24,7 @@ import {
 import { useVideoEncodings } from "./useVideoEncodings";
 import type { CompressedVideoEncoding } from "../network/VideoUploadEncoder";
 import type { ClientSession } from "../network/Transport";
+import { orientUpload } from "../utils/orientUpload";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import type { BinarySettingsConfig } from "../components";
 import { resolveCameraDeviceId } from "../utils/mediaDevicePreferences";
@@ -279,7 +280,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         conn.getState() === ConnectionState.CONNECTED
       ) {
         if ((conn.getBufferedAmount?.() ?? 0) > 256 * 1024) return;
-        const frame =
+        let frame =
           fileFrame ??
           captureFrame(
             drawVideo,
@@ -287,6 +288,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
             !videoEncoderRef.current && !conn.sendVideoFrame,
           );
         if (frame && frame.data) {
+          const uploadCanvas = sourceCanvas ?? canvasRef.current;
+          if (uploadCanvas) frame = orientUpload(uploadCanvas, frame);
           captureLoopFrameCountRef.current++;
           const frameHash = computeFrameHash(frame.data);
 
@@ -481,15 +484,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                   (!cameraNeedsFrameLimit(settings.targetFps) ||
                     mediaClock.accept(frame.timestamp / 1e6, sendInterval))
                 ) {
-                  if (settings.flipX) {
-                    context.save();
-                    context.translate(canvas.width, 0);
-                    context.scale(-1, 1);
-                    drawFaceFollow(context, frame, canvas);
-                    context.restore();
-                  } else {
-                    drawFaceFollow(context, frame, canvas);
-                  }
+                  drawFaceFollow(context, frame, canvas);
                   webcamCaptureLoopRef.current?.(false);
                 }
               } finally {
@@ -592,7 +587,6 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     connectionState,
     isWebcamRunning,
     captureRevision,
-    settings.flipX,
     settings,
     videoRef,
   ]);
@@ -636,7 +630,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       // Send STREAM_START to notify server we're about to send video
       if (clientRef.current) {
         console.log("[Client] Sending STREAM_START before webcam...");
-        const streamPayload = buildStreamStartPacket(includeAudio);
+        const streamPayload = buildStreamStartPacket(
+          includeAudio || !!providedStream?.getAudioTracks().length,
+        );
         // Send as unencrypted ACIP packet (like native client does)
         clientRef.current.sendUnencryptedAcipPacket(
           PacketType.STREAM_START,

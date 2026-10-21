@@ -306,6 +306,29 @@ describe("WebRTC signaling reconnects", () => {
 });
 
 describe("WebRTC ACIP framing", () => {
+  it("wakes again when a large raw frame needs the channel completely drained", () => {
+    const dc = channel();
+    Object.defineProperty(dc, "bufferedAmount", {
+      value: 200000,
+      writable: true,
+    });
+    const bridge = new WebRTCBridge(dc, vi.fn(), vi.fn());
+    const frame = packet(640 * 360 * 4);
+    bridge.send(frame);
+    Object.defineProperty(dc, "bufferedAmount", { value: 120000 });
+    dc.onbufferedamountlow!(new Event("bufferedamountlow"));
+    expect(dc.send).not.toHaveBeenCalled();
+    // The next wakeup must occur at zero, below the usual 128 KiB threshold.
+    expect(dc.bufferedAmountLowThreshold).toBe(0);
+    Object.defineProperty(dc, "bufferedAmount", { value: 0 });
+    dc.onbufferedamountlow!(new Event("bufferedamountlow"));
+    const sent = vi
+      .mocked(dc.send)
+      .mock.calls.flatMap(([chunk]) => Array.from(chunk as Uint8Array));
+    expect(sent).toEqual(Array.from(frame));
+    bridge.close();
+  });
+
   it("preserves every wire packet in order after encryption", () => {
     const dc = channel();
     Object.defineProperty(dc, "bufferedAmount", {

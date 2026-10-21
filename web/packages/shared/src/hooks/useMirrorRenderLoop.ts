@@ -25,6 +25,7 @@ import {
 } from "../capture/cameraRate";
 
 interface UseMirrorRenderLoopParams {
+  externalAudio?: boolean;
   isWebcamRunning: boolean;
   terminalDimensions: { cols: number; rows: number };
   captureFrame: (drawVideo?: boolean) => {
@@ -51,6 +52,7 @@ interface UseMirrorRenderLoopParams {
 let loopCounter = 0;
 
 export function useMirrorRenderLoop({
+  externalAudio = false,
   isWebcamRunning,
   terminalDimensions,
   captureFrame,
@@ -220,7 +222,11 @@ export function useMirrorRenderLoop({
           }
           if (mediaAudioRef.current.context.state === "suspended")
             void mediaAudioRef.current.context.resume();
-        } else if (!testMode && streamRef.current?.getAudioTracks().length) {
+        } else if (
+          !externalAudio &&
+          !testMode &&
+          streamRef.current?.getAudioTracks().length
+        ) {
           if (microphoneAudioRef.current?.stream !== streamRef.current) {
             microphoneAudioRef.current?.dispose();
             void microphoneAudioRef.current?.context.close();
@@ -534,6 +540,7 @@ export function useMirrorRenderLoop({
       cancelAnimationFrame(currentRafHandle);
     };
   }, [
+    externalAudio,
     isWebcamRunning,
     captureFrame,
     terminalDimensions,

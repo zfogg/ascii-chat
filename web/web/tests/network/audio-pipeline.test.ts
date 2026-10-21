@@ -113,6 +113,80 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("AudioPipeline", () => {
+  it("does not recreate audio resources after close", async () => {
+    const pipeline = new AudioPipeline({ localOnly: true });
+    pipeline.close();
+    await expect(pipeline.enablePlayback()).rejects.toThrow("closed");
+    await expect(
+      pipeline.setDisplayStream({
+        getAudioTracks: () => [{ readyState: "live" }],
+      } as unknown as MediaStream),
+    ).rejects.toThrow("closed");
+    await pipeline.setDisplayStream(null);
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+  it("keeps one microphone and preserves display capture when the microphone stops", async () => {
+    vi.stubGlobal(
+      "MediaStream",
+      class {
+        constructor(private tracks: MediaStreamTrack[]) {}
+        getAudioTracks() {
+          return this.tracks;
+        }
+      },
+    );
+    const displayTrack = { readyState: "live", stop: vi.fn() };
+    const display = {
+      getAudioTracks: () => [displayTrack],
+    } as unknown as MediaStream;
+    const send = vi.fn();
+    const pipeline = new AudioPipeline({ onAudioData: send });
+    await pipeline.startCapture();
+    await pipeline.setDisplayStream(display);
+    expect(getUserMedia).toHaveBeenCalledOnce();
+    pipeline.stopCapture();
+    expect(stopTrack).toHaveBeenCalledOnce();
+    expect(processor.onaudioprocess).not.toBeNull();
+    processor.onaudioprocess!({
+      inputBuffer: { getChannelData: () => new Float32Array(1920).fill(0.15) },
+    } as unknown as AudioProcessingEvent);
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(start).not.toHaveBeenCalled();
+    await pipeline.setDisplayStream(null);
+    expect(processor.onaudioprocess).toBeNull();
+    pipeline.close();
+    expect(displayTrack.stop).not.toHaveBeenCalled();
+  });
+
+  it("replaces display inputs without acquiring or stopping a microphone or owning display tracks", async () => {
+    vi.stubGlobal(
+      "MediaStream",
+      class {
+        constructor(private tracks: MediaStreamTrack[]) {}
+        getAudioTracks() {
+          return this.tracks;
+        }
+      },
+    );
+    const track = () => ({ readyState: "live", stop: vi.fn() });
+    const first = track(),
+      second = track();
+    const pipeline = new AudioPipeline({ localOnly: true });
+    await pipeline.setDisplayStream({
+      getAudioTracks: () => [first],
+    } as unknown as MediaStream);
+    await pipeline.setDisplayStream({
+      getAudioTracks: () => [second],
+    } as unknown as MediaStream);
+    await pipeline.enablePlayback();
+    expect(getUserMedia).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+    pipeline.close();
+    expect(first.stop).not.toHaveBeenCalled();
+    expect(second.stop).not.toHaveBeenCalled();
+    expect(processor.onaudioprocess).toBeNull();
+  });
+
   it("rejects state startup errors without throwing synchronously and permits retry", async () => {
     const pipeline = new AudioPipeline({ onAudioData: vi.fn() });
     const begin = vi

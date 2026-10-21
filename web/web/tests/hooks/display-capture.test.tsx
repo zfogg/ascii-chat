@@ -41,13 +41,13 @@ test("requests display video, owns cleanup, and handles browser-ended capture on
   await act(() => result.current.start());
   expect(navigator.mediaDevices.getDisplayMedia).toHaveBeenCalledWith({
     video: true,
-    audio: false,
+    audio: true,
   });
-  expect(source.audio.stop).toHaveBeenCalledOnce();
-  expect(source.stream.removeTrack).toHaveBeenCalledWith(source.audio);
+  expect(source.audio.stop).not.toHaveBeenCalled();
   expect(result.current.active).toBe(true);
   act(() => source.video.dispatchEvent(new Event("ended")));
   expect(result.current.active).toBe(false);
+  expect(source.audio.stop).toHaveBeenCalledOnce();
   expect(options.onStop).toHaveBeenCalledOnce();
   act(() => source.video.dispatchEvent(new Event("ended")));
   expect(options.onStop).toHaveBeenCalledOnce();
@@ -109,14 +109,17 @@ test("pending picker results cannot resurrect capture after cancel or unmount", 
   expect(options.onStart).not.toHaveBeenCalled();
 });
 
-test("unmount stops display video but leaves pipeline-added microphone tracks alone", async () => {
+test("unmount stops display video and audio but leaves pipeline-added microphone tracks alone", async () => {
   const source = display();
   const { result, unmount } = setup(async () => source.stream);
   await act(() => result.current.start());
-  source.audio.stop.mockClear();
+  const microphone = { kind: "audio", stop: vi.fn() };
+  source.stream.getTracks = () =>
+    [source.video, source.audio, microphone] as unknown as MediaStreamTrack[];
   unmount();
   expect(source.video.stop).toHaveBeenCalledOnce();
-  expect(source.audio.stop).not.toHaveBeenCalled();
+  expect(source.audio.stop).toHaveBeenCalledOnce();
+  expect(microphone.stop).not.toHaveBeenCalled();
 });
 
 test("capture failures are visible and unsupported browsers do not acquire media", async () => {

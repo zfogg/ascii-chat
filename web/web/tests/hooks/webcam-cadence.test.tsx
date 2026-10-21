@@ -3,6 +3,15 @@ import { afterEach, expect, it, vi } from "vite-plus/test";
 import { useWebcamStream } from "../../src/hooks/useWebcamStream";
 import { ConnectionState, PacketType } from "../../src/wasm/client";
 import { DEFAULT_SETTINGS } from "../../src/utils/defaultSettings";
+
+// Cadence is measured independently of the C pixel transform, exercised by the
+// browser's asymmetric source and independent receiving participant checks.
+vi.mock("../../src/utils/orientUpload", () => ({
+  orientUpload: (
+    _canvas: HTMLCanvasElement,
+    frame: { data: Uint8Array; width: number; height: number },
+  ) => frame,
+}));
 import type { ClientSession } from "../../src/network/Transport";
 
 const captureOptions = vi.hoisted(() => ({
@@ -105,6 +114,7 @@ async function startCapture(
   const stream = {
     active: true,
     getVideoTracks: () => [track],
+    getAudioTracks: () => [],
     getTracks: () => [track],
   };
   vi.stubGlobal("navigator", {
