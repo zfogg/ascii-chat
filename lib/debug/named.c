@@ -453,9 +453,33 @@ void named_unregister(uintptr_t key) {
 }
 
 const char *named_update_name(uintptr_t key, const char *new_base_name) {
+#ifndef NDEBUG
+  if (!new_base_name || !lifecycle_is_initialized(&g_named_registry.lifecycle))
+    return NULL;
+  char name[MAX_NAME_LEN];
+  snprintf(name, sizeof(name), "%s.%" PRIu64, new_base_name, ++named_generation);
+  char *replacement = entry_strdup(name);
+  if (!replacement)
+    return NULL;
+  rwlock_wrlock(&g_named_registry.entries_lock);
+  named_entry_t *entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
+  const char *result = NULL;
+  if (entry) {
+    UNTRACKED_FREE(entry->name);
+    entry->name = replacement;
+    result = replacement;
+    atomic_fetch_add(&g_metadata_revision, 1);
+  } else {
+    UNTRACKED_FREE(replacement);
+  }
+  rwlock_wrunlock(&g_named_registry.entries_lock);
+  return result;
+#else
   (void)key;
   (void)new_base_name;
   return NULL;
+#endif
 }
 
 const char *named_get(uintptr_t key) {
