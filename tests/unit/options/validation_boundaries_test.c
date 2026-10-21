@@ -92,9 +92,11 @@ Test(option_validation_boundaries, enum_parsers_reject_unknown_values_without_ov
   cr_assert_eq(value, LOG_WARN);
   cr_assert(parse_port_option("65535", &value, &error));
   cr_assert_eq(value, 65535);
-  char palette[256];
-  cr_assert(parse_palette_chars(" .:#", palette, &error));
-  cr_assert_str_eq(palette, " .:#");
-  cr_assert_not(parse_palette_chars("", palette, &error));
+  options_t *options = SAFE_CALLOC(1, sizeof(*options), options_t *);
+  cr_assert(parse_palette_chars(" .:#", options->palette_custom, &error));
+  cr_assert_str_eq(options->palette_custom, " .:#");
+  cr_assert_eq(options->palette_type, PALETTE_CUSTOM);
+  cr_assert_not(parse_palette_chars("", options->palette_custom, &error));
   SAFE_FREE(error);
+  SAFE_FREE(options);
 }
