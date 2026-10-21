@@ -58,6 +58,9 @@ async function healthy(p, before = { audio: 0, unique: 0 }) {
   assert.equal((await snapshot(p)).error, "");
 }
 async function routes(p) {
+  // Direct media needs no TURN claim. Some native ICE interop reports omit
+  // selected-pair traffic counters; retain that evidence without fabricating it.
+  if (route === "direct") return p.evaluate(() => window.handoffProbe.routes());
   const value = await until(
     async () => {
       const pairs = await p.evaluate(() => window.handoffProbe.routes());

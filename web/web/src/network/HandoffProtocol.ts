@@ -29,7 +29,6 @@ type Module = ReturnType<typeof getClientModule> & {
 /** Scheduling adapter. The C protocol owns wire validation; ACDS runs the shared C selector. */
 export class HandoffProtocol {
   private timer: ReturnType<typeof setInterval>;
-  private sequence = 0;
   private generation = 0;
   private stopped = false;
   private prepared = false;
@@ -38,9 +37,12 @@ export class HandoffProtocol {
     private send: (type: number, data: Uint8Array) => void,
     private commit: (id: Uint8Array) => void,
     private progress?: (stage: string) => void,
+    private sequence = 0,
   ) {
     this.timer = setInterval(() => this.sample(), 5000);
-    this.sample();
+    // Promotion retains the authenticated participant and its probe cadence.
+    // An immediate extra sample can violate ACDS rate limiting.
+    if (!sequence) this.sample();
   }
   private frame(
     kind: number,
@@ -125,12 +127,13 @@ export class HandoffProtocol {
     }
     return true;
   }
-  close(): void {
+  close(): number {
     this.stopped = true;
     clearInterval(this.timer);
     if (this.prepared) {
       (getClientModule() as Module | null)?._browser_host_destroy();
       this.prepared = false;
     }
+    return this.sequence;
   }
 }

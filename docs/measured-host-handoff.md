@@ -126,9 +126,11 @@ base signaling port (default 31000; mixed uses base + 20).
 `HANDOFF_TURN_USERNAME` and `HANDOFF_TURN_PASSWORD`. Use a reachable
 credentialed TURN server; the runner does not silently fall back to direct
 routing. Both browser ICE policies and the native host use relay-only mode.
-Before and after every loss, getStats must identify selected successful
-candidate pairs with nonzero sent/received bytes; every selected pair must
-have relay candidates at both ends. Credentials are not written into result
+In relay mode, before and after every loss, getStats must identify selected
+successful candidate pairs with nonzero sent/received bytes; every selected
+pair must have relay candidates at both ends. Direct mode records available
+selected-pair diagnostics but relies on decoded media for continuity: native
+interop may omit selected-pair traffic counters. Credentials are not written into result
 JSON. A configured TURN URL or a gathered relay candidate alone is insufficient.
 
 Each result records pre-loss and post-commit counters, selected pairs,
@@ -144,3 +146,23 @@ The experiment exposed browser worker admission dropping the synchronous
 SERVER_STATE emitted before the C participant ID is registered. The worker
 now retains the logical admission recipient during that call; the focused
 worker regression checks delivery and rejection of unknown recipients.
+
+
+Validation on Windows x64 with native Clang/Ninja and real Chromium has executed
+three host losses with 30-second dwell periods for browser direct, browser forced
+relay, and native-host-to-browser forced relay sessions. Both observers recovered
+new changing video and decoded non-silent audio after every commit. The mixed
+relay run first received 29 non-silent blocks with the native host as its only
+remote source. Callback interruption upper bounds were 1.76–7.71 seconds for
+browser relay, 4.28–15.70 seconds for browser direct, and 0.36–12.95 seconds for
+mixed relay. These local runs demonstrate bounded recovery, not seamless audio
+or general Internet reliability. The direct mixed scenario and final rebuilt
+WASM validation are tracked separately until complete.
+
+Additional production repairs retain the probe sequence and avoid an immediate
+extra probe when a participant becomes host (ACDS replay/rate limits remain
+unchanged), preserve healthy ACDS signaling while a failed media queue enters its
+bounded successor wait (queue congestion limits remain unchanged), send native
+SERVER_STATE only after peer negotiation is ready, and inject native host audio
+into its local memory participant with capture owned and cleaned up by the host
+role.

@@ -126,6 +126,7 @@ export class BrowserHostSession implements ClientSession {
     options: DiscoveryOptions,
     signaling: ClientConnection,
     joined: JoinedSession,
+    sequence = 0,
   ): BrowserHostSession {
     const host = new BrowserHostSession(options);
     host.signaling = signaling;
@@ -139,10 +140,10 @@ export class BrowserHostSession implements ClientSession {
         .then(() => host.signal(packet.type, payload))
         .catch((error) => host.fail(error));
     });
-    host.queue = host.startHosting().catch((error) => host.fail(error));
+    host.queue = host.startHosting(sequence).catch((error) => host.fail(error));
     return host;
   }
-  private async startHosting(): Promise<void> {
+  private async startHosting(sequence = 0): Promise<void> {
     discoveryRTCConfiguration(this.options, this.joined!);
     this.runtime = new BrowserHostRuntime(
       (id, bytes) => {
@@ -211,6 +212,7 @@ export class BrowserHostSession implements ClientSession {
           );
       },
       this.options.onProgress,
+      sequence,
     );
   }
   private async signal(type: number, payload: Uint8Array): Promise<void> {

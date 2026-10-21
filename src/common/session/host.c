@@ -857,7 +857,8 @@ static asciichat_error_t host_connection_open(network_connection_t *connection, 
       host->clients[i].connection = connection;
   mutex_unlock(&host->clients_mutex);
   if (network_connection_state(connection) == NETWORK_READY)
-    return ASCIICHAT_OK;
+    return session_host_set_client_transport(host, client->client_id, network_connection_transport(connection),
+                                             ACIP_TRANSPORT_BORROWED);
   asciichat_error_t result = network_connection_prepare_security(connection, true, host->password);
   if (result != ASCIICHAT_OK)
     return result;
@@ -884,8 +885,13 @@ static asciichat_error_t host_connection_packet(network_connection_t *connection
   if (network_connection_state(connection) == NETWORK_NEGOTIATING) {
     asciichat_error_t result = network_negotiation_receive(
         &client->negotiation, network_connection_transport(connection), type, payload, length);
-    if (result == ASCIICHAT_OK && client->negotiation.ready)
+    if (result == ASCIICHAT_OK && client->negotiation.ready) {
       network_connection_ready(connection);
+      // Admission attaches the transport before security negotiation. Publish
+      // protocol readiness only now, so browser peers can begin STREAM_START.
+      return session_host_set_client_transport(arg, client->client_id, network_connection_transport(connection),
+                                               ACIP_TRANSPORT_BORROWED);
+    }
     return result;
   }
   return session_host_receive_packet(arg, client->client_id, type, payload, length);

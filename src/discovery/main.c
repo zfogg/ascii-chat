@@ -42,6 +42,7 @@
 #include "session/capture.h"
 #include "session/display.h"
 #include "session/host.h"
+#include "session/audio.h"
 #include "session/render.h"
 #include "session/keyboard_handler.h"
 #include "session/client_like.h"
@@ -403,9 +404,27 @@ role_dispatch:
 
     log_info("Host participating with ID %u", host_participant_id);
 
+    // The native host is also a media source. Own its capture worker for this
+    // role and feed the same memory participant used for local video.
+    session_audio_ctx_t *host_audio = NULL;
+    if (GET_OPTION(audio_enabled)) {
+      host_audio = session_audio_create(true);
+      if (!host_audio)
+        return SET_ERRNO(ERROR_AUDIO, "Failed to create host audio capture");
+      session_audio_set_capture_source(host_audio, session_capture_get_media_source(capture));
+      result = session_audio_start_capture(host_audio);
+      if (result != ASCIICHAT_OK) {
+        session_audio_destroy(host_audio);
+        return result;
+      }
+      session_capture_set_audio_context(capture, session_audio_get_context(host_audio));
+    }
+
     // Start the render thread (handles video mixing and ASCII rendering for display)
     result = session_host_start_render(host);
     if (result != ASCIICHAT_OK) {
+      session_capture_set_audio_context(capture, NULL);
+      session_audio_destroy(host_audio);
       log_error("Failed to start render thread: %d", result);
       // Host context is owned by discovery session - don't destroy
       return result;
@@ -458,6 +477,21 @@ role_dispatch:
         log_debug_every(5 * NS_PER_SEC_INT, "No frame captured");
       }
 
+      if (host_audio) {
+        float samples[960];
+        // Drain up to 100 ms per video tick; audio must not run at video FPS.
+        for (int block = 0; block < 5; ++block) {
+          size_t count = session_audio_read_captured(host_audio, samples, 960);
+          if (!count)
+            break;
+          result = session_host_inject_audio(host, host_participant_id, samples, count);
+          if (result != ASCIICHAT_OK)
+            break;
+        }
+        if (result != ASCIICHAT_OK)
+          break;
+      }
+
       // Keep discovery session responsive (NAT negotiations, migrations)
       asciichat_errno_scope_t process_scope = asciichat_errno_scope_begin();
       result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
@@ -477,6 +511,9 @@ role_dispatch:
 
     log_debug("Host role main loop exited (snapshot_mode=%d, first_frame_rendered=%d, session_active=%d)",
               snapshot_mode, g_snapshot_first_frame_rendered ? 1 : 0, discovery_session_is_active(g_discovery) ? 1 : 0);
+
+    session_capture_set_audio_context(capture, NULL);
+    session_audio_destroy(host_audio);
 
     // Stop render thread before returning (display will be destroyed by caller)
     session_host_stop_render(host);
