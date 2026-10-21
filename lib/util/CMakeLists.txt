@@ -1,6 +1,7 @@
 # lib/util - Core utilities
 
 set(UTIL_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/stdout_writer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/format.c
     ${CMAKE_CURRENT_SOURCE_DIR}/parsing.c
     ${CMAKE_CURRENT_SOURCE_DIR}/path.c

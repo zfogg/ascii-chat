@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/util/stdout_writer.h>
 
 typedef struct terminal_fd_writer_s {
   FILE *fp; // File pointer created from FD
@@ -44,16 +45,12 @@ asciichat_error_t terminal_fd_writer_write(terminal_fd_writer_t *writer, const c
   }
 
   // Write frame and newline
-  int ret = fprintf(writer->fp, "%s\n", frame);
-  if (ret < 0) {
-    return SET_ERRNO_SYS(ERROR_INVALID_PARAM, "fprintf failed");
-  }
-
-  // Flush to ensure output is visible immediately
-  int flush_ret = fflush(writer->fp);
-  if (flush_ret != 0) {
-    return SET_ERRNO_SYS(ERROR_INVALID_PARAM, "fflush failed");
-  }
+  asciichat_error_t err = stdout_writer_write(writer->fp, frame, strlen(frame));
+  if (err != ASCIICHAT_OK)
+    return err;
+  err = stdout_writer_write(writer->fp, "\n", 1);
+  if (err != ASCIICHAT_OK)
+    return err;
 
   log_debug_every(NS_PER_SEC_INT, "wrote frame (%zu bytes)", strlen(frame));
   return ASCIICHAT_OK;

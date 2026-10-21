@@ -155,7 +155,9 @@ typedef struct {
 static void client_like_setup_terminal_logging(void) {
 
   // Force stderr when stdout is piped (prevents ASCII corruption in output stream)
-  bool should_force_stderr = terminal_should_force_stderr();
+  const char *output = GET_OPTION(render_file);
+  bool should_force_stderr = terminal_should_force_stderr() || GET_OPTION(render_kitty) ||
+                             strcmp(output, "--kitty") == 0 || strcmp(output, "-") == 0 || strcmp(output, "pipe:") == 0;
   log_debug("terminal_should_force_stderr()=%d", should_force_stderr);
 
   if (should_force_stderr) {
