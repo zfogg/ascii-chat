@@ -311,12 +311,15 @@ static void test_rendered_frame_validation(void) {
   memcpy(packet + sizeof(wire_header) + metadata_size, "abcd", 4);
   sink_t sink = {0};
   session_protocol_t protocol;
-  session_protocol_init(&protocol, NULL, (session_protocol_media_t){.on_frame = frame, .context = &sink},
+  acip_transport_t transport = {0};
+  session_protocol_init(&protocol, &transport, (session_protocol_media_t){.on_frame = frame, .context = &sink},
                         (acip_client_callbacks_t){0});
   protocol.settings_revision = 2; // A later ACK need not invalidate a queued older frame.
-  cr_assert_eq(
-      session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 4),
-      ASCIICHAT_OK);
+  asciichat_error_t dispatch_result =
+      session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 4);
+  asciichat_error_context_t dispatch_error = {0};
+  errno_has(&dispatch_error);
+  cr_assert_eq(dispatch_result, ASCIICHAT_OK, "Valid contract dispatch: %s", dispatch_error.context_message);
   cr_assert_eq(sink.frames, 1);
   packet[sizeof(wire_header) + FRAME_RENDER_CONTRACT_HEADER] = 'X';
   cr_assert_eq(

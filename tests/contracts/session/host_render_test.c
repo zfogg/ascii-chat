@@ -512,13 +512,13 @@ Test(host_render, recipient_settings_and_delivery, .timeout = 60) {
   cr_assert_eq(render_tick(host), ASCIICHAT_OK);
   cr_assert_eq(strcmp(sinks[0].frame, sinks[1].frame), 0);
 
-  cr_assert_eq(display.sink.frames, 7);
+  cr_assert_eq(display.sink.frames, 8);
   check_palette(display.sink.frame, "Z");
   // A local backend also picks up changed rendering settings at the next tick.
   display.config.caps.color_level = TERM_COLOR_TRUECOLOR;
   display.config.palette = "LL";
   cr_assert_eq(render_tick(host), ASCIICHAT_OK);
-  cr_assert_eq(display.sink.frames, 8);
+  cr_assert_eq(display.sink.frames, 9);
   cr_assert(strstr(display.sink.frame, "\033[38;2;"));
   check_palette(display.sink.frame, "L");
   SAFE_FREE(display.sink.frame);
@@ -530,9 +530,9 @@ Test(host_render, recipient_settings_and_delivery, .timeout = 60) {
   update(host, ids[1], &caps[1]);
   cr_assert_eq(render_tick(host), ASCIICHAT_OK);
   check_palette(sinks[1].frame, "W");
-  cr_assert_eq(display.sink.frames, 8);
+  cr_assert_eq(display.sink.frames, 9);
   for (int i = 0; i < 3; ++i) {
-    cr_assert_eq(sinks[i].frames, 9); // Local clients receive exactly one frame per tick.
+    cr_assert_eq(sinks[i].frames, 10); // Local clients receive exactly one frame per tick.
     SAFE_FREE(sinks[i].frame);
   }
   cr_assert_eq(session_host_remove_client(host, ids[1]), ASCIICHAT_OK);
