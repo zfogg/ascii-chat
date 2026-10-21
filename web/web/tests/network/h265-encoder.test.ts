@@ -158,6 +158,73 @@ describe("HEVC uploads", () => {
     resized.emit();
     expect(output).toHaveBeenCalledTimes(1);
   });
+  it("scales adaptive uploads, keeps the original FPS ceiling, and restarts with a keyframe", async () => {
+    let now = 0;
+    const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+    const drawImage = vi.fn(),
+      close = vi.fn();
+    vi.stubGlobal(
+      "OffscreenCanvas",
+      class {
+        constructor(
+          public width: number,
+          public height: number,
+        ) {}
+        getContext() {
+          return { drawImage };
+        }
+      },
+    );
+    vi.stubGlobal(
+      "VideoFrame",
+      class {
+        displayWidth: number;
+        displayHeight: number;
+        close = close;
+        constructor(canvas: OffscreenCanvas) {
+          this.displayWidth = canvas.width;
+          this.displayHeight = canvas.height;
+        }
+      },
+    );
+    try {
+      const output = vi.fn();
+      const encoder = new H265Encoder(output);
+      await encoder.initialize(320, 240, 30);
+      const original = FakeEncoder.instances[0]!;
+      now = 500;
+      encoder.observeTransport({ bufferedBytes: 300000 });
+      encoder.encode(frame());
+      await vi.waitFor(() => expect(FakeEncoder.instances).toHaveLength(2));
+      original.emit();
+      expect(output).not.toHaveBeenCalled();
+      const adapted = FakeEncoder.instances[1]!;
+      now = 600;
+      encoder.encode(frame());
+      expect(adapted.encode).toHaveBeenCalledWith(
+        expect.objectContaining({ displayWidth: 240, displayHeight: 180 }),
+        { keyFrame: true },
+      );
+      expect(drawImage).toHaveBeenCalledWith(frame(), 0, 0, 240, 180);
+      expect(close).toHaveBeenCalledOnce();
+      now = 610;
+      encoder.encode(frame(), 30, true);
+      expect(adapted.encode).toHaveBeenCalledOnce();
+      now = 650;
+      encoder.encode(frame(), 30, true);
+      expect(adapted.encode).toHaveBeenCalledTimes(2);
+      expect(adapted.encode.mock.calls.at(-1)![1]).toEqual({ keyFrame: true });
+      adapted.emit();
+      expect(output.mock.calls[0]![0]).toMatchObject({
+        width: 240,
+        height: 180,
+        flags: 3,
+      });
+      encoder.destroy();
+    } finally {
+      clock.mockRestore();
+    }
+  });
   it("does not resurrect an encoder stopped during probing", async () => {
     let resolve!: (value: {
       supported: boolean;
