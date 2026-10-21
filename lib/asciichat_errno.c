@@ -307,8 +307,8 @@ static asciichat_error_t set_formatted(asciichat_error_t code, const char *file,
   return code;
 }
 
-asciichat_error_t asciichat_set_errno_with_message(asciichat_error_t code, const char *file, int line,
-                                                   const char *function, const char *format, ...) {
+asciichat_error_t errno_set_with_message(asciichat_error_t code, const char *file, int line, const char *function,
+                                         const char *format, ...) {
   va_list args;
   va_start(args, format);
   asciichat_error_t result = set_formatted(code, file, line, function, 0, false, 0, false, format, args);
@@ -316,14 +316,14 @@ asciichat_error_t asciichat_set_errno_with_message(asciichat_error_t code, const
   return result;
 }
 
-asciichat_error_t asciichat_set_errno(asciichat_error_t code, const char *file, int line, const char *function,
-                                      const char *message) {
-  return asciichat_set_errno_with_message(code, file, line, function, "%s", message ? message : "");
+asciichat_error_t errno_set(asciichat_error_t code, const char *file, int line, const char *function,
+                            const char *message) {
+  return errno_set_with_message(code, file, line, function, "%s", message ? message : "");
 }
 
-asciichat_error_t asciichat_set_errno_with_system_error_and_message(asciichat_error_t code, const char *file, int line,
-                                                                    const char *function, int sys_errno,
-                                                                    const char *format, ...) {
+asciichat_error_t errno_set_with_system_error_and_message(asciichat_error_t code, const char *file, int line,
+                                                          const char *function, int sys_errno, const char *format,
+                                                          ...) {
   va_list args;
   va_start(args, format);
   asciichat_error_t result = set_formatted(code, file, line, function, sys_errno, true, 0, false, format, args);
@@ -331,10 +331,10 @@ asciichat_error_t asciichat_set_errno_with_system_error_and_message(asciichat_er
   return result;
 }
 
-asciichat_error_t asciichat_set_errno_with_system_error(asciichat_error_t code, const char *file, int line,
-                                                        const char *function, int sys_errno) {
-  return asciichat_set_errno_with_system_error_and_message(code, file, line, function, sys_errno,
-                                                           "System operation failed (%d)", sys_errno);
+asciichat_error_t errno_set_with_system_error(asciichat_error_t code, const char *file, int line, const char *function,
+                                              int sys_errno) {
+  return errno_set_with_system_error_and_message(code, file, line, function, sys_errno, "System operation failed (%d)",
+                                                 sys_errno);
 }
 
 // WSA metadata must be published together with the frame, never patched later.
@@ -346,12 +346,12 @@ static asciichat_error_t set_wsa(asciichat_error_t code, const char *file, int l
   va_end(args);
   return result;
 }
-asciichat_error_t asciichat_set_errno_with_wsa_error(asciichat_error_t code, const char *file, int line,
-                                                     const char *function, int wsa_error) {
+asciichat_error_t errno_set_with_wsa_error(asciichat_error_t code, const char *file, int line, const char *function,
+                                           int wsa_error) {
   return set_wsa(code, file, line, function, wsa_error, "Socket operation failed (%d)", wsa_error);
 }
 
-bool asciichat_has_thread_errno(uint64_t id, asciichat_error_context_t *context) {
+bool errno_has_thread_error(uint64_t id, asciichat_error_context_t *context) {
   registry_lock();
   error_thread_t *thread = find_thread(id);
   bool found = thread && thread->depth;
@@ -364,20 +364,20 @@ bool asciichat_has_thread_errno(uint64_t id, asciichat_error_context_t *context)
   registry_unlock();
   return found;
 }
-bool asciichat_has_errno(asciichat_error_context_t *context) {
-  return asciichat_has_thread_errno(asciichat_thread_current_id(), context);
+bool errno_has(asciichat_error_context_t *context) {
+  return errno_has_thread_error(asciichat_thread_current_id(), context);
 }
-asciichat_error_t asciichat_get_thread_error(uint64_t id) {
+asciichat_error_t errno_get_thread_error(uint64_t id) {
   registry_lock();
   error_thread_t *thread = find_thread(id);
   asciichat_error_t code = thread && thread->depth ? g_frames[thread->top].context.code : ASCIICHAT_OK;
   registry_unlock();
   return code;
 }
-asciichat_error_t asciichat_get_errno(void) {
-  return asciichat_get_thread_error(asciichat_thread_current_id());
+asciichat_error_t errno_get(void) {
+  return errno_get_thread_error(asciichat_thread_current_id());
 }
-bool asciichat_has_wsa_error(void) {
+bool errno_has_wsa_error(void) {
   asciichat_error_context_t context;
   return HAS_ERRNO(&context) && context.has_wsa_error;
 }
@@ -394,16 +394,16 @@ static bool has_code_locked(error_thread_t *thread, uint64_t after_id, asciichat
   }
   return false;
 }
-bool asciichat_has_errno_code_tid(uint64_t id, asciichat_error_t code) {
+bool errno_has_code_tid(uint64_t id, asciichat_error_t code) {
   registry_lock();
   bool found = has_code_locked(find_thread(id), 0, code);
   registry_unlock();
   return found;
 }
-bool asciichat_has_errno_code(asciichat_error_t code) {
-  return asciichat_has_errno_code_tid(asciichat_thread_current_id(), code);
+bool errno_has_code(asciichat_error_t code) {
+  return errno_has_code_tid(asciichat_thread_current_id(), code);
 }
-bool asciichat_has_errno_code_since(asciichat_errno_scope_t scope, asciichat_error_t code) {
+bool errno_has_code_since(asciichat_errno_scope_t scope, asciichat_error_t code) {
   registry_lock();
   error_thread_t *thread = find_thread(scope.thread_id);
   bool found = thread && thread->generation == scope.generation && has_code_locked(thread, scope.after_id, code);
@@ -411,7 +411,7 @@ bool asciichat_has_errno_code_since(asciichat_errno_scope_t scope, asciichat_err
   return found;
 }
 
-bool asciichat_errno_peek_since(asciichat_errno_scope_t scope, asciichat_error_context_t *out) {
+bool errno_peek_since(asciichat_errno_scope_t scope, asciichat_error_context_t *out) {
   registry_lock();
   error_thread_t *thread = find_thread(scope.thread_id);
   bool found = thread && thread->generation == scope.generation && thread->top != NO_FRAME &&
@@ -421,7 +421,7 @@ bool asciichat_errno_peek_since(asciichat_errno_scope_t scope, asciichat_error_c
   registry_unlock();
   return found;
 }
-asciichat_error_t asciichat_errno_import(const asciichat_error_context_t *cause) {
+asciichat_error_t errno_import(const asciichat_error_context_t *cause) {
   if (!cause || cause->code == ASCIICHAT_OK)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing failure snapshot");
   if (g_recording)
@@ -450,21 +450,21 @@ static void clear_thread(uint64_t id, bool all) {
   }
   registry_unlock();
 }
-void asciichat_clear_thread_error(uint64_t id) {
+void errno_clear_thread_error(uint64_t id) {
   clear_thread(id, false);
 }
-void asciichat_clear_thread_errors(uint64_t id) {
+void errno_clear_thread_errors(uint64_t id) {
   clear_thread(id, true);
 }
-void asciichat_clear_errno(void) {
+void errno_clear(void) {
   clear_thread(asciichat_thread_current_id(), false);
   platform_clear_error_state();
 }
-void asciichat_clear_errno_all(void) {
+void errno_clear_all(void) {
   clear_thread(asciichat_thread_current_id(), true);
   platform_clear_error_state();
 }
-bool asciichat_clear_errno_if_top(uint64_t id, uint64_t generation, uint64_t error_id) {
+bool errno_clear_if_top(uint64_t id, uint64_t generation, uint64_t error_id) {
   registry_lock();
   uint64_t now = time_get_ns();
   error_thread_t *thread = find_thread(id);
@@ -489,13 +489,13 @@ static asciichat_errno_scope_t checkpoint(bool new_cause) {
   registry_unlock();
   return scope;
 }
-asciichat_errno_scope_t asciichat_errno_checkpoint(void) {
+asciichat_errno_scope_t errno_checkpoint(void) {
   return checkpoint(false);
 }
-asciichat_errno_scope_t asciichat_errno_scope_begin(void) {
+asciichat_errno_scope_t errno_scope_begin(void) {
   return checkpoint(true);
 }
-void asciichat_errno_scope_end(asciichat_errno_scope_t scope, asciichat_errno_outcome_t outcome) {
+void errno_scope_end(asciichat_errno_scope_t scope, asciichat_errno_outcome_t outcome) {
   uint64_t now = time_get_ns();
   // Recovery runs on the offending thread. Cross-thread clearing has separate APIs.
   if (scope.thread_id != asciichat_thread_current_id())
@@ -509,7 +509,7 @@ void asciichat_errno_scope_end(asciichat_errno_scope_t scope, asciichat_errno_ou
   }
   registry_unlock();
 }
-size_t asciichat_errno_snapshot(uint64_t id, asciichat_error_context_t *out, size_t capacity) {
+size_t errno_snapshot(uint64_t id, asciichat_error_context_t *out, size_t capacity) {
   registry_lock();
   error_thread_t *thread = find_thread(id);
   size_t depth = thread ? thread->depth : 0;
@@ -520,7 +520,7 @@ size_t asciichat_errno_snapshot(uint64_t id, asciichat_error_context_t *out, siz
   registry_unlock();
   return depth;
 }
-size_t asciichat_errno_history_snapshot(asciichat_errno_history_t *out, size_t capacity) {
+size_t errno_history_snapshot(asciichat_errno_history_t *out, size_t capacity) {
   registry_lock();
   size_t count = g_history_count;
   if (out)
@@ -530,10 +530,10 @@ size_t asciichat_errno_history_snapshot(asciichat_errno_history_t *out, size_t c
   return count;
 }
 
-void asciichat_errno_suppress(bool suppress) {
+void errno_suppress(bool suppress) {
   g_suppress_logging = suppress;
 }
-void asciichat_errno_destroy(void) {
+void errno_destroy(void) {
   uint64_t now = time_get_ns();
   uint64_t id = asciichat_thread_current_id();
   registry_lock();
@@ -546,8 +546,8 @@ void asciichat_errno_destroy(void) {
     unregister_locked(thread, now);
   registry_unlock();
 }
-void asciichat_errno_shutdown(void) {
-  asciichat_errno_destroy();
+void errno_shutdown(void) {
+  errno_destroy();
   registry_lock();
   g_shutdown = true;
   memset(g_threads, 0, sizeof(g_threads));
@@ -637,7 +637,7 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
   print_error_context(context, true);
 }
 
-void asciichat_errno_print_stacks(void) {
+void errno_print_stacks(void) {
   // Copy one bounded thread stack at a time. A generation check prevents a
   // reused thread slot from being attributed to the thread sampled earlier.
   uint64_t ids[ASCIICHAT_ERRNO_MAX_THREADS], generations[ASCIICHAT_ERRNO_MAX_THREADS];
@@ -652,7 +652,7 @@ void asciichat_errno_print_stacks(void) {
   log_plain("Pending error stacks (%zu threads):", count);
   for (size_t i = 0; i < count; ++i) {
     asciichat_error_context_t contexts[ASCIICHAT_ERRNO_MAX_DEPTH];
-    size_t depth = asciichat_errno_snapshot(ids[i], contexts, ASCIICHAT_ERRNO_MAX_DEPTH);
+    size_t depth = errno_snapshot(ids[i], contexts, ASCIICHAT_ERRNO_MAX_DEPTH);
     if (!depth || contexts[0].generation != generations[i])
       continue;
     for (size_t j = 0; j < depth; ++j)
@@ -660,9 +660,9 @@ void asciichat_errno_print_stacks(void) {
   }
   asciichat_error_stats_print();
 }
-void asciichat_errno_print_history(void) {
+void errno_print_history(void) {
   asciichat_errno_history_t events[ASCIICHAT_ERRNO_HISTORY_SIZE];
-  size_t count = asciichat_errno_history_snapshot(events, ASCIICHAT_ERRNO_HISTORY_SIZE);
+  size_t count = errno_history_snapshot(events, ASCIICHAT_ERRNO_HISTORY_SIZE);
   static const char *outcomes[] = {"handled", "dismissed", "thread-exit", "overflow"};
   for (size_t i = 0; i < count; ++i) {
     const asciichat_errno_history_t *event = &events[i];
@@ -671,7 +671,7 @@ void asciichat_errno_print_history(void) {
               (double)(event->resolved_ns - event->context.created_ns) / 1e6, event->context.context_message);
   }
 }
-void asciichat_errno_print_hash_stats(void) {
+void errno_print_hash_stats(void) {
   size_t used = 0, max_chain = 0;
   registry_lock();
   for (size_t i = 0; i < ERRNO_BUCKETS; ++i) {
@@ -701,7 +701,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   NOTICE(FATAL, "FATAL ERROR", "%s", asciichat_error_format(message, code));
   log_error("Fatal: %s (at %s:%d in %s)", asciichat_error_format(message, code), file ? file : "?", line,
             function ? function : "?");
-  asciichat_errno_print_stacks();
+  errno_print_stacks();
   g_recording = previous;
 #ifdef EMSCRIPTEN_BUILD
   SET_ERRNO(code, "%s", message);
@@ -710,7 +710,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #endif
 }
 
-bool asciichat_errno_scope_is_clean(asciichat_errno_scope_t scope) {
+bool errno_scope_is_clean(asciichat_errno_scope_t scope) {
   registry_lock();
   error_thread_t *thread = find_thread(scope.thread_id);
   bool clean = !thread || thread->generation != scope.generation || !thread->depth ||
@@ -718,9 +718,9 @@ bool asciichat_errno_scope_is_clean(asciichat_errno_scope_t scope) {
   registry_unlock();
   return clean;
 }
-void asciichat_errno_print_chain(uint64_t id, uint64_t error_id) {
+void errno_print_chain(uint64_t id, uint64_t error_id) {
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-  size_t count = asciichat_errno_snapshot(id, frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+  size_t count = errno_snapshot(id, frames, ASCIICHAT_ERRNO_MAX_DEPTH);
   log_plain("Failure chain (outer context -> root cause):");
   for (size_t i = 0; i < count && error_id; ++i) {
     if (frames[i].error_id == error_id) {
@@ -735,13 +735,13 @@ void asciichat_errno_print_chain(uint64_t id, uint64_t error_id) {
     log_plain("  Cause #%" PRIu64 " was resolved or evicted; consult handled-error history", error_id);
 }
 
-void asciichat_errno_request_exit(asciichat_error_t code) {
+void errno_request_exit(asciichat_error_t code) {
   registry_lock();
   if (g_exit_code == ASCIICHAT_OK)
     g_exit_code = code;
   registry_unlock();
 }
-asciichat_error_t asciichat_errno_exit_code(void) {
+asciichat_error_t errno_exit_code(void) {
   registry_lock();
   asciichat_error_t code = g_exit_code;
   registry_unlock();

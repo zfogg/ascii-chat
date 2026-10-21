@@ -88,10 +88,10 @@ static void *webrtc_mapping_worker(void *arg) {
   webrtc_peer_connection_t *pc = arg;
   while (!atomic_load_bool(&pc->mapping_stop)) {
     if (time_get_ns() >= pc->mapping->refresh_at_ns) {
-      asciichat_errno_scope_t renewal_scope = asciichat_errno_scope_begin();
+      asciichat_errno_scope_t renewal_scope = errno_scope_begin();
       if (nat_upnp_refresh(pc->mapping) != ASCIICHAT_OK)
         LOG_ERRNO_IF_SET("WebRTC UDP mapping renewal failed");
-      asciichat_errno_scope_end(renewal_scope, ASCIICHAT_ERRNO_HANDLED);
+      errno_scope_end(renewal_scope, ASCIICHAT_ERRNO_HANDLED);
     }
     time_sleep_ns(100 * NS_PER_MS_INT);
   }
@@ -132,14 +132,14 @@ static void webrtc_mapping_prepare(webrtc_peer_connection_t *pc, rtcConfiguratio
     return;
   }
   uint16_t port = ntohs(addr.sin_port);
-  asciichat_errno_scope_t mapping_scope = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t mapping_scope = errno_scope_begin();
   if (nat_upnp_open_protocol(port, "ascii-chat WebRTC", NAT_UPNP_UDP, &pc->mapping) != ASCIICHAT_OK) {
-    asciichat_errno_scope_end(mapping_scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(mapping_scope, ASCIICHAT_ERRNO_HANDLED);
     log_warn("WebRTC UDP mapping unavailable; continuing with normal ICE/STUN/TURN");
     webrtc_release_port(pc);
     return;
   }
-  asciichat_errno_scope_end(mapping_scope, ASCIICHAT_ERRNO_HANDLED);
+  errno_scope_end(mapping_scope, ASCIICHAT_ERRNO_HANDLED);
   if (pc->mapping->is_natpmp) {
     pc->mapping->internal_ip[0] = '\0';
     struct sockaddr_in gateway = {0};

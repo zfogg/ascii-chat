@@ -658,17 +658,17 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   }
 
   case LWS_CALLBACK_EVENT_WAIT_CANCELLED: {
-    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t scope = errno_scope_begin();
     asciichat_error_t result = websocket_request_writable_callbacks(wsi);
     if (result != ASCIICHAT_OK) {
       asciichat_error_context_t error;
-      if (asciichat_errno_peek_since(scope, &error)) {
+      if (errno_peek_since(scope, &error)) {
         log_error("WebSocket writable callback request failed: %s", error.context_message);
       } else {
         log_error("WebSocket writable callback request failed: %s", asciichat_error_format(NULL, result));
       }
     }
-    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
     return result == ASCIICHAT_OK ? 0 : -1;
   }
 

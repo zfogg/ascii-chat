@@ -12,6 +12,7 @@
 
 #ifndef _WIN32
 #include <sys/socket.h>
+#include <errno.h>
 
 Test(tcp_transport, send_failure_preserves_nested_system_context) {
   int sockets[2];
@@ -20,15 +21,22 @@ Test(tcp_transport, send_failure_preserves_nested_system_context) {
   cr_assert_not_null(transport);
   socket_close(sockets[1]);
   CLEAR_ERRNO_ALL();
-  asciichat_errno_scope_t scope = asciichat_errno_checkpoint();
+  asciichat_errno_scope_t scope = errno_checkpoint();
   cr_assert_eq(packet_send_via_transport(transport, PACKET_TYPE_STREAM_START, NULL, 0, 0), ERROR_NETWORK);
+  asciichat_error_context_t wrapper;
+  cr_assert(errno_peek_since(scope, &wrapper));
+  cr_assert_eq(wrapper.code, ERROR_NETWORK);
+  cr_assert_str_eq(wrapper.context_message, "TCP packet transmission failed");
+  cr_assert_str_eq(wrapper.function, "tcp_sendv");
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-  size_t count = asciichat_errno_snapshot(scope.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+  size_t count = errno_snapshot(scope.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH);
   bool found_system_cause = false;
   for (size_t i = 0; i < count && i < ASCIICHAT_ERRNO_MAX_DEPTH; ++i) {
     if (frames[i].error_id > scope.after_id && frames[i].has_system_error) {
-      cr_assert_neq(frames[i].system_errno, 0);
-      cr_assert_str_neq(frames[i].function, "tcp_sendv");
+      cr_assert_eq(frames[i].system_errno, EPIPE);
+      cr_assert_str_eq(frames[i].function, "socket_sendv");
+      cr_assert_str_eq(frames[i].context_message, "sendmsg failed");
+      cr_assert_eq(wrapper.cause_id, frames[i].error_id);
       found_system_cause = true;
     }
   }

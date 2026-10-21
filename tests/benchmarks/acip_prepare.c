@@ -86,7 +86,7 @@ static void prepare(crypto_context_t *crypto, const socket_buffer_t *slices, siz
 
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   crypto_context_t crypto;
   CHECK(crypto_init(&crypto) == CRYPTO_OK);
   crypto.key_exchange_complete = true;

@@ -483,14 +483,14 @@
 437   asciichat_error_stats_print();
 438 
 439   // Clean up thread-local error context before exit
-440   asciichat_errno_destroy();
+440   errno_destroy();
 441 
 442   return NULL;
 443 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>client_info::active</b>,
-    <b>asciichat_errno_destroy()</b>, <b>asciichat_error_stats_print()</b>,
+    <b>errno_destroy()</b>, <b>asciichat_error_stats_print()</b>,
     <b>atomic_load_bool()</b>, <b>client_info::audio_queue</b>,
     <b>BUFFER_SIZE_MEDIUM</b>, <b>BUFFER_SIZE_XLARGE</b>,
     <b>client_info::client_id</b>, <b>debug_sync_get_stats()</b>,

@@ -437,10 +437,10 @@ role_dispatch:
         session_handle_keyboard_input(capture, display, key);
       // Capture frame from local media (webcam, test pattern, file, etc.)
       // The capture context is set up during session_client_like_run() and handles all media types
-      asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
+      asciichat_errno_scope_t frame_scope = errno_checkpoint();
       image_t *frame = session_capture_read_frame(capture);
       asciichat_error_context_t capture_failure;
-      if (!frame && asciichat_errno_peek_since(frame_scope, &capture_failure)) {
+      if (!frame && errno_peek_since(frame_scope, &capture_failure)) {
         result = capture_failure.code;
         break;
       }
@@ -459,7 +459,7 @@ role_dispatch:
       }
 
       // Keep discovery session responsive (NAT negotiations, migrations)
-      asciichat_errno_scope_t process_scope = asciichat_errno_scope_begin();
+      asciichat_errno_scope_t process_scope = errno_scope_begin();
       result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
       if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
         log_error("Discovery session process failed %s", asciichat_error_format(NULL, result));
@@ -468,7 +468,7 @@ role_dispatch:
 
       if (result == ASCIICHAT_OK)
         ASSERT_NO_ERRNO_SINCE(process_scope);
-      asciichat_errno_scope_end(process_scope, ASCIICHAT_ERRNO_HANDLED);
+      errno_scope_end(process_scope, ASCIICHAT_ERRNO_HANDLED);
       result = ASCIICHAT_OK;
 
       // Frame rate limiting (60 FPS)
@@ -597,10 +597,10 @@ role_dispatch:
           break;
         }
         uint64_t capture_start = time_get_ns();
-        asciichat_errno_scope_t frame_scope = asciichat_errno_checkpoint();
+        asciichat_errno_scope_t frame_scope = errno_checkpoint();
         image_t *frame = session_capture_read_frame(capture);
         asciichat_error_context_t capture_failure;
-        if (!frame && asciichat_errno_peek_since(frame_scope, &capture_failure)) {
+        if (!frame && errno_peek_since(frame_scope, &capture_failure)) {
           result = capture_failure.code;
           break;
         }

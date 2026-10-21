@@ -46,9 +46,9 @@ def library_checks(path, output):
     lib.test_pattern_image.argtypes = [c.c_void_p]; lib.test_pattern_image.restype = c.POINTER(Image)
     lib.test_pattern_destroy.argtypes = [c.c_void_p]
     a,b=c.c_void_p(),c.c_void_p()
-    lib.asciichat_clear_errno()
+    lib.errno_clear()
     assert lib.test_pattern_create(640,480,c.byref(a)) == 0
-    assert lib.asciichat_get_errno() == 0, "successful creation left an error"
+    assert lib.errno_get() == 0, "successful creation left an error"
     assert lib.test_pattern_create(640,480,c.byref(b)) == 0
     try:
         for index in [0,1]:

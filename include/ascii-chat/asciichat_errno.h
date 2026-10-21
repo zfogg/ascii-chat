@@ -95,66 +95,65 @@ typedef struct {
 extern "C" {
 #endif
 
-asciichat_error_t asciichat_set_errno(asciichat_error_t code, const char *file, int line, const char *function,
-                                      const char *message);
-asciichat_error_t asciichat_set_errno_with_message(asciichat_error_t code, const char *file, int line,
-                                                   const char *function, const char *format, ...);
-asciichat_error_t asciichat_set_errno_with_system_error(asciichat_error_t code, const char *file, int line,
-                                                        const char *function, int sys_errno);
-asciichat_error_t asciichat_set_errno_with_system_error_and_message(asciichat_error_t code, const char *file, int line,
-                                                                    const char *function, int sys_errno,
-                                                                    const char *format, ...);
-asciichat_error_t asciichat_set_errno_with_wsa_error(asciichat_error_t code, const char *file, int line,
-                                                     const char *function, int wsa_error);
+asciichat_error_t errno_set(asciichat_error_t code, const char *file, int line, const char *function,
+                            const char *message);
+asciichat_error_t errno_set_with_message(asciichat_error_t code, const char *file, int line, const char *function,
+                                         const char *format, ...);
+asciichat_error_t errno_set_with_system_error(asciichat_error_t code, const char *file, int line, const char *function,
+                                              int sys_errno);
+asciichat_error_t errno_set_with_system_error_and_message(asciichat_error_t code, const char *file, int line,
+                                                          const char *function, int sys_errno, const char *format, ...);
+asciichat_error_t errno_set_with_wsa_error(asciichat_error_t code, const char *file, int line, const char *function,
+                                           int wsa_error);
 
 // Arguments evaluate once. Capture errno before evaluating message arguments.
-#define SET_ERRNO(code, ...) asciichat_set_errno_with_message((code), __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define SET_ERRNO(code, ...) errno_set_with_message((code), __FILE__, __LINE__, __func__, __VA_ARGS__)
 #define SET_ERRNO_SYS(code, ...)                                                                                       \
   ({                                                                                                                   \
     int _asciichat_saved_errno = platform_get_last_error();                                                            \
-    asciichat_set_errno_with_system_error_and_message((code), __FILE__, __LINE__, __func__, _asciichat_saved_errno,    \
-                                                      __VA_ARGS__);                                                    \
+    errno_set_with_system_error_and_message((code), __FILE__, __LINE__, __func__, _asciichat_saved_errno,              \
+                                            __VA_ARGS__);                                                              \
   })
 
-bool asciichat_has_errno(asciichat_error_context_t *context);
-bool asciichat_has_thread_errno(uint64_t thread_id, asciichat_error_context_t *context);
-bool asciichat_has_errno_code(asciichat_error_t code);
-bool asciichat_has_errno_code_tid(uint64_t thread_id, asciichat_error_t code);
+bool errno_has(asciichat_error_context_t *context);
+bool errno_has_thread_error(uint64_t thread_id, asciichat_error_context_t *context);
+bool errno_has_code(asciichat_error_t code);
+bool errno_has_code_tid(uint64_t thread_id, asciichat_error_t code);
 /** Copy the newest error belonging to this operation, without consuming it. */
-bool asciichat_errno_peek_since(asciichat_errno_scope_t scope, asciichat_error_context_t *out);
+bool errno_peek_since(asciichat_errno_scope_t scope, asciichat_error_context_t *out);
 /** Import an owned value snapshot into the caller's stack, linking to its original ID.
  * Synchronization of snapshot transfer belongs to the operation owner. */
-asciichat_error_t asciichat_errno_import(const asciichat_error_context_t *cause);
-bool asciichat_has_errno_code_since(asciichat_errno_scope_t scope, asciichat_error_t code);
-bool asciichat_has_wsa_error(void);
-bool asciichat_errno_scope_is_clean(asciichat_errno_scope_t scope);
-void asciichat_errno_print_chain(uint64_t thread_id, uint64_t error_id);
-asciichat_error_t asciichat_get_errno(void);
-asciichat_error_t asciichat_get_thread_error(uint64_t thread_id);
-void asciichat_clear_errno(void);
-void asciichat_clear_errno_all(void);
-void asciichat_clear_thread_error(uint64_t thread_id);
-void asciichat_clear_thread_errors(uint64_t thread_id);
-bool asciichat_clear_errno_if_top(uint64_t thread_id, uint64_t generation, uint64_t error_id);
+asciichat_error_t errno_import(const asciichat_error_context_t *cause);
+bool errno_has_code_since(asciichat_errno_scope_t scope, asciichat_error_t code);
+bool errno_has_wsa_error(void);
+bool errno_scope_is_clean(asciichat_errno_scope_t scope);
+void errno_print_chain(uint64_t thread_id, uint64_t error_id);
+asciichat_error_t errno_get(void);
+asciichat_error_t errno_get_thread_error(uint64_t thread_id);
+void errno_clear(void);
+void errno_clear_all(void);
+void errno_clear_thread_error(uint64_t thread_id);
+void errno_clear_thread_errors(uint64_t thread_id);
+bool errno_clear_if_top(uint64_t thread_id, uint64_t generation, uint64_t error_id);
 // Observe a suboperation without severing its causal link to the caller.
-asciichat_errno_scope_t asciichat_errno_checkpoint(void);
-asciichat_errno_scope_t asciichat_errno_scope_begin(void);
-void asciichat_errno_scope_end(asciichat_errno_scope_t scope, asciichat_errno_outcome_t outcome);
+asciichat_errno_scope_t errno_checkpoint(void);
+asciichat_errno_scope_t errno_scope_begin(void);
+void errno_scope_end(asciichat_errno_scope_t scope, asciichat_errno_outcome_t outcome);
 
 /** Copy newest-first up to capacity; return total depth so truncation is visible. */
-size_t asciichat_errno_snapshot(uint64_t thread_id, asciichat_error_context_t *out, size_t capacity);
-size_t asciichat_errno_history_snapshot(asciichat_errno_history_t *out, size_t capacity);
-void asciichat_errno_print_stacks(void);
-void asciichat_errno_print_history(void);
-void asciichat_errno_print_hash_stats(void);
+size_t errno_snapshot(uint64_t thread_id, asciichat_error_context_t *out, size_t capacity);
+size_t errno_history_snapshot(asciichat_errno_history_t *out, size_t capacity);
+void errno_print_stacks(void);
+void errno_print_history(void);
+void errno_print_hash_stats(void);
 // Per-thread automatic logging suppression; storage is never suppressed.
-void asciichat_errno_suppress(bool suppress);
+void errno_suppress(bool suppress);
 // Idempotent current-thread cleanup. Does not disable other threads.
-void asciichat_errno_destroy(void);
+void errno_destroy(void);
 // Process shutdown, after producers and readers have joined.
-void asciichat_errno_shutdown(void);
-void asciichat_errno_request_exit(asciichat_error_t code);
-asciichat_error_t asciichat_errno_exit_code(void);
+void errno_shutdown(void);
+void errno_request_exit(asciichat_error_t code);
+asciichat_error_t errno_exit_code(void);
 
 void asciichat_error_stats_init(void);
 void asciichat_error_stats_record(asciichat_error_t code);
@@ -165,22 +164,22 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
                                   const char *format, ...);
 void asciichat_print_error_context(const asciichat_error_context_t *context);
 
-#define HAS_ERRNO(context) asciichat_has_errno(context)
-#define HAS_ERRNO_CODE(code) asciichat_has_errno_code(code)
-#define HAS_ERRNO_CODE_TID(tid, code) asciichat_has_errno_code_tid((tid), (code))
-#define HAS_ERRNO_CODE_SINCE(scope, code) asciichat_has_errno_code_since((scope), (code))
-#define GET_ERRNO() asciichat_get_errno()
-#define CLEAR_ERRNO() asciichat_clear_errno()
-#define CLEAR_ERRNO_ALL() asciichat_clear_errno_all()
-#define CLEAR_ERRNO_TID(tid) asciichat_clear_thread_error(tid)
-#define CLEAR_ERRNO_ALL_TID(tid) asciichat_clear_thread_errors(tid)
+#define HAS_ERRNO(context) errno_has(context)
+#define HAS_ERRNO_CODE(code) errno_has_code(code)
+#define HAS_ERRNO_CODE_TID(tid, code) errno_has_code_tid((tid), (code))
+#define HAS_ERRNO_CODE_SINCE(scope, code) errno_has_code_since((scope), (code))
+#define GET_ERRNO() errno_get()
+#define CLEAR_ERRNO() errno_clear()
+#define CLEAR_ERRNO_ALL() errno_clear_all()
+#define CLEAR_ERRNO_TID(tid) errno_clear_thread_error(tid)
+#define CLEAR_ERRNO_ALL_TID(tid) errno_clear_thread_errors(tid)
 #define PRINT_ERRNO_CONTEXT(context) asciichat_print_error_context(context)
 #define LOG_ERRNO_IF_SET(message)                                                                                      \
   do {                                                                                                                 \
     asciichat_error_context_t _ctx;                                                                                    \
     if (HAS_ERRNO(&_ctx)) {                                                                                            \
       log_error("%s", (message));                                                                                      \
-      asciichat_errno_print_chain(_ctx.thread_id, _ctx.error_id);                                                      \
+      errno_print_chain(_ctx.thread_id, _ctx.error_id);                                                                \
     }                                                                                                                  \
   } while (0)
 #define LOG_ERRNO_IF_CODE(error_code, message)                                                                         \
@@ -188,14 +187,14 @@ void asciichat_print_error_context(const asciichat_error_context_t *context);
     asciichat_error_context_t _ctx;                                                                                    \
     if (HAS_ERRNO(&_ctx) && _ctx.code == (error_code)) {                                                               \
       log_error("%s", (message));                                                                                      \
-      asciichat_errno_print_chain(_ctx.thread_id, _ctx.error_id);                                                      \
+      errno_print_chain(_ctx.thread_id, _ctx.error_id);                                                                \
     }                                                                                                                  \
   } while (0)
 #define PRINT_ERRNO_IF_ERROR() LOG_ERRNO_IF_SET("Pending error")
 #ifndef NDEBUG
 #define ASSERT_NO_ERRNO_SINCE(scope)                                                                                   \
   do {                                                                                                                 \
-    if (!asciichat_errno_scope_is_clean(scope))                                                                        \
+    if (!errno_scope_is_clean(scope))                                                                                  \
       FATAL(ERROR_INVALID_STATE, "Successful operation left unresolved errors");                                       \
   } while (0)
 #define ASSERT_NO_ERRNO()                                                                                              \

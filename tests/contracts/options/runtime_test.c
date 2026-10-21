@@ -168,7 +168,7 @@ static void test_remote(void) {
 
 static void setup(void) {
   log_init(NULL, LOG_WARN, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
 }
 

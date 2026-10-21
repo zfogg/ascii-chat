@@ -48,7 +48,7 @@ static void setup(void) {
 static void teardown(void) {
   audio_recording_destroy(recording);
   recording = NULL;
-  asciichat_clear_errno();
+  errno_clear();
   options_state_destroy();
 }
 

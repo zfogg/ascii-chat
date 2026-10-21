@@ -19,7 +19,7 @@ void image_test_init(void) {}
 // Custom fini function to cleanup asciichat_errno
 void image_test_fini(void) {
   // Clear any error state left by tests
-  asciichat_clear_errno();
+  errno_clear();
 }
 
 // Use TestSuite with custom init and fini

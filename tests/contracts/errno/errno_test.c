@@ -6,12 +6,12 @@
 
 static void setup(void) {
   log_init(NULL, LOG_WARN, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
 }
 
 static void teardown(void) {
   CLEAR_ERRNO_ALL();
-  asciichat_errno_destroy();
+  errno_destroy();
   log_destroy();
 }
 
@@ -71,12 +71,12 @@ Test(errno_stack, scheduler_shutdown_and_first_exit_code) {
   debug_errno_destroy();
   debug_stats_destroy();
   cr_assert(time_get_ns() - start < NS_PER_SEC_INT);
-  asciichat_errno_destroy();
+  errno_destroy();
   cr_assert_eq(asciichat_error_stats_get().registered_threads, 0);
-  asciichat_errno_request_exit(ERROR_CRYPTO_AUTH);
-  asciichat_errno_request_exit(ERROR_MEDIA_OPEN);
+  errno_request_exit(ERROR_CRYPTO_AUTH);
+  errno_request_exit(ERROR_MEDIA_OPEN);
   CLEAR_ERRNO_ALL();
-  asciichat_errno_shutdown();
-  cr_assert_eq(asciichat_errno_exit_code(), ERROR_CRYPTO_AUTH);
-  asciichat_errno_shutdown();
+  errno_shutdown();
+  cr_assert_eq(errno_exit_code(), ERROR_CRYPTO_AUTH);
+  errno_shutdown();
 }

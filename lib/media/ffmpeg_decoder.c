@@ -348,7 +348,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     uint64_t read_start_ns = time_get_ns();
     bool frame_decoded = false;
     bool reached_eof = false;
-    asciichat_errno_scope_t decode_scope = asciichat_errno_checkpoint();
+    asciichat_errno_scope_t decode_scope = errno_checkpoint();
 
     // Release prefetch mutex but hold read_frame_mutex to prevent concurrent av_read_frame() calls from audio thread
     mutex_unlock(&decoder->prefetch_mutex);
@@ -559,9 +559,9 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       reached_eof = false;
     }
     if (!frame_decoded && !reached_eof && !interrupted) {
-      if (!asciichat_errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
+      if (!errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
         SET_ERRNO(ERROR_MEDIA_DECODE, "Background video decoding failed (FFmpeg result %d)", decode_result);
-        if (!asciichat_errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
+        if (!errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
           decoder->prefetch_failure.code = ERROR_MEDIA_DECODE;
           SAFE_STRNCPY(decoder->prefetch_failure.context_message, "Background video decoding failed",
                        sizeof(decoder->prefetch_failure.context_message));
@@ -640,19 +640,19 @@ static asciichat_error_t open_codec_context(AVFormatContext *fmt_ctx, enum AVMed
 // and other initialization failures still fail decoder creation with their cause.
 static asciichat_error_t open_optional_codec_context(AVFormatContext *format, enum AVMediaType type, int *stream_index,
                                                      AVCodecContext **context) {
-  asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t scope = errno_scope_begin();
   asciichat_error_t result = open_codec_context(format, type, stream_index, context);
   if (result == ERROR_MEDIA_DECODE && HAS_ERRNO_CODE_SINCE(scope, ERROR_MEDIA_DECODE)) {
     LOG_ERRNO_IF_SET("Optional media stream unavailable");
     avcodec_free_context(context);
     *stream_index = -1;
-    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
     return ASCIICHAT_OK;
   }
   if (result != ASCIICHAT_OK)
     return result;
   ASSERT_NO_ERRNO_SINCE(scope);
-  asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+  errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   return ASCIICHAT_OK;
 }
 
@@ -1264,9 +1264,9 @@ ffmpeg_frame_status_t ffmpeg_decoder_poll_video(ffmpeg_decoder_t *decoder, image
   if (failure)
     memset(failure, 0, sizeof(*failure));
   if (!decoder || !frame || !failure) {
-    asciichat_errno_scope_t scope = asciichat_errno_checkpoint();
+    asciichat_errno_scope_t scope = errno_checkpoint();
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid video poll outputs");
-    if (failure && !asciichat_errno_peek_since(scope, failure))
+    if (failure && !errno_peek_since(scope, failure))
       failure->code = ERROR_INVALID_PARAM;
     return FFMPEG_FRAME_FAILED;
   }
@@ -1308,7 +1308,7 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
   image_t *frame = NULL;
   asciichat_error_context_t failure = {0};
   if (ffmpeg_decoder_poll_video(decoder, &frame, &failure) == FFMPEG_FRAME_FAILED)
-    asciichat_errno_import(&failure);
+    errno_import(&failure);
   return frame;
 }
 

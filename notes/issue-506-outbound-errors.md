@@ -7,7 +7,7 @@ formatting changes in PR #535, capability negotiation (#269), and demos (#431).
 | File / function | Finding / disposition |
 | --- | --- |
 | `lib/network/acip/backpressure.c`: `outbound_worker` | Backend status already uses `asciichat_error_t`, but handling its errno scope discards the source message, system errno, and source location before producers can inspect them. Snapshot the current send's matching error before handling the scope; synthesize context for a backend returning only a status or unrelated diagnostic. |
-| Same: `fail_queue` | Queued controls lose the backend status to `ERROR_NETWORK`. Retain the first terminal status and a self-contained cause snapshot for the connection, and complete queued waiters with that status. Reliable packet expiry gets `ERROR_NETWORK_TIMEOUT` context. |
+| Same: `outbound_record_failure_and_fail_pending` | Queued controls lose the backend status to `ERROR_NETWORK`. Retain the first terminal status and a self-contained cause snapshot for the connection, and complete queued waiters with that status. Reliable packet expiry gets `ERROR_NETWORK_TIMEOUT` context. |
 | Same: `acip_outbound_submitv` | The active waiter previously got only generic context; later producers got a generic network status. Import the retained snapshot into each caller's errno registry, including queued and later producers. |
 | Same: `acip_outbound_destroy` | Keep existing teardown and producer-quiescence contract. Cleanup must not overwrite the first backend failure. |
 | `lib/network/acip/send.c`: `acip_transport_sendv` | Preserves typed failures; adapts nonaccepted admission to `ERROR_BUFFER_FULL`. No conversion needed. |
@@ -24,6 +24,15 @@ the errno API instead of depending on platform-specific error-state storage.
 No public structure, callback signature, platform ABI, boolean query, or count
 return changes. Cancellation/interrupt semantics remain a separate lifecycle
 concern; this patch adds no new cancellation status.
+
+The requested API follow-up renames all 35 error-state operations to errno_*
+functions, including the setter family and associated get/has/clear operations.
+Callers and library consumers must rebuild; no old function aliases remain.
+Error/scope/history types, constants, and header filenames retain their names.
+The outbound helper is now outbound_record_failure_and_fail_pending: it retains
+the first terminal cause, rejects later admissions, drains queued owners, and
+wakes pending producers. The real TCP regression verifies EPIPE, socket_sendv's
+source/message, tcp_sendv's wrapper, and their producer-local causal link.
 
 Regression coverage in `tests/contracts/network/backpressure_test.c` checks
 unsupported and fatal backend errors, timeout status with unrelated diagnostics,

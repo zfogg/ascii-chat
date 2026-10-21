@@ -481,14 +481,14 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
   }
 
   size_t max_message_size = 16384;
-  asciichat_errno_scope_t size_scope = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t size_scope = errno_scope_begin();
   asciichat_error_t max_size_result = webrtc_datachannel_get_max_message_size(wrtc->data_channel, &max_message_size);
   if (max_size_result != ASCIICHAT_OK || max_message_size == 0) {
     max_message_size = 16384;
   } else {
     ASSERT_NO_ERRNO_SINCE(size_scope);
   }
-  asciichat_errno_scope_end(size_scope, ASCIICHAT_ERRNO_DISMISSED);
+  errno_scope_end(size_scope, ASCIICHAT_ERRNO_DISMISSED);
   log_debug_every(60 * US_PER_SEC_INT, "WebRTC DataChannel negotiated max message size: %zu bytes", max_message_size);
 
   socket_buffer_t input = {.data = data, .len = len};
@@ -747,9 +747,9 @@ static void webrtc_interrupt(acip_transport_t *transport) {
 static size_t webrtc_queued_bytes(acip_transport_t *transport) {
   webrtc_transport_data_t *wrtc = transport->impl_data;
   size_t bytes = 0;
-  asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t scope = errno_scope_begin();
   asciichat_error_t result = webrtc_datachannel_get_buffered_amount(wrtc->data_channel, &bytes);
-  asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   // Let the sender report a closed channel and fail the outbound queue.
   return result == ASCIICHAT_OK ? bytes : 0;
 }

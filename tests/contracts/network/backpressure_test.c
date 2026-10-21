@@ -29,8 +29,8 @@ static asciichat_error_t backend_send(acip_transport_t *transport, const void *d
       SET_ERRNO(ERROR_INVALID_STATE, "Unrelated backend diagnostic");
       return backend->failure;
     }
-    asciichat_set_errno_with_system_error_and_message(backend->failure, __FILE__, __LINE__, __func__, EPIPE,
-                                                      "Backend rejected outgoing packet");
+    errno_set_with_system_error_and_message(backend->failure, __FILE__, __LINE__, __func__, EPIPE,
+                                            "Backend rejected outgoing packet");
     return backend->wrap_context ? SET_ERRNO(backend->failure, "Backend failure wrapper") : backend->failure;
   }
   return ASCIICHAT_OK;
@@ -88,7 +88,7 @@ static void *produce(void *arg) {
 
 Test(transport_backpressure, slow_peer_does_not_block_healthy_peer) {
   log_init(NULL, LOG_ERROR, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   acip_transport_t *slow = create(), *healthy = create();
   backend_t *backend = slow->impl_data;
   atomic_store_u64(&backend->bytes, 300000);
@@ -118,7 +118,7 @@ Test(transport_backpressure, slow_peer_does_not_block_healthy_peer) {
 
 Test(transport_backpressure, codec_recovery_requires_keyframe) {
   log_init(NULL, LOG_ERROR, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   backend_t *backend;
   acip_outbound_stats_t stats;
   for (int codec = 0; codec < 2; ++codec) {
@@ -145,7 +145,7 @@ Test(transport_backpressure, codec_recovery_requires_keyframe) {
 
 Test(transport_backpressure, concurrent_streams_obey_budget_and_keep_control) {
   log_init(NULL, LOG_ERROR, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   acip_outbound_stats_t stats;
   acip_transport_t *concurrent = create();
   atomic_store_u64(&((backend_t *)concurrent->impl_data)->bytes, 300000);
@@ -186,11 +186,11 @@ static void *submit_control(void *arg) {
   acip_admission_t admission;
   // A caller's older failure must not replace the worker's failure snapshot.
   SET_ERRNO(ERROR_INVALID_PARAM, "Old producer diagnostic");
-  asciichat_errno_scope_t scope = asciichat_errno_checkpoint();
+  asciichat_errno_scope_t scope = errno_checkpoint();
   producer->result = acip_outbound_submitv(producer->transport, &buffer, 1, &admission);
-  producer->has_cause = asciichat_errno_peek_since(scope, &producer->cause);
+  producer->has_cause = errno_peek_since(scope, &producer->cause);
   asciichat_error_context_t frames[3];
-  size_t count = asciichat_errno_snapshot(scope.thread_id, frames, 3);
+  size_t count = errno_snapshot(scope.thread_id, frames, 3);
   for (size_t i = 0; i < count && i < 3; ++i)
     if (frames[i].error_id > scope.after_id && frames[i].has_system_error)
       producer->detail = frames[i];
@@ -200,7 +200,7 @@ static void *submit_control(void *arg) {
 
 static void check_backend_failure(asciichat_error_t code, bool omit_context, bool wrap_context) {
   log_init(NULL, LOG_ERROR, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   acip_transport_t *transport = create();
   backend_t *backend = transport->impl_data;
   backend->failure = code;
@@ -275,7 +275,7 @@ Test(transport_backpressure, wrapped_backend_preserves_nested_system_error) {
 
 Test(transport_backpressure, asynchronous_media_failure_reaches_next_producer) {
   log_init(NULL, LOG_ERROR, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   acip_transport_t *transport = create();
   backend_t *backend = transport->impl_data;
   backend->failure = ERROR_NOT_SUPPORTED;
@@ -298,7 +298,7 @@ Test(transport_backpressure, asynchronous_media_failure_reaches_next_producer) {
 
 Test(transport_backpressure, expired_control_reports_timeout_without_backend_send, .timeout = 15) {
   log_init(NULL, LOG_ERROR, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   acip_transport_t *transport = create();
   backend_t *backend = transport->impl_data;
   atomic_store_u64(&backend->bytes, 1);
@@ -316,19 +316,19 @@ Test(transport_backpressure, expired_control_reports_timeout_without_backend_sen
 
 Test(transport_backpressure, congestion_recovers_without_terminal_error) {
   log_init(NULL, LOG_ERROR, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   acip_transport_t *transport = create();
   backend_t *backend = transport->impl_data;
   atomic_store_u64(&backend->bytes, ACIP_OUTBOUND_BUDGET);
   CLEAR_ERRNO_ALL();
-  asciichat_errno_scope_t scope = asciichat_errno_checkpoint();
+  asciichat_errno_scope_t scope = errno_checkpoint();
   cr_assert_eq(submit(transport, PACKET_TYPE_IMAGE_FRAME, 0, 1000, false), ACIP_ADMISSION_CONGESTED);
-  cr_assert_not(asciichat_errno_peek_since(scope, NULL));
+  cr_assert_not(errno_peek_since(scope, NULL));
   cr_assert_not(atomic_load_bool(&backend->closed));
   atomic_store_u64(&backend->bytes, 0);
   cr_assert_eq(submit(transport, PACKET_TYPE_IMAGE_FRAME, 0, 1000, false), ACIP_ADMISSION_ACCEPTED);
   await_submitted(transport, 1);
-  cr_assert_not(asciichat_errno_peek_since(scope, NULL));
+  cr_assert_not(errno_peek_since(scope, NULL));
   cr_assert_not(atomic_load_bool(&backend->closed));
   acip_transport_destroy(transport);
   buffer_system_cleanup();

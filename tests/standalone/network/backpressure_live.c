@@ -507,7 +507,7 @@ int main(int argc, char **argv) {
   CHECK(argc == 4);
   const char *transport = argv[1], *encoding = argv[2];
   log_init(NULL, LOG_ERROR, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   av_log_set_level(AV_LOG_ERROR);
   lws_set_log_level(LLL_ERR, NULL);
   CHECK(platform_init() == ASCIICHAT_OK);
@@ -700,9 +700,9 @@ int main(int argc, char **argv) {
     mutex_lock(&f->mutex);
     f->meta[f->meta_next++ % META_COUNT] = (frame_meta_t){asciichat_crc32(payload, length), time_get_ns()};
     mutex_unlock(&f->mutex);
-    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t scope = errno_scope_begin();
     packet_send_via_transport(f->sender, type, payload, length, 0);
-    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
   if (!strcmp(transport, "webrtc")) {
     CHECK(f->sender->methods->close(f->sender) == ASCIICHAT_OK);

@@ -155,9 +155,9 @@ static void audio_publish_local_capture(audio_context_t *ctx, float *samples, si
 static void *audio_worker_thread(void *arg) {
   audio_context_t *ctx = (audio_context_t *)arg;
   if (ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media) {
-    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t scope = errno_scope_begin();
     (void)asciichat_thread_set_realtime_priority();
-    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
   log_debug("Audio worker thread started (batch size: %d frames = %d samples)", WORKER_BATCH_FRAMES,
             WORKER_BATCH_SAMPLES);
@@ -515,9 +515,9 @@ static void audio_callback_prepare(void) {
   static _Thread_local bool prepared;
   if (!prepared) {
     prepared = true;
-    asciichat_errno_scope_t scope = asciichat_errno_scope_begin();
+    asciichat_errno_scope_t scope = errno_scope_begin();
     (void)asciichat_thread_set_realtime_priority();
-    asciichat_errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
 }
 
@@ -1804,11 +1804,11 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   // Media-only recording can run through the software worker without an audio
   // device. Initialize PortAudio opportunistically so monitoring still works
   // when a speaker is available.
-  asciichat_errno_scope_t pa_scope = asciichat_errno_scope_begin();
+  asciichat_errno_scope_t pa_scope = errno_scope_begin();
   asciichat_error_t pa_result = audio_ensure_portaudio_initialized();
   if (pa_result == ASCIICHAT_OK) {
     ASSERT_NO_ERRNO_SINCE(pa_scope);
-    asciichat_errno_scope_end(pa_scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(pa_scope, ASCIICHAT_ERRNO_HANDLED);
   }
   if (pa_result != ASCIICHAT_OK && (!media_only || pa_result != ERROR_AUDIO))
     return pa_result;
@@ -2183,7 +2183,7 @@ start_worker:
   ctx->sample_rate = AUDIO_SAMPLE_RATE;
   mutex_unlock(&ctx->state_mutex);
   if (pa_result != ASCIICHAT_OK)
-    asciichat_errno_scope_end(pa_scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_scope_end(pa_scope, ASCIICHAT_ERRNO_HANDLED);
   return ASCIICHAT_OK;
 }
 

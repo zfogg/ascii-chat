@@ -237,7 +237,7 @@ static void fixture(uint8_t mode, const char *password, bool identity, int rejec
 
 static void setup(void) {
   log_init(NULL, LOG_WARN, false, false);
-  asciichat_errno_suppress(true);
+  errno_suppress(true);
   cr_assert_eq(socket_init(), ASCIICHAT_OK);
   cr_assert_eq(webrtc_init(), ASCIICHAT_OK);
 }
