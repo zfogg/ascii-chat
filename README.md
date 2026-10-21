@@ -32,7 +32,7 @@ desktop environment at all to video chat with ascii-chat. (\*)
 
 \(\*) Testing needed to verify a decent framerate.
 
-## Animated Demonstrations
+## Animated Demonstration
 
 https://github.com/user-attachments/assets/98ea116a-627a-4f4f-a33e-47854473cdf2
 
