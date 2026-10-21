@@ -73,27 +73,7 @@ export function MirrorPage() {
   const fileVideoRef = useRef<HTMLVideoElement>(null);
   const fileCanvasRef = useRef<HTMLCanvasElement>(null);
   const ignoreMediaFps = useCallback(() => {}, []);
-  const fileSourceRef = useRef(false);
-  const [mediaFlipX, setMediaFlipX] = useUrlState("mediaFlipX", false);
   const [mediaFlipY, setMediaFlipY] = useUrlState("mediaFlipY", false);
-  const mediaFlipRef = useRef({ flipX: mediaFlipX, flipY: mediaFlipY });
-  useLayoutEffect(() => {
-    mediaFlipRef.current = { flipX: mediaFlipX, flipY: mediaFlipY };
-  }, [mediaFlipX, mediaFlipY]);
-  const applyWasmSettings = useCallback((settings: BinarySettingsConfig) => {
-    applyMirrorWasmSettings(
-      fileSourceRef.current
-        ? {
-            ...settings,
-            ...mediaFlipRef.current,
-            animationEnabled:
-              !!settings.animationEnabled && settings.animation === "matrix",
-            matrixRain:
-              !!settings.animationEnabled && settings.animation === "matrix",
-          }
-        : settings,
-    );
-  }, []);
 
   const setWasmDimensions = useCallback((cols: number, rows: number) => {
     setMirrorWasmDimensions(cols, rows);
@@ -102,7 +82,6 @@ export function MirrorPage() {
   const optionsManager = useClientLike({
     initWasm,
     isWasmReady,
-    applyWasmSettings,
     setWasmDimensions,
   });
 
@@ -127,48 +106,56 @@ export function MirrorPage() {
     setShowSettings,
     settings,
     setSettings,
+    receiveSettings,
     handleDimensionsChange,
     stopWebcam,
     debugCountRef,
     firstFrameTimeRef,
   } = optionsManager;
 
-  useEffect(() => {
-    fileSourceRef.current = mediaSource === MediaSourceType.FILE;
-    if (wasmInitialized) applyWasmSettings(settings);
-  }, [
-    mediaSource,
+  const applyWasmSettings = useCallback(
+    (next: BinarySettingsConfig) => {
+      const file = mediaSource === MediaSourceType.FILE;
+      applyMirrorWasmSettings(
+        file
+          ? {
+              ...next,
+              flipY: mediaFlipY,
+              animationEnabled:
+                !!next.animationEnabled && next.animation === "matrix",
+              matrixRain:
+                !!next.animationEnabled && next.animation === "matrix",
+            }
+          : next,
+        file,
+      );
+    },
+    [mediaSource, mediaFlipY],
+  );
+  const handleSettingsChange = useCallback(
+    (next: BinarySettingsConfig) => {
+      if (mediaSource === MediaSourceType.FILE) {
+        setMediaFlipY(!!next.flipY);
+        setSettings({ ...next, flipY: settings.flipY ?? false });
+      } else setSettings(next);
+    },
+    [mediaSource, setSettings, setMediaFlipY, settings.flipY],
+  );
+  const receiveEngineSettings = useCallback(
+    (next: BinarySettingsConfig) => {
+      if (mediaSource === MediaSourceType.FILE) {
+        setMediaFlipY(!!next.flipY);
+        receiveSettings({ ...next, flipY: settings.flipY ?? false });
+      } else receiveSettings(next);
+    },
+    [mediaSource, receiveSettings, setMediaFlipY, settings.flipY],
+  );
+  useEngineSettings(
     wasmInitialized,
     settings,
+    receiveEngineSettings,
     applyWasmSettings,
-    mediaFlipX,
-    mediaFlipY,
-  ]);
-
-  // Handle settings change
-  const handleSettingsChange = useCallback(
-    (newSettings: BinarySettingsConfig) => {
-      if (fileSourceRef.current) {
-        mediaFlipRef.current = {
-          flipX: !!newSettings.flipX,
-          flipY: !!newSettings.flipY,
-        };
-        setMediaFlipX(!!newSettings.flipX);
-        setMediaFlipY(!!newSettings.flipY);
-        setSettings({
-          ...newSettings,
-          flipX: settings.flipX ?? true,
-          flipY: settings.flipY ?? false,
-        });
-      } else {
-        setSettings(newSettings);
-      }
-      // The settings effect applies the resolved per-mode flip preference to C.
-    },
-    [setSettings, settings.flipX, settings.flipY, setMediaFlipX, setMediaFlipY],
   );
-
-  useEngineSettings(wasmInitialized, settings, handleSettingsChange);
 
   // Webcam start logic and auto-start effects
   const pendingWebcamSwitch = useRef<object | null>(null);
@@ -222,11 +209,8 @@ export function MirrorPage() {
       ),
   );
   const contentSettings = useMemo(
-    () =>
-      fileActive
-        ? { ...settings, flipX: mediaFlipX, flipY: mediaFlipY }
-        : settings,
-    [fileActive, settings, mediaFlipX, mediaFlipY],
+    () => (fileActive ? { ...settings, flipY: mediaFlipY } : settings),
+    [fileActive, settings, mediaFlipY],
   );
   const toggleMedia = useCallback(() => {
     if (!fileMedia.kind) return;

@@ -1,4 +1,5 @@
 import {
+  useState,
   useCallback,
   useMemo,
   useRef,
@@ -8,10 +9,6 @@ import {
 import type { BinarySettingsConfig } from "../components";
 import { DEFAULT_SETTINGS } from "../utils/defaultSettings";
 import { useUrlState } from "./useUrlState";
-
-function defaultFlip(settings: BinarySettingsConfig): boolean {
-  return !settings.animationEnabled || settings.animation === "matrix";
-}
 
 /** Source defaults apply until the user explicitly chooses an orientation. */
 export function useRenderSettings() {
@@ -43,30 +40,57 @@ export function useRenderSettings() {
     false,
     (restored) => ({ ...restored, flipX: DEFAULT_SETTINGS.flipX ?? true }),
   );
+  const [appliedFlip, setAppliedFlip] = useState(stored.flipX ?? true);
   const settings = useMemo(
     () => ({
       ...stored,
-      flipX: preference === "auto" ? defaultFlip(stored) : preference === "on",
+      flipX: preference === "auto" ? appliedFlip : preference === "on",
+      flipXExplicit: preference !== "auto",
     }),
-    [stored, preference],
+    [stored, preference, appliedFlip],
   );
   const current = useRef({ settings, preference });
   useLayoutEffect(() => {
     current.current = { settings, preference };
   }, [settings, preference]);
+  const commitSettings = useCallback(
+    (next: BinarySettingsConfig, selected: string) => {
+      const flipX = next.flipX ?? true;
+      current.current = {
+        settings: { ...next, flipX, flipXExplicit: selected !== "auto" },
+        preference: selected,
+      };
+      setPreference(selected);
+      setAppliedFlip(flipX);
+      const { flipXExplicit: _explicit, ...storedNext } = next;
+      setStored({ ...storedNext, flipX: DEFAULT_SETTINGS.flipX ?? true });
+    },
+    [setPreference, setStored],
+  );
+  // Only user edits select an orientation. C readbacks use a separate receiver.
   const setSettings = useCallback(
     (action: SetStateAction<BinarySettingsConfig>) => {
       const { settings, preference } = current.current;
       const next = typeof action === "function" ? action(settings) : action;
       if (next === settings) return;
-      const changedFlip = next.flipX !== settings.flipX;
-      const selected = changedFlip ? (next.flipX ? "on" : "off") : preference;
-      if (changedFlip) setPreference(selected);
-      const flipX = selected === "auto" ? defaultFlip(next) : selected === "on";
-      current.current = { settings: { ...next, flipX }, preference: selected };
-      setStored({ ...next, flipX: DEFAULT_SETTINGS.flipX ?? true });
+      const selected =
+        next.flipX !== settings.flipX
+          ? next.flipX
+            ? "on"
+            : "off"
+          : preference;
+      commitSettings(next, selected);
     },
-    [setPreference, setStored],
+    [commitSettings],
   );
-  return [settings, setSettings] as const;
+  const receiveSettings = useCallback(
+    (next: BinarySettingsConfig) => {
+      commitSettings(
+        next,
+        next.flipXExplicit ? (next.flipX ? "on" : "off") : "auto",
+      );
+    },
+    [commitSettings],
+  );
+  return [settings, setSettings, receiveSettings] as const;
 }

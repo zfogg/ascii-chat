@@ -311,8 +311,8 @@ const registry_entry_t g_display_entries[] = {
      offsetof(options_t, flip_x),
      &default_flip_x_value,
      sizeof(bool),
-     "Flip video horizontally (X-axis). Works with webcam, files, and streams. Note: Ignored for webcam on macOS "
-     "(respects platform default like FaceTime).",
+     "Flip video horizontally (X-axis). Webcam defaults to mirrored; media and audio animations do not. Explicit "
+     "choices apply to all sources until exit.",
      "DISPLAY",
      NULL,
      false,

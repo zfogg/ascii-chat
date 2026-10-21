@@ -125,6 +125,7 @@ Test(options, explicit_flip_values_survive_mode_parsing) {
   cr_assert_eq(options_init(5, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
   cr_assert_eq(opts->flip_x, false);
+  cr_assert(opts->flip_x_explicit);
   cr_assert_eq(opts->flip_y, true);
 }
 
@@ -150,11 +151,8 @@ Test(options, default_values) {
   cr_assert_str_eq(opts->address, "localhost");
   cr_assert_eq(opts->port, 27224);
   cr_assert_eq(opts->webcam_index, 0);
-#ifdef __APPLE__
   cr_assert_eq(opts->flip_x, true);
-#else
-  cr_assert_eq(opts->flip_x, false);
-#endif
+  cr_assert_not(opts->flip_x_explicit);
   cr_assert_eq(opts->color_mode, COLOR_MODE_AUTO);
   cr_assert_eq(opts->render_mode, RENDER_MODE_FOREGROUND);
   cr_assert_eq(opts->show_capabilities, 0);

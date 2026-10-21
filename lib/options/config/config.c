@@ -541,6 +541,9 @@ static asciichat_error_t write_bool(const option_parsed_value_t *parsed, const c
     *(bool *)field_ptr = bool_value;
   }
 
+  if (meta->field_offset == offsetof(options_t, flip_x))
+    opts->flip_x_explicit = true;
+
   return ASCIICHAT_OK;
 }
 

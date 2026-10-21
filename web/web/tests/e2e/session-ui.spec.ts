@@ -345,3 +345,154 @@ test("connected web client shows its C network logs", async ({ page }) => {
     page.getByRole("button", { name: "Disconnect", exact: true }),
   ).toBeVisible();
 });
+
+test("C owns automatic horizontal orientation and the browser echoes it without selecting it", async ({
+  page,
+}) => {
+  await observe(page);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const horizontal = page.getByRole("button", { name: /Flip Horizontal/ });
+  const canvas = page.locator("canvas.ascii-canvas");
+  const state = () =>
+    page.evaluate(async (url) => {
+      const { getMirrorModule } = await import(url);
+      const m = getMirrorModule();
+      const p = m._wasm_options_values();
+      try {
+        return JSON.parse(m.UTF8ToString(p)).values;
+      } finally {
+        m._wasm_options_release(p);
+      }
+    }, moduleUrl);
+  const orientation = async (flip: boolean, explicit = false) => {
+    await expect(horizontal).toHaveAttribute("aria-pressed", String(flip));
+    await expect
+      .poll(async () => {
+        const values = await state();
+        return [values.flip_x, values.flip_x_explicit];
+      })
+      .toEqual([flip, explicit]);
+  };
+  const key = async (value: string) => {
+    await canvas.focus();
+    await page.keyboard.press(value);
+  };
+  await orientation(true);
+  await key("2");
+  await orientation(false);
+  await key("3");
+  await orientation(false);
+  await key("3");
+  await orientation(true);
+  expect(new URL(page.url()).searchParams.has("horizontalFlip")).toBe(false);
+  await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true }),
+  ).toBeVisible();
+  await orientation(true);
+  await page.getByRole("button", { name: "Upload File", exact: true }).click();
+  await page
+    .getByLabel("Choose media file")
+    .setInputFiles("tests/fixtures/media/still.png");
+  await orientation(false);
+  await page.getByRole("button", { name: "Toggle Media", exact: true }).click();
+  await orientation(true);
+  await page.getByRole("button", { name: "Toggle Media", exact: true }).click();
+  await orientation(false);
+  // Choose on while viewing media; the choice applies to every subsequent source.
+  await horizontal.click();
+  await orientation(true, true);
+  await page.getByRole("button", { name: "Toggle Media", exact: true }).click();
+  await key("2");
+  await orientation(true, true);
+  await key("3");
+  await orientation(true, true);
+  await horizontal.click();
+  await orientation(false, true);
+  await key("3");
+  await orientation(false, true);
+  await page.getByRole("button", { name: "Toggle Media", exact: true }).click();
+  await orientation(false, true);
+  await key("x");
+  await orientation(true, true);
+  await key("x");
+  await orientation(false, true);
+  await page.screenshot({ path: "artifacts/flip-c-policy-web.png" });
+  // A fresh program without a saved explicit choice starts with automatic defaults.
+  await page.goto("/mirror?animationEnabled=true&animation=waveform");
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await orientation(false);
+  await key("2");
+  await orientation(true);
+});
+
+for (const mode of ["client", "discovery"]) {
+  test(`${mode}: horizontal orientation follows uploaded media and shares an explicit choice`, async ({
+    page,
+  }) => {
+    await page.goto(`/${mode}`);
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    const horizontal = page.getByRole("button", { name: /Flip Horizontal/ });
+    const state = () =>
+      page.evaluate(async (url) => {
+        const { getMirrorModule } = await import(url);
+        const m = getMirrorModule();
+        if (!m) return null;
+        const p = m._wasm_options_values();
+        try {
+          const values = JSON.parse(m.UTF8ToString(p)).values;
+          return [values.flip_x, values.flip_x_explicit];
+        } finally {
+          m._wasm_options_release(p);
+        }
+      }, moduleUrl);
+    await expect(horizontal).toHaveAttribute("aria-pressed", "true");
+    await page
+      .getByRole("button", { name: "Upload File", exact: true })
+      .click();
+    await page
+      .getByLabel("Choose media file")
+      .setInputFiles("tests/fixtures/media/still.png");
+    await expect.poll(state).toEqual([false, false]);
+    await expect(horizontal).toHaveAttribute("aria-pressed", "false");
+    await horizontal.click();
+    await expect.poll(state).toEqual([true, true]);
+    await page.getByRole("button", { name: "Stop", exact: true }).click();
+    await expect.poll(state).toEqual([true, true]);
+    await horizontal.click();
+    await expect.poll(state).toEqual([false, true]);
+    await page.screenshot({ path: `artifacts/flip-c-policy-${mode}.png` });
+  });
+}
+
+test("horizontal orientation startup commits saved choices before reading C", async ({
+  page,
+}) => {
+  for (const [query, flip] of [
+    ["animationEnabled=true&animation=waveform&horizontalFlip=on", true],
+    ["horizontalFlip=off", false],
+  ] as const) {
+    await page.goto(`/mirror?${query}`);
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    const state = () =>
+      page.evaluate(async (url) => {
+        const { getMirrorModule } = await import(url);
+        const m = getMirrorModule();
+        if (!m) return null;
+        const p = m._wasm_options_values();
+        try {
+          const values = JSON.parse(m.UTF8ToString(p)).values;
+          return [values.flip_x, values.flip_x_explicit];
+        } finally {
+          m._wasm_options_release(p);
+        }
+      }, moduleUrl);
+    await expect.poll(state).toEqual([flip, true]);
+    await expect(
+      page.getByRole("button", { name: /Flip Horizontal/ }),
+    ).toHaveAttribute("aria-pressed", String(flip));
+    await page.locator("canvas.ascii-canvas").focus();
+    await page.keyboard.press("2");
+    await expect.poll(state).toEqual([flip, true]);
+  }
+});

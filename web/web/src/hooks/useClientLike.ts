@@ -14,8 +14,6 @@ export interface UseClientLikeOptions {
   initWasm: () => Promise<void>;
   /** Check if WASM is ready */
   isWasmReady: () => boolean;
-  /** Apply settings to WASM */
-  applyWasmSettings: (settings: BinarySettingsConfig) => void;
   /** Set WASM terminal dimensions */
   setWasmDimensions: (cols: number, rows: number) => void;
   /** Optional callback after dimensions change (for network modes) */
@@ -52,6 +50,7 @@ export interface UseClientLikeReturn {
   setShowSettings: (show: boolean) => void;
   settings: BinarySettingsConfig;
   setSettings: (settings: BinarySettingsConfig) => void;
+  receiveSettings: (settings: BinarySettingsConfig) => void;
 
   // Hooks
   captureFrame: (drawVideo?: boolean) => {
@@ -73,13 +72,8 @@ export interface UseClientLikeReturn {
 export function useClientLike(
   options: UseClientLikeOptions,
 ): UseClientLikeReturn {
-  const {
-    initWasm,
-    isWasmReady,
-    applyWasmSettings,
-    setWasmDimensions,
-    onDimensionsChange,
-  } = options;
+  const { initWasm, isWasmReady, setWasmDimensions, onDimensionsChange } =
+    options;
 
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -102,7 +96,7 @@ export function useClientLike(
   const [fps, setFps] = useState<number | undefined>(0);
   const [wasmInitialized, setWasmInitialized] = useState(false);
   const [showSettings, setShowSettings] = useUrlState("settings", false);
-  const [settings, setSettings] = useRenderSettings();
+  const [settings, setSettings, receiveSettings] = useRenderSettings();
   useAutoGridSize(setSettings);
 
   // Debug refs
@@ -120,39 +114,6 @@ export function useClientLike(
         setError(`Failed to load WASM module: ${err}`);
       });
   }, [initWasm]);
-
-  // Apply WASM settings immediately after init completes
-  useEffect(() => {
-    if (!wasmInitialized) {
-      return;
-    }
-
-    // Retry up to 5 times if WASM isn't ready yet (typically ready immediately)
-    let retries = 0;
-    const tryApply = () => {
-      const ready = isWasmReady();
-
-      if (!ready) {
-        if (retries < 5) {
-          retries++;
-          setTimeout(tryApply, 10); // 10ms retry
-          return;
-        }
-        return;
-      }
-
-      try {
-        applyWasmSettings(settings);
-      } catch (err) {
-        console.error(
-          `[useClientLike-Settings-Try] applyWasmSettings failed: ${String(err)}`,
-        );
-      }
-    };
-
-    tryApply();
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [wasmInitialized, applyWasmSettings, settings]);
 
   // Update frame interval when target FPS changes
   useEffect(() => {
@@ -247,6 +208,7 @@ export function useClientLike(
     setShowSettings,
     settings,
     setSettings,
+    receiveSettings,
 
     // Hooks
     captureFrame,

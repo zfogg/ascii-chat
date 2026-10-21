@@ -11,7 +11,10 @@ import {
   type RuntimeValues,
 } from "@ascii-chat/shared/wasm";
 import type { BinarySettingsConfig } from "../components";
-import { acknowledgeEngineSettings } from "./useWasmOptions";
+import {
+  acknowledgeEngineSettings,
+  applyMirrorWasmSettings,
+} from "./useWasmOptions";
 
 const emptySubscribe = () => () => {};
 const emptySnapshot = () => null;
@@ -21,6 +24,9 @@ export function useEngineSettings(
   ready: boolean,
   settings: BinarySettingsConfig,
   onChange: (settings: BinarySettingsConfig) => void,
+  applySettings: (
+    settings: BinarySettingsConfig,
+  ) => void = applyMirrorWasmSettings,
 ) {
   const module = ready ? getMirrorModule() : null;
   const store = module ? runtimeOptions(module) : null;
@@ -34,17 +40,30 @@ export function useEngineSettings(
   useLayoutEffect(() => {
     current.current = { settings, onChange };
   }, [settings, onChange]);
+  useLayoutEffect(() => {
+    previous.current = null;
+  }, [store]);
+  // Commit startup inputs and user edits before observing the resulting C state.
+  useLayoutEffect(() => {
+    if (!ready) return;
+    try {
+      applySettings(settings);
+    } catch (error) {
+      console.error("Failed to apply renderer settings:", error);
+    }
+  }, [ready, settings, applySettings]);
   useEffect(() => {
     // Earlier layout/passive effects may already have published a newer revision.
     // React will render that snapshot next; do not echo the stale one into the UI.
     if (snapshot && store && snapshot !== store.getSnapshot()) return;
     const old = previous.current;
     previous.current = snapshot;
-    if (!old || !snapshot || old === snapshot) return;
+    if (!snapshot || old === snapshot) return;
     const { settings, onChange } = current.current;
     const values = snapshot.values;
     const next = { ...settings };
-    const changed = (name: string) => old.values[name] !== values[name];
+    const changed = (name: string) =>
+      values[name] !== undefined && (!old || old.values[name] !== values[name]);
     if (store) acknowledgeEngineSettings(store, values, changed);
     const numeric = (name: string) => Number(values[name]);
     const colors: BinarySettingsConfig["colorMode"][] = [
@@ -93,6 +112,8 @@ export function useEngineSettings(
     if (changed("palette_custom"))
       next.paletteChars = String(values["palette_custom"]);
     if (changed("flip_x")) next.flipX = !!values["flip_x"];
+    if (changed("flip_x_explicit"))
+      next.flipXExplicit = !!values["flip_x_explicit"];
     if (changed("flip_y")) next.flipY = !!values["flip_y"];
     if (changed("fps")) next.targetFps = numeric("fps");
     if (["matrix_rain", "waveform", "fft"].some(changed)) {

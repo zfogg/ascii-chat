@@ -15,13 +15,16 @@ vi.mock("@ascii-chat/shared/wasm", async (original) => ({
   isWasmReady: () => true,
   isOptionsInitialized: () => true,
 }));
-import { applyMirrorWasmSettings } from "../src/hooks/useWasmOptions";
+import {
+  applyMirrorWasmSettings,
+  acknowledgeEngineSettings,
+} from "../src/hooks/useWasmOptions";
 
 afterEach(() => vi.unstubAllGlobals());
 
-function createEngine() {
+function createEngine(initial: Record<string, string | boolean | number> = {}) {
   let revision = 1;
-  let values: Record<string, string | boolean | number> = {};
+  let values: Record<string, string | boolean | number> = { ...initial };
   let pointer = 0;
   const strings = new Map<number, string>();
   const patches: Record<string, unknown>[] = [];
@@ -57,6 +60,7 @@ function createEngine() {
     patches,
     change: () => {
       values["flip_x"] = !values["flip_x"];
+      values["flip_x_explicit"] = true;
       revision++;
     },
     values: () => values,
@@ -64,6 +68,70 @@ function createEngine() {
 }
 
 describe("browser preference transactions", () => {
+  it("logs rejected settings and keeps the hook usable for a subsequent edit", () => {
+    vi.stubGlobal("requestAnimationFrame", () => 1);
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+    createEngine();
+    const error = new Error("Settings update rejected");
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const apply = vi.fn().mockImplementationOnce(() => {
+      throw error;
+    });
+    try {
+      const hook = renderHook(
+        ({ settings }) => useEngineSettings(true, settings, vi.fn(), apply),
+        { initialProps: { settings: DEFAULT_SETTINGS } },
+      );
+      expect(log).toHaveBeenCalledExactlyOnceWith(
+        "Failed to apply renderer settings:",
+        error,
+      );
+      hook.rerender({ settings: { ...DEFAULT_SETTINGS, targetFps: 30 } });
+      expect(apply).toHaveBeenCalledTimes(2);
+      expect(apply).toHaveBeenLastCalledWith(
+        expect.objectContaining({ targetFps: 30 }),
+      );
+      hook.unmount();
+    } finally {
+      log.mockRestore();
+    }
+  });
+  it("commits startup inputs before projecting the complete first C snapshot", () => {
+    vi.stubGlobal("requestAnimationFrame", () => 1);
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+    const c = createEngine({
+      flip_x: false,
+      flip_x_explicit: false,
+      color_mode: 0,
+      fps: 15,
+    });
+    const onChange = vi.fn();
+    const hook = renderHook(() =>
+      useEngineSettings(true, DEFAULT_SETTINGS, onChange),
+    );
+    expect(c.patches).toHaveLength(1);
+    expect(c.patches[0]).not.toHaveProperty("flip_x");
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        flipX: false,
+        flipXExplicit: false,
+        colorMode: "truecolor",
+        targetFps: 60,
+      }),
+    );
+    hook.unmount();
+  });
+  it("commits an explicit startup orientation before the initial C readback", () => {
+    vi.stubGlobal("requestAnimationFrame", () => 1);
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+    const c = createEngine({ flip_x: false, flip_x_explicit: true });
+    const settings = { ...DEFAULT_SETTINGS, flipX: true, flipXExplicit: true };
+    const onChange = vi.fn();
+    const hook = renderHook(() => useEngineSettings(true, settings, onChange));
+    expect(c.values()["flip_x"]).toBe(true);
+    expect(onChange).not.toHaveBeenCalled();
+    hook.unmount();
+  });
   it("does not replay an observed animation over a newer C keyboard change", () => {
     vi.stubGlobal("requestAnimationFrame", () => 1);
     vi.stubGlobal("cancelAnimationFrame", () => {});
@@ -127,12 +195,29 @@ describe("browser preference transactions", () => {
   });
   it("preserves an intervening C keyboard change when another UI field changes", () => {
     const c = createEngine();
-    const settings = { ...DEFAULT_SETTINGS, flipX: true };
+    const settings = { ...DEFAULT_SETTINGS, flipX: true, flipXExplicit: true };
     expect(applyMirrorWasmSettings(settings)).toBe(true);
     c.change();
     applyMirrorWasmSettings({ ...settings, targetFps: 30 });
     expect(c.patches.at(-1)).toEqual({ fps: 30 });
     expect(c.values()["flip_x"]).toBe(false);
+  });
+  it("does not submit a C keyboard orientation back as a browser edit", () => {
+    const c = createEngine({ flip_x: true, flip_x_explicit: false });
+    applyMirrorWasmSettings(DEFAULT_SETTINGS);
+    c.change();
+    const store = runtimeOptions(engine.module!);
+    const values = store.getSnapshot().values;
+    acknowledgeEngineSettings(store, values, (name) =>
+      name.startsWith("flip_x"),
+    );
+    const count = c.patches.length;
+    applyMirrorWasmSettings({
+      ...DEFAULT_SETTINGS,
+      flipX: false,
+      flipXExplicit: true,
+    });
+    expect(c.patches).toHaveLength(count);
   });
   it("switches animation and palette settings in a single transaction", () => {
     const c = createEngine();
