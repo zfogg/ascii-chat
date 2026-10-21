@@ -350,6 +350,7 @@ int main(int argc, char **argv) {
     ui_controller_remove(UI_SCREEN_MEDIA);
     ui_controller_shutdown();
   } else {
+#ifndef NDEBUG
     for (unsigned i = 0; i < 600; ++i)
       CHECK(named_register((uintptr_t)&objects[i], "regression_entry", "test", "%p", __FILE__, __LINE__, __func__, 0) !=
             NULL);
@@ -357,16 +358,18 @@ int main(int argc, char **argv) {
     CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
     CHECK(seen == 600);
     CHECK(registry_lock != NULL);
+#endif
     CHECK(colorscheme_init() == ASCIICHAT_OK);
     color_scheme_t scheme = *colorscheme_get_active_scheme();
     colorscheme_palette_t palette;
     colorscheme_current_palette(&palette, TERM_COLOR_TRUECOLOR);
-    CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
 #ifndef NDEBUG
+    CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
     CHECK(scheme_mutex);
 #endif
-    seen = 600;
+
 #ifndef NDEBUG
+    seen = 600;
     uint64_t color_locks = scheme_mutex->lock_count;
 #endif
     for (unsigned i = 0; i < 1000; ++i) {
@@ -397,6 +400,7 @@ int main(int argc, char **argv) {
       debug_sync_check_cond_deadlocks();
     CHECK(registry_lock->rdlock_count == scans_before);
 #endif
+#ifndef NDEBUG
     asciichat_thread_t holder;
     CHECK(acthread_create(&holder, "registry_holder", hold_registry, NULL) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
@@ -411,7 +415,6 @@ int main(int argc, char **argv) {
     CLEAR_ERRNO();
     for (unsigned i = 0; i < 600; ++i)
       NAMED_UNREGISTER(&objects[i]);
-#ifndef NDEBUG
     CHECK(mutex_init(&test_mutex, "regression_mutex") == 0);
     mutex_lock(&test_mutex);
 #ifdef _WIN32

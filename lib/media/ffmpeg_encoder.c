@@ -432,6 +432,10 @@ static asciichat_error_t encoder_init_video_stream(ffmpeg_encoder_t *enc, const 
   enc->codec_ctx->pix_fmt = enc->target_pix_fmt;
   enc->codec_ctx->time_base = (AVRational){1, fps};
   enc->codec_ctx->framerate = (AVRational){fps, 1};
+  enc->stream->time_base = enc->codec_ctx->time_base;
+  enc->stream->avg_frame_rate = enc->codec_ctx->framerate;
+  if (enc->fmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+    enc->codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
   // Set bitrate for high quality (music-level quality)
   // Use ~5-10 Mbps per megapixel for visually lossless quality
@@ -863,6 +867,22 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   return ASCIICHAT_OK;
 }
 
+static asciichat_error_t encoder_prepare_audio_frame(ffmpeg_encoder_t *enc) {
+  enc->audio_frame->nb_samples = enc->audio_frame_size;
+  if (!enc->audio_frame->buf[0] && av_frame_get_buffer(enc->audio_frame, 0) < 0)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate recording audio frame");
+  if (av_frame_make_writable(enc->audio_frame) < 0)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot make recording audio frame writable");
+  const uint8_t *input[] = {(const uint8_t *)enc->audio_partial_buf};
+  int converted = swr_convert(enc->audio_swr_ctx, enc->audio_frame->data, enc->audio_frame_size,
+                              input, enc->audio_frame_size);
+  if (converted < 0)
+    return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot convert recording audio samples: %d", converted);
+  enc->audio_frame->nb_samples = converted;
+  enc->audio_frame->pts = enc->audio_pts;
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t ffmpeg_encoder_write_audio(ffmpeg_encoder_t *enc, const float *samples, int num_samples) {
   if (!enc || !samples || num_samples <= 0)
     return ASCIICHAT_OK; // Silently ignore invalid calls
@@ -889,10 +909,9 @@ asciichat_error_t ffmpeg_encoder_write_audio(ffmpeg_encoder_t *enc, const float 
     // If buffer is full, encode and write frame
     if (enc->audio_partial_len >= enc->audio_frame_size) {
       // Set up audio frame with accumulated samples
-      enc->audio_frame->data[0] = (uint8_t *)enc->audio_partial_buf;
-      enc->audio_frame->linesize[0] = enc->audio_frame_size * sizeof(float);
-      enc->audio_frame->nb_samples = enc->audio_frame_size;
-      enc->audio_frame->pts = enc->audio_pts;
+      asciichat_error_t prepare_result = encoder_prepare_audio_frame(enc);
+      if (prepare_result != ASCIICHAT_OK)
+        return prepare_result;
 
       // Send frame to encoder
       int ret = avcodec_send_frame(enc->audio_codec_ctx, enc->audio_frame);
@@ -1050,11 +1069,9 @@ static asciichat_error_t encoder_flush_audio(ffmpeg_encoder_t *enc) {
       // Zero-pad the remaining samples
       memset(&enc->audio_partial_buf[enc->audio_partial_len], 0,
              (enc->audio_frame_size - enc->audio_partial_len) * sizeof(float));
-      enc->audio_frame->data[0] = (uint8_t *)enc->audio_partial_buf;
-      enc->audio_frame->linesize[0] = enc->audio_frame_size * sizeof(float);
-      enc->audio_frame->nb_samples = enc->audio_frame_size;
-      enc->audio_frame->pts = enc->audio_pts;
-      asciichat_error_t pad_result = finish_audio_frame(enc, enc->audio_frame);
+      asciichat_error_t pad_result = encoder_prepare_audio_frame(enc);
+      if (pad_result == ASCIICHAT_OK)
+        pad_result = finish_audio_frame(enc, enc->audio_frame);
       if (pad_result != ASCIICHAT_OK)
         result = pad_result;
     }

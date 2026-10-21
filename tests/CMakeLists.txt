@@ -30,6 +30,7 @@
 # Enable CTest if any tests are being built (Criterion or lib runtime)
 if(BUILD_TESTS)
     enable_testing()
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
 endif()
 
 # =============================================================================
@@ -912,7 +913,7 @@ if(TARGET ascii-chat-shared)
     if(BUILD_TESTS)
         add_test(NAME sync-regressions COMMAND test-sync-regressions sync
             "${CMAKE_CURRENT_BINARY_DIR}/sync-regressions.log")
-        set_tests_properties(sync-regressions PROPERTIES TIMEOUT 60)
+        set_tests_properties(sync-regressions PROPERTIES LABELS "integration" TIMEOUT 60)
     endif()
     if(BUILD_TESTS)
         add_executable(test-shared-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
@@ -960,6 +961,7 @@ if(TARGET ascii-chat-shared)
     if(BUILD_TESTS)
         add_test(NAME shared-lib-runtime
             COMMAND ${CMAKE_BINARY_DIR}/bin/test-shared-lib)
+        set_tests_properties(shared-lib-runtime PROPERTIES LABELS "integration")
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")
             execute_process(
                 COMMAND ${CMAKE_C_COMPILER} --print-file-name=libclang_rt.asan-x86_64.so
@@ -989,7 +991,7 @@ if(TARGET ascii-chat-static)
         endif()
         add_test(NAME crypto-logging COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_SOURCE_DIR}/tests/standalone/logging/run.py $<TARGET_FILE:test-crypto-logging>)
-        set_tests_properties(crypto-logging PROPERTIES TIMEOUT 60)
+        set_tests_properties(crypto-logging PROPERTIES LABELS "integration" TIMEOUT 60)
         if(WIN32)
             set_property(TEST crypto-logging PROPERTY ENVIRONMENT_MODIFICATION
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
@@ -1210,7 +1212,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
         # Contract cases are registered by the Criterion targets below.
         add_test(NAME acip-prepare-websocket COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_SOURCE_DIR}/tests/integration/acip_prepare_websocket.py $<TARGET_FILE:test-acip-prepare>)
-        set_tests_properties(acip-prepare-websocket PROPERTIES TIMEOUT 60)
+        set_tests_properties(acip-prepare-websocket PROPERTIES LABELS "integration" TIMEOUT 60)
         if(WIN32)
             set_property(TEST acip-prepare-websocket PROPERTY ENVIRONMENT_MODIFICATION
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
@@ -1645,5 +1647,16 @@ endif()
 # Preserve each suite's existing category while making all migrated contracts selectable.
 get_property(contract_tests DIRECTORY PROPERTY ASCIICHAT_CONTRACT_TESTS)
 foreach(contract_test IN LISTS contract_tests)
+    get_property(category TEST ${contract_test} PROPERTY LABELS)
+    if(NOT category MATCHES "(^|;)(unit|integration|performance)(;|$)")
+        set_property(TEST ${contract_test} APPEND PROPERTY LABELS integration)
+    endif()
     set_property(TEST ${contract_test} APPEND PROPERTY LABELS criterion contract)
 endforeach()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32)
+    add_test(NAME discovery-webrtc
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/integration/discovery_webrtc.py
+            $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(discovery-webrtc PROPERTIES LABELS "integration" TIMEOUT 120 RUN_SERIAL TRUE)
+endif()
