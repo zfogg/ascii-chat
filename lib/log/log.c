@@ -1919,7 +1919,7 @@ const char *log_level_color_for_output(log_color_t color, bool enabled) {
     return "";
   static _Thread_local colorscheme_palette_t palette;
   terminal_color_mode_t mode = (terminal_color_mode_t)log_get_color_mode();
-  colorscheme_current_palette(&palette, mode == TERM_COLOR_NONE ? TERM_COLOR_16 : mode);
+  colorscheme_current_palette(&palette, mode);
   return palette.codes[color >= 0 && color <= LOG_COLOR_RESET ? color : LOG_COLOR_RESET];
 }
 
