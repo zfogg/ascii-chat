@@ -1199,7 +1199,7 @@ export function ClientPage({
                 ? disableWebcam
                 : enableWebcam
           }
-          className={`border rounded px-3 py-1 cursor-pointer text-white ${isWebcamRunning ? "border-red-700 bg-red-700 hover:bg-red-800" : "border-green-700 bg-green-700 hover:bg-green-800"}`}
+          className={`border rounded px-3 py-1 cursor-pointer text-white ${screenCapture.active ? "border-blue-700 bg-blue-700 hover:bg-blue-800" : isWebcamRunning ? "border-red-700 bg-red-700 hover:bg-red-800" : "border-green-700 bg-green-700 hover:bg-green-800"}`}
         >
           {screenCapture.active
             ? "Switch to webcam"

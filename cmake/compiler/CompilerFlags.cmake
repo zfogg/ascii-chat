@@ -512,7 +512,8 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             "$<$<NOT:$<BOOL:$<TARGET_PROPERTY:ASCIICHAT_KEEP_TEST_REGISTRATION>>>:-Wl,--gc-sections>")
     elseif(APPLE)
         # Apple ld: Use -dead_strip to remove unused sections
-        target_link_options(asciichat-project-options INTERFACE -Wl,-dead_strip)
+        target_link_options(asciichat-project-options INTERFACE
+            "$<$<NOT:$<BOOL:$<TARGET_PROPERTY:ASCIICHAT_KEEP_TEST_REGISTRATION>>>:-Wl,-dead_strip>")
     elseif(WIN32)
         # MSVC linker: Use /OPT:REF and /OPT:ICF for dead code elimination and COMDAT folding
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")

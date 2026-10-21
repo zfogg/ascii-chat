@@ -86,12 +86,13 @@ set(ALL_TIMED_TEST_TARGETS "" CACHE INTERNAL "All test targets for timing")
 
 # White-box contract suites retain explicit production link dependencies.
 function(asciichat_configure_contract target)
+    set_property(TARGET ${target} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
     target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES})
     target_include_directories(${target} PRIVATE ${CRITERION_INCLUDE_DIRS})
     set_target_properties(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF
         INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)
     if(APPLE)
-        target_link_options(${target} PRIVATE -Wl,-no_dead_strip)
+        target_link_options(${target} PRIVATE -Wl,-all_load)
     else()
         target_link_options(${target} PRIVATE -Wl,--no-gc-sections)
     endif()

@@ -867,7 +867,7 @@ jobs:
           FLAGS="-std=c2x"
 
           # Disable coverage for functional tests - not needed and causes llvm_gcov_init symbol errors
-          cmake -B build --preset github \
+          cmake --fresh -B build --preset github \
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_C_FLAGS="${FLAGS}" \

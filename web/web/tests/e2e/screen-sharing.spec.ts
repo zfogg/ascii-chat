@@ -510,6 +510,9 @@ for (const mode of ["client", "discovery"]) {
         .getByRole("button", { name: "Share screen", exact: true })
         .click();
       await expect(page.getByText("Sharing screen · video only")).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Switch to webcam", exact: true }),
+      ).toHaveCSS("background-color", "oklch(0.488 0.243 264.376)");
       await expect
         .poll(
           () => page.evaluate(() => window.__clientFrameMetrics?.received ?? 0),

@@ -1912,9 +1912,13 @@ const char *log_level_color_for_output(log_color_t color, bool enabled) {
   if (!enabled)
     return "";
   static _Thread_local colorscheme_palette_t palette;
-  terminal_color_mode_t mode = terminal_get_effective_color_mode();
+  // The caller already resolved whether this destination accepts color. Do not
+  // re-check stdout here: reports can target a terminal independent of stdout.
+  terminal_color_mode_t mode = GET_OPTION(color_mode);
   if (mode == TERM_COLOR_AUTO)
     mode = (terminal_color_mode_t)log_get_color_mode();
+  if (mode == TERM_COLOR_NONE && GET_OPTION(color_mode) == TERM_COLOR_AUTO)
+    mode = TERM_COLOR_16;
   colorscheme_current_palette(&palette, mode);
   return palette.codes[color >= 0 && color <= LOG_COLOR_RESET ? color : LOG_COLOR_RESET];
 }
