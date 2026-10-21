@@ -20,7 +20,15 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/mirror",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/client",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/discovery",
       "destination": "/index.html"
     }
   ]
