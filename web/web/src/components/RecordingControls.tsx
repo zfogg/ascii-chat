@@ -25,41 +25,48 @@ export function RecordingControls({
         }
         onClick={() => void (active ? recording.stop() : recording.start())}
       >
-        {recording.state === "finalizing"
-          ? "Finishing recording…"
-          : active
-            ? "Stop recording"
-            : "Record ASCII"}
+        <span aria-hidden="true" className="recording-button-size">
+          Finishing recording…
+        </span>
+        <span className="recording-button-label">
+          {recording.state === "finalizing"
+            ? "Finishing recording…"
+            : active
+              ? "Stop recording"
+              : "Record ASCII"}
+        </span>
       </button>
       <div className="recording-details">
-        <div className="recording-message">
-          {recording.state === "recording" && !recording.error && (
-            <span role="status">
-              Recording locally ({RECORDING_LIMIT_MS / 60_000} min /{" "}
-              {RECORDING_LIMIT_BYTES / (1024 * 1024)} MiB limit)
-            </span>
-          )}
-          {!recording.supported && (
-            <span role="status">
-              ASCII recording is unsupported in this browser.
-            </span>
-          )}
-          {recording.error && <span role="alert">{recording.error}</span>}
-        </div>
-        <div className="recording-download">
-          {recording.download ? (
-            <a
-              className="underline"
-              href={recording.download.url}
-              download={recording.download.name}
-            >
-              Download recording
-            </a>
-          ) : (
-            <span aria-hidden="true" className="invisible">
-              Download recording
-            </span>
-          )}
+        <span aria-hidden="true" className="recording-details-size">
+          Recording locally ({RECORDING_LIMIT_MS / 60_000} min /{" "}
+          {RECORDING_LIMIT_BYTES / (1024 * 1024)} MiB limit)
+        </span>
+        <div className="recording-details-content">
+          <div className="recording-message">
+            {recording.state === "recording" && !recording.error && (
+              <span role="status">
+                Recording locally ({RECORDING_LIMIT_MS / 60_000} min /{" "}
+                {RECORDING_LIMIT_BYTES / (1024 * 1024)} MiB limit)
+              </span>
+            )}
+            {!recording.supported && (
+              <span role="status">
+                ASCII recording is unsupported in this browser.
+              </span>
+            )}
+            {recording.error && <span role="alert">{recording.error}</span>}
+          </div>
+          <div className="recording-download">
+            {recording.download ? (
+              <a
+                className="underline"
+                href={recording.download.url}
+                download={recording.download.name}
+              >
+                Download recording
+              </a>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

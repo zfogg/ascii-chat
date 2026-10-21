@@ -11,30 +11,56 @@
    their width before capture starts so the header cannot resize the raster. */
 .recording-controls {
   display: grid;
-  grid-template-columns: 11rem minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   column-gap: 0.5rem;
-  width: 27rem;
+  width: max-content;
   max-width: 100%;
   flex: none;
   min-width: 0;
 }
 .recording-button {
-  width: 100%;
+  display: grid;
+  align-items: center;
   white-space: nowrap;
 }
+.recording-button-size,
+.recording-button-label {
+  grid-area: 1 / 1;
+}
+.recording-button-size,
+.recording-details-size {
+  visibility: hidden;
+  pointer-events: none;
+}
 .recording-details {
+  display: grid;
   min-width: 0;
   line-height: 1rem;
-}
-.recording-message {
   height: 2rem;
+}
+.recording-details-size,
+.recording-details-content {
+  grid-area: 1 / 1;
+}
+.recording-details-size {
+  white-space: nowrap;
+}
+.recording-details-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
   overflow: auto;
   overflow-wrap: anywhere;
 }
 .recording-download {
-  height: 1rem;
   white-space: nowrap;
+}
+@media (max-width: 400px) {
+  .recording-details {
+    height: 3rem;
+  }
 }
 
 .session-content-box {

@@ -295,10 +295,27 @@ async function record(
   }
   await page.getByRole("button", { name: "Record ASCII", exact: true }).click();
   await expect(
-    page.getByText("Recording locally", { exact: false }),
+    page.getByRole("status").filter({ hasText: "Recording locally" }),
   ).toBeVisible();
   await during?.();
   await page.waitForTimeout(4000);
+  const recordingAlignment = await page
+    .locator(".recording-controls")
+    .evaluate((element) => {
+      const label = element
+        .querySelector(".recording-button-label")!
+        .getBoundingClientRect();
+      const message = element
+        .querySelector('[role="status"]')!
+        .getBoundingClientRect();
+      return Math.abs(
+        label.y + label.height / 2 - message.y - message.height / 2,
+      );
+    });
+  expect(
+    recordingAlignment,
+    "recording status vertically centered with button text",
+  ).toBeLessThan(2);
   await page.screenshot({
     path: info.outputPath(`${name}-recording.png`),
     fullPage: true,
@@ -313,6 +330,23 @@ async function record(
     exact: true,
   });
   await expect(link).toBeVisible();
+  const downloadAlignment = await page
+    .locator(".recording-controls")
+    .evaluate((element) => {
+      const label = element
+        .querySelector(".recording-button-label")!
+        .getBoundingClientRect();
+      const download = element
+        .querySelector("a[download]")!
+        .getBoundingClientRect();
+      return Math.abs(
+        label.y + label.height / 2 - download.y - download.height / 2,
+      );
+    });
+  expect(
+    downloadAlignment,
+    "download vertically centered with button text",
+  ).toBeLessThan(2);
   if (checkLayout) {
     await page.waitForTimeout(400);
     const geometry = await page.evaluate(() => {
