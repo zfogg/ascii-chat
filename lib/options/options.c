@@ -1197,6 +1197,18 @@ static asciichat_error_t parse_binary_options(options_t *opts, int argc, char **
           return ERROR_USAGE;
         }
       }
+      if (strcmp(argv[i], "--config") == 0 || strncmp(argv[i], "--config=", 9) == 0) {
+        const char *path = argv[i] + 9;
+        if (strcmp(argv[i], "--config") == 0) {
+          if (i + 1 >= argc || argv[i + 1][0] == '-')
+            return SET_ERRNO(ERROR_USAGE, "--config requires a file path");
+          path = argv[++i];
+        }
+        if (!path[0] || strlen(path) >= sizeof(opts->config_file))
+          return SET_ERRNO(ERROR_USAGE, "Invalid --config file path");
+        SAFE_STRNCPY(opts->config_file, path, sizeof(opts->config_file));
+        continue;
+      }
       // Handle -L and --log-file FILE (set log file path)
       if ((strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-file") == 0)) {
         if (i + 1 >= argc) {
@@ -1369,7 +1381,8 @@ static asciichat_error_t build_mode_argv(int argc, char **argv, int mode_index, 
       // Check if this is a binary-level option
       if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
         // Skip argument if needed
-        if (i + 1 < mode_index && (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
+        if (!strchr(argv[i], '=') && i + 1 < mode_index &&
+            (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
           i++; // Skip argument
         }
         continue;
@@ -1386,7 +1399,7 @@ static asciichat_error_t build_mode_argv(int argc, char **argv, int mode_index, 
       // Check if this is a binary-level option (shouldn't appear after mode)
       if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
         // Skip binary-level option and its argument if needed
-        if (i + 1 < argc && (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
+        if (!strchr(argv[i], '=') && i + 1 < argc && (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
           i++; // Skip argument
         }
         continue; // Skip this option
@@ -1455,7 +1468,7 @@ static void build_options_schema(void) {
   }
 }
 
-static void load_options_config(options_t *opts, asciichat_mode_t detected_mode, bool *fps_set_by_config) {
+static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t detected_mode, bool *fps_set_by_config) {
   // Extract binary-level options BEFORE config loading (config may reset them)
   binary_level_opts_t binary_before_config = extract_binary_level(opts);
   // Publish options to RCU before config loading so that config logs get proper colors
@@ -1467,12 +1480,18 @@ static void load_options_config(options_t *opts, asciichat_mode_t detected_mode,
   bool saved_flip_y_from_config = opts->flip_y;
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, false, opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
+  if (binary_before_config.config_file[0]) {
+    config_result = config_load_and_apply(detected_mode, binary_before_config.config_file, true, opts);
+    if (config_result != ASCIICHAT_OK)
+      return config_result;
+  }
   *fps_set_by_config = opts->fps != OPT_FPS_DEFAULT;
   // Restore binary-level options (don't let config override command-line options)
   restore_binary_level(opts, &binary_before_config);
 
   // Preserve the existing vertical flip default.
   opts->flip_y = saved_flip_y_from_config;
+  return ASCIICHAT_OK;
 }
 
 static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *config, asciichat_mode_t detected_mode,
@@ -2242,7 +2261,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   build_options_schema();
   // Apply defaults, config, environment, then CLI values in increasing precedence.
   bool fps_set_by_config = false;
-  load_options_config(&opts, detected_mode, &fps_set_by_config);
+  result = load_options_config(&opts, detected_mode, &fps_set_by_config);
+  if (result != ASCIICHAT_OK)
+    goto cleanup;
   config = options_preset_unified(NULL, NULL);
   if (!config) {
     result = SET_ERRNO(ERROR_CONFIG, "Failed to create options configuration");

@@ -680,7 +680,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
     // If any pattern has global flag, highlight ALL matches for that pattern
     // Find first pattern with global flag
     for (int i = 0; i < g_filter_state.pattern_count; i++) {
-      if (g_filter_state.patterns[i].global_flag && !g_filter_state.patterns[i].is_fixed_string) {
+      if (g_filter_state.patterns[i].global_flag) {
         global_pat = &g_filter_state.patterns[i];
         should_use_global_pattern = true;
         break;
@@ -697,12 +697,16 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
   if (should_use_global_pattern) {
     pcre2_code *code = NULL;
     pcre2_match_data *match_data = NULL;
-    char fixed_string_pattern[256] = {0};
+    char fixed_string_pattern[4096] = {0};
     bool is_fixed_string_pattern = false;
     bool case_insensitive_fixed = false;
 
     // Get code from CLI pattern or interactive grep pattern
-    if (global_pat && global_pat->singleton) {
+    if (global_pat && global_pat->is_fixed_string) {
+      SAFE_STRNCPY(fixed_string_pattern, global_pat->parsed_pattern, sizeof(fixed_string_pattern));
+      is_fixed_string_pattern = true;
+      case_insensitive_fixed = global_pat->case_insensitive;
+    } else if (global_pat && global_pat->singleton) {
       code = asciichat_pcre2_singleton_get_code(global_pat->singleton);
       match_data = get_thread_match_data();
     } else if (is_log_search) {
@@ -761,6 +765,11 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
         // Map to colored text positions (same as single-match path)
         size_t colored_match_start = map_plain_to_colored_pos(colored_text, plain_match_start);
         size_t colored_match_end = map_plain_to_colored_pos(colored_text, plain_match_end);
+
+        // Reserve the untouched tail plus the next background/reset sequences.
+        if ((size_t)(dst - highlight_buffer) + colored_len - colored_pos + 37 >= sizeof(highlight_buffer)) {
+          return colored_text;
+        }
 
         // Copy text before match
         if (colored_match_start > colored_pos) {

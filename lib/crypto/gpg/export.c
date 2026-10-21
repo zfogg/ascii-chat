@@ -397,6 +397,23 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
     return -1;
   }
 
+  // Assuan data lines escape %, CR and LF, including bytes inside the S-expression.
+  size_t decoded = 0;
+  for (size_t i = 0; i < (size_t)bytes_read; ++i) {
+    if (response[i] == '%' && i + 2 < (size_t)bytes_read && isxdigit((unsigned char)response[i + 1]) &&
+        isxdigit((unsigned char)response[i + 2])) {
+      unsigned char high = (unsigned char)tolower((unsigned char)response[i + 1]);
+      unsigned char low = (unsigned char)tolower((unsigned char)response[i + 2]);
+      high = high <= '9' ? high - '0' : high - 'a' + 10;
+      low = low <= '9' ? low - '0' : low - 'a' + 10;
+      response[decoded++] = (char)((high << 4) | low);
+      i += 2;
+    } else {
+      response[decoded++] = response[i];
+    }
+  }
+  response[decoded] = '\0';
+
   // Parse the S-expression to extract Ed25519 public key (q value)
   // GPG agent returns binary S-expressions in format: (1:q<length>:<binary-data>)
   // Example: (1:q33:<33-bytes>) where first byte is 0x40 (Ed25519 prefix), then 32-byte key
@@ -434,6 +451,10 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
 
   // Skip the colon to get to the binary data
   const unsigned char *binary_start = (const unsigned char *)(colon + 1);
+  if ((size_t)(binary_start - (const unsigned char *)response) + key_len > decoded) {
+    log_error("Truncated Ed25519 public key in GPG agent response");
+    return -1;
+  }
 
   // Ed25519 public keys in GPG format have a 0x40 prefix byte, then 32 bytes of actual key
   if (binary_start[0] != 0x40) {
