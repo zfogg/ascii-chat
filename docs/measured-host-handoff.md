@@ -158,12 +158,12 @@ verified selected relay-to-relay pairs carrying bytes before and after loss.
 
 | Scenario | Host losses | Callback interruption upper bound | Recovery observation |
 | --- | ---: | ---: | ---: |
-| browser-audio-direct | 3 | 2.08–16.90 s | 2.71–17.67 s |
-| browser-audio-relay | 3 | 2.27–11.77 s | 2.84–12.40 s |
-| mixed-audio-direct | 3 | 0.17–1.46 s | 0.94–2.11 s |
-| mixed-audio-relay | 3 | 0.22–4.99 s | 0.98–5.67 s |
-| native-audio-direct | 3 | 2.15–3.14 s | 2.84–4.09 s |
-| mixed-audio-relay-slow-video-and-promotion | 3 | 7.34–10.63 s | 8.29–11.30 s |
+| browser-audio-direct | 3 | 2.81–4.19 s | 3.50–4.85 s |
+| browser-audio-relay | 3 | 1.44–2.55 s | 2.28–3.17 s |
+| mixed-audio-direct | 3 | 0.41–1.83 s | 1.31–2.42 s |
+| mixed-audio-relay | 3 | 0.16–1.33 s | 0.86–1.92 s |
+| native-audio-direct | 3 | 1.56–2.12 s | 2.42–2.83 s |
+| mixed-audio-relay-slow-video-and-promotion | 3 | 7.14–9.11 s | 7.91–9.70 s |
 
 [Result JSON](validation/handoff-audio-2026-10-21/results.json) records counters,
 selected pairs, timestamps, binary hashes and the WASM manifest. Final
@@ -204,7 +204,7 @@ frame rate. Adopted browser startup has a 30-second deadline; readiness cancels 
 
 The final relay stress row sets `HANDOFF_NATIVE_FPS=1` and
 `HANDOFF_PROMOTION_DELAY_MS=7000`. An eight-second exclusive native-source
-observation decoded 401 blocks, including 291 non-silent blocks (72.6 percent),
+observation decoded 401 blocks, including 268 non-silent blocks (66.8 percent),
 before introducing another browser sender. Every injected loss produced exactly
 one host commit while the promoted worker start was delayed seven seconds.
 The longer measured interruptions in that row include the intentional delay.
@@ -212,10 +212,12 @@ A fake-clock regression also holds runtime initialization for twelve seconds and
 verifies uninterrupted five-second probing; lifecycle tests cover ready and hung
 startup cleanup. All 388 web unit tests in 56 files passed.
 
-These runtime results use implementation commit
-`bd4869c10c3aafd4c1ba5c79635f1d501f48d4a1`. The synthetic PR merge against
-master `b1090964d6898fa2525289936a6c535a696efa1b` changes additional hashed
-C sources and correctly fails prebuilt-WASM freshness validation. Rebuild and
-revalidate the bundle after integrating those source changes; these measurements
-do not certify that synthetic merge. macOS amd64 CI configuration also failed
+These runtime results use integrated implementation commit
+`38e9f02b0454be22eeb9d614d4682111ac688d9e`, including master
+`b1090964d6898fa2525289936a6c535a696efa1b`. Both WASM targets and the native
+executable were rebuilt after integration. Source/artifact verification, all six
+Chromium asset/runtime-init tests, all 388 web unit tests, and the Linux
+host-render contract (CTest 1/1) passed on that source. The Linux native executable
+also rebuilt successfully. Earlier synthetic-merge stale-bundle validation is
+addressed by that actual rebuild. macOS amd64 CI configuration separately failed
 while resolving ffmpeg.org, before compiling the changed source.
