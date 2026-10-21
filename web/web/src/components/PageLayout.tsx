@@ -16,6 +16,7 @@ interface PageLayoutProps {
   loadingError?: string;
 }
 
+/** Keep capture elements mounted and reserve the renderer box during initialization. */
 export function PageLayout({
   videoRef,
   canvasRef,

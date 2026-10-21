@@ -18,6 +18,7 @@ const DiscoveryPage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import("./pages/NotFound").then((m) => ({ default: m.NotFoundPage })),
 );
+/** Render lazy routes with shared loading and pathname-reset error recovery. */
 export function App() {
   const { pathname } = useLocation();
   return (

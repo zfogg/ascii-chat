@@ -7,6 +7,7 @@ const MIME_TYPES = [
   "video/mp4",
 ];
 
+/** Return the preferred supported container/codec, or null without an encoder. */
 export function recordingMimeType(): string | null {
   if (typeof MediaRecorder === "undefined") return null;
   return MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type)) ?? null;
@@ -38,6 +39,7 @@ export class LocalRecording {
     private onError: (message: string) => void,
   ) {}
 
+  /** Copy the displayed raster and clone bus audio; leave source tracks owned by callers. */
   start(canvas: HTMLCanvasElement, audio: MediaStream): void {
     if (this.disposed || this.recorder) throw new Error("Recording is busy");
     const mimeType = recordingMimeType();
@@ -128,6 +130,7 @@ export class LocalRecording {
     }
   }
 
+  /** Stop once and await the final encoder chunk, bounded by the watchdog. */
   stop(): Promise<RecordingResult | null> {
     const recorder = this.recorder;
     if (!recorder) return this.completion ?? Promise.resolve(null);
@@ -152,10 +155,12 @@ export class LocalRecording {
     return this.completion ?? Promise.resolve(null);
   }
 
+  /** Observe completion, including automatic duration, byte, or track-end stops. */
   completed(): Promise<RecordingResult | null> {
     return this.completion ?? Promise.resolve(null);
   }
 
+  /** Settle the export once and detach encoder callbacks before releasing tracks. */
   private finish(): void {
     const recorder = this.recorder;
     if (!recorder) return;
@@ -182,6 +187,7 @@ export class LocalRecording {
     }
   }
 
+  /** Release only recorder-owned streams, callbacks, animation and timers. */
   private cleanup(): void {
     clearTimeout(this.deadline);
     clearTimeout(this.finalization);
@@ -197,6 +203,7 @@ export class LocalRecording {
     }
   }
 
+  /** Cancel without a download or late UI callbacks when the session unmounts. */
   dispose(): void {
     this.disposed = true;
     const recorder = this.recorder;

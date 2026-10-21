@@ -45,6 +45,7 @@ export class AudioPipeline {
   private recording: MediaStreamAudioDestinationNode | null = null;
   private recordingMediaCleanup: (() => void) | null = null;
 
+  /** Replace the file-audio tap independently of element mute and speaker volume. */
   setRecordingMedia(element: HTMLMediaElement | null): void {
     this.recordingMediaCleanup?.();
     this.recordingMediaCleanup = null;
@@ -101,6 +102,7 @@ export class AudioPipeline {
     return this.recording.stream;
   }
 
+  /** Detach recording taps while preserving microphone capture and monitoring. */
   stopRecording(): void {
     this.recordingMediaCleanup?.();
     this.recordingMediaCleanup = null;

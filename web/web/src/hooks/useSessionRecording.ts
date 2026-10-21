@@ -41,6 +41,7 @@ export function useSessionRecording(options: Options) {
   const busy = useRef(false);
   const mounted = useRef(true);
 
+  /** Prepare audio once, cancel stale starts, and retain one completed download. */
   const start = async () => {
     if (busy.current || latest.current.enabled === false) return;
     busy.current = true;
@@ -109,6 +110,7 @@ export function useSessionRecording(options: Options) {
     }
   };
 
+  /** Cancel preparation or finalize the active encoder without ending capture. */
   const stop = async () => {
     if (!busy.current) return;
     if (!owner.current) {

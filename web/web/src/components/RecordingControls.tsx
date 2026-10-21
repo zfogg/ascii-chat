@@ -4,6 +4,7 @@ import {
   RECORDING_LIMIT_MS,
 } from "../recording/LocalRecording";
 
+/** Keep completed downloads and errors reachable even when starting is disabled. */
 export function RecordingControls({
   recording,
   disabled = false,
