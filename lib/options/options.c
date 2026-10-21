@@ -1381,7 +1381,8 @@ static asciichat_error_t build_mode_argv(int argc, char **argv, int mode_index, 
       // Check if this is a binary-level option
       if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
         // Skip argument if needed
-        if (i + 1 < mode_index && (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
+        if (!strchr(argv[i], '=') && i + 1 < mode_index &&
+            (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
           i++; // Skip argument
         }
         continue;
@@ -1398,7 +1399,8 @@ static asciichat_error_t build_mode_argv(int argc, char **argv, int mode_index, 
       // Check if this is a binary-level option (shouldn't appear after mode)
       if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
         // Skip binary-level option and its argument if needed
-        if (i + 1 < argc && (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
+        if (!strchr(argv[i], '=') && i + 1 < argc &&
+            (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
           i++; // Skip argument
         }
         continue; // Skip this option

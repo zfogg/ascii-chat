@@ -74,7 +74,7 @@ class MediaSessions(unittest.TestCase):
         path.write_text(configured)
         self.assertEqual(tomllib.loads(configured)["terminal"]["width"], 37)
         cases = [(["--config", str(path)], [], self.env, 37),
-                 ([f"--config={path}"], [], dict(self.env, ASCII_CHAT_WIDTH="31"), 31),
+                 ([f"--config={path}", "--log-level", "warn"], [], dict(self.env, ASCII_CHAT_WIDTH="31"), 31),
                  (["--config", str(path)], ["--width", "29"], dict(self.env, ASCII_CHAT_WIDTH="31"), 29)]
         for config_args, cli_args, env, expected_width in cases:
             with self.subTest(width=expected_width):
