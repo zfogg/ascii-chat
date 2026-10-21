@@ -30,7 +30,13 @@ jobs:
               if (run.status === 'completed') continue;
               const file = run.path.split('/').pop().split('@')[0];
               if (!validation.has(file)) continue;
-              if (!run.pull_requests.some(p => p.number === pr.number)) continue;
+              let associated = run.pull_requests || [];
+              if (associated.length === 0) {
+                associated = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
+                  ...context.repo, commit_sha: run.head_sha, per_page: 100,
+                });
+              }
+              if (!associated.some(p => p.number === pr.number)) continue;
               try {
                 await github.rest.actions.cancelWorkflowRun({...context.repo, run_id: run.id});
                 core.info(`Canceled ${run.name}: ${run.html_url}`);

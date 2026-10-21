@@ -25,11 +25,14 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           if [ -n "$BASE_SHA" ] && [ "$BASE_SHA" != 0000000000000000000000000000000000000000 ]; then
             git diff --check "$BASE_SHA" HEAD
           else
-            git show --format= --check HEAD
+            base=$(git merge-base HEAD "origin/$DEFAULT_BRANCH")
+            if [ "$base" = "$(git rev-parse HEAD)" ]; then base=$(git rev-parse HEAD^); fi
+            git diff --check "$base" HEAD
           fi
 
   format:
@@ -43,10 +46,12 @@ jobs:
       - name: Check changed C and C++ formatting
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           base="$BASE_SHA"
           if [ -z "$base" ] || [ "$base" = 0000000000000000000000000000000000000000 ]; then
-            base=$(git rev-parse HEAD^)
+            base=$(git merge-base HEAD "origin/$DEFAULT_BRANCH")
+            if [ "$base" = "$(git rev-parse HEAD)" ]; then base=$(git rev-parse HEAD^); fi
           fi
           git diff --name-only -z --diff-filter=ACMR "$base" HEAD -- \
             '*.c' '*.h' '*.cpp' '*.hpp' '*.m' \
