@@ -750,7 +750,7 @@ asciichat_error_t debug_sync_start_thread(void) {
       debug_sync_print_backtrace_delayed((uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT));
   }
 #ifndef EMSCRIPTEN_BUILD
-  if (asciichat_thread_create(&g_thread, "debug_sync", debug_sync_worker, NULL) != 0)
+  if (acthread_create(&g_thread, "debug_sync", debug_sync_worker, NULL) != 0)
     return SET_ERRNO(ERROR_THREAD, "Cannot start diagnostics worker");
 #endif
   g_started = true;
@@ -766,7 +766,7 @@ void debug_sync_cleanup_thread(void) {
   mutex_unlock(&g_mutex);
 #ifndef EMSCRIPTEN_BUILD
   // Join fully: diagnostic data must not be destroyed while a reader is alive.
-  if (asciichat_thread_join(&g_thread, NULL) != 0)
+  if (thread_join(&g_thread, NULL) != 0)
     FATAL(ERROR_THREAD, "Cannot join diagnostics worker");
 #endif
   g_started = false;

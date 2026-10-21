@@ -715,7 +715,7 @@
 218   // Wait for NAT detection thread to complete if still running (with 500ms timeout)
 219   if (session-&gt;nat_detection_thread_started) {
 220     log_debug(&quot;Waiting for NAT detection thread to complete (500ms timeout)...&quot;);
-221     int join_result = asciichat_thread_join_timeout(&amp;session-&gt;nat_detection_thread, NULL, 500 * 1000 * 1000); // 500ms
+221     int join_result = thread_join_timeout(&amp;session-&gt;nat_detection_thread, NULL, 500 * 1000 * 1000); // 500ms
 222     if (join_result != 0) {
 223       log_warn(&quot;NAT detection thread did not exit within 500ms, continuing cleanup anyway&quot;);
 224     }
@@ -730,7 +730,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_session_t::acds_transport</b>,
-    <b>acip_transport_destroy()</b>, <b>asciichat_thread_join_timeout()</b>,
+    <b>acip_transport_destroy()</b>, <b>thread_join_timeout()</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>discovery_session_t::host_ctx</b>,
     <b>log_debug</b>, <b>log_warn</b>, <b>mutex_destroy()</b>,
     <b>discovery_session_t::nat_detection_thread</b>,

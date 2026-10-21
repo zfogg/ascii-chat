@@ -33,10 +33,10 @@ Test(memory_concurrency, allocation_tracking_is_serialized_across_threads, .time
   asciichat_thread_t threads[8];
   for (int i = 0; i < 8; i++) {
     workers[i] = (allocation_worker_t){.value = (unsigned char)(i + 1)};
-    cr_assert_eq(asciichat_thread_create(&threads[i], "allocation-regression", allocate_concurrently, &workers[i]), 0);
+    cr_assert_eq(acthread_create(&threads[i], "allocation-regression", allocate_concurrently, &workers[i]), 0);
   }
   for (int i = 0; i < 8; i++) {
-    cr_assert_eq(asciichat_thread_join(&threads[i], NULL), 0);
+    cr_assert_eq(thread_join(&threads[i], NULL), 0);
     cr_assert(workers[i].valid, "Concurrent allocation/reallocation must preserve each thread's data");
   }
 }

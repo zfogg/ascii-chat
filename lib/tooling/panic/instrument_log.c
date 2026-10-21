@@ -198,7 +198,7 @@ asciichat_instr_runtime_t *asciichat_instr_runtime_get(void) {
   }
 
   runtime->pid = platform_get_pid();
-  runtime->thread_id = asciichat_thread_current_id();
+  runtime->thread_id = thread_current_id();
   runtime->sequence = 0;
   runtime->call_counter = 0;
   runtime->fd = -1;

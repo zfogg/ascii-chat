@@ -39,20 +39,20 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>asciichat_thread_create</b>(thread_ptr, attr,
+<p class="Pp">#define <b>acthread_create</b>(thread_ptr, attr,
     start_routine, arg)
   <br/>
-  #define <b>asciichat_thread_join</b>(thread, timeout_ms)
+  #define <b>thread_join</b>(thread, timeout_ms)
   <br/>
-  #define <b>asciichat_thread_detach</b>(thread)
+  #define <b>thread_detach</b>(thread)
   <br/>
-  #define <b>asciichat_thread_self</b>()
+  #define <b>thread_self</b>()
   <br/>
-  #define <b>asciichat_thread_equal</b>(t1, t2)
+  #define <b>thread_equal</b>(t1, t2)
   <br/>
-  #define <b>asciichat_thread_exit</b>(status)
+  #define <b>thread_exit</b>(status)
   <br/>
-  #define <b>asciichat_thread_initialized</b>(thread)
+  #define <b>thread_initialized</b>(thread)
   <br/>
   #define <b>thread_id_self</b>()
   <br/>
@@ -98,7 +98,7 @@
   Definition Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="_define_asciichat_thread_create(_thread_ptr,__attr,__start_routine,__arg)"><a class="permalink" href="#_define_asciichat_thread_create(_thread_ptr,__attr,__start_routine,__arg)">#define
-  asciichat_thread_create( thread_ptr, attr, start_routine, arg)</a></h2>
+  acthread_create( thread_ptr, attr, start_routine, arg)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>ASCIICHAT_OK</pre>
 <pre></pre>
@@ -120,7 +120,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_asciichat_thread_detach(_thread)"><a class="permalink" href="#_define_asciichat_thread_detach(_thread)">#define
-  asciichat_thread_detach( thread)</a></h2>
+  thread_detach( thread)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>ASCIICHAT_OK</pre>
 <pre></pre>
@@ -130,7 +130,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_asciichat_thread_equal(_t1,__t2)"><a class="permalink" href="#_define_asciichat_thread_equal(_t1,__t2)">#define
-  asciichat_thread_equal( t1, t2)</a></h2>
+  thread_equal( t1, t2)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>(t1 == t2)</pre>
 <pre></pre>
@@ -142,7 +142,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_asciichat_thread_exit(_status)"><a class="permalink" href="#_define_asciichat_thread_exit(_status)">#define
-  asciichat_thread_exit( status)</a></h2>
+  thread_exit( status)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>((void)0)</pre>
 <pre></pre>
@@ -152,7 +152,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_asciichat_thread_initialized(_thread)"><a class="permalink" href="#_define_asciichat_thread_initialized(_thread)">#define
-  asciichat_thread_initialized( thread)</a></h2>
+  thread_initialized( thread)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>false</pre>
 <pre></pre>
@@ -162,7 +162,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_asciichat_thread_join(_thread,__timeout_ms)"><a class="permalink" href="#_define_asciichat_thread_join(_thread,__timeout_ms)">#define
-  asciichat_thread_join( thread, timeout_ms)</a></h2>
+  thread_join( thread, timeout_ms)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>ASCIICHAT_OK</pre>
 <pre></pre>
@@ -182,7 +182,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_asciichat_thread_self(_void)"><a class="permalink" href="#_define_asciichat_thread_self(_void)">#define
-  asciichat_thread_self( void)</a></h2>
+  thread_self( void)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>((asciichat_thread_t)NULL)</pre>
 <pre></pre>

@@ -253,7 +253,7 @@ asciichat_error_t ui_sync_start(int fd) {
       g_sync_fd = -1;
     } else {
       atomic_store(&g_sync_stop, false);
-      result = asciichat_thread_create(&g_sync_thread, "sync_collector", sync_collect_main, NULL);
+      result = acthread_create(&g_sync_thread, "sync_collector", sync_collect_main, NULL);
       if (result == ASCIICHAT_OK) {
         g_sync_started = true;
       } else {
@@ -272,7 +272,7 @@ void ui_sync_stop(void) {
   if (!g_sync_started)
     return;
   atomic_store(&g_sync_stop, true);
-  asciichat_thread_join(&g_sync_thread, NULL);
+  thread_join(&g_sync_thread, NULL);
   keyboard_destroy();
   platform_close(g_sync_fd);
   g_sync_fd = -1;

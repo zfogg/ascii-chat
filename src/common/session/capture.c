@@ -449,7 +449,7 @@ void session_capture_destroy(session_capture_ctx_t *ctx) {
 
   if (ctx->loader_created) {
     atomic_store_bool(&ctx->load_cancel, true);
-    if (asciichat_thread_join(&ctx->loader, NULL) != 0) {
+    if (thread_join(&ctx->loader, NULL) != 0) {
       log_error("Cannot join media loader; retaining capture resources");
       return;
     }
@@ -603,7 +603,7 @@ static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const
     mutex_unlock(&ctx->load_mutex);
     return progress;
   }
-  if (asciichat_thread_create(&ctx->loader, "media_open", load_media_worker, ctx) != 0) {
+  if (acthread_create(&ctx->loader, "media_open", load_media_worker, ctx) != 0) {
     ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
     mutex_unlock(&ctx->load_mutex);
     return SET_ERRNO(ERROR_THREAD, "Cannot start media loader");
@@ -637,7 +637,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
     mutex_unlock(&ctx->load_mutex);
     return;
   }
-  if (asciichat_thread_join(&ctx->loader, NULL) != 0) {
+  if (thread_join(&ctx->loader, NULL) != 0) {
     mutex_unlock(&ctx->load_mutex);
     log_error("Cannot join media loader; deferring replacement");
     return;

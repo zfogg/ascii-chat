@@ -354,7 +354,7 @@ if (written &gt; 0) {
 84   char timestamp[32];
 85   strftime(timestamp, sizeof(timestamp), &quot;%H:%M:%S&quot;, tm_info);
 86 
-87   thread_id_t tid = asciichat_thread_self();
+87   thread_id_t tid = thread_self();
 88   uint64_t tid_val = (uintptr_t)tid;
 89 
 90   // Get current time in nanoseconds for template formatting
@@ -605,7 +605,7 @@ if (written &gt; 0) {
 335 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_self</b>, <b>colored_string()</b>,
+<p class="Pp">References <b>thread_self</b>, <b>colored_string()</b>,
     <b>backtrace_t::count</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>LOG_COLOR_DEBUG</b>, <b>LOG_COLOR_DEV</b>, <b>LOG_COLOR_ERROR</b>,
     <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_GREY</b>, <b>LOG_COLOR_WARN</b>,

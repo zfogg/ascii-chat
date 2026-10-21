@@ -792,7 +792,7 @@ static asciichat_error_t controller_start(void) {
     NAMED_REGISTER_ATOMIC(&g_presentation_stop_requested, "ui_presentation_stop_requested", NULL);
     NAMED_REGISTER_ATOMIC(&g_blocked, "ui_controller_blocked", NULL);
     NAMED_REGISTER_ATOMIC(&g_lifecycle.state, "ui_controller_lifecycle", NULL);
-    if (asciichat_thread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
+    if (acthread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
       ui_session_destroy(g_session);
       g_session = NULL;
       NAMED_UNREGISTER(&g_live);
@@ -1161,7 +1161,7 @@ void ui_controller_shutdown(void) {
   atomic_store_bool(&g_presentation_stop_requested, true);
   cond_signal(&g_render_requested);
   mutex_unlock(&g_mutex);
-  asciichat_thread_join(&g_thread, NULL);
+  thread_join(&g_thread, NULL);
   ui_session_destroy(g_session);
   g_session = NULL;
   atomic_store_u64(&g_volume_until, 0);

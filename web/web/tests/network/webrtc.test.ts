@@ -556,14 +556,22 @@ describe("handoff with queued media", () => {
   });
   it("uses the promoted host's queue and recovery state", () => {
     const session = new WebRTCSession(options);
+    const feedback = {
+      bufferedBytes: 123,
+      oldestFrameAgeMs: 80,
+      droppedFrames: 7,
+    };
     const host = {
       getBufferedAmount: () => 123,
+      getUploadFeedback: vi.fn(() => feedback),
       needsKeyframe: vi.fn(() => false),
       sendPacket: vi.fn(),
       disconnect: vi.fn(),
     };
     Reflect.set(session, "promoted", host);
     expect(session.getBufferedAmount()).toBe(123);
+    expect(session.getUploadFeedback()).toBe(feedback);
+    expect(host.getUploadFeedback).toHaveBeenCalledOnce();
     expect(session.needsKeyframe(PacketType.IMAGE_FRAME_H264)).toBe(false);
     const payload = new Uint8Array([1]);
     session.sendPacket(PacketType.IMAGE_FRAME_H264, payload);

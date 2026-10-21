@@ -53,19 +53,19 @@
   Try to lock a mutex without blocking (implementation function). int
     <b>mutex_unlock_impl</b> (<b>mutex_t</b> *<b>mutex</b>)
   <br/>
-  Unlock a mutex (implementation function). int <b>asciichat_thread_create</b>
+  Unlock a mutex (implementation function). int <b>acthread_create</b>
     (<b>asciichat_thread_t</b> *thread, const char *name, void
     *(*start_routine)(void *), void *arg)
   <br/>
-  Create a new named thread. int <b>asciichat_thread_join</b>
+  Create a new named thread. int <b>thread_join</b>
     (<b>asciichat_thread_t</b> *thread, void **retval)
   <br/>
-  Wait for a thread to complete (blocking). int <b>asciichat_thread_detach</b>
+  Wait for a thread to complete (blocking). int <b>thread_detach</b>
     (<b>asciichat_thread_t</b> *thread)
   <br/>
-  <b>asciichat_thread_t</b> <b>asciichat_thread_self</b> (void)
+  <b>asciichat_thread_t</b> <b>thread_self</b> (void)
   <br/>
-  Get the current thread's ID. int <b>asciichat_thread_equal</b>
+  Get the current thread's ID. int <b>thread_equal</b>
     (<b>asciichat_thread_t</b> t1, <b>asciichat_thread_t</b> t2)
   <br/>
   Compare two thread IDs for equality. int <b>rwlock_init</b> (<b>rwlock_t</b>
@@ -84,10 +84,10 @@
     (<b>rwlock_t</b> *<b>rwlock</b>)
   <br/>
   Release a write lock (implementation function). uintptr_t
-    <b>asciichat_thread_to_key</b> (<b>asciichat_thread_t</b> thread)
+    <b>thread_to_key</b> (<b>asciichat_thread_t</b> thread)
   <br/>
   Convert a thread handle to a registry key. <b>uint64_t</b>
-    <b>asciichat_thread_current_id</b> (void)
+    <b>thread_current_id</b> (void)
   <br/>
   Get the current thread's unique numeric ID. int <b>ascii_tls_key_create</b>
     (<b>tls_key_t</b> *key, void(*destructor)(void *))
@@ -119,7 +119,7 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="int_asciichat_thread_detach_("><a class="permalink" href="#int_asciichat_thread_detach_(">int
-  asciichat_thread_detach (<b>asciichat_thread_t</b> * thread)</a></h2>
+  thread_detach (<b>asciichat_thread_t</b> * thread)</a></h2>
 <p class="Pp">Definition at line <b>52</b> of file <b>threading.c</b>.</p>
 <pre>52                                                         {
 53   return pthread_detach(*thread);

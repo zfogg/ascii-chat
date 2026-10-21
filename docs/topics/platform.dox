@@ -61,7 +61,7 @@
  *
  * // ✅ GOOD - Single API, works everywhere
  * asciichat_thread_t thread;
- * asciichat_thread_create(&thread, thread_func, arg);
+ * acthread_create(&thread, thread_func, arg);
  * ```
  *
  * **Benefits of complete isolation**:
@@ -152,7 +152,7 @@
  *
  * // Application just uses asciichat_thread_t
  * asciichat_thread_t my_thread;
- * asciichat_thread_create(&my_thread, worker, NULL);
+ * acthread_create(&my_thread, worker, NULL);
  * ```
  *
  * This prevents common mistakes like:
@@ -337,14 +337,14 @@
  *   // Create thread
  *   asciichat_thread_t thread;
  *   int data = 42;
- *   int result = asciichat_thread_create(&thread, worker_thread, &data);
+ *   int result = acthread_create(&thread, worker_thread, &data);
  *   if (result != 0) {
  *     log_error("Thread creation failed");
  *     return 1;
  *   }
  *
  *   // Wait for thread to finish
- *   asciichat_thread_join(&thread, NULL);
+ *   thread_join(&thread, NULL);
  *
  *   platform_cleanup();
  *   return 0;
@@ -354,7 +354,7 @@
  * Thread operations with timeout:
  * ```c
  * // Wait up to 5 seconds for thread to complete
- * int result = asciichat_thread_join_timeout(&thread, NULL, 5000);
+ * int result = thread_join_timeout(&thread, NULL, 5000);
  * if (result == ETIMEDOUT) {
  *   log_warn("Thread did not finish in time");
  *   // Thread is still running!
@@ -366,15 +366,15 @@
  * Thread identity and comparison:
  * ```c
  * // Get current thread ID
- * thread_id_t my_id = asciichat_thread_self();
+ * thread_id_t my_id = thread_self();
  *
  * // Compare thread IDs
- * if (asciichat_thread_equal(my_id, other_id)) {
+ * if (thread_equal(my_id, other_id)) {
  *   log_debug("Same thread");
  * }
  *
  * // Get numeric thread ID for logging
- * uint64_t tid = asciichat_thread_current_id();
+ * uint64_t tid = thread_current_id();
  * log_debug("Thread ID: %" PRIu64, tid);
  * ```
  *
@@ -1304,13 +1304,13 @@
  *
  * **Thread Creation**:
  * ```c
- * int asciichat_thread_create(asciichat_thread_t *thread,
+ * int acthread_create(asciichat_thread_t *thread,
  *                              void *(*func)(void *), void *arg);
  * ```
  * Creates a new thread that executes `func(arg)`. The thread handle is stored in `*thread`.
  *
  * - **Parameters**:
- *   - `thread`: Output parameter for thread handle (must be initialized with asciichat_thread_init or uninitialized)
+ *   - `thread`: Output parameter for thread handle (must be initialized with thread_init or uninitialized)
  *   - `func`: Thread function with signature `void* (*)(void*)`
  *   - `arg`: Single void pointer argument passed to thread function
  * - **Return**: 0 on success, non-zero on error
@@ -1322,8 +1322,8 @@
  * **Error handling example**:
  * ```c
  * asciichat_thread_t thread;
- * asciichat_thread_init(&thread);
- * int result = asciichat_thread_create(&thread, worker, data);
+ * thread_init(&thread);
+ * int result = acthread_create(&thread, worker, data);
  * if (result != 0) {
  *   log_error("Failed to create thread: %s", strerror(result));
  *   return;
@@ -1332,7 +1332,7 @@
  *
  * **Thread Exit**:
  * ```c
- * void asciichat_thread_exit(void *retval);
+ * void thread_exit(void *retval);
  * ```
  * Terminates the calling thread and passes `retval` to any waiting joiners.
  * - This function never returns
@@ -1341,12 +1341,12 @@
  *
  * **Thread Joining** (blocking wait):
  * ```c
- * int asciichat_thread_join(asciichat_thread_t *thread, void **retval);
+ * int thread_join(asciichat_thread_t *thread, void **retval);
  * ```
  * Blocks until the specified thread terminates.
  *
  * - **Parameters**:
- *   - `thread`: Thread handle from asciichat_thread_create()
+ *   - `thread`: Thread handle from acthread_create()
  *   - `retval`: Optional output parameter for thread return value (NULL to ignore)
  * - **Return**: 0 on success, non-zero on error
  * - **Blocks**: Calling thread waits indefinitely for target thread to finish
@@ -1354,7 +1354,7 @@
  *
  * **Thread Joining with Timeout**:
  * ```c
- * int asciichat_thread_join_timeout(asciichat_thread_t *thread,
+ * int thread_join_timeout(asciichat_thread_t *thread,
  *                                    void **retval, uint64_t timeout_ns);
  * ```
  * Wait for thread with maximum wait time.
@@ -1376,7 +1376,7 @@
  *
  *   // Wait up to 5 seconds
  *   uint64_t timeout = 5 * 1000000000ULL;  // 5 seconds in nanoseconds
- *   int result = asciichat_thread_join_timeout(worker, NULL, timeout);
+ *   int result = thread_join_timeout(worker, NULL, timeout);
  *
  *   if (result != 0) {
  *     log_warn("Thread did not stop gracefully");
@@ -1389,7 +1389,7 @@
  *
  * **Get Current Thread ID**:
  * ```c
- * thread_id_t asciichat_thread_self(void);
+ * thread_id_t thread_self(void);
  * ```
  * Returns the calling thread's ID.
  *
@@ -1399,7 +1399,7 @@
  *
  * **Compare Thread IDs**:
  * ```c
- * int asciichat_thread_equal(thread_id_t t1, thread_id_t t2);
+ * int thread_equal(thread_id_t t1, thread_id_t t2);
  * ```
  * Safely compare two thread IDs for equality.
  *
@@ -1407,16 +1407,16 @@
  * - **Why use this?**: Direct comparison of thread_id_t may not work on all platforms
  * - **Logging example**:
  * ```c
- * thread_id_t main_tid = asciichat_thread_self();
- * thread_id_t current_tid = asciichat_thread_self();
- * if (asciichat_thread_equal(main_tid, current_tid)) {
+ * thread_id_t main_tid = thread_self();
+ * thread_id_t current_tid = thread_self();
+ * if (thread_equal(main_tid, current_tid)) {
  *   log_debug("Running in main thread");
  * }
  * ```
  *
  * **Get Numeric Thread ID**:
  * ```c
- * uint64_t asciichat_thread_current_id(void);
+ * uint64_t thread_current_id(void);
  * ```
  * Returns a unique numeric identifier for the current thread.
  *
@@ -1434,7 +1434,7 @@
  *
  * void register_thread(const char *name, int client_fd) {
  *   thread_registry_entry_t entry = {
- *     .thread_id = asciichat_thread_current_id(),
+ *     .thread_id = thread_current_id(),
  *     .client_fd = client_fd,
  *   };
  *   platform_strlcpy(entry.name, name, sizeof(entry.name));
@@ -1444,8 +1444,8 @@
  *
  * **Check Thread Initialization**:
  * ```c
- * bool asciichat_thread_is_initialized(asciichat_thread_t *thread);
- * int  asciichat_thread_init(asciichat_thread_t *thread);
+ * bool thread_is_initialized(asciichat_thread_t *thread);
+ * int  thread_init(asciichat_thread_t *thread);
  * ```
  * Check/set thread handle initialization state.
  *
@@ -1462,7 +1462,7 @@
  *
  * thread_pool_entry_t* acquire_thread_from_pool() {
  *   for (size_t i = 0; i < POOL_SIZE; i++) {
- *     if (!asciichat_thread_is_initialized(&g_pool[i].thread)) {
+ *     if (!thread_is_initialized(&g_pool[i].thread)) {
  *       // Thread handle is available, can be reused
  *       return &g_pool[i];
  *     }
@@ -1685,7 +1685,7 @@
  *
  * **Set Realtime Priority**:
  * ```c
- * asciichat_error_t asciichat_thread_set_realtime_priority(void);
+ * asciichat_error_t thread_set_realtime_priority(void);
  * ```
  * Elevate current thread to real-time priority.
  *
@@ -1701,7 +1701,7 @@
  * ```c
  * void* audio_worker(void* arg) {
  *   // Attempt to use real-time priority
- *   if (asciichat_thread_set_realtime_priority() != ASCIICHAT_OK) {
+ *   if (thread_set_realtime_priority() != ASCIICHAT_OK) {
  *     log_warn("Could not enable real-time priority for audio thread");
  *   } else {
  *     log_debug("Audio thread running with real-time priority");
@@ -1817,8 +1817,8 @@
  *   platform_init();  // Installs crash handlers
  *
  *   asciichat_thread_t thread;
- *   asciichat_thread_create(&thread, worker_thread, NULL);
- *   asciichat_thread_join(&thread, NULL);
+ *   acthread_create(&thread, worker_thread, NULL);
+ *   thread_join(&thread, NULL);
  *
  *   platform_cleanup();
  *   return 0;
@@ -2037,7 +2037,7 @@
  * Most POSIX functions are thin wrappers:
  * ```c
  * // Thread creation - simple delegation
- * int asciichat_thread_create(asciichat_thread_t* thread, void* (*func)(void*), void* arg) {
+ * int acthread_create(asciichat_thread_t* thread, void* (*func)(void*), void* arg) {
  *   return pthread_create(&thread->thread, NULL, func, arg);
  * }
  *
@@ -2096,7 +2096,7 @@
  * **Thread timeout join**:
  * macOS doesn't have `pthread_timedjoin_np()`, so timeouts fall back to blocking:
  * ```c
- * int asciichat_thread_join_timeout(asciichat_thread_t* thread, void** retval, int timeout_ms) {
+ * int thread_join_timeout(asciichat_thread_t* thread, void** retval, int timeout_ms) {
  *   #ifdef __APPLE__
  *     // No timeout support, fall back to blocking join
  *     return pthread_join(thread->thread, retval);
@@ -2189,7 +2189,7 @@
  *     info->client_id = ++client_id;
  *
  *     asciichat_thread_t thread;
- *     if (asciichat_thread_create(&thread, handle_client, info) != 0) {
+ *     if (acthread_create(&thread, handle_client, info) != 0) {
  *       fprintf(stderr, "Failed to create thread\n");
  *       socket_close(client_sock);
  *       free(info);
@@ -2283,11 +2283,11 @@
  *   queue_init(&queue);
  *
  *   asciichat_thread_t prod_thread, cons_thread;
- *   asciichat_thread_create(&prod_thread, producer, &queue);
- *   asciichat_thread_create(&cons_thread, consumer, &queue);
+ *   acthread_create(&prod_thread, producer, &queue);
+ *   acthread_create(&cons_thread, consumer, &queue);
  *
- *   asciichat_thread_join(&prod_thread, NULL);
- *   asciichat_thread_join(&cons_thread, NULL);
+ *   thread_join(&prod_thread, NULL);
+ *   thread_join(&cons_thread, NULL);
  *
  *   mutex_destroy(&queue.lock);
  *   cond_destroy(&queue.not_empty);
@@ -2428,7 +2428,7 @@
  *
  * // ✅ GOOD - Use platform abstraction
  * asciichat_thread_t thread;
- * asciichat_thread_create(&thread, func, arg);
+ * acthread_create(&thread, func, arg);
  * ```
  *
  * If you find yourself writing platform-specific code:
@@ -2460,12 +2460,12 @@
  *
  * ```c
  * // ❌ BAD - No error checking
- * asciichat_thread_create(&thread, func, arg);
+ * acthread_create(&thread, func, arg);
  * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
  * socket_bind(sock, &addr, sizeof(addr));
  *
  * // ✅ GOOD - Proper error checking
- * if (asciichat_thread_create(&thread, func, arg) != 0) {
+ * if (acthread_create(&thread, func, arg) != 0) {
  *   log_error("Thread creation failed");
  *   return ERROR_THREAD_CREATE;
  * }
@@ -2532,29 +2532,29 @@
  * ```c
  * // ❌ BAD - Joining uninitialized thread
  * asciichat_thread_t thread;
- * asciichat_thread_create(&thread, func, arg);  // What if this fails?
- * asciichat_thread_join(&thread, NULL);         // Undefined behavior!
+ * acthread_create(&thread, func, arg);  // What if this fails?
+ * thread_join(&thread, NULL);         // Undefined behavior!
  *
  * // ✅ GOOD - Check creation before join
  * asciichat_thread_t thread;
  * bool thread_created = false;
  *
- * if (asciichat_thread_create(&thread, func, arg) == 0) {
+ * if (acthread_create(&thread, func, arg) == 0) {
  *   thread_created = true;
  * } else {
  *   log_error("Thread creation failed");
  * }
  *
  * if (thread_created) {
- *   asciichat_thread_join(&thread, NULL);
+ *   thread_join(&thread, NULL);
  * }
  * ```
  *
  * Or use a helper function:
  * ```c
  * // Check if thread was initialized
- * if (asciichat_thread_is_initialized(&thread)) {
- *   asciichat_thread_join(&thread, NULL);
+ * if (thread_is_initialized(&thread)) {
+ *   thread_join(&thread, NULL);
  * }
  * ```
  *
@@ -2601,8 +2601,8 @@
  * #include "platform/abstraction.h"
  *
  * asciichat_thread_t thread;
- * asciichat_thread_create(&thread, worker, arg);
- * asciichat_thread_join(&thread, NULL);
+ * acthread_create(&thread, worker, arg);
+ * thread_join(&thread, NULL);
  * ```
  *
  * **From Windows threads**:
@@ -2618,8 +2618,8 @@
  * #include "platform/abstraction.h"
  *
  * asciichat_thread_t thread;
- * asciichat_thread_create(&thread, worker, arg);
- * asciichat_thread_join(&thread, NULL);
+ * acthread_create(&thread, worker, arg);
+ * thread_join(&thread, NULL);
  * ```
  *
  * @subsection platform_migration_mutexes Migrating Mutexes
@@ -2797,14 +2797,14 @@
  *
  * @subsection platform_troubleshooting_thread_join_crash Thread Join Crashes
  *
- * **Problem**: Crash when calling `asciichat_thread_join()`.
+ * **Problem**: Crash when calling `thread_join()`.
  *
  * **Solution**: Check if thread was successfully created:
  * ```c
  * asciichat_thread_t thread;
- * if (asciichat_thread_create(&thread, func, arg) == 0) {
+ * if (acthread_create(&thread, func, arg) == 0) {
  *   // Only join if creation succeeded
- *   asciichat_thread_join(&thread, NULL);
+ *   thread_join(&thread, NULL);
  * }
  * ```
  *

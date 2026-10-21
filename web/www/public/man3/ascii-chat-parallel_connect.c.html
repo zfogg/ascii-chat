@@ -150,8 +150,8 @@
 230   asciichat_thread_t ipv4_thread;
 231   asciichat_thread_t ipv6_thread;
 232 
-233   asciichat_thread_init(&amp;ipv4_thread);
-234   asciichat_thread_init(&amp;ipv6_thread);
+233   thread_init(&amp;ipv4_thread);
+234   thread_init(&amp;ipv6_thread);
 235 
 236   // Start IPv4 attempt if available
 237   if (ipv4_addr) {
@@ -167,7 +167,7 @@
 247     memcpy(&amp;ipv4_attempt.addr, ipv4_addr-&gt;ai_addr, ipv4_addr-&gt;ai_addrlen);
 248     ipv4_attempt.addr_len = ipv4_addr-&gt;ai_addrlen;
 249 
-250     asciichat_thread_create(&amp;ipv4_thread, &quot;connect_ipv4&quot;, attempt_connection_thread, &amp;ipv4_attempt);
+250     acthread_create(&amp;ipv4_thread, &quot;connect_ipv4&quot;, attempt_connection_thread, &amp;ipv4_attempt);
 251   }
 252 
 253   // Start IPv6 attempt if available
@@ -184,7 +184,7 @@
 264     memcpy(&amp;ipv6_attempt.addr, ipv6_addr-&gt;ai_addr, ipv6_addr-&gt;ai_addrlen);
 265     ipv6_attempt.addr_len = ipv6_addr-&gt;ai_addrlen;
 266 
-267     asciichat_thread_create(&amp;ipv6_thread, &quot;connect_ipv6&quot;, attempt_connection_thread, &amp;ipv6_attempt);
+267     acthread_create(&amp;ipv6_thread, &quot;connect_ipv6&quot;, attempt_connection_thread, &amp;ipv6_attempt);
 268   }
 269 
 270   // Wait for winner or both to finish
@@ -209,11 +209,11 @@
 289 
 290   // Join threads (must wait for both to complete before returning)
 291   // The threads access shared state on our stack, so we cannot return until they're done
-292   if (asciichat_thread_is_initialized(&amp;ipv4_thread)) {
-293     asciichat_thread_join(&amp;ipv4_thread, NULL);
+292   if (thread_is_initialized(&amp;ipv4_thread)) {
+293     thread_join(&amp;ipv4_thread, NULL);
 294   }
-295   if (asciichat_thread_is_initialized(&amp;ipv6_thread)) {
-296     asciichat_thread_join(&amp;ipv6_thread, NULL);
+295   if (thread_is_initialized(&amp;ipv6_thread)) {
+296     thread_join(&amp;ipv6_thread, NULL);
 297   }
 298 
 299   // Close any remaining sockets
@@ -243,8 +243,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>connection_attempt_t::addr</b>,
     <b>connection_attempt_t::addr_len</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_thread_create</b>, <b>asciichat_thread_init()</b>,
-    <b>asciichat_thread_is_initialized()</b>, <b>asciichat_thread_join</b>,
+    <b>acthread_create</b>, <b>thread_init()</b>,
+    <b>thread_is_initialized()</b>, <b>thread_join</b>,
     <b>connection_attempt_t::callback_data</b>,
     <b>parallel_connect_config_t::callback_data</b>, <b>cond_destroy()</b>,
     <b>cond_init()</b>, <b>cond_timedwait</b>,

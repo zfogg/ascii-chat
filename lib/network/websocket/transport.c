@@ -1108,7 +1108,7 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
   websocket_interrupt(transport);
   // Client contexts are exclusive; server contexts close on their writable callback.
   if (ws_data->service_running) {
-    asciichat_error_t result = asciichat_thread_join(&ws_data->service_thread, NULL);
+    asciichat_error_t result = thread_join(&ws_data->service_thread, NULL);
     if (result != ASCIICHAT_OK)
       return result;
     ws_data->service_running = false;
@@ -1233,7 +1233,7 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   if (ws_data->service_running) {
     log_debug("Stopping WebSocket service thread");
     ws_data->service_running = false;
-    asciichat_thread_join(&ws_data->service_thread, NULL);
+    thread_join(&ws_data->service_thread, NULL);
     log_debug("WebSocket service thread stopped");
   }
 
@@ -1663,7 +1663,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   // The service thread checks is_destroying and context validity before calling lws_service,
   // so it's safe to start it right away without delays.
   ws_data->service_running = true;
-  if (asciichat_thread_create(&ws_data->service_thread, "ws_service", websocket_service_thread, ws_data) != 0) {
+  if (acthread_create(&ws_data->service_thread, "ws_service", websocket_service_thread, ws_data) != 0) {
     log_error("Failed to create WebSocket service thread");
     ws_data->service_running = false;
     lws_context_destroy(ws_data->context);

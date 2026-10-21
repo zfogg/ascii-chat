@@ -162,12 +162,12 @@ static void register_thread_if_needed(void) {
   thread_lock_stack_t *local_stack = get_thread_local_stack();
   if (!local_stack)
     return;
-  thread_id_t current_thread = asciichat_thread_self();
+  thread_id_t current_thread = thread_self();
   registry_lock();
   int count = atomic_load_int(&g_thread_registry_count);
   int slot = -1;
   for (int i = 0; i < count; ++i) {
-    if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread)) {
+    if (thread_equal(g_thread_registry[i].thread_id, current_thread)) {
       slot = i;
       break;
     }
@@ -887,11 +887,11 @@ void mutex_stack_cleanup_current_thread(void) {
   ascii_tls_set(g_tls_mutex_stack, NULL);
 
   // Update registry if this thread is registered
-  thread_id_t current_thread = asciichat_thread_self();
+  thread_id_t current_thread = thread_self();
   registry_lock();
   int count = atomic_load_int(&g_thread_registry_count);
   for (int i = 0; i < count; i++) {
-    if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread) && g_thread_registry[i].stack == stack) {
+    if (thread_equal(g_thread_registry[i].thread_id, current_thread) && g_thread_registry[i].stack == stack) {
       g_thread_registry[i].stack = NULL; // Mark as freed in registry
       break;
     }

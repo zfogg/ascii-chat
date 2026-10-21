@@ -215,7 +215,7 @@ asciichat_error_t acip_outbound_create(acip_transport_t *transport) {
     return GET_ERRNO();
   }
   out->transport = transport;
-  asciichat_error_t result = asciichat_thread_create(&out->worker, "outbound", outbound_worker, out);
+  asciichat_error_t result = acthread_create(&out->worker, "outbound", outbound_worker, out);
   if (result != ASCIICHAT_OK) {
     cond_destroy(&out->changed);
     mutex_destroy(&out->mutex);
@@ -234,10 +234,16 @@ void acip_outbound_destroy(acip_transport_t *transport) {
   out->stopping = true;
   cond_broadcast(&out->changed);
   mutex_unlock(&out->mutex);
-  /* The caller has quiesced producers. Interrupt a blocking legacy TCP write
-   * before joining, while every backend resource is still alive. */
-  transport->methods->close(transport);
-  asciichat_thread_join(&out->worker, NULL);
+  /* Wake a blocked send while every backend resource is still alive. The
+   * failed-send worker also closes its backend, so wait for that worker before
+   * closing here: two concurrent closes can join the same service thread. */
+  if (transport->methods->interrupt)
+    transport->methods->interrupt(transport);
+  else
+    transport->methods->close(transport);
+  thread_join(&out->worker, NULL);
+  if (transport->methods->interrupt)
+    transport->methods->close(transport);
   mutex_lock(&out->mutex);
   fail_queue(out);
   while (out->recycled) {

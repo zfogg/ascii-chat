@@ -1,5 +1,8 @@
+import { UploadQuality, type UploadFeedback } from "./UploadQuality";
+import { VideoFrameClock } from "../../../packages/shared/src/hooks/videoFrameClock";
 /** Browser HEVC/AVC upload encoder. ACIP carries self-contained Annex B access units. */
 export interface VideoChunk {
+  timestamp?: number;
   flags: number;
   width: number;
   height: number;
@@ -19,6 +22,40 @@ export class VideoUploadEncoder {
   private generation = 0;
   private failure: Error | null = null;
   private resizing = false;
+  private quality = new UploadQuality();
+  private feedback: UploadFeedback = { bufferedBytes: 0 };
+  private frameClock = new VideoFrameClock();
+  private ceilingFps = 30;
+  private scaleCanvas: OffscreenCanvas | null = null;
+  private rejectedConfigs = new Set<string>();
+
+  private configurationKey(
+    width: number,
+    height: number,
+    fps: number,
+    bitrate: number,
+  ): string {
+    return `${width}:${height}:${fps}:${bitrate}`;
+  }
+
+  private rejectConfiguration(key: string): void {
+    if (this.rejectedConfigs.size >= 64)
+      this.rejectedConfigs.delete(this.rejectedConfigs.values().next().value!);
+    this.rejectedConfigs.add(key);
+  }
+
+  observeTransport(feedback: UploadFeedback): void {
+    this.feedback = feedback;
+    this.quality.sample(
+      performance.now(),
+      feedback,
+      this.encoder?.encodeQueueSize ?? 0,
+    );
+  }
+
+  get qualityStatus() {
+    return { ...this.config, reason: this.quality.reason };
+  }
 
   constructor(
     private output: (chunk: VideoChunk) => void,
@@ -47,7 +84,7 @@ export class VideoUploadEncoder {
       width,
       height,
       framerate: fps,
-      bitrate: Math.max(500_000, width * height * 2 * fps),
+      bitrate: UploadQuality.bitrateCeiling(width, height, fps),
       latencyMode: "realtime",
       hardwareAcceleration: "prefer-hardware",
       ...(codec === "hevc"
@@ -73,6 +110,22 @@ export class VideoUploadEncoder {
 
   async initialize(width: number, height: number, fps: number): Promise<void> {
     this.destroy();
+    this.rejectedConfigs.clear();
+    this.ceilingFps = fps;
+    this.quality = new UploadQuality();
+    this.feedback = { bufferedBytes: 0 };
+    this.quality.sample(performance.now(), this.feedback);
+    this.frameClock = new VideoFrameClock();
+    return this.configure(width, height, fps);
+  }
+
+  private async configure(
+    width: number,
+    height: number,
+    fps: number,
+    bitrate?: number,
+    adaptive = false,
+  ): Promise<void> {
     const generation = this.generation;
     if (!VideoUploadEncoder.isSupported())
       throw new Error(
@@ -84,19 +137,31 @@ export class VideoUploadEncoder {
       height,
       fps,
     );
+    if (bitrate !== undefined) config.bitrate = bitrate;
+    const key = this.configurationKey(width, height, fps, config.bitrate!);
     const supported = await VideoUploadEncoder.supports(config);
     if (generation !== this.generation) return;
-    if (!supported)
+    if (!supported) {
+      if (adaptive) {
+        this.rejectConfiguration(key);
+        return;
+      }
       throw new Error(
         `${this.label} encoding is unsupported by this browser/device for the requested video size and frame rate. Use ?encoding=raw.`,
       );
-    this.config = config;
-    this.failure = null;
-    this.frameCount = 0;
+    }
+    // The old encoder remains authoritative until a supported replacement has
+    // configured successfully. Its output keeps its original dimensions.
+    const nextGeneration = generation + 1;
     let firstOutput = true;
-    this.encoder = new VideoEncoder({
+    const candidate = new VideoEncoder({
       output: (chunk) => {
-        if (generation !== this.generation || this.failure) return;
+        if (
+          nextGeneration !== this.generation ||
+          this.encoder !== candidate ||
+          this.failure
+        )
+          return;
         try {
           const data = new Uint8Array(chunk.byteLength);
           chunk.copyTo(data);
@@ -113,6 +178,7 @@ export class VideoUploadEncoder {
               `Browser did not produce ${this.label} Annex B video. Use ?encoding=raw.`,
             );
           this.output({
+            timestamp: chunk.timestamp,
             flags: (chunk.type === "key" ? 1 : 0) | (firstOutput ? 2 : 0),
             width,
             height,
@@ -125,35 +191,81 @@ export class VideoUploadEncoder {
         }
       },
       error: (error) => {
-        if (generation === this.generation) this.failure = error;
+        if (nextGeneration === this.generation && this.encoder === candidate)
+          this.failure = error;
       },
     });
     try {
-      this.encoder.configure(config);
+      candidate.configure(config);
     } catch (error) {
-      this.destroy();
+      if (candidate.state !== "closed") candidate.close();
+      if (adaptive) {
+        this.rejectConfiguration(key);
+        return;
+      }
       throw new Error(
         `${this.label} encoder initialization failed: ${String(error)} Use ?encoding=raw.`,
         { cause: error },
       );
     }
+    this.destroy();
+    this.encoder = candidate;
+    this.config = config;
+    this.failure = null;
+    this.frameCount = 0;
+    this.frameClock = new VideoFrameClock();
   }
 
   encode(
     frame: VideoFrame,
-    fps = this.config?.framerate,
+    fps = this.ceilingFps,
     forceKeyframe = false,
   ): void {
     if (this.failure) throw this.failure;
-    if (!this.encoder || !this.config || this.resizing) return;
+    if (!this.encoder || !this.config) return;
+    const now = performance.now();
+    this.quality.sample(now, this.feedback, this.encoder.encodeQueueSize);
+    let target = this.quality.target(
+      frame.displayWidth,
+      frame.displayHeight,
+      fps ?? 30,
+    );
+    // Avoid bitrate-only restart/keyframe churn for small recovery steps.
+    // Always apply the ceiling when recovered, even below the relative threshold.
+    const bitrateShift =
+      Math.abs(target.bitrate - this.config.bitrate!) / this.config.bitrate!;
+    const atCeiling =
+      target.bitrate ===
+      UploadQuality.bitrateCeiling(
+        frame.displayWidth,
+        frame.displayHeight,
+        fps,
+      );
     if (
-      frame.displayWidth !== this.config.width ||
-      frame.displayHeight !== this.config.height ||
-      fps !== this.config.framerate
+      !this.resizing &&
+      !this.rejectedConfigs.has(
+        this.configurationKey(
+          target.width,
+          target.height,
+          target.fps,
+          target.bitrate,
+        ),
+      ) &&
+      (target.width !== this.config.width ||
+        target.height !== this.config.height ||
+        target.fps !== this.config.framerate ||
+        (target.bitrate !== this.config.bitrate &&
+          (bitrateShift >= 0.25 || atCeiling)))
     ) {
       this.resizing = true;
       // Recreate instead of relabeling pending output with the new dimensions.
-      void this.initialize(frame.displayWidth, frame.displayHeight, fps ?? 30)
+      void this.configure(
+        target.width,
+        target.height,
+        target.fps,
+        target.bitrate,
+        true,
+      )
         .catch((error: unknown) => {
           this.failure =
             error instanceof Error ? error : new Error(String(error));
@@ -161,12 +273,38 @@ export class VideoUploadEncoder {
         .finally(() => {
           this.resizing = false;
         });
-      return;
     }
+    // Continue at the active settings while probing, or after a rejected tier.
+    target = {
+      width: this.config.width!,
+      height: this.config.height!,
+      fps: this.config.framerate!,
+      bitrate: this.config.bitrate!,
+    };
     if (this.encoder.encodeQueueSize >= 2) return;
-    this.encoder.encode(frame, {
-      keyFrame: forceKeyframe || this.frameCount % 60 === 0,
-    });
+    if (!this.frameClock.accept(now / 1000, 1000 / target.fps)) return;
+    let scaled: VideoFrame | null = null;
+    try {
+      if (
+        target.width !== frame.displayWidth ||
+        target.height !== frame.displayHeight
+      ) {
+        this.scaleCanvas ??= new OffscreenCanvas(target.width, target.height);
+        this.scaleCanvas.width = target.width;
+        this.scaleCanvas.height = target.height;
+        const context = this.scaleCanvas.getContext("2d");
+        if (!context) throw new Error("Upload scaling canvas is unavailable");
+        context.drawImage(frame, 0, 0, target.width, target.height);
+        scaled = new VideoFrame(this.scaleCanvas, {
+          timestamp: frame.timestamp,
+        });
+      }
+      this.encoder.encode(scaled ?? frame, {
+        keyFrame: forceKeyframe || this.frameCount % 60 === 0,
+      });
+    } finally {
+      scaled?.close();
+    }
     this.frameCount++;
   }
 

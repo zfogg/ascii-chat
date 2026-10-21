@@ -439,7 +439,7 @@ log_info(&quot;Frame took %s&quot;, duration_str);
 <br/>
     snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), &quot;%s_tid%llu&quot;, _timer_name_buf,                      \
 <br/>
-             (unsigned long long)asciichat_thread_current_id());                                                     \
+             (unsigned long long)thread_current_id());                                                     \
 <br/>
     (void)timer_start(_timer_name_with_tid);                                                                         \
 <br/>
@@ -472,7 +472,7 @@ log_info(&quot;Frame took %s&quot;, duration_str);
 337       char _timer_name_with_tid[280];                                                                                  \
 338       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
 339       snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), &quot;%s_tid%llu&quot;, _timer_name_buf,                      \
-340                (unsigned long long)asciichat_thread_current_id());                                                     \
+340                (unsigned long long)thread_current_id());                                                     \
 341       (void)timer_start(_timer_name_with_tid);                                                                         \
 342     }                                                                                                                  \
 343   } while (0)</pre>
@@ -546,7 +546,7 @@ log_info(&quot;Frame took %s&quot;, duration_str);
 <br/>
     snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), &quot;%s_tid%llu&quot;, _timer_name_buf,                      \
 <br/>
-             (unsigned long long)asciichat_thread_current_id());                                                     \
+             (unsigned long long)thread_current_id());                                                     \
 <br/>
     _elapsed = timer_stop(_timer_name_with_tid);                                                                     \
 <br/>
@@ -581,7 +581,7 @@ log_info(&quot;Frame took %s&quot;, duration_str);
 408       char _timer_name_with_tid[280];                                                                                  \
 409       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
 410       snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), &quot;%s_tid%llu&quot;, _timer_name_buf,                      \
-411                (unsigned long long)asciichat_thread_current_id());                                                     \
+411                (unsigned long long)thread_current_id());                                                     \
 412       _elapsed = timer_stop(_timer_name_with_tid);                                                                     \
 413     }                                                                                                                  \
 414     _elapsed;                                                                                                          \

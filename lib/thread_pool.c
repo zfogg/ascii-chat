@@ -191,7 +191,7 @@ thread_pool_t *thread_pool_create_with_workers(const char *pool_name, size_t num
     SAFE_SNPRINTF(entry->name, sizeof(entry->name), "%s_worker_%zu", pool->name, i);
 
     // Create worker thread
-    if (asciichat_thread_create(&entry->thread, entry->name, thread_pool_worker_thread, pool) != 0) {
+    if (acthread_create(&entry->thread, entry->name, thread_pool_worker_thread, pool) != 0) {
       log_error("Failed to create worker thread %zu", i);
       SAFE_FREE(entry);
       thread_pool_destroy(pool);
@@ -365,7 +365,7 @@ asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(vo
   }
 
   // Create thread
-  if (asciichat_thread_create(&entry->thread, entry->name, thread_func, thread_arg) != 0) {
+  if (acthread_create(&entry->thread, entry->name, thread_func, thread_arg) != 0) {
     // Save name before freeing entry
     char thread_name_copy[64];
     SAFE_STRNCPY(thread_name_copy, entry->name, sizeof(thread_name_copy));
@@ -443,7 +443,7 @@ asciichat_error_t thread_pool_stop_all(thread_pool_t *pool) {
 
     // A timed-out worker may still access its pool and arguments. Keep its
     // entry tracked so later shutdown can join it before freeing those objects.
-    int join_result = asciichat_thread_join_timeout(&entry->thread, NULL, THREAD_JOIN_TIMEOUT_NS);
+    int join_result = thread_join_timeout(&entry->thread, NULL, THREAD_JOIN_TIMEOUT_NS);
     if (join_result != 0) {
       if (join_result == ETIMEDOUT) {
         log_warn("Thread '%s' (stop_id=%d) did not exit within 2s timeout; retaining its pool entry.", entry->name,

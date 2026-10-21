@@ -86,13 +86,16 @@ set(ALL_TIMED_TEST_TARGETS "" CACHE INTERNAL "All test targets for timing")
 
 # White-box contract suites retain explicit production link dependencies.
 function(asciichat_configure_contract target)
+    set_property(TARGET ${target} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
     target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES})
+    target_link_directories(${target} PRIVATE ${CRITERION_LIBRARY_DIRS})
     target_include_directories(${target} PRIVATE ${CRITERION_INCLUDE_DIRS})
     set_target_properties(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF
         INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)
-    if(APPLE)
-        target_link_options(${target} PRIVATE -Wl,-no_dead_strip)
-    else()
+    # Registrations are compiled directly into these executables. Omitting the
+    # shared dead-strip policy preserves them without force-loading production
+    # archives, which would conflict with white-box replacement definitions.
+    if(NOT APPLE)
         target_link_options(${target} PRIVATE -Wl,--no-gc-sections)
     endif()
     foreach(build_target tests tests-criterion-build test_all)
@@ -497,30 +500,10 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # Interface link options are appended after private options, so the
         # shared project policy must omit stripping for Criterion targets.
         set_property(TARGET ${test_exe_name} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
-        # Criterion uses __attribute__((constructor)) to register tests, which the linker
-        # considers "unused" and removes with --gc-sections/-dead_strip. This causes all
-        # tests to be stripped in Release builds, resulting in "Tested: 0" output.
-        #
-        # On macOS: We cannot use -Wl,-no_dead_strip to disable stripping, so we use
-        # -Wl,-all_load on static libraries instead (via target_link_options below).
-        # On Linux: Use --no-gc-sections to override the global --gc-sections flag.
-        #
-        # IMPORTANT: We must NOT replace LINK_OPTIONS entirely on macOS as that would
-        # remove sanitizer link flags. Instead we add flags to counteract dead stripping.
-        if(NOT WIN32)
-            if(APPLE)
-                # macOS: Add -all_load to prevent stripping constructor functions from static libs
-                # The global -undefined dynamic_lookup flag handles undefined symbols from WebRTC
-                # Keep -pie for ASLR security. Don't clear other link options (sanitizers!)
-                target_link_options(${test_exe_name} PRIVATE
-                    -Wl,-all_load
-                )
-            else()
-                # Linux: Use --no-gc-sections to override the global --gc-sections flag
-                target_link_options(${test_exe_name} PRIVATE
-                    -Wl,--no-gc-sections
-                )
-            endif()
+        # Registrations are direct executable objects. The project policy keeps
+        # them without force-loading unrelated archives and duplicate symbols.
+        if(NOT WIN32 AND NOT APPLE)
+            target_link_options(${test_exe_name} PRIVATE -Wl,--no-gc-sections)
         endif()
 
         # Disable IPO/LTO for test executables
