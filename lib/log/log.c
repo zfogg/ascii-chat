@@ -1232,13 +1232,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       // Choose output stream using unified routing logic
       int fd = terminal_choose_log_fd(level);
       FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
-      // Check if colors should be used
-      // Priority 1: If --color was explicitly passed, force colors
-      bool use_colors = true; // Default: enable colors
-      if (g_color_flag_passed && !g_color_flag_value) {
-        use_colors = false; // --color=false explicitly disables colors
-      }
-      // Priority 2: If --color NOT explicitly passed, enable colors by default
+      bool use_colors = terminal_should_color_output(fd);
 
       char header_buffer[512];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func,
@@ -1919,7 +1913,7 @@ const char *log_level_color_for_output(log_color_t color, bool enabled) {
     return "";
   static _Thread_local colorscheme_palette_t palette;
   terminal_color_mode_t mode = (terminal_color_mode_t)log_get_color_mode();
-  colorscheme_current_palette(&palette, mode);
+  colorscheme_current_palette(&palette, mode == TERM_COLOR_NONE ? TERM_COLOR_16 : mode);
   return palette.codes[color >= 0 && color <= LOG_COLOR_RESET ? color : LOG_COLOR_RESET];
 }
 
