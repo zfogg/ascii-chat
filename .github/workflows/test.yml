@@ -73,6 +73,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install gcovr==8.6
       - run: python .github/scripts/test_generate_coverage.py
+      - run: python .github/scripts/test_prepare_coverage_upload.py
       - run: python .github/scripts/test_criterion_to_junit.py
 
   unit-tests:
@@ -119,6 +120,8 @@ jobs:
 
       - name: Clean test executables and libraries only
         run: |
+          rm -f build/coverage.xml build/Testing/ctest-results.xml
+          rm -rf build/Testing/criterion-xml
           # Only clean test executables and old libraries
           # Keep CMakeCache.txt and CMakeFiles to preserve configure cache across build type changes
           rm -rf build/bin/test_*
@@ -178,8 +181,6 @@ jobs:
             # Force Criterion tests in Release mode for CI testing
             # Must use ASCIICHAT_FORCE_CRITERION_TESTS (cache option) not BUILD_CRITERION_TESTS (regular variable)
             cmake_args+=(-DASCIICHAT_FORCE_CRITERION_TESTS=ON)
-            # Disable coverage for Release builds (github preset has it ON by default)
-            cmake_args+=(-DASCIICHAT_ENABLE_COVERAGE=OFF)
             # Skip hardening validation (linker checks may fail in CI environment)
             cmake_args+=(-DASCIICHAT_SKIP_HARDENING_VALIDATION=ON)
           fi
@@ -241,12 +242,12 @@ jobs:
           # Several unit binaries mutate process-global options and logging
           # state. Run them serially so one test process cannot perturb
           # another on the same CI worker.
-          ctest --test-dir build --label-regex "^unit$" --output-on-failure --parallel 1 | tee unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
+          ctest --test-dir build --label-regex "^unit$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 1 | tee unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
 
           echo "Unit tests completed successfully"
 
-      - name: Generate coverage report (debug builds only)
-        if: always() && matrix.build_type == 'debug'
+      - name: Generate coverage report
+        if: always()
         uses: ./.github/actions/generate-coverage
         with:
           os-type: ${{ matrix.os-name }}
@@ -295,7 +296,7 @@ jobs:
           criterion-xml-dir: build/Testing/criterion-xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
-          upload-coverage: ${{ matrix.build_type == 'debug' && 'true' || 'false' }}
+          upload-coverage: "false"
 
       - name: Upload test results
         if: always()
@@ -304,6 +305,8 @@ jobs:
           name: test-results-${{ runner.os }}-${{ matrix.build_type }}
           path: |
             unit-tests-*.log
+            build/coverage.xml
+            build/Testing/ctest-results.xml
             build/Testing/criterion-xml/*.xml
           retention-days: 7
 
@@ -350,6 +353,8 @@ jobs:
 
       - name: Clear stale integration executables and libraries
         run: |
+          rm -f build/coverage.xml build/Testing/ctest-results.xml
+          rm -rf build/Testing/criterion-xml
           # macOS debug symbol bundles matching these paths are directories.
           rm -rf build/bin/test_* build/bin/ascii-chat build/bin/ascii-chat.dSYM build/lib/libasciichat*
 
@@ -411,7 +416,7 @@ jobs:
 
       - name: Build and run integration tests
         run: |
-          cmake --build build --target ascii-chat tests-criterion-build
+          cmake --build build --target all tests-criterion-build
           if [ "${{ matrix.os-name }}" = "macos" ]; then
             export ASAN_SYMBOLIZER_PATH="$(brew --prefix llvm)/bin/llvm-symbolizer"
           fi
@@ -422,7 +427,7 @@ jobs:
 
           # Run integration tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
-          ctest --test-dir build --label-regex "^integration$" --output-on-failure --parallel 0 | tee integration-tests-${{ matrix.os-name }}.log
+          ctest --test-dir build --label-regex "^integration$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 0 | tee integration-tests-${{ matrix.os-name }}.log
 
           echo "Integration tests completed successfully"
 
@@ -459,7 +464,7 @@ jobs:
           criterion-xml-dir: build/Testing/criterion-xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
-          upload-coverage: "true"
+          upload-coverage: "false"
 
       - name: Upload integration test results
         if: always()
@@ -468,6 +473,8 @@ jobs:
           name: integration-test-results-${{ runner.os }}
           path: |
             integration-tests-*.log
+            build/coverage.xml
+            build/Testing/ctest-results.xml
             build/Testing/criterion-xml/*.xml
             build/backpressure/
             /tmp/webrtc_e2e_*.log
@@ -506,6 +513,8 @@ jobs:
 
       - name: Clean test executables and libraries only
         run: |
+          rm -f build/coverage.xml build/Testing/ctest-results.xml
+          rm -rf build/Testing/criterion-xml
           # Only clean test executables and old libraries
           # Keep CMakeCache.txt and CMakeFiles to preserve configure cache
           rm -rf build/bin/test_*
@@ -586,7 +595,7 @@ jobs:
           # Run performance tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
           set -o pipefail
-          ctest --test-dir build --label-regex "^performance$" --output-on-failure --parallel 0 | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          ctest --test-dir build --label-regex "^performance$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 0 | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Performance tests completed successfully"
 
@@ -623,7 +632,7 @@ jobs:
           criterion-xml-dir: build/Testing/criterion-xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
-          upload-coverage: "true"
+          upload-coverage: "false"
 
       - name: Upload performance test artifacts
         if: always()
@@ -632,8 +641,54 @@ jobs:
           name: performance-test-results-${{ runner.os }}
           path: |
             performance-tests-*.log
+            build/coverage.xml
+            build/Testing/ctest-results.xml
             build/Testing/criterion-xml/*.xml
           retention-days: 7
+
+  coverage:
+    name: Publish complete coverage
+    needs: [unit-tests, integration-tests, performance-tests]
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*test-results-*'
+          path: coverage-reports
+      - name: Require all seven coverage reports
+        id: coverage
+        run: python .github/scripts/prepare-coverage-upload.py coverage-reports
+      - name: Preserve complete coverage inputs and summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: complete-coverage
+          path: |
+            coverage-reports/**/coverage.xml
+            coverage-reports/**/ctest-results.xml
+            coverage-reports/**/criterion-xml/*.xml
+            coverage-reports/summary.json
+          retention-days: 7
+      - name: Install pinned Codecov CLI
+        id: codecov-cli
+        run: |
+          python -m pip install codecov-cli==11.3.1
+          echo "binary=$(command -v codecovcli)" >> "$GITHUB_OUTPUT"
+      - name: Upload complete coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          binary: ${{ steps.codecov-cli.outputs.binary }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ${{ steps.coverage.outputs.files }}
+          disable_search: true
+          plugins: noop
+          flags: coverage
+          name: complete-native-suite
+          fail_ci_if_error: true
 
   memory-tests:
     runs-on: ubuntu-latest

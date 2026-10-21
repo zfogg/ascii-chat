@@ -508,7 +508,8 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
 
     if(PLATFORM_LINUX)
         # GNU ld: Use --gc-sections to remove unused sections
-        target_link_options(asciichat-project-options INTERFACE -Wl,--gc-sections)
+        target_link_options(asciichat-project-options INTERFACE
+            "$<$<NOT:$<BOOL:$<TARGET_PROPERTY:ASCIICHAT_KEEP_TEST_REGISTRATION>>>:-Wl,--gc-sections>")
     elseif(APPLE)
         # Apple ld: Use -dead_strip to remove unused sections
         target_link_options(asciichat-project-options INTERFACE -Wl,-dead_strip)

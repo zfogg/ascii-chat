@@ -467,6 +467,9 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         endif()
 
         # Disable dead code elimination for test executables
+        # Interface link options are appended after private options, so the
+        # shared project policy must omit stripping for Criterion targets.
+        set_property(TARGET ${test_exe_name} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
         # Criterion uses __attribute__((constructor)) to register tests, which the linker
         # considers "unused" and removes with --gc-sections/-dead_strip. This causes all
         # tests to be stripped in Release builds, resulting in "Tested: 0" output.
