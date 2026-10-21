@@ -140,7 +140,9 @@ export function useClientLike(
     videoRef,
     canvasRef,
     false,
-    mediaSource === MediaSourceType.SCREEN ? { faceFollow: false, faceFollowDebug: false } : settings,
+    mediaSource === MediaSourceType.SCREEN
+      ? { faceFollow: false, faceFollowDebug: false }
+      : settings,
   );
 
   // Handle dimension changes from AsciiRenderer

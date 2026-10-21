@@ -371,8 +371,16 @@ export function ClientPage({
   const [settings, setSettings, receiveSettings] = useRenderSettings();
   const [captureFps, setCaptureFps] = useUrlState("captureFps", 60);
   const cameraSettings = useMemo(
-    () => ({ ...settings, targetFps: captureFps,
-      ...(displayInput ? { faceFollow: false, faceFollowDebug: false, ...(!settings.flipXExplicit ? { flipX: false } : {}) } : {}),
+    () => ({
+      ...settings,
+      targetFps: captureFps,
+      ...(displayInput
+        ? {
+            faceFollow: false,
+            faceFollowDebug: false,
+            ...(!settings.flipXExplicit ? { flipX: false } : {}),
+          }
+        : {}),
     }),
     [settings, captureFps, displayInput],
   );
@@ -653,7 +661,8 @@ export function ClientPage({
   }, [connectionState, releaseScreen]);
 
   const applyWasmSettings = useCallback(
-    (next: BinarySettingsConfig) => applyMirrorWasmSettings(next, fileSelected || displayInput),
+    (next: BinarySettingsConfig) =>
+      applyMirrorWasmSettings(next, fileSelected || displayInput),
     [fileSelected, displayInput],
   );
 
@@ -1660,7 +1669,10 @@ export function ClientPage({
               uploadControls: (
                 <ScreenShareControls
                   capture={screenCapture}
-                  disabled={connectionState !== ConnectionState.CONNECTED}
+                  disabled={
+                    connectionState !== ConnectionState.CONNECTED ||
+                    fileMedia.loading
+                  }
                 />
               ),
             }}

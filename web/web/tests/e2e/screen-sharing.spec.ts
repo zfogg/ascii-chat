@@ -112,7 +112,17 @@ test("Mirror renders display ASCII, cancels, replaces, ends and restores the mic
   ).toBeVisible();
   await page.getByRole("button", { name: "Share screen", exact: true }).click();
   await expect(page.getByText("Sharing screen · video only")).toBeVisible();
-  expect(await page.locator("video[autoplay]").evaluate((video) => (video as HTMLVideoElement).srcObject instanceof MediaStream && ((video as HTMLVideoElement).srcObject as MediaStream).getAudioTracks().length)).toBe(1);
+  expect(
+    await page
+      .locator("video[autoplay]")
+      .evaluate(
+        (video) =>
+          (video as HTMLVideoElement).srcObject instanceof MediaStream &&
+          (
+            (video as HTMLVideoElement).srcObject as MediaStream
+          ).getAudioTracks().length,
+      ),
+  ).toBe(1);
   await expect.poll(() => redPixels(page)).toBeGreaterThan(1000);
   await fullPageProof(page, info.outputPath("mirror-screen-ascii.png"));
   const microphone = await page.evaluate(() => {

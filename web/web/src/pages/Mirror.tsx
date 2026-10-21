@@ -458,7 +458,7 @@ export function MirrorPage() {
               uploadControls: (
                 <ScreenShareControls
                   capture={screenCapture}
-                  disabled={!wasmInitialized || isStarting}
+                  disabled={!wasmInitialized || isStarting || fileMedia.loading}
                 />
               ),
               statusControls: (
