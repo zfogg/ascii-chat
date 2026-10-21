@@ -13,11 +13,15 @@ import signal
 import socket
 import struct
 import subprocess
-import tomllib
 import tempfile
 import termios
 import time
 import unittest
+
+try:
+    import tomllib
+except ImportError:
+    tomllib = None
 
 
 def free_port():
@@ -46,12 +50,13 @@ class MediaSessions(unittest.TestCase):
     def command(self, *args):
         return [BINARY, "--no-check-update", "--log-file", str(self.root / "session.log"), *args]
 
-    def run_snapshot(self, *args):
-        result = subprocess.run(self.command(*args), env=self.env, capture_output=True, timeout=25)
+    def run_snapshot(self, *args, env=None):
+        result = subprocess.run(self.command(*args), env=env or self.env, capture_output=True, timeout=25)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-5000:])
         self.assertGreater(len(result.stdout), 100, "Snapshot did not contain a rendered frame")
         return result.stdout
 
+    @unittest.skipIf(tomllib is None, "Independent TOML validation requires Python 3.11 or later")
     def test_generated_configuration_is_valid_and_controls_snapshot_dimensions(self):
         result = subprocess.run(self.command("--config-create", "-"), env=self.env,
                                 capture_output=True, timeout=20)
@@ -60,19 +65,37 @@ class MediaSessions(unittest.TestCase):
         document = tomllib.loads(template)
         self.assertIn("terminal", document)
         self.assertIn("network", document)
-        configured = re.sub(r"^width = \d+$", "width = 37", template, flags=re.MULTILINE)
+        # The unified template includes other modes; select the terminal settings for mirror.
+        terminal = re.search(r"(?ms)^\[terminal\]\n.*?(?=^\[|\Z)", template)
+        self.assertIsNotNone(terminal)
+        configured = re.sub(r"^width = \d+$", "width = 37", terminal[0], flags=re.MULTILINE)
         configured = re.sub(r"^height = \d+$", "height = 18", configured, flags=re.MULTILINE)
         path = self.root / "generated.toml"
         path.write_text(configured)
         self.assertEqual(tomllib.loads(configured)["terminal"]["width"], 37)
-        frame = self.run_snapshot("--config", str(path), "mirror", "--file", str(self.image),
-                                  "--snapshot", "--snapshot-delay", "0", "--splash-screen=false",
-                                  "--color-mode", "none", "--palette", "custom", "--palette-chars", " .#")
-        frame = re.sub(rb"(.)\x1b\[(\d+)b", lambda match: match[1] * (min(int(match[2]), 500) + 1), frame)
-        frame = re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]", b"", frame)
-        rows = [line for line in frame.splitlines() if b"#" in line and set(line) <= set(b" .#")]
-        self.assertTrue(rows, "The generated configuration did not produce a rendered frame")
-        self.assertTrue(all(len(line) == 37 for line in rows), rows)
+        cases = [(["--config", str(path)], [], self.env, 37),
+                 ([f"--config={path}"], [], dict(self.env, ASCII_CHAT_WIDTH="31"), 31),
+                 (["--config", str(path)], ["--width", "29"], dict(self.env, ASCII_CHAT_WIDTH="31"), 29)]
+        for config_args, cli_args, env, expected_width in cases:
+            with self.subTest(width=expected_width):
+                frame = self.run_snapshot(*config_args, "mirror", "--file", str(self.image),
+                                          "--snapshot", "--snapshot-delay", "0", "--splash-screen=false",
+                                          "--color-mode", "none", "--palette", "custom", "--palette-chars", " .#",
+                                          *cli_args, env=env)
+                frame = re.sub(rb"(.)\x1b\[(\d+)b", lambda match: match[1] * (min(int(match[2]), 500) + 1), frame)
+                frame = re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]", b"", frame)
+                rows = [line for line in frame.splitlines() if b"#" in line and set(line) <= set(b" .#")]
+                self.assertTrue(rows, "The generated configuration did not produce a rendered frame")
+                self.assertTrue(all(len(line) == expected_width for line in rows), rows)
+
+    def test_explicit_configuration_errors_are_fatal(self):
+        broken = self.root / "broken.toml"
+        broken.write_text("[terminal\nwidth = 37\n")
+        for args in (["--config"], ["--config="], ["--config", str(self.root / "absent.toml")],
+                     [f"--config={broken}"]):
+            with self.subTest(args=args):
+                result = subprocess.run(self.command(*args), env=self.env, capture_output=True, timeout=15)
+                self.assertNotEqual(result.returncode, 0)
 
     def test_generated_shell_completions_and_manual_preserve_public_options(self):
         markers = {"bash": b"complete -F", "fish": b"complete -c ascii-chat",
