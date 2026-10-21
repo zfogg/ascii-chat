@@ -300,7 +300,11 @@ for (const [index, kind] of (
           const committed = await snapshot(p);
           await healthy(p, committed);
           const after = await snapshot(p);
-          assert.equal(after.migrations, before[i].migrations + 1, "Exactly one fenced commit must follow each injected host loss");
+          assert.equal(
+            after.migrations,
+            before[i].migrations + 1,
+            "Exactly one fenced commit must follow each injected host loss",
+          );
           const timing = await p.evaluate(
             ({ last, blocks }) => {
               const times = window.handoffProbe.audioTimes.slice(blocks);

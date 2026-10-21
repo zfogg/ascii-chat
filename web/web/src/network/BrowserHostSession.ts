@@ -23,6 +23,8 @@ import {
   type ParsedPacket,
 } from "../wasm/client";
 
+const HOST_START_TIMEOUT_MS = 30_000;
+
 type Peer = {
   outbound?: OutboundQueue;
   pc: RTCPeerConnection;
@@ -85,7 +87,7 @@ export class BrowserHostSession implements ClientSession {
     void ready.catch(() => {});
     this.deadline = setTimeout(
       () => this.fail(new Error("Session creation timed out.")),
-      30000,
+      HOST_START_TIMEOUT_MS,
     );
     let requested = false;
     this.signaling.onStateChange((state) => {
@@ -132,6 +134,10 @@ export class BrowserHostSession implements ClientSession {
     host.signaling = signaling;
     host.joined = joined;
     host.handoff = handoff ?? null;
+    host.deadline = setTimeout(
+      () => host.fail(new Error("Host initialization timed out.")),
+      HOST_START_TIMEOUT_MS,
+    );
     handoff?.adopt(
       (type, payload) => signaling.sendPacket(type, payload),
       (id) => host.hostCommitted(id),
