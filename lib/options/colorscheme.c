@@ -10,6 +10,7 @@
 
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/platform/stat.h>
@@ -314,6 +315,10 @@ asciichat_error_t colorscheme_init(void) {
 
   /* Mark as initialized */
   lifecycle_init(&g_colorscheme_lifecycle, "colorscheme");
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+  // Register the statically initialized mutex without initializing its pthread storage again.
+  g_colorscheme_mutex.name = NAMED_REGISTER_MUTEX(&g_colorscheme_mutex, "colorscheme", NULL);
+#endif
 
   return ASCIICHAT_OK;
 }

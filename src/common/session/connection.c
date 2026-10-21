@@ -1,14 +1,14 @@
 #include "session/connection.h"
 
 void session_connection_init(session_connection_t *connection, session_connection_ops_t ops, void *context) {
-  connection->owner_thread = asciichat_thread_self();
+  connection->owner_thread = thread_self();
   connection->ops = ops;
   connection->context = context;
   atomic_store_int(&connection->state, SESSION_CONNECTION_STARTING);
 }
 
 asciichat_error_t session_connection_start(session_connection_t *connection) {
-  if (!connection || !asciichat_thread_equal(connection->owner_thread, asciichat_thread_self()))
+  if (!connection || !thread_equal(connection->owner_thread, thread_self()))
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection startup requires its controlling thread");
   int expected = SESSION_CONNECTION_STARTING;
   if (!atomic_cas_int(&connection->state, &expected, SESSION_CONNECTION_RUNNING))
@@ -28,7 +28,7 @@ asciichat_error_t session_connection_stop(session_connection_t *connection) {
   if (!connection || atomic_load_int(&connection->state) == SESSION_CONNECTION_STOPPED)
     return ASCIICHAT_OK;
   session_connection_request_stop(connection);
-  if (!asciichat_thread_equal(connection->owner_thread, asciichat_thread_self()))
+  if (!thread_equal(connection->owner_thread, thread_self()))
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection cleanup requires its controlling thread");
   if (connection->ops.join) {
     asciichat_error_t result = connection->ops.join(connection->context);

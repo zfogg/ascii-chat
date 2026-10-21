@@ -18,13 +18,13 @@ typedef void *thread_id_t;
 typedef void *tls_key_t;
 
 /* Stub functions that do nothing in WASM */
-#define asciichat_thread_create(thread_ptr, attr, start_routine, arg) ASCIICHAT_OK
-#define asciichat_thread_join(thread, timeout_ms) ASCIICHAT_OK
-#define asciichat_thread_detach(thread) ASCIICHAT_OK
-#define asciichat_thread_self() ((asciichat_thread_t)NULL)
-#define asciichat_thread_equal(t1, t2) (t1 == t2)
-#define asciichat_thread_exit(status) ((void)0)
-#define asciichat_thread_initialized(thread) false
+#define acthread_create(thread_ptr, attr, start_routine, arg) ASCIICHAT_OK
+#define thread_join(thread, timeout_ms) ASCIICHAT_OK
+#define thread_detach(thread) ASCIICHAT_OK
+#define thread_self() ((asciichat_thread_t)NULL)
+#define thread_equal(t1, t2) (t1 == t2)
+#define thread_exit(status) ((void)0)
+#define thread_initialized(thread) false
 
 #define thread_id_self() ((thread_id_t)NULL)
 #define thread_id_equal(id1, id2) (id1 == id2)

@@ -580,7 +580,7 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
 
     case LOG_FORMAT_TNAME: {
       asciichat_thread_t thread = (asciichat_thread_t)tid;
-      uintptr_t key = asciichat_thread_to_key(thread);
+      uintptr_t key = thread_to_key(thread);
       named_metadata_t metadata;
       if (named_metadata_copy(key, &metadata)) {
         written = safe_snprintf(p, remaining + 1, "%s", metadata.name);

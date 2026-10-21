@@ -554,7 +554,7 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
 
   // Spawn mDNS thread
   asciichat_thread_t mdns_thread;
-  asciichat_thread_init(&mdns_thread);
+  thread_init(&mdns_thread);
 
   if (use_mdns) {
     mdns_thread_context_t *mdns_ctx = SAFE_MALLOC(sizeof(*mdns_ctx), mdns_thread_context_t *);
@@ -569,7 +569,7 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
     mdns_ctx->state = &state;
     mdns_ctx->expected_pubkey = config->expected_pubkey;
 
-    int thread_err = asciichat_thread_create(&mdns_thread, "mdns", mdns_thread_fn, mdns_ctx);
+    int thread_err = acthread_create(&mdns_thread, "mdns", mdns_thread_fn, mdns_ctx);
     if (thread_err != 0) {
       log_warn("Discovery: Failed to spawn mDNS thread");
       SAFE_FREE(mdns_ctx);
@@ -579,14 +579,14 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
 
   // Spawn ACDS thread
   asciichat_thread_t acds_thread;
-  asciichat_thread_init(&acds_thread);
+  thread_init(&acds_thread);
 
   if (use_acds) {
     acds_thread_context_t *acds_ctx = SAFE_MALLOC(sizeof(*acds_ctx), acds_thread_context_t *);
     if (!acds_ctx) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate ACDS context");
-      if (use_mdns && asciichat_thread_is_initialized(&mdns_thread)) {
-        asciichat_thread_join(&mdns_thread, NULL);
+      if (use_mdns && thread_is_initialized(&mdns_thread)) {
+        thread_join(&mdns_thread, NULL);
       }
       mutex_destroy(&state.lock);
       cond_destroy(&state.signal);
@@ -597,7 +597,7 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
     acds_ctx->state = &state;
     acds_ctx->config = config;
 
-    int thread_err = asciichat_thread_create(&acds_thread, "acds_client", acds_thread_fn, acds_ctx);
+    int thread_err = acthread_create(&acds_thread, "acds_client", acds_thread_fn, acds_ctx);
     if (thread_err != 0) {
       log_warn("Discovery: Failed to spawn ACDS thread");
       SAFE_FREE(acds_ctx);
@@ -624,11 +624,11 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
   mutex_unlock(&state.lock);
 
   // Join threads
-  if (use_mdns && asciichat_thread_is_initialized(&mdns_thread)) {
-    asciichat_thread_join(&mdns_thread, NULL);
+  if (use_mdns && thread_is_initialized(&mdns_thread)) {
+    thread_join(&mdns_thread, NULL);
   }
-  if (use_acds && asciichat_thread_is_initialized(&acds_thread)) {
-    asciichat_thread_join(&acds_thread, NULL);
+  if (use_acds && thread_is_initialized(&acds_thread)) {
+    thread_join(&acds_thread, NULL);
   }
 
   // Cleanup

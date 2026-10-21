@@ -219,7 +219,7 @@ static void async_destroy(acip_transport_t *transport) {
   if (tcp->loop) {
     platform_event_loop_stop(tcp->loop);
     if (tcp->thread_started)
-      asciichat_thread_join(&tcp->thread, NULL);
+      thread_join(&tcp->thread, NULL);
     else
       platform_event_loop_run(tcp->loop);
     platform_event_loop_destroy(tcp->loop);
@@ -399,7 +399,7 @@ acip_transport_t *acip_async_tcp_client_create(socket_t *socket, crypto_context_
   if (result == ASCIICHAT_OK)
     result = platform_event_loop_tick(tcp->loop, 50, client_tick, tcp);
   if (result == ASCIICHAT_OK)
-    result = asciichat_thread_create(&tcp->thread, "tcp_io", client_loop, tcp);
+    result = acthread_create(&tcp->thread, "tcp_io", client_loop, tcp);
   if (result != ASCIICHAT_OK) {
     acip_transport_destroy(transport);
     return NULL;

@@ -65,3 +65,9 @@ bool lifecycle_is_initialized(const lifecycle_t *lc) {
 
   return result;
 }
+
+bool lifecycle_is_dead(const lifecycle_t *lc) {
+  if (!lc)
+    return false;
+  return atomic_load((const _Atomic(uint64_t) *)&lc->state.impl) == LIFECYCLE_DEAD;
+}

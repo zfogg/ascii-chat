@@ -290,11 +290,11 @@ static void test_listener_interrupt(void) {
   transport->receive_timeout_ns = 5 * NS_PER_SEC_INT;
   receive_wait_t wait = {.transport = transport};
   asciichat_thread_t thread;
-  cr_assert_eq(asciichat_thread_create(&thread, "accepted_receive", receive_wait, &wait), ASCIICHAT_OK);
+  cr_assert_eq(acthread_create(&thread, "accepted_receive", receive_wait, &wait), ASCIICHAT_OK);
   while (!atomic_load_bool(&wait.entered))
     platform_sleep_ms(1);
   acip_transport_interrupt(transport);
-  cr_assert_eq(asciichat_thread_join_timeout(&thread, NULL, NS_PER_SEC_INT), ASCIICHAT_OK);
+  cr_assert_eq(thread_join_timeout(&thread, NULL, NS_PER_SEC_INT), ASCIICHAT_OK);
   cr_assert(wait.result != ASCIICHAT_OK && !acip_transport_is_connected(transport));
   cr_assert_eq(session_host_stop(host), ASCIICHAT_OK);
   cr_assert_eq(session_host_stop(host), ASCIICHAT_OK);

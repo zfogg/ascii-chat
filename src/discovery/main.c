@@ -101,13 +101,13 @@ static void discovery_media_interrupt(void *context) {
 static asciichat_error_t discovery_media_join(void *context) {
   discovery_video_receiver_t *receiver = context;
   if (receiver->receiver_started) {
-    asciichat_error_t result = asciichat_thread_join(&receiver->receiver_thread, NULL);
+    asciichat_error_t result = thread_join(&receiver->receiver_thread, NULL);
     if (result != ASCIICHAT_OK)
       return result;
     receiver->receiver_started = false;
   }
   if (receiver->audio_started) {
-    asciichat_error_t result = asciichat_thread_join(&receiver->audio_thread, NULL);
+    asciichat_error_t result = thread_join(&receiver->audio_thread, NULL);
     if (result != ASCIICHAT_OK)
       return result;
     receiver->audio_started = false;
@@ -159,7 +159,7 @@ static void discovery_host_audio_join(discovery_host_audio_capture_t *capture) {
     return;
   // The worker borrows this role's stack and audio context. Retain both until
   // the join succeeds, including error/shutdown paths.
-  while (asciichat_thread_join(&capture->thread, NULL) != ASCIICHAT_OK) {
+  while (thread_join(&capture->thread, NULL) != ASCIICHAT_OK) {
     log_warn_every(NS_PER_SEC_INT, "Waiting for native host audio capture worker to stop");
     platform_sleep_ns(NS_PER_MS_INT);
   }
@@ -487,7 +487,7 @@ role_dispatch:
       }
       host_capture.audio = host_audio;
       atomic_store_bool(&host_capture.running, true);
-      result = asciichat_thread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture,
+      result = acthread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture,
                                        &host_capture);
       if (result != ASCIICHAT_OK) {
         session_audio_destroy(host_audio);
@@ -669,13 +669,13 @@ role_dispatch:
         }
       }
       atomic_store_bool(&receiver.running, true);
-      result = asciichat_thread_create(&receiver.receiver_thread, "discovery_video_receive",
+      result = acthread_create(&receiver.receiver_thread, "discovery_video_receive",
                                        discovery_video_receive_thread, &receiver);
       if (result != ASCIICHAT_OK)
         goto media_cleanup;
       receiver.receiver_started = true;
       if (enable_audio) {
-        result = asciichat_thread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread,
+        result = acthread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread,
                                          &receiver);
         receiver.audio_started = result == ASCIICHAT_OK;
         if (!receiver.audio_started)

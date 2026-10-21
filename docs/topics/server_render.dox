@@ -253,7 +253,7 @@
  * int create_client_render_threads(client_info_t *client) {
  *   // Create video render thread
  *   atomic_store(&client->video_render_thread_running, true);
- *   if (asciichat_thread_create(&client->video_render_thread,
+ *   if (acthread_create(&client->video_render_thread,
  *                           video_render_thread_func,
  *                           (void *)(uintptr_t)client->client_id) != 0) {
  *     return -1;
@@ -261,12 +261,12 @@
  *
  *   // Create audio render thread
  *   atomic_store(&client->audio_render_thread_running, true);
- *   if (asciichat_thread_create(&client->audio_render_thread,
+ *   if (acthread_create(&client->audio_render_thread,
  *                           audio_render_thread_func,
  *                           (void *)(uintptr_t)client->client_id) != 0) {
  *     // Cleanup video thread on failure
  *     atomic_store(&client->video_render_thread_running, false);
- *     asciichat_thread_join(&client->video_render_thread, NULL);
+ *     thread_join(&client->video_render_thread, NULL);
  *     return -1;
  *   }
  *
@@ -290,12 +290,12 @@
  *   atomic_store(&client->audio_render_thread_running, false);
  *
  *   // Join threads with timeout
- *   asciichat_thread_join_timeout(&client->video_render_thread, NULL, 1000);
- *   asciichat_thread_join_timeout(&client->audio_render_thread, NULL, 1000);
+ *   thread_join_timeout(&client->video_render_thread, NULL, 1000);
+ *   thread_join_timeout(&client->audio_render_thread, NULL, 1000);
  *
  *   // Clear thread handles
- *   asciichat_thread_init(&client->video_render_thread);
- *   asciichat_thread_init(&client->audio_render_thread);
+ *   thread_init(&client->video_render_thread);
+ *   thread_init(&client->audio_render_thread);
  * }
  * @endcode
  *

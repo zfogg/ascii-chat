@@ -344,11 +344,11 @@ int mutex_destroy(mutex_t *mutex) {
 }
 
 // Thread creation (not used in mirror mode, but provided for completeness)
-int asciichat_thread_create(asciichat_thread_t *thread, void *(*start_routine)(void *), void *arg) {
+int acthread_create(asciichat_thread_t *thread, void *(*start_routine)(void *), void *arg) {
     return pthread_create(thread, NULL, start_routine, arg);
 }
 
-int asciichat_thread_join(asciichat_thread_t thread, void **retval) {
+int thread_join(asciichat_thread_t thread, void **retval) {
     return pthread_join(thread, retval);
 }
 ```

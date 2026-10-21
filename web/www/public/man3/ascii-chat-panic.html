@@ -600,7 +600,7 @@
 197   }
 198 
 199   runtime-&gt;pid = platform_get_pid();
-200   runtime-&gt;thread_id = asciichat_thread_current_id();
+200   runtime-&gt;thread_id = thread_current_id();
 201   runtime-&gt;sequence = 0;
 202   runtime-&gt;call_counter = 0;
 203   runtime-&gt;fd = -1;
@@ -625,7 +625,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_tls_get()</b>, <b>ascii_tls_set()</b>,
-    <b>asciichat_thread_current_id()</b>,
+    <b>thread_current_id()</b>,
     <b>asciichat_instr_runtime::call_counter</b>,
     <b>asciichat_instr_runtime::fd</b>,
     <b>asciichat_instr_runtime::filter_exclude</b>,
