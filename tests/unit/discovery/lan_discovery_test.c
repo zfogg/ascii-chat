@@ -123,7 +123,7 @@ Test(ui_mdns, get_best_address_fallback_ipv6) {
   strcpy(server.ipv6, "2001:db8::1");
 
   const char *addr = ui_mdns_get_best_address(&server);
-  cr_assert_str_eq(addr, "test-server", "Should use name when IPv4 unavailable");
+  cr_assert_str_eq(addr, "2001:db8::1", "Should use IPv6 rather than the display name when IPv4 is unavailable");
 }
 
 /**
@@ -231,3 +231,4 @@ Test(ui_mdns, query_with_long_timeout) {
 
   ui_mdns_free_results(servers);
 }
+
