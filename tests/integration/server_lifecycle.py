@@ -178,6 +178,13 @@ def main():
                         if rows != expected:
                             raise AssertionError(f"Incorrect discovery privacy policy: {rows}")
                         participants = db.execute("SELECT COUNT(*) FROM participants").fetchone()[0]
+                        # Session creation precedes the asynchronous host join.
+                        deadline = time.monotonic() + 20
+                        while participants == 0 and time.monotonic() < deadline:
+                            if acds.process.poll() is not None:
+                                raise AssertionError("Discovery service exited before the host joined")
+                            time.sleep(0.05)
+                            participants = db.execute("SELECT COUNT(*) FROM participants").fetchone()[0]
                         if participants != 1:
                             raise AssertionError(f"Server did not join its session: {participants}")
                     acds.stop()

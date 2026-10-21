@@ -542,6 +542,11 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     // Release read_frame_mutex now that av_read_frame() is done
     mutex_unlock(&decoder->read_frame_mutex);
 
+    // FFmpeg reports application cancellation as AVERROR_EXIT. Keep that
+    // distinct from damaged media when shutdown races the next frame read.
+    bool (*cancel)(void *) = decoder->should_exit_callback;
+    bool cancelled = decode_result == AVERROR_EXIT && cancel && cancel(decoder->exit_callback_user_data);
+
     if (frame_decoded) {
       char read_time_str[32];
       time_pretty(time_elapsed_ns(read_start_ns, time_get_ns()), -1, read_time_str, sizeof(read_time_str));
@@ -553,7 +558,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
     // Mutex now held - update prefetch state
     bool obsolete = generation != decoder->seek_generation;
-    bool interrupted = decoder->prefetch_should_stop || decoder->seeking_in_progress || obsolete;
+    bool interrupted = decoder->prefetch_should_stop || decoder->seeking_in_progress || obsolete || cancelled;
     if (obsolete) {
       frame_decoded = false;
       reached_eof = false;
@@ -580,7 +585,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       decoder->current_prefetch_image = decode_buffer;
       atomic_store_explicit(&decoder->prefetch_frame_ready, true, memory_order_release);
 
-    } else if (!reached_eof && !interrupted) {
+    } else if (cancelled || (!reached_eof && !interrupted)) {
       // A decoder error terminates prefetch; EOF waits for rewind above.
       break;
     }
