@@ -42,10 +42,9 @@ Test(ip_utils, mapped_addresses_round_trip_and_ipv6_formatting_rejects_invalid_i
 
 Test(ip_utils, discovery_rejects_special_use_addresses_as_public_endpoints) {
   const char *non_public_v4[] = {
-      "10.0.0.1", "172.31.255.255", "192.168.1.1", "127.0.0.2", "169.254.1.2",
-      "255.255.255.255", "224.0.0.1", "0.1.2.3", "100.64.0.1", "100.127.255.255",
-      "192.0.0.1", "192.0.2.1", "198.18.0.1", "198.19.255.255", "198.51.100.1",
-      "203.0.113.1", "240.0.0.1", "invalid"};
+      "10.0.0.1",   "172.31.255.255", "192.168.1.1",  "127.0.0.2",       "169.254.1.2", "255.255.255.255",
+      "224.0.0.1",  "0.1.2.3",        "100.64.0.1",   "100.127.255.255", "192.0.0.1",   "192.0.2.1",
+      "198.18.0.1", "198.19.255.255", "198.51.100.1", "203.0.113.1",     "240.0.0.1",   "invalid"};
   for (size_t i = 0; i < sizeof(non_public_v4) / sizeof(non_public_v4[0]); ++i) {
     cr_assert_not(is_internet_ipv4(non_public_v4[i]), "%s", non_public_v4[i]);
   }
@@ -53,9 +52,9 @@ Test(ip_utils, discovery_rejects_special_use_addresses_as_public_endpoints) {
   for (size_t i = 0; i < sizeof(public_v4) / sizeof(public_v4[0]); ++i) {
     cr_assert(is_internet_ipv4(public_v4[i]), "%s", public_v4[i]);
   }
-  const char *non_public_v6[] = {"::1", "[::1]", "fe80::1", "fc00::1", "fdff::1", "ff02::1", "::",
-                                  "::ffff:8.8.8.8", "::8.8.8.8", "2001:db8::1", "2002:0808:0808::1",
-                                  "[bad", "invalid", NULL};
+  const char *non_public_v6[] = {
+      "::1",       "[::1]",       "fe80::1",           "fc00::1", "fdff::1", "ff02::1", "::", "::ffff:8.8.8.8",
+      "::8.8.8.8", "2001:db8::1", "2002:0808:0808::1", "[bad",    "invalid", NULL};
   for (size_t i = 0; i < sizeof(non_public_v6) / sizeof(non_public_v6[0]); ++i) {
     cr_assert_not(is_internet_ipv6(non_public_v6[i]));
   }
@@ -72,10 +71,14 @@ Test(ip_utils, endpoint_identity_normalizes_ipv6_but_preserves_port_and_family) 
   cr_assert_not(compare_ip_port_strings("bad", "8.8.8.8:27224"));
   cr_assert_not(compare_ip_port_strings("8.8.8.8:27224", "bad"));
   cr_assert_not(compare_ip_port_strings(NULL, "8.8.8.8:27224"));
-  const struct { const char *ip; const char *label; } labels[] = {
-      {"0.0.0.0", "All Interfaces"}, {"::", "All Interfaces"}, {"127.0.0.2", "Localhost"},
-      {"::1", "Localhost"}, {"10.1.2.3", "LAN"}, {"fd00::1", "LAN"},
-      {"8.8.8.8", "Internet"}, {"2606:4700:4700::1111", "Internet"}, {"invalid", "Unknown"}, {NULL, ""}};
+  const struct {
+    const char *ip;
+    const char *label;
+  } labels[] = {{"0.0.0.0", "All Interfaces"}, {"::", "All Interfaces"},
+                {"127.0.0.2", "Localhost"},    {"::1", "Localhost"},
+                {"10.1.2.3", "LAN"},           {"fd00::1", "LAN"},
+                {"8.8.8.8", "Internet"},       {"2606:4700:4700::1111", "Internet"},
+                {"invalid", "Unknown"},        {NULL, ""}};
   for (size_t i = 0; i < sizeof(labels) / sizeof(labels[0]); ++i) {
     cr_assert_str_eq(get_ip_type_string(labels[i].ip), labels[i].label);
   }
