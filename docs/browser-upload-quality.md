@@ -23,6 +23,11 @@ expiry, and keyframe recovery remain authoritative. Feedback is collected before
 capture backpressure can skip a frame, including after WebRTC host promotion.
 Bitrate-only changes need a 25% shift to recreate the encoder; full recovery
 always reapplies the original bitrate ceiling even when the final step is smaller.
+Adaptive probes keep the active encoder running until a replacement configures
+successfully. Unsupported tiers and candidate configuration failures retain the
+working codec, dimensions, and FPS, and rejected configurations are cached (up to
+64 per session) to prevent a probe on every frame. Stopping capture invalidates
+pending probes as well as pending encoder output.
 
 This policy belongs beside WebCodecs: browser capture frames and JavaScript
 transport queues do not traverse the C encoder. Moving the policy into C would
