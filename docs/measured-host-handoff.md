@@ -105,7 +105,7 @@ continuity or TURN-route coverage.
 Run `web/web/tests/e2e/run-handoff-audio.mjs` with the same binary,
 Chromium, website, Playwright and artifact settings as the video runner.
 `HANDOFF_AUDIO_SCENARIOS=browser,mixed` selects a browser host or native
-host followed by browser successors. This is not a native-only audio proof.
+host followed by browser successors. Native-only audio uses the companion runner below.
 The probe uses the production AudioPipeline, deterministic `test2` capture,
 Opus packets, the C host mixer and decoded remote PCM playback callback.
 The native host uses `--test-audio`; hardware microphones are unnecessary.
@@ -148,16 +148,49 @@ now retains the logical admission recipient during that call; the focused
 worker regression checks delivery and rejection of unknown recipients.
 
 
-Validation on Windows x64 with native Clang/Ninja and real Chromium has executed
-three host losses with 30-second dwell periods for browser direct, browser forced
-relay, and native-host-to-browser forced relay sessions. Both observers recovered
-new changing video and decoded non-silent audio after every commit. The mixed
-relay run first received 29 non-silent blocks with the native host as its only
-remote source. Callback interruption upper bounds were 1.76–7.71 seconds for
-browser relay, 4.28–15.70 seconds for browser direct, and 0.36–12.95 seconds for
-mixed relay. These local runs demonstrate bounded recovery, not seamless audio
-or general Internet reliability. The direct mixed scenario and final rebuilt
-WASM validation are tracked separately until complete.
+Validation on Windows x64, Clang/Ninja and Chrome 155 executed all five rows
+below with three real host process losses per session and 30-second dwell
+periods. Browser runs used the rebuilt source-matched Release WASM bundle.
+Both browser observers recovered new changing video and non-silent decoded
+audio after every commit. Mixed runs first proved native host audio while
+only one browser receiver was connected. Every forced-relay measurement
+verified selected relay-to-relay pairs carrying bytes before and after loss.
+
+| Scenario | Host losses | Callback interruption upper bound | Recovery observation |
+| --- | ---: | ---: | ---: |
+| browser-audio-direct | 3 | 1.67–2.58 s | 2.37–3.24 s |
+| browser-audio-relay | 3 | 1.65–2.31 s | 2.31–3.03 s |
+| mixed-audio-direct | 3 | 0.20–2.05 s | 0.83–2.58 s |
+| mixed-audio-relay | 3 | 0.16–1.97 s | 0.94–2.51 s |
+| native-audio-direct | 3 | 1.70–3.95 s | 2.76–4.44 s |
+
+[Result JSON](validation/handoff-audio-2026-10-21/results.json) records counters,
+selected pairs, timestamps, binary hashes and the WASM manifest. Final
+[browser relay](validation/handoff-audio-2026-10-21/browser-relay-final.png) and
+[mixed relay](validation/handoff-audio-2026-10-21/mixed-relay-final.png)
+screenshots show recovered media and decoded audio sample counts. Local raw
+logs, screenshots and process exit evidence remain in the directories listed
+in the JSON. These results demonstrate recovery with interruptions, not
+seamless audio or general Internet reliability.
+
+Run `web/web/tests/e2e/run-handoff-native-audio.mjs` for native-only audio.
+It keeps three live participants by adding a replacement between losses,
+uses `--test-audio` with muted local speakers, and requires fresh decoded
+remote PCM plus 25 decoded video frames after reconnect. Test-source decode
+observations are emitted after successful playback submission. Saved log
+offsets use the chronological log file; stderr is retained separately.
+Strictly newer receiver monotonic timestamps prevent buffered pre-loss
+observations from satisfying recovery. `HANDOFF_NATIVE_LOSSES` accepts 2–3;
+`HANDOFF_DWELL_MS` and `HANDOFF_PORT` work as above. Native-only TURN
+routing was not exercised. Physical speaker output, sample-perfect recovery
+and large participant counts are not covered.
+
+Both WASM targets were rebuilt using Emscripten 5.0.0 with its default
+`dlmalloc` allocator. An experimental `emmalloc` override aborted actual
+C client initialization despite loading assets successfully. The added
+Playwright runtime-init regression exercises `initClientWasm` before cleanup
+so asset-only checks cannot miss that failure. Publication verifies the
+source fingerprint and each generated file hash.
 
 Additional production repairs retain the probe sequence and avoid an immediate
 extra probe when a participant becomes host (ACDS replay/rate limits remain
