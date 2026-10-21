@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   type RefObject,
   type MutableRefObject,
@@ -85,13 +86,15 @@ export function useMirrorRenderLoop({
     dispose: () => void;
   } | null>(null);
   const audioInputRef = useRef({ enabled: false, fileActive });
-  audioInputRef.current = {
-    enabled:
-      isWebcamRunning &&
-      !!animationEnabled &&
-      (animation === "waveform" || animation === "fft"),
-    fileActive,
-  };
+  useLayoutEffect(() => {
+    audioInputRef.current = {
+      enabled:
+        isWebcamRunning &&
+        !!animationEnabled &&
+        (animation === "waveform" || animation === "fft"),
+      fileActive,
+    };
+  }, [isWebcamRunning, animationEnabled, animation, fileActive]);
   useEffect(
     () => () => {
       mediaAudioRef.current?.dispose();
