@@ -35,16 +35,39 @@ export default function TraditionalModeSection() {
 
       <div className="docs-subsection-spacing">
         <Heading level={3} className="heading-3 text-green-300 mb-3">
-          mDNS (Zero-Config LAN Discovery)
+          Scan the LAN with --scan
         </Heading>
         <p className="docs-paragraph">
-          Auto-discover servers on local network without knowing IP addresses:
+          Find ascii-chat servers on your local network without entering an IP
+          address. Start a server, then pass <code>--scan</code> to the client
+          to open the interactive LAN server picker:
         </p>
         <CodeBlock language="bash">
           {
-            "# Client: Scan for servers on local network via mDNS\nascii-chat client --scan\n\n# Server: Server can be discovered on local network\nascii-chat server\n\n# Client: Discover and list all available servers\nascii-chat client --scan\n\n# Discovery mode also supports mDNS for peer-to-peer discovery\nascii-chat client session-string --scan"
+            "# Advertise a server on the local network via mDNS\nascii-chat server\n\n# Find and choose a LAN server\nascii-chat client --scan"
           }
         </CodeBlock>
+        <p className="docs-paragraph">
+          Use the arrow keys or j/k to select a server, Enter to connect, and
+          Esc or q to cancel. The list refreshes automatically as servers appear
+          or leave. The picker opens only with <code>--scan</code>; a plain
+          <code> ascii-chat client</code> connects to localhost, and an explicit
+          destination connects directly.
+        </p>
+        <figure className="mt-6">
+          <img
+            src="/images/lan-server-picker.png"
+            alt="ascii-chat LAN server picker with a rainbow logo, two discovered servers, a blue selected entry, and keyboard shortcuts"
+            width={1124}
+            height={528}
+            loading="lazy"
+            className="w-full rounded-lg border border-gray-700"
+          />
+          <figcaption className="mt-2 text-sm text-gray-400">
+            The LAN picker refreshes asynchronously while you choose a server.
+            Terminals without UTF-8 support use ASCII dividers.
+          </figcaption>
+        </figure>
       </div>
 
       <div className="docs-subsection-spacing">

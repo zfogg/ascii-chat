@@ -70,11 +70,13 @@ def main():
             service.wait_for("mDNS: Server advertised")
             return service
 
-        def client(name, destination=None, utf8="true", color="true"):
+        def client(name, destination=None, utf8="true", color="true", scan=True):
             command = [str(binary), "--no-check-update", "--log-file", str(root / f"{name}.log"),
                 "--log-level", "debug", "--color", color, "--utf8", utf8, "client"]
             if destination:
                 command.append(destination)
+            if scan:
+                command.append("--scan")
             command += ["--test-pattern", "--audio=false", "--video-codec", "raw", "--fps", "5",
                         "--splash-screen=true", "--reconnect-attempts", "-1"]
             term = Terminal(command, rows=24, cols=110)
@@ -95,7 +97,7 @@ def main():
         try:
             first = server(0, "first")
             term = client("picker")
-            term.expect(lambda text: "LAN servers" in text and str(ports[0]) in text, "Automatic LAN picker missing")
+            term.expect(lambda text: "LAN servers" in text and str(ports[0]) in text, "--scan LAN picker missing")
             rows = term.screen.display
             occupied = [index for index, line in enumerate(rows) if line.strip()]
             assert abs(occupied[0] - (len(rows) - 1 - occupied[-1])) <= 2, rows
@@ -174,7 +176,7 @@ def main():
             term.interrupt()
             term.close()
             terminals.remove(term)
-            print("PASS automatic discovery, refresh, arrows/j/k, resize/covered input, selection and same-address reconnect")
+            print("PASS explicit --scan discovery, refresh, arrows/j/k, resize/covered input, selection and same-address reconnect")
 
             cancelled = client("cancelled", utf8="false", color="false")
             cancelled.expect(lambda text: "LAN servers" in text, "Cancellation picker missing")
@@ -184,6 +186,13 @@ def main():
             cancelled.write("q")
             cancelled.expect(lambda text: not cancelled.process.isalive(), "Cancellation did not exit")
             assert "Using test pattern mode" not in (root / "cancelled.log").read_text(errors="replace")
+            default = client("default-no-scan", scan=False)
+            log_wait("default-no-scan", "Using test pattern mode")
+            default.pump(.3)
+            assert "LAN servers" not in "".join(default.raw), "Default client unexpectedly opened LAN picker"
+            default.interrupt()
+            default.close()
+            terminals.remove(default)
             before_explicit = replacement.text().count("announced video stream")
             explicit = client("explicit", f"127.0.0.1:{ports[chosen]}")
             deadline = time.monotonic() + 20

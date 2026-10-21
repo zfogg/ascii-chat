@@ -501,12 +501,10 @@ static asciichat_error_t client_select_destination(void *user_data) {
   const options_t *opts = options_get();
   if (!opts)
     return SET_ERRNO(ERROR_INVALID_STATE, "Client options are unavailable during LAN discovery");
-  bool scanning = opts->lan_discovery;
+  if (!opts->lan_discovery)
+    return ASCIICHAT_OK;
   bool default_destination =
       !opts->address_explicit && strcmp(opts->address, OPT_ADDRESS_DEFAULT) == 0 && opts->port == OPT_PORT_INT_DEFAULT;
-  bool automatic = default_destination && terminal_can_prompt_user() && !opts->snapshot_mode;
-  if (!scanning && !automatic)
-    return ASCIICHAT_OK;
   if (opts->address_explicit || !default_destination)
     return ASCIICHAT_OK;
 
@@ -515,9 +513,7 @@ static asciichat_error_t client_select_destination(void *user_data) {
   ui_mdns_server_t *servers = ui_mdns_query(&config, &count);
   if (count == 0) {
     ui_mdns_free_results(servers);
-    if (scanning)
-      return SET_ERRNO(ERROR_NETWORK, "No ascii-chat servers found on the local network");
-    return ASCIICHAT_OK;
+    return SET_ERRNO(ERROR_NETWORK, "No ascii-chat servers found on the local network");
   }
   uint64_t deadline = ui_input_deadline(30);
   ui_mdns_server_t selected;
