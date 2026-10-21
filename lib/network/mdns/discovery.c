@@ -131,8 +131,9 @@ static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery,
   // Check if we already have this server (avoid duplicates)
   for (int i = 0; i < state->count; i++) {
     if (strcmp(state->servers[i].name, discovery->name) == 0 && state->servers[i].port == discovery->port) {
-      if (strncmp(discovery->txt, "session_string=", 15) == 0)
-        SAFE_STRNCPY(state->servers[i].session_string, discovery->txt + 15, sizeof(state->servers[i].session_string));
+      if (strncmp(discovery->txt, "session_string=", sizeof("session_string=") - 1) == 0)
+        SAFE_STRNCPY(state->servers[i].session_string, discovery->txt + sizeof("session_string=") - 1,
+                     sizeof(state->servers[i].session_string));
       // Update TTL if newer
       if (discovery->ttl > state->servers[i].ttl) {
         state->servers[i].ttl = discovery->ttl;
@@ -151,8 +152,9 @@ static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery,
 
   // Copy service information
   SAFE_STRNCPY(server->name, discovery->name, sizeof(server->name));
-  if (strncmp(discovery->txt, "session_string=", 15) == 0)
-    SAFE_STRNCPY(server->session_string, discovery->txt + 15, sizeof(server->session_string));
+  if (strncmp(discovery->txt, "session_string=", sizeof("session_string=") - 1) == 0)
+    SAFE_STRNCPY(server->session_string, discovery->txt + sizeof("session_string=") - 1,
+                 sizeof(server->session_string));
   SAFE_STRNCPY(server->ipv4, discovery->ipv4, sizeof(server->ipv4));
   SAFE_STRNCPY(server->ipv6, discovery->ipv6, sizeof(server->ipv6));
   server->port = discovery->port;
