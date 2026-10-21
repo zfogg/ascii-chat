@@ -68,6 +68,34 @@ function createEngine(initial: Record<string, string | boolean | number> = {}) {
 }
 
 describe("browser preference transactions", () => {
+  it("logs rejected settings and keeps the hook usable for a subsequent edit", () => {
+    vi.stubGlobal("requestAnimationFrame", () => 1);
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+    createEngine();
+    const error = new Error("Settings update rejected");
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const apply = vi.fn().mockImplementationOnce(() => {
+      throw error;
+    });
+    try {
+      const hook = renderHook(
+        ({ settings }) => useEngineSettings(true, settings, vi.fn(), apply),
+        { initialProps: { settings: DEFAULT_SETTINGS } },
+      );
+      expect(log).toHaveBeenCalledExactlyOnceWith(
+        "Failed to apply renderer settings:",
+        error,
+      );
+      hook.rerender({ settings: { ...DEFAULT_SETTINGS, targetFps: 30 } });
+      expect(apply).toHaveBeenCalledTimes(2);
+      expect(apply).toHaveBeenLastCalledWith(
+        expect.objectContaining({ targetFps: 30 }),
+      );
+      hook.unmount();
+    } finally {
+      log.mockRestore();
+    }
+  });
   it("commits startup inputs before projecting the complete first C snapshot", () => {
     vi.stubGlobal("requestAnimationFrame", () => 1);
     vi.stubGlobal("cancelAnimationFrame", () => {});

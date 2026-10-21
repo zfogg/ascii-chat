@@ -45,7 +45,12 @@ export function useEngineSettings(
   }, [store]);
   // Commit startup inputs and user edits before observing the resulting C state.
   useLayoutEffect(() => {
-    if (ready) applySettings(settings);
+    if (!ready) return;
+    try {
+      applySettings(settings);
+    } catch (error) {
+      console.error("Failed to apply renderer settings:", error);
+    }
   }, [ready, settings, applySettings]);
   useEffect(() => {
     // Earlier layout/passive effects may already have published a newer revision.
