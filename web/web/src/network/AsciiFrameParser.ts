@@ -1,4 +1,4 @@
-import { decompress as decompressZstd } from "fzstd";
+import { validateReceivedFrame } from "../wasm/client";
 
 /**
  * Parse ascii_frame_packet_t from decrypted payload.
@@ -10,14 +10,17 @@ import { decompress as decompressZstd } from "fzstd";
  *   offset 12: compressed_size (uint32)
  *   offset 16: checksum        (uint32)
  *   offset 20: flags           (uint32)
- *   offset 24: frame data      (original_size bytes, UTF-8 ANSI string)
+ *   offset 24: optional versioned contract (flag 0x10), then encoded frame text.
+ * See docs/security/rendered-frames.md. Text sizes/checksum exclude the contract.
  */
 
 export const ASCII_FRAME_HEADER_SIZE = 24;
+export const ASCII_FRAME_MAX_BYTES = 16 * 1024 * 1024;
 
 export const FrameFlags = {
   HAS_COLOR: 0x01,
   IS_COMPRESSED: 0x02,
+  RENDER_CONTRACT: 0x10,
 } as const;
 
 export interface AsciiFrameHeader {
@@ -64,33 +67,38 @@ export function parseAsciiFrame(payload: Uint8Array): AsciiFrame {
     flags,
   };
 
+  if (!originalSize || originalSize > ASCII_FRAME_MAX_BYTES)
+    throw new Error("ASCII frame exceeds decoded byte budget");
+  let offset = ASCII_FRAME_HEADER_SIZE;
+  let metadata = payload.subarray(offset, offset);
+  if (flags & FrameFlags.RENDER_CONTRACT) {
+    if (payload.length - offset < 20) throw new Error("Truncated frame contract");
+    const paletteBytes = view.getUint32(offset + 16, false);
+    if (paletteBytes > 255 || payload.length - offset - 20 < paletteBytes)
+      throw new Error("Truncated frame contract palette");
+    metadata = payload.subarray(offset, offset + 20 + paletteBytes);
+    offset += metadata.length;
+  }
   const compressed = (header.flags & FrameFlags.IS_COMPRESSED) !== 0;
   const encodedSize = compressed ? compressedSize : originalSize;
   if (
+    encodedSize > ASCII_FRAME_MAX_BYTES ||
     (compressed && compressedSize === 0) ||
-    ASCII_FRAME_HEADER_SIZE + encodedSize !== payload.length
+    (!compressed && compressedSize !== 0) ||
+    offset + encodedSize !== payload.length
   ) {
-    const payloadDataSize = payload.length - ASCII_FRAME_HEADER_SIZE;
+    const payloadDataSize = payload.length - offset;
     const err = `Frame payload size mismatch: header says ${encodedSize} bytes but payload has ${payloadDataSize}`;
     console.error(`[AsciiFrameParser] ERROR: ${err}`);
     throw new Error(err);
   }
 
   const encodedFrame = payload.subarray(
-    ASCII_FRAME_HEADER_SIZE,
-    ASCII_FRAME_HEADER_SIZE + encodedSize,
+    offset,
+    offset + encodedSize,
   );
-  let frameBytes: Uint8Array;
-  if (compressed) {
-    frameBytes = decompressZstd(encodedFrame);
-    if (frameBytes.byteLength !== originalSize) {
-      throw new Error("Decompressed ASCII frame size mismatch");
-    }
-  } else {
-    frameBytes = encodedFrame;
-  }
-
-  const decoder = new TextDecoder("utf-8");
+  const frameBytes = validateReceivedFrame(encodedFrame, width, height, checksum, flags, metadata, originalSize);
+  const decoder = new TextDecoder("utf-8", { fatal: true });
   const ansiString = decoder.decode(frameBytes);
 
   return { header, ansiString };

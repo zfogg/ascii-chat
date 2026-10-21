@@ -105,7 +105,7 @@ const network_connection_callbacks_t server_network_callbacks = {server_connecti
                                                                  server_connection_closing, server_connection_closed};
 
 void server_send_video(client_info_t *client, acip_frame_workspace_t *workspace, const char *data, size_t length,
-                       uint32_t width, uint32_t height, int sources) {
+                       uint32_t width, uint32_t height, int sources, const acip_render_settings_t *rendering) {
   mutex_lock(&client->client_state_mutex);
   mutex_lock(&client->send_mutex);
   acip_transport_t *transport = client->transport;
@@ -116,7 +116,10 @@ void server_send_video(client_info_t *client, acip_frame_workspace_t *workspace,
       acip_send_clear_console(transport);
       atomic_store_u64(&client->last_sent_grid_sources, (uint64_t)sources);
     }
-    if (acip_send_ascii_frame(transport, workspace, data, length, width, height, client->client_id) == ASCIICHAT_OK)
+    if (acip_send_ascii_frame_contract(
+            transport, workspace, data, length, width, height, rendering,
+            (rendering->caps.capabilities & TERM_CAP_MATRIX_RAIN) ? FRAME_RENDER_CONTRACT_RAIN : 0,
+            client->client_id) == ASCIICHAT_OK)
       atomic_fetch_add_u64(&client->frames_sent_count, 1);
   }
   mutex_unlock(&client->send_mutex);

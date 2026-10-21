@@ -335,7 +335,8 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   acip_client_callbacks_t control = g_acip_client_callbacks;
   control.app_ctx = connection;
   session_protocol_init(&connection->protocol, server_connection_get_transport(connection),
-                        (session_protocol_media_t){.on_frame = client_present_frame,
+                        (session_protocol_media_t){.terminal_output = true,
+                                                   .on_frame = client_present_frame,
                                                    .on_samples = client_play_samples,
                                                    .decode_opus = client_decode_opus,
                                                    .on_audio_packet = client_track_audio,

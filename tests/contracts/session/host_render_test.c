@@ -52,6 +52,9 @@ static asciichat_error_t send_frame(acip_transport_t *transport, const socket_bu
   sink_t *sink = transport->impl_data;
   asciichat_error_t result = session_protocol_dispatch(&sink->protocol, PACKET_TYPE_ASCII_FRAME,
                                                        packet + sizeof(header), length - sizeof(header));
+  asciichat_error_context_t error = {0};
+  errno_has(&error);
+  cr_assert_eq(result, ASCIICHAT_OK, "Receiver rejected real rendered frame: %s", error.context_message);
   SAFE_FREE(packet);
   return result;
 }

@@ -377,8 +377,9 @@ void *client_video_render_thread(void *arg) {
 
     uint64_t frame_create_start_ns = time_get_ns();
     START_TIMER("render_create_frame");
+    acip_render_settings_t frame_rendering = {0};
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
-                                                            &frame_size, NULL, &sources_count);
+                                                            &frame_size, NULL, &sources_count, &frame_rendering);
     STOP_TIMER_AND_LOG(dev, 0, "render_create_frame", "create_mixed_ascii_frame completed");
     uint64_t frame_create_end_ns = time_get_ns();
     if (sources_count > 0) {
@@ -400,8 +401,8 @@ void *client_video_render_thread(void *arg) {
     // The frame data (animated background or test pattern) is still valid content
 
     if (ascii_frame && frame_size > 0) {
-      server_send_video(client, &event_workspace, ascii_frame, frame_size, width_snapshot, height_snapshot,
-                        sources_count);
+      server_send_video(client, &event_workspace, ascii_frame, frame_size, frame_rendering.width,
+                        frame_rendering.height, sources_count, &frame_rendering);
       fps_frame_ns(&video_fps_tracker, current_time_ns, "frame rendered");
       rendered_frames_in_window++;
       uint64_t render_rate_now_ns = time_get_ns();
@@ -1044,12 +1045,12 @@ asciichat_error_t stop_client_render_threads(client_info_t *client) {
     if (result != ASCIICHAT_OK)
       return result;
     thread_init(&client->video_render_thread);
-    }
+  }
   if (thread_is_initialized(&client->audio_render_thread)) {
     asciichat_error_t result = thread_join(&client->audio_render_thread, NULL);
     if (result != ASCIICHAT_OK)
       return result;
     thread_init(&client->audio_render_thread);
-    }
-    return ASCIICHAT_OK;
+  }
+  return ASCIICHAT_OK;
 }

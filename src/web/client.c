@@ -1,3 +1,6 @@
+#include <ascii-chat/network/compression.h>
+#include "session/frame_validation.h"
+#include <ascii-chat/network/crc32.h>
 #include <ascii-chat/crypto/policy.h>
 #include <emscripten.h>
 #include <ascii-chat/common.h>
@@ -1161,4 +1164,43 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_handshake_receive(uint32_t type, c
       return SET_ERRNO(ERROR_CRYPTO, "Server changed requested payload encryption");
   }
   return client_acds_handshake_receive(type, payload, length);
+}
+
+/* Browser transport marshals framing, then invokes the SAME network content
+ * contract as native before any terminal parser or recording receives bytes. */
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_validate_frame(const char *text, size_t length, uint32_t width,
+                                                             uint32_t height, uint32_t checksum, uint32_t flags,
+                                                             const void *metadata, size_t metadata_length) {
+  if (flags & ~(FRAME_FLAG_RENDER_CONTRACT | FRAME_FLAG_IS_COMPRESSED | 1u))
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unknown browser frame flags");
+  acip_render_settings_t settings;
+  uint32_t effects = 0;
+  bool contract = (flags & FRAME_FLAG_RENDER_CONTRACT) != 0;
+  if (contract) {
+    size_t consumed;
+    asciichat_error_t decoded = frame_render_contract_decode(metadata, metadata_length, &settings, &effects, &consumed);
+    if (decoded != ASCIICHAT_OK)
+      return decoded;
+    if (settings.revision && settings.revision == remote_render_settings.revision &&
+        remote_render_settings.palette[0] && remote_render_settings.caps.utf8_support &&
+        strcmp(settings.palette, remote_render_settings.palette) != 0)
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Browser frame palette contradicts acknowledged revision");
+    if (consumed != metadata_length)
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Trailing browser frame contract bytes");
+  } else if (metadata_length) {
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected browser frame contract");
+  }
+  if (!text || !length || length > FRAME_RENDER_MAX_BYTES || asciichat_crc32(text, length) != checksum)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Browser frame length/checksum mismatch");
+  return session_frame_validate_contract(text, length, width, height, contract ? &settings : NULL, effects);
+}
+
+EMSCRIPTEN_KEEPALIVE asciichat_error_t client_decode_frame_data(const void *encoded, size_t encoded_length,
+                                                                void *output, size_t output_length) {
+  if (!encoded || !output || !encoded_length || encoded_length > FRAME_RENDER_MAX_BYTES || !output_length ||
+      output_length > FRAME_RENDER_MAX_BYTES)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid browser frame decompression bounds");
+  if (decompress_data_exact(encoded, encoded_length, output, output_length) != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Decompressed ASCII frame size mismatch");
+  return ASCIICHAT_OK;
 }

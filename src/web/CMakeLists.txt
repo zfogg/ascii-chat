@@ -355,6 +355,7 @@ set(LIB_SRC_CLIENT_CRYPTO
 )
 
 set(LIB_SRC_CLIENT_NETWORK
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/frame_validation.c
     ${LIB_ROOT}/network/network.c
     ${LIB_ROOT}/network/packet/packet.c
     ${LIB_ROOT}/network/packet/parsing.c
@@ -610,6 +611,8 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
+    "_client_validate_frame"
+    "_client_decode_frame_data"
     _wasm_capture_transform_required _wasm_capture_transform_rgba
     _client_settings_receive _client_settings_values
     _peer_crypto_error
