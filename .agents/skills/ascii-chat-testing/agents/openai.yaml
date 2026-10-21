@@ -1,0 +1,3 @@
+interface:
+  display_name: "ascii-chat testing"
+  short_description: "Run C, Python, Docker tests and inspect coverage"
