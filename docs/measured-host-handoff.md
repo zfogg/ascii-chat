@@ -98,3 +98,49 @@ Set `HANDOFF_SCENARIOS=native,browser,mixed` to run the complete matrix. Result 
 process logs, and screenshots are written to the artifact directory. The test uses
 changing synthetic video, disables native audio devices, and does not claim audio
 continuity or TURN-route coverage.
+
+
+## Audio and forced relay experiment
+
+Run `web/web/tests/e2e/run-handoff-audio.mjs` with the same binary,
+Chromium, website, Playwright and artifact settings as the video runner.
+`HANDOFF_AUDIO_SCENARIOS=browser,mixed` selects a browser host or native
+host followed by browser successors. This is not a native-only audio proof.
+The probe uses the production AudioPipeline, deterministic `test2` capture,
+Opus packets, the C host mixer and decoded remote PCM playback callback.
+The native host uses `--test-audio`; hardware microphones are unnecessary.
+The visible page reports decoded non-silent blocks and sample counts.
+These observations establish decode and playback submission, not physical
+speaker output, perceptual audio quality or exact sample preservation.
+
+The default is three abrupt host process kills, with 30 seconds of media
+activity before each loss. Each round creates a replacement participant,
+waits for an acknowledged successor, then kills the current host. Both
+survivors must observe a new commit and receive five changing images plus
+25 new non-silent decoded audio blocks after that commit. Set
+`HANDOFF_LOSSES` (2–20) and `HANDOFF_DWELL_MS` (at least 1000) to extend
+sessions; record overrides with the result. `HANDOFF_PORT` selects the
+base signaling port (default 31000; mixed uses base + 20).
+
+`HANDOFF_ROUTE=relay` additionally requires `HANDOFF_TURN_URL`,
+`HANDOFF_TURN_USERNAME` and `HANDOFF_TURN_PASSWORD`. Use a reachable
+credentialed TURN server; the runner does not silently fall back to direct
+routing. Both browser ICE policies and the native host use relay-only mode.
+Before and after every loss, getStats must identify selected successful
+candidate pairs with nonzero sent/received bytes; every selected pair must
+have relay candidates at both ends. Credentials are not written into result
+JSON. A configured TURN URL or a gathered relay candidate alone is insufficient.
+
+Each result records pre-loss and post-commit counters, selected pairs,
+wall-clock recovery-observation time, and decoded-audio callback gaps using
+the receiver's monotonic clock. The interruption includes the last pre-kill
+observation through the first new block after commit; it is an upper bound
+on the audible gap, not a synchronized one-way latency. Screenshots and
+browser/native logs accompany the JSON, and failed runs retain an explicit
+`passed: false` result. A failed or unexecuted scenario is not covered by
+the original video-only validation claims.
+
+The experiment exposed browser worker admission dropping the synchronous
+SERVER_STATE emitted before the C participant ID is registered. The worker
+now retains the logical admission recipient during that call; the focused
+worker regression checks delivery and rejection of unknown recipients.

@@ -520,7 +520,13 @@ export class WebRTCSession implements ClientSession {
       this.outbound = new OutboundQueue(
         () => this.bridge?.getBufferedAmount() ?? 0,
         (packet) => this.peerCrypto!.sendPacket(packet),
-        (error) => this.fail(error),
+        () => {
+          // A failed media queue must not discard the independent ACDS
+          // connection needed to commit a successor. Stop this peer and its
+          // producers, then use the same bounded recovery as bridge failure.
+          this.closePeer();
+          this.waitForSuccessor();
+        },
       );
     const admission = this.outbound.submit(serializePacket(type, payload, 0));
     if (

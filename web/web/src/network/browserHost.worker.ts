@@ -155,6 +155,9 @@ function render() {
     fail(error);
   }
 }
+// C emits SERVER_STATE synchronously while attaching the new transport.
+// Preserve its logical recipient before the C id is returned and registered.
+let admittingClient: number | null = null;
 let queue = Promise.resolve();
 self.onmessage = (event) => {
   queue = queue
@@ -176,7 +179,8 @@ self.onmessage = (event) => {
           )
             return;
           const entry = [...clients].find(([, value]) => value === actual);
-          if (entry) packets.push({ id: entry[0], bytes });
+          const id = entry?.[0] ?? admittingClient;
+          if (id !== null) packets.push({ id, bytes });
         };
         post({ kind: "ready" });
         nextFrameAt = performance.now();
@@ -198,7 +202,13 @@ self.onmessage = (event) => {
           }
         }, 20);
       } else if (message.kind === "add") {
-        const id = module._browser_host_add_client();
+        let id: number;
+        admittingClient = message.id;
+        try {
+          id = module._browser_host_add_client();
+        } finally {
+          admittingClient = null;
+        }
         if (!id) throw new Error("Host participant limit reached.");
         clients.set(message.id, id);
         if (message.local && module._browser_host_set_local_client(id))
