@@ -98,3 +98,129 @@ Set `HANDOFF_SCENARIOS=native,browser,mixed` to run the complete matrix. Result 
 process logs, and screenshots are written to the artifact directory. The test uses
 changing synthetic video, disables native audio devices, and does not claim audio
 continuity or TURN-route coverage.
+
+
+## Audio and forced relay experiment
+
+Run `web/web/tests/e2e/run-handoff-audio.mjs` with the same binary,
+Chromium, website, Playwright and artifact settings as the video runner.
+`HANDOFF_AUDIO_SCENARIOS=browser,mixed` selects a browser host or native
+host followed by browser successors. Native-only audio uses the companion runner below.
+The probe uses the production AudioPipeline, deterministic `test2` capture,
+Opus packets, the C host mixer and decoded remote PCM playback callback.
+The native host uses `--test-audio`; hardware microphones are unnecessary.
+The visible page reports decoded non-silent blocks and sample counts.
+These observations establish decode and playback submission, not physical
+speaker output, perceptual audio quality or exact sample preservation.
+
+The default is three abrupt host process kills, with 30 seconds of media
+activity before each loss. Each round creates a replacement participant,
+waits for an acknowledged successor, then kills the current host. Both
+survivors must observe a new commit and receive five changing images plus
+25 new non-silent decoded audio blocks after that commit. Set
+`HANDOFF_LOSSES` (2–20) and `HANDOFF_DWELL_MS` (at least 1000) to extend
+sessions; record overrides with the result. `HANDOFF_PORT` selects the
+base signaling port (default 31000; mixed uses base + 20).
+
+`HANDOFF_ROUTE=relay` additionally requires `HANDOFF_TURN_URL`,
+`HANDOFF_TURN_USERNAME` and `HANDOFF_TURN_PASSWORD`. Use a reachable
+credentialed TURN server; the runner does not silently fall back to direct
+routing. Both browser ICE policies and the native host use relay-only mode.
+In relay mode, before and after every loss, getStats must identify selected
+successful candidate pairs with nonzero sent/received bytes; every selected
+pair must have relay candidates at both ends. Direct mode records available
+selected-pair diagnostics but relies on decoded media for continuity: native
+interop may omit selected-pair traffic counters. Credentials are not written into result
+JSON. A configured TURN URL or a gathered relay candidate alone is insufficient.
+
+Each result records pre-loss and post-commit counters, selected pairs,
+wall-clock recovery-observation time, and decoded-audio callback gaps using
+the receiver's monotonic clock. The interruption includes the last pre-kill
+observation through the first new block after commit; it is an upper bound
+on the audible gap, not a synchronized one-way latency. Screenshots and
+browser/native logs accompany the JSON, and failed runs retain an explicit
+`passed: false` result. A failed or unexecuted scenario is not covered by
+the original video-only validation claims.
+
+The experiment exposed browser worker admission dropping the synchronous
+SERVER_STATE emitted before the C participant ID is registered. The worker
+now retains the logical admission recipient during that call; the focused
+worker regression checks delivery and rejection of unknown recipients.
+
+
+Validation on Windows x64, Clang/Ninja and Chrome 155 executed all six rows
+below with three real host process losses per session and 30-second dwell
+periods. Four invocations ran concurrently on one Windows host, sharing CPU,
+Chromium and local coturn resources; this shared load can lengthen measured
+interruptions. `HANDOFF_PORT` bases were 38200 (browser/mixed direct),
+38400 (browser/mixed relay), 38600 (slow mixed relay) and 38800 (native direct).
+Each browser/mixed invocation ran its two scenarios sequentially, with mixed
+using base + 20. Browser runs used the rebuilt source-matched Release WASM bundle.
+Both browser observers recovered new changing video and non-silent decoded
+audio after every commit. Mixed runs first proved native host audio while
+only one browser receiver was connected. Every forced-relay measurement
+verified selected relay-to-relay pairs carrying bytes before and after loss.
+
+| Scenario | Host losses | Callback interruption upper bound | Recovery observation |
+| --- | ---: | ---: | ---: |
+| browser-audio-direct | 3 | 2.81–4.19 s | 3.50–4.85 s |
+| browser-audio-relay | 3 | 1.44–2.55 s | 2.28–3.17 s |
+| mixed-audio-direct | 3 | 0.41–1.83 s | 1.31–2.42 s |
+| mixed-audio-relay | 3 | 0.16–1.33 s | 0.86–1.92 s |
+| native-audio-direct | 3 | 1.56–2.12 s | 2.42–2.83 s |
+| mixed-audio-relay-slow-video-and-promotion | 3 | 7.14–9.11 s | 7.91–9.70 s |
+
+Raw result JSON records counters, selected pairs, timestamps, binary hashes and
+the WASM manifest. Logs, screenshots and process exit evidence remain local
+test artifacts under `.tmp/handoff-integrated-{direct,relay,slow,native}`.
+Set `HANDOFF_ARTIFACTS` to retain equivalent evidence when reproducing the runs.
+These results demonstrate recovery with interruptions, not seamless audio or
+general Internet reliability.
+
+Run `web/web/tests/e2e/run-handoff-native-audio.mjs` for native-only audio.
+It keeps three live participants by adding a replacement between losses,
+uses `--test-audio` with muted local speakers, and requires fresh decoded
+remote PCM plus 25 decoded video frames after reconnect. Test-source decode
+observations are emitted after successful playback submission. Saved log
+offsets use the chronological log file; stderr is retained separately.
+Strictly newer receiver monotonic timestamps prevent buffered pre-loss
+observations from satisfying recovery. `HANDOFF_NATIVE_LOSSES` accepts 2–3;
+`HANDOFF_DWELL_MS` and `HANDOFF_PORT` work as above. Native-only TURN
+routing was not exercised. Physical speaker output, sample-perfect recovery
+and large participant counts are not covered.
+
+Both WASM targets were rebuilt using Emscripten 5.0.0 with its default
+`dlmalloc` allocator. An experimental `emmalloc` override aborted actual
+C client initialization despite loading assets successfully. The added
+Playwright runtime-init regression exercises `initClientWasm` before cleanup
+so asset-only checks cannot miss that failure. Publication verifies the
+source fingerprint and each generated file hash.
+
+Additional production repairs transfer the live probe protocol and its five-second
+clock into the promoted host, preserving sequence, generation and freshness during
+slow runtime initialization (ACDS replay/rate limits remain unchanged), preserve healthy ACDS signaling while a failed media queue enters its
+bounded successor wait (queue congestion limits remain unchanged), send native
+SERVER_STATE only after peer negotiation is ready, and inject native host audio
+into its local memory participant on an independent capture worker, joined before
+the host role destroys its capture context. Audio draining is independent of video
+frame rate. Adopted browser startup has a 30-second deadline; readiness cancels it.
+
+The final relay stress row sets `HANDOFF_NATIVE_FPS=1` and
+`HANDOFF_PROMOTION_DELAY_MS=7000`. An eight-second exclusive native-source
+observation decoded 401 blocks, including 268 non-silent blocks (66.8 percent),
+before introducing another browser sender. Every injected loss produced exactly
+one host commit while the promoted worker start was delayed seven seconds.
+The longer measured interruptions in that row include the intentional delay.
+A fake-clock regression also holds runtime initialization for twelve seconds and
+verifies uninterrupted five-second probing; lifecycle tests cover ready and hung
+startup cleanup. All 388 web unit tests in 56 files passed.
+
+These runtime results use integrated implementation commit
+`38e9f02b0454be22eeb9d614d4682111ac688d9e`, including master
+`b1090964d6898fa2525289936a6c535a696efa1b`. Both WASM targets and the native
+executable were rebuilt after integration. Source/artifact verification, all six
+Chromium asset/runtime-init tests, all 388 web unit tests, and the Linux
+host-render contract (CTest 1/1) passed on that source. The Linux native executable
+also rebuilt successfully. Earlier synthetic-merge stale-bundle validation is
+addressed by that actual rebuild. macOS amd64 CI configuration separately failed
+while resolving ffmpeg.org, before compiling the changed source.
