@@ -39,7 +39,9 @@ def capture(term, directory, name):
     draw = ImageDraw.Draw(image)
     for row, text in enumerate(term.screen.display):
         for column, character in enumerate(text):
-            draw.text((12 + column * 10, 12 + row * 21), character, font=font, fill="#e1e8ed")
+            foreground = term.screen.buffer[row][column].fg
+            color = f"#{foreground}" if re.fullmatch(r"[0-9a-fA-F]{6}", foreground) else "#e1e8ed"
+            draw.text((12 + column * 10, 12 + row * 21), character, font=font, fill=color)
     image.save(directory / f"{name}.png")
 
 
@@ -70,7 +72,7 @@ def main():
 
         def client(name, destination=None):
             command = [str(binary), "--no-check-update", "--log-file", str(root / f"{name}.log"),
-                "--log-level", "debug", "client"]
+                "--log-level", "debug", "--color", "true", "client"]
             if destination:
                 command.append(destination)
             command += ["--test-pattern", "--audio=false", "--video-codec", "raw", "--fps", "5",
@@ -94,6 +96,17 @@ def main():
             first = server(0, "first")
             term = client("picker")
             term.expect(lambda text: "LAN servers" in text and str(ports[0]) in text, "Automatic LAN picker missing")
+            rows = term.screen.display
+            occupied = [index for index, line in enumerate(rows) if line.strip()]
+            assert abs(occupied[0] - (len(rows) - 1 - occupied[-1])) <= 2, rows
+            for line in rows:
+                if "LAN servers" in line or "> [1]" in line:
+                    assert abs(len(line) - len(line.lstrip()) - (len(line) - len(line.rstrip()))) <= 2, line
+            logo_row = occupied[0]
+            colors = tuple(term.screen.buffer[logo_row][col].fg for col in range(term.screen.columns))
+            term.pump(.3)
+            animated = tuple(term.screen.buffer[logo_row][col].fg for col in range(term.screen.columns))
+            assert colors != animated, "Rainbow logo did not animate"
             assert "Using test pattern mode" not in (root / "picker.log").read_text(errors="replace")
             capture(term, args.artifacts, "initial-server")
             second = server(1, "second")

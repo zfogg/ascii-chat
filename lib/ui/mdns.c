@@ -13,6 +13,9 @@
 #include <ascii-chat/ui/mdns.h>
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/frame_buffer.h>
+#include <ascii-chat/ui/invitation.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/network/mdns/discovery.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/log.h>
@@ -121,19 +124,37 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
   if (!buffer)
     return;
-  frame_buffer_printf(buffer, "\033[H\033[2J");
-  int available = size.rows - 3;
+  frame_buffer_printf(buffer, "\033[0m\033[H\033[2J");
+  bool compact = size.cols < 52 || size.rows < 10;
+  int logo_rows = size.rows >= 6 ? (compact ? 1 : 4) : 0;
+  int logo_height = logo_rows ? logo_rows + 1 : 0;
+  int available = size.rows - logo_height - 3;
   if (available < 1 || size.cols < 2) {
     frame_buffer_flush(buffer);
     frame_buffer_destroy(buffer);
     return;
   }
+  int shown = snapshot->count < available ? snapshot->count : available;
+  if (!shown)
+    shown = 1;
+  int height = logo_height + shown + 2;
+  int top = (size.rows - height) / 2 + 1;
+  frame_buffer_printf(buffer, "\033[%d;1H", top);
+  if (logo_rows) {
+    const animation_sample_t *sample = ui_controller_animation_sample();
+    int tick = sample ? (int)(sample->seconds * 60) : (int)((time_get_ns() / NS_PER_MS_INT / 16) % 100000);
+    bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDERR_FILENO);
+    invitation_render_logo(buffer, size.cols - 1, tick, colors, compact);
+    frame_buffer_printf(buffer, "\r\n");
+  }
   char heading[128];
   truncate_with_ellipsis("ascii-chat | LAN servers", heading, sizeof(heading), size.cols - 1);
-  frame_buffer_printf(buffer, "%s\r\n", heading);
+  frame_buffer_render_centered(buffer, heading, size.cols - 1);
+  frame_buffer_printf(buffer, "\r");
   if (snapshot->count == 0) {
     truncate_with_ellipsis("No servers found. Press r to refresh.", heading, sizeof(heading), size.cols - 1);
-    frame_buffer_printf(buffer, "%s\r\n", heading);
+    frame_buffer_render_centered(buffer, heading, size.cols - 1);
+    frame_buffer_printf(buffer, "\r");
   }
   int first = snapshot->selected >= available ? snapshot->selected - available + 1 : 0;
   for (int i = first; i < snapshot->count && i < first + available; ++i) {
@@ -143,13 +164,15 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
              snapshot->servers[i].name, strchr(address, ':') ? "[" : "", address, strchr(address, ':') ? "]" : "",
              snapshot->servers[i].port);
     truncate_with_ellipsis(line, clipped, sizeof(clipped), size.cols - 1);
-    frame_buffer_printf(buffer, "%s\r\n", clipped);
+    frame_buffer_render_centered(buffer, clipped, size.cols - 1);
+    frame_buffer_printf(buffer, "\r");
   }
   char footer[128], clipped[128];
   snprintf(footer, sizeof(footer), "Arrows/j/k: move | Enter: select | r: refresh | Esc/q: cancel | 30s | %s",
            snapshot->input);
   truncate_with_ellipsis(footer, clipped, sizeof(clipped), size.cols - 1);
-  frame_buffer_printf(buffer, "%s\033[K", clipped);
+  frame_buffer_render_centered(buffer, clipped, size.cols - 1);
+  frame_buffer_printf(buffer, "\033[K");
   frame_buffer_flush(buffer);
   frame_buffer_destroy(buffer);
 }
