@@ -8,7 +8,7 @@ Probably the first command line video chat program (let me know if this isn't
 true). Initial commits _November 20-24, 2013_, with
 [@craigpalermo](https://github.com/craigpalermo), at some collegiate hackathon.
 
-ascii-chat is a client-server application that operates over TCP/IP. It
+ascii-chat is an ascii-art communication application that operates over TCP/IP, Websocket, and WebRTC. It
 supports color and audio and crypto and compression and multiple clients
 and has many little features and options.
 
