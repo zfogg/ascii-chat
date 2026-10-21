@@ -124,7 +124,8 @@ No helper scripts or pre-existing terminal recordings are required.
 
 Edit chapters(), tui_chapters(), and call_chapters() to change the timeline;
 CALL_SOURCES/CALL_CROPS choose and frame the default participants. The call uses
-default ASCII rendering. --speed retimes the complete edit after recording.
+default ASCII rendering. Both test patterns finish the video after the TUIs.
+--speed retimes the complete edit after recording.
 
 Each run verifies the encoded video and silent call, saves encoded screenshots
 and a contact sheet in work-dir/review/, and writes verification.json plus a
@@ -207,6 +208,11 @@ def tui_chapters(scale=1.0):
             chapter.label = "Keyboard shortcut: " + chapter.label
         chapter.seconds *= scale
     return result
+
+
+def chapter_order(main, call, ui, patterns):
+    """Keep the group call before the TUIs and both test patterns at the end."""
+    return [name for name in main if name != "outro"] + call + ui + ["outro"] + patterns
 
 
 COMMANDS = []
@@ -1141,8 +1147,8 @@ def verify_encoded_call(args, files, durations, evidence):
     call_names = [c.name for c in call_chapters()]
     expected = names.index(call_names[0])
     if (names[expected:expected + 4] != call_names or names[expected + 4] != "open-media" or
-            "face-follow" in names or names[-1] != "outro"):
-        raise RuntimeError("Incorrect edit order: the complete call must immediately precede the TUIs")
+            "face-follow" in names or names[-3:] != ["outro", "pattern-0", "pattern-1"]):
+        raise RuntimeError("Incorrect edit order: call must precede TUIs and both test patterns must finish the video")
     commands = evidence["call"]["commands"]
     if len(commands) != 5 or any("client" not in cmd or "--audio=false" not in cmd or
                                 any(flag in cmd for flag in ("--render-mode", "--color-mode", "--color-filter"))
@@ -1304,6 +1310,10 @@ def main():
                           "call": [asdict(c) for c in call_chapters()],
                           "speed": args.speed, "optimize": args.optimize, "overlay": args.opt_text_overlay,
                           "media_start": args.media_file_start, "chapters": [asdict(c) for c in main_chapters + tui_chapters(args.segment_duration_scale)],
+                          "chapter_order": chapter_order(["splash"] + [c.name for c in main_chapters] + ["outro"],
+                                                         [c.name for c in call_chapters()],
+                                                         [c.name for c in tui_chapters(args.segment_duration_scale) if c.name != "outro"],
+                                                         ["pattern-0", "pattern-1"]),
                           "seconds": (sum(c.seconds for c in call_chapters()) + 15 * args.segment_duration_scale + sum(c.seconds for c in main_chapters + tui_chapters(args.segment_duration_scale))) / args.speed}, indent=2))
         return
     for name in ("binary", "media_file", "work_dir", "output", "face_file", "font"):
@@ -1349,10 +1359,11 @@ def main():
     splash = {"name": "splash", "label": "ascii-chat - video chat in your terminal", "seconds": 3 * args.segment_duration_scale,
               "start": splash_start + .03, "end": splash_end, "cols": args.ui_cols, "rows": args.ui_rows, "cell_scale": 1, "fit_grid": True}
     selected = [splash] + evidence["main"]
-    insert = 1 + len(main_chapters)
-    expected_names = [c["name"] for c in selected]
-    extras = evidence["patterns"] + evidence["call"]["chapters"] + evidence["ui"]
-    expected_names[insert:insert] = [c["name"] for c in extras]
+    extras = evidence["call"]["chapters"] + evidence["ui"] + evidence["patterns"]
+    expected_names = chapter_order([c["name"] for c in selected],
+                                   [c["name"] for c in evidence["call"]["chapters"]],
+                                   [c["name"] for c in evidence["ui"]],
+                                   [c["name"] for c in evidence["patterns"]])
     files = None
     cached = set()
     manifest_path = args.work_dir / "manifest.json"
@@ -1383,7 +1394,8 @@ def main():
             patterns += render_capture(args, c["name"], [c], raster, cached)
         patterns += render_capture(args, "call", evidence["call"]["chapters"], raster, cached)
         patterns += render_capture(args, "ui", evidence["ui"], raster, cached)
-        files[insert:insert] = patterns
+        rendered = {p.stem: p for p in files + patterns}
+        files = [rendered[name] for name in expected_names]
     assemble(args, files, evidence)
 
 

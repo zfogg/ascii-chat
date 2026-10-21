@@ -67,9 +67,11 @@ class ReadmeDemoTests(unittest.TestCase):
             root = Path(directory)
             args = SimpleNamespace(work_dir=root, output=root/'result.mp4', speed=1, output_fps=33,
                                    width=838, height=640, ffmpeg='ffmpeg')
-            files = [root/(n+'.mp4') for n in ('intro','call-1','call-2','call-3','call-4','open-media','outro')]
-            durations = [7, 1.5, 1.5, 1.5, 9.5, 3, 2]
+            files = [root/(n+'.mp4') for n in ('intro','call-1','call-2','call-3','call-4','open-media','outro','pattern-0','pattern-1')]
+            durations = [7, 1.5, 1.5, 1.5, 9.5, 3, 2, 10.8, 10.8]
             evidence = {'call': {'commands': [['server']] + [['client','--audio=false'] for _ in range(4)]}}
+            with self.assertRaisesRegex(RuntimeError, 'Incorrect edit order'):
+                demo.verify_encoded_call(args, files[:1] + files[-2:] + files[1:-2], durations, evidence)
             for i in range(1,5):
                 (root/f'call-{i}.txt').write_text('ASCII art', encoding='utf-8')
             silent = SimpleNamespace(stderr='Overall\nPeak level dB: -inf\n')
@@ -300,6 +302,18 @@ class ReadmeDemoTests(unittest.TestCase):
         baseline = 14 + 15 * 1.8 + sum(c.seconds for c in demo.chapters(1.8) + demo.tui_chapters(1.8))
         self.assertAlmostEqual(plan["seconds"], baseline / 1.1)
         self.assertEqual([c['seconds'] for c in plan['call']], [1.5, 1.5, 1.5, 9.5])
+        self.assertEqual(plan['chapter_order'][-3:], ['outro', 'pattern-0', 'pattern-1'])
+        call_end = plan['chapter_order'].index('call-4')
+        self.assertEqual(plan['chapter_order'][call_end + 1], 'open-media')
+
+    def test_edit_finishes_with_both_patterns_after_the_complete_call_and_tuis(self):
+        effects = ['splash'] + [c.name for c in demo.chapters(1.8)]
+        call = [c.name for c in demo.call_chapters()]
+        ui = [c.name for c in demo.tui_chapters(1.8) if c.name != 'outro']
+        order = demo.chapter_order(effects + ['outro'], call, ui, ['pattern-0', 'pattern-1'])
+        self.assertEqual(order[:len(effects)], effects)
+        self.assertEqual(order[len(effects):], call + ui + ['outro', 'pattern-0', 'pattern-1'])
+        self.assertEqual(len(order), len(set(order)))
 
     def test_call_audio_inserts_silence_and_resumes_music_at_the_same_sample(self):
         import array
