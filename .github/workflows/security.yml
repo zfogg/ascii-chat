@@ -5,22 +5,44 @@ on:
   push:
     branches: [main, master]
     paths:
+      - "include/**"
+      - "deps/**"
+      - "vcpkg-overlay/**"
+      - "vcpkg*.json"
+      - ".gitmodules"
+      - ".github/actions/**"
+      - ".github/workflows/ci-preflight.yml"
       - "**.c"
       - "**.h"
       - "**.m"
   pull_request:
     branches: ["*"]
     paths:
+      - "include/**"
+      - "deps/**"
+      - "vcpkg-overlay/**"
+      - "vcpkg*.json"
+      - ".gitmodules"
+      - ".github/actions/**"
+      - ".github/workflows/ci-preflight.yml"
       - "**.c"
       - "**.h"
       - "**.m"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   CC: clang
   CXX: clang++
 
 jobs:
+  preflight:
+    uses: ./.github/workflows/ci-preflight.yml
+
   codeql:
+    needs: preflight
     name: CodeQL Analysis
     runs-on: ubuntu-latest
     permissions:
@@ -59,6 +81,7 @@ jobs:
           category: "/language:${{matrix.language}}"
 
   dependency-scan:
+    needs: preflight
     name: Dependency Vulnerability Scan
     runs-on: ubuntu-latest
 
@@ -127,6 +150,7 @@ jobs:
           fi
 
   format-security:
+    needs: preflight
     name: Format String Security Check
     runs-on: ubuntu-latest
 

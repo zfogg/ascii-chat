@@ -4,6 +4,13 @@ on:
   push:
     branches: [master, main]
     paths:
+      - "include/**"
+      - "deps/**"
+      - "vcpkg-overlay/**"
+      - "vcpkg*.json"
+      - ".gitmodules"
+      - ".github/actions/**"
+      - ".github/workflows/ci-preflight.yml"
       - "src/**.c"
       - "src/**.cpp"
       - "src/**.h"
@@ -23,6 +30,13 @@ on:
   pull_request:
     branches: [master, main]
     paths:
+      - "include/**"
+      - "deps/**"
+      - "vcpkg-overlay/**"
+      - "vcpkg*.json"
+      - ".gitmodules"
+      - ".github/actions/**"
+      - ".github/workflows/ci-preflight.yml"
       - "src/**.c"
       - "src/**.cpp"
       - "src/**.h"
@@ -40,13 +54,26 @@ on:
       - ".github/actions/install-deps/**"
       - "scripts/create-release-tarball.sh"
   workflow_dispatch:
+    inputs:
+      full_matrix:
+        description: Run the full native platform matrix
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   CC: clang
   CXX: clang++
 
 jobs:
+  preflight:
+    uses: ./.github/workflows/ci-preflight.yml
+
   release-archive:
+    needs: preflight
     name: Release archive
     runs-on: ubuntu-latest
     steps:
@@ -74,66 +101,30 @@ jobs:
             exit 1
           fi
 
+  platforms:
+    needs: preflight
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - id: select
+        env:
+          FULL_MATRIX: ${{ inputs.full_matrix == true }}
+        run: |
+          if [ "$FULL_MATRIX" = true ]; then
+            echo 'matrix={"include":[{"os":"Linux","arch":"amd64","runner":"ubuntu-latest","vcpkg-packages":"","vcpkg-static-packages":"","vcpkg-triplet":"","vcpkg-static-triplet":""},{"os":"Linux","arch":"arm64","runner":"ubuntu-24.04-arm","vcpkg-packages":"","vcpkg-static-packages":"","vcpkg-triplet":"","vcpkg-static-triplet":""},{"os":"macOS","arch":"amd64","runner":"macos-15-intel","vcpkg-packages":"","vcpkg-static-packages":"","vcpkg-triplet":"","vcpkg-static-triplet":""},{"os":"macOS","arch":"arm64","runner":"macos-15","vcpkg-packages":"","vcpkg-static-packages":"","vcpkg-triplet":"","vcpkg-static-triplet":""},{"os":"Windows","arch":"amd64","runner":"windows-2022","vcpkg-packages":"zstd portaudio libsodium fftw3 opus openssl","vcpkg-static-packages":"zstd portaudio libsodium mimalloc fftw3 opus openssl","vcpkg-triplet":"x64-windows","vcpkg-static-triplet":"x64-windows-static"},{"os":"Windows","arch":"arm64","runner":"windows-11-arm","vcpkg-packages":"zstd portaudio libsodium fftw3 opus openssl","vcpkg-static-packages":"zstd portaudio libsodium mimalloc fftw3 opus openssl","vcpkg-triplet":"arm64-windows","vcpkg-static-triplet":"arm64-windows-static"}]}' >> "$GITHUB_OUTPUT"
+          else
+            echo 'matrix={"include":[{"os":"Linux","arch":"amd64","runner":"ubuntu-latest","vcpkg-packages":"","vcpkg-static-packages":"","vcpkg-triplet":"","vcpkg-static-triplet":""}]}' >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: [preflight, platforms]
     name: ${{ matrix.os }} (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # Linux AMD64
-          - os: Linux
-            arch: amd64
-            runner: ubuntu-latest
-            vcpkg-packages: ""
-            vcpkg-static-packages: ""
-            vcpkg-triplet: ""
-            vcpkg-static-triplet: ""
-
-          # Linux ARM64 - Native GitHub-hosted runner (free for public repos)
-          - os: Linux
-            arch: arm64
-            runner: ubuntu-24.04-arm
-            vcpkg-packages: ""
-            vcpkg-static-packages: ""
-            vcpkg-triplet: ""
-            vcpkg-static-triplet: ""
-
-          # macOS AMD64 (Intel) - using macos-15-intel (last Intel runner, supported until Aug 2027)
-          - os: macOS
-            arch: amd64
-            runner: macos-15-intel
-            vcpkg-packages: ""
-            vcpkg-static-packages: ""
-            vcpkg-triplet: ""
-            vcpkg-static-triplet: ""
-
-          # macOS ARM64 (Apple Silicon) - Native!
-          - os: macOS
-            arch: arm64
-            runner: macos-15
-            vcpkg-packages: ""
-            vcpkg-static-packages: ""
-            vcpkg-triplet: ""
-            vcpkg-static-triplet: ""
-
-          # Windows AMD64
-          - os: Windows
-            arch: amd64
-            runner: windows-2022
-            vcpkg-packages: "zstd portaudio libsodium fftw3 opus openssl"
-            vcpkg-static-packages: "zstd portaudio libsodium mimalloc fftw3 opus openssl"
-            vcpkg-triplet: "x64-windows"
-            vcpkg-static-triplet: "x64-windows-static"
-
-          # Windows ARM64 - Native GitHub-hosted runner (free for public repos)
-          - os: Windows
-            arch: arm64
-            runner: windows-11-arm
-            vcpkg-packages: "zstd portaudio libsodium fftw3 opus openssl"
-            vcpkg-static-packages: "zstd portaudio libsodium mimalloc fftw3 opus openssl"
-            vcpkg-triplet: "arm64-windows"
-            vcpkg-static-triplet: "arm64-windows-static"
+        include: ${{ fromJSON(needs.platforms.outputs.matrix).include }}
 
     steps:
       - name: Checkout code

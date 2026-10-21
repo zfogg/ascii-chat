@@ -2,9 +2,21 @@ name: Test Suite
 
 on:
   workflow_dispatch:
+    inputs:
+      full_matrix:
+        description: Run the full native platform matrix
+        type: boolean
+        default: false
   push:
     branches: [main, master]
     paths:
+      - "include/**"
+      - "deps/**"
+      - "vcpkg-overlay/**"
+      - "vcpkg*.json"
+      - ".gitmodules"
+      - ".github/actions/**"
+      - ".github/workflows/ci-preflight.yml"
       - "**.c"
       - "**.h"
       - "**.m"
@@ -21,6 +33,13 @@ on:
   pull_request:
     branches: ["*"]
     paths:
+      - "include/**"
+      - "deps/**"
+      - "vcpkg-overlay/**"
+      - "vcpkg*.json"
+      - ".gitmodules"
+      - ".github/actions/**"
+      - ".github/workflows/ci-preflight.yml"
       - "**.c"
       - "**.h"
       - "**.m"
@@ -41,18 +60,26 @@ permissions:
   checks: write
   pull-requests: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   CC: clang
   CXX: clang++
 
 jobs:
+  preflight:
+    uses: ./.github/workflows/ci-preflight.yml
+
   upnp-lifecycle:
+    needs: preflight
     name: Router mapping lifecycle (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-15, windows-latest]
+        os: ${{ fromJSON(inputs.full_matrix == true && '["ubuntu-latest","macos-15","windows-latest"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -64,6 +91,7 @@ jobs:
       - run: python tests/standalone/upnp/run.py
 
   coverage-tools:
+    needs: preflight
     name: Coverage report regression tests
     runs-on: ubuntu-latest
     steps:
@@ -77,12 +105,13 @@ jobs:
       - run: python .github/scripts/test_criterion_to_junit.py
 
   unit-tests:
+    needs: preflight
     name: Unit Tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-15]
+        os: ${{ fromJSON(inputs.full_matrix == true && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
         build_type: [debug, release]
         # The macOS Debug/sanitizer combination currently reports unrelated
         # platform-specific test failures. Keep macOS Release coverage and
@@ -90,11 +119,6 @@ jobs:
         exclude:
           - os: macos-15
             build_type: debug
-        include:
-          - os: ubuntu-latest
-            os-name: ubuntu
-          - os: macos-15
-            os-name: macos
 
     steps:
       - name: Checkout code
@@ -107,8 +131,8 @@ jobs:
       - name: Install dependencies with caching
         uses: ./.github/actions/install-deps
         with:
-          os: ${{ matrix.os-name }}
-          extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr libc6-dbg' || 'gcovr' }}
+          os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr libc6-dbg' || 'gcovr' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache build, dependencies, and ccache
@@ -141,7 +165,7 @@ jobs:
 
           # Use Homebrew LLVM on macOS for better standards support
           # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
-          if [ "${{ matrix.os-name }}" = "macos" ]; then
+          if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}" = "macos" ]; then
             if [ -d "/opt/homebrew/opt/llvm" ]; then
               HOMEBREW_PREFIX="/opt/homebrew"
             elif [ -d "/usr/local/opt/llvm" ]; then
@@ -242,7 +266,7 @@ jobs:
           # Several unit binaries mutate process-global options and logging
           # state. Run them serially so one test process cannot perturb
           # another on the same CI worker.
-          ctest --test-dir build --label-regex "^unit$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 1 | tee unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
+          ctest --test-dir build --label-regex "^unit$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 1 | tee unit-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}-${{ matrix.build_type }}.log
 
           echo "Unit tests completed successfully"
 
@@ -250,7 +274,7 @@ jobs:
         if: always()
         uses: ./.github/actions/generate-coverage
         with:
-          os-type: ${{ matrix.os-name }}
+          os-type: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
       - name: Save build caches
         if: always()
@@ -291,7 +315,7 @@ jobs:
         if: always()
         with:
           test-type: unit
-          os-name: ${{ matrix.os-name }}
+          os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
           build-type: ${{ matrix.build_type }}
           criterion-xml-dir: build/Testing/criterion-xml
           coverage-files: "build/coverage.xml"
@@ -311,17 +335,13 @@ jobs:
           retention-days: 7
 
   integration-tests:
+    needs: preflight
     name: Integration Tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-15]
-        include:
-          - os: ubuntu-latest
-            os-name: ubuntu
-          - os: macos-15
-            os-name: macos
+        os: ${{ fromJSON(inputs.full_matrix == true && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
 
     steps:
       - name: Checkout code
@@ -334,8 +354,8 @@ jobs:
       - name: Install dependencies with caching
         uses: ./.github/actions/install-deps
         with:
-          os: ${{ matrix.os-name }}
-          extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr' || 'gcovr' }}
+          os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr' || 'gcovr' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache build, dependencies, and ccache
@@ -367,7 +387,7 @@ jobs:
           # Use CMake build system with coverage
           # Use Homebrew LLVM on macOS for better standards support
           # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
-          if [ "${{ matrix.os-name }}" = "macos" ]; then
+          if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}" = "macos" ]; then
             if [ -d "/opt/homebrew/opt/llvm" ]; then
               HOMEBREW_PREFIX="/opt/homebrew"
             elif [ -d "/usr/local/opt/llvm" ]; then
@@ -420,7 +440,7 @@ jobs:
       - name: Build and run integration tests
         run: |
           cmake --build build --target all tests-criterion-build
-          if [ "${{ matrix.os-name }}" = "macos" ]; then
+          if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}" = "macos" ]; then
             export ASAN_SYMBOLIZER_PATH="$(brew --prefix llvm)/bin/llvm-symbolizer"
           fi
           ctest --test-dir build -R '^test_unit_debug_memory_concurrency$' --output-on-failure
@@ -430,7 +450,7 @@ jobs:
 
           # Run integration tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
-          ctest --test-dir build --label-regex "^integration$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 0 | tee integration-tests-${{ matrix.os-name }}.log
+          ctest --test-dir build --label-regex "^integration$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 0 | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Integration tests completed successfully"
 
@@ -438,7 +458,7 @@ jobs:
         if: always()
         uses: ./.github/actions/generate-coverage
         with:
-          os-type: ${{ matrix.os-name }}
+          os-type: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
       - name: Save build cache (integration-tests)
         if: always()
@@ -463,7 +483,7 @@ jobs:
         if: always()
         with:
           test-type: integration
-          os-name: ${{ matrix.os-name }}
+          os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
           criterion-xml-dir: build/Testing/criterion-xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
@@ -487,12 +507,13 @@ jobs:
           retention-days: 7
 
   performance-tests:
+    needs: preflight
     name: Performance Tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-15]
+        os: ${{ fromJSON(inputs.full_matrix == true && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
 
     steps:
       - name: Checkout code
@@ -652,7 +673,7 @@ jobs:
   coverage:
     name: Publish complete coverage
     needs: [unit-tests, integration-tests, performance-tests]
-    if: ${{ always() && !cancelled() }}
+    if: ${{ always() && !cancelled() && inputs.full_matrix == true }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -694,6 +715,7 @@ jobs:
           fail_ci_if_error: true
 
   memory-tests:
+    needs: preflight
     runs-on: ubuntu-latest
 
     steps:
@@ -811,11 +833,12 @@ jobs:
           retention-days: 7
 
   functional-tests:
+    needs: preflight
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-15]
+        os: ${{ fromJSON(inputs.full_matrix == true && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
 
     steps:
       - name: Checkout code
