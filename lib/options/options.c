@@ -1399,8 +1399,7 @@ static asciichat_error_t build_mode_argv(int argc, char **argv, int mode_index, 
       // Check if this is a binary-level option (shouldn't appear after mode)
       if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
         // Skip binary-level option and its argument if needed
-        if (!strchr(argv[i], '=') && i + 1 < argc &&
-            (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
+        if (!strchr(argv[i], '=') && i + 1 < argc && (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
           i++; // Skip argument
         }
         continue; // Skip this option
@@ -1469,8 +1468,7 @@ static void build_options_schema(void) {
   }
 }
 
-static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t detected_mode,
-                                           bool *fps_set_by_config) {
+static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t detected_mode, bool *fps_set_by_config) {
   // Extract binary-level options BEFORE config loading (config may reset them)
   binary_level_opts_t binary_before_config = extract_binary_level(opts);
   // Publish options to RCU before config loading so that config logs get proper colors
