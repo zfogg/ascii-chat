@@ -1,5 +1,7 @@
 /** Native regressions for diagnostic snapshots and UI callback ownership. */
 #include <ascii-chat/common.h>
+#include <ascii-chat/debug/coverage.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
@@ -140,6 +142,13 @@ static atomic_t sync_values[600];
 static mutex_t rate_hot, rate_warm;
 static atomic_t rate_value, total_value;
 static atomic_ptr_t total_pointer;
+static void *finish_blocked_fixture(void *arg) {
+  const char *stop_path = arg;
+  while (platform_access(stop_path, PLATFORM_ACCESS_EXISTS) != 0)
+    platform_sleep_ns(10 * NS_PER_MS_INT);
+  asciichat_coverage_flush();
+  _Exit(0);
+}
 static void *rate_worker(void *unused) {
   (void)unused;
   for (;;) {
@@ -207,6 +216,10 @@ int main(int argc, char **argv) {
   CHECK(options_init(3, options) == ASCIICHAT_OK);
 #ifndef NDEBUG
   if (!strcmp(argv[1], "deadlock") || !strcmp(argv[1], "stale")) {
+    static char stop_path[1024];
+    SAFE_SNPRINTF(stop_path, sizeof(stop_path), "%s.stop", argv[2]);
+    asciichat_thread_t finisher;
+    CHECK(acthread_create(&finisher, "fixture_finish", finish_blocked_fixture, stop_path) == ASCIICHAT_OK);
     for (unsigned i = 0; i < 600; ++i) {
       atomic_store_u64(&sync_values[i], i);
       NAMED_REGISTER_ATOMIC(&sync_values[i], "sync_fixture_value", NULL);
