@@ -13,20 +13,25 @@ test("client runtime initializes after its versioned module loads", async ({
   await page.goto("/client");
   const diagnostics = await page.evaluate(async () => {
     const moduleUrl = "/src/wasm/client.ts";
-    const { initClientWasm, cleanupClientWasm, getClientWasmModule } = await import(
-      /* @vite-ignore */ moduleUrl
-    );
+    const { initClientWasm, cleanupClientWasm, getClientWasmModule } =
+      await import(/* @vite-ignore */ moduleUrl);
     await initClientWasm({ width: 80, height: 24 });
     const wasm = getClientWasmModule() as Record<string, unknown>;
     const diagnostics = {
-      stacks: typeof wasm._errno_print_stacks,
-      history: typeof wasm._errno_print_history,
-      legacy: Object.keys(wasm).filter((name) => name.startsWith("_asciichat_errno_")),
+      stacks: typeof wasm["_errno_print_stacks"],
+      history: typeof wasm["_errno_print_history"],
+      legacy: Object.keys(wasm).filter((name) =>
+        name.startsWith("_asciichat_errno_"),
+      ),
     };
     cleanupClientWasm();
     return diagnostics;
   });
-  expect(diagnostics).toEqual({ stacks: "function", history: "function", legacy: [] });
+  expect(diagnostics).toEqual({
+    stacks: "function",
+    history: "function",
+    legacy: [],
+  });
 });
 
 for (const [mode, url] of [
