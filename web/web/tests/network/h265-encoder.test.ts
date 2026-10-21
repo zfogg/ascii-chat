@@ -225,6 +225,51 @@ describe("HEVC uploads", () => {
       clock.mockRestore();
     }
   });
+  it("coalesces small bitrate-only recovery steps but always restores the ceiling", async () => {
+    let now = 0;
+    const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.stubGlobal(
+      "OffscreenCanvas",
+      class {
+        constructor(
+          public width: number,
+          public height: number,
+        ) {}
+        getContext() {
+          return { drawImage: vi.fn() };
+        }
+      },
+    );
+    vi.stubGlobal(
+      "VideoFrame",
+      class {
+        close() {}
+      },
+    );
+    try {
+      const encoder = new H265Encoder(vi.fn());
+      await encoder.initialize(320, 240, 1);
+      now = 500;
+      encoder.observeTransport({ bufferedBytes: 300000 });
+      encoder.encode(frame());
+      await vi.waitFor(() => expect(FakeEncoder.instances).toHaveLength(2));
+      for (now = 1000; now <= 6000; now += 500)
+        encoder.observeTransport({ bufferedBytes: 0 });
+      encoder.encode(frame());
+      expect(FakeEncoder.instances).toHaveLength(2);
+      expect(encoder.qualityStatus.bitrate).toBe(41600);
+      for (let recovery = 11000; recovery <= 36000; recovery += 5000) {
+        now = recovery;
+        encoder.observeTransport({ bufferedBytes: 0 });
+        encoder.encode(frame());
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      expect(encoder.qualityStatus.bitrate).toBe(64000);
+      encoder.destroy();
+    } finally {
+      clock.mockRestore();
+    }
+  });
   it("preserves requested cadence across slightly early timer callbacks", async () => {
     let now = 0;
     const clock = vi.spyOn(performance, "now").mockImplementation(() => now);

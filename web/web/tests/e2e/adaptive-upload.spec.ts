@@ -178,6 +178,7 @@ test("real browser upload reduces load on collapse and recovers with fresh decod
   const collapse = result.samples.filter(
     (sample) => sample.time > 9000 && sample.time < 14000,
   );
+  expect(collapse.length).toBeGreaterThan(0);
   const low = collapse.reduce((a, b) => (a.bitrate! < b.bitrate! ? a : b));
   const recovered = result.samples.at(-1)!;
   expect(low.bitrate!).toBeLessThan(initial.bitrate!);

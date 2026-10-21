@@ -68,7 +68,7 @@ export class VideoUploadEncoder {
       width,
       height,
       framerate: fps,
-      bitrate: new UploadQuality().target(width, height, fps).bitrate,
+      bitrate: UploadQuality.bitrateCeiling(width, height, fps),
       latencyMode: "realtime",
       hardwareAcceleration: "prefer-hardware",
       ...(codec === "hevc"
@@ -190,11 +190,23 @@ export class VideoUploadEncoder {
       frame.displayHeight,
       fps ?? 30,
     );
+    // Avoid bitrate-only restart/keyframe churn for small recovery steps.
+    // Always apply the ceiling when recovered, even below the relative threshold.
+    const bitrateShift =
+      Math.abs(target.bitrate - this.config.bitrate!) / this.config.bitrate!;
+    const atCeiling =
+      target.bitrate ===
+      UploadQuality.bitrateCeiling(
+        frame.displayWidth,
+        frame.displayHeight,
+        fps,
+      );
     if (
       target.width !== this.config.width ||
       target.height !== this.config.height ||
       target.fps !== this.config.framerate ||
-      target.bitrate !== this.config.bitrate
+      (target.bitrate !== this.config.bitrate &&
+        (bitrateShift >= 0.25 || atCeiling))
     ) {
       this.resizing = true;
       // Recreate instead of relabeling pending output with the new dimensions.

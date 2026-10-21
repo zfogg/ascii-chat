@@ -6,6 +6,10 @@ export interface UploadFeedback {
 }
 
 export class UploadQuality {
+  /** Initial target and upper bitrate bound for the requested source. */
+  static bitrateCeiling(width: number, height: number, fps: number): number {
+    return Math.min(8_000_000, Math.max(64_000, width * height * fps * 0.12));
+  }
   private network = 1;
   private compute = 1;
   private lastSample = -Infinity;
@@ -13,6 +17,7 @@ export class UploadQuality {
   private drops = 0;
   reason: "healthy" | "network" | "encoder" = "healthy";
 
+  /** Consume cumulative queue feedback; make at most one quality decision per 500 ms. */
   sample(now: number, feedback: UploadFeedback, encoderQueue = 0): void {
     const dropped = feedback.droppedFrames ?? this.drops;
     const network =
@@ -39,6 +44,7 @@ export class UploadQuality {
     }
   }
 
+  /** Resolve bounded encoding settings beneath the source dimensions and requested FPS. */
   target(width: number, height: number, fps: number) {
     const factor = Math.min(this.network, this.compute);
     const scale =
@@ -54,8 +60,7 @@ export class UploadQuality {
       bitrate: Math.max(
         32_000,
         Math.round(
-          Math.min(8_000_000, Math.max(64_000, width * height * fps * 0.12)) *
-            this.network,
+          UploadQuality.bitrateCeiling(width, height, fps) * this.network,
         ),
       ),
     };

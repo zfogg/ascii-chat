@@ -21,6 +21,8 @@ configuration begins with a keyframe and reset flag. Existing outbound queue
 admission, audio/control reserves, priority/barriers, 100 ms application video
 expiry, and keyframe recovery remain authoritative. Feedback is collected before
 capture backpressure can skip a frame, including after WebRTC host promotion.
+Bitrate-only changes need a 25% shift to recreate the encoder; full recovery
+always reapplies the original bitrate ceiling even when the final step is smaller.
 
 This policy belongs beside WebCodecs: browser capture frames and JavaScript
 transport queues do not traverse the C encoder. Moving the policy into C would
