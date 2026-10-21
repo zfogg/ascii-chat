@@ -110,7 +110,7 @@ export function useMirrorWebcam({
       console.log(
         `[Mirror] startWebcam: entering try block at ${tryStartTime.toFixed(0)}ms`,
       );
-      if (!applyMirrorWasmSettings(settings))
+      if (!applyMirrorWasmSettings(settings, !!providedStream))
         throw new Error("Renderer settings are not initialized");
 
       // Check for test mode via query parameter

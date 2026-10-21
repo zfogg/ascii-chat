@@ -207,6 +207,7 @@ export function ClientPage({
   );
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [webcamDisabledByUser, setWebcamDisabledByUser] = useState(false);
+  const [displayInput, setDisplayInput] = useState(false);
   const [deviceSetupOpen, setDeviceSetupOpen] = useState(() =>
     readUrlValue("devices", false),
   );
@@ -370,8 +371,10 @@ export function ClientPage({
   const [settings, setSettings, receiveSettings] = useRenderSettings();
   const [captureFps, setCaptureFps] = useUrlState("captureFps", 60);
   const cameraSettings = useMemo(
-    () => ({ ...settings, targetFps: captureFps }),
-    [settings, captureFps],
+    () => ({ ...settings, targetFps: captureFps,
+      ...(displayInput ? { faceFollow: false, faceFollowDebug: false, ...(!settings.flipXExplicit ? { flipX: false } : {}) } : {}),
+    }),
+    [settings, captureFps, displayInput],
   );
   const setCameraSettings = useCallback(
     (next: BinarySettingsConfig) => setCaptureFps(next.targetFps),
@@ -573,8 +576,8 @@ export function ClientPage({
   const { captureFrame } = useCanvasCapture(
     videoRef,
     canvasRef,
-    settings.flipX ?? false,
-    settings,
+    cameraSettings.flipX ?? false,
+    cameraSettings,
   );
 
   // Use webcam stream hook
@@ -623,12 +626,14 @@ export function ClientPage({
   const screenCapture = useDisplayCapture({
     setError,
     onStart: async (stream) => {
+      setDisplayInput(true);
       screenRestore.current ??= { file: fileRunning, webcam: isWebcamRunning };
       setWebcamDisabledByUser(true);
       suspendFile(true);
       return startVideoStream(stream);
     },
     onStop: () => {
+      setDisplayInput(false);
       stopWebcam();
       const previous = screenRestore.current;
       screenRestore.current = null;
@@ -640,6 +645,7 @@ export function ClientPage({
   const { release: releaseDisplay } = screenCapture;
   const releaseScreen = useCallback(() => {
     screenRestore.current = null;
+    setDisplayInput(false);
     releaseDisplay();
   }, [releaseDisplay]);
   useEffect(() => {
@@ -647,8 +653,8 @@ export function ClientPage({
   }, [connectionState, releaseScreen]);
 
   const applyWasmSettings = useCallback(
-    (next: BinarySettingsConfig) => applyMirrorWasmSettings(next, fileSelected),
-    [fileSelected],
+    (next: BinarySettingsConfig) => applyMirrorWasmSettings(next, fileSelected || displayInput),
+    [fileSelected, displayInput],
   );
 
   const fileCaptureRef = useRef({

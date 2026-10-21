@@ -14,6 +14,7 @@ export default defineConfig({
     "wasm-assets.spec.ts",
     "runtime-settings.spec.ts",
     "face-follow.spec.ts",
+    "screen-sharing.spec.ts",
   ],
   grepInvert:
     /connected web client shows its C network logs|native host applies live browser settings/,

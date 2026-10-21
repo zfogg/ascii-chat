@@ -129,7 +129,7 @@ export function MirrorPage() {
                 !!next.animationEnabled && next.animation === "matrix",
             }
           : next,
-        file,
+        file || mediaSource === MediaSourceType.SCREEN,
       );
     },
     [mediaSource, mediaFlipY],
