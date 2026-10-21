@@ -13,6 +13,7 @@ import signal
 import socket
 import struct
 import subprocess
+import tomllib
 import tempfile
 import termios
 import time
@@ -50,6 +51,53 @@ class MediaSessions(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-5000:])
         self.assertGreater(len(result.stdout), 100, "Snapshot did not contain a rendered frame")
         return result.stdout
+
+    def test_generated_configuration_is_valid_and_controls_snapshot_dimensions(self):
+        result = subprocess.run(self.command("--config-create", "-"), env=self.env,
+                                capture_output=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-3000:])
+        template = result.stdout.decode()
+        document = tomllib.loads(template)
+        self.assertIn("terminal", document)
+        self.assertIn("network", document)
+        configured = re.sub(r"^width = \d+$", "width = 37", template, flags=re.MULTILINE)
+        configured = re.sub(r"^height = \d+$", "height = 18", configured, flags=re.MULTILINE)
+        path = self.root / "generated.toml"
+        path.write_text(configured)
+        self.assertEqual(tomllib.loads(configured)["terminal"]["width"], 37)
+        frame = self.run_snapshot("--config", str(path), "mirror", "--file", str(self.image),
+                                  "--snapshot", "--snapshot-delay", "0", "--splash-screen=false",
+                                  "--color-mode", "none", "--palette", "custom", "--palette-chars", " .#")
+        rows = [line for line in frame.splitlines() if b"#" in line and set(line) <= set(b" .#")]
+        self.assertTrue(rows, "The generated configuration did not produce a rendered frame")
+        self.assertTrue(all(len(line) == 37 for line in rows), rows)
+
+    def test_generated_shell_completions_and_manual_preserve_public_options(self):
+        markers = {"bash": b"complete -F", "fish": b"complete -c ascii-chat",
+                   "zsh": b"compdef", "powershell": b"Register-ArgumentCompleter"}
+        for shell, marker in markers.items():
+            with self.subTest(shell=shell):
+                result = subprocess.run(self.command("--completions", shell), env=self.env,
+                                        capture_output=True, timeout=20)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-3000:])
+                self.assertIn(marker, result.stdout)
+                for option in (b"color-mode", b"password", b"snapshot", b"discovery-service"):
+                    self.assertIn(option, result.stdout)
+                path = self.root / f"completion.{shell}"
+                written = subprocess.run(self.command("--completions", shell, str(path)), env=self.env,
+                                         capture_output=True, timeout=20)
+                self.assertEqual(written.returncode, 0, written.stderr.decode(errors="replace")[-3000:])
+                self.assertEqual(path.read_bytes(), result.stdout)
+                if shell == "bash":
+                    syntax = subprocess.run(["bash", "-n", str(path)], capture_output=True, timeout=10)
+                    self.assertEqual(syntax.returncode, 0, syntax.stderr.decode(errors="replace"))
+        manual = self.root / "ascii-chat.1"
+        result = subprocess.run(self.command("--man-page-create", str(manual)), env=self.env,
+                                capture_output=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-3000:])
+        text = manual.read_text().replace(r"\-", "-")
+        for required in (".TH ascii-chat 1", ".SH SYNOPSIS", "--color-mode", "--password", "--snapshot"):
+            self.assertIn(required, text)
 
     def test_mirror_palette_and_color_encodings(self):
         for mode in ("none", "16", "256", "truecolor"):
