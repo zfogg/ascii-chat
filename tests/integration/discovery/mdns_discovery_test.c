@@ -59,7 +59,7 @@ Test(mdns_integration, real_answers_survive_invalid_replacement_and_own_caller_r
   cr_assert_not_null(advertiser);
   cr_assert_not_null(query);
   char name[64] = "owned-lan-fixture", host[64] = "owned-host";
-  const char *txt[] = {"session_string=owned-session"};
+  const char *txt[] = {"session_string=swift-river-mountain"};
   asciichat_mdns_service_t service = {
       .name = name, .host = host, .type = "_ascii-chat._tcp", .port = 32123, .txt_records = txt, .txt_count = 1};
   cr_assert_eq(asciichat_mdns_advertise(advertiser, &service), ASCIICHAT_OK);
@@ -74,19 +74,26 @@ Test(mdns_integration, real_answers_survive_invalid_replacement_and_own_caller_r
     cr_assert_eq(asciichat_mdns_update(query, 50), ASCIICHAT_OK);
   cr_assert_eq(found.port, 32123, "A registered service must answer real network queries");
   cr_assert_str_eq(found.host, "owned-host.local.");
-  cr_assert_str_eq(found.txt, "session_string=owned-session");
+  cr_assert_str_eq(found.txt, "session_string=swift-river-mountain");
   cr_assert_str_not_empty(found.ipv4);
   int server_count = 0;
   ui_mdns_server_t *servers = discovery_mdns_query(800, 20, true, &server_count);
   bool session_found = false;
   for (int i = 0; i < server_count; ++i) {
     if (servers[i].port == 32123 && strncmp(servers[i].name, "owned-lan-fixture-", 18) == 0) {
-      cr_assert_str_eq(servers[i].session_string, "owned-session");
+      cr_assert_str_eq(servers[i].session_string, "swift-river-mountain");
       session_found = true;
     }
   }
   cr_assert(session_found, "The UI discovery result must retain session TXT metadata");
   discovery_mdns_destroy(servers);
+  discovery_config_t config;
+  discovery_config_init_defaults(&config);
+  discovery_result_t resolved;
+  cr_assert_eq(discover_session_parallel("swift-river-mountain", &config, &resolved), ASCIICHAT_OK);
+  cr_assert(resolved.success);
+  cr_assert_eq(resolved.source, DISCOVERY_SOURCE_MDNS);
+  cr_assert_eq(resolved.server_port, 32123);
   cr_assert_eq(asciichat_mdns_unadvertise(advertiser, "owned-lan-fixture"), ASCIICHAT_OK);
   asciichat_mdns_destroy(advertiser);
   asciichat_mdns_destroy(query);
