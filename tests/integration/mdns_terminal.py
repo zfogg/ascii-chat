@@ -55,7 +55,8 @@ def main():
             if key.startswith("ASCII_CHAT_"):
                 del os.environ[key]
         os.environ.update(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root),
-                          XDG_CONFIG_HOME=str(root), TERM="xterm-256color")
+                          XDG_CONFIG_HOME=str(root), TERM="xterm-256color",
+                          ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
         ports = [free_port(), free_port()]
         services, terminals = [], []
 
@@ -116,6 +117,7 @@ def main():
             text = term.expect(lambda text: "> [2]" in text, "Covered Enter selected a server")
             chosen_line = next(line for line in text.splitlines() if "> [2]" in line)
             chosen = next(index for index, port in enumerate(ports) if str(port) in chosen_line)
+            selected_host = chosen_line.rsplit("(", 1)[1].rsplit(":", 1)[0].strip("[]")
             term.write("\r")
             log_wait("picker", "Selected server")
             selected_service = [first, second][chosen]
@@ -123,8 +125,8 @@ def main():
             selected_service.stop()
             services.remove(selected_service)
             log_wait("picker", "Connection failed, retrying")
-            text = term.pump(.5)
-            assert "LAN servers" not in text, text
+            text = term.expect(lambda text: selected_host in text and "Connecting to" in text
+                               and "LAN servers" not in text, "Reconnect splash lost the selected address")
             capture(term, args.artifacts, "reconnect-splash")
             replacement = server(chosen, "replacement")
             replacement.wait_for("announced video stream")

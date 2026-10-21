@@ -499,10 +499,13 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
 static asciichat_error_t client_select_destination(void *user_data) {
   (void)user_data;
   const options_t *opts = options_get();
+  if (!opts)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Client options are unavailable during LAN discovery");
+  bool scanning = opts->lan_discovery;
   bool default_destination =
       !opts->address_explicit && strcmp(opts->address, OPT_ADDRESS_DEFAULT) == 0 && opts->port == OPT_PORT_INT_DEFAULT;
   bool automatic = default_destination && terminal_can_prompt_user() && !opts->snapshot_mode;
-  if (!opts->lan_discovery && !automatic)
+  if (!scanning && !automatic)
     return ASCIICHAT_OK;
   if (opts->address_explicit || !default_destination)
     return ASCIICHAT_OK;
@@ -512,7 +515,7 @@ static asciichat_error_t client_select_destination(void *user_data) {
   ui_mdns_server_t *servers = ui_mdns_query(&config, &count);
   if (count == 0) {
     ui_mdns_free_results(servers);
-    if (opts->lan_discovery)
+    if (scanning)
       return SET_ERRNO(ERROR_NETWORK, "No ascii-chat servers found on the local network");
     return ASCIICHAT_OK;
   }
@@ -528,6 +531,13 @@ static asciichat_error_t client_select_destination(void *user_data) {
   }
   static char selected_address[OPTIONS_BUFF_SIZE];
   SAFE_STRNCPY(selected_address, ui_mdns_get_best_address(&servers[selected]), sizeof(selected_address));
+  asciichat_error_t result = options_set_string("address", selected_address);
+  if (result == ASCIICHAT_OK)
+    result = options_set_int("port", servers[selected].port);
+  if (result != ASCIICHAT_OK) {
+    ui_mdns_free_results(servers);
+    return result;
+  }
   g_client_session.discovered_address = selected_address;
   g_client_session.discovered_port = servers[selected].port;
   log_debug("LAN discovery: Selected server '%s' at %s:%d", servers[selected].name, selected_address,
