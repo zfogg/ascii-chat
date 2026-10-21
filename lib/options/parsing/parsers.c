@@ -279,8 +279,9 @@ bool parse_color_filter(const char *arg, void *dest, char **error_msg) {
   to_lower(arg, lower, sizeof(lower));
 
   // Try to match against all known color filters
-  *color_filter = color_filter_from_cli_name(lower);
-  if (*color_filter != COLOR_FILTER_NONE || strcmp(lower, OPT_COLOR_FILTER_NONE) == 0) {
+  color_filter_t parsed_filter = color_filter_from_cli_name(lower);
+  if (parsed_filter != COLOR_FILTER_NONE || strcmp(lower, OPT_COLOR_FILTER_NONE) == 0) {
+    *color_filter = parsed_filter;
     return true;
   }
 

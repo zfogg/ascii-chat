@@ -391,6 +391,12 @@ void log_labeled(const char *label, log_color_t color, const char *message, ...)
  */
 const char *log_level_color(log_color_t color);
 
+/** Resolve a color after the caller has selected an output policy.
+ * Explicitly colored non-terminal output uses the portable 16-color palette.
+ * The returned thread-local string is valid until the next call.
+ */
+const char *log_level_color_for_output(log_color_t color, bool enabled);
+
 /**
  * @brief Get the appropriate color array based on terminal capabilities
  * @return Pointer to color array (16-color, 256-color, or truecolor)
