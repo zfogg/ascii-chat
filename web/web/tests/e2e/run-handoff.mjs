@@ -23,11 +23,31 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function until(read, timeout = 30000, description = "condition") {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
-    const value = await read();
+    const value = await bounded(
+      read,
+      Math.max(1, deadline - Date.now()),
+      description,
+    );
     if (value) return value;
     await delay(100);
   }
   throw new Error(`Timed out waiting for ${description}`);
+}
+async function bounded(read, timeout = 30000, description = "operation") {
+  let timer;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(read),
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("Timed out waiting for " + description)),
+          timeout,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 let ordinal = 0;
 function native(args, name) {
@@ -52,12 +72,16 @@ function native(args, name) {
       stdio: ["ignore", "ignore", "pipe"],
     },
   );
-  let stderr = "";
   child.stderr.on("data", (bytes) => {
-    stderr += bytes.toString();
+    fs.appendFileSync(`${log}.stderr`, bytes);
   });
+  child.on("exit", (code, signal) =>
+    fs.writeFileSync(`${log}.exit.json`, JSON.stringify({ code, signal })),
+  );
   const read = () =>
-    (fs.existsSync(log) ? fs.readFileSync(log, "utf8") : "") + stderr;
+    // Keep offsets chronological: stderr is archived separately and can repeat
+    // the same messages. Concatenating it shifts old entries past saved offsets.
+    fs.existsSync(log) ? fs.readFileSync(log, "utf8") : "";
   return { child, read, log };
 }
 const launch = {
@@ -66,6 +90,7 @@ const launch = {
   args: [
     "--no-sandbox",
     "--disable-dev-shm-usage",
+    "--autoplay-policy=no-user-gesture-required",
     "--disable-background-timer-throttling",
     "--disable-renderer-backgrounding",
     `--unsafely-treat-insecure-origin-as-secure=${website}`,
@@ -84,7 +109,7 @@ async function page(browser, name) {
     output.write(`PAGE ERROR ${error.stack}\n`),
   );
   result.on("close", () => output.end());
-  await result.goto(`${website}/tests/e2e/handoff-probe.html`);
+  await result.goto(`${website}/tests/e2e/handoff-probe.html?test2`);
   await result.waitForFunction(() => Boolean(window.handoffProbe));
   return result;
 }
@@ -423,7 +448,25 @@ async function scenario(kind) {
       if (process.child.exitCode === null) process.child.kill("SIGKILL");
   }
 }
-for (const kind of (
-  process.env.HANDOFF_SCENARIOS || "native,browser,mixed"
-).split(","))
-  await scenario(kind);
+export {
+  bounded,
+  chromium,
+  native,
+  launch,
+  page,
+  startPage,
+  media,
+  until,
+  delay,
+  directory,
+  peerArgs,
+};
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
+)
+  for (const kind of (
+    process.env.HANDOFF_SCENARIOS || "native,browser,mixed"
+  ).split(","))
+    await scenario(kind);
