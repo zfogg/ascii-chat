@@ -1641,6 +1641,8 @@ if(BUILD_TESTS AND UNIX AND NOT APPLE AND TARGET ascii-chat)
         ${CMAKE_SOURCE_DIR}/tests/integration/media_sessions.py --binary $<TARGET_FILE:ascii-chat>
         ${media_session_coverage_args})
     set_tests_properties(media-sessions PROPERTIES LABELS "integration" TIMEOUT 150 RUN_SERIAL TRUE)
+    set_property(TEST media-sessions APPEND PROPERTY ENVIRONMENT_MODIFICATION
+        "LSAN_OPTIONS=string_append::suppressions=${CMAKE_CURRENT_SOURCE_DIR}/standalone/network/x265_3_5_lsan.supp")
     if(TARGET tests)
         add_dependencies(tests ascii-chat)
     endif()
