@@ -55,6 +55,7 @@ typedef struct {
   // Service thread for client-side transports
   asciichat_thread_t service_thread; ///< Thread that services libwebsockets context
   volatile bool service_running;     ///< Service thread running flag
+  bool service_joining;              ///< Join ownership protected by state_mutex
 
   // Partial message reassembly state (preserved across recv() calls)
   // Fixes issue where slow fragment delivery caused reassembly timeouts

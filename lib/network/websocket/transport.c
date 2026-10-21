@@ -1107,12 +1107,23 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
   websocket_interrupt(transport);
   // Client contexts are exclusive; server contexts close on their writable callback.
+  // Receive and outbound workers can close concurrently after a peer disconnect.
+  mutex_lock(&ws_data->state_mutex);
+  while (ws_data->service_joining)
+    cond_wait(&ws_data->state_cond, &ws_data->state_mutex);
   if (ws_data->service_running) {
+    ws_data->service_joining = true;
+    mutex_unlock(&ws_data->state_mutex);
     asciichat_error_t result = thread_join(&ws_data->service_thread, NULL);
-    if (result != ASCIICHAT_OK)
-      return result;
-    ws_data->service_running = false;
+    mutex_lock(&ws_data->state_mutex);
+    if (result == ASCIICHAT_OK)
+      ws_data->service_running = false;
+    ws_data->service_joining = false;
+    cond_broadcast(&ws_data->state_cond);
+    mutex_unlock(&ws_data->state_mutex);
+    return result;
   }
+  mutex_unlock(&ws_data->state_mutex);
   return ASCIICHAT_OK;
 }
 
