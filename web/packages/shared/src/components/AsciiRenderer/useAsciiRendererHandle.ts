@@ -398,6 +398,7 @@ export function useAsciiRendererHandle({
   useImperativeHandle(
     ref,
     () => ({
+      getCanvas: () => canvasRef.current,
       writeFrame(ansiString: string): boolean {
         lastFrameChangedRef.current = false;
         const ui = ensureUi();

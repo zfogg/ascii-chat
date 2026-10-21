@@ -1,5 +1,7 @@
 import { ScreenShareControls } from "../components/ScreenShareControls";
 import { MediaAudioControls } from "../components/MediaAudioControls";
+import { RecordingControls } from "../components/RecordingControls";
+import { useSessionRecording } from "../hooks/useSessionRecording";
 import { useMediaAudio } from "../hooks/useMediaAudio";
 import { useDisplayCapture } from "../hooks/useDisplayCapture";
 import { useMirrorFile } from "../hooks/useMirrorFile";
@@ -845,6 +847,15 @@ export function ClientPage({
   };
   const toggleMicrophone = () =>
     mediaAudio.toggleMicrophone(() => enableAudio(false));
+  const recording = useSessionRecording({
+    enabled: connectionState === ConnectionState.CONNECTED,
+    rendererRef,
+    ensureAudio,
+    prepare: () => enableAudio(false),
+    fileElement: () =>
+      fileSelected && !displayInput ? fileVideoRef.current : null,
+    sourceRevision: `${fileSelected}:${fileMedia.fileName}:${displayInput}`,
+  });
 
   const handleDimensionsChange = useCallback(
     (dims: { cols: number; rows: number }) => {
@@ -1176,6 +1187,7 @@ export function ClientPage({
   const audioControls =
     connectionState === ConnectionState.CONNECTED ? (
       <>
+        <RecordingControls recording={recording} />
         {!screenCapture.active && (
           <button
             onClick={isWebcamRunning ? disableWebcam : enableWebcam}
@@ -1209,6 +1221,8 @@ export function ClientPage({
       <video ref={fileVideoRef} playsInline style={{ display: "none" }} />
       <canvas ref={fileCanvasRef} style={{ display: "none" }} />
       <PageLayout
+        loading={rendererRequested && !rendererReady}
+        loadingError={rendererError}
         videoRef={videoRef}
         canvasRef={canvasRef}
         header={

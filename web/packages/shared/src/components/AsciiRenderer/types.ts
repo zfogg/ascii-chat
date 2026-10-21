@@ -1,6 +1,8 @@
 import type { ClientLikeKind } from "../../wasm/assetUrl";
 
 export interface AsciiRendererHandle {
+  /** The displayed C/WASM raster, never the source-video capture canvas. */
+  getCanvas(): HTMLCanvasElement | null;
   writeFrame(
     ansiString: string,
     dimensions?: { cols: number; rows: number },

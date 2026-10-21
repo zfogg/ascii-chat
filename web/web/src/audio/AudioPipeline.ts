@@ -42,6 +42,79 @@ export class AudioPipeline {
   private outputGain: GainNode | null = null;
   private volume = 1;
   private playbackEnabled = false;
+  private recording: MediaStreamAudioDestinationNode | null = null;
+  private recordingMediaCleanup: (() => void) | null = null;
+
+  setRecordingMedia(element: HTMLMediaElement | null): void {
+    this.recordingMediaCleanup?.();
+    this.recordingMediaCleanup = null;
+    if (!element || !this.recording || !this.context) return;
+    const capture = element as HTMLMediaElement & {
+      captureStream?: () => MediaStream;
+      mozCaptureStream?: () => MediaStream;
+    };
+    const captureStream = capture.captureStream ?? capture.mozCaptureStream;
+    if (!captureStream)
+      throw new Error(
+        "This browser cannot record file audio. Use a camera or screen source.",
+      );
+    // Element capture is independent of the element's local volume/mute state.
+    // Never route it back into the network or speaker graph.
+    const stream = captureStream.call(element);
+    let source: MediaStreamAudioSourceNode | null = null;
+    const update = () => {
+      source?.disconnect();
+      source = null;
+      if (!this.context || !this.recording) return;
+      const tracks = stream
+        .getAudioTracks()
+        .filter((track) => track.readyState === "live");
+      if (tracks.length) {
+        source = this.context.createMediaStreamSource(new MediaStream(tracks));
+        source.connect(this.recording);
+      }
+    };
+    stream.addEventListener("addtrack", update);
+    stream.addEventListener("removetrack", update);
+    this.recordingMediaCleanup = () => {
+      stream.removeEventListener("addtrack", update);
+      stream.removeEventListener("removetrack", update);
+      source?.disconnect();
+      stream.getTracks().forEach((track) => track.stop());
+    };
+    update();
+  }
+
+  /** A separate output bus: local inputs never connect to the loudspeakers. */
+  async startRecording(): Promise<MediaStream> {
+    if (this.closed) throw new Error("Audio pipeline is closed");
+    await this.initializeAudio();
+    if (this.closed || !this.context)
+      throw new Error("Audio pipeline is closed");
+    if (!this.recording) {
+      this.recording = this.context.createMediaStreamDestination();
+      this.source?.connect(this.recording);
+      this.displaySource?.connect(this.recording);
+      this.playback?.connect(this.recording);
+      for (const source of this.sources) source.connect(this.recording);
+    }
+    return this.recording.stream;
+  }
+
+  stopRecording(): void {
+    this.recordingMediaCleanup?.();
+    this.recordingMediaCleanup = null;
+    const bus = this.recording;
+    if (!bus) return;
+    this.recording = null;
+    this.source?.disconnect(bus);
+    this.displaySource?.disconnect(bus);
+    this.playback?.disconnect(bus);
+    for (const source of this.sources) source.disconnect(bus);
+    bus.stream.getTracks().forEach((track) => track.stop());
+    bus.disconnect();
+    if (!this.playbackEnabled) this.disablePlayback();
+  }
 
   setVolume(value: number): void {
     this.volume = Math.min(1, Math.max(0, value));
@@ -91,6 +164,7 @@ export class AudioPipeline {
   disablePlayback(): void {
     this.playbackEnabled = false;
     this.setVolume(this.volume);
+    if (this.recording) return;
     for (const source of this.sources) source.stop();
     this.sources.clear();
     this.playback?.port.postMessage({ reset: true });
@@ -232,6 +306,7 @@ export class AudioPipeline {
     }
     this.stream = stream;
     this.source = this.context.createMediaStreamSource(stream);
+    if (this.recording) this.source.connect(this.recording);
     // A display transition may retire an in-flight processor. Rejoin the
     // current graph instead of treating that transition as microphone failure.
     do {
@@ -308,6 +383,7 @@ export class AudioPipeline {
       if (!hadDisplayAudio || isTestMode()) return;
       // Restore microphone-only enhancement after the display/music mix ends.
       this.source.disconnect();
+      if (this.recording) this.source.connect(this.recording);
       this.releaseCaptureGraph();
       await this.ensureCaptureGraph();
       if (
@@ -325,6 +401,7 @@ export class AudioPipeline {
     // Screen/music samples must bypass microphone-only enhancement. Reconnect
     // the retained microphone into that same processor instead of duplicating it.
     this.source?.disconnect();
+    if (this.recording) this.source?.connect(this.recording);
     this.releaseCaptureGraph();
     await this.ensureCaptureGraph();
     if (generation !== this.displayGeneration || this.closed || !this.processor)
@@ -334,6 +411,7 @@ export class AudioPipeline {
       new MediaStream(this.displayStream!.getAudioTracks()),
     );
     this.displaySource.connect(this.processor.node);
+    if (this.recording) this.displaySource.connect(this.recording);
   }
   async replaceMicrophone(deviceId: string): Promise<void> {
     if (
@@ -389,6 +467,7 @@ export class AudioPipeline {
 
     const nextSource = this.context.createMediaStreamSource(nextStream);
     nextSource.connect(this.processor.node);
+    if (this.recording) nextSource.connect(this.recording);
     const previousSource = this.source;
     const previousStream = this.stream;
     this.source = nextSource;
@@ -408,7 +487,7 @@ export class AudioPipeline {
   }
   playPacket(type: number, payload: Uint8Array): void {
     if (
-      !this.playbackEnabled ||
+      (!this.playbackEnabled && !this.recording) ||
       !this.context ||
       !this.codec ||
       this.context.state !== "running"
@@ -502,6 +581,7 @@ export class AudioPipeline {
     const source = context.createBufferSource();
     source.buffer = buffer;
     source.connect(this.outputGain!);
+    if (this.recording) source.connect(this.recording);
     this.sources.add(source);
     source.onended = () => {
       this.sources.delete(source);
@@ -534,6 +614,7 @@ export class AudioPipeline {
     });
   }
   close(): void {
+    this.stopRecording();
     this.closed = true;
     this.playbackEnabled = false;
 

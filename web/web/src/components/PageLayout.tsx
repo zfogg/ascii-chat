@@ -1,5 +1,6 @@
 import { applyAudioOutputDevice } from "@ascii-chat/shared/devices/mediaDevicePreferences";
 import React from "react";
+import { SessionContent } from "./SessionContent";
 import {
   getMediaDevicePreferences,
   MEDIA_DEVICE_PREFERENCES_CHANGED,
@@ -11,6 +12,8 @@ interface PageLayoutProps {
   header: React.ReactNode;
   renderer: React.ReactNode;
   modal?: React.ReactNode;
+  loading?: boolean;
+  loadingError?: string;
 }
 
 export function PageLayout({
@@ -19,6 +22,8 @@ export function PageLayout({
   header,
   renderer,
   modal,
+  loading = false,
+  loadingError,
 }: PageLayoutProps) {
   React.useEffect(() => {
     const applySpeaker = () => {
@@ -69,7 +74,9 @@ export function PageLayout({
       {header}
 
       {/* ASCII output fills remaining space */}
-      {renderer}
+      <SessionContent loading={loading} error={loadingError}>
+        {renderer}
+      </SessionContent>
 
       {/* Modals */}
       {modal}

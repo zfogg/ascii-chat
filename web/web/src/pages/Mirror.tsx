@@ -1,4 +1,6 @@
 import { ScreenShareControls } from "../components/ScreenShareControls";
+import { RecordingControls } from "../components/RecordingControls";
+import { useSessionRecording } from "../hooks/useSessionRecording";
 import { MediaAudioControls } from "../components/MediaAudioControls";
 import { useMediaAudio } from "../hooks/useMediaAudio";
 import { initClientWasm } from "../wasm/client";
@@ -108,6 +110,7 @@ export function MirrorPage() {
     fps,
     setFps,
     wasmInitialized,
+    wasmError,
     showSettings,
     setShowSettings,
     settings,
@@ -335,6 +338,13 @@ export function MirrorPage() {
   // Animations can paint while hardware permission and capture are pending.
   const renderActive =
     isWebcamRunning || (playing && !!settings.animationEnabled && !fileActive);
+  const recording = useSessionRecording({
+    rendererRef,
+    ensureAudio,
+    enabled: renderActive,
+    fileElement: () => (fileActive ? fileVideoRef.current : null),
+    sourceRevision: `${String(mediaSource)}:${fileMedia.fileName}`,
+  });
 
   // Render loop that captures and converts frames to ASCII
   useMirrorRenderLoop({
@@ -460,6 +470,8 @@ export function MirrorPage() {
         url={`${SITES.WEB}/mirror`}
       />
       <PageLayout
+        loading={!wasmInitialized}
+        loadingError={wasmError}
         videoRef={videoRef}
         canvasRef={canvasRef}
         header={
@@ -516,6 +528,10 @@ export function MirrorPage() {
               ),
               statusControls: (
                 <>
+                  <RecordingControls
+                    recording={recording}
+                    disabled={!wasmInitialized || !renderActive}
+                  />
                   <MediaAudioControls
                     speakers={speakersEnabled}
                     microphone={microphoneEnabled}
