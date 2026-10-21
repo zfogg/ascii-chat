@@ -1,3 +1,7 @@
+import { ScreenShareControls } from "../components/ScreenShareControls";
+import { MediaAudioControls } from "../components/MediaAudioControls";
+import { useMediaAudio } from "../hooks/useMediaAudio";
+import { useDisplayCapture } from "../hooks/useDisplayCapture";
 import { useMirrorFile } from "../hooks/useMirrorFile";
 import { MediaSourceType } from "../hooks/useClientLike";
 import {
@@ -83,7 +87,6 @@ import {
   useWebcamStream,
 } from "../hooks";
 import { buildStreamStartPacket } from "../network";
-import { AudioPipeline } from "../audio";
 import { SecuritySetupModal } from "../components/SecuritySetupModal";
 import {
   getActivePassword,
@@ -203,8 +206,12 @@ export function ClientPage({
     "turnUrls",
     "turn:turn.ascii-chat.com:3478",
   );
-  const [audioEnabled, setAudioEnabled] = useState(false);
   const [webcamDisabledByUser, setWebcamDisabledByUser] = useState(false);
+  const [displayInput, setDisplayInput] = useState(false);
+  const displayInputRef = useRef(displayInput);
+  useEffect(() => {
+    displayInputRef.current = displayInput;
+  }, [displayInput]);
   const [deviceSetupOpen, setDeviceSetupOpen] = useState(() =>
     readUrlValue("devices", false),
   );
@@ -239,26 +246,67 @@ export function ClientPage({
       active = false;
     };
   }, [rendererRequested]);
-  const [micEnabled, setMicEnabled] = useState(false);
   const [connecting, setConnecting] = useState(requestedConnection);
   const settingsRef = useRef<BinarySettingsConfig>(DEFAULT_SETTINGS);
-  const micEnabledRef = useRef(false);
-  const audioRef = useRef<AudioPipeline | null>(null);
   const audioStreamStartedRef = useRef(false);
-  const onConnectionStateChange = useCallback((state: ConnectionState) => {
-    if (state !== ConnectionState.CONNECTED) {
-      audioStreamStartedRef.current = false;
-      audioRef.current?.stopCapture();
-    }
-  }, []);
-  const [audioLevels, setAudioLevels] = useState({
-    microphone: 0,
-    playback: 0,
-    sent: 0,
-    played: 0,
-    playedSamples: 0,
-    underruns: 0,
-  });
+  const mediaAudio = useMediaAudio(() => ({
+    onError: (error) => {
+      setError(error.message);
+    },
+    onMicrophoneSamples: (samples) => {
+      const current = settingsRef.current;
+      if (
+        current.animationEnabled &&
+        (current.animation === "waveform" || current.animation === "fft")
+      ) {
+        submitAudioVisualizationSamples(samples, "microphone");
+        submitAudioVisualizationSamples(samples, "media");
+      }
+    },
+    onPlaybackSamples: (samples) => {
+      const current = settingsRef.current;
+      if (
+        !displayInputRef.current &&
+        current.animationEnabled &&
+        (current.animation === "waveform" || current.animation === "fft")
+      ) {
+        submitAudioVisualizationSamples(samples);
+      }
+    },
+    onAudioData: (payload) => {
+      if (
+        !audioStreamStartedRef.current ||
+        clientRef.current?.getState() !== ConnectionState.CONNECTED
+      )
+        return;
+      try {
+        clientRef.current?.sendPacket(PacketType.AUDIO_OPUS_BATCH, payload);
+      } catch (error) {
+        console.error("Audio send failed", error);
+      }
+    },
+  }));
+  const {
+    audioRef,
+    audioEnabled,
+    setAudioEnabled,
+    micEnabled,
+    micEnabledRef,
+    audioLevels,
+    ensureAudio,
+    closeAudio,
+  } = mediaAudio;
+  const onConnectionStateChange = useCallback(
+    (state: ConnectionState) => {
+      if (state !== ConnectionState.CONNECTED) {
+        audioStreamStartedRef.current = false;
+        audioRef.current?.stopCapture();
+        void audioRef.current?.setDisplayStream(null);
+      }
+    },
+    [audioRef],
+  );
+
   const discovery = useMemo<DiscoveryOptions | undefined>(
     () =>
       discoveryMode
@@ -307,13 +355,16 @@ export function ClientPage({
       turnCredential,
     ],
   );
-  const onAudioPacket = useCallback((type: number, payload: Uint8Array) => {
-    try {
-      audioRef.current?.playPacket(type, payload);
-    } catch (error) {
-      console.error("Audio playback failed", error);
-    }
-  }, []);
+  const onAudioPacket = useCallback(
+    (type: number, payload: Uint8Array) => {
+      try {
+        audioRef.current?.playPacket(type, payload);
+      } catch (error) {
+        console.error("Audio playback failed", error);
+      }
+    },
+    [audioRef],
+  );
   const rendererRef = useRef<AsciiRendererHandle>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -368,7 +419,10 @@ export function ClientPage({
   const [settings, setSettings, receiveSettings] = useRenderSettings();
   const [captureFps, setCaptureFps] = useUrlState("captureFps", 60);
   const cameraSettings = useMemo(
-    () => ({ ...settings, targetFps: captureFps }),
+    () => ({
+      ...settings,
+      targetFps: captureFps,
+    }),
     [settings, captureFps],
   );
   const setCameraSettings = useCallback(
@@ -382,9 +436,6 @@ export function ClientPage({
   useEffect(() => {
     settingsRef.current = settings;
   }, [settings]);
-  useEffect(() => {
-    micEnabledRef.current = micEnabled;
-  }, [micEnabled]);
 
   // Render loop for displaying received frames at target FPS (decoupled from network arrival rate)
   const frameQueueRef = useRef<AsciiFrame[]>([]);
@@ -478,7 +529,7 @@ export function ClientPage({
         MEDIA_DEVICE_PREFERENCES_CHANGED,
         handleMediaDeviceChange,
       );
-  }, [setError]);
+  }, [setError, audioRef, micEnabledRef]);
 
   useEffect(() => {
     if (connectionState === ConnectionState.CONNECTED)
@@ -571,27 +622,31 @@ export function ClientPage({
   const { captureFrame } = useCanvasCapture(
     videoRef,
     canvasRef,
-    settings.flipX ?? false,
-    settings,
+    cameraSettings,
   );
 
   // Use webcam stream hook
-  const { startWebcam, stopWebcam, isWebcamRunning, sendFileFrame } =
-    useWebcamStream({
-      includeAudio: audioEnabled,
-      terminalDimensions,
-      clientRef,
-      connectionState,
-      settings: cameraSettings,
-      receiveFps: settings.targetFps,
-      captureFrame,
-      canvasRef,
-      videoRef,
-      frameIntervalRef: cameraFrameInterval,
-      lastFrameTimeRef: cameraLastFrameTime,
-      frameQueueRef,
-      setError,
-    });
+  const {
+    startWebcam,
+    startVideoStream,
+    stopWebcam,
+    isWebcamRunning,
+    sendFileFrame,
+  } = useWebcamStream({
+    includeAudio: audioEnabled,
+    terminalDimensions,
+    clientRef,
+    connectionState,
+    settings: cameraSettings,
+    receiveFps: settings.targetFps,
+    captureFrame,
+    canvasRef,
+    videoRef,
+    frameIntervalRef: cameraFrameInterval,
+    lastFrameTimeRef: cameraLastFrameTime,
+    frameQueueRef,
+    setError,
+  });
   const fileVideoRef = useRef<HTMLVideoElement>(null);
   const fileCanvasRef = useRef<HTMLCanvasElement>(null);
   const [fileRunning, setFileRunning] = useState(false);
@@ -612,9 +667,49 @@ export function ClientPage({
   });
   const { stop: stopFile, setSuspended: suspendFile } = fileMedia;
   const fileSelected = !!fileMedia.fileName;
+  const screenRestore = useRef<{ file: boolean; webcam: boolean } | null>(null);
+  const screenCapture = useDisplayCapture({
+    setError,
+    onStart: async (stream, current) => {
+      setDisplayInput(true);
+      screenRestore.current ??= { file: fileRunning, webcam: isWebcamRunning };
+      setWebcamDisabledByUser(true);
+      suspendFile(true);
+      if (!(await enableAudio(false))) return false;
+      if (!current()) return false;
+      await audioRef.current?.setDisplayStream(stream);
+      if (!current()) {
+        await audioRef.current?.setDisplayStream(null);
+        return false;
+      }
+      return startVideoStream(stream);
+    },
+    onStop: () => {
+      void audioRef.current?.setDisplayStream(null);
+      setDisplayInput(false);
+      stopWebcam();
+      const previous = screenRestore.current;
+      screenRestore.current = null;
+      setWebcamDisabledByUser(!previous?.webcam);
+      if (previous?.file) suspendFile(false);
+      else if (previous?.webcam) void startVideoStream();
+    },
+  });
+  const { release: releaseDisplay } = screenCapture;
+  const releaseScreen = useCallback(() => {
+    void audioRef.current?.setDisplayStream(null);
+    screenRestore.current = null;
+    setDisplayInput(false);
+    releaseDisplay();
+  }, [releaseDisplay, audioRef]);
+  useEffect(() => {
+    if (connectionState !== ConnectionState.CONNECTED) releaseScreen();
+  }, [connectionState, releaseScreen]);
+
   const applyWasmSettings = useCallback(
-    (next: BinarySettingsConfig) => applyMirrorWasmSettings(next, fileSelected),
-    [fileSelected],
+    (next: BinarySettingsConfig) =>
+      applyMirrorWasmSettings(next, fileSelected || displayInput),
+    [fileSelected, displayInput],
   );
 
   const fileCaptureRef = useRef({
@@ -630,7 +725,7 @@ export function ClientPage({
     rendererReady,
   };
   useEffect(() => {
-    if (!fileRunning) return;
+    if (!fileRunning || screenCapture.active) return;
     if (connectionState === ConnectionState.CONNECTED) {
       clientRef.current?.sendPacket(
         PacketType.STREAM_START,
@@ -657,30 +752,35 @@ export function ClientPage({
       }
     }, 1000 / settings.targetFps);
     return () => window.clearInterval(timer);
-  }, [fileRunning, connectionState, clientRef, settings.targetFps]);
+  }, [
+    fileRunning,
+    connectionState,
+    clientRef,
+    settings.targetFps,
+    screenCapture.active,
+  ]);
   const handleDeviceSetupOpenChange = useCallback(
     (open: boolean) => {
-      if (open) stopWebcam();
+      if (open) {
+        releaseScreen();
+        stopWebcam();
+      }
       suspendFile(open);
       setDeviceSetupOpen(open);
     },
-    [stopWebcam, suspendFile],
+    [stopWebcam, suspendFile, releaseScreen],
   );
 
   useEffect(() => {
-    getMirrorModule()?._wasm_ui_audio(Number(audioEnabled || micEnabled));
-  }, [audioEnabled, micEnabled, connectionState, rendererReady]);
+    getMirrorModule()?._wasm_ui_audio(
+      Number(audioEnabled || micEnabled || displayInput),
+    );
+  }, [audioEnabled, micEnabled, displayInput, connectionState, rendererReady]);
 
-  const closeAudio = useCallback(() => {
-    audioRef.current?.close();
-    audioRef.current = null;
-    setAudioEnabled(false);
-    setMicEnabled(false);
-  }, []);
   const cameraFps = useCameraFrameRate(
     cameraSettings,
     setCameraSettings,
-    isWebcamRunning,
+    isWebcamRunning && !screenCapture.active,
   );
   const disconnectMedia = useCallback(
     (event?: { preventDefault(): void }) => {
@@ -715,7 +815,6 @@ export function ClientPage({
     if (connectionState === ConnectionState.DISCONNECTED) {
       stopWebcam();
       closeAudio();
-      setMicEnabled(false);
     } else if (connectionState === ConnectionState.ERROR) {
       stopWebcam();
       // Keep the user-activated AudioContext alive during automatic discovery
@@ -726,55 +825,13 @@ export function ClientPage({
       if (discovery) audioRef.current?.stopCapture();
       else closeAudio();
     }
-  }, [connectionState, stopWebcam, closeAudio, discovery]);
-  useEffect(
-    () => () => {
-      audioRef.current?.close();
-    },
-    [],
-  );
+  }, [connectionState, stopWebcam, closeAudio, discovery, audioRef]);
   const enableAudio = async (speakers = true) => {
     try {
-      if (!audioRef.current)
-        audioRef.current = new AudioPipeline({
-          onError: (error) => {
-            setMicEnabled(false);
-            setError(error.message);
-          },
-          onLevels: setAudioLevels,
-          onMicrophoneSamples: (samples) => {
-            const current = settingsRef.current;
-            if (
-              current.animationEnabled &&
-              (current.animation === "waveform" || current.animation === "fft")
-            ) {
-              submitAudioVisualizationSamples(samples, "microphone");
-            }
-          },
-          onPlaybackSamples: (samples) => {
-            const current = settingsRef.current;
-            if (
-              current.animationEnabled &&
-              (current.animation === "waveform" || current.animation === "fft")
-            ) {
-              submitAudioVisualizationSamples(samples);
-            }
-          },
-          onAudioData: (payload) => {
-            if (!audioStreamStartedRef.current) return;
-            try {
-              clientRef.current?.sendPacket(
-                PacketType.AUDIO_OPUS_BATCH,
-                payload,
-              );
-            } catch (error) {
-              console.error("Audio send failed", error);
-            }
-          },
-        });
+      const pipeline = ensureAudio();
       const ui = getMirrorModule();
-      if (ui) audioRef.current.setVolume(ui._wasm_ui_volume());
-      if (speakers) await audioRef.current.enablePlayback();
+      if (ui) pipeline.setVolume(ui._wasm_ui_volume());
+      if (speakers) await pipeline.enablePlayback();
       const client = clientRef.current;
       if (!client) throw new Error("Connect before starting the audio stream");
       client.sendPacket(PacketType.STREAM_START, buildStreamStartPacket(true));
@@ -786,29 +843,8 @@ export function ClientPage({
       return false;
     }
   };
-  const toggleMicrophone = async () => {
-    if (micEnabled) {
-      audioRef.current?.stopCapture();
-      micEnabledRef.current = false;
-      setMicEnabled(false);
-      return;
-    }
-    try {
-      if (!(await enableAudio(false))) return;
-      if (!audioRef.current) return;
-      const client = clientRef.current;
-      if (!client) throw new Error("Connect before resuming the audio stream");
-      client.sendPacket(PacketType.STREAM_START, buildStreamStartPacket(true));
-      audioStreamStartedRef.current = true;
-      const pipeline = audioRef.current;
-      await pipeline.startCapture();
-      if (audioRef.current !== pipeline || !pipeline.captureActive) return;
-      micEnabledRef.current = true;
-      setMicEnabled(true);
-    } catch (error) {
-      setError(String(error));
-    }
-  };
+  const toggleMicrophone = () =>
+    mediaAudio.toggleMicrophone(() => enableAudio(false));
 
   const handleDimensionsChange = useCallback(
     (dims: { cols: number; rows: number }) => {
@@ -964,7 +1000,7 @@ export function ClientPage({
         }
       }
     },
-    [syntheticAudio],
+    [syntheticAudio, micEnabledRef],
   );
 
   useEffect(() => {
@@ -1041,7 +1077,14 @@ export function ClientPage({
         error,
       );
     }
-  }, [audioEnabled, connectionState, discovery, clientRef, micEnabled]);
+  }, [
+    audioEnabled,
+    connectionState,
+    discovery,
+    clientRef,
+    micEnabled,
+    audioRef,
+  ]);
 
   const audioVisualization =
     !!settings.animationEnabled &&
@@ -1053,12 +1096,12 @@ export function ClientPage({
       setWebcamDisabledByUser(false);
       return;
     }
-    if (fileSelected) return;
+    if (fileSelected || screenCapture.active || screenCapture.selecting) return;
     if (deviceSetupOpen) {
       webcamAutoStartedRef.current = false;
       return;
     }
-    if (audioVisualization) {
+    if (audioVisualization && !screenCapture.active) {
       if (webcamAutoStartedRef.current || isWebcamRunning) stopWebcam();
       webcamAutoStartedRef.current = false;
       return;
@@ -1077,18 +1120,22 @@ export function ClientPage({
     audioVisualization,
     deviceSetupOpen,
     fileSelected,
+    screenCapture.active,
+    screenCapture.selecting,
   ]);
 
   const disableWebcam = useCallback(() => {
+    releaseScreen();
     setWebcamDisabledByUser(true);
     stopWebcam();
-  }, [stopWebcam]);
+  }, [stopWebcam, releaseScreen]);
 
   const enableWebcam = useCallback(() => {
+    releaseScreen();
     stopFile();
     setWebcamDisabledByUser(false);
     if (!audioVisualization) void startWebcam();
-  }, [startWebcam, audioVisualization, stopFile]);
+  }, [startWebcam, audioVisualization, stopFile, releaseScreen]);
 
   const getStatusDotColor = () => {
     switch (connectionState) {
@@ -1129,42 +1176,26 @@ export function ClientPage({
   const audioControls =
     connectionState === ConnectionState.CONNECTED ? (
       <>
-        <button
-          onClick={isWebcamRunning ? disableWebcam : enableWebcam}
-          className={`border rounded px-3 py-1 cursor-pointer text-white ${isWebcamRunning ? "border-red-700 bg-red-700 hover:bg-red-800" : "border-green-700 bg-green-700 hover:bg-green-800"}`}
-        >
-          {isWebcamRunning ? "Disable webcam" : "Enable webcam"}
-        </button>
-        <button
-          onClick={() => {
+        {!screenCapture.active && (
+          <button
+            onClick={isWebcamRunning ? disableWebcam : enableWebcam}
+            className={`border rounded px-3 py-1 cursor-pointer text-white ${isWebcamRunning ? "border-red-700 bg-red-700 hover:bg-red-800" : "border-green-700 bg-green-700 hover:bg-green-800"}`}
+          >
+            {isWebcamRunning ? "Disable webcam" : "Enable webcam"}
+          </button>
+        )}
+        <MediaAudioControls
+          speakers={audioEnabled}
+          microphone={micEnabled}
+          onSpeakers={() => {
             if (audioEnabled) {
               audioRef.current?.disablePlayback();
               setAudioEnabled(false);
             } else void enableAudio();
           }}
-          className={`border rounded px-3 py-1 cursor-pointer text-white ${audioEnabled ? "border-red-700 bg-red-700 hover:bg-red-800" : "border-terminal-8 bg-transparent"}`}
-        >
-          {audioEnabled ? "Disable speakers" : "Enable speakers"}
-        </button>
-        <button
-          onClick={() => void toggleMicrophone()}
-          className={`border rounded px-3 py-1 cursor-pointer text-white ${micEnabled ? "border-red-700 bg-red-700 hover:bg-red-800" : "border-terminal-8 bg-transparent"}`}
-        >
-          {micEnabled ? "Disable microphone" : "Enable microphone"}
-        </button>
-        {audioEnabled && (
-          <output
-            data-testid="audio-levels"
-            data-sent={audioLevels.sent}
-            data-played={audioLevels.played}
-            data-played-samples={audioLevels.playedSamples}
-            data-underruns={audioLevels.underruns}
-            className="self-center text-sm text-terminal-8"
-          >
-            Mic {Math.round(audioLevels.microphone * 100)}% &middot; Playback{" "}
-            {Math.round(audioLevels.playback * 100)}%
-          </output>
-        )}
+          onMicrophone={() => void toggleMicrophone()}
+          levels={audioLevels}
+        />
       </>
     ) : undefined;
 
@@ -1571,6 +1602,7 @@ export function ClientPage({
                 ? `${fileMedia.status} ${fileMedia.fileName}`
                 : status,
               onFileSelect: (file) => {
+                releaseScreen();
                 setRendererRequested(true);
                 void fileMedia.start(file);
               },
@@ -1593,6 +1625,15 @@ export function ClientPage({
               showSettingsButton: true,
               settingsOpen: showSettings,
               statusControls: audioControls,
+              uploadControls: (
+                <ScreenShareControls
+                  capture={screenCapture}
+                  disabled={
+                    connectionState !== ConnectionState.CONNECTED ||
+                    fileMedia.loading
+                  }
+                />
+              ),
             }}
           />
         }

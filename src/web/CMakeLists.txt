@@ -370,6 +370,7 @@ set(LIB_SRC_CLIENT_NETWORK
 # Common WASM abstraction layer (shared between mirror and client)
 set(COMMON_WEB_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/common/options.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/capture.c
     ${CMAKE_CURRENT_SOURCE_DIR}/common/init.c
 )
 
@@ -549,6 +550,7 @@ apply_sanitizers_to_target(client-web)
 
 # Exported functions for mirror module (main() entry point via main_wasm.c)
 set(EXPORTED_FUNCTIONS_MIRROR
+    _wasm_capture_transform_required _wasm_capture_transform_rgba
     _errno_print_stacks _errno_print_history
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
     # Frame processing for JavaScript control
@@ -608,6 +610,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
+    _wasm_capture_transform_required _wasm_capture_transform_rgba
     _client_settings_receive _client_settings_values
     _peer_crypto_error
     _peer_crypto_create

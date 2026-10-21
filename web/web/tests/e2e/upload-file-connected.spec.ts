@@ -21,7 +21,7 @@ const media =
 const seekTime = Number(process.env["UPLOAD_TEST_SEEK_SECONDS"] ?? "1");
 
 for (const mode of ["client", "discovery", "mirror"]) {
-  test(`Upload File /${mode}: recognizable file frames ${mode === "mirror" ? "locally" : "through a live server"}`, async ({
+  test(`Upload file /${mode}: recognizable file frames ${mode === "mirror" ? "locally" : "through a live server"}`, async ({
     page,
   }) => {
     test.setTimeout(150_000);
@@ -158,7 +158,7 @@ for (const mode of ["client", "discovery", "mirror"]) {
         await expect(page.locator(".status")).toContainText("Connected");
       }
       await page
-        .getByRole("button", { name: "Upload File", exact: true })
+        .getByRole("button", { name: "Upload file", exact: true })
         .click();
       await page.getByLabel("Choose media file").setInputFiles(media);
       const video = page.locator("video:not([autoplay])");

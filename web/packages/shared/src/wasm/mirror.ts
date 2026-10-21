@@ -66,6 +66,12 @@ interface MirrorModuleExports {
 }
 
 export interface MirrorModule extends WasmModule, SessionUiModule {
+  _wasm_capture_transform_required(): number;
+  _wasm_capture_transform_rgba(
+    pointer: number,
+    width: number,
+    height: number,
+  ): number;
   _wasm_test_pattern_create(width: number, height: number): number;
   _wasm_test_pattern_render(
     pointer: number,

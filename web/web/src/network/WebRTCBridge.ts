@@ -130,8 +130,17 @@ export class WebRTCBridge implements PacketTransport {
         if (
           entry.offset === 0 &&
           this.channel.bufferedAmount + entry.packet.length > highWaterMark
-        )
+        ) {
+          // A frame larger than the live window needs an empty channel. The
+          // normal low-water event can fire too early and will not fire again
+          // unless its threshold follows the remaining admission capacity.
+          this.channel.bufferedAmountLowThreshold = Math.min(
+            this.sendWindow / 2,
+            highWaterMark - entry.packet.length,
+          );
           break;
+        }
+        this.channel.bufferedAmountLowThreshold = this.sendWindow / 2;
         const chunkSize = Math.max(1, this.maxMessageSize || 16384);
         const chunk = entry.packet.slice(
           entry.offset,
