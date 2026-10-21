@@ -2,7 +2,7 @@ import { expect, test } from "./browser-fixture";
 import path from "node:path";
 
 for (const mode of ["mirror", "client", "discovery"]) {
-  test(`Upload File on /${mode}: header placement, cancel and real playback`, async ({
+  test(`Upload file on /${mode}: header placement, cancel and real playback`, async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -10,7 +10,7 @@ for (const mode of ["mirror", "client", "discovery"]) {
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(`/${mode}`);
     const upload = page.getByRole("button", {
-      name: "Upload File",
+      name: "Upload file",
       exact: true,
     });
     await expect(upload).toBeVisible();

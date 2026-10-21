@@ -7,6 +7,7 @@ import {
   vi,
 } from "vite-plus/test";
 import { AudioPipeline } from "../../src/audio/AudioPipeline";
+import { AudioCapture } from "../../src/audio/AudioCapture";
 import { AVState } from "../../src/wasm/AVState";
 import { PacketType } from "../../src/wasm/client";
 
@@ -113,6 +114,155 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("AudioPipeline", () => {
+  it("does not recreate audio resources after close", async () => {
+    const pipeline = new AudioPipeline({ localOnly: true });
+    pipeline.close();
+    await expect(pipeline.enablePlayback()).rejects.toThrow("closed");
+    await expect(
+      pipeline.setDisplayStream({
+        getAudioTracks: () => [{ readyState: "live" }],
+      } as unknown as MediaStream),
+    ).rejects.toThrow("closed");
+    await pipeline.setDisplayStream(null);
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+  it("keeps one microphone and preserves display capture when the microphone stops", async () => {
+    vi.stubGlobal(
+      "MediaStream",
+      class {
+        constructor(private tracks: MediaStreamTrack[]) {}
+        getAudioTracks() {
+          return this.tracks;
+        }
+      },
+    );
+    const displayTrack = { readyState: "live", stop: vi.fn() };
+    const display = {
+      getAudioTracks: () => [displayTrack],
+    } as unknown as MediaStream;
+    const send = vi.fn();
+    const pipeline = new AudioPipeline({ onAudioData: send });
+    await pipeline.startCapture();
+    await pipeline.setDisplayStream(display);
+    expect(getUserMedia).toHaveBeenCalledOnce();
+    pipeline.stopCapture();
+    expect(stopTrack).toHaveBeenCalledOnce();
+    expect(processor.onaudioprocess).not.toBeNull();
+    processor.onaudioprocess!({
+      inputBuffer: { getChannelData: () => new Float32Array(1920).fill(0.15) },
+    } as unknown as AudioProcessingEvent);
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(start).not.toHaveBeenCalled();
+    await pipeline.setDisplayStream(null);
+    expect(processor.onaudioprocess).toBeNull();
+    pipeline.close();
+    expect(displayTrack.stop).not.toHaveBeenCalled();
+  });
+
+  it("preserves a microphone starting while display replacement retires its processor", async () => {
+    vi.stubGlobal(
+      "MediaStream",
+      class {
+        constructor(private tracks: MediaStreamTrack[]) {}
+        getAudioTracks() {
+          return this.tracks;
+        }
+      },
+    );
+    type Capture = Awaited<ReturnType<typeof AudioCapture.create>>;
+    let firstReady!: (capture: Capture) => void;
+    let secondReady!: (capture: Capture) => void;
+    const retired = { node: node(), close: vi.fn() } as unknown as Capture;
+    const replacement = { node: node(), close: vi.fn() } as unknown as Capture;
+    const create = vi.mocked(AudioCapture.create);
+    create.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          firstReady = resolve;
+        }),
+    );
+    create.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          secondReady = resolve;
+        }),
+    );
+    const pipeline = new AudioPipeline();
+    const started = pipeline.startCapture().then(
+      () => true,
+      () => false,
+    );
+    await vi.waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    const display = pipeline.setDisplayStream({
+      getAudioTracks: () => [{ readyState: "live", stop: vi.fn() }],
+    } as unknown as MediaStream);
+    await vi.waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+    firstReady(retired);
+    await vi.waitFor(() => expect(retired.close).toHaveBeenCalledOnce());
+    secondReady(replacement);
+    await display;
+    expect(await started).toBe(true);
+    expect(pipeline.captureActive).toBe(true);
+    expect(getUserMedia).toHaveBeenCalledOnce();
+    expect(stopTrack).not.toHaveBeenCalled();
+    pipeline.close();
+  });
+
+  it("restores microphone enhancement after display audio stops", async () => {
+    vi.stubGlobal(
+      "MediaStream",
+      class {
+        constructor(private tracks: MediaStreamTrack[]) {}
+        getAudioTracks() {
+          return this.tracks;
+        }
+      },
+    );
+    const pipeline = new AudioPipeline();
+    const create = vi.mocked(AudioCapture.create);
+    await pipeline.startCapture();
+    expect(create.mock.calls.at(-1)![1].bypass).toBe(false);
+    await pipeline.setDisplayStream({
+      getAudioTracks: () => [{ readyState: "live", stop: vi.fn() }],
+    } as unknown as MediaStream);
+    expect(create.mock.calls.at(-1)![1].bypass).toBe(true);
+    await pipeline.setDisplayStream(null);
+    expect(create.mock.calls.at(-1)![1].bypass).toBe(false);
+    expect(pipeline.captureActive).toBe(true);
+    expect(getUserMedia).toHaveBeenCalledOnce();
+    expect(stopTrack).not.toHaveBeenCalled();
+    pipeline.close();
+  });
+
+  it("replaces display inputs without acquiring or stopping a microphone or owning display tracks", async () => {
+    vi.stubGlobal(
+      "MediaStream",
+      class {
+        constructor(private tracks: MediaStreamTrack[]) {}
+        getAudioTracks() {
+          return this.tracks;
+        }
+      },
+    );
+    const track = () => ({ readyState: "live", stop: vi.fn() });
+    const first = track(),
+      second = track();
+    const pipeline = new AudioPipeline({ localOnly: true });
+    await pipeline.setDisplayStream({
+      getAudioTracks: () => [first],
+    } as unknown as MediaStream);
+    await pipeline.setDisplayStream({
+      getAudioTracks: () => [second],
+    } as unknown as MediaStream);
+    await pipeline.enablePlayback();
+    expect(getUserMedia).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+    pipeline.close();
+    expect(first.stop).not.toHaveBeenCalled();
+    expect(second.stop).not.toHaveBeenCalled();
+    expect(processor.onaudioprocess).toBeNull();
+  });
+
   it("rejects state startup errors without throwing synchronously and permits retry", async () => {
     const pipeline = new AudioPipeline({ onAudioData: vi.fn() });
     const begin = vi

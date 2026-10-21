@@ -14,7 +14,6 @@ import {
 export function useCanvasCapture(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
-  flipX = false,
   faceOptions: FaceFollowOptions = {},
 ) {
   const { faceFollow = false, faceFollowDebug = false } = faceOptions;
@@ -96,15 +95,7 @@ export function useCanvasCapture(
         }
 
         if (drawVideo && video) {
-          if (flipX) {
-            ctx.save();
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-            drawFaceFollow(ctx, video, canvas);
-            ctx.restore();
-          } else {
-            drawFaceFollow(ctx, video, canvas);
-          }
+          drawFaceFollow(ctx, video, canvas);
         }
         // WebCodecs consumes the canvas directly; avoid a synchronous GPU
         // readback and RGBA allocation when no caller needs raw pixels.
@@ -159,7 +150,7 @@ export function useCanvasCapture(
         return null;
       }
     },
-    [videoRef, canvasRef, flipX],
+    [videoRef, canvasRef],
   );
 
   return { captureFrame, capturedDataRef };

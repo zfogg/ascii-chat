@@ -179,7 +179,7 @@ export default function MirrorDemoWidget({
   const selectedOption =
     demoOptions?.find((o) => o.id === selectedOptionId) ?? null;
 
-  const { captureFrame } = useCanvasCapture(videoRef, canvasRef, false, {
+  const { captureFrame } = useCanvasCapture(videoRef, canvasRef, {
     faceFollow: selectedOption?.settings.faceFollow ?? false,
     faceFollowDebug: selectedOption?.settings.faceFollowDebug ?? false,
   });

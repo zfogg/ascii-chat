@@ -24,6 +24,7 @@ import {
 import { useVideoEncodings } from "./useVideoEncodings";
 import type { CompressedVideoEncoding } from "../network/VideoUploadEncoder";
 import type { ClientSession } from "../network/Transport";
+import { orientUpload } from "../utils/orientUpload";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import type { BinarySettingsConfig } from "../components";
 import { resolveCameraDeviceId } from "../utils/mediaDevicePreferences";
@@ -102,6 +103,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   const cancelMetadataRef = useRef<(() => void) | null>(null);
   const captureReadyRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
+  const displayStreamRef = useRef<MediaStream | null>(null);
+  const pendingDisplayRef = useRef<MediaStream | undefined>(undefined);
   const videoEncoderRef = useRef<VideoUploadEncoder | null>(null);
   const webcamCaptureLoopRef = useRef<
     | ((
@@ -120,6 +123,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
   const videFrameUpdateCountRef = useRef(0); // Track actual VIDEO updates
 
   const [isWebcamRunning, setIsWebcamRunning] = useState(false);
+  const [captureRevision, setCaptureRevision] = useState(0);
 
   const stopWebcam = useCallback(() => {
     const wasRunning = avState.current(avState.generation);
@@ -155,6 +159,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
+      displayStreamRef.current = null;
       testPatternSourceRef.current?.stop();
       testPatternSourceRef.current = null;
 
@@ -280,7 +285,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           },
         );
         if ((conn.getBufferedAmount?.() ?? 0) > 256 * 1024) return;
-        const frame =
+        let frame =
           fileFrame ??
           captureFrame(
             drawVideo,
@@ -288,6 +293,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
             !videoEncoderRef.current && !conn.sendVideoFrame,
           );
         if (frame && frame.data) {
+          const uploadCanvas = sourceCanvas ?? canvasRef.current;
+          if (uploadCanvas) frame = orientUpload(uploadCanvas, frame);
           captureLoopFrameCountRef.current++;
           const frameHash = computeFrameHash(frame.data);
 
@@ -423,7 +430,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         return;
       }
       const videoTrack = streamRef.current?.getVideoTracks()[0];
-      if (videoTrack) {
+      if (videoTrack && !displayStreamRef.current) {
         reportCameraTrack(videoTrack);
         void videoTrack
           .applyConstraints({
@@ -482,15 +489,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                   (!cameraNeedsFrameLimit(settings.targetFps) ||
                     mediaClock.accept(frame.timestamp / 1e6, sendInterval))
                 ) {
-                  if (settings.flipX) {
-                    context.save();
-                    context.translate(canvas.width, 0);
-                    context.scale(-1, 1);
-                    drawFaceFollow(context, frame, canvas);
-                    context.restore();
-                  } else {
-                    drawFaceFollow(context, frame, canvas);
-                  }
+                  drawFaceFollow(context, frame, canvas);
                   webcamCaptureLoopRef.current?.(false);
                 }
               } finally {
@@ -592,13 +591,15 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     canvasRef,
     connectionState,
     isWebcamRunning,
-    settings.flipX,
+    captureRevision,
     settings,
     videoRef,
   ]);
 
   const startWebcam = useCallback(async () => {
-    if (startingRef.current || streamRef.current) return;
+    const providedStream = pendingDisplayRef.current;
+    pendingDisplayRef.current = undefined;
+    if (startingRef.current || streamRef.current) return false;
     captureReadyRef.current = false;
     console.log("[Client] startWebcam() called");
     console.log(
@@ -608,7 +609,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     if (!videoRef.current || !canvasRef.current) {
       console.error("[Client] Video or canvas element not ready");
       setError("Video or canvas element not ready");
-      return;
+      return false;
     }
 
     console.log(
@@ -619,21 +620,24 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         `[Client] Not connected (state=${connectionState}), cannot start webcam`,
       );
       setError("Must be connected to server before starting webcam");
-      return;
+      return false;
     }
 
     console.log("[Client] Passed all initial checks");
 
     const generation = avState.begin();
-    if (!generation) return;
+    if (!generation) return false;
     startingRef.current = true;
+    let captureStarted = false;
     try {
       validateEncoding();
       setError("");
       // Send STREAM_START to notify server we're about to send video
       if (clientRef.current) {
         console.log("[Client] Sending STREAM_START before webcam...");
-        const streamPayload = buildStreamStartPacket(includeAudio);
+        const streamPayload = buildStreamStartPacket(
+          includeAudio || !!providedStream?.getAudioTracks().length,
+        );
         // Send as unencrypted ACIP packet (like native client does)
         clientRef.current.sendUnencryptedAcipPacket(
           PacketType.STREAM_START,
@@ -654,9 +658,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         videoRef.current,
       );
 
-      const preferredCameraId = testPattern.enabled
-        ? ""
-        : await resolveCameraDeviceId();
+      const preferredCameraId =
+        providedStream || testPattern.enabled
+          ? ""
+          : await resolveCameraDeviceId();
       const videoConstraints: MediaTrackConstraints = {
         width: { ideal: w },
         height: { ideal: h },
@@ -666,9 +671,12 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           : {}),
       };
 
-      if (!avState.current(generation)) return;
+      if (!avState.current(generation)) return false;
       let stream: MediaStream;
-      if (testPattern.enabled) {
+      if (providedStream) {
+        stream = providedStream;
+        displayStreamRef.current = providedStream;
+      } else if (testPattern.enabled) {
         const frameInterval = 1000 / settings.targetFps;
         let nextPatternFrameAt = 0;
         const source = createTestPatternVideoSource(
@@ -702,7 +710,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
 
       if (!avState.current(generation)) {
         stream.getTracks().forEach((track) => track.stop());
-        return;
+        return false;
       }
       // Publish ownership before any further awaits so stop can release the device.
       streamRef.current = stream;
@@ -715,7 +723,11 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       if (!videoTrack || videoTrack.readyState !== "live") {
         throw new Error("Selected camera did not provide a live video track");
       }
-      if (videoTrack?.getCapabilities && videoTrack.getSettings) {
+      if (
+        !providedStream &&
+        videoTrack?.getCapabilities &&
+        videoTrack.getSettings
+      ) {
         const capabilities = videoTrack.getCapabilities();
         const currentSettings = videoTrack.getSettings();
         const currentFps = currentSettings.frameRate;
@@ -782,7 +794,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         clientRef.current?.getState() !== ConnectionState.CONNECTED
       ) {
         stream.getTracks().forEach((track) => track.stop());
-        return;
+        return false;
       }
       streamRef.current = stream;
       const video = videoRef.current!;
@@ -847,7 +859,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         }
       }
       await metadataPromise;
-      if (!avState.current(generation)) return;
+      if (!avState.current(generation)) return false;
       if (video.videoWidth && video.videoHeight && canvasRef.current) {
         canvasRef.current.width = video.videoWidth;
         canvasRef.current.height = video.videoHeight;
@@ -892,7 +904,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         );
       }
 
-      if (!avState.current(generation)) return;
+      if (!avState.current(generation)) return false;
       const scale = Math.min(
         1,
         320 / canvasRef.current.width,
@@ -915,9 +927,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         canvasRef.current.height,
         generation,
       );
-      if (!avState.current(generation)) return;
-      if (!avState.complete(generation)) return;
+      if (!avState.current(generation)) return false;
+      if (!avState.complete(generation)) return false;
       captureReadyRef.current = true;
+      setCaptureRevision((revision) => revision + 1);
       setIsWebcamRunning(avState.active);
 
       console.log("[Client] Starting render loops...");
@@ -938,6 +951,8 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       }
 
       console.log("[Client] Webcam started successfully");
+      captureStarted = true;
+      return true;
     } catch (err) {
       const errMsg = `Failed to start webcam: ${String(err)}`;
       console.error("[Client]", errMsg);
@@ -967,7 +982,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
           testPatternSourceRef.current?.stop();
           testPatternSourceRef.current = null;
         });
+      return false;
     } finally {
+      if (!captureStarted && displayStreamRef.current === providedStream)
+        displayStreamRef.current = null;
       cancelMetadataRef.current?.();
       startingRef.current = false;
       if (!mountedRef.current) avState.dispose();
@@ -1008,6 +1026,9 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     previousEncodingRef.current = encodingPreference;
     if (!streamRef.current && !startingRef.current) return;
     let cancelled = false;
+    // Retain the selected display track while rebuilding the upload encoder.
+    const display = displayStreamRef.current;
+    if (display) streamRef.current = null;
     captureActionsRef.current.stopWebcam();
     void (async () => {
       while (startingRef.current)
@@ -1015,8 +1036,10 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       if (
         !cancelled &&
         clientRef.current?.getState() === ConnectionState.CONNECTED
-      )
+      ) {
+        pendingDisplayRef.current = display ?? undefined;
         await captureActionsRef.current.startWebcam();
+      }
     })();
     return () => {
       cancelled = true;
@@ -1029,6 +1052,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
         .detail;
       if (
         !change?.changedKeys.includes("cameraId") ||
+        !!displayStreamRef.current ||
         (!streamRef.current && !startingRef.current) ||
         testPattern.enabled
       )
@@ -1061,7 +1085,26 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
       );
   }, [isWebcamRunning, startWebcam, stopWebcam, testPattern.enabled]);
 
+  const startVideoStream = useCallback(
+    async (stream?: MediaStream) => {
+      stopWebcam();
+      const generation = avState.generation;
+      while (startingRef.current && mountedRef.current)
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 10));
+      if (
+        !mountedRef.current ||
+        avState.generation !== generation ||
+        (stream && stream.getVideoTracks()[0]?.readyState !== "live")
+      )
+        return false;
+      pendingDisplayRef.current = stream;
+      return (await startWebcam()) === true;
+    },
+    [startWebcam, stopWebcam, avState],
+  );
+
   return {
+    startVideoStream,
     startWebcam,
     stopWebcam,
     isWebcamRunning,

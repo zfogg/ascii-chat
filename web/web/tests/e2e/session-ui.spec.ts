@@ -102,8 +102,13 @@ test("C splash animates and keyboard settings update both C and the web controls
   await expect
     .poll(() => lastFrame(page))
     .toContain("ascii-chat Keyboard Shortcuts");
-  // Static help does not keep counting covered splash frames.
-  await expect.poll(canvasFps).toBe(0);
+  // Help owns the canvas and animates its own rainbow logo.
+  await expect.poll(canvasFps).toBeGreaterThan(0);
+  const helpBefore = await canvas.screenshot();
+  await expect
+    .poll(async () => (await canvas.screenshot()).equals(helpBefore))
+    .toBe(false);
+  expect(await lastFrame(page)).not.toContain("Video chat in your terminal");
   await page.keyboard.press("c");
   await expect(page).toHaveURL(/colorMode=none/);
   await expect.poll(() => lastFrame(page)).toContain("Mono");
@@ -249,7 +254,9 @@ test("C application logs survive closed overlays and share exclusive presentatio
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
   await page.screenshot({ path: "artifacts/session-logs-web.png" });
   await page.keyboard.press("?");
-  await expect.poll(() => lastFrame(page)).toContain("Toggle application logs");
+  await expect
+    .poll(() => lastFrame(page))
+    .toContain("Live log viewer/searcher TUI");
   expect(await lastFrame(page)).not.toContain("/: search logs");
   await page.screenshot({ path: "artifacts/session-logs-help-web.png" });
   await page.keyboard.press("]");
@@ -390,7 +397,7 @@ test("C owns automatic horizontal orientation and the browser echoes it without 
     page.getByRole("button", { name: "Stop", exact: true }),
   ).toBeVisible();
   await orientation(true);
-  await page.getByRole("button", { name: "Upload File", exact: true }).click();
+  await page.getByRole("button", { name: "Upload file", exact: true }).click();
   await page
     .getByLabel("Choose media file")
     .setInputFiles("tests/fixtures/media/still.png");
@@ -448,7 +455,7 @@ for (const mode of ["client", "discovery"]) {
       }, moduleUrl);
     await expect(horizontal).toHaveAttribute("aria-pressed", "true");
     await page
-      .getByRole("button", { name: "Upload File", exact: true })
+      .getByRole("button", { name: "Upload file", exact: true })
       .click();
     await page
       .getByLabel("Choose media file")

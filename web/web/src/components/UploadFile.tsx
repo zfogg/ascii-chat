@@ -14,7 +14,7 @@ export function UploadFile({
         onClick={() => setOpen(true)}
         className="px-4 py-2 bg-terminal-5 text-terminal-bg rounded hover:bg-terminal-13 text-sm font-medium"
       >
-        Upload File
+        Upload file
       </button>
       <VideoUploadModal
         isOpen={open}

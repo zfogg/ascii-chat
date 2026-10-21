@@ -159,6 +159,104 @@ test("starting in FFT requests microphone only and does not wait for video metad
   expect(params.videoRef.current.play).not.toHaveBeenCalled();
 });
 
+test("an idle display share acquires microphone audio separately from display video", async () => {
+  const { params } = setup();
+  params.streamRef.current = null;
+  Object.assign(params.videoRef.current, { readyState: 1 });
+  const microphone = track("audio"),
+    display = track("video");
+  const shared = stream([display]);
+  const getUserMedia = vi.fn().mockResolvedValue(stream([microphone]));
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: { getUserMedia },
+  });
+  const { result, unmount } = renderHook(() =>
+    useMirrorWebcam({ ...params, isWebcamRunning: false }),
+  );
+  await act(async () =>
+    expect(await result.current.startWebcam(shared)).toBe(true),
+  );
+  expect(getUserMedia).toHaveBeenCalledOnce();
+  expect(getUserMedia.mock.calls[0]![0].video).toBe(false);
+  expect(getUserMedia.mock.calls[0]![0].audio).not.toBe(false);
+  expect(params.streamRef.current!.getAudioTracks()).toEqual([microphone]);
+  expect(params.setMediaSource).toHaveBeenCalledWith(MediaSourceType.SCREEN);
+  expect(microphone.stop).not.toHaveBeenCalled();
+  unmount();
+});
+
+test.each(["NotAllowedError", "NotFoundError"])(
+  "display video survives microphone %s",
+  async (name) => {
+    const { params } = setup();
+    params.streamRef.current = null;
+    Object.assign(params.videoRef.current, { readyState: 1 });
+    const display = track("video"),
+      shared = stream([display]);
+    const getUserMedia = vi
+      .fn()
+      .mockRejectedValue(new DOMException("No microphone", name));
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia },
+    });
+    const { result, unmount } = renderHook(() =>
+      useMirrorWebcam({ ...params, isWebcamRunning: false }),
+    );
+    await act(async () =>
+      expect(await result.current.startWebcam(shared)).toBe(true),
+    );
+    expect(display.stop).not.toHaveBeenCalled();
+    expect(params.streamRef.current!.getAudioTracks()).toHaveLength(0);
+    expect(params.setMediaSource).toHaveBeenCalledWith(MediaSourceType.SCREEN);
+    expect(params.setError).toHaveBeenLastCalledWith("");
+    unmount();
+  },
+);
+
+test.each(["waveform", "fft"] as const)(
+  "restore %s from display reuses the retained microphone without media acquisition",
+  async (animation) => {
+    const { params, mic, camera } = setup();
+    camera.stop();
+    const getUserMedia = vi.fn();
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia },
+    });
+    vi.stubGlobal(
+      "MediaStream",
+      function (tracks: ReturnType<typeof track>[] = []) {
+        return stream([...tracks]);
+      },
+    );
+    try {
+      const { result, unmount } = renderHook(() =>
+        useMirrorWebcam({
+          ...params,
+          mediaSource: MediaSourceType.SCREEN,
+          settings: { ...DEFAULT_SETTINGS, animationEnabled: true, animation },
+        }),
+      );
+      await act(async () =>
+        expect(await result.current.startWebcam()).toBe(true),
+      );
+      expect(getUserMedia).not.toHaveBeenCalled();
+      expect(params.streamRef.current!.getAudioTracks()).toEqual([mic]);
+      expect(params.streamRef.current!.getVideoTracks()).toHaveLength(0);
+      expect(mic.stop).not.toHaveBeenCalled();
+      expect(params.setMediaSource).toHaveBeenCalledWith(
+        MediaSourceType.WEBCAM,
+      );
+      expect(params.setIsWebcamRunning).toHaveBeenCalledWith(true);
+      unmount();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  },
+);
+
 test("failed camera restoration requests only the selected camera", async () => {
   const { params, mic } = setup();
   const getUserMedia = vi

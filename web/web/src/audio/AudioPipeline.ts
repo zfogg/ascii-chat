@@ -11,9 +11,11 @@ import {
 import { getMediaDevicePreferences } from "../utils/mediaDevicePreferences";
 
 export interface AudioPipelineOptions {
+  /** Local capture/visualization only; never decode or monitor captured audio. */
+  localOnly?: boolean;
   onError?: (error: Error) => void;
   onAudioData?: (payload: Uint8Array) => void;
-  /** Receives microphone PCM synchronously while the capture buffer is valid. */
+  /** Receives mixed display/microphone PCM while the capture buffer is valid. */
   onMicrophoneSamples?: (samples: Float32Array) => void;
   onPlaybackSamples?: (samples: Float32Array) => void;
   onLevels?: (levels: {
@@ -32,6 +34,11 @@ export class AudioPipeline {
   private stream: MediaStream | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private processor: AudioCapture | null = null;
+  private processorInit: Promise<void> | null = null;
+  private processorGeneration = 0;
+  private displayStream: MediaStream | null = null;
+  private displaySource: MediaStreamAudioSourceNode | null = null;
+  private displayGeneration = 0;
   private outputGain: GainNode | null = null;
   private volume = 1;
   private playbackEnabled = false;
@@ -76,6 +83,7 @@ export class AudioPipeline {
 
   constructor(private options: AudioPipelineOptions = {}) {}
   async enablePlayback(): Promise<void> {
+    if (this.closed) throw new Error("Audio pipeline is closed");
     await this.initializeAudio();
     this.playbackEnabled = true;
     this.setVolume(this.volume);
@@ -129,7 +137,7 @@ export class AudioPipeline {
     }
     await this.playbackInit;
     if (this.context !== playbackContext) return;
-    if (!this.codec) {
+    if (!this.codec && !this.options.localOnly) {
       const module = getClientModule();
       if (!module) throw new Error("Connect before enabling audio");
       this.codec = new OpusEncoder({ sampleRate: 48000, channelCount: 1 });
@@ -224,10 +232,24 @@ export class AudioPipeline {
     }
     this.stream = stream;
     this.source = this.context.createMediaStreamSource(stream);
-    const processor = await AudioCapture.create(this.context, {
-      bypass: isTestMode(),
+    // A display transition may retire an in-flight processor. Rejoin the
+    // current graph instead of treating that transition as microphone failure.
+    do {
+      await this.ensureCaptureGraph();
+      if (!this.avState.current(generation) || this.closed) return;
+    } while (!this.processor);
+    this.source!.connect(this.processor.node);
+    this.avState.complete(generation);
+  }
+
+  private ensureCaptureGraph(): Promise<void> {
+    if (this.processor) return Promise.resolve();
+    if (this.processorInit) return this.processorInit;
+    const generation = ++this.processorGeneration;
+    const pending = AudioCapture.create(this.context!, {
+      bypass: isTestMode() || !!this.displayStream,
       onFrame: (payload, input) => {
-        if (!this.avState.current(generation)) return;
+        if (generation !== this.processorGeneration) return;
         this.options.onMicrophoneSamples?.(input);
         this.microphoneLevel = Math.sqrt(
           input.reduce((sum, value) => sum + value * value, 0) / input.length,
@@ -237,19 +259,81 @@ export class AudioPipeline {
         this.reportLevels();
       },
       onError: (error) => {
-        if (!this.avState.current(generation)) return;
+        if (generation !== this.processorGeneration) return;
         this.stopCapture();
+        void this.setDisplayStream(null);
         console.error("[Audio] Capture processing failed", error);
         this.options.onError?.(error);
       },
-    });
-    if (!this.avState.current(generation)) {
-      processor.close();
+    })
+      .then((processor) => {
+        if (generation !== this.processorGeneration || this.closed)
+          processor.close();
+        else this.processor = processor;
+      })
+      .finally(() => {
+        if (this.processorInit === pending) this.processorInit = null;
+      });
+    this.processorInit = pending;
+    return pending;
+  }
+
+  private releaseCaptureGraph(): void {
+    ++this.processorGeneration;
+    this.processor?.close();
+    this.processor = null;
+    this.processorInit = null;
+  }
+
+  /** Mix display audio and microphone into one ordered Opus stream, without monitoring either input. */
+  async setDisplayStream(stream: MediaStream | null): Promise<void> {
+    if (this.closed) {
+      if (stream) throw new Error("Audio pipeline is closed");
       return;
     }
-    this.processor = processor;
-    this.source!.connect(processor.node);
-    this.avState.complete(generation);
+    const generation = ++this.displayGeneration;
+    const hadDisplayAudio = this.displayStream !== null;
+    this.displaySource?.disconnect();
+    this.displaySource = null;
+    this.displayStream = stream
+      ?.getAudioTracks()
+      .some((track) => track.readyState === "live")
+      ? stream
+      : null;
+    if (!this.displayStream) {
+      if (!this.source) {
+        if (!this.starting) this.releaseCaptureGraph();
+        return;
+      }
+      if (!hadDisplayAudio || isTestMode()) return;
+      // Restore microphone-only enhancement after the display/music mix ends.
+      this.source.disconnect();
+      this.releaseCaptureGraph();
+      await this.ensureCaptureGraph();
+      if (
+        generation !== this.displayGeneration ||
+        this.closed ||
+        !this.processor
+      )
+        return;
+      this.source?.connect(this.processor.node);
+      return;
+    }
+    await this.initializeAudio();
+    if (generation !== this.displayGeneration || this.closed || !this.context)
+      return;
+    // Screen/music samples must bypass microphone-only enhancement. Reconnect
+    // the retained microphone into that same processor instead of duplicating it.
+    this.source?.disconnect();
+    this.releaseCaptureGraph();
+    await this.ensureCaptureGraph();
+    if (generation !== this.displayGeneration || this.closed || !this.processor)
+      return;
+    this.source?.connect(this.processor.node);
+    this.displaySource = this.context.createMediaStreamSource(
+      new MediaStream(this.displayStream!.getAudioTracks()),
+    );
+    this.displaySource.connect(this.processor.node);
   }
   async replaceMicrophone(deviceId: string): Promise<void> {
     if (
@@ -440,19 +524,24 @@ export class AudioPipeline {
   stopCapture(): void {
     this.avState.stop(() => {
       this.microphoneChangeGeneration++;
-      this.processor?.close();
       this.source?.disconnect();
       this.stream?.getTracks().forEach((track) => track.stop());
       this.testPatternSource?.stop();
       this.testPatternSource = null;
-      this.processor = null;
       this.source = null;
       this.stream = null;
+      if (!this.displaySource) this.releaseCaptureGraph();
     });
   }
   close(): void {
     this.closed = true;
     this.playbackEnabled = false;
+
+    ++this.displayGeneration;
+    this.displaySource?.disconnect();
+    this.displaySource = null;
+    this.displayStream = null;
+    this.releaseCaptureGraph();
 
     this.stopCapture();
     if (!this.starting) this.avState.dispose();

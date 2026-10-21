@@ -4,7 +4,7 @@ export interface AudioCaptureOptions {
   onError: (error: Error) => void;
 }
 
-/** Owns the worklet and its C/WASM processing worker for one microphone stream. */
+/** Owns the silent-output worklet and C/WASM worker for one capture input graph. */
 export class AudioCapture {
   private constructor(
     public readonly node: AudioWorkletNode,

@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   type RefObject,
   type MutableRefObject,
@@ -25,6 +26,7 @@ import {
 } from "../capture/cameraRate";
 
 interface UseMirrorRenderLoopParams {
+  externalAudio?: boolean;
   isWebcamRunning: boolean;
   terminalDimensions: { cols: number; rows: number };
   captureFrame: (drawVideo?: boolean) => {
@@ -51,6 +53,7 @@ interface UseMirrorRenderLoopParams {
 let loopCounter = 0;
 
 export function useMirrorRenderLoop({
+  externalAudio = false,
   isWebcamRunning,
   terminalDimensions,
   captureFrame,
@@ -83,13 +86,15 @@ export function useMirrorRenderLoop({
     dispose: () => void;
   } | null>(null);
   const audioInputRef = useRef({ enabled: false, fileActive });
-  audioInputRef.current = {
-    enabled:
-      isWebcamRunning &&
-      !!animationEnabled &&
-      (animation === "waveform" || animation === "fft"),
-    fileActive,
-  };
+  useLayoutEffect(() => {
+    audioInputRef.current = {
+      enabled:
+        isWebcamRunning &&
+        !!animationEnabled &&
+        (animation === "waveform" || animation === "fft"),
+      fileActive,
+    };
+  }, [isWebcamRunning, animationEnabled, animation, fileActive]);
   useEffect(
     () => () => {
       mediaAudioRef.current?.dispose();
@@ -220,7 +225,11 @@ export function useMirrorRenderLoop({
           }
           if (mediaAudioRef.current.context.state === "suspended")
             void mediaAudioRef.current.context.resume();
-        } else if (!testMode && streamRef.current?.getAudioTracks().length) {
+        } else if (
+          !externalAudio &&
+          !testMode &&
+          streamRef.current?.getAudioTracks().length
+        ) {
           if (microphoneAudioRef.current?.stream !== streamRef.current) {
             microphoneAudioRef.current?.dispose();
             void microphoneAudioRef.current?.context.close();
@@ -534,6 +543,7 @@ export function useMirrorRenderLoop({
       cancelAnimationFrame(currentRafHandle);
     };
   }, [
+    externalAudio,
     isWebcamRunning,
     captureFrame,
     terminalDimensions,
