@@ -561,7 +561,11 @@ static asciichat_error_t encoder_init_video_frames(ffmpeg_encoder_t *enc) {
   return ASCIICHAT_OK;
 }
 
+#if LIBAVFORMAT_VERSION_MAJOR >= 61
 static int encoder_stdout_write(void *opaque, const uint8_t *data, int size) {
+#else
+static int encoder_stdout_write(void *opaque, uint8_t *data, int size) {
+#endif
   if (size < 0)
     return AVERROR(EINVAL);
   return stdout_writer_write(opaque, data, (size_t)size) == ASCIICHAT_OK ? size : AVERROR(EIO);
