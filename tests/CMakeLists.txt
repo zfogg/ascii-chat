@@ -91,9 +91,10 @@ function(asciichat_configure_contract target)
     target_include_directories(${target} PRIVATE ${CRITERION_INCLUDE_DIRS})
     set_target_properties(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF
         INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)
-    if(APPLE)
-        target_link_options(${target} PRIVATE -Wl,-all_load)
-    else()
+    # Registrations are compiled directly into these executables. Omitting the
+    # shared dead-strip policy preserves them without force-loading production
+    # archives, which would conflict with white-box replacement definitions.
+    if(NOT APPLE)
         target_link_options(${target} PRIVATE -Wl,--no-gc-sections)
     endif()
     foreach(build_target tests tests-criterion-build test_all)
