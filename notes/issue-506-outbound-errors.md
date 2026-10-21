@@ -38,3 +38,6 @@ terminal implementation returns its explicit color option or AUTO, consistent
 with its existing always-color-capable output. This small compatibility fix is
 needed to rebuild the source-fingerprinted Release bundle; no logging/parser
 implementation from #535 is changed by this PR.
+Browser artifact checks also execute C client initialization and cleanup. The
+Release bundle uses Emscripten's default dlmalloc allocator, validated by all six
+asset/initialization cases and the visible mirror/raster checks.
