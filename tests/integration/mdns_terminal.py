@@ -128,7 +128,8 @@ def main():
             term.expect(lambda text: str(ports[0]) in text and str(ports[1]) not in text,
                         "Background refresh retained a withdrawn server")
             second = server(1, "second-restarted")
-            text = term.expect(lambda text: all(str(port) in text for port in ports[:2]),
+            text = term.expect(lambda text: all(str(port) in text for port in ports[:2])
+                               and re.search(r"> \[\d+\]", text) and "Auto-refresh" in text,
                                "Background refresh omitted the restarted server")
             assert "r: refresh" not in text
             assert "ascii-chat | LAN servers" not in text
@@ -158,6 +159,8 @@ def main():
             selected_port = next(port for port in ports[:2]
                                  if str(port) in next(line for line in term.screen.display if "> [2]" in line))
             term.pump(1.8)
+            term.expect(lambda text: re.search(r"> \[\d+\]", text) and "Auto-refresh" in text,
+                        "Background refresh did not finish drawing its selected row and footer")
             assert str(selected_port) in next(line for line in term.screen.display if "> [2]" in line), "Background refresh moved the selection"
             capture(term, args.artifacts, "highlighted-selection")
             term.write("k")
@@ -195,7 +198,9 @@ def main():
             print("PASS explicit --scan discovery, refresh, arrows/j/k, resize/covered input, selection and same-address reconnect")
 
             cancelled = client("cancelled", utf8="false", color="false")
-            cancelled.expect(lambda text: "LAN servers" in text, "Cancellation picker missing")
+            cancelled.expect(lambda text: "LAN servers" in text
+                             and sum(line.strip().startswith("---") for line in text.splitlines()) == 2,
+                             "Cancellation picker missing its completed ASCII dividers")
             assert "━" not in "\n".join(cancelled.screen.display)
             assert sum(line.strip().startswith("---") for line in cancelled.screen.display) == 2
             capture(cancelled, args.artifacts, "ascii-fallback")

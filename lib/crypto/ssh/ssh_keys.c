@@ -249,6 +249,7 @@ static bool ssh_private_key_from_agent(const char *key_path, private_key_t *key_
           fclose(pub_f);
           log_dev("Key found in ssh-agent - using cached key (no password required)");
           // Key is in agent, we can use it
+          memset(key_out, 0, sizeof(*key_out));
           key_out->type = KEY_TYPE_ED25519;
           key_out->use_ssh_agent = true;
           memcpy(key_out->key.ed25519 + 32, pub_key.key, 32); // Copy public key to second half
@@ -724,9 +725,13 @@ static asciichat_error_t ssh_private_key_read_decrypted_material(ssh_private_key
   state->dec_offset += 64;
 
   // Populate key_out (ed25519_sk contains: 32-byte seed + 32-byte public key)
+  memset(key_out, 0, sizeof(*key_out));
   key_out->type = KEY_TYPE_ED25519;
   memcpy(key_out->key.ed25519, ed25519_sk, 32);           // Seed (first 32 bytes)
   memcpy(key_out->key.ed25519 + 32, ed25519_sk + 32, 32); // Public key (next 32 bytes)
+  memcpy(key_out->public_key, ed25519_pk, sizeof(ed25519_pk));
+  SAFE_STRNCPY(key_out->key_comment, "ssh-ed25519", sizeof(key_out->key_comment) - 1);
+  sodium_memzero(ed25519_sk, sizeof(ed25519_sk));
 
   // Clean up decrypted data (sensitive!)
   sodium_memzero(state->decrypted_blob, state->decrypted_blob_len);
