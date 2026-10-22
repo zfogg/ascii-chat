@@ -6,6 +6,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/tests/logging.h>
+#include <ascii-chat/util/endian.h>
 #include <sodium.h>
 #include <string.h>
 
@@ -206,4 +207,135 @@ Test(ssh_agent_live, openssh_generated_plain_and_encrypted_keys_sign_the_matchin
       platform_setenv("SSH_AUTH_SOCK", socket_path);
     }
   }
+}
+
+static void write_blob(const char *path, const uint8_t *blob, size_t length) {
+  char encoded[4096];
+  cr_assert_not_null(sodium_bin2base64(encoded, sizeof(encoded), blob, length, sodium_base64_VARIANT_ORIGINAL));
+  FILE *file = platform_fopen("malformed-openssh-fixture", path, "wb");
+  cr_assert_not_null(file);
+  cr_assert_eq(platform_chmod(path, 0600), 0);
+  cr_assert_geq(fputs("-----BEGIN OPENSSH PRIVATE KEY-----\n", file), 0);
+  cr_assert_geq(fputs(encoded, file), 0);
+  cr_assert_geq(fputs("\n-----END OPENSSH PRIVATE KEY-----\n", file), 0);
+  cr_assert_eq(fclose(file), 0);
+}
+
+static size_t read_blob(const char *path, uint8_t *blob, size_t capacity) {
+  FILE *file = platform_fopen("openssh-source-fixture", path, "rb");
+  cr_assert_not_null(file);
+  char text[4096];
+  size_t text_length = fread(text, 1, sizeof(text) - 1, file);
+  fclose(file);
+  text[text_length] = '\0';
+  char *body = strchr(text, '\n');
+  cr_assert_not_null(body);
+  ++body;
+  char *footer = strstr(body, "-----END");
+  cr_assert_not_null(footer);
+  size_t length;
+  cr_assert_eq(
+      sodium_base642bin(blob, capacity, body, footer - body, "\r\n", &length, NULL, sodium_base64_VARIANT_ORIGINAL), 0);
+  sodium_memzero(text, sizeof(text));
+  return length;
+}
+
+Test(ssh_agent_live, encrypted_openssh_truncations_are_rejected_before_decryption_reads) {
+  char path[PLATFORM_MAX_PATH_LENGTH], malformed[PLATFORM_MAX_PATH_LENGTH];
+  safe_snprintf(path, sizeof(path), "%s/encrypted-source", directory);
+  safe_snprintf(malformed, sizeof(malformed), "%s/encrypted-malformed", directory);
+  const char *args[] = {"ssh-keygen", "-q",         "-t", "ed25519", "-a", "1",  "-N", "fixture-passphrase",
+                        "-Z",         "aes256-ctr", "-C", "fixture", "-f", path, NULL};
+  cr_assert_eq(platform_execute_subprocess("/usr/bin/ssh-keygen", args, NULL, 0), 0);
+  uint8_t blob[2048];
+  size_t length = read_blob(path, blob, sizeof(blob));
+  platform_setenv("ASCII_CHAT_KEY_PASSWORD", "fixture-passphrase");
+  private_key_t secret;
+  write_blob(malformed, blob, length);
+  cr_assert_eq(parse_ssh_private_key(malformed, &secret), ASCIICHAT_OK);
+  sodium_memzero(&secret, sizeof(secret));
+  for (size_t cut = 0; cut < length; ++cut) {
+    write_blob(malformed, blob, cut);
+    cr_assert_neq(parse_ssh_private_key(malformed, &secret), ASCIICHAT_OK,
+                  "Accepted encrypted key truncated at %zu/%zu", cut, length);
+    CLEAR_ERRNO_ALL();
+  }
+  sodium_memzero(blob, sizeof(blob));
+}
+
+Test(ssh_agent_live, truncated_and_oversized_openssh_fields_are_rejected) {
+  char path[PLATFORM_MAX_PATH_LENGTH], malformed[PLATFORM_MAX_PATH_LENGTH];
+  safe_snprintf(path, sizeof(path), "%s/source", directory);
+  safe_snprintf(malformed, sizeof(malformed), "%s/malformed", directory);
+  const char *args[] = {"ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "fixture", "-f", path, NULL};
+  cr_assert_eq(platform_execute_subprocess("/usr/bin/ssh-keygen", args, NULL, 0), 0);
+  FILE *file = platform_fopen("openssh-source-fixture", path, "rb");
+  cr_assert_not_null(file);
+  char text[4096];
+  size_t text_length = fread(text, 1, sizeof(text) - 1, file);
+  fclose(file);
+  text[text_length] = '\0';
+  char *body = strchr(text, '\n');
+  cr_assert_not_null(body);
+  ++body;
+  char *footer = strstr(body, "-----END");
+  cr_assert_not_null(footer);
+  uint8_t blob[2048];
+  size_t length;
+  cr_assert_eq(
+      sodium_base642bin(blob, sizeof(blob), body, footer - body, "\r\n", &length, NULL, sodium_base64_VARIANT_ORIGINAL),
+      0);
+  cr_assert_gt(length, 64);
+  size_t offsets[12], fields = 0, position = 15;
+  // Locate RFC 4251 strings in the generated OpenSSH container, then the private section.
+  for (unsigned field = 0; field < 3; ++field) {
+    offsets[fields++] = position;
+    position += 4 + read_u32_be(blob + position);
+  }
+  size_t key_count = position;
+  position += 4;
+  offsets[fields++] = position;
+  position += 4 + read_u32_be(blob + position);
+  offsets[fields++] = position;
+  position += 4 + 8;
+  size_t checkint = position - 8;
+  for (unsigned field = 0; field < 3; ++field) {
+    offsets[fields++] = position;
+    position += 4 + read_u32_be(blob + position);
+  }
+  cr_assert_lt(position, length);
+  private_key_t secret;
+  write_blob(malformed, blob, length);
+  asciichat_error_t parsed = parse_ssh_private_key(malformed, &secret);
+  asciichat_error_context_t context;
+  bool found_context = HAS_ERRNO(&context);
+  cr_assert_eq(parsed, ASCIICHAT_OK, "%s", found_context ? context.context_message : "no error context");
+  sodium_memzero(&secret, sizeof(secret));
+  for (size_t cut = 0; cut < position; ++cut) {
+    write_blob(malformed, blob, cut);
+    cr_assert_neq(parse_ssh_private_key(malformed, &secret), ASCIICHAT_OK, "Accepted key truncated at %zu/%zu", cut,
+                  length);
+    CLEAR_ERRNO_ALL();
+  }
+  const uint32_t invalid_lengths[] = {UINT32_MAX, UINT32_MAX - 3};
+  for (size_t field = 0; field < fields; ++field) {
+    uint8_t original[4];
+    memcpy(original, blob + offsets[field], 4);
+    for (size_t variant = 0; variant < 2; ++variant) {
+      write_u32_be(blob + offsets[field], invalid_lengths[variant]);
+      write_blob(malformed, blob, length);
+      cr_assert_neq(parse_ssh_private_key(malformed, &secret), ASCIICHAT_OK, "Accepted oversized field %zu", field);
+      CLEAR_ERRNO_ALL();
+    }
+    memcpy(blob + offsets[field], original, 4);
+  }
+  blob[checkint] ^= 1;
+  write_blob(malformed, blob, length);
+  cr_assert_eq(parse_ssh_private_key(malformed, &secret), ERROR_CRYPTO_KEY);
+  blob[checkint] ^= 1;
+  write_u32_be(blob + key_count, 0);
+  write_blob(malformed, blob, length);
+  cr_assert_eq(parse_ssh_private_key(malformed, &secret), ERROR_CRYPTO_KEY);
+  sodium_memzero(blob, sizeof(blob));
+  sodium_memzero(text, sizeof(text));
 }
