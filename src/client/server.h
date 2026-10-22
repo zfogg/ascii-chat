@@ -125,6 +125,7 @@ void server_connection_shutdown(client_connection_t *connection);
  * @ingroup client_connection
  */
 void server_connection_lost(client_connection_t *connection);
+void server_connection_pong_received(client_connection_t *connection);
 void server_connection_set_remote_error(client_connection_t *connection, asciichat_error_t code);
 asciichat_error_t server_connection_get_remote_error(client_connection_t *connection);
 

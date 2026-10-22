@@ -389,8 +389,16 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
   }
 
   *output_size = required_size;
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_BYTES, (double)required_size);
+  if (encoder->packet->flags & AV_PKT_FLAG_KEY)
+    ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_KEYFRAMES, 1);
   encoder->total_frames++;
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENCODED, 1);
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_WIDTH, encoder->frame->width);
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_HEIGHT, encoder->frame->height);
+  if (required_size)
+    ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_RATIO,
+                      (double)encoder->frame->width * encoder->frame->height * 3 / (double)required_size);
   log_dev("[H265_ENCODE_DONE] Encoding complete, output_size=%zu", required_size);
 
   return ASCIICHAT_OK;
@@ -476,6 +484,9 @@ asciichat_error_t h265_encoder_flush(h265_encoder_t *encoder, uint8_t *output_bu
   }
 
   *output_size = required_size;
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_BYTES, (double)required_size);
+  if (encoder->packet->flags & AV_PKT_FLAG_KEY)
+    ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_KEYFRAMES, 1);
   encoder->total_frames++;
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENCODED, 1);
 

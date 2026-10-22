@@ -54,6 +54,7 @@ struct client_connection {
   atomic_t stop_requested;
   atomic_t connection_active;
   atomic_t remote_error;
+  atomic_t telemetry_ping_ns;
   atomic_t connection_lost;
   uint32_t my_client_id;
   char server_ip[256];

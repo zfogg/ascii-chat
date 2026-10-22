@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 /**
  * @file network/rate_limit/rate_limit.c
  * @brief 🚦 Rate limiting implementation with backend abstraction
@@ -127,6 +128,7 @@ void rate_limiter_destroy(rate_limiter_t *limiter) {
 
 asciichat_error_t rate_limiter_check(rate_limiter_t *limiter, const char *ip_address, rate_event_type_t event_type,
                                      const rate_limit_config_t *config, bool *allowed) {
+  ASCII_OTEL_SCOPE(RATE_LIMITER_CHECK);
   if (!limiter || !limiter->ops || !limiter->ops->check) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rate limiter");
   }
@@ -139,7 +141,10 @@ asciichat_error_t rate_limiter_check(rate_limiter_t *limiter, const char *ip_add
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid event_type: %d", event_type);
   }
 
-  return limiter->ops->check(limiter->backend_data, ip_address, event_type, config, allowed);
+  asciichat_error_t result = limiter->ops->check(limiter->backend_data, ip_address, event_type, config, allowed);
+  if (result == ASCIICHAT_OK && !*allowed)
+    ascii_otel_metric(ASCII_OTEL_METRIC_RATE_REJECT, 1);
+  return result;
 }
 
 asciichat_error_t rate_limiter_record(rate_limiter_t *limiter, const char *ip_address, rate_event_type_t event_type) {
@@ -159,6 +164,7 @@ asciichat_error_t rate_limiter_record(rate_limiter_t *limiter, const char *ip_ad
 }
 
 asciichat_error_t rate_limiter_prune(rate_limiter_t *limiter, uint32_t max_age_secs) {
+  ASCII_OTEL_SCOPE(RATE_LIMITER_PRUNE);
   if (!limiter || !limiter->ops || !limiter->ops->cleanup) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rate limiter");
   }

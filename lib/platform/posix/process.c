@@ -15,6 +15,48 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/resource.h>
+#ifdef __APPLE__
+#include <mach/mach.h>
+#endif
+asciichat_error_t platform_process_stats(platform_process_stats_t *out) {
+  if (!out)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing process stats output");
+  *out = (platform_process_stats_t){0};
+  struct rusage usage;
+  if (getrusage(RUSAGE_SELF, &usage))
+    return SET_ERRNO_SYS(ERROR_PROCESS_FAILED, "Cannot query process CPU time");
+  out->cpu_seconds = (double)usage.ru_utime.tv_sec + (double)usage.ru_stime.tv_sec +
+                     ((double)usage.ru_utime.tv_usec + (double)usage.ru_stime.tv_usec) / 1e6;
+#ifdef __APPLE__
+  struct task_basic_info info;
+  mach_msg_type_number_t count = TASK_BASIC_INFO_COUNT;
+  if (task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&info, &count) == KERN_SUCCESS)
+    out->resident_bytes = info.resident_size;
+  thread_act_array_t threads;
+  mach_msg_type_number_t n;
+  if (task_threads(mach_task_self(), &threads, &n) == KERN_SUCCESS) {
+    out->threads = n;
+    for (mach_msg_type_number_t i = 0; i < n; ++i)
+      mach_port_deallocate(mach_task_self(), threads[i]);
+    vm_deallocate(mach_task_self(), (vm_address_t)threads, n * sizeof(*threads));
+  }
+#elif defined(__linux__)
+  FILE *status = fopen("/proc/self/status", "r");
+  if (status) {
+    char line[256];
+    unsigned long long value;
+    while (fgets(line, sizeof(line), status)) {
+      if (sscanf(line, "VmRSS: %llu", &value) == 1)
+        out->resident_bytes = value * 1024;
+      if (sscanf(line, "Threads: %llu", &value) == 1)
+        out->threads = value;
+    }
+    fclose(status);
+  }
+#endif
+  return ASCIICHAT_OK;
+}
 
 /**
  * @brief Get current process ID (POSIX implementation)

@@ -502,7 +502,7 @@ static void acip_on_remote_log(const remote_log_packet_t *header, const char *me
 
 static void acip_on_pong(void *ctx) {
   (void)ctx;
-  // Pong received - no action needed (server acknowledged our ping)
+  server_connection_pong_received(ctx);
 }
 
 static void acip_on_clear_console(void *ctx) {

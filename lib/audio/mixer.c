@@ -607,15 +607,19 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     // Process compressor with frame peak (1 call instead of 480)
     float comp_gain = compressor_process_sample(&mixer->compressor, frame_peak);
 
+    uint64_t clipped = 0;
     // Apply compression gain and soft clipping to all samples
     for (int s = 0; s < frame_size; s++) {
       float mix = mixer->mix_buffer[s] * comp_gain;
+      if (fabsf(mix) > 0.7f)
+        ++clipped;
 
       // Soft clip at 0.7 to provide 3dB headroom and prevent hard clipping
       // With +6dB makeup gain, peaks can exceed 1.0, so we need headroom
       // threshold=0.7 maps asymptotically toward 1.0, preventing harsh distortion
       output[frame_start + s] = soft_clip(mix, 0.7f, 3.0f);
     }
+    ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_CLIP, (double)clipped);
   }
 
   if (mixer->spectral[mixer->max_sources])
@@ -827,15 +831,19 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     // Process compressor with frame peak (1 call instead of 480)
     float comp_gain = compressor_process_sample(&mixer->compressor, frame_peak);
 
+    uint64_t clipped = 0;
     // Apply compression gain and soft clipping to all samples
     for (int s = 0; s < frame_size; s++) {
       float mix = mixer->mix_buffer[s] * comp_gain;
+      if (fabsf(mix) > 0.7f)
+        ++clipped;
 
       // Soft clip at 0.7 to provide 3dB headroom and prevent hard clipping
       // With +6dB makeup gain, peaks can exceed 1.0, so we need headroom
       // threshold=0.7 maps asymptotically toward 1.0, preventing harsh distortion
       output[frame_start + s] = soft_clip(mix, 0.7f, 3.0f);
     }
+    ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_CLIP, (double)clipped);
   }
 
   if (mixer->spectral[spectral_slot])

@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
@@ -100,6 +101,7 @@ static void discard_stream(acip_outbound_t *out, const outbound_packet_t *video)
       out->bytes -= packet->cost;
       --out->count;
       ++out->stats.dropped;
+      ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
       packet_free(out, packet);
     } else {
       link = &packet->next;
@@ -266,6 +268,7 @@ static void *outbound_worker(void *arg) {
 }
 
 asciichat_error_t acip_outbound_create(acip_transport_t *transport) {
+  ASCII_OTEL_SCOPE(ACIP_OUTBOUND_CREATE);
   if (!transport || !transport->methods || !transport->methods->send)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing outbound backend");
   if (transport->outbound)
@@ -293,6 +296,7 @@ asciichat_error_t acip_outbound_create(acip_transport_t *transport) {
 }
 
 void acip_outbound_destroy(acip_transport_t *transport) {
+  ASCII_OTEL_SCOPE(ACIP_OUTBOUND_DESTROY);
   acip_outbound_t *out = transport->outbound;
   if (!out)
     return;
@@ -325,6 +329,7 @@ void acip_outbound_destroy(acip_transport_t *transport) {
 
 asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
                                         acip_admission_t *admission) {
+  ASCII_OTEL_SCOPE(ACIP_OUTBOUND_SUBMITV);
   if (!transport || !transport->outbound || !buffers || !count || count > SOCKET_IOV_MAX || !admission)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid outbound submission");
   *admission = ACIP_ADMISSION_CONGESTED;
@@ -370,6 +375,7 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
   outbound_stream_t *stream = info.encoded ? stream_state(out, info.type, info.stream) : NULL;
   if (info.encoded && (!stream || (stream->needs_keyframe && !info.keyframe))) {
     ++out->stats.dropped;
+    ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
     *admission = ACIP_ADMISSION_NEEDS_KEYFRAME;
     mutex_unlock(&out->mutex);
     return ASCIICHAT_OK;
@@ -382,6 +388,9 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
                                  : 0;
   size_t limit = ACIP_OUTBOUND_BUDGET - reserved;
   size_t pending = out->bytes + out->active_bytes + backend + transport->methods->reserved_bytes;
+  ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_PENDING, (double)pending);
+  if (out->head)
+    ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_AGE, (double)(info.created - out->head->created) / 1e9);
   if (out->count >= OUTBOUND_MAX_PACKETS - (info.video   ? 64
                                             : info.audio ? 32
                                                          : 0) ||
@@ -389,6 +398,7 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
     if (info.encoded)
       discard_stream(out, &info);
     ++out->stats.congestion;
+    ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_CONGESTION, 1);
     mutex_unlock(&out->mutex);
     return ASCIICHAT_OK;
   }

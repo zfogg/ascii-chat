@@ -60,3 +60,43 @@ DATABASE_QUERY(CommitTransaction, "COMMIT;")
 DATABASE_QUERY(RollbackTransaction, "ROLLBACK;")
 DATABASE_QUERY(EnableWAL, "PRAGMA journal_mode=WAL;")
 DATABASE_QUERY(EnableForeignKeys, "PRAGMA foreign_keys=ON;")
+
+/* Startup migrations use the same immutable naming registry. */
+DATABASE_QUERY(SchemaSessions,
+    "CREATE TABLE IF NOT EXISTS sessions (  session_string TEXT PRIMARY KEY,  session_id BLOB "
+    "UNIQUE NOT NULL,  host_pubkey BLOB NOT NULL,  password_hash TEXT,  max_participants INTEGER "
+    "DEFAULT 4,  current_participants INTEGER DEFAULT 0,  capabilities INTEGER DEFAULT 3,  "
+    "has_password INTEGER DEFAULT 0,  expose_ip_publicly INTEGER DEFAULT 0,  session_type INTEGER"
+    " DEFAULT 0,  server_address TEXT,  server_port INTEGER DEFAULT 0,  created_at INTEGER NOT "
+    "NULL,  expires_at INTEGER NOT NULL,  last_activity_at INTEGER NOT NULL,  initiator_id BLOB,"
+    "  host_established INTEGER DEFAULT 0,  host_participant_id BLOB,  host_address TEXT,  "
+    "host_port INTEGER DEFAULT 0,  host_connection_type INTEGER DEFAULT 0,  in_migration INTEGER "
+    "DEFAULT 0,  migration_start_ns INTEGER DEFAULT 0);")
+DATABASE_QUERY(SchemaParticipants,
+    "CREATE TABLE IF NOT EXISTS participants (  participant_id BLOB PRIMARY KEY,  session_string "
+    "TEXT NOT NULL,  identity_pubkey BLOB NOT NULL,  joined_at INTEGER NOT NULL,  FOREIGN KEY "
+    "(session_string) REFERENCES sessions(session_string) ON DELETE CASCADE);")
+DATABASE_QUERY(SchemaSessionKeys,
+    "CREATE TABLE IF NOT EXISTS session_keys (  id INTEGER PRIMARY KEY AUTOINCREMENT,  "
+    "session_string TEXT NOT NULL,  identity_pubkey BLOB NOT NULL,  key_version INTEGER NOT NULL,"
+    "  added_at INTEGER NOT NULL,  revoked INTEGER DEFAULT 0,  FOREIGN KEY (session_string) "
+    "REFERENCES sessions(session_string) ON DELETE CASCADE,  UNIQUE(session_string, "
+    "identity_pubkey));")
+DATABASE_QUERY(SchemaRateEvents,
+    "CREATE TABLE IF NOT EXISTS rate_events (  id INTEGER PRIMARY KEY AUTOINCREMENT,  ip_address "
+    "TEXT NOT NULL,  event_type TEXT NOT NULL,  timestamp INTEGER NOT NULL);")
+DATABASE_QUERY(SchemaIdxSessionsId,
+    "CREATE INDEX IF NOT EXISTS idx_sessions_id ON sessions(session_id);")
+DATABASE_QUERY(SchemaIdxSessionsActivity,
+    "CREATE INDEX IF NOT EXISTS idx_sessions_activity ON sessions(last_activity_at);")
+DATABASE_QUERY(SchemaIdxParticipantsSession,
+    "CREATE INDEX IF NOT EXISTS idx_participants_session ON participants(session_string);")
+DATABASE_QUERY(SchemaIdxSessionKeysSession,
+    "CREATE INDEX IF NOT EXISTS idx_session_keys_session ON session_keys(session_string);")
+DATABASE_QUERY(SchemaIdxSessionKeysActive,
+    "CREATE INDEX IF NOT EXISTS idx_session_keys_active ON session_keys(session_string, revoked);")
+DATABASE_QUERY(SchemaIdxRateEvents,
+    "CREATE INDEX IF NOT EXISTS idx_rate_events ON rate_events(ip_address, event_type, "
+    "timestamp);")
+
+DATABASE_QUERY(GetPopulation, "SELECT COUNT(*), COALESCE(SUM(current_participants),0) FROM sessions WHERE expires_at > ?")

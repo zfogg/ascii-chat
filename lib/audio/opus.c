@@ -138,6 +138,7 @@ size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samp
     log_debug_every(LOG_RATE_VERY_FAST, "Opus DTX frame (silence detected)");
   }
 
+  ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_BYTES, encoded_bytes);
   return (size_t)encoded_bytes;
 }
 

@@ -5,6 +5,7 @@
 #include <ascii-chat/version.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/thread.h>
+#include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
@@ -19,6 +20,14 @@ static const gotel_operation_t operations[] = {
 #include <ascii-chat/otel_operations.def>
 #undef ASCII_OTEL_OPERATION
 };
+static const double metric_bounds[] = {.0001, .001, .005, .01, .025, .05,  .1,   .25,   .5,    1,      2,
+                                       5,     10,   50,   100, 500,  1000, 5000, 10000, 50000, 100000, 1000000};
+static const gotel_metric_t metrics[] = {
+#define ASCII_OTEL_METRIC(id, name, type, unit)                                                                        \
+  {name, unit, OTLP_METRIC_##type, metric_bounds, sizeof(metric_bounds) / sizeof(metric_bounds[0])},
+#include <ascii-chat/otel_metrics.def>
+#undef ASCII_OTEL_METRIC
+};
 static _Atomic(gotel_host_t *) host;
 static atomic_uint readers;
 static atomic_bool stopping;
@@ -28,6 +37,14 @@ static _Thread_local bool in_log;
 static int minimum_log_level;
 static gotel_scope_t command_scope;
 static uint64_t shutdown_timeout_ns;
+static atomic_uint_fast64_t exporter_retries, exporter_batches;
+static void exporter_event(void *context, const otlp_event_t *event) {
+  (void)context;
+  if (event->code == OTLP_EVT_RETRY_ARMED)
+    atomic_fetch_add(&exporter_retries, 1);
+  if (event->code == OTLP_EVT_BATCH_SENT)
+    atomic_fetch_add(&exporter_batches, 1);
+}
 
 static uint64_t telemetry_realtime_ns(void) {
   uint64_t now = time_get_realtime_ns();
@@ -50,6 +67,16 @@ static gotel_host_t *retain(void) {
 static void release(void) {
   atomic_fetch_sub_explicit(&readers, 1, memory_order_seq_cst);
 }
+bool ascii_otel_enabled(void) {
+  return atomic_load_explicit(&host, memory_order_acquire) != NULL;
+}
+void ascii_otel_metric(ascii_otel_metric_t metric, double value) {
+  gotel_host_t *h = retain();
+  if (h) {
+    (void)gotel_metric_record(h, metric, value);
+    release();
+  }
+}
 static void exporter_diagnostic(void *context, otlp_log_level_t level, const char *message) {
   (void)context;
   (void)level;
@@ -60,8 +87,36 @@ static void exporter_diagnostic(void *context, otlp_log_level_t level, const cha
 }
 static void *export_worker(void *arg) {
   gotel_host_t *h = arg;
+  uint64_t last_health = 0;
   while (!atomic_load_explicit(&stopping, memory_order_acquire)) {
+    uint64_t start = time_get_ns();
     (void)gotel_tick(h);
+    (void)gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_LATENCY, (double)(time_get_ns() - start) / 1e9);
+    if (!last_health || start - last_health >= NS_PER_SEC_INT) {
+      last_health = start;
+      platform_process_stats_t process;
+      if (platform_process_stats(&process) == ASCIICHAT_OK) {
+        (void)gotel_metric_record(h, ASCII_OTEL_METRIC_CPU, process.cpu_seconds);
+        (void)gotel_metric_record(h, ASCII_OTEL_METRIC_RSS, (double)process.resident_bytes);
+        (void)gotel_metric_record(h, ASCII_OTEL_METRIC_THREADS, (double)process.threads);
+      }
+      otlp_exporter_stats_t stats = {0};
+      (void)gotel_stats(h, &stats);
+      uint64_t accepted = stats.emitted + stats.emitted_logs + stats.emitted_metrics;
+      uint64_t sent = stats.sent + stats.sent_logs + stats.sent_metrics;
+      uint64_t failed = stats.dropped_err + stats.dropped_logs_err + stats.dropped_metrics_err;
+      uint64_t pending = accepted > sent + failed ? accepted - sent - failed : 0;
+      (void)gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_QUEUE,
+                                (double)pending / (3.0 * options_get()->otel_queue_capacity));
+      (void)gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_SENT, (double)sent);
+      (void)gotel_metric_record(
+          h, ASCII_OTEL_METRIC_EXPORT_DROP,
+          (double)(failed + stats.dropped_full + stats.dropped_logs_full + stats.dropped_metrics_full));
+      (void)gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_RETRY, (double)stats.network_err);
+      (void)gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_REJECT, (double)stats.rejected_spans);
+      (void)gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_RETRIES, (double)atomic_load(&exporter_retries));
+      (void)gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_BATCHES, (double)atomic_load(&exporter_batches));
+    }
     platform_sleep_ms(10);
   }
   return NULL;
@@ -180,6 +235,9 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   config.realtime_ns = telemetry_realtime_ns;
   config.operations = operations;
   config.operation_count = ASCII_OTEL_OPERATION_COUNT;
+  config.exporter_event = exporter_event;
+  config.metrics = metrics;
+  config.metric_count = ASCII_OTEL_METRIC_COUNT;
   gotel_host_t *h = NULL;
   if (gotel_create(&config, &h) != OTLP_OK)
     return SET_ERRNO(ERROR_CONFIG, "Cannot initialize telemetry exporter");

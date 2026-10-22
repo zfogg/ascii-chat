@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/common.h>
@@ -135,6 +136,7 @@ stats_peer_t *stats_runtime_peer_open(const char *transport) {
   mutex_lock(&g_peers_mutex);
   peer->id = ++g_peer_id;
   ++g_peer_count;
+  ascii_otel_metric(ASCII_OTEL_METRIC_CONNECTIONS, (double)g_peer_count);
   for (unsigned i = 0; i < 64; ++i) {
     if (!g_peers[i]) {
       g_peers[i] = peer;
@@ -153,6 +155,7 @@ void stats_runtime_peer_close(stats_peer_t *peer) {
     if (g_peers[i] == peer)
       g_peers[i] = NULL;
   --g_peer_count;
+  ascii_otel_metric(ASCII_OTEL_METRIC_CONNECTIONS, (double)g_peer_count);
   mutex_unlock(&g_peers_mutex);
   stats_sampler_destroy(peer->sampler);
   stats_scope_destroy(peer->scope);
@@ -160,6 +163,12 @@ void stats_runtime_peer_close(stats_peer_t *peer) {
 }
 
 void stats_runtime_packet(stats_peer_t *peer, unsigned type, size_t payload_bytes, bool sent, bool success) {
+  if (success) {
+    ascii_otel_metric(sent ? ASCII_OTEL_METRIC_NET_TX : ASCII_OTEL_METRIC_NET_RX,
+                      (double)(sizeof(packet_header_t) + payload_bytes));
+    ascii_otel_metric(sent ? ASCII_OTEL_METRIC_NET_TX_SIZE : ASCII_OTEL_METRIC_NET_RX_SIZE, (double)payload_bytes);
+  } else
+    ascii_otel_metric(sent ? ASCII_OTEL_METRIC_NET_TX_ERRORS : ASCII_OTEL_METRIC_NET_RX_ERRORS, 1);
   if (sent && type == PACKET_TYPE_ERROR_MESSAGE)
     stats_counter_add(g_scope, STATS_COUNTER_REQUEST_FAILURES, 1);
   stats_scope_t *scopes[] = {g_scope, peer ? peer->scope : NULL};

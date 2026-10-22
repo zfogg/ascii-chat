@@ -118,6 +118,10 @@ asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet
   memcpy(slices + 1, payload, count * sizeof(*payload));
   asciichat_error_t result = acip_transport_sendv(transport, slices, count + 1);
   stats_runtime_packet(transport->stats_peer, type, len, true, result == ASCIICHAT_OK);
+#ifdef ASCIICHAT_WITH_OTEL
+  ascii_otel_scope_int(&otel_scope, "network.packet.type", type);
+  ascii_otel_scope_int(&otel_scope, "network.packet.size", (int64_t)len);
+#endif
   return result;
 }
 
@@ -182,6 +186,10 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
     *payload = (uint8_t *)recv_buffer + sizeof(packet_header_t);
   }
   *payload_len = plen;
+#ifdef ASCIICHAT_WITH_OTEL
+  ascii_otel_scope_int(&otel_scope, "network.packet.type", *type);
+  ascii_otel_scope_int(&otel_scope, "network.packet.size", (int64_t)plen);
+#endif
   stats_runtime_packet(transport->stats_peer, *type, plen, false, true);
 
   return ASCIICHAT_OK;

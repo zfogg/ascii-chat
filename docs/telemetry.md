@@ -76,8 +76,10 @@ connection attempts, DNS resolution, database/session operations, and capture,
 encode and display queues.
 
 Every operation exports cumulative `.count`, `.errors`, and `.duration.sum`
-metrics. Duration sums are seconds; divide by counts for means. These are not
-percentile histograms. Metrics include unsampled operations and export every
+metrics and an explicit-bucket `.duration` histogram in seconds. Histogram
+boundaries range from 100 microseconds through 10 seconds, enabling percentile
+analysis. Duration sums divided by counts give means. Metrics include unsampled
+operations and export every
 10 seconds by default, plus a final snapshot at shutdown. Series names come
 from the finite catalog and never include client/session identifiers.
 
@@ -104,10 +106,50 @@ array: option names remain visible; arbitrary argument values are redacted.
 Existing application log messages can contain paths or URLs; select exported
 log levels according to the destination's data policy.
 
+## Quality and health measurements
+
+The fixed catalog in `include/ascii-chat/otel_metrics.def` adds 60 application
+instruments. Unused instruments are omitted. Counters and operation histograms
+are cumulative; gauges replace the last value. Derive FPS and bytes/second from
+successive frame/byte counter snapshots. Labels never contain client/session IDs.
+
+- Frames: captured/displayed/encoded totals, replacement/encode-timeout/invalid/
+  conversion/hidden-screen drops, capture-to-display and capture-to-encode latency.
+- Queues: display/encode depth, dequeue wait, oldest dequeued age, outbound bytes,
+  oldest pending frame age, congestion events, and discarded outbound video.
+- Network: ACIP header/payload bytes, payload size histograms, send/receive errors,
+  reconnect attempts, active connections, loss notifications, and matched ping/pong
+  RTT. Overlapping/failed probes suppress RTT samples for that connection because
+  pong packets lack probe IDs. This measures local RTT, without comparing clocks
+  across hosts.
+- Audio: buffer occupancy, adaptive jitter target, real underruns/overruns, dropped,
+  sample consumption grouped by jitter policy, samples exceeding the mixer's soft-clip threshold,
+  and Opus packet size. Occupancy/jitter aggregate observations across buffers.
+- Video: H.265 packet size, raw RGB-to-packet size ratio, keyframe count, and actual
+  encoded width/height. Existing encode/decode spans also have duration histograms.
+- Discovery/SQLite: session/participant gauges, lookup misses, rate-limit rejection,
+  checked busy/locked errors and affected rows; all ten startup table/index SQL
+  statements now have registered names. Transactions retain their named SQL spans.
+- Process: cumulative CPU seconds, resident memory bytes and OS thread count,
+  sampled by the exporter worker approximately once per second. CPU is summed
+  across threads; derive utilization from its change over wall time.
+- Exporter: tick latency, retry attempts and batches sent from structured events,
+  sent/dropped/rejected totals and network errors. Queue utilization is an estimate
+  of pending/in-flight records divided by all three queue capacities, not an exact
+  queue-depth query. Exporter observations do not create recursive HTTP spans.
+
+Capture-to-display latency covers the local pipeline. Existing frame context
+connects capture, encode, and display spans across worker queues; trace propagation
+across the network would require an ACIP protocol change.
+
 ## Validation
 
 `tests/integration/test_otel.py BINARY` runs a synthetic mirror snapshot against
 a loopback OTLP receiver, verifies each signal mask, sampling and metric
 independence, CLI/config/environment precedence, invalid configuration, and a
 bounded collector outage, encrypted client/server delivery and named ACDS SQL. With `BUILD_TESTS=ON` it is registered as CTest
-`otel-export`. c-gotel has separate native unit/wire tests in its repository.
+`otel-export`. It also checks histogram bucket/count consistency, process gauges,
+network metrics, startup schema names, and controlled Windows audio underrun/
+overrun/drop export through the audio-priority fixture. c-gotel has separate
+native unit/wire tests in its repository, including forced HTTP 503 recovery,
+structured retry events, cumulative custom instruments and SQLite delta buckets.
