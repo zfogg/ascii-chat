@@ -133,10 +133,10 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
   } else if (available) {
     labels[0] = " Enter  Update now ";
     labels[1] = " O  GitHub ";
-    labels[2] = " Esc  Close ";
+    labels[2] = " Esc / F12 Close ";
     labels[3] = " R  Check again ";
   } else {
-    labels[0] = " Esc  Close ";
+    labels[0] = " Esc / F12 Close ";
     labels[1] = " R  Check again ";
   }
   int buttons_width = (count - 1) * 3;
