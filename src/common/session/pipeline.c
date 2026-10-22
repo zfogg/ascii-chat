@@ -37,7 +37,7 @@ extern bool g_snapshot_first_frame_rendered;
 typedef struct frame_slot_s frame_slot_t;
 
 typedef struct {
-  frame_slot_t *slot; // Exclusive until free_frame publishes the slot back to capture.
+  frame_slot_t *slot;    // Exclusive until free_frame publishes the slot back to capture.
   const uint8_t *pixels; // Immutable owning reference shared by display and encoding
   int w, h;
   uint64_t source_epoch, frame_serial;
@@ -180,8 +180,8 @@ static pipeline_frame_t *make_frame_copy(const image_t *src, frame_slot_t *slots
   if (slots) {
     for (size_t i = 0; i < PIPELINE_FRAME_SLOTS; ++i) {
       bool expected = false;
-      if (atomic_compare_exchange_strong_explicit(&slots[i].busy, &expected, true,
-                                                  memory_order_acquire, memory_order_relaxed)) {
+      if (atomic_compare_exchange_strong_explicit(&slots[i].busy, &expected, true, memory_order_acquire,
+                                                  memory_order_relaxed)) {
         f = &slots[i].frame;
         f->slot = &slots[i];
         if (slots[i].capacity < bytes) {
@@ -574,8 +574,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     pipeline->keyboard_handler = keyboard_handler;
     pipeline->should_exit = should_exit;
     pipeline->input_data = user_data;
-    if (acthread_create(&pipeline->input_tid, "pipeline_input", pipeline_input_thread, pipeline) !=
-        ASCIICHAT_OK)
+    if (acthread_create(&pipeline->input_tid, "pipeline_input", pipeline_input_thread, pipeline) != ASCIICHAT_OK)
       return SET_ERRNO(ERROR_THREAD, "Cannot start responsive session input");
   }
 
@@ -648,8 +647,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
   log_debug("[PIPELINE_MAIN] Main loop exiting, signaling threads to stop");
   atomic_store_bool(&pipeline->stop, true);
-  if (thread_is_initialized(&pipeline->input_tid) &&
-      thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
+  if (thread_is_initialized(&pipeline->input_tid) && thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_THREAD, "Cannot join session input thread");
 
   return ASCIICHAT_OK;
@@ -680,8 +678,7 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
     mutex_unlock(&pipeline->encode_queue->mu);
   }
 
-  if (thread_is_initialized(&pipeline->input_tid) &&
-      thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
+  if (thread_is_initialized(&pipeline->input_tid) && thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_THREAD, "Cannot join session input thread during shutdown");
   session_display_begin_drain(pipeline->display, 0, false);
 

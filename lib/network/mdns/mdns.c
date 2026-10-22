@@ -204,10 +204,9 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mDNS TXT record value");
     }
   }
-  DNSServiceErrorType error =
-      DNSServiceRegister(&mdns->dns_service_ref, 0, kDNSServiceInterfaceIndexAny, service->name, regtype, NULL,
-                         NULL, htons(service->port), TXTRecordGetLength(&txt_record),
-                         TXTRecordGetBytesPtr(&txt_record), NULL, NULL);
+  DNSServiceErrorType error = DNSServiceRegister(
+      &mdns->dns_service_ref, 0, kDNSServiceInterfaceIndexAny, service->name, regtype, NULL, NULL, htons(service->port),
+      TXTRecordGetLength(&txt_record), TXTRecordGetBytesPtr(&txt_record), NULL, NULL);
   TXTRecordDeallocate(&txt_record);
   if (error != kDNSServiceErr_NoError)
     return SET_ERRNO(ERROR_NETWORK, "Cannot register mDNS service with Bonjour (error %d)", error);
@@ -366,24 +365,21 @@ static int mdns_send_query_on_interface(asciichat_mdns_t *mdns, const char *serv
                          mdns->buffer_capacity, 0);
 }
 
-static int mdns_send_query_all_interfaces(asciichat_mdns_t *mdns, const char *service_type,
-                                          size_t service_type_len) {
+static int mdns_send_query_all_interfaces(asciichat_mdns_t *mdns, const char *service_type, size_t service_type_len) {
   int sent = 0;
 #ifdef _WIN32
   ULONG size = 0;
-  if (GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST,
-                           NULL, NULL, &size) == ERROR_BUFFER_OVERFLOW) {
+  if (GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST, NULL,
+                           NULL, &size) == ERROR_BUFFER_OVERFLOW) {
     IP_ADAPTER_ADDRESSES *adapters = SAFE_MALLOC(size, IP_ADAPTER_ADDRESSES *);
     if (adapters) {
-      if (GetAdaptersAddresses(AF_INET,
-                               GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST, NULL,
-                               adapters, &size) == NO_ERROR) {
+      if (GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST,
+                               NULL, adapters, &size) == NO_ERROR) {
         for (IP_ADAPTER_ADDRESSES *adapter = adapters; adapter; adapter = adapter->Next) {
           if (adapter->OperStatus != IfOperStatusUp || adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK ||
               adapter->NoMulticast)
             continue;
-          for (IP_ADAPTER_UNICAST_ADDRESS *unicast = adapter->FirstUnicastAddress; unicast;
-               unicast = unicast->Next) {
+          for (IP_ADAPTER_UNICAST_ADDRESS *unicast = adapter->FirstUnicastAddress; unicast; unicast = unicast->Next) {
             if (!unicast->Address.lpSockaddr || unicast->Address.lpSockaddr->sa_family != AF_INET)
               continue;
             struct in_addr address = ((struct sockaddr_in *)unicast->Address.lpSockaddr)->sin_addr;
@@ -399,9 +395,8 @@ static int mdns_send_query_all_interfaces(asciichat_mdns_t *mdns, const char *se
   struct ifaddrs *interfaces = NULL;
   if (getifaddrs(&interfaces) == 0) {
     for (struct ifaddrs *interface = interfaces; interface; interface = interface->ifa_next) {
-      if (!interface->ifa_addr || interface->ifa_addr->sa_family != AF_INET ||
-          !(interface->ifa_flags & IFF_UP) || !(interface->ifa_flags & IFF_MULTICAST) ||
-          (interface->ifa_flags & IFF_LOOPBACK))
+      if (!interface->ifa_addr || interface->ifa_addr->sa_family != AF_INET || !(interface->ifa_flags & IFF_UP) ||
+          !(interface->ifa_flags & IFF_MULTICAST) || (interface->ifa_flags & IFF_LOOPBACK))
         continue;
       struct in_addr address = ((struct sockaddr_in *)interface->ifa_addr)->sin_addr;
       if (mdns_send_query_on_interface(mdns, service_type, service_type_len, address) >= 0)

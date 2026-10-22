@@ -51,7 +51,7 @@ struct media_source_t {
   bool is_shared_decoder;          ///< True if both streams share same decoder (YouTube URLs)
 
   // Thread synchronization
-  mutex_t decoder_mutex;     ///< Protects shared decoder access (YouTube URLs)
+  mutex_t decoder_mutex; ///< Protects shared decoder access (YouTube URLs)
 
   // Cached paths
   char *file_path;            ///< File path (for FILE type)

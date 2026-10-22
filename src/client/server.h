@@ -53,7 +53,6 @@ int server_connection_init(client_connection_t *connection);
 
 bool server_connection_is_active(client_connection_t *connection);
 
-
 /**
  * @brief Get ACIP transport instance
  * @return Transport instance or NULL if not connected

@@ -65,8 +65,8 @@ void audio_recording_start(audio_recording_t *recording, uint64_t epoch_ns) {
 
 void audio_recording_submit(audio_recording_source_t source, const float *samples, size_t count, uint64_t start_ns) {
   // This is only a hint: the locked pointer/state check protects destruction.
-  if (!atomic_load_explicit(&recording_accepts_samples, memory_order_acquire) ||
-      !samples || !count || source < 0 || source >= AUDIO_RECORDING_SOURCE_COUNT)
+  if (!atomic_load_explicit(&recording_accepts_samples, memory_order_acquire) || !samples || !count || source < 0 ||
+      source >= AUDIO_RECORDING_SOURCE_COUNT)
     return;
   static_mutex_lock_named(&recording_mutex, "audio_recording");
   audio_recording_t *recording = active_recording;

@@ -351,8 +351,8 @@ static screen_snapshot_t *allocate_snapshot(ui_screen_t screen, size_t bytes) {
   if (screen == UI_SCREEN_MEDIA) {
     for (size_t i = 0; i < 3; ++i) {
       bool expected = false;
-      if (atomic_compare_exchange_strong_explicit(&g_media_snapshots[i].busy, &expected, true,
-                                                  memory_order_acquire, memory_order_relaxed)) {
+      if (atomic_compare_exchange_strong_explicit(&g_media_snapshots[i].busy, &expected, true, memory_order_acquire,
+                                                  memory_order_relaxed)) {
         slot = &g_media_snapshots[i];
         break;
       }
@@ -1139,9 +1139,11 @@ static asciichat_error_t present_text(ui_screen_t screen, int fd, terminal_size_
   uint64_t entered_ns = time_get_ns();
   if (!data || !len || len > UI_CONTROLLER_MAX_FRAME_BYTES)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI frame");
-  text_snapshot_t text = {.fd = fd, .media = screen == UI_SCREEN_MEDIA,
+  text_snapshot_t text = {.fd = fd,
+                          .media = screen == UI_SCREEN_MEDIA,
                           .dimensions = {.cols = GET_OPTION(width), .rows = GET_OPTION(height)},
-                          .len = len, .text = data};
+                          .len = len,
+                          .text = data};
   uint64_t prepared_ns = time_get_ns();
   asciichat_error_t err = submit_screen(screen, fd, minimum, render_text, &text, sizeof(text), NULL, fresh);
   uint64_t submitted_ns = time_get_ns();

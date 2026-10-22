@@ -11,5 +11,5 @@
     bool worker_check_passed = !!(condition);                                                                          \
     cr_expect(worker_check_passed, "Worker assertion failed: %s", #condition);                                         \
     if (!worker_check_passed)                                                                                          \
-      thread_exit(NULL);                                                                                     \
+      thread_exit(NULL);                                                                                               \
   } while (0)

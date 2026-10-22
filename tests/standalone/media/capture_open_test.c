@@ -92,9 +92,12 @@ static void finish_load(session_capture_ctx_t *ctx) {
 }
 #ifndef NDEBUG
 static mutex_t *prefetch_mutex, *recording_mutex;
-static void find_prefetch(uintptr_t key, uint64_t generation, const char *name, const char *type,
-                          const char *file, int line, void *data) {
-  (void)generation; (void)file; (void)line; (void)data;
+static void find_prefetch(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file,
+                          int line, void *data) {
+  (void)generation;
+  (void)file;
+  (void)line;
+  (void)data;
   if (!strcmp(type, "mutex") && strstr(name, "ffmpeg_prefetch."))
     prefetch_mutex = (mutex_t *)key;
   if (!strcmp(type, "mutex") && strstr(name, "audio_recording."))

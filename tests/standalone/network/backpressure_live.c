@@ -415,8 +415,7 @@ static void setup(fixture_t *f, const char *transport, bool slow) {
     f->context = lws_create_context(&info);
     CHECK(f->context);
     atomic_store_bool(&f->running, true);
-    CHECK(acthread_create(&f->service_thread, "websocket_receiver", websocket_receiver_loop, f) ==
-          ASCIICHAT_OK);
+    CHECK(acthread_create(&f->service_thread, "websocket_receiver", websocket_receiver_loop, f) == ASCIICHAT_OK);
     f->proxy_target = address;
     struct sockaddr_in proxy_address;
     f->proxy_listener = bound_socket(SOCK_STREAM, &proxy_address);

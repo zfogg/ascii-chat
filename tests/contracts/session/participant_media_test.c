@@ -258,8 +258,7 @@ Test(participant_media, startup_failures_and_worker_lifecycle, .timeout = 60) {
   session_participant_t *retained = session_participant_create(&config);
   cr_assert_eq(session_participant_set_transport(retained, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
   asciichat_thread_t foreign;
-  cr_assert_eq(acthread_create(&foreign, "foreign_destroy", destroy_from_foreign_thread, retained),
-               ASCIICHAT_OK);
+  cr_assert_eq(acthread_create(&foreign, "foreign_destroy", destroy_from_foreign_thread, retained), ASCIICHAT_OK);
   cr_assert_eq(thread_join(&foreign, NULL), ASCIICHAT_OK);
   cr_assert(retained->initialized && session_participant_get_transport(retained) == &transport);
   cr_assert_eq(atomic_load_int(&retained->connection.state), SESSION_CONNECTION_STOPPING);

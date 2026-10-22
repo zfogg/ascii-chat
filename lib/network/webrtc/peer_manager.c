@@ -28,19 +28,19 @@
  * @brief Per-peer connection state
  */
 typedef struct {
-  uint8_t participant_id[16];          ///< Remote participant UUID (hash key)
-  uint8_t session_id[16];              ///< Session UUID
-  webrtc_peer_connection_t *pc;        ///< WebRTC peer connection
-  webrtc_data_channel_t *dc;           ///< WebRTC data channel
-  acip_security_t *security;           ///< Owned until transferred to the transport
+  uint8_t participant_id[16];   ///< Remote participant UUID (hash key)
+  uint8_t session_id[16];       ///< Session UUID
+  webrtc_peer_connection_t *pc; ///< WebRTC peer connection
+  webrtc_data_channel_t *dc;    ///< WebRTC data channel
+  acip_security_t *security;    ///< Owned until transferred to the transport
   atomic_t security_ready;
   atomic_t handshake_started_ns;
   atomic_ptr_t pending_transport;      ///< Owned until authenticated and handed to the application
   bool is_connected;                   ///< DataChannel opened
-  bool remote_sdp_attempted;            ///< A remote description was applied or attempted
-  bool remote_description_set;          ///< libdatachannel has installed the remote SDP and ICE transport
-  char remote_ice_ufrag[257];            ///< ICE generation currently installed on this peer
-  bool gathering_timeout_reported;       ///< ICE gathering timed out while trickle candidates may still connect
+  bool remote_sdp_attempted;           ///< A remote description was applied or attempted
+  bool remote_description_set;         ///< libdatachannel has installed the remote SDP and ICE transport
+  char remote_ice_ufrag[257];          ///< ICE generation currently installed on this peer
+  bool gathering_timeout_reported;     ///< ICE gathering timed out while trickle candidates may still connect
   struct webrtc_peer_manager *manager; ///< Back-reference to manager
   UT_hash_handle hh;                   ///< uthash handle
 } peer_entry_t;

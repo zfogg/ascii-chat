@@ -811,7 +811,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * In release builds (NDEBUG), this is a no-op.
  */
 #define NAMED_REGISTER_THREAD(thread, name, parent_ptr)                                                                \
-  named_register(thread_to_key((thread)), (name), "thread", "0x%tx", __FILE__, __LINE__, __func__,           \
+  named_register(thread_to_key((thread)), (name), "thread", "0x%tx", __FILE__, __LINE__, __func__,                     \
                  (uintptr_t)(const void *)(parent_ptr))
 
 /**
