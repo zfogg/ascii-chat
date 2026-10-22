@@ -11,6 +11,7 @@ import importlib.util
 import os
 from pathlib import Path
 import queue
+import shlex
 import shutil
 import socket
 import subprocess
@@ -373,12 +374,12 @@ def main():
                 failed.pump(0.5)
                 finish(failed)
 
-                marker = root / "updated-marker"
+                marker = root / "updated marker"
                 update_command_env = {
                     "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v99.0.0",
                     "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "update-command-cache"),
                     "ASCII_CHAT_TEST_UPDATE_COMMAND": (
-                        f"copy NUL {marker}" if os.name == "nt" else f"touch {marker}"
+                        f'copy NUL "{marker}"' if os.name == "nt" else f"touch {shlex.quote(str(marker))}"
                     ),
                 }
                 updater = terminal("run-update", update_command, check_updates=True,

@@ -441,6 +441,8 @@ bool update_banner_install_update(void) {
     const char *helper = update_check_get_aur_helper();
     if (!helper) {
       log_warn("No supported AUR helper is available");
+      g_update_install_failed = true;
+      ui_controller_redraw();
       return false;
     }
     const char *argv[] = {helper, "-S", "ascii-chat", NULL};
@@ -569,8 +571,15 @@ static void update_banner_open_release(void) {
   mutex_lock(&g_update_result_mutex);
   result = g_update_result;
   mutex_unlock(&g_update_result_mutex);
-  if (!result.check_succeeded || !result.release_url[0])
+  // The URL can originate in the disk cache. Keep it a single HTTPS argument,
+  // including when Windows passes it through cmd's start builtin.
+  if (!result.check_succeeded || strncmp(result.release_url, "https://", 8) != 0 || !result.release_url[8] ||
+      strpbrk(result.release_url, "\"'&|^<>%!`()\\") != NULL)
     return;
+  for (const unsigned char *ch = (const unsigned char *)result.release_url; *ch; ++ch) {
+    if (*ch <= ' ' || *ch == 127)
+      return;
+  }
 #ifdef _WIN32
   const char *argv[] = {"cmd", "/c", "start", "", result.release_url, NULL};
   (void)platform_execute_subprocess("cmd", argv, NULL, 0);
