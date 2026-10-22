@@ -212,7 +212,7 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
       update_border(out, top + 9, command_left, command_width, unicode ? "└" : "+", horizontal, unicode ? "┘" : "+",
                     cyan);
       update_center_line(out, top + 11, left + 2, width - 4,
-                         "Binaries for every OS with release notes in the GitHub release:", muted);
+                         "Binaries for every OS with release notes on GitHub:", muted);
       update_center_line(out, top + 12, left + 2, width - 4, result->release_url, cyan);
     } else {
       update_center_line(out, top + 7, left + 2, width - 4, "Checked just now", muted);
@@ -312,7 +312,7 @@ void update_banner_print_instructions(void) {
   int len = snprintf(output, sizeof(output),
                      "\033[0m\033[2J\033[H\033[?25h"
                      "\nUpdated ascii-chat: %s -> %s\n\nRun ascii-chat again to start the new version.\n\n"
-                     "Binaries for every OS with release notes in the GitHub release:\n%s\n\n",
+                     "Binaries for every OS with release notes on GitHub:\n%s\n\n",
                      result.current_version, result.latest_version, result.release_url);
   if (len > 0 && len < (int)sizeof(output))
     ui_controller_finish(STDOUT_FILENO, output, (size_t)len);
