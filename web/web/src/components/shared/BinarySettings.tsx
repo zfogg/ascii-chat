@@ -458,7 +458,9 @@ export function BinarySettings({
 
           <Tooltip
             text={
-              disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "palette")
+              disabled
+                ? LOCKED_SETTINGS_HELP
+                : "Enter characters from darkest to brightest. Typing selects Custom after 750 ms."
             }
           >
             <div className="flex-1 min-w-[200px]">
@@ -501,15 +503,8 @@ export function BinarySettings({
                 value={paletteDraft}
                 onChange={(event) => updatePaletteDraft(event.target.value)}
                 disabled={disabled}
-                aria-describedby={`${paletteInputId}-help`}
                 className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4 font-mono"
               />
-              <div
-                id={`${paletteInputId}-help`}
-                className="text-xs text-terminal-8 mt-1"
-              >
-                Darkest to brightest. Typing selects Custom after 750 ms.
-              </div>
             </div>
           </Tooltip>
 
