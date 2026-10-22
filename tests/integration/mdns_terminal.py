@@ -59,7 +59,7 @@ def main():
         os.environ.update(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root),
                           XDG_CONFIG_HOME=str(root), TERM="xterm-256color",
                           ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
-        ports = [free_port(), free_port()]
+        ports = [free_port() for _ in range(14)]
         services, terminals = [], []
 
         def server(index, name):
@@ -112,13 +112,14 @@ def main():
             assert "Using test pattern mode" not in (root / "picker.log").read_text(errors="replace")
             capture(term, args.artifacts, "initial-server")
             second = server(1, "second")
-            text = term.expect(lambda text: all(str(port) in text for port in ports), "Background refresh omitted new server")
+            text = term.expect(lambda text: all(str(port) in text for port in ports[:2]),
+                               "Background refresh omitted new server")
             second.stop()
             services.remove(second)
             term.expect(lambda text: str(ports[0]) in text and str(ports[1]) not in text,
                         "Background refresh retained a withdrawn server")
             second = server(1, "second-restarted")
-            text = term.expect(lambda text: all(str(port) in text for port in ports),
+            text = term.expect(lambda text: all(str(port) in text for port in ports[:2]),
                                "Background refresh omitted the restarted server")
             assert "r: refresh" not in text
             assert "ascii-chat | LAN servers" not in text
@@ -140,7 +141,8 @@ def main():
             slash = footer.index("/")
             assert term.screen.buffer[footer_row][slash].fg == term.screen.buffer[footer_row][footer.index("move")].fg
             assert term.screen.buffer[footer_row][slash - 1].fg != term.screen.buffer[footer_row][slash].fg
-            selected_port = next(port for port in ports if str(port) in next(line for line in term.screen.display if "> [2]" in line))
+            selected_port = next(port for port in ports[:2]
+                                 if str(port) in next(line for line in term.screen.display if "> [2]" in line))
             term.pump(1.8)
             assert str(selected_port) in next(line for line in term.screen.display if "> [2]" in line), "Background refresh moved the selection"
             capture(term, args.artifacts, "highlighted-selection")
@@ -158,7 +160,7 @@ def main():
             term.resize(24, 110)
             text = term.expect(lambda text: "> [2]" in text, "Covered Enter selected a server")
             chosen_line = next(line for line in text.splitlines() if "> [2]" in line)
-            chosen = next(index for index, port in enumerate(ports) if str(port) in chosen_line)
+            chosen = next(index for index, port in enumerate(ports[:2]) if str(port) in chosen_line)
             selected_host = chosen_line.rsplit("(", 1)[1].rsplit(":", 1)[0].strip("[]")
             term.write("\r")
             log_wait("picker", "Selected server")
@@ -204,6 +206,30 @@ def main():
             assert "LAN servers" not in "".join(explicit.raw)
             explicit.interrupt()
             print("PASS cancellation precedes media; explicit destination bypasses LAN picker")
+
+            for index in range(2, 14):
+                server(index, f"boundary-{index + 1}")
+            boundary = client("boundary")
+            boundary.expect(lambda text: "LAN servers" in text and " [12]" in text,
+                            "Twelve-row LAN viewport did not fill")
+            boundary.pump(2)
+            boundary.write("j" * 13)
+            text = boundary.expect(lambda text: "> [14]" in text,
+                                   "Selection could not move safely to server 14")
+            visible = [line for line in text.splitlines() if re.search(r"[ >] \[\d+\]", line)]
+            assert len(visible) == 12, f"Expected 12 visible servers, got {len(visible)}: {visible}"
+            assert boundary.process.isalive(), "Picker crashed while moving to server 14"
+            boundary.write("j")
+            boundary.expect(lambda text: "> [1]" in text, "Down from the last server did not wrap to server 1")
+            boundary.write("k")
+            text = boundary.expect(lambda text: "> [14]" in text,
+                                   "Up from server 1 produced an invalid negative selection")
+            assert "[-1]" not in text
+            assert boundary.process.isalive(), "Picker crashed at the negative selection boundary"
+            capture(boundary, args.artifacts, "fourteen-server-scroll")
+            boundary.write("q")
+            boundary.expect(lambda text: not boundary.process.isalive(), "Boundary picker did not exit")
+            print("PASS 12-row viewport scrolls selection to 14 and wraps above server 1 without a negative index")
         finally:
             if args.artifacts:
                 args.artifacts.mkdir(parents=True, exist_ok=True)
