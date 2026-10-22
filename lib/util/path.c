@@ -386,13 +386,14 @@ const char *path_last_components(const char *path, size_t component_count) {
       continue;
     }
 
+    const char *component_start = cursor + 1;
     // Treat repeated separators as one boundary.
     while (cursor > path && (cursor[-1] == '/' || cursor[-1] == '\\')) {
       cursor--;
     }
     components_seen++;
     if (components_seen == component_count) {
-      return cursor + 1;
+      return component_start;
     }
   }
 
@@ -609,6 +610,9 @@ bool path_is_within_base(const char *path, const char *base) {
 
   if (platform_path_strcasecmp(normalized_path, normalized_base, base_len) != 0) {
     return false;
+  }
+  if (normalized_base[base_len - 1] == PATH_DELIM) {
+    return true;
   }
   char next = normalized_path[base_len];
   if (next == '\0') {

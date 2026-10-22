@@ -35,7 +35,7 @@ struct acip_outbound {
   mutex_t mutex;
   cond_t changed;
   asciichat_thread_t worker;
-  bool stopping, failed;
+  bool stopping, failed, stopped_by_caller;
   asciichat_error_t failure_code;
   asciichat_error_context_t failure;
   asciichat_error_context_t failure_detail;
@@ -258,7 +258,7 @@ static void *outbound_worker(void *arg) {
       break;
     }
   }
-  bool failed = out->failed;
+  bool failed = out->failed && !out->stopped_by_caller;
   mutex_unlock(&out->mutex);
   if (failed)
     out->transport->methods->close(out->transport);
@@ -290,6 +290,17 @@ asciichat_error_t acip_outbound_create(acip_transport_t *transport) {
   }
   transport->outbound = out;
   return ASCIICHAT_OK;
+}
+
+void acip_outbound_stop(acip_transport_t *transport) {
+  acip_outbound_t *out = transport ? transport->outbound : NULL;
+  if (!out)
+    return;
+  mutex_lock(&out->mutex);
+  out->stopping = true;
+  out->stopped_by_caller = true;
+  outbound_record_failure_and_fail_pending(out, ERROR_NETWORK, NULL, NULL);
+  mutex_unlock(&out->mutex);
 }
 
 void acip_outbound_destroy(acip_transport_t *transport) {

@@ -26,8 +26,9 @@ typedef struct terminal_fd_reader_s {
 #define LINE_BUFFER_SIZE 16384 // Max bytes per line
 
 asciichat_error_t terminal_fd_reader_create(int fd, int frame_height, terminal_fd_reader_t **out) {
-  if (fd < 0 || frame_height <= 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid fd or frame height: fd=%d, height=%d", fd, frame_height);
+  if (fd < 0 || frame_height <= 0 || !out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid reader parameters: fd=%d, height=%d, output=%p", fd, frame_height,
+                     (void *)out);
   }
 
   FILE *fp = platform_fdopen("terminal_fd_reader", fd, "r");
@@ -81,6 +82,7 @@ asciichat_error_t terminal_fd_reader_next(terminal_fd_reader_t *reader, char **o
         if (frame_pos > 0 && frame_data[frame_pos - 1] == '\n') {
           frame_pos--;
         }
+        frame_data[frame_pos] = '\0';
         *out_frame = frame_data;
         return ASCIICHAT_OK;
       }
@@ -108,9 +110,9 @@ asciichat_error_t terminal_fd_reader_next(terminal_fd_reader_t *reader, char **o
 
   // Remove trailing newline from last line (we'll add it back in display)
   if (frame_pos > 0 && frame_data[frame_pos - 1] == '\n') {
-    frame_data[frame_pos - 1] = '\0';
     frame_pos--;
   }
+  frame_data[frame_pos] = '\0';
 
   // Detect frame width from first frame (count visible chars in first line)
   if (!reader->first_frame_processed && frame_pos > 0) {

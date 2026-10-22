@@ -8,6 +8,7 @@
 #include <ascii-chat/options/validation.h>
 
 #include <limits.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -326,7 +327,7 @@ float validate_opt_float_non_negative(const char *value_str, char *error_msg, si
 
   char *endptr;
   float val = strtof(value_str, &endptr);
-  if (*endptr != '\0' || value_str == endptr) {
+  if (*endptr != '\0' || value_str == endptr || !isfinite(val)) {
     if (error_msg) {
       SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid float value '%s'. Must be a number.", value_str);
     }
@@ -355,7 +356,7 @@ float validate_opt_volume(const char *value_str, char *error_msg, size_t error_m
 
   char *endptr;
   float val = strtof(value_str, &endptr);
-  if (*endptr != '\0' || value_str == endptr) {
+  if (*endptr != '\0' || value_str == endptr || !isfinite(val)) {
     if (error_msg) {
       SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid volume value '%s'. Must be a number.", value_str);
     }

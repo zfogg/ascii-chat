@@ -268,11 +268,12 @@ void asciichat_instr_runtime_global_destroy(void) {
     g_coverage_enabled = false;
     g_output_dir_set = false;
     g_output_dir[0] = '\0';
-    g_instrumentation_enabled_checked = false;
-    g_instrumentation_enabled = false;
     g_echo_to_stderr_initialized = false;
     g_echo_to_stderr = false;
   }
+
+  g_instrumentation_enabled_checked = false;
+  g_instrumentation_enabled = false;
 
   // Reset g_disable_write so instrumentation can be re-enabled in subsequent tests
   g_disable_write = false;
