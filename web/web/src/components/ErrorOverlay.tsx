@@ -15,8 +15,19 @@ function FramePath({
 }) {
   const file = frame.file || "<unknown>";
   const label = `${file}:${frame.line ?? 0}`;
+  const renderedLabel = (
+    <>
+      <span className="text-blue-400 transition-colors group-hover:text-blue-300">
+        {file}
+      </span>
+      <span className="text-terminal-fg">:</span>
+      <span className="text-purple-400 transition-colors group-active:text-purple-300">
+        {frame.line ?? 0}
+      </span>
+    </>
+  );
   const interactiveClassName =
-    "text-blue-400 underline decoration-blue-500/70 underline-offset-2 transition-colors hover:text-blue-300 hover:decoration-blue-300 active:text-purple-300";
+    "source-location group underline decoration-blue-500/70 underline-offset-2 transition-colors hover:decoration-blue-300 active:decoration-purple-300";
   const sourceUrl = productionMode ? sourceUrlForFrame(frame) : null;
   if (sourceUrl) {
     const revision = __COMMIT_SHA__ === "unknown" ? "master" : __COMMIT_SHA__;
@@ -29,7 +40,7 @@ function FramePath({
         title={`Open ${label} on GitHub at ${revision}`}
         aria-label={`Open ${file} line ${frame.line} on GitHub at ${revision}`}
       >
-        {label}
+        {renderedLabel}
       </a>
     );
   }
@@ -42,11 +53,11 @@ function FramePath({
         aria-label={`Copy full path for ${file}`}
         onClick={() => void navigator.clipboard.writeText(frame.fullFile!)}
       >
-        {label}
+        {renderedLabel}
       </button>
     );
   }
-  return <span className="text-blue-400">{label}</span>;
+  return <span>{renderedLabel}</span>;
 }
 
 export function ErrorOverlay({

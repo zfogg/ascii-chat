@@ -120,9 +120,15 @@ test("renders a five-frame errno stack as paired source and message rows", async
           `[title="${index === 0 ? "Newest error" : `Stack frame ${index}`}"]`,
         ),
       ).toHaveText(String(index));
-      await expect(row.locator(".text-blue-400")).toHaveText(`${file}:${line}`);
-      await expect(row.locator(".text-blue-400")).toHaveClass(/underline/);
-      await expect(row.locator(".text-blue-400")).toHaveAttribute(
+      const sourceLocation = row.locator(".source-location");
+      await expect(sourceLocation).toHaveText(`${file}:${line}`);
+      await expect(sourceLocation).toHaveClass(/underline/);
+      await expect(sourceLocation.locator(".text-blue-400")).toHaveText(file);
+      await expect(sourceLocation.locator(".text-terminal-fg")).toHaveText(":");
+      await expect(sourceLocation.locator(".text-purple-400")).toHaveText(
+        String(line),
+      );
+      await expect(sourceLocation).toHaveAttribute(
         "title",
         `Copy full path: ${fullFile}`,
       );
@@ -134,7 +140,7 @@ test("renders a five-frame errno stack as paired source and message rows", async
       await expect(row).not.toContainText("C:/Users/");
     }
 
-    await rows.nth(0).locator(".text-blue-400").click();
+    await rows.nth(0).locator(".source-location").click();
     await expect
       .poll(() =>
         page.evaluate(

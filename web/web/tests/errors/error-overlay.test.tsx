@@ -51,7 +51,9 @@ describe("browser error overlay", () => {
     expect(screen.getByTitle("Newest error").textContent).toBe("0");
     expect(screen.getByTitle("Stack frame 1").textContent).toBe("1");
     expect(screen.getByText("checksum mismatch")).toBeTruthy();
-    const outerPath = screen.getByText("src/web/client.c:1196");
+    const outerPath = screen.getByRole("button", {
+      name: "Copy full path for src/web/client.c",
+    });
     const outerMetadata = outerPath.parentElement!;
     const outerMessage = screen.getByText("outer failure");
     expect(
@@ -60,8 +62,14 @@ describe("browser error overlay", () => {
     ).toBeTruthy();
     expect(outerMetadata.closest("li")?.className).toContain("border");
     expect(outerPath.textContent).toBe("src/web/client.c:1196");
-    expect(outerPath.className).toContain("text-blue-400");
     expect(outerPath.className).toContain("underline");
+    expect(outerPath.querySelector(".text-blue-400")?.textContent).toBe(
+      "src/web/client.c",
+    );
+    expect(outerPath.querySelector(".text-terminal-fg")?.textContent).toBe(":");
+    expect(outerPath.querySelector(".text-purple-400")?.textContent).toBe(
+      "1196",
+    );
     fireEvent.click(outerPath);
     expect(writeText).toHaveBeenCalledWith(
       "C:/src/ascii-chat/src/web/client.c",
@@ -72,7 +80,8 @@ describe("browser error overlay", () => {
     expect(screen.getAllByText("in")[0]?.className).toContain(
       "text-terminal-fg",
     );
-    expect(screen.getByText("lib/network/packet/packet.c:481")).toBeTruthy();
+    expect(screen.getByText("lib/network/packet/packet.c")).toBeTruthy();
+    expect(screen.getByText("481").className).toContain("text-purple-400");
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(dismiss).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alertdialog")).toBeNull();
@@ -87,10 +96,14 @@ describe("browser error overlay", () => {
       );
     });
     expect(screen.getByText("server wrapper")).toBeTruthy();
-    expect(screen.getByText("src/server/client.c:144")).toBeTruthy();
+    const serverPath = screen.getByRole("button", {
+      name: "Copy full path for src/server/client.c",
+    });
+    expect(serverPath.textContent).toBe("src/server/client.c:144");
     expect(screen.getByText("run()")).toBeTruthy();
     expect(screen.getByText("socket cause")).toBeTruthy();
-    expect(screen.getByText("lib/network/tcp.c:91")).toBeTruthy();
+    expect(screen.getByText("lib/network/tcp.c")).toBeTruthy();
+    expect(screen.getByText("91").className).toContain("text-purple-400");
     expect(screen.getByText("receive()")).toBeTruthy();
     expect(
       screen.getByRole("button", {
