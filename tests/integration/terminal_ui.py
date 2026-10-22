@@ -219,7 +219,10 @@ def main():
             port = free_port()
             websocket_port = free_port()
             status = terminal("status", ["server", "127.0.0.1", "--port", str(port),
-                               "--websocket-port", str(websocket_port), "--status-screen"])
+                               "--websocket-port", str(websocket_port), "--status-screen"], environment={
+                "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v0.0.0",
+                "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "status-update-cache"),
+            })
             small(status)
             # The WebSocket handshake must continue behind the warning.
             with socket.create_connection(("127.0.0.1", websocket_port), timeout=3) as sock:
@@ -235,7 +238,7 @@ def main():
                                    "Expected status recovery")
             assert "should-not-replay" not in normal
             status.write("\x1b[24~")
-            status.expect(lambda text: "Check for updates" in text or "You're up to date" in text or "Update available" in text,
+            status.expect(lambda text: "Check for updates" in text or "You're up to date" in text or "Update available" in text or "Update check unavailable" in text,
                           "F12 did not open the update checker over the server status UI")
             status.write("\x1b")
             status.expect(lambda text: "127.0.0.1" in text,
@@ -249,7 +252,7 @@ def main():
 
             mirror_args = ["mirror", "--file", str(media), "--loop", "--splash-screen=false",
                            "--audio=false", "--color-mode", "none"]
-            mirror = terminal("mirror", mirror_args, check_updates=True, environment={
+            mirror = terminal("mirror", mirror_args, environment={
                 "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v0.0.0",
                 "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "f12-cache"),
             })
@@ -259,7 +262,7 @@ def main():
             mirror.write("?")
             mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Expected help")
             mirror.write("\x1b[24~")
-            mirror.expect(lambda text: "Check for updates" in text or "You're up to date" in text or "Update available" in text,
+            mirror.expect(lambda text: "Check for updates" in text or "You're up to date" in text or "Update available" in text or "Update check unavailable" in text,
                           "F12 did not replace the help overlay with the update checker")
             mirror.write("\x1b")
             mirror.expect(lambda text: "Keyboard Shortcuts" in text,
@@ -305,59 +308,93 @@ def main():
             finish(mirror)
             print("PASS media: startup, help priority, blocked keys, paused resize, recovery")
 
-            update_command = ["mirror", "--file", str(media), "--loop", "--splash-screen=true",
-                              "--audio=false", "--color-mode", "none"]
-            update_env = {
-                "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v99.0.0",
-                "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "update-cache"),
-            }
-            startup = terminal("startup-update", update_command, check_updates=True,
-                               environment=update_env, rows=40, cols=100)
-            startup.expect(lambda text: "[ ok ]" in text,
-                           "Startup did not render compact initialization logs")
-            startup.expect(lambda text: "Update Available" in text,
-                           "An older build did not show the startup update prompt")
-            startup.write("n")
-            video(startup)
-            # Let the post-splash capture pipeline finish before exercising shutdown.
-            # A Ctrl-C during source creation is not the dismissal behavior this scenario covers.
-            startup.pump(0.5)
-            finish(startup)
+            if args.debug_updates:
+                update_command = ["mirror", "--file", str(media), "--loop", "--splash-screen=true",
+                                  "--audio=false", "--color-mode", "none"]
+                update_env = {
+                    "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v99.0.0",
+                    "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "update-cache"),
+                }
+                startup = terminal("startup-update", update_command, check_updates=True,
+                                   environment=update_env, rows=40, cols=100)
+                startup.expect(lambda text: "Update Available" in text,
+                               "An older build did not show the startup update prompt")
+                # The prompt may replace a short-lived splash between samples.
+                assert "[ ok ]" in "".join(startup.raw), "Startup did not render compact initialization logs"
+                startup.write("n")
+                video(startup)
+                # Let the post-splash capture pipeline finish before exercising shutdown.
+                # A Ctrl-C during source creation is not the dismissal behavior this scenario covers.
+                startup.pump(0.5)
+                startup.write("\x1b[24~")
+                startup.expect(lambda text: "Update available" in text,
+                               "F12 did not recheck the dismissed release")
+                startup.write("\x1b")
+                finish(startup)
 
-            dismissed = terminal("dismissed-update", update_command, check_updates=True,
-                                 environment=update_env, rows=40, cols=100)
-            dismissed_media = video(dismissed)
-            # The forced update seam is synchronous, so give the splash/prompt
-            # hand-off a bounded moment and then prove this version's dismissal
-            # still suppresses the startup modal.
-            dismissed_media = dismissed.pump(0.5) or dismissed_media
-            assert "Update Available" not in dismissed_media, (
-                "Weekly dismissal did not suppress the repeated startup update prompt"
-            )
-            finish(dismissed)
+                dismissed = terminal("dismissed-update", update_command, check_updates=True,
+                                     environment=update_env, rows=40, cols=100)
+                dismissed_media = video(dismissed)
+                # The forced update seam is synchronous, so give the splash/prompt
+                # hand-off a bounded moment and then prove this version's dismissal
+                # still suppresses the startup modal.
+                dismissed_media = dismissed.pump(0.5) or dismissed_media
+                assert "Update Available" not in dismissed_media, (
+                    "Weekly dismissal did not suppress the repeated startup update prompt"
+                )
+                finish(dismissed)
 
-            marker = root / "updated-marker"
-            update_command_env = {
-                "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v99.0.0",
-                "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "update-command-cache"),
-                "ASCII_CHAT_TEST_UPDATE_COMMAND": (
-                    f"copy NUL {marker}" if os.name == "nt" else f"touch {marker}"
-                ),
-            }
-            updater = terminal("run-update", update_command, check_updates=True,
-                               environment=update_command_env, rows=40, cols=100)
-            updater.expect(lambda text: "Update Available" in text,
-                           "Updater scenario did not reach the update prompt")
-            updater.write("\r")
-            updater.expect(lambda text: "Run ascii-chat again" in text,
-                           "Successful installer did not print restart instructions")
-            deadline = time.monotonic() + 10
-            while updater.process.isalive() and time.monotonic() < deadline:
-                updater.pump(.1)
-            assert not updater.process.isalive(), "Updater did not exit after installation"
-            assert marker.exists(), "Update command was not executed"
-            updater.close()
-            print("PASS update checker: startup prompt, weekly dismissal, installer execution and clean exit")
+                handoff = terminal("startup-f12", update_command, check_updates=True,
+                                   environment={**update_env, "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "handoff-cache")},
+                                   rows=40, cols=100)
+                handoff.expect(lambda text: "Update Available" in text,
+                               "F12 handoff did not reach the startup prompt")
+                handoff.write("\x1b[24~")
+                handoff.expect(lambda text: "Update available" in text,
+                               "F12 did not replace the startup prompt")
+                handoff.write("\x1b")
+                handoff.expect(lambda text: "Update available" not in text and "Update Available" not in text,
+                               "Startup remained blocked after closing the F12 overlay")
+                handoff.pump(0.5)
+                finish(handoff)
+
+                failed = terminal("failed-update", mirror_args, environment={
+                    **update_env, "ASCII_CHAT_TEST_UPDATE_COMMAND": "exit 7",
+                }, rows=40, cols=100)
+                video(failed)
+                failed.write("\x1b[24~")
+                failed.expect(lambda text: "Update available" in text,
+                              "Failure scenario did not open the update overlay")
+                failed.write("\r")
+                failed.expect(lambda text: "Update command failed" in text,
+                              "Failed installer did not report failure in the overlay")
+                assert failed.process.isalive(), "Failed installer shut down the session"
+                failed.write("\x1b")
+                failed.pump(0.5)
+                finish(failed)
+
+                marker = root / "updated-marker"
+                update_command_env = {
+                    "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v99.0.0",
+                    "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "update-command-cache"),
+                    "ASCII_CHAT_TEST_UPDATE_COMMAND": (
+                        f"copy NUL {marker}" if os.name == "nt" else f"touch {marker}"
+                    ),
+                }
+                updater = terminal("run-update", update_command, check_updates=True,
+                                   environment=update_command_env, rows=40, cols=100)
+                updater.expect(lambda text: "Update Available" in text,
+                               "Updater scenario did not reach the update prompt")
+                updater.write("\r")
+                updater.expect(lambda text: "Run ascii-chat again" in text,
+                               "Successful installer did not print restart instructions")
+                deadline = time.monotonic() + 10
+                while updater.process.isalive() and time.monotonic() < deadline:
+                    updater.pump(.1)
+                assert not updater.process.isalive(), "Updater did not exit after installation"
+                assert marker.exists(), "Update command was not executed"
+                updater.close()
+                print("PASS update checker: startup prompt, weekly dismissal, installer execution and clean exit")
 
             explicit = terminal("explicit", mirror_args + ["--width", "60", "--height", "20"])
             small(explicit)

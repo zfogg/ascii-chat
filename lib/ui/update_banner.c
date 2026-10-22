@@ -28,6 +28,7 @@
 #include <ascii-chat/util/lifecycle.h>
 
 #include <stdio.h>
+#include <stdatomic.h>
 #include <string.h>
 
 // Thread-safe storage for the update check result
@@ -41,7 +42,8 @@ static asciichat_thread_t g_update_thread;
 static bool g_update_thread_started = false;
 static bool g_update_checking = false;
 static bool g_update_finished = false;
-static bool g_update_overlay = false;
+static _Atomic bool g_update_overlay = false;
+static _Atomic bool g_update_install_failed = false;
 
 static bool update_banner_copy_result(update_check_result_t *result) {
   if (!result || !lifecycle_is_initialized(&g_update_result_lifecycle)) {
@@ -73,19 +75,8 @@ void update_banner_set_result(const update_check_result_t *result) {
 }
 
 bool update_banner_has_update(void) {
-  if (!g_update_result_set) {
-    return false;
-  }
-
-  if (lifecycle_init_once(&g_update_result_lifecycle)) {
-    mutex_init(&g_update_result_mutex, "update_banner_result");
-    lifecycle_init_commit(&g_update_result_lifecycle);
-  }
-
-  mutex_lock(&g_update_result_mutex);
-  bool available = g_update_result_set && g_update_result.update_available;
-  mutex_unlock(&g_update_result_mutex);
-  return available;
+  update_check_result_t result = {0};
+  return update_banner_copy_result(&result) && result.update_available;
 }
 
 // Build a box line: "║  <content><padding>║"
@@ -330,7 +321,7 @@ static void render_update_overlay(terminal_size_t size, const void *data) {
     update_check_get_upgrade_suggestion(update_check_detect_install_method(), result.latest_version, command,
                                         sizeof(command));
   char installed[128] = {0}, latest[128] = {0}, checking_line[64] = {0};
-  const char *lines[5] = {0};
+  const char *lines[6] = {0};
   size_t line_count = 0;
   if (checking) {
     static const char spin[] = "|/-\\";
@@ -352,6 +343,8 @@ static void render_update_overlay(terminal_size_t size, const void *data) {
   } else {
     lines[line_count++] = "No network result is available. Press R to retry.";
   }
+  if (g_update_install_failed)
+    lines[line_count++] = "Update command failed. See the logs and retry, or close to continue.";
   const char *footer =
       result.update_available ? "Enter update now  O open GitHub  R retry  F12/Esc close" : "R retry  F12/Esc close";
   frame_buffer_t *out = frame_buffer_create((size_t)size.rows, (size_t)size.cols);
@@ -380,6 +373,8 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
   bool update = false;
   while (!shutdown_is_requested()) {
     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_UPDATE, 100);
+    if (g_update_overlay)
+      return false;
     if (key == 'y' || key == 'Y' || key == '\r' || key == '\n') {
       update = true;
       break;
@@ -418,6 +413,7 @@ bool update_banner_install_update(void) {
   if (!update_banner_copy_result(&result) || !result.update_available) {
     return false;
   }
+  g_update_install_failed = false;
 
   install_method_t method = update_check_detect_install_method();
   int exit_code = -1;
@@ -437,8 +433,10 @@ bool update_banner_install_update(void) {
     const char *argv[] = {"brew", "upgrade", "ascii-chat", NULL};
     exit_code = platform_execute_subprocess("brew", argv, NULL, 0);
   } else if (method == INSTALL_METHOD_SCOOP) {
-    const char *argv[] = {"scoop", "update", "ascii-chat", NULL};
-    exit_code = platform_execute_subprocess("scoop", argv, NULL, 0);
+    // Scoop is a PowerShell script/shim, rather than a native executable.
+    const char *argv[] = {"powershell", "-NoProfile", "-Command",
+                          "$ErrorActionPreference = 'Stop'; scoop update ascii-chat; if (!$?) { exit 1 }", NULL};
+    exit_code = platform_execute_subprocess("powershell", argv, NULL, 0);
   } else if (method == INSTALL_METHOD_ARCH_AUR) {
     const char *helper = update_check_get_aur_helper();
     if (!helper) {
@@ -449,17 +447,20 @@ bool update_banner_install_update(void) {
     exit_code = platform_execute_subprocess(helper, argv, NULL, 0);
   } else {
 #ifdef _WIN32
-    const char *argv[] = {"powershell", "-NoProfile", "-ExecutionPolicy",
-                          "Bypass",     "-Command",   "irm https://ascii-chat.com/install.ps1 | iex",
-                          NULL};
+    const char *argv[] = {
+        "powershell", "-NoProfile", "-ExecutionPolicy",
+        "Bypass",     "-Command",   "$ErrorActionPreference = 'Stop'; irm https://ascii-chat.com/install.ps1 | iex",
+        NULL};
     exit_code = platform_execute_subprocess("powershell", argv, NULL, 0);
 #else
-    const char *argv[] = {"/bin/sh", "-c", "curl -fsSL https://ascii-chat.com/install.sh | bash", NULL};
-    exit_code = platform_execute_subprocess("/bin/sh", argv, NULL, 0);
+    const char *argv[] = {"bash", "-o", "pipefail", "-c", "curl -fsSL https://ascii-chat.com/install.sh | bash", NULL};
+    exit_code = platform_execute_subprocess("bash", argv, NULL, 0);
 #endif
   }
   if (exit_code != 0) {
     log_warn("ascii-chat update command exited with status %d", exit_code);
+    g_update_install_failed = true;
+    ui_controller_redraw();
     return false;
   }
   update_banner_print_instructions();
@@ -484,6 +485,10 @@ static void *update_check_thread_func(void *arg) {
 
     // Store every terminal state for the reusable update overlay.
     update_banner_set_result(&result);
+  } else {
+    // A failed retry must not advertise an earlier successful result.
+    update_check_result_t unavailable = {0};
+    update_banner_set_result(&unavailable);
   }
   mutex_lock(&g_update_result_mutex);
   g_update_checking = false;
@@ -503,6 +508,8 @@ static void update_banner_start_check_impl(bool force) {
   mutex_lock(&g_update_result_mutex);
   g_update_checking = true;
   g_update_finished = false;
+  memset(&g_update_result, 0, sizeof(g_update_result));
+  g_update_result_set = false;
   mutex_unlock(&g_update_result_mutex);
   if (acthread_create(&g_update_thread, "update_check", update_check_thread_func, force ? (void *)1 : NULL) == 0) {
     g_update_thread_started = true;
@@ -562,6 +569,8 @@ static void update_banner_open_release(void) {
   mutex_lock(&g_update_result_mutex);
   result = g_update_result;
   mutex_unlock(&g_update_result_mutex);
+  if (!result.check_succeeded || !result.release_url[0])
+    return;
 #ifdef _WIN32
   const char *argv[] = {"cmd", "/c", "start", "", result.release_url, NULL};
   (void)platform_execute_subprocess("cmd", argv, NULL, 0);
@@ -586,16 +595,20 @@ bool update_banner_handle_key(int key) {
     return true;
   }
   if (key == 'o' || key == 'O') {
-    update_banner_open_release();
+    if (!update_banner_is_checking())
+      update_banner_open_release();
     return true;
   }
   if (key == 'r' || key == 'R') {
+    if (update_banner_is_checking())
+      return true;
     update_banner_wait_for_check();
     update_banner_start_check_impl(true);
     return true;
   }
   if (key == '\r' || key == '\n') {
-    (void)update_banner_install_update();
+    if (!update_banner_is_checking())
+      (void)update_banner_install_update();
     return true;
   }
   return g_update_overlay;
