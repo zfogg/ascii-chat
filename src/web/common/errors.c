@@ -31,6 +31,16 @@ EMSCRIPTEN_KEEPALIVE const char *wasm_error_file(size_t index) {
   return frame && frame->file ? extract_project_relative_path(frame->file) : "";
 }
 
+EMSCRIPTEN_KEEPALIVE const char *wasm_error_full_file(size_t index) {
+#ifdef NDEBUG
+  (void)index;
+  return "";
+#else
+  const asciichat_error_context_t *frame = browser_error_at(index);
+  return frame && frame->file ? frame->file : "";
+#endif
+}
+
 EMSCRIPTEN_KEEPALIVE const char *wasm_error_function(size_t index) {
   const asciichat_error_context_t *frame = browser_error_at(index);
   return frame && frame->function ? frame->function : "";

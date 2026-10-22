@@ -56,6 +56,7 @@ interface ClientModuleExports {
   _wasm_error_code(index: number): number;
   _wasm_error_message(index: number): number;
   _wasm_error_file(index: number): number;
+  _wasm_error_full_file(index: number): number;
   _wasm_error_function(index: number): number;
   _wasm_error_line(index: number): number;
   _wasm_error_dismiss(): void;
@@ -282,6 +283,7 @@ export function throwWasmError(result: number, fallback: string): never {
         message:
           module.UTF8ToString(module._wasm_error_message(index)) || fallback,
         file: module.UTF8ToString(module._wasm_error_file(index)),
+        fullFile: module.UTF8ToString(module._wasm_error_full_file(index)),
         function: module.UTF8ToString(module._wasm_error_function(index)),
         line: module._wasm_error_line(index),
       });

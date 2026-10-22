@@ -4,6 +4,7 @@ export interface BrowserErrorFrame {
   code?: number;
   message: string;
   file?: string;
+  fullFile?: string;
   function?: string;
   line?: number;
 }
@@ -14,6 +15,20 @@ export interface BrowserErrorReport {
   title: string;
   frames: BrowserErrorFrame[];
   dismiss?: () => void;
+}
+
+export function sourceUrlForFrame(frame: BrowserErrorFrame): string | null {
+  if (!frame.file || !frame.line) return null;
+  const file = frame.file.replaceAll("\\", "/");
+  if (
+    file.startsWith("/") ||
+    /^[a-z]:/i.test(file) ||
+    file.split("/").includes("..")
+  )
+    return null;
+  const revision = __COMMIT_SHA__ === "unknown" ? "master" : __COMMIT_SHA__;
+  const encodedFile = file.split("/").map(encodeURIComponent).join("/");
+  return `https://github.com/zfogg/ascii-chat/blob/${revision}/${encodedFile}#L${frame.line}`;
 }
 
 const EVENT = "ascii-chat:error";
@@ -102,11 +117,15 @@ export function reportProtocolError(
 const PROTOCOL_FRAME = /^(.*) \((.*):(\d+) in ([^()]+)\(\)\)$/;
 
 function parseProtocolFrame(line: string): BrowserErrorFrame {
-  const match = PROTOCOL_FRAME.exec(line);
+  const [displayLine, fullPathField] = line.split("\tfull-path=", 2);
+  const match = PROTOCOL_FRAME.exec(displayLine!);
   if (!match) return { message: line };
   return {
     message: match[1]!,
     file: match[2]!,
+    ...(import.meta.env.DEV && fullPathField
+      ? { fullFile: fullPathField }
+      : {}),
     line: Number(match[3]),
     function: match[4]!,
   };
@@ -116,9 +135,13 @@ export function formatReportForProtocol(report: BrowserErrorReport): string {
   return report.frames
     .map((frame) => {
       const location = frame.file
-        ? ` (${frame.file}:${frame.line ?? 0}${frame.function ? ` ${frame.function}` : ""})`
+        ? ` (${frame.file}:${frame.line ?? 0}${frame.function ? ` in ${frame.function}()` : ""})`
         : "";
-      return `${frame.message}${location}`;
+      const fullPath =
+        import.meta.env.DEV && frame.fullFile
+          ? `\tfull-path=${frame.fullFile}`
+          : "";
+      return `${frame.message}${location}${fullPath}`;
     })
     .join("\n")
     .slice(0, 4096);

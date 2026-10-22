@@ -259,7 +259,13 @@ Test(tcp_transport, acip_error_response_includes_errno_stack_locations) {
   cr_assert_not_null(strstr(message, "packet validation failed"));
   cr_assert_not_null(strstr(message, "socket read failed"));
   cr_assert_not_null(strstr(message, "tests/unit/network/tcp_transport_test.c:"));
+#ifdef NDEBUG
   cr_assert_null(strstr(message, ASCIICHAT_SOURCE_ROOT));
+  cr_assert_null(strstr(message, "\tfull-path="));
+#else
+  cr_assert_not_null(strstr(message, ASCIICHAT_SOURCE_ROOT));
+  cr_assert_not_null(strstr(message, "\tfull-path="));
+#endif
   cr_assert_not_null(strstr(message, " in "));
   cr_assert_not_null(strchr(message, '\n'));
 

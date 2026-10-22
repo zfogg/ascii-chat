@@ -24,6 +24,7 @@ interface ParserModule {
   _wasm_error_code(index: number): number;
   _wasm_error_message(index: number): number;
   _wasm_error_file(index: number): number;
+  _wasm_error_full_file(index: number): number;
   _wasm_error_function(index: number): number;
   _wasm_error_line(index: number): number;
   UTF8ToString(pointer: number): string;
@@ -41,6 +42,7 @@ function getErrorFrames(module: ParserModule): BrowserErrorFrame[] {
     code: module._wasm_error_code(index),
     message: module.UTF8ToString(module._wasm_error_message(index)),
     file: module.UTF8ToString(module._wasm_error_file(index)),
+    fullFile: module.UTF8ToString(module._wasm_error_full_file(index)),
     function: module.UTF8ToString(module._wasm_error_function(index)),
     line: module._wasm_error_line(index),
   }));

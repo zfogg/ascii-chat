@@ -1,10 +1,59 @@
 import { useEffect, useState } from "react";
 import {
+  sourceUrlForFrame,
   subscribeBrowserErrors,
+  type BrowserErrorFrame,
   type BrowserErrorReport,
 } from "../errors/errorBus";
 
-export function ErrorOverlay() {
+function FramePath({
+  frame,
+  productionMode,
+}: {
+  frame: BrowserErrorFrame;
+  productionMode: boolean;
+}) {
+  const file = frame.file || "<unknown>";
+  const label = `${file}:${frame.line ?? 0}`;
+  const interactiveClassName =
+    "text-blue-400 underline decoration-blue-500/70 underline-offset-2 transition-colors hover:text-blue-300 hover:decoration-blue-300 active:text-purple-300";
+  const sourceUrl = productionMode ? sourceUrlForFrame(frame) : null;
+  if (sourceUrl) {
+    const revision = __COMMIT_SHA__ === "unknown" ? "master" : __COMMIT_SHA__;
+    return (
+      <a
+        href={sourceUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={interactiveClassName}
+        title={`Open ${label} on GitHub at ${revision}`}
+        aria-label={`Open ${file} line ${frame.line} on GitHub at ${revision}`}
+      >
+        {label}
+      </a>
+    );
+  }
+  if (!productionMode && frame.fullFile) {
+    return (
+      <button
+        type="button"
+        className={interactiveClassName}
+        title={`Copy full path: ${frame.fullFile}`}
+        aria-label={`Copy full path for ${file}`}
+        onClick={() => void navigator.clipboard.writeText(frame.fullFile!)}
+      >
+        {label}
+      </button>
+    );
+  }
+  return <span className="text-blue-400">{label}</span>;
+}
+
+export function ErrorOverlay({
+  productionMode = import.meta.env.PROD,
+}: {
+  productionMode?: boolean;
+}) {
   const [reports, setReports] = useState<BrowserErrorReport[]>([]);
 
   useEffect(
@@ -60,11 +109,7 @@ export function ErrorOverlay() {
               <div>
                 {(frame.file || frame.function || frame.line) && (
                   <div className="mb-1 break-all text-xs">
-                    <span className="text-blue-400">
-                      {frame.file || "<unknown>"}
-                    </span>
-                    <span className="text-terminal-fg">:</span>
-                    <span className="text-purple-400">{frame.line ?? 0}</span>
+                    <FramePath frame={frame} productionMode={productionMode} />
                     {frame.function && (
                       <>
                         <span className="text-terminal-fg"> in </span>

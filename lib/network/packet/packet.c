@@ -914,8 +914,14 @@ size_t packet_format_error_stack(char *buffer, size_t size) {
   for (size_t i = 0; i < frame_count && offset < size - 1; ++i) {
     const asciichat_error_context_t *frame = &frames[i];
     const char *file = extract_project_relative_path(frame->file);
+#ifdef NDEBUG
     int written = snprintf(buffer + offset, size - offset, "%s%s (%s:%d in %s())", i ? "\n" : "",
                            frame->context_message, file, frame->line, frame->function ? frame->function : "<unknown>");
+#else
+    int written = snprintf(buffer + offset, size - offset, "%s%s (%s:%d in %s())\tfull-path=%s", i ? "\n" : "",
+                           frame->context_message, file, frame->line, frame->function ? frame->function : "<unknown>",
+                           frame->file ? frame->file : "");
+#endif
     if (written < 0)
       break;
     size_t available = size - offset;
