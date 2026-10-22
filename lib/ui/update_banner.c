@@ -147,11 +147,8 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
   if (width > preferred_width)
     width = preferred_width;
   bool stacked = buttons_width > width - 6;
-  int height = (available ? 19 : 14) + (stacked ? count - 1 : 0);
+  int height = (available ? 18 : 13) + (stacked ? count - 1 : 0);
   bool failed = atomic_load(&g_update_install_failed);
-  bool failure_row = failed && height + 2 <= size.rows - 2;
-  if (failure_row)
-    height += 2;
   if (width < 24 || height > size.rows - 2)
     return;
   int left = (size.cols - width) / 2 + 1;
@@ -216,10 +213,9 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
     update_center_line(out, top + 7, left + 2, width - 4, "Press R to retry.", muted);
   }
   int button_row = top + (available ? 16 : 11);
-  if (failure_row) {
-    update_center_line(out, button_row - 2, left + 2, width - 4, "Update command failed. See the logs and retry.",
+  if (failed) {
+    update_center_line(out, button_row - 3, left + 2, width - 4, "Update command failed. See the logs and retry.",
                        yellow);
-    button_row += 2;
   }
   update_border(out, button_row - 2, left + 2, width - 4, "", horizontal, "", cyan);
   int selected = atomic_load(&g_update_selected_action) % count;
@@ -233,12 +229,6 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
                         colored_string(magenta, button));
     col += label_width + 3;
   }
-  const char *hint = startup     ? "Y update  N continue  Tab / arrows select"
-                     : available ? "O open GitHub  F12 close  Tab / arrows select"
-                                 : "F12 close  Tab / arrows select";
-  if (failed && !failure_row)
-    hint = "Update command failed. See the logs and retry.";
-  update_center_line(out, top + height - 2, left + 2, width - 4, hint, muted);
   ui_controller_write(STDOUT_FILENO, frame_buffer_get_content(out), frame_buffer_get_length(out));
   frame_buffer_destroy(out);
 }
