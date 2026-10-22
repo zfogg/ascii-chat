@@ -10,7 +10,9 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/util/display.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <string.h>
@@ -261,7 +263,7 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
   }
 
   int width = size.cols - 1;
-  bool utf8 = terminal_supports_utf8();
+  bool utf8 = utf8_output_enabled();
   frame_buffer_render_divider(buffer, width, utf8, colors);
   asciichat_errno_history_t *history =
       SAFE_CALLOC(ASCIICHAT_ERRNO_HISTORY_SIZE, sizeof(*history), asciichat_errno_history_t *);
@@ -316,14 +318,21 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
     truncate_with_ellipsis(thread_name, thread, sizeof(thread), 14);
     truncate_with_ellipsis(asciichat_error_string(row->context.code), message, sizeof(message), 23);
     truncate_with_ellipsis(row->context.context_message, user, sizeof(user), table_width - 65);
+    int thread_padding = 14 - display_width(thread);
+    int message_padding = 23 - display_width(message);
+    if (thread_padding < 0)
+      thread_padding = 0;
+    if (message_padding < 0)
+      message_padding = 0;
     unsigned resolved, dismissed, handled;
     outcome_counts(history, old_count, (unsigned)row->context.code, &resolved, &dismissed, &handled);
     char line[768];
-    safe_snprintf(line, sizeof(line), "%s%c %s%.*s%s%s%*s %s%u%s/%s%u%s/%s%u%s   %s%-5d%s %-14s %-23s %s",
+    safe_snprintf(line, sizeof(line), "%s%c %s%.*s%s%s%*s %s%u%s/%s%u%s/%s%u%s   %s%-5d%s %s%*s %s%*s %s",
                   index == state.list.selected ? log_level_color_for_output(LOG_COLOR_DEBUG, colors) : "",
                   index == state.list.selected ? '>' : ' ', purple, (int)ago_value_length, ago, reset,
                   ago + ago_value_length, ago_padding, "", purple, resolved, reset, purple, dismissed, reset, purple,
-                  handled, reset, purple, row->context.code, reset, thread, message, user);
+                  handled, reset, purple, row->context.code, reset, thread, thread_padding, "", message, message_padding,
+                  "", user);
     render_table_line(buffer, line, width);
   }
   frame_buffer_render_divider(buffer, width, utf8, colors);
