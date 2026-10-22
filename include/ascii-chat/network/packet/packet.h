@@ -121,7 +121,7 @@
  * bytes allowed in the message portion to prevent excessive allocations and
  * potential abuse.
  */
-#define MAX_ERROR_MESSAGE_LENGTH 512
+#define MAX_ERROR_MESSAGE_LENGTH 4096
 
 /**
  * @brief Maximum remote log message length (512 bytes)
