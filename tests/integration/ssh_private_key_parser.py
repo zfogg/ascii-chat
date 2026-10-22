@@ -61,7 +61,11 @@ def main():
     api.ed25519_sign_message.argtypes = [c.POINTER(PrivateKey), c.c_char_p, c.c_size_t, c.c_void_p]
     api.ed25519_verify_signature.argtypes = [c.c_void_p, c.c_char_p, c.c_size_t, c.c_void_p, c.c_char_p]
     cases = 0
-    with tempfile.TemporaryDirectory(prefix="ascii-key-parser-") as tmp:
+    # macOS sets TMPDIR below /var/folders, which is intentionally outside the
+    # accepted user-key locations. Keep this fixture in the portable /tmp
+    # namespace so it exercises parsing instead of path-policy rejection.
+    tmpdir = "/tmp" if os.name != "nt" else None
+    with tempfile.TemporaryDirectory(prefix="ascii-key-parser-", dir=tmpdir) as tmp:
         root = Path(tmp)
 
         def check(path, success, expected=None):

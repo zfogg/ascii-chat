@@ -316,7 +316,7 @@ const char *colored_string(log_color_t color, const char *text) {
   return current_buf;
 }
 
-void truncate_with_ellipsis(const char *input, char *output, size_t output_size, int max_width) {
+void truncate_with_ellipsis_mode(const char *input, char *output, size_t output_size, int max_width, bool utf8) {
   if (!output || output_size == 0) {
     return;
   }
@@ -334,18 +334,26 @@ void truncate_with_ellipsis(const char *input, char *output, size_t output_size,
     return;
   }
 
-  // Reserve the complete reset, ellipsis, and terminator before copying content.
-  static const char suffix[] = "\033[0m…";
-  if (output_size < sizeof(suffix)) {
+  // Reserve the complete reset, terminal-appropriate ellipsis, and terminator before copying content.
+  static const char utf8_suffix[] = "\033[0m…";
+  static const char ascii_suffix[] = "\033[0m...";
+  const char *suffix = utf8 ? utf8_suffix : ascii_suffix;
+  int suffix_width = utf8 ? 1 : 3;
+  size_t suffix_size = strlen(suffix) + 1;
+  if (output_size < suffix_size || max_width < suffix_width) {
     return;
   }
-  byte_limit = output_size - sizeof(suffix);
+  byte_limit = output_size - suffix_size;
   if (byte_limit > input_size) {
     byte_limit = input_size;
   }
-  copy = utf8_prefix_bytes_for_width(input, byte_limit, max_width - 1);
+  copy = utf8_prefix_bytes_for_width(input, byte_limit, max_width - suffix_width);
   memcpy(output, input, copy);
-  memcpy(output + copy, suffix, sizeof(suffix));
+  memcpy(output + copy, suffix, suffix_size);
+}
+
+void truncate_with_ellipsis(const char *input, char *output, size_t output_size, int max_width) {
+  truncate_with_ellipsis_mode(input, output, output_size, max_width, utf8_output_enabled());
 }
 
 void strip_ansi_codes(const char *input, char *output, size_t output_size) {

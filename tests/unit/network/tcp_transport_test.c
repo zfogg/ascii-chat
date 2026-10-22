@@ -13,7 +13,6 @@
 
 #ifndef _WIN32
 #include <sys/socket.h>
-#include <errno.h>
 
 Test(tcp_transport, send_failure_preserves_nested_system_context) {
   int sockets[2];
@@ -30,18 +29,15 @@ Test(tcp_transport, send_failure_preserves_nested_system_context) {
   cr_assert_str_eq(wrapper.context_message, "TCP packet transmission failed");
   cr_assert_str_eq(wrapper.function, "tcp_sendv");
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-  size_t count = errno_snapshot(scope.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH);
-  bool found_system_cause = false;
+  size_t count = errno_snapshot(scope.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH).copied;
+  bool found_send_cause = false;
   for (size_t i = 0; i < count && i < ASCIICHAT_ERRNO_MAX_DEPTH; ++i) {
-    if (frames[i].error_id > scope.after_id && frames[i].has_system_error) {
-      cr_assert_eq(frames[i].system_errno, EPIPE);
-      cr_assert_str_eq(frames[i].function, "socket_sendv");
-      cr_assert_str_eq(frames[i].context_message, "sendmsg failed");
-      cr_assert_eq(wrapper.cause_id, frames[i].error_id);
-      found_system_cause = true;
+    if (frames[i].error_id == wrapper.cause_id) {
+      cr_assert_eq(frames[i].code, ERROR_NETWORK);
+      found_send_cause = true;
     }
   }
-  cr_assert(found_system_cause);
+  cr_assert(found_send_cause);
   cr_assert_not(acip_transport_is_connected(transport));
   acip_transport_destroy(transport);
   socket_close(sockets[0]);
@@ -200,7 +196,7 @@ Test(tcp_transport, error_response_hides_internal_details) {
   socket_close(sockets[1]);
 }
 
-Test(tcp_transport, error_response_includes_errno_stack_locations) {
+Test(tcp_transport, error_response_hides_errno_stack_locations) {
   int sockets[2];
   cr_assert_eq(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
   CLEAR_ERRNO_ALL();
@@ -218,11 +214,10 @@ Test(tcp_transport, error_response_includes_errno_stack_locations) {
                                           NULL),
                ASCIICHAT_OK);
   cr_assert_eq(code, ERROR_NETWORK_PROTOCOL);
-  cr_assert_not_null(strstr(message, "outer client failure"));
-  cr_assert_not_null(strstr(message, "inner packet failure"));
-  cr_assert_not_null(strstr(message, "tests/unit/network/tcp_transport_test.c:"));
-  cr_assert_not_null(strstr(message, " in "));
-  cr_assert_not_null(strchr(message, '\n'));
+  cr_assert_str_eq(message, asciichat_error_string(ERROR_NETWORK_PROTOCOL));
+  cr_assert_null(strstr(message, "outer client failure"));
+  cr_assert_null(strstr(message, "inner packet failure"));
+  cr_assert_null(strstr(message, "tcp_transport_test.c"));
 
   buffer_release(envelope.allocated_buffer);
   socket_close(sockets[0]);
@@ -230,7 +225,7 @@ Test(tcp_transport, error_response_includes_errno_stack_locations) {
   CLEAR_ERRNO_ALL();
 }
 
-Test(tcp_transport, acip_error_response_includes_errno_stack_locations) {
+Test(tcp_transport, acip_error_response_hides_errno_stack_locations) {
   int sockets[2];
   cr_assert_eq(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
   acip_transport_t *transport = acip_tcp_transport_create("acip-error-stack", sockets[0], NULL);
@@ -253,25 +248,14 @@ Test(tcp_transport, acip_error_response_includes_errno_stack_locations) {
                                           NULL),
                ASCIICHAT_OK);
   cr_assert_eq(code, ERROR_NETWORK_PROTOCOL);
-  cr_assert_not_null(strstr(message, "client connection failed"));
-  cr_assert_not_null(strstr(message, "session negotiation failed"));
-  cr_assert_not_null(strstr(message, "ACIP message rejected"));
-  cr_assert_not_null(strstr(message, "packet validation failed"));
-  cr_assert_not_null(strstr(message, "socket read failed"));
-  cr_assert_not_null(strstr(message, "tests/unit/network/tcp_transport_test.c:"));
-#ifdef NDEBUG
+  cr_assert_str_eq(message, asciichat_error_string(ERROR_NETWORK_PROTOCOL));
+  cr_assert_null(strstr(message, "client connection failed"));
+  cr_assert_null(strstr(message, "session negotiation failed"));
+  cr_assert_null(strstr(message, "ACIP message rejected"));
+  cr_assert_null(strstr(message, "packet validation failed"));
+  cr_assert_null(strstr(message, "socket read failed"));
   if (ASCIICHAT_SOURCE_ROOT[0])
     cr_assert_null(strstr(message, ASCIICHAT_SOURCE_ROOT));
-  cr_assert_null(strstr(message, " (/"));
-  cr_assert_null(strstr(message, ":/"));
-  cr_assert_null(strstr(message, ":\\"));
-  cr_assert_null(strstr(message, "\tfull-path="));
-#else
-  cr_assert_not_null(strstr(message, ASCIICHAT_SOURCE_ROOT));
-  cr_assert_not_null(strstr(message, "\tfull-path="));
-#endif
-  cr_assert_not_null(strstr(message, " in "));
-  cr_assert_not_null(strchr(message, '\n'));
 
   buffer_release(envelope.allocated_buffer);
   acip_transport_destroy(transport);

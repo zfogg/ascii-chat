@@ -14,6 +14,28 @@ import subprocess
 import tempfile
 
 
+class Backtrace(c.Structure):
+    _fields_ = [("ptrs", c.c_void_p * 32), ("symbols", c.POINTER(c.c_char_p)), ("count", c.c_int),
+               ("tried_symbolize", c.c_bool)]
+
+
+class ErrorContext(c.Structure):
+    _fields_ = [("code", c.c_int), ("file", c.c_char_p), ("line", c.c_int), ("function", c.c_char_p),
+               ("context_message", c.c_char * 1024), ("timestamp", c.c_uint64), ("created_ns", c.c_uint64),
+               ("error_id", c.c_uint64), ("cause_id", c.c_uint64), ("thread_id", c.c_uint64),
+               ("generation", c.c_uint64), ("system_errno", c.c_int), ("wsa_error", c.c_int),
+               ("backtrace", Backtrace), ("has_system_error", c.c_bool), ("has_wsa_error", c.c_bool),
+               ("message_truncated", c.c_bool)]
+
+
+def webm_encoder_unavailable(api):
+    context = ErrorContext()
+    api.errno_has.argtypes = [c.POINTER(ErrorContext)]
+    api.errno_has.restype = c.c_bool
+    return api.errno_has(c.byref(context)) and context.code == 8 and \
+        b"encoder 'libvpx-vp9' not found" in context.context_message
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("library", type=Path)
@@ -41,7 +63,11 @@ def main():
             for count in (1, frame_size, frame_size + 1, 48001):
                 path = Path(directory) / f"{count}.{extension}"
                 enc = c.c_void_p()
-                assert api.ffmpeg_encoder_create(os.fsencode(path), 64, 48, 30, c.byref(enc)) == 0
+                created = api.ffmpeg_encoder_create(os.fsencode(path), 64, 48, 30, c.byref(enc))
+                if created != 0 and extension == "webm" and webm_encoder_unavailable(api):
+                    print("SKIP opus/WebM: this FFmpeg build has no compatible WebM video encoder", flush=True)
+                    break
+                assert created == 0
                 try:
                     pixels = (c.c_uint8 * (64 * 48 * 4))(*([128, 128, 128, 255] * (64 * 48)))
                     assert api.ffmpeg_encoder_write_frame(enc, pixels, 64 * 4, 1_000_000_000) == 0

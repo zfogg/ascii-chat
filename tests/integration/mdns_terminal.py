@@ -134,9 +134,10 @@ def main():
             assert "r: refresh" not in text
             assert "ascii-chat | LAN servers" not in text
             current = int(re.search(r"> \[(\d+)\]", text).group(1))
+            term.pump(.2)
             term.write("j")
             expected = 2 if current == 1 else 1
-            term.expect(lambda text: f"> [{expected}]" in text, "j did not move selection")
+            term.expect(lambda text: f"> [{expected}]" in text, "j did not move selection", timeout=5)
             if expected == 1:
                 term.write("k")
                 term.expect(lambda text: "> [2]" in text, "k did not wrap selection")
@@ -151,6 +152,7 @@ def main():
             selected_row = next(row for row, line in enumerate(term.screen.display) if "> [2]" in line)
             selected_col = term.screen.display[selected_row].index(">")
             assert term.screen.buffer[selected_row][selected_col].fg == blue
+            term.expect(lambda text: "Auto-refresh" in text, "LAN picker footer missing")
             footer_row = next(row for row, line in enumerate(term.screen.display) if "Auto-refresh" in line)
             footer = term.screen.display[footer_row]
             slash = footer.index("/")
