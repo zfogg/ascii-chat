@@ -47,6 +47,17 @@ def signal_records(requests, signal):
                 output.extend(protobuf(record) for record in protobuf(scope).get(2, []))
     return output
 
+def service_names(requests):
+    names = set()
+    for _, payload in requests:
+        for resource in protobuf(payload).get(1, []):
+            attributes = protobuf(protobuf(resource)[1][0]).get(1, [])
+            for attribute in attributes:
+                entry = protobuf(attribute)
+                if entry[1] == [b'service.name']:
+                    names.add(protobuf(entry[2][0])[1][0].decode())
+    return names
+
 class Receiver(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         body = self.rfile.read(int(self.headers['Content-Length']))
@@ -91,6 +102,7 @@ def network_smoke(binary, receiver, env):
         traces = b''.join(body for path, body in receiver.records if path == '/v1/traces')
         assert b'crypto_handshake_client_key_exchange' in traces
         assert b'ascii-chat.server.video.render' in traces
+        assert service_names(receiver.records) == {'ascii-chat-client', 'ascii-chat-server'}
     finally:
         server.terminate()
         server.wait(timeout=5)
@@ -114,6 +126,7 @@ def database_smoke(binary, receiver, env):
                 time.sleep(.05)
             metrics = b''.join(body for path, body in receiver.records if path == '/v1/metrics')
             assert b'db.client.operation.duration' in metrics
+            assert service_names(receiver.records) == {'ascii-chat-discovery-service'}
         finally:
             process.terminate()
             process.wait(timeout=5)
@@ -137,6 +150,7 @@ def main():
                  env=env, capture_output=True, timeout=20)
             assert result.returncode == 0, result.stderr.decode(errors='replace')[-6000:]
             assert {path.rsplit('/', 1)[-1] for path, _ in server.records} == paths
+            assert service_names(server.records) == ({'ascii-chat-mirror'} if paths else set())
             traces = b''.join(b for p, b in server.records if p == '/v1/traces')
             metrics = b''.join(b for p, b in server.records if p == '/v1/metrics')
             if 'traces' in paths:

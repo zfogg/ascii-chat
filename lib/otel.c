@@ -156,7 +156,11 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   if (otlp_exporter_opts_apply_env(&config.exporter, &env) != OTLP_OK)
     return SET_ERRNO(ERROR_CONFIG, "Invalid OTEL exporter environment");
   config.exporter.endpoint = traces;
-  config.exporter.service_name = "ascii-chat";
+  char service_name[OPTIONS_BUFF_SIZE];
+  n = safe_snprintf(service_name, sizeof(service_name), "ascii-chat-%s", mode);
+  if (n < 0 || (size_t)n >= sizeof(service_name))
+    return SET_ERRNO(ERROR_CONFIG, "Telemetry service name too long");
+  config.exporter.service_name = service_name;
   config.exporter.batch_ms = 250;
   config.exporter.queue_capacity = (size_t)o->otel_queue_capacity;
   config.exporter.connect_timeout_ms = (uint32_t)o->otel_timeout;
