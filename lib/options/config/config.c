@@ -235,12 +235,12 @@ static void extract_string(toml_datum_t datum, char *value_str, int *int_val, bo
  */
 static void extract_int(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
                         bool *has_value) {
+  (void)int_val;
   (void)bool_val;
   (void)double_val;
 
   if (datum.type == TOML_INT64) {
-    *int_val = (int)datum.u.int64;
-    SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%d", *int_val);
+    SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%lld", (long long)datum.u.int64);
     *has_value = true;
   } else if (datum.type == TOML_STRING) {
     const char *str = get_toml_string_validated(datum);
