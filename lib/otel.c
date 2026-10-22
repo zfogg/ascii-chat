@@ -33,6 +33,7 @@ static atomic_uint readers;
 static atomic_bool stopping;
 static asciichat_thread_t worker;
 static bool worker_started;
+static otlp_status_t drain_result;
 static _Thread_local bool in_log;
 static int minimum_log_level;
 static gotel_scope_t command_scope;
@@ -88,6 +89,8 @@ static void exporter_diagnostic(void *context, otlp_log_level_t level, const cha
 static void *export_worker(void *arg) {
   gotel_host_t *h = arg;
   uint64_t last_health = 0;
+  uint64_t last_failure_warning = 0, observed_failures = 0, observed_sent = 0;
+  bool collector_failed = false;
   while (!atomic_load_explicit(&stopping, memory_order_acquire)) {
     uint64_t start = time_get_ns();
     (void)gotel_tick(h);
@@ -104,6 +107,25 @@ static void *export_worker(void *arg) {
       (void)gotel_stats(h, &stats);
       uint64_t accepted = stats.emitted + stats.emitted_logs + stats.emitted_metrics;
       uint64_t sent = stats.sent + stats.sent_logs + stats.sent_metrics;
+      uint64_t failures = stats.network_err + stats.http_4xx + stats.http_5xx;
+      // Exporter health logs stay local to avoid feeding failures back into its queue.
+      bool previous = in_log;
+      in_log = true;
+      if (failures > observed_failures) {
+        collector_failed = true;
+        if (!last_failure_warning || start - last_failure_warning >= 30 * NS_PER_SEC_INT) {
+          log_warn("Telemetry collector export failed (%llu failures); export continues in background",
+                   (unsigned long long)failures);
+          last_failure_warning = start;
+        }
+      } else if (collector_failed && sent > observed_sent) {
+        log_info("Telemetry collector export recovered");
+        collector_failed = false;
+        last_failure_warning = 0;
+      }
+      in_log = previous;
+      observed_failures = failures;
+      observed_sent = sent;
       uint64_t failed = stats.dropped_err + stats.dropped_logs_err + stats.dropped_metrics_err;
       uint64_t pending = accepted > sent + failed ? accepted - sent - failed : 0;
       (void)gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_QUEUE,
@@ -119,6 +141,8 @@ static void *export_worker(void *arg) {
     }
     platform_sleep_ms(10);
   }
+  // Keep final connection setup (including synchronous DNS) off the exit thread.
+  drain_result = gotel_drain(h);
   return NULL;
 }
 void ascii_otel_scope_begin(ascii_otel_scope_t *s, ascii_otel_operation_t op) {
@@ -154,7 +178,7 @@ void ascii_otel_shutdown(void) {
     }
     worker_started = false;
   }
-  otlp_status_t result = gotel_drain(h);
+  otlp_status_t result = drain_result;
   otlp_exporter_stats_t stats = {0};
   (void)gotel_stats(h, &stats);
   // exit() can bypass scope cleanup in a producer. Do not free its host while

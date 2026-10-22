@@ -8,6 +8,8 @@ import tempfile
 import json
 import socket
 import struct
+import socketserver
+import threading
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] /
     'deps/ascii-chat-deps/gotel/c-gotel/testing/python'))
@@ -16,6 +18,65 @@ from gotel_testing import Collector, protobuf, records, service_names
 
 def signal_records(requests, signal):
     return records(requests, '/v1/' + signal)
+
+
+def interrupted_collector_smoke(binary, env):
+    """Exercise real sockets that crash or stall after consuming an HTTP request."""
+    class Handler(socketserver.StreamRequestHandler):
+        def handle(self):
+            self.connection.settimeout(2)
+            try:
+                length = 0
+                while line := self.rfile.readline():
+                    if line == b'\r\n':
+                        break
+                    if line.lower().startswith(b'content-length:'):
+                        length = int(line.split(b':', 1)[1])
+                self.rfile.read(length)
+                self.server.received.set()
+                if self.server.mode == 'close':
+                    return
+                partial = (b'HTTP/1.1 200 OK\r\nContent-Length: ' if self.server.mode == 'headers'
+                           else b'HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nx')
+                self.wfile.write(partial)
+                self.wfile.flush()
+                self.server.stop.wait(12)
+            except (OSError, ValueError):
+                pass
+
+    class Server(socketserver.ThreadingTCPServer):
+        daemon_threads = True
+        block_on_close = False
+
+    for mode in ('close', 'headers', 'body'):
+        with Server(('127.0.0.1', 0), Handler) as receiver, tempfile.TemporaryDirectory() as temp:
+            receiver.mode = mode
+            receiver.stop = threading.Event()
+            receiver.received = threading.Event()
+            thread = threading.Thread(target=receiver.serve_forever, kwargs={'poll_interval': .01}, daemon=True)
+            thread.start()
+            started = time.monotonic()
+            try:
+                log = Path(temp) / 'collector.log'
+                # The stalled body also exercises the production timeout default.
+                timeout_flags = [] if mode == 'body' else ['--otel-timeout', '100']
+                duration = '6' if mode == 'body' else '3'
+                result = subprocess.run([binary, '--no-check-update', '--log-file', str(log), '--otel-endpoint',
+                    f'http://127.0.0.1:{receiver.server_address[1]}'] + timeout_flags + [
+                    'mirror', '--test-pattern', '--audio=false', '--snapshot', '--snapshot-delay', duration,
+                    '--width', '40', '--height', '12', '--splash-screen=false'],
+                    env=env, capture_output=True, timeout=24)
+                assert receiver.received.is_set(), (mode, 'no HTTP request reached fault fixture')
+                assert result.returncode == 0, (mode, result.stderr[-2000:])
+                assert len(result.stdout) > 40, (mode, 'rendering stopped during collector failure')
+                assert time.monotonic() - started < (22 if mode == 'body' else 10), (mode, 'shutdown deadline exceeded')
+                messages = log.read_bytes()
+                assert b'Telemetry collector export failed' in messages, (mode, messages[-2000:])
+                assert messages.count(b'Telemetry collector export failed') <= 1, 'failure log spam'
+            finally:
+                receiver.stop.set()
+                receiver.shutdown()
+                thread.join(timeout=3)
 
 
 def free_port():
@@ -207,6 +268,7 @@ def main():
                     assert struct.unpack('<d', point[4][0])[0] >= 1
         network_smoke(binary, server, env)
         database_smoke(binary, server, env)
+        interrupted_collector_smoke(binary, env)
         print('ascii-chat OTLP integration: signals, media, sampling, offline collector, config precedence, encrypted networking and SQLite passed')
     finally:
         server.close()

@@ -11,6 +11,7 @@ import struct
 import subprocess
 import sys
 import time
+import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'deps/ascii-chat-deps/gotel/c-gotel/testing/python'))
 from gotel_testing import Collector, protobuf, records
 
@@ -48,7 +49,10 @@ def main():
     def execute(name, flags, callback=None):
         cpu_start = 0 if os.name == 'nt' else child_cpu()
         start = time.monotonic()
-        process = subprocess.Popen(base + flags + media, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        log_dir = tempfile.TemporaryDirectory()
+        log = Path(log_dir.name) / 'collector.log'
+        process = subprocess.Popen(base + ['--log-file', str(log)] + flags + media, env=env,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         try:
             if callback: callback(process)
             _, stderr = process.communicate(timeout=args.seconds + 20)
@@ -56,9 +60,16 @@ def main():
         finally:
             if process.poll() is None: process.kill(); process.wait()
         report[name] = {'wall_seconds': time.monotonic()-start, 'cpu_seconds': child_cpu(process)-cpu_start}
-        return stderr
+        messages = stderr + log.read_bytes()
+        log_dir.cleanup()
+        return messages
     execute('disabled', [])
     with Collector() as collector:
+        execute('defaults', ['--otel-endpoint', collector.url])
+        report['defaults']['spans_received'] = len(records(collector.records, '/v1/traces'))
+        report['defaults']['payload_bytes'] = sum(len(body) for _, body in collector.records)
+        report['defaults']['bytes_per_second'] = report['defaults']['payload_bytes'] / args.seconds
+        collector.clear()
         flags = ['--otel-endpoint', collector.url, '--otel-realtime-sample-rate', '1',
                  '--otel-realtime-max-per-second', '100000', '--otel-metrics-interval', '100', '--otel-timeout', '500']
         execute('enabled', flags)
@@ -79,7 +90,9 @@ def main():
             assert process.poll() is None
             for signal in ['traces', 'logs', 'metrics']: collector.script('/v1/'+signal, [])
         for signal in ['traces', 'logs', 'metrics']: collector.script('/v1/'+signal, [503]*10000)
-        execute('outage_recovery', flags, recover)
+        stderr = execute('outage_recovery', flags, recover)
+        assert b'Telemetry collector export failed' in stderr, stderr[-2000:]
+        assert b'Telemetry collector export recovered' in stderr, stderr[-2000:]
         assert any(status == 503 for _, _, status in collector.attempts)
         assert all(records(collector.records, '/v1/'+signal) for signal in ['traces', 'logs', 'metrics'])
         report['outage_recovery']['attempts'] = len(collector.attempts)

@@ -168,6 +168,15 @@ c-gotel; fake clocks, scripted no-I/O transport and atomic event counts remain
 independent of Criterion. The Python integration test shares c-gotel's loopback
 collector/OTLP decoder and waits for complete asynchronous exports.
 
+Collector failures produce local warnings at most once every 30 seconds while
+unhealthy; successful delivery produces a recovery message. These health messages
+do not enter the export queue. Snapshot/rendering can suppress terminal logs;
+use `--log-file` to retain them. The socket integration checks abrupt disconnects,
+stalled HTTP headers, and stalled response bodies while synthetic frames continue
+rendering, including shutdown with the default five-second exporter timeout.
+The worker also owns the final flush, keeping synchronous DNS resolution off the
+exit thread; the shutdown join deadline retains a stuck exporter until process exit.
+
 For focused Linux testing after configuring the Docker preset:
 
 ```sh
@@ -206,7 +215,7 @@ The sustained-load test is deliberately absent from CTest. Run it explicitly:
 python tests/manual/test_otel_load.py build/bin/ascii-chat --seconds 60
 ```
 
-It compares disabled/enabled elapsed and child CPU time, records exported RSS,
+It measures payload bytes and spans with default sampling, compares disabled/enabled elapsed and child CPU time, records exported RSS,
 compares delivered span counts with a two-entry queue, recovers from HTTP 503 responses, and checks
 bounded shutdown during an outage. Tiny queues can also drop health metrics, so the pressure phase checks collector
 delivery counts rather than assuming the drop gauge survives. It prints JSON
@@ -216,3 +225,14 @@ more useful than wall-clock ratio for overhead comparisons. Use a longer run on
 an otherwise idle machine for meaningful performance conclusions; the short
 8-second development run exercises failure/recovery behavior only. The script
 uses no webcam, microphone, GPU, remote collector, or credentials.
+
+On 2026-10-22, native Windows 15-second synthetic workloads forwarded through a
+counting HTTP relay into Spaniel with only the endpoint configured. Total OTLP
+protobuf payloads, including startup/shutdown, were 38,706 bytes for mirror,
+133,332 bytes for client/server video, and 176,280 bytes for client/server with
+test audio and video. These exclude HTTP headers and are short functional
+measurements, not long-term storage or performance guarantees. Native Spaniel MCP
+queries confirmed 901 mirror captures with six capture spans, 575 server video
+renders with three render spans, and (in the audio/video run) 1,381 client audio
+captures with 14 spans, 955 server audio renders with six spans, and 467 Opus
+decodes with four spans. Metrics continue counting work omitted from traces.
