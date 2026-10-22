@@ -313,6 +313,8 @@ def main():
             }
             startup = terminal("startup-update", update_command, check_updates=True,
                                environment=update_env, rows=40, cols=100)
+            startup.expect(lambda text: "[ ok ]" in text,
+                           "Startup did not render compact initialization logs")
             startup.expect(lambda text: "Update Available" in text,
                            "An older build did not show the startup update prompt")
             startup.write("n")
