@@ -27,7 +27,7 @@
 #include <ascii-chat/media/playlist.h>
 #include <ascii-chat/log/search.h>
 
-#ifndef NDEBUG
+#if defined(ASCIICHAT_DIAGNOSTIC_UI)
 #include <ascii-chat/debug/sync.h>
 #endif
 

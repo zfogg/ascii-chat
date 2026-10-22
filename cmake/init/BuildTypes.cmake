@@ -52,7 +52,7 @@ function(configure_build_type_post_project)
         configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
         configure_debug_build_flags("Debug")
 
-        target_compile_definitions(asciichat-project-options INTERFACE CMAKE_BUILD_TYPE_DEBUG)
+        target_compile_definitions(asciichat-project-options INTERFACE CMAKE_BUILD_TYPE_DEBUG ASCIICHAT_DIAGNOSTIC_UI)
         target_compile_definitions(asciichat-project-options INTERFACE ENABLE_ERRNO_BACKTRACES)
         target_compile_definitions(asciichat-project-options INTERFACE DEBUG_LOCKS)
 
@@ -70,8 +70,8 @@ function(configure_build_type_post_project)
         configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
         configure_debug_build_flags("Dev")
         # No sanitizers in Dev mode
-        target_compile_definitions(asciichat-project-options INTERFACE CMAKE_BUILD_TYPE_DEBUG)
-        target_compile_definitions(asciichat-project-options INTERFACE ENABLE_ERRNO_BACKTRACES)
+        target_compile_definitions(asciichat-project-options INTERFACE CMAKE_BUILD_TYPE_DEBUG ASCIICHAT_DIAGNOSTIC_UI)
+        target_compile_definitions(asciichat-project-options INTERFACE ENABLE_ERRNO_BACKTRACES ASCIICHAT_DIAGNOSTIC_UI)
         target_compile_definitions(asciichat-project-options INTERFACE DEBUG_LOCKS)
         fix_macos_asan_runtime()
 
