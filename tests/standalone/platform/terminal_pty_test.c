@@ -90,10 +90,10 @@ static asciichat_error_t probe(const char *mode) {
     update_banner_wait_for_check();
     REQUIRE(options_set_bool("strip_ansi", true) == ASCIICHAT_OK);
     update_check_result_t result = {.update_available = true,
-                                   .current_version = "v7.1.0",
-                                   .latest_version = "v8.2.0",
-                                   .current_sha = "1234567890abcdef",
-                                   .release_url = "https://example.invalid/releases/v8.2.0"};
+                                    .current_version = "v7.1.0",
+                                    .latest_version = "v8.2.0",
+                                    .current_sha = "1234567890abcdef",
+                                    .release_url = "https://example.invalid/releases/v8.2.0"};
     update_banner_set_result(&result);
     REQUIRE(update_banner_has_update());
     memset(&result, 0, sizeof(result));

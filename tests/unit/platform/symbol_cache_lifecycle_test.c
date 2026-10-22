@@ -42,14 +42,14 @@ static void fallback_setup(void) {
   FILE *file = platform_fopen("addr2line-fixture", script, "w");
   cr_assert_not_null(file);
   const char *program = "#!/bin/sh\n"
-      "for argument do\n"
-      " case \"$argument\" in\n"
-      "  0x1111) printf 'both_known\\n/tmp/project/source.c:42\\n';;\n"
-      "  0x2222) printf 'function_only\\n??:0\\n';;\n"
-      "  0x3333) printf '??\\n/tmp/project/source.c:73\\n';;\n"
-      "  0x4444) printf '??\\n??:?\\n';;\n"
-      " esac\n"
-      "done\n";
+                        "for argument do\n"
+                        " case \"$argument\" in\n"
+                        "  0x1111) printf 'both_known\\n/tmp/project/source.c:42\\n';;\n"
+                        "  0x2222) printf 'function_only\\n??:0\\n';;\n"
+                        "  0x3333) printf '??\\n/tmp/project/source.c:73\\n';;\n"
+                        "  0x4444) printf '??\\n??:?\\n';;\n"
+                        " esac\n"
+                        "done\n";
   cr_assert_eq(fwrite(program, 1, strlen(program), file), strlen(program));
   cr_assert_eq(fclose(file), 0);
   cr_assert_eq(platform_chmod(script, 0700), 0);
@@ -57,8 +57,8 @@ static void fallback_setup(void) {
   cr_assert_eq(platform_setenv("LLVM_SYMBOLIZER_PATH", "/missing/llvm-symbolizer"), 0);
   cr_assert_eq(platform_setenv("ADDR2LINE_PATH", script), 0);
 }
-Test(symbol_cache_fallback, addr2line_handles_mixed_resolution_and_caches_owned_results,
-     .init = fallback_setup, .fini = fallback_cleanup) {
+Test(symbol_cache_fallback, addr2line_handles_mixed_resolution_and_caches_owned_results, .init = fallback_setup,
+     .fini = fallback_cleanup) {
   cr_assert_eq(symbol_cache_init(), ASCIICHAT_OK);
   void *addresses[] = {(void *)0x1111, (void *)0x2222, (void *)0x3333, (void *)0x4444};
   char **symbols = symbol_cache_resolve_batch(addresses, 4);

@@ -36,7 +36,10 @@ Test(debug_mutex, formatted_mutex_state_tracks_acquisition_and_release) {
   cr_assert_not_null(strstr(text, "unlock="));
   cr_assert_not_null(strstr(text, "trylock=1/1"));
   cr_assert_null(strstr(text, "LOCKED_BY"));
-  struct { char text[2]; char guard; } short_output = {.guard = 'G'};
+  struct {
+    char text[2];
+    char guard;
+  } short_output = {.guard = 'G'};
   cr_assert_gt(mutex_format_state(&mutex, short_output.text, sizeof(short_output.text)), 1);
   cr_assert_eq(short_output.text[1], '\0');
   cr_assert_eq(short_output.guard, 'G');

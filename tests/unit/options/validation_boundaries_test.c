@@ -11,13 +11,13 @@ TestSuite(option_validation_boundaries);
 Test(option_validation_boundaries, finite_float_and_volume_inputs) {
   char error[256];
   float (*validators[])(const char *, char *, size_t) = {validate_opt_float_non_negative, validate_opt_volume};
-  const char *invalid[] = {NULL, "", "garbage", "0.5junk", "-0.01", "nan", "NAN", "nan(payload)",
-                           "inf", "-inf", "Infinity", "1e1000"};
+  const char *invalid[] = {NULL,           "",    "garbage", "0.5junk",  "-0.01", "nan", "NAN",
+                           "nan(payload)", "inf", "-inf",    "Infinity", "1e1000"};
   for (size_t v = 0; v < sizeof(validators) / sizeof(*validators); ++v) {
     for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
       error[0] = '\0';
-      cr_assert_eq(validators[v](invalid[i], error, sizeof(error)), -1.0f,
-                   "validator %zu accepted %s", v, invalid[i] ? invalid[i] : "NULL");
+      cr_assert_eq(validators[v](invalid[i], error, sizeof(error)), -1.0f, "validator %zu accepted %s", v,
+                   invalid[i] ? invalid[i] : "NULL");
       cr_assert_neq(error[0], '\0');
       cr_assert_eq(validators[v](invalid[i], NULL, 0), -1.0f);
     }
@@ -32,10 +32,10 @@ Test(option_validation_boundaries, finite_float_and_volume_inputs) {
 }
 
 Test(option_validation_boundaries, address_literals_and_local_hostname) {
-  const char *inputs[] = {"127.0.0.1", "0.0.0.0", "192.0.2.123", "::1", "[::1]", "2001:db8::1",
-                          "[2001:db8::1]", "localhost"};
-  const char *expected[] = {"127.0.0.1", "0.0.0.0", "192.0.2.123", "::1", "::1", "2001:db8::1",
-                            "2001:db8::1", "127.0.0.1"};
+  const char *inputs[] = {"127.0.0.1", "0.0.0.0",     "192.0.2.123",   "::1",
+                          "[::1]",     "2001:db8::1", "[2001:db8::1]", "localhost"};
+  const char *expected[] = {"127.0.0.1", "0.0.0.0",     "192.0.2.123", "::1",
+                            "::1",       "2001:db8::1", "2001:db8::1", "127.0.0.1"};
   char parsed[256], error[256];
   for (size_t i = 0; i < sizeof(inputs) / sizeof(*inputs); ++i)
     for (int client = 0; client <= 1; ++client) {

@@ -36,8 +36,8 @@ Test(invitation_contract, hosting_joining_and_pending_have_distinct_instructions
 Test(invitation_contract, short_and_narrow_terminals_preserve_session_within_bounds) {
   frame_buffer_t *buffer = frame_buffer_create(0, 0);
   cr_assert_not_null(buffer);
-  const terminal_size_t sizes[] = {{.cols = 80, .rows = 2}, {.cols = 20, .rows = 10},
-                                  {.cols = 2, .rows = 2}, {.cols = 52, .rows = 6}};
+  const terminal_size_t sizes[] = {
+      {.cols = 80, .rows = 2}, {.cols = 20, .rows = 10}, {.cols = 2, .rows = 2}, {.cols = 52, .rows = 6}};
   for (size_t i = 0; i < sizeof(sizes) / sizeof(*sizes); ++i) {
     frame_buffer_reset(buffer);
     invitation_render(buffer, sizes[i], "blue-tiger", false, 0, false);

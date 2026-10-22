@@ -9,16 +9,32 @@ import os
 from pathlib import Path
 import re
 import shutil
+import socket
 import sys
 import tempfile
 import time
 
 try:
-    from terminal_ui import Terminal, free_port
+    from terminal_ui import Terminal
 except ImportError as error:
     print(f"SKIP: terminal prerequisites unavailable: {error}")
     raise SystemExit(77)
 from server_lifecycle import Service
+
+
+def service_port_pairs(count):
+    """Reserve distinct TCP and WebSocket candidates for the whole server matrix."""
+    reservations = []
+    try:
+        for _ in range(count * 2):
+            reservation = socket.socket()
+            reservations.append(reservation)
+            reservation.bind(("127.0.0.1", 0))
+        ports = [reservation.getsockname()[1] for reservation in reservations]
+        return list(zip(ports[::2], ports[1::2]))
+    finally:
+        for reservation in reservations:
+            reservation.close()
 
 
 def capture(term, directory, name):
@@ -68,12 +84,13 @@ def main():
         os.environ.update(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root),
                           XDG_CONFIG_HOME=str(root), TERM="xterm-256color",
                           ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
-        ports = [free_port() for _ in range(14)]
+        port_pairs = service_port_pairs(14)
+        ports = [pair[0] for pair in port_pairs]
         services, terminals = [], []
 
         def server(index, name):
             service = Service(binary, root, name, "server", ["0.0.0.0", "--port", str(ports[index]),
-                "--websocket-port", str(free_port()), "--status-screen=false"])
+                "--websocket-port", str(port_pairs[index][1]), "--status-screen=false"])
             services.append(service)
             service.wait_for("Server accepting connections")
             service.wait_for("mDNS: Server advertised")
