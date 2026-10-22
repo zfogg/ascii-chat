@@ -43,12 +43,12 @@ typedef struct {
  * @brief Installation method for suggesting upgrade command
  */
 typedef enum {
-  INSTALL_METHOD_HOMEBREW, ///< Installed via Homebrew
-  INSTALL_METHOD_SCOOP,    ///< Installed via Scoop
-  INSTALL_METHOD_ARCH_AUR, ///< Installed via Arch AUR (paru/yay)
+  INSTALL_METHOD_HOMEBREW,  ///< Installed via Homebrew
+  INSTALL_METHOD_SCOOP,     ///< Installed via Scoop
+  INSTALL_METHOD_ARCH_AUR,  ///< Installed via Arch AUR (paru/yay)
   INSTALL_METHOD_INSTALLER, ///< Installed by ascii-chat.com installer
-  INSTALL_METHOD_GITHUB,   ///< Manual install from GitHub releases
-  INSTALL_METHOD_UNKNOWN,  ///< Unknown installation method
+  INSTALL_METHOD_GITHUB,    ///< Manual install from GitHub releases
+  INSTALL_METHOD_UNKNOWN,   ///< Unknown installation method
 } install_method_t;
 
 /**

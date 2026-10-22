@@ -153,11 +153,15 @@ class Terminal:
 
     def close(self):
         if os.name == "nt" and self.process.isalive():
-            subprocess.run(["taskkill", "/PID", str(self.process.pid), "/T", "/F"],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                subprocess.run(["taskkill", "/PID", str(self.process.pid), "/T", "/F"],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               timeout=5, check=False)
+            except subprocess.TimeoutExpired:
+                pass
         if os.name != "nt":
             self.process.terminate(force=True)
-        self.reader.join(timeout=2)
+        self.reader.join(timeout=.2 if os.name == "nt" else 2)
 
 
 def free_port():
