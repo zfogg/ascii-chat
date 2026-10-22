@@ -29,7 +29,7 @@ Test(tcp_transport, send_failure_preserves_nested_system_context) {
   cr_assert_str_eq(wrapper.context_message, "TCP packet transmission failed");
   cr_assert_str_eq(wrapper.function, "tcp_sendv");
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-  size_t count = errno_snapshot(scope.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+  size_t count = errno_snapshot(scope.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH).copied;
   bool found_send_cause = false;
   for (size_t i = 0; i < count && i < ASCIICHAT_ERRNO_MAX_DEPTH; ++i) {
     if (frames[i].error_id == wrapper.cause_id) {

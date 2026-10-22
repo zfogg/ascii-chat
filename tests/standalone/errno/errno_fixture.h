@@ -202,7 +202,7 @@ static inline void selectable_errno_contract(void) {
 
   CHECK(errno_clear_if_current(middle.thread_id, middle.generation, middle.error_id));
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-  CHECK(errno_snapshot(root.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH) == 2);
+  CHECK(errno_snapshot(root.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH).total == 2);
   CHECK(frames[0].code == ERROR_MEDIA_OPEN);
   CHECK(frames[1].error_id == root.error_id);
   CHECK(!errno_clear_if_current(root.thread_id, root.generation + 1, root.error_id));
@@ -263,10 +263,12 @@ static inline void capacity_contract(void) {
     SET_ERRNO(ERROR_NETWORK, "attempt %d", i);
   uint64_t tid = thread_current_id();
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-  CHECK(errno_snapshot(tid, frames, ASCIICHAT_ERRNO_MAX_DEPTH) == ASCIICHAT_ERRNO_MAX_DEPTH);
+  CHECK(errno_snapshot(tid, frames, ASCIICHAT_ERRNO_MAX_DEPTH).total == ASCIICHAT_ERRNO_MAX_DEPTH);
   CHECK(frames[ASCIICHAT_ERRNO_MAX_DEPTH - 1].error_id == root.error_id);
   CHECK(strcmp(frames[0].context_message, "attempt 255") == 0);
-  CHECK(errno_snapshot(tid, frames, 1) == ASCIICHAT_ERRNO_MAX_DEPTH);
+  asciichat_errno_snapshot_t truncated = errno_snapshot(tid, frames, 1);
+  CHECK(truncated.total == ASCIICHAT_ERRNO_MAX_DEPTH);
+  CHECK(truncated.copied == 1);
   CHECK(asciichat_error_stats_get().dropped_errors > 0);
   CLEAR_ERRNO_ALL();
   CHECK(asciichat_error_stats_get().pending_errors == 0);
@@ -405,10 +407,11 @@ static inline void concurrency_contract(void) {
   CHECK(asciichat_error_stats_get().pending_errors <= ASCIICHAT_ERRNO_MAX_FRAMES);
   for (size_t i = 0; i < 20; ++i) {
     asciichat_error_context_t contexts[ASCIICHAT_ERRNO_MAX_DEPTH];
-    size_t depth = errno_snapshot(data[i].tid, contexts, ASCIICHAT_ERRNO_MAX_DEPTH);
-    CHECK(depth >= 2);
+    asciichat_errno_snapshot_t snapshot = errno_snapshot(data[i].tid, contexts, ASCIICHAT_ERRNO_MAX_DEPTH);
+    CHECK(snapshot.total >= 2);
+    CHECK(snapshot.copied == ASCIICHAT_ERRNO_MAX_DEPTH);
     CHECK(strcmp(contexts[0].context_message, "worker 63") == 0);
-    CHECK(strcmp(contexts[depth - 1].context_message, "worker 0") == 0);
+    CHECK(strcmp(contexts[snapshot.copied - 1].context_message, "worker 0") == 0);
   }
   CHECK(asciichat_error_stats_get().dropped_errors > 0);
   for (size_t i = 0; i < 20; ++i) {

@@ -81,6 +81,11 @@ typedef struct {
 } asciichat_errno_scope_t;
 
 typedef struct {
+  size_t total;
+  size_t copied;
+} asciichat_errno_snapshot_t;
+
+typedef struct {
   uint64_t error_counts[256];
   uint64_t total_errors;
   uint64_t last_error_time;
@@ -142,8 +147,8 @@ asciichat_errno_scope_t errno_checkpoint(void);
 asciichat_errno_scope_t errno_scope_begin(void);
 void errno_scope_end(asciichat_errno_scope_t scope, asciichat_errno_outcome_t outcome);
 
-/** Copy newest-first up to capacity; return total depth so truncation is visible. */
-size_t errno_snapshot(uint64_t thread_id, asciichat_error_context_t *out, size_t capacity);
+/** Copy newest-first up to capacity. The result distinguishes total depth from copied frames. */
+asciichat_errno_snapshot_t errno_snapshot(uint64_t thread_id, asciichat_error_context_t *out, size_t capacity);
 /** Copy registered thread IDs. Returns the total count so truncation is visible. */
 size_t errno_threads_snapshot(uint64_t *out, size_t capacity);
 size_t errno_history_snapshot(asciichat_errno_history_t *out, size_t capacity);

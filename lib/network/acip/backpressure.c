@@ -127,9 +127,7 @@ static void expire_video(acip_outbound_t *out, uint64_t now) {
 static asciichat_error_context_t backend_failure_detail(asciichat_errno_scope_t scope,
                                                         const asciichat_error_context_t *cause) {
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-  size_t count = errno_snapshot(scope.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH);
-  if (count > ASCIICHAT_ERRNO_MAX_DEPTH)
-    count = ASCIICHAT_ERRNO_MAX_DEPTH;
+  size_t count = errno_snapshot(scope.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH).copied;
   asciichat_error_context_t detail = {0};
   uint64_t next = cause->cause_id;
   for (size_t i = 0; i < count && next; ++i) {

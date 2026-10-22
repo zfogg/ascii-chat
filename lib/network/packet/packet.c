@@ -907,9 +907,7 @@ size_t packet_format_error_stack(char *buffer, size_t size) {
     return 0;
   buffer[0] = '\0';
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-  size_t frame_count = errno_snapshot(thread_current_id(), frames, ASCIICHAT_ERRNO_MAX_DEPTH);
-  if (frame_count > ASCIICHAT_ERRNO_MAX_DEPTH)
-    frame_count = ASCIICHAT_ERRNO_MAX_DEPTH;
+  size_t frame_count = errno_snapshot(thread_current_id(), frames, ASCIICHAT_ERRNO_MAX_DEPTH).copied;
   size_t offset = 0;
   for (size_t i = 0; i < frame_count && offset < size - 1; ++i) {
     const asciichat_error_context_t *frame = &frames[i];
