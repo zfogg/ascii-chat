@@ -22,6 +22,12 @@ def main():
         parser.error("a Python test command is required")
 
     environment = dict(os.environ)
+    # The test process loads the sanitizer-instrumented native shared library.
+    # Python's interpreter-owned allocations survive interpreter teardown and
+    # are outside the native test's leak contract.
+    asan_options = environment.get("ASAN_OPTIONS", "")
+    if "detect_leaks=" not in asan_options:
+        environment["ASAN_OPTIONS"] = ":".join(filter(None, (asan_options, "detect_leaks=0")))
     before = {}
     if args.coverage_build:
         if args.coverage_root is None:

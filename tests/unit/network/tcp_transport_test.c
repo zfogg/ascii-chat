@@ -258,7 +258,8 @@ Test(tcp_transport, acip_error_response_hides_errno_stack_locations) {
   cr_assert_null(strstr(message, "ACIP message rejected"));
   cr_assert_null(strstr(message, "packet validation failed"));
   cr_assert_null(strstr(message, "socket read failed"));
-  cr_assert_null(strstr(message, ASCIICHAT_SOURCE_ROOT));
+  if (ASCIICHAT_SOURCE_ROOT[0])
+    cr_assert_null(strstr(message, ASCIICHAT_SOURCE_ROOT));
 
   buffer_release(envelope.allocated_buffer);
   acip_transport_destroy(transport);

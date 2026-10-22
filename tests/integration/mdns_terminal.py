@@ -145,6 +145,7 @@ def main():
             selected_row = next(row for row, line in enumerate(term.screen.display) if "> [2]" in line)
             selected_col = term.screen.display[selected_row].index(">")
             assert term.screen.buffer[selected_row][selected_col].fg == blue
+            term.expect(lambda text: "Auto-refresh" in text, "LAN picker footer missing")
             footer_row = next(row for row, line in enumerate(term.screen.display) if "Auto-refresh" in line)
             footer = term.screen.display[footer_row]
             slash = footer.index("/")
