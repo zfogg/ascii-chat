@@ -276,7 +276,7 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
     if (history[i].resolved_ns > latest)
       latest = history[i].resolved_ns;
   char header[768];
-  const char *blue = log_level_color_for_output(LOG_COLOR_DEBUG, colors);
+  const char *blue = log_level_color_for_output(LOG_COLOR_DEV, colors);
   const char *purple = log_level_color_for_output(LOG_COLOR_FATAL, colors);
   const char *reset = log_level_color_for_output(LOG_COLOR_RESET, colors);
   int header_length =
