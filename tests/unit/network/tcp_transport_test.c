@@ -7,6 +7,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/acip/acds_server.h>
+#include <ascii-chat/source_root.h>
 #include <ascii-chat/buffer.h>
 #include <sodium.h>
 
@@ -235,8 +236,11 @@ Test(tcp_transport, acip_error_response_includes_errno_stack_locations) {
   acip_transport_t *transport = acip_tcp_transport_create("acip-error-stack", sockets[0], NULL);
   cr_assert_not_null(transport);
   CLEAR_ERRNO_ALL();
-  (void)SET_ERRNO(ERROR_NETWORK_PROTOCOL, "inner ACIP failure");
-  (void)SET_ERRNO(ERROR_NETWORK_PROTOCOL, "outer server failure");
+  (void)SET_ERRNO(ERROR_NETWORK_PROTOCOL, "socket read failed");
+  (void)SET_ERRNO(ERROR_NETWORK_PROTOCOL, "packet validation failed");
+  (void)SET_ERRNO(ERROR_NETWORK_PROTOCOL, "ACIP message rejected");
+  (void)SET_ERRNO(ERROR_NETWORK_PROTOCOL, "session negotiation failed");
+  (void)SET_ERRNO(ERROR_NETWORK_PROTOCOL, "client connection failed");
   cr_assert_eq(acip_send_error(transport, ERROR_NETWORK_PROTOCOL, NULL), ASCIICHAT_OK);
 
   packet_envelope_t envelope = {0};
@@ -249,9 +253,13 @@ Test(tcp_transport, acip_error_response_includes_errno_stack_locations) {
                                           NULL),
                ASCIICHAT_OK);
   cr_assert_eq(code, ERROR_NETWORK_PROTOCOL);
-  cr_assert_not_null(strstr(message, "outer server failure"));
-  cr_assert_not_null(strstr(message, "inner ACIP failure"));
+  cr_assert_not_null(strstr(message, "client connection failed"));
+  cr_assert_not_null(strstr(message, "session negotiation failed"));
+  cr_assert_not_null(strstr(message, "ACIP message rejected"));
+  cr_assert_not_null(strstr(message, "packet validation failed"));
+  cr_assert_not_null(strstr(message, "socket read failed"));
   cr_assert_not_null(strstr(message, "tests/unit/network/tcp_transport_test.c:"));
+  cr_assert_null(strstr(message, ASCIICHAT_SOURCE_ROOT));
   cr_assert_not_null(strstr(message, " in "));
   cr_assert_not_null(strchr(message, '\n'));
 

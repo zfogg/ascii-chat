@@ -40,9 +40,28 @@ describe("browser error overlay", () => {
     });
 
     expect(screen.getByText("outer failure")).toBeTruthy();
+    expect(screen.getByText("Stack order: 0 is newest")).toBeTruthy();
+    expect(screen.getByTitle("Newest error").textContent).toBe("0");
+    expect(screen.getByTitle("Stack frame 1").textContent).toBe("1");
     expect(screen.getByText("checksum mismatch")).toBeTruthy();
-    expect(screen.getByText(/src\/web\/client.c:1196/)).toBeTruthy();
-    expect(screen.getByText(/packet.c:481/)).toBeTruthy();
+    const outerPath = screen.getByText("src/web/client.c");
+    const outerMetadata = outerPath.parentElement!;
+    const outerMessage = screen.getByText("outer failure");
+    expect(
+      outerMetadata.compareDocumentPosition(outerMessage) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(outerMetadata.closest("li")?.className).toContain("border");
+    expect(outerPath.className).toContain("text-blue-400");
+    expect(screen.getByText("1196").className).toContain("text-purple-400");
+    expect(screen.getByText("client_validate_frame()").className).toContain(
+      "text-orange-400",
+    );
+    expect(screen.getAllByText("in")[0]?.className).toContain(
+      "text-terminal-fg",
+    );
+    expect(screen.getByText("lib/network/packet/packet.c")).toBeTruthy();
+    expect(screen.getByText("481")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(dismiss).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alertdialog")).toBeNull();
@@ -56,8 +75,14 @@ describe("browser error overlay", () => {
         "server wrapper (src/server/client.c:144 in run())\nsocket cause (lib/network/tcp.c:91 in receive())",
       );
     });
-    expect(screen.getByText(/server wrapper/)).toBeTruthy();
-    expect(screen.getByText(/socket cause/)).toBeTruthy();
+    expect(screen.getByText("server wrapper")).toBeTruthy();
+    expect(screen.getByText("src/server/client.c")).toBeTruthy();
+    expect(screen.getByText("144")).toBeTruthy();
+    expect(screen.getByText("run()")).toBeTruthy();
+    expect(screen.getByText("socket cause")).toBeTruthy();
+    expect(screen.getByText("lib/network/tcp.c")).toBeTruthy();
+    expect(screen.getByText("91")).toBeTruthy();
+    expect(screen.getByText("receive()")).toBeTruthy();
   });
 
   it("forwards JavaScript errors through the active network reporter", () => {
