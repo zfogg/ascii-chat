@@ -409,14 +409,6 @@ _find_llvm_tool(ASCIICHAT_LLVM_READOBJ_EXECUTABLE llvm-readobj)
 _find_llvm_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE llvm-objdump)
 _find_llvm_tool(ASCIICHAT_LLVM_STRINGS_EXECUTABLE llvm-strings)
 
-# CMake does not always initialize CMAKE_NM for the Windows Clang toolchain.
-# The generated DLL export definition needs nm, so use the centrally discovered
-# LLVM tool when the caller did not select one explicitly.
-if(WIN32 AND (NOT CMAKE_NM OR CMAKE_NM MATCHES "-NOTFOUND$") AND ASCIICHAT_LLVM_NM_EXECUTABLE)
-    set(CMAKE_NM "${ASCIICHAT_LLVM_NM_EXECUTABLE}" CACHE FILEPATH "Program used to inspect symbols" FORCE)
-    message(STATUS "FindPrograms: using LLVM nm for CMAKE_NM: ${CMAKE_NM}")
-endif()
-
 # =============================================================================
 # Windows-specific LLVM tools - clang-cl, llvm-lib
 # =============================================================================

@@ -5,6 +5,7 @@
 #include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common/error_codes.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -15,7 +16,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define ERRNO_TUI_MIN_COLS 72
+#define ERRNO_TUI_MIN_COLS 88
 #define ERRNO_TUI_MIN_ROWS 10
 #define ERRNO_TUI_MAX_ROWS (ASCIICHAT_ERRNO_MAX_FRAMES + ASCIICHAT_ERRNO_HISTORY_SIZE)
 
@@ -34,6 +35,7 @@ typedef struct {
   errno_tui_tab_t tab;
   ui_selectable_list_t list;
   int rows;
+  int count;
   int output_fd;
   asciichat_error_context_t selected_context;
   bool selected_current;
@@ -162,6 +164,16 @@ static void outcome_counts(const asciichat_errno_history_t *history, size_t coun
   }
 }
 
+/** Copy the registered thread label without retaining registry-owned memory. */
+static void format_thread_name(uint64_t thread_id, char *output, size_t output_size) {
+  named_metadata_t metadata = {0};
+  if (named_metadata_copy((uintptr_t)thread_id, &metadata) && metadata.name[0]) {
+    safe_snprintf(output, output_size, "%s", metadata.name);
+    return;
+  }
+  safe_snprintf(output, output_size, "0x%llx", (unsigned long long)thread_id);
+}
+
 static void put_color(frame_buffer_t *buffer, log_color_t color, bool enabled) {
   frame_buffer_printf(buffer, "%s", log_level_color_for_output(color, enabled));
 }
@@ -187,11 +199,12 @@ static void render_footer(frame_buffer_t *buffer, int width, bool colors) {
 }
 
 static void render_table_line(frame_buffer_t *buffer, const char *line, int width) {
-  int table_width = width > 104 ? 100 : width - 4;
+  int table_width = width > 118 ? 114 : width - 4;
   int left_padding = (width - table_width) / 2;
   frame_buffer_printf(buffer, "%*s%s\n", left_padding, "", line);
 }
 
+/** Render the active errno view from fresh current and historical snapshots. */
 static void render_errno_stacks(terminal_size_t size, const void *unused) {
   (void)unused;
   errno_tui_state_t state;
@@ -237,6 +250,7 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
     list_rows = 1;
   if (state_lock()) {
     g_state.rows = list_rows;
+    g_state.count = (int)count;
     ui_selectable_list_keep_visible(&g_state.list, (int)count, list_rows);
     g_state.selected_current =
         state.tab == ERRNO_TUI_CURRENT && g_state.list.selected >= 0 && g_state.list.selected < (int)count;
@@ -279,10 +293,10 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
   safe_snprintf(tabs, sizeof(tabs), "Current | Past %s sort", state.stack_sort ? "stack" : "recent");
   frame_buffer_render_centered(buffer, tabs, width);
   char columns[256];
-  safe_snprintf(columns, sizeof(columns), "%sAgo        R/D/H    Code  Standard message               User message%s",
-                blue, reset);
+  safe_snprintf(columns, sizeof(columns),
+                "%sAgo        R/D/H    Code  Thread          Standard message       User message%s", blue, reset);
   render_table_line(buffer, columns, width);
-  int table_width = width > 104 ? 100 : width - 4;
+  int table_width = width > 118 ? 114 : width - 4;
 
   for (int i = 0; i < list_rows; ++i) {
     int index = state.list.first_visible + i;
@@ -291,23 +305,25 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
       continue;
     }
     const errno_tui_row_t *row = &rows[index];
-    char ago[32], message[256], user[256];
+    char ago[32], thread_name[256], thread[256], message[256], user[256];
     uint64_t timestamp = row->historical ? row->resolved_ns : row->context.created_ns;
     time_pretty(time_get_ns() - timestamp, -1, ago, sizeof(ago));
     size_t ago_value_length = duration_number_length(ago);
     int ago_padding = 9 - (int)strlen(ago);
     if (ago_padding < 0)
       ago_padding = 0;
-    truncate_with_ellipsis(asciichat_error_string(row->context.code), message, sizeof(message), 31);
-    truncate_with_ellipsis(row->context.context_message, user, sizeof(user), table_width - 56);
+    format_thread_name(row->context.thread_id, thread_name, sizeof(thread_name));
+    truncate_with_ellipsis(thread_name, thread, sizeof(thread), 14);
+    truncate_with_ellipsis(asciichat_error_string(row->context.code), message, sizeof(message), 23);
+    truncate_with_ellipsis(row->context.context_message, user, sizeof(user), table_width - 65);
     unsigned resolved, dismissed, handled;
     outcome_counts(history, old_count, (unsigned)row->context.code, &resolved, &dismissed, &handled);
     char line[768];
-    safe_snprintf(line, sizeof(line), "%s%c %s%.*s%s%s%*s %s%u%s/%s%u%s/%s%u%s   %s%-5d%s %-29s %s",
+    safe_snprintf(line, sizeof(line), "%s%c %s%.*s%s%s%*s %s%u%s/%s%u%s/%s%u%s   %s%-5d%s %-14s %-23s %s",
                   index == state.list.selected ? log_level_color_for_output(LOG_COLOR_DEBUG, colors) : "",
                   index == state.list.selected ? '>' : ' ', purple, (int)ago_value_length, ago, reset,
                   ago + ago_value_length, ago_padding, "", purple, resolved, reset, purple, dismissed, reset, purple,
-                  handled, reset, purple, row->context.code, reset, message, user);
+                  handled, reset, purple, row->context.code, reset, thread, message, user);
     render_table_line(buffer, line, width);
   }
   frame_buffer_render_divider(buffer, width, utf8, colors);
@@ -384,9 +400,9 @@ bool ui_errno_stacks_handle_key(keyboard_key_t key) {
     g_state.stack_sort = !g_state.stack_sort;
     ui_selectable_list_reset(&g_state.list);
   } else if (key == KEY_UP || key == 'k') {
-    ui_selectable_list_move(&g_state.list, ERRNO_TUI_MAX_ROWS, g_state.rows, -1);
+    ui_selectable_list_move(&g_state.list, g_state.count, g_state.rows, -1);
   } else if (key == KEY_DOWN || key == 'j') {
-    ui_selectable_list_move(&g_state.list, ERRNO_TUI_MAX_ROWS, g_state.rows, 1);
+    ui_selectable_list_move(&g_state.list, g_state.count, g_state.rows, 1);
   } else if (key == 'x' || key == 'X') {
     errno_tui_state_t state = g_state;
     state_unlock();
