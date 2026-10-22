@@ -170,8 +170,8 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
     break;
   }
 
-  // ===== LOCK DEBUG (debug builds only) =====
-#ifndef NDEBUG
+  // ===== DIAGNOSTICS =====
+#if defined(ASCIICHAT_DIAGNOSTIC_UI)
   case UI_ACTION_DEBUG: {
     debug_sync_trigger_print();
     debug_errno_trigger_print();
