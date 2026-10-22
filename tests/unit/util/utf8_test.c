@@ -79,3 +79,16 @@ Test(utf8, ellipsis_small_buffers) {
   truncate_with_ellipsis("é", tiny, sizeof(tiny), 1);
   cr_assert_str_eq(tiny, "é");
 }
+
+Test(utf8, repeat_sequences_count_cells_without_splitting) {
+  const char *text = "é\033[3bX";
+  cr_assert_eq(utf8_display_width(text), 5);
+  cr_assert_eq(utf8_prefix_bytes_for_width(text, strlen(text), 4), strlen(text) - 1);
+  cr_assert_eq(utf8_prefix_bytes_for_width(text, strlen(text), 3), strlen("é"));
+  cr_assert_eq(utf8_display_width("界\033[2b"), 6);
+  cr_assert_eq(utf8_prefix_bytes_for_width("界\033[2b", strlen("界\033[2b"), 5), strlen("界"));
+  cr_assert_eq(utf8_display_width("x\033[b"), 2);
+  cr_assert_eq(utf8_display_width("x\033[0b"), 2);
+  cr_assert_eq(utf8_prefix_bytes_for_width("x\033[42949672960b", strlen("x\033[42949672960b"), 20), 1);
+  cr_assert_eq(utf8_prefix_bytes_for_width("x\033[1;2b", strlen("x\033[1;2b"), 20), 1);
+}

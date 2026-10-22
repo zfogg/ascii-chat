@@ -1,4 +1,6 @@
 #include "session/protocol.h"
+#include "session/frame_validation.h"
+#include <ascii-chat/ui/controller.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/acip/send.h>
@@ -16,12 +18,41 @@
 
 static void receive_frame(const ascii_frame_packet_t *header, const void *data, size_t length, void *context) {
   session_protocol_t *protocol = context;
-  bool compressed = (header->flags & FRAME_FLAG_IS_COMPRESSED) != 0;
-  size_t expected = compressed ? header->compressed_size : header->original_size;
-  if (!header->original_size || length != expected || (compressed && !header->compressed_size)) {
-    protocol->callback_result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid participant ASCII frame length");
+  acip_render_settings_t contract;
+  uint32_t effects = 0;
+  bool has_contract = (header->flags & FRAME_FLAG_RENDER_CONTRACT) != 0;
+  if (header->flags & ~(FRAME_FLAG_RENDER_CONTRACT | FRAME_FLAG_IS_COMPRESSED | 1u)) {
+    protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Unknown participant frame flags");
     return;
   }
+  if (has_contract) {
+    size_t prefix;
+    protocol->callback_result = frame_render_contract_decode(data, length, &contract, &effects, &prefix);
+    if (protocol->callback_result != ASCIICHAT_OK)
+      return;
+    data = (const uint8_t *)data + prefix;
+    length -= prefix;
+    if (contract.revision && contract.revision == protocol->settings_revision &&
+        protocol->effective_render_settings.palette[0] &&
+        strcmp(contract.palette, protocol->effective_render_settings.palette) != 0 &&
+        protocol->effective_render_settings.caps.utf8_support) {
+      protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Frame palette contradicts acknowledged revision");
+      return;
+    }
+  }
+  bool compressed = (header->flags & FRAME_FLAG_IS_COMPRESSED) != 0;
+  size_t expected = compressed ? header->compressed_size : header->original_size;
+  if (!header->original_size || expected > FRAME_RENDER_MAX_BYTES || length != expected ||
+      (compressed && !header->compressed_size) || (!compressed && header->compressed_size)) {
+    protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Invalid participant ASCII frame length");
+    return;
+  }
+  // Bound decoded work before allocation/decompression, matching the UI frame budget.
+  if (header->original_size > FRAME_RENDER_MAX_BYTES) {
+    protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Participant ASCII frame exceeds byte budget");
+    return;
+  }
+  asciichat_errno_scope_t decode_scope = errno_checkpoint();
   char *text;
   if (protocol->media.frame_workspace) {
     protocol->callback_result = packet_decode_frame_data_workspace(
@@ -33,16 +64,37 @@ static void receive_frame(const ascii_frame_packet_t *header, const void *data, 
     text = packet_decode_frame_data_malloc(data, length, compressed, header->original_size, header->compressed_size);
   }
   if (!text) {
-    protocol->callback_result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Could not decode participant ASCII frame");
+    asciichat_error_context_t cause;
+    protocol->callback_result = errno_peek_since(decode_scope, &cause)
+                                    ? cause.code
+                                    : SET_ERRNO(ERROR_INVALID_FRAME, "Could not decode participant ASCII frame");
     return;
   }
   if (asciichat_crc32(text, header->original_size) != header->checksum) {
-    protocol->callback_result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Participant ASCII frame checksum mismatch");
-  } else {
+    protocol->callback_result = SET_ERRNO(ERROR_INVALID_FRAME, "Participant ASCII frame checksum mismatch");
+  } else if ((protocol->callback_result =
+                  session_frame_validate_contract(text, header->original_size, header->width, header->height,
+                                                  has_contract ? &contract : NULL, effects)) == ASCIICHAT_OK) {
+    // A valid old frame may arrive after a resize/settings update. Skip it
+    // without disconnecting the transport or disturbing audio and recovery.
+    if (protocol->media.terminal_output) {
+      // Redirected snapshots have no physical viewport; the UI fallback is
+      // not a bound on their explicitly configured or default output size.
+      terminal_size_t viewport =
+          (ui_controller_is_presenting() || terminal_is_stdout_tty()) ? ui_controller_size() : (terminal_size_t){0};
+      uint32_t width = terminal_get_effective_width(), height = terminal_get_effective_height();
+      if ((viewport.cols > 0 && header->width > (uint32_t)viewport.cols) ||
+          (viewport.rows > 0 && header->height > (uint32_t)viewport.rows) || header->width > width ||
+          header->height > height) {
+        protocol->frames_skipped_viewport++;
+        goto done;
+      }
+    }
     protocol->frames_received++;
     if (protocol->media.on_frame)
       protocol->callback_result = protocol->media.on_frame(header, text, protocol->media.context);
   }
+done:
   if (!protocol->media.frame_workspace)
     SAFE_FREE(text);
 }
@@ -139,6 +191,7 @@ static void receive_error(const error_packet_t *header, const char *message, voi
 void session_protocol_init(session_protocol_t *protocol, acip_transport_t *transport, session_protocol_media_t media,
                            acip_client_callbacks_t control) {
   *protocol = (session_protocol_t){.transport = transport, .media = media, .control = control};
+  protocol->effective_render_settings.caps.utf8_support = GET_OPTION(force_utf8) != UTF8_SETTING_FALSE;
 }
 
 asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet_type_t type, const void *payload,

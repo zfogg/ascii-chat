@@ -67,6 +67,9 @@
 /** @brief Frame was stretched (aspect adjusted) */
 #define FRAME_FLAG_IS_STRETCHED 0x08
 
+/** @brief Explicit versioned render contract precedes encoded ASCII text. */
+#define FRAME_FLAG_RENDER_CONTRACT 0x10
+
 /* ============================================================================
  * Pixel Format Constants
  * ============================================================================ */

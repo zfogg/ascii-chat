@@ -688,8 +688,14 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
       if (!recipient) {
         host->render_target.render_frame(host->render_target.context, output, output_size, width, height);
       } else {
-        acip_send_ascii_frame(recipient->transport, &host->frame_workspace, output, output_size, width, height,
-                              "session-host");
+        acip_render_settings_t rendering = recipient->rendering;
+        rendering.caps = caps;
+        SAFE_STRNCPY(rendering.palette, palette, sizeof(rendering.palette));
+        uint32_t effects = (caps.capabilities & TERM_CAP_MATRIX_RAIN) ? FRAME_RENDER_CONTRACT_RAIN : 0;
+        if (count > 1)
+          effects |= FRAME_RENDER_CONTRACT_GRID;
+        acip_send_ascii_frame_contract(recipient->transport, &host->frame_workspace, output, output_size, width, height,
+                                       &rendering, effects, "session-host");
       }
       SAFE_FREE(rain_frame);
     }

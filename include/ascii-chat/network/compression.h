@@ -119,6 +119,9 @@ asciichat_error_t compress_data(const void *input, size_t input_size, void **out
  */
 asciichat_error_t decompress_data(const void *input, size_t input_size, void *output, size_t output_size);
 
+/** Decode an exact-size payload, rejecting short output as well as overflow. */
+asciichat_error_t decompress_data_exact(const void *input, size_t input_size, void *output, size_t expected_size);
+
 /**
  * @brief Determine if compression should be used for given data sizes
  * @param original_size Original (uncompressed) data size in bytes

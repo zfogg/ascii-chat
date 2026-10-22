@@ -1,13 +1,17 @@
 /**
  * Unit tests for Client WASM bindings
  *
- * NOTE: These tests verify TypeScript types and enums.
+ * These tests verify enums and the pre-allocation frame boundary.
  * Full WASM integration tests require a browser environment
  * and are covered by E2E tests with Playwright.
  */
 
 import { describe, it, expect } from "vite-plus/test";
-import { ConnectionState, PacketType } from "../../src/wasm/client";
+import {
+  ConnectionState,
+  PacketType,
+  validateReceivedFrame,
+} from "../../src/wasm/client";
 
 describe("Client WASM Module Types", () => {
   describe("ConnectionState enum", () => {
@@ -66,4 +70,39 @@ describe("Client WASM Module Types", () => {
       expect(type).toBeDefined();
     });
   });
+});
+
+describe("Received frame allocation boundary", () => {
+  it.each([3, 5])(
+    "rejects uncompressed size %i before accessing the WASM heap",
+    (size) => {
+      expect(() =>
+        validateReceivedFrame(
+          new Uint8Array(4),
+          4,
+          1,
+          0,
+          0,
+          new Uint8Array(),
+          size,
+        ),
+      ).toThrow("Uncompressed frame size mismatch");
+    },
+  );
+  it.each([-1, 0, 1.5, NaN, Infinity, 16 * 1024 * 1024 + 1])(
+    "rejects invalid decoded size %s before allocation",
+    (size) => {
+      expect(() =>
+        validateReceivedFrame(
+          new Uint8Array(4),
+          4,
+          1,
+          0,
+          2,
+          new Uint8Array(),
+          size,
+        ),
+      ).toThrow("Received frame allocation exceeds byte budget");
+    },
+  );
 });

@@ -147,6 +147,7 @@
 #include <ascii-chat/video/rgba/video_frame.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/ascii.h>
+#include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/util/aspect_ratio.h>
@@ -776,7 +777,7 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
  * @ingroup server_stream
  */
 static char *convert_composite_to_ascii(image_t *composite, const char *target_client_id, unsigned short width,
-                                        unsigned short height) {
+                                        unsigned short height, acip_render_settings_t *out_rendering) {
   // LOCK OPTIMIZATION: Don't call find_client_by_id() - it would acquire rwlock unnecessarily
   // Instead, the render thread already has snapshot of client state, so we just need palette data
   // which is stable after initialization
@@ -807,6 +808,8 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
     SET_ERRNO(ERROR_TERMINAL, "Client rendering is not configured");
     return NULL;
   }
+  if (out_rendering)
+    *out_rendering = rendering;
   terminal_capabilities_t caps_snapshot = rendering.caps;
   width = rendering.width;
   height = rendering.height;
@@ -850,6 +853,15 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
     render_client->digital_rain = NULL;
   }
 
+  if (ascii_frame && (size_t)utf8_display_width(rendering.palette) != utf8_char_count(rendering.palette)) {
+    // Normalize display-cell geometry (wide palettes and REP included) with the
+    // same row composer as discovery/browser hosts.
+    ascii_frame_source_t source = {.frame_data = ascii_frame, .frame_size = strlen(ascii_frame)};
+    size_t size;
+    char *rectangular = ascii_create_grid(&source, 1, width, height, &size);
+    SAFE_FREE(ascii_frame);
+    ascii_frame = rectangular;
+  }
   return ascii_frame;
 }
 
@@ -957,7 +969,7 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
 // Uses hardware-accelerated CRC32 for ultra-fast hashing
 char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned short width, unsigned short height,
                                           bool wants_stretch, size_t *out_size, bool *out_grid_changed,
-                                          int *out_sources_count) {
+                                          int *out_sources_count, acip_render_settings_t *out_rendering) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
 
   // Register the stream counter once even when per-client render workers enter
@@ -1066,7 +1078,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   // Convert composite to ASCII using client capabilities
   // Pass terminal dimensions so the frame can be padded to full width
   START_TIMER("ascii_convert");
-  char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height);
+  char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height, out_rendering);
   STOP_TIMER_AND_LOG(dev, 500000, "ascii_convert", "ASCII conversion (composite to ASCII)");
 
   if (ascii_frame) {
@@ -1084,44 +1096,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
       return NULL;
     }
 
-    // Ensure frame ends with a reset sequence to avoid garbage at terminal
-    // This prevents color codes from leaking into uninitialized memory
-    const char reset_seq[] = "\033[0m";
-    const size_t reset_len = 4;
-
-    if (ascii_len >= reset_len) {
-      // Check if frame already ends with reset
-      const char *frame_end = ascii_frame + ascii_len - reset_len;
-      if (strncmp(frame_end, reset_seq, reset_len) == 0) {
-        // Frame properly ends with reset, use full length
-        *out_size = ascii_len;
-      } else {
-        // Frame doesn't end with reset - this is the REAL bug!
-        // Truncate to the last occurrence of reset sequence
-        const char *last_reset = NULL;
-        for (const char *p = ascii_frame + ascii_len - reset_len; p >= ascii_frame; p--) {
-          if (strncmp(p, reset_seq, reset_len) == 0) {
-            last_reset = p;
-            break;
-          }
-        }
-
-        if (last_reset) {
-          // Include the reset sequence and truncate after it
-          *out_size = (size_t)(last_reset - ascii_frame) + reset_len;
-          ascii_frame[*out_size] = '\0'; // Ensure null termination
-          log_warn("Frame was missing reset at end (had garbage), truncated from %zu to %zu bytes", ascii_len,
-                   *out_size);
-        } else {
-          // No reset found, use full length as fallback
-          *out_size = ascii_len;
-          log_dev_every(LOG_RATE_SLOW, "Frame has no reset sequences, sending full %zu bytes", ascii_len);
-        }
-      }
-    } else {
-      // Frame too short to have a reset, use as-is
-      *out_size = ascii_len;
-    }
+    *out_size = ascii_len; // Renderer owns complete rows; never truncate to a color reset.
 
     log_dev_every(LOG_RATE_SLOW, "Final frame size=%zu bytes for client %s", *out_size, target_client_id);
 
@@ -1243,8 +1218,6 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
  * @see packet_queue_push_copy() For underlying queue implementation
  * @see asciichat_crc32() For checksum generation
  */
-
-
 
 /**
  * @brief Check if any connected clients are currently sending video

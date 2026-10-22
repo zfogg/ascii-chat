@@ -10,5 +10,6 @@ typedef struct {
 extern const network_connection_callbacks_t server_network_callbacks;
 asciichat_error_t server_dispatch_packet(client_info_t *, packet_type_t, const void *, size_t);
 asciichat_error_t server_send_state(acip_transport_t *);
-void server_send_video(client_info_t *, acip_frame_workspace_t *, const char *, size_t, uint32_t, uint32_t, int);
+void server_send_video(client_info_t *, acip_frame_workspace_t *, const char *, size_t, uint32_t, uint32_t, int,
+                       const acip_render_settings_t *);
 asciichat_error_t server_send_audio(client_info_t *, const void *, size_t);

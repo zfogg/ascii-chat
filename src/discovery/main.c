@@ -487,8 +487,7 @@ role_dispatch:
       }
       host_capture.audio = host_audio;
       atomic_store_bool(&host_capture.running, true);
-      result = acthread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture,
-                                       &host_capture);
+      result = acthread_create(&host_capture.thread, "host_audio_capture", discovery_host_audio_capture, &host_capture);
       if (result != ASCIICHAT_OK) {
         session_audio_destroy(host_audio);
         return result;
@@ -630,7 +629,8 @@ role_dispatch:
                                              .running = {0},
                                              .result = ASCIICHAT_OK};
       session_protocol_init(&receiver.protocol, transport,
-                            (session_protocol_media_t){.on_frame = discovery_present_frame,
+                            (session_protocol_media_t){.terminal_output = true,
+                                                       .on_frame = discovery_present_frame,
                                                        .on_samples = discovery_play_samples,
                                                        .decode_opus = discovery_decode_opus,
                                                        .context = &receiver},
@@ -669,14 +669,14 @@ role_dispatch:
         }
       }
       atomic_store_bool(&receiver.running, true);
-      result = acthread_create(&receiver.receiver_thread, "discovery_video_receive",
-                                       discovery_video_receive_thread, &receiver);
+      result = acthread_create(&receiver.receiver_thread, "discovery_video_receive", discovery_video_receive_thread,
+                               &receiver);
       if (result != ASCIICHAT_OK)
         goto media_cleanup;
       receiver.receiver_started = true;
       if (enable_audio) {
-        result = acthread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread,
-                                         &receiver);
+        result =
+            acthread_create(&receiver.audio_thread, "discovery_audio_send", discovery_audio_send_thread, &receiver);
         receiver.audio_started = result == ASCIICHAT_OK;
         if (!receiver.audio_started)
           atomic_store_bool(&receiver.running, false);

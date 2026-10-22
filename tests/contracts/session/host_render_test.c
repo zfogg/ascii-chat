@@ -1,6 +1,8 @@
 #include <criterion/criterion.h>
 /* Capability packets must affect the frames delivered by the discovery host. */
 #include "session/host.h"
+#include "session/display.h"
+#include "session/frame_validation.h"
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/negotiation.h>
 #include "session/host_timing.h"
@@ -52,6 +54,9 @@ static asciichat_error_t send_frame(acip_transport_t *transport, const socket_bu
   sink_t *sink = transport->impl_data;
   asciichat_error_t result = session_protocol_dispatch(&sink->protocol, PACKET_TYPE_ASCII_FRAME,
                                                        packet + sizeof(header), length - sizeof(header));
+  asciichat_error_context_t error = {0};
+  errno_has(&error);
+  cr_assert_eq(result, ASCIICHAT_OK, "Receiver rejected real rendered frame: %s", error.context_message);
   SAFE_FREE(packet);
   return result;
 }
@@ -490,6 +495,11 @@ Test(host_render, recipient_settings_and_delivery, .timeout = 60) {
   update(host, ids[2], &caps[2]);
   cr_assert_eq(render_tick(host), ASCIICHAT_OK);
   cr_assert(strstr(sinks[2].frame, "\xe2\x96\x80"));
+  caps[2].color_level = HOST_TO_NET_U32(TERM_COLOR_NONE);
+  update(host, ids[2], &caps[2]);
+  cr_assert_eq(render_tick(host), ASCIICHAT_OK);
+  cr_assert(strstr(sinks[2].frame, "░") || strstr(sinks[2].frame, "▒") || strstr(sinks[2].frame, "▓") ||
+            strstr(sinks[2].frame, "█"));
 
   // Invalid runtime transactions leave all recipients' last committed values intact.
   for (int i = 0; i < 3; ++i) {
@@ -504,13 +514,13 @@ Test(host_render, recipient_settings_and_delivery, .timeout = 60) {
   cr_assert_eq(render_tick(host), ASCIICHAT_OK);
   cr_assert_eq(strcmp(sinks[0].frame, sinks[1].frame), 0);
 
-  cr_assert_eq(display.sink.frames, 7);
+  cr_assert_eq(display.sink.frames, 8);
   check_palette(display.sink.frame, "Z");
   // A local backend also picks up changed rendering settings at the next tick.
   display.config.caps.color_level = TERM_COLOR_TRUECOLOR;
   display.config.palette = "LL";
   cr_assert_eq(render_tick(host), ASCIICHAT_OK);
-  cr_assert_eq(display.sink.frames, 8);
+  cr_assert_eq(display.sink.frames, 9);
   cr_assert(strstr(display.sink.frame, "\033[38;2;"));
   check_palette(display.sink.frame, "L");
   SAFE_FREE(display.sink.frame);
@@ -522,9 +532,9 @@ Test(host_render, recipient_settings_and_delivery, .timeout = 60) {
   update(host, ids[1], &caps[1]);
   cr_assert_eq(render_tick(host), ASCIICHAT_OK);
   check_palette(sinks[1].frame, "W");
-  cr_assert_eq(display.sink.frames, 8);
+  cr_assert_eq(display.sink.frames, 9);
   for (int i = 0; i < 3; ++i) {
-    cr_assert_eq(sinks[i].frames, 9); // Local clients receive exactly one frame per tick.
+    cr_assert_eq(sinks[i].frames, 10); // Local clients receive exactly one frame per tick.
     SAFE_FREE(sinks[i].frame);
   }
   cr_assert_eq(session_host_remove_client(host, ids[1]), ASCIICHAT_OK);
@@ -569,5 +579,56 @@ Test(host_render, ascii_only_display) {
   for (int i = 0; i < image->w * image->h; ++i)
     image->pixels[i] = (rgb_pixel_t){.r = (uint8_t)(40 + i * 6), .g = 25, .b = 100};
   test_ascii_only_display(image);
+  image_destroy(image);
+}
+
+Test(host_render, mirror_output_validation) {
+  cr_assert_eq(options_set_int("width", 40), ASCIICHAT_OK);
+  cr_assert_eq(options_set_int("height", 12), ASCIICHAT_OK);
+  image_t *image = image_new(8, 4);
+  cr_assert_not_null(image);
+  for (int i = 0; i < image->w * image->h; ++i)
+    image->pixels[i] = (rgb_pixel_t){.r = 120, .g = 80, .b = 40};
+  session_display_config_t config = {
+      .snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = "XX", .color_mode = TERM_COLOR_NONE};
+  session_display_ctx_t *display = session_display_create(&config);
+  cr_assert_not_null(display);
+  for (int mode = RENDER_MODE_FOREGROUND; mode <= RENDER_MODE_HALF_BLOCK; ++mode) {
+    cr_assert_eq(options_set_int("render_mode", mode), ASCIICHAT_OK);
+    for (int color = TERM_COLOR_NONE; color <= TERM_COLOR_TRUECOLOR; ++color) {
+      cr_assert_eq(options_set_int("color_mode", color), ASCIICHAT_OK);
+      char *text = session_display_convert_to_ascii_reuse(display, image);
+      cr_assert_not_null(text, "mirror mode%d color%d rejected", mode, color);
+      cr_assert_eq(session_frame_validate(text, strlen(text), 40, 12), ASCIICHAT_OK);
+      session_display_release_ascii(display, text);
+    }
+  }
+  cr_assert_eq(options_set_int("render_mode", RENDER_MODE_FOREGROUND), ASCIICHAT_OK);
+  // Simulate a corrupted renderer palette after initialization. Mirror must
+  // discard the result before presentation, then recover on a valid next frame.
+  char *palette = (char *)session_display_get_palette_chars(display);
+  palette[0] = '\x1b';
+  palette[1] = 0;
+  CLEAR_ERRNO();
+  cr_assert_null(session_display_convert_to_ascii_reuse(display, image));
+  asciichat_error_context_t error = {0};
+  cr_assert(errno_has(&error));
+  cr_assert_eq(error.code, ERROR_INVALID_FRAME);
+  palette[0] = 'X';
+  palette[1] = 'X';
+  palette[2] = 0;
+  CLEAR_ERRNO();
+  char *recovered = session_display_convert_to_ascii_reuse(display, image);
+  cr_assert_not_null(recovered);
+  session_display_release_ascii(display, recovered);
+  session_display_destroy(display);
+  config.custom_palette = "界é";
+  display = session_display_create(&config);
+  cr_assert_not_null(display);
+  char *wide = session_display_convert_to_ascii_reuse(display, image);
+  cr_assert_not_null(wide);
+  cr_assert_eq(session_frame_validate(wide, strlen(wide), 40, 12), ASCIICHAT_OK);
+  session_display_release_ascii(display, wide);
+  session_display_destroy(display);
   image_destroy(image);
 }

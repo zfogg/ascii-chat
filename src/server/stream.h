@@ -16,7 +16,7 @@ extern atomic_t g_should_exit;
 // Stream mixing and sending functions
 char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned short width, unsigned short height,
                                           bool wants_stretch, size_t *out_size, bool *out_grid_changed,
-                                          int *out_sources_count);
+                                          int *out_sources_count, acip_render_settings_t *out_rendering);
 
 // Check if any clients are currently sending video
 bool any_clients_sending_video(void);

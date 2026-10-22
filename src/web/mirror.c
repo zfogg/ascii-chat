@@ -8,6 +8,8 @@
 #include <string.h>
 
 #include "common/init.h"
+#include "session/frame_validation.h"
+#include <ascii-chat/util/utf8.h>
 
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
@@ -235,7 +237,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
       g_digital_rain = digital_rain_init(dst_width, dst_height);
       if (!g_digital_rain) {
         log_error("Failed to initialize digital rain effect");
-        return ascii_output; // Return without effect on error
+        goto validate_output;
       }
       g_last_rain_update_time = emscripten_get_now();
     }
@@ -262,6 +264,26 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
     g_last_rain_update_time = 0.0;
   }
 
+validate_output:
+  if (ascii_output) {
+    if ((size_t)utf8_display_width(palette_chars) != utf8_char_count(palette_chars)) {
+      ascii_frame_source_t source = {.frame_data = ascii_output, .frame_size = strlen(ascii_output)};
+      size_t normalized_size;
+      char *rectangular = ascii_create_grid(&source, 1, dst_width, dst_height, &normalized_size);
+      SAFE_FREE(ascii_output);
+      ascii_output = rectangular;
+    }
+    if (!ascii_output)
+      return NULL;
+    acip_render_settings_t rendering = {.caps = caps};
+    SAFE_STRNCPY(rendering.palette, palette_chars, sizeof(rendering.palette));
+    uint32_t effects = matrix_rain ? FRAME_RENDER_CONTRACT_RAIN : 0;
+    if (session_frame_validate_contract(ascii_output, strlen(ascii_output), dst_width, dst_height, &rendering,
+                                        effects) != ASCIICHAT_OK) {
+      SAFE_FREE(ascii_output);
+      return NULL;
+    }
+  }
   return ascii_output;
 }
 
@@ -278,11 +300,17 @@ EMSCRIPTEN_KEEPALIVE
 char *mirror_render_audio_visualization(unsigned int width, unsigned int height, int source) {
   audio_visualization_source_t audio_source =
       source == AUDIO_VISUALIZATION_SOURCE_MIC ? AUDIO_VISUALIZATION_SOURCE_MIC : AUDIO_VISUALIZATION_SOURCE_MEDIA;
-  if (GET_OPTION(fft))
-    return audio_visualization_render_fft(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER,
-                                          GET_OPTION(flip_x), GET_OPTION(flip_y));
-  return audio_visualization_render_waveform(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER,
-                                             GET_OPTION(flip_x), GET_OPTION(flip_y));
+  char *text =
+      GET_OPTION(fft)
+          ? audio_visualization_render_fft(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER,
+                                           GET_OPTION(flip_x), GET_OPTION(flip_y))
+          : audio_visualization_render_waveform(width, height, audio_source, true, AUDIO_VISUALIZATION_COLOR_BRIGHTER,
+                                                GET_OPTION(flip_x), GET_OPTION(flip_y));
+  if (text && session_frame_validate(text, strlen(text), width, height) != ASCIICHAT_OK) {
+    SAFE_FREE(text);
+    return NULL;
+  }
+  return text;
 }
 
 EMSCRIPTEN_KEEPALIVE

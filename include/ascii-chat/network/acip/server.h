@@ -17,6 +17,7 @@
 
 #ifndef NETWORK_ACIP_SERVER_H
 #define NETWORK_ACIP_SERVER_H
+#include <ascii-chat/network/render_contract.h>
 
 #include "../../network/acip/transport.h"
 #include "../../network/acip/handlers.h"
@@ -25,6 +26,7 @@
 
 #ifdef __cplusplus
 extern "C" {
+
 #endif
 
 // =============================================================================
@@ -72,6 +74,11 @@ void acip_frame_workspace_destroy(acip_frame_workspace_t *workspace);
 asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, acip_frame_workspace_t *workspace,
                                         const char *frame_data, size_t frame_size, uint32_t width, uint32_t height,
                                         const char *client_id);
+
+asciichat_error_t acip_send_ascii_frame_contract(acip_transport_t *transport, acip_frame_workspace_t *workspace,
+                                                 const char *text, size_t length, uint32_t width, uint32_t height,
+                                                 const acip_render_settings_t *settings, uint32_t effects,
+                                                 const char *client_id);
 
 /**
  * @brief Send clear console command to client (server → client)
