@@ -196,6 +196,17 @@ int ui_controller_current_screen(void) {
   return background > interactive ? background : interactive;
 }
 
+int ui_controller_active_fd(void) {
+  int fd = STDOUT_FILENO;
+  if (!lifecycle_is_initialized(&g_lifecycle))
+    return fd;
+  mutex_lock(&g_mutex);
+  if (g_active >= 0 && g_active < UI_SCREEN_COUNT && g_screens[g_active].render)
+    fd = g_screens[g_active].fd;
+  mutex_unlock(&g_mutex);
+  return fd;
+}
+
 static bool interactive_screen(int screen) {
   return screen == UI_SCREEN_HELP || screen == UI_SCREEN_LOGS || screen == UI_SCREEN_ERRNO ||
          screen == UI_SCREEN_SYNC || screen == UI_SCREEN_PROMPT;

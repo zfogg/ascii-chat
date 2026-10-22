@@ -34,6 +34,9 @@ typedef struct {
   errno_tui_tab_t tab;
   ui_selectable_list_t list;
   int rows;
+  int output_fd;
+  asciichat_error_context_t selected_context;
+  bool selected_current;
 } errno_tui_state_t;
 
 static errno_tui_state_t g_state;
@@ -143,16 +146,8 @@ static size_t snapshot_history(errno_tui_row_t *rows, bool stack_sort, size_t ca
   return count;
 }
 
-static void outcome_counts(unsigned code, unsigned *resolved, unsigned *dismissed, unsigned *handled) {
-  asciichat_errno_history_t *history =
-      SAFE_CALLOC(ASCIICHAT_ERRNO_HISTORY_SIZE, sizeof(*history), asciichat_errno_history_t *);
-  if (!history) {
-    *resolved = 0;
-    *dismissed = 0;
-    *handled = 0;
-    return;
-  }
-  size_t count = errno_history_snapshot(history, ASCIICHAT_ERRNO_HISTORY_SIZE);
+static void outcome_counts(const asciichat_errno_history_t *history, size_t count, unsigned code, unsigned *resolved,
+                           unsigned *dismissed, unsigned *handled) {
   *resolved = 0;
   *handled = 0;
   *dismissed = 0;
@@ -165,7 +160,6 @@ static void outcome_counts(unsigned code, unsigned *resolved, unsigned *dismisse
     else if (history[i].outcome == ASCIICHAT_ERRNO_DISMISSED)
       ++*dismissed;
   }
-  SAFE_FREE(history);
 }
 
 static void put_color(frame_buffer_t *buffer, log_color_t color, bool enabled) {
@@ -184,10 +178,11 @@ static void render_footer(frame_buffer_t *buffer, int width, bool colors) {
   const char *grey = log_level_color_for_output(LOG_COLOR_GREY, colors);
   const char *reset = log_level_color_for_output(LOG_COLOR_RESET, colors);
   char footer[512];
-  safe_snprintf(footer, sizeof(footer),
-                "%sTab%s%s: tab  %ss%s%s: sort  %sUp%s/%sDown%s%s: move  %sx%s%s: clear  %s`%s/%sEsc%s%s: close",
-                orange, reset, grey, orange, reset, grey, orange, reset, orange, reset, grey, orange, reset, grey,
-                orange, reset, orange, reset, grey);
+  safe_snprintf(
+      footer, sizeof(footer),
+      "%sTab%s%s: tab  %ss%s%s: sort  %sUp%s/%sk%s/%sDown%s/%sj%s%s: move  %sx%s%s: clear  %s`%s/%sEsc%s%s: close",
+      orange, reset, grey, orange, reset, grey, orange, reset, orange, reset, orange, reset, orange, reset, grey,
+      orange, reset, grey, orange, reset, orange, reset, grey);
   frame_buffer_render_centered(buffer, footer, width);
 }
 
@@ -211,14 +206,15 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
   frame_buffer_append(buffer, "\033[0m", 4);
   frame_buffer_clear_screen(buffer);
   const terminal_size_t minimum = {.cols = ERRNO_TUI_MIN_COLS, .rows = ERRNO_TUI_MIN_ROWS};
+  int output_fd = state.output_fd >= 0 ? state.output_fd : STDOUT_FILENO;
   if (ui_too_small(size, minimum)) {
     ui_too_small_render(buffer, size, minimum);
-    ui_controller_write(STDOUT_FILENO, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
+    ui_controller_write(output_fd, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
     frame_buffer_destroy(buffer);
     return;
   }
 
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDOUT_FILENO);
+  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(output_fd);
   errno_tui_row_t *rows = SAFE_CALLOC(ERRNO_TUI_MAX_ROWS, sizeof(*rows), errno_tui_row_t *);
   errno_tui_row_t *current_rows = SAFE_CALLOC(ERRNO_TUI_MAX_ROWS, sizeof(*current_rows), errno_tui_row_t *);
   if (!rows || !current_rows) {
@@ -242,6 +238,10 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
   if (state_lock()) {
     g_state.rows = list_rows;
     ui_selectable_list_keep_visible(&g_state.list, (int)count, list_rows);
+    g_state.selected_current =
+        state.tab == ERRNO_TUI_CURRENT && g_state.list.selected >= 0 && g_state.list.selected < (int)count;
+    if (g_state.selected_current)
+      g_state.selected_context = rows[g_state.list.selected].context;
     state = g_state;
     state_unlock();
   }
@@ -260,10 +260,12 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
     if (history[i].resolved_ns > latest)
       latest = history[i].resolved_ns;
   char header[768];
+  const char *blue = log_level_color_for_output(LOG_COLOR_DEBUG, colors);
   const char *purple = log_level_color_for_output(LOG_COLOR_FATAL, colors);
   const char *reset = log_level_color_for_output(LOG_COLOR_RESET, colors);
-  int header_length = safe_snprintf(header, sizeof(header), "errno stacks  errors %s%zu%s  stacks %s%zu%s  old %s%zu%s",
-                                    purple, current_count, reset, purple, stacks, reset, purple, old_count, reset);
+  int header_length =
+      safe_snprintf(header, sizeof(header), "%serrno stacks%s  errors %s%zu%s  stacks %s%zu%s  old %s%zu%s", blue,
+                    reset, purple, current_count, reset, purple, stacks, reset, purple, old_count, reset);
   if (latest && header_length > 0 && (size_t)header_length < sizeof(header)) {
     char ago[32];
     time_pretty(time_get_ns() - latest, -1, ago, sizeof(ago));
@@ -276,7 +278,10 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
   char tabs[256];
   safe_snprintf(tabs, sizeof(tabs), "Current | Past %s sort", state.stack_sort ? "stack" : "recent");
   frame_buffer_render_centered(buffer, tabs, width);
-  render_table_line(buffer, "Ago        R/D/H    Code  Standard message               User message", width);
+  char columns[256];
+  safe_snprintf(columns, sizeof(columns), "%sAgo        R/D/H    Code  Standard message               User message%s",
+                blue, reset);
+  render_table_line(buffer, columns, width);
   int table_width = width > 104 ? 100 : width - 4;
 
   for (int i = 0; i < list_rows; ++i) {
@@ -296,7 +301,7 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
     truncate_with_ellipsis(asciichat_error_string(row->context.code), message, sizeof(message), 31);
     truncate_with_ellipsis(row->context.context_message, user, sizeof(user), table_width - 56);
     unsigned resolved, dismissed, handled;
-    outcome_counts((unsigned)row->context.code, &resolved, &dismissed, &handled);
+    outcome_counts(history, old_count, (unsigned)row->context.code, &resolved, &dismissed, &handled);
     char line[768];
     safe_snprintf(line, sizeof(line), "%s%c %s%.*s%s%s%*s %s%u%s/%s%u%s/%s%u%s   %s%-5d%s %-29s %s",
                   index == state.list.selected ? log_level_color_for_output(LOG_COLOR_DEBUG, colors) : "",
@@ -308,7 +313,7 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
   frame_buffer_render_divider(buffer, width, utf8, colors);
   render_footer(buffer, width, colors);
   put_color(buffer, LOG_COLOR_RESET, colors);
-  ui_controller_write(STDOUT_FILENO, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
+  ui_controller_write(output_fd, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
   SAFE_FREE(history);
   SAFE_FREE(current_rows);
   SAFE_FREE(rows);
@@ -317,7 +322,12 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
 
 static void publish(void) {
   const unsigned marker = 1;
-  if (ui_controller_submit(UI_SCREEN_ERRNO, STDOUT_FILENO, (terminal_size_t){ERRNO_TUI_MIN_COLS, ERRNO_TUI_MIN_ROWS},
+  int fd = STDOUT_FILENO;
+  if (state_lock()) {
+    fd = g_state.output_fd >= 0 ? g_state.output_fd : STDOUT_FILENO;
+    state_unlock();
+  }
+  if (ui_controller_submit(UI_SCREEN_ERRNO, fd, (terminal_size_t){ERRNO_TUI_MIN_COLS, ERRNO_TUI_MIN_ROWS},
                            render_errno_stacks, &marker, sizeof(marker)) != ASCIICHAT_OK)
     CLEAR_ERRNO();
 }
@@ -329,6 +339,8 @@ void ui_errno_stacks_toggle(void) {
   g_state.visible = !g_state.visible;
   if (g_state.visible)
     ui_selectable_list_reset(&g_state.list);
+  if (g_state.visible)
+    g_state.output_fd = ui_controller_active_fd();
   bool visible = g_state.visible;
   state_unlock();
   if (visible)
@@ -378,16 +390,9 @@ bool ui_errno_stacks_handle_key(keyboard_key_t key) {
   } else if (key == 'x' || key == 'X') {
     errno_tui_state_t state = g_state;
     state_unlock();
-    if (state.tab == ERRNO_TUI_CURRENT) {
-      errno_tui_row_t *rows = SAFE_CALLOC(ASCIICHAT_ERRNO_MAX_FRAMES, sizeof(*rows), errno_tui_row_t *);
-      size_t stacks = 0;
-      size_t count = rows ? snapshot_current(rows, state.stack_sort, ASCIICHAT_ERRNO_MAX_FRAMES, &stacks) : 0;
-      if (rows && state.list.selected >= 0 && state.list.selected < (int)count) {
-        const asciichat_error_context_t *context = &rows[state.list.selected].context;
-        errno_clear_if_current(context->thread_id, context->generation, context->error_id);
-      }
-      SAFE_FREE(rows);
-    }
+    if (state.selected_current)
+      errno_clear_if_current(state.selected_context.thread_id, state.selected_context.generation,
+                             state.selected_context.error_id);
     publish();
     return true;
   } else {
