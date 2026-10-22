@@ -26,7 +26,7 @@ def screen_row(term):
 
 
 def assert_clipped(row, suffix, columns):
-    table_width = 114 if columns - 1 > 118 else columns - 1 - 4
+    table_width = min(columns - 1 - 4, 160)
     left_padding = (columns - 1 - table_width) // 2
     table_end = left_padding + table_width
     visible = row[:table_end]
@@ -88,11 +88,22 @@ def exercise(binary, utf8, artifacts):
     try:
         wide = screen_row(term)
         wide_end = assert_clipped(wide, suffix, 120)
+        render_capture(term, artifacts, "errno-tui-120-utf8" if utf8 else "errno-tui-120-ascii")
+
+        term.resize(24, 160)
+        wider, wider_end = wait_for_clipped(term, suffix, 160, "errno stack did not widen")
+        assert wider_end > wide_end, (wide_end, wider_end, wider)
+        render_capture(term, artifacts, "errno-tui-160-utf8" if utf8 else "errno-tui-160-ascii")
+
+        term.resize(24, 200)
+        capped, capped_end = wait_for_clipped(term, suffix, 200, "errno stack did not respect the table maximum")
+        assert capped_end > wider_end, (wider_end, capped_end, capped)
+        render_capture(term, artifacts, "errno-tui-200-utf8" if utf8 else "errno-tui-200-ascii")
 
         term.resize(18, 100)
         row, narrow_end = wait_for_clipped(term, suffix, 100, "errno stack did not redraw after resize")
-        assert narrow_end < wide_end, (wide_end, narrow_end, row)
-        render_capture(term, artifacts, "errno-tui-utf8" if utf8 else "errno-tui-ascii")
+        assert narrow_end < wide_end < wider_end < capped_end, (narrow_end, wide_end, wider_end, capped_end, row)
+        render_capture(term, artifacts, "errno-tui-100-utf8" if utf8 else "errno-tui-100-ascii")
     finally:
         term.close()
 

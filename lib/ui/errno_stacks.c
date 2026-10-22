@@ -21,6 +21,12 @@
 #define ERRNO_TUI_MIN_COLS 88
 #define ERRNO_TUI_MIN_ROWS 10
 #define ERRNO_TUI_MAX_ROWS (ASCIICHAT_ERRNO_MAX_FRAMES + ASCIICHAT_ERRNO_HISTORY_SIZE)
+#define ERRNO_TUI_TABLE_BASE_WIDTH 114
+#define ERRNO_TUI_TABLE_MAX_WIDTH 160
+#define ERRNO_TUI_THREAD_BASE_WIDTH 14
+#define ERRNO_TUI_THREAD_MAX_WIDTH 24
+#define ERRNO_TUI_MESSAGE_BASE_WIDTH 23
+#define ERRNO_TUI_MESSAGE_MAX_WIDTH 38
 
 typedef enum { ERRNO_TUI_CURRENT, ERRNO_TUI_HISTORY } errno_tui_tab_t;
 typedef struct {
@@ -201,9 +207,18 @@ static void render_footer(frame_buffer_t *buffer, int width, bool colors) {
 }
 
 static void render_table_line(frame_buffer_t *buffer, const char *line, int width) {
-  int table_width = width > 118 ? 114 : width - 4;
+  int table_width = MIN(width - 4, ERRNO_TUI_TABLE_MAX_WIDTH);
   int left_padding = (width - table_width) / 2;
   frame_buffer_printf(buffer, "%*s%s\n", left_padding, "", line);
+}
+
+static int table_width_for_terminal(int width) {
+  return MIN(width - 4, ERRNO_TUI_TABLE_MAX_WIDTH);
+}
+
+static int growing_column_width(int table_width, int base_width, int max_width, int divisor) {
+  int extra_width = MAX(table_width - ERRNO_TUI_TABLE_BASE_WIDTH, 0);
+  return MIN(base_width + extra_width / divisor, max_width);
 }
 
 /** Render the active errno view from fresh current and historical snapshots. */
@@ -294,11 +309,14 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
   char tabs[256];
   safe_snprintf(tabs, sizeof(tabs), "Current | Past %s sort", state.stack_sort ? "stack" : "recent");
   frame_buffer_render_centered(buffer, tabs, width);
+  int table_width = table_width_for_terminal(width);
+  int thread_width = growing_column_width(table_width, ERRNO_TUI_THREAD_BASE_WIDTH, ERRNO_TUI_THREAD_MAX_WIDTH, 4);
+  int message_width = growing_column_width(table_width, ERRNO_TUI_MESSAGE_BASE_WIDTH, ERRNO_TUI_MESSAGE_MAX_WIDTH, 3);
+  int user_width = table_width - 28 - thread_width - message_width;
   char columns[256];
-  safe_snprintf(columns, sizeof(columns),
-                "%sAgo        R/D/H    Code  Thread          Standard message       User message%s", blue, reset);
+  safe_snprintf(columns, sizeof(columns), "%sAgo        R/D/H    Code  %-*s %-*s User message%s", blue, thread_width,
+                "Thread", message_width, "Standard message", reset);
   render_table_line(buffer, columns, width);
-  int table_width = width > 118 ? 114 : width - 4;
 
   for (int i = 0; i < list_rows; ++i) {
     int index = state.list.first_visible + i;
@@ -315,11 +333,11 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
     if (ago_padding < 0)
       ago_padding = 0;
     format_thread_name(row->context.thread_id, thread_name, sizeof(thread_name));
-    truncate_with_ellipsis(thread_name, thread, sizeof(thread), 14);
-    truncate_with_ellipsis(asciichat_error_string(row->context.code), message, sizeof(message), 23);
-    truncate_with_ellipsis(row->context.context_message, user, sizeof(user), table_width - 65);
-    int thread_padding = 14 - display_width(thread);
-    int message_padding = 23 - display_width(message);
+    truncate_with_ellipsis(thread_name, thread, sizeof(thread), thread_width);
+    truncate_with_ellipsis(asciichat_error_string(row->context.code), message, sizeof(message), message_width);
+    truncate_with_ellipsis(row->context.context_message, user, sizeof(user), user_width);
+    int thread_padding = thread_width - display_width(thread);
+    int message_padding = message_width - display_width(message);
     if (thread_padding < 0)
       thread_padding = 0;
     if (message_padding < 0)
