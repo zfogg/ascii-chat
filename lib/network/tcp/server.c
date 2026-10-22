@@ -87,14 +87,9 @@ static socket_t bind_and_listen(const char *address, int family, int port) {
 
   freeaddrinfo(res);
 
-  // Listen with backlog of 128 connections
-  if (listen(server_socket, 128) < 0) {
-    log_error("Failed to listen on %s:%d", addr_str ? addr_str : "(wildcard)", port);
-    socket_close(server_socket);
-    return INVALID_SOCKET_VALUE;
-  }
-
-  log_info("Listening on %s%s%s:%d (%s)", family == AF_INET6 ? "[" : "",
+  // libuv takes ownership of the bound socket and performs listen(). Calling
+  // listen() before uv_tcp_open() leaves adopted listeners stuck on macOS.
+  log_info("Bound %s%s%s:%d (%s)", family == AF_INET6 ? "[" : "",
            addr_str ? addr_str : (family == AF_INET ? "0.0.0.0" : "::"), family == AF_INET6 ? "]" : "", port,
            family == AF_INET ? "IPv4" : "IPv6");
 
