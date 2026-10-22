@@ -317,11 +317,15 @@ def main():
                            "An older build did not show the startup update prompt")
             startup.write("n")
             video(startup)
+            # Let the post-splash capture pipeline finish before exercising shutdown.
+            # A Ctrl-C during source creation is not the dismissal behavior this scenario covers.
+            startup.pump(0.5)
             finish(startup)
 
             dismissed = terminal("dismissed-update", update_command, check_updates=True,
                                  environment=update_env, rows=40, cols=100)
             video(dismissed)
+            dismissed.pump(0.5)
             finish(dismissed)
 
             marker = root / "updated-marker"
