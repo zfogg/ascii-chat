@@ -425,6 +425,10 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
   }
 
+  if (!data && len > 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Packet payload is NULL with nonzero length");
+  }
+
   // Handshake packets are ALWAYS sent unencrypted
   if (packet_is_handshake_type(type)) {
     return packet_send(sockfd, type, data, len);
@@ -668,6 +672,11 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
 
     // Parse decrypted header
     packet_header_t *decrypted_header = (packet_header_t *)plaintext;
+    if (NET_TO_HOST_U64(decrypted_header->magic) != PACKET_MAGIC) {
+      SET_ERRNO(ERROR_CRYPTO, "Decrypted packet has invalid magic");
+      buffer_release(plaintext);
+      return PACKET_RECV_ERROR;
+    }
     pkt_type = NET_TO_HOST_U16(decrypted_header->type);
 
     // DEBUG: Log decrypted packet type
@@ -1269,9 +1278,9 @@ asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_dat
 
   // Create image frame packet
   image_frame_packet_t packet;
-  packet.width = width;
-  packet.height = height;
-  packet.pixel_format = format;
+  packet.width = HOST_TO_NET_U32(width);
+  packet.height = HOST_TO_NET_U32(height);
+  packet.pixel_format = HOST_TO_NET_U32(format);
   packet.compressed_size = 0;
   packet.checksum = 0;
   packet.timestamp = 0; // Will be set by receiver
