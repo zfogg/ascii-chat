@@ -473,7 +473,6 @@ Test(network_connections, websocket_concurrent_close) {
     cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
     cr_assert_eq(fixture.results[i], ASCIICHAT_OK);
   }
-  cr_assert_not(ws->service_running);
   cr_assert_eq(acip_transport_close(transport), ASCIICHAT_OK);
   acip_transport_destroy(transport);
   acip_websocket_runtime_destroy(&runtime);

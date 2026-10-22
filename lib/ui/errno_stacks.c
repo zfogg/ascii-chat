@@ -96,7 +96,7 @@ static size_t snapshot_current(errno_tui_row_t *rows, bool stack_sort, size_t ca
   *stacks = 0;
   for (size_t t = 0; t < thread_count && t < ASCIICHAT_ERRNO_MAX_THREADS; ++t) {
     asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-    size_t depth = errno_snapshot(threads[t], frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+    size_t depth = errno_snapshot(threads[t], frames, ASCIICHAT_ERRNO_MAX_DEPTH).copied;
     if (!depth)
       continue;
     ++*stacks;
