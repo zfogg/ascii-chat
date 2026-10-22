@@ -331,8 +331,8 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
                   index == state.list.selected ? log_level_color_for_output(LOG_COLOR_DEBUG, colors) : "",
                   index == state.list.selected ? '>' : ' ', purple, (int)ago_value_length, ago, reset,
                   ago + ago_value_length, ago_padding, "", purple, resolved, reset, purple, dismissed, reset, purple,
-                  handled, reset, purple, row->context.code, reset, thread, thread_padding, "", message, message_padding,
-                  "", user);
+                  handled, reset, purple, row->context.code, reset, thread, thread_padding, "", message,
+                  message_padding, "", user);
     render_table_line(buffer, line, width);
   }
   frame_buffer_render_divider(buffer, width, utf8, colors);
