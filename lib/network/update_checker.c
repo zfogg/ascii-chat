@@ -88,8 +88,6 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL result pointer");
   }
 
-  update_check_result_t cached = {0};
-  bool have_cached = update_check_load_cache(&cached) == ASCIICHAT_OK;
   memset(result, 0, sizeof(*result));
 
   char *cache_path = get_cache_file_path();
@@ -294,6 +292,8 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL result pointer");
   }
 
+  update_check_result_t cached = {0};
+  bool have_cached = update_check_load_cache(&cached) == ASCIICHAT_OK;
   memset(result, 0, sizeof(*result));
 
   // Fill in current version and SHA
