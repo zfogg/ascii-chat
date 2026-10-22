@@ -44,6 +44,9 @@ RUN chmod +x /tmp/install-deps.sh && \
 RUN pacman -S --noconfirm --needed \
   which \
   clang-tools \
+  python-pyte \
+  python-pexpect \
+  ttf-dejavu \
   && pacman -Scc --noconfirm \
   && rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
 

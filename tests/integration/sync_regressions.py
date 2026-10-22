@@ -4,11 +4,21 @@ Build: cmake --build build --target test-sync-regressions
 Run: python tests/integration/sync_regressions.py build/bin/test-sync-regressions.exe
 Requires the same pyte/pywinpty (Windows) or pexpect (POSIX) as terminal_ui.py.
 """
+import importlib.util
+import os
 import re
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
+
+prerequisites = ["pyte"] + ([] if os.name == "nt" else ["pexpect"])
+missing = [name for name in prerequisites if importlib.util.find_spec(name) is None]
+if missing:
+    print("SKIP: sync terminal tests need " + ", ".join(missing) +
+          "; install tests/requirements-terminal.txt")
+    raise SystemExit(77)
 
 from terminal_ui import Terminal
 
@@ -28,6 +38,8 @@ def main():
         finally:
             terminal.close()
         for mode in ("deadlock", "stale"):
+            stop_path = Path(log + ".stop")
+            stop_path.unlink(missing_ok=True)
             terminal = Terminal([binary, mode, log], rows=30, cols=120)
             try:
                 terminal.expect(lambda text: "SYNC FIXTURE READY" in text, "Fixture did not start")
@@ -142,7 +154,17 @@ def main():
                                 "Sync screen did not recover after resize")
                 print(f"PASS independent sync UI: {mode}, keyboard, pagination, resize")
             finally:
-                terminal.close()
+                try:
+                    stop_path.touch()
+                    deadline = time.monotonic() + 10
+                    while terminal.process.isalive() and time.monotonic() < deadline:
+                        terminal.pump(0.1)
+                    assert not terminal.process.isalive(), "Blocked fixture did not save its coverage and exit"
+                    if os.name != "nt":
+                        terminal.process.close()
+                        assert terminal.process.exitstatus == 0, terminal.process.exitstatus
+                finally:
+                    terminal.close()
 
 
 if __name__ == "__main__":

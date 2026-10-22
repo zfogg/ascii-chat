@@ -2,6 +2,8 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/atomic.h>
+#include <string.h>
 
 // A 2x2 RGB PNG with a zlib-compressed IDAT: red, green, blue, white.
 // Keep the encoded fixture independent of the FFmpeg encoder configuration.
@@ -56,4 +58,46 @@ Test(ffmpeg_decoder, decodes_zlib_compressed_png) {
   cr_assert_eq(frame->w, 2);
   cr_assert_eq(frame->h, 2);
   cr_assert_arr_eq(frame->pixels, expected, sizeof(expected), "PNG decoding must preserve every RGB pixel");
+}
+
+static bool cancel_video_read(void *data) {
+  atomic_fetch_add_int((atomic_t *)data, 1);
+  return true;
+}
+
+Test(ffmpeg_decoder, cancelled_prefetch_is_not_a_decode_failure, .timeout = 10) {
+  static const char header[] = "YUV4MPEG2 W256 H256 F30:1 Ip A1:1 C420jpeg\n";
+  static const char marker[] = "FRAME\n";
+  unsigned char pixels[256 * 256 * 3 / 2];
+  memset(pixels, 128, sizeof(pixels));
+  cr_assert_eq(platform_create_temp_file(fixture_path, sizeof(fixture_path), "cancel-decoder", &fixture_fd), 0);
+  cr_assert_eq(platform_temp_file_open("cancel-decoder", fixture_path, &fixture_fd), ASCIICHAT_OK);
+  cr_assert_eq(platform_write(fixture_fd, header, sizeof(header) - 1), (ssize_t)sizeof(header) - 1);
+  for (unsigned i = 0; i < 4; ++i) {
+    cr_assert_eq(platform_write(fixture_fd, marker, sizeof(marker) - 1), (ssize_t)sizeof(marker) - 1);
+    cr_assert_eq(platform_write(fixture_fd, pixels, sizeof(pixels)), (ssize_t)sizeof(pixels));
+  }
+  cr_assert_eq(platform_close(fixture_fd), 0);
+  fixture_fd = -1;
+  decoder = ffmpeg_decoder_create(fixture_path);
+  cr_assert_not_null(decoder);
+  cr_assert_eq(ffmpeg_decoder_seek_to_timestamp(decoder, 0), ASCIICHAT_OK);
+  static atomic_t callbacks;
+  atomic_store_int(&callbacks, 0);
+  ffmpeg_decoder_set_exit_callback(decoder, cancel_video_read, &callbacks);
+  cr_assert_eq(ffmpeg_decoder_start_prefetch(decoder), ASCIICHAT_OK);
+  uint64_t deadline = platform_get_monotonic_time_us() + 5000000;
+  image_t *frame = NULL;
+  asciichat_error_context_t failure = {0};
+  while (atomic_load_int(&callbacks) < 2 && platform_get_monotonic_time_us() < deadline) {
+    cr_assert_neq(ffmpeg_decoder_poll_video(decoder, &frame, &failure), FFMPEG_FRAME_FAILED, "%s",
+                  failure.context_message);
+    platform_sleep_ms(1);
+  }
+  // One callback interrupts FFmpeg; the worker confirms cancellation before
+  // publishing its result. Stop joins it before inspecting the final state.
+  cr_assert_geq(atomic_load_int(&callbacks), 2);
+  ffmpeg_decoder_stop_prefetch(decoder);
+  cr_assert_neq(ffmpeg_decoder_poll_video(decoder, &frame, &failure), FFMPEG_FRAME_FAILED, "%s",
+                failure.context_message);
 }

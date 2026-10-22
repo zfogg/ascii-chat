@@ -6,6 +6,7 @@
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/webrtc/webrtc.h>
+#include <ascii-chat/network/websocket/internal.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
@@ -416,6 +417,66 @@ Test(network_connections, websocket_partial_start) {
 
 Test(network_connections, websocket_close) {
   scenario(1, false, false, 0, true);
+}
+
+typedef struct {
+  acip_transport_t *transport;
+  atomic_t entered, release;
+  asciichat_error_t results[8];
+} concurrent_close_t;
+
+typedef struct {
+  concurrent_close_t *fixture;
+  size_t index;
+} concurrent_close_worker_t;
+
+static void *held_websocket_service(void *arg) {
+  concurrent_close_t *fixture = arg;
+  while (!atomic_load_bool(&fixture->release))
+    platform_sleep_ms(1);
+  return NULL;
+}
+
+static void *close_websocket_concurrently(void *arg) {
+  concurrent_close_worker_t *worker = arg;
+  atomic_fetch_add_int(&worker->fixture->entered, 1);
+  worker->fixture->results[worker->index] = acip_transport_close(worker->fixture->transport);
+  return NULL;
+}
+
+Test(network_connections, websocket_concurrent_close) {
+  acip_websocket_runtime_t *runtime = NULL;
+  cr_assert_eq(acip_websocket_runtime_create(&runtime), ASCIICHAT_OK);
+  acip_transport_t *transport = acip_websocket_client_transport_create("concurrent_close", "ws://127.0.0.1:1", NULL);
+  cr_assert_not_null(transport);
+  cr_assert_eq(acip_transport_close(transport), ASCIICHAT_OK);
+
+  // Hold a replacement service thread alive so every caller closes the same
+  // joinable thread, independent of network callback timing.
+  concurrent_close_t fixture = {.transport = transport};
+  websocket_transport_data_t *ws = transport->impl_data;
+  cr_assert_eq(acthread_create(&ws->service_thread, "held_ws_service", held_websocket_service, &fixture), ASCIICHAT_OK);
+  ws->service_running = true;
+  asciichat_thread_t threads[8];
+  concurrent_close_worker_t workers[8];
+  for (size_t i = 0; i < 8; ++i) {
+    workers[i] = (concurrent_close_worker_t){.fixture = &fixture, .index = i};
+    cr_assert_eq(acthread_create(&threads[i], "concurrent_ws_close", close_websocket_concurrently, &workers[i]),
+                 ASCIICHAT_OK);
+  }
+  uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
+  while (atomic_load_int(&fixture.entered) != 8 && time_get_ns() < deadline)
+    platform_sleep_ms(1);
+  cr_assert_eq(atomic_load_int(&fixture.entered), 8);
+  atomic_store_bool(&fixture.release, true);
+  for (size_t i = 0; i < 8; ++i) {
+    cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
+    cr_assert_eq(fixture.results[i], ASCIICHAT_OK);
+  }
+  cr_assert_not(ws->service_running);
+  cr_assert_eq(acip_transport_close(transport), ASCIICHAT_OK);
+  acip_transport_destroy(transport);
+  acip_websocket_runtime_destroy(&runtime);
 }
 
 Test(network_connections, webrtc_echo) {

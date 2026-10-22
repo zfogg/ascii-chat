@@ -63,6 +63,7 @@
 #include <ascii-chat/options/schema.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/options/colorscheme.h>
@@ -898,6 +899,7 @@ static void handle_help_option(int argc, char **argv) {
       // Show help for the detected mode (or binary-level if no mode)
       usage(stdout, help_mode);
       fflush(NULL);
+      asciichat_coverage_flush();
       _Exit(0);
     }
   }

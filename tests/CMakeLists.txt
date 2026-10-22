@@ -30,6 +30,7 @@
 # Enable CTest if any tests are being built (Criterion or lib runtime)
 if(BUILD_TESTS)
     enable_testing()
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
 endif()
 
 # =============================================================================
@@ -381,11 +382,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         )
 
         if(USE_MIMALLOC)
-            if(TARGET mimalloc-static)
-                target_link_libraries(${test_exe_name} mimalloc-static)
-            elseif(MIMALLOC_LIBRARIES)
-                target_link_libraries(${test_exe_name} ${MIMALLOC_LIBRARIES})
-            endif()
+            target_link_libraries(${test_exe_name} ${MIMALLOC_LIBRARIES})
         endif()
 
         # Coverage builds need the profile runtime linked into test executables
@@ -912,7 +909,7 @@ if(TARGET ascii-chat-shared)
     if(BUILD_TESTS)
         add_test(NAME sync-regressions COMMAND test-sync-regressions sync
             "${CMAKE_CURRENT_BINARY_DIR}/sync-regressions.log")
-        set_tests_properties(sync-regressions PROPERTIES TIMEOUT 60)
+        set_tests_properties(sync-regressions PROPERTIES LABELS "integration" TIMEOUT 60)
     endif()
     if(BUILD_TESTS)
         add_executable(test-shared-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
@@ -960,6 +957,7 @@ if(TARGET ascii-chat-shared)
     if(BUILD_TESTS)
         add_test(NAME shared-lib-runtime
             COMMAND ${CMAKE_BINARY_DIR}/bin/test-shared-lib)
+        set_tests_properties(shared-lib-runtime PROPERTIES LABELS "integration")
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")
             execute_process(
                 COMMAND ${CMAKE_C_COMPILER} --print-file-name=libclang_rt.asan-x86_64.so
@@ -989,7 +987,7 @@ if(TARGET ascii-chat-static)
         endif()
         add_test(NAME crypto-logging COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_SOURCE_DIR}/tests/standalone/logging/run.py $<TARGET_FILE:test-crypto-logging>)
-        set_tests_properties(crypto-logging PROPERTIES TIMEOUT 60)
+        set_tests_properties(crypto-logging PROPERTIES LABELS "integration" TIMEOUT 60)
         if(WIN32)
             set_property(TEST crypto-logging PROPERTY ENVIRONMENT_MODIFICATION
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
@@ -1210,7 +1208,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
         # Contract cases are registered by the Criterion targets below.
         add_test(NAME acip-prepare-websocket COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_SOURCE_DIR}/tests/integration/acip_prepare_websocket.py $<TARGET_FILE:test-acip-prepare>)
-        set_tests_properties(acip-prepare-websocket PROPERTIES TIMEOUT 60)
+        set_tests_properties(acip-prepare-websocket PROPERTIES LABELS "integration" TIMEOUT 60)
         if(WIN32)
             set_property(TEST acip-prepare-websocket PROPERTY ENVIRONMENT_MODIFICATION
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
@@ -1651,5 +1649,80 @@ endif()
 # Preserve each suite's existing category while making all migrated contracts selectable.
 get_property(contract_tests DIRECTORY PROPERTY ASCIICHAT_CONTRACT_TESTS)
 foreach(contract_test IN LISTS contract_tests)
+    get_property(category TEST ${contract_test} PROPERTY LABELS)
+    if(NOT category MATCHES "(^|;)(unit|integration|performance)(;|$)")
+        set_property(TEST ${contract_test} APPEND PROPERTY LABELS integration)
+    endif()
     set_property(TEST ${contract_test} APPEND PROPERTY LABELS criterion contract)
 endforeach()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32)
+    add_test(NAME discovery-webrtc
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/integration/discovery_webrtc.py
+            $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(discovery-webrtc PROPERTIES LABELS "integration" TIMEOUT 120 RUN_SERIAL TRUE)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat)
+    add_test(NAME options-init COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/options_init.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(options-init PROPERTIES LABELS "unit" TIMEOUT 180)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat-shared)
+    set(shared_api_tests options-metadata)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_test(NAME symbolizer-offline COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/symbolizer_offline.py
+            $<TARGET_FILE:ascii-chat-shared> --cc ${CMAKE_C_COMPILER})
+        set_tests_properties(symbolizer-offline PROPERTIES SKIP_RETURN_CODE 77)
+        list(APPEND shared_api_tests symbolizer-offline)
+    endif()
+    add_test(NAME options-metadata COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/options_metadata.py $<TARGET_FILE:ascii-chat-shared>)
+    find_program(ASCIICHAT_TEST_SSH_KEYGEN ssh-keygen)
+    if(ASCIICHAT_TEST_SSH_KEYGEN)
+        add_test(NAME ssh-private-key-parser COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/ssh_private_key_parser.py $<TARGET_FILE:ascii-chat-shared>)
+        list(APPEND shared_api_tests ssh-private-key-parser)
+    endif()
+    find_program(ASCIICHAT_TEST_FFMPEG ffmpeg)
+    find_program(ASCIICHAT_TEST_FFPROBE ffprobe)
+    if(ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TEST_FFPROBE)
+        add_test(NAME encoder-audio-flush COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/encoder_audio_flush.py $<TARGET_FILE:ascii-chat-shared>)
+        list(APPEND shared_api_tests encoder-audio-flush)
+    endif()
+    foreach(api_test IN LISTS shared_api_tests)
+        set_tests_properties(${api_test} PROPERTIES LABELS "unit" TIMEOUT 120)
+        # Python hosts the instrumented library, so load ASan before Python's allocator.
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ASCIICHAT_SANITIZER_COMPILE_FLAGS MATCHES "fsanitize=address"
+           AND EXISTS "${ASAN_RUNTIME_LIBRARY}")
+            set_property(TEST ${api_test} APPEND PROPERTY ENVIRONMENT
+                "LD_PRELOAD=${ASAN_RUNTIME_LIBRARY}" "PYTHONMALLOC=malloc")
+        endif()
+    endforeach()
+endif()
+
+if(BUILD_TESTS AND TARGET test-sync-regressions AND NOT WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_test(NAME sync-ui-regressions COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/sync_regressions.py $<TARGET_FILE:test-sync-regressions>)
+    set_tests_properties(sync-ui-regressions PROPERTIES LABELS "integration" TIMEOUT 180
+        RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32 AND ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TEST_FFPROBE)
+    set(terminal_ui_args)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        list(APPEND terminal_ui_args --debug-sync)
+    endif()
+    add_test(NAME terminal-ui COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_ui.py --binary $<TARGET_FILE:ascii-chat>
+        ${terminal_ui_args})
+    set_tests_properties(terminal-ui PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+endif()
+
+if(TEST test_unit_crypto_test_gpg_key_expiry)
+    set_tests_properties(test_unit_crypto_test_gpg_key_expiry PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()

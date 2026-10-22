@@ -18,6 +18,7 @@
 
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/options/manpage.h>
@@ -51,6 +52,7 @@
  */
 static _Noreturn void action_exit(int code) {
   fflush(NULL);
+  asciichat_coverage_flush();
   _Exit(code);
 }
 

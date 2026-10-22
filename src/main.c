@@ -59,6 +59,7 @@
 // Common headers for version info and initialization
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/system.h>
@@ -896,6 +897,7 @@ int main(int argc, char *argv[]) {
     log_set_terminal_output(true);
     print_usage(opts->detected_mode);
     fflush(NULL);
+    asciichat_coverage_flush();
     _Exit(0);
   }
 

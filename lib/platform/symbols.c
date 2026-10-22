@@ -405,7 +405,7 @@ void symbol_cache_destroy(void) {
     if (entry) {
       HASH_DEL(g_symbol_cache, entry);
       if (entry->symbol) {
-        free(entry->symbol);
+        SAFE_FREE(entry->symbol);
       }
       free(entry);
       freed_count++;
@@ -469,7 +469,7 @@ bool symbol_cache_insert(void *addr, const char *symbol) {
     // Entry exists - update symbol if different
     if (existing->symbol && strcmp(existing->symbol, symbol) != 0) {
       // Free old symbol and allocate new one
-      free(existing->symbol);
+      SAFE_FREE(existing->symbol);
       existing->symbol = platform_strdup(symbol);
       if (!existing->symbol) {
         rwlock_wrunlock(&g_symbol_cache_lock);
@@ -710,11 +710,12 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
       continue;
     }
 
+    // Error reporting must not wait for remote debug-data downloads.
     // Build command with all addresses for this binary
     char cmd[8192];
     int offset =
-        safe_snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames %s-e %s ", symbolizer_cmd,
-                      groups[g].relative_addresses ? "--relative-address " : "", escaped_binary_path);
+        safe_snprintf(cmd, sizeof(cmd), "%s --demangle --no-debuginfod --output-style=LLVM --relativenames %s-e %s ",
+                      symbolizer_cmd, groups[g].relative_addresses ? "--relative-address " : "", escaped_binary_path);
 
     for (int j = 0; j < groups[g].count && offset < (int)sizeof(cmd) - 32; j++) {
       int n =

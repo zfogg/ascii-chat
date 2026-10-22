@@ -7,6 +7,7 @@ The test creates its own media and uses only loopback network connections.
 """
 
 import argparse
+import importlib.util
 import os
 from pathlib import Path
 import queue
@@ -16,6 +17,12 @@ import subprocess
 import tempfile
 import threading
 import time
+
+prerequisites = ["pyte"] + ([] if os.name == "nt" else ["pexpect"])
+missing = [name for name in prerequisites if importlib.util.find_spec(name) is None]
+if missing:
+    print("SKIP: terminal tests need " + ", ".join(missing) + "; install tests/requirements-terminal.txt")
+    raise SystemExit(77)
 
 import pyte
 
@@ -181,6 +188,13 @@ def main():
             sessions.append((name, term))
             return term
 
+        def finish(term):
+            term.interrupt()
+            if os.name != "nt":
+                term.process.close()
+                assert term.process.exitstatus == 0, term.process.exitstatus
+            term.close()
+
         def small(term):
             return term.expect(lambda text: "Terminal too small" in text,
                                "Expected the size warning")
@@ -214,7 +228,7 @@ def main():
             status.pump(0.4)
             status.resize(12, 19)
             small(status)
-            status.close()
+            finish(status)
             print("PASS status: startup, resize, tiny terminal, input suppression, live handshake")
 
             mirror_args = ["mirror", "--file", str(media), "--loop", "--splash-screen=false",
@@ -262,7 +276,7 @@ def main():
             assert mirror.pump(0.3) == paused, "Resize changed the paused state"
             mirror.write(" ")
             mirror.expect(lambda text: text != paused, "Expected playback to resume")
-            mirror.close()
+            finish(mirror)
             print("PASS media: startup, help priority, blocked keys, paused resize, recovery")
 
             explicit = terminal("explicit", mirror_args + ["--width", "60", "--height", "20"])
@@ -271,16 +285,14 @@ def main():
             video(explicit)
             explicit.resize(12, 19)
             small(explicit)
-            explicit.interrupt()
-            explicit.close()
+            finish(explicit)
             print("PASS explicit dimensions do not mask the physical terminal size")
 
             recording = root / "recorded.mp4"
             recorder = terminal("recording", mirror_args + ["--render-file", str(recording)])
             small(recorder)
             recorder.pump(2)
-            recorder.interrupt()
-            recorder.close()
+            finish(recorder)
             probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=nb_frames",
                 "-of", "csv=p=0", str(recording)], capture_output=True, text=True, check=True)
             assert any(line.isdigit() and int(line) > 1 for line in probe.stdout.splitlines()), probe.stdout

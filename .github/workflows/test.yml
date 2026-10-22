@@ -378,6 +378,9 @@ jobs:
           # macOS debug symbol bundles matching these paths are directories.
           rm -rf build/bin/test_* build/bin/ascii-chat build/bin/ascii-chat.dSYM build/lib/libasciichat*
 
+      - name: Install terminal test dependencies
+        run: python -m pip install -r tests/requirements-terminal.txt
+
       - name: Configure integration tests with coverage
         run: |
           echo "Configuring integration tests with coverage build..."

@@ -215,12 +215,31 @@ class MediaSessions(unittest.TestCase):
                         os.read(master, 65536)
                     except OSError:
                         break
-            self.assertEqual(process.wait(timeout=2), 0)
+            self.assertEqual(process.wait(timeout=2), 0,
+                             (self.root / "session.log").read_text(errors="replace")[-8000:])
         finally:
             if process.poll() is None:
                 process.kill()
                 process.wait()
             os.close(master)
+
+    def test_early_actions_write_coverage(self):
+        if not COVERAGE_BUILD:
+            self.skipTest("Requires gcov instrumentation")
+        for name, arguments, marker in (
+                ("help", ["--help"], b"--color-mode"),
+                ("version", ["--version"], b"ascii-chat"),
+                ("completion", ["--completions", "bash"], b"complete -F")):
+            with self.subTest(action=name):
+                prefix = self.root / ("action-profile-" + name)
+                result = subprocess.run(self.command(*arguments), env=dict(self.env, GCOV_PREFIX=str(prefix)),
+                                        capture_output=True, timeout=20)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-3000:])
+                self.assertIn(marker, result.stdout)
+                self.assertNotIn(b"profiling:", result.stderr)
+                profiles = list(prefix.rglob("actions.c.gcda"))
+                self.assertTrue(profiles, f"{name} exited without saving its action coverage")
+                self.assertTrue(all(path.stat().st_size > 20 for path in profiles))
 
     def test_loopback_encrypted_password_and_plain_sessions(self):
         for authentication in ([], ["--password", "loopback-test-secret"], ["--encrypt", "false"]):

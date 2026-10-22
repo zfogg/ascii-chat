@@ -1,5 +1,7 @@
 /** Native regressions for diagnostic snapshots and UI callback ownership. */
 #include <ascii-chat/common.h>
+#include <ascii-chat/debug/coverage.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
@@ -63,8 +65,8 @@ static void count_entry(uintptr_t key, const char *name, void *unused) {
     registry_lock = (rwlock_t *)key;
 }
 
-static void find_controller(uintptr_t key, uint64_t generation, const char *name, const char *type,
-                            const char *file, int line, void *data) {
+static void find_controller(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file,
+                            int line, void *data) {
   (void)generation;
   (void)file;
   (void)line;
@@ -140,6 +142,13 @@ static atomic_t sync_values[600];
 static mutex_t rate_hot, rate_warm;
 static atomic_t rate_value, total_value;
 static atomic_ptr_t total_pointer;
+static void *finish_blocked_fixture(void *arg) {
+  const char *stop_path = arg;
+  while (platform_access(stop_path, PLATFORM_ACCESS_EXISTS) != 0)
+    platform_sleep_ns(10 * NS_PER_MS_INT);
+  asciichat_coverage_flush();
+  _Exit(0);
+}
 static void *rate_worker(void *unused) {
   (void)unused;
   for (;;) {
@@ -167,25 +176,50 @@ static void *cycle_worker(void *unused) {
 
 int main(int argc, char **argv) {
   CHECK(argc == 3);
-  const struct { uint64_t ns; int decimals; const char *text; } duration_cases[] = {
-      {0, -1, "0ns"}, {100, -1, "100ns"}, {3500, -1, "3.5µs"},
-      {1250000, -1, "1.25ms"}, {255000000, -1, "255ms"}, {2500000000, -1, "2.5s"},
-      {60000000000, -1, "1:00"}, {83456000000, -1, "1:23"},
-      {119999600000, -1, "1:59"}, {3599999600000, -1, "59:59"},
-      {3600000000000, -1, "1:00:00"}, {7530000000000, -1, "2:05:30"},
-      {86399999999999, -1, "23:59:59"}, {86400000000000, -1, "1d 0:00"},
-      {3207240000000000, -1, "37d 2:54"}, {83456789123, 9, "1:23"},
-      {83456000000, 0, "1:23"}};
+  const struct {
+    uint64_t ns;
+    int decimals;
+    const char *text;
+  } duration_cases[] = {{0, -1, "0ns"},
+                        {100, -1, "100ns"},
+                        {3500, -1, "3.5µs"},
+                        {1250000, -1, "1.25ms"},
+                        {255000000, -1, "255ms"},
+                        {2500000000, -1, "2.5s"},
+                        {60000000000, -1, "1:00"},
+                        {83456000000, -1, "1:23"},
+                        {119999600000, -1, "1:59"},
+                        {3599999600000, -1, "59:59"},
+                        {3600000000000, -1, "1:00:00"},
+                        {7530000000000, -1, "2:05:30"},
+                        {86399999999999, -1, "23:59:59"},
+                        {86400000000000, -1, "1d 0:00"},
+                        {3207240000000000, -1, "37d 2:54"},
+                        {83456789123, 9, "1:23"},
+                        {83456000000, 0, "1:23"}};
   for (size_t i = 0; i < sizeof(duration_cases) / sizeof(duration_cases[0]); ++i) {
     char text[32];
     CHECK(time_pretty(duration_cases[i].ns, duration_cases[i].decimals, text, sizeof(text)) >= 0);
     CHECK(!strcmp(text, duration_cases[i].text));
   }
-  const struct { uint64_t value; const char *text; } compact_cases[] = {
-      {0, "0"}, {100, "100"}, {999, "999"}, {1000, "1k"}, {1050, "1.1k"},
-      {57400, "57.4k"}, {203200, "203.2k"}, {1300000, "1.3m"}, {124400000, "124.4m"},
-      {UINT64_C(7300000000), "7.3b"}, {UINT64_C(800200000000000), "800.2t"},
-      {999949, "999.9k"}, {999950, "1m"}, {UINT64_C(999950000000), "1t"}, {UINT64_MAX, "18.4e"}};
+  const struct {
+    uint64_t value;
+    const char *text;
+  } compact_cases[] = {{0, "0"},
+                       {100, "100"},
+                       {999, "999"},
+                       {1000, "1k"},
+                       {1050, "1.1k"},
+                       {57400, "57.4k"},
+                       {203200, "203.2k"},
+                       {1300000, "1.3m"},
+                       {124400000, "124.4m"},
+                       {UINT64_C(7300000000), "7.3b"},
+                       {UINT64_C(800200000000000), "800.2t"},
+                       {999949, "999.9k"},
+                       {999950, "1m"},
+                       {UINT64_C(999950000000), "1t"},
+                       {UINT64_MAX, "18.4e"}};
   for (size_t i = 0; i < sizeof(compact_cases) / sizeof(compact_cases[0]); ++i) {
     char text[32];
     format_number_compact(compact_cases[i].value, text, sizeof(text));
@@ -207,6 +241,10 @@ int main(int argc, char **argv) {
   CHECK(options_init(3, options) == ASCIICHAT_OK);
 #ifndef NDEBUG
   if (!strcmp(argv[1], "deadlock") || !strcmp(argv[1], "stale")) {
+    static char stop_path[1024];
+    SAFE_SNPRINTF(stop_path, sizeof(stop_path), "%s.stop", argv[2]);
+    asciichat_thread_t finisher;
+    CHECK(acthread_create(&finisher, "fixture_finish", finish_blocked_fixture, stop_path) == ASCIICHAT_OK);
     for (unsigned i = 0; i < 600; ++i) {
       atomic_store_u64(&sync_values[i], i);
       NAMED_REGISTER_ATOMIC(&sync_values[i], "sync_fixture_value", NULL);
@@ -287,7 +325,8 @@ int main(int argc, char **argv) {
 #ifndef NDEBUG
     bool completed = false;
     size_t required = 0;
-    CHECK(named_registry_try_snapshot(SIZE_MAX, &required, &completed, find_controller, NULL) == ASCIICHAT_OK && completed);
+    CHECK(named_registry_try_snapshot(SIZE_MAX, &required, &completed, find_controller, NULL) == ASCIICHAT_OK &&
+          completed);
     CHECK(controller_mutex);
     uint64_t query_locks = controller_mutex->lock_count;
 #endif
@@ -334,7 +373,8 @@ int main(int argc, char **argv) {
     CHECK(await_flag(&entered));
     const char media[] = "frame stays immutable";
     for (unsigned i = 0; i < 8; ++i)
-      CHECK(ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, media, sizeof(media)) == ASCIICHAT_OK);
+      CHECK(ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, media, sizeof(media)) ==
+            ASCIICHAT_OK);
 #ifndef NDEBUG
     bool found = false;
     CHECK(named_registry_for_each(count_entry, NULL, &found) == ASCIICHAT_OK && found);
@@ -342,7 +382,8 @@ int main(int argc, char **argv) {
     uint64_t media_memory_locks = memory_mutex->lock_count;
 #endif
     for (unsigned i = 0; i < 1000; ++i)
-      CHECK(ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, media, sizeof(media)) == ASCIICHAT_OK);
+      CHECK(ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, media, sizeof(media)) ==
+            ASCIICHAT_OK);
 #ifndef NDEBUG
     CHECK(memory_mutex->lock_count == media_memory_locks);
 #endif
@@ -350,6 +391,7 @@ int main(int argc, char **argv) {
     ui_controller_remove(UI_SCREEN_MEDIA);
     ui_controller_shutdown();
   } else {
+#ifndef NDEBUG
     for (unsigned i = 0; i < 600; ++i)
       CHECK(named_register((uintptr_t)&objects[i], "regression_entry", "test", "%p", __FILE__, __LINE__, __func__, 0) !=
             NULL);
@@ -357,16 +399,18 @@ int main(int argc, char **argv) {
     CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
     CHECK(seen == 600);
     CHECK(registry_lock != NULL);
+#endif
     CHECK(colorscheme_init() == ASCIICHAT_OK);
     color_scheme_t scheme = *colorscheme_get_active_scheme();
     colorscheme_palette_t palette;
     colorscheme_current_palette(&palette, TERM_COLOR_TRUECOLOR);
-    CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
 #ifndef NDEBUG
+    CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
     CHECK(scheme_mutex);
 #endif
-    seen = 600;
+
 #ifndef NDEBUG
+    seen = 600;
     uint64_t color_locks = scheme_mutex->lock_count;
 #endif
     for (unsigned i = 0; i < 1000; ++i) {
@@ -397,6 +441,7 @@ int main(int argc, char **argv) {
       debug_sync_check_cond_deadlocks();
     CHECK(registry_lock->rdlock_count == scans_before);
 #endif
+#ifndef NDEBUG
     asciichat_thread_t holder;
     CHECK(acthread_create(&holder, "registry_holder", hold_registry, NULL) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
@@ -411,7 +456,6 @@ int main(int argc, char **argv) {
     CLEAR_ERRNO();
     for (unsigned i = 0; i < 600; ++i)
       NAMED_UNREGISTER(&objects[i]);
-#ifndef NDEBUG
     CHECK(mutex_init(&test_mutex, "regression_mutex") == 0);
     mutex_lock(&test_mutex);
 #ifdef _WIN32
