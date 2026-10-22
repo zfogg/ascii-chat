@@ -187,7 +187,7 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
                                                                        : "."));
     }
     update_center_line(out, top + 7, left + 2, width - 4, "Contacting GitHub Releases...", LOG_COLOR_RESET);
-    update_center_line(out, top + 9, left + 2, width - 4, "Your chat and media keep running underneath", muted);
+    update_center_line(out, top + 9, left + 2, width - 4, "Video chat in your terminal", muted);
   } else if (result->check_succeeded) {
     char installed[160], latest[160];
     snprintf(installed, sizeof(installed), "Installed  %s",
