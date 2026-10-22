@@ -1,4 +1,5 @@
 import { createWasmModule } from "@ascii-chat/shared/wasm";
+import type { BrowserErrorFrame } from "../errors/errorBus";
 
 interface ParserModule {
   HEAPU8: Uint8Array;
@@ -19,12 +20,32 @@ interface ParserModule {
     output: number,
   ): number;
   _client_get_crypto_error_message(output: number, size: number): number;
+  _wasm_error_snapshot(): number;
+  _wasm_error_code(index: number): number;
+  _wasm_error_message(index: number): number;
+  _wasm_error_file(index: number): number;
+  _wasm_error_full_file(index: number): number;
+  _wasm_error_function(index: number): number;
+  _wasm_error_line(index: number): number;
+  UTF8ToString(pointer: number): string;
   lengthBytesUTF8(value: string): number;
   stringToUTF8(value: string, pointer: number, maximum: number): void;
   FS: {
     writeFile(path: string, contents: string, options: { mode: number }): void;
     unlink(path: string): void;
   };
+}
+
+function getErrorFrames(module: ParserModule): BrowserErrorFrame[] {
+  const count = Math.min(module._wasm_error_snapshot(), 64);
+  return Array.from({ length: count }, (_, index) => ({
+    code: module._wasm_error_code(index),
+    message: module.UTF8ToString(module._wasm_error_message(index)),
+    file: module.UTF8ToString(module._wasm_error_file(index)),
+    fullFile: module.UTF8ToString(module._wasm_error_full_file(index)),
+    function: module.UTF8ToString(module._wasm_error_function(index)),
+    line: module._wasm_error_line(index),
+  }));
 }
 
 let modulePromise: Promise<ParserModule> | null = null;
@@ -146,9 +167,11 @@ self.onmessage = async (
       postMessageToWorker({ id, bytes: bytes.buffer }, [bytes.buffer]);
     }
   } catch (error) {
+    const module = modulePromise ? await modulePromise.catch(() => null) : null;
     postMessageToWorker({
       id,
       error: error instanceof Error ? error.message : String(error),
+      frames: module ? getErrorFrames(module) : [],
     });
   } finally {
     const module = modulePromise ? await modulePromise.catch(() => null) : null;

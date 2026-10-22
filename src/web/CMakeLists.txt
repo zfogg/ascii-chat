@@ -177,6 +177,7 @@ message(STATUS "WASM: Using generated font at ${GENERATED_FONT_FILE}")
 
 # Library source files common to both mirror and client modes
 set(LIB_SRC_COMMON
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/errors.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/frame_validation.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/av_state.c
     # Core
@@ -551,6 +552,7 @@ apply_sanitizers_to_target(client-web)
 
 # Exported functions for mirror module (main() entry point via main_wasm.c)
 set(EXPORTED_FUNCTIONS_MIRROR
+    _wasm_error_snapshot _wasm_error_code _wasm_error_message _wasm_error_file _wasm_error_full_file _wasm_error_function _wasm_error_line _wasm_error_dismiss
     _wasm_capture_transform_required _wasm_capture_transform_rgba
     _errno_print_stacks _errno_print_history
     _wasm_test_pattern_create _wasm_test_pattern_render _wasm_test_pattern_render_rgba _wasm_test_pattern_destroy
@@ -611,6 +613,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
+    _wasm_error_snapshot _wasm_error_code _wasm_error_message _wasm_error_file _wasm_error_full_file _wasm_error_function _wasm_error_line _wasm_error_dismiss
     "_client_validate_frame"
     "_client_decode_frame_data"
     _wasm_capture_transform_required _wasm_capture_transform_rgba

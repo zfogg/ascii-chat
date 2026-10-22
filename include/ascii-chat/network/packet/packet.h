@@ -121,7 +121,7 @@
  * bytes allowed in the message portion to prevent excessive allocations and
  * potential abuse.
  */
-#define MAX_ERROR_MESSAGE_LENGTH 512
+#define MAX_ERROR_MESSAGE_LENGTH 4096
 
 /**
  * @brief Maximum remote log message length (512 bytes)
@@ -1393,6 +1393,14 @@ int send_pong_packet(socket_t sockfd);
  */
 asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *crypto_ctx, asciichat_error_t error_code,
                                     const char *message);
+
+/**
+ * @brief Format the current thread's error stack for transport to a peer
+ * @param buffer Destination buffer
+ * @param size Destination buffer size
+ * @return Number of bytes written, excluding the null terminator
+ */
+size_t packet_format_error_stack(char *buffer, size_t size);
 
 /**
  * @brief Parse an error packet payload into components
