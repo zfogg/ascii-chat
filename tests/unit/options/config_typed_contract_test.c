@@ -74,6 +74,8 @@ Test(config_typed_contract, typed_toml_loads_enum_names_scalars_and_escaped_stri
   cr_assert_float_eq(options.snapshot_delay, 1.25, 1e-9);
   cr_assert_str_eq(options.log_file, "folder\\trace\"name.log");
   cr_assert_eq(options_get()->fps, 24);
+  cr_assert_eq(load("[contract]\ncolor_mode='auto'\n", true, &options), ASCIICHAT_OK);
+  cr_assert_eq(options.color_mode, TERM_COLOR_AUTO);
 }
 Test(config_typed_contract, numeric_enum_compatibility_and_invalid_values_preserve_fields) {
   const struct {

@@ -332,7 +332,8 @@ static asciichat_error_t parse_validate_int(const char *value_str, const config_
 
   if (is_enum) {
     // Enum parsing
-    if (enum_val < 0) {
+    bool named_auto = meta->field_offset == offsetof(options_t, color_mode) && strcmp(value_str, OPT_VALUE_AUTO) == 0;
+    if (enum_val < 0 && !named_auto) {
       // Backward compatibility: accept numeric enum values too.
       char *endptr = NULL;
       long raw_enum = strtol(value_str, &endptr, 10);
@@ -358,7 +359,7 @@ static asciichat_error_t parse_validate_int(const char *value_str, const config_
         }
       }
 
-      if (enum_val < 0) {
+      if (!numeric_valid) {
         if (strlen(error_msg) == 0) {
           SAFE_SNPRINTF(error_msg, error_size, "Invalid enum value: %s", value_str);
         }
