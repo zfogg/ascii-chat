@@ -320,11 +320,14 @@ static void render_update_overlay(terminal_size_t size, const void *data) {
   result = g_update_result;
   checking = g_update_checking;
   mutex_unlock(&g_update_result_mutex);
-  const char *title = checking ? "Check for updates" : result.update_available ? "Update available" :
-                    result.check_succeeded ? "You're up to date" : "Update check unavailable";
+  const char *title = checking                  ? "Check for updates"
+                      : result.update_available ? "Update available"
+                      : result.check_succeeded  ? "You're up to date"
+                                                : "Update check unavailable";
   char command[512] = {0};
   if (result.update_available)
-    update_check_get_upgrade_suggestion(update_check_detect_install_method(), result.latest_version, command, sizeof(command));
+    update_check_get_upgrade_suggestion(update_check_detect_install_method(), result.latest_version, command,
+                                        sizeof(command));
   char installed[128] = {0}, latest[128] = {0}, checking_line[64] = {0};
   const char *lines[5] = {0};
   size_t line_count = 0;
@@ -348,12 +351,13 @@ static void render_update_overlay(terminal_size_t size, const void *data) {
   } else {
     lines[line_count++] = "No network result is available. Press R to retry.";
   }
-  const char *footer = result.update_available ? "Enter update now  O open GitHub  R retry  F12/Esc close"
-                                                : "R retry  F12/Esc close";
+  const char *footer =
+      result.update_available ? "Enter update now  O open GitHub  R retry  F12/Esc close" : "R retry  F12/Esc close";
   frame_buffer_t *out = frame_buffer_create((size_t)size.rows, (size_t)size.cols);
   if (!out)
     return;
-  ui_overlay_box_t box = {.title = title, .lines = lines, .line_count = line_count, .footer = footer, .minimum_width = 66};
+  ui_overlay_box_t box = {
+      .title = title, .lines = lines, .line_count = line_count, .footer = footer, .minimum_width = 66};
   (void)ui_overlay_box_render(out, size, &box);
   ui_controller_write(STDOUT_FILENO, frame_buffer_get_content(out), frame_buffer_get_length(out));
   frame_buffer_destroy(out);
@@ -397,12 +401,11 @@ void update_banner_print_instructions(void) {
   mutex_unlock(&g_update_result_mutex);
 
   char output[2048];
-  int len =
-      snprintf(output, sizeof(output),
-               "\033[0m\033[2J\033[H\033[?25h"
-               "\nUpdated ascii-chat: %s -> %s\n\nRun ascii-chat again to start the new version.\n\n"
-               "Binaries for every OS with release notes in the GitHub release:\n%s\n\n",
-               result.current_version, result.latest_version, result.release_url);
+  int len = snprintf(output, sizeof(output),
+                     "\033[0m\033[2J\033[H\033[?25h"
+                     "\nUpdated ascii-chat: %s -> %s\n\nRun ascii-chat again to start the new version.\n\n"
+                     "Binaries for every OS with release notes in the GitHub release:\n%s\n\n",
+                     result.current_version, result.latest_version, result.release_url);
   if (len > 0 && len < (int)sizeof(output))
     ui_controller_finish(STDOUT_FILENO, output, (size_t)len);
 }
@@ -427,7 +430,7 @@ bool update_banner_install_update(void) {
 #endif
   } else
 #endif
-  if (method == INSTALL_METHOD_HOMEBREW) {
+      if (method == INSTALL_METHOD_HOMEBREW) {
     const char *argv[] = {"brew", "upgrade", "ascii-chat", NULL};
     exit_code = platform_execute_subprocess("brew", argv, NULL, 0);
   } else if (method == INSTALL_METHOD_SCOOP) {
@@ -438,8 +441,9 @@ bool update_banner_install_update(void) {
     exit_code = platform_execute_subprocess("paru", argv, NULL, 0);
   } else {
 #ifdef _WIN32
-    const char *argv[] = {"powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
-                          "irm https://ascii-chat.com/install.ps1 | iex", NULL};
+    const char *argv[] = {"powershell", "-NoProfile", "-ExecutionPolicy",
+                          "Bypass",     "-Command",   "irm https://ascii-chat.com/install.ps1 | iex",
+                          NULL};
     exit_code = platform_execute_subprocess("powershell", argv, NULL, 0);
 #else
     const char *argv[] = {"/bin/sh", "-c", "curl -fsSL https://ascii-chat.com/install.sh | bash", NULL};
@@ -481,9 +485,15 @@ static void *update_check_thread_func(void *arg) {
 }
 
 static void update_banner_start_check_impl(bool force) {
-  if (g_update_thread_started) return;
-  if (lifecycle_init_once(&g_update_result_lifecycle)) { mutex_init(&g_update_result_mutex, "update_banner_result"); lifecycle_init_commit(&g_update_result_lifecycle); }
-  mutex_lock(&g_update_result_mutex); g_update_checking = true; mutex_unlock(&g_update_result_mutex);
+  if (g_update_thread_started)
+    return;
+  if (lifecycle_init_once(&g_update_result_lifecycle)) {
+    mutex_init(&g_update_result_mutex, "update_banner_result");
+    lifecycle_init_commit(&g_update_result_lifecycle);
+  }
+  mutex_lock(&g_update_result_mutex);
+  g_update_checking = true;
+  mutex_unlock(&g_update_result_mutex);
   mutex_lock(&g_update_result_mutex);
   g_update_finished = false;
   mutex_unlock(&g_update_result_mutex);
@@ -497,7 +507,11 @@ void update_banner_start_check(void) {
 }
 
 void update_banner_toggle_overlay(void) {
-  if (g_update_overlay) { g_update_overlay = false; ui_controller_remove(UI_SCREEN_UPDATE); return; }
+  if (g_update_overlay) {
+    g_update_overlay = false;
+    ui_controller_remove(UI_SCREEN_UPDATE);
+    return;
+  }
   g_update_overlay = true;
   bool finished = false;
   if (lifecycle_is_initialized(&g_update_result_lifecycle)) {
@@ -507,7 +521,8 @@ void update_banner_toggle_overlay(void) {
   }
   if (g_update_thread_started && finished)
     update_banner_wait_for_check();
-  if (!g_update_thread_started) update_banner_start_check_impl(true);
+  if (!g_update_thread_started)
+    update_banner_start_check_impl(true);
   const bool snapshot = true;
   if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 40, .rows = 15},
                            render_update_overlay, &snapshot, sizeof(snapshot)) != ASCIICHAT_OK) {
@@ -518,7 +533,8 @@ void update_banner_toggle_overlay(void) {
 }
 
 bool update_banner_is_checking(void) {
-  if (!lifecycle_is_initialized(&g_update_result_lifecycle)) return false;
+  if (!lifecycle_is_initialized(&g_update_result_lifecycle))
+    return false;
   mutex_lock(&g_update_result_mutex);
   bool checking = g_update_checking;
   mutex_unlock(&g_update_result_mutex);
@@ -531,7 +547,9 @@ bool update_banner_is_overlay_open(void) {
 
 static void update_banner_open_release(void) {
   update_check_result_t result;
-  mutex_lock(&g_update_result_mutex); result = g_update_result; mutex_unlock(&g_update_result_mutex);
+  mutex_lock(&g_update_result_mutex);
+  result = g_update_result;
+  mutex_unlock(&g_update_result_mutex);
 #ifdef _WIN32
   const char *argv[] = {"cmd", "/c", "start", "", result.release_url, NULL};
   (void)platform_execute_subprocess("cmd", argv, NULL, 0);
@@ -545,12 +563,29 @@ static void update_banner_open_release(void) {
 }
 
 bool update_banner_handle_key(int key) {
-  if (key == KEY_F12) { update_banner_toggle_overlay(); return true; }
-  if (!g_update_overlay) return false;
-  if (key == KEY_ESCAPE) { update_banner_toggle_overlay(); return true; }
-  if (key == 'o' || key == 'O') { update_banner_open_release(); return true; }
-  if (key == 'r' || key == 'R') { update_banner_wait_for_check(); update_banner_start_check_impl(true); return true; }
-  if (key == '\r' || key == '\n') { (void)update_banner_install_update(); return true; }
+  if (key == KEY_F12) {
+    update_banner_toggle_overlay();
+    return true;
+  }
+  if (!g_update_overlay)
+    return false;
+  if (key == KEY_ESCAPE) {
+    update_banner_toggle_overlay();
+    return true;
+  }
+  if (key == 'o' || key == 'O') {
+    update_banner_open_release();
+    return true;
+  }
+  if (key == 'r' || key == 'R') {
+    update_banner_wait_for_check();
+    update_banner_start_check_impl(true);
+    return true;
+  }
+  if (key == '\r' || key == '\n') {
+    (void)update_banner_install_update();
+    return true;
+  }
   return g_update_overlay;
 }
 
