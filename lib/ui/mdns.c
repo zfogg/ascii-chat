@@ -333,7 +333,8 @@ static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_
       break;
     if (count && (key == KEY_UP || key == 'k' || key == KEY_DOWN || key == 'j')) {
       int delta = (key == KEY_UP || key == 'k') ? -1 : 1;
-      ui_selectable_list_move(&snapshot->list, count, MDNS_LIST_MAX_ROWS, delta);
+      snapshot->list.selected = (snapshot->list.selected + delta + count) % count;
+      ui_selectable_list_keep_visible(&snapshot->list, count, MDNS_LIST_MAX_ROWS);
       length = 0;
       snapshot->input[0] = '\0';
       continue;
