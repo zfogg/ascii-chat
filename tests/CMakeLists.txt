@@ -1104,6 +1104,12 @@ if(BUILD_TESTS)
             --binary $<TARGET_FILE:ascii-chat>)
     set_tests_properties(mdns-terminal PROPERTIES
         LABELS "integration;terminal" TIMEOUT 180 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
+    add_test(NAME mdns-cross-host
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/mdns_cross_host.py
+            --binary $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(mdns-cross-host PROPERTIES
+        LABELS "integration;terminal;network" TIMEOUT 120 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
 endif()
 
 # Exercises the production discovery state machine without external services.
