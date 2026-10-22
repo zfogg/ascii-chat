@@ -115,7 +115,6 @@ static bool update_select_key(int key, int count) {
 static void render_update_dialog(terminal_size_t size, const update_check_result_t *result, bool startup,
                                  bool checking) {
   bool available = !checking && result->update_available;
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDOUT_FILENO);
   bool unicode = GET_OPTION(force_utf8) == UTF8_SETTING_TRUE ||
                  (GET_OPTION(force_utf8) == UTF8_SETTING_AUTO && terminal_supports_utf8());
   log_color_t cyan = LOG_COLOR_DEBUG;
@@ -214,13 +213,18 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
       char instructions[128];
       truncate_with_ellipsis("Full instructions on ascii-chat.com", instructions, sizeof(instructions), width - 4);
       int instructions_left = left + 2 + (width - 4 - display_width(instructions)) / 2;
-      bool links = !GET_OPTION(strip_ansi);
-      char styled_instructions[160];
-      snprintf(styled_instructions, sizeof(styled_instructions), "%s%s%s", colors ? "\033[37;4m" : "", instructions,
-               colors ? "\033[0m" : "");
-      frame_buffer_printf(out, "\033[%d;%dH%s%s%s", top + 10, instructions_left,
-                          links ? "\033]8;;https://ascii-chat.com\033\\" : "",
-                          colored_string(LOG_COLOR_RESET, styled_instructions), links ? "\033]8;;\033\\" : "");
+      char domain_link[128], styled_instructions[256];
+      (void)terminal_format_hyperlink(domain_link, sizeof(domain_link), "https://ascii-chat.com", "ascii-chat.com",
+                                      !GET_OPTION(strip_ansi));
+      char *domain = strstr(instructions, "ascii-chat.com");
+      if (domain) {
+        *domain = '\0';
+        snprintf(styled_instructions, sizeof(styled_instructions), "%s%s", instructions, domain_link);
+      } else {
+        snprintf(styled_instructions, sizeof(styled_instructions), "%s", instructions);
+      }
+      frame_buffer_printf(out, "\033[%d;%dH%s", top + 10, instructions_left,
+                          colored_string(LOG_COLOR_WHITE, styled_instructions));
       update_center_line(out, top + 11, left + 2, width - 4,
                          "Binaries for every OS with release notes on GitHub:", muted);
       update_center_line(out, top + 12, left + 2, width - 4, result->release_url, cyan);
@@ -243,7 +247,7 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
     int label_width = display_width(labels[i]);
     int button_col = stacked ? left + (width - label_width) / 2 : col;
     char button[96];
-    snprintf(button, sizeof(button), "%s%s", i == selected ? (colors ? "\033[40;7m" : "\033[7m") : "", labels[i]);
+    snprintf(button, sizeof(button), "%s%s", i == selected ? "\033[40;7m" : "", labels[i]);
     frame_buffer_printf(out, "\033[%d;%dH%s\033[0m", button_row + (stacked ? i : 0), button_col,
                         colored_string(magenta, button));
     col += label_width + 3;
@@ -318,15 +322,18 @@ void update_banner_print_instructions(void) {
   memcpy(&result, &g_update_result, sizeof(result));
   mutex_unlock(&g_update_result_mutex);
 
+  char domain_link[128], instructions[256];
+  (void)terminal_format_hyperlink(domain_link, sizeof(domain_link), "https://ascii-chat.com", "ascii-chat.com",
+                                  !GET_OPTION(strip_ansi));
+  snprintf(instructions, sizeof(instructions), "Full instructions on %s", domain_link);
   char output[2048];
   int len = snprintf(output, sizeof(output),
                      "\033[0m\033[2J\033[H\033[?25h"
                      "\nUpdated ascii-chat: %s -> %s\n\nRun ascii-chat again to start the new version.\n\n"
                      "Binaries for every OS with release notes on GitHub:\n%s\n\n"
-                     "%sFull instructions on ascii-chat.com%s\n\n",
+                     "%s\n\n",
                      result.current_version, result.latest_version, result.release_url,
-                     GET_OPTION(strip_ansi) ? "" : "\033]8;;https://ascii-chat.com\033\\\033[37;4m",
-                     GET_OPTION(strip_ansi) ? "" : "\033[0m\033]8;;\033\\");
+                     colored_string(LOG_COLOR_WHITE, instructions));
   if (len > 0 && len < (int)sizeof(output))
     ui_controller_finish(STDOUT_FILENO, output, (size_t)len);
 }

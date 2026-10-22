@@ -363,10 +363,11 @@ def main():
                 link_row, link_line = next((row, line) for row, line in enumerate(startup.screen.display)
                                            if link_label in line)
                 link_start = link_line.index(link_label)
-                assert all(startup.screen.buffer[link_row][col].underscore
+                domain_start = link_line.index("ascii-chat.com", link_start)
+                assert all(startup.screen.buffer[link_row][col].underscore == (col >= domain_start)
                            and startup.screen.buffer[link_row][col].fg == "white"
-                           for col in range(link_start, link_start + len(link_label))), "Instructions must be white and underlined"
-                assert ("\x1b]8;;https://ascii-chat.com\x1b\\" in "".join(startup.raw)
+                           for col in range(link_start, link_start + len(link_label))), "Only the white domain should be underlined"
+                assert ("\x1b]8;;https://ascii-chat.com\x1b\\\x1b[4mascii-chat.com\x1b[24m\x1b]8;;\x1b\\" in "".join(startup.raw)
                         and "\x1b]8;;\x1b\\" in "".join(startup.raw)), "Instructions lack a bounded OSC 8 hyperlink"
                 startup.write("\x1b[C\x1b[C")
                 startup.pump(.3)

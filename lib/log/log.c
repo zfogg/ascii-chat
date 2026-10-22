@@ -1898,6 +1898,8 @@ const char *log_get_foreground_color(void) {
 }
 
 const char *log_level_color(log_color_t color) {
+  if (color == LOG_COLOR_WHITE)
+    return "\033[37m";
   const char **colors = log_get_color_array();
   if (colors == NULL) {
     return ""; /* Return empty string if colors not available */
@@ -1911,6 +1913,8 @@ const char *log_level_color(log_color_t color) {
 const char *log_level_color_for_output(log_color_t color, bool enabled) {
   if (!enabled)
     return "";
+  if (color == LOG_COLOR_WHITE)
+    return "\033[37m";
   static _Thread_local colorscheme_palette_t palette;
   // The caller already resolved whether this destination accepts color. Do not
   // re-check stdout here: reports can target a terminal independent of stdout.

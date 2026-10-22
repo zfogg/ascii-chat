@@ -934,6 +934,21 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps);
 bool terminal_should_color_output(int fd);
 
 /**
+ * @brief Format a clickable, underlined OSC 8 terminal link.
+ *
+ * Uses the same terminal protocol on Windows, macOS, and Linux. The terminal
+ * emulator handles clicking and opening the URL in the user's browser.
+ * Emulators without OSC 8 support still display the label. Pass enabled=false
+ * for plain output. Styling and the hyperlink end immediately after the label.
+ * URLs and labels must not contain terminal control characters.
+ *
+ * @return Number of bytes written, or -1 for invalid input/insufficient space.
+ * On failure a nonempty output buffer is cleared; escape sequences are never
+ * truncated. The return count excludes the terminating NUL.
+ */
+int terminal_format_hyperlink(char *buffer, size_t capacity, const char *url, const char *label, bool enabled);
+
+/**
  * @brief Get current color mode considering all overrides
  *
  * Determines effective color mode by checking:
