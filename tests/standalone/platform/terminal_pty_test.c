@@ -11,6 +11,7 @@
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/ui/update_banner.h>
+#include <ascii-chat/ui/render_progress.h>
 #include "../../../src/common/session/display.h"
 
 #define REQUIRE(condition)                                                                                             \
@@ -111,6 +112,35 @@ static asciichat_error_t probe(const char *mode) {
     ui_input_shutdown();
     ui_controller_shutdown();
     keyboard_destroy();
+  } else if (strncmp(mode, "progress-", 9) == 0) {
+    REQUIRE(render_progress_create(false, "unused") == NULL);
+    render_progress_frame(NULL, NULL, false);
+    render_progress_begin(NULL, 0, false);
+    render_progress_finalize(NULL);
+    render_progress_destroy(NULL);
+    REQUIRE(terminal_set_raw_mode(true) == ASCIICHAT_OK);
+    render_progress_t *progress = render_progress_create(true, "/tmp/output\033[2J\n.mp4");
+    REQUIRE(progress != NULL);
+    char preview[] = "FIRST-PREVIEW\nsecond-line";
+    render_progress_frame(progress, preview, true);
+    memset(preview, 'Z', sizeof(preview) - 1);
+    render_progress_begin(progress, 3, strcmp(mode, "progress-known") == 0);
+    char acknowledgement = 0;
+    REQUIRE(platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'f');
+    render_progress_finalize(progress);
+    REQUIRE(platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'e');
+    render_progress_frame(progress, "FAILED-PREVIEW", false);
+    REQUIRE(platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'o');
+    size_t oversized_length = 1024 * 1024 + 1;
+    char *oversized = SAFE_MALLOC(oversized_length + 1, char *);
+    memset(oversized, 'X', oversized_length);
+    oversized[oversized_length] = '\0';
+    render_progress_frame(progress, oversized, true);
+    SAFE_FREE(oversized);
+    REQUIRE(platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'q');
+    render_progress_destroy(progress);
+    ui_controller_shutdown();
+    REQUIRE(terminal_set_raw_mode(false) == ASCIICHAT_OK);
   } else if (strcmp(mode, "errno-ui") == 0) {
 #ifdef ASCIICHAT_DIAGNOSTIC_UI
     REQUIRE(options_set_bool("strip_ansi", true) == ASCIICHAT_OK);

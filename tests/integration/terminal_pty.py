@@ -188,4 +188,39 @@ for mode, key, expected in [
     finally:
         if child.isalive():
             child.close(force=True)
+for mode, known in [("progress-known", True), ("progress-unknown", False)]:
+    child = start(mode)
+    try:
+        screen = pyte.Screen(91, 37)
+        stream = pyte.Stream(screen)
+        decoder = codecs.getincrementaldecoder("utf-8")("replace")
+        def progress_view(predicate):
+            deadline = time.monotonic() + 5
+            while not predicate("\n".join(screen.display)):
+                assert time.monotonic() < deadline, screen.display
+                try:
+                    chunk = child.read_nonblocking(65536, timeout=.2)
+                except pexpect.TIMEOUT:
+                    continue
+                stream.feed(decoder.decode(chunk))
+            return "\n".join(screen.display)
+        initial_total = "3" if known else "?"
+        text = progress_view(lambda text: "Rendering file" in text and f"frame 1/{initial_total}" in text
+                             and "FIRST-PREVIEW" in text and "second-line" in text)
+        assert "/tmp/output?[2J?.mp4" in text, text
+        assert "ZZZZ" not in text, text
+        child.send(b"f")
+        final_total = "3" if known else "1"
+        progress_view(lambda text: "Finalizing file" in text and f"frame 1/{final_total}" in text)
+        child.send(b"e")
+        progress_view(lambda text: "Recording failed" in text and "FAILED-PREVIEW" in text
+                      and f"frame 1/{final_total}" in text and "FIRST-PREVIEW" not in text)
+        child.send(b"o")
+        text = progress_view(lambda text: f"frame 2/{final_total}" in text and "FAILED-PREVIEW" not in text)
+        assert "XXXXXXXX" not in text, text
+        child.send(b"q")
+        finish(child)
+    finally:
+        if child.isalive():
+            child.close(force=True)
 print("Terminal PTY contracts passed")
