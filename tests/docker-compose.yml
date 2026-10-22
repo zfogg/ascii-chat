@@ -2,9 +2,12 @@ services:
   # Arch Linux container (x86_64 with QEMU emulation)
   ascii-chat-tests:
     image: zfogg/ascii-chat:latest
+    # The published runtime image has an ascii-chat ENTRYPOINT. Clear it so
+    # this service always executes its test shell command.
+    entrypoint: []
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: tests/Dockerfile
       platforms:
         - linux/amd64
 
