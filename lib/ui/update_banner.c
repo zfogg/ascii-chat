@@ -9,6 +9,7 @@
 
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/common/shutdown.h>
+#include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/ui/overlay_box.h>
@@ -386,8 +387,10 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
     if (key == 'n' || key == 'N' || key == KEY_ESCAPE)
       break;
   }
-  ui_controller_remove(UI_SCREEN_UPDATE);
-  if (!update) {
+  if (!g_update_overlay) {
+    ui_controller_remove(UI_SCREEN_UPDATE);
+  }
+  if (!update && !g_update_overlay) {
     update_check_dismiss_for_a_week(&result);
     update_banner_set_result(&result);
   }
@@ -456,6 +459,7 @@ bool update_banner_install_update(void) {
   }
   update_banner_print_instructions();
   shutdown_request();
+  APP_CALLBACK_VOID(signal_exit);
   return true;
 }
 
@@ -493,12 +497,15 @@ static void update_banner_start_check_impl(bool force) {
   }
   mutex_lock(&g_update_result_mutex);
   g_update_checking = true;
-  mutex_unlock(&g_update_result_mutex);
-  mutex_lock(&g_update_result_mutex);
   g_update_finished = false;
   mutex_unlock(&g_update_result_mutex);
   if (acthread_create(&g_update_thread, "update_check", update_check_thread_func, force ? (void *)1 : NULL) == 0) {
     g_update_thread_started = true;
+  } else {
+    mutex_lock(&g_update_result_mutex);
+    g_update_checking = false;
+    g_update_finished = true;
+    mutex_unlock(&g_update_result_mutex);
   }
 }
 

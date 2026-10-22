@@ -1784,7 +1784,7 @@ endif()
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32 AND ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TEST_FFPROBE)
     set(terminal_ui_args)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        list(APPEND terminal_ui_args --debug-sync)
+        list(APPEND terminal_ui_args --debug-sync --debug-updates)
     endif()
     asciichat_add_python_test(terminal-ui
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_ui.py --binary $<TARGET_FILE:ascii-chat>

@@ -176,6 +176,7 @@ def main():
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--artifacts", type=Path)
     parser.add_argument("--debug-sync", action="store_true")
+    parser.add_argument("--debug-updates", action="store_true")
     args = parser.parse_args()
     binary = str(args.binary.resolve())
     with tempfile.TemporaryDirectory(prefix="ascii-ui-") as directory:
@@ -242,7 +243,10 @@ def main():
 
             mirror_args = ["mirror", "--file", str(media), "--loop", "--splash-screen=false",
                            "--audio=false", "--color-mode", "none"]
-            mirror = terminal("mirror", mirror_args)
+            mirror = terminal("mirror", mirror_args, check_updates=True, environment={
+                "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v0.0.0",
+                "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "f12-cache"),
+            })
             small(mirror)
             mirror.resize(40, 100)
             video(mirror)
