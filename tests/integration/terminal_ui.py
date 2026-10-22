@@ -326,8 +326,14 @@ def main():
 
             dismissed = terminal("dismissed-update", update_command, check_updates=True,
                                  environment=update_env, rows=40, cols=100)
-            video(dismissed)
-            dismissed.pump(0.5)
+            dismissed_media = video(dismissed)
+            # The forced update seam is synchronous, so give the splash/prompt
+            # hand-off a bounded moment and then prove this version's dismissal
+            # still suppresses the startup modal.
+            dismissed_media = dismissed.pump(0.5) or dismissed_media
+            assert "Update Available" not in dismissed_media, (
+                "Weekly dismissal did not suppress the repeated startup update prompt"
+            )
             finish(dismissed)
 
             marker = root / "updated-marker"
