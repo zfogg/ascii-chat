@@ -71,10 +71,27 @@ for mode, answer in [("password", "sécret".encode() + b"\r"), ("password-box", 
         deadline = time.monotonic() + 5
         while "test passphrase" not in "\n".join(screen.display).lower():
             assert time.monotonic() < deadline, screen.display
-            chunk = child.read_nonblocking(4096, timeout=1)
+            try:
+                chunk = child.read_nonblocking(4096, timeout=1)
+            except pexpect.TIMEOUT:
+                continue
             before += chunk
             stream.feed(decoder.decode(chunk))
-        child.send(answer)
+        if mode != "password-cancel":
+            child.send(answer[:-1])
+            deadline = time.monotonic() + 5
+            while "> ******" not in "\n".join(screen.display):
+                assert time.monotonic() < deadline, screen.display
+                try:
+                    chunk = child.read_nonblocking(4096, timeout=1)
+                except pexpect.TIMEOUT:
+                    continue
+                before += chunk
+                stream.feed(decoder.decode(chunk))
+                assert "sécret" not in "\n".join(screen.display)
+            child.send(b"\r")
+        else:
+            child.send(answer)
         after = finish(child)
         assert "sécret".encode() not in before + after
     finally:
