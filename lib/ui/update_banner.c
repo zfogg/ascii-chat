@@ -44,6 +44,7 @@ static bool g_update_finished = false;
 static _Atomic bool g_update_overlay = false;
 static _Atomic bool g_update_install_failed = false;
 static _Atomic int g_update_selected_action = 0;
+static _Atomic uint64_t g_update_visible_until_ns = 0;
 static void update_banner_open_release(void);
 
 static bool update_banner_copy_result(update_check_result_t *result) {
@@ -147,7 +148,7 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
   if (width > preferred_width)
     width = preferred_width;
   bool stacked = buttons_width > width - 6;
-  int height = (available ? 18 : 13) + (stacked ? count - 1 : 0);
+  int height = (available ? 18 : checking ? 15 : 13) + (stacked ? count - 1 : 0);
   bool failed = atomic_load(&g_update_install_failed);
   if (width < 24 || height > size.rows - 2)
     return;
@@ -156,7 +157,7 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
   frame_buffer_t *out = frame_buffer_create(size.rows, size.cols);
   if (!out)
     return;
-  frame_buffer_printf(out, "\033[0m\033[2J\033[H");
+  frame_buffer_printf(out, startup ? "\033[0m\033[2J\033[H" : "\033[0m");
   update_border(out, top, left, width, unicode ? "┌" : "+", horizontal, unicode ? "┐" : "+", cyan);
   for (int row = 1; row < height - 1; ++row)
     frame_buffer_printf(out, "\033[%d;%dH%s%*s%s", top + row, left, colored_string(cyan, vertical), width - 2, "",
@@ -168,17 +169,25 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
                                                 : "Update check unavailable";
   char heading[160];
   snprintf(heading, sizeof(heading), "\033[1m%s", title);
-  update_center_line(out, top + 2, left + 2, width - 4, heading,
+  update_center_line(out, top + (checking ? 1 : 2), left + 2, width - 4, heading,
                      checking                  ? cyan
                      : available               ? yellow
                      : result->check_succeeded ? green
                                                : yellow);
   if (checking) {
-    static const char spinner[] = "|/-\\";
-    char spin[2] = {spinner[(time_get_ns() / (150 * NS_PER_MS_INT)) % 4], 0};
-    update_center_line(out, top + 4, left + 2, width - 4, spin, yellow);
-    update_center_line(out, top + 6, left + 2, width - 4, "Contacting GitHub Releases...", LOG_COLOR_RESET);
-    update_center_line(out, top + 8, left + 2, width - 4, "Your chat and media keep running underneath", muted);
+    static const int dot_x[] = {3, 5, 6, 5, 3, 1, 0, 1};
+    static const int dot_y[] = {0, 0, 1, 2, 2, 2, 1, 0};
+    unsigned phase = (unsigned)((time_get_ns() / (100 * NS_PER_MS_INT)) % 8);
+    int spinner_left = left + (width - 7) / 2;
+    for (unsigned dot = 0; dot < 8; ++dot) {
+      bool lit = (phase + 8 - dot) % 8 < 3;
+      frame_buffer_printf(out, "\033[%d;%dH%s", top + 3 + dot_y[dot], spinner_left + dot_x[dot],
+                          colored_string(lit ? yellow : muted, unicode ? "●"
+                                                               : lit   ? "o"
+                                                                       : "."));
+    }
+    update_center_line(out, top + 7, left + 2, width - 4, "Contacting GitHub Releases...", LOG_COLOR_RESET);
+    update_center_line(out, top + 9, left + 2, width - 4, "Your chat and media keep running underneath", muted);
   } else if (result->check_succeeded) {
     char installed[160], latest[160];
     snprintf(installed, sizeof(installed), "Installed  %s",
@@ -212,7 +221,7 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
     update_center_line(out, top + 6, left + 2, width - 4, "No network result is available.", muted);
     update_center_line(out, top + 7, left + 2, width - 4, "Press R to retry.", muted);
   }
-  int button_row = top + (available ? 16 : 11);
+  int button_row = top + (available ? 16 : checking ? 13 : 11);
   if (failed) {
     update_center_line(out, button_row - 3, left + 2, width - 4, "Update command failed. See the logs and retry.",
                        yellow);
@@ -374,8 +383,17 @@ bool update_banner_install_update(void) {
 
 static void *update_check_thread_func(void *arg) {
   bool force = arg != NULL;
+  uint64_t visible_until = time_get_ns() + 2 * NS_PER_SEC_INT;
   update_check_result_t result;
   asciichat_error_t err = force ? update_check_perform(&result) : update_check_startup(&result);
+  while (!shutdown_is_requested()) {
+    uint64_t overlay_until = atomic_load(&g_update_visible_until_ns);
+    if (overlay_until > visible_until)
+      visible_until = overlay_until;
+    if (time_get_ns() >= visible_until)
+      break;
+    platform_sleep_ms(10);
+  }
   if (err == ASCIICHAT_OK) {
     if (result.update_available) {
       char notification[1024];
@@ -411,6 +429,7 @@ static void update_banner_start_check_impl(bool force) {
   mutex_lock(&g_update_result_mutex);
   g_update_checking = true;
   g_update_finished = false;
+  atomic_store(&g_update_selected_action, 0);
   memset(&g_update_result, 0, sizeof(g_update_result));
   g_update_result_set = false;
   mutex_unlock(&g_update_result_mutex);
@@ -422,6 +441,7 @@ static void update_banner_start_check_impl(bool force) {
     g_update_finished = true;
     mutex_unlock(&g_update_result_mutex);
   }
+  ui_controller_redraw();
 }
 
 void update_banner_start_check(void) {
@@ -435,6 +455,7 @@ void update_banner_toggle_overlay(void) {
     return;
   }
   g_update_overlay = true;
+  atomic_store(&g_update_visible_until_ns, time_get_ns() + 2 * NS_PER_SEC_INT);
   atomic_store(&g_update_selected_action, 0);
   bool finished = false;
   if (lifecycle_is_initialized(&g_update_result_lifecycle)) {

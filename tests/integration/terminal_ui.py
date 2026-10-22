@@ -185,6 +185,16 @@ def check_update_centering(term, title):
 
 
 def check_update_selection(term, label, selected=True):
+    def selection_ready(text):
+        for row, line in enumerate(term.screen.display):
+            if label not in line:
+                continue
+            start = line.index(label)
+            return all(term.screen.buffer[row][col].reverse == selected
+                       for col in range(start, start + len(label)))
+        return False
+
+    term.expect(selection_ready, f"Highlight did not move to the expected button: {label}", timeout=5)
     row, line = next((row, line) for row, line in enumerate(term.screen.display) if label in line)
     start = line.index(label)
     cells = [term.screen.buffer[row][col] for col in range(start, start + len(label))]
@@ -340,6 +350,7 @@ def main():
                 update_env = {
                     "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v99.0.0",
                     "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "update-cache"),
+                    "ASCII_CHAT_TEST_UPDATE_COMMAND": "exit 7",
                 }
                 startup = terminal("startup-update", update_command, check_updates=True,
                                    environment={**update_env, "ASCII_CHAT_TEST_UPDATE_SLOW": "1"}, rows=40, cols=100)
@@ -351,9 +362,15 @@ def main():
                 startup.pump(.3)
                 check_update_selection(startup, "Continue")
                 check_update_selection(startup, "Update now", selected=False)
+                startup.write("\x1b[C")
+                startup.pump(.2)
+                check_update_selection(startup, "Update now")
+                startup.write("\x1b[D")
+                startup.pump(.2)
+                check_update_selection(startup, "Continue")
                 # The prompt may replace a short-lived splash between samples.
                 assert "[ ok ]" in "".join(startup.raw), "Startup did not render compact initialization logs"
-                startup.write("n")
+                startup.write("\r")
                 video(startup)
                 # Let the post-splash capture pipeline finish before exercising shutdown.
                 # A Ctrl-C during source creation is not the dismissal behavior this scenario covers.
@@ -366,6 +383,22 @@ def main():
                 startup.write("\t\t")
                 startup.pump(.3)
                 check_update_selection(startup, "Close")
+                startup.write("\t\t")
+                startup.pump(.2)
+                check_update_selection(startup, "Update now")
+                startup.write("\x1b[D")
+                startup.pump(.2)
+                check_update_selection(startup, "Check again")
+                startup.write("\r")
+                startup.expect(lambda text: "Contacting GitHub Releases" in text,
+                               "Enter did not activate the selected retry button")
+                startup.write("\t\x1b[D\x1b[C\x1b[A\x1b[B?qc m")
+                startup.pump(.2)
+                check_update_selection(startup, "Close")
+                assert startup.process.isalive(), "Overlay-local keys leaked to the session"
+                startup.expect(lambda text: "Update available" in text,
+                               "Retry did not return the update result")
+                check_update_selection(startup, "Update now")
                 startup.resize(24, 40)
                 startup.pump(.3)
                 check_update_centering(startup, "Update available")
@@ -416,12 +449,28 @@ def main():
                 finish(failed)
 
                 current = terminal("current-update", update_command[:-2] + ["--color-mode", "truecolor"],
-                                   environment={**update_env, "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v0.0.0"},
+                                   environment={**update_env, "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v0.0.0",
+                                                "ASCII_CHAT_TEST_UPDATE_SLOW": "1"},
                                    rows=28, cols=80)
                 current.pump(.5)
+                check_started = time.monotonic()
                 current.write("\x1b[24~")
+                current.expect(lambda text: "Contacting GitHub Releases..." in text,
+                               "Async check did not show the checking dialog")
+                assert sum(line.count("●") for line in current.screen.display) == 8, "Checking spinner is not a dot ring"
+                current.write("\t\x1b[D\x1b[C\x1b[A\x1b[B")
+                current.pump(.2)
+                check_update_selection(current, "Close")
+                current.write("\r")
+                current.expect(lambda text: "Contacting GitHub Releases" not in text,
+                               "Enter did not close the checking dialog immediately")
+                check_started = time.monotonic()
+                current.write("\x1b[24~")
+                current.expect(lambda text: "Contacting GitHub Releases" in text,
+                               "F12 did not reopen the checking dialog")
                 current.expect(lambda text: "You're up to date" in text,
                                "Current release did not show the up-to-date dialog")
+                assert time.monotonic() - check_started >= 2, "Checking dialog disappeared before two seconds"
                 check_update_centering(current, "You're up to date")
                 check_update_selection(current, "Close")
                 current.write("\t")

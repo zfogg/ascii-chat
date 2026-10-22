@@ -9,6 +9,7 @@
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/ui/fps_counter.h>
+#include <ascii-chat/ui/update_banner.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -72,6 +73,8 @@ typedef struct screen {
 
 static screen_t g_screens[UI_SCREEN_COUNT];
 static ui_session_t *g_session;
+static frame_buffer_t *g_update_backdrop;
+static terminal_size_t g_update_backdrop_size;
 static _Thread_local frame_buffer_t *g_capture;
 static _Thread_local const animation_sample_t *g_animation;
 static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
@@ -483,6 +486,7 @@ typedef struct {
   bool volume;
   bool drew;
   bool fresh;
+  bool restore_backdrop;
 } native_view_t;
 
 static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
@@ -491,6 +495,13 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
   g_capture = output;
   g_animation = animation;
   g_render_volume = view->volume;
+  if (view->active == UI_SCREEN_UPDATE && view->restore_backdrop) {
+    frame_buffer_clear_screen(output);
+    if (update_banner_is_overlay_open() && g_update_backdrop && size.cols == g_update_backdrop_size.cols &&
+        size.rows == g_update_backdrop_size.rows)
+      frame_buffer_append(output, frame_buffer_get_content(g_update_backdrop),
+                          frame_buffer_get_length(g_update_backdrop));
+  }
   view->fresh = fps_counter_frame_begin_id(g_fps, view->active == UI_SCREEN_MEDIA ? view->screen->owned->frame_id : 0);
   // Paint the reserved cells before the art, which never writes over them.
   // This remains visible on terminals without synchronized-output support.
@@ -499,6 +510,15 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
   // Compose overlays before publishing the frame, so replacing the media cannot
   // expose an intermediate frame with its counter erased.
   fps_counter_render(g_fps, view->screen->fd, size.cols, true);
+  if (view->active != UI_SCREEN_UPDATE) {
+    if (!g_update_backdrop)
+      g_update_backdrop = frame_buffer_create(size.rows, size.cols);
+    if (g_update_backdrop) {
+      frame_buffer_reset(g_update_backdrop);
+      frame_buffer_append(g_update_backdrop, frame_buffer_get_content(output), frame_buffer_get_length(output));
+      g_update_backdrop_size = size;
+    }
+  }
   g_render_volume = false;
   g_animation = NULL;
   g_capture = NULL;
@@ -658,7 +678,11 @@ static void *presentation_main(void *unused) {
         mutex_unlock(&g_mutex);
         release_snapshot(retired);
       }
-      native_view_t context = {.screen = screen, .active = active, .volume = volume_visible, .fresh = false};
+      native_view_t context = {.screen = screen,
+                               .active = active,
+                               .volume = volume_visible,
+                               .fresh = false,
+                               .restore_backdrop = changed || resized || redraw || screen->dirty};
       bool help_changed = false;
       if (active == UI_SCREEN_HELP) {
         uint64_t revision = options_revision();
@@ -1182,6 +1206,8 @@ void ui_controller_shutdown(void) {
   thread_join(&g_thread, NULL);
   ui_session_destroy(g_session);
   g_session = NULL;
+  frame_buffer_destroy(g_update_backdrop);
+  g_update_backdrop = NULL;
   atomic_store_u64(&g_volume_until, 0);
   ui_sync_stop();
   for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
