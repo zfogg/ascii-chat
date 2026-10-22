@@ -211,7 +211,13 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
       update_center_line(out, top + 8, command_left + 2, command_width - 4, command, cyan);
       update_border(out, top + 9, command_left, command_width, unicode ? "└" : "+", horizontal, unicode ? "┘" : "+",
                     cyan);
-      update_center_line(out, top + 10, left + 2, width - 4, "Full instructions on ascii-chat.com", muted);
+      char instructions[128];
+      truncate_with_ellipsis("Full instructions on ascii-chat.com", instructions, sizeof(instructions), width - 4);
+      int instructions_left = left + 2 + (width - 4 - display_width(instructions)) / 2;
+      bool links = !GET_OPTION(strip_ansi);
+      frame_buffer_printf(out, "\033[%d;%dH%s%s%s", top + 10, instructions_left,
+                          links ? "\033]8;;https://ascii-chat.com\033\\" : "", colored_string(cyan, instructions),
+                          links ? "\033]8;;\033\\" : "");
       update_center_line(out, top + 11, left + 2, width - 4,
                          "Binaries for every OS with release notes on GitHub:", muted);
       update_center_line(out, top + 12, left + 2, width - 4, result->release_url, cyan);
@@ -314,8 +320,10 @@ void update_banner_print_instructions(void) {
                      "\033[0m\033[2J\033[H\033[?25h"
                      "\nUpdated ascii-chat: %s -> %s\n\nRun ascii-chat again to start the new version.\n\n"
                      "Binaries for every OS with release notes on GitHub:\n%s\n\n"
-                     "Full instructions on ascii-chat.com\n\n",
-                     result.current_version, result.latest_version, result.release_url);
+                     "%sFull instructions on ascii-chat.com%s\n\n",
+                     result.current_version, result.latest_version, result.release_url,
+                     GET_OPTION(strip_ansi) ? "" : "\033]8;;https://ascii-chat.com\033\\",
+                     GET_OPTION(strip_ansi) ? "" : "\033]8;;\033\\");
   if (len > 0 && len < (int)sizeof(output))
     ui_controller_finish(STDOUT_FILENO, output, (size_t)len);
 }

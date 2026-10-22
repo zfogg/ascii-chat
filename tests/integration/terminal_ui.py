@@ -358,6 +358,9 @@ def main():
                                "An older build did not show the startup update prompt")
                 check_update_centering(startup, "Update available")
                 check_update_selection(startup, "Update now")
+                assert "Full instructions on ascii-chat.com" in startup.pump(), "Update instructions link is missing"
+                assert ("\x1b]8;;https://ascii-chat.com\x1b\\" in "".join(startup.raw)
+                        and "\x1b]8;;\x1b\\" in "".join(startup.raw)), "Instructions lack a bounded OSC 8 hyperlink"
                 startup.write("\x1b[C\x1b[C")
                 startup.pump(.3)
                 check_update_selection(startup, "Continue")
