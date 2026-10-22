@@ -1109,110 +1109,79 @@ asciichat_error_t platform_restore_timer_resolution(void) {
  * Execute a subprocess using fork+exec (POSIX implementation)
  */
 int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size) {
-  if (!executable || !argv) {
-    log_error("invalid parameters");
+  if (!executable || !argv || !argv[0]) {
+    log_error("Invalid subprocess parameters");
     return -1;
   }
-
-  // If output capture is requested
-  if (output_buffer && output_size > 0) {
-    // Build command line from argv for popen
-    size_t cmd_len = 0;
-    for (int i = 0; argv[i] != NULL; i++) {
-      cmd_len += strlen(argv[i]) + 1;
-    }
-
-    char *command_line = SAFE_MALLOC(cmd_len + 1, char *);
-    if (!command_line) {
+  bool capture = output_buffer && output_size > 0;
+  int output_pipe[2] = {-1, -1};
+  if (capture) {
+    output_buffer[0] = '\0';
+    if (pipe(output_pipe) != 0)
+      return -1;
+    if (fcntl(output_pipe[0], F_SETFD, FD_CLOEXEC) < 0 || fcntl(output_pipe[1], F_SETFD, FD_CLOEXEC) < 0) {
+      close(output_pipe[0]);
+      close(output_pipe[1]);
       return -1;
     }
-
-    // Build command line
-    command_line[0] = '\0';
-    for (int i = 0; argv[i] != NULL; i++) {
-      if (i > 0) {
-        if (safe_snprintf(command_line + strlen(command_line), cmd_len + 1 - strlen(command_line), " %s", argv[i]) <
-            0) {
-          SAFE_FREE(command_line);
-          log_error("Failed to build command line");
-          return -1;
-        }
-      } else {
-        if (safe_snprintf(command_line, cmd_len + 1, "%s", argv[i]) < 0) {
-          SAFE_FREE(command_line);
-          log_error("Failed to build command line");
-          return -1;
-        }
-      }
-    }
-
-    // Use popen to capture output
-    FILE *pipe = popen(command_line, "r"); // NOLINT(bugprone-command-processor) - intentional shell usage
-    SAFE_FREE(command_line);
-
-    if (!pipe) {
-      log_error("Failed to execute command: %s", SAFE_STRERROR(errno));
-      return -1;
-    }
-
-    // Read output from pipe
-    size_t pos = 0;
-    int ch;
-    while ((ch = fgetc(pipe)) != EOF && pos < output_size - 1) {
-      output_buffer[pos++] = (char)ch;
-    }
-    output_buffer[pos] = '\0';
-
-    // Get exit code from pclose
-    int exit_code = pclose(pipe);
-    if (exit_code < 0) {
-      log_error("Failed to close pipe: %s", SAFE_STRERROR(errno));
-      return -1;
-    }
-
-    // Extract actual exit code
-    if (WIFEXITED(exit_code)) {
-      return WEXITSTATUS(exit_code);
-    }
-
-    return -1;
   }
-
-  // No output capture: use fork+exec for better performance
   pid_t pid = fork();
   if (pid < 0) {
+    if (capture) {
+      close(output_pipe[0]);
+      close(output_pipe[1]);
+    }
     log_error("Failed to fork process: %s", SAFE_STRERROR(errno));
     return -1;
   }
-
   if (pid == 0) {
-    // Child process: execute the command
-    // argv[0] is conventionally the program name
-    execvp(executable, (char *const *)argv);
+    if (capture) {
+      close(output_pipe[0]);
+      if (output_pipe[1] == STDOUT_FILENO) {
+        if (fcntl(STDOUT_FILENO, F_SETFD, 0) < 0)
+          _exit(126);
+      } else {
+        if (dup2(output_pipe[1], STDOUT_FILENO) < 0)
+          _exit(126);
+        close(output_pipe[1]);
+      }
+    }
     // The forked child must not run inherited log locks or atexit handlers.
-    _exit(127); // Standard convention for command not found
+    execvp(executable, (char *const *)argv);
+    _exit(127);
   }
-
-  // Parent process: wait for child to complete
+  bool capture_failed = false;
+  if (capture) {
+    close(output_pipe[1]);
+    size_t position = 0;
+    char chunk[4096];
+    for (;;) {
+      ssize_t count = read(output_pipe[0], chunk, sizeof(chunk));
+      if (count < 0 && errno == EINTR)
+        continue;
+      if (count <= 0) {
+        if (count < 0)
+          capture_failed = true;
+        break;
+      }
+      size_t available = output_size - 1 - position;
+      size_t copied = (size_t)count < available ? (size_t)count : available;
+      memcpy(output_buffer + position, chunk, copied);
+      position += copied;
+      if ((size_t)count > available)
+        capture_failed = true;
+      // Drain excess output so a full pipe cannot deadlock the child during wait.
+    }
+    output_buffer[position] = '\0';
+    close(output_pipe[0]);
+  }
   int status = 0;
-  pid_t wait_result = waitpid(pid, &status, 0);
-  if (wait_result < 0) {
-    log_error("Failed to wait for child process %d: %s", pid, SAFE_STRERROR(errno));
+  pid_t waited;
+  do {
+    waited = waitpid(pid, &status, 0);
+  } while (waited < 0 && errno == EINTR);
+  if (waited < 0 || capture_failed)
     return -1;
-  }
-
-  // Extract exit code
-  if (WIFEXITED(status)) {
-    int exit_code = WEXITSTATUS(status);
-    return exit_code;
-  } else if (WIFSIGNALED(status)) {
-    // Process terminated by signal
-    int sig = WTERMSIG(status);
-    log_warn("Process %d terminated by signal %d", pid, sig);
-    return -1;
-  }
-
-  return -1;
+  return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
-
 #endif // !_WIN32
