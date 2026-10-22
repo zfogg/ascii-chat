@@ -171,3 +171,163 @@ Test(builder_contract, requires_and_conflicts_validate_the_final_option_set) {
     options_config_destroy(c);
   }
 }
+
+static int parse_pair(const char *argument, void *destination, char **remaining, int count, char **error) {
+  sample_t *sample = destination;
+  if (strcmp(argument, "reject") == 0)
+    return -1;
+  if (count < 1 || strcmp(remaining[0], "value") != 0) {
+    SAFE_STRDUP(*error, "Expected pair NAME value");
+    return -1;
+  }
+  SAFE_STRNCPY(sample->label, argument, sizeof(sample->label));
+  sample->count = count;
+  return 2;
+}
+Test(builder_contract, positional_parser_consumes_pairs_and_rejects_missing_or_extra_arguments) {
+  options_builder_t *b = builder();
+  options_builder_add_positional(b, "pair", "A two-word pair", true, NULL, NULL, 0, OPTION_MODE_ALL, parse_pair);
+  options_config_t *c = options_builder_build(b);
+  options_builder_destroy(b);
+  cr_assert_not_null(c);
+  sample_t sample = defaults();
+  char *valid[] = {"name", "value"};
+  cr_assert_eq(options_config_parse_positional(c, 2, valid, &sample), ASCIICHAT_OK);
+  cr_assert_str_eq(sample.label, "name");
+  cr_assert_eq(sample.count, 1);
+  cr_assert_eq(options_config_parse_positional(c, 0, NULL, &sample), ERROR_USAGE);
+  cr_assert_eq(options_config_parse_positional(c, 1, valid, &sample), ERROR_USAGE);
+  char *rejected[] = {"reject", "value"};
+  cr_assert_eq(options_config_parse_positional(c, 2, rejected, &sample), ERROR_USAGE);
+  char *extra[] = {"name", "value", "unexpected"};
+  cr_assert_eq(options_config_parse_positional(c, 3, extra, &sample), ERROR_USAGE);
+  cr_assert_eq(options_config_parse_positional(c, -1, valid, &sample), ERROR_INVALID_PARAM);
+  cr_assert_eq(options_config_parse_positional(c, 1, NULL, &sample), ERROR_INVALID_PARAM);
+  cr_assert_eq(options_config_parse_positional(NULL, 2, valid, &sample), ERROR_INVALID_PARAM);
+  cr_assert_eq(options_config_parse_positional(c, 2, valid, NULL), ERROR_INVALID_PARAM);
+  options_config_destroy(c);
+}
+static bool validate_count(const void *destination) {
+  const sample_t *sample = destination;
+  if (sample->count < 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Count must not be negative");
+    return false;
+  }
+  return sample->count < 10;
+}
+Test(builder_contract, custom_validator_propagates_fresh_errors_and_ignores_stale_ones) {
+  options_builder_t *b = options_builder_create(sizeof(sample_t));
+  cr_assert_not_null(b);
+  options_builder_add_int(b, "count", 'c', offsetof(sample_t, count), 7, "Count", "Test", false, NULL, validate_count);
+  options_config_t *c = options_builder_build(b);
+  options_builder_destroy(b);
+  cr_assert_not_null(c);
+  sample_t sample = defaults();
+  cr_assert_eq(options_config_validate(c, &sample, NULL), ASCIICHAT_OK);
+  sample.count = -1;
+  cr_assert_eq(options_config_validate(c, &sample, NULL), ERROR_INVALID_PARAM);
+  sample.count = 12;
+  cr_assert_eq(options_config_validate(c, &sample, NULL), ERROR_USAGE);
+  sample.count = 9;
+  cr_assert_eq(options_config_validate(c, &sample, NULL), ASCIICHAT_OK);
+  options_config_destroy(c);
+}
+Test(builder_contract, required_fields_report_the_cli_and_environment_routes) {
+  for (unsigned with_environment = 0; with_environment < 2; ++with_environment) {
+    options_builder_t *b = options_builder_create(sizeof(sample_t));
+    cr_assert_not_null(b);
+    options_builder_add_string(b, "label", 'l', offsetof(sample_t, label), NULL, "Label", "Test", true,
+                               with_environment ? "ASCII_TEST_REQUIRED_LABEL" : NULL, NULL);
+    options_config_t *c = options_builder_build(b);
+    options_builder_destroy(b);
+    cr_assert_not_null(c);
+    sample_t sample = {0};
+    char *error = NULL;
+    cr_assert_eq(options_config_validate(c, &sample, &error), ERROR_USAGE);
+    cr_assert_not_null(error);
+    cr_assert_not_null(strstr(error, "--label"));
+    if (with_environment)
+      cr_assert_not_null(strstr(error, "ASCII_TEST_REQUIRED_LABEL"));
+    SAFE_FREE(error);
+    cr_assert_eq(options_config_validate(c, &sample, NULL), ERROR_USAGE);
+    SAFE_STRNCPY(sample.label, "supplied", sizeof(sample.label));
+    cr_assert_eq(options_config_validate(c, &sample, &error), ASCIICHAT_OK);
+    cr_assert_null(error);
+    options_config_destroy(c);
+  }
+}
+
+static int parse_literals(const char *argument, void *destination, char **remaining, int count, char **error) {
+  (void)error;
+  cr_assert_str_eq(argument, "-literal");
+  cr_assert_eq(count, 1);
+  cr_assert_str_eq(remaining[0], "client");
+  SAFE_STRNCPY(((sample_t *)destination)->label, argument, sizeof(((sample_t *)destination)->label));
+  return 2;
+}
+Test(builder_contract, boolean_spellings_and_end_of_options_preserve_positional_arguments) {
+  options_builder_t *b = builder();
+  options_builder_add_positional(b, "literals", "Literal words", false, NULL, NULL, 0, OPTION_MODE_CLIENT,
+                                 parse_literals);
+  options_config_t *c = options_builder_build(b);
+  options_builder_destroy(b);
+  cr_assert_not_null(c);
+  const char *values[] = {"true", "YES", "1", "On", "false", "NO", "0", "off"};
+  for (size_t i = 0; i < 8; ++i) {
+    sample_t sample = defaults();
+    char *args[] = {"program", "--enabled", (char *)values[i], "--", "-literal", "client"};
+    int remaining = 0;
+    char **rest = NULL;
+    cr_assert_eq(options_config_parse(c, 6, args, &sample, OPTION_MODE_CLIENT, &remaining, &rest), ASCIICHAT_OK);
+    cr_assert_eq(sample.enabled, i < 4);
+    cr_assert_eq(remaining, 0);
+    cr_assert_null(rest);
+    cr_assert_str_eq(sample.label, "-literal");
+  }
+  sample_t sample = defaults();
+  char *toggles[] = {"program", "--enabled", "--enabled"};
+  cr_assert_eq(options_config_parse(c, 3, toggles, &sample, OPTION_MODE_CLIENT, NULL, NULL), ASCIICHAT_OK);
+  cr_assert_not(sample.enabled);
+  options_config_destroy(c);
+}
+Test(builder_contract, primary_port_environment_overrides_short_aliases) {
+  const char *primary[] = {"ASCII_CHAT_PORT", "ASCII_CHAT_WEBSOCKET_PORT"};
+  const char *alias[] = {"PORT", "WS_PORT"};
+  for (size_t i = 0; i < 2; ++i) {
+    char *old_primary = NULL, *old_alias = NULL;
+    if (getenv(primary[i]))
+      SAFE_STRDUP(old_primary, getenv(primary[i]));
+    if (getenv(alias[i]))
+      SAFE_STRDUP(old_alias, getenv(alias[i]));
+    platform_unsetenv(primary[i]);
+    platform_setenv(alias[i], "1234");
+    options_builder_t *b = options_builder_create(sizeof(sample_t));
+    cr_assert_not_null(b);
+    options_builder_add_int(b, "port", 'p', offsetof(sample_t, count), 7, "Port", "Test", false, primary[i], NULL);
+    options_config_t *c = options_builder_build(b);
+    options_builder_destroy(b);
+    sample_t sample = defaults();
+    cr_assert_eq(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
+    cr_assert_eq(sample.count, 1234);
+    platform_setenv(primary[i], "4321");
+    cr_assert_eq(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
+    cr_assert_eq(sample.count, 4321);
+    const char *invalid[] = {"invalid", "12suffix", "2147483648", "-2147483649"};
+    for (size_t j = 0; j < 4; ++j) {
+      platform_setenv(primary[i], invalid[j]);
+      cr_assert_eq(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
+      cr_assert_eq(sample.count, 4321);
+    }
+    options_config_destroy(c);
+    if (old_primary)
+      platform_setenv(primary[i], old_primary);
+    else
+      platform_unsetenv(primary[i]);
+    if (old_alias)
+      platform_setenv(alias[i], old_alias);
+    else
+      platform_unsetenv(alias[i]);
+    SAFE_FREE(old_primary);
+    SAFE_FREE(old_alias);
+  }
+}
