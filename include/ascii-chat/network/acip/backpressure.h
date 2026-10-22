@@ -29,6 +29,8 @@ typedef struct {
 } acip_outbound_stats_t;
 
 asciichat_error_t acip_outbound_create(acip_transport_t *transport);
+/** Stop admission and wake queued producers without joining the worker or releasing backend resources. */
+void acip_outbound_stop(acip_transport_t *transport);
 /** Stop admission, interrupt writes, join the worker, and release every queued owner. */
 void acip_outbound_destroy(acip_transport_t *transport);
 /** Copy plaintext before returning ACCEPTED; congestion never changes encryption state.

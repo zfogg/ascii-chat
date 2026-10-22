@@ -75,6 +75,7 @@
  */
 
 #pragma once
+#include <ascii-chat/network/acip/backpressure.h>
 
 #include <ascii-chat/stats/runtime.h>
 #include "../../common.h"
@@ -305,6 +306,7 @@ static inline asciichat_error_t acip_transport_close(acip_transport_t *transport
   if (!transport || !transport->methods || !transport->methods->close) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
+  acip_outbound_stop(transport);
   return transport->methods->close(transport);
 }
 
@@ -321,9 +323,10 @@ static inline acip_transport_type_t acip_transport_get_type(acip_transport_t *tr
   return transport->methods->get_type(transport);
 }
 
-/** Interrupt I/O while retaining the transport and callback contexts.
- * NULL is safe; transports without interrupt support are left untouched. */
+/** Stop outbound admission and interrupt I/O while retaining transport and callback contexts.
+ * NULL is safe; backend interruption is used when supported. */
 static inline void acip_transport_interrupt(acip_transport_t *transport) {
+  acip_outbound_stop(transport);
   if (transport && transport->methods && transport->methods->interrupt)
     transport->methods->interrupt(transport);
 }

@@ -246,6 +246,51 @@ static void *submit_control(void *arg) {
   return NULL;
 }
 
+static void check_stopped_control(bool interrupt) {
+  log_init(NULL, LOG_ERROR, false, false);
+  errno_suppress(true);
+  acip_transport_t *transport = create();
+  backend_t *backend = transport->impl_data;
+  atomic_store_u64(&backend->bytes, 1);
+  failing_producer_t producer = {.transport = transport};
+  asciichat_thread_t thread;
+  cr_assert_eq(acthread_create(&thread, "closing_control", submit_control, &producer), ASCIICHAT_OK);
+  uint64_t start = time_get_ns();
+  for (;;) {
+    acip_outbound_stats_t stats;
+    cr_assert_eq(acip_outbound_snapshot(transport, &stats), ASCIICHAT_OK);
+    if (stats.accepted == 1)
+      break;
+    cr_assert_lt(time_get_ns() - start, NS_PER_SEC_INT);
+    platform_sleep_ms(1);
+  }
+  if (interrupt)
+    acip_transport_interrupt(transport);
+  else
+    cr_assert_eq(acip_transport_close(transport), ASCIICHAT_OK);
+  cr_assert_eq(thread_join(&thread, NULL), ASCIICHAT_OK);
+  cr_assert_eq(producer.result, ERROR_NETWORK);
+  cr_assert_eq(atomic_load_u64(&backend->sent), 0);
+  cr_assert_eq(atomic_load_bool(&backend->closed), !interrupt);
+  acip_outbound_stats_t stats;
+  cr_assert_eq(acip_outbound_snapshot(transport, &stats), ASCIICHAT_OK);
+  cr_assert_eq(stats.application_bytes, 0);
+  failing_producer_t later = {.transport = transport};
+  submit_control(&later);
+  cr_assert_eq(later.result, ERROR_NETWORK);
+  acip_transport_destroy(transport);
+  buffer_system_cleanup();
+  log_destroy();
+}
+
+Test(transport_backpressure, close_wakes_controls_waiting_behind_undrainable_backend_bytes, .timeout = 3) {
+  check_stopped_control(false);
+}
+
+Test(transport_backpressure, interrupt_wakes_controls_even_without_a_backend_interrupt_method, .timeout = 3) {
+  check_stopped_control(true);
+}
+
 static void check_backend_failure(asciichat_error_t code, bool omit_context, bool wrap_context) {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
