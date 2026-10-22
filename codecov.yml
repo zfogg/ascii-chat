@@ -144,14 +144,6 @@ coverage:
         paths:
           - "src/main.c"
 
-      # Test infrastructure
-      test_framework:
-        target: 60%
-        threshold: 3%
-        paths:
-          - "tests/**/*"
-        informational: true # Don't fail builds on test framework coverage
-
     # Patch-level status checks (for PRs)
     patch:
       # Overall patch coverage
@@ -216,21 +208,6 @@ coverage:
         if_ci_failed: error
         only_pulls: true
 
-      # Test files should be covered too
-      tests_patch:
-        target: 80%
-        threshold: 10%
-        base: auto
-        paths:
-          - "tests/**/*"
-        branches:
-          - master
-          - main
-          - palettes
-        if_ci_failed: success # Don't fail CI for test coverage
-        only_pulls: true
-        informational: true
-
     # Changes status - detects unexpected coverage changes
     changes:
       default:
@@ -270,7 +247,6 @@ component_management:
       name: "Server Core"
       paths:
         - "src/server/**/*"
-        - "tests/**/server*.c"
       statuses:
         - type: project
           target: 50%
@@ -283,7 +259,6 @@ component_management:
       name: "Client Core"
       paths:
         - "src/client/**/*"
-        - "tests/**/client*.c"
       statuses:
         - type: project
           target: 50%
@@ -296,7 +271,6 @@ component_management:
       name: "ASCII Art Engine"
       paths:
         - "lib/video/ascii/**/*"
-        - "tests/**/ascii*.c"
       statuses:
         - type: project
           target: 50%
@@ -311,7 +285,6 @@ component_management:
         - "lib/video/ascii/avx2/**/*"
         - "lib/video/ascii/neon/**/*"
         - "lib/video/ascii/sve/**/*"
-        - "tests/**/simd*.c"
       statuses:
         - type: project
           target: 50%
@@ -325,7 +298,6 @@ component_management:
       paths:
         - "lib/network/**/*"
         - "lib/network/packet/queue.*"
-        - "tests/**/network*.c"
       statuses:
         - type: project
           target: 50%
@@ -340,7 +312,6 @@ component_management:
         - "lib/audio/**/*"
         - "lib/audio/mixer.*"
         - "lib/audio/audio.*"
-        - "tests/**/audio*.c"
       statuses:
         - type: project
           target: 50%
@@ -366,7 +337,6 @@ component_management:
       paths:
         - "lib/crypto/**/*"
         - "lib/network/crc32.*"
-        - "tests/**/crypto*.c"
       statuses:
         - type: project
           target: 50%
@@ -381,9 +351,6 @@ component_management:
         - "lib/buffer.*"
         - "lib/network/packet/queue.*"
         - "lib/audio/audio.*"
-        - "tests/**/buffer*.c"
-        - "tests/**/packet_queue*.c"
-        - "tests/**/ringbuffer*.c"
       statuses:
         - type: project
           target: 50%
@@ -481,16 +448,6 @@ component_management:
         - type: patch
           target: 50%
 
-    # Integration tests
-    - component_id: integration_tests
-      name: "Integration Tests"
-      paths:
-        - "tests/integration/**/*"
-      statuses:
-        - type: project
-          target: 60%
-          informational: true
-
     # Cross-cutting components (span multiple directories)
     - component_id: simd_all
       name: "All SIMD Code"
@@ -507,20 +464,6 @@ component_management:
           threshold: 5%
         - type: patch
           target: 50%
-
-    - component_id: test_infrastructure
-      name: "Test Infrastructure"
-      paths:
-        - "tests/**/*.c"
-        - "tests/**/*.h"
-        - "lib/tests/**/*"
-      flag_regexes:
-        - "coverage"
-        - "ascii-chat-(tests|integration|performance).*"
-      statuses:
-        - type: project
-          target: 50%
-          informational: true
 
     - component_id: headers
       name: "Header Files"
@@ -579,6 +522,7 @@ ignore:
   - "lib/version.c"
   - "lib/version.h.in"
   - "lib/musl_c23_compat.c"
+  - "tests/**/*"
 
 # Flag configuration for organizing uploads
 flags:
@@ -586,61 +530,51 @@ flags:
     paths:
       - "lib/"
       - "src/"
-      - "tests/"
     carryforward: false
   ascii-chat-tests-ubuntu-release:
     paths:
       - "lib/"
       - "src/"
-      - "tests/"
     carryforward: false
   ascii-chat-tests-macos-debug:
     paths:
       - "lib/"
       - "src/"
-      - "tests/"
     carryforward: false
   ascii-chat-tests-macos-release:
     paths:
       - "lib/"
       - "src/"
-      - "tests/"
     carryforward: false
   ascii-chat-tests:
     paths:
       - "lib/"
       - "src/"
-      - "tests/"
     carryforward: false
   coverage:
     paths:
       - "lib/"
       - "src/"
-      - "tests/"
     carryforward: false
   ascii-chat-integration-ubuntu:
     paths:
       - "lib/"
       - "src/"
-      - "tests/integration/"
     carryforward: false
   ascii-chat-integration-macos:
     paths:
       - "lib/"
       - "src/"
-      - "tests/integration/"
     carryforward: false
   ascii-chat-performance-ubuntu:
     paths:
       - "lib/"
       - "src/"
-      - "tests/performance/"
     carryforward: false
   ascii-chat-performance-macos:
     paths:
       - "lib/"
       - "src/"
-      - "tests/performance/"
     carryforward: false
 
 # Notification settings

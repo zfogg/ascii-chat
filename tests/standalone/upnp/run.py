@@ -7,15 +7,16 @@ import argparse
 import pathlib
 import shutil
 import subprocess
-import tempfile
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / 'tests' / 'scripts'))
+from standalone_coverage import coverage_flags, standalone_output_directory
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--cc', default='clang')
 args = parser.parse_args()
-with tempfile.TemporaryDirectory(prefix='ascii-chat-upnp-') as tmp:
-    out = pathlib.Path(tmp)
+with standalone_output_directory('upnp') as out:
     headers = {
         'ascii-chat/common.h': 'common.h',
         'ascii-chat/log/log.h': 'common.h',
@@ -42,9 +43,9 @@ with tempfile.TemporaryDirectory(prefix='ascii-chat-upnp-') as tmp:
         ('unavailable', []),
     ]:
         exe = out / (variant + ('.exe' if __import__('os').name == 'nt' else ''))
-        command = [args.cc, '-std=c11', '-Wall', '-Wextra', '-Werror', '-I', str(out),
+        command = [args.cc, '-std=c11', '-Wall', '-Wextra', '-Werror', *coverage_flags(), '-I', str(out),
                    *['-D' + flag for flag in defines],
                    str(ROOT / 'lib/network/nat/upnp.c'), str(HERE / 'test.c'), '-o', str(exe)]
-        subprocess.run(command, check=True)
+        subprocess.run(command, check=True, cwd=out)
         subprocess.run([str(exe)], check=True)
         print(f'PASS: {variant}', flush=True)

@@ -44,6 +44,21 @@ if(BUILD_TESTS)
             ${CMAKE_SOURCE_DIR}/tests/scripts/run_python_test.py ${_coverage_args} --
             ${Python3_EXECUTABLE} ${script} ${ARGN})
     endfunction()
+
+    # These dependency-isolated build matrices compile selected production
+    # sources directly. The shared wrapper retains their profiles under the
+    # active build tree when coverage is enabled.
+    asciichat_add_python_test(standalone-crc32
+        ${CMAKE_SOURCE_DIR}/tests/standalone/crc32/run.py --cc ${CMAKE_C_COMPILER})
+    set_tests_properties(standalone-crc32 PROPERTIES LABELS "unit;standalone" TIMEOUT 60)
+    asciichat_add_python_test(standalone-upnp
+        ${CMAKE_SOURCE_DIR}/tests/standalone/upnp/run.py --cc ${CMAKE_C_COMPILER})
+    set_tests_properties(standalone-upnp PROPERTIES LABELS "unit;standalone" TIMEOUT 60)
+    if(UNIX)
+        asciichat_add_python_test(standalone-log-io
+            ${CMAKE_SOURCE_DIR}/tests/standalone/log_io/run.py --cc ${CMAKE_C_COMPILER})
+        set_tests_properties(standalone-log-io PROPERTIES LABELS "unit;standalone" TIMEOUT 60)
+    endif()
 endif()
 
 # =============================================================================
@@ -1019,6 +1034,21 @@ if(TARGET ascii-chat-static)
         if(TARGET tests)
             add_dependencies(tests test-errno-stacks)
         endif()
+        if(UNIX AND TARGET ascii-chat)
+            set(errno_smoke_args $<TARGET_FILE:ascii-chat>)
+            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+                list(APPEND errno_smoke_args --debug-sync)
+            endif()
+            asciichat_add_python_test(errno-smoke
+                ${CMAKE_SOURCE_DIR}/tests/standalone/errno/smoke.py ${errno_smoke_args})
+            set_tests_properties(errno-smoke PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
+        endif()
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND TARGET ascii-chat)
+            asciichat_add_python_test(errno-signal-stdout
+                ${CMAKE_SOURCE_DIR}/tests/standalone/errno/signal_stdout.py $<TARGET_FILE:ascii-chat>
+                --errno-probe $<TARGET_FILE:test-errno-stacks>)
+            set_tests_properties(errno-signal-stdout PROPERTIES LABELS "integration" TIMEOUT 120 RUN_SERIAL TRUE)
+        endif()
         # Contract cases are registered by the Criterion targets below.
     endif()
 endif()
@@ -1169,6 +1199,9 @@ if(BUILD_TESTS AND TARGET ascii-chat)
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_lifecycle.py
             $<TARGET_FILE:ascii-chat>)
     set_tests_properties(server-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180)
+    asciichat_add_python_test(render-file-audio
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/render_file_audio.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(render-file-audio PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)

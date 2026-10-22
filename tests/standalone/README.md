@@ -41,5 +41,10 @@ Run converted contracts through CTest after building their targets:
 ctest --test-dir build_docker -L contract --output-on-failure
 ```
 
+The dependency-isolated CRC32, UPnP, and log-I/O matrices are also CTest tests.
+In a native coverage build their Python harnesses retain the separately compiled
+production-source profiles under the build directory, so the final coverage
+report includes the implementation they exercise without counting test sources.
+
 The audio processor regression is now `tests/unit/audio/processor_test.c` and is
 registered with the normal Criterion unit inventory.
