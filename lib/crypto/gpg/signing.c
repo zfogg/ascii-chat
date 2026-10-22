@@ -270,8 +270,8 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
 
   log_debug("R: %d bits (%zu bytes)", r_bits, r_bytes);
 
-  if (r_bytes != 32) {
-    log_error("Expected 32-byte R value, got %zu bytes", r_bytes);
+  if (r_bytes == 0 || r_bytes > 32) {
+    log_error("Expected a 1-32 byte R value, got %zu bytes", r_bytes);
     return -1;
   }
 
@@ -280,7 +280,9 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
     return -1;
   }
 
-  memcpy(signature_out, &openpgp_signature[offset], 32);
+  // OpenPGP MPIs omit leading zero bytes; raw signatures retain fixed-width components.
+  memset(signature_out, 0, 64);
+  memcpy(signature_out + 32 - r_bytes, &openpgp_signature[offset], r_bytes);
   offset += r_bytes;
 
   // Read S value
@@ -295,8 +297,8 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
 
   log_debug("S: %d bits (%zu bytes)", s_bits, s_bytes);
 
-  if (s_bytes != 32) {
-    log_error("Expected 32-byte S value, got %zu bytes", s_bytes);
+  if (s_bytes == 0 || s_bytes > 32) {
+    log_error("Expected a 1-32 byte S value, got %zu bytes", s_bytes);
     return -1;
   }
 
@@ -305,7 +307,7 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
     return -1;
   }
 
-  memcpy(signature_out + 32, &openpgp_signature[offset], 32);
+  memcpy(signature_out + 64 - s_bytes, &openpgp_signature[offset], s_bytes);
 
   log_debug("Successfully extracted 64-byte Ed25519 signature from OpenPGP packet");
 
