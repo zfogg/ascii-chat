@@ -47,11 +47,9 @@ def main():
     parser.add_argument("--ssh", default=os.environ.get("ASCIICHAT_MAC_SSH"))
     parser.add_argument("--remote-binary", default=os.environ.get("ASCIICHAT_MAC_BINARY"))
     parser.add_argument("--server-address", default=os.environ.get("ASCIICHAT_MAC_LAN_ADDRESS"))
-    parser.add_argument("--firewall-binary", default=os.environ.get("ASCIICHAT_MAC_FIREWALL_BINARY"))
     args = parser.parse_args()
-    if not all((args.ssh, args.remote_binary, args.server_address, args.firewall_binary)):
-        print("SKIP: set ASCIICHAT_MAC_SSH, ASCIICHAT_MAC_BINARY, ASCIICHAT_MAC_LAN_ADDRESS, "
-              "and ASCIICHAT_MAC_FIREWALL_BINARY")
+    if not all((args.ssh, args.remote_binary, args.server_address)):
+        print("SKIP: set ASCIICHAT_MAC_SSH, ASCIICHAT_MAC_BINARY, and ASCIICHAT_MAC_LAN_ADDRESS")
         raise SystemExit(77)
 
     binary = args.binary.resolve()
@@ -63,18 +61,15 @@ def main():
     remote_log = f"/tmp/ascii-chat-mdns-cross-host-{token}.log"
     remote_pid = f"/tmp/ascii-chat-mdns-cross-host-{token}.pid"
     remote_script = f"/tmp/ascii-chat-mdns-cross-host-{token}.sh"
-    backup = f"/tmp/ascii-chat-mdns-cross-host-{token}.backup"
     library = str(PurePosixPath(args.remote_binary).parents[1] / "lib")
     command = (
         f"echo $$ > {shlex.quote(remote_pid)}; exec env DYLD_LIBRARY_PATH={shlex.quote(library)} "
-        f"{shlex.quote(args.firewall_binary)} --no-check-update --log-file {shlex.quote(remote_log)} "
+        f"{shlex.quote(args.remote_binary)} --no-check-update --log-file {shlex.quote(remote_log)} "
         f"--log-level debug server 0.0.0.0 --port {tcp_port} --websocket-port {websocket_port} "
         "--status-screen=false"
     )
     encoded = base64.b64encode(command.encode()).decode()
     prepare = (
-        f"cp -p {shlex.quote(args.firewall_binary)} {shlex.quote(backup)} && "
-        f"cp {shlex.quote(args.remote_binary)} {shlex.quote(args.firewall_binary)} && "
         f"echo {encoded} | /usr/bin/base64 -D > {shlex.quote(remote_script)} && "
         f"chmod 700 {shlex.quote(remote_script)} && "
         f"nohup {shlex.quote(remote_script)} >/dev/null 2>&1 &"
@@ -105,7 +100,7 @@ def main():
                     "--splash-screen=true", "--reconnect-attempts", "0",
                 ], rows=24, cols=110)
                 try:
-                    terminal.expect(
+                    picker = terminal.expect(
                         lambda text: "LAN servers" in text and args.server_address in text and str(tcp_port) in text,
                         "physical Mac server did not appear in the LAN picker", timeout=8,
                     )
@@ -117,7 +112,8 @@ def main():
                         raise
                     time.sleep(.5)
             capture(terminal, args.artifacts, "macbook-physical-lan-picker")
-            terminal.write("\r")
+            selected = next(line for line in picker.splitlines() if str(tcp_port) in line)
+            terminal.write(selected.split("[", 1)[1].split("]", 1)[0] + "\r")
             deadline = time.monotonic() + 30
             client_text = ""
             while time.monotonic() < deadline:
@@ -128,8 +124,16 @@ def main():
             else:
                 raise AssertionError(f"Physical-LAN selection did not complete its handshake:\n{client_text[-8000:]}")
             wait_remote(args.ssh, remote_log, "Crypto handshake completed successfully", timeout=10)
-            capture(terminal, args.artifacts, "macbook-physical-lan-connected")
-            print(f"PASS: discovered and connected to Mac at {args.server_address}:{tcp_port}", flush=True)
+            wait_remote(args.ssh, remote_log, "Frame committed", timeout=20)
+            wait_remote(args.ssh, remote_log, "SEND_ASCII_FRAME", timeout=20)
+            terminal.expect(
+                lambda text: "LAN servers" not in text
+                and sum(character not in " \r\n" for character in text) > 300,
+                "Mac server did not render and deliver an ASCII-art frame", timeout=20,
+            )
+            capture(terminal, args.artifacts, "macbook-physical-lan-rendered")
+            print(f"PASS: discovered Mac at {args.server_address}:{tcp_port}; Mac rendered and delivered ASCII art",
+                  flush=True)
         finally:
             if terminal is not None:
                 terminal.close()
@@ -137,8 +141,7 @@ def main():
                 cleanup = (
                     f"pid=$(cat {shlex.quote(remote_pid)} 2>/dev/null); "
                     f"if test -n \"$pid\"; then kill \"$pid\" 2>/dev/null || true; fi; sleep 1; "
-                    f"cp -p {shlex.quote(backup)} {shlex.quote(args.firewall_binary)}; "
-                    f"rm -f {shlex.quote(backup)} {shlex.quote(remote_pid)} {shlex.quote(remote_script)}"
+                    f"rm -f {shlex.quote(remote_pid)} {shlex.quote(remote_script)}"
                 )
                 ssh(args.ssh, cleanup, check=False)
 

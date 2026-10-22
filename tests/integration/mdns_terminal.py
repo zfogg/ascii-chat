@@ -31,10 +31,19 @@ def capture(term, directory, name):
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
         return
-    try:
-        font = ImageFont.truetype(os.environ.get("TERMINAL_CAPTURE_FONT", "DejaVuSansMono.ttf"), 16)
-    except OSError:
-        font = ImageFont.load_default(size=16)
+    configured_font = os.environ.get("TERMINAL_CAPTURE_FONT")
+    font_candidates = [configured_font] if configured_font else []
+    if os.name == "nt":
+        font_candidates += [r"C:\Windows\Fonts\CascadiaMono.ttf", r"C:\Windows\Fonts\consola.ttf"]
+    else:
+        font_candidates += ["/System/Library/Fonts/Menlo.ttc", "DejaVuSansMono.ttf"]
+    font = next((ImageFont.truetype(path, 16) for path in font_candidates
+                 if path and Path(path).exists()), None)
+    if font is None:
+        raise AssertionError("PNG capture requires a Unicode monospace font; set TERMINAL_CAPTURE_FONT")
+    divider_mask = font.getmask("━")
+    if not divider_mask.getbbox():
+        raise AssertionError("Terminal capture font does not contain the UTF-8 divider glyph")
     image = Image.new("RGB", (term.screen.columns * 10 + 24, term.screen.lines * 21 + 24), "#10151c")
     draw = ImageDraw.Draw(image)
     for row, text in enumerate(term.screen.display):
