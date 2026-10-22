@@ -63,11 +63,11 @@ def exercise(term, name, artifacts):
     term.write("\x04")
     term.expect(lambda s: "0 rows from tail" in s, "Ctrl-D did not scroll a half page newer")
     term.write("?")
-    term.expect(lambda s: "Log Viewer Shortcuts" in s and "/: search logs" in s,
+    term.expect(lambda s: "Log Viewer Keyboard Controls" in s and "/: search logs" in s,
                 "Log help did not overlay the viewer")
     capture(term, artifacts / f"session-log-help-{name}.png")
     term.write("?")
-    term.expect(lambda s: "/: search logs" in s and "Log Viewer Shortcuts" not in s,
+    term.expect(lambda s: "/: search logs" in s and "Log Viewer Keyboard Controls" not in s,
                 "Log help did not close back to the viewer")
     term.resize(4, 20)
     term.expect(lambda s: "Terminal too small" in s, "Log size guard missing")
@@ -95,7 +95,8 @@ def main():
         media = root / "test.mp4"
         subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
                         "testsrc2=size=160x120:rate=10", "-t", "3", "-c:v", "libx264", str(media)], check=True)
-        common = ["--file", str(media), "--loop", "--splash-screen=false", "--audio=false", "--color-mode", "none"]
+        common = ["--file", str(media), "--loop", "--splash-screen=false", "--audio=false", "--color-mode",
+                  "truecolor", "--utf8=true"]
         base = [binary, "--no-check-update", "--log-level", "info"]
         # Keep the transport open without a handshake so startup remains observable.
         with socket.socket() as listener:

@@ -223,17 +223,21 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
     frame_buffer_printf(output, "\033[%d;1H\033[2K", size.rows);
   }
   if (config->show_logs && terminal_screen_logs_help_open()) {
-    static const char *const lines[] = {
-        "j / Down       newer line",
-        "k / Up         older line",
-        "Ctrl-D / Right half page newer",
-        "Ctrl-U / Left  half page older",
-    };
-    ui_overlay_box_t box = {.title = "Log Viewer Shortcuts",
-                            .lines = lines,
-                            .line_count = sizeof(lines) / sizeof(lines[0]),
-                            .footer = "? or Esc closes this help",
-                            .minimum_width = 48};
+    bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd());
+    const char *orange = log_level_color_for_output(LOG_COLOR_WARN, colors);
+    const char *reset = log_level_color_for_output(LOG_COLOR_RESET, colors);
+    char lines[4][128];
+    snprintf(lines[0], sizeof(lines[0]), "%sj%s / %sDown%s        newer line", orange, reset, orange, reset);
+    snprintf(lines[1], sizeof(lines[1]), "%sk%s / %sUp%s          older line", orange, reset, orange, reset);
+    snprintf(lines[2], sizeof(lines[2]), "%sCtrl-D%s / %sRight%s  half page newer", orange, reset, orange, reset);
+    snprintf(lines[3], sizeof(lines[3]), "%sCtrl-U%s / %sLeft%s   half page older", orange, reset, orange, reset);
+    const char *line_text[] = {lines[0], lines[1], lines[2], lines[3]};
+    char footer[128];
+    snprintf(footer, sizeof(footer), "%s?%s or %sEsc%s closes this help", orange, reset, orange, reset);
+    ui_overlay_box_t box = {.title = "Log Viewer Keyboard Controls",
+                            .lines = line_text,
+                            .line_count = sizeof(line_text) / sizeof(line_text[0]),
+                            .footer = footer};
     (void)ui_overlay_box_render(output, size, &box);
   }
   frame_buffer_destroy(body);
