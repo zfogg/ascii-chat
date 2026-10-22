@@ -2,7 +2,7 @@ include_guard(GLOBAL)
 
 # Source locations belong to the build checkout, independently of the runtime cwd.
 function(asciichat_configure_source_root source_root binary_root)
-    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_ENABLE_COVERAGE)
         # Release compiler flags already make project source locations relative.
         set(ASCIICHAT_SOURCE_ROOT "")
     else()

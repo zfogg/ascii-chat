@@ -74,6 +74,10 @@ def exercise(term, name, artifacts):
     term.expect(lambda s: "Log Viewer Keyboard Controls" in s and "/: search logs" in s,
                 "Log help did not overlay the viewer")
     assert term.screen.cursor.hidden, "Log viewer help left the cursor visible"
+    help_rows = term.screen.display
+    title_row = next(i for i, row in enumerate(help_rows) if "Log Viewer Keyboard Controls" in row)
+    first_binding = next(i for i, row in enumerate(help_rows) if "newer line" in row)
+    assert first_binding == title_row + 2, "Log help needs a blank row below its header"
     capture(term, artifacts / f"session-log-help-{name}.png")
     term.write("?")
     term.expect(lambda s: "/: search logs" in s and "Log Viewer Keyboard Controls" not in s,
@@ -81,9 +85,9 @@ def exercise(term, name, artifacts):
     term.resize(10, 140)
     term.expect(lambda s: "/: search logs" in s, "Log viewer did not survive compact resize")
     term.write("?")
-    term.expect(lambda s: "Help needs at least 11 terminal rows" in s, "Compact help warning missing")
-    term.resize(11, 140)
-    term.expect(lambda s: s.splitlines()[-1].startswith("Help needs at least 11 terminal rows"),
+    term.expect(lambda s: "Help needs at least 12 terminal rows" in s, "Compact help warning missing")
+    term.resize(12, 140)
+    term.expect(lambda s: s.splitlines()[-1].startswith("Help needs at least 12 terminal rows"),
                 "Log viewer did not observe the restored terminal height")
     term.write("?")
     term.expect(lambda s: "Log Viewer Keyboard Controls" in s, "Log help did not reopen after resize")

@@ -5,6 +5,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/network.h>
+#include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/network/webrtc/webrtc.h>
 #include <ascii-chat/network/websocket/internal.h>
 #include <ascii-chat/buffer.h>
@@ -17,6 +18,7 @@ typedef struct {
   network_server_t *server;
   atomic_t opened, packets, closing, closed, fail_closing;
   bool reject, stall;
+  asciichat_error_t packet_rejection;
   asciichat_error_t result;
 } fixture_t;
 
@@ -37,6 +39,8 @@ static asciichat_error_t packet(network_connection_t *connection, packet_type_t 
   cr_assert_worker((network_connection_context(connection)) == (f));
   cr_assert_worker(type == PACKET_TYPE_PING && length == sizeof(uint64_t));
   atomic_fetch_add_int(&f->packets, 1);
+  if (f->packet_rejection != ASCIICHAT_OK)
+    return SET_ERRNO(f->packet_rejection, "Private admission fixture detail");
   return packet_send_via_transport(network_connection_transport(connection), PACKET_TYPE_PONG, data, length, 0);
 }
 static asciichat_error_t closing(network_connection_t *connection, void *arg) {
@@ -371,6 +375,50 @@ Test(network_connections, establishment_controls) {
   establishment_controls();
 }
 
+Test(network_connections, tcp_packet_rejection_is_delivered_before_close) {
+  fixture_t f = {.packet_rejection = ERROR_SESSION_FULL};
+  uint16_t port = unused_port();
+  network_server_config_t config = {.port = port,
+                                    .ipv4_address = "127.0.0.1",
+                                    .bind_ipv4 = true,
+                                    .max_connections = 4,
+                                    .callbacks = {opened, packet, closing, closed},
+                                    .user_data = &f};
+  cr_assert_eq(network_server_create(&config, &f.server), ASCIICHAT_OK);
+  cr_assert_eq(network_server_start(f.server), ASCIICHAT_OK);
+  asciichat_thread_t thread;
+  cr_assert_eq(acthread_create(&thread, "rejection_fixture", run, &f), ASCIICHAT_OK);
+  char endpoint[64];
+  safe_snprintf(endpoint, sizeof(endpoint), "tcp://127.0.0.1:%u", port);
+  network_connection_t *client = NULL;
+  cr_assert_eq(network_connection_open("rejection_client", endpoint, port, NULL, &client, NULL), ASCIICHAT_OK);
+  acip_transport_t *transport = network_connection_transport(client);
+  uint64_t ping = 7;
+  cr_assert_eq(packet_send_via_transport(transport, PACKET_TYPE_PING, &ping, sizeof(ping), 0), ASCIICHAT_OK);
+  packet_type_t type;
+  void *data = NULL, *allocation = NULL;
+  size_t length = 0;
+  asciichat_error_t received = packet_receive_via_transport(transport, &type, &data, &length, &allocation);
+  cr_expect_eq(received, ASCIICHAT_OK);
+  if (received == ASCIICHAT_OK) {
+    cr_expect_eq(type, PACKET_TYPE_ERROR_MESSAGE);
+    asciichat_error_t code = ASCIICHAT_OK;
+    char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
+    cr_expect_eq(packet_parse_error_message(data, length, &code, message, sizeof(message), NULL), ASCIICHAT_OK);
+    cr_expect_eq(code, ERROR_SESSION_FULL);
+    cr_expect_str_eq(message, asciichat_error_string(ERROR_SESSION_FULL));
+    cr_expect_null(strstr(message, "Private admission"));
+  }
+  buffer_release(allocation);
+  wait_count(&f.closed, 1);
+  network_connection_destroy(&client);
+  network_server_request_stop(f.server);
+  cr_assert_eq(thread_join(&thread, NULL), ASCIICHAT_OK);
+  cr_assert_eq(f.result, ASCIICHAT_OK);
+  network_server_destroy(&f.server);
+  cr_assert_null(f.server);
+}
+
 Test(network_connections, tcp_echo) {
   scenario(0, false, false, 0, false);
 }
@@ -421,7 +469,7 @@ Test(network_connections, websocket_close) {
 
 typedef struct {
   acip_transport_t *transport;
-  atomic_t entered, release;
+  atomic_t entered, returned, release;
   asciichat_error_t results[8];
 } concurrent_close_t;
 
@@ -441,6 +489,7 @@ static void *close_websocket_concurrently(void *arg) {
   concurrent_close_worker_t *worker = arg;
   atomic_fetch_add_int(&worker->fixture->entered, 1);
   worker->fixture->results[worker->index] = acip_transport_close(worker->fixture->transport);
+  atomic_fetch_add_int(&worker->fixture->returned, 1);
   return NULL;
 }
 
@@ -451,10 +500,14 @@ Test(network_connections, websocket_concurrent_close) {
   cr_assert_not_null(transport);
   cr_assert_eq(acip_transport_close(transport), ASCIICHAT_OK);
 
-  // Hold a replacement service thread alive so every caller closes the same
-  // joinable thread, independent of network callback timing.
+  // Retire the original thread before replacing its handle. Close interrupts
+  // it, but the transport owner retains responsibility for joining it.
   concurrent_close_t fixture = {.transport = transport};
   websocket_transport_data_t *ws = transport->impl_data;
+  cr_assert_eq(thread_join(&ws->service_thread, NULL), ASCIICHAT_OK);
+  ws->service_running = false;
+  // Keep a replacement thread blocked: concurrent close calls must return
+  // without trying to join this owner-managed service thread.
   cr_assert_eq(acthread_create(&ws->service_thread, "held_ws_service", held_websocket_service, &fixture), ASCIICHAT_OK);
   ws->service_running = true;
   asciichat_thread_t threads[8];
@@ -465,14 +518,19 @@ Test(network_connections, websocket_concurrent_close) {
                  ASCIICHAT_OK);
   }
   uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
-  while (atomic_load_int(&fixture.entered) != 8 && time_get_ns() < deadline)
+  while (atomic_load_int(&fixture.returned) != 8 && time_get_ns() < deadline)
     platform_sleep_ms(1);
-  cr_assert_eq(atomic_load_int(&fixture.entered), 8);
+  int returned_before_release = atomic_load_int(&fixture.returned);
+  bool owner_still_must_join = ws->service_running;
+  // Always release the fixture before checking results so failures can unwind.
   atomic_store_bool(&fixture.release, true);
+  cr_assert_eq(atomic_load_int(&fixture.entered), 8);
   for (size_t i = 0; i < 8; ++i) {
     cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
     cr_assert_eq(fixture.results[i], ASCIICHAT_OK);
   }
+  cr_assert_eq(returned_before_release, 8, "close must not wait for the owner's service-thread join");
+  cr_assert(owner_still_must_join, "close must preserve the owner's join responsibility");
   cr_assert_eq(acip_transport_close(transport), ASCIICHAT_OK);
   acip_transport_destroy(transport);
   acip_websocket_runtime_destroy(&runtime);

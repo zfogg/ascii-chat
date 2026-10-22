@@ -235,12 +235,12 @@ static void extract_string(toml_datum_t datum, char *value_str, int *int_val, bo
  */
 static void extract_int(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
                         bool *has_value) {
+  (void)int_val;
   (void)bool_val;
   (void)double_val;
 
   if (datum.type == TOML_INT64) {
-    *int_val = (int)datum.u.int64;
-    SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%d", *int_val);
+    SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%lld", (long long)datum.u.int64);
     *has_value = true;
   } else if (datum.type == TOML_STRING) {
     const char *str = get_toml_string_validated(datum);
@@ -332,7 +332,8 @@ static asciichat_error_t parse_validate_int(const char *value_str, const config_
 
   if (is_enum) {
     // Enum parsing
-    if (enum_val < 0) {
+    bool named_auto = meta->field_offset == offsetof(options_t, color_mode) && strcmp(value_str, OPT_VALUE_AUTO) == 0;
+    if (enum_val < 0 && !named_auto) {
       // Backward compatibility: accept numeric enum values too.
       char *endptr = NULL;
       long raw_enum = strtol(value_str, &endptr, 10);
@@ -358,7 +359,7 @@ static asciichat_error_t parse_validate_int(const char *value_str, const config_
         }
       }
 
-      if (enum_val < 0) {
+      if (!numeric_valid) {
         if (strlen(error_msg) == 0) {
           SAFE_SNPRINTF(error_msg, error_size, "Invalid enum value: %s", value_str);
         }

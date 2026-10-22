@@ -3,8 +3,82 @@
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/util/pcre2.h>
+#include <stdlib.h>
 
 TestSuite(symbol_cache_lifecycle);
+
+#ifndef _WIN32
+static char fallback_directory[PLATFORM_MAX_PATH_LENGTH];
+static char *fallback_old_env[3];
+static const char *fallback_env_names[] = {"PATH", "LLVM_SYMBOLIZER_PATH", "ADDR2LINE_PATH"};
+static void fallback_cleanup(void) {
+  symbol_cache_destroy();
+  for (size_t i = 0; i < 3; ++i) {
+    if (fallback_old_env[i]) {
+      platform_setenv(fallback_env_names[i], fallback_old_env[i]);
+      SAFE_FREE(fallback_old_env[i]);
+    } else {
+      platform_unsetenv(fallback_env_names[i]);
+    }
+  }
+  if (fallback_directory[0])
+    platform_rmdir_recursive(fallback_directory);
+  log_destroy();
+  asciichat_pcre2_cleanup_all();
+}
+static void fallback_setup(void) {
+  log_init(NULL, LOG_FATAL, false, false);
+  for (size_t i = 0; i < 3; ++i) {
+    const char *value = getenv(fallback_env_names[i]);
+    if (value)
+      SAFE_STRDUP(fallback_old_env[i], value);
+  }
+  cr_assert_eq(platform_mkdtemp(fallback_directory, sizeof(fallback_directory), "symbol-fallback"), ASCIICHAT_OK);
+  char script[PLATFORM_MAX_PATH_LENGTH];
+  safe_snprintf(script, sizeof(script), "%s/addr2line", fallback_directory);
+  FILE *file = platform_fopen("addr2line-fixture", script, "w");
+  cr_assert_not_null(file);
+  const char *program = "#!/bin/sh\n"
+                        "for argument do\n"
+                        " case \"$argument\" in\n"
+                        "  0x1111) printf 'both_known\\n/tmp/project/source.c:42\\n';;\n"
+                        "  0x2222) printf 'function_only\\n??:0\\n';;\n"
+                        "  0x3333) printf '??\\n/tmp/project/source.c:73\\n';;\n"
+                        "  0x4444) printf '??\\n??:?\\n';;\n"
+                        " esac\n"
+                        "done\n";
+  cr_assert_eq(fwrite(program, 1, strlen(program), file), strlen(program));
+  cr_assert_eq(fclose(file), 0);
+  cr_assert_eq(platform_chmod(script, 0700), 0);
+  cr_assert_eq(platform_setenv("PATH", fallback_directory), 0);
+  cr_assert_eq(platform_setenv("LLVM_SYMBOLIZER_PATH", "/missing/llvm-symbolizer"), 0);
+  cr_assert_eq(platform_setenv("ADDR2LINE_PATH", script), 0);
+}
+Test(symbol_cache_fallback, addr2line_handles_mixed_resolution_and_caches_owned_results, .init = fallback_setup,
+     .fini = fallback_cleanup) {
+  cr_assert_eq(symbol_cache_init(), ASCIICHAT_OK);
+  void *addresses[] = {(void *)0x1111, (void *)0x2222, (void *)0x3333, (void *)0x4444};
+  char **symbols = symbol_cache_resolve_batch(addresses, 4);
+  cr_assert_not_null(symbols);
+  for (int i = 0; i < 4; ++i)
+    cr_assert_not_null(symbols[i]);
+  cr_assert_not_null(strstr(symbols[0], "source.c:42"));
+  cr_assert_not_null(strstr(symbols[0], "both_known()"));
+  cr_assert_not_null(strstr(symbols[1], "function_only() at 0x2222"));
+  cr_assert_not_null(strstr(symbols[2], "source.c:73"));
+  cr_assert_not_null(strstr(symbols[2], "unknown function"));
+  cr_assert_str_eq(symbols[3], "0x4444");
+  char **cached = symbol_cache_resolve_batch(addresses, 4);
+  cr_assert_not_null(cached);
+  for (int i = 0; i < 4; ++i)
+    cr_assert_str_eq(cached[i], symbols[i]);
+  symbol_cache_free_symbols(cached);
+  symbol_cache_free_symbols(symbols);
+}
+#endif
 
 Test(symbol_cache_lifecycle, batch_resolution_identifies_exported_functions_and_reuses_the_cache) {
   cr_assert_eq(symbol_cache_init(), ASCIICHAT_OK);

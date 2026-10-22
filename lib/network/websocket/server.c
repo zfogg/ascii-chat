@@ -262,7 +262,7 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
     log_debug("[LWS_CALLBACK_CLOSED] Closing transport=%p for wsi=%p", (void *)transport_snapshot, (void *)wsi);
     // Now safely close the transport (methods pointer is stable)
     if (transport_snapshot && transport_snapshot->methods) {
-      transport_snapshot->methods->close(transport_snapshot);
+      acip_transport_close(transport_snapshot);
     }
   }
 

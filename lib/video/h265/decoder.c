@@ -139,7 +139,14 @@ asciichat_error_t h265_decode(h265_decoder_t *decoder, const uint8_t *encoded_pa
     size_t hevc_size = packet_size - 5;
 
     // Send packet to decoder
-    av_packet_from_data(decoder->packet, (uint8_t *)hevc_data, hevc_size);
+    // FFmpeg owns packet storage and requires zero padding after the payload.
+    // The wire buffer belongs to the caller and may be stack allocated.
+    if (hevc_size > INT_MAX)
+      return SET_ERRNO(ERROR_NETWORK_SIZE, "HEVC packet exceeds decoder size limit");
+    av_packet_unref(decoder->packet);
+    if (av_new_packet(decoder->packet, (int)hevc_size) < 0)
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate HEVC decoder packet");
+    memcpy(decoder->packet->data, hevc_data, hevc_size);
 
     uint64_t stats_codec_start = time_get_ns();
     if (avcodec_send_packet(decoder->codec_ctx, decoder->packet) < 0) {

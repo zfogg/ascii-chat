@@ -18,8 +18,8 @@ typedef struct terminal_fd_writer_s {
 } terminal_fd_writer_t;
 
 asciichat_error_t terminal_fd_writer_create(int fd, terminal_fd_writer_t **out) {
-  if (fd < 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid fd: %d", fd);
+  if (fd < 0 || !out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid writer parameters: fd=%d, output=%p", fd, (void *)out);
   }
 
   FILE *fp = platform_fdopen("terminal_fd_writer", fd, "w");

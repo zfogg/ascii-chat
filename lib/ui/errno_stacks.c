@@ -369,7 +369,7 @@ static void publish(void) {
     fd = g_state.output_fd >= 0 ? g_state.output_fd : STDOUT_FILENO;
     state_unlock();
   }
-  if (ui_controller_submit(UI_SCREEN_ERRNO, fd, (terminal_size_t){ERRNO_TUI_MIN_COLS, ERRNO_TUI_MIN_ROWS},
+  if (ui_controller_submit(UI_SCREEN_ERRNO, fd, (terminal_size_t){.cols = ERRNO_TUI_MIN_COLS, .rows = ERRNO_TUI_MIN_ROWS},
                            render_errno_stacks, &marker, sizeof(marker)) != ASCIICHAT_OK)
     CLEAR_ERRNO();
 }

@@ -117,6 +117,12 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     envelope.allocated_buffer = allocated_buffer;
     envelope.allocated_size = packet_len;
 
+    if (envelope.len != packet_len - sizeof(packet_header_t)) {
+      buffer_release(allocated_buffer);
+      return SET_ERRNO(ERROR_NETWORK, "Packet length mismatch: header says %zu, actual %zu", envelope.len,
+                       packet_len - sizeof(packet_header_t));
+    }
+
     log_dev_every(4500 * US_PER_MS_INT, "ACIP_SERVER_DISPATCH: WebRTC packet parsed: type=%d, len=%u", envelope.type,
                   envelope.len);
 
@@ -159,6 +165,12 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
       envelope.data = plaintext + sizeof(packet_header_t);
       envelope.allocated_buffer = plaintext;
       envelope.allocated_size = plaintext_size;
+
+      if (envelope.len != plaintext_len - sizeof(packet_header_t)) {
+        buffer_release(plaintext);
+        return SET_ERRNO(ERROR_CRYPTO, "Decrypted packet length mismatch: header says %zu, actual %zu", envelope.len,
+                         plaintext_len - sizeof(packet_header_t));
+      }
 
       uint64_t decrypt_end_ns = time_get_ns();
       char decrypt_duration_str[32];

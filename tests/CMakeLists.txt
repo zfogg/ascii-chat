@@ -409,6 +409,11 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             ${TEST_LDFLAGS}
         )
 
+        if(test_exe_name STREQUAL "test_unit_log_json")
+            target_include_directories(${test_exe_name} PRIVATE ${YYJSON_INCLUDE_DIRS})
+            target_link_libraries(${test_exe_name} ${YYJSON_LIBRARIES})
+        endif()
+
         if(USE_MIMALLOC)
             target_link_libraries(${test_exe_name} ${MIMALLOC_LIBRARIES})
         endif()
@@ -1219,6 +1224,9 @@ if(BUILD_TESTS AND TARGET ascii-chat)
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_lifecycle.py
             $<TARGET_FILE:ascii-chat>)
     set_tests_properties(server-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180)
+    asciichat_add_python_test(identity-sessions
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/identity_sessions.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(identity-sessions PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
     asciichat_add_python_test(render-file-audio
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/render_file_audio.py $<TARGET_FILE:ascii-chat>)
     set_tests_properties(render-file-audio PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
@@ -1384,6 +1392,19 @@ if(TARGET ascii-chat-static AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     endif()
 endif()
 
+# Exercise the event-driven loop with real conversion and captured terminal output.
+if(BUILD_TESTS AND TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+    add_executable(test-render-loop contracts/session/render_loop_test.c)
+    asciichat_configure_contract(test-render-loop)
+    target_link_libraries(test-render-loop PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-render-loop PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-render-loop)
+    set_target_properties(test-render-loop PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(render-loop test-render-loop)
+    set_tests_properties(render-loop PROPERTIES LABELS "unit" TIMEOUT 30)
+endif()
 # Shared discovery host rendering, including builds without Criterion.
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     add_executable(test-host-render EXCLUDE_FROM_ALL contracts/session/host_render_test.c)
@@ -1477,6 +1498,50 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN AND CMAKE_BUILD_TYPE MAT
     set_tests_properties(client-connection-lifecycle PROPERTIES LABELS "integration" TIMEOUT 300)
 endif()
 
+# Server handlers linked with their real media pipeline and fixture-owned application state.
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+    add_executable(test-server-protocol contracts/network/server_protocol_test.c
+        ${CMAKE_SOURCE_DIR}/src/server/protocol.c ${CMAKE_SOURCE_DIR}/src/session/h265/server.c)
+    asciichat_configure_contract(test-server-protocol)
+    target_link_libraries(test-server-protocol PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-server-protocol PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-server-protocol)
+    set_target_properties(test-server-protocol PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(server-protocol test-server-protocol)
+    set_tests_properties(server-protocol PROPERTIES LABELS "unit" TIMEOUT 30)
+endif()
+
+# Audio device selection and callbacks with a deterministic PortAudio boundary.
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+    add_executable(test-audio-device contracts/audio/device_test.c)
+    asciichat_configure_contract(test-audio-device)
+    target_link_libraries(test-audio-device PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-audio-device PRIVATE
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${PORTAUDIO_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-audio-device)
+    set_target_properties(test-audio-device PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(audio-device test-audio-device)
+    set_tests_properties(audio-device PROPERTIES LABELS "unit" TIMEOUT 30)
+endif()
+
+# Discovery host ranking and local wire probes use the production mode implementation.
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+    add_executable(test-nat-quality contracts/discovery/nat_quality_test.c
+        ${CMAKE_SOURCE_DIR}/src/discovery/nat.c)
+    asciichat_configure_contract(test-nat-quality)
+    target_link_libraries(test-nat-quality PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-nat-quality PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-nat-quality)
+    set_target_properties(test-nat-quality PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(nat-quality test-nat-quality)
+    set_tests_properties(nat-quality PROPERTIES LABELS "unit" TIMEOUT 30)
+endif()
+
 # Criterion connection owner tests with real blocked TCP workers.
 if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     add_executable(test-session-connections contracts/session/connection_test.c contracts/session/protocol_test.c)
@@ -1520,6 +1585,22 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_tests_properties(peer-ready PROPERTIES LABELS "integration" TIMEOUT 30)
 endif()
 
+if(BUILD_TESTS AND UNIX AND NOT EMSCRIPTEN AND TARGET ascii-chat-static)
+    add_executable(test-terminal-pty standalone/platform/terminal_pty_test.c)
+    target_link_libraries(test-terminal-pty PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-terminal-pty PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-terminal-pty)
+    set_target_properties(test-terminal-pty PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    foreach(test_build_target tests tests-criterion-build test_all)
+        if(TARGET ${test_build_target})
+            add_dependencies(${test_build_target} test-terminal-pty)
+        endif()
+    endforeach()
+    add_test(NAME terminal-pty COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_pty.py $<TARGET_FILE:test-terminal-pty>)
+    set_tests_properties(terminal-pty PROPERTIES LABELS "integration" TIMEOUT 45)
+endif()
 if(BUILD_TESTS AND WIN32)
     add_executable(test-terminal-resize standalone/session/terminal_resize_test.c)
     target_link_libraries(test-terminal-resize PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ws2_32)
@@ -1763,6 +1844,9 @@ if(BUILD_TESTS AND TARGET ascii-chat-shared)
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/encoder_audio_flush.py $<TARGET_FILE:ascii-chat-shared>)
         list(APPEND shared_api_tests encoder-audio-flush)
     endif()
+    asciichat_add_python_test(log-viewer-rendering
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui/test_log_history.py $<TARGET_FILE:ascii-chat-shared>)
+    list(APPEND shared_api_tests log-viewer-rendering)
     foreach(api_test IN LISTS shared_api_tests)
         set_tests_properties(${api_test} PROPERTIES LABELS "unit" TIMEOUT 120)
         # Python hosts the instrumented library, so load ASan before Python's allocator.

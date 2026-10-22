@@ -252,6 +252,31 @@ bool ui_session_logs_key(keyboard_key_t key) {
   }
   if (terminal_screen_logs_handle_key(key))
     return true;
+  // Client-like log screens own these keys while the renderer is hidden.
+  // Search and log navigation take precedence over rendering shortcuts.
+  switch ((int)key) {
+  case 'c':
+  case 'C':
+  case 'r':
+  case 'R':
+  case 'f':
+  case 'F':
+  case 'x':
+  case 'X':
+  case 'y':
+  case 'Y':
+  case '1':
+  case '2':
+  case '3':
+  case 'w':
+  case 'W':
+  case 'z':
+  case 'Z':
+  case '-':
+    return true;
+  default:
+    break;
+  }
   return false;
 }
 
