@@ -157,6 +157,7 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
   }
 
   bool is_direct = url_is_direct_stream(url);
+  ASCII_OTEL_ATTR_STRING("media.resolver", is_direct ? "ffmpeg" : "yt-dlp");
 
   if (is_direct) {
     log_debug("URL is direct stream, passing to FFmpeg directly: %s", url);

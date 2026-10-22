@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 
 typedef struct h265_decoder {
   AVCodecContext *codec_ctx;
@@ -142,10 +143,17 @@ asciichat_error_t h265_decode(h265_decoder_t *decoder, const uint8_t *encoded_pa
     size_t hevc_size = packet_size - 5;
 
     // Send packet to decoder
-    av_packet_from_data(decoder->packet, (uint8_t *)hevc_data, hevc_size);
+    if (hevc_size > INT_MAX)
+      return SET_ERRNO(ERROR_NETWORK_SIZE, "Encoded video packet exceeds FFmpeg limits");
+    av_packet_unref(decoder->packet);
+    if (av_new_packet(decoder->packet, (int)hevc_size) < 0)
+      return SET_ERRNO(ERROR_MEMORY, "Cannot allocate decoder packet");
+    memcpy(decoder->packet->data, hevc_data, hevc_size);
 
     uint64_t stats_codec_start = time_get_ns();
-    if (avcodec_send_packet(decoder->codec_ctx, decoder->packet) < 0) {
+    int send_result = avcodec_send_packet(decoder->codec_ctx, decoder->packet);
+    av_packet_unref(decoder->packet);
+    if (send_result < 0) {
       return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to send packet to decoder");
     }
 
@@ -183,6 +191,14 @@ asciichat_error_t h265_decode(h265_decoder_t *decoder, const uint8_t *encoded_pa
   decoder->last_width = width;
   decoder->last_height = height;
   decoder->total_frames++;
+  ASCII_OTEL_ATTR_STRING("video.codec", "h265");
+  ASCII_OTEL_ATTR_INT("video.frame.width", width);
+  ASCII_OTEL_ATTR_INT("video.frame.height", height);
+  ASCII_OTEL_ATTR_INT("video.frame.keyframe", (flags & H265_DECODER_FLAG_KEYFRAME) != 0);
+  ASCII_OTEL_ATTR_INT("video.packet.size", (int64_t)packet_size);
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_DECODE_BYTES, (double)packet_size);
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_DECODE_FRAMES, 1);
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_DECODE_BYTES_OUT, (double)*output_size);
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DECODED, 1);
 
   if (flags & H265_DECODER_FLAG_KEYFRAME) {

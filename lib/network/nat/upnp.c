@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 /**
  * @file nat/upnp.c
  * @brief Router mapping lifecycle for TCP listeners and UDP transports.
@@ -194,6 +195,9 @@ asciichat_error_t nat_upnp_open(uint16_t internal_port, const char *description,
 
 asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *description, nat_upnp_protocol_t protocol,
                                          nat_upnp_context_t **ctx) {
+  ASCII_OTEL_SCOPE(NAT_MAP);
+  ASCII_OTEL_ATTR_STRING("network.transport", protocol == NAT_UPNP_UDP ? "udp" : "tcp");
+  ASCII_OTEL_ATTR_INT("network.local.port", internal_port);
   if (!ctx) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: missing mapping output");
   }
@@ -219,11 +223,13 @@ asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *des
   }
 #endif
   if (result == ASCIICHAT_OK) {
+    ascii_otel_metric(ASCII_OTEL_METRIC_NAT_MAP_SUCCESS, 1);
     errno_scope_end(mapping_scope, ASCIICHAT_ERRNO_HANDLED);
     log_info("NAT: mapping created for %s:%u (external reachability unverified)", (*ctx)->external_ip,
              (*ctx)->mapped_port);
     return ASCIICHAT_OK;
   }
+  ascii_otel_metric(ASCII_OTEL_METRIC_NAT_MAP_FAILURE, 1);
   LOG_ERRNO_IF_SET("Automatic router mapping unavailable");
   SAFE_FREE((*ctx)->control_url);
   SAFE_FREE(*ctx);
@@ -232,6 +238,8 @@ asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *des
 }
 
 void nat_upnp_close(nat_upnp_context_t **ctx) {
+  ASCII_OTEL_SCOPE(NAT_CLOSE);
+
   if (!ctx || !*ctx) {
     return;
   }
@@ -295,6 +303,8 @@ asciichat_error_t nat_upnp_get_endpoint(const nat_upnp_context_t *ctx, char *ip,
 }
 
 asciichat_error_t nat_upnp_refresh(nat_upnp_context_t *ctx) {
+  ASCII_OTEL_SCOPE(NAT_REFRESH);
+
   if (!ctx || !ctx->is_mapped) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: cannot refresh without a mapping");
   }

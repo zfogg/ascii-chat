@@ -462,6 +462,7 @@ typedef struct {
   bool no_check_update;         // Disable the startup update check
   char otel_log_level[OPTIONS_BUFF_SIZE];
   char otel_endpoint[OPTIONS_BUFF_SIZE];
+  char otel_ca_file[OPTIONS_BUFF_SIZE];
   char otel_enabled_telemetry[OPTIONS_BUFF_SIZE];
   double otel_realtime_sample_rate;
   int otel_realtime_max_per_second;
@@ -488,6 +489,7 @@ static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
   binary.no_check_update = opts->no_check_update;
   SAFE_STRNCPY(binary.otel_log_level, opts->otel_log_level, sizeof(binary.otel_log_level));
   SAFE_STRNCPY(binary.otel_endpoint, opts->otel_endpoint, sizeof(binary.otel_endpoint));
+  SAFE_STRNCPY(binary.otel_ca_file, opts->otel_ca_file, sizeof(binary.otel_ca_file));
   SAFE_STRNCPY(binary.otel_enabled_telemetry, opts->otel_enabled_telemetry, sizeof(binary.otel_enabled_telemetry));
   binary.otel_realtime_sample_rate = opts->otel_realtime_sample_rate;
   binary.otel_realtime_max_per_second = opts->otel_realtime_max_per_second;
@@ -515,6 +517,7 @@ static inline void restore_binary_level(options_t *opts, const binary_level_opts
   opts->no_check_update = binary->no_check_update;
   SAFE_STRNCPY(opts->otel_log_level, binary->otel_log_level, sizeof(opts->otel_log_level));
   SAFE_STRNCPY(opts->otel_endpoint, binary->otel_endpoint, sizeof(opts->otel_endpoint));
+  SAFE_STRNCPY(opts->otel_ca_file, binary->otel_ca_file, sizeof(opts->otel_ca_file));
   SAFE_STRNCPY(opts->otel_enabled_telemetry, binary->otel_enabled_telemetry, sizeof(opts->otel_enabled_telemetry));
   opts->otel_realtime_sample_rate = binary->otel_realtime_sample_rate;
   opts->otel_realtime_max_per_second = binary->otel_realtime_max_per_second;
@@ -1524,6 +1527,7 @@ static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t d
   // Telemetry CLI values are parsed again after config and environment resolution.
   SAFE_STRNCPY(binary_before_config.otel_log_level, opts->otel_log_level, sizeof(binary_before_config.otel_log_level));
   SAFE_STRNCPY(binary_before_config.otel_endpoint, opts->otel_endpoint, sizeof(binary_before_config.otel_endpoint));
+  SAFE_STRNCPY(binary_before_config.otel_ca_file, opts->otel_ca_file, sizeof(binary_before_config.otel_ca_file));
   SAFE_STRNCPY(binary_before_config.otel_enabled_telemetry, opts->otel_enabled_telemetry,
                sizeof(binary_before_config.otel_enabled_telemetry));
   binary_before_config.otel_realtime_sample_rate = opts->otel_realtime_sample_rate;

@@ -164,7 +164,7 @@ def main():
         assert result.returncode == 0
         assert time.monotonic() - started < 8
         for flag, value in [('--otel-queue-capacity', '3'), ('--otel-enabled-telemetry', 'invalid'),
-                            ('--otel-endpoint', 'https://collector.example'), ('--otel-log-level', 'invalid')]:
+                            ('--otel-endpoint', 'ftp://collector.example'), ('--otel-log-level', 'invalid')]:
             args = base + ['--otel-endpoint', f'http://127.0.0.1:{server.server_port}', flag, value] + media
             result = subprocess.run(args, env=env, capture_output=True, timeout=10)
             assert result.returncode != 0, (flag, value)

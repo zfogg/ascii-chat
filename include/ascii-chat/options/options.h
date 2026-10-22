@@ -1098,6 +1098,7 @@ typedef struct options_state {
   // OpenTelemetry export configuration.
   char otel_log_level[OPTIONS_BUFF_SIZE];
   char otel_endpoint[OPTIONS_BUFF_SIZE];
+  char otel_ca_file[OPTIONS_BUFF_SIZE];
   char otel_enabled_telemetry[OPTIONS_BUFF_SIZE];
   double otel_realtime_sample_rate;
   int otel_realtime_max_per_second;

@@ -47,9 +47,15 @@ an inherited endpoint without sending anything.
 
 `OTEL_EXPORTER_OTLP_ENDPOINT` is a fallback base URL. Standard otlp-c exporter
 headers and per-signal endpoint environment settings are also accepted. The
-base URL must use HTTP and must not contain credentials, query or fragment.
-For production HTTPS backends, use a local OpenTelemetry Collector to handle
-TLS and forwarding. No default remote collector or usage reporting is enabled.
+base URL accepts HTTP or HTTPS and must not contain credentials, query or fragment.
+HTTPS uses the existing OpenSSL dependency, enables TLS 1.3 with TLS 1.2 as the
+minimum, and verifies certificates and DNS/IP identities. System roots are used
+by default, including native Windows/macOS anchors. `--otel-ca-file` (also
+`ASCII_CHAT_OTEL_CA_FILE` or TOML `[otel] ca_file`) selects a PEM CA bundle
+replacing system roots. `OTEL_EXPORTER_OTLP_CERTIFICATE` is the fallback.
+Verification cannot be disabled.
+A local Collector remains useful for forwarding and processing. No default
+remote collector or usage reporting is enabled.
 
 ## Execution and export
 
@@ -168,3 +174,45 @@ For focused Linux testing after configuring the Docker preset:
 cmake --build build_docker --target test_unit_otel_otel ascii-chat
 ctest --test-dir build_docker -R 'test_unit_otel_otel|otel-export' --no-tests=error --output-on-failure
 ```
+
+
+### Compression and video codecs
+
+`ascii-chat.compression.zstd.{compress,compress_workspace,decompress,decompress_exact}`
+spans include algorithm, level where applicable, and input/output sizes. Successful
+operations record byte counters, packet-size histograms, and compression
+output/input ratio. Failed decompression does not add successful byte counts.
+Operation duration/error metrics cover rejected inputs and codec failures too.
+
+`ascii-chat.video.encode` and `.decode` record codec, dimensions, packet size, and
+keyframe status. The encoder supports both H.264 and H.265; codec attributes
+identify the actual implementation. Encoding records RGB24 input bytes, encoded
+packet bytes, packet count, dimensions, keyframes, and input/output ratio.
+Decoding records input packet sizes, frames and grayscale output bytes. Flush
+packets add output bytes without counting another input frame.
+
+The `otel-media` integration test performs real zstd round trips (including an
+exact-size failure), H.264/H.265 encoding and HEVC decoding, then checks exported
+names, attributes, counters, and histograms. A missing software encoder is
+reported explicitly; compression assertions still execute. Native Windows's
+current cached FFmpeg lacks libx264/libx265, so full codec assertions run in Linux
+Docker. The test also covers ownership of borrowed decoder input under ASan.
+
+### Manual load and outage test
+
+The sustained-load test is deliberately absent from CTest. Run it explicitly:
+
+```sh
+python tests/manual/test_otel_load.py build/bin/ascii-chat --seconds 60
+```
+
+It compares disabled/enabled elapsed and child CPU time, records exported RSS,
+compares delivered span counts with a two-entry queue, recovers from HTTP 503 responses, and checks
+bounded shutdown during an outage. Tiny queues can also drop health metrics, so the pressure phase checks collector
+delivery counts rather than assuming the drop gauge survives. It prints JSON
+measurements and imposes no
+host-dependent performance threshold. Fixed capture duration makes the CPU ratio
+more useful than wall-clock ratio for overhead comparisons. Use a longer run on
+an otherwise idle machine for meaningful performance conclusions; the short
+8-second development run exercises failure/recovery behavior only. The script
+uses no webcam, microphone, GPU, remote collector, or credentials.

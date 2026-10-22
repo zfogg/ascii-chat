@@ -197,8 +197,9 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
     return SET_ERRNO(ERROR_CONFIG, "Invalid otel-log-level");
   if (!signals)
     return ASCIICHAT_OK;
-  if (strncmp(endpoint, "http://", 7) || strchr(endpoint, '?') || strchr(endpoint, '#') || strchr(endpoint, '@'))
-    return SET_ERRNO(ERROR_CONFIG, "otel-endpoint requires an HTTP collector base URL without credentials or query");
+  if ((strncmp(endpoint, "http://", 7) && strncmp(endpoint, "https://", 8)) || strchr(endpoint, '?') ||
+      strchr(endpoint, '#') || strchr(endpoint, '@'))
+    return SET_ERRNO(ERROR_CONFIG, "otel-endpoint requires an HTTP(S) collector base URL without credentials or query");
   char traces[OPTIONS_BUFF_SIZE];
   size_t length = strlen(endpoint);
   while (length && endpoint[length - 1] == '/')
@@ -211,6 +212,7 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   if (otlp_exporter_opts_apply_env(&config.exporter, &env) != OTLP_OK)
     return SET_ERRNO(ERROR_CONFIG, "Invalid OTEL exporter environment");
   config.exporter.endpoint = traces;
+  config.tls_ca_file = *o->otel_ca_file ? o->otel_ca_file : SAFE_GETENV("OTEL_EXPORTER_OTLP_CERTIFICATE");
   char service_name[OPTIONS_BUFF_SIZE];
   n = safe_snprintf(service_name, sizeof(service_name), "ascii-chat-%s", mode);
   if (n < 0 || (size_t)n >= sizeof(service_name))

@@ -141,7 +141,10 @@ asciichat_error_t rate_limiter_check(rate_limiter_t *limiter, const char *ip_add
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid event_type: %d", event_type);
   }
 
+  ASCII_OTEL_ATTR_STRING("rate_limit.event", rate_limiter_event_type_string(event_type));
   asciichat_error_t result = limiter->ops->check(limiter->backend_data, ip_address, event_type, config, allowed);
+  if (result == ASCIICHAT_OK)
+    ASCII_OTEL_ATTR_INT("rate_limit.allowed", *allowed);
   if (result == ASCIICHAT_OK && !*allowed)
     ascii_otel_metric(ASCII_OTEL_METRIC_RATE_REJECT, 1);
   return result;

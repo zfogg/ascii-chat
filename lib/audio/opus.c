@@ -32,6 +32,9 @@ asciichat_error_t audio_opus_configure_encoder(OpusEncoder *encoder, int bitrate
 }
 
 opus_codec_t *opus_codec_create_encoder(opus_application_t application, int sample_rate, int bitrate) {
+  ASCII_OTEL_SCOPE(OPUS_ENCODER_CREATE);
+  ASCII_OTEL_ATTR_INT("audio.sample_rate", sample_rate);
+  ASCII_OTEL_ATTR_INT("audio.bitrate", bitrate);
   if (sample_rate <= 0 || bitrate <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid codec parameters: sample_rate=%d, bitrate=%d", sample_rate, bitrate);
     return NULL;
@@ -76,6 +79,8 @@ opus_codec_t *opus_codec_create_encoder(opus_application_t application, int samp
  * ============================================================================ */
 
 opus_codec_t *opus_codec_create_decoder(int sample_rate) {
+  ASCII_OTEL_SCOPE(OPUS_DECODER_CREATE);
+  ASCII_OTEL_ATTR_INT("audio.sample_rate", sample_rate);
   if (sample_rate <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid sample rate: %d", sample_rate);
     return NULL;
@@ -149,6 +154,9 @@ size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samp
 int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len, float *out_samples,
                       int out_num_samples) {
   ASCII_OTEL_SCOPE(OPUS_CODEC_DECODE);
+  ASCII_OTEL_ATTR_STRING("audio.codec", "opus");
+  ASCII_OTEL_ATTR_INT("audio.packet.size", (int64_t)data_len);
+  ASCII_OTEL_ATTR_INT("audio.packet_loss_concealment", !data || !data_len);
   if (!codec || !codec->decoder || !out_samples || out_num_samples <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM,
               "Invalid decode parameters: codec=%p, decoder=%p, out_samples=%p, out_num_samples=%d", (void *)codec,
@@ -164,6 +172,7 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
       SET_ERRNO(ERROR_AUDIO, "Opus PLC failed: %s", opus_strerror(samples));
       return -1;
     }
+    ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_DECODE_SAMPLES, samples);
     return samples;
   }
 
@@ -175,6 +184,8 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
     return -1;
   }
 
+  ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_DECODE_BYTES, (double)data_len);
+  ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_DECODE_SAMPLES, samples);
   return samples;
 }
 
@@ -217,6 +228,8 @@ int opus_codec_get_bitrate(opus_codec_t *codec) {
 }
 
 asciichat_error_t opus_codec_set_dtx(opus_codec_t *codec, int enable) {
+  ASCII_OTEL_SCOPE(OPUS_DTX);
+  ASCII_OTEL_ATTR_INT("audio.dtx.enabled", enable != 0);
   if (!codec || !codec->encoder) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid codec for DTX configuration");
   }

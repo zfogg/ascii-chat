@@ -62,6 +62,10 @@ h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_hei
 }
 
 h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_width, uint16_t initial_height) {
+  ASCII_OTEL_SCOPE(VIDEO_ENCODER_CREATE);
+  ASCII_OTEL_ATTR_STRING("video.codec", codec_type == VIDEO_CODEC_H264 ? "h264" : "h265");
+  ASCII_OTEL_ATTR_INT("video.frame.width", initial_width);
+  ASCII_OTEL_ATTR_INT("video.frame.height", initial_height);
   if (codec_type != VIDEO_CODEC_H265 && codec_type != VIDEO_CODEC_H264) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Expected HEVC or H.264 codec");
     return NULL;
@@ -77,7 +81,9 @@ h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_
     return NULL;
   }
 
-  const AVCodec *codec = avcodec_find_encoder(codec_type == VIDEO_CODEC_H264 ? AV_CODEC_ID_H264 : AV_CODEC_ID_HEVC);
+  const AVCodec *codec = avcodec_find_encoder_by_name(codec_type == VIDEO_CODEC_H264 ? "libx264" : "libx265");
+  if (!codec)
+    codec = avcodec_find_encoder(codec_type == VIDEO_CODEC_H264 ? AV_CODEC_ID_H264 : AV_CODEC_ID_HEVC);
   if (!codec) {
     SET_ERRNO(ERROR_MEDIA_INIT, "%s encoder not found", codec_type == VIDEO_CODEC_H264 ? "H.264" : "HEVC");
     SAFE_FREE(enc);
@@ -295,6 +301,10 @@ static void h265_encoder_ascii_to_yuv420(const uint8_t *rgb_data, uint16_t width
 asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *ascii_data,
                               uint8_t *output_buf, size_t *output_size) {
   ASCII_OTEL_SCOPE(H265_ENCODE);
+  ASCII_OTEL_ATTR_INT("video.frame.width", width);
+  ASCII_OTEL_ATTR_INT("video.frame.height", height);
+  if (encoder && encoder->codec)
+    ASCII_OTEL_ATTR_STRING("video.codec", encoder->codec->id == AV_CODEC_ID_H264 ? "h264" : "h265");
   if (!encoder || !ascii_data || !output_buf || !output_size) {
     return SET_ERRNO(ERROR_INTERNAL, "Invalid encoder arguments");
   }
@@ -392,6 +402,12 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
   ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_BYTES, (double)required_size);
   if (encoder->packet->flags & AV_PKT_FLAG_KEY)
     ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_KEYFRAMES, 1);
+  ASCII_OTEL_ATTR_INT("video.packet.size", (int64_t)required_size);
+  ASCII_OTEL_ATTR_INT("video.frame.keyframe", (encoder->packet->flags & AV_PKT_FLAG_KEY) != 0);
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_ENCODE_FRAMES, 1);
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_ENCODE_INPUT, (double)width * height * 3);
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_ENCODE_BYTES_IN, (double)width * height * 3);
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_ENCODE_BYTES_OUT, (double)required_size);
   encoder->total_frames++;
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_ENCODED, 1);
   ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_WIDTH, encoder->frame->width);
@@ -484,6 +500,11 @@ asciichat_error_t h265_encoder_flush(h265_encoder_t *encoder, uint8_t *output_bu
   }
 
   *output_size = required_size;
+  ASCII_OTEL_ATTR_INT("video.packet.size", (int64_t)required_size);
+  if (encoder->codec)
+    ASCII_OTEL_ATTR_STRING("video.codec", encoder->codec->id == AV_CODEC_ID_H264 ? "h264" : "h265");
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_ENCODE_FRAMES, 1);
+  ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_ENCODE_BYTES_OUT, (double)required_size);
   ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_BYTES, (double)required_size);
   if (encoder->packet->flags & AV_PKT_FLAG_KEY)
     ascii_otel_metric(ASCII_OTEL_METRIC_VIDEO_KEYFRAMES, 1);
