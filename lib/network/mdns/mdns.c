@@ -19,8 +19,14 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <iphlpapi.h>
 #else
+#include <ifaddrs.h>
+#include <net/if.h>
 #include <netinet/in.h> /* For struct sockaddr_in, sockaddr_in6 */
+#endif
+#ifdef __APPLE__
+#include <dns_sd.h>
 #endif
 
 /** @brief Internal mDNS context structure */
@@ -40,6 +46,9 @@ struct asciichat_mdns_t {
   asciichat_mdns_discovery_t discovered[64];
   size_t discovered_count;
   uint16_t query_id; /**< Current query ID */
+#ifdef __APPLE__
+  DNSServiceRef dns_service_ref;
+#endif
 };
 
 /** @brief mDNS packet buffer size (4KB should handle most service records) */
@@ -83,10 +92,17 @@ asciichat_mdns_t *asciichat_mdns_init(void) {
 static void mdns_stop_advertising(asciichat_mdns_t *mdns) {
   if (!mdns->advertising)
     return;
+#ifdef __APPLE__
+  if (mdns->dns_service_ref) {
+    DNSServiceRefDeallocate(mdns->dns_service_ref);
+    mdns->dns_service_ref = NULL;
+  }
+#else
   atomic_store(&mdns->stop_advertising, true);
   thread_join(&mdns->advertiser, NULL);
   mdns_goodbye_multicast(mdns->socket_fd, mdns->buffer, mdns->buffer_capacity, mdns->ptr, NULL, 0, mdns->additional,
                          mdns->additional_count);
+#endif
   mdns->advertising = false;
 }
 
@@ -160,6 +176,44 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
     if (!service->txt_records[i] || strlen(service->txt_records[i]) >= sizeof(mdns->txt[i]))
       return SET_ERRNO(ERROR_INVALID_PARAM, "mDNS TXT record is missing or too long");
   mdns_stop_advertising(mdns);
+#ifdef __APPLE__
+  TXTRecordRef txt_record;
+  TXTRecordCreate(&txt_record, 0, NULL);
+  char regtype[256];
+  SAFE_STRNCPY(regtype, service->type, sizeof(regtype));
+  char *local_suffix = strstr(regtype, ".local");
+  if (local_suffix)
+    *local_suffix = '\0';
+  size_t regtype_length = strlen(regtype);
+  if (regtype_length && regtype[regtype_length - 1] == '.')
+    regtype[regtype_length - 1] = '\0';
+  for (size_t i = 0; i < service->txt_count; ++i) {
+    const char *separator = strchr(service->txt_records[i], '=');
+    size_t key_length = separator ? (size_t)(separator - service->txt_records[i]) : strlen(service->txt_records[i]);
+    if (!key_length || key_length >= 256) {
+      TXTRecordDeallocate(&txt_record);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mDNS TXT record key");
+    }
+    char key[256];
+    safe_snprintf(key, sizeof(key), "%.*s", (int)key_length, service->txt_records[i]);
+    const void *value = separator ? separator + 1 : NULL;
+    size_t value_length = separator ? strlen(separator + 1) : 0;
+    if (value_length > UINT8_MAX ||
+        TXTRecordSetValue(&txt_record, key, (uint8_t)value_length, value) != kDNSServiceErr_NoError) {
+      TXTRecordDeallocate(&txt_record);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mDNS TXT record value");
+    }
+  }
+  DNSServiceErrorType error =
+      DNSServiceRegister(&mdns->dns_service_ref, 0, kDNSServiceInterfaceIndexAny, service->name, regtype, NULL,
+                         NULL, htons(service->port), TXTRecordGetLength(&txt_record),
+                         TXTRecordGetBytesPtr(&txt_record), NULL, NULL);
+  TXTRecordDeallocate(&txt_record);
+  if (error != kDNSServiceErr_NoError)
+    return SET_ERRNO(ERROR_NETWORK, "Cannot register mDNS service with Bonjour (error %d)", error);
+  mdns->advertising = true;
+  return ASCIICHAT_OK;
+#else
   mdns_socket_close(mdns->socket_fd);
   struct sockaddr_in listen_address = {.sin_family = AF_INET, .sin_port = htons(MDNS_PORT)};
   mdns->socket_fd = mdns_socket_open_ipv4(&listen_address);
@@ -211,6 +265,7 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
     return SET_ERRNO(ERROR_THREAD, "Cannot start mDNS advertiser");
   mdns->advertising = true;
   return ASCIICHAT_OK;
+#endif
 }
 
 asciichat_error_t asciichat_mdns_unadvertise(asciichat_mdns_t *mdns, const char *service_name) {
@@ -303,6 +358,64 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
   return 0;
 }
 
+static int mdns_send_query_on_interface(asciichat_mdns_t *mdns, const char *service_type, size_t service_type_len,
+                                        struct in_addr address) {
+  if (setsockopt(mdns->socket_fd, IPPROTO_IP, IP_MULTICAST_IF, (const char *)&address, sizeof(address)) != 0)
+    return -1;
+  return mdns_query_send(mdns->socket_fd, MDNS_RECORDTYPE_PTR, service_type, service_type_len, mdns->buffer,
+                         mdns->buffer_capacity, 0);
+}
+
+static int mdns_send_query_all_interfaces(asciichat_mdns_t *mdns, const char *service_type,
+                                          size_t service_type_len) {
+  int sent = 0;
+#ifdef _WIN32
+  ULONG size = 0;
+  if (GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST,
+                           NULL, NULL, &size) == ERROR_BUFFER_OVERFLOW) {
+    IP_ADAPTER_ADDRESSES *adapters = SAFE_MALLOC(size, IP_ADAPTER_ADDRESSES *);
+    if (adapters) {
+      if (GetAdaptersAddresses(AF_INET,
+                               GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST, NULL,
+                               adapters, &size) == NO_ERROR) {
+        for (IP_ADAPTER_ADDRESSES *adapter = adapters; adapter; adapter = adapter->Next) {
+          if (adapter->OperStatus != IfOperStatusUp || adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK ||
+              adapter->NoMulticast)
+            continue;
+          for (IP_ADAPTER_UNICAST_ADDRESS *unicast = adapter->FirstUnicastAddress; unicast;
+               unicast = unicast->Next) {
+            if (!unicast->Address.lpSockaddr || unicast->Address.lpSockaddr->sa_family != AF_INET)
+              continue;
+            struct in_addr address = ((struct sockaddr_in *)unicast->Address.lpSockaddr)->sin_addr;
+            if (mdns_send_query_on_interface(mdns, service_type, service_type_len, address) >= 0)
+              ++sent;
+          }
+        }
+      }
+      SAFE_FREE(adapters);
+    }
+  }
+#else
+  struct ifaddrs *interfaces = NULL;
+  if (getifaddrs(&interfaces) == 0) {
+    for (struct ifaddrs *interface = interfaces; interface; interface = interface->ifa_next) {
+      if (!interface->ifa_addr || interface->ifa_addr->sa_family != AF_INET ||
+          !(interface->ifa_flags & IFF_UP) || !(interface->ifa_flags & IFF_MULTICAST) ||
+          (interface->ifa_flags & IFF_LOOPBACK))
+        continue;
+      struct in_addr address = ((struct sockaddr_in *)interface->ifa_addr)->sin_addr;
+      if (mdns_send_query_on_interface(mdns, service_type, service_type_len, address) >= 0)
+        ++sent;
+    }
+    freeifaddrs(interfaces);
+  }
+#endif
+  if (!sent)
+    return mdns_query_send(mdns->socket_fd, MDNS_RECORDTYPE_PTR, service_type, service_type_len, mdns->buffer,
+                           mdns->buffer_capacity, 0);
+  return 0;
+}
+
 asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *service_type,
                                        asciichat_mdns_discovery_callback_fn callback, void *user_data) {
   if (!mdns || !service_type || !callback) {
@@ -325,14 +438,22 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
   mdns->callback_data = user_data;
   mdns->discovered_count = 0;
 
+  // Use the standard mDNS port so responders multicast their answers. Some
+  // system mDNS responders do not return QU answers to an ephemeral source
+  // port, and multicast answers are also visible across all active adapters.
+  mdns_socket_close(mdns->socket_fd);
+  struct sockaddr_in listen_address = {.sin_family = AF_INET, .sin_port = htons(MDNS_PORT)};
+  mdns->socket_fd = mdns_socket_open_ipv4(&listen_address);
+  if (mdns->socket_fd < 0)
+    return SET_ERRNO(ERROR_NETWORK_BIND, "Cannot listen for mDNS query responses");
+
   log_info("Starting mDNS query for: %s", service_type);
 
   /* Send PTR query for service type (one-shot query)
    * PTR query discovers all instances of a service type
    * mdns_query_send returns the query ID for response filtering
    */
-  int query_id = mdns_query_send(mdns->socket_fd, MDNS_RECORDTYPE_PTR, service_type, service_type_len, mdns->buffer,
-                                 mdns->buffer_capacity, 0);
+  int query_id = mdns_send_query_all_interfaces(mdns, service_type, service_type_len);
 
   if (query_id < 0) {
     return SET_ERRNO(ERROR_NETWORK, "mDNS query send failed for %s (query_id=%d)", service_type, query_id);
