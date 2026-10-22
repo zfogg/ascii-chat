@@ -6,8 +6,92 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/platform/rwlock.h>
+#include <string.h>
 
 #ifndef NDEBUG
+// Internal formatters back the public diagnostic log_state functions.
+extern int mutex_format_state(const mutex_t *mutex, char *buffer, size_t size);
+extern int rwlock_format_state(const rwlock_t *lock, char *buffer, size_t size);
+extern int cond_format_state(const cond_t *condition, char *buffer, size_t size);
+
+Test(debug_mutex, formatted_mutex_state_tracks_acquisition_and_release) {
+  mutex_t mutex;
+  char text[1024];
+  cr_assert_eq(mutex_init(&mutex, "formatted-mutex"), 0);
+  cr_assert_eq(mutex_format_state(NULL, text, sizeof(text)), 0);
+  cr_assert_eq(mutex_format_state(&mutex, NULL, sizeof(text)), 0);
+  cr_assert_eq(mutex_format_state(&mutex, text, 0), 0);
+  cr_assert_gt(mutex_format_state(&mutex, text, sizeof(text)), 0);
+  cr_assert_null(strstr(text, "LOCKED_BY"));
+  cr_assert_eq(mutex_lock(&mutex), 0);
+  cr_assert_gt(mutex_format_state(&mutex, text, sizeof(text)), 0);
+  cr_assert_not_null(strstr(text, "lock="));
+  cr_assert_not_null(strstr(text, "LOCKED_BY=thread."));
+  cr_assert_not_null(strstr(text, "lock=1 unlock=0"));
+  cr_assert_eq(mutex_unlock(&mutex), 0);
+  cr_assert_eq(mutex_trylock(&mutex), 0);
+  cr_assert_eq(mutex_unlock(&mutex), 0);
+  cr_assert_gt(mutex_format_state(&mutex, text, sizeof(text)), 0);
+  cr_assert_not_null(strstr(text, "unlock="));
+  cr_assert_not_null(strstr(text, "trylock=1/1"));
+  cr_assert_null(strstr(text, "LOCKED_BY"));
+  struct { char text[2]; char guard; } short_output = {.guard = 'G'};
+  cr_assert_gt(mutex_format_state(&mutex, short_output.text, sizeof(short_output.text)), 1);
+  cr_assert_eq(short_output.text[1], '\0');
+  cr_assert_eq(short_output.guard, 'G');
+  cr_assert_eq(mutex_destroy(&mutex), 0);
+}
+
+Test(debug_mutex, formatted_rwlock_distinguishes_readers_writer_and_released_state) {
+  rwlock_t lock;
+  char text[1024];
+  cr_assert_eq(rwlock_init(&lock, "formatted-rwlock"), 0);
+  cr_assert_eq(rwlock_format_state(NULL, text, sizeof(text)), 0);
+  cr_assert_eq(rwlock_format_state(&lock, NULL, sizeof(text)), 0);
+  cr_assert_eq(rwlock_format_state(&lock, text, 0), 0);
+  cr_assert_eq(rwlock_rdlock(&lock), 0);
+  cr_assert_gt(rwlock_format_state(&lock, text, sizeof(text)), 0);
+  cr_assert_not_null(strstr(text, "READ_LOCKED=1"));
+  cr_assert_not_null(strstr(text, "rdlock="));
+  cr_assert_eq(rwlock_rdunlock(&lock), 0);
+  cr_assert_eq(rwlock_wrlock(&lock), 0);
+  cr_assert_gt(rwlock_format_state(&lock, text, sizeof(text)), 0);
+  cr_assert_not_null(strstr(text, "WRITE_LOCKED_BY=thread."));
+  cr_assert_not_null(strstr(text, "wrlock="));
+  cr_assert_null(strstr(text, "READ_LOCKED="));
+  cr_assert_eq(rwlock_wrunlock(&lock), 0);
+  cr_assert_gt(rwlock_format_state(&lock, text, sizeof(text)), 0);
+  cr_assert_not_null(strstr(text, "unlock="));
+  cr_assert_not_null(strstr(text, "rdlock=1 wrlock=1 unlock=2"));
+  cr_assert_null(strstr(text, "LOCKED"));
+  cr_assert_eq(rwlock_destroy(&lock), 0);
+}
+
+Test(debug_mutex, formatted_condition_state_tracks_timeout_signal_and_broadcast) {
+  mutex_t mutex;
+  cond_t condition;
+  char text[1024];
+  cr_assert_eq(mutex_init(&mutex, "formatted-condition-lock"), 0);
+  cr_assert_eq(cond_init(&condition, "formatted-condition"), 0);
+  cr_assert_eq(cond_format_state(NULL, text, sizeof(text)), 0);
+  cr_assert_eq(cond_format_state(&condition, NULL, sizeof(text)), 0);
+  cr_assert_eq(cond_format_state(&condition, text, 0), 0);
+  cr_assert_eq(mutex_lock(&mutex), 0);
+  cr_assert_neq(cond_timedwait(&condition, &mutex, 1000000), 0);
+  cr_assert_eq(cond_signal(&condition), 0);
+  cr_assert_eq(cond_broadcast(&condition), 0);
+  cr_assert_gt(cond_format_state(&condition, text, sizeof(text)), 0);
+  cr_assert_not_null(strstr(text, "wait="));
+  cr_assert_not_null(strstr(text, "signal="));
+  cr_assert_not_null(strstr(text, "broadcast="));
+  cr_assert_not_null(strstr(text, "wait=1 signal=1 broadcast=1"));
+  cr_assert_null(strstr(text, "WAITING="));
+  cr_assert_eq(mutex_unlock(&mutex), 0);
+  cr_assert_eq(cond_destroy(&condition), 0);
+  cr_assert_eq(mutex_destroy(&mutex), 0);
+}
+
 static atomic_bool stack_stress_running;
 
 static void *change_lock_stack(void *unused) {
