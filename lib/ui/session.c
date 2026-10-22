@@ -227,13 +227,14 @@ void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_ses
   const char *mode = GET_OPTION(detected_mode) == MODE_MIRROR ? "Mirror" : "Client";
   char detail[256];
   size_t offset = terminal_screen_logs_offset();
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd());
-  const char *orange = log_level_color_for_output(LOG_COLOR_WARN, colors);
-  const char *purple = log_level_color_for_output(LOG_COLOR_FATAL, colors);
-  const char *reset = log_level_color_for_output(LOG_COLOR_RESET, colors);
-  snprintf(detail, sizeof(detail),
-           "%sEsc%s: close | %s/%s: search logs | %s?%s: keyboard controls | %s%zu%s rows from tail", orange, reset,
-           orange, reset, orange, reset, purple, offset, reset);
+  char offset_text[32];
+  snprintf(offset_text, sizeof(offset_text), "%zu", offset);
+  const char *escape_key = colored_string(LOG_COLOR_WARN, "Esc");
+  const char *search_key = colored_string(LOG_COLOR_WARN, "/");
+  const char *help_key = colored_string(LOG_COLOR_WARN, "?");
+  const char *colored_offset = colored_string(LOG_COLOR_FATAL, offset_text);
+  snprintf(detail, sizeof(detail), "%s: close | %s: search logs | %s: keyboard controls | %s rows from tail",
+           escape_key, search_key, help_key, colored_offset);
   ui_status_t status = {.mode_name = mode, .start_time = s->started, .detail = detail};
   terminal_screen_config_t config = {
       .fixed_header_lines = 4, .render_header = ui_status_render_header, .user_data = &status, .show_logs = true};

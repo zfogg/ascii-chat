@@ -46,9 +46,8 @@ bool ui_overlay_box_render(frame_buffer_t *output, terminal_size_t size, const u
   frame_buffer_append(output, bottom_right, strlen(bottom_right));
   char rendered[1024];
   truncate_with_ellipsis(box->title, rendered, sizeof(rendered), width - 4);
-  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd());
-  frame_buffer_printf(output, "\033[%d;%dH\033[1m%s%s\033[0m", top + 1, left + 2,
-                      log_level_color_for_output(LOG_COLOR_DEBUG, colors), rendered);
+  const char *colored_title = colored_string(LOG_COLOR_DEBUG, rendered);
+  frame_buffer_printf(output, "\033[%d;%dH\033[1m%s\033[0m", top + 1, left + 2, colored_title);
   for (size_t i = 0; i < box->line_count; ++i) {
     truncate_with_ellipsis(box->lines[i], rendered, sizeof(rendered), width - 4);
     frame_buffer_printf(output, "\033[%d;%dH%s", top + 2 + (int)i, left + 2, rendered);
