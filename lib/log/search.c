@@ -17,6 +17,8 @@
 #include "ascii-chat/util/lifecycle.h"
 #include "ascii-chat/util/pcre2.h"
 #include "ascii-chat/util/utf8.h"
+#include "ascii-chat/util/flow_control.h"
+#include "ascii-chat/util/time.h"
 #include <ascii-chat/session/session_log_buffer.h>
 #include "ascii-chat/options/options.h"
 #include <ascii-chat/video/terminal/ansi.h>
@@ -32,6 +34,7 @@
 
 #define MAX_LOG_SEARCH_PATTERNS 32       ///< Maximum number of patterns to support
 #define LOG_SEARCH_INPUT_BUFFER_SIZE 256 ///< Input buffer size
+#define LOG_SEARCH_DEBOUNCE_NS 200000000ULL
 
 /* ============================================================================
  * State Structure
@@ -65,6 +68,7 @@ typedef struct {
   atomic_t signal_cancelled;       ///< Set by signal handler, checked by render loop
   atomic_t mode_atomic;            ///< Shadow of mode for signal-safe reads
   bool cli_pattern_auto_populated; ///< Track if CLI pattern was already populated
+  flow_control_debounce_t debounce;
 } log_search_state_t;
 
 static log_search_state_t g_search_state = {
@@ -221,6 +225,7 @@ void log_search_enter_mode(void) {
   memset(g_search_state.input_buffer, 0, sizeof(g_search_state.input_buffer));
   g_search_state.len = 0;
   g_search_state.cursor = 0;
+  flow_control_debounce_cancel(&g_search_state.debounce);
 
   // Pre-populate with CLI --grep pattern if available (only once at startup)
   if (!g_search_state.cli_pattern_auto_populated) {
@@ -287,6 +292,7 @@ void log_search_exit_mode(bool accept) {
   }
 
   if (!accept) {
+    flow_control_debounce_cancel(&g_search_state.debounce);
     // Cancel - restore previous patterns and reset CLI pattern flag so user can re-populate
     asciichat_error_t result = grep_restore_patterns();
     if (result != ASCIICHAT_OK) {
@@ -310,6 +316,7 @@ void log_search_exit_mode(bool accept) {
   }
 
   // Accept - parse and compile pattern
+  flow_control_debounce_cancel(&g_search_state.debounce);
   grep_parse_result_t parsed = grep_parse_pattern(g_search_state.input_buffer);
 
   if (!parsed.valid) {
@@ -405,6 +412,44 @@ bool log_search_should_handle(int key) {
   return should_handle;
 }
 
+static void log_search_update_filter_locked(void) {
+  if (g_search_state.len == 0) {
+    g_search_state.active_pattern_count = 0;
+    g_search_state.fixed_string = false;
+    return;
+  }
+  grep_parse_result_t parsed = grep_parse_pattern(g_search_state.input_buffer);
+  if (!parsed.valid)
+    return;
+  g_search_state.active_pattern_count = 0;
+  g_search_state.case_insensitive = parsed.case_insensitive;
+  g_search_state.fixed_string = parsed.is_fixed_string;
+  if (!parsed.is_fixed_string) {
+    pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
+    if (singleton && asciichat_pcre2_singleton_get_code(singleton)) {
+      g_search_state.active_patterns[0] = singleton;
+      g_search_state.active_pattern_count = 1;
+    } else {
+      g_search_state.fixed_string = true;
+    }
+  }
+  g_search_state.global_highlight = parsed.global_flag;
+  g_search_state.invert_match = parsed.invert;
+  g_search_state.context_before = parsed.context_before;
+  g_search_state.context_after = parsed.context_after;
+}
+
+void log_search_process_pending(void) {
+  mutex_lock(&g_search_state.mutex);
+  bool ready = g_search_state.mode == LOG_SEARCH_MODE_ENTERING &&
+               flow_control_debounce_take_ready(&g_search_state.debounce, time_get_ns());
+  if (ready)
+    log_search_update_filter_locked();
+  mutex_unlock(&g_search_state.mutex);
+  if (ready)
+    atomic_store_bool(&g_search_state.needs_rerender, true);
+}
+
 asciichat_error_t log_search_handle_key(keyboard_key_t key) {
   mutex_lock(&g_search_state.mutex);
 
@@ -449,62 +494,7 @@ asciichat_error_t log_search_handle_key(keyboard_key_t key) {
     log_search_exit_mode(false); // Restore previous
     break;
   case LINE_EDIT_CONTINUE:
-    // Still editing - compile pattern for live filtering
-    // Mutex is still held here
-
-    // If buffer is empty, clear patterns to show all logs (don't exit grep mode)
-    if (g_search_state.len == 0) {
-      g_search_state.active_pattern_count = 0;
-      mutex_unlock(&g_search_state.mutex);
-      atomic_store_bool(&g_search_state.needs_rerender, true);
-      break;
-    }
-
-    // Parse and compile pattern for live filtering
-    grep_parse_result_t parsed = grep_parse_pattern(g_search_state.input_buffer);
-
-    if (!parsed.valid) {
-      // Invalid pattern - keep previous patterns active (don't clear)
-      mutex_unlock(&g_search_state.mutex);
-      atomic_store_bool(&g_search_state.needs_rerender, true);
-      break;
-    }
-
-    // Valid pattern - update filtering state
-    if (parsed.is_fixed_string) {
-      // Fixed string matching - no regex compilation needed
-      g_search_state.active_pattern_count = 0;
-      g_search_state.case_insensitive = parsed.case_insensitive;
-      g_search_state.fixed_string = true;
-    } else {
-      // Regex pattern - compile with full pcre2_options
-      pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
-      if (singleton) {
-        pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
-        if (code) {
-          g_search_state.active_patterns[0] = singleton;
-          g_search_state.active_pattern_count = 1;
-          g_search_state.case_insensitive = parsed.case_insensitive;
-          g_search_state.fixed_string = false;
-        } else {
-          // Compilation failed - fall back to fixed string matching
-          g_search_state.active_pattern_count = 0;
-          g_search_state.fixed_string = true;
-          g_search_state.case_insensitive = parsed.case_insensitive;
-        }
-      } else {
-        g_search_state.active_pattern_count = 0;
-        g_search_state.fixed_string = true;
-        g_search_state.case_insensitive = parsed.case_insensitive;
-      }
-    }
-
-    // Store parsed flags
-    g_search_state.global_highlight = parsed.global_flag;
-    g_search_state.invert_match = parsed.invert;
-    g_search_state.context_before = parsed.context_before;
-    g_search_state.context_after = parsed.context_after;
-
+    flow_control_debounce_trigger(&g_search_state.debounce, time_get_ns(), LOG_SEARCH_DEBOUNCE_NS);
     mutex_unlock(&g_search_state.mutex);
     atomic_store_bool(&g_search_state.needs_rerender, true);
     break;

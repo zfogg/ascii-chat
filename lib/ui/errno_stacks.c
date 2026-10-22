@@ -10,7 +10,9 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/util/display.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <string.h>
@@ -19,6 +21,11 @@
 #define ERRNO_TUI_MIN_COLS 88
 #define ERRNO_TUI_MIN_ROWS 10
 #define ERRNO_TUI_MAX_ROWS (ASCIICHAT_ERRNO_MAX_FRAMES + ASCIICHAT_ERRNO_HISTORY_SIZE)
+#define ERRNO_TUI_TABLE_BASE_WIDTH 114
+#define ERRNO_TUI_THREAD_BASE_WIDTH 14
+#define ERRNO_TUI_THREAD_MAX_WIDTH 24
+#define ERRNO_TUI_MESSAGE_BASE_WIDTH 23
+#define ERRNO_TUI_MESSAGE_MAX_WIDTH 38
 
 typedef enum { ERRNO_TUI_CURRENT, ERRNO_TUI_HISTORY } errno_tui_tab_t;
 typedef struct {
@@ -89,7 +96,7 @@ static size_t snapshot_current(errno_tui_row_t *rows, bool stack_sort, size_t ca
   *stacks = 0;
   for (size_t t = 0; t < thread_count && t < ASCIICHAT_ERRNO_MAX_THREADS; ++t) {
     asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-    size_t depth = errno_snapshot(threads[t], frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+    size_t depth = errno_snapshot(threads[t], frames, ASCIICHAT_ERRNO_MAX_DEPTH).copied;
     if (!depth)
       continue;
     ++*stacks;
@@ -192,16 +199,25 @@ static void render_footer(frame_buffer_t *buffer, int width, bool colors) {
   char footer[512];
   safe_snprintf(
       footer, sizeof(footer),
-      "%sTab%s%s: tab  %ss%s%s: sort  %sUp%s/%sk%s/%sDown%s/%sj%s%s: move  %sx%s%s: clear  %s`%s/%sEsc%s%s: close",
+      "%sTab%s%s: tab  %ss%s%s: sort  %sUp%s/%sk%s/%sDown%s/%sj%s%s: move  %sx%s%s: clear  %s'%s/%sEsc%s%s: close",
       orange, reset, grey, orange, reset, grey, orange, reset, orange, reset, orange, reset, orange, reset, grey,
       orange, reset, grey, orange, reset, orange, reset, grey);
   frame_buffer_render_centered(buffer, footer, width);
 }
 
 static void render_table_line(frame_buffer_t *buffer, const char *line, int width) {
-  int table_width = width > 118 ? 114 : width - 4;
+  int table_width = width - 4;
   int left_padding = (width - table_width) / 2;
   frame_buffer_printf(buffer, "%*s%s\n", left_padding, "", line);
+}
+
+static int table_width_for_terminal(int width) {
+  return width - 4;
+}
+
+static int growing_column_width(int table_width, int base_width, int max_width, int divisor) {
+  int extra_width = MAX(table_width - ERRNO_TUI_TABLE_BASE_WIDTH, 0);
+  return MIN(base_width + extra_width / divisor, max_width);
 }
 
 /** Render the active errno view from fresh current and historical snapshots. */
@@ -261,7 +277,7 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
   }
 
   int width = size.cols - 1;
-  bool utf8 = terminal_supports_utf8();
+  bool utf8 = utf8_output_enabled();
   frame_buffer_render_divider(buffer, width, utf8, colors);
   asciichat_errno_history_t *history =
       SAFE_CALLOC(ASCIICHAT_ERRNO_HISTORY_SIZE, sizeof(*history), asciichat_errno_history_t *);
@@ -292,11 +308,14 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
   char tabs[256];
   safe_snprintf(tabs, sizeof(tabs), "Current | Past %s sort", state.stack_sort ? "stack" : "recent");
   frame_buffer_render_centered(buffer, tabs, width);
+  int table_width = table_width_for_terminal(width);
+  int thread_width = growing_column_width(table_width, ERRNO_TUI_THREAD_BASE_WIDTH, ERRNO_TUI_THREAD_MAX_WIDTH, 4);
+  int message_width = growing_column_width(table_width, ERRNO_TUI_MESSAGE_BASE_WIDTH, ERRNO_TUI_MESSAGE_MAX_WIDTH, 3);
+  int user_width = table_width - 28 - thread_width - message_width;
   char columns[256];
-  safe_snprintf(columns, sizeof(columns),
-                "%sAgo        R/D/H    Code  Thread          Standard message       User message%s", blue, reset);
+  safe_snprintf(columns, sizeof(columns), "%sAgo        R/D/H    Code  %-*s %-*s User message%s", blue, thread_width,
+                "Thread", message_width, "Standard message", reset);
   render_table_line(buffer, columns, width);
-  int table_width = width > 118 ? 114 : width - 4;
 
   for (int i = 0; i < list_rows; ++i) {
     int index = state.list.first_visible + i;
@@ -313,17 +332,24 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
     if (ago_padding < 0)
       ago_padding = 0;
     format_thread_name(row->context.thread_id, thread_name, sizeof(thread_name));
-    truncate_with_ellipsis(thread_name, thread, sizeof(thread), 14);
-    truncate_with_ellipsis(asciichat_error_string(row->context.code), message, sizeof(message), 23);
-    truncate_with_ellipsis(row->context.context_message, user, sizeof(user), table_width - 65);
+    truncate_with_ellipsis(thread_name, thread, sizeof(thread), thread_width);
+    truncate_with_ellipsis(asciichat_error_string(row->context.code), message, sizeof(message), message_width);
+    truncate_with_ellipsis(row->context.context_message, user, sizeof(user), user_width);
+    int thread_padding = thread_width - display_width(thread);
+    int message_padding = message_width - display_width(message);
+    if (thread_padding < 0)
+      thread_padding = 0;
+    if (message_padding < 0)
+      message_padding = 0;
     unsigned resolved, dismissed, handled;
     outcome_counts(history, old_count, (unsigned)row->context.code, &resolved, &dismissed, &handled);
     char line[768];
-    safe_snprintf(line, sizeof(line), "%s%c %s%.*s%s%s%*s %s%u%s/%s%u%s/%s%u%s   %s%-5d%s %-14s %-23s %s",
+    safe_snprintf(line, sizeof(line), "%s%c %s%.*s%s%s%*s %s%u%s/%s%u%s/%s%u%s   %s%-5d%s %s%*s %s%*s %s",
                   index == state.list.selected ? log_level_color_for_output(LOG_COLOR_DEBUG, colors) : "",
                   index == state.list.selected ? '>' : ' ', purple, (int)ago_value_length, ago, reset,
                   ago + ago_value_length, ago_padding, "", purple, resolved, reset, purple, dismissed, reset, purple,
-                  handled, reset, purple, row->context.code, reset, thread, message, user);
+                  handled, reset, purple, row->context.code, reset, thread, thread_padding, "", message,
+                  message_padding, "", user);
     render_table_line(buffer, line, width);
   }
   frame_buffer_render_divider(buffer, width, utf8, colors);

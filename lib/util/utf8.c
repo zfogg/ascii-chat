@@ -10,12 +10,19 @@
 #include "ascii-chat/asciichat_errno.h"
 #include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/util/utf8.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
+
+bool utf8_output_enabled(void) {
+  utf8_setting_t setting = GET_OPTION(force_utf8);
+  return setting == UTF8_SETTING_TRUE || (setting == UTF8_SETTING_AUTO && terminal_supports_utf8());
+}
 
 int utf8_decode(const uint8_t *s, uint32_t *codepoint) {
   if (s[0] < 0x80) {

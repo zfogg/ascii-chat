@@ -53,7 +53,13 @@ def generate(root, build, output):
     subprocess.run([
         gcovr, "--root", str(root),
         "--gcov-executable", f"{llvm_cov} gcov", "--xml-pretty", "--output", str(output),
-        "--filter", r"(lib|src|include|tests)/", "--exclude", r"deps/", "--exclude", r"\.deps-cache/",
+        # Standalone tests intentionally compile source under several platform
+        # feature configurations. Keep function counters for each conditional
+        # implementation instead of rejecting their distinct source locations.
+        "--merge-mode-functions", "separate",
+        # CTest/JUnit reports whether test sources executed. Native coverage
+        # measures the product implementation exercised by those tests.
+        "--filter", r"(lib|src|include)/", "--exclude", r"deps/", "--exclude", r"\.deps-cache/",
         str(build),
     ], cwd=root, check=True)
     covered, valid = validate_report(output)

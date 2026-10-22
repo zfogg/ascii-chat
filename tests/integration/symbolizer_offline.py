@@ -15,6 +15,10 @@ import uuid
 
 
 def worker(library, fixture, name):
+    # The worker intentionally receives a mock debuginfod URL from the parent
+    # to verify application symbolization remains local. Sanitizer teardown is
+    # outside that contract and must not query it for the ASan runtime.
+    os.environ['DEBUGINFOD_URLS'] = ''
     api = c.CDLL(str(library))
     api.log_init.argtypes = [c.c_char_p, c.c_int, c.c_bool, c.c_bool]
     api.log_init(None, 4, True, False)

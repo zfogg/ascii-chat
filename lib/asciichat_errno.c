@@ -531,16 +531,16 @@ void errno_scope_end(asciichat_errno_scope_t scope, asciichat_errno_outcome_t ou
   }
   registry_unlock();
 }
-size_t errno_snapshot(uint64_t id, asciichat_error_context_t *out, size_t capacity) {
+asciichat_errno_snapshot_t errno_snapshot(uint64_t id, asciichat_error_context_t *out, size_t capacity) {
   registry_lock();
   error_thread_t *thread = find_thread(id);
   size_t depth = thread ? thread->depth : 0;
-  size_t count = 0;
+  asciichat_errno_snapshot_t snapshot = {.total = depth};
   if (thread && out)
-    for (int index = thread->top; index != NO_FRAME && count < capacity; index = g_frames[index].next)
-      out[count++] = g_frames[index].context;
+    for (int index = thread->top; index != NO_FRAME && snapshot.copied < capacity; index = g_frames[index].next)
+      out[snapshot.copied++] = g_frames[index].context;
   registry_unlock();
-  return depth;
+  return snapshot;
 }
 size_t errno_threads_snapshot(uint64_t *out, size_t capacity) {
   registry_lock();
@@ -687,7 +687,7 @@ void errno_print_stacks(void) {
   log_plain("Pending error stacks (%zu threads):", count);
   for (size_t i = 0; i < count; ++i) {
     asciichat_error_context_t contexts[ASCIICHAT_ERRNO_MAX_DEPTH];
-    size_t depth = errno_snapshot(ids[i], contexts, ASCIICHAT_ERRNO_MAX_DEPTH);
+    size_t depth = errno_snapshot(ids[i], contexts, ASCIICHAT_ERRNO_MAX_DEPTH).copied;
     if (!depth || contexts[0].generation != generations[i])
       continue;
     for (size_t j = 0; j < depth; ++j)
@@ -755,7 +755,7 @@ bool errno_scope_is_clean(asciichat_errno_scope_t scope) {
 }
 void errno_print_chain(uint64_t id, uint64_t error_id) {
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-  size_t count = errno_snapshot(id, frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+  size_t count = errno_snapshot(id, frames, ASCIICHAT_ERRNO_MAX_DEPTH).copied;
   log_plain("Failure chain (outer context -> root cause):");
   for (size_t i = 0; i < count && error_id; ++i) {
     if (frames[i].error_id == error_id) {

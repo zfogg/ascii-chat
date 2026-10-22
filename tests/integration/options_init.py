@@ -68,6 +68,14 @@ def main():
                 ["--test-pattern=1", "-f", "-"],
             ]:
                 check([*mode, *sources], False, "--test-pattern and --file are mutually exclusive")
+            for sources in [
+                ["--test-pattern", "--url", "https://example.com/video.mp4"],
+                ["--url", "https://example.com/video.mp4", "--test-pattern"],
+            ]:
+                check([*mode, *sources], False, "--test-pattern and --url are mutually exclusive")
+            for visualization in ("--waveform", "--fft"):
+                check([*mode, "--test-pattern", visualization], False,
+                      "--test-pattern cannot be used with --waveform or --fft")
 
         # Deferred actions run only after mode parsing, validation, and publication.
         check(["--show-capabilities"], True, "Terminal Capabilities:")

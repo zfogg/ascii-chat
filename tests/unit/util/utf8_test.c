@@ -40,22 +40,34 @@ Test(utf8, complete_csi_and_trailing_marks) {
 
 Test(utf8, ellipsis_width_and_byte_limits) {
   char output[64];
-  truncate_with_ellipsis("é中😀x", output, sizeof(output), 4);
+  truncate_with_ellipsis_mode("é中😀x", output, sizeof(output), 4, true);
   cr_assert_str_eq(output, "é中\033[0m…");
-  truncate_with_ellipsis("e\xcc\x81x", output, sizeof(output), 1);
+  truncate_with_ellipsis_mode("e\xcc\x81x", output, sizeof(output), 1, true);
   cr_assert_str_eq(output, "\033[0m…");
-  truncate_with_ellipsis("é中", output, sizeof(output), 3);
+  truncate_with_ellipsis_mode("é中", output, sizeof(output), 3, true);
   cr_assert_str_eq(output, "é中");
-  truncate_with_ellipsis("abc", output, sizeof(output), 0);
+  truncate_with_ellipsis_mode("abc", output, sizeof(output), 0, true);
   cr_assert_str_eq(output, "");
-  truncate_with_ellipsis("abc", output, sizeof(output), -1);
+  truncate_with_ellipsis_mode("abc", output, sizeof(output), -1, true);
   cr_assert_str_eq(output, "");
-  truncate_with_ellipsis("a\033[31", output, sizeof(output), 20);
+  truncate_with_ellipsis_mode("a\033[31", output, sizeof(output), 20, true);
   cr_assert_str_eq(output, "a\033[0m…");
-  truncate_with_ellipsis("中中中中", output, 10, 20);
+  truncate_with_ellipsis_mode("中中中中", output, 10, 20, true);
   cr_assert_str_eq(output, "\033[0m…");
-  truncate_with_ellipsis("\033[31mabcdef", output, 11, 20);
+  truncate_with_ellipsis_mode("\033[31mabcdef", output, 11, 20, true);
   cr_assert_str_eq(output, "\033[0m…");
+}
+
+Test(utf8, ellipsis_uses_ascii_when_utf8_is_disabled) {
+  char output[64];
+  truncate_with_ellipsis_mode("abcdef", output, sizeof(output), 4, false);
+  cr_assert_str_eq(output, "a\033[0m...");
+  cr_assert_eq(utf8_display_width(output), 4);
+  truncate_with_ellipsis_mode("abcdef", output, sizeof(output), 4, true);
+  cr_assert_str_eq(output, "abc\033[0m…");
+  cr_assert_eq(utf8_display_width(output), 4);
+  truncate_with_ellipsis_mode("abcdef", output, sizeof(output), 2, false);
+  cr_assert_str_eq(output, "");
 }
 
 Test(utf8, ellipsis_small_buffers) {
@@ -63,7 +75,7 @@ Test(utf8, ellipsis_small_buffers) {
   for (size_t size = 0; size <= 16; ++size) {
     memset(guarded, 0xa5, sizeof(guarded));
     char *output = (char *)guarded + 1;
-    truncate_with_ellipsis("é中😀abcdef", output, size, 3);
+    truncate_with_ellipsis_mode("é中😀abcdef", output, size, 3, true);
     cr_assert_eq(guarded[0], 0xa5);
     cr_assert_eq(guarded[size + 1], 0xa5);
     if (size > 0) {
@@ -76,7 +88,7 @@ Test(utf8, ellipsis_small_buffers) {
     }
   }
   char tiny[3];
-  truncate_with_ellipsis("é", tiny, sizeof(tiny), 1);
+  truncate_with_ellipsis_mode("é", tiny, sizeof(tiny), 1, true);
   cr_assert_str_eq(tiny, "é");
 }
 
