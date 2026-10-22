@@ -485,28 +485,32 @@ export function BinarySettings({
             </div>
           </Tooltip>
 
-          <Tooltip
-            text={
-              disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "palette")
-            }
-          >
-            <div className="flex-1 min-w-[200px]">
+          <div className="flex-1 min-w-[200px]">
+            <div className="flex items-center gap-1.5 mb-1">
               <label
                 htmlFor={paletteInputId}
-                className="block text-xs font-medium text-terminal-8 mb-1"
+                className="text-xs font-medium text-terminal-8"
               >
                 Palette characters
               </label>
-              <input
-                id={paletteInputId}
-                type="text"
-                value={paletteDraft}
-                onChange={(event) => updatePaletteDraft(event.target.value)}
-                disabled={disabled}
-                className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4 font-mono"
+              <DimensionHelp
+                label="Palette characters"
+                text={
+                  disabled
+                    ? LOCKED_SETTINGS_HELP
+                    : "Enter characters from darkest to brightest."
+                }
               />
             </div>
-          </Tooltip>
+            <input
+              id={paletteInputId}
+              type="text"
+              value={paletteDraft}
+              onChange={(event) => updatePaletteDraft(event.target.value)}
+              disabled={disabled}
+              className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4 font-mono"
+            />
+          </div>
 
           <Tooltip
             text={

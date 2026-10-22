@@ -33,6 +33,14 @@ test("shows the engine standard palette and applies typed characters after 750 m
 
   const input = screen.getByLabelText("Palette characters");
   expect((input as HTMLInputElement).value).toBe(DEFAULT_PALETTE_CHARS);
+  const help = screen.getByRole("button", {
+    name: "Palette characters help",
+  });
+  const tooltipId = help.getAttribute("aria-describedby");
+  expect(tooltipId).toBeTruthy();
+  expect(document.getElementById(tooltipId!)?.textContent).toBe(
+    "Enter characters from darkest to brightest.",
+  );
 
   fireEvent.change(input, { target: { value: " .+#" } });
   expect((input as HTMLInputElement).value).toBe(" .+#");
