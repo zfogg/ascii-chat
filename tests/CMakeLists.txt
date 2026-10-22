@@ -1452,6 +1452,20 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_tests_properties(server-protocol PROPERTIES LABELS "unit" TIMEOUT 30)
 endif()
 
+# Audio device selection and callbacks with a deterministic PortAudio boundary.
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+    add_executable(test-audio-device contracts/audio/device_test.c)
+    asciichat_configure_contract(test-audio-device)
+    target_link_libraries(test-audio-device PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-audio-device PRIVATE
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${PORTAUDIO_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-audio-device)
+    set_target_properties(test-audio-device PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(audio-device test-audio-device)
+    set_tests_properties(audio-device PROPERTIES LABELS "unit" TIMEOUT 30)
+endif()
+
 # Discovery host ranking and local wire probes use the production mode implementation.
 if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     add_executable(test-nat-quality contracts/discovery/nat_quality_test.c
