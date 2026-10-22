@@ -59,7 +59,7 @@ def check_capture_emulator():
 
 
 class Terminal:
-    def __init__(self, argv, rows=12, cols=19, terminal_replies=False, code_page=65001):
+    def __init__(self, argv, rows=12, cols=19, terminal_replies=False, code_page=65001, environment=None):
         self.terminal_replies = terminal_replies
         self.background_reply = "\x1b]11;rgb:0000/0000/0000\x1b\\"
         self.query_tail = ""
@@ -67,19 +67,21 @@ class Terminal:
         self.stream = CaptureStream(self.screen)
         self.output = queue.Queue()
         self.raw = []
+        child_environment = os.environ.copy()
+        child_environment.update(environment or {})
         if os.name == "nt":
             from winpty import PtyProcess
 
             # Match a UTF-8 terminal, including its console code page.
             command = f"chcp {code_page}>nul & " + subprocess.list2cmdline(argv)
             self.process = PtyProcess.spawn(
-                ["cmd.exe", "/d", "/c", command], dimensions=(rows, cols)
+                ["cmd.exe", "/d", "/c", command], dimensions=(rows, cols), env=child_environment
             )
         else:
             import pexpect
 
             self.process = pexpect.spawn(
-                argv[0], argv[1:], dimensions=(rows, cols), encoding="utf-8"
+                argv[0], argv[1:], dimensions=(rows, cols), encoding="utf-8", env=child_environment
             )
         self.reader = threading.Thread(target=self._read, daemon=True)
         self.reader.start()
@@ -183,8 +185,11 @@ def main():
         base = [binary, "--no-check-update", "--log-file", str(root / "application.log"), "--log-level", "info"]
         sessions = []
 
-        def terminal(name, argv, **kwargs):
-            term = Terminal(base + argv, **kwargs)
+        def terminal(name, argv, check_updates=False, environment=None, **kwargs):
+            command = [binary, "--log-file", str(root / "application.log"), "--log-level", "info"]
+            if not check_updates:
+                command.insert(1, "--no-check-update")
+            term = Terminal(command + argv, environment=environment, **kwargs)
             sessions.append((name, term))
             return term
 
@@ -239,6 +244,13 @@ def main():
             video(mirror)
             mirror.write("?")
             mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Expected help")
+            mirror.write("\x1b[24~")
+            mirror.expect(lambda text: "Check for updates" in text or "You're up to date" in text or "Update available" in text,
+                          "F12 did not replace the help overlay with the update checker")
+            mirror.write("\x1b")
+            mirror.expect(lambda text: "Keyboard Shortcuts" in text,
+                          "Esc did not restore the covered help overlay")
+            print("PASS update checker: F12 opens the retained overlay over help and Esc restores it")
             if args.debug_sync:
                 mirror.resize(40, 160)
                 mirror.write("0")
@@ -278,6 +290,48 @@ def main():
             mirror.expect(lambda text: text != paused, "Expected playback to resume")
             finish(mirror)
             print("PASS media: startup, help priority, blocked keys, paused resize, recovery")
+
+            update_command = ["mirror", "--file", str(media), "--loop", "--splash-screen=true",
+                              "--audio=false", "--color-mode", "none"]
+            update_env = {
+                "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v99.0.0",
+                "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "update-cache"),
+            }
+            startup = terminal("startup-update", update_command, check_updates=True,
+                               environment=update_env, rows=40, cols=100)
+            startup.expect(lambda text: "Update Available" in text,
+                           "An older build did not show the startup update prompt")
+            startup.write("n")
+            video(startup)
+            finish(startup)
+
+            dismissed = terminal("dismissed-update", update_command, check_updates=True,
+                                 environment=update_env, rows=40, cols=100)
+            video(dismissed)
+            finish(dismissed)
+
+            marker = root / "updated-marker"
+            update_command_env = {
+                "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v99.0.0",
+                "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "update-command-cache"),
+                "ASCII_CHAT_TEST_UPDATE_COMMAND": (
+                    f"copy NUL {marker}" if os.name == "nt" else f"touch {marker}"
+                ),
+            }
+            updater = terminal("run-update", update_command, check_updates=True,
+                               environment=update_command_env, rows=40, cols=100)
+            updater.expect(lambda text: "Update Available" in text,
+                           "Updater scenario did not reach the update prompt")
+            updater.write("\r")
+            updater.expect(lambda text: "Run ascii-chat again" in text,
+                           "Successful installer did not print restart instructions")
+            deadline = time.monotonic() + 10
+            while updater.process.isalive() and time.monotonic() < deadline:
+                updater.pump(.1)
+            assert not updater.process.isalive(), "Updater did not exit after installation"
+            assert marker.exists(), "Update command was not executed"
+            updater.close()
+            print("PASS update checker: startup prompt, weekly dismissal, installer execution and clean exit")
 
             explicit = terminal("explicit", mirror_args + ["--width", "60", "--height", "20"])
             small(explicit)

@@ -193,6 +193,8 @@ static keyboard_key_t keyboard_stream_read_unlocked(int (*read_byte)(void)) {
       key = KEY_DELETE;
     else if (!strcmp(sequence, "\033[3;5~") || !strcmp(sequence, "\033[2~"))
       key = KEY_CTRL_DELETE;
+    else if (!strcmp(sequence, "\033[24~"))
+      key = KEY_F12;
     length = 0;
     if (pending_escape) {
       pending_escape = false;

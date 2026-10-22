@@ -3,6 +3,8 @@
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/version.h>
+#include <ascii-chat/ui/update_banner.h>
 #include <ascii-chat/util/string.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,7 +23,9 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
     return;
   }
 
-  const char *tagline = "Video chat in your terminal";
+  char tagline_with_version[128];
+  snprintf(tagline_with_version, sizeof(tagline_with_version), "Video chat in your terminal + %s", ASCII_CHAT_VERSION_STRING);
+  const char *tagline = tagline_with_version;
   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, ctx->use_colors);
   invitation_render_logo(buf, term_size.cols - 1, (int)(ctx->animation.seconds * 60), ctx->use_colors, false);
 
@@ -105,6 +109,14 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
 
   frame_buffer_printf(buf, "%s\n", plain_connection);
 
-  // Line 9 (or 8 if no update): Bottom border
+  if (update_banner_is_checking()) {
+    static const char spin[] = "|/-\\";
+    const char *text = "Checking for updates...";
+    int pad = term_size.cols - (int)strlen(text) - 3;
+    if (pad < 0) pad = 0;
+    frame_buffer_printf(buf, "%*s%c %s\n", pad, "", spin[((int)(ctx->animation.seconds * 8)) % 4], text);
+  }
+
+  // Bottom border
   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, ctx->use_colors);
 }

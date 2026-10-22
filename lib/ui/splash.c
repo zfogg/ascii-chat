@@ -331,7 +331,7 @@ static void *splash_monitor_thread(void *arg) {
           .fixed_header_lines = view.discovery.enabled ? 0 : (view.update_notification[0] ? 9 : 8),
           .render_header = render_splash_header,
           .user_data = &view,
-          .show_logs = false,
+          .show_logs = !view.discovery.enabled,
           .hide_cursor = view.discovery.enabled,
       };
       terminal_screen_render(&config);

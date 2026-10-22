@@ -5,6 +5,7 @@
 #include <ascii-chat/ui/prompt.h>
 #include <ascii-chat/media/playlist.h>
 #include <ascii-chat/ui/keyboard_help.h>
+#include <ascii-chat/ui/update_banner.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/utf8.h>
@@ -274,6 +275,13 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     input_unlock();
     return notice_key == 'q' || notice_key == 3 ? notice_key : KEY_NONE;
   }
+  if (state.screen == UI_SCREEN_UPDATE && update_banner_is_overlay_open()) {
+    keyboard_key_t update_key = input_read_event();
+    if (update_key != KEY_NONE)
+      (void)update_banner_handle_key(update_key);
+    input_unlock();
+    return KEY_NONE;
+  }
   if (screen == UI_SCREEN_MEDIA && g_media_editor.active && state.screen == UI_SCREEN_PROMPT) {
     if (state.covered || g_input_was_covered) {
       g_paste_ready = false;
@@ -366,6 +374,10 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
       }
       if (key == KEY_NONE)
         key = state.screen == UI_SCREEN_HELP && keyboard_help_check_signal_cancel() ? KEY_QUESTION : input_read_event();
+      if (key == KEY_F12) {
+        update_banner_handle_key(key);
+        key = KEY_NONE;
+      }
       if (screen != UI_SCREEN_PROMPT && key != KEY_PASTE && !log_search_is_entering())
         key = ui_sync_handle_key(key);
     }
@@ -381,6 +393,8 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     stats_runtime_toggle();
     key = KEY_NONE;
   }
+  if (key != KEY_NONE && update_banner_handle_key(key))
+    key = KEY_NONE;
   g_switch_pending |= input_switch_key(key);
   input_unlock();
   return key;

@@ -141,6 +141,8 @@ static int keyboard_raw_read(void) {
         return KEY_HOME;
       case VK_END:
         return KEY_END;
+      case VK_F12:
+        return KEY_F12;
       default:
         continue;
       }

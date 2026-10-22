@@ -35,6 +35,7 @@ typedef struct {
   char current_sha[41];     ///< Current commit SHA
   char release_url[512];    ///< GitHub release page URL
   time_t last_check_time;   ///< Timestamp of last check
+  time_t dismissed_until;   ///< Suppress this available release until this time
   bool check_succeeded;     ///< True if check completed (even if no update)
 } update_check_result_t;
 
@@ -43,7 +44,9 @@ typedef struct {
  */
 typedef enum {
   INSTALL_METHOD_HOMEBREW, ///< Installed via Homebrew
+  INSTALL_METHOD_SCOOP,    ///< Installed via Scoop
   INSTALL_METHOD_ARCH_AUR, ///< Installed via Arch AUR (paru/yay)
+  INSTALL_METHOD_INSTALLER, ///< Installed by ascii-chat.com installer
   INSTALL_METHOD_GITHUB,   ///< Manual install from GitHub releases
   INSTALL_METHOD_UNKNOWN,  ///< Unknown installation method
 } install_method_t;
@@ -87,6 +90,12 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result);
  * @return ASCIICHAT_OK on success, error otherwise
  */
 asciichat_error_t update_check_save_cache(const update_check_result_t *result);
+
+/** Persist a seven-day dismissal for the currently cached release. */
+void update_check_dismiss_for_a_week(update_check_result_t *result);
+
+/** True when the cached available release remains dismissed. */
+bool update_check_is_dismissed(const update_check_result_t *result);
 
 /**
  * @brief Check if cache is fresh (< 7 days old)

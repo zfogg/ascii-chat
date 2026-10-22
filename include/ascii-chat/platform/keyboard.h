@@ -67,6 +67,7 @@ typedef enum {
   KEY_PASTE_END = 265,
   KEY_PASTE = 266,
   KEY_MEDIA_SUBMIT = 267, ///< Nonblocking media prompt submitted
+  KEY_F12 = 268,          ///< Open the version update checker TUI
   KEY_MINUS = '-',        ///< '-' key - toggle FPS counter
   KEY_0 = '0',            ///< '0' key - toggle sync debug screen
   KEY_1 = '1',            ///< '1' key - toggle matrix rain effect

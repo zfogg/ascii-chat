@@ -10,12 +10,14 @@
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/ui/controller.h>
+#include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/ui/update_banner.h>
 #include <ascii-chat/ui/splash.h>
 #include "session/display.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/display.h>
@@ -35,9 +37,25 @@ static lifecycle_t g_update_result_lifecycle = LIFECYCLE_INIT_MUTEX(&g_update_re
 // Background update check thread
 static asciichat_thread_t g_update_thread;
 static bool g_update_thread_started = false;
+static bool g_update_checking = false;
+static bool g_update_finished = false;
+static bool g_update_overlay = false;
+
+static bool update_banner_copy_result(update_check_result_t *result) {
+  if (!result || !lifecycle_is_initialized(&g_update_result_lifecycle)) {
+    return false;
+  }
+  mutex_lock(&g_update_result_mutex);
+  bool set = g_update_result_set;
+  if (set) {
+    *result = g_update_result;
+  }
+  mutex_unlock(&g_update_result_mutex);
+  return set;
+}
 
 void update_banner_set_result(const update_check_result_t *result) {
-  if (!result || !result->update_available) {
+  if (!result) {
     return;
   }
 
@@ -278,8 +296,7 @@ static void render_update_prompt(terminal_size_t size, const void *data) {
   // Prompt (grey)
   {
     char line[256];
-    snprintf(line, sizeof(line), "%s[Y] update [N] continue (%us: continue)\033[0m", log_level_color(LOG_COLOR_GREY),
-             10u);
+    snprintf(line, sizeof(line), "%s[Y] update [N] continue\033[0m", log_level_color(LOG_COLOR_GREY));
     append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
   }
 
@@ -294,6 +311,64 @@ static void render_update_prompt(terminal_size_t size, const void *data) {
   SAFE_FREE(buffer);
 }
 
+static void render_update_overlay(terminal_size_t size, const void *data) {
+  (void)data;
+  update_check_result_t result = {0};
+  bool checking;
+  mutex_lock(&g_update_result_mutex);
+  result = g_update_result;
+  checking = g_update_checking;
+  mutex_unlock(&g_update_result_mutex);
+  const char *title = checking ? "Check for updates" : result.update_available ? "Update available" :
+                    result.check_succeeded ? "You're up to date" : "Update check unavailable";
+  int width = size.cols < 66 ? size.cols - 2 : 66, height = 15;
+  int left = (size.cols - width) / 2, top = (size.rows - height) / 2;
+  if (left < 0) left = 0;
+  if (top < 0) top = 0;
+  char command[512] = {0};
+  if (result.update_available)
+    update_check_get_upgrade_suggestion(update_check_detect_install_method(), result.latest_version, command, sizeof(command));
+  frame_buffer_t *out = frame_buffer_create((size_t)height, (size_t)width);
+  if (!out) return;
+  // Leave the retained renderer visible outside the box; this is an overlay,
+  // not a replacement screen.
+  frame_buffer_printf(out, "\033[%d;%dH╔", top + 1, left + 1);
+  for (int i = 0; i < width - 2; ++i) frame_buffer_append(out, "═", strlen("═"));
+  frame_buffer_append(out, "╗", strlen("╗"));
+  for (int row = 1; row < height - 1; ++row) {
+    frame_buffer_printf(out, "\033[%d;%dH║", top + row + 1, left + 1);
+    frame_buffer_printf(out, "\033[%d;%dH║", top + row + 1, left + width);
+  }
+  frame_buffer_printf(out, "\033[%d;%dH╚", top + height, left + 1);
+  for (int i = 0; i < width - 2; ++i) frame_buffer_append(out, "═", strlen("═"));
+  frame_buffer_append(out, "╝", strlen("╝"));
+  frame_buffer_printf(out, "\033[%d;%dH\033[1m%s%s\033[0m", top + 3, left + (width - (int)strlen(title)) / 2,
+                      checking ? log_level_color(LOG_COLOR_DEBUG) : result.update_available ? log_level_color(LOG_COLOR_WARN) : log_level_color(LOG_COLOR_INFO), title);
+  if (checking) {
+    static const char spin[] = "|/-\\";
+    frame_buffer_printf(out, "\033[%d;%dH%s  Checking for updates...", top + 7, left + 6,
+                        (char[]){spin[(time_get_ns() / (150 * NS_PER_MS_INT)) % 4], 0});
+  } else if (result.check_succeeded) {
+    frame_buffer_printf(out, "\033[%d;%dHInstalled  %s", top + 6, left + 8, result.current_version);
+    frame_buffer_printf(out, "\033[%d;%dHLatest     %s%s\033[0m", top + 7, left + 8,
+                        result.update_available ? log_level_color(LOG_COLOR_INFO) : "", result.latest_version);
+    if (result.update_available) {
+      frame_buffer_printf(out, "\033[%d;%dH%s", top + 9, left + 7, command);
+      frame_buffer_printf(out, "\033[%d;%dHBinaries for every OS with release notes in the GitHub release:", top + 11,
+                          left + 3);
+      frame_buffer_printf(out, "\033[%d;%dH%s", top + 12, left + 5, result.release_url);
+    } else {
+      frame_buffer_printf(out, "\033[%d;%dHChecked just now", top + 10, left + (width - 16) / 2);
+    }
+  } else {
+    frame_buffer_printf(out, "\033[%d;%dHNo network result is available. Press R to retry.", top + 8, left + 5);
+  }
+  frame_buffer_printf(out, "\033[%d;%dH%s", top + height - 2, left + 4,
+                      result.update_available ? "Enter update now  O open GitHub  R retry  F12/Esc close" : "R retry  F12/Esc close");
+  ui_controller_write(STDOUT_FILENO, frame_buffer_get_content(out), frame_buffer_get_length(out));
+  frame_buffer_destroy(out);
+}
+
 bool update_banner_show_prompt(session_display_ctx_t *ctx) {
   if (!ctx || !terminal_can_prompt_user())
     return false;
@@ -301,18 +376,15 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
   mutex_lock(&g_update_result_mutex);
   result = g_update_result;
   mutex_unlock(&g_update_result_mutex);
+  if (update_check_is_dismissed(&result)) {
+    return false;
+  }
   if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 32, .rows = 16},
                            render_update_prompt, &result, sizeof(result)) != ASCIICHAT_OK)
     return false;
   bool update = false;
-  uint64_t deadline = ui_input_deadline(10);
-  bool timed_out = false;
   while (!shutdown_is_requested()) {
     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_UPDATE, 100);
-    if (ui_input_expired(deadline)) {
-      timed_out = true;
-      break;
-    }
     if (key == 'y' || key == 'Y' || key == '\r' || key == '\n') {
       update = true;
       break;
@@ -321,8 +393,10 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
       break;
   }
   ui_controller_remove(UI_SCREEN_UPDATE);
-  if (timed_out)
-    ui_input_timeout_report(10u, "update notice dismissed; continuing normally");
+  if (!update) {
+    update_check_dismiss_for_a_week(&result);
+    update_banner_set_result(&result);
+  }
   return update;
 }
 
@@ -332,45 +406,162 @@ void update_banner_print_instructions(void) {
   memcpy(&result, &g_update_result, sizeof(result));
   mutex_unlock(&g_update_result_mutex);
 
-  install_method_t method = update_check_detect_install_method();
-  char suggestion[512];
-  update_check_get_upgrade_suggestion(method, result.latest_version, suggestion, sizeof(suggestion));
-
   char output[2048];
   int len =
       snprintf(output, sizeof(output),
                "\033[0m\033[2J\033[H\033[?25h"
-               "\nUpdate available: %s -> %s\n\n%s\n\n    %s\n\nRelease notes: %s\n\n",
-               result.current_version, result.latest_version,
-               method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN ? "Download the latest release:"
-                                                                                   : "To upgrade, run:",
-               suggestion, result.release_url);
+               "\nUpdated ascii-chat: %s -> %s\n\nRun ascii-chat again to start the new version.\n\n"
+               "Binaries for every OS with release notes in the GitHub release:\n%s\n\n",
+               result.current_version, result.latest_version, result.release_url);
   if (len > 0 && len < (int)sizeof(output))
     ui_controller_finish(STDOUT_FILENO, output, (size_t)len);
 }
 
+bool update_banner_install_update(void) {
+  update_check_result_t result = {0};
+  if (!update_banner_copy_result(&result) || !result.update_available) {
+    return false;
+  }
+
+  install_method_t method = update_check_detect_install_method();
+  int exit_code = -1;
+#ifndef NDEBUG
+  const char *test_command = SAFE_GETENV("ASCII_CHAT_TEST_UPDATE_COMMAND");
+  if (test_command && test_command[0]) {
+#ifdef _WIN32
+    const char *argv[] = {"cmd", "/d", "/c", test_command, NULL};
+    exit_code = platform_execute_subprocess("cmd", argv, NULL, 0);
+#else
+    const char *argv[] = {"/bin/sh", "-c", test_command, NULL};
+    exit_code = platform_execute_subprocess("/bin/sh", argv, NULL, 0);
+#endif
+  } else
+#endif
+  if (method == INSTALL_METHOD_HOMEBREW) {
+    const char *argv[] = {"brew", "upgrade", "ascii-chat", NULL};
+    exit_code = platform_execute_subprocess("brew", argv, NULL, 0);
+  } else if (method == INSTALL_METHOD_SCOOP) {
+    const char *argv[] = {"scoop", "update", "ascii-chat", NULL};
+    exit_code = platform_execute_subprocess("scoop", argv, NULL, 0);
+  } else if (method == INSTALL_METHOD_ARCH_AUR) {
+    const char *argv[] = {"paru", "-S", "ascii-chat", NULL};
+    exit_code = platform_execute_subprocess("paru", argv, NULL, 0);
+  } else {
+#ifdef _WIN32
+    const char *argv[] = {"powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
+                          "irm https://ascii-chat.com/install.ps1 | iex", NULL};
+    exit_code = platform_execute_subprocess("powershell", argv, NULL, 0);
+#else
+    const char *argv[] = {"/bin/sh", "-c", "curl -fsSL https://ascii-chat.com/install.sh | bash", NULL};
+    exit_code = platform_execute_subprocess("/bin/sh", argv, NULL, 0);
+#endif
+  }
+  if (exit_code != 0) {
+    log_warn("ascii-chat update command exited with status %d", exit_code);
+    return false;
+  }
+  update_banner_print_instructions();
+  shutdown_request();
+  return true;
+}
+
 static void *update_check_thread_func(void *arg) {
-  (void)arg;
+  bool force = arg != NULL;
   update_check_result_t result;
-  asciichat_error_t err = update_check_startup(&result);
-  if (err == ASCIICHAT_OK && result.update_available) {
-    char notification[1024];
-    update_check_format_notification(&result, notification, sizeof(notification));
-    log_info("%s", notification);
+  asciichat_error_t err = force ? update_check_perform(&result) : update_check_startup(&result);
+  if (err == ASCIICHAT_OK) {
+    if (result.update_available) {
+      char notification[1024];
+      update_check_format_notification(&result, notification, sizeof(notification));
+      log_info("%s", notification);
+      splash_set_update_notification(notification);
+    } else {
+      log_info("Already on latest version: %s", result.current_version);
+    }
 
-    // Set notification for splash screen (thread-safe)
-    splash_set_update_notification(notification);
-
-    // Store full result for the update prompt screen
+    // Store every terminal state for the reusable update overlay.
     update_banner_set_result(&result);
   }
+  mutex_lock(&g_update_result_mutex);
+  g_update_checking = false;
+  g_update_finished = true;
+  mutex_unlock(&g_update_result_mutex);
+  ui_controller_redraw();
   return NULL;
 }
 
-void update_banner_start_check(void) {
-  if (acthread_create(&g_update_thread, "update_check", update_check_thread_func, NULL) == 0) {
+static void update_banner_start_check_impl(bool force) {
+  if (g_update_thread_started) return;
+  if (lifecycle_init_once(&g_update_result_lifecycle)) { mutex_init(&g_update_result_mutex, "update_banner_result"); lifecycle_init_commit(&g_update_result_lifecycle); }
+  mutex_lock(&g_update_result_mutex); g_update_checking = true; mutex_unlock(&g_update_result_mutex);
+  mutex_lock(&g_update_result_mutex);
+  g_update_finished = false;
+  mutex_unlock(&g_update_result_mutex);
+  if (acthread_create(&g_update_thread, "update_check", update_check_thread_func, force ? (void *)1 : NULL) == 0) {
     g_update_thread_started = true;
   }
+}
+
+void update_banner_start_check(void) {
+  update_banner_start_check_impl(false);
+}
+
+void update_banner_toggle_overlay(void) {
+  if (g_update_overlay) { g_update_overlay = false; ui_controller_remove(UI_SCREEN_UPDATE); return; }
+  g_update_overlay = true;
+  bool finished = false;
+  if (lifecycle_is_initialized(&g_update_result_lifecycle)) {
+    mutex_lock(&g_update_result_mutex);
+    finished = g_update_finished;
+    mutex_unlock(&g_update_result_mutex);
+  }
+  if (g_update_thread_started && finished)
+    update_banner_wait_for_check();
+  if (!g_update_thread_started) update_banner_start_check_impl(true);
+  const bool snapshot = true;
+  if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 40, .rows = 15},
+                           render_update_overlay, &snapshot, sizeof(snapshot)) != ASCIICHAT_OK) {
+    g_update_overlay = false;
+    LOG_ERRNO_IF_SET("Cannot show update checker");
+    CLEAR_ERRNO();
+  }
+}
+
+bool update_banner_is_checking(void) {
+  if (!lifecycle_is_initialized(&g_update_result_lifecycle)) return false;
+  mutex_lock(&g_update_result_mutex);
+  bool checking = g_update_checking;
+  mutex_unlock(&g_update_result_mutex);
+  return checking;
+}
+
+bool update_banner_is_overlay_open(void) {
+  return g_update_overlay;
+}
+
+static void update_banner_open_release(void) {
+  update_check_result_t result;
+  mutex_lock(&g_update_result_mutex); result = g_update_result; mutex_unlock(&g_update_result_mutex);
+#ifdef _WIN32
+  const char *argv[] = {"cmd", "/c", "start", "", result.release_url, NULL};
+  (void)platform_execute_subprocess("cmd", argv, NULL, 0);
+#elif defined(__APPLE__)
+  const char *argv[] = {"open", result.release_url, NULL};
+  (void)platform_execute_subprocess("open", argv, NULL, 0);
+#else
+  const char *argv[] = {"xdg-open", result.release_url, NULL};
+  (void)platform_execute_subprocess("xdg-open", argv, NULL, 0);
+#endif
+}
+
+bool update_banner_handle_key(int key) {
+  if (key == KEY_F12) { update_banner_toggle_overlay(); return true; }
+  if (!g_update_overlay) return false;
+  if (key == KEY_ESCAPE) { update_banner_toggle_overlay(); return true; }
+  if (key == 'o' || key == 'O') { update_banner_open_release(); return true; }
+  if (key == 'r' || key == 'R') { update_banner_wait_for_check(); update_banner_start_check_impl(true); return true; }
+  if (key == '\r' || key == '\n') { (void)update_banner_install_update(); return true; }
+  return g_update_overlay;
 }
 
 void update_banner_wait_for_check(void) {
