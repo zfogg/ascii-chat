@@ -132,9 +132,8 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
   if (!header_rows)
     header_rows = config->fixed_header_lines;
   bool entering = config->show_logs && log_search_is_entering();
-  // The idle view already reserves the final row. Search uses that same row
-  // for its prompt, so it must not remove an additional visible log line.
-  int available = size.rows - header_rows - 1;
+  // Search owns the final row for its prompt. Otherwise logs fill it.
+  int available = size.rows - header_rows - (entering ? 1 : 0);
   session_log_entry_t *entries = NULL;
   size_t count = 0;
   if (config->show_logs && available > 0) {
@@ -179,8 +178,12 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
     // Normalize CRLF before erasing the line; erasing after CR removes its text.
     if (content[i] == '\r' && i + 1 < length && content[i + 1] == '\n')
       continue;
-    if (content[i] == '\n')
+    if (content[i] == '\n') {
       frame_buffer_printf(output, "\033[K\r");
+      // Do not advance past the bottom row when the idle log view fills it.
+      if (config->show_logs && !entering && i + 1 == length)
+        continue;
+    }
     frame_buffer_append(output, content + i, 1);
   }
   if (entering) {
@@ -193,8 +196,6 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
     frame_buffer_printf(output, "\033[%d;1H/%.*s\033[K\033[%d;%dH", size.rows, size.cols - 2,
                         pattern ? pattern + offset : "", size.rows, cursor - offset + 2);
     mutex_unlock(mutex);
-  } else if (config->show_logs) {
-    frame_buffer_printf(output, "\033[%d;1H\033[2K", size.rows);
   }
   frame_buffer_destroy(body);
 }

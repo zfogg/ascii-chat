@@ -44,8 +44,8 @@ def exercise(term, name, artifacts):
     logs_before_search = term.pump(.3).splitlines()
     term.write("/")
     search_open = term.expect(lambda s: s.splitlines()[-1].strip() == "/", "Search prompt did not open")
-    assert search_open.splitlines()[4:-1] == logs_before_search[4:-1], (
-        "Opening search changed the visible log rows"
+    assert search_open.splitlines()[4:-1] == logs_before_search[5:], (
+        "Opening search did not replace the top log row with the prompt"
     )
     pattern = ""
     for key in "Volume DOWN":
