@@ -59,33 +59,98 @@ static uint64_t g_log_hold_started_ns;
 static uint64_t g_log_hold_last_ns;
 static int g_log_hold_direction;
 static bool g_log_help;
+static bool g_log_help_too_small;
+static uint64_t g_log_last_tail_sequence;
+static mutex_t g_log_viewer_mutex;
+static bool g_log_viewer_mutex_initialized;
 
-void terminal_screen_logs_reset(void) {
+static void terminal_screen_logs_reset_locked(void) {
   g_log_scroll_rows = 0;
   g_log_hold_started_ns = 0;
   g_log_hold_last_ns = 0;
   g_log_hold_direction = 0;
   g_log_help = false;
+  g_log_help_too_small = false;
+  g_log_last_tail_sequence = 0;
+}
+
+void terminal_screen_logs_reset(void) {
+  if (!g_log_viewer_mutex_initialized) {
+    terminal_screen_logs_reset_locked();
+    return;
+  }
+  mutex_lock(&g_log_viewer_mutex);
+  terminal_screen_logs_reset_locked();
+  mutex_unlock(&g_log_viewer_mutex);
 }
 
 size_t terminal_screen_logs_offset(void) {
-  return g_log_scroll_rows;
+  if (!g_log_viewer_mutex_initialized)
+    return g_log_scroll_rows;
+  mutex_lock(&g_log_viewer_mutex);
+  size_t offset = g_log_scroll_rows;
+  mutex_unlock(&g_log_viewer_mutex);
+  return offset;
 }
 
 void terminal_screen_logs_set_offset(size_t rows) {
+  if (!g_log_viewer_mutex_initialized) {
+    g_log_scroll_rows = rows;
+    return;
+  }
+  mutex_lock(&g_log_viewer_mutex);
   g_log_scroll_rows = rows;
+  mutex_unlock(&g_log_viewer_mutex);
+}
+
+size_t terminal_screen_logs_retain_position(uint64_t tail_sequence, size_t appended_rows, size_t maximum_offset) {
+  if (!g_log_viewer_mutex_initialized)
+    return 0;
+  mutex_lock(&g_log_viewer_mutex);
+  if (g_log_scroll_rows && g_log_last_tail_sequence && tail_sequence > g_log_last_tail_sequence) {
+    if (SIZE_MAX - g_log_scroll_rows < appended_rows)
+      g_log_scroll_rows = SIZE_MAX;
+    else
+      g_log_scroll_rows += appended_rows;
+  }
+  g_log_last_tail_sequence = tail_sequence;
+  if (g_log_scroll_rows > maximum_offset)
+    g_log_scroll_rows = maximum_offset;
+  size_t offset = g_log_scroll_rows;
+  mutex_unlock(&g_log_viewer_mutex);
+  return offset;
+}
+
+uint64_t terminal_screen_logs_last_tail_sequence(void) {
+  if (!g_log_viewer_mutex_initialized)
+    return 0;
+  mutex_lock(&g_log_viewer_mutex);
+  uint64_t sequence = g_log_last_tail_sequence;
+  mutex_unlock(&g_log_viewer_mutex);
+  return sequence;
 }
 
 bool terminal_screen_logs_handle_key(int key) {
+  if (!g_log_viewer_mutex_initialized)
+    return false;
+  bool redraw = false;
+  mutex_lock(&g_log_viewer_mutex);
   if (g_log_help) {
     if (key == KEY_ESCAPE || key == '?') {
       g_log_help = false;
-      ui_controller_redraw();
+      redraw = true;
     }
+    mutex_unlock(&g_log_viewer_mutex);
+    if (redraw)
+      ui_controller_redraw();
     return true;
   }
   if (key == '?') {
-    g_log_help = true;
+    terminal_size_t size = ui_controller_size();
+    g_log_help_too_small = size.rows < 11 || size.cols < 8;
+    g_log_help = !g_log_help_too_small;
+    redraw = true;
+    mutex_unlock(&g_log_viewer_mutex);
     ui_controller_redraw();
     return true;
   }
@@ -98,8 +163,11 @@ bool terminal_screen_logs_handle_key(int key) {
     direction = 1000000;
   else if (key == KEY_RIGHT || key == 4)
     direction = -1000000;
-  else
+  else {
+    g_log_help_too_small = false;
+    mutex_unlock(&g_log_viewer_mutex);
     return false;
+  }
 
   uint64_t now = time_get_ns();
   size_t step = 1;
@@ -125,12 +193,28 @@ bool terminal_screen_logs_handle_key(int key) {
   } else {
     g_log_scroll_rows = g_log_scroll_rows > step ? g_log_scroll_rows - step : 0;
   }
+  g_log_help_too_small = false;
+  mutex_unlock(&g_log_viewer_mutex);
   ui_controller_redraw();
   return true;
 }
 
 bool terminal_screen_logs_help_open(void) {
-  return g_log_help;
+  if (!g_log_viewer_mutex_initialized)
+    return false;
+  mutex_lock(&g_log_viewer_mutex);
+  bool help_open = g_log_help;
+  mutex_unlock(&g_log_viewer_mutex);
+  return help_open;
+}
+
+bool terminal_screen_logs_help_too_small(void) {
+  if (!g_log_viewer_mutex_initialized)
+    return false;
+  mutex_lock(&g_log_viewer_mutex);
+  bool too_small = g_log_help_too_small;
+  mutex_unlock(&g_log_viewer_mutex);
+  return too_small;
 }
 
 static void terminal_screen_render_impl(const terminal_screen_config_t *config) {
@@ -181,6 +265,11 @@ void terminal_screen_cleanup(void) {
 
 session_log_buffer_t *terminal_screen_log_init(void) {
   log_search_init();
+  if (!g_log_viewer_mutex_initialized) {
+    if (mutex_init(&g_log_viewer_mutex, "log_viewer") != 0)
+      return NULL;
+    g_log_viewer_mutex_initialized = true;
+  }
   if (g_session_log_buffer) {
     return g_session_log_buffer; // Already initialized
   }
@@ -203,6 +292,10 @@ void terminal_screen_log_destroy(void) {
     g_session_log_buffer = NULL;
   }
   terminal_screen_logs_reset();
+  if (g_log_viewer_mutex_initialized) {
+    mutex_destroy(&g_log_viewer_mutex);
+    g_log_viewer_mutex_initialized = false;
+  }
 }
 
 void terminal_screen_log_clear(void) {
