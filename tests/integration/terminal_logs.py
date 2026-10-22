@@ -41,9 +41,11 @@ def exercise(term, name, artifacts):
     term.write("]")
     term.expect(lambda s: "/: search logs" in s,
                 "C log emitted while hidden did not reach overlay")
+    assert term.screen.cursor.hidden, "Idle log viewer left the cursor visible"
     logs_before_search = term.pump(.3).splitlines()
     term.write("/")
     search_open = term.expect(lambda s: s.splitlines()[-1].strip() == "/", "Search prompt did not open")
+    assert not term.screen.cursor.hidden, "Search input did not show its editing cursor"
     assert search_open.splitlines()[4:-1] == logs_before_search[5:], (
         "Opening search did not replace the top log row with the prompt"
     )
@@ -57,6 +59,7 @@ def exercise(term, name, artifacts):
     capture(term, artifacts / f"session-search-{name}.png")
     term.write("\x1b")
     term.expect(lambda s: "/: search logs" in s, "Escape closed overlay instead of search")
+    assert term.screen.cursor.hidden, "Leaving search did not hide its editing cursor"
     capture(term, artifacts / f"session-logs-{name}.png")
     term.write("k")
     term.expect(lambda s: "1 rows from tail" in s, "k did not scroll one log row older")
@@ -70,6 +73,7 @@ def exercise(term, name, artifacts):
     term.write("?")
     term.expect(lambda s: "Log Viewer Keyboard Controls" in s and "/: search logs" in s,
                 "Log help did not overlay the viewer")
+    assert term.screen.cursor.hidden, "Log viewer help left the cursor visible"
     capture(term, artifacts / f"session-log-help-{name}.png")
     term.write("?")
     term.expect(lambda s: "/: search logs" in s and "Log Viewer Keyboard Controls" not in s,
@@ -79,9 +83,14 @@ def exercise(term, name, artifacts):
     term.write("?")
     term.expect(lambda s: "Help needs at least 11 terminal rows" in s, "Compact help warning missing")
     term.resize(11, 140)
+    term.expect(lambda s: s.splitlines()[-1].startswith("Help needs at least 11 terminal rows"),
+                "Log viewer did not observe the restored terminal height")
     term.write("?")
     term.expect(lambda s: "Log Viewer Keyboard Controls" in s, "Log help did not reopen after resize")
+    assert term.screen.cursor.hidden, "Resized log viewer help left the cursor visible"
     term.write("?")
+    term.expect(lambda s: "Log Viewer Keyboard Controls" not in s and "/: search logs" in s,
+                "Resized log help did not close before shrinking the terminal")
     term.resize(4, 20)
     term.expect(lambda s: "Terminal too small" in s, "Log size guard missing")
     term.resize(30, 140)
