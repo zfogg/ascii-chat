@@ -347,3 +347,158 @@ Test(instrument_log, thread_filter_allows_matching_thread) {
   remove_directory_recursively(temp_dir);
   clear_filter_environment();
 }
+
+static void reset_extended_filters(void) {
+  static const char *keys[] = {"ASCII_INSTR_SOURCE_PRINT_ONLY",
+                               "ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE",
+                               "ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE",
+                               "ASCII_INSTR_SOURCE_PRINT_INCLUDE_REGEX",
+                               "ASCII_INSTR_SOURCE_PRINT_EXCLUDE_REGEX",
+                               "ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE_REGEX",
+                               "ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE_REGEX",
+                               "ASCII_INSTR_SOURCE_PRINT_ENABLE",
+                               "ASCII_INSTR_SOURCE_PRINT_RATE",
+                               "ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE",
+                               "ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE",
+                               "ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_STDERR",
+                               "ASCII_INSTR_SOURCE_PRINT_ECHO_STDERR"};
+  asciichat_instr_runtime_global_destroy();
+  clear_filter_environment();
+  for (size_t i = 0; i < sizeof(keys) / sizeof(*keys); ++i)
+    set_env_variable(keys[i], NULL);
+}
+
+Test(instrument_log, selector_and_regex_filters_write_only_the_selected_records) {
+  const struct {
+    const char *key, *value;
+    unsigned mask;
+  } cases[] = {
+      {"ONLY", "network", 11},
+      {"ONLY", "module=network", 3},
+      {"ONLY", " module = tcp : s*.c ", 1},
+      {"ONLY", "network:recv.c", 2},
+      {"ONLY", "module=network:", 3},
+      {"ONLY", "func=send_*", 9},
+      {"ONLY", "function=*packet", 3},
+      {"ONLY", "file=*udp/?e?v.c", 2},
+      {"ONLY", "unknown=*audio*", 4},
+      {"ONLY", " func=mix_*, module=tcp ", 5},
+      {"ONLY", " , , func=, module=:x ", 15},
+      {"ONLY", "module=not-a-module", 0},
+      {"ONLY", "file=unmatched*", 0},
+      {"INCLUDE", "network", 11},
+      {"EXCLUDE", "audio", 11},
+      {"FUNCTION_INCLUDE", "packet", 3},
+      {"FUNCTION_EXCLUDE", "packet", 12},
+#ifndef _WIN32
+      {"INCLUDE_REGEX", "^lib/network/.*[.]c$", 3},
+      {"EXCLUDE_REGEX", "recv[.]c$", 13},
+      {"FUNCTION_INCLUDE_REGEX", "^send_", 9},
+      {"FUNCTION_EXCLUDE_REGEX", "_packet$", 12},
+      {"INCLUDE_REGEX", "[", 15},
+#endif
+  };
+  const char *paths[] = {"lib/network/tcp/send.c", "lib/network/udp/recv.c", "lib/audio/mixer.c",
+                         "src/common/networker.c"};
+  const char *functions[] = {"send_packet", "receive_packet", "mix_audio", "send_status"};
+  const char *markers[] = {"marker-zero", "marker-one", "marker-two", "marker-three"};
+  for (size_t c = 0; c < sizeof(cases) / sizeof(*cases); ++c) {
+    reset_extended_filters();
+    char directory[PATH_MAX], key[128];
+    make_unique_directory(directory, sizeof(directory));
+    set_env_variable("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", directory);
+    safe_snprintf(key, sizeof(key), "ASCII_INSTR_SOURCE_PRINT_%s", cases[c].key);
+    set_env_variable(key, cases[c].value);
+    for (size_t i = 0; i < 4; ++i)
+      asciichat_instr_log_line(paths[i], (uint32_t)(10 + i), functions[i], markers[i], 0);
+    asciichat_instr_runtime_global_destroy();
+    char path[PATH_MAX], contents[16384] = {0};
+    bool found = find_log_file(directory, path, sizeof(path));
+    if (found) {
+      FILE *file = fopen(path, "r");
+      cr_assert_not_null(file);
+      size_t length = fread(contents, 1, sizeof(contents) - 1, file);
+      cr_assert_not(ferror(file));
+      fclose(file);
+      contents[length] = 0;
+    }
+    for (size_t i = 0; i < 4; ++i)
+      cr_assert_eq(strstr(contents, markers[i]) != NULL, (cases[c].mask & (1u << i)) != 0, "%s=%s record %zu",
+                   cases[c].key, cases[c].value, i);
+    remove_directory_recursively(directory);
+  }
+  reset_extended_filters();
+}
+
+Test(instrument_log, sampling_and_disabled_values_control_persisted_records) {
+  const char *values[] = {"0", "false", "OFF", "  no"};
+  for (size_t i = 0; i < sizeof(values) / sizeof(*values); ++i) {
+    reset_extended_filters();
+    char directory[PATH_MAX], path[PATH_MAX];
+    make_unique_directory(directory, sizeof(directory));
+    set_env_variable("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", directory);
+    set_env_variable("ASCII_INSTR_SOURCE_PRINT_ENABLE", values[i]);
+    asciichat_instr_log_line("sample.c", 1, "sample", "must-not-appear", 0);
+    asciichat_instr_runtime_global_destroy();
+    cr_assert_not(find_log_file(directory, path, sizeof(path)));
+    remove_directory_recursively(directory);
+  }
+  reset_extended_filters();
+  char directory[PATH_MAX], path[PATH_MAX];
+  make_unique_directory(directory, sizeof(directory));
+  set_env_variable("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", directory);
+  set_env_variable("ASCII_INSTR_SOURCE_PRINT_RATE", "  3");
+  const char *markers[] = {"sample-A", "sample-B", "sample-C", "sample-D", "sample-E", "sample-F", "sample-G"};
+  for (size_t i = 0; i < 7; ++i)
+    asciichat_instr_log_line("sample.c", 1, "sample", markers[i], 0);
+  asciichat_instr_runtime_global_destroy();
+  cr_assert(find_log_file(directory, path, sizeof(path)));
+  FILE *file = fopen(path, "r");
+  cr_assert_not_null(file);
+  char contents[16384] = {0};
+  size_t length = fread(contents, 1, sizeof(contents) - 1, file);
+  fclose(file);
+  contents[length] = 0;
+  for (size_t i = 0; i < 7; ++i)
+    cr_assert_eq(strstr(contents, markers[i]) != NULL, i % 3 == 0, "sample %zu", i);
+  remove_directory_recursively(directory);
+  reset_extended_filters();
+}
+
+Test(instrument_log, custom_trace_files_append_escape_snippets_and_record_program_counters) {
+  reset_extended_filters();
+  char directory[PATH_MAX], path[PATH_MAX];
+  make_unique_directory(directory, sizeof(directory));
+  safe_snprintf(path, sizeof(path), "%s/selected.log", directory);
+  set_env_variable("ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE", path);
+  set_env_variable("ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE", "yes");
+  cr_assert(asciichat_instr_coverage_enabled());
+  asciichat_instr_log_line(NULL, 17, NULL, "first\nsecond\rthird\tend", ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION);
+  asciichat_instr_log_pc((uintptr_t)0x1234);
+  asciichat_instr_runtime_global_destroy();
+  asciichat_instr_log_line("append.c", 18, "append", "append-marker", ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION);
+  asciichat_instr_runtime_global_destroy();
+  FILE *file = fopen(path, "r");
+  cr_assert_not_null(file);
+  char line[4096];
+  unsigned count = 0;
+  while (fgets(line, sizeof(line), file)) {
+    if (count == 0) {
+      cr_assert_not_null(strstr(line, "file=<unknown> line=17 func=<unknown> macro=1"));
+      cr_assert_not_null(strstr(line, "snippet=first\\nsecond\\rthird\\tend\n"));
+    } else if (count == 1) {
+      cr_assert_not_null(strstr(line, "file=__coverage__"));
+      cr_assert_not_null(strstr(line, "snippet=pc=0x1234"));
+    } else if (count == 2) {
+      cr_assert_not_null(strstr(line, "file=append.c line=18 func=append macro=2 snippet=append-marker"));
+    }
+    ++count;
+  }
+  cr_assert_not(ferror(file));
+  fclose(file);
+  cr_assert_eq(count, 3);
+  remove_directory_recursively(directory);
+  reset_extended_filters();
+  cr_assert_not(asciichat_instr_coverage_enabled());
+  asciichat_instr_runtime_global_destroy();
+}
