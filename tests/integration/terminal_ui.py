@@ -479,6 +479,12 @@ def main():
                 current.write("\x1b[D\r")
                 current.expect(lambda text: "You're up to date" not in text,
                                "Enter did not activate the selected Close button")
+                current.write("\x1b[24~")
+                current.expect(lambda text: "Contacting GitHub Releases" in text,
+                               "F12 did not open another check")
+                current.write("\x1b[24~")
+                current.expect(lambda text: "Contacting GitHub Releases" not in text and "You're up to date" not in text,
+                               "F12 did not close the checking dialog")
                 current.pump(.5)
                 finish(current)
 
