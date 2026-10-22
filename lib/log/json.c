@@ -10,6 +10,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/util/utf8.h>
 #include <yyjson.h>
 #include <stdint.h>
 #include <string.h>
@@ -222,6 +223,19 @@ static size_t json_escape_async_safe(const char *src, char *dest, size_t dest_si
     } else if ((unsigned char)c < 32) {
       /* Skip other control characters */
       continue;
+    } else if ((unsigned char)c >= 0x80) {
+      // Preserve complete UTF-8 characters when the fixed output buffer fills.
+      size_t available = 0;
+      while (available < 4 && p[available])
+        available++;
+      int bytes = utf8_next_char_bytes(p, available);
+      if (bytes < 0)
+        continue;
+      if (pos + (size_t)bytes >= dest_size)
+        break;
+      for (int i = 0; i < bytes; ++i)
+        dest[pos++] = p[i];
+      p += bytes - 1;
     } else {
       dest[pos++] = c;
     }

@@ -421,7 +421,7 @@ Test(network_connections, websocket_close) {
 
 typedef struct {
   acip_transport_t *transport;
-  atomic_t entered, release;
+  atomic_t entered, returned, release;
   asciichat_error_t results[8];
 } concurrent_close_t;
 
@@ -441,6 +441,7 @@ static void *close_websocket_concurrently(void *arg) {
   concurrent_close_worker_t *worker = arg;
   atomic_fetch_add_int(&worker->fixture->entered, 1);
   worker->fixture->results[worker->index] = acip_transport_close(worker->fixture->transport);
+  atomic_fetch_add_int(&worker->fixture->returned, 1);
   return NULL;
 }
 
@@ -451,10 +452,14 @@ Test(network_connections, websocket_concurrent_close) {
   cr_assert_not_null(transport);
   cr_assert_eq(acip_transport_close(transport), ASCIICHAT_OK);
 
-  // Hold a replacement service thread alive so every caller closes the same
-  // joinable thread, independent of network callback timing.
+  // Retire the original thread before replacing its handle. Close interrupts
+  // it, but the transport owner retains responsibility for joining it.
   concurrent_close_t fixture = {.transport = transport};
   websocket_transport_data_t *ws = transport->impl_data;
+  cr_assert_eq(thread_join(&ws->service_thread, NULL), ASCIICHAT_OK);
+  ws->service_running = false;
+  // Keep a replacement thread blocked: concurrent close calls must return
+  // without trying to join this owner-managed service thread.
   cr_assert_eq(acthread_create(&ws->service_thread, "held_ws_service", held_websocket_service, &fixture), ASCIICHAT_OK);
   ws->service_running = true;
   asciichat_thread_t threads[8];
@@ -465,15 +470,19 @@ Test(network_connections, websocket_concurrent_close) {
                  ASCIICHAT_OK);
   }
   uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
-  while (atomic_load_int(&fixture.entered) != 8 && time_get_ns() < deadline)
+  while (atomic_load_int(&fixture.returned) != 8 && time_get_ns() < deadline)
     platform_sleep_ms(1);
-  cr_assert_eq(atomic_load_int(&fixture.entered), 8);
+  int returned_before_release = atomic_load_int(&fixture.returned);
+  bool owner_still_must_join = ws->service_running;
+  // Always release the fixture before checking results so failures can unwind.
   atomic_store_bool(&fixture.release, true);
+  cr_assert_eq(atomic_load_int(&fixture.entered), 8);
   for (size_t i = 0; i < 8; ++i) {
     cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
     cr_assert_eq(fixture.results[i], ASCIICHAT_OK);
   }
-  cr_assert_not(ws->service_running);
+  cr_assert_eq(returned_before_release, 8, "close must not wait for the owner's service-thread join");
+  cr_assert(owner_still_must_join, "close must preserve the owner's join responsibility");
   cr_assert_eq(acip_transport_close(transport), ASCIICHAT_OK);
   acip_transport_destroy(transport);
   acip_websocket_runtime_destroy(&runtime);

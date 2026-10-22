@@ -381,6 +381,11 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             ${TEST_LDFLAGS}
         )
 
+        if(test_exe_name STREQUAL "test_unit_log_json")
+            target_include_directories(${test_exe_name} PRIVATE ${YYJSON_INCLUDE_DIRS})
+            target_link_libraries(${test_exe_name} ${YYJSON_LIBRARIES})
+        endif()
+
         if(USE_MIMALLOC)
             target_link_libraries(${test_exe_name} ${MIMALLOC_LIBRARIES})
         endif()

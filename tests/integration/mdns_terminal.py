@@ -139,6 +139,11 @@ def main():
             if expected == 1:
                 term.write("k")
                 term.expect(lambda text: "> [2]" in text, "k did not wrap selection")
+            # A PTY read can end after the selected row but before the footer.
+            # Inspect colors only once all parts of the rendered frame arrived.
+            term.expect(lambda text: "> [2]" in text and "Auto-refresh" in text
+                        and sum("━" in line for line in text.splitlines()) == 2,
+                        "Selection frame did not finish rendering its dividers and footer")
             rules = [row for row, line in enumerate(term.screen.display) if "━" in line]
             assert len(rules) == 2, "Header and footer must each have a divider"
             blue = next(term.screen.buffer[rules[0]][col].fg for col, char in enumerate(term.screen.display[rules[0]]) if char == "━")
