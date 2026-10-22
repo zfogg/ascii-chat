@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 
 /**
@@ -1255,6 +1256,7 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
 
       if (samples > target_writes) {
         int dropped = samples - target_writes;
+        ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_DROPPED, dropped);
         log_warn_every(LOG_RATE_FAST,
                        "Audio capture buffer high water mark exceeded (%d > %d): dropping %d incoming samples",
                        buffer_level, AUDIO_JITTER_HIGH_WATER_MARK, dropped);
@@ -1268,6 +1270,8 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   if (samples > available) {
     // This should rarely happen after the high water mark logic above
     int samples_dropped = samples - available;
+    ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_DROPPED, samples_dropped);
+    ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_OVERRUN, 1);
     samples_to_write = available;
     log_warn_every(LOG_RATE_FAST, "Audio buffer overflow: dropping %d of %d incoming samples (buffer_used=%d/%d)",
                    samples_dropped, samples, AUDIO_RING_BUFFER_SIZE - available, AUDIO_RING_BUFFER_SIZE);
@@ -1364,8 +1368,12 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   log_dev_every(5 * US_PER_SEC_INT, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available,
                 AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
 
+  ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_FILL, (double)available);
+  if (rb->jitter_buffer_enabled)
+    ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_JITTER, (double)rb->jitter_target_samples / AUDIO_SAMPLE_RATE);
   bool underrun = rb->jitter_buffer_enabled && available < samples;
   if (underrun) {
+    ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_UNDERRUN, 1);
     atomic_fetch_add_u64(&rb->underrun_count, 1);
     // One bounded refill after a real shortage avoids alternating tiny fragments
     // and silence when packets resume. Low occupancy alone is not an underrun.
@@ -1384,6 +1392,8 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
 
   size_t to_read = (samples > available) ? available : samples;
+  ascii_otel_metric(rb->jitter_buffer_enabled ? ASCII_OTEL_METRIC_AUDIO_PLAYBACK : ASCII_OTEL_METRIC_AUDIO_CAPTURE,
+                    (double)to_read);
   size_t consumed = to_read;
   if (rb->jitter_buffer_enabled && !underrun && samples > 1 && available > samples) {
     // Slowly reconcile independent device clocks. Bound interpolation to one
@@ -1537,6 +1547,7 @@ size_t audio_ring_buffer_available_write(audio_ring_buffer_t *rb) {
 }
 
 asciichat_error_t audio_init(audio_context_t *ctx) {
+  ASCII_OTEL_SCOPE(AUDIO_INIT);
   log_debug("starting, ctx=%p", (void *)ctx);
   if (!ctx) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx is NULL");
@@ -1692,6 +1703,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
 }
 
 void audio_destroy(audio_context_t *ctx) {
+  ASCII_OTEL_SCOPE(AUDIO_DESTROY);
   if (!ctx) {
     return;
   }
@@ -1775,6 +1787,7 @@ void audio_flush_playback_buffers(audio_context_t *ctx) {
 }
 
 asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
+  ASCII_OTEL_SCOPE(AUDIO_START_DUPLEX);
   if (!ctx || !ctx->initialized) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Audio context not initialized");
   }
@@ -2193,6 +2206,7 @@ start_worker:
 }
 
 asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
+  ASCII_OTEL_SCOPE(AUDIO_STOP_DUPLEX);
   if (!ctx || !ctx->initialized) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Audio context not initialized");
   }

@@ -318,7 +318,10 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
 
     // Generate TOML key: "category.field_name" (category is lowercase group, field_name is long_name with
     // dashes->underscores)
-    if (!generate_toml_key(category_buffer, desc->long_name, toml_key_buffer, sizeof(toml_key_buffer))) {
+    const char *field_name = desc->long_name;
+    if (strcmp(category_buffer, "otel") == 0 && strncmp(field_name, "otel-", 5) == 0)
+      field_name += 5;
+    if (!generate_toml_key(category_buffer, field_name, toml_key_buffer, sizeof(toml_key_buffer))) {
       g_dynamic_schema_count--; // Skip this entry
       continue;
     }

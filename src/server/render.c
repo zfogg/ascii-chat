@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /* Per-client video conversion and audio mixing. Render workers submit media
  * to the shared ACIP scheduler and are joined before connection destruction. */
@@ -265,6 +266,7 @@ void *client_video_render_thread(void *arg) {
 
   bool should_continue = true;
   while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
+    ASCII_OTEL_SCOPE(SERVER_VIDEO);
     START_TIMER("render_iteration");
     log_dev_every(10 * NS_PER_MS_INT, "Video render loop iteration for client %s", thread_client_id);
 
@@ -607,6 +609,7 @@ void *client_audio_render_thread(void *arg) {
   bool should_continue = true;
   uint64_t audio_deadline = time_get_ns();
   while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
+    ASCII_OTEL_SCOPE(SERVER_AUDIO);
     log_debug_every(LOG_RATE_SLOW, "Audio render loop iteration for client %s", thread_client_id);
 
     // Check for immediate shutdown

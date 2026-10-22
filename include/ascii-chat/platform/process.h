@@ -17,8 +17,16 @@
  */
 
 #include <stdio.h>
+#include <stdint.h>
 #include "api.h"
 #include "../asciichat_errno.h"
+
+typedef struct {
+  double cpu_seconds;
+  uint64_t resident_bytes, threads;
+} platform_process_stats_t;
+/* Snapshot of this process; unsupported fields remain zero. */
+asciichat_error_t platform_process_stats(platform_process_stats_t *out);
 
 // ============================================================================
 // Process ID Type (pid_t)

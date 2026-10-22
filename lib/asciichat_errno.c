@@ -2,6 +2,7 @@
  * @file asciichat_errno.c
  * @brief Bounded, synchronized error stacks with allocation-free recording.
  */
+#include <ascii-chat/otel.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/ui/notice.h>
 #include <ascii-chat/atomic.h>
@@ -299,6 +300,9 @@ static asciichat_error_t set_formatted(asciichat_error_t code, const char *file,
   backtrace_capture(&context.backtrace);
 #endif
   push_context(&context);
+#ifdef ASCIICHAT_WITH_OTEL
+  ascii_otel_error(context.context_message);
+#endif
   if (!g_suppress_logging) {
     log_debug("%s%s", asciichat_error_format(context.context_message, code),
               context.message_truncated ? " [message truncated]" : "");

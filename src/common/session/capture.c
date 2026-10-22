@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/atomic.h>
@@ -259,6 +260,7 @@ session_capture_ctx_t *session_network_capture_create(uint32_t target_fps) {
 }
 
 session_capture_ctx_t *session_capture_create(const session_capture_config_t *config) {
+  ASCII_OTEL_SCOPE(SESSION_CAPTURE_CREATE);
   // Auto-create config from command-line options if NULL
   session_capture_config_t auto_config = {0};
   if (!config) {
@@ -614,16 +616,19 @@ static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const
 }
 
 asciichat_error_t session_capture_open_media(session_capture_ctx_t *ctx, const char *path) {
+  ASCII_OTEL_SCOPE(SESSION_CAPTURE_OPEN_MEDIA);
   media_playlist_t list = {0};
   asciichat_error_t result = media_playlist_append(&list, path, path && strstr(path, "://") != NULL);
   return result == ASCIICHAT_OK ? capture_load_playlist(ctx, &list, 0, false) : result;
 }
 asciichat_error_t session_capture_open_playlist(session_capture_ctx_t *ctx, const char *text) {
+  ASCII_OTEL_SCOPE(SESSION_CAPTURE_OPEN_PLAYLIST);
   media_playlist_t list = {0};
   asciichat_error_t result = media_playlist_parse(text, &list);
   return result == ASCIICHAT_OK ? capture_load_playlist(ctx, &list, 0, false) : result;
 }
 void session_capture_skip_media(session_capture_ctx_t *ctx, int direction) {
+  ASCII_OTEL_SCOPE(SESSION_CAPTURE_SKIP_MEDIA);
   if (ctx && (direction == -1 || direction == 1))
     atomic_store_u64(&ctx->playlist_skip, direction > 0 ? 1 : 2);
 }
@@ -978,6 +983,7 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
 }
 
 image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
+  ASCII_OTEL_SCOPE(SESSION_CAPTURE_READ_FRAME);
   if (!ctx)
     return NULL;
   session_capture_lock_source(ctx);
@@ -988,6 +994,7 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
 
 asciichat_error_t session_capture_process_for_transmission_into(session_capture_ctx_t *ctx, image_t *frame,
                                                                 image_t **output) {
+  ASCII_OTEL_SCOPE(SESSION_CAPTURE_PROCESS_FOR_TRANSMISSION_INTO);
   if (!ctx || !frame || !output)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing transmission frame or workspace");
   ssize_t width = frame->w, height = frame->h;
@@ -1123,6 +1130,7 @@ static size_t capture_read_audio(session_capture_ctx_t *ctx, float *buffer, size
 }
 
 size_t session_capture_read_audio(session_capture_ctx_t *ctx, float *buffer, size_t num_samples) {
+  ASCII_OTEL_SCOPE(SESSION_CAPTURE_READ_AUDIO);
   session_capture_lock_source(ctx);
   size_t count = capture_read_audio(ctx, buffer, num_samples);
   session_capture_unlock_source(ctx);

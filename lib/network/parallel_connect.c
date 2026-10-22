@@ -3,6 +3,7 @@
  * @brief Parallel IPv4/IPv6 connection implementation
  */
 
+#include <ascii-chat/otel.h>
 #include <ascii-chat/network/parallel_connect.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -171,6 +172,7 @@ done:
 }
 
 asciichat_error_t parallel_connect(const parallel_connect_config_t *config, socket_t *out_socket) {
+  ASCII_OTEL_SCOPE(PARALLEL_CONNECT);
   if (!config || !out_socket) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "config or out_socket is NULL");
   }
@@ -189,7 +191,19 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", config->port);
 
-  int gai_result = getaddrinfo(config->hostname, port_str, &hints, &result);
+  int gai_result;
+  {
+    ASCII_OTEL_SCOPE(DNS_RESOLVE);
+#ifdef ASCIICHAT_WITH_OTEL
+    if (otel_scope.retained)
+      gotel_attr_string(&otel_scope.scope, "dns.question.name", config->hostname);
+#endif
+    gai_result = getaddrinfo(config->hostname, port_str, &hints, &result);
+#ifdef ASCIICHAT_WITH_OTEL
+    if (gai_result && otel_scope.retained)
+      gotel_error(&otel_scope.scope, "dns.error", "DNS lookup failed");
+#endif
+  }
   if (gai_result != 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to resolve %s: %s", config->hostname, gai_strerror(gai_result));
   }

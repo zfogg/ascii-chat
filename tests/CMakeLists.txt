@@ -455,6 +455,10 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             endif()
         endif()
 
+        if(test_exe_name STREQUAL "test_unit_otel_otel")
+            target_link_libraries(${test_exe_name} gotel::testing)
+        endif()
+
         # The regex fixtures call PCRE2 directly to prepare and inspect native patterns.
         if(test_exe_name MATCHES "^test_unit_util_regex_(fallback|match)$")
             target_include_directories(${test_exe_name} PRIVATE ${PCRE2_INCLUDE_DIRS})
@@ -1887,4 +1891,24 @@ endif()
 if(TEST test_unit_crypto_test_gpg_key_expiry)
     set_tests_properties(test_unit_crypto_test_gpg_key_expiry PROPERTIES
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()
+
+if(BUILD_TESTS AND TARGET c-gotel)
+    add_executable(test-otel-media standalone/media/otel_media_test.c)
+    target_link_libraries(test-otel-media PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-otel-media PRIVATE ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-otel-media)
+    set_target_properties(test-otel-media PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_python_test(otel-media
+        ${CMAKE_SOURCE_DIR}/tests/integration/test_otel_media.py $<TARGET_FILE:test-otel-media>)
+    set_tests_properties(otel-media PROPERTIES LABELS "integration;otel" TIMEOUT 60)
+    if(TARGET tests)
+        add_dependencies(tests test-otel-media)
+    endif()
+    asciichat_add_python_test(otel-export
+        ${CMAKE_SOURCE_DIR}/tests/integration/test_otel.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(otel-export PROPERTIES LABELS "integration;otel" TIMEOUT 120)
+    asciichat_add_python_test(otel-tls
+        ${CMAKE_SOURCE_DIR}/tests/integration/test_otel_tls.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(otel-tls PROPERTIES LABELS "integration;otel" TIMEOUT 120)
 endif()

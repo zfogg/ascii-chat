@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file network/acip/client.c
@@ -124,6 +125,7 @@ asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet
 
 asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
                                                    const acip_client_callbacks_t *callbacks) {
+  ASCII_OTEL_SCOPE(ACIP_CLIENT_RECEIVE_AND_DISPATCH);
   if (!callbacks)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing client packet callbacks");
   packet_envelope_t envelope = {0};
@@ -141,6 +143,7 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
 
 asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width,
                                         uint32_t height, uint32_t pixel_format) {
+  ASCII_OTEL_SCOPE(ACIP_SEND_IMAGE_FRAME);
   log_dev("★ ACIP_SEND_IMAGE_FRAME: Called with %ux%u, transport=%p, pixel_data=%p", width, height, (void *)transport,
           pixel_data);
 
@@ -181,6 +184,7 @@ asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void 
  */
 asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_encoder_t *encoder,
                                              const void *pixel_data, uint32_t width, uint32_t height) {
+  ASCII_OTEL_SCOPE(ACIP_SEND_IMAGE_FRAME_H265);
   if (!transport || !encoder || !pixel_data) {
     log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Invalid params");
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport, encoder, or pixel_data");
@@ -235,6 +239,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
 }
 
 asciichat_error_t acip_send_stream_start(acip_transport_t *transport, uint8_t stream_types) {
+  ASCII_OTEL_SCOPE(ACIP_SEND_STREAM_START);
   if (!transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
@@ -245,6 +250,7 @@ asciichat_error_t acip_send_stream_start(acip_transport_t *transport, uint8_t st
 }
 
 asciichat_error_t acip_send_stream_stop(acip_transport_t *transport, uint8_t stream_types) {
+  ASCII_OTEL_SCOPE(ACIP_SEND_STREAM_STOP);
   if (!transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }

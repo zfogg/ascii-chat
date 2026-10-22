@@ -135,3 +135,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Criterion.cmake)
 
 # Platform-specific system libraries (Windows, macOS frameworks, Linux libs)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/PlatformLibraries.cmake)
+
+# Native telemetry is an explicit dependency; browser builds keep no-op hooks.
+if(NOT EMSCRIPTEN)
+    set(CGOTEL_BUILD_TEST_SUPPORT ${BUILD_TESTS} CACHE BOOL "Build reusable telemetry test helpers" FORCE)
+    set(CGOTEL_WITH_SQLITE ON CACHE BOOL "Build SQLite telemetry adapter" FORCE)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c-gotel
+                     ${CMAKE_BINARY_DIR}/c-gotel)
+    add_compile_definitions(ASCIICHAT_WITH_OTEL=1 CGOTEL_WITH_SQLITE=1)
+    include_directories($<TARGET_PROPERTY:c-gotel,INTERFACE_INCLUDE_DIRECTORIES>
+                        $<TARGET_PROPERTY:otlp_c,INTERFACE_INCLUDE_DIRECTORIES>)
+endif()

@@ -1,6 +1,7 @@
 /** @file video/ascii/render.c
  * Shared cell construction and terminal emission for scalar and SIMD kernels.
  */
+#include <ascii-chat/otel.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/video/ascii/common.h>
@@ -192,6 +193,7 @@ char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int str
 }
 
 asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, const char *palette) {
+  ASCII_OTEL_SCOPE(ASCII_FRAME_INIT);
   outbuf_t *target = ascii_render_set_output_target(NULL);
   memset(frame, 0, sizeof(*frame));
   if (!image || !image->pixels || image->w <= 0 || image->h <= 0 || !palette || !palette[0])
@@ -250,6 +252,7 @@ char *ascii_frame_finish(ascii_frame_t *frame) {
 
 asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride,
                                         ascii_color_t mode) {
+  ASCII_OTEL_SCOPE(ASCII_HALF_FRAME_INIT);
   outbuf_t *target = ascii_render_set_output_target(NULL);
   memset(frame, 0, sizeof(*frame));
   size_t row_bytes, extent, bytes, capacity;

@@ -3,6 +3,7 @@
  * @brief Unified media source implementation
  */
 
+#include <ascii-chat/otel.h>
 #include <ascii-chat/ui/notice.h>
 
 #include <ascii-chat/video/anim/controller.h>
@@ -149,12 +150,14 @@ static bool url_is_direct_stream(const char *url) {
  */
 static asciichat_error_t media_source_resolve_url(const char *url, const char *yt_dlp_options, char *output_url,
                                                   size_t output_size) {
+  ASCII_OTEL_SCOPE(MEDIA_SOURCE_RESOLVE_URL);
   if (!url || !output_url || output_size < 256) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for URL resolution");
     return ERROR_INVALID_PARAM;
   }
 
   bool is_direct = url_is_direct_stream(url);
+  ASCII_OTEL_ATTR_STRING("media.resolver", is_direct ? "ffmpeg" : "yt-dlp");
 
   if (is_direct) {
     log_debug("URL is direct stream, passing to FFmpeg directly: %s", url);
@@ -192,6 +195,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
 
 media_source_t *media_source_create_interruptible(media_source_type_t type, const char *path, bool (*cancel)(void *),
                                                   void *data) {
+  ASCII_OTEL_SCOPE(MEDIA_SOURCE_CREATE_INTERRUPTIBLE);
   media_source_t *source = SAFE_MALLOC(sizeof(media_source_t), media_source_t *);
   if (!source) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate media source");
@@ -452,6 +456,7 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
 }
 
 void media_source_destroy(media_source_t *source) {
+  ASCII_OTEL_SCOPE(MEDIA_SOURCE_DESTROY);
   if (!source) {
     return;
   }
@@ -514,6 +519,7 @@ static image_t *read_test_pattern(media_source_t *source) {
 }
 
 asciichat_error_t media_source_start_video(media_source_t *source) {
+  ASCII_OTEL_SCOPE(MEDIA_SOURCE_START_VIDEO);
   if (!source)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing media source");
   if (!source->audio_only || source->webcam_ctx || GET_OPTION(test_pattern))
@@ -531,6 +537,7 @@ bool media_source_uses_webcam(media_source_t *source) {
 }
 
 image_t *media_source_read_video(media_source_t *source) {
+  ASCII_OTEL_SCOPE(MEDIA_SOURCE_READ_VIDEO);
   if (!source) {
     return NULL;
   }
@@ -658,6 +665,7 @@ bool media_source_has_video(media_source_t *source) {
  * ============================================================================ */
 
 size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num_samples) {
+  ASCII_OTEL_SCOPE(MEDIA_SOURCE_READ_AUDIO);
   if (!source || !buffer || num_samples == 0) {
     return 0;
   }
@@ -799,6 +807,7 @@ bool media_source_at_end(media_source_t *source) {
 }
 
 asciichat_error_t media_source_rewind(media_source_t *source) {
+  ASCII_OTEL_SCOPE(MEDIA_SOURCE_REWIND);
   if (!source) {
     return ERROR_INVALID_PARAM;
   }
@@ -851,6 +860,7 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
 }
 
 asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec) {
+  ASCII_OTEL_SCOPE(MEDIA_SOURCE_SEEK);
   if (!source) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Media source is NULL");
     return ERROR_INVALID_PARAM;

@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/video/ascii/zalgo.h>
 #include <ascii-chat/stats/runtime.h>
@@ -205,6 +206,7 @@ static void display_sync_entries(session_display_ctx_t *ctx, bool add) {
 }
 
 session_display_ctx_t *session_display_create(const session_display_config_t *config) {
+  ASCII_OTEL_SCOPE(SESSION_DISPLAY_CREATE);
   if (GET_OPTION(zalgo) > 0 && (GET_OPTION(force_utf8) == UTF8_SETTING_FALSE ||
                                 (GET_OPTION(force_utf8) == UTF8_SETTING_AUTO && terminal_is_stdout_tty() &&
                                  !detect_terminal_capabilities().utf8_support))) {
@@ -859,6 +861,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 }
 
 char *session_display_convert_to_ascii_reuse(session_display_ctx_t *ctx, const image_t *image) {
+  ASCII_OTEL_SCOPE(SESSION_DISPLAY_CONVERT_TO_ASCII_REUSE);
   return convert_to_ascii(ctx, image, true);
 }
 
@@ -868,6 +871,7 @@ void session_display_release_ascii(session_display_ctx_t *ctx, char *ascii) {
 }
 
 void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *ascii, bool fresh) {
+  ASCII_OTEL_SCOPE(SESSION_DISPLAY_WRITE_ASCII_FRAME);
   if (!ctx || !ctx->initialized) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL or uninitialized");
     return;
@@ -1111,6 +1115,7 @@ void session_display_set_render_live_timing(session_display_ctx_t *ctx) {
 }
 
 asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image, uint64_t captured_ns) {
+  ASCII_OTEL_SCOPE(SESSION_DISPLAY_ENCODE_FRAME);
   static int call_count = 0;
   if (call_count++ < 5) {
     log_debug("ctx=%p, image=%p, captured_ns=%llu, ctx->render_file=%p", (void *)ctx, (void *)image,
@@ -1162,6 +1167,7 @@ asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const
 }
 
 void session_display_write_raw(session_display_ctx_t *ctx, const char *data, size_t len) {
+  ASCII_OTEL_SCOPE(SESSION_DISPLAY_WRITE_RAW);
   if (!ctx || !ctx->initialized || !data || len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, data=%p, len=%zu", ctx, data, len);
     return;
@@ -1205,6 +1211,7 @@ bool session_display_has_audio_playback(session_display_ctx_t *ctx) {
 }
 
 asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const float *buffer, size_t num_samples) {
+  ASCII_OTEL_SCOPE(SESSION_DISPLAY_WRITE_AUDIO);
   if (!ctx || !ctx->initialized || !buffer || num_samples == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%zu", ctx, buffer,
                      num_samples);

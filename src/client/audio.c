@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include "connection_internal.h"
 #include <ascii-chat/network/errors.h>
 /**
@@ -218,6 +219,7 @@ static void *audio_sender_thread_func(void *arg) {
   int send_count = 0;
 
   while (!atomic_load_bool(&connection->audio_sender_should_exit)) {
+    ASCII_OTEL_SCOPE(CLIENT_AUDIO_SEND);
     mutex_lock(&connection->audio_send_queue_mutex);
 
     // Wait for packet or exit signal (cond_wait re-acquires mutex before returning)
@@ -529,6 +531,7 @@ static void *audio_capture_thread_func(void *arg) {
   bool batch_has_data = false;
 
   while (!should_exit() && !server_connection_is_lost(connection)) {
+    ASCII_OTEL_SCOPE(CLIENT_AUDIO_CAPTURE);
     uint64_t audio_capture_loop_iteration_start_ns = time_get_ns();
     timing_loop_count++;
 

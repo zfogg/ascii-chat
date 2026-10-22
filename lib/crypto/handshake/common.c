@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 /**
  * @file crypto/handshake/common.c
  * @ingroup handshake
@@ -313,6 +314,9 @@ const crypto_context_t *crypto_handshake_get_context(const crypto_handshake_cont
 asciichat_error_t crypto_handshake_encrypt_packet(const crypto_handshake_context_t *ctx, const uint8_t *plaintext,
                                                   size_t plaintext_len, uint8_t *ciphertext, size_t ciphertext_size,
                                                   size_t *ciphertext_len) {
+  ASCII_OTEL_SCOPE(CRYPTO_ENCRYPT);
+  ASCII_OTEL_ATTR_INT("crypto.input.size", (int64_t)plaintext_len);
+  ASCII_OTEL_ATTR_STRING("crypto.algorithm", "xsalsa20-poly1305");
   if (!ctx || !crypto_handshake_is_ready(ctx)) {
     SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, ready=%d", ctx, ctx ? crypto_handshake_is_ready(ctx) : 0);
     return ERROR_INVALID_STATE;
@@ -324,6 +328,7 @@ asciichat_error_t crypto_handshake_encrypt_packet(const crypto_handshake_context
     return SET_ERRNO(ERROR_NETWORK, "Failed to encrypt packet: %s", crypto_result_to_string(result));
   }
 
+  ascii_otel_metric(ASCII_OTEL_METRIC_CRYPTO_ENCRYPT_BYTES, (double)plaintext_len);
   return ASCIICHAT_OK;
 }
 
@@ -331,6 +336,9 @@ asciichat_error_t crypto_handshake_encrypt_packet(const crypto_handshake_context
 asciichat_error_t crypto_handshake_decrypt_packet(const crypto_handshake_context_t *ctx, const uint8_t *ciphertext,
                                                   size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
                                                   size_t *plaintext_len) {
+  ASCII_OTEL_SCOPE(CRYPTO_DECRYPT);
+  ASCII_OTEL_ATTR_INT("crypto.input.size", (int64_t)ciphertext_len);
+  ASCII_OTEL_ATTR_STRING("crypto.algorithm", "xsalsa20-poly1305");
   if (!ctx || !crypto_handshake_is_ready(ctx)) {
     SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, ready=%d", ctx, ctx ? crypto_handshake_is_ready(ctx) : 0);
     return ERROR_INVALID_STATE;
@@ -342,6 +350,7 @@ asciichat_error_t crypto_handshake_decrypt_packet(const crypto_handshake_context
     return SET_ERRNO(ERROR_NETWORK, "Failed to decrypt packet: %s", crypto_result_to_string(result));
   }
 
+  ascii_otel_metric(ASCII_OTEL_METRIC_CRYPTO_DECRYPT_BYTES, (double)ciphertext_len);
   return ASCIICHAT_OK;
 }
 
@@ -392,6 +401,8 @@ asciichat_error_t crypto_decrypt_packet_or_passthrough(const crypto_handshake_co
  * Sends the initiator's new ephemeral public key to the peer.
  */
 asciichat_error_t crypto_handshake_rekey_request(crypto_handshake_context_t *ctx, acip_transport_t *transport) {
+  ASCII_OTEL_SCOPE(CRYPTO_REKEY_REQUEST);
+  ASCII_OTEL_ATTR_STRING("crypto.key_exchange", "x25519");
   if (!ctx || !crypto_handshake_is_ready(ctx)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
                      ctx ? crypto_handshake_is_ready(ctx) : 0);
@@ -424,6 +435,8 @@ asciichat_error_t crypto_handshake_rekey_request(crypto_handshake_context_t *ctx
  * Sends the responder's new ephemeral public key to the peer.
  */
 asciichat_error_t crypto_handshake_rekey_response(crypto_handshake_context_t *ctx, acip_transport_t *transport) {
+  ASCII_OTEL_SCOPE(CRYPTO_REKEY_RESPONSE);
+  ASCII_OTEL_ATTR_STRING("crypto.key_exchange", "x25519");
   if (!ctx || !crypto_handshake_is_ready(ctx)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
                      ctx ? crypto_handshake_is_ready(ctx) : 0);
@@ -455,6 +468,8 @@ asciichat_error_t crypto_handshake_rekey_response(crypto_handshake_context_t *ct
  * It proves that both sides have computed the same shared secret.
  */
 asciichat_error_t crypto_handshake_rekey_complete(crypto_handshake_context_t *ctx, acip_transport_t *transport) {
+  ASCII_OTEL_SCOPE(CRYPTO_REKEY_COMPLETE);
+  ASCII_OTEL_ATTR_STRING("crypto.key_exchange", "x25519");
   if (!ctx || !crypto_handshake_is_ready(ctx)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
                      ctx ? crypto_handshake_is_ready(ctx) : 0);
@@ -505,6 +520,8 @@ asciichat_error_t crypto_handshake_rekey_complete(crypto_handshake_context_t *ct
  */
 asciichat_error_t crypto_handshake_process_rekey_request(crypto_handshake_context_t *ctx, const uint8_t *packet,
                                                          size_t packet_len) {
+  ASCII_OTEL_SCOPE(CRYPTO_REKEY_RECEIVE_REQUEST);
+  ASCII_OTEL_ATTR_STRING("crypto.key_exchange", "x25519");
   if (!ctx || !crypto_handshake_is_ready(ctx)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
                      ctx ? crypto_handshake_is_ready(ctx) : 0);
@@ -556,6 +573,8 @@ asciichat_error_t crypto_handshake_process_rekey_request(crypto_handshake_contex
  */
 asciichat_error_t crypto_handshake_process_rekey_response(crypto_handshake_context_t *ctx, const uint8_t *packet,
                                                           size_t packet_len) {
+  ASCII_OTEL_SCOPE(CRYPTO_REKEY_RECEIVE_RESPONSE);
+  ASCII_OTEL_ATTR_STRING("crypto.key_exchange", "x25519");
   if (!ctx || !crypto_handshake_is_ready(ctx)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
                      ctx ? crypto_handshake_is_ready(ctx) : 0);
@@ -591,6 +610,8 @@ asciichat_error_t crypto_handshake_process_rekey_response(crypto_handshake_conte
  */
 asciichat_error_t crypto_handshake_process_rekey_complete(crypto_handshake_context_t *ctx, const uint8_t *packet,
                                                           size_t packet_len) {
+  ASCII_OTEL_SCOPE(CRYPTO_REKEY_RECEIVE_COMPLETE);
+  ASCII_OTEL_ATTR_STRING("crypto.key_exchange", "x25519");
   if (!ctx || !crypto_handshake_is_ready(ctx)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
                      ctx ? crypto_handshake_is_ready(ctx) : 0);

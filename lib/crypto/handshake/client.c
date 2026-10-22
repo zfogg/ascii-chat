@@ -4,6 +4,7 @@
  * @brief Client-side handshake protocol implementation
  */
 
+#include <ascii-chat/otel.h>
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/ui/notice.h>
 
@@ -34,6 +35,7 @@
 asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, acip_transport_t *transport,
                                                        packet_type_t packet_type, const uint8_t *payload,
                                                        size_t payload_len) {
+  ASCII_OTEL_SCOPE(CRYPTO_HANDSHAKE_CLIENT_KEY_EXCHANGE);
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_INIT) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", (void *)ctx, ctx ? (int)ctx->state : -1);
   }
@@ -654,6 +656,7 @@ static asciichat_error_t send_key_auth_response(crypto_handshake_context_t *ctx,
 asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, acip_transport_t *transport,
                                                         packet_type_t packet_type, const uint8_t *payload,
                                                         size_t payload_len) {
+  ASCII_OTEL_SCOPE(CRYPTO_HANDSHAKE_CLIENT_AUTH_RESPONSE);
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_KEY_EXCHANGE) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? ctx->state : -1);
   }
@@ -810,6 +813,7 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
 asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *ctx, acip_transport_t *transport,
                                                    packet_type_t packet_type, const uint8_t *payload,
                                                    size_t payload_len) {
+  ASCII_OTEL_SCOPE(CRYPTO_HANDSHAKE_CLIENT_COMPLETE);
   // Accept both KEY_EXCHANGE and AUTHENTICATING states for simple mode compatibility
   // In simple mode, server skips AUTH_CHALLENGE and sends HANDSHAKE_COMPLETE directly
   if (!ctx || (ctx->state != CRYPTO_HANDSHAKE_KEY_EXCHANGE && ctx->state != CRYPTO_HANDSHAKE_AUTHENTICATING)) {

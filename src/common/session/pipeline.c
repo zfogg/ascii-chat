@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/buffer.h>
 /**
@@ -41,6 +42,9 @@ typedef struct {
   const uint8_t *pixels; // Immutable owning reference shared by display and encoding
   int w, h;
   uint64_t source_epoch, frame_serial;
+#ifdef ASCIICHAT_WITH_OTEL
+  gotel_context_t telemetry_context;
+#endif
   bool fresh;
   uint64_t captured_ns; // wall-clock timestamp
   uint64_t acquisition_started_ns;
@@ -104,6 +108,7 @@ static bool frame_queue_push(frame_queue_t *q, void *item, uint64_t timeout_ns) 
   q->slots[q->tail] = item;
   q->tail = (q->tail + 1) % q->capacity;
   q->count++;
+  ascii_otel_metric(ASCII_OTEL_METRIC_ENCODE_DEPTH, q->count);
   cond_signal(&q->not_empty);
   mutex_unlock(&q->mu);
   return true;
@@ -126,6 +131,12 @@ static void *frame_queue_pop(frame_queue_t *q, uint64_t timeout_ns) {
   void *item = q->slots[q->head];
   q->head = (q->head + 1) % q->capacity;
   q->count--;
+  ascii_otel_metric(!strcmp(q->name, "display") ? ASCII_OTEL_METRIC_DISPLAY_DEPTH : ASCII_OTEL_METRIC_ENCODE_DEPTH,
+                    q->count);
+  pipeline_frame_t *telemetry_frame = item;
+  double age = (double)(time_get_ns() - telemetry_frame->captured_ns) / 1e9;
+  ascii_otel_metric(!strcmp(q->name, "display") ? ASCII_OTEL_METRIC_DISPLAY_WAIT : ASCII_OTEL_METRIC_ENCODE_WAIT, age);
+  ascii_otel_metric(ASCII_OTEL_METRIC_QUEUE_OLDEST, age);
   cond_signal(&q->not_full);
   mutex_unlock(&q->mu);
   return item;
@@ -138,6 +149,9 @@ static void *frame_queue_replace_latest(frame_queue_t *q, void *item) {
   q->tail = 0;
   q->count = 1;
   q->slots[0] = item;
+  ascii_otel_metric(ASCII_OTEL_METRIC_DISPLAY_DEPTH, 1);
+  if (retired)
+    ascii_otel_metric(ASCII_OTEL_METRIC_DROP_DISPLAY, 1);
   cond_signal(&q->not_empty);
   mutex_unlock(&q->mu);
   return retired;
@@ -160,6 +174,13 @@ static void frame_queue_flush(frame_queue_t *q, void (*free_fn)(void *)) {
     void *item = q->slots[q->head];
     q->head = (q->head + 1) % q->capacity;
     q->count--;
+    ascii_otel_metric(!strcmp(q->name, "display") ? ASCII_OTEL_METRIC_DISPLAY_DEPTH : ASCII_OTEL_METRIC_ENCODE_DEPTH,
+                      q->count);
+    pipeline_frame_t *telemetry_frame = item;
+    double age = (double)(time_get_ns() - telemetry_frame->captured_ns) / 1e9;
+    ascii_otel_metric(!strcmp(q->name, "display") ? ASCII_OTEL_METRIC_DISPLAY_WAIT : ASCII_OTEL_METRIC_ENCODE_WAIT,
+                      age);
+    ascii_otel_metric(ASCII_OTEL_METRIC_QUEUE_OLDEST, age);
     if (item && free_fn)
       free_fn(item);
   }
@@ -316,6 +337,7 @@ static void *pipeline_capture_thread(void *arg) {
 
   uint64_t previous_serial = 0;
   while (!atomic_load_bool(&pipeline->stop)) {
+    ASCII_OTEL_SCOPE(PIPELINE_CAPTURE);
     asciichat_errno_scope_t frame_scope = errno_checkpoint();
     uint64_t acquisition_started_ns = time_get_ns();
     image_t *img = session_capture_read_frame(pipeline->capture);
@@ -338,6 +360,9 @@ static void *pipeline_capture_thread(void *arg) {
       continue;
     }
     frame->acquisition_started_ns = acquisition_started_ns;
+#ifdef ASCIICHAT_WITH_OTEL
+    frame->telemetry_context = ascii_otel_context();
+#endif
 
     frame->source_epoch = session_capture_source_epoch(pipeline->capture);
     frame->frame_serial = session_capture_frame_serial(pipeline->capture);
@@ -348,6 +373,7 @@ static void *pipeline_capture_thread(void *arg) {
     uint64_t zero = 0;
     atomic_cas_u64(&pipeline->first_frame_ns, &zero, frame->captured_ns);
 
+    ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_CAPTURED, 1);
     // Fan out: display queue (fast, can drop), encode queue (slow, keep all)
     pipeline_frame_t *display_copy = frame;
     if (pipeline->has_render_file) {
@@ -370,6 +396,7 @@ static void *pipeline_capture_thread(void *arg) {
       while (!queued && snapshot_uses_frame_target && !atomic_load_bool(&pipeline->stop))
         queued = frame_queue_push(pipeline->encode_queue, frame, 100 * NS_PER_MS_INT);
       if (!queued) {
+        ascii_otel_metric(ASCII_OTEL_METRIC_DROP_ENCODE, 1);
         stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
         stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
         // Non-blocking: drop if queue full after 500ms
@@ -452,8 +479,10 @@ static void *pipeline_encode_thread(void *arg) {
       continue; // timeout, keep waiting
     }
 
+    ASCII_OTEL_SCOPE_PARENT(PIPELINE_ENCODE, &frame->telemetry_context);
     // Validate frame before processing (catch memory corruption)
     if (!frame_is_valid(frame)) {
+      ascii_otel_metric(ASCII_OTEL_METRIC_DROP_INVALID, 1);
       log_error("Skipping frame with corrupted dimensions in encode thread");
       free_frame(frame);
       continue;
@@ -468,6 +497,11 @@ static void *pipeline_encode_thread(void *arg) {
     // Avoid double-conversion that was causing state desynchronization between display/encode threads
     image_t raw_image = {.w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels};
     pipeline->encode_error = session_display_encode_frame(pipeline->display, &raw_image, frame->captured_ns);
+    if (pipeline->encode_error == ASCIICHAT_OK) {
+      ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_ENCODED, 1);
+      ascii_otel_metric(ASCII_OTEL_METRIC_ENCODE_LATENCY,
+                        (double)(time_get_ns() - frame->acquisition_started_ns) / 1e9);
+    }
     if (pipeline->encode_error != ASCIICHAT_OK) {
       atomic_store_bool(&pipeline->stop, true);
       free_frame(frame);
@@ -596,8 +630,13 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
       continue;
     }
 
+    ASCII_OTEL_SCOPE_PARENT(PIPELINE_DISPLAY, &frame->telemetry_context);
+#ifdef ASCIICHAT_WITH_OTEL
+    ascii_otel_scope_int(&otel_scope, "ascii_chat.queue.wait_ns", (int64_t)(time_get_ns() - frame->captured_ns));
+#endif
     // Validate frame structure exists before accessing fields
     if (!frame_is_valid(frame)) {
+      ascii_otel_metric(ASCII_OTEL_METRIC_DROP_INVALID, 1);
       log_error("Received invalid frame: corrupted or NULL");
       free_frame(frame);
       frame = NULL;
@@ -629,6 +668,8 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
           session_display_write_ascii_frame(pipeline->display, ascii, fresh);
           ui_controller_frame_acquired_at(0);
           uint64_t published_ns = time_get_ns();
+          ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_DISPLAYED, 1);
+          ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_LATENCY, (double)(published_ns - acquisition_started_ns) / 1e9);
           session_capture_complete_open(pipeline->capture, epoch);
           log_debug("LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d read_ms=%.2f queue_ms=%.2f convert_ms=%.2f "
                     "publish_ms=%.2f",
@@ -637,9 +678,11 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
         }
         session_display_release_ascii(pipeline->display, ascii);
       } else {
+        ascii_otel_metric(ASCII_OTEL_METRIC_DROP_CONVERT, 1);
         log_error_every(US_PER_SEC_INT, "Failed to convert captured frame to ASCII; skipping display frame");
       }
     } else {
+      ascii_otel_metric(ASCII_OTEL_METRIC_DROP_SCREEN, 1);
       free_frame(frame);
       frame = NULL;
     }

@@ -4,6 +4,7 @@
  * @brief 🌐 HTTPS client with BearSSL for fetching public keys from GitHub/GitLab with CA validation
  */
 
+#include <ascii-chat/otel.h>
 #include <ascii-chat/network/http_client.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/pem.h>
@@ -176,6 +177,10 @@ static asciichat_error_t check_http_status(const char *response) {
 #define HTTPS_MAX_RESPONSE_SIZE (1024 * 1024)
 
 char *https_get(const char *hostname, const char *path) {
+  ASCII_OTEL_SCOPE(HTTP);
+#ifdef ASCIICHAT_WITH_OTEL
+  ascii_otel_http(&otel_scope, hostname, path);
+#endif
   if (!hostname || !path) {
     log_error("Invalid arguments");
     return NULL;
@@ -210,7 +215,20 @@ char *https_get(const char *hostname, const char *path) {
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
 
-  if (getaddrinfo(hostname, "443", &hints, &result) != 0) {
+  int dns_result;
+  {
+    ASCII_OTEL_SCOPE(DNS_RESOLVE);
+#ifdef ASCIICHAT_WITH_OTEL
+    if (otel_scope.retained)
+      gotel_attr_string(&otel_scope.scope, "dns.question.name", hostname);
+#endif
+    dns_result = getaddrinfo(hostname, "443", &hints, &result);
+#ifdef ASCIICHAT_WITH_OTEL
+    if (dns_result && otel_scope.retained)
+      gotel_error(&otel_scope.scope, "dns.error", "DNS lookup failed");
+#endif
+  }
+  if (dns_result != 0) {
     log_error("Failed to resolve hostname: %s", hostname);
     goto cleanup_anchors;
   }
@@ -342,6 +360,10 @@ char *https_get(const char *hostname, const char *path) {
   socket_close(sock);
 
   // Parse HTTP response
+#ifdef ASCIICHAT_WITH_OTEL
+  if (strncmp(response_buf, "HTTP/1.", 7) == 0 && strlen(response_buf) >= 12)
+    ascii_otel_http_status(&otel_scope, atoi(response_buf + 9));
+#endif
   asciichat_error_t status = check_http_status(response_buf);
   if (status != ASCIICHAT_OK) {
     SAFE_FREE(response_buf);

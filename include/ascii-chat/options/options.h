@@ -1086,14 +1086,25 @@ typedef struct options_state {
   // ============================================================================
   // Output Options
   // ============================================================================
-  bool quiet;                           ///< Quiet mode (suppress logs)
-  unsigned short int verbose_level;     ///< Verbosity level (stackable -V)
-  bool snapshot_mode;                   ///< Snapshot mode (one frame and exit)
-  double snapshot_delay;                ///< Snapshot delay in seconds
-  int zalgo;                            ///< Combining-mark intensity (0 = disabled, 1-10 = enabled)
-  bool matrix_rain;                     ///< Matrix digital rain effect (false = disabled)
-  bool fps_counter;                     ///< Show FPS counter overlay in top-right corner
-  bool strip_ansi;                      ///< Strip ANSI escape sequences
+  bool quiet;                       ///< Quiet mode (suppress logs)
+  unsigned short int verbose_level; ///< Verbosity level (stackable -V)
+  bool snapshot_mode;               ///< Snapshot mode (one frame and exit)
+  double snapshot_delay;            ///< Snapshot delay in seconds
+  int zalgo;                        ///< Combining-mark intensity (0 = disabled, 1-10 = enabled)
+  bool matrix_rain;                 ///< Matrix digital rain effect (false = disabled)
+  bool fps_counter;                 ///< Show FPS counter overlay in top-right corner
+  bool strip_ansi;                  ///< Strip ANSI escape sequences
+
+  // OpenTelemetry export configuration.
+  char otel_log_level[OPTIONS_BUFF_SIZE];
+  char otel_endpoint[OPTIONS_BUFF_SIZE];
+  char otel_ca_file[OPTIONS_BUFF_SIZE];
+  char otel_enabled_telemetry[OPTIONS_BUFF_SIZE];
+  double otel_realtime_sample_rate;
+  int otel_realtime_max_per_second;
+  int otel_metrics_interval;
+  int otel_timeout;
+  int otel_queue_capacity;
   char log_file[OPTIONS_BUFF_SIZE];     ///< Log file path
   log_level_t log_level;                ///< Log level threshold
   char grep_pattern[OPTIONS_BUFF_SIZE]; ///< PCRE2 regex for log filtering

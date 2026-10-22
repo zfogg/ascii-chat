@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/debug/errno.h>
 #include <ascii-chat/stats/runtime.h>
@@ -631,8 +632,10 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
 
   while (true) {
     attempt++;
-    if (attempt > 1)
+    if (attempt > 1) {
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RECONNECTS, 1);
+      ascii_otel_metric(ASCII_OTEL_METRIC_RECONNECT, 1);
+    }
 
     asciichat_errno_scope_t attempt_scope = errno_scope_begin();
     result = config->run_fn(state->capture, state->display, config->run_user_data);
@@ -802,6 +805,7 @@ static asciichat_error_t client_like_cleanup_session(const session_client_like_c
 }
 
 asciichat_error_t session_client_like_run(const session_client_like_config_t *config) {
+  ASCII_OTEL_SCOPE(SESSION_CLIENT_LIKE_RUN);
   if (!config || !config->run_fn) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "config or run_fn is NULL");
   }

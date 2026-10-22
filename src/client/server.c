@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include "connection_internal.h"
 #include <ascii-chat/network/acip/backpressure.h>
 /**
@@ -153,6 +154,7 @@ asciichat_error_t server_connection_get_remote_error(client_connection_t *connec
  * @ingroup client_connection
  */
 int server_connection_init(client_connection_t *connection) {
+  ASCII_OTEL_SCOPE(SERVER_CONNECTION_INIT);
   // Initialize mutex for thread-safe packet sending
   if (mutex_init(&connection->send_mutex, "send") != 0) {
     log_error("Failed to initialize send mutex");
@@ -285,6 +287,7 @@ int server_connection_get_port(client_connection_t *connection) {
 /* Called by the owner and its workers, never by a signal handler. The
  * transport remains allocated until the controlling thread joins all users. */
 void server_connection_shutdown(client_connection_t *connection) {
+  ASCII_OTEL_SCOPE(SERVER_CONNECTION_SHUTDOWN);
   if (!connection)
     return;
   atomic_store_bool(&connection->connection_active, false);
@@ -300,8 +303,15 @@ void server_connection_shutdown(client_connection_t *connection) {
  *
  * @ingroup client_connection
  */
+void server_connection_pong_received(client_connection_t *connection) {
+  uint64_t sent = atomic_load_u64(&connection->telemetry_ping_ns);
+  if (sent && sent != UINT64_MAX && atomic_cas_u64(&connection->telemetry_ping_ns, &sent, 0))
+    ascii_otel_metric(ASCII_OTEL_METRIC_RTT, (double)(time_get_ns() - sent) / 1e9);
+}
 void server_connection_lost(client_connection_t *connection) {
-  atomic_store_bool(&connection->connection_lost, true);
+  ASCII_OTEL_SCOPE(CONNECTION_LOST);
+  if (!atomic_exchange_bool(&connection->connection_lost, true))
+    ascii_otel_metric(ASCII_OTEL_METRIC_DISCONNECT, 1);
   atomic_store_bool(&connection->connection_active, false);
 
   // Don't re-enable terminal logging here - let the splash screen handle it
@@ -678,7 +688,15 @@ asciichat_error_t threaded_send_image_frame_encoded(client_connection_t *connect
  */
 asciichat_error_t threaded_send_ping_packet(client_connection_t *connection) {
   // Use threaded_send_packet which handles encryption, mutex locking, and connection state
-  return threaded_send_packet(connection, PACKET_TYPE_PING, NULL, 0);
+  // Without a probe ID, overlapping pings make subsequent pongs ambiguous.
+  // Keep sending normally, but suppress RTT samples for this connection.
+  uint64_t empty = 0;
+  if (!atomic_cas_u64(&connection->telemetry_ping_ns, &empty, time_get_ns()))
+    atomic_store_u64(&connection->telemetry_ping_ns, UINT64_MAX);
+  asciichat_error_t result = threaded_send_packet(connection, PACKET_TYPE_PING, NULL, 0);
+  if (result != ASCIICHAT_OK)
+    atomic_store_u64(&connection->telemetry_ping_ns, UINT64_MAX);
+  return result;
 }
 
 /**

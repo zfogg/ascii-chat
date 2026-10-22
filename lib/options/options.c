@@ -45,6 +45,7 @@
  * @date January 2026
  */
 
+#include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/crypto/policy.h>
 #include <ctype.h>
 #include <sys/stat.h>
@@ -459,6 +460,15 @@ typedef struct {
   bool json;                    // JSON logging format - binary-level option
   bool log_format_console_only; // Apply log template only to console - binary-level option
   bool no_check_update;         // Disable the startup update check
+  char otel_log_level[OPTIONS_BUFF_SIZE];
+  char otel_endpoint[OPTIONS_BUFF_SIZE];
+  char otel_ca_file[OPTIONS_BUFF_SIZE];
+  char otel_enabled_telemetry[OPTIONS_BUFF_SIZE];
+  double otel_realtime_sample_rate;
+  int otel_realtime_max_per_second;
+  int otel_metrics_interval;
+  int otel_timeout;
+  int otel_queue_capacity;
 } binary_level_opts_t;
 
 static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
@@ -477,6 +487,16 @@ static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
   binary.json = opts->json;                                       // Save JSON logging flag (binary-level option)
   binary.log_format_console_only = opts->log_format_console_only; // Save log format console setting
   binary.no_check_update = opts->no_check_update;
+  SAFE_STRNCPY(binary.otel_log_level, opts->otel_log_level, sizeof(binary.otel_log_level));
+  SAFE_STRNCPY(binary.otel_endpoint, opts->otel_endpoint, sizeof(binary.otel_endpoint));
+  SAFE_STRNCPY(binary.otel_ca_file, opts->otel_ca_file, sizeof(binary.otel_ca_file));
+  SAFE_STRNCPY(binary.otel_enabled_telemetry, opts->otel_enabled_telemetry, sizeof(binary.otel_enabled_telemetry));
+  binary.otel_realtime_sample_rate = opts->otel_realtime_sample_rate;
+  binary.otel_realtime_max_per_second = opts->otel_realtime_max_per_second;
+  binary.otel_metrics_interval = opts->otel_metrics_interval;
+  binary.otel_timeout = opts->otel_timeout;
+  binary.otel_queue_capacity = opts->otel_queue_capacity;
+
   return binary;
 }
 
@@ -495,6 +515,15 @@ static inline void restore_binary_level(options_t *opts, const binary_level_opts
   opts->json = binary->json;                                       // Restore JSON logging flag (binary-level option)
   opts->log_format_console_only = binary->log_format_console_only; // Restore log format console setting
   opts->no_check_update = binary->no_check_update;
+  SAFE_STRNCPY(opts->otel_log_level, binary->otel_log_level, sizeof(opts->otel_log_level));
+  SAFE_STRNCPY(opts->otel_endpoint, binary->otel_endpoint, sizeof(opts->otel_endpoint));
+  SAFE_STRNCPY(opts->otel_ca_file, binary->otel_ca_file, sizeof(opts->otel_ca_file));
+  SAFE_STRNCPY(opts->otel_enabled_telemetry, binary->otel_enabled_telemetry, sizeof(opts->otel_enabled_telemetry));
+  opts->otel_realtime_sample_rate = binary->otel_realtime_sample_rate;
+  opts->otel_realtime_max_per_second = binary->otel_realtime_max_per_second;
+  opts->otel_metrics_interval = binary->otel_metrics_interval;
+  opts->otel_timeout = binary->otel_timeout;
+  opts->otel_queue_capacity = binary->otel_queue_capacity;
 }
 
 options_t options_t_new(void) {
@@ -525,6 +554,13 @@ options_t options_t_new(void) {
   opts.quiet = OPT_QUIET_DEFAULT;
   opts.verbose_level = OPT_VERBOSE_LEVEL_DEFAULT;
   opts.log_level = OPT_LOG_LEVEL_DEFAULT;
+  SAFE_STRNCPY(opts.otel_enabled_telemetry, "traces,logs,metrics", sizeof(opts.otel_enabled_telemetry));
+  opts.otel_realtime_sample_rate = 0.01;
+  opts.otel_realtime_max_per_second = 10;
+  opts.otel_metrics_interval = 10000;
+  SAFE_STRNCPY(opts.otel_log_level, "info", sizeof(opts.otel_log_level));
+  opts.otel_timeout = 5000;
+  opts.otel_queue_capacity = 4096;
   opts.grep_pattern[0] = '\0'; // Explicitly ensure grep_pattern is empty
   opts.json = OPT_JSON_DEFAULT;
   SAFE_STRNCPY(opts.color_scheme_name, OPT_COLOR_SCHEME_NAME_DEFAULT, sizeof(opts.color_scheme_name));
@@ -1488,6 +1524,17 @@ static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t d
       return config_result;
   }
   *fps_set_by_config = opts->fps != OPT_FPS_DEFAULT;
+  // Telemetry CLI values are parsed again after config and environment resolution.
+  SAFE_STRNCPY(binary_before_config.otel_log_level, opts->otel_log_level, sizeof(binary_before_config.otel_log_level));
+  SAFE_STRNCPY(binary_before_config.otel_endpoint, opts->otel_endpoint, sizeof(binary_before_config.otel_endpoint));
+  SAFE_STRNCPY(binary_before_config.otel_ca_file, opts->otel_ca_file, sizeof(binary_before_config.otel_ca_file));
+  SAFE_STRNCPY(binary_before_config.otel_enabled_telemetry, opts->otel_enabled_telemetry,
+               sizeof(binary_before_config.otel_enabled_telemetry));
+  binary_before_config.otel_realtime_sample_rate = opts->otel_realtime_sample_rate;
+  binary_before_config.otel_realtime_max_per_second = opts->otel_realtime_max_per_second;
+  binary_before_config.otel_metrics_interval = opts->otel_metrics_interval;
+  binary_before_config.otel_timeout = opts->otel_timeout;
+  binary_before_config.otel_queue_capacity = opts->otel_queue_capacity;
   // Restore binary-level options (don't let config override command-line options)
   restore_binary_level(opts, &binary_before_config);
 
@@ -1551,6 +1598,19 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   // Restore detected_mode before parsing so mode validation works.
   opts->detected_mode = mode_saved_for_parsing;
 
+  // Apply telemetry environment values after config restoration, before CLI.
+  // Using the normal value parsers retains range checks and error reporting.
+  for (size_t i = 0; i < config->num_descriptors; ++i) {
+    const option_descriptor_t *desc = &config->descriptors[i];
+    if (!desc->long_name || strncmp(desc->long_name, "otel-", 5) || !desc->env_var_name)
+      continue;
+    const char *value = SAFE_GETENV(desc->env_var_name);
+    if (value && desc->type >= 0 && desc->type < NUM_OPTION_TYPES) {
+      asciichat_error_t env_result = g_builder_handlers[desc->type].apply_cli((char *)opts + desc->offset, value, desc);
+      if (env_result != ASCIICHAT_OK)
+        return env_result;
+    }
+  }
   // Save flip_x and flip_y before parsing - they should not be reset by the parser
   bool saved_flip_x_for_parse = opts->flip_x;
   bool saved_flip_y_for_parse = opts->flip_y;

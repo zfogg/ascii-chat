@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 /**
  * @file yt_dlp.c
  * @brief yt-dlp stream URL extraction implementation
@@ -141,6 +142,8 @@ static void yt_dlp_cache_set(const char *url, const char *yt_dlp_options, const 
  * ============================================================================ */
 
 bool yt_dlp_is_available(void) {
+  ASCII_OTEL_SCOPE(YTDLP_AVAILABLE);
+  ASCII_OTEL_ATTR_STRING("media.extractor", "yt-dlp");
   const char *argv[] = {"yt-dlp", "--version", NULL};
   int ret = 0;
   LOG_IO("yt-dlp", { ret = platform_execute_subprocess("yt-dlp", argv, NULL, 0); });
@@ -149,6 +152,8 @@ bool yt_dlp_is_available(void) {
 
 asciichat_error_t yt_dlp_extract_stream_url(const char *url, const char *yt_dlp_options, char *output_url,
                                             size_t output_size) {
+  ASCII_OTEL_SCOPE(YTDLP_EXTRACT);
+  ASCII_OTEL_ATTR_STRING("media.extractor", "yt-dlp");
   if (!url || !output_url || output_size < 256) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for yt-dlp URL extraction");
     return ERROR_INVALID_PARAM;
@@ -164,6 +169,10 @@ asciichat_error_t yt_dlp_extract_stream_url(const char *url, const char *yt_dlp_
   // Check if we have a cached extraction for this URL+options combination
   char cached_url[8192] = {0};
   if (yt_dlp_cache_get(url, yt_dlp_options, cached_url, sizeof(cached_url))) {
+    ascii_otel_metric(ASCII_OTEL_METRIC_YTDLP_HIT, 1);
+    ASCII_OTEL_ATTR_STRING("cache.result", *cached_url ? "hit" : "negative_hit");
+    if (!*cached_url)
+      ascii_otel_metric(ASCII_OTEL_METRIC_YTDLP_NEGATIVE, 1);
     if (cached_url[0] != '\0') {
       // Cached success - return the URL
       SAFE_STRNCPY(output_url, cached_url, output_size - 1);
@@ -175,6 +184,8 @@ asciichat_error_t yt_dlp_extract_stream_url(const char *url, const char *yt_dlp_
     }
   }
 
+  ascii_otel_metric(ASCII_OTEL_METRIC_YTDLP_MISS, 1);
+  ASCII_OTEL_ATTR_STRING("cache.result", "miss");
   // Build yt-dlp command
   char command[4096];
   const char *opts = yt_dlp_options ? yt_dlp_options : "";
