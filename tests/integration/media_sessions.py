@@ -296,6 +296,7 @@ if __name__ == "__main__":
     parser.add_argument("--coverage-root", type=Path)
     args, remaining = parser.parse_known_args()
     BINARY = str(args.binary.resolve())
-    COVERAGE_BUILD = args.coverage_build
-    COVERAGE_ROOT = args.coverage_root.resolve() if args.coverage_root else None
+    COVERAGE_BUILD = args.coverage_build or os.environ.get("ASCIICHAT_COVERAGE_BUILD") == "1"
+    coverage_root = args.coverage_root or os.environ.get("ASCIICHAT_COVERAGE_ROOT")
+    COVERAGE_ROOT = Path(coverage_root).resolve() if coverage_root else None
     unittest.main(argv=[__file__, *remaining])
