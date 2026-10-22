@@ -42,13 +42,6 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
     return -1;
   }
 
-  // Escape key_id for safe use in shell command
-  char escaped_key_id[BUFFER_SIZE_MEDIUM];
-  if (!escape_shell_single_quotes(key_id, escaped_key_id, sizeof(escaped_key_id))) {
-    log_error("Failed to escape GPG key ID for shell command");
-    return -1;
-  }
-
   // Create temp file for exported key
   char temp_path[PLATFORM_MAX_PATH_LENGTH];
   int temp_fd = -1;
@@ -61,7 +54,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   }
 
   // Use gpg --export to export the public key in binary format
-  const char *argv[] = {"gpg", "--export", escaped_key_id, "--output", temp_path, NULL};
+  const char *argv[] = {"gpg", "--batch", "--yes", "--output", temp_path, "--export", key_id, NULL};
   int result = 0;
   LOG_IO("gpg", { result = platform_execute_subprocess("gpg", argv, NULL, 0); });
   if (result != 0) {

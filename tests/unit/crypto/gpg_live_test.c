@@ -7,7 +7,9 @@
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/socket.h>
+#include <ascii-chat/platform/thread.h>
 #include <ascii-chat/tests/logging.h>
+#include <ascii-chat/util/pcre2.h>
 #include <sodium.h>
 #include <string.h>
 #include <stdlib.h>
@@ -34,6 +36,7 @@ static void teardown(void) {
     platform_unsetenv("GNUPGHOME");
   }
   log_destroy();
+  asciichat_pcre2_cleanup_all();
 }
 static void setup(void) {
   if (!platform_is_regular_file("/usr/bin/gpg"))
@@ -224,6 +227,7 @@ static void wire_cleanup(void) {
     socket_close(wire_peer);
   wire_client = wire_peer = INVALID_SOCKET_VALUE;
   log_destroy();
+  asciichat_pcre2_cleanup_all();
 }
 TestSuite(gpg_agent_wire, .init = wire_setup, .fini = wire_cleanup, .timeout = 5);
 Test(gpg_agent_wire, binary_nulls_and_percent_escapes_preserve_signature_bytes_and_bad_frames_are_rejected) {
@@ -295,4 +299,17 @@ Test(gpg_agent_wire, binary_nulls_and_percent_escapes_preserve_signature_bytes_a
     socket_close(wire_peer);
     wire_client = wire_peer = INVALID_SOCKET_VALUE;
   }
+}
+Test(gpg_live, public_key_export_falls_back_to_packet_parsing_when_the_isolated_agent_stops) {
+  uint8_t expected[32], actual[32];
+  char grip[41];
+  cr_assert_eq(gpg_get_public_key(fingerprint, expected, grip), 0);
+  const char *stop[] = {"gpgconf", "--homedir", directory, "--kill", "gpg-agent", NULL};
+  cr_assert_eq(platform_execute_subprocess("gpgconf", stop, NULL, 0), 0);
+  for (unsigned attempt = 0; attempt < 100 && gpg_agent_is_available(); ++attempt)
+    platform_sleep_us(10000);
+  cr_assert_not(gpg_agent_is_available());
+  memset(actual, 0xa5, sizeof(actual));
+  cr_assert_eq(gpg_get_public_key(fingerprint, actual, NULL), 0);
+  cr_assert_arr_eq(actual, expected, sizeof(actual));
 }
