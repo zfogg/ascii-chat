@@ -13,6 +13,7 @@
 #include <ascii-chat/ui/mdns.h>
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/frame_buffer.h>
+#include <ascii-chat/ui/selectable_list.h>
 #include <ascii-chat/ui/invitation.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/time.h>
@@ -115,7 +116,7 @@ int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count) {
  */
 typedef struct {
   int count;
-  int selected;
+  ui_selectable_list_t list;
   char input[32];
   ui_mdns_server_t servers[];
 } mdns_snapshot_t;
@@ -239,15 +240,17 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
     frame_buffer_render_centered(buffer, heading, size.cols - 1);
     frame_buffer_printf(buffer, "\r");
   }
-  int first = snapshot->selected >= available ? snapshot->selected - available + 1 : 0;
+  ui_selectable_list_t list = snapshot->list;
+  ui_selectable_list_keep_visible(&list, snapshot->count, available);
+  int first = list.first_visible;
   for (int i = first; i < snapshot->count && i < first + available; ++i) {
     char line[512], clipped[512];
     const char *address = ui_mdns_get_best_address(&snapshot->servers[i]);
-    snprintf(line, sizeof(line), "%s [%d] %s (%s%s%s:%u)", i == snapshot->selected ? ">" : " ", i + 1,
+    snprintf(line, sizeof(line), "%s [%d] %s (%s%s%s:%u)", i == list.selected ? ">" : " ", i + 1,
              snapshot->servers[i].name, strchr(address, ':') ? "[" : "", address, strchr(address, ':') ? "]" : "",
              snapshot->servers[i].port);
     truncate_with_ellipsis(line, clipped, sizeof(clipped), size.cols - 1);
-    if (colors && i == snapshot->selected)
+    if (colors && i == list.selected)
       frame_buffer_printf(buffer, "%s", log_level_color(LOG_COLOR_DEBUG));
     frame_buffer_render_centered(buffer, clipped, size.cols - 1);
     frame_buffer_printf(buffer, "\033[0m\r");
@@ -300,15 +303,15 @@ static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_
       if (generation != refresh->generation) {
         ui_mdns_server_t previous = {0};
         if (count)
-          previous = snapshot->servers[snapshot->selected];
+          previous = snapshot->servers[snapshot->list.selected];
         count = refresh->count;
         snapshot->count = count;
         memcpy(snapshot->servers, refresh->servers, (size_t)count * sizeof(*servers));
-        snapshot->selected = 0;
+        ui_selectable_list_reset(&snapshot->list);
         for (int i = 0; i < count; ++i) {
           if (previous.port == snapshot->servers[i].port &&
               strcmp(ui_mdns_get_best_address(&previous), ui_mdns_get_best_address(&snapshot->servers[i])) == 0) {
-            snapshot->selected = i;
+            snapshot->list.selected = i;
             break;
           }
         }
@@ -330,7 +333,7 @@ static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_
       break;
     if (count && (key == KEY_UP || key == 'k' || key == KEY_DOWN || key == 'j')) {
       int delta = (key == KEY_UP || key == 'k') ? -1 : 1;
-      snapshot->selected = (snapshot->selected + delta + count) % count;
+      ui_selectable_list_move(&snapshot->list, count, MDNS_LIST_MAX_ROWS, delta);
       length = 0;
       snapshot->input[0] = '\0';
       continue;
@@ -339,7 +342,7 @@ static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_
       if (!count)
         continue;
       if (!length) {
-        selection = snapshot->selected;
+        selection = snapshot->list.selected;
         break;
       }
       long value = strtol(snapshot->input, NULL, 10);

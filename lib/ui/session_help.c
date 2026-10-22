@@ -236,6 +236,9 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
 #ifndef NDEBUG
       browser ? NULL : "`      Print current sync primitive state",
 #endif
+#if defined(ASCIICHAT_DIAGNOSTIC_UI)
+      browser ? NULL : "`      Error stacks diagnostic TUI",
+#endif
       browser ? NULL : "o      TUI to open media from path or url",
       "]      Live log viewer/searcher TUI",
       browser ? NULL : "=      Running app statistics TUI",

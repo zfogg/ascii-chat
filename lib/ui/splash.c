@@ -19,6 +19,7 @@
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/ui/session.h>
+#include <ascii-chat/ui/errno_stacks.h>
 #include <ascii-chat/ui/invitation.h>
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/ui/terminal_screen.h>
@@ -277,8 +278,12 @@ static void *splash_monitor_thread(void *arg) {
       break;
     if (keyboard_enabled) {
       keyboard_key_t key = ui_input_read_key(UI_SCREEN_SPLASH);
-      if (discovery_splash_snapshot().enabled && key != ']' && key != KEY_QUESTION &&
-          ui_controller_current_screen() != UI_SCREEN_LOGS)
+      if (ui_errno_stacks_handle_key(key)) {
+        continue;
+      } else if (key == KEY_BACKTICK) {
+        ui_errno_stacks_toggle();
+      } else if (discovery_splash_snapshot().enabled && key != ']' && key != KEY_QUESTION &&
+                 ui_controller_current_screen() != UI_SCREEN_LOGS)
         key = KEY_NONE;
       if (ui_controller_current_screen() == UI_SCREEN_LOGS && ui_session_logs_key(key)) {
         // Search consumed the key.

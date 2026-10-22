@@ -183,6 +183,32 @@ static inline void stack_contract(void) {
   CLEAR_ERRNO_ALL();
 }
 
+static inline void selectable_errno_contract(void) {
+  CLEAR_ERRNO_ALL();
+  SET_ERRNO(ERROR_NETWORK, "root selectable");
+  asciichat_error_context_t root;
+  CHECK(HAS_ERRNO(&root));
+  SET_ERRNO(ERROR_CRYPTO, "middle selectable");
+  asciichat_error_context_t middle;
+  CHECK(HAS_ERRNO(&middle));
+  SET_ERRNO(ERROR_MEDIA_OPEN, "top selectable");
+
+  uint64_t threads[ASCIICHAT_ERRNO_MAX_THREADS] = {0};
+  size_t thread_count = errno_threads_snapshot(threads, ASCIICHAT_ERRNO_MAX_THREADS);
+  bool found = false;
+  for (size_t i = 0; i < thread_count && i < ASCIICHAT_ERRNO_MAX_THREADS; ++i)
+    found |= threads[i] == root.thread_id;
+  CHECK(found);
+
+  CHECK(errno_clear_if_current(middle.thread_id, middle.generation, middle.error_id));
+  asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
+  CHECK(errno_snapshot(root.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH) == 2);
+  CHECK(frames[0].code == ERROR_MEDIA_OPEN);
+  CHECK(frames[1].error_id == root.error_id);
+  CHECK(!errno_clear_if_current(root.thread_id, root.generation + 1, root.error_id));
+  CLEAR_ERRNO_ALL();
+}
+
 static inline void scopes_and_history(void) {
   SET_ERRNO(ERROR_AUDIO, "unrelated older failure");
   asciichat_error_context_t outer, propagated;
