@@ -1163,6 +1163,9 @@ if(BUILD_TESTS AND TARGET ascii-chat)
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_lifecycle.py
             $<TARGET_FILE:ascii-chat>)
     set_tests_properties(server-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180)
+    add_test(NAME identity-sessions COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/identity_sessions.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(identity-sessions PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
