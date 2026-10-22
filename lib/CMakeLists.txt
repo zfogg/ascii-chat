@@ -13,6 +13,7 @@ set(CORE_SRCS
     ${LIB_DIR}/media/input.c
     ${LIB_DIR}/media/playlist.c
     ${LIB_DIR}/common.c
+    ${LIB_DIR}/otel.c
     ${LIB_DIR}/asciichat_errno.c
     ${LIB_DIR}/atomic.c
     ${LIB_DIR}/app_callbacks.c
@@ -1820,3 +1821,9 @@ if(TARGET ascii-chat-shared)
     target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_LIBRARIES})
 endif()
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_LIBRARIES})
+
+if(TARGET c-gotel)
+    target_link_libraries(ascii-chat-core PRIVATE gotel::c-gotel)
+    target_link_libraries(ascii-chat-shared PRIVATE gotel::c-gotel)
+    target_link_libraries(ascii-chat-static-lib-deps INTERFACE gotel::c-gotel)
+endif()

@@ -4,6 +4,7 @@
  * @brief Server-side handshake protocol implementation
  */
 
+#include <ascii-chat/otel.h>
 #include <ascii-chat/ui/notice.h>
 
 #include <ascii-chat/crypto/handshake/server.h>
@@ -67,6 +68,7 @@ asciichat_error_t crypto_handshake_server_send_parameters(crypto_handshake_conte
 
 // Server: Start crypto handshake by sending public key
 asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx, acip_transport_t *transport) {
+  ASCII_OTEL_SCOPE(CRYPTO_HANDSHAKE_SERVER_START);
   log_debug("[HANDSHAKE_START] ctx=%p, transport=%p", (void *)ctx, (void *)transport);
 
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_INIT) {
@@ -166,6 +168,7 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
 asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, acip_transport_t *transport,
                                                          packet_type_t packet_type, const uint8_t *payload,
                                                          size_t payload_len) {
+  ASCII_OTEL_SCOPE(CRYPTO_HANDSHAKE_SERVER_AUTH_CHALLENGE);
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_KEY_EXCHANGE) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? ctx->state : -1);
   }
@@ -446,6 +449,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
 asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *ctx, acip_transport_t *transport,
                                                    packet_type_t packet_type, const uint8_t *payload,
                                                    size_t payload_len) {
+  ASCII_OTEL_SCOPE(CRYPTO_HANDSHAKE_SERVER_COMPLETE);
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_AUTHENTICATING) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? ctx->state : -1);
   }

@@ -9,6 +9,7 @@
  * @date January 2026
  */
 
+#include <ascii-chat/otel.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/transport.h>
@@ -97,6 +98,7 @@ asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *d
 
 asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet_type_t type,
                                              const socket_buffer_t *payload, size_t count, uint32_t client_id) {
+  ASCII_OTEL_SCOPE(PACKET_SEND_VIA_TRANSPORTV);
   if (!transport || !payload || !count || count >= SOCKET_IOV_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet vectors");
   size_t len = 0;
@@ -131,6 +133,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
 
 asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, packet_type_t *type, void **payload,
                                                size_t *payload_len, void **alloc_buffer) {
+  ASCII_OTEL_SCOPE(PACKET_RECEIVE_VIA_TRANSPORT);
   if (!transport || !type || !payload || !payload_len || !alloc_buffer) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -194,6 +197,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
 
 asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float *samples, uint32_t num_samples,
                                         uint32_t batch_count) {
+  ASCII_OTEL_SCOPE(ACIP_SEND_AUDIO_BATCH);
   if (!transport || !samples || num_samples == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -210,6 +214,7 @@ asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float
 }
 
 asciichat_error_t acip_send_audio_opus(acip_transport_t *transport, const void *opus_data, size_t opus_len) {
+  ASCII_OTEL_SCOPE(ACIP_SEND_AUDIO_OPUS);
   if (!transport || !opus_data || opus_len == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -223,6 +228,7 @@ asciichat_error_t acip_send_audio_opus(acip_transport_t *transport, const void *
 asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const void *opus_data, size_t opus_len,
                                              const uint16_t *frame_sizes, uint32_t frame_count, uint32_t sample_rate,
                                              uint32_t frame_duration) {
+  ASCII_OTEL_SCOPE(ACIP_SEND_AUDIO_OPUS_BATCH);
   if (!transport || !opus_data || !frame_sizes || frame_count == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -255,6 +261,7 @@ asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const 
 // =============================================================================
 
 asciichat_error_t acip_send_ping(acip_transport_t *transport) {
+  ASCII_OTEL_SCOPE(ACIP_SEND_PING);
   if (!transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
@@ -284,6 +291,7 @@ asciichat_error_t acip_send_pong(acip_transport_t *transport) {
 // =============================================================================
 
 asciichat_error_t acip_send_error(acip_transport_t *transport, uint32_t error_code, const char *message) {
+  ASCII_OTEL_SCOPE(ACIP_SEND_ERROR);
   if (!transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }

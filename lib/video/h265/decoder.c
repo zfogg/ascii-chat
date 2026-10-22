@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /**
  * @file video/h265/decoder.c
@@ -30,6 +31,7 @@ typedef struct h265_decoder {
 } h265_decoder_t;
 
 h265_decoder_t *h265_decoder_create(void) {
+  ASCII_OTEL_SCOPE(H265_DECODER_CREATE);
   h265_decoder_t *dec = SAFE_CALLOC(1, sizeof(h265_decoder_t), h265_decoder_t *);
   if (!dec) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate decoder structure");
@@ -110,6 +112,7 @@ void h265_decoder_destroy(h265_decoder_t *decoder) {
 asciichat_error_t h265_decode(h265_decoder_t *decoder, const uint8_t *encoded_packet, size_t packet_size,
                               uint16_t *output_width, uint16_t *output_height, uint8_t *output_buf,
                               size_t *output_size) {
+  ASCII_OTEL_SCOPE(H265_DECODE);
   if (!decoder || !encoded_packet || !output_width || !output_height || !output_buf || !output_size) {
     return SET_ERRNO(ERROR_INTERNAL, "Invalid decoder arguments");
   }

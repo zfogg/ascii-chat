@@ -1804,3 +1804,9 @@ if(TEST test_unit_crypto_test_gpg_key_expiry)
     set_tests_properties(test_unit_crypto_test_gpg_key_expiry PROPERTIES
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
+
+if(BUILD_TESTS AND TARGET c-gotel)
+    asciichat_add_python_test(otel-export
+        ${CMAKE_SOURCE_DIR}/tests/integration/test_otel.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(otel-export PROPERTIES LABELS "integration;otel" TIMEOUT 120)
+endif()

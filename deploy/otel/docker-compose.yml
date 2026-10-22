@@ -1,0 +1,20 @@
+name: ascii-chat-otel
+services:
+  spaniel:
+    image: ${SPANIEL_IMAGE:-ghcr.io/zfogg/spaniel:latest}
+    command: ["--db-path", "/data/spaniel.duckdb", "--no-browser"]
+    environment:
+      SPANIEL_BIND_ADDRESS_V4: 0.0.0.0
+      SPANIEL_BIND_ADDRESS_V6: "::"
+    ports:
+      - "127.0.0.1:28080:8080"
+      - "127.0.0.1:24318:4318"
+    volumes:
+      - spaniel-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+volumes:
+  spaniel-data:

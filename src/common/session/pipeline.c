@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/buffer.h>
 /**
@@ -41,6 +42,9 @@ typedef struct {
   const uint8_t *pixels; // Immutable owning reference shared by display and encoding
   int w, h;
   uint64_t source_epoch, frame_serial;
+#ifdef ASCIICHAT_WITH_OTEL
+  gotel_context_t telemetry_context;
+#endif
   bool fresh;
   uint64_t captured_ns; // wall-clock timestamp
   uint64_t acquisition_started_ns;
@@ -316,6 +320,7 @@ static void *pipeline_capture_thread(void *arg) {
 
   uint64_t previous_serial = 0;
   while (!atomic_load_bool(&pipeline->stop)) {
+    ASCII_OTEL_SCOPE(PIPELINE_CAPTURE);
     asciichat_errno_scope_t frame_scope = errno_checkpoint();
     uint64_t acquisition_started_ns = time_get_ns();
     image_t *img = session_capture_read_frame(pipeline->capture);
@@ -338,6 +343,9 @@ static void *pipeline_capture_thread(void *arg) {
       continue;
     }
     frame->acquisition_started_ns = acquisition_started_ns;
+#ifdef ASCIICHAT_WITH_OTEL
+    frame->telemetry_context = ascii_otel_context();
+#endif
 
     frame->source_epoch = session_capture_source_epoch(pipeline->capture);
     frame->frame_serial = session_capture_frame_serial(pipeline->capture);
@@ -452,6 +460,7 @@ static void *pipeline_encode_thread(void *arg) {
       continue; // timeout, keep waiting
     }
 
+    ASCII_OTEL_SCOPE_PARENT(PIPELINE_ENCODE, &frame->telemetry_context);
     // Validate frame before processing (catch memory corruption)
     if (!frame_is_valid(frame)) {
       log_error("Skipping frame with corrupted dimensions in encode thread");
@@ -596,6 +605,10 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
       continue;
     }
 
+    ASCII_OTEL_SCOPE_PARENT(PIPELINE_DISPLAY, &frame->telemetry_context);
+#ifdef ASCIICHAT_WITH_OTEL
+    ascii_otel_scope_int(&otel_scope, "ascii_chat.queue.wait_ns", (int64_t)(time_get_ns() - frame->captured_ns));
+#endif
     // Validate frame structure exists before accessing fields
     if (!frame_is_valid(frame)) {
       log_error("Received invalid frame: corrupted or NULL");

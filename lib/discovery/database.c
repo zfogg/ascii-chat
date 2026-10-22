@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /**
  * @file acds/database.c
@@ -109,6 +110,23 @@ static const char *schema_sql =
 /**
  * @brief Generate random UUID (v4)
  */
+#ifndef ASCIICHAT_WITH_OTEL
+typedef struct {
+  const char *name;
+  const char *sql;
+} gotel_query_t;
+#endif
+typedef enum {
+#define DATABASE_QUERY(name, sql) QUERY_##name,
+#include "queries.def"
+#undef DATABASE_QUERY
+} database_query_id_t;
+static const gotel_query_t database_queries[] = {
+#define DATABASE_QUERY(name, sql) [QUERY_##name] = {#name, sql},
+#include "queries.def"
+#undef DATABASE_QUERY
+};
+
 static void generate_uuid(uint8_t uuid_out[16]) {
   randombytes_buf(uuid_out, 16);
   uuid_out[6] = (uuid_out[6] & 0x0F) | 0x40; // Version 4
@@ -221,8 +239,7 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
  * @brief Load participants for a session from database
  */
 static void load_session_participants(sqlite3 *db, session_entry_t *session) {
-  static const char *sql = "SELECT participant_id, identity_pubkey, joined_at "
-                           "FROM participants WHERE session_string = ?";
+  const char *sql = database_queries[QUERY_GetSessionParticipants].sql;
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -276,6 +293,9 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to open database: %s", err);
   }
 
+#ifdef ASCIICHAT_WITH_OTEL
+  ascii_otel_sqlite(*db, database_queries, sizeof(database_queries) / sizeof(database_queries[0]));
+#endif
   // Enable Write-Ahead Logging for concurrent reads
   char *err_msg = NULL;
   rc = sqlite3_exec(*db, "PRAGMA journal_mode=WAL;", NULL, NULL, &err_msg);
@@ -322,6 +342,7 @@ void database_close(sqlite3 *db) {
 
 asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create_t *req, const acds_config_t *config,
                                           acip_session_created_t *resp) {
+  ASCII_OTEL_SCOPE(DATABASE_SESSION_CREATE);
   if (!db || !req || !config || !resp) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, req, config, or resp is NULL");
   }
@@ -365,11 +386,7 @@ asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create
                                  : PARTICIPANT_LIMIT;
 
   // Insert into database
-  const char *sql = "INSERT INTO sessions "
-                    "(session_string, session_id, host_pubkey, password_hash, max_participants, "
-                    "current_participants, capabilities, has_password, expose_ip_publicly, "
-                    "session_type, server_address, server_port, created_at, expires_at, last_activity_at) "
-                    "VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  const char *sql = database_queries[QUERY_CreateSession].sql;
 
   sqlite3_stmt *stmt = NULL;
   int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -421,16 +438,14 @@ asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create
 
 asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_string, const acds_config_t *config,
                                           acip_session_info_t *resp) {
+  ASCII_OTEL_SCOPE(DATABASE_SESSION_LOOKUP);
   if (!db || !session_string || !config || !resp) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_string, config, or resp is NULL");
   }
 
   memset(resp, 0, sizeof(*resp));
 
-  const char *sql = "SELECT session_string, session_id, host_pubkey, password_hash, "
-                    "max_participants, current_participants, capabilities, has_password, "
-                    "expose_ip_publicly, session_type, server_address, server_port, "
-                    "created_at, expires_at, last_activity_at FROM sessions WHERE session_string = ?";
+  const char *sql = database_queries[QUERY_LookupSession].sql;
 
   sqlite3_stmt *stmt = NULL;
   int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -483,6 +498,7 @@ asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_strin
 
 asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *req, const acds_config_t *config,
                                         acip_session_joined_t *resp) {
+  ASCII_OTEL_SCOPE(DATABASE_SESSION_JOIN);
   if (!db || !req || !config || !resp) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, req, config, or resp is NULL");
   }
@@ -548,8 +564,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   }
 
   // Insert participant
-  const char *insert_sql = "INSERT INTO participants (participant_id, session_string, identity_pubkey, joined_at) "
-                           "VALUES (?, ?, ?, ?)";
+  const char *insert_sql = database_queries[QUERY_InsertParticipant].sql;
   sqlite3_stmt *stmt = NULL;
   rc = sqlite3_prepare_v2(db, insert_sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
@@ -573,8 +588,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   }
 
   // Update participant count and last activity
-  const char *update_sql = "UPDATE sessions SET current_participants = current_participants + 1, "
-                           "last_activity_at = ? WHERE session_string = ?";
+  const char *update_sql = database_queries[QUERY_IncrementParticipants].sql;
   rc = sqlite3_prepare_v2(db, update_sql, -1, &stmt, NULL);
   if (rc == SQLITE_OK) {
     sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
@@ -594,7 +608,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   }
 
   if (is_first_participant || is_zero_initiator) {
-    const char *initiator_sql = "UPDATE sessions SET initiator_id = ? WHERE session_string = ?";
+    const char *initiator_sql = database_queries[QUERY_SetSessionInitiator].sql;
     rc = sqlite3_prepare_v2(db, initiator_sql, -1, &stmt, NULL);
     if (rc == SQLITE_OK) {
       sqlite3_bind_blob(stmt, 1, participant_id, 16, SQLITE_STATIC);
@@ -674,13 +688,14 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
 }
 
 asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[16], const uint8_t participant_id[16]) {
+  ASCII_OTEL_SCOPE(DATABASE_SESSION_LEAVE);
   if (!db || !session_id || !participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_id, or participant_id is NULL");
   }
 
   // Look up session_string from session_id
   char session_string[SESSION_STRING_BUFFER_SIZE] = {0};
-  const char *lookup_sql = "SELECT session_string FROM sessions WHERE session_id = ?";
+  const char *lookup_sql = database_queries[QUERY_LookupSessionString].sql;
   sqlite3_stmt *stmt = NULL;
   int rc = sqlite3_prepare_v2(db, lookup_sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
@@ -714,7 +729,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
   }
 
   // Delete participant
-  const char *del_sql = "DELETE FROM participants WHERE participant_id = ? AND session_string = ?";
+  const char *del_sql = database_queries[QUERY_DeleteParticipant].sql;
   rc = sqlite3_prepare_v2(db, del_sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
     sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
@@ -740,8 +755,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
   uint64_t now = database_get_current_time_ms();
 
   // Decrement participant count and update last activity
-  const char *update_sql = "UPDATE sessions SET current_participants = current_participants - 1, "
-                           "last_activity_at = ? WHERE session_string = ? AND current_participants > 0";
+  const char *update_sql = database_queries[QUERY_DecrementParticipants].sql;
   rc = sqlite3_prepare_v2(db, update_sql, -1, &stmt, NULL);
   if (rc == SQLITE_OK) {
     sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
@@ -751,7 +765,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
   }
 
   // Check if session is now empty and delete if so
-  const char *check_sql = "SELECT current_participants FROM sessions WHERE session_string = ?";
+  const char *check_sql = database_queries[QUERY_GetParticipantCount].sql;
   rc = sqlite3_prepare_v2(db, check_sql, -1, &stmt, NULL);
   if (rc == SQLITE_OK) {
     sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
@@ -763,7 +777,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
         sqlite3_finalize(stmt);
 
         // Delete empty session
-        const char *del_session_sql = "DELETE FROM sessions WHERE session_string = ?";
+        const char *del_session_sql = database_queries[QUERY_DeleteSession].sql;
         rc = sqlite3_prepare_v2(db, del_session_sql, -1, &stmt, NULL);
         if (rc == SQLITE_OK) {
           sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
@@ -797,7 +811,7 @@ session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_
     return NULL;
   }
 
-  static const char sql[] = SELECT_SESSION_BASE " WHERE session_id = ?";
+  const char *sql = database_queries[QUERY_GetSessionById].sql;
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -823,7 +837,7 @@ session_entry_t *database_session_find_by_string(sqlite3 *db, const char *sessio
     return NULL;
   }
 
-  static const char sql[] = SELECT_SESSION_BASE " WHERE session_string = ?";
+  const char *sql = database_queries[QUERY_GetSessionByString].sql;
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -845,6 +859,7 @@ session_entry_t *database_session_find_by_string(sqlite3 *db, const char *sessio
 }
 
 void database_session_cleanup_expired(sqlite3 *db) {
+  ASCII_OTEL_SCOPE(DATABASE_SESSION_CLEANUP_EXPIRED);
   if (!db) {
     return;
   }
@@ -855,7 +870,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
   uint64_t cutoff_time = now - inactivity_threshold;
 
   // Log sessions about to be deleted
-  const char *log_sql = "SELECT session_string, last_activity_at FROM sessions WHERE last_activity_at < ?";
+  const char *log_sql = database_queries[QUERY_FindExpiredSessions].sql;
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, log_sql, -1, &stmt, NULL) == SQLITE_OK) {
     sqlite3_bind_int64(stmt, 1, (sqlite3_int64)cutoff_time);
@@ -871,7 +886,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
   }
 
   // Delete inactive sessions (CASCADE deletes participants)
-  const char *del_sql = "DELETE FROM sessions WHERE last_activity_at < ?";
+  const char *del_sql = database_queries[QUERY_DeleteExpiredSessions].sql;
   if (sqlite3_prepare_v2(db, del_sql, -1, &stmt, NULL) == SQLITE_OK) {
     sqlite3_bind_int64(stmt, 1, (sqlite3_int64)cutoff_time);
     sqlite3_step(stmt);
@@ -895,14 +910,7 @@ asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t sessio
   bool migrating = database_session_is_migration_ready(db, session_id, 0);
   uint64_t now = database_get_current_time_ms();
 
-  const char *sql = "UPDATE sessions SET "
-                    "host_established = 1, in_migration = 0, migration_start_ns = 0, "
-                    "host_participant_id = ?, "
-                    "host_address = ?, "
-                    "host_port = ?, "
-                    "host_connection_type = ?, "
-                    "last_activity_at = ? "
-                    "WHERE session_id = ?";
+  const char *sql = database_queries[QUERY_UpdateHost].sql;
 
   sqlite3_stmt *stmt = NULL;
   int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -942,13 +950,7 @@ asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session
     return SET_ERRNO(ERROR_INVALID_PARAM, "db or session_id is NULL");
   }
 
-  const char *sql = "UPDATE sessions SET "
-                    "host_established = 0, "
-                    "host_participant_id = NULL, "
-                    "host_address = NULL, "
-                    "host_port = 0, "
-                    "host_connection_type = 0 "
-                    "WHERE session_id = ?";
+  const char *sql = database_queries[QUERY_ClearHost].sql;
 
   sqlite3_stmt *stmt = NULL;
   int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -982,10 +984,7 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
 
   uint64_t now_ns = time_get_realtime_ns();
 
-  const char *sql = "UPDATE sessions SET "
-                    "in_migration = 1, "
-                    "migration_start_ns = ? "
-                    "WHERE session_id = ?";
+  const char *sql = database_queries[QUERY_StartMigration].sql;
 
   sqlite3_stmt *stmt = NULL;
   int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -1020,7 +1019,7 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[1
   }
 
   uint64_t now_ns = time_get_realtime_ns();
-  const char *sql = "SELECT in_migration, migration_start_ns FROM sessions WHERE session_id = ?";
+  const char *sql = database_queries[QUERY_GetMigrationState].sql;
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -1059,8 +1058,7 @@ asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_stri
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for add_key");
   }
 
-  const char *sql = "INSERT OR IGNORE INTO session_keys (session_string, identity_pubkey, key_version, added_at) "
-                    "VALUES (?, ?, ?, ?)";
+  const char *sql = database_queries[QUERY_AddSessionKey].sql;
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -1089,7 +1087,7 @@ asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_s
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for revoke_key");
   }
 
-  const char *sql = "UPDATE session_keys SET revoked = 1 WHERE session_string = ? AND identity_pubkey = ?";
+  const char *sql = database_queries[QUERY_RevokeSessionKey].sql;
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -1115,7 +1113,7 @@ bool database_session_verify_key(sqlite3 *db, const char *session_string, const 
     return false;
   }
 
-  const char *sql = "SELECT 1 FROM session_keys WHERE session_string = ? AND identity_pubkey = ? AND revoked = 0";
+  const char *sql = database_queries[QUERY_VerifySessionKey].sql;
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -1137,8 +1135,7 @@ asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_str
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for get_keys");
   }
 
-  const char *sql = "SELECT identity_pubkey FROM session_keys WHERE session_string = ? AND revoked = 0 "
-                    "ORDER BY key_version ASC";
+  const char *sql = database_queries[QUERY_GetSessionKeys].sql;
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -1172,7 +1169,7 @@ asciichat_error_t database_stats_session_count(sqlite3 *db, int64_t *count_out) 
     return SET_ERRNO(ERROR_INVALID_PARAM, "db or count_out is NULL");
   }
 
-  const char *query = "SELECT COUNT(*) FROM sessions WHERE expires_at > ?";
+  const char *query = database_queries[QUERY_CountSessions].sql;
   sqlite3_stmt *stmt;
   int rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
@@ -1203,7 +1200,7 @@ asciichat_error_t database_stats_unique_clients(sqlite3 *db, int64_t *count_out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "db or count_out is NULL");
   }
 
-  const char *query = "SELECT COUNT(DISTINCT participant_id) FROM participants";
+  const char *query = database_queries[QUERY_CountUniqueClients].sql;
   sqlite3_stmt *stmt;
   int rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
@@ -1228,13 +1225,13 @@ asciichat_error_t database_stats_unique_clients(sqlite3 *db, int64_t *count_out)
 
 asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t *rows, size_t capacity,
                                           size_t *row_count, uint64_t *sessions, uint64_t *participants) {
+  ASCII_OTEL_SCOPE(DATABASE_STATS_SNAPSHOT);
   if (!db || (!rows && capacity) || !row_count || !sessions || !participants)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid database stats snapshot");
   *row_count = 0;
   *sessions = *participants = 0;
   sqlite3_stmt *stmt = NULL;
-  const char *sql = "SELECT session_string,current_participants,host_established,in_migration "
-                    "FROM sessions WHERE expires_at > ? ORDER BY session_string";
+  const char *sql = database_queries[QUERY_GetStatsSnapshot].sql;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK)
     return SET_ERRNO(ERROR_CONFIG, "Cannot query active session statistics");
   sqlite3_bind_int64(stmt, 1, (sqlite3_int64)(time_get_realtime_ns() / NS_PER_MS_INT));

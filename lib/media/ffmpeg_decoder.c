@@ -3,6 +3,7 @@
  * @brief FFmpeg-based media decoder implementation
  */
 
+#include <ascii-chat/otel.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/atomic.h>
@@ -670,6 +671,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
 }
 
 ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*cancel)(void *), void *data) {
+  ASCII_OTEL_SCOPE(FFMPEG_DECODER_CREATE_INTERRUPTIBLE);
   if (!path) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Path is NULL");
     return NULL;
@@ -916,6 +918,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
 }
 
 ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
+  ASCII_OTEL_SCOPE(FFMPEG_DECODER_CREATE_STDIN);
   // Buffer entire stdin on first call (shared between video and audio decoders)
   if (!g_stdin_buffer) {
     log_debug("Reading stdin into buffer...");
@@ -1172,6 +1175,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
 }
 
 void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
+  ASCII_OTEL_SCOPE(FFMPEG_DECODER_DESTROY);
   if (!decoder) {
     return;
   }
@@ -1264,6 +1268,7 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
 
 ffmpeg_frame_status_t ffmpeg_decoder_poll_video(ffmpeg_decoder_t *decoder, image_t **frame,
                                                 asciichat_error_context_t *failure) {
+  ASCII_OTEL_SCOPE(FFMPEG_DECODER_POLL_VIDEO);
   if (frame)
     *frame = NULL;
   if (failure)
@@ -1309,6 +1314,7 @@ ffmpeg_frame_status_t ffmpeg_decoder_poll_video(ffmpeg_decoder_t *decoder, image
 }
 
 image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
+  ASCII_OTEL_SCOPE(FFMPEG_DECODER_READ_VIDEO_FRAME);
   image_t *frame = NULL;
   asciichat_error_context_t failure = {0};
   if (ffmpeg_decoder_poll_video(decoder, &frame, &failure) == FFMPEG_FRAME_FAILED)
@@ -1433,6 +1439,7 @@ double ffmpeg_decoder_get_video_fps(ffmpeg_decoder_t *decoder) {
  * ============================================================================ */
 
 size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffer, size_t num_samples) {
+  ASCII_OTEL_SCOPE(FFMPEG_DECODER_READ_AUDIO_SAMPLES);
   if (!decoder || decoder->audio_stream_idx < 0 || !buffer || num_samples == 0) {
     return 0;
   }
@@ -1565,6 +1572,7 @@ asciichat_error_t ffmpeg_decoder_rewind(ffmpeg_decoder_t *decoder) {
 }
 
 asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, double timestamp_sec) {
+  ASCII_OTEL_SCOPE(FFMPEG_DECODER_SEEK_TO_TIMESTAMP);
   if (!decoder) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing decoder for seek");
   }

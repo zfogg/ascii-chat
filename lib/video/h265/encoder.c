@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /**
  * @file video/h265/encoder.c
@@ -56,6 +57,7 @@ typedef struct h265_encoder {
 } h265_encoder_t;
 
 h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_height) {
+  ASCII_OTEL_SCOPE(H265_ENCODER_CREATE);
   return video_encoder_create(VIDEO_CODEC_H265, initial_width, initial_height);
 }
 
@@ -239,6 +241,7 @@ static asciichat_error_t h265_encoder_open_codec(h265_encoder_t *encoder, uint16
 }
 
 static asciichat_error_t h265_encoder_reconfigure(h265_encoder_t *encoder, uint16_t new_width, uint16_t new_height) {
+  ASCII_OTEL_SCOPE(H265_ENCODER_RECONFIGURE);
   if (encoder->codec_opened && encoder->current_width == new_width && encoder->current_height == new_height) {
     return ASCIICHAT_OK;
   }
@@ -291,6 +294,7 @@ static void h265_encoder_ascii_to_yuv420(const uint8_t *rgb_data, uint16_t width
 
 asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *ascii_data,
                               uint8_t *output_buf, size_t *output_size) {
+  ASCII_OTEL_SCOPE(H265_ENCODE);
   if (!encoder || !ascii_data || !output_buf || !output_size) {
     return SET_ERRNO(ERROR_INTERNAL, "Invalid encoder arguments");
   }
@@ -399,6 +403,7 @@ void h265_encoder_request_keyframe(h265_encoder_t *encoder) {
 }
 
 asciichat_error_t h265_encoder_flush(h265_encoder_t *encoder, uint8_t *output_buf, size_t *output_size) {
+  ASCII_OTEL_SCOPE(H265_ENCODER_FLUSH);
   if (!encoder || !output_buf || !output_size) {
     return SET_ERRNO(ERROR_INTERNAL, "Invalid encoder or output parameters for flush");
   }

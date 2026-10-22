@@ -1,0 +1,62 @@
+/* Named immutable SQL templates shared by SQLite and telemetry. */
+DATABASE_QUERY(CreateSession, "INSERT INTO sessions "
+                    "(session_string, session_id, host_pubkey, password_hash, max_participants, "
+                    "current_participants, capabilities, has_password, expose_ip_publicly, "
+                    "session_type, server_address, server_port, created_at, expires_at, last_activity_at) "
+                    "VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+DATABASE_QUERY(LookupSession, "SELECT session_string, session_id, host_pubkey, password_hash, "
+                    "max_participants, current_participants, capabilities, has_password, "
+                    "expose_ip_publicly, session_type, server_address, server_port, "
+                    "created_at, expires_at, last_activity_at FROM sessions WHERE session_string = ?")
+DATABASE_QUERY(InsertParticipant, "INSERT INTO participants (participant_id, session_string, identity_pubkey, joined_at) "
+                           "VALUES (?, ?, ?, ?)")
+DATABASE_QUERY(IncrementParticipants, "UPDATE sessions SET current_participants = current_participants + 1, "
+                           "last_activity_at = ? WHERE session_string = ?")
+DATABASE_QUERY(SetSessionInitiator, "UPDATE sessions SET initiator_id = ? WHERE session_string = ?")
+DATABASE_QUERY(LookupSessionString, "SELECT session_string FROM sessions WHERE session_id = ?")
+DATABASE_QUERY(DeleteParticipant, "DELETE FROM participants WHERE participant_id = ? AND session_string = ?")
+DATABASE_QUERY(DecrementParticipants, "UPDATE sessions SET current_participants = current_participants - 1, "
+                           "last_activity_at = ? WHERE session_string = ? AND current_participants > 0")
+DATABASE_QUERY(GetParticipantCount, "SELECT current_participants FROM sessions WHERE session_string = ?")
+DATABASE_QUERY(DeleteSession, "DELETE FROM sessions WHERE session_string = ?")
+DATABASE_QUERY(FindExpiredSessions, "SELECT session_string, last_activity_at FROM sessions WHERE last_activity_at < ?")
+DATABASE_QUERY(DeleteExpiredSessions, "DELETE FROM sessions WHERE last_activity_at < ?")
+DATABASE_QUERY(UpdateHost, "UPDATE sessions SET "
+                    "host_established = 1, in_migration = 0, migration_start_ns = 0, "
+                    "host_participant_id = ?, "
+                    "host_address = ?, "
+                    "host_port = ?, "
+                    "host_connection_type = ?, "
+                    "last_activity_at = ? "
+                    "WHERE session_id = ?")
+DATABASE_QUERY(ClearHost, "UPDATE sessions SET "
+                    "host_established = 0, "
+                    "host_participant_id = NULL, "
+                    "host_address = NULL, "
+                    "host_port = 0, "
+                    "host_connection_type = 0 "
+                    "WHERE session_id = ?")
+DATABASE_QUERY(StartMigration, "UPDATE sessions SET "
+                    "in_migration = 1, "
+                    "migration_start_ns = ? "
+                    "WHERE session_id = ?")
+DATABASE_QUERY(GetMigrationState, "SELECT in_migration, migration_start_ns FROM sessions WHERE session_id = ?")
+DATABASE_QUERY(AddSessionKey, "INSERT OR IGNORE INTO session_keys (session_string, identity_pubkey, key_version, added_at) "
+                    "VALUES (?, ?, ?, ?)")
+DATABASE_QUERY(RevokeSessionKey, "UPDATE session_keys SET revoked = 1 WHERE session_string = ? AND identity_pubkey = ?")
+DATABASE_QUERY(VerifySessionKey, "SELECT 1 FROM session_keys WHERE session_string = ? AND identity_pubkey = ? AND revoked = 0")
+DATABASE_QUERY(GetSessionKeys, "SELECT identity_pubkey FROM session_keys WHERE session_string = ? AND revoked = 0 "
+                    "ORDER BY key_version ASC")
+DATABASE_QUERY(GetStatsSnapshot, "SELECT session_string,current_participants,host_established,in_migration "
+                    "FROM sessions WHERE expires_at > ? ORDER BY session_string")
+DATABASE_QUERY(GetSessionParticipants, "SELECT participant_id, identity_pubkey, joined_at "
+                           "FROM participants WHERE session_string = ?")
+DATABASE_QUERY(GetSessionById, SELECT_SESSION_BASE " WHERE session_id = ?")
+DATABASE_QUERY(GetSessionByString, SELECT_SESSION_BASE " WHERE session_string = ?")
+DATABASE_QUERY(CountSessions, "SELECT COUNT(*) FROM sessions WHERE expires_at > ?")
+DATABASE_QUERY(CountUniqueClients, "SELECT COUNT(DISTINCT participant_id) FROM participants")
+DATABASE_QUERY(BeginTransaction, "BEGIN IMMEDIATE;")
+DATABASE_QUERY(CommitTransaction, "COMMIT;")
+DATABASE_QUERY(RollbackTransaction, "ROLLBACK;")
+DATABASE_QUERY(EnableWAL, "PRAGMA journal_mode=WAL;")
+DATABASE_QUERY(EnableForeignKeys, "PRAGMA foreign_keys=ON;")

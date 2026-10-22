@@ -4,6 +4,7 @@
  * @ingroup audio
  */
 
+#include <ascii-chat/otel.h>
 #include <ascii-chat/audio/opus.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -114,6 +115,7 @@ opus_codec_t *opus_codec_create_decoder(int sample_rate) {
 
 size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samples, uint8_t *out_data,
                          size_t out_size) {
+  ASCII_OTEL_SCOPE(OPUS_CODEC_ENCODE);
   if (!codec || !codec->encoder || !samples || num_samples <= 0 || !out_data || out_size == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM,
               "Invalid encode parameters: codec=%p, encoder=%p, samples=%p, num_samples=%d, out_data=%p, "
@@ -145,6 +147,7 @@ size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samp
 
 int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len, float *out_samples,
                       int out_num_samples) {
+  ASCII_OTEL_SCOPE(OPUS_CODEC_DECODE);
   if (!codec || !codec->decoder || !out_samples || out_num_samples <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM,
               "Invalid decode parameters: codec=%p, decoder=%p, out_samples=%p, out_num_samples=%d", (void *)codec,
@@ -179,6 +182,7 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
  * ============================================================================ */
 
 asciichat_error_t opus_codec_set_bitrate(opus_codec_t *codec, int bitrate) {
+  ASCII_OTEL_SCOPE(OPUS_CODEC_SET_BITRATE);
   if (!codec || !codec->encoder || bitrate <= 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid bitrate parameters: codec=%p, encoder=%p, bitrate=%d", (void *)codec,
                      (void *)(codec ? codec->encoder : NULL), bitrate);

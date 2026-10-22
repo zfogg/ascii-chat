@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/debug/errno.h>
 #include <ascii-chat/stats/runtime.h>
@@ -1049,11 +1050,22 @@ int main(int argc, char *argv[]) {
   asciichat_error_t stats_result = stats_runtime_start(mode->name, (unsigned)GET_OPTION(stats_interval));
   if (stats_result != ASCIICHAT_OK)
     return stats_result;
+#ifdef ASCIICHAT_WITH_OTEL
+  asciichat_error_t otel_result = ascii_otel_init(mode->name, argc, argv);
+  if (otel_result != ASCIICHAT_OK) {
+    log_error("Telemetry configuration failed %s", asciichat_error_format(NULL, otel_result));
+    return otel_result;
+  }
+#endif
   int exit_code = mode->entry_point();
   asciichat_error_t requested_exit = errno_exit_code();
   if (requested_exit != ASCIICHAT_OK)
     exit_code = requested_exit;
   stats_runtime_stop();
+#ifdef ASCIICHAT_WITH_OTEL
+  ascii_otel_exit(exit_code);
+  ascii_otel_shutdown();
+#endif
 
   // Named registry cleanup is handled by asciichat_shared_destroy()
   // (called via atexit handler), which runs AFTER the memory report

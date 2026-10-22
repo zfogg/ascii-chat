@@ -3,12 +3,14 @@
  * @brief DNS resolution utilities implementation
  */
 
+#include <ascii-chat/otel.h>
 #include <ascii-chat/network/dns.h>
 #include <ascii-chat/platform/network.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 
 bool dns_test_connectivity(const char *hostname) {
+  ASCII_OTEL_SCOPE(DNS_TEST_CONNECTIVITY);
   if (!hostname) {
     log_warn("NULL hostname provided to DNS connectivity test");
     return false;

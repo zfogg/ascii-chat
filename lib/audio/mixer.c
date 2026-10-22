@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/buffer.h>
 /**
  * @file mixer.c
@@ -170,6 +171,7 @@ void ducking_process_frame(ducking_t *duck, float *envelopes, float *gains, int 
 
 // Mixer implementation
 mixer_t *mixer_create(int max_sources, int sample_rate) {
+  ASCII_OTEL_SCOPE(MIXER_CREATE);
   // Validate parameters
   if (max_sources <= 0 || max_sources > MIXER_MAX_SOURCES) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_sources: %d (must be 1-%d)", max_sources, MIXER_MAX_SOURCES);
@@ -349,6 +351,7 @@ void mixer_destroy(mixer_t *mixer) {
 }
 
 int mixer_add_source(mixer_t *mixer, const char *client_id, audio_ring_buffer_t *buffer) {
+  ASCII_OTEL_SCOPE(MIXER_ADD_SOURCE);
   if (!mixer || !buffer)
     return -1;
 
@@ -408,6 +411,7 @@ int mixer_add_source(mixer_t *mixer, const char *client_id, audio_ring_buffer_t 
 }
 
 void mixer_remove_source(mixer_t *mixer, const char *client_id) {
+  ASCII_OTEL_SCOPE(MIXER_REMOVE_SOURCE);
   if (!mixer)
     return;
 
@@ -474,6 +478,7 @@ void mixer_set_source_active(mixer_t *mixer, const char *client_id, bool active)
 }
 
 int mixer_process(mixer_t *mixer, float *output, int num_samples) {
+  ASCII_OTEL_SCOPE(MIXER_PROCESS);
   if (!mixer || !output || num_samples <= 0)
     return -1;
 
@@ -620,6 +625,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
 }
 
 int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_samples, uint32_t exclude_client_id) {
+  ASCII_OTEL_SCOPE(MIXER_PROCESS_EXCLUDING_SOURCE);
   if (!mixer || !output || num_samples <= 0) {
     return -1;
   }
