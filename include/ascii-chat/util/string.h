@@ -249,7 +249,7 @@ bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer
  * @param text The text to color
  * @return Colored string with ANSI codes, or plain text if colors disabled
  *
- * @note The returned pointer points to a static rotating buffer.
+ * @note The returned pointer points to a thread-local rotating buffer.
  *       Use or copy the result before calling colored_string() again in tight loops.
  * @note Color codes are applied based on log_level_color() from logging subsystem.
  *

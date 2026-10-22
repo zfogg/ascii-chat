@@ -171,6 +171,29 @@ def free_port():
         return sock.getsockname()[1]
 
 
+def check_update_centering(term, title):
+    lines = term.screen.display
+    border_row = next(row for row, line in enumerate(lines) if "┌" in line)
+    border = lines[border_row]
+    left, right = border.index("┌"), border.rindex("┐")
+    assert abs(left - (term.screen.columns - right - 1)) <= 1, "Update box is not horizontally centered"
+    bottom = max(row for row, line in enumerate(lines) if "└" in line)
+    assert abs(border_row - (term.screen.lines - bottom - 1)) <= 1, "Update box is not vertically centered"
+    title_line = next(line for line in lines if title in line)
+    start = title_line.index(title)
+    assert abs((start - left) - (right - start - len(title) + 1)) <= 1, "Update title is not centered"
+
+
+def check_update_selection(term, label, selected=True):
+    row, line = next((row, line) for row, line in enumerate(term.screen.display) if label in line)
+    start = line.index(label)
+    cells = [term.screen.buffer[row][col] for col in range(start, start + len(label))]
+    assert all(cell.reverse == selected for cell in cells), f"Incorrect inverse selection for {label}"
+    if selected:
+        assert all(cell.fg != "default" for cell in cells), f"Selected button {label} has no palette accent color"
+        assert all(cell.bg == "black" for cell in cells), f"Selected button {label} inherits its text color from the terminal theme"
+
+
 def main():
     check_capture_emulator()
     parser = argparse.ArgumentParser(description=__doc__)
@@ -213,6 +236,8 @@ def main():
         def video(term):
             return term.expect(lambda text: "Terminal too small" not in text
                                and "Keyboard Shortcuts" not in text
+                               and "Video chat in your terminal" not in text
+                               and "Update now" not in text
                                and len(text.strip()) > 100,
                                "Expected the media screen")
 
@@ -311,15 +336,21 @@ def main():
 
             if args.debug_updates:
                 update_command = ["mirror", "--file", str(media), "--loop", "--splash-screen=true",
-                                  "--audio=false", "--color-mode", "none"]
+                                  "--audio=false", "--color-mode", "truecolor"]
                 update_env = {
                     "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v99.0.0",
                     "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "update-cache"),
                 }
                 startup = terminal("startup-update", update_command, check_updates=True,
-                                   environment=update_env, rows=40, cols=100)
-                startup.expect(lambda text: "Update Available" in text,
+                                   environment={**update_env, "ASCII_CHAT_TEST_UPDATE_SLOW": "1"}, rows=40, cols=100)
+                startup.expect(lambda text: "Update available" in text,
                                "An older build did not show the startup update prompt")
+                check_update_centering(startup, "Update available")
+                check_update_selection(startup, "Update now")
+                startup.write("\x1b[C\x1b[C")
+                startup.pump(.3)
+                check_update_selection(startup, "Continue")
+                check_update_selection(startup, "Update now", selected=False)
                 # The prompt may replace a short-lived splash between samples.
                 assert "[ ok ]" in "".join(startup.raw), "Startup did not render compact initialization logs"
                 startup.write("n")
@@ -330,6 +361,16 @@ def main():
                 startup.write("\x1b[24~")
                 startup.expect(lambda text: "Update available" in text,
                                "F12 did not recheck the dismissed release")
+                check_update_centering(startup, "Update available")
+                check_update_selection(startup, "Update now")
+                startup.write("\t\t")
+                startup.pump(.3)
+                check_update_selection(startup, "Close")
+                startup.resize(24, 40)
+                startup.pump(.3)
+                check_update_centering(startup, "Update available")
+                startup.resize(40, 100)
+                startup.pump(.3)
                 startup.write("\x1b")
                 finish(startup)
 
@@ -340,7 +381,7 @@ def main():
                 # hand-off a bounded moment and then prove this version's dismissal
                 # still suppresses the startup modal.
                 dismissed_media = dismissed.pump(0.5) or dismissed_media
-                assert "Update Available" not in dismissed_media, (
+                assert "Update now" not in dismissed_media, (
                     "Weekly dismissal did not suppress the repeated startup update prompt"
                 )
                 finish(dismissed)
@@ -348,13 +389,13 @@ def main():
                 handoff = terminal("startup-f12", update_command, check_updates=True,
                                    environment={**update_env, "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "handoff-cache")},
                                    rows=40, cols=100)
-                handoff.expect(lambda text: "Update Available" in text,
+                handoff.expect(lambda text: "Update available" in text,
                                "F12 handoff did not reach the startup prompt")
                 handoff.write("\x1b[24~")
-                handoff.expect(lambda text: "Update available" in text,
+                handoff.expect(lambda text: "Check again" in text,
                                "F12 did not replace the startup prompt")
                 handoff.write("\x1b")
-                handoff.expect(lambda text: "Update available" not in text and "Update Available" not in text,
+                handoff.expect(lambda text: "Update available" not in text,
                                "Startup remained blocked after closing the F12 overlay")
                 handoff.pump(0.5)
                 finish(handoff)
@@ -374,6 +415,24 @@ def main():
                 failed.pump(0.5)
                 finish(failed)
 
+                current = terminal("current-update", update_command[:-2] + ["--color-mode", "truecolor"],
+                                   environment={**update_env, "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v0.0.0"},
+                                   rows=28, cols=80)
+                current.pump(.5)
+                current.write("\x1b[24~")
+                current.expect(lambda text: "You're up to date" in text,
+                               "Current release did not show the up-to-date dialog")
+                check_update_centering(current, "You're up to date")
+                check_update_selection(current, "Close")
+                current.write("\t")
+                current.pump(.3)
+                check_update_selection(current, "Check again")
+                current.write("\x1b[D\r")
+                current.expect(lambda text: "You're up to date" not in text,
+                               "Enter did not activate the selected Close button")
+                current.pump(.5)
+                finish(current)
+
                 marker = root / "updated marker"
                 update_command_env = {
                     "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v99.0.0",
@@ -384,7 +443,7 @@ def main():
                 }
                 updater = terminal("run-update", update_command, check_updates=True,
                                    environment=update_command_env, rows=40, cols=100)
-                updater.expect(lambda text: "Update Available" in text,
+                updater.expect(lambda text: "Update available" in text,
                                "Updater scenario did not reach the update prompt")
                 updater.write("\r")
                 updater.expect(lambda text: "Run ascii-chat again" in text,

@@ -307,6 +307,9 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
   const char *test_latest = SAFE_GETENV("ASCII_CHAT_TEST_UPDATE_LATEST_VERSION");
   if (test_latest && test_latest[0]) {
     SAFE_STRNCPY(result->latest_version, test_latest, sizeof(result->latest_version));
+    const char *test_slow = SAFE_GETENV("ASCII_CHAT_TEST_UPDATE_SLOW");
+    if (test_slow && strcmp(test_slow, "1") == 0)
+      platform_sleep_ms(1000);
     SAFE_STRNCPY(result->release_url, "https://github.com/zfogg/ascii-chat/releases/latest",
                  sizeof(result->release_url));
     result->check_succeeded = true;

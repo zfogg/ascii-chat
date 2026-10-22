@@ -12,7 +12,6 @@
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/frame_buffer.h>
-#include <ascii-chat/ui/overlay_box.h>
 #include <ascii-chat/ui/update_banner.h>
 #include <ascii-chat/ui/splash.h>
 #include "session/display.h"
@@ -44,6 +43,8 @@ static bool g_update_checking = false;
 static bool g_update_finished = false;
 static _Atomic bool g_update_overlay = false;
 static _Atomic bool g_update_install_failed = false;
+static _Atomic int g_update_selected_action = 0;
+static void update_banner_open_release(void);
 
 static bool update_banner_copy_result(update_check_result_t *result) {
   if (!result || !lifecycle_is_initialized(&g_update_result_lifecycle)) {
@@ -79,282 +80,181 @@ bool update_banner_has_update(void) {
   return update_banner_copy_result(&result) && result.update_available;
 }
 
-// Build a box line: "║  <content><padding>║"
-// Content may contain ANSI escape sequences — truncate_with_ellipsis handles them.
-static void build_box_line(char *output, size_t output_size, const char *content, int box_width) {
-  if (!output || output_size < 256 || !content || box_width < 6) {
-    return;
-  }
-
-  int content_available = box_width - 4; // "║  " + "║"
-  if (content_available < 1) {
-    content_available = 1;
-  }
-
-  char truncated[512];
-  truncate_with_ellipsis(content, truncated, sizeof(truncated), content_available);
-
-  int content_width = display_width(truncated);
-  int padding = content_available - content_width;
-  if (padding < 0) {
-    padding = 0;
-  }
-
-  char *pos = output;
-  int remaining = (int)output_size;
-
-  int n = snprintf(pos, remaining, "║  %s", truncated);
-  if (n > 0) {
-    pos += n;
-    remaining -= n;
-  }
-
-  for (int i = 0; i < padding && remaining > 1; i++) {
-    *pos++ = ' ';
-    remaining--;
-  }
-
-  if (remaining > 3) {
-    snprintf(pos, remaining, "║");
-  }
+static void update_center_line(frame_buffer_t *out, int row, int left, int width, const char *text, log_color_t color) {
+  char clipped[1024];
+  truncate_with_ellipsis(text, clipped, sizeof(clipped), width);
+  int padding = (width - display_width(clipped)) / 2;
+  frame_buffer_printf(out, "\033[%d;%dH%s", row, left + padding, colored_string(color, clipped));
 }
 
-// Append a positioned box line to the buffer
-static void append_line(char *buffer, size_t *buf_pos, size_t buf_size, int start_row, int *current_row, int start_col,
-                        int box_width, const char *content) {
-  if (!buffer || *buf_pos >= buf_size || !content) {
-    return;
-  }
-
-  char line_buf[256];
-  int written =
-      snprintf(buffer + *buf_pos, buf_size - *buf_pos, "\033[%d;%dH", start_row + *current_row, start_col + 1);
-  if (written > 0) {
-    *buf_pos += (size_t)written;
-  }
-
-  build_box_line(line_buf, sizeof(line_buf), content, box_width);
-  written = snprintf(buffer + *buf_pos, buf_size - *buf_pos, "%s", line_buf);
-  if (written > 0) {
-    *buf_pos += (size_t)written;
-  }
-
-  (*current_row)++;
+static void update_border(frame_buffer_t *out, int row, int left, int width, const char *first, const char *horizontal,
+                          const char *last, log_color_t color) {
+  frame_buffer_printf(out, "\033[%d;%dH%s", row, left, colored_string(color, first));
+  int edges = (first[0] ? 1 : 0) + (last[0] ? 1 : 0);
+  const char *stroke = colored_string(color, horizontal);
+  for (int col = 0; col < width - edges; ++col)
+    frame_buffer_append(out, stroke, strlen(stroke));
+  frame_buffer_printf(out, "%s", colored_string(color, last));
 }
 
-// Build a horizontal border line (top: ╔═╗, middle: ╠═╣, bottom: ╚═╝)
-static void append_border(char *buffer, size_t *buf_pos, size_t buf_size, int start_row, int *current_row,
-                          int start_col, int box_width, const char *left, const char *right) {
-  if (!buffer || *buf_pos >= buf_size) {
+static int update_action_count(bool startup, bool checking, bool available) {
+  return startup ? 3 : checking ? 1 : available ? 4 : 2;
+}
+
+static bool update_select_key(int key, int count) {
+  int direction = key == KEY_LEFT || key == KEY_UP ? -1 : key == KEY_RIGHT || key == KEY_DOWN || key == '\t' ? 1 : 0;
+  if (!direction)
+    return false;
+  int selected = atomic_load(&g_update_selected_action);
+  atomic_store(&g_update_selected_action, (selected + direction + count) % count);
+  ui_controller_redraw();
+  return true;
+}
+
+static void render_update_dialog(terminal_size_t size, const update_check_result_t *result, bool startup,
+                                 bool checking) {
+  bool available = !checking && result->update_available;
+  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(STDOUT_FILENO);
+  bool unicode = GET_OPTION(force_utf8) == UTF8_SETTING_TRUE ||
+                 (GET_OPTION(force_utf8) == UTF8_SETTING_AUTO && terminal_supports_utf8());
+  log_color_t cyan = LOG_COLOR_DEBUG;
+  log_color_t magenta = LOG_COLOR_FATAL;
+  log_color_t muted = LOG_COLOR_GREY;
+  log_color_t green = LOG_COLOR_INFO;
+  log_color_t yellow = LOG_COLOR_WARN;
+  const char *horizontal = unicode ? "─" : "-";
+  const char *vertical = unicode ? "│" : "|";
+  const char *labels[4] = {0};
+  int count = update_action_count(startup, checking, available);
+  if (startup) {
+    labels[0] = " Enter  Update now ";
+    labels[1] = " O  GitHub ";
+    labels[2] = " Esc  Continue ";
+  } else if (available) {
+    labels[0] = " Enter  Update now ";
+    labels[1] = " O  GitHub ";
+    labels[2] = " Esc  Close ";
+    labels[3] = " R  Check again ";
+  } else {
+    labels[0] = " Esc  Close ";
+    labels[1] = " R  Check again ";
+  }
+  int buttons_width = (count - 1) * 3;
+  for (int i = 0; i < count; ++i)
+    buttons_width += display_width(labels[i]);
+  int width = size.cols - 4;
+  int preferred_width = available ? 78 : checking ? 62 : 58;
+  if (width > preferred_width)
+    width = preferred_width;
+  bool stacked = buttons_width > width - 6;
+  int height = (available ? 19 : 14) + (stacked ? count - 1 : 0);
+  bool failed = atomic_load(&g_update_install_failed);
+  bool failure_row = failed && height + 2 <= size.rows - 2;
+  if (failure_row)
+    height += 2;
+  if (width < 24 || height > size.rows - 2)
     return;
-  }
-
-  int written =
-      snprintf(buffer + *buf_pos, buf_size - *buf_pos, "\033[%d;%dH", start_row + *current_row, start_col + 1);
-  if (written > 0) {
-    *buf_pos += (size_t)written;
-  }
-
-  char border[256];
-  int bpos = 0;
-  int r = snprintf(border + bpos, sizeof(border) - bpos, "%s", left);
-  if (r > 0) {
-    bpos += r;
-  }
-  for (int i = 1; i < box_width - 1; i++) {
-    r = snprintf(border + bpos, sizeof(border) - bpos, "═");
-    if (r > 0) {
-      bpos += r;
+  int left = (size.cols - width) / 2 + 1;
+  int top = (size.rows - height) / 2 + 1;
+  frame_buffer_t *out = frame_buffer_create(size.rows, size.cols);
+  if (!out)
+    return;
+  frame_buffer_printf(out, "\033[0m\033[2J\033[H");
+  update_border(out, top, left, width, unicode ? "┌" : "+", horizontal, unicode ? "┐" : "+", cyan);
+  for (int row = 1; row < height - 1; ++row)
+    frame_buffer_printf(out, "\033[%d;%dH%s%*s%s", top + row, left, colored_string(cyan, vertical), width - 2, "",
+                        colored_string(cyan, vertical));
+  update_border(out, top + height - 1, left, width, unicode ? "└" : "+", horizontal, unicode ? "┘" : "+", cyan);
+  const char *title = checking                  ? "Check for updates"
+                      : available               ? "Update available"
+                      : result->check_succeeded ? "You're up to date"
+                                                : "Update check unavailable";
+  char heading[160];
+  snprintf(heading, sizeof(heading), "\033[1m%s", title);
+  update_center_line(out, top + 2, left + 2, width - 4, heading,
+                     checking                  ? cyan
+                     : available               ? yellow
+                     : result->check_succeeded ? green
+                                               : yellow);
+  if (checking) {
+    static const char spinner[] = "|/-\\";
+    char spin[2] = {spinner[(time_get_ns() / (150 * NS_PER_MS_INT)) % 4], 0};
+    update_center_line(out, top + 4, left + 2, width - 4, spin, yellow);
+    update_center_line(out, top + 6, left + 2, width - 4, "Contacting GitHub Releases...", LOG_COLOR_RESET);
+    update_center_line(out, top + 8, left + 2, width - 4, "Your chat and media keep running underneath", muted);
+  } else if (result->check_succeeded) {
+    char installed[160], latest[160];
+    snprintf(installed, sizeof(installed), "Installed  %s",
+             colored_string(available ? yellow : green, result->current_version));
+    snprintf(latest, sizeof(latest), "Latest     %s", colored_string(green, result->latest_version));
+    update_center_line(out, top + 4, left + 2, width - 4, installed, LOG_COLOR_RESET);
+    update_center_line(out, top + 5, left + 2, width - 4, latest, LOG_COLOR_RESET);
+    if (available) {
+      update_center_line(out, top + 6, left + 2, width - 4, "A new version of ascii-chat is available.", muted);
+      char command[512];
+      update_check_get_upgrade_suggestion(update_check_detect_install_method(), result->latest_version, command,
+                                          sizeof(command));
+      int command_width = display_width(command) + 6;
+      if (command_width > width - 6)
+        command_width = width - 6;
+      int command_left = left + (width - command_width) / 2;
+      update_border(out, top + 7, command_left, command_width, unicode ? "┌" : "+", horizontal, unicode ? "┐" : "+",
+                    cyan);
+      frame_buffer_printf(out, "\033[%d;%dH%s%*s%s", top + 8, command_left, colored_string(cyan, vertical),
+                          command_width - 2, "", colored_string(cyan, vertical));
+      update_center_line(out, top + 8, command_left + 2, command_width - 4, command, cyan);
+      update_border(out, top + 9, command_left, command_width, unicode ? "└" : "+", horizontal, unicode ? "┘" : "+",
+                    cyan);
+      update_center_line(out, top + 11, left + 2, width - 4,
+                         "Binaries for every OS with release notes in the GitHub release:", muted);
+      update_center_line(out, top + 12, left + 2, width - 4, result->release_url, cyan);
+    } else {
+      update_center_line(out, top + 7, left + 2, width - 4, "Checked just now", muted);
     }
+  } else {
+    update_center_line(out, top + 6, left + 2, width - 4, "No network result is available.", muted);
+    update_center_line(out, top + 7, left + 2, width - 4, "Press R to retry.", muted);
   }
-  snprintf(border + bpos, sizeof(border) - bpos, "%s", right);
-
-  written = snprintf(buffer + *buf_pos, buf_size - *buf_pos, "%s", border);
-  if (written > 0) {
-    *buf_pos += (size_t)written;
+  int button_row = top + (available ? 16 : 11);
+  if (failure_row) {
+    update_center_line(out, button_row - 2, left + 2, width - 4, "Update command failed. See the logs and retry.",
+                       yellow);
+    button_row += 2;
   }
-
-  (*current_row)++;
+  update_border(out, button_row - 2, left + 2, width - 4, "", horizontal, "", cyan);
+  int selected = atomic_load(&g_update_selected_action) % count;
+  int col = left + (width - buttons_width) / 2;
+  for (int i = 0; i < count; ++i) {
+    int label_width = display_width(labels[i]);
+    int button_col = stacked ? left + (width - label_width) / 2 : col;
+    char button[96];
+    snprintf(button, sizeof(button), "%s%s", i == selected ? (colors ? "\033[40;7m" : "\033[7m") : "", labels[i]);
+    frame_buffer_printf(out, "\033[%d;%dH%s\033[0m", button_row + (stacked ? i : 0), button_col,
+                        colored_string(magenta, button));
+    col += label_width + 3;
+  }
+  const char *hint = startup     ? "Y update  N continue  Tab / arrows select"
+                     : available ? "O open GitHub  F12 close  Tab / arrows select"
+                                 : "F12 close  Tab / arrows select";
+  if (failed && !failure_row)
+    hint = "Update command failed. See the logs and retry.";
+  update_center_line(out, top + height - 2, left + 2, width - 4, hint, muted);
+  ui_controller_write(STDOUT_FILENO, frame_buffer_get_content(out), frame_buffer_get_length(out));
+  frame_buffer_destroy(out);
 }
 
 static void render_update_prompt(terminal_size_t size, const void *data) {
-  update_check_result_t result = *(const update_check_result_t *)data;
-
-  // Get upgrade suggestion
-  install_method_t method = update_check_detect_install_method();
-  char suggestion[512];
-  update_check_get_upgrade_suggestion(method, result.latest_version, suggestion, sizeof(suggestion));
-
-  // Terminal dimensions
-  int term_width = size.cols;
-  int term_height = size.rows;
-
-  // Box sizing
-  int box_width = 52;
-  if (box_width > term_width - 2) {
-    box_width = term_width - 2;
-  }
-  if (box_width < 30) {
-    box_width = 30;
-  }
-
-  int box_height = 16;
-  int start_col = (term_width - box_width) / 2;
-  if (start_col < 0) {
-    start_col = 0;
-  }
-  int start_row = (term_height - box_height) / 2;
-  if (start_row < 0) {
-    start_row = 0;
-  }
-
-  // Build the screen
-  const size_t BUF_SIZE = 4096;
-  char *buffer = SAFE_MALLOC(BUF_SIZE, char *);
-  size_t buf_pos = 0;
-
-#define APPEND(fmt, ...)                                                                                               \
-  do {                                                                                                                 \
-    int _w = snprintf(buffer + buf_pos, BUF_SIZE - buf_pos, fmt, ##__VA_ARGS__);                                       \
-    if (_w > 0) {                                                                                                      \
-      buf_pos += (size_t)_w;                                                                                           \
-    }                                                                                                                  \
-  } while (0)
-
-  // Clear screen
-  APPEND("\033[2J\033[H");
-
-  int row = 1;
-
-  // Top border
-  append_border(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, "╔", "╗");
-
-  // Title (bold yellow)
-  {
-    char title_content[256];
-    snprintf(title_content, sizeof(title_content), "\033[1m%sUpdate Available\033[0m", log_level_color(LOG_COLOR_WARN));
-    append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, title_content);
-  }
-
-  // Separator
-  append_border(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, "╠", "╣");
-
-  // Blank line
-  append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, "");
-
-  // Current version
-  {
-    char line[256];
-    snprintf(line, sizeof(line), "Current : %s (%.8s)", result.current_version, result.current_sha);
-    append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
-  }
-
-  // Latest version (green)
-  {
-    char line[256];
-    snprintf(line, sizeof(line), "Latest  : %s%s\033[0m", log_level_color(LOG_COLOR_INFO), result.latest_version);
-    append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
-  }
-
-  // Exact release source on GitHub.
-  {
-    char line[512];
-    snprintf(line, sizeof(line), "Release : %s", result.release_url);
-    append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
-  }
-
-  // Blank line
-  append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, "");
-
-  // Separator
-  append_border(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, "╠", "╣");
-
-  // Upgrade instructions
-  append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, "To upgrade:");
-  append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, "");
-
-  // Upgrade command (bold white)
-  {
-    char line[256];
-    snprintf(line, sizeof(line), "  \033[1m%s\033[0m", suggestion);
-    append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
-  }
-
-  // Blank line
-  append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, "");
-
-  // Separator
-  append_border(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, "╠", "╣");
-
-  // Prompt (grey)
-  {
-    char line[256];
-    snprintf(line, sizeof(line), "%s[Y] update [N] continue\033[0m", log_level_color(LOG_COLOR_GREY));
-    append_line(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, line);
-  }
-
-  // Bottom border
-  append_border(buffer, &buf_pos, BUF_SIZE, start_row, &row, start_col, box_width, "╚", "╝");
-
-#undef APPEND
-
-  // Write to terminal
-  ui_controller_write(STDOUT_FILENO, buffer, buf_pos);
-  terminal_flush(STDOUT_FILENO);
-  SAFE_FREE(buffer);
+  render_update_dialog(size, data, true, false);
 }
 
 static void render_update_overlay(terminal_size_t size, const void *data) {
   (void)data;
-  update_check_result_t result = {0};
-  bool checking;
+  update_check_result_t result;
   mutex_lock(&g_update_result_mutex);
   result = g_update_result;
-  checking = g_update_checking;
+  bool checking = g_update_checking;
   mutex_unlock(&g_update_result_mutex);
-  const char *title = checking                  ? "Check for updates"
-                      : result.update_available ? "Update available"
-                      : result.check_succeeded  ? "You're up to date"
-                                                : "Update check unavailable";
-  char command[512] = {0};
-  if (result.update_available)
-    update_check_get_upgrade_suggestion(update_check_detect_install_method(), result.latest_version, command,
-                                        sizeof(command));
-  char installed[128] = {0}, latest[128] = {0}, checking_line[64] = {0};
-  const char *lines[6] = {0};
-  size_t line_count = 0;
-  if (checking) {
-    static const char spin[] = "|/-\\";
-    snprintf(checking_line, sizeof(checking_line), "%c  Checking for updates...",
-             spin[(time_get_ns() / (150 * NS_PER_MS_INT)) % 4]);
-    lines[line_count++] = checking_line;
-  } else if (result.check_succeeded) {
-    snprintf(installed, sizeof(installed), "Installed  %s", result.current_version);
-    snprintf(latest, sizeof(latest), "Latest     %s", result.latest_version);
-    lines[line_count++] = installed;
-    lines[line_count++] = latest;
-    if (result.update_available) {
-      lines[line_count++] = command;
-      lines[line_count++] = "Binaries for every OS with release notes in the GitHub release:";
-      lines[line_count++] = result.release_url;
-    } else {
-      lines[line_count++] = "Checked just now";
-    }
-  } else {
-    lines[line_count++] = "No network result is available. Press R to retry.";
-  }
-  if (g_update_install_failed)
-    lines[line_count++] = "Update command failed. See the logs and retry, or close to continue.";
-  const char *footer =
-      result.update_available ? "Enter update now  O open GitHub  R retry  F12/Esc close" : "R retry  F12/Esc close";
-  frame_buffer_t *out = frame_buffer_create((size_t)size.rows, (size_t)size.cols);
-  if (!out)
-    return;
-  ui_overlay_box_t box = {
-      .title = title, .lines = lines, .line_count = line_count, .footer = footer, .minimum_width = 66};
-  (void)ui_overlay_box_render(out, size, &box);
-  ui_controller_write(STDOUT_FILENO, frame_buffer_get_content(out), frame_buffer_get_length(out));
-  frame_buffer_destroy(out);
+  render_update_dialog(size, &result, false, checking);
 }
 
 bool update_banner_show_prompt(session_display_ctx_t *ctx) {
@@ -367,7 +267,8 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
   if (update_check_is_dismissed(&result)) {
     return false;
   }
-  if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 32, .rows = 16},
+  atomic_store(&g_update_selected_action, 0);
+  if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 32, .rows = 23},
                            render_update_prompt, &result, sizeof(result)) != ASCIICHAT_OK)
     return false;
   bool update = false;
@@ -375,7 +276,17 @@ bool update_banner_show_prompt(session_display_ctx_t *ctx) {
     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_UPDATE, 100);
     if (g_update_overlay)
       return false;
-    if (key == 'y' || key == 'Y' || key == '\r' || key == '\n') {
+    if (update_select_key(key, 3))
+      continue;
+    if (key == 'o' || key == 'O' || ((key == '\r' || key == '\n') && atomic_load(&g_update_selected_action) == 1)) {
+      update_banner_open_release();
+      continue;
+    }
+    if (key == '\r' || key == '\n') {
+      update = atomic_load(&g_update_selected_action) == 0;
+      break;
+    }
+    if (key == 'y' || key == 'Y') {
       update = true;
       break;
     }
@@ -534,6 +445,7 @@ void update_banner_toggle_overlay(void) {
     return;
   }
   g_update_overlay = true;
+  atomic_store(&g_update_selected_action, 0);
   bool finished = false;
   if (lifecycle_is_initialized(&g_update_result_lifecycle)) {
     mutex_lock(&g_update_result_mutex);
@@ -545,7 +457,7 @@ void update_banner_toggle_overlay(void) {
   if (!g_update_thread_started)
     update_banner_start_check_impl(true);
   const bool snapshot = true;
-  if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 40, .rows = 15},
+  if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 32, .rows = 24},
                            render_update_overlay, &snapshot, sizeof(snapshot)) != ASCIICHAT_OK) {
     g_update_overlay = false;
     LOG_ERRNO_IF_SET("Cannot show update checker");
@@ -599,6 +511,30 @@ bool update_banner_handle_key(int key) {
   }
   if (!g_update_overlay)
     return false;
+  bool checking = update_banner_is_checking();
+  update_check_result_t result = {0};
+  bool available = !checking && update_banner_copy_result(&result) && result.update_available;
+  int count = update_action_count(false, checking, available);
+  if (update_select_key(key, count))
+    return true;
+  if (key == '\r' || key == '\n') {
+    int selected = atomic_load(&g_update_selected_action) % count;
+    if ((available && selected == 2) || (!available && selected == 0)) {
+      update_banner_toggle_overlay();
+      return true;
+    }
+    if (checking)
+      return true;
+    if (available && selected == 0) {
+      (void)update_banner_install_update();
+      return true;
+    }
+    if (available && selected == 1) {
+      update_banner_open_release();
+      return true;
+    }
+    key = 'r';
+  }
   if (key == KEY_ESCAPE) {
     update_banner_toggle_overlay();
     return true;
@@ -613,11 +549,6 @@ bool update_banner_handle_key(int key) {
       return true;
     update_banner_wait_for_check();
     update_banner_start_check_impl(true);
-    return true;
-  }
-  if (key == '\r' || key == '\n') {
-    if (!update_banner_is_checking())
-      (void)update_banner_install_update();
     return true;
   }
   return g_update_overlay;
