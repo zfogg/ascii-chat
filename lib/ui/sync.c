@@ -26,7 +26,7 @@
 typedef struct {
   uintptr_t key, owner, waiter;
   uint64_t generation, value, locks, unlocks, changes, actions, last_ns, wait_ns;
-  double lock_rate, unlock_rate, change_rate;
+  double lock_rate, unlock_rate, change_rate, total_score;
   char name[256], type[24], file[160];
   int line;
   unsigned waiters;
@@ -150,10 +150,12 @@ static int sync_compare_rows(const void *a, const void *b) {
   const sync_row_t *x = a, *y = b;
   if (x->cycle != y->cycle)
     return x->cycle ? -1 : 1;
-  double x_activity = x->lock_rate + x->unlock_rate;
-  double y_activity = y->lock_rate + y->unlock_rate;
+  double x_activity = x->lock_rate + x->unlock_rate + x->change_rate;
+  double y_activity = y->lock_rate + y->unlock_rate + y->change_rate;
   if (x_activity != y_activity)
     return x_activity > y_activity ? -1 : 1;
+  if (x->total_score != y->total_score)
+    return x->total_score > y->total_score ? -1 : 1;
   int result = strcmp(x->type, y->type);
   if (!result)
     result = strcmp(sync_short_name(x), sync_short_name(y));
@@ -228,6 +230,20 @@ static void *sync_collect_main(void *unused) {
                 }
               }
             }
+          }
+          uint64_t max_actions = 0, max_wait = 0;
+          for (size_t i = 0; i < sample->count; ++i) {
+            const sync_row_t *r = &sample->rows[i];
+            if (r->actions > max_actions)
+              max_actions = r->actions;
+            if (r->wait_known && r->wait_ns > max_wait)
+              max_wait = r->wait_ns;
+          }
+          // Normalize counts and durations before combining them with equal weight.
+          for (size_t i = 0; i < sample->count; ++i) {
+            sync_row_t *r = &sample->rows[i];
+            r->total_score = (max_actions ? (double)r->actions / (double)max_actions : 0) +
+                             (max_wait && r->wait_known ? (double)r->wait_ns / (double)max_wait : 0);
           }
           qsort(sample->rows, sample->count, sizeof(*sample->rows), sync_compare_rows);
           atomic_store(&g_sync_published, slot);

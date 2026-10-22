@@ -23,6 +23,11 @@ class Entry(C.Structure):
     _fields_ = [("message", C.c_char * 1024), ("sequence", C.c_uint64)]
 lib.session_log_buffer_get_recent.argtypes = [C.c_void_p, C.POINTER(Entry), C.c_size_t]
 lib.session_log_buffer_get_recent.restype = C.c_size_t
+assert lib.options_state_init() == 0
+lib.options_set_int.argtypes = [C.c_char_p, C.c_int]
+assert lib.options_set_int(b"color_mode", 3) == 0
+C.c_bool.in_dll(lib, "g_color_flag_passed").value = True
+C.c_bool.in_dll(lib, "g_color_flag_value").value = True
 with tempfile.TemporaryDirectory() as root:
     assert lib.asciichat_shared_init(str(Path(root) / "app.log").encode(), True, True) == 0
     try:
@@ -115,6 +120,25 @@ with tempfile.TemporaryDirectory() as root:
         lib.ui_session_destroy(popup)
         lib.session_log_buffer_destroy(logs)
 
+        # Numeric binding characters use the same key color as Esc.
+        lib.ui_session_help_render.argtypes = [Size, C.c_bool, C.c_bool, C.c_void_p]
+        lib.ui_session_help_render.restype = C.c_void_p
+        minimum = Size()
+        help_text = lib.ui_session_help_render(Size(45, 140), True, False, C.byref(minimum))
+        assert help_text
+        help_screen = pyte.Screen(140, 45)
+        pyte.Stream(help_screen).feed(C.string_at(help_text).decode())
+        lib.debug_free.argtypes = [C.c_void_p, C.c_char_p, C.c_int]
+        lib.debug_free(help_text, b"test_log_history.py", 0)
+        def binding_colors(binding):
+            row = next(i for i, text in enumerate(help_screen.display) if binding in text)
+            col = help_screen.display[row].index(binding)
+            return [help_screen.buffer[row][col + i].fg for i in range(len(binding))]
+        key_color = binding_colors("Esc")[0]
+        assert key_color != "default", "Help key colors were not enabled"
+        assert binding_colors("F12") == [key_color] * 3
+        assert binding_colors("0      C code")[:1] == [key_color]
+        assert binding_colors("(1)")[1] == key_color
         # A worker's first formatted record must resolve its registered name on Windows too.
         lib.log_template_parse.argtypes = [C.c_char_p, C.c_bool]
         lib.log_template_parse.restype = C.c_void_p

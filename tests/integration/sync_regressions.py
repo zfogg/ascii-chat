@@ -45,9 +45,8 @@ def main():
                 terminal.expect(lambda text: "SYNC FIXTURE READY" in text, "Fixture did not start")
                 terminal.pump(2)
                 terminal.write("0")
-                text = terminal.expect(lambda text: "Sync primitives" in text and "sync_fixture_value" in text,
+                text = terminal.expect(lambda text: "Sync primitives" in text and "objects" in text,
                                        "Sync screen did not open with the main thread blocked")
-                assert re.search(r"buffer\.process_reserved_[^\s]*\s+0x", text), text
                 state_column = text.splitlines()[2].index("State/value")
                 if mode == "deadlock":
                     text = terminal.expect(lambda text: "2 mutexes in wait cycles" in text, "Missing circular wait")
@@ -55,24 +54,28 @@ def main():
                         r"zzz_rate_hot[^\n]*\s[1-9][0-9]*\.[0-9]\s+[0-9.]+\s+-\s+-\s*$", t, re.M) is not None,
                         "Missing warmed activity rates")
                     rows = text.splitlines()
+                    state_column = rows[2].index("State/value")
                     assert "cycle_a" in rows[4] and "DEADLOCK" in rows[4], text
                     assert "cycle_b" in rows[5] and "DEADLOCK" in rows[5], text
                     body = rows[6:-4]
-                    rates = [sum(map(float, row.split()[-4:-2])) for row in body if row.strip()]
+                    rates = [sum(float(value) for value in row.split()[-4:-1] if value != "-")
+                             for row in body if row.strip()]
                     assert rates == sorted(rates, reverse=True), text
                     assert next(i for i, r in enumerate(body) if "zzz_rate_hot" in r) < next(
                         i for i, r in enumerate(body) if "aaa_rate_warm" in r), text
                     assert "Change/s" in rows[2] and rows[2].rstrip().endswith("Total Wait"), text
-                    assert all(r.split()[-1] == "-" for r in rows[4:-4] if r.strip()), text
+                    assert all(r.split()[-1] == "-" for r in rows[4:-4]
+                               if re.match(r"[ >]*(?:mutex|rwlock|atomic|atomic_p)\s", r)), text
+                    positions = {name: next(i for i, row in enumerate(body) if name in row)
+                                 for name in ("sort_balanced", "sort_actions", "sort_wait")}
+                    assert positions["sort_balanced"] < positions["sort_actions"], text
+                    assert positions["sort_balanced"] < positions["sort_wait"], text
                     assert all(row.split()[-2] == "-" for row in rows[4:-4]
                                if re.match(r"[ >]*(?:mutex|rwlock|cond)\s", row) and "DEADLOCK" not in row), text
                     assert "Total Actions" in rows[2], text
-                    total_row = next(row for row in rows[4:-4] if "aaa_total_uses." in row)
-                    assert total_row.split()[-5] == "9", text
-                    assert float(total_row.split()[-2]) == 0, text
                     atomic_row = next(row for row in rows[4:-4] if "aaa_rate_counter." in row)
                     assert float(atomic_row.split()[-2]) > 0, text
-                    print("PASS deadlocks first, descending L/s+U/s, atomic totals and change rates")
+                    print("PASS deadlocks first, descending Change/s+L/s+U/s, atomic totals and change rates")
                     if len(sys.argv) > 2:
                         from sync_tui_modes import capture
                         capture(terminal, Path(sys.argv[2]), "deadlocks-first")
@@ -116,6 +119,8 @@ def main():
                     # and one terminal page; every registered fixture is reachable.
                     fixtures = set()
                     pointer_total_seen = False
+                    atomic_total_seen = False
+                    reserved_buffer_seen = False
                     pages = int(re.search(r"page 1/(\d+)", terminal.pump()).group(1))
                     for page in range(1, pages + 1):
                         text = terminal.expect(lambda t: f"page {page}/{pages}" in t, "Missing inventory page")
@@ -128,9 +133,16 @@ def main():
                             if pointer_row:
                                 assert pointer_row.split()[-5] == "7", text
                                 pointer_total_seen = True
+                            total_row = next((r for r in text.splitlines()[4:-4] if "aaa_total_uses." in r), None)
+                            if total_row:
+                                assert total_row.split()[-5] == "9" and float(total_row.split()[-2]) == 0, text
+                                atomic_total_seen = True
+                            reserved_buffer_seen |= bool(re.search(r"buffer\.process_reserved_[^\s]*\s+0x", text))
                             fixtures.update(re.findall(r"sync_fixture_value\.\d+", "\n".join(text.splitlines()[4:-4])))
                         if page < pages:
                             terminal.write("\x1b[C")
+                    assert atomic_total_seen, "Missing cumulative atomic total"
+                    assert reserved_buffer_seen, "Missing reserved buffer value"
                     assert pointer_total_seen, "Missing cumulative pointer operations"
                     assert len(fixtures) == 600, (len(fixtures), sorted(fixtures))
                     terminal.write("\x1b[H")

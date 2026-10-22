@@ -160,21 +160,20 @@ static void color_help_text(const char *text, size_t key_end, bool use_color, ch
       } while (text[i] && !(text[i - 1] >= '@' && text[i - 1] <= '~' && text[i - 1] != '['));
       continue;
     }
-    bool number = text[i] >= '0' && text[i] <= '9';
     bool key = i < key_end && text[i] != ' ' && text[i] != '/' && text[i] != '(' && text[i] != ')';
+    bool number = !key && text[i] >= '0' && text[i] <= '9';
     if (use_color && (number || key)) {
       size_t start = i++;
       if (number) {
         while (text[i] >= '0' && text[i] <= '9')
           ++i;
       } else {
-        while (i < key_end && text[i] && text[i] != ' ' && text[i] != '/' && text[i] != ')' &&
-               !(text[i] >= '0' && text[i] <= '9'))
+        while (i < key_end && text[i] && text[i] != ' ' && text[i] != '/' && text[i] != ')')
           ++i;
       }
       used += snprintf(output + used, capacity - used, "%s%.*s%s",
-                       log_level_color(number ? LOG_COLOR_FATAL : LOG_COLOR_WARN), (int)(i - start), text + start,
-                       log_level_color(LOG_COLOR_RESET));
+                       log_level_color_for_output(number ? LOG_COLOR_FATAL : LOG_COLOR_WARN, use_color),
+                       (int)(i - start), text + start, log_level_color_for_output(LOG_COLOR_RESET, use_color));
     } else {
       output[used++] = text[i++];
     }

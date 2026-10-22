@@ -140,6 +140,7 @@ static void self_remove(terminal_size_t size, const void *data) {
 static mutex_t cycle_a, cycle_b;
 static atomic_t sync_values[600];
 static mutex_t rate_hot, rate_warm;
+static cond_t sort_actions, sort_balanced, sort_wait;
 static atomic_t rate_value, total_value;
 static atomic_ptr_t total_pointer;
 static void *finish_blocked_fixture(void *arg) {
@@ -273,6 +274,14 @@ int main(int argc, char **argv) {
           ASCIICHAT_OK);
     CHECK(mutex_init(&rate_hot, "zzz_rate_hot") == ASCIICHAT_OK);
     CHECK(mutex_init(&rate_warm, "aaa_rate_warm") == ASCIICHAT_OK);
+    CHECK(cond_init(&sort_actions, "sort_actions") == ASCIICHAT_OK);
+    CHECK(cond_init(&sort_balanced, "sort_balanced") == ASCIICHAT_OK);
+    CHECK(cond_init(&sort_wait, "sort_wait") == ASCIICHAT_OK);
+    // A balanced history must outrank either one-dimensional extreme.
+    sort_actions.signal_count = UINT64_C(1000000000000);
+    sort_balanced.signal_count = UINT64_C(750000000000);
+    sort_balanced.total_wait_ns = UINT64_C(2700000000000);
+    sort_wait.total_wait_ns = UINT64_C(3600000000000);
     NAMED_REGISTER_ATOMIC(&rate_value, "aaa_rate_counter", NULL);
     NAMED_REGISTER_ATOMIC(&total_value, "aaa_total_uses", NULL);
     for (unsigned i = 0; i < 3; ++i)
@@ -461,7 +470,7 @@ int main(int argc, char **argv) {
 #ifdef _WIN32
     mutex_lock(&test_mutex);
     mutex_unlock(&test_mutex);
-    CHECK(test_mutex.currently_held_by_key != 0);
+    CHECK(test_mutex.currently_held_by_key == (uintptr_t)thread_current_id());
 #endif
     atomic_store(&entered, false);
     CHECK(acthread_create(&holder, "mutex_waiter", wait_for_mutex, NULL) == ASCIICHAT_OK);
