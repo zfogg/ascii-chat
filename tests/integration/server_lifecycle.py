@@ -147,7 +147,10 @@ def check_server(binary, directory, name, extra, expected, clients=False, before
 
 def main():
     binary = Path(sys.argv[1]).resolve()
-    with tempfile.TemporaryDirectory(prefix="ascii-server-lifecycle-") as tmp:
+    output = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else None
+    if output:
+        output.mkdir(parents=True, exist_ok=True)
+    with contextlib.nullcontext(str(output)) if output else tempfile.TemporaryDirectory(prefix="ascii-server-lifecycle-") as tmp:
         directory = Path(tmp)
         # Public Ed25519 test vector; never use this key outside the fixture.
         identity = directory / "acds-test-key"
