@@ -160,4 +160,32 @@ try:
 finally:
     if child.isalive():
         child.close(force=True)
+for mode, key, expected in [
+    ("update-y", b"Y", True),
+    ("update-enter", b"\r", True),
+    ("update-n", b"n", False),
+    ("update-escape", b"\x1b", False),
+    ("update-timeout", None, False),
+]:
+    child = start(mode)
+    try:
+        child.expect_exact(b"[Y] update [N] continue")
+        prompt = child.before
+        assert b"Update Available" in prompt
+        assert b"v7.1.0" in prompt and b"v8.2.0" in prompt
+        assert b"12345678" in prompt
+        child.expect_exact("╝".encode())
+        if key is None:
+            child.timeout = 15
+        else:
+            child.send(key)
+        output = finish(child)
+        if expected:
+            assert b"Update available: v7.1.0 -> v8.2.0" in output
+            assert b"https://example.invalid/releases/v8.2.0" in output
+        else:
+            assert b"Update available:" not in output
+    finally:
+        if child.isalive():
+            child.close(force=True)
 print("Terminal PTY contracts passed")

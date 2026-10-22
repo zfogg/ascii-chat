@@ -10,6 +10,8 @@
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/ui/update_banner.h>
+#include "../../../src/common/session/display.h"
 
 #define REQUIRE(condition)                                                                                             \
   do {                                                                                                                 \
@@ -74,6 +76,38 @@ static asciichat_error_t probe(const char *mode) {
     REQUIRE(prompt_password_simple(NULL, password, sizeof(password)) == -1);
     REQUIRE(prompt_password_simple("Prompt", NULL, sizeof(password)) == -1);
     REQUIRE(prompt_password_simple("Prompt", password, 1) == -1);
+    ui_input_shutdown();
+    ui_controller_shutdown();
+    keyboard_destroy();
+  } else if (strncmp(mode, "update-", 7) == 0) {
+    REQUIRE(!update_banner_has_update());
+    update_banner_set_result(NULL);
+    update_check_result_t ignored = {0};
+    update_banner_set_result(&ignored);
+    REQUIRE(!update_banner_has_update());
+    REQUIRE(!update_banner_show_prompt(NULL));
+    update_banner_wait_for_check();
+    REQUIRE(options_set_bool("strip_ansi", true) == ASCIICHAT_OK);
+    update_check_result_t result = {.update_available = true,
+                                   .current_version = "v7.1.0",
+                                   .latest_version = "v8.2.0",
+                                   .current_sha = "1234567890abcdef",
+                                   .release_url = "https://example.invalid/releases/v8.2.0"};
+    update_banner_set_result(&result);
+    REQUIRE(update_banner_has_update());
+    memset(&result, 0, sizeof(result));
+    update_banner_set_result(&result);
+    REQUIRE(update_banner_has_update());
+    session_display_config_t config = {0};
+    session_display_ctx_t *display = session_display_create(&config);
+    REQUIRE(display != NULL);
+    REQUIRE(keyboard_init() == ASCIICHAT_OK);
+    bool wants_update = update_banner_show_prompt(display);
+    bool expected = strcmp(mode, "update-y") == 0 || strcmp(mode, "update-enter") == 0;
+    REQUIRE(wants_update == expected);
+    if (wants_update)
+      update_banner_print_instructions();
+    session_display_destroy(display);
     ui_input_shutdown();
     ui_controller_shutdown();
     keyboard_destroy();
