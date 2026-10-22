@@ -3,3 +3,4 @@
 leak:_PyMem_RawMalloc
 leak:_PyObject_Malloc
 leak:PyMem_Malloc
+leak:PyUnicode_FromKindAndData

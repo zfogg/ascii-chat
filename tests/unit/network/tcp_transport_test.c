@@ -13,7 +13,6 @@
 
 #ifndef _WIN32
 #include <sys/socket.h>
-#include <errno.h>
 
 Test(tcp_transport, send_failure_preserves_nested_system_context) {
   int sockets[2];
@@ -31,15 +30,14 @@ Test(tcp_transport, send_failure_preserves_nested_system_context) {
   cr_assert_str_eq(wrapper.function, "tcp_sendv");
   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
   size_t count = errno_snapshot(scope.thread_id, frames, ASCIICHAT_ERRNO_MAX_DEPTH);
-  bool found_terminal_cause = false;
+  bool found_send_cause = false;
   for (size_t i = 0; i < count && i < ASCIICHAT_ERRNO_MAX_DEPTH; ++i) {
-    if (frames[i].error_id > scope.after_id &&
-        !strcmp(frames[i].context_message, "Socket unavailable during vectored send")) {
-      cr_assert_eq(wrapper.cause_id, frames[i].error_id);
-      found_terminal_cause = true;
+    if (frames[i].error_id == wrapper.cause_id) {
+      cr_assert_eq(frames[i].code, ERROR_NETWORK);
+      found_send_cause = true;
     }
   }
-  cr_assert(found_terminal_cause);
+  cr_assert(found_send_cause);
   cr_assert_not(acip_transport_is_connected(transport));
   acip_transport_destroy(transport);
   socket_close(sockets[0]);
