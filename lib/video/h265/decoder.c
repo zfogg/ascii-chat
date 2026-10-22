@@ -143,6 +143,8 @@ asciichat_error_t h265_decode(h265_decoder_t *decoder, const uint8_t *encoded_pa
     size_t hevc_size = packet_size - 5;
 
     // Send packet to decoder
+    // FFmpeg owns packet storage and requires zero padding after the payload.
+    // The wire buffer belongs to the caller and may be stack allocated.
     if (hevc_size > INT_MAX)
       return SET_ERRNO(ERROR_NETWORK_SIZE, "Encoded video packet exceeds FFmpeg limits");
     av_packet_unref(decoder->packet);

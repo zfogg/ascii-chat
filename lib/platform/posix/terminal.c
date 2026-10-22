@@ -17,6 +17,7 @@
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/log/log.h>
 #include <errno.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <sys/ioctl.h>
@@ -1017,28 +1018,29 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   }
   rgb_start += 4; // Skip "rgb:"
 
-  // Parse hex values (format is either RRRR/GGGG/BBBB or RR/GG/BB)
-  char *p = (char *)rgb_start;
-  char *end;
-  unsigned long r16 = strtoul(p, &end, 16);
-  if (end == p || *end != '/') {
-    return false;
+  // Terminals report each channel with either two or four hexadecimal digits.
+  uint8_t channels[3];
+  const char *cursor = rgb_start;
+  for (size_t i = 0; i < 3; ++i) {
+    if (!isxdigit((unsigned char)*cursor))
+      return false;
+    char *end = NULL;
+    unsigned long value = strtoul(cursor, &end, 16);
+    size_t digits = (size_t)(end - cursor);
+    if ((digits != 2 && digits != 4) || value > 0xffff)
+      return false;
+    channels[i] = (uint8_t)(digits == 4 ? value >> 8 : value);
+    if (i < 2) {
+      if (*end != '/')
+        return false;
+      cursor = end + 1;
+    } else if (!((*end == '\007' && end[1] == '\0') || (*end == '\033' && end[1] == '\\' && end[2] == '\0'))) {
+      return false;
+    }
   }
-  p = end + 1;
-  unsigned long g16 = strtoul(p, &end, 16);
-  if (end == p || *end != '/') {
-    return false;
-  }
-  p = end + 1;
-  unsigned long b16 = strtoul(p, &end, 16);
-  if (end == p) {
-    return false;
-  }
-
-  // Convert from 16-bit to 8-bit
-  *bg_r = (uint8_t)(r16 >> 8);
-  *bg_g = (uint8_t)(g16 >> 8);
-  *bg_b = (uint8_t)(b16 >> 8);
+  *bg_r = channels[0];
+  *bg_g = channels[1];
+  *bg_b = channels[2];
   return true;
 }
 

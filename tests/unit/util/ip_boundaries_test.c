@@ -128,3 +128,104 @@ Test(ip_boundaries, classify_private_loopback_link_local_and_public_addresses) {
   cr_assert_not(is_broadcast_ipv6("invalid"));
   cr_assert_not(is_lan_ipv6(NULL));
 }
+
+Test(ip_boundaries, optional_ports_parse_hostnames_ipv4_and_unambiguous_ipv6) {
+  const struct {
+    const char *input, *address;
+    uint16_t port;
+  } cases[] = {{"localhost", "localhost", 27224},
+               {"Example-host.test:443", "Example-host.test", 443},
+               {"192.0.2.1", "192.0.2.1", 27224},
+               {"192.0.2.1:1", "192.0.2.1", 1},
+               {"192.0.2.1:65535", "192.0.2.1", 65535},
+               {"::1", "::1", 27224},
+               {"[::1]", "::1", 27224},
+               {"[::1]:0", "::1", 0},
+               {"[2001:db8::1]:443", "2001:db8::1", 443},
+               {"2001:db8::1234", "2001:db8::1234", 27224}};
+  for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+    char output[128];
+    uint16_t port = 0;
+    cr_assert_eq(parse_address_with_optional_port(cases[i].input, output, sizeof(output), &port, 27224), 0, "%s",
+                 cases[i].input);
+    cr_assert_str_eq(output, cases[i].address);
+    cr_assert_eq(port, cases[i].port);
+    cr_assert_eq(parse_address_with_optional_port(cases[i].input, output, strlen(cases[i].address), &port, 27224), -1);
+    cr_assert_eq(parse_address_with_optional_port(cases[i].input, output, strlen(cases[i].address) + 1, &port, 27224),
+                 0);
+  }
+}
+Test(ip_boundaries, optional_port_parser_rejects_malformed_addresses_and_port_overflows) {
+  const char *invalid[] = {"",
+                           "[]",
+                           "[::1",
+                           "[bad]:443",
+                           "[::1]junk",
+                           "[::1]:",
+
+                           "[::1]:65536",
+                           "[::1]:-1",
+                           "host:",
+                           ":443",
+                           "host:65536",
+                           "host:12junk",
+                           "host:9999999999999999999999999",
+                           "2001:db8::wrong:443",
+                           "two..labels",
+                           "bad_name",
+                           "-host",
+                           "host-",
+                           ".host",
+                           "host.",
+                           "bad/name:12"};
+  char output[300];
+  uint16_t port;
+  for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i)
+    cr_assert_eq(parse_address_with_optional_port(invalid[i], output, sizeof(output), &port, 27224), -1, "%s",
+                 invalid[i]);
+  cr_assert_eq(parse_address_with_optional_port(NULL, output, sizeof(output), &port, 1), -1);
+  cr_assert_eq(parse_address_with_optional_port("host", NULL, sizeof(output), &port, 1), -1);
+  cr_assert_eq(parse_address_with_optional_port("host", output, 0, &port, 1), -1);
+  cr_assert_eq(parse_address_with_optional_port("host", output, sizeof(output), NULL, 1), -1);
+  char oversized[258];
+  memset(oversized, 'a', sizeof(oversized) - 1);
+  oversized[sizeof(oversized) - 1] = 0;
+  cr_assert_eq(parse_address_with_optional_port(oversized, output, sizeof(output), &port, 1), -1);
+}
+Test(ip_boundaries, hostname_label_and_total_length_limits_are_enforced_without_dns) {
+  char hostname[260], output[260];
+  uint16_t port;
+  memset(hostname, 'a', 63);
+  strcpy(hostname + 63, ".test");
+  cr_assert_eq(parse_address_with_optional_port(hostname, output, sizeof(output), &port, 42), 0);
+  cr_assert_str_eq(hostname, output);
+  hostname[63] = 'a';
+  strcpy(hostname + 64, ".test");
+  cr_assert_eq(parse_address_with_optional_port(hostname, output, sizeof(output), &port, 42), -1);
+  memset(hostname, 'a', 253);
+  hostname[63] = hostname[127] = hostname[191] = '.';
+  hostname[253] = 0;
+  cr_assert_eq(parse_address_with_optional_port(hostname, output, sizeof(output), &port, 42), 0);
+  hostname[253] = 'a';
+  hostname[254] = 0;
+  cr_assert_eq(parse_address_with_optional_port(hostname, output, sizeof(output), &port, 42), -1);
+}
+Test(ip_boundaries, formatted_addresses_round_trip_and_reject_short_destinations) {
+  const char *addresses[] = {"192.0.2.1", "2001:db8::1"};
+  for (size_t i = 0; i < 2; ++i) {
+    char formatted[128], recovered[128];
+    uint16_t port;
+    cr_assert_eq(format_ip_with_port(addresses[i], 65535, formatted, sizeof(formatted)), ASCIICHAT_OK);
+    cr_assert_eq(parse_address_with_optional_port(formatted, recovered, sizeof(recovered), &port, 1), 0);
+    cr_assert_str_eq(recovered, addresses[i]);
+    cr_assert_eq(port, 65535);
+    cr_assert_eq(format_ip_with_port(addresses[i], 65535, recovered, strlen(formatted)), ERROR_INVALID_PARAM);
+    cr_assert_eq(format_ip_with_port(addresses[i], 65535, recovered, strlen(formatted) + 1), ASCIICHAT_OK);
+    cr_assert_str_eq(formatted, recovered);
+  }
+  char out[32];
+  cr_assert_eq(format_ip_with_port("", 1, out, sizeof(out)), ERROR_INVALID_PARAM);
+  cr_assert_eq(format_ip_with_port(NULL, 1, out, sizeof(out)), ERROR_INVALID_PARAM);
+  cr_assert_eq(format_ip_with_port("::1", 1, NULL, 32), ERROR_INVALID_PARAM);
+  cr_assert_eq(format_ip_with_port("::1", 1, out, 0), ERROR_INVALID_PARAM);
+}

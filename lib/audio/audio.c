@@ -1932,6 +1932,10 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       }
     } else {
       log_warn("Full-duplex stream failed to open: %s", Pa_GetErrorText(err));
+      if (ctx->duplex_stream) {
+        LOG_IO("portaudio", { Pa_CloseStream(ctx->duplex_stream); });
+        ctx->duplex_stream = NULL;
+      }
       try_separate = true;
     }
   }

@@ -271,8 +271,8 @@ bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer
 const char *colored_string(log_color_t color, const char *text) {
 #define COLORED_BUFFERS 4
 #define COLORED_BUFFER_SIZE 256
-  static char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
-  static int buffer_idx = 0;
+  static _Thread_local char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
+  static _Thread_local int buffer_idx = 0;
 
   if (!text) {
     return "";

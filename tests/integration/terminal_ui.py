@@ -11,6 +11,7 @@ import importlib.util
 import os
 from pathlib import Path
 import queue
+import shlex
 import shutil
 import socket
 import subprocess
@@ -59,7 +60,7 @@ def check_capture_emulator():
 
 
 class Terminal:
-    def __init__(self, argv, rows=12, cols=19, terminal_replies=False, code_page=65001):
+    def __init__(self, argv, rows=12, cols=19, terminal_replies=False, code_page=65001, environment=None):
         self.terminal_replies = terminal_replies
         self.background_reply = "\x1b]11;rgb:0000/0000/0000\x1b\\"
         self.query_tail = ""
@@ -67,19 +68,21 @@ class Terminal:
         self.stream = CaptureStream(self.screen)
         self.output = queue.Queue()
         self.raw = []
+        child_environment = os.environ.copy()
+        child_environment.update(environment or {})
         if os.name == "nt":
             from winpty import PtyProcess
 
             # Match a UTF-8 terminal, including its console code page.
             command = f"chcp {code_page}>nul & " + subprocess.list2cmdline(argv)
             self.process = PtyProcess.spawn(
-                ["cmd.exe", "/d", "/c", command], dimensions=(rows, cols)
+                ["cmd.exe", "/d", "/c", command], dimensions=(rows, cols), env=child_environment
             )
         else:
             import pexpect
 
             self.process = pexpect.spawn(
-                argv[0], argv[1:], dimensions=(rows, cols), encoding="utf-8"
+                argv[0], argv[1:], dimensions=(rows, cols), encoding="utf-8", env=child_environment
             )
         self.reader = threading.Thread(target=self._read, daemon=True)
         self.reader.start()
@@ -151,11 +154,15 @@ class Terminal:
 
     def close(self):
         if os.name == "nt" and self.process.isalive():
-            subprocess.run(["taskkill", "/PID", str(self.process.pid), "/T", "/F"],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                subprocess.run(["taskkill", "/PID", str(self.process.pid), "/T", "/F"],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               timeout=5, check=False)
+            except subprocess.TimeoutExpired:
+                pass
         if os.name != "nt":
             self.process.terminate(force=True)
-        self.reader.join(timeout=2)
+        self.reader.join(timeout=.2 if os.name == "nt" else 2)
 
 
 def free_port():
@@ -164,12 +171,70 @@ def free_port():
         return sock.getsockname()[1]
 
 
+def check_update_centering(term, title):
+    lines = term.screen.display
+    border_row = next(row for row, line in enumerate(lines) if "┌" in line)
+    border = lines[border_row]
+    left, right = border.index("┌"), border.rindex("┐")
+    assert abs(left - (term.screen.columns - right - 1)) <= 1, "Update box is not horizontally centered"
+    bottom = max(row for row, line in enumerate(lines) if "└" in line)
+    assert abs(border_row - (term.screen.lines - bottom - 1)) <= 1, "Update box is not vertically centered"
+    title_line = next(line for line in lines if title in line)
+    start = title_line.index(title)
+    assert abs((start - left) - (right - start - len(title) + 1)) <= 1, "Update title is not centered"
+
+
+def check_update_selection(term, label, selected=True):
+    def selection_ready(text):
+        for row, line in enumerate(term.screen.display):
+            if label not in line:
+                continue
+            start = line.index(label)
+            return all(term.screen.buffer[row][col].reverse == selected
+                       for col in range(start, start + len(label)))
+        return False
+
+    term.expect(selection_ready, f"Highlight did not move to the expected button: {label}", timeout=5)
+    assert term.screen.cursor.hidden, "Update dialog left the terminal cursor visible"
+    row, line = next((row, line) for row, line in enumerate(term.screen.display) if label in line)
+    start = line.index(label)
+    cells = [term.screen.buffer[row][col] for col in range(start, start + len(label))]
+    assert all(cell.reverse == selected for cell in cells), f"Incorrect inverse selection for {label}"
+    if selected:
+        assert all(cell.fg != "default" for cell in cells), f"Selected button {label} has no palette accent color"
+        assert all(cell.bg == "black" for cell in cells), f"Selected button {label} inherits its text color from the terminal theme"
+
+
+def update_media_backdrop(term):
+    """Read only video cells outside the modal, excluding spinner/button changes."""
+    lines = term.screen.display
+    borders = [(row, line) for row, line in enumerate(lines) if "┌" in line and "┐" in line]
+    bottoms = [row for row, line in enumerate(lines) if "└" in line and "┘" in line]
+    if not borders or not bottoms:
+        return ""
+    top, border = borders[0]
+    left, right = border.index("┌"), border.rindex("┐")
+    bottom = max(bottoms)
+    return "\n".join(line if row < top or row > bottom else line[:left] + line[right + 1:]
+                     for row, line in enumerate(lines) if row > 0).strip()
+
+
+def check_update_video_playing(term, title):
+    term.expect(lambda text: title in text and bool(update_media_backdrop(term)),
+                "Video was not painted behind the update checker")
+    before = update_media_backdrop(term)
+    term.expect(lambda text: title in text and bool(update_media_backdrop(term))
+                and update_media_backdrop(term) != before,
+                "Video stopped rendering behind the update checker", timeout=3)
+
+
 def main():
     check_capture_emulator()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--artifacts", type=Path)
     parser.add_argument("--debug-sync", action="store_true")
+    parser.add_argument("--debug-updates", action="store_true")
     args = parser.parse_args()
     binary = str(args.binary.resolve())
     with tempfile.TemporaryDirectory(prefix="ascii-ui-") as directory:
@@ -183,8 +248,11 @@ def main():
         base = [binary, "--no-check-update", "--log-file", str(root / "application.log"), "--log-level", "info"]
         sessions = []
 
-        def terminal(name, argv, **kwargs):
-            term = Terminal(base + argv, **kwargs)
+        def terminal(name, argv, check_updates=False, environment=None, **kwargs):
+            command = [binary, "--log-file", str(root / "application.log"), "--log-level", "info"]
+            if not check_updates:
+                command.insert(1, "--no-check-update")
+            term = Terminal(command + argv, environment=environment, **kwargs)
             sessions.append((name, term))
             return term
 
@@ -202,6 +270,8 @@ def main():
         def video(term):
             return term.expect(lambda text: "Terminal too small" not in text
                                and "Keyboard Shortcuts" not in text
+                               and "Video chat in your terminal" not in text
+                               and "Update now" not in text
                                and len(text.strip()) > 100,
                                "Expected the media screen")
 
@@ -209,7 +279,10 @@ def main():
             port = free_port()
             websocket_port = free_port()
             status = terminal("status", ["server", "127.0.0.1", "--port", str(port),
-                               "--websocket-port", str(websocket_port), "--status-screen"])
+                               "--websocket-port", str(websocket_port), "--status-screen"], environment={
+                "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v0.0.0",
+                "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "status-update-cache"),
+            })
             small(status)
             # The WebSocket handshake must continue behind the warning.
             with socket.create_connection(("127.0.0.1", websocket_port), timeout=3) as sock:
@@ -224,6 +297,12 @@ def main():
             normal = status.expect(lambda text: "Terminal too small" not in text and "127.0.0.1" in text,
                                    "Expected status recovery")
             assert "should-not-replay" not in normal
+            status.write("\x1b[24~")
+            status.expect(lambda text: "Check for updates" in text or "You're up to date" in text or "Update available" in text or "Update check unavailable" in text,
+                          "F12 did not open the update checker over the server status UI")
+            status.write("\x1b")
+            status.expect(lambda text: "127.0.0.1" in text,
+                          "Esc did not restore the server status UI after the update checker")
             status.resize(2, 2)
             status.pump(0.4)
             status.resize(12, 19)
@@ -233,12 +312,22 @@ def main():
 
             mirror_args = ["mirror", "--file", str(media), "--loop", "--splash-screen=false",
                            "--audio=false", "--color-mode", "none"]
-            mirror = terminal("mirror", mirror_args)
+            mirror = terminal("mirror", mirror_args, environment={
+                "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v0.0.0",
+                "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "f12-cache"),
+            })
             small(mirror)
             mirror.resize(40, 100)
             video(mirror)
             mirror.write("?")
             mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Expected help")
+            mirror.write("\x1b[24~")
+            mirror.expect(lambda text: "Check for updates" in text or "You're up to date" in text or "Update available" in text or "Update check unavailable" in text,
+                          "F12 did not replace the help overlay with the update checker")
+            mirror.write("\x1b")
+            mirror.expect(lambda text: "Keyboard Shortcuts" in text,
+                          "Esc did not restore the covered help overlay")
+            print("PASS update checker: F12 opens the retained overlay over help and Esc restores it")
             if args.debug_sync:
                 mirror.resize(40, 160)
                 mirror.write("0")
@@ -278,6 +367,200 @@ def main():
             mirror.expect(lambda text: text != paused, "Expected playback to resume")
             finish(mirror)
             print("PASS media: startup, help priority, blocked keys, paused resize, recovery")
+
+            if args.debug_updates:
+                update_command = ["mirror", "--file", str(media), "--loop", "--splash-screen=true",
+                                  "--audio=false", "--color-mode", "truecolor"]
+                update_env = {
+                    "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v99.0.0",
+                    "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "update-cache"),
+                    "ASCII_CHAT_TEST_UPDATE_COMMAND": "exit 7",
+                }
+                startup = terminal("startup-update", update_command, check_updates=True,
+                                   environment={**update_env, "ASCII_CHAT_TEST_UPDATE_SLOW": "1"}, rows=40, cols=100)
+                startup.expect(lambda text: "[ * ]" in text, "Startup log markers are missing")
+                marker_row, marker_line = next((row, line) for row, line in enumerate(startup.screen.display)
+                                               if "[ * ]" in line)
+                marker_start = marker_line.index("[ * ]")
+                assert startup.screen.buffer[marker_row][marker_start].fg == "white"
+                assert startup.screen.buffer[marker_row][marker_start + 4].fg == "white"
+                assert startup.screen.buffer[marker_row][marker_start + 2].fg not in ("default", "white", "red", "green")
+                startup.expect(lambda text: "Update available" in text,
+                               "An older build did not show the startup update prompt")
+                check_update_centering(startup, "Update available")
+                check_update_selection(startup, "Update now")
+                assert "Full instructions on ascii-chat.com" in startup.pump(), "Update instructions link is missing"
+                link_label = "Full instructions on ascii-chat.com"
+                link_row, link_line = next((row, line) for row, line in enumerate(startup.screen.display)
+                                           if link_label in line)
+                link_start = link_line.index(link_label)
+                domain_start = link_line.index("ascii-chat.com", link_start)
+                assert all(startup.screen.buffer[link_row][col].underscore == (col >= domain_start)
+                           and startup.screen.buffer[link_row][col].fg == "white"
+                           for col in range(link_start, link_start + len(link_label))), "Only the white domain should be underlined"
+                assert ("\x1b]8;;https://ascii-chat.com\x1b\\\x1b[4mascii-chat.com\x1b[24m\x1b]8;;\x1b\\" in "".join(startup.raw)
+                        and "\x1b]8;;\x1b\\" in "".join(startup.raw)), "Instructions lack a bounded OSC 8 hyperlink"
+                startup.write("\x1b[C\x1b[C")
+                startup.pump(.3)
+                check_update_selection(startup, "Continue")
+                check_update_selection(startup, "Update now", selected=False)
+                startup.write("\x1b[C")
+                startup.pump(.2)
+                check_update_selection(startup, "Update now")
+                startup.write("\x1b[D")
+                startup.pump(.2)
+                check_update_selection(startup, "Continue")
+                startup.write("\r")
+                video(startup)
+                # Let the post-splash capture pipeline finish before exercising shutdown.
+                # A Ctrl-C during source creation is not the dismissal behavior this scenario covers.
+                startup.pump(0.5)
+                startup.write("\x1b[24~")
+                startup.expect(lambda text: "Contacting GitHub Releases" in text,
+                               "F12 did not show the checking animation")
+                check_update_video_playing(startup, "Contacting GitHub Releases")
+                startup.expect(lambda text: "Update available" in text,
+                               "F12 did not recheck the dismissed release")
+                check_update_centering(startup, "Update available")
+                check_update_selection(startup, "Update now")
+                check_update_video_playing(startup, "Update available")
+                startup.resize(12, 19)
+                small(startup)
+                startup.resize(38, 110)
+                startup.expect(lambda text: "Update available" in text and "Terminal too small" not in text,
+                               "Update checker did not recover after resizing")
+                check_update_centering(startup, "Update available")
+                check_update_video_playing(startup, "Update available")
+                startup.write("\t\t")
+                startup.pump(.3)
+                check_update_selection(startup, "Close")
+                startup.write("\t\t")
+                startup.pump(.2)
+                check_update_selection(startup, "Update now")
+                startup.write("\x1b[D")
+                startup.pump(.2)
+                check_update_selection(startup, "Check again")
+                startup.write("\r")
+                startup.expect(lambda text: "Contacting GitHub Releases" in text,
+                               "Enter did not activate the selected retry button")
+                startup.write("\t\x1b[D\x1b[C\x1b[A\x1b[B?qc m")
+                startup.pump(.2)
+                check_update_selection(startup, "Close")
+                assert startup.process.isalive(), "Overlay-local keys leaked to the session"
+                startup.expect(lambda text: "Update available" in text,
+                               "Retry did not return the update result")
+                check_update_selection(startup, "Update now")
+                startup.resize(24, 40)
+                startup.pump(.3)
+                check_update_centering(startup, "Update available")
+                startup.resize(40, 100)
+                startup.pump(.3)
+                startup.write("\x1b")
+                finish(startup)
+
+                dismissed = terminal("dismissed-update", update_command, check_updates=True,
+                                     environment=update_env, rows=40, cols=100)
+                dismissed_media = video(dismissed)
+                # The forced update seam is synchronous, so give the splash/prompt
+                # hand-off a bounded moment and then prove this version's dismissal
+                # still suppresses the startup modal.
+                dismissed_media = dismissed.pump(0.5) or dismissed_media
+                assert "Update now" not in dismissed_media, (
+                    "Weekly dismissal did not suppress the repeated startup update prompt"
+                )
+                finish(dismissed)
+
+                handoff = terminal("startup-f12", update_command, check_updates=True,
+                                   environment={**update_env, "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "handoff-cache")},
+                                   rows=40, cols=100)
+                handoff.expect(lambda text: "Update available" in text,
+                               "F12 handoff did not reach the startup prompt")
+                handoff.write("\x1b[24~")
+                handoff.expect(lambda text: "Check again" in text,
+                               "F12 did not replace the startup prompt")
+                handoff.write("\x1b")
+                handoff.expect(lambda text: "Update available" not in text,
+                               "Startup remained blocked after closing the F12 overlay")
+                handoff.pump(0.5)
+                finish(handoff)
+
+                failed = terminal("failed-update", mirror_args, environment={
+                    **update_env, "ASCII_CHAT_TEST_UPDATE_COMMAND": "exit 7",
+                }, rows=40, cols=100)
+                video(failed)
+                failed.write("\x1b[24~")
+                failed.expect(lambda text: "Update available" in text,
+                              "Failure scenario did not open the update overlay")
+                failed.write("\r")
+                failed.expect(lambda text: "Update command failed" in text,
+                              "Failed installer did not report failure in the overlay")
+                assert failed.process.isalive(), "Failed installer shut down the session"
+                failed.write("\x1b")
+                failed.pump(0.5)
+                finish(failed)
+
+                current = terminal("current-update", update_command[:-2] + ["--color-mode", "truecolor"],
+                                   environment={**update_env, "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v0.0.0",
+                                                "ASCII_CHAT_TEST_UPDATE_SLOW": "1"},
+                                   rows=28, cols=80)
+                current.pump(.5)
+                check_started = time.monotonic()
+                current.write("\x1b[24~")
+                current.expect(lambda text: "Contacting GitHub Releases..." in text,
+                               "Async check did not show the checking dialog")
+                assert sum(line.count("●") for line in current.screen.display) == 8, "Checking spinner is not a dot ring"
+                current.write("\t\x1b[D\x1b[C\x1b[A\x1b[B")
+                current.pump(.2)
+                check_update_selection(current, "Close")
+                current.write("\r")
+                current.expect(lambda text: "Contacting GitHub Releases" not in text,
+                               "Enter did not close the checking dialog immediately")
+                check_started = time.monotonic()
+                current.write("\x1b[24~")
+                current.expect(lambda text: "Contacting GitHub Releases" in text,
+                               "F12 did not reopen the checking dialog")
+                current.expect(lambda text: "You're up to date" in text,
+                               "Current release did not show the up-to-date dialog")
+                assert time.monotonic() - check_started >= 2, "Checking dialog disappeared before two seconds"
+                check_update_centering(current, "You're up to date")
+                check_update_selection(current, "Close")
+                current.write("\t")
+                current.pump(.3)
+                check_update_selection(current, "Check again")
+                current.write("\x1b[D\r")
+                current.expect(lambda text: "You're up to date" not in text,
+                               "Enter did not activate the selected Close button")
+                current.write("\x1b[24~")
+                current.expect(lambda text: "Contacting GitHub Releases" in text,
+                               "F12 did not open another check")
+                current.write("\x1b[24~")
+                current.expect(lambda text: "Contacting GitHub Releases" not in text and "You're up to date" not in text,
+                               "F12 did not close the checking dialog")
+                current.pump(.5)
+                finish(current)
+
+                marker = root / "updated marker"
+                update_command_env = {
+                    "ASCII_CHAT_TEST_UPDATE_LATEST_VERSION": "v99.0.0",
+                    "ASCII_CHAT_UPDATE_CACHE_DIR": str(root / "update-command-cache"),
+                    "ASCII_CHAT_TEST_UPDATE_COMMAND": (
+                        f'copy NUL "{marker}"' if os.name == "nt" else f"touch {shlex.quote(str(marker))}"
+                    ),
+                }
+                updater = terminal("run-update", update_command, check_updates=True,
+                                   environment=update_command_env, rows=40, cols=100)
+                updater.expect(lambda text: "Update available" in text,
+                               "Updater scenario did not reach the update prompt")
+                updater.write("\r")
+                updater.expect(lambda text: "Run ascii-chat again" in text,
+                               "Successful installer did not print restart instructions")
+                deadline = time.monotonic() + 10
+                while updater.process.isalive() and time.monotonic() < deadline:
+                    updater.pump(.1)
+                assert not updater.process.isalive(), "Updater did not exit after installation"
+                assert marker.exists(), "Update command was not executed"
+                updater.close()
+                print("PASS update checker: startup prompt, weekly dismissal, installer execution and clean exit")
 
             explicit = terminal("explicit", mirror_args + ["--width", "60", "--height", "20"])
             small(explicit)

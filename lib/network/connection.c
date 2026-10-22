@@ -272,6 +272,28 @@ static uint64_t connection_deadline(network_connection_t *c) {
   return !end ? 0 : now >= end ? 1 : (end - now) / NS_PER_MS_INT + 1;
 }
 
+static void connection_notify_error(network_connection_t *c, asciichat_error_t reason) {
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  asciichat_error_t result = acip_send_error(c->transport, reason, NULL);
+  if (result == ASCIICHAT_OK && acip_transport_get_type(c->transport) == ACIP_TRANSPORT_WEBSOCKET)
+    result = acip_websocket_transport_flush(c->transport, 500 * NS_PER_MS_INT);
+  if (result == ASCIICHAT_OK && c->stream) {
+    // This runs on a worker. Give the event loop time to deliver the rejection
+    // before stream_done closes the TCP stream and discards pending writes.
+    uint64_t deadline = time_get_ns() + 500 * NS_PER_MS_INT;
+    while (platform_event_stream_queued_bytes(c->stream)) {
+      if (time_get_ns() >= deadline) {
+        result = SET_ERRNO(ERROR_NETWORK_TIMEOUT, "Connection rejection did not drain");
+        break;
+      }
+      platform_sleep_ms(1);
+    }
+  }
+  if (result != ASCIICHAT_OK)
+    log_debug("Could not send connection error to %s: %s", c->peer, asciichat_error_format(NULL, result));
+  errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+}
+
 static void connection_work(void *arg) {
   network_connection_t *c = arg;
   c->result = connection_open(c);
@@ -284,6 +306,8 @@ static void connection_work(void *arg) {
     if (!packet_decoder_pending(&c->decoder))
       c->partial_since = 0;
   }
+  if (c->result != ASCIICHAT_OK && c->server && c->stream)
+    connection_notify_error(c, c->result);
 }
 static void stream_done(platform_event_stream_t *stream, void *arg, bool closing) {
   network_connection_t *c = arg;
@@ -373,13 +397,8 @@ static void *connection_receive(void *arg) {
       connection_work(c);
       result = c->result;
     }
-    if (result != ASCIICHAT_OK && c->server) {
-      asciichat_error_t send_result = acip_send_error(c->transport, result, NULL);
-      if (send_result == ASCIICHAT_OK && acip_transport_get_type(c->transport) == ACIP_TRANSPORT_WEBSOCKET)
-        send_result = acip_websocket_transport_flush(c->transport, 500 * NS_PER_MS_INT);
-      if (send_result != ASCIICHAT_OK)
-        log_debug("Could not send connection error to %s: %s", c->peer, asciichat_error_format(NULL, send_result));
-    }
+    if (result != ASCIICHAT_OK && c->server)
+      connection_notify_error(c, result);
     buffer_release(allocation);
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }

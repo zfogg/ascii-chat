@@ -49,6 +49,11 @@ static inline asciichat_error_t capture_public_error(acip_transport_t *transport
                                    &code, message, sizeof(message), NULL) == ASCIICHAT_OK);
   CHECK(code == ERROR_INTERNAL);
   CHECK(strcmp(message, asciichat_error_string(ERROR_INTERNAL)) == 0);
+  CHECK(strstr(message, "Delivery may be partial") == NULL);
+  CHECK(strstr(message, "failure after transport dispatch") == NULL);
+  CHECK(strstr(message, "errno_fixture.h:") == NULL);
+  CHECK(strstr(message, "failing_send()") == NULL);
+  CHECK(strstr(message, "private/path and subprocess details") == NULL);
   return ASCIICHAT_OK;
 }
 static int fake_send_calls;

@@ -54,8 +54,15 @@ static void trim_line_ending(char *line) {
  * @return Allocated string with cache file path (caller must free)
  */
 static char *get_cache_file_path(void) {
-  // Get config directory
-  char *config_dir = get_config_dir();
+  // An explicit cache directory is useful for isolated automation and portable
+  // launches; normal installations continue using the platform config path.
+  const char *override_dir = SAFE_GETENV("ASCII_CHAT_UPDATE_CACHE_DIR");
+  char *config_dir = NULL;
+  if (override_dir && override_dir[0]) {
+    SAFE_STRDUP(config_dir, override_dir);
+  } else {
+    config_dir = get_config_dir();
+  }
   if (!config_dir) {
     log_error("Failed to get config directory for update check cache");
     return NULL;
@@ -141,6 +148,11 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
   trim_line_ending(line);
   SAFE_STRNCPY(result->release_url, line, sizeof(result->release_url));
 
+  // Older four-line cache files remain valid; they simply have no dismissal.
+  if (fgets(line, sizeof(line), f)) {
+    result->dismissed_until = (time_t)strtoll(line, NULL, 10);
+  }
+
   fclose(f);
 
   // Fill in current version/SHA
@@ -201,6 +213,7 @@ asciichat_error_t update_check_save_cache(const update_check_result_t *result) {
   // Write the release URL so cached notifications retain the exact GitHub
   // source returned by the API.
   fprintf(f, "%s\n", result->release_url);
+  fprintf(f, "%lld\n", (long long)result->dismissed_until);
 
   fclose(f);
   SAFE_FREE(cache_path);
@@ -217,6 +230,18 @@ bool update_check_is_cache_fresh(const update_check_result_t *result) {
   time_t age = now - result->last_check_time;
 
   return (age < UPDATE_CHECK_CACHE_MAX_AGE_SECONDS);
+}
+
+void update_check_dismiss_for_a_week(update_check_result_t *result) {
+  if (!result) {
+    return;
+  }
+  result->dismissed_until = time(NULL) + UPDATE_CHECK_CACHE_MAX_AGE_SECONDS;
+  (void)update_check_save_cache(result);
+}
+
+bool update_check_is_dismissed(const update_check_result_t *result) {
+  return result && result->dismissed_until > time(NULL);
 }
 
 /**
@@ -267,12 +292,37 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL result pointer");
   }
 
+  update_check_result_t cached = {0};
+  bool have_cached = update_check_load_cache(&cached) == ASCIICHAT_OK;
   memset(result, 0, sizeof(*result));
 
   // Fill in current version and SHA
   SAFE_STRNCPY(result->current_version, ASCII_CHAT_VERSION_STRING, sizeof(result->current_version));
   SAFE_STRNCPY(result->current_sha, ASCII_CHAT_GIT_COMMIT_HASH, sizeof(result->current_sha));
   result->last_check_time = time(NULL);
+
+#ifndef NDEBUG
+  // Deterministic local seam for PTY smoke coverage. Release builds never
+  // consult it, and ordinary debug runs continue through the network path.
+  const char *test_latest = SAFE_GETENV("ASCII_CHAT_TEST_UPDATE_LATEST_VERSION");
+  if (test_latest && test_latest[0]) {
+    SAFE_STRNCPY(result->latest_version, test_latest, sizeof(result->latest_version));
+    const char *test_slow = SAFE_GETENV("ASCII_CHAT_TEST_UPDATE_SLOW");
+    if (test_slow && strcmp(test_slow, "1") == 0)
+      platform_sleep_ms(1000);
+    SAFE_STRNCPY(result->release_url, "https://github.com/zfogg/ascii-chat/releases/latest",
+                 sizeof(result->release_url));
+    result->check_succeeded = true;
+    semantic_version_t current_ver = version_parse(result->current_version);
+    semantic_version_t latest_ver = version_parse(result->latest_version);
+    result->update_available = current_ver.valid && latest_ver.valid && version_compare(latest_ver, current_ver) > 0;
+    if (have_cached && strcmp(cached.latest_version, result->latest_version) == 0) {
+      result->dismissed_until = cached.dismissed_until;
+    }
+    (void)update_check_save_cache(result);
+    return ASCIICHAT_OK;
+  }
+#endif
 
   // Test DNS connectivity first
   if (!dns_test_connectivity(GITHUB_API_HOSTNAME)) {
@@ -310,6 +360,9 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
   SAFE_STRNCPY(result->release_url, release_url, sizeof(result->release_url));
   result->latest_sha[0] = '\0';
   result->check_succeeded = true;
+  if (have_cached && strcmp(cached.latest_version, result->latest_version) == 0) {
+    result->dismissed_until = cached.dismissed_until;
+  }
 
   // Compare versions semantically
   semantic_version_t current_ver = version_parse(result->current_version);
@@ -339,6 +392,7 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
 /**
  * @brief Check if binary path contains Homebrew markers
  */
+#ifndef _WIN32
 static bool is_homebrew_install(void) {
   // Check if binary is in Homebrew Cellar directory
   char exe_path[1024];
@@ -376,8 +430,18 @@ static bool is_arch_linux(void) {
   return false;
 #endif
 }
+#endif
 
 install_method_t update_check_detect_install_method(void) {
+#if defined(ASCIICHAT_INSTALLED_BY_HOMEBREW)
+  return INSTALL_METHOD_HOMEBREW;
+#elif defined(ASCIICHAT_INSTALLED_BY_SCOOP)
+  return INSTALL_METHOD_SCOOP;
+#elif defined(ASCIICHAT_INSTALLED_BY_AUR)
+  return INSTALL_METHOD_ARCH_AUR;
+#elif defined(_WIN32)
+  return INSTALL_METHOD_INSTALLER;
+#else
   if (is_homebrew_install()) {
     return INSTALL_METHOD_HOMEBREW;
   }
@@ -386,8 +450,21 @@ install_method_t update_check_detect_install_method(void) {
     return INSTALL_METHOD_ARCH_AUR;
   }
 
-  // Default to GitHub releases
-  return INSTALL_METHOD_GITHUB;
+  // The published Unix installer is the default outside package-managed installs.
+  return INSTALL_METHOD_INSTALLER;
+#endif
+}
+
+const char *update_check_get_aur_helper(void) {
+  static int helper = -1;
+  if (helper == -1) {
+    const char *paru[] = {"paru", "--version", NULL};
+    const char *yay[] = {"yay", "--version", NULL};
+    helper = platform_execute_subprocess("paru", paru, NULL, 0) == 0 ? 1
+             : platform_execute_subprocess("yay", yay, NULL, 0) == 0 ? 2
+                                                                     : 0;
+  }
+  return helper == 1 ? "paru" : helper == 2 ? "yay" : NULL;
 }
 
 void update_check_get_upgrade_suggestion(install_method_t method, const char *latest_version, char *buffer,
@@ -401,24 +478,22 @@ void update_check_get_upgrade_suggestion(install_method_t method, const char *la
     snprintf(buffer, buffer_size, "brew upgrade ascii-chat");
     break;
 
+  case INSTALL_METHOD_SCOOP:
+    snprintf(buffer, buffer_size, "scoop update ascii-chat");
+    break;
+
+  case INSTALL_METHOD_INSTALLER:
+#ifdef _WIN32
+    snprintf(buffer, buffer_size, "irm https://ascii-chat.com/install.ps1 | iex");
+#else
+    snprintf(buffer, buffer_size, "curl -fsSL https://ascii-chat.com/install.sh | bash");
+#endif
+    break;
+
   case INSTALL_METHOD_ARCH_AUR: {
-    // Cache AUR helper detection to avoid spawning subprocesses on every call
-    static int aur_helper = -1; // -1 = unknown, 0 = none, 1 = paru, 2 = yay
-    if (aur_helper == -1) {
-      const char *argv_paru[] = {"paru", "--version", NULL};
-      const char *argv_yay[] = {"yay", "--version", NULL};
-      if (platform_execute_subprocess("paru", argv_paru, NULL, 0) == 0) {
-        aur_helper = 1;
-      } else if (platform_execute_subprocess("yay", argv_yay, NULL, 0) == 0) {
-        aur_helper = 2;
-      } else {
-        aur_helper = 0;
-      }
-    }
-    if (aur_helper == 1) {
-      snprintf(buffer, buffer_size, "paru -S ascii-chat");
-    } else if (aur_helper == 2) {
-      snprintf(buffer, buffer_size, "yay -S ascii-chat");
+    const char *helper = update_check_get_aur_helper();
+    if (helper) {
+      snprintf(buffer, buffer_size, "%s -S ascii-chat", helper);
     } else {
       snprintf(buffer, buffer_size, "<your-aur-helper> -Ss ascii-chat");
     }

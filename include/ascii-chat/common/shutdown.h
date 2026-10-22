@@ -42,6 +42,9 @@ typedef bool (*shutdown_check_fn)(void);
  */
 void shutdown_register_callback(shutdown_check_fn callback);
 
+/** Request a clean application shutdown from shared library code. */
+void shutdown_request(void);
+
 /**
  * @brief Check if shutdown has been requested
  * @return true if shutdown has been requested, false otherwise

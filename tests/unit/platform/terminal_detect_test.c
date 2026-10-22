@@ -13,6 +13,30 @@
 // Note: We don't disable stdout/stderr because terminal detection needs them
 TestSuite(terminal_detect);
 
+Test(terminal_detect, hyperlink_format_and_plain_fallback) {
+  char output[128];
+  int length = terminal_format_hyperlink(output, sizeof(output), "https://ascii-chat.com", "ascii-chat.com", true);
+  cr_assert_gt(length, 0);
+  cr_assert_eq((size_t)length, strlen(output));
+  cr_assert_str_eq(output, "\033]8;;https://ascii-chat.com\033\\\033[4mascii-chat.com\033[24m\033]8;;\033\\");
+  cr_assert_eq(terminal_format_hyperlink(output, sizeof(output), "https://ascii-chat.com", "ascii-chat.com", false),
+               14);
+  cr_assert_str_eq(output, "ascii-chat.com");
+}
+
+Test(terminal_detect, hyperlink_rejects_controls_and_partial_output) {
+  char output[128] = "unchanged";
+  cr_assert_eq(terminal_format_hyperlink(output, sizeof(output), "https://example.com\033]8;;evil", "site", true), -1);
+  cr_assert_str_eq(output, "");
+  cr_assert_eq(terminal_format_hyperlink(output, sizeof(output), "https://example.com", "site\n", true), -1);
+  cr_assert_str_eq(output, "");
+  cr_assert_eq(terminal_format_hyperlink(output, 4, "https://example.com", "site", true), -1);
+  cr_assert_str_eq(output, "");
+  cr_assert_eq(terminal_format_hyperlink(output, 4, "https://example.com", "site", false), -1);
+  cr_assert_str_eq(output, "");
+  cr_assert_eq(terminal_format_hyperlink(NULL, 0, "https://example.com", "site", true), -1);
+}
+
 /* ============================================================================
  * Terminal Size Detection Tests
  * ============================================================================ */

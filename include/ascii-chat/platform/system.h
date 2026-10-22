@@ -681,7 +681,7 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
  * @return Exit code of the process, or -1 on error
  *
  * Executes a subprocess using platform-specific mechanisms:
- *   - POSIX: fork() + execvp() (no output), or popen() (with output)
+ *   - POSIX: fork() + execvp(), with a pipe when capturing output
  *   - Windows: CreateProcess() (no output), or piped output capture (with output)
  *
  * If output_buffer is NULL or output_size is 0, stdout and stderr are inherited

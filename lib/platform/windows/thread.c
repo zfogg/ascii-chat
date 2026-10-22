@@ -25,6 +25,7 @@
 typedef struct {
   void *(*posix_func)(void *);
   void *arg;
+  char name[128];
 } thread_wrapper_t;
 
 // Global to hold exception info from filter
@@ -392,6 +393,8 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
     return 1;
   }
 
+  NAMED_REGISTER_THREAD(GetCurrentThread(), wrapper->name, NULL);
+
   // Validate wrapper structure before accessing its fields.
   // If the wrapper was freed or corrupted, accessing its fields will crash.
   __try {
@@ -615,6 +618,7 @@ int acthread_create(asciichat_thread_t *thread, const char *name, void *(*func)(
 
   wrapper->posix_func = func;
   wrapper->arg = arg;
+  SAFE_STRNCPY(wrapper->name, name ? name : "worker", sizeof(wrapper->name));
 
   DWORD thread_id;
 
@@ -639,12 +643,7 @@ int acthread_create(asciichat_thread_t *thread, const char *name, void *(*func)(
     return -1;
   }
 
-  // Register thread with name in debug registry
-  if (name && thread) {
-    NAMED_REGISTER_THREAD(*thread, name, NULL);
-  }
-
-  // IMPORTANT: Add a memory barrier to ensure all writes complete before returning
+  // Publish thread initialization before returning.
   MemoryBarrier();
 
   return 0;
@@ -885,7 +884,7 @@ asciichat_error_t thread_set_realtime_priority(void) {
 }
 
 uintptr_t thread_to_key(asciichat_thread_t thread) {
-  return (uintptr_t)thread;
+  return (uintptr_t)GetThreadId(thread);
 }
 
 #endif // _WIN32

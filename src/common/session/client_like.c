@@ -261,9 +261,11 @@ static asciichat_error_t client_like_prepare_session_splash(const session_client
     if (update_banner_has_update() && !GET_OPTION(snapshot_mode)) {
       bool wants_update = update_banner_show_prompt(state->display);
       if (wants_update) {
-        update_banner_print_instructions();
-        *stop = true;
-        return ASCIICHAT_OK;
+        if (update_banner_install_update()) {
+          *stop = true;
+          return ASCIICHAT_OK;
+        }
+        ui_controller_redraw();
       }
       ui_controller_redraw();
     }

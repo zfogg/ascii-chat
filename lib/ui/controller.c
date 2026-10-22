@@ -9,6 +9,7 @@
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/ui/fps_counter.h>
+#include <ascii-chat/ui/update_banner.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -72,6 +73,8 @@ typedef struct screen {
 
 static screen_t g_screens[UI_SCREEN_COUNT];
 static ui_session_t *g_session;
+static frame_buffer_t *g_update_backdrop;
+static terminal_size_t g_update_backdrop_size;
 static _Thread_local frame_buffer_t *g_capture;
 static _Thread_local const animation_sample_t *g_animation;
 static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
@@ -221,16 +224,20 @@ void ui_controller_select_interactive(int screen) {
   atomic_store(&g_interactive_screen, screen);
 }
 
-static int selected_screen_locked(void) {
+static int selected_screen_excluding_locked(int excluded) {
   uint32_t visible = 0;
   int interactive = ui_controller_interactive_screen();
   for (int i = 0; i < UI_SCREEN_COUNT; ++i)
-    if (g_screens[i].render && (!interactive_screen(i) || i == interactive))
+    if (i != excluded && g_screens[i].render && (!interactive_screen(i) || i == interactive))
       visible |= 1u << i;
   int selected = ui_session_select_screen(visible);
   // Sync presents from its independent mailbox. Never fall through to media
   // if it was selected after the presentation loop checked that mailbox.
   return interactive == UI_SCREEN_SYNC && selected < UI_SCREEN_SYNC ? -1 : selected;
+}
+
+static int selected_screen_locked(void) {
+  return selected_screen_excluding_locked(-1);
 }
 
 static void publish_screen_locked(void) {
@@ -479,10 +486,12 @@ const animation_sample_t *ui_controller_animation_sample(void) {
 
 typedef struct {
   screen_t *screen;
+  screen_t *media_backdrop;
   int active;
   bool volume;
   bool drew;
   bool fresh;
+  bool restore_backdrop;
 } native_view_t;
 
 static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
@@ -491,6 +500,15 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
   g_capture = output;
   g_animation = animation;
   g_render_volume = view->volume;
+  if (view->active == UI_SCREEN_UPDATE && (view->restore_backdrop || view->media_backdrop)) {
+    frame_buffer_clear_screen(output);
+    if (view->media_backdrop)
+      view->media_backdrop->render(size, view->media_backdrop->snapshot);
+    else if (update_banner_is_overlay_open() && g_update_backdrop && size.cols == g_update_backdrop_size.cols &&
+             size.rows == g_update_backdrop_size.rows)
+      frame_buffer_append(output, frame_buffer_get_content(g_update_backdrop),
+                          frame_buffer_get_length(g_update_backdrop));
+  }
   view->fresh = fps_counter_frame_begin_id(g_fps, view->active == UI_SCREEN_MEDIA ? view->screen->owned->frame_id : 0);
   // Paint the reserved cells before the art, which never writes over them.
   // This remains visible on terminals without synchronized-output support.
@@ -499,6 +517,15 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
   // Compose overlays before publishing the frame, so replacing the media cannot
   // expose an intermediate frame with its counter erased.
   fps_counter_render(g_fps, view->screen->fd, size.cols, true);
+  if (view->active != UI_SCREEN_UPDATE) {
+    if (!g_update_backdrop)
+      g_update_backdrop = frame_buffer_create(size.rows, size.cols);
+    if (g_update_backdrop) {
+      frame_buffer_reset(g_update_backdrop);
+      frame_buffer_append(g_update_backdrop, frame_buffer_get_content(output), frame_buffer_get_length(output));
+      g_update_backdrop_size = size;
+    }
+  }
   g_render_volume = false;
   g_animation = NULL;
   g_capture = NULL;
@@ -578,7 +605,7 @@ static void *presentation_main(void *unused) {
     if ((active == UI_SCREEN_MEDIA || active == UI_SCREEN_HELP || active == UI_SCREEN_STATS) &&
         time_get_ns() >= atomic_load_u64(&g_volume_until))
       refresh_deadline = iteration_started_ns + 100 * NS_PER_MS_INT;
-    screen_t frame = {0};
+    screen_t frame = {0}, media_backdrop = {0};
     if (active >= 0 && !g_finished && (!shutdown_is_requested() || active == UI_SCREEN_RENDER_PROGRESS)) {
       frame = g_screens[active];
       atomic_fetch_add(&frame.owned->references, 1);
@@ -633,7 +660,19 @@ static void *presentation_main(void *unused) {
         fps_counter_reset(g_fps);
       g_render_fd = screen->fd;
       frame_buffer_set_screen_output_fd(screen->fd);
-      if ((resized || changed) && active == UI_SCREEN_MEDIA) {
+      if (active == UI_SCREEN_UPDATE && update_banner_is_overlay_open()) {
+        mutex_lock(&g_mutex);
+        // Media submissions own their text. Retain the newest mailbox frame
+        // while composing it with the modal, without borrowing producer memory.
+        if (selected_screen_excluding_locked(UI_SCREEN_UPDATE) == UI_SCREEN_MEDIA &&
+            g_screens[UI_SCREEN_MEDIA].render == render_text) {
+          media_backdrop = g_screens[UI_SCREEN_MEDIA];
+          atomic_fetch_add(&media_backdrop.owned->references, 1);
+          g_screens[UI_SCREEN_MEDIA].dirty = false;
+        }
+        mutex_unlock(&g_mutex);
+      }
+      if ((resized || changed) && (active == UI_SCREEN_MEDIA || media_backdrop.render)) {
         if (GET_OPTION(auto_width))
           options_set_int("width", size.cols);
         if (GET_OPTION(auto_height))
@@ -658,7 +697,12 @@ static void *presentation_main(void *unused) {
         mutex_unlock(&g_mutex);
         release_snapshot(retired);
       }
-      native_view_t context = {.screen = screen, .active = active, .volume = volume_visible, .fresh = false};
+      native_view_t context = {.screen = screen,
+                               .media_backdrop = media_backdrop.render ? &media_backdrop : NULL,
+                               .active = active,
+                               .volume = volume_visible,
+                               .fresh = false,
+                               .restore_backdrop = changed || resized || redraw || screen->dirty};
       bool help_changed = false;
       if (active == UI_SCREEN_HELP) {
         uint64_t revision = options_revision();
@@ -668,9 +712,10 @@ static void *presentation_main(void *unused) {
       ui_session_view_t view = {
           .screen = active,
           .minimum = screen->minimum,
-          .dirty = screen->dirty || volume_changed || help_changed,
-          .refresh_ns = active == UI_SCREEN_PROMPT ? 50 * NS_PER_MS_INT
-                        : active == UI_SCREEN_LOGS ? 100 * NS_PER_MS_INT
+          .dirty = screen->dirty || media_backdrop.dirty || volume_changed || help_changed,
+          .refresh_ns = active == UI_SCREEN_PROMPT   ? 50 * NS_PER_MS_INT
+                        : active == UI_SCREEN_LOGS   ? 100 * NS_PER_MS_INT
+                        : active == UI_SCREEN_UPDATE ? (update_banner_is_checking() ? 100 * NS_PER_MS_INT : 0)
                         : active == UI_SCREEN_RENDER_PROGRESS
                             ? 125 * NS_PER_MS_INT
                             : (active != UI_SCREEN_MEDIA && active != UI_SCREEN_STATS && active != UI_SCREEN_HELP
@@ -741,6 +786,7 @@ static void *presentation_main(void *unused) {
   frame_complete:
     g_render_fd = -1;
     g_render_snapshot = NULL;
+    release_snapshot(media_backdrop.owned);
     if (frame.render) {
       release_snapshot(frame.owned);
       mutex_lock(&g_mutex);
@@ -758,7 +804,8 @@ static void *presentation_main(void *unused) {
     // part of the interval rather than an additional delay after each frame.
     mutex_lock(&g_mutex);
     int pending_screen = ui_controller_current_screen();
-    bool pending = g_redraw || pending_screen != g_active || (pending_screen >= 0 && g_screens[pending_screen].dirty);
+    bool pending = g_redraw || pending_screen != g_active || (pending_screen >= 0 && g_screens[pending_screen].dirty) ||
+                   (media_backdrop.render && g_screens[UI_SCREEN_MEDIA].dirty);
     uint64_t now = time_get_ns();
     if (!pending && !atomic_load_bool(&g_presentation_stop_requested) && now < refresh_deadline)
       cond_timedwait(&g_render_requested, &g_mutex, refresh_deadline - now);
@@ -1182,6 +1229,8 @@ void ui_controller_shutdown(void) {
   thread_join(&g_thread, NULL);
   ui_session_destroy(g_session);
   g_session = NULL;
+  frame_buffer_destroy(g_update_backdrop);
+  g_update_backdrop = NULL;
   atomic_store_u64(&g_volume_until, 0);
   ui_sync_stop();
   for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
