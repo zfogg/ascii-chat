@@ -160,5 +160,10 @@ Test(session_ui, media_toggle_action_and_shared_help) {
   char *help = ui_session_help_render((terminal_size_t){120, 40}, true, false, &minimum);
   cr_assert_not_null(help);
   cr_assert_not_null(strstr(help, "Toggle Media Playback"));
+#if defined(ASCIICHAT_DIAGNOSTIC_UI)
+  cr_assert_not_null(strstr(help, "Error stacks diagnostic TUI"));
+#else
+  cr_assert_null(strstr(help, "Error stacks diagnostic TUI"));
+#endif
   SAFE_FREE(help);
 }
