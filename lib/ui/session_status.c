@@ -107,6 +107,8 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
                              session_log_buffer_t *logs) {
   if (!output || !config || !config->render_header || size.cols < 1 || size.rows < 1)
     return;
+  if (config->show_logs)
+    log_search_process_pending();
   frame_buffer_t *body = frame_buffer_create(size.rows, size.cols);
   if (!body)
     return;

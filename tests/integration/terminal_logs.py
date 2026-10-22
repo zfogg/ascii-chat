@@ -47,13 +47,13 @@ def exercise(term, name, artifacts):
     assert search_open.splitlines()[4:-1] == logs_before_search[5:], (
         "Opening search did not replace the top log row with the prompt"
     )
-    pattern = ""
-    for key in "Volume DOWN":
-        pattern += key
-        term.write(key)
-        term.expect(lambda s: pattern in s.splitlines()[-1], "Existing server search did not accept key")
+    term.write("Volume DOWN")
+    typed = term.pump(.15)
+    assert typed.splitlines()[-1].strip() == "/Volume DOWN", "Search input was delayed"
+    assert "KEYBOARD INPUT" in typed, "Search action was not debounced"
+    term.expect(lambda s: "KEYBOARD INPUT" not in s, "Debounced search did not filter")
     term.write("\r")
-    term.expect(lambda s: "Volume DOWN" in s and "KEYBOARD INPUT" not in s, "Search did not filter")
+    term.expect(lambda s: "Volume DOWN" in s, "Search did not remain active after accepting input")
     capture(term, artifacts / f"session-search-{name}.png")
     term.write("\x1b")
     term.expect(lambda s: "/: search logs" in s, "Escape closed overlay instead of search")

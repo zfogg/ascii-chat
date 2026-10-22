@@ -117,6 +117,9 @@ bool log_search_should_handle(int key);
  */
 asciichat_error_t log_search_handle_key(keyboard_key_t key);
 
+/** Apply a pending interactive-search action after its debounce interval. */
+void log_search_process_pending(void);
+
 /* ============================================================================
  * Log Filtering and Display
  * ========================================================================== */
