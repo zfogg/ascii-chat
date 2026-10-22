@@ -39,37 +39,39 @@ def main():
         print(f"PASS {name}: exit {expected}", flush=True)
         return (logs / f"{name}.log").read_text(encoding="utf-8", errors="replace")
 
+    synthetic_media = ["--test-pattern", "--test-audio", "--no-audio-playback"]
     snapshot = ["--snapshot", "--snapshot-delay", "0.3", "--width", "20", "--height", "10",
                 "--splash-screen=false"]
+    synthetic_snapshot = [*snapshot, *synthetic_media]
     help_text = subprocess.check_output([binary, "--help"], env=env, stderr=subprocess.STDOUT).decode(errors="replace")
     for flag in ("--errno-stacks", "--sync-state"):
         assert (flag in help_text) == args.debug_sync, (flag, args.debug_sync)
     if args.debug_sync:
-        diagnostic = run("mirror", ["mirror", "--test-pattern", "--errno-stacks=0.05", *snapshot], 0)
+        diagnostic = run("mirror", ["mirror", "--errno-stacks=0.05", *synthetic_snapshot], 0)
         assert "Pending error stacks" in diagnostic
         assert "Error registry:" in diagnostic
         assert "SYNC_STATE:" not in diagnostic
-        sync = run("sync-only", ["mirror", "--test-pattern", "--sync-state=0.05", *snapshot], 0)
+        sync = run("sync-only", ["mirror", "--sync-state=0.05", *synthetic_snapshot], 0)
         assert "Pending error stacks" not in sync
-        both = run("both-reports", ["mirror", "--test-pattern", "--sync-state=0.05",
-                                   "--errno-stacks=0.15", *snapshot], 0)
+        both = run("both-reports", ["mirror", "--sync-state=0.05",
+                                   "--errno-stacks=0.15", *synthetic_snapshot], 0)
         assert both.count("Pending error stacks") == 1
         assert sync.count("SYNC_STATE:") == 1
         assert both.count("SYNC_STATE:") == 1
         assert both.index("SYNC_STATE:") < both.index("Pending error stacks")
         # A later errno deadline must not delay or replace the earlier sync report.
-        later = run("independent-deadlines", ["mirror", "--test-pattern", "--sync-state=0.05",
-                                            "--errno-stacks=60", *snapshot], 0)
+        later = run("independent-deadlines", ["mirror", "--sync-state=0.05",
+                                            "--errno-stacks=60", *synthetic_snapshot], 0)
         assert "Pending error stacks" not in later
         assert later.count("SYNC_STATE:") == 1
     else:
         for flag in ("--errno-stacks", "--sync-state"):
             for suffix in ("", "=0.05"):
-                result = subprocess.run([binary, "mirror", flag + suffix, "--test-pattern", *snapshot],
+                result = subprocess.run([binary, "mirror", flag + suffix, *synthetic_snapshot],
                                         env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
                 assert result.returncode == 2, (flag, suffix, result.returncode, result.stdout)
             print(f"PASS Release rejects {flag}", flush=True)
-        run("mirror", ["mirror", "--test-pattern", *snapshot], 0)
+        run("mirror", ["mirror", *synthetic_snapshot], 0)
     missing = run("missing-media", ["mirror", "--file", str(logs / "missing.mp4"), *snapshot], 26)
     assert "Failure chain (outer context -> root cause)" in missing
     assert "Media initialization failed" in missing
@@ -101,7 +103,7 @@ def main():
                 time.sleep(0.1)
             for attempt in range(2):
                 run(f"rejected-client-{attempt}", ["client", f"127.0.0.1:{port}", "--password",
-                    "wrong-test-secret", "--test-pattern", *snapshot], 62)
+                    "wrong-test-secret", *synthetic_snapshot], 62)
                 assert server.poll() is None, "One client's authentication failure stopped the server"
             print("PASS server survives repeated authentication failures", flush=True)
             # Keep an authenticated client active while testing the capacity rejection.
@@ -119,15 +121,15 @@ def main():
                             break
                         time.sleep(0.1)
                     run("session-full", ["client", f"127.0.0.1:{port}", "--password",
-                        "errno-test-secret", "--test-pattern", "--video-codec", "raw", *snapshot], 48)
+                        "errno-test-secret", "--video-codec", "raw", *synthetic_snapshot], 48)
                 finally:
                     holder.terminate()
                     holder.wait(timeout=10)
             time.sleep(1)
             assert server.poll() is None, "Admission rejection stopped the server"
             run("authenticated-client", ["client", f"127.0.0.1:{port}", "--password",
-                "errno-test-secret", "--test-pattern", "--video-codec", "raw",
-                *snapshot, "--snapshot-delay", "0"], 0)
+                "errno-test-secret", "--video-codec", "raw",
+                *synthetic_snapshot, "--snapshot-delay", "0"], 0)
         finally:
             server.terminate()
             server.wait(timeout=15)
