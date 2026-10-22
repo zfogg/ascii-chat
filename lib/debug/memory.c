@@ -419,8 +419,8 @@ void *debug_malloc(size_t size, const char *file, int line) {
           if (!should_ignore_allocation(normalized_file, line, thread_current_id(), size)) {
             log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation at site (total: %zu bytes, this "
                      "alloc: %zu bytes)",
-                     normalized_file, line, thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
-                     site->live_bytes, size);
+                     normalized_file, line, thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY, site->live_bytes,
+                     size);
           }
         }
       }
@@ -486,8 +486,8 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
           if (!should_ignore_allocation(normalized_file, line, thread_current_id(), size)) {
             log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation at site (total: %zu bytes, this "
                      "alloc: %zu bytes)",
-                     normalized_file, line, thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
-                     site->live_bytes, size);
+                     normalized_file, line, thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY, site->live_bytes,
+                     size);
           }
         }
       }
@@ -645,8 +645,8 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
           if (!should_ignore_allocation(normalized_file, line, thread_current_id(), size)) {
             log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation at site (total: %zu bytes, this "
                      "alloc: %zu bytes)",
-                     normalized_file, line, thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
-                     site->live_bytes, total);
+                     normalized_file, line, thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY, site->live_bytes,
+                     total);
           }
         }
       }

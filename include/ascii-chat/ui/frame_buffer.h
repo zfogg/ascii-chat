@@ -136,6 +136,9 @@ const char *frame_buffer_get_content(const frame_buffer_t *buf);
  */
 void frame_buffer_render_border(frame_buffer_t *buf, int cols, const char *color);
 
+/** Theme-blue divider of exactly width cells, followed by a newline. */
+void frame_buffer_render_divider(frame_buffer_t *buf, int width, bool use_utf8, bool use_colors);
+
 /**
  * @brief Render centered text (used by both splash and status screens)
  *

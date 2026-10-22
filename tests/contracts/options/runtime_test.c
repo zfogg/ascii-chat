@@ -95,8 +95,7 @@ static void test_transactions(void) {
   before = options_revision();
   asciichat_thread_t threads[4];
   for (int i = 0; i < 4; ++i)
-    cr_assert_eq(acthread_create(&threads[i], "settings_writer", writer, i % 2 ? "flip_x" : "flip_y"),
-                 ASCIICHAT_OK);
+    cr_assert_eq(acthread_create(&threads[i], "settings_writer", writer, i % 2 ? "flip_x" : "flip_y"), ASCIICHAT_OK);
   while (atomic_load_int(&ready) != 4)
     time_sleep_ns(1000);
   atomic_store_int(&start, 1);

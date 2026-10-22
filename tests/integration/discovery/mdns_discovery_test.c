@@ -18,8 +18,10 @@
 #include <unistd.h>
 
 #include <ascii-chat/network/mdns/mdns.h>
+#include <ascii-chat/network/mdns/discovery.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/time.h>
 
 // Static callbacks for integration tests (must be at file scope, not inside Test())
 static void dummy_callback(const asciichat_mdns_discovery_t *discovery, void *user_data) {
@@ -44,6 +46,67 @@ static void invalid_type_test_callback(const asciichat_mdns_discovery_t *discove
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 TestSuite(mdns_integration);
+
+static void lifecycle_callback(const asciichat_mdns_discovery_t *service, void *data) {
+  asciichat_mdns_discovery_t *found = data;
+  if (strncmp(service->name, "owned-lan-fixture-", 18) == 0)
+    *found = *service;
+}
+
+Test(mdns_integration, real_answers_survive_invalid_replacement_and_own_caller_records, .timeout = 10) {
+  asciichat_mdns_t *advertiser = asciichat_mdns_init();
+  asciichat_mdns_t *query = asciichat_mdns_init();
+  cr_assert_not_null(advertiser);
+  cr_assert_not_null(query);
+  char name[64] = "owned-lan-fixture", host[64] = "owned-host";
+  const char *txt[] = {"session_string=swift-river-mountain"};
+  asciichat_mdns_service_t service = {
+      .name = name, .host = host, .type = "_ascii-chat._tcp", .port = 32123, .txt_records = txt, .txt_count = 1};
+  cr_assert_eq(asciichat_mdns_advertise(advertiser, &service), ASCIICHAT_OK);
+  service.port = 0;
+  cr_assert_eq(asciichat_mdns_advertise(advertiser, &service), ERROR_INVALID_PARAM);
+  memset(name, 'x', sizeof(name) - 1);
+  memset(host, 'y', sizeof(host) - 1);
+  asciichat_mdns_discovery_t found = {0};
+  cr_assert_eq(asciichat_mdns_query(query, "_ascii-chat._tcp.local", lifecycle_callback, &found), ASCIICHAT_OK);
+  uint64_t deadline = time_get_ns() + 2 * NS_PER_SEC_INT;
+  while (!found.port && time_get_ns() < deadline)
+    cr_assert_eq(asciichat_mdns_update(query, 50), ASCIICHAT_OK);
+  cr_assert_eq(found.port, 32123, "A registered service must answer real network queries");
+  cr_assert_str_eq(found.host, "owned-host.local.");
+  cr_assert_str_eq(found.txt, "session_string=swift-river-mountain");
+  cr_assert_str_not_empty(found.ipv4);
+  int server_count = 0;
+  ui_mdns_server_t *servers = discovery_mdns_query(800, 20, true, &server_count);
+  bool session_found = false;
+  for (int i = 0; i < server_count; ++i) {
+    if (servers[i].port == 32123 && strncmp(servers[i].name, "owned-lan-fixture-", 18) == 0) {
+      cr_assert_str_eq(servers[i].session_string, "swift-river-mountain");
+      session_found = true;
+    }
+  }
+  cr_assert(session_found, "The UI discovery result must retain session TXT metadata");
+  discovery_mdns_destroy(servers);
+  discovery_config_t config;
+  discovery_config_init_defaults(&config);
+  discovery_result_t resolved;
+  cr_assert_eq(discover_session_parallel("swift-river-mountain", &config, &resolved), ASCIICHAT_OK);
+  cr_assert(resolved.success);
+  cr_assert_eq(resolved.source, DISCOVERY_SOURCE_MDNS);
+  cr_assert_eq(resolved.server_port, 32123);
+  cr_assert_eq(asciichat_mdns_unadvertise(advertiser, "owned-lan-fixture"), ASCIICHAT_OK);
+  asciichat_mdns_destroy(advertiser);
+  asciichat_mdns_destroy(query);
+  query = asciichat_mdns_init();
+  cr_assert_not_null(query);
+  memset(&found, 0, sizeof(found));
+  cr_assert_eq(asciichat_mdns_query(query, "_ascii-chat._tcp.local", lifecycle_callback, &found), ASCIICHAT_OK);
+  deadline = time_get_ns() + 300 * NS_PER_MS_INT;
+  while (time_get_ns() < deadline)
+    cr_assert_eq(asciichat_mdns_update(query, 50), ASCIICHAT_OK);
+  cr_assert_eq(found.port, 0, "Withdrawn service must stop answering queries");
+  asciichat_mdns_destroy(query);
+}
 
 Test(mdns_integration, initialization_cleanup_cycle) {
   // Create and destroy multiple times to verify no resource leaks

@@ -967,6 +967,9 @@ typedef struct options_state {
   // ============================================================================
   // Network Options
   // ============================================================================
+#ifndef __EMSCRIPTEN__
+  bool address_explicit; ///< Native client destination overrides automatic LAN discovery
+#endif
   char address[OPTIONS_BUFF_SIZE];            ///< Server address (client) or bind address (server)
   char address6[OPTIONS_BUFF_SIZE];           ///< IPv6 bind address (server only)
   int port;                                   ///< Server port number

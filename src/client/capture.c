@@ -360,7 +360,6 @@ static void *webcam_capture_thread_func(void *arg) {
                      late_ms, expected_ms, actual_ms, actual_fps);
     }
 
-
     // Yield to reduce CPU usage
     platform_sleep_us(1 * US_PER_MS_INT); // 1ms
   }

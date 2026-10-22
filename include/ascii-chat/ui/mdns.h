@@ -55,12 +55,13 @@ void ui_mdns_log_append(const char *message);
  * @brief Discovered server information from mDNS
  */
 typedef struct {
-  char name[256];    ///< Service instance name (e.g., "swift-river-canyon")
-  char address[256]; ///< Server address (IPv4, IPv6, or hostname)
-  uint16_t port;     ///< Server port number
-  char ipv4[16];     ///< IPv4 address (if available)
-  char ipv6[46];     ///< IPv6 address (if available)
-  uint32_t ttl;      ///< TTL remaining (seconds)
+  char name[256];           ///< Service instance name (e.g., "swift-river-canyon")
+  char session_string[256]; ///< Session identity advertised in TXT metadata
+  char address[256];        ///< Server address (IPv4, IPv6, or hostname)
+  uint16_t port;            ///< Server port number
+  char ipv4[16];            ///< IPv4 address (if available)
+  char ipv6[46];            ///< IPv6 address (if available)
+  uint32_t ttl;             ///< TTL remaining (seconds)
 } ui_mdns_server_t;
 
 /**
@@ -135,89 +136,38 @@ ui_mdns_server_t *ui_mdns_query(const ui_mdns_config_t *config, int *out_count);
 void ui_mdns_free_results(ui_mdns_server_t *servers);
 
 /**
- * @brief Display discovered servers to user and prompt for selection
- *
- * Shows a numbered list of discovered servers and prompts user to select one.
- * Handles invalid input with re-prompting.
- *
- * **User Experience:**
- * ```
- * Available ascii-chat servers on LAN:
- *   1. swift-river-canyon (192.168.1.100:27224)
- *   2. quiet-mountain-lake (192.168.1.101:27224)
- *   3. gentle-forest-breeze (192.168.1.102:27224)
- *
- * Select server (1-3) or press Enter to cancel: _
- * ```
- *
- * **Behavior:**
- * - Displays each server with instance name and best-guess address
- * - Shows IPv4 address if available, falls back to IPv6 or hostname
- * - Handles non-numeric input with error message and re-prompt
- * - Returns -1 if user presses Enter/Ctrl+C to cancel
- * - Returns 0-based index of selected server
- *
- * @param servers Array of discovered servers
- * @param count Number of servers in array
- * @return Index of selected server (0 to count-1), or -1 to cancel
- *
- * @note This function performs interactive I/O - may not be suitable for automated contexts
- * @note For automated selection, use servers[0] directly instead
+ * Interactive controller picker; Enter selects the highlighted row, Esc/q cancels.
+ * Redirected input never chooses a server implicitly. Returns -1 when a terminal
+ * is unavailable.
  */
 int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count);
 
 /**
- * @brief TUI-based server selection with formatted display
- *
- * Displays discovered servers in a formatted terminal UI with:
- * - Clear screen and boxed display
- * - Server list with numbering and addresses
- * - "No results" message if no servers available
- * - Interactive numeric selection prompt
- *
- * **Display Example (3 servers):**
- * ```
- * ╭─ 🔍 ascii-chat Server Discovery ────────────╮
- * │
- * │ Found 3 servers on your local network:
- * │
- * │   [1] swift-river-canyon     192.168.1.100:27224
- * │   [2] quiet-mountain-lake    192.168.1.101:27224
- * │   [3] gentle-forest-breeze   192.168.1.102:27224
- * │
- * ╰────────────────────────────────────────────╯
- *
- * Enter server number (1-3) or press Enter to cancel:
- * ```
- *
- * **No Results Display:**
- * ```
- * ╭─ 🔍 ascii-chat Server Discovery ─╮
- * │
- * │   No servers found on local network
- * │
- * │   Make sure an ascii-chat server is running on your LAN
- * │   Or provide a server address manually: ascii-chat client <address>
- * │
- * ╰─────────────────────────────────────────╯
- * ```
- *
- * @param servers Array of discovered servers
- * @param count Number of servers (0 for "no results")
- * @return 0-based index of selected server, or -1 to cancel
+ * Shared controller list: arrows/j/k move, Enter selects, digits choose by number,
+ * Esc/q cancels. Resizes retain the selection and scroll it into view.
+ * Returns -1 without waiting when no interactive terminal is available.
  */
 int ui_mdns_select(const ui_mdns_server_t *servers, int count);
+
+/** Select with a caller-owned absolute monotonic deadline, retained across refreshes. */
+int ui_mdns_select_until(const ui_mdns_server_t *servers, int count, uint64_t deadline);
+
+/** Background LAN discovery while choosing; copies the selected endpoint into chosen.
+ * Returns 0 on selection, -1 on cancellation. Selection follows endpoint identity
+ * as the list changes; the worker is stopped and joined before returning.
+ */
+int ui_mdns_select_live(const ui_mdns_server_t *servers, int count, uint64_t deadline, ui_mdns_server_t *chosen);
 
 /**
  * @brief Get best address representation for a discovered server
  *
- * Returns the most suitable address representation (IPv4 > hostname > IPv6)
+ * Returns the most suitable address representation (IPv4 > IPv6 > hostname)
  * for connecting to a discovered server.
  *
  * **Selection Priority:**
  * 1. IPv4 address (most universal)
- * 2. Service name (if IPv4 not available)
- * 3. IPv6 address (last resort)
+ * 2. IPv6 address
+ * 3. Advertised hostname (service labels are never connection destinations)
  *
  * @param server Discovered server
  * @return Pointer to best address string (points to field in server struct)

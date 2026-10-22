@@ -696,6 +696,9 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
 
   log_debug("Processing argument: '%s'", arg);
 
+#ifndef __EMSCRIPTEN__
+  ((options_t *)config)->address_explicit = true;
+#endif
   // Access address and port fields from options_state struct
   char *address = (char *)config + offsetof(struct options_state, address);
   int *port = (int *)((char *)config + offsetof(struct options_state, port));

@@ -101,7 +101,7 @@ static void websocket_configure_socket(struct lws *wsi) {
       getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &actual_rcv, &optlen);
       getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &actual_snd, &optlen);
       log_debug("[WS_SOCKET] TCP_QUICKACK=1, TCP_NODELAY=1, SO_RCVBUF=%d (autotuned), SO_SNDBUF=%d", actual_rcv,
-               actual_snd);
+                actual_snd);
     }
   }
 #else
@@ -114,7 +114,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
   uint64_t established_ns = time_get_ns();
   log_debug("🔵🔵🔵 LWS_CALLBACK_ESTABLISHED FIRED! wsi=%p", (void *)wsi);
   log_debug("[LWS_CALLBACK_ESTABLISHED] WebSocket client connection established at timestamp=%llu",
-           (unsigned long long)established_ns);
+            (unsigned long long)established_ns);
 
   // Get server instance from protocol user data
   const struct lws_protocols *protocol = lws_get_protocol(wsi);
@@ -230,8 +230,8 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
   if (in && len >= 2) {
     close_code = (uint16_t)((uint8_t *)in)[0] << 8 | ((uint8_t *)in)[1];
     log_debug("[LWS_CALLBACK_CLOSED] Close frame received with code=%u (1000=normal, 1001=going away, 1006=abnormal, "
-             "1009=message too big)",
-             close_code);
+              "1009=message too big)",
+              close_code);
   } else {
     log_info(
         "[LWS_CALLBACK_CLOSED] No close frame (in=%p, len=%zu) - connection closed without WebSocket close handshake",

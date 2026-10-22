@@ -116,12 +116,6 @@ static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery,
     return;
   }
 
-  // Check if we've exceeded capacity
-  if (state->count >= state->capacity) {
-    log_warn("mDNS: Reached maximum server capacity (%d)", state->capacity);
-    return;
-  }
-
   // Check if timeout exceeded
   int64_t elapsed = (int64_t)time_ns_to_ms(time_get_ns()) - state->start_time_ms;
   if (elapsed > state->timeout_ms) {
@@ -137,6 +131,9 @@ static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery,
   // Check if we already have this server (avoid duplicates)
   for (int i = 0; i < state->count; i++) {
     if (strcmp(state->servers[i].name, discovery->name) == 0 && state->servers[i].port == discovery->port) {
+      if (strncmp(discovery->txt, "session_string=", sizeof("session_string=") - 1) == 0)
+        SAFE_STRNCPY(state->servers[i].session_string, discovery->txt + sizeof("session_string=") - 1,
+                     sizeof(state->servers[i].session_string));
       // Update TTL if newer
       if (discovery->ttl > state->servers[i].ttl) {
         state->servers[i].ttl = discovery->ttl;
@@ -145,12 +142,19 @@ static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery,
     }
   }
 
+  // Allow metadata updates for existing entries even when the list is full.
+  if (state->count >= state->capacity)
+    return;
+
   // Add new server to our array
   ui_mdns_server_t *server = &state->servers[state->count];
   memset(server, 0, sizeof(ui_mdns_server_t));
 
   // Copy service information
   SAFE_STRNCPY(server->name, discovery->name, sizeof(server->name));
+  if (strncmp(discovery->txt, "session_string=", sizeof("session_string=") - 1) == 0)
+    SAFE_STRNCPY(server->session_string, discovery->txt + sizeof("session_string=") - 1,
+                 sizeof(server->session_string));
   SAFE_STRNCPY(server->ipv4, discovery->ipv4, sizeof(server->ipv4));
   SAFE_STRNCPY(server->ipv6, discovery->ipv6, sizeof(server->ipv6));
   server->port = discovery->port;
@@ -310,7 +314,7 @@ static void *mdns_thread_fn(void *arg) {
   for (int i = 0; i < discovered_count; i++) {
     ui_mdns_server_t *server = &discovered_servers[i];
 
-    if (strcmp(server->name, ctx->session_string) == 0) {
+    if (strcmp(server->name, ctx->session_string) == 0 || strcmp(server->session_string, ctx->session_string) == 0) {
       // Found a match!
       mutex_lock(&ctx->state->lock);
       {

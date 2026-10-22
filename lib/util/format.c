@@ -69,7 +69,8 @@ void format_number_compact(uint64_t value, char *out, size_t out_capacity) {
     ++unit;
   }
   if (fraction)
-    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%" PRIu64 ".%" PRIu64 "%c", whole, fraction, suffixes[unit]));
+    SAFE_IGNORE_PRINTF_RESULT(
+        safe_snprintf(out, out_capacity, "%" PRIu64 ".%" PRIu64 "%c", whole, fraction, suffixes[unit]));
   else
     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%" PRIu64 "%c", whole, suffixes[unit]));
 }

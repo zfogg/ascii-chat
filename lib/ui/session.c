@@ -162,7 +162,9 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
                     s->size.rows != s->presented_size.rows || view->minimum.cols != s->minimum.cols ||
                     view->minimum.rows != s->minimum.rows;
   s->covered = covered;
-  bool visible = (view->screen == UI_SCREEN_SPLASH || view->screen == UI_SCREEN_HELP) && !covered;
+  bool visible =
+      (view->screen == UI_SCREEN_SPLASH || view->screen == UI_SCREEN_HELP || view->screen == UI_SCREEN_MDNS) &&
+      !covered;
   if (visible != s->animation.visible) {
     // Account for the elapsed interval under the old visibility before changing
     // it, so resuming after an idle modal does not advance a paused animation.

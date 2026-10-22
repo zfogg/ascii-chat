@@ -253,18 +253,17 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
 }
 
 char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t width, const ssize_t height,
-                                               const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                               const bool stretch, const char *palette_chars, const bool contain,
-                                               image_t **workspace) {
+                                                const terminal_capabilities_t *caps, const bool use_aspect_ratio,
+                                                const bool stretch, const char *palette_chars, const bool contain,
+                                                image_t **workspace) {
 
-  return ascii_convert_with_buffers(original, width, height, caps, use_aspect_ratio, stretch, palette_chars,
-                                    contain, workspace, NULL);
+  return ascii_convert_with_buffers(original, width, height, caps, use_aspect_ratio, stretch, palette_chars, contain,
+                                    workspace, NULL);
 }
 
 char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const ssize_t height,
-                                               const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                               const bool stretch, const char *palette_chars, const bool contain,
-                                               image_t **workspace, outbuf_t *output) {
+                                 const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+                                 const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output) {
 
   if (original == NULL || caps == NULL) {
     log_error("Invalid parameters for ascii_convert_with_capabilities");

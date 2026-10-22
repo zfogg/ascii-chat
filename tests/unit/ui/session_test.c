@@ -11,6 +11,17 @@ typedef struct {
   const char *text;
 } view_fixture_t;
 
+Test(session_ui, shared_dividers_have_matching_utf8_and_ascii_widths) {
+  frame_buffer_t *buffer = frame_buffer_create(2, 20);
+  cr_assert_not_null(buffer);
+  frame_buffer_render_divider(buffer, 5, true, false);
+  cr_assert_str_eq(frame_buffer_get_content(buffer), "━━━━━\n");
+  frame_buffer_reset(buffer);
+  frame_buffer_render_divider(buffer, 5, false, false);
+  cr_assert_str_eq(frame_buffer_get_content(buffer), "-----\n");
+  frame_buffer_destroy(buffer);
+}
+
 Test(session_ui, two_media_sessions_present_every_jittered_60fps_frame) {
   ui_session_t *sessions[] = {ui_session_create(), ui_session_create()};
   for (unsigned client = 0; client < 2; client++) {

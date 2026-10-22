@@ -84,6 +84,7 @@
 #include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/ui/mdns.h>
+#include <ascii-chat/ui/input.h>
 #include <ascii-chat/network/mdns/discovery.h>
 
 #include <ascii-chat/platform/abstraction.h>
@@ -443,6 +444,7 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     }
 
     if (!should_exit()) {
+      splash_intro_start(display);
       log_debug("Connection lost, preparing for reconnection attempt");
     }
   }
@@ -493,7 +495,49 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
   return result;
 }
 
-int client_main(void) {
+/* Runs once after splash startup, before capture/audio and the retry loop. */
+static asciichat_error_t client_select_destination(void *user_data) {
+  (void)user_data;
+  const options_t *opts = options_get();
+  if (!opts)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Client options are unavailable during LAN discovery");
+  if (!opts->lan_discovery)
+    return ASCIICHAT_OK;
+  bool default_destination =
+      !opts->address_explicit && strcmp(opts->address, OPT_ADDRESS_DEFAULT) == 0 && opts->port == OPT_PORT_INT_DEFAULT;
+  if (opts->address_explicit || !default_destination)
+    return ASCIICHAT_OK;
+
+  ui_mdns_config_t config = {.timeout_ms = 2000, .max_servers = 20, .quiet = true};
+  int count = 0;
+  ui_mdns_server_t *servers = ui_mdns_query(&config, &count);
+  if (count == 0) {
+    ui_mdns_free_results(servers);
+    return SET_ERRNO(ERROR_NETWORK, "No ascii-chat servers found on the local network");
+  }
+  uint64_t deadline = ui_input_deadline(30);
+  ui_mdns_server_t selected;
+  int selection = ui_mdns_select_live(servers, count, deadline, &selected);
+  ui_mdns_free_results(servers);
+  if (selection < 0) {
+    return SET_ERRNO(ERROR_NETWORK, "LAN server selection cancelled");
+  }
+  static char selected_address[OPTIONS_BUFF_SIZE];
+  SAFE_STRNCPY(selected_address, ui_mdns_get_best_address(&selected), sizeof(selected_address));
+  asciichat_error_t result = options_set_string("address", selected_address);
+  if (result == ASCIICHAT_OK)
+    result = options_set_int("port", selected.port);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+  g_client_session.discovered_address = selected_address;
+  g_client_session.discovered_port = selected.port;
+  log_debug("LAN discovery: Selected server '%s' at %s:%d", selected.name, selected_address,
+            g_client_session.discovered_port);
+  return ASCIICHAT_OK;
+}
+
+static int client_initialize_devices(void) {
 
   // Initialize client-specific systems (NOT shared with session_client_like)
   // This includes application devices and the application client context.
@@ -540,6 +584,17 @@ int client_main(void) {
     errno_scope_end(init_scope, ASCIICHAT_ERRNO_HANDLED);
   }
 
+  return 0;
+}
+
+static asciichat_error_t client_prepare_destination(void *user_data) {
+  asciichat_error_t result = client_select_destination(user_data);
+  if (result != ASCIICHAT_OK)
+    return result;
+  return (asciichat_error_t)client_initialize_devices();
+}
+
+int client_main(void) {
   // Register cleanup function for graceful shutdown
   (void)atexit(shutdown_client);
 
@@ -556,78 +611,12 @@ int client_main(void) {
    * - Direct address/port
    */
 
-  // LAN Discovery: If --scan flag is set, discover servers on local network
-  const options_t *opts = options_get();
-  if (opts && opts->lan_discovery &&
-      (opts->address[0] == '\0' || is_localhost_ipv4(opts->address) || strcmp(opts->address, "localhost") == 0)) {
-    log_debug("LAN discovery: --scan flag set, querying for available servers");
-
-    ui_mdns_config_t lan_config;
-    memset(&lan_config, 0, sizeof(lan_config));
-    lan_config.timeout_ms = 2 * MS_PER_SEC_INT; // Wait up to 2 seconds for responses
-    lan_config.max_servers = 20;                // Support up to 20 servers on LAN
-    lan_config.quiet = true;                    // Quiet during discovery, TUI will show status
-
-    int discovered_count = 0;
-    ui_mdns_server_t *discovered_servers = ui_mdns_query(&lan_config, &discovered_count);
-
-    // Use TUI for server selection
-    int selected_index = ui_mdns_select(discovered_servers, discovered_count);
-
-    if (selected_index < 0) {
-      // User cancelled or no servers found
-      if (discovered_count == 0) {
-        // No servers found - log message and prevent any further output
-        // Lock the terminal so other threads can't write and our error
-        // will be the last message
-        log_lock_terminal();
-
-        // Log single message with embedded newlines to prevent multiple log entries
-        NOTICE(WARNING, "NO SERVERS FOUND",
-               "No ascii-chat servers found on the local network.\nUse 'ascii-chat client <address>' to connect "
-               "manually.");
-
-        // Exit without cleanup
-        ui_controller_finish(STDERR_FILENO, "", 0);
-        platform_force_exit(1);
-      }
-      // User cancelled (had servers to choose from but pressed cancel)
-      log_debug("LAN discovery: User cancelled server selection");
-      if (discovered_servers) {
-        ui_mdns_free_results(discovered_servers);
-      }
-      return 1; // User cancelled
-    }
-
-    // Update options with discovered server's address and port
-    ui_mdns_server_t *selected = &discovered_servers[selected_index];
-    const char *selected_address = ui_mdns_get_best_address(selected);
-
-    // We need to modify options, but they're immutable via RCU
-    // Create a new options copy with updated address/port
-    options_t *opts_new = SAFE_MALLOC(sizeof(options_t), options_t *);
-    if (opts_new) {
-      memcpy(opts_new, opts, sizeof(options_t));
-      SAFE_STRNCPY(opts_new->address, selected_address, sizeof(opts_new->address));
-
-      opts_new->port = (int)selected->port;
-
-      log_debug("LAN discovery: Selected server '%s' at %s:%d", selected->name, opts_new->address, opts_new->port);
-
-      // Note: In a real scenario, we'd update the global options via RCU
-      // For now, we'll use the updated values directly for connection
-      // This is a known limitation - proper RCU update requires more infrastructure
-    }
-
-    ui_mdns_free_results(discovered_servers);
-  }
-
   // =========================================================================
   // Client-Specific: Server Address Resolution
   // =========================================================================
   // Client mode supports:
-  // 1. Direct address/port (--address HOST --port PORT) - handled by options
-  // 2. LAN discovery (--scan) - handled above
+  // 1. Direct positional address/port - handled by options
+  // 2. Interactive default LAN discovery or --scan - prepared after splash startup
   // 3. WebSocket URL (direct ws:// or wss:// connection string)
   //
   // Note: Session string discovery via ACDS is handled by discovery mode only.
@@ -697,6 +686,7 @@ int client_main(void) {
   // Configure session_client_like with client-specific settings
   session_client_like_config_t config = {
       .run_fn = client_run,
+      .prepare_fn = client_prepare_destination,
       .run_user_data = NULL,
       .kind = SESSION_CLIENT_LIKE_KIND_CLIENT,
       .discovery = NULL,

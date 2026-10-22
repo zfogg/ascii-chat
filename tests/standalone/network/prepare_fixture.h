@@ -235,7 +235,7 @@ static inline void retained_async_receive(void) {
   crypto_destroy(&peer);
 }
 
-static inline void websocket_fixture(const char *url) {
+static inline void websocket_fixture(const char *url, void (*before_destroy)(acip_transport_t *)) {
   crypto_context_t crypto, peer;
   crypto_pair(&crypto, &peer);
   acip_transport_t *transport = acip_websocket_client_transport_create("prepare-websocket", url, &crypto);
@@ -256,6 +256,8 @@ static inline void websocket_fixture(const char *url) {
         CRYPTO_OK);
   CHECK(length == sizeof(outer) + 9 && memcmp(plain + sizeof(outer), "123456789", 9) == 0);
   buffer_release(owner);
+  if (before_destroy)
+    before_destroy(transport);
   acip_transport_destroy(transport);
   crypto_destroy(&crypto);
   crypto_destroy(&peer);

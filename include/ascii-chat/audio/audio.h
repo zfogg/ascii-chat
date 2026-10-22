@@ -143,11 +143,11 @@ typedef struct {
   audio_ring_buffer_t *render_buffer;   ///< Ring buffer for render reference (separate streams mode)
 
   // Worker thread for heavy processing (AEC3, filters)
-  asciichat_thread_t worker_thread; ///< Worker thread for audio processing
+  asciichat_thread_t worker_thread;    ///< Worker thread for audio processing
   mutex_t audio_processing_wait_guard; ///< Coordinates device-worker sleep with shutdown
   cond_t audio_processing_wakeup;      ///< Capture/AEC work, monitor refill, or shutdown notification
-  bool worker_running;              ///< True if worker thread is running
-  atomic_t worker_should_stop;      ///< Signal worker thread to exit
+  bool worker_running;                 ///< True if worker thread is running
+  atomic_t worker_should_stop;         ///< Signal worker thread to exit
 
   // Pre-allocated worker buffers (avoid malloc in worker loop)
   float *worker_capture_batch;  ///< Pre-allocated buffer for batch capture processing

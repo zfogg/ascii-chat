@@ -1098,6 +1098,18 @@ if(BUILD_TESTS)
             $<TARGET_FILE:test-client-like-lifecycle>)
     set_tests_properties(client-like-lifecycle PROPERTIES
         LABELS "integration" TIMEOUT 120)
+    add_test(NAME mdns-terminal
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/mdns_terminal.py
+            --binary $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(mdns-terminal PROPERTIES
+        LABELS "integration;terminal" TIMEOUT 180 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
+    add_test(NAME mdns-cross-host
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/mdns_cross_host.py
+            --binary $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(mdns-cross-host PROPERTIES
+        LABELS "integration;terminal;network" TIMEOUT 120 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
 endif()
 
 # Exercises the production discovery state machine without external services.
@@ -1635,6 +1647,8 @@ if(BUILD_TESTS AND UNIX AND NOT APPLE AND TARGET ascii-chat)
         ${CMAKE_SOURCE_DIR}/tests/integration/media_sessions.py --binary $<TARGET_FILE:ascii-chat>
         ${media_session_coverage_args})
     set_tests_properties(media-sessions PROPERTIES LABELS "integration" TIMEOUT 150 RUN_SERIAL TRUE)
+    set_property(TEST media-sessions APPEND PROPERTY ENVIRONMENT_MODIFICATION
+        "LSAN_OPTIONS=string_append::suppressions=${CMAKE_CURRENT_SOURCE_DIR}/standalone/network/x265_3_5_lsan.supp")
     if(TARGET tests)
         add_dependencies(tests ascii-chat)
     endif()

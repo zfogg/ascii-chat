@@ -198,7 +198,8 @@ static void *audio_worker_thread(void *arg) {
     // Local media playback maintains 150 ms of queued audio. Refill below
     // 100 ms instead of waking for every callback or 10 ms timeout. Capture
     // and software-only transmission retain their 10 ms processing cadence.
-    bool buffered_media = ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media && ctx->output_stream;
+    bool buffered_media =
+        ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media && ctx->output_stream;
     bool transmitted_media = ctx->capture_media_source && ctx->playback_only && !ctx->monitor_local_media;
     int timeout_ms = buffered_media ? 100 : transmitted_media ? 20 : WORKER_TIMEOUT_MS;
     int wait_result;

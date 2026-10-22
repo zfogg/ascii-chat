@@ -200,8 +200,7 @@ Test(session_connections, retains_owners_until_workers_join, .timeout = 60) {
   socket_t peers[2];
   for (int i = 0; i < 2; i++) {
     initialize(&owners[i], connect_peer(listener, &address, &peers[i]));
-    cr_assert_eq(acthread_create(&owners[i].worker, "owner_receive", receive_packets, &owners[i]),
-                 ASCIICHAT_OK);
+    cr_assert_eq(acthread_create(&owners[i].worker, "owner_receive", receive_packets, &owners[i]), ASCIICHAT_OK);
     owners[i].started = true;
     cr_assert_eq(session_connection_start(&owners[i].connection), ASCIICHAT_OK);
     progress(&owners[i], peers[i]);
