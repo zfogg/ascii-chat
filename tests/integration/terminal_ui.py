@@ -234,6 +234,12 @@ def main():
             normal = status.expect(lambda text: "Terminal too small" not in text and "127.0.0.1" in text,
                                    "Expected status recovery")
             assert "should-not-replay" not in normal
+            status.write("\x1b[24~")
+            status.expect(lambda text: "Check for updates" in text or "You're up to date" in text or "Update available" in text,
+                          "F12 did not open the update checker over the server status UI")
+            status.write("\x1b")
+            status.expect(lambda text: "127.0.0.1" in text,
+                          "Esc did not restore the server status UI after the update checker")
             status.resize(2, 2)
             status.pump(0.4)
             status.resize(12, 19)
