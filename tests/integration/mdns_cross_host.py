@@ -90,6 +90,9 @@ def main():
             prepared = True
             wait_remote(args.ssh, remote_log, "Server accepting connections")
             wait_remote(args.ssh, remote_log, "mDNS: Server advertised")
+            # Bonjour registration is asynchronous; allow the multicast record
+            # to reach the other host before the client's finite scan window.
+            time.sleep(3)
             for key in list(os.environ):
                 if key.startswith("ASCII_CHAT_"):
                     del os.environ[key]
