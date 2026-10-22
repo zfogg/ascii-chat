@@ -120,7 +120,7 @@ typedef struct {
   ui_mdns_server_t servers[];
 } mdns_snapshot_t;
 
-#define MDNS_LIVE_CAPACITY 20
+#define MDNS_LIVE_CAPACITY 128
 #define MDNS_LIST_MAX_ROWS 12
 typedef struct {
   mutex_t mutex;
