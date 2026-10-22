@@ -204,6 +204,29 @@ def check_update_selection(term, label, selected=True):
         assert all(cell.bg == "black" for cell in cells), f"Selected button {label} inherits its text color from the terminal theme"
 
 
+def update_media_backdrop(term):
+    """Read only video cells outside the modal, excluding spinner/button changes."""
+    lines = term.screen.display
+    borders = [(row, line) for row, line in enumerate(lines) if "┌" in line and "┐" in line]
+    bottoms = [row for row, line in enumerate(lines) if "└" in line and "┘" in line]
+    if not borders or not bottoms:
+        return ""
+    top, border = borders[0]
+    left, right = border.index("┌"), border.rindex("┐")
+    bottom = max(bottoms)
+    return "\n".join(line if row < top or row > bottom else line[:left] + line[right + 1:]
+                     for row, line in enumerate(lines) if row > 0).strip()
+
+
+def check_update_video_playing(term, title):
+    term.expect(lambda text: title in text and bool(update_media_backdrop(term)),
+                "Video was not painted behind the update checker")
+    before = update_media_backdrop(term)
+    term.expect(lambda text: title in text and bool(update_media_backdrop(term))
+                and update_media_backdrop(term) != before,
+                "Video stopped rendering behind the update checker", timeout=3)
+
+
 def main():
     check_capture_emulator()
     parser = argparse.ArgumentParser(description=__doc__)
@@ -387,10 +410,21 @@ def main():
                 # A Ctrl-C during source creation is not the dismissal behavior this scenario covers.
                 startup.pump(0.5)
                 startup.write("\x1b[24~")
+                startup.expect(lambda text: "Contacting GitHub Releases" in text,
+                               "F12 did not show the checking animation")
+                check_update_video_playing(startup, "Contacting GitHub Releases")
                 startup.expect(lambda text: "Update available" in text,
                                "F12 did not recheck the dismissed release")
                 check_update_centering(startup, "Update available")
                 check_update_selection(startup, "Update now")
+                check_update_video_playing(startup, "Update available")
+                startup.resize(12, 19)
+                small(startup)
+                startup.resize(38, 110)
+                startup.expect(lambda text: "Update available" in text and "Terminal too small" not in text,
+                               "Update checker did not recover after resizing")
+                check_update_centering(startup, "Update available")
+                check_update_video_playing(startup, "Update available")
                 startup.write("\t\t")
                 startup.pump(.3)
                 check_update_selection(startup, "Close")
