@@ -10,6 +10,8 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/video/rgba/video_frame.h>
 #include <string.h>
+#include <ascii-chat/video/h265/encoder.h>
+#include <ascii-chat/video/h265/decoder.h>
 
 atomic_t g_should_exit;
 client_manager_t g_client_manager;
@@ -46,6 +48,8 @@ static void setup(void) {
 }
 
 static void teardown(void) {
+  h265_server_context_destroy(g_h265_server);
+  g_h265_server = NULL;
   if (client->opus_decoder)
     opus_codec_destroy(client->opus_decoder);
   if (client->incoming_audio_buffer)
@@ -362,4 +366,60 @@ Test(server_protocol, opus_single_and_large_batches_decode_into_the_capture_ring
   }
   opus_codec_destroy(reference);
   SAFE_FREE(output);
+}
+
+Test(server_protocol, h265_frames_decode_to_grayscale_rgba_and_preserve_client_isolation) {
+  uint8_t input[32 * 16 * 3];
+  for (size_t i = 0; i < sizeof(input); ++i)
+    input[i] = (uint8_t)(32 + i % 96);
+  h265_encoder_t *encoder = h265_encoder_create(32, 16);
+  cr_assert_not_null(encoder);
+  uint8_t packet[65536];
+  size_t length = sizeof(packet);
+  cr_assert_eq(h265_encode(encoder, 32, 16, input, packet, &length), ASCIICHAT_OK);
+  cr_assert_gt(length, 5);
+  h265_encoder_destroy(encoder);
+  h265_decoder_t *reference = h265_decoder_create();
+  cr_assert_not_null(reference);
+  uint8_t grayscale[32 * 16];
+  uint16_t width = 0, height = 0;
+  size_t size = sizeof(grayscale);
+  cr_assert_eq(h265_decode(reference, packet, length, &width, &height, grayscale, &size), ASCIICHAT_OK);
+  cr_assert_eq(width, 32);
+  cr_assert_eq(height, 16);
+  h265_decoder_destroy(reference);
+  g_h265_server = h265_server_context_create();
+  cr_assert_not_null(g_h265_server);
+  h265_server_client_t *first = h265_server_get_client_decoder(g_h265_server, 7);
+  cr_assert_not_null(first);
+  cr_assert_eq(first, h265_server_get_client_decoder(g_h265_server, 7));
+  h265_server_client_t *second = h265_server_get_client_decoder(g_h265_server, 8);
+  cr_assert_not_null(second);
+  cr_assert_neq(first, second);
+  client->incoming_video_buffer = video_frame_buffer_create(client->client_id);
+  cr_assert_not_null(client->incoming_video_buffer);
+  client->codec_capabilities_video = VIDEO_CODEC_CAP_H265;
+  handle_image_frame_h265_packet(client, packet, length);
+  cr_assert_not(atomic_load_bool(&client->protocol_disconnect_requested));
+  const video_frame_t *frame = video_frame_get_latest(client->incoming_video_buffer);
+  cr_assert_not_null(frame);
+  cr_assert_eq(frame->width, width);
+  cr_assert_eq(frame->height, height);
+  cr_assert_eq(frame->size, sizeof(grayscale) * 4);
+  cr_assert_eq(client->frames_received, 1);
+  for (size_t i = 0; i < sizeof(grayscale); ++i) {
+    cr_assert_eq(((const uint8_t *)frame->data)[4 * i], grayscale[i]);
+    cr_assert_eq(((const uint8_t *)frame->data)[4 * i + 1], grayscale[i]);
+    cr_assert_eq(((const uint8_t *)frame->data)[4 * i + 2], grayscale[i]);
+    cr_assert_eq(((const uint8_t *)frame->data)[4 * i + 3], 255);
+  }
+  handle_image_frame_h265_packet(client, packet, length);
+  cr_assert_not(atomic_load_bool(&client->protocol_disconnect_requested));
+  cr_assert_eq(client->frames_received, 2);
+  uint64_t frames = 99, keys = 99;
+  h265_server_client_get_stats(second, &frames, &keys, &width, &height);
+  cr_assert_eq(frames, 0);
+  h265_server_remove_client(g_h265_server, 7);
+  h265_server_remove_client(g_h265_server, 7);
+  cr_assert_not_null(h265_server_get_client_decoder(g_h265_server, 7));
 }
