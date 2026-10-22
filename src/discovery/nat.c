@@ -60,11 +60,11 @@ int nat_compare_quality(const nat_quality_t *ours, const nat_quality_t *theirs, 
 
   // Check for bandwidth override: massive bandwidth advantage can override NAT tier
   if (ours->upload_kbps > 0 && theirs->upload_kbps > 0) {
-    if (ours->upload_kbps >= theirs->upload_kbps * BANDWIDTH_OVERRIDE_RATIO) {
+    if ((uint64_t)ours->upload_kbps >= (uint64_t)theirs->upload_kbps * BANDWIDTH_OVERRIDE_RATIO) {
       log_debug("NAT compare: we win by bandwidth override (%u vs %u kbps)", ours->upload_kbps, theirs->upload_kbps);
       return -1;
     }
-    if (theirs->upload_kbps >= ours->upload_kbps * BANDWIDTH_OVERRIDE_RATIO) {
+    if ((uint64_t)theirs->upload_kbps >= (uint64_t)ours->upload_kbps * BANDWIDTH_OVERRIDE_RATIO) {
       log_debug("NAT compare: they win by bandwidth override (%u vs %u kbps)", theirs->upload_kbps, ours->upload_kbps);
       return 1;
     }

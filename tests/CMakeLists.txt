@@ -1452,6 +1452,21 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_tests_properties(server-protocol PROPERTIES LABELS "unit" TIMEOUT 30)
 endif()
 
+# Discovery host ranking and local wire probes use the production mode implementation.
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+    add_executable(test-nat-quality contracts/discovery/nat_quality_test.c
+        ${CMAKE_SOURCE_DIR}/src/discovery/nat.c)
+    asciichat_configure_contract(test-nat-quality)
+    target_link_libraries(test-nat-quality PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-nat-quality PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-nat-quality)
+    set_target_properties(test-nat-quality PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(nat-quality test-nat-quality)
+    set_tests_properties(nat-quality PROPERTIES LABELS "unit" TIMEOUT 30)
+endif()
+
 # Criterion connection owner tests with real blocked TCP workers.
 if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     add_executable(test-session-connections contracts/session/connection_test.c contracts/session/protocol_test.c)
