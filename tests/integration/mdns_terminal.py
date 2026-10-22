@@ -226,7 +226,14 @@ def main():
             boundary = client("boundary")
             boundary.expect(lambda text: "LAN servers" in text and " [12]" in text,
                             "Twelve-row LAN viewport did not fill")
-            boundary.pump(2)
+            text = boundary.pump(2)
+            # Refresh sorts discoveries while preserving the selected endpoint,
+            # so its row need not remain one after the initial discovery query.
+            current = int(re.search(r"> \[(\d+)\]", text).group(1))
+            if current > 1:
+                boundary.write("k" * (current - 1))
+                boundary.expect(lambda text: "> [1]" in text,
+                                "Could not establish the first row before testing thirteen Down events")
             boundary.write("j" * 13)
             text = boundary.expect(lambda text: "> [14]" in text,
                                    "Selection could not move safely to server 14")
