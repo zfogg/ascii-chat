@@ -156,7 +156,7 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
   frame_buffer_t *out = frame_buffer_create(size.rows, size.cols);
   if (!out)
     return;
-  frame_buffer_printf(out, startup ? "\033[0m\033[2J\033[H" : "\033[0m");
+  frame_buffer_printf(out, startup ? "\033[?25l\033[0m\033[2J\033[H" : "\033[?25l\033[0m");
   update_border(out, top, left, width, unicode ? "┌" : "+", horizontal, unicode ? "┐" : "+", cyan);
   for (int row = 1; row < height - 1; ++row)
     frame_buffer_printf(out, "\033[%d;%dH%s%*s%s", top + row, left, colored_string(cyan, vertical), width - 2, "",

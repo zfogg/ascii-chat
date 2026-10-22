@@ -195,6 +195,7 @@ def check_update_selection(term, label, selected=True):
         return False
 
     term.expect(selection_ready, f"Highlight did not move to the expected button: {label}", timeout=5)
+    assert term.screen.cursor.hidden, "Update dialog left the terminal cursor visible"
     row, line = next((row, line) for row, line in enumerate(term.screen.display) if label in line)
     start = line.index(label)
     cells = [term.screen.buffer[row][col] for col in range(start, start + len(label))]
