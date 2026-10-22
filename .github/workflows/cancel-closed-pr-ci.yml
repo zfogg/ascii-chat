@@ -7,6 +7,7 @@ on:
 permissions:
   actions: write
   contents: read
+  pull-requests: read
 
 jobs:
   cancel:
@@ -36,7 +37,27 @@ jobs:
                   ...context.repo, commit_sha: run.head_sha, per_page: 100,
                 });
               }
-              if (!associated.some(p => p.number === pr.number)) continue;
+              let belongsToPr = associated.some(p => p.number === pr.number);
+              if (!belongsToPr && associated.length === 0 && pr.head.repo) {
+                // Deleted, unmerged branches can lose both API associations.
+                // Restrict fallback to the exact source repository/branch and
+                // the PR lifetime, and refuse ambiguous overlapping PRs.
+                const sameSource = run.head_repository?.id === pr.head.repo.id &&
+                  run.head_branch === pr.head.ref;
+                const inLifetime = run.created_at >= pr.created_at &&
+                  run.created_at <= pr.closed_at;
+                if (sameSource && inLifetime) {
+                  const siblings = await github.paginate(github.rest.pulls.list, {
+                    ...context.repo, state: 'all',
+                    head: `${pr.head.repo.owner.login}:${pr.head.ref}`, per_page: 100,
+                  });
+                  const ambiguous = siblings.some(p => p.number !== pr.number &&
+                    p.created_at <= run.created_at &&
+                    (!p.closed_at || p.closed_at >= run.created_at));
+                  belongsToPr = !ambiguous;
+                }
+              }
+              if (!belongsToPr) continue;
               try {
                 await github.rest.actions.cancelWorkflowRun({...context.repo, run_id: run.id});
                 core.info(`Canceled ${run.name}: ${run.html_url}`);

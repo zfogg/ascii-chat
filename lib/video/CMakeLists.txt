@@ -44,6 +44,7 @@ if(FFMPEG_FOUND)
     # Render-to-file - libvterm + FreeType2 render-file backend
     list(APPEND VIDEO_SRCS
         ${CMAKE_SOURCE_DIR}/lib/media/render/renderer.c
+        ${CMAKE_SOURCE_DIR}/lib/media/kitty/image.c
         ${CMAKE_SOURCE_DIR}/lib/media/render/terminal.c
     )
 endif()

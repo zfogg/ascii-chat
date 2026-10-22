@@ -55,7 +55,43 @@ and performance tests. Run individual specs with `vp exec playwright test
 variables. Native-server fixtures use `build/bin/ascii-chat` by default, or the
 path supplied by `ASCII_CHAT_TEST_BINARY`.
 
+## Local ASCII recordings
+
+Mirror, Client and Discovery share local start/stop/download controls. The browser
+encodes copies of the existing C/WASM canvas, with fixed export dimensions (up to
+1920×1080 at 30 FPS) across source switches and resizes. Microphone audio is included
+when enabled; selected screen audio and current file audio are included without
+requiring local monitoring. Client/Discovery also include received peer audio.
+The recording mix never feeds the network or speakers. Stop finalizes the browser's
+last data event before offering a download; no recording is uploaded automatically.
+Exports stop after ten minutes, reject output over 128 MiB, and retain at most one
+completed download. File audio requires browser media-element capture support.
+
+Run the real export checks from `web/web/` with FFmpeg/ffprobe on PATH:
+
+```sh
+ASCII_CHAT_TEST_BINARY=/absolute/path/to/ascii-chat \
+RECORDING_EVIDENCE=/absolute/path/outside/the/repo \
+vp exec playwright test --config tests/e2e/recording.config.ts
+```
+
+This uses a private Vite port (4207), browser media tracks from deterministic input
+fixtures, real C/WASM renderers, child native servers, MediaRecorder downloads,
+FFmpeg video/audio decoding, tone membership/amplitude and timestamp checks.
+Both network modes export from both participants with monitoring disabled.
+Full-page recording/download/playback screenshots and decoded evidence are saved
+outside the repository. Native servers are required for the two network cases;
+without `ASCII_CHAT_TEST_BINARY` those cases skip and cannot prove network recording.
+The unit suites cover cancellation, unmount, duplicate starts/stops, encoder errors,
+timeouts, memory/duration limits and recording-bus ownership independently.
+
 ## Unit test development
+
+`session-loading.spec.ts` also runs through `recording.config.ts`. It holds real
+page/WASM requests pending, verifies the shared loader's center against the
+rendering box below navigation and controls at desktop/mobile widths, then
+releases the requests and checks recovery. It also fails a real asset load and
+tests the inline error/reload path. No artificial loading delay is used by the app.
 
 From `web/web/`, use `vp test` for watch mode, or select a file:
 

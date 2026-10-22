@@ -1,6 +1,8 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { Layout } from "./components/Layout";
+import { SessionContent } from "./components/SessionContent";
+import ErrorBoundary from "@ascii-chat/shared/components/ErrorBoundary";
 const HomePage = lazy(() =>
   import("./pages/Home").then((m) => ({ default: m.HomePage })),
 );
@@ -16,18 +18,25 @@ const DiscoveryPage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import("./pages/NotFound").then((m) => ({ default: m.NotFoundPage })),
 );
+/** Render lazy routes with shared loading and pathname-reset error recovery. */
 export function App() {
+  const { pathname } = useLocation();
   return (
     <Layout>
-      <Suspense fallback={<div role="status">Loading…</div>}>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/mirror" element={<MirrorPage />} />
-          <Route path="/client" element={<ClientPage />} />
-          <Route path="/discovery" element={<DiscoveryPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </Suspense>
+      <ErrorBoundary
+        key={pathname}
+        fallback={<SessionContent error="Page loading failed" />}
+      >
+        <Suspense fallback={<SessionContent title="Opening your workspace" />}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/mirror" element={<MirrorPage />} />
+            <Route path="/client" element={<ClientPage />} />
+            <Route path="/discovery" element={<DiscoveryPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
     </Layout>
   );
 }

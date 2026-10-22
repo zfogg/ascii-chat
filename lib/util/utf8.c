@@ -54,12 +54,30 @@ static size_t utf8_prefix_scan(const char *str, size_t max_bytes, int max_width,
 
   const char *p = str;
   const char *end = str + max_bytes;
+  int previous_width = 0;
   while (p < end && *p) {
     if (*p == '\x1b') {
       const char *next = ansi_skip_escape(p, end);
       // Only complete CSI sequences are accepted; never emit a partial escape.
       if (next - p < 3 || p[1] != '[' || next[-1] < '@' || next[-1] > '~') {
         break;
+      }
+      if (next[-1] == 'b') {
+        unsigned repeats = 0;
+        const char *q = p + 2;
+        while (q < next - 1 && *q >= '0' && *q <= '9') {
+          unsigned digit = (unsigned)(*q++ - '0');
+          if (repeats > (UINT_MAX - digit) / 10)
+            return (size_t)(p - str);
+          repeats = repeats * 10 + digit;
+        }
+        if (q != next - 1 || previous_width <= 0)
+          break;
+        if (!repeats)
+          repeats = 1;
+        if (repeats > (unsigned)((max_width - *width) / previous_width))
+          break;
+        *width += (int)repeats * previous_width;
       }
       p = next;
       continue;
@@ -78,6 +96,7 @@ static size_t utf8_prefix_scan(const char *str, size_t max_bytes, int max_width,
       break;
     }
     *width += char_width;
+    previous_width = char_width;
     p += len;
   }
   return (size_t)(p - str);

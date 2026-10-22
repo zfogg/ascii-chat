@@ -14,6 +14,7 @@ typedef struct {
                                    void *context);
   void (*on_audio_packet)(size_t length, void *context);
   void *context;
+  bool terminal_output;                // Drop valid obsolete geometry during terminal/settings resize transitions.
   buffer_workspace_t *frame_workspace; // Optional; receive worker owns it through callback completion.
 } session_protocol_media_t;
 
@@ -24,6 +25,7 @@ typedef struct {
   asciichat_error_t callback_result;
   uint64_t packets_received;
   uint64_t frames_received;
+  uint64_t frames_skipped_viewport;
   uint64_t audio_packets_received;
   uint32_t active_client_count;
   bool server_state_initialized;
@@ -44,7 +46,7 @@ asciichat_error_t session_protocol_dispatch(session_protocol_t *protocol, packet
 void session_protocol_build_capabilities(unsigned short width, unsigned short height,
                                          terminal_capabilities_packet_t *packet);
 typedef asciichat_error_t (*session_protocol_send_settings_fn)(const options_t *values, uint32_t request,
-                                                                   void *context);
+                                                               void *context);
 /* Call on the connection owner thread. UI publishes automatic dimensions through options.
  * Each connection retains its own last successfully advertised size; failed sends are retried. */
 asciichat_error_t session_protocol_update_settings(terminal_size_t *advertised, uint64_t *advertised_revision,

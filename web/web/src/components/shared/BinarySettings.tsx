@@ -1,9 +1,13 @@
-import { useId } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Heading } from "@ascii-chat/shared/components/Heading";
 import { getOptionHelp, AsciiChatMode } from "../../utils";
 import { Tooltip } from "../Tooltip";
 import { LOCKED_SETTINGS_HELP } from "../lockedSettings";
 import type { useCameraFrameRate } from "../../hooks/useCameraFrameRate";
+import {
+  DEFAULT_PALETTE_CHARS,
+  PALETTE_INPUT_DEBOUNCE_MS,
+} from "../../utils/defaultSettings";
 
 export type ColorMode = "auto" | "none" | "16" | "256" | "truecolor";
 export type ColorFilter =
@@ -94,6 +98,28 @@ export function BinarySettings({
   separateCameraFps = false,
 }: BinarySettingsProps) {
   const dimensionsId = useId();
+  const paletteInputId = useId();
+  const configRef = useRef(config);
+  const paletteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [paletteDraft, setPaletteDraft] = useState(
+    config.paletteChars ?? DEFAULT_PALETTE_CHARS,
+  );
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
+  useEffect(() => {
+    if (paletteTimerRef.current === null) {
+      setPaletteDraft(config.paletteChars ?? DEFAULT_PALETTE_CHARS);
+    }
+  }, [config.paletteChars]);
+  useEffect(
+    () => () => {
+      if (paletteTimerRef.current !== null) {
+        clearTimeout(paletteTimerRef.current);
+      }
+    },
+    [],
+  );
   const cameraRate = cameraFps?.rate;
   const adaptiveRate = separateCameraFps ? undefined : cameraRate;
   const maximumFps = adaptiveRate ? cameraFps!.maximum : 60;
@@ -106,6 +132,22 @@ export function BinarySettings({
     (config.animation === "waveform" || config.animation === "fft");
   const updateConfig = (updates: Partial<BinarySettingsConfig>) => {
     if (!disabled) onChange({ ...config, ...updates });
+  };
+  const updatePaletteDraft = (value: string) => {
+    setPaletteDraft(value);
+    if (paletteTimerRef.current !== null) {
+      clearTimeout(paletteTimerRef.current);
+    }
+    paletteTimerRef.current = setTimeout(() => {
+      paletteTimerRef.current = null;
+      if (value.length > 0) {
+        onChange({
+          ...configRef.current,
+          palette: "custom",
+          paletteChars: value,
+        });
+      }
+    }, PALETTE_INPUT_DEBOUNCE_MS);
   };
 
   return (
@@ -416,7 +458,9 @@ export function BinarySettings({
 
           <Tooltip
             text={
-              disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "palette")
+              disabled
+                ? LOCKED_SETTINGS_HELP
+                : "Enter characters from darkest to brightest. Typing selects Custom after 750 ms."
             }
           >
             <div className="flex-1 min-w-[200px]">
@@ -440,6 +484,33 @@ export function BinarySettings({
               </select>
             </div>
           </Tooltip>
+
+          <div className="flex-1 min-w-[200px]">
+            <div className="flex items-center gap-1.5 mb-1">
+              <label
+                htmlFor={paletteInputId}
+                className="text-xs font-medium text-terminal-8"
+              >
+                Palette characters
+              </label>
+              <DimensionHelp
+                label="Palette characters"
+                text={
+                  disabled
+                    ? LOCKED_SETTINGS_HELP
+                    : "Enter characters from darkest to brightest."
+                }
+              />
+            </div>
+            <input
+              id={paletteInputId}
+              type="text"
+              value={paletteDraft}
+              onChange={(event) => updatePaletteDraft(event.target.value)}
+              disabled={disabled}
+              className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4 font-mono"
+            />
+          </div>
 
           <Tooltip
             text={
@@ -591,33 +662,6 @@ export function BinarySettings({
               </button>
             </div>
           </Tooltip>
-
-          {config.palette === "custom" && (
-            <Tooltip
-              text={
-                disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "palette")
-              }
-            >
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-xs font-medium text-terminal-8 mb-1">
-                  Custom Characters (dark → bright)
-                </label>
-                <input
-                  type="text"
-                  value={config.paletteChars || " =#░░▒▒▓▓██"}
-                  onChange={(e) =>
-                    updateConfig({ paletteChars: e.target.value })
-                  }
-                  disabled={disabled}
-                  placeholder=" =#░░▒▒▓▓██"
-                  className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4 font-mono"
-                />
-                <div className="text-xs text-terminal-8 mt-1">
-                  Enter characters from darkest to brightest
-                </div>
-              </div>
-            </Tooltip>
-          )}
         </div>
       </div>
     </div>

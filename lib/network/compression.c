@@ -71,6 +71,17 @@ asciichat_error_t decompress_data(const void *input, size_t input_size, void *ou
   return ASCIICHAT_OK;
 }
 
+// Rendered frames must fill every advertised byte; a short decode must not
+// expose stale workspace bytes or uninitialized allocation tails to CRC/parser.
+asciichat_error_t decompress_data_exact(const void *input, size_t input_size, void *output, size_t expected_size) {
+  if (!input || !input_size || !output || !expected_size)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid exact decompression bounds");
+  size_t decoded = ZSTD_decompress(output, expected_size, input, input_size);
+  if (ZSTD_isError(decoded) || decoded != expected_size)
+    return SET_ERRNO(ERROR_COMPRESSION, "Decompressed payload does not match expected size %zu", expected_size);
+  return ASCIICHAT_OK;
+}
+
 // Check if compression is worthwhile based on ratio
 bool should_compress(size_t original_size, size_t compressed_size) {
   if (original_size == 0)

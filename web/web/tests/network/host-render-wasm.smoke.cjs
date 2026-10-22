@@ -1,6 +1,15 @@
 // After rebuilding WASM: node web/web/tests/network/host-render-wasm.smoke.cjs
 const { chromium } = require("../../node_modules/@playwright/test");
-const { decompress } = require("../../node_modules/fzstd");
+// ACIP uses CRC32-C (Castagnoli), not the IEEE CRC in node:zlib.
+function crc32(bytes) {
+  let value = 0xffffffff;
+  for (const byte of bytes) {
+    value ^= byte;
+    for (let bit = 0; bit < 8; ++bit)
+      value = (value >>> 1) ^ (value & 1 ? 0x82f63b78 : 0);
+  }
+  return ~value >>> 0;
+}
 const http = require("node:http");
 const fs = require("node:fs");
 const assert = require("node:assert/strict");
@@ -10,13 +19,17 @@ const path = require("node:path");
     res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
     res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
     if (req.url === "/")
-      return res.end("<html><body>Host rendering test</body></html>");
-    const file =
-      req.url === "/client.js"
-        ? "client.js"
-        : req.url === "/client.wasm"
-          ? "client.wasm"
-          : null;
+      return res.end(
+        `<html><style>body{background:#10141c;color:#e1e8ef;font:16px monospace;padding:24px}canvas{image-rendering:pixelated;border:1px solid #546479}</style><body><h1>Received frame validation</h1><p id="result">Browser host wire output validated and rendered by shared C</p><canvas id="frame"></canvas></body></html>`,
+      );
+    const file = [
+      "/client.js",
+      "/client.wasm",
+      "/mirror.js",
+      "/mirror.wasm",
+    ].includes(req.url)
+      ? req.url.slice(1)
+      : null;
     if (!file) {
       res.statusCode = 404;
       return res.end();
@@ -35,7 +48,21 @@ const path = require("node:path");
     const page = await browser.newPage();
     page.on("pageerror", (error) => console.error("browser error:", error));
     await page.goto(`http://127.0.0.1:${server.address().port}`);
-    const packets = await page.evaluate(async () => {
+    const fixtures = [
+      { text: "    ", width: 4, height: 1, valid: true },
+      { text: "界é ", width: 4, height: 1, valid: true },
+      { text: "abc", width: 4, height: 1, valid: false },
+      { text: "abcde", width: 4, height: 1, valid: false },
+      { text: "abcd\nabc", width: 4, height: 2, valid: false },
+      { text: "abcd\x1b]52;c;AAAA\x07", width: 4, height: 1, valid: false },
+      { text: "abcd\x1b]0;title\x07", width: 4, height: 1, valid: false },
+      { text: "abcd\x1b[6n", width: 4, height: 1, valid: false },
+      { text: "abc\x1b[", width: 4, height: 1, valid: false },
+      { text: "a\x1b[999999999999b", width: 4, height: 1, valid: false },
+      { text: "\x1b[8mabcd", width: 4, height: 1, valid: false },
+      { text: "\x1b[31mabcd\x1b[0m", width: 4, height: 1, valid: true },
+    ].map((fixture) => ({ ...fixture, crc: crc32(Buffer.from(fixture.text)) }));
+    const packets = await page.evaluate(async (fixtures) => {
       const { default: createModule } = await import("/client.js");
       const m = await createModule({
         print: () => {},
@@ -103,10 +130,198 @@ const path = require("node:path");
       }
       send(ids[0], 3001, image);
       send(ids[0], 5005, new Uint8Array());
+      let rejected = 0;
+      const verify = (
+        bytes,
+        width,
+        height,
+        crc,
+        flags,
+        metadata = new Uint8Array(),
+      ) => {
+        const text = m._malloc(bytes.length || 1),
+          contract = m._malloc(metadata.length || 1);
+        try {
+          m.HEAPU8.set(bytes, text);
+          m.HEAPU8.set(metadata, contract);
+          return m._client_validate_frame(
+            text,
+            bytes.length,
+            width,
+            height,
+            crc,
+            flags,
+            contract,
+            metadata.length,
+          );
+        } finally {
+          m._free(text);
+          m._free(contract);
+        }
+      };
+      for (const fixture of fixtures) {
+        const result = verify(
+          new TextEncoder().encode(fixture.text),
+          fixture.width,
+          fixture.height,
+          fixture.crc,
+          0,
+        );
+        if ((result === 0) !== fixture.valid)
+          throw new Error("C frame corpus failed: " + JSON.stringify(fixture));
+        if (result && result !== 87)
+          throw new Error(
+            "Malformed frame did not return ERROR_INVALID_FRAME: " + result,
+          );
+        if (result) rejected++;
+      }
+      const decodeFrame = (packet) => {
+        const payload = packet.subarray(22),
+          view = new DataView(
+            payload.buffer,
+            payload.byteOffset,
+            payload.byteLength,
+          );
+        const flags = view.getUint32(20),
+          original = view.getUint32(8);
+        let offset = 24;
+        if (!(flags & 16) || view.getUint32(offset) !== 1)
+          throw new Error("Missing explicit render contract");
+        const metadata = payload.subarray(
+          offset,
+          offset + 20 + view.getUint32(offset + 16),
+        );
+        offset += metadata.length;
+        const encoded = payload.subarray(offset),
+          input = m._malloc(encoded.length),
+          output = m._malloc(original);
+        try {
+          m.HEAPU8.set(encoded, input);
+          if (flags & 2) {
+            if (
+              m._client_decode_frame_data(
+                input,
+                encoded.length,
+                output,
+                original,
+              )
+            )
+              throw new Error("C zstd failed");
+            const oversized = m._malloc(original + 1);
+            try {
+              if (
+                !m._client_decode_frame_data(
+                  input,
+                  encoded.length,
+                  oversized,
+                  original + 1,
+                )
+              )
+                throw new Error("Short zstd output accepted");
+            } finally {
+              m._free(oversized);
+            }
+          } else m.HEAPU8.set(encoded, output);
+          const bytes = m.HEAPU8.slice(output, output + original);
+          if (
+            verify(
+              bytes,
+              view.getUint32(0),
+              view.getUint32(4),
+              view.getUint32(16),
+              flags,
+              metadata,
+            )
+          )
+            throw new Error("Real host frame rejected");
+          const wrongPalette = metadata.slice();
+          wrongPalette.fill(33, 20); // Same exact-length contract, truly off-palette for X/Y/Z frames.
+          if (
+            new DataView(metadata.buffer, metadata.byteOffset).getUint32(8) !==
+              2 &&
+            !verify(
+              bytes,
+              view.getUint32(0),
+              view.getUint32(4),
+              view.getUint32(16),
+              flags,
+              wrongPalette,
+            )
+          )
+            throw new Error("Off-palette real frame accepted");
+          return new TextDecoder().decode(bytes);
+        } finally {
+          m._free(input);
+          m._free(output);
+        }
+      };
+      let rendered = false;
+      const paint = (text) => {
+        const config = m._malloc(544),
+          out = m._malloc(4),
+          bytes = new TextEncoder().encode(text),
+          input = m._malloc(bytes.length);
+        let renderer = 0;
+        try {
+          m.HEAPU8.fill(0, config, config + 544);
+          const view = new DataView(m.HEAPU8.buffer, config, 544);
+          view.setInt32(0, 40, true);
+          view.setInt32(4, 12, true);
+          view.setFloat64(8, 12, true);
+          view.setInt32(536, m._get_font_default_ptr(0), true);
+          view.setInt32(540, m._get_font_default_size(0), true);
+          if (m._term_renderer_create(config, out))
+            throw new Error("C terminal create failed");
+          renderer = new DataView(m.HEAPU8.buffer, out, 4).getUint32(0, true);
+          m.HEAPU8.set(bytes, input);
+          if (m._term_renderer_feed(renderer, input, bytes.length))
+            throw new Error("C terminal feed failed");
+          const canvas = document.getElementById("frame");
+          canvas.width = m._term_renderer_width_px(renderer);
+          canvas.height = m._term_renderer_height_px(renderer);
+          const pixels = new Uint8ClampedArray(
+              canvas.width * canvas.height * 4,
+            ),
+            source = m._term_renderer_pixels(renderer),
+            pitch = m._term_renderer_pitch(renderer);
+          for (let row = 0; row < canvas.height; row++)
+            pixels.set(
+              m.HEAPU8.subarray(
+                source + row * pitch,
+                source + row * pitch + canvas.width * 4,
+              ),
+              row * canvas.width * 4,
+            );
+          if (!pixels.some((value, i) => i % 4 !== 3 && value > 0))
+            throw new Error("No visible pixels from real frame");
+          canvas
+            .getContext("2d")
+            .putImageData(
+              new ImageData(pixels, canvas.width, canvas.height),
+              0,
+              0,
+            );
+          document.getElementById("result").textContent +=
+            "; " + rejected + " malformed frames rejected; live output below";
+        } finally {
+          if (renderer) m._term_renderer_destroy(renderer);
+          m._free(config);
+          m._free(out);
+          m._free(input);
+        }
+      };
       const output = [];
       m.hostPacketCallback = (id, bytes) => {
-        if (new DataView(bytes.buffer, bytes.byteOffset).getUint16(8) === 3000)
-          output.push({ id, bytes: Array.from(bytes) });
+        if (
+          new DataView(bytes.buffer, bytes.byteOffset).getUint16(8) === 3000
+        ) {
+          const text = decodeFrame(bytes);
+          output.push({ id, bytes: Array.from(bytes), text });
+          if (!rendered) {
+            paint(text);
+            rendered = true;
+          }
+        }
       };
       if (m._browser_host_render()) throw new Error("render failed");
       const first = output.splice(0);
@@ -125,6 +340,13 @@ const path = require("node:path");
       await new Promise((resolve) => setTimeout(resolve, 20));
       if (m._browser_host_render()) throw new Error("updated render failed");
       const updated = output.splice(0);
+      patch(ids[1], { color_mode: 0, render_mode: 2 });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      if (m._browser_host_render())
+        throw new Error("monochrome half-block render failed");
+      const halfBlock = output.splice(0).find((frame) => frame.id === ids[1]);
+      if (!halfBlock || !/[░▒▓█]/u.test(halfBlock.text))
+        throw new Error("Missing real monochrome half-block shade output");
       if (
         m._client_opus_encoder_init(48000, 1, 24000) ||
         m._client_opus_decoder_init(48000, 1)
@@ -242,12 +464,147 @@ const path = require("node:path");
         m._client_opus_decoder_cleanup();
         m._browser_host_destroy();
       }
+      // A frame may carry an older palette, but may not contradict its acknowledged revision.
+      const acknowledged = new TextEncoder().encode(
+        JSON.stringify({
+          width: 40,
+          height: 12,
+          fps: 30,
+          color_mode: 0,
+          palette_custom: "X",
+        }),
+      );
+      const ack = new Uint8Array(20 + acknowledged.length);
+      const ackView = new DataView(ack.buffer);
+      ackView.setUint32(0, 1);
+      ackView.setUint32(12, 90);
+      ack.set(acknowledged, 20);
+      const ackPtr = m._malloc(ack.length);
+      m.HEAPU8.set(ack, ackPtr);
+      try {
+        const ackResult = m._client_settings_receive(ackPtr, ack.length);
+        if (ackResult) throw new Error("settings ACK failed: " + ackResult);
+      } finally {
+        m._free(ackPtr);
+      }
+      const paletteContract = new Uint8Array(21);
+      const paletteView = new DataView(paletteContract.buffer);
+      paletteView.setUint32(0, 1);
+      paletteView.setUint32(4, 90);
+      paletteView.setUint32(16, 1);
+      paletteContract[20] = 32;
+      const blank = fixtures[0];
+      if (
+        !verify(
+          new TextEncoder().encode(blank.text),
+          4,
+          1,
+          blank.crc,
+          16,
+          paletteContract,
+        )
+      )
+        throw new Error("Contradictory acknowledged palette accepted");
+      paletteView.setUint32(4, 89);
+      if (
+        verify(
+          new TextEncoder().encode(blank.text),
+          4,
+          1,
+          blank.crc,
+          16,
+          paletteContract,
+        )
+      )
+        throw new Error("Older palette revision rejected");
+      const { default: createMirror } = await import("/mirror.js");
+      const mirror = await createMirror({
+        print: () => {},
+        printErr: () => {},
+        getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
+      });
+      const mirrorArgs = "mirror --width 40 --height 12 --log-level fatal";
+      const argsPointer = mirror._malloc(mirrorArgs.length + 1);
+      mirror.stringToUTF8(mirrorArgs, argsPointer, mirrorArgs.length + 1);
+      if (mirror._mirror_init_with_args(argsPointer))
+        throw new Error("mirror init failed");
+      mirror._free(argsPointer);
+      const rgba = new Uint8Array(8 * 4 * 4);
+      for (let i = 0; i < rgba.length; i += 4) rgba.set([120, 80, 40, 255], i);
+      const rgbaPointer = mirror._malloc(rgba.length);
+      mirror.HEAPU8.set(rgba, rgbaPointer);
+      let mirrorFrames = 0;
+      try {
+        for (const palette of ["XX", "界é"])
+          for (let mode = 0; mode <= 2; ++mode)
+            for (let color = 0; color <= 3; ++color) {
+              const json = JSON.stringify({
+                palette_custom: palette,
+                render_mode: mode,
+                color_mode: color,
+              });
+              const size = new TextEncoder().encode(json).length + 1;
+              const patchPointer = mirror._malloc(size);
+              mirror.stringToUTF8(json, patchPointer, size);
+              const patched = mirror._wasm_options_patch(patchPointer, -1);
+              mirror._free(patchPointer);
+              if (patched) throw new Error("mirror settings failed");
+              const output = mirror._mirror_convert_frame(rgbaPointer, 8, 4, 0);
+              if (!output)
+                throw new Error(
+                  "Mirror validator rejected mode " +
+                    mode +
+                    " color " +
+                    color +
+                    " palette " +
+                    palette,
+                );
+              try {
+                const bytes = new TextEncoder().encode(
+                  mirror.UTF8ToString(output),
+                );
+                let checksum = 0xffffffff;
+                for (const byte of bytes) {
+                  checksum ^= byte;
+                  for (let bit = 0; bit < 8; ++bit)
+                    checksum =
+                      (checksum >>> 1) ^ (checksum & 1 ? 0x82f63b78 : 0);
+                }
+                if (verify(bytes, 40, 12, ~checksum >>> 0, 0))
+                  throw new Error("Malformed accepted mirror output");
+                mirrorFrames++;
+              } finally {
+                mirror._mirror_free_string(output);
+              }
+            }
+        for (const fft of [false, true]) {
+          const json = JSON.stringify({ fft });
+          const pointer = mirror._malloc(json.length + 1);
+          mirror.stringToUTF8(json, pointer, json.length + 1);
+          const result = mirror._wasm_options_patch(pointer, -1);
+          mirror._free(pointer);
+          if (result) throw new Error("mirror audio settings failed");
+          const frame = mirror._mirror_render_audio_visualization(40, 12, 0);
+          if (!frame)
+            throw new Error("Mirror audio validation rejected valid output");
+          mirror._mirror_free_string(frame);
+        }
+      } finally {
+        mirror._free(rgbaPointer);
+        mirror._mirror_cleanup();
+      }
+      if (mirrorFrames !== 24) throw new Error("Missing mirror mode coverage");
       return {
         video: [first, updated],
         audioRms: Math.sqrt(audioEnergy / Math.max(1, audioSamples)),
         audioSamples,
       };
-    });
+    }, fixtures);
+    if (process.env.FRAME_VALIDATION_SCREENSHOT)
+      await page.screenshot({
+        path: process.env.FRAME_VALIDATION_SCREENSHOT,
+        fullPage: true,
+      });
     assert.ok(packets.audioSamples >= 9600);
     assert.ok(packets.audioRms > 1000, `Mixed audio RMS ${packets.audioRms}`);
     const frames = packets.video.map((batch) => {
@@ -258,16 +615,12 @@ const path = require("node:path");
       );
       return batch
         .sort((a, b) => a.id - b.id)
-        .map(({ bytes }) => {
-          const b = Buffer.from(bytes),
-            p = b.subarray(22),
-            flags = p.readUInt32BE(20);
-          assert.equal(p.readUInt32BE(0), 40);
-          assert.equal(p.readUInt32BE(4), 12);
-          const payload = p.subarray(24);
-          return Buffer.from(
-            flags & 1 ? decompress(payload) : payload,
-          ).toString();
+        .map(({ bytes, text }) => {
+          const payload = Buffer.from(bytes).subarray(22);
+          assert.equal(payload.readUInt32BE(0), 40);
+          assert.equal(payload.readUInt32BE(4), 12);
+          assert.ok(payload.readUInt32BE(20) & 16);
+          return text;
         });
     });
     const [text, updated] = frames;
@@ -283,7 +636,7 @@ const path = require("node:path");
     assert.match(updated[1], /\x1b\[38;2;/);
     assert.match(updated[1], /Y/);
     console.log(
-      "PASS: WASM local and remote targets honor independent settings and live updates without duplicate frames",
+      "PASS: shared C validates browser mirror modes/palettes/audio and local/remote host frames",
     );
   } finally {
     await browser.close();

@@ -60,7 +60,8 @@ static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
     }
 
     // Decompress using compression API
-    asciichat_error_t decompress_result = decompress_data(frame_data_ptr, frame_data_len, frame_data, original_size);
+    asciichat_error_t decompress_result =
+        decompress_data_exact(frame_data_ptr, frame_data_len, frame_data, original_size);
 
     if (decompress_result != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u: %s", original_size,
@@ -116,7 +117,8 @@ asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, si
     }
 
     // Decompress using compression API
-    asciichat_error_t decompress_result = decompress_data(frame_data_ptr, frame_data_len, output_buffer, original_size);
+    asciichat_error_t decompress_result =
+        decompress_data_exact(frame_data_ptr, frame_data_len, output_buffer, original_size);
 
     if (decompress_result != ASCIICHAT_OK) {
       return SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u: %s", original_size,
@@ -139,7 +141,8 @@ asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, si
 }
 
 asciichat_error_t packet_decode_frame_data_workspace(buffer_workspace_t *workspace, const void *data, size_t length,
-                                                     bool compressed, uint32_t original_size, uint32_t compressed_size) {
+                                                     bool compressed, uint32_t original_size,
+                                                     uint32_t compressed_size) {
   if (!workspace || original_size > PACKET_MAX_FRAME_SIZE)
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Invalid decoded ASCII workspace size: %u", original_size);
   uint64_t started = time_get_ns();

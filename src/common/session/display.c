@@ -18,6 +18,8 @@
 #include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/app_callbacks.h>
 #include "session/display.h"
+#include "session/frame_validation.h"
+#include <ascii-chat/util/utf8.h>
 #include "session/render.h"
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
@@ -154,6 +156,8 @@ asciichat_error_t session_display_init_render_file(session_display_ctx_t *ctx, u
   }
 
   const char *render_file_opt = GET_OPTION(render_file);
+  if ((!render_file_opt || !render_file_opt[0]) && GET_OPTION(render_kitty))
+    render_file_opt = "--kitty";
   if (!render_file_opt || render_file_opt[0] == '\0') {
     return ASCIICHAT_OK;
   }
@@ -178,6 +182,9 @@ asciichat_error_t session_display_init_render_file(session_display_ctx_t *ctx, u
   asciichat_error_t err =
       render_file_create(render_file_opt, width, height, (int)encoder_fps, GET_OPTION(render_theme), &ctx->render_file);
   if (err != ASCIICHAT_OK) {
+    asciichat_error_context_t error;
+    if (HAS_ERRNO(&error))
+      log_error("render-file: %s", error.context_message);
     log_error("render-file: Failed to create encoder %s", asciichat_error_format(NULL, err));
     return err;
   }
@@ -237,6 +244,11 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Presentation follows stdout. Opening a separate controlling terminal can
   // fail under ConPTY even though stdout is an interactive console.
   ctx->has_tty = terminal_is_stdout_tty();
+  const char *stdout_output = GET_OPTION(render_file);
+  bool owns_stdout = GET_OPTION(render_kitty) || strcmp(stdout_output, "--kitty") == 0 ||
+                     strcmp(stdout_output, "-") == 0 || strcmp(stdout_output, "pipe:") == 0;
+  if (owns_stdout)
+    ctx->has_tty = false;
   if (ctx->has_tty) {
     // Retain the terminal before decoder/audio workers redirect process stdio
     // through LOG_IO. The first media submission must remain interactive too.
@@ -615,7 +627,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   if ((flip_x_enabled || flip_y_enabled) && image->w > 1 && image->h > 1 && image->pixels) {
     uint64_t t_flip_alloc_start = time_get_ns();
     flipped_image = ctx->render_file ? image_new(image->w, image->h)
-                                    : display_image_workspace(&ctx->flip_workspace, image->w, image->h);
+                                     : display_image_workspace(&ctx->flip_workspace, image->w, image->h);
     uint64_t t_flip_alloc_end = time_get_ns();
 
     if (flipped_image) {
@@ -674,8 +686,9 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   image_t *filtered_image = NULL;
   if (color_filter != COLOR_FILTER_NONE && color_filter != COLOR_FILTER_RAINBOW) {
     // Create a copy to avoid modifying the original
-    filtered_image = ctx->render_file ? image_new(display_image->w, display_image->h)
-                                     : display_image_workspace(&ctx->filter_workspace, display_image->w, display_image->h);
+    filtered_image = ctx->render_file
+                         ? image_new(display_image->w, display_image->h)
+                         : display_image_workspace(&ctx->filter_workspace, display_image->w, display_image->h);
     if (filtered_image && filtered_image->pixels && display_image->pixels) {
       memcpy(filtered_image->pixels, display_image->pixels,
              (size_t)display_image->w * (size_t)display_image->h * sizeof(rgb_pixel_t));
@@ -694,10 +707,12 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   uint64_t t_convert_start = time_get_ns();
   // Recording converts concurrently on its encoder thread and retains owned output.
   outbuf_t *output = reuse && !ctx->render_file && color_filter == COLOR_FILTER_NONE && !matrix_rain_enabled
-                         ? &ctx->ascii_workspace : NULL;
+                         ? &ctx->ascii_workspace
+                         : NULL;
   // Call the standard ASCII conversion using the filtered (or original) image
-  char *result = ascii_convert_with_buffers(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio,
-                                                 stretch, ctx->palette_chars, false, ctx->render_file ? NULL : &ctx->resize_workspace, output);
+  char *result =
+      ascii_convert_with_buffers(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio, stretch,
+                                 ctx->palette_chars, false, ctx->render_file ? NULL : &ctx->resize_workspace, output);
   uint64_t t_convert_end = time_get_ns();
 
   // Apply rainbow color filter to ANSI output by replacing RGB values
@@ -741,6 +756,25 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
     log_dev("DIGITAL_RAIN: Effect applied (%s)", rain_str);
   }
 
+  // Validate the completed local frame using the same policy as received text.
+  // Wide palettes use the existing cell composer before the rectangular check.
+  if (result && (size_t)utf8_display_width(ctx->palette_chars) != utf8_char_count(ctx->palette_chars)) {
+    ascii_frame_source_t source = {.frame_data = result, .frame_size = strlen(result)};
+    size_t normalized_size;
+    char *rectangular = ascii_create_grid(&source, 1, width, height, &normalized_size);
+    session_display_release_ascii(ctx, result);
+    result = rectangular;
+  }
+  if (result) {
+    acip_render_settings_t rendering = {.caps = caps_copy};
+    SAFE_STRNCPY(rendering.palette, ctx->palette_chars, sizeof(rendering.palette));
+    uint32_t effects = ctx->digital_rain ? FRAME_RENDER_CONTRACT_RAIN : 0;
+    if (session_frame_validate_contract(result, strlen(result), width, height, &rendering, effects) != ASCIICHAT_OK) {
+      session_display_release_ascii(ctx, result);
+      result = NULL;
+    }
+  }
+
   uint64_t t_cleanup_start = time_get_ns();
   // Scratch images remain owned by the display until resize or teardown.
   if (ctx->render_file) {
@@ -779,11 +813,16 @@ static char *session_display_create_visualization_frame(session_display_ctx_t *c
     visual_source = AUDIO_VISUALIZATION_SOURCE_MIC;
   else if (selected_audio == AUDIO_SOURCE_CALL)
     visual_source = AUDIO_VISUALIZATION_SOURCE_REMOTE;
-  if (GET_OPTION(fft))
-    return audio_visualization_render_fft(width, height, visual_source, use_color, color_mode, GET_OPTION(flip_x),
-                                          GET_OPTION(flip_y));
-  return audio_visualization_render_waveform(width, height, visual_source, use_color, color_mode, GET_OPTION(flip_x),
-                                             GET_OPTION(flip_y));
+  char *text = GET_OPTION(fft)
+                   ? audio_visualization_render_fft(width, height, visual_source, use_color, color_mode,
+                                                    GET_OPTION(flip_x), GET_OPTION(flip_y))
+                   : audio_visualization_render_waveform(width, height, visual_source, use_color, color_mode,
+                                                         GET_OPTION(flip_x), GET_OPTION(flip_y));
+  if (text && session_frame_validate(text, strlen(text), width, height) != ASCIICHAT_OK) {
+    SAFE_FREE(text);
+    return NULL;
+  }
+  return text;
 }
 
 void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data) {
@@ -930,7 +969,8 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
 
   // Binary video owns stdout in every terminal mode.
   const char *output = GET_OPTION(render_file);
-  bool binary_stdout = ctx->render_file && (strcmp(output, "-") == 0 || strcmp(output, "pipe:") == 0);
+  bool binary_stdout = ctx->render_file && (strcmp(output, "-") == 0 || strcmp(output, "pipe:") == 0 ||
+                                            strcmp(output, "--kitty") == 0 || GET_OPTION(render_kitty));
   if (binary_stdout) {
     if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
       g_snapshot_first_frame_rendered = true;

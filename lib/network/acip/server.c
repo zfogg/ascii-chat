@@ -203,9 +203,10 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 // Server Send (to client)
 // =============================================================================
 
-asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, acip_frame_workspace_t *workspace,
-                                        const char *frame_data, size_t frame_size, uint32_t width, uint32_t height,
-                                        const char *client_id) {
+asciichat_error_t acip_send_ascii_frame_contract(acip_transport_t *transport, acip_frame_workspace_t *workspace,
+                                                 const char *frame_data, size_t frame_size, uint32_t width,
+                                                 uint32_t height, const acip_render_settings_t *settings,
+                                                 uint32_t effects, const char *client_id) {
   if (!transport || !frame_data || !workspace) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or frame_data");
   }
@@ -244,11 +245,29 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, acip_frame_
   header.original_size = HOST_TO_NET_U32((uint32_t)frame_size);
   header.compressed_size = HOST_TO_NET_U32(is_compressed ? (uint32_t)payload_size : 0);
   header.checksum = HOST_TO_NET_U32(checksum_value);
-  header.flags = HOST_TO_NET_U32(is_compressed ? FRAME_FLAG_IS_COMPRESSED : 0);
+  uint8_t contract[FRAME_RENDER_CONTRACT_MAX];
+  size_t contract_length = 0;
+  if (settings) {
+    asciichat_error_t encoded = frame_render_contract_encode(settings, effects, contract, &contract_length);
+    if (encoded != ASCIICHAT_OK)
+      return encoded;
+  }
+  header.flags =
+      HOST_TO_NET_U32((is_compressed ? FRAME_FLAG_IS_COMPRESSED : 0) | (settings ? FRAME_FLAG_RENDER_CONTRACT : 0));
 
-  socket_buffer_t slices[] = {{&header, sizeof(header)}, {payload_data, payload_size}};
-  asciichat_error_t result = packet_send_via_transportv(transport, PACKET_TYPE_ASCII_FRAME, slices, 2, 0);
+  socket_buffer_t slices[3] = {{&header, sizeof(header)}};
+  size_t count = 1;
+  if (contract_length)
+    slices[count++] = (socket_buffer_t){contract, contract_length};
+  slices[count++] = (socket_buffer_t){payload_data, payload_size};
+  asciichat_error_t result = packet_send_via_transportv(transport, PACKET_TYPE_ASCII_FRAME, slices, count, 0);
   return result;
+}
+
+asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, acip_frame_workspace_t *workspace,
+                                        const char *text, size_t length, uint32_t width, uint32_t height,
+                                        const char *client_id) {
+  return acip_send_ascii_frame_contract(transport, workspace, text, length, width, height, NULL, 0, client_id);
 }
 
 void acip_frame_workspace_destroy(acip_frame_workspace_t *workspace) {
