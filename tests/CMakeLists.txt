@@ -1060,10 +1060,12 @@ if(TARGET ascii-chat-static)
     set_target_properties(test-errno-tui-fixture PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS AND NOT WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-        if(TARGET tests)
-            add_dependencies(tests test-errno-tui-fixture)
-        endif()
-        add_test(NAME errno-tui-ellipsis COMMAND ${Python3_EXECUTABLE}
+        foreach(test_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${test_build_target})
+                add_dependencies(${test_build_target} test-errno-tui-fixture)
+            endif()
+        endforeach()
+        asciichat_add_python_test(errno-tui-ellipsis
             ${CMAKE_SOURCE_DIR}/tests/integration/errno_tui_ellipsis.py
             --binary $<TARGET_FILE:test-errno-tui-fixture>)
         set_tests_properties(errno-tui-ellipsis PROPERTIES LABELS "integration" TIMEOUT 90
@@ -1226,7 +1228,7 @@ if(BUILD_TESTS AND TARGET ascii-chat)
     asciichat_add_python_test(server-client-lifecycle
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_client_lifecycle.py
             $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(server-client-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180)
+    set_tests_properties(server-client-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
 endif()
 
 # Production transport tests run natively on Windows, macOS, and Linux without Criterion.
@@ -1791,7 +1793,7 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32 AND ASCIICHAT_TEST_FFMPEG AND
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TEST_FFPROBE)
-    add_test(NAME terminal-logs COMMAND ${Python3_EXECUTABLE}
+    asciichat_add_python_test(terminal-logs
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_logs.py --binary $<TARGET_FILE:ascii-chat>
         --artifacts ${CMAKE_BINARY_DIR}/terminal-logs --search-regression-only)
     set_tests_properties(terminal-logs PROPERTIES LABELS "integration;terminal" TIMEOUT 180

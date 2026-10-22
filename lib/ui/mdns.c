@@ -142,6 +142,7 @@ static int compare_mdns_servers(const void *left, const void *right) {
 static void *refresh_mdns_servers(void *data) {
   mdns_refresh_t *refresh = data;
   ui_mdns_config_t config = {.timeout_ms = 500, .max_servers = MDNS_LIVE_CAPACITY, .quiet = true};
+  unsigned empty_refreshes = 0;
   while (!atomic_load_bool(&refresh->stop)) {
     int count = 0;
     ui_mdns_server_t *servers = ui_mdns_query(&config, &count);
@@ -149,13 +150,20 @@ static void *refresh_mdns_servers(void *data) {
       qsort(servers, (size_t)count, sizeof(*servers), compare_mdns_servers);
     if (!atomic_load_bool(&refresh->stop)) {
       mutex_lock(&refresh->mutex);
-      bool changed = count != refresh->count ||
-                     (count && memcmp(refresh->servers, servers, (size_t)count * sizeof(*servers)) != 0);
-      refresh->count = count;
-      if (count)
-        memcpy(refresh->servers, servers, (size_t)count * sizeof(*servers));
-      if (changed)
-        ++refresh->generation;
+      bool apply_snapshot = true;
+      if (count == 0 && refresh->count > 0)
+        apply_snapshot = ++empty_refreshes >= 2;
+      else
+        empty_refreshes = 0;
+      if (apply_snapshot) {
+        bool changed = count != refresh->count ||
+                       (count && memcmp(refresh->servers, servers, (size_t)count * sizeof(*servers)) != 0);
+        refresh->count = count;
+        if (count)
+          memcpy(refresh->servers, servers, (size_t)count * sizeof(*servers));
+        if (changed)
+          ++refresh->generation;
+      }
       mutex_unlock(&refresh->mutex);
     }
     ui_mdns_free_results(servers);
