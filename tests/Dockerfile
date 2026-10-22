@@ -43,6 +43,8 @@ RUN chmod +x /tmp/install-deps.sh && \
 RUN pacman -S --noconfirm --needed \
   which \
   clang-tools \
+  libc++ \
+  libc++abi \
   python-pyte \
   python-pexpect \
   python-pillow \

@@ -450,6 +450,10 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             endif()
         endif()
 
+        if(test_exe_name STREQUAL "test_unit_otel_otel")
+            target_link_libraries(${test_exe_name} gotel::testing)
+        endif()
+
         # The regex fixtures call PCRE2 directly to prepare and inspect native patterns.
         if(test_exe_name MATCHES "^test_unit_util_regex_(fallback|match)$")
             target_include_directories(${test_exe_name} PRIVATE ${PCRE2_INCLUDE_DIRS})

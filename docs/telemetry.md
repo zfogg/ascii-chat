@@ -153,3 +153,18 @@ network metrics, startup schema names, and controlled Windows audio underrun/
 overrun/drop export through the audio-priority fixture. c-gotel has separate
 native unit/wire tests in its repository, including forced HTTP 503 recovery,
 structured retry events, cumulative custom instruments and SQLite delta buckets.
+
+The Criterion suite `test_unit_otel_otel` exercises the host API and ascii-chat
+adapter, including all signal masks, context restoration, sampling and budgets,
+metric intervals/validation, retries and permanent loss, queue saturation, SQLite
+lifecycle, and the complete application catalog. It links `gotel::testing` from
+c-gotel; fake clocks, scripted no-I/O transport and atomic event counts remain
+independent of Criterion. The Python integration test shares c-gotel's loopback
+collector/OTLP decoder and waits for complete asynchronous exports.
+
+For focused Linux testing after configuring the Docker preset:
+
+```sh
+cmake --build build_docker --target test_unit_otel_otel ascii-chat
+ctest --test-dir build_docker -R 'test_unit_otel_otel|otel-export' --no-tests=error --output-on-failure
+```
