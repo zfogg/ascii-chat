@@ -200,7 +200,7 @@ Test(tcp_transport, error_response_hides_internal_details) {
   socket_close(sockets[1]);
 }
 
-Test(tcp_transport, error_response_includes_errno_stack_locations) {
+Test(tcp_transport, error_response_hides_errno_stack_locations) {
   int sockets[2];
   cr_assert_eq(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
   CLEAR_ERRNO_ALL();
@@ -218,11 +218,10 @@ Test(tcp_transport, error_response_includes_errno_stack_locations) {
                                           NULL),
                ASCIICHAT_OK);
   cr_assert_eq(code, ERROR_NETWORK_PROTOCOL);
-  cr_assert_not_null(strstr(message, "outer client failure"));
-  cr_assert_not_null(strstr(message, "inner packet failure"));
-  cr_assert_not_null(strstr(message, "tests/unit/network/tcp_transport_test.c:"));
-  cr_assert_not_null(strstr(message, " in "));
-  cr_assert_not_null(strchr(message, '\n'));
+  cr_assert_str_eq(message, asciichat_error_string(ERROR_NETWORK_PROTOCOL));
+  cr_assert_null(strstr(message, "outer client failure"));
+  cr_assert_null(strstr(message, "inner packet failure"));
+  cr_assert_null(strstr(message, "tcp_transport_test.c"));
 
   buffer_release(envelope.allocated_buffer);
   socket_close(sockets[0]);
@@ -230,7 +229,7 @@ Test(tcp_transport, error_response_includes_errno_stack_locations) {
   CLEAR_ERRNO_ALL();
 }
 
-Test(tcp_transport, acip_error_response_includes_errno_stack_locations) {
+Test(tcp_transport, acip_error_response_hides_errno_stack_locations) {
   int sockets[2];
   cr_assert_eq(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
   acip_transport_t *transport = acip_tcp_transport_create("acip-error-stack", sockets[0], NULL);
@@ -253,21 +252,13 @@ Test(tcp_transport, acip_error_response_includes_errno_stack_locations) {
                                           NULL),
                ASCIICHAT_OK);
   cr_assert_eq(code, ERROR_NETWORK_PROTOCOL);
-  cr_assert_not_null(strstr(message, "client connection failed"));
-  cr_assert_not_null(strstr(message, "session negotiation failed"));
-  cr_assert_not_null(strstr(message, "ACIP message rejected"));
-  cr_assert_not_null(strstr(message, "packet validation failed"));
-  cr_assert_not_null(strstr(message, "socket read failed"));
-  cr_assert_not_null(strstr(message, "tests/unit/network/tcp_transport_test.c:"));
-#ifdef NDEBUG
+  cr_assert_str_eq(message, asciichat_error_string(ERROR_NETWORK_PROTOCOL));
+  cr_assert_null(strstr(message, "client connection failed"));
+  cr_assert_null(strstr(message, "session negotiation failed"));
+  cr_assert_null(strstr(message, "ACIP message rejected"));
+  cr_assert_null(strstr(message, "packet validation failed"));
+  cr_assert_null(strstr(message, "socket read failed"));
   cr_assert_null(strstr(message, ASCIICHAT_SOURCE_ROOT));
-  cr_assert_null(strstr(message, "\tfull-path="));
-#else
-  cr_assert_not_null(strstr(message, ASCIICHAT_SOURCE_ROOT));
-  cr_assert_not_null(strstr(message, "\tfull-path="));
-#endif
-  cr_assert_not_null(strstr(message, " in "));
-  cr_assert_not_null(strchr(message, '\n'));
 
   buffer_release(envelope.allocated_buffer);
   acip_transport_destroy(transport);
