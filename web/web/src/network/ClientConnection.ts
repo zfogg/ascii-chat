@@ -26,7 +26,17 @@ import {
   type ParsedPacket,
   type ClientInitOptions,
   type ClientCryptoOptions,
+  isReportedWasmError,
+  throwWasmError,
 } from "../wasm/client";
+import {
+  forwardJavaScriptError,
+  reportJavaScriptError,
+  reportProtocolError,
+  setNetworkErrorReporter,
+  type BrowserErrorReport,
+} from "../errors/errorBus";
+import { decodeRemoteError, encodeBrowserError } from "./errorProtocol";
 
 export interface ClientConnectionOptions {
   serverUrl: string;
@@ -64,6 +74,24 @@ export class ClientConnection {
   private socketHasEverOpened = false; // Track if this socket instance has ever opened
 
   constructor(private options: ClientConnectionOptions) {}
+
+  private reportToServer = (report: BrowserErrorReport): void => {
+    if (this.transportState !== ConnectionState.CONNECTED) return;
+    try {
+      this.sendPacket(PacketType.ERROR_MESSAGE, encodeBrowserError(report));
+    } catch (error) {
+      console.warn("[ClientConnection] Could not report browser error:", error);
+    }
+  };
+
+  private handleRemoteError(payload: Uint8Array): void {
+    try {
+      const error = decodeRemoteError(payload);
+      reportProtocolError(error.code, error.message);
+    } catch (error) {
+      reportProtocolError(49, (error as Error).message);
+    }
+  }
 
   /**
    * Initialize WASM and connect to server
@@ -238,8 +266,11 @@ export class ClientConnection {
       const result = this.options.discoveryHandshake
         ? module._client_acds_handshake_begin(this.cryptoMode)
         : module._client_handshake_begin();
-      if (result) throw new Error("Could not begin security negotiation");
-    } catch {
+      if (result)
+        throwWasmError(result, "Could not begin security negotiation");
+    } catch (error) {
+      if (isReportedWasmError(error)) forwardJavaScriptError(error);
+      else reportJavaScriptError(error);
       this.socket.close();
       this.transportState = ConnectionState.ERROR;
       this.onStateChangeCallback?.(ConnectionState.ERROR);
@@ -249,6 +280,7 @@ export class ClientConnection {
     if (this.options.discoveryHandshake && this.cryptoMode === 0) {
       this.transportState = ConnectionState.CONNECTED;
       this.wasEverConnected = true;
+      setNetworkErrorReporter(this.reportToServer);
       this.onStateChangeCallback?.(ConnectionState.CONNECTED);
       return;
     }
@@ -274,6 +306,11 @@ export class ClientConnection {
       // Extract payload (skip header)
       const HEADER_SIZE = 22; // sizeof(packet_header_t): magic(8) + type(2) + length(4) + crc32(4) + client_id(4)
       const payload = rawPacket.slice(HEADER_SIZE);
+
+      if (parsed.type === PacketType.ERROR_MESSAGE) {
+        this.handleRemoteError(payload);
+        throw new Error("Remote endpoint reported a protocol error");
+      }
 
       // TLS-only discovery starts application traffic without a version ACK.
       // A policy rejection must stop retries before its first application reply.
@@ -301,12 +338,13 @@ export class ClientConnection {
                 ptr,
                 payload.length,
               );
-          if (result) throw new Error("Security handshake rejected");
+          if (result) throwWasmError(result, "Security handshake rejected");
           const next = getConnectionState();
           if (next === ConnectionState.CONNECTED) {
             this.discoveryAccepted = true;
             this.wasEverConnected = true;
             this.transportState = ConnectionState.CONNECTED;
+            setNetworkErrorReporter(this.reportToServer);
           }
           this.onStateChangeCallback?.(next);
         } finally {
@@ -360,6 +398,10 @@ export class ClientConnection {
 
           // Extract inner payload (skip inner header)
           const innerPayload = plaintext.slice(HEADER_SIZE);
+          if (innerParsed.type === PacketType.ERROR_MESSAGE) {
+            this.handleRemoteError(innerPayload);
+            throw new Error("Remote endpoint reported a protocol error");
+          }
           // console.log(
           //   `[ClientConnection] Inner payload extracted: ${innerPayload.length} bytes`,
           // );
@@ -397,6 +439,15 @@ export class ClientConnection {
       this.onPacketCallback?.(parsed, payload);
     } catch (error) {
       console.error("[ClientConnection] Failed to handle packet:", error);
+      if (
+        !(
+          error instanceof Error &&
+          error.message.startsWith("Remote endpoint reported")
+        )
+      ) {
+        if (isReportedWasmError(error)) forwardJavaScriptError(error);
+        else reportJavaScriptError(error);
+      }
       if (!this.isUserDisconnecting) {
         this.socket?.close();
         this.transportState = ConnectionState.ERROR;
@@ -572,6 +623,7 @@ export class ClientConnection {
     this.outbound = null;
     this.isUserDisconnecting = true;
     this.transportState = ConnectionState.DISCONNECTED;
+    setNetworkErrorReporter(null);
 
     if (this.socket) {
       this.socket.close();

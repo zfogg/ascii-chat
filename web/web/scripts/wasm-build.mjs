@@ -21,6 +21,16 @@ const publicOutput = resolve(app, "public/wasm");
 const files = ["mirror.js", "mirror.wasm", "client.js", "client.wasm"];
 const removedFiles = ["face-follow.js", "face-follow.wasm"];
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+function copyArtifact(source, destination) {
+  if (source.endsWith(".js")) {
+    writeFileSync(
+      destination,
+      readFileSync(source, "utf8").replaceAll("\r\n", "\n"),
+    );
+    return;
+  }
+  copyFileSync(source, destination);
+}
 function sourceHash() {
   const digest = createHash("sha256");
   const walk = (directory) => {
@@ -97,7 +107,7 @@ if (
       : resolve(build, "web");
   mkdirSync(output, { recursive: true });
   for (const file of files)
-    copyFileSync(resolve(source, file), resolve(output, file));
+    copyArtifact(resolve(source, file), resolve(output, file));
   writeFileSync(
     manifestPath,
     JSON.stringify(

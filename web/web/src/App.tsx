@@ -1,8 +1,10 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { SessionContent } from "./components/SessionContent";
 import ErrorBoundary from "@ascii-chat/shared/components/ErrorBoundary";
+import { ErrorOverlay } from "./components/ErrorOverlay";
+import { installJavaScriptErrorForwarding } from "./errors/errorBus";
 const HomePage = lazy(() =>
   import("./pages/Home").then((m) => ({ default: m.HomePage })),
 );
@@ -21,8 +23,10 @@ const NotFoundPage = lazy(() =>
 /** Render lazy routes with shared loading and pathname-reset error recovery. */
 export function App() {
   const { pathname } = useLocation();
+  useEffect(() => installJavaScriptErrorForwarding(), []);
   return (
     <Layout>
+      <ErrorOverlay />
       <ErrorBoundary
         key={pathname}
         fallback={<SessionContent error="Page loading failed" />}
