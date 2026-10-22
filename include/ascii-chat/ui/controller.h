@@ -15,6 +15,7 @@ typedef enum {
   UI_SCREEN_SPLASH,
   UI_SCREEN_RENDER_PROGRESS,
   UI_SCREEN_LOGS,
+  UI_SCREEN_ERRNO,
   UI_SCREEN_HELP,
   UI_SCREEN_STATS,
   UI_SCREEN_SYNC,
@@ -58,6 +59,8 @@ typedef struct {
 ui_presentation_state_t ui_controller_state(void);
 /** Last published screen priority; does not acquire application locks. */
 int ui_controller_current_screen(void);
+/** Output descriptor owned by the active screen, or stdout when none is active. */
+int ui_controller_active_fd(void);
 /** One interactive screen replaces the previous one; sync can switch without application locks. */
 int ui_controller_interactive_screen(void);
 void ui_controller_select_interactive(int screen);

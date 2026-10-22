@@ -345,7 +345,10 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
   bool active = state.screen < 0 || state.screen == (int)screen ||
                 (screen == UI_SCREEN_MEDIA && state.screen == UI_SCREEN_RENDER_PROGRESS) ||
                 (screen == UI_SCREEN_MEDIA && state.screen == UI_SCREEN_HELP) ||
+                (screen == UI_SCREEN_MEDIA && state.screen == UI_SCREEN_ERRNO) ||
                 ((screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_SPLASH) && state.screen == UI_SCREEN_LOGS) ||
+                ((screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_SPLASH || screen == UI_SCREEN_STATUS) &&
+                 state.screen == UI_SCREEN_ERRNO) ||
                 (screen == UI_SCREEN_SPLASH && state.screen == UI_SCREEN_HELP);
   keyboard_key_t key = KEY_NONE;
   if (active) {

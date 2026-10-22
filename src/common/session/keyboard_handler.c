@@ -26,8 +26,9 @@
 #include <ascii-chat/media/input.h>
 #include <ascii-chat/media/playlist.h>
 #include <ascii-chat/log/search.h>
+#include <ascii-chat/ui/errno_stacks.h>
 
-#ifndef NDEBUG
+#if defined(ASCIICHAT_DIAGNOSTIC_UI)
 #include <ascii-chat/debug/sync.h>
 #endif
 
@@ -43,9 +44,13 @@ static double g_mute_saved_volume = 1.0;
  * ============================================================================ */
 
 static void handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
+  if (ui_errno_stacks_handle_key(key))
+    return;
   if (ui_controller_current_screen() == UI_SCREEN_LOGS && ui_session_logs_key(key))
     return;
   ui_session_action_t action = ui_session_key(key, &g_mute_saved_volume);
+  if (action == UI_ACTION_HELP || action == UI_ACTION_LOGS)
+    ui_errno_stacks_hide();
   if (action == UI_ACTION_SETTINGS || action == UI_ACTION_VOLUME) {
     session_capture_redraw_media(capture);
     if (key == KEY_UP || key == KEY_DOWN || key == 'm' || key == 'M')
@@ -170,13 +175,10 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
     break;
   }
 
-  // ===== LOCK DEBUG (debug builds only) =====
-#ifndef NDEBUG
+  // ===== DIAGNOSTICS =====
+#if defined(ASCIICHAT_DIAGNOSTIC_UI)
   case UI_ACTION_DEBUG: {
-    debug_sync_trigger_print();
-    debug_errno_trigger_print();
-    debug_stats_trigger_print();
-    log_debug("Lock state dump triggered via backtick key");
+    ui_errno_stacks_toggle();
     break;
   }
 #endif

@@ -5,6 +5,7 @@
 
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
+#include <ascii-chat/ui/errno_stacks.h>
 #include <ascii-chat/ui/status.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/ui/terminal_screen.h>
@@ -180,7 +181,11 @@ bool ui_status_display_interactive(const ui_status_t *status) {
   bool should_exit_status = false;
   if (keyboard_enabled) {
     keyboard_key_t key = ui_input_read_key(UI_SCREEN_STATUS);
-    if (key == KEY_ESCAPE) {
+    if (ui_errno_stacks_handle_key(key)) {
+      return true;
+    } else if (key == KEY_BACKTICK) {
+      ui_errno_stacks_toggle();
+    } else if (key == KEY_ESCAPE) {
       // Escape key: cancel grep if active, otherwise exit status screen
       if (log_search_is_active()) {
         log_search_exit_mode(false); // Cancel grep without applying

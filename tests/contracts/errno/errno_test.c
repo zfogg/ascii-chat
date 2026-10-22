@@ -33,6 +33,10 @@ Test(errno_stack, stack_contract) {
   stack_contract();
 }
 
+Test(errno_stack, selectable_errno_contract) {
+  selectable_errno_contract();
+}
+
 Test(errno_stack, scopes_and_history) {
   scopes_and_history();
 }
