@@ -1,0 +1,3 @@
+# Local collector started with deploy/otel/docker-compose.yml.
+[mcp_servers.spaniel]
+url = "http://127.0.0.1:28080/mcp"

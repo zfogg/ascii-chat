@@ -14,6 +14,13 @@ specific to this Compose project. Set `SPANIEL_IMAGE` to select a locally built
 or immutable release image. Both UI and OTLP ports bind only to host loopback.
 The container itself binds all interfaces so Docker port forwarding works.
 
+The project's `.codex/config.toml` connects Codex to Spaniel's MCP endpoint at
+`http://127.0.0.1:28080/mcp`. Start the collector before opening a new Codex chat
+in this trusted checkout. Use the Spaniel tools to inspect stored traces, logs,
+and metrics, including named SQLite spans under `ascii-chat.storage.*`.
+Telemetry services are named `ascii-chat-$mode`, such as
+`ascii-chat-discovery-service` for ACDS.
+
 ## Configuration
 
 All options support CLI, `ASCII_CHAT_OTEL_*` environment variables and TOML.
