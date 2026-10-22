@@ -475,6 +475,28 @@ bool errno_clear_if_top(uint64_t id, uint64_t generation, uint64_t error_id) {
   registry_unlock();
   return matches;
 }
+bool errno_clear_if_current(uint64_t id, uint64_t generation, uint64_t error_id) {
+  registry_lock();
+  uint64_t now = time_get_ns();
+  error_thread_t *thread = find_thread(id);
+  int previous = NO_FRAME;
+  int index = thread ? thread->top : NO_FRAME;
+  while (index != NO_FRAME && g_frames[index].context.error_id != error_id) {
+    previous = index;
+    index = g_frames[index].next;
+  }
+  bool matches = thread && thread->generation == generation && index != NO_FRAME;
+  if (matches) {
+    if (previous == NO_FRAME)
+      thread->top = g_frames[index].next;
+    else
+      g_frames[previous].next = g_frames[index].next;
+    --thread->depth;
+    release_frame_locked(index, ASCIICHAT_ERRNO_HANDLED, now);
+  }
+  registry_unlock();
+  return matches;
+}
 static asciichat_errno_scope_t checkpoint(bool new_cause) {
   asciichat_errno_scope_t scope = {.thread_id = thread_current_id()};
   registry_lock();
@@ -519,6 +541,19 @@ size_t errno_snapshot(uint64_t id, asciichat_error_context_t *out, size_t capaci
       out[count++] = g_frames[index].context;
   registry_unlock();
   return depth;
+}
+size_t errno_threads_snapshot(uint64_t *out, size_t capacity) {
+  registry_lock();
+  size_t count = 0;
+  for (size_t i = 0; i < ASCIICHAT_ERRNO_MAX_THREADS; ++i) {
+    if (!g_threads[i].generation)
+      continue;
+    if (out && count < capacity)
+      out[count] = g_threads[i].id;
+    ++count;
+  }
+  registry_unlock();
+  return count;
 }
 size_t errno_history_snapshot(asciichat_errno_history_t *out, size_t capacity) {
   registry_lock();

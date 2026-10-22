@@ -54,6 +54,8 @@ set(CORE_SRCS
     ${LIB_DIR}/ui/status.c
     ${LIB_DIR}/ui/update_banner.c
     ${LIB_DIR}/ui/mdns.c
+    ${LIB_DIR}/ui/selectable_list.c
+    ${LIB_DIR}/ui/errno_stacks.c
     # options/
     ${LIB_DIR}/options/colorscheme.c
     ${LIB_DIR}/options/options.c

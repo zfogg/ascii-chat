@@ -52,7 +52,7 @@ function(configure_build_type_post_project)
         configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
         configure_debug_build_flags("Debug")
 
-        target_compile_definitions(asciichat-project-options INTERFACE CMAKE_BUILD_TYPE_DEBUG)
+        target_compile_definitions(asciichat-project-options INTERFACE CMAKE_BUILD_TYPE_DEBUG ASCIICHAT_DIAGNOSTIC_UI)
         target_compile_definitions(asciichat-project-options INTERFACE ENABLE_ERRNO_BACKTRACES)
         target_compile_definitions(asciichat-project-options INTERFACE DEBUG_LOCKS)
 
@@ -70,7 +70,7 @@ function(configure_build_type_post_project)
         configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
         configure_debug_build_flags("Dev")
         # No sanitizers in Dev mode
-        target_compile_definitions(asciichat-project-options INTERFACE CMAKE_BUILD_TYPE_DEBUG)
+        target_compile_definitions(asciichat-project-options INTERFACE CMAKE_BUILD_TYPE_DEBUG ASCIICHAT_DIAGNOSTIC_UI)
         target_compile_definitions(asciichat-project-options INTERFACE ENABLE_ERRNO_BACKTRACES)
         target_compile_definitions(asciichat-project-options INTERFACE DEBUG_LOCKS)
         fix_macos_asan_runtime()
@@ -86,8 +86,8 @@ function(configure_build_type_post_project)
         # Like Release but with debug symbols enabled for debugging optimized code
         configure_release_flags(${PLATFORM_DARWIN} ${PLATFORM_LINUX} ${IS_ROSETTA} ${IS_APPLE_SILICON} ${ASCIICHAT_ENABLE_CRC32_HW} TRUE)
 
-        # Enable errno backtraces for RelWithDebInfo (useful for debugging production issues)
-        target_compile_definitions(asciichat-project-options INTERFACE ENABLE_ERRNO_BACKTRACES)
+        # RelWithDebInfo is an explicitly diagnostic build, including the errno TUI.
+        target_compile_definitions(asciichat-project-options INTERFACE ENABLE_ERRNO_BACKTRACES ASCIICHAT_DIAGNOSTIC_UI)
         message(STATUS "RelWithDebInfo: Enabled errno backtraces for debugging")
 
         # Windows-specific: Add debug info format for RelWithDebInfo
