@@ -127,8 +127,7 @@ static const char *startup_log_summary(const char *message, char *buffer, size_t
       ++summary;
   }
 
-  bool failed = strstr(plain, "[ERROR]") || strstr(plain, "[FATAL]") || strstr(plain, "[WARN ]");
-  snprintf(buffer, buffer_size, "\033[%sm[%s]\033[0m %s", failed ? "31" : "32", failed ? "fail" : " ok ", summary);
+  snprintf(buffer, buffer_size, "[ * ] %s", summary);
   return buffer;
 }
 
@@ -153,11 +152,7 @@ static size_t utf8_byte_offset_for_char(const char *text, size_t character_offse
 
 static void append_log_row(frame_buffer_t *body, const char *message, int row, int width, bool compact_startup) {
   char formatted[SESSION_LOG_LINE_MAX + 32];
-  bool failed = false;
   if (compact_startup) {
-    char unformatted[SESSION_LOG_LINE_MAX];
-    strip_ansi_codes(message, unformatted, sizeof(unformatted));
-    failed = strstr(unformatted, "[ERROR]") || strstr(unformatted, "[FATAL]") || strstr(unformatted, "[WARN ]");
     message = startup_log_summary(message, formatted, sizeof(formatted));
   }
   char plain[SESSION_LOG_LINE_MAX];
@@ -183,18 +178,20 @@ static void append_log_row(frame_buffer_t *body, const char *message, int row, i
   char line[SESSION_LOG_LINE_MAX];
   memcpy(line, start, length);
   line[length] = '\0';
+  bool startup_marker = compact_startup && row == 0 && strncmp(line, "[ * ] ", 6) == 0;
+  const char *content = startup_marker ? line + 6 : line;
   size_t match_start = 0;
   size_t match_length = 0;
-  const char *rendered = line;
-  if (log_search_get_match_info(line, &match_start, &match_length)) {
-    size_t start_byte = utf8_byte_offset_for_char(line, match_start);
-    size_t end_byte = utf8_byte_offset_for_char(line, match_start + match_length);
-    rendered = grep_highlight(line, start_byte, end_byte - start_byte);
+  const char *rendered = content;
+  if (log_search_get_match_info(content, &match_start, &match_length)) {
+    size_t start_byte = utf8_byte_offset_for_char(content, match_start);
+    size_t end_byte = utf8_byte_offset_for_char(content, match_start + match_length);
+    rendered = grep_highlight(content, start_byte, end_byte - start_byte);
   }
-  if (compact_startup)
-    frame_buffer_printf(body, "\033[%sm%s\033[0m\n", failed ? "31" : "32", rendered);
-  else
-    frame_buffer_printf(body, "%s\033[0m\n", rendered);
+  if (startup_marker)
+    frame_buffer_printf(body, "%s%s%s ", colored_string(LOG_COLOR_WHITE, "[ "), colored_string(LOG_COLOR_WARN, "*"),
+                        colored_string(LOG_COLOR_WHITE, " ]"));
+  frame_buffer_printf(body, "%s\033[0m\n", rendered);
 }
 
 void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const terminal_screen_config_t *config,

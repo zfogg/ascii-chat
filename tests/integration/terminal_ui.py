@@ -377,6 +377,13 @@ def main():
                 }
                 startup = terminal("startup-update", update_command, check_updates=True,
                                    environment={**update_env, "ASCII_CHAT_TEST_UPDATE_SLOW": "1"}, rows=40, cols=100)
+                startup.expect(lambda text: "[ * ]" in text, "Startup log markers are missing")
+                marker_row, marker_line = next((row, line) for row, line in enumerate(startup.screen.display)
+                                               if "[ * ]" in line)
+                marker_start = marker_line.index("[ * ]")
+                assert startup.screen.buffer[marker_row][marker_start].fg == "white"
+                assert startup.screen.buffer[marker_row][marker_start + 4].fg == "white"
+                assert startup.screen.buffer[marker_row][marker_start + 2].fg not in ("default", "white", "red", "green")
                 startup.expect(lambda text: "Update available" in text,
                                "An older build did not show the startup update prompt")
                 check_update_centering(startup, "Update available")
@@ -402,8 +409,6 @@ def main():
                 startup.write("\x1b[D")
                 startup.pump(.2)
                 check_update_selection(startup, "Continue")
-                # The prompt may replace a short-lived splash between samples.
-                assert "[ ok ]" in "".join(startup.raw), "Startup did not render compact initialization logs"
                 startup.write("\r")
                 video(startup)
                 # Let the post-splash capture pipeline finish before exercising shutdown.
