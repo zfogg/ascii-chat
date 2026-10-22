@@ -64,6 +64,7 @@ export function useAsciiRendererHandle({
   onRecreateRenderer,
 }: UseAsciiRendererHandleParams): UseAsciiRendererHandleReturn {
   const firstRenderDoneRef = useRef(false);
+  const presentedRasterRef = useRef({ renderer: 0, width: 0, height: 0 });
   const dimensionsRef = useRef({ cols: 0, rows: 0 });
   const presentedFrameTimesRef = useRef<number[]>([]);
   const lastReportedFpsRef = useRef<number | null>(null);
@@ -152,6 +153,11 @@ export function useAsciiRendererHandle({
         const context = canvas.getContext("2d");
         if (!context) return;
         context.putImageData(new ImageData(pixels, width, height), 0, 0);
+        presentedRasterRef.current = {
+          renderer: rendererPtrRef.current,
+          width,
+          height,
+        };
         firstRenderDoneRef.current = true;
         lastFrameChangedRef.current = changed;
         if (showFps) presentedFrameTimesRef.current.push(performance.now());
@@ -295,6 +301,11 @@ export function useAsciiRendererHandle({
                 throw new Error("[AsciiRenderer] Canvas context not found");
               }
               ctx.putImageData(imageData, 0, 0);
+              presentedRasterRef.current = {
+                renderer: rendererPtrRef.current,
+                width: w,
+                height: h,
+              };
               if (ctx) {
                 if (
                   new URLSearchParams(window.location.search).get(
@@ -398,6 +409,19 @@ export function useAsciiRendererHandle({
   useImperativeHandle(
     ref,
     () => ({
+      getCanvas: () => {
+        const canvas = canvasRef.current;
+        const presented = presentedRasterRef.current;
+        // Resizing clears the backing surface before the replacement renderer
+        // presents. Consumers must hold their last frame through that interval.
+        return canvas &&
+          !resizeTimeoutRef.current &&
+          presented.renderer === rendererPtrRef.current &&
+          presented.width === canvas.width &&
+          presented.height === canvas.height
+          ? canvas
+          : null;
+      },
       writeFrame(ansiString: string): boolean {
         lastFrameChangedRef.current = false;
         const ui = ensureUi();

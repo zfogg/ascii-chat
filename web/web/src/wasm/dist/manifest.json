@@ -2,8 +2,8 @@
   "sourceHash": "89cd1bc913b38d752565cd9576ebdc3f7aabeb0329ef966ea871e1e9df462faf",
   "files": {
     "mirror.js": "3ebc28cc5252a76bef2f88cd599d5d0e62bae98a477ec748af82c27958756ac6",
-    "mirror.wasm": "02b858bac3abf162d86851cdf091db481d67b79838c38c7c557c3df2dbd6aede",
+    "mirror.wasm": "22e16b445669d543a63ce17634c9db71feacd4aa82d01a914e5664227832451d",
     "client.js": "369c66759d35ae75985268e685bb43f2cba5ecc9104bf151d89807365288a4f7",
-    "client.wasm": "e26999331abe5a527cd276633fe83c8be2cb5a9b6fc3351ee68c2edcd0e841f6"
+    "client.wasm": "78eeeb3f8f381dd72d1a55baadd2ecef0cfff5e88c542d93ac7d0150f375149e"
   }
 }

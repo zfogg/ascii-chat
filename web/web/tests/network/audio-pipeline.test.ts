@@ -83,8 +83,17 @@ let processor: ReturnType<typeof node> & {
 let start: ReturnType<typeof vi.fn>;
 let stopTrack: ReturnType<typeof vi.fn>;
 let getUserMedia: ReturnType<typeof vi.fn>;
+let recordingBus: ReturnType<typeof node> & { stream: MediaStream };
+let captureSources: ReturnType<typeof node>[];
+let playbackSources: ReturnType<typeof node>[];
 
 beforeEach(() => {
+  captureSources = [];
+  playbackSources = [];
+  recordingBus = {
+    ...node(),
+    stream: { getTracks: () => [] } as unknown as MediaStream,
+  };
   processor = { ...node(), onaudioprocess: null };
   start = vi.fn();
   stopTrack = vi.fn();
@@ -100,20 +109,70 @@ beforeEach(() => {
       destination = {};
       resume = vi.fn().mockResolvedValue(undefined);
       close = vi.fn().mockResolvedValue(undefined);
-      createMediaStreamSource = node;
+      createMediaStreamSource = () => {
+        const source = node();
+        captureSources.push(source);
+        return source;
+      };
+      createMediaStreamDestination = () => recordingBus;
       createScriptProcessor = () => processor;
       createGain = () => ({ ...node(), gain: { value: 1 } });
       createBuffer = (_channels: number, length: number, rate: number) => ({
         duration: length / rate,
         getChannelData: () => new Float32Array(length),
       });
-      createBufferSource = () => ({ ...node(), start, stop: vi.fn() });
+      createBufferSource = () => {
+        const source = { ...node(), start, stop: vi.fn() };
+        playbackSources.push(source);
+        return source;
+      };
     },
   );
 });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("AudioPipeline", () => {
+  it("records decoded peer audio with speakers disabled without acquiring a microphone", async () => {
+    const pipeline = new AudioPipeline();
+    expect(await pipeline.startRecording()).toBe(recordingBus.stream);
+    expect(getUserMedia).not.toHaveBeenCalled();
+    const packet = new Uint8Array(16 + 960 * 4);
+    const view = new DataView(packet.buffer);
+    view.setUint32(4, 960, true);
+    view.setUint32(8, 48000, true);
+    view.setUint32(12, 1, true);
+    for (let i = 0; i < 960; i++) view.setFloat32(16 + i * 4, 0.1, true);
+    pipeline.playPacket(PacketType.AUDIO_BATCH, packet);
+    expect(playbackSources).toHaveLength(1);
+    expect(playbackSources[0]!.connect).toHaveBeenCalledWith(recordingBus);
+    pipeline.disablePlayback();
+    pipeline.playPacket(PacketType.AUDIO_BATCH, packet);
+    expect(playbackSources).toHaveLength(2);
+    pipeline.stopRecording();
+    pipeline.playPacket(PacketType.AUDIO_BATCH, packet);
+    expect(playbackSources).toHaveLength(2);
+    pipeline.close();
+  });
+
+  it("taps the existing microphone once, survives microphone stop, and never monitors it", async () => {
+    const pipeline = new AudioPipeline({ localOnly: true });
+    await pipeline.startCapture();
+    const source = captureSources[0]!;
+    await pipeline.startRecording();
+    await pipeline.startRecording();
+    expect(
+      source.connect.mock.calls.filter(([target]) => target === recordingBus),
+    ).toHaveLength(1);
+    expect(getUserMedia).toHaveBeenCalledOnce();
+    pipeline.stopRecording();
+    expect(stopTrack).not.toHaveBeenCalled();
+    expect(source.disconnect).toHaveBeenCalledWith(recordingBus);
+    await pipeline.startRecording();
+    pipeline.stopCapture();
+    expect(stopTrack).toHaveBeenCalledOnce();
+    pipeline.stopRecording();
+    pipeline.close();
+  });
   it("does not recreate audio resources after close", async () => {
     const pipeline = new AudioPipeline({ localOnly: true });
     pipeline.close();

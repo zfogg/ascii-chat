@@ -46,6 +46,7 @@ export interface UseClientLikeReturn {
   fps: number | undefined;
   setFps: (fps: number | undefined) => void;
   wasmInitialized: boolean;
+  wasmError: string;
   showSettings: boolean;
   setShowSettings: (show: boolean) => void;
   settings: BinarySettingsConfig;
@@ -95,6 +96,7 @@ export function useClientLike(
   });
   const [fps, setFps] = useState<number | undefined>(0);
   const [wasmInitialized, setWasmInitialized] = useState(false);
+  const [wasmError, setWasmError] = useState("");
   const [showSettings, setShowSettings] = useUrlState("settings", false);
   const [settings, setSettings, receiveSettings] = useRenderSettings();
   useAutoGridSize(setSettings);
@@ -111,6 +113,7 @@ export function useClientLike(
       })
       .catch((err) => {
         console.error("WASM init error:", err);
+        setWasmError(String(err));
         setError(`Failed to load WASM module: ${err}`);
       });
   }, [initWasm]);
@@ -199,6 +202,7 @@ export function useClientLike(
     fps,
     setFps,
     wasmInitialized,
+    wasmError,
     showSettings,
     setShowSettings,
     settings,

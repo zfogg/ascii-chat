@@ -68,6 +68,7 @@ test.each([30, 33, 60, 120, 144])(
         rendererRef: {
           current: {
             writeFrame,
+            getCanvas: () => null,
             getDimensions: () => ({ cols: 80, rows: 30 }),
             clear: vi.fn(),
             recreateRenderer: vi.fn(),
@@ -167,6 +168,7 @@ test("Mirror starts and replaces direct capture after script-driven track restor
       rendererRef: {
         current: {
           writeFrame,
+          getCanvas: () => null,
           getDimensions: () => ({ cols: 80, rows: 24 }),
           clear: vi.fn(),
           recreateRenderer: vi.fn(),
@@ -238,6 +240,7 @@ for (const contentFit of [undefined, "cover"] as const) {
           rendererRef: {
             current: {
               writeFrame,
+              getCanvas: () => null,
               getDimensions: () => ({ cols: 80, rows: 24 }),
               clear: vi.fn(),
               recreateRenderer: vi.fn(),
