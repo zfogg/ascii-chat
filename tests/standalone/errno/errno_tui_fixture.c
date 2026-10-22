@@ -17,7 +17,8 @@ static void *publish_long_error(void *opaque) {
   fixture_state_t *state = opaque;
   NAMED_REGISTER_ID(thread_current_id(), "websocket-error-proxy-worker-with-a-long-name", "thread", "0x%tx", NULL);
   SET_ERRNO(ERROR_CRYPTO_INIT,
-            "USER_MESSAGE_MARKER_the_websocket_error_proxy_returned_a_diagnostic_payload_that_must_not_wrap");
+            "USER_MESSAGE_MARKER_the_websocket_error_proxy_returned_a_diagnostic_payload_that_must_not_wrap_"
+            "and_keeps_going_until_the_user_message_column_reaches_the_right_hand_table_edge_before_ellipsizing");
   atomic_store(&state->ready, true);
   while (!atomic_load(&state->stop))
     platform_sleep_ms(10);

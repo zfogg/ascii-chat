@@ -22,7 +22,6 @@
 #define ERRNO_TUI_MIN_ROWS 10
 #define ERRNO_TUI_MAX_ROWS (ASCIICHAT_ERRNO_MAX_FRAMES + ASCIICHAT_ERRNO_HISTORY_SIZE)
 #define ERRNO_TUI_TABLE_BASE_WIDTH 114
-#define ERRNO_TUI_TABLE_MAX_WIDTH 160
 #define ERRNO_TUI_THREAD_BASE_WIDTH 14
 #define ERRNO_TUI_THREAD_MAX_WIDTH 24
 #define ERRNO_TUI_MESSAGE_BASE_WIDTH 23
@@ -207,13 +206,13 @@ static void render_footer(frame_buffer_t *buffer, int width, bool colors) {
 }
 
 static void render_table_line(frame_buffer_t *buffer, const char *line, int width) {
-  int table_width = MIN(width - 4, ERRNO_TUI_TABLE_MAX_WIDTH);
+  int table_width = width - 4;
   int left_padding = (width - table_width) / 2;
   frame_buffer_printf(buffer, "%*s%s\n", left_padding, "", line);
 }
 
 static int table_width_for_terminal(int width) {
-  return MIN(width - 4, ERRNO_TUI_TABLE_MAX_WIDTH);
+  return width - 4;
 }
 
 static int growing_column_width(int table_width, int base_width, int max_width, int divisor) {

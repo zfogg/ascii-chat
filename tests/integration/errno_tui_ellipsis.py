@@ -26,7 +26,7 @@ def screen_row(term):
 
 
 def assert_clipped(row, suffix, columns):
-    table_width = min(columns - 1 - 4, 160)
+    table_width = columns - 1 - 4
     left_padding = (columns - 1 - table_width) // 2
     table_end = left_padding + table_width
     visible = row[:table_end]
@@ -96,7 +96,7 @@ def exercise(binary, utf8, artifacts):
         render_capture(term, artifacts, "errno-tui-160-utf8" if utf8 else "errno-tui-160-ascii")
 
         term.resize(24, 200)
-        capped, capped_end = wait_for_clipped(term, suffix, 200, "errno stack did not respect the table maximum")
+        capped, capped_end = wait_for_clipped(term, suffix, 200, "errno stack did not widen to the terminal edge")
         assert capped_end > wider_end, (wider_end, capped_end, capped)
         render_capture(term, artifacts, "errno-tui-200-utf8" if utf8 else "errno-tui-200-ascii")
 
