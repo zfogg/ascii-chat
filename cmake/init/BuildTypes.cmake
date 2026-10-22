@@ -86,8 +86,8 @@ function(configure_build_type_post_project)
         # Like Release but with debug symbols enabled for debugging optimized code
         configure_release_flags(${PLATFORM_DARWIN} ${PLATFORM_LINUX} ${IS_ROSETTA} ${IS_APPLE_SILICON} ${ASCIICHAT_ENABLE_CRC32_HW} TRUE)
 
-        # Enable errno backtraces for RelWithDebInfo (useful for debugging production issues)
-        target_compile_definitions(asciichat-project-options INTERFACE ENABLE_ERRNO_BACKTRACES)
+        # Enable errno backtraces and diagnostic UI for RelWithDebInfo.
+        target_compile_definitions(asciichat-project-options INTERFACE ENABLE_ERRNO_BACKTRACES ASCIICHAT_DIAGNOSTIC_UI)
         message(STATUS "RelWithDebInfo: Enabled errno backtraces for debugging")
 
         # Windows-specific: Add debug info format for RelWithDebInfo
