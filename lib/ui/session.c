@@ -226,8 +226,7 @@ void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_ses
   const char *mode = GET_OPTION(detected_mode) == MODE_MIRROR ? "Mirror" : "Client";
   char detail[192];
   size_t offset = terminal_screen_logs_offset();
-  snprintf(detail, sizeof(detail), "] / Esc: close | /: search logs | ?: shortcuts%s%zu rows from tail",
-           offset ? " | " : "", offset);
+  snprintf(detail, sizeof(detail), "/ Esc: close | /: search logs | ?: keyboard controls | %zu rows from tail", offset);
   ui_status_t status = {.mode_name = mode, .start_time = s->started, .detail = detail};
   terminal_screen_config_t config = {
       .fixed_header_lines = 4, .render_header = ui_status_render_header, .user_data = &status, .show_logs = true};
