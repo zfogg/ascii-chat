@@ -5,6 +5,8 @@
 #include <ascii-chat/log/log.h>
 #include <string.h>
 #include <ascii-chat/util/password.h>
+#include <ascii-chat/ui/errno_stacks.h>
+#include <ascii-chat/platform/thread.h>
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/platform/keyboard.h>
@@ -75,6 +77,39 @@ static asciichat_error_t probe(const char *mode) {
     ui_input_shutdown();
     ui_controller_shutdown();
     keyboard_destroy();
+  } else if (strcmp(mode, "errno-ui") == 0) {
+#ifdef ASCIICHAT_DIAGNOSTIC_UI
+    REQUIRE(options_set_bool("strip_ansi", true) == ASCIICHAT_OK);
+    REQUIRE(keyboard_init() == ASCIICHAT_OK);
+    CLEAR_ERRNO_ALL();
+    (void)SET_ERRNO(ERROR_NETWORK, "ERR-ALPHA");
+    (void)SET_ERRNO(ERROR_NETWORK, "ERR-BRAVO");
+    (void)SET_ERRNO(ERROR_NETWORK, "ERR-CHARLIE");
+    ui_errno_stacks_toggle();
+    REQUIRE(ui_errno_stacks_visible());
+    for (;;) {
+      char key = 0;
+      REQUIRE(platform_read(0, &key, 1) == 1);
+      if (key == '\033') {
+        REQUIRE(ui_errno_stacks_handle_key(KEY_ESCAPE));
+        break;
+      }
+      REQUIRE(ui_errno_stacks_handle_key((keyboard_key_t)key));
+    }
+    REQUIRE(!ui_errno_stacks_visible());
+    REQUIRE(!ui_errno_stacks_handle_key('j'));
+    asciichat_error_context_t frames[8];
+    size_t count = errno_snapshot(thread_current_id(), frames, 8);
+    REQUIRE(count == 2);
+    for (size_t i = 0; i < count; ++i)
+      REQUIRE(strcmp(frames[i].context_message, "ERR-BRAVO") != 0);
+    ui_errno_stacks_hide();
+    ui_controller_shutdown();
+    CLEAR_ERRNO_ALL();
+    keyboard_destroy();
+#else
+    REQUIRE(platform_write_all(1, "DIAGNOSTIC_DISABLED", 19) == 19);
+#endif
   } else if (strcmp(mode, "dark") == 0 || strcmp(mode, "light") == 0) {
     REQUIRE(terminal_has_dark_background() == (strcmp(mode, "dark") == 0));
   } else if (strcmp(mode, "background") == 0 || strcmp(mode, "bad-background") == 0) {

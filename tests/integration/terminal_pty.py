@@ -122,4 +122,42 @@ for mode, response, environment in background_cases:
     finally:
         if child.isalive():
             child.close(force=True)
+child = start("errno-ui")
+try:
+    screen = pyte.Screen(91, 37)
+    stream = pyte.Stream(screen)
+    decoder = codecs.getincrementaldecoder("utf-8")("replace")
+    captured = bytearray()
+    def wait_view(predicate):
+        deadline = time.monotonic() + 5
+        while not predicate(screen.display):
+            assert time.monotonic() < deadline, screen.display
+            try:
+                chunk = child.read_nonblocking(4096, timeout=1)
+            except pexpect.TIMEOUT:
+                continue
+            except pexpect.EOF:
+                assert b"DIAGNOSTIC_DISABLED" in captured, (screen.display, captured)
+                child.close()
+                assert child.exitstatus == 0
+                return False
+            captured.extend(chunk)
+            stream.feed(decoder.decode(chunk))
+        return True
+    def selected(lines, text):
+        return any(">" in line and text in line for line in lines)
+    if wait_view(lambda lines: selected(lines, "ERR-CHARLIE")):
+        child.send(b"j")
+        wait_view(lambda lines: selected(lines, "ERR-BRAVO"))
+        child.send(b"x")
+        wait_view(lambda lines: selected(lines, "ERR-ALPHA") and not any("ERR-BRAVO" in line for line in lines))
+        child.send(b"\t")
+        wait_view(lambda lines: selected(lines, "ERR-BRAVO") and not any("ERR-ALPHA" in line for line in lines))
+        child.send(b"s")
+        wait_view(lambda lines: any("stack sort" in line for line in lines))
+        child.send(b"\x1b")
+        finish(child)
+finally:
+    if child.isalive():
+        child.close(force=True)
 print("Terminal PTY contracts passed")
