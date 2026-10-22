@@ -33,7 +33,7 @@
  * Read a line from gpg-agent (Assuan protocol)
  * Returns: 0 on success, -1 on error
  */
-static int read_agent_line(pipe_t pipe, char *buf, size_t buf_size) {
+static int read_agent_line(pipe_t pipe, char *buf, size_t buf_size, size_t *line_len) {
   size_t pos = 0;
   while (pos < buf_size - 1) {
     char c;
@@ -49,6 +49,8 @@ static int read_agent_line(pipe_t pipe, char *buf, size_t buf_size) {
 
     if (c == '\n') {
       buf[pos] = '\0';
+      if (line_len)
+        *line_len = pos;
       return 0;
     }
 
@@ -111,7 +113,7 @@ int gpg_agent_connect(void) {
 
   // Read initial greeting
   char response[GPG_AGENT_MAX_RESPONSE];
-  if (read_agent_line(pipe, response, sizeof(response)) != 0) {
+  if (read_agent_line(pipe, response, sizeof(response), NULL) != 0) {
     log_error("Failed to read GPG agent greeting");
     platform_pipe_close(pipe);
     return -1;
@@ -131,7 +133,7 @@ int gpg_agent_connect(void) {
     log_warn("Failed to set loopback pinentry mode (continuing anyway)");
   } else {
     // Read response for OPTION command
-    if (read_agent_line(pipe, response, sizeof(response)) != 0) {
+    if (read_agent_line(pipe, response, sizeof(response), NULL) != 0) {
       log_warn("Failed to read OPTION command response (continuing anyway)");
     } else if (is_ok_response(response)) {
       log_debug("Loopback pinentry mode enabled");
@@ -169,7 +171,7 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
     return -1;
   }
 
-  if (read_agent_line(handle, response, sizeof(response)) != 0) {
+  if (read_agent_line(handle, response, sizeof(response), NULL) != 0) {
     log_error("Failed to read SIGKEY response");
     return -1;
   }
@@ -203,7 +205,7 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
   }
 
   // Read SETHASH response
-  if (read_agent_line(handle, response, sizeof(response)) != 0) {
+  if (read_agent_line(handle, response, sizeof(response), NULL) != 0) {
     log_error("Failed to read SETHASH response");
     return -1;
   }
@@ -223,13 +225,14 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
   // GPG agent sends informational ERR lines that are not fatal (e.g., "Not implemented")
   // Keep reading until we get the actual signature data
   bool found_data = false;
+  size_t response_len = 0;
   for (int attempts = 0; attempts < 20; attempts++) {
-    if (read_agent_line(handle, response, sizeof(response)) != 0) {
+    if (read_agent_line(handle, response, sizeof(response), &response_len) != 0) {
       log_error("Failed to read PKSIGN response");
       return -1;
     }
 
-    log_debug("PKSIGN response line %d: %s", attempts + 1, response);
+    log_debug("PKSIGN response line %d (%zu bytes)", attempts + 1, response_len);
 
     // Skip status lines (S INQUIRE_MAXLEN, etc)
     if (response[0] == 'S' && response[1] == ' ') {
@@ -272,49 +275,41 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
     return -1;
   }
 
-  // Parse S-expression signature from GPG agent
-  // GPG agent returns: D <percent-encoded-sexp>
-  // Example: D (7:sig-val(5:eddsa(1:r32:%<hex>)(1:s32:%<hex>)))
-  // The signature is 64 bytes total: R (32) + S (32)
-
-  // DEBUG: Print first 200 chars of response to see format
-  char debug_buf[201];
-  size_t response_len = strlen(response);
-  size_t debug_len = response_len < 200 ? response_len : 200;
-  memcpy(debug_buf, response, debug_len);
-  debug_buf[debug_len] = '\0';
-  log_debug("GPG agent D line (first 200 bytes): %s", debug_buf);
-
-  const char *data = response + 2; // Skip "D "
-
-  // The response format from GPG agent for EdDSA is percent-encoded
-  // We need to decode it to get the raw binary signature
-  // For now, let's try the simple approach: find the raw data
-
-  // Look for the pattern that indicates where R starts: "(1:r32:"
-  const char *r_marker = strstr(data, "(1:r32:");
-  if (!r_marker) {
-    log_error("Could not find r value marker in S-expression");
+  // Assuan escapes binary bytes as %HH. Decode before reading canonical S-expression fields.
+  uint8_t decoded[GPG_AGENT_MAX_RESPONSE];
+  size_t decoded_len = 0;
+  for (size_t input = 2; input < response_len; ++input) {
+    if (decoded_len == sizeof(decoded)) {
+      log_error("GPG agent signature response exceeds buffer");
+      return -1;
+    }
+    if (response[input] == '%') {
+      if (response_len - input < 3 || !isxdigit((unsigned char)response[input + 1]) ||
+          !isxdigit((unsigned char)response[input + 2])) {
+        log_error("Invalid percent escape in GPG agent signature");
+        return -1;
+      }
+      char hex[3] = {response[input + 1], response[input + 2], 0};
+      decoded[decoded_len++] = (uint8_t)strtoul(hex, NULL, 16);
+      input += 2;
+    } else {
+      decoded[decoded_len++] = (uint8_t)response[input];
+    }
+  }
+  static const char prefix[] = "(7:sig-val(5:eddsa(1:r32:";
+  static const char separator[] = ")(1:s32:";
+  static const char suffix[] = ")))";
+  const size_t prefix_len = sizeof(prefix) - 1;
+  const size_t separator_len = sizeof(separator) - 1;
+  const size_t expected_len = prefix_len + 32 + separator_len + 32 + sizeof(suffix) - 1;
+  if (decoded_len != expected_len || memcmp(decoded, prefix, prefix_len) != 0 ||
+      memcmp(decoded + prefix_len + 32, separator, separator_len) != 0 ||
+      memcmp(decoded + expected_len - (sizeof(suffix) - 1), suffix, sizeof(suffix) - 1) != 0) {
+    log_error("Invalid Ed25519 signature S-expression from GPG agent");
     return -1;
   }
-
-  // Skip the marker to get to the actual R data
-  const char *r_data = r_marker + 7; // strlen("(1:r32:")
-
-  // Look for the pattern that indicates where S starts: "(1:s32:"
-  const char *s_marker = strstr(r_data + 32, "(1:s32:");
-  if (!s_marker) {
-    log_error("Could not find s value marker in S-expression");
-    return -1;
-  }
-
-  // Skip the marker to get to the actual S data
-  const char *s_data = s_marker + 7; // strlen("(1:s32:")
-
-  // Copy the raw binary data
-  memcpy(signature_out, r_data, 32);
-  memcpy(signature_out + 32, s_data, 32);
-
+  memcpy(signature_out, decoded + prefix_len, 32);
+  memcpy(signature_out + 32, decoded + prefix_len + 32 + separator_len, 32);
   *signature_len_out = 64;
 
   // DEBUG: Print signature in hex
@@ -326,7 +321,7 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
   log_debug("Extracted signature (64 bytes): %s", sig_hex);
 
   // Read final OK
-  if (read_agent_line(handle, response, sizeof(response)) != 0) {
+  if (read_agent_line(handle, response, sizeof(response), &response_len) != 0) {
     log_error("Failed to read final PKSIGN response");
     return -1;
   }

@@ -2,9 +2,11 @@
 #include <ascii-chat/crypto/gpg/signing.h>
 #include <ascii-chat/crypto/gpg/verification.h>
 #include <ascii-chat/crypto/gpg/export.h>
+#include <ascii-chat/crypto/gpg/agent.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/socket.h>
 #include <ascii-chat/tests/logging.h>
 #include <sodium.h>
 #include <string.h>
@@ -12,7 +14,10 @@
 
 static char directory[PLATFORM_MAX_PATH_LENGTH], fingerprint[41];
 static char *old_home, *old_path;
+static int agent_socket = -1;
 static void teardown(void) {
+  gpg_agent_disconnect(agent_socket);
+  agent_socket = -1;
   if (old_path) {
     platform_setenv("PATH", old_path);
     SAFE_FREE(old_path);
@@ -192,5 +197,102 @@ Test(gpg_live, short_signature_integers_are_restored_to_exactly_32_bytes_each) {
                    "R length %zu, S length %zu", lengths[r], lengths[s]);
       cr_assert_arr_eq(actual, expected, sizeof(actual));
     }
+  }
+}
+Test(gpg_live, agent_signature_verifies_independently_over_the_documented_sha512_digest) {
+  uint8_t public_key[32], signature[64], digest[crypto_hash_sha512_BYTES];
+  char grip[41];
+  cr_assert_eq(gpg_get_public_key(fingerprint, public_key, grip), 0);
+  cr_assert(gpg_agent_is_available());
+  agent_socket = gpg_agent_connect();
+  cr_assert_geq(agent_socket, 0);
+  const uint8_t message[] = {'a', 'g', 'e', 'n', 't', 0, 0xff};
+  size_t signature_length = 0;
+  cr_assert_eq(gpg_agent_sign(agent_socket, grip, message, sizeof(message), signature, &signature_length), 0);
+  cr_assert_eq(signature_length, 64);
+  cr_assert_eq(crypto_hash_sha512(digest, message, sizeof(message)), 0);
+  cr_assert_eq(crypto_sign_verify_detached(signature, digest, sizeof(digest), public_key), 0);
+  digest[0] ^= 1;
+  cr_assert_neq(crypto_sign_verify_detached(signature, digest, sizeof(digest), public_key), 0);
+}
+static socket_t wire_client = INVALID_SOCKET_VALUE, wire_peer = INVALID_SOCKET_VALUE;
+static void wire_setup(void) { log_init(NULL, LOG_FATAL, false, false); }
+static void wire_cleanup(void) {
+  if (wire_client != INVALID_SOCKET_VALUE)
+    socket_close(wire_client);
+  if (wire_peer != INVALID_SOCKET_VALUE)
+    socket_close(wire_peer);
+  wire_client = wire_peer = INVALID_SOCKET_VALUE;
+  log_destroy();
+}
+TestSuite(gpg_agent_wire, .init = wire_setup, .fini = wire_cleanup, .timeout = 5);
+Test(gpg_agent_wire, binary_nulls_and_percent_escapes_preserve_signature_bytes_and_bad_frames_are_rejected) {
+  for (unsigned malformed = 0; malformed < 3; ++malformed) {
+    socket_t listener = socket_create("gpg-wire-listen", AF_INET, SOCK_STREAM, 0);
+    cr_assert_neq(listener, INVALID_SOCKET_VALUE);
+    struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = htonl(INADDR_LOOPBACK)};
+    cr_assert_eq(socket_bind(listener, (struct sockaddr *)&address, sizeof(address)), 0);
+    cr_assert_eq(socket_listen(listener, 1), 0);
+    socklen_t address_len = sizeof(address);
+    cr_assert_eq(socket_getsockname(listener, (struct sockaddr *)&address, &address_len), 0);
+    wire_client = socket_create("gpg-wire-client", AF_INET, SOCK_STREAM, 0);
+    cr_assert_neq(wire_client, INVALID_SOCKET_VALUE);
+    cr_assert_eq(socket_connect(wire_client, (struct sockaddr *)&address, address_len), 0);
+    wire_peer = socket_accept(listener, NULL, NULL, "gpg-wire-peer");
+    socket_close(listener);
+    cr_assert_neq(wire_peer, INVALID_SOCKET_VALUE);
+    uint8_t expected[64];
+    for (unsigned i = 0; i < sizeof(expected); ++i)
+      expected[i] = (uint8_t)i;
+    expected[4] = '%';
+    uint8_t sexp[128];
+    const char prefix[] = "(7:sig-val(5:eddsa(1:r32:";
+    size_t length = sizeof(prefix) - 1;
+    memcpy(sexp, prefix, length);
+    memcpy(sexp + length, expected, 32);
+    length += 32;
+    memcpy(sexp + length, ")(1:s32:", 8);
+    length += 8;
+    memcpy(sexp + length, expected + 32, 32);
+    length += 32;
+    memcpy(sexp + length, ")))", 3);
+    length += 3;
+    if (malformed == 2)
+      --length;
+    uint8_t response[512];
+    size_t used = 8;
+    memcpy(response, "OK\nOK\nD ", used);
+    const char hex[] = "0123456789ABCDEF";
+    for (size_t i = 0; i < length; ++i) {
+      if (sexp[i] == '%' || sexp[i] == '\r' || sexp[i] == '\n') {
+        response[used++] = '%';
+        response[used++] = malformed == 1 ? 'Z' : (uint8_t)hex[sexp[i] >> 4];
+        response[used++] = (uint8_t)hex[sexp[i] & 15];
+      } else {
+        response[used++] = sexp[i];
+      }
+    }
+    memcpy(response + used, "\nOK\n", 4);
+    used += 4;
+    cr_assert_eq(socket_send(wire_peer, response, used, 0), (ssize_t)used);
+    uint8_t actual[64];
+    memset(actual, 0xa5, sizeof(actual));
+    size_t signature_len = 999;
+    const uint8_t message[] = "wire";
+    int result = gpg_agent_sign((int)wire_client, "0123456789012345678901234567890123456789",
+                                message, sizeof(message), actual, &signature_len);
+    if (malformed) {
+      cr_assert_neq(result, 0);
+      cr_assert_eq(signature_len, 999);
+      for (size_t i = 0; i < sizeof(actual); ++i)
+        cr_assert_eq(actual[i], 0xa5);
+    } else {
+      cr_assert_eq(result, 0);
+      cr_assert_eq(signature_len, 64);
+      cr_assert_arr_eq(actual, expected, 64);
+    }
+    socket_close(wire_client);
+    socket_close(wire_peer);
+    wire_client = wire_peer = INVALID_SOCKET_VALUE;
   }
 }
