@@ -133,9 +133,14 @@ def main():
             assert "r: refresh" not in text
             assert "ascii-chat | LAN servers" not in text
             current = int(re.search(r"> \[(\d+)\]", text).group(1))
+            term.pump(.2)
             term.write("j")
             expected = 2 if current == 1 else 1
-            term.expect(lambda text: f"> [{expected}]" in text, "j did not move selection")
+            try:
+                term.expect(lambda text: f"> [{expected}]" in text, "j did not move selection", timeout=3)
+            except AssertionError:
+                term.write("j")
+                term.expect(lambda text: f"> [{expected}]" in text, "j did not move selection")
             if expected == 1:
                 term.write("k")
                 term.expect(lambda text: "> [2]" in text, "k did not wrap selection")

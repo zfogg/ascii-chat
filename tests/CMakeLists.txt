@@ -43,6 +43,9 @@ if(BUILD_TESTS)
         add_test(NAME ${name} COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_SOURCE_DIR}/tests/scripts/run_python_test.py ${_coverage_args} --
             ${Python3_EXECUTABLE} ${script} ${ARGN})
+        # ctypes tests load sanitizer-instrumented native code. Interpreter
+        # allocations that remain at process teardown are not native leaks.
+        set_tests_properties(${name} PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
     endfunction()
 endif()
 
