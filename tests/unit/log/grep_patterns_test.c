@@ -3,6 +3,7 @@
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
+#include <ascii-chat/util/string.h>
 
 TestSuite(grep_patterns, .fini = grep_destroy);
 
@@ -82,4 +83,49 @@ Test(grep_patterns, dense_global_fixed_matches_preserve_long_lines_without_overf
   cr_assert_not_null(highlighted);
   cr_assert_str_eq(highlighted, line);
   SAFE_FREE(highlighted);
+}
+
+Test(grep_patterns, plain_global_and_single_highlights_preserve_all_original_text) {
+  const char *line = "prefix foo middle FOO suffix";
+  cr_assert_eq(grep_init("/foo/ig"), ASCIICHAT_OK);
+  const char *highlighted = grep_highlight(line, 7, 3);
+  cr_assert_not_null(highlighted);
+  const char *first = strstr(highlighted, "\033[48;2;");
+  cr_assert_not_null(first);
+  cr_assert_not_null(strstr(first + 1, "\033[48;2;"));
+  char plain[256];
+  strip_ansi_codes(highlighted, plain, sizeof(plain));
+  cr_assert_str_eq(plain, line);
+  grep_destroy();
+  highlighted = grep_highlight(line, 7, 3);
+  cr_assert_not_null(highlighted);
+  strip_ansi_codes(highlighted, plain, sizeof(plain));
+  cr_assert_str_eq(plain, line);
+  cr_assert_eq(grep_highlight(line, strlen(line), 1), line);
+  cr_assert_eq(grep_highlight(line, 0, 0), line);
+  cr_assert_null(grep_highlight(NULL, 0, 1));
+  cr_assert_eq(grep_init("/(?=o)/g"), ASCIICHAT_OK);
+  highlighted = grep_highlight("foo", 1, 1);
+  strip_ansi_codes(highlighted, plain, sizeof(plain));
+  cr_assert_str_eq(plain, "foo");
+}
+Test(grep_patterns, saving_again_replaces_previous_snapshot_and_empty_restore_disables_filtering) {
+  cr_assert_eq(grep_init("first"), ASCIICHAT_OK);
+  cr_assert_eq(grep_save_patterns(), ASCIICHAT_OK);
+  cr_assert_eq(grep_init("/second/iF"), ASCIICHAT_OK);
+  cr_assert_eq(grep_save_patterns(), ASCIICHAT_OK);
+  cr_assert_eq(grep_init("third"), ASCIICHAT_OK);
+  cr_assert_eq(grep_restore_patterns(), ASCIICHAT_OK);
+  cr_assert_eq(grep_get_pattern_count(), 2);
+  cr_assert_str_eq(grep_get_last_pattern(), "/second/iF");
+  size_t start, length;
+  cr_assert_not(grep_should_output("third", &start, &length));
+  cr_assert(grep_should_output("SECOND", &start, &length));
+  grep_clear_patterns();
+  cr_assert_null(grep_get_last_pattern());
+  cr_assert_eq(grep_save_patterns(), ASCIICHAT_OK);
+  cr_assert_eq(grep_init("temporary"), ASCIICHAT_OK);
+  cr_assert_eq(grep_restore_patterns(), ASCIICHAT_OK);
+  cr_assert_eq(grep_get_pattern_count(), 0);
+  cr_assert(grep_should_output("unfiltered", &start, &length));
 }

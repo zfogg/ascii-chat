@@ -5,6 +5,7 @@
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
+#include <ascii-chat/util/string.h>
 
 static void search_setup(void) {
   grep_clear_patterns();
@@ -94,4 +95,49 @@ Test(log_search_behavior, fixed_case_insensitive_unicode_and_inversion) {
   cr_assert_str_eq(entries[0].message, "other");
   SAFE_FREE(entries);
   session_log_buffer_destroy(buffer);
+}
+
+static unsigned background_count(const char *text) {
+  unsigned count = 0;
+  for (const char *p = text; (p = strstr(p, "\033[48;2;")) != NULL; ++p)
+    ++count;
+  return count;
+}
+Test(log_search_behavior, interactive_global_highlighting_preserves_colored_unicode_text) {
+  const char *patterns[] = {"/needle/ig", "/needle/igF"};
+  const char *plain = "é NEEDLE middle needle end";
+  const char *colored = "\033[31mé NEEDLE\033[0m middle \033[34mneedle end\033[0m";
+  for (size_t i = 0; i < 2; ++i) {
+    type_pattern(patterns[i]);
+    cr_assert(log_search_get_global_highlight());
+    size_t start = 0, length = 0;
+    cr_assert(log_search_get_match_info(plain, &start, &length));
+    char *result = grep_highlight_colored_copy(colored, plain, start, length);
+    cr_assert_not_null(result);
+    cr_assert_geq(background_count(result), 2, "pattern %s", patterns[i]);
+    char stripped[256];
+    strip_ansi_codes(result, stripped, sizeof(stripped));
+    cr_assert_str_eq(stripped, plain);
+    cr_assert_not_null(strstr(result, "\033[31m"));
+    cr_assert_not_null(strstr(result, "\033[34m"));
+    SAFE_FREE(result);
+    log_search_exit_mode(false);
+  }
+}
+Test(log_search_behavior, single_highlight_survives_embedded_reset_and_zero_width_matches_terminate) {
+  const char *plain = "before needle after";
+  const char *colored = "before ne\033[0med\033[00mle after";
+  char *result = grep_highlight_colored_copy(colored, plain, 7, 6);
+  cr_assert_not_null(result);
+  cr_assert_eq(background_count(result), 3);
+  char stripped[256];
+  strip_ansi_codes(result, stripped, sizeof(stripped));
+  cr_assert_str_eq(stripped, plain);
+  SAFE_FREE(result);
+  cr_assert_eq(grep_init("/(?=x)/g"), ASCIICHAT_OK);
+  result = grep_highlight_colored_copy("x x", "x x", 0, 1);
+  cr_assert_not_null(result);
+  strip_ansi_codes(result, stripped, sizeof(stripped));
+  cr_assert_str_eq(stripped, "x x");
+  SAFE_FREE(result);
 }

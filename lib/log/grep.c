@@ -724,7 +724,9 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
         int pattern_len = log_search_get_input_len();
         const char *pattern = log_search_get_input_buffer();
         if (pattern_len > 0 && pattern && pattern_len < (int)sizeof(fixed_string_pattern)) {
-          SAFE_STRNCPY(fixed_string_pattern, pattern, sizeof(fixed_string_pattern) - 1);
+          grep_parse_result_t parsed = grep_parse_pattern(pattern);
+          const char *literal = parsed.valid ? parsed.pattern : pattern;
+          SAFE_STRNCPY(fixed_string_pattern, literal, sizeof(fixed_string_pattern) - 1);
           is_fixed_string_pattern = true;
           case_insensitive_fixed = log_search_get_case_insensitive();
         }
