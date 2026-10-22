@@ -306,7 +306,9 @@ static inline asciichat_error_t acip_transport_close(acip_transport_t *transport
   if (!transport || !transport->methods || !transport->methods->close) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
+#ifndef __EMSCRIPTEN__
   acip_outbound_stop(transport);
+#endif
   return transport->methods->close(transport);
 }
 
@@ -326,7 +328,9 @@ static inline acip_transport_type_t acip_transport_get_type(acip_transport_t *tr
 /** Stop outbound admission and interrupt I/O while retaining transport and callback contexts.
  * NULL is safe; backend interruption is used when supported. */
 static inline void acip_transport_interrupt(acip_transport_t *transport) {
+#ifndef __EMSCRIPTEN__
   acip_outbound_stop(transport);
+#endif
   if (transport && transport->methods && transport->methods->interrupt)
     transport->methods->interrupt(transport);
 }
