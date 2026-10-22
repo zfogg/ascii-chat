@@ -199,7 +199,7 @@ static void render_footer(frame_buffer_t *buffer, int width, bool colors) {
   char footer[512];
   safe_snprintf(
       footer, sizeof(footer),
-      "%sTab%s%s: tab  %ss%s%s: sort  %sUp%s/%sk%s/%sDown%s/%sj%s%s: move  %sx%s%s: clear  %s`%s/%sEsc%s%s: close",
+      "%sTab%s%s: tab  %ss%s%s: sort  %sUp%s/%sk%s/%sDown%s/%sj%s%s: move  %sx%s%s: clear  %s'%s/%sEsc%s%s: close",
       orange, reset, grey, orange, reset, grey, orange, reset, orange, reset, orange, reset, orange, reset, grey,
       orange, reset, grey, orange, reset, orange, reset, grey);
   frame_buffer_render_centered(buffer, footer, width);
