@@ -183,7 +183,7 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
   if (last_sep) {
     *last_sep = '\0';
     if (!platform_is_directory(dir_path)) {
-      asciichat_error_t result = platform_mkdir(dir_path, 0700);
+      asciichat_error_t result = platform_mkdir_recursive(dir_path, 0700);
       if (result != ASCIICHAT_OK) {
         return SET_ERRNO(ERROR_FILE_OPERATION, "Failed to create ACDS key cache directory: %s", dir_path);
       }
@@ -196,9 +196,11 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
     return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to create cache file: %s", cache_path);
   }
 
-  // Convert binary Ed25519 key to base64 for OpenSSH format
+  // OpenSSH encodes a length-prefixed algorithm name followed by the key string.
+  uint8_t wire_key[51] = {0, 0, 0, 11, 's', 's', 'h', '-', 'e', 'd', '2', '5', '5', '1', '9', 0, 0, 0, 32};
+  memcpy(wire_key + 19, pubkey, 32);
   char base64_key[128];
-  sodium_bin2base64(base64_key, sizeof(base64_key), pubkey, 32, sodium_base64_VARIANT_ORIGINAL);
+  sodium_bin2base64(base64_key, sizeof(base64_key), wire_key, sizeof(wire_key), sodium_base64_VARIANT_ORIGINAL);
 
   fprintf(f, "ssh-ed25519 %s acds-cached-key\n", base64_key);
   fclose(f);

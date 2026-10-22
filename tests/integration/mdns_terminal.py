@@ -226,7 +226,10 @@ def main():
             boundary = client("boundary")
             boundary.expect(lambda text: "LAN servers" in text and " [12]" in text,
                             "Twelve-row LAN viewport did not fill")
-            text = boundary.pump(2)
+            boundary.pump(2)
+            text = boundary.expect(lambda text: re.search(r"> \[\d+\]", text)
+                                   and "Auto-refresh" in text,
+                                   "Boundary picker did not finish drawing its selected row and footer")
             # Refresh sorts discoveries while preserving the selected endpoint,
             # so its row need not remain one after the initial discovery query.
             current = int(re.search(r"> \[(\d+)\]", text).group(1))
