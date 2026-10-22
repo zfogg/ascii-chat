@@ -1,6 +1,7 @@
 #include <ascii-chat/ui/session.h>
 #include <ascii-chat/ui/status.h>
 #include <ascii-chat/ui/terminal_screen.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/ui/invitation.h>
@@ -224,9 +225,15 @@ static void draw_splash(frame_buffer_t *output, terminal_size_t size, const anim
 
 void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_session_t *s) {
   const char *mode = GET_OPTION(detected_mode) == MODE_MIRROR ? "Mirror" : "Client";
-  char detail[192];
+  char detail[256];
   size_t offset = terminal_screen_logs_offset();
-  snprintf(detail, sizeof(detail), "Esc: close | /: search logs | ?: keyboard controls | %zu rows from tail", offset);
+  bool colors = !GET_OPTION(strip_ansi) && terminal_should_color_output(frame_buffer_get_screen_output_fd());
+  const char *orange = log_level_color_for_output(LOG_COLOR_WARN, colors);
+  const char *purple = log_level_color_for_output(LOG_COLOR_FATAL, colors);
+  const char *reset = log_level_color_for_output(LOG_COLOR_RESET, colors);
+  snprintf(detail, sizeof(detail),
+           "%sEsc%s: close | %s/%s: search logs | %s?%s: keyboard controls | %s%zu%s rows from tail", orange, reset,
+           orange, reset, orange, reset, purple, offset, reset);
   ui_status_t status = {.mode_name = mode, .start_time = s->started, .detail = detail};
   terminal_screen_config_t config = {
       .fixed_header_lines = 4, .render_header = ui_status_render_header, .user_data = &status, .show_logs = true};
