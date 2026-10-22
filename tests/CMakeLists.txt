@@ -1721,3 +1721,8 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32 AND ASCIICHAT_TEST_FFMPEG AND
         ${terminal_ui_args})
     set_tests_properties(terminal-ui PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
 endif()
+
+if(TEST test_unit_crypto_test_gpg_key_expiry)
+    set_tests_properties(test_unit_crypto_test_gpg_key_expiry PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()

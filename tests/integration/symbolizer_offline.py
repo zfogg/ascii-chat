@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import uuid
 
 
@@ -21,11 +22,20 @@ def worker(library, fixture, name):
     api.symbol_cache_resolve_batch.argtypes = [c.POINTER(c.c_void_p), c.c_int]
     api.symbol_cache_resolve_batch.restype = c.POINTER(c.c_char_p)
     api.symbol_cache_free_symbols.argtypes = [c.POINTER(c.c_char_p)]
+    api.symbol_cache_free_symbols.restype = None
+    api.symbol_cache_insert.argtypes = [c.c_void_p, c.c_char_p]
+    api.symbol_cache_insert.restype = c.c_bool
+    api.symbol_cache_destroy.restype = None
     probe = c.CDLL(str(fixture))
     address = c.cast(getattr(probe, name), c.c_void_p).value
     assert api.symbol_cache_init() == 0
     symbols = api.symbol_cache_resolve_batch((c.c_void_p * 1)(address), 1)
     assert symbols and name.encode() in symbols[0], "Local function symbol was lost"
+    api.symbol_cache_free_symbols(symbols)
+    replacement = (name + '_cached_replacement').encode()
+    assert api.symbol_cache_insert(address, replacement)
+    symbols = api.symbol_cache_resolve_batch((c.c_void_p * 1)(address), 1)
+    assert symbols and symbols[0] == replacement, "Cache replacement was not preserved"
     api.symbol_cache_free_symbols(symbols)
     api.symbol_cache_destroy()
 
@@ -76,12 +86,20 @@ def main():
                        '--worker', str(fixture), name]
             process = subprocess.Popen(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                        start_new_session=True)
-            try:
-                stdout, stderr = process.communicate(timeout=5)
-            except subprocess.TimeoutExpired as error:
-                os.killpg(process.pid, signal.SIGKILL)
-                process.communicate()
-                raise AssertionError(f'Symbolization blocked on the unavailable debug server: {requests}') from error
+            # Reject any remote lookup immediately. Allow process teardown to
+            # save instrumented counters without charging it to symbolization.
+            deadline = time.monotonic() + 30
+            while True:
+                try:
+                    stdout, stderr = process.communicate(timeout=0.1)
+                    break
+                except subprocess.TimeoutExpired as error:
+                    if requests or time.monotonic() >= deadline:
+                        os.killpg(process.pid, signal.SIGKILL)
+                        process.communicate()
+                        if requests:
+                            raise AssertionError(f'Symbolization made remote debug-data requests: {requests}') from error
+                        raise AssertionError('Offline symbolizer worker did not finish teardown within 30 seconds') from error
             assert process.returncode == 0, stderr.decode(errors='replace')[-4000:]
             assert not requests, f'Symbolization made remote debug-data requests: {requests}'
             print('PASS: local function resolved with no debuginfod requests')

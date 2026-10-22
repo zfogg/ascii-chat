@@ -405,7 +405,7 @@ void symbol_cache_destroy(void) {
     if (entry) {
       HASH_DEL(g_symbol_cache, entry);
       if (entry->symbol) {
-        free(entry->symbol);
+        SAFE_FREE(entry->symbol);
       }
       free(entry);
       freed_count++;
@@ -469,7 +469,7 @@ bool symbol_cache_insert(void *addr, const char *symbol) {
     // Entry exists - update symbol if different
     if (existing->symbol && strcmp(existing->symbol, symbol) != 0) {
       // Free old symbol and allocate new one
-      free(existing->symbol);
+      SAFE_FREE(existing->symbol);
       existing->symbol = platform_strdup(symbol);
       if (!existing->symbol) {
         rwlock_wrunlock(&g_symbol_cache_lock);
