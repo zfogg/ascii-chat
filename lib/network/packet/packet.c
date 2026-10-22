@@ -901,6 +901,28 @@ asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *cry
   return ASCIICHAT_OK;
 }
 
+size_t packet_format_error_stack(char *buffer, size_t size) {
+  if (!buffer || size == 0)
+    return 0;
+  buffer[0] = '\0';
+  asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
+  size_t frame_count = errno_snapshot(thread_current_id(), frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+  if (frame_count > ASCIICHAT_ERRNO_MAX_DEPTH)
+    frame_count = ASCIICHAT_ERRNO_MAX_DEPTH;
+  size_t offset = 0;
+  for (size_t i = 0; i < frame_count && offset < size - 1; ++i) {
+    const asciichat_error_context_t *frame = &frames[i];
+    int written =
+        snprintf(buffer + offset, size - offset, "%s%s (%s:%d in %s())", i ? "\n" : "", frame->context_message,
+                 frame->file ? frame->file : "<unknown>", frame->line, frame->function ? frame->function : "<unknown>");
+    if (written < 0)
+      break;
+    size_t available = size - offset;
+    offset += (size_t)written < available ? (size_t)written : available - 1;
+  }
+  return offset;
+}
+
 asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *crypto_ctx, asciichat_error_t error_code,
                                     const char *message) {
   if (sockfd == INVALID_SOCKET_VALUE) {
@@ -909,21 +931,7 @@ asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *cry
 
   error_code = network_error_public_code(error_code);
   char stack_message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
-  asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
-  size_t frame_count = errno_snapshot(thread_current_id(), frames, ASCIICHAT_ERRNO_MAX_DEPTH);
-  if (frame_count > ASCIICHAT_ERRNO_MAX_DEPTH)
-    frame_count = ASCIICHAT_ERRNO_MAX_DEPTH;
-  size_t offset = 0;
-  for (size_t i = 0; i < frame_count && offset < MAX_ERROR_MESSAGE_LENGTH; ++i) {
-    const asciichat_error_context_t *frame = &frames[i];
-    int written = snprintf(stack_message + offset, sizeof(stack_message) - offset, "%s%s (%s:%d in %s())",
-                           i ? "\n" : "", frame->context_message, frame->file ? frame->file : "<unknown>", frame->line,
-                           frame->function ? frame->function : "<unknown>");
-    if (written < 0)
-      break;
-    size_t available = sizeof(stack_message) - offset;
-    offset += (size_t)written < available ? (size_t)written : available - 1;
-  }
+  size_t offset = packet_format_error_stack(stack_message, sizeof(stack_message));
   if (offset)
     message = stack_message;
   else

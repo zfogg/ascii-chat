@@ -373,6 +373,13 @@ static void *connection_receive(void *arg) {
       connection_work(c);
       result = c->result;
     }
+    if (result != ASCIICHAT_OK && c->server) {
+      asciichat_error_t send_result = acip_send_error(c->transport, result, NULL);
+      if (send_result == ASCIICHAT_OK && acip_transport_get_type(c->transport) == ACIP_TRANSPORT_WEBSOCKET)
+        send_result = acip_websocket_transport_flush(c->transport, 500 * NS_PER_MS_INT);
+      if (send_result != ASCIICHAT_OK)
+        log_debug("Could not send connection error to %s: %s", c->peer, asciichat_error_format(NULL, send_result));
+    }
     buffer_release(allocation);
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }

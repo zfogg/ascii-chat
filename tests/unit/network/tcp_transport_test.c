@@ -228,4 +228,37 @@ Test(tcp_transport, error_response_includes_errno_stack_locations) {
   socket_close(sockets[1]);
   CLEAR_ERRNO_ALL();
 }
+
+Test(tcp_transport, acip_error_response_includes_errno_stack_locations) {
+  int sockets[2];
+  cr_assert_eq(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
+  acip_transport_t *transport = acip_tcp_transport_create("acip-error-stack", sockets[0], NULL);
+  cr_assert_not_null(transport);
+  CLEAR_ERRNO_ALL();
+  (void)SET_ERRNO(ERROR_NETWORK_PROTOCOL, "inner ACIP failure");
+  (void)SET_ERRNO(ERROR_NETWORK_PROTOCOL, "outer server failure");
+  cr_assert_eq(acip_send_error(transport, ERROR_NETWORK_PROTOCOL, NULL), ASCIICHAT_OK);
+
+  packet_envelope_t envelope = {0};
+  cr_assert_eq(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT),
+               PACKET_RECV_SUCCESS);
+  asciichat_error_t code;
+  char message[MAX_ERROR_MESSAGE_LENGTH + 1];
+  cr_assert_eq(packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t),
+                                          envelope.len - sizeof(packet_header_t), &code, message, sizeof(message),
+                                          NULL),
+               ASCIICHAT_OK);
+  cr_assert_eq(code, ERROR_NETWORK_PROTOCOL);
+  cr_assert_not_null(strstr(message, "outer server failure"));
+  cr_assert_not_null(strstr(message, "inner ACIP failure"));
+  cr_assert_not_null(strstr(message, "tests/unit/network/tcp_transport_test.c:"));
+  cr_assert_not_null(strstr(message, " in "));
+  cr_assert_not_null(strchr(message, '\n'));
+
+  buffer_release(envelope.allocated_buffer);
+  acip_transport_destroy(transport);
+  socket_close(sockets[0]);
+  socket_close(sockets[1]);
+  CLEAR_ERRNO_ALL();
+}
 #endif
