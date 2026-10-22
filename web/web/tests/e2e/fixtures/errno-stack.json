@@ -1,0 +1,10 @@
+{
+  "code": 62,
+  "frames": [
+    {"file": "lib/network/connection.c", "line": 376, "function": "connection_receive", "message": "client connection failed"},
+    {"file": "lib/network/negotiation.c", "line": 228, "function": "media_receive", "message": "session negotiation failed"},
+    {"file": "lib/network/acip/handlers.c", "line": 702, "function": "acip_handle_packet", "message": "ACIP message rejected"},
+    {"file": "lib/network/packet/packet.c", "line": 188, "function": "packet_validate", "message": "packet validation failed"},
+    {"file": "lib/network/tcp/transport.c", "line": 521, "function": "tcp_recv", "message": "socket read failed"}
+  ]
+}

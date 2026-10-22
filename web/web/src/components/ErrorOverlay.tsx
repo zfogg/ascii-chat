@@ -21,7 +21,7 @@ export function ErrorOverlay() {
       aria-label="ascii-chat error"
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
     >
-      <div className="max-h-[80vh] w-full max-w-4xl overflow-auto border border-red-500 bg-terminal-bg p-5 shadow-2xl">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-4xl overflow-y-auto border border-red-500 bg-terminal-bg p-5 shadow-2xl">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-red-400">
