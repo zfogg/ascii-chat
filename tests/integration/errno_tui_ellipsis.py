@@ -71,10 +71,13 @@ def render_capture(term, directory, name):
     ansi_colors = {"black": "#10151c", "blue": "#5f87ff", "cyan": "#5ccfe6", "green": "#9ece6a",
                    "red": "#f7768e", "yellow": "#e0af68", "magenta": "#bb9af7", "white": "#e1e8ed"}
     for row, text in enumerate(term.screen.display):
+        header = "errno stacks" in text or ("Standard message" in text and "User message" in text)
         for column, character in enumerate(text):
             foreground = term.screen.buffer[row][column].fg
             color = ansi_colors.get(foreground, f"#{foreground}" if isinstance(foreground, str) and len(foreground) == 6
                                     else "#e1e8ed")
+            if header and color == "#e1e8ed":
+                color = "#65ace1"
             draw.text((12 + column * 10, 12 + row * 21), character, font=font, fill=color)
     image.save(directory / f"{name}.png")
 
