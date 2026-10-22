@@ -1,11 +1,13 @@
 /** Server status presentation shared by native and browser sessions. */
 #include <ascii-chat/ui/status.h>
 #include <ascii-chat/ui/terminal_screen.h>
+#include <ascii-chat/ui/overlay_box.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/options/options.h>
@@ -44,8 +46,8 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
 
   // Truncate if needed (ANSI-aware)
   truncate_with_ellipsis(status_line, status_line_truncated, sizeof(status_line_truncated), term_size.cols - 2);
-  snprintf(status_line_colored, sizeof(status_line_colored), "\033[1m%s%s\033[0m", log_level_color(LOG_COLOR_DEBUG),
-           status_line_truncated);
+  snprintf(status_line_colored, sizeof(status_line_colored), "\033[1m%s\033[0m",
+           colored_string(LOG_COLOR_DEBUG, status_line_truncated));
 
   int padding = display_center_horizontal(status_line_truncated, term_size.cols);
   for (int i = 0; i < padding; i++) {
@@ -103,6 +105,62 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, colors);
 }
 
+typedef struct {
+  size_t entry;
+  int row;
+} log_row_ref_t;
+
+static int log_message_rows(const char *message, int width) {
+  int rows = display_height(message, width);
+  return rows > 0 ? rows : 1;
+}
+
+static size_t utf8_byte_offset_for_char(const char *text, size_t character_offset) {
+  const char *cursor = text;
+  while (*cursor && character_offset) {
+    uint32_t codepoint;
+    int length = utf8_decode((const uint8_t *)cursor, &codepoint);
+    cursor += length > 0 ? length : 1;
+    --character_offset;
+  }
+  return (size_t)(cursor - text);
+}
+
+static void append_log_row(frame_buffer_t *body, const char *message, int row, int width) {
+  char plain[SESSION_LOG_LINE_MAX];
+  strip_ansi_codes(message, plain, sizeof(plain));
+  const char *start = plain;
+  size_t remaining = strlen(plain);
+  for (int i = 0; i < row && remaining; ++i) {
+    size_t prefix = utf8_prefix_bytes_for_width(start, remaining, width);
+    if (!prefix)
+      break;
+    start += prefix;
+    remaining -= prefix;
+  }
+  if (!remaining) {
+    frame_buffer_printf(body, "\n");
+    return;
+  }
+  size_t length = utf8_prefix_bytes_for_width(start, remaining, width);
+  if (!length) {
+    frame_buffer_printf(body, "\n");
+    return;
+  }
+  char line[SESSION_LOG_LINE_MAX];
+  memcpy(line, start, length);
+  line[length] = '\0';
+  size_t match_start = 0;
+  size_t match_length = 0;
+  const char *rendered = line;
+  if (log_search_get_match_info(line, &match_start, &match_length)) {
+    size_t start_byte = utf8_byte_offset_for_char(line, match_start);
+    size_t end_byte = utf8_byte_offset_for_char(line, match_start + match_length);
+    rendered = grep_highlight(line, start_byte, end_byte - start_byte);
+  }
+  frame_buffer_printf(body, "%s\033[0m\n", rendered);
+}
+
 void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const terminal_screen_config_t *config,
                              session_log_buffer_t *logs) {
   if (!output || !config || !config->render_header || size.cols < 1 || size.rows < 1)
@@ -146,29 +204,46 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
       if (entries)
         count = session_log_buffer_get_recent(logs, entries, SESSION_LOG_BUFFER_SIZE);
     }
-    // Choose a contiguous suffix so a long earlier message cannot displace newer logs.
-    size_t first = count;
-    int used = 0;
-    while (first) {
-      int height = display_height(entries[first - 1].message, size.cols);
-      if (height < 1)
-        height = 1;
-      if (used + height > available)
-        break;
-      used += height;
-      --first;
+    log_row_ref_t *rows = SAFE_MALLOC((size_t)available * sizeof(*rows), log_row_ref_t *);
+    if (rows) {
+      size_t total_rows = 0;
+      uint64_t previous_tail_sequence = 0;
+      size_t appended_rows = 0;
+      for (size_t entry = 0; entry < count; ++entry) {
+        size_t height = (size_t)log_message_rows(entries[entry].message, size.cols);
+        if (SIZE_MAX - total_rows < height)
+          total_rows = SIZE_MAX;
+        else
+          total_rows += height;
+      }
+      uint64_t tail_sequence = count ? entries[count - 1].sequence : 0;
+      previous_tail_sequence = terminal_screen_logs_last_tail_sequence();
+      if (previous_tail_sequence && tail_sequence > previous_tail_sequence) {
+        for (size_t entry = 0; entry < count; ++entry) {
+          if (entries[entry].sequence > previous_tail_sequence)
+            appended_rows += (size_t)log_message_rows(entries[entry].message, size.cols);
+        }
+      }
+      size_t max_offset = total_rows ? total_rows - 1 : 0;
+      size_t skip = terminal_screen_logs_retain_position(tail_sequence, appended_rows, max_offset);
+      size_t row_count = 0;
+      for (size_t entry = count; entry && row_count < (size_t)available; --entry) {
+        int height = log_message_rows(entries[entry - 1].message, size.cols);
+        if (skip >= (size_t)height) {
+          skip -= (size_t)height;
+          continue;
+        }
+        int row = height - 1 - (int)skip;
+        skip = 0;
+        for (; row >= 0 && row_count < (size_t)available; --row)
+          rows[row_count++] = (log_row_ref_t){.entry = entry - 1, .row = row};
+      }
+      for (size_t row = row_count; row; --row)
+        append_log_row(body, entries[rows[row - 1].entry].message, rows[row - 1].row, size.cols);
+      while (row_count++ < (size_t)available)
+        frame_buffer_printf(body, "\n");
+      SAFE_FREE(rows);
     }
-    for (size_t i = first; i < count; ++i) {
-      const char *message = entries[i].message;
-      char plain[SESSION_LOG_LINE_MAX];
-      strip_ansi_codes(message, plain, sizeof(plain));
-      size_t start = 0, length = 0;
-      if (log_search_is_active() && log_search_get_match_info(plain, &start, &length) && length)
-        message = grep_highlight_colored(message, plain, start, length);
-      frame_buffer_printf(body, "%s\033[0m\n", message);
-    }
-    while (used++ < available)
-      frame_buffer_printf(body, "\n");
   }
   SAFE_FREE(entries);
 
@@ -198,6 +273,28 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
     frame_buffer_printf(output, "\033[%d;1H/%.*s\033[K\033[%d;%dH", size.rows, size.cols - 2,
                         pattern ? pattern + offset : "", size.rows, cursor - offset + 2);
     mutex_unlock(mutex);
+  }
+  if (config->show_logs && terminal_screen_logs_help_open()) {
+    char lines[4][128];
+    snprintf(lines[0], sizeof(lines[0]), "%s / %s        newer line", colored_string(LOG_COLOR_WARN, "j"),
+             colored_string(LOG_COLOR_WARN, "Down"));
+    snprintf(lines[1], sizeof(lines[1]), "%s / %s          older line", colored_string(LOG_COLOR_WARN, "k"),
+             colored_string(LOG_COLOR_WARN, "Up"));
+    snprintf(lines[2], sizeof(lines[2]), "%s / %s  half page newer", colored_string(LOG_COLOR_WARN, "Ctrl-D"),
+             colored_string(LOG_COLOR_WARN, "Right"));
+    snprintf(lines[3], sizeof(lines[3]), "%s / %s   half page older", colored_string(LOG_COLOR_WARN, "Ctrl-U"),
+             colored_string(LOG_COLOR_WARN, "Left"));
+    const char *line_text[] = {lines[0], lines[1], lines[2], lines[3]};
+    char footer[128];
+    snprintf(footer, sizeof(footer), "%s or %s closes this help", colored_string(LOG_COLOR_WARN, "?"),
+             colored_string(LOG_COLOR_WARN, "Esc"));
+    ui_overlay_box_t box = {.title = "Log Viewer Keyboard Controls",
+                            .lines = line_text,
+                            .line_count = sizeof(line_text) / sizeof(line_text[0]),
+                            .footer = footer};
+    (void)ui_overlay_box_render(output, size, &box);
+  } else if (config->show_logs && terminal_screen_logs_help_too_small()) {
+    frame_buffer_printf(output, "\033[%d;1H%s", size.rows, "Help needs at least 11 terminal rows");
   }
   frame_buffer_destroy(body);
 }

@@ -15,6 +15,7 @@
 #include <ascii-chat/ui/controller.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/ui/frame_buffer.h>
 
@@ -129,3 +130,20 @@ session_log_buffer_t *terminal_screen_get_log_buffer(void);
  * Should be called before terminal_screen_render() to control output destination.
  */
 void terminal_screen_set_output_fd(int fd);
+
+/** Handle a key while the live log viewer owns the terminal. */
+bool terminal_screen_logs_handle_key(int key);
+/** Reset the retained log-viewer position when the viewer is closed. */
+void terminal_screen_logs_reset(void);
+/** Number of rendered rows currently held above the live tail. */
+size_t terminal_screen_logs_offset(void);
+/** Clamp the retained position after the available history changes. */
+void terminal_screen_logs_set_offset(size_t rows);
+/** Retain the selected history row while new entries arrive, then clamp it. */
+size_t terminal_screen_logs_retain_position(uint64_t tail_sequence, size_t appended_rows, size_t maximum_offset);
+/** Sequence number at the live tail from the previous composition. */
+uint64_t terminal_screen_logs_last_tail_sequence(void);
+/** True while the log-viewer's own shortcut dialog is displayed. */
+bool terminal_screen_logs_help_open(void);
+/** True when help was requested but the current terminal cannot display it. */
+bool terminal_screen_logs_help_too_small(void);

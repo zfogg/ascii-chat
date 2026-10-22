@@ -4,6 +4,7 @@
 #include <ascii-chat/ui/notice.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/session.h>
+#include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/errno_stacks.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/ui/too_small.h>
@@ -1225,6 +1226,7 @@ static void render_logs(terminal_size_t size, const void *snapshot) {
 
 void ui_controller_hide_logs(void) {
   ui_controller_remove(UI_SCREEN_LOGS);
+  terminal_screen_logs_reset();
 }
 
 void ui_controller_toggle_logs(void) {

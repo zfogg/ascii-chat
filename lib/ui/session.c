@@ -1,6 +1,7 @@
 #include <ascii-chat/ui/session.h>
 #include <ascii-chat/ui/status.h>
 #include <ascii-chat/ui/terminal_screen.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/ui/invitation.h>
@@ -9,6 +10,7 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/options/options.h>
 #include <string.h>
+#include <stdio.h>
 
 struct ui_session {
   terminal_size_t size;
@@ -223,8 +225,17 @@ static void draw_splash(frame_buffer_t *output, terminal_size_t size, const anim
 
 void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_session_t *s) {
   const char *mode = GET_OPTION(detected_mode) == MODE_MIRROR ? "Mirror" : "Client";
-  ui_status_t status = {
-      .mode_name = mode, .start_time = s->started, .detail = "] / Esc: close | /: search logs | ?: keyboard settings"};
+  char detail[256];
+  size_t offset = terminal_screen_logs_offset();
+  char offset_text[32];
+  snprintf(offset_text, sizeof(offset_text), "%zu", offset);
+  const char *escape_key = colored_string(LOG_COLOR_WARN, "Esc");
+  const char *search_key = colored_string(LOG_COLOR_WARN, "/");
+  const char *help_key = colored_string(LOG_COLOR_WARN, "?");
+  const char *colored_offset = colored_string(LOG_COLOR_FATAL, offset_text);
+  snprintf(detail, sizeof(detail), "%s: close | %s: search logs | %s: keyboard controls | %s rows from tail",
+           escape_key, search_key, help_key, colored_offset);
+  ui_status_t status = {.mode_name = mode, .start_time = s->started, .detail = detail};
   terminal_screen_config_t config = {
       .fixed_header_lines = 4, .render_header = ui_status_render_header, .user_data = &status, .show_logs = true};
   terminal_screen_compose(output, size, &config, s->logs);
@@ -239,6 +250,8 @@ bool ui_session_logs_key(keyboard_key_t key) {
     log_search_handle_key(key);
     return true;
   }
+  if (terminal_screen_logs_handle_key(key))
+    return true;
   return false;
 }
 
