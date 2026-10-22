@@ -48,6 +48,7 @@ RUN pacman -S --noconfirm --needed \
   clang-tools \
   python-pyte \
   python-pexpect \
+  python-pillow \
   ttf-dejavu \
   && pacman -Scc --noconfirm \
   && rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
