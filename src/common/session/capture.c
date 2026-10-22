@@ -61,7 +61,10 @@ struct session_capture_ctx {
   /** @brief Underlying media source (webcam, file, stdin, test) */
   media_source_t *source;
   mutex_t source_mutex, load_mutex;
-  bool media_locks_ready, loader_created, loader_done;
+  session_capture_audio_update_fn audio_update;
+  void *audio_update_data;
+  bool media_locks_ready;
+  _Atomic bool loader_created, loader_done;
   asciichat_thread_t loader;
   atomic_t load_cancel;
   atomic_t playlist_skip;
@@ -112,7 +115,7 @@ struct session_capture_ctx {
   uint64_t next_frame_deadline_ns;
 
   /** @brief Audio is enabled for capture */
-  bool audio_enabled;
+  _Atomic bool audio_enabled;
 
   /** @brief File has audio stream available */
   bool file_has_audio;
@@ -127,7 +130,7 @@ struct session_capture_ctx {
   void *mic_audio_ctx;
 
   /** @brief Main audio context for playback (borrowed, not owned) */
-  void *audio_ctx;
+  _Atomic(void *) audio_ctx;
 
   /** @brief Pause media source after first frame is read (--pause flag) */
   bool should_pause_after_first_frame;
@@ -635,7 +638,7 @@ void session_capture_skip_media(session_capture_ctx_t *ctx, int direction) {
 
 /* Only the capture owner commits replacements, between frame reads. */
 static void capture_commit_media(session_capture_ctx_t *ctx) {
-  if (!ctx->media_locks_ready)
+  if (!ctx->media_locks_ready || !ctx->loader_created || !ctx->loader_done)
     return;
   mutex_lock(&ctx->load_mutex);
   if (!ctx->loader_created || !ctx->loader_done) {
@@ -800,10 +803,12 @@ void session_capture_unlock_source(session_capture_ctx_t *ctx) {
 }
 
 static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
+  if (ctx->audio_update) {
+    ctx->audio_ctx = ctx->audio_update(ctx->source, ctx->audio_update_data);
+    ctx->audio_enabled = ctx->audio_ctx && ((audio_context_t *)ctx->audio_ctx)->running;
+  }
   capture_commit_media(ctx);
-  mutex_lock(&ctx->load_mutex);
   bool loading = ctx->loader_created;
-  mutex_unlock(&ctx->load_mutex);
   if (!loading) {
     uint64_t skip = atomic_exchange_u64(&ctx->playlist_skip, 0);
     bool ended =
@@ -1057,9 +1062,7 @@ bool session_capture_at_end(session_capture_ctx_t *ctx) {
     return true;
   }
 
-  mutex_lock(&ctx->load_mutex);
   bool pending = ctx->loader_created;
-  mutex_unlock(&ctx->load_mutex);
   size_t next;
   if (pending || (!ctx->advance_failed && (media_playlist_adjacent(&ctx->playlist, 1, &next) ||
                                            (GET_OPTION(media_loop) && ctx->playlist.count > 1))))
@@ -1158,6 +1161,14 @@ void *session_capture_get_audio_context(session_capture_ctx_t *ctx) {
   return ctx->audio_ctx;
 }
 
+void session_capture_set_audio_updater(session_capture_ctx_t *ctx, session_capture_audio_update_fn update,
+                                       void *user_data) {
+  if (ctx) {
+    ctx->audio_update = update;
+    ctx->audio_update_data = user_data;
+  }
+}
+
 void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_ctx) {
   if (ctx) {
     session_capture_lock_source(ctx);
@@ -1204,7 +1215,7 @@ uint64_t session_capture_frame_serial(session_capture_ctx_t *ctx) {
   return ctx ? atomic_load_u64(&ctx->frame_serial) : 0;
 }
 void session_capture_complete_open(session_capture_ctx_t *ctx, uint64_t epoch) {
-  if (!ctx)
+  if (!ctx || !atomic_load_bool(&ctx->awaiting_presentation))
     return;
   mutex_lock(&ctx->load_mutex);
   if (epoch == session_capture_source_epoch(ctx) && atomic_exchange_bool(&ctx->awaiting_presentation, false))

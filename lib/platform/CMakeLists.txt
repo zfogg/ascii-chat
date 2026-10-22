@@ -1,6 +1,7 @@
 # lib/platform - Platform abstraction layer
 
 set(PLATFORM_SRCS_COMMON
+    ${CMAKE_CURRENT_SOURCE_DIR}/wakeup.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/keyboard_edit.c
     ${CMAKE_CURRENT_SOURCE_DIR}/keyboard_stream.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu.c

@@ -457,13 +457,14 @@ static void sync_separator(int columns, int *measure) {
   if (measure)
     return;
   char line[2048];
-  frame_buffer_t *buffer = frame_buffer_create(1, columns);
-  if (!buffer)
-    return;
-  frame_buffer_render_divider(buffer, columns - 1, g_sync_use_utf8, g_sync_use_color);
-  size_t length = frame_buffer_get_length(buffer);
-  snprintf(line, sizeof(line), "%.*s", (int)(length ? length - 1 : 0), frame_buffer_get_content(buffer));
-  frame_buffer_destroy(buffer);
+  const char *rule = g_sync_use_utf8 ? "━" : "-";
+  size_t width = strlen(rule), used = 0;
+  used += snprintf(line, sizeof(line), "%s", sync_color(LOG_COLOR_DEBUG));
+  for (int col = 0; col < columns - 1 && used + width + 1 < sizeof(line); ++col) {
+    memcpy(line + used, rule, width);
+    used += width;
+  }
+  line[used] = '\0';
   sync_write_line(line, columns, true, NULL);
 }
 
@@ -609,8 +610,11 @@ void ui_sync_render(terminal_size_t size) {
       // Prefer the complete hex value over a clipped redundant decimal copy.
       if (!strncmp(r->type, "atomic", 6) && strlen(state) > 12)
         snprintf(state, sizeof(state), "0x%" PRIx64, r->value);
-      char actions[32];
-      format_number_compact(r->actions, actions, sizeof(actions));
+      char plain_actions[32], actions[256];
+      format_number_compact(r->actions, plain_actions, sizeof(plain_actions));
+      char padded_actions[32];
+      snprintf(padded_actions, sizeof(padded_actions), "%13s", plain_actions);
+      sync_color_numbers(padded_actions, actions, sizeof(actions));
       char changes[64];
       if (!strncmp(r->type, "atomic", 6))
         snprintf(changes, sizeof(changes), "%s%7.1f", sync_rate_color(r->change_rate), r->change_rate);
@@ -623,11 +627,12 @@ void ui_sync_render(terminal_size_t size) {
         else
           snprintf(wait, sizeof(wait), "busy");
       }
-      snprintf(line, sizeof(line), "%c%-8.8s %-*s %-12.12s  %s%13s %s%6.1f %s%6.1f %s\033[0m %s%12s\033[0m",
-               (int)i == selected ? '>' : ' ', r->type, name_width, name, state,
-               sync_color(r->actions ? LOG_COLOR_FATAL : LOG_COLOR_ERROR), actions, sync_rate_color(r->lock_rate),
-               r->lock_rate, sync_rate_color(r->unlock_rate), r->unlock_rate, changes,
-               sync_color(r->wait_ns ? LOG_COLOR_FATAL : LOG_COLOR_RESET), wait);
+      char padded_wait[48], colored_wait[512];
+      snprintf(padded_wait, sizeof(padded_wait), "%12s", wait);
+      sync_color_numbers(padded_wait, colored_wait, sizeof(colored_wait));
+      snprintf(line, sizeof(line), "%c%-8.8s %-*s %-12.12s  %s %s%6.1f %s%6.1f %s\033[0m %s\033[0m",
+               (int)i == selected ? '>' : ' ', r->type, name_width, name, state, actions, sync_rate_color(r->lock_rate),
+               r->lock_rate, sync_rate_color(r->unlock_rate), r->unlock_rate, changes, colored_wait);
       sync_write_line(line, size.cols, true, measure);
     }
     if (!measure) {

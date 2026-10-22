@@ -26,6 +26,7 @@
 
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/options/runtime.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/url.h>
@@ -151,6 +152,7 @@ typedef struct {
   bool audio_available;
   bool stdin_render_mode;
   bool should_init_audio;
+  uint64_t audio_failed_revision;
 } client_like_state_t;
 
 static void client_like_setup_terminal_logging(void) {
@@ -582,42 +584,58 @@ static asciichat_error_t client_like_create_local_capture(client_like_state_t *s
   return ASCIICHAT_OK;
 }
 
-static void client_like_start_session_audio(const session_client_like_config_t *config, client_like_state_t *state) {
-  if (state->should_init_audio && config->kind == SESSION_CLIENT_LIKE_KIND_MIRROR) {
-    media_source_t *source = session_capture_get_media_source(state->capture);
-    bool file_audio = media_source_has_audio(source);
+static void *client_like_update_mirror_audio(media_source_t *source, void *data) {
+  client_like_state_t *state = data;
+  bool file_audio = media_source_has_audio(source);
+  bool needed = GET_OPTION(audio_enabled) && (file_audio || GET_OPTION(waveform) || GET_OPTION(fft) ||
+                                              GET_OPTION(test_audio) || GET_OPTION(render_file)[0]);
+  if (!needed) {
+    if (state->audio_ctx && state->audio_ctx->running) {
+      if (audio_stop_duplex(state->audio_ctx) != ASCIICHAT_OK)
+        LOG_ERRNO_IF_SET("Cannot stop idle mirror audio");
+      else
+        log_info("Mirror audio idle");
+    }
+    return state->audio_ctx;
+  }
+  if (state->audio_ctx && state->audio_ctx->running)
+    return state->audio_ctx;
+  uint64_t revision = options_revision();
+  if (state->audio_failed_revision == revision + 1)
+    return state->audio_ctx;
+  if (!state->audio_ctx) {
     state->audio_ctx = SAFE_CALLOC(1, sizeof(*state->audio_ctx), audio_context_t *);
-    if (audio_init(state->audio_ctx) == ASCIICHAT_OK) {
-      state->audio_available = true;
-      if (file_audio && GET_OPTION(audio_capture_source) != AUDIO_CAPTURE_SOURCE_MIC)
-        state->audio_ctx->capture_media_source = source;
-      state->audio_ctx->monitor_local_media = true;
-      state->audio_ctx->playback_only = !audio_should_enable_microphone(GET_OPTION(audio_capture_source), file_audio);
-      session_capture_set_audio_context(state->capture, state->audio_ctx);
-      media_source_set_audio_context(source, state->audio_ctx);
-    } else {
+    if (audio_init(state->audio_ctx) != ASCIICHAT_OK) {
+      LOG_ERRNO_IF_SET("Cannot initialize mirror audio");
       SAFE_FREE(state->audio_ctx);
+      state->audio_failed_revision = revision + 1;
+      return NULL;
     }
   }
+  state->audio_ctx->capture_media_source =
+      file_audio && GET_OPTION(audio_capture_source) != AUDIO_CAPTURE_SOURCE_MIC ? source : NULL;
+  state->audio_ctx->monitor_local_media = true;
+  state->audio_ctx->playback_only = !audio_should_enable_microphone(GET_OPTION(audio_capture_source), file_audio);
+  media_source_set_audio_context(source, state->audio_ctx);
+  if (audio_start_duplex(state->audio_ctx) != ASCIICHAT_OK) {
+    LOG_ERRNO_IF_SET("Cannot start mirror audio");
+    media_source_set_audio_context(source, NULL);
+    // Keep the initialized context alive for input-thread borrowers and retries.
+    state->audio_failed_revision = revision + 1;
+    state->audio_available = false;
+    return state->audio_ctx;
+  }
+  state->audio_available = true;
+  state->audio_failed_revision = 0;
+  log_info("Mirror audio started on demand");
+  return state->audio_ctx;
+}
 
-  // ============================================================================
-  // SETUP: Start Audio Playback
-  // ============================================================================
-
-  log_debug("[SETUP_AUDIO] About to check audio context for duplex");
-  if (state->audio_ctx && state->audio_available) {
-    log_debug("[SETUP_AUDIO] Starting audio duplex");
-    if (audio_start_duplex(state->audio_ctx) == ASCIICHAT_OK) {
-      log_info("Audio playback started");
-    } else {
-      log_warn("Failed to start audio duplex");
-      session_capture_set_audio_context(state->capture, NULL);
-      media_source_set_audio_context(session_capture_get_media_source(state->capture), NULL);
-      audio_destroy(state->audio_ctx);
-      SAFE_FREE(state->audio_ctx);
-      state->audio_ctx = NULL;
-      state->audio_available = false;
-    }
+static void client_like_start_session_audio(const session_client_like_config_t *config, client_like_state_t *state) {
+  if (state->should_init_audio && config->kind == SESSION_CLIENT_LIKE_KIND_MIRROR) {
+    session_capture_set_audio_updater(state->capture, client_like_update_mirror_audio, state);
+    media_source_t *source = session_capture_get_media_source(state->capture);
+    session_capture_set_audio_context(state->capture, client_like_update_mirror_audio(source, state));
   }
 }
 

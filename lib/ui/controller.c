@@ -124,6 +124,7 @@ static void publish_input_state_locked(void) {
 static int g_active = -1;
 static _Atomic int g_interactive_screen = -1;
 static _Atomic int g_background_screen = -1;
+static _Atomic uint32_t g_screen_mask;
 static atomic_t g_volume_until = {0};
 static _Thread_local bool g_render_volume;
 static _Thread_local bool g_volume_caps_valid;
@@ -242,10 +243,15 @@ static int selected_screen_locked(void) {
 
 static void publish_screen_locked(void) {
   publish_input_state_locked();
-  uint32_t background = 0;
-  for (int i = 0; i < UI_SCREEN_COUNT; ++i)
-    if (g_screens[i].render && !interactive_screen(i))
-      background |= 1u << i;
+  uint32_t background = 0, live = 0;
+  for (int i = 0; i < UI_SCREEN_COUNT; ++i) {
+    if (g_screens[i].render) {
+      live |= 1u << i;
+      if (!interactive_screen(i))
+        background |= 1u << i;
+    }
+  }
+  atomic_store(&g_screen_mask, live);
   int selected = ui_session_select_screen(background);
   if (atomic_load(&g_background_screen) != selected)
     atomic_store(&g_background_screen, selected);
@@ -441,6 +447,7 @@ void ui_controller_finish(int fd, const char *data, size_t len) {
     memcpy(retired, g_screens, sizeof(retired));
     memset(g_screens, 0, sizeof(g_screens));
     atomic_store(&g_background_screen, -1);
+    atomic_store(&g_screen_mask, 0);
     ui_controller_select_interactive(-1);
     cond_signal(&g_render_requested);
     uint64_t pending = g_render_started;
@@ -883,12 +890,7 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   if (interactive_screen(screen) && screen != UI_SCREEN_ERRNO)
     ui_errno_stacks_hide();
   // A live slot retains its terminal even while LOG_IO redirects process stdio.
-  bool live = false;
-  if (lifecycle_is_initialized(&g_lifecycle)) {
-    mutex_lock(&g_mutex);
-    live = g_screens[screen].render != NULL;
-    mutex_unlock(&g_mutex);
-  }
+  bool live = lifecycle_is_initialized(&g_lifecycle) && (atomic_load(&g_screen_mask) & (1u << screen));
   // New modal slots inherit the live terminal instead of process stdio, which
   // an audio/decoder worker can temporarily redirect through LOG_IO.
   if (!live && !retained_terminal && lifecycle_is_initialized(&g_lifecycle) &&
@@ -1242,6 +1244,7 @@ void ui_controller_shutdown(void) {
   mutex_destroy(&g_mutex);
   atomic_store_bool(&g_live, false);
   atomic_store(&g_background_screen, -1);
+  atomic_store(&g_screen_mask, 0);
   ui_controller_select_interactive(-1);
   NAMED_UNREGISTER(&g_live);
   NAMED_UNREGISTER(&g_presentation_stop_requested);

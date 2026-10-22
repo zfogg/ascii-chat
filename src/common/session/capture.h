@@ -366,6 +366,11 @@ void *session_capture_get_audio_context(session_capture_ctx_t *ctx);
  */
 void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_ctx);
 
+/** Capture-owner callback for on-demand local audio; NULL keeps existing behavior. */
+typedef void *(*session_capture_audio_update_fn)(media_source_t *source, void *user_data);
+void session_capture_set_audio_updater(session_capture_ctx_t *ctx, session_capture_audio_update_fn update,
+                                       void *user_data);
+
 /** @} */
 
 /** @} */

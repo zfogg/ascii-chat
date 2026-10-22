@@ -264,3 +264,30 @@ Test(audio_device, real_worker_publishes_microphone_samples_with_configured_sens
   cr_assert_not(context.worker_running || context.running);
   cr_assert_eq(closes, opens);
 }
+
+Test(audio_device, capture_callbacks_notify_once_per_twenty_millisecond_batch) {
+  cr_assert_eq(audio_start_duplex(&context), ASCIICHAT_OK);
+  pause_processing();
+  float input[480] = {0}, output[480];
+  uint64_t signals = context.audio_processing_wakeup.signal_count;
+  cr_assert_eq(invoke(&streams[0], input, output, 480, 0), paContinue);
+  cr_assert_eq(context.audio_processing_wakeup.signal_count, signals);
+  cr_assert_eq(invoke(&streams[0], input, output, 480, 0), paContinue);
+  cr_assert_eq(context.audio_processing_wakeup.signal_count, signals + 1);
+  cr_assert_eq(audio_ring_buffer_available_read(context.raw_capture_rb), 960);
+}
+
+Test(audio_device, real_worker_preserves_both_ten_millisecond_capture_blocks) {
+  cr_assert_eq(audio_start_duplex(&context), ASCIICHAT_OK);
+  float input[960], output[480], captured[960];
+  for (unsigned i = 0; i < 960; ++i)
+    input[i] = (i & 1) ? -0.25f : 0.5f;
+  cr_assert_eq(invoke(&streams[0], input, output, 480, 0), paContinue);
+  cr_assert_eq(invoke(&streams[0], input + 480, output, 480, 0), paContinue);
+  uint64_t deadline = time_get_ns() + 2 * NS_PER_SEC_INT;
+  while (audio_ring_buffer_available_read(context.capture_buffer) < 960 && time_get_ns() < deadline)
+    platform_sleep_ns(NS_PER_MS_INT);
+  cr_assert_eq(audio_ring_buffer_read(context.capture_buffer, captured, 960), 960);
+  for (unsigned i = 0; i < 960; ++i)
+    cr_assert_float_eq(captured[i], input[i], 1e-6);
+}

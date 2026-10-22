@@ -66,6 +66,16 @@ def main():
                     assert "Change/s" in rows[2] and rows[2].rstrip().endswith("Total Wait"), text
                     assert all(r.split()[-1] == "-" for r in rows[4:-4]
                                if re.match(r"[ >]*(?:mutex|rwlock|atomic|atomic_p)\s", r)), text
+                    for row_index, row in enumerate(rows[4:-4], start=4):
+                        fields = row.split()
+                        if not fields:
+                            continue
+                        for token in fields[-5:]:
+                            suffix = re.search(r"(?<=[0-9])(?:[kmbt]|ns|µs|ms|s)$", token)
+                            if suffix:
+                                start = row.rindex(token) + suffix.start()
+                                for col in range(start, start + len(suffix.group())):
+                                    assert terminal.screen.buffer[row_index][col].fg == "default", row
                     positions = {name: next(i for i, row in enumerate(body) if name in row)
                                  for name in ("sort_balanced", "sort_actions", "sort_wait")}
                     assert positions["sort_balanced"] < positions["sort_actions"], text

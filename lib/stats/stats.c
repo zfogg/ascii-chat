@@ -4,6 +4,21 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
+#include <stdatomic.h>
+#include <ascii-chat/platform/thread.h>
+
+// Each duration recorder owns a shard. Readers use sequence checks to copy a
+// complete observation without making capture, conversion, and output contend.
+#define STATS_DURATION_SHARDS 16
+
+typedef struct {
+  _Atomic uint64_t sequence, observations, total_ns, min_ns, max_ns, last_ns, recorded_ns;
+} stats_duration_cell_t;
+
+typedef struct {
+  _Atomic uint64_t owner;
+  stats_duration_cell_t durations[STATS_DURATION_COUNT];
+} stats_duration_shard_t;
 
 struct stats_scope {
   uint64_t id;
@@ -14,6 +29,8 @@ struct stats_scope {
   mutex_t snapshot_mutex;
   mutex_t duration_mutex;
   stats_duration_snapshot_t durations[STATS_DURATION_COUNT];
+  uint64_t duration_recorded_ns[STATS_DURATION_COUNT];
+  stats_duration_shard_t shards[STATS_DURATION_SHARDS];
 };
 
 struct stats_sampler {
@@ -71,13 +88,55 @@ void stats_gauge_set(stats_scope_t *scope, stats_gauge_id_t id, uint64_t value) 
     atomic_store_u64_impl(&scope->gauges[id], value);
 }
 
+static uint64_t duration_add(uint64_t a, uint64_t b) {
+  return a > UINT64_MAX - b ? b - (UINT64_MAX - a) - 1 : a + b;
+}
+
+static stats_duration_shard_t *duration_shard(stats_scope_t *scope) {
+  static _Thread_local uint64_t cached_scope_id;
+  static _Thread_local stats_duration_shard_t *cached_shard;
+  if (cached_scope_id == scope->id)
+    return cached_shard;
+  uint64_t owner = thread_current_id();
+  cached_scope_id = scope->id;
+  cached_shard = NULL;
+  for (size_t i = 0; i < STATS_DURATION_SHARDS; ++i) {
+    uint64_t expected = 0;
+    if (atomic_load(&scope->shards[i].owner) == owner ||
+        atomic_compare_exchange_strong(&scope->shards[i].owner, &expected, owner)) {
+      cached_shard = &scope->shards[i];
+      break;
+    }
+  }
+  return cached_shard;
+}
+
 void stats_duration_record(stats_scope_t *scope, stats_duration_id_t id, uint64_t elapsed_ns) {
   if (!scope || (unsigned)id >= STATS_DURATION_COUNT || !scope->capabilities.durations[id])
     return;
+  stats_duration_shard_t *shard = duration_shard(scope);
+  if (shard) {
+    stats_duration_cell_t *cell = &shard->durations[id];
+    uint64_t sequence = atomic_load(&cell->sequence);
+    atomic_store(&cell->sequence, duration_add(sequence, 1));
+    uint64_t observations = atomic_load(&cell->observations);
+    if (!observations || elapsed_ns < atomic_load(&cell->min_ns))
+      atomic_store(&cell->min_ns, elapsed_ns);
+    if (elapsed_ns > atomic_load(&cell->max_ns))
+      atomic_store(&cell->max_ns, elapsed_ns);
+    atomic_store(&cell->last_ns, elapsed_ns);
+    atomic_store(&cell->recorded_ns, time_get_ns());
+    atomic_store(&cell->observations, duration_add(observations, 1));
+    atomic_store(&cell->total_ns, duration_add(atomic_load(&cell->total_ns), elapsed_ns));
+    atomic_store(&cell->sequence, duration_add(sequence, 2));
+    return;
+  }
+  // Unusually many lifetime producers retain the bounded, coherent fallback.
   if (mutex_lock(&scope->duration_mutex) != 0)
     return;
   stats_duration_snapshot_t *duration = &scope->durations[id];
   duration->last_ns = elapsed_ns;
+  scope->duration_recorded_ns[id] = time_get_ns();
   if (!duration->observations || elapsed_ns < duration->min_ns)
     duration->min_ns = elapsed_ns;
   if (elapsed_ns > duration->max_ns)
@@ -109,7 +168,44 @@ asciichat_error_t stats_scope_snapshot(const stats_scope_t *scope, stats_snapsho
     return SET_ERRNO(ERROR_THREAD, "Cannot lock stats durations");
   }
   memcpy(out->durations, scope->durations, sizeof(out->durations));
+  uint64_t recorded_ns[STATS_DURATION_COUNT];
+  memcpy(recorded_ns, scope->duration_recorded_ns, sizeof(recorded_ns));
   mutex_unlock(&mutable_scope->duration_mutex);
+  for (size_t i = 0; i < STATS_DURATION_SHARDS; ++i) {
+    if (!atomic_load(&scope->shards[i].owner))
+      continue;
+    for (size_t id = 0; id < STATS_DURATION_COUNT; ++id) {
+      const stats_duration_cell_t *cell = &scope->shards[i].durations[id];
+      stats_duration_snapshot_t sample;
+      uint64_t stamp, before;
+      for (;;) {
+        before = atomic_load(&cell->sequence);
+        if (before & 1)
+          continue;
+        sample.observations = atomic_load(&cell->observations);
+        sample.total_ns = atomic_load(&cell->total_ns);
+        sample.min_ns = atomic_load(&cell->min_ns);
+        sample.max_ns = atomic_load(&cell->max_ns);
+        sample.last_ns = atomic_load(&cell->last_ns);
+        stamp = atomic_load(&cell->recorded_ns);
+        if (before == atomic_load(&cell->sequence))
+          break;
+      }
+      if (!sample.observations)
+        continue;
+      stats_duration_snapshot_t *total = &out->durations[id];
+      if (!total->observations || sample.min_ns < total->min_ns)
+        total->min_ns = sample.min_ns;
+      if (sample.max_ns > total->max_ns)
+        total->max_ns = sample.max_ns;
+      if (stamp >= recorded_ns[id]) {
+        recorded_ns[id] = stamp;
+        total->last_ns = sample.last_ns;
+      }
+      total->observations = duration_add(total->observations, sample.observations);
+      total->total_ns = duration_add(total->total_ns, sample.total_ns);
+    }
+  }
   out->sampled_ns = time_get_ns();
   mutex_unlock(&mutable_scope->snapshot_mutex);
   return ASCIICHAT_OK;

@@ -9,6 +9,7 @@
 #include <ascii-chat/log/named.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/cond.h>
+#include <ascii-chat/platform/wakeup.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/options/options.h>
@@ -17,6 +18,7 @@
 #include <ascii-chat/ui/sync.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/format.h>
+#include <ascii-chat/stats/stats.h>
 #include <stdatomic.h>
 #include <string.h>
 #include <errno.h>
@@ -45,6 +47,97 @@ static void inspect_atomic(uintptr_t key, void *value) {
       return 1;                                                                                                        \
     }                                                                                                                  \
   } while (0)
+
+static platform_wakeup_t *test_wakeup;
+static atomic_uint wake_generation;
+static atomic_bool wake_acknowledged;
+
+static void *publish_wakeups(void *unused) {
+  (void)unused;
+  for (unsigned i = 1; i <= 10000; ++i) {
+    atomic_store(&wake_acknowledged, false);
+    atomic_store(&wake_generation, i);
+    platform_wakeup_signal(test_wakeup);
+    while (!atomic_load(&wake_acknowledged))
+      platform_sleep_ns(1000);
+  }
+  return NULL;
+}
+
+static int check_wakeups(void) {
+  CHECK(platform_wakeup_create(&test_wakeup) == ASCIICHAT_OK);
+  CHECK(!platform_wakeup_wait(test_wakeup, NS_PER_MS_INT));
+  for (unsigned i = 0; i < 10000; ++i)
+    platform_wakeup_signal(test_wakeup);
+  CHECK(platform_wakeup_wait(test_wakeup, NS_PER_MS_INT));
+  CHECK(!platform_wakeup_wait(test_wakeup, NS_PER_MS_INT));
+  asciichat_thread_t publisher = {0};
+  CHECK(acthread_create(&publisher, "wakeup_regression", publish_wakeups, NULL) == ASCIICHAT_OK);
+  for (unsigned i = 1; i <= 10000; ++i) {
+    CHECK(platform_wakeup_wait(test_wakeup, NS_PER_SEC_INT));
+    CHECK(atomic_load(&wake_generation) == i);
+    atomic_store(&wake_acknowledged, true);
+  }
+  CHECK(thread_join(&publisher, NULL) == ASCIICHAT_OK);
+  platform_wakeup_destroy(test_wakeup);
+  test_wakeup = NULL;
+  return 0;
+}
+
+static atomic_uint duration_workers_done;
+static atomic_bool duration_workers_release;
+static void *record_durations(void *data) {
+  stats_scope_t *scope = data;
+  while (!atomic_load(&duration_workers_release))
+    platform_sleep_ns(NS_PER_MS_INT);
+  for (unsigned i = 0; i < 10000; ++i)
+    stats_duration_record(scope, STATS_DURATION_CAPTURE, 7);
+  atomic_fetch_add(&duration_workers_done, 1);
+  return NULL;
+}
+
+static int check_duration_recording(void) {
+  stats_capabilities_t capabilities = {0};
+  capabilities.durations[STATS_DURATION_CAPTURE] = true;
+  stats_scope_t *scope = NULL;
+  CHECK(stats_scope_create(&capabilities, &scope) == ASCIICHAT_OK);
+  asciichat_thread_t workers[20];
+  atomic_store(&duration_workers_done, 0);
+  atomic_store(&duration_workers_release, false);
+  for (unsigned i = 0; i < 4; ++i)
+    CHECK(acthread_create(&workers[i], "duration_writer", record_durations, scope) == ASCIICHAT_OK);
+  atomic_store(&duration_workers_release, true);
+  stats_snapshot_t snapshot;
+  do {
+    CHECK(stats_scope_snapshot(scope, &snapshot) == ASCIICHAT_OK);
+    stats_duration_snapshot_t duration = snapshot.durations[STATS_DURATION_CAPTURE];
+    CHECK(duration.total_ns == duration.observations * 7);
+    if (duration.observations) {
+      CHECK(duration.min_ns == 7 && duration.max_ns == 7 && duration.last_ns == 7);
+    }
+  } while (atomic_load(&duration_workers_done) < 4);
+  for (unsigned i = 0; i < 4; ++i)
+    CHECK(thread_join(&workers[i], NULL) == ASCIICHAT_OK);
+  CHECK(stats_scope_snapshot(scope, &snapshot) == ASCIICHAT_OK);
+  CHECK(snapshot.durations[STATS_DURATION_CAPTURE].observations == 40000);
+  // More simultaneous producers than shards exercise the coherent fallback.
+  atomic_store(&duration_workers_release, false);
+  for (unsigned i = 0; i < 20; ++i)
+    CHECK(acthread_create(&workers[i], "duration_writer", record_durations, scope) == ASCIICHAT_OK);
+  atomic_store(&duration_workers_release, true);
+  for (unsigned i = 0; i < 20; ++i)
+    CHECK(thread_join(&workers[i], NULL) == ASCIICHAT_OK);
+  stats_duration_record(scope, STATS_DURATION_CAPTURE, 0);
+  stats_duration_record(scope, STATS_DURATION_CAPTURE, 900);
+  CHECK(stats_scope_snapshot(scope, &snapshot) == ASCIICHAT_OK);
+  CHECK(snapshot.durations[STATS_DURATION_CAPTURE].observations == 240002);
+  CHECK(snapshot.durations[STATS_DURATION_CAPTURE].total_ns == 240000 * 7 + 900);
+  CHECK(snapshot.durations[STATS_DURATION_CAPTURE].min_ns == 0);
+  CHECK(snapshot.durations[STATS_DURATION_CAPTURE].max_ns == 900);
+  CHECK(snapshot.durations[STATS_DURATION_CAPTURE].last_ns == 900);
+  stats_scope_destroy(scope);
+  return 0;
+}
 
 static bool await_flag(atomic_bool *flag) {
   uint64_t deadline = time_get_ns() + 3 * NS_PER_SEC_INT;
@@ -240,6 +333,10 @@ int main(int argc, char **argv) {
 #endif
   char *options[] = {"sync-regressions", "--no-check-update", "mirror", NULL};
   CHECK(options_init(3, options) == ASCIICHAT_OK);
+  if (!strcmp(argv[1], "sync"))
+    CHECK(check_duration_recording() == 0);
+  if (!strcmp(argv[1], "sync"))
+    CHECK(check_wakeups() == 0);
 #ifndef NDEBUG
   if (!strcmp(argv[1], "deadlock") || !strcmp(argv[1], "stale")) {
     static char stop_path[1024];

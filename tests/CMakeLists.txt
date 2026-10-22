@@ -1886,6 +1886,11 @@ if(BUILD_TESTS AND TARGET ascii-chat AND ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TES
         --artifacts ${CMAKE_BINARY_DIR}/terminal-logs --search-regression-only)
     set_tests_properties(terminal-logs PROPERTIES LABELS "integration;terminal" TIMEOUT 180
         RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    asciichat_add_python_test(mirror-lazy-audio
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/mirror_lazy_audio.py --binary $<TARGET_FILE:ascii-chat>
+        --artifacts ${CMAKE_BINARY_DIR}/mirror-lazy-audio)
+    set_tests_properties(mirror-lazy-audio PROPERTIES LABELS "integration;terminal;hardware" TIMEOUT 120
+        RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
 endif()
 
 if(TEST test_unit_crypto_test_gpg_key_expiry)

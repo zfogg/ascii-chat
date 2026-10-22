@@ -99,11 +99,18 @@ void audio_terminate_portaudio_final(void) {
 }
 
 // AEC processes complete 480-sample blocks; the worker buffers must hold at least one block.
-#define WORKER_BATCH_FRAMES 480
+#define WORKER_BATCH_FRAMES 960
 #define WORKER_BATCH_SAMPLES (WORKER_BATCH_FRAMES * AUDIO_CHANNELS)
 // Device callbacks signal after capture/consumption. The fallback follows the
-// 10 ms AEC frame cadence for software sources and missed notifications.
-#define WORKER_TIMEOUT_MS 10
+// 20 ms worker cadence for software sources and missed notifications.
+#define WORKER_TIMEOUT_MS 20
+
+// Device callbacks remain 10 ms; publish two complete AEC frames per wake.
+// The bounded worker timeout also flushes partial batches and missed signals.
+static void audio_wake_capture_worker(audio_context_t *ctx) {
+  if (audio_ring_buffer_available_read(ctx->raw_capture_rb) >= WORKER_BATCH_SAMPLES)
+    cond_signal(&ctx->audio_processing_wakeup);
+}
 
 static void audio_publish_local_capture(audio_context_t *ctx, float *samples, size_t count, bool use_media) {
   uint64_t now = time_get_ns();
@@ -139,7 +146,7 @@ static void audio_publish_local_capture(audio_context_t *ctx, float *samples, si
  * - Any filtering or analysis
  *
  * Architecture:
- * 1. Wait for signal from callbacks (or timeout after 10ms)
+ * 1. Wait for signal from callbacks (or timeout after 20ms)
  * 2. Batch-read raw audio from ring buffers
  * 3. Process through AEC3 + filters (can take 50-80ms, that's OK!)
  * 4. Resample if needed (separate streams mode)
@@ -189,6 +196,8 @@ static void *audio_worker_thread(void *arg) {
 
   uint64_t media_start_ns = time_get_ns();
   uint64_t media_samples = 0;
+  // Only this worker uses the wait guard; condition waits release it while sleeping.
+  mutex_lock(&ctx->audio_processing_wait_guard);
   while (true) {
     loop_count++;
     uint64_t loop_start_ns = time_get_ns();
@@ -198,11 +207,15 @@ static void *audio_worker_thread(void *arg) {
     uint64_t wait_start_ns = time_get_ns();
     // Local media playback maintains 150 ms of queued audio. Refill below
     // 100 ms instead of waking for every callback or 10 ms timeout. Capture
-    // and software-only transmission retain their 10 ms processing cadence.
+    // and software-only transmission use a 20 ms processing cadence.
     bool buffered_media =
         ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media && ctx->output_stream;
     bool transmitted_media = ctx->capture_media_source && ctx->playback_only && !ctx->monitor_local_media;
-    int timeout_ms = buffered_media ? 100 : transmitted_media ? 20 : WORKER_TIMEOUT_MS;
+    // Device callbacks publish every 20 ms. Leave a second batch of grace
+    // before the watchdog flushes a partial batch, avoiding a timeout racing
+    // the callback that is already about to wake us.
+    bool device_capture = ctx->duplex_stream || ctx->input_stream;
+    int timeout_ms = buffered_media ? 100 : device_capture ? 40 : WORKER_TIMEOUT_MS;
     int wait_result;
     if (transmitted_media) {
       // This producer follows the media clock, not device callbacks. A bounded
@@ -210,10 +223,8 @@ static void *audio_worker_thread(void *arg) {
       platform_sleep_us(20 * US_PER_MS_INT);
       wait_result = 1;
     } else {
-      mutex_lock(&ctx->audio_processing_wait_guard);
       wait_result =
           cond_timedwait(&ctx->audio_processing_wakeup, &ctx->audio_processing_wait_guard, timeout_ms * NS_PER_MS_INT);
-      mutex_unlock(&ctx->audio_processing_wait_guard);
     }
     double wait_time_ns = (double)time_elapsed_ns(wait_start_ns, time_get_ns());
     total_wait_ns += wait_time_ns;
@@ -475,6 +486,7 @@ static void *audio_worker_thread(void *arg) {
     }
   }
 
+  mutex_unlock(&ctx->audio_processing_wait_guard);
   log_debug("Audio worker thread exiting");
   return NULL;
 }
@@ -654,9 +666,8 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     audio_ring_buffer_write(ctx->raw_render_rb, output, (int)num_samples);
   }
 
-  // STEP 4: Signal worker thread (non-blocking, ~0.1ms)
-  // Worker wakes up, processes batch, writes back to processed buffers
-  cond_signal(&ctx->audio_processing_wakeup);
+  // Wake after two device blocks; AEC still processes each 10 ms frame.
+  audio_wake_capture_worker(ctx);
 
   // Log callback timing and playback stats periodically
   double callback_time_ns = (double)time_elapsed_ns(callback_start_ns, time_get_ns());
@@ -902,7 +913,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
   // STEP 3: Signal worker when local playback needs a refill. Other audio
   // paths still notify on every callback to preserve capture/AEC latency.
   bool buffered_media = ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media;
-  if ((!ctx->playback_only || ctx->monitor_local_media) &&
+  if (ctx->playback_only && ctx->monitor_local_media &&
       (!buffered_media || audio_ring_buffer_available_read(ctx->playback_buffer) <= 4800))
     cond_signal(&ctx->audio_processing_wakeup);
 
@@ -1055,8 +1066,8 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
     }
   }
 
-  // STEP 3: Signal worker thread
-  cond_signal(&ctx->audio_processing_wakeup);
+  // The capture clock drives AEC work, in complete 20 ms batches.
+  audio_wake_capture_worker(ctx);
 
   return paContinue;
 }

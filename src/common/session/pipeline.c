@@ -16,6 +16,7 @@
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/platform/wakeup.h>
 #include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
@@ -140,21 +141,6 @@ static void *frame_queue_pop(frame_queue_t *q, uint64_t timeout_ns) {
   cond_signal(&q->not_full);
   mutex_unlock(&q->mu);
   return item;
-}
-
-static void *frame_queue_replace_latest(frame_queue_t *q, void *item) {
-  mutex_lock(&q->mu);
-  void *retired = q->count ? q->slots[q->head] : NULL;
-  q->head = 0;
-  q->tail = 0;
-  q->count = 1;
-  q->slots[0] = item;
-  ascii_otel_metric(ASCII_OTEL_METRIC_DISPLAY_DEPTH, 1);
-  if (retired)
-    ascii_otel_metric(ASCII_OTEL_METRIC_DROP_DISPLAY, 1);
-  cond_signal(&q->not_empty);
-  mutex_unlock(&q->mu);
-  return retired;
 }
 
 static int frame_queue_count(frame_queue_t *q) {
@@ -290,7 +276,8 @@ struct session_pipeline_s {
   void *input_data;
 
   frame_slot_t frame_slots[PIPELINE_FRAME_SLOTS];
-  frame_queue_t *display_queue;
+  atomic_ptr_t display_pending;
+  platform_wakeup_t *display_ready;
   frame_queue_t *encode_queue;
 
   session_capture_ctx_t *capture;
@@ -381,7 +368,11 @@ static void *pipeline_capture_thread(void *arg) {
       memcpy(display_copy, frame, sizeof(*display_copy));
       display_copy->pixels = buffer_share(frame->pixels);
     }
-    pipeline_frame_t *retired = frame_queue_replace_latest(pipeline->display_queue, display_copy);
+    pipeline_frame_t *retired = atomic_ptr_exchange(&pipeline->display_pending, display_copy);
+    ascii_otel_metric(ASCII_OTEL_METRIC_DISPLAY_DEPTH, 1);
+    platform_wakeup_signal(pipeline->display_ready);
+    if (retired)
+      ascii_otel_metric(ASCII_OTEL_METRIC_DROP_DISPLAY, 1);
     if (retired) {
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
@@ -453,6 +444,7 @@ static void *pipeline_capture_thread(void *arg) {
   }
 
   atomic_store_bool(&pipeline->capture_finished, true);
+  platform_wakeup_signal(pipeline->display_ready);
   log_debug("[PIPELINE_CAPTURE] Capture thread exiting");
   return NULL;
 }
@@ -532,7 +524,12 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
     atomic_init(&p->frame_slots[i].busy, false);
   p->capture = capture;
   p->display = display;
-  p->display_queue = frame_queue_create(1, "display");
+  if (platform_wakeup_create(&p->display_ready) != ASCIICHAT_OK) {
+    SAFE_FREE(p);
+    return SET_ERRNO(ERROR_INIT, "failed to create display wakeup");
+  }
+  atomic_ptr_store(&p->display_pending, NULL);
+  NAMED_REGISTER_ATOMIC_PTR(&p->display_pending, "display.pending_frame", p);
   p->encode_queue = frame_queue_create(256, "encode"); // Large buffer for slow encoding
 
   // Check if display has render_file configured (will be checked in encode thread)
@@ -556,7 +553,9 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
 
   // Start capture thread
   if (acthread_create(&p->capture_tid, "pipeline_capture", pipeline_capture_thread, p) != 0) {
-    frame_queue_destroy(p->display_queue);
+    free_frame(atomic_ptr_exchange(&p->display_pending, NULL));
+    platform_wakeup_destroy(p->display_ready);
+    NAMED_UNREGISTER(&p->display_pending);
     frame_queue_destroy(p->encode_queue);
     NAMED_UNREGISTER(&p->capture_finished);
     SAFE_FREE(p);
@@ -568,7 +567,10 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
     if (acthread_create(&p->encode_tid, "pipeline_encode", pipeline_encode_thread, p) != 0) {
       atomic_store_bool(&p->stop, true);
       thread_join(&p->capture_tid, NULL);
-      frame_queue_destroy(p->display_queue);
+      free_frame(atomic_ptr_exchange(&p->display_pending, NULL));
+      frame_slots_destroy(p->frame_slots);
+      platform_wakeup_destroy(p->display_ready);
+      NAMED_UNREGISTER(&p->display_pending);
       frame_queue_destroy(p->encode_queue);
       NAMED_UNREGISTER(&p->capture_finished);
       SAFE_FREE(p);
@@ -622,14 +624,19 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     log_debug_every(US_PER_SEC_INT, "[PIPELINE_DEBUG] should_exit=%d, stop=%d", exit_check,
                     atomic_load_bool(&pipeline->stop));
 
-    pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 100 * NS_PER_MS_INT);
+    platform_wakeup_wait(pipeline->display_ready, 100 * NS_PER_MS_INT);
+    pipeline_frame_t *frame = atomic_ptr_exchange(&pipeline->display_pending, NULL);
 
     if (!frame) {
-      if (atomic_load_bool(&pipeline->capture_finished) && frame_queue_count(pipeline->display_queue) == 0)
+      if (atomic_load_bool(&pipeline->capture_finished) && !atomic_ptr_load(&pipeline->display_pending))
         break;
       continue;
     }
 
+    ascii_otel_metric(ASCII_OTEL_METRIC_DISPLAY_DEPTH, 0);
+    double queue_age = (double)(time_get_ns() - frame->captured_ns) / 1e9;
+    ascii_otel_metric(ASCII_OTEL_METRIC_DISPLAY_WAIT, queue_age);
+    ascii_otel_metric(ASCII_OTEL_METRIC_QUEUE_OLDEST, queue_age);
     ASCII_OTEL_SCOPE_PARENT(PIPELINE_DISPLAY, &frame->telemetry_context);
 #ifdef ASCIICHAT_WITH_OTEL
     ascii_otel_scope_int(&otel_scope, "ascii_chat.queue.wait_ns", (int64_t)(time_get_ns() - frame->captured_ns));
@@ -708,12 +715,7 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
   // Wake up any threads blocked on condition variable waits
   // so they can check the stop flag and exit immediately
   // instead of waiting for timeouts (e.g., 100ms frame_queue_pop timeout)
-  if (pipeline->display_queue) {
-    mutex_lock(&pipeline->display_queue->mu);
-    cond_broadcast(&pipeline->display_queue->not_empty);
-    cond_broadcast(&pipeline->display_queue->not_full);
-    mutex_unlock(&pipeline->display_queue->mu);
-  }
+  platform_wakeup_signal(pipeline->display_ready);
   if (pipeline->encode_queue) {
     mutex_lock(&pipeline->encode_queue->mu);
     cond_broadcast(&pipeline->encode_queue->not_empty);
@@ -738,11 +740,12 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
   }
 
   // Flush queues to free any remaining frames
-  frame_queue_flush(pipeline->display_queue, free_frame_generic);
+  free_frame(atomic_ptr_exchange(&pipeline->display_pending, NULL));
   frame_queue_flush(pipeline->encode_queue, free_frame_generic);
 
   frame_slots_destroy(pipeline->frame_slots);
-  frame_queue_destroy(pipeline->display_queue);
+  platform_wakeup_destroy(pipeline->display_ready);
+  NAMED_UNREGISTER(&pipeline->display_pending);
   frame_queue_destroy(pipeline->encode_queue);
   NAMED_UNREGISTER(&pipeline->capture_finished);
   asciichat_error_t err = pipeline->capture_failure.code != ASCIICHAT_OK ? errno_import(&pipeline->capture_failure)
