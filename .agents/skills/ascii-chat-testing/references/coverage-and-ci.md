@@ -38,6 +38,8 @@ For a new measurement in a reused tree, remove only that tree's stale `.gcda` co
 
 The generator reads `CMakeCache.txt`, selects `llvm-cov` matching the configured Clang major version, requires paired `.gcda/.gcno`, and runs gcovr across the selected build tree. It filters `lib|src|include|tests`, excludes dependency directories, and rejects zero-execution reports and invalid/non-relative source paths. Do not use GCC gcov, fabricate coverage XML, tolerate corrupt counters, or upload an arbitrary individual `.gcov` file. This is gcov-style coverage, not a `.profraw`/`llvm-profdata` pipeline.
 
+Python is a valid native-test driver. A Python CTest harness that launches an instrumented executable, or loads an instrumented shared library, contributes its C/C++ counters when that process exits. Run those harnesses against the same coverage build tree and leave `GCOV_PREFIX` unset so the runtime writes beside its paired `.gcno` files. `GCOV_PREFIX` is only for isolated assertions about counter emission; the report generator does not scan redirected counters. `media-sessions` exercises both normal CLI exit and the explicit flush used by early actions, and verifies that their counters changed in the build tree consumed by gcovr.
+
 ## CI generation and publication
 
 The current native workflow requires **seven coverage shards**:

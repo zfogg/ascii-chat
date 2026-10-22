@@ -50,6 +50,12 @@ class MediaSessions(unittest.TestCase):
     def command(self, *args):
         return [BINARY, "--no-check-update", "--log-file", str(self.root / "session.log"), *args]
 
+    @staticmethod
+    def coverage_profiles(pattern):
+        if COVERAGE_ROOT is None:
+            raise AssertionError("Coverage root was not supplied for an instrumented test")
+        return {path: path.stat().st_mtime_ns for path in COVERAGE_ROOT.rglob(pattern)}
+
     def run_snapshot(self, *args, env=None):
         result = subprocess.run(self.command(*args), env=env or self.env, capture_output=True, timeout=25)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-5000:])
@@ -148,16 +154,17 @@ class MediaSessions(unittest.TestCase):
     def test_coverage_runtime_writes_the_cli_profile(self):
         if not COVERAGE_BUILD:
             self.skipTest("Requires gcov instrumentation")
-        prefix = self.root / "isolated-profile"
-        env = dict(self.env, GCOV_PREFIX=str(prefix))
+        before = self.coverage_profiles("ascii-chat.dir/main.c.gcda")
         result = subprocess.run(self.command("mirror", "--file", str(self.image), "--snapshot",
                                              "--width", "40", "--height", "20", "--splash-screen=false"),
-                                env=env, capture_output=True, timeout=20)
+                                env=self.env, capture_output=True, timeout=20)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-3000:])
         self.assertNotIn(b"profiling:", result.stderr)
-        profiles = list(prefix.rglob("ascii-chat.dir/main.c.gcda"))
-        self.assertEqual(len(profiles), 1, "The CLI entry point did not write a gcov profile")
-        self.assertGreater(profiles[0].stat().st_size, 20)
+        profiles = self.coverage_profiles("ascii-chat.dir/main.c.gcda")
+        self.assertTrue(profiles, "The CLI entry point did not write a gcov profile into the build tree")
+        self.assertTrue(any(path not in before or timestamp > before[path] for path, timestamp in profiles.items()),
+                        "The CLI entry point did not update a gcov profile consumed by report generation")
+        self.assertTrue(all(path.stat().st_size > 20 for path in profiles), profiles)
 
     def test_interactive_mirror_recovers_after_overlays_and_resize(self):
         master, slave = pty.openpty()
@@ -231,15 +238,17 @@ class MediaSessions(unittest.TestCase):
                 ("version", ["--version"], b"ascii-chat"),
                 ("completion", ["--completions", "bash"], b"complete -F")):
             with self.subTest(action=name):
-                prefix = self.root / ("action-profile-" + name)
-                result = subprocess.run(self.command(*arguments), env=dict(self.env, GCOV_PREFIX=str(prefix)),
+                before = self.coverage_profiles("actions.c.gcda")
+                result = subprocess.run(self.command(*arguments), env=self.env,
                                         capture_output=True, timeout=20)
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-3000:])
                 self.assertIn(marker, result.stdout)
                 self.assertNotIn(b"profiling:", result.stderr)
-                profiles = list(prefix.rglob("actions.c.gcda"))
-                self.assertTrue(profiles, f"{name} exited without saving its action coverage")
-                self.assertTrue(all(path.stat().st_size > 20 for path in profiles))
+                profiles = self.coverage_profiles("actions.c.gcda")
+                self.assertTrue(profiles, f"{name} exited without saving action coverage into the build tree")
+                self.assertTrue(any(path not in before or timestamp > before[path] for path, timestamp in profiles.items()),
+                                f"{name} exited without updating action coverage consumed by report generation")
+                self.assertTrue(all(path.stat().st_size > 20 for path in profiles), profiles)
 
     def test_loopback_encrypted_password_and_plain_sessions(self):
         for authentication in ([], ["--password", "loopback-test-secret"], ["--encrypt", "false"]):
@@ -284,7 +293,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--coverage-build", action="store_true")
+    parser.add_argument("--coverage-root", type=Path)
     args, remaining = parser.parse_known_args()
     BINARY = str(args.binary.resolve())
     COVERAGE_BUILD = args.coverage_build
+    COVERAGE_ROOT = args.coverage_root.resolve() if args.coverage_root else None
     unittest.main(argv=[__file__, *remaining])

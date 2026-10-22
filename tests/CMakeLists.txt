@@ -1641,7 +1641,7 @@ endif()
 if(BUILD_TESTS AND UNIX AND NOT APPLE AND TARGET ascii-chat)
     set(media_session_coverage_args)
     if(ASCIICHAT_ENABLE_COVERAGE)
-        list(APPEND media_session_coverage_args --coverage-build)
+        list(APPEND media_session_coverage_args --coverage-build --coverage-root ${CMAKE_BINARY_DIR})
     endif()
     add_test(NAME media-sessions COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_SOURCE_DIR}/tests/integration/media_sessions.py --binary $<TARGET_FILE:ascii-chat>
