@@ -1844,6 +1844,9 @@ if(BUILD_TESTS AND TARGET ascii-chat-shared)
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/encoder_audio_flush.py $<TARGET_FILE:ascii-chat-shared>)
         list(APPEND shared_api_tests encoder-audio-flush)
     endif()
+    asciichat_add_python_test(log-viewer-rendering
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui/test_log_history.py $<TARGET_FILE:ascii-chat-shared>)
+    list(APPEND shared_api_tests log-viewer-rendering)
     foreach(api_test IN LISTS shared_api_tests)
         set_tests_properties(${api_test} PROPERTIES LABELS "unit" TIMEOUT 120)
         # Python hosts the instrumented library, so load ASan before Python's allocator.

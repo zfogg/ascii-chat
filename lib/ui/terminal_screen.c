@@ -173,7 +173,7 @@ bool terminal_screen_logs_handle_key(int key) {
   }
   if (key == '?') {
     terminal_size_t size = ui_controller_size();
-    g_log_help_too_small = size.rows < 11 || size.cols < 8;
+    g_log_help_too_small = size.rows < 12 || size.cols < 8;
     g_log_help = !g_log_help_too_small;
     redraw = true;
     mutex_unlock(&g_log_viewer_mutex);

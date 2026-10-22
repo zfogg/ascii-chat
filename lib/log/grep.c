@@ -112,10 +112,10 @@ static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
 }
 
 /**
- * @brief Map character position in plain text to byte position in colored text
+ * @brief Map byte position in plain text to byte position in colored text
  *
  * @param colored_text Original text with ANSI escape codes
- * @param char_pos Character position (ignoring ANSI codes)
+ * @param char_pos Byte position (ignoring ANSI codes)
  * @return Byte position in colored_text
  */
 static size_t map_plain_to_colored_pos(const char *colored_text, size_t char_pos) {
@@ -169,8 +169,8 @@ static size_t map_plain_to_colored_pos(const char *colored_text, size_t char_pos
       // Advance by all bytes of this UTF-8 character
       byte_pos += utf8_len;
 
-      // Only increment character count once per character (not per byte)
-      chars_seen++;
+      // Match offsets from PCRE2 and strstr are measured in bytes.
+      chars_seen += (size_t)utf8_len;
     }
   }
 
@@ -911,7 +911,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
   }
 
   // Single match highlighting (same logic as global path)
-  // map_plain_to_colored_pos(N) returns byte position after counting N characters
+  // map_plain_to_colored_pos(N) returns byte position after counting N plain bytes
   size_t colored_start = map_plain_to_colored_pos(colored_text, match_start);
   size_t colored_end = map_plain_to_colored_pos(colored_text, match_start + match_len);
 
@@ -994,106 +994,9 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
 }
 
 const char *grep_highlight(const char *log_line, size_t match_start, size_t match_len) {
-  static __thread char highlight_buffer[16384];
-
-  if (!log_line || match_len == 0) {
-    return log_line; // No highlighting needed
-  }
-
-  size_t line_len = strlen(log_line);
-  if (match_start + match_len > line_len) {
-    return log_line; // Invalid range
-  }
-
-  char *dst = highlight_buffer;
-  const char *src = log_line;
-  size_t pos = 0;
-
-  // If any pattern has global flag, highlight ALL matches
-  grep_pattern_t *global_pat = NULL;
-  for (int i = 0; i < g_filter_state.pattern_count; i++) {
-    if (g_filter_state.patterns[i].global_flag && !g_filter_state.patterns[i].is_fixed_string) {
-      global_pat = &g_filter_state.patterns[i];
-      break;
-    }
-  }
-
-  if (global_pat && global_pat->singleton) {
-    pcre2_code *code = asciichat_pcre2_singleton_get_code(global_pat->singleton);
-    pcre2_match_data *match_data = get_thread_match_data();
-
-    if (!code || !match_data) {
-      return log_line; // Fall back to no highlighting
-    }
-
-    // Find all matches in the line
-    size_t offset = 0;
-    while (offset < line_len) {
-      int rc = pcre2_jit_match(code, (PCRE2_SPTR)log_line, line_len, offset, 0, match_data, NULL);
-      if (rc < 0) {
-        break; // No more matches
-      }
-
-      PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-      size_t match_pos = (size_t)ovector[0];
-      size_t match_end = (size_t)ovector[1];
-      size_t len = match_end - match_pos;
-
-      // Copy text before match
-      if (match_pos > pos) {
-        memcpy(dst, src + pos, match_pos - pos);
-        dst += (match_pos - pos);
-      }
-
-      // Highlight the match (background only, preserve foreground color)
-      uint8_t r, g, b;
-      get_highlight_color(&r, &g, &b);
-      dst = append_truecolor_bg(dst, r, g, b);
-      memcpy(dst, src + match_pos, len);
-      dst += len;
-
-      pos = match_end;
-      offset = match_end;
-
-      // Prevent infinite loop on zero-length matches
-      if (len == 0) {
-        offset++;
-      }
-    }
-
-    // Copy remaining text after last match
-    if (pos < line_len) {
-      memcpy(dst, src + pos, line_len - pos);
-      dst += (line_len - pos);
-    }
-
-  } else {
-    // Single match highlighting (original behavior)
-    // Copy text before match
-    if (match_start > 0) {
-      memcpy(dst, log_line, match_start);
-      dst += match_start;
-    }
-
-    // Add background color for match (preserve foreground color)
-    uint8_t r, g, b;
-    get_highlight_color(&r, &g, &b);
-    dst = append_truecolor_bg(dst, r, g, b);
-
-    // Copy matched text
-    memcpy(dst, log_line + match_start, match_len);
-    dst += match_len;
-
-    // Copy text after match
-    size_t remaining = line_len - (match_start + match_len);
-    if (remaining > 0) {
-      memcpy(dst, log_line + match_start + match_len, remaining);
-      dst += remaining;
-    }
-  }
-
-  *dst = '\0';
-  return highlight_buffer;
+  if (!log_line || match_start > strlen(log_line) || match_len > strlen(log_line) - match_start)
+    return log_line;
+  return grep_highlight_colored(log_line, log_line, match_start, match_len);
 }
 
 void grep_destroy(void) {

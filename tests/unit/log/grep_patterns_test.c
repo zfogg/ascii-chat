@@ -129,3 +129,16 @@ Test(grep_patterns, saving_again_replaces_previous_snapshot_and_empty_restore_di
   cr_assert_eq(grep_get_pattern_count(), 0);
   cr_assert(grep_should_output("unfiltered", &start, &length));
 }
+
+Test(grep_patterns, single_plain_match_resets_background_before_suffix) {
+  const char *result = grep_highlight("[WARN] warning details", 1, 4);
+  cr_assert_not_null(strstr(result, "WARN\033[49m] warning details"));
+}
+
+Test(grep_patterns, colored_utf8_match_uses_plain_byte_offsets) {
+  const char *plain = "é [WARN] detail";
+  const char *colored = "\033[33mé [WARN] detail\033[0m";
+  const char *result = grep_highlight_colored(colored, plain, strlen("é ["), 4);
+  cr_assert_not_null(strstr(result, "WARN\033[49m] detail"));
+  cr_assert_not_null(strstr(result, "\033[33m"));
+}

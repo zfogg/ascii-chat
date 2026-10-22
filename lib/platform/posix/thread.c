@@ -10,6 +10,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
 #include <pthread.h>
@@ -53,6 +54,8 @@ void *thread_wrapper_impl(void *arg) {
     return NULL;
   }
 
+  NAMED_REGISTER_THREAD(pthread_self(), wrapper->name, NULL);
+
   log_debug("[THREAD] Starting wrapped thread, wrapper at %p", (void *)wrapper);
 
   // Call user's thread function with user's argument
@@ -95,12 +98,11 @@ int acthread_create(asciichat_thread_t *thread, const char *name, void *(*func)(
 
   wrapper->user_func = func;
   wrapper->user_arg = arg;
+  SAFE_STRNCPY(wrapper->name, name ? name : "worker", sizeof(wrapper->name));
 
   // Create thread with wrapper function, passing wrapper as argument
   int err = pthread_create(thread, NULL, thread_wrapper_impl, (void *)wrapper);
-  if (err == 0 && name && thread) {
-    NAMED_REGISTER_THREAD(*thread, name, NULL);
-  } else if (err != 0) {
+  if (err != 0) {
     // If thread creation failed, free the wrapper we allocated
     SAFE_FREE(wrapper);
   }

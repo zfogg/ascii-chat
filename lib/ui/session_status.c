@@ -147,18 +147,33 @@ static void append_log_row(frame_buffer_t *body, const char *message, int row, i
     frame_buffer_printf(body, "\n");
     return;
   }
-  char line[SESSION_LOG_LINE_MAX];
-  memcpy(line, start, length);
-  line[length] = '\0';
-  size_t match_start = 0;
-  size_t match_length = 0;
-  const char *rendered = line;
-  if (log_search_get_match_info(line, &match_start, &match_length)) {
-    size_t start_byte = utf8_byte_offset_for_char(line, match_start);
-    size_t end_byte = utf8_byte_offset_for_char(line, match_start + match_length);
-    rendered = grep_highlight(line, start_byte, end_byte - start_byte);
+  size_t match_start = 0, match_length = 0;
+  const char *rendered = message;
+  if (log_search_get_match_info(plain, &match_start, &match_length)) {
+    size_t start_byte = utf8_byte_offset_for_char(plain, match_start);
+    size_t end_byte = utf8_byte_offset_for_char(plain, match_start + match_length);
+    rendered = grep_highlight_colored(message, plain, start_byte, end_byte - start_byte);
   }
-  frame_buffer_printf(body, "%s\033[0m\n", rendered);
+  // Replay preceding SGR sequences so wrapped rows retain their original style.
+  size_t first = (size_t)(start - plain), last = first + length, offset = 0;
+  for (const char *cursor = rendered; *cursor && offset < last;) {
+    if (cursor[0] == '\033' && cursor[1] == '[') {
+      const char *escape = cursor;
+      cursor += 2;
+      while (*cursor && !(*cursor >= '@' && *cursor <= '~'))
+        ++cursor;
+      if (*cursor) {
+        if (*cursor++ == 'm')
+          frame_buffer_append(body, escape, (size_t)(cursor - escape));
+      }
+    } else {
+      if (offset >= first)
+        frame_buffer_append(body, cursor, 1);
+      ++cursor;
+      ++offset;
+    }
+  }
+  frame_buffer_printf(body, "\033[0m\n");
 }
 
 void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const terminal_screen_config_t *config,
@@ -286,7 +301,7 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
              colored_string(LOG_COLOR_WARN, "Right"));
     snprintf(lines[3], sizeof(lines[3]), "%s / %s   half page older", colored_string(LOG_COLOR_WARN, "Ctrl-U"),
              colored_string(LOG_COLOR_WARN, "Left"));
-    const char *line_text[] = {lines[0], lines[1], lines[2], lines[3]};
+    const char *line_text[] = {"", lines[0], lines[1], lines[2], lines[3]};
     char footer[128];
     snprintf(footer, sizeof(footer), "%s or %s closes this help", colored_string(LOG_COLOR_WARN, "?"),
              colored_string(LOG_COLOR_WARN, "Esc"));
@@ -296,7 +311,7 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
                             .footer = footer};
     (void)ui_overlay_box_render(output, size, &box);
   } else if (config->show_logs && terminal_screen_logs_help_too_small()) {
-    frame_buffer_printf(output, "\033[%d;1H%s", size.rows, "Help needs at least 11 terminal rows");
+    frame_buffer_printf(output, "\033[%d;1H%s", size.rows, "Help needs at least 12 terminal rows");
   }
   frame_buffer_destroy(body);
 }

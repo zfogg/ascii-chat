@@ -99,6 +99,7 @@ extern "C" {
 typedef struct {
   void *(*user_func)(void *); // User's thread function
   void *user_arg;             // User's argument
+  char name[128];             // Owned name available before the first worker log
 } asciichat_thread_wrapper_t;
 
 /**
