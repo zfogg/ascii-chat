@@ -57,6 +57,9 @@ bool update_banner_show_prompt(struct session_display_ctx *ctx);
  */
 void update_banner_print_instructions(void);
 
+/** Run the installation command associated with this binary and request exit on success. */
+bool update_banner_install_update(void);
+
 /**
  * @brief Start the background update check thread
  *
@@ -73,5 +76,14 @@ void update_banner_start_check(void);
  * even if no check was started.
  */
 void update_banner_wait_for_check(void);
+
+/** Toggle the retained update overlay. This is safe from every mode's shared input path. */
+void update_banner_toggle_overlay(void);
+/** Consumes F12 and overlay-local keys before mode-specific shortcut handling. */
+bool update_banner_handle_key(int key);
+/** True while the shared startup or explicit update request is in flight. */
+bool update_banner_is_checking(void);
+/** True only while the F12 overlay, rather than the startup prompt, owns the update screen. */
+bool update_banner_is_overlay_open(void);
 
 /** @} */

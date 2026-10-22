@@ -11,6 +11,7 @@
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/options/options.h>
+#include <stdio.h>
 #include <string.h>
 
 void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, void *user_data) {
@@ -110,7 +111,30 @@ typedef struct {
   int row;
 } log_row_ref_t;
 
-static int log_message_rows(const char *message, int width) {
+static const char *startup_log_summary(const char *message, char *buffer, size_t buffer_size) {
+  if (!message || !buffer || !buffer_size)
+    return message;
+
+  char plain[SESSION_LOG_LINE_MAX];
+  strip_ansi_codes(message, plain, sizeof(plain));
+  const char *summary = strstr(plain, "(): ");
+  if (summary)
+    summary += 4;
+  else {
+    summary = strrchr(plain, ']');
+    summary = summary ? summary + 1 : plain;
+    while (*summary == ' ')
+      ++summary;
+  }
+
+  snprintf(buffer, buffer_size, "[ * ] %s", summary);
+  return buffer;
+}
+
+static int log_message_rows(const char *message, int width, bool compact_startup) {
+  char formatted[SESSION_LOG_LINE_MAX + 32];
+  if (compact_startup)
+    message = startup_log_summary(message, formatted, sizeof(formatted));
   int rows = display_height(message, width);
   return rows > 0 ? rows : 1;
 }
@@ -126,7 +150,11 @@ static size_t utf8_byte_offset_for_char(const char *text, size_t character_offse
   return (size_t)(cursor - text);
 }
 
-static void append_log_row(frame_buffer_t *body, const char *message, int row, int width) {
+static void append_log_row(frame_buffer_t *body, const char *message, int row, int width, bool compact_startup) {
+  char formatted[SESSION_LOG_LINE_MAX + 32];
+  if (compact_startup) {
+    message = startup_log_summary(message, formatted, sizeof(formatted));
+  }
   char plain[SESSION_LOG_LINE_MAX];
   strip_ansi_codes(message, plain, sizeof(plain));
   const char *start = plain;
@@ -145,6 +173,26 @@ static void append_log_row(frame_buffer_t *body, const char *message, int row, i
   size_t length = utf8_prefix_bytes_for_width(start, remaining, width);
   if (!length) {
     frame_buffer_printf(body, "\n");
+    return;
+  }
+  if (compact_startup) {
+    char line[SESSION_LOG_LINE_MAX];
+    memcpy(line, start, length);
+    line[length] = '\0';
+    bool startup_marker = compact_startup && row == 0 && strncmp(line, "[ * ] ", 6) == 0;
+    const char *content = startup_marker ? line + 6 : line;
+    size_t match_start = 0;
+    size_t match_length = 0;
+    const char *rendered = content;
+    if (log_search_get_match_info(content, &match_start, &match_length)) {
+      size_t start_byte = utf8_byte_offset_for_char(content, match_start);
+      size_t end_byte = utf8_byte_offset_for_char(content, match_start + match_length);
+      rendered = grep_highlight(content, start_byte, end_byte - start_byte);
+    }
+    if (startup_marker)
+      frame_buffer_printf(body, "%s%s%s ", colored_string(LOG_COLOR_WHITE, "[ "), colored_string(LOG_COLOR_WARN, "*"),
+                          colored_string(LOG_COLOR_WHITE, " ]"));
+    frame_buffer_printf(body, "%s\033[0m\n", rendered);
     return;
   }
   size_t match_start = 0, match_length = 0;
@@ -209,6 +257,7 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
   bool entering = config->show_logs && log_search_is_entering();
   // Search owns the final row for its prompt. Otherwise logs fill it.
   int available = size.rows - header_rows - (entering ? 1 : 0);
+  bool compact_startup = config->screen == UI_SCREEN_SPLASH;
   session_log_entry_t *entries = NULL;
   size_t count = 0;
   if (config->show_logs && available > 0) {
@@ -225,7 +274,7 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
       uint64_t previous_tail_sequence = 0;
       size_t appended_rows = 0;
       for (size_t entry = 0; entry < count; ++entry) {
-        size_t height = (size_t)log_message_rows(entries[entry].message, size.cols);
+        size_t height = (size_t)log_message_rows(entries[entry].message, size.cols, compact_startup);
         if (SIZE_MAX - total_rows < height)
           total_rows = SIZE_MAX;
         else
@@ -236,14 +285,14 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
       if (previous_tail_sequence && tail_sequence > previous_tail_sequence) {
         for (size_t entry = 0; entry < count; ++entry) {
           if (entries[entry].sequence > previous_tail_sequence)
-            appended_rows += (size_t)log_message_rows(entries[entry].message, size.cols);
+            appended_rows += (size_t)log_message_rows(entries[entry].message, size.cols, compact_startup);
         }
       }
       size_t max_offset = total_rows ? total_rows - 1 : 0;
       size_t skip = terminal_screen_logs_retain_position(tail_sequence, appended_rows, max_offset);
       size_t row_count = 0;
       for (size_t entry = count; entry && row_count < (size_t)available; --entry) {
-        int height = log_message_rows(entries[entry - 1].message, size.cols);
+        int height = log_message_rows(entries[entry - 1].message, size.cols, compact_startup);
         if (skip >= (size_t)height) {
           skip -= (size_t)height;
           continue;
@@ -254,7 +303,7 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
           rows[row_count++] = (log_row_ref_t){.entry = entry - 1, .row = row};
       }
       for (size_t row = row_count; row; --row)
-        append_log_row(body, entries[rows[row - 1].entry].message, rows[row - 1].row, size.cols);
+        append_log_row(body, entries[rows[row - 1].entry].message, rows[row - 1].row, size.cols, compact_startup);
       while (row_count++ < (size_t)available)
         frame_buffer_printf(body, "\n");
       SAFE_FREE(rows);

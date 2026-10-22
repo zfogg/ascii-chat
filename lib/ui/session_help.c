@@ -241,6 +241,7 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
 #endif
       browser ? NULL : "o      TUI to open media from path or url",
       "]      Live log viewer/searcher TUI",
+      "F12    Version update checker TUI",
       browser ? NULL : "=      Running app statistics TUI",
 #ifndef NDEBUG
       browser ? NULL : "0      C code sync primitives TUI",

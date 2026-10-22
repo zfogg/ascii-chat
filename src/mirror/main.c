@@ -267,7 +267,7 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
     return SET_ERRNO(ERROR_INVALID_STATE, "Render should_exit callback not initialized");
   }
 
-  log_info("Calling session_render_loop in synchronous mode");
+  log_debug("Calling session_render_loop in synchronous mode");
   // Run the unified render loop with keyboard support using synchronous mode
   // Pass capture context directly (not as callbacks) for proper frame capture
   asciichat_error_t result = session_render_loop(capture, // Capture context (synchronous mode)
@@ -277,7 +277,7 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
                                                  NULL,                    // No sleep callback (built-in FPS limiting)
                                                  mirror_keyboard_handler, // Keyboard handler
                                                  display); // Pass display as user_data for help screen toggle
-  log_info("session_render_loop returned with result=%d", result);
+  log_debug("session_render_loop returned with result=%d", result);
   return result;
 }
 
@@ -308,7 +308,7 @@ int mirror_main(void) {
 
   // Run shared initialization/teardown with mode-specific loop
   asciichat_error_t result = session_client_like_run(&config);
-  log_info("session_client_like_run returned with result=%d", result);
+  log_debug("session_client_like_run returned with result=%d", result);
 
   if (result != ASCIICHAT_OK) {
     log_set_terminal_output(true);

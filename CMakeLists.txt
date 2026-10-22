@@ -375,6 +375,12 @@ target_compile_definitions(asciichat-project-options INTERFACE
     ASCIICHAT_RESOURCE_DIR="${CMAKE_BINARY_DIR}"
 )
 
+foreach(_package_manager HOMEBREW SCOOP AUR)
+    if(ASCIICHAT_INSTALLED_BY_${_package_manager})
+        target_compile_definitions(asciichat-project-options INTERFACE ASCIICHAT_INSTALLED_BY_${_package_manager}=1)
+    endif()
+endforeach()
+
 if(false)
     include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
 endif()

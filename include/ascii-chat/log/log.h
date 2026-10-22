@@ -125,7 +125,7 @@ typedef struct {
  * @brief Color enum for logging - indexes into color arrays
  * @ingroup logging
  *
- * These values directly index into level_colors arrays.
+ * Values through RESET index into level_colors arrays; WHITE is resolved separately.
  * Order matches DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET.
  */
 typedef enum {
@@ -136,7 +136,8 @@ typedef enum {
   LOG_COLOR_ERROR = 4, /**< Red - ERROR messages */
   LOG_COLOR_FATAL = 5, /**< Magenta - FATAL messages */
   LOG_COLOR_GREY = 6,  /**< Grey - for neutral messages or labels */
-  LOG_COLOR_RESET = 7  /**< Reset to default */
+  LOG_COLOR_RESET = 7, /**< Reset to default */
+  LOG_COLOR_WHITE = 8  /**< White text, independent of the accent palette */
 } log_color_t;
 
 #ifdef __cplusplus
