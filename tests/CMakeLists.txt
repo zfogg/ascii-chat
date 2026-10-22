@@ -1327,6 +1327,19 @@ if(TARGET ascii-chat-static AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     endif()
 endif()
 
+# Exercise the event-driven loop with real conversion and captured terminal output.
+if(BUILD_TESTS AND TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+    add_executable(test-render-loop contracts/session/render_loop_test.c)
+    asciichat_configure_contract(test-render-loop)
+    target_link_libraries(test-render-loop PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-render-loop PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-render-loop)
+    set_target_properties(test-render-loop PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(render-loop test-render-loop)
+    set_tests_properties(render-loop PROPERTIES LABELS "unit" TIMEOUT 30)
+endif()
 # Shared discovery host rendering, including builds without Criterion.
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     add_executable(test-host-render EXCLUDE_FROM_ALL contracts/session/host_render_test.c)
