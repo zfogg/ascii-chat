@@ -4,6 +4,10 @@
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
+#include <ascii-chat/util/password.h>
+#include <ascii-chat/ui/input.h>
+#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/platform/keyboard.h>
 
 #define REQUIRE(condition)                                                                                             \
   do {                                                                                                                 \
@@ -50,6 +54,27 @@ static asciichat_error_t probe(const char *mode) {
     REQUIRE(terminal_set_echo(true) == ASCIICHAT_OK);
     REQUIRE(platform_write_all(1, "RESTORED", 8) == 8);
     REQUIRE(platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'y');
+  } else if (strcmp(mode, "password") == 0 || strcmp(mode, "password-cancel") == 0 ||
+             strcmp(mode, "password-box") == 0) {
+    char password[32];
+    int result = strcmp(mode, "password-box") == 0
+                     ? prompt_password("Test passphrase", password, sizeof(password))
+                     : prompt_password_simple("Test passphrase", password, sizeof(password));
+    if (strcmp(mode, "password-cancel") != 0) {
+      REQUIRE(result == 0);
+      REQUIRE(strcmp(password, "sécret") == 0);
+    } else {
+      REQUIRE(result == -1);
+    }
+    REQUIRE(prompt_password(NULL, password, sizeof(password)) == -1);
+    REQUIRE(prompt_password("Prompt", NULL, sizeof(password)) == -1);
+    REQUIRE(prompt_password("Prompt", password, 1) == -1);
+    REQUIRE(prompt_password_simple(NULL, password, sizeof(password)) == -1);
+    REQUIRE(prompt_password_simple("Prompt", NULL, sizeof(password)) == -1);
+    REQUIRE(prompt_password_simple("Prompt", password, 1) == -1);
+    ui_input_shutdown();
+    ui_controller_shutdown();
+    keyboard_destroy();
   } else if (strcmp(mode, "background") == 0 || strcmp(mode, "bad-background") == 0) {
     uint8_t r = 17, g = 34, b = 51;
     bool result = terminal_query_background_color(&r, &g, &b);
