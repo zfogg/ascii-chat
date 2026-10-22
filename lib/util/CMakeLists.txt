@@ -10,6 +10,7 @@ set(UTIL_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/ip.c
     ${CMAKE_CURRENT_SOURCE_DIR}/aspect_ratio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/time.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/flow_control.c
     ${CMAKE_CURRENT_SOURCE_DIR}/image.c
     ${CMAKE_CURRENT_SOURCE_DIR}/password.c
     ${CMAKE_CURRENT_SOURCE_DIR}/fps.c

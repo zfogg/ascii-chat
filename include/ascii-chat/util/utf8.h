@@ -160,6 +160,17 @@ int utf8_display_width_n(const char *str, size_t max_bytes);
  */
 size_t utf8_prefix_bytes_for_width(const char *str, size_t max_bytes, int max_width);
 
+/**
+ * @brief Return whether terminal output should use UTF-8 according to --utf8.
+ *
+ * A forced setting wins; automatic mode uses terminal capability detection.
+ * Use this for output glyph selection rather than terminal_supports_utf8()
+ * when the user's UTF-8 preference must be honored.
+ *
+ * @ingroup util
+ */
+bool utf8_output_enabled(void);
+
 /* ============================================================================
  * UTF-8 Validation Functions
  * ========================================================================== */

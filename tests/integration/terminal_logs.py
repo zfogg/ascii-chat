@@ -41,14 +41,19 @@ def exercise(term, name, artifacts):
     term.write("]")
     term.expect(lambda s: "/: search logs" in s,
                 "C log emitted while hidden did not reach overlay")
-    term.pump(.3)
-    pattern = ""
-    for key in "/Volume DOWN":
-        pattern += key
-        term.write(key)
-        term.expect(lambda s: pattern in s.splitlines()[-1], "Existing server search did not accept key")
+    logs_before_search = term.pump(.3).splitlines()
+    term.write("/")
+    search_open = term.expect(lambda s: s.splitlines()[-1].strip() == "/", "Search prompt did not open")
+    assert search_open.splitlines()[4:-1] == logs_before_search[5:], (
+        "Opening search did not replace the top log row with the prompt"
+    )
+    term.write("Volume DOWN")
+    typed = term.pump(.15)
+    assert typed.splitlines()[-1].strip() == "/Volume DOWN", "Search input was delayed"
+    assert "KEYBOARD INPUT" in typed, "Search action was not debounced"
+    term.expect(lambda s: "KEYBOARD INPUT" not in s, "Debounced search did not filter")
     term.write("\r")
-    term.expect(lambda s: "Volume DOWN" in s and "KEYBOARD INPUT" not in s, "Search did not filter")
+    term.expect(lambda s: "Volume DOWN" in s, "Search did not remain active after accepting input")
     capture(term, artifacts / f"session-search-{name}.png")
     term.write("\x1b")
     term.expect(lambda s: "/: search logs" in s, "Escape closed overlay instead of search")
@@ -78,6 +83,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--artifacts", type=Path, required=True)
+    parser.add_argument("--search-regression-only", action="store_true",
+                        help="Run only the focused log-search terminal smoke test")
     args = parser.parse_args()
     args.artifacts.mkdir(parents=True, exist_ok=True)
     binary = str(args.binary.resolve())
@@ -88,6 +95,14 @@ def main():
                         "testsrc2=size=160x120:rate=10", "-t", "3", "-c:v", "libx264", str(media)], check=True)
         common = ["--file", str(media), "--loop", "--splash-screen=false", "--audio=false", "--color-mode", "none"]
         base = [binary, "--no-check-update", "--log-level", "info"]
+        if args.search_regression_only:
+            mirror = Terminal(base + ["--log-file", str(root / "mirror.log"), "mirror"] + common, rows=40, cols=140)
+            try:
+                exercise(mirror, "mirror", args.artifacts)
+            finally:
+                mirror.close()
+                shutil.copyfile(root / "mirror.log", args.artifacts / "mirror-debug.log")
+            return
         # Keep the transport open without a handshake so startup remains observable.
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))

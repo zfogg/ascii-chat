@@ -1051,6 +1051,24 @@ if(TARGET ascii-chat-static)
         endif()
         # Contract cases are registered by the Criterion targets below.
     endif()
+
+    add_executable(test-errno-tui-fixture EXCLUDE_FROM_ALL
+        ${CMAKE_SOURCE_DIR}/tests/standalone/errno/errno_tui_fixture.c)
+    target_link_libraries(test-errno-tui-fixture PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    apply_sanitizers_to_target(test-errno-tui-fixture)
+    target_include_directories(test-errno-tui-fixture PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    set_target_properties(test-errno-tui-fixture PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS AND NOT WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+        if(TARGET tests)
+            add_dependencies(tests test-errno-tui-fixture)
+        endif()
+        add_test(NAME errno-tui-ellipsis COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/tests/integration/errno_tui_ellipsis.py
+            --binary $<TARGET_FILE:test-errno-tui-fixture>)
+        set_tests_properties(errno-tui-ellipsis PROPERTIES LABELS "integration" TIMEOUT 90
+            RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    endif()
 endif()
 
 # Criterion buffer ownership, queue, budget, and concurrency contracts.
@@ -1770,6 +1788,14 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32 AND ASCIICHAT_TEST_FFMPEG AND
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_ui.py --binary $<TARGET_FILE:ascii-chat>
         ${terminal_ui_args})
     set_tests_properties(terminal-ui PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TEST_FFPROBE)
+    add_test(NAME terminal-logs COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_logs.py --binary $<TARGET_FILE:ascii-chat>
+        --artifacts ${CMAKE_BINARY_DIR}/terminal-logs --search-regression-only)
+    set_tests_properties(terminal-logs PROPERTIES LABELS "integration;terminal" TIMEOUT 180
+        RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
 endif()
 
 if(TEST test_unit_crypto_test_gpg_key_expiry)
