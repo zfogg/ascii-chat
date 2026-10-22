@@ -6,6 +6,8 @@ import {
 
 export function ErrorOverlay() {
   const [reports, setReports] = useState<BrowserErrorReport[]>([]);
+  const diagnosticsEnabled =
+    import.meta.env.DEV || import.meta.env.VITE_ENABLE_DIAGNOSTIC_UI === "1";
 
   useEffect(
     () =>
@@ -14,7 +16,7 @@ export function ErrorOverlay() {
   );
 
   const report = reports[0];
-  if (!report) return null;
+  if (!diagnosticsEnabled || !report) return null;
   return (
     <section
       role="alertdialog"
