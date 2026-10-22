@@ -68,7 +68,13 @@ Test(mdns_integration, real_answers_survive_invalid_replacement_and_own_caller_r
   memset(name, 'x', sizeof(name) - 1);
   memset(host, 'y', sizeof(host) - 1);
   asciichat_mdns_discovery_t found = {0};
-  cr_assert_eq(asciichat_mdns_query(query, "_ascii-chat._tcp.local", lifecycle_callback, &found), ASCIICHAT_OK);
+  asciichat_error_t query_result = asciichat_mdns_query(query, "_ascii-chat._tcp.local", lifecycle_callback, &found);
+  if (query_result == ERROR_NETWORK_BIND || query_result == ERROR_NETWORK) {
+    asciichat_mdns_destroy(advertiser);
+    asciichat_mdns_destroy(query);
+    cr_skip_test("mDNS multicast queries are unavailable on this runner");
+  }
+  cr_assert_eq(query_result, ASCIICHAT_OK);
   uint64_t deadline = time_get_ns() + 2 * NS_PER_SEC_INT;
   while (!found.port && time_get_ns() < deadline)
     cr_assert_eq(asciichat_mdns_update(query, 50), ASCIICHAT_OK);

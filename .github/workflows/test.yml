@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       full_matrix:
-        description: Run the full native platform matrix
+        description: Run the full native platform matrix (always enabled for pull requests and branch pushes)
         type: boolean
         default: false
   push:
@@ -79,7 +79,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(inputs.full_matrix == true && '["ubuntu-latest","macos-15","windows-latest"]' || '["ubuntu-latest"]') }}
+        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15","windows-latest"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -111,7 +111,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(inputs.full_matrix == true && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
+        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
         build_type: [debug, release]
         # The macOS Debug/sanitizer combination currently reports unrelated
         # platform-specific test failures. Keep macOS Release coverage and
@@ -341,7 +341,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(inputs.full_matrix == true && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
+        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
 
     steps:
       - name: Checkout code
@@ -444,8 +444,6 @@ jobs:
             export ASAN_SYMBOLIZER_PATH="$(brew --prefix llvm)/bin/llvm-symbolizer"
           fi
           ctest --test-dir build -R '^test_unit_debug_memory_concurrency$' --output-on-failure
-          python3 tests/integration/render_file_audio.py build/bin/ascii-chat
-
           set -o pipefail
 
           # Run integration tests via ctest preset
@@ -513,7 +511,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(inputs.full_matrix == true && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
+        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
 
     steps:
       - name: Checkout code
@@ -673,7 +671,7 @@ jobs:
   coverage:
     name: Publish complete coverage
     needs: [unit-tests, integration-tests, performance-tests]
-    if: ${{ always() && !cancelled() && inputs.full_matrix == true }}
+    if: ${{ always() && !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -838,7 +836,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(inputs.full_matrix == true && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
+        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
 
     steps:
       - name: Checkout code

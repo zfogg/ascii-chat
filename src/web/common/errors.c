@@ -7,9 +7,10 @@ static asciichat_error_context_t browser_error_frames[ASCIICHAT_ERRNO_MAX_DEPTH]
 static size_t browser_error_count;
 
 EMSCRIPTEN_KEEPALIVE size_t wasm_error_snapshot(void) {
-  size_t total = errno_snapshot(thread_current_id(), browser_error_frames, ASCIICHAT_ERRNO_MAX_DEPTH);
-  browser_error_count = total < ASCIICHAT_ERRNO_MAX_DEPTH ? total : ASCIICHAT_ERRNO_MAX_DEPTH;
-  return total;
+  asciichat_errno_snapshot_t snapshot =
+      errno_snapshot(thread_current_id(), browser_error_frames, ASCIICHAT_ERRNO_MAX_DEPTH);
+  browser_error_count = snapshot.copied;
+  return snapshot.total;
 }
 
 static const asciichat_error_context_t *browser_error_at(size_t index) {

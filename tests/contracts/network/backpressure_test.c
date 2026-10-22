@@ -238,8 +238,8 @@ static void *submit_control(void *arg) {
   producer->result = acip_outbound_submitv(producer->transport, &buffer, 1, &admission);
   producer->has_cause = errno_peek_since(scope, &producer->cause);
   asciichat_error_context_t frames[3];
-  size_t count = errno_snapshot(scope.thread_id, frames, 3);
-  for (size_t i = 0; i < count && i < 3; ++i)
+  size_t count = errno_snapshot(scope.thread_id, frames, 3).copied;
+  for (size_t i = 0; i < count; ++i)
     if (frames[i].error_id > scope.after_id && frames[i].has_system_error)
       producer->detail = frames[i];
   CLEAR_ERRNO_ALL();

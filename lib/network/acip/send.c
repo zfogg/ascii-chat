@@ -289,11 +289,10 @@ asciichat_error_t acip_send_error(acip_transport_t *transport, uint32_t error_co
   }
 
   error_code = network_error_public_code((asciichat_error_t)error_code);
-  char stack_message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
-  if (packet_format_error_stack(stack_message, sizeof(stack_message)))
-    message = stack_message;
-  else
-    message = asciichat_error_string((asciichat_error_t)error_code);
+  // Error packets can be sent before authentication. Never let a caller's
+  // context or source locations cross the network boundary.
+  (void)message;
+  message = asciichat_error_string((asciichat_error_t)error_code);
 
   // Calculate message length (max MAX_ERROR_MESSAGE_LENGTH)
   size_t msg_len = 0;
