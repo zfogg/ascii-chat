@@ -128,7 +128,8 @@ def main():
             term.expect(lambda text: str(ports[0]) in text and str(ports[1]) not in text,
                         "Background refresh retained a withdrawn server")
             second = server(1, "second-restarted")
-            text = term.expect(lambda text: all(str(port) in text for port in ports[:2]),
+            text = term.expect(lambda text: all(str(port) in text for port in ports[:2])
+                               and re.search(r"> \[\d+\]", text) and "Auto-refresh" in text,
                                "Background refresh omitted the restarted server")
             assert "r: refresh" not in text
             assert "ascii-chat | LAN servers" not in text
@@ -139,6 +140,11 @@ def main():
             if expected == 1:
                 term.write("k")
                 term.expect(lambda text: "> [2]" in text, "k did not wrap selection")
+            # A PTY read can end after the selected row but before the footer.
+            # Inspect colors only once all parts of the rendered frame arrived.
+            term.expect(lambda text: "> [2]" in text and "Auto-refresh" in text
+                        and sum("━" in line for line in text.splitlines()) == 2,
+                        "Selection frame did not finish rendering its dividers and footer")
             rules = [row for row, line in enumerate(term.screen.display) if "━" in line]
             assert len(rules) == 2, "Header and footer must each have a divider"
             blue = next(term.screen.buffer[rules[0]][col].fg for col, char in enumerate(term.screen.display[rules[0]]) if char == "━")
@@ -153,6 +159,8 @@ def main():
             selected_port = next(port for port in ports[:2]
                                  if str(port) in next(line for line in term.screen.display if "> [2]" in line))
             term.pump(1.8)
+            term.expect(lambda text: re.search(r"> \[\d+\]", text) and "Auto-refresh" in text,
+                        "Background refresh did not finish drawing its selected row and footer")
             assert str(selected_port) in next(line for line in term.screen.display if "> [2]" in line), "Background refresh moved the selection"
             capture(term, args.artifacts, "highlighted-selection")
             term.write("k")
@@ -190,7 +198,9 @@ def main():
             print("PASS explicit --scan discovery, refresh, arrows/j/k, resize/covered input, selection and same-address reconnect")
 
             cancelled = client("cancelled", utf8="false", color="false")
-            cancelled.expect(lambda text: "LAN servers" in text, "Cancellation picker missing")
+            cancelled.expect(lambda text: "LAN servers" in text
+                             and sum(line.strip().startswith("---") for line in text.splitlines()) == 2,
+                             "Cancellation picker missing its completed ASCII dividers")
             assert "━" not in "\n".join(cancelled.screen.display)
             assert sum(line.strip().startswith("---") for line in cancelled.screen.display) == 2
             capture(cancelled, args.artifacts, "ascii-fallback")
@@ -222,6 +232,16 @@ def main():
             boundary.expect(lambda text: "LAN servers" in text and " [12]" in text,
                             "Twelve-row LAN viewport did not fill")
             boundary.pump(2)
+            text = boundary.expect(lambda text: re.search(r"> \[\d+\]", text)
+                                   and "Auto-refresh" in text,
+                                   "Boundary picker did not finish drawing its selected row and footer")
+            # Refresh sorts discoveries while preserving the selected endpoint,
+            # so its row need not remain one after the initial discovery query.
+            current = int(re.search(r"> \[(\d+)\]", text).group(1))
+            if current > 1:
+                boundary.write("k" * (current - 1))
+                boundary.expect(lambda text: "> [1]" in text,
+                                "Could not establish the first row before testing thirteen Down events")
             boundary.write("j" * 13)
             text = boundary.expect(lambda text: "> [14]" in text,
                                    "Selection could not move safely to server 14")
