@@ -11,6 +11,7 @@
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/frame_buffer.h>
+#include <ascii-chat/ui/overlay_box.h>
 #include <ascii-chat/ui/update_banner.h>
 #include <ascii-chat/ui/splash.h>
 #include "session/display.h"
@@ -321,50 +322,39 @@ static void render_update_overlay(terminal_size_t size, const void *data) {
   mutex_unlock(&g_update_result_mutex);
   const char *title = checking ? "Check for updates" : result.update_available ? "Update available" :
                     result.check_succeeded ? "You're up to date" : "Update check unavailable";
-  int width = size.cols < 66 ? size.cols - 2 : 66, height = 15;
-  int left = (size.cols - width) / 2, top = (size.rows - height) / 2;
-  if (left < 0) left = 0;
-  if (top < 0) top = 0;
   char command[512] = {0};
   if (result.update_available)
     update_check_get_upgrade_suggestion(update_check_detect_install_method(), result.latest_version, command, sizeof(command));
-  frame_buffer_t *out = frame_buffer_create((size_t)height, (size_t)width);
-  if (!out) return;
-  // Leave the retained renderer visible outside the box; this is an overlay,
-  // not a replacement screen.
-  frame_buffer_printf(out, "\033[%d;%dH╔", top + 1, left + 1);
-  for (int i = 0; i < width - 2; ++i) frame_buffer_append(out, "═", strlen("═"));
-  frame_buffer_append(out, "╗", strlen("╗"));
-  for (int row = 1; row < height - 1; ++row) {
-    frame_buffer_printf(out, "\033[%d;%dH║", top + row + 1, left + 1);
-    frame_buffer_printf(out, "\033[%d;%dH║", top + row + 1, left + width);
-  }
-  frame_buffer_printf(out, "\033[%d;%dH╚", top + height, left + 1);
-  for (int i = 0; i < width - 2; ++i) frame_buffer_append(out, "═", strlen("═"));
-  frame_buffer_append(out, "╝", strlen("╝"));
-  frame_buffer_printf(out, "\033[%d;%dH\033[1m%s%s\033[0m", top + 3, left + (width - (int)strlen(title)) / 2,
-                      checking ? log_level_color(LOG_COLOR_DEBUG) : result.update_available ? log_level_color(LOG_COLOR_WARN) : log_level_color(LOG_COLOR_INFO), title);
+  char installed[128] = {0}, latest[128] = {0}, checking_line[64] = {0};
+  const char *lines[5] = {0};
+  size_t line_count = 0;
   if (checking) {
     static const char spin[] = "|/-\\";
-    frame_buffer_printf(out, "\033[%d;%dH%s  Checking for updates...", top + 7, left + 6,
-                        (char[]){spin[(time_get_ns() / (150 * NS_PER_MS_INT)) % 4], 0});
+    snprintf(checking_line, sizeof(checking_line), "%c  Checking for updates...",
+             spin[(time_get_ns() / (150 * NS_PER_MS_INT)) % 4]);
+    lines[line_count++] = checking_line;
   } else if (result.check_succeeded) {
-    frame_buffer_printf(out, "\033[%d;%dHInstalled  %s", top + 6, left + 8, result.current_version);
-    frame_buffer_printf(out, "\033[%d;%dHLatest     %s%s\033[0m", top + 7, left + 8,
-                        result.update_available ? log_level_color(LOG_COLOR_INFO) : "", result.latest_version);
+    snprintf(installed, sizeof(installed), "Installed  %s", result.current_version);
+    snprintf(latest, sizeof(latest), "Latest     %s", result.latest_version);
+    lines[line_count++] = installed;
+    lines[line_count++] = latest;
     if (result.update_available) {
-      frame_buffer_printf(out, "\033[%d;%dH%s", top + 9, left + 7, command);
-      frame_buffer_printf(out, "\033[%d;%dHBinaries for every OS with release notes in the GitHub release:", top + 11,
-                          left + 3);
-      frame_buffer_printf(out, "\033[%d;%dH%s", top + 12, left + 5, result.release_url);
+      lines[line_count++] = command;
+      lines[line_count++] = "Binaries for every OS with release notes in the GitHub release:";
+      lines[line_count++] = result.release_url;
     } else {
-      frame_buffer_printf(out, "\033[%d;%dHChecked just now", top + 10, left + (width - 16) / 2);
+      lines[line_count++] = "Checked just now";
     }
   } else {
-    frame_buffer_printf(out, "\033[%d;%dHNo network result is available. Press R to retry.", top + 8, left + 5);
+    lines[line_count++] = "No network result is available. Press R to retry.";
   }
-  frame_buffer_printf(out, "\033[%d;%dH%s", top + height - 2, left + 4,
-                      result.update_available ? "Enter update now  O open GitHub  R retry  F12/Esc close" : "R retry  F12/Esc close");
+  const char *footer = result.update_available ? "Enter update now  O open GitHub  R retry  F12/Esc close"
+                                                : "R retry  F12/Esc close";
+  frame_buffer_t *out = frame_buffer_create((size_t)size.rows, (size_t)size.cols);
+  if (!out)
+    return;
+  ui_overlay_box_t box = {.title = title, .lines = lines, .line_count = line_count, .footer = footer, .minimum_width = 66};
+  (void)ui_overlay_box_render(out, size, &box);
   ui_controller_write(STDOUT_FILENO, frame_buffer_get_content(out), frame_buffer_get_length(out));
   frame_buffer_destroy(out);
 }
