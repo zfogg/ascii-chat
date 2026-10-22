@@ -1708,3 +1708,14 @@ if(BUILD_TESTS AND TARGET test-sync-regressions AND NOT WIN32 AND CMAKE_BUILD_TY
     set_tests_properties(sync-ui-regressions PROPERTIES LABELS "integration" TIMEOUT 180
         RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
 endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32 AND ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TEST_FFPROBE)
+    set(terminal_ui_args)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        list(APPEND terminal_ui_args --debug-sync)
+    endif()
+    add_test(NAME terminal-ui COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_ui.py --binary $<TARGET_FILE:ascii-chat>
+        ${terminal_ui_args})
+    set_tests_properties(terminal-ui PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+endif()
