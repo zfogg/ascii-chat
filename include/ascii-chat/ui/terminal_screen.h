@@ -129,3 +129,14 @@ session_log_buffer_t *terminal_screen_get_log_buffer(void);
  * Should be called before terminal_screen_render() to control output destination.
  */
 void terminal_screen_set_output_fd(int fd);
+
+/** Handle a key while the live log viewer owns the terminal. */
+bool terminal_screen_logs_handle_key(int key);
+/** Reset the retained log-viewer position when the viewer is closed. */
+void terminal_screen_logs_reset(void);
+/** Number of rendered rows currently held above the live tail. */
+size_t terminal_screen_logs_offset(void);
+/** Clamp the retained position after the available history changes. */
+void terminal_screen_logs_set_offset(size_t rows);
+/** True while the log-viewer's own shortcut dialog is displayed. */
+bool terminal_screen_logs_help_open(void);

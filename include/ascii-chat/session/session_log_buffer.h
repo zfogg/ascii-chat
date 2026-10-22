@@ -21,7 +21,13 @@
 #include <stdbool.h>
 
 // Configuration
-#define SESSION_LOG_BUFFER_SIZE 8192
+/*
+ * Keep roughly 16 MiB of formatted logs in the interactive history.  The
+ * former 8 MiB ring was exhausted by a few seconds of verbose transport logs,
+ * making the log viewer appear to scroll while silently losing the requested
+ * history.
+ */
+#define SESSION_LOG_BUFFER_SIZE 16384
 #define SESSION_LOG_LINE_MAX 1024
 
 /**

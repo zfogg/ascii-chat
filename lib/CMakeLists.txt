@@ -46,6 +46,7 @@ set(CORE_SRCS
     ${LIB_DIR}/ui/notice.c
     ${LIB_DIR}/ui/too_small.c
     ${LIB_DIR}/ui/frame_buffer.c
+    ${LIB_DIR}/ui/overlay_box.c
     ${LIB_DIR}/ui/fps_counter.c
     ${LIB_DIR}/ui/terminal_screen.c
     ${LIB_DIR}/ui/keyboard_help.c

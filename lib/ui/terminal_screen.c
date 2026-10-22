@@ -22,6 +22,7 @@
 #include "ascii-chat/util/time.h"
 #include "ascii-chat/platform/system.h"
 #include "ascii-chat/platform/abstraction.h"
+#include "ascii-chat/platform/keyboard.h"
 #include "ascii-chat/platform/mutex.h"
 #include "ascii-chat/log/grep.h"
 #include "ascii-chat/log/log.h"
@@ -51,6 +52,86 @@ static void terminal_screen_free_buffer(void) {
 // Shared process history, with an owned fallback for standalone screen users.
 static session_log_buffer_t *g_session_log_buffer = NULL;
 static bool g_owns_log_buffer;
+
+/* Offset is expressed in rendered terminal rows from the live tail. */
+static size_t g_log_scroll_rows;
+static uint64_t g_log_hold_started_ns;
+static uint64_t g_log_hold_last_ns;
+static int g_log_hold_direction;
+static bool g_log_help;
+
+void terminal_screen_logs_reset(void) {
+  g_log_scroll_rows = 0;
+  g_log_hold_started_ns = 0;
+  g_log_hold_last_ns = 0;
+  g_log_hold_direction = 0;
+  g_log_help = false;
+}
+
+size_t terminal_screen_logs_offset(void) {
+  return g_log_scroll_rows;
+}
+
+void terminal_screen_logs_set_offset(size_t rows) {
+  g_log_scroll_rows = rows;
+}
+
+bool terminal_screen_logs_handle_key(int key) {
+  if (g_log_help) {
+    if (key == KEY_ESCAPE || key == '?') {
+      g_log_help = false;
+      ui_controller_redraw();
+    }
+    return true;
+  }
+  if (key == '?') {
+    g_log_help = true;
+    ui_controller_redraw();
+    return true;
+  }
+  int direction = 0;
+  if (key == KEY_UP || key == 'k')
+    direction = 1;
+  else if (key == KEY_DOWN || key == 'j')
+    direction = -1;
+  else if (key == KEY_LEFT || key == 21)
+    direction = 1000000;
+  else if (key == KEY_RIGHT || key == 4)
+    direction = -1000000;
+  else
+    return false;
+
+  uint64_t now = time_get_ns();
+  size_t step = 1;
+  if (direction == 1 || direction == -1) {
+    if (g_log_hold_direction != direction || now - g_log_hold_last_ns > 250 * NS_PER_MS_INT)
+      g_log_hold_started_ns = now;
+    uint64_t held_ms = (now - g_log_hold_started_ns) / NS_PER_MS_INT;
+    /* A gentle quadratic curve: single taps stay precise, held keys travel. */
+    step += (size_t)((held_ms * held_ms) / 180000);
+    if (step > 64)
+      step = 64;
+  } else {
+    int rows = ui_controller_size().rows;
+    step = (size_t)(rows > 6 ? (rows - 5) / 2 : 1);
+  }
+  g_log_hold_direction = direction;
+  g_log_hold_last_ns = now;
+  if (direction > 0) {
+    if (SIZE_MAX - g_log_scroll_rows < step)
+      g_log_scroll_rows = SIZE_MAX;
+    else
+      g_log_scroll_rows += step;
+  } else {
+    g_log_scroll_rows = g_log_scroll_rows > step ? g_log_scroll_rows - step : 0;
+  }
+  ui_controller_redraw();
+  return true;
+}
+
+bool terminal_screen_logs_help_open(void) {
+  return g_log_help;
+}
 
 static void terminal_screen_render_impl(const terminal_screen_config_t *config) {
   if (!config || !config->render_header)
@@ -121,6 +202,7 @@ void terminal_screen_log_destroy(void) {
       session_log_buffer_destroy(g_session_log_buffer);
     g_session_log_buffer = NULL;
   }
+  terminal_screen_logs_reset();
 }
 
 void terminal_screen_log_clear(void) {

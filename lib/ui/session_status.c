@@ -1,6 +1,7 @@
 /** Server status presentation shared by native and browser sessions. */
 #include <ascii-chat/ui/status.h>
 #include <ascii-chat/ui/terminal_screen.h>
+#include <ascii-chat/ui/overlay_box.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/log/grep.h>
@@ -103,6 +104,32 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, colors);
 }
 
+typedef struct {
+  size_t entry;
+  int row;
+} log_row_ref_t;
+
+static int log_message_rows(const char *message, int width) {
+  int rows = display_height(message, width);
+  return rows > 0 ? rows : 1;
+}
+
+static void append_log_row(frame_buffer_t *body, const char *message, int row, int width) {
+  char plain[SESSION_LOG_LINE_MAX];
+  strip_ansi_codes(message, plain, sizeof(plain));
+  size_t length = strlen(plain);
+  size_t start = (size_t)row * (size_t)width;
+  if (start >= length) {
+    frame_buffer_printf(body, "\n");
+    return;
+  }
+  size_t count = length - start;
+  if (count > (size_t)width)
+    count = (size_t)width;
+  /* A slice can start after a color escape, so use the plain text here. */
+  frame_buffer_printf(body, "%.*s\033[0m\n", (int)count, plain + start);
+}
+
 void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const terminal_screen_config_t *config,
                              session_log_buffer_t *logs) {
   if (!output || !config || !config->render_header || size.cols < 1 || size.rows < 1)
@@ -143,29 +170,30 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
       if (entries)
         count = session_log_buffer_get_recent(logs, entries, SESSION_LOG_BUFFER_SIZE);
     }
-    // Choose a contiguous suffix so a long earlier message cannot displace newer logs.
-    size_t first = count;
-    int used = 0;
-    while (first) {
-      int height = display_height(entries[first - 1].message, size.cols);
-      if (height < 1)
-        height = 1;
-      if (used + height > available)
-        break;
-      used += height;
-      --first;
+    log_row_ref_t *rows = SAFE_MALLOC((size_t)available * sizeof(*rows), log_row_ref_t *);
+    if (rows) {
+      size_t skip = terminal_screen_logs_offset();
+      size_t row_count = 0;
+      for (size_t entry = count; entry && row_count < (size_t)available; --entry) {
+        int height = log_message_rows(entries[entry - 1].message, size.cols);
+        if (skip >= (size_t)height) {
+          skip -= (size_t)height;
+          continue;
+        }
+        int row = height - 1 - (int)skip;
+        skip = 0;
+        for (; row >= 0 && row_count < (size_t)available; --row)
+          rows[row_count++] = (log_row_ref_t){.entry = entry - 1, .row = row};
+      }
+      /* Clamp at the oldest retained line rather than leaving an empty view. */
+      if (skip)
+        terminal_screen_logs_set_offset(terminal_screen_logs_offset() - skip);
+      for (size_t row = row_count; row; --row)
+        append_log_row(body, entries[rows[row - 1].entry].message, rows[row - 1].row, size.cols);
+      while (row_count++ < (size_t)available)
+        frame_buffer_printf(body, "\n");
+      SAFE_FREE(rows);
     }
-    for (size_t i = first; i < count; ++i) {
-      const char *message = entries[i].message;
-      char plain[SESSION_LOG_LINE_MAX];
-      strip_ansi_codes(message, plain, sizeof(plain));
-      size_t start = 0, length = 0;
-      if (log_search_is_active() && log_search_get_match_info(plain, &start, &length) && length)
-        message = grep_highlight_colored(message, plain, start, length);
-      frame_buffer_printf(body, "%s\033[0m\n", message);
-    }
-    while (used++ < available)
-      frame_buffer_printf(body, "\n");
   }
   SAFE_FREE(entries);
 
@@ -193,6 +221,20 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
     mutex_unlock(mutex);
   } else if (config->show_logs) {
     frame_buffer_printf(output, "\033[%d;1H\033[2K", size.rows);
+  }
+  if (config->show_logs && terminal_screen_logs_help_open()) {
+    static const char *const lines[] = {
+        "j / Down       newer line",
+        "k / Up         older line",
+        "Ctrl-D / Right half page newer",
+        "Ctrl-U / Left  half page older",
+    };
+    ui_overlay_box_t box = {.title = "Log Viewer Shortcuts",
+                            .lines = lines,
+                            .line_count = sizeof(lines) / sizeof(lines[0]),
+                            .footer = "? or Esc closes this help",
+                            .minimum_width = 48};
+    (void)ui_overlay_box_render(output, size, &box);
   }
   frame_buffer_destroy(body);
 }

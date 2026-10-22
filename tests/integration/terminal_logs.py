@@ -53,13 +53,22 @@ def exercise(term, name, artifacts):
     term.write("\x1b")
     term.expect(lambda s: "/: search logs" in s, "Escape closed overlay instead of search")
     capture(term, artifacts / f"session-logs-{name}.png")
+    term.write("k")
+    term.expect(lambda s: "1 rows from tail" in s, "k did not scroll one log row older")
+    term.write("j")
+    term.expect(lambda s: "0 rows from tail" in s, "j did not scroll one log row newer")
+    term.write("\x15")
+    term.expect(lambda s: "rows from tail" in s and "0 rows from tail" not in s,
+                "Ctrl-U did not scroll a half page older")
+    term.write("\x04")
+    term.expect(lambda s: "0 rows from tail" in s, "Ctrl-D did not scroll a half page newer")
     term.write("?")
-    term.expect(lambda s: "Keyboard Shortcuts" in s and "/: search logs" not in s,
-                "Help did not replace logs")
-    assert "Live log viewer/searcher TUI" in term.pump(.2)
-    term.write("]")
-    term.expect(lambda s: "/: search logs" in s and "Keyboard Shortcuts" not in s,
-                "Logs did not replace help")
+    term.expect(lambda s: "Log Viewer Shortcuts" in s and "/: search logs" in s,
+                "Log help did not overlay the viewer")
+    capture(term, artifacts / f"session-log-help-{name}.png")
+    term.write("?")
+    term.expect(lambda s: "/: search logs" in s and "Log Viewer Shortcuts" not in s,
+                "Log help did not close back to the viewer")
     term.resize(4, 20)
     term.expect(lambda s: "Terminal too small" in s, "Log size guard missing")
     term.resize(30, 140)
