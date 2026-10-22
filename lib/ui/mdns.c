@@ -121,6 +121,7 @@ typedef struct {
 } mdns_snapshot_t;
 
 #define MDNS_LIVE_CAPACITY 20
+#define MDNS_LIST_MAX_ROWS 12
 typedef struct {
   mutex_t mutex;
   atomic_t stop;
@@ -212,6 +213,8 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
     frame_buffer_destroy(buffer);
     return;
   }
+  if (available > MDNS_LIST_MAX_ROWS)
+    available = MDNS_LIST_MAX_ROWS;
   int shown = snapshot->count < available ? snapshot->count : available;
   if (!shown)
     shown = 1;
