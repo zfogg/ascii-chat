@@ -4,6 +4,7 @@
 #include <ascii-chat/ui/notice.h>
 #include <ascii-chat/ui/controller.h>
 #include <ascii-chat/ui/session.h>
+#include <ascii-chat/ui/errno_stacks.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/ui/too_small.h>
 #include <ascii-chat/ui/fps_counter.h>
@@ -196,7 +197,8 @@ int ui_controller_current_screen(void) {
 }
 
 static bool interactive_screen(int screen) {
-  return screen == UI_SCREEN_HELP || screen == UI_SCREEN_LOGS || screen == UI_SCREEN_SYNC || screen == UI_SCREEN_PROMPT;
+  return screen == UI_SCREEN_HELP || screen == UI_SCREEN_LOGS || screen == UI_SCREEN_ERRNO ||
+         screen == UI_SCREEN_SYNC || screen == UI_SCREEN_PROMPT;
 }
 
 int ui_controller_interactive_screen(void) {
@@ -819,6 +821,8 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   if (screen < 0 || screen >= UI_SCREEN_COUNT || !render || !snapshot || !bytes || minimum.cols <= 0 ||
       minimum.rows <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI screen snapshot");
+  if (interactive_screen(screen) && screen != UI_SCREEN_ERRNO)
+    ui_errno_stacks_hide();
   // A live slot retains its terminal even while LOG_IO redirects process stdio.
   bool live = false;
   if (lifecycle_is_initialized(&g_lifecycle)) {
@@ -1213,6 +1217,7 @@ void ui_controller_hide_logs(void) {
 }
 
 void ui_controller_toggle_logs(void) {
+  ui_errno_stacks_hide();
   if (ui_controller_current_screen() == UI_SCREEN_LOGS) {
     ui_controller_hide_logs();
     return;
