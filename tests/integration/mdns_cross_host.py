@@ -97,15 +97,25 @@ def main():
                 if key.startswith("ASCII_CHAT_"):
                     del os.environ[key]
             os.environ.update(TERM="xterm-256color", ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
-            terminal = Terminal([
-                str(binary), "--no-check-update", "--log-file", str(local_log), "--log-level", "debug",
-                "client", "--scan", "--test-pattern", "--audio=false", "--video-codec", "raw", "--fps", "5",
-                "--splash-screen=true", "--reconnect-attempts", "0",
-            ], rows=24, cols=110)
-            terminal.expect(
-                lambda text: "LAN servers" in text and args.server_address in text and str(tcp_port) in text,
-                "physical Mac server did not appear in the LAN picker", timeout=30,
-            )
+            for attempt in range(3):
+                local_log.write_text("", encoding="utf-8")
+                terminal = Terminal([
+                    str(binary), "--no-check-update", "--log-file", str(local_log), "--log-level", "debug",
+                    "client", "--scan", "--test-pattern", "--audio=false", "--video-codec", "raw", "--fps", "5",
+                    "--splash-screen=true", "--reconnect-attempts", "0",
+                ], rows=24, cols=110)
+                try:
+                    terminal.expect(
+                        lambda text: "LAN servers" in text and args.server_address in text and str(tcp_port) in text,
+                        "physical Mac server did not appear in the LAN picker", timeout=8,
+                    )
+                    break
+                except AssertionError:
+                    terminal.close()
+                    terminal = None
+                    if attempt == 2:
+                        raise
+                    time.sleep(.5)
             capture(terminal, args.artifacts, "macbook-physical-lan-picker")
             terminal.write("\r")
             deadline = time.monotonic() + 30
