@@ -10,7 +10,142 @@ typedef struct {
   packet_type_t type;
   const void *payload;
   void *client;
+  audio_batch_packet_t audio;
+  float samples[4];
 } observation_t;
+
+static void client_audio(const audio_batch_packet_t *header, const float *samples, size_t count, void *context) {
+  observation_t *seen = context;
+  seen->calls++;
+  seen->audio = *header;
+  seen->length = count;
+  cr_assert_leq(count, 4);
+  memcpy(seen->samples, samples, count * sizeof(float));
+}
+
+static void server_audio(const audio_batch_packet_t *header, const float *samples, size_t count, void *client,
+                         void *context) {
+  client_audio(header, samples, count, context);
+  ((observation_t *)context)->client = client;
+}
+
+static void client_signal(void *context) {
+  ((observation_t *)context)->calls++;
+}
+
+static void server_signal(void *client, void *context) {
+  client_signal(context);
+  ((observation_t *)context)->client = client;
+}
+
+static void stream_signal(uint32_t types, void *client, void *context) {
+  server_signal(client, context);
+  ((observation_t *)context)->flags = types;
+}
+
+Test(acip_handlers, audio_batches_decode_wire_samples_and_metadata_for_both_peers) {
+  acip_transport_t transport = {0};
+  observation_t seen = {0};
+  int client;
+  acip_client_callbacks_t c = {.on_audio_batch = client_audio, .app_ctx = &seen};
+  acip_server_callbacks_t s = {.on_audio_batch = server_audio, .app_ctx = &seen};
+  struct {
+    audio_batch_packet_t header;
+    uint32_t samples[4];
+  } packet = {.header = {.batch_count = HOST_TO_NET_U32(2),
+                         .total_samples = HOST_TO_NET_U32(4),
+                         .sample_rate = HOST_TO_NET_U32(48000),
+                         .channels = HOST_TO_NET_U32(2)},
+              .samples = {HOST_TO_NET_U32(0), HOST_TO_NET_U32(0x7fffffff), HOST_TO_NET_U32(0x80000001),
+                          HOST_TO_NET_U32(0x40000000)}};
+  for (unsigned peer = 0; peer < 2; ++peer) {
+    seen.calls = 0;
+    asciichat_error_t result =
+        peer ? acip_handle_server_packet(&transport, PACKET_TYPE_AUDIO_BATCH, &packet, sizeof(packet), &client, &s)
+             : acip_handle_client_packet(&transport, PACKET_TYPE_AUDIO_BATCH, &packet, sizeof(packet), &c);
+    cr_assert_eq(result, ASCIICHAT_OK);
+    cr_assert_eq(seen.calls, 1);
+    cr_assert_eq(seen.audio.batch_count, 2);
+    cr_assert_eq(seen.audio.total_samples, 4);
+    cr_assert_eq(seen.audio.sample_rate, 48000);
+    cr_assert_eq(seen.audio.channels, 2);
+    cr_assert_eq(seen.length, 4);
+    cr_assert_float_eq(seen.samples[0], 0, 1e-7);
+    cr_assert_float_eq(seen.samples[1], 1, 1e-7);
+    cr_assert_float_eq(seen.samples[2], -1, 1e-7);
+    cr_assert_float_eq(seen.samples[3], .5f, 1e-7);
+    if (peer)
+      cr_assert_eq(seen.client, &client);
+  }
+  const uint32_t rates[] = {8000, 16000, 24000, 32000, 44100, 48000, 96000, 192000};
+  for (size_t i = 0; i < sizeof(rates) / sizeof(rates[0]); ++i) {
+    packet.header.sample_rate = HOST_TO_NET_U32(rates[i]);
+    cr_assert_eq(acip_handle_client_packet(&transport, PACKET_TYPE_AUDIO_BATCH, &packet, sizeof(packet), &c),
+                 ASCIICHAT_OK);
+    cr_assert_eq(seen.audio.sample_rate, rates[i]);
+  }
+  const uint32_t bad_rates[] = {0, 7999, 12345, 192001, UINT32_MAX};
+  for (size_t i = 0; i < sizeof(bad_rates) / sizeof(bad_rates[0]); ++i) {
+    packet.header.sample_rate = HOST_TO_NET_U32(bad_rates[i]);
+    seen.calls = 0;
+    cr_assert_eq(acip_handle_client_packet(&transport, PACKET_TYPE_AUDIO_BATCH, &packet, sizeof(packet), &c),
+                 ERROR_INVALID_PARAM);
+    cr_assert_eq(seen.calls, 0);
+  }
+  packet.header.sample_rate = HOST_TO_NET_U32(48000);
+  const uint32_t bad_channels[] = {0, 9, UINT32_MAX};
+  for (size_t i = 0; i < sizeof(bad_channels) / sizeof(bad_channels[0]); ++i) {
+    packet.header.channels = HOST_TO_NET_U32(bad_channels[i]);
+    cr_assert_eq(acip_handle_client_packet(&transport, PACKET_TYPE_AUDIO_BATCH, &packet, sizeof(packet), &c),
+                 ERROR_INVALID_PARAM);
+  }
+  packet.header.channels = HOST_TO_NET_U32(2);
+  seen.calls = 0;
+  for (size_t length = 0; length < sizeof(packet); ++length) {
+    cr_assert_eq(acip_handle_client_packet(&transport, PACKET_TYPE_AUDIO_BATCH, &packet, length, &c),
+                 ERROR_INVALID_PARAM);
+    cr_assert_eq(acip_handle_server_packet(&transport, PACKET_TYPE_AUDIO_BATCH, &packet, length, &client, &s),
+                 ERROR_INVALID_PARAM);
+  }
+  cr_assert_eq(seen.calls, 0);
+}
+
+Test(acip_handlers, ping_pong_console_and_stream_controls_preserve_context_and_wire_flags) {
+  acip_transport_t transport = {0};
+  observation_t seen = {0};
+  int client;
+  acip_client_callbacks_t c = {
+      .on_ping = client_signal, .on_pong = client_signal, .on_clear_console = client_signal, .app_ctx = &seen};
+  acip_server_callbacks_t s = {.on_ping = server_signal,
+                               .on_pong = server_signal,
+                               .on_client_leave = server_signal,
+                               .on_stream_start = stream_signal,
+                               .on_stream_stop = stream_signal,
+                               .app_ctx = &seen};
+  const packet_type_t client_types[] = {PACKET_TYPE_PING, PACKET_TYPE_PONG, PACKET_TYPE_CLEAR_CONSOLE};
+  const packet_type_t server_types[] = {PACKET_TYPE_PING, PACKET_TYPE_PONG, PACKET_TYPE_CLIENT_LEAVE};
+  for (size_t i = 0; i < 3; ++i) {
+    seen.calls = 0;
+    cr_assert_eq(acip_handle_client_packet(&transport, client_types[i], NULL, 0, &c), ASCIICHAT_OK);
+    cr_assert_eq(seen.calls, 1);
+    cr_assert_eq(acip_handle_server_packet(&transport, server_types[i], NULL, 0, &client, &s), ASCIICHAT_OK);
+    cr_assert_eq(seen.calls, 2);
+    cr_assert_eq(seen.client, &client);
+  }
+  const packet_type_t stream_types[] = {PACKET_TYPE_STREAM_START, PACKET_TYPE_STREAM_STOP};
+  uint8_t unaligned[] = {0xff, 0x12, 0x34, 0xab, 0xcd};
+  for (size_t i = 0; i < 2; ++i) {
+    seen.calls = 0;
+    for (size_t length = 0; length < 4; ++length)
+      cr_assert_eq(acip_handle_server_packet(&transport, stream_types[i], unaligned + 1, length, &client, &s),
+                   ERROR_INVALID_PARAM);
+    cr_assert_eq(seen.calls, 0);
+    cr_assert_eq(acip_handle_server_packet(&transport, stream_types[i], unaligned + 1, 4, &client, &s), ASCIICHAT_OK);
+    cr_assert_eq(seen.calls, 1);
+    cr_assert_eq(seen.flags, 0x1234abcd);
+    cr_assert_eq(seen.client, &client);
+  }
+}
 
 static void ascii_frame(const ascii_frame_packet_t *header, const void *data, size_t length, void *context) {
   observation_t *seen = context;
