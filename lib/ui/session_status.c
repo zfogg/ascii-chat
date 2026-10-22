@@ -248,7 +248,9 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
   SAFE_FREE(entries);
 
   // Preserve the existing repaint-in-place behavior, also supplying CR for browser terminals.
-  frame_buffer_printf(output, "\033[H%s", config->hide_cursor ? "\033[?25l" : "\033[?25h");
+  bool log_help_open = config->show_logs && terminal_screen_logs_help_open();
+  bool hide_cursor = log_help_open || (!entering && (config->hide_cursor || config->show_logs));
+  frame_buffer_printf(output, "\033[H%s", hide_cursor ? "\033[?25l" : "\033[?25h");
   const char *content = frame_buffer_get_content(body);
   size_t length = frame_buffer_get_length(body);
   for (size_t i = 0; i < length; ++i) {
@@ -274,7 +276,7 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
                         pattern ? pattern + offset : "", size.rows, cursor - offset + 2);
     mutex_unlock(mutex);
   }
-  if (config->show_logs && terminal_screen_logs_help_open()) {
+  if (log_help_open) {
     char lines[4][128];
     snprintf(lines[0], sizeof(lines[0]), "%s / %s        newer line", colored_string(LOG_COLOR_WARN, "j"),
              colored_string(LOG_COLOR_WARN, "Down"));
