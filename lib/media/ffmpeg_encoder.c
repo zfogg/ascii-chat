@@ -397,6 +397,17 @@ static const AVCodec *encoder_find_video_codec(const char *codec_name) {
       log_info("ffmpeg: using fallback H.264 encoder '%s' (libx264 not available)", codec->name);
     }
   }
+  if (!codec && strcmp(codec_name, "libvpx-vp9") == 0) {
+    // Homebrew and distribution FFmpeg builds do not consistently expose the
+    // libvpx VP9 encoder under the preferred name. Both VP9 and VP8 remain
+    // valid WebM video codecs.
+    static const char *webm_fallbacks[] = {"libvpx", "vp9", "libvpx-vp8", "vp8", NULL};
+    for (int i = 0; webm_fallbacks[i] && !codec; ++i)
+      codec = avcodec_find_encoder_by_name(webm_fallbacks[i]);
+    if (codec) {
+      log_info("ffmpeg: using fallback WebM encoder '%s' (libvpx-vp9 not available)", codec->name);
+    }
+  }
   return codec;
 }
 
