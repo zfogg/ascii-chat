@@ -42,20 +42,44 @@ export function ErrorOverlay() {
             Dismiss{reports.length > 1 ? ` (${reports.length})` : ""}
           </button>
         </div>
-        <ol className="space-y-2 font-mono text-sm">
+        <p className="mb-2 font-mono text-xs text-terminal-7">
+          Stack order: 0 is newest
+        </p>
+        <ol className="space-y-4 font-mono text-sm">
           {report.frames.map((frame, index) => (
             <li
               key={`${report.id}-${index}`}
-              className="border-l-2 border-red-800 pl-3"
+              className="grid grid-cols-[2rem_1fr] gap-x-3 border border-red-900 bg-red-950/15 px-3 py-2"
             >
-              <div className="text-red-100">{frame.message}</div>
-              {(frame.file || frame.function || frame.line) && (
-                <div className="break-all text-xs text-red-400">
-                  {frame.file || "<unknown>"}:{frame.line ?? 0}
-                  {frame.function ? ` in ${frame.function}()` : ""}
-                  {frame.code !== undefined ? ` [code ${frame.code}]` : ""}
-                </div>
-              )}
+              <span
+                className="row-span-2 self-center border border-red-800 py-1 text-center text-xs text-red-300"
+                title={index === 0 ? "Newest error" : `Stack frame ${index}`}
+              >
+                {index}
+              </span>
+              <div>
+                {(frame.file || frame.function || frame.line) && (
+                  <div className="mb-1 break-all text-xs">
+                    <span className="text-blue-400">
+                      {frame.file || "<unknown>"}
+                    </span>
+                    <span className="text-terminal-fg">:</span>
+                    <span className="text-purple-400">{frame.line ?? 0}</span>
+                    {frame.function && (
+                      <>
+                        <span className="text-terminal-fg"> in </span>
+                        <span className="text-orange-400">
+                          {frame.function}()
+                        </span>
+                      </>
+                    )}
+                    {frame.code !== undefined && (
+                      <span className="text-red-400"> [code {frame.code}]</span>
+                    )}
+                  </div>
+                )}
+                <div className="text-red-100">{frame.message}</div>
+              </div>
             </li>
           ))}
         </ol>

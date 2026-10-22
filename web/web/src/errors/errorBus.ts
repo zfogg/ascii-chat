@@ -95,10 +95,21 @@ export function reportProtocolError(
   return publishBrowserError({
     source: "Protocol",
     title: `Remote protocol error ${code}`,
-    frames: (lines.length ? lines : [message]).map((line) => ({
-      message: line,
-    })),
+    frames: (lines.length ? lines : [message]).map(parseProtocolFrame),
   });
+}
+
+const PROTOCOL_FRAME = /^(.*) \((.*):(\d+) in ([^()]+)\(\)\)$/;
+
+function parseProtocolFrame(line: string): BrowserErrorFrame {
+  const match = PROTOCOL_FRAME.exec(line);
+  if (!match) return { message: line };
+  return {
+    message: match[1]!,
+    file: match[2]!,
+    line: Number(match[3]),
+    function: match[4]!,
+  };
 }
 
 export function formatReportForProtocol(report: BrowserErrorReport): string {

@@ -17,6 +17,7 @@
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/overflow.h>
+#include <ascii-chat/util/path.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
@@ -912,9 +913,9 @@ size_t packet_format_error_stack(char *buffer, size_t size) {
   size_t offset = 0;
   for (size_t i = 0; i < frame_count && offset < size - 1; ++i) {
     const asciichat_error_context_t *frame = &frames[i];
-    int written =
-        snprintf(buffer + offset, size - offset, "%s%s (%s:%d in %s())", i ? "\n" : "", frame->context_message,
-                 frame->file ? frame->file : "<unknown>", frame->line, frame->function ? frame->function : "<unknown>");
+    const char *file = extract_project_relative_path(frame->file);
+    int written = snprintf(buffer + offset, size - offset, "%s%s (%s:%d in %s())", i ? "\n" : "",
+                           frame->context_message, file, frame->line, frame->function ? frame->function : "<unknown>");
     if (written < 0)
       break;
     size_t available = size - offset;
