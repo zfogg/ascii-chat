@@ -190,8 +190,9 @@ static size_t json_escape_async_safe(const char *src, char *dest, size_t dest_si
   }
 
   size_t pos = 0;
-  for (const char *p = src; *p && pos < dest_size - 1; p++) {
-    char c = *p;
+  const char *p = src;
+  while (*p && pos < dest_size - 1) {
+    char c = *p++;
     if (c == '"' || c == '\\') {
       if (pos + 1 < dest_size - 1) {
         dest[pos++] = '\\';
@@ -225,16 +226,17 @@ static size_t json_escape_async_safe(const char *src, char *dest, size_t dest_si
       continue;
     } else if ((unsigned char)c >= 0x80) {
       // Preserve complete UTF-8 characters when the fixed output buffer fills.
+      const char *character = p - 1;
       size_t available = 0;
-      while (available < 4 && p[available])
+      while (available < 4 && character[available])
         available++;
-      int bytes = utf8_next_char_bytes(p, available);
+      int bytes = utf8_next_char_bytes(character, available);
       if (bytes < 0)
         continue;
       if (pos + (size_t)bytes >= dest_size)
         break;
       for (int i = 0; i < bytes; ++i)
-        dest[pos++] = p[i];
+        dest[pos++] = character[i];
       p += bytes - 1;
     } else {
       dest[pos++] = c;
