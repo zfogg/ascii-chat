@@ -7,6 +7,12 @@ import type {
   RuntimeValues,
 } from "@ascii-chat/shared/wasm";
 import { createWasmModule } from "@ascii-chat/shared/wasm";
+import {
+  forwardJavaScriptError,
+  publishBrowserError,
+  reportJavaScriptError,
+  type BrowserErrorFrame,
+} from "../errors/errorBus";
 
 export const BINARY_OPENPGP_KEY_PREFIX = "ascii-chat:openpgp-binary-base64:";
 
@@ -46,6 +52,13 @@ interface AsciiChatWasmExports {
 
 // Type definition for the Emscripten module
 interface ClientModuleExports {
+  _wasm_error_snapshot(): number;
+  _wasm_error_code(index: number): number;
+  _wasm_error_message(index: number): number;
+  _wasm_error_file(index: number): number;
+  _wasm_error_function(index: number): number;
+  _wasm_error_line(index: number): number;
+  _wasm_error_dismiss(): void;
   _client_decode_frame_data(
     encoded: number,
     encodedLength: number,
@@ -256,6 +269,41 @@ interface ClientModule extends ClientModuleExports, RuntimeOptionsModule {
   _free: ClientModuleExports["_free"];
 }
 
+/** Publish the complete pending C error stack and throw at the JS boundary. */
+export function throwWasmError(result: number, fallback: string): never {
+  const module = wasmModule;
+  const frames: BrowserErrorFrame[] = [];
+  if (module) {
+    const total = module._wasm_error_snapshot();
+    const count = Math.min(total, 64);
+    for (let index = 0; index < count; index++) {
+      frames.push({
+        code: module._wasm_error_code(index),
+        message:
+          module.UTF8ToString(module._wasm_error_message(index)) || fallback,
+        file: module.UTF8ToString(module._wasm_error_file(index)),
+        function: module.UTF8ToString(module._wasm_error_function(index)),
+        line: module._wasm_error_line(index),
+      });
+    }
+  }
+  publishBrowserError({
+    source: "C/WASM",
+    title: `${fallback} (${result})`,
+    frames: frames.length ? frames : [{ code: result, message: fallback }],
+    dismiss: () => module?._wasm_error_dismiss(),
+  });
+  const error = new Error(`${fallback} (${result})`);
+  Object.defineProperty(error, "asciichatWasmReported", { value: true });
+  throw error;
+}
+
+export function isReportedWasmError(error: unknown): boolean {
+  return Boolean(
+    error && typeof error === "object" && "asciichatWasmReported" in error,
+  );
+}
+
 export interface ClientCryptoOptions {
   allowedClientPublicKeyText?: string;
   password?: string;
@@ -271,7 +319,7 @@ export function acceptRemoteRenderSettings(payload: Uint8Array): RuntimeValues {
   try {
     wasmModule.HEAPU8.set(payload, pointer);
     const result = wasmModule._client_settings_receive(pointer, payload.length);
-    if (result) throw new Error(`Invalid remote settings (${result})`);
+    if (result) throwWasmError(result, "Invalid remote settings");
     const values = wasmModule._client_settings_values();
     if (!values) throw new Error("Cannot read effective remote settings");
     try {
@@ -515,15 +563,13 @@ export async function configureClientCrypto(
         throw new Error("Unable to allocate the verification key");
       wasmModule.HEAPU8.set(expectedServerPublicKey, expectedServerPtr);
     }
-    if (
-      (configure ?? wasmModule._client_configure_crypto_options)(
-        passwordPtr,
-        identityPtr,
-        expectedServerPtr,
-      ) !== 0
-    ) {
-      throw new Error("WASM rejected the configured crypto settings");
-    }
+    const result = (configure ?? wasmModule._client_configure_crypto_options)(
+      passwordPtr,
+      identityPtr,
+      expectedServerPtr,
+    );
+    if (result !== 0)
+      throwWasmError(result, "WASM rejected the configured crypto settings");
   } finally {
     if (passwordPtr) {
       wasmModule.HEAPU8.fill(0, passwordPtr, passwordPtr + passwordBytes);
@@ -605,13 +651,28 @@ function parseKeyInWorker(
   return new Promise((resolve, reject) => {
     pendingKeyParserRequests.set(id, { resolve, reject });
     worker.onmessage = (
-      event: MessageEvent<{ id: number; bytes?: ArrayBuffer; error?: string }>,
+      event: MessageEvent<{
+        id: number;
+        bytes?: ArrayBuffer;
+        error?: string;
+        frames?: BrowserErrorFrame[];
+      }>,
     ) => {
       const pending = pendingKeyParserRequests.get(event.data.id);
       if (!pending) return;
       pendingKeyParserRequests.delete(event.data.id);
-      if (event.data.error) pending.reject(new Error(event.data.error));
-      else if (event.data.bytes)
+      if (event.data.error) {
+        if (event.data.frames?.length)
+          publishBrowserError({
+            source: "C/WASM",
+            title: event.data.error,
+            frames: event.data.frames,
+          });
+        const error = new Error(event.data.error);
+        if (event.data.frames?.length) forwardJavaScriptError(error);
+        else reportJavaScriptError(error);
+        pending.reject(error);
+      } else if (event.data.bytes)
         pending.resolve(new Uint8Array(event.data.bytes));
       else pending.reject(new Error("SSH key parser returned no result"));
     };
@@ -729,7 +790,7 @@ async function initializeClientWasm(options: ClientInitOptions): Promise<void> {
     const result = wasmModule._client_init_with_args(strPtr);
     console.log("[Client WASM] _client_init_with_args returned:", result);
     if (result !== 0) {
-      throw new Error("Failed to initialize client WASM module");
+      throwWasmError(result, "Failed to initialize client WASM module");
     }
     clientInitialized = true;
     console.log("[Client WASM] Initialization complete!");
@@ -772,7 +833,7 @@ export async function generateKeypair(): Promise<string> {
   console.log("[Client WASM] Generating keypair...");
   const result = wasmModule._client_generate_keypair();
   if (result !== 0) {
-    throw new Error("Failed to generate keypair");
+    throwWasmError(result, "Failed to generate keypair");
   }
 
   // Get the public key as hex string
@@ -815,7 +876,7 @@ export function setServerAddress(serverHost: string, serverPort: number): void {
     wasmModule.stringToUTF8(serverHost, hostPtr, hostLen);
     const result = wasmModule._client_set_server_address(hostPtr, serverPort);
     if (result !== 0) {
-      throw new Error("Failed to set server address");
+      throwWasmError(result, "Failed to set server address");
     }
   } finally {
     wasmModule._free(hostPtr);
@@ -850,7 +911,7 @@ export function handleCryptoParameters(rawPacket: Uint8Array): void {
       `[WASM] handleCryptoParameters: Result=${result}, state after=${getConnectionState()}`,
     );
     if (result !== 0) {
-      throw new Error("Failed to handle CRYPTO_PARAMETERS");
+      throwWasmError(result, "Failed to handle CRYPTO_PARAMETERS");
     }
   } finally {
     wasmModule._free(packetPtr);
@@ -885,7 +946,7 @@ export function handleKeyExchangeInit(rawPacket: Uint8Array): void {
       `[WASM] handleKeyExchangeInit: Result=${result}, state after=${getConnectionState()}`,
     );
     if (result !== 0) {
-      throw new Error("Failed to handle KEY_EXCHANGE_INIT");
+      throwWasmError(result, "Failed to handle KEY_EXCHANGE_INIT");
     }
   } finally {
     wasmModule._free(packetPtr);
@@ -916,7 +977,7 @@ export function handleAuthChallenge(rawPacket: Uint8Array): void {
       `[WASM] handleAuthChallenge: Result=${result}, state after=${getConnectionState()}`,
     );
     if (result !== 0) {
-      throw new Error("Failed to handle AUTH_CHALLENGE");
+      throwWasmError(result, "Failed to handle AUTH_CHALLENGE");
     }
   } finally {
     wasmModule._free(packetPtr);
@@ -947,7 +1008,7 @@ export function handleHandshakeComplete(rawPacket: Uint8Array): void {
       `[WASM] handleHandshakeComplete: Result=${result}, state after=${getConnectionState()}`,
     );
     if (result !== 0) {
-      throw new Error("Failed to handle HANDSHAKE_COMPLETE");
+      throwWasmError(result, "Failed to handle HANDSHAKE_COMPLETE");
     }
   } finally {
     wasmModule._free(packetPtr);
@@ -1004,7 +1065,7 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
     );
 
     if (result !== 0) {
-      throw new Error("Encryption failed");
+      throwWasmError(result, "Encryption failed");
     }
 
     // Read output length
@@ -1057,7 +1118,7 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
     );
 
     if (result !== 0) {
-      throw new Error("Decryption failed");
+      throwWasmError(result, "Decryption failed");
     }
 
     // Read output length
@@ -1152,7 +1213,7 @@ export function serializePacket(
     );
 
     if (result !== 0) {
-      throw new Error("Serialization failed");
+      throwWasmError(result, "Serialization failed");
     }
 
     // Read output length
@@ -1191,7 +1252,7 @@ export async function sendVideoFrame(
     wasmModule.HEAPU8.set(rgbaData, dataPtr);
     const result = wasmModule._client_send_video_frame(dataPtr, width, height);
     if (result !== 0) {
-      throw new Error("Failed to send video frame");
+      throwWasmError(result, "Failed to send video frame");
     }
   } finally {
     wasmModule._free(dataPtr);
@@ -1214,9 +1275,8 @@ export function getConnectionState(): ConnectionState {
 export function setColorMode(mode: ColorMode): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  if (wasmModule._client_set_color_mode(mode) !== 0) {
-    throw new Error(`Invalid color mode: ${mode}`);
-  }
+  const result = wasmModule._client_set_color_mode(mode);
+  if (result !== 0) throwWasmError(result, `Invalid color mode: ${mode}`);
 }
 
 /**
@@ -1233,9 +1293,8 @@ export function getColorMode(): ColorMode {
 export function setColorFilter(filter: ColorFilter): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  if (wasmModule._client_set_color_filter(filter) !== 0) {
-    throw new Error(`Invalid color filter: ${filter}`);
-  }
+  const result = wasmModule._client_set_color_filter(filter);
+  if (result !== 0) throwWasmError(result, `Invalid color filter: ${filter}`);
 }
 
 /**
@@ -1262,7 +1321,7 @@ export function setPalette(palette: Palette): void {
     wasmModule.stringToUTF8(palette, strPtr, strLen);
     const result = wasmModule._client_set_palette(strPtr);
     if (result !== 0) {
-      throw new Error(`Failed to set palette: ${palette}`);
+      throwWasmError(result, `Failed to set palette: ${palette}`);
     }
   } finally {
     wasmModule._free(strPtr);
@@ -1295,7 +1354,7 @@ export function setPaletteChars(chars: string): void {
     wasmModule.stringToUTF8(chars, strPtr, strLen);
     const result = wasmModule._client_set_palette_chars(strPtr);
     if (result !== 0) {
-      throw new Error(`Failed to set palette chars: ${chars}`);
+      throwWasmError(result, `Failed to set palette chars: ${chars}`);
     }
   } finally {
     wasmModule._free(strPtr);
@@ -1318,9 +1377,9 @@ export function getPaletteChars(): string {
 export function setMatrixRain(enabled: boolean): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  if (wasmModule._client_set_matrix_rain(enabled ? 1 : 0) !== 0) {
-    throw new Error(`Failed to set matrix rain: ${enabled}`);
-  }
+  const result = wasmModule._client_set_matrix_rain(enabled ? 1 : 0);
+  if (result !== 0)
+    throwWasmError(result, `Failed to set matrix rain: ${enabled}`);
 }
 
 /**
@@ -1337,9 +1396,8 @@ export function getMatrixRain(): boolean {
 export function setFlipX(enabled: boolean): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  if (wasmModule._client_set_flip_x(enabled ? 1 : 0) !== 0) {
-    throw new Error(`Failed to set flip X: ${enabled}`);
-  }
+  const result = wasmModule._client_set_flip_x(enabled ? 1 : 0);
+  if (result !== 0) throwWasmError(result, `Failed to set flip X: ${enabled}`);
 }
 
 /**
@@ -1356,9 +1414,8 @@ export function getFlipX(): boolean {
 export function setTargetFps(fps: number): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  if (wasmModule._client_set_target_fps(fps) !== 0) {
-    throw new Error(`Invalid target FPS: ${fps}`);
-  }
+  const result = wasmModule._client_set_target_fps(fps);
+  if (result !== 0) throwWasmError(result, `Invalid target FPS: ${fps}`);
 }
 
 /**
@@ -1375,9 +1432,8 @@ export function getTargetFps(): number {
 export function setWidth(width: number): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  if (wasmModule._client_set_width(width) !== 0) {
-    throw new Error(`Invalid width: ${width}`);
-  }
+  const result = wasmModule._client_set_width(width);
+  if (result !== 0) throwWasmError(result, `Invalid width: ${width}`);
 }
 
 /**
@@ -1394,9 +1450,8 @@ export function getWidth(): number {
 export function setHeight(height: number): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  if (wasmModule._client_set_height(height) !== 0) {
-    throw new Error(`Invalid height: ${height}`);
-  }
+  const result = wasmModule._client_set_height(height);
+  if (result !== 0) throwWasmError(result, `Invalid height: ${height}`);
 }
 
 /**
@@ -1494,7 +1549,8 @@ export class PeerCryptoSession {
         ? wasmModule!._peer_crypto_receive(this.handle, pointer, packet.length)
         : wasmModule!._peer_crypto_send(this.handle, pointer, packet.length);
       if (result !== 0)
-        throw new Error(
+        throwWasmError(
+          result,
           wasmModule!.UTF8ToString(wasmModule!._peer_crypto_error()),
         );
     } finally {
@@ -1557,16 +1613,16 @@ export function validateReceivedFrame(
   try {
     wasmModule.HEAPU8.set(bytes, text);
     if (contract) wasmModule.HEAPU8.set(metadata, contract);
-    if (
-      compressed &&
-      wasmModule._client_decode_frame_data(
-        text,
-        bytes.length,
-        output,
-        originalSize,
-      ) !== 0
-    )
-      throw new Error("Decompressed ASCII frame size mismatch");
+    const decodeResult = compressed
+      ? wasmModule._client_decode_frame_data(
+          text,
+          bytes.length,
+          output,
+          originalSize,
+        )
+      : 0;
+    if (decodeResult !== 0)
+      throwWasmError(decodeResult, "Decompressed ASCII frame size mismatch");
     const result = wasmModule._client_validate_frame(
       output,
       originalSize,
@@ -1577,8 +1633,7 @@ export function validateReceivedFrame(
       contract,
       metadata.length,
     );
-    if (result !== 0)
-      throw new Error(`Invalid received rendered frame (errno ${result})`);
+    if (result !== 0) throwWasmError(result, "Invalid received rendered frame");
     return wasmModule.HEAPU8.slice(output, output + originalSize);
   } finally {
     wasmModule._free(text);
