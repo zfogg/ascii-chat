@@ -1006,6 +1006,24 @@ if(TARGET ascii-chat-static)
         endif()
         # Contract cases are registered by the Criterion targets below.
     endif()
+
+    add_executable(test-errno-tui-fixture EXCLUDE_FROM_ALL
+        ${CMAKE_SOURCE_DIR}/tests/standalone/errno/errno_tui_fixture.c)
+    target_link_libraries(test-errno-tui-fixture PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    apply_sanitizers_to_target(test-errno-tui-fixture)
+    target_include_directories(test-errno-tui-fixture PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    set_target_properties(test-errno-tui-fixture PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS AND NOT WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+        if(TARGET tests)
+            add_dependencies(tests test-errno-tui-fixture)
+        endif()
+        add_test(NAME errno-tui-ellipsis COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/tests/integration/errno_tui_ellipsis.py
+            --binary $<TARGET_FILE:test-errno-tui-fixture>)
+        set_tests_properties(errno-tui-ellipsis PROPERTIES LABELS "integration" TIMEOUT 90
+            RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    endif()
 endif()
 
 # Criterion buffer ownership, queue, budget, and concurrency contracts.

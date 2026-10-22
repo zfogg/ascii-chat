@@ -279,6 +279,17 @@ const char *colored_string(log_color_t color, const char *text);
 void truncate_with_ellipsis(const char *input, char *output, size_t output_size, int max_width);
 
 /**
+ * @brief Truncate a string to a maximum display width with a terminal-appropriate ellipsis.
+ *
+ * Behaves like truncate_with_ellipsis(), except @p utf8 selects the suffix:
+ * "…" for UTF-8 terminals or "..." for ASCII-only terminals. The suffix is
+ * included in @p max_width and ANSI reset handling is preserved.
+ *
+ * @ingroup util
+ */
+void truncate_with_ellipsis_mode(const char *input, char *output, size_t output_size, int max_width, bool utf8);
+
+/**
  * @brief Strip ANSI escape codes from a string
  *
  * Removes all ANSI escape sequences from the input string, suitable for
