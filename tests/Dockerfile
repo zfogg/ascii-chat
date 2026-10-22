@@ -44,6 +44,7 @@ RUN chmod +x /tmp/install-deps.sh && \
 RUN pacman -S --noconfirm --needed \
   which \
   openssh \
+  gnupg \
   clang-tools \
   python-pyte \
   python-pexpect \
