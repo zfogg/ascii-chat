@@ -188,9 +188,11 @@ static void render_update_dialog(terminal_size_t size, const update_check_result
     update_center_line(out, top + 7, left + 2, width - 4, "Contacting GitHub Releases...", LOG_COLOR_RESET);
     update_center_line(out, top + 9, left + 2, width - 4, "Video chat in your terminal", muted);
   } else if (result->check_succeeded) {
-    char installed[160], latest[160];
+    char installed[160], latest[160], installed_version[128];
+    snprintf(installed_version, sizeof(installed_version), "%s%s", result->current_version[0] == 'v' ? "" : "v",
+             result->current_version);
     snprintf(installed, sizeof(installed), "Installed  %s",
-             colored_string(available ? yellow : green, result->current_version));
+             colored_string(available ? yellow : green, installed_version));
     snprintf(latest, sizeof(latest), "Latest     %s", colored_string(green, result->latest_version));
     update_center_line(out, top + 4, left + 2, width - 4, installed, LOG_COLOR_RESET);
     update_center_line(out, top + 5, left + 2, width - 4, latest, LOG_COLOR_RESET);
