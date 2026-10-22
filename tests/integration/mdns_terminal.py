@@ -136,11 +136,7 @@ def main():
             term.pump(.2)
             term.write("j")
             expected = 2 if current == 1 else 1
-            try:
-                term.expect(lambda text: f"> [{expected}]" in text, "j did not move selection", timeout=3)
-            except AssertionError:
-                term.write("j")
-                term.expect(lambda text: f"> [{expected}]" in text, "j did not move selection")
+            term.expect(lambda text: f"> [{expected}]" in text, "j did not move selection", timeout=5)
             if expected == 1:
                 term.write("k")
                 term.expect(lambda text: "> [2]" in text, "k did not wrap selection")

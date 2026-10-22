@@ -1,0 +1,5 @@
+# Python retains interpreter-owned allocations until process teardown. Native
+# allocations from ascii-chat do not have these CPython allocator frames.
+leak:_PyMem_RawMalloc
+leak:_PyObject_Malloc
+leak:PyMem_Malloc

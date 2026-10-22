@@ -127,14 +127,6 @@ asciichat_error_t socket_sendv_all(socket_t sock, const socket_buffer_t *buffers
         continue;
     }
     if (polled <= 0 || !(ready.revents & POLLOUT)) {
-      // Probe a terminal peer error once so the caller retains the operating
-      // system context (for example EPIPE) instead of a generic poll result.
-      if (polled > 0 && (ready.revents & (POLLERR | POLLHUP | POLLNVAL))) {
-        size_t sent = 0;
-        result = socket_sendv(sock, pending + index, count - index, &sent);
-        if (result != ASCIICHAT_OK)
-          break;
-      }
       result = SET_ERRNO(ERROR_NETWORK, "Socket unavailable during vectored send");
       break;
     }

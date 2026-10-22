@@ -7,6 +7,15 @@ import subprocess
 import sys
 
 
+def append_lsan_suppression(environment):
+    """Suppress interpreter-owned teardown allocations without masking native leaks."""
+    if "suppressions=" in environment.get("LSAN_OPTIONS", ""):
+        return
+    suppression = Path(__file__).with_name("python_interpreter.lsan.supp")
+    options = environment.get("LSAN_OPTIONS", "")
+    environment["LSAN_OPTIONS"] = ":".join(filter(None, (options, f"suppressions={suppression}")))
+
+
 def coverage_counters(root):
     return {path: path.stat().st_mtime_ns for path in root.rglob("*.gcda")}
 
@@ -22,12 +31,7 @@ def main():
         parser.error("a Python test command is required")
 
     environment = dict(os.environ)
-    # The test process loads the sanitizer-instrumented native shared library.
-    # Python's interpreter-owned allocations survive interpreter teardown and
-    # are outside the native test's leak contract.
-    asan_options = environment.get("ASAN_OPTIONS", "")
-    if "detect_leaks=" not in asan_options:
-        environment["ASAN_OPTIONS"] = ":".join(filter(None, (asan_options, "detect_leaks=0")))
+    append_lsan_suppression(environment)
     before = {}
     if args.coverage_build:
         if args.coverage_root is None:
