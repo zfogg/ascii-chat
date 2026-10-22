@@ -75,6 +75,8 @@ static asciichat_error_t probe(const char *mode) {
     ui_input_shutdown();
     ui_controller_shutdown();
     keyboard_destroy();
+  } else if (strcmp(mode, "dark") == 0 || strcmp(mode, "light") == 0) {
+    REQUIRE(terminal_has_dark_background() == (strcmp(mode, "dark") == 0));
   } else if (strcmp(mode, "background") == 0 || strcmp(mode, "bad-background") == 0) {
     uint8_t r = 17, g = 34, b = 51;
     bool result = terminal_query_background_color(&r, &g, &b);

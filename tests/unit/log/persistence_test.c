@@ -4,6 +4,8 @@
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/common.h>
 #include <string.h>
+#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/util/utf8.h>
 
 static char directory[PLATFORM_MAX_PATH_LENGTH], path[PLATFORM_MAX_PATH_LENGTH];
 
@@ -143,4 +145,52 @@ Test(log_persistence, recoloring_rejects_incomplete_headers_and_keeps_message_co
     cr_assert_not_null(strstr(output, "unique-message"));
     cr_assert_not_null(strstr(output, "function"));
   }
+}
+
+Test(log_persistence, notice_records_follow_levels_while_announcements_bypass_them) {
+  session_log_buffer_t *buffer = session_log_buffer_create();
+  cr_assert_not_null(buffer);
+  log_set_session_log_buffer(buffer);
+  cr_assert_eq(log_set_format("[%level] ", false), ASCIICHAT_OK);
+  log_set_level(LOG_ERROR);
+  ui_notice_log(UI_NOTICE_INFO, "notice-test.c", 12, "test", "FILTERED TITLE", "hidden body");
+  ui_notice_log(UI_NOTICE_DANGER, "notice-test.c", 13, "test", "ERROR TITLE", "error body %d", 7);
+  ui_notice_announce("notice-test.c", 14, "test", "ANNOUNCED TITLE", "important body %s", "ready");
+  char *records = read_records(NULL);
+  cr_assert_null(strstr(records, "FILTERED TITLE"));
+  cr_assert_not_null(strstr(records, "ERROR TITLE"));
+  cr_assert_not_null(strstr(records, "error body 7"));
+  cr_assert_not_null(strstr(records, "ANNOUNCED TITLE"));
+  cr_assert_not_null(strstr(records, "important body ready"));
+  cr_assert_null(strstr(records, "\033["));
+  SAFE_FREE(records);
+  session_log_entry_t entries[8];
+  size_t count = session_log_buffer_get_recent(buffer, entries, 8);
+  cr_assert_eq(count, 4);
+  cr_assert_str_eq(entries[0].message, "ERROR TITLE");
+  cr_assert_str_eq(entries[1].message, "error body 7");
+  cr_assert_str_eq(entries[2].message, "ANNOUNCED TITLE");
+  cr_assert_str_eq(entries[3].message, "important body ready");
+  log_clear_session_log_buffer();
+  session_log_buffer_destroy(buffer);
+}
+Test(log_persistence, long_notice_chunks_preserve_every_utf8_character_and_final_marker) {
+  char body[6004];
+  for (size_t i = 0; i < 6000; i += 3)
+    memcpy(body + i, "\xe2\x82\xac", 3);
+  memcpy(body + 6000, "END", 4);
+  ui_notice_log(UI_NOTICE_WARNING, "notice-test.c", 21, "test", "NOTICE", "%s", body);
+  char *records = read_records(NULL);
+  cr_assert(utf8_is_valid(records));
+  cr_assert_not_null(strstr(records, "NOTICE"));
+  cr_assert_not_null(strstr(records, "END"));
+  size_t characters = 0;
+  const char *cursor = records;
+  while ((cursor = strstr(cursor, "\xe2\x82\xac")) != NULL) {
+    ++characters;
+    cursor += 3;
+  }
+  cr_assert_eq(characters, 2000);
+  cr_assert_null(strstr(records, "\033["));
+  SAFE_FREE(records);
 }

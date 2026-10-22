@@ -8,10 +8,13 @@ import termios
 import pexpect
 
 binary = sys.argv[1]
-def start(mode):
+def start(mode, **overrides):
     env = dict(os.environ, TERM="xterm-256color")
     env.pop("TTY", None)
     env.pop("ASCII_CHAT_QUESTION_PROMPT_RESPONSE", None)
+    env.pop("COLORFGBG", None)
+    env.pop("TERM_PROGRAM", None)
+    env.update(overrides)
     return pexpect.spawn(binary, [mode], env=env, dimensions=(37, 91), timeout=5)
 
 def finish(child):
@@ -94,6 +97,28 @@ for mode, answer in [("password", "sécret".encode() + b"\r"), ("password-box", 
             child.send(answer)
         after = finish(child)
         assert "sécret".encode() not in before + after
+    finally:
+        if child.isalive():
+            child.close(force=True)
+background_cases = [
+    ("dark", b"\x1b]11;rgb:0000/0000/0000\x07", {}),
+    ("light", b"\x1b]11;rgb:ffff/ffff/ffff\x07", {}),
+    ("dark", b"\x1b]11;invalid\x07", {"COLORFGBG": "15;0"}),
+    ("light", b"\x1b]11;invalid\x07", {"COLORFGBG": "0;15"}),
+    ("dark", b"\x1b]11;invalid\x07", {"COLORFGBG": "0;-1", "TERM_PROGRAM": "vscode"}),
+    ("dark", b"\x1b]11;invalid\x07", {"COLORFGBG": "0;bad", "TERM_PROGRAM": "iTerm.app"}),
+    ("dark", b"\x1b]11;invalid\x07", {"COLORFGBG": "0;2147483648"}),
+    ("dark", b"\x1b]11;invalid\x07", {"COLORFGBG": "0;1suffix"}),
+    ("dark", b"\x1b]11;invalid\x07", {"COLORFGBG": "0;"}),
+    ("dark", b"\x1b]11;invalid\x07", {"COLORFGBG": "unknown", "TERM": "dumb"}),
+    ("dark", b"\x1b]11;invalid\x07", {"TERM": "xterm-truecolor"}),
+]
+for mode, response, environment in background_cases:
+    child = start(mode, **environment)
+    try:
+        child.expect_exact(b"\x1b]11;?\x1b\\")
+        child.send(response)
+        assert finish(child) == b""
     finally:
         if child.isalive():
             child.close(force=True)
