@@ -97,16 +97,16 @@ struct ffmpeg_decoder_t {
   image_t *prefetch_image_a;          ///< First prefetch buffer
   image_t *prefetch_image_b;          ///< Second prefetch buffer
   image_t *current_prefetch_image;    ///< Currently available prefetched frame
-  _Atomic bool prefetch_frame_ready;          ///< Whether current_prefetch_image has valid data
+  _Atomic bool prefetch_frame_ready;  ///< Whether current_prefetch_image has valid data
   asciichat_error_context_t prefetch_failure;
   _Atomic bool prefetch_failed;
-  bool prefetch_thread_running; ///< Whether prefetch thread is active
-  _Atomic bool prefetch_should_stop;    ///< Signal to stop prefetch thread
-  _Atomic bool seeking_in_progress;     ///< Signal to pause prefetch thread during seek
-  _Atomic uint64_t seek_generation; ///< Detect seeks before and after packet reads
-  cond_t prefetch_cond;         ///< Condition variable for pausing during seek
-  mutex_t prefetch_mutex;       ///< Protect prefetch state and FFmpeg decoder access
-  mutex_t read_frame_mutex;     ///< Protect av_read_frame() calls from video and audio threads
+  bool prefetch_thread_running;      ///< Whether prefetch thread is active
+  _Atomic bool prefetch_should_stop; ///< Signal to stop prefetch thread
+  _Atomic bool seeking_in_progress;  ///< Signal to pause prefetch thread during seek
+  _Atomic uint64_t seek_generation;  ///< Detect seeks before and after packet reads
+  cond_t prefetch_cond;              ///< Condition variable for pausing during seek
+  mutex_t prefetch_mutex;            ///< Protect prefetch state and FFmpeg decoder access
+  mutex_t read_frame_mutex;          ///< Protect av_read_frame() calls from video and audio threads
 
   // Track which buffer is being read by main thread
   image_t *current_read_buffer; ///< Buffer main thread is currently reading/rendering
@@ -336,8 +336,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     // The consumer releases the previous image and wakes us when taking the
     // next frame. Seek completion and shutdown also signal this condition.
     while (!decoder->prefetch_should_stop &&
-           (atomic_load_bool(&decoder->eof_reached) || decoder->seeking_in_progress ||
-            decoder->prefetch_frame_ready || (decoder->buffer_a_in_use && decoder->buffer_b_in_use)))
+           (atomic_load_bool(&decoder->eof_reached) || decoder->seeking_in_progress || decoder->prefetch_frame_ready ||
+            (decoder->buffer_a_in_use && decoder->buffer_b_in_use)))
       cond_wait(&decoder->prefetch_cond, &decoder->prefetch_mutex);
     if (decoder->prefetch_should_stop) {
       break;
@@ -1278,8 +1278,7 @@ ffmpeg_frame_status_t ffmpeg_decoder_poll_video(ffmpeg_decoder_t *decoder, image
   // Empty polls need no protected state. EOF and errors still confirm under
   // the mutex so a final pending frame takes precedence over termination.
   if (!atomic_load_explicit(&decoder->prefetch_frame_ready, memory_order_acquire) &&
-      !atomic_load_explicit(&decoder->prefetch_failed, memory_order_acquire) &&
-      !ffmpeg_decoder_at_end(decoder))
+      !atomic_load_explicit(&decoder->prefetch_failed, memory_order_acquire) && !ffmpeg_decoder_at_end(decoder))
     return FFMPEG_FRAME_WAITING;
 
   mutex_lock(&decoder->prefetch_mutex);
@@ -1343,8 +1342,8 @@ asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder) {
   memset(&decoder->prefetch_failure, 0, sizeof(decoder->prefetch_failure));
   atomic_store(&decoder->prefetch_failed, false);
 
-  int thread_err = acthread_create(&decoder->prefetch_thread, "ffmpeg_prefetch",
-                                           ffmpeg_decoder_prefetch_thread_func, decoder);
+  int thread_err =
+      acthread_create(&decoder->prefetch_thread, "ffmpeg_prefetch", ffmpeg_decoder_prefetch_thread_func, decoder);
   if (thread_err != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to create video prefetch thread");
   }

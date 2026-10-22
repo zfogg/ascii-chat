@@ -602,8 +602,8 @@ static asciichat_error_t websocket_prepare_payload(acip_transport_t *transport, 
 static asciichat_error_t websocket_queue_payload(websocket_transport_data_t *ws_data, buffer_domain_t *domain,
                                                  const void *send_data, size_t send_len) {
   // Both sides retain padded wire data until the owning service callback sends it.
-  websocket_recv_msg_t msg = {.data = buffer_alloc(domain, LWS_PRE + send_len), .len = send_len,
-                              .first = 1, .final = 1};
+  websocket_recv_msg_t msg = {
+      .data = buffer_alloc(domain, LWS_PRE + send_len), .len = send_len, .first = 1, .final = 1};
   if (!msg.data)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate WebSocket send buffer");
   memcpy(msg.data + LWS_PRE, send_data, send_len);

@@ -714,8 +714,8 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     // Build command with all addresses for this binary
     char cmd[8192];
     int offset =
-        safe_snprintf(cmd, sizeof(cmd), "%s --demangle --no-debuginfod --output-style=LLVM --relativenames %s-e %s ", symbolizer_cmd,
-                      groups[g].relative_addresses ? "--relative-address " : "", escaped_binary_path);
+        safe_snprintf(cmd, sizeof(cmd), "%s --demangle --no-debuginfod --output-style=LLVM --relativenames %s-e %s ",
+                      symbolizer_cmd, groups[g].relative_addresses ? "--relative-address " : "", escaped_binary_path);
 
     for (int j = 0; j < groups[g].count && offset < (int)sizeof(cmd) - 32; j++) {
       int n =
