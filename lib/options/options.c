@@ -2023,7 +2023,8 @@ static asciichat_error_t finalize_media_options(options_t *opts) {
     return SET_ERRNO(ERROR_USAGE, "--test-pattern and --url are mutually exclusive; choose one video source");
   }
   if (opts->test_pattern && (opts->waveform || opts->fft)) {
-    return SET_ERRNO(ERROR_USAGE, "--test-pattern cannot be used with --waveform or --fft; choose video or audio visualization");
+    return SET_ERRNO(ERROR_USAGE,
+                     "--test-pattern cannot be used with --waveform or --fft; choose video or audio visualization");
   }
 
   // Apply --no-compress interaction with audio encoding
