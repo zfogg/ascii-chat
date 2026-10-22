@@ -359,6 +359,13 @@ def main():
                 check_update_centering(startup, "Update available")
                 check_update_selection(startup, "Update now")
                 assert "Full instructions on ascii-chat.com" in startup.pump(), "Update instructions link is missing"
+                link_label = "Full instructions on ascii-chat.com"
+                link_row, link_line = next((row, line) for row, line in enumerate(startup.screen.display)
+                                           if link_label in line)
+                link_start = link_line.index(link_label)
+                assert all(startup.screen.buffer[link_row][col].underscore
+                           and startup.screen.buffer[link_row][col].fg == "white"
+                           for col in range(link_start, link_start + len(link_label))), "Instructions must be white and underlined"
                 assert ("\x1b]8;;https://ascii-chat.com\x1b\\" in "".join(startup.raw)
                         and "\x1b]8;;\x1b\\" in "".join(startup.raw)), "Instructions lack a bounded OSC 8 hyperlink"
                 startup.write("\x1b[C\x1b[C")
