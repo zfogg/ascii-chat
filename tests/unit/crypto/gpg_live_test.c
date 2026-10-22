@@ -11,8 +11,12 @@
 #include <stdlib.h>
 
 static char directory[PLATFORM_MAX_PATH_LENGTH], fingerprint[41];
-static char *old_home;
+static char *old_home, *old_path;
 static void teardown(void) {
+  if (old_path) {
+    platform_setenv("PATH", old_path);
+    SAFE_FREE(old_path);
+  }
   if (directory[0]) {
     const char *args[] = {"gpgconf", "--homedir", directory, "--kill", "gpg-agent", NULL};
     (void)platform_execute_subprocess("gpgconf", args, NULL, 0);
@@ -136,4 +140,57 @@ Test(gpg_live, real_armored_keys_parse_to_the_same_public_key_and_a_usable_ed255
   sodium_memzero(seed, sizeof(seed));
   sodium_memzero(sodium_secret, sizeof(sodium_secret));
   sodium_memzero(armor, sizeof(armor));
+}
+Test(gpg_live, short_signature_integers_are_restored_to_exactly_32_bytes_each) {
+  const char *original = getenv("PATH");
+  cr_assert_not_null(original);
+  SAFE_STRDUP(old_path, original);
+  char script_path[PLATFORM_MAX_PATH_LENGTH], packet_path[PLATFORM_MAX_PATH_LENGTH], path[8192];
+  safe_snprintf(script_path, sizeof(script_path), "%s/gpg", directory);
+  safe_snprintf(packet_path, sizeof(packet_path), "%s/signature.pgp", directory);
+  FILE *file = platform_fopen("gpg-fixture", script_path, "wb");
+  cr_assert_not_null(file);
+  char script[PLATFORM_MAX_PATH_LENGTH + 80];
+  safe_snprintf(script, sizeof(script), "#!/bin/sh\nexec /usr/bin/cp '%s' \"$5\"\n", packet_path);
+  cr_assert_eq(fwrite(script, 1, strlen(script), file), strlen(script));
+  cr_assert_eq(fclose(file), 0);
+  cr_assert_eq(platform_chmod(script_path, 0700), 0);
+  safe_snprintf(path, sizeof(path), "%s:%s", directory, old_path);
+  cr_assert_eq(platform_setenv("PATH", path), 0);
+  const size_t lengths[] = {0, 1, 31, 32, 33};
+  const uint8_t message[] = "MPI parser contract";
+  for (size_t r = 0; r < 5; ++r) {
+    for (size_t s = 0; s < 5; ++s) {
+      uint8_t packet[96] = {0x88, 0, 4, 0, 22, 8, 0, 0, 0, 0, 0, 0};
+      uint8_t expected[64] = {0}, actual[64];
+      size_t offset = 12;
+      packet[offset++] = (uint8_t)((lengths[r] * 8) >> 8);
+      packet[offset++] = (uint8_t)(lengths[r] * 8);
+      for (size_t i = 0; i < lengths[r]; ++i) {
+        packet[offset++] = (uint8_t)(0x80 + i);
+        if (lengths[r] <= 32)
+          expected[32 - lengths[r] + i] = (uint8_t)(0x80 + i);
+      }
+      packet[offset++] = (uint8_t)((lengths[s] * 8) >> 8);
+      packet[offset++] = (uint8_t)(lengths[s] * 8);
+      for (size_t i = 0; i < lengths[s]; ++i) {
+        packet[offset++] = (uint8_t)(0x90 + i);
+        if (lengths[s] <= 32)
+          expected[64 - lengths[s] + i] = (uint8_t)(0x90 + i);
+      }
+      packet[1] = (uint8_t)(offset - 2);
+      file = platform_fopen("gpg-packet", packet_path, "wb");
+      cr_assert_not_null(file);
+      cr_assert_eq(fwrite(packet, 1, offset, file), offset);
+      cr_assert_eq(fclose(file), 0);
+      memset(actual, 0xa5, sizeof(actual));
+      if (lengths[r] == 0 || lengths[r] > 32 || lengths[s] == 0 || lengths[s] > 32) {
+        cr_assert_neq(gpg_sign_detached_ed25519(fingerprint, message, sizeof(message), actual), 0);
+        continue;
+      }
+      cr_assert_eq(gpg_sign_detached_ed25519(fingerprint, message, sizeof(message), actual), 0,
+                   "R length %zu, S length %zu", lengths[r], lengths[s]);
+      cr_assert_arr_eq(actual, expected, sizeof(actual));
+    }
+  }
 }
