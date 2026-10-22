@@ -88,6 +88,8 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL result pointer");
   }
 
+  update_check_result_t cached = {0};
+  bool have_cached = update_check_load_cache(&cached) == ASCIICHAT_OK;
   memset(result, 0, sizeof(*result));
 
   char *cache_path = get_cache_file_path();
@@ -311,6 +313,9 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
     semantic_version_t current_ver = version_parse(result->current_version);
     semantic_version_t latest_ver = version_parse(result->latest_version);
     result->update_available = current_ver.valid && latest_ver.valid && version_compare(latest_ver, current_ver) > 0;
+    if (have_cached && strcmp(cached.latest_version, result->latest_version) == 0) {
+      result->dismissed_until = cached.dismissed_until;
+    }
     (void)update_check_save_cache(result);
     return ASCIICHAT_OK;
   }
@@ -352,6 +357,9 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
   SAFE_STRNCPY(result->release_url, release_url, sizeof(result->release_url));
   result->latest_sha[0] = '\0';
   result->check_succeeded = true;
+  if (have_cached && strcmp(cached.latest_version, result->latest_version) == 0) {
+    result->dismissed_until = cached.dismissed_until;
+  }
 
   // Compare versions semantically
   semantic_version_t current_ver = version_parse(result->current_version);
@@ -444,6 +452,18 @@ install_method_t update_check_detect_install_method(void) {
 #endif
 }
 
+const char *update_check_get_aur_helper(void) {
+  static int helper = -1;
+  if (helper == -1) {
+    const char *paru[] = {"paru", "--version", NULL};
+    const char *yay[] = {"yay", "--version", NULL};
+    helper = platform_execute_subprocess("paru", paru, NULL, 0) == 0 ? 1
+             : platform_execute_subprocess("yay", yay, NULL, 0) == 0 ? 2
+                                                                     : 0;
+  }
+  return helper == 1 ? "paru" : helper == 2 ? "yay" : NULL;
+}
+
 void update_check_get_upgrade_suggestion(install_method_t method, const char *latest_version, char *buffer,
                                          size_t buffer_size) {
   if (!buffer || buffer_size == 0) {
@@ -468,23 +488,9 @@ void update_check_get_upgrade_suggestion(install_method_t method, const char *la
     break;
 
   case INSTALL_METHOD_ARCH_AUR: {
-    // Cache AUR helper detection to avoid spawning subprocesses on every call
-    static int aur_helper = -1; // -1 = unknown, 0 = none, 1 = paru, 2 = yay
-    if (aur_helper == -1) {
-      const char *argv_paru[] = {"paru", "--version", NULL};
-      const char *argv_yay[] = {"yay", "--version", NULL};
-      if (platform_execute_subprocess("paru", argv_paru, NULL, 0) == 0) {
-        aur_helper = 1;
-      } else if (platform_execute_subprocess("yay", argv_yay, NULL, 0) == 0) {
-        aur_helper = 2;
-      } else {
-        aur_helper = 0;
-      }
-    }
-    if (aur_helper == 1) {
-      snprintf(buffer, buffer_size, "paru -S ascii-chat");
-    } else if (aur_helper == 2) {
-      snprintf(buffer, buffer_size, "yay -S ascii-chat");
+    const char *helper = update_check_get_aur_helper();
+    if (helper) {
+      snprintf(buffer, buffer_size, "%s -S ascii-chat", helper);
     } else {
       snprintf(buffer, buffer_size, "<your-aur-helper> -Ss ascii-chat");
     }

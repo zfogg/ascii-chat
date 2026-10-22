@@ -440,8 +440,13 @@ bool update_banner_install_update(void) {
     const char *argv[] = {"scoop", "update", "ascii-chat", NULL};
     exit_code = platform_execute_subprocess("scoop", argv, NULL, 0);
   } else if (method == INSTALL_METHOD_ARCH_AUR) {
-    const char *argv[] = {"paru", "-S", "ascii-chat", NULL};
-    exit_code = platform_execute_subprocess("paru", argv, NULL, 0);
+    const char *helper = update_check_get_aur_helper();
+    if (!helper) {
+      log_warn("No supported AUR helper is available");
+      return false;
+    }
+    const char *argv[] = {helper, "-S", "ascii-chat", NULL};
+    exit_code = platform_execute_subprocess(helper, argv, NULL, 0);
   } else {
 #ifdef _WIN32
     const char *argv[] = {"powershell", "-NoProfile", "-ExecutionPolicy",

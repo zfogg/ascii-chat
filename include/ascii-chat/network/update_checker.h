@@ -127,6 +127,9 @@ install_method_t update_check_detect_install_method(void);
 void update_check_get_upgrade_suggestion(install_method_t method, const char *latest_version, char *buffer,
                                          size_t buffer_size);
 
+/** Return the detected AUR helper (paru or yay), or NULL if unavailable. */
+const char *update_check_get_aur_helper(void);
+
 /**
  * @brief Format update notification message
  *
