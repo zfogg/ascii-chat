@@ -5,6 +5,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/network.h>
+#include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/network/webrtc/webrtc.h>
 #include <ascii-chat/network/websocket/internal.h>
 #include <ascii-chat/buffer.h>
@@ -17,6 +18,7 @@ typedef struct {
   network_server_t *server;
   atomic_t opened, packets, closing, closed, fail_closing;
   bool reject, stall;
+  asciichat_error_t packet_rejection;
   asciichat_error_t result;
 } fixture_t;
 
@@ -37,6 +39,8 @@ static asciichat_error_t packet(network_connection_t *connection, packet_type_t 
   cr_assert_worker((network_connection_context(connection)) == (f));
   cr_assert_worker(type == PACKET_TYPE_PING && length == sizeof(uint64_t));
   atomic_fetch_add_int(&f->packets, 1);
+  if (f->packet_rejection != ASCIICHAT_OK)
+    return SET_ERRNO(f->packet_rejection, "Private admission fixture detail");
   return packet_send_via_transport(network_connection_transport(connection), PACKET_TYPE_PONG, data, length, 0);
 }
 static asciichat_error_t closing(network_connection_t *connection, void *arg) {
@@ -369,6 +373,50 @@ TestSuite(network_connections, .init = setup, .fini = teardown, .timeout = 30);
 
 Test(network_connections, establishment_controls) {
   establishment_controls();
+}
+
+Test(network_connections, tcp_packet_rejection_is_delivered_before_close) {
+  fixture_t f = {.packet_rejection = ERROR_SESSION_FULL};
+  uint16_t port = unused_port();
+  network_server_config_t config = {.port = port,
+                                    .ipv4_address = "127.0.0.1",
+                                    .bind_ipv4 = true,
+                                    .max_connections = 4,
+                                    .callbacks = {opened, packet, closing, closed},
+                                    .user_data = &f};
+  cr_assert_eq(network_server_create(&config, &f.server), ASCIICHAT_OK);
+  cr_assert_eq(network_server_start(f.server), ASCIICHAT_OK);
+  asciichat_thread_t thread;
+  cr_assert_eq(acthread_create(&thread, "rejection_fixture", run, &f), ASCIICHAT_OK);
+  char endpoint[64];
+  safe_snprintf(endpoint, sizeof(endpoint), "tcp://127.0.0.1:%u", port);
+  network_connection_t *client = NULL;
+  cr_assert_eq(network_connection_open("rejection_client", endpoint, port, NULL, &client, NULL), ASCIICHAT_OK);
+  acip_transport_t *transport = network_connection_transport(client);
+  uint64_t ping = 7;
+  cr_assert_eq(packet_send_via_transport(transport, PACKET_TYPE_PING, &ping, sizeof(ping), 0), ASCIICHAT_OK);
+  packet_type_t type;
+  void *data = NULL, *allocation = NULL;
+  size_t length = 0;
+  asciichat_error_t received = packet_receive_via_transport(transport, &type, &data, &length, &allocation);
+  cr_expect_eq(received, ASCIICHAT_OK);
+  if (received == ASCIICHAT_OK) {
+    cr_expect_eq(type, PACKET_TYPE_ERROR_MESSAGE);
+    asciichat_error_t code = ASCIICHAT_OK;
+    char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
+    cr_expect_eq(packet_parse_error_message(data, length, &code, message, sizeof(message), NULL), ASCIICHAT_OK);
+    cr_expect_eq(code, ERROR_SESSION_FULL);
+    cr_expect_str_eq(message, asciichat_error_string(ERROR_SESSION_FULL));
+    cr_expect_null(strstr(message, "Private admission"));
+  }
+  buffer_release(allocation);
+  wait_count(&f.closed, 1);
+  network_connection_destroy(&client);
+  network_server_request_stop(f.server);
+  cr_assert_eq(thread_join(&thread, NULL), ASCIICHAT_OK);
+  cr_assert_eq(f.result, ASCIICHAT_OK);
+  network_server_destroy(&f.server);
+  cr_assert_null(f.server);
 }
 
 Test(network_connections, tcp_echo) {

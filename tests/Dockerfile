@@ -43,9 +43,12 @@ RUN chmod +x /tmp/install-deps.sh && \
 # These are not in install-deps.sh but required for the test environment
 RUN pacman -S --noconfirm --needed \
   which \
+  openssh \
+  gnupg \
   clang-tools \
   python-pyte \
   python-pexpect \
+  python-pillow \
   ttf-dejavu \
   && pacman -Scc --noconfirm \
   && rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
