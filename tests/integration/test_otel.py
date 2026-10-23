@@ -208,6 +208,19 @@ def main():
             assert result.returncode == 0, result.stderr.decode(errors='replace')[-6000:]
             assert {path.rsplit('/', 1)[-1] for path, _ in server.records} == paths
             assert service_names(server.records) == ({'ascii-chat-mirror'} if paths else set())
+            for _, payload in server.records:
+                for envelope in protobuf(payload).get(1, []):
+                    resource = protobuf(protobuf(envelope)[1][0])
+                    attributes = {}
+                    for entry in resource.get(1, []):
+                        entry = protobuf(entry)
+                        attributes[entry[1][0]] = protobuf(entry[2][0])
+                    for key in (b'process.pid', b'process.executable.path', b'process.executable.name',
+                                b'host.name', b'os.type', b'os.description', b'process.command_args'):
+                        assert key in attributes, ('missing resource', key)
+                    args = [protobuf(value)[1][0] for value in protobuf(attributes[b'process.command_args'][5][0])[1]]
+                    assert args[0] == b'ascii-chat'
+                    assert not any(b'http://127.0.0.1:' in value for value in args), 'resource args bypassed redaction'
             traces = b''.join(b for p, b in server.records if p == '/v1/traces')
             metrics = b''.join(b for p, b in server.records if p == '/v1/metrics')
             if 'traces' in paths:

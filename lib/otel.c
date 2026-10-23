@@ -155,9 +155,8 @@ void ascii_otel_scope_parent(ascii_otel_scope_t *s, ascii_otel_operation_t op, c
   if (h) {
     gotel_context_t root = {0};
     gotel_context_t context = gotel_current_context();
-    bool lifetime_parent = current_scope &&
-                           (current_scope->scope.operation == ASCII_OTEL_SESSION_CLIENT_LIKE_RUN ||
-                            current_scope->scope.operation == ASCII_OTEL_SESSION_ATTEMPT);
+    bool lifetime_parent = current_scope && (current_scope->scope.operation == ASCII_OTEL_SESSION_CLIENT_LIKE_RUN ||
+                                             current_scope->scope.operation == ASCII_OTEL_SESSION_ATTEMPT);
     // Lifetime spans finish only at shutdown. Completed operations must remain
     // inspectable while a server is running, including after abrupt termination.
     if (!parent && context.valid) {
@@ -227,6 +226,22 @@ void ascii_otel_shutdown(void) {
             (unsigned long long)stats.http_4xx, (unsigned long long)(stats.dropped_full + stats.dropped_err),
             (unsigned long long)stats.rejected_spans);
 }
+static const char *telemetry_argument(const char *argument, int index, const char *mode, char *name, size_t size) {
+  if (!index)
+    return "ascii-chat";
+  if (!strcmp(argument, mode))
+    return mode;
+  if (!strncmp(argument, "--", 2)) {
+    size_t length = strcspn(argument, "=");
+    if (length < size) {
+      memcpy(name, argument, length);
+      name[length] = 0;
+      return name;
+    }
+  }
+  return "[REDACTED]";
+}
+
 asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   const options_t *o = options_get();
   const char *endpoint = o->otel_endpoint;
@@ -294,8 +309,19 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   config.exporter_event = exporter_event;
   config.metrics = metrics;
   config.metric_count = ASCII_OTEL_METRIC_COUNT;
+  typedef char otel_arg_name_t[128];
+  size_t argument_count = argc > 0 ? (size_t)argc : 1;
+  const char **resource_args = SAFE_CALLOC(argument_count, sizeof(*resource_args), const char **);
+  otel_arg_name_t *resource_names = SAFE_CALLOC(argument_count, sizeof(*resource_names), otel_arg_name_t *);
+  for (int i = 0; i < argc; ++i)
+    resource_args[i] = telemetry_argument(argv[i], i, mode, resource_names[i], sizeof(resource_names[i]));
+  config.argc = argc;
+  config.argv = resource_args;
   gotel_host_t *h = NULL;
-  if (gotel_create(&config, &h) != OTLP_OK)
+  otlp_status_t created = gotel_create(&config, &h);
+  SAFE_FREE(resource_args);
+  SAFE_FREE(resource_names);
+  if (created != OTLP_OK)
     return SET_ERRNO(ERROR_CONFIG, "Cannot initialize telemetry exporter");
   gotel_set_logger(h, exporter_diagnostic, NULL);
   shutdown_timeout_ns = (uint64_t)o->otel_timeout * NS_PER_MS_INT;
@@ -313,26 +339,12 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   gotel_attr_string(&command_scope, "process.command", "ascii-chat");
   gotel_attr_string(&command_scope, "cli.command.name", mode);
   if (command_scope.span) {
-    otlp_value_t *args = SAFE_CALLOC((size_t)argc, sizeof(*args), otlp_value_t *);
-    typedef char otel_arg_name_t[128];
-    otel_arg_name_t *names = SAFE_CALLOC((size_t)argc, sizeof(*names), otel_arg_name_t *);
+    otlp_value_t *args = SAFE_CALLOC(argument_count, sizeof(*args), otlp_value_t *);
+    otel_arg_name_t *names = SAFE_CALLOC(argument_count, sizeof(*names), otel_arg_name_t *);
     if (args && names) {
       for (int i = 0; i < argc; ++i) {
-        const char *value = "[REDACTED]";
-        if (!i)
-          value = "ascii-chat";
-        else if (!strcmp(argv[i], mode))
-          value = mode;
-        else if (!strncmp(argv[i], "--", 2)) {
-          size_t len = strcspn(argv[i], "=");
-          if (len < sizeof(names[i])) {
-            memcpy(names[i], argv[i], len);
-            names[i][len] = 0;
-            value = names[i];
-          }
-        }
         args[i].type = OTLP_VALUE_STRING;
-        args[i].v.string_val = value;
+        args[i].v.string_val = telemetry_argument(argv[i], i, mode, names[i], sizeof(names[i]));
       }
       otlp_span_set_attribute_array(command_scope.span, "process.command_args", args, (size_t)argc);
     }
