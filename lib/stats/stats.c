@@ -21,6 +21,8 @@ typedef struct {
 } stats_duration_shard_t;
 
 struct stats_scope {
+  stats_observer_fn observer;
+  void *observer_context;
   uint64_t id;
   uint64_t started_ns;
   stats_capabilities_t capabilities;
@@ -78,14 +80,27 @@ void stats_scope_destroy(stats_scope_t *scope) {
   SAFE_FREE(scope);
 }
 
+void stats_scope_set_observer(stats_scope_t *scope, stats_observer_fn observer, void *context) {
+  if (scope) {
+    scope->observer = observer;
+    scope->observer_context = context;
+  }
+}
+
 void stats_counter_add(stats_scope_t *scope, stats_counter_id_t id, uint64_t amount) {
-  if (scope && (unsigned)id < STATS_COUNTER_COUNT && scope->capabilities.counters[id])
+  if (scope && (unsigned)id < STATS_COUNTER_COUNT && scope->capabilities.counters[id]) {
     atomic_fetch_add_u64_impl(&scope->counters[id], amount);
+    if (scope->observer)
+      scope->observer(STATS_RECORD_COUNTER, id, amount, scope->observer_context);
+  }
 }
 
 void stats_gauge_set(stats_scope_t *scope, stats_gauge_id_t id, uint64_t value) {
-  if (scope && (unsigned)id < STATS_GAUGE_COUNT && scope->capabilities.gauges[id])
+  if (scope && (unsigned)id < STATS_GAUGE_COUNT && scope->capabilities.gauges[id]) {
     atomic_store_u64_impl(&scope->gauges[id], value);
+    if (scope->observer)
+      scope->observer(STATS_RECORD_GAUGE, id, value, scope->observer_context);
+  }
 }
 
 static uint64_t duration_add(uint64_t a, uint64_t b) {
@@ -129,6 +144,8 @@ void stats_duration_record(stats_scope_t *scope, stats_duration_id_t id, uint64_
     atomic_store(&cell->observations, duration_add(observations, 1));
     atomic_store(&cell->total_ns, duration_add(atomic_load(&cell->total_ns), elapsed_ns));
     atomic_store(&cell->sequence, duration_add(sequence, 2));
+    if (scope->observer)
+      scope->observer(STATS_RECORD_DURATION, id, elapsed_ns, scope->observer_context);
     return;
   }
   // Unusually many lifetime producers retain the bounded, coherent fallback.
@@ -146,6 +163,8 @@ void stats_duration_record(stats_scope_t *scope, stats_duration_id_t id, uint64_
   duration->total_ns = duration->total_ns > UINT64_MAX - elapsed_ns ? elapsed_ns - (UINT64_MAX - duration->total_ns) - 1
                                                                     : duration->total_ns + elapsed_ns;
   mutex_unlock(&scope->duration_mutex);
+  if (scope->observer)
+    scope->observer(STATS_RECORD_DURATION, id, elapsed_ns, scope->observer_context);
 }
 
 asciichat_error_t stats_scope_snapshot(const stats_scope_t *scope, stats_snapshot_t *out) {

@@ -1,5 +1,33 @@
 # OpenTelemetry
 
+### Statistics coverage
+
+The typed process stats catalog has a one-to-one telemetry mapping: 29 counters,
+5 gauges and 10 duration histograms. Counters and gauges use
+`ascii-chat.stats.<descriptor_name>`; durations use
+`ascii-chat.stats.duration.<descriptor_name>` in seconds. This includes frame
+capture/conversion/encoding/presentation/skips/drops, queue submissions/drops,
+recording, application packets/bytes/errors, reconnects, audio underruns/overruns,
+session creates/joins/lookups/expirations, request failures, rate rejections and
+host migration successes/failures. Gauges cover connections, sessions,
+participants, queued video and buffered audio.
+
+The stats engine sends counter increments, current gauge values (including zero)
+and each duration observation through a process-scope observer. Per-peer scopes
+remain local, so their duplicate accounting is not exported twice. Mode
+capabilities still control collection; unsupported operations do not generate
+observations. Server/discovery provider gauges refresh at least once per second
+while telemetry is enabled, even with the stats screen closed and stats printing
+disabled. Existing focused codec, crypto, queue, process and exporter metrics
+remain separate measurements; do not add them to these stats totals.
+
+FPS and byte rates are derived from counter changes over elapsed time, rather
+than exported as competing cumulative counters. Duration histograms retain
+observation counts, sums and distributions. Display text, peer/session row IDs
+and arbitrary diagnostic strings are not metric labels. Adding a typed stat
+without a telemetry mapping fails the native build. The mapping is maintained
+in `include/ascii-chat/stats/telemetry.def`.
+
 ### Test isolation
 
 All tests prohibit collector export. `ascii_otel_init` returns before creating a

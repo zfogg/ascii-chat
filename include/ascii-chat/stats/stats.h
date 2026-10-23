@@ -109,6 +109,14 @@ typedef struct {
 asciichat_error_t stats_scope_create(const stats_capabilities_t *capabilities, stats_scope_t **out_scope);
 void stats_scope_destroy(stats_scope_t *scope);
 
+typedef enum { STATS_RECORD_COUNTER, STATS_RECORD_GAUGE, STATS_RECORD_DURATION } stats_record_kind_t;
+/** Called concurrently by producers with counter deltas, gauge values or duration nanoseconds.
+ * Configure before producers start; detach only after they join. The observer must not
+ * record back into this scope. Peer scopes do not inherit the observer.
+ */
+typedef void (*stats_observer_fn)(stats_record_kind_t kind, unsigned id, uint64_t value, void *context);
+void stats_scope_set_observer(stats_scope_t *scope, stats_observer_fn observer, void *context);
+
 /** Thread-safe recording with no module allocations. Platform mutex diagnostics may
  * initialize per-thread storage on first use in debug builds. NULL, invalid IDs, and unsupported metrics
  * are ignored. Counters and duration totals wrap at UINT64_MAX; samplers rebaseline

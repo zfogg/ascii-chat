@@ -2,6 +2,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <ascii-chat/stats/stats.h>
 typedef enum {
 #define ASCII_OTEL_OPERATION(id, name, realtime) ASCII_OTEL_##id,
 #include <ascii-chat/otel_operations.def>
@@ -26,6 +27,7 @@ void ascii_otel_shutdown(void);
 bool ascii_otel_enabled(void);
 const char *ascii_otel_current_operation(void);
 void ascii_otel_metric(ascii_otel_metric_t metric, double value);
+void ascii_otel_stats_attach(stats_scope_t *scope);
 void ascii_otel_call_session_used(const char *session_string);
 void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_size, const char *action, int transport);
 void ascii_otel_exit(int code);
@@ -67,6 +69,7 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count);
 #define ascii_otel_current_operation() ""
 #define ascii_otel_call_session_used(session_string) ((void)(session_string))
 #define ascii_otel_metric(metric, value) ((void)(metric), (void)(value))
+#define ascii_otel_stats_attach(scope) ((void)(scope))
 #define ASCII_OTEL_SCOPE_PARENT(id, parent) ((void)0)
 #define ASCII_OTEL_SCOPE(id) ((void)0)
 #endif

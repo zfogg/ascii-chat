@@ -146,6 +146,7 @@ stats_peer_t *stats_runtime_peer_open(const char *transport) {
   peer->id = ++g_peer_id;
   ++g_peer_count;
   ascii_otel_metric(ASCII_OTEL_METRIC_CONNECTIONS, (double)g_peer_count);
+  stats_gauge_set(g_scope, STATS_GAUGE_CONNECTIONS_ACTIVE, g_peer_count);
   for (unsigned i = 0; i < 64; ++i) {
     if (!g_peers[i]) {
       g_peers[i] = peer;
@@ -165,6 +166,7 @@ void stats_runtime_peer_close(stats_peer_t *peer) {
       g_peers[i] = NULL;
   --g_peer_count;
   ascii_otel_metric(ASCII_OTEL_METRIC_CONNECTIONS, (double)g_peer_count);
+  stats_gauge_set(g_scope, STATS_GAUGE_CONNECTIONS_ACTIVE, g_peer_count);
   mutex_unlock(&g_peers_mutex);
   stats_sampler_destroy(peer->sampler);
   stats_scope_destroy(peer->scope);
@@ -321,6 +323,7 @@ static void *stats_worker(void *unused) {
   size_t last_count = 0;
   ui_viewport_t viewport = {0};
   bool was_active = false;
+  uint64_t next_telemetry = 0;
   while (!atomic_load_bool_impl(&g_stop) && !shutdown_is_requested()) {
     bool active = stats_runtime_active();
     // Own input only while our screen is visible, or while a server has no screen.
@@ -363,8 +366,11 @@ static void *stats_worker(void *unused) {
       stats_scope_snapshot(g_scope, &snapshot);
       stats_sampler_update(g_sampler, &snapshot, &rates);
       bool print_due = g_interval && now >= next_print;
-      if (active || print_due)
+      bool telemetry_due = ascii_otel_enabled() && now >= next_telemetry;
+      if (active || print_due || telemetry_due)
         build_view(&view, &snapshot, &rates);
+      if (telemetry_due)
+        next_telemetry = now + NS_PER_SEC_INT;
       terminal_size_t size = ui_controller_size();
       ui_viewport_update(&viewport, view.count, size.rows > 6 ? (size_t)size.rows - 6 : 1);
       last_count = view.count;
@@ -432,6 +438,7 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
   asciichat_error_t result = stats_scope_create(&caps, &g_scope);
   if (result != ASCIICHAT_OK)
     return result;
+  ascii_otel_stats_attach(g_scope);
   stats_sampler_config_t config = {NS_PER_SEC_INT, 250 * NS_PER_MS_INT};
   result = stats_sampler_create(&config, &g_sampler);
   if (result != ASCIICHAT_OK)

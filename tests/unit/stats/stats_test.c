@@ -21,6 +21,47 @@ static stats_scope_t *make_scope(void) {
   return scope;
 }
 
+typedef struct {
+  unsigned calls[3];
+  unsigned ids[3];
+  uint64_t values[3];
+} observer_records_t;
+
+static void observe_record(stats_record_kind_t kind, unsigned id, uint64_t value, void *context) {
+  observer_records_t *records = context;
+  records->calls[kind]++;
+  records->ids[kind] = id;
+  records->values[kind] = value;
+}
+
+Test(stats, observer_receives_only_supported_process_records) {
+  stats_scope_t *process = make_scope(), *peer = make_scope();
+  observer_records_t records = {0};
+  stats_scope_set_observer(process, observe_record, &records);
+  stats_counter_add(process, STATS_COUNTER_FRAMES_CAPTURED, 3);
+  stats_counter_add(process, STATS_COUNTER_FRAMES_CAPTURED, 5);
+  stats_counter_add(peer, STATS_COUNTER_FRAMES_CAPTURED, 5);
+  stats_counter_add(process, STATS_COUNTER_FRAMES_DROPPED, 9);
+  stats_counter_add(process, STATS_COUNTER_COUNT, 9);
+  stats_gauge_set(process, STATS_GAUGE_CONNECTIONS_ACTIVE, 4);
+  stats_gauge_set(process, STATS_GAUGE_CONNECTIONS_ACTIVE, 0);
+  stats_gauge_set(process, STATS_GAUGE_SESSIONS_ACTIVE, 8);
+  stats_duration_record(process, STATS_DURATION_CAPTURE, 250000000);
+  stats_duration_record(process, STATS_DURATION_DECODE, 900000000);
+  cr_assert_eq(records.calls[STATS_RECORD_COUNTER], 2);
+  cr_assert_eq(records.values[STATS_RECORD_COUNTER], 5, "Observer receives deltas, not cumulative totals");
+  cr_assert_eq(records.ids[STATS_RECORD_COUNTER], STATS_COUNTER_FRAMES_CAPTURED);
+  cr_assert_eq(records.calls[STATS_RECORD_GAUGE], 2);
+  cr_assert_eq(records.values[STATS_RECORD_GAUGE], 0, "Recovery must export a zero gauge");
+  cr_assert_eq(records.calls[STATS_RECORD_DURATION], 1);
+  cr_assert_eq(records.values[STATS_RECORD_DURATION], 250000000);
+  stats_scope_set_observer(process, NULL, NULL);
+  stats_counter_add(process, STATS_COUNTER_FRAMES_CAPTURED, 1);
+  cr_assert_eq(records.calls[STATS_RECORD_COUNTER], 2);
+  stats_scope_destroy(peer);
+  stats_scope_destroy(process);
+}
+
 static stats_sampler_t *make_sampler(uint64_t window, uint64_t resolution) {
   stats_sampler_t *sampler = NULL;
   stats_sampler_config_t config = {.window_ns = window, .resolution_ns = resolution};

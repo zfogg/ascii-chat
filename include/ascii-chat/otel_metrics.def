@@ -93,3 +93,11 @@ ASCII_OTEL_METRIC(FRAME_VALIDATION_REJECTED, "ascii-chat.frame.validation.reject
 ASCII_OTEL_METRIC(CONNECTION_FAILURE, "ascii-chat.network.connection.attempts.failed", COUNTER, "{attempt}")
 ASCII_OTEL_METRIC(PIPELINE_DISPLAY_STALL, "ascii-chat.pipeline.display.stall_age", GAUGE, "s")
 ASCII_OTEL_METRIC(PIPELINE_ENCODE_STALL, "ascii-chat.pipeline.encode.stall_age", GAUGE, "s")
+
+#define ASCII_STATS_COUNTER(id, name, unit) ASCII_OTEL_METRIC(STATS_COUNTER_##id, "ascii-chat.stats." name, COUNTER, unit)
+#define ASCII_STATS_GAUGE(id, name, unit) ASCII_OTEL_METRIC(STATS_GAUGE_##id, "ascii-chat.stats." name, GAUGE, unit)
+#define ASCII_STATS_DURATION(id, name, unit) ASCII_OTEL_METRIC(STATS_DURATION_##id, "ascii-chat.stats.duration." name, HISTOGRAM, unit)
+#include <ascii-chat/stats/telemetry.def>
+#undef ASCII_STATS_COUNTER
+#undef ASCII_STATS_GAUGE
+#undef ASCII_STATS_DURATION
