@@ -30,8 +30,11 @@ session join reaches `CONNECTING_HOST`; this is not a WebRTC media delivery test
 - `client-narrow.png`: compact logo and popup at 40 columns by 19 rows.
 
 The implementation uses the existing rainbow animation, popup frame, line editor,
-and buttons. Native terminal colors, font metrics, the input marker, and the
-minimum-length label differ from the illustrative concept.
+and buttons. The title is centered in the top border; the connection text and
+controls are centered within the frame. The label and confirmation wording match
+the concept. Shortcut names are orange, with the Left/Right slash in the regular
+foreground. Native terminal colors, font metrics, and the input marker differ
+from the illustrative concept.
 
 Left/Right select a button, Enter activates it, and Esc cancels. Typing always edits
 the password. Shift+Enter inserts a newline and grows the input; up to three

@@ -125,7 +125,18 @@ def main():
             peer.expect(lambda _: bool(re.search(r'\x1b\][02];[^\x07\x1b]*password required', ''.join(peer.raw))),
                         'Password dialog terminal title missing')
             border = next(i for i, line in enumerate(peer.screen.display) if '\u250c' in line)
-            assert abs(border - (peer.screen.lines - border - 13)) <= 1, 'Popup is not vertically centered'
+            assert abs(border - (peer.screen.lines - border - 14)) <= 1, 'Popup is not vertically centered'
+            title_line = peer.screen.display[border]
+            assert 'Password required' in title_line, 'Title is not embedded in the top border'
+            for text in ('Password required', 'This server requires a password.'):
+                row, line = next((r, line) for r, line in enumerate(peer.screen.display) if text in line)
+                column = line.index(text)
+                assert abs(2 * column + len(text) - peer.screen.columns) <= 1, f'{text} is not centered'
+            row, line = next((r, line) for r, line in enumerate(peer.screen.display) if 'Left/Right' in line)
+            column = line.index('Left/Right')
+            cells = peer.screen.buffer[row]
+            assert cells[column].fg == cells[column + 5].fg != cells[column + 4].fg, 'Shortcut slash inherited orange'
+            assert cells[column + 4].fg == cells[line.index('select')].fg, 'Shortcut slash lost normal foreground'
             selected(peer, '[ Confirm ]')
             peer.write('\x1b[C')
             selected(peer, '[ Cancel ]')
@@ -144,7 +155,7 @@ def main():
             peer.expect(lambda s: 'Maximum 3 newlines.' in s, 'Fourth newline was not rejected')
             borders = [(row, line) for row, line in enumerate(peer.screen.display) if '\u250c' in line or '\u2514' in line]
             assert borders[2][0] - borders[1][0] == 5, 'Input did not expand to four lines'
-            assert borders[3][0] - borders[0][0] == 15, 'Popup did not grow with the input'
+            assert borders[3][0] - borders[0][0] == 16, 'Popup did not grow with the input'
             save(peer, 'client-newline-limit')
             peer.resize(19, 40)
             peer.expect(lambda s: 'Maximum 3 newlines.' in s and sum('*' in line for line in s.splitlines()) == 4,

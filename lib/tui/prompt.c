@@ -2,6 +2,7 @@
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/ui/popup.h>
 #include <ascii-chat/ui/buttons.h>
+#include <ascii-chat/ui/text.h>
 #include <ascii-chat/tui/notice.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/tui/prompt.h>
@@ -119,12 +120,18 @@ static int password_lines(const prompt_snapshot_t *s) {
   return lines;
 }
 
+static void password_center_line(frame_buffer_t *buffer, const char *text, int row, int left, int width) {
+  char centered[2048];
+  ui_text_cell(centered, sizeof(centered), text, width - 4, UI_ALIGN_CENTER);
+  frame_buffer_printf(buffer, "\033[%d;%dH%s", row, left + 2, centered);
+}
+
 static void password_panel(frame_buffer_t *buffer, terminal_size_t size, const prompt_snapshot_t *s) {
   int width = size.cols - 4;
   if (width > 64)
     width = 64;
   int lines = password_lines(s);
-  int height = 12 + lines;
+  int height = 13 + lines;
   int top = (size.rows - height) / 2 + 1;
   int logo_rows = size.cols >= 52 && top >= 6 ? 4 : 1;
   int logo_top = top - logo_rows - (top >= 3 ? 1 : 0);
@@ -134,24 +141,31 @@ static void password_panel(frame_buffer_t *buffer, terminal_size_t size, const p
   if (top >= 3)
     media_center_line(buffer, "Video chat in your terminal", top - 1, size.cols);
   int left = (size.cols - width) / 2 + 1;
-  ui_popup_frame(buffer, top, left, width, height, LOG_COLOR_RESET);
-  frame_buffer_printf(buffer, "\033[%d;%dH\033[1mPassword required\033[0m", top + 1, left + 2);
+  ui_popup_frame_titled(buffer, top, left, width, height, LOG_COLOR_RESET, "Password required");
   char target[256];
   snprintf(target, sizeof(target), "Connect to %.*s", width - 15, s->text);
-  frame_buffer_printf(buffer, "\033[%d;%dH%s", top + 3, left + 2, target);
-  frame_buffer_printf(buffer, "\033[%d;%dHThis server requires a password.", top + 4, left + 2);
+  password_center_line(buffer, target, top + 2, left, width);
+  password_center_line(buffer, "This server requires a password.", top + 3, left, width);
   if (s->incorrect || s->newline_limit)
-    frame_buffer_printf(
-        buffer, "\033[%d;%dH%s", top + 5, left + 2,
-        colored_string(LOG_COLOR_WARN, s->newline_limit ? "Maximum 3 newlines." : "Incorrect password. Try again."));
-  frame_buffer_printf(buffer, "\033[%d;%dHPassword (%d characters minimum)", top + 6, left + 2, MIN_PASSWORD_LENGTH);
+    password_center_line(
+        buffer,
+        colored_string(LOG_COLOR_WARN, s->newline_limit ? "Maximum 3 newlines." : "Incorrect password. Try again."),
+        top + 4, left, width);
+  frame_buffer_printf(buffer, "\033[%d;%dHPassword", top + 6, left + 2);
   ui_popup_frame(buffer, top + 7, left + 2, width - 4, lines + 2, LOG_COLOR_DEBUG);
   const ui_button_t buttons[] = {{"[ Confirm ]", 0, !s->can_confirm}, {"[ Cancel ]", 0, false}};
   ui_buttons_render(buffer, top + 9 + lines, left + 2, width - 4, buttons, 2, s->selected_button);
-  frame_buffer_printf(buffer, "\033[%d;%dH%s", top + 10 + lines, left + 2,
-                      width >= 42 ? "Left/Right select  Enter OK  Esc cancel" : "L/R select  Enter OK  Esc cancel");
-  frame_buffer_printf(buffer, "\033[%d;%dH%s", top + 2, left + 2,
-                      width >= 42 ? "Shift+Enter newline (maximum 3)" : "Shift+Enter newline (max 3)");
+  const char *orange = s->color ? ui_text_color_prefix(LOG_COLOR_DEV) : "";
+  const char *foreground = s->color ? ui_text_color_prefix(LOG_COLOR_RESET) : "";
+  char shortcuts[1024];
+  snprintf(shortcuts, sizeof(shortcuts),
+           width >= 46 ? "%s%s%s/%s%s%s select  %sEnter%s confirm  %sEsc%s cancel"
+                       : "%s%s%s/%s%s%s  %sEnter%s confirm  %sEsc%s cancel",
+           orange, width >= 46 ? "Left" : "L", foreground, orange, width >= 46 ? "Right" : "R", foreground, orange,
+           foreground, orange, foreground);
+  password_center_line(buffer, shortcuts, top + 10 + lines, left, width);
+  snprintf(shortcuts, sizeof(shortcuts), "%sShift+Enter%s newline (maximum 3)", orange, foreground);
+  password_center_line(buffer, shortcuts, top + 11 + lines, left, width);
   ui_input_render(buffer, top + 8, left + 3, width - 8, lines, s->text + s->prompt_bytes, s->cursor, false);
 }
 
