@@ -57,7 +57,7 @@ panels:
     max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT max(timestamp_ns) FROM
     logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key
     ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE (name LIKE 'ascii-chat.frames.%' OR name IN ('ascii-chat.recording.frames.encoded','ascii-chat.video.encode.frames','ascii-chat.queue.frames.dropped'))
-    AND type='sum' GROUP BY service_name,name ORDER BY service_name,name) AS totals
+    AND type='sum' GROUP BY service_name,name) AS totals ORDER BY value ASC,label ASC
   settings:
     unit: frames
   layout:
