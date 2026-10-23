@@ -41,6 +41,37 @@ def main():
             api("/api/dashboards/"+definition["id"]+"/query-preview",
                 {"query_sql":panel["query"], "display_type":panel["display_type"]})
     print(f"{len(alerts)} alert queries and {sum(len(d['panels']) for d in dashboards)} panels validated", flush=True)
+    health = next(d for d in dashboards if d["name"].endswith("Session health"))
+    def metric_fixture(panel_title, rows):
+        panel = next(p for p in health["panels"] if p["title"].startswith(panel_title))
+        selections = []
+        for process, seconds, value, session in rows:
+            selections.append(f"SELECT {session} AS session_id,'ascii-chat-client' AS service_name,"
+                f"'ascii-chat.frames.captured' AS name,'sum' AS type,{process}::BIGINT AS start_timestamp_ns,"
+                f"'series' AS series_key,epoch_ns(current_timestamp)-100000000000+{seconds}::BIGINT*1000000000 AS timestamp_ns,"
+                f"{value}::DOUBLE AS value")
+        sql = "WITH metrics AS (" + " UNION ALL ".join(selections) + "), " + panel["query"].removeprefix("WITH ")
+        return api("/api/dashboards/"+health["id"]+"/query-preview", {"query_sql":sql,"display_type":panel["display_type"]})["rows"]
+    # Independent producers contribute 1 + 2 frames/s, rather than averaging their rates.
+    # A reset is omitted; the next increase uses its new baseline. First-only points
+    # and telemetry from another recording session must not contribute.
+    rows = metric_fixture("Frame stage throughput", [
+        (1,10,0,"$session_id"),(1,20,10,"$session_id"),
+        (1,30,5,"$session_id"),(1,40,15,"$session_id"),
+        (2,10,0,"$session_id"),(2,20,20,"$session_id"),
+        (3,20,500,"$session_id"),(4,10,0,"'foreign'"),(4,20,900,"'foreign'")])
+    assert [row["value"] for row in rows] == [3,1], rows
+    panel = next(p for p in health["panels"] if p["title"].startswith("Capture, conversion, mixing"))
+    histogram = """WITH metrics AS (
+      SELECT $session_id AS session_id,'ascii-chat-client' AS service_name,
+      'ascii-chat.media.capture.duration' AS name,'histogram' AS type,p AS start_timestamp_ns,'series' AS series_key,
+      floor(epoch_ns(current_timestamp)/10000000000)::BIGINT*10000000000+t AS timestamp_ns,
+      n AS histogram_count,s AS histogram_sum
+      FROM (VALUES (1,1,1,0.005),(1,2,2,0.020),(2,2,1,0.040)) AS v(p,t,n,s)
+    ), """ + panel["query"].removeprefix("WITH ")
+    result = api("/api/dashboards/"+health["id"]+"/query-preview", {"query_sql":histogram,"display_type":"time_series"})["rows"]
+    assert len(result)==1 and abs(result[0]["value"]-20)<1e-8,result
+    print("dashboard rates: process sums, resets, first samples, session isolation and weighted histograms passed",flush=True)
     for category in ("crypto", "protocol", "discovery"):
         definition = next(d for d in alerts if d["id"] == "ascii-chat-"+category+"-failures")
         for session, status, expected in [("$session_id",2,1),("'other-session'",2,0),("$session_id",0,0)]:

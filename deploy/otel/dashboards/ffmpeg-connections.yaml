@@ -2,7 +2,8 @@ version: 1
 id: 21f3a8f3-6ec1-4baf-a29a-6f56bceb5178
 name: ascii-chat · FFmpeg and connections
 description: Last 15 minutes. Operation metrics count unsampled work; span timings summarize only retained traces. EOF, EAGAIN and cancellation are normal FFmpeg
-  control flow. No URLs, filenames or peer identities are used as grouping dimensions.
+  control flow. No URLs, filenames or peer identities are used as grouping dimensions. Packet/byte rate graphs use process-separated counter deltas, exclude
+  resets/initial samples, and sum process rates. Population graphs show the highest process snapshot per bucket, not a sum of shared discovery populations.
 magic_variables:
 - name: session_id
   kind: string
@@ -10,9 +11,10 @@ panels:
 - title: FFmpeg latency from every operation (cumulative mean, ms)
   display_type: time_series
   query: WITH snapshots AS (SELECT *,floor(timestamp_ns/10000000000)*10 AS bucket FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
-    AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000 AND (type='histogram' AND (name LIKE 'ascii-chat.ffmpeg.%.duration')) QUALIFY row_number() OVER (PARTITION
-    BY service_name,name,start_timestamp_ns,series_key,bucket ORDER BY timestamp_ns DESC)=1) SELECT bucket*1000000000 AS timestamp_ns,service_name || ' / ' || name
-    AS group_value,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value FROM snapshots GROUP BY bucket,service_name,name ORDER BY bucket,service_name,name
+    AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000 AND (type='histogram' AND (name LIKE 'ascii-chat.ffmpeg.%.duration')) QUALIFY row_number() OVER
+    (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket ORDER BY timestamp_ns DESC)=1) SELECT bucket*1000000000 AS timestamp_ns,service_name
+    || ' / ' || name AS group_value,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value FROM snapshots GROUP BY bucket,service_name,name ORDER BY
+    bucket,service_name,name
   settings: {}
   layout:
     w: 6
@@ -20,11 +22,11 @@ panels:
   position: 0
 - title: FFmpeg operation and failure totals
   display_type: entity_list
-  query: SELECT service_name || ' / ' || name AS label,process_total AS primary_value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND
-    service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp)
-    - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value)
-    AS process_total FROM latest WHERE name LIKE 'ascii-chat.ffmpeg.%.count' OR name LIKE 'ascii-chat.ffmpeg.%.errors' GROUP BY service_name,name ORDER BY service_name,name)
-    AS totals
+  query: SELECT service_name || ' / ' || name AS label,process_total AS primary_value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id
+    AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns
+    >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns
+    DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name LIKE 'ascii-chat.ffmpeg.%.count' OR name LIKE 'ascii-chat.ffmpeg.%.errors'
+    GROUP BY service_name,name ORDER BY service_name,name) AS totals
   settings: {}
   layout:
     w: 6
@@ -40,14 +42,86 @@ panels:
     w: 6
     h: 1
   position: 2
-- title: Connection establishment and transition latency (cumulative mean, ms)
+- title: Connection readiness, request and transition latency (cumulative mean, ms)
   display_type: time_series
   query: WITH snapshots AS (SELECT *,floor(timestamp_ns/10000000000)*10 AS bucket FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
-    AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000 AND (type='histogram' AND (name IN ('ascii-chat.network.connection.establish.duration','ascii-chat.network.reconnect.wait.duration','ascii-chat.media.transition.load.duration','ascii-chat.media.transition.commit.duration')))
-    QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket ORDER BY timestamp_ns DESC)=1) SELECT bucket*1000000000 AS timestamp_ns,service_name
-    || ' / ' || name AS group_value,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value FROM snapshots GROUP BY bucket,service_name,name ORDER BY bucket,service_name,name
+    AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000 AND (type='histogram' AND (name IN ('ascii-chat.network.connection.establish.duration','ascii-chat.network.connection.setup.duration','ascii-chat.discovery.request.duration','ascii-chat.network.reconnect.wait.duration','ascii-chat.media.transition.load.duration','ascii-chat.media.transition.commit.duration')))
+    QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket ORDER BY timestamp_ns DESC)=1) SELECT bucket*1000000000 AS
+    timestamp_ns,service_name || ' / ' || name AS group_value,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value FROM snapshots GROUP BY bucket,service_name,name
+    ORDER BY bucket,service_name,name
   settings: {}
   layout:
     w: 6
     h: 1
   position: 3
+- title: Application packet and media-frame throughput (events/s)
+  display_type: time_series
+  query: "WITH points AS (\n SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\n\
+    \ AND type='sum' AND name IN ('ascii-chat.network.packets.sent','ascii-chat.network.packets.received','ascii-chat.frames.sent','ascii-chat.frames.received')\
+    \ AND timestamp_ns >= epoch_ns(current_timestamp)-960000000000\n QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,timestamp_ns\
+    \ ORDER BY timestamp_ns DESC)=1\n), deltas AS (\n SELECT *,lag(value) OVER w AS previous,lag(timestamp_ns) OVER w AS previous_ns FROM points\n WINDOW w AS\
+    \ (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns)\n), per_process AS (\n SELECT floor(timestamp_ns/10000000000)*10000000000\
+    \ AS timestamp_ns,service_name,name,start_timestamp_ns,series_key,\n sum(value-previous)/nullif(sum((timestamp_ns-previous_ns)/1e9),0)/1 AS value\n FROM\
+    \ deltas WHERE previous IS NOT NULL AND value>=previous AND timestamp_ns>previous_ns\n AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000\n GROUP\
+    \ BY 1,service_name,name,start_timestamp_ns,series_key\n)\nSELECT timestamp_ns,service_name || ' / ' || name AS group_value,sum(value) AS value\nFROM per_process\
+    \ GROUP BY timestamp_ns,service_name,name ORDER BY timestamp_ns,service_name,name"
+  settings: {}
+  layout:
+    w: 6
+    h: 1
+  position: 4
+- title: Application network throughput (KiB/s)
+  display_type: time_series
+  query: "WITH points AS (\n SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\n\
+    \ AND type='sum' AND name IN ('ascii-chat.network.sent','ascii-chat.network.received') AND timestamp_ns >= epoch_ns(current_timestamp)-960000000000\n QUALIFY\
+    \ row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,timestamp_ns ORDER BY timestamp_ns DESC)=1\n), deltas AS (\n SELECT *,lag(value)\
+    \ OVER w AS previous,lag(timestamp_ns) OVER w AS previous_ns FROM points\n WINDOW w AS (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER\
+    \ BY timestamp_ns)\n), per_process AS (\n SELECT floor(timestamp_ns/10000000000)*10000000000 AS timestamp_ns,service_name,name,start_timestamp_ns,series_key,\n\
+    \ sum(value-previous)/nullif(sum((timestamp_ns-previous_ns)/1e9),0)/1024 AS value\n FROM deltas WHERE previous IS NOT NULL AND value>=previous AND timestamp_ns>previous_ns\n\
+    \ AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000\n GROUP BY 1,service_name,name,start_timestamp_ns,series_key\n)\nSELECT timestamp_ns,service_name\
+    \ || ' / ' || name AS group_value,sum(value) AS value\nFROM per_process GROUP BY timestamp_ns,service_name,name ORDER BY timestamp_ns,service_name,name"
+  settings: {}
+  layout:
+    w: 6
+    h: 1
+  position: 5
+- title: Codec encode/decode latency (cumulative mean, ms)
+  display_type: time_series
+  query: "WITH snapshots AS (\n SELECT *,floor(timestamp_ns/10000000000)*10000000000 AS bucket FROM metrics\n WHERE session_id=$session_id AND service_name IN\
+    \ ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND type='histogram' AND name IN ('ascii-chat.video.encode.duration','ascii-chat.video.decode.duration')\n\
+    \ AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000\n QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket\
+    \ ORDER BY timestamp_ns DESC)=1\n)\nSELECT bucket AS timestamp_ns,service_name || ' / ' || name AS group_value,\n 1000*sum(histogram_sum)/nullif(sum(histogram_count),0)\
+    \ AS value\nFROM snapshots GROUP BY bucket,service_name,name ORDER BY bucket,service_name,name"
+  settings: {}
+  layout:
+    w: 6
+    h: 1
+  position: 6
+- title: Discovery lifecycle and migrations (events/s)
+  display_type: time_series
+  query: "WITH points AS (\n SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\n\
+    \ AND type='sum' AND name IN ('ascii-chat.discovery.sessions.created','ascii-chat.discovery.sessions.joined','ascii-chat.discovery.sessions.looked_up','ascii-chat.discovery.sessions.expired','ascii-chat.discovery.requests.failed','ascii-chat.network.rate_limit.rejections','ascii-chat.discovery.migrations.completed','ascii-chat.discovery.migrations.failed')\
+    \ AND timestamp_ns >= epoch_ns(current_timestamp)-960000000000\n QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,timestamp_ns\
+    \ ORDER BY timestamp_ns DESC)=1\n), deltas AS (\n SELECT *,lag(value) OVER w AS previous,lag(timestamp_ns) OVER w AS previous_ns FROM points\n WINDOW w AS\
+    \ (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns)\n), per_process AS (\n SELECT floor(timestamp_ns/10000000000)*10000000000\
+    \ AS timestamp_ns,service_name,name,start_timestamp_ns,series_key,\n sum(value-previous)/nullif(sum((timestamp_ns-previous_ns)/1e9),0)/1 AS value\n FROM\
+    \ deltas WHERE previous IS NOT NULL AND value>=previous AND timestamp_ns>previous_ns\n AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000\n GROUP\
+    \ BY 1,service_name,name,start_timestamp_ns,series_key\n)\nSELECT timestamp_ns,service_name || ' / ' || name AS group_value,sum(value) AS value\nFROM per_process\
+    \ GROUP BY timestamp_ns,service_name,name ORDER BY timestamp_ns,service_name,name"
+  settings: {}
+  layout:
+    w: 6
+    h: 1
+  position: 7
+- title: Discovery population (latest observed sessions/participants)
+  display_type: time_series
+  query: "WITH snapshots AS (\n SELECT *,floor(timestamp_ns/10000000000)*10000000000 AS bucket FROM metrics\n WHERE session_id=$session_id AND service_name IN\
+    \ ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND name IN ('ascii-chat.discovery.sessions.active','ascii-chat.discovery.participants.active')\n\
+    \ AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000\n QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket\
+    \ ORDER BY timestamp_ns DESC)=1\n)\nSELECT bucket AS timestamp_ns,service_name || ' / ' || name AS group_value,max(value) AS value\nFROM snapshots GROUP\
+    \ BY bucket,service_name,name ORDER BY bucket,service_name,name"
+  settings: {}
+  layout:
+    w: 6
+    h: 1
+  position: 8
