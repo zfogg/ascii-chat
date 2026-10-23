@@ -17,8 +17,8 @@
 typedef struct {
   size_t prompt_bytes;
   size_t cursor;
-  size_t focus;
-  bool password_dialog, incorrect, can_confirm;
+  size_t selected_button;
+  bool password_dialog, incorrect, can_confirm, newline_limit;
   ui_notice_severity_t severity;
   bool color;
   bool unicode;
@@ -112,18 +112,27 @@ void ui_media_panel_render(frame_buffer_t *buffer, terminal_size_t size, const c
   media_panel_clear_background(buffer, size, top, logo_rows, shown);
 }
 
+static int password_lines(const prompt_snapshot_t *s) {
+  int lines = 1;
+  for (const char *p = s->text + s->prompt_bytes; *p; ++p)
+    lines += *p == '\n';
+  return lines;
+}
+
 static void password_panel(frame_buffer_t *buffer, terminal_size_t size, const prompt_snapshot_t *s) {
   int width = size.cols - 4;
   if (width > 64)
     width = 64;
-  int height = 13;
+  int lines = password_lines(s);
+  int height = 12 + lines;
   int top = (size.rows - height) / 2 + 1;
   int logo_rows = size.cols >= 52 && top >= 6 ? 4 : 1;
-  int logo_top = top - logo_rows - 1;
+  int logo_top = top - logo_rows - (top >= 3 ? 1 : 0);
   frame_buffer_printf(buffer, "\033[0m\033[H\033[2J\033[?25l\033[%d;1H", logo_top);
   const animation_sample_t *sample = ui_controller_animation_sample();
   invitation_render_logo(buffer, size.cols, sample ? (int)(sample->seconds * 60) : 0, s->color, logo_rows == 1);
-  media_center_line(buffer, "Video chat in your terminal", top - 1, size.cols);
+  if (top >= 3)
+    media_center_line(buffer, "Video chat in your terminal", top - 1, size.cols);
   int left = (size.cols - width) / 2 + 1;
   ui_popup_frame(buffer, top, left, width, height, LOG_COLOR_RESET);
   frame_buffer_printf(buffer, "\033[%d;%dH\033[1mPassword required\033[0m", top + 1, left + 2);
@@ -131,17 +140,19 @@ static void password_panel(frame_buffer_t *buffer, terminal_size_t size, const p
   snprintf(target, sizeof(target), "Connect to %.*s", width - 15, s->text);
   frame_buffer_printf(buffer, "\033[%d;%dH%s", top + 3, left + 2, target);
   frame_buffer_printf(buffer, "\033[%d;%dHThis server requires a password.", top + 4, left + 2);
-  if (s->incorrect)
-    frame_buffer_printf(buffer, "\033[%d;%dH%s", top + 5, left + 2,
-                        colored_string(LOG_COLOR_WARN, "Incorrect password. Try again."));
+  if (s->incorrect || s->newline_limit)
+    frame_buffer_printf(
+        buffer, "\033[%d;%dH%s", top + 5, left + 2,
+        colored_string(LOG_COLOR_WARN, s->newline_limit ? "Maximum 3 newlines." : "Incorrect password. Try again."));
   frame_buffer_printf(buffer, "\033[%d;%dHPassword (%d characters minimum)", top + 6, left + 2, MIN_PASSWORD_LENGTH);
-  ui_popup_frame(buffer, top + 7, left + 2, width - 4, 3, LOG_COLOR_DEBUG);
+  ui_popup_frame(buffer, top + 7, left + 2, width - 4, lines + 2, LOG_COLOR_DEBUG);
   const ui_button_t buttons[] = {{"[ Confirm ]", 0, !s->can_confirm}, {"[ Cancel ]", 0, false}};
-  ui_buttons_render(buffer, top + 10, left + 2, width - 4, buttons, 2, s->focus ? s->focus - 1 : SIZE_MAX);
-  frame_buffer_printf(buffer, "\033[%d;%dHEnter OK  Tab focus  Esc cancel", top + 11, left + 2);
-  ui_input_render(buffer, top + 8, left + 3, width - 8, 1, s->text + s->prompt_bytes, s->cursor, false);
-  if (s->focus)
-    frame_buffer_printf(buffer, "\033[?25l");
+  ui_buttons_render(buffer, top + 9 + lines, left + 2, width - 4, buttons, 2, s->selected_button);
+  frame_buffer_printf(buffer, "\033[%d;%dH%s", top + 10 + lines, left + 2,
+                      width >= 42 ? "Left/Right select  Enter OK  Esc cancel" : "L/R select  Enter OK  Esc cancel");
+  frame_buffer_printf(buffer, "\033[%d;%dH%s", top + 2, left + 2,
+                      width >= 42 ? "Shift+Enter newline (maximum 3)" : "Shift+Enter newline (max 3)");
+  ui_input_render(buffer, top + 8, left + 3, width - 8, lines, s->text + s->prompt_bytes, s->cursor, false);
 }
 
 const char *ui_prompt_title(const void *data) {
@@ -195,8 +206,8 @@ asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, siz
   prompt_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot) + prompt_bytes + visible_bytes, prompt_snapshot_t *);
   if (!snapshot)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate prompt presentation");
-  snapshot->password_dialog = snapshot->incorrect = snapshot->can_confirm = false;
-  snapshot->focus = 0;
+  snapshot->password_dialog = snapshot->incorrect = snapshot->can_confirm = snapshot->newline_limit = false;
+  snapshot->selected_button = 0;
   snapshot->prompt_bytes = prompt_bytes;
   snapshot->cursor = cursor;
   snapshot->secret = secret;
@@ -225,8 +236,10 @@ void ui_prompt_remove(void) {
 
 int ui_prompt_required_rows(const void *data, int cols) {
   const prompt_snapshot_t *snapshot = data;
-  if (snapshot->password_dialog)
-    return 19;
+  if (snapshot->password_dialog) {
+    int rows = 15 + password_lines(snapshot);
+    return rows < 19 ? 19 : rows;
+  }
   if (strncmp(snapshot->text, "Open media:", 11) == 0)
     return cols < 52 ? 8 : 11;
   return ui_notice_render(NULL, snapshot->text, snapshot->severity, cols, false, false) + 3;
@@ -247,9 +260,10 @@ asciichat_error_t ui_media_loading_present(void) {
                               render_media_loading, "", 1);
 }
 
-asciichat_error_t ui_password_prompt_present(const char *target, const char *masked, size_t cursor, size_t focus,
-                                             bool incorrect, bool can_confirm) {
-  if (!target || !masked || focus > 2)
+asciichat_error_t ui_password_prompt_present(const char *target, const char *masked, size_t cursor,
+                                             size_t selected_button, bool incorrect, bool can_confirm,
+                                             bool newline_limit) {
+  if (!target || !masked || selected_button > 1)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid password presentation");
   size_t target_bytes = strlen(target) + 1, masked_bytes = strlen(masked) + 1;
   size_t bytes = sizeof(prompt_snapshot_t) + target_bytes + masked_bytes;
@@ -258,11 +272,12 @@ asciichat_error_t ui_password_prompt_present(const char *target, const char *mas
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate password presentation");
   s->prompt_bytes = target_bytes;
   s->cursor = cursor;
-  s->focus = focus;
+  s->selected_button = selected_button;
   s->password_dialog = true;
   s->secret = true;
   s->incorrect = incorrect;
   s->can_confirm = can_confirm;
+  s->newline_limit = newline_limit;
   s->color = !GET_OPTION(strip_ansi) && terminal_should_color_output(prompt_fd());
   memcpy(s->text, target, target_bytes);
   memcpy(s->text + target_bytes, masked, masked_bytes);

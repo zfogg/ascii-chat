@@ -16,6 +16,9 @@ import tempfile
 import time
 from terminal_ui import Terminal, free_port
 
+SECRET = 's3\ncret!'
+SHIFT_ENTER = '\x1b[13;2u'
+
 
 def capture(term, path):
     try:
@@ -30,17 +33,23 @@ def capture(term, path):
                'brightcyan': '#29b8db', 'brightwhite': '#ffffff'}
     def color(value, default):
         return palette.get(value, '#' + value if len(value) == 6 and value != 'default' else default)
-    image = Image.new('RGB', (term.screen.columns * 12, term.screen.lines * 25), '#000000')
+    cw = round(font.getlength('M'))
+    top, bottom = font.getbbox('\u2502')[1::2]
+    ch = bottom - top
+    image = Image.new('RGB', (term.screen.columns * cw, term.screen.lines * ch), '#000000')
     draw = ImageDraw.Draw(image)
+    glyphs = []
     for row in range(term.screen.lines):
         for col in range(term.screen.columns):
             cell = term.screen.buffer[row][col]
             fg, bg = color(cell.fg, '#dddddd'), color(cell.bg, '#000000')
             if cell.reverse:
                 fg, bg = bg, fg
-            x, y = col * 12, row * 25
-            draw.rectangle((x, y, x + 11, y + 24), fill=bg)
-            draw.text((x, y), cell.data, font=font, fill=fg)
+            x, y = col * cw, row * ch
+            draw.rectangle((x, y, x + cw - 1, y + ch - 1), fill=bg)
+            glyphs.append((x, y, cell.data, fg))
+    for x, y, text, fg in glyphs:
+        draw.text((x, y), text, font=font, fill=fg)
     image.save(path)
     path.with_suffix('.txt').write_text('\n'.join(term.screen.display), encoding='utf-8')
 
@@ -69,7 +78,7 @@ def main():
             os.environ.pop(key, None)
         terminals, services = [], []
         def terminal(name, mode_args, password=False):
-            env = {**environment, **({'ASCII_CHAT_PASSWORD': 's3 cret!'} if password else {})}
+            env = {**environment, **({'ASCII_CHAT_PASSWORD': SECRET} if password else {})}
             term = Terminal([binary, '--no-check-update', '--log-level', 'info', '--log-file',
                              str(root / (name + '.log')), *mode_args], rows=30, cols=100,
                             terminal_replies=True, environment=env)
@@ -81,6 +90,18 @@ def main():
                 capture(term, args.artifacts / (name + '.png'))
         def prompt(term):
             term.expect(lambda s: 'Password required' in s and '[ Cancel ]' in s, 'Missing password popup', timeout=30)
+        def selected(term, label):
+            def highlighted(_):
+                for row, line in enumerate(term.screen.display):
+                    if label in line:
+                        start = line.index(label)
+                        cells = [term.screen.buffer[row][col] for col in range(start, start + len(label))]
+                        return all(cell.bg != 'default' and not cell.reverse and cell.fg != cell.bg for cell in cells)
+                return False
+            term.expect(highlighted, 'Selected button must have a background fill and regular foreground')
+        def enter_secret(term):
+            term.write('s3' + SHIFT_ENTER + 'cret!')
+            term.expect(lambda s: '**' in s and '*****' in s, 'Multiline password was not masked')
         def reject(term, answer, paste=False):
             term.write('\x1b[200~' + answer + '\x1b[201~' if paste else answer)
             term.expect(lambda s: '*' * len(answer) in s, 'Password was not entered')
@@ -97,19 +118,41 @@ def main():
                 except OSError:
                     assert time.monotonic() < deadline, server.pump()
                     server.pump(.1)
-            def client(name):
-                return terminal(name, ['client', '127.0.0.1', '--port', str(port), *common])
+            def client(name, extra=()):
+                return terminal(name, ['client', '127.0.0.1', '--port', str(port), *common, *extra])
             peer = client('retry')
             prompt(peer)
             peer.expect(lambda _: bool(re.search(r'\x1b\][02];[^\x07\x1b]*password required', ''.join(peer.raw))),
                         'Password dialog terminal title missing')
             border = next(i for i, line in enumerate(peer.screen.display) if '\u250c' in line)
             assert abs(border - (peer.screen.lines - border - 13)) <= 1, 'Popup is not vertically centered'
+            selected(peer, '[ Confirm ]')
+            peer.write('\x1b[C')
+            selected(peer, '[ Cancel ]')
+            save(peer, 'client-selected-cancel')
+            peer.write('\x1b[D')
+            selected(peer, '[ Confirm ]')
             save(peer, 'client-initial')
             peer.write('short\r')
             peer.expect(lambda s: '*****' in s and 'Password required' in s, 'Short input submitted')
             peer.write('\b' * 5)
             peer.expect(lambda s: '*' not in s, 'Backspace editing failed')
+            multiline = 'first\nsecond\nthird\nfourth'
+            peer.write(SHIFT_ENTER.join(multiline.split('\n')))
+            peer.expect(lambda s: sum('*' in line for line in s.splitlines()) == 4, 'Multiline edit did not render')
+            peer.write(SHIFT_ENTER)
+            peer.expect(lambda s: 'Maximum 3 newlines.' in s, 'Fourth newline was not rejected')
+            borders = [(row, line) for row, line in enumerate(peer.screen.display) if '\u250c' in line or '\u2514' in line]
+            assert borders[2][0] - borders[1][0] == 5, 'Input did not expand to four lines'
+            assert borders[3][0] - borders[0][0] == 15, 'Popup did not grow with the input'
+            save(peer, 'client-newline-limit')
+            peer.resize(19, 40)
+            peer.expect(lambda s: 'Maximum 3 newlines.' in s and sum('*' in line for line in s.splitlines()) == 4,
+                        'Four-line password did not fit the compact terminal')
+            peer.resize(30, 100)
+            prompt(peer)
+            peer.write('\b' * len(multiline))
+            peer.expect(lambda s: '*' not in s and 'Maximum 3 newlines.' not in s, 'Multiline deletion did not shrink input')
             reject(peer, 'wrongpass', paste=True)
             save(peer, 'client-incorrect')
             reject(peer, 'wrong again')
@@ -120,9 +163,8 @@ def main():
             save(peer, 'client-narrow')
             peer.resize(30, 100)
             prompt(peer)
-            peer.write('s3 crex\b' + 't!')
-            peer.expect(lambda s: '********' in s, 'Masked line editing failed')
-            peer.write('\t')
+            enter_secret(peer)
+            selected(peer, '[ Confirm ]')
             peer.pump(.3)
             save(peer, 'client-masked')
             peer.write('\r')
@@ -132,13 +174,19 @@ def main():
             while 'CLIENT_CONNECTION_RUNNING' not in (root / 'retry.log').read_text(encoding='utf-8', errors='replace'):
                 assert time.monotonic() < deadline, peer.pump()
                 peer.pump(.1)
-            assert 's3 cret!' not in ''.join(peer.raw)
-            for name, keys in [('escape', '\x1b'), ('cancel', '\t\x1b[200~discarded\x1b[201~\t\r')]:
-                cancelled = client(name)
+            assert SECRET not in ''.join(peer.raw)
+            for name, keys, utf8 in [('escape', '\x1b', 'true'), ('cancel', '\x1b[C\r', 'true'),
+                                     ('ascii-cancel', '\x1b[C\r', 'false')]:
+                cancelled = client(name, ['--utf8', utf8])
                 prompt(cancelled)
+                text = cancelled.pump(.1)
+                assert ('\u250c' in text) == (utf8 == 'true'), 'Incorrect UTF-8 border policy'
+                if utf8 == 'false':
+                    assert '+' in text and '|' in text
+                    save(cancelled, 'client-ascii')
                 cancelled.write(keys)
                 wait_exit(cancelled)
-            print('PASS client: retries, editing, spaces, masking, minimum length, resize, confirm, Esc, Cancel', flush=True)
+            print('PASS client: retries, editing, spaces, masking, minimum length, multiline limit, UTF-8/ASCII borders, Left/Right, resize, Enter, Esc', flush=True)
 
             acds_port = free_port()
             acds = subprocess.Popen([binary, '--no-check-update', '--log-file', str(root / 'acds.log'),
@@ -159,15 +207,16 @@ def main():
             save(joiner, 'discovery-initial')
             reject(joiner, 'wrongpass')
             save(joiner, 'discovery-incorrect')
-            joiner.write('s3 cret!\r')
+            enter_secret(joiner)
+            joiner.write('\r')
             joiner.expect(lambda s: 'Password required' not in s, 'Discovery did not resume')
             deadline = time.monotonic() + 10
             while 'Discovery state: CONNECTING_HOST' not in (root / 'discovery-retry.log').read_text(encoding='utf-8', errors='replace'):
                 assert time.monotonic() < deadline, joiner.pump()
                 joiner.pump(.1)
             assert joiner.process.isalive()
-            assert 's3 cret!' not in ''.join(joiner.raw)
-            for name, keys in [('discovery-escape', '\x1b'), ('discovery-cancel', '\t\t\r')]:
+            assert SECRET not in ''.join(joiner.raw)
+            for name, keys in [('discovery-escape', '\x1b'), ('discovery-cancel', '\x1b[C\r')]:
                 cancelled = terminal(name, [session, *discovery])
                 prompt(cancelled)
                 cancelled.write(keys)
@@ -184,7 +233,7 @@ def main():
                 if args.artifacts:
                     args.artifacts.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(log, args.artifacts / log.name)
-                assert 's3 cret!' not in text, f'Password leaked in {log.name}'
+                assert SECRET not in text, f'Password leaked in {log.name}'
 
 
 if __name__ == '__main__':

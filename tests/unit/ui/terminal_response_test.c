@@ -165,3 +165,26 @@ Test(terminal_response, background_snapshot_never_consumes_shortcuts) {
     cr_assert(keyboard_stream_background(&r, &g, &b));
   cr_assert_eq(keyboard_stream_read(next_byte), 'q');
 }
+
+Test(terminal_response, shifted_enter_is_distinct_and_survives_fragmented_input) {
+  const char *sequences[] = {"\033[13;2u", "\033[27;2;13~"};
+  for (size_t sequence = 0; sequence < 2; ++sequence) {
+    keyboard_stream_reset();
+    size_t length = strlen(sequences[sequence]);
+    for (size_t i = 0; i < length; ++i) {
+      char fragment[] = {sequences[sequence][i], 0};
+      input = fragment;
+      cr_assert_eq(keyboard_stream_read(next_byte), i + 1 == length ? KEY_SHIFT_ENTER : KEY_NONE);
+    }
+    input = "\r";
+    cr_assert_eq(keyboard_stream_read(next_byte), '\r');
+  }
+}
+
+Test(terminal_response, extended_keyboard_controls_preserve_cancel_and_edit_keys) {
+  keyboard_stream_reset();
+  input = "\033[27u\033[13u\033[9u\033[127u\033[99;5u\033[27;5;99~";
+  const keyboard_key_t keys[] = {KEY_ESCAPE, 13, 9, 127, 3, 3};
+  for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); ++i)
+    cr_assert_eq(keyboard_stream_read(next_byte), keys[i]);
+}

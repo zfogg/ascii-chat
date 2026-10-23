@@ -20,8 +20,11 @@ is bypassed only in the test subprocess environment to isolate password entry;
 production trust checks are unchanged. Discovery success asserts that an accepted
 session join reaches `CONNECTING_HOST`; this is not a WebRTC media delivery test.
 
-- `client-initial.png`: initial password dialog, with Confirm disabled while empty.
-- `client-masked.png`: masked editing and selected Confirm button.
+- `client-initial.png`: initial password dialog, with Confirm selected by default.
+- `client-selected-cancel.png`: Cancel selected using Right, with a filled background.
+- `client-masked.png`: two-line masked password and selected Confirm button.
+- `client-newline-limit.png`: four-line input and the error after a fourth newline.
+- `client-ascii.png`: ASCII borders with `--utf8 false`.
 - `client-incorrect.png`: incorrect-password feedback with cleared input.
 - `discovery-incorrect.png`: the same dialog after a rejected discovery session join.
 - `client-narrow.png`: compact logo and popup at 40 columns by 19 rows.
@@ -29,3 +32,13 @@ session join reaches `CONNECTING_HOST`; this is not a WebRTC media delivery test
 The implementation uses the existing rainbow animation, popup frame, line editor,
 and buttons. Native terminal colors, font metrics, the input marker, and the
 minimum-length label differ from the illustrative concept.
+
+Left/Right select a button, Enter activates it, and Esc cancels. Typing always edits
+the password. Shift+Enter inserts a newline and grows the input; up to three
+newlines (four lines) are allowed. Further newlines leave the password unchanged
+and show an inline error. Button selection uses the shared UI buttons, with a
+background fill and the regular foreground color.
+
+Popup borders use `terminal_should_use_utf8()`: `--utf8 true` forces Unicode,
+`--utf8 false` forces ASCII, and auto follows detection. Captures use the measured
+font cell dimensions so adjacent Unicode box-drawing glyphs meet.

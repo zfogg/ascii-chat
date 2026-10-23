@@ -474,7 +474,11 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
   char timed_prompt[8192];
   snprintf(timed_prompt, sizeof(timed_prompt), "%s\n(Timeout: %us; cancels without an answer)", prompt, seconds);
   asciichat_error_t result = ASCIICHAT_OK;
-  size_t focus = 0; // Input, Confirm, Cancel.
+  bool newline_limit = false;
+  if (password_dialog) {
+    const char *enable = "\033[>1u\033[>4;2m";
+    platform_write_all(STDERR_FILENO, enable, strlen(enable));
+  }
   ui_buttons_t buttons = {0};
   ui_button_t actions[] = {{"[ Confirm ]", 0, false}, {"[ Cancel ]", 0, false}};
   while (!shutdown_is_requested()) {
@@ -486,11 +490,11 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
     if (opts.echo) {
       memcpy(visible, buffer, len + 1);
     } else {
-      size_t chars = utf8_char_count(buffer);
-      // A UTF-8 character can be incomplete between byte events.
-      if (chars == SIZE_MAX)
-        chars = len;
-      memset(visible, opts.mask_char, chars);
+      size_t chars = 0;
+      for (size_t i = 0; i < len; ++i) {
+        if (((unsigned char)buffer[i] & 0xc0) != 0x80)
+          visible[chars++] = password_dialog && buffer[i] == '\n' ? '\n' : opts.mask_char;
+      }
       visible[opts.mask_char ? chars : 0] = '\0';
       display_cursor = 0;
       for (size_t i = 0; i < cursor; ++i)
@@ -499,8 +503,8 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
       if (!opts.mask_char)
         display_cursor = 0;
     }
-    result = password_dialog ? ui_password_prompt_present(prompt, visible, display_cursor, focus, incorrect,
-                                                          len >= MIN_PASSWORD_LENGTH)
+    result = password_dialog ? ui_password_prompt_present(prompt, visible, display_cursor, buttons.selected, incorrect,
+                                                          len >= MIN_PASSWORD_LENGTH, newline_limit)
                              : ui_prompt_present(timed_prompt, visible, display_cursor, !opts.echo);
     if (result != ASCIICHAT_OK)
       break;
@@ -511,23 +515,21 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
     }
     if (key == KEY_NONE)
       continue;
-    if (password_dialog && key == '\t') {
-      focus = (focus + 1) % 3;
+    newline_limit = false;
+    if (password_dialog && key == KEY_SHIFT_ENTER) {
+      size_t newlines = 0;
+      for (size_t i = 0; i < len; ++i)
+        newlines += buffer[i] == '\n';
+      if (newlines >= 3)
+        newline_limit = true;
+      else
+        (void)ui_input_insert(buffer, max_len, &len, &cursor, "\n");
       continue;
     }
     actions[0].disabled = password_dialog && len < MIN_PASSWORD_LENGTH;
-    if (password_dialog && focus && key != KEY_ESCAPE && key != 3) {
-      if (key == KEY_PASTE) {
-        char discarded[sizeof(g_paste)] = {0};
-        (void)ui_input_take_paste(discarded, sizeof(discarded));
-        sodium_memzero(discarded, sizeof(discarded));
-        CLEAR_ERRNO();
-        continue;
-      }
-      buttons.selected = focus - 1;
+    if (password_dialog && (key == KEY_LEFT || key == KEY_RIGHT || key == '\r' || key == '\n')) {
       int activated = ui_buttons_key(&buttons, actions, 2, key);
-      focus = buttons.selected + 1;
-      if (activated == 0 && len)
+      if (activated == 0)
         break;
       if (activated == 1) {
         result = SET_ERRNO(ERROR_CRYPTO_AUTH, "Password entry cancelled");
@@ -537,9 +539,18 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
     }
     if (key == KEY_PASTE) {
       char pasted[8192] = {0};
-      if (ui_input_take_paste(pasted, sizeof(pasted)) == ASCIICHAT_OK && !strpbrk(pasted, "\r\n\t") &&
-          strlen(pasted) + len < max_len) {
-        (void)ui_input_insert(buffer, max_len, &len, &cursor, pasted);
+      if (ui_input_take_paste(pasted, sizeof(pasted)) == ASCIICHAT_OK) {
+        size_t newlines = 0;
+        for (size_t i = 0; i < len; ++i)
+          newlines += buffer[i] == '\n';
+        for (size_t i = 0; pasted[i]; ++i)
+          newlines += pasted[i] == '\n';
+        if (password_dialog && newlines > 3)
+          newline_limit = true;
+        else if (!strpbrk(pasted, password_dialog ? "\r\t" : "\r\n\t") && strlen(pasted) + len < max_len)
+          (void)ui_input_insert(buffer, max_len, &len, &cursor, pasted);
+        else
+          CLEAR_ERRNO();
       } else {
         CLEAR_ERRNO();
       }
@@ -560,6 +571,10 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
   if (shutdown_is_requested())
     result = SET_ERRNO(ERROR_GENERAL, "Prompt interrupted");
   ui_prompt_remove();
+  if (password_dialog) {
+    const char *disable = "\033[<u\033[>4;0m";
+    platform_write_all(STDERR_FILENO, disable, strlen(disable));
+  }
   mutex_unlock(&g_input_prompt_mutex);
   SAFE_FREE(visible);
   if (result == ERROR_PROMPT_TIMEOUT)

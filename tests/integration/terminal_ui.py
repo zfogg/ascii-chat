@@ -238,7 +238,8 @@ def check_update_selection(term, label, selected=True):
             if label not in line:
                 continue
             start = line.index(label)
-            return all(term.screen.buffer[row][col].reverse == selected
+            return all((term.screen.buffer[row][col].bg != 'default') == selected
+                       and not term.screen.buffer[row][col].reverse
                        for col in range(start, start + len(label)))
         return False
 
@@ -247,10 +248,10 @@ def check_update_selection(term, label, selected=True):
     row, line = next((row, line) for row, line in enumerate(term.screen.display) if label in line)
     start = line.index(label)
     cells = [term.screen.buffer[row][col] for col in range(start, start + len(label))]
-    assert all(cell.reverse == selected for cell in cells), f"Incorrect inverse selection for {label}"
+    assert all(not cell.reverse for cell in cells), f"Button {label} inverted its foreground"
     if selected:
-        assert all(cell.fg != "default" for cell in cells), f"Selected button {label} has no palette accent color"
-        assert all(cell.bg == "black" for cell in cells), f"Selected button {label} inherits its text color from the terminal theme"
+        assert all(cell.fg != cell.bg for cell in cells), f"Selected button {label} has no foreground contrast"
+        assert all(cell.bg != "default" for cell in cells), f"Selected button {label} has no background highlight"
 
 
 def update_media_backdrop(term):
