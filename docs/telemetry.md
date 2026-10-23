@@ -324,7 +324,7 @@ Stable YAML IDs preserve rule identity. After editing a rule, run
 rule's source file, hash, and evaluation health in Spaniel. File definitions are
 the source of truth; browser notifications are enabled, remote delivery is not.
 
-The six rules cover distinct errored traces (one in five minutes), exporter loss
+The six rules cover new errored traces (deduplicated by trace ID), exporter loss
 (any recent dropped/rejected records), exporter queue pressure (80% for a minute),
 outbound queue delay (250 ms average, at least 20 observations, for a minute),
 audio glitches (10 in five minutes, pending 30 seconds), and invalid/conversion
@@ -364,3 +364,9 @@ cycles and checks live export before terminating its disposable child:
 python tests/manual/test_otel_watchdog.py build/lib/libasciichat.so
 # macOS: build/lib/libasciichat.dylib; Windows: build/bin/asciichat.dll
 ```
+
+The errored-trace rule uses Spaniel event mode: acknowledgement removes a trace
+from Needs attention without deleting its telemetry. Repeated query evaluations,
+replay, and container restarts do not rearm the same trace ID. A different trace
+ID creates a fresh instance immediately. Other alerts retain condition semantics:
+acknowledgement suppresses repeats until recovery and the next breach.
