@@ -147,3 +147,6 @@ uint64_t terminal_screen_logs_last_tail_sequence(void);
 bool terminal_screen_logs_help_open(void);
 /** True when help was requested but the current terminal cannot display it. */
 bool terminal_screen_logs_help_too_small(void);
+
+/** Recompose log-viewer help above modal error notifications. */
+void terminal_screen_logs_render_help(frame_buffer_t *output, terminal_size_t size);

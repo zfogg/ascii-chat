@@ -180,7 +180,7 @@ static void *sync_collect_main(void *unused) {
     // snapshots only for the visible overlay. The pairwise rate comparisons
     // otherwise compete with live capture and input throughout the session.
     if (!ui_sync_is_visible() &&
-        !(ui_controller_current_screen() == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_SYNC)) {
+        !(ui_controller_current_screen() == UI_SCREEN_HELP && keyboard_help_previous_interactive() == UI_SCREEN_SYNC)) {
       next_sample = 0;
       platform_sleep_ns(10 * NS_PER_MS_INT);
       continue;

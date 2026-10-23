@@ -10,6 +10,7 @@
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/tui/terminal_screen.h>
 #include <ascii-chat/tui/errno_stacks.h>
+#include <ascii-chat/tui/error_popup.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/tui/too_small.h>
 #include <ascii-chat/ui/fps_counter.h>
@@ -77,8 +78,6 @@ typedef struct screen {
 
 static screen_t g_screens[UI_SCREEN_COUNT];
 static ui_session_t *g_session;
-static frame_buffer_t *g_update_backdrop;
-static terminal_size_t g_update_backdrop_size;
 static _Thread_local frame_buffer_t *g_capture;
 static _Thread_local const animation_sample_t *g_animation;
 static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
@@ -86,6 +85,7 @@ static mutex_t g_mutex;
 static cond_t g_render_done;
 static cond_t g_render_requested;
 static int g_rendering_screen = -1;
+static uint32_t g_rendering_layers;
 static uint64_t g_render_started;
 static uint64_t g_render_completed;
 static asciichat_thread_t g_thread;
@@ -201,8 +201,10 @@ static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
 int ui_controller_current_screen(void) {
   int background = atomic_load(&g_background_screen);
   int interactive = atomic_load(&g_interactive_screen);
-  if (interactive == UI_SCREEN_HELP && background < UI_SCREEN_NOTICE)
+  if (interactive == UI_SCREEN_HELP && (atomic_load(&g_screen_mask) & (1u << UI_SCREEN_HELP)))
     return UI_SCREEN_HELP;
+  if ((background >= 0 || interactive >= 0) && ui_error_popup_visible())
+    return UI_SCREEN_ERROR;
   if (interactive < 0 && background < UI_SCREEN_MDNS && (atomic_load(&g_screen_mask) & (1u << UI_SCREEN_MDNS)))
     return UI_SCREEN_MDNS;
   return background > interactive ? background : interactive;
@@ -238,12 +240,14 @@ void ui_controller_select_interactive(int screen) {
 static int selected_screen_excluding_locked(int excluded) {
   uint32_t visible = 0;
   int interactive = ui_controller_interactive_screen();
+  if (interactive == UI_SCREEN_HELP)
+    interactive = keyboard_help_previous_interactive();
   for (int i = 0; i < UI_SCREEN_COUNT; ++i)
     if (i != excluded && g_screens[i].render &&
         (!interactive_screen(i) || i == interactive || (interactive < 0 && i == UI_SCREEN_MDNS)))
       visible |= 1u << i;
-  if (excluded != UI_SCREEN_HELP && interactive == UI_SCREEN_HELP && g_screens[UI_SCREEN_HELP].render &&
-      !(visible & (1u << UI_SCREEN_NOTICE)))
+  if (excluded != UI_SCREEN_HELP && ui_controller_interactive_screen() == UI_SCREEN_HELP &&
+      g_screens[UI_SCREEN_HELP].render)
     return UI_SCREEN_HELP;
   int selected = ui_session_select_screen(visible);
   // Sync presents from its independent mailbox. Never fall through to media
@@ -334,11 +338,14 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   bool synchronized = g_render_snapshot != NULL;
   bool started = !synchronized || write_output_chunk(fd, "\033[?2026h", 8) == 8;
   size_t written = 0;
+  bool superseded = false;
   while (started && written < len) {
     // A pending editor or overlay supersedes the remainder of a media frame.
     // Bound each console write so a large frame cannot delay that transition.
-    if (g_stats_media && ui_controller_current_screen() != UI_SCREEN_MEDIA)
+    if (g_stats_media && ui_controller_current_screen() != UI_SCREEN_MEDIA) {
+      superseded = true;
       break;
+    }
     size_t count = len - written;
     if (g_stats_media && count > 65536) {
       count = 65536;
@@ -359,7 +366,8 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   bool ended = !synchronized || write_output_chunk(fd, end_with_query, end_length) == end_length;
   if (!ended)
     g_probe_requested_ns = 0;
-  bool complete = written == len && started && ended;
+  // Switching screens intentionally cancels the remainder of an old media frame.
+  bool complete = (written == len || superseded) && started && ended;
   if (g_stats_media) {
     g_stats_write_ns += time_get_ns() - stats_start;
     g_stats_writes++;
@@ -454,6 +462,7 @@ static void release_screen(screen_t *screen, bool flush_notices) {
 }
 
 void ui_controller_finish(int fd, const char *data, size_t len) {
+  errno_notifications_enable(false);
   screen_t retired[UI_SCREEN_COUNT] = {0};
   bool locked = lifecycle_is_initialized(&g_lifecycle);
   if (locked) {
@@ -508,12 +517,10 @@ const animation_sample_t *ui_controller_animation_sample(void) {
 
 typedef struct {
   screen_t *screen;
-  screen_t *media_backdrop;
+  screen_t *layers;
+  size_t layer_count;
   int active;
-  bool volume;
-  bool drew;
-  bool fresh;
-  bool restore_backdrop;
+  bool volume, drew, fresh, errors, sync_backdrop;
 } native_view_t;
 
 static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
@@ -522,42 +529,40 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
   g_capture = output;
   g_animation = animation;
   g_render_volume = view->volume;
-  if ((view->active == UI_SCREEN_UPDATE || view->active == UI_SCREEN_HELP) &&
-      (view->restore_backdrop || (view->media_backdrop && view->media_backdrop->dirty))) {
-    if (view->restore_backdrop)
-      frame_buffer_clear_screen(output);
-    if (view->media_backdrop)
-      view->media_backdrop->render(size, view->media_backdrop->snapshot);
-    else if (view->active == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_SYNC)
-      ui_sync_render(size);
-    else if (update_banner_is_overlay_open() && g_update_backdrop && size.cols == g_update_backdrop_size.cols &&
-             size.rows == g_update_backdrop_size.rows)
-      frame_buffer_append(output, frame_buffer_get_content(g_update_backdrop),
-                          frame_buffer_get_length(g_update_backdrop));
-  }
-  view->fresh = fps_counter_frame_begin_id(g_fps, view->active == UI_SCREEN_MEDIA ? view->screen->owned->frame_id : 0);
-  // Paint the reserved cells before the art, which never writes over them.
-  // This remains visible on terminals without synchronized-output support.
-  fps_counter_render(g_fps, view->screen->fd, size.cols, true);
-  if (view->active == UI_SCREEN_HELP) {
-    int top = (size.rows - view->screen->minimum.rows) / 2;
-    frame_buffer_printf(output, "\033[%d;1H", top + 2);
-    invitation_render_logo(output, size.cols, (int)(animation->seconds * 60),
-                           terminal_should_color_output(view->screen->fd), false);
-  }
-  view->screen->render(size, view->screen->snapshot);
-  // Compose overlays before publishing the frame, so replacing the media cannot
-  // expose an intermediate frame with its counter erased.
-  fps_counter_render(g_fps, view->screen->fd, size.cols, true);
-  if (view->active != UI_SCREEN_UPDATE) {
-    if (!g_update_backdrop)
-      g_update_backdrop = frame_buffer_create(size.rows, size.cols);
-    if (g_update_backdrop) {
-      frame_buffer_reset(g_update_backdrop);
-      frame_buffer_append(g_update_backdrop, frame_buffer_get_content(output), frame_buffer_get_length(output));
-      g_update_backdrop_size = size;
+  bool previous = errno_notifications_suppress(true);
+  if (view->errors || view->layer_count > 1)
+    frame_buffer_clear_screen(output);
+  if (view->sync_backdrop)
+    ui_sync_render(size);
+  for (size_t i = 0; i < view->layer_count; ++i) {
+    screen_t *layer = &view->layers[i];
+    bool help = i + 1 == view->layer_count && view->active == UI_SCREEN_HELP;
+    if (help && view->errors)
+      ui_error_popup_render(output, size);
+    if (help) {
+      int top = (size.rows - layer->minimum.rows) / 2;
+      frame_buffer_printf(output, "\033[%d;1H", top + 2);
+      invitation_render_logo(output, size.cols, (int)(animation->seconds * 60), terminal_should_color_output(layer->fd),
+                             false);
     }
+    if (ui_too_small(size, layer->minimum)) {
+      ui_too_small_render(output, size, layer->minimum);
+      continue;
+    }
+    screen_snapshot_t *previous_snapshot = g_render_snapshot;
+    g_render_snapshot = layer->owned;
+    layer->render(size, layer->snapshot);
+    g_render_snapshot = previous_snapshot;
   }
+  view->fresh = fps_counter_frame_begin_id(
+      g_fps, view->active == UI_SCREEN_MEDIA && !view->errors ? view->screen->owned->frame_id : 0);
+  fps_counter_render(g_fps, view->screen->fd, size.cols, true);
+  if (view->errors && view->active != UI_SCREEN_HELP)
+    ui_error_popup_render(output, size);
+  if (view->errors && terminal_screen_logs_help_open() &&
+      (view->active == UI_SCREEN_LOGS || view->active == UI_SCREEN_STATUS || view->active == UI_SCREEN_SPLASH))
+    terminal_screen_logs_render_help(output, size);
+  errno_notifications_suppress(previous);
   g_render_volume = false;
   g_animation = NULL;
   g_capture = NULL;
@@ -595,7 +600,8 @@ static void *presentation_main(void *unused) {
       awaiting_reply = false;
       fps_counter_frame_end(g_fps, reply_written_ns);
     }
-    if (awaiting_reply && ui_controller_current_screen() == UI_SCREEN_MEDIA && !shutdown_is_requested()) {
+    if (awaiting_reply && !ui_error_popup_visible() && ui_controller_current_screen() == UI_SCREEN_MEDIA &&
+        !shutdown_is_requested()) {
       // Keep only the latest mailbox frame while the frontend parses output.
       // Input and modal screens remain independent of this backpressure.
       platform_sleep_ms(2);
@@ -604,7 +610,8 @@ static void *presentation_main(void *unused) {
     // This path must remain independent of producers, including one stuck
     // holding the controller mutex. It reads only the collector's mailbox.
     if (ui_sync_is_visible() && ui_controller_current_screen() >= 0 &&
-        ui_controller_current_screen() <= UI_SCREEN_SYNC && !shutdown_is_requested()) {
+        (ui_controller_current_screen() <= UI_SCREEN_SYNC || ui_controller_current_screen() == UI_SCREEN_ERROR) &&
+        !shutdown_is_requested()) {
       if (!was_sync) {
         const ui_session_view_t hidden = {.screen = -1};
         ui_session_render(g_session, &hidden, time_get_ns());
@@ -615,7 +622,22 @@ static void *presentation_main(void *unused) {
       if (terminal_get_size_fd(fd, &size) == ASCIICHAT_OK && size.cols > 0 && size.rows > 0) {
         g_render_size = size;
         atomic_store_bool(&g_blocked, false);
-        ui_sync_render(size);
+        if (ui_error_popup_visible()) {
+          frame_buffer_t *composed = frame_buffer_create(size.rows, size.cols);
+          if (composed) {
+            bool previous = errno_notifications_suppress(true);
+            g_capture = composed;
+            ui_sync_render(size);
+            ui_error_popup_render(composed, size);
+            g_capture = NULL;
+            ui_controller_write(fd, frame_buffer_get_content(composed), frame_buffer_get_length(composed));
+            errno_notifications_suppress(previous);
+            frame_buffer_destroy(composed);
+          }
+        } else {
+          ui_sync_render(size);
+        }
+        atomic_store(&g_size, pack_size(size));
       }
       g_render_fd = -1;
       was_sync = true;
@@ -637,7 +659,9 @@ static void *presentation_main(void *unused) {
     if ((active == UI_SCREEN_MEDIA || active == UI_SCREEN_HELP || active == UI_SCREEN_STATS) &&
         time_get_ns() >= atomic_load_u64(&g_volume_until))
       refresh_deadline = iteration_started_ns + 100 * NS_PER_MS_INT;
-    screen_t frame = {0}, media_backdrop = {0};
+    screen_t frame = {0};
+    screen_t layers[3] = {0};
+    size_t layer_count = 0;
     if (active >= 0 && !g_finished && (!shutdown_is_requested() || active == UI_SCREEN_RENDER_PROGRESS)) {
       frame = g_screens[active];
       atomic_fetch_add(&frame.owned->references, 1);
@@ -696,23 +720,45 @@ static void *presentation_main(void *unused) {
         fps_counter_reset(g_fps);
       g_render_fd = screen->fd;
       frame_buffer_set_screen_output_fd(screen->fd);
-      if ((active == UI_SCREEN_UPDATE && update_banner_is_overlay_open()) || active == UI_SCREEN_HELP) {
-        mutex_lock(&g_mutex);
-        // Media submissions own their text. Retain the newest mailbox frame
-        // while composing it with the modal, without borrowing producer memory.
-        int parent = active == UI_SCREEN_HELP ? keyboard_help_parent_screen()
-                                              : selected_screen_excluding_locked(UI_SCREEN_UPDATE);
-        if (parent >= 0 && parent < UI_SCREEN_COUNT && g_screens[parent].render) {
-          media_backdrop = g_screens[parent];
-          atomic_fetch_add(&media_backdrop.owned->references, 1);
-          g_screens[parent].dirty = false;
+      bool errors = ui_error_popup_visible();
+      bool overlay = errors || active == UI_SCREEN_HELP || active == UI_SCREEN_UPDATE;
+      bool sync_backdrop = false;
+      mutex_lock(&g_mutex);
+      if (active == UI_SCREEN_HELP || active == UI_SCREEN_UPDATE) {
+        int parent = selected_screen_excluding_locked(active);
+        // Help can cover the update dialog, which itself covers the retained TUI.
+        if (parent == UI_SCREEN_UPDATE && active == UI_SCREEN_HELP) {
+          int underlying = keyboard_help_previous_interactive();
+          if (underlying >= 0 && underlying != UI_SCREEN_HELP && g_screens[underlying].render)
+            layers[layer_count++] = g_screens[underlying];
+          else {
+            for (int i = UI_SCREEN_SPLASH; i >= UI_SCREEN_STATUS; --i)
+              if (g_screens[i].render) {
+                layers[layer_count++] = g_screens[i];
+                break;
+              }
+          }
         }
-        mutex_unlock(&g_mutex);
+        if (parent >= 0 && parent != active && g_screens[parent].render)
+          layers[layer_count++] = g_screens[parent];
+        sync_backdrop = keyboard_help_previous_interactive() == UI_SCREEN_SYNC && layer_count == 0;
       }
-      if ((resized || changed) && (active == UI_SCREEN_MEDIA || media_backdrop.render)) {
-        if (GET_OPTION(auto_width))
+      // The active frame already has its own lifetime reference.
+      for (size_t i = 0; i < layer_count; ++i) {
+        atomic_fetch_add(&layers[i].owned->references, 1);
+      }
+      g_rendering_layers = 1u << active;
+      for (int i = 0; i < UI_SCREEN_COUNT; ++i)
+        for (size_t j = 0; j < layer_count; ++j)
+          if (g_screens[i].owned == layers[j].owned)
+            g_rendering_layers |= 1u << i;
+      mutex_unlock(&g_mutex);
+      layers[layer_count++] = frame;
+      if ((resized || changed) && (active == UI_SCREEN_MEDIA || overlay)) {
+        // Keep the last usable media dimensions while a small-terminal view is shown.
+        if (GET_OPTION(auto_width) && size.cols >= UI_MEDIA_MIN_COLS && size.cols <= 1024)
           options_set_int("width", size.cols);
-        if (GET_OPTION(auto_height))
+        if (GET_OPTION(auto_height) && size.rows >= UI_MEDIA_MIN_ROWS && size.rows <= 1024)
           options_set_int("height", size.rows);
       }
       ui_session_resize(g_session, size.cols, size.rows);
@@ -734,12 +780,14 @@ static void *presentation_main(void *unused) {
         mutex_unlock(&g_mutex);
         release_snapshot(retired);
       }
+      layers[layer_count - 1] = frame;
       native_view_t context = {.screen = screen,
-                               .media_backdrop = media_backdrop.render ? &media_backdrop : NULL,
+                               .layers = layers,
+                               .layer_count = layer_count,
                                .active = active,
                                .volume = volume_visible,
-                               .fresh = false,
-                               .restore_backdrop = changed || resized || redraw || screen->dirty};
+                               .errors = errors,
+                               .sync_backdrop = sync_backdrop};
       bool help_changed = false;
       if (active == UI_SCREEN_HELP) {
         uint64_t revision = options_revision();
@@ -748,8 +796,8 @@ static void *presentation_main(void *unused) {
       }
       ui_session_view_t view = {
           .screen = active,
-          .minimum = screen->minimum,
-          .dirty = screen->dirty || media_backdrop.dirty || volume_changed || help_changed,
+          .minimum = errors && active != UI_SCREEN_HELP ? (terminal_size_t){1, 1} : screen->minimum,
+          .dirty = screen->dirty || overlay || volume_changed || help_changed,
           .refresh_ns = active == UI_SCREEN_PROMPT   ? 50 * NS_PER_MS_INT
                         : active == UI_SCREEN_LOGS   ? 100 * NS_PER_MS_INT
                         : active == UI_SCREEN_UPDATE ? (update_banner_is_checking() ? 100 * NS_PER_MS_INT : 0)
@@ -823,16 +871,20 @@ static void *presentation_main(void *unused) {
   frame_complete:
     g_render_fd = -1;
     g_render_snapshot = NULL;
-    release_snapshot(media_backdrop.owned);
+    for (size_t i = 0; i + 1 < layer_count; ++i)
+      release_snapshot(layers[i].owned);
     if (frame.render) {
       release_snapshot(frame.owned);
       mutex_lock(&g_mutex);
       g_rendering_screen = -1;
+      g_rendering_layers = 0;
       g_render_completed = g_render_started;
       bool live = false;
       for (int i = 0; i < UI_SCREEN_COUNT; ++i)
         live |= g_screens[i].render != NULL;
       atomic_store_bool(&g_live, live);
+      if (!live)
+        errno_notifications_enable(false);
       cond_broadcast(&g_render_done);
       mutex_unlock(&g_mutex);
     }
@@ -840,9 +892,9 @@ static void *presentation_main(void *unused) {
     // animations, terminal geometry and idle FPS counters; rendering time is
     // part of the interval rather than an additional delay after each frame.
     mutex_lock(&g_mutex);
-    int pending_screen = ui_controller_current_screen();
+    int pending_screen = selected_screen_locked();
     bool pending = g_redraw || pending_screen != g_active || (pending_screen >= 0 && g_screens[pending_screen].dirty) ||
-                   (media_backdrop.render && g_screens[UI_SCREEN_MEDIA].dirty);
+                   (ui_error_popup_visible() && g_screens[UI_SCREEN_MEDIA].dirty);
     uint64_t now = time_get_ns();
     if (!pending && !atomic_load_bool(&g_presentation_stop_requested) && now < refresh_deadline)
       cond_timedwait(&g_render_requested, &g_mutex, refresh_deadline - now);
@@ -930,7 +982,7 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   if (screen < 0 || screen >= UI_SCREEN_COUNT || !render || !snapshot || !bytes || minimum.cols <= 0 ||
       minimum.rows <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI screen snapshot");
-  if (interactive_screen(screen) && screen != UI_SCREEN_ERRNO &&
+  if (interactive_screen(screen) && screen != UI_SCREEN_ERRNO && screen != UI_SCREEN_HELP &&
       !(screen == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_ERRNO) &&
       (screen != UI_SCREEN_STATS || ui_controller_interactive_screen() == UI_SCREEN_STATS))
     ui_errno_stacks_hide();
@@ -1058,6 +1110,7 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   }
   screen_snapshot_t *retired = slot->owned;
   atomic_store_bool(&g_live, true);
+  errno_notifications_enable(true);
   *slot = (screen_t){
       .owned = copy, .snapshot = copy->data, .render = render, .minimum = minimum, .fd = output_fd, .dirty = true};
   if (interactive_screen(screen) && screen != UI_SCREEN_STATS && (screen != UI_SCREEN_MDNS || !live))
@@ -1095,7 +1148,7 @@ void ui_controller_remove(ui_screen_t screen) {
   screen_snapshot_t *retired = g_screens[screen].owned;
   int expected = screen;
   atomic_compare_exchange_strong(&g_interactive_screen, &expected, -1);
-  uint64_t pending = g_rendering_screen == (int)screen ? g_render_started : 0;
+  uint64_t pending = (g_rendering_layers & (1u << screen)) ? g_render_started : 0;
   screen_t *next = g_screens[screen].next;
   if (next) {
     g_screens[screen] = *next;
@@ -1109,6 +1162,8 @@ void ui_controller_remove(ui_screen_t screen) {
   for (int i = 0; i < UI_SCREEN_COUNT; ++i)
     live |= g_screens[i].render != NULL;
   atomic_store_bool(&g_live, live);
+  if (!live)
+    errno_notifications_enable(false);
   // Borrowed pointers inside snapshots may be freed as soon as remove returns.
   // A callback removing itself retains its owned bytes until the frame ends.
   while (!g_render_snapshot && g_render_completed < pending)
@@ -1122,6 +1177,10 @@ ui_presentation_state_t ui_controller_state(void) {
   if (!lifecycle_is_initialized(&g_lifecycle))
     return state;
   state.screen = ui_controller_current_screen();
+  if (state.screen == UI_SCREEN_ERROR) {
+    state.covered = ui_too_small(ui_controller_size(), ui_error_popup_minimum());
+    return state;
+  }
   if (state.screen >= 0 && state.screen < UI_SCREEN_COUNT) {
     uint64_t published = atomic_load(&g_input_state);
     // Sync has an independent mailbox instead of a controller slot. Treat an
@@ -1276,8 +1335,8 @@ void ui_controller_shutdown(void) {
   thread_join(&g_thread, NULL);
   ui_session_destroy(g_session);
   g_session = NULL;
-  frame_buffer_destroy(g_update_backdrop);
-  g_update_backdrop = NULL;
+  errno_notifications_enable(false);
+  ui_error_popup_reset();
   atomic_store_u64(&g_volume_until, 0);
   ui_sync_stop();
   for (int i = 0; i < UI_SCREEN_COUNT; ++i) {

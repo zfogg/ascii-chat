@@ -44,6 +44,7 @@ set(CORE_SRCS
     ${LIB_DIR}/tui/input.c
     ${LIB_DIR}/tui/sync.c
     ${LIB_DIR}/tui/prompt.c
+    ${LIB_DIR}/tui/error_popup.c
     ${LIB_DIR}/tui/notice.c
     ${LIB_DIR}/tui/too_small.c
     ${LIB_DIR}/ui/frame_buffer.c

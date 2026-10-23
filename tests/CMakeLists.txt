@@ -1061,6 +1061,35 @@ if(TARGET ascii-chat-static)
         # Contract cases are registered by the Criterion targets below.
     endif()
 
+    add_executable(test-error-popup-fixture EXCLUDE_FROM_ALL
+        ${CMAKE_SOURCE_DIR}/tests/standalone/errno/error_popup_fixture.c)
+    target_link_libraries(test-error-popup-fixture PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    apply_sanitizers_to_target(test-error-popup-fixture)
+    target_include_directories(test-error-popup-fixture PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
+    set_target_properties(test-error-popup-fixture PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS)
+        foreach(test_build_target tests tests-criterion-build tests-lib-build)
+            if(TARGET ${test_build_target})
+                add_dependencies(${test_build_target} test-error-popup-fixture)
+            endif()
+        endforeach()
+        set(error_popup_args --binary $<TARGET_FILE:test-error-popup-fixture>
+            --artifacts ${CMAKE_BINARY_DIR}/Testing/error-popup)
+        if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev|RelWithDebInfo)$")
+            list(APPEND error_popup_args --diagnostics)
+        endif()
+        asciichat_add_python_test(error-popup-smoke
+            ${CMAKE_SOURCE_DIR}/tests/integration/error_popup.py ${error_popup_args})
+        set_tests_properties(error-popup-smoke PROPERTIES LABELS "integration;tui" TIMEOUT 240
+            RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+        if(WIN32)
+            set_property(TEST error-popup-smoke PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+        endif()
+    endif()
+
     add_executable(test-errno-tui-fixture EXCLUDE_FROM_ALL
         ${CMAKE_SOURCE_DIR}/tests/standalone/errno/errno_tui_fixture.c)
     target_link_libraries(test-errno-tui-fixture PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})

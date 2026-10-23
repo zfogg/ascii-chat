@@ -349,20 +349,24 @@ void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const
     mutex_unlock(mutex);
   }
   if (log_help_open) {
-    const ui_help_entry_t entries[] = {{"j / Down", "newer line"},
-                                       {"k / Up", "older line"},
-                                       {"Ctrl-D / Right", "half page newer"},
-                                       {"Ctrl-U / Left", "half page older"}};
-    char footer[128], keys[96];
-    ui_help_keys(keys, sizeof(keys), "? / Esc");
-    snprintf(footer, sizeof(footer), "%s closes this help", keys);
-    ui_help_menu_t menu = {.title = "Log Viewer Keyboard Controls",
-                           .entries = entries,
-                           .count = sizeof(entries) / sizeof(*entries),
-                           .footer = footer};
-    (void)ui_help_menu_render(output, size, &menu);
+    terminal_screen_logs_render_help(output, size);
   } else if (config->show_logs && terminal_screen_logs_help_too_small()) {
     frame_buffer_printf(output, "\033[%d;1H%s", size.rows, "Help needs at least 12 terminal rows");
   }
   frame_buffer_destroy(body);
+}
+
+void terminal_screen_logs_render_help(frame_buffer_t *output, terminal_size_t size) {
+  const ui_help_entry_t entries[] = {{"j / Down", "newer line"},
+                                     {"k / Up", "older line"},
+                                     {"Ctrl-D / Right", "half page newer"},
+                                     {"Ctrl-U / Left", "half page older"}};
+  char footer[128], keys[96];
+  ui_help_keys(keys, sizeof(keys), "? / Esc");
+  snprintf(footer, sizeof(footer), "%s closes this help", keys);
+  ui_help_menu_t menu = {.title = "Log Viewer Keyboard Controls",
+                         .entries = entries,
+                         .count = sizeof(entries) / sizeof(*entries),
+                         .footer = footer};
+  (void)ui_help_menu_render(output, size, &menu);
 }

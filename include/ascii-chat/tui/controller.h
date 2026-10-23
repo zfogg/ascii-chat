@@ -23,6 +23,7 @@ typedef enum {
   UI_SCREEN_UPDATE,
   UI_SCREEN_NOTICE,
   UI_SCREEN_PROMPT,
+  UI_SCREEN_ERROR, // Virtual notification layer; rendered above screens and below help.
   UI_SCREEN_COUNT
 } ui_screen_t;
 

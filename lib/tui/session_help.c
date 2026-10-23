@@ -273,6 +273,16 @@ char *ui_session_context_help_render(terminal_size_t size, ui_screen_t screen, t
   size_t count = 0;
   const char *title = NULL;
   switch (screen) {
+  case UI_SCREEN_ERROR: {
+    static const ui_help_entry_t popup[] = {
+        {"Left / Right", "Previous / next error"}, {"Home / End", "First / last error"},
+        {"Up / Down", "Scroll error details"},     {"PgUp / PgDn", "Scroll a page"},
+        {"Esc / q / Enter", "Dismiss all errors"}, {"?", "Close this help"}};
+    entries = popup;
+    count = sizeof(popup) / sizeof(*popup);
+    title = "Error Popup Keyboard Shortcuts";
+    break;
+  }
   case UI_SCREEN_SYNC:
     entries = sync;
     count = sizeof(sync) / sizeof(*sync);
