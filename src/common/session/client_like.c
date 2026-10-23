@@ -750,6 +750,7 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
 
 static asciichat_error_t client_like_cleanup_session(const session_client_like_config_t *config,
                                                      client_like_state_t *state, asciichat_error_t result) {
+  ASCII_OTEL_SCOPE(SESSION_CLEANUP);
   // Preparation can fail before the normal update check wait above.
   update_banner_wait_for_check();
   // Stop the terminal writer before restoring output or destroying the display.
@@ -843,44 +844,48 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   g_current_config = *config;
   g_render_should_exit = client_like_display_should_exit_adapter;
   client_like_state_t state = {0};
-  client_like_setup_terminal_logging();
-  asciichat_error_t result = client_like_setup_keepawake();
-  if (result != ASCIICHAT_OK) {
-    goto cleanup;
+  asciichat_error_t result = ASCIICHAT_OK;
+  {
+    ASCII_OTEL_SCOPE(SESSION_INITIALIZE);
+    client_like_setup_terminal_logging();
+    result = client_like_setup_keepawake();
+    if (result != ASCIICHAT_OK) {
+      goto cleanup;
+    }
+    result = client_like_validate_mirror_webcam_selection(config);
+    if (result != ASCIICHAT_OK) {
+      goto cleanup;
+    }
+    result = client_like_create_session_display(&state);
+    if (result != ASCIICHAT_OK) {
+      goto cleanup;
+    }
+    // An accepted update prompt ends the session successfully before media setup.
+    bool stop = false;
+    result = client_like_prepare_session_splash(config, &state, &stop);
+    if (result != ASCIICHAT_OK || stop) {
+      goto cleanup;
+    }
+    client_like_configure_session_logging(config);
+    result = client_like_configure_media_capture(config, &state);
+    if (result != ASCIICHAT_OK) {
+      goto cleanup;
+    }
+    result = client_like_create_network_capture(config, &state);
+    if (result != ASCIICHAT_OK) {
+      goto cleanup;
+    }
+    client_like_prepare_session_audio(&state);
+    if (client_like_finish_session_splash(config)) {
+      goto cleanup;
+    }
+    result = client_like_create_local_capture(&state);
+    if (result != ASCIICHAT_OK) {
+      goto cleanup;
+    }
+    client_like_start_session_audio(config, &state);
+    log_debug("[MARKER] Audio setup complete at line 614");
   }
-  result = client_like_validate_mirror_webcam_selection(config);
-  if (result != ASCIICHAT_OK) {
-    goto cleanup;
-  }
-  result = client_like_create_session_display(&state);
-  if (result != ASCIICHAT_OK) {
-    goto cleanup;
-  }
-  // An accepted update prompt ends the session successfully before media setup.
-  bool stop = false;
-  result = client_like_prepare_session_splash(config, &state, &stop);
-  if (result != ASCIICHAT_OK || stop) {
-    goto cleanup;
-  }
-  client_like_configure_session_logging(config);
-  result = client_like_configure_media_capture(config, &state);
-  if (result != ASCIICHAT_OK) {
-    goto cleanup;
-  }
-  result = client_like_create_network_capture(config, &state);
-  if (result != ASCIICHAT_OK) {
-    goto cleanup;
-  }
-  client_like_prepare_session_audio(&state);
-  if (client_like_finish_session_splash(config)) {
-    goto cleanup;
-  }
-  result = client_like_create_local_capture(&state);
-  if (result != ASCIICHAT_OK) {
-    goto cleanup;
-  }
-  client_like_start_session_audio(config, &state);
-  log_debug("[MARKER] Audio setup complete at line 614");
   log_debug("[SETUP_COMPLETE] All setup complete, about to start connection loop");
   result = client_like_run_session_attempts(config, &state);
 

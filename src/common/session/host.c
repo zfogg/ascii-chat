@@ -2,6 +2,7 @@
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/otel.h>
 #include <ascii-chat/audio/recording.h>
 /**
  * @file session/host.c
@@ -566,6 +567,7 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
       ++count;
 
   if (count > 0) {
+    ASCII_OTEL_SCOPE(SERVER_VIDEO);
     typedef struct {
       int width, height;
       terminal_capabilities_t caps;
@@ -736,6 +738,7 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
     session_host_client_t *client = &host->clients[i];
     if (!client->active || !client->transport)
       continue;
+    ASCII_OTEL_SCOPE(SERVER_AUDIO);
     if (!client->opus_encoder)
       client->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
     if (!client->opus_encoder) {

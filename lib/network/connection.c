@@ -168,6 +168,7 @@ void network_server_foreach(network_server_t *s, network_connection_visit_fn vis
 }
 
 static void connection_finish(void *arg) {
+  ASCII_OTEL_SCOPE(CONNECTION_CLEANUP);
   network_connection_t *c = arg;
   network_server_t *s = c->server;
   atomic_store_int(&c->state, NETWORK_CLOSING);
@@ -627,6 +628,7 @@ static asciichat_error_t connection_open_tcp(const char *name, const connection_
 asciichat_error_t network_connection_open(const char *name, const char *address, uint16_t port,
                                           const network_connect_config_t *settings, network_connection_t **out,
                                           connection_endpoint_t *resolved) {
+  ASCII_OTEL_SCOPE(CONNECTION_CREATE);
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing connection output");
   *out = NULL;

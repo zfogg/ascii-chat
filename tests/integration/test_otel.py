@@ -190,6 +190,35 @@ def database_smoke(binary, receiver, env):
             process.terminate()
             process.wait(timeout=5)
 
+def discovery_trace_smoke(binary, receiver):
+    import discovery_webrtc
+
+    receiver.clear()
+    original_service = discovery_webrtc.Service
+
+    class InstrumentedService(original_service):
+        def __init__(self, executable, directory, name, mode, options, environment=None):
+            environment = dict(environment or {}, ASCII_CHAT_OTEL_ENDPOINT=receiver.url,
+                               ASCII_CHAT_OTEL_ENABLED_TELEMETRY='traces',
+                               ASCII_CHAT_OTEL_REALTIME_SAMPLE_RATE='1',
+                               ASCII_CHAT_OTEL_REALTIME_MAX_PER_SECOND='10000')
+            super().__init__(executable, directory, name, mode, options, environment)
+
+    discovery_webrtc.Service = InstrumentedService
+    try:
+        with tempfile.TemporaryDirectory(prefix='otel-discovery-chains-') as temp:
+            discovery_webrtc.exercise(Path(binary), Path(temp))
+        spans = signal_records(receiver.records, 'traces')
+        renders = [span for span in spans if span[5] == [b'ascii-chat.server.video.render']]
+        assert renders, 'no native discovery host render spans'
+        assert any(any(child[1] == root[1] and child[5] == [b'ascii-chat.video.ascii_frame_init']
+                       for child in spans) for root in renders), 'native host conversion lost frame context'
+        for tick in (span for span in spans if span[5] == [b'ascii-chat.discovery.handoff.tick']):
+            assert any(span[1] == tick[1] and span[2] != tick[2] for span in spans), 'empty handoff trace'
+    finally:
+        discovery_webrtc.Service = original_service
+
+
 def main():
     binary = str(Path(sys.argv[1]).resolve())
     server = Collector()
@@ -231,6 +260,13 @@ def main():
                 assert b'process.exit.code' in traces
                 assert b'http://127.0.0.1:' not in traces, 'CLI argument values were not redacted'
                 spans = signal_records(server.records, 'traces')
+                initialization = next(s for s in spans if s[5] == [b'ascii-chat.session.initialize'])
+                cleanup = next(s for s in spans if s[5] == [b'ascii-chat.session.cleanup'])
+                display_setup = next(s for s in spans if s[5] == [b'ascii-chat.display.session_display_create'])
+                media_cleanup = next(s for s in spans if s[5] == [b'ascii-chat.media.media_source_destroy'])
+                assert initialization[1] == display_setup[1], 'display setup lost its lifecycle trace'
+                assert cleanup[1] == media_cleanup[1], 'media cleanup lost its lifecycle trace'
+                assert initialization[1] != cleanup[1], 'setup and shutdown must be bounded independently'
                 capture = next(s for s in spans if s[5] == [b'ascii-chat.pipeline.capture'])
                 display = next(s for s in spans if s[5] == [b'ascii-chat.pipeline.display'])
                 assert capture[1] == display[1], 'frame context was lost across worker queues'
@@ -319,6 +355,7 @@ def main():
                     assert struct.unpack('<d', point[4][0])[0] >= 1
         network_smoke(binary, server, env)
         database_smoke(binary, server, env)
+        discovery_trace_smoke(binary, server)
         interrupted_collector_smoke(binary, env)
         print('ascii-chat OTLP integration: signals, media, sampling, offline collector, config precedence, encrypted networking and SQLite passed')
     finally:

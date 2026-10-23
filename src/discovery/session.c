@@ -240,6 +240,7 @@ static asciichat_error_t select_participant_transport(discovery_session_t *sessi
 }
 
 asciichat_error_t discovery_session_destroy(discovery_session_t *session) {
+  ASCII_OTEL_SCOPE(DISCOVERY_SHUTDOWN);
   if (!session) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
   }
@@ -548,6 +549,7 @@ __attribute__((unused)) static asciichat_error_t receive_network_quality_from_ac
 }
 
 static asciichat_error_t connect_to_acds(discovery_session_t *session) {
+  ASCII_OTEL_SCOPE(DISCOVERY_CONNECT);
   if (!session) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "null session");
   }
@@ -595,6 +597,7 @@ static asciichat_error_t discovery_protocol_receive(discovery_session_t *session
 }
 
 static asciichat_error_t create_session(discovery_session_t *session) {
+  ASCII_OTEL_SCOPE(DISCOVERY_CREATE);
   if (!session) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "null session");
   }
@@ -1292,6 +1295,7 @@ static void handle_acds_webrtc_packet(discovery_session_t *session, packet_type_
  * @brief Join an existing discovery session
  */
 static asciichat_error_t join_session(discovery_session_t *session) {
+  ASCII_OTEL_SCOPE(DISCOVERY_JOIN);
   log_info("participant_ctx=%p", session->participant_ctx);
 
   if (!session)
@@ -1656,6 +1660,7 @@ static asciichat_error_t discovery_session_negotiate(discovery_session_t *sessio
 }
 
 static asciichat_error_t discovery_session_start_host(discovery_session_t *session) {
+  ASCII_OTEL_SCOPE(DISCOVERY_START_HOST);
   // Start hosting
   if (!session->host_ctx) {
     // Create host context with configured port
@@ -1819,6 +1824,7 @@ static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *s
 }
 
 static asciichat_error_t discovery_session_connect_tcp(discovery_session_t *session) {
+  ASCII_OTEL_SCOPE(CONNECTION_ATTEMPT);
   if (!session->participant_ctx) {
     session_participant_config_t config = {.address = session->host_address,
                                            .port = session->host_port,
@@ -2004,6 +2010,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 }
 
 void discovery_session_stop(discovery_session_t *session) {
+  ASCII_OTEL_SCOPE(DISCOVERY_SHUTDOWN);
   if (!session) {
     SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
     return;

@@ -1033,10 +1033,10 @@ static asciichat_error_t acds_handoff_broadcast(acds_server_t *server, consensus
                              (packet_type_t)CONSENSUS_HANDOFF_PACKET, bytes, sizeof(bytes), NULL);
 }
 static asciichat_error_t acds_handoff_tick(acds_server_t *server, consensus_handoff_t *state) {
-  ASCII_OTEL_SCOPE(DISCOVERY_HANDOFF);
   consensus_handoff_message_t action;
   if (!consensus_handoff_tick(state, time_get_ns() / NS_PER_MS_INT, &action))
     return ASCIICHAT_OK;
+  ASCII_OTEL_SCOPE(DISCOVERY_HANDOFF);
   if (action.kind == HANDOFF_COMMIT) {
     asciichat_error_t result = database_session_update_host(server->db, state->session, action.participant, "",
                                                             action.port, ACIP_CONNECTION_TYPE_STUN);

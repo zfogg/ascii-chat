@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 /**
  * @file session/render.c
  * @ingroup session
@@ -223,6 +224,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // EVENT-DRIVEN MODE: Frames come from callbacks
     // Both sleep_cb and capture_cb are guaranteed non-NULL by validation above
     sleep_cb(user_data);
+    ASCII_OTEL_SCOPE(PIPELINE_DISPLAY);
     asciichat_errno_scope_t frame_scope = errno_checkpoint();
     image = capture_cb(user_data);
 

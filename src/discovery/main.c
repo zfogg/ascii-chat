@@ -54,6 +54,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/buffer.h>
+#include <ascii-chat/otel.h>
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/platform/terminal.h>
 
@@ -177,6 +178,7 @@ static void *discovery_audio_send_thread(void *user_data) {
     }
     if (audio_ring_buffer_read(ctx->audio->capture_buffer, samples, 960) != 960)
       continue;
+    ASCII_OTEL_SCOPE(CLIENT_AUDIO_CAPTURE);
     int size = client_audio_pipeline_capture(ctx->audio_pipeline, samples, 960, encoded, sizeof(encoded));
     if (size <= 0)
       continue;
@@ -509,6 +511,7 @@ role_dispatch:
 
     // Main loop: capture own media and keep discovery responsive
     while (discovery_session_is_active(g_discovery)) {
+      ASCII_OTEL_SCOPE(CLIENT_VIDEO_FRAME);
       // Exit conditions:
       // 1. Non-snapshot mode: check should_exit() (Ctrl+C, SIGTERM, any exit signal)
       // 2. Snapshot mode: exit when should_exit() is true AND we've rendered at least one frame
@@ -688,6 +691,7 @@ role_dispatch:
         goto media_cleanup;
       while (!should_exit() && discovery_session_is_active(g_discovery) && acip_transport_is_connected(transport) &&
              atomic_load_bool(&receiver.running)) {
+        ASCII_OTEL_SCOPE(CLIENT_VIDEO_FRAME);
         result =
             session_protocol_update_settings(&advertised, &advertised_revision, discovery_send_settings, transport);
         if (result != ASCIICHAT_OK)
