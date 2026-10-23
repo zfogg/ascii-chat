@@ -5,6 +5,8 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/symbols.h>
+#include <ascii-chat/source_root.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/session.h>
@@ -73,6 +75,19 @@ static void *produce_errors(void *opaque) {
   } while (0)
 
 static int journal_contract(void) {
+  char source[512];
+  bool external;
+  if (ASCIICHAT_SOURCE_ROOT[0]) {
+    CHECK(symbol_format_source_path("test-error-popup-fixture.exe",
+                                    ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c", source,
+                                    sizeof(source), &external) == ASCIICHAT_OK);
+    CHECK(!external);
+    CHECK(!strcmp(source, "tests\\standalone\\errno\\error_popup_fixture.c"));
+  }
+  CHECK(symbol_format_source_path("vendor.dll", "D:\\external\\vendor.c", source, sizeof(source), &external) ==
+        ASCIICHAT_OK);
+  CHECK(external);
+  CHECK(!strcmp(source, "D:\\external\\vendor.c"));
   asciichat_error_context_t entries[ASCIICHAT_ERRNO_HISTORY_SIZE];
   uint64_t dropped;
   SET_ERRNO(ERROR_MEDIA_OPEN, "Before TUI");

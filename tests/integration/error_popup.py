@@ -137,6 +137,7 @@ def navigation(args):
             f.expect("popup-media-worker")
             f.expect("Source:")
             f.expect("Backtrace")
+            f.absent("ascii-chat\\tests\\standalone")
             assert "error_popup_fixture.c" in "".join(f.term.raw)
         else:
             f.absent("Source:")
