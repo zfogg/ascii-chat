@@ -28,6 +28,7 @@ bool ascii_otel_enabled(void);
 const char *ascii_otel_current_operation(void);
 void ascii_otel_metric(ascii_otel_metric_t metric, double value);
 void ascii_otel_stats_attach(stats_scope_t *scope);
+ascii_otel_metric_t ascii_otel_stats_metric(stats_record_kind_t kind, unsigned id);
 void ascii_otel_call_session_used(const char *session_string);
 void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_size, const char *action, int transport);
 void ascii_otel_exit(int code);

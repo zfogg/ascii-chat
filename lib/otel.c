@@ -158,9 +158,9 @@ void ascii_otel_metric(ascii_otel_metric_t metric, double value) {
 }
 enum {
   stats_metric_count = 0
-#define ASCII_STATS_COUNTER(id, name, unit) +1
-#define ASCII_STATS_GAUGE(id, name, unit) +1
-#define ASCII_STATS_DURATION(id, name, unit) +1
+#define ASCII_STATS_COUNTER(id, metric_id, name, unit) +1
+#define ASCII_STATS_GAUGE(id, metric_id, name, unit) +1
+#define ASCII_STATS_DURATION(id, metric_id, name, unit) +1
 #include <ascii-chat/stats/telemetry.def>
 #undef ASCII_STATS_COUNTER
 #undef ASCII_STATS_GAUGE
@@ -169,29 +169,40 @@ enum {
 _Static_assert(stats_metric_count == STATS_COUNTER_COUNT + STATS_GAUGE_COUNT + STATS_DURATION_COUNT,
                "Every typed stat needs a telemetry metric");
 
-static void stats_metric_record(stats_record_kind_t kind, unsigned id, uint64_t value, void *context) {
-  (void)context;
+ascii_otel_metric_t ascii_otel_stats_metric(stats_record_kind_t kind, unsigned id) {
+  if (!((kind == STATS_RECORD_COUNTER && id < STATS_COUNTER_COUNT) ||
+        (kind == STATS_RECORD_GAUGE && id < STATS_GAUGE_COUNT) ||
+        (kind == STATS_RECORD_DURATION && id < STATS_DURATION_COUNT)))
+    return ASCII_OTEL_METRIC_COUNT;
   ascii_otel_metric_t metric;
   switch (((unsigned)kind << 16) | id) {
-#define ASCII_STATS_COUNTER(id, name, unit)                                                                            \
+#define ASCII_STATS_COUNTER(id, metric_id, name, unit)                                                                            \
   case (STATS_RECORD_COUNTER << 16) | STATS_COUNTER_##id:                                                              \
-    metric = ASCII_OTEL_METRIC_STATS_COUNTER_##id;                                                                     \
+    metric = ASCII_OTEL_METRIC_##metric_id;                                                                     \
     break;
-#define ASCII_STATS_GAUGE(id, name, unit)                                                                              \
+#define ASCII_STATS_GAUGE(id, metric_id, name, unit)                                                                              \
   case (STATS_RECORD_GAUGE << 16) | STATS_GAUGE_##id:                                                                  \
-    metric = ASCII_OTEL_METRIC_STATS_GAUGE_##id;                                                                       \
+    metric = ASCII_OTEL_METRIC_##metric_id;                                                                       \
     break;
-#define ASCII_STATS_DURATION(id, name, unit)                                                                           \
+#define ASCII_STATS_DURATION(id, metric_id, name, unit)                                                                           \
   case (STATS_RECORD_DURATION << 16) | STATS_DURATION_##id:                                                            \
-    metric = ASCII_OTEL_METRIC_STATS_DURATION_##id;                                                                    \
+    metric = ASCII_OTEL_METRIC_##metric_id;                                                                    \
     break;
 #include <ascii-chat/stats/telemetry.def>
 #undef ASCII_STATS_COUNTER
 #undef ASCII_STATS_GAUGE
 #undef ASCII_STATS_DURATION
   default:
-    return;
+    return ASCII_OTEL_METRIC_COUNT;
   }
+  return metric;
+}
+
+static void stats_metric_record(stats_record_kind_t kind, unsigned id, uint64_t value, void *context) {
+  (void)context;
+  ascii_otel_metric_t metric = ascii_otel_stats_metric(kind, id);
+  if (metric == ASCII_OTEL_METRIC_COUNT)
+    return;
   ascii_otel_metric(metric, kind == STATS_RECORD_DURATION ? (double)value / 1e9 : (double)value);
 }
 

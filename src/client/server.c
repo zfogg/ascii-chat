@@ -1,3 +1,4 @@
+#include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/otel.h>
 #include "connection_internal.h"
 #include <ascii-chat/network/acip/backpressure.h>
@@ -306,7 +307,7 @@ void server_connection_shutdown(client_connection_t *connection) {
 void server_connection_pong_received(client_connection_t *connection) {
   uint64_t sent = atomic_load_u64(&connection->telemetry_ping_ns);
   if (sent && sent != UINT64_MAX && atomic_cas_u64(&connection->telemetry_ping_ns, &sent, 0))
-    ascii_otel_metric(ASCII_OTEL_METRIC_RTT, (double)(time_get_ns() - sent) / 1e9);
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_RTT, time_get_ns() - sent);
 }
 void server_connection_lost(client_connection_t *connection) {
   ASCII_OTEL_SCOPE(CONNECTION_LOST);

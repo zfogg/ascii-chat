@@ -2,31 +2,33 @@
 
 ### Statistics coverage
 
-The typed process stats catalog has a one-to-one telemetry mapping: 29 counters,
-5 gauges and 10 duration histograms. Counters and gauges use
-`ascii-chat.stats.<descriptor_name>`; durations use
-`ascii-chat.stats.duration.<descriptor_name>` in seconds. This includes frame
-capture/conversion/encoding/presentation/skips/drops, queue submissions/drops,
-recording, application packets/bytes/errors, reconnects, audio underruns/overruns,
-session creates/joins/lookups/expirations, request failures, rate rejections and
-host migration successes/failures. Gauges cover connections, sessions,
-participants, queued video and buffered audio.
+The typed process stats catalog maps to 29 counters, 5 gauges and 10 duration
+histograms through `include/ascii-chat/stats/telemetry.def`. Each entry names its
+canonical telemetry metric. There is no separate `ascii-chat.stats.*` mirror.
+For example, local `frames_captured` feeds `ascii-chat.frames.captured`,
+`bytes_sent` feeds `ascii-chat.network.sent`, and `reconnects` feeds
+`ascii-chat.network.reconnects`. Those events are recorded only by the process
+stats observer; the former parallel OTEL calls have been removed. Per-peer stats
+scopes do not export, so their duplicate local accounting is not counted again.
 
-The stats engine sends counter increments, current gauge values (including zero)
-and each duration observation through a process-scope observer. Per-peer scopes
-remain local, so their duplicate accounting is not exported twice. Mode
-capabilities still control collection; unsupported operations do not generate
-observations. Server/discovery provider gauges refresh at least once per second
-while telemetry is enabled, even with the stats screen closed and stats printing
-disabled. Existing focused codec, crypto, queue, process and exporter metrics
-remain separate measurements; do not add them to these stats totals.
+New measurements have descriptive names such as `ascii-chat.frames.converted`,
+`ascii-chat.discovery.migrations.failed`, `ascii-chat.recording.frame.duration`
+and `ascii-chat.video.ascii.convert.duration`. Durations are seconds and retain
+all observations as histograms. The native build fails if a typed stat lacks a
+mapping. FPS and throughput are derived from counter changes over elapsed time.
 
-FPS and byte rates are derived from counter changes over elapsed time, rather
-than exported as competing cumulative counters. Duration histograms retain
-observation counts, sums and distributions. Display text, peer/session row IDs
-and arbitrary diagnostic strings are not metric labels. Adding a typed stat
-without a telemetry mapping fails the native build. The mapping is maintained
-in `include/ascii-chat/stats/telemetry.def`.
+Distinct stages remain separate, with explicit names: `audio.device.underruns`
+counts PortAudio flags while `audio.buffer.underruns` counts network ring-buffer
+shortages; `frames.submitted_to_display` counts display submissions while
+`frames.presented` counts completed terminal writes; `recording.frames.encoded`
+counts recording submissions while `video.encode.frames` counts codec frames.
+The `ascii-chat.` prefix applies to each name above. Stage totals and specific
+codec measurements must not be added to one another as if they were disjoint.
+
+Mode capabilities control collection. Server/discovery gauges refresh once per
+second with telemetry enabled even when the stats screen and printing are off.
+Existing historical `ascii-chat.stats.*` points remain in recordings; new runs
+emit only canonical names. No historical data is deleted or re-ingested.
 
 ### Test isolation
 

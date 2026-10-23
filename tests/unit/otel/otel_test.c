@@ -395,6 +395,31 @@ Test(otel, ascii_http_in_test_mode_is_a_safe_noop) {
   cr_assert_not(ascii_otel_enabled());
 }
 
+Test(otel, stats_share_canonical_metrics_without_mirror_series) {
+  static const char *names[] = {
+#define ASCII_OTEL_METRIC(id, name, type, unit) name,
+#include <ascii-chat/otel_metrics.def>
+#undef ASCII_OTEL_METRIC
+  };
+  for (unsigned kind = STATS_RECORD_COUNTER; kind <= STATS_RECORD_DURATION; ++kind) {
+    unsigned count = kind == STATS_RECORD_COUNTER ? STATS_COUNTER_COUNT :
+                     kind == STATS_RECORD_GAUGE ? STATS_GAUGE_COUNT : STATS_DURATION_COUNT;
+    for (unsigned id = 0; id < count; ++id) {
+      ascii_otel_metric_t metric = ascii_otel_stats_metric(kind, id);
+      cr_assert_lt(metric, ASCII_OTEL_METRIC_COUNT);
+      cr_assert(strncmp(names[metric], "ascii-chat.stats.", 17) != 0);
+    }
+  }
+  cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_FRAMES_CAPTURED), ASCII_OTEL_METRIC_FRAME_CAPTURED);
+  cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_RECONNECTS), ASCII_OTEL_METRIC_RECONNECT);
+  cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_BYTES_SENT), ASCII_OTEL_METRIC_NET_TX);
+  cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_BYTES_RECEIVED), ASCII_OTEL_METRIC_NET_RX);
+  cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_GAUGE, STATS_GAUGE_SESSIONS_ACTIVE), ASCII_OTEL_METRIC_SESSIONS);
+  cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_DURATION, STATS_DURATION_RTT), ASCII_OTEL_METRIC_RTT);
+  cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_COUNT), ASCII_OTEL_METRIC_COUNT);
+  cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_COUNTER, 65536), ASCII_OTEL_METRIC_COUNT);
+}
+
 Test(otel, complete_application_catalog_exports_without_loss) {
   static const gotel_operation_t application_operations[] = {
 #define ASCII_OTEL_OPERATION(id, name, realtime) {name, realtime},

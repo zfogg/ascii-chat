@@ -581,7 +581,6 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     asciichat_error_t rate_check =
         rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
-      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RATE_LIMIT_REJECTIONS, 1);
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
       log_warn("Rate limit exceeded for SESSION_CREATE from %s", client_ip);
       return;
@@ -656,7 +655,6 @@ static void acds_on_session_lookup(const acip_session_lookup_t *req, acip_transp
     asciichat_error_t rate_check =
         rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_LOOKUP, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
-      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RATE_LIMIT_REJECTIONS, 1);
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
       log_warn("Rate limit exceeded for SESSION_LOOKUP from %s", client_ip);
       return;
@@ -698,7 +696,6 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
     asciichat_error_t rate_check =
         rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_JOIN, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
-      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RATE_LIMIT_REJECTIONS, 1);
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
       log_warn("Rate limit exceeded for SESSION_JOIN from %s", client_ip);
       return;

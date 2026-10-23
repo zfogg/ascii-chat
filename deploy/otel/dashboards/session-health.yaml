@@ -71,7 +71,7 @@ panels:
   query: SELECT service_name || ' / ' || name AS label,process_total AS primary_value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND
     service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp)
     - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value)
-    AS process_total FROM latest WHERE name IN ('ascii-chat.audio.underruns','ascii-chat.audio.overruns','ascii-chat.audio.samples.dropped','ascii-chat.audio.samples.clipped')
+    AS process_total FROM latest WHERE name IN ('ascii-chat.audio.buffer.underruns','ascii-chat.audio.buffer.overruns','ascii-chat.audio.samples.dropped','ascii-chat.audio.samples.clipped')
     GROUP BY service_name,name ORDER BY service_name,name) AS totals
   settings: {}
   layout:

@@ -220,8 +220,8 @@ static void database_telemetry_population(sqlite3 *db) {
     return;
   sqlite3_bind_int64(statement, 1, (sqlite3_int64)database_get_current_time_ms());
   if (sqlite3_step(statement) == SQLITE_ROW) {
-    ascii_otel_metric(ASCII_OTEL_METRIC_SESSIONS, (double)sqlite3_column_int64(statement, 0));
-    ascii_otel_metric(ASCII_OTEL_METRIC_PARTICIPANTS, (double)sqlite3_column_int64(statement, 1));
+    stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_SESSIONS_ACTIVE, (uint64_t)sqlite3_column_int64(statement, 0));
+    stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_PARTICIPANTS_ACTIVE, (uint64_t)sqlite3_column_int64(statement, 1));
   }
   sqlite3_finalize(statement);
 }
@@ -1296,7 +1296,7 @@ asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t 
   sqlite3_finalize(stmt);
   if (result != SQLITE_DONE)
     return SET_ERRNO(ERROR_CONFIG, "Active session statistics query failed");
-  ascii_otel_metric(ASCII_OTEL_METRIC_SESSIONS, (double)*sessions);
-  ascii_otel_metric(ASCII_OTEL_METRIC_PARTICIPANTS, (double)*participants);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_SESSIONS_ACTIVE, *sessions);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_PARTICIPANTS_ACTIVE, *participants);
   return ASCIICHAT_OK;
 }

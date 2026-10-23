@@ -360,7 +360,6 @@ static void *pipeline_capture_thread(void *arg) {
     uint64_t zero = 0;
     atomic_cas_u64(&pipeline->first_frame_ns, &zero, frame->captured_ns);
 
-    ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_CAPTURED, 1);
     int telemetry_screen = ui_controller_current_screen();
     unsigned expected = telemetry_screen == UI_SCREEN_PROMPT || telemetry_screen == UI_SCREEN_LOGS ? 0 : 1;
     ascii_otel_pipeline_progress(0, expected | (pipeline->has_render_file ? 2 : 0));
@@ -493,7 +492,6 @@ static void *pipeline_encode_thread(void *arg) {
     image_t raw_image = {.w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels};
     pipeline->encode_error = session_display_encode_frame(pipeline->display, &raw_image, frame->captured_ns);
     if (pipeline->encode_error == ASCIICHAT_OK) {
-      ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_ENCODED, 1);
       ascii_otel_pipeline_progress(2, 0);
       ascii_otel_metric(ASCII_OTEL_METRIC_ENCODE_LATENCY,
                         (double)(time_get_ns() - frame->acquisition_started_ns) / 1e9);

@@ -654,7 +654,6 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
       ui_controller_title_activity(attempt > 1 ? UI_TITLE_RECONNECTING : UI_TITLE_CONNECTING);
     if (attempt > 1) {
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RECONNECTS, 1);
-      ascii_otel_metric(ASCII_OTEL_METRIC_RECONNECT, 1);
     }
 
     asciichat_errno_scope_t attempt_scope = errno_scope_begin();

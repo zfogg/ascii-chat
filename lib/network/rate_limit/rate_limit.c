@@ -1,4 +1,5 @@
 #include <ascii-chat/otel.h>
+#include <ascii-chat/stats/runtime.h>
 /**
  * @file network/rate_limit/rate_limit.c
  * @brief 🚦 Rate limiting implementation with backend abstraction
@@ -146,7 +147,7 @@ asciichat_error_t rate_limiter_check(rate_limiter_t *limiter, const char *ip_add
   if (result == ASCIICHAT_OK)
     ASCII_OTEL_ATTR_INT("rate_limit.allowed", *allowed);
   if (result == ASCIICHAT_OK && !*allowed)
-    ascii_otel_metric(ASCII_OTEL_METRIC_RATE_REJECT, 1);
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RATE_LIMIT_REJECTIONS, 1);
   return result;
 }
 
