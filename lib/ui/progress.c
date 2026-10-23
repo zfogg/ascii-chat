@@ -30,10 +30,11 @@ void ui_progress_format(char *out, size_t cap, double fraction, int width) {
   }
 }
 const char *ui_spinner_glyph(uint64_t elapsed_ns, bool use_colors) {
-  static const char *unicode[] = {"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"};
+  // Each rotating segment has three dots spanning both Braille columns.
+  static const char *unicode[] = {"⠋", "⠙", "⠴", "⠦"};
   static const char *ascii[] = {"|", "/", "-", "\\"};
   uint64_t step = elapsed_ns / 125000000;
-  const char *glyph = terminal_should_use_utf8() ? unicode[step % 8] : ascii[step % 4];
+  const char *glyph = terminal_should_use_utf8() ? unicode[step % 4] : ascii[step % 4];
   return use_colors ? colored_string(LOG_COLOR_WARN, glyph) : glyph;
 }
 void ui_spinner_render(frame_buffer_t *out, int row, int col, uint64_t elapsed_ns) {
