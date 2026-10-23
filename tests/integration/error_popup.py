@@ -94,6 +94,7 @@ class Fixture:
         self.command("error", number)
         self.expect(marker)
         self.expect("? Help")
+        self.expect("Dismiss all")
 
     def screenshot(self, name):
         self.term.pump(.2)
@@ -169,6 +170,7 @@ def navigation(args):
         f.expect("Scroll error details")
         f.expect("Scroll a page")
         f.expect("Dismiss all errors")
+        f.expect("Enter / Esc")
         f.command("error", 8)
         f.term.pump(.4)
         f.expect("Error Popup Keyboard Shortcuts")

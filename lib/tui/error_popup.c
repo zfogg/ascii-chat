@@ -1,4 +1,5 @@
 #include <ascii-chat/tui/error_popup.h>
+#include <ascii-chat/ui/buttons.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/too_small.h>
 #include <ascii-chat/ui/popup.h>
@@ -299,6 +300,8 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
   const char *orange = colors ? ui_text_color_prefix(LOG_COLOR_DEV) : "";
   const char *reset = colors ? "\033[0m" : "";
   frame_buffer_printf(out, "\033[%d;%dH%s?%s Help", top + height - 2, left + 2, orange, reset);
+  ui_button_t button = {.label = "Dismiss all", .shortcut = '\r'};
+  ui_buttons_render(out, top + height - 2, left + 10, width - 20, &button, 1, 0);
 }
 
 void ui_error_popup_reset(void) {

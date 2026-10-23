@@ -234,7 +234,8 @@ as terminal logs. Release hides these developer diagnostics.
 
 Left/Right select the preceding/following error; Home/End select the oldest/newest.
 New arrivals select the newest error. Up/Down and PageUp/PageDown scroll details.
-The popup displays only ? Help; its help overlay lists navigation, scrolling,
+The popup displays a Dismiss all button activated by Enter and a ? Help hint.
+Its compact help overlay lists navigation, scrolling,
 and dismissal shortcuts. Esc, q, and Enter dismiss all errors and consume the key. Acknowledgment removes
 only notifications through the captured cutoff ID; concurrent later arrivals
 remain visible. It never clears a producer's pending errno stack or recovery scope.

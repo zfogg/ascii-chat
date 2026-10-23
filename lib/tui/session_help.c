@@ -215,7 +215,7 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
                          .settings = settings_text,
                          .settings_count = (size_t)settings_count,
                          .footer = footer,
-                         .top_margin = 5};
+                         .top_margin = 0};
   *minimum = ui_help_menu_measure(&menu);
   frame_buffer_t *output = frame_buffer_create(size.rows, size.cols);
   if (!output)
@@ -274,10 +274,13 @@ char *ui_session_context_help_render(terminal_size_t size, ui_screen_t screen, t
   const char *title = NULL;
   switch (screen) {
   case UI_SCREEN_ERROR: {
-    static const ui_help_entry_t popup[] = {
-        {"Left / Right", "Previous / next error"}, {"Home / End", "First / last error"},
-        {"Up / Down", "Scroll error details"},     {"PgUp / PgDn", "Scroll a page"},
-        {"Esc / q / Enter", "Dismiss all errors"}, {"?", "Close this help"}};
+    static const ui_help_entry_t popup[] = {{"Left / Right", "Previous / next error"},
+                                            {"Home / End", "First / last error"},
+                                            {"Up / Down", "Scroll error details"},
+                                            {"PgUp / PgDn", "Scroll a page"},
+                                            {"Enter / Esc", "Dismiss all errors"},
+                                            {"q", "Dismiss all errors"},
+                                            {"?", "Close this help"}};
     entries = popup;
     count = sizeof(popup) / sizeof(*popup);
     title = "Error Popup Keyboard Shortcuts";
@@ -318,7 +321,7 @@ char *ui_session_context_help_render(terminal_size_t size, ui_screen_t screen, t
   }
   char footer[128];
   snprintf(footer, sizeof(footer), "Press %s to close", colored_string(LOG_COLOR_WARN, "?"));
-  ui_help_menu_t menu = {.title = title, .entries = entries, .count = count, .footer = footer, .top_margin = 5};
+  ui_help_menu_t menu = {.title = title, .entries = entries, .count = count, .footer = footer, .top_margin = 0};
   *minimum = ui_help_menu_measure(&menu);
   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
   if (!buffer)

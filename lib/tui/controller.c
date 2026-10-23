@@ -539,12 +539,6 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
     bool help = i + 1 == view->layer_count && view->active == UI_SCREEN_HELP;
     if (help && view->errors)
       ui_error_popup_render(output, size);
-    if (help) {
-      int top = (size.rows - layer->minimum.rows) / 2;
-      frame_buffer_printf(output, "\033[%d;1H", top + 2);
-      invitation_render_logo(output, size.cols, (int)(animation->seconds * 60), terminal_should_color_output(layer->fd),
-                             false);
-    }
     if (ui_too_small(size, layer->minimum)) {
       ui_too_small_render(output, size, layer->minimum);
       continue;
