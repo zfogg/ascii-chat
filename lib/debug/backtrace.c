@@ -126,7 +126,7 @@ void backtrace_format_styled(backtrace_text_t *text, const char *label, const ba
         size_t bin_copy_len = MIN((size_t)bin_len, sizeof(bin_name) - 1);
         SAFE_MEMCPY(bin_name, sizeof(bin_name), s, bin_copy_len);
         bin_name[bin_copy_len] = '\0';
-        const char *colored_bin_ptr = colored_string(LOG_COLOR_DEBUG, bin_name);
+        const char *colored_bin_ptr = colored_string(LOG_COLOR_RESET, bin_name);
         char colored_bin_buf[512];
         SAFE_STRNCPY(colored_bin_buf, colored_bin_ptr, sizeof(colored_bin_buf));
         colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,

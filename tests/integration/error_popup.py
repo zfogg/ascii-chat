@@ -166,6 +166,8 @@ def navigation(args):
         if args.diagnostics:
             assert color_of(f.term, "produce_errors") == shortcut_color
             assert color_of(f.term, "backtrace_capture") == shortcut_color
+            if sys.platform == "win32":
+                assert color_of(f.term, "[asciichat.dll]", 1) == "default"
             assert color_of(f.term, "backtrace.c:", len("backtrace.c:")) == thread_color
             assert name_color != shortcut_color
         f.absent("Left / Right")
