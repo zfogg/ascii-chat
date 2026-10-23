@@ -37,10 +37,11 @@ def main():
             print("PASS callback reentry, concurrent replacement/removal, self-removal, finish")
         finally:
             terminal.close()
-        for mode in ("deadlock", "stale"):
+        for mode in ("deadlock", "deadlock-ascii", "stale"):
             stop_path = Path(log + ".stop")
             stop_path.unlink(missing_ok=True)
-            terminal = Terminal([binary, mode, log], rows=30, cols=120)
+            terminal = Terminal([binary, "deadlock" if mode == "deadlock-ascii" else mode, log], rows=30, cols=120,
+                                environment={"ASCII_CHAT_UTF8": "false" if mode == "deadlock-ascii" else "true"})
             try:
                 terminal.expect(lambda text: "SYNC FIXTURE READY" in text, "Fixture did not start")
                 terminal.pump(2)
@@ -48,7 +49,7 @@ def main():
                 text = terminal.expect(lambda text: "Sync primitives" in text and "objects" in text,
                                        "Sync screen did not open with the main thread blocked")
                 state_column = text.splitlines()[2].index("State/value")
-                if mode == "deadlock":
+                if mode.startswith("deadlock"):
                     text = terminal.expect(lambda text: "2 mutexes in wait cycles" in text, "Missing circular wait")
                     text = terminal.expect(lambda t: re.search(
                         r"zzz_rate_hot[^\n]*\s[1-9][0-9]*\.[0-9]\s+[0-9.]+\s+-\s+-\s*$", t, re.M) is not None,
@@ -57,6 +58,16 @@ def main():
                     state_column = rows[2].index("State/value")
                     assert "cycle_a" in rows[4] and "DEADLOCK" in rows[4], text
                     assert "cycle_b" in rows[5] and "DEADLOCK" in rows[5], text
+                    label = "DEADLOCK!" if mode == "deadlock-ascii" else "DEADLOCK ❌"
+                    detail_index = len(rows) - 2
+                    error_color = terminal.screen.buffer[detail_index][rows[detail_index].index("value=") + len("value=")].fg
+                    assert error_color != "default", rows[detail_index]
+                    for row_index in (4, 5, detail_index):
+                        row = rows[row_index]
+                        start = row.index("DEADLOCK")
+                        assert label in row, row
+                        for col in range(start, start + len(label)):
+                            assert terminal.screen.buffer[row_index][col].fg == error_color, row
                     body = rows[6:-4]
                     rates = [sum(float(value) for value in row.split()[-4:-1] if value != "-")
                              for row in body if row.strip()]
@@ -88,7 +99,10 @@ def main():
                     print("PASS deadlocks first, descending Change/s+L/s+U/s, atomic totals and change rates")
                     if len(sys.argv) > 2:
                         from sync_tui_modes import capture
-                        capture(terminal, Path(sys.argv[2]), "deadlocks-first")
+                        capture(terminal, Path(sys.argv[2]), mode + "-red")
+                    if mode == "deadlock-ascii":
+                        print("PASS red ASCII deadlock marker")
+                        continue
                     terminal.write("\x1b[C")
                     terminal.expect(lambda text: "page 2/" in text, "Right advances a page")
                     terminal.write("\x1b[D")

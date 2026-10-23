@@ -25,6 +25,9 @@ def capture(term, root, name):
     font_path = ("C:/Windows/Fonts/consola.ttf" if os.name == "nt" else
                  "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf")
     font = ImageFont.truetype(font_path, 16)
+    symbol_paths = ("C:/Windows/Fonts/seguisym.ttf",
+                    "/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf")
+    symbol_font = next((ImageFont.truetype(path, 16) for path in symbol_paths if Path(path).exists()), font)
     cw, ch = round(font.getlength("M")), 21
     image = Image.new("RGB", (term.screen.columns * cw + 24, term.screen.lines * ch + 24), "#0d141a")
     draw = ImageDraw.Draw(image)
@@ -41,7 +44,8 @@ def capture(term, root, name):
                 fg, bg = bg, fg
             if bg != "#0d141a":
                 draw.rectangle((12+x*cw, 12+y*ch, 12+(x+1)*cw, 12+(y+1)*ch), fill=bg)
-            draw.text((12+x*cw, 12+y*ch), cell.data, font=font, fill=fg)
+            draw.text((12+x*cw, 12+y*ch), cell.data,
+                      font=symbol_font if "❌" in cell.data else font, fill=fg)
     image.save(root / f"{name}.png")
 
 

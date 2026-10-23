@@ -537,6 +537,9 @@ void ui_sync_render(terminal_size_t size) {
   selected %= per_page;
   if ((size_t)selected >= count)
     selected = count ? (int)count - 1 : 0;
+  char deadlock[128];
+  snprintf(deadlock, sizeof(deadlock), "%s%s%s", sync_color(LOG_COLOR_ERROR),
+           g_sync_use_utf8 ? "DEADLOCK ❌" : "DEADLOCK!", sync_color(LOG_COLOR_RESET));
   int measured_width = 0;
   for (int pass = 0; pass < 2; ++pass) {
     int *measure = pass == 0 ? &measured_width : NULL;
@@ -610,6 +613,13 @@ void ui_sync_render(terminal_size_t size) {
       // Prefer the complete hex value over a clipped redundant decimal copy.
       if (!strncmp(r->type, "atomic", 6) && strlen(state) > 12)
         snprintf(state, sizeof(state), "0x%" PRIx64, r->value);
+      char padded_state[256];
+      if (r->cycle) {
+        int width = utf8_display_width(g_sync_use_utf8 ? "DEADLOCK ❌" : "DEADLOCK!");
+        snprintf(padded_state, sizeof(padded_state), "%s%*s", deadlock, 12 - width, "");
+      } else {
+        snprintf(padded_state, sizeof(padded_state), "%-12.12s", state);
+      }
       char plain_actions[32], actions[256];
       format_number_compact(r->actions, plain_actions, sizeof(plain_actions));
       char padded_actions[32];
@@ -630,9 +640,9 @@ void ui_sync_render(terminal_size_t size) {
       char padded_wait[48], colored_wait[512];
       snprintf(padded_wait, sizeof(padded_wait), "%12s", wait);
       sync_color_numbers(padded_wait, colored_wait, sizeof(colored_wait));
-      snprintf(line, sizeof(line), "%c%-8.8s %-*s %-12.12s  %s %s%6.1f %s%6.1f %s\033[0m %s\033[0m",
-               (int)i == selected ? '>' : ' ', r->type, name_width, name, state, actions, sync_rate_color(r->lock_rate),
-               r->lock_rate, sync_rate_color(r->unlock_rate), r->unlock_rate, changes, colored_wait);
+      snprintf(line, sizeof(line), "%c%-8.8s %-*s %s  %s %s%6.1f %s%6.1f %s\033[0m %s\033[0m",
+               (int)i == selected ? '>' : ' ', r->type, name_width, name, padded_state, actions,
+               sync_rate_color(r->lock_rate), r->lock_rate, sync_rate_color(r->unlock_rate), r->unlock_rate, changes, colored_wait);
       sync_write_line(line, size.cols, true, measure);
     }
     if (!measure) {
@@ -657,9 +667,9 @@ void ui_sync_render(terminal_size_t size) {
                numbers, colored_name);
       sync_write_line(line, size.cols, true, measure);
       snprintf(line, sizeof(line),
-               "owner=0x%" PRIxPTR " waiter=0x%" PRIxPTR " | value=%" PRIu64 " | last operation %.2fs ago%s", r->owner,
+               "owner=0x%" PRIxPTR " waiter=0x%" PRIxPTR " | value=%" PRIu64 " | last operation %.2fs ago%s%s", r->owner,
                r->waiter, r->value, r->last_ns ? (double)(now - r->last_ns) / NS_PER_SEC_INT : 0.0,
-               r->cycle ? " DEADLOCK" : "");
+               r->cycle ? " " : "", r->cycle ? deadlock : "");
       sync_write_numbers(line, size.cols, measure);
     } else if (!measure) {
       snprintf(line, sizeof(line), "\033[%d;1H\033[K\033[%d;1H\033[K", size.rows - 2, size.rows - 1);
