@@ -554,6 +554,7 @@ options_t options_t_new(void) {
   opts.quiet = OPT_QUIET_DEFAULT;
   opts.verbose_level = OPT_VERBOSE_LEVEL_DEFAULT;
   opts.log_level = OPT_LOG_LEVEL_DEFAULT;
+  SAFE_STRNCPY(opts.otel_endpoint, OPT_OTEL_ENDPOINT_DEFAULT, sizeof(opts.otel_endpoint));
   SAFE_STRNCPY(opts.otel_enabled_telemetry, "traces,logs,metrics", sizeof(opts.otel_enabled_telemetry));
   opts.otel_realtime_sample_rate = 0.01;
   opts.otel_realtime_max_per_second = 10;

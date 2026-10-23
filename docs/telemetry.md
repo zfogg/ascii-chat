@@ -1,8 +1,23 @@
 # OpenTelemetry
 
-Telemetry is disabled until a collector endpoint is supplied. Native builds use
+Debug and Dev builds export traces, logs, and metrics to the local Compose
+collector at `http://127.0.0.1:24318` by default. Release builds require an endpoint.
+Native builds use
 `gotel/c-gotel` (a Git submodule) over pinned otlp-c. Browser builds compile no-op
 instrumentation hooks.
+
+Endpoint precedence is CLI `--otel-endpoint`, `ASCII_CHAT_OTEL_ENDPOINT`,
+configured endpoint, `OTEL_EXPORTER_OTLP_ENDPOINT`, then the build default.
+Standard OTEL configuration is handled by c-gotel. It supports `OTEL_SDK_DISABLED`,
+`OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_EXPORTER_OTLP_HEADERS`,
+`OTEL_EXPORTER_OTLP_TIMEOUT` (milliseconds), `OTEL_EXPORTER_OTLP_CERTIFICATE`,
+and `OTEL_EXPORTER_OTLP_PROTOCOL` (`http/protobuf` only). Signal-specific
+`OTEL_EXPORTER_OTLP_{TRACES,LOGS,METRICS}_{ENDPOINT,HEADERS}` override common settings.
+Explicit ascii-chat endpoint settings override all signal endpoints. Empty standard
+environment values are unset. `OTEL_SDK_DISABLED=true` disables all signals;
+`ASCII_CHAT_OTEL_ENABLED_TELEMETRY=none` also disables export. `OTEL_SERVICE_NAME`
+wins over `service.name` in resource attributes. Explicit ascii-chat timeout and
+CA settings override their standard OTEL equivalents.
 
 ```sh
 docker compose -f deploy/otel/docker-compose.yml up -d

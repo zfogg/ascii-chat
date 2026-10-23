@@ -49,7 +49,7 @@ const registry_entry_t g_logging_entries[] = {
      '\0',
      OPTION_TYPE_STRING,
      offsetof(options_t, otel_endpoint),
-     NULL,
+     OPT_OTEL_ENDPOINT_DEFAULT,
      sizeof(((options_t *)0)->otel_endpoint),
      "Collector base URL; setting this enables telemetry (HTTP/protobuf).",
      "OTEL",

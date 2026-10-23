@@ -339,6 +339,13 @@ typedef enum {
 /** @brief Default quiet mode flag (false = logging enabled) */
 #define OPT_QUIET_DEFAULT false
 
+/** @brief Debug and Dev builds export to the local Spaniel Compose collector. */
+#ifdef CMAKE_BUILD_TYPE_DEBUG
+#define OPT_OTEL_ENDPOINT_DEFAULT "http://127.0.0.1:24318"
+#else
+#define OPT_OTEL_ENDPOINT_DEFAULT ""
+#endif
+
 /** @brief Default verbose level (0 = not verbose) */
 #define OPT_VERBOSE_LEVEL_DEFAULT 0
 

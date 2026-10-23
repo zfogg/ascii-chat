@@ -307,10 +307,11 @@ static const char *telemetry_argument(const char *argument, int index, const cha
 asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   const options_t *o = options_get();
   const char *endpoint = o->otel_endpoint;
-  if (!*endpoint)
-    endpoint = SAFE_GETENV("OTEL_EXPORTER_OTLP_ENDPOINT");
-  if (!endpoint || !*endpoint)
-    return ASCIICHAT_OK;
+  bool endpoint_cli = false, timeout_cli = false;
+  for (int i = 1; i < argc; ++i) {
+    endpoint_cli |= !strcmp(argv[i], "--otel-endpoint") || !strncmp(argv[i], "--otel-endpoint=", 16);
+    timeout_cli |= !strcmp(argv[i], "--otel-timeout") || !strncmp(argv[i], "--otel-timeout=", 15);
+  }
   unsigned signals;
   if (gotel_parse_signals(o->otel_enabled_telemetry, &signals) != OTLP_OK)
     return SET_ERRNO(ERROR_CONFIG, "otel-enabled-telemetry must contain traces,logs,metrics or none");
@@ -328,24 +329,9 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
     return SET_ERRNO(ERROR_CONFIG, "Invalid otel-log-level");
   if (!signals)
     return ASCIICHAT_OK;
-  if ((strncmp(endpoint, "http://", 7) && strncmp(endpoint, "https://", 8)) || strchr(endpoint, '?') ||
-      strchr(endpoint, '#') || strchr(endpoint, '@'))
-    return SET_ERRNO(ERROR_CONFIG, "otel-endpoint requires an HTTP(S) collector base URL without credentials or query");
-  char traces[OPTIONS_BUFF_SIZE];
-  size_t length = strlen(endpoint);
-  while (length && endpoint[length - 1] == '/')
-    --length;
-  int n = safe_snprintf(traces, sizeof(traces), "%.*s/v1/traces", (int)length, endpoint);
-  if (n < 0 || (size_t)n >= sizeof(traces))
-    return SET_ERRNO(ERROR_CONFIG, "Telemetry endpoint too long");
   gotel_options_t config = {0};
-  otlp_env_storage_t env;
-  if (otlp_exporter_opts_apply_env(&config.exporter, &env) != OTLP_OK)
-    return SET_ERRNO(ERROR_CONFIG, "Invalid OTEL exporter environment");
-  config.exporter.endpoint = traces;
-  config.tls_ca_file = *o->otel_ca_file ? o->otel_ca_file : SAFE_GETENV("OTEL_EXPORTER_OTLP_CERTIFICATE");
   char service_name[OPTIONS_BUFF_SIZE];
-  n = safe_snprintf(service_name, sizeof(service_name), "ascii-chat-%s", mode);
+  int n = safe_snprintf(service_name, sizeof(service_name), "ascii-chat-%s", mode);
   if (n < 0 || (size_t)n >= sizeof(service_name))
     return SET_ERRNO(ERROR_CONFIG, "Telemetry service name too long");
   config.exporter.service_name = service_name;
@@ -385,6 +371,23 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
     resource_args[i] = telemetry_argument(argv[i], i, mode, resource_names[i], sizeof(resource_names[i]));
   config.argc = argc;
   config.argv = resource_args;
+  gotel_env_storage_t env;
+  otlp_status_t env_status = gotel_options_apply_env(&config, &env, OPT_OTEL_ENDPOINT_DEFAULT);
+  if (env_status == OTLP_OK && (endpoint_cli || SAFE_GETENV("ASCII_CHAT_OTEL_ENDPOINT") ||
+                                strcmp(endpoint, OPT_OTEL_ENDPOINT_DEFAULT)))
+    env_status = gotel_options_set_endpoint(&config, &env, endpoint);
+  if (timeout_cli || SAFE_GETENV("ASCII_CHAT_OTEL_TIMEOUT")) {
+    config.exporter.connect_timeout_ms = (uint32_t)o->otel_timeout;
+    config.exporter.read_timeout_ms = (uint32_t)o->otel_timeout;
+    config.exporter.flush_timeout_ms = (uint32_t)o->otel_timeout;
+  }
+  if (*o->otel_ca_file)
+    config.tls_ca_file = o->otel_ca_file;
+  if (env_status != OTLP_OK || !config.signals || !config.exporter.endpoint) {
+    SAFE_FREE(resource_args);
+    SAFE_FREE(resource_names);
+    return env_status == OTLP_OK ? ASCIICHAT_OK : SET_ERRNO(ERROR_CONFIG, "Invalid OTEL environment or endpoint");
+  }
   gotel_host_t *h = NULL;
   otlp_status_t created = gotel_create(&config, &h);
   SAFE_FREE(resource_args);
@@ -420,7 +423,7 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
     SAFE_FREE(names);
   }
 
-  log_info("Telemetry enabled: %s (%s)", endpoint, o->otel_enabled_telemetry);
+  log_info("Telemetry enabled: %s (%s)", config.exporter.endpoint, o->otel_enabled_telemetry);
   return ASCIICHAT_OK;
 }
 void ascii_otel_log(int level, const char *file, int line, const char *function, const char *format, va_list args) {
