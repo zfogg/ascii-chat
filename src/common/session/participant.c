@@ -1,3 +1,6 @@
+#include <ascii-chat/util/password.h>
+#include <ascii-chat/tui/input.h>
+#include <sodium.h>
 #include <ascii-chat/network/acip/settings.h>
 /**
  * @file session/participant.c
@@ -206,7 +209,7 @@ void session_participant_destroy(session_participant_t *p) {
     return;
 
   // Clear sensitive data
-  memset(p->password, 0, sizeof(p->password));
+  sodium_memzero(p->password, sizeof(p->password));
   memset(p->server_key, 0, sizeof(p->server_key));
 
   p->initialized = false;
@@ -241,21 +244,46 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
 
   participant_connection_init(p);
 
-  asciichat_error_t result = network_connection_open("participant", p->address, p->port, NULL, &p->network, NULL);
-  if (result != ASCIICHAT_OK)
-    return result;
-  p->transport = network_connection_transport(p->network);
-  p->transport_ownership = ACIP_TRANSPORT_OWNED;
-  result = network_connection_prepare_security(p->network, false, p->password[0] ? p->password : NULL);
-  if (result == ASCIICHAT_OK) {
+  asciichat_error_t result;
+  char password[PASSWORD_BUFFER_SIZE] = {0};
+  bool entered = false;
+  for (;;) {
+    result = network_connection_open("participant", p->address, p->port, NULL, &p->network, NULL);
+    if (result != ASCIICHAT_OK)
+      break;
+    p->transport = network_connection_transport(p->network);
+    p->transport_ownership = ACIP_TRANSPORT_OWNED;
+    result = network_connection_prepare_security(p->network, false,
+                                                 entered          ? password
+                                                 : p->password[0] ? p->password
+                                                                  : NULL);
+    sodium_memzero(password, sizeof(password));
+    if (result != ASCIICHAT_OK)
+      break;
     crypto_handshake_context_t *ctx = network_connection_handshake(p->network);
+    ctx->defer_password_prompt = true;
     if (p->server_key[0]) {
       ctx->verify_server_key = true;
       SAFE_STRNCPY(ctx->expected_server_key, p->server_key, sizeof(ctx->expected_server_key));
     }
-    result =
-        network_client_negotiate(p->transport, ctx, network_connection_crypto_mode(p->network), NETWORK_PROTOCOL_MEDIA);
+    uint8_t mode = network_connection_crypto_mode(p->network);
+    if (!GET_OPTION(no_auth))
+      mode |= ACIP_CRYPTO_AUTH;
+    result = network_client_negotiate(p->transport, ctx, mode, NETWORK_PROTOCOL_MEDIA);
+    uint8_t failure = ctx->password_failure;
+    if (result == ASCIICHAT_OK || !failure)
+      break;
+    network_connection_destroy(&p->network);
+    p->transport = NULL;
+    CLEAR_ERRNO();
+    char target[320];
+    snprintf(target, sizeof(target), "%s:%u", p->address, (unsigned)p->port);
+    result = ui_input_password(target, password, sizeof(password), failure & AUTH_FAIL_PASSWORD_INCORRECT);
+    if (result != ASCIICHAT_OK)
+      break;
+    entered = true;
   }
+  sodium_memzero(password, sizeof(password));
   if (result != ASCIICHAT_OK) {
     network_connection_destroy(&p->network);
     p->transport = NULL;

@@ -1,4 +1,7 @@
 #include <ascii-chat/ui/input.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/ui/popup.h>
+#include <ascii-chat/ui/buttons.h>
 #include <ascii-chat/tui/notice.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/tui/prompt.h>
@@ -6,6 +9,7 @@
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/utf8.h>
+#include <ascii-chat/util/string.h>
 #include <string.h>
 #include <ascii-chat/tui/invitation.h>
 #include <ascii-chat/util/time.h>
@@ -13,6 +17,8 @@
 typedef struct {
   size_t prompt_bytes;
   size_t cursor;
+  size_t focus;
+  bool password_dialog, incorrect, can_confirm;
   ui_notice_severity_t severity;
   bool color;
   bool unicode;
@@ -105,12 +111,50 @@ void ui_media_panel_render(frame_buffer_t *buffer, terminal_size_t size, const c
   media_panel_clear_background(buffer, size, top, logo_rows, shown);
 }
 
+static void password_panel(frame_buffer_t *buffer, terminal_size_t size, const prompt_snapshot_t *s) {
+  int width = size.cols - 4;
+  if (width > 64)
+    width = 64;
+  int height = 13;
+  int top = (size.rows - height) / 2 + 1;
+  int logo_rows = size.cols >= 52 && top >= 6 ? 4 : 1;
+  int logo_top = top - logo_rows - 1;
+  frame_buffer_printf(buffer, "\033[0m\033[H\033[2J\033[?25l\033[%d;1H", logo_top);
+  const animation_sample_t *sample = ui_controller_animation_sample();
+  invitation_render_logo(buffer, size.cols, sample ? (int)(sample->seconds * 60) : 0, s->color, logo_rows == 1);
+  media_center_line(buffer, "Video chat in your terminal", top - 1, size.cols);
+  int left = (size.cols - width) / 2 + 1;
+  ui_popup_frame(buffer, top, left, width, height, LOG_COLOR_RESET);
+  frame_buffer_printf(buffer, "\033[%d;%dH\033[1mPassword required\033[0m", top + 1, left + 2);
+  char target[256];
+  snprintf(target, sizeof(target), "Connect to %.*s", width - 15, s->text);
+  frame_buffer_printf(buffer, "\033[%d;%dH%s", top + 3, left + 2, target);
+  frame_buffer_printf(buffer, "\033[%d;%dHThis server requires a password.", top + 4, left + 2);
+  if (s->incorrect)
+    frame_buffer_printf(buffer, "\033[%d;%dH%s", top + 5, left + 2,
+                        colored_string(LOG_COLOR_WARN, "Incorrect password. Try again."));
+  frame_buffer_printf(buffer, "\033[%d;%dHPassword (%d characters minimum)", top + 6, left + 2, MIN_PASSWORD_LENGTH);
+  ui_popup_frame(buffer, top + 7, left + 2, width - 4, 3, LOG_COLOR_DEBUG);
+  const ui_button_t buttons[] = {{"[ Confirm ]", 0, !s->can_confirm}, {"[ Cancel ]", 0, false}};
+  ui_buttons_render(buffer, top + 10, left + 2, width - 4, buttons, 2, s->focus ? s->focus - 1 : SIZE_MAX);
+  frame_buffer_printf(buffer, "\033[%d;%dHEnter OK  Tab focus  Esc cancel", top + 11, left + 2);
+  ui_input_render(buffer, top + 8, left + 3, width - 8, 1, s->text + s->prompt_bytes, s->cursor, false);
+  if (s->focus)
+    frame_buffer_printf(buffer, "\033[?25l");
+}
+
 static void render_prompt(terminal_size_t size, const void *data) {
   const prompt_snapshot_t *snapshot = data;
   const char *visible = snapshot->text + snapshot->prompt_bytes;
   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
   if (!buffer)
     return;
+  if (snapshot->password_dialog) {
+    password_panel(buffer, size, snapshot);
+    ui_controller_write(STDERR_FILENO, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
+    frame_buffer_destroy(buffer);
+    return;
+  }
   if (strncmp(snapshot->text, "Open media:", 11) == 0) {
     ui_media_panel_render(buffer, size, "Open media:", "Drop files / paste paths or URLs; Enter plays; Esc cancels",
                           visible, snapshot->cursor);
@@ -139,6 +183,8 @@ asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, siz
   prompt_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot) + prompt_bytes + visible_bytes, prompt_snapshot_t *);
   if (!snapshot)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate prompt presentation");
+  snapshot->password_dialog = snapshot->incorrect = snapshot->can_confirm = false;
+  snapshot->focus = 0;
   snapshot->prompt_bytes = prompt_bytes;
   snapshot->cursor = cursor;
   snapshot->severity = ui_notice_prompt_severity();
@@ -166,6 +212,8 @@ void ui_prompt_remove(void) {
 
 int ui_prompt_required_rows(const void *data, int cols) {
   const prompt_snapshot_t *snapshot = data;
+  if (snapshot->password_dialog)
+    return 19;
   if (strncmp(snapshot->text, "Open media:", 11) == 0)
     return cols < 52 ? 8 : 11;
   return ui_notice_render(NULL, snapshot->text, snapshot->severity, cols, false, false) + 3;
@@ -184,4 +232,28 @@ static void render_media_loading(terminal_size_t size, const void *data) {
 asciichat_error_t ui_media_loading_present(void) {
   return ui_controller_submit(UI_SCREEN_RENDER_PROGRESS, STDERR_FILENO, (terminal_size_t){.cols = 40, .rows = 8},
                               render_media_loading, "", 1);
+}
+
+asciichat_error_t ui_password_prompt_present(const char *target, const char *masked, size_t cursor, size_t focus,
+                                             bool incorrect, bool can_confirm) {
+  if (!target || !masked || focus > 2)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid password presentation");
+  size_t target_bytes = strlen(target) + 1, masked_bytes = strlen(masked) + 1;
+  size_t bytes = sizeof(prompt_snapshot_t) + target_bytes + masked_bytes;
+  prompt_snapshot_t *s = SAFE_CALLOC(1, bytes, prompt_snapshot_t *);
+  if (!s)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate password presentation");
+  s->prompt_bytes = target_bytes;
+  s->cursor = cursor;
+  s->focus = focus;
+  s->password_dialog = true;
+  s->incorrect = incorrect;
+  s->can_confirm = can_confirm;
+  s->color = !GET_OPTION(strip_ansi) && terminal_should_color_output(prompt_fd());
+  memcpy(s->text, target, target_bytes);
+  memcpy(s->text + target_bytes, masked, masked_bytes);
+  asciichat_error_t result = ui_controller_submit(UI_SCREEN_PROMPT, prompt_fd(),
+                                                  (terminal_size_t){.cols = 40, .rows = 19}, render_prompt, s, bytes);
+  SAFE_FREE(s);
+  return result;
 }

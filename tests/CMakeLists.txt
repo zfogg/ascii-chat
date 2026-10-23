@@ -1962,3 +1962,11 @@ foreach(collector_test otel-export otel-media otel-tls)
         set_tests_properties(${collector_test} PROPERTIES SKIP_RETURN_CODE 77)
     endif()
 endforeach()
+
+if(BUILD_TESTS AND TARGET ascii-chat)
+    asciichat_add_python_test(password-prompt
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/password_prompt.py --binary $<TARGET_FILE:ascii-chat>
+        --artifacts ${CMAKE_BINARY_DIR}/password-prompt)
+    set_tests_properties(password-prompt PROPERTIES LABELS "integration;terminal" TIMEOUT 180
+        RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+endif()

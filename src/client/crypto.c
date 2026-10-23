@@ -10,8 +10,8 @@
 
 /* Security storage and initialization belong to the shared connection owner.
  * This module retains CLI discovery identity verification and rekey actions. */
-asciichat_error_t client_crypto_init(client_connection_t *connection) {
-  asciichat_error_t result = network_connection_prepare_security(connection->network, false, NULL);
+asciichat_error_t client_crypto_init(client_connection_t *connection, const char *password) {
+  asciichat_error_t result = network_connection_prepare_security(connection->network, false, password);
   if (result != ASCIICHAT_OK)
     return result;
   connection->crypto_ctx = network_connection_handshake(connection->network);

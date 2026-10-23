@@ -1,4 +1,7 @@
+#include <ascii-chat/util/password.h>
 #include <ascii-chat/otel.h>
+#include <ascii-chat/tui/input.h>
+#include <sodium.h>
 #include <ascii-chat/network/negotiation.h>
 #include "connection_internal.h"
 #include "server.h"
@@ -130,17 +133,40 @@ asciichat_error_t client_connection_start(client_connection_t *connection, const
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection is not ready for startup");
   }
   connection_endpoint_t endpoint;
-  asciichat_error_t result = network_connection_open("client", address, port, NULL, &connection->network, &endpoint);
-  if (result != ASCIICHAT_OK)
-    return result;
-  connection->transport = network_connection_transport(connection->network);
-  server_connection_set_ip(connection, endpoint.host);
-  server_connection_set_port(connection, endpoint.port);
-  result = client_crypto_init(connection);
-  if (result != ASCIICHAT_OK)
-    return result;
-  result = network_client_negotiate(connection->transport, connection->crypto_ctx, connection->crypto_mode,
-                                    NETWORK_PROTOCOL_MEDIA);
+  char password[PASSWORD_BUFFER_SIZE] = {0};
+  bool entered = false;
+  asciichat_error_t result;
+  for (;;) {
+    result = network_connection_open("client", address, port, NULL, &connection->network, &endpoint);
+    if (result != ASCIICHAT_OK)
+      break;
+    connection->transport = network_connection_transport(connection->network);
+    server_connection_set_ip(connection, endpoint.host);
+    server_connection_set_port(connection, endpoint.port);
+    result = client_crypto_init(connection, entered ? password : NULL);
+    sodium_memzero(password, sizeof(password));
+    if (result != ASCIICHAT_OK)
+      break;
+    connection->crypto_ctx->defer_password_prompt = true;
+    if (!GET_OPTION(no_auth))
+      connection->crypto_mode |= ACIP_CRYPTO_AUTH;
+    result = network_client_negotiate(connection->transport, connection->crypto_ctx, connection->crypto_mode,
+                                      NETWORK_PROTOCOL_MEDIA);
+    uint8_t failure = connection->crypto_ctx->password_failure;
+    if (result == ASCIICHAT_OK || !failure)
+      break;
+    network_connection_destroy(&connection->network);
+    connection->transport = NULL;
+    connection->crypto_ctx = NULL;
+    CLEAR_ERRNO();
+    char target[320];
+    snprintf(target, sizeof(target), "%s:%u", endpoint.host, endpoint.port);
+    result = ui_input_password(target, password, sizeof(password), failure & AUTH_FAIL_PASSWORD_INCORRECT);
+    if (result != ASCIICHAT_OK)
+      break;
+    entered = true;
+  }
+  sodium_memzero(password, sizeof(password));
   if (result != ASCIICHAT_OK)
     return result;
   network_connection_ready(connection->network);

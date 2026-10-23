@@ -1,3 +1,4 @@
+#include <ascii-chat/tui/input.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/network/consensus/handoff.h>
@@ -300,6 +301,7 @@ asciichat_error_t discovery_session_destroy(discovery_session_t *session) {
   mutex_destroy(&session->nat_quality_mutex);
 
   NAMED_UNREGISTER(&session->liveness.last_pong_received_ms);
+  sodium_memzero(session->password, sizeof(session->password));
   SAFE_FREE(session);
   return ASCIICHAT_OK;
 }
@@ -591,7 +593,8 @@ static asciichat_error_t discovery_protocol_receive(discovery_session_t *session
   if (result == ASCIICHAT_OK)
     result = acds_protocol_receive(protocol, type, payload, length);
   buffer_release(allocation);
-  if (result != ASCIICHAT_OK)
+  if (result != ASCIICHAT_OK &&
+      !(result == ERROR_INVALID_PASSWORD && session->state == DISCOVERY_STATE_JOINING_SESSION))
     set_error(session, result, protocol->error[0] ? protocol->error : "Discovery receive failed");
   return result;
 }
@@ -1305,16 +1308,27 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   log_info("Joining session: %s (participant_ctx still=%p)", session->session_string, session->participant_ctx);
 
   acds_protocol_t protocol;
-  acds_protocol_init(&protocol, discovery_protocol_send, session->acds_transport);
-  acds_session_join_params_t params = {.session_string = session->session_string,
-                                       .has_password = session->password[0] != 0};
-  memcpy(params.identity_pubkey, session->identity_pubkey, sizeof(params.identity_pubkey));
-  memcpy(params.identity_seckey, session->identity_seckey, sizeof(params.identity_seckey));
-  SAFE_STRNCPY(params.password, session->password, sizeof(params.password));
-  asciichat_error_t result = acds_protocol_join(&protocol, &params);
-  sodium_memzero(&params, sizeof(params));
-  if (result == ASCIICHAT_OK)
-    result = discovery_protocol_receive(session, &protocol);
+  asciichat_error_t result;
+  for (;;) {
+    acds_protocol_init(&protocol, discovery_protocol_send, session->acds_transport);
+    acds_session_join_params_t params = {.session_string = session->session_string,
+                                         .has_password = session->password[0] != 0};
+    memcpy(params.identity_pubkey, session->identity_pubkey, sizeof(params.identity_pubkey));
+    memcpy(params.identity_seckey, session->identity_seckey, sizeof(params.identity_seckey));
+    SAFE_STRNCPY(params.password, session->password, sizeof(params.password));
+    result = acds_protocol_join(&protocol, &params);
+    sodium_memzero(&params, sizeof(params));
+    if (result == ASCIICHAT_OK)
+      result = discovery_protocol_receive(session, &protocol);
+    if (result != ERROR_INVALID_PASSWORD)
+      break;
+    acds_protocol_destroy(&protocol);
+    bool incorrect = session->password[0] != 0;
+    CLEAR_ERRNO();
+    result = ui_input_password(session->session_string, session->password, sizeof(session->password), incorrect);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
   if (result != ASCIICHAT_OK) {
     acds_protocol_destroy(&protocol);
     return result;
