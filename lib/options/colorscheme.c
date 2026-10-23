@@ -944,6 +944,19 @@ void colorscheme_current_palette(colorscheme_palette_t *palette, terminal_color_
     rgb_pixel_t rgb = colors[i == 8 ? 7 : i];
     if (mode == TERM_COLOR_NONE)
       continue;
+    if (i < 8) {
+      char *background = palette->background_codes[i];
+      if (i == 7)
+        safe_snprintf(background, 32, "\033[49m");
+      else if (mode >= TERM_COLOR_TRUECOLOR)
+        safe_snprintf(background, 32, "\033[48;2;%u;%u;%um", rgb.r, rgb.g, rgb.b);
+      else if (mode >= TERM_COLOR_256)
+        safe_snprintf(background, 32, "\033[48;5;%dm", rgb_to_256color(rgb.r, rgb.g, rgb.b));
+      else {
+        unsigned index = rgb_to_16color(rgb.r, rgb.g, rgb.b);
+        safe_snprintf(background, 32, "\033[%um", index < 8 ? 40 + index : 100 + index - 8);
+      }
+    }
     if (i == 7)
       safe_snprintf(code, 32, "\033[0m");
     else if (mode >= TERM_COLOR_TRUECOLOR)

@@ -1326,8 +1326,11 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     bool incorrect = session->password[0] != 0;
     CLEAR_ERRNO();
     result = ui_input_password(session->session_string, session->password, sizeof(session->password), incorrect);
-    if (result != ASCIICHAT_OK)
+    if (result != ASCIICHAT_OK) {
+      if (!shutdown_is_requested())
+        set_error(session, result, "Password required to join session");
       return result;
+    }
   }
   if (result != ASCIICHAT_OK) {
     acds_protocol_destroy(&protocol);

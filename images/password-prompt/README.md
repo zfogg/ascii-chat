@@ -20,6 +20,7 @@ is bypassed only in the test subprocess environment to isolate password entry;
 production trust checks are unchanged. Discovery success asserts that an accepted
 session join reaches `CONNECTING_HOST`; this is not a WebRTC media delivery test.
 
+- `client-light.png`: same live dialog after an OSC 11 switch to a light background.
 - `client-initial.png`: initial password dialog, with Confirm selected by default.
 - `client-selected-cancel.png`: Cancel selected using Right, with a filled background.
 - `client-scrolled.png`: horizontally scrolled 80-character masked input.
@@ -48,3 +49,8 @@ unselected Confirm is green and Cancel is red. Disabled Confirm remains gray.
 Popup borders use `terminal_should_use_utf8()`: `--utf8 true` forces Unicode,
 `--utf8 false` forces ASCII, and auto follows detection. Captures use the measured
 font cell dimensions so adjacent Unicode box-drawing glyphs meet.
+
+Selected backgrounds come from the live logging palette, including the scheme’s
+light/dark variants and terminal color depth. The test switches OSC 11 replies
+from dark to light and back while the dialog remains open. It also restarts the
+TCP server and verifies reconnect reuses the prompted session credential.

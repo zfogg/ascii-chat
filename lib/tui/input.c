@@ -449,6 +449,11 @@ void ui_input_shutdown(void) {
   lifecycle_destroy_commit(&g_input_lifecycle);
 }
 
+/** Own a synchronous prompt while the controller renders masked snapshots.
+ * Password dialogs keep navigation in the shared editor, route Tab/Enter to
+ * buttons, and reject excess newlines before insertion. Clipboard and terminal
+ * paste share atomic insertion; temporary secret buffers are wiped on exit.
+ */
 static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts,
                                       bool password_dialog, bool incorrect) {
   if (!prompt || !buffer || max_len < 2)
@@ -476,6 +481,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
   snprintf(timed_prompt, sizeof(timed_prompt), "%s\n(Timeout: %us; cancels without an answer)", prompt, seconds);
   asciichat_error_t result = ASCIICHAT_OK;
   bool newline_limit = false;
+  // Request modifier-aware Enter while this dialog owns terminal input.
   if (password_dialog) {
     const char *enable = "\033[>1u\033[>4;2m";
     platform_write_all(STDERR_FILENO, enable, strlen(enable));
@@ -504,6 +510,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
       if (!opts.mask_char)
         display_cursor = 0;
     }
+    // Presentation owns only the mask; the caller retains the credential.
     result = password_dialog ? ui_password_prompt_present(prompt, visible, display_cursor, buttons.selected, incorrect,
                                                           len >= MIN_PASSWORD_LENGTH, newline_limit)
                              : ui_prompt_present(timed_prompt, visible, display_cursor, !opts.echo);
@@ -538,6 +545,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
       }
       continue;
     }
+    // Validate the whole paste before editing so rejection cannot leave a partial password.
     if (key == KEY_PASTE || key == 22) {
       char pasted[8192] = {0};
       asciichat_error_t pasted_result =
@@ -566,6 +574,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
       } else {
         CLEAR_ERRNO();
       }
+      // Clipboard and terminal paste buffers can contain unmasked credentials.
       sodium_memzero(pasted, sizeof(pasted));
       continue;
     }

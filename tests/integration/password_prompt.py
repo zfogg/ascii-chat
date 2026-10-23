@@ -25,7 +25,10 @@ def capture(term, path):
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
         return  # Screenshots are optional; terminal assertions still run.
-    font = ImageFont.truetype('C:/Windows/Fonts/consola.ttf' if os.name == 'nt' else 'DejaVuSansMono.ttf', 20)
+    try:
+        font = ImageFont.truetype('C:/Windows/Fonts/consola.ttf' if os.name == 'nt' else 'DejaVuSansMono.ttf', 20)
+    except OSError:
+        return  # Optional screenshots must not disable terminal assertions.
     palette = {'black': '#000000', 'red': '#cd3131', 'green': '#0dbc79', 'yellow': '#e5e510',
                'blue': '#2472c8', 'magenta': '#bc3fbc', 'cyan': '#11a8cd', 'white': '#e5e5e5',
                'brightblack': '#666666', 'brightred': '#f14c4c', 'brightgreen': '#23d18b',
@@ -36,13 +39,15 @@ def capture(term, path):
     cw = round(font.getlength('M'))
     top, bottom = font.getbbox('\u2502')[1::2]
     ch = bottom - top
+    light = 'ffff/ffff/ffff' in term.background_reply
+    default_fg, default_bg = ('#222222', '#ffffff') if light else ('#dddddd', '#000000')
     image = Image.new('RGB', (term.screen.columns * cw, term.screen.lines * ch), '#000000')
     draw = ImageDraw.Draw(image)
     glyphs = []
     for row in range(term.screen.lines):
         for col in range(term.screen.columns):
             cell = term.screen.buffer[row][col]
-            fg, bg = color(cell.fg, '#dddddd'), color(cell.bg, '#000000')
+            fg, bg = color(cell.fg, default_fg), color(cell.bg, default_bg)
             if cell.reverse:
                 fg, bg = bg, fg
             x, y = col * cw, row * ch
@@ -147,6 +152,20 @@ def main():
             peer.write('\t')
             selected(peer, '[ Confirm ]')
             save(peer, 'client-initial')
+            def confirm_style():
+                row, line = next((r, line) for r, line in enumerate(peer.screen.display) if '[ Confirm ]' in line)
+                cell = peer.screen.buffer[row][line.index('[ Confirm ]')]
+                return cell.fg, cell.bg
+            dark_style = confirm_style()
+            peer.background_reply = '\x1b]11;rgb:ffff/ffff/ffff\x1b\\'
+            peer.expect(lambda s: '[ Confirm ]' in s and confirm_style()[0] != dark_style[0] and
+                        confirm_style()[1] != dark_style[1], 'Button palette did not react to a light background')
+            selected(peer, '[ Confirm ]')
+            save(peer, 'client-light')
+            peer.background_reply = '\x1b]11;rgb:0000/0000/0000\x1b\\'
+            peer.expect(lambda s: '[ Confirm ]' in s and confirm_style() == dark_style,
+                        'Button palette did not return to dark colors')
+
             peer.write('x' * 80)
             peer.expect(lambda s: s.count('*') >= 50, 'Long input did not render')
             save(peer, 'client-scrolled')
@@ -210,6 +229,14 @@ def main():
             while 'CLIENT_CONNECTION_RUNNING' not in (root / 'retry.log').read_text(encoding='utf-8', errors='replace'):
                 assert time.monotonic() < deadline, peer.pump()
                 peer.pump(.1)
+            server.close()
+            server = terminal('server-restarted', ['server', '--port', str(port), '--status-screen=false'], password=True)
+            deadline = time.monotonic() + 35
+            while (root / 'retry.log').read_text(encoding='utf-8', errors='replace').count('CLIENT_CONNECTION_RUNNING') < 2:
+                text = peer.pump(.2)
+                assert 'Password required' not in text, 'Reconnect requested an already accepted password'
+                server.pump(.05)
+                assert time.monotonic() < deadline, 'Client did not reconnect with its session password'
             assert SECRET not in ''.join(peer.raw)
             for name, keys, utf8 in [('escape', '\x1b', 'true'), ('cancel', '\t\r', 'true'),
                                      ('ascii-cancel', '\t\r', 'false')]:
@@ -223,6 +250,9 @@ def main():
                 cancelled.write(keys)
                 wait_exit(cancelled)
             print('PASS client: retries, editing, spaces, masking, minimum length, multiline limit, UTF-8/ASCII borders, Tab, cursor navigation, horizontal scrolling, resize, Enter, Esc', flush=True)
+
+            peer.close()
+            server.close()
 
             acds_port = free_port()
             acds = subprocess.Popen([binary, '--no-check-update', '--log-file', str(root / 'acds.log'),
@@ -252,6 +282,13 @@ def main():
                 joiner.pump(.1)
             assert joiner.process.isalive()
             assert SECRET not in ''.join(joiner.raw)
+            headless_log = root / 'discovery-headless.log'
+            headless = subprocess.run([binary, '--no-check-update', '--log-file', str(headless_log), session, *discovery],
+                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                      env=environment, timeout=25)
+            assert headless.returncode != 0, 'Missing headless password unexpectedly succeeded'
+            assert 'Discovery state: FAILED' in headless_log.read_text(encoding='utf-8', errors='replace'), \
+                'Unavailable password prompt did not publish discovery failure'
             for name, keys in [('discovery-escape', '\x1b'), ('discovery-cancel', '\t\r')]:
                 cancelled = terminal(name, [session, *discovery])
                 prompt(cancelled)

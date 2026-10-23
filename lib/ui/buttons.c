@@ -45,13 +45,15 @@ void ui_buttons_render(frame_buffer_t *out, int row, int left, int width, const 
     if (selected_button && colors) {
       terminal_color_mode_t mode = GET_OPTION(color_mode);
       if (mode == TERM_COLOR_AUTO)
-        mode = terminal_get_effective_color_mode();
+        mode = (terminal_color_mode_t)log_get_color_mode();
+      if (mode == TERM_COLOR_NONE)
+        mode = TERM_COLOR_16;
       colorscheme_palette_t palette;
       colorscheme_current_palette(&palette, mode);
       uint8_t grey = colorscheme_highlight_background();
       frame_buffer_printf(out, "\033[%d;%dH\033[0m%s", row + (stacked ? (int)i : 0), x, palette.foreground);
-      if (b[i].color == LOG_COLOR_INFO || b[i].color == LOG_COLOR_ERROR)
-        frame_buffer_printf(out, "\033[%dm", b[i].color == LOG_COLOR_INFO ? 42 : 41);
+      if (b[i].color > LOG_COLOR_DEV && b[i].color < LOG_COLOR_RESET)
+        frame_buffer_printf(out, "%s", palette.background_codes[b[i].color]);
       else if (mode >= TERM_COLOR_TRUECOLOR)
         frame_buffer_printf(out, "\033[48;2;%u;%u;%um", grey, grey, grey);
       else if (mode >= TERM_COLOR_256)
