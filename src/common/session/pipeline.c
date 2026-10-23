@@ -7,8 +7,8 @@
  * @ingroup session
  */
 
-#include <ascii-chat/ui/input.h>
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/controller.h>
 #include "pipeline.h"
 #include "capture.h"
 #include "display.h"
@@ -17,7 +17,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/wakeup.h>
-#include <ascii-chat/ui/keyboard_help.h>
+#include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
@@ -652,7 +652,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
     // Check if help screen is active - if so, don't render ASCII frames
     int screen = ui_controller_current_screen();
-    bool help_is_active = screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_HELP || screen == UI_SCREEN_LOGS;
+    bool help_is_active = screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_LOGS;
 
     if (!help_is_active) {
       // Convert to ASCII

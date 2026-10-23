@@ -1001,12 +1001,12 @@ git commit -m "feat: add automatic update check at startup with cache"
 
 **Files:**
 
-- Modify: `lib/ui/splash.c`
-- Modify: `include/ascii-chat/ui/splash.h`
+- Modify: `lib/tui/splash.c`
+- Modify: `include/ascii-chat/tui/splash.h`
 
 **Step 1: Add update notification to splash header callback**
 
-In `lib/ui/splash.c`, add at the top:
+In `lib/tui/splash.c`, add at the top:
 
 ```c
 #include <ascii-chat/network/update_checker.h>
@@ -1047,7 +1047,7 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
 **Step 2: Commit**
 
 ```bash
-git add lib/ui/splash.c
+git add lib/tui/splash.c
 git commit -m "feat: display update notification banner on splash screen"
 ```
 

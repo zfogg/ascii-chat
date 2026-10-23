@@ -70,8 +70,8 @@
  * @version 2.0
  */
 
-#include <ascii-chat/ui/input.h>
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/controller.h>
 #include "display.h"
 #include "session/display.h"
 #include "main.h"
@@ -80,8 +80,8 @@
 #include "display.h"
 #include "capture.h"
 #include "session/keyboard_handler.h"
-#include <ascii-chat/ui/keyboard_help.h>
-#include <ascii-chat/ui/splash.h>
+#include <ascii-chat/tui/keyboard_help.h>
+#include <ascii-chat/tui/splash.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/options/options.h>

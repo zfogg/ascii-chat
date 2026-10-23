@@ -31,11 +31,11 @@
 #include <time.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/controller.h>
 #include <ascii-chat/ui/frame_buffer.h>
-#include <ascii-chat/ui/prompt.h>
+#include <ascii-chat/tui/prompt.h>
 #include <ascii-chat/media/playlist.h>
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 #include <ascii-chat/common/shutdown.h>
 
 /* ============================================================================
@@ -512,16 +512,6 @@ static bool playback_cancelled(void *data) {
   return shutdown_is_requested();
 }
 
-static void render_media_loading(terminal_size_t size, const void *data) {
-  (void)data;
-  frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
-  if (!buffer)
-    return;
-  ui_media_panel_render(buffer, size, "Loading media...", "Esc cancels; current playback continues.", NULL, 0);
-  ui_controller_write(STDERR_FILENO, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
-  frame_buffer_destroy(buffer);
-}
-
 static void *load_media_worker(void *data) {
   ASCII_OTEL_SCOPE(MEDIA_TRANSITION_LOAD);
   session_capture_ctx_t *ctx = data;
@@ -609,8 +599,7 @@ static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const
   ctx->loader_done = false;
   atomic_store_bool(&ctx->awaiting_presentation, false);
   atomic_store_bool(&ctx->load_cancel, false);
-  asciichat_error_t progress = ui_controller_submit(
-      UI_SCREEN_RENDER_PROGRESS, STDERR_FILENO, (terminal_size_t){.cols = 40, .rows = 8}, render_media_loading, "", 1);
+  asciichat_error_t progress = ui_media_loading_present();
   if (progress != ASCIICHAT_OK) {
     mutex_unlock(&ctx->load_mutex);
     return progress;

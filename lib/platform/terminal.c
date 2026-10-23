@@ -15,6 +15,11 @@
 #endif
 #include <string.h>
 
+bool terminal_should_use_utf8(void) {
+  utf8_setting_t setting = GET_OPTION(force_utf8);
+  return setting == UTF8_SETTING_TRUE || (setting == UTF8_SETTING_AUTO && terminal_supports_utf8());
+}
+
 asciichat_error_t terminal_resize_poll(terminal_resize_watcher_t *watcher, int fd, bool *changed) {
   if (changed)
     *changed = false;

@@ -320,15 +320,28 @@ set(LIB_SRC_COMMON
 
     # Shared session UI; scheduling and media side effects belong to the browser host.
     ${CMAKE_CURRENT_SOURCE_DIR}/common/ui.c
-    ${LIB_ROOT}/ui/session.c
-    ${LIB_ROOT}/ui/session_status.c
+    ${LIB_ROOT}/tui/session.c
+    ${LIB_ROOT}/tui/session_status.c
     ${LIB_ROOT}/platform/keyboard_edit.c
-    ${LIB_ROOT}/ui/session_input.c
-    ${LIB_ROOT}/ui/session_help.c
-    ${LIB_ROOT}/ui/session_splash.c
-    ${LIB_ROOT}/ui/invitation.c
-    ${LIB_ROOT}/ui/too_small.c
+    ${LIB_ROOT}/tui/session_input.c
+    ${LIB_ROOT}/tui/session_help.c
+    ${LIB_ROOT}/tui/session_splash.c
+    ${LIB_ROOT}/tui/invitation.c
+    ${LIB_ROOT}/tui/too_small.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/session_log_buffer.c
+    ${LIB_ROOT}/ui/output.c
+    ${LIB_ROOT}/ui/text.c
+    ${LIB_ROOT}/ui/popup.c
+    ${LIB_ROOT}/ui/help_menu.c
+    ${LIB_ROOT}/ui/viewport.c
+    ${LIB_ROOT}/ui/selectable_list.c
+    ${LIB_ROOT}/ui/scrollbar.c
+    ${LIB_ROOT}/ui/table.c
+    ${LIB_ROOT}/ui/buttons.c
+    ${LIB_ROOT}/ui/layout.c
+    ${LIB_ROOT}/ui/input.c
+    ${LIB_ROOT}/ui/progress.c
+    ${LIB_ROOT}/tui/shortcuts.c
     ${LIB_ROOT}/ui/frame_buffer.c
     ${LIB_ROOT}/ui/fps_counter.c
     ${LIB_ROOT}/stats/stats.c

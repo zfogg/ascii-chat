@@ -6,7 +6,7 @@
 
 #include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/ui/output.h>
 #include <string.h>
 
 /* ============================================================================
@@ -196,7 +196,7 @@ void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redraw
   int value = measured >= 999.0f ? 999 : (int)(measured + 0.5f);
   if (counter->visible && columns >= 7 && (redrawn || value != counter->last_fps)) {
     // Restore the cursor so the right-margin overlay cannot wrap the next write.
-    if (ui_controller_printf(fd, "\0337\033[1;%dH\033[0;7mFPS:%3d\033[0m\0338", columns - 6, value) == ASCIICHAT_OK)
+    if (ui_output_printf(fd, "\0337\033[1;%dH\033[0;7mFPS:%3d\033[0m\0338", columns - 6, value) == ASCIICHAT_OK)
       counter->last_fps = value;
   }
   if (now - counter->report_start >= 3 * NS_PER_SEC_INT) {

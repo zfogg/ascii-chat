@@ -1,3 +1,6 @@
+#include <ascii-chat/tui/keyboard_help.h>
+#include <ascii-chat/ui/viewport.h>
+#include <ascii-chat/tui/stats.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/atomic.h>
@@ -5,10 +8,10 @@
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/ui/controller.h>
-#include <ascii-chat/ui/input.h>
+#include <ascii-chat/tui/controller.h>
+#include <ascii-chat/tui/input.h>
 #include <ascii-chat/ui/frame_buffer.h>
-#include <ascii-chat/ui/terminal_screen.h>
+#include <ascii-chat/tui/terminal_screen.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/util/time.h>
@@ -59,12 +62,18 @@ stats_scope_t *stats_runtime_peer_scope(stats_peer_t *peer) {
   return peer ? peer->scope : NULL;
 }
 bool stats_runtime_active(void) {
-  return atomic_load_bool_impl(&g_active);
+  return atomic_load_bool_impl(&g_active) &&
+         (ui_controller_interactive_screen() == UI_SCREEN_STATS ||
+          (ui_controller_interactive_screen() == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_STATS));
 }
 
 void stats_runtime_toggle(void) {
-  if (g_started && g_keyboard)
-    atomic_store_bool_impl(&g_active, !stats_runtime_active());
+  if (g_started && g_keyboard) {
+    bool active = !stats_runtime_active();
+    atomic_store_bool_impl(&g_active, active);
+    ui_controller_select_interactive(active ? UI_SCREEN_STATS : -1);
+    log_debug("Statistics TUI requested: %s", active ? "open" : "closed");
+  }
 }
 
 static void stats_view_vadd(stats_view_t *view, bool heading, const char *format, va_list args) {
@@ -184,100 +193,6 @@ void stats_runtime_packet(stats_peer_t *peer, unsigned type, size_t payload_byte
         type == PACKET_TYPE_IMAGE_FRAME_H264)
       stats_counter_add(scopes[i], sent ? STATS_COUNTER_FRAMES_SENT : STATS_COUNTER_FRAMES_RECEIVED, 1);
   }
-}
-
-static size_t stats_body_width(const stats_view_t *view) {
-  size_t width = 0;
-  for (unsigned i = 0; i < view->count; ++i) {
-    size_t length = strlen(view->lines[i]);
-    if (length > width)
-      width = length;
-  }
-  return width;
-}
-
-static void stats_footer(const stats_view_t *view, char *footer, size_t capacity) {
-  snprintf(footer, capacity, "= / Esc close | Tab page | Up/Down select | %u rows", view->count);
-}
-
-static terminal_size_t stats_minimum(const stats_view_t *view) {
-  char title[160], footer[160];
-  snprintf(title, sizeof(title), "  ASCII-CHAT / %-20s  LIVE STATS", view->mode);
-  stats_footer(view, footer, sizeof(footer));
-  size_t width = stats_body_width(view) + 4;
-  if (strlen(title) + 1 > width)
-    width = strlen(title) + 1;
-  if (strlen(footer) + 3 > width)
-    width = strlen(footer) + 3;
-  // Both subtitles are shorter than the title. Keep one spare row and column
-  // to avoid terminal auto-wrap/scroll, in addition to the fixed header/footer.
-  return (terminal_size_t){.cols = (int)width, .rows = (int)view->count + 6};
-}
-
-static void stats_render_text(frame_buffer_t *buffer, const char *text, bool heading, bool color) {
-  const char *base = color ? (heading ? log_level_color(LOG_COLOR_DEBUG) : "\033[39m") : "";
-  frame_buffer_printf(buffer, "%s", base);
-  for (const char *p = text; *p;) {
-    char *end;
-    if (isdigit((unsigned char)*p)) {
-      (void)strtod(p, &end);
-      frame_buffer_printf(buffer, "%s%.*s%s", color ? log_level_color(LOG_COLOR_FATAL) : "", (int)(end - p), p, base);
-      p = end;
-    } else if ((p == text || !isalnum((unsigned char)p[-1])) &&
-               ((!strncmp(p, "enabled", 7) && !isalnum((unsigned char)p[7])) ||
-                (!strncmp(p, "disabled", 8) && !isalnum((unsigned char)p[8])))) {
-      bool enabled = *p == 'e';
-      int length = enabled ? 7 : 8;
-      frame_buffer_printf(buffer, "%s%.*s%s", color ? log_level_color(enabled ? LOG_COLOR_INFO : LOG_COLOR_ERROR) : "",
-                          length, p, base);
-      p += length;
-    } else {
-      frame_buffer_append(buffer, p++, 1);
-    }
-  }
-  frame_buffer_printf(buffer, "%s", color ? "\033[39m" : "");
-}
-
-static void stats_render(terminal_size_t size, const void *data) {
-  const stats_view_t *view = data;
-  frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols + 64);
-  if (!buffer)
-    return;
-  terminal_capabilities_t caps = detect_terminal_capabilities();
-  terminal_color_mode_t mode = GET_OPTION(color_mode);
-  bool color = mode != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE && !GET_OPTION(strip_ansi) &&
-               (mode != TERM_COLOR_AUTO || caps.color_level != TERM_COLOR_NONE);
-  const char *blue = color ? log_level_color(LOG_COLOR_DEBUG) : "";
-  frame_buffer_cursor_home(buffer);
-  frame_buffer_printf(buffer, "\033[1m%s  ASCII-CHAT / %-20s  LIVE STATS\033[0m\033[K\n", blue, view->mode);
-  frame_buffer_printf(buffer, "  ");
-  stats_render_text(buffer, view->page ? "CONNECTIONS & MODE DETAILS" : "OVERVIEW / rates over ~1 second", true, color);
-  frame_buffer_printf(buffer, "\033[K\n");
-  frame_buffer_render_border(buffer, size.cols, blue);
-  unsigned available = size.rows > 6 ? (unsigned)size.rows - 6 : 0;
-  unsigned remaining = view->offset < view->count ? view->count - view->offset : 0;
-  unsigned visible = remaining < available ? remaining : available;
-  unsigned top = (available - visible) / 2;
-  size_t width = stats_body_width(view);
-  int left = (size.cols - (int)width) / 2;
-  for (unsigned i = 0; i < available; ++i) {
-    if (i < top || i >= top + visible) {
-      frame_buffer_printf(buffer, "\033[K\n");
-      continue;
-    }
-    unsigned index = view->offset + i - top;
-    frame_buffer_printf(buffer, "%*s%s", left, "", view->page && index == view->selected ? "\033[7m" : "");
-    stats_render_text(buffer, view->lines[index], view->headings[index], color);
-    frame_buffer_printf(buffer, "\033[0m\033[K\n");
-  }
-  frame_buffer_render_border(buffer, size.cols, blue);
-  char footer[160];
-  stats_footer(view, footer, sizeof(footer));
-  frame_buffer_printf(buffer, "  ");
-  stats_render_text(buffer, footer, false, color);
-  frame_buffer_printf(buffer, "\033[K");
-  ui_controller_write(g_fd, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
-  frame_buffer_destroy(buffer);
 }
 
 static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rates_t *rates) {
@@ -402,15 +317,17 @@ static void print_summary(const stats_snapshot_t *snapshot, const stats_rates_t 
 static void *stats_worker(void *unused) {
   (void)unused;
   uint64_t next_sample = 0, next_print = time_get_ns() + (uint64_t)g_interval * NS_PER_SEC_INT;
-  unsigned page = 0, selected = 0;
+  unsigned page = 0;
+  size_t last_count = 0;
+  ui_viewport_t viewport = {0};
   bool was_active = false;
   while (!atomic_load_bool_impl(&g_stop) && !shutdown_is_requested()) {
     bool active = stats_runtime_active();
-    ui_presentation_state_t state = ui_controller_state();
     // Own input only while our screen is visible, or while a server has no screen.
     bool server_like = strcmp(g_mode, "server") == 0 || strcmp(g_mode, "discovery-service") == 0;
-    if (g_keyboard && (active || (server_like && state.screen < 0))) {
+    if (g_keyboard && (active || (server_like && !ui_controller_screen_live(UI_SCREEN_STATUS)))) {
       keyboard_key_t key = ui_input_read_key(UI_SCREEN_STATS);
+      active = stats_runtime_active();
       if (active && key == ']') {
         stats_runtime_toggle();
         active = false;
@@ -421,19 +338,16 @@ static void *stats_worker(void *unused) {
       } else if (!active && key == '=') {
         stats_runtime_toggle();
         active = stats_runtime_active();
-      } else if (key == KEY_DOWN) {
-        if (page)
-          selected++;
-      } else if (key == KEY_UP) {
-        if (page && selected)
-          selected--;
       } else if (key == '\t' || key == KEY_LEFT || key == KEY_RIGHT) {
         page = !page;
-        selected = 0;
-      } else if (key == KEY_HOME) {
-        selected = 0;
+        viewport = (ui_viewport_t){0};
+      } else {
+        terminal_size_t size = ui_controller_size();
+        ui_viewport_key(&viewport, last_count, size.rows > 6 ? (size_t)size.rows - 6 : 1, key);
       }
     }
+    if (active != was_active)
+      log_debug("Statistics TUI visibility: %d (selected=%d)", active, ui_controller_interactive_screen());
     if (!active && was_active) {
       ui_controller_remove(UI_SCREEN_STATS);
       if (ui_controller_state().screen < 0) {
@@ -451,12 +365,13 @@ static void *stats_worker(void *unused) {
       bool print_due = g_interval && now >= next_print;
       if (active || print_due)
         build_view(&view, &snapshot, &rates);
-      if (selected >= view.count)
-        selected = view.count ? view.count - 1 : 0;
-      view.selected = selected;
-      view.offset = 0;
+      terminal_size_t size = ui_controller_size();
+      ui_viewport_update(&viewport, view.count, size.rows > 6 ? (size_t)size.rows - 6 : 1);
+      last_count = view.count;
+      view.selected = (unsigned)viewport.selected;
+      view.offset = (unsigned)viewport.first_visible;
       if (active)
-        ui_controller_submit(UI_SCREEN_STATS, g_fd, stats_minimum(&view), stats_render, &view, sizeof(view));
+        ui_controller_submit(UI_SCREEN_STATS, g_fd, tui_stats_minimum(&view), tui_stats_render, &view, sizeof(view));
       if (print_due) {
         print_summary(&snapshot, &rates);
         next_print = now + (uint64_t)g_interval * NS_PER_SEC_INT;
@@ -540,6 +455,9 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
   atomic_store_bool_impl(&g_stop, false);
   atomic_store_bool_impl(&g_active, false);
   g_started = true;
+  bool server_like = strcmp(mode, "server") == 0 || strcmp(mode, "discovery-service") == 0;
+  if (g_keyboard && server_like && ui_controller_start_terminal(g_fd) != ASCIICHAT_OK)
+    LOG_ERRNO_IF_SET("Cannot start terminal presentation");
   if (acthread_create(&g_worker, "stats", stats_worker, NULL) == 0)
     return ASCIICHAT_OK;
   result = SET_ERRNO(ERROR_THREAD, "Cannot start stats worker");

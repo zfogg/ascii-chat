@@ -4,7 +4,7 @@
  * @brief 📋 TOML configuration file parser with schema validation and CLI override support
  */
 
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/options/enums.h>

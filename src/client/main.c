@@ -65,8 +65,8 @@
  * @version 2.0
  */
 
-#include <ascii-chat/ui/notice.h>
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/notice.h>
+#include <ascii-chat/tui/controller.h>
 #include "session/protocol.h"
 
 #include "main.h"
@@ -77,14 +77,14 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
-#include <ascii-chat/ui/splash.h>
+#include <ascii-chat/tui/splash.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include "session/client_like.h"
 #include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/video/webcam/webcam.h>
-#include <ascii-chat/ui/mdns.h>
-#include <ascii-chat/ui/input.h>
+#include <ascii-chat/tui/mdns.h>
+#include <ascii-chat/tui/input.h>
 #include <ascii-chat/network/mdns/discovery.h>
 
 #include <ascii-chat/platform/abstraction.h>

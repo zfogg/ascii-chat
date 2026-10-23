@@ -11,15 +11,15 @@
  * @date January 2026
  */
 
-#include <ascii-chat/ui/input.h>
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/controller.h>
 #include "session/render.h"
 #include "session/capture.h"
 #include "session/display.h"
 #include "session/pipeline.h"
 #include <ascii-chat/terminal/fd/reader.h>
-#include <ascii-chat/ui/keyboard_help.h>
-#include <ascii-chat/ui/splash.h>
+#include <ascii-chat/tui/keyboard_help.h>
+#include <ascii-chat/tui/splash.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/common.h>
 #include <fcntl.h>
@@ -290,13 +290,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           log_debug("Ctrl+C cancelled help screen - returning to ASCII art");
         }
 
-        // Check if help screen is active - if so, render help instead of frame
-        // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
-        bool help_is_active = display && keyboard_help_is_active(display);
-
-        if (!help_is_active) {
-          session_display_render_frame(display, ascii_frame);
-        }
+        session_display_render_frame(display, ascii_frame);
 
         // Snapshot mode: increment frame counter for all displayed frames
         // Counter starts at 1 for the first displayed frame, then 2, 3, 4... for subsequent frames

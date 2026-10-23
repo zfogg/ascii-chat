@@ -339,7 +339,7 @@ lib/options/registry/ios_mode_defaults.c  # iOS defaults (truecolor, dimensions)
 
 That's ~9 platform files + 2 module files vs. the WASM layer's ~22 files.
 
-> **`isatty()` routing**: All `isatty()` calls in `lib/ui/splash.c`, `lib/ui/status.c`,
+> **`isatty()` routing**: All `isatty()` calls in `lib/tui/splash.c`, `lib/tui/status.c`,
 > `lib/platform/posix/keyboard.c`, and `lib/platform/posix/terminal.c` now go through
 > `platform_isatty()`. On iOS, the platform layer can override this to control which
 > screens display. By default, `fd 1` is not a TTY on iOS, so splash/status screens

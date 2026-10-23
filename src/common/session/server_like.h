@@ -13,7 +13,7 @@
 #include <ascii-chat/network/nat/upnp.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/platform/api.h>
-#include <ascii-chat/ui/status.h>
+#include <ascii-chat/tui/status.h>
 #include <stdbool.h>
 
 typedef asciichat_error_t (*session_server_like_init_fn)(void *user_data);

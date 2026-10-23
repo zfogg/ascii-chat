@@ -1,6 +1,6 @@
 #include "session/protocol.h"
 #include "session/frame_validation.h"
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/controller.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/acip/send.h>

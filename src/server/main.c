@@ -55,7 +55,7 @@
  */
 
 #include <ascii-chat/crypto/key_identity/display.h>
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #ifdef _WIN32
 #include <io.h>
@@ -132,7 +132,7 @@
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/network/acip/client.h>
-#include <ascii-chat/ui/status.h>
+#include <ascii-chat/tui/status.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/platform/keyboard.h>

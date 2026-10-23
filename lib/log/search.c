@@ -6,7 +6,7 @@
  * Supports full /pattern/flags syntax with real-time filtering.
  */
 
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/controller.h>
 #include "ascii-chat/log/search.h"
 #include "ascii-chat/common.h"
 #include "ascii-chat/log/log.h"

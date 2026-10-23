@@ -56,8 +56,8 @@ Reviewed all 28 PRs closed in this interval, including inline threads, review su
 | #491 | [src/web/common/ui.c](https://github.com/zfogg/ascii-chat/pull/491#discussion_r4299840532) | Fixed: synchronize active speaker/microphone state into C when the renderer is ready. |
 | #491 | [web/web/src/audio/AudioPipeline.ts](https://github.com/zfogg/ascii-chat/pull/491#discussion_r4299840538) | Fixed: seed playback gain from the current C speakers_volume before enabling playback. |
 | #491 | [web/web/src/pages/Mirror.tsx](https://github.com/zfogg/ascii-chat/pull/491#discussion_r4299840548) | Already fixed: Mirror Escape calls stopPlayback, clearing persisted playing state. |
-| #491 | [lib/ui/session_help.c](https://github.com/zfogg/ascii-chat/pull/491#discussion_r4299849170) | Fixed: remove unreachable content-width clamp after max_width >= 6. |
-| #491 | [lib/ui/controller.c](https://github.com/zfogg/ascii-chat/pull/491#discussion_r4299964679) | Intentional: help displays the live presentation FPS counter; periodic refresh keeps that line current. |
+| #491 | [lib/tui/session_help.c](https://github.com/zfogg/ascii-chat/pull/491#discussion_r4299849170) | Fixed: remove unreachable content-width clamp after max_width >= 6. |
+| #491 | [lib/tui/controller.c](https://github.com/zfogg/ascii-chat/pull/491#discussion_r4299964679) | Intentional: help displays the live presentation FPS counter; periodic refresh keeps that line current. |
 | #491 | [web/packages/shared/src/components/AsciiRenderer/useAsciiRendererHandle.ts](https://github.com/zfogg/ascii-chat/pull/491#discussion_r4299964689) | Fixed: preserve writeFrame boolean failure contract when C rejects a frame or allocation fails. |
 | #491 | [web/web/src/pages/Client.tsx](https://github.com/zfogg/ascii-chat/pull/491#discussion_r4299964693) | Fixed: seed each playback activation from C volume. |
 | #491 | [web/web/src/pages/Mirror.tsx](https://github.com/zfogg/ascii-chat/pull/491#discussion_r4299964697) | Already fixed: Mirror Escape uses the complete stopPlayback path. |

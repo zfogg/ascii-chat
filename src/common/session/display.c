@@ -14,9 +14,9 @@
  * @date January 2026
  */
 
-#include <ascii-chat/ui/too_small.h>
-#include <ascii-chat/ui/controller.h>
-#include <ascii-chat/ui/keyboard_help.h>
+#include <ascii-chat/tui/too_small.h>
+#include <ascii-chat/tui/controller.h>
+#include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/app_callbacks.h>
 #include "session/display.h"
 #include "session/frame_validation.h"
@@ -26,7 +26,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/ui/splash.h>
+#include <ascii-chat/tui/splash.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
@@ -894,9 +894,6 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   }
 
   // Suppress frame rendering when help screen is active
-  if (ui_controller_interactive_screen() == UI_SCREEN_HELP) {
-    return;
-  }
 
   bool visualization_enabled = GET_OPTION(waveform) || GET_OPTION(fft);
   char *visualization_frame = visualization_enabled ? session_display_create_visualization_frame(ctx) : NULL;

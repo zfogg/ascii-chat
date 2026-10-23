@@ -6,9 +6,9 @@
  * @brief 📝 Multi-level logging with terminal color support, file rotation, and async output
  */
 
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/controller.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access

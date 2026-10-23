@@ -1,3 +1,5 @@
+#include <ascii-chat/ui/text.h>
+#include <ascii-chat/util/string.h>
 /**
  * @file ui/frame_buffer.c
  * @brief Buffered terminal frame rendering implementation
@@ -5,7 +7,7 @@
  * Accumulates terminal output into a growable buffer and flushes atomically.
  */
 
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/ui/output.h>
 #include "ascii-chat/ui/frame_buffer.h"
 #include "ascii-chat/platform/abstraction.h"
 #include <ascii-chat/util/display.h>
@@ -194,12 +196,13 @@ void frame_buffer_flush(frame_buffer_t *buf) {
     }
   }
 
-  ui_controller_write(g_terminal_screen_output_fd, output, output_len);
+  ui_output_write(g_terminal_screen_output_fd, output, output_len);
   SAFE_FREE(output);
 }
 
 void frame_buffer_set_screen_output_fd(int fd) {
   g_terminal_screen_output_fd = fd;
+  colored_string_set_output_fd(fd);
 }
 
 int frame_buffer_get_screen_output_fd(void) {
@@ -233,13 +236,11 @@ static void render_rule(frame_buffer_t *buf, int width, const char *color, bool 
 }
 
 void frame_buffer_render_border(frame_buffer_t *buf, int cols, const char *color) {
-  utf8_setting_t utf8 = GET_OPTION(force_utf8);
-  render_rule(buf, cols - 1, color,
-              utf8 == UTF8_SETTING_TRUE || (utf8 == UTF8_SETTING_AUTO && terminal_supports_utf8()));
+  render_rule(buf, cols - 1, color, terminal_should_use_utf8());
 }
 
 void frame_buffer_render_divider(frame_buffer_t *buf, int width, bool use_utf8, bool use_colors) {
-  render_rule(buf, width, use_colors ? log_level_color(LOG_COLOR_DEBUG) : NULL, use_utf8);
+  render_rule(buf, width, use_colors ? ui_text_color_prefix(LOG_COLOR_DEBUG) : NULL, use_utf8);
 }
 
 int frame_buffer_render_centered(frame_buffer_t *buf, const char *text, int cols) {

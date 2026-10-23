@@ -7,12 +7,15 @@
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/crypto/known_hosts.h>
 #include <ascii-chat/crypto/discovery_keys.h>
-#include <ascii-chat/ui/controller.h>
-#include <ascii-chat/ui/input.h>
-#include <ascii-chat/ui/mdns.h>
-#include <ascii-chat/ui/splash.h>
-#include <ascii-chat/ui/update_banner.h>
-#include <ascii-chat/ui/keyboard_help.h>
+#include <ascii-chat/tui/controller.h>
+#include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/mdns.h>
+#include <ascii-chat/tui/render_progress.h>
+#include <ascii-chat/tui/notice.h>
+#include <ascii-chat/tui/prompt.h>
+#include <ascii-chat/tui/splash.h>
+#include <ascii-chat/tui/update_banner.h>
+#include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/visualization.h>
 #include "session/display.h"
@@ -64,6 +67,22 @@ int main(int argc, char **argv) {
       platform_sleep_ns(100 * NS_PER_MS_INT);
     }
     ok = true;
+  } else if (!strcmp(kind, "render-progress")) {
+    render_progress_t *progress = render_progress_create(true, "example-recording.mp4");
+    render_progress_begin(progress, 100, true);
+    for (int i = 0; i < 40; ++i)
+      render_progress_frame(progress, "Synthetic recording frame\nVideo continues behind the progress panel", true);
+    platform_sleep_ns(8 * NS_PER_SEC_INT);
+    render_progress_destroy(progress);
+    ok = true;
+  } else if (!strcmp(kind, "media-loading")) {
+    ok = ui_media_loading_present() == ASCIICHAT_OK;
+    platform_sleep_ns(8 * NS_PER_SEC_INT);
+    ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
+  } else if (!strcmp(kind, "notice")) {
+    ok = ui_notice_present(UI_NOTICE_WARNING, "Example warning\nShared terminal notice layout") == ASCIICHAT_OK;
+    platform_sleep_ns(8 * NS_PER_SEC_INT);
+    ui_notice_dismiss();
   } else if (!strcmp(kind, "text")) {
     ok = platform_prompt_question("Account name", answer, sizeof(answer), PROMPT_OPTS_DEFAULT) == 0 &&
          !strcmp(answer, "alice");
@@ -94,6 +113,7 @@ int main(int argc, char **argv) {
     ok = discovery_keys_verify_change("fixture.invalid", old_key, new_key) != ASCIICHAT_OK;
   } else if (!strcmp(kind, "update-yes") || !strcmp(kind, "update-no")) {
     update_check_result_t update = {.update_available = true,
+                                    .check_succeeded = true,
                                     .latest_version = "v99.0.0",
                                     .current_version = "v1.0.0",
                                     .release_url = "https://example.invalid/releases/test"};
@@ -102,20 +122,34 @@ int main(int argc, char **argv) {
     ok = update_banner_show_prompt(display) == expected;
     if (expected)
       update_banner_print_instructions();
-  } else if (!strcmp(kind, "mdns") || !strcmp(kind, "mdns-cancel")) {
-    ui_mdns_server_t servers[] = {{.name = "fixture-one", .address = "127.0.0.1", .ipv4 = "127.0.0.1", .port = 27224},
-                                  {.name = "fixture-two", .address = "127.0.0.1", .ipv4 = "127.0.0.1", .port = 27225}};
+  } else if (!strcmp(kind, "mdns") || !strcmp(kind, "mdns-cancel") || !strcmp(kind, "mdns-long")) {
+    ui_mdns_server_t servers[24] = {
+        {.name = "fixture-one", .address = "127.0.0.1", .ipv4 = "127.0.0.1", .port = 27224},
+        {.name = "fixture-two", .address = "127.0.0.1", .ipv4 = "127.0.0.1", .port = 27225}};
+    bool long_list = !strcmp(kind, "mdns-long");
+    int count = long_list ? 24 : 2;
+    if (long_list) {
+      for (int i = 0; i < count; ++i) {
+        safe_snprintf(servers[i].name, sizeof(servers[i].name), "fixture-%02d", i + 1);
+        safe_snprintf(servers[i].address, sizeof(servers[i].address), "127.0.0.1");
+        safe_snprintf(servers[i].ipv4, sizeof(servers[i].ipv4), "127.0.0.1");
+        servers[i].port = (uint16_t)(27224 + i);
+      }
+    }
     bool logging = !strcmp(kind, "mdns");
     log_set_terminal_output(logging);
-    ok = ui_mdns_select(servers, 2) == (!strcmp(kind, "mdns") ? 1 : -1);
+    ok = ui_mdns_select(servers, count) == (long_list ? 9 : !strcmp(kind, "mdns") ? 1 : -1);
     // Give the presentation thread time to retire the selection screen.
     platform_sleep_ns(100 * NS_PER_MS_INT);
     ok = ok && log_get_terminal_output() == logging;
-  } else if (!strcmp(kind, "splash")) {
+  } else if (!strcmp(kind, "splash") || !strcmp(kind, "invitation")) {
+    if (!strcmp(kind, "invitation"))
+      splash_set_discovery_session("fixture-tiger-cloud", false);
     splash_intro_start(display);
     platform_sleep_ns(8 * NS_PER_SEC_INT);
     splash_intro_done();
     splash_wait_for_animation();
+    splash_clear_discovery_session();
     ok = true;
   }
   memset(answer, 0, sizeof(answer));

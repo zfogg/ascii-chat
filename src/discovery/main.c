@@ -1,4 +1,4 @@
-#include <ascii-chat/ui/input.h>
+#include <ascii-chat/tui/input.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/stats/runtime.h>
 /**
@@ -34,7 +34,7 @@
  * @version 1.0
  */
 
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include "main.h"
 #include "../main.h" // Global exit API
@@ -49,7 +49,7 @@
 #include "session/participant.h"
 #include "session/connection.h"
 #include "session/protocol.h"
-#include <ascii-chat/ui/splash.h>
+#include <ascii-chat/tui/splash.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/parsing.h>

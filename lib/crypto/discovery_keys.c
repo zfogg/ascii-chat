@@ -7,7 +7,7 @@
  * @date January 2026
  */
 
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/crypto/discovery_keys.h>
 #include <ascii-chat/crypto/known_hosts.h>

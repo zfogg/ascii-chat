@@ -5,8 +5,8 @@
  * @brief 🖼️ Image-to-ASCII conversion with SIMD acceleration, color matching, and terminal optimization
  */
 
-#include <ascii-chat/ui/controller.h>
-#include <ascii-chat/ui/too_small.h>
+#include <ascii-chat/tui/controller.h>
+#include <ascii-chat/tui/too_small.h>
 
 #include <ascii-chat/ui/frame_buffer.h>
 #include <stdint.h>

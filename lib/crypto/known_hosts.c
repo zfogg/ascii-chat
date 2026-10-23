@@ -4,10 +4,10 @@
  * @brief 📜 SSH known_hosts file parser for host key verification and trust management
  */
 
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/controller.h>
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/crypto/key_identity/keymask.h>
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include <stdio.h>
 #include <string.h>

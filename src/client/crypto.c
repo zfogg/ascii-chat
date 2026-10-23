@@ -5,7 +5,7 @@
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/crypto/discovery_keys.h>
 #include <ascii-chat/crypto/handshake/client.h>
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 #include <ascii-chat/util/endian.h>
 
 /* Security storage and initialization belong to the shared connection owner.

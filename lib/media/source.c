@@ -4,7 +4,7 @@
  */
 
 #include <ascii-chat/otel.h>
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/video/anim/controller.h>
 #include <ascii-chat/video/anim/test_pattern.h>

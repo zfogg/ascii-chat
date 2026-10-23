@@ -8,8 +8,8 @@
  * and signal handling. Modes plug in via callbacks.
  */
 
-#include <ascii-chat/ui/input.h>
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/controller.h>
 #include "server_like.h"
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>

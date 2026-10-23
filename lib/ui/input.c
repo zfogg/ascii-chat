@@ -1,78 +1,12 @@
-#include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/log/search.h>
-#include <ascii-chat/ui/sync.h>
 #include <ascii-chat/ui/input.h>
-#include <ascii-chat/ui/prompt.h>
-#include <ascii-chat/media/playlist.h>
-#include <ascii-chat/ui/keyboard_help.h>
-#include <ascii-chat/ui/update_banner.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/common.h>
-#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/asciichat_errno.h>
 #include <string.h>
-#include <ascii-chat/common/shutdown.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/util/lifecycle.h>
-#include <ascii-chat/util/time.h>
-#include <ascii-chat/debug/named.h>
-#include <ascii-chat/atomic.h>
-
-uint64_t ui_input_deadline(unsigned seconds) {
-  return time_get_ns() + (uint64_t)seconds * NS_PER_SEC_INT;
-}
-
-bool ui_input_expired(uint64_t deadline) {
-  return time_get_ns() >= deadline;
-}
-
-void ui_input_timeout_report(unsigned seconds, const char *consequence) {
-  char message[512];
-  int length = snprintf(message, sizeof(message), "\nPrompt timed out after %u seconds; %s.\n", seconds, consequence);
-  // This diagnostic must remain visible even while a background screen owns the terminal.
-  if (length > 0)
-    platform_write_all(STDERR_FILENO, message, (size_t)length < sizeof(message) ? (size_t)length : sizeof(message) - 1);
-  SET_ERRNO(ERROR_PROMPT_TIMEOUT, "Prompt timed out after %u seconds: %s", seconds, consequence);
-}
-
-static lifecycle_t g_input_lifecycle = LIFECYCLE_INIT;
-static mutex_t g_input_mutex;
-static mutex_t g_input_prompt_mutex;
-static _Atomic bool g_input_was_covered;
-static keyboard_key_t g_sync_keys[256];
-static unsigned g_sync_key_head, g_sync_key_count;
-static bool g_switch_pending;
-static _Atomic bool g_input_buffered;
-
-static bool input_switch_key(keyboard_key_t key) {
-  return key == KEY_QUESTION || key == ']' || key == 'o' || key == 'O' || key == 15;
-}
-
-static bool g_pasting, g_paste_invalid, g_paste_ready;
-static char g_paste[8192];
-static size_t g_paste_length;
-static keyboard_key_t g_text_keys[8192];
-static size_t g_text_head, g_text_count;
-
-typedef struct {
-  char buffer[8192];
-  size_t length, cursor;
-  uint64_t deadline;
-  bool active, submitted, pasted;
-} input_editor_t;
-static input_editor_t g_media_editor;
-
-// Publish only whether routing work remains; the actual queues stay serialized.
-static void input_unlock(void) {
-  atomic_store(&g_input_buffered,
-               g_sync_key_count || g_text_count || g_paste_ready || g_pasting || g_media_editor.active);
-  mutex_unlock(&g_input_mutex);
-}
-
-static bool input_ready(void) {
-  return atomic_load(&g_input_buffered) || keyboard_input_available();
-}
-
-static void input_editor_key(char *buffer, size_t max_len, size_t *length, size_t *position, keyboard_key_t key) {
+#include <ascii-chat/util/utf8.h>
+void ui_input_edit_key(char *buffer, size_t max_len, size_t *length, size_t *position, keyboard_key_t key) {
+  if (!buffer || !max_len || !length || !position || *length >= max_len || *position > *length) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid line editor storage, length or cursor");
+    return;
+  }
   size_t len = *length, cursor = *position;
   if (key == KEY_HOME)
     cursor = 0;
@@ -104,445 +38,88 @@ static void input_editor_key(char *buffer, size_t max_len, size_t *length, size_
     memmove(buffer + cursor + 1, buffer + cursor, len - cursor + 1);
     buffer[cursor++] = (char)key;
     ++len;
+  } else if (key >= 32 && key < 256 && len >= max_len - 1) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Line editor buffer is full");
   }
   *length = len;
   *position = cursor;
 }
 
-/* Called only with g_input_mutex held. Payload never reaches shortcut routing. */
-static keyboard_key_t input_read_event(void) {
-  if (g_paste_ready)
-    return KEY_NONE;
-  for (unsigned i = 0; i < 1024; ++i) {
-    bool buffered = g_text_count != 0;
-    keyboard_key_t key = buffered ? g_text_keys[g_text_head++] : keyboard_read_nonblocking();
-    if (buffered)
-      --g_text_count;
-    if (key == KEY_NONE)
-      return KEY_NONE;
-    if (key == KEY_PASTE_BEGIN) {
-      g_pasting = true;
-      g_paste_invalid = false;
-      g_paste_length = 0;
-      continue;
+asciichat_error_t ui_input_render(frame_buffer_t *buffer, int row, int col, int width, int height, const char *text,
+                                  size_t cursor, bool preserve_quotes) {
+  if (!buffer || !text || row < 1 || col < 1 || width < 5 || height < 1 || cursor > strlen(text) ||
+      !utf8_is_valid(text) || (cursor && ((unsigned char)text[cursor] & 0xc0) == 0x80))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid input field text, cursor or geometry");
+  int lines = 1;
+  size_t cursor_line = 0;
+  for (size_t i = 0; text[i]; ++i)
+    if (text[i] == '\n') {
+      ++lines;
+      if (i < cursor)
+        ++cursor_line;
     }
-    if (key == KEY_PASTE_END) {
-      if (!g_pasting)
-        continue;
-      g_pasting = false;
-      g_paste[g_paste_length] = '\0';
-      g_paste_ready = true;
-      return KEY_PASTE;
-    }
-    if (!g_pasting) {
-      if (buffered)
-        return key;
-      if (key < 32 || key > 255)
-        return key;
-      g_text_head = 0;
-      g_text_keys[0] = key;
-      size_t count = 1;
-      keyboard_key_t next;
-      while (count < 8192 && (next = keyboard_read_nonblocking()) != KEY_NONE) {
-        g_text_keys[count++] = next;
-        if (next == KEY_PASTE_BEGIN || next == KEY_PASTE_END)
+  int shown = lines < height ? lines : height;
+  int first = cursor_line >= (size_t)shown ? (int)cursor_line - shown + 1 : 0;
+  const char *line = text;
+  int number = 0, cursor_col = col + 2;
+  while (line && number < first + shown) {
+    const char *end = strchr(line, '\n');
+    if (!end)
+      end = line + strlen(line);
+    if (number >= first) {
+      const char *start = line;
+      bool active_line = (size_t)number == cursor_line;
+      bool quoted = preserve_quotes && end - line >= 2 && (*line == '"' || *line == '\'') && end[-1] == *line;
+      const char *anchor = active_line ? text + cursor : end;
+      int prefix = 0;
+      if (quoted && utf8_display_width_n(line, (size_t)(anchor - line)) > width - 1) {
+        // Keep the opening quote visible while scrolling the path's interior.
+        // The tail includes the closing quote when the cursor is at the end.
+        start = line + 1;
+        prefix = 4;
+        while (start < anchor && utf8_display_width_n(start, (size_t)(anchor - start)) > width - prefix - 1)
+          start += utf8_next_char_bytes(start, (size_t)(end - start));
+      } else if (active_line) {
+        while (start < anchor && utf8_display_width_n(start, (size_t)(anchor - start)) > width - 1)
+          start += utf8_next_char_bytes(start, (size_t)(end - start));
+      }
+      if (active_line)
+        cursor_col = col + 2 + prefix + utf8_display_width_n(start, (size_t)(anchor - start));
+      frame_buffer_printf(buffer, "\033[%d;%dH%s", row + number - first, col, active_line ? "> " : "  ");
+      if (prefix)
+        frame_buffer_printf(buffer, "%c...", *line);
+      int used = prefix;
+      while (start < end) {
+        int bytes = utf8_next_char_bytes(start, (size_t)(end - start));
+        if (bytes <= 0)
           break;
+        int cells = utf8_display_width_n(start, (size_t)bytes);
+        if (used + cells > width)
+          break;
+        frame_buffer_append(buffer, start, (size_t)bytes);
+        used += cells;
+        start += bytes;
       }
-      size_t text_count = count;
-      while (text_count && (g_text_keys[text_count - 1] == '\r' || g_text_keys[text_count - 1] == '\n'))
-        --text_count;
-      char text[8193];
-      bool printable = true;
-      for (size_t n = 0; n < count; ++n) {
-        if (n < text_count && (g_text_keys[n] < 32 || g_text_keys[n] > 255 || g_text_keys[n] == 127))
-          printable = false;
-        text[n] = (char)g_text_keys[n];
-      }
-      text[text_count] = '\0';
-      bool path = text[0] == '.' || text[0] == '/' || text[0] == '\\' || text[0] == '~' || text[0] == '\'' ||
-                  text[0] == '"' || (count > 2 && text[1] == ':') || strstr(text, "://") != NULL;
-      if (text_count > 1 && path) {
-        g_paste_invalid = !printable || text_count >= sizeof(g_paste);
-        g_paste_length = g_paste_invalid ? 0 : text_count;
-        memcpy(g_paste, text, g_paste_length);
-        g_paste[g_paste_length] = '\0';
-        g_paste_ready = true;
-        return KEY_PASTE;
-      }
-      g_text_head = 1;
-      g_text_count = count - 1;
-      return key;
+      frame_buffer_printf(buffer, "%*s", width - used, "");
     }
-    if ((key < 32 && key != '\n' && key != '\r' && key != '\t') || key > 255 || key == 127 ||
-        g_paste_length + 1 >= sizeof(g_paste))
-      g_paste_invalid = true;
-    else
-      g_paste[g_paste_length++] = (char)key;
+    ++number;
+    line = *end ? end + 1 : NULL;
   }
-  return KEY_NONE;
+  frame_buffer_printf(buffer, "\033[%d;%dH\033[?25h", row + (int)cursor_line - first, cursor_col);
+  return ASCIICHAT_OK;
 }
 
-/* Background debug polling can retain an event before a modal screen appears. */
-static keyboard_key_t input_next_key(void) {
-  if (g_sync_key_count) {
-    keyboard_key_t key = g_sync_keys[g_sync_key_head];
-    g_sync_key_head = (g_sync_key_head + 1) % 256;
-    --g_sync_key_count;
-    return key;
-  }
-  return input_read_event();
-}
-
-static bool input_initialize(void) {
-  if (lifecycle_init_once(&g_input_lifecycle)) {
-    if (mutex_init(&g_input_mutex, "ui_input") != 0) {
-      lifecycle_init_abort(&g_input_lifecycle);
-      return false;
-    }
-    if (mutex_init(&g_input_prompt_mutex, "ui_prompt_input") != 0) {
-      mutex_destroy(&g_input_mutex);
-      lifecycle_init_abort(&g_input_lifecycle);
-      return false;
-    }
-    NAMED_REGISTER_ATOMIC(&g_input_lifecycle.state, "ui_input_lifecycle", NULL);
-    g_input_was_covered = false;
-    g_switch_pending = false;
-    lifecycle_init_commit(&g_input_lifecycle);
-  }
-  return lifecycle_is_initialized(&g_input_lifecycle);
-}
-
-asciichat_error_t ui_input_take_paste(char *buffer, size_t capacity) {
-  if (!buffer || !capacity || !input_initialize())
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid paste buffer");
-  mutex_lock(&g_input_mutex);
-  asciichat_error_t result = ASCIICHAT_OK;
-  if (g_paste_invalid || g_paste_length >= capacity || !utf8_is_valid(g_paste))
-    result = SET_ERRNO(ERROR_INVALID_PARAM, "Paste media paths or URLs without terminal controls (maximum 8191 bytes)");
-  else
-    memcpy(buffer, g_paste, g_paste_length + 1);
-  g_paste_length = 0;
-  g_paste[0] = '\0';
-  g_paste_ready = false;
-  input_unlock();
-  return result;
-}
-
-void ui_input_poll_sync(void) {
-#ifndef NDEBUG
-  if (!input_initialize() || !input_ready() || mutex_trylock(&g_input_mutex) != 0)
-    return;
-  if (g_switch_pending) {
-    input_unlock();
-    return;
-  }
-  int screen = ui_controller_current_screen();
-  if (screen >= 0 && screen <= UI_SCREEN_SYNC && !ui_controller_is_blocked()) {
-    keyboard_key_t key = input_read_event();
-    if (key != KEY_PASTE && !log_search_is_entering())
-      key = ui_sync_handle_key(key);
-    if (key && g_sync_key_count < 256) {
-      g_sync_keys[(g_sync_key_head + g_sync_key_count++) % 256] = key;
-      g_switch_pending = input_switch_key(key);
-    }
-  }
-  input_unlock();
-#endif
-}
-
-keyboard_key_t ui_input_read_key(ui_screen_t screen) {
-  if (!input_initialize())
-    return KEY_NONE;
-  if (!input_ready()) {
-    // Once recovery has an empty input queue, the next key is a fresh action.
-    if (atomic_load(&g_input_was_covered) && !ui_controller_state().covered)
-      atomic_store(&g_input_was_covered, false);
-    return KEY_NONE;
-  }
-  ui_presentation_state_t state = ui_controller_state();
-  mutex_lock(&g_input_mutex);
-  // The previous event has now been dispatched by the session. Background
-  // polling must not overtake a pending switch with the next shortcut.
-  g_switch_pending = false;
-  if (state.screen == UI_SCREEN_NOTICE) {
-    g_paste_ready = false;
-    g_sync_key_count = 0;
-    keyboard_key_t notice_key = input_read_event();
-    if (notice_key == KEY_PASTE)
-      g_paste_ready = false;
-    if (notice_key == KEY_ESCAPE || notice_key == '\r' || notice_key == '\n' || notice_key == 'q' || notice_key == 3)
-      ui_controller_remove(UI_SCREEN_NOTICE);
-    input_unlock();
-    return notice_key == 'q' || notice_key == 3 ? notice_key : KEY_NONE;
-  }
-  if (state.screen == UI_SCREEN_UPDATE && update_banner_is_overlay_open()) {
-    keyboard_key_t update_key = input_read_event();
-    if (update_key != KEY_NONE)
-      (void)update_banner_handle_key(update_key);
-    input_unlock();
-    return KEY_NONE;
-  }
-  if (screen == UI_SCREEN_MEDIA && g_media_editor.active && state.screen == UI_SCREEN_PROMPT) {
-    if (state.covered || g_input_was_covered) {
-      g_paste_ready = false;
-      g_sync_key_count = 0;
-      for (unsigned n = 0; n < 256 && input_read_event() != KEY_NONE; ++n) {
-        g_paste_ready = false;
-      }
-      g_input_was_covered = state.covered;
-      input_unlock();
-      return KEY_NONE;
-    }
-    keyboard_key_t key = input_next_key();
-    bool switch_screen = input_switch_key(key);
-#ifndef NDEBUG
-    switch_screen |= key == KEY_0;
-#endif
-    if (switch_screen) {
-      // Keep the old prompt on screen until its replacement is published.
-      g_media_editor.active = false;
-      if (key == KEY_0)
-        key = ui_sync_handle_key(key);
-      g_switch_pending = input_switch_key(key);
-      input_unlock();
-      return key;
-    }
-    if (key == KEY_ESCAPE || key == 3 || ui_input_expired(g_media_editor.deadline)) {
-      if (key == KEY_PASTE)
-        g_paste_ready = false;
-      g_media_editor.active = false;
-      ui_prompt_remove();
-    } else if (key == '\r' || key == '\n') {
-      g_media_editor.active = false;
-      g_media_editor.submitted = true;
-      input_unlock();
-      return KEY_MEDIA_SUBMIT;
-    } else if (key != KEY_NONE) {
-      if (key == KEY_PASTE) {
-        if (!g_paste_invalid && utf8_is_valid(g_paste)) {
-          media_playlist_t items = {0}, added = {0};
-          bool valid = !g_media_editor.length || media_playlist_parse(g_media_editor.buffer, &items) == ASCIICHAT_OK;
-          if (valid && media_playlist_parse(g_paste, &added) == ASCIICHAT_OK) {
-            for (size_t i = 0; i < added.count && valid; ++i)
-              valid = media_playlist_append(&items, added.paths[i], added.urls[i]) == ASCIICHAT_OK;
-            char formatted[sizeof(g_media_editor.buffer)];
-            if (valid && media_playlist_format(&items, formatted, sizeof(formatted)) == ASCIICHAT_OK) {
-              memcpy(g_media_editor.buffer, formatted, strlen(formatted) + 1);
-              g_media_editor.length = g_media_editor.cursor = strlen(formatted);
-            }
-          }
-          CLEAR_ERRNO();
-        }
-        g_paste_ready = false;
-        g_media_editor.pasted = true;
-      } else if (!(key == ' ' && g_media_editor.pasted && g_media_editor.cursor == g_media_editor.length)) {
-        g_media_editor.pasted = false;
-        input_editor_key(g_media_editor.buffer, sizeof(g_media_editor.buffer), &g_media_editor.length,
-                         &g_media_editor.cursor, key);
-      }
-      if (ui_prompt_present("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels",
-                            g_media_editor.buffer, g_media_editor.cursor) != ASCIICHAT_OK) {
-        g_media_editor.active = false;
-        ui_prompt_remove();
-        CLEAR_ERRNO();
-      }
-    }
-    input_unlock();
-    return KEY_NONE;
-  }
-  bool active = state.screen < 0 || state.screen == (int)screen ||
-                (screen == UI_SCREEN_MEDIA && state.screen == UI_SCREEN_RENDER_PROGRESS) ||
-                (screen == UI_SCREEN_MEDIA && state.screen == UI_SCREEN_HELP) ||
-                (screen == UI_SCREEN_MEDIA && state.screen == UI_SCREEN_ERRNO) ||
-                ((screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_SPLASH) && state.screen == UI_SCREEN_LOGS) ||
-                ((screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_SPLASH || screen == UI_SCREEN_STATUS) &&
-                 state.screen == UI_SCREEN_ERRNO) ||
-                (screen == UI_SCREEN_SPLASH && state.screen == UI_SCREEN_HELP);
-  keyboard_key_t key = KEY_NONE;
-  if (active) {
-    if (state.covered || g_input_was_covered) {
-      // Drain on recovery too, including keys buffered since the last poll.
-      g_sync_key_count = 0;
-      g_paste_ready = false;
-      for (int i = 0; i < 256 && input_read_event() != KEY_NONE; ++i) {
-      }
-    } else {
-      if (g_sync_key_count) {
-        key = g_sync_keys[g_sync_key_head];
-        g_sync_key_head = (g_sync_key_head + 1) % 256;
-        --g_sync_key_count;
-      }
-      if (key == KEY_NONE)
-        key = state.screen == UI_SCREEN_HELP && keyboard_help_check_signal_cancel() ? KEY_QUESTION : input_read_event();
-      if (key == KEY_F12) {
-        update_banner_handle_key(key);
-        key = KEY_NONE;
-      }
-      if (screen != UI_SCREEN_PROMPT && key != KEY_PASTE && !log_search_is_entering())
-        key = ui_sync_handle_key(key);
-    }
-    g_input_was_covered = state.covered;
-  }
-  if (key == KEY_PASTE && screen != UI_SCREEN_MEDIA && screen != UI_SCREEN_PROMPT) {
-    g_paste_ready = false;
-    key = KEY_NONE;
-  }
-  if ((screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_STATUS || screen == UI_SCREEN_SPLASH) &&
-      state.screen != UI_SCREEN_HELP && key == '=' && !log_search_is_entering()) {
-    ui_controller_hide_logs();
-    stats_runtime_toggle();
-    key = KEY_NONE;
-  }
-  if (key != KEY_NONE && update_banner_handle_key(key))
-    key = KEY_NONE;
-  g_switch_pending |= input_switch_key(key);
-  input_unlock();
-  return key;
-}
-
-keyboard_key_t ui_input_wait_key(ui_screen_t screen, unsigned timeout_ms) {
-  uint64_t deadline = time_get_ns() + (uint64_t)timeout_ms * NS_PER_MS_INT;
-  do {
-    keyboard_key_t key = ui_input_read_key(screen);
-    if (key != KEY_NONE || shutdown_is_requested())
-      return key;
-    platform_sleep_ns(NS_PER_MS_INT);
-  } while (time_get_ns() < deadline);
-  return KEY_NONE;
-}
-
-void ui_input_shutdown(void) {
-  if (!lifecycle_destroy_once(&g_input_lifecycle))
-    return;
-  mutex_destroy(&g_input_prompt_mutex);
-  mutex_destroy(&g_input_mutex);
-  NAMED_UNREGISTER(&g_input_lifecycle.state);
-  lifecycle_destroy_commit(&g_input_lifecycle);
-}
-
-asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts) {
-  if (!prompt || !buffer || max_len < 2)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid prompt buffer");
-  if (keyboard_init() != ASCIICHAT_OK)
-    return SET_ERRNO(ERROR_PLATFORM_INIT, "Cannot initialize prompt input");
-  char *visible = SAFE_CALLOC(max_len, 1, char *);
-  if (!visible)
-    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate prompt display");
-  if (!input_initialize()) {
-    SAFE_FREE(visible);
-    return SET_ERRNO(ERROR_THREAD, "Cannot initialize prompt input lock");
-  }
-  mutex_lock(&g_input_prompt_mutex);
-  const char *end = memchr(buffer, '\0', max_len);
-  if (!end) {
-    mutex_unlock(&g_input_prompt_mutex);
-    SAFE_FREE(visible);
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Prompt text is too long");
-  }
-  size_t len = (size_t)(end - buffer), cursor = len;
-  unsigned seconds = opts.timeout_seconds ? opts.timeout_seconds : (opts.echo ? 30 : 60);
-  uint64_t deadline = ui_input_deadline(seconds);
-  char timed_prompt[8192];
-  snprintf(timed_prompt, sizeof(timed_prompt), "%s\n(Timeout: %us; cancels without an answer)", prompt, seconds);
-  asciichat_error_t result = ASCIICHAT_OK;
-  while (!shutdown_is_requested()) {
-    if (ui_input_expired(deadline)) {
-      result = ERROR_PROMPT_TIMEOUT;
-      break;
-    }
-    size_t display_cursor = cursor;
-    if (opts.echo) {
-      memcpy(visible, buffer, len + 1);
-    } else {
-      size_t chars = utf8_char_count(buffer);
-      // A UTF-8 character can be incomplete between byte events.
-      if (chars == SIZE_MAX)
-        chars = len;
-      memset(visible, opts.mask_char, chars);
-      visible[opts.mask_char ? chars : 0] = '\0';
-      display_cursor = 0;
-      for (size_t i = 0; i < cursor; ++i)
-        if (((unsigned char)buffer[i] & 0xc0) != 0x80)
-          ++display_cursor;
-      if (!opts.mask_char)
-        display_cursor = 0;
-    }
-    result = ui_prompt_present(timed_prompt, visible, display_cursor);
-    if (result != ASCIICHAT_OK)
-      break;
-    keyboard_key_t key = ui_input_wait_key(UI_SCREEN_PROMPT, 100);
-    if (ui_input_expired(deadline)) {
-      result = ERROR_PROMPT_TIMEOUT;
-      break;
-    }
-    if (key == KEY_NONE)
-      continue;
-    if (key == KEY_PASTE) {
-      char pasted[8192];
-      if (ui_input_take_paste(pasted, sizeof(pasted)) == ASCIICHAT_OK && !strpbrk(pasted, "\r\n\t") &&
-          strlen(pasted) + len < max_len) {
-        size_t bytes = strlen(pasted);
-        memmove(buffer + cursor + bytes, buffer + cursor, len - cursor + 1);
-        memcpy(buffer + cursor, pasted, bytes);
-        cursor += bytes;
-        len += bytes;
-      } else {
-        CLEAR_ERRNO();
-      }
-      continue;
-    }
-    if (key == '\r' || key == '\n')
-      break;
-    if (key == KEY_ESCAPE || key == 3) {
-      result = SET_ERRNO(ERROR_GENERAL, "Prompt cancelled");
-      break;
-    }
-    input_editor_key(buffer, max_len, &len, &cursor, key);
-  }
-  if (shutdown_is_requested())
-    result = SET_ERRNO(ERROR_GENERAL, "Prompt interrupted");
-  ui_prompt_remove();
-  mutex_unlock(&g_input_prompt_mutex);
-  SAFE_FREE(visible);
-  if (result == ERROR_PROMPT_TIMEOUT)
-    ui_input_timeout_report(seconds, opts.echo ? "answer declined" : "password entry cancelled");
-  if (result != ASCIICHAT_OK)
-    memset(buffer, 0, max_len);
-  return result;
-}
-
-asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts) {
-  if (buffer && max_len)
-    buffer[0] = '\0';
-  return ui_input_prompt_prefilled(prompt, buffer, max_len, opts);
-}
-
-asciichat_error_t ui_input_media_begin(const char *text) {
-  if (!text || strlen(text) >= sizeof(g_media_editor.buffer) || !input_initialize())
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid media prompt text");
-  mutex_lock(&g_input_mutex);
-  memset(&g_media_editor, 0, sizeof(g_media_editor));
-  memcpy(g_media_editor.buffer, text, strlen(text) + 1);
-  g_media_editor.length = g_media_editor.cursor = strlen(text);
-  g_media_editor.deadline = ui_input_deadline(120);
-  asciichat_error_t result =
-      ui_prompt_present("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels",
-                        g_media_editor.buffer, g_media_editor.cursor);
-  g_media_editor.active = result == ASCIICHAT_OK;
-  input_unlock();
-  return result;
-}
-
-asciichat_error_t ui_input_media_take(char *output, size_t capacity) {
-  if (!output || !input_initialize())
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid media prompt destination");
-  mutex_lock(&g_input_mutex);
-  asciichat_error_t result = ASCIICHAT_OK;
-  if (!g_media_editor.submitted || g_media_editor.length >= capacity)
-    result = SET_ERRNO(ERROR_INVALID_STATE, "No submitted media prompt");
-  else
-    memcpy(output, g_media_editor.buffer, g_media_editor.length + 1);
-  g_media_editor.submitted = false;
-  input_unlock();
-  return result;
+asciichat_error_t ui_input_insert(char *buffer, size_t capacity, size_t *length, size_t *cursor, const char *text) {
+  if (!buffer || !length || !cursor || !text || *length >= capacity || *cursor > *length ||
+      strnlen(buffer, capacity) != *length || !utf8_is_valid(text) || !utf8_is_valid(buffer) ||
+      (*cursor && ((unsigned char)buffer[*cursor] & 0xc0) == 0x80))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid input insertion storage, text or cursor");
+  size_t bytes = strlen(text);
+  if (bytes >= capacity - *length)
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Input insertion exceeds field capacity");
+  memmove(buffer + *cursor + bytes, buffer + *cursor, *length - *cursor + 1);
+  memcpy(buffer + *cursor, text, bytes);
+  *cursor += bytes;
+  *length += bytes;
+  return ASCIICHAT_OK;
 }

@@ -58,7 +58,7 @@
  * @version 2.0
  */
 
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include "server.h"
 #include "session/protocol.h"

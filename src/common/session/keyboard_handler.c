@@ -6,12 +6,12 @@
  * @ingroup session
  */
 
-#include <ascii-chat/ui/controller.h>
-#include <ascii-chat/ui/session.h>
+#include <ascii-chat/tui/controller.h>
+#include <ascii-chat/tui/session.h>
 #include "session/keyboard_handler.h"
 #include "session/capture.h"
 #include "session/display.h"
-#include <ascii-chat/ui/keyboard_help.h>
+#include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/log.h>
@@ -19,14 +19,14 @@
 #include <ascii-chat/platform/terminal.h>
 #include <string.h>
 #include <signal.h>
-#include <ascii-chat/ui/input.h>
-#include <ascii-chat/ui/prompt.h>
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/prompt.h>
+#include <ascii-chat/tui/notice.h>
 #include <ascii-chat/platform/clipboard.h>
 #include <ascii-chat/media/input.h>
 #include <ascii-chat/media/playlist.h>
 #include <ascii-chat/log/search.h>
-#include <ascii-chat/ui/errno_stacks.h>
+#include <ascii-chat/tui/errno_stacks.h>
 
 #if defined(ASCIICHAT_DIAGNOSTIC_UI)
 #include <ascii-chat/debug/sync.h>

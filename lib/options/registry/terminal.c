@@ -10,7 +10,7 @@
  * @date January 2026
  */
 
-#include <ascii-chat/ui/too_small.h>
+#include <ascii-chat/tui/too_small.h>
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/registry/metadata.h>
 
@@ -76,7 +76,7 @@ const registry_entry_t g_terminal_entries[] = {
      parse_color_mode,
      false,
      false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_ALL,
      {.enum_values = g_color_mode_values,
       .enum_descriptions = g_color_mode_descs,
       .enum_integer_values = g_color_mode_integers,
@@ -115,7 +115,7 @@ const registry_entry_t g_terminal_entries[] = {
      parse_utf8_setting,
      false,
      true,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_ALL,
      {.enum_values = g_utf8_setting_values,
       .enum_descriptions = g_utf8_setting_descs,
       .enum_integer_values = g_utf8_setting_integers,

@@ -1,30 +1,15 @@
 #pragma once
-
-/** Poll debug controls without waiting for another input reader. */
-void ui_input_poll_sync(void);
-
+#include <ascii-chat/ui/frame_buffer.h>
+#include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/question.h>
-#include <ascii-chat/ui/controller.h>
+#include <stddef.h>
+/** UTF-8 cursor movement/deletion in caller-owned single-line storage. */
+void ui_input_edit_key(char *buffer, size_t capacity, size_t *length, size_t *cursor, keyboard_key_t key);
 
-/** Input policy is separate from presentation. Covered controls are consumed and discarded. */
-keyboard_key_t ui_input_read_key(ui_screen_t screen);
-keyboard_key_t ui_input_wait_key(ui_screen_t screen, unsigned timeout_ms);
-void ui_input_shutdown(void);
+/** Render a scrollable UTF-8 field with an active-row marker and visible cursor.
+ * Width excludes the two-cell marker. Quoted paths may retain their opening quote. */
+asciichat_error_t ui_input_render(frame_buffer_t *output, int row, int column, int width, int height, const char *text,
+                                  size_t cursor, bool preserve_quotes);
 
-/** Absolute monotonic deadline; user activity never extends it. */
-uint64_t ui_input_deadline(unsigned seconds);
-bool ui_input_expired(uint64_t deadline);
-void ui_input_timeout_report(unsigned seconds, const char *consequence);
-
-asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts);
-
-/** Copy a complete paste event. Invalid/oversized payloads fail without truncation. */
-asciichat_error_t ui_input_take_paste(char *buffer, size_t capacity);
-/** Editable prompt initialized with buffer contents. */
-asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts);
-
-/** Begin media text entry without blocking capture or network processing. */
-asciichat_error_t ui_input_media_begin(const char *text);
-/** Consume the value signaled by KEY_MEDIA_SUBMIT. */
-asciichat_error_t ui_input_media_take(char *output, size_t capacity);
+/** Insert UTF-8 text atomically, retaining storage unchanged on failure. */
+asciichat_error_t ui_input_insert(char *buffer, size_t capacity, size_t *length, size_t *cursor, const char *text);

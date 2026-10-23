@@ -5,13 +5,13 @@
 #include <ascii-chat/log/log.h>
 #include <string.h>
 #include <ascii-chat/util/password.h>
-#include <ascii-chat/ui/errno_stacks.h>
+#include <ascii-chat/tui/errno_stacks.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/ui/input.h>
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/controller.h>
 #include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/ui/update_banner.h>
-#include <ascii-chat/ui/render_progress.h>
+#include <ascii-chat/tui/update_banner.h>
+#include <ascii-chat/tui/render_progress.h>
 #include "../../../src/common/session/display.h"
 
 #define REQUIRE(condition)                                                                                             \

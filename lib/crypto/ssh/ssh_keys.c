@@ -4,7 +4,7 @@
  * @brief 🔐 SSH key parsing and management for RSA, ECDSA, and Ed25519 key types
  */
 
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/crypto/crypto.h> // Includes <sodium.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>

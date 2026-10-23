@@ -34,30 +34,42 @@ set(CORE_SRCS
     ${LIB_DIR}/log/io.c
     ${LIB_DIR}/log/asan.c
     # ui/
-    ${LIB_DIR}/ui/session.c
-    ${LIB_DIR}/ui/session_status.c
-    ${LIB_DIR}/ui/session_input.c
-    ${LIB_DIR}/ui/session_help.c
-    ${LIB_DIR}/ui/session_splash.c
-    ${LIB_DIR}/ui/controller.c
-    ${LIB_DIR}/ui/render_progress.c
-    ${LIB_DIR}/ui/input.c
-    ${LIB_DIR}/ui/sync.c
-    ${LIB_DIR}/ui/prompt.c
-    ${LIB_DIR}/ui/notice.c
-    ${LIB_DIR}/ui/too_small.c
+    ${LIB_DIR}/tui/session.c
+    ${LIB_DIR}/tui/session_status.c
+    ${LIB_DIR}/tui/session_input.c
+    ${LIB_DIR}/tui/session_help.c
+    ${LIB_DIR}/tui/session_splash.c
+    ${LIB_DIR}/tui/controller.c
+    ${LIB_DIR}/tui/render_progress.c
+    ${LIB_DIR}/tui/input.c
+    ${LIB_DIR}/tui/sync.c
+    ${LIB_DIR}/tui/prompt.c
+    ${LIB_DIR}/tui/notice.c
+    ${LIB_DIR}/tui/too_small.c
     ${LIB_DIR}/ui/frame_buffer.c
-    ${LIB_DIR}/ui/overlay_box.c
+    ${LIB_DIR}/ui/popup.c
     ${LIB_DIR}/ui/fps_counter.c
-    ${LIB_DIR}/ui/terminal_screen.c
-    ${LIB_DIR}/ui/keyboard_help.c
-    ${LIB_DIR}/ui/splash.c
-    ${LIB_DIR}/ui/invitation.c
-    ${LIB_DIR}/ui/status.c
-    ${LIB_DIR}/ui/update_banner.c
-    ${LIB_DIR}/ui/mdns.c
+    ${LIB_DIR}/tui/terminal_screen.c
+    ${LIB_DIR}/tui/keyboard_help.c
+    ${LIB_DIR}/tui/splash.c
+    ${LIB_DIR}/tui/invitation.c
+    ${LIB_DIR}/tui/status.c
+    ${LIB_DIR}/tui/update_banner.c
+    ${LIB_DIR}/tui/mdns.c
+    ${LIB_DIR}/ui/input.c
+    ${LIB_DIR}/ui/output.c
+    ${LIB_DIR}/ui/layout.c
+    ${LIB_DIR}/ui/progress.c
+    ${LIB_DIR}/ui/text.c
+    ${LIB_DIR}/ui/viewport.c
+    ${LIB_DIR}/ui/scrollbar.c
+    ${LIB_DIR}/ui/table.c
+    ${LIB_DIR}/ui/help_menu.c
+    ${LIB_DIR}/ui/buttons.c
     ${LIB_DIR}/ui/selectable_list.c
-    ${LIB_DIR}/ui/errno_stacks.c
+    ${LIB_DIR}/tui/stats.c
+    ${LIB_DIR}/tui/shortcuts.c
+    ${LIB_DIR}/tui/errno_stacks.c
     # options/
     ${LIB_DIR}/options/colorscheme.c
     ${LIB_DIR}/options/options.c

@@ -3,7 +3,7 @@
 #include <ascii-chat/platform/keyboard_stream.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/ui/input.h>
+#include <ascii-chat/tui/input.h>
 #include <stdlib.h>
 
 static const unsigned char *bytes;
@@ -25,8 +25,8 @@ static keyboard_key_t fake_keyboard(void) {
   return keyboard_stream_read(raw_byte);
 }
 
-#include <ascii-chat/ui/prompt.h>
-#include <ascii-chat/ui/session.h>
+#include <ascii-chat/tui/prompt.h>
+#include <ascii-chat/tui/session.h>
 #include <ascii-chat/log/search.h>
 #include "session/capture.h"
 #include "session/keyboard_handler.h"
@@ -72,7 +72,7 @@ static bool fake_cancel(session_capture_ctx_t *capture) {
 #define ui_prompt_present fake_present
 #define ui_prompt_remove fake_remove
 #define log_search_is_entering fake_search_entering
-#include "../../../lib/ui/input.c"
+#include "../../../lib/tui/input.c"
 #define ui_session_logs_key fake_logs_key
 #define session_capture_cancel_open fake_cancel
 #include "../../../src/common/session/keyboard_handler.c"

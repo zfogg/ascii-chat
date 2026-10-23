@@ -11,7 +11,7 @@
 
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/ui/session.h>
+#include <ascii-chat/tui/session.h>
 #include <ascii-chat/asciichat_errno.h>
 
 /**

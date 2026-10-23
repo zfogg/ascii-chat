@@ -2499,13 +2499,13 @@
     "name": "keyboard_help.c",
     "title": "keyboard_help.c",
     "file": "ascii-chat-keyboard_help.c.html",
-    "sourcePath": "lib/ui/keyboard_help.c"
+    "sourcePath": "lib/tui/keyboard_help.c"
   },
   {
     "name": "keyboard_help.h",
     "title": "keyboard_help.h",
     "file": "ascii-chat-keyboard_help.h.html",
-    "sourcePath": "include/ascii-chat/ui/keyboard_help.h"
+    "sourcePath": "include/ascii-chat/tui/keyboard_help.h"
   },
   {
     "name": "keys.c",
@@ -3303,13 +3303,13 @@
     "name": "mdns.c",
     "title": "mdns.c",
     "file": "ascii-chat-network_mdns_mdns.c.html",
-    "sourcePath": "lib/ui/mdns.c"
+    "sourcePath": "lib/tui/mdns.c"
   },
   {
     "name": "mdns.h",
     "title": "mdns.h",
     "file": "ascii-chat-network_mdns_mdns.h.html",
-    "sourcePath": "include/ascii-chat/ui/mdns.h"
+    "sourcePath": "include/ascii-chat/tui/mdns.h"
   },
   {
     "name": "network.c",
@@ -4869,13 +4869,13 @@
     "name": "splash.c",
     "title": "splash.c",
     "file": "ascii-chat-splash.c.html",
-    "sourcePath": "lib/ui/splash.c"
+    "sourcePath": "lib/tui/splash.c"
   },
   {
     "name": "splash.h",
     "title": "splash.h",
     "file": "ascii-chat-splash.h.html",
-    "sourcePath": "include/ascii-chat/ui/splash.h"
+    "sourcePath": "include/ascii-chat/tui/splash.h"
   },
   {
     "name": "splash_header_ctx_t",
@@ -5235,13 +5235,13 @@
     "name": "status.c",
     "title": "status.c",
     "file": "ascii-chat-status.c.html",
-    "sourcePath": "lib/ui/status.c"
+    "sourcePath": "lib/tui/status.c"
   },
   {
     "name": "status.h",
     "title": "status.h",
     "file": "ascii-chat-status.h.html",
-    "sourcePath": "include/ascii-chat/ui/status.h"
+    "sourcePath": "include/ascii-chat/tui/status.h"
   },
   {
     "name": "stdbool.h",
@@ -5493,13 +5493,13 @@
     "name": "terminal_screen.c",
     "title": "terminal_screen.c",
     "file": "ascii-chat-terminal_screen.c.html",
-    "sourcePath": "lib/ui/terminal_screen.c"
+    "sourcePath": "lib/tui/terminal_screen.c"
   },
   {
     "name": "terminal_screen.h",
     "title": "terminal_screen.h",
     "file": "ascii-chat-terminal_screen.h.html",
-    "sourcePath": "include/ascii-chat/ui/terminal_screen.h"
+    "sourcePath": "include/ascii-chat/tui/terminal_screen.h"
   },
   {
     "name": "terminal_screen_config_t",
@@ -5697,13 +5697,13 @@
     "name": "mdns.c",
     "title": "mdns.c",
     "file": "ascii-chat-ui_mdns.c.html",
-    "sourcePath": "lib/ui/mdns.c"
+    "sourcePath": "lib/tui/mdns.c"
   },
   {
     "name": "mdns.h",
     "title": "mdns.h",
     "file": "ascii-chat-ui_mdns.h.html",
-    "sourcePath": "include/ascii-chat/ui/mdns.h"
+    "sourcePath": "include/ascii-chat/tui/mdns.h"
   },
   {
     "name": "ui_mdns_config_t",
@@ -5733,13 +5733,13 @@
     "name": "update_banner.c",
     "title": "update_banner.c",
     "file": "ascii-chat-update_banner.c.html",
-    "sourcePath": "lib/ui/update_banner.c"
+    "sourcePath": "lib/tui/update_banner.c"
   },
   {
     "name": "update_banner.h",
     "title": "update_banner.h",
     "file": "ascii-chat-update_banner.h.html",
-    "sourcePath": "include/ascii-chat/ui/update_banner.h"
+    "sourcePath": "include/ascii-chat/tui/update_banner.h"
   },
   {
     "name": "update_check_result_t",

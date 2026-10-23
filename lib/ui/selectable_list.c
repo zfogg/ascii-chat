@@ -1,3 +1,4 @@
+#include <ascii-chat/ui/viewport.h>
 #include <ascii-chat/ui/selectable_list.h>
 
 void ui_selectable_list_reset(ui_selectable_list_t *list) {
@@ -8,26 +9,11 @@ void ui_selectable_list_reset(ui_selectable_list_t *list) {
 void ui_selectable_list_keep_visible(ui_selectable_list_t *list, int count, int rows) {
   if (!list)
     return;
-  if (count <= 0) {
-    list->selected = 0;
-    list->first_visible = 0;
-    return;
-  }
-  if (rows < 1)
-    rows = 1;
-  if (list->selected < 0)
-    list->selected = 0;
-  if (list->selected >= count)
-    list->selected = count - 1;
-  if (list->first_visible < 0)
-    list->first_visible = 0;
-  if (list->selected < list->first_visible)
-    list->first_visible = list->selected;
-  if (list->selected >= list->first_visible + rows)
-    list->first_visible = list->selected - rows + 1;
-  int last_first = count > rows ? count - rows : 0;
-  if (list->first_visible > last_first)
-    list->first_visible = last_first;
+  ui_viewport_t viewport = {.selected = list->selected > 0 ? (size_t)list->selected : 0,
+                            .first_visible = list->first_visible > 0 ? (size_t)list->first_visible : 0};
+  ui_viewport_update(&viewport, count > 0 ? (size_t)count : 0, rows > 0 ? (size_t)rows : 1);
+  list->selected = (int)viewport.selected;
+  list->first_visible = (int)viewport.first_visible;
 }
 
 void ui_selectable_list_move(ui_selectable_list_t *list, int count, int rows, int delta) {

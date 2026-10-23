@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <ascii-chat/ui/mdns.h>
+#include <ascii-chat/tui/mdns.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 

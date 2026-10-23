@@ -11,7 +11,7 @@
  * - Merger: Intelligently merging auto-generated with manual content
  */
 
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/options/manpage.h>
 #include <ascii-chat/options/manpage/resources.h>

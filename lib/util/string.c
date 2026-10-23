@@ -268,6 +268,17 @@ bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer
 // String Formatting and Display
 // ============================================================================
 
+static _Thread_local int g_colored_string_fd = STDOUT_FILENO;
+int colored_string_set_output_fd(int fd) {
+  int previous = g_colored_string_fd;
+  if (fd < 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid colored string output descriptor");
+    return previous;
+  }
+  g_colored_string_fd = fd;
+  return previous;
+}
+
 const char *colored_string(log_color_t color, const char *text) {
 #define COLORED_BUFFERS 4
 #define COLORED_BUFFER_SIZE 256
@@ -288,11 +299,13 @@ const char *colored_string(log_color_t color, const char *text) {
   }
   // Priority 2: If --color NOT explicitly passed, use terminal detection
   else if (!g_color_flag_passed) {
-    use_colors = terminal_should_color_output(STDOUT_FILENO);
+    use_colors = terminal_should_color_output(g_colored_string_fd);
   }
   // Priority 3: If --color=false was explicitly passed, disable colors
   // (use_colors stays false)
 
+  if (GET_OPTION(strip_ansi) || GET_OPTION(color_mode) == TERM_COLOR_NONE)
+    use_colors = false;
   if (!use_colors) {
     // No colors, just return the text directly
     return text;
@@ -302,8 +315,8 @@ const char *colored_string(log_color_t color, const char *text) {
   char *current_buf = buffers[buffer_idx];
   buffer_idx = (buffer_idx + 1) % COLORED_BUFFERS;
 
-  const char *color_code = log_level_color(color);
-  const char *reset_code = log_level_color(LOG_COLOR_RESET);
+  const char *color_code = log_level_color_for_output(color, true);
+  const char *reset_code = log_level_color_for_output(LOG_COLOR_RESET, true);
 
   // Ensure we never pass NULL to snprintf (handle uninitialized color system)
   if (!color_code)

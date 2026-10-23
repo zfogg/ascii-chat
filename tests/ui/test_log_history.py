@@ -1,6 +1,7 @@
 """Verify C log routes retain history independently of UI and terminal output."""
 import ctypes as C
 import os
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -31,6 +32,10 @@ C.c_bool.in_dll(lib, "g_color_flag_value").value = True
 with tempfile.TemporaryDirectory() as root:
     assert lib.asciichat_shared_init(str(Path(root) / "app.log").encode(), True, True) == 0
     try:
+        arguments = [b"log-history-test", b"--color=true", b"--color-mode", b"truecolor", b"mirror", b"--audio=false", b"--splash-screen=false"]
+        argv = (C.c_char_p * len(arguments))(*arguments)
+        lib.options_init.argtypes = [C.c_int, C.POINTER(C.c_char_p)]
+        assert lib.options_init(len(arguments), argv) == 0
         lib.log_set_terminal_output(False)
         for function in ("log_plain_msg", "log_plain_stderr_msg", "log_plain_stdout_msg", "log_file_msg"):
             getattr(lib, function)(function.encode())
@@ -41,14 +46,14 @@ with tempfile.TemporaryDirectory() as root:
         lib.ui_session_capture_logs(s)
         lib.ui_session_resize(s, 140, 30)
         lib.ui_session_loading(s, True, b"Starting client")
-        frame = lib.ui_session_tick(s, 500000000)
+        frame = re.sub(rb"\x1b\[[0-9;?]*[A-Za-z]", b"", lib.ui_session_tick(s, 500000000))
         assert b"Video chat in your terminal" in frame
         assert b"log_file_msg" not in frame and b"/: search logs" not in frame
         assert lib.ui_session_input(s, ord("]")) == 9
-        frame = lib.ui_session_tick(s, 1000000000)
+        frame = re.sub(rb"\x1b\[[0-9;?]*[A-Za-z]", b"", lib.ui_session_tick(s, 1000000000))
         assert b"log_file_msg" in frame and b"/: search logs" in frame
         lib.ui_session_input(s, ord("]"))
-        frame = lib.ui_session_tick(s, 1500000000)
+        frame = re.sub(rb"\x1b\[[0-9;?]*[A-Za-z]", b"", lib.ui_session_tick(s, 1500000000))
         assert b"Video chat in your terminal" in frame and b"log_file_msg" not in frame
         lib.ui_session_destroy(s)
         # Detaching/destroying an overlay must not stop capture.
@@ -120,6 +125,7 @@ with tempfile.TemporaryDirectory() as root:
         lib.ui_session_destroy(popup)
         lib.session_log_buffer_destroy(logs)
 
+        lib.log_init_colors()
         # Numeric binding characters use the same key color as Esc.
         lib.ui_session_help_render.argtypes = [Size, C.c_bool, C.c_bool, C.c_void_p]
         lib.ui_session_help_render.restype = C.c_void_p
@@ -131,13 +137,13 @@ with tempfile.TemporaryDirectory() as root:
         lib.debug_free.argtypes = [C.c_void_p, C.c_char_p, C.c_int]
         lib.debug_free(help_text, b"test_log_history.py", 0)
         def binding_colors(binding):
-            row = next(i for i, text in enumerate(help_screen.display) if binding in text)
+            row = next(i for i, text in enumerate(help_screen.display) if binding in text and (binding != "0 " or "C code sync" in text))
             col = help_screen.display[row].index(binding)
             return [help_screen.buffer[row][col + i].fg for i in range(len(binding))]
         key_color = binding_colors("Esc")[0]
         assert key_color != "default", "Help key colors were not enabled"
         assert binding_colors("F12") == [key_color] * 3
-        assert binding_colors("0      C code")[:1] == [key_color]
+        assert binding_colors("0 ")[:1] == [key_color]
         assert binding_colors("(1)")[1] == key_color
         # A worker's first formatted record must resolve its registered name on Windows too.
         lib.log_template_parse.argtypes = [C.c_char_p, C.c_bool]

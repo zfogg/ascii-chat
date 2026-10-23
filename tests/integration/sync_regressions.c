@@ -14,8 +14,8 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/colorscheme.h>
-#include <ascii-chat/ui/controller.h>
-#include <ascii-chat/ui/sync.h>
+#include <ascii-chat/tui/controller.h>
+#include <ascii-chat/tui/sync.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/stats/stats.h>

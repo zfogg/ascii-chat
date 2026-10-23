@@ -4,7 +4,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/system.h>
-#include <ascii-chat/ui/errno_stacks.h>
+#include <ascii-chat/tui/errno_stacks.h>
 #include <stdatomic.h>
 #include <string.h>
 

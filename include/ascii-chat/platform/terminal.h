@@ -276,6 +276,8 @@ bool terminal_supports_unicode(void);
  * @ingroup platform_terminal
  */
 bool terminal_supports_utf8(void);
+/** Effective UTF-8 policy: explicit --utf8 wins; auto uses terminal detection. */
+bool terminal_should_use_utf8(void);
 
 /**
  * @brief Clear the terminal screen

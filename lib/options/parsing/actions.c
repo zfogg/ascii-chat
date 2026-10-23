@@ -10,7 +10,7 @@
  * Examples: --list-webcams, --list-microphones, --list-speakers, --show-capabilities
  */
 
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/options/actions.h>
 #include <string.h>

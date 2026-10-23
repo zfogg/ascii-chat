@@ -2,8 +2,8 @@
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/crypto/key_identity/keymask.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/ui/controller.h>
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/controller.h>
+#include <ascii-chat/tui/notice.h>
 #include <string.h>
 #include <ascii-chat/util/utf8.h>
 

@@ -7,7 +7,7 @@
  * @date February 2026
  */
 
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/network/websocket/server.h>
 #include <ascii-chat/version.h>

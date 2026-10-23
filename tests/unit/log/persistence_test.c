@@ -4,7 +4,7 @@
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/common.h>
 #include <string.h>
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 #include <ascii-chat/util/utf8.h>
 
 static char directory[PLATFORM_MAX_PATH_LENGTH], path[PLATFORM_MAX_PATH_LENGTH];

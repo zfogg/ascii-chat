@@ -1,7 +1,7 @@
 # Shared session TUI
 
 The native terminal and browser use the C views and key handling in
-`include/ascii-chat/ui/session.h`. The browser does not implement its own splash,
+`include/ascii-chat/tui/session.h`. The browser does not implement its own splash,
 help layout, status/log feed, or settings-key switch in React.
 
 `session_splash.c` renders the existing rainbow logo and connection header into

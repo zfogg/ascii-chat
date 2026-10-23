@@ -11,7 +11,7 @@
  * @ingroup discovery
  */
 
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include "session.h"
 

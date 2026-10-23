@@ -200,7 +200,7 @@
  * @see lib/video/palette.h - ASCII palette types
  */
 
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include "main.h"
 #include "session/client_like.h"

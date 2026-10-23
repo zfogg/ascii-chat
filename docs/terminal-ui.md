@@ -1,6 +1,6 @@
 # Terminal presentation
 
-`lib/ui/controller.c` owns terminal rendering only. It never reads keys, queues input,
+`lib/tui/controller.c` owns terminal rendering only. It never reads keys, queues input,
 edits answers, or interprets commands.
 Capture, encoding, networking, and status producers publish screen snapshots;
 they do not decide when to show the terminal-size warning.
@@ -14,7 +14,7 @@ the pointed-to objects. Removal waits for any in-progress rendering to finish.
 The controller selects the highest-priority registered screen: authentication/text prompt, update prompt,
 mDNS selection, help, splash, media, then status. It retains covered screens and
 the latest media frame. A 16 ms tick detects resizing even when no producer has a
-new frame. Below the active screen's minimum it presents `ui/too_small.h`;
+new frame. Below the active screen's minimum it presents `tui/too_small.h`;
 recovery restores the underlying screen. Interrupts
 still terminate the process while the warning is visible.
 
@@ -24,7 +24,7 @@ Splash and status provide their header geometry. Paused media retains its last
 frame; if that frame is larger than the resized terminal, presentation clips it
 without resuming capture.
 
-`lib/ui/input.c` owns keyboard polling, covered-input suppression, and prompt
+`lib/tui/input.c` owns keyboard polling, covered-input suppression, and prompt
 editing. It reads the controller's presentation state, then lets the appropriate
 consumer handle the key. It has no presentation thread or rendering callbacks.
 The media consumer also handles help keys. Prompt editing publishes only visible
@@ -88,7 +88,7 @@ values, and actual value changes per second. Repeated stores of the same value,
 failed compare/exchanges, and zero-delta fetches do not count as changes. Rates
 are red at 60 or more, yellow at 10 or more, green when nonzero, and blue at zero.
 
-`lib/ui/sync.c` collects protected copies on its own thread using try-locks.
+`lib/tui/sync.c` collects protected copies on its own thread using try-locks.
 The presentation thread renders a separate owned mailbox; terminal output never
 holds a mailbox lock. Input continues polling independently of the main loop.
 Registry contention retains the last complete sample and displays its growing
@@ -263,3 +263,37 @@ visibility, reset, typed targets, both shared patterns, and rain/rainbow composi
 Matrix/rainbow from real tmux panes before and after resize. Stationary video input
 isolates effect motion from source motion. Captures/reports are generated outside
 Git, not checked into the repository.
+
+## Shared components and screens
+
+Reusable terminal widgets live in `lib/ui/`, with public headers under
+`include/ascii-chat/ui/`. Complete screens and their input/presentation runtime
+live in `lib/tui/` and `include/ascii-chat/tui/`. The size warning is a screen.
+The generic UI output sink keeps widgets independent of the TUI controller.
+
+`ui/popup.h` provides overdrawn dialog frames and rules. `ui/help_menu.h` builds
+help popups from separate binding and description fields: binding tokens are
+yellow, separators retain the foreground, and numeric values use the theme's
+number color. Help retains the underlying screen, including animated media.
+Server and discovery-service help contain their own mode controls and settings.
+
+`ui/table.h` formats ANSI-aware cells and renders rectangular tables with fixed
+headers. Callers own sorting and data; a cell callback supplies each visible row.
+`ui/viewport.h` keeps selection, page size, and the scroll offset within a page
+independent. A zero page size means one scrollable dataset. `ui/scrollbar.h`
+provides proportional thumb geometry and rendering, also usable by non-table
+screens such as logs and LAN selection. Tables reserve their rightmost column
+for this scrollbar. Streaming tables can use the allocation-free row formatter.
+
+Other components include buttons, a UTF-8 line editor, fixed-region layout,
+text clipping/styling, progress bars, and spinners. Caller-owned storage has
+explicit capacities; invalid arguments and capacity errors set error context
+with `SET_ERRNO`. `terminal_should_use_utf8()` resolves the explicit UTF-8 option
+before capability detection. Widget colors go through `colored_string()`;
+`ui_text_color_prefix()` supports incremental formatting with the same policy.
+
+`tests/integration/tui_mode_shortcuts.py` covers help, logs, sync, stats and error
+stacks in mirror and both server modes, with status screens enabled and disabled.
+`native_ui_screens.py` covers prompts, identity warnings, update buttons, LAN
+selection, notices, recording progress and splash, including size recovery.
+Both can export terminal-cell screenshots and original ANSI streams.

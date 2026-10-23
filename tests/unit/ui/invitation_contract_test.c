@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/ui/invitation.h>
+#include <ascii-chat/tui/invitation.h>
 #include <string.h>
 
 Test(invitation_contract, hosting_joining_and_pending_have_distinct_instructions) {

@@ -21,7 +21,7 @@
 #include <ascii-chat/network/negotiation.h>
 #include "session/host_timing.h"
 #include "session/display.h"
-#include <ascii-chat/ui/splash.h>
+#include <ascii-chat/tui/splash.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>

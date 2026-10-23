@@ -1886,6 +1886,20 @@ if(BUILD_TESTS AND TARGET ascii-chat AND ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TES
         --artifacts ${CMAKE_BINARY_DIR}/terminal-logs --search-regression-only)
     set_tests_properties(terminal-logs PROPERTIES LABELS "integration;terminal" TIMEOUT 180
         RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    if(TARGET ui-native-probe)
+        asciichat_add_python_test(native-ui-screens
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/native_ui_screens.py --probe $<TARGET_FILE:ui-native-probe>
+            --artifacts ${CMAKE_BINARY_DIR}/native-ui-screens)
+        set_tests_properties(native-ui-screens PROPERTIES LABELS "integration;terminal" TIMEOUT 240
+            RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    endif()
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        asciichat_add_python_test(tui-mode-shortcuts
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/tui_mode_shortcuts.py --binary $<TARGET_FILE:ascii-chat>
+            --artifacts ${CMAKE_BINARY_DIR}/tui-mode-shortcuts)
+        set_tests_properties(tui-mode-shortcuts PROPERTIES LABELS "integration;terminal" TIMEOUT 240
+            RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    endif()
     asciichat_add_python_test(mirror-lazy-audio
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/mirror_lazy_audio.py --binary $<TARGET_FILE:ascii-chat>
         --artifacts ${CMAKE_BINARY_DIR}/mirror-lazy-audio)

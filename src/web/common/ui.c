@@ -1,5 +1,5 @@
 #include <emscripten.h>
-#include <ascii-chat/ui/session.h>
+#include <ascii-chat/tui/session.h>
 #include <ascii-chat/options/options.h>
 
 EMSCRIPTEN_KEEPALIVE ui_session_t *wasm_ui_create(void) {

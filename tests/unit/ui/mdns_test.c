@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/ui/mdns.h>
+#include <ascii-chat/tui/mdns.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/parsers.h>
 #include <string.h>

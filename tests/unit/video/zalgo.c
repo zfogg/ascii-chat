@@ -4,7 +4,7 @@
 #include <string.h>
 #include <ascii-chat/font.h>
 #include <ascii-chat/media/render/renderer.h>
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/controller.h>
 
 Test(zalgo, respects_output_budget) {
   char *output = NULL;

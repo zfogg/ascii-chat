@@ -25,9 +25,9 @@
  */
 
 #include <ascii-chat/video/ascii/simd/dispatch.h>
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/controller.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -50,7 +50,7 @@
 #include <ascii-chat/app_callbacks.h>
 
 // Keyboard help UI
-#include <ascii-chat/ui/keyboard_help.h>
+#include <ascii-chat/tui/keyboard_help.h>
 
 // Utilities
 #include <ascii-chat/util/utf8.h>
@@ -81,8 +81,8 @@
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/network/update_checker.h>
-#include <ascii-chat/ui/update_banner.h>
-#include <ascii-chat/ui/splash.h>
+#include <ascii-chat/tui/update_banner.h>
+#include <ascii-chat/tui/splash.h>
 #include <ascii-chat/platform/thread.h>
 
 #ifndef NDEBUG

@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/ui/too_small.h>
+#include <ascii-chat/tui/too_small.h>
 #include <string.h>
 
 Test(ui_too_small, media_boundaries) {

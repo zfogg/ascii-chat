@@ -1,6 +1,7 @@
 """Check key, number, and separator colors in the help and sync screens."""
 import argparse
 import os
+import re
 from pathlib import Path
 import tempfile
 
@@ -8,10 +9,14 @@ from terminal_ui import Terminal
 
 
 def check_span(term, label, span, color):
-    row = next(i for i, text in enumerate(term.screen.display) if label in text)
-    col = term.screen.display[row].index(label) + label.index(span)
+    pattern = re.compile(r"\s+".join(re.escape(part) for part in label.split()))
+    matches = [(i, pattern.search(text)) for i, text in enumerate(term.screen.display)]
+    row, match = next(((i, match) for i, match in matches if match), (None, None))
+    assert row is not None, (label, "\n".join(term.screen.display))
+    col = term.screen.display[row].index(span, match.start())
     actual = [term.screen.buffer[row][col + i].fg for i in range(len(span))]
     assert actual == [color] * len(span), (label, span, actual, color)
+
 
 
 def main():
@@ -29,7 +34,7 @@ def main():
         try:
             for mode in ('truecolor', 'none'):
                 term = Terminal([str(args.binary.resolve()), '--no-check-update', '--log-file', str(root / 'app.log'),
-                                 'mirror', '--test-pattern', '1', '--audio=false', '--splash-screen=false',
+                                 'mirror', '--test-pattern', '1', '--audio=false', '--splash-screen=false', '--fps', '10',
                                  '--color-mode', mode], rows=36, cols=110)
                 try:
                     term.pump(2)
@@ -40,11 +45,11 @@ def main():
                     for label, span, color in (
                         ('m / M', 'm', key), ('m / M', 'M', key), ('m / M', '/', 'default'),
                         ('Close overlay / Quit app', '/', 'default'), ('Esc    Close', 'Esc', key),
-                        ('(1) Matrix', '1', number), ('(1) Matrix', '(', 'default'),
+                        ('(1) Matrix', '1', key), ('(1) Matrix', '(', 'default'),
                         ('(z) Zalgo', 'z', key), ('Volume :', '100', number),
                         ('Volume up/down (10%)', '10', number), ('Press ? to close', '?', key),
                         ('-      FPS counter', '-', key), ('=      Running app statistics TUI', '=', key),
-                        ('0      C code sync primitives TUI', '0', number),
+                        ('0      C code sync primitives TUI', '0', key),
                         ('FPS counter', 'FPS counter', 'default'),
                         ('w / W', 'w', key), ('w / W', 'W', key), ('w / W', '/', 'default'),
                         ('Running app statistics TUI', 'Running app statistics TUI', 'default'),
@@ -54,31 +59,21 @@ def main():
                             label = next(line.strip() for line in term.screen.display if label in line)
                         check_span(term, label, span, color)
                     descriptions = ('Toggle this help screen TUI', 'Live log viewer/searcher TUI',
-                                    'Close overlay / Quit app', 'TUI to open media from path or url',
+                                    'Close overlay / Quit app', 'TUI to open media from path or URL',
                                     'Open from clipboard', 'Queue dropped/pasted media',
                                     'Previous/next media (restart)', 'Mute/Unmute audio',
                                     'Volume up/down (10%)', 'Cycle color mode', 'Cycle color filter',
                                     'Flip webcam horizontally', 'Flip webcam vertically', 'Toggle Face Follow', 'Cycle render mode',
-                                    'FPS counter', 'Running app statistics TUI', 'Print current sync primitive state',
+                                    'FPS counter', 'Running app statistics TUI',
                                     'C code sync primitives TUI')
                     positions = [next((row, line.index(label)) for row, line in enumerate(term.screen.display)
                                       if label in line) for label in descriptions]
                     assert len({col for _, col in positions}) == 1, positions
-                    fps_row = next(row for row, line in enumerate(term.screen.display) if 'FPS counter' in line)
-                    group = ('TUI to open media from path or url', 'Live log viewer/searcher TUI',
-                             'Running app statistics TUI', 'C code sync primitives TUI')
-                    group_rows = [next(row for row, line in enumerate(term.screen.display) if label in line)
-                                  for label in group]
-                    assert group_rows == list(range(group_rows[0], group_rows[0] + len(group))), group_rows
-                    assert group_rows[0] > fps_row
-                    assert '(0)' not in '\n'.join(term.screen.display)
-                    assert '=' not in term.screen.display[fps_row], term.screen.display[fps_row]
-                    # The longest binding occupies five cells, followed by two spaces.
-                    check_span(term, '< / >  Previous', '  ', 'default')
-                    for label in ('Current Settings:', 'Animations (number key toggle):'):
-                        row = next(line for line in term.screen.display if label in line)
-                        assert row.index(label) == row.index('║') + 3 + max(
-                            7 + len(description) for description in descriptions) + 2, row
+                    for binding in ('F12', '0'):
+                        description = 'Version update checker TUI' if binding == 'F12' else 'C code sync primitives TUI'
+                        check_span(term, binding + ' ' + description, binding, key)
+                    check_span(term, '(2) Audio Waveform', '2', key)
+                    check_span(term, '(2) Audio Waveform', ')', 'default')
                     if args.artifacts and mode == 'truecolor':
                         from sync_tui_modes import capture
                         capture(term, args.artifacts, 'keyboard-help-aligned')

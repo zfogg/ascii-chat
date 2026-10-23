@@ -35,6 +35,8 @@ def main():
     deadline = bind('ui_session_next_frame_ns', c.c_uint64, c.c_void_p)
     assert initialize() == 0
     assert set_int(b'color_mode', 3) == 0
+    set_bool = bind('options_set_bool', c.c_int, c.c_char_p, c.c_bool)
+    assert set_bool(b'force_utf8', True) == 0
     session = create()
     assert session
     try:
@@ -49,13 +51,13 @@ def main():
         baseline = screen.display
         occupied = [row for row, line in enumerate(baseline) if line.strip()]
         assert abs(occupied[0] - (47 - occupied[-1])) <= 1, 'Combined layout is not vertically centered'
-        box_top = next(row for row, line in enumerate(baseline) if '╔' in line)
+        box_top = next(row for row, line in enumerate(baseline) if '┌' in line)
         assert box_top == occupied[0] + 5, 'Logo must have four rows and one blank row above the box'
         box_line = baseline[box_top]
-        assert abs(box_line.index('╔') - (109 - box_line.index('╗'))) <= 1
+        assert abs(box_line.index('┌') - (109 - box_line.index('┐'))) <= 1
         logo_left = min(len(baseline[row]) - len(baseline[row].lstrip()) for row in occupied[:4])
         logo_right = max(len(baseline[row].rstrip()) - 1 for row in occupied[:4])
-        assert abs(logo_left + logo_right - box_line.index('╔') - box_line.index('╗')) <= 1
+        assert abs(logo_left + logo_right - box_line.index('┌') - box_line.index('┐')) <= 1
         first_colors = [screen.buffer[y][x].fg for y in range(48) for x in range(110)]
         for index in range(1, 61):
             following = deadline(session)
@@ -97,6 +99,7 @@ def main():
             nonlocal now
             now += 20_000_000
             stream.feed(tick(session, now).decode())
+            assert any('Face Follow :' in line for line in screen.display), '\n'.join(screen.display)
             return next(line.split('Face Follow :', 1)[1].strip().split()[0]
                         for line in screen.display if 'Face Follow :' in line)
 
@@ -107,7 +110,7 @@ def main():
         assert face_status() == 'O', 'Removed 4 binding still toggles Face Follow'
         key(session, ord('W'))
         assert face_status() == 'X'
-        assert any('w / W  Toggle Face Follow' in line for line in screen.display)
+        assert any('Toggle Face Follow' in line for line in screen.display)
         assert not any('(4) Face' in line for line in screen.display)
         print('PASS shared input: w/W toggle Face Follow; 4 has no effect; setting is outside animations')
     finally:

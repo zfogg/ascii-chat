@@ -21,7 +21,7 @@ def main():
         term = None
         try:
             term = Terminal([str(args.binary.resolve()), '--no-check-update', '--log-file', str(root / 'app.log'),
-                             'mirror', '--test-pattern', '1', '--audio=false', '--splash-screen=false'],
+                             'mirror', '--test-pattern', '1', '--audio=false', '--splash-screen=false', '--fps', '10'],
                             rows=40, cols=140)
             term.pump(2)
 
@@ -30,7 +30,7 @@ def main():
                 text = term.expect(lambda t: 'Current Settings:' in t, 'Renderer help did not open')
                 labels = ('Color  :', 'Filter :', 'Render :', 'Flip   :', 'Face Follow :',
                           '(1) Matrix', '(2)', '(3)', '(z) Zalgo', '(-) FPS Counter')
-                values = [line[line.index(label):].strip() for line in text.splitlines()
+                values = [line[line.index(label):].split("│", 1)[0].split("|", 1)[0].strip() for line in text.splitlines()
                           for label in labels if label in line]
                 assert len(values) >= 6, values
                 term.write('?')

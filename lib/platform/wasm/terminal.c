@@ -10,7 +10,7 @@
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/terminal/fd/reader.h>
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/controller.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -151,6 +151,10 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
 }
 
 // Terminal UTF-8 support detection
+bool terminal_should_use_utf8(void) {
+  return GET_OPTION(force_utf8) != UTF8_SETTING_FALSE;
+}
+
 bool terminal_supports_utf8(void) {
   return true;
 }

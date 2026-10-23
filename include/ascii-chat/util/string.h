@@ -256,6 +256,9 @@ bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer
  * @ingroup util
  */
 const char *colored_string(log_color_t color, const char *text);
+/** Scope automatic color detection to the actual output terminal on this thread.
+ * Returns the previous descriptor for restoration by the caller. */
+int colored_string_set_output_fd(int fd);
 
 /**
  * @brief Truncate a string to a maximum display width, with ellipsis

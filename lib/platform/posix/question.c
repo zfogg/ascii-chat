@@ -5,7 +5,7 @@
  */
 
 #include <ascii-chat/platform/question.h>
-#include <ascii-chat/ui/input.h>
+#include <ascii-chat/tui/input.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/env.h>
 #include <ascii-chat/log/log.h>

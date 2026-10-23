@@ -40,6 +40,16 @@ class CaptureScreen(pyte.Screen):
         if data:
             self.last_character = data[-1]
 
+    def set_mode(self, *modes, **kwargs):
+        if kwargs.get("private") and 2026 in modes:
+            self.synchronized = True
+        super().set_mode(*modes, **kwargs)
+
+    def reset_mode(self, *modes, **kwargs):
+        super().reset_mode(*modes, **kwargs)
+        if kwargs.get("private") and 2026 in modes:
+            self.synchronized = False
+
     def repeat_character(self, count=1):
         if self.last_character:
             self.draw(self.last_character * (count or 1))
@@ -49,6 +59,31 @@ class CaptureStream(pyte.Stream):
     csi = dict(pyte.Stream.csi, b="repeat_character")
     events = pyte.Stream.events | {"repeat_character"}
 
+    def feed(self, data):
+        # Publish synchronized output as a single update, even when ConPTY splits
+        # its start/end markers across reads. Plain output remains immediate.
+        start, end = "\x1b[?2026h", "\x1b[?2026l"
+        self.pending_frame = getattr(self, "pending_frame", "") + data
+        while self.pending_frame:
+            first = self.pending_frame.find(start)
+            if first < 0:
+                tail = next((n for n in range(len(start) - 1, 0, -1)
+                             if self.pending_frame.endswith(start[:n])), 0)
+                ready = self.pending_frame[:-tail] if tail else self.pending_frame
+                self.pending_frame = self.pending_frame[-tail:] if tail else ""
+                if ready:
+                    super().feed(ready)
+                return
+            if first:
+                super().feed(self.pending_frame[:first])
+                self.pending_frame = self.pending_frame[first:]
+            last = self.pending_frame.find(end, len(start))
+            if last < 0:
+                return
+            last += len(end)
+            super().feed(self.pending_frame[:last])
+            self.pending_frame = self.pending_frame[last:]
+
 
 def check_capture_emulator():
     screen = CaptureScreen(20, 2)
@@ -57,6 +92,12 @@ def check_capture_emulator():
     stream.feed("A\x1b[4")
     stream.feed("bB\x1b[0bC\x1b[b")
     assert screen.display[0].startswith("AAAAABBCC"), screen.display[0]
+    before = screen.display
+    stream.feed("\x1b[?2026h\x1b[HZ")
+    assert screen.display == before, "Published an incomplete synchronized frame"
+    stream.feed("\x1b[?2026l")
+    assert screen.display[0].startswith("ZAAAA"), screen.display[0]
+
 
 
 class Terminal:

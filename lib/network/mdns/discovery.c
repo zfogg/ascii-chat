@@ -13,10 +13,10 @@
  * - UI wrapper: lan_discovery.c calls discovery_mdns_query() for interactive selection
  */
 
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/network/mdns/discovery.h>
-#include <ascii-chat/ui/mdns.h> // For ui_mdns_server_t struct only
+#include <ascii-chat/tui/mdns.h> // For ui_mdns_server_t struct only
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/mutex.h>

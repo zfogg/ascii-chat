@@ -14,7 +14,7 @@
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
-#include <ascii-chat/ui/render_progress.h>
+#include <ascii-chat/tui/render_progress.h>
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/media/kitty/image.h>
 

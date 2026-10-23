@@ -4,7 +4,7 @@
  * callbacks. Media parsing and participant state live in session/protocol. */
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/ui/notice.h>
+#include <ascii-chat/tui/notice.h>
 
 #include "protocol_adapter.h"
 #include "main.h"

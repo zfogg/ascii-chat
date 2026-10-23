@@ -5,7 +5,7 @@
 #include <windows.h>
 #include <io.h>
 #include <fcntl.h>
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/controller.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/platform/system.h>
 

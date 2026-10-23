@@ -1,9 +1,21 @@
 #include <criterion/criterion.h>
+#include <ascii-chat/options/rcu.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/ui/session.h>
+#include <ascii-chat/tui/session.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <stdio.h>
 #include <string.h>
+
+static void setup(void) {
+  options_state_init();
+  options_t options = *options_get();
+  options.detected_mode = MODE_MIRROR;
+  cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
+}
+static void teardown(void) {
+  options_state_destroy();
+}
+TestSuite(session_ui, .init = setup, .fini = teardown);
 
 typedef struct {
   unsigned calls;
@@ -157,7 +169,7 @@ Test(session_ui, media_toggle_action_and_shared_help) {
   double volume = 1.0;
   cr_assert_eq(ui_session_key((keyboard_key_t)'[', &volume), UI_ACTION_TOGGLE_MEDIA);
   terminal_size_t minimum;
-  char *help = ui_session_help_render((terminal_size_t){120, 40}, true, false, &minimum);
+  char *help = ui_session_help_render((terminal_size_t){.rows = 60, .cols = 160}, true, false, &minimum);
   cr_assert_not_null(help);
   cr_assert_not_null(strstr(help, "Toggle Media Playback"));
 #if defined(ASCIICHAT_DIAGNOSTIC_UI)

@@ -5,7 +5,7 @@
  * @brief 🧠 Memory debugging implementation for ascii-chat debug builds
  */
 
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/controller.h>
 // SPDX-License-Identifier: MIT
 #include <stdbool.h>
 

@@ -8,7 +8,7 @@
  * @brief Shared initialization and teardown for client-like modes
  */
 
-#include <ascii-chat/ui/controller.h>
+#include <ascii-chat/tui/controller.h>
 #include "session/client_like.h"
 #include "session/capture.h"
 #include "session/display.h"
@@ -19,9 +19,9 @@
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/video/webcam/webcam.h>
-#include <ascii-chat/ui/splash.h>
-#include <ascii-chat/ui/update_banner.h>
-#include <ascii-chat/ui/keyboard_help.h>
+#include <ascii-chat/tui/splash.h>
+#include <ascii-chat/tui/update_banner.h>
+#include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/debug/sync.h>
 
 #include <ascii-chat/log/log.h>
