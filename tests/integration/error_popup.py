@@ -145,10 +145,26 @@ def navigation(args):
         else:
             f.absent("Source:")
             f.absent("Backtrace")
+        thread_color = color_of(f.term, "Thread:")
+        assert thread_color != "default", thread_color
+        address_color = color_of(f.term, "Thread:", 8)
+        assert address_color != thread_color
+        if args.diagnostics:
+            name_color = color_of(f.term, "popup-media-worker")
+            thread_line = next(line for line in f.term.screen.display if "Thread:" in line)
+            address_color = color_of(f.term, "Thread:", thread_line.index("(0x") - thread_line.index("Thread:") + 1)
+            assert name_color not in (thread_color, address_color, "default")
+            assert color_of(f.term, "Source:") == thread_color
+            assert color_of(f.term, "Source:", 8) != thread_color
         title_color = color_of(f.term, "Error (1)")
         shortcut_color = color_of(f.term, "? Help")
         assert title_color != "default", title_color
         assert shortcut_color not in ("default", color_of(f.term, "? Help", 2))
+        if args.diagnostics:
+            assert color_of(f.term, "produce_errors") == shortcut_color
+            assert color_of(f.term, "backtrace_capture") == shortcut_color
+            assert color_of(f.term, "backtrace.c:", len("backtrace.c:")) == thread_color
+            assert name_color != shortcut_color
         f.absent("Left / Right")
         f.absent("Esc / q / Enter")
         f.screenshot("single-media")

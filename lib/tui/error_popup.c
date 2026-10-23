@@ -204,12 +204,17 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
     wrap_body("Error details unavailable (out of memory)", width);
     return;
   }
-  frame_buffer_printf(body, "Details: %s%s\n\nThread: %s", message[0] ? message : "No additional details",
-                      error->message_truncated ? " [truncated]" : "",
-                      colors ? colored_string(LOG_COLOR_DEV, thread) : thread);
-  if (named)
-    frame_buffer_printf(body, " (0x%llx)", (unsigned long long)error->thread_id);
-  frame_buffer_append(body, "\n", 1);
+  const char *grey = colors ? ui_text_color_prefix(LOG_COLOR_GREY) : "";
+  const char *reset = colors ? "\033[0m" : "";
+  frame_buffer_printf(body, "Details: %s%s\n\n%sThread: %s", message[0] ? message : "No additional details",
+                      error->message_truncated ? " [truncated]" : "", grey,
+                      colors ? colored_string(named ? LOG_COLOR_INFO : LOG_COLOR_FATAL, thread) : thread);
+  if (named) {
+    char address[40];
+    safe_snprintf(address, sizeof(address), "(0x%llx)", (unsigned long long)error->thread_id);
+    frame_buffer_printf(body, " %s", colors ? colored_string(LOG_COLOR_FATAL, address) : address);
+  }
+  frame_buffer_printf(body, "%s\n", reset);
   if (error->has_system_error)
     frame_buffer_printf(body, "System error: %d (%s)\n", error->system_errno, SAFE_STRERROR(error->system_errno));
   if (error->has_wsa_error)
@@ -218,9 +223,9 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
   sanitize(file, sizeof(file), error->file ? extract_project_relative_path(error->file) : "?");
   sanitize(function, sizeof(function), error->function);
   safe_snprintf(line, sizeof(line), "%d", error->line);
-  frame_buffer_printf(body, "Source: %s %s:%s\n", colors ? colored_string(LOG_COLOR_DEBUG, file) : file,
-                      colors ? colored_string(LOG_COLOR_RESET, function) : function,
-                      colors ? colored_string(LOG_COLOR_FATAL, line) : line);
+  frame_buffer_printf(body, "%sSource: %s %s:%s%s\n", grey, colors ? colored_string(LOG_COLOR_DEBUG, file) : file,
+                      colors ? colored_string(LOG_COLOR_DEV, function) : function,
+                      colors ? colored_string(LOG_COLOR_GREY, line) : line, reset);
   if (g_cached_id != error->error_id) {
     memset(&g_trace, 0, sizeof(g_trace));
     backtrace_t trace = error->backtrace;
