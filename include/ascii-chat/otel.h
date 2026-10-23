@@ -16,9 +16,10 @@ typedef enum {
 } ascii_otel_metric_t;
 #ifdef ASCIICHAT_WITH_OTEL
 #include <gotel/gotel.h>
-typedef struct {
+typedef struct ascii_otel_scope {
   gotel_scope_t scope;
   bool retained;
+  struct ascii_otel_scope *previous;
 } ascii_otel_scope_t;
 asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv);
 void ascii_otel_shutdown(void);

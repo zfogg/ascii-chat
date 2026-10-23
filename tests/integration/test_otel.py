@@ -160,7 +160,8 @@ def database_smoke(binary, receiver, env):
                 traces = b''.join(body for path, body in requests if path == '/v1/traces')
                 metrics = b''.join(body for path, body in requests if path == '/v1/metrics')
                 return (all(name in traces for name in [b'ascii-chat.storage.EnableWAL',
-                            b'ascii-chat.storage.SchemaSessions', b'ascii-chat.storage.SchemaIdxRateEvents'])
+                            b'ascii-chat.storage.SchemaSessions', b'ascii-chat.storage.SchemaIdxRateEvents',
+                            b'ascii-chat.discovery.initialize', b'ascii-chat.discovery.database.initialize'])
                         and all(name in metrics for name in [b'db.client.operation.duration',
                             b'ascii-chat.discovery.sessions.active', b'ascii-chat.discovery.participants.active']))
             assert receiver.wait_for(exported, timeout=10), 'named SQLite export deadline'
@@ -173,6 +174,18 @@ def database_smoke(binary, receiver, env):
             assert b'ascii-chat.storage.SchemaSessions' in traces
             assert b'ascii-chat.storage.SchemaIdxRateEvents' in traces
             assert b'ascii-chat.storage.UnknownQuery' not in traces
+            spans = signal_records(receiver.records, 'traces')
+            by_id = {s[2][0]: s for s in spans}
+            initialization = next(s for s in spans if s[5] == [b'ascii-chat.discovery.initialize'])
+            database = next(s for s in spans if s[5] == [b'ascii-chat.discovery.database.initialize'])
+            assert not initialization.get(4) or not any(initialization[4][0]), 'startup inherited a pending lifetime span'
+            assert database[4] == initialization[2]
+            for span in spans:
+                if span.get(4) and any(span[4][0]):
+                    assert span[4][0] in by_id, ('missing parent while service is running', span[5])
+                    assert span[1] == by_id[span[4][0]][1]
+            schema = next(s for s in spans if s[5] == [b'ascii-chat.storage.SchemaSessions'])
+            assert schema[4] == database[2], 'SQL must belong to database initialization'
         finally:
             process.terminate()
             process.wait(timeout=5)

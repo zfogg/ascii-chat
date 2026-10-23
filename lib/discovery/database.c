@@ -212,6 +212,7 @@ static void load_session_participants(sqlite3 *db, session_entry_t *session) {
 // ============================================================================
 
 static void database_telemetry_population(sqlite3 *db) {
+  ASCII_OTEL_SCOPE(DATABASE_POPULATION);
   if (!ascii_otel_enabled())
     return;
   sqlite3_stmt *statement = NULL;
@@ -226,6 +227,7 @@ static void database_telemetry_population(sqlite3 *db) {
 }
 
 asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
+  ASCII_OTEL_SCOPE(DATABASE_INIT);
   if (!db_path || !db) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db_path or db is NULL");
   }
@@ -1035,6 +1037,7 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
 }
 
 bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[16], uint64_t migration_window_ms) {
+  ASCII_OTEL_SCOPE(DATABASE_MIGRATION_READY);
   if (!db || !session_id) {
     return false;
   }
@@ -1075,6 +1078,7 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[1
 
 asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32],
                                            uint32_t key_version) {
+  ASCII_OTEL_SCOPE(DATABASE_ADD_KEY);
   if (!db || !session_string || !identity_pubkey) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for add_key");
   }
@@ -1106,6 +1110,7 @@ asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_stri
 
 asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_string,
                                               const uint8_t identity_pubkey[32]) {
+  ASCII_OTEL_SCOPE(DATABASE_REVOKE_KEY);
   if (!db || !session_string || !identity_pubkey) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for revoke_key");
   }
@@ -1134,6 +1139,7 @@ asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_s
 }
 
 bool database_session_verify_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32]) {
+  ASCII_OTEL_SCOPE(DATABASE_VERIFY_KEY);
   if (!db || !session_string || !identity_pubkey) {
     return false;
   }
@@ -1156,6 +1162,7 @@ bool database_session_verify_key(sqlite3 *db, const char *session_string, const 
 
 asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_string, uint8_t (*keys_out)[32],
                                             size_t max_keys, size_t *count_out) {
+  ASCII_OTEL_SCOPE(DATABASE_GET_KEYS);
   if (!db || !session_string || !keys_out || !count_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for get_keys");
   }
@@ -1190,6 +1197,7 @@ asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_str
 // ============================================================================
 
 asciichat_error_t database_stats_session_count(sqlite3 *db, int64_t *count_out) {
+  ASCII_OTEL_SCOPE(DATABASE_SESSION_COUNT);
   if (!db || !count_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db or count_out is NULL");
   }
@@ -1225,6 +1233,7 @@ asciichat_error_t database_stats_session_count(sqlite3 *db, int64_t *count_out) 
 }
 
 asciichat_error_t database_stats_unique_clients(sqlite3 *db, int64_t *count_out) {
+  ASCII_OTEL_SCOPE(DATABASE_UNIQUE_CLIENTS);
   if (!db || !count_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db or count_out is NULL");
   }

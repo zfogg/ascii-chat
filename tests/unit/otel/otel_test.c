@@ -359,6 +359,39 @@ Test(otel, ascii_none_does_not_start_worker) {
   adapter_start("none");
   cr_assert_not(ascii_otel_enabled());
 }
+Test(otel, bounded_operations_do_not_inherit_lifetime_spans) {
+  adapter_start("traces");
+  gotel_context_t cli = ascii_otel_context();
+  cr_assert(cli.valid);
+  const ascii_otel_operation_t lifetimes[] = {ASCII_OTEL_SESSION_CLIENT_LIKE_RUN, ASCII_OTEL_SESSION_ATTEMPT};
+  for (size_t i = 0; i < sizeof(lifetimes) / sizeof(lifetimes[0]); ++i) {
+    ascii_otel_scope_t lifetime = {0}, operation_scope = {0}, child = {0};
+    ascii_otel_scope_begin(&lifetime, lifetimes[i]);
+    ascii_otel_scope_begin(&operation_scope, ASCII_OTEL_DATABASE_INIT);
+    cr_assert_neq(memcmp(lifetime.scope.context.trace_id, operation_scope.scope.context.trace_id, 16), 0);
+    cr_assert_neq(memcmp(cli.trace_id, operation_scope.scope.context.trace_id, 16), 0);
+    ascii_otel_scope_begin(&child, ASCII_OTEL_FFMPEG_PACKET_READ);
+    cr_assert(child.scope.context.sampled);
+    cr_assert_arr_eq(operation_scope.scope.context.trace_id, child.scope.context.trace_id, 16);
+    ascii_otel_scope_end(&child);
+    ascii_otel_scope_end(&operation_scope);
+    cr_assert_arr_eq(lifetime.scope.context.span_id, ascii_otel_context().span_id, 8);
+    ascii_otel_scope_end(&lifetime);
+    cr_assert_arr_eq(cli.span_id, ascii_otel_context().span_id, 8);
+  }
+}
+
+Test(otel, bounded_children_keep_unsampled_parent_decision) {
+  adapter_start("traces");
+  gotel_context_t unsampled = {.valid = true, .sampled = false, .realtime = true};
+  ascii_otel_scope_t operation_scope = {0}, child = {0};
+  ascii_otel_scope_parent(&operation_scope, ASCII_OTEL_NETWORK_PACKET_DISPATCH, &unsampled);
+  ascii_otel_scope_begin(&child, ASCII_OTEL_FFMPEG_VIDEO_DECODE);
+  cr_assert_not(operation_scope.scope.context.sampled);
+  cr_assert_not(child.scope.context.sampled);
+  ascii_otel_scope_end(&child);
+  ascii_otel_scope_end(&operation_scope);
+}
 Test(otel, ascii_http_success_clears_transport_error) {
   adapter_start("traces,metrics");
   ascii_otel_scope_t scope = {0};

@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/stats/runtime.h>
@@ -206,6 +207,7 @@ static void *cleanup_thread_func(void *arg) {
 }
 
 asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *config) {
+  ASCII_OTEL_SCOPE(DISCOVERY_INIT);
   if (!server || !config) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "server or config is NULL");
   }
@@ -267,6 +269,7 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
 }
 
 void acds_server_shutdown(acds_server_t *server) {
+  ASCII_OTEL_SCOPE(DISCOVERY_SHUTDOWN);
   if (!server) {
     return;
   }
@@ -330,6 +333,7 @@ static inline void acds_track_packet_sent(acds_server_t *server, size_t payload_
 
 static void acds_on_session_create(const acip_session_create_t *req, acip_transport_t *transport, const char *client_ip,
                                    void *app_ctx) {
+  ASCII_OTEL_SCOPE(DISCOVERY_CREATE);
   acds_server_t *server = (acds_server_t *)app_ctx;
   acds_client_data_t *client_data = (acds_client_data_t *)transport->user_data;
 
@@ -641,6 +645,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
 
 static void acds_on_session_lookup(const acip_session_lookup_t *req, acip_transport_t *transport, const char *client_ip,
                                    void *app_ctx) {
+  ASCII_OTEL_SCOPE(DISCOVERY_LOOKUP);
   acds_server_t *server = (acds_server_t *)app_ctx;
 
   log_debug("SESSION_LOOKUP packet from %s", client_ip);
@@ -681,6 +686,7 @@ static void acds_on_session_lookup(const acip_session_lookup_t *req, acip_transp
 
 static void acds_on_session_join(const acip_session_join_t *req, acip_transport_t *transport, const char *client_ip,
                                  void *app_ctx) {
+  ASCII_OTEL_SCOPE(DISCOVERY_JOIN);
   acds_server_t *server = (acds_server_t *)app_ctx;
   acds_client_data_t *client_data = (acds_client_data_t *)transport->user_data;
 
@@ -844,6 +850,7 @@ static asciichat_error_t acds_remove_client_from_session(acds_server_t *server, 
 
 static void acds_on_session_leave(const acip_session_leave_t *req, acip_transport_t *transport, const char *client_ip,
                                   void *app_ctx) {
+  ASCII_OTEL_SCOPE(DISCOVERY_LEAVE);
   acds_server_t *server = (acds_server_t *)app_ctx;
   acds_client_data_t *client_data = (acds_client_data_t *)transport->user_data;
 
@@ -923,6 +930,7 @@ static void acds_on_network_quality(const void *payload, size_t payload_len, aci
 
 static void acds_on_host_announcement(const acip_host_announcement_t *announcement, acip_transport_t *transport,
                                       const char *client_ip, void *app_ctx) {
+  ASCII_OTEL_SCOPE(DISCOVERY_HOST_ANNOUNCE);
   acds_server_t *server = (acds_server_t *)app_ctx;
 
   log_info("HOST_ANNOUNCEMENT from %s: host_id=%02x%02x..., address=%s:%u, conn_type=%d", client_ip,
@@ -964,6 +972,7 @@ static void acds_on_host_announcement(const acip_host_announcement_t *announceme
 
 static void acds_on_host_lost(const acip_host_lost_t *host_lost, acip_transport_t *transport, const char *client_ip,
                               void *app_ctx) {
+  ASCII_OTEL_SCOPE(DISCOVERY_HOST_LOST);
   acds_server_t *server = (acds_server_t *)app_ctx;
 
   log_info("HOST_LOST from %s: session=%02x%02x..., participant=%02x%02x..., last_host=%02x%02x..., reason=%u",
@@ -1024,6 +1033,7 @@ static asciichat_error_t acds_handoff_broadcast(acds_server_t *server, consensus
                              (packet_type_t)CONSENSUS_HANDOFF_PACKET, bytes, sizeof(bytes), NULL);
 }
 static asciichat_error_t acds_handoff_tick(acds_server_t *server, consensus_handoff_t *state) {
+  ASCII_OTEL_SCOPE(DISCOVERY_HANDOFF);
   consensus_handoff_message_t action;
   if (!consensus_handoff_tick(state, time_get_ns() / NS_PER_MS_INT, &action))
     return ASCIICHAT_OK;

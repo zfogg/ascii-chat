@@ -37,6 +37,7 @@ static otlp_status_t drain_result;
 static _Thread_local bool in_log;
 static int minimum_log_level;
 static gotel_scope_t command_scope;
+static _Thread_local ascii_otel_scope_t *current_scope;
 static uint64_t shutdown_timeout_ns;
 static atomic_uint_fast64_t exporter_retries, exporter_batches;
 static void exporter_event(void *context, const otlp_event_t *event) {
@@ -151,13 +152,34 @@ void ascii_otel_scope_begin(ascii_otel_scope_t *s, ascii_otel_operation_t op) {
 void ascii_otel_scope_parent(ascii_otel_scope_t *s, ascii_otel_operation_t op, const gotel_context_t *parent) {
   gotel_host_t *h = retain();
   s->retained = h != NULL;
-  if (h)
+  if (h) {
+    gotel_context_t root = {0};
+    gotel_context_t context = gotel_current_context();
+    bool lifetime_parent = current_scope &&
+                           (current_scope->scope.operation == ASCII_OTEL_SESSION_CLIENT_LIKE_RUN ||
+                            current_scope->scope.operation == ASCII_OTEL_SESSION_ATTEMPT);
+    // Lifetime spans finish only at shutdown. Completed operations must remain
+    // inspectable while a server is running, including after abrupt termination.
+    if (!parent && context.valid) {
+      if (lifetime_parent || memcmp(context.span_id, command_scope.context.span_id, sizeof(context.span_id)) == 0) {
+        parent = &root;
+      } else {
+        // A bounded operation owns one sampling decision for all its stages.
+        context.realtime = true;
+        parent = &context;
+      }
+    }
     gotel_begin(h, &s->scope, (size_t)op, parent);
+    s->previous = current_scope;
+    current_scope = s;
+  }
 }
 void ascii_otel_scope_end(ascii_otel_scope_t *s) {
   if (!s || !s->retained)
     return;
   gotel_end(&s->scope);
+  if (current_scope == s)
+    current_scope = s->previous;
   s->retained = false;
   release();
 }
