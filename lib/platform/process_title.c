@@ -4,7 +4,6 @@
  */
 
 #include <ascii-chat/platform/process.h>
-#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/common.h>
 #include <stdbool.h>
 #include <string.h>
@@ -138,11 +137,8 @@ static asciichat_error_t process_title_apply(const char *title, const char *shor
   if (!title) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Process title must not be NULL");
   }
-#ifdef _WIN32
-  return terminal_set_title(title);
-#else
+  // Terminal titles are managed separately by the UI controller.
   return ASCIICHAT_OK;
-#endif
 }
 
 void platform_process_title_destroy(void) {}
@@ -152,7 +148,7 @@ asciichat_error_t platform_process_title_set(const char *title) {
   return process_title_apply(title, title);
 }
 
-// Bound the Windows title and avoid allocating in proportion to untrusted argv.
+// Bound the generated title and avoid allocating in proportion to untrusted argv.
 #define PROCESS_TITLE_MAX 32768
 
 typedef struct {

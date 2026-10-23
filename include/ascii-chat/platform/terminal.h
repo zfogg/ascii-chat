@@ -430,18 +430,23 @@ asciichat_error_t terminal_restore_cursor(void);
  * @param title Title string to set (must not be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Sets the terminal window title to the specified string. Uses ANSI
- * escape sequence ESC]0;titleBEL or platform-specific API. Title
+ * Sets the terminal window and icon titles to the specified string. Uses ANSI
+ * escape sequence ESC]0;titleST or platform-specific API. Title
  * appears in window title bar or terminal tab.
  *
- * @note Title is truncated to terminal-specific maximum length.
- * @note Windows uses SetConsoleTitleA and reports failure without emitting
- * escape sequences to stdout, including when no console is attached.
+ * @note Oversized titles are rejected without splitting UTF-8 characters.
+ * @note Windows uses SetConsoleTitleW. Redirected descriptors and absent
+ * consoles do not receive title sequences.
  * @note Some terminals may not support title setting.
  *
  * @ingroup platform_terminal
  */
 asciichat_error_t terminal_set_title(const char *title);
+/** Set a UTF-8 title on a TTY descriptor. Redirected descriptors are a no-op. */
+asciichat_error_t terminal_set_title_fd(int fd, const char *title);
+/** Save/restore the terminal title around an interactive application lifetime. */
+asciichat_error_t terminal_title_save(int fd);
+asciichat_error_t terminal_title_restore(int fd);
 
 /**
  * @brief Ring terminal bell

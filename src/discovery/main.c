@@ -288,6 +288,31 @@ static discovery_session_t *g_discovery = NULL;
  */
 static void on_discovery_state_change(discovery_state_t new_state, void *user_data) {
   (void)user_data; // Unused
+  switch (new_state) {
+  case DISCOVERY_STATE_CONNECTING_ACDS:
+  case DISCOVERY_STATE_NEGOTIATING:
+  case DISCOVERY_STATE_STARTING_HOST:
+  case DISCOVERY_STATE_CONNECTING_HOST:
+    ui_controller_title_activity(UI_TITLE_CONNECTING);
+    break;
+  case DISCOVERY_STATE_CREATING_SESSION:
+    ui_controller_title_activity(UI_TITLE_CREATING_SESSION);
+    break;
+  case DISCOVERY_STATE_JOINING_SESSION:
+    ui_controller_title_activity(UI_TITLE_JOINING_SESSION);
+    break;
+  case DISCOVERY_STATE_WAITING_PEER:
+    ui_controller_title_activity(UI_TITLE_WAITING_PEERS);
+    break;
+  case DISCOVERY_STATE_MIGRATING:
+    ui_controller_title_activity(UI_TITLE_RECONNECTING);
+    break;
+  default:
+    ui_controller_title_activity(UI_TITLE_ACTIVITY_IDLE);
+    break;
+  }
+  if (new_state == DISCOVERY_STATE_ACTIVE)
+    ui_controller_title_ready();
   static uint64_t setup_started;
   if (new_state == DISCOVERY_STATE_CONNECTING_ACDS)
     setup_started = time_get_ns();

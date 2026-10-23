@@ -411,6 +411,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   /* === 10. TCP accept loop (blocks) === */
 
   log_info("Server accepting connections on port %d", port);
+  ui_controller_title_ready();
   result = network_server_run(g_network_server);
   if (result != ASCIICHAT_OK) {
     log_error("TCP server exited with error");

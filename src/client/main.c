@@ -353,6 +353,9 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     return connection_result;
   }
 
+  ui_controller_title_ready();
+  ui_controller_title_activity(UI_TITLE_ACTIVITY_IDLE);
+
   // Log connection status
   if (!g_client_session.has_ever_connected) {
     log_info("Connected");
