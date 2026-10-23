@@ -51,7 +51,7 @@ const registry_entry_t g_logging_entries[] = {
      offsetof(options_t, otel_endpoint),
      OPT_OTEL_ENDPOINT_DEFAULT,
      sizeof(((options_t *)0)->otel_endpoint),
-     "Collector base URL; setting this enables telemetry (HTTP/protobuf).",
+     "Collector base URL; enables telemetry. OTEL_EXPORTER_OTLP_PROTOCOL selects http/protobuf or grpc.",
      "OTEL",
      "VALUE",
      false,
