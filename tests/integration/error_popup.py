@@ -154,6 +154,9 @@ def navigation(args):
             thread_line = next(line for line in f.term.screen.display if "Thread:" in line)
             address_color = color_of(f.term, "Thread:", thread_line.index("(0x") - thread_line.index("Thread:") + 1)
             assert name_color not in (thread_color, address_color, "default")
+            address_start = thread_line.index("(0x") - thread_line.index("Thread:")
+            assert color_of(f.term, "Thread:", address_start) == "default"
+            assert color_of(f.term, "Thread:", thread_line.rindex(")") - thread_line.index("Thread:")) == "default"
             assert color_of(f.term, "Source:") == thread_color
             assert color_of(f.term, "Source:", 8) != thread_color
         title_color = color_of(f.term, "Error (1)")

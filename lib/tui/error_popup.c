@@ -211,8 +211,8 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
                       colors ? colored_string(named ? LOG_COLOR_INFO : LOG_COLOR_FATAL, thread) : thread);
   if (named) {
     char address[40];
-    safe_snprintf(address, sizeof(address), "(0x%llx)", (unsigned long long)error->thread_id);
-    frame_buffer_printf(body, " %s", colors ? colored_string(LOG_COLOR_FATAL, address) : address);
+    safe_snprintf(address, sizeof(address), "0x%llx", (unsigned long long)error->thread_id);
+    frame_buffer_printf(body, " (%s)", colors ? colored_string(LOG_COLOR_FATAL, address) : address);
   }
   frame_buffer_printf(body, "%s\n", reset);
   if (error->has_system_error)
