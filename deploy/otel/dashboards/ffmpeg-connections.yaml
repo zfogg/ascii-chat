@@ -5,7 +5,8 @@ description: Shows the most recent 15 minutes of telemetry within the selected s
   recordings remain visible. Last 15 minutes. Operation metrics count unsampled work; span timings summarize only retained traces. EOF, EAGAIN and cancellation
   are normal FFmpeg control flow. No URLs, filenames or peer identities are used as grouping dimensions. Packet/byte rate graphs use process-separated counter
   deltas, exclude resets/initial samples, and sum process rates. Population graphs show the highest process snapshot per bucket, not a sum of shared discovery
-  populations.
+  populations. The byte-share pie includes sent application bytes only, so received copies are not counted a second time. Compression input and output are compared
+  as bars, not parts of one total.
 magic_variables:
 - name: session_id
   kind: string
@@ -24,14 +25,15 @@ panels:
     h: 1
   position: 0
 - title: FFmpeg operation and failure totals
-  display_type: entity_list
-  query: SELECT service_name || ' / ' || name AS label,process_total AS primary_value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id
-    AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns
-    >= coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT
-    max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key
+  display_type: bar
+  query: SELECT service_name || ' / ' || name AS label,process_total AS value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND service_name
+    IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= coalesce(greatest((SELECT
+    max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT max(timestamp_ns) FROM
+    logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key
     ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name LIKE 'ascii-chat.ffmpeg.%.count' OR name LIKE
     'ascii-chat.ffmpeg.%.errors' GROUP BY service_name,name ORDER BY service_name,name) AS totals
-  settings: {}
+  settings:
+    unit: calls
   layout:
     w: 6
     h: 1
@@ -140,3 +142,29 @@ panels:
     w: 6
     h: 1
   position: 8
+- title: Sent application bytes by service
+  display_type: pie
+  query: "WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\n\
+    \ AND name IN ('ascii-chat.network.sent') AND timestamp_ns>=coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT\
+    \ max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp))-900000000000\n\
+    \ QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name AS label,sum(value)\
+    \ AS value FROM latest GROUP BY service_name ORDER BY value DESC"
+  settings:
+    unit: bytes
+  layout:
+    w: 6
+    h: 1
+  position: 9
+- title: Zstd input/output volume (KiB)
+  display_type: bar
+  query: "WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\n\
+    \ AND name IN ('ascii-chat.compression.zstd.input.bytes','ascii-chat.compression.zstd.output.bytes') AND timestamp_ns>=coalesce(greatest((SELECT max(timestamp_ns)\
+    \ FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp))-900000000000\n\
+    \ QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name || ' / ' ||\
+    \ name AS label,sum(value)/1024 AS value FROM latest GROUP BY service_name,name ORDER BY service_name,name"
+  settings:
+    unit: KiB
+  layout:
+    w: 6
+    h: 1
+  position: 10

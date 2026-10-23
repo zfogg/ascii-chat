@@ -5,7 +5,8 @@ description: Shows the most recent 15 minutes of telemetry within the selected s
   recordings remain visible. Last 15 minutes of observations across ascii-chat services. Totals and histogram summaries use only the newest cumulative snapshot
   per series and process start. They are process-lifetime totals for processes seen in this window, not interval counts. Missing telemetry is not zero. Hidden-screen
   drops are expected; sampling does not affect metric counts. Rate graphs use per-process counter deltas and actual elapsed time, excluding initial samples and
-  resets; unavailable rates remain missing. Pipeline stages are separate observations and must not be added together.
+  resets; unavailable rates remain missing. Pipeline stages are separate observations and must not be added together. Bars compare separate stage totals; their
+  categories overlap and are not additive. The rejection gauge measures validation attempts, not unique frames.
 magic_variables:
 - name: session_id
   kind: string
@@ -50,14 +51,15 @@ panels:
     h: 1
   position: 2
 - title: Frame stage and loss totals (separate measurements)
-  display_type: entity_list
-  query: SELECT service_name || ' / ' || name AS label,process_total AS primary_value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id
-    AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns
-    >= coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT
-    max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key
+  display_type: bar
+  query: SELECT service_name || ' / ' || name AS label,process_total AS value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND service_name
+    IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= coalesce(greatest((SELECT
+    max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT max(timestamp_ns) FROM
+    logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key
     ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE (name LIKE 'ascii-chat.frames.%' OR name IN ('ascii-chat.recording.frames.encoded','ascii-chat.video.encode.frames','ascii-chat.queue.frames.dropped'))
     AND type='sum' GROUP BY service_name,name ORDER BY service_name,name) AS totals
-  settings: {}
+  settings:
+    unit: frames
   layout:
     w: 6
     h: 1
@@ -75,16 +77,17 @@ panels:
     w: 6
     h: 1
   position: 4
-- title: Audio device/buffer glitches and sample-loss totals
-  display_type: entity_list
-  query: SELECT service_name || ' / ' || name AS label,process_total AS primary_value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id
-    AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns
-    >= coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT
-    max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key
-    ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name IN ('ascii-chat.audio.buffer.underruns','ascii-chat.audio.buffer.overruns','ascii-chat.audio.device.underruns','ascii-chat.audio.device.overruns','ascii-chat.audio.samples.dropped','ascii-chat.audio.samples.clipped')
+- title: Audio device and network-buffer glitch totals
+  display_type: bar
+  query: SELECT service_name || ' / ' || name AS label,process_total AS value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND service_name
+    IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= coalesce(greatest((SELECT
+    max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT max(timestamp_ns) FROM
+    logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key
+    ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name IN ('ascii-chat.audio.buffer.underruns','ascii-chat.audio.buffer.overruns','ascii-chat.audio.device.underruns','ascii-chat.audio.device.overruns')
     GROUP BY service_name,name ORDER BY service_name,name) AS totals
-  settings: {}
-  layout:
+  settings:
+    unit: events
+  layout: &id001
     w: 6
     h: 1
   position: 5
@@ -101,15 +104,16 @@ panels:
     w: 6
     h: 1
   position: 6
-- title: Network errors, reconnects and bytes
-  display_type: entity_list
-  query: SELECT service_name || ' / ' || name AS label,process_total AS primary_value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id
-    AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns
-    >= coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT
-    max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key
-    ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name IN ('ascii-chat.network.reconnects','ascii-chat.network.disconnects','ascii-chat.network.send.errors','ascii-chat.network.receive.errors','ascii-chat.network.sent','ascii-chat.network.received','ascii-chat.network.outbound.frames.dropped','ascii-chat.network.outbound.congestion')
+- title: Network errors, reconnects and discarded-frame totals
+  display_type: bar
+  query: SELECT service_name || ' / ' || name AS label,process_total AS value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND service_name
+    IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= coalesce(greatest((SELECT
+    max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT max(timestamp_ns) FROM
+    logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key
+    ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name IN ('ascii-chat.network.reconnects','ascii-chat.network.disconnects','ascii-chat.network.send.errors','ascii-chat.network.receive.errors','ascii-chat.network.outbound.frames.dropped','ascii-chat.network.outbound.congestion')
     GROUP BY service_name,name ORDER BY service_name,name) AS totals
-  settings: {}
+  settings:
+    unit: ''
   layout:
     w: 6
     h: 1
@@ -226,3 +230,30 @@ panels:
     w: 6
     h: 1
   position: 15
+- title: Dropped and clipped audio sample totals
+  display_type: bar
+  query: SELECT service_name || ' / ' || name AS label,process_total AS value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND service_name
+    IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= coalesce(greatest((SELECT
+    max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT max(timestamp_ns) FROM
+    logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key
+    ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name IN ('ascii-chat.audio.samples.dropped','ascii-chat.audio.samples.clipped')
+    GROUP BY service_name,name ORDER BY service_name,name) AS totals
+  settings:
+    unit: samples
+  layout: *id001
+  position: 16
+- title: Rejected frame validations (%)
+  display_type: gauge
+  query: "WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\n\
+    \ AND name IN ('ascii-chat.frame.validation.checked','ascii-chat.frame.validation.rejected') AND timestamp_ns>=coalesce(greatest((SELECT max(timestamp_ns)\
+    \ FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp))-900000000000\n\
+    \ QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT 100.0*sum(CASE WHEN name='ascii-chat.frame.validation.rejected'\
+    \ THEN value ELSE 0 END)\n /nullif(sum(CASE WHEN name='ascii-chat.frame.validation.checked' THEN value ELSE 0 END),0) AS value FROM latest"
+  settings:
+    min: 0
+    max: 100
+    unit: '%'
+  layout:
+    w: 6
+    h: 1
+  position: 17

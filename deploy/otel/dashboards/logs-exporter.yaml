@@ -3,21 +3,21 @@ id: 3437136c-fcf4-4665-9c08-a462d70c4eb8
 name: ascii-chat · Logs and exporter
 description: 'Shows the most recent 15 minutes of telemetry within the selected session, anchored to its latest recorded sample rather than wall-clock time.
   Stopped recordings remain visible. Last 15 minutes. Severity uses OTLP numbers: TRACE 1–4, DEBUG 5–8, INFO 9–12, WARN 13–16, ERROR 17–20, FATAL 21–24. Exporter
-  failure diagnostics stay local to avoid recursive queue pressure; collector-side metrics cannot show an ongoing total collector outage.'
+  failure diagnostics stay local to avoid recursive queue pressure; collector-side metrics cannot show an ongoing total collector outage. The queue gauge shows
+  the highest latest reported process utilization within the recording window, using its actual 0–100% capacity bound.'
 magic_variables:
 - name: session_id
   kind: string
 panels:
 - title: Log severity distribution
-  display_type: entity_list
-  query: SELECT service_name || ' / ' || severity AS label,records AS primary_value FROM (SELECT service_name,CASE WHEN severity BETWEEN 1 AND 4 THEN 'TRACE'
-    WHEN severity BETWEEN 5 AND 8 THEN 'DEBUG' WHEN severity BETWEEN 9 AND 12 THEN 'INFO' WHEN severity BETWEEN 13 AND 16 THEN 'WARN' WHEN severity BETWEEN 17
-    AND 20 THEN 'ERROR' WHEN severity BETWEEN 21 AND 24 THEN 'FATAL' ELSE 'UNSPECIFIED' END AS severity,count(*) AS records FROM logs WHERE session_id=$session_id
-    AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns
-    >= coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT
-    max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 GROUP BY service_name,2 ORDER BY service_name,2) AS
-    totals
-  settings: {}
+  display_type: pie
+  query: "SELECT CASE WHEN severity BETWEEN 1 AND 4 THEN 'TRACE' WHEN severity BETWEEN 5 AND 8 THEN 'DEBUG'\n WHEN severity BETWEEN 9 AND 12 THEN 'INFO' WHEN\
+    \ severity BETWEEN 13 AND 16 THEN 'WARN'\n WHEN severity BETWEEN 17 AND 20 THEN 'ERROR' WHEN severity BETWEEN 21 AND 24 THEN 'FATAL' ELSE 'UNSPECIFIED' END\
+    \ AS label,\n count(*) AS value FROM logs WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\
+    \ AND timestamp_ns>=coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT\
+    \ max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp))-900000000000 GROUP BY label ORDER BY value DESC"
+  settings:
+    unit: records
   layout:
     w: 6
     h: 1
@@ -83,3 +83,18 @@ panels:
     w: 6
     h: 1
   position: 5
+- title: Highest latest exporter queue utilization (%)
+  display_type: gauge
+  query: "WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\n\
+    \ AND name IN ('ascii-chat.otel.queue.utilization') AND timestamp_ns>=coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT\
+    \ max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp))-900000000000\n\
+    \ QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT 100*max(value) AS value FROM\
+    \ latest"
+  settings:
+    min: 0
+    max: 100
+    unit: '%'
+  layout:
+    w: 6
+    h: 1
+  position: 6
