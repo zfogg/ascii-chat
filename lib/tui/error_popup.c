@@ -208,7 +208,7 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
   const char *reset = colors ? "\033[0m" : "";
   frame_buffer_printf(body, "Details: %s%s\n\n%sThread: %s", message[0] ? message : "No additional details",
                       error->message_truncated ? " [truncated]" : "", grey,
-                      colors ? colored_string(named ? LOG_COLOR_INFO : LOG_COLOR_FATAL, thread) : thread);
+                      colors ? colored_string(named ? LOG_COLOR_WARN : LOG_COLOR_FATAL, thread) : thread);
   if (named) {
     char address[40];
     safe_snprintf(address, sizeof(address), "0x%llx", (unsigned long long)error->thread_id);
