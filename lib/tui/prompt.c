@@ -22,6 +22,7 @@ typedef struct {
   ui_notice_severity_t severity;
   bool color;
   bool unicode;
+  bool secret;
   char text[];
 } prompt_snapshot_t;
 
@@ -143,6 +144,17 @@ static void password_panel(frame_buffer_t *buffer, terminal_size_t size, const p
     frame_buffer_printf(buffer, "\033[?25l");
 }
 
+const char *ui_prompt_title(const void *data) {
+  const prompt_snapshot_t *snapshot = data;
+  if (strncmp(snapshot->text, "Open media:", 11) == 0)
+    return "load file/url";
+  if (strstr(snapshot->text, "(y/N)") || strstr(snapshot->text, "(Y/n)"))
+    return "confirmation";
+  if (snapshot->secret)
+    return "password required";
+  return "input";
+}
+
 static void render_prompt(terminal_size_t size, const void *data) {
   const prompt_snapshot_t *snapshot = data;
   const char *visible = snapshot->text + snapshot->prompt_bytes;
@@ -177,7 +189,7 @@ static int prompt_fd(void) {
   return platform_isatty(STDERR_FILENO) ? STDERR_FILENO : STDOUT_FILENO;
 }
 
-asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, size_t cursor) {
+asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, size_t cursor, bool secret) {
   size_t prompt_bytes = strlen(prompt) + 1;
   size_t visible_bytes = strlen(visible) + 1;
   prompt_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot) + prompt_bytes + visible_bytes, prompt_snapshot_t *);
@@ -187,6 +199,7 @@ asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, siz
   snapshot->focus = 0;
   snapshot->prompt_bytes = prompt_bytes;
   snapshot->cursor = cursor;
+  snapshot->secret = secret;
   snapshot->severity = ui_notice_prompt_severity();
   bool media = strncmp(prompt, "Open media:", 11) == 0;
   snapshot->color = !media && !GET_OPTION(strip_ansi) && terminal_should_color_output(prompt_fd());
@@ -247,6 +260,7 @@ asciichat_error_t ui_password_prompt_present(const char *target, const char *mas
   s->cursor = cursor;
   s->focus = focus;
   s->password_dialog = true;
+  s->secret = true;
   s->incorrect = incorrect;
   s->can_confirm = can_confirm;
   s->color = !GET_OPTION(strip_ansi) && terminal_should_color_output(prompt_fd());

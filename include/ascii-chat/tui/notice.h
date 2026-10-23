@@ -34,6 +34,7 @@ bool ui_notice_confirm(ui_notice_severity_t severity, const char *text, unsigned
 #endif
 ui_notice_severity_t ui_notice_prompt_severity(void);
 void ui_notice_dismiss(void);
+const char *ui_notice_title(const void *snapshot);
 
 /** File/JSON logging stays undecorated; terminal presentation uses the notice renderer. */
 void ui_notice_log(ui_notice_severity_t severity, const char *file, int line, const char *func, const char *title,

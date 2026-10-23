@@ -3,8 +3,10 @@
 #include <stddef.h>
 
 /** Only display-safe text crosses this boundary; never pass an unmasked password. */
-asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, size_t cursor);
+asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, size_t cursor, bool secret);
 void ui_prompt_remove(void);
+
+const char *ui_prompt_title(const void *snapshot);
 
 int ui_prompt_required_rows(const void *snapshot, int cols);
 

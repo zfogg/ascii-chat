@@ -172,6 +172,13 @@ typedef struct {
   char text[];
 } notice_snapshot_t;
 
+const char *ui_notice_title(const void *data) {
+  const notice_snapshot_t *notice = data;
+  return notice->severity == UI_NOTICE_WARNING                                         ? "warning"
+         : notice->severity == UI_NOTICE_DANGER || notice->severity == UI_NOTICE_FATAL ? "error"
+                                                                                       : "notice";
+}
+
 static void render_notice(terminal_size_t size, const void *data) {
   const notice_snapshot_t *notice = data;
   // Only the presentation thread owns these counters. Every queued notice gets

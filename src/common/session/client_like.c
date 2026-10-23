@@ -555,14 +555,14 @@ static bool client_like_finish_session_splash(const session_client_like_config_t
   // Wait for splash animation to finish before proceeding to render loop
   // (splash_anim thread uses the display, must not be disrupted before cleanup)
   // But skip for immediate snapshots (snapshot-delay=0) which need to output first frame immediately
-  // For discovery mode, keep the splash running - it stays visible while waiting for peers
-  if (config->discovery == NULL) {
+  // Networked modes retain their input monitor until the first received frame.
+  if (config->kind == SESSION_CLIENT_LIKE_KIND_MIRROR) {
     splash_intro_done();
     if (!(GET_OPTION(snapshot_mode) && GET_OPTION(snapshot_delay) == 0.0)) {
       splash_wait_for_animation();
     }
   } else {
-    log_debug("[SETUP_SPLASH] Discovery mode: keeping splash visible while waiting for peers");
+    log_debug("[SETUP_SPLASH] Networked mode: keeping splash visible while connecting");
   }
 
   return false;
@@ -650,6 +650,8 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
 
   while (true) {
     attempt++;
+    if (config->kind == SESSION_CLIENT_LIKE_KIND_CLIENT)
+      ui_controller_title_activity(attempt > 1 ? UI_TITLE_RECONNECTING : UI_TITLE_CONNECTING);
     if (attempt > 1) {
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RECONNECTS, 1);
       ascii_otel_metric(ASCII_OTEL_METRIC_RECONNECT, 1);
@@ -706,6 +708,9 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
 
     LOG_ERRNO_IF_SET("Connection attempt failed; retrying");
     errno_scope_end(attempt_scope, ASCIICHAT_ERRNO_HANDLED);
+
+    if (config->kind == SESSION_CLIENT_LIKE_KIND_CLIENT)
+      ui_controller_title_activity(UI_TITLE_RECONNECTING);
 
     // Reconnection will happen - show splash screen during reconnection attempt
     // Reset first_frame flag so splash cleanup runs on next successful connection

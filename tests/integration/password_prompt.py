@@ -101,6 +101,8 @@ def main():
                 return terminal(name, ['client', '127.0.0.1', '--port', str(port), *common])
             peer = client('retry')
             prompt(peer)
+            peer.expect(lambda _: bool(re.search(r'\x1b\][02];[^\x07\x1b]*password required', ''.join(peer.raw))),
+                        'Password dialog terminal title missing')
             border = next(i for i, line in enumerate(peer.screen.display) if '\u250c' in line)
             assert abs(border - (peer.screen.lines - border - 13)) <= 1, 'Popup is not vertically centered'
             save(peer, 'client-initial')
