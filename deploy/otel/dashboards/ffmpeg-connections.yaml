@@ -11,8 +11,8 @@ panels:
   display_type: time_series
   query: WITH snapshots AS (SELECT *,floor(timestamp_ns/10000000000)*10 AS bucket FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
     AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000 AND (type='histogram' AND (name LIKE 'ascii-chat.ffmpeg.%.duration')) QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket
-    ORDER BY timestamp_ns DESC)=1) SELECT to_timestamp(bucket) AS timestamp,service_name || ' / ' || name AS series,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value FROM
-    snapshots GROUP BY bucket,service_name,name ORDER BY bucket,service_name,name
+    ORDER BY timestamp_ns DESC)=1) SELECT bucket*1000000000 AS timestamp_ns,service_name || ' / ' || name AS group_value,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value
+    FROM snapshots GROUP BY bucket,service_name,name ORDER BY bucket,service_name,name
   settings: {}
   layout:
     w: 6
@@ -42,8 +42,8 @@ panels:
   display_type: time_series
   query: WITH snapshots AS (SELECT *,floor(timestamp_ns/10000000000)*10 AS bucket FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
     AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000 AND (type='histogram' AND (name IN ('ascii-chat.network.connection.establish.duration','ascii-chat.network.reconnect.wait.duration','ascii-chat.media.transition.load.duration','ascii-chat.media.transition.commit.duration')))
-    QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket ORDER BY timestamp_ns DESC)=1) SELECT to_timestamp(bucket) AS timestamp,service_name
-    || ' / ' || name AS series,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value FROM snapshots GROUP BY bucket,service_name,name ORDER BY bucket,service_name,name
+    QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket ORDER BY timestamp_ns DESC)=1) SELECT bucket*1000000000 AS timestamp_ns,service_name
+    || ' / ' || name AS group_value,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value FROM snapshots GROUP BY bucket,service_name,name ORDER BY bucket,service_name,name
   settings: {}
   layout:
     w: 6
