@@ -112,7 +112,7 @@ static uint64_t g_cached_id;
 static int g_cached_width;
 static bool g_cached_color;
 static char g_wrapped[65536];
-static size_t g_lines[2048], g_line_count;
+static size_t g_lines[2048], g_line_count, g_trace_start;
 #ifdef ASCIICHAT_DIAGNOSTIC_UI
 static backtrace_text_t g_trace;
 #endif
@@ -190,6 +190,7 @@ static void wrap_body(const char *text, int width) {
 }
 
 static void build_body(const asciichat_error_context_t *error, int width, bool colors) {
+  g_trace_start = 0;
   char message[ASCIICHAT_ERRNO_MESSAGE_MAX], thread[160], file[1024], function[256], line[24];
   sanitize(message, sizeof(message), error->context_message);
   named_metadata_t metadata = {0};
@@ -232,8 +233,14 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
       backtrace_t_free(&trace);
     }
   }
-  frame_buffer_printf(body, "\n%s",
-                      g_trace.plain[0] ? (colors ? g_trace.colored : g_trace.plain) : "Backtrace unavailable\n");
+  wrap_body(frame_buffer_get_content(body), width);
+  if (g_trace.plain[0])
+    g_trace_start = g_line_count + 1;
+  const char *trace_text = g_trace.plain[0] ? (colors ? g_trace.colored : g_trace.plain) : "Backtrace unavailable";
+  size_t trace_length = strlen(trace_text);
+  if (trace_length && trace_text[trace_length - 1] == '\n')
+    --trace_length;
+  frame_buffer_printf(body, "\n%.*s", (int)trace_length, trace_text);
 #else
   (void)file;
   (void)function;
@@ -268,13 +275,19 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
   int body_width = width - 6;
   if (g_cached_id != error.error_id || g_cached_width != body_width || g_cached_color != colors)
     build_body(&error, body_width, colors);
-  int height = MIN(size.rows - 2, MIN(28, (int)g_line_count + 6));
+  size_t desired_rows = g_trace_start ? MIN(g_line_count, g_trace_start + 12) : g_line_count;
+  int body_rows = MIN(size.rows - 8, MIN(22, (int)desired_rows));
+  size_t fixed_rows = g_trace_start && g_trace_start < (size_t)body_rows ? g_trace_start : 0;
+  if (g_trace_start && !fixed_rows)
+    body_rows = MIN(body_rows, 12);
+  int height = body_rows + 6;
   int top = (size.rows - height) / 2 + 1, left = (size.cols - width) / 2 + 1;
-  int body_rows = height - 6;
+  size_t scroll_rows = g_line_count - fixed_rows;
+  size_t page_rows = (size_t)body_rows - fixed_rows;
   lock_state();
-  g_body_rows = g_line_count;
-  g_page_rows = (size_t)body_rows;
-  size_t maximum = g_line_count > (size_t)body_rows ? g_line_count - (size_t)body_rows : 0;
+  g_body_rows = scroll_rows;
+  g_page_rows = page_rows;
+  size_t maximum = scroll_rows > page_rows ? scroll_rows - page_rows : 0;
   g_scroll = MIN(g_scroll, maximum);
   size_t scroll = g_scroll;
   unlock_state();
@@ -290,13 +303,16 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
   safe_snprintf(code, sizeof(code), "Code: %s (%d)", asciichat_error_name(error.code), error.code);
   ui_text_cell(cell, sizeof(cell), code, width - 4, UI_ALIGN_LEFT);
   frame_buffer_printf(out, "\033[%d;%dH%s", top + 2, left + 2, cell);
-  for (int i = 0; i < body_rows && scroll + (size_t)i < g_line_count; ++i) {
-    const char *start = g_wrapped + g_lines[scroll + (size_t)i];
+  for (int i = 0; i < body_rows; ++i) {
+    size_t index = (size_t)i < fixed_rows ? (size_t)i : (size_t)i + scroll;
+    if (index >= g_line_count)
+      break;
+    const char *start = g_wrapped + g_lines[index];
     const char *end = strchr(start, '\n');
     frame_buffer_printf(out, "\033[%d;%dH%.*s\033[0m", top + 4 + i, left + 2,
                         (int)(end ? end - start : (ptrdiff_t)strlen(start)), start);
   }
-  ui_scrollbar_render(out, top + 4, left + width - 3, body_rows, g_line_count, (size_t)body_rows, scroll);
+  ui_scrollbar_render(out, top + 4 + (int)fixed_rows, left + width - 3, (int)page_rows, scroll_rows, page_rows, scroll);
   const char *orange = colors ? ui_text_color_prefix(LOG_COLOR_DEV) : "";
   const char *reset = colors ? "\033[0m" : "";
   frame_buffer_printf(out, "\033[%d;%dH%s?%s Help", top + height - 2, left + 2, orange, reset);

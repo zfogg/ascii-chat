@@ -8,6 +8,7 @@ import _environment  # noqa: F401
 
 import argparse
 import json
+import re
 import subprocess
 import tempfile
 import time
@@ -192,8 +193,47 @@ def navigation(args):
             f.term.pump(.25)
             assert f.term.process.isalive(), "Dismissal escaped to the underlying session"
             assert "Error (" not in "\n".join(f.term.screen.display), "Acknowledged errors reopened"
+        if args.diagnostics:
+            f.error(11, "DEEP_BACKTRACE_ERROR")
+            f.expect("Backtrace")
+            f.term.pump(.2)
+            def frames():
+                return [int(n) for n in re.findall(r"\[(\d+)\]", "\n".join(f.term.screen.display))]
+            first = frames()
+            assert first[0] == 0 and max(first) <= 11, first
+            track_col = (120 - 100) // 2 + 100 - 3
+            track_rows = [row for row in range(f.term.screen.lines)
+                          if f.term.screen.buffer[row][track_col].data in ("█", "│", "#", "|")]
+            assert len(track_rows) == 12, track_rows
+            f.screenshot("backtrace-scroll-top")
+            f.term.write("\x1b[6~")
+            f.term.expect(lambda _: frames() and min(frames()) > 0, "Backtrace page did not scroll")
+            f.expect("DEEP_BACKTRACE_ERROR")
+            f.expect("Source:")
+            f.screenshot("backtrace-scroll-down")
+            f.key("?", "Error Popup Keyboard Shortcuts")
+            f.key("?", "DEEP_BACKTRACE_ERROR")
+            assert min(frames()) > 0, "Help reset the trace offset"
+            for _ in range(4):
+                f.term.write("\x1b[6~")
+            f.term.pump(.2)
+            last = frames()
+            f.term.write("\x1b[6~")
+            f.term.pump(.2)
+            assert frames() == last, "Scrolling past the final trace line"
+            for _ in range(5):
+                f.term.write("\x1b[5~")
+            f.term.expect(lambda _: frames() and min(frames()) == 0, "Backtrace did not return to top")
+            f.key("\r", "MEDIA_BACKGROUND")
         f.error(4, "LONG_ERROR line 00")
+        for _ in range(20):
+            if "[truncated]" in "\n".join(f.term.screen.display):
+                break
+            f.term.write("\x1b[B")
+            f.term.pump(.1)
         f.expect("[truncated]")
+        f.term.write("\x1b[5~" * 20)
+        f.expect("LONG_ERROR line 00")
         f.term.resize(20, 120)
         f.expect("LONG_ERROR line 00")
         before = f.term.screen.display

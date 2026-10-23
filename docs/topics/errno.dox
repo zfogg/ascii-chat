@@ -234,6 +234,9 @@ as terminal logs. Release hides these developer diagnostics.
 
 Left/Right select the preceding/following error; Home/End select the oldest/newest.
 New arrivals select the newest error. Up/Down and PageUp/PageDown scroll details.
+Backtraces use at most 12 visible lines with the shared scrollbar. Error metadata
+stays fixed while the trace scrolls when the terminal has room for both sections;
+smaller terminals scroll the combined details so every line remains reachable.
 The popup displays a Dismiss all button activated by Enter and a ? Help hint.
 Its compact help overlay lists navigation, scrolling,
 and dismissal shortcuts. Esc, q, and Enter dismiss all errors and consume the key. Acknowledgment removes

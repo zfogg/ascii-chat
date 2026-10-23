@@ -27,6 +27,14 @@ typedef struct {
   atomic_bool stop;
 } worker_t;
 
+static __attribute__((noinline)) void deep_error(int depth) {
+  if (depth)
+    deep_error(depth - 1);
+  else
+    SET_ERRNO(ERROR_MEDIA_DECODE, "DEEP_BACKTRACE_ERROR");
+  platform_sleep_ms(1);
+}
+
 static void *produce_errors(void *opaque) {
   worker_t *state = opaque;
   NAMED_REGISTER_ID(thread_current_id(), "popup-media-worker", "thread", "0x%tx", NULL);
@@ -52,6 +60,8 @@ static void *produce_errors(void *opaque) {
         bool previous = errno_notifications_suppress(true);
         SET_ERRNO(ERROR_MEMORY, "SUPPRESSED_RENDER_ERROR");
         errno_notifications_suppress(previous);
+      } else if (request == 11) {
+        deep_error(20);
       } else if (request == 7) {
         for (int i = 0; i < 140; ++i)
           SET_ERRNO(ERROR_NETWORK, "BURST_ERROR_%03d", i);
