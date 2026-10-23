@@ -87,3 +87,4 @@ ASCII_OTEL_METRIC(OPUS_ENCODE_SAMPLES, "ascii-chat.audio.opus.encode.samples", C
 ASCII_OTEL_METRIC(OPUS_PLC_FRAMES, "ascii-chat.audio.opus.plc.frames", COUNTER, "{frame}")
 ASCII_OTEL_METRIC(OUTBOUND_WAIT, "ascii-chat.network.outbound.queue.wait", HISTOGRAM, "s")
 ASCII_OTEL_METRIC(CONNECTION_ESTABLISHED, "ascii-chat.network.connections.established", COUNTER, "{connection}")
+ASCII_OTEL_METRIC(DEADLOCK_THREADS, "ascii-chat.thread.deadlock.threads", GAUGE, "{thread}")

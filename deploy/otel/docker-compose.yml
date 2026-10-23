@@ -2,7 +2,7 @@ name: ascii-chat-otel
 services:
   spaniel:
     image: ${SPANIEL_IMAGE:-ghcr.io/zfogg/spaniel:latest}
-    command: ["--db-path", "/data/spaniel.duckdb", "--no-browser", "--mcp-allow-writes", "--dashboards-dir", "/dashboards"]
+    command: ["--db-path", "/data/spaniel.duckdb", "--no-browser", "--mcp-allow-writes", "--dashboards-dir", "/dashboards", "--alerts-dir", "/alerts"]
     environment:
       SPANIEL_BIND_ADDRESS_V4: 0.0.0.0
       SPANIEL_BIND_ADDRESS_V6: "::"
@@ -13,6 +13,7 @@ services:
     volumes:
       - spaniel-data:/data
       - ./dashboards:/dashboards:ro
+      - ./alerts:/alerts:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
       interval: 10s

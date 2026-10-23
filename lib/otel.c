@@ -12,6 +12,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/debug/mutex.h>
 #include <stdatomic.h>
 #include <math.h>
 #include <stdio.h>
@@ -72,6 +73,10 @@ static gotel_host_t *retain(void) {
 static void release(void) {
   atomic_fetch_sub_explicit(&readers, 1, memory_order_seq_cst);
 }
+const char *ascii_otel_current_operation(void) {
+  return current_scope && current_scope->scope.operation < ASCII_OTEL_OPERATION_COUNT
+             ? operations[current_scope->scope.operation].name : "";
+}
 bool ascii_otel_enabled(void) {
   return atomic_load_explicit(&host, memory_order_acquire) != NULL;
 }
@@ -90,6 +95,41 @@ static void exporter_diagnostic(void *context, otlp_log_level_t level, const cha
   log_debug("OTLP exporter: %s", message);
   in_log = previous;
 }
+#ifndef NDEBUG
+static mutex_wait_snapshot_t watchdog_detail;
+static bool watchdog_snapshot(void *context, gotel_watchdog_snapshot_t *out) {
+  (void)context;
+  static mutex_wait_snapshot_t waits[256];
+  size_t count = 0;
+  if (!mutex_stack_try_snapshot(waits, 256, &count, &out->limited))
+    return false;
+  uint64_t now = time_get_ns();
+  for (size_t i = 0; i < count; ++i) {
+    if (waits[i].cycle) {
+      if (!out->blocked_threads) {
+        watchdog_detail = waits[i];
+        memcpy(out->parent.trace_id, waits[i].trace_id, sizeof(out->parent.trace_id));
+        memcpy(out->parent.span_id, waits[i].span_id, sizeof(out->parent.span_id));
+        out->parent.valid = waits[i].context_valid;
+        out->parent.sampled = waits[i].context_sampled;
+        out->parent.realtime = true;
+      }
+      ++out->blocked_threads;
+      uint64_t age = now >= waits[i].since_ns ? now - waits[i].since_ns : 0;
+      if (!out->wait_ns || age < out->wait_ns)
+        out->wait_ns = age;
+    }
+  }
+  return true;
+}
+static void watchdog_decorate(void *context, gotel_scope_t *scope) {
+  (void)context;
+  gotel_attr_string(scope, "thread.blocked.span.name", watchdog_detail.span_name);
+  gotel_attr_int(scope, "asciichat_errno.code", watchdog_detail.error_code);
+  gotel_attr_string(scope, "asciichat_errno.code_message", asciichat_error_string(watchdog_detail.error_code));
+  gotel_attr_string(scope, "asciichat_errno.message", watchdog_detail.error_message);
+}
+#endif
 static void *export_worker(void *arg) {
   gotel_host_t *h = arg;
   uint64_t last_health = 0;
@@ -331,6 +371,12 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   config.exporter_event = exporter_event;
   config.metrics = metrics;
   config.metric_count = ASCII_OTEL_METRIC_COUNT;
+#ifndef NDEBUG
+  config.watchdog.snapshot = watchdog_snapshot;
+  config.watchdog.decorate = watchdog_decorate;
+  config.watchdog.operation = ASCII_OTEL_THREAD_DEADLOCK;
+  config.watchdog.metric = ASCII_OTEL_METRIC_DEADLOCK_THREADS;
+#endif
   typedef char otel_arg_name_t[128];
   size_t argument_count = argc > 0 ? (size_t)argc : 1;
   const char **resource_args = SAFE_CALLOC(argument_count, sizeof(*resource_args), const char **);

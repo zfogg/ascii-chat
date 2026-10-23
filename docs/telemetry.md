@@ -299,3 +299,47 @@ queries confirmed 901 mirror captures with six capture spans, 575 server video
 renders with three render spans, and (in the audio/video run) 1,381 client audio
 captures with 14 spans, 955 server audio renders with six spans, and 467 Opus
 decodes with four spans. Metrics continue counting work omitted from traces.
+
+
+### Spaniel alerts and deadlock watchdog
+
+Compose mounts `deploy/otel/alerts` read-only and passes `--alerts-dir /alerts`.
+Stable YAML IDs preserve rule identity. After editing a rule, run
+`docker compose -f deploy/otel/docker-compose.yml restart spaniel` and check the
+rule's source file, hash, and evaluation health in Spaniel. File definitions are
+the source of truth; browser notifications are enabled, remote delivery is not.
+
+The six rules cover distinct errored traces (one in five minutes), exporter loss
+(any recent dropped/rejected records), exporter queue pressure (80% for a minute),
+outbound queue delay (250 ms average, at least 20 observations, for a minute),
+audio glitches (10 in five minutes, pending 30 seconds), and invalid/conversion
+frame drops (five in five minutes, pending 30 seconds). Counter queries compute
+positive per-process/per-series deltas, handling resets and duplicate snapshots;
+they do not alert on old lifetime totals. Normal frame replacement and hidden
+screens are excluded. Stopped development processes do not produce silence alerts.
+
+With telemetry enabled in a debug build, gotel polls ascii-chat's nonblocking
+mutex wait-cycle callback on the independent telemetry worker, once per second.
+A cycle whose newest wait is at least two seconds old produces a completed
+`ascii-chat.thread.deadlock` ERROR span and the gauge
+`ascii-chat.thread.deadlock.threads`. Reports repeat at most every 30 seconds per
+host. Ordinary contention without a cycle does not qualify. Unavailable snapshots
+are skipped, not treated as recovery. The existing errored-trace alert covers
+these watchdog spans.
+
+The watchdog includes a representative blocked thread's active operation name,
+`asciichat_errno.code`, `asciichat_errno.code_message`, and
+`asciichat_errno.message`, copied when that thread began waiting. Zero/empty means
+no pending errno at that point; `error.type=thread.deadlock` describes the newly
+detected failure. It is parented to the copied blocked span context when available, without modifying that unfinished span.
+
+Detection depends on tracked mutexes and debug lock instrumentation. It cannot
+report fatal process termination, untracked locks, arbitrary hangs, or a stuck
+telemetry worker/exporter. No allocation, logging, or export is attempted from a
+fatal signal handler. The opt-in native smoke check uses actual two-thread mutex
+cycles and checks live export before terminating its disposable child:
+
+```sh
+python tests/manual/test_otel_watchdog.py build/lib/libasciichat.so
+# macOS: build/lib/libasciichat.dylib; Windows: build/bin/asciichat.dll
+```

@@ -1,0 +1,22 @@
+version: 1
+id: ascii-chat-errored-traces
+name: ascii-chat · Traces with errors
+query: |-
+    SELECT service_name,count(DISTINCT trace_id) AS value FROM spans
+    WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND end_ns >= epoch_ns(current_timestamp)-300000000000 AND status_code=2 GROUP BY service_name
+condition:
+    kind: threshold
+    operator: '>='
+    threshold: 1
+group_by:
+    - service_name
+pending_for: 0s
+cooldown: 10m0s
+repeat_interval: 1h0m0s
+severity: warning
+enabled: true
+browser_enabled: true
+pushover_enabled: false
+annotations:
+    runbook: Open Traces, select this service and Error, and inspect error.type and status messages. One trace counts once even when the error propagates through several spans. Sampling and dropped telemetry can undercount; expected EOF/EAGAIN must not be marked ERROR.
+    summary: At least one retained trace has an ERROR span in the last five minutes.

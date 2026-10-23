@@ -163,3 +163,4 @@ ASCII_OTEL_OPERATION(DISCOVERY_LEAVE, "ascii-chat.discovery.session.leave", fals
 ASCII_OTEL_OPERATION(DISCOVERY_HOST_ANNOUNCE, "ascii-chat.discovery.host.announce", false)
 ASCII_OTEL_OPERATION(DISCOVERY_HOST_LOST, "ascii-chat.discovery.host.lost", false)
 ASCII_OTEL_OPERATION(DISCOVERY_HANDOFF, "ascii-chat.discovery.handoff.tick", false)
+ASCII_OTEL_OPERATION(THREAD_DEADLOCK, "ascii-chat.thread.deadlock", false)

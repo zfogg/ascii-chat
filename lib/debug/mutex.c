@@ -20,6 +20,7 @@
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/platform/thread.h>
 #include <string.h>
+#include <ascii-chat/otel.h>
 
 // ============================================================================
 // Per-thread Lock Stack Storage
@@ -31,6 +32,7 @@ typedef struct {
   mutex_stack_entry_t stack[MUTEX_STACK_MAX_DEPTH];
   int depth;
   atomic_t guard;
+  mutex_wait_snapshot_t telemetry;
 } thread_lock_stack_t;
 
 static void stack_lock(thread_lock_stack_t *stack) {
@@ -200,7 +202,25 @@ static void mutex_stack_push(uintptr_t mutex_key, const char *mutex_name, mutex_
   // Register this thread in the global registry on first mutex use
   register_thread_if_needed();
 
+  mutex_wait_snapshot_t telemetry = {0};
+  asciichat_error_context_t error = {0};
+  if (state == MUTEX_STACK_STATE_PENDING && ascii_otel_enabled()) {
+    SAFE_STRNCPY(telemetry.span_name, ascii_otel_current_operation(), sizeof(telemetry.span_name));
+#ifdef ASCIICHAT_WITH_OTEL
+    gotel_context_t context = ascii_otel_context();
+    memcpy(telemetry.trace_id, context.trace_id, sizeof(context.trace_id));
+    memcpy(telemetry.span_id, context.span_id, sizeof(context.span_id));
+    telemetry.context_valid = context.valid;
+    telemetry.context_sampled = context.sampled;
+#endif
+    (void)HAS_ERRNO(&error);
+  }
   stack_lock(stack);
+  if (state == MUTEX_STACK_STATE_PENDING) {
+    telemetry.error_code = error.code;
+    memcpy(telemetry.error_message, error.context_message, sizeof(telemetry.error_message));
+    stack->telemetry = telemetry;
+  }
   if (stack->depth >= MUTEX_STACK_MAX_DEPTH) {
     stack_unlock(stack);
     return;
@@ -485,6 +505,7 @@ bool mutex_stack_try_snapshot(mutex_wait_snapshot_t *waits, size_t capacity, siz
     }
     snapshots[i].depth = stack->depth;
     memcpy(snapshots[i].stack, stack->stack, sizeof(stack->stack));
+    snapshots[i].telemetry = stack->telemetry;
     atomic_store(&stack->guard.impl, 0);
   }
   atomic_store(&g_registry_guard.impl, 0);
@@ -505,8 +526,12 @@ bool mutex_stack_try_snapshot(mutex_wait_snapshot_t *waits, size_t capacity, siz
       if (detect_cycle_dfs(snapshots, threads, i, path, &length) >= 0)
         for (int j = 0; j < length; ++j)
           cycle |= path[j] == i;
-      waits[(*count)++] = (mutex_wait_snapshot_t){key, (uintptr_t)ids[i],
-                                                  snapshots[i].stack[snapshots[i].depth - 1].timestamp_ns, cycle};
+      mutex_wait_snapshot_t *wait = &waits[(*count)++];
+      *wait = snapshots[i].telemetry;
+      wait->mutex_key = key;
+      wait->thread_key = (uintptr_t)ids[i];
+      wait->since_ns = snapshots[i].stack[snapshots[i].depth - 1].timestamp_ns;
+      wait->cycle = cycle;
     }
   }
   atomic_flag_clear(&sampling);
