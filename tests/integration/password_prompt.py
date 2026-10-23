@@ -70,7 +70,7 @@ def main():
         terminals, services = [], []
         def terminal(name, mode_args, password=False):
             env = {**environment, **({'ASCII_CHAT_PASSWORD': 's3 cret!'} if password else {})}
-            term = Terminal([binary, '--no-check-update', '--log-level', 'debug', '--log-file',
+            term = Terminal([binary, '--no-check-update', '--log-level', 'info', '--log-file',
                              str(root / (name + '.log')), *mode_args], rows=30, cols=100,
                             terminal_replies=True, environment=env)
             terminals.append(term)
@@ -108,8 +108,8 @@ def main():
             save(peer, 'client-initial')
             peer.write('short\r')
             peer.expect(lambda s: '*****' in s and 'Password required' in s, 'Short input submitted')
-            peer.write('\x1b[H' + '\x1b[3~' * 5)
-            peer.expect(lambda s: '*****' not in s, 'Home/Delete editing failed')
+            peer.write('\b' * 5)
+            peer.expect(lambda s: '*' not in s, 'Backspace editing failed')
             reject(peer, 'wrongpass', paste=True)
             save(peer, 'client-incorrect')
             reject(peer, 'wrong again')
