@@ -961,9 +961,10 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   }
 
   // Handle first frame - perform initial terminal reset and splash cleanup
-  ui_controller_title_ready();
   bool was_first_frame = atomic_exchange_bool(&ctx->first_frame, false);
   if (was_first_frame) {
+    ui_controller_title_ready();
+    ui_controller_title_activity(UI_TITLE_ACTIVITY_IDLE);
     // Stop splash screen when first frame is ready
     splash_intro_done();
     splash_wait_for_animation();

@@ -40,10 +40,23 @@ void ui_controller_remove(ui_screen_t screen);
 void ui_controller_shutdown(void);
 /** Start interactive title presentation. Producer events never write to the terminal. */
 asciichat_error_t ui_controller_title_start(const char *mode, int fd);
-void ui_controller_title_ready(void);
-void ui_controller_title_discovery(bool has_session, bool joining);
 typedef enum { UI_TITLE_IDLE, UI_TITLE_RENDERING, UI_TITLE_FINALIZING, UI_TITLE_FAILED } ui_title_render_t;
 void ui_controller_title_render(ui_title_render_t phase);
+void ui_controller_title_ready(void);
+typedef enum {
+  UI_TITLE_ACTIVITY_IDLE,
+  UI_TITLE_CONNECTING,
+  UI_TITLE_RECONNECTING,
+  UI_TITLE_CREATING_SESSION,
+  UI_TITLE_JOINING_SESSION,
+  UI_TITLE_WAITING_PEERS
+} ui_title_activity_t;
+void ui_controller_title_activity(ui_title_activity_t activity);
+void ui_controller_title_discovery(bool has_session, bool joining);
+/** Keep a complete terminal protocol packet and its flush separate from title updates.
+ * Call outside presentation callbacks; application shutdown must follow packet completion. */
+void ui_controller_packet_begin(void);
+void ui_controller_packet_end(void);
 /** Stop presentation and restore cursor visibility on an interactive terminal. */
 void ui_controller_restore_terminal(void);
 void ui_controller_redraw(void);

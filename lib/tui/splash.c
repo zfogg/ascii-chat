@@ -89,6 +89,7 @@ void splash_clear_discovery_session(void) {
   discovery_splash_init();
   mutex_lock(&g_discovery_splash_mutex);
   memset(&g_discovery_splash, 0, sizeof(g_discovery_splash));
+  ui_controller_title_activity(UI_TITLE_ACTIVITY_IDLE);
   mutex_unlock(&g_discovery_splash_mutex);
 }
 

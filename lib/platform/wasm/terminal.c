@@ -339,6 +339,6 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
 }
 
 void ui_controller_title_ready(void) {}
-void ui_controller_title_render(ui_title_render_t phase) {
-  (void)phase;
+void ui_controller_title_activity(ui_title_activity_t activity) {
+  (void)activity;
 }

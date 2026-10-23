@@ -84,6 +84,7 @@ static _Thread_local frame_buffer_t *g_capture;
 static _Thread_local const animation_sample_t *g_animation;
 static lifecycle_t g_lifecycle = LIFECYCLE_INIT;
 static mutex_t g_mutex;
+static mutex_t g_title_packet_mutex;
 static cond_t g_render_done;
 static cond_t g_render_requested;
 static int g_rendering_screen = -1;
@@ -495,10 +496,15 @@ terminal_size_t ui_controller_size(void) {
   terminal_size_t size = {.cols = 80, .rows = 24};
   if (lifecycle_is_initialized(&g_lifecycle)) {
     size = unpack_size(atomic_load(&g_size));
-  } else {
+  }
+  // A title-only controller has no screen to poll geometry yet.
+  if (!lifecycle_is_initialized(&g_lifecycle) || atomic_load(&g_screen_mask) == 0) {
     terminal_size_t detected = {0};
-    if (terminal_get_size(&detected) == ASCIICHAT_OK && detected.cols > 0 && detected.rows > 0)
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    if (terminal_get_size_fd(atomic_load(&g_default_fd), &detected) == ASCIICHAT_OK && detected.cols > 0 &&
+        detected.rows > 0)
       size = detected;
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   }
   return size;
 }
@@ -565,27 +571,34 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
   view->drew = true;
 }
 
-static _Atomic(const char *) g_title_mode;
+static atomic_t g_title_active = {0};
 static bool g_title_saved;
+static bool g_title_written;
+static bool g_title_startup_finished;
 static int g_title_fd = -1;
 static uint64_t g_title_started;
-static _Atomic bool g_title_ready;
-static _Atomic int g_title_render;
-static _Atomic int g_title_discovery;
+static atomic_t g_title_render = {0};
+static atomic_t g_title_ready = {0};
 static char g_last_title[512];
+static const char *g_title_mode;
+static atomic_t g_title_activity = {0};
 
 void ui_controller_title_ready(void) {
-  atomic_store(&g_title_ready, true);
-}
-void ui_controller_title_discovery(bool has_session, bool joining) {
-  atomic_store(&g_title_discovery, joining ? 2 : has_session ? 3 : 1);
-  if (has_session && !joining)
-    ui_controller_title_ready();
+  atomic_store_bool(&g_title_ready, true);
 }
 void ui_controller_title_render(ui_title_render_t phase) {
-  atomic_store(&g_title_render, phase);
+  atomic_store_int(&g_title_render, phase);
   if (phase != UI_TITLE_IDLE)
     ui_controller_title_ready();
+}
+
+void ui_controller_title_activity(ui_title_activity_t activity) {
+  atomic_store_int(&g_title_activity, activity);
+}
+void ui_controller_title_discovery(bool has_session, bool joining) {
+  ui_controller_title_activity(joining       ? UI_TITLE_JOINING_SESSION
+                               : has_session ? UI_TITLE_WAITING_PEERS
+                                             : UI_TITLE_CREATING_SESSION);
 }
 
 static const char *title_screen_label(int screen, const void *snapshot) {
@@ -612,38 +625,39 @@ static const char *title_screen_label(int screen, const void *snapshot) {
 }
 
 static void title_update(int screen, const void *snapshot, bool covered) {
-  const char *mode = atomic_load(&g_title_mode);
-  if (!mode || g_title_fd < 0)
+  if (!atomic_load_bool(&g_title_active))
     return;
+  // Preserve the shell's title once for application exit, never for view navigation.
   if (!g_title_saved) {
     asciichat_errno_scope_t scope = errno_scope_begin();
+    mutex_lock(&g_title_packet_mutex);
     (void)terminal_title_save(g_title_fd);
+    mutex_unlock(&g_title_packet_mutex);
     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
     g_title_saved = true;
   }
-  uint64_t elapsed = time_get_ns() - g_title_started;
-  const char *separator = terminal_should_use_utf8() ? " • " : " - ";
-  char title[512];
-  if (!atomic_load(&g_title_ready) || elapsed < 3 * NS_PER_SEC_INT) {
-    snprintf(title, sizeof(title), "ascii-chat%svideo chat in your terminal", separator);
-  } else {
-    int phase = atomic_load(&g_title_render);
-    const char *operation = phase == UI_TITLE_RENDERING    ? "rendering file..."
-                            : phase == UI_TITLE_FINALIZING ? "finalizing file..."
-                            : phase == UI_TITLE_FAILED     ? "rendering failed"
-                                                           : NULL;
-    bool spinning = phase == UI_TITLE_RENDERING || phase == UI_TITLE_FINALIZING;
-    if (!operation && screen == UI_SCREEN_SPLASH) {
-      int discovery = atomic_load(&g_title_discovery);
-      operation = discovery == 1                ? "creating session..."
-                  : discovery == 2              ? "joining session..."
-                  : discovery == 3              ? "waiting for peers"
-                  : strcmp(mode, "client") == 0 ? "connecting..."
-                                                : NULL;
-      spinning = operation && discovery != 3;
-    }
-    snprintf(title, sizeof(title), "ascii-chat%s%s%s%s%s%s", separator, mode, operation ? separator : "",
-             operation ? operation : "", spinning ? " " : "", spinning ? ui_spinner_glyph(elapsed, false) : "");
+  char title[512] = {0};
+  if (terminal_should_use_utf8()) {
+    int phase = atomic_load_int(&g_title_render);
+    int activity = atomic_load_int(&g_title_activity);
+    if (phase != UI_TITLE_IDLE || activity != UI_TITLE_ACTIVITY_IDLE || screen >= UI_SCREEN_LOGS ||
+        (atomic_load_bool(&g_title_ready) && time_get_ns() - g_title_started >= 3 * NS_PER_SEC_INT))
+      g_title_startup_finished = true;
+    bool startup = !g_title_startup_finished;
+    const char *status = phase == UI_TITLE_RENDERING             ? "rendering file..."
+                         : phase == UI_TITLE_FINALIZING          ? "finalizing file..."
+                         : phase == UI_TITLE_FAILED              ? "rendering failed"
+                         : activity == UI_TITLE_CONNECTING       ? "connecting..."
+                         : activity == UI_TITLE_RECONNECTING     ? "reconnecting..."
+                         : activity == UI_TITLE_CREATING_SESSION ? "creating session..."
+                         : activity == UI_TITLE_JOINING_SESSION  ? "joining session..."
+                         : activity == UI_TITLE_WAITING_PEERS    ? "waiting for peers..."
+                                                                 : NULL;
+    bool spinning = phase == UI_TITLE_RENDERING || phase == UI_TITLE_FINALIZING ||
+                    (phase == UI_TITLE_IDLE && activity != UI_TITLE_ACTIVITY_IDLE);
+    snprintf(title, sizeof(title), "🔠 ascii-chat • %s%s%s%s%s", startup ? "video chat in your terminal" : g_title_mode,
+             status ? " • " : "", status ? status : "", spinning ? " " : "",
+             spinning ? ui_spinner_glyph(time_get_ns() - g_title_started, false) : "");
     int parent = screen == UI_SCREEN_HELP ? keyboard_help_parent_screen() : screen;
     const char *label;
     if (screen == UI_SCREEN_HELP) {
@@ -653,23 +667,26 @@ static void title_update(int screen, const void *snapshot, bool covered) {
     } else {
       label = title_screen_label(parent, snapshot);
     }
-    if (screen == UI_SCREEN_RENDER_PROGRESS && phase == UI_TITLE_IDLE)
+    if (parent == UI_SCREEN_RENDER_PROGRESS && phase == UI_TITLE_IDLE)
       label = "load file/url";
-    bool help = screen == UI_SCREEN_HELP || (screen == UI_SCREEN_LOGS && terminal_screen_logs_help_open());
     size_t used = strlen(title);
     if (label)
-      snprintf(title + used, sizeof(title) - used, "%s%s", separator, label);
+      snprintf(title + used, sizeof(title) - used, " • %s", label);
     used = strlen(title);
-    if (help)
-      snprintf(title + used, sizeof(title) - used, "%shelp", separator);
+    if (screen == UI_SCREEN_HELP || (screen == UI_SCREEN_LOGS && terminal_screen_logs_help_open()))
+      snprintf(title + used, sizeof(title) - used, " • help");
     used = strlen(title);
     if (covered)
-      snprintf(title + used, sizeof(title) - used, "%sterminal too small", separator);
+      snprintf(title + used, sizeof(title) - used, " • terminal too small");
   }
-  if (strcmp(title, g_last_title) != 0) {
+  if (!g_title_written || strcmp(title, g_last_title) != 0) {
     asciichat_errno_scope_t scope = errno_scope_begin();
-    if (terminal_set_title_fd(g_title_fd, title) == ASCIICHAT_OK)
-      snprintf(g_last_title, sizeof(g_last_title), "%s", title);
+    mutex_lock(&g_title_packet_mutex);
+    (void)terminal_set_title_fd(g_title_fd, title);
+    mutex_unlock(&g_title_packet_mutex);
+    // Retry cosmetic failures only when the desired text changes.
+    snprintf(g_last_title, sizeof(g_last_title), "%s", title);
+    g_title_written = true;
     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   }
 }
@@ -968,7 +985,7 @@ static void *presentation_main(void *unused) {
     (void)platform_close(g_title_fd);
     g_title_fd = -1;
     g_title_saved = false;
-    atomic_store(&g_title_mode, NULL);
+    atomic_store_bool(&g_title_active, false);
     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   }
   fps_counter_destroy(g_fps);
@@ -991,13 +1008,20 @@ static asciichat_error_t controller_start(void) {
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI mutex");
     }
+    if (mutex_init(&g_title_packet_mutex, "terminal_title_packets") != 0) {
+      mutex_destroy(&g_mutex);
+      lifecycle_init_abort(&g_lifecycle);
+      return SET_ERRNO(ERROR_THREAD, "Cannot initialize terminal title packet mutex");
+    }
     if (cond_init(&g_render_done, "ui_render_done") != 0) {
+      mutex_destroy(&g_title_packet_mutex);
       mutex_destroy(&g_mutex);
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI render completion condition");
     }
     if (cond_init(&g_render_requested, "ui_render_requested") != 0) {
       cond_destroy(&g_render_done);
+      mutex_destroy(&g_title_packet_mutex);
       mutex_destroy(&g_mutex);
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_THREAD, "Cannot initialize UI presentation condition");
@@ -1006,10 +1030,15 @@ static asciichat_error_t controller_start(void) {
     if (!g_session) {
       cond_destroy(&g_render_requested);
       cond_destroy(&g_render_done);
+      mutex_destroy(&g_title_packet_mutex);
       mutex_destroy(&g_mutex);
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_MEMORY, "Cannot create session UI runtime");
     }
+    NAMED_REGISTER_ATOMIC(&g_title_active, "terminal_title_active", NULL);
+    NAMED_REGISTER_ATOMIC(&g_title_render, "terminal_title_render", NULL);
+    NAMED_REGISTER_ATOMIC(&g_title_ready, "terminal_title_ready", NULL);
+    NAMED_REGISTER_ATOMIC(&g_title_activity, "terminal_title_activity", NULL);
     NAMED_REGISTER_ATOMIC(&g_live, "ui_controller_live", NULL);
     NAMED_REGISTER_ATOMIC(&g_presentation_stop_requested, "ui_presentation_stop_requested", NULL);
     NAMED_REGISTER_ATOMIC(&g_blocked, "ui_controller_blocked", NULL);
@@ -1017,12 +1046,17 @@ static asciichat_error_t controller_start(void) {
     if (acthread_create(&g_thread, "ui_controller", presentation_main, NULL) != ASCIICHAT_OK) {
       ui_session_destroy(g_session);
       g_session = NULL;
+      NAMED_UNREGISTER(&g_title_active);
+      NAMED_UNREGISTER(&g_title_render);
+      NAMED_UNREGISTER(&g_title_ready);
+      NAMED_UNREGISTER(&g_title_activity);
       NAMED_UNREGISTER(&g_live);
       NAMED_UNREGISTER(&g_presentation_stop_requested);
       NAMED_UNREGISTER(&g_blocked);
       NAMED_UNREGISTER(&g_lifecycle.state);
       cond_destroy(&g_render_requested);
       cond_destroy(&g_render_done);
+      mutex_destroy(&g_title_packet_mutex);
       mutex_destroy(&g_mutex);
       lifecycle_init_abort(&g_lifecycle);
       return SET_ERRNO(ERROR_THREAD, "Cannot start UI controller");
@@ -1034,6 +1068,16 @@ static asciichat_error_t controller_start(void) {
   return ASCIICHAT_OK;
 }
 
+void ui_controller_packet_begin(void) {
+  if (lifecycle_is_initialized(&g_lifecycle))
+    mutex_lock(&g_title_packet_mutex);
+}
+
+void ui_controller_packet_end(void) {
+  if (lifecycle_is_initialized(&g_lifecycle))
+    mutex_unlock(&g_title_packet_mutex);
+}
+
 asciichat_error_t ui_controller_start_terminal(int fd) {
   if (fd < 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI terminal descriptor");
@@ -1043,9 +1087,10 @@ asciichat_error_t ui_controller_start_terminal(int fd) {
 }
 
 asciichat_error_t ui_controller_title_start(const char *mode, int fd) {
-  if (!mode || !platform_isatty(fd) || (GET_OPTION(snapshot_mode) && !GET_OPTION(render_file)[0]))
+  if (!mode || !platform_isatty(fd) ||
+      (GET_OPTION(snapshot_mode) && !GET_OPTION(render_file)[0] && !GET_OPTION(render_kitty)))
     return ASCIICHAT_OK;
-  if (atomic_load(&g_title_mode))
+  if (atomic_load_bool(&g_title_active))
     return SET_ERRNO(ERROR_INVALID_STATE, "Terminal title is already initialized");
   atomic_store(&g_default_fd, fd);
   asciichat_error_t result = controller_start();
@@ -1054,12 +1099,16 @@ asciichat_error_t ui_controller_title_start(const char *mode, int fd) {
   g_title_fd = platform_dup(fd);
   if (g_title_fd < 0)
     return SET_ERRNO_SYS(ERROR_TERMINAL, "Cannot retain title terminal");
+  g_title_mode = mode;
   g_title_started = time_get_ns();
   g_last_title[0] = '\0';
-  atomic_store(&g_title_ready, false);
-  atomic_store(&g_title_render, UI_TITLE_IDLE);
+  g_title_written = false;
+  g_title_startup_finished = false;
+  atomic_store_int(&g_title_render, UI_TITLE_IDLE);
+  atomic_store_int(&g_title_activity, UI_TITLE_ACTIVITY_IDLE);
+  atomic_store_bool(&g_title_ready, false);
   // Publish only after the retained descriptor and immutable configuration are ready.
-  atomic_store(&g_title_mode, mode);
+  atomic_store_bool(&g_title_active, true);
   return ASCIICHAT_OK;
 }
 
@@ -1430,11 +1479,16 @@ void ui_controller_shutdown(void) {
   destroy_media_snapshots();
   cond_destroy(&g_render_requested);
   cond_destroy(&g_render_done);
+  mutex_destroy(&g_title_packet_mutex);
   mutex_destroy(&g_mutex);
   atomic_store_bool(&g_live, false);
   atomic_store(&g_background_screen, -1);
   atomic_store(&g_screen_mask, 0);
   ui_controller_select_interactive(-1);
+  NAMED_UNREGISTER(&g_title_active);
+  NAMED_UNREGISTER(&g_title_render);
+  NAMED_UNREGISTER(&g_title_ready);
+  NAMED_UNREGISTER(&g_title_activity);
   NAMED_UNREGISTER(&g_live);
   NAMED_UNREGISTER(&g_presentation_stop_requested);
   NAMED_UNREGISTER(&g_blocked);

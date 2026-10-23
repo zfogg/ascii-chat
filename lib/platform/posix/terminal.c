@@ -1062,7 +1062,7 @@ asciichat_error_t terminal_set_title_fd(int fd, const char *title) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal title must not be NULL");
   char sequence[1024];
   size_t used = 4, length = strlen(title);
-  memcpy(sequence, "\033]2;", 4);
+  memcpy(sequence, "\033]0;", 4);
   if (length > sizeof(sequence) - 7)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal title is too long");
   for (size_t i = 0; i < length; ++i) {

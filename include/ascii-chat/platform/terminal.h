@@ -430,8 +430,8 @@ asciichat_error_t terminal_restore_cursor(void);
  * @param title Title string to set (must not be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Sets the terminal window title to the specified string. Uses ANSI
- * escape sequence ESC]2;titleST or platform-specific API. Title
+ * Sets the terminal window and icon titles to the specified string. Uses ANSI
+ * escape sequence ESC]0;titleST or platform-specific API. Title
  * appears in window title bar or terminal tab.
  *
  * @note Oversized titles are rejected without splitting UTF-8 characters.
