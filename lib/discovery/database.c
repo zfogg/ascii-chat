@@ -668,10 +668,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
              session->current_participants + 1, session->max_participants);
   }
 
-  {
-    ASCII_OTEL_SCOPE(CALL_SESSION_USED);
-    ASCII_OTEL_ATTR_STRING("ascii-chat.session.string", session_string);
-  }
+  ascii_otel_call_session_used(session_string);
 
   session_entry_destroy(session);
   database_telemetry_population(db);

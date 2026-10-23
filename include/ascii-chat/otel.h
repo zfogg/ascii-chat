@@ -25,6 +25,7 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv);
 void ascii_otel_shutdown(void);
 bool ascii_otel_enabled(void);
 void ascii_otel_metric(ascii_otel_metric_t metric, double value);
+void ascii_otel_call_session_used(const char *session_string);
 void ascii_otel_exit(int code);
 gotel_context_t ascii_otel_context(void);
 void ascii_otel_scope_int(ascii_otel_scope_t *scope, const char *key, int64_t value);
@@ -49,6 +50,7 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count);
 #define ASCII_OTEL_ATTR_STRING(key, value) ((void)(key), (void)(value))
 #define ASCII_OTEL_ATTR_INT(key, value) ((void)(key), (void)(value))
 #define ascii_otel_enabled() false
+#define ascii_otel_call_session_used(session_string) ((void)(session_string))
 #define ascii_otel_metric(metric, value) ((void)(metric), (void)(value))
 #define ASCII_OTEL_SCOPE_PARENT(id, parent) ((void)0)
 #define ASCII_OTEL_SCOPE(id) ((void)0)

@@ -183,6 +183,14 @@ void ascii_otel_scope_end(ascii_otel_scope_t *s) {
   s->retained = false;
   release();
 }
+void ascii_otel_call_session_used(const char *session_string) {
+  if (!session_string || !session_string[0])
+    return;
+  // Call usage must not inherit a realtime packet's sampling decision.
+  gotel_context_t root = {0};
+  ASCII_OTEL_SCOPE_PARENT(CALL_SESSION_USED, &root);
+  ASCII_OTEL_ATTR_STRING("ascii-chat.session.string", session_string);
+}
 void ascii_otel_shutdown(void) {
   gotel_host_t *h = atomic_exchange_explicit(&host, NULL, memory_order_seq_cst);
   if (!h)
