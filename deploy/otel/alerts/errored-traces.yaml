@@ -1,14 +1,14 @@
 version: 1
 id: ascii-chat-errored-traces
 name: ascii-chat · Traces with errors
-query: |-
-    SELECT service_name,trace_id AS event_id,max(end_ns) AS event_time_ns FROM spans
-    WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND end_ns >= epoch_ns(current_timestamp)-300000000000 AND status_code=2
-    GROUP BY service_name,trace_id ORDER BY event_time_ns DESC,event_id
+query: "SELECT s.service_name,s.trace_id AS event_id,max(s.end_ns) AS event_time_ns FROM spans s\nWHERE s.session_id=$session_id AND s.service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\
+  \ AND s.end_ns >= epoch_ns(current_timestamp)-300000000000 AND s.status_code=2\nAND NOT EXISTS (SELECT 1 FROM spans classified WHERE classified.session_id=$session_id\
+  \ AND classified.trace_id=s.trace_id\n AND classified.name IN ('ascii-chat.failure.crypto','ascii-chat.failure.protocol','ascii-chat.failure.discovery','ascii-chat.frame.validation.rejected'))\n\
+  GROUP BY s.service_name,s.trace_id ORDER BY event_time_ns DESC,event_id"
 condition:
-    kind: event
+  kind: event
 group_by:
-    - service_name
+- service_name
 pending_for: 0s
 cooldown: 10m0s
 repeat_interval: 0s
@@ -17,5 +17,7 @@ enabled: true
 browser_enabled: true
 pushover_enabled: false
 annotations:
-    runbook: Open Traces, select this service and Error, and inspect error.type and status messages. Each trace ID fires once and stays handled after acknowledgement or replay, even when the error propagates through several spans. Sampling and dropped telemetry can undercount; expected EOF/EAGAIN must not be marked ERROR.
-    summary: A new retained trace has an ERROR span. Acknowledged trace IDs do not notify again.
+  runbook: Open Traces, select this service and Error, and inspect error.type and status messages. Each trace ID fires once and stays handled after acknowledgement
+    or replay, even when the error propagates through several spans. Sampling and dropped telemetry can undercount; expected EOF/EAGAIN must not be marked ERROR.
+    Dedicated crypto, protocol, discovery and invalid-frame alerts own their traces to avoid duplicate generic notifications.
+  summary: A new retained trace has an ERROR span. Acknowledged trace IDs do not notify again.

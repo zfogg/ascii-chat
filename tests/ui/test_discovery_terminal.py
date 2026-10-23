@@ -4,6 +4,13 @@ Install pywinpty and pyte in a test environment, then run:
   python tests/ui/test_discovery_terminal.py build/bin/ascii-chat.exe
 Uses a private local ACDS, ephemeral ports, and generated test-pattern video.
 """
+
+# Apply the shared test policy before importing helpers or starting native children.
+from pathlib import Path as _TestPath
+import sys as _test_sys
+_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
+import _environment  # noqa: F401
+
 import os
 from pathlib import Path
 import re

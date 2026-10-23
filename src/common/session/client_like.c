@@ -662,8 +662,11 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
       ASCII_OTEL_ATTR_STRING("session.attempt.kind", attempt > 1 ? "reconnect" : "initial");
       result = config->run_fn(state->capture, state->display, config->run_user_data);
       ASCII_OTEL_ATTR_INT("session.result", result);
+      if (result != ASCIICHAT_OK && result != ERROR_SIGNAL_INTERRUPT &&
+          config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR && !APP_CALLBACK_BOOL(should_exit))
+        ascii_otel_metric(ASCII_OTEL_METRIC_CONNECTION_FAILURE, 1);
 #ifdef ASCIICHAT_WITH_OTEL
-      if (result != ASCIICHAT_OK)
+      if (result != ASCIICHAT_OK && result != ERROR_SIGNAL_INTERRUPT)
         ascii_otel_error("Session attempt failed");
 #endif
     }

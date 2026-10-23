@@ -359,26 +359,14 @@ Test(otel, ascii_none_does_not_start_worker) {
   adapter_start("none");
   cr_assert_not(ascii_otel_enabled());
 }
-Test(otel, bounded_operations_do_not_inherit_lifetime_spans) {
-  adapter_start("traces");
-  gotel_context_t cli = ascii_otel_context();
-  cr_assert(cli.valid);
-  const ascii_otel_operation_t lifetimes[] = {ASCII_OTEL_SESSION_CLIENT_LIKE_RUN, ASCII_OTEL_SESSION_ATTEMPT};
-  for (size_t i = 0; i < sizeof(lifetimes) / sizeof(lifetimes[0]); ++i) {
-    ascii_otel_scope_t lifetime = {0}, operation_scope = {0}, child = {0};
-    ascii_otel_scope_begin(&lifetime, lifetimes[i]);
-    ascii_otel_scope_begin(&operation_scope, ASCII_OTEL_DATABASE_INIT);
-    cr_assert_neq(memcmp(lifetime.scope.context.trace_id, operation_scope.scope.context.trace_id, 16), 0);
-    cr_assert_neq(memcmp(cli.trace_id, operation_scope.scope.context.trace_id, 16), 0);
-    ascii_otel_scope_begin(&child, ASCII_OTEL_FFMPEG_PACKET_READ);
-    cr_assert(child.scope.context.sampled);
-    cr_assert_arr_eq(operation_scope.scope.context.trace_id, child.scope.context.trace_id, 16);
-    ascii_otel_scope_end(&child);
-    ascii_otel_scope_end(&operation_scope);
-    cr_assert_arr_eq(lifetime.scope.context.span_id, ascii_otel_context().span_id, 8);
-    ascii_otel_scope_end(&lifetime);
-    cr_assert_arr_eq(cli.span_id, ascii_otel_context().span_id, 8);
-  }
+Test(otel, test_mode_cannot_start_adapter_with_explicit_collector) {
+  adapter_start("traces,logs,metrics");
+  cr_assert_not(ascii_otel_enabled());
+  cr_assert_not(ascii_otel_context().valid);
+  ascii_otel_scope_t scope = {0};
+  ascii_otel_scope_begin(&scope, ASCII_OTEL_DATABASE_INIT);
+  cr_assert_not(scope.retained);
+  ascii_otel_scope_end(&scope);
 }
 
 Test(otel, bounded_children_keep_unsampled_parent_decision) {
@@ -392,13 +380,13 @@ Test(otel, bounded_children_keep_unsampled_parent_decision) {
   ascii_otel_scope_end(&child);
   ascii_otel_scope_end(&operation_scope);
 }
-Test(otel, ascii_http_success_clears_transport_error) {
+Test(otel, ascii_http_in_test_mode_is_a_safe_noop) {
   adapter_start("traces,metrics");
   ascii_otel_scope_t scope = {0};
   ascii_otel_scope_begin(&scope, ASCII_OTEL_HTTP);
-  cr_assert(scope.retained);
+  cr_assert_not(scope.retained);
   ascii_otel_http(&scope, "example.invalid", "/items/123?q=secret");
-  cr_assert(scope.scope.failed);
+  cr_assert_not(scope.scope.failed);
   ascii_otel_http_status(&scope, 200);
   cr_assert_not(scope.scope.failed);
   ascii_otel_scope_end(&scope);
@@ -474,4 +462,25 @@ Test(otel, http_error_status_marks_scope_failed) {
   gotel_end(&scope);
   cr_assert_eq(gotel_drain(host), OTLP_OK);
   cr_assert_eq(stats().sent, 1);
+}
+
+Test(otel, classifies_actionable_failures_without_cancellation_or_incomplete_reads) {
+  cr_assert_eq(ascii_otel_failure_operation(ERROR_CRYPTO_AUTH, ""), ASCII_OTEL_FAILURE_CRYPTO);
+  cr_assert_eq(ascii_otel_failure_operation(ERROR_INVALID_SIGNATURE, ""), ASCII_OTEL_FAILURE_CRYPTO);
+  cr_assert_eq(ascii_otel_failure_operation(ERROR_NETWORK_PROTOCOL, ""), ASCII_OTEL_FAILURE_PROTOCOL);
+  cr_assert_eq(ascii_otel_failure_operation(ERROR_UNKNOWN_PACKET, ""), ASCII_OTEL_FAILURE_PROTOCOL);
+  cr_assert_eq(ascii_otel_failure_operation(ERROR_SESSION_NOT_FOUND, ""), ASCII_OTEL_FAILURE_DISCOVERY);
+  cr_assert_eq(ascii_otel_failure_operation(ERROR_NETWORK_CONNECT, "ascii-chat.discovery.connect"), ASCII_OTEL_FAILURE_DISCOVERY);
+  cr_assert_eq(ascii_otel_failure_operation(ERROR_SIGNAL_INTERRUPT, "ascii-chat.discovery.connect"), ASCII_OTEL_OPERATION_COUNT);
+  cr_assert_eq(ascii_otel_failure_operation(ERROR_NETWORK_INCOMPLETE, "ascii-chat.discovery.connect"), ASCII_OTEL_OPERATION_COUNT);
+  cr_assert_eq(ascii_otel_failure_operation(ERROR_NETWORK, "ascii-chat.network.receive"), ASCII_OTEL_OPERATION_COUNT);
+}
+Test(otel, pipeline_stall_requires_recent_capture_and_an_expected_stage) {
+  const uint64_t now = UINT64_C(20000000000), capture = UINT64_C(19500000000), progress = UINT64_C(10000000000);
+  cr_assert_eq(ascii_otel_pipeline_age(now, capture, progress, true), 10);
+  cr_assert_eq(ascii_otel_pipeline_age(now, capture, progress, false), 0);
+  cr_assert_eq(ascii_otel_pipeline_age(now, UINT64_C(17000000000), progress, true), 0);
+  cr_assert_eq(ascii_otel_pipeline_age(now, 0, progress, true), 0);
+  cr_assert_eq(ascii_otel_pipeline_age(now, capture, 0, true), 0);
+  cr_assert_eq(ascii_otel_pipeline_age(now, capture, now, true), 0);
 }

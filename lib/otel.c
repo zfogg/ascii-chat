@@ -1,4 +1,5 @@
 /** @file otel.c Native telemetry lifecycle and ascii-chat instrumentation. */
+#define ASCIICHAT_OTEL_IMPLEMENTATION
 #include <ascii-chat/otel.h>
 #ifdef ASCIICHAT_WITH_OTEL
 #include <ascii-chat/common.h>
@@ -13,6 +14,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/mutex.h>
+#include <ascii-chat/tests/test_env.h>
 #include <stdatomic.h>
 #include <math.h>
 #include <stdio.h>
@@ -201,6 +203,42 @@ static void watchdog_decorate(void *context, gotel_scope_t *scope) {
   gotel_attr_string(scope, "asciichat_errno.message", watchdog_detail.error_message);
 }
 #endif
+static atomic_uint_fast64_t pipeline_capture_ns, pipeline_display_ns, pipeline_encode_ns;
+static atomic_uint pipeline_expected;
+void ascii_otel_pipeline_progress(unsigned stage, unsigned expected) {
+  if (!ascii_otel_enabled()) return;
+  uint64_t now = time_get_ns();
+  if (stage == 0) {
+    if (!atomic_load(&pipeline_capture_ns)) {
+      atomic_store(&pipeline_display_ns, now);
+      atomic_store(&pipeline_encode_ns, now);
+    }
+    if (!(expected & 1)) atomic_store(&pipeline_display_ns, now);
+    if (!(expected & 2)) atomic_store(&pipeline_encode_ns, now);
+    atomic_store(&pipeline_expected, expected);
+    atomic_store(&pipeline_capture_ns, now);
+  } else if (stage == 1) atomic_store(&pipeline_display_ns, now);
+  else if (stage == 2) atomic_store(&pipeline_encode_ns, now);
+  else {
+    atomic_store(&pipeline_expected, 0);
+    atomic_store(&pipeline_capture_ns, 0);
+    ascii_otel_metric(ASCII_OTEL_METRIC_PIPELINE_DISPLAY_STALL, 0);
+    ascii_otel_metric(ASCII_OTEL_METRIC_PIPELINE_ENCODE_STALL, 0);
+  }
+}
+double ascii_otel_pipeline_age(uint64_t now, uint64_t capture, uint64_t progress, bool expected) {
+  return expected && capture && progress && now >= capture && now >= progress && now-capture < 2 * NS_PER_SEC_INT
+      ? (double)(now-progress)/1e9 : 0;
+}
+static void pipeline_health(gotel_host_t *h, uint64_t now) {
+  uint64_t capture = atomic_load(&pipeline_capture_ns);
+  unsigned expected = atomic_load(&pipeline_expected);
+  uint64_t display = atomic_load(&pipeline_display_ns), encode = atomic_load(&pipeline_encode_ns);
+  (void)gotel_metric_record(h, ASCII_OTEL_METRIC_PIPELINE_DISPLAY_STALL,
+      ascii_otel_pipeline_age(now, capture, display, (expected & 1) != 0));
+  (void)gotel_metric_record(h, ASCII_OTEL_METRIC_PIPELINE_ENCODE_STALL,
+      ascii_otel_pipeline_age(now, capture, encode, (expected & 2) != 0));
+}
 static void *export_worker(void *arg) {
   gotel_host_t *h = arg;
   uint64_t last_health = 0;
@@ -213,6 +251,7 @@ static void *export_worker(void *arg) {
                       "gotel_metric_record");
     if (!last_health || start - last_health >= NS_PER_SEC_INT) {
       last_health = start;
+      pipeline_health(h, time_get_ns());
       platform_process_stats_t process;
       if (platform_process_stats(&process) == ASCIICHAT_OK) {
         (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_CPU, process.cpu_seconds), "gotel_metric_record");
@@ -390,6 +429,9 @@ static const char *telemetry_argument(const char *argument, int index, const cha
 }
 
 asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
+  // Test mode is a hard export prohibition, including explicit endpoints and CLI overrides.
+  if (is_test_environment())
+    return ASCIICHAT_OK;
   const options_t *o = options_get();
   const char *endpoint = o->otel_endpoint;
   bool endpoint_cli = false, timeout_cli = false;
@@ -570,6 +612,39 @@ void ascii_otel_frame_rejected(const char *validator, const char *reason, size_t
   ASCII_OTEL_ATTR_STRING("asciichat_errno.code_message", asciichat_error_string(code));
   if (otel_scope.retained)
     gotel_error(&otel_scope.scope, "ascii_chat.invalid_frame", reason);
+}
+ascii_otel_operation_t ascii_otel_failure_operation(asciichat_error_t code, const char *origin) {
+  if (code == ASCIICHAT_OK || code == ERROR_SIGNAL_INTERRUPT || code == ERROR_NETWORK_INCOMPLETE)
+    return ASCII_OTEL_OPERATION_COUNT;
+  if ((code >= ERROR_CRYPTO && code <= ERROR_CRYPTO_VERIFICATION) || code == ERROR_CRYPTO_INIT ||
+      code == ERROR_INVALID_PASSWORD || code == ERROR_INVALID_SIGNATURE)
+    return ASCII_OTEL_FAILURE_CRYPTO;
+  if (code == ERROR_NETWORK_PROTOCOL || code == ERROR_NETWORK_SIZE || code == ERROR_UNKNOWN_PACKET)
+    return ASCII_OTEL_FAILURE_PROTOCOL;
+  if ((code >= ERROR_SESSION_NOT_FOUND && code <= ERROR_SESSION_FULL) ||
+      code == ERROR_ACDS_STRING_TAKEN || code == ERROR_ACDS_STRING_INVALID ||
+      (origin && !strncmp(origin, "ascii-chat.discovery.", 21)))
+    return ASCII_OTEL_FAILURE_DISCOVERY;
+  return ASCII_OTEL_OPERATION_COUNT;
+}
+void ascii_otel_error_code(asciichat_error_t code, const char *message) {
+  if (code == ASCIICHAT_OK || code == ERROR_SIGNAL_INTERRUPT || code == ERROR_NETWORK_INCOMPLETE) return;
+  ascii_otel_error(message);
+  if (!ascii_otel_enabled()) return;
+  const char *origin = ascii_otel_current_operation();
+  ascii_otel_operation_t operation = ascii_otel_failure_operation(code, origin);
+  if (operation == ASCII_OTEL_OPERATION_COUNT) return;
+  const char *category = operation == ASCII_OTEL_FAILURE_CRYPTO ? "crypto" :
+                         operation == ASCII_OTEL_FAILURE_PROTOCOL ? "protocol" : "discovery";
+  gotel_context_t parent = ascii_otel_context();
+  if (!parent.sampled) parent = (gotel_context_t){0};
+  ascii_otel_scope_t report __attribute__((cleanup(ascii_otel_scope_end))) = {0};
+  ascii_otel_scope_parent(&report, operation, &parent);
+  gotel_attr_string(&report.scope, "ascii_chat.failure.category", category);
+  gotel_attr_string(&report.scope, "ascii_chat.failure.operation", origin);
+  gotel_attr_int(&report.scope, "asciichat_errno.code", code);
+  gotel_attr_string(&report.scope, "asciichat_errno.code_message", asciichat_error_string(code));
+  gotel_error(&report.scope, category, message);
 }
 void ascii_otel_error(const char *message) {
   gotel_current_error("ascii_chat.error", message);

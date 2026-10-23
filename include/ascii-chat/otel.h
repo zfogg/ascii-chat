@@ -39,6 +39,11 @@ void ascii_otel_scope_begin(ascii_otel_scope_t *scope, ascii_otel_operation_t op
 void ascii_otel_scope_end(ascii_otel_scope_t *scope);
 void ascii_otel_log(int level, const char *file, int line, const char *function, const char *format, va_list args);
 void ascii_otel_error(const char *message);
+void ascii_otel_error_code(asciichat_error_t code, const char *message);
+ascii_otel_operation_t ascii_otel_failure_operation(asciichat_error_t code, const char *origin);
+double ascii_otel_pipeline_age(uint64_t now, uint64_t capture, uint64_t progress, bool expected);
+// Stages: capture=0 (expected bits: display=1, encode=2), display=1, encode=2, stop=3.
+void ascii_otel_pipeline_progress(unsigned stage, unsigned expected);
 void ascii_otel_http(ascii_otel_scope_t *scope, const char *hostname, const char *path);
 void ascii_otel_http_status(ascii_otel_scope_t *scope, int status);
 void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count);
@@ -57,10 +62,16 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count);
 #define ASCII_OTEL_PACKET(type, size, action, transport) ((void)0)
 #define ascii_otel_frame_rejected(validator, reason, bytes, width, height, code) \
   ((void)(validator), (void)(reason), (void)(bytes), (void)(width), (void)(height), (void)(code))
+#define ascii_otel_pipeline_progress(stage, expected) ((void)(stage), (void)(expected))
 #define ascii_otel_enabled() false
 #define ascii_otel_current_operation() ""
 #define ascii_otel_call_session_used(session_string) ((void)(session_string))
 #define ascii_otel_metric(metric, value) ((void)(metric), (void)(value))
 #define ASCII_OTEL_SCOPE_PARENT(id, parent) ((void)0)
 #define ASCII_OTEL_SCOPE(id) ((void)0)
+#endif
+
+// Test executables may link the ordinary library; never initialize its exporter.
+#if !defined(ASCIICHAT_OTEL_IMPLEMENTATION) && (defined(TESTING) || defined(CRITERION_TEST) || defined(__CRITERION__))
+#define ascii_otel_init(mode, argc, argv) ((void)(mode), (void)(argc), (void)(argv), ASCIICHAT_OK)
 #endif

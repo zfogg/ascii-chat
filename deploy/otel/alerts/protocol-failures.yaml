@@ -1,0 +1,26 @@
+version: 1
+id: ascii-chat-protocol-failures
+name: ascii-chat · Malformed protocol packet
+query: 'SELECT $session_id AS session_id,service_name,trace_id AS event_id,max(end_ns) AS event_time_ns FROM spans
+
+  WHERE session_id=$session_id AND name=''ascii-chat.failure.protocol'' AND status_code=2
+
+  AND service_name IN (''ascii-chat-server'',''ascii-chat-client'',''ascii-chat-mirror'',''ascii-chat-discovery'',''ascii-chat-discovery-service'') AND end_ns >=
+  epoch_ns(current_timestamp)-300000000000
+
+  GROUP BY service_name,trace_id ORDER BY event_time_ns DESC,event_id'
+condition:
+  kind: event
+group_by:
+- session_id
+- service_name
+pending_for: 0s
+cooldown: 0s
+repeat_interval: 0s
+severity: warning
+enabled: true
+browser_enabled: true
+pushover_enabled: false
+annotations:
+  runbook: Inspect the parent packet span for ACIP packet name, transport, sizes and version. Check CRC, lengths and protocol compatibility. Normal EOF and incomplete
+    buffered reads are excluded.

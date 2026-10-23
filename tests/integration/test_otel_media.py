@@ -1,4 +1,11 @@
 """Prove compression and codec telemetry from real production round trips."""
+
+# Apply the shared test policy before importing helpers or starting native children.
+from pathlib import Path as _TestPath
+import sys as _test_sys
+_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
+import _environment  # noqa: F401
+
 from pathlib import Path
 import os
 import struct
@@ -7,6 +14,9 @@ import sys
 import tempfile
 import wave
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'deps/ascii-chat-deps/gotel/c-gotel/testing/python'))
+if __name__ == "__main__":
+    print("SKIP: collector-export checks are prohibited in test mode; use in-process transport tests")
+    sys.exit(77)
 from gotel_testing import Collector, records, protobuf, service_names
 
 def attributes(span):

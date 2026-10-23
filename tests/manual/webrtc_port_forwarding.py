@@ -8,6 +8,13 @@ server-reflexive candidates are signaled (including candidates embedded in SDP).
 This verifies router readback and data delivery, not off-LAN reachability.
 The ctypes Config/Stun layouts mirror the public C headers; keep them in sync.
 """
+
+# Apply the shared test policy before importing helpers or starting native children.
+from pathlib import Path as _TestPath
+import sys as _test_sys
+_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
+import _environment  # noqa: F401
+
 import argparse
 import sys
 import ctypes as c

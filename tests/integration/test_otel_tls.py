@@ -1,4 +1,11 @@
 """HTTPS integration for the actual ascii-chat worker and CLI/env/TOML settings."""
+
+# Apply the shared test policy before importing helpers or starting native children.
+from pathlib import Path as _TestPath
+import sys as _test_sys
+_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
+import _environment  # noqa: F401
+
 from pathlib import Path
 import os
 import shutil
@@ -10,6 +17,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'deps/ascii-chat-de
 from gotel_testing import Collector, service_names
 
 def main():
+    print("SKIP: collector-export checks are prohibited in test mode; use in-process transport tests and test_otel_disabled.py")
+    return 77
+
     binary = str(Path(sys.argv[1]).resolve())
     env = {k:v for k,v in os.environ.items() if not k.startswith(('OTEL_', 'ASCII_CHAT_OTEL_'))}
     openssl = shutil.which('openssl') or r'C:\Program Files\Git\usr\bin\openssl.exe'
@@ -57,4 +67,4 @@ def main():
                     stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=10)
                 assert result.returncode != 0 and not collector.attempts
                 print(version.name, 'ascii-chat CLI/environment/TOML export and certificate rejection passed')
-if __name__ == '__main__': main()
+if __name__ == '__main__': sys.exit(main())

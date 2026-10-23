@@ -1,18 +1,18 @@
 version: 1
 id: 21f3a8f3-6ec1-4baf-a29a-6f56bceb5178
 name: ascii-chat · FFmpeg and connections
-description: Last 15 minutes. Operation metrics count unsampled work; span timings summarize only retained traces. EOF, EAGAIN and cancellation are normal FFmpeg control flow. No URLs,
-  filenames or peer identities are used as grouping dimensions.
+description: Last 15 minutes. Operation metrics count unsampled work; span timings summarize only retained traces. EOF, EAGAIN and cancellation are normal FFmpeg
+  control flow. No URLs, filenames or peer identities are used as grouping dimensions.
 magic_variables:
 - name: session_id
   kind: string
 panels:
 - title: FFmpeg latency from every operation (cumulative mean, ms)
   display_type: time_series
-  query: WITH snapshots AS (SELECT *,floor(timestamp_ns/10000000000)*10 AS bucket FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
-    AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000 AND (type='histogram' AND (name LIKE 'ascii-chat.ffmpeg.%.duration')) QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket
-    ORDER BY timestamp_ns DESC)=1) SELECT bucket*1000000000 AS timestamp_ns,service_name || ' / ' || name AS group_value,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value
-    FROM snapshots GROUP BY bucket,service_name,name ORDER BY bucket,service_name,name
+  query: WITH snapshots AS (SELECT *,floor(timestamp_ns/10000000000)*10 AS bucket FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
+    AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000 AND (type='histogram' AND (name LIKE 'ascii-chat.ffmpeg.%.duration')) QUALIFY row_number() OVER (PARTITION
+    BY service_name,name,start_timestamp_ns,series_key,bucket ORDER BY timestamp_ns DESC)=1) SELECT bucket*1000000000 AS timestamp_ns,service_name || ' / ' || name
+    AS group_value,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value FROM snapshots GROUP BY bucket,service_name,name ORDER BY bucket,service_name,name
   settings: {}
   layout:
     w: 6
@@ -20,10 +20,11 @@ panels:
   position: 0
 - title: FFmpeg operation and failure totals
   display_type: entity_list
-  query: SELECT service_name || ' / ' || name AS label,process_total AS primary_value FROM (WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
-    AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1)
-    SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name LIKE 'ascii-chat.ffmpeg.%.count' OR name LIKE 'ascii-chat.ffmpeg.%.errors' GROUP BY service_name,name
-    ORDER BY service_name,name) AS totals
+  query: SELECT service_name || ' / ' || name AS label,process_total AS primary_value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND
+    service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp)
+    - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value)
+    AS process_total FROM latest WHERE name LIKE 'ascii-chat.ffmpeg.%.count' OR name LIKE 'ascii-chat.ffmpeg.%.errors' GROUP BY service_name,name ORDER BY service_name,name)
+    AS totals
   settings: {}
   layout:
     w: 6
@@ -31,8 +32,9 @@ panels:
   position: 1
 - title: FFmpeg latency distribution (retained spans, ms)
   display_type: heatmap
-  query: SELECT floor(start_ns/10000000000)*10000000000 AS timestamp_ns, floor(duration_ns/1000000)*1.0 AS bucket_ms,count(*) AS value FROM spans WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
-    AND start_ns>=epoch_ns(current_timestamp)-900000000000 AND name LIKE 'ascii-chat.ffmpeg.%' GROUP BY 1,2 ORDER BY 1,2
+  query: SELECT floor(start_ns/10000000000)*10000000000 AS timestamp_ns, floor(duration_ns/1000000)*1.0 AS bucket_ms,count(*) AS value FROM spans WHERE session_id=$session_id
+    AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND start_ns>=epoch_ns(current_timestamp)-900000000000
+    AND name LIKE 'ascii-chat.ffmpeg.%' GROUP BY 1,2 ORDER BY 1,2
   settings: {}
   layout:
     w: 6
@@ -40,7 +42,7 @@ panels:
   position: 2
 - title: Connection establishment and transition latency (cumulative mean, ms)
   display_type: time_series
-  query: WITH snapshots AS (SELECT *,floor(timestamp_ns/10000000000)*10 AS bucket FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
+  query: WITH snapshots AS (SELECT *,floor(timestamp_ns/10000000000)*10 AS bucket FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
     AND timestamp_ns>=epoch_ns(current_timestamp)-900000000000 AND (type='histogram' AND (name IN ('ascii-chat.network.connection.establish.duration','ascii-chat.network.reconnect.wait.duration','ascii-chat.media.transition.load.duration','ascii-chat.media.transition.commit.duration')))
     QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket ORDER BY timestamp_ns DESC)=1) SELECT bucket*1000000000 AS timestamp_ns,service_name
     || ' / ' || name AS group_value,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value FROM snapshots GROUP BY bucket,service_name,name ORDER BY bucket,service_name,name

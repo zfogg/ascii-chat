@@ -361,6 +361,9 @@ static void *pipeline_capture_thread(void *arg) {
     atomic_cas_u64(&pipeline->first_frame_ns, &zero, frame->captured_ns);
 
     ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_CAPTURED, 1);
+    int telemetry_screen = ui_controller_current_screen();
+    unsigned expected = telemetry_screen == UI_SCREEN_PROMPT || telemetry_screen == UI_SCREEN_LOGS ? 0 : 1;
+    ascii_otel_pipeline_progress(0, expected | (pipeline->has_render_file ? 2 : 0));
     // Fan out: display queue (fast, can drop), encode queue (slow, keep all)
     pipeline_frame_t *display_copy = frame;
     if (pipeline->has_render_file) {
@@ -491,11 +494,13 @@ static void *pipeline_encode_thread(void *arg) {
     pipeline->encode_error = session_display_encode_frame(pipeline->display, &raw_image, frame->captured_ns);
     if (pipeline->encode_error == ASCIICHAT_OK) {
       ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_ENCODED, 1);
+      ascii_otel_pipeline_progress(2, 0);
       ascii_otel_metric(ASCII_OTEL_METRIC_ENCODE_LATENCY,
                         (double)(time_get_ns() - frame->acquisition_started_ns) / 1e9);
     }
     if (pipeline->encode_error != ASCIICHAT_OK) {
       atomic_store_bool(&pipeline->stop, true);
+      ascii_otel_pipeline_progress(3, 0);
       free_frame(frame);
       break;
     }
@@ -676,6 +681,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
           ui_controller_frame_acquired_at(0);
           uint64_t published_ns = time_get_ns();
           ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_DISPLAYED, 1);
+          ascii_otel_pipeline_progress(1, 0);
           ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_LATENCY, (double)(published_ns - acquisition_started_ns) / 1e9);
           session_capture_complete_open(pipeline->capture, epoch);
           log_debug("LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d read_ms=%.2f queue_ms=%.2f convert_ms=%.2f "
@@ -697,6 +703,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
   log_debug("[PIPELINE_MAIN] Main loop exiting, signaling threads to stop");
   atomic_store_bool(&pipeline->stop, true);
+  ascii_otel_pipeline_progress(3, 0);
   if (thread_is_initialized(&pipeline->input_tid) && thread_join(&pipeline->input_tid, NULL) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_THREAD, "Cannot join session input thread");
 
@@ -711,6 +718,7 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
 
   // Signal threads to stop (may already be stopped)
   atomic_store_bool(&pipeline->stop, true);
+  ascii_otel_pipeline_progress(3, 0);
 
   // Wake up any threads blocked on condition variable waits
   // so they can check the stop flag and exit immediately

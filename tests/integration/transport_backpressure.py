@@ -4,6 +4,13 @@ Build test-backpressure-live first. Receiver reads are paced for TCP/WebSocket; 
 verified UDP relay paces WebRTC packets. A second connection remains unthrottled.
 Example: python tests/integration/transport_backpressure.py --binary build/bin/test-backpressure-live --output build/backpressure
 """
+
+# Apply the shared test policy before importing helpers or starting native children.
+from pathlib import Path as _TestPath
+import sys as _test_sys
+_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
+import _environment  # noqa: F401
+
 import argparse
 import hashlib
 import json

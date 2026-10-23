@@ -301,7 +301,7 @@ static asciichat_error_t set_formatted(asciichat_error_t code, const char *file,
 #endif
   push_context(&context);
 #ifdef ASCIICHAT_WITH_OTEL
-  ascii_otel_error(context.context_message);
+  ascii_otel_error_code(code, context.context_message);
 #endif
   if (!g_suppress_logging) {
     log_debug("%s%s", asciichat_error_format(context.context_message, code),

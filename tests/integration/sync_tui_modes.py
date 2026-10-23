@@ -4,6 +4,13 @@ Uses loopback services, generated video plus a 440 Hz audio track, and a real PT
 Optional --artifacts exports the captured terminal cells as PNGs (requires Pillow),
 plus their plain text and unmodified ANSI stream for inspection.
 """
+
+# Apply the shared test policy before importing helpers or starting native children.
+from pathlib import Path as _TestPath
+import sys as _test_sys
+_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
+import _environment  # noqa: F401
+
 import argparse
 import json
 import os

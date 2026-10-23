@@ -1,0 +1,26 @@
+version: 1
+id: ascii-chat-pipeline-stalled
+name: ascii-chat · Active media pipeline stalled
+query: "WITH latest AS (\n SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\n\
+  \ AND name IN ('ascii-chat.pipeline.display.stall_age','ascii-chat.pipeline.encode.stall_age')\n AND timestamp_ns >= epoch_ns(current_timestamp)-90000000000\n QUALIFY\
+  \ row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1\n)\nSELECT $session_id AS session_id,service_name,name\
+  \ AS stage,max(value) AS value FROM latest GROUP BY service_name,name"
+condition:
+  kind: threshold
+  operator: '>='
+  threshold: 5
+group_by:
+- session_id
+- service_name
+- stage
+pending_for: 10s
+cooldown: 0s
+repeat_interval: 0s
+severity: warning
+enabled: true
+browser_enabled: true
+pushover_enabled: false
+annotations:
+  runbook: Capture is progressing but an expected display/encode stage has made no progress for at least five seconds, sustained for ten seconds. Gauges reset for
+    paused/stopped capture, hidden prompt/log screens, disabled encoding and shutdown. Check blocked terminal output, rendering and file encoding. Applies to the
+    client-like local media pipeline.

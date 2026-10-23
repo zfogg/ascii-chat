@@ -1,5 +1,57 @@
 # OpenTelemetry
 
+### Test isolation
+
+All tests prohibit collector export. `ascii_otel_init` returns before creating a
+host, exporter, or worker when the canonical `is_test_environment()` is true.
+There is no endpoint, signal or CLI override. C test executables also compile
+with `TESTING=1`, and their public adapter initialization is a no-op even when
+they link the normal library. CTest applies `TESTING=1` recursively to every
+registered test, including root-directory smoke checks and subprocesses.
+
+Every Python test imports the shared `tests/_environment.py` bootstrap before
+loading helpers or launching native children. It sets `TESTING=1` and disables
+signals as a second default. As in the existing C helper, presence of TESTING or
+CRITERION_TEST denotes test mode, including the string value `0`. Do not remove
+those variables to enable export in tests.
+
+Collector-based OTEL smoke scripts now report skip code 77. In-process gotel
+transport tests still validate spans, metrics, sampling and failures without
+network I/O. `test_otel_disabled.py` runs real native media with explicit collector
+and signal overrides and asserts zero received requests. Historical exported-load
+measurements below describe earlier manual runs; they are not test permissions.
+
+### Failure alerts and active-session scope
+
+All repository dashboard panels and alert SQL use Spaniel's built-in
+`$session_id`, bound by the server to the active recording session. Changing the
+active session changes query results without editing YAML or supplying an
+ordinary variable override. Alert history remains durable across sessions.
+
+The new dedicated event alerts classify errno failures as crypto/authentication,
+malformed protocol packets, or discovery failures. Their ERROR reports carry
+`ascii_chat.failure.operation`, category, code/description and the status message.
+Incomplete buffered reads and signal cancellation are not failure reports.
+The generic errored-trace rule excludes traces owned by these dedicated alerts
+and the invalid-ASCII-frame alert.
+
+Three failed non-mirror session attempts within two minutes trigger the connection
+failure condition. Shutdown and signal cancellation are excluded. Active pipeline
+stall gauges require capture within two seconds, an expected display/encode stage,
+and no stage progress; a five-second age sustained for ten seconds triggers the
+pipeline alert. Prompt/log screens, stopped/paused capture, disabled file encoding
+and shutdown reset the relevant observations. This covers the process's local
+client-like media pipeline, not arbitrary remote peers or discovery idle time.
+
+The session-scope verification script uses existing sessions and SQL-only
+fixtures, sends no OTLP, switches to an empty session, checks all panels/rules,
+and restores the original session in a finally block:
+
+```sh
+python tests/integration/test_spaniel_alert_pack.py
+```
+
+
 Debug and Dev builds export traces, logs, and metrics to the local Compose
 collector at `http://127.0.0.1:24318` by default. Release builds require an endpoint.
 Native builds use

@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 """Exercise native prompt/TUI entry points in a real tmux PTY (synthetic identities)."""
+
+# Apply the shared test policy before importing helpers or starting native children.
+from pathlib import Path as _TestPath
+import sys as _test_sys
+_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
+import _environment  # noqa: F401
+
 import argparse
 import json
 import shlex

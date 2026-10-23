@@ -1,18 +1,15 @@
 version: 1
 id: ascii-chat-exporter-pressure
 name: ascii-chat · Exporter queue pressure
-query: |-
-    WITH latest AS (
-     SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND name='ascii-chat.otel.queue.utilization'
-     AND timestamp_ns >= epoch_ns(current_timestamp)-90000000000
-     QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1
-    ) SELECT service_name,max(value) AS value FROM latest GROUP BY service_name
+query: "WITH latest AS (\n SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\
+  \ AND name='ascii-chat.otel.queue.utilization'\n AND timestamp_ns >= epoch_ns(current_timestamp)-90000000000\n QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key\
+  \ ORDER BY timestamp_ns DESC)=1\n) SELECT service_name,max(value) AS value FROM latest GROUP BY service_name"
 condition:
-    kind: threshold
-    operator: '>='
-    threshold: 0.8
+  kind: threshold
+  operator: '>='
+  threshold: 0.8
 group_by:
-    - service_name
+- service_name
 pending_for: 1m0s
 cooldown: 10m0s
 repeat_interval: 1h0m0s
@@ -21,5 +18,6 @@ enabled: true
 browser_enabled: true
 pushover_enabled: false
 annotations:
-    runbook: Check collector latency and exporter drop counters. Reduce realtime trace sampling or log verbosity before increasing queue capacity. Stopped or silent processes age out after 90 seconds; no telemetry does not imply health.
-    summary: A recently reporting process has exporter queue utilization at or above 80% for one minute.
+  runbook: Check collector latency and exporter drop counters. Reduce realtime trace sampling or log verbosity before increasing queue capacity. Stopped or silent
+    processes age out after 90 seconds; no telemetry does not imply health.
+  summary: A recently reporting process has exporter queue utilization at or above 80% for one minute.

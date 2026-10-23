@@ -2,6 +2,13 @@
 Run: python tests/manual/test_otel_watchdog.py build/bin/asciichat.dll
 Uses oversized aligned opaque mutex storage to exercise the exported platform API.
 """
+
+# Apply the shared test policy before importing helpers or starting native children.
+from pathlib import Path as _TestPath
+import sys as _test_sys
+_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
+import _environment  # noqa: F401
+
 import ctypes
 import json
 import os
@@ -60,6 +67,9 @@ def child(library, endpoint):
 
 
 def main():
+    print("SKIP: collector-export checks are prohibited in test mode; use in-process transport tests and test_otel_disabled.py")
+    return 77
+
     if len(sys.argv) == 4 and sys.argv[1] == "--child":
         child(sys.argv[2], sys.argv[3])
         return
@@ -120,4 +130,4 @@ def main():
                 print(errors[-4000:], file=sys.stderr)
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

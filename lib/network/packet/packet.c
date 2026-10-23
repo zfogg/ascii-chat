@@ -744,7 +744,7 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
     // Verify CRC
     uint32_t actual_crc = asciichat_crc32(packet_buf + sizeof(packet_header_t), pkt_len);
     if (actual_crc != expected_crc) {
-      SET_ERRNO(ERROR_NETWORK, "Packet CRC mismatch: 0x%x != 0x%x", actual_crc, expected_crc);
+      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Packet CRC mismatch: 0x%x != 0x%x", actual_crc, expected_crc);
       buffer_release(packet_buf);
       return PACKET_RECV_ERROR;
     }

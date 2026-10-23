@@ -1,29 +1,20 @@
 version: 1
 id: ascii-chat-outbound-queue-delay
 name: ascii-chat · Outbound queue delay
-query: |-
-    WITH points AS (
-     SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND name='ascii-chat.network.outbound.queue.wait'
-     AND timestamp_ns >= epoch_ns(current_timestamp)-600000000000
-     QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,timestamp_ns ORDER BY timestamp_ns DESC)=1
-    ), changes AS (
-     SELECT *,lag(histogram_count) OVER w AS previous_count,lag(histogram_sum) OVER w AS previous_sum FROM points
-     WINDOW w AS (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns)
-    ), deltas AS (
-     SELECT service_name,
-     CASE WHEN previous_count IS NOT NULL THEN greatest(histogram_count-previous_count,0)
-     WHEN start_timestamp_ns >= epoch_ns(current_timestamp)-300000000000 THEN histogram_count ELSE 0 END AS observations,
-     CASE WHEN previous_sum IS NOT NULL THEN greatest(histogram_sum-previous_sum,0)
-     WHEN start_timestamp_ns >= epoch_ns(current_timestamp)-300000000000 THEN histogram_sum ELSE 0 END AS duration
-     FROM changes WHERE timestamp_ns >= epoch_ns(current_timestamp)-300000000000
-    ) SELECT service_name,sum(duration)/nullif(sum(observations),0) AS value
-    FROM deltas GROUP BY service_name HAVING sum(observations)>=20
+query: "WITH points AS (\n SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\
+  \ AND name='ascii-chat.network.outbound.queue.wait'\n AND timestamp_ns >= epoch_ns(current_timestamp)-600000000000\n QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,timestamp_ns\
+  \ ORDER BY timestamp_ns DESC)=1\n), changes AS (\n SELECT *,lag(histogram_count) OVER w AS previous_count,lag(histogram_sum) OVER w AS previous_sum FROM points\n\
+  \ WINDOW w AS (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns)\n), deltas AS (\n SELECT service_name,\n CASE WHEN previous_count\
+  \ IS NOT NULL THEN greatest(histogram_count-previous_count,0)\n WHEN start_timestamp_ns >= epoch_ns(current_timestamp)-300000000000 THEN histogram_count ELSE 0\
+  \ END AS observations,\n CASE WHEN previous_sum IS NOT NULL THEN greatest(histogram_sum-previous_sum,0)\n WHEN start_timestamp_ns >= epoch_ns(current_timestamp)-300000000000\
+  \ THEN histogram_sum ELSE 0 END AS duration\n FROM changes WHERE timestamp_ns >= epoch_ns(current_timestamp)-300000000000\n) SELECT service_name,sum(duration)/nullif(sum(observations),0)\
+  \ AS value\nFROM deltas GROUP BY service_name HAVING sum(observations)>=20"
 condition:
-    kind: threshold
-    operator: '>='
-    threshold: 0.25
+  kind: threshold
+  operator: '>='
+  threshold: 0.25
 group_by:
-    - service_name
+- service_name
 pending_for: 1m0s
 cooldown: 10m0s
 repeat_interval: 1h0m0s
@@ -32,5 +23,6 @@ enabled: true
 browser_enabled: true
 pushover_enabled: false
 annotations:
-    runbook: Inspect network.queue.wait_ns spans, outbound congestion and frame-drop metrics. Check slow peers and bandwidth before adjusting FPS, dimensions or codec settings. This uses histogram sum/count deltas, not process-lifetime averages or sampled spans.
-    summary: Mean outbound queue wait exceeds 250 ms over five minutes, with at least 20 sends, for one minute.
+  runbook: Inspect network.queue.wait_ns spans, outbound congestion and frame-drop metrics. Check slow peers and bandwidth before adjusting FPS, dimensions or codec
+    settings. This uses histogram sum/count deltas, not process-lifetime averages or sampled spans.
+  summary: Mean outbound queue wait exceeds 250 ms over five minutes, with at least 20 sends, for one minute.

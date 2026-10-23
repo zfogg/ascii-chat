@@ -1,23 +1,18 @@
 version: 1
 id: ascii-chat-telemetry-loss
 name: ascii-chat · Telemetry dropped or rejected
-query: |-
-    WITH points AS (
-      SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp)-600000000000 AND name IN ('ascii-chat.otel.records.dropped','ascii-chat.otel.spans.rejected')
-      QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,timestamp_ns ORDER BY timestamp_ns DESC)=1
-    ), changes AS (
-      SELECT *,lag(value) OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns) AS previous
-      FROM points
-    )
-    SELECT service_name,sum(CASE WHEN previous IS NOT NULL THEN greatest(value-previous,0)
-      WHEN start_timestamp_ns >= epoch_ns(current_timestamp)-300000000000 THEN greatest(value,0) ELSE 0 END) AS value
-    FROM changes WHERE timestamp_ns >= epoch_ns(current_timestamp)-300000000000 GROUP BY service_name
+query: "WITH points AS (\n  SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\
+  \ AND timestamp_ns >= epoch_ns(current_timestamp)-600000000000 AND name IN ('ascii-chat.otel.records.dropped','ascii-chat.otel.spans.rejected')\n  QUALIFY row_number()\
+  \ OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,timestamp_ns ORDER BY timestamp_ns DESC)=1\n), changes AS (\n  SELECT *,lag(value) OVER (PARTITION\
+  \ BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns) AS previous\n  FROM points\n)\nSELECT service_name,sum(CASE WHEN previous IS NOT NULL\
+  \ THEN greatest(value-previous,0)\n  WHEN start_timestamp_ns >= epoch_ns(current_timestamp)-300000000000 THEN greatest(value,0) ELSE 0 END) AS value\nFROM changes\
+  \ WHERE timestamp_ns >= epoch_ns(current_timestamp)-300000000000 GROUP BY service_name"
 condition:
-    kind: threshold
-    operator: '>='
-    threshold: 1
+  kind: threshold
+  operator: '>='
+  threshold: 1
 group_by:
-    - service_name
+- service_name
 pending_for: 0s
 cooldown: 10m0s
 repeat_interval: 1h0m0s
@@ -26,5 +21,6 @@ enabled: true
 browser_enabled: true
 pushover_enabled: false
 annotations:
-    runbook: Inspect exporter diagnostics and Spaniel ingestion health. Check queue capacity, collector availability and storage. Counts combine dropped records and rejected spans; a total collector outage cannot report itself through this collector.
-    summary: Exporter loss/rejection counters increased during the last five minutes.
+  runbook: Inspect exporter diagnostics and Spaniel ingestion health. Check queue capacity, collector availability and storage. Counts combine dropped records and
+    rejected spans; a total collector outage cannot report itself through this collector.
+  summary: Exporter loss/rejection counters increased during the last five minutes.

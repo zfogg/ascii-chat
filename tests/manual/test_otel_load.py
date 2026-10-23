@@ -3,6 +3,13 @@
 Run manually: python tests/manual/test_otel_load.py build/bin/ascii-chat --seconds 60
 Reports the enabled/disabled timing ratio without imposing noisy CI thresholds.
 """
+
+# Apply the shared test policy before importing helpers or starting native children.
+from pathlib import Path as _TestPath
+import sys as _test_sys
+_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
+import _environment  # noqa: F401
+
 from pathlib import Path
 import argparse
 import json
@@ -35,6 +42,9 @@ def child_cpu(process=None):
     return usage.ru_utime + usage.ru_stime
 
 def main():
+    print("SKIP: collector-export checks are prohibited in test mode; use in-process transport tests and test_otel_disabled.py")
+    return 77
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('binary')
     parser.add_argument('--seconds', type=int, default=60)
@@ -103,4 +113,4 @@ def main():
     report['enabled_cpu_ratio'] = report['enabled']['cpu_seconds']/max(.000001, report['disabled']['cpu_seconds'])
     report['enabled_wall_ratio'] = report['enabled']['wall_seconds']/report['disabled']['wall_seconds']
     print(json.dumps(report, indent=2))
-if __name__ == '__main__': main()
+if __name__ == '__main__': sys.exit(main())
