@@ -664,17 +664,59 @@ static const acip_server_handler_func_t g_server_handlers[SERVER_HANDLER_COUNT] 
     handle_server_image_frame_h264,         // 20
 };
 
-// Packet type names for debugging (matches handler table order)
-static const char *g_packet_type_name(packet_type_t type) {
+// Canonical names for the wire packet types.
+const char *acip_packet_type_name(uint16_t type) {
   switch (type) {
   case PACKET_TYPE_PROTOCOL_VERSION:
     return "PROTOCOL_VERSION";
+  case PACKET_TYPE_CRYPTO_CLIENT_HELLO:
+    return "CRYPTO_CLIENT_HELLO";
+  case PACKET_TYPE_CRYPTO_CAPABILITIES:
+    return "CRYPTO_CAPABILITIES";
+  case PACKET_TYPE_CRYPTO_PARAMETERS:
+    return "CRYPTO_PARAMETERS";
+  case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT:
+    return "CRYPTO_KEY_EXCHANGE_INIT";
+  case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP:
+    return "CRYPTO_KEY_EXCHANGE_RESP";
+  case PACKET_TYPE_CRYPTO_AUTH_CHALLENGE:
+    return "CRYPTO_AUTH_CHALLENGE";
+  case PACKET_TYPE_CRYPTO_AUTH_RESPONSE:
+    return "CRYPTO_AUTH_RESPONSE";
+  case PACKET_TYPE_CRYPTO_AUTH_FAILED:
+    return "CRYPTO_AUTH_FAILED";
+  case PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP:
+    return "CRYPTO_SERVER_AUTH_RESP";
+  case PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE:
+    return "CRYPTO_HANDSHAKE_COMPLETE";
+  case PACKET_TYPE_CRYPTO_NO_ENCRYPTION:
+    return "CRYPTO_NO_ENCRYPTION";
+  case PACKET_TYPE_ENCRYPTED:
+    return "ENCRYPTED";
+  case PACKET_TYPE_CRYPTO_REKEY_REQUEST:
+    return "CRYPTO_REKEY_REQUEST";
+  case PACKET_TYPE_CRYPTO_REKEY_RESPONSE:
+    return "CRYPTO_REKEY_RESPONSE";
+  case PACKET_TYPE_CRYPTO_REKEY_COMPLETE:
+    return "CRYPTO_REKEY_COMPLETE";
+  case PACKET_TYPE_SIZE_MESSAGE:
+    return "SIZE_MESSAGE";
+  case PACKET_TYPE_AUDIO_MESSAGE:
+    return "AUDIO_MESSAGE";
+  case PACKET_TYPE_TEXT_MESSAGE:
+    return "TEXT_MESSAGE";
+  case PACKET_TYPE_ERROR_MESSAGE:
+    return "ERROR_MESSAGE";
+  case PACKET_TYPE_REMOTE_LOG:
+    return "REMOTE_LOG";
+  case PACKET_TYPE_ASCII_FRAME:
+    return "ASCII_FRAME";
   case PACKET_TYPE_IMAGE_FRAME:
     return "IMAGE_FRAME";
-  case PACKET_TYPE_IMAGE_FRAME_H264:
-    return "IMAGE_FRAME_H264";
   case PACKET_TYPE_IMAGE_FRAME_H265:
     return "IMAGE_FRAME_H265";
+  case PACKET_TYPE_IMAGE_FRAME_H264:
+    return "IMAGE_FRAME_H264";
   case PACKET_TYPE_AUDIO_BATCH:
     return "AUDIO_BATCH";
   case PACKET_TYPE_AUDIO_OPUS_BATCH:
@@ -693,22 +735,82 @@ static const char *g_packet_type_name(packet_type_t type) {
     return "STREAM_START";
   case PACKET_TYPE_STREAM_STOP:
     return "STREAM_STOP";
-  case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP:
-    return "CRYPTO_KEY_EXCHANGE_RESP";
-  case PACKET_TYPE_CRYPTO_REKEY_REQUEST:
-    return "CRYPTO_REKEY_REQUEST";
-  case PACKET_TYPE_CRYPTO_REKEY_RESPONSE:
-    return "CRYPTO_REKEY_RESPONSE";
-  case PACKET_TYPE_ERROR_MESSAGE:
-    return "ERROR_MESSAGE";
-  case PACKET_TYPE_REMOTE_LOG:
-    return "REMOTE_LOG";
-  case PACKET_TYPE_CRYPTO_REKEY_COMPLETE:
-    return "CRYPTO_REKEY_COMPLETE";
-  case PACKET_TYPE_CRYPTO_AUTH_RESPONSE:
-    return "CRYPTO_AUTH_RESPONSE";
-  case PACKET_TYPE_CRYPTO_NO_ENCRYPTION:
-    return "CRYPTO_NO_ENCRYPTION";
+  case PACKET_TYPE_CLEAR_CONSOLE:
+    return "CLEAR_CONSOLE";
+  case PACKET_TYPE_SERVER_STATE:
+    return "SERVER_STATE";
+  case PACKET_TYPE_ACIP_SESSION_CREATE:
+    return "ACIP_SESSION_CREATE";
+  case PACKET_TYPE_ACIP_SESSION_CREATED:
+    return "ACIP_SESSION_CREATED";
+  case PACKET_TYPE_ACIP_SESSION_LOOKUP:
+    return "ACIP_SESSION_LOOKUP";
+  case PACKET_TYPE_ACIP_SESSION_INFO:
+    return "ACIP_SESSION_INFO";
+  case PACKET_TYPE_ACIP_SESSION_JOIN:
+    return "ACIP_SESSION_JOIN";
+  case PACKET_TYPE_ACIP_SESSION_JOINED:
+    return "ACIP_SESSION_JOINED";
+  case PACKET_TYPE_ACIP_SESSION_LEAVE:
+    return "ACIP_SESSION_LEAVE";
+  case PACKET_TYPE_ACIP_SESSION_END:
+    return "ACIP_SESSION_END";
+  case PACKET_TYPE_ACIP_SESSION_RECONNECT:
+    return "ACIP_SESSION_RECONNECT";
+  case PACKET_TYPE_ACIP_WEBRTC_SDP:
+    return "ACIP_WEBRTC_SDP";
+  case PACKET_TYPE_ACIP_WEBRTC_ICE:
+    return "ACIP_WEBRTC_ICE";
+  case PACKET_TYPE_ACIP_STRING_RESERVE:
+    return "ACIP_STRING_RESERVE";
+  case PACKET_TYPE_ACIP_STRING_RESERVED:
+    return "ACIP_STRING_RESERVED";
+  case PACKET_TYPE_ACIP_STRING_RENEW:
+    return "ACIP_STRING_RENEW";
+  case PACKET_TYPE_ACIP_STRING_RELEASE:
+    return "ACIP_STRING_RELEASE";
+  case PACKET_TYPE_ACIP_PARTICIPANT_LIST:
+    return "ACIP_PARTICIPANT_LIST";
+  case PACKET_TYPE_ACIP_RING_COLLECT:
+    return "ACIP_RING_COLLECT";
+  case PACKET_TYPE_ACIP_NETWORK_QUALITY:
+    return "ACIP_NETWORK_QUALITY";
+  case PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT:
+    return "ACIP_HOST_ANNOUNCEMENT";
+  case PACKET_TYPE_ACIP_HOST_DESIGNATED:
+    return "ACIP_HOST_DESIGNATED";
+  case PACKET_TYPE_ACIP_SETTINGS_SYNC:
+    return "ACIP_SETTINGS_SYNC";
+  case PACKET_TYPE_ACIP_SETTINGS_ACK:
+    return "ACIP_SETTINGS_ACK";
+  case PACKET_TYPE_ACIP_HOST_LOST:
+    return "ACIP_HOST_LOST";
+  case PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED:
+    return "ACIP_FUTURE_HOST_ELECTED";
+  case PACKET_TYPE_ACIP_PARTICIPANT_JOINED:
+    return "ACIP_PARTICIPANT_JOINED";
+  case PACKET_TYPE_ACIP_PARTICIPANT_LEFT:
+    return "ACIP_PARTICIPANT_LEFT";
+  case PACKET_TYPE_ACIP_BANDWIDTH_TEST:
+    return "ACIP_BANDWIDTH_TEST";
+  case PACKET_TYPE_ACIP_BANDWIDTH_RESULT:
+    return "ACIP_BANDWIDTH_RESULT";
+  case PACKET_TYPE_ACIP_BROADCAST_ACK:
+    return "ACIP_BROADCAST_ACK";
+  case PACKET_TYPE_RING_MEMBERS:
+    return "RING_MEMBERS";
+  case PACKET_TYPE_STATS_COLLECTION_START:
+    return "STATS_COLLECTION_START";
+  case PACKET_TYPE_STATS_UPDATE:
+    return "STATS_UPDATE";
+  case PACKET_TYPE_RING_ELECTION_RESULT:
+    return "RING_ELECTION_RESULT";
+  case PACKET_TYPE_STATS_ACK:
+    return "STATS_ACK";
+  case PACKET_TYPE_ACIP_DISCOVERY_PING:
+    return "ACIP_DISCOVERY_PING";
+  case PACKET_TYPE_ACIP_ERROR:
+    return "ACIP_ERROR";
   default:
     return "UNKNOWN";
   }
@@ -730,19 +832,19 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
   int idx = handler_hash_lookup(g_server_handler_hash, type);
   if (idx < 0) {
     log_error("ACIP_HANDLER_NOT_FOUND: No handler for packet type=%d (0x%04x, name=%s)", type, type,
-              g_packet_type_name(type));
+              acip_packet_type_name(type));
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unhandled server packet type: %d", type);
   }
 
-  log_dev("HANDLER_DISPATCH: type=%d (%s), handler_idx=%d, payload=%zu bytes", type, g_packet_type_name(type), idx,
+  log_dev("HANDLER_DISPATCH: type=%d (%s), handler_idx=%d, payload=%zu bytes", type, acip_packet_type_name(type), idx,
           payload_len);
   asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
 
   if (result != ASCIICHAT_OK) {
-    log_error("❌ [HANDLER_ERROR] Handler failed: type=%d (%s), result=%s", type, g_packet_type_name(type),
+    log_error("❌ [HANDLER_ERROR] Handler failed: type=%d (%s), result=%s", type, acip_packet_type_name(type),
               asciichat_error_format(NULL, result));
   } else {
-    log_dev("HANDLER_COMPLETE: type=%d (%s), payload=%zu bytes", type, g_packet_type_name(type), payload_len);
+    log_dev("HANDLER_COMPLETE: type=%d (%s), payload=%zu bytes", type, acip_packet_type_name(type), payload_len);
   }
 
   return result;

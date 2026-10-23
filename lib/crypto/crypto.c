@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/otel.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/tests/test_env.h>
@@ -422,6 +423,11 @@ crypto_result_t crypto_derive_password_encryption_key(const char *password,
 
 crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, size_t plaintext_len,
                                uint8_t *ciphertext_out, size_t ciphertext_out_size, size_t *ciphertext_len_out) {
+  ASCII_OTEL_SCOPE(CRYPTO_ENCRYPT);
+  ASCII_OTEL_ATTR_STRING("crypto.operation", "encrypt");
+  ASCII_OTEL_ATTR_STRING("crypto.algorithm", "xsalsa20-poly1305");
+  ASCII_OTEL_ATTR_INT("crypto.input.size", (int64_t)plaintext_len);
+  ASCII_OTEL_ATTR_INT("crypto.output.capacity", (int64_t)ciphertext_out_size);
   if (!ctx || !ctx->initialized || !plaintext || !ciphertext_out || !ciphertext_len_out) {
     SET_ERRNO(ERROR_INVALID_PARAM,
               "Invalid parameters: ctx=%p, initialized=%d, plaintext=%p, ciphertext_out=%p, ciphertext_len_out=%p", ctx,
@@ -439,6 +445,10 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
   }
 
+  ASCII_OTEL_ATTR_INT("crypto.nonce.size", ctx->nonce_size);
+  ASCII_OTEL_ATTR_INT("crypto.mac.size", ctx->mac_size);
+  ASCII_OTEL_ATTR_INT("crypto.key.size", ctx->encryption_key_size);
+  ASCII_OTEL_ATTR_STRING("crypto.key.source", ctx->key_exchange_complete ? "x25519" : "password");
   // Check output buffer size
   size_t required_size = plaintext_len + ctx->nonce_size + ctx->mac_size;
   if (ciphertext_out_size < required_size) {
@@ -486,11 +496,18 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   // Increment rekey packet counter for rekeying trigger detection
   ctx->rekey_packet_count++;
 
+  ASCII_OTEL_ATTR_INT("crypto.output.size", (int64_t)*ciphertext_len_out);
+  ascii_otel_metric(ASCII_OTEL_METRIC_CRYPTO_ENCRYPT_BYTES, (double)plaintext_len);
   return CRYPTO_OK;
 }
 
 crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext, size_t ciphertext_len,
                                uint8_t *plaintext_out, size_t plaintext_out_size, size_t *plaintext_len_out) {
+  ASCII_OTEL_SCOPE(CRYPTO_DECRYPT);
+  ASCII_OTEL_ATTR_STRING("crypto.operation", "decrypt");
+  ASCII_OTEL_ATTR_STRING("crypto.algorithm", "xsalsa20-poly1305");
+  ASCII_OTEL_ATTR_INT("crypto.input.size", (int64_t)ciphertext_len);
+  ASCII_OTEL_ATTR_INT("crypto.output.capacity", (int64_t)plaintext_out_size);
   if (!ctx || !ctx->initialized || !ciphertext || !plaintext_out || !plaintext_len_out) {
     SET_ERRNO(ERROR_INVALID_PARAM,
               "Invalid parameters: ctx=%p, initialized=%d, ciphertext=%p, plaintext_out=%p, plaintext_len_out=%p", ctx,
@@ -503,6 +520,10 @@ crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext,
     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
   }
 
+  ASCII_OTEL_ATTR_INT("crypto.nonce.size", ctx->nonce_size);
+  ASCII_OTEL_ATTR_INT("crypto.mac.size", ctx->mac_size);
+  ASCII_OTEL_ATTR_INT("crypto.key.size", ctx->encryption_key_size);
+  ASCII_OTEL_ATTR_STRING("crypto.key.source", ctx->key_exchange_complete ? "x25519" : "password");
   // Check minimum ciphertext size (nonce + MAC)
   size_t min_ciphertext_size = ctx->nonce_size + ctx->mac_size;
   if (ciphertext_len < min_ciphertext_size) {
@@ -544,6 +565,9 @@ crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext,
   *plaintext_len_out = plaintext_len;
   ctx->bytes_decrypted += plaintext_len;
 
+  ASCII_OTEL_ATTR_INT("crypto.output.size", (int64_t)*plaintext_len_out);
+  ASCII_OTEL_ATTR_INT("crypto.authenticated", 1);
+  ascii_otel_metric(ASCII_OTEL_METRIC_CRYPTO_DECRYPT_BYTES, (double)ciphertext_len);
   return CRYPTO_OK;
 }
 

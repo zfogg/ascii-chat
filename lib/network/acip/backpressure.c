@@ -192,8 +192,8 @@ static void outbound_record_failure_and_fail_pending(acip_outbound_t *out, ascii
 
 static asciichat_error_t outbound_send(acip_outbound_t *out, const outbound_packet_t *packet) {
   ASCII_OTEL_SCOPE_PARENT(ACIP_OUTBOUND_SEND, &packet->telemetry_context);
-  ASCII_OTEL_ATTR_INT("network.packet.type", packet->type);
-  ASCII_OTEL_ATTR_INT("network.packet.size", packet->size);
+  ASCII_OTEL_PACKET(packet->type, packet->size >= sizeof(packet_header_t) ? packet->size - sizeof(packet_header_t) : 0,
+                    "send", acip_transport_get_type(out->transport));
   ASCII_OTEL_ATTR_INT("network.queue.wait_ns", time_get_ns() - packet->created);
   return out->transport->methods->send(out->transport, packet->data, packet->size);
 }

@@ -30,6 +30,7 @@ asciichat_error_t compress_data(const void *input, size_t input_size, void **out
                                 int compression_level) {
   ASCII_OTEL_SCOPE(ZSTD_COMPRESS);
   ASCII_OTEL_ATTR_STRING("compression.algorithm", "zstd");
+  ASCII_OTEL_ATTR_STRING("compression.library.version", ZSTD_versionString());
   ASCII_OTEL_ATTR_INT("compression.level", compression_level);
   ASCII_OTEL_ATTR_INT("compression.input.size", (int64_t)input_size);
   if (!input || input_size == 0 || !output || !output_size) {
@@ -70,6 +71,7 @@ asciichat_error_t compress_data(const void *input, size_t input_size, void **out
   *output = compressed_data;
   *output_size = ret;
   ASCII_OTEL_ATTR_INT("compression.output.size", (int64_t)ret);
+  ASCII_OTEL_ATTR_INT("compression.ratio.permille", (int64_t)(1000.0 * (double)ret / (double)input_size));
   compression_measure(input_size, ret, true);
 
   return ASCIICHAT_OK;
@@ -79,7 +81,9 @@ asciichat_error_t compress_data(const void *input, size_t input_size, void **out
 asciichat_error_t decompress_data(const void *input, size_t input_size, void *output, size_t output_size) {
   ASCII_OTEL_SCOPE(ZSTD_DECOMPRESS);
   ASCII_OTEL_ATTR_STRING("compression.algorithm", "zstd");
+  ASCII_OTEL_ATTR_STRING("compression.library.version", ZSTD_versionString());
   ASCII_OTEL_ATTR_INT("compression.input.size", (int64_t)input_size);
+  ASCII_OTEL_ATTR_INT("compression.output.capacity", (int64_t)output_size);
   if (!input || input_size == 0 || !output || output_size == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%zu",
                      input, input_size, output, output_size);
@@ -92,6 +96,7 @@ asciichat_error_t decompress_data(const void *input, size_t input_size, void *ou
   }
 
   ASCII_OTEL_ATTR_INT("compression.output.size", (int64_t)ret);
+  ASCII_OTEL_ATTR_INT("compression.ratio.permille", (int64_t)(1000.0 * (double)ret / (double)input_size));
   compression_measure(input_size, ret, false);
   return ASCIICHAT_OK;
 }
@@ -101,6 +106,7 @@ asciichat_error_t decompress_data(const void *input, size_t input_size, void *ou
 asciichat_error_t decompress_data_exact(const void *input, size_t input_size, void *output, size_t expected_size) {
   ASCII_OTEL_SCOPE(ZSTD_DECOMPRESS_EXACT);
   ASCII_OTEL_ATTR_STRING("compression.algorithm", "zstd");
+  ASCII_OTEL_ATTR_STRING("compression.library.version", ZSTD_versionString());
   ASCII_OTEL_ATTR_INT("compression.input.size", (int64_t)input_size);
   ASCII_OTEL_ATTR_INT("compression.expected_output.size", (int64_t)expected_size);
   if (!input || !input_size || !output || !expected_size)
@@ -125,6 +131,7 @@ bool should_compress(size_t original_size, size_t compressed_size) {
 asciichat_error_t compress_workspace(compression_workspace_t *workspace, const void *input, size_t size, int level) {
   ASCII_OTEL_SCOPE(ZSTD_COMPRESS_WORKSPACE);
   ASCII_OTEL_ATTR_STRING("compression.algorithm", "zstd");
+  ASCII_OTEL_ATTR_STRING("compression.library.version", ZSTD_versionString());
   ASCII_OTEL_ATTR_INT("compression.level", level);
   ASCII_OTEL_ATTR_INT("compression.input.size", (int64_t)size);
   if (!workspace || !input || !size || level < 1 || level > 9)
@@ -148,6 +155,7 @@ asciichat_error_t compress_workspace(compression_workspace_t *workspace, const v
   result = buffer_set_size(workspace->output.data, written);
   if (result == ASCIICHAT_OK) {
     ASCII_OTEL_ATTR_INT("compression.output.size", (int64_t)written);
+    ASCII_OTEL_ATTR_INT("compression.ratio.permille", (int64_t)(1000.0 * (double)written / (double)size));
     compression_measure(size, written, true);
   }
   return result;

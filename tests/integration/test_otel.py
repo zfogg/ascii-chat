@@ -108,7 +108,8 @@ def network_smoke(binary, receiver, env):
                 assert time.monotonic() < deadline, 'server readiness deadline'
                 time.sleep(.05)
         result = subprocess.run(base + ['client', f'127.0.0.1:{port}', '--test-pattern',
-             '--audio=false', '--snapshot', '--snapshot-delay', '2', '--width', '40', '--height', '12',
+             '--audio=false', '--snapshot', '--snapshot-delay', '2', '--width', '120', '--height', '40',
+             '--color-mode', 'truecolor',
              '--splash-screen=false'], env=fixture_env, capture_output=True, timeout=20)
         assert result.returncode == 0, result.stderr.decode(errors='replace')[-3000:]
         assert len(result.stdout) > 40
@@ -117,13 +118,21 @@ def network_smoke(binary, receiver, env):
         assert b'ascii-chat.server.video.render' in traces
         spans = signal_records(receiver.records, 'traces')
         by_id = {s[2][0]: s for s in spans}
+        packets = [s for s in spans if b'network.packet.name' in b''.join(s.get(9, []))]
+        assert packets and any(b'.ASCII_FRAME' in s[5][0] for s in packets), 'packet names missing from spans'
+        assert all(b'network.protocol.name' in b''.join(s.get(9, [])) for s in packets)
+        crypto = [s for s in spans if s[5] == [b'ascii-chat.crypto.packet.encrypt']]
+        assert crypto and any(b'crypto.output.size' in b''.join(s.get(9, [])) for s in crypto), 'core crypto metadata missing'
+        compression = [s for s in spans if s[5] == [b'ascii-chat.compression.zstd.compress_workspace']]
+        assert compression and any(b'compression.ratio.permille' in b''.join(s.get(9, [])) for s in compression)
+        assert any(c[1] == e[1] for c in compression for e in crypto), 'compression and encryption lost frame context'
         def ancestor(span, name):
             seen = set()
             while span.get(4) and span[4][0] in by_id and span[4][0] not in seen:
                 seen.add(span[4][0])
                 parent = by_id[span[4][0]]
                 assert parent[1] == span[1], 'parent and child have different trace IDs'
-                if parent[5] == [name]:
+                if parent[5] == [name] or parent[5][0].startswith(name + b'.'):
                     return True
                 span = parent
             return False
@@ -131,7 +140,7 @@ def network_smoke(binary, receiver, env):
                    ancestor(s, b'ascii-chat.client.video.frame') for s in spans), 'encoding lost frame parent'
         assert any(s[5] == [b'ascii-chat.display.session_display_write_ascii_frame'] and
                    ancestor(s, b'ascii-chat.network.packet.dispatch') for s in spans), 'receive processing is detached'
-        assert any(s[5] == [b'ascii-chat.network.outbound.send'] and
+        assert any(s[5][0].startswith(b'ascii-chat.network.outbound.send.') and
                    ancestor(s, b'ascii-chat.client.video.frame') for s in spans), 'outbound worker lost producer context'
         # Builds without a software encoder negotiate raw RGB instead.
         if any(s[5] == [b'ascii-chat.ffmpeg.video.decode'] for s in spans):

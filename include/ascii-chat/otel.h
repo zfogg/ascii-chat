@@ -26,6 +26,7 @@ void ascii_otel_shutdown(void);
 bool ascii_otel_enabled(void);
 void ascii_otel_metric(ascii_otel_metric_t metric, double value);
 void ascii_otel_call_session_used(const char *session_string);
+void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_size, const char *action, int transport);
 void ascii_otel_exit(int code);
 gotel_context_t ascii_otel_context(void);
 void ascii_otel_scope_int(ascii_otel_scope_t *scope, const char *key, int64_t value);
@@ -40,6 +41,7 @@ void ascii_otel_http_status(ascii_otel_scope_t *scope, int status);
 void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count);
 #define ASCII_OTEL_ATTR_STRING(key, value) gotel_attr_string(&otel_scope.scope, key, value)
 #define ASCII_OTEL_ATTR_INT(key, value) gotel_attr_int(&otel_scope.scope, key, value)
+#define ASCII_OTEL_PACKET(type, size, action, transport) ascii_otel_packet(&otel_scope, type, size, action, transport)
 #define ASCII_OTEL_SCOPE_PARENT(id, parent)                                                                            \
   ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};                                  \
   ascii_otel_scope_parent(&otel_scope, ASCII_OTEL_##id, parent)
@@ -49,6 +51,7 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count);
 #else
 #define ASCII_OTEL_ATTR_STRING(key, value) ((void)(key), (void)(value))
 #define ASCII_OTEL_ATTR_INT(key, value) ((void)(key), (void)(value))
+#define ASCII_OTEL_PACKET(type, size, action, transport) ((void)0)
 #define ascii_otel_enabled() false
 #define ascii_otel_call_session_used(session_string) ((void)(session_string))
 #define ascii_otel_metric(metric, value) ((void)(metric), (void)(value))

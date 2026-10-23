@@ -3,6 +3,9 @@
 #ifdef ASCIICHAT_WITH_OTEL
 #include <ascii-chat/common.h>
 #include <ascii-chat/version.h>
+#include <ascii-chat/network/acip/messages.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/process.h>
@@ -189,6 +192,25 @@ void ascii_otel_call_session_used(const char *session_string) {
   gotel_context_t root = {0};
   ASCII_OTEL_SCOPE_PARENT(CALL_SESSION_USED, &root);
   ASCII_OTEL_ATTR_STRING("ascii-chat.session.string", session_string);
+}
+void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_size, const char *action, int transport) {
+  if (!scope->retained || !scope->scope.span)
+    return;
+  const char *packet = acip_packet_type_name(type);
+  char name[256], version[32];
+  safe_snprintf(name, sizeof(name), "%s.%s", operations[scope->scope.operation].name, packet);
+  safe_snprintf(version, sizeof(version), "%d.%d.%d", PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
+                PROTOCOL_VERSION_PATCH);
+  otlp_span_set_name(scope->scope.span, name);
+  gotel_attr_string(&scope->scope, "network.protocol.name", "acip");
+  gotel_attr_string(&scope->scope, "network.protocol.version", version);
+  gotel_attr_string(&scope->scope, "network.packet.name", packet);
+  gotel_attr_int(&scope->scope, "network.packet.type", type);
+  gotel_attr_int(&scope->scope, "network.packet.size", (int64_t)payload_size);
+  gotel_attr_string(&scope->scope, "network.packet.operation", action);
+  const char *carrier = transport == ACIP_TRANSPORT_TCP ? "tcp" : transport == ACIP_TRANSPORT_WEBSOCKET ? "websocket"
+                       : transport == ACIP_TRANSPORT_WEBRTC ? "webrtc" : "unknown";
+  gotel_attr_string(&scope->scope, "acip.transport", carrier);
 }
 void ascii_otel_shutdown(void) {
   gotel_host_t *h = atomic_exchange_explicit(&host, NULL, memory_order_seq_cst);

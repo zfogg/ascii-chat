@@ -256,6 +256,9 @@ static asciichat_error_t connection_packet(const void *data, size_t length, void
         result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid encrypted packet");
     }
   }
+  ASCII_OTEL_PACKET(envelope.type, envelope.len, "dispatch", acip_transport_get_type(c->transport));
+  ASCII_OTEL_ATTR_INT("acip.wire.packet.type", NET_TO_HOST_U16(header.type));
+  ASCII_OTEL_ATTR_INT("acip.wire.packet.size", (int64_t)length);
   c->last_packet = time_get_ns();
   if (result == ASCIICHAT_OK)
     result = c->callbacks.packet(c, envelope.type, envelope.data, envelope.len, c->callback_context);
