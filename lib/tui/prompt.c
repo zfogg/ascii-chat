@@ -153,16 +153,14 @@ static void password_panel(frame_buffer_t *buffer, terminal_size_t size, const p
         top + 4, left, width);
   frame_buffer_printf(buffer, "\033[%d;%dHPassword", top + 6, left + 2);
   ui_popup_frame(buffer, top + 7, left + 2, width - 4, lines + 2, LOG_COLOR_DEBUG);
-  const ui_button_t buttons[] = {{"[ Confirm ]", 0, !s->can_confirm}, {"[ Cancel ]", 0, false}};
+  const ui_button_t buttons[] = {{.label = "[ Confirm ]", .disabled = !s->can_confirm, .color = LOG_COLOR_INFO},
+                                 {.label = "[ Cancel ]", .color = LOG_COLOR_ERROR}};
   ui_buttons_render(buffer, top + 9 + lines, left + 2, width - 4, buttons, 2, s->selected_button);
   const char *orange = s->color ? ui_text_color_prefix(LOG_COLOR_DEV) : "";
   const char *foreground = s->color ? ui_text_color_prefix(LOG_COLOR_RESET) : "";
   char shortcuts[1024];
-  snprintf(shortcuts, sizeof(shortcuts),
-           width >= 46 ? "%s%s%s/%s%s%s select  %sEnter%s confirm  %sEsc%s cancel"
-                       : "%s%s%s/%s%s%s  %sEnter%s confirm  %sEsc%s cancel",
-           orange, width >= 46 ? "Left" : "L", foreground, orange, width >= 46 ? "Right" : "R", foreground, orange,
-           foreground, orange, foreground);
+  snprintf(shortcuts, sizeof(shortcuts), "%sTab%s select  %sEnter%s confirm  %sEsc%s cancel", orange, foreground,
+           orange, foreground, orange, foreground);
   password_center_line(buffer, shortcuts, top + 10 + lines, left, width);
   snprintf(shortcuts, sizeof(shortcuts), "%sShift+Enter%s newline (maximum 3)", orange, foreground);
   password_center_line(buffer, shortcuts, top + 11 + lines, left, width);

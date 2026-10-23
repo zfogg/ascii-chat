@@ -189,6 +189,8 @@ static keyboard_key_t keyboard_stream_read_unlocked(int (*read_byte)(void)) {
       key = (keyboard_key_t)127;
     else if (!strcmp(sequence, "\033[99;5u") || !strcmp(sequence, "\033[27;5;99~"))
       key = (keyboard_key_t)3;
+    else if (!strcmp(sequence, "\033[118;5u") || !strcmp(sequence, "\033[27;5;118~"))
+      key = (keyboard_key_t)22;
     else if (!strcmp(sequence, "\033[A"))
       key = KEY_UP;
     else if (!strcmp(sequence, "\033[B"))

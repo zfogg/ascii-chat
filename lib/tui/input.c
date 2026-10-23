@@ -16,6 +16,7 @@
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/platform/question.h>
+#include <ascii-chat/platform/clipboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/utf8.h>
 #include <string.h>
@@ -527,7 +528,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
       continue;
     }
     actions[0].disabled = password_dialog && len < MIN_PASSWORD_LENGTH;
-    if (password_dialog && (key == KEY_LEFT || key == KEY_RIGHT || key == '\r' || key == '\n')) {
+    if (password_dialog && (key == '\t' || key == '\r' || key == '\n')) {
       int activated = ui_buttons_key(&buttons, actions, 2, key);
       if (activated == 0)
         break;
@@ -537,9 +538,20 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
       }
       continue;
     }
-    if (key == KEY_PASTE) {
+    if (key == KEY_PASTE || key == 22) {
       char pasted[8192] = {0};
-      if (ui_input_take_paste(pasted, sizeof(pasted)) == ASCIICHAT_OK) {
+      asciichat_error_t pasted_result =
+          key == 22 ? platform_clipboard_read(pasted, sizeof(pasted)) : ui_input_take_paste(pasted, sizeof(pasted));
+      if (pasted_result == ASCIICHAT_OK) {
+        if (key == 22) {
+          size_t write = 0;
+          for (size_t read = 0; pasted[read]; ++read) {
+            if (pasted[read] == '\r' && pasted[read + 1] == '\n')
+              continue;
+            pasted[write++] = pasted[read] == '\r' ? '\n' : pasted[read];
+          }
+          pasted[write] = '\0';
+        }
         size_t newlines = 0;
         for (size_t i = 0; i < len; ++i)
           newlines += buffer[i] == '\n';

@@ -22,6 +22,7 @@ session join reaches `CONNECTING_HOST`; this is not a WebRTC media delivery test
 
 - `client-initial.png`: initial password dialog, with Confirm selected by default.
 - `client-selected-cancel.png`: Cancel selected using Right, with a filled background.
+- `client-scrolled.png`: horizontally scrolled 80-character masked input.
 - `client-masked.png`: two-line masked password and selected Confirm button.
 - `client-newline-limit.png`: four-line input and the error after a fourth newline.
 - `client-ascii.png`: ASCII borders with `--utf8 false`.
@@ -32,15 +33,17 @@ session join reaches `CONNECTING_HOST`; this is not a WebRTC media delivery test
 The implementation uses the existing rainbow animation, popup frame, line editor,
 and buttons. The title is centered in the top border; the connection text and
 controls are centered within the frame. The label and confirmation wording match
-the concept. Shortcut names are orange, with the Left/Right slash in the regular
-foreground. Native terminal colors, font metrics, and the input marker differ
-from the illustrative concept.
+the concept. Shortcut names are orange. Tab selects buttons; Left/Right and Home/End
+navigate the shared scrollable input editor. Ctrl+V inserts clipboard text at
+the cursor, preserving following text and the three-newline limit. Native terminal
+colors, font metrics, and the input marker differ from the illustrative concept.
 
-Left/Right select a button, Enter activates it, and Esc cancels. Typing always edits
+Tab cycles between buttons, Enter activates the selected button, and Esc cancels. Typing always edits
 the password. Shift+Enter inserts a newline and grows the input; up to three
 newlines (four lines) are allowed. Further newlines leave the password unchanged
-and show an inline error. Button selection uses the shared UI buttons, with a
-background fill and the regular foreground color.
+and show an inline error. Button selection uses the shared UI buttons, with
+the button’s green/red background fill and the regular foreground color. Enabled,
+unselected Confirm is green and Cancel is red. Disabled Confirm remains gray.
 
 Popup borders use `terminal_should_use_utf8()`: `--utf8 true` forces Unicode,
 `--utf8 false` forces ASCII, and auto follows detection. Captures use the measured

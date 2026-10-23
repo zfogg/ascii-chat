@@ -96,11 +96,16 @@ def main():
                     if label in line:
                         start = line.index(label)
                         cells = [term.screen.buffer[row][col] for col in range(start, start + len(label))]
-                        return all(cell.bg != 'default' and not cell.reverse and cell.fg != cell.bg for cell in cells)
+                        backgrounds = all(cell.bg != 'default' and not cell.reverse and cell.fg != cell.bg for cell in cells)
+                        bg = cells[0].bg
+                        if len(bg) == 6 and all(c in '0123456789abcdef' for c in bg):
+                            red, green, blue = (int(bg[i:i + 2], 16) for i in (0, 2, 4))
+                            return backgrounds and (green > red and green > blue if 'Confirm' in label else red > green and red > blue)
+                        return backgrounds and bg in (('green', 'brightgreen') if 'Confirm' in label else ('red', 'brightred'))
                 return False
             term.expect(highlighted, 'Selected button must have a background fill and regular foreground')
         def enter_secret(term):
-            term.write('s3' + SHIFT_ENTER + 'cret!')
+            term.write('s3' + SHIFT_ENTER + 'ct!' + '\x1b[D' * 2 + '\x1b[200~re\x1b[201~')
             term.expect(lambda s: '**' in s and '*****' in s, 'Multiline password was not masked')
         def reject(term, answer, paste=False):
             term.write('\x1b[200~' + answer + '\x1b[201~' if paste else answer)
@@ -132,18 +137,33 @@ def main():
                 row, line = next((r, line) for r, line in enumerate(peer.screen.display) if text in line)
                 column = line.index(text)
                 assert abs(2 * column + len(text) - peer.screen.columns) <= 1, f'{text} is not centered'
-            row, line = next((r, line) for r, line in enumerate(peer.screen.display) if 'Left/Right' in line)
-            column = line.index('Left/Right')
+            row, line = next((r, line) for r, line in enumerate(peer.screen.display) if 'Tab select' in line)
             cells = peer.screen.buffer[row]
-            assert cells[column].fg == cells[column + 5].fg != cells[column + 4].fg, 'Shortcut slash inherited orange'
-            assert cells[column + 4].fg == cells[line.index('select')].fg, 'Shortcut slash lost normal foreground'
+            assert cells[line.index('Tab')].fg != cells[line.index('select')].fg, 'Shortcut is not colored separately'
             selected(peer, '[ Confirm ]')
-            peer.write('\x1b[C')
+            peer.write('\t')
             selected(peer, '[ Cancel ]')
             save(peer, 'client-selected-cancel')
-            peer.write('\x1b[D')
+            peer.write('\t')
             selected(peer, '[ Confirm ]')
             save(peer, 'client-initial')
+            peer.write('x' * 80)
+            peer.expect(lambda s: s.count('*') >= 50, 'Long input did not render')
+            save(peer, 'client-scrolled')
+            end_x = peer.screen.cursor.x
+            assert peer.screen.display[peer.screen.cursor.y].count('*') < 80, 'Long input did not scroll'
+            peer.write('\x1b[H')
+            peer.expect(lambda _: peer.screen.cursor.x < end_x - 20, 'Home did not reveal input start')
+            home_x = peer.screen.cursor.x
+            peer.write('\x1b[C')
+            peer.expect(lambda _: peer.screen.cursor.x == home_x + 1, 'Right did not move input cursor')
+            selected(peer, '[ Confirm ]')
+            peer.write('\x1b[D')
+            peer.expect(lambda _: peer.screen.cursor.x == home_x, 'Left did not move input cursor')
+            peer.write('\x1b[F')
+            peer.expect(lambda _: peer.screen.cursor.x == end_x, 'End did not reveal input tail')
+            peer.write('\b' * 80)
+            peer.expect(lambda s: '*' not in s, 'Scrolled input did not delete correctly')
             peer.write('short\r')
             peer.expect(lambda s: '*****' in s and 'Password required' in s, 'Short input submitted')
             peer.write('\b' * 5)
@@ -176,6 +196,11 @@ def main():
             prompt(peer)
             enter_secret(peer)
             selected(peer, '[ Confirm ]')
+            peer.write('\t')
+            selected(peer, '[ Cancel ]')
+            save(peer, 'client-selected-cancel')
+            peer.write('\t')
+            selected(peer, '[ Confirm ]')
             peer.pump(.3)
             save(peer, 'client-masked')
             peer.write('\r')
@@ -186,8 +211,8 @@ def main():
                 assert time.monotonic() < deadline, peer.pump()
                 peer.pump(.1)
             assert SECRET not in ''.join(peer.raw)
-            for name, keys, utf8 in [('escape', '\x1b', 'true'), ('cancel', '\x1b[C\r', 'true'),
-                                     ('ascii-cancel', '\x1b[C\r', 'false')]:
+            for name, keys, utf8 in [('escape', '\x1b', 'true'), ('cancel', '\t\r', 'true'),
+                                     ('ascii-cancel', '\t\r', 'false')]:
                 cancelled = client(name, ['--utf8', utf8])
                 prompt(cancelled)
                 text = cancelled.pump(.1)
@@ -197,7 +222,7 @@ def main():
                     save(cancelled, 'client-ascii')
                 cancelled.write(keys)
                 wait_exit(cancelled)
-            print('PASS client: retries, editing, spaces, masking, minimum length, multiline limit, UTF-8/ASCII borders, Left/Right, resize, Enter, Esc', flush=True)
+            print('PASS client: retries, editing, spaces, masking, minimum length, multiline limit, UTF-8/ASCII borders, Tab, cursor navigation, horizontal scrolling, resize, Enter, Esc', flush=True)
 
             acds_port = free_port()
             acds = subprocess.Popen([binary, '--no-check-update', '--log-file', str(root / 'acds.log'),
@@ -227,7 +252,7 @@ def main():
                 joiner.pump(.1)
             assert joiner.process.isalive()
             assert SECRET not in ''.join(joiner.raw)
-            for name, keys in [('discovery-escape', '\x1b'), ('discovery-cancel', '\x1b[C\r')]:
+            for name, keys in [('discovery-escape', '\x1b'), ('discovery-cancel', '\t\r')]:
                 cancelled = terminal(name, [session, *discovery])
                 prompt(cancelled)
                 cancelled.write(keys)

@@ -183,8 +183,8 @@ Test(terminal_response, shifted_enter_is_distinct_and_survives_fragmented_input)
 
 Test(terminal_response, extended_keyboard_controls_preserve_cancel_and_edit_keys) {
   keyboard_stream_reset();
-  input = "\033[27u\033[13u\033[9u\033[127u\033[99;5u\033[27;5;99~";
-  const keyboard_key_t keys[] = {KEY_ESCAPE, 13, 9, 127, 3, 3};
+  input = "\033[27u\033[13u\033[9u\033[127u\033[99;5u\033[27;5;99~\033[118;5u\033[27;5;118~";
+  const keyboard_key_t keys[] = {KEY_ESCAPE, 13, 9, 127, 3, 3, 22, 22};
   for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); ++i)
     cr_assert_eq(keyboard_stream_read(next_byte), keys[i]);
 }
