@@ -60,7 +60,7 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
 
   // Debug: log all key codes to help identify unknown keys
   if (key != KEY_NONE) {
-    log_info("KEYBOARD INPUT: code=%d (0x%02x) char='%c'", key, key, (key >= 32 && key < 127) ? key : '?');
+    log_debug("KEYBOARD INPUT: code=%d (0x%02x) char='%c'", key, key, (key >= 32 && key < 127) ? key : '?');
   }
 
   switch (action) {
@@ -186,7 +186,7 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
   default:
     // Unknown key - log it for debugging
     if (key != KEY_NONE) {
-      log_info("UNKNOWN KEY: code=%d (0x%02x) char='%c'", key, key, (key >= 32 && key < 127) ? key : '?');
+      log_debug("UNKNOWN KEY: code=%d (0x%02x) char='%c'", key, key, (key >= 32 && key < 127) ? key : '?');
     }
     break;
   }
