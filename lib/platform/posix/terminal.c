@@ -1049,4 +1049,39 @@ void terminal_stop_resize_detection(void) {
   // This is a no-op stub for compatibility
 }
 
+static asciichat_error_t title_write(int fd, const char *text) {
+  const char *term = SAFE_GETENV("TERM");
+  if (!platform_isatty(fd) || (term && strcmp(term, "dumb") == 0))
+    return ASCIICHAT_OK;
+  size_t length = strlen(text);
+  return platform_write_all(fd, text, length) == length ? ASCIICHAT_OK
+                                                        : SET_ERRNO_SYS(ERROR_TERMINAL, "Cannot write terminal title");
+}
+asciichat_error_t terminal_set_title_fd(int fd, const char *title) {
+  if (!title)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal title must not be NULL");
+  char sequence[1024];
+  size_t used = 4, length = strlen(title);
+  memcpy(sequence, "\033]0;", 4);
+  if (length > sizeof(sequence) - 7)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal title is too long");
+  for (size_t i = 0; i < length; ++i) {
+    unsigned char c = (unsigned char)title[i];
+    sequence[used++] = c < 0x20 || c == 0x7f ? ' ' : title[i];
+  }
+  sequence[used++] = '\033';
+  sequence[used++] = '\\';
+  sequence[used] = '\0';
+  return title_write(fd, sequence);
+}
+asciichat_error_t terminal_set_title(const char *title) {
+  return terminal_set_title_fd(STDOUT_FILENO, title);
+}
+asciichat_error_t terminal_title_save(int fd) {
+  return title_write(fd, "\033[22;0t");
+}
+asciichat_error_t terminal_title_restore(int fd) {
+  return title_write(fd, "\033[23;0t");
+}
+
 #endif // !_WIN32

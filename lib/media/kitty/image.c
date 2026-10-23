@@ -1,5 +1,6 @@
 #include <ascii-chat/media/kitty/image.h>
 #include <ascii-chat/util/stdout_writer.h>
+#include <ascii-chat/tui/controller.h>
 #include <limits.h>
 #include <stddef.h>
 
@@ -37,7 +38,9 @@ asciichat_error_t kitty_image_write(FILE *stream, const uint8_t *rgba, int width
     }
     packet[used++] = '\033';
     packet[used++] = '\\';
+    ui_controller_packet_begin();
     asciichat_error_t err = stdout_writer_write(stream, packet, used);
+    ui_controller_packet_end();
     if (err != ASCIICHAT_OK)
       return err;
     offset += count;

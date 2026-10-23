@@ -400,7 +400,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
                           &g_media_editor.cursor, key);
       }
       if (ui_prompt_present("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels",
-                            g_media_editor.buffer, g_media_editor.cursor) != ASCIICHAT_OK) {
+                            g_media_editor.buffer, g_media_editor.cursor, false) != ASCIICHAT_OK) {
         g_media_editor.active = false;
         ui_prompt_remove();
         CLEAR_ERRNO();
@@ -522,7 +522,7 @@ asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, si
       if (!opts.mask_char)
         display_cursor = 0;
     }
-    result = ui_prompt_present(timed_prompt, visible, display_cursor);
+    result = ui_prompt_present(timed_prompt, visible, display_cursor, !opts.echo);
     if (result != ASCIICHAT_OK)
       break;
     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_PROMPT, 100);
@@ -578,7 +578,7 @@ asciichat_error_t ui_input_media_begin(const char *text) {
   g_media_editor.deadline = ui_input_deadline(120);
   asciichat_error_t result =
       ui_prompt_present("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels",
-                        g_media_editor.buffer, g_media_editor.cursor);
+                        g_media_editor.buffer, g_media_editor.cursor, false);
   g_media_editor.active = result == ASCIICHAT_OK;
   input_unlock();
   return result;

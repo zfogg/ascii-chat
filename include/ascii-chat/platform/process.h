@@ -76,11 +76,11 @@ ASCIICHAT_API asciichat_error_t platform_process_title_init(int argc, char ***ar
 
 /**
  * @brief Update the OS process naming surfaces through one platform API.
- * @note Main-thread only. Never writes to stdout. WASM is a no-op.
+ * @note Main-thread only. Never writes to the terminal. Windows and WASM are no-ops.
  * Unix titles exceeding the reserved storage fail without changing the title.
  * Linux updates argv and the main thread's comm (15 visible bytes). macOS
  * updates argv, the main-thread name, and the Launch Services display name
- * used by Activity Monitor. Windows updates the console title.
+ * used by Activity Monitor.
  * Does not rename the executable file or Windows Task Manager image name.
  * A native-name failure returns an error after the Unix argv title is updated;
  * the command-line update is retained, including when macOS Launch Services
