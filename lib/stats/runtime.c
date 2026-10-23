@@ -62,9 +62,9 @@ stats_scope_t *stats_runtime_peer_scope(stats_peer_t *peer) {
   return peer ? peer->scope : NULL;
 }
 bool stats_runtime_active(void) {
-  return atomic_load_bool_impl(&g_active) &&
-         (ui_controller_interactive_screen() == UI_SCREEN_STATS ||
-          (ui_controller_interactive_screen() == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_STATS));
+  return atomic_load_bool_impl(&g_active) && (ui_controller_interactive_screen() == UI_SCREEN_STATS ||
+                                              (ui_controller_interactive_screen() == UI_SCREEN_HELP &&
+                                               keyboard_help_previous_interactive() == UI_SCREEN_STATS));
 }
 
 void stats_runtime_toggle(void) {

@@ -124,6 +124,14 @@ typedef bool (*backtrace_frame_filter_t)(const char *frame);
  *
  * @param bt Backtrace structure to fill (must not be NULL)
  */
+/** Shared semantic formatting for terminal logs and TUI backtraces. No output or ownership transfer. */
+typedef struct {
+  char colored[16384];
+  char plain[16384];
+} backtrace_text_t;
+void backtrace_format_styled(backtrace_text_t *text, const char *label, const backtrace_t *bt, int skip_frames,
+                             int max_frames, backtrace_frame_filter_t filter);
+
 void backtrace_capture(backtrace_t *bt);
 
 /**

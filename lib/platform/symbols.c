@@ -90,7 +90,8 @@ asciichat_error_t symbol_format_source_path(const char *module_name, const char 
 
   const char *path = source_path ? source_path : "unknown";
   const char *project_relative = extract_project_relative_path(path);
-  *external = !symbol_module_is_project(module_name) || (project_relative == path && source_path_is_absolute(path));
+  // Source files in this checkout also belong to test and tooling executables.
+  *external = project_relative == path && (!symbol_module_is_project(module_name) || source_path_is_absolute(path));
   const char *display_path = *external ? path_last_components(path, 5) : project_relative;
   bool truncated = *external && display_path != path;
   size_t prefix_size = truncated ? 4 : 0; // Ellipsis plus the omitted path separator.

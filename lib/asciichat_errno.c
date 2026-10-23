@@ -61,6 +61,70 @@ static bool g_tls_ready;
 #endif
 static PLATFORM_THREAD_LOCAL bool g_recording;
 static PLATFORM_THREAD_LOCAL bool g_suppress_logging;
+static void registry_lock(void);
+static void registry_unlock(void);
+static PLATFORM_THREAD_LOCAL bool g_suppress_notifications;
+static asciichat_error_context_t g_notifications[ASCIICHAT_ERRNO_HISTORY_SIZE];
+static size_t g_notification_first, g_notification_count;
+static uint64_t g_notification_dropped;
+static bool g_notifications_enabled;
+static atomic_t g_notifications_pending = {0};
+
+void errno_notifications_enable(bool enabled) {
+  registry_lock();
+  if (enabled != g_notifications_enabled) {
+    g_notifications_enabled = enabled;
+    g_notification_first = g_notification_count = 0;
+    g_notification_dropped = 0;
+    atomic_store_bool_impl(&g_notifications_pending, false);
+  }
+  registry_unlock();
+}
+
+bool errno_notifications_pending(void) {
+  return atomic_load_bool_impl(&g_notifications_pending);
+}
+
+bool errno_notifications_suppress(bool suppress) {
+  bool previous = g_suppress_notifications;
+  g_suppress_notifications = suppress;
+  return previous;
+}
+
+size_t errno_notifications_snapshot(asciichat_error_context_t *out, size_t capacity, uint64_t *dropped) {
+  registry_lock();
+  size_t count = MIN(capacity, g_notification_count);
+  for (size_t i = 0; out && i < count; ++i)
+    out[i] = g_notifications[(g_notification_first + i) % ASCIICHAT_ERRNO_HISTORY_SIZE];
+  if (dropped)
+    *dropped = g_notification_dropped;
+  registry_unlock();
+  return count;
+}
+
+void errno_notifications_dismiss(uint64_t through_id) {
+  registry_lock();
+  while (g_notification_count && g_notifications[g_notification_first].error_id <= through_id) {
+    memset(&g_notifications[g_notification_first], 0, sizeof(g_notifications[0]));
+    g_notification_first = (g_notification_first + 1) % ASCIICHAT_ERRNO_HISTORY_SIZE;
+    --g_notification_count;
+  }
+  g_notification_dropped = 0;
+  atomic_store_bool_impl(&g_notifications_pending, g_notification_count != 0);
+  registry_unlock();
+}
+
+static void notify_locked(const asciichat_error_context_t *context) {
+  if (!g_notifications_enabled || g_suppress_notifications)
+    return;
+  if (g_notification_count == ASCIICHAT_ERRNO_HISTORY_SIZE) {
+    g_notification_first = (g_notification_first + 1) % ASCIICHAT_ERRNO_HISTORY_SIZE;
+    --g_notification_count;
+    ++g_notification_dropped;
+  }
+  g_notifications[(g_notification_first + g_notification_count++) % ASCIICHAT_ERRNO_HISTORY_SIZE] = *context;
+  atomic_store_bool_impl(&g_notifications_pending, true);
+}
 
 const char *asciichat_error_format(const char *message, asciichat_error_t code) {
   static PLATFORM_THREAD_LOCAL char buffers[8][ASCIICHAT_ERRNO_MESSAGE_MAX + 256];
@@ -227,6 +291,7 @@ static void push_context(asciichat_error_context_t *context) {
   if (!thread) {
     ++g_stats.dropped_errors;
     remember_locked(context, ASCIICHAT_ERRNO_OVERFLOW, context->created_ns);
+    notify_locked(context);
     registry_unlock();
     return;
   }
@@ -268,6 +333,7 @@ static void push_context(asciichat_error_context_t *context) {
   thread->top = index;
   ++thread->depth;
   ++g_stats.pending_errors;
+  notify_locked(context);
   registry_unlock();
 }
 
@@ -586,6 +652,7 @@ void errno_destroy(void) {
   registry_unlock();
 }
 void errno_shutdown(void) {
+  errno_notifications_enable(false);
   errno_destroy();
   registry_lock();
   g_shutdown = true;

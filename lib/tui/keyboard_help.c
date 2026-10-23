@@ -8,6 +8,10 @@
 #include <string.h>
 
 static atomic_int g_help_parent = -1;
+static atomic_int g_help_previous = -1;
+int keyboard_help_previous_interactive(void) {
+  return atomic_load(&g_help_previous);
+}
 int keyboard_help_parent_screen(void) {
   return atomic_load(&g_help_parent);
 }
@@ -24,11 +28,13 @@ static void render_help_snapshot(terminal_size_t size, const void *data) {
 
 void keyboard_help_toggle_terminal(int fd) {
   if (ui_controller_current_screen() == UI_SCREEN_HELP) {
+    // Keep the underlying worker active throughout dismissal. An intermediate
+    // empty selection could make it retire its screen after we restore it.
+    ui_controller_select_interactive(keyboard_help_previous_interactive());
     ui_controller_remove(UI_SCREEN_HELP);
-    ui_controller_select_interactive(keyboard_help_parent_screen() >= UI_SCREEN_LOGS ? keyboard_help_parent_screen()
-                                                                                     : -1);
     return;
   }
+  atomic_store(&g_help_previous, ui_controller_interactive_screen());
   atomic_store(&g_help_parent, ui_controller_current_screen());
   terminal_size_t minimum;
   char *text =
