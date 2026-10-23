@@ -192,8 +192,9 @@ or URLs.
 startup. `ascii-chat.session.attempt` covers an initial or reconnect session;
 `ascii-chat.network.reconnect.wait` covers backoff. Media replacement has separate
 `ascii-chat.media.transition.load` and `.commit` spans with bounded outcome/kind
-attributes. Loader spans are independent roots because the loader crosses a
-thread boundary; they do not claim an unpropagated parent relationship.
+attributes. Loader and commit spans are independent control-operation roots:
+the loader crosses a thread boundary, and commit must not inherit a discarded
+frame's sampling decision.
 
 `tests/integration/test_otel.py BINARY` runs a synthetic mirror snapshot against
 a loopback OTLP receiver, verifies each signal mask, sampling and metric

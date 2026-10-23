@@ -652,7 +652,8 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
     mutex_unlock(&ctx->load_mutex);
     return;
   }
-  ASCII_OTEL_SCOPE(MEDIA_TRANSITION_COMMIT);
+  // Media replacement must not inherit a discarded frame's sampling decision.
+  ASCII_OTEL_SCOPE_PARENT(MEDIA_TRANSITION_COMMIT, &(const gotel_context_t){0});
   if (thread_join(&ctx->loader, NULL) != 0) {
     mutex_unlock(&ctx->load_mutex);
     log_error("Cannot join media loader; deferring replacement");
