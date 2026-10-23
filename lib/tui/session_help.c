@@ -268,8 +268,7 @@ char *ui_session_context_help_render(terminal_size_t size, ui_screen_t screen, t
   static const ui_help_entry_t media[] = {
       {"Enter", "Play the entered paths or URLs"},  {"Esc / Ctrl-O", "Cancel media input"},
       {"Left / Right", "Move the text cursor"},     {"Home / End", "Beginning/end of input"},
-      {"Backspace / Delete", "Delete a character"}, {NULL, "Printable characters are literal while editing."},
-      {"?", "Help when the input is empty"}};
+      {"Backspace / Delete", "Delete a character"}, {"?", "Help when the input is empty"}};
   const ui_help_entry_t *entries = NULL;
   size_t count = 0;
   const char *title = NULL;
