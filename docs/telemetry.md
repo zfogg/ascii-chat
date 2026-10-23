@@ -93,7 +93,7 @@ configured endpoint, `OTEL_EXPORTER_OTLP_ENDPOINT`, then the build default.
 Standard OTEL configuration is handled by c-gotel. It supports `OTEL_SDK_DISABLED`,
 `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_EXPORTER_OTLP_HEADERS`,
 `OTEL_EXPORTER_OTLP_TIMEOUT` (milliseconds), `OTEL_EXPORTER_OTLP_CERTIFICATE`,
-and `OTEL_EXPORTER_OTLP_PROTOCOL` (`http/protobuf` only). Signal-specific
+and `OTEL_EXPORTER_OTLP_PROTOCOL` (`http/protobuf` or `grpc`). Signal-specific
 `OTEL_EXPORTER_OTLP_{TRACES,LOGS,METRICS}_{ENDPOINT,HEADERS}` override common settings.
 Explicit ascii-chat endpoint settings override all signal endpoints. Empty standard
 environment values are unset. `OTEL_SDK_DISABLED=true` disables all signals;
@@ -184,6 +184,19 @@ by default, including native Windows/macOS anchors. `--otel-ca-file` (also
 `ASCII_CHAT_OTEL_CA_FILE` or TOML `[otel] ca_file`) selects a PEM CA bundle
 replacing system roots. `OTEL_EXPORTER_OTLP_CERTIFICATE` is the fallback.
 Verification cannot be disabled.
+Native builds include gRPC support. Select it with `OTEL_EXPORTER_OTLP_PROTOCOL=grpc`
+and an origin such as `https://collector.example.com:4317` (or
+`http://127.0.0.1:4317` for plaintext HTTP/2). gRPC endpoints must not include
+`/v1/traces` or another HTTP signal path. For example:
+
+```sh
+OTEL_EXPORTER_OTLP_PROTOCOL=grpc ./build/bin/ascii-chat \
+  --otel-endpoint http://127.0.0.1:4317 mirror --test-pattern --audio=false
+```
+
+gRPC uses the same signal, sampling, timeout, header and CA settings as
+HTTP/protobuf. HTTPS gRPC also requires HTTP/2 ALPN negotiation. HTTP/protobuf
+remains the default protocol, including the local development collector.
 A local Collector remains useful for forwarding and processing. No default
 remote collector or usage reporting is enabled.
 
