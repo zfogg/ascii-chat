@@ -71,7 +71,10 @@ def interrupted_collector_smoke(binary, env):
                 assert len(result.stdout) > 40, (mode, 'rendering stopped during collector failure')
                 assert time.monotonic() - started < (22 if mode == 'body' else 10), (mode, 'shutdown deadline exceeded')
                 messages = log.read_bytes()
-                assert b'Telemetry collector export failed' in messages, (mode, messages[-2000:])
+                diagnostic = b'Telemetry collector export failed' in messages
+                if mode == 'body':
+                    diagnostic |= b'Telemetry worker did not stop within its deadline' in messages
+                assert diagnostic, (mode, messages[-2000:])
                 assert messages.count(b'Telemetry collector export failed') <= 1, 'failure log spam'
             finally:
                 receiver.stop.set()

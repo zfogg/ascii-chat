@@ -18,6 +18,23 @@ The project's `.codex/config.toml` connects Codex to Spaniel's MCP endpoint at
 `http://127.0.0.1:28080/mcp`. Start the collector before opening a new Codex chat
 in this trusted checkout. Use the Spaniel tools to inspect stored traces, logs,
 and metrics, including named SQLite spans under `ascii-chat.storage.*`.
+The bundled collector enables MCP writes with `--mcp-allow-writes`. Its ports
+remain bound to host loopback. To validate and install the versioned dashboards:
+
+```sh
+python deploy/otel/apply_dashboards.py --dry-run
+python deploy/otel/apply_dashboards.py
+```
+
+The installer uses Spaniel MCP, replaces dashboards with matching names, and
+prints links. Session health covers frames, audio, network, queues and latency;
+FFmpeg and connections covers media operations and transitions; logs and exporter
+covers severity and export pressure. Queries use a rolling 15-minute observation
+window. Cumulative metrics select the newest snapshot per process start and
+series, so repeated exports are not added together. Totals remain process-lifetime
+totals for processes seen in the window. Sampled span percentiles are labeled
+separately from metrics that count every operation. No data is not a healthy zero.
+
 Telemetry services are named `ascii-chat-$mode`, such as
 `ascii-chat-discovery-service` for ACDS.
 
@@ -150,6 +167,32 @@ across the network would require an ACIP protocol change.
 
 ## Validation
 
+Logs include both OTLP severity numbers and text. DEV maps to TRACE (1), DEBUG
+to DEBUG (5), INFO to INFO (9), WARN to WARN (13), ERROR to ERROR (17), and FATAL
+to FATAL (21). The media integration fixture checks all six mappings on the wire.
+Routine render/setup pointers, snapshot timing checks and transport destruction
+are DEBUG. Connection retries and real transport-close failures are WARN.
+Crypto initialization no longer emits unsolicited synchronization-state dumps;
+explicit `--sync-state` diagnostics remain available.
+
+FFmpeg span names describe operations rather than implementation function names:
+`ascii-chat.ffmpeg.input.{open,open_stdin,close,seek}`, `demux.{open,probe,read_packet}`,
+`decoder.{open,send_packet,receive_frame}`, `video.{decode,scale,poll,read}` and
+`audio.{read,resample}` under the same `ascii-chat.ffmpeg.` prefix. These replace
+the earlier `ascii-chat.media.ffmpeg_decoder_*` operation names and derived metric
+names. Packet/frame/scaling/resampling spans remain sampled; all operation counts,
+errors and duration histograms include unsampled work. EOF, EAGAIN and application
+cancellation do not mark codec spans as errors. Attributes include codec, media
+type, dimensions, packet sizes and numeric FFmpeg results, without source paths
+or URLs.
+
+`ascii-chat.network.connection.establish` covers transport, crypto and protocol
+startup. `ascii-chat.session.attempt` covers an initial or reconnect session;
+`ascii-chat.network.reconnect.wait` covers backoff. Media replacement has separate
+`ascii-chat.media.transition.load` and `.commit` spans with bounded outcome/kind
+attributes. Loader spans are independent roots because the loader crosses a
+thread boundary; they do not claim an unpropagated parent relationship.
+
 `tests/integration/test_otel.py BINARY` runs a synthetic mirror snapshot against
 a loopback OTLP receiver, verifies each signal mask, sampling and metric
 independence, CLI/config/environment precedence, invalid configuration, and a
@@ -200,7 +243,10 @@ packet bytes, packet count, dimensions, keyframes, and input/output ratio.
 Decoding records input packet sizes, frames and grayscale output bytes. Flush
 packets add output bytes without counting another input frame.
 
-The `otel-media` integration test performs real zstd round trips (including an
+The `otel-media` integration test also generates PPM/WAV inputs and exercises
+FFmpeg probing, packet decoding, video scaling, audio resampling and seeking,
+checking operation names and expected EOF behavior without cameras or speakers.
+It performs real zstd round trips (including an
 exact-size failure), H.264/H.265 encoding and HEVC decoding, then checks exported
 names, attributes, counters, and histograms. A missing software encoder is
 reported explicitly; compression assertions still execute. Native Windows's

@@ -4,6 +4,9 @@
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/video/h265/encoder.h>
 #include <ascii-chat/video/h265/decoder.h>
+#include <ascii-chat/media/ffmpeg_decoder.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/platform/system.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/log/log.h>
@@ -14,6 +17,12 @@
     if (!(value))                                                                                                      \
       FATAL(ERROR_ASSERTION_FAILED, "%s", #value);                                                                     \
   } while (0)
+static void emit_severity(int level, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  ascii_otel_log(level, __FILE__, __LINE__, __func__, format, args);
+  va_end(args);
+}
 int main(void) {
   log_init(NULL, LOG_ERROR, false, false);
   options_t options = options_t_new();
@@ -22,10 +31,43 @@ int main(void) {
   SAFE_STRNCPY(options.otel_endpoint, endpoint, sizeof(options.otel_endpoint));
   options.otel_realtime_sample_rate = 1;
   options.otel_realtime_max_per_second = 10000;
+  SAFE_STRNCPY(options.otel_log_level, "dev", sizeof(options.otel_log_level));
   CHECK(options_state_init() == ASCIICHAT_OK);
   CHECK(options_state_set(&options) == ASCIICHAT_OK);
-  char *args[] = {"otel-media-fixture"};
-  CHECK(ascii_otel_init("media-fixture", 1, args) == ASCIICHAT_OK);
+  char *args[] = {"ascii-chat", "mirror"};
+  CHECK(ascii_otel_init("mirror", 2, args) == ASCIICHAT_OK);
+  for (int level = LOG_DEV; level <= LOG_FATAL; ++level)
+    emit_severity(level, "otel severity fixture %d", level);
+  char video_path[OPTIONS_BUFF_SIZE], audio_path[OPTIONS_BUFF_SIZE];
+  const char *path = SAFE_GETENV("ASCII_CHAT_OTEL_FIXTURE_VIDEO");
+  CHECK(path != NULL);
+  SAFE_STRNCPY(video_path, path, sizeof(video_path));
+  path = SAFE_GETENV("ASCII_CHAT_OTEL_FIXTURE_AUDIO");
+  CHECK(path != NULL);
+  SAFE_STRNCPY(audio_path, path, sizeof(audio_path));
+  ffmpeg_decoder_t *media = ffmpeg_decoder_create(video_path);
+  CHECK(media != NULL);
+  CHECK(ffmpeg_decoder_start_prefetch(media) == ASCIICHAT_OK);
+  image_t *frame = NULL;
+  uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
+  while (!frame && time_get_ns() < deadline) {
+    frame = ffmpeg_decoder_read_video_frame(media);
+    if (!frame)
+      platform_sleep_ms(1);
+  }
+  CHECK(frame && frame->w == 16 && frame->h == 16);
+  ffmpeg_decoder_destroy(media);
+  media = ffmpeg_decoder_create(audio_path);
+  CHECK(media != NULL && ffmpeg_decoder_has_audio(media));
+  float samples[128];
+  CHECK(ffmpeg_decoder_read_audio_samples(media, samples, 128) > 0);
+  CHECK(ffmpeg_decoder_seek_to_timestamp(media, 0) == ASCIICHAT_OK);
+  CHECK(ffmpeg_decoder_read_audio_samples(media, samples, 128) > 0);
+  ffmpeg_decoder_destroy(media);
+  char missing_path[sizeof(video_path) + 16];
+  safe_snprintf(missing_path, sizeof(missing_path), "%s.missing", video_path);
+  CHECK(ffmpeg_decoder_create(missing_path) == NULL);
+  CLEAR_ERRNO();
   uint8_t input[32 * 32 * 3], decoded[32 * 32 * 3];
   memset(input, 65, sizeof(input));
   void *compressed = NULL;

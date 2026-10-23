@@ -391,7 +391,8 @@ void acip_transport_destroy(acip_transport_t *transport) {
     return;
   }
 
-  log_warn("[TRANSPORT_DESTROY] 🔴 DESTROY_START: transport=%p, impl_data=%p", (void *)transport, transport->impl_data);
+  log_debug("[TRANSPORT_DESTROY] 🔴 DESTROY_START: transport=%p, impl_data=%p", (void *)transport,
+            transport->impl_data);
 
 #ifndef __EMSCRIPTEN__
   acip_outbound_destroy(transport);
@@ -401,24 +402,26 @@ void acip_transport_destroy(acip_transport_t *transport) {
   acip_transport_type_t type = 0;
   if (transport->methods && transport->methods->get_type) {
     type = transport->methods->get_type(transport);
-    log_info("[TRANSPORT_DESTROY] 📋 TRANSPORT_TYPE: type=%d (1=TCP, 2=WebSocket, 3=WebRTC, ...)", type);
+    log_debug("[TRANSPORT_DESTROY] 📋 TRANSPORT_TYPE: type=%d (1=TCP, 2=WebSocket, 3=WebRTC, ...)", type);
   }
 
   // Close if still connected
   if (transport->methods && transport->methods->close && transport->methods->is_connected &&
       transport->methods->is_connected(transport)) {
-    log_warn("[TRANSPORT_DESTROY] 🔴 STILL_CONNECTED: calling close() first (type=%d)", type);
+    log_debug("[TRANSPORT_DESTROY] 🔴 STILL_CONNECTED: calling close() first (type=%d)", type);
     asciichat_error_t close_result = transport->methods->close(transport);
-    log_info("[TRANSPORT_DESTROY] 🔴 CLOSE_CALLED: result=%d", close_result != ASCIICHAT_OK ? -1 : 0);
+    if (close_result != ASCIICHAT_OK)
+      log_warn("Transport close during cleanup failed: %d", close_result);
+    log_debug("[TRANSPORT_DESTROY] 🔴 CLOSE_CALLED: result=%d", close_result != ASCIICHAT_OK ? -1 : 0);
   } else {
     log_debug("[TRANSPORT_DESTROY] ✅ ALREADY_CLOSED: skipping close (type=%d)", type);
   }
 
   // Call custom destroy implementation if provided
   if (transport->methods && transport->methods->destroy_impl) {
-    log_info("[TRANSPORT_DESTROY] 🔧 CALLING_DESTROY_IMPL: type=%d", type);
+    log_debug("[TRANSPORT_DESTROY] 🔧 CALLING_DESTROY_IMPL: type=%d", type);
     transport->methods->destroy_impl(transport);
-    log_info("[TRANSPORT_DESTROY] ✅ DESTROY_IMPL_COMPLETE: type=%d", type);
+    log_debug("[TRANSPORT_DESTROY] ✅ DESTROY_IMPL_COMPLETE: type=%d", type);
   } else {
     log_debug("[TRANSPORT_DESTROY] ⏭️  NO_CUSTOM_DESTROY: type=%d (using generic cleanup)", type);
   }
@@ -438,5 +441,5 @@ void acip_transport_destroy(acip_transport_t *transport) {
   log_debug("[TRANSPORT_DESTROY] 🗑️  FREEING_TRANSPORT: %p", (void *)transport);
   SAFE_FREE(transport);
 
-  log_warn("[TRANSPORT_DESTROY] ✅ DESTROY_COMPLETE: type=%d", type);
+  log_debug("[TRANSPORT_DESTROY] ✅ DESTROY_COMPLETE: type=%d", type);
 }

@@ -454,6 +454,7 @@ void session_capture_destroy(session_capture_ctx_t *ctx) {
 
   if (ctx->loader_created) {
     atomic_store_bool(&ctx->load_cancel, true);
+    ASCII_OTEL_SCOPE(MEDIA_TRANSITION_COMMIT);
     if (thread_join(&ctx->loader, NULL) != 0) {
       log_error("Cannot join media loader; retaining capture resources");
       return;
@@ -522,6 +523,7 @@ static void render_media_loading(terminal_size_t size, const void *data) {
 }
 
 static void *load_media_worker(void *data) {
+  ASCII_OTEL_SCOPE(MEDIA_TRANSITION_LOAD);
   session_capture_ctx_t *ctx = data;
   asciichat_errno_scope_t scope = errno_scope_begin();
   media_source_t *source = media_source_create_interruptible(MEDIA_SOURCE_FILE, ctx->load_path, load_cancelled, ctx);
@@ -555,6 +557,11 @@ static void *load_media_worker(void *data) {
       source = NULL;
     }
   }
+  ASCII_OTEL_ATTR_STRING("media.transition.outcome", source ? "ready" : load_cancelled(ctx) ? "cancelled" : "failed");
+#ifdef ASCIICHAT_WITH_OTEL
+  if (!source && !load_cancelled(ctx))
+    ascii_otel_error("Media transition could not prepare source");
+#endif
   asciichat_error_context_t failure;
   char error[512] = "Could not open media";
   if (!source && errno_peek_since(scope, &failure))
@@ -645,6 +652,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
     mutex_unlock(&ctx->load_mutex);
     return;
   }
+  ASCII_OTEL_SCOPE(MEDIA_TRANSITION_COMMIT);
   if (thread_join(&ctx->loader, NULL) != 0) {
     mutex_unlock(&ctx->load_mutex);
     log_error("Cannot join media loader; deferring replacement");
@@ -661,6 +669,8 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   media_playlist_t loaded_playlist = ctx->load_playlist;
   bool cancelled = atomic_load_bool(&ctx->load_cancel);
   bool automatic = ctx->load_is_advance;
+  ASCII_OTEL_ATTR_STRING("media.transition.kind", automatic ? "playlist_advance" : "user");
+  ASCII_OTEL_ATTR_STRING("media.transition.outcome", cancelled ? "cancelled" : "failed");
   mutex_unlock(&ctx->load_mutex);
   if (cancelled || !replacement) {
     ctx->advance_failed |= automatic;
@@ -789,6 +799,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   atomic_fetch_add_u64(&ctx->source_epoch, 1);
   atomic_store_bool(&ctx->awaiting_presentation, !ctx->loader_created);
   mutex_unlock(&ctx->load_mutex);
+  ASCII_OTEL_ATTR_STRING("media.transition.outcome", "committed");
   log_info("Opened media: %s", path);
   CLEAR_ERRNO();
 }

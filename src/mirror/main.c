@@ -258,7 +258,7 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
   (void)user_data; // Unused
 
   js_mirror_log("mirror_run: ENTRY");
-  log_info("capture=%p display=%p", (void *)capture, (void *)display);
+  log_debug("capture=%p display=%p", (void *)capture, (void *)display);
 
   // Get the render loop's should_exit callback from session_client_like
   bool (*render_should_exit)(void *) = session_client_like_get_render_should_exit();

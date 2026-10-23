@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/network/negotiation.h>
 #include "connection_internal.h"
 #include "server.h"
@@ -124,6 +125,7 @@ asciichat_error_t client_connection_create(client_connection_t **out) {
 }
 
 asciichat_error_t client_connection_start(client_connection_t *connection, const char *address, uint16_t port) {
+  ASCII_OTEL_SCOPE(CONNECTION_ATTEMPT);
   if (!connection || atomic_load_int(&connection->lifecycle.state) != SESSION_CONNECTION_STARTING) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection is not ready for startup");
   }

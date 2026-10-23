@@ -111,9 +111,9 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const asc
       // Log every 0.5 seconds to debug timing
 
       if (current_time_ns - connection->frame_last_debug_log_ns > 500 * 1000 * 1000) { // 500ms
-        log_info("SNAPSHOT_DELAY_CHECK: elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu", elapsed,
-                 snapshot_delay, (unsigned long long)connection->frame_first_frame_time_ns,
-                 (unsigned long long)current_time_ns);
+        log_debug("SNAPSHOT_DELAY_CHECK: elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu", elapsed,
+                  snapshot_delay, (unsigned long long)connection->frame_first_frame_time_ns,
+                  (unsigned long long)current_time_ns);
         connection->frame_last_debug_log_ns = current_time_ns;
       }
 

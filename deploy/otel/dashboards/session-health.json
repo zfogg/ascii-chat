@@ -1,0 +1,48 @@
+{
+  "name": "ascii-chat · Session health",
+  "description": "Last 15 minutes of observations across ascii-chat services. Totals and histogram summaries use only the newest cumulative snapshot per series and process start. They are process-lifetime totals for processes seen in this window, not interval counts. Missing telemetry is not zero. Hidden-screen drops are expected; sampling does not affect metric counts.",
+  "panels": [
+    {
+      "title": "Capture, display and frame-drop totals",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name LIKE 'ascii-chat.frames.%' AND type='sum' GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 0,
+      "display_type": "table"
+    },
+    {
+      "title": "Pipeline and queue latency (all work, ms)",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(histogram_count) AS observations,round(1000*sum(histogram_sum)/nullif(sum(histogram_count),0),3) AS mean_ms,round(1000*max(histogram_max),3) AS process_max_ms FROM latest WHERE type='histogram' AND (name IN ('ascii-chat.frames.capture_to_display','ascii-chat.frames.capture_to_encode','ascii-chat.queue.display.wait','ascii-chat.queue.encode.wait','ascii-chat.queue.oldest_age')) GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 1,
+      "display_type": "table"
+    },
+    {
+      "title": "Audio underruns, overruns, clipped and dropped samples",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name IN ('ascii-chat.audio.underruns','ascii-chat.audio.overruns','ascii-chat.audio.samples.dropped','ascii-chat.audio.samples.clipped') GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 2,
+      "display_type": "table"
+    },
+    {
+      "title": "RTT and outbound queue age (ms)",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(histogram_count) AS observations,round(1000*sum(histogram_sum)/nullif(sum(histogram_count),0),3) AS mean_ms,round(1000*max(histogram_max),3) AS process_max_ms FROM latest WHERE type='histogram' AND (name IN ('ascii-chat.network.round_trip_time','ascii-chat.network.outbound.oldest_age')) GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 3,
+      "display_type": "table"
+    },
+    {
+      "title": "Network errors, reconnects and bytes",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name IN ('ascii-chat.network.reconnects','ascii-chat.network.disconnects','ascii-chat.network.send.errors','ascii-chat.network.receive.errors','ascii-chat.network.sent','ascii-chat.network.received','ascii-chat.network.outbound.frames.dropped','ascii-chat.network.outbound.congestion') GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 4,
+      "display_type": "table"
+    },
+    {
+      "title": "Latest queue occupancy and active connections",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,max(value) AS value FROM latest WHERE name IN ('ascii-chat.queue.display.depth','ascii-chat.queue.encode.depth','ascii-chat.network.connections.active') GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 5,
+      "display_type": "table"
+    },
+    {
+      "title": "Capture-to-display mean latency trend (cumulative observations, ms)",
+      "display_type": "time_series",
+      "position": 6,
+      "query": "WITH snapshots AS (SELECT *, floor(timestamp_ns/10000000000)*10 AS bucket FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp)-900000000000 AND name='ascii-chat.frames.capture_to_display' QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket ORDER BY timestamp_ns DESC)=1) SELECT to_timestamp(bucket) AS timestamp,service_name AS series,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value FROM snapshots GROUP BY bucket,service_name ORDER BY bucket"
+    }
+  ]
+}

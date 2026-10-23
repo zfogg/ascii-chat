@@ -172,8 +172,8 @@ static void client_like_setup_terminal_logging(void) {
   // Note: Force all logging to stderr if encoding to pipe to prevent corrupting binary video output
   // (implemented via should_force_stderr check above)
   const char *render_file_early = GET_OPTION(render_file);
-  log_info("[CLIENT_LIKE_RUN] render_file_early=%s (ptr=%p)", render_file_early ? render_file_early : "(null)",
-           (void *)render_file_early);
+  log_debug("[CLIENT_LIKE_RUN] render_file_early=%s (ptr=%p)", render_file_early ? render_file_early : "(null)",
+            (void *)render_file_early);
   if (render_file_early && render_file_early[0] != '\0' &&
       (strcmp(render_file_early, "-") == 0 || strcmp(render_file_early, "pipe:") == 0)) {
     log_info("--render-file=- will output binary video to stdout, logging sent to stderr");
@@ -290,7 +290,7 @@ static void client_like_configure_session_logging(const session_client_like_conf
 }
 
 static void client_like_configure_url_capture(client_like_state_t *state) {
-  log_info("Using network URL: %s (webcam disabled)", state->media_url_val);
+  log_info("Using network media source (webcam disabled)");
   state->capture_config.type = MEDIA_SOURCE_FILE;
   state->capture_config.path = state->media_url_val;
   state->capture_config.loop = false;
@@ -569,10 +569,10 @@ static bool client_like_finish_session_splash(const session_client_like_config_t
 }
 
 static asciichat_error_t client_like_create_local_capture(client_like_state_t *state) {
-  log_info("[MIRROR_CHECK] stdin_render_mode=%d, capture=%p", state->stdin_render_mode, (void *)state->capture);
+  log_debug("[MIRROR_CHECK] stdin_render_mode=%d, capture=%p", state->stdin_render_mode, (void *)state->capture);
   if (!state->stdin_render_mode && !state->capture) {
     // Mirror mode: create capture context with local media source (NOW, after splash finishes)
-    log_info("Mirror mode detected - creating mirror capture after splash screen");
+    log_debug("Mirror mode detected - creating mirror capture after splash screen");
     uint64_t mirror_cap_start = time_get_ns();
     state->capture = session_mirror_capture_create(&state->capture_config);
     double mirror_cap_ms = time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
@@ -646,7 +646,7 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
   int attempt = 0;
   int max_attempts = config->max_reconnect_attempts;
 
-  log_info("[CLIENT_LIKE_LOOP] Starting connection loop, max_attempts=%d", max_attempts);
+  log_debug("[CLIENT_LIKE_LOOP] Starting connection loop, max_attempts=%d", max_attempts);
 
   while (true) {
     attempt++;
@@ -656,7 +656,17 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
     }
 
     asciichat_errno_scope_t attempt_scope = errno_scope_begin();
-    result = config->run_fn(state->capture, state->display, config->run_user_data);
+    {
+      ASCII_OTEL_SCOPE(SESSION_ATTEMPT);
+      ASCII_OTEL_ATTR_INT("session.attempt", attempt);
+      ASCII_OTEL_ATTR_STRING("session.attempt.kind", attempt > 1 ? "reconnect" : "initial");
+      result = config->run_fn(state->capture, state->display, config->run_user_data);
+      ASCII_OTEL_ATTR_INT("session.result", result);
+#ifdef ASCIICHAT_WITH_OTEL
+      if (result != ASCIICHAT_OK)
+        ascii_otel_error("Session attempt failed");
+#endif
+    }
 
     // Exit immediately if run_fn succeeded
     if (result == ASCIICHAT_OK) {
@@ -705,9 +715,9 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
 
     // Log reconnection message
     if (max_attempts == -1) {
-      log_info("Connection failed, retrying...");
+      log_warn("Connection failed, retrying...");
     } else if (max_attempts > 0) {
-      log_info("Connection failed, retrying (attempt %d/%d)...", attempt + 1, max_attempts);
+      log_warn("Connection failed, retrying (attempt %d/%d)...", attempt + 1, max_attempts);
     }
 
     // Apply reconnection delay if configured
@@ -720,6 +730,8 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
         retry_delay_ms = rejection_delay_ms;
     }
     if (retry_delay_ms > 0) {
+      ASCII_OTEL_SCOPE(RECONNECT_WAIT);
+      ASCII_OTEL_ATTR_INT("reconnect.delay_ms", retry_delay_ms);
       unsigned int remaining_ms = retry_delay_ms;
       const unsigned int check_interval_ms = 100; // Check exit flag every 100ms
 
@@ -868,8 +880,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     goto cleanup;
   }
   client_like_start_session_audio(config, &state);
-  log_info("[MARKER] Audio setup complete at line 614");
-  log_info("[SETUP_COMPLETE] All setup complete, about to start connection loop");
+  log_debug("[MARKER] Audio setup complete at line 614");
+  log_debug("[SETUP_COMPLETE] All setup complete, about to start connection loop");
   result = client_like_run_session_attempts(config, &state);
 
 cleanup:

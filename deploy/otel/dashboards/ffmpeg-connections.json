@@ -1,0 +1,30 @@
+{
+  "name": "ascii-chat · FFmpeg and connections",
+  "description": "Last 15 minutes. Operation metrics count unsampled work; span timings summarize only retained traces. EOF, EAGAIN and cancellation are normal FFmpeg control flow. No URLs, filenames or peer identities are used as grouping dimensions.",
+  "panels": [
+    {
+      "title": "FFmpeg latency from every operation (ms)",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(histogram_count) AS observations,round(1000*sum(histogram_sum)/nullif(sum(histogram_count),0),3) AS mean_ms,round(1000*max(histogram_max),3) AS process_max_ms FROM latest WHERE type='histogram' AND (name LIKE 'ascii-chat.ffmpeg.%.duration') GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 0,
+      "display_type": "table"
+    },
+    {
+      "title": "FFmpeg operation and failure totals",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name LIKE 'ascii-chat.ffmpeg.%.count' OR name LIKE 'ascii-chat.ffmpeg.%.errors' GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 1,
+      "display_type": "table"
+    },
+    {
+      "title": "Retained FFmpeg and transition spans (sampled timing)",
+      "query": "SELECT service_name,name,count(*) AS sampled_spans,count(*) FILTER (WHERE status_code=2) AS errors,round(avg(duration_ns)/1e6,3) AS mean_ms,round(quantile_cont(duration_ns,0.95)/1e6,3) AS sampled_p95_ms FROM spans WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND start_ns >= epoch_ns(current_timestamp)-900000000000 AND (name LIKE 'ascii-chat.ffmpeg.%' OR name LIKE 'ascii-chat.media.transition.%' OR name IN ('ascii-chat.network.connection.establish','ascii-chat.network.reconnect.wait','ascii-chat.session.attempt')) GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 2,
+      "display_type": "table"
+    },
+    {
+      "title": "Connection establishment and transition latency (ms)",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(histogram_count) AS observations,round(1000*sum(histogram_sum)/nullif(sum(histogram_count),0),3) AS mean_ms,round(1000*max(histogram_max),3) AS process_max_ms FROM latest WHERE type='histogram' AND (name IN ('ascii-chat.network.connection.establish.duration','ascii-chat.network.reconnect.wait.duration','ascii-chat.media.transition.load.duration','ascii-chat.media.transition.commit.duration')) GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 3,
+      "display_type": "table"
+    }
+  ]
+}

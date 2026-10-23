@@ -1,0 +1,42 @@
+{
+  "name": "ascii-chat · Logs and exporter",
+  "description": "Last 15 minutes. Severity uses OTLP numbers: TRACE 1–4, DEBUG 5–8, INFO 9–12, WARN 13–16, ERROR 17–20, FATAL 21–24. Exporter failure diagnostics stay local to avoid recursive queue pressure; collector-side metrics cannot show an ongoing total collector outage.",
+  "panels": [
+    {
+      "title": "Log severity distribution",
+      "query": "SELECT service_name,CASE WHEN severity BETWEEN 1 AND 4 THEN 'TRACE' WHEN severity BETWEEN 5 AND 8 THEN 'DEBUG' WHEN severity BETWEEN 9 AND 12 THEN 'INFO' WHEN severity BETWEEN 13 AND 16 THEN 'WARN' WHEN severity BETWEEN 17 AND 20 THEN 'ERROR' WHEN severity BETWEEN 21 AND 24 THEN 'FATAL' ELSE 'UNSPECIFIED' END AS severity,count(*) AS records FROM logs WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 GROUP BY service_name,2 ORDER BY service_name,2",
+      "position": 0,
+      "display_type": "table"
+    },
+    {
+      "title": "Recent warnings and errors",
+      "query": "SELECT to_timestamp(timestamp_ns/1e9) AS timestamp,service_name,severity,body,trace_id FROM logs WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 AND severity>=13 ORDER BY timestamp_ns DESC LIMIT 100",
+      "position": 1,
+      "display_type": "table"
+    },
+    {
+      "title": "Exporter sent, dropped, rejected and retry totals",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name LIKE 'ascii-chat.otel.%' AND name NOT IN ('ascii-chat.otel.queue.utilization','ascii-chat.otel.tick.duration') GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 2,
+      "display_type": "table"
+    },
+    {
+      "title": "Exporter queue utilization (latest observed fraction)",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,max(value) AS queue_utilization FROM latest WHERE name='ascii-chat.otel.queue.utilization' GROUP BY service_name ORDER BY service_name",
+      "position": 3,
+      "display_type": "table"
+    },
+    {
+      "title": "Exporter tick latency (ms)",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(histogram_count) AS observations,round(1000*sum(histogram_sum)/nullif(sum(histogram_count),0),3) AS mean_ms,round(1000*max(histogram_max),3) AS process_max_ms FROM latest WHERE type='histogram' AND (name='ascii-chat.otel.tick.duration') GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 4,
+      "display_type": "table"
+    },
+    {
+      "title": "Process memory and threads (latest observation)",
+      "query": "WITH latest AS (SELECT * FROM metrics WHERE service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns >= epoch_ns(current_timestamp) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,max(value) AS value FROM latest WHERE name IN ('ascii-chat.process.memory.resident','ascii-chat.process.threads') GROUP BY service_name,name ORDER BY service_name,name",
+      "position": 5,
+      "display_type": "table"
+    }
+  ]
+}

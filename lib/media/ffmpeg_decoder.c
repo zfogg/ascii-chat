@@ -107,7 +107,7 @@ struct ffmpeg_decoder_t {
   _Atomic uint64_t seek_generation;  ///< Detect seeks before and after packet reads
   cond_t prefetch_cond;              ///< Condition variable for pausing during seek
   mutex_t prefetch_mutex;            ///< Protect prefetch state and FFmpeg decoder access
-  mutex_t read_frame_mutex;          ///< Protect av_read_frame() calls from video and audio threads
+  mutex_t read_frame_mutex;          ///< Protect traced_packet_read() calls from video and audio threads
 
   // Track which buffer is being read by main thread
   image_t *current_read_buffer; ///< Buffer main thread is currently reading/rendering
@@ -251,7 +251,7 @@ static stdin_buffer_t *stdin_buffer_read_all(void) {
     sb->size += bytes_read;
   }
 
-  log_info("Buffered stdin: %zu bytes in %d chunks (capacity: %zu)", sb->size, chunk_count, total_capacity);
+  log_debug("Buffered stdin: %zu bytes in %d chunks (capacity: %zu)", sb->size, chunk_count, total_capacity);
   if (sb->size > 0) {
     log_info(
         "  First 16 bytes of stdin: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
@@ -288,7 +288,7 @@ static double get_frame_pts_seconds(AVFrame *frame, AVRational time_base) {
 }
 
 /**
- * @brief FFmpeg interrupt callback - allows seeking to interrupt long-running av_read_frame() calls
+ * @brief FFmpeg interrupt callback - allows seeking to interrupt long-running traced_packet_read() calls
  *
  * This callback is called periodically by FFmpeg during blocking operations.
  * Returning 1 tells FFmpeg to abort the current operation.
@@ -299,12 +299,12 @@ static int ffmpeg_interrupt_callback(void *opaque) {
     return 0;
   }
 
-  // Interrupt av_read_frame() if a seek is in progress
+  // Interrupt traced_packet_read() if a seek is in progress
   if (decoder->seeking_in_progress) {
     return 1;
   }
 
-  // Interrupt av_read_frame() if application is shutting down
+  // Interrupt traced_packet_read() if application is shutting down
   // This allows Ctrl+C to abort blocking I/O operations like YouTube HTTP requests
   bool (*cancel)(void *) = decoder->should_exit_callback;
   void *data = decoder->exit_callback_user_data;
@@ -322,6 +322,82 @@ static int ffmpeg_interrupt_callback(void *opaque) {
  * This allows the main render thread to pull pre-decoded frames without blocking
  * on YouTube HTTP requests.
  */
+
+static void ffmpeg_otel_result(int result, bool streaming) {
+#ifdef ASCIICHAT_WITH_OTEL
+  // EOF, buffering and application cancellation are expected control flow.
+  if (result < 0 && result != AVERROR_EXIT && !(streaming && (result == AVERROR_EOF || result == AVERROR(EAGAIN))))
+    gotel_current_error("ffmpeg.error", "FFmpeg operation failed");
+#else
+  (void)result;
+  (void)streaming;
+#endif
+}
+
+static int traced_format_open(AVFormatContext **format, const char *path, const AVInputFormat *input,
+                              AVDictionary **options) {
+  ASCII_OTEL_SCOPE(FFMPEG_FORMAT_OPEN);
+  ASCII_OTEL_ATTR_STRING("media.source.kind", !path ? "stdin" : strstr(path, "://") ? "network" : "file");
+  int result = avformat_open_input(format, path, input, options);
+  ASCII_OTEL_ATTR_INT("ffmpeg.result", result);
+  ffmpeg_otel_result(result, false);
+  return result;
+}
+static int traced_format_probe(AVFormatContext *format, AVDictionary **options) {
+  ASCII_OTEL_SCOPE(FFMPEG_PROBE);
+  int result = avformat_find_stream_info(format, options);
+  ASCII_OTEL_ATTR_INT("ffmpeg.result", result);
+  if (result >= 0 && format->iformat)
+    ASCII_OTEL_ATTR_STRING("media.container", format->iformat->name);
+  ffmpeg_otel_result(result, false);
+  return result;
+}
+static int traced_packet_read(AVFormatContext *format, AVPacket *packet) {
+  ASCII_OTEL_SCOPE(FFMPEG_PACKET_READ);
+  int result = av_read_frame(format, packet);
+  ASCII_OTEL_ATTR_INT("ffmpeg.result", result);
+  if (result >= 0)
+    ASCII_OTEL_ATTR_INT("media.packet.size", packet->size);
+  ffmpeg_otel_result(result, true);
+  return result;
+}
+static int traced_packet_send(AVCodecContext *codec, const AVPacket *packet) {
+  ASCII_OTEL_SCOPE(FFMPEG_PACKET_SEND);
+  ASCII_OTEL_ATTR_STRING("media.type", codec->codec_type == AVMEDIA_TYPE_AUDIO ? "audio" : "video");
+  ASCII_OTEL_ATTR_STRING("media.codec", avcodec_get_name(codec->codec_id));
+  ASCII_OTEL_ATTR_INT("media.decoder.draining", packet == NULL);
+  int result = avcodec_send_packet(codec, packet);
+  ASCII_OTEL_ATTR_INT("ffmpeg.result", result);
+  ffmpeg_otel_result(result, true);
+  return result;
+}
+static int traced_frame_receive(AVCodecContext *codec, AVFrame *frame) {
+  ASCII_OTEL_SCOPE(FFMPEG_FRAME_RECEIVE);
+  ASCII_OTEL_ATTR_STRING("media.type", codec->codec_type == AVMEDIA_TYPE_AUDIO ? "audio" : "video");
+  int result = avcodec_receive_frame(codec, frame);
+  ASCII_OTEL_ATTR_INT("ffmpeg.result", result);
+  ffmpeg_otel_result(result, true);
+  return result;
+}
+static int traced_video_scale(struct SwsContext *context, const uint8_t *const data[], const int stride[], int start,
+                              int height, uint8_t *const output[], const int output_stride[]) {
+  ASCII_OTEL_SCOPE(FFMPEG_SCALE);
+  ASCII_OTEL_ATTR_INT("video.frame.height", height);
+  int result = sws_scale(context, data, stride, start, height, output, output_stride);
+  ASCII_OTEL_ATTR_INT("ffmpeg.result", result);
+  ffmpeg_otel_result(result, false);
+  return result;
+}
+static int traced_audio_resample(struct SwrContext *context, uint8_t **output, int capacity, const uint8_t **input,
+                                 int samples) {
+  ASCII_OTEL_SCOPE(FFMPEG_RESAMPLE);
+  ASCII_OTEL_ATTR_INT("audio.input.samples", samples);
+  int result = swr_convert(context, output, capacity, input, samples);
+  ASCII_OTEL_ATTR_INT("audio.output.samples", result > 0 ? result : 0);
+  ffmpeg_otel_result(result, false);
+  return result;
+}
+
 static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
   ffmpeg_decoder_t *decoder = (ffmpeg_decoder_t *)arg;
   if (!decoder || !decoder->prefetch_image_a || !decoder->prefetch_image_b) {
@@ -351,7 +427,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     bool reached_eof = false;
     asciichat_errno_scope_t decode_scope = errno_checkpoint();
 
-    // Release prefetch mutex but hold read_frame_mutex to prevent concurrent av_read_frame() calls from audio thread
+    // Release prefetch mutex but hold read_frame_mutex to prevent concurrent traced_packet_read() calls from audio
+    // thread
     mutex_unlock(&decoder->prefetch_mutex);
     mutex_lock(&decoder->read_frame_mutex);
     if (generation != decoder->seek_generation || decoder->seeking_in_progress) {
@@ -360,12 +437,14 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       continue;
     }
 
+    ASCII_OTEL_SCOPE(FFMPEG_VIDEO_DECODE);
+    ASCII_OTEL_ATTR_STRING("media.codec", avcodec_get_name(decoder->video_codec_ctx->codec_id));
     int decode_result = 0;
     // Read packets until we get a video frame - read_frame_mutex HELD
     while (true) {
       int ret;
       if (decoder->video_draining) {
-        ret = decode_result = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
+        ret = decode_result = traced_frame_receive(decoder->video_codec_ctx, decoder->frame);
         if (ret == AVERROR_EOF) {
           atomic_store_bool(&decoder->eof_reached, true);
           reached_eof = true;
@@ -375,19 +454,19 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           break;
         }
       } else {
-        ret = decode_result = av_read_frame(decoder->format_ctx, decoder->packet);
+        ret = decode_result = traced_packet_read(decoder->format_ctx, decoder->packet);
         if (ret < 0) {
           if (ret != AVERROR_EOF) {
             break;
           }
 
-          ret = decode_result = avcodec_send_packet(decoder->video_codec_ctx, NULL);
+          ret = decode_result = traced_packet_send(decoder->video_codec_ctx, NULL);
           decoder->video_draining = true;
           if (ret < 0 && ret != AVERROR_EOF) {
             break;
           }
 
-          ret = decode_result = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
+          ret = decode_result = traced_frame_receive(decoder->video_codec_ctx, decoder->frame);
           if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) {
             atomic_store_bool(&decoder->eof_reached, true);
             reached_eof = true;
@@ -404,7 +483,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           }
 
           // Send packet to decoder
-          ret = decode_result = avcodec_send_packet(decoder->video_codec_ctx, decoder->packet);
+          ret = decode_result = traced_packet_send(decoder->video_codec_ctx, decoder->packet);
           av_packet_unref(decoder->packet);
 
           if (ret == AVERROR(EAGAIN))
@@ -415,7 +494,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           }
 
           // Receive decoded frame
-          ret = decode_result = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
+          ret = decode_result = traced_frame_receive(decoder->video_codec_ctx, decoder->frame);
           if (ret == AVERROR(EAGAIN)) {
             continue; // Need more packets
           } else if (ret < 0) {
@@ -431,6 +510,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
       // Convert frame to RGB24
       int width = decoder->video_codec_ctx->width;
+      ASCII_OTEL_ATTR_INT("video.frame.width", width);
+      ASCII_OTEL_ATTR_INT("video.frame.height", decoder->video_codec_ctx->height);
       int height = decoder->video_codec_ctx->height;
 
       // Get current decode buffer based on which one we're using
@@ -524,8 +605,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
                   decoder->frame->linesize[0], decoder->frame->linesize[1], decoder->frame->linesize[2]);
       }
 
-      int ret_scale = sws_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data,
-                                decoder->frame->linesize, 0, height, dst_data, dst_linesize);
+      int ret_scale = traced_video_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data,
+                                         decoder->frame->linesize, 0, height, dst_data, dst_linesize);
       if (ret_scale <= 0) {
         SET_ERRNO(ERROR_MEDIA_DECODE, "Video conversion failed: %d", ret_scale);
         break;
@@ -540,7 +621,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       break; // Exit while loop
     }
 
-    // Release read_frame_mutex now that av_read_frame() is done
+    // Release read_frame_mutex now that traced_packet_read() is done
     mutex_unlock(&decoder->read_frame_mutex);
 
     // FFmpeg reports application cancellation as AVERROR_EXIT. Keep that
@@ -602,6 +683,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
  */
 static asciichat_error_t open_codec_context(AVFormatContext *fmt_ctx, enum AVMediaType type, int *stream_idx,
                                             AVCodecContext **codec_ctx) {
+  ASCII_OTEL_SCOPE(FFMPEG_CODEC_OPEN);
+  ASCII_OTEL_ATTR_STRING("media.type", type == AVMEDIA_TYPE_AUDIO ? "audio" : "video");
   int ret = av_find_best_stream(fmt_ctx, type, -1, -1, NULL, 0);
   if (ret < 0) {
     // Stream not found - not an error, just means no stream of this type
@@ -619,6 +702,7 @@ static asciichat_error_t open_codec_context(AVFormatContext *fmt_ctx, enum AVMed
     return SET_ERRNO(ERROR_MEDIA_DECODE, "Codec not found for stream %d", ret);
   }
 
+  ASCII_OTEL_ATTR_STRING("media.codec", codec->name);
   // Allocate codec context
   *codec_ctx = avcodec_alloc_context3(codec);
   if (!*codec_ctx) {
@@ -732,12 +816,12 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
     }
 
     // Open input file
-    ret = avformat_open_input(&decoder->format_ctx, path, NULL, &options);
+    ret = traced_format_open(&decoder->format_ctx, path, NULL, &options);
     av_dict_free(&options); // Free options dictionary
 
     if (ret >= 0) {
       // Find stream info
-      if (avformat_find_stream_info(decoder->format_ctx, NULL) < 0) {
+      if (traced_format_probe(decoder->format_ctx, NULL) < 0) {
         ret = -1;
       }
     }
@@ -756,7 +840,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
     return NULL;
   }
 
-  // Install interrupt callback to allow seeking to interrupt long av_read_frame() calls
+  // Install interrupt callback to allow seeking to interrupt long traced_packet_read() calls
   // Do this AFTER finding stream info to ensure format context is fully initialized
   if (decoder->format_ctx) {
     decoder->format_ctx->interrupt_callback.callback = ffmpeg_interrupt_callback;
@@ -998,10 +1082,10 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   int ret = 0;
   LOG_IO("ffmpeg", {
     // Open input from buffered stdin
-    ret = avformat_open_input(&decoder->format_ctx, NULL, NULL, NULL);
+    ret = traced_format_open(&decoder->format_ctx, NULL, NULL, NULL);
     if (ret >= 0) {
       // Find stream info
-      if (avformat_find_stream_info(decoder->format_ctx, NULL) < 0) {
+      if (traced_format_probe(decoder->format_ctx, NULL) < 0) {
         ret = -1;
       }
     }
@@ -1472,7 +1556,7 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
   static uint64_t packet_count = 0;
 
   while (samples_written < num_samples) {
-    int ret = av_read_frame(decoder->format_ctx, decoder->packet);
+    int ret = traced_packet_read(decoder->format_ctx, decoder->packet);
     if (ret < 0) {
       if (ret == AVERROR_EOF) {
         atomic_store_bool(&decoder->eof_reached, true);
@@ -1491,7 +1575,7 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
                     decoder->packet->pts, decoder->packet->dts, decoder->packet->duration, decoder->packet->size);
 
     // Send packet to decoder
-    ret = avcodec_send_packet(decoder->audio_codec_ctx, decoder->packet);
+    ret = traced_packet_send(decoder->audio_codec_ctx, decoder->packet);
     av_packet_unref(decoder->packet);
 
     if (ret < 0) {
@@ -1504,7 +1588,7 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
     // Receive all decoded frames from this packet
     // Important: a single packet can produce multiple frames. Must drain all before next packet.
     while (1) {
-      ret = avcodec_receive_frame(decoder->audio_codec_ctx, decoder->frame);
+      ret = traced_frame_receive(decoder->audio_codec_ctx, decoder->frame);
       if (ret == AVERROR(EAGAIN)) {
         break; // No more frames from this packet, get next packet
       } else if (ret < 0) {
@@ -1520,8 +1604,8 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
       // requested block. Flushing the resampler between packets would insert
       // padding into inputs whose sample rate differs from the output rate.
       uint8_t *out_ptr = (uint8_t *)decoder->audio_buffer;
-      int converted = swr_convert(decoder->swr_ctx, &out_ptr, (int)decoder->audio_buffer_size,
-                                  (const uint8_t **)decoder->frame->data, decoder->frame->nb_samples);
+      int converted = traced_audio_resample(decoder->swr_ctx, &out_ptr, (int)decoder->audio_buffer_size,
+                                            (const uint8_t **)decoder->frame->data, decoder->frame->nb_samples);
 
       if (converted > 0) {
         size_t available = (size_t)converted;
@@ -1546,7 +1630,7 @@ audio_read_done:
   if (samples_written < num_samples && atomic_load_bool(&decoder->eof_reached)) {
     int remaining_space = (int)(num_samples - samples_written);
     uint8_t *out_ptr = (uint8_t *)(buffer + samples_written);
-    int flushed = swr_convert(decoder->swr_ctx, &out_ptr, remaining_space, NULL, 0);
+    int flushed = traced_audio_resample(decoder->swr_ctx, &out_ptr, remaining_space, NULL, 0);
     if (flushed > 0) {
       samples_written += (size_t)flushed;
     }

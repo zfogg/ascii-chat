@@ -59,8 +59,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
                                       session_sleep_for_frame_fn sleep_cb, session_keyboard_handler_fn keyboard_handler,
                                       void *user_data) {
   // Validate required parameters
-  log_info("capture=%p, display=%p, mode=%s", (void *)capture, (void *)display,
-           capture ? "SYNCHRONOUS" : "EVENT-DRIVEN");
+  log_debug("capture=%p, display=%p, mode=%s", (void *)capture, (void *)display,
+            capture ? "SYNCHRONOUS" : "EVENT-DRIVEN");
 
   if (!display) {
     SET_ERRNO(ERROR_INVALID_PARAM, "display context is NULL");
@@ -96,18 +96,18 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // SYNCHRONOUS MODE: Use threaded pipeline for capture + render
   if (capture != NULL) {
-    log_info("[SESSION_RENDER_LOOP_SYNCHRONOUS] Creating pipeline... (capture=%p, display=%p)", (void *)capture,
-             (void *)display);
+    log_debug("[SESSION_RENDER_LOOP_SYNCHRONOUS] Creating pipeline... (capture=%p, display=%p)", (void *)capture,
+              (void *)display);
     session_pipeline_t *pipeline = NULL;
     asciichat_error_t pipeline_err = session_pipeline_create(capture, display, &pipeline);
-    log_info("[SESSION_RENDER_LOOP_SYNCHRONOUS] pipeline_create returned: %d (pipeline=%p)", pipeline_err,
-             (void *)pipeline);
+    log_debug("[SESSION_RENDER_LOOP_SYNCHRONOUS] pipeline_create returned: %d (pipeline=%p)", pipeline_err,
+              (void *)pipeline);
     if (pipeline_err != ASCIICHAT_OK) {
       log_error("[SESSION_RENDER_LOOP_SYNCHRONOUS] Pipeline creation failed %s",
                 asciichat_error_format(NULL, pipeline_err));
       return pipeline_err;
     }
-    log_info("[SESSION_RENDER_LOOP_SYNCHRONOUS] Pipeline created successfully, running main loop...");
+    log_debug("[SESSION_RENDER_LOOP_SYNCHRONOUS] Pipeline created successfully, running main loop...");
 
     // Disable logging to stdout/stderr during rendering (same as event-driven mode).
     // This prevents logs from mixing with ASCII art output. Logs still go to file.
@@ -131,8 +131,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   uint64_t frames_rendered_since_first = 0; // Track frames rendered after first frame (for snapshot delay)
   // NOTE: g_snapshot_first_frame_rendered is set by display.c when first frame is rendered via platform_write_all()
 
-  log_info("display=%p capture=%p capture_cb=%p snapshot_mode=%s snapshot_delay=%.2f", (void *)display, (void *)capture,
-           (void *)capture_cb, snapshot_mode ? "YES" : "NO", snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
+  log_debug("display=%p capture=%p capture_cb=%p snapshot_mode=%s snapshot_delay=%.2f", (void *)display,
+            (void *)capture, (void *)capture_cb, snapshot_mode ? "YES" : "NO",
+            snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
   if (should_exit(user_data)) {
     log_warn("EXIT signal already set at entry, aborting render loop");
     return ASCIICHAT_OK;
@@ -147,12 +148,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Pause mode state tracking (for pause/unpause transitions in event-driven mode)
   bool initial_paused_frame_rendered = false;
   bool is_paused = false;
-  log_info("Keyboard setup - handler=%p snapshot=%s enabled=%s", (void *)keyboard_handler, snapshot_mode ? "YES" : "NO",
-           keyboard_enabled ? "YES" : "NO");
+  log_debug("Keyboard setup - handler=%p snapshot=%s enabled=%s", (void *)keyboard_handler,
+            snapshot_mode ? "YES" : "NO", keyboard_enabled ? "YES" : "NO");
 
   // Log TTY detection status for debugging keyboard issues
-  log_info("TTY Status: stdin_tty=%d stdout_tty=%d interactive=%d keyboard_enabled=%d", terminal_is_stdin_tty(),
-           terminal_is_stdout_tty(), terminal_is_interactive(), keyboard_enabled);
+  log_debug("TTY Status: stdin_tty=%d stdout_tty=%d interactive=%d keyboard_enabled=%d", terminal_is_stdin_tty(),
+            terminal_is_stdout_tty(), terminal_is_interactive(), keyboard_enabled);
 
   // Frame rate timing (event-driven mode only)
   uint64_t frame_count = 0;
@@ -160,14 +161,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // Event-driven mode: disable console logging during rendering to prevent logs from corrupting frame display
   // This must be done BEFORE the render loop to avoid repeated lock/unlock cycles that could cause deadlocks
-  log_info("[EVENT_DRIVEN_MODE] Entering render loop. snapshot_mode=%s", snapshot_mode ? "YES" : "NO");
+  log_debug("[EVENT_DRIVEN_MODE] Entering render loop. snapshot_mode=%s", snapshot_mode ? "YES" : "NO");
   log_set_terminal_output(false);
 
   asciichat_error_t capture_result = ASCIICHAT_OK;
   // Main render loop
   int loop_iteration = 0;
-  log_info("[RENDER_LOOP_START] snapshot_mode=%s, snapshot_delay=%.2f", snapshot_mode ? "YES" : "NO",
-           snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
+  log_debug("[RENDER_LOOP_START] snapshot_mode=%s, snapshot_delay=%.2f", snapshot_mode ? "YES" : "NO",
+            snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
 
   // Wait for splash animation to complete before rendering first frame
   // This prevents ASCII art from mixing with splash screen output
@@ -194,16 +195,16 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   while (force_first_iteration || (!should_exit(user_data) && !(snapshot_mode && snapshot_done))) {
     force_first_iteration = false;
     loop_iteration++;
-    log_info("[LOOP_ITER] iteration=%d, snapshot_done=%s, frame_count=%lu", loop_iteration,
-             snapshot_done ? "YES" : "NO", frame_count);
+    log_debug("[LOOP_ITER] iteration=%d, snapshot_done=%s, frame_count=%lu", loop_iteration,
+              snapshot_done ? "YES" : "NO", frame_count);
     if (loop_iteration % 60 == 0) {
       log_debug("iteration %d, should_exit check returning false", loop_iteration);
     }
     // Snapshot mode: exit at start of iteration if done
     // This prevents frame 2+ from being captured when snapshot_delay has elapsed
     if (snapshot_mode && snapshot_done && frame_count > 0) {
-      log_info("[SNAPSHOT_EXIT] Snapshot mode: exiting at loop iteration start (snapshot_done=true, frames=%lu)",
-               frame_count);
+      log_debug("[SNAPSHOT_EXIT] Snapshot mode: exiting at loop iteration start (snapshot_done=true, frames=%lu)",
+                frame_count);
       break;
     }
 
@@ -247,8 +248,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
 
     if (frame_count <= 3) {
-      log_info("RENDER_LOOP[%lu]: image=%p, ascii_frame=%p (conversion took %u ms)", frame_count, (void *)image,
-               (void *)ascii_frame, (unsigned)(conversion_elapsed_ns / NS_PER_MS_INT));
+      log_debug("RENDER_LOOP[%lu]: image=%p, ascii_frame=%p (conversion took %u ms)", frame_count, (void *)image,
+                (void *)ascii_frame, (unsigned)(conversion_elapsed_ns / NS_PER_MS_INT));
     }
 
     // Declare variables that need scope beyond the if (ascii_frame) block
@@ -276,8 +277,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         pre_render_ns = time_get_ns();
 
         if (frame_count <= 5 || frame_count % 10 == 0) {
-          log_info("Frame %lu - calling session_display_render_frame, display=%p", (unsigned long)frame_count,
-                   (void *)display);
+          log_debug("Frame %lu - calling session_display_render_frame, display=%p", (unsigned long)frame_count,
+                    (void *)display);
         }
 
         // Check if SIGINT handler cancelled help mode (Ctrl+C while help is open).
@@ -341,8 +342,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
 
         if (frames_rendered_since_first == 1 || frames_rendered_since_first % 20 == 0) {
-          log_info("SNAPSHOT: RENDER_CHECK iter=%lu elapsed=%.3f target=%.2f (from first_frame_rendered)",
-                   frames_rendered_since_first, elapsed_sec, snapshot_delay);
+          log_debug("SNAPSHOT: RENDER_CHECK iter=%lu elapsed=%.3f target=%.2f (from first_frame_rendered)",
+                    frames_rendered_since_first, elapsed_sec, snapshot_delay);
         }
 
         // snapshot_delay=0 means exit after first frame
@@ -351,8 +352,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         bool should_exit = (snapshot_delay == 0.0) || (elapsed_sec >= snapshot_delay);
 
         if (should_exit) {
-          log_info("SNAPSHOT: RENDER_DONE at iteration %lu - elapsed=%.3f target=%.2f (setting snapshot_done=true)",
-                   frames_rendered_since_first, elapsed_sec, snapshot_delay);
+          log_debug("SNAPSHOT: RENDER_DONE at iteration %lu - elapsed=%.3f target=%.2f (setting snapshot_done=true)",
+                    frames_rendered_since_first, elapsed_sec, snapshot_delay);
           // We don't end frames with newlines so the next log would print on the same line as the frame's
           // last row without an \n here. We only need this \n in stdout when interactive,
           // so piped snapshots don't have a weird newline in stdout that they don't need.
@@ -372,8 +373,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
     if (snapshot_mode && (snapshot_done || output_paused_frame)) {
-      log_info("SNAPSHOT: EXIT CONDITION MET - snapshot_done=%d, output_paused_frame=%d", snapshot_done,
-               output_paused_frame);
+      log_debug("SNAPSHOT: EXIT CONDITION MET - snapshot_done=%d, output_paused_frame=%d", snapshot_done,
+                output_paused_frame);
 
       // Calculate elapsed time from first frame captured (for video file)
       // This is separate from render time - video should span from first capture to last capture
@@ -382,20 +383,20 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         uint64_t now_ns = time_get_ns();
         uint64_t elapsed_ns = now_ns - g_snapshot_first_capture_ns;
         capture_elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
-        log_info("SNAPSHOT: EXIT - Capture elapsed: %.3f seconds, render elapsed: %.3f seconds, "
-                 "g_snapshot_first_capture_ns=%llu",
-                 capture_elapsed_sec,
-                 (g_snapshot_first_frame_rendered_ns > 0)
-                     ? (double)(now_ns - g_snapshot_first_frame_rendered_ns) / NS_PER_SEC_INT
-                     : 0.0,
-                 (unsigned long long)g_snapshot_first_capture_ns);
+        log_debug("SNAPSHOT: EXIT - Capture elapsed: %.3f seconds, render elapsed: %.3f seconds, "
+                  "g_snapshot_first_capture_ns=%llu",
+                  capture_elapsed_sec,
+                  (g_snapshot_first_frame_rendered_ns > 0)
+                      ? (double)(now_ns - g_snapshot_first_frame_rendered_ns) / NS_PER_SEC_INT
+                      : 0.0,
+                  (unsigned long long)g_snapshot_first_capture_ns);
       } else {
         log_warn("SNAPSHOT: EXIT condition met but g_snapshot_first_capture_ns is 0!");
       }
 
       // Pass actual capture elapsed time to encoder for correct video duration
-      log_info("SNAPSHOT: About to call session_display_set_snapshot_actual_duration with duration=%.3f, display=%p",
-               capture_elapsed_sec, (void *)display);
+      log_debug("SNAPSHOT: About to call session_display_set_snapshot_actual_duration with duration=%.3f, display=%p",
+                capture_elapsed_sec, (void *)display);
       if (display) {
         session_display_set_snapshot_actual_duration(display, capture_elapsed_sec);
       } else {
