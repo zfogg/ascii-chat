@@ -6,6 +6,7 @@ services:
     environment:
       SPANIEL_BIND_ADDRESS_V4: 0.0.0.0
       SPANIEL_BIND_ADDRESS_V6: "::"
+      SPANIEL_SELF_MONITOR: "false"
     ports:
       - "127.0.0.1:28080:8080"
       - "127.0.0.1:24318:4318"

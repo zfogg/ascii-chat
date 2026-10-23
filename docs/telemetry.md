@@ -19,7 +19,9 @@ The project's `.codex/config.toml` connects Codex to Spaniel's MCP endpoint at
 in this trusted checkout. Use the Spaniel tools to inspect stored traces, logs,
 and metrics, including named SQLite spans under `ascii-chat.storage.*`.
 The bundled collector enables MCP writes with `--mcp-allow-writes`. Its ports
-remain bound to host loopback. To validate and install the versioned dashboards:
+remain bound to host loopback. `SPANIEL_SELF_MONITOR=false` keeps the collector's
+own request logs and telemetry out of application views. To validate and install
+the versioned dashboards:
 
 ```sh
 python deploy/otel/apply_dashboards.py --dry-run
