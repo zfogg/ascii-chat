@@ -105,6 +105,8 @@ typedef struct {
   int error_code;
   char error_message[1024];
   uint8_t trace_id[16], span_id[8];
+  uint8_t parent_span_id[8];
+  uint64_t span_start_unix_ns;
   bool context_valid, context_sampled;
 } mutex_wait_snapshot_t;
 bool mutex_stack_try_snapshot(mutex_wait_snapshot_t *waits, size_t capacity, size_t *count, bool *limited);

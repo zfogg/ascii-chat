@@ -93,6 +93,15 @@ def main():
             assert attributes["asciichat_errno.message"][1] == [b"watchdog fixture pending error"], attributes
             assert attributes["asciichat_errno.code_message"][1][0], attributes
             assert attributes["error.type"][1] == [b"thread.deadlock"], attributes
+            parent_spans = [p for p in records(receiver.records, "/v1/traces")
+                            if p.get(1) == span[1] and p.get(2) == span[4]]
+            assert len(parent_spans) == 1, "blocked parent snapshot is missing or duplicated"
+            parent = parent_spans[0]
+            assert parent[5] == [b"ascii-chat.cli"]
+            parent_attributes = {protobuf(a)[1][0].decode(): protobuf(protobuf(a)[2][0])
+                                 for a in parent.get(9, [])}
+            assert parent_attributes["gotel.span.snapshot"][2] == [1]
+            assert parent_attributes["gotel.span.incomplete"][2] == [1]
             assert "ascii-chat.thread.deadlock.threads" in [m[1][0].decode() for m in records(receiver.records, "/v1/metrics")]
             print(json.dumps({"trace_id": span[1][0].hex(), "span_id": span[2][0].hex(), "deadlocked_threads": 2,
                               "healthy_contention": "passed", "live_export": "passed", "rate_limit": "passed"}))

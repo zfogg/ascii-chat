@@ -346,7 +346,13 @@ The watchdog includes a representative blocked thread's active operation name,
 `asciichat_errno.code`, `asciichat_errno.code_message`, and
 `asciichat_errno.message`, copied when that thread began waiting. Zero/empty means
 no pending errno at that point; `error.type=thread.deadlock` describes the newly
-detected failure. It is parented to the copied blocked span context when available, without modifying that unfinished span.
+detected failure. It is parented to the copied blocked span context when available.
+The watchdog also exports a metadata snapshot of that parent with its original
+trace/span IDs, ancestor ID, name and start time. Its end time is the observation
+time, with `gotel.span.snapshot=true` and `gotel.span.incomplete=true` identifying
+the partial observation. This makes the parent and error child visible together
+without reading, ending or freeing another thread's live span. Attributes modified
+on the live span are not copied; the owning thread can still resume and finish it.
 
 Detection depends on tracked mutexes and debug lock instrumentation. It cannot
 report fatal process termination, untracked locks, arbitrary hangs, or a stuck

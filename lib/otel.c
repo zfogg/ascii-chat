@@ -180,6 +180,10 @@ static bool watchdog_snapshot(void *context, gotel_watchdog_snapshot_t *out) {
         out->parent.valid = waits[i].context_valid;
         out->parent.sampled = waits[i].context_sampled;
         out->parent.realtime = true;
+        out->parent_snapshot.context = out->parent;
+        memcpy(out->parent_snapshot.parent_span_id, waits[i].parent_span_id, sizeof(waits[i].parent_span_id));
+        out->parent_snapshot.start_unix_ns = waits[i].span_start_unix_ns;
+        SAFE_STRNCPY(out->parent_snapshot.name, waits[i].span_name, sizeof(out->parent_snapshot.name));
       }
       ++out->blocked_threads;
       uint64_t age = now >= waits[i].since_ns ? now - waits[i].since_ns : 0;

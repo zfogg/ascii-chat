@@ -212,6 +212,9 @@ static void mutex_stack_push(uintptr_t mutex_key, const char *mutex_name, mutex_
     memcpy(telemetry.span_id, context.span_id, sizeof(context.span_id));
     telemetry.context_valid = context.valid;
     telemetry.context_sampled = context.sampled;
+    gotel_span_snapshot_t snapshot = gotel_current_span_snapshot();
+    memcpy(telemetry.parent_span_id, snapshot.parent_span_id, sizeof(telemetry.parent_span_id));
+    telemetry.span_start_unix_ns = snapshot.start_unix_ns;
 #endif
     (void)HAS_ERRNO(&error);
   }
