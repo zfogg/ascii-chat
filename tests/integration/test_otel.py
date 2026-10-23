@@ -149,7 +149,8 @@ def network_smoke(binary, receiver, env):
         metrics = b''.join(body for path, body in receiver.records if path == '/v1/metrics')
         for name in [b'ascii-chat.network.sent', b'ascii-chat.network.received',
                      b'ascii-chat.network.packet.sent_size', b'ascii-chat.network.packet.received_size',
-                     b'ascii-chat.network.round_trip_time']:
+                     b'ascii-chat.network.round_trip_time', b'ascii-chat.network.outbound.queue.wait',
+                     b'ascii-chat.network.connections.established']:
             assert name in metrics, name
         assert service_names(receiver.records) == {'ascii-chat-client', 'ascii-chat-server'}
     finally:

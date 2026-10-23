@@ -121,6 +121,9 @@ opus_codec_t *opus_codec_create_decoder(int sample_rate) {
 size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samples, uint8_t *out_data,
                          size_t out_size) {
   ASCII_OTEL_SCOPE(OPUS_CODEC_ENCODE);
+  ASCII_OTEL_ATTR_STRING("audio.codec", "opus");
+  ASCII_OTEL_ATTR_INT("audio.frame.samples", num_samples);
+  ASCII_OTEL_ATTR_INT("audio.output.capacity", (int64_t)out_size);
   if (!codec || !codec->encoder || !samples || num_samples <= 0 || !out_data || out_size == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM,
               "Invalid encode parameters: codec=%p, encoder=%p, samples=%p, num_samples=%d, out_data=%p, "
@@ -130,6 +133,9 @@ size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samp
     return 0;
   }
 
+  ASCII_OTEL_ATTR_INT("audio.sample_rate", codec->sample_rate);
+  ASCII_OTEL_ATTR_INT("audio.bitrate", codec->bitrate);
+  ASCII_OTEL_ATTR_INT("audio.channels", 1);
   // Encode frame
   opus_int32 encoded_bytes = opus_encode_float(codec->encoder, samples, num_samples, out_data, (opus_int32)out_size);
 
@@ -144,6 +150,8 @@ size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samp
   }
 
   ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_BYTES, encoded_bytes);
+  ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_ENCODE_SAMPLES, num_samples);
+  ASCII_OTEL_ATTR_INT("audio.packet.size", encoded_bytes);
   return (size_t)encoded_bytes;
 }
 
@@ -164,6 +172,9 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
     return -1;
   }
 
+  ASCII_OTEL_ATTR_INT("audio.sample_rate", codec->sample_rate);
+  ASCII_OTEL_ATTR_INT("audio.channels", 1);
+  ASCII_OTEL_ATTR_INT("audio.output.capacity_samples", out_num_samples);
   // If data is NULL, use PLC (Packet Loss Concealment)
   if (!data || data_len == 0) {
     log_debug_every(LOG_RATE_VERY_FAST, "Opus PLC (Packet Loss Concealment)");
@@ -173,6 +184,8 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
       return -1;
     }
     ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_DECODE_SAMPLES, samples);
+    ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_PLC_FRAMES, 1);
+    ASCII_OTEL_ATTR_INT("audio.frame.samples", samples);
     return samples;
   }
 
@@ -185,6 +198,7 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
   }
 
   ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_DECODE_BYTES, (double)data_len);
+  ASCII_OTEL_ATTR_INT("audio.frame.samples", samples);
   ascii_otel_metric(ASCII_OTEL_METRIC_OPUS_DECODE_SAMPLES, samples);
   return samples;
 }

@@ -194,7 +194,10 @@ static asciichat_error_t outbound_send(acip_outbound_t *out, const outbound_pack
   ASCII_OTEL_SCOPE_PARENT(ACIP_OUTBOUND_SEND, &packet->telemetry_context);
   ASCII_OTEL_PACKET(packet->type, packet->size >= sizeof(packet_header_t) ? packet->size - sizeof(packet_header_t) : 0,
                     "send", acip_transport_get_type(out->transport));
-  ASCII_OTEL_ATTR_INT("network.queue.wait_ns", time_get_ns() - packet->created);
+  uint64_t wait_ns = time_get_ns() - packet->created;
+  ASCII_OTEL_ATTR_INT("network.queue.wait_ns", wait_ns);
+  ASCII_OTEL_ATTR_STRING("network.packet.category", packet->video ? "video" : packet->audio ? "audio" : "control");
+  ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_WAIT, (double)wait_ns / 1e9);
   return out->transport->methods->send(out->transport, packet->data, packet->size);
 }
 
@@ -372,6 +375,7 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
   info.encoded = info.type == PACKET_TYPE_IMAGE_FRAME_H264 || info.type == PACKET_TYPE_IMAGE_FRAME_H265;
   info.video = info.encoded || info.type == PACKET_TYPE_IMAGE_FRAME || info.type == PACKET_TYPE_ASCII_FRAME;
   info.audio = info.type == PACKET_TYPE_AUDIO_BATCH || info.type == PACKET_TYPE_AUDIO_OPUS_BATCH;
+  ASCII_OTEL_ATTR_STRING("network.packet.category", info.video ? "video" : info.audio ? "audio" : "control");
   info.wait = !info.video && !info.audio && info.type != PACKET_TYPE_PING && info.type != PACKET_TYPE_PONG;
   if (info.encoded) {
     const uint8_t *flags = NULL;
@@ -402,6 +406,7 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
     ++out->stats.dropped;
     ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_DROP, 1);
     *admission = ACIP_ADMISSION_NEEDS_KEYFRAME;
+    ASCII_OTEL_ATTR_STRING("network.queue.admission", "needs_keyframe");
     mutex_unlock(&out->mutex);
     return ASCIICHAT_OK;
   }
@@ -413,6 +418,8 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
                                  : 0;
   size_t limit = ACIP_OUTBOUND_BUDGET - reserved;
   size_t pending = out->bytes + out->active_bytes + backend + transport->methods->reserved_bytes;
+  ASCII_OTEL_ATTR_INT("network.queue.pending_bytes", (int64_t)pending);
+  ASCII_OTEL_ATTR_INT("network.queue.budget_bytes", (int64_t)limit);
   ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_PENDING, (double)pending);
   if (out->head)
     ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_AGE, (double)(info.created - out->head->created) / 1e9);
@@ -423,6 +430,7 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
     if (info.encoded)
       discard_stream(out, &info);
     ++out->stats.congestion;
+    ASCII_OTEL_ATTR_STRING("network.queue.admission", "congested");
     ascii_otel_metric(ASCII_OTEL_METRIC_OUTBOUND_CONGESTION, 1);
     mutex_unlock(&out->mutex);
     return ASCIICHAT_OK;
@@ -476,6 +484,7 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
   if (stream && info.keyframe)
     stream->needs_keyframe = false;
   *admission = ACIP_ADMISSION_ACCEPTED;
+  ASCII_OTEL_ATTR_STRING("network.queue.admission", "accepted");
   if (was_empty)
     cond_broadcast(&out->changed);
   asciichat_error_t result = ASCIICHAT_OK;
