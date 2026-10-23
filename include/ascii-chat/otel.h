@@ -29,6 +29,8 @@ void ascii_otel_metric(ascii_otel_metric_t metric, double value);
 void ascii_otel_call_session_used(const char *session_string);
 void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_size, const char *action, int transport);
 void ascii_otel_exit(int code);
+void ascii_otel_frame_rejected(const char *validator, const char *reason, size_t bytes,
+                               uint32_t width, uint32_t height, asciichat_error_t code);
 gotel_context_t ascii_otel_context(void);
 void ascii_otel_scope_int(ascii_otel_scope_t *scope, const char *key, int64_t value);
 void ascii_otel_scope_parent(ascii_otel_scope_t *scope, ascii_otel_operation_t operation,
@@ -53,6 +55,8 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count);
 #define ASCII_OTEL_ATTR_STRING(key, value) ((void)(key), (void)(value))
 #define ASCII_OTEL_ATTR_INT(key, value) ((void)(key), (void)(value))
 #define ASCII_OTEL_PACKET(type, size, action, transport) ((void)0)
+#define ascii_otel_frame_rejected(validator, reason, bytes, width, height, code) \
+  ((void)(validator), (void)(reason), (void)(bytes), (void)(width), (void)(height), (void)(code))
 #define ascii_otel_enabled() false
 #define ascii_otel_current_operation() ""
 #define ascii_otel_call_session_used(session_string) ((void)(session_string))

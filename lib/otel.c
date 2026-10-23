@@ -553,6 +553,24 @@ void ascii_otel_exit(int code) {
       (void)otel_status(otlp_span_set_status(command_scope.span, OTLP_STATUS_CODE_UNSET, ""), "otlp_span_set_status");
   }
 }
+void ascii_otel_frame_rejected(const char *validator, const char *reason, size_t bytes,
+                               uint32_t width, uint32_t height, asciichat_error_t code) {
+  ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_VALIDATION_REJECTED, 1);
+  gotel_context_t parent = ascii_otel_context();
+  // Rejections must remain inspectable even when the media operation was sampled out.
+  if (!parent.sampled)
+    parent = (gotel_context_t){0};
+  ASCII_OTEL_SCOPE_PARENT(FRAME_VALIDATION_REJECTED, &parent);
+  ASCII_OTEL_ATTR_STRING("frame.validation.validator", validator);
+  ASCII_OTEL_ATTR_STRING("frame.validation.reason", reason);
+  ASCII_OTEL_ATTR_INT("frame.size_bytes", (int64_t)bytes);
+  ASCII_OTEL_ATTR_INT("frame.width", width);
+  ASCII_OTEL_ATTR_INT("frame.height", height);
+  ASCII_OTEL_ATTR_INT("asciichat_errno.code", code);
+  ASCII_OTEL_ATTR_STRING("asciichat_errno.code_message", asciichat_error_string(code));
+  if (otel_scope.retained)
+    gotel_error(&otel_scope.scope, "ascii_chat.invalid_frame", reason);
+}
 void ascii_otel_error(const char *message) {
   gotel_current_error("ascii_chat.error", message);
 }

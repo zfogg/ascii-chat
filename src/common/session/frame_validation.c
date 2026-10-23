@@ -1,6 +1,7 @@
 #include "session/frame_validation.h"
 #include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <stdbool.h>
+#include <ascii-chat/otel.h>
 #include <string.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/video/anim/digital_rain.h>
@@ -33,7 +34,7 @@ static bool valid_sgr(const uint32_t *p, size_t n, bool *neutral) {
   return true;
 }
 
-asciichat_error_t session_frame_validate_contract(const char *text, size_t length, uint32_t width, uint32_t height,
+static asciichat_error_t validate_contract(const char *text, size_t length, uint32_t width, uint32_t height,
                                                   const acip_render_settings_t *settings, uint32_t effects) {
   if (!text || !length || !width || !height || width > 16384 || height > 16384 ||
       (uint64_t)width * height > FRAME_RENDER_MAX_BYTES || length > FRAME_RENDER_MAX_BYTES)
@@ -181,6 +182,18 @@ asciichat_error_t session_frame_validate_contract(const char *text, size_t lengt
     return SET_ERRNO(ERROR_INVALID_FRAME, "Frame geometry does not match %ux%u (%u rows, %u final cells)", width,
                      height, row, col);
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t session_frame_validate_contract(const char *text, size_t length, uint32_t width, uint32_t height,
+                                                  const acip_render_settings_t *settings, uint32_t effects) {
+  asciichat_error_t result = validate_contract(text, length, width, height, settings, effects);
+  ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_VALIDATION_CHECKED, 1);
+  if (result != ASCIICHAT_OK) {
+    asciichat_error_context_t error = {0};
+    const char *reason = HAS_ERRNO(&error) ? error.context_message : asciichat_error_string(result);
+    ascii_otel_frame_rejected("rendered_frame", reason, length, width, height, result);
+  }
+  return result;
 }
 
 asciichat_error_t session_frame_validate(const char *text, size_t length, uint32_t width, uint32_t height) {

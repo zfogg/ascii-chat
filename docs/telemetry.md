@@ -370,3 +370,32 @@ from Needs attention without deleting its telemetry. Repeated query evaluations,
 replay, and container restarts do not rearm the same trace ID. A different trace
 ID creates a fresh instance immediately. Other alerts retain condition semantics:
 acknowledgement suppresses repeats until recovery and the next breach.
+
+
+### Invalid rendered ASCII frames
+
+The shared session renderer/protocol validator records
+`ascii-chat.frame.validation.checked` for every validation attempt and
+`ascii-chat.frame.validation.rejected` for every rejection. Rejections also emit
+an ERROR span named `ascii-chat.frame.validation.rejected` with
+`error.type=ascii_chat.invalid_frame`, `frame.validation.validator`,
+`frame.validation.reason`, dimensions, byte count and errno code/description.
+Frame text and palette contents are not exported. Valid frames produce no
+per-frame validation span. Rejection spans remain available even when the parent
+media operation was sampled out; without a sampled parent they start a new trace.
+Counters count validation attempts, which can include repeated checks of one
+frame; they are separate from pipeline drop counters.
+
+`deploy/otel/alerts/invalid-ascii-frames.yaml` provisions an event alert for each
+rejected trace. It fires immediately, deduplicates trace IDs, and stays out of
+Needs attention after acknowledgement, including across restart/replay. The
+existing invalid/conversion-drop condition remains a separate sustained-loss
+signal. Reload the mounted definitions by restarting Spaniel.
+
+The focused native smoke accepts one valid frame, then rejects row overflow,
+invalid UTF-8, an unsupported terminal escape and an unreset SGR state. It checks
+four ERROR spans and exact counter totals with media sampling set to zero:
+
+```sh
+python tests/manual/test_otel_frame_validation.py build/bin/asciichat.dll
+```

@@ -1,0 +1,23 @@
+version: 1
+id: ascii-chat-invalid-ascii-frames
+name: ascii-chat · Invalid ASCII frame
+query: |-
+    SELECT service_name,trace_id AS event_id,max(end_ns) AS event_time_ns FROM spans
+    WHERE name='ascii-chat.frame.validation.rejected' AND status_code=2
+    AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
+    AND end_ns >= epoch_ns(current_timestamp)-300000000000
+    GROUP BY service_name,trace_id ORDER BY event_time_ns DESC,event_id
+condition:
+    kind: event
+group_by:
+    - service_name
+pending_for: 0s
+cooldown: 0s
+repeat_interval: 0s
+severity: warning
+enabled: true
+browser_enabled: true
+pushover_enabled: false
+annotations:
+    summary: A rendered ASCII frame failed validation. Each trace alerts once; acknowledgement survives restart and replay.
+    runbook: Inspect frame.validation.reason, frame.validation.validator, frame.width, frame.height, frame.size_bytes and asciichat_errno.code on the rejection span. Frame text and palette contents are not exported. Check geometry, UTF-8, terminal escapes and render contract compatibility. The validation counter counts rejected attempts, not necessarily unique frames or downstream drops.
