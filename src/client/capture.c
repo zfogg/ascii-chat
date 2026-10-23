@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include "connection_internal.h"
 #include <ascii-chat/network/errors.h>
 /**
@@ -209,6 +210,7 @@ static void *webcam_capture_thread_func(void *arg) {
       break;
     }
 
+    ASCII_OTEL_SCOPE(CLIENT_VIDEO_FRAME);
     // Read frame using session capture library
     asciichat_errno_scope_t frame_scope = errno_checkpoint();
     image_t *image = session_capture_read_frame(connection->capture_context);

@@ -194,6 +194,9 @@ static int audio_queue_packet(client_connection_t *connection, const uint8_t *op
   memcpy(packet->data, opus_data, opus_size);
   packet->size = opus_size;
   packet->frame_count = frame_count;
+#ifdef ASCIICHAT_WITH_OTEL
+  packet->telemetry_context = ascii_otel_context();
+#endif
   for (int i = 0; i < frame_count && i < 8; i++) {
     packet->frame_sizes[i] = frame_sizes[i];
   }
@@ -219,7 +222,6 @@ static void *audio_sender_thread_func(void *arg) {
   int send_count = 0;
 
   while (!atomic_load_bool(&connection->audio_sender_should_exit)) {
-    ASCII_OTEL_SCOPE(CLIENT_AUDIO_SEND);
     mutex_lock(&connection->audio_send_queue_mutex);
 
     // Wait for packet or exit signal (cond_wait re-acquires mutex before returning)
@@ -243,6 +245,7 @@ static void *audio_sender_thread_func(void *arg) {
 
     // Dequeue packet
     audio_send_packet_t packet = connection->audio_send_queue[connection->audio_send_queue_tail];
+    ASCII_OTEL_SCOPE_PARENT(CLIENT_AUDIO_SEND, &packet.telemetry_context);
     connection->audio_send_queue_tail = (connection->audio_send_queue_tail + 1) % AUDIO_SEND_QUEUE_SIZE;
 
     mutex_unlock(&connection->audio_send_queue_mutex);
@@ -531,7 +534,6 @@ static void *audio_capture_thread_func(void *arg) {
   bool batch_has_data = false;
 
   while (!should_exit() && !server_connection_is_lost(connection)) {
-    ASCII_OTEL_SCOPE(CLIENT_AUDIO_CAPTURE);
     uint64_t audio_capture_loop_iteration_start_ns = time_get_ns();
     timing_loop_count++;
 
@@ -555,6 +557,7 @@ static void *audio_capture_thread_func(void *arg) {
         uint64_t elapsed_ns = time_elapsed_ns(batch_start_time_ns, now_ns);
 
         if (elapsed_ns >= BATCH_TIMEOUT_NS) {
+          ASCII_OTEL_SCOPE(CLIENT_AUDIO_CAPTURE);
           long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
           log_debug_every(LOG_RATE_FAST, "Idle timeout flush: %d frames (%zu bytes) after %ld ms", batch_frame_count,
                           batch_total_size, elapsed_ms);
@@ -572,6 +575,7 @@ static void *audio_capture_thread_func(void *arg) {
       continue;
     }
 
+    ASCII_OTEL_SCOPE(CLIENT_AUDIO_CAPTURE);
     // Read as many samples as possible (up to CAPTURE_READ_SIZE) to drain faster
     // This prevents buffer overflow when processing is slower than capture
     int to_read = (available < CAPTURE_READ_SIZE) ? available : CAPTURE_READ_SIZE;

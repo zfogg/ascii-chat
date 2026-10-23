@@ -1,4 +1,5 @@
 #pragma once
+#include <ascii-chat/otel.h>
 #include "connection.h"
 #include "session/connection.h"
 #include "session/protocol.h"
@@ -23,6 +24,9 @@ typedef struct {
   size_t size;
   uint16_t frame_sizes[8];
   int frame_count;
+#ifdef ASCIICHAT_WITH_OTEL
+  gotel_context_t telemetry_context;
+#endif
 } audio_send_packet_t;
 
 /** Ring buffer queue for async audio packets */

@@ -115,6 +115,28 @@ def network_smoke(binary, receiver, env):
         traces = b''.join(body for path, body in receiver.records if path == '/v1/traces')
         assert b'crypto_handshake_client_key_exchange' in traces
         assert b'ascii-chat.server.video.render' in traces
+        spans = signal_records(receiver.records, 'traces')
+        by_id = {s[2][0]: s for s in spans}
+        def ancestor(span, name):
+            seen = set()
+            while span.get(4) and span[4][0] in by_id and span[4][0] not in seen:
+                seen.add(span[4][0])
+                parent = by_id[span[4][0]]
+                assert parent[1] == span[1], 'parent and child have different trace IDs'
+                if parent[5] == [name]:
+                    return True
+                span = parent
+            return False
+        assert any(s[5] == [b'ascii-chat.video.encode'] and
+                   ancestor(s, b'ascii-chat.client.video.frame') for s in spans), 'encoding lost frame parent'
+        assert any(s[5] == [b'ascii-chat.display.session_display_write_ascii_frame'] and
+                   ancestor(s, b'ascii-chat.network.packet.dispatch') for s in spans), 'receive processing is detached'
+        assert any(s[5] == [b'ascii-chat.network.outbound.send'] and
+                   ancestor(s, b'ascii-chat.client.video.frame') for s in spans), 'outbound worker lost producer context'
+        # Builds without a software encoder negotiate raw RGB instead.
+        if any(s[5] == [b'ascii-chat.ffmpeg.video.decode'] for s in spans):
+            assert any(s[5] == [b'ascii-chat.ffmpeg.decoder.receive_frame'] and
+                       ancestor(s, b'ascii-chat.network.packet.dispatch') for s in spans), 'server decode lost receive parent'
         metrics = b''.join(body for path, body in receiver.records if path == '/v1/metrics')
         for name in [b'ascii-chat.network.sent', b'ascii-chat.network.received',
                      b'ascii-chat.network.packet.sent_size', b'ascii-chat.network.packet.received_size',

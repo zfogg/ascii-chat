@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/tcp/server.h>
 #include <ascii-chat/network/tcp/async.h>
@@ -231,6 +232,7 @@ static asciichat_error_t connection_open(network_connection_t *c) {
 }
 
 static asciichat_error_t connection_packet(const void *data, size_t length, void *arg) {
+  ASCII_OTEL_SCOPE(NETWORK_PACKET_DISPATCH);
   network_connection_t *c = arg;
   if (atomic_load_int(&c->state) >= NETWORK_CLOSING)
     return SET_ERRNO(ERROR_NETWORK, "Connection is stopping");

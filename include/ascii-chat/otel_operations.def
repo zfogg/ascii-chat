@@ -1,4 +1,7 @@
 /* Stable operation identities; no per-client, URL or session identifiers. */
+ASCII_OTEL_OPERATION(CLIENT_VIDEO_FRAME, "ascii-chat.client.video.frame", true)
+ASCII_OTEL_OPERATION(NETWORK_PACKET_DISPATCH, "ascii-chat.network.packet.dispatch", true)
+ASCII_OTEL_OPERATION(ACIP_OUTBOUND_SEND, "ascii-chat.network.outbound.send", true)
 ASCII_OTEL_OPERATION(CLI, "ascii-chat.cli", false)
 ASCII_OTEL_OPERATION(HTTP, "ascii-chat.http.request", false)
 ASCII_OTEL_OPERATION(MEDIA_SOURCE_RESOLVE_URL, "ascii-chat.media.media_source_resolve_url", false)

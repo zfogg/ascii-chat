@@ -23,6 +23,9 @@ typedef struct outbound_packet {
   uint32_t stream;
   bool video, encoded, keyframe, audio, wait, done;
   asciichat_error_t result;
+#ifdef ASCIICHAT_WITH_OTEL
+  gotel_context_t telemetry_context;
+#endif
 } outbound_packet_t;
 
 typedef struct {
@@ -187,6 +190,14 @@ static void outbound_record_failure_and_fail_pending(acip_outbound_t *out, ascii
   cond_broadcast(&out->changed);
 }
 
+static asciichat_error_t outbound_send(acip_outbound_t *out, const outbound_packet_t *packet) {
+  ASCII_OTEL_SCOPE_PARENT(ACIP_OUTBOUND_SEND, &packet->telemetry_context);
+  ASCII_OTEL_ATTR_INT("network.packet.type", packet->type);
+  ASCII_OTEL_ATTR_INT("network.packet.size", packet->size);
+  ASCII_OTEL_ATTR_INT("network.queue.wait_ns", time_get_ns() - packet->created);
+  return out->transport->methods->send(out->transport, packet->data, packet->size);
+}
+
 static void *outbound_worker(void *arg) {
   acip_outbound_t *out = arg;
   mutex_lock(&out->mutex);
@@ -226,7 +237,7 @@ static void *outbound_worker(void *arg) {
     /* One worker fixes wire/encryption order. Backends receive only complete
      * packets and must finish a partially submitted packet or fail the stream. */
     asciichat_errno_scope_t scope = errno_scope_begin();
-    asciichat_error_t result = out->transport->methods->send(out->transport, p->data, p->size);
+    asciichat_error_t result = outbound_send(out, p);
     asciichat_error_context_t cause = {0};
     asciichat_error_context_t detail = {0};
     if (result != ASCIICHAT_OK) {
@@ -375,6 +386,9 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
   acip_outbound_t *out = transport->outbound;
   mutex_lock(&out->mutex);
   info.created = time_get_ns();
+#ifdef ASCIICHAT_WITH_OTEL
+  info.telemetry_context = ascii_otel_context();
+#endif
   if (out->stopping || out->failed) {
     asciichat_error_t code = out->failed ? out->failure_code : ERROR_NETWORK;
     asciichat_error_context_t cause = out->failure;
