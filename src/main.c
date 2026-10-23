@@ -1053,7 +1053,9 @@ int main(int argc, char *argv[]) {
 #ifdef ASCIICHAT_WITH_OTEL
   asciichat_error_t otel_result = ascii_otel_init(mode->name, argc, argv);
   if (otel_result != ASCIICHAT_OK) {
-    log_error("Telemetry configuration failed %s", asciichat_error_format(NULL, otel_result));
+    asciichat_error_context_t context;
+    const char *detail = HAS_ERRNO(&context) ? context.context_message : NULL;
+    log_error("Telemetry configuration failed %s", asciichat_error_format(detail, otel_result));
     return otel_result;
   }
 #endif
