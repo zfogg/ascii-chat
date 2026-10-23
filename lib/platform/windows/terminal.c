@@ -593,14 +593,42 @@ asciichat_error_t terminal_restore_cursor(void) {
  * @param title New window title
  * @return ASCIICHAT_OK on success, an error for NULL titles or console failures
  */
-asciichat_error_t terminal_set_title(const char *title) {
-  if (!title) {
+static WCHAR saved_terminal_title[1024];
+static bool terminal_title_saved;
+
+asciichat_error_t terminal_set_title_fd(int fd, const char *title) {
+  if (!title)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal title must not be NULL");
-  }
-  if (SetConsoleTitleA(title)) {
+  if (!platform_isatty(fd))
     return ASCIICHAT_OK;
+  WCHAR wide[1024];
+  if (!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, title, -1, wide, 1024))
+    return SET_ERRNO(ERROR_TERMINAL, "Invalid or oversized UTF-8 terminal title");
+  for (WCHAR *p = wide; *p; ++p)
+    if (*p < 0x20 || *p == 0x7f)
+      *p = L' ';
+  if (SetConsoleTitleW(wide))
+    return ASCIICHAT_OK;
+  return SET_ERRNO(ERROR_TERMINAL, "Cannot set console title (Windows error %lu)", (unsigned long)GetLastError());
+}
+asciichat_error_t terminal_set_title(const char *title) {
+  return terminal_set_title_fd(STDOUT_FILENO, title);
+}
+asciichat_error_t terminal_title_save(int fd) {
+  if (platform_isatty(fd)) {
+    SetLastError(ERROR_SUCCESS);
+    DWORD count = GetConsoleTitleW(saved_terminal_title, 1024);
+    terminal_title_saved = count < 1023 && (count > 0 || GetLastError() == ERROR_SUCCESS);
   }
-  return SET_ERRNO(ERROR_TERMINAL, "Failed to set console title (Windows error %lu)", (unsigned long)GetLastError());
+  return ASCIICHAT_OK;
+}
+asciichat_error_t terminal_title_restore(int fd) {
+  if (terminal_title_saved && platform_isatty(fd)) {
+    terminal_title_saved = false;
+    if (!SetConsoleTitleW(saved_terminal_title))
+      return SET_ERRNO(ERROR_TERMINAL, "Cannot restore console title");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**

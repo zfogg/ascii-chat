@@ -337,3 +337,8 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     return SET_ERRNO(ERROR_FILE_OPERATION, "Failed to write browser log output");
   return ASCIICHAT_OK;
 }
+
+void ui_controller_title_ready(void) {}
+void ui_controller_title_render(ui_title_render_t phase) {
+  (void)phase;
+}

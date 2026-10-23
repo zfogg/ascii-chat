@@ -15,6 +15,7 @@
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 #include <ascii-chat/tui/render_progress.h>
+#include <ascii-chat/tui/controller.h>
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/media/kitty/image.h>
 
@@ -166,6 +167,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 
   bool binary_stdout = strcmp(output_path, "-") == 0 || strcmp(output_path, "pipe:") == 0;
   ctx->progress = render_progress_create(!binary_stdout && !ctx->kitty, output_path);
+  if (!ctx->kitty)
+    ui_controller_title_render(UI_TITLE_RENDERING);
   *out = ctx;
   return ASCIICHAT_OK;
 }
@@ -286,6 +289,8 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *fr
   if (ctx->error != ASCIICHAT_OK)
     return ctx->error;
   asciichat_error_t err = render_file_write_frame_internal(ctx, frame, captured_ns);
+  if (err != ASCIICHAT_OK && !ctx->kitty)
+    ui_controller_title_render(UI_TITLE_FAILED);
   render_progress_frame(ctx->progress, frame, err == ASCIICHAT_OK);
   if (err != ASCIICHAT_OK)
     ctx->error = err;
@@ -307,6 +312,8 @@ asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
   if (!ctx)
     return ASCIICHAT_OK;
   NAMED_UNREGISTER(ctx);
+  if (!ctx->kitty)
+    ui_controller_title_render(UI_TITLE_FINALIZING);
   render_progress_finalize(ctx->progress);
   uint64_t target = ctx->audio_target;
   asciichat_error_t err = ASCIICHAT_OK;
@@ -332,6 +339,8 @@ asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
   if (err == ASCIICHAT_OK && ctx->kitty && ctx->frames_written > 0)
     err = kitty_image_write(stdout, term_renderer_pixels(ctx->renderer), term_renderer_width_px(ctx->renderer),
                             term_renderer_height_px(ctx->renderer), term_renderer_pitch(ctx->renderer));
+  if (!ctx->kitty)
+    ui_controller_title_render(UI_TITLE_IDLE);
   term_renderer_destroy(ctx->renderer);
   buffer_workspace_destroy(&ctx->pixels);
   SAFE_FREE(ctx->audio_read_buf);

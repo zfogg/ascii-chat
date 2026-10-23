@@ -38,6 +38,12 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
                                        const void *snapshot, size_t bytes);
 void ui_controller_remove(ui_screen_t screen);
 void ui_controller_shutdown(void);
+/** Start interactive title presentation. Producer events never write to the terminal. */
+asciichat_error_t ui_controller_title_start(const char *mode, int fd);
+void ui_controller_title_ready(void);
+void ui_controller_title_discovery(bool has_session, bool joining);
+typedef enum { UI_TITLE_IDLE, UI_TITLE_RENDERING, UI_TITLE_FINALIZING, UI_TITLE_FAILED } ui_title_render_t;
+void ui_controller_title_render(ui_title_render_t phase);
 /** Stop presentation and restore cursor visibility on an interactive terminal. */
 void ui_controller_restore_terminal(void);
 void ui_controller_redraw(void);

@@ -80,6 +80,7 @@ void splash_set_discovery_session(const char *session, bool joining) {
   mutex_lock(&g_discovery_splash_mutex);
   g_discovery_splash.enabled = true;
   g_discovery_splash.joining = joining;
+  ui_controller_title_discovery(session && session[0], joining);
   SAFE_STRNCPY(g_discovery_splash.session_string, session ? session : "", sizeof(g_discovery_splash.session_string));
   mutex_unlock(&g_discovery_splash_mutex);
 }

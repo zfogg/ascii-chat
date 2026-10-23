@@ -1,4 +1,5 @@
 #include <ascii-chat/ui/text.h>
+#include <ascii-chat/ui/progress.h>
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/invitation.h>
 #include <ascii-chat/ui/output.h>
@@ -564,6 +565,115 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
   view->drew = true;
 }
 
+static _Atomic(const char *) g_title_mode;
+static bool g_title_saved;
+static int g_title_fd = -1;
+static uint64_t g_title_started;
+static _Atomic bool g_title_ready;
+static _Atomic int g_title_render;
+static _Atomic int g_title_discovery;
+static char g_last_title[512];
+
+void ui_controller_title_ready(void) {
+  atomic_store(&g_title_ready, true);
+}
+void ui_controller_title_discovery(bool has_session, bool joining) {
+  atomic_store(&g_title_discovery, joining ? 2 : has_session ? 3 : 1);
+  if (has_session && !joining)
+    ui_controller_title_ready();
+}
+void ui_controller_title_render(ui_title_render_t phase) {
+  atomic_store(&g_title_render, phase);
+  if (phase != UI_TITLE_IDLE)
+    ui_controller_title_ready();
+}
+
+static const char *title_screen_label(int screen, const void *snapshot) {
+  switch (screen) {
+  case UI_SCREEN_LOGS:
+    return "log viewer";
+  case UI_SCREEN_ERRNO:
+    return "errors";
+  case UI_SCREEN_STATS:
+    return "statistics";
+  case UI_SCREEN_SYNC:
+    return "sync primitives";
+  case UI_SCREEN_MDNS:
+    return "LAN server discovery";
+  case UI_SCREEN_UPDATE:
+    return "updates";
+  case UI_SCREEN_PROMPT:
+    return snapshot ? ui_prompt_title(snapshot) : "input";
+  case UI_SCREEN_NOTICE:
+    return snapshot ? ui_notice_title(snapshot) : "notice";
+  default:
+    return NULL;
+  }
+}
+
+static void title_update(int screen, const void *snapshot, bool covered) {
+  const char *mode = atomic_load(&g_title_mode);
+  if (!mode || g_title_fd < 0)
+    return;
+  if (!g_title_saved) {
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    (void)terminal_title_save(g_title_fd);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+    g_title_saved = true;
+  }
+  uint64_t elapsed = time_get_ns() - g_title_started;
+  const char *separator = terminal_should_use_utf8() ? " • " : " - ";
+  char title[512];
+  if (!atomic_load(&g_title_ready) || elapsed < 3 * NS_PER_SEC_INT) {
+    snprintf(title, sizeof(title), "ascii-chat%svideo chat in your terminal", separator);
+  } else {
+    int phase = atomic_load(&g_title_render);
+    const char *operation = phase == UI_TITLE_RENDERING    ? "rendering file..."
+                            : phase == UI_TITLE_FINALIZING ? "finalizing file..."
+                            : phase == UI_TITLE_FAILED     ? "rendering failed"
+                                                           : NULL;
+    bool spinning = phase == UI_TITLE_RENDERING || phase == UI_TITLE_FINALIZING;
+    if (!operation && screen == UI_SCREEN_SPLASH) {
+      int discovery = atomic_load(&g_title_discovery);
+      operation = discovery == 1                ? "creating session..."
+                  : discovery == 2              ? "joining session..."
+                  : discovery == 3              ? "waiting for peers"
+                  : strcmp(mode, "client") == 0 ? "connecting..."
+                                                : NULL;
+      spinning = operation && discovery != 3;
+    }
+    snprintf(title, sizeof(title), "ascii-chat%s%s%s%s%s%s", separator, mode, operation ? separator : "",
+             operation ? operation : "", spinning ? " " : "", spinning ? ui_spinner_glyph(elapsed, false) : "");
+    int parent = screen == UI_SCREEN_HELP ? keyboard_help_parent_screen() : screen;
+    const char *label;
+    if (screen == UI_SCREEN_HELP) {
+      mutex_lock(&g_mutex);
+      label = title_screen_label(parent, parent >= 0 && parent < UI_SCREEN_COUNT ? g_screens[parent].snapshot : NULL);
+      mutex_unlock(&g_mutex);
+    } else {
+      label = title_screen_label(parent, snapshot);
+    }
+    if (screen == UI_SCREEN_RENDER_PROGRESS && phase == UI_TITLE_IDLE)
+      label = "load file/url";
+    bool help = screen == UI_SCREEN_HELP || (screen == UI_SCREEN_LOGS && terminal_screen_logs_help_open());
+    size_t used = strlen(title);
+    if (label)
+      snprintf(title + used, sizeof(title) - used, "%s%s", separator, label);
+    used = strlen(title);
+    if (help)
+      snprintf(title + used, sizeof(title) - used, "%shelp", separator);
+    used = strlen(title);
+    if (covered)
+      snprintf(title + used, sizeof(title) - used, "%sterminal too small", separator);
+  }
+  if (strcmp(title, g_last_title) != 0) {
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    if (terminal_set_title_fd(g_title_fd, title) == ASCIICHAT_OK)
+      snprintf(g_last_title, sizeof(g_last_title), "%s", title);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  }
+}
+
 static void *presentation_main(void *unused) {
   (void)unused;
   g_owner = true;
@@ -577,6 +687,8 @@ static void *presentation_main(void *unused) {
   bool awaiting_reply = false;
   while (!atomic_load_bool(&g_presentation_stop_requested)) {
     uint64_t iteration_started_ns = time_get_ns();
+    if (ui_controller_current_screen() < 0)
+      title_update(-1, NULL, false);
     uint64_t refresh_deadline = iteration_started_ns + 16 * NS_PER_MS_INT;
     uint64_t replied_ns = keyboard_stream_terminal_reply_ns();
     if (reply_requested_ns && replied_ns >= reply_requested_ns) {
@@ -614,6 +726,7 @@ static void *presentation_main(void *unused) {
       g_render_fd = fd;
       if (terminal_get_size_fd(fd, &size) == ASCIICHAT_OK && size.cols > 0 && size.rows > 0) {
         g_render_size = size;
+        title_update(UI_SCREEN_SYNC, NULL, false);
         atomic_store_bool(&g_blocked, false);
         ui_sync_render(size);
       }
@@ -679,6 +792,7 @@ static void *presentation_main(void *unused) {
       g_render_size = size;
       if (active == UI_SCREEN_PROMPT)
         screen->minimum.rows = ui_prompt_required_rows(screen->snapshot, size.cols);
+      title_update(active, screen->snapshot, ui_too_small(size, screen->minimum));
       uint64_t now = time_get_ns();
       uint64_t volume_until = atomic_load_u64(&g_volume_until);
       bool volume_visible =
@@ -848,6 +962,15 @@ static void *presentation_main(void *unused) {
       cond_timedwait(&g_render_requested, &g_mutex, refresh_deadline - now);
     mutex_unlock(&g_mutex);
   }
+  if (g_title_saved) {
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    (void)terminal_title_restore(g_title_fd);
+    (void)platform_close(g_title_fd);
+    g_title_fd = -1;
+    g_title_saved = false;
+    atomic_store(&g_title_mode, NULL);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  }
   fps_counter_destroy(g_fps);
   g_fps = NULL;
   g_owner = false;
@@ -917,6 +1040,27 @@ asciichat_error_t ui_controller_start_terminal(int fd) {
   atomic_store(&g_default_fd, fd);
   asciichat_error_t result = controller_start();
   return result == ASCIICHAT_OK ? ui_sync_start(fd) : result;
+}
+
+asciichat_error_t ui_controller_title_start(const char *mode, int fd) {
+  if (!mode || !platform_isatty(fd) || (GET_OPTION(snapshot_mode) && !GET_OPTION(render_file)[0]))
+    return ASCIICHAT_OK;
+  if (atomic_load(&g_title_mode))
+    return SET_ERRNO(ERROR_INVALID_STATE, "Terminal title is already initialized");
+  atomic_store(&g_default_fd, fd);
+  asciichat_error_t result = controller_start();
+  if (result != ASCIICHAT_OK)
+    return result;
+  g_title_fd = platform_dup(fd);
+  if (g_title_fd < 0)
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Cannot retain title terminal");
+  g_title_started = time_get_ns();
+  g_last_title[0] = '\0';
+  atomic_store(&g_title_ready, false);
+  atomic_store(&g_title_render, UI_TITLE_IDLE);
+  // Publish only after the retained descriptor and immutable configuration are ready.
+  atomic_store(&g_title_mode, mode);
+  return ASCIICHAT_OK;
 }
 
 bool ui_controller_screen_live(ui_screen_t screen) {
