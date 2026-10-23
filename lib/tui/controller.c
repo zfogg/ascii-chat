@@ -655,9 +655,9 @@ static void title_update(int screen, const void *snapshot, bool covered) {
                                                                  : NULL;
     bool spinning = phase == UI_TITLE_RENDERING || phase == UI_TITLE_FINALIZING ||
                     (phase == UI_TITLE_IDLE && activity != UI_TITLE_ACTIVITY_IDLE);
-    snprintf(title, sizeof(title), "🔠 ascii-chat • %s%s%s%s%s", startup ? "video chat in your terminal" : g_title_mode,
-             status ? " • " : "", status ? status : "", spinning ? " " : "",
-             spinning ? ui_spinner_glyph(time_get_ns() - g_title_started, false) : "");
+    const char *icon = spinning ? ui_spinner_glyph(time_get_ns() - g_title_started, false) : "🔠";
+    snprintf(title, sizeof(title), "%s ascii-chat • %s%s%s", icon,
+             startup ? "video chat in your terminal" : g_title_mode, status ? " • " : "", status ? status : "");
     int parent = screen == UI_SCREEN_HELP ? keyboard_help_parent_screen() : screen;
     const char *label;
     if (screen == UI_SCREEN_HELP) {

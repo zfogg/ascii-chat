@@ -143,7 +143,7 @@ def main():
             pending = terminal('client-connection-status', [binary, '--no-check-update', 'client',
                                f'127.0.0.1:{listener.getsockname()[1]}', '--test-pattern', '--audio=false', '--splash-screen=true', '--utf8', 'true'])
             peer, _ = listener.accept()
-            status = re.escape('🔠 ascii-chat • client • connecting... ') + '[⠋⠙⠹⠸⠼⠴⠦⠧]'
+            status = '[⠋⠙⠹⠸⠼⠴⠦⠧]' + re.escape(' ascii-chat • client • connecting...')
             try:
                 title_pattern(pending, status, 'No connecting spinner')
                 pending.write(']')
@@ -151,7 +151,7 @@ def main():
                 pending.write('?')
                 title_pattern(pending, status + re.escape(' • log viewer • help'), 'Connecting status lost under help')
                 peer.close()
-                retry = re.escape('🔠 ascii-chat • client • reconnecting... ') + '[⠋⠙⠹⠸⠼⠴⠦⠧]'
+                retry = '[⠋⠙⠹⠸⠼⠴⠦⠧]' + re.escape(' ascii-chat • client • reconnecting...')
                 title_pattern(pending, retry + re.escape(' • log viewer • help'), 'Reconnecting status lost under help', timeout=20)
             finally:
                 peer.close()
@@ -169,7 +169,7 @@ def main():
                                  '--test-pattern', '--audio=false', '--splash-screen=true', '--utf8', 'true'])
             peer, _ = listener.accept()
             try:
-                connecting = re.escape('🔠 ascii-chat • discovery • connecting... ') + '[⠋⠙⠹⠸⠼⠴⠦⠧]'
+                connecting = '[⠋⠙⠹⠸⠼⠴⠦⠧]' + re.escape(' ascii-chat • discovery • connecting...')
                 title_pattern(discovery, connecting, 'Discovery did not animate while connecting')
                 discovery.write(']')
                 title_pattern(discovery, connecting + re.escape(' • log viewer'), 'Discovery status lost under log viewer')
@@ -184,11 +184,11 @@ def main():
         for unicode in (True, False):
             destination = args.output.resolve() / ('unicode.mp4' if unicode else 'ascii.mp4')
             term = terminal('render-unicode' if unicode else 'render-ascii', mirror(unicode) + ['--render-file', str(destination)])
-            prefix = '🔠 ascii-chat • mirror • rendering file... '
+            suffix = ' ascii-chat • mirror • rendering file...'
             if unicode:
-                title_pattern(term, re.escape(prefix) + '[⠋⠙⠹⠸⠼⠴⠦⠧]', 'Rendering spinner did not appear')
+                title_pattern(term, '[⠋⠙⠹⠸⠼⠴⠦⠧]' + re.escape(suffix), 'Rendering spinner did not appear')
                 term.pump(0.7)
-                spinners = {title.removeprefix(prefix) for _, title in term.titles if title.startswith(prefix)}
+                spinners = {title.removesuffix(suffix) for _, title in term.titles if title.endswith(suffix)}
                 assert len(spinners) >= 2, f'Spinner did not animate: {spinners}'
             else:
                 term.expect_title('')
@@ -201,7 +201,7 @@ def main():
 
         kitty = terminal('render-kitty', mirror(True) + ['--width', '20', '--height', '10', '--snapshot', '--snapshot-delay', '2', '--render-kitty'],
                          environment={'TERM': 'xterm-kitty'})
-        title_pattern(kitty, re.escape('🔠 ascii-chat • mirror • rendering file... ') + '[⠋⠙⠹⠸⠼⠴⠦⠧]',
+        title_pattern(kitty, '[⠋⠙⠹⠸⠼⠴⠦⠧]' + re.escape(' ascii-chat • mirror • rendering file...'),
                       'Kitty image rendering did not animate the title', timeout=20)
         kitty.expect(lambda _: re.search(r'\x1b_G[^;]*m=0;[A-Za-z0-9+/=]*\x1b\\', ''.join(kitty.raw)) is not None,
                      'No complete Kitty image was emitted', timeout=25)
