@@ -53,8 +53,11 @@ void backtrace_t_free(backtrace_t *bt) {
   bt->tried_symbolize = false;
 }
 
-void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
-                     backtrace_frame_filter_t filter) {
+void backtrace_format_styled(backtrace_text_t *text, const char *label, const backtrace_t *bt, int skip_frames,
+                             int max_frames, backtrace_frame_filter_t filter) {
+  if (!text)
+    return;
+  memset(text, 0, sizeof(*text));
   if (!bt || !bt->symbols || bt->count <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid backtrace params");
     return;
@@ -72,14 +75,14 @@ void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt
   }
 
   // Build the message in two versions; log_colored_msg() adds the normal log header.
-  char colored_buffer[16384] = {0};
-  char plain_buffer[16384] = {0};
-  int colored_offset = safe_snprintf(colored_buffer, sizeof(colored_buffer), "%s\n", label);
-  int plain_offset = safe_snprintf(plain_buffer, sizeof(plain_buffer), "%s\n", label);
+  char *colored_buffer = text->colored;
+  char *plain_buffer = text->plain;
+  int colored_offset = safe_snprintf(colored_buffer, sizeof(text->colored), "%s\n", label);
+  int plain_offset = safe_snprintf(plain_buffer, sizeof(text->plain), "%s\n", label);
 
   // Build backtrace frames with colored output for terminal, plain for log
   int frame_num = 0;
-  for (int i = start; i < end && i < count && colored_offset < (int)sizeof(colored_buffer) - 512; i++) {
+  for (int i = start; i < end && i < count && colored_offset < (int)sizeof(text->colored) - 512; i++) {
     // Safely access symbols[i] - symbols array might be smaller than count or have NULL entries
     const char *symbol = NULL;
     if (symbols && symbols[i]) {
@@ -123,7 +126,7 @@ void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt
         size_t bin_copy_len = MIN((size_t)bin_len, sizeof(bin_name) - 1);
         SAFE_MEMCPY(bin_name, sizeof(bin_name), s, bin_copy_len);
         bin_name[bin_copy_len] = '\0';
-        const char *colored_bin_ptr = colored_string(LOG_COLOR_DEBUG, bin_name);
+        const char *colored_bin_ptr = colored_string(LOG_COLOR_RESET, bin_name);
         char colored_bin_buf[512];
         SAFE_STRNCPY(colored_bin_buf, colored_bin_ptr, sizeof(colored_bin_buf));
         colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
@@ -188,7 +191,7 @@ void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt
         SAFE_STRNCPY(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf));
 
         const char *line_num = file_colon + 1;
-        const char *colored_line_ptr = colored_string(LOG_COLOR_FATAL, line_num);
+        const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
         char colored_line_buf[512];
         SAFE_STRNCPY(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf));
 
@@ -204,7 +207,7 @@ void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt
       SAFE_MEMCPY(func_name, sizeof(func_name), s, func_copy_len);
       func_name[func_copy_len] = '\0';
 
-      const char *colored_func_ptr = colored_string(LOG_COLOR_RESET, func_name);
+      const char *colored_func_ptr = colored_string(LOG_COLOR_DEV, func_name);
       char colored_func_buf[512];
       SAFE_STRNCPY(colored_func_buf, colored_func_ptr, sizeof(colored_func_buf));
       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
@@ -245,7 +248,7 @@ void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt
             SAFE_STRNCPY(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf));
 
             const char *line_num = colon_pos + 1;
-            const char *colored_line_ptr = colored_string(LOG_COLOR_FATAL, line_num);
+            const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
             char colored_line_buf[512];
             SAFE_STRNCPY(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf));
 
@@ -276,17 +279,22 @@ void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt
     }
 
     // Format colored buffer: "  [colored_num] colored_symbol\n"
-    colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
+    colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(text->colored) - (size_t)colored_offset,
                                     "  [%s] %s\n", colored_num_buf, colored_symbol);
 
     // Format plain buffer: "  [num] symbol\n"
-    plain_offset += safe_snprintf(plain_buffer + plain_offset, sizeof(plain_buffer) - (size_t)plain_offset,
+    plain_offset += safe_snprintf(plain_buffer + plain_offset, sizeof(text->plain) - (size_t)plain_offset,
                                   "  [%d] %s\n", frame_num, symbol);
     frame_num++;
   }
+}
 
-  // Preserve semantic terminal colors while keeping filtering, JSON, and log files ANSI-free.
-  log_colored_msg(level, colored_buffer, plain_buffer);
+void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
+                     backtrace_frame_filter_t filter) {
+  backtrace_text_t text;
+  backtrace_format_styled(&text, label, bt, skip_frames, max_frames, filter);
+  if (text.plain[0])
+    log_colored_msg(level, text.colored, text.plain);
 }
 
 void backtrace_print_many(log_level_t level, const char *label, const backtrace_t *bts, int count) {
@@ -376,6 +384,17 @@ void backtrace_symbolize(backtrace_t *bt) {
 void backtrace_t_free(backtrace_t *bt) {
   (void)bt;
   // No-op in release builds
+}
+
+void backtrace_format_styled(backtrace_text_t *text, const char *label, const backtrace_t *bt, int skip_frames,
+                             int max_frames, backtrace_frame_filter_t filter) {
+  (void)label;
+  (void)bt;
+  (void)skip_frames;
+  (void)max_frames;
+  (void)filter;
+  if (text)
+    memset(text, 0, sizeof(*text));
 }
 
 void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt, int skip_frames, int max_frames,

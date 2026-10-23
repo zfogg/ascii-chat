@@ -189,6 +189,10 @@ static keyboard_key_t keyboard_stream_read_unlocked(int (*read_byte)(void)) {
       key = KEY_HOME;
     else if (!strcmp(sequence, "\033[F") || !strcmp(sequence, "\033[4~"))
       key = KEY_END;
+    else if (!strcmp(sequence, "\033[5~"))
+      key = KEY_PAGEUP;
+    else if (!strcmp(sequence, "\033[6~"))
+      key = KEY_PAGEDOWN;
     else if (!strcmp(sequence, "\033[3~"))
       key = KEY_DELETE;
     else if (!strcmp(sequence, "\033[3;5~") || !strcmp(sequence, "\033[2~"))

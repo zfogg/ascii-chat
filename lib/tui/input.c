@@ -1,6 +1,8 @@
 #include <ascii-chat/tui/shortcuts.h>
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/tui/errno_stacks.h>
+#include <ascii-chat/tui/error_popup.h>
+#include <ascii-chat/tui/terminal_screen.h>
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/log/search.h>
@@ -275,11 +277,41 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
       atomic_store(&g_input_was_covered, false);
     return KEY_NONE;
   }
-  ui_presentation_state_t state = ui_controller_state();
   mutex_lock(&g_input_mutex);
+  ui_presentation_state_t state = ui_controller_state();
   // The previous event has now been dispatched by the session. Background
   // polling must not overtake a pending switch with the next shortcut.
   g_switch_pending = false;
+  if (state.screen == UI_SCREEN_HELP &&
+      (ui_error_popup_visible() || keyboard_help_parent_screen() == UI_SCREEN_ERROR)) {
+    keyboard_key_t key = keyboard_help_check_signal_cancel() ? KEY_ESCAPE : input_next_key();
+    if (key == KEY_ESCAPE || key == KEY_QUESTION)
+      keyboard_help_toggle_terminal(ui_controller_active_fd());
+    if (key == KEY_PASTE)
+      g_paste_ready = false;
+    input_unlock();
+    return KEY_NONE;
+  }
+  if (state.screen == UI_SCREEN_ERROR && terminal_screen_logs_help_open()) {
+    keyboard_key_t key = input_next_key();
+    if (key != KEY_NONE)
+      terminal_screen_logs_handle_key(key);
+    if (key == KEY_PASTE)
+      g_paste_ready = false;
+    input_unlock();
+    return KEY_NONE;
+  }
+  if (state.screen == UI_SCREEN_ERROR) {
+    keyboard_key_t key = input_next_key();
+    if (key == KEY_QUESTION)
+      keyboard_help_toggle_terminal(ui_controller_active_fd());
+    else if (key != KEY_NONE && key != KEY_PASTE && key != 3)
+      ui_error_popup_key(key);
+    if (key == KEY_PASTE)
+      g_paste_ready = false;
+    input_unlock();
+    return key == 3 ? key : KEY_NONE;
+  }
   if (state.screen == UI_SCREEN_NOTICE) {
     g_paste_ready = false;
     g_sync_key_count = 0;

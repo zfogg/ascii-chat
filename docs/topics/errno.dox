@@ -223,6 +223,38 @@ when the scheduler takes responsibility for retrying; mapping state still tracks
 lease expiration. Rate-limit helpers return a typed status plus an allowed
 output; connection owners send encrypted public responses under their send lock.
 
+@section errno_popup Runtime error popup
+
+While the native terminal presenter is active, newly recorded errors also enter
+an allocation-free, 128-entry notification journal. The popup shows the symbolic
+and numeric code, generic meaning, contextual message, system/socket error when
+present, and originating thread. Debug, Dev, and RelWithDebInfo builds also show
+the source location and the captured backtrace, using the same semantic formatter
+as terminal logs. Release hides these developer diagnostics.
+
+Left/Right select the preceding/following error; Home/End select the oldest/newest.
+New arrivals select the newest error. Up/Down and PageUp/PageDown scroll details.
+Backtraces use at most 12 visible lines with the shared scrollbar. Error metadata
+stays fixed while the trace scrolls when the terminal has room for both sections;
+smaller terminals scroll the combined details so every line remains reachable.
+The popup displays a Dismiss all button activated by Enter and a ? Help hint.
+Its compact help overlay lists navigation, scrolling,
+and dismissal shortcuts. Esc, q, and Enter dismiss all errors and consume the key. Acknowledgment removes
+only notifications through the captured cutoff ID; concurrent later arrivals
+remain visible. It never clears a producer's pending errno stack or recovery scope.
+Overflow keeps the newest 128 notifications and marks older entries as dropped.
+
+The presenter composes the selected screen and retained dialog layers, then errors,
+then keyboard help. An already open log-viewer help menu also stays above errors.
+Help retains the underlying interactive selection, including prompts and diagnostics.
+Below 60 columns or 14 rows the popup uses the common too-small UI; dismissal keys
+remain active and enlarging the terminal restores selection and scrolling.
+
+Batch output and finite snapshots keep their existing synchronous behavior.
+UI rendering can suppress its own notifications without suppressing errno storage
+or logging, preventing recursive popup failures. Normal screen changes intentionally
+supersede unfinished media frames and are not terminal write errors.
+
 @section errno_tests Tests
 
 Build the production library tests without Criterion:
@@ -230,6 +262,8 @@ Build the production library tests without Criterion:
 cmake --preset default -B build -DBUILD_TESTS=ON
 cmake --build build --target test-errno-stacks
 ctest --test-dir build -R "^errno-stacks$" --output-on-failure
+cmake --build build --target test-error-popup-fixture
+ctest --test-dir build -R "^error-popup-smoke$" --no-tests=error --output-on-failure
 python tests/standalone/errno/smoke.py build/bin/ascii-chat --debug-sync
 # Linux: verify SIGUSR1 prints both reports on stdout from separate workers
 python tests/standalone/errno/signal_stdout.py build/bin/ascii-chat --errno-probe build/bin/test-errno-stacks
@@ -247,4 +281,14 @@ thread-ID generations, remote clearing, thread exit, simultaneous writers,
 global/per-thread capacity, and interruptible diagnostics shutdown.
 Run test-errno-stacks --assert-leak in a debug build to verify that an unresolved
 successful-operation boundary exits with ERROR_INVALID_STATE.
+
+The Python error-popup smoke test drives production rendering and input through
+PTY on POSIX and ConPTY on Windows. It checks journal acknowledgment races,
+multiple-error navigation, new arrivals under help, dismissal without key replay,
+scrolling, truncation, control-character sanitization, small/exact-minimum terminal
+sizes, overflow, colors, monochrome/ASCII output, prompt preservation, and layered
+status/splash/log/statistics/error-stack/sync/dialog screens where supported.
+CTest selects diagnostic expectations from the build type. Terminal cell dumps,
+ANSI streams, screenshots, logs, and result metadata are saved under
+build/Testing/error-popup (or the corresponding build directory).
 */
