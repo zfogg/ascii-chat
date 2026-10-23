@@ -20,22 +20,36 @@ in this trusted checkout. Use the Spaniel tools to inspect stored traces, logs,
 and metrics, including named SQLite spans under `ascii-chat.storage.*`.
 The bundled collector enables MCP writes with `--mcp-allow-writes`. Its ports
 remain bound to host loopback. `SPANIEL_SELF_MONITOR=false` keeps the collector's
-own request logs and telemetry out of application views. To validate and install
-the versioned dashboards:
+own request logs and telemetry out of application views. Compose mounts the
+versioned `deploy/otel/dashboards/*.yaml` files read-only and loads them through
+Spaniel's `--dashboards-dir /dashboards` at startup. Stable IDs preserve existing
+dashboard links and also recreate the dashboards on a fresh database. After
+editing YAML, restart the collector to load it:
 
 ```sh
-python deploy/otel/apply_dashboards.py --dry-run
-python deploy/otel/apply_dashboards.py
+docker compose -f deploy/otel/docker-compose.yml restart spaniel
 ```
 
-The installer uses Spaniel MCP, replaces dashboards with matching names, and
-prints links. Session health covers frames, audio, network, queues and latency;
+Session health covers frames, audio, network, queues and latency;
 FFmpeg and connections covers media operations and transitions; logs and exporter
 covers severity and export pressure. Queries use a rolling 15-minute observation
 window. Cumulative metrics select the newest snapshot per process start and
 series, so repeated exports are not added together. Totals remain process-lifetime
 totals for processes seen in the window. Sampled span percentiles are labeled
 separately from metrics that count every operation. No data is not a healthy zero.
+
+Session health also counts unique ascii-chat session strings used for calls in
+the last 15 minutes. Discovery emits `ascii-chat.discovery.call.session_used`
+when a participant enters ACTIVE (a host merely listening does not count);
+discovery-service emits it after a successful session join.
+The span attribute `ascii-chat.session.string` holds the string, without adding
+it to metric labels. The panel deduplicates retries, reconnects and observations
+from both services, and shows connected and joined distinct counts separately.
+A successful discovery-service join confirms signaling admission, not completed
+media connectivity. Creation, lookup and failed joins do not count. These are
+observed transition counts: calls already active before the window are excluded,
+and disabled, dropped or unavailable traces can undercount. This telemetry sends
+session strings to the configured collector when tracing is enabled.
 
 Telemetry services are named `ascii-chat-$mode`, such as
 `ascii-chat-discovery-service` for ACDS.

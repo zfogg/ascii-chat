@@ -148,6 +148,7 @@ ASCII_OTEL_OPERATION(DATABASE_GET_KEYS, "ascii-chat.discovery.database.key.list"
 ASCII_OTEL_OPERATION(DATABASE_SESSION_COUNT, "ascii-chat.discovery.database.session_count", true)
 ASCII_OTEL_OPERATION(DATABASE_UNIQUE_CLIENTS, "ascii-chat.discovery.database.unique_clients", true)
 ASCII_OTEL_OPERATION(DISCOVERY_INIT, "ascii-chat.discovery.initialize", false)
+ASCII_OTEL_OPERATION(CALL_SESSION_USED, "ascii-chat.discovery.call.session_used", false)
 ASCII_OTEL_OPERATION(DISCOVERY_SHUTDOWN, "ascii-chat.discovery.shutdown", false)
 ASCII_OTEL_OPERATION(DISCOVERY_CREATE, "ascii-chat.discovery.session.create", false)
 ASCII_OTEL_OPERATION(DISCOVERY_LOOKUP, "ascii-chat.discovery.session.lookup", false)

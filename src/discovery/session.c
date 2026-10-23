@@ -4,6 +4,7 @@
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/otel.h>
 /**
  * @file discovery/session.c
  * @brief Discovery session flow management
@@ -310,6 +311,13 @@ static void set_state(discovery_session_t *session, discovery_state_t new_state)
 
   discovery_state_t old_state = session->state;
   session->state = new_state;
+
+  // A host enters ACTIVE when it starts listening, before a peer connects.
+  if (new_state == DISCOVERY_STATE_ACTIVE && old_state != DISCOVERY_STATE_ACTIVE && !session->is_host &&
+      session->session_string[0]) {
+    ASCII_OTEL_SCOPE(CALL_SESSION_USED);
+    ASCII_OTEL_ATTR_STRING("ascii-chat.session.string", session->session_string);
+  }
 
   // Initialize timing for WAITING_PEER state (to timeout if peer doesn't join)
   if (new_state == DISCOVERY_STATE_WAITING_PEER) {
