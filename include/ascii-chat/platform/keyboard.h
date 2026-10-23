@@ -67,6 +67,7 @@ typedef enum {
   KEY_PASTE_END = 265,
   KEY_PASTE = 266,
   KEY_MEDIA_SUBMIT = 267, ///< Nonblocking media prompt submitted
+  KEY_SHIFT_ENTER = 269,  ///< Shift+Enter (insert a newline in multiline prompts)
   KEY_F12 = 268,          ///< Open the version update checker TUI
   KEY_PAGEUP = 269,
   KEY_PAGEDOWN = 270,

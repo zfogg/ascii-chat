@@ -34,6 +34,21 @@ asciichat_error_t ui_popup_frame(frame_buffer_t *out, int row, int col, int widt
   return ui_popup_rule(out, width, UI_POPUP_BOTTOM, false, terminal_should_use_utf8(), color);
 }
 
+asciichat_error_t ui_popup_frame_titled(frame_buffer_t *out, int row, int col, int width, int height, log_color_t color,
+                                        const char *title) {
+  if (!title || width < 5)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid popup title or width");
+  asciichat_error_t result = ui_popup_frame(out, row, col, width, height, color);
+  if (result != ASCIICHAT_OK)
+    return result;
+  char rendered[1024];
+  truncate_with_ellipsis(title, rendered, sizeof(rendered), width - 4);
+  int title_width = display_width(rendered);
+  frame_buffer_printf(out, "\033[%d;%dH %s ", row, col + (width - title_width - 2) / 2,
+                      colored_string(LOG_COLOR_RESET, rendered));
+  return ASCIICHAT_OK;
+}
+
 bool ui_popup_render(frame_buffer_t *output, terminal_size_t size, const ui_popup_t *box) {
   if (!output || !box || !box->title || (box->line_count && !box->lines) || box->top_margin < 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid popup output, content or margins");

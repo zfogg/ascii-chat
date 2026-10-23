@@ -124,6 +124,8 @@ static int keyboard_raw_read(void) {
       repeated = key;
       repeated.wRepeatCount = key.wRepeatCount > 0 ? (WORD)(key.wRepeatCount - 1) : 0;
     }
+    if (key.wVirtualKeyCode == VK_RETURN && (key.dwControlKeyState & SHIFT_PRESSED))
+      return KEY_SHIFT_ENTER;
     wchar_t ch = key.uChar.UnicodeChar;
     if (!ch) {
       switch (key.wVirtualKeyCode) {

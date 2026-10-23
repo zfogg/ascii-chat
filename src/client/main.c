@@ -1,3 +1,5 @@
+#include <ascii-chat/util/password.h>
+#include <sodium.h>
 #include <ascii-chat/network/acip/settings.h>
 #include "connection_internal.h"
 /**
@@ -153,10 +155,11 @@ struct webrtc_peer_manager *g_peer_manager = NULL;
  * Used by client_run() callback to manage the connection/reconnection loop.
  */
 typedef struct {
-  const char *discovered_address; // From LAN/session discovery
-  int discovered_port;            // From LAN/session discovery
-  int reconnect_attempt;          // Current reconnection attempt number
-  bool has_ever_connected;        // Track if connection ever succeeded
+  const char *discovered_address;      // From LAN/session discovery
+  int discovered_port;                 // From LAN/session discovery
+  int reconnect_attempt;               // Current reconnection attempt number
+  char password[PASSWORD_BUFFER_SIZE]; // Retained across attempts, wiped by session cleanup.
+  bool has_ever_connected;             // Track if connection ever succeeded
 } client_session_state_t;
 
 static client_session_state_t g_client_session = {0};
@@ -191,6 +194,7 @@ static void shutdown_client() {
   // Stop splash animation thread before any resource cleanup
   splash_intro_done();
 
+  sodium_memzero(g_client_session.password, sizeof(g_client_session.password));
   audio_cleanup();
   capture_cleanup();
   acip_websocket_runtime_destroy(&g_websocket_runtime);
@@ -345,7 +349,8 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
 
   asciichat_error_t connection_result = client_connection_start(
       connection, g_client_session.discovered_address ? g_client_session.discovered_address : "",
-      (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224));
+      (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224),
+      g_client_session.password, sizeof(g_client_session.password));
   if (connection_result != ASCIICHAT_OK) {
     if (should_exit())
       return ERROR_NETWORK;

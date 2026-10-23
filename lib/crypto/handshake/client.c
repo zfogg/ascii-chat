@@ -723,6 +723,10 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
                                      "provide --password and --key to authenticate");
     }
     // Prompt for password interactively
+    if (ctx->defer_password_prompt) {
+      ctx->password_failure = AUTH_FAIL_PASSWORD_REQUIRED;
+      return SET_ERRNO(ERROR_CRYPTO_AUTH, "Server requires a password");
+    }
     char prompted_password[PASSWORD_BUFFER_SIZE];
     if (prompt_password("Server password required - please enter password:", prompted_password,
                         sizeof(prompted_password)) != 0) {
@@ -832,6 +836,11 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
     // Parse the auth failure packet to get specific reasons
     if (payload_len >= sizeof(auth_failure_packet_t)) {
       auth_failure_packet_t *failure = (auth_failure_packet_t *)payload;
+      const uint8_t password_flags = AUTH_FAIL_PASSWORD_REQUIRED | AUTH_FAIL_PASSWORD_INCORRECT;
+      if (ctx->defer_password_prompt && failure->reason_flags && !(failure->reason_flags & ~password_flags)) {
+        ctx->password_failure = failure->reason_flags;
+        return SET_ERRNO(ERROR_CRYPTO_AUTH, "Server rejected password");
+      }
       NOTICE(DANGER, "AUTHENTICATION REJECTED", "%s%s%s%s%sConnection rejected.",
              failure->reason_flags & AUTH_FAIL_PASSWORD_INCORRECT ? "Incorrect password.\n" : "",
              failure->reason_flags & AUTH_FAIL_PASSWORD_REQUIRED ? "Password required: use --password.\n" : "",

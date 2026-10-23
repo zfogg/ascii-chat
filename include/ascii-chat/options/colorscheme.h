@@ -94,6 +94,7 @@ typedef struct {
 /** A caller-owned palette: no shared string lifetime or allocation. */
 typedef struct {
   char codes[8][32];
+  char background_codes[8][32]; /**< Matching live logging colors as background SGR sequences. */
   char foreground[32];
   terminal_background_t background;
 } colorscheme_palette_t;

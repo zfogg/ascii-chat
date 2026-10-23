@@ -1,5 +1,10 @@
 #include <ascii-chat/tui/shortcuts.h>
 #include <ascii-chat/ui/input.h>
+#include <ascii-chat/ui/buttons.h>
+#include <sodium.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/app_callbacks.h>
+#include <ascii-chat/util/env.h>
 #include <ascii-chat/tui/errno_stacks.h>
 #include <ascii-chat/tui/error_popup.h>
 #include <ascii-chat/tui/terminal_screen.h>
@@ -13,6 +18,7 @@
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/platform/question.h>
+#include <ascii-chat/platform/clipboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/utf8.h>
 #include <string.h>
@@ -199,7 +205,7 @@ asciichat_error_t ui_input_take_paste(char *buffer, size_t capacity) {
   else
     memcpy(buffer, g_paste, g_paste_length + 1);
   g_paste_length = 0;
-  g_paste[0] = '\0';
+  sodium_memzero(g_paste, sizeof(g_paste));
   g_paste_ready = false;
   input_unlock();
   return result;
@@ -475,7 +481,13 @@ void ui_input_shutdown(void) {
   lifecycle_destroy_commit(&g_input_lifecycle);
 }
 
-asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts) {
+/** Own a synchronous prompt while the controller renders masked snapshots.
+ * Password dialogs keep navigation in the shared editor, route Tab/Enter to
+ * buttons, and reject excess newlines before insertion. Clipboard and terminal
+ * paste share atomic insertion; temporary secret buffers are wiped on exit.
+ */
+static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts,
+                                      bool password_dialog, bool incorrect) {
   if (!prompt || !buffer || max_len < 2)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid prompt buffer");
   if (keyboard_init() != ASCIICHAT_OK)
@@ -500,6 +512,14 @@ asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, si
   char timed_prompt[8192];
   snprintf(timed_prompt, sizeof(timed_prompt), "%s\n(Timeout: %us; cancels without an answer)", prompt, seconds);
   asciichat_error_t result = ASCIICHAT_OK;
+  bool newline_limit = false;
+  // Request modifier-aware Enter while this dialog owns terminal input.
+  if (password_dialog) {
+    const char *enable = "\033[>1u\033[>4;2m";
+    platform_write_all(STDERR_FILENO, enable, strlen(enable));
+  }
+  ui_buttons_t buttons = {0};
+  ui_button_t actions[] = {{"[ Confirm ]", 0, false}, {"[ Cancel ]", 0, false}};
   while (!shutdown_is_requested()) {
     if (ui_input_expired(deadline)) {
       result = ERROR_PROMPT_TIMEOUT;
@@ -509,11 +529,11 @@ asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, si
     if (opts.echo) {
       memcpy(visible, buffer, len + 1);
     } else {
-      size_t chars = utf8_char_count(buffer);
-      // A UTF-8 character can be incomplete between byte events.
-      if (chars == SIZE_MAX)
-        chars = len;
-      memset(visible, opts.mask_char, chars);
+      size_t chars = 0;
+      for (size_t i = 0; i < len; ++i) {
+        if (((unsigned char)buffer[i] & 0xc0) != 0x80)
+          visible[chars++] = password_dialog && buffer[i] == '\n' ? '\n' : opts.mask_char;
+      }
       visible[opts.mask_char ? chars : 0] = '\0';
       display_cursor = 0;
       for (size_t i = 0; i < cursor; ++i)
@@ -522,7 +542,10 @@ asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, si
       if (!opts.mask_char)
         display_cursor = 0;
     }
-    result = ui_prompt_present(timed_prompt, visible, display_cursor, !opts.echo);
+    // Presentation owns only the mask; the caller retains the credential.
+    result = password_dialog ? ui_password_prompt_present(prompt, visible, display_cursor, buttons.selected, incorrect,
+                                                          len >= MIN_PASSWORD_LENGTH, newline_limit)
+                             : ui_prompt_present(timed_prompt, visible, display_cursor, !opts.echo);
     if (result != ASCIICHAT_OK)
       break;
     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_PROMPT, 100);
@@ -532,18 +555,66 @@ asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, si
     }
     if (key == KEY_NONE)
       continue;
-    if (key == KEY_PASTE) {
-      char pasted[8192];
-      if (ui_input_take_paste(pasted, sizeof(pasted)) == ASCIICHAT_OK && !strpbrk(pasted, "\r\n\t") &&
-          strlen(pasted) + len < max_len) {
-        (void)ui_input_insert(buffer, max_len, &len, &cursor, pasted);
-      } else {
-        CLEAR_ERRNO();
+    newline_limit = false;
+    if (password_dialog && key == KEY_SHIFT_ENTER) {
+      size_t newlines = 0;
+      for (size_t i = 0; i < len; ++i)
+        newlines += buffer[i] == '\n';
+      if (newlines >= 3)
+        newline_limit = true;
+      else
+        (void)ui_input_insert(buffer, max_len, &len, &cursor, "\n");
+      continue;
+    }
+    actions[0].disabled = password_dialog && len < MIN_PASSWORD_LENGTH;
+    if (password_dialog && (key == '\t' || key == '\r' || key == '\n')) {
+      int activated = ui_buttons_key(&buttons, actions, 2, key);
+      if (activated == 0)
+        break;
+      if (activated == 1) {
+        result = SET_ERRNO(ERROR_CRYPTO_AUTH, "Password entry cancelled");
+        break;
       }
       continue;
     }
-    if (key == '\r' || key == '\n')
-      break;
+    // Validate the whole paste before editing so rejection cannot leave a partial password.
+    if (key == KEY_PASTE || key == 22) {
+      char pasted[8192] = {0};
+      asciichat_error_t pasted_result =
+          key == 22 ? platform_clipboard_read(pasted, sizeof(pasted)) : ui_input_take_paste(pasted, sizeof(pasted));
+      if (pasted_result == ASCIICHAT_OK) {
+        if (key == 22) {
+          size_t write = 0;
+          for (size_t read = 0; pasted[read]; ++read) {
+            if (pasted[read] == '\r' && pasted[read + 1] == '\n')
+              continue;
+            pasted[write++] = pasted[read] == '\r' ? '\n' : pasted[read];
+          }
+          pasted[write] = '\0';
+        }
+        size_t newlines = 0;
+        for (size_t i = 0; i < len; ++i)
+          newlines += buffer[i] == '\n';
+        for (size_t i = 0; pasted[i]; ++i)
+          newlines += pasted[i] == '\n';
+        if (password_dialog && newlines > 3)
+          newline_limit = true;
+        else if (!strpbrk(pasted, password_dialog ? "\r\t" : "\r\n\t") && strlen(pasted) + len < max_len)
+          (void)ui_input_insert(buffer, max_len, &len, &cursor, pasted);
+        else
+          CLEAR_ERRNO();
+      } else {
+        CLEAR_ERRNO();
+      }
+      // Clipboard and terminal paste buffers can contain unmasked credentials.
+      sodium_memzero(pasted, sizeof(pasted));
+      continue;
+    }
+    if (key == '\r' || key == '\n') {
+      if (!password_dialog || len >= MIN_PASSWORD_LENGTH)
+        break;
+      continue;
+    }
     if (key == KEY_ESCAPE || key == 3) {
       result = SET_ERRNO(ERROR_GENERAL, "Prompt cancelled");
       break;
@@ -553,12 +624,37 @@ asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, si
   if (shutdown_is_requested())
     result = SET_ERRNO(ERROR_GENERAL, "Prompt interrupted");
   ui_prompt_remove();
+  if (password_dialog) {
+    const char *disable = "\033[<u\033[>4;0m";
+    platform_write_all(STDERR_FILENO, disable, strlen(disable));
+  }
   mutex_unlock(&g_input_prompt_mutex);
   SAFE_FREE(visible);
   if (result == ERROR_PROMPT_TIMEOUT)
     ui_input_timeout_report(seconds, opts.echo ? "answer declined" : "password entry cancelled");
   if (result != ASCIICHAT_OK)
-    memset(buffer, 0, max_len);
+    sodium_memzero(buffer, max_len);
+  return result;
+}
+
+asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts) {
+  return input_prompt(prompt, buffer, max_len, opts, false, false);
+}
+
+asciichat_error_t ui_input_password(const char *target, char *buffer, size_t capacity, bool incorrect) {
+  if (!target || !buffer || capacity < 2)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid password dialog");
+  sodium_memzero(buffer, capacity);
+  if (env_pop_prompt_response(buffer, capacity))
+    return ASCIICHAT_OK;
+  if (!platform_is_interactive())
+    return SET_ERRNO(ERROR_CRYPTO_AUTH, "Server password requires an interactive terminal or --password");
+  asciichat_error_t result = input_prompt(target, buffer, capacity, PROMPT_OPTS_PASSWORD, true, incorrect);
+  if (result != ASCIICHAT_OK) {
+    shutdown_request();
+    APP_CALLBACK_VOID(signal_exit);
+    return SET_ERRNO(ERROR_CRYPTO_AUTH, "Password entry cancelled");
+  }
   return result;
 }
 

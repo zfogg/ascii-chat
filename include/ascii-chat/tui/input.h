@@ -28,3 +28,6 @@ asciichat_error_t ui_input_prompt_prefilled(const char *prompt, char *buffer, si
 asciichat_error_t ui_input_media_begin(const char *text);
 /** Consume the value signaled by KEY_MEDIA_SUBMIT. */
 asciichat_error_t ui_input_media_take(char *output, size_t capacity);
+
+/** Server password dialog; cancellation requests normal application shutdown. */
+asciichat_error_t ui_input_password(const char *target, char *buffer, size_t capacity, bool incorrect);

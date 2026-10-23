@@ -74,6 +74,8 @@ typedef struct crypto_handshake_context_t {
   crypto_context_t crypto_ctx;    /**< Core crypto context (keys, encryption state) */
   crypto_handshake_state_t state; /**< Current handshake state (validated by each function) */
   bool is_server;                 /**< True if this is the server side */
+  uint8_t password_failure;       /**< Password-only rejection flags, for application-owned retry. */
+  bool defer_password_prompt;     /**< Application owns interactive password entry and reconnect. */
 
   /** Server identity (server only) */
   public_key_t server_public_key;   /**< Server's long-term Ed25519 public key (identity) */

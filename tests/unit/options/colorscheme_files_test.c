@@ -89,3 +89,24 @@ Test(colorscheme_files, hex_colors_require_six_valid_digits) {
     cr_assert_eq(parse_hex_color(invalid[i], &r, &g, &b), ERROR_CONFIG);
   cr_assert_eq(parse_hex_color(NULL, &r, &g, &b), ERROR_INVALID_PARAM);
 }
+
+Test(colorscheme_files, live_background_palette_uses_custom_logging_colors_at_every_depth) {
+  color_scheme_t previous = *colorscheme_get_active_scheme();
+  color_scheme_t custom = previous;
+  custom.log_colors_dark[2] = custom.log_colors_light[2] = (rgb_pixel_t){1, 240, 3};
+  custom.log_colors_dark[4] = custom.log_colors_light[4] = (rgb_pixel_t){240, 1, 3};
+  colorscheme_apply(&custom);
+  colorscheme_palette_t palette;
+  colorscheme_current_palette(&palette, TERM_COLOR_TRUECOLOR);
+  cr_expect_str_eq(palette.background_codes[2], "\033[48;2;1;240;3m");
+  cr_expect_str_eq(palette.background_codes[4], "\033[48;2;240;1;3m");
+  colorscheme_current_palette(&palette, TERM_COLOR_256);
+  cr_expect_str_eq(palette.background_codes[2], "\033[48;5;46m");
+  cr_expect_str_eq(palette.background_codes[4], "\033[48;5;196m");
+  colorscheme_current_palette(&palette, TERM_COLOR_16);
+  cr_expect_str_eq(palette.background_codes[2], "\033[102m");
+  cr_expect_str_eq(palette.background_codes[4], "\033[101m");
+  colorscheme_current_palette(&palette, TERM_COLOR_NONE);
+  cr_expect_str_eq(palette.background_codes[2], "");
+  colorscheme_apply(&previous);
+}

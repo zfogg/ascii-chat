@@ -177,6 +177,20 @@ static keyboard_key_t keyboard_stream_read_unlocked(int (*read_byte)(void)) {
       key = KEY_PASTE_END;
     } else if (pasting)
       key = (keyboard_key_t)27;
+    else if (!strcmp(sequence, "\033[13;2u") || !strcmp(sequence, "\033[27;2;13~"))
+      key = KEY_SHIFT_ENTER;
+    else if (!strcmp(sequence, "\033[27u"))
+      key = KEY_ESCAPE;
+    else if (!strcmp(sequence, "\033[13u"))
+      key = (keyboard_key_t)13;
+    else if (!strcmp(sequence, "\033[9u"))
+      key = (keyboard_key_t)9;
+    else if (!strcmp(sequence, "\033[127u"))
+      key = (keyboard_key_t)127;
+    else if (!strcmp(sequence, "\033[99;5u") || !strcmp(sequence, "\033[27;5;99~"))
+      key = (keyboard_key_t)3;
+    else if (!strcmp(sequence, "\033[118;5u") || !strcmp(sequence, "\033[27;5;118~"))
+      key = (keyboard_key_t)22;
     else if (!strcmp(sequence, "\033[A"))
       key = KEY_UP;
     else if (!strcmp(sequence, "\033[B"))

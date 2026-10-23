@@ -1,10 +1,12 @@
 #pragma once
 #include <ascii-chat/ui/frame_buffer.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/keyboard.h>
 typedef struct {
   const char *label;
   keyboard_key_t shortcut;
   bool disabled;
+  log_color_t color; /**< Unselected foreground; zero retains the default button color. */
 } ui_button_t;
 typedef struct {
   size_t selected;

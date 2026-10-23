@@ -12,6 +12,10 @@ asciichat_error_t ui_popup_rule(frame_buffer_t *output, int width, ui_popup_edge
                                 bool unicode, log_color_t color);
 asciichat_error_t ui_popup_frame(frame_buffer_t *output, int row, int column, int width, int height, log_color_t color);
 
+/** Draw a frame with a centered, clipped title embedded in its top border. */
+asciichat_error_t ui_popup_frame_titled(frame_buffer_t *output, int row, int column, int width, int height,
+                                        log_color_t color, const char *title);
+
 /** A compact modal drawn over an already-rendered terminal frame. */
 typedef struct {
   const char *title;

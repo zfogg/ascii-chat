@@ -18,3 +18,8 @@ void ui_media_panel_render(frame_buffer_t *buffer, terminal_size_t size, const c
 
 /** Present the media-loading screen while capture resolves its next source. */
 asciichat_error_t ui_media_loading_present(void);
+
+/** The snapshot contains masked text only. Selection: confirm=0, cancel=1. */
+asciichat_error_t ui_password_prompt_present(const char *target, const char *masked, size_t cursor,
+                                             size_t selected_button, bool incorrect, bool can_confirm,
+                                             bool newline_limit);
