@@ -204,8 +204,8 @@ static void build_body(const asciichat_error_context_t *error, int width, bool c
     wrap_body("Error details unavailable (out of memory)", width);
     return;
   }
-  frame_buffer_printf(body, "Message: %s\nDetails: %s%s\n\nThread: %s", asciichat_error_string(error->code),
-                      message[0] ? message : "No additional details", error->message_truncated ? " [truncated]" : "",
+  frame_buffer_printf(body, "Details: %s%s\n\nThread: %s", message[0] ? message : "No additional details",
+                      error->message_truncated ? " [truncated]" : "",
                       colors ? colored_string(LOG_COLOR_DEV, thread) : thread);
   if (named)
     frame_buffer_printf(body, " (0x%llx)", (unsigned long long)error->thread_id);
@@ -299,8 +299,9 @@ void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
   ui_text_cell(heading, sizeof(heading), title, width - 4, UI_ALIGN_LEFT);
   frame_buffer_printf(out, "\033[%d;%dH%s", top + 1, left + 2,
                       colors ? colored_string(LOG_COLOR_ERROR, heading) : heading);
-  char code[160], cell[1024];
-  safe_snprintf(code, sizeof(code), "Code: %s (%d)", asciichat_error_name(error.code), error.code);
+  char code[512], cell[1024];
+  safe_snprintf(code, sizeof(code), "%s (%d): %s", asciichat_error_name(error.code), error.code,
+                asciichat_error_string(error.code));
   ui_text_cell(cell, sizeof(cell), code, width - 4, UI_ALIGN_LEFT);
   frame_buffer_printf(out, "\033[%d;%dH%s", top + 2, left + 2, cell);
   for (int i = 0; i < body_rows; ++i) {

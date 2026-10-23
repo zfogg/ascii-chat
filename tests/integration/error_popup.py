@@ -131,7 +131,9 @@ def navigation(args):
     f = Fixture(args)
     try:
         f.error(1, "FIRST_ERROR")
-        f.expect("ERROR_MEDIA_OPEN (27)")
+        f.expect("ERROR_MEDIA_OPEN (27): Failed to open media file or stream")
+        f.absent("Code:")
+        f.absent("Message:")
         f.expect("Error (1)")
         f.expect("Thread:")
         if args.diagnostics:
@@ -241,8 +243,8 @@ def navigation(args):
         f.term.expect(lambda _: f.term.screen.display != before, "PageDown failed to scroll")
         f.key("\x1b[5~", "LONG_ERROR line 00")
         f.term.write("\x1b[B\x1b[B")
-        f.absent("Message:")
-        f.key("\x1b[A\x1b[A", "Message:")
+        f.absent("Details:")
+        f.key("\x1b[A\x1b[A", "Details:")
         f.term.resize(8, 35)
         f.expect("Terminal too small")
         f.screenshot("too-small")
