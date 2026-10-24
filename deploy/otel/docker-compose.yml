@@ -13,7 +13,7 @@ services:
     volumes:
       - spaniel-data:/data
       - ./dashboards:/dashboards
-      - ./alerts:/alerts:ro
+      - ./alerts:/alerts
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
       interval: 10s
