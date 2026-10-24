@@ -34,11 +34,17 @@ using a local console, a remote SSH session, or any terminal emulator.
 [\fIbind-address\fR]
 [\fIbind-address\fR]
 [\fImode-options\fR]
+.PP
+.B ascii-chat mcp-server
+[\fB\-\-server\fR]
+[\fIbind-address\fR]
+[\fIbind-address\fR]
+[\fImode-options\fR]
 .\" MANUAL-END: SYNOPSIS
 
 .\" MANUAL-START: MODES
 .SH MODES
-The program operates in five modes:
+The program operates in six modes:
 .TP
 .B default
 The default operating mode when running
@@ -70,7 +76,51 @@ Runs an ACDS (ascii-chat Discovery Service) server for session discovery.
 Allows users of ascii-chat's default mode to discover each other using memorable session
 strings instead of IP addresses. See the SECURITY section for
 notes on the official instance and its keys.
+.TP
+.B mcp-server
+Exposes ASCII rendering as Model Context Protocol (MCP) tools over stdio.
+Use \fB\-\-server\fR for Streamable HTTP at /mcp (default 127.0.0.1:27228).
+See MCP SERVER below.
 .\" MANUAL-END: MODES
+
+.\" MANUAL-START: MCP SERVER
+.SH MCP SERVER
+Start \fBascii-chat mcp-server\fR from an MCP client for newline-delimited
+JSON-RPC over stdio. Protocol output uses stdout; diagnostics use stderr.
+The local tools are \fBrender_file\fR (path or base64 bytes),
+\fBrender_url\fR (media URL), \fBrender_webcam\fR (camera device), and
+\fBrender_visualization\fR (waveform or fft with test, file, URL, or microphone audio).
+.PP
+Tools accept an \fBoptions\fR object using CLI long names without leading dashes.
+Use \fBcolor-mode\fR for rendered color. Defaults are 100 by 40 characters,
+monochrome, and one snapshot. Use \fBseek\fR for a media timestamp;
+\fBsnapshot-delay\fR is capture duration after the first rendered frame.
+\fBtimeout_ms\fR bounds each request (1000 to 60000; default 45000).
+.PP
+Local \fBoutput_path\fR saves an image or video selected by filename extension.
+Its parent directory must exist. Existing files and symlinks are never replaced.
+Set \fBrender-font-size\fR (for example 28) to enlarge images and videos;
+set \fBsnapshot-delay\fR above zero to record a clip.
+Results include text and \fBstructuredContent\fR with ascii, elapsed_ms, and saved_files.
+.PP
+HTTP mode uses \fB\-\-port\fR, \fB\-\-address\fR, \fB\-\-address6\fR,
+and positional bind addresses. TLS uses the existing websocket-tls-cert and
+websocket-tls-key options. It disables devices, caller-selected filesystem paths,
+output_path, custom fonts, and arbitrary yt-dlp options. Uploaded bytes remain supported
+(limit 16 MiB decoded; request limit 24 MiB; returned ASCII limit 8 MiB).
+Public deployments require an unprivileged sandbox and network egress controls for
+media decoders, plus reverse-proxy authentication and rate limits as appropriate.
+.PP
+.EX
+ascii-chat mcp-server
+ascii-chat mcp-server --server --address 127.0.0.1 --port 27228
+ascii-chat --log-level debug mcp-server --server --status-screen
+.EE
+.PP
+HTTP status supports the usual log viewer, error stacks, error popups, and sync diagnostics.
+Stdio reserves stdin for MCP and does not read terminal shortcuts.
+Full setup and tool examples: https://ascii-chat.com/docs/mcp
+.\" MANUAL-END: MCP SERVER
 
 .\" MANUAL-START: ANIMATIONS
 .SH ANIMATIONS

@@ -47,6 +47,8 @@ Defaults are 100×40, monochrome, snapshot enabled with delay zero, splash and s
 
 ## Saved images and videos
 
+Set `options.render-font-size` (for example, 28) to increase the pixel size of images or videos; `width` and `height` set the character grid. Use `color-mode` for rendered colors, rather than the CLI diagnostic `color` option.
+
 Set local `output_path` to an image/video filename. The existing render-file pipeline renders the ASCII grid into the encoded artifact, with format selected by extension. Parent directories must exist. The server stages the encoded artifact in a private directory beside the destination, then publishes with an atomic non-replacing hard link. Existing regular files, symlinks, and destinations won by concurrent writers are preserved. Filesystems without hard-link support return an error instead of falling back to an overwriting rename. Cancellation/failure removes staged artifacts; successful results contain absolute paths in `structuredContent.saved_files`.
 
 ```json
@@ -55,7 +57,7 @@ Set local `output_path` to an image/video filename. The existing render-file pip
   "arguments": {
     "visualization": "fft",
     "audio": { "type": "test" },
-    "options": { "snapshot": true, "snapshot-delay": 2 },
+    "options": { "snapshot": true, "snapshot-delay": 2, "render-font-size": 28, "color-mode": "truecolor" },
     "output_path": "/home/me/fft.mp4"
   }
 }

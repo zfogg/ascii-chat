@@ -47,6 +47,11 @@ export const pageMetadata = {
     description:
       "Stream media in ascii-chat: local files, remote URLs, YouTube, TikTok, HLS, DASH, FFmpeg, and yt-dlp support.",
   },
+  mcp: {
+    title: "MCP Server - Docs - ascii-chat",
+    description:
+      "Connect MCP clients to ascii-chat over stdio or HTTP. Render files, URLs, webcams, and audio visualizations, and export images and videos.",
+  },
   crypto: {
     title: "Cryptography & Security - Docs - ascii-chat",
     description:

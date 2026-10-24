@@ -158,6 +158,15 @@ static asciichat_error_t bash_write_all_options(FILE *output) {
   }
   fprintf(output, "  )\n\n");
 
+  size_t mcp_count = 0;
+  const option_descriptor_t *mcp_opts = options_registry_get_for_display(MODE_MCP_SERVER, false, &mcp_count);
+  fprintf(output, "  local -a mcp_opts=(\n");
+  for (size_t i = 0; i < mcp_count; i++) {
+    bash_write_option(output, &mcp_opts[i]);
+  }
+  SAFE_FREE(mcp_opts);
+  fprintf(output, "  )\n\n");
+
   return ASCIICHAT_OK;
 }
 
@@ -257,14 +266,14 @@ static void bash_write_enum_cases(FILE *output) {
  */
 static void bash_write_completion_logic(FILE *output) {
   fprintf(output, "  # Modes\n"
-                  "  local modes=\"server client mirror discovery-service\"\n"
+                  "  local modes=\"server client mirror discovery-service mcp-server\"\n"
                   "\n"
                   "  # Detect which mode we're in\n"
                   "  local mode=\"\"\n"
                   "  local i\n"
                   "  for ((i = 1; i < cword; i++)); do\n"
                   "    case \"${words[i]}\" in\n"
-                  "    server | client | mirror | discovery-service)\n"
+                  "    server | client | mirror | discovery-service | mcp-server)\n"
                   "      mode=\"${words[i]}\"\n"
                   "      break\n"
                   "      ;;\n"
@@ -324,6 +333,9 @@ static void bash_write_completion_logic(FILE *output) {
                   "      ;;\n"
                   "    mirror)\n"
                   "      opts_to_complete=(\"${binary_opts[@]}\" \"${mirror_opts[@]}\")\n"
+                  "      ;;\n"
+                  "    mcp-server)\n"
+                  "      opts_to_complete=(\"${binary_opts[@]}\" \"${mcp_opts[@]}\")\n"
                   "      ;;\n"
                   "    *)\n"
                   "      opts_to_complete=(\"${binary_opts[@]}\")\n"
