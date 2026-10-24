@@ -537,3 +537,56 @@ The identity is stored in the retained presentation snapshot and never derived
 from prompt text, target addresses, paths, fingerprints, or entered answers.
 Historical `prompt` events remain unchanged. The usage dashboard groups the new
 names automatically.
+
+### UI actions and outcomes
+
+The same `ascii-chat.ui.usage` event stream now includes:
+
+- Prompt `submitted`, `cancelled`, `timed_out`, `interrupted`, and `failed` outcomes.
+  A password retry records `rejected` once when the retry dialog begins; it is
+  evidence of a prior authentication rejection, not a claim about the new answer.
+  Interactive confirmations also record `accepted` or `declined`. Automated answers
+  bypass the TUI and do not count as interactive usage.
+- `stats_overview` and `stats_details` page visits and completed durations. Help,
+  other overlays, and terminal-size warnings pause page time. These page visits
+  refine stats-screen visits and must not be added to them as separate users.
+- Log `search_started`, `search_cancelled`, `search_rejected`, `filter_applied`,
+  `scroll_older`, and `scroll_newer` actions. Scroll events count dispatched
+  navigation requests; they do not assert that more buffered rows existed.
+- Error-popup `selected`, `details_scrolled`, `dismissed`, and `help_viewed`
+  actions. Selection and detail scroll events require an actual state change.
+  The existing `error`/`error_help` visits cover opening and viewing help.
+- Media-input `paste`, `queue_changed`, `queue_submitted`, `source_file`, and
+  `source_url` actions, plus `submitted`, `cancelled`, `timed_out`, `rejected`,
+  `load_succeeded`, `load_failed`, and `load_cancelled`. Source events indicate
+  presence of each source class, not a count of playlist items. Load success means
+  the capture owner committed a replacement; playlist auto-advance uses the same
+  load outcomes. No playlist paths, URLs, or paste contents are attached.
+- `size_warning_started` and `size_warning_ended` (with elapsed nanoseconds).
+  `size_warning_resolved` specifically means the same screen became usable after
+  a resize; changing screens or shutting down ends an interval without a resolution.
+- Update `opened`, `dismissed`, `check_started`, `check_completed`, `check_failed`,
+  and `release_open_requested`. Completed/failed describes publication of a check
+  result (including cache results); release-open records a validated launch request,
+  not proof that a browser displayed the page. No update is installed by telemetry.
+
+The dashboard includes actions/outcomes and terminal-warning tables. The current
+log viewer has no copy command, and the error popup has no expand/collapse control;
+there are no fabricated events for those actions. Existing OTEL enablement and
+loss limitations apply. Early CLI prompts before OTEL initialization cannot export.
+
+The build generates a patched copy of the pinned otlp-c exporter. It prevents the
+queue drain from modifying an HTTP batch while that batch is in flight; previously,
+records appended during a request could be freed unsent on successful completion
+without incrementing drop counters. Dependency source checkouts stay unchanged.
+
+Manual native Windows verification for this change observed and asserted 41
+screen/event combinations in Spaniel across prompts, pages, log search/navigation,
+error-popup controls, media loading, size recovery, and update controls. Media used
+a generated local video, a loopback HTTP server, a missing file, and a delayed
+response cancelled during loading. Update success/failure publication also used
+controlled result fixtures; a release-open request launched the releases page.
+This verifies event wiring and payloads, not availability of every external updater.
+The action fixture sent all 86 emitted spans after the exporter correction (zero
+reported drops). All four dashboard queries executed successfully. Automated
+editing/masking, timeout, mirror-shortcut and test-export-prohibition checks passed.

@@ -1,24 +1,169 @@
 version: 1
 id: 21f3a8f3-6ec1-4baf-a29a-6f56bceb5178
 name: ascii-chat · FFmpeg and connections
-description: Shows the most recent 15 minutes of telemetry within the selected session, anchored to its latest recorded sample rather than wall-clock time. Stopped
-  recordings remain visible. Last 15 minutes. Operation metrics count unsampled work; span timings summarize only retained traces. EOF, EAGAIN and cancellation
-  are normal FFmpeg control flow. No URLs, filenames or peer identities are used as grouping dimensions. Packet/byte rate graphs use process-separated counter
-  deltas, exclude resets/initial samples, and sum process rates. Population graphs show the highest process snapshot per bucket, not a sum of shared discovery
-  populations. The byte-share pie includes sent application bytes only, so received copies are not counted a second time. Compression input and output are compared
-  as bars, not parts of one total.
+description: Shows the most recent 15 minutes of telemetry within the selected session, anchored to its latest recorded sample rather than wall-clock time. Stopped recordings remain visible. Last 15 minutes. Operation metrics count unsampled work; span timings summarize only retained traces. EOF, EAGAIN and cancellation are normal FFmpeg control flow. No URLs, filenames or peer identities are used as grouping dimensions. Packet/byte rate graphs use process-separated counter deltas, exclude resets/initial samples, and sum process rates. Population graphs show the highest process snapshot per bucket, not a sum of shared discovery populations. The byte-share pie includes sent application bytes only, so received copies are not counted a second time. Compression input and output are compared as bars, not parts of one total.
 magic_variables:
-- name: session_id
-  kind: string
+  - name: session_id
+    kind: string
 panels:
-- title: FFmpeg latency from every operation (cumulative mean, ms)
-  display_type: time_series
-  query: |
-    WITH snapshots AS (
+  - title: FFmpeg latency from every operation (cumulative mean, ms)
+    display_type: time_series
+    query: |
+      WITH snapshots AS (
+        SELECT
+          *,
+          floor(timestamp_ns / 10000000000) * 10 AS bucket
+        FROM metrics
+        WHERE
+          session_id = $session_id
+          AND service_name IN (
+            'ascii-chat-server',
+            'ascii-chat-client',
+            'ascii-chat-mirror',
+            'ascii-chat-discovery',
+            'ascii-chat-discovery-service'
+          )
+          AND timestamp_ns >= coalesce(
+            greatest(
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM metrics
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(end_ns)
+                FROM spans
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM logs
+                WHERE
+                  session_id = $session_id
+              )
+            ),
+            epoch_ns(current_timestamp)
+          ) - 900000000000
+          AND (type = 'histogram' AND (name LIKE 'ascii-chat.ffmpeg.%.duration'))
+        QUALIFY
+          row_number() OVER (
+            PARTITION BY
+              service_name,
+              name,
+              start_timestamp_ns,
+              series_key,
+              bucket
+            ORDER BY timestamp_ns DESC
+          ) = 1
+      )
       SELECT
-        *,
-        floor(timestamp_ns / 10000000000) * 10 AS bucket
-      FROM metrics
+        bucket * 1000000000 AS timestamp_ns,
+        service_name || ' / ' || name AS group_value,
+        1000 * sum(histogram_sum) / nullif(sum(histogram_count), 0) AS value
+      FROM snapshots
+      GROUP BY
+        bucket,
+        service_name,
+        name
+      ORDER BY
+        bucket,
+        service_name,
+        name
+    settings: {}
+    layout:
+      w: 6
+      h: 1
+    position: 0
+  - title: FFmpeg operation and failure totals
+    display_type: bar
+    query: |
+      SELECT
+        service_name || ' / ' || name AS label,
+        process_total AS value
+      FROM (
+        WITH latest AS (
+          SELECT
+            *
+          FROM metrics
+          WHERE
+            session_id = $session_id
+            AND service_name IN (
+              'ascii-chat-server',
+              'ascii-chat-client',
+              'ascii-chat-mirror',
+              'ascii-chat-discovery',
+              'ascii-chat-discovery-service'
+            )
+            AND timestamp_ns >= coalesce(
+              greatest(
+                (
+                  SELECT
+                    max(timestamp_ns)
+                  FROM metrics
+                  WHERE
+                    session_id = $session_id
+                ),
+                (
+                  SELECT
+                    max(end_ns)
+                  FROM spans
+                  WHERE
+                    session_id = $session_id
+                ),
+                (
+                  SELECT
+                    max(timestamp_ns)
+                  FROM logs
+                  WHERE
+                    session_id = $session_id
+                )
+              ),
+              epoch_ns(current_timestamp)
+            ) - 900000000000
+          QUALIFY
+            row_number() OVER (
+              PARTITION BY
+                service_name,
+                name,
+                start_timestamp_ns,
+                series_key
+              ORDER BY timestamp_ns DESC
+            ) = 1
+        )
+        SELECT
+          service_name,
+          name,
+          sum(value) AS process_total
+        FROM latest
+        WHERE
+          name LIKE 'ascii-chat.ffmpeg.%.count'
+          OR name LIKE 'ascii-chat.ffmpeg.%.errors'
+        GROUP BY
+          service_name,
+          name
+        ORDER BY
+          service_name,
+          name
+      ) AS totals
+    settings:
+      unit: calls
+    layout:
+      w: 6
+      h: 1
+    position: 1
+  - title: FFmpeg latency distribution (retained spans, ms)
+    display_type: heatmap
+    query: |
+      SELECT
+        floor(start_ns / 10000000000) * 10000000000 AS timestamp_ns,
+        floor(duration_ns / 1000000) * 1.0 AS bucket_ms,
+        count(*) AS value
+      FROM spans
       WHERE
         session_id = $session_id
         AND service_name IN (
@@ -28,7 +173,7 @@ panels:
           'ascii-chat-discovery',
           'ascii-chat-discovery-service'
         )
-        AND timestamp_ns >= coalesce(
+        AND start_ns >= coalesce(
           greatest(
             (
               SELECT
@@ -54,46 +199,666 @@ panels:
           ),
           epoch_ns(current_timestamp)
         ) - 900000000000
-        AND (
-          type = 'histogram'
-          AND (name LIKE 'ascii-chat.ffmpeg.%.duration')
+        AND name LIKE 'ascii-chat.ffmpeg.%'
+      GROUP BY
+        1,
+        2
+      ORDER BY
+        1,
+        2
+    settings: {}
+    layout:
+      w: 6
+      h: 1
+    position: 2
+  - title: Connection readiness, request and transition latency (cumulative mean, ms)
+    display_type: time_series
+    query: |
+      WITH snapshots AS (
+        SELECT
+          *,
+          floor(timestamp_ns / 10000000000) * 10 AS bucket
+        FROM metrics
+        WHERE
+          session_id = $session_id
+          AND service_name IN (
+            'ascii-chat-server',
+            'ascii-chat-client',
+            'ascii-chat-mirror',
+            'ascii-chat-discovery',
+            'ascii-chat-discovery-service'
+          )
+          AND timestamp_ns >= coalesce(
+            greatest(
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM metrics
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(end_ns)
+                FROM spans
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM logs
+                WHERE
+                  session_id = $session_id
+              )
+            ),
+            epoch_ns(current_timestamp)
+          ) - 900000000000
+          AND (
+            type = 'histogram'
+            AND (
+              name IN (
+                'ascii-chat.network.connection.establish.duration',
+                'ascii-chat.network.connection.setup.duration',
+                'ascii-chat.discovery.request.duration',
+                'ascii-chat.network.reconnect.wait.duration',
+                'ascii-chat.media.transition.load.duration',
+                'ascii-chat.media.transition.commit.duration'
+              )
+            )
+          )
+        QUALIFY
+          row_number() OVER (
+            PARTITION BY
+              service_name,
+              name,
+              start_timestamp_ns,
+              series_key,
+              bucket
+            ORDER BY timestamp_ns DESC
+          ) = 1
+      )
+      SELECT
+        bucket * 1000000000 AS timestamp_ns,
+        service_name || ' / ' || name AS group_value,
+        1000 * sum(histogram_sum) / nullif(sum(histogram_count), 0) AS value
+      FROM snapshots
+      GROUP BY
+        bucket,
+        service_name,
+        name
+      ORDER BY
+        bucket,
+        service_name,
+        name
+    settings: {}
+    layout:
+      w: 6
+      h: 1
+    position: 3
+  - title: Application packet and media-frame throughput (events/s)
+    display_type: time_series
+    query: |
+      WITH points AS (
+        SELECT
+          *
+        FROM metrics
+        WHERE
+          session_id = $session_id
+          AND service_name IN (
+            'ascii-chat-server',
+            'ascii-chat-client',
+            'ascii-chat-mirror',
+            'ascii-chat-discovery',
+            'ascii-chat-discovery-service'
+          )
+          AND type = 'sum'
+          AND name IN (
+            'ascii-chat.network.packets.sent',
+            'ascii-chat.network.packets.received',
+            'ascii-chat.frames.sent',
+            'ascii-chat.frames.received'
+          )
+          AND timestamp_ns >= coalesce(
+            greatest(
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM metrics
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(end_ns)
+                FROM spans
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM logs
+                WHERE
+                  session_id = $session_id
+              )
+            ),
+            epoch_ns(current_timestamp)
+          ) - 960000000000
+        QUALIFY
+          row_number() OVER (
+            PARTITION BY
+              service_name,
+              name,
+              start_timestamp_ns,
+              series_key,
+              timestamp_ns
+            ORDER BY timestamp_ns DESC
+          ) = 1
+      ),
+      deltas AS (
+        SELECT
+          *,
+          lag(value) OVER w AS previous,
+          lag(timestamp_ns) OVER w AS previous_ns
+        FROM points WINDOW w AS (
+          PARTITION BY service_name,
+          name,
+          start_timestamp_ns,
+          series_key ORDER BY timestamp_ns
         )
-      QUALIFY
-        row_number() OVER (
-          PARTITION BY
-            service_name,
-            name,
-            start_timestamp_ns,
-            series_key,
-            bucket
-          ORDER BY timestamp_ns DESC
-        ) = 1
-    )
-    SELECT
-      bucket * 1000000000 AS timestamp_ns,
-      service_name || ' / ' || name AS group_value,
-      1000 * sum(histogram_sum) / nullif(sum(histogram_count), 0) AS value
-    FROM snapshots
-    GROUP BY
-      bucket,
-      service_name,
-      name
-    ORDER BY
-      bucket,
-      service_name,
-      name
-  settings: {}
-  layout:
-    w: 6
-    h: 1
-  position: 0
-- title: FFmpeg operation and failure totals
-  display_type: bar
-  query: |
-    SELECT
-      service_name || ' / ' || name AS label,
-      process_total AS value
-    FROM (
+      ),
+      per_process AS (
+        SELECT
+          floor(timestamp_ns / 10000000000) * 10000000000 AS timestamp_ns,
+          service_name,
+          name,
+          start_timestamp_ns,
+          series_key,
+          sum(value - previous) / nullif(sum((timestamp_ns - previous_ns) / 1e9), 0) / 1 AS value
+        FROM deltas
+        WHERE
+          previous IS NOT NULL
+          AND value >= previous
+          AND timestamp_ns > previous_ns
+          AND timestamp_ns >= coalesce(
+            greatest(
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM metrics
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(end_ns)
+                FROM spans
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM logs
+                WHERE
+                  session_id = $session_id
+              )
+            ),
+            epoch_ns(current_timestamp)
+          ) - 900000000000
+        GROUP BY
+          1,
+          service_name,
+          name,
+          start_timestamp_ns,
+          series_key
+      )
+      SELECT
+        timestamp_ns,
+        service_name || ' / ' || name AS group_value,
+        sum(value) AS value
+      FROM per_process
+      GROUP BY
+        timestamp_ns,
+        service_name,
+        name
+      ORDER BY
+        timestamp_ns,
+        service_name,
+        name
+    settings: {}
+    layout:
+      w: 6
+      h: 1
+    position: 4
+  - title: Application network throughput (KiB/s)
+    display_type: time_series
+    query: |
+      WITH points AS (
+        SELECT
+          *
+        FROM metrics
+        WHERE
+          session_id = $session_id
+          AND service_name IN (
+            'ascii-chat-server',
+            'ascii-chat-client',
+            'ascii-chat-mirror',
+            'ascii-chat-discovery',
+            'ascii-chat-discovery-service'
+          )
+          AND type = 'sum'
+          AND name IN ('ascii-chat.network.sent', 'ascii-chat.network.received')
+          AND timestamp_ns >= coalesce(
+            greatest(
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM metrics
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(end_ns)
+                FROM spans
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM logs
+                WHERE
+                  session_id = $session_id
+              )
+            ),
+            epoch_ns(current_timestamp)
+          ) - 960000000000
+        QUALIFY
+          row_number() OVER (
+            PARTITION BY
+              service_name,
+              name,
+              start_timestamp_ns,
+              series_key,
+              timestamp_ns
+            ORDER BY timestamp_ns DESC
+          ) = 1
+      ),
+      deltas AS (
+        SELECT
+          *,
+          lag(value) OVER w AS previous,
+          lag(timestamp_ns) OVER w AS previous_ns
+        FROM points WINDOW w AS (
+          PARTITION BY service_name,
+          name,
+          start_timestamp_ns,
+          series_key ORDER BY timestamp_ns
+        )
+      ),
+      per_process AS (
+        SELECT
+          floor(timestamp_ns / 10000000000) * 10000000000 AS timestamp_ns,
+          service_name,
+          name,
+          start_timestamp_ns,
+          series_key,
+          sum(value - previous) / nullif(sum((timestamp_ns - previous_ns) / 1e9), 0) / 1024 AS value
+        FROM deltas
+        WHERE
+          previous IS NOT NULL
+          AND value >= previous
+          AND timestamp_ns > previous_ns
+          AND timestamp_ns >= coalesce(
+            greatest(
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM metrics
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(end_ns)
+                FROM spans
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM logs
+                WHERE
+                  session_id = $session_id
+              )
+            ),
+            epoch_ns(current_timestamp)
+          ) - 900000000000
+        GROUP BY
+          1,
+          service_name,
+          name,
+          start_timestamp_ns,
+          series_key
+      )
+      SELECT
+        timestamp_ns,
+        service_name || ' / ' || name AS group_value,
+        sum(value) AS value
+      FROM per_process
+      GROUP BY
+        timestamp_ns,
+        service_name,
+        name
+      ORDER BY
+        timestamp_ns,
+        service_name,
+        name
+    settings: {}
+    layout:
+      w: 6
+      h: 1
+    position: 5
+  - title: Codec encode/decode latency (cumulative mean, ms)
+    display_type: time_series
+    query: |
+      WITH snapshots AS (
+        SELECT
+          *,
+          floor(timestamp_ns / 10000000000) * 10000000000 AS bucket
+        FROM metrics
+        WHERE
+          session_id = $session_id
+          AND service_name IN (
+            'ascii-chat-server',
+            'ascii-chat-client',
+            'ascii-chat-mirror',
+            'ascii-chat-discovery',
+            'ascii-chat-discovery-service'
+          )
+          AND type = 'histogram'
+          AND name IN (
+            'ascii-chat.video.encode.duration',
+            'ascii-chat.video.decode.duration'
+          )
+          AND timestamp_ns >= coalesce(
+            greatest(
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM metrics
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(end_ns)
+                FROM spans
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM logs
+                WHERE
+                  session_id = $session_id
+              )
+            ),
+            epoch_ns(current_timestamp)
+          ) - 900000000000
+        QUALIFY
+          row_number() OVER (
+            PARTITION BY
+              service_name,
+              name,
+              start_timestamp_ns,
+              series_key,
+              bucket
+            ORDER BY timestamp_ns DESC
+          ) = 1
+      )
+      SELECT
+        bucket AS timestamp_ns,
+        service_name || ' / ' || name AS group_value,
+        1000 * sum(histogram_sum) / nullif(sum(histogram_count), 0) AS value
+      FROM snapshots
+      GROUP BY
+        bucket,
+        service_name,
+        name
+      ORDER BY
+        bucket,
+        service_name,
+        name
+    settings: {}
+    layout:
+      w: 6
+      h: 1
+    position: 6
+  - title: Discovery lifecycle and migrations (events/s)
+    display_type: time_series
+    query: |
+      WITH points AS (
+        SELECT
+          *
+        FROM metrics
+        WHERE
+          session_id = $session_id
+          AND service_name IN (
+            'ascii-chat-server',
+            'ascii-chat-client',
+            'ascii-chat-mirror',
+            'ascii-chat-discovery',
+            'ascii-chat-discovery-service'
+          )
+          AND type = 'sum'
+          AND name IN (
+            'ascii-chat.discovery.sessions.created',
+            'ascii-chat.discovery.sessions.joined',
+            'ascii-chat.discovery.sessions.looked_up',
+            'ascii-chat.discovery.sessions.expired',
+            'ascii-chat.discovery.requests.failed',
+            'ascii-chat.network.rate_limit.rejections',
+            'ascii-chat.discovery.migrations.completed',
+            'ascii-chat.discovery.migrations.failed'
+          )
+          AND timestamp_ns >= coalesce(
+            greatest(
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM metrics
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(end_ns)
+                FROM spans
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM logs
+                WHERE
+                  session_id = $session_id
+              )
+            ),
+            epoch_ns(current_timestamp)
+          ) - 960000000000
+        QUALIFY
+          row_number() OVER (
+            PARTITION BY
+              service_name,
+              name,
+              start_timestamp_ns,
+              series_key,
+              timestamp_ns
+            ORDER BY timestamp_ns DESC
+          ) = 1
+      ),
+      deltas AS (
+        SELECT
+          *,
+          lag(value) OVER w AS previous,
+          lag(timestamp_ns) OVER w AS previous_ns
+        FROM points WINDOW w AS (
+          PARTITION BY service_name,
+          name,
+          start_timestamp_ns,
+          series_key ORDER BY timestamp_ns
+        )
+      ),
+      per_process AS (
+        SELECT
+          floor(timestamp_ns / 10000000000) * 10000000000 AS timestamp_ns,
+          service_name,
+          name,
+          start_timestamp_ns,
+          series_key,
+          sum(value - previous) / nullif(sum((timestamp_ns - previous_ns) / 1e9), 0) / 1 AS value
+        FROM deltas
+        WHERE
+          previous IS NOT NULL
+          AND value >= previous
+          AND timestamp_ns > previous_ns
+          AND timestamp_ns >= coalesce(
+            greatest(
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM metrics
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(end_ns)
+                FROM spans
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM logs
+                WHERE
+                  session_id = $session_id
+              )
+            ),
+            epoch_ns(current_timestamp)
+          ) - 900000000000
+        GROUP BY
+          1,
+          service_name,
+          name,
+          start_timestamp_ns,
+          series_key
+      )
+      SELECT
+        timestamp_ns,
+        service_name || ' / ' || name AS group_value,
+        sum(value) AS value
+      FROM per_process
+      GROUP BY
+        timestamp_ns,
+        service_name,
+        name
+      ORDER BY
+        timestamp_ns,
+        service_name,
+        name
+    settings: {}
+    layout:
+      w: 6
+      h: 1
+    position: 7
+  - title: Discovery population (latest observed sessions/participants)
+    display_type: time_series
+    query: |
+      WITH snapshots AS (
+        SELECT
+          *,
+          floor(timestamp_ns / 10000000000) * 10000000000 AS bucket
+        FROM metrics
+        WHERE
+          session_id = $session_id
+          AND service_name IN (
+            'ascii-chat-server',
+            'ascii-chat-client',
+            'ascii-chat-mirror',
+            'ascii-chat-discovery',
+            'ascii-chat-discovery-service'
+          )
+          AND name IN (
+            'ascii-chat.discovery.sessions.active',
+            'ascii-chat.discovery.participants.active'
+          )
+          AND timestamp_ns >= coalesce(
+            greatest(
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM metrics
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(end_ns)
+                FROM spans
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM logs
+                WHERE
+                  session_id = $session_id
+              )
+            ),
+            epoch_ns(current_timestamp)
+          ) - 900000000000
+        QUALIFY
+          row_number() OVER (
+            PARTITION BY
+              service_name,
+              name,
+              start_timestamp_ns,
+              series_key,
+              bucket
+            ORDER BY timestamp_ns DESC
+          ) = 1
+      )
+      SELECT
+        bucket AS timestamp_ns,
+        service_name || ' / ' || name AS group_value,
+        max(value) AS value
+      FROM snapshots
+      GROUP BY
+        bucket,
+        service_name,
+        name
+      ORDER BY
+        bucket,
+        service_name,
+        name
+    settings: {}
+    layout:
+      w: 6
+      h: 1
+    position: 8
+  - title: Sent application bytes by service
+    display_type: pie
+    query: |
       WITH latest AS (
         SELECT
           *
@@ -106,6 +871,77 @@ panels:
             'ascii-chat-mirror',
             'ascii-chat-discovery',
             'ascii-chat-discovery-service'
+          )
+          AND name IN ('ascii-chat.network.sent')
+          AND timestamp_ns >= coalesce(
+            greatest(
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM metrics
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(end_ns)
+                FROM spans
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM logs
+                WHERE
+                  session_id = $session_id
+              )
+            ),
+            epoch_ns(current_timestamp)
+          ) - 900000000000
+        QUALIFY
+          row_number() OVER (
+            PARTITION BY
+              service_name,
+              name,
+              start_timestamp_ns,
+              series_key
+            ORDER BY timestamp_ns DESC
+          ) = 1
+      )
+      SELECT
+        service_name AS label,
+        sum(value) AS value
+      FROM latest
+      GROUP BY
+        service_name
+      ORDER BY
+        value DESC
+    settings:
+      unit: bytes
+    layout:
+      w: 6
+      h: 1
+    position: 9
+  - title: Zstd input/output volume (KiB)
+    display_type: bar
+    query: |
+      WITH latest AS (
+        SELECT
+          *
+        FROM metrics
+        WHERE
+          session_id = $session_id
+          AND service_name IN (
+            'ascii-chat-server',
+            'ascii-chat-client',
+            'ascii-chat-mirror',
+            'ascii-chat-discovery',
+            'ascii-chat-discovery-service'
+          )
+          AND name IN (
+            'ascii-chat.compression.zstd.input.bytes',
+            'ascii-chat.compression.zstd.output.bytes'
           )
           AND timestamp_ns >= coalesce(
             greatest(
@@ -144,862 +980,18 @@ panels:
           ) = 1
       )
       SELECT
-        service_name,
-        name,
-        sum(value) AS process_total
+        service_name || ' / ' || name AS label,
+        sum(value) / 1024 AS value
       FROM latest
-      WHERE
-        name LIKE 'ascii-chat.ffmpeg.%.count'
-        OR name LIKE 'ascii-chat.ffmpeg.%.errors'
       GROUP BY
         service_name,
         name
       ORDER BY
         service_name,
         name
-    ) AS totals
-  settings:
-    unit: calls
-  layout:
-    w: 6
-    h: 1
-  position: 1
-- title: FFmpeg latency distribution (retained spans, ms)
-  display_type: heatmap
-  query: |
-    SELECT
-      floor(start_ns / 10000000000) * 10000000000 AS timestamp_ns,
-      floor(duration_ns / 1000000) * 1.0 AS bucket_ms,
-      count(*) AS value
-    FROM spans
-    WHERE
-      session_id = $session_id
-      AND service_name IN (
-        'ascii-chat-server',
-        'ascii-chat-client',
-        'ascii-chat-mirror',
-        'ascii-chat-discovery',
-        'ascii-chat-discovery-service'
-      )
-      AND start_ns >= coalesce(
-        greatest(
-          (
-            SELECT
-              max(timestamp_ns)
-            FROM metrics
-            WHERE
-              session_id = $session_id
-          ),
-          (
-            SELECT
-              max(end_ns)
-            FROM spans
-            WHERE
-              session_id = $session_id
-          ),
-          (
-            SELECT
-              max(timestamp_ns)
-            FROM logs
-            WHERE
-              session_id = $session_id
-          )
-        ),
-        epoch_ns(current_timestamp)
-      ) - 900000000000
-      AND name LIKE 'ascii-chat.ffmpeg.%'
-    GROUP BY
-      1,
-      2
-    ORDER BY
-      1,
-      2
-  settings: {}
-  layout:
-    w: 6
-    h: 1
-  position: 2
-- title: Connection readiness, request and transition latency (cumulative mean, ms)
-  display_type: time_series
-  query: |
-    WITH snapshots AS (
-      SELECT
-        *,
-        floor(timestamp_ns / 10000000000) * 10 AS bucket
-      FROM metrics
-      WHERE
-        session_id = $session_id
-        AND service_name IN (
-          'ascii-chat-server',
-          'ascii-chat-client',
-          'ascii-chat-mirror',
-          'ascii-chat-discovery',
-          'ascii-chat-discovery-service'
-        )
-        AND timestamp_ns >= coalesce(
-          greatest(
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM metrics
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(end_ns)
-              FROM spans
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM logs
-              WHERE
-                session_id = $session_id
-            )
-          ),
-          epoch_ns(current_timestamp)
-        ) - 900000000000
-        AND (
-          type = 'histogram'
-          AND (
-            name IN (
-              'ascii-chat.network.connection.establish.duration',
-              'ascii-chat.network.connection.setup.duration',
-              'ascii-chat.discovery.request.duration',
-              'ascii-chat.network.reconnect.wait.duration',
-              'ascii-chat.media.transition.load.duration',
-              'ascii-chat.media.transition.commit.duration'
-            )
-          )
-        )
-      QUALIFY
-        row_number() OVER (
-          PARTITION BY
-            service_name,
-            name,
-            start_timestamp_ns,
-            series_key,
-            bucket
-          ORDER BY timestamp_ns DESC
-        ) = 1
-    )
-    SELECT
-      bucket * 1000000000 AS timestamp_ns,
-      service_name || ' / ' || name AS group_value,
-      1000 * sum(histogram_sum) / nullif(sum(histogram_count), 0) AS value
-    FROM snapshots
-    GROUP BY
-      bucket,
-      service_name,
-      name
-    ORDER BY
-      bucket,
-      service_name,
-      name
-  settings: {}
-  layout:
-    w: 6
-    h: 1
-  position: 3
-- title: Application packet and media-frame throughput (events/s)
-  display_type: time_series
-  query: |
-    WITH points AS (
-      SELECT
-        *
-      FROM metrics
-      WHERE
-        session_id = $session_id
-        AND service_name IN (
-          'ascii-chat-server',
-          'ascii-chat-client',
-          'ascii-chat-mirror',
-          'ascii-chat-discovery',
-          'ascii-chat-discovery-service'
-        )
-        AND type = 'sum'
-        AND name IN (
-          'ascii-chat.network.packets.sent',
-          'ascii-chat.network.packets.received',
-          'ascii-chat.frames.sent',
-          'ascii-chat.frames.received'
-        )
-        AND timestamp_ns >= coalesce(
-          greatest(
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM metrics
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(end_ns)
-              FROM spans
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM logs
-              WHERE
-                session_id = $session_id
-            )
-          ),
-          epoch_ns(current_timestamp)
-        ) - 960000000000
-      QUALIFY
-        row_number() OVER (
-          PARTITION BY
-            service_name,
-            name,
-            start_timestamp_ns,
-            series_key,
-            timestamp_ns
-          ORDER BY timestamp_ns DESC
-        ) = 1
-    ),
-    deltas AS (
-      SELECT
-        *,
-        lag(value) OVER w AS previous,
-        lag(timestamp_ns) OVER w AS previous_ns
-      FROM points WINDOW w AS (
-        PARTITION BY service_name,
-        name,
-        start_timestamp_ns,
-        series_key ORDER BY timestamp_ns
-      )
-    ),
-    per_process AS (
-      SELECT
-        floor(timestamp_ns / 10000000000) * 10000000000 AS timestamp_ns,
-        service_name,
-        name,
-        start_timestamp_ns,
-        series_key,
-        sum(value - previous) / nullif(sum((timestamp_ns - previous_ns) / 1e9), 0) / 1 AS value
-      FROM deltas
-      WHERE
-        previous IS NOT NULL
-        AND value >= previous
-        AND timestamp_ns > previous_ns
-        AND timestamp_ns >= coalesce(
-          greatest(
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM metrics
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(end_ns)
-              FROM spans
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM logs
-              WHERE
-                session_id = $session_id
-            )
-          ),
-          epoch_ns(current_timestamp)
-        ) - 900000000000
-      GROUP BY
-        1,
-        service_name,
-        name,
-        start_timestamp_ns,
-        series_key
-    )
-    SELECT
-      timestamp_ns,
-      service_name || ' / ' || name AS group_value,
-      sum(value) AS value
-    FROM per_process
-    GROUP BY
-      timestamp_ns,
-      service_name,
-      name
-    ORDER BY
-      timestamp_ns,
-      service_name,
-      name
-  settings: {}
-  layout:
-    w: 6
-    h: 1
-  position: 4
-- title: Application network throughput (KiB/s)
-  display_type: time_series
-  query: |
-    WITH points AS (
-      SELECT
-        *
-      FROM metrics
-      WHERE
-        session_id = $session_id
-        AND service_name IN (
-          'ascii-chat-server',
-          'ascii-chat-client',
-          'ascii-chat-mirror',
-          'ascii-chat-discovery',
-          'ascii-chat-discovery-service'
-        )
-        AND type = 'sum'
-        AND name IN ('ascii-chat.network.sent', 'ascii-chat.network.received')
-        AND timestamp_ns >= coalesce(
-          greatest(
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM metrics
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(end_ns)
-              FROM spans
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM logs
-              WHERE
-                session_id = $session_id
-            )
-          ),
-          epoch_ns(current_timestamp)
-        ) - 960000000000
-      QUALIFY
-        row_number() OVER (
-          PARTITION BY
-            service_name,
-            name,
-            start_timestamp_ns,
-            series_key,
-            timestamp_ns
-          ORDER BY timestamp_ns DESC
-        ) = 1
-    ),
-    deltas AS (
-      SELECT
-        *,
-        lag(value) OVER w AS previous,
-        lag(timestamp_ns) OVER w AS previous_ns
-      FROM points WINDOW w AS (
-        PARTITION BY service_name,
-        name,
-        start_timestamp_ns,
-        series_key ORDER BY timestamp_ns
-      )
-    ),
-    per_process AS (
-      SELECT
-        floor(timestamp_ns / 10000000000) * 10000000000 AS timestamp_ns,
-        service_name,
-        name,
-        start_timestamp_ns,
-        series_key,
-        sum(value - previous) / nullif(sum((timestamp_ns - previous_ns) / 1e9), 0) / 1024 AS value
-      FROM deltas
-      WHERE
-        previous IS NOT NULL
-        AND value >= previous
-        AND timestamp_ns > previous_ns
-        AND timestamp_ns >= coalesce(
-          greatest(
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM metrics
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(end_ns)
-              FROM spans
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM logs
-              WHERE
-                session_id = $session_id
-            )
-          ),
-          epoch_ns(current_timestamp)
-        ) - 900000000000
-      GROUP BY
-        1,
-        service_name,
-        name,
-        start_timestamp_ns,
-        series_key
-    )
-    SELECT
-      timestamp_ns,
-      service_name || ' / ' || name AS group_value,
-      sum(value) AS value
-    FROM per_process
-    GROUP BY
-      timestamp_ns,
-      service_name,
-      name
-    ORDER BY
-      timestamp_ns,
-      service_name,
-      name
-  settings: {}
-  layout:
-    w: 6
-    h: 1
-  position: 5
-- title: Codec encode/decode latency (cumulative mean, ms)
-  display_type: time_series
-  query: |
-    WITH snapshots AS (
-      SELECT
-        *,
-        floor(timestamp_ns / 10000000000) * 10000000000 AS bucket
-      FROM metrics
-      WHERE
-        session_id = $session_id
-        AND service_name IN (
-          'ascii-chat-server',
-          'ascii-chat-client',
-          'ascii-chat-mirror',
-          'ascii-chat-discovery',
-          'ascii-chat-discovery-service'
-        )
-        AND type = 'histogram'
-        AND name IN (
-          'ascii-chat.video.encode.duration',
-          'ascii-chat.video.decode.duration'
-        )
-        AND timestamp_ns >= coalesce(
-          greatest(
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM metrics
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(end_ns)
-              FROM spans
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM logs
-              WHERE
-                session_id = $session_id
-            )
-          ),
-          epoch_ns(current_timestamp)
-        ) - 900000000000
-      QUALIFY
-        row_number() OVER (
-          PARTITION BY
-            service_name,
-            name,
-            start_timestamp_ns,
-            series_key,
-            bucket
-          ORDER BY timestamp_ns DESC
-        ) = 1
-    )
-    SELECT
-      bucket AS timestamp_ns,
-      service_name || ' / ' || name AS group_value,
-      1000 * sum(histogram_sum) / nullif(sum(histogram_count), 0) AS value
-    FROM snapshots
-    GROUP BY
-      bucket,
-      service_name,
-      name
-    ORDER BY
-      bucket,
-      service_name,
-      name
-  settings: {}
-  layout:
-    w: 6
-    h: 1
-  position: 6
-- title: Discovery lifecycle and migrations (events/s)
-  display_type: time_series
-  query: |
-    WITH points AS (
-      SELECT
-        *
-      FROM metrics
-      WHERE
-        session_id = $session_id
-        AND service_name IN (
-          'ascii-chat-server',
-          'ascii-chat-client',
-          'ascii-chat-mirror',
-          'ascii-chat-discovery',
-          'ascii-chat-discovery-service'
-        )
-        AND type = 'sum'
-        AND name IN (
-          'ascii-chat.discovery.sessions.created',
-          'ascii-chat.discovery.sessions.joined',
-          'ascii-chat.discovery.sessions.looked_up',
-          'ascii-chat.discovery.sessions.expired',
-          'ascii-chat.discovery.requests.failed',
-          'ascii-chat.network.rate_limit.rejections',
-          'ascii-chat.discovery.migrations.completed',
-          'ascii-chat.discovery.migrations.failed'
-        )
-        AND timestamp_ns >= coalesce(
-          greatest(
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM metrics
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(end_ns)
-              FROM spans
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM logs
-              WHERE
-                session_id = $session_id
-            )
-          ),
-          epoch_ns(current_timestamp)
-        ) - 960000000000
-      QUALIFY
-        row_number() OVER (
-          PARTITION BY
-            service_name,
-            name,
-            start_timestamp_ns,
-            series_key,
-            timestamp_ns
-          ORDER BY timestamp_ns DESC
-        ) = 1
-    ),
-    deltas AS (
-      SELECT
-        *,
-        lag(value) OVER w AS previous,
-        lag(timestamp_ns) OVER w AS previous_ns
-      FROM points WINDOW w AS (
-        PARTITION BY service_name,
-        name,
-        start_timestamp_ns,
-        series_key ORDER BY timestamp_ns
-      )
-    ),
-    per_process AS (
-      SELECT
-        floor(timestamp_ns / 10000000000) * 10000000000 AS timestamp_ns,
-        service_name,
-        name,
-        start_timestamp_ns,
-        series_key,
-        sum(value - previous) / nullif(sum((timestamp_ns - previous_ns) / 1e9), 0) / 1 AS value
-      FROM deltas
-      WHERE
-        previous IS NOT NULL
-        AND value >= previous
-        AND timestamp_ns > previous_ns
-        AND timestamp_ns >= coalesce(
-          greatest(
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM metrics
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(end_ns)
-              FROM spans
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM logs
-              WHERE
-                session_id = $session_id
-            )
-          ),
-          epoch_ns(current_timestamp)
-        ) - 900000000000
-      GROUP BY
-        1,
-        service_name,
-        name,
-        start_timestamp_ns,
-        series_key
-    )
-    SELECT
-      timestamp_ns,
-      service_name || ' / ' || name AS group_value,
-      sum(value) AS value
-    FROM per_process
-    GROUP BY
-      timestamp_ns,
-      service_name,
-      name
-    ORDER BY
-      timestamp_ns,
-      service_name,
-      name
-  settings: {}
-  layout:
-    w: 6
-    h: 1
-  position: 7
-- title: Discovery population (latest observed sessions/participants)
-  display_type: time_series
-  query: |
-    WITH snapshots AS (
-      SELECT
-        *,
-        floor(timestamp_ns / 10000000000) * 10000000000 AS bucket
-      FROM metrics
-      WHERE
-        session_id = $session_id
-        AND service_name IN (
-          'ascii-chat-server',
-          'ascii-chat-client',
-          'ascii-chat-mirror',
-          'ascii-chat-discovery',
-          'ascii-chat-discovery-service'
-        )
-        AND name IN (
-          'ascii-chat.discovery.sessions.active',
-          'ascii-chat.discovery.participants.active'
-        )
-        AND timestamp_ns >= coalesce(
-          greatest(
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM metrics
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(end_ns)
-              FROM spans
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM logs
-              WHERE
-                session_id = $session_id
-            )
-          ),
-          epoch_ns(current_timestamp)
-        ) - 900000000000
-      QUALIFY
-        row_number() OVER (
-          PARTITION BY
-            service_name,
-            name,
-            start_timestamp_ns,
-            series_key,
-            bucket
-          ORDER BY timestamp_ns DESC
-        ) = 1
-    )
-    SELECT
-      bucket AS timestamp_ns,
-      service_name || ' / ' || name AS group_value,
-      max(value) AS value
-    FROM snapshots
-    GROUP BY
-      bucket,
-      service_name,
-      name
-    ORDER BY
-      bucket,
-      service_name,
-      name
-  settings: {}
-  layout:
-    w: 6
-    h: 1
-  position: 8
-- title: Sent application bytes by service
-  display_type: pie
-  query: |
-    WITH latest AS (
-      SELECT
-        *
-      FROM metrics
-      WHERE
-        session_id = $session_id
-        AND service_name IN (
-          'ascii-chat-server',
-          'ascii-chat-client',
-          'ascii-chat-mirror',
-          'ascii-chat-discovery',
-          'ascii-chat-discovery-service'
-        )
-        AND name IN ('ascii-chat.network.sent')
-        AND timestamp_ns >= coalesce(
-          greatest(
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM metrics
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(end_ns)
-              FROM spans
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM logs
-              WHERE
-                session_id = $session_id
-            )
-          ),
-          epoch_ns(current_timestamp)
-        ) - 900000000000
-      QUALIFY
-        row_number() OVER (
-          PARTITION BY
-            service_name,
-            name,
-            start_timestamp_ns,
-            series_key
-          ORDER BY timestamp_ns DESC
-        ) = 1
-    )
-    SELECT
-      service_name AS label,
-      sum(value) AS value
-    FROM latest
-    GROUP BY
-      service_name
-    ORDER BY
-      value DESC
-  settings:
-    unit: bytes
-  layout:
-    w: 6
-    h: 1
-  position: 9
-- title: Zstd input/output volume (KiB)
-  display_type: bar
-  query: |
-    WITH latest AS (
-      SELECT
-        *
-      FROM metrics
-      WHERE
-        session_id = $session_id
-        AND service_name IN (
-          'ascii-chat-server',
-          'ascii-chat-client',
-          'ascii-chat-mirror',
-          'ascii-chat-discovery',
-          'ascii-chat-discovery-service'
-        )
-        AND name IN (
-          'ascii-chat.compression.zstd.input.bytes',
-          'ascii-chat.compression.zstd.output.bytes'
-        )
-        AND timestamp_ns >= coalesce(
-          greatest(
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM metrics
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(end_ns)
-              FROM spans
-              WHERE
-                session_id = $session_id
-            ),
-            (
-              SELECT
-                max(timestamp_ns)
-              FROM logs
-              WHERE
-                session_id = $session_id
-            )
-          ),
-          epoch_ns(current_timestamp)
-        ) - 900000000000
-      QUALIFY
-        row_number() OVER (
-          PARTITION BY
-            service_name,
-            name,
-            start_timestamp_ns,
-            series_key
-          ORDER BY timestamp_ns DESC
-        ) = 1
-    )
-    SELECT
-      service_name || ' / ' || name AS label,
-      sum(value) / 1024 AS value
-    FROM latest
-    GROUP BY
-      service_name,
-      name
-    ORDER BY
-      service_name,
-      name
-  settings:
-    unit: KiB
-  layout:
-    w: 6
-    h: 1
-  position: 10
+    settings:
+      unit: KiB
+    layout:
+      w: 6
+      h: 1
+    position: 10

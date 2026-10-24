@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/tui/error_popup.h>
 #include <ascii-chat/ui/buttons.h>
 #include <ascii-chat/tui/controller.h>
@@ -58,6 +59,7 @@ void ui_error_popup_key(keyboard_key_t key) {
   refresh_locked();
   uint64_t dismiss = 0;
   size_t previous = g_selected;
+  size_t previous_scroll = g_scroll;
   switch ((int)key) {
   case KEY_ESCAPE:
   case 'q':
@@ -100,7 +102,15 @@ void ui_error_popup_key(keyboard_key_t key) {
   size_t maximum = g_body_rows > g_page_rows ? g_body_rows - g_page_rows : 0;
   if (g_scroll > maximum)
     g_scroll = maximum;
+  bool selection_changed = previous != g_selected;
+  bool scrolled = previous_scroll != g_scroll && !selection_changed;
   unlock_state();
+  if (selection_changed)
+    ascii_otel_ui_usage("error", "selected", 0);
+  if (scrolled)
+    ascii_otel_ui_usage("error", "details_scrolled", 0);
+  if (dismiss)
+    ascii_otel_ui_usage("error", "dismissed", 0);
   if (dismiss)
     errno_notifications_dismiss(dismiss);
   ui_controller_redraw();

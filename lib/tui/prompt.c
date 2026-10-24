@@ -217,7 +217,11 @@ const char *ui_prompt_usage_name(const void *data) {
   const prompt_snapshot_t *snapshot = data;
   if (!snapshot)
     return "input_prompt";
-  switch (snapshot->kind) {
+  return ui_prompt_kind_name(snapshot->kind);
+}
+
+const char *ui_prompt_kind_name(ui_prompt_kind_t kind) {
+  switch (kind) {
   case UI_PROMPT_PASSWORD:
     return "password_prompt";
   case UI_PROMPT_MEDIA_INPUT:

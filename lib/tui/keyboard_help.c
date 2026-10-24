@@ -59,6 +59,8 @@ void keyboard_help_toggle_terminal(int fd) {
     ui_controller_remove(UI_SCREEN_HELP);
     return;
   }
+  if (parent == UI_SCREEN_ERROR)
+    ascii_otel_ui_usage("error", "help_viewed", 0);
   atomic_store(&g_help_previous, ui_controller_interactive_screen());
   atomic_store(&g_help_parent, ui_controller_current_screen());
   terminal_size_t minimum;

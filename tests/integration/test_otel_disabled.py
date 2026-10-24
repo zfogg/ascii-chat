@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "deps/ascii-chat-deps/gotel/c-gotel/testing/python"))
+sys.path.insert(0, str(ROOT / "deps/ascii-chat-deps/gotel/c/testing/python"))
 from gotel_testing import Collector
 
 def main():

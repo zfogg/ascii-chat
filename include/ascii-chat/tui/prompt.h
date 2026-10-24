@@ -7,6 +7,7 @@
 asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, size_t cursor, bool secret);
 asciichat_error_t ui_prompt_present_kind(const char *prompt, const char *visible, size_t cursor, bool secret,
                                          ui_prompt_kind_t kind);
+const char *ui_prompt_kind_name(ui_prompt_kind_t kind);
 const char *ui_prompt_usage_name(const void *snapshot);
 void ui_prompt_remove(void);
 
