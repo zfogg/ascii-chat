@@ -51,7 +51,7 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
   }
 
   option_mode_bitmask_t user_modes_mask = (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) |
-                                          (1 << MODE_DISCOVERY_SERVICE) | (1 << MODE_DISCOVERY);
+                                          (1 << MODE_DISCOVERY_SERVICE) | (1 << MODE_DISCOVERY) | (1 << MODE_MCP_SERVER);
   if ((mode_bitmask & user_modes_mask) == user_modes_mask) {
     // If all user modes are set, check if binary-level is also set
     if (mode_bitmask & OPTION_MODE_BINARY) {

@@ -96,6 +96,11 @@ const char *format_available_modes(option_mode_bitmask_t mode_bitmask) {
     first = false;
   }
 
+  if (mode_bitmask & OPTION_MODE_MCP_SERVER) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%smcp-server", first ? "" : ", ");
+    first = false;
+  }
+
   // Fallback if no modes matched
   if (buffer[0] == '\0') {
     SAFE_SNPRINTF(buffer, sizeof(buffer), "unknown mode");
@@ -676,6 +681,7 @@ typedef struct {
 } mode_metadata_t;
 
 static const mode_metadata_t mode_info[] = {
+    {MODE_MCP_SERVER, "ascii-chat mcp-server", "MCP rendering tools over stdio or HTTP"},
     {MODE_SERVER, "ascii-chat server", "host a server mixing video and audio for ascii-chat clients"},
     {MODE_CLIENT, "ascii-chat client", "connect to an ascii-chat server"},
     {MODE_MIRROR, "ascii-chat mirror", "use the webcam or files or urls without network connections"},

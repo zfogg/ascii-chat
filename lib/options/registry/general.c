@@ -16,6 +16,13 @@
 // GENERAL CATEGORY - General-purpose options
 // ============================================================================
 const registry_entry_t g_general_entries[] = {
+    {.long_name = "server", .type = OPTION_TYPE_BOOL, .offset = offsetof(options_t, mcp_server),
+     .help_text = "Serve restricted MCP tools over HTTP (no webcam or caller-selected filesystem paths).",
+     .group = "MCP", .env_var_name = "ASCII_CHAT_SERVER", .mode_bitmask = OPTION_MODE_MCP_SERVER},
+    {.long_name = "origin", .type = OPTION_TYPE_STRING, .offset = offsetof(options_t, mcp_origin),
+     .default_value = "https://mcp.ascii-chat.com", .default_value_size = OPTIONS_BUFF_SIZE,
+     .help_text = "Allowed browser Origin for MCP HTTP requests.", .group = "MCP",
+     .env_var_name = "ASCII_CHAT_ORIGIN", .mode_bitmask = OPTION_MODE_MCP_SERVER},
     // GENERAL GROUP (binary-level + all modes)
     {"help",
      'h',
@@ -87,7 +94,7 @@ const registry_entry_t g_general_entries[] = {
      NULL,
      false,
      true, // optional_arg: allows --status-screen to toggle or --status-screen=true/false
-     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
+     OPTION_MODE_MCP_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
      {0},
      NULL},
     {"keepawake",

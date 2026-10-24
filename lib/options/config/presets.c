@@ -194,7 +194,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_positional(b, "bind-address",
                                  "(optional) 0-2 addresses for a server to bind to, one IPv4 and the other IPv6.",
                                  false, "POSITIONAL ARGUMENTS", server_examples, ARRAY_SIZE(server_examples),
-                                 OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC, parse_server_bind_address);
+                                 OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_MCP_SERVER, parse_server_bind_address);
 
   options_builder_add_positional(b, "address", "(optional) Server address for client to connect to.", false,
                                  "POSITIONAL ARGUMENTS", client_examples, ARRAY_SIZE(client_examples),
@@ -213,6 +213,8 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_usage(b, NULL, NULL, true, "Start a new session (share the session string)");
   options_builder_add_usage(b, NULL, "<session-string>", true, "Join an existing session");
   options_builder_add_usage(b, NULL, "<mode>", true, "Run in a specific mode");
+  options_builder_add_usage(b, "mcp-server", "[--server] [bind-address] [bind-address]", true,
+                            "MCP rendering tools (stdio locally, HTTP with --server, default port 27228)");
   options_builder_add_usage(b, "server", "[bind-address] [bind-address]", true,
                             "Start server (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
   options_builder_add_usage(b, "client", "[address]", true, "Connect to server (defaults to localhost:27224)");

@@ -370,8 +370,8 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
     // Default: Try webcam if stdout is a TTY, otherwise use test pattern
     // (webcam + piped output often fails, test pattern is reliable fallback)
     bool stdout_is_tty = terminal_is_stdout_tty();
-    if (stdout_is_tty) {
-      // Normal terminal mode: use webcam
+    if (stdout_is_tty || SAFE_GETENV("ASCII_CHAT_MCP_WEBCAM")) {
+      // Explicit MCP webcam capture also works with the isolated worker's pipe.
       log_debug("Stdout is TTY, using local webcam");
       log_info("Using local webcam");
       state->capture_config.type = MEDIA_SOURCE_WEBCAM;

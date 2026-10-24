@@ -284,8 +284,8 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
 
   // Check if argv[0] itself is a mode name (for test compatibility)
   // This handles the case where tests pass ["client", "-p", "80"] without a binary name
-  const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-service", NULL};
-  const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE};
+  const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-service", "mcp-server", NULL};
+  const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE, MODE_MCP_SERVER};
   for (int i = 0; mode_names_check[i] != NULL; i++) {
     if (strcmp(argv[0], mode_names_check[i]) == 0) {
       log_dev("Mode detected from argv[0]: %s", argv[0]);
@@ -322,7 +322,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
             bool looks_like_mode_or_session = false;
 
             // Check if it looks like a mode name
-            const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", NULL};
+            const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "mcp-server", NULL};
             for (int j = 0; mode_names[j] != NULL; j++) {
               if (strcmp(next_arg, mode_names[j]) == 0) {
                 looks_like_mode_or_session = true;
@@ -396,8 +396,8 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   const char *positional = argv[first_positional_idx];
 
   // Try to match against known modes
-  const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "default", NULL};
-  const asciichat_mode_t mode_values[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE, MODE_INVALID};
+  const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "mcp-server", "default", NULL};
+  const asciichat_mode_t mode_values[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE, MODE_MCP_SERVER, MODE_INVALID};
 
   for (int i = 0; mode_names[i] != NULL; i++) {
     if (strcmp(positional, mode_names[i]) == 0) {
@@ -761,6 +761,9 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
   case MODE_MIRROR:
     log_filename_literal = "mirror.log";
     break;
+  case MODE_MCP_SERVER:
+    log_filename_literal = "mcp-server.log";
+    break;
   case MODE_DISCOVERY_SERVICE:
     log_filename_literal = "acds.log";
     break;
@@ -924,6 +927,8 @@ static void handle_help_option(int argc, char **argv) {
             help_mode = MODE_CLIENT;
           } else if (strcmp(argv[j], "mirror") == 0) {
             help_mode = MODE_MIRROR;
+          } else if (strcmp(argv[j], "mcp-server") == 0) {
+            help_mode = MODE_MCP_SERVER;
           } else if (strcmp(argv[j], "discovery-service") == 0) {
             help_mode = MODE_DISCOVERY_SERVICE;
           } else if (strcmp(argv[j], "discovery") == 0) {
@@ -1481,7 +1486,7 @@ static void initialize_mode_defaults(options_t *opts, asciichat_mode_t detected_
     // Client/Mirror/Discovery: connects to localhost by default (discovery uses ACDS to find server)
     SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "localhost");
     opts->address6[0] = '\0'; // Client doesn't use address6
-  } else if (detected_mode == MODE_SERVER) {
+  } else if (detected_mode == MODE_SERVER || detected_mode == MODE_MCP_SERVER) {
     // Server: binds to 127.0.0.1 (IPv4) and ::1 (IPv6) by default
     SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "127.0.0.1");
     // address6 is now a positional argument, not an option
@@ -1508,6 +1513,11 @@ static void build_options_schema(void) {
 }
 
 static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t detected_mode, bool *fps_set_by_config) {
+  // Isolated MCP renderers never load user/system configuration.
+  if (SAFE_GETENV("ASCII_CHAT_MCP_WORKER")) {
+    *fps_set_by_config = false;
+    return ASCIICHAT_OK;
+  }
   // Extract binary-level options BEFORE config loading (config may reset them)
   binary_level_opts_t binary_before_config = extract_binary_level(opts);
   // Publish options to RCU before config loading so that config logs get proper colors
