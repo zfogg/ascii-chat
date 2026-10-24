@@ -1,13 +1,13 @@
 # MCP rendering server
 
-`ascii-chat --no-check-update mcp-server` exposes four rendering tools over newline-delimited JSON-RPC on stdio. It runs through the ordinary application initialization, options, logging, error-stack and diagnostic workers. Protocol stdout is reserved before initialization; incidental terminal diagnostics go to stderr.
+`ascii-chat mcp-server` exposes four rendering tools over newline-delimited JSON-RPC on stdio. It runs through the ordinary application initialization, options, logging, error-stack and diagnostic workers. Both transports automatically skip startup update checks. Protocol stdout is reserved before initialization; incidental terminal diagnostics go to stderr.
 
-`ascii-chat --no-check-update mcp-server --server` serves the restricted tool set at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. Examples:
+`ascii-chat mcp-server --server` serves the restricted tool set at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. Examples:
 
 ```sh
-ascii-chat --no-check-update mcp-server --server --port 28028 --address 127.0.0.1
-ascii-chat --no-check-update mcp-server --server 0.0.0.0 ::1 --port 27228
-ascii-chat --no-check-update --log-level debug --grep 'MCP|render' mcp-server --server --status-screen
+ascii-chat mcp-server --server --port 28028 --address 127.0.0.1
+ascii-chat mcp-server --server 0.0.0.0 ::1 --port 27228
+ascii-chat --log-level debug --grep 'MCP|render' mcp-server --server --status-screen
 ```
 
 The existing `--websocket-tls-cert`, `--websocket-tls-key`, and `--websocket-tls-key-password` configure HTTPS for this HTTP listener too. `--port-forwarding` maps the HTTP port with the existing UPnP implementation; `--max-clients` bounds concurrent render jobs (hard maximum four). HTTP status uses the shared terminal controller and log viewer, including error popups and debug controls. Debug builds retain `--sync-state`, `--backtrace`, and memory diagnostics. Stdio does not consume terminal keys: stdin is the protocol stream.
@@ -76,8 +76,48 @@ Register a built executable in the project's `.codex/config.toml`:
 ```toml
 [mcp_servers.ascii_chat]
 command = "./build/bin/ascii-chat"
-args = ["--no-check-update", "mcp-server"]
+args = ["mcp-server"]
 tool_timeout_sec = 70
 ```
 
 The suffixless executable path works on Windows (which resolves `.exe`) and Unix (which uses the exact filename), without a symlink. For a checkout outside the current project, use its absolute suffixless path. Newly created chats can discover the four tools through this stdio connection. The server must be built before starting the chat.
+
+## Claude Code connection
+
+The repository's `.mcp.json` registers the built local stdio server at project scope:
+
+```json
+{
+  "mcpServers": {
+    "ascii_chat": {
+      "type": "stdio",
+      "command": "./build/bin/ascii-chat",
+      "args": [
+        "mcp-server"
+      ]
+    }
+  }
+}
+```
+
+Build the executable first, start Claude Code from the checkout, and approve the
+project server when prompted. Use `/mcp` to inspect its connection. This is the
+same suffixless build path as the Codex configuration; use an absolute path for
+a server in another checkout.
+
+For a networked server, start `ascii-chat mcp-server --server --address 127.0.0.1 --port 27228`
+separately and replace the stdio entry with:
+
+```json
+{
+  "mcpServers": {
+    "ascii_chat": {
+      "type": "http",
+      "url": "http://127.0.0.1:27228/mcp"
+    }
+  }
+}
+```
+
+HTTP uses the restricted tool profile described above. See the
+[Claude Code MCP documentation](https://code.claude.com/docs/en/mcp) for project scope and approvals.

@@ -1029,7 +1029,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Automatic update check in background thread (once per week maximum)
-  if (!GET_OPTION(no_check_update)) {
+  if (opts->detected_mode != MODE_MCP_SERVER && !GET_OPTION(no_check_update)) {
     update_banner_start_check();
   }
 

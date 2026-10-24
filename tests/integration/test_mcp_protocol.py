@@ -21,7 +21,7 @@ import unittest
 class Client:
     def __init__(self, binary, directory, extra=()):
         self.err = open(directory / "stderr.log", "wb")
-        self.p = subprocess.Popen([str(binary), "--no-check-update", *extra, "mcp-server"],
+        self.p = subprocess.Popen([str(binary), *extra, "mcp-server"],
                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.err)
         self.responses = queue.Queue()
         def read():
@@ -92,7 +92,7 @@ class Protocol(unittest.TestCase):
     def test_http_profile_and_port(self):
         with socket.socket() as sock: sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]
         log = open(self.directory / "http.log", "wb"); self.addCleanup(log.close)
-        p = subprocess.Popen([str(BINARY), "--no-check-update", "mcp-server", "--server", "--address", "127.0.0.1",
+        p = subprocess.Popen([str(BINARY), "mcp-server", "--server", "--address", "127.0.0.1",
                               "--port", str(port), "--status-screen=false"], stdout=log, stderr=log)
         def stop():
             p.terminate()

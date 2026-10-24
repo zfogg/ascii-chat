@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ascii_chat": {
+      "type": "stdio",
+      "command": "./build/bin/ascii-chat",
+      "args": [
+        "mcp-server"
+      ]
+    }
+  }
+}

@@ -39,10 +39,13 @@ export default function Mcp() {
             <p className="docs-paragraph">
               Build or install ascii-chat, then configure your MCP client to
               launch the following command. The server uses the same mirror
-              rendering pipeline as the CLI. JSON-RPC messages use stdin and
-              stdout; logs and diagnostics go to stderr.
+              rendering pipeline as the CLI. Stdio is the default when --server
+              is omitted: the MCP client starts this process, and no network
+              port is opened. MCP mode automatically skips startup update
+              checks. JSON-RPC messages use stdin and stdout; logs and
+              diagnostics go to stderr.
             </p>
-            <CodeBlock language="bash">{`ascii-chat --no-check-update mcp-server`}</CodeBlock>
+            <CodeBlock language="bash">{`ascii-chat mcp-server`}</CodeBlock>
             <p className="docs-paragraph">
               For a source checkout, the project configuration uses this entry
               in .codex/config.toml. Build the executable before starting a new
@@ -52,8 +55,63 @@ export default function Mcp() {
             </p>
             <CodeBlock language="text">{`[mcp_servers.ascii_chat]
 command = "./build/bin/ascii-chat"
-args = ["--no-check-update", "mcp-server"]
+args = ["mcp-server"]
 tool_timeout_sec = 70`}</CodeBlock>
+          </section>
+          <section className="docs-section-spacing">
+            <Heading level={2} className="heading-2 text-cyan-400">
+              Claude Code configuration
+            </Heading>
+            <p className="docs-paragraph">
+              The repository also includes .mcp.json for Claude Code. Build the
+              binary, start Claude Code from the checkout, and approve the
+              project server when prompted. Use /mcp to inspect its connection.
+              This project configuration launches the local stdio server:
+            </p>
+            <CodeBlock language="json">
+              {JSON.stringify(
+                {
+                  mcpServers: {
+                    ascii_chat: {
+                      type: "stdio",
+                      command: "./build/bin/ascii-chat",
+                      args: ["mcp-server"],
+                    },
+                  },
+                },
+                null,
+                2,
+              )}
+            </CodeBlock>
+            <p className="docs-paragraph">
+              For a networked server, start the HTTP command below
+              independently, then replace that entry with this URL
+              configuration. It uses the restricted HTTP tool profile:
+            </p>
+            <CodeBlock language="json">
+              {JSON.stringify(
+                {
+                  mcpServers: {
+                    ascii_chat: {
+                      type: "http",
+                      url: "http://127.0.0.1:27228/mcp",
+                    },
+                  },
+                },
+                null,
+                2,
+              )}
+            </CodeBlock>
+            <p className="docs-paragraph">
+              See the{" "}
+              <a
+                href="https://code.claude.com/docs/en/mcp"
+                className="link-standard"
+              >
+                Claude Code MCP documentation
+              </a>{" "}
+              for project configuration and approvals.
+            </p>
           </section>
           <section className="docs-section-spacing">
             <Heading level={2} className="heading-2 text-green-400">
@@ -197,13 +255,20 @@ tool_timeout_sec = 70`}</CodeBlock>
             <Heading level={2} className="heading-2 text-purple-400">
               Serve Streamable HTTP
             </Heading>
-            <CodeBlock language="bash">{`ascii-chat --no-check-update mcp-server --server --address 127.0.0.1 --port 27228
+            <p className="docs-paragraph">
+              Add --server to select networked Streamable HTTP. Run this process
+              independently, then configure your MCP client with its endpoint
+              URL instead of a process launch command.
+            </p>
+            <CodeBlock language="bash">{`ascii-chat mcp-server --server --address 127.0.0.1 --port 27228
 # IPv4 and IPv6 bind addresses
-ascii-chat --no-check-update mcp-server --server 0.0.0.0 ::1 --port 28028`}</CodeBlock>
+ascii-chat mcp-server --server 0.0.0.0 ::1 --port 28028`}</CodeBlock>
             <p className="docs-paragraph">
               Connect your HTTP MCP client to http://127.0.0.1:27228/mcp. The
-              default port is 27228; --port or ASCII_CHAT_PORT overrides it.
-              Bind addresses use --address, --address6, or up to two positional
+              default listener is loopback on port 27228; --port or
+              ASCII_CHAT_PORT overrides the port. For remote clients, bind to
+              0.0.0.0 and use the server hostname or IP in the client URL. Bind
+              addresses use --address, --address6, or up to two positional
               addresses. Existing --websocket-tls-cert, --websocket-tls-key, and
               --websocket-tls-key-password options configure HTTPS.
               --port-forwarding enables UPnP; --max-clients limits render
@@ -234,7 +299,7 @@ ascii-chat --no-check-update mcp-server --server 0.0.0.0 ::1 --port 28028`}</Cod
             <Heading level={2} className="heading-2 text-yellow-400">
               Logs and diagnostics
             </Heading>
-            <CodeBlock language="bash">{`ascii-chat --no-check-update --log-level debug --grep 'MCP|render' mcp-server --server --status-screen`}</CodeBlock>
+            <CodeBlock language="bash">{`ascii-chat --log-level debug --grep 'MCP|render' mcp-server --server --status-screen`}</CodeBlock>
             <p className="docs-paragraph">
               HTTP status uses the shared terminal UI, including the log viewer,
               error stacks, error popups, and sync primitives. Debug builds

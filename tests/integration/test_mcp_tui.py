@@ -18,7 +18,7 @@ def main():
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
-    term = Terminal([str(args.binary.resolve()), "--no-check-update", "mcp-server", "--server",
+    term = Terminal([str(args.binary.resolve()), "mcp-server", "--server",
                      "--port", str(port), "--status-screen"], rows=40, cols=130,
                     environment={"TERM": "xterm-256color"})
     try:

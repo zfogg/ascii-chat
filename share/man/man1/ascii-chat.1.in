@@ -85,7 +85,16 @@ See MCP SERVER below.
 
 .\" MANUAL-START: MCP SERVER
 .SH MCP SERVER
-Start \fBascii-chat --no-check-update mcp-server\fR from an MCP client for newline-delimited
+.SS "Local stdio (default)"
+.EX
+ascii-chat mcp-server
+.EE
+.PP
+Without \fB\-\-server\fR, the MCP client launches this process and communicates
+through its stdin and stdout. No network listener is opened.
+MCP mode automatically skips startup update checks for both transports.
+.PP
+Start \fBascii-chat mcp-server\fR from an MCP client for newline-delimited
 JSON-RPC over stdio. Protocol output uses stdout; diagnostics use stderr.
 The local tools are \fBrender_file\fR (path or base64 bytes),
 \fBrender_url\fR (media URL), \fBrender_webcam\fR (camera device), and
@@ -102,6 +111,33 @@ Its parent directory must exist. Existing files and symlinks are never replaced.
 Set \fBrender-font-size\fR (for example 28) to enlarge images and videos;
 set \fBsnapshot-delay\fR above zero to record a clip.
 Results include text and \fBstructuredContent\fR with ascii, elapsed_ms, and saved_files.
+.SS "Claude Code configuration"
+Build the binary first. Place this project-scoped entry in .mcp.json at the checkout root,
+then start Claude Code from that checkout. Approve the project server when prompted
+and use /mcp to inspect the connection.
+.EX
+{
+  "mcpServers": {
+    "ascii_chat": {
+      "type": "stdio",
+      "command": "./build/bin/ascii-chat",
+      "args": ["mcp-server"]
+    }
+  }
+}
+.EE
+.PP
+For an independently running HTTP server, replace the entry with
+\fB{"type":"http","url":"http://127.0.0.1:27228/mcp"}\fR.
+.SS "Networked Streamable HTTP"
+.EX
+ascii-chat mcp-server --server --address 127.0.0.1 --port 27228
+.EE
+.PP
+With \fB\-\-server\fR, run the process independently and configure the MCP
+client with the URL \fBhttp://127.0.0.1:27228/mcp\fR instead of a launch command.
+The default bind address is loopback; use \fB\-\-address 0.0.0.0\fR to accept
+remote connections and configure the client with the server hostname or IP.
 .PP
 HTTP mode uses \fB\-\-port\fR, \fB\-\-address\fR, \fB\-\-address6\fR,
 and positional bind addresses. TLS uses the existing websocket-tls-cert and
@@ -112,9 +148,7 @@ Public deployments require an unprivileged sandbox and network egress controls f
 media decoders, plus reverse-proxy authentication and rate limits as appropriate.
 .PP
 .EX
-ascii-chat --no-check-update mcp-server
-ascii-chat --no-check-update mcp-server --server --address 127.0.0.1 --port 27228
-ascii-chat --no-check-update --log-level debug mcp-server --server --status-screen
+ascii-chat --log-level debug mcp-server --server --status-screen
 .EE
 .PP
 HTTP status supports the usual log viewer, error stacks, error popups, and sync diagnostics.
