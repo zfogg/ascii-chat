@@ -1,12 +1,62 @@
 version: 1
 id: ascii-chat-connection-failures
 name: ascii-chat · Repeated connection failures
-query: "WITH points AS (\n SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\n\
-  \ AND name='ascii-chat.network.connection.attempts.failed' AND timestamp_ns >= epoch_ns(current_timestamp)-240000000000\n QUALIFY row_number() OVER (PARTITION BY\
-  \ service_name,name,start_timestamp_ns,series_key,timestamp_ns ORDER BY timestamp_ns DESC)=1\n), changes AS (\n SELECT *,lag(value) OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key\
-  \ ORDER BY timestamp_ns) AS previous FROM points\n)\nSELECT $session_id AS session_id,service_name,sum(CASE WHEN previous IS NOT NULL THEN greatest(value-previous,0)\n\
-  \ WHEN start_timestamp_ns >= epoch_ns(current_timestamp)-120000000000 THEN greatest(value,0) ELSE 0 END) AS value\nFROM changes WHERE timestamp_ns >= epoch_ns(current_timestamp)-120000000000\
-  \ GROUP BY service_name"
+query: |
+  WITH points AS (
+    SELECT
+      *
+    FROM metrics
+    WHERE
+      session_id = $session_id
+      AND service_name IN (
+        'ascii-chat-server',
+        'ascii-chat-client',
+        'ascii-chat-mirror',
+        'ascii-chat-discovery',
+        'ascii-chat-discovery-service'
+      )
+      AND name = 'ascii-chat.network.connection.attempts.failed'
+      AND timestamp_ns >= epoch_ns(current_timestamp) - 240000000000
+    QUALIFY
+      row_number() OVER (
+        PARTITION BY
+          service_name,
+          name,
+          start_timestamp_ns,
+          series_key,
+          timestamp_ns
+        ORDER BY timestamp_ns DESC
+      ) = 1
+  ),
+  changes AS (
+    SELECT
+      *,
+      lag(value) OVER (
+        PARTITION BY
+          service_name,
+          name,
+          start_timestamp_ns,
+          series_key
+        ORDER BY timestamp_ns
+      ) AS previous
+    FROM points
+  )
+  SELECT
+    $session_id AS session_id,
+    service_name,
+    sum(
+      CASE
+        WHEN previous IS NOT NULL THEN greatest(value - previous, 0)
+        WHEN start_timestamp_ns >= epoch_ns(current_timestamp) - 120000000000
+        THEN greatest(value, 0)
+        ELSE 0
+      END
+    ) AS value
+  FROM changes
+  WHERE
+    timestamp_ns >= epoch_ns(current_timestamp) - 120000000000
+  GROUP BY
+    service_name
 condition:
   kind: threshold
   operator: '>='

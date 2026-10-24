@@ -1,10 +1,44 @@
 version: 1
 id: ascii-chat-pipeline-stalled
 name: ascii-chat · Active media pipeline stalled
-query: "WITH latest AS (\n SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\n\
-  \ AND name IN ('ascii-chat.pipeline.display.stall_age','ascii-chat.pipeline.encode.stall_age')\n AND timestamp_ns >= epoch_ns(current_timestamp)-90000000000\n QUALIFY\
-  \ row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1\n)\nSELECT $session_id AS session_id,service_name,name\
-  \ AS stage,max(value) AS value FROM latest GROUP BY service_name,name"
+query: |
+  WITH latest AS (
+    SELECT
+      *
+    FROM metrics
+    WHERE
+      session_id = $session_id
+      AND service_name IN (
+        'ascii-chat-server',
+        'ascii-chat-client',
+        'ascii-chat-mirror',
+        'ascii-chat-discovery',
+        'ascii-chat-discovery-service'
+      )
+      AND name IN (
+        'ascii-chat.pipeline.display.stall_age',
+        'ascii-chat.pipeline.encode.stall_age'
+      )
+      AND timestamp_ns >= epoch_ns(current_timestamp) - 90000000000
+    QUALIFY
+      row_number() OVER (
+        PARTITION BY
+          service_name,
+          name,
+          start_timestamp_ns,
+          series_key
+        ORDER BY timestamp_ns DESC
+      ) = 1
+  )
+  SELECT
+    $session_id AS session_id,
+    service_name,
+    name AS stage,
+    max(value) AS value
+  FROM latest
+  GROUP BY
+    service_name,
+    name
 condition:
   kind: threshold
   operator: '>='

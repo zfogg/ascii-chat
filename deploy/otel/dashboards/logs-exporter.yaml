@@ -11,11 +11,64 @@ magic_variables:
 panels:
 - title: Log severity distribution
   display_type: pie
-  query: "SELECT CASE WHEN severity BETWEEN 1 AND 4 THEN 'TRACE' WHEN severity BETWEEN 5 AND 8 THEN 'DEBUG'\n WHEN severity BETWEEN 9 AND 12 THEN 'INFO' WHEN\
-    \ severity BETWEEN 13 AND 16 THEN 'WARN'\n WHEN severity BETWEEN 17 AND 20 THEN 'ERROR' WHEN severity BETWEEN 21 AND 24 THEN 'FATAL' ELSE 'UNSPECIFIED' END\
-    \ AS label,\n count(*) AS value FROM logs WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\
-    \ AND timestamp_ns>=coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT\
-    \ max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp))-900000000000 GROUP BY label ORDER BY value DESC"
+  query: |
+    SELECT
+      CASE
+        WHEN severity BETWEEN 1 AND 4
+        THEN 'TRACE'
+        WHEN severity BETWEEN 5 AND 8
+        THEN 'DEBUG'
+        WHEN severity BETWEEN 9 AND 12
+        THEN 'INFO'
+        WHEN severity BETWEEN 13 AND 16
+        THEN 'WARN'
+        WHEN severity BETWEEN 17 AND 20
+        THEN 'ERROR'
+        WHEN severity BETWEEN 21 AND 24
+        THEN 'FATAL'
+        ELSE 'UNSPECIFIED'
+      END AS label,
+      count(*) AS value
+    FROM logs
+    WHERE
+      session_id = $session_id
+      AND service_name IN (
+        'ascii-chat-server',
+        'ascii-chat-client',
+        'ascii-chat-mirror',
+        'ascii-chat-discovery',
+        'ascii-chat-discovery-service'
+      )
+      AND timestamp_ns >= coalesce(
+        greatest(
+          (
+            SELECT
+              max(timestamp_ns)
+            FROM metrics
+            WHERE
+              session_id = $session_id
+          ),
+          (
+            SELECT
+              max(end_ns)
+            FROM spans
+            WHERE
+              session_id = $session_id
+          ),
+          (
+            SELECT
+              max(timestamp_ns)
+            FROM logs
+            WHERE
+              session_id = $session_id
+          )
+        ),
+        epoch_ns(current_timestamp)
+      ) - 900000000000
+    GROUP BY
+      label
+    ORDER BY
+      value DESC
   settings:
     unit: records
   layout:
@@ -24,10 +77,53 @@ panels:
   position: 0
 - title: Recent warnings and errors
   display_type: log_list
-  query: SELECT to_timestamp(timestamp_ns/1e9) AS timestamp,service_name,severity,body,trace_id FROM logs WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
-    AND timestamp_ns >= coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT
-    max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 AND severity>=13 ORDER BY timestamp_ns DESC LIMIT
-    100
+  query: |
+    SELECT
+      to_timestamp(timestamp_ns / 1e9) AS timestamp,
+      service_name,
+      severity,
+      body,
+      trace_id
+    FROM logs
+    WHERE
+      session_id = $session_id
+      AND service_name IN (
+        'ascii-chat-server',
+        'ascii-chat-client',
+        'ascii-chat-mirror',
+        'ascii-chat-discovery',
+        'ascii-chat-discovery-service'
+      )
+      AND timestamp_ns >= coalesce(
+        greatest(
+          (
+            SELECT
+              max(timestamp_ns)
+            FROM metrics
+            WHERE
+              session_id = $session_id
+          ),
+          (
+            SELECT
+              max(end_ns)
+            FROM spans
+            WHERE
+              session_id = $session_id
+          ),
+          (
+            SELECT
+              max(timestamp_ns)
+            FROM logs
+            WHERE
+              session_id = $session_id
+          )
+        ),
+        epoch_ns(current_timestamp)
+      ) - 900000000000
+      AND severity >= 13
+    ORDER BY
+      timestamp_ns DESC
+    LIMIT 100
   settings: {}
   layout:
     w: 12
@@ -35,12 +131,78 @@ panels:
   position: 1
 - title: Exporter sent, dropped, rejected and retry totals
   display_type: entity_list
-  query: SELECT service_name || ' / ' || name AS label,process_total AS primary_value FROM (WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id
-    AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service') AND timestamp_ns
-    >= coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT
-    max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp)) - 900000000000 QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key
-    ORDER BY timestamp_ns DESC)=1) SELECT service_name,name,sum(value) AS process_total FROM latest WHERE name LIKE 'ascii-chat.otel.%' AND name NOT IN ('ascii-chat.otel.queue.utilization','ascii-chat.otel.tick.duration')
-    GROUP BY service_name,name ORDER BY service_name,name) AS totals
+  query: |
+    SELECT
+      service_name || ' / ' || name AS label,
+      process_total AS primary_value
+    FROM (
+      WITH latest AS (
+        SELECT
+          *
+        FROM metrics
+        WHERE
+          session_id = $session_id
+          AND service_name IN (
+            'ascii-chat-server',
+            'ascii-chat-client',
+            'ascii-chat-mirror',
+            'ascii-chat-discovery',
+            'ascii-chat-discovery-service'
+          )
+          AND timestamp_ns >= coalesce(
+            greatest(
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM metrics
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(end_ns)
+                FROM spans
+                WHERE
+                  session_id = $session_id
+              ),
+              (
+                SELECT
+                  max(timestamp_ns)
+                FROM logs
+                WHERE
+                  session_id = $session_id
+              )
+            ),
+            epoch_ns(current_timestamp)
+          ) - 900000000000
+        QUALIFY
+          row_number() OVER (
+            PARTITION BY
+              service_name,
+              name,
+              start_timestamp_ns,
+              series_key
+            ORDER BY timestamp_ns DESC
+          ) = 1
+      )
+      SELECT
+        service_name,
+        name,
+        sum(value) AS process_total
+      FROM latest
+      WHERE
+        name LIKE 'ascii-chat.otel.%'
+        AND name NOT IN (
+          'ascii-chat.otel.queue.utilization',
+          'ascii-chat.otel.tick.duration'
+        )
+      GROUP BY
+        service_name,
+        name
+      ORDER BY
+        service_name,
+        name
+    ) AS totals
   settings: {}
   layout:
     w: 6
@@ -48,11 +210,72 @@ panels:
   position: 2
 - title: Exporter queue utilization (latest observed fraction)
   display_type: time_series
-  query: WITH snapshots AS (SELECT *,floor(timestamp_ns/10000000000)*10 AS bucket FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
-    AND timestamp_ns>=coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT
-    max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp))-900000000000 AND (name='ascii-chat.otel.queue.utilization') QUALIFY
-    row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket ORDER BY timestamp_ns DESC)=1) SELECT bucket*1000000000 AS timestamp_ns,service_name
-    || ' / ' || name AS group_value,max(value) AS value FROM snapshots GROUP BY bucket,service_name,name ORDER BY bucket,service_name,name
+  query: |
+    WITH snapshots AS (
+      SELECT
+        *,
+        floor(timestamp_ns / 10000000000) * 10 AS bucket
+      FROM metrics
+      WHERE
+        session_id = $session_id
+        AND service_name IN (
+          'ascii-chat-server',
+          'ascii-chat-client',
+          'ascii-chat-mirror',
+          'ascii-chat-discovery',
+          'ascii-chat-discovery-service'
+        )
+        AND timestamp_ns >= coalesce(
+          greatest(
+            (
+              SELECT
+                max(timestamp_ns)
+              FROM metrics
+              WHERE
+                session_id = $session_id
+            ),
+            (
+              SELECT
+                max(end_ns)
+              FROM spans
+              WHERE
+                session_id = $session_id
+            ),
+            (
+              SELECT
+                max(timestamp_ns)
+              FROM logs
+              WHERE
+                session_id = $session_id
+            )
+          ),
+          epoch_ns(current_timestamp)
+        ) - 900000000000
+        AND (name = 'ascii-chat.otel.queue.utilization')
+      QUALIFY
+        row_number() OVER (
+          PARTITION BY
+            service_name,
+            name,
+            start_timestamp_ns,
+            series_key,
+            bucket
+          ORDER BY timestamp_ns DESC
+        ) = 1
+    )
+    SELECT
+      bucket * 1000000000 AS timestamp_ns,
+      service_name || ' / ' || name AS group_value,
+      max(value) AS value
+    FROM snapshots
+    GROUP BY
+      bucket,
+      service_name,
+      name
+    ORDER BY
+      bucket,
+      service_name,
+      name
   settings: {}
   layout:
     w: 6
@@ -60,12 +283,75 @@ panels:
   position: 3
 - title: Exporter tick latency (cumulative mean, ms)
   display_type: time_series
-  query: WITH snapshots AS (SELECT *,floor(timestamp_ns/10000000000)*10 AS bucket FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
-    AND timestamp_ns>=coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT
-    max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp))-900000000000 AND (type='histogram' AND (name='ascii-chat.otel.tick.duration'))
-    QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket ORDER BY timestamp_ns DESC)=1) SELECT bucket*1000000000 AS
-    timestamp_ns,service_name || ' / ' || name AS group_value,1000*sum(histogram_sum)/nullif(sum(histogram_count),0) AS value FROM snapshots GROUP BY bucket,service_name,name
-    ORDER BY bucket,service_name,name
+  query: |
+    WITH snapshots AS (
+      SELECT
+        *,
+        floor(timestamp_ns / 10000000000) * 10 AS bucket
+      FROM metrics
+      WHERE
+        session_id = $session_id
+        AND service_name IN (
+          'ascii-chat-server',
+          'ascii-chat-client',
+          'ascii-chat-mirror',
+          'ascii-chat-discovery',
+          'ascii-chat-discovery-service'
+        )
+        AND timestamp_ns >= coalesce(
+          greatest(
+            (
+              SELECT
+                max(timestamp_ns)
+              FROM metrics
+              WHERE
+                session_id = $session_id
+            ),
+            (
+              SELECT
+                max(end_ns)
+              FROM spans
+              WHERE
+                session_id = $session_id
+            ),
+            (
+              SELECT
+                max(timestamp_ns)
+              FROM logs
+              WHERE
+                session_id = $session_id
+            )
+          ),
+          epoch_ns(current_timestamp)
+        ) - 900000000000
+        AND (
+          type = 'histogram'
+          AND (name = 'ascii-chat.otel.tick.duration')
+        )
+      QUALIFY
+        row_number() OVER (
+          PARTITION BY
+            service_name,
+            name,
+            start_timestamp_ns,
+            series_key,
+            bucket
+          ORDER BY timestamp_ns DESC
+        ) = 1
+    )
+    SELECT
+      bucket * 1000000000 AS timestamp_ns,
+      service_name || ' / ' || name AS group_value,
+      1000 * sum(histogram_sum) / nullif(sum(histogram_count), 0) AS value
+    FROM snapshots
+    GROUP BY
+      bucket,
+      service_name,
+      name
+    ORDER BY
+      bucket,
+      service_name,
+      name
   settings: {}
   layout:
     w: 6
@@ -73,11 +359,72 @@ panels:
   position: 4
 - title: Resident memory trend (MiB)
   display_type: time_series
-  query: WITH snapshots AS (SELECT *,floor(timestamp_ns/10000000000)*10 AS bucket FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')
-    AND timestamp_ns>=coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT
-    max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp))-900000000000 AND (name='ascii-chat.process.memory.resident') QUALIFY
-    row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key,bucket ORDER BY timestamp_ns DESC)=1) SELECT bucket*1000000000 AS timestamp_ns,service_name
-    || ' / ' || name AS group_value,max(value)/1048576 AS value FROM snapshots GROUP BY bucket,service_name,name ORDER BY bucket,service_name,name
+  query: |
+    WITH snapshots AS (
+      SELECT
+        *,
+        floor(timestamp_ns / 10000000000) * 10 AS bucket
+      FROM metrics
+      WHERE
+        session_id = $session_id
+        AND service_name IN (
+          'ascii-chat-server',
+          'ascii-chat-client',
+          'ascii-chat-mirror',
+          'ascii-chat-discovery',
+          'ascii-chat-discovery-service'
+        )
+        AND timestamp_ns >= coalesce(
+          greatest(
+            (
+              SELECT
+                max(timestamp_ns)
+              FROM metrics
+              WHERE
+                session_id = $session_id
+            ),
+            (
+              SELECT
+                max(end_ns)
+              FROM spans
+              WHERE
+                session_id = $session_id
+            ),
+            (
+              SELECT
+                max(timestamp_ns)
+              FROM logs
+              WHERE
+                session_id = $session_id
+            )
+          ),
+          epoch_ns(current_timestamp)
+        ) - 900000000000
+        AND (name = 'ascii-chat.process.memory.resident')
+      QUALIFY
+        row_number() OVER (
+          PARTITION BY
+            service_name,
+            name,
+            start_timestamp_ns,
+            series_key,
+            bucket
+          ORDER BY timestamp_ns DESC
+        ) = 1
+    )
+    SELECT
+      bucket * 1000000000 AS timestamp_ns,
+      service_name || ' / ' || name AS group_value,
+      max(value) / 1048576 AS value
+    FROM snapshots
+    GROUP BY
+      bucket,
+      service_name,
+      name
+    ORDER BY
+      bucket,
+      service_name,
+      name
   settings: {}
   layout:
     w: 6
@@ -85,11 +432,60 @@ panels:
   position: 5
 - title: Highest latest exporter queue utilization (%)
   display_type: gauge
-  query: "WITH latest AS (SELECT * FROM metrics WHERE session_id=$session_id AND service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\n\
-    \ AND name IN ('ascii-chat.otel.queue.utilization') AND timestamp_ns>=coalesce(greatest((SELECT max(timestamp_ns) FROM metrics WHERE session_id=$session_id),(SELECT\
-    \ max(end_ns) FROM spans WHERE session_id=$session_id),(SELECT max(timestamp_ns) FROM logs WHERE session_id=$session_id)),epoch_ns(current_timestamp))-900000000000\n\
-    \ QUALIFY row_number() OVER (PARTITION BY service_name,name,start_timestamp_ns,series_key ORDER BY timestamp_ns DESC)=1) SELECT 100*max(value) AS value FROM\
-    \ latest"
+  query: |
+    WITH latest AS (
+      SELECT
+        *
+      FROM metrics
+      WHERE
+        session_id = $session_id
+        AND service_name IN (
+          'ascii-chat-server',
+          'ascii-chat-client',
+          'ascii-chat-mirror',
+          'ascii-chat-discovery',
+          'ascii-chat-discovery-service'
+        )
+        AND name IN ('ascii-chat.otel.queue.utilization')
+        AND timestamp_ns >= coalesce(
+          greatest(
+            (
+              SELECT
+                max(timestamp_ns)
+              FROM metrics
+              WHERE
+                session_id = $session_id
+            ),
+            (
+              SELECT
+                max(end_ns)
+              FROM spans
+              WHERE
+                session_id = $session_id
+            ),
+            (
+              SELECT
+                max(timestamp_ns)
+              FROM logs
+              WHERE
+                session_id = $session_id
+            )
+          ),
+          epoch_ns(current_timestamp)
+        ) - 900000000000
+      QUALIFY
+        row_number() OVER (
+          PARTITION BY
+            service_name,
+            name,
+            start_timestamp_ns,
+            series_key
+          ORDER BY timestamp_ns DESC
+        ) = 1
+    )
+    SELECT
+      100 * max(value) AS value
+    FROM latest
   settings:
     min: 0
     max: 100
