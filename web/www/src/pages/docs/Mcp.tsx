@@ -39,10 +39,10 @@ export default function Mcp() {
             <p className="docs-paragraph">
               Build or install ascii-chat, then configure your MCP client to
               launch the following command. The server uses the same mirror
-              rendering pipeline as the CLI. Stdio is the default when --server
-              is omitted: the MCP client starts this process, and no network
-              port is opened. MCP mode automatically skips startup update
-              checks. JSON-RPC messages use stdin and stdout; logs and
+              rendering pipeline as the CLI. Stdio is the default when
+              --http-server is omitted: the MCP client starts this process, and
+              no network port is opened. MCP mode automatically skips startup
+              update checks. JSON-RPC messages use stdin and stdout; logs and
               diagnostics go to stderr.
             </p>
             <CodeBlock language="bash">{`ascii-chat mcp-server`}</CodeBlock>
@@ -256,23 +256,23 @@ tool_timeout_sec = 70`}</CodeBlock>
               Serve Streamable HTTP
             </Heading>
             <p className="docs-paragraph">
-              Add --server to select networked Streamable HTTP. Run this process
-              independently, then configure your MCP client with its endpoint
-              URL instead of a process launch command.
+              Add --http-server to select networked Streamable HTTP. Run this
+              process independently, then configure your MCP client with its
+              endpoint URL instead of a process launch command.
             </p>
-            <CodeBlock language="bash">{`ascii-chat mcp-server --server --address 127.0.0.1 --port 27228
+            <CodeBlock language="bash">{`ascii-chat mcp-server --http-server --address 127.0.0.1 --port 27228
 # IPv4 and IPv6 bind addresses
-ascii-chat mcp-server --server 0.0.0.0 ::1 --port 28028`}</CodeBlock>
+ascii-chat mcp-server --http-server 0.0.0.0 ::1 --port 28028`}</CodeBlock>
             <p className="docs-paragraph">
               Connect your HTTP MCP client to http://127.0.0.1:27228/mcp. The
               default listener is loopback on port 27228; --port or
               ASCII_CHAT_PORT overrides the port. For remote clients, bind to
               0.0.0.0 and use the server hostname or IP in the client URL. Bind
               addresses use --address, --address6, or up to two positional
-              addresses. Existing --websocket-tls-cert, --websocket-tls-key, and
-              --websocket-tls-key-password options configure HTTPS.
-              --port-forwarding enables UPnP; --max-clients limits render
-              concurrency, up to four jobs.
+              addresses. The --http-tls-cert, --http-tls-key, and
+              --http-tls-key-password options configure HTTPS. --port-forwarding
+              enables UPnP; --max-clients limits render concurrency, up to four
+              jobs.
             </p>
             <p className="docs-paragraph">
               HTTP mode omits render_webcam and rejects caller-selected
@@ -287,8 +287,8 @@ ascii-chat mcp-server --server 0.0.0.0 ::1 --port 28028`}</CodeBlock>
             </p>
             <p className="docs-paragraph">
               The allowed browser Origin defaults to https://mcp.ascii-chat.com;
-              change it with --origin. Native clients may omit Origin. POST /mcp
-              serves stateless JSON responses; GET and DELETE return 405.
+              change it with --http-origin. Native clients may omit Origin. POST
+              /mcp serves stateless JSON responses; GET and DELETE return 405.
               Clients send Accept including application/json and
               text/event-stream. Supported protocol versions are 2025-03-26,
               2025-06-18, and 2025-11-25. Decoded uploads are limited to 16 MiB,
@@ -299,7 +299,7 @@ ascii-chat mcp-server --server 0.0.0.0 ::1 --port 28028`}</CodeBlock>
             <Heading level={2} className="heading-2 text-yellow-400">
               Logs and diagnostics
             </Heading>
-            <CodeBlock language="bash">{`ascii-chat --log-level debug --grep 'MCP|render' mcp-server --server --status-screen`}</CodeBlock>
+            <CodeBlock language="bash">{`ascii-chat --log-level debug --grep 'MCP|render' mcp-server --http-server --status-screen`}</CodeBlock>
             <p className="docs-paragraph">
               HTTP status uses the shared terminal UI, including the log viewer,
               error stacks, error popups, and sync primitives. Debug builds
@@ -307,6 +307,17 @@ ascii-chat mcp-server --server 0.0.0.0 ::1 --port 28028`}</CodeBlock>
               reserves stdin for the protocol and does not consume terminal
               shortcuts. Keep a bounded snapshot duration for webcam or
               synthetic sources; unbounded capture ends with a timeout error.
+            </p>
+            <p className="docs-paragraph">
+              The normal --otel-* flags configure telemetry for either
+              transport. MCP request and render spans preserve parent context
+              across render threads. Metrics count requests, rejections,
+              failures, cancellation, deadlines, output bytes and saved files,
+              plus render duration. Attributes contain bounded method/tool names
+              and status codes, without media paths, URLs, uploaded bytes or
+              ASCII content. Render subprocesses do not export separately; the
+              parent records each job. Test environments prohibit collector
+              export.
             </p>
             <p className="docs-paragraph">
               See{" "}

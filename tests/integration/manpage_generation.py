@@ -23,7 +23,7 @@ def normalize_examples(content):
     sections = text.split(".SH EXAMPLES\n", 1)
     if len(sections) == 2:
         examples, separator, remainder = sections[1].partition(".SH ")
-        examples = re.sub(r"(?m)^(\.B ascii-chat )(server|client|mirror|discovery-service)(?= |$)",
+        examples = re.sub(r"(?m)^(\.B ascii-chat )(server|client|mirror|discovery-service|mcp-server)(?= |$)",
                           r"\1MODE", examples)
         text = sections[0] + ".SH EXAMPLES\n" + examples + separator + remainder
     return text

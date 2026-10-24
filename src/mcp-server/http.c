@@ -1,4 +1,5 @@
 #include "mcp.h"
+#include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/tui/status.h>
 #include <ascii-chat/tui/controller.h>
@@ -115,6 +116,10 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     if (!h->status)
       return 0;
     if (!h->sent) {
+      ASCII_OTEL_SCOPE(MCP_HTTP_RESPONSE);
+      ASCII_OTEL_ATTR_INT("http.response.status_code", h->status);
+      ASCII_OTEL_ATTR_INT("http.response.body.size", (int64_t)h->response_size);
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_HTTP_RESPONSES, 1);
       unsigned char buffer[LWS_PRE + 1024], *p = buffer + LWS_PRE, *end = buffer + sizeof(buffer);
       if (lws_add_http_common_headers(wsi, h->status, "application/json", (lws_filepos_t)h->response_size, &p, end) ||
           lws_finalize_write_http_header(wsi, buffer + LWS_PRE, &p, end))

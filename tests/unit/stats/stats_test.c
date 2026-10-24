@@ -482,3 +482,27 @@ Test(stats, summary_runtime_calls_provider_when_due, .timeout = 5) {
   stats_runtime_stop();
   cr_assert_eq(atomic_load_u64_impl(&calls), 1);
 }
+
+Test(stats, mcp_measurements_share_the_process_observer) {
+  stats_capabilities_t caps = {0};
+  caps.counters[STATS_COUNTER_MCP_REQUESTS] = true;
+  caps.counters[STATS_COUNTER_MCP_RENDERS] = true;
+  caps.durations[STATS_DURATION_MCP_RENDER] = true;
+  stats_scope_t *scope = NULL;
+  cr_assert_eq(stats_scope_create(&caps, &scope), ASCIICHAT_OK);
+  observer_records_t records = {0};
+  stats_scope_set_observer(scope, observe_record, &records);
+  stats_counter_add(scope, STATS_COUNTER_MCP_REQUESTS, 2);
+  stats_counter_add(scope, STATS_COUNTER_MCP_RENDERS, 1);
+  stats_duration_record(scope, STATS_DURATION_MCP_RENDER, 250000000);
+  stats_snapshot_t snapshot;
+  cr_assert_eq(stats_scope_snapshot(scope, &snapshot), ASCIICHAT_OK);
+  cr_assert_eq(snapshot.counters[STATS_COUNTER_MCP_REQUESTS], 2);
+  cr_assert_eq(snapshot.counters[STATS_COUNTER_MCP_RENDERS], 1);
+  cr_assert_eq(snapshot.durations[STATS_DURATION_MCP_RENDER].total_ns, 250000000);
+  cr_assert_eq(records.calls[STATS_RECORD_COUNTER], 2);
+  cr_assert_eq(records.calls[STATS_RECORD_DURATION], 1);
+  cr_assert_eq(records.values[STATS_RECORD_COUNTER], 1);
+  cr_assert_eq(records.ids[STATS_RECORD_COUNTER], STATS_COUNTER_MCP_RENDERS);
+  stats_scope_destroy(scope);
+}

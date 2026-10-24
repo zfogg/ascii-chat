@@ -550,6 +550,11 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+  bool help_requested = false;
+  for (int i = 1; i < argc; ++i)
+    if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
+      help_requested = true;
+  mcp_mode_early = mcp_mode_early && !help_requested;
   // Reserve stdout even in HTTP mode: configuration can select the transport later.
   if (mcp_mode_early && mcp_stdio_reserve() != ASCIICHAT_OK)
     return ERROR_FILE_OPERATION;
@@ -1085,7 +1090,7 @@ int main(int argc, char *argv[]) {
     log_debug("Process title initialization was unavailable %s", asciichat_error_format(NULL, title_init_result));
   }
   asciichat_errno_scope_t terminal_title_scope = errno_scope_begin();
-  if (opts->detected_mode != MODE_MCP_SERVER || GET_OPTION(mcp_server))
+  if (opts->detected_mode != MODE_MCP_SERVER || GET_OPTION(http_server))
     (void)ui_controller_title_start(mode->name, platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO);
   errno_scope_end(terminal_title_scope, ASCIICHAT_ERRNO_DISMISSED);
   asciichat_error_t stats_result = stats_runtime_start(mode->name, (unsigned)GET_OPTION(stats_interval));

@@ -1,4 +1,6 @@
 #include "mcp.h"
+#include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/version.h>
 #include <libwebsockets.h>
 #include <string.h>
@@ -12,6 +14,12 @@ static yyjson_mut_doc *envelope(yyjson_val *id) {
   return d;
 }
 yyjson_mut_doc *mcp_error(yyjson_val *id, int code, const char *message) {
+  ASCII_OTEL_SCOPE(MCP_PROTOCOL_ERROR);
+  ASCII_OTEL_ATTR_INT("rpc.jsonrpc.error_code", code);
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REJECTED, 1);
+#ifdef ASCIICHAT_WITH_OTEL
+  ascii_otel_error("MCP protocol request rejected");
+#endif
   yyjson_mut_doc *d = envelope(id);
   yyjson_mut_val *e = yyjson_mut_obj(d);
   yyjson_mut_obj_add_int(d, e, "code", code);
@@ -43,14 +51,32 @@ static yyjson_mut_doc *tool_result(yyjson_val *id, const mcp_render_result_t *r)
 }
 static void *run_job(void *arg) {
   mcp_job_t *job = arg;
+  ASCII_OTEL_SCOPE_PARENT(MCP_RENDER, &job->telemetry_parent);
+  static const char *const tools[] = {"render_file", "render_url", "render_webcam", "render_visualization"};
+  ASCII_OTEL_ATTR_STRING("mcp.tool", tools[job->tool]);
+  ASCII_OTEL_ATTR_STRING("mcp.transport", job->server->policy.hosted ? "http" : "stdio");
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_RENDERS, 1);
   mcp_render_result_t result;
+  uint64_t render_started = time_get_ns();
   log_info("MCP render started");
   mcp_render_execute(&job->request, &job->cancelled, &result);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_MCP_RENDER, time_get_ns() - render_started);
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_OUTPUT_BYTES, result.length);
+  ASCII_OTEL_ATTR_INT("mcp.output.bytes", (int64_t)result.length);
   if (result.error[0]) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_RENDER_FAILURES, 1);
+    const char *failure = result.timed_out ? "timeout" : atomic_load_bool(&job->cancelled) ? "cancelled" : "render";
+    ASCII_OTEL_ATTR_STRING("error.type", failure);
+    if (result.timed_out)
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_TIMEOUTS, 1);
+    else if (atomic_load_bool(&job->cancelled))
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_CANCELLED, 1);
     SET_ERRNO(ERROR_FILE_OPERATION, "MCP render failed: %s", result.error);
     log_error("MCP render failed: %s", result.error);
   } else
     log_info("MCP render completed in %llu ms", (unsigned long long)result.elapsed_ms);
+  if (!result.error[0] && result.output_path[0])
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_SAVED_FILES, 1);
   job->response = tool_result(mcp_get(yyjson_doc_get_root(job->message), "id"), &result);
   SAFE_FREE(result.text);
   mcp_request_destroy(&job->request);
@@ -83,6 +109,10 @@ static bool same_id(yyjson_val *a, yyjson_val *b) {
           (yyjson_is_int(a) && yyjson_is_int(b) && yyjson_get_sint(a) == yyjson_get_sint(b)));
 }
 yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connection, bool *pending) {
+  ASCII_OTEL_SCOPE(MCP_REQUEST);
+  ASCII_OTEL_ATTR_STRING("rpc.system", "jsonrpc");
+  ASCII_OTEL_ATTR_STRING("mcp.transport", s->policy.hosted ? "http" : "stdio");
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REQUESTS, 1);
   *pending = false;
   yyjson_val *root = yyjson_doc_get_root(message), *id = mcp_get(root, "id"), *method = mcp_get(root, "method"),
              *version = mcp_get(root, "jsonrpc");
@@ -91,6 +121,13 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
       (id && !yyjson_is_str(id) && !yyjson_is_int(id)))
     return mcp_error(id, -32600, "Invalid JSON-RPC request");
   const char *name = yyjson_get_str(method);
+  static const char *const methods[] = {
+      "initialize", "ping", "tools/list", "tools/call", "notifications/initialized", "notifications/cancelled"};
+  const char *method_name = "unknown";
+  for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); i++)
+    if (!strcmp(name, methods[i]))
+      method_name = methods[i];
+  ASCII_OTEL_ATTR_STRING("rpc.method", method_name);
   yyjson_val *params = mcp_get(root, "params");
   if (params && !yyjson_is_obj(params))
     return id ? mcp_error(id, -32602, "params must be an object") : NULL;
@@ -164,6 +201,8 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   if (empty)
     yyjson_doc_free(empty);
   if (err != ASCIICHAT_OK) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REJECTED, 1);
+    ASCII_OTEL_ATTR_STRING("error.type", "invalid_arguments");
     asciichat_error_context_t ctx;
     mcp_render_result_t fail = {0};
     SAFE_STRNCPY(fail.error, HAS_ERRNO(&ctx) ? ctx.context_message : "Invalid render request", sizeof(fail.error));
@@ -175,6 +214,10 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   char *copy = yyjson_write(message, 0, &len);
   j->message = yyjson_read(copy, len, 0);
   free(copy);
+  j->tool = (mcp_tool_t)kind;
+#ifdef ASCIICHAT_WITH_OTEL
+  j->telemetry_parent = ascii_otel_context();
+#endif
   j->server = s;
   j->connection = connection;
   j->started = true;

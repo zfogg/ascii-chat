@@ -193,7 +193,7 @@ bool option_applies_to_mode(const option_descriptor_t *desc, asciichat_mode_t mo
   // For mode-specific help (non-discovery modes), show only options for that mode.
   // Do not show binary options here unless it also specifically applies to the mode.
   // The 'mode' parameter is the actual mode (e.g., MODE_CLIENT, MODE_SERVER).
-  if (mode < 0 || mode > MODE_DISCOVERY) { // Use MODE_INVALID as upper bound for valid modes
+  if (mode < 0 || mode >= MODE_INVALID) { // Use MODE_INVALID as upper bound for valid modes
     return false;
   }
   option_mode_bitmask_t mode_bit = (1 << mode);

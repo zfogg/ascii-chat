@@ -55,7 +55,7 @@ esac
         time.sleep(1)
         cases = [
             ("ascii-chat mcp", ["ascii-chat mcp-server"], []),
-            ("ascii-chat mcp-server --ser", ["--server"], []),
+            ("ascii-chat mcp-server --http-ser", ["--http-server"], []),
             ("ascii-chat mcp-server --add", ["--address", "--address6"], []),
             ("ascii-chat mcp-server --status-screen ", ["true", "false"], []),
             ("ascii-chat --color-mode ", ["truecolor", "mono", "Monochrome only"], []),

@@ -196,7 +196,7 @@ const registry_entry_t g_logging_entries[] = {
      offsetof(options_t, stats_interval),
      &default_stats_interval,
      sizeof(int),
-     "Write plain statistics to stdout every N seconds (0 disables). Press = for live statistics.",
+     "Write plain statistics to stdout (stderr for MCP) every N seconds (0 disables). Press = for live statistics.",
      "LOGGING",
      "SECONDS",
      false,
@@ -205,7 +205,7 @@ const registry_entry_t g_logging_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
+     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_MCP_SERVER,
      {.numeric_range = {0, 86400, 1}, .input_type = OPTION_INPUT_NUMERIC},
      NULL},
     // LOGGING GROUP (binary-level)

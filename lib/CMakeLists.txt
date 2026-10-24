@@ -90,6 +90,7 @@ set(CORE_SRCS
     ${LIB_DIR}/options/config/config.c
     ${LIB_DIR}/options/config/schema.c
     ${LIB_DIR}/options/config/presets.c
+    ${LIB_DIR}/options/json.c
     # options/registry/
     ${LIB_DIR}/options/registry/metadata.c
     ${LIB_DIR}/options/registry/general.c

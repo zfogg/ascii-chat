@@ -16,21 +16,21 @@
 // GENERAL CATEGORY - General-purpose options
 // ============================================================================
 const registry_entry_t g_general_entries[] = {
-    {.long_name = "server",
+    {.long_name = "http-server",
      .type = OPTION_TYPE_BOOL,
-     .offset = offsetof(options_t, mcp_server),
+     .offset = offsetof(options_t, http_server),
      .help_text = "Serve restricted MCP tools over HTTP (no webcam or caller-selected filesystem paths).",
      .group = "MCP",
-     .env_var_name = "ASCII_CHAT_SERVER",
+     .env_var_name = "ASCII_CHAT_HTTP_SERVER",
      .mode_bitmask = OPTION_MODE_MCP_SERVER},
-    {.long_name = "origin",
+    {.long_name = "http-origin",
      .type = OPTION_TYPE_STRING,
-     .offset = offsetof(options_t, mcp_origin),
+     .offset = offsetof(options_t, http_origin),
      .default_value = "https://mcp.ascii-chat.com",
      .default_value_size = OPTIONS_BUFF_SIZE,
      .help_text = "Allowed browser Origin for MCP HTTP requests.",
      .group = "MCP",
-     .env_var_name = "ASCII_CHAT_ORIGIN",
+     .env_var_name = "ASCII_CHAT_HTTP_ORIGIN",
      .mode_bitmask = OPTION_MODE_MCP_SERVER},
     // GENERAL GROUP (binary-level + all modes)
     {"help",

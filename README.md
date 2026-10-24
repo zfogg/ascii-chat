@@ -257,7 +257,7 @@ the same rendering pipeline as the CLI.
 ascii-chat mcp-server
 
 # Restricted Streamable HTTP transport
-ascii-chat mcp-server --server --address 127.0.0.1 --port 27228
+ascii-chat mcp-server --http-server --address 127.0.0.1 --port 27228
 ```
 
 Tool arguments accept CLI rendering options such as `color-mode`, `width`,

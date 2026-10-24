@@ -1,10 +1,10 @@
 #include "mcp.h"
+#include <ascii-chat/options/json.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/registry/core.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <sodium.h>
 #include <uv.h>
-#include <math.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -61,16 +61,6 @@ static const registry_entry_t *exposed(const mcp_policy_t *policy, const char *n
     return NULL;
   return registry_find_entry_by_name(name);
 }
-static const char *json_type(const registry_entry_t *entry) {
-  if (entry->type == OPTION_TYPE_BOOL)
-    return "boolean";
-  if (entry->type == OPTION_TYPE_INT || !strcmp(entry->long_name, "zalgo"))
-    return "integer";
-  if (entry->type == OPTION_TYPE_DOUBLE || (entry->type == OPTION_TYPE_CALLBACK && !entry->metadata.enum_values &&
-                                            entry->metadata.numeric_range.max && strcmp(entry->long_name, "seek")))
-    return "number";
-  return "string";
-}
 static yyjson_mut_val *object_schema(yyjson_mut_doc *d) {
   yyjson_mut_val *v = yyjson_mut_obj(d);
   yyjson_mut_obj_add_str(d, v, "type", "object");
@@ -100,30 +90,8 @@ static yyjson_mut_val *options_schema(yyjson_mut_doc *d, const mcp_policy_t *p) 
       const registry_entry_t *e = exposed(p, lists[list][i]);
       if (!e)
         continue;
-      property(d, s, e->long_name, json_type(e), e->help_text);
-      yyjson_mut_val *v = yyjson_mut_obj_get(props, e->long_name);
-      if (e->metadata.enum_values)
-        enum_strings(d, v, (const char *const *)e->metadata.enum_values);
-      if (!strcmp(e->long_name, "test-pattern")) {
-        // Boolean true selects pattern zero; integer/string selects a particular pattern.
-        yyjson_mut_obj_remove_str(v, "type");
-        yyjson_mut_obj_remove_str(v, "enum");
-        yyjson_mut_val *a = yyjson_mut_arr(d);
-        yyjson_mut_arr_add_bool(d, a, true);
-        yyjson_mut_arr_add_bool(d, a, false);
-        yyjson_mut_arr_add_int(d, a, 0);
-        yyjson_mut_arr_add_int(d, a, 1);
-        yyjson_mut_arr_add_str(d, a, "0");
-        yyjson_mut_arr_add_str(d, a, "1");
-        yyjson_mut_obj_add_val(d, v, "enum", a);
-      }
-      if (!strcmp(e->long_name, "seek")) {
-        yyjson_mut_obj_remove_str(v, "type");
-        yyjson_mut_val *types = yyjson_mut_arr(d);
-        yyjson_mut_arr_add_str(d, types, "string");
-        yyjson_mut_arr_add_str(d, types, "number");
-        yyjson_mut_obj_add_val(d, v, "type", types);
-      }
+      yyjson_mut_val *v = options_json_schema_for_option(d, e->long_name);
+      yyjson_mut_obj_add_val(d, props, e->long_name, v);
       if (!strcmp(e->long_name, "width") || !strcmp(e->long_name, "height")) {
         yyjson_mut_obj_add_int(d, v, "minimum", e->metadata.numeric_range.min);
         yyjson_mut_obj_add_int(d, v, "maximum", !strcmp(e->long_name, "width") ? 512 : 256);
@@ -237,25 +205,6 @@ static asciichat_error_t option(mcp_render_request_t *r, const char *name, const
       }
   }
   return err;
-}
-static asciichat_error_t validate_value(const registry_entry_t *e, yyjson_val *v) {
-  if (!strcmp(e->long_name, "test-pattern")) {
-    if (yyjson_is_bool(v) || (yyjson_is_int(v) && yyjson_get_sint(v) >= 0 && yyjson_get_sint(v) <= 1) ||
-        (yyjson_is_str(v) && (!strcmp(yyjson_get_str(v), "0") || !strcmp(yyjson_get_str(v), "1"))))
-      return ASCIICHAT_OK;
-    return SET_ERRNO(ERROR_INVALID_PARAM, "test-pattern must be boolean, 0 or 1");
-  }
-  const char *type = json_type(e);
-  bool ok = (!strcmp(type, "boolean") && yyjson_is_bool(v)) || (!strcmp(type, "integer") && yyjson_is_int(v)) ||
-            (!strcmp(type, "number") && yyjson_is_num(v)) || (!strcmp(type, "string") && yyjson_is_str(v)) ||
-            (!strcmp(e->long_name, "seek") && yyjson_is_num(v));
-  if (!ok)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Wrong type for %s", e->long_name);
-  if (yyjson_is_str(v) && (yyjson_get_len(v) > 4096 || strlen(yyjson_get_str(v)) != yyjson_get_len(v)))
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid or oversized option %s", e->long_name);
-  if (yyjson_is_num(v) && !isfinite(yyjson_get_num(v)))
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Non-finite option");
-  return ASCIICHAT_OK;
 }
 static bool enabled(yyjson_val *opts, const char *name) {
   yyjson_val *v = mcp_get(opts, name);
@@ -423,31 +372,19 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
       const registry_entry_t *e = exposed(p, name);
       if (strlen(name) != yyjson_get_len(k) || !e)
         return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported option: %s", name);
-      err = validate_value(e, v);
+      char buf[4097];
+      bool omitted = false;
+      err = options_json_parse_value(name, v, buf, sizeof(buf), &omitted);
       if (err)
         return err;
+      if (omitted)
+        continue;
       double n = yyjson_get_num(v);
       if ((!strcmp(name, "width") && (n < e->metadata.numeric_range.min || n > 512)) ||
           (!strcmp(name, "height") && (n < e->metadata.numeric_range.min || n > 256)) ||
           (!strcmp(name, "snapshot-delay") && (n < 0 || n > 30)) || (!strcmp(name, "fps") && (n < 1 || n > 144)))
         return SET_ERRNO(ERROR_INVALID_PARAM, "Option %s is out of bounds", name);
-      char buf[128];
-      const char *value;
-      if (yyjson_is_str(v))
-        value = yyjson_get_str(v);
-      else if (yyjson_is_bool(v))
-        value = yyjson_get_bool(v) ? "true" : "false";
-      else {
-        SAFE_SNPRINTF(buf, sizeof(buf), "%.17g", n);
-        value = buf;
-      }
-      if (!strcmp(name, "test-pattern")) {
-        if (yyjson_is_bool(v) && !yyjson_get_bool(v))
-          continue;
-        if (yyjson_is_bool(v))
-          value = "0";
-      }
-      err = option(r, name, value);
+      err = option(r, name, buf);
       if (err)
         return err;
     }

@@ -19,9 +19,9 @@ import time
 import unittest
 
 class Client:
-    def __init__(self, binary, directory, extra=()):
+    def __init__(self, binary, directory, extra=(), mode_extra=()):
         self.err = open(directory / "stderr.log", "wb")
-        self.p = subprocess.Popen([str(binary), *extra, "mcp-server"],
+        self.p = subprocess.Popen([str(binary), *extra, "mcp-server", *mode_extra],
                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.err)
         self.responses = queue.Queue()
         def read():
@@ -48,8 +48,39 @@ class Protocol(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="ascii-mcp-protocol-")
         self.directory = Path(self.tmp.name); self.addCleanup(self.tmp.cleanup)
-    def client(self, extra=()):
-        c = Client(BINARY, self.directory, extra); self.addCleanup(c.close); return c
+    def client(self, extra=(), mode_extra=()):
+        c = Client(BINARY, self.directory, extra, mode_extra); self.addCleanup(c.close); return c
+    def test_stats_interval_preserves_stdio_protocol(self):
+        c = self.client(mode_extra=("--stats-interval", "1"))
+        c.send("tools/call", {"name": "render_file", "arguments": {
+            "options": {"test-pattern": True, "width": 40, "height": 16}}}, 1)
+        self.assertFalse(c.receive()["result"]["isError"])
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            text = (self.directory / "stderr.log").read_text(errors="replace")
+            if "mcp_renders=1" in text and "mcp_requests=1" in text:
+                break
+            time.sleep(.05)
+        else:
+            self.fail("No MCP stats summary on stderr: " + text[-2000:])
+        self.assertNotIn("frames_captured=", text)
+        c.send("ping", {}, 2)
+        self.assertEqual(c.receive()["id"], 2)
+
+    def test_mode_help_and_http_options(self):
+        top = subprocess.run([str(BINARY), "--help"], capture_output=True, text=True, timeout=10)
+        self.assertEqual(top.returncode, 0)
+        self.assertIn("mcp-server", top.stdout)
+        mode = subprocess.run([str(BINARY), "mcp-server", "--help"], capture_output=True, text=True, timeout=10)
+        self.assertEqual(mode.returncode, 0)
+        for flag in ("--http-server", "--http-origin", "--http-tls-cert", "--http-tls-key", "--http-tls-key-password", "--port", "--address", "--stats-interval"):
+            self.assertIn(flag, mode.stdout)
+        self.assertNotIn("--websocket-tls-cert", mode.stdout)
+        missing_key = subprocess.run([str(BINARY), "mcp-server", "--http-server", "--http-tls-cert", "missing.pem"],
+                                     capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(missing_key.returncode, 0)
+        self.assertIn("--http-tls-key", missing_key.stdout + missing_key.stderr)
+
     def test_cancel_ping_and_diagnostic_stream(self):
         c = self.client(("--sync-state", "0.2"))
         c.send("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
@@ -73,7 +104,7 @@ class Protocol(unittest.TestCase):
             props = tool["inputSchema"]["properties"]["options"]["properties"]
             self.assertNotIn("color", props); self.assertIn("color-mode", props)
             self.assertIn("outputSchema", tool)
-        for i, arguments in enumerate(({"options": {"width": 100000}}, {"options": {"color": "true"}},
+        for i, arguments in enumerate(({"options": {"width": 100000}}, {"options": {"color": "true"}}, {"options": {"color-mode": "invalid"}}, {"options": {"seek": "invalid"}},
                                         {"path": "x", "data_base64": "AAAA"}, {"data_base64": "!"}), 2):
             c.send("tools/call", {"name": "render_file", "arguments": arguments}, i)
             self.assertTrue(c.receive()["result"]["isError"])
@@ -92,8 +123,8 @@ class Protocol(unittest.TestCase):
     def test_http_profile_and_port(self):
         with socket.socket() as sock: sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]
         log = open(self.directory / "http.log", "wb"); self.addCleanup(log.close)
-        p = subprocess.Popen([str(BINARY), "mcp-server", "--server", "--address", "127.0.0.1",
-                              "--port", str(port), "--status-screen=false"], stdout=log, stderr=log)
+        p = subprocess.Popen([str(BINARY), "mcp-server", "--http-server", "--address", "127.0.0.1",
+                              "--port", str(port), "--http-origin", "https://tools.example.test", "--status-screen=false"], stdout=log, stderr=log)
         def stop():
             p.terminate()
             try: p.wait(timeout=10)
@@ -116,6 +147,11 @@ class Protocol(unittest.TestCase):
         self.assertEqual(status, 200)
         tools = {tool["name"]: tool for tool in response["result"]["tools"]}
         self.assertEqual(set(tools), {"render_file", "render_url", "render_visualization"})
+        for tool, arguments in (("render_webcam", {}), ("render_visualization", {"visualization": "fft", "audio": {"type": "microphone"}})):
+            _, denied = request({"jsonrpc": "2.0", "id": 20, "method": "tools/call", "params": {"name": tool, "arguments": arguments}})
+            self.assertTrue("error" in denied or denied.get("result", {}).get("isError"), denied)
+        self.assertEqual(request({"jsonrpc": "2.0", "id": 21, "method": "ping"}, "https://tools.example.test")[0], 200)
+
         for tool in tools.values(): self.assertNotIn("output_path", tool["inputSchema"]["properties"])
         self.assertNotIn("path", tools["render_file"]["inputSchema"]["properties"])
         self.assertEqual(request(None, method="GET")[0], 405)

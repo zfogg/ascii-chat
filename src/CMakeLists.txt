@@ -23,7 +23,7 @@ set(APP_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/client/webrtc.c
     # MCP rendering server
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/main.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/options.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/request.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/protocol.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/render.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/stdio.c

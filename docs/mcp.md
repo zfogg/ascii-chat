@@ -2,17 +2,17 @@
 
 `ascii-chat mcp-server` exposes four rendering tools over newline-delimited JSON-RPC on stdio. It runs through the ordinary application initialization, options, logging, error-stack and diagnostic workers. Both transports automatically skip startup update checks. Protocol stdout is reserved before initialization; incidental terminal diagnostics go to stderr.
 
-`ascii-chat mcp-server --server` serves the restricted tool set at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. Examples:
+`ascii-chat mcp-server --http-server` serves the restricted tool set at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. Examples:
 
 ```sh
-ascii-chat mcp-server --server --port 28028 --address 127.0.0.1
-ascii-chat mcp-server --server 0.0.0.0 ::1 --port 27228
-ascii-chat --log-level debug --grep 'MCP|render' mcp-server --server --status-screen
+ascii-chat mcp-server --http-server --port 28028 --address 127.0.0.1
+ascii-chat mcp-server --http-server 0.0.0.0 ::1 --port 27228
+ascii-chat --log-level debug --grep 'MCP|render' mcp-server --http-server --status-screen
 ```
 
-The existing `--websocket-tls-cert`, `--websocket-tls-key`, and `--websocket-tls-key-password` configure HTTPS for this HTTP listener too. `--port-forwarding` maps the HTTP port with the existing UPnP implementation; `--max-clients` bounds concurrent render jobs (hard maximum four). HTTP status uses the shared terminal controller and log viewer, including error popups and debug controls. Debug builds retain `--sync-state`, `--backtrace`, and memory diagnostics. Stdio does not consume terminal keys: stdin is the protocol stream.
+The `--http-tls-cert`, `--http-tls-key`, and `--http-tls-key-password` configure HTTPS for this HTTP listener too. `--port-forwarding` maps the HTTP port with the existing UPnP implementation; `--max-clients` bounds concurrent render jobs (hard maximum four). HTTP status uses the shared terminal controller and log viewer, including error popups and debug controls. Debug builds retain `--sync-state`, `--backtrace`, and memory diagnostics. Stdio does not consume terminal keys: stdin is the protocol stream.
 
-For mcp.ascii-chat.com, terminate HTTPS and enforce rate/body/concurrency limits at a reverse proxy. The configured browser Origin defaults to `https://mcp.ascii-chat.com`; change it with `--origin`. Requests without Origin are accepted for native MCP clients. The initial implementation uses stateless JSON responses; POST handles requests and notifications, GET/DELETE return 405. It supports MCP versions 2025-03-26, 2025-06-18, and 2025-11-25. Clients send Accept including application/json and text/event-stream.
+For mcp.ascii-chat.com, terminate HTTPS and enforce rate/body/concurrency limits at a reverse proxy. The configured browser Origin defaults to `https://mcp.ascii-chat.com`; change it with `--http-origin`. Requests without Origin are accepted for native MCP clients. The initial implementation uses stateless JSON responses; POST handles requests and notifications, GET/DELETE return 405. It supports MCP versions 2025-03-26, 2025-06-18, and 2025-11-25. Clients send Accept including application/json and text/event-stream.
 
 ## Tools
 
@@ -41,7 +41,7 @@ All tools accept `options`, `timeout_ms` (1000–60000, default 45000), and a lo
 
 For uploaded media, the client must read and base64-encode the bytes; an attachment in a conversation is not automatically accessible to an MCP server. This uses normal JSON tool arguments with no upload endpoint or public URL requirement. Decoded uploads are limited to 16 MiB; request bodies to 24 MiB; returned ASCII to 8 MiB.
 
-The shared option schema is generated from the CLI registry through an explicit exposure table in `src/mcp-server/options.c`. It covers palette/characters, color/filter/render mode, dimensions, transforms, effects, FPS, snapshot/delay, seek/loop, test pattern/audio, audio processing, and render styling. Local mode additionally exposes custom render fonts and yt-dlp options. Unsupported/unknown arguments are rejected, including arguments hidden from the hosted schema.
+The shared option schema is generated from the CLI registry through an explicit exposure table in `src/mcp-server/request.c` and the shared `lib/options/json.c` adapter. It covers palette/characters, color/filter/render mode, dimensions, transforms, effects, FPS, snapshot/delay, seek/loop, test pattern/audio, audio processing, and render styling. Local mode additionally exposes custom render fonts and yt-dlp options. Unsupported/unknown arguments are rejected, including arguments hidden from the hosted schema.
 
 Defaults are 100×40, monochrome, snapshot enabled with delay zero, splash and speaker playback disabled. `snapshot-delay` measures capture duration after the first rendered frame, matching CLI semantics; it is not time from receipt of the tool call. Use `seek` to choose a media timestamp. Snapshot false is bounded by timeout and suitable for finite media; unbounded capture must finish via snapshot or returns a timeout error.
 
@@ -105,7 +105,7 @@ project server when prompted. Use `/mcp` to inspect its connection. This is the
 same suffixless build path as the Codex configuration; use an absolute path for
 a server in another checkout.
 
-For a networked server, start `ascii-chat mcp-server --server --address 127.0.0.1 --port 27228`
+For a networked server, start `ascii-chat mcp-server --http-server --address 127.0.0.1 --port 27228`
 separately and replace the stdio entry with:
 
 ```json
@@ -121,3 +121,27 @@ separately and replace the stdio entry with:
 
 HTTP uses the restricted tool profile described above. See the
 [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp) for project scope and approvals.
+
+## Telemetry
+
+MCP uses the ordinary `--otel-*` options, environment variables, configuration,
+and process shutdown. `ascii-chat.mcp.request` spans record bounded method and
+transport names; `ascii-chat.mcp.render` child spans preserve parent context across
+render threads and record the tool, output byte count, and failure category.
+HTTP responses record status codes and body sizes. Metrics under `ascii-chat.mcp.*`
+count requests, rejections, renders, failures, cancellations, deadlines, saved files,
+and output bytes, with render duration in seconds.
+
+Telemetry attributes do not include media URLs, file paths, uploaded bytes, ASCII
+content, credentials, or caller-supplied request IDs. Render subprocesses keep their
+isolated environment and do not export separately; the parent records their job.
+As with every other mode, test environments prohibit collector export.
+
+## Statistics
+
+MCP measurements use the process stats scope and canonical metric mappings in
+`include/ascii-chat/stats/telemetry.def`, so each observation feeds both local
+statistics and OTEL without duplicate counters. HTTP mode supports the `=` stats
+viewer, including totals, rates, render duration, and transport details. Use
+`--stats-interval 1` with either transport for periodic summaries. MCP summaries
+use stderr so stdio stdout stays a JSON-RPC stream; stdio never reads UI keys.

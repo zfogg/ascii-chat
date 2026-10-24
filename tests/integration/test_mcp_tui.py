@@ -18,7 +18,7 @@ def main():
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
-    term = Terminal([str(args.binary.resolve()), "mcp-server", "--server",
+    term = Terminal([str(args.binary.resolve()), "mcp-server", "--http-server",
                      "--port", str(port), "--status-screen"], rows=40, cols=130,
                     environment={"TERM": "xterm-256color"})
     try:
@@ -34,6 +34,20 @@ def main():
             capture(term, args.artifacts, label)
         term.write("0")
         term.pump(.2)
+        rendered = {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {
+            "name": "render_file", "arguments": {"options": {"test-pattern": True, "width": 40, "height": 16}}}}
+        request = urllib.request.Request(f"http://127.0.0.1:{port}/mcp", data=json.dumps(rendered).encode(),
+                                         headers={"Content-Type": "application/json", "Accept": "application/json, text/event-stream"})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            assert not json.load(response)["result"]["isError"]
+        term.write("=")
+        term.expect(lambda text: "LIVE STATS" in text and re.search(r"mcp_renders\s+1", text), "MCP live statistics", timeout=10)
+        capture(term, args.artifacts, "stats")
+        term.write("\t")
+        term.expect(lambda text: "Transport: HTTP" in text, "MCP statistics transport details", timeout=5)
+        capture(term, args.artifacts, "stats-details")
+        term.write("=")
+        term.expect(lambda text: "MCP Server" in text, "MCP status after statistics", timeout=5)
         request = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
             "name": "render_file", "arguments": {"options": {"width": 99999}}}}
         req = urllib.request.Request(f"http://127.0.0.1:{port}/mcp", data=json.dumps(request).encode(),
@@ -41,13 +55,13 @@ def main():
                                               "Accept": "application/json, text/event-stream"})
         with urllib.request.urlopen(req, timeout=5) as response:
             assert json.load(response)["result"]["isError"], "Invalid request was accepted"
-        term.expect(lambda text: "Error (1)" in text and "ERROR_INVALID_PARAM" in text,
+        term.expect(lambda text: "Error (1)" in text and ("ERROR_INVALID_PARAM" in text or "ERROR_USAGE" in text),
                     "MCP error popup", timeout=10)
         capture(term, args.artifacts, "popup")
         term.interrupt()
     finally:
         term.close()
-    print("MCP status, logs, error stacks, sync primitives, popup and shutdown passed")
+    print("MCP status, logs, error stacks, sync primitives, stats, popup and shutdown passed")
 
 
 if __name__ == "__main__":

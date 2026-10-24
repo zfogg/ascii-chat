@@ -117,7 +117,8 @@ Test(completions, mcp_mode_registry_includes_transport_and_bind_options) {
   size_t count = 0;
   const option_descriptor_t *options = options_registry_get_for_display(MODE_MCP_SERVER, false, &count);
   cr_assert_not_null(options);
-  const char *required[] = {"server", "origin", "port", "address", "address6"};
+  const char *required[] = {"http-server",           "http-origin", "http-tls-cert", "http-tls-key",
+                            "http-tls-key-password", "port",        "address",       "address6"};
   for (size_t r = 0; r < sizeof(required) / sizeof(required[0]); r++) {
     bool found = false;
     for (size_t i = 0; i < count; i++) {

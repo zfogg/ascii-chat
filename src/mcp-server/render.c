@@ -81,8 +81,10 @@ static void tick(uv_timer_t *timer) {
   render_worker_t *w = timer->data;
   if (atomic_load_bool(w->cancelled))
     stop_worker(w, "Rendering cancelled");
-  if (time_get_ns() - w->started > (uint64_t)w->timeout * 1000000)
+  if (!w->failed && time_get_ns() - w->started > (uint64_t)w->timeout * 1000000) {
+    w->result->timed_out = true;
     stop_worker(w, "Rendering exceeded timeout_ms");
+  }
   if (w->exited) {
     bool drained = uv_is_closing((uv_handle_t *)&w->output) && uv_is_closing((uv_handle_t *)&w->errors);
     // Allow pending pipe reads to drain after process exit, but bound inherited-descriptor stalls.
