@@ -226,8 +226,9 @@ static void draw_splash(frame_buffer_t *output, terminal_size_t size, const anim
 }
 
 void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_session_t *s) {
-  const char *mode = GET_OPTION(detected_mode) == MODE_MCP_SERVER ? "MCP Server" :
-                     GET_OPTION(detected_mode) == MODE_MIRROR ? "Mirror" : "Client";
+  const char *mode = GET_OPTION(detected_mode) == MODE_MCP_SERVER ? "MCP Server"
+                     : GET_OPTION(detected_mode) == MODE_MIRROR   ? "Mirror"
+                                                                  : "Client";
   char detail[256];
   size_t offset = terminal_screen_logs_offset();
   char offset_text[32];

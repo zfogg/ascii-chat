@@ -452,7 +452,7 @@ static const mode_descriptor_t *g_mode_lookup[] = {
     [MODE_DISCOVERY_SERVICE] = &g_mode_table[3], // acds_main
     [MODE_DISCOVERY] = &g_discovery_mode,        // discovery_main (implicit mode)
     [MODE_MCP_SERVER] = &g_mode_table[4],
-    [MODE_INVALID] = NULL,                       // Invalid: no descriptor
+    [MODE_INVALID] = NULL, // Invalid: no descriptor
 };
 
 /**
@@ -536,18 +536,23 @@ int main(int argc, char *argv[]) {
     }
     if (!strchr(argv[i], '=')) {
       const char *name = argv[i] + (argv[i][1] == '-' ? 2 : 1);
-      const registry_entry_t *descriptor = argv[i][1] == '-' ? registry_find_entry_by_name(name) :
-          (name[0] && !name[1] ? registry_find_entry_by_short(name[0]) : NULL);
-      if (descriptor && descriptor->type != OPTION_TYPE_BOOL && descriptor->type != OPTION_TYPE_ACTION && i + 1 < argc) {
+      const registry_entry_t *descriptor = argv[i][1] == '-'
+                                               ? registry_find_entry_by_name(name)
+                                               : (name[0] && !name[1] ? registry_find_entry_by_short(name[0]) : NULL);
+      if (descriptor && descriptor->type != OPTION_TYPE_BOOL && descriptor->type != OPTION_TYPE_ACTION &&
+          i + 1 < argc) {
         bool next_is_mode = strcmp(argv[i + 1], "discovery") == 0 || strcmp(argv[i + 1], "acds") == 0;
         for (const mode_descriptor_t *mode = g_mode_table; mode->name; ++mode)
-          if (strcmp(argv[i + 1], mode->name) == 0) next_is_mode = true;
-        if (!descriptor->optional_arg || (argv[i + 1][0] != '-' && !next_is_mode)) ++i;
+          if (strcmp(argv[i + 1], mode->name) == 0)
+            next_is_mode = true;
+        if (!descriptor->optional_arg || (argv[i + 1][0] != '-' && !next_is_mode))
+          ++i;
       }
     }
   }
   // Reserve stdout even in HTTP mode: configuration can select the transport later.
-  if (mcp_mode_early && mcp_stdio_reserve() != ASCIICHAT_OK) return ERROR_FILE_OPERATION;
+  if (mcp_mode_early && mcp_stdio_reserve() != ASCIICHAT_OK)
+    return ERROR_FILE_OPERATION;
   bool mcp_stdio = mcp_mode_early;
 
   // Show cursor early in case a previous session crashed with it hidden.

@@ -380,7 +380,8 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     if (key == KEY_ESCAPE || key == 3 || ui_input_expired(g_media_editor.deadline)) {
       if (key == KEY_PASTE)
         g_paste_ready = false;
-      ascii_otel_ui_usage("media_input_prompt", ui_input_expired(g_media_editor.deadline) ? "timed_out" : "cancelled", 0);
+      ascii_otel_ui_usage("media_input_prompt", ui_input_expired(g_media_editor.deadline) ? "timed_out" : "cancelled",
+                          0);
       g_media_editor.active = false;
       ui_prompt_remove();
     } else if (key == '\r' || key == '\n') {
@@ -419,7 +420,8 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
                           &g_media_editor.cursor, key);
       }
       if (ui_prompt_present_kind("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels",
-                            g_media_editor.buffer, g_media_editor.cursor, false, UI_PROMPT_MEDIA_INPUT) != ASCIICHAT_OK) {
+                                 g_media_editor.buffer, g_media_editor.cursor, false,
+                                 UI_PROMPT_MEDIA_INPUT) != ASCIICHAT_OK) {
         g_media_editor.active = false;
         ui_prompt_remove();
         CLEAR_ERRNO();
@@ -506,8 +508,8 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid prompt buffer");
   if (keyboard_init() != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_PLATFORM_INIT, "Cannot initialize prompt input");
-  const char *usage_name = ui_prompt_kind_name(password_dialog || (opts.kind == UI_PROMPT_INPUT && !opts.echo)
-                                                  ? UI_PROMPT_PASSWORD : opts.kind);
+  const char *usage_name = ui_prompt_kind_name(
+      password_dialog || (opts.kind == UI_PROMPT_INPUT && !opts.echo) ? UI_PROMPT_PASSWORD : opts.kind);
   if (password_dialog && incorrect)
     ascii_otel_ui_usage(usage_name, "rejected", 0);
   char *visible = SAFE_CALLOC(max_len, 1, char *);
@@ -561,10 +563,11 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
         display_cursor = 0;
     }
     // Presentation owns only the mask; the caller retains the credential.
-    result = password_dialog ? ui_password_prompt_present(prompt, visible, display_cursor, buttons.selected, incorrect,
-                                                          len >= MIN_PASSWORD_LENGTH, newline_limit)
-                             : ui_prompt_present_kind(timed_prompt, visible, display_cursor, !opts.echo,
-                                                      opts.kind == UI_PROMPT_INPUT && !opts.echo ? UI_PROMPT_PASSWORD : opts.kind);
+    result = password_dialog
+                 ? ui_password_prompt_present(prompt, visible, display_cursor, buttons.selected, incorrect,
+                                              len >= MIN_PASSWORD_LENGTH, newline_limit)
+                 : ui_prompt_present_kind(timed_prompt, visible, display_cursor, !opts.echo,
+                                          opts.kind == UI_PROMPT_INPUT && !opts.echo ? UI_PROMPT_PASSWORD : opts.kind);
     if (result != ASCIICHAT_OK)
       break;
     keyboard_key_t key = ui_input_wait_key(UI_SCREEN_PROMPT, 100);
@@ -644,8 +647,13 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
   }
   if (shutdown_is_requested())
     result = SET_ERRNO(ERROR_GENERAL, "Prompt interrupted");
-  ascii_otel_ui_usage(usage_name, result == ASCIICHAT_OK ? "submitted" : result == ERROR_PROMPT_TIMEOUT ? "timed_out"
-                                   : shutdown_is_requested() ? "interrupted" : cancelled ? "cancelled" : "failed", 0);
+  ascii_otel_ui_usage(usage_name,
+                      result == ASCIICHAT_OK           ? "submitted"
+                      : result == ERROR_PROMPT_TIMEOUT ? "timed_out"
+                      : shutdown_is_requested()        ? "interrupted"
+                      : cancelled                      ? "cancelled"
+                                                       : "failed",
+                      0);
   ui_prompt_remove();
   if (password_dialog) {
     const char *disable = "\033[<u\033[>4;0m";
@@ -697,7 +705,7 @@ asciichat_error_t ui_input_media_begin(const char *text) {
   g_media_editor.deadline = ui_input_deadline(120);
   asciichat_error_t result =
       ui_prompt_present_kind("Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels",
-                        g_media_editor.buffer, g_media_editor.cursor, false, UI_PROMPT_MEDIA_INPUT);
+                             g_media_editor.buffer, g_media_editor.cursor, false, UI_PROMPT_MEDIA_INPUT);
   g_media_editor.active = result == ASCIICHAT_OK;
   input_unlock();
   return result;

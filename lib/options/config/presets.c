@@ -191,10 +191,10 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                                           "9631:54e7:5b5c:80dc:0f62:1f01:7ccf:5512",
                                           "105.137.19.11 3a08:7276:ccb4:7b31:e934:5330:9b3a:9598",
                                           "::1 192.168.1.100"};
-  options_builder_add_positional(b, "bind-address",
-                                 "(optional) 0-2 addresses for a server to bind to, one IPv4 and the other IPv6.",
-                                 false, "POSITIONAL ARGUMENTS", server_examples, ARRAY_SIZE(server_examples),
-                                 OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_MCP_SERVER, parse_server_bind_address);
+  options_builder_add_positional(
+      b, "bind-address", "(optional) 0-2 addresses for a server to bind to, one IPv4 and the other IPv6.", false,
+      "POSITIONAL ARGUMENTS", server_examples, ARRAY_SIZE(server_examples),
+      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_MCP_SERVER, parse_server_bind_address);
 
   options_builder_add_positional(b, "address", "(optional) Server address for client to connect to.", false,
                                  "POSITIONAL ARGUMENTS", client_examples, ARRAY_SIZE(client_examples),

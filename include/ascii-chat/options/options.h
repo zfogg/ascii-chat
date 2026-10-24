@@ -933,8 +933,8 @@ typedef enum {
   OPTION_MODE_DISCOVERY_SVC = (1 << MODE_DISCOVERY_SERVICE), ///< Discovery server mode (bit 3)
   OPTION_MODE_DISCOVERY = (1 << MODE_DISCOVERY),             ///< Discovery mode (bit 4)
   OPTION_MODE_MCP_SERVER = (1 << MODE_MCP_SERVER),
-  OPTION_MODE_BINARY = 0x100,                                ///< Binary-level options (parsed before mode detection)
-  OPTION_MODE_ALL = 0x3F | 0x100                             ///< All modes + binary
+  OPTION_MODE_BINARY = 0x100,    ///< Binary-level options (parsed before mode detection)
+  OPTION_MODE_ALL = 0x3F | 0x100 ///< All modes + binary
 } option_mode_bitmask_t;
 
 /**
@@ -998,7 +998,7 @@ typedef struct options_state {
   // ============================================================================
   bool discovery;                                ///< Enable discovery session registration (default: false)
   char discovery_server[OPTIONS_BUFF_SIZE];      ///< discovery server address (default: 127.0.0.1)
-  bool mcp_server;                              ///< Restricted HTTP profile
+  bool mcp_server;                               ///< Restricted HTTP profile
   char mcp_origin[OPTIONS_BUFF_SIZE];            ///< Allowed HTTP Origin
   int discovery_port;                            ///< discovery server port (default: 27225)
   char discovery_service_url[OPTIONS_BUFF_SIZE]; ///< discovery server WebSocket URL (ws:// or wss://, mutually
