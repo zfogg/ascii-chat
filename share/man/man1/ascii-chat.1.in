@@ -85,7 +85,7 @@ See MCP SERVER below.
 
 .\" MANUAL-START: MCP SERVER
 .SH MCP SERVER
-Start \fBascii-chat mcp-server\fR from an MCP client for newline-delimited
+Start \fBascii-chat --no-check-update mcp-server\fR from an MCP client for newline-delimited
 JSON-RPC over stdio. Protocol output uses stdout; diagnostics use stderr.
 The local tools are \fBrender_file\fR (path or base64 bytes),
 \fBrender_url\fR (media URL), \fBrender_webcam\fR (camera device), and
@@ -112,9 +112,9 @@ Public deployments require an unprivileged sandbox and network egress controls f
 media decoders, plus reverse-proxy authentication and rate limits as appropriate.
 .PP
 .EX
-ascii-chat mcp-server
-ascii-chat mcp-server --server --address 127.0.0.1 --port 27228
-ascii-chat --log-level debug mcp-server --server --status-screen
+ascii-chat --no-check-update mcp-server
+ascii-chat --no-check-update mcp-server --server --address 127.0.0.1 --port 27228
+ascii-chat --no-check-update --log-level debug mcp-server --server --status-screen
 .EE
 .PP
 HTTP status supports the usual log viewer, error stacks, error popups, and sync diagnostics.

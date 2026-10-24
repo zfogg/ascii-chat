@@ -248,16 +248,16 @@ ascii-chat --completions powershell | Out-String | Invoke-Expression
 ## MCP Server
 
 Let an MCP client render files, URLs, webcams, and audio visualizations through
-`ascii-chat mcp-server`. The local stdio server provides `render_file`,
+`ascii-chat --no-check-update mcp-server`. The local stdio server provides `render_file`,
 `render_url`, `render_webcam`, and `render_visualization` (waveform or FFT), using
 the same rendering pipeline as the CLI.
 
 ```sh
 # Local stdio transport: launch this command from your MCP client
-ascii-chat mcp-server
+ascii-chat --no-check-update mcp-server
 
 # Restricted Streamable HTTP transport
-ascii-chat mcp-server --server --address 127.0.0.1 --port 27228
+ascii-chat --no-check-update mcp-server --server --address 127.0.0.1 --port 27228
 ```
 
 Tool arguments accept CLI rendering options such as `color-mode`, `width`,

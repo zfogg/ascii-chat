@@ -1,13 +1,13 @@
 # MCP rendering server
 
-`ascii-chat mcp-server` exposes four rendering tools over newline-delimited JSON-RPC on stdio. It runs through the ordinary application initialization, options, logging, error-stack and diagnostic workers. Protocol stdout is reserved before initialization; incidental terminal diagnostics go to stderr.
+`ascii-chat --no-check-update mcp-server` exposes four rendering tools over newline-delimited JSON-RPC on stdio. It runs through the ordinary application initialization, options, logging, error-stack and diagnostic workers. Protocol stdout is reserved before initialization; incidental terminal diagnostics go to stderr.
 
-`ascii-chat mcp-server --server` serves the restricted tool set at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. Examples:
+`ascii-chat --no-check-update mcp-server --server` serves the restricted tool set at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. Examples:
 
 ```sh
-ascii-chat mcp-server --server --port 28028 --address 127.0.0.1
-ascii-chat mcp-server --server 0.0.0.0 ::1 --port 27228
-ascii-chat --log-level debug --grep 'MCP|render' mcp-server --server --status-screen
+ascii-chat --no-check-update mcp-server --server --port 28028 --address 127.0.0.1
+ascii-chat --no-check-update mcp-server --server 0.0.0.0 ::1 --port 27228
+ascii-chat --no-check-update --log-level debug --grep 'MCP|render' mcp-server --server --status-screen
 ```
 
 The existing `--websocket-tls-cert`, `--websocket-tls-key`, and `--websocket-tls-key-password` configure HTTPS for this HTTP listener too. `--port-forwarding` maps the HTTP port with the existing UPnP implementation; `--max-clients` bounds concurrent render jobs (hard maximum four). HTTP status uses the shared terminal controller and log viewer, including error popups and debug controls. Debug builds retain `--sync-state`, `--backtrace`, and memory diagnostics. Stdio does not consume terminal keys: stdin is the protocol stream.
@@ -76,7 +76,7 @@ Register a built executable in the project's `.codex/config.toml`:
 ```toml
 [mcp_servers.ascii_chat]
 command = "./build/bin/ascii-chat"
-args = ["mcp-server"]
+args = ["--no-check-update", "mcp-server"]
 tool_timeout_sec = 70
 ```
 

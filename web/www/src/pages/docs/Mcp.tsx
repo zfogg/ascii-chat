@@ -42,7 +42,7 @@ export default function Mcp() {
               rendering pipeline as the CLI. JSON-RPC messages use stdin and
               stdout; logs and diagnostics go to stderr.
             </p>
-            <CodeBlock language="bash">{`ascii-chat mcp-server`}</CodeBlock>
+            <CodeBlock language="bash">{`ascii-chat --no-check-update mcp-server`}</CodeBlock>
             <p className="docs-paragraph">
               For a source checkout, the project configuration uses this entry
               in .codex/config.toml. Build the executable before starting a new
@@ -197,9 +197,9 @@ tool_timeout_sec = 70`}</CodeBlock>
             <Heading level={2} className="heading-2 text-purple-400">
               Serve Streamable HTTP
             </Heading>
-            <CodeBlock language="bash">{`ascii-chat mcp-server --server --address 127.0.0.1 --port 27228
+            <CodeBlock language="bash">{`ascii-chat --no-check-update mcp-server --server --address 127.0.0.1 --port 27228
 # IPv4 and IPv6 bind addresses
-ascii-chat mcp-server --server 0.0.0.0 ::1 --port 28028`}</CodeBlock>
+ascii-chat --no-check-update mcp-server --server 0.0.0.0 ::1 --port 28028`}</CodeBlock>
             <p className="docs-paragraph">
               Connect your HTTP MCP client to http://127.0.0.1:27228/mcp. The
               default port is 27228; --port or ASCII_CHAT_PORT overrides it.
@@ -234,7 +234,7 @@ ascii-chat mcp-server --server 0.0.0.0 ::1 --port 28028`}</CodeBlock>
             <Heading level={2} className="heading-2 text-yellow-400">
               Logs and diagnostics
             </Heading>
-            <CodeBlock language="bash">{`ascii-chat --log-level debug --grep 'MCP|render' mcp-server --server --status-screen`}</CodeBlock>
+            <CodeBlock language="bash">{`ascii-chat --no-check-update --log-level debug --grep 'MCP|render' mcp-server --server --status-screen`}</CodeBlock>
             <p className="docs-paragraph">
               HTTP status uses the shared terminal UI, including the log viewer,
               error stacks, error popups, and sync primitives. Debug builds
