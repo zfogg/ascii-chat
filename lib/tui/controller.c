@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/ui/text.h>
 #include <ascii-chat/ui/progress.h>
 #include <ascii-chat/tui/keyboard_help.h>
@@ -691,6 +692,29 @@ static void title_update(int screen, const void *snapshot, bool covered) {
   }
 }
 
+static const char *usage_screen_name(int screen) {
+  static const char *names[UI_SCREEN_COUNT] = {
+      [UI_SCREEN_STATUS] = "status", [UI_SCREEN_MEDIA] = "media", [UI_SCREEN_SPLASH] = "splash",
+      [UI_SCREEN_RENDER_PROGRESS] = "render_progress", [UI_SCREEN_LOGS] = "logs", [UI_SCREEN_ERRNO] = "errno",
+      [UI_SCREEN_HELP] = "help", [UI_SCREEN_STATS] = "stats", [UI_SCREEN_SYNC] = "sync", [UI_SCREEN_MDNS] = "mdns",
+      [UI_SCREEN_UPDATE] = "update", [UI_SCREEN_NOTICE] = "notice", [UI_SCREEN_PROMPT] = "prompt",
+      [UI_SCREEN_ERROR] = "error"};
+  return screen >= 0 && screen < UI_SCREEN_COUNT ? names[screen] : "none";
+}
+
+// Only the presentation thread owns this state. Repaints do not create visits.
+static void usage_transition(int next, int *previous, uint64_t *since) {
+  if (next == *previous)
+    return;
+  uint64_t now = time_get_ns();
+  if (*previous >= 0)
+    ascii_otel_ui_usage(usage_screen_name(*previous), "leave", now - *since);
+  if (next >= 0)
+    ascii_otel_ui_usage(usage_screen_name(next), "enter", 0);
+  *previous = next;
+  *since = now;
+}
+
 static void *presentation_main(void *unused) {
   (void)unused;
   g_owner = true;
@@ -702,7 +726,10 @@ static void *presentation_main(void *unused) {
   uint64_t reply_requested_ns = 0, reply_frame_ns = 0, reply_frame_id = 0, reply_written_ns = 0;
   int reply_support = 0;
   bool awaiting_reply = false;
+  int usage_screen = -1;
+  uint64_t usage_since = 0;
   while (!atomic_load_bool(&g_presentation_stop_requested)) {
+    usage_transition(ui_controller_current_screen(), &usage_screen, &usage_since);
     uint64_t iteration_started_ns = time_get_ns();
     if (ui_controller_current_screen() < 0)
       title_update(-1, NULL, false);
@@ -1026,6 +1053,7 @@ static void *presentation_main(void *unused) {
       cond_timedwait(&g_render_requested, &g_mutex, refresh_deadline - now);
     mutex_unlock(&g_mutex);
   }
+  usage_transition(-1, &usage_screen, &usage_since);
   if (g_title_saved) {
     asciichat_errno_scope_t scope = errno_scope_begin();
     (void)terminal_title_restore(g_title_fd);

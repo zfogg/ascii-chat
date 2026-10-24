@@ -399,6 +399,15 @@ void ascii_otel_scope_end(ascii_otel_scope_t *s) {
   s->retained = false;
   release();
 }
+void ascii_otel_ui_usage(const char *screen, const char *event, uint64_t duration_ns) {
+  // UI transitions must not inherit realtime media sampling decisions.
+  gotel_context_t root = {0};
+  ASCII_OTEL_SCOPE_PARENT(UI_USAGE, &root);
+  ASCII_OTEL_ATTR_STRING("ascii_chat.ui.screen", screen);
+  ASCII_OTEL_ATTR_STRING("ascii_chat.ui.event", event);
+  ASCII_OTEL_ATTR_INT("ascii_chat.ui.duration_ns", (int64_t)duration_ns);
+}
+
 void ascii_otel_call_session_used(const char *session_string) {
   if (!session_string || !session_string[0])
     return;

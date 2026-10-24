@@ -168,3 +168,5 @@ ASCII_OTEL_OPERATION(FRAME_VALIDATION_REJECTED, "ascii-chat.frame.validation.rej
 ASCII_OTEL_OPERATION(FAILURE_CRYPTO, "ascii-chat.failure.crypto", false)
 ASCII_OTEL_OPERATION(FAILURE_PROTOCOL, "ascii-chat.failure.protocol", false)
 ASCII_OTEL_OPERATION(FAILURE_DISCOVERY, "ascii-chat.failure.discovery", false)
+
+ASCII_OTEL_OPERATION(UI_USAGE, "ascii-chat.ui.usage", false)

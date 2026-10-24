@@ -494,3 +494,26 @@ four ERROR spans and exact counter totals with media sampling set to zero:
 ```sh
 python tests/manual/test_otel_frame_validation.py build/bin/asciichat.dll
 ```
+
+## TUI usage
+
+`ascii-chat.ui.usage` emits unsampled-by-realtime-policy root events for native
+interactive presentation. `ascii_chat.ui.screen` is a fixed screen name and
+`ascii_chat.ui.event` is `enter`, `leave`, or `shortcut`. Leave events carry
+`ascii_chat.ui.duration_ns` (monotonic elapsed time); other events carry zero.
+These follow the existing trace enablement, test isolation and exporter settings.
+No prompt text, passwords, media paths, URLs, or raw key values are attached.
+
+The presentation thread observes foreground selection at loop boundaries, including
+error overlays and screens covered by terminal-size warnings. Repaints do not
+create visits. Returning from an overlay starts a new visit. Selection is not
+proof of a successful terminal write; very short transitions between loop samples
+can be missed. The final visit closes on orderly presentation-thread shutdown;
+abrupt exits and dropped telemetry can leave incomplete visits. Shortcut events
+count help, logs, stats and error-stack requests dispatched by the shared input
+policy, including toggles off; they do not assert successful presentation.
+
+The **ascii-chat - TUI usage** Spaniel dashboard groups observed visits, shortcut
+requests and completed visit durations by mode service and screen across the
+active recording session. It counts events rather than exported cumulative
+snapshots; no data means no observed usage, not proof that a TUI was unused.

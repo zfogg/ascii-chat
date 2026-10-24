@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/tui/shortcuts.h>
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/buttons.h>
@@ -239,18 +240,22 @@ static keyboard_key_t input_common_key(keyboard_key_t key, int current) {
     return key;
   tui_shortcut_t action = tui_shortcut_action(key);
   if (action == TUI_SHORTCUT_STATS) {
+    ascii_otel_ui_usage("stats", "shortcut", 0);
     stats_runtime_toggle();
     return KEY_NONE;
   }
   if (action == TUI_SHORTCUT_HELP && current != UI_SCREEN_LOGS) {
+    ascii_otel_ui_usage("help", "shortcut", 0);
     keyboard_help_toggle_terminal(ui_controller_active_fd());
     return KEY_NONE;
   }
   if (action == TUI_SHORTCUT_LOGS) {
+    ascii_otel_ui_usage("logs", "shortcut", 0);
     ui_controller_toggle_logs();
     return KEY_NONE;
   }
   if (action == TUI_SHORTCUT_ERRORS) {
+    ascii_otel_ui_usage("errno", "shortcut", 0);
     ui_errno_stacks_toggle();
     return KEY_NONE;
   }

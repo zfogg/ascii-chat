@@ -1,0 +1,43 @@
+version: 1
+id: 841d15ad-05cf-404e-9caf-2eb91a2de81d
+name: ascii-chat - TUI usage
+description: Observed usage across the active recording session. Visits measure the
+  selected foreground screen at presentation-loop boundaries, including overlays and
+  size warnings. Returning from an overlay starts a new visit. Completed durations
+  exclude unfinished visits and abrupt process exits; shortcut requests do not guarantee
+  a successful screen switch. Tracing/export loss can undercount. No prompt content
+  or raw keys are collected.
+magic_variables:
+- name: session_id
+  kind: string
+panels:
+- title: Screen visits and shortcut requests
+  display_type: table
+  query: "WITH usage AS (SELECT service_name, json_extract_string(attributes, '$.\"\
+    ascii_chat.ui.screen\"') AS screen,\n       json_extract_string(attributes, '$.\"\
+    ascii_chat.ui.event\"') AS event,\n       try_cast(json_extract_string(attributes,\
+    \ '$.\"ascii_chat.ui.duration_ns\"') AS BIGINT)/1e9 AS seconds\nFROM spans WHERE\
+    \ session_id=$session_id AND name='ascii-chat.ui.usage') SELECT service_name,\
+    \ screen, count(*) FILTER (WHERE event='enter') AS visits, count(*) FILTER (WHERE\
+    \ event='shortcut') AS shortcut_requests FROM usage GROUP BY service_name,screen\
+    \ ORDER BY visits DESC"
+  settings: {}
+  layout:
+    w: 12
+    h: 2
+  position: 0
+- title: 'Completed screen visits: time selected'
+  display_type: table
+  query: "WITH usage AS (SELECT service_name, json_extract_string(attributes, '$.\"\
+    ascii_chat.ui.screen\"') AS screen,\n       json_extract_string(attributes, '$.\"\
+    ascii_chat.ui.event\"') AS event,\n       try_cast(json_extract_string(attributes,\
+    \ '$.\"ascii_chat.ui.duration_ns\"') AS BIGINT)/1e9 AS seconds\nFROM spans WHERE\
+    \ session_id=$session_id AND name='ascii-chat.ui.usage') SELECT service_name,screen,count(*)\
+    \ AS completed_visits,round(sum(seconds),3) AS total_seconds,round(avg(seconds),3)\
+    \ AS mean_seconds FROM usage WHERE event='leave' GROUP BY service_name,screen\
+    \ ORDER BY total_seconds DESC"
+  settings: {}
+  layout:
+    w: 12
+    h: 2
+  position: 1
