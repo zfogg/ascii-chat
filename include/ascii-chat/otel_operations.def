@@ -170,3 +170,8 @@ ASCII_OTEL_OPERATION(FAILURE_PROTOCOL, "ascii-chat.failure.protocol", false)
 ASCII_OTEL_OPERATION(FAILURE_DISCOVERY, "ascii-chat.failure.discovery", false)
 
 ASCII_OTEL_OPERATION(UI_USAGE, "ascii-chat.ui.usage", false)
+
+ASCII_OTEL_OPERATION(MCP_REQUEST, "ascii-chat.mcp.request", false)
+ASCII_OTEL_OPERATION(MCP_RENDER, "ascii-chat.mcp.render", false)
+ASCII_OTEL_OPERATION(MCP_PROTOCOL_ERROR, "ascii-chat.mcp.protocol.error", false)
+ASCII_OTEL_OPERATION(MCP_HTTP_RESPONSE, "ascii-chat.mcp.http.response", false)

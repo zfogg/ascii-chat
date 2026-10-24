@@ -1,3 +1,9 @@
 # Local collector started with deploy/otel/docker-compose.yml.
 [mcp_servers.spaniel]
 url = "http://127.0.0.1:28080/mcp"
+
+# Build the native executable before opening a chat that uses these tools.
+[mcp_servers.ascii_chat]
+command = "./build/bin/ascii-chat"
+args = ["mcp-server"]
+tool_timeout_sec = 70

@@ -2022,3 +2022,26 @@ if(BUILD_TESTS AND TARGET ascii-chat)
     set_tests_properties(password-prompt PROPERTIES LABELS "integration;terminal" TIMEOUT 180
         RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
 endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
+    foreach(_mcp_tool IN ITEMS file url webcam visualization)
+        asciichat_add_python_test(mcp-render-${_mcp_tool}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_mcp_render_${_mcp_tool}.py
+            --binary $<TARGET_FILE:ascii-chat>)
+        set_tests_properties(mcp-render-${_mcp_tool} PROPERTIES
+            LABELS "integration;mcp" TIMEOUT 240 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    endforeach()
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
+    asciichat_add_python_test(mcp-protocol
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_mcp_protocol.py --binary $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(mcp-protocol PROPERTIES LABELS "integration;mcp" TIMEOUT 180 RUN_SERIAL TRUE)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev|RelWithDebInfo)$")
+    asciichat_add_python_test(mcp-tui
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_mcp_tui.py --binary $<TARGET_FILE:ascii-chat>
+        --artifacts ${CMAKE_BINARY_DIR}/Testing/mcp-tui)
+    set_tests_properties(mcp-tui PROPERTIES LABELS "integration;mcp;tui" TIMEOUT 90 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+endif()

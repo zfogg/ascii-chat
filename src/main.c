@@ -39,6 +39,8 @@
 #include "server/main.h"
 #include "client/main.h"
 #include "mirror/main.h"
+#include "mcp-server/mcp.h"
+#include <ascii-chat/options/registry/core.h>
 #include "discovery-service/main.h"
 #include "discovery/main.h"
 #include <ascii-chat/discovery/session.h>
@@ -123,6 +125,8 @@ static const char *get_mode_log_filename(asciichat_mode_t mode) {
     return "client.log";
   case MODE_MIRROR:
     return "mirror.log";
+  case MODE_MCP_SERVER:
+    return "mcp-server.log";
   case MODE_DISCOVERY_SERVICE:
     return "acds.log";
   case MODE_DISCOVERY:
@@ -405,6 +409,7 @@ static const mode_descriptor_t g_mode_table[] = {
         .description = "Secure P2P session signalling",
         .entry_point = acds_main,
     },
+    {.name = "mcp-server", .description = "MCP rendering tools", .entry_point = mcp_server_main},
     {.name = NULL, .description = NULL, .entry_point = NULL},
 };
 
@@ -446,7 +451,8 @@ static const mode_descriptor_t *g_mode_lookup[] = {
     [MODE_MIRROR] = &g_mode_table[2],            // mirror_main
     [MODE_DISCOVERY_SERVICE] = &g_mode_table[3], // acds_main
     [MODE_DISCOVERY] = &g_discovery_mode,        // discovery_main (implicit mode)
-    [MODE_INVALID] = NULL,                       // Invalid: no descriptor
+    [MODE_MCP_SERVER] = &g_mode_table[4],
+    [MODE_INVALID] = NULL, // Invalid: no descriptor
 };
 
 /**
@@ -520,8 +526,42 @@ int main(int argc, char *argv[]) {
   g_argv = argv;
   (void)atexit(platform_process_title_destroy);
 
+  // Determine the first positional argument without mistaking an option value for a mode.
+  registry_init_size();
+  bool mcp_mode_early = false;
+  for (int i = 1; i < argc; ++i) {
+    if (argv[i][0] != '-') {
+      mcp_mode_early = strcmp(argv[i], "mcp-server") == 0;
+      break;
+    }
+    if (!strchr(argv[i], '=')) {
+      const char *name = argv[i] + (argv[i][1] == '-' ? 2 : 1);
+      const registry_entry_t *descriptor = argv[i][1] == '-'
+                                               ? registry_find_entry_by_name(name)
+                                               : (name[0] && !name[1] ? registry_find_entry_by_short(name[0]) : NULL);
+      if (descriptor && descriptor->type != OPTION_TYPE_BOOL && descriptor->type != OPTION_TYPE_ACTION &&
+          i + 1 < argc) {
+        bool next_is_mode = strcmp(argv[i + 1], "discovery") == 0 || strcmp(argv[i + 1], "acds") == 0;
+        for (const mode_descriptor_t *mode = g_mode_table; mode->name; ++mode)
+          if (strcmp(argv[i + 1], mode->name) == 0)
+            next_is_mode = true;
+        if (!descriptor->optional_arg || (argv[i + 1][0] != '-' && !next_is_mode))
+          ++i;
+      }
+    }
+  }
+  bool help_requested = false;
+  for (int i = 1; i < argc; ++i)
+    if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
+      help_requested = true;
+  mcp_mode_early = mcp_mode_early && !help_requested;
+  // Reserve stdout even in HTTP mode: configuration can select the transport later.
+  if (mcp_mode_early && mcp_stdio_reserve() != ASCIICHAT_OK)
+    return ERROR_FILE_OPERATION;
+  bool mcp_stdio = mcp_mode_early;
+
   // Show cursor early in case a previous session crashed with it hidden.
-  if (platform_isatty(STDOUT_FILENO))
+  if (!mcp_stdio && platform_isatty(STDOUT_FILENO))
     (void)ui_controller_write(STDOUT_FILENO, "\033[?25h", 6);
 
   // VERY FIRST: Scan for --color BEFORE ANY logging initialization
@@ -651,6 +691,8 @@ int main(int argc, char *argv[]) {
       detected_mode = MODE_CLIENT;
     } else if (strcmp(mode_str, "mirror") == 0) {
       detected_mode = MODE_MIRROR;
+    } else if (strcmp(mode_str, "mcp-server") == 0) {
+      detected_mode = MODE_MCP_SERVER;
     } else if (strcmp(mode_str, "acds") == 0 || strcmp(mode_str, "discovery-service") == 0) {
       detected_mode = MODE_DISCOVERY_SERVICE;
     } else if (strcmp(mode_str, "discovery") == 0) {
@@ -992,7 +1034,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Automatic update check in background thread (once per week maximum)
-  if (!GET_OPTION(no_check_update)) {
+  if (opts->detected_mode != MODE_MCP_SERVER && !GET_OPTION(no_check_update)) {
     update_banner_start_check();
   }
 
@@ -1048,7 +1090,8 @@ int main(int argc, char *argv[]) {
     log_debug("Process title initialization was unavailable %s", asciichat_error_format(NULL, title_init_result));
   }
   asciichat_errno_scope_t terminal_title_scope = errno_scope_begin();
-  (void)ui_controller_title_start(mode->name, platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO);
+  if (opts->detected_mode != MODE_MCP_SERVER || GET_OPTION(http_server))
+    (void)ui_controller_title_start(mode->name, platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO);
   errno_scope_end(terminal_title_scope, ASCIICHAT_ERRNO_DISMISSED);
   asciichat_error_t stats_result = stats_runtime_start(mode->name, (unsigned)GET_OPTION(stats_interval));
   if (stats_result != ASCIICHAT_OK)

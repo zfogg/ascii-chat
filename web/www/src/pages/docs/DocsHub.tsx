@@ -30,6 +30,13 @@ export default function DocsHub() {
 
   const docSections = [
     {
+      icon: "🤖",
+      title: "MCP Server",
+      description: "AI tool setup, stdio and HTTP, image and video exports",
+      to: "/docs/mcp",
+      ...colorOptions[2],
+    },
+    {
       icon: "⚙️",
       title: "Configuration",
       description: "Config files, options, color schemes, shell completions",

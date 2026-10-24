@@ -18,7 +18,35 @@
 // ============================================================================
 // NETWORK CATEGORY - Network protocol options
 // ============================================================================
+static bool parse_mcp_bind(const char *arg, void *field, char **error) {
+  options_t *opts = (options_t *)((char *)field - offsetof(options_t, address));
+  return parse_server_bind_address(arg, opts, NULL, 0, error) == 1;
+}
+static bool parse_mcp_bind6(const char *arg, void *field, char **error) {
+  options_t *opts = (options_t *)((char *)field - offsetof(options_t, address6));
+  return parse_server_bind_address(arg, opts, NULL, 0, error) == 1;
+}
 const registry_entry_t g_network_entries[] = {
+    {.long_name = "address",
+     .type = OPTION_TYPE_STRING,
+     .offset = offsetof(options_t, address),
+     .default_value = "127.0.0.1",
+     .default_value_size = OPTIONS_BUFF_SIZE,
+     .help_text = "MCP bind address (IPv4 or IPv6); also accepts positional bind addresses.",
+     .group = "NETWORK",
+     .env_var_name = "ASCII_CHAT_ADDRESS",
+     .parse_fn = parse_mcp_bind,
+     .mode_bitmask = OPTION_MODE_MCP_SERVER},
+    {.long_name = "address6",
+     .type = OPTION_TYPE_STRING,
+     .offset = offsetof(options_t, address6),
+     .default_value = "",
+     .default_value_size = OPTIONS_BUFF_SIZE,
+     .help_text = "Additional MCP IPv6 bind address.",
+     .group = "NETWORK",
+     .env_var_name = "ASCII_CHAT_ADDRESS6",
+     .parse_fn = parse_mcp_bind6,
+     .mode_bitmask = OPTION_MODE_MCP_SERVER},
     // NETWORK GROUP - port and client management
     {"port",
      'p',
@@ -27,7 +55,7 @@ const registry_entry_t g_network_entries[] = {
      NULL, // Use mode_default_getter instead
      sizeof(int),
      "Port to host a server or discovery-service on, or port to connect to a server as a client (default: 27224 for "
-     "server/client, 27225 for discovery-service).",
+     "server/client, 27225 for discovery-service, 27228 for mcp-server).",
      "NETWORK",
      NULL,
      false,
@@ -36,7 +64,8 @@ const registry_entry_t g_network_entries[] = {
      parse_port_option,
      false,
      false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_CLIENT | OPTION_MODE_MCP_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC |
+         OPTION_MODE_DISCOVERY,
      {.numeric_range = {1, 65535, 1}, .input_type = OPTION_INPUT_NUMERIC},
      get_default_port},
     {"websocket-port",
@@ -57,6 +86,33 @@ const registry_entry_t g_network_entries[] = {
      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
      {.numeric_range = {1, 65535, 1}, .input_type = OPTION_INPUT_NUMERIC},
      get_default_websocket_port},
+    {.long_name = "http-tls-cert",
+     .type = OPTION_TYPE_STRING,
+     .offset = offsetof(options_t, http_tls_cert),
+     .default_value_size = OPTIONS_BUFF_SIZE,
+     .help_text = "HTTP TLS certificate file path for MCP HTTPS.",
+     .group = "NETWORK",
+     .env_var_name = "ASCII_CHAT_HTTP_TLS_CERT",
+     .mode_bitmask = OPTION_MODE_MCP_SERVER,
+     .metadata = {.input_type = OPTION_INPUT_STRING}},
+    {.long_name = "http-tls-key",
+     .type = OPTION_TYPE_STRING,
+     .offset = offsetof(options_t, http_tls_key),
+     .default_value_size = OPTIONS_BUFF_SIZE,
+     .help_text = "HTTP TLS private key file path for MCP HTTPS.",
+     .group = "NETWORK",
+     .env_var_name = "ASCII_CHAT_HTTP_TLS_KEY",
+     .mode_bitmask = OPTION_MODE_MCP_SERVER,
+     .metadata = {.input_type = OPTION_INPUT_STRING}},
+    {.long_name = "http-tls-key-password",
+     .type = OPTION_TYPE_STRING,
+     .offset = offsetof(options_t, http_tls_key_password),
+     .default_value_size = OPTIONS_BUFF_SIZE,
+     .help_text = "HTTP TLS private key password (use ASCII_CHAT_HTTP_TLS_KEY_PASSWORD).",
+     .group = "NETWORK",
+     .env_var_name = "ASCII_CHAT_HTTP_TLS_KEY_PASSWORD",
+     .mode_bitmask = OPTION_MODE_MCP_SERVER,
+     .metadata = {.input_type = OPTION_INPUT_STRING}},
     {"websocket-tls-cert",
      '\0',
      OPTION_TYPE_STRING,
@@ -127,7 +183,7 @@ const registry_entry_t g_network_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
+     OPTION_MODE_MCP_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
      {.numeric_range = {1, 99, 1}, .examples = g_maxclients_examples, .input_type = OPTION_INPUT_NUMERIC},
      NULL},
     {"reconnect-attempts",
@@ -163,7 +219,8 @@ const registry_entry_t g_network_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_MCP_SERVER | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_CLIENT |
+         OPTION_MODE_DISCOVERY,
      {0},
      NULL},
     {"scan",

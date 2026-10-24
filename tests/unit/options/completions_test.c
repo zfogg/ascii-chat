@@ -8,6 +8,9 @@
 
 #include <ascii-chat/options/completions/completions.h>
 #include <stdio.h>
+#include <string.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/options/registry.h>
 
 TestSuite(completions);
 
@@ -108,4 +111,24 @@ Test(completions, generate_null_output) {
 Test(completions, generate_invalid_format) {
   asciichat_error_t result = completions_generate_for_shell(COMPLETION_FORMAT_UNKNOWN, stdout);
   cr_assert_neq(result, ASCIICHAT_OK, "Should fail with invalid completion format");
+}
+
+Test(completions, mcp_mode_registry_includes_transport_and_bind_options) {
+  size_t count = 0;
+  const option_descriptor_t *options = options_registry_get_for_display(MODE_MCP_SERVER, false, &count);
+  cr_assert_not_null(options);
+  const char *required[] = {"http-server",           "http-origin", "http-tls-cert", "http-tls-key",
+                            "http-tls-key-password", "port",        "address",       "address6"};
+  for (size_t r = 0; r < sizeof(required) / sizeof(required[0]); r++) {
+    bool found = false;
+    for (size_t i = 0; i < count; i++) {
+      found |= strcmp(options[i].long_name, required[r]) == 0;
+    }
+    cr_assert(found, "Missing MCP completion option: %s", required[r]);
+  }
+  SAFE_FREE(options);
+  options = options_registry_get_for_mode(MODE_MCP_SERVER, &count);
+  cr_assert_not_null(options);
+  cr_assert_gt(count, 0);
+  SAFE_FREE(options);
 }

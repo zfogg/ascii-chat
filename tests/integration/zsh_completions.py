@@ -54,6 +54,10 @@ esac
              f"env ZDOTDIR={shlex.quote(directory)} zsh -i")
         time.sleep(1)
         cases = [
+            ("ascii-chat mcp", ["ascii-chat mcp-server"], []),
+            ("ascii-chat mcp-server --http-ser", ["--http-server"], []),
+            ("ascii-chat mcp-server --add", ["--address", "--address6"], []),
+            ("ascii-chat mcp-server --status-screen ", ["true", "false"], []),
             ("ascii-chat --color-mode ", ["truecolor", "mono", "Monochrome only"], []),
             ("ascii-chat mirror --render-mode ", ["foreground", "2x vertical resolution"], []),
             ("ascii-chat mirror --render-mode=", ["foreground", "background"], []),

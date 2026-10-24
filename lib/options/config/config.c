@@ -792,7 +792,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     if (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY)) {
       // Option has specific mode restrictions - check if current mode matches
       bool applies_to_mode = false;
-      if (detected_mode >= 0 && detected_mode <= MODE_DISCOVERY) {
+      if (detected_mode >= 0 && detected_mode < MODE_INVALID) {
         option_mode_bitmask_t mode_bit = (option_mode_bitmask_t)(1 << detected_mode);
         applies_to_mode = (meta->mode_bitmask & mode_bit) != 0;
       }
@@ -1272,6 +1272,8 @@ static asciichat_mode_t extract_mode_from_bitmask(option_mode_bitmask_t mode_bit
     return MODE_DISCOVERY_SERVICE;
   if (mode_bitmask == OPTION_MODE_DISCOVERY)
     return MODE_DISCOVERY;
+  if (mode_bitmask == OPTION_MODE_MCP_SERVER)
+    return MODE_MCP_SERVER;
   // Bitmask has zero or multiple bits set
   return MODE_INVALID;
 }
@@ -1520,7 +1522,8 @@ asciichat_error_t config_create_default(const char *config_path) {
 
       char question[4096];
       safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", config_path_expanded);
-      bool overwrite = ui_notice_confirm_kind(UI_PROMPT_CONFIG_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
+      bool overwrite =
+          ui_notice_confirm_kind(UI_PROMPT_CONFIG_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
       if (!overwrite) {
         log_plain("Config file creation cancelled.");
         return SET_ERRNO(ERROR_CONFIG, "User cancelled overwrite");

@@ -134,6 +134,7 @@ export default defineConfig({
         "/docs/snapshot",
         "/docs/network",
         "/docs/media",
+        "/docs/mcp",
         "/docs/architecture",
       ],
     }),

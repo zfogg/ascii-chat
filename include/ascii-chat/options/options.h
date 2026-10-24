@@ -564,6 +564,9 @@ typedef enum {
 /** @brief Default WebSocket port for discovery-service mode (integer) */
 #define OPT_WEBSOCKET_PORT_ACDS_DEFAULT 27227
 
+/** MCP HTTP listener port. */
+#define OPT_MCP_PORT_DEFAULT 27228
+
 /** @brief Default maximum concurrent clients (server only) */
 #define OPT_MAX_CLIENTS_DEFAULT 9
 
@@ -912,6 +915,7 @@ typedef enum {
   MODE_MIRROR,            ///< Mirror mode - local webcam viewing (no network)
   MODE_DISCOVERY_SERVICE, ///< Discovery server mode - session management and WebRTC signaling
   MODE_DISCOVERY,         ///< Discovery mode - participant that can dynamically become host
+  MODE_MCP_SERVER,        ///< Model Context Protocol rendering server
   MODE_INVALID            ///< Invalid mode
 } asciichat_mode_t;
 
@@ -928,8 +932,9 @@ typedef enum {
   OPTION_MODE_MIRROR = (1 << MODE_MIRROR),                   ///< Mirror mode (bit 2)
   OPTION_MODE_DISCOVERY_SVC = (1 << MODE_DISCOVERY_SERVICE), ///< Discovery server mode (bit 3)
   OPTION_MODE_DISCOVERY = (1 << MODE_DISCOVERY),             ///< Discovery mode (bit 4)
-  OPTION_MODE_BINARY = 0x100,                                ///< Binary-level options (parsed before mode detection)
-  OPTION_MODE_ALL = 0x1F | 0x100                             ///< All modes + binary
+  OPTION_MODE_MCP_SERVER = (1 << MODE_MCP_SERVER),
+  OPTION_MODE_BINARY = 0x100,    ///< Binary-level options (parsed before mode detection)
+  OPTION_MODE_ALL = 0x3F | 0x100 ///< All modes + binary
 } option_mode_bitmask_t;
 
 /**
@@ -991,8 +996,14 @@ typedef struct options_state {
   // ============================================================================
   // Discovery Service Options (server only)
   // ============================================================================
-  bool discovery;                                ///< Enable discovery session registration (default: false)
-  char discovery_server[OPTIONS_BUFF_SIZE];      ///< discovery server address (default: 127.0.0.1)
+  bool discovery;                           ///< Enable discovery session registration (default: false)
+  char discovery_server[OPTIONS_BUFF_SIZE]; ///< discovery server address (default: 127.0.0.1)
+  // MCP HTTP transport
+  bool http_server;                              ///< Serve MCP tools over HTTP rather than stdio
+  char http_origin[OPTIONS_BUFF_SIZE];           ///< Allowed HTTP Origin
+  char http_tls_cert[OPTIONS_BUFF_SIZE];         ///< HTTP TLS certificate path
+  char http_tls_key[OPTIONS_BUFF_SIZE];          ///< HTTP TLS key path
+  char http_tls_key_password[OPTIONS_BUFF_SIZE]; ///< HTTP TLS key password
   int discovery_port;                            ///< discovery server port (default: 27225)
   char discovery_service_url[OPTIONS_BUFF_SIZE]; ///< discovery server WebSocket URL (ws:// or wss://, mutually
                                                  ///< exclusive with discovery_port)

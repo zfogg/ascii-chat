@@ -21,6 +21,13 @@ set(APP_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/client/audio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client/keepalive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client/webrtc.c
+    # MCP rendering server
+    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/request.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/protocol.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/render.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/stdio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/http.c
     # Mirror mode
     ${CMAKE_CURRENT_SOURCE_DIR}/mirror/main.c
     # Discovery-service mode
@@ -58,6 +65,8 @@ endif()
 
 if(BUILD_EXECUTABLES)
 add_executable(ascii-chat ${APP_SRCS})
+target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LIBUV_TARGET} ${YYJSON_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+target_include_directories(ascii-chat PRIVATE ${YYJSON_INCLUDE_DIRS})
 
 # The executable's mode sources call FFmpeg directly. pkg-config can return
 # bare library names, so carry its search directories to every link branch.

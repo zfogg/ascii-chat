@@ -224,7 +224,7 @@ bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciichat_mod
 
   // For mode-specific help, show only options for that mode.
   // Do not show binary options here unless it also specifically applies to the mode.
-  if (mode < 0 || mode > MODE_DISCOVERY) {
+  if (mode < 0 || mode >= MODE_INVALID) {
     return false;
   }
   option_mode_bitmask_t mode_bit = (1 << mode);

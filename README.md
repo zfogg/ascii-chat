@@ -51,6 +51,7 @@ https://github.com/user-attachments/assets/98ea116a-627a-4f4f-a33e-47854473cdf2
   - [Get ascii-chat](#get-ascii-chat)
   - [Build From Source](#build-from-source)
   - [Usage](#usage)
+  - [MCP Server](#mcp-server)
   - [Cryptography](#cryptography)
   - [Environment Variables](#environment-variables)
   - [ascii-chat Internet Protocol (ACIP)](#ascii-chat-internet-protocol-acip)
@@ -243,6 +244,33 @@ eval "$(ascii-chat --completions zsh)"
 # PowerShell ($PROFILE)
 ascii-chat --completions powershell | Out-String | Invoke-Expression
 ```
+
+## MCP Server
+
+Let an MCP client render files, URLs, webcams, and audio visualizations through
+`ascii-chat mcp-server`. The local stdio server provides `render_file`,
+`render_url`, `render_webcam`, and `render_visualization` (waveform or FFT), using
+the same rendering pipeline as the CLI.
+
+```sh
+# Local stdio transport: launch this command from your MCP client
+ascii-chat mcp-server
+
+# Restricted Streamable HTTP transport
+ascii-chat mcp-server --http-server --address 127.0.0.1 --port 27228
+```
+
+Tool arguments accept CLI rendering options such as `color-mode`, `width`,
+`height`, and `render-font-size`. Local `output_path` saves ASCII art as an image
+or video without overwriting existing files; set `render-font-size` to 28 for
+larger output and `snapshot-delay` to a positive duration for a clip. Files must
+be on the server's computer, or supplied as base64 bytes by the MCP client.
+HTTP mode restricts filesystem/device access and requires deployment isolation
+and network egress controls when exposed publicly.
+
+See the **[MCP website guide](https://ascii-chat.com/docs/mcp)** or
+[repository documentation](docs/mcp.md) for client configuration, all four tools,
+exports, limits, networking, and diagnostics.
 
 ## Cryptography
 

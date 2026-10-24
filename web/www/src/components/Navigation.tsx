@@ -51,7 +51,7 @@ export default function Navigation() {
     {
       to: "/docs",
       label: "Docs",
-      paths: ["/docs", "/docs/", "/crypto", "/docs/architecture"],
+      paths: ["/docs", "/docs/", "/crypto", "/docs/architecture", "/docs/mcp"],
     },
     { to: "/man1", label: "ascii-chat(1)", paths: "/man1" },
     { to: "/man5", label: "ascii-chat(5)", paths: "/man5" },

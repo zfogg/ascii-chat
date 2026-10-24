@@ -165,7 +165,7 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
   snprintf(settings[settings_count++], sizeof(settings[0]), "(z) Zalgo intensity : %d", GET_OPTION(zalgo));
   snprintf(settings[settings_count++], sizeof(settings[0]), "(-) FPS Counter : %s",
            status_indicator(GET_OPTION(fps_counter)));
-  bool server = !browser && GET_OPTION(detected_mode) == MODE_SERVER;
+  bool server = !browser && (GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_MCP_SERVER);
   bool discovery = !browser && GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE;
   ui_help_entry_t entries[40];
   char key_storage[40][48];
