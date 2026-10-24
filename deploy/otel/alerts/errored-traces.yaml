@@ -1,10 +1,43 @@
 version: 1
 id: ascii-chat-errored-traces
 name: ascii-chat · Traces with errors
-query: "SELECT s.service_name,s.trace_id AS event_id,max(s.end_ns) AS event_time_ns FROM spans s\nWHERE s.session_id=$session_id AND s.service_name IN ('ascii-chat-server','ascii-chat-client','ascii-chat-mirror','ascii-chat-discovery','ascii-chat-discovery-service')\
-  \ AND s.end_ns >= epoch_ns(current_timestamp)-300000000000 AND s.status_code=2\nAND NOT EXISTS (SELECT 1 FROM spans classified WHERE classified.session_id=$session_id\
-  \ AND classified.trace_id=s.trace_id\n AND classified.name IN ('ascii-chat.failure.crypto','ascii-chat.failure.protocol','ascii-chat.failure.discovery','ascii-chat.frame.validation.rejected'))\n\
-  GROUP BY s.service_name,s.trace_id ORDER BY event_time_ns DESC,event_id"
+query: |
+  SELECT
+    s.service_name,
+    s.trace_id AS event_id,
+    max(s.end_ns) AS event_time_ns
+  FROM spans s
+  WHERE
+    s.session_id = $session_id
+    AND s.service_name IN (
+      'ascii-chat-server',
+      'ascii-chat-client',
+      'ascii-chat-mirror',
+      'ascii-chat-discovery',
+      'ascii-chat-discovery-service'
+    )
+    AND s.end_ns >= epoch_ns(current_timestamp) - 300000000000
+    AND s.status_code = 2
+    AND NOT EXISTS (
+      SELECT
+        1
+      FROM spans classified
+      WHERE
+        classified.session_id = $session_id
+        AND classified.trace_id = s.trace_id
+        AND classified.name IN (
+          'ascii-chat.failure.crypto',
+          'ascii-chat.failure.protocol',
+          'ascii-chat.failure.discovery',
+          'ascii-chat.frame.validation.rejected'
+        )
+    )
+  GROUP BY
+    s.service_name,
+    s.trace_id
+  ORDER BY
+    event_time_ns DESC,
+    event_id
 condition:
   kind: event
 group_by:

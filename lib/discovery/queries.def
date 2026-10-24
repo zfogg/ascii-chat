@@ -1,102 +1,246 @@
 /* Named immutable SQL templates shared by SQLite and telemetry. */
-DATABASE_QUERY(CreateSession, "INSERT INTO sessions "
-                    "(session_string, session_id, host_pubkey, password_hash, max_participants, "
-                    "current_participants, capabilities, has_password, expose_ip_publicly, "
-                    "session_type, server_address, server_port, created_at, expires_at, last_activity_at) "
-                    "VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-DATABASE_QUERY(LookupSession, "SELECT session_string, session_id, host_pubkey, password_hash, "
-                    "max_participants, current_participants, capabilities, has_password, "
-                    "expose_ip_publicly, session_type, server_address, server_port, "
-                    "created_at, expires_at, last_activity_at FROM sessions WHERE session_string = ?")
-DATABASE_QUERY(InsertParticipant, "INSERT INTO participants (participant_id, session_string, identity_pubkey, joined_at) "
-                           "VALUES (?, ?, ?, ?)")
-DATABASE_QUERY(IncrementParticipants, "UPDATE sessions SET current_participants = current_participants + 1, "
-                           "last_activity_at = ? WHERE session_string = ?")
-DATABASE_QUERY(SetSessionInitiator, "UPDATE sessions SET initiator_id = ? WHERE session_string = ?")
-DATABASE_QUERY(LookupSessionString, "SELECT session_string FROM sessions WHERE session_id = ?")
-DATABASE_QUERY(DeleteParticipant, "DELETE FROM participants WHERE participant_id = ? AND session_string = ?")
-DATABASE_QUERY(DecrementParticipants, "UPDATE sessions SET current_participants = current_participants - 1, "
-                           "last_activity_at = ? WHERE session_string = ? AND current_participants > 0")
-DATABASE_QUERY(GetParticipantCount, "SELECT current_participants FROM sessions WHERE session_string = ?")
-DATABASE_QUERY(DeleteSession, "DELETE FROM sessions WHERE session_string = ?")
-DATABASE_QUERY(FindExpiredSessions, "SELECT session_string, last_activity_at FROM sessions WHERE last_activity_at < ?")
-DATABASE_QUERY(DeleteExpiredSessions, "DELETE FROM sessions WHERE last_activity_at < ?")
-DATABASE_QUERY(UpdateHost, "UPDATE sessions SET "
-                    "host_established = 1, in_migration = 0, migration_start_ns = 0, "
-                    "host_participant_id = ?, "
-                    "host_address = ?, "
-                    "host_port = ?, "
-                    "host_connection_type = ?, "
-                    "last_activity_at = ? "
-                    "WHERE session_id = ?")
-DATABASE_QUERY(ClearHost, "UPDATE sessions SET "
-                    "host_established = 0, "
-                    "host_participant_id = NULL, "
-                    "host_address = NULL, "
-                    "host_port = 0, "
-                    "host_connection_type = 0 "
-                    "WHERE session_id = ?")
-DATABASE_QUERY(StartMigration, "UPDATE sessions SET "
-                    "in_migration = 1, "
-                    "migration_start_ns = ? "
-                    "WHERE session_id = ?")
-DATABASE_QUERY(GetMigrationState, "SELECT in_migration, migration_start_ns FROM sessions WHERE session_id = ?")
-DATABASE_QUERY(AddSessionKey, "INSERT OR IGNORE INTO session_keys (session_string, identity_pubkey, key_version, added_at) "
-                    "VALUES (?, ?, ?, ?)")
-DATABASE_QUERY(RevokeSessionKey, "UPDATE session_keys SET revoked = 1 WHERE session_string = ? AND identity_pubkey = ?")
-DATABASE_QUERY(VerifySessionKey, "SELECT 1 FROM session_keys WHERE session_string = ? AND identity_pubkey = ? AND revoked = 0")
-DATABASE_QUERY(GetSessionKeys, "SELECT identity_pubkey FROM session_keys WHERE session_string = ? AND revoked = 0 "
-                    "ORDER BY key_version ASC")
-DATABASE_QUERY(GetStatsSnapshot, "SELECT session_string,current_participants,host_established,in_migration "
-                    "FROM sessions WHERE expires_at > ? ORDER BY session_string")
-DATABASE_QUERY(GetSessionParticipants, "SELECT participant_id, identity_pubkey, joined_at "
-                           "FROM participants WHERE session_string = ?")
+DATABASE_QUERY(CreateSession, "INSERT INTO sessions (\n"
+                              "  session_string,\n"
+                              "  session_id,\n"
+                              "  host_pubkey,\n"
+                              "  password_hash,\n"
+                              "  max_participants,\n"
+                              "  current_participants,\n"
+                              "  capabilities,\n"
+                              "  has_password,\n"
+                              "  expose_ip_publicly,\n"
+                              "  session_type,\n"
+                              "  server_address,\n"
+                              "  server_port,\n"
+                              "  created_at,\n"
+                              "  expires_at,\n"
+                              "  last_activity_at\n"
+                              ")\n"
+                              "VALUES\n"
+                              "  (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+DATABASE_QUERY(LookupSession, "SELECT\n"
+                              "  session_string,\n"
+                              "  session_id,\n"
+                              "  host_pubkey,\n"
+                              "  password_hash,\n"
+                              "  max_participants,\n"
+                              "  current_participants,\n"
+                              "  capabilities,\n"
+                              "  has_password,\n"
+                              "  expose_ip_publicly,\n"
+                              "  session_type,\n"
+                              "  server_address,\n"
+                              "  server_port,\n"
+                              "  created_at,\n"
+                              "  expires_at,\n"
+                              "  last_activity_at\n"
+                              "FROM sessions\n"
+                              "WHERE\n"
+                              "  session_string = ?")
+DATABASE_QUERY(InsertParticipant,
+               "INSERT INTO participants (participant_id, session_string, identity_pubkey, joined_at)\n"
+               "VALUES\n"
+               "  (?, ?, ?, ?)")
+DATABASE_QUERY(IncrementParticipants, "UPDATE sessions\n"
+                                      "SET\n"
+                                      "  current_participants = current_participants + 1,\n"
+                                      "  last_activity_at = ?\n"
+                                      "WHERE\n"
+                                      "  session_string = ?")
+DATABASE_QUERY(SetSessionInitiator, "UPDATE sessions\n"
+                                    "SET\n"
+                                    "  initiator_id = ?\n"
+                                    "WHERE\n"
+                                    "  session_string = ?")
+DATABASE_QUERY(LookupSessionString, "SELECT\n"
+                                    "  session_string\n"
+                                    "FROM sessions\n"
+                                    "WHERE\n"
+                                    "  session_id = ?")
+DATABASE_QUERY(DeleteParticipant, "DELETE FROM participants\n"
+                                  "WHERE\n"
+                                  "  participant_id = ?\n"
+                                  "  AND session_string = ?")
+DATABASE_QUERY(DecrementParticipants, "UPDATE sessions\n"
+                                      "SET\n"
+                                      "  current_participants = current_participants - 1,\n"
+                                      "  last_activity_at = ?\n"
+                                      "WHERE\n"
+                                      "  session_string = ?\n"
+                                      "  AND current_participants > 0")
+DATABASE_QUERY(GetParticipantCount, "SELECT\n"
+                                    "  current_participants\n"
+                                    "FROM sessions\n"
+                                    "WHERE\n"
+                                    "  session_string = ?")
+DATABASE_QUERY(DeleteSession, "DELETE FROM sessions\n"
+                              "WHERE\n"
+                              "  session_string = ?")
+DATABASE_QUERY(FindExpiredSessions, "SELECT\n"
+                                    "  session_string,\n"
+                                    "  last_activity_at\n"
+                                    "FROM sessions\n"
+                                    "WHERE\n"
+                                    "  last_activity_at < ?")
+DATABASE_QUERY(DeleteExpiredSessions, "DELETE FROM sessions\n"
+                                      "WHERE\n"
+                                      "  last_activity_at < ?")
+DATABASE_QUERY(UpdateHost, "UPDATE sessions\n"
+                           "SET\n"
+                           "  host_established = 1,\n"
+                           "  in_migration = 0,\n"
+                           "  migration_start_ns = 0,\n"
+                           "  host_participant_id = ?,\n"
+                           "  host_address = ?,\n"
+                           "  host_port = ?,\n"
+                           "  host_connection_type = ?,\n"
+                           "  last_activity_at = ?\n"
+                           "WHERE\n"
+                           "  session_id = ?")
+DATABASE_QUERY(ClearHost, "UPDATE sessions\n"
+                          "SET\n"
+                          "  host_established = 0,\n"
+                          "  host_participant_id = NULL,\n"
+                          "  host_address = NULL,\n"
+                          "  host_port = 0,\n"
+                          "  host_connection_type = 0\n"
+                          "WHERE\n"
+                          "  session_id = ?")
+DATABASE_QUERY(StartMigration, "UPDATE sessions\n"
+                               "SET\n"
+                               "  in_migration = 1,\n"
+                               "  migration_start_ns = ?\n"
+                               "WHERE\n"
+                               "  session_id = ?")
+DATABASE_QUERY(GetMigrationState, "SELECT\n"
+                                  "  in_migration,\n"
+                                  "  migration_start_ns\n"
+                                  "FROM sessions\n"
+                                  "WHERE\n"
+                                  "  session_id = ?")
+DATABASE_QUERY(AddSessionKey,
+               "INSERT OR IGNORE INTO session_keys (session_string, identity_pubkey, key_version, added_at)\n"
+               "VALUES\n"
+               "  (?, ?, ?, ?)")
+DATABASE_QUERY(RevokeSessionKey, "UPDATE session_keys\n"
+                                 "SET\n"
+                                 "  revoked = 1\n"
+                                 "WHERE\n"
+                                 "  session_string = ?\n"
+                                 "  AND identity_pubkey = ?")
+DATABASE_QUERY(VerifySessionKey, "SELECT\n"
+                                 "  1\n"
+                                 "FROM session_keys\n"
+                                 "WHERE\n"
+                                 "  session_string = ?\n"
+                                 "  AND identity_pubkey = ?\n"
+                                 "  AND revoked = 0")
+DATABASE_QUERY(GetSessionKeys, "SELECT\n"
+                               "  identity_pubkey\n"
+                               "FROM session_keys\n"
+                               "WHERE\n"
+                               "  session_string = ?\n"
+                               "  AND revoked = 0\n"
+                               "ORDER BY\n"
+                               "  key_version ASC")
+DATABASE_QUERY(GetStatsSnapshot, "SELECT\n"
+                                 "  session_string,\n"
+                                 "  current_participants,\n"
+                                 "  host_established,\n"
+                                 "  in_migration\n"
+                                 "FROM sessions\n"
+                                 "WHERE\n"
+                                 "  expires_at > ?\n"
+                                 "ORDER BY\n"
+                                 "  session_string")
+DATABASE_QUERY(GetSessionParticipants, "SELECT\n"
+                                       "  participant_id,\n"
+                                       "  identity_pubkey,\n"
+                                       "  joined_at\n"
+                                       "FROM participants\n"
+                                       "WHERE\n"
+                                       "  session_string = ?")
 DATABASE_QUERY(GetSessionById, SELECT_SESSION_BASE " WHERE session_id = ?")
 DATABASE_QUERY(GetSessionByString, SELECT_SESSION_BASE " WHERE session_string = ?")
-DATABASE_QUERY(CountSessions, "SELECT COUNT(*) FROM sessions WHERE expires_at > ?")
-DATABASE_QUERY(CountUniqueClients, "SELECT COUNT(DISTINCT participant_id) FROM participants")
+DATABASE_QUERY(CountSessions, "SELECT\n"
+                              "  COUNT(*)\n"
+                              "FROM sessions\n"
+                              "WHERE\n"
+                              "  expires_at > ?")
+DATABASE_QUERY(CountUniqueClients, "SELECT\n"
+                                   "  COUNT(DISTINCT participant_id)\n"
+                                   "FROM participants")
 DATABASE_QUERY(BeginTransaction, "BEGIN IMMEDIATE;")
 DATABASE_QUERY(CommitTransaction, "COMMIT;")
 DATABASE_QUERY(RollbackTransaction, "ROLLBACK;")
-DATABASE_QUERY(EnableWAL, "PRAGMA journal_mode=WAL;")
-DATABASE_QUERY(EnableForeignKeys, "PRAGMA foreign_keys=ON;")
+DATABASE_QUERY(EnableWAL, "PRAGMA journal_mode = WAL;")
+DATABASE_QUERY(EnableForeignKeys, "PRAGMA foreign_keys = ON;")
 
 /* Startup migrations use the same immutable naming registry. */
-DATABASE_QUERY(SchemaSessions,
-    "CREATE TABLE IF NOT EXISTS sessions (  session_string TEXT PRIMARY KEY,  session_id BLOB "
-    "UNIQUE NOT NULL,  host_pubkey BLOB NOT NULL,  password_hash TEXT,  max_participants INTEGER "
-    "DEFAULT 4,  current_participants INTEGER DEFAULT 0,  capabilities INTEGER DEFAULT 3,  "
-    "has_password INTEGER DEFAULT 0,  expose_ip_publicly INTEGER DEFAULT 0,  session_type INTEGER"
-    " DEFAULT 0,  server_address TEXT,  server_port INTEGER DEFAULT 0,  created_at INTEGER NOT "
-    "NULL,  expires_at INTEGER NOT NULL,  last_activity_at INTEGER NOT NULL,  initiator_id BLOB,"
-    "  host_established INTEGER DEFAULT 0,  host_participant_id BLOB,  host_address TEXT,  "
-    "host_port INTEGER DEFAULT 0,  host_connection_type INTEGER DEFAULT 0,  in_migration INTEGER "
-    "DEFAULT 0,  migration_start_ns INTEGER DEFAULT 0);")
+DATABASE_QUERY(SchemaSessions, "CREATE TABLE IF NOT EXISTS sessions (\n"
+                               "  session_string TEXT PRIMARY KEY,\n"
+                               "  session_id BLOB UNIQUE NOT NULL,\n"
+                               "  host_pubkey BLOB NOT NULL,\n"
+                               "  password_hash TEXT,\n"
+                               "  max_participants INTEGER DEFAULT 4,\n"
+                               "  current_participants INTEGER DEFAULT 0,\n"
+                               "  capabilities INTEGER DEFAULT 3,\n"
+                               "  has_password INTEGER DEFAULT 0,\n"
+                               "  expose_ip_publicly INTEGER DEFAULT 0,\n"
+                               "  session_type INTEGER DEFAULT 0,\n"
+                               "  server_address TEXT,\n"
+                               "  server_port INTEGER DEFAULT 0,\n"
+                               "  created_at INTEGER NOT NULL,\n"
+                               "  expires_at INTEGER NOT NULL,\n"
+                               "  last_activity_at INTEGER NOT NULL,\n"
+                               "  initiator_id BLOB,\n"
+                               "  host_established INTEGER DEFAULT 0,\n"
+                               "  host_participant_id BLOB,\n"
+                               "  host_address TEXT,\n"
+                               "  host_port INTEGER DEFAULT 0,\n"
+                               "  host_connection_type INTEGER DEFAULT 0,\n"
+                               "  in_migration INTEGER DEFAULT 0,\n"
+                               "  migration_start_ns INTEGER DEFAULT 0\n"
+                               ");")
 DATABASE_QUERY(SchemaParticipants,
-    "CREATE TABLE IF NOT EXISTS participants (  participant_id BLOB PRIMARY KEY,  session_string "
-    "TEXT NOT NULL,  identity_pubkey BLOB NOT NULL,  joined_at INTEGER NOT NULL,  FOREIGN KEY "
-    "(session_string) REFERENCES sessions(session_string) ON DELETE CASCADE);")
-DATABASE_QUERY(SchemaSessionKeys,
-    "CREATE TABLE IF NOT EXISTS session_keys (  id INTEGER PRIMARY KEY AUTOINCREMENT,  "
-    "session_string TEXT NOT NULL,  identity_pubkey BLOB NOT NULL,  key_version INTEGER NOT NULL,"
-    "  added_at INTEGER NOT NULL,  revoked INTEGER DEFAULT 0,  FOREIGN KEY (session_string) "
-    "REFERENCES sessions(session_string) ON DELETE CASCADE,  UNIQUE(session_string, "
-    "identity_pubkey));")
-DATABASE_QUERY(SchemaRateEvents,
-    "CREATE TABLE IF NOT EXISTS rate_events (  id INTEGER PRIMARY KEY AUTOINCREMENT,  ip_address "
-    "TEXT NOT NULL,  event_type TEXT NOT NULL,  timestamp INTEGER NOT NULL);")
-DATABASE_QUERY(SchemaIdxSessionsId,
-    "CREATE INDEX IF NOT EXISTS idx_sessions_id ON sessions(session_id);")
+               "CREATE TABLE IF NOT EXISTS participants (\n"
+               "  participant_id BLOB PRIMARY KEY,\n"
+               "  session_string TEXT NOT NULL,\n"
+               "  identity_pubkey BLOB NOT NULL,\n"
+               "  joined_at INTEGER NOT NULL,\n"
+               "  FOREIGN KEY (session_string) REFERENCES sessions(session_string) ON DELETE CASCADE\n"
+               ");")
+DATABASE_QUERY(SchemaSessionKeys, "CREATE TABLE IF NOT EXISTS session_keys (\n"
+                                  "  id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
+                                  "  session_string TEXT NOT NULL,\n"
+                                  "  identity_pubkey BLOB NOT NULL,\n"
+                                  "  key_version INTEGER NOT NULL,\n"
+                                  "  added_at INTEGER NOT NULL,\n"
+                                  "  revoked INTEGER DEFAULT 0,\n"
+                                  "  FOREIGN KEY (session_string) REFERENCES sessions(session_string) ON DELETE "
+                                  "CASCADE, UNIQUE(session_string, identity_pubkey)\n"
+                                  ");")
+DATABASE_QUERY(SchemaRateEvents, "CREATE TABLE IF NOT EXISTS rate_events (\n"
+                                 "  id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
+                                 "  ip_address TEXT NOT NULL,\n"
+                                 "  event_type TEXT NOT NULL,\n"
+                                 "  timestamp INTEGER NOT NULL\n"
+                                 ");")
+DATABASE_QUERY(SchemaIdxSessionsId, "CREATE INDEX IF NOT EXISTS idx_sessions_id ON sessions(session_id);")
 DATABASE_QUERY(SchemaIdxSessionsActivity,
-    "CREATE INDEX IF NOT EXISTS idx_sessions_activity ON sessions(last_activity_at);")
+               "CREATE INDEX IF NOT EXISTS idx_sessions_activity ON sessions(last_activity_at);")
 DATABASE_QUERY(SchemaIdxParticipantsSession,
-    "CREATE INDEX IF NOT EXISTS idx_participants_session ON participants(session_string);")
+               "CREATE INDEX IF NOT EXISTS idx_participants_session ON participants(session_string);")
 DATABASE_QUERY(SchemaIdxSessionKeysSession,
-    "CREATE INDEX IF NOT EXISTS idx_session_keys_session ON session_keys(session_string);")
+               "CREATE INDEX IF NOT EXISTS idx_session_keys_session ON session_keys(session_string);")
 DATABASE_QUERY(SchemaIdxSessionKeysActive,
-    "CREATE INDEX IF NOT EXISTS idx_session_keys_active ON session_keys(session_string, revoked);")
+               "CREATE INDEX IF NOT EXISTS idx_session_keys_active ON session_keys(session_string, revoked);")
 DATABASE_QUERY(SchemaIdxRateEvents,
-    "CREATE INDEX IF NOT EXISTS idx_rate_events ON rate_events(ip_address, event_type, "
-    "timestamp);")
+               "CREATE INDEX IF NOT EXISTS idx_rate_events ON rate_events(ip_address, event_type, timestamp);")
 
-DATABASE_QUERY(GetPopulation, "SELECT COUNT(*), COALESCE(SUM(current_participants),0) FROM sessions WHERE expires_at > ?")
+DATABASE_QUERY(GetPopulation, "SELECT\n"
+                              "  COUNT(*),\n"
+                              "  COALESCE(SUM(current_participants), 0)\n"
+                              "FROM sessions\n"
+                              "WHERE\n"
+                              "  expires_at > ?")

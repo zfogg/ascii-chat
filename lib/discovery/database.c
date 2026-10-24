@@ -25,12 +25,31 @@
 
 // Base SELECT for all session fields
 #define SELECT_SESSION_BASE                                                                                            \
-  "SELECT session_string, session_id, host_pubkey, password_hash, "                                                    \
-  "max_participants, current_participants, capabilities, has_password, "                                               \
-  "expose_ip_publicly, session_type, server_address, server_port, "                                                    \
-  "created_at, expires_at, last_activity_at, initiator_id, host_established, "                                         \
-  "host_participant_id, host_address, host_port, host_connection_type, "                                               \
-  "in_migration, migration_start_ns FROM sessions"
+  "SELECT\n"                                                                                                           \
+  "  session_string,\n"                                                                                                \
+  "  session_id,\n"                                                                                                    \
+  "  host_pubkey,\n"                                                                                                   \
+  "  password_hash,\n"                                                                                                 \
+  "  max_participants,\n"                                                                                              \
+  "  current_participants,\n"                                                                                          \
+  "  capabilities,\n"                                                                                                  \
+  "  has_password,\n"                                                                                                  \
+  "  expose_ip_publicly,\n"                                                                                            \
+  "  session_type,\n"                                                                                                  \
+  "  server_address,\n"                                                                                                \
+  "  server_port,\n"                                                                                                   \
+  "  created_at,\n"                                                                                                    \
+  "  expires_at,\n"                                                                                                    \
+  "  last_activity_at,\n"                                                                                              \
+  "  initiator_id,\n"                                                                                                  \
+  "  host_established,\n"                                                                                              \
+  "  host_participant_id,\n"                                                                                           \
+  "  host_address,\n"                                                                                                  \
+  "  host_port,\n"                                                                                                     \
+  "  host_connection_type,\n"                                                                                          \
+  "  in_migration,\n"                                                                                                  \
+  "  migration_start_ns\n"                                                                                             \
+  "FROM sessions"
 
 // ============================================================================
 // SQL schema for creating tables
@@ -221,7 +240,8 @@ static void database_telemetry_population(sqlite3 *db) {
   sqlite3_bind_int64(statement, 1, (sqlite3_int64)database_get_current_time_ms());
   if (sqlite3_step(statement) == SQLITE_ROW) {
     stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_SESSIONS_ACTIVE, (uint64_t)sqlite3_column_int64(statement, 0));
-    stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_PARTICIPANTS_ACTIVE, (uint64_t)sqlite3_column_int64(statement, 1));
+    stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_PARTICIPANTS_ACTIVE,
+                    (uint64_t)sqlite3_column_int64(statement, 1));
   }
   sqlite3_finalize(statement);
 }
@@ -249,7 +269,7 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
 #endif
   // Enable Write-Ahead Logging for concurrent reads
   char *err_msg = NULL;
-  rc = sqlite3_exec(*db, "PRAGMA journal_mode=WAL;", NULL, NULL, &err_msg);
+  rc = sqlite3_exec(*db, "PRAGMA journal_mode = WAL;", NULL, NULL, &err_msg);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
@@ -258,7 +278,7 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
   }
 
   // Enable foreign key constraints
-  rc = sqlite3_exec(*db, "PRAGMA foreign_keys=ON;", NULL, NULL, &err_msg);
+  rc = sqlite3_exec(*db, "PRAGMA foreign_keys = ON;", NULL, NULL, &err_msg);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
