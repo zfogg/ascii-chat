@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 /**
  * @file tui/terminal_screen.c
  * @brief Reusable "fixed header + scrolling logs" terminal screen abstraction
@@ -195,6 +196,7 @@ bool terminal_screen_logs_handle_key(int key) {
     return false;
   }
 
+  ascii_otel_ui_usage("logs", direction > 0 ? "scroll_older" : "scroll_newer", 0);
   uint64_t now = time_get_ns();
   size_t step = 1;
   if (direction == 1 || direction == -1) {

@@ -1,43 +1,22 @@
 version: 1
 id: 841d15ad-05cf-404e-9caf-2eb91a2de81d
 name: ascii-chat - TUI usage
-description: Observed usage across the active recording session. Visits measure the
-  selected foreground screen at presentation-loop boundaries, including overlays and
-  size warnings. Returning from an overlay starts a new visit. Completed durations
-  exclude unfinished visits and abrupt process exits; shortcut requests do not guarantee
-  a successful screen switch. Tracing/export loss can undercount. No prompt content
-  or raw keys are collected.
+description: Observed usage across the active recording session. Visits measure the selected foreground screen at presentation-loop
+  boundaries, including overlays and size warnings. Returning from an overlay starts a new visit. Completed durations exclude unfinished
+  visits and abrupt process exits; shortcut requests do not guarantee a successful screen switch. Tracing/export loss can undercount.
+  No prompt content or raw keys are collected.
 magic_variables:
 - name: session_id
   kind: string
 panels:
 - title: Screen visits and shortcut requests
   display_type: table
-  query: |
-    WITH usage AS (
-      SELECT
-        service_name,
-        json_extract_string(attributes, '$."ascii_chat.ui.screen"') AS screen,
-        json_extract_string(attributes, '$."ascii_chat.ui.event"') AS event,
-        try_cast(
-          json_extract_string(attributes, '$."ascii_chat.ui.duration_ns"') AS BIGINT
-        ) / 1e9 AS seconds
-      FROM spans
-      WHERE
-        session_id = $session_id
-        AND name = 'ascii-chat.ui.usage'
-    )
-    SELECT
-      service_name,
-      screen,
-      count(*) FILTER (WHERE event = 'enter') AS visits,
-      count(*) FILTER (WHERE event = 'shortcut') AS shortcut_requests
-    FROM usage
-    GROUP BY
-      service_name,
-      screen
-    ORDER BY
-      visits DESC
+  query: "WITH usage AS (\n  SELECT\n    service_name,\n    json_extract_string(attributes, '$.\"ascii_chat.ui.screen\"') AS screen,\n\
+    \    json_extract_string(attributes, '$.\"ascii_chat.ui.event\"') AS event,\n    try_cast(\n      json_extract_string(attributes,\
+    \ '$.\"ascii_chat.ui.duration_ns\"') AS BIGINT\n    ) / 1e9 AS seconds\n  FROM spans\n  WHERE\n    session_id = $session_id\n  \
+    \  AND name = 'ascii-chat.ui.usage'\n)\nSELECT\n  service_name,\n  screen,\n  count(*) FILTER (WHERE event = 'enter') AS visits,\n\
+    \  count(*) FILTER (WHERE event = 'shortcut') AS shortcut_requests\nFROM usage\nGROUP BY\n  service_name,\n  screen\nORDER BY\n\
+    \  visits DESC\n"
   settings: {}
   layout:
     w: 12
@@ -45,36 +24,47 @@ panels:
   position: 0
 - title: 'Completed screen visits: time selected'
   display_type: table
-  query: |
-    WITH usage AS (
-      SELECT
-        service_name,
-        json_extract_string(attributes, '$."ascii_chat.ui.screen"') AS screen,
-        json_extract_string(attributes, '$."ascii_chat.ui.event"') AS event,
-        try_cast(
-          json_extract_string(attributes, '$."ascii_chat.ui.duration_ns"') AS BIGINT
-        ) / 1e9 AS seconds
-      FROM spans
-      WHERE
-        session_id = $session_id
-        AND name = 'ascii-chat.ui.usage'
-    )
-    SELECT
-      service_name,
-      screen,
-      count(*) AS completed_visits,
-      round(sum(seconds), 3) AS total_seconds,
-      round(avg(seconds), 3) AS mean_seconds
-    FROM usage
-    WHERE
-      event = 'leave'
-    GROUP BY
-      service_name,
-      screen
-    ORDER BY
-      total_seconds DESC
+  query: "WITH usage AS (\n  SELECT\n    service_name,\n    json_extract_string(attributes, '$.\"ascii_chat.ui.screen\"') AS screen,\n\
+    \    json_extract_string(attributes, '$.\"ascii_chat.ui.event\"') AS event,\n    try_cast(\n      json_extract_string(attributes,\
+    \ '$.\"ascii_chat.ui.duration_ns\"') AS BIGINT\n    ) / 1e9 AS seconds\n  FROM spans\n  WHERE\n    session_id = $session_id\n  \
+    \  AND name = 'ascii-chat.ui.usage'\n)\nSELECT\n  service_name,\n  screen,\n  count(*) AS completed_visits,\n  round(sum(seconds),\
+    \ 3) AS total_seconds,\n  round(avg(seconds), 3) AS mean_seconds\nFROM usage\nWHERE\n  event = 'leave'\nGROUP BY\n  service_name,\n\
+    \  screen\nORDER BY\n  total_seconds DESC\n"
   settings: {}
   layout:
     w: 12
     h: 2
   position: 1
+- title: Actions and outcomes
+  display_type: table
+  query: 'WITH usage AS (SELECT service_name,json_extract_string(attributes, ''$."ascii_chat.ui.screen"'') AS screen,
+
+    json_extract_string(attributes, ''$."ascii_chat.ui.event"'') AS event,
+
+    try_cast(json_extract_string(attributes, ''$."ascii_chat.ui.duration_ns"'') AS BIGINT)/1e9 AS seconds
+
+    FROM spans WHERE session_id=$session_id AND name=''ascii-chat.ui.usage'' ) SELECT service_name,screen,event,count(*) AS events FROM
+    usage WHERE event NOT IN (''enter'',''leave'',''shortcut'',''size_warning_started'',''size_warning_ended'') GROUP BY service_name,screen,event
+    ORDER BY events DESC'
+  settings: {}
+  layout:
+    w: 12
+    h: 2
+  position: 2
+- title: Terminal size warnings
+  display_type: table
+  query: 'WITH usage AS (SELECT service_name,json_extract_string(attributes, ''$."ascii_chat.ui.screen"'') AS screen,
+
+    json_extract_string(attributes, ''$."ascii_chat.ui.event"'') AS event,
+
+    try_cast(json_extract_string(attributes, ''$."ascii_chat.ui.duration_ns"'') AS BIGINT)/1e9 AS seconds
+
+    FROM spans WHERE session_id=$session_id AND name=''ascii-chat.ui.usage'' ) SELECT service_name,screen,count(*) FILTER (WHERE event=''size_warning_started'')
+    AS warnings,count(*) FILTER (WHERE event=''size_warning_resolved'') AS resolved_by_resize,round(sum(seconds) FILTER (WHERE event=''size_warning_ended''),3)
+    AS completed_blocked_seconds FROM usage WHERE event LIKE ''size_warning_%'' GROUP BY service_name,screen ORDER BY completed_blocked_seconds
+    DESC NULLS LAST'
+  settings: {}
+  layout:
+    w: 12
+    h: 2
+  position: 3

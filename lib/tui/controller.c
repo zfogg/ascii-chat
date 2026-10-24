@@ -738,8 +738,34 @@ static void *presentation_main(void *unused) {
   bool awaiting_reply = false;
   const char *usage_screen = NULL;
   uint64_t usage_since = 0;
+  const char *stats_page = NULL, *covered_screen = NULL;
+  uint64_t stats_since = 0, covered_since = 0;
   while (!atomic_load_bool(&g_presentation_stop_requested)) {
-    usage_transition(usage_screen_name(ui_controller_current_screen()), &usage_screen, &usage_since);
+    int usage_current = ui_controller_current_screen();
+    usage_transition(usage_screen_name(usage_current), &usage_screen, &usage_since);
+    ui_presentation_state_t usage_state = ui_controller_state();
+    const char *next_page = NULL;
+    if (usage_current == UI_SCREEN_STATS && !usage_state.covered) {
+      mutex_lock(&g_mutex);
+      const stats_view_t *view = g_screens[UI_SCREEN_STATS].snapshot;
+      if (view)
+        next_page = view->page ? "stats_details" : "stats_overview";
+      mutex_unlock(&g_mutex);
+    }
+    usage_transition(next_page, &stats_page, &stats_since);
+    const char *next_covered = usage_state.covered ? usage_screen_name(usage_state.screen) : NULL;
+    if (next_covered != covered_screen && (!next_covered || !covered_screen || strcmp(next_covered, covered_screen))) {
+      uint64_t now = time_get_ns();
+      if (covered_screen) {
+        ascii_otel_ui_usage(covered_screen, "size_warning_ended", now - covered_since);
+        if (!next_covered && usage_screen && !strcmp(covered_screen, usage_screen))
+          ascii_otel_ui_usage(covered_screen, "size_warning_resolved", 0);
+      }
+      if (next_covered)
+        ascii_otel_ui_usage(next_covered, "size_warning_started", 0);
+      covered_screen = next_covered;
+      covered_since = now;
+    }
     uint64_t iteration_started_ns = time_get_ns();
     if (ui_controller_current_screen() < 0)
       title_update(-1, NULL, false);
@@ -1063,6 +1089,9 @@ static void *presentation_main(void *unused) {
       cond_timedwait(&g_render_requested, &g_mutex, refresh_deadline - now);
     mutex_unlock(&g_mutex);
   }
+  usage_transition(NULL, &stats_page, &stats_since);
+  if (covered_screen)
+    ascii_otel_ui_usage(covered_screen, "size_warning_ended", time_get_ns() - covered_since);
   usage_transition(NULL, &usage_screen, &usage_since);
   if (g_title_saved) {
     asciichat_errno_scope_t scope = errno_scope_begin();

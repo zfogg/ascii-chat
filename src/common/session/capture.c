@@ -663,6 +663,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   ASCII_OTEL_ATTR_STRING("media.transition.outcome", cancelled ? "cancelled" : "failed");
   mutex_unlock(&ctx->load_mutex);
   if (cancelled || !replacement) {
+    ascii_otel_ui_usage("media_input_prompt", cancelled ? "load_cancelled" : "load_failed", 0);
     ctx->advance_failed |= automatic;
     ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
     if (first)
@@ -676,6 +677,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   }
   audio_context_t *audio = ctx->audio_ctx;
   if (audio && audio_stop_duplex(audio) != ASCIICHAT_OK) {
+    ascii_otel_ui_usage("media_input_prompt", "load_failed", 0);
     ctx->advance_failed |= automatic;
     ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
     if (first)
@@ -698,6 +700,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
     if (audio->capture_buffer)
       audio_ring_buffer_clear(audio->capture_buffer);
     if (audio_start_duplex(audio) != ASCIICHAT_OK) {
+      ascii_otel_ui_usage("media_input_prompt", "load_failed", 0);
       ctx->advance_failed |= automatic;
       ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
       LOG_ERRNO_IF_SET("Cannot start replacement audio; restoring previous source");
@@ -789,6 +792,7 @@ static void capture_commit_media(session_capture_ctx_t *ctx) {
   atomic_fetch_add_u64(&ctx->source_epoch, 1);
   atomic_store_bool(&ctx->awaiting_presentation, !ctx->loader_created);
   mutex_unlock(&ctx->load_mutex);
+  ascii_otel_ui_usage("media_input_prompt", "load_succeeded", 0);
   ASCII_OTEL_ATTR_STRING("media.transition.outcome", "committed");
   log_info("Opened media: %s", path);
   CLEAR_ERRNO();

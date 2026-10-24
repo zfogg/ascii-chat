@@ -379,27 +379,35 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     if (key == KEY_ESCAPE || key == 3 || ui_input_expired(g_media_editor.deadline)) {
       if (key == KEY_PASTE)
         g_paste_ready = false;
+      ascii_otel_ui_usage("media_input_prompt", ui_input_expired(g_media_editor.deadline) ? "timed_out" : "cancelled", 0);
       g_media_editor.active = false;
       ui_prompt_remove();
     } else if (key == '\r' || key == '\n') {
       g_media_editor.active = false;
       g_media_editor.submitted = true;
+      ascii_otel_ui_usage("media_input_prompt", "submitted", 0);
       input_unlock();
       return KEY_MEDIA_SUBMIT;
     } else if (key != KEY_NONE) {
+      if (key == KEY_PASTE)
+        ascii_otel_ui_usage("media_input_prompt", "paste", 0);
       if (key == KEY_PASTE) {
         if (!g_paste_invalid && utf8_is_valid(g_paste)) {
           media_playlist_t items = {0}, added = {0};
           bool valid = !g_media_editor.length || media_playlist_parse(g_media_editor.buffer, &items) == ASCIICHAT_OK;
-          if (valid && media_playlist_parse(g_paste, &added) == ASCIICHAT_OK) {
+          valid = valid && media_playlist_parse(g_paste, &added) == ASCIICHAT_OK;
+          if (valid) {
             for (size_t i = 0; i < added.count && valid; ++i)
               valid = media_playlist_append(&items, added.paths[i], added.urls[i]) == ASCIICHAT_OK;
             char formatted[sizeof(g_media_editor.buffer)];
-            if (valid && media_playlist_format(&items, formatted, sizeof(formatted)) == ASCIICHAT_OK) {
+            valid = valid && media_playlist_format(&items, formatted, sizeof(formatted)) == ASCIICHAT_OK;
+            if (valid) {
               memcpy(g_media_editor.buffer, formatted, strlen(formatted) + 1);
               g_media_editor.length = g_media_editor.cursor = strlen(formatted);
             }
           }
+          if (valid)
+            ascii_otel_ui_usage("media_input_prompt", "queue_changed", 0);
           CLEAR_ERRNO();
         }
         g_paste_ready = false;
@@ -496,6 +504,10 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid prompt buffer");
   if (keyboard_init() != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_PLATFORM_INIT, "Cannot initialize prompt input");
+  const char *usage_name = ui_prompt_kind_name(password_dialog || (opts.kind == UI_PROMPT_INPUT && !opts.echo)
+                                                  ? UI_PROMPT_PASSWORD : opts.kind);
+  if (password_dialog && incorrect)
+    ascii_otel_ui_usage(usage_name, "rejected", 0);
   char *visible = SAFE_CALLOC(max_len, 1, char *);
   if (!visible)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate prompt display");
@@ -516,7 +528,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
   char timed_prompt[8192];
   snprintf(timed_prompt, sizeof(timed_prompt), "%s\n(Timeout: %us; cancels without an answer)", prompt, seconds);
   asciichat_error_t result = ASCIICHAT_OK;
-  bool newline_limit = false;
+  bool newline_limit = false, cancelled = false;
   // Request modifier-aware Enter while this dialog owns terminal input.
   if (password_dialog) {
     const char *enable = "\033[>1u\033[>4;2m";
@@ -577,6 +589,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
       if (activated == 0)
         break;
       if (activated == 1) {
+        cancelled = true;
         result = SET_ERRNO(ERROR_CRYPTO_AUTH, "Password entry cancelled");
         break;
       }
@@ -621,6 +634,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
       continue;
     }
     if (key == KEY_ESCAPE || key == 3) {
+      cancelled = true;
       result = SET_ERRNO(ERROR_GENERAL, "Prompt cancelled");
       break;
     }
@@ -628,6 +642,8 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
   }
   if (shutdown_is_requested())
     result = SET_ERRNO(ERROR_GENERAL, "Prompt interrupted");
+  ascii_otel_ui_usage(usage_name, result == ASCIICHAT_OK ? "submitted" : result == ERROR_PROMPT_TIMEOUT ? "timed_out"
+                                   : shutdown_is_requested() ? "interrupted" : cancelled ? "cancelled" : "failed", 0);
   ui_prompt_remove();
   if (password_dialog) {
     const char *disable = "\033[<u\033[>4;0m";
@@ -692,8 +708,26 @@ asciichat_error_t ui_input_media_take(char *output, size_t capacity) {
   asciichat_error_t result = ASCIICHAT_OK;
   if (!g_media_editor.submitted || g_media_editor.length >= capacity)
     result = SET_ERRNO(ERROR_INVALID_STATE, "No submitted media prompt");
-  else
+  else {
     memcpy(output, g_media_editor.buffer, g_media_editor.length + 1);
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    media_playlist_t playlist = {0};
+    if (media_playlist_parse(output, &playlist) == ASCIICHAT_OK) {
+      bool file = false, url = false;
+      for (size_t i = 0; i < playlist.count; ++i) {
+        file |= !playlist.urls[i];
+        url |= playlist.urls[i];
+      }
+      if (file)
+        ascii_otel_ui_usage("media_input_prompt", "source_file", 0);
+      if (url)
+        ascii_otel_ui_usage("media_input_prompt", "source_url", 0);
+      ascii_otel_ui_usage("media_input_prompt", "queue_submitted", 0);
+    } else {
+      ascii_otel_ui_usage("media_input_prompt", "rejected", 0);
+    }
+    errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  }
   g_media_editor.submitted = false;
   input_unlock();
   return result;

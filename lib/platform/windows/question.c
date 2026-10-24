@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 /**
  * @file platform/windows/question.c
  * @ingroup platform
@@ -6,6 +7,7 @@
 
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/prompt.h>
 #include <ascii-chat/tui/notice.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/env.h>
@@ -83,9 +85,14 @@ bool platform_prompt_yes_no_timeout(const char *prompt, bool default_yes, unsign
     log_error("Cannot answer prompt without an interactive terminal: %s", prompt);
     return false;
   }
-  if (_stricmp(response, "yes") == 0 || _stricmp(response, "y") == 0)
+  if (_stricmp(response, "yes") == 0 || _stricmp(response, "y") == 0) {
+    ascii_otel_ui_usage(ui_prompt_kind_name(ui_notice_prompt_kind()), "accepted", 0);
     return true;
-  if (_stricmp(response, "no") == 0 || _stricmp(response, "n") == 0)
+  }
+  if (_stricmp(response, "no") == 0 || _stricmp(response, "n") == 0) {
+    ascii_otel_ui_usage(ui_prompt_kind_name(ui_notice_prompt_kind()), "declined", 0);
     return false;
+  }
+  ascii_otel_ui_usage(ui_prompt_kind_name(ui_notice_prompt_kind()), default_yes ? "accepted" : "declined", 0);
   return default_yes;
 }

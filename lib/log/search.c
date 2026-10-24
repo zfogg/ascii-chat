@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 /**
  * @file log/search.c
  * @brief Interactive search filtering implementation
@@ -210,6 +211,7 @@ void log_search_destroy(void) {
  * ========================================================================== */
 
 void log_search_enter_mode(void) {
+  ascii_otel_ui_usage("logs", "search_started", 0);
   // Ensure cursor is visible for user typing
   (void)terminal_cursor_show();
 
@@ -293,6 +295,7 @@ void log_search_exit_mode(bool accept) {
 
   if (!accept) {
     flow_control_debounce_cancel(&g_search_state.debounce);
+    ascii_otel_ui_usage("logs", "search_cancelled", 0);
     // Cancel - restore previous patterns and reset CLI pattern flag so user can re-populate
     asciichat_error_t result = grep_restore_patterns();
     if (result != ASCIICHAT_OK) {
@@ -320,6 +323,7 @@ void log_search_exit_mode(bool accept) {
   grep_parse_result_t parsed = grep_parse_pattern(g_search_state.input_buffer);
 
   if (!parsed.valid) {
+    ascii_otel_ui_usage("logs", "search_rejected", 0);
     log_error("Invalid pattern format");
     mutex_unlock(&g_search_state.mutex);
     return; // Stay in input mode
@@ -359,6 +363,7 @@ void log_search_exit_mode(bool accept) {
   }
   // For fixed strings, pattern stays in input_buffer and fixed_string=true
 
+  ascii_otel_ui_usage("logs", "filter_applied", 0);
   g_search_state.mode = LOG_SEARCH_MODE_ACTIVE;
   atomic_store_int(&g_search_state.mode_atomic, LOG_SEARCH_MODE_ACTIVE);
   atomic_store_bool(&g_search_state.needs_rerender, true);

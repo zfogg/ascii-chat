@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/ui/popup.h>
 #include <ascii-chat/ui/progress.h>
 #include <ascii-chat/ui/buttons.h>
@@ -73,6 +74,7 @@ void update_banner_set_result(const update_check_result_t *result) {
     lifecycle_init_commit(&g_update_result_lifecycle);
   }
 
+  ascii_otel_ui_usage("update", result->check_succeeded ? "check_completed" : "check_failed", 0);
   mutex_lock(&g_update_result_mutex);
   memcpy(&g_update_result, result, sizeof(g_update_result));
   g_update_result_set = true;
@@ -430,6 +432,7 @@ static void update_banner_start_check_impl(bool force) {
     mutex_init(&g_update_result_mutex, "update_banner_result");
     lifecycle_init_commit(&g_update_result_lifecycle);
   }
+  ascii_otel_ui_usage("update", "check_started", 0);
   mutex_lock(&g_update_result_mutex);
   g_update_checking = true;
   g_update_finished = false;
@@ -440,6 +443,7 @@ static void update_banner_start_check_impl(bool force) {
   if (acthread_create(&g_update_thread, "update_check", update_check_thread_func, force ? (void *)1 : NULL) == 0) {
     g_update_thread_started = true;
   } else {
+    ascii_otel_ui_usage("update", "check_failed", 0);
     mutex_lock(&g_update_result_mutex);
     g_update_checking = false;
     g_update_finished = true;
@@ -454,10 +458,12 @@ void update_banner_start_check(void) {
 
 void update_banner_toggle_overlay(void) {
   if (g_update_overlay) {
+    ascii_otel_ui_usage("update", "dismissed", 0);
     g_update_overlay = false;
     ui_controller_remove(UI_SCREEN_UPDATE);
     return;
   }
+  ascii_otel_ui_usage("update", "opened", 0);
   g_update_overlay = true;
   atomic_store(&g_update_visible_until_ns, time_get_ns() + 2 * NS_PER_SEC_INT);
   atomic_store(&g_update_selected_action, 0);
@@ -507,6 +513,7 @@ static void update_banner_open_release(void) {
     if (*ch <= ' ' || *ch == 127)
       return;
   }
+  ascii_otel_ui_usage("update", "release_open_requested", 0);
 #ifdef _WIN32
   const char *argv[] = {"cmd", "/c", "start", "", result.release_url, NULL};
   (void)platform_execute_subprocess("cmd", argv, NULL, 0);
