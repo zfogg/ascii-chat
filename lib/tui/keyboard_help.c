@@ -1,4 +1,5 @@
 #include <stdatomic.h>
+#include <ascii-chat/otel.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/session.h>
@@ -16,6 +17,27 @@ int keyboard_help_parent_screen(void) {
   return atomic_load(&g_help_parent);
 }
 
+const char *keyboard_help_screen_name(int parent) {
+  switch (parent) {
+  case UI_SCREEN_STATS:
+    return "stats_help";
+  case UI_SCREEN_SYNC:
+    return "sync_help";
+  case UI_SCREEN_ERRNO:
+    return "errno_help";
+  case UI_SCREEN_PROMPT:
+    return "media_input_help";
+  case UI_SCREEN_MDNS:
+    return "mdns_help";
+  case UI_SCREEN_UPDATE:
+    return "update_help";
+  case UI_SCREEN_ERROR:
+    return "error_help";
+  default:
+    return "help";
+  }
+}
+
 static void render_help_snapshot(terminal_size_t size, const void *data) {
   int fd = *(const int *)data;
   terminal_size_t minimum;
@@ -27,6 +49,9 @@ static void render_help_snapshot(terminal_size_t size, const void *data) {
 }
 
 void keyboard_help_toggle_terminal(int fd) {
+  int parent = ui_controller_current_screen() == UI_SCREEN_HELP ? keyboard_help_parent_screen()
+                                                             : ui_controller_current_screen();
+  ascii_otel_ui_usage(keyboard_help_screen_name(parent), "shortcut", 0);
   if (ui_controller_current_screen() == UI_SCREEN_HELP) {
     // Keep the underlying worker active throughout dismissal. An intermediate
     // empty selection could make it retire its screen after we restore it.

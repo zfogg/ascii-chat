@@ -517,3 +517,12 @@ The **ascii-chat - TUI usage** Spaniel dashboard groups observed visits, shortcu
 requests and completed visit durations by mode service and screen across the
 active recording session. It counts events rather than exported cumulative
 snapshots; no data means no observed usage, not proof that a TUI was unused.
+
+Contextual help visits have distinct screen identities: `logs_help`, `stats_help`,
+`sync_help`, `errno_help`, `media_input_help`, `mdns_help`, `update_help`, and
+`error_help`. General mode help remains `help` (the service identifies the mode).
+Inline log help transitions are counted even though the controller screen enum
+stays unchanged. Each leave retains the identity observed on entry, so closing
+help cannot relabel its elapsed time as the underlying screen. Historical events
+remain unchanged. Shared help toggle requests use the same contextual names;
+inline log help is observed through visits rather than shortcut events.

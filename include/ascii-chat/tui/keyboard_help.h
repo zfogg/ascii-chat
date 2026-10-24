@@ -52,6 +52,8 @@ void keyboard_help_toggle(session_display_ctx_t *ctx);
 /** Shared mode-aware help without a media display dependency. */
 void keyboard_help_toggle_terminal(int fd);
 int keyboard_help_parent_screen(void);
+/** Fixed telemetry identity matching the help menu rendered for this parent. */
+const char *keyboard_help_screen_name(int parent);
 
 /**
  * @brief Check if keyboard help is currently active

@@ -245,7 +245,6 @@ static keyboard_key_t input_common_key(keyboard_key_t key, int current) {
     return KEY_NONE;
   }
   if (action == TUI_SHORTCUT_HELP && current != UI_SCREEN_LOGS) {
-    ascii_otel_ui_usage("help", "shortcut", 0);
     keyboard_help_toggle_terminal(ui_controller_active_fd());
     return KEY_NONE;
   }
