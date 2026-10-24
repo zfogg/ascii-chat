@@ -16,6 +16,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <ascii-chat/platform/question.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,6 +75,7 @@ int prompt_password(const char *prompt, char *password, size_t max_len);
  * @ingroup util
  */
 int prompt_password_simple(const char *prompt, char *password, size_t max_len);
+int prompt_password_simple_kind(const char *prompt, char *password, size_t max_len, ui_prompt_kind_t kind);
 
 #ifdef __cplusplus
 }

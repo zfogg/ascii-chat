@@ -1338,7 +1338,7 @@ static bool server_allow_discovery(server_discovery_policy_t *policy) {
     bool is_interactive = terminal_can_prompt_user();
 
     if (is_interactive) {
-      if (!ui_notice_confirm(UI_NOTICE_DANGER,
+      if (!ui_notice_confirm_kind(UI_PROMPT_IP_DISCLOSURE, UI_NOTICE_DANGER,
                              "PUBLIC IP DISCLOSURE\nAnyone with the session string will be able to see your IP "
                              "address.\n\nDo you want to proceed",
                              30)) {

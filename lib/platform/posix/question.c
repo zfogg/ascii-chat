@@ -6,6 +6,7 @@
 
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/notice.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/env.h>
 #include <ascii-chat/log/log.h>
@@ -74,6 +75,7 @@ bool platform_prompt_yes_no_timeout(const char *prompt, bool default_yes, unsign
     char question[4096];
     snprintf(question, sizeof(question), "%s %s", prompt, default_yes ? "(Y/n)?" : "(y/N)?");
     prompt_opts_t opts = PROMPT_OPTS_INLINE;
+    opts.kind = ui_notice_prompt_kind();
     opts.timeout_seconds = timeout_seconds;
     if (ui_input_prompt(question, response, sizeof(response), opts) != ASCIICHAT_OK)
       return false;

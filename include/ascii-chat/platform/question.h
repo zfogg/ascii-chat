@@ -28,11 +28,28 @@ extern "C" {
 /**
  * @brief Options for text prompts
  */
+typedef enum {
+  UI_PROMPT_INPUT,
+  UI_PROMPT_PASSWORD,
+  UI_PROMPT_MEDIA_INPUT,
+  UI_PROMPT_CONFIRMATION,
+  UI_PROMPT_SSH_PASSPHRASE,
+  UI_PROMPT_GPG_PASSPHRASE,
+  UI_PROMPT_TRUST_HOST,
+  UI_PROMPT_UNVERIFIED_HOST,
+  UI_PROMPT_DISCOVERY_KEY_CHANGE,
+  UI_PROMPT_IP_DISCLOSURE,
+  UI_PROMPT_CONFIG_OVERWRITE,
+  UI_PROMPT_MANPAGE_OVERWRITE,
+  UI_PROMPT_COMPLETION_OVERWRITE
+} ui_prompt_kind_t;
+
 typedef struct {
   unsigned timeout_seconds; /**< Zero selects the default for this prompt type. */
   bool echo;                /**< Whether to echo input (false for passwords) */
   bool same_line;           /**< If true, answer on same line after prompt; if false, answer on next line */
   char mask_char;           /**< Character to display instead of input when echo=false (0 for no mask, '*' typical) */
+  ui_prompt_kind_t kind;     /**< Fixed purpose; never derived from user input. */
 } prompt_opts_t;
 
 /**

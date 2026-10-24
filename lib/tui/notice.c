@@ -10,6 +10,7 @@
 #include <ascii-chat/util/time.h>
 #include <string.h>
 
+static _Thread_local ui_prompt_kind_t g_prompt_kind = UI_PROMPT_CONFIRMATION;
 static _Thread_local ui_notice_severity_t g_prompt_severity = UI_NOTICE_INFO;
 
 static const char *notice_color(ui_notice_severity_t severity) {
@@ -273,6 +274,13 @@ asciichat_error_t ui_notice_present(ui_notice_severity_t severity, const char *t
 }
 
 bool ui_notice_confirm(ui_notice_severity_t severity, const char *text, unsigned timeout_seconds) {
+  return ui_notice_confirm_kind(UI_PROMPT_CONFIRMATION, severity, text, timeout_seconds);
+}
+
+bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity,
+                            const char *text, unsigned timeout_seconds) {
+  ui_prompt_kind_t previous_kind = g_prompt_kind;
+  g_prompt_kind = kind;
   ui_notice_severity_t previous = g_prompt_severity;
   g_prompt_severity = severity;
   if (terminal_can_prompt_user())
@@ -284,8 +292,13 @@ bool ui_notice_confirm(ui_notice_severity_t severity, const char *text, unsigned
   else
     ui_notice_log(severity, __FILE__, __LINE__, __func__, "CONFIRMATION REQUIRED", "%s", text);
   bool accepted = platform_prompt_yes_no_timeout(text, false, timeout_seconds);
+  g_prompt_kind = previous_kind;
   g_prompt_severity = previous;
   return accepted;
+}
+
+ui_prompt_kind_t ui_notice_prompt_kind(void) {
+  return g_prompt_kind;
 }
 
 ui_notice_severity_t ui_notice_prompt_severity(void) {

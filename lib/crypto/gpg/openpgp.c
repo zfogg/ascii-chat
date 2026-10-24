@@ -507,8 +507,10 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
     // No environment variable - try interactive prompt
     if (platform_is_interactive()) {
       log_info("GPG key is encrypted - prompting for passphrase");
+      prompt_opts_t prompt_opts = PROMPT_OPTS_PASSWORD;
+      prompt_opts.kind = UI_PROMPT_GPG_PASSPHRASE;
       if (platform_prompt_question("Enter passphrase for GPG key", passphrase_buffer, sizeof(passphrase_buffer),
-                                   PROMPT_OPTS_PASSWORD) != 0) {
+                                   prompt_opts) != 0) {
         return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read passphrase for encrypted GPG key");
       }
       passphrase = passphrase_buffer;

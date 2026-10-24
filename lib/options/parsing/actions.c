@@ -598,7 +598,7 @@ void action_completions(const char *shell_name, const char *output_path) {
       char question[4096];
       safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", output_path);
       asciichat_errno_scope_t prompt_scope = errno_checkpoint();
-      bool overwrite = ui_notice_confirm(UI_NOTICE_WARNING, question, 30); // Default to No
+      bool overwrite = ui_notice_confirm_kind(UI_PROMPT_COMPLETION_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
       if (!overwrite) {
         log_plain("Completions generation cancelled.");
         asciichat_error_context_t context;

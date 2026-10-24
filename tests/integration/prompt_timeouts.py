@@ -21,7 +21,7 @@ import time
 
 class PromptOptions(C.Structure):
     _fields_ = [("timeout_seconds", C.c_uint), ("echo", C.c_bool),
-                ("same_line", C.c_bool), ("mask_char", C.c_char)]
+                ("same_line", C.c_bool), ("mask_char", C.c_char), ("kind", C.c_int)]
 
 class Server(C.Structure):
     _fields_ = [("name", C.c_char * 256), ("address", C.c_char * 256),

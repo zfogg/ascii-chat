@@ -29,6 +29,10 @@ int prompt_password(const char *prompt, char *password, size_t max_len) {
 }
 
 int prompt_password_simple(const char *prompt, char *password, size_t max_len) {
+  return prompt_password_simple_kind(prompt, password, max_len, UI_PROMPT_PASSWORD);
+}
+
+int prompt_password_simple_kind(const char *prompt, char *password, size_t max_len, ui_prompt_kind_t kind) {
   if (!prompt || !password || max_len < 2) {
     return -1;
   }
@@ -45,6 +49,7 @@ int prompt_password_simple(const char *prompt, char *password, size_t max_len) {
 
   // Prompt for password with asterisk masking, same line
   prompt_opts_t opts = PROMPT_OPTS_PASSWORD;
+  opts.kind = kind;
   int result = platform_prompt_question(full_prompt, password, max_len, opts);
 
   // Validate password is valid UTF-8 (should always succeed since platform_prompt_question handles it)

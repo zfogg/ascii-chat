@@ -30,7 +30,7 @@ def probe(library, log):
         _fields_ = [("rows", ctypes.c_int), ("cols", ctypes.c_int)]
 
     class PromptOptions(ctypes.Structure):
-        _fields_ = [("timeout_seconds", ctypes.c_uint), ("echo", ctypes.c_bool), ("same_line", ctypes.c_bool), ("mask_char", ctypes.c_char)]
+        _fields_ = [("timeout_seconds", ctypes.c_uint), ("echo", ctypes.c_bool), ("same_line", ctypes.c_bool), ("mask_char", ctypes.c_char), ("kind", ctypes.c_int)]
 
     native.ui_controller_present.argtypes = [ctypes.c_int, ctypes.c_int, Size, ctypes.c_char_p, ctypes.c_size_t]
     background = b"BACKGROUND MEDIA"
@@ -69,12 +69,12 @@ def main():
         term = Terminal([sys.executable, str(Path(__file__).resolve()), "--library", str(args.library.resolve()),
                          "--probe", "--log", str(log)], rows=30, cols=80)
         try:
-            term.expect(lambda s: "Account name" in s, "Text prompt did not render")
+            term.expect(lambda s: "account name" in s.lower(), "Text prompt did not render")
             term.write("alicx\b" + "e=")
             text = term.expect(lambda s: "alice=" in s, "Equals must remain prompt text")
             assert "LIVE STATS" not in text
             term.write("\r")
-            term.expect(lambda s: "Test passphrase" in s, "Password prompt did not render")
+            term.expect(lambda s: "test passphrase" in s.lower(), "Password prompt did not render")
             term.write("s3cret")
             text = term.expect(lambda s: "******" in s, "Password mask did not render")
             assert "s3cret" not in text
@@ -83,7 +83,7 @@ def main():
             term.write("discard\r")
             term.pump(.3)
             term.resize(30, 80)
-            term.expect(lambda s: "Test passphrase" in s and "******" in s, "Password not restored")
+            term.expect(lambda s: "test passphrase" in s.lower() and "******" in s, "Password not restored")
             term.write("\r")
             term.expect(lambda s: "SHA256:TEST-FINGERPRINT" in s, "Security context missing")
             term.write("yes\r")

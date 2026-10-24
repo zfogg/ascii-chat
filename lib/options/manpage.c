@@ -257,7 +257,7 @@ static asciichat_error_t manpage_open_merged_output(const char *output_path, FIL
 
       char question[4096];
       safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", output_path);
-      bool overwrite = ui_notice_confirm(UI_NOTICE_WARNING, question, 30); // Default to No
+      bool overwrite = ui_notice_confirm_kind(UI_PROMPT_MANPAGE_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
       if (!overwrite) {
         log_plain("Man page generation cancelled.");
         return SET_ERRNO(ERROR_FILE_OPERATION, "User cancelled overwrite");

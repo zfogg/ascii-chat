@@ -663,7 +663,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
                 "%s\n"
                 "Are you sure you want to continue connecting",
                 ip_with_port, identity);
-  if (ui_notice_confirm(UI_NOTICE_DANGER, question, 120)) {
+  if (ui_notice_confirm_kind(UI_PROMPT_TRUST_HOST, UI_NOTICE_DANGER, question, 120)) {
     log_warn("Warning: Permanently added '%s' to the list of known hosts.", ip_with_port);
     return true;
   }
@@ -834,7 +834,7 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
                 "Use --key on the server and --server-key on the client to verify identity.\n\n"
                 "Are you sure you want to continue connecting",
                 ip_with_port);
-  if (ui_notice_confirm(UI_NOTICE_DANGER, question, 120)) {
+  if (ui_notice_confirm_kind(UI_PROMPT_UNVERIFIED_HOST, UI_NOTICE_DANGER, question, 120)) {
     NOTICE(DANGER, "UNVERIFIED CONNECTION",
            "Warning: Proceeding with unverified connection.\n"
            "Your data may be intercepted by attackers!\n"

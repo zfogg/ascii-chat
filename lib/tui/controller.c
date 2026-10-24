@@ -699,6 +699,12 @@ static const char *usage_screen_name(int screen) {
       [UI_SCREEN_HELP] = "help", [UI_SCREEN_STATS] = "stats", [UI_SCREEN_SYNC] = "sync", [UI_SCREEN_MDNS] = "mdns",
       [UI_SCREEN_UPDATE] = "update", [UI_SCREEN_NOTICE] = "notice", [UI_SCREEN_PROMPT] = "prompt",
       [UI_SCREEN_ERROR] = "error"};
+  if (screen == UI_SCREEN_PROMPT) {
+    mutex_lock(&g_mutex);
+    const char *name = ui_prompt_usage_name(g_screens[UI_SCREEN_PROMPT].snapshot);
+    mutex_unlock(&g_mutex);
+    return name;
+  }
   if (screen == UI_SCREEN_HELP)
     return keyboard_help_screen_name(keyboard_help_parent_screen());
   if ((screen == UI_SCREEN_LOGS || screen == UI_SCREEN_ERROR) && terminal_screen_logs_help_open())

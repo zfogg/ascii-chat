@@ -521,7 +521,7 @@ static asciichat_error_t ssh_private_key_read_password(ssh_private_key_parse_t *
       ssh_private_key_cleanup(state);
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for password");
     }
-    if (prompt_password_simple("Encrypted SSH key - enter passphrase", state->password, 1024) != 0) {
+    if (prompt_password_simple_kind("Encrypted SSH key - enter passphrase", state->password, 1024, UI_PROMPT_SSH_PASSPHRASE) != 0) {
       ssh_private_key_cleanup(state);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read passphrase for encrypted key: %s", key_path);
     }

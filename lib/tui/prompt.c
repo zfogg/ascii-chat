@@ -16,6 +16,7 @@
 #include <ascii-chat/util/time.h>
 
 typedef struct {
+  ui_prompt_kind_t kind;
   size_t prompt_bytes;
   size_t cursor;
   size_t selected_button;
@@ -212,12 +213,52 @@ static int prompt_fd(void) {
   return platform_isatty(STDERR_FILENO) ? STDERR_FILENO : STDOUT_FILENO;
 }
 
+const char *ui_prompt_usage_name(const void *data) {
+  const prompt_snapshot_t *snapshot = data;
+  if (!snapshot)
+    return "input_prompt";
+  switch (snapshot->kind) {
+  case UI_PROMPT_PASSWORD:
+    return "password_prompt";
+  case UI_PROMPT_MEDIA_INPUT:
+    return "media_input_prompt";
+  case UI_PROMPT_CONFIRMATION:
+    return "confirmation_prompt";
+  case UI_PROMPT_SSH_PASSPHRASE:
+    return "ssh_passphrase_prompt";
+  case UI_PROMPT_GPG_PASSPHRASE:
+    return "gpg_passphrase_prompt";
+  case UI_PROMPT_TRUST_HOST:
+    return "trust_host_prompt";
+  case UI_PROMPT_UNVERIFIED_HOST:
+    return "unverified_host_prompt";
+  case UI_PROMPT_DISCOVERY_KEY_CHANGE:
+    return "discovery_key_change_prompt";
+  case UI_PROMPT_IP_DISCLOSURE:
+    return "ip_disclosure_prompt";
+  case UI_PROMPT_CONFIG_OVERWRITE:
+    return "config_overwrite_prompt";
+  case UI_PROMPT_MANPAGE_OVERWRITE:
+    return "manpage_overwrite_prompt";
+  case UI_PROMPT_COMPLETION_OVERWRITE:
+    return "completion_overwrite_prompt";
+  default:
+    return "input_prompt";
+  }
+}
+
 asciichat_error_t ui_prompt_present(const char *prompt, const char *visible, size_t cursor, bool secret) {
+  return ui_prompt_present_kind(prompt, visible, cursor, secret, secret ? UI_PROMPT_PASSWORD : UI_PROMPT_INPUT);
+}
+
+asciichat_error_t ui_prompt_present_kind(const char *prompt, const char *visible, size_t cursor, bool secret,
+                                         ui_prompt_kind_t kind) {
   size_t prompt_bytes = strlen(prompt) + 1;
   size_t visible_bytes = strlen(visible) + 1;
   prompt_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot) + prompt_bytes + visible_bytes, prompt_snapshot_t *);
   if (!snapshot)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate prompt presentation");
+  snapshot->kind = kind;
   snapshot->password_dialog = snapshot->incorrect = snapshot->can_confirm = snapshot->newline_limit = false;
   snapshot->selected_button = 0;
   snapshot->prompt_bytes = prompt_bytes;
@@ -285,6 +326,7 @@ asciichat_error_t ui_password_prompt_present(const char *target, const char *mas
   s->prompt_bytes = target_bytes;
   s->cursor = cursor;
   s->selected_button = selected_button;
+  s->kind = UI_PROMPT_PASSWORD;
   s->password_dialog = true;
   s->secret = true;
   s->incorrect = incorrect;

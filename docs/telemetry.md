@@ -526,3 +526,14 @@ stays unchanged. Each leave retains the identity observed on entry, so closing
 help cannot relabel its elapsed time as the underlying screen. Historical events
 remain unchanged. Shared help toggle requests use the same contextual names;
 inline log help is observed through visits rather than shortcut events.
+
+Prompt visits now use caller-supplied, fixed purpose names: `password_prompt`,
+`media_input_prompt`, `ssh_passphrase_prompt`, `gpg_passphrase_prompt`,
+`trust_host_prompt`, `unverified_host_prompt`, `discovery_key_change_prompt`,
+`ip_disclosure_prompt`, `config_overwrite_prompt`, `manpage_overwrite_prompt`,
+and `completion_overwrite_prompt`. Generic APIs retain `input_prompt` and
+`confirmation_prompt` fallbacks. Password retries remain the same screen type.
+The identity is stored in the retained presentation snapshot and never derived
+from prompt text, target addresses, paths, fingerprints, or entered answers.
+Historical `prompt` events remain unchanged. The usage dashboard groups the new
+names automatically.

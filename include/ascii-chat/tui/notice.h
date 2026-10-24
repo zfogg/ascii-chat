@@ -4,6 +4,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <stdbool.h>
+#include <ascii-chat/platform/question.h>
 
 typedef enum {
   UI_NOTICE_INFO,
@@ -32,6 +33,17 @@ static inline bool ui_notice_confirm(ui_notice_severity_t severity, const char *
 #else
 bool ui_notice_confirm(ui_notice_severity_t severity, const char *text, unsigned timeout_seconds);
 #endif
+#ifdef EMSCRIPTEN_BUILD
+static inline bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity,
+                                          const char *text, unsigned timeout_seconds) {
+  (void)kind;
+  return ui_notice_confirm(severity, text, timeout_seconds);
+}
+#else
+bool ui_notice_confirm_kind(ui_prompt_kind_t kind, ui_notice_severity_t severity,
+                            const char *text, unsigned timeout_seconds);
+#endif
+ui_prompt_kind_t ui_notice_prompt_kind(void);
 ui_notice_severity_t ui_notice_prompt_severity(void);
 void ui_notice_dismiss(void);
 const char *ui_notice_title(const void *snapshot);
