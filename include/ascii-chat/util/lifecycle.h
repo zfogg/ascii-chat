@@ -39,7 +39,7 @@ extern "C" {
 
 typedef enum {
   LIFECYCLE_UNINITIALIZED = 0, ///< Not yet initialized (zero = default)
-  LIFECYCLE_INITIALIZING = 1,  ///< init_once winner in progress; losers spin
+  LIFECYCLE_INITIALIZING = 1,  ///< init_once winner in progress; other callers must wait before use
   LIFECYCLE_INITIALIZED = 2,   ///< Ready to use
   LIFECYCLE_DEAD = 3,          ///< Permanently shut down; no re-init
   LIFECYCLE_DESTROYING = 4,    ///< destroy_once winner in progress; losers skip
@@ -99,15 +99,16 @@ bool lifecycle_init(lifecycle_t *lc, const char *name);
  *   1. Do actual init work
  *   2. Call lifecycle_init_commit() on success or lifecycle_init_abort() on failure
  *
- * Losing callers spin on the transient INITIALIZING state until the winner commits,
- * then return false without doing work.
+ * Losing callers return false immediately, including while the winner is still
+ * INITIALIZING. Callers requiring the resource must wait for INITIALIZED or retry
+ * after an aborted initialization before using it.
  *
  * @param lc lifecycle state
  * @return true if THIS caller won the init race and should do work
  * @return false if init already happened (or is in progress) or module is DEAD
  *
  * Safe for concurrent callers. Exactly one caller gets true (the CAS winner).
- * Other concurrent callers spin until the winner moves to INITIALIZED or DEAD.
+ * Other concurrent callers do not wait for the winner to finish initialization.
  */
 bool lifecycle_init_once(lifecycle_t *lc);
 
@@ -117,8 +118,8 @@ bool lifecycle_init_once(lifecycle_t *lc);
  *
  * @param lc lifecycle state
  *
- * Wakes all spinners waiting in lifecycle_init_once(). Must be called by the
- * lifecycle_init_once() winner after successful init work.
+ * Publishes the completed resource to callers checking lifecycle_is_initialized().
+ * Must be called by the lifecycle_init_once() winner after successful init work.
  */
 void lifecycle_init_commit(lifecycle_t *lc);
 
@@ -128,7 +129,7 @@ void lifecycle_init_commit(lifecycle_t *lc);
  *
  * @param lc lifecycle state
  *
- * Allows the next caller to retry initialization. Wakes spinners.
+ * Allows the next caller to retry initialization.
  */
 void lifecycle_init_abort(lifecycle_t *lc);
 

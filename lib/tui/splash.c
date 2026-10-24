@@ -68,11 +68,22 @@ static discovery_splash_t g_discovery_splash;
 static mutex_t g_discovery_splash_mutex;
 static lifecycle_t g_discovery_splash_lifecycle = LIFECYCLE_INIT_MUTEX(&g_discovery_splash_mutex);
 
-static void discovery_splash_init(void) {
-  if (lifecycle_init_once(&g_discovery_splash_lifecycle)) {
-    mutex_init(&g_discovery_splash_mutex, "discovery_splash");
-    lifecycle_init_commit(&g_discovery_splash_lifecycle);
+static void splash_mutex_init(lifecycle_t *lifecycle, mutex_t *mutex, const char *name) {
+  for (;;) {
+    if (lifecycle_init_once(lifecycle)) {
+      mutex_init(mutex, name);
+      lifecycle_init_commit(lifecycle);
+      return;
+    }
+    if (lifecycle_is_initialized(lifecycle))
+      return;
+    // A losing caller must not enter the native lock while its owner initializes it.
+    platform_sleep_ms(1);
   }
+}
+
+static void discovery_splash_init(void) {
+  splash_mutex_init(&g_discovery_splash_lifecycle, &g_discovery_splash_mutex, "discovery_splash");
 }
 
 void splash_set_discovery_session(const char *session, bool joining) {
@@ -313,10 +324,7 @@ static void *splash_monitor_thread(void *arg) {
       }
     }
     splash_header_ctx_t view = {.discovery = discovery_splash_snapshot(), .use_colors = use_colors};
-    if (lifecycle_init_once(&g_update_notification_lifecycle)) {
-      mutex_init(&g_update_notification_mutex, "update_notification");
-      lifecycle_init_commit(&g_update_notification_lifecycle);
-    }
+    splash_mutex_init(&g_update_notification_lifecycle, &g_update_notification_mutex, "update_notification");
     mutex_lock(&g_update_notification_mutex);
     SAFE_STRNCPY(view.update_notification, g_update_notification, sizeof(view.update_notification));
     mutex_unlock(&g_update_notification_mutex);
@@ -455,10 +463,7 @@ void splash_wait_for_animation(void) {
 }
 
 void splash_set_update_notification(const char *notification) {
-  if (lifecycle_init_once(&g_update_notification_lifecycle)) {
-    mutex_init(&g_update_notification_mutex, "update_notification");
-    lifecycle_init_commit(&g_update_notification_lifecycle);
-  }
+  splash_mutex_init(&g_update_notification_lifecycle, &g_update_notification_mutex, "update_notification");
   mutex_lock(&g_update_notification_mutex);
 
   if (!notification || notification[0] == '\0') {

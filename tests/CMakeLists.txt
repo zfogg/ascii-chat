@@ -1176,6 +1176,21 @@ if(BUILD_TESTS)
         set_tests_properties(websocket-dependency-probes PROPERTIES LABELS "unit;build" TIMEOUT 60)
     endif()
     add_executable(test-client-like-lifecycle integration/client_like_lifecycle.c)
+    # A separate native process tests first-call races in Windows critical sections too.
+    add_executable(test-splash-init standalone/tui/splash_init.c)
+    if(TARGET ascii-chat-shared)
+        target_link_libraries(test-splash-init PRIVATE ascii-chat-shared)
+    else()
+        target_link_libraries(test-splash-init PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    endif()
+    target_include_directories(test-splash-init PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+    apply_sanitizers_to_target(test-splash-init)
+    set_target_properties(test-splash-init PROPERTIES
+        LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_test(NAME splash-init COMMAND $<TARGET_FILE:test-splash-init>)
+    set_tests_properties(splash-init PROPERTIES LABELS "integration;thread" TIMEOUT 30
+        ENVIRONMENT "TESTING=1;ASCII_CHAT_OTEL_ENABLED_TELEMETRY=none")
     if(TARGET ascii-chat-shared)
         target_link_libraries(test-client-like-lifecycle PRIVATE ascii-chat-shared)
     else()
@@ -1192,7 +1207,7 @@ if(BUILD_TESTS)
     # Cover both the documented tests target and the Criterion run targets.
     foreach(test_build_target tests tests-criterion-build tests-lib-build)
         if(TARGET ${test_build_target})
-            add_dependencies(${test_build_target} test-client-like-lifecycle)
+            add_dependencies(${test_build_target} test-client-like-lifecycle test-splash-init)
         endif()
     endforeach()
     asciichat_add_python_test(client-like-lifecycle
