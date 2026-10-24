@@ -521,6 +521,8 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   if (!signals)
     return ASCIICHAT_OK;
   gotel_options_t config = {0};
+  config.application_name = "ascii-chat";
+  config.disable_span_name_prefix = true;
   char service_name[OPTIONS_BUFF_SIZE];
   int n = safe_snprintf(service_name, sizeof(service_name), "ascii-chat-%s", mode);
   if (n < 0 || (size_t)n >= sizeof(service_name))
