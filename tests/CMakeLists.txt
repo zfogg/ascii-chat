@@ -1964,7 +1964,7 @@ if(TEST test_unit_crypto_test_gpg_key_expiry)
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
 
-if(BUILD_TESTS AND TARGET c-gotel)
+if(BUILD_TESTS AND TARGET gotel)
     add_executable(test-otel-media standalone/media/otel_media_test.c)
     target_link_libraries(test-otel-media PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
     target_include_directories(test-otel-media PRIVATE ${CMAKE_BINARY_DIR}/generated)
@@ -1984,7 +1984,7 @@ if(BUILD_TESTS AND TARGET c-gotel)
     set_tests_properties(otel-tls PROPERTIES LABELS "integration;otel" TIMEOUT 120)
 endif()
 
-if(BUILD_TESTS AND TARGET c-gotel)
+if(BUILD_TESTS AND TARGET gotel)
     asciichat_add_python_test(otel-disabled
         ${CMAKE_SOURCE_DIR}/tests/integration/test_otel_disabled.py $<TARGET_FILE:ascii-chat>)
     set_tests_properties(otel-disabled PROPERTIES LABELS "integration;otel" TIMEOUT 90)
