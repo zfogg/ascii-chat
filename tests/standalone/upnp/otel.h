@@ -1,6 +1,6 @@
 #pragma once
 
-// Standalone tests isolate native implementations from telemetry.
+// Router lifecycle tests isolate the gateway implementation from telemetry.
 #define ASCII_OTEL_SCOPE(operation) ((void)0)
 #define ASCII_OTEL_ATTR_STRING(key, value) ((void)(key), (void)(value))
 #define ASCII_OTEL_ATTR_INT(key, value) ((void)(key), (void)(value))

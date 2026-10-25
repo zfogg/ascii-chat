@@ -28,7 +28,7 @@ with standalone_output_directory('upnp') as out:
         'ascii-chat/common.h': 'common.h',
         'ascii-chat/log/log.h': 'common.h',
         'ascii-chat/util/time.h': 'common.h',
-        'ascii-chat/otel.h': ROOT / 'lib/otel.h',
+        'ascii-chat/otel.h': 'otel.h',
         'miniupnpc/miniupnpc.h': 'gateway.h',
         'miniupnpc.h': 'gateway.h',
         'upnpcommands.h': 'gateway.h',
