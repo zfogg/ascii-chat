@@ -180,7 +180,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   for (int i = 0; i < 4; ++i)
     if (tool && strlen(tool) == yyjson_get_len(mcp_get(params, "name")) && !strcmp(tool, names[i]))
       kind = i;
-  if (kind < 0 || (s->policy.hosted && kind == MCP_WEBCAM))
+  if (kind < 0 || (s->policy.restricted && kind == MCP_WEBCAM))
     return mcp_error(id, -32602, "Unknown tool");
   mcp_jobs_reap(s, false);
   mcp_job_t *j = NULL;

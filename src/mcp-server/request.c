@@ -57,7 +57,7 @@ static bool in_names(const char *name, const char *const *names) {
   return false;
 }
 static const registry_entry_t *exposed(const mcp_policy_t *policy, const char *name) {
-  if (!in_names(name, shared_options) && !(!policy->hosted && in_names(name, local_options)))
+  if (!in_names(name, shared_options) && !(!policy->restricted && in_names(name, local_options)))
     return NULL;
   return registry_find_entry_by_name(name);
 }
@@ -85,7 +85,7 @@ static yyjson_mut_val *options_schema(yyjson_mut_doc *d, const mcp_policy_t *p) 
   yyjson_mut_val *s = object_schema(d), *props = yyjson_mut_obj_get(s, "properties");
   registry_init_size();
   const char *const *lists[] = {shared_options, local_options};
-  for (size_t list = 0; list < (p->hosted ? 1u : 2u); ++list)
+  for (size_t list = 0; list < (p->restricted ? 1u : 2u); ++list)
     for (size_t i = 0; lists[list][i]; ++i) {
       const registry_entry_t *e = exposed(p, lists[list][i]);
       if (!e)
@@ -122,18 +122,18 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
       "Render waveform or FFT from test audio, uploaded audio, URL audio, or local audio/microphone."};
   yyjson_mut_val *tools = yyjson_mut_arr(d);
   for (int i = 0; i < 4; ++i) {
-    if (p->hosted && i == MCP_WEBCAM)
+    if (p->restricted && i == MCP_WEBCAM)
       continue;
     yyjson_mut_val *tool = yyjson_mut_obj(d), *s = object_schema(d), *props = yyjson_mut_obj_get(s, "properties");
     yyjson_mut_obj_add_str(d, tool, "name", names[i]);
     yyjson_mut_obj_add_str(d, tool, "description", descs[i]);
     yyjson_mut_obj_add_val(d, props, "options", options_schema(d, p));
     property(d, s, "timeout_ms", "integer", "Maximum job time, 1000–60000 ms; default 45000.");
-    if (!p->hosted)
+    if (!p->restricted)
       property(d, s, "output_path", "string",
                "Save rendered ASCII art as an image/video, selected by extension. Existing files are never replaced.");
     if (i == MCP_FILE)
-      file_properties(d, s, !p->hosted);
+      file_properties(d, s, !p->restricted);
     if (i == MCP_URL) {
       property(d, s, "url", "string", "HTTP/HTTPS media URL (local profile also accepts RTSP/RTMP).");
       yyjson_mut_val *required = yyjson_mut_arr(d);
@@ -151,10 +151,10 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
       const char *types[] = {"test", "file", "url", "microphone", NULL};
       const char *remote_types[] = {"test", "file", "url", NULL};
       enum_strings(d, yyjson_mut_obj_get(yyjson_mut_obj_get(audio, "properties"), "type"),
-                   p->hosted ? remote_types : types);
-      file_properties(d, audio, !p->hosted);
+                   p->restricted ? remote_types : types);
+      file_properties(d, audio, !p->restricted);
       property(d, audio, "url", "string", "Audio URL.");
-      if (!p->hosted)
+      if (!p->restricted)
         property(d, audio, "device", "integer", "Microphone index.");
       yyjson_mut_obj_add_val(d, props, "audio", audio);
       yyjson_mut_val *req = yyjson_mut_arr(d);
@@ -228,7 +228,7 @@ static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, mcp_r
   if ((path != NULL) == (data != NULL))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Provide exactly one of path or data_base64");
   if (path) {
-    if (p->hosted)
+    if (p->restricted)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Local paths are unavailable in server mode");
     if (!yyjson_is_str(path) || !*yyjson_get_str(path) || !strcmp(yyjson_get_str(path), "-") ||
         strstr(yyjson_get_str(path), "://"))
@@ -270,7 +270,7 @@ static asciichat_error_t source_url(const mcp_policy_t *p, yyjson_val *v, mcp_re
     return SET_ERRNO(ERROR_INVALID_PARAM, "url must be a nonempty string");
   const char *url = yyjson_get_str(v);
   if (strncmp(url, "https://", 8) && strncmp(url, "http://", 7) &&
-      (p->hosted || (strncmp(url, "rtsp://", 7) && strncmp(url, "rtmp://", 7))))
+      (p->restricted || (strncmp(url, "rtsp://", 7) && strncmp(url, "rtmp://", 7))))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported URL scheme");
   return option(r, "url", url);
 }
@@ -337,7 +337,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
     if (!allowed && mcp_get(a, source_fields[i]))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Argument %s is not valid for this tool", source_fields[i]);
   }
-  if (p->hosted && (tool == MCP_WEBCAM || mcp_get(a, "path") || mcp_get(a, "output_path")))
+  if (p->restricted && (tool == MCP_WEBCAM || mcp_get(a, "path") || mcp_get(a, "output_path")))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Local capability is unavailable in server mode");
   yyjson_val *timeout = mcp_get(a, "timeout_ms");
   if (timeout) {
@@ -349,7 +349,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   if (!platform_get_executable_path(exe, sizeof(exe)))
     return SET_ERRNO(ERROR_FILE_OPERATION, "Cannot locate renderer executable");
   arg(r, exe);
-  arg(r, "--quiet");
+  arg(r, "--log-level=error");
   arg(r, "--no-check-update");
   arg(r, "mirror");
   option(r, "width", "100");
@@ -458,7 +458,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
         return err;
       option(r, "audio-source", "media");
       option(r, "audio-capture-source", "media");
-    } else if (!strcmp(t, "microphone") && !p->hosted) {
+    } else if (!strcmp(t, "microphone") && !p->restricted) {
       if (mcp_get(audio, "path") || mcp_get(audio, "data_base64") || mcp_get(audio, "url") || test_audio)
         return SET_ERRNO(ERROR_INVALID_PARAM, "Conflicting audio sources");
       yyjson_val *dev = mcp_get(audio, "device");

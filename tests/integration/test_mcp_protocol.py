@@ -73,13 +73,16 @@ class Protocol(unittest.TestCase):
         self.assertIn("mcp-server", top.stdout)
         mode = subprocess.run([str(BINARY), "mcp-server", "--help"], capture_output=True, text=True, timeout=10)
         self.assertEqual(mode.returncode, 0)
-        for flag in ("--http-server", "--http-origin", "--http-tls-cert", "--http-tls-key", "--http-tls-key-password", "--port", "--address", "--stats-interval"):
+        for flag in ("--transport", "--server", "--http-origin", "--http-tls-cert", "--http-tls-key", "--http-tls-key-password", "--port", "--address", "--stats-interval"):
             self.assertIn(flag, mode.stdout)
         self.assertNotIn("--websocket-tls-cert", mode.stdout)
-        missing_key = subprocess.run([str(BINARY), "mcp-server", "--http-server", "--http-tls-cert", "missing.pem"],
+        missing_key = subprocess.run([str(BINARY), "mcp-server", "--transport", "http", "--http-tls-cert", "missing.pem"],
                                      capture_output=True, text=True, timeout=10)
         self.assertNotEqual(missing_key.returncode, 0)
         self.assertIn("--http-tls-key", missing_key.stdout + missing_key.stderr)
+        invalid_transport = subprocess.run([str(BINARY), "mcp-server", "--transport", "udp"],
+                                           capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(invalid_transport.returncode, 0)
 
     def test_cancel_ping_and_diagnostic_stream(self):
         c = self.client(("--sync-state", "0.2"))
@@ -121,9 +124,15 @@ class Protocol(unittest.TestCase):
         self.assertEqual(hashlib.sha256(output.read_bytes()).digest(), digest)
         self.assertEqual(list(self.directory.glob(".ascii-mcp-*")), [])
     def test_http_profile_and_port(self):
+        self.http_profile(True)
+
+    def test_http_local_devices_and_paths(self):
+        self.http_profile(False)
+
+    def http_profile(self, restricted):
         with socket.socket() as sock: sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]
         log = open(self.directory / "http.log", "wb"); self.addCleanup(log.close)
-        p = subprocess.Popen([str(BINARY), "mcp-server", "--http-server", "--address", "127.0.0.1",
+        p = subprocess.Popen([str(BINARY), "mcp-server", "--transport", "http", *(["--server"] if restricted else []), "--address", "127.0.0.1",
                               "--port", str(port), "--http-origin", "https://tools.example.test", "--status-screen=false"], stdout=log, stderr=log)
         def stop():
             p.terminate()
@@ -146,6 +155,17 @@ class Protocol(unittest.TestCase):
         status, response = request({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
         self.assertEqual(status, 200)
         tools = {tool["name"]: tool for tool in response["result"]["tools"]}
+        if not restricted:
+            self.assertEqual(set(tools), {"render_file", "render_url", "render_webcam", "render_visualization"})
+            self.assertIn("device", tools["render_webcam"]["inputSchema"]["properties"])
+            self.assertIn("path", tools["render_file"]["inputSchema"]["properties"])
+            self.assertIn("output_path", tools["render_file"]["inputSchema"]["properties"])
+            _, rendered = request({"jsonrpc": "2.0", "id": 9, "method": "tools/call", "params": {
+                "name": "render_webcam", "arguments": {"device": 0, "options": {
+                    "test-pattern": True, "width": 40, "height": 16}}}})
+            self.assertFalse(rendered["result"]["isError"], rendered)
+            self.assertGreater(len(rendered["result"]["structuredContent"]["ascii"]), 100)
+            return
         self.assertEqual(set(tools), {"render_file", "render_url", "render_visualization"})
         for tool, arguments in (("render_webcam", {}), ("render_visualization", {"visualization": "fft", "audio": {"type": "microphone"}})):
             _, denied = request({"jsonrpc": "2.0", "id": 20, "method": "tools/call", "params": {"name": tool, "arguments": arguments}})

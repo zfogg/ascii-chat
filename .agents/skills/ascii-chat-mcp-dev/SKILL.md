@@ -1,6 +1,6 @@
 ---
 name: ascii-chat-mcp-dev
-description: Develop and test ascii-chat MCP tools using a native runtime copy, avoiding Windows build file locks and coordinating server restarts across development chats.
+description: Develop ascii-chat MCP tools through a shared local HTTP endpoint, avoiding Windows file locks and coordinating server restarts across chats.
 ---
 
 # ascii-chat MCP development
@@ -8,6 +8,8 @@ description: Develop and test ascii-chat MCP tools using a native runtime copy, 
 Read the checkout's AGENTS.md and inspect its current MCP configuration before changing it. Use the worktree containing the implementation under test. Preserve its build directory and shared dependency cache; build with the existing Clang/Ninja default preset.
 
 ## Keep the build and MCP executables separate
+
+Development chats now share one independently running HTTP server. Launch the native runtime with `build/bin/ascii-chat-mcp mcp-server --transport http --address 127.0.0.1 --port 27228 --status-screen=false` (add `.exe` on Windows). Keep this URL stable across rebuilds: `http://127.0.0.1:27228/mcp`. Check the port owner before starting or stopping the server; never replace an unrelated listener.
 
 Keep both executables in `build/bin/`:
 
@@ -32,16 +34,15 @@ On Unix:
 cp build/bin/ascii-chat build/bin/ascii-chat-mcp
 ```
 
-The repository Codex configuration uses the suffixless path, which resolves the `.exe` on Windows and the native executable on Unix:
+The repository Codex configuration uses the shared URL:
 
 ```toml
 [mcp_servers.ascii_chat]
-command = "./build/bin/ascii-chat-mcp"
-args = ["mcp-server"]
+url = "http://127.0.0.1:27228/mcp"
 tool_timeout_sec = 70
 ```
 
-Resolve relative paths against the client's working directory. A local configuration may need an absolute path into the implementation worktree. Preserve unrelated server entries. MCP mode skips update checks automatically. Stdio retains local webcam and filesystem access; HTTP mode intentionally restricts these capabilities.
+Preserve unrelated server entries. MCP mode skips update checks automatically. `--transport http` retains webcam and filesystem access; keep the unrestricted listener on loopback. Add `--server` only for cloud capability restrictions. `--transport stdio` explicitly selects the default stdio transport. The project `.mcp.json` also uses the shared HTTP URL.
 
 ## Handle executable and DLL locks
 
@@ -59,8 +60,8 @@ Only stop processes belonging to the relevant worktree and development task. Nev
 
 ## Coordinate across chats
 
-Multiple development chats can each own an MCP server connected to the same worktree. Restarting one can leave another chat with a dead transport or stale tool connection. Before a shared-runtime refresh, determine which chats are affected and coordinate a brief pause. When the user has authorized messaging those chats, use the available thread tools to notify their owners before stopping servers, then tell them when the build and copy are ready. Otherwise report the affected chats to the user; this skill does not independently authorize sending messages.
+Multiple development chats share this HTTP endpoint. Coordinate one restart owner and a brief pause, preferably without active renders. When the user has authorized messaging affected chats, notify their owners before downtime and after readiness. Otherwise report affected chats to the user; this skill does not independently authorize sending messages.
 
-After stopping the affected servers: finish the build, refresh the runtime copy, and reconnect or restart each affected MCP client. Simply launching another stdio process does not reconnect an existing client's pipes. Inspect the current client's reconnect controls; if the session cannot reload MCP, state that it needs a reconnect or new chat. Do not silently create or archive chats.
+After stopping the relevant server: finish the build successfully, refresh the runtime copy, and restart the HTTP server on the same address, port, and `/mcp` path. On Windows use `Start-Process -WindowStyle Hidden` with separate stdout/stderr logs under build/. Verify readiness with initialize, tools/list, and a bounded render. HTTP clients retain their URL; in-flight requests may fail during downtime and need retry. Confirm client recovery instead of promising seamless restarts. Schema changes may require tool rediscovery; existing stdio chats need a one-time configuration reload to migrate to HTTP. Reconnect clients only when necessary. Do not silently create or archive chats.
 
 Verify through an actual MCP tool call from a connected client. A direct CLI render or hand-written JSON-RPC subprocess probe is useful additional evidence, but does not establish that the client's MCP connection works. Check that the client runs the refreshed copy before attributing stale behavior to the implementation. For rendering changes, compare the artifact with the equivalent CLI output and inspect images or video frames. Report the tests performed and any clients still needing reconnection.

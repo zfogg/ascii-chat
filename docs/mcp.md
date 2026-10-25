@@ -2,12 +2,12 @@
 
 `ascii-chat mcp-server` exposes four rendering tools over newline-delimited JSON-RPC on stdio. It runs through the ordinary application initialization, options, logging, error-stack and diagnostic workers. Both transports automatically skip startup update checks. Protocol stdout is reserved before initialization; incidental terminal diagnostics go to stderr.
 
-`ascii-chat mcp-server --http-server` serves the restricted tool set at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. Examples:
+`ascii-chat mcp-server --transport http` serves all four tools at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. Examples:
 
 ```sh
-ascii-chat mcp-server --http-server --port 28028 --address 127.0.0.1
-ascii-chat mcp-server --http-server 0.0.0.0 ::1 --port 27228
-ascii-chat --log-level debug --grep 'MCP|render' mcp-server --http-server --status-screen
+ascii-chat mcp-server --transport http --port 28028 --address 127.0.0.1
+ascii-chat mcp-server --transport http 0.0.0.0 ::1 --port 27228
+ascii-chat --log-level debug --grep 'MCP|render' mcp-server --transport http --status-screen
 ```
 
 The `--http-tls-cert`, `--http-tls-key`, and `--http-tls-key-password` configure HTTPS for this HTTP listener too. `--port-forwarding` maps the HTTP port with the existing UPnP implementation; `--max-clients` bounds concurrent render jobs (hard maximum four). HTTP status uses the shared terminal controller and log viewer, including error popups and debug controls. Debug builds retain `--sync-state`, `--backtrace`, and memory diagnostics. Stdio does not consume terminal keys: stdin is the protocol stream.
@@ -67,16 +67,18 @@ Results contain `content` text plus `structuredContent` with `ascii`, `elapsed_m
 
 ## Hosted isolation
 
-Server mode omits webcam tooling and rejects caller-selected paths, microphone access, saved output paths, custom font paths, and arbitrary yt-dlp options. Uploaded bytes use private server-created temporary files. These capability restrictions do not sandbox third-party media decoders or URL extractors: public deployments must run under an unprivileged account/container with no secrets or device mounts and network egress rules blocking private/loopback/link-local/metadata destinations. Enforce those rules on redirected and nested media requests too. Put authentication/rate limits at the reverse proxy if required. Local mode intentionally permits the filesystem and devices of the user running it.
+`--server` mode omits webcam tooling and rejects caller-selected paths, microphone access, saved output paths, custom font paths, and arbitrary yt-dlp options. Uploaded bytes use private server-created temporary files. These capability restrictions do not sandbox third-party media decoders or URL extractors: public deployments must run under an unprivileged account/container with no secrets or device mounts and network egress rules blocking private/loopback/link-local/metadata destinations. Enforce those rules on redirected and nested media requests too. Put authentication/rate limits at the reverse proxy if required. Local mode intentionally permits the filesystem and devices of the user running it.
 
 ## Codex connection
 
-Register a built executable in the project's `.codex/config.toml`:
+The repository's `.codex/config.toml` and `.mcp.json` use the shared HTTP endpoint `http://127.0.0.1:27228/mcp`. Start the runtime copy with `build/bin/ascii-chat-mcp mcp-server --transport http --address 127.0.0.1 --port 27228` (Windows: add `.exe`). See the `ascii-chat-mcp-dev` skill for copying builds and restarting it. Chats retain the endpoint across restarts; interrupted requests may need retry.
+
+For a client-managed stdio server instead:
 
 ```toml
 [mcp_servers.ascii_chat]
 command = "./build/bin/ascii-chat"
-args = ["mcp-server"]
+args = ["mcp-server", "--transport", "stdio"]
 tool_timeout_sec = 70
 ```
 
@@ -84,7 +86,7 @@ The suffixless executable path works on Windows (which resolves `.exe`) and Unix
 
 ## Claude Code connection
 
-The repository's `.mcp.json` registers the built local stdio server at project scope:
+To replace the shared HTTP entry in `.mcp.json` with a client-managed stdio server:
 
 ```json
 {
@@ -93,7 +95,7 @@ The repository's `.mcp.json` registers the built local stdio server at project s
       "type": "stdio",
       "command": "./build/bin/ascii-chat",
       "args": [
-        "mcp-server"
+        "mcp-server", "--transport", "stdio"
       ]
     }
   }
@@ -105,7 +107,7 @@ project server when prompted. Use `/mcp` to inspect its connection. This is the
 same suffixless build path as the Codex configuration; use an absolute path for
 a server in another checkout.
 
-For a networked server, start `ascii-chat mcp-server --http-server --address 127.0.0.1 --port 27228`
+For a networked server, start `ascii-chat mcp-server --transport http --address 127.0.0.1 --port 27228`
 separately and replace the stdio entry with:
 
 ```json
@@ -119,7 +121,7 @@ separately and replace the stdio entry with:
 }
 ```
 
-HTTP uses the restricted tool profile described above. See the
+Add `--server` for the restricted cloud tool profile described above. See the
 [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp) for project scope and approvals.
 
 ## Telemetry

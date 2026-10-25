@@ -256,8 +256,10 @@ the same rendering pipeline as the CLI.
 # Local stdio transport: launch this command from your MCP client
 ascii-chat mcp-server
 
-# Restricted Streamable HTTP transport
-ascii-chat mcp-server --http-server --address 127.0.0.1 --port 27228
+# Local Streamable HTTP transport (all four tools)
+ascii-chat mcp-server --transport http --address 127.0.0.1 --port 27228
+# Add --server for cloud restrictions
+ascii-chat mcp-server --transport http --server --address 0.0.0.0 --port 27228
 ```
 
 Tool arguments accept CLI rendering options such as `color-mode`, `width`,
@@ -265,7 +267,7 @@ Tool arguments accept CLI rendering options such as `color-mode`, `width`,
 or video without overwriting existing files; set `render-font-size` to 28 for
 larger output and `snapshot-delay` to a positive duration for a clip. Files must
 be on the server's computer, or supplied as base64 bytes by the MCP client.
-HTTP mode restricts filesystem/device access and requires deployment isolation
+The --server flag restricts filesystem/device access and requires deployment isolation
 and network egress controls when exposed publicly.
 
 See the **[MCP website guide](https://ascii-chat.com/docs/mcp)** or

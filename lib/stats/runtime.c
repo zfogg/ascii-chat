@@ -325,7 +325,7 @@ static void *stats_worker(void *unused) {
     bool active = stats_runtime_active();
     // Own input only while our screen is visible, or while a server has no screen.
     bool server_like = strcmp(g_mode, "server") == 0 || strcmp(g_mode, "discovery-service") == 0 ||
-                       (strcmp(g_mode, "mcp-server") == 0 && GET_OPTION(http_server));
+                       (strcmp(g_mode, "mcp-server") == 0 && !strcmp(GET_OPTION(mcp_transport), "http"));
     if (g_keyboard && (active || (server_like && !ui_controller_screen_live(UI_SCREEN_STATUS)))) {
       keyboard_key_t key = ui_input_read_key(UI_SCREEN_STATS);
       active = stats_runtime_active();
@@ -465,13 +465,13 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
   snprintf(g_mode, sizeof(g_mode), "%s", mode);
   g_interval = interval_seconds;
   g_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO;
-  g_keyboard = (!mcp || GET_OPTION(http_server)) && platform_isatty(STDIN_FILENO) && platform_isatty(g_fd) &&
-               keyboard_init() == ASCIICHAT_OK;
+  g_keyboard = (!mcp || !strcmp(GET_OPTION(mcp_transport), "http")) && platform_isatty(STDIN_FILENO) &&
+               platform_isatty(g_fd) && keyboard_init() == ASCIICHAT_OK;
   atomic_store_bool_impl(&g_stop, false);
   atomic_store_bool_impl(&g_active, false);
   g_started = true;
-  bool server_like =
-      strcmp(mode, "server") == 0 || strcmp(mode, "discovery-service") == 0 || (mcp && GET_OPTION(http_server));
+  bool server_like = strcmp(mode, "server") == 0 || strcmp(mode, "discovery-service") == 0 ||
+                     (mcp && !strcmp(GET_OPTION(mcp_transport), "http"));
   if (g_keyboard && server_like && ui_controller_start_terminal(g_fd) != ASCIICHAT_OK)
     LOG_ERRNO_IF_SET("Cannot start terminal presentation");
   if (acthread_create(&g_worker, "stats", stats_worker, NULL) == 0)

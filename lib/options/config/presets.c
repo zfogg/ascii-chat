@@ -213,11 +213,11 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_usage(b, NULL, NULL, true, "Start a new session (share the session string)");
   options_builder_add_usage(b, NULL, "<session-string>", true, "Join an existing session");
   options_builder_add_usage(b, NULL, "<mode>", true, "Run in a specific mode");
-  options_builder_add_usage(b, "mcp-server", "[--http-server] [bind-address] [bind-address]", true,
-                            "MCP rendering tools (stdio locally, HTTP with --http-server, default port 27228)");
+  options_builder_add_usage(b, "mcp-server", "[--transport http|stdio] [--server] [bind-address] [bind-address]", true,
+                            "MCP rendering tools (stdio locally, HTTP with --transport http, default port 27228)");
   options_builder_add_example(b, OPTION_MODE_MCP_SERVER, "", "Local MCP tools over stdio", false);
-  options_builder_add_example(b, OPTION_MODE_MCP_SERVER, "--http-server --address 127.0.0.1 --port 27228",
-                              "Restricted MCP tools over Streamable HTTP", false);
+  options_builder_add_example(b, OPTION_MODE_MCP_SERVER, "--transport http --address 127.0.0.1 --port 27228",
+                              "Local MCP tools over Streamable HTTP", false);
   options_builder_add_usage(b, "server", "[bind-address] [bind-address]", true,
                             "Start server (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
   options_builder_add_usage(b, "client", "[address]", true, "Connect to server (defaults to localhost:27224)");

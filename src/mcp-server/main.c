@@ -16,8 +16,11 @@ static void mcp_stats_view(stats_view_t *view, void *data) {
 }
 
 int mcp_server_main(void) {
+  if (strcmp(GET_OPTION(mcp_transport), "http") && strcmp(GET_OPTION(mcp_transport), "stdio"))
+    return SET_ERRNO(ERROR_CONFIG, "--transport must be http or stdio");
   mcp_server_t *s = SAFE_CALLOC(1, sizeof(*s), mcp_server_t *);
-  s->policy = (mcp_policy_t){.hosted = GET_OPTION(http_server),
+  s->policy = (mcp_policy_t){.hosted = !strcmp(GET_OPTION(mcp_transport), "http"),
+                             .restricted = GET_OPTION(mcp_server_restricted),
                              .address = GET_OPTION(address),
                              .address6 = GET_OPTION(address6),
                              .port = GET_OPTION(port),
@@ -41,7 +44,8 @@ int mcp_server_main(void) {
     SAFE_FREE(s);
     return SET_ERRNO(ERROR_INVALID_STATE, "Cannot initialize MCP server");
   }
-  log_info("MCP server started (%s, four rendering tools)", s->policy.hosted ? "restricted HTTP" : "local stdio");
+  log_info("MCP server started (%s, %s capabilities)", s->policy.hosted ? "HTTP" : "stdio",
+           s->policy.restricted ? "restricted" : "local");
   stats_runtime_set_provider(mcp_stats_view, s);
   asciichat_error_t err = s->policy.hosted ? mcp_http_run(s) : mcp_stdio_run(s);
   stats_runtime_set_provider(NULL, NULL);

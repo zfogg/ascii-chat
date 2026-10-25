@@ -45,7 +45,7 @@ def main():
             sock.bind(("127.0.0.1", 0))
             port = sock.getsockname()[1]
         process = subprocess.Popen([binary, "--otel-endpoint", receiver.url, "--otel-enabled-telemetry", "traces,logs,metrics",
-                                    "mcp-server", "--http-server", "--address", "127.0.0.1", "--port", str(port), "--status-screen=false"],
+                                    "mcp-server", "--transport", "http", "--address", "127.0.0.1", "--port", str(port), "--status-screen=false"],
                                    env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
             for _ in range(100):
@@ -62,7 +62,7 @@ def main():
                                {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"})
             response = connection.getresponse()
             assert response.status == 200
-            assert len(json.loads(response.read())["result"]["tools"]) == 3
+            assert len(json.loads(response.read())["result"]["tools"]) == 4
             connection.close()
         finally:
             process.terminate()

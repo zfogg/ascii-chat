@@ -24,6 +24,7 @@ static inline yyjson_val *mcp_get(yyjson_val *obj, const char *name) {
 typedef enum { MCP_FILE, MCP_URL, MCP_WEBCAM, MCP_VISUALIZATION } mcp_tool_t;
 typedef struct {
   bool hosted;
+  bool restricted;
   const char *address;
   const char *address6;
   const char *tls_cert, *tls_key, *tls_password;

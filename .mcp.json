@@ -1,11 +1,8 @@
 {
   "mcpServers": {
     "ascii_chat": {
-      "type": "stdio",
-      "command": "./build/bin/ascii-chat",
-      "args": [
-        "mcp-server"
-      ]
+      "type": "http",
+      "url": "http://127.0.0.1:27228/mcp"
     }
   }
 }

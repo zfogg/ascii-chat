@@ -15,13 +15,25 @@
 // ============================================================================
 // GENERAL CATEGORY - General-purpose options
 // ============================================================================
+static const char *g_mcp_transport_values[] = {"http", "stdio", NULL};
+
 const registry_entry_t g_general_entries[] = {
-    {.long_name = "http-server",
+    {.long_name = "server",
      .type = OPTION_TYPE_BOOL,
-     .offset = offsetof(options_t, http_server),
-     .help_text = "Serve restricted MCP tools over HTTP (no webcam or caller-selected filesystem paths).",
+     .offset = offsetof(options_t, mcp_server_restricted),
+     .help_text = "Restrict MCP capabilities for cloud deployment (no webcam or caller-selected filesystem paths).",
      .group = "MCP",
-     .env_var_name = "ASCII_CHAT_HTTP_SERVER",
+     .env_var_name = "ASCII_CHAT_SERVER",
+     .mode_bitmask = OPTION_MODE_MCP_SERVER},
+    {.long_name = "transport",
+     .type = OPTION_TYPE_STRING,
+     .offset = offsetof(options_t, mcp_transport),
+     .default_value = "stdio",
+     .default_value_size = OPTIONS_BUFF_SIZE,
+     .help_text = "MCP transport: http or stdio (default). --server independently restricts cloud capabilities.",
+     .metadata = {.enum_values = g_mcp_transport_values, .input_type = OPTION_INPUT_ENUM},
+     .group = "MCP",
+     .env_var_name = "ASCII_CHAT_TRANSPORT",
      .mode_bitmask = OPTION_MODE_MCP_SERVER},
     {.long_name = "http-origin",
      .type = OPTION_TYPE_STRING,

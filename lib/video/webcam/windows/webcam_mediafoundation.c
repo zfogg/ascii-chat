@@ -185,7 +185,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   }
 
   if (device_index >= count) {
-    SET_ERRNO(ERROR_WEBCAM, "Device index %d out of range (0-%d)", device_index, count - 1);
+    result = SET_ERRNO(ERROR_WEBCAM, "Device index %d out of range (0-%d)", device_index, count - 1);
     hr = E_FAIL;
     goto error;
   }

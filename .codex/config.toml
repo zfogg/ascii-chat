@@ -2,8 +2,7 @@
 [mcp_servers.spaniel]
 url = "http://127.0.0.1:28080/mcp"
 
-# Refresh this runtime copy after building; see $ascii-chat-mcp-dev.
+# Shared local HTTP server; rebuild/restart instructions: $ascii-chat-mcp-dev.
 [mcp_servers.ascii_chat]
-command = "./build/bin/ascii-chat-mcp"
-args = ["mcp-server"]
+url = "http://127.0.0.1:27228/mcp"
 tool_timeout_sec = 70

@@ -999,7 +999,8 @@ typedef struct options_state {
   bool discovery;                           ///< Enable discovery session registration (default: false)
   char discovery_server[OPTIONS_BUFF_SIZE]; ///< discovery server address (default: 127.0.0.1)
   // MCP HTTP transport
-  bool http_server;                              ///< Serve MCP tools over HTTP rather than stdio
+  bool mcp_server_restricted;                    ///< Restrict MCP capabilities for cloud deployment
+  char mcp_transport[OPTIONS_BUFF_SIZE];         ///< MCP transport: stdio or http
   char http_origin[OPTIONS_BUFF_SIZE];           ///< Allowed HTTP Origin
   char http_tls_cert[OPTIONS_BUFF_SIZE];         ///< HTTP TLS certificate path
   char http_tls_key[OPTIONS_BUFF_SIZE];          ///< HTTP TLS key path

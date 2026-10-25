@@ -15,12 +15,13 @@ typedef struct {
   mcp_render_result_t *result;
   uint64_t started, exit_time;
   unsigned timeout;
-  bool exited, failed;
+  bool exited, failed, stopped;
 } render_worker_t;
 static void stop_worker(render_worker_t *w, const char *reason) {
   if (w->failed)
     return;
   w->failed = true;
+  w->stopped = true;
   SAFE_STRNCPY(w->result->error, reason, sizeof(w->result->error));
   if (!w->exited)
     uv_process_kill(&w->process, SIGKILL);
@@ -43,7 +44,7 @@ static void read_output(uv_stream_t *stream, ssize_t count, const uv_buf_t *buf)
         w->result->length += n;
         w->result->text[w->result->length] = '\0';
       }
-    } else if (!w->failed) {
+    } else if (!w->stopped) {
       // Keep the tail, which normally contains the most useful decoder error.
       size_t old = strlen(w->result->error), n = (size_t)count, cap = sizeof(w->result->error) - 1;
       if (n >= cap) {
