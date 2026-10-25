@@ -2,6 +2,16 @@
 #include <stddef.h>
 
 static const stats_descriptor_t counter_descriptors[STATS_COUNTER_COUNT] = {
+    [STATS_COUNTER_MCP_REQUESTS] = {"mcp_requests", "requests", "MCP protocol messages handled"},
+    [STATS_COUNTER_MCP_REJECTED] = {"mcp_rejected", "requests", "Rejected MCP protocol or tool requests"},
+    [STATS_COUNTER_MCP_RENDERS] = {"mcp_renders", "renders", "MCP render jobs started"},
+    [STATS_COUNTER_MCP_RENDER_FAILURES] = {"mcp_render_failures", "renders", "MCP render jobs which failed"},
+    [STATS_COUNTER_MCP_CANCELLED] = {"mcp_cancelled", "renders", "MCP render jobs cancelled"},
+    [STATS_COUNTER_MCP_TIMEOUTS] = {"mcp_timeouts", "renders", "MCP render jobs exceeding their deadline"},
+    [STATS_COUNTER_MCP_OUTPUT_BYTES] = {"mcp_output_bytes", "bytes", "ASCII bytes captured from MCP render workers"},
+    [STATS_COUNTER_MCP_SAVED_FILES] = {"mcp_saved_files", "files", "MCP image or video files saved"},
+    [STATS_COUNTER_MCP_HTTP_RESPONSES] = {"mcp_http_responses", "responses", "MCP HTTP responses sent"},
+
     [STATS_COUNTER_FRAMES_ENQUEUED] = {"frames_enqueued", "frames",
                                        "Successful frame queue submissions (fanout counted separately)"},
     [STATS_COUNTER_QUEUE_DROPS] = {"queue_drops", "frames", "Frames discarded because a queue is full"},
@@ -47,6 +57,7 @@ static const stats_descriptor_t gauge_descriptors[STATS_GAUGE_COUNT] = {
 };
 
 static const stats_descriptor_t duration_descriptors[STATS_DURATION_COUNT] = {
+    [STATS_DURATION_MCP_RENDER] = {"mcp_render", "ns", "MCP render worker attempt including output publication"},
     [STATS_DURATION_RECORDING] = {"recording", "ns", "Recording frame conversion and encoding attempt"},
     [STATS_DURATION_CAPTURE] = {"capture", "ns", "Media acquisition attempt, including source wait"},
     [STATS_DURATION_ASCII_CONVERT] = {"ascii_convert", "ns", "ASCII conversion attempt, excluding capture and output"},

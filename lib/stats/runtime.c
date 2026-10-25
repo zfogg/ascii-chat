@@ -197,7 +197,9 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
   view->sampled_ns = snapshot->sampled_ns;
   if (!view->page) {
     stats_view_add(view, "Uptime %.1fs", (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9);
-    stats_view_add_header(view, "%-28s %14s %14s", "PIPELINE / NETWORK", "TOTAL", "PER SECOND");
+    stats_view_add_header(view, "%-28s %14s %14s",
+                          strcmp(g_mode, "mcp-server") == 0 ? "MCP REQUESTS / RENDERS" : "PIPELINE / NETWORK", "TOTAL",
+                          "PER SECOND");
     for (int i = 0; i < STATS_COUNTER_COUNT; ++i) {
       if (!snapshot->capabilities.counters[i])
         continue;
@@ -244,17 +246,17 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
       else
         stats_view_add(view, "Media position: unavailable (live source)");
     }
-    if (strcmp(g_mode, "discovery-service") != 0)
+    if (strcmp(g_mode, "discovery-service") != 0 && strcmp(g_mode, "mcp-server") != 0)
       stats_view_add(view, "Audio: %s   Recording: %s", GET_OPTION(audio_enabled) ? "enabled" : "disabled",
                      GET_OPTION(render_file)[0] ? "enabled" : "disabled");
-    if (strcmp(g_mode, "mirror") != 0) {
+    if (strcmp(g_mode, "mirror") != 0 && strcmp(g_mode, "mcp-server") != 0) {
       stats_view_add(view, "Bytes: ACIP header + payload, excluding transport/encryption overhead.");
       stats_view_add(view, "RTT includes uniquely matched probes only; unanswered probes are excluded.");
     }
   }
   mutex_lock(&g_peers_mutex);
   unsigned peers = 0;
-  if (view->page)
+  if (view->page && strcmp(g_mode, "mcp-server") != 0)
     stats_view_add_header(view, "%-5s %-12s %12s %12s %10s %10s", "ID", "TRANSPORT", "TX bytes/s", "RX bytes/s",
                           "TX fps", "RX fps");
   for (unsigned i = 0; i < 64; ++i) {
@@ -274,7 +276,7 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
   }
   stats_gauge_set(g_scope, STATS_GAUGE_CONNECTIONS_ACTIVE, g_peer_count);
   mutex_unlock(&g_peers_mutex);
-  if (view->page)
+  if (view->page && strcmp(g_mode, "mcp-server") != 0)
     stats_view_add(view, "%u transport handles shown (up to 64); process totals include all peers.", peers);
   mutex_lock(&g_provider_mutex);
   if (g_state[0])
@@ -322,7 +324,8 @@ static void *stats_worker(void *unused) {
   while (!atomic_load_bool_impl(&g_stop) && !shutdown_is_requested()) {
     bool active = stats_runtime_active();
     // Own input only while our screen is visible, or while a server has no screen.
-    bool server_like = strcmp(g_mode, "server") == 0 || strcmp(g_mode, "discovery-service") == 0;
+    bool server_like = strcmp(g_mode, "server") == 0 || strcmp(g_mode, "discovery-service") == 0 ||
+                       (strcmp(g_mode, "mcp-server") == 0 && !strcmp(GET_OPTION(mcp_transport), "http"));
     if (g_keyboard && (active || (server_like && !ui_controller_screen_live(UI_SCREEN_STATUS)))) {
       keyboard_key_t key = ui_input_read_key(UI_SCREEN_STATS);
       active = stats_runtime_active();
@@ -391,6 +394,7 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing statistics mode");
   if (g_started)
     return ASCIICHAT_OK;
+  bool mcp = strcmp(mode, "mcp-server") == 0;
   stats_capabilities_t caps = network_capabilities();
   bool mirror = strcmp(mode, "mirror") == 0, acds = strcmp(mode, "discovery-service") == 0;
   if (mirror)
@@ -432,6 +436,12 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
     caps.gauges[STATS_GAUGE_CONNECTIONS_ACTIVE] = true;
     caps.durations[STATS_DURATION_CONNECTION_SETUP] = !acds;
   }
+  if (mcp) {
+    memset(&caps, 0, sizeof(caps));
+    for (unsigned i = STATS_COUNTER_MCP_REQUESTS; i <= STATS_COUNTER_MCP_HTTP_RESPONSES; i++)
+      caps.counters[i] = true;
+    caps.durations[STATS_DURATION_MCP_RENDER] = true;
+  }
   asciichat_error_t result = stats_scope_create(&caps, &g_scope);
   if (result != ASCIICHAT_OK)
     return result;
@@ -455,11 +465,13 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
   snprintf(g_mode, sizeof(g_mode), "%s", mode);
   g_interval = interval_seconds;
   g_fd = platform_isatty(STDOUT_FILENO) ? STDOUT_FILENO : STDERR_FILENO;
-  g_keyboard = platform_isatty(STDIN_FILENO) && platform_isatty(g_fd) && keyboard_init() == ASCIICHAT_OK;
+  g_keyboard = (!mcp || !strcmp(GET_OPTION(mcp_transport), "http")) && platform_isatty(STDIN_FILENO) &&
+               platform_isatty(g_fd) && keyboard_init() == ASCIICHAT_OK;
   atomic_store_bool_impl(&g_stop, false);
   atomic_store_bool_impl(&g_active, false);
   g_started = true;
-  bool server_like = strcmp(mode, "server") == 0 || strcmp(mode, "discovery-service") == 0;
+  bool server_like = strcmp(mode, "server") == 0 || strcmp(mode, "discovery-service") == 0 ||
+                     (mcp && !strcmp(GET_OPTION(mcp_transport), "http"));
   if (g_keyboard && server_like && ui_controller_start_terminal(g_fd) != ASCIICHAT_OK)
     LOG_ERRNO_IF_SET("Cannot start terminal presentation");
   if (acthread_create(&g_worker, "stats", stats_worker, NULL) == 0)

@@ -23,7 +23,7 @@ def normalize_examples(content):
     sections = text.split(".SH EXAMPLES\n", 1)
     if len(sections) == 2:
         examples, separator, remainder = sections[1].partition(".SH ")
-        examples = re.sub(r"(?m)^(\.B ascii-chat )(server|client|mirror|discovery-service)(?= |$)",
+        examples = re.sub(r"(?m)^(\.B ascii-chat )(server|client|mirror|discovery-service|mcp-server)(?= |$)",
                           r"\1MODE", examples)
         text = sections[0] + ".SH EXAMPLES\n" + examples + separator + remainder
     return text
@@ -53,6 +53,9 @@ def main():
         for marker in ("AUTO-START:", "AUTO-END:", "MERGE-START:", "MERGE-END:", "MANUAL-START:"):
             if marker in stdout:
                 raise AssertionError(f"Control marker leaked into output: {marker}")
+        for text in (".SH MCP SERVER", "ascii-chat mcp-server", "render_visualization", "output_path", "render-font-size"):
+            if text not in stdout:
+                raise AssertionError(f"Missing MCP documentation: {text}")
         output = directory / "ascii-chat.1"
         run(output)
         if normalize_examples(output.read_bytes()) != stdout:

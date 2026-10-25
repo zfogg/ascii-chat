@@ -213,7 +213,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
       fprintf(output, "|-%c", opt->short_name);
     fprintf(output, ") (( ++i )) ;;\n");
   }
-  fprintf(output, "      server|client|mirror|discovery-service|acds)\n"
+  fprintf(output, "      server|client|mirror|discovery-service|acds|mcp-server)\n"
                   "        mode=$words[i]\n"
                   "        words=(\"$words[1]\" \"${(@)words[i+1,-1]}\")\n"
                   "        (( CURRENT -= i - 1 ))\n"
@@ -231,6 +231,10 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "      return\n"
                   "      ;;\n"
                   "\n"
+                  "    mcp-server)\n"
+                  "      _ascii_chat_mcp_server\n"
+                  "      return\n"
+                  "      ;;\n"
                   "    # Client-like modes\n"
                   "    client)\n"
                   "      _ascii_chat_client\n"
@@ -352,6 +356,19 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "# Register completion functions (must come after definitions)\n"
                   "compdef _ascii_chat ascii-chat\n"
                   "compdef _ascii_chat 'build/bin/ascii-chat'\n");
+
+  fprintf(output, "_ascii_chat_mcp_server() {\n"
+                  "  local curcontext=$curcontext\n"
+                  "  local -a context line state_descr args\n"
+                  "  local state\n"
+                  "  local -A opt_args\n\n");
+  size_t mcp_count = 0;
+  const option_descriptor_t *mcp_opts = options_registry_get_for_display(MODE_MCP_SERVER, false, &mcp_count);
+  if (mcp_opts) {
+    zsh_write_combined_args(output, mcp_opts, mcp_count, false);
+    SAFE_FREE(mcp_opts);
+  }
+  fprintf(output, "}\n\n");
 
   SAFE_FREE(binary_opts);
 

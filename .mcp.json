@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ascii_chat": {
+      "type": "http",
+      "url": "http://127.0.0.1:27228/mcp"
+    }
+  }
+}

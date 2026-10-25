@@ -17,6 +17,7 @@ const Terminal = lazy(() => import("./pages/docs/Terminal"));
 const Display = lazy(() => import("./pages/docs/Display"));
 const Snapshot = lazy(() => import("./pages/docs/Snapshot"));
 const Network = lazy(() => import("./pages/docs/Network"));
+const Mcp = lazy(() => import("./pages/docs/Mcp"));
 const Media = lazy(() => import("./pages/docs/Media"));
 const Architecture = lazy(() => import("./pages/docs/Architecture"));
 
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="/docs/display" element={<Display />} />
               <Route path="/docs/snapshot" element={<Snapshot />} />
               <Route path="/docs/network" element={<Network />} />
+              <Route path="/docs/mcp" element={<Mcp />} />
               <Route path="/docs/media" element={<Media />} />
               <Route path="/docs/crypto" element={<Crypto />} />
               <Route path="/docs/architecture" element={<Architecture />} />

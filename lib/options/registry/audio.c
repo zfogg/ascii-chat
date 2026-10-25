@@ -14,6 +14,7 @@
 #include <ascii-chat/options/registry/metadata.h>
 
 #include <ascii-chat/options/parsers.h>
+#include <limits.h>
 
 // ============================================================================
 // AUDIO CATEGORY - Audio processing options
@@ -233,8 +234,8 @@ const registry_entry_t g_audio_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
-     {.numeric_range = {-1, 10, 1}, .examples = g_mic_examples, .input_type = OPTION_INPUT_NUMERIC},
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.numeric_range = {-1, INT_MAX, 1}, .examples = g_mic_examples, .input_type = OPTION_INPUT_NUMERIC},
      NULL},
     {"speakers-index",
      '\0',

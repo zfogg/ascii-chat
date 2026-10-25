@@ -141,7 +141,7 @@ asciichat_error_t completions_generate_fish(FILE *output) {
           "function __fish_ascii_chat_using_mode\n"
           "    set -l cmd (commandline -opc)\n"
           "    for arg in $cmd\n"
-          "        if contains -- $arg server client mirror\n"
+          "        if contains -- $arg server client mirror discovery-service mcp-server\n"
           "            echo $arg\n"
           "            return 0\n"
           "        end\n"
@@ -214,6 +214,15 @@ asciichat_error_t completions_generate_fish(FILE *output) {
     SAFE_FREE(mirror_opts);
   }
   fprintf(output, "\n");
+
+  fprintf(output,
+          "complete -c ascii-chat -n __fish_ascii_chat_no_mode -a mcp-server -d 'Render ASCII art through MCP'\n");
+  size_t mcp_count = 0;
+  const option_descriptor_t *mcp_opts = options_registry_get_for_display(MODE_MCP_SERVER, false, &mcp_count);
+  for (size_t i = 0; i < mcp_count; i++) {
+    fish_write_option(output, &mcp_opts[i], "-n '__fish_seen_subcommand_from mcp-server'");
+  }
+  SAFE_FREE(mcp_opts);
 
   /* Discovery-service options */
   size_t discovery_svc_count = 0;

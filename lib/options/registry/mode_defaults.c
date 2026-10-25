@@ -31,6 +31,7 @@ static const mode_descriptor_t g_mode_descriptors[] = {
     {MODE_CLIENT, "client", "Connect to a server and send/receive streams", "client-like"},
     {MODE_MIRROR, "mirror", "Local webcam preview without networking", "client-like"},
     {MODE_DISCOVERY, "discovery", "Participant with dynamic session discovery", "client-like"},
+    {MODE_MCP_SERVER, "mcp-server", "MCP media rendering tools", "server-like"},
     {MODE_INVALID, NULL, NULL, NULL}};
 
 /**
@@ -126,6 +127,10 @@ static const int g_port_discovery = OPT_PORT_INT_DEFAULT;              // 27224 
  */
 const void *get_default_port(asciichat_mode_t mode) {
   switch (mode) {
+  case MODE_MCP_SERVER: {
+    static const int port = OPT_MCP_PORT_DEFAULT;
+    return &port;
+  }
   case MODE_SERVER:
     return &g_port_server;
   case MODE_CLIENT:

@@ -19,7 +19,7 @@ from both destinations; ascii-chat currently uses redaction rules.
 
 ### Statistics coverage
 
-The typed process stats catalog maps to 29 counters, 5 gauges and 10 duration
+The typed process stats catalog maps to 38 counters, 5 gauges and 11 duration
 histograms through `include/ascii-chat/stats/telemetry.def`. Each entry names its
 canonical telemetry metric. There is no separate `ascii-chat.stats.*` mirror.
 For example, local `frames_captured` feeds `ascii-chat.frames.captured`,

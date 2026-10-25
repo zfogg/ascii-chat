@@ -263,7 +263,8 @@ static keyboard_key_t input_common_key(keyboard_key_t key, int current) {
     keyboard_help_toggle_terminal(ui_controller_active_fd());
     return KEY_NONE;
   }
-  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE;
+  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE ||
+                GET_OPTION(detected_mode) == MODE_MCP_SERVER;
   if (server && current == UI_SCREEN_LOGS) {
     if (ui_session_logs_key(key))
       return KEY_NONE;
@@ -432,7 +433,8 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
   }
   bool primary =
       screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_SPLASH || screen == UI_SCREEN_STATUS || screen == UI_SCREEN_MDNS;
-  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE;
+  bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE ||
+                GET_OPTION(detected_mode) == MODE_MCP_SERVER;
   bool server_owner = screen == UI_SCREEN_STATS && server && !ui_controller_screen_live(UI_SCREEN_STATUS);
   bool active = state.screen < 0 || state.screen == (int)screen ||
                 ((primary || server_owner) && state.screen <= UI_SCREEN_SYNC && state.screen != UI_SCREEN_STATS);

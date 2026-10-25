@@ -26,8 +26,9 @@ static const mode_bit_name_t mode_bit_names[] = {
     {(1 << 1), "client"},            // MODE_CLIENT
     {(1 << 2), "mirror"},            // MODE_MIRROR
     {(1 << 3), "discovery-service"}, // MODE_DISCOVERY_SERVICE
-    {(1 << 4), NULL},                // MODE_DISCOVERY (no mode prefix)
-    {0, NULL}                        // Terminator
+    {OPTION_MODE_MCP_SERVER, "mcp-server"},
+    {(1 << 4), NULL}, // MODE_DISCOVERY (no mode prefix)
+    {0, NULL}         // Terminator
 };
 
 /**

@@ -34,11 +34,18 @@ using a local console, a remote SSH session, or any terminal emulator.
 [\fIbind-address\fR]
 [\fIbind-address\fR]
 [\fImode-options\fR]
+.PP
+.B ascii-chat mcp-server
+[\fB\-\-transport\fR \fIhttp|stdio\fR]
+[\fB\-\-server\fR]
+[\fIbind-address\fR]
+[\fIbind-address\fR]
+[\fImode-options\fR]
 .\" MANUAL-END: SYNOPSIS
 
 .\" MANUAL-START: MODES
 .SH MODES
-The program operates in five modes:
+The program operates in six modes:
 .TP
 .B default
 The default operating mode when running
@@ -70,7 +77,104 @@ Runs an ACDS (ascii-chat Discovery Service) server for session discovery.
 Allows users of ascii-chat's default mode to discover each other using memorable session
 strings instead of IP addresses. See the SECURITY section for
 notes on the official instance and its keys.
+.TP
+.B mcp-server
+Exposes ASCII rendering as Model Context Protocol (MCP) tools over stdio.
+Use \fB\-\-transport http\fR for Streamable HTTP at /mcp (default 127.0.0.1:27228).
+See MCP SERVER below.
 .\" MANUAL-END: MODES
+
+.\" MANUAL-START: MCP SERVER
+.SH MCP SERVER
+.SS "Local stdio (default)"
+.EX
+ascii-chat mcp-server --transport stdio
+.EE
+.PP
+Without \fB\-\-transport http\fR, the MCP client launches this process and communicates
+through its stdin and stdout. No network listener is opened.
+MCP mode automatically skips startup update checks for both transports.
+.PP
+Start \fBascii-chat mcp-server\fR from an MCP client for newline-delimited
+JSON-RPC over stdio. Protocol output uses stdout; diagnostics use stderr.
+The local tools are \fBrender_file\fR (path or base64 bytes),
+\fBrender_url\fR (media URL), \fBrender_webcam\fR (camera device), and
+\fBrender_visualization\fR (waveform or fft with test, file, URL, or microphone audio).
+.PP
+\fBdevice_list\fR takes no arguments and lists video_devices and audio_devices
+(microphones), each with index, name, and is_default. The result also contains
+default_video_device and default_audio_device (null when absent).
+The default webcam is index 0; the default microphone is selected by the OS.
+Device enumeration and webcam capture are hidden with \fB\-\-server\fR.
+.PP
+\fBrender_webcam\fR accepts video_device, audio_device, and volume.
+\fBrender_visualization\fR accepts audio_device and volume for microphone input.
+An omitted audio_device or -1 selects the system microphone; volume is
+microphone gain from 0 (mute) to 1 (normal). Timed webcam exports capture the
+default microphone unless options.audio is false. Use output_path ending in
+.mp4 and a positive snapshot-delay to save an audiovisual clip.
+.PP
+Tools accept an \fBoptions\fR object using CLI long names without leading dashes.
+Use \fBcolor-mode\fR for rendered color. Defaults are 100 by 40 characters,
+monochrome, and one snapshot. Use \fBseek\fR for a media timestamp;
+\fBsnapshot-delay\fR is capture duration after the first rendered frame.
+\fBtimeout_ms\fR bounds each request (1000 to 60000; default 45000).
+.PP
+Local \fBoutput_path\fR saves an image or video selected by filename extension.
+Its parent directory must exist. Existing files and symlinks are never replaced.
+Set \fBrender-font-size\fR (for example 28) to enlarge images and videos;
+set \fBsnapshot-delay\fR above zero to record a clip.
+Results include text and \fBstructuredContent\fR with ascii, elapsed_ms, and saved_files.
+.SS "Claude Code configuration"
+Build the binary first. Place this project-scoped entry in .mcp.json at the checkout root,
+then start Claude Code from that checkout. Approve the project server when prompted
+and use /mcp to inspect the connection.
+.EX
+{
+  "mcpServers": {
+    "ascii_chat": {
+      "type": "stdio",
+      "command": "./build/bin/ascii-chat",
+      "args": ["mcp-server"]
+    }
+  }
+}
+.EE
+.PP
+For an independently running HTTP server, replace the entry with
+\fB{"type":"http","url":"http://127.0.0.1:27228/mcp"}\fR.
+.SS "Networked Streamable HTTP"
+.EX
+ascii-chat mcp-server --transport http --address 127.0.0.1 --port 27228
+.EE
+.PP
+With \fB\-\-transport http\fR, run the process independently and configure the MCP
+client with the URL \fBhttp://127.0.0.1:27228/mcp\fR instead of a launch command.
+The default bind address is loopback; use \fB\-\-address 0.0.0.0\fR to accept
+remote connections and configure the client with the server hostname or IP.
+.PP
+HTTP mode uses \fB\-\-port\fR, \fB\-\-address\fR, \fB\-\-address6\fR,
+and positional bind addresses. TLS uses the http-tls-cert and
+http-tls-key options. Add \fB\-\-server\fR to disable devices, caller-selected filesystem paths,
+output_path, custom fonts, and arbitrary yt-dlp options. Uploaded bytes remain supported
+(limit 16 MiB decoded; request limit 24 MiB; returned ASCII limit 8 MiB).
+Public deployments require an unprivileged sandbox and network egress controls for
+media decoders, plus reverse-proxy authentication and rate limits as appropriate.
+.PP
+.EX
+ascii-chat --log-level debug mcp-server --transport http --status-screen
+.EE
+.PP
+HTTP status supports the usual log viewer, error stacks, error popups, and sync diagnostics.
+The normal \fB\-\-otel-*\fR options enable request/render traces, HTTP response
+status, and counters for failures, cancellation, deadlines, and output. Render spans
+preserve request context across worker threads. Test processes never export telemetry.
+MCP counters and durations use the shared stats scope and canonical telemetry
+metrics. Press = in HTTP mode for live statistics, or use
+\fB\-\-stats-interval 1\fR with either transport for stderr summaries.
+Stdio reserves stdin for MCP and does not read terminal shortcuts.
+Full setup and tool examples: https://ascii-chat.com/docs/mcp
+.\" MANUAL-END: MCP SERVER
 
 .\" MANUAL-START: ANIMATIONS
 .SH ANIMATIONS

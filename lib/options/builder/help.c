@@ -42,7 +42,7 @@
  */
 static const char *get_mode_name_from_bitmask(uint32_t mode_bitmask) {
   // Skip binary-only examples (OPTION_MODE_BINARY = 0x100)
-  if (mode_bitmask & OPTION_MODE_BINARY && !(mode_bitmask & 0x1F)) {
+  if (mode_bitmask & OPTION_MODE_BINARY && !(mode_bitmask & (OPTION_MODE_ALL & ~OPTION_MODE_BINARY))) {
     return NULL; // Binary-level example, no mode name to prepend
   }
 
@@ -63,6 +63,10 @@ static const char *get_mode_name_from_bitmask(uint32_t mode_bitmask) {
   }
   if (mode_bitmask & OPTION_MODE_DISCOVERY_SVC) {
     return "discovery-service";
+  }
+
+  if (mode_bitmask & OPTION_MODE_MCP_SERVER) {
+    return "mcp-server";
   }
 
   return NULL; // Unknown or no specific mode
@@ -230,6 +234,9 @@ static int calculate_section_max_col_width(const options_config_t *config, const
     const char *mode_name = NULL;
     if (!for_binary_help) {
       switch (mode) {
+      case MODE_MCP_SERVER:
+        mode_name = "mcp-server";
+        break;
       case MODE_SERVER:
         mode_name = "server";
         break;
@@ -1174,6 +1181,9 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
     // Get mode name for filtering usage lines
     const char *mode_name = NULL;
     switch (mode) {
+    case MODE_MCP_SERVER:
+      mode_name = "mcp-server";
+      break;
     case MODE_SERVER:
       mode_name = "server";
       break;

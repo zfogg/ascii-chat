@@ -16,6 +16,16 @@ static const gotel_metric_t metrics[] = {
     {"fixture.depth", "{item}", OTLP_METRIC_GAUGE, NULL, 0},
     {"fixture.duration", "s", OTLP_METRIC_HISTOGRAM, bounds, 3},
 };
+static const gotel_operation_t application_operations[] = {
+#define ASCII_OTEL_OPERATION(id, name, realtime) {name, realtime},
+#include <ascii-chat/otel_operations.def>
+#undef ASCII_OTEL_OPERATION
+};
+static const gotel_metric_t application_metrics[] = {
+#define ASCII_OTEL_METRIC(id, name, type, unit) {name, unit, OTLP_METRIC_##type, bounds, 3},
+#include <ascii-chat/otel_metrics.def>
+#undef ASCII_OTEL_METRIC
+};
 static gotel_host_t *host;
 static gotel_test_events_t *events;
 static bool adapter_options;
@@ -402,15 +412,17 @@ Test(otel, stats_share_canonical_metrics_without_mirror_series) {
 #undef ASCII_OTEL_METRIC
   };
   for (unsigned kind = STATS_RECORD_COUNTER; kind <= STATS_RECORD_DURATION; ++kind) {
-    unsigned count = kind == STATS_RECORD_COUNTER ? STATS_COUNTER_COUNT :
-                     kind == STATS_RECORD_GAUGE ? STATS_GAUGE_COUNT : STATS_DURATION_COUNT;
+    unsigned count = kind == STATS_RECORD_COUNTER ? STATS_COUNTER_COUNT
+                     : kind == STATS_RECORD_GAUGE ? STATS_GAUGE_COUNT
+                                                  : STATS_DURATION_COUNT;
     for (unsigned id = 0; id < count; ++id) {
       ascii_otel_metric_t metric = ascii_otel_stats_metric(kind, id);
       cr_assert_lt(metric, ASCII_OTEL_METRIC_COUNT);
       cr_assert(strncmp(names[metric], "ascii-chat.stats.", 17) != 0);
     }
   }
-  cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_FRAMES_CAPTURED), ASCII_OTEL_METRIC_FRAME_CAPTURED);
+  cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_FRAMES_CAPTURED),
+               ASCII_OTEL_METRIC_FRAME_CAPTURED);
   cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_RECONNECTS), ASCII_OTEL_METRIC_RECONNECT);
   cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_BYTES_SENT), ASCII_OTEL_METRIC_NET_TX);
   cr_assert_eq(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_BYTES_RECEIVED), ASCII_OTEL_METRIC_NET_RX);
@@ -421,16 +433,6 @@ Test(otel, stats_share_canonical_metrics_without_mirror_series) {
 }
 
 Test(otel, complete_application_catalog_exports_without_loss) {
-  static const gotel_operation_t application_operations[] = {
-#define ASCII_OTEL_OPERATION(id, name, realtime) {name, realtime},
-#include <ascii-chat/otel_operations.def>
-#undef ASCII_OTEL_OPERATION
-  };
-  static const gotel_metric_t application_metrics[] = {
-#define ASCII_OTEL_METRIC(id, name, type, unit) {name, unit, OTLP_METRIC_##type, bounds, 3},
-#include <ascii-chat/otel_metrics.def>
-#undef ASCII_OTEL_METRIC
-  };
   gotel_options_t o = config();
   o.operations = application_operations;
   o.operation_count = ASCII_OTEL_OPERATION_COUNT;
@@ -495,9 +497,12 @@ Test(otel, classifies_actionable_failures_without_cancellation_or_incomplete_rea
   cr_assert_eq(ascii_otel_failure_operation(ERROR_NETWORK_PROTOCOL, ""), ASCII_OTEL_FAILURE_PROTOCOL);
   cr_assert_eq(ascii_otel_failure_operation(ERROR_UNKNOWN_PACKET, ""), ASCII_OTEL_FAILURE_PROTOCOL);
   cr_assert_eq(ascii_otel_failure_operation(ERROR_SESSION_NOT_FOUND, ""), ASCII_OTEL_FAILURE_DISCOVERY);
-  cr_assert_eq(ascii_otel_failure_operation(ERROR_NETWORK_CONNECT, "ascii-chat.discovery.connect"), ASCII_OTEL_FAILURE_DISCOVERY);
-  cr_assert_eq(ascii_otel_failure_operation(ERROR_SIGNAL_INTERRUPT, "ascii-chat.discovery.connect"), ASCII_OTEL_OPERATION_COUNT);
-  cr_assert_eq(ascii_otel_failure_operation(ERROR_NETWORK_INCOMPLETE, "ascii-chat.discovery.connect"), ASCII_OTEL_OPERATION_COUNT);
+  cr_assert_eq(ascii_otel_failure_operation(ERROR_NETWORK_CONNECT, "ascii-chat.discovery.connect"),
+               ASCII_OTEL_FAILURE_DISCOVERY);
+  cr_assert_eq(ascii_otel_failure_operation(ERROR_SIGNAL_INTERRUPT, "ascii-chat.discovery.connect"),
+               ASCII_OTEL_OPERATION_COUNT);
+  cr_assert_eq(ascii_otel_failure_operation(ERROR_NETWORK_INCOMPLETE, "ascii-chat.discovery.connect"),
+               ASCII_OTEL_OPERATION_COUNT);
   cr_assert_eq(ascii_otel_failure_operation(ERROR_NETWORK, "ascii-chat.network.receive"), ASCII_OTEL_OPERATION_COUNT);
 }
 Test(otel, pipeline_stall_requires_recent_capture_and_an_expected_stage) {
@@ -508,4 +513,27 @@ Test(otel, pipeline_stall_requires_recent_capture_and_an_expected_stage) {
   cr_assert_eq(ascii_otel_pipeline_age(now, 0, progress, true), 0);
   cr_assert_eq(ascii_otel_pipeline_age(now, capture, 0, true), 0);
   cr_assert_eq(ascii_otel_pipeline_age(now, capture, now, true), 0);
+}
+
+Test(otel, mcp_render_context_survives_request_completion) {
+  gotel_options_t o = config();
+  o.operations = application_operations;
+  o.operation_count = ASCII_OTEL_OPERATION_COUNT;
+  o.metrics = application_metrics;
+  o.metric_count = ASCII_OTEL_METRIC_COUNT;
+  o.exporter.queue_capacity = 1024;
+  create(o);
+  gotel_scope_t request, render;
+  gotel_begin(host, &request, ASCII_OTEL_MCP_REQUEST, NULL);
+  gotel_context_t parent = request.context;
+  gotel_end(&request);
+  gotel_begin(host, &render, ASCII_OTEL_MCP_RENDER, &parent);
+  cr_assert_arr_eq(render.context.trace_id, parent.trace_id, 16);
+  cr_assert_arr_eq(render.parent_span_id, parent.span_id, 8);
+  gotel_attr_string(&render, "mcp.tool", "render_file");
+  cr_assert_eq(gotel_metric_record(host, ASCII_OTEL_METRIC_MCP_RENDERS, 1), OTLP_OK);
+  cr_assert_eq(gotel_metric_record(host, ASCII_OTEL_METRIC_MCP_RENDER_DURATION, .25), OTLP_OK);
+  gotel_end(&render);
+  cr_assert_eq(gotel_drain(host), OTLP_OK);
+  cr_assert_eq(stats().sent, 2);
 }

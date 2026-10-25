@@ -232,9 +232,11 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     source->webcam_index = index;
     asciichat_error_t webcam_error = webcam_init_context(&source->webcam_ctx, index);
     if (webcam_error != ASCIICHAT_OK) {
+      asciichat_error_context_t webcam_context;
+      bool has_webcam_context = HAS_ERRNO(&webcam_context);
       // Webcam init failed - log and cleanup
       NOTICE(WARNING, "CAMERA UNAVAILABLE", "Failed to initialize webcam device %u: %s", index,
-             asciichat_error_format(NULL, webcam_error));
+             asciichat_error_format(has_webcam_context ? webcam_context.context_message : NULL, webcam_error));
       // Destroy mutexes before freeing source
       mutex_destroy(&source->decoder_mutex);
       SAFE_FREE(source);
