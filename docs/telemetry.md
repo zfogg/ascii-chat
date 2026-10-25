@@ -2,17 +2,16 @@
 
 ### Command argument privacy
 
-`--otel-sanitize-args=true|false` (or `ASCII_CHAT_OTEL_SANITIZE_ARGS`)
-controls command argument redaction for both resource metadata and the CLI span.
-It defaults to true with `NDEBUG` (release builds) and false otherwise.
+Release builds (`NDEBUG`) redact sensitive command arguments in both resource
+metadata and the CLI span. Other builds copy arguments verbatim. This is a build
+policy, with no CLI or environment override.
 
-When enabled, gotel redacts only ascii-chat's sensitive option values: passwords,
+Release builds redact ascii-chat's sensitive option values: passwords,
 identity/public/private key sources and paths, TLS certificates and keys,
 network addresses and ports, discovery/STUN/TURN endpoints and credentials,
 media URLs, yt-dlp options, and telemetry endpoint/CA paths. Native positional
 addresses, including bracketed IPv6 and address-with-port forms, are also hidden.
-Other values, such as width, FPS, and log level, stay visible. When disabled,
-arguments are copied verbatim, including sensitive values.
+Other values, such as width, FPS, and log level, stay visible.
 
 The reusable gotel policy API supports all, selected, or no redaction, plus
 per-flag removal rules. Removal omits a flag and its required or optional value

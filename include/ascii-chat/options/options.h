@@ -1112,7 +1112,6 @@ typedef struct options_state {
   int otel_metrics_interval;
   int otel_timeout;
   int otel_queue_capacity;
-  bool otel_sanitize_args;
   char log_file[OPTIONS_BUFF_SIZE];     ///< Log file path
   log_level_t log_level;                ///< Log level threshold
   char grep_pattern[OPTIONS_BUFF_SIZE]; ///< PCRE2 regex for log filtering
@@ -1831,9 +1830,3 @@ extern uint64_t g_snapshot_actual_duration_ms;      // Actual wall-clock duratio
 
 /** Resolve source defaults without turning them into a user selection. */
 void options_resolve_flip_x(options_t *opts);
-
-#ifdef NDEBUG
-#define OPT_OTEL_SANITIZE_ARGS_DEFAULT true
-#else
-#define OPT_OTEL_SANITIZE_ARGS_DEFAULT false
-#endif

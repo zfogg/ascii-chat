@@ -584,7 +584,11 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   const char *sensitive_values[] = {o->address, o->address6, address_port, address6_port, address_brackets,
                                     address6_brackets, address_brackets_port, address6_brackets_port};
   gotel_command_policy_t argument_policy = {
-      .mode = o->otel_sanitize_args ? GOTEL_COMMAND_REDACT_SELECTED : GOTEL_COMMAND_REDACT_NONE,
+#ifdef NDEBUG
+      .mode = GOTEL_COMMAND_REDACT_SELECTED,
+#else
+      .mode = GOTEL_COMMAND_REDACT_NONE,
+#endif
       .rules = command_argument_rules,
       .sensitive_values = sensitive_values,
       .sensitive_value_count = sizeof(sensitive_values) / sizeof(sensitive_values[0]),
