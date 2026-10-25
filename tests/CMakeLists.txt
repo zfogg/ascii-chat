@@ -905,6 +905,11 @@ endif()
 # Test Shared Library
 # =============================================================================
 if(BUILD_TESTS)
+    add_test(NAME cmake-static-archive
+        COMMAND "${CMAKE_COMMAND}" "-DCC=${CMAKE_C_COMPILER}" "-DAR=${CMAKE_AR}" "-DRANLIB=${CMAKE_RANLIB}"
+            "-DSTATIC_ARCHIVE_TEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/static-archive"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/static_archive.cmake")
+    set_tests_properties(cmake-static-archive PROPERTIES LABELS "unit" TIMEOUT 30)
     add_test(NAME cmake-patching
         COMMAND "${CMAKE_COMMAND}" "-DPATCH_TEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/patching"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patching.cmake")
