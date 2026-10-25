@@ -205,7 +205,8 @@ int ui_controller_current_screen(void) {
   int background = atomic_load(&g_background_screen);
   int interactive = atomic_load(&g_interactive_screen);
   if (interactive == UI_SCREEN_HELP && (atomic_load(&g_screen_mask) & (1u << UI_SCREEN_HELP)) &&
-      (background != UI_SCREEN_UPDATE || keyboard_help_parent_screen() == UI_SCREEN_UPDATE))
+      (background != UI_SCREEN_UPDATE || keyboard_help_parent_screen() == UI_SCREEN_UPDATE ||
+       keyboard_help_parent_screen() == UI_SCREEN_ERROR))
     return UI_SCREEN_HELP;
   if ((background >= 0 || interactive >= 0) && ui_error_popup_visible())
     return UI_SCREEN_ERROR;
@@ -254,7 +255,7 @@ static int selected_screen_excluding_locked(int excluded) {
       g_screens[UI_SCREEN_HELP].render) {
     // F12 covers existing help; help opened from the update checker covers it in turn.
     if (excluded != UI_SCREEN_UPDATE && g_screens[UI_SCREEN_UPDATE].render &&
-        keyboard_help_parent_screen() != UI_SCREEN_UPDATE)
+        keyboard_help_parent_screen() != UI_SCREEN_UPDATE && keyboard_help_parent_screen() != UI_SCREEN_ERROR)
       return UI_SCREEN_UPDATE;
     return UI_SCREEN_HELP;
   }
@@ -517,7 +518,8 @@ terminal_size_t ui_controller_size(void) {
   if (!lifecycle_is_initialized(&g_lifecycle) || atomic_load(&g_screen_mask) == 0) {
     terminal_size_t detected = {0};
     asciichat_errno_scope_t scope = errno_scope_begin();
-    if (terminal_get_size_fd(atomic_load(&g_default_fd), &detected) == ASCIICHAT_OK && detected.cols > 0 &&
+    int fd = atomic_load(&g_default_fd);
+    if (platform_isatty(fd) && terminal_get_size_fd(fd, &detected) == ASCIICHAT_OK && detected.cols > 0 &&
         detected.rows > 0)
       size = detected;
     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);

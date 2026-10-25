@@ -1222,7 +1222,7 @@ if(BUILD_TESTS)
         LABELS "integration" TIMEOUT 120)
     asciichat_add_python_test(mdns-terminal
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/mdns_terminal.py
-            --binary $<TARGET_FILE:ascii-chat>)
+            --binary $<TARGET_FILE:ascii-chat> --artifacts ${CMAKE_BINARY_DIR}/Testing/mdns-terminal)
     set_tests_properties(mdns-terminal PROPERTIES
         LABELS "integration;terminal" TIMEOUT 180 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
     asciichat_add_python_test(mdns-cross-host

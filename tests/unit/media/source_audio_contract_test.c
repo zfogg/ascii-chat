@@ -134,6 +134,8 @@ Test(source_audio_contract, cancelled_and_invalid_source_creation_fail_without_d
   cr_assert_null(media_source_create((media_source_type_t)99, path));
   cr_assert_null(media_source_create(MEDIA_SOURCE_FILE, NULL));
   read_samples(.25f);
+  cr_assert_eq(media_source_start_video(NULL), ERROR_INVALID_PARAM);
+  cr_assert_not(media_source_uses_webcam(NULL));
   cr_assert_eq(media_source_seek(NULL, 1), ERROR_INVALID_PARAM);
   cr_assert_eq(media_source_rewind(NULL), ERROR_INVALID_PARAM);
   media_source_pause(NULL);

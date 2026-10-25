@@ -22,7 +22,7 @@ import tempfile
 import time
 
 try:
-    from terminal_ui import Terminal
+    from terminal_ui import Terminal, load_terminal_font
 except ImportError as error:
     print(f"SKIP: terminal prerequisites unavailable: {error}")
     raise SystemExit(77)
@@ -55,15 +55,7 @@ def capture(term, directory, name):
     except ImportError:
         return
     configured_font = os.environ.get("TERMINAL_CAPTURE_FONT")
-    font_candidates = [configured_font] if configured_font else []
-    if os.name == "nt":
-        font_candidates += [r"C:\Windows\Fonts\CascadiaMono.ttf", r"C:\Windows\Fonts\consola.ttf"]
-    else:
-        font_candidates += ["/System/Library/Fonts/Menlo.ttc", "DejaVuSansMono.ttf"]
-    font = next((ImageFont.truetype(path, 16) for path in font_candidates
-                 if path and Path(path).exists()), None)
-    if font is None:
-        raise AssertionError("PNG capture requires a Unicode monospace font; set TERMINAL_CAPTURE_FONT")
+    font = ImageFont.truetype(configured_font, 16) if configured_font else load_terminal_font(16)
     divider_mask = font.getmask("━")
     if not divider_mask.getbbox():
         raise AssertionError("Terminal capture font does not contain the UTF-8 divider glyph")
@@ -100,7 +92,15 @@ def main():
                 "--websocket-port", str(port_pairs[index][1]), "--status-screen=false"])
             services.append(service)
             service.wait_for("Server accepting connections")
-            service.wait_for("mDNS: Server advertised")
+            try:
+                service.wait_for("mDNS: Server advertised")
+            except AssertionError as error:
+                text = service.text()
+                mdns_details = "\n".join(line for line in text.splitlines() if "mdns" in line.lower() or "bonjour" in line.lower())
+                if sys.platform == "darwin" and any(f"Bonjour (error {code})" in text for code in (-65563, -65570)):
+                    print("SKIP: Bonjour service is unavailable or local-network access is denied\n" + mdns_details)
+                    raise SystemExit(77) from error
+                raise AssertionError("mDNS advertisement failed:\n" + mdns_details) from error
             return service
 
         def client(name, destination=None, utf8="true", color="true", scan=True):

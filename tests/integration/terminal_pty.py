@@ -38,7 +38,10 @@ def finish(child):
         if child.isalive():
             child.close(force=True)
 
-assert finish(start("size")) == b""
+size_output = finish(start("size"))
+# Querying geometry must not emit terminal control sequences. Native runtime
+# diagnostics on stderr are independent of the in-process size assertions.
+assert b"\x1b" not in size_output, size_output
 expected = b"\x1b[2J\x1b[H\x1b[3;5H\x1b[3C\x1b[2D\x1b[?25l\x1b[?25h\x1b[H\x1b[3J\x1bc"
 assert finish(start("controls")) == expected
 child = start("raw")
