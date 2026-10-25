@@ -25,6 +25,14 @@ def start(mode, **overrides):
     env.pop("TERM_PROGRAM", None)
     env.update(overrides)
     env["ASCII_CHAT_UPDATE_CACHE_DIR"] = os.path.join(test_state.name, mode)
+    if mode in ("size", "controls"):
+        # These probes assert exact stdout bytes; keep runtime stderr separate.
+        stderr_path = os.path.join(test_state.name, mode + ".stderr")
+        child = pexpect.spawn("/bin/sh", ["-c", 'exec "$1" "$2" 2>"$3"',
+                                      "ascii-terminal-probe", binary, mode, stderr_path],
+                              env=env, dimensions=(37, 91), timeout=5)
+        child.probe_stderr = stderr_path
+        return child
     return pexpect.spawn(binary, [mode], env=env, dimensions=(37, 91), timeout=5)
 
 def finish(child):
@@ -32,16 +40,17 @@ def finish(child):
         child.expect(pexpect.EOF)
         output = child.before
         child.close()
-        assert child.exitstatus == 0, (child.exitstatus, child.signalstatus, output)
+        diagnostics = (_TestPath(child.probe_stderr).read_bytes()
+                       if hasattr(child, "probe_stderr") else b"")
+        assert child.exitstatus == 0, (child.exitstatus, child.signalstatus, output, diagnostics)
         return output
     finally:
         if child.isalive():
             child.close(force=True)
 
 size_output = finish(start("size"))
-# Querying geometry must not emit terminal control sequences. Native runtime
-# diagnostics on stderr are independent of the in-process size assertions.
-assert b"\x1b" not in size_output, size_output
+# Geometry queries must leave stdout empty; the native probe checks dimensions.
+assert size_output == b"", size_output
 expected = b"\x1b[2J\x1b[H\x1b[3;5H\x1b[3C\x1b[2D\x1b[?25l\x1b[?25h\x1b[H\x1b[3J\x1bc"
 controls_output = finish(start("controls"))
 assert controls_output == expected, controls_output
