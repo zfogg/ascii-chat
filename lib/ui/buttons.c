@@ -1,4 +1,5 @@
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/options/options.h>
 #include <ascii-chat/ui/buttons.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/display.h>
