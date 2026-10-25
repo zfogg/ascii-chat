@@ -65,7 +65,7 @@ def main():
         assert both.count("Pending error stacks") == 1
         assert sync.count("SYNC_STATE:") == 1
         assert both.count("SYNC_STATE:") == 1
-        assert both.index("SYNC_STATE:") < both.index("Pending error stacks")
+        # Independent report workers may publish in either order when both are overdue.
         # A later errno deadline must not delay or replace the earlier sync report.
         later = run("independent-deadlines", ["mirror", "--sync-state=0.05",
                                             "--errno-stacks=60", *synthetic_snapshot], 0)

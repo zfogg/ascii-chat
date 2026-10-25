@@ -135,6 +135,17 @@ jobs:
           extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr libc6-dbg' || 'gcovr' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # CPython 3.12 retains allocations during teardown under preloaded ASan.
+      # Use Python 3.14 for ctypes hosts while keeping leak checks enabled.
+      - name: Set up Python for sanitizer hosts
+        id: unit-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install Python test dependencies
+        run: python -m pip install -r tests/requirements-terminal.txt
+
       - name: Cache build, dependencies, and ccache
         id: cache-build
         uses: ./.github/actions/cache-build
@@ -190,6 +201,7 @@ jobs:
           echo "Building with CMake build type: ${BUILD_TYPE}"
           cmake_args=(
             -DBUILD_TESTS=ON
+            -DPython3_EXECUTABLE="${{ steps.unit-python.outputs.python-path }}"
             -DUSE_MUSL=OFF
             -DASCIICHAT_FORCE_CRITERION_TESTS=ON
             -DASCIICHAT_ENABLE_ANALYZERS=OFF
@@ -378,6 +390,12 @@ jobs:
           # macOS debug symbol bundles matching these paths are directories.
           rm -rf build/bin/test_* build/bin/ascii-chat build/bin/ascii-chat.dSYM build/lib/libasciichat*
 
+      - name: Set up Python test interpreter
+        id: integration-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
       - name: Install terminal test dependencies
         run: python -m pip install -r tests/requirements-terminal.txt
 
@@ -407,6 +425,7 @@ jobs:
           cmake --fresh -B build --preset github --debug-output \
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
+            -DPython3_EXECUTABLE="${{ steps.integration-python.outputs.python-path }}" \
             -DASCIICHAT_ENABLE_COVERAGE=ON \
             -DBUILD_TESTS=ON \
             -DASCIICHAT_FORCE_CRITERION_TESTS=ON \

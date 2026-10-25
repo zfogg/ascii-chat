@@ -35,6 +35,20 @@ if missing:
 import pyte
 
 
+def load_terminal_font(size):
+    """Use an installed monospace font on each native test platform."""
+    from PIL import ImageFont
+    candidates = ("C:/Windows/Fonts/consola.ttf", "/System/Library/Fonts/Menlo.ttc",
+                  "/usr/share/fonts/TTF/DejaVuSansMono.ttf",
+                  "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", "DejaVuSansMono.ttf")
+    for candidate in candidates:
+        try:
+            return ImageFont.truetype(candidate, size)
+        except OSError:
+            continue
+    raise RuntimeError("Install a monospace font to capture terminal screenshots")
+
+
 class CaptureScreen(pyte.Screen):
     """Handle REP, used by the renderer and ConPTY to compress repeated cells."""
 
@@ -386,15 +400,16 @@ def main():
                 mirror.expect(lambda text: "Sync primitives" in text and "Keyboard Shortcuts" not in text,
                               "Sync did not replace help")
                 mirror.write("?")
-                mirror.expect(lambda text: "Keyboard Shortcuts" in text and "Sync primitives |" not in text,
-                              "Help did not replace sync")
+                mirror.expect(lambda text: "Sync Viewer Keyboard Shortcuts" in text and "Sync primitives |" in text,
+                              "Context help did not overlay the sync viewer")
                 mirror.write("0")
-                mirror.expect(lambda text: "Sync primitives" in text, "Sync did not reopen")
+                mirror.expect(lambda text: "Sync primitives" in text and "Keyboard Shortcuts" not in text,
+                              "Sync did not reopen")
                 mirror.write("0")
                 video(mirror)
                 mirror.write("?")
                 mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Help did not reopen")
-                print("PASS sync/help replacement and closing to media")
+                print("PASS sync context-help overlay and closing to media")
             mirror.resize(12, 19)
             small(mirror)
             mirror.write("?m ")
@@ -495,7 +510,7 @@ def main():
                 startup.write("\r")
                 startup.expect(lambda text: "Contacting GitHub Releases" in text,
                                "Enter did not activate the selected retry button")
-                startup.write("\t\x1b[D\x1b[C\x1b[A\x1b[B?qc m")
+                startup.write("\t\x1b[D\x1b[C\x1b[A\x1b[Bqc m")
                 startup.pump(.2)
                 check_update_selection(startup, "Close")
                 assert startup.process.isalive(), "Overlay-local keys leaked to the session"

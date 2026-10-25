@@ -13,13 +13,13 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from terminal_ui import Terminal, free_port
+from terminal_ui import Terminal, free_port, load_terminal_font
 
 
 def capture(term, path):
     """Render the observed ConPTY cell grid, preserving terminal colors."""
     from PIL import Image, ImageDraw, ImageFont
-    font = ImageFont.truetype("C:/Windows/Fonts/consola.ttf" if os.name == "nt" else "DejaVuSansMono.ttf", 16)
+    font = load_terminal_font(16)
     image = Image.new("RGB", (term.screen.columns * 10, term.screen.lines * 20), "black")
     draw = ImageDraw.Draw(image)
     colors = {"default": "#dddddd", "cyan": "#00aaaa", "brightcyan": "#55ffff"}

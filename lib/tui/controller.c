@@ -204,7 +204,8 @@ static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
 int ui_controller_current_screen(void) {
   int background = atomic_load(&g_background_screen);
   int interactive = atomic_load(&g_interactive_screen);
-  if (interactive == UI_SCREEN_HELP && (atomic_load(&g_screen_mask) & (1u << UI_SCREEN_HELP)))
+  if (interactive == UI_SCREEN_HELP && (atomic_load(&g_screen_mask) & (1u << UI_SCREEN_HELP)) &&
+      (background != UI_SCREEN_UPDATE || keyboard_help_parent_screen() == UI_SCREEN_UPDATE))
     return UI_SCREEN_HELP;
   if ((background >= 0 || interactive >= 0) && ui_error_popup_visible())
     return UI_SCREEN_ERROR;
@@ -250,8 +251,13 @@ static int selected_screen_excluding_locked(int excluded) {
         (!interactive_screen(i) || i == interactive || (interactive < 0 && i == UI_SCREEN_MDNS)))
       visible |= 1u << i;
   if (excluded != UI_SCREEN_HELP && ui_controller_interactive_screen() == UI_SCREEN_HELP &&
-      g_screens[UI_SCREEN_HELP].render)
+      g_screens[UI_SCREEN_HELP].render) {
+    // F12 covers existing help; help opened from the update checker covers it in turn.
+    if (excluded != UI_SCREEN_UPDATE && g_screens[UI_SCREEN_UPDATE].render &&
+        keyboard_help_parent_screen() != UI_SCREEN_UPDATE)
+      return UI_SCREEN_UPDATE;
     return UI_SCREEN_HELP;
+  }
   int selected = ui_session_select_screen(visible);
   // Sync presents from its independent mailbox. Never fall through to media
   // if it was selected after the presentation loop checked that mailbox.
@@ -694,11 +700,13 @@ static void title_update(int screen, const void *snapshot, bool covered) {
 
 static const char *usage_screen_name(int screen) {
   static const char *names[UI_SCREEN_COUNT] = {
-      [UI_SCREEN_STATUS] = "status", [UI_SCREEN_MEDIA] = "media", [UI_SCREEN_SPLASH] = "splash",
-      [UI_SCREEN_RENDER_PROGRESS] = "render_progress", [UI_SCREEN_LOGS] = "logs", [UI_SCREEN_ERRNO] = "errno",
-      [UI_SCREEN_HELP] = "help", [UI_SCREEN_STATS] = "stats", [UI_SCREEN_SYNC] = "sync", [UI_SCREEN_MDNS] = "mdns",
-      [UI_SCREEN_UPDATE] = "update", [UI_SCREEN_NOTICE] = "notice", [UI_SCREEN_PROMPT] = "prompt",
-      [UI_SCREEN_ERROR] = "error"};
+      [UI_SCREEN_STATUS] = "status", [UI_SCREEN_MEDIA] = "media",
+      [UI_SCREEN_SPLASH] = "splash", [UI_SCREEN_RENDER_PROGRESS] = "render_progress",
+      [UI_SCREEN_LOGS] = "logs",     [UI_SCREEN_ERRNO] = "errno",
+      [UI_SCREEN_HELP] = "help",     [UI_SCREEN_STATS] = "stats",
+      [UI_SCREEN_SYNC] = "sync",     [UI_SCREEN_MDNS] = "mdns",
+      [UI_SCREEN_UPDATE] = "update", [UI_SCREEN_NOTICE] = "notice",
+      [UI_SCREEN_PROMPT] = "prompt", [UI_SCREEN_ERROR] = "error"};
   if (screen == UI_SCREEN_PROMPT) {
     mutex_lock(&g_mutex);
     const char *name = ui_prompt_usage_name(g_screens[UI_SCREEN_PROMPT].snapshot);
