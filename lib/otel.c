@@ -474,22 +474,6 @@ void ascii_otel_shutdown(void) {
             (unsigned long long)stats.http_4xx, (unsigned long long)(stats.dropped_full + stats.dropped_err),
             (unsigned long long)stats.rejected_spans);
 }
-static const char *telemetry_argument(const char *argument, int index, const char *mode, char *name, size_t size) {
-  if (!index)
-    return "ascii-chat";
-  if (!strcmp(argument, mode))
-    return mode;
-  if (!strncmp(argument, "--", 2)) {
-    size_t length = strcspn(argument, "=");
-    if (length < size) {
-      memcpy(name, argument, length);
-      name[length] = 0;
-      return name;
-    }
-  }
-  return "[REDACTED]";
-}
-
 asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   // Test mode is a hard export prohibition, including explicit endpoints and CLI overrides.
   if (is_test_environment())
@@ -556,14 +540,14 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   config.watchdog.operation = ASCII_OTEL_THREAD_DEADLOCK;
   config.watchdog.metric = ASCII_OTEL_METRIC_DEADLOCK_THREADS;
 #endif
-  typedef char otel_arg_name_t[128];
-  size_t argument_count = argc > 0 ? (size_t)argc : 1;
-  const char **resource_args = SAFE_CALLOC(argument_count, sizeof(*resource_args), const char **);
-  otel_arg_name_t *resource_names = SAFE_CALLOC(argument_count, sizeof(*resource_names), otel_arg_name_t *);
-  for (int i = 0; i < argc; ++i)
-    resource_args[i] = telemetry_argument(argv[i], i, mode, resource_names[i], sizeof(resource_names[i]));
-  config.argc = argc;
-  config.argv = resource_args;
+  gotel_command_args_t command_args = {0};
+  asciichat_error_t arguments_status =
+      otel_status(gotel_command_args_init(&command_args, "ascii-chat", mode, argc, (const char *const *)argv),
+                  "Sanitize telemetry command arguments");
+  if (arguments_status != ASCIICHAT_OK)
+    return arguments_status;
+  config.argc = command_args.argc;
+  config.argv = command_args.argv;
   gotel_env_storage_t env;
   asciichat_error_t env_status =
       otel_status(gotel_options_apply_env(&config, &env, OPT_OTEL_ENDPOINT_DEFAULT), "Configure OTEL environment");
@@ -578,45 +562,29 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   if (*o->otel_ca_file)
     config.tls_ca_file = o->otel_ca_file;
   if (env_status != ASCIICHAT_OK || !config.signals || !config.exporter.endpoint) {
-    SAFE_FREE(resource_args);
-    SAFE_FREE(resource_names);
+    gotel_command_args_destroy(&command_args);
     return env_status;
   }
   gotel_host_t *h = NULL;
   asciichat_error_t created = otel_status(gotel_create(&config, &h), "Initialize telemetry exporter");
-  SAFE_FREE(resource_args);
-  SAFE_FREE(resource_names);
-  if (created != ASCIICHAT_OK)
+  if (created != ASCIICHAT_OK) {
+    gotel_command_args_destroy(&command_args);
     return created;
+  }
   gotel_set_logger(h, exporter_diagnostic, NULL);
   shutdown_timeout_ns = (uint64_t)o->otel_timeout * NS_PER_MS_INT;
   atomic_store(&stopping, false);
   if (acthread_create(&worker, "otel_export", export_worker, h) != 0) {
     gotel_destroy(h);
+    gotel_command_args_destroy(&command_args);
     return SET_ERRNO(ERROR_THREAD, "Cannot start telemetry exporter");
   }
   worker_started = true;
   (void)atexit(ascii_otel_shutdown);
   atomic_store_explicit(&host, h, memory_order_release);
-  /* Only option names are exported for arbitrary value-bearing flags. This also
-   * handles -Psecret and future credential options without a fragile denylist. */
   gotel_begin(h, &command_scope, ASCII_OTEL_CLI, NULL);
-  gotel_attr_string(&command_scope, "process.command", "ascii-chat");
-  gotel_attr_string(&command_scope, "cli.command.name", mode);
-  if (command_scope.span) {
-    otlp_value_t *args = SAFE_CALLOC(argument_count, sizeof(*args), otlp_value_t *);
-    otel_arg_name_t *names = SAFE_CALLOC(argument_count, sizeof(*names), otel_arg_name_t *);
-    if (args && names) {
-      for (int i = 0; i < argc; ++i) {
-        args[i].type = OTLP_VALUE_STRING;
-        args[i].v.string_val = telemetry_argument(argv[i], i, mode, names[i], sizeof(names[i]));
-      }
-      (void)otel_status(otlp_span_set_attribute_array(command_scope.span, "process.command_args", args, (size_t)argc),
-                        "otlp_span_set_attribute_array");
-    }
-    SAFE_FREE(args);
-    SAFE_FREE(names);
-  }
+  (void)otel_status(gotel_command_args_set_span(&command_scope, &command_args), "Attach telemetry command arguments");
+  gotel_command_args_destroy(&command_args);
 
   log_info("Telemetry enabled: %s (%s)", config.exporter.endpoint, o->otel_enabled_telemetry);
   return ASCIICHAT_OK;
