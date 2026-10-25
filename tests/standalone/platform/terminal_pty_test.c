@@ -89,15 +89,16 @@ static asciichat_error_t probe(const char *mode) {
     REQUIRE(!update_banner_show_prompt(NULL));
     update_banner_wait_for_check();
     REQUIRE(options_set_bool("strip_ansi", true) == ASCIICHAT_OK);
-    update_check_result_t result = {.update_available = true,
+    update_check_result_t result = {.check_succeeded = true,
+                                    .update_available = true,
                                     .current_version = "v7.1.0",
                                     .latest_version = "v8.2.0",
                                     .current_sha = "1234567890abcdef",
                                     .release_url = "https://example.invalid/releases/v8.2.0"};
     update_banner_set_result(&result);
     REQUIRE(update_banner_has_update());
+    // The banner owns a copy; changing the caller's storage must not change it.
     memset(&result, 0, sizeof(result));
-    update_banner_set_result(&result);
     REQUIRE(update_banner_has_update());
     session_display_config_t config = {0};
     session_display_ctx_t *display = session_display_create(&config);

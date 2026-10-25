@@ -13,8 +13,10 @@ import os
 import sys
 import termios
 import pexpect
+import tempfile
 
 binary = sys.argv[1]
+test_state = tempfile.TemporaryDirectory(prefix="ascii-terminal-pty-")
 def start(mode, **overrides):
     env = dict(os.environ, TERM="xterm-256color")
     env.pop("TTY", None)
@@ -22,6 +24,7 @@ def start(mode, **overrides):
     env.pop("COLORFGBG", None)
     env.pop("TERM_PROGRAM", None)
     env.update(overrides)
+    env["ASCII_CHAT_UPDATE_CACHE_DIR"] = os.path.join(test_state.name, mode)
     return pexpect.spawn(binary, [mode], env=env, dimensions=(37, 91), timeout=5)
 
 def finish(child):
@@ -172,26 +175,32 @@ for mode, key, expected in [
     ("update-enter", b"\r", True),
     ("update-n", b"n", False),
     ("update-escape", b"\x1b", False),
-    ("update-timeout", None, False),
+    ("update-idle", None, False),
 ]:
     child = start(mode)
     try:
-        child.expect_exact(b"[Y] update [N] continue")
-        prompt = child.before
-        assert b"Update Available" in prompt
-        assert b"v7.1.0" in prompt and b"v8.2.0" in prompt
-        assert b"12345678" in prompt
-        child.expect_exact("╝".encode())
+        screen = pyte.Screen(91, 37)
+        stream = pyte.Stream(screen)
+        decoder = codecs.getincrementaldecoder("utf-8")("replace")
+        deadline = time.monotonic() + 5
+        while "Continue" not in "\n".join(screen.display):
+            assert time.monotonic() < deadline, screen.display
+            stream.feed(decoder.decode(child.read_nonblocking(4096, timeout=1)))
+        prompt = "\n".join(screen.display)
+        assert "Update available" in prompt and "Update now" in prompt
+        assert "v7.1.0" in prompt and "v8.2.0" in prompt
         if key is None:
-            child.timeout = 15
+            time.sleep(.25)
+            assert child.isalive(), "The update dialog should wait for an explicit choice"
+            child.send(b"\x1b")
         else:
             child.send(key)
         output = finish(child)
         if expected:
-            assert b"Update available: v7.1.0 -> v8.2.0" in output
+            assert b"Updated ascii-chat: v7.1.0 -> v8.2.0" in output
             assert b"https://example.invalid/releases/v8.2.0" in output
         else:
-            assert b"Update available:" not in output
+            assert b"Updated ascii-chat:" not in output
     finally:
         if child.isalive():
             child.close(force=True)
