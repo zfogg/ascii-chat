@@ -1,4 +1,5 @@
 #include <ascii-chat/otel.h>
+#include <ascii-chat/options/options.h>
 #include <ascii-chat/tui/shortcuts.h>
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/buttons.h>
