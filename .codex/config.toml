@@ -2,8 +2,8 @@
 [mcp_servers.spaniel]
 url = "http://127.0.0.1:28080/mcp"
 
-# Build the native executable before opening a chat that uses these tools.
+# Refresh this runtime copy after building; see $ascii-chat-mcp-dev.
 [mcp_servers.ascii_chat]
-command = "./build/bin/ascii-chat"
+command = "./build/bin/ascii-chat-mcp"
 args = ["mcp-server"]
 tool_timeout_sec = 70

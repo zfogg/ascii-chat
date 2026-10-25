@@ -1,0 +1,4 @@
+interface:
+  display_name: "ascii-chat MCP Development"
+  short_description: "Develop MCP tools and coordinate native runtime restarts"
+  default_prompt: "Use $ascii-chat-mcp-dev to develop and test ascii-chat MCP tools without blocking native builds."
