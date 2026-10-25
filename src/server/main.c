@@ -1340,9 +1340,9 @@ static bool server_allow_discovery(server_discovery_policy_t *policy) {
 
     if (is_interactive) {
       if (!ui_notice_confirm_kind(UI_PROMPT_IP_DISCLOSURE, UI_NOTICE_DANGER,
-                             "PUBLIC IP DISCLOSURE\nAnyone with the session string will be able to see your IP "
-                             "address.\n\nDo you want to proceed",
-                             30)) {
+                                  "PUBLIC IP DISCLOSURE\nAnyone with the session string will be able to see your IP "
+                                  "address.\n\nDo you want to proceed",
+                                  30)) {
         log_info("IP disclosure not confirmed. Server will run WITHOUT discovery service.");
         return false;
       }
