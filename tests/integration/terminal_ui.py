@@ -296,6 +296,7 @@ def main():
         )
         base = [binary, "--no-check-update", "--log-file", str(root / "application.log"), "--log-level", "info"]
         sessions = []
+        sockets = []
 
         def terminal(name, argv, check_updates=False, environment=None, **kwargs):
             command = [binary, "--log-file", str(root / "application.log"), "--log-level", "info"]
@@ -334,12 +335,13 @@ def main():
             })
             small(status)
             # The WebSocket handshake must continue behind the warning.
-            with socket.create_connection(("127.0.0.1", websocket_port), timeout=3) as sock:
-                sock.settimeout(3)
-                sock.sendall(b"GET / HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\n"
-                             b"Connection: Upgrade\r\nSec-WebSocket-Version: 13\r\n"
-                             b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n")
-                assert b"101" in sock.recv(4096), "WebSocket handshake stopped while covered"
+            sock = socket.create_connection(("127.0.0.1", websocket_port), timeout=3)
+            sockets.append(sock)
+            sock.settimeout(3)
+            sock.sendall(b"GET / HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\n"
+                         b"Connection: Upgrade\r\nSec-WebSocket-Version: 13\r\n"
+                         b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n")
+            assert b"101" in sock.recv(4096), "WebSocket handshake stopped while covered"
             status.write("/should-not-replay")
             status.pump(0.3)
             status.resize(25, 80)
@@ -357,6 +359,7 @@ def main():
             status.resize(12, 19)
             small(status)
             finish(status)
+            sock.close()
             print("PASS status: startup, resize, tiny terminal, input suppression, live handshake")
 
             mirror_args = ["mirror", "--file", str(media), "--loop", "--splash-screen=false",
@@ -638,6 +641,8 @@ def main():
             assert snapshot.stdout.strip() and b"Terminal too small" not in snapshot.stdout
             print("PASS redirected snapshot remains synchronous and contains only media output")
         finally:
+            for sock in sockets:
+                sock.close()
             if args.artifacts and (root / "application.log").exists():
                 args.artifacts.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(root / "application.log", args.artifacts / "application.log")

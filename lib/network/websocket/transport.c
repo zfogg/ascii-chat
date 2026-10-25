@@ -928,8 +928,12 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
         ws_data->partial_size = assembled_size;
         ws_data->partial_capacity = assembled_capacity;
         mutex_unlock(&ws_data->recv_mutex);
-        return SET_ERRNO(assembled_size ? ERROR_NETWORK_INCOMPLETE : ERROR_NETWORK_TIMEOUT,
-                         "WebSocket receive deadline expired");
+        // Poll deadlines preserve partial packets and are handled by the receive loop.
+        bool previous = errno_notifications_suppress(true);
+        asciichat_error_t result = SET_ERRNO(assembled_size ? ERROR_NETWORK_INCOMPLETE : ERROR_NETWORK_TIMEOUT,
+                                             "WebSocket receive deadline expired");
+        errno_notifications_suppress(previous);
+        return result;
       }
       // Check connection state - but don't fail immediately if connection closes
       // while reassembling. Instead, return what we have so the handler can process it.

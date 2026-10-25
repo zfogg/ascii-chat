@@ -31,6 +31,14 @@
 #include <ws2tcpip.h>
 #endif
 
+// The password dialog presents deferred authentication feedback itself.
+static asciichat_error_t deferred_password_error(const char *message) {
+  bool previous = errno_notifications_suppress(true);
+  asciichat_error_t result = SET_ERRNO(ERROR_CRYPTO_AUTH, "%s", message);
+  errno_notifications_suppress(previous);
+  return result;
+}
+
 // Client: Process server's public key and send our public key
 asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, acip_transport_t *transport,
                                                        packet_type_t packet_type, const uint8_t *payload,
@@ -725,7 +733,7 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
     // Prompt for password interactively
     if (ctx->defer_password_prompt) {
       ctx->password_failure = AUTH_FAIL_PASSWORD_REQUIRED;
-      return SET_ERRNO(ERROR_CRYPTO_AUTH, "Server requires a password");
+      return deferred_password_error("Server requires a password");
     }
     char prompted_password[PASSWORD_BUFFER_SIZE];
     if (prompt_password("Server password required - please enter password:", prompted_password,
@@ -839,7 +847,7 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
       const uint8_t password_flags = AUTH_FAIL_PASSWORD_REQUIRED | AUTH_FAIL_PASSWORD_INCORRECT;
       if (ctx->defer_password_prompt && failure->reason_flags && !(failure->reason_flags & ~password_flags)) {
         ctx->password_failure = failure->reason_flags;
-        return SET_ERRNO(ERROR_CRYPTO_AUTH, "Server rejected password");
+        return deferred_password_error("Server rejected password");
       }
       NOTICE(DANGER, "AUTHENTICATION REJECTED", "%s%s%s%s%sConnection rejected.",
              failure->reason_flags & AUTH_FAIL_PASSWORD_INCORRECT ? "Incorrect password.\n" : "",

@@ -193,7 +193,14 @@ static asciichat_error_t protocol_fail(acds_protocol_t *p, asciichat_error_t err
   SAFE_STRNCPY(p->error, message, sizeof(p->error));
   sodium_memzero(p->join.identity_seckey, sizeof(p->join.identity_seckey));
   sodium_memzero(p->join.password, sizeof(p->join.password));
-  return SET_ERRNO(error, "%s", message);
+  // Password rejection is presented by the joiner's retry dialog.
+  bool previous = false;
+  if (error == ERROR_INVALID_PASSWORD)
+    previous = errno_notifications_suppress(true);
+  asciichat_error_t result = SET_ERRNO(error, "%s", message);
+  if (error == ERROR_INVALID_PASSWORD)
+    errno_notifications_suppress(previous);
+  return result;
 }
 
 void acds_protocol_init(acds_protocol_t *p, acds_protocol_send_fn send, void *user_data) {

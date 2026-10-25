@@ -648,8 +648,9 @@ asciichat_error_t network_connection_open(const char *name, const char *address,
   ASCII_OTEL_ATTR_STRING("network.connection.endpoint_protocol",
                          endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? "websocket" : "tcp");
   ASCII_OTEL_ATTR_INT("server.port", endpoint.port);
-  ASCII_OTEL_ATTR_INT("network.connection.timeout_ms",
-                      settings ? settings->timeout_ms : endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? 15000 : 3000);
+  ASCII_OTEL_ATTR_INT("network.connection.timeout_ms", settings ? settings->timeout_ms
+                                                       : endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? 15000
+                                                                                                            : 3000);
   if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
     transport = acip_websocket_client_transport_create(name, endpoint.input, NULL);
   } else {

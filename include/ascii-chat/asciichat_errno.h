@@ -161,7 +161,7 @@ void errno_notifications_enable(bool enabled);
 bool errno_notifications_pending(void);
 size_t errno_notifications_snapshot(asciichat_error_context_t *out, size_t capacity, uint64_t *dropped);
 void errno_notifications_dismiss(uint64_t through_id);
-/** Suppress UI self-errors on this thread, without suppressing errno storage/logging. */
+/** Suppress UI notifications on this thread, without suppressing errno storage/logging. */
 bool errno_notifications_suppress(bool suppress);
 void errno_print_stacks(void);
 void errno_print_history(void);

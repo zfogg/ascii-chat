@@ -212,9 +212,10 @@ def main():
             selected_service.stop()
             services.remove(selected_service)
             log_wait("picker", "Connection failed, retrying")
-            text = term.expect(lambda text: selected_host in text and "Connecting to" in text
-                               and "LAN servers" not in text, "Reconnect splash lost the selected address")
-            capture(term, args.artifacts, "reconnect-splash")
+            text = term.expect(lambda text: selected_host in text
+                               and ("Connecting to" in text or "Failed to connect to" in text)
+                               and "LAN servers" not in text, "Reconnect UI lost the selected address")
+            capture(term, args.artifacts, "reconnect-state")
             replacement = server(chosen, "replacement")
             replacement.wait_for("announced video stream")
             assert (root / "picker.log").read_text(errors="replace").count("Selected server") == 1
