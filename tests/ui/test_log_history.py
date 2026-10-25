@@ -136,13 +136,15 @@ with tempfile.TemporaryDirectory() as root:
         # Numeric binding characters use the same key color as Esc.
         lib.ui_session_help_render.argtypes = [Size, C.c_bool, C.c_bool, C.c_void_p]
         lib.ui_session_help_render.restype = C.c_void_p
+        lib.ui_session_help_free.argtypes = [C.c_void_p]
         minimum = Size()
         help_text = lib.ui_session_help_render(Size(45, 140), True, False, C.byref(minimum))
         assert help_text
         help_screen = pyte.Screen(140, 45)
-        pyte.Stream(help_screen).feed(C.string_at(help_text).decode())
-        lib.debug_free.argtypes = [C.c_void_p, C.c_char_p, C.c_int]
-        lib.debug_free(help_text, b"test_log_history.py", 0)
+        try:
+            pyte.Stream(help_screen).feed(C.string_at(help_text).decode())
+        finally:
+            lib.ui_session_help_free(help_text)
         def binding_colors(binding):
             row = next(i for i, text in enumerate(help_screen.display) if binding in text and (binding != "0 " or "C code sync" in text))
             col = help_screen.display[row].index(binding)
@@ -150,7 +152,8 @@ with tempfile.TemporaryDirectory() as root:
         key_color = binding_colors("Esc")[0]
         assert key_color != "default", "Help key colors were not enabled"
         assert binding_colors("F12") == [key_color] * 3
-        assert binding_colors("0 ")[:1] == [key_color]
+        if any("C code sync" in row for row in help_screen.display):
+            assert binding_colors("0 ")[:1] == [key_color]
         assert binding_colors("(1)")[1] == key_color
         # A worker's first formatted record must resolve its registered name on Windows too.
         lib.log_template_parse.argtypes = [C.c_char_p, C.c_bool]
@@ -161,13 +164,17 @@ with tempfile.TemporaryDirectory() as root:
             C.c_char_p, C.c_char_p, C.c_int, C.c_char_p, C.c_uint64, C.c_char_p, C.c_bool, C.c_uint64]
         Worker = C.CFUNCTYPE(C.c_void_p, C.c_void_p)
         observed = []
+        debug_build = hasattr(lib, "debug_free")
         @Worker
         def worker(context):
             template = lib.log_template_parse(b"%tname", False)
             output = C.create_string_buffer(256)
             lib.log_template_apply(template, output, len(output), 2, b"", b"test", 1,
                                    b"worker", lib.thread_current_id(), b"", False, 0)
-            observed.append(output.value)
+            # Release builds omit the named-object registry and print the thread ID.
+            tid = lib.thread_current_id()
+            expected = b"log-regression.0" if debug_build else str(tid).encode()
+            observed.append((output.value, expected))
             lib.log_template_free(template)
             return None
         lib.acthread_create.argtypes = [C.c_void_p, C.c_char_p, Worker, C.c_void_p]
@@ -175,7 +182,7 @@ with tempfile.TemporaryDirectory() as root:
         thread = C.c_void_p()
         assert lib.acthread_create(C.byref(thread), b"log-regression", worker, None) == 0
         assert lib.thread_join(C.byref(thread), None) == 0
-        assert len(observed) == 1 and b"log-regression" in observed[0], observed
+        assert len(observed) == 1 and observed[0][0] == observed[0][1], observed
     finally:
         lib.log_search_destroy()
         lib.asciichat_shared_destroy()

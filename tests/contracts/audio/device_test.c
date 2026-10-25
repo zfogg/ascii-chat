@@ -22,6 +22,13 @@ static bool fail_duplex, fail_all, no_input, no_output;
 static PaDeviceInfo input_info, output_info;
 static audio_context_t context;
 
+// Complete the PortAudio boundary so static linkers never pull in real devices.
+PaDeviceIndex Pa_GetDeviceCount(void) {
+  return 2;
+}
+const char *Pa_GetErrorText(PaError error) {
+  return error == paNoError ? "Success" : "Simulated audio device failure";
+}
 PaError Pa_Initialize(void) {
   initialized++;
   return paNoError;

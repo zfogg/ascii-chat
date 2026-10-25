@@ -377,7 +377,10 @@ static void listener_accept(platform_event_stream_t *stream, void *arg) {
 
 static void *connection_receive(void *arg) {
   network_connection_t *c = arg;
+  asciichat_errno_scope_t open_scope = errno_scope_begin();
   asciichat_error_t result = connection_open(c);
+  if (c->server)
+    errno_scope_end(open_scope, ASCIICHAT_ERRNO_HANDLED);
   c->transport->receive_timeout_ns = 100 * NS_PER_MS_INT;
   while (result == ASCIICHAT_OK && !APP_CALLBACK_BOOL(should_exit) &&
          (!c->server || !atomic_load_bool(&c->server->stopping)) && network_connection_state(c) < NETWORK_CLOSING) {

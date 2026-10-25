@@ -23,6 +23,8 @@ typedef struct {
 void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t size, void *view);
 /** Returns owned ANSI text, released with SAFE_FREE. */
 char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser, terminal_size_t *minimum);
+/** Release rendered help with the same allocator that created it. */
+void ui_session_help_free(char *text);
 char *ui_session_context_help_render(terminal_size_t size, ui_screen_t screen, terminal_size_t *minimum);
 
 typedef enum {

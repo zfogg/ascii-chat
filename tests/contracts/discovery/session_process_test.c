@@ -105,11 +105,12 @@ static void *discovery_session_server(void *data) {
   size_t len = 0;
   cr_assert_worker((receive_packet(socket, &type, &payload, &len)) == (ASCIICHAT_OK));
   cr_assert_worker(type == PACKET_TYPE_PROTOCOL_VERSION && len == sizeof(protocol_version_packet_t));
-  cr_assert_worker((((protocol_version_packet_t *)payload)->supports_encryption) == (1));
+  cr_assert_worker((((protocol_version_packet_t *)payload)->supports_encryption) == (ACIP_CRYPTO_FULL));
   buffer_release(payload);
   payload = NULL;
   protocol_version_packet_t version = {.protocol_version = HOST_TO_NET_U16(1),
-                                       .supports_encryption = server->scenario != 3};
+                                       .supports_encryption =
+                                           server->scenario == 3 ? ACIP_CRYPTO_NONE : ACIP_CRYPTO_FULL};
   packet_type_t response_type = server->scenario == 1 ? PACKET_TYPE_PONG : PACKET_TYPE_PROTOCOL_VERSION;
   size_t response_size = server->scenario == 2 ? 1 : sizeof(version);
   cr_assert_worker((packet_send(socket, response_type, &version, response_size)) == (ASCIICHAT_OK));

@@ -337,7 +337,7 @@ const char *ui_session_tick(ui_session_t *s, uint64_t now_ns) {
       s->presentation_times[s->presentation_index++ % 120] = now_ns;
   }
   const char *frame = ui_session_render(s, &view, now_ns);
-  SAFE_FREE(help);
+  ui_session_help_free(help);
   return frame;
 }
 

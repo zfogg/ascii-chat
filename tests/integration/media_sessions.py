@@ -196,7 +196,8 @@ class MediaSessions(unittest.TestCase):
                                       lambda m: m[1] * (min(int(m[2]), 500) + 1), bytes(output))
                     if marker in expanded:
                         return bytes(output)
-            self.fail(f"Missing {marker!r} in terminal output: {bytes(output[-3000:])!r}")
+            log = (self.root / "session.log").read_text(errors="replace")
+            self.fail(f"Missing {marker!r} in terminal output: {bytes(output[-3000:])!r}\nSession log:\n{log[-8000:]}")
 
         try:
             expect(b"QQQQQQQQ")

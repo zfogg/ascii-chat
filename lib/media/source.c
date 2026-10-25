@@ -156,7 +156,9 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
     return ERROR_INVALID_PARAM;
   }
 
-  bool is_direct = url_is_direct_stream(url);
+  // Local paths and native FFmpeg protocols never need site extraction.
+  bool is_site = strncmp(url, "http://", 7) == 0 || strncmp(url, "https://", 8) == 0;
+  bool is_direct = !is_site || url_is_direct_stream(url);
   ASCII_OTEL_ATTR_STRING("media.resolver", is_direct ? "ffmpeg" : "yt-dlp");
 
   if (is_direct) {
@@ -169,7 +171,9 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
   log_debug("URL is complex site, attempting yt-dlp extraction: %s", url);
 
   // Try yt-dlp extraction (for complex sites like YouTube, Twitch, etc.)
+  asciichat_errno_scope_t extraction_scope = errno_scope_begin();
   asciichat_error_t yt_dlp_result = yt_dlp_extract_stream_url(url, yt_dlp_options, output_url, output_size);
+  errno_scope_end(extraction_scope, ASCIICHAT_ERRNO_HANDLED);
   if (yt_dlp_result == ASCIICHAT_OK) {
     log_debug("yt-dlp successfully extracted stream URL");
     return ASCIICHAT_OK;

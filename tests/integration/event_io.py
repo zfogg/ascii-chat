@@ -89,8 +89,13 @@ def idle_rate_limit(binary, directory):
                 peers.append(peer)
                 peer.settimeout(0.1)
                 try:
-                    if not peer.recv(1):
-                        rejected += 1
+                    # Rejections carry an ACIP error packet before the socket closes.
+                    if peer.recv(1, socket.MSG_PEEK):
+                        kind, payload = receive_packet(peer)
+                        assert kind == 2003 and len(payload) >= 8, (kind, payload)
+                        code, length = struct.unpack("!II", payload[:8])
+                        assert code != 0 and length == len(payload) - 8, payload
+                    rejected += 1
                 except ConnectionResetError:
                     rejected += 1
                 except socket.timeout:
