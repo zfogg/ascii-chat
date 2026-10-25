@@ -474,6 +474,36 @@ void ascii_otel_shutdown(void) {
             (unsigned long long)stats.http_4xx, (unsigned long long)(stats.dropped_full + stats.dropped_err),
             (unsigned long long)stats.rejected_spans);
 }
+static const gotel_command_rule_t command_argument_rules[] = {
+    {"--password", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--key", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"-K", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--server-key", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--client-keys", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--discovery-service-key", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--address", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--address6", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--port", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"-p", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--websocket-port", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--websocket-tls-cert", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--websocket-tls-key", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--websocket-tls-key-password", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--discovery-service", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--discovery-service-port", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--discovery-service-url", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--stun-servers", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--turn-servers", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--turn-username", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--turn-credential", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--turn-secret", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--url", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"-u", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--yt-dlp-options", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--otel-endpoint", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--otel-ca-file", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+};
+
 asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   // Test mode is a hard export prohibition, including explicit endpoints and CLI overrides.
   if (is_test_environment())
@@ -541,8 +571,28 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   config.watchdog.metric = ASCII_OTEL_METRIC_DEADLOCK_THREADS;
 #endif
   gotel_command_args_t command_args = {0};
+  // Addresses are positional in native client/server modes, with optional ports.
+  char address_port[OPTIONS_BUFF_SIZE + 32], address6_port[OPTIONS_BUFF_SIZE + 32];
+  char address_brackets[OPTIONS_BUFF_SIZE + 32], address6_brackets[OPTIONS_BUFF_SIZE + 32];
+  char address_brackets_port[OPTIONS_BUFF_SIZE + 32], address6_brackets_port[OPTIONS_BUFF_SIZE + 32];
+  SAFE_SNPRINTF(address_port, sizeof(address_port), "%s:%d", o->address, o->port);
+  SAFE_SNPRINTF(address6_port, sizeof(address6_port), "%s:%d", o->address6, o->port);
+  SAFE_SNPRINTF(address_brackets, sizeof(address_brackets), "[%s]", o->address);
+  SAFE_SNPRINTF(address6_brackets, sizeof(address6_brackets), "[%s]", o->address6);
+  SAFE_SNPRINTF(address_brackets_port, sizeof(address_brackets_port), "[%s]:%d", o->address, o->port);
+  SAFE_SNPRINTF(address6_brackets_port, sizeof(address6_brackets_port), "[%s]:%d", o->address6, o->port);
+  const char *sensitive_values[] = {o->address, o->address6, address_port, address6_port, address_brackets,
+                                    address6_brackets, address_brackets_port, address6_brackets_port};
+  gotel_command_policy_t argument_policy = {
+      .mode = o->otel_sanitize_args ? GOTEL_COMMAND_REDACT_SELECTED : GOTEL_COMMAND_REDACT_NONE,
+      .rules = command_argument_rules,
+      .sensitive_values = sensitive_values,
+      .sensitive_value_count = sizeof(sensitive_values) / sizeof(sensitive_values[0]),
+      .rule_count = sizeof(command_argument_rules) / sizeof(command_argument_rules[0]),
+  };
   asciichat_error_t arguments_status =
-      otel_status(gotel_command_args_init(&command_args, "ascii-chat", mode, argc, (const char *const *)argv),
+      otel_status(gotel_command_args_init_policy(&command_args, "ascii-chat", mode, argc, (const char *const *)argv,
+                                                 &argument_policy),
                   "Sanitize telemetry command arguments");
   if (arguments_status != ASCIICHAT_OK)
     return arguments_status;

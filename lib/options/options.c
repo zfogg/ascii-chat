@@ -469,6 +469,7 @@ typedef struct {
   int otel_metrics_interval;
   int otel_timeout;
   int otel_queue_capacity;
+  bool otel_sanitize_args;
 } binary_level_opts_t;
 
 static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
@@ -496,6 +497,7 @@ static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
   binary.otel_metrics_interval = opts->otel_metrics_interval;
   binary.otel_timeout = opts->otel_timeout;
   binary.otel_queue_capacity = opts->otel_queue_capacity;
+  binary.otel_sanitize_args = opts->otel_sanitize_args;
 
   return binary;
 }
@@ -524,6 +526,7 @@ static inline void restore_binary_level(options_t *opts, const binary_level_opts
   opts->otel_metrics_interval = binary->otel_metrics_interval;
   opts->otel_timeout = binary->otel_timeout;
   opts->otel_queue_capacity = binary->otel_queue_capacity;
+  opts->otel_sanitize_args = binary->otel_sanitize_args;
 }
 
 options_t options_t_new(void) {
@@ -562,6 +565,7 @@ options_t options_t_new(void) {
   SAFE_STRNCPY(opts.otel_log_level, "info", sizeof(opts.otel_log_level));
   opts.otel_timeout = 5000;
   opts.otel_queue_capacity = 4096;
+  opts.otel_sanitize_args = OPT_OTEL_SANITIZE_ARGS_DEFAULT;
   opts.grep_pattern[0] = '\0'; // Explicitly ensure grep_pattern is empty
   opts.json = OPT_JSON_DEFAULT;
   SAFE_STRNCPY(opts.color_scheme_name, OPT_COLOR_SCHEME_NAME_DEFAULT, sizeof(opts.color_scheme_name));
@@ -1536,6 +1540,7 @@ static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t d
   binary_before_config.otel_metrics_interval = opts->otel_metrics_interval;
   binary_before_config.otel_timeout = opts->otel_timeout;
   binary_before_config.otel_queue_capacity = opts->otel_queue_capacity;
+  binary_before_config.otel_sanitize_args = opts->otel_sanitize_args;
   // Restore binary-level options (don't let config override command-line options)
   restore_binary_level(opts, &binary_before_config);
 

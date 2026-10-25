@@ -1,5 +1,23 @@
 # OpenTelemetry
 
+### Command argument privacy
+
+`--otel-sanitize-args=true|false` (or `ASCII_CHAT_OTEL_SANITIZE_ARGS`)
+controls command argument redaction for both resource metadata and the CLI span.
+It defaults to true with `NDEBUG` (release builds) and false otherwise.
+
+When enabled, gotel redacts only ascii-chat's sensitive option values: passwords,
+identity/public/private key sources and paths, TLS certificates and keys,
+network addresses and ports, discovery/STUN/TURN endpoints and credentials,
+media URLs, yt-dlp options, and telemetry endpoint/CA paths. Native positional
+addresses, including bracketed IPv6 and address-with-port forms, are also hidden.
+Other values, such as width, FPS, and log level, stay visible. When disabled,
+arguments are copied verbatim, including sensitive values.
+
+The reusable gotel policy API supports all, selected, or no redaction, plus
+per-flag removal rules. Removal omits a flag and its required or optional value
+from both destinations; ascii-chat currently uses redaction rules.
+
 ### Statistics coverage
 
 The typed process stats catalog maps to 29 counters, 5 gauges and 10 duration

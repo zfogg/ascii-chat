@@ -26,7 +26,14 @@ static const int default_otel_realtime_max_per_second = 10;
 static const int default_otel_metrics_interval = 10000;
 static const int default_otel_timeout = 5000;
 static const int default_otel_queue_capacity = 4096;
+static const bool default_otel_sanitize_args = OPT_OTEL_SANITIZE_ARGS_DEFAULT;
 const registry_entry_t g_logging_entries[] = {
+    {"otel-sanitize-args", '\0', OPTION_TYPE_BOOL,
+     offsetof(options_t, otel_sanitize_args), &default_otel_sanitize_args,
+     sizeof(((options_t *)0)->otel_sanitize_args),
+     "Redact telemetry command arguments (default: on in release builds, off otherwise).",
+     "OTEL", NULL, false, "ASCII_CHAT_OTEL_SANITIZE_ARGS", NULL, NULL, false, false,
+     OPTION_MODE_BINARY, {.input_type = OPTION_INPUT_NONE}, NULL},
     {"otel-log-level",
      '\0',
      OPTION_TYPE_STRING,
