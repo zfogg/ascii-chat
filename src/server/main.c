@@ -794,7 +794,8 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
 
   // Build session name from hostname for mDNS service name
   char hostname[256] = {0};
-  char session_name[256] = "ascii-chat-Server";
+  // Reserve the service label suffix for the port used by the mDNS backend.
+  char session_name[56] = "ascii-chat-Server";
   if (gethostname(hostname, sizeof(hostname) - 1) == 0 && strlen(hostname) > 0) {
     safe_snprintf(session_name, sizeof(session_name), "%s", hostname);
   }

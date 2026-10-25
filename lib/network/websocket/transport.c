@@ -931,7 +931,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
         // Poll deadlines preserve partial packets and are handled by the receive loop.
         bool previous = errno_notifications_suppress(true);
         asciichat_error_t deadline_result = SET_ERRNO(assembled_size ? ERROR_NETWORK_INCOMPLETE : ERROR_NETWORK_TIMEOUT,
-                                             "WebSocket receive deadline expired");
+                                                      "WebSocket receive deadline expired");
         errno_notifications_suppress(previous);
         return deadline_result;
       }
