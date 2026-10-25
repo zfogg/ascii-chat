@@ -7,6 +7,7 @@
 #include <uv.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 
 // Exposure is explicit; types, descriptions, enums and CLI parsers remain in the registry.
 static const char *const shared_options[] = {"width",
@@ -140,8 +141,27 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
       yyjson_mut_arr_add_str(d, required, "url");
       yyjson_mut_obj_add_val(d, s, "required", required);
     }
-    if (i == MCP_WEBCAM)
-      property(d, s, "device", "integer", "Local webcam index, 0–10; default 0.");
+    if (i == MCP_WEBCAM) {
+      property(d, s, "video_device", "integer", "Local webcam index, 0–10; default 0.");
+      yyjson_mut_val *device = yyjson_mut_obj_get(props, "video_device");
+      yyjson_mut_obj_add_int(d, device, "default", 0);
+      yyjson_mut_obj_add_int(d, device, "minimum", 0);
+      yyjson_mut_obj_add_int(d, device, "maximum", 10);
+    }
+    if (!p->restricted && (i == MCP_WEBCAM || i == MCP_VISUALIZATION)) {
+      property(d, s, "audio_device", "integer", "Microphone index; -1 or omitted selects the system default.");
+      yyjson_mut_val *device = yyjson_mut_obj_get(props, "audio_device");
+      yyjson_mut_obj_add_int(d, device, "default", -1);
+      yyjson_mut_obj_add_int(d, device, "minimum", -1);
+      yyjson_mut_obj_add_int(d, device, "maximum", INT_MAX);
+      yyjson_mut_val *volume = options_json_schema_for_option(d, "microphone-volume");
+      yyjson_mut_obj_remove_str(volume, "description");
+      yyjson_mut_obj_add_str(d, volume, "description", "Microphone volume multiplier, 0–1; 0 mutes, 1 is normal.");
+      yyjson_mut_obj_add_real(d, volume, "default", 1);
+      yyjson_mut_obj_add_real(d, volume, "minimum", 0);
+      yyjson_mut_obj_add_real(d, volume, "maximum", 1);
+      yyjson_mut_obj_add_val(d, props, "volume", volume);
+    }
     if (i == MCP_VISUALIZATION) {
       property(d, s, "visualization", "string", "waveform or fft");
       const char *values[] = {"waveform", "fft", NULL};
@@ -154,8 +174,6 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
                    p->restricted ? remote_types : types);
       file_properties(d, audio, !p->restricted);
       property(d, audio, "url", "string", "Audio URL.");
-      if (!p->restricted)
-        property(d, audio, "device", "integer", "Microphone index.");
       yyjson_mut_obj_add_val(d, props, "audio", audio);
       yyjson_mut_val *req = yyjson_mut_arr(d);
       yyjson_mut_arr_add_str(d, req, "visualization");
@@ -176,6 +194,17 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
     yyjson_mut_obj_add_val(d, out, "required", required);
     yyjson_mut_obj_add_val(d, tool, "outputSchema", out);
     yyjson_mut_obj_add_val(d, tool, "inputSchema", s);
+    yyjson_mut_arr_add_val(tools, tool);
+  }
+  if (!p->restricted) {
+    yyjson_mut_val *tool = yyjson_mut_obj(d);
+    yyjson_mut_obj_add_str(d, tool, "name", "device_list");
+    yyjson_mut_obj_add_str(d, tool, "description",
+                           "List local video and microphone device indices, names, and defaults.");
+    yyjson_mut_obj_add_val(d, tool, "inputSchema", object_schema(d));
+    yyjson_mut_val *annotations = yyjson_mut_obj(d);
+    yyjson_mut_obj_add_bool(d, annotations, "readOnlyHint", true);
+    yyjson_mut_obj_add_val(d, tool, "annotations", annotations);
     yyjson_mut_arr_add_val(tools, tool);
   }
   return tools;
@@ -326,18 +355,21 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   memset(r, 0, sizeof(*r));
   r->timeout_ms = 45000;
   r->argv = SAFE_CALLOC(256, sizeof(char *), char **);
-  static const char *const fields[] = {"path",          "data_base64", "mime_type",   "url",        "device", "audio",
-                                       "visualization", "options",     "output_path", "timeout_ms", NULL};
+  static const char *const fields[] = {"path",         "data_base64",   "mime_type", "url",         "video_device",
+                                       "audio",        "visualization", "options",   "output_path", "timeout_ms",
+                                       "audio_device", "volume",        NULL};
   asciichat_error_t err = check_fields(a, fields);
   if (err)
     return err;
-  const char *source_fields[] = {"path", "data_base64", "mime_type", "url", "device", "audio", "visualization"};
-  for (size_t i = 0; i < 7; ++i) {
-    bool allowed = tool == MCP_FILE ? i < 3 : tool == MCP_URL ? i == 3 : tool == MCP_WEBCAM ? i == 4 : i >= 5;
+  const char *source_fields[] = {"path",  "data_base64",   "mime_type",    "url",   "video_device",
+                                 "audio", "visualization", "audio_device", "volume"};
+  for (size_t i = 0; i < 9; ++i) {
+    bool allowed = tool == MCP_FILE ? i < 3 : tool == MCP_URL ? i == 3 : tool == MCP_WEBCAM ? i == 4 || i >= 7 : i >= 5;
     if (!allowed && mcp_get(a, source_fields[i]))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Argument %s is not valid for this tool", source_fields[i]);
   }
-  if (p->restricted && (tool == MCP_WEBCAM || mcp_get(a, "path") || mcp_get(a, "output_path")))
+  if (p->restricted && (tool == MCP_WEBCAM || mcp_get(a, "path") || mcp_get(a, "output_path") ||
+                        mcp_get(a, "audio_device") || mcp_get(a, "volume")))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Local capability is unavailable in server mode");
   yyjson_val *timeout = mcp_get(a, "timeout_ms");
   if (timeout) {
@@ -389,6 +421,30 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
         return err;
     }
   bool synthetic = enabled(opts, "test-pattern"), test_audio = enabled(opts, "test-audio");
+  yyjson_val *audio_device = mcp_get(a, "audio_device"), *volume = mcp_get(a, "volume");
+  if (audio_device) {
+    if (!yyjson_is_int(audio_device) || yyjson_get_sint(audio_device) < -1 || yyjson_get_sint(audio_device) > INT_MAX)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "audio_device must be -1 or a nonnegative device index");
+    char index[16];
+    SAFE_SNPRINTF(index, sizeof(index), "%d", (int)yyjson_get_sint(audio_device));
+    err = option(r, "microphone-index", index);
+    if (err)
+      return err;
+  }
+  if (volume) {
+    if (!yyjson_is_num(volume) || yyjson_get_num(volume) < 0 || yyjson_get_num(volume) > 1)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "volume must be a number from 0 to 1");
+    char value[64];
+    bool omitted = false;
+    err = options_json_parse_value("microphone-volume", volume, value, sizeof(value), &omitted);
+    if (err)
+      return err;
+    if (mcp_get(opts, "microphone-volume") || mcp_get(opts, "ivolume"))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "volume conflicts with options.microphone-volume/ivolume");
+    err = option(r, "microphone-volume", value);
+    if (err)
+      return err;
+  }
   if (tool == MCP_FILE) {
     if (synthetic || test_audio) {
       if (mcp_get(a, "path") || mcp_get(a, "data_base64"))
@@ -410,10 +466,20 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
       return err;
   } else if (tool == MCP_WEBCAM) {
     r->capture_webcam = !synthetic;
-    yyjson_val *dev = mcp_get(a, "device");
+    bool record_audio =
+        audio_device || volume || enabled(opts, "audio") ||
+        (mcp_get(a, "output_path") && yyjson_get_num(mcp_get(opts, "snapshot-delay")) > 0 && !mcp_get(opts, "audio"));
+    if (record_audio && mcp_get(opts, "audio") && !enabled(opts, "audio"))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Microphone selection conflicts with options.audio=false");
+    if (record_audio && !test_audio) {
+      option(r, "audio", "true");
+      option(r, "audio-source", "mic");
+      option(r, "audio-capture-source", "mic");
+    }
+    yyjson_val *dev = mcp_get(a, "video_device");
     if (dev) {
       if (!yyjson_is_int(dev) || yyjson_get_sint(dev) < 0 || yyjson_get_sint(dev) > 10)
-        return SET_ERRNO(ERROR_INVALID_PARAM, "device must be 0–10");
+        return SET_ERRNO(ERROR_INVALID_PARAM, "video_device must be 0–10");
       char b[16];
       SAFE_SNPRINTF(b, sizeof(b), "%d", (int)yyjson_get_sint(dev));
       option(r, "webcam-index", b);
@@ -427,7 +493,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
     option(r, yyjson_get_str(visual), "true");
     option(r, "audio", "true");
     yyjson_val *audio = mcp_get(a, "audio");
-    static const char *const audio_fields[] = {"type", "path", "data_base64", "mime_type", "url", "device", NULL};
+    static const char *const audio_fields[] = {"type", "path", "data_base64", "mime_type", "url", NULL};
     if (audio) {
       err = check_fields(audio, audio_fields);
       if (err)
@@ -436,14 +502,16 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
     yyjson_val *type = mcp_get(audio, "type");
     if (type && !yyjson_is_str(type))
       return SET_ERRNO(ERROR_INVALID_PARAM, "audio.type must be a string");
-    const char *t = type ? yyjson_get_str(type) : "test";
+    const char *t = type ? yyjson_get_str(type) : (audio_device || volume ? "microphone" : "test");
+    if ((audio_device || volume) && strcmp(t, "microphone"))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "audio_device and volume require microphone audio");
     if (!strcmp(t, "test")) {
       if (audio && yyjson_obj_size(audio) > 1)
         return SET_ERRNO(ERROR_INVALID_PARAM, "Test audio has no source fields");
       option(r, "test-audio", "true");
       option(r, "audio-source", "all");
     } else if (!strcmp(t, "file")) {
-      if (mcp_get(audio, "url") || mcp_get(audio, "device") || test_audio)
+      if (mcp_get(audio, "url") || mcp_get(a, "audio_device") || test_audio)
         return SET_ERRNO(ERROR_INVALID_PARAM, "Conflicting audio sources");
       err = source_file(p, audio, r);
       if (err)
@@ -451,7 +519,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
       option(r, "audio-source", "media");
       option(r, "audio-capture-source", "media");
     } else if (!strcmp(t, "url")) {
-      if (mcp_get(audio, "path") || mcp_get(audio, "data_base64") || mcp_get(audio, "device") || test_audio)
+      if (mcp_get(audio, "path") || mcp_get(audio, "data_base64") || mcp_get(a, "audio_device") || test_audio)
         return SET_ERRNO(ERROR_INVALID_PARAM, "Conflicting audio sources");
       err = source_url(p, mcp_get(audio, "url"), r);
       if (err)
@@ -461,14 +529,6 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
     } else if (!strcmp(t, "microphone") && !p->restricted) {
       if (mcp_get(audio, "path") || mcp_get(audio, "data_base64") || mcp_get(audio, "url") || test_audio)
         return SET_ERRNO(ERROR_INVALID_PARAM, "Conflicting audio sources");
-      yyjson_val *dev = mcp_get(audio, "device");
-      if (dev) {
-        if (!yyjson_is_int(dev) || yyjson_get_sint(dev) < 0 || yyjson_get_sint(dev) > 100)
-          return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid microphone device");
-        char b[16];
-        SAFE_SNPRINTF(b, sizeof(b), "%d", (int)yyjson_get_sint(dev));
-        option(r, "microphone-index", b);
-      }
       option(r, "audio-source", "mic");
       option(r, "audio-capture-source", "mic");
     } else

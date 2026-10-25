@@ -138,8 +138,8 @@ def run(binary, evidence):
         client.send("notifications/initialized", {}, notification=True)
         listing = successful(client.send("tools/list", {}))
         names = {tool["name"] for tool in listing["tools"]}
-        assert names == {"render_file", "render_url", "render_webcam", "render_visualization"}, names
-        checks.append("initialize and four advertised tools")
+        assert names == {"render_file", "render_url", "render_webcam", "render_visualization", "device_list"}, names
+        checks.append("initialize and five advertised tools")
         local = successful(client.call({"path": str(image), "options": options}))
         text = ascii_text(local)
         (evidence / "mcp-ascii.txt").write_text(text, encoding="utf-8")

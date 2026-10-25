@@ -101,6 +101,19 @@ The local tools are \fBrender_file\fR (path or base64 bytes),
 \fBrender_url\fR (media URL), \fBrender_webcam\fR (camera device), and
 \fBrender_visualization\fR (waveform or fft with test, file, URL, or microphone audio).
 .PP
+\fBdevice_list\fR takes no arguments and lists video_devices and audio_devices
+(microphones), each with index, name, and is_default. The result also contains
+default_video_device and default_audio_device (null when absent).
+The default webcam is index 0; the default microphone is selected by the OS.
+Device enumeration and webcam capture are hidden with \fB\-\-server\fR.
+.PP
+\fBrender_webcam\fR accepts video_device, audio_device, and volume.
+\fBrender_visualization\fR accepts audio_device and volume for microphone input.
+An omitted audio_device or -1 selects the system microphone; volume is
+microphone gain from 0 (mute) to 1 (normal). Timed webcam exports capture the
+default microphone unless options.audio is false. Use output_path ending in
+.mp4 and a positive snapshot-delay to save an audiovisual clip.
+.PP
 Tools accept an \fBoptions\fR object using CLI long names without leading dashes.
 Use \fBcolor-mode\fR for rendered color. Defaults are 100 by 40 characters,
 monochrome, and one snapshot. Use \fBseek\fR for a media timestamp;

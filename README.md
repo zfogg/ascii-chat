@@ -256,14 +256,18 @@ the same rendering pipeline as the CLI.
 # Local stdio transport: launch this command from your MCP client
 ascii-chat mcp-server
 
-# Local Streamable HTTP transport (all four tools)
+# Local Streamable HTTP transport (all five tools)
 ascii-chat mcp-server --transport http --address 127.0.0.1 --port 27228
 # Add --server for cloud restrictions
 ascii-chat mcp-server --transport http --server --address 0.0.0.0 --port 27228
 ```
 
 Tool arguments accept CLI rendering options such as `color-mode`, `width`,
-`height`, and `render-font-size`. Local `output_path` saves ASCII art as an image
+and `height`. `device_list` lists camera/microphone names, indices, and defaults.
+`render_webcam` accepts `video_device`, `audio_device`, and `volume` (0–1 microphone
+gain); timed exports include microphone audio unless `options.audio` is false.
+`render_visualization` also accepts `audio_device` and `volume` for microphone input.
+Use `render-font-size` to control export size. Local `output_path` saves ASCII art as an image
 or video without overwriting existing files; set `render-font-size` to 28 for
 larger output and `snapshot-delay` to a positive duration for a clip. Files must
 be on the server's computer, or supplied as base64 bytes by the MCP client.
@@ -271,7 +275,7 @@ The --server flag restricts filesystem/device access and requires deployment iso
 and network egress controls when exposed publicly.
 
 See the **[MCP website guide](https://ascii-chat.com/docs/mcp)** or
-[repository documentation](docs/mcp.md) for client configuration, all four tools,
+[repository documentation](docs/mcp.md) for client configuration, all five tools,
 exports, limits, networking, and diagnostics.
 
 ## Cryptography

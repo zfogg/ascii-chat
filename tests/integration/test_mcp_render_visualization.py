@@ -151,7 +151,7 @@ def main():
         client.send("notifications/initialized", {}, notification=True)
         listed = client.send("tools/list", {})
         tools = {tool["name"]: tool for tool in listed["result"]["tools"]}
-        assert set(tools) == {"render_file", "render_url", "render_webcam", "render_visualization"}, listed
+        assert set(tools) == {"render_file", "render_url", "render_webcam", "render_visualization", "device_list"}, listed
         checks.append({"case": "initialize-and-tools-list", "passed": True})
         sources = {
             "test": ({"type": "test"}, ["--test-audio"]),

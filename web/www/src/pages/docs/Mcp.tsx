@@ -85,7 +85,7 @@ tool_timeout_sec = 70`}</CodeBlock>
             <p className="docs-paragraph">
               For a networked server, start the HTTP command below
               independently, then replace that entry with this URL
-              configuration. It uses HTTP with all four local tools (add
+              configuration. It uses HTTP with all five local tools (add
               --server for cloud restrictions):
             </p>
             <CodeBlock language="json">
@@ -148,8 +148,21 @@ tool_timeout_sec = 70`}</CodeBlock>
                       <code className="whitespace-nowrap">render_webcam</code>
                     </td>
                     <td className="p-3">
-                      An optional integer device (0–10). Stdio or local HTTP;
-                      unavailable with --server.
+                      Optional video_device (default 0), audio_device (default
+                      system microphone), and volume (0–1 microphone gain).
+                      Timed exports include microphone audio unless
+                      options.audio is false. Unavailable with --server.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3">
+                      <code>device_list</code>
+                    </td>
+                    <td className="p-3">
+                      No arguments. Returns named video_devices and
+                      audio_devices with index and is_default, plus
+                      default_video_device and default_audio_device. Hidden with
+                      --server.
                     </td>
                   </tr>
                   <tr>
@@ -161,14 +174,14 @@ tool_timeout_sec = 70`}</CodeBlock>
                     <td className="p-3">
                       visualization: waveform or fft. Audio type: test
                       (default), file (path or base64), url, or local microphone
-                      with optional device.
+                      with optional audio_device and volume.
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <p className="docs-paragraph">
-              All tools accept options with CLI long names without leading
+              Rendering tools accept options with CLI long names without leading
               dashes, plus timeout_ms (1,000–60,000; default 45,000). Local
               tools also accept output_path. Use color-mode for rendered colors;
               color controls CLI diagnostics. Defaults are 100×40 characters,
@@ -276,7 +289,7 @@ ascii-chat mcp-server --transport http 0.0.0.0 ::1 --port 28028`}</CodeBlock>
               jobs.
             </p>
             <p className="docs-paragraph">
-              Local HTTP retains all four tools. Add --server for cloud
+              Local HTTP retains all five tools. Add --server for cloud
               deployment; it omits render_webcam and rejects caller-selected
               filesystem paths, microphones, output_path, custom font paths, and
               arbitrary yt-dlp options. Uploaded bytes and media URLs remain

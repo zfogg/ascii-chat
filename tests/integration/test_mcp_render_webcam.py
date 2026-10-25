@@ -112,11 +112,11 @@ class WebcamTests(unittest.TestCase):
     def test_tools_schema(self):
         result = self.success(self.rpc.send("tools/list", {}))
         tools = {tool["name"]: tool for tool in result["tools"]}
-        self.assertEqual(set(tools), {"render_file", "render_url", "render_webcam", "render_visualization"})
-        self.assertIn("device", tools["render_webcam"]["inputSchema"]["properties"])
+        self.assertEqual(set(tools), {"render_file", "render_url", "render_webcam", "render_visualization", "device_list"})
+        self.assertIn("video_device", tools["render_webcam"]["inputSchema"]["properties"])
 
     def test_synthetic_matches_cli(self):
-        result = self.success(self.rpc.call({"device": 0, "options": OPTIONS}))
+        result = self.success(self.rpc.call({"video_device": 0, "options": OPTIONS}))
         texts = [part["text"] for part in result.get("content", []) if part.get("type") == "text"]
         self.assertTrue(texts, result)
         command = [str(CONFIG.binary), "mirror", "--webcam-index", "0"]
@@ -136,14 +136,14 @@ class WebcamTests(unittest.TestCase):
     def test_invalid_device(self):
         for device in (-1, "camera", 0.5):
             with self.subTest(device=device):
-                self.rejected(self.rpc.call({"device": device, "options": OPTIONS}))
+                self.rejected(self.rpc.call({"video_device": device, "options": OPTIONS}))
 
     def test_saved_media_and_no_overwrite(self):
         for extension in ("png", "mp4"):
             with self.subTest(extension=extension):
                 path = CONFIG.evidence / f"synthetic.{extension}"
                 self.assertFalse(path.exists(), f"Use a fresh evidence directory: {path}")
-                arguments = {"device": 0, "options": OPTIONS, "output_path": str(path)}
+                arguments = {"video_device": 0, "options": OPTIONS, "output_path": str(path)}
                 self.success(self.rpc.call(arguments))
                 self.assertTrue(path.is_file(), path)
                 data = path.read_bytes()
@@ -161,7 +161,7 @@ class WebcamTests(unittest.TestCase):
             self.skipTest("physical webcam probe requires explicit --device N")
         options = dict(OPTIONS)
         options.pop("test-pattern")
-        result = self.success(self.rpc.call({"device": CONFIG.device, "options": options}))
+        result = self.success(self.rpc.call({"video_device": CONFIG.device, "options": options}))
         self.assertTrue(result.get("content"), result)
 
 

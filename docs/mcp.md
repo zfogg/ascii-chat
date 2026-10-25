@@ -2,7 +2,7 @@
 
 `ascii-chat mcp-server` exposes four rendering tools over newline-delimited JSON-RPC on stdio. It runs through the ordinary application initialization, options, logging, error-stack and diagnostic workers. Both transports automatically skip startup update checks. Protocol stdout is reserved before initialization; incidental terminal diagnostics go to stderr.
 
-`ascii-chat mcp-server --transport http` serves all four tools at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. Examples:
+`ascii-chat mcp-server --transport http` serves all five tools at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. Examples:
 
 ```sh
 ascii-chat mcp-server --transport http --port 28028 --address 127.0.0.1
@@ -18,10 +18,10 @@ For mcp.ascii-chat.com, terminate HTTPS and enforce rate/body/concurrency limits
 
 - `render_file`: exactly one of `path` or `data_base64`, optional `mime_type`. A source may be omitted when options select synthetic test video/audio.
 - `render_url`: `url` for media supported by the CLI FFmpeg/yt-dlp resolver.
-- `render_webcam`: optional integer `device` (0–10), local only. `options.test-pattern` uses synthetic video instead.
-- `render_visualization`: `visualization` is `waveform` or `fft`; optional `audio` selects `{ "type": "test" }` (default), `{ "type": "file", "path": "..." }`, `{ "type": "file", "data_base64": "...", "mime_type": "audio/wav" }`, `{ "type": "url", "url": "..." }`, or local `{ "type": "microphone", "device": 0 }`.
+- `device_list`: no arguments. Returns `video_devices` and `audio_devices` (microphones), each with `index`, `name`, and `is_default`, plus `default_video_device` and `default_audio_device` (null when absent). Webcam default is index 0; microphone default comes from the OS. Enumeration failures appear in `errors`, preserving devices discovered in the other category. Hidden with `--server`.- `render_webcam`: optional `video_device` (default 0), `audio_device` (-1 or omitted uses the system microphone), and `volume` (microphone gain, 0 to 1). Timed saved exports capture microphone audio unless `options.audio` is false. `options.test-pattern` uses synthetic video instead.
+- `render_visualization`: `visualization` is `waveform` or `fft`; optional `audio` selects `{ "type": "test" }` (default), `{ "type": "file", "path": "..." }`, `{ "type": "file", "data_base64": "...", "mime_type": "audio/wav" }`, `{ "type": "url", "url": "..." }`, or local `{ "type": "microphone" }` with top-level `audio_device: 0` and optional `volume` (0-1). Supplying `audio_device` or `volume` without an audio source selects microphone input. Both fields are unavailable with `--server`.
 
-All tools accept `options`, `timeout_ms` (1000–60000, default 45000), and a local-only optional `output_path`.
+Rendering tools accept `options`, `timeout_ms` (1000–60000, default 45000), and a local-only optional `output_path`.
 
 ```json
 {
@@ -67,7 +67,7 @@ Results contain `content` text plus `structuredContent` with `ascii`, `elapsed_m
 
 ## Hosted isolation
 
-`--server` mode omits webcam tooling and rejects caller-selected paths, microphone access, saved output paths, custom font paths, and arbitrary yt-dlp options. Uploaded bytes use private server-created temporary files. These capability restrictions do not sandbox third-party media decoders or URL extractors: public deployments must run under an unprivileged account/container with no secrets or device mounts and network egress rules blocking private/loopback/link-local/metadata destinations. Enforce those rules on redirected and nested media requests too. Put authentication/rate limits at the reverse proxy if required. Local mode intentionally permits the filesystem and devices of the user running it.
+`--server` mode omits device enumeration and webcam tooling and rejects caller-selected paths, microphone access, saved output paths, custom font paths, and arbitrary yt-dlp options. Uploaded bytes use private server-created temporary files. These capability restrictions do not sandbox third-party media decoders or URL extractors: public deployments must run under an unprivileged account/container with no secrets or device mounts and network egress rules blocking private/loopback/link-local/metadata destinations. Enforce those rules on redirected and nested media requests too. Put authentication/rate limits at the reverse proxy if required. Local mode intentionally permits the filesystem and devices of the user running it.
 
 ## Codex connection
 
@@ -82,7 +82,7 @@ args = ["mcp-server", "--transport", "stdio"]
 tool_timeout_sec = 70
 ```
 
-The suffixless executable path works on Windows (which resolves `.exe`) and Unix (which uses the exact filename), without a symlink. For a checkout outside the current project, use its absolute suffixless path. Newly created chats can discover the four tools through this stdio connection. The server must be built before starting the chat.
+The suffixless executable path works on Windows (which resolves `.exe`) and Unix (which uses the exact filename), without a symlink. For a checkout outside the current project, use its absolute suffixless path. Newly created chats can discover the five tools through this stdio connection. The server must be built before starting the chat.
 
 ## Claude Code connection
 

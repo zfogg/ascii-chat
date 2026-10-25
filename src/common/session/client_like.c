@@ -891,6 +891,11 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       goto cleanup;
     }
     client_like_start_session_audio(config, &state);
+    if (SAFE_GETENV("ASCII_CHAT_MCP_WORKER") && state.should_init_audio &&
+        GET_OPTION(audio_capture_source) == AUDIO_CAPTURE_SOURCE_MIC && !state.audio_available) {
+      result = SET_ERRNO(ERROR_AUDIO, "Requested microphone capture could not start");
+      goto cleanup;
+    }
     log_debug("[MARKER] Audio setup complete at line 614");
   }
   log_debug("[SETUP_COMPLETE] All setup complete, about to start connection loop");

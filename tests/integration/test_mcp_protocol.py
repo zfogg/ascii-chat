@@ -102,8 +102,11 @@ class Protocol(unittest.TestCase):
     def test_schema_and_invalid_parameters(self):
         c = self.client(); c.send("tools/list", {}, 1)
         tools = c.receive()["result"]["tools"]
-        self.assertEqual(len(tools), 4)
+        self.assertEqual(len(tools), 5)
         for tool in tools:
+            if tool["name"] == "device_list":
+                self.assertEqual(tool["inputSchema"]["properties"], {})
+                continue
             props = tool["inputSchema"]["properties"]["options"]["properties"]
             self.assertNotIn("color", props); self.assertIn("color-mode", props)
             self.assertIn("outputSchema", tool)
@@ -123,6 +126,33 @@ class Protocol(unittest.TestCase):
         self.assertTrue(c.receive()["result"]["isError"])
         self.assertEqual(hashlib.sha256(output.read_bytes()).digest(), digest)
         self.assertEqual(list(self.directory.glob(".ascii-mcp-*")), [])
+    def test_device_list_names_defaults_and_selection_validation(self):
+        c = self.client()
+        c.send("tools/call", {"name": "device_list", "arguments": {}}, 1)
+        result = c.receive()["result"]
+        devices = result["structuredContent"]
+        self.assertEqual(json.loads(result["content"][0]["text"]), devices)
+        for kind in ("audio", "video"):
+            entries = devices[kind + "_devices"]
+            self.assertIsInstance(entries, list)
+            for entry in entries:
+                self.assertIsInstance(entry["index"], int)
+                self.assertTrue(entry["name"])
+                self.assertIsInstance(entry["is_default"], bool)
+            default = devices["default_" + kind + "_device"]
+            if default is not None:
+                self.assertTrue(any(e["index"] == default and e["is_default"] for e in entries))
+        for tool in ("render_webcam", "render_visualization"):
+            for arguments in ({"audio_device": -2}, {"audio_device": "mic"}, {"volume": -0.1}, {"volume": 1.1}, {"volume": "quiet"}):
+                if tool == "render_visualization":
+                    arguments = {"visualization": "waveform", **arguments}
+                c.send("tools/call", {"name": tool, "arguments": arguments}, 2)
+                self.assertTrue(c.receive()["result"]["isError"])
+        c.send("tools/call", {"name": "render_webcam", "arguments": {
+            "audio_device": 14, "options": {"test-pattern": True, "test-audio": True,
+                                           "width": 40, "height": 16}}}, 3)
+        self.assertFalse(c.receive()["result"]["isError"])
+
     def test_http_profile_and_port(self):
         self.http_profile(True)
 
@@ -156,18 +186,21 @@ class Protocol(unittest.TestCase):
         self.assertEqual(status, 200)
         tools = {tool["name"]: tool for tool in response["result"]["tools"]}
         if not restricted:
-            self.assertEqual(set(tools), {"render_file", "render_url", "render_webcam", "render_visualization"})
-            self.assertIn("device", tools["render_webcam"]["inputSchema"]["properties"])
+            self.assertEqual(set(tools), {"render_file", "render_url", "render_webcam", "render_visualization", "device_list"})
+            self.assertIn("video_device", tools["render_webcam"]["inputSchema"]["properties"])
+            for name in ("render_webcam", "render_visualization"):
+                self.assertIn("audio_device", tools[name]["inputSchema"]["properties"])
+                self.assertIn("volume", tools[name]["inputSchema"]["properties"])
             self.assertIn("path", tools["render_file"]["inputSchema"]["properties"])
             self.assertIn("output_path", tools["render_file"]["inputSchema"]["properties"])
             _, rendered = request({"jsonrpc": "2.0", "id": 9, "method": "tools/call", "params": {
-                "name": "render_webcam", "arguments": {"device": 0, "options": {
+                "name": "render_webcam", "arguments": {"video_device": 0, "options": {
                     "test-pattern": True, "width": 40, "height": 16}}}})
             self.assertFalse(rendered["result"]["isError"], rendered)
             self.assertGreater(len(rendered["result"]["structuredContent"]["ascii"]), 100)
             return
         self.assertEqual(set(tools), {"render_file", "render_url", "render_visualization"})
-        for tool, arguments in (("render_webcam", {}), ("render_visualization", {"visualization": "fft", "audio": {"type": "microphone"}})):
+        for tool, arguments in (("device_list", {}), ("render_webcam", {}), ("render_visualization", {"visualization": "fft", "audio": {"type": "microphone"}})):
             _, denied = request({"jsonrpc": "2.0", "id": 20, "method": "tools/call", "params": {"name": tool, "arguments": arguments}})
             self.assertTrue("error" in denied or denied.get("result", {}).get("isError"), denied)
         self.assertEqual(request({"jsonrpc": "2.0", "id": 21, "method": "ping"}, "https://tools.example.test")[0], 200)

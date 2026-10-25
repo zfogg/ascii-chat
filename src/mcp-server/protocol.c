@@ -2,6 +2,8 @@
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/version.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/video/webcam/webcam.h>
 #include <libwebsockets.h>
 #include <string.h>
 
@@ -47,6 +49,71 @@ static yyjson_mut_doc *tool_result(yyjson_val *id, const mcp_render_result_t *r)
     yyjson_mut_obj_add_val(d, result, "structuredContent", data);
   }
   yyjson_mut_obj_add_val(d, root, "result", result);
+  return d;
+}
+
+// Enumerate through the same platform APIs as the CLI, without opening capture streams.
+static yyjson_mut_doc *device_list_result(yyjson_val *id, yyjson_val *arguments) {
+  if (arguments && (!yyjson_is_obj(arguments) || yyjson_obj_size(arguments)))
+    return mcp_error(id, -32602, "device_list accepts no arguments");
+  yyjson_mut_doc *d = envelope(id);
+  yyjson_mut_val *result = yyjson_mut_obj(d), *data = yyjson_mut_obj(d), *video = yyjson_mut_arr(d),
+                 *audio = yyjson_mut_arr(d), *errors = yyjson_mut_arr(d);
+  webcam_device_info_t *cameras = NULL;
+  audio_device_info_t *microphones = NULL;
+  unsigned camera_count = 0, microphone_count = 0;
+  int default_video = -1, default_audio = -1;
+  asciichat_error_t err = webcam_list_devices(&cameras, &camera_count);
+  if (err != ASCIICHAT_OK) {
+    asciichat_error_context_t context;
+    yyjson_mut_arr_add_strcpy(d, errors, HAS_ERRNO(&context) ? context.context_message : "Cannot enumerate webcams");
+  } else {
+    for (unsigned i = 0; i < camera_count; ++i) {
+      yyjson_mut_val *device = yyjson_mut_obj(d);
+      bool is_default = cameras[i].index == 0;
+      if (is_default)
+        default_video = (int)cameras[i].index;
+      yyjson_mut_obj_add_uint(d, device, "index", cameras[i].index);
+      yyjson_mut_obj_add_strcpy(d, device, "name", cameras[i].name);
+      yyjson_mut_obj_add_bool(d, device, "is_default", is_default);
+      yyjson_mut_arr_add_val(video, device);
+    }
+  }
+  webcam_free_device_list(cameras);
+  err = audio_list_input_devices(&microphones, &microphone_count);
+  if (err != ASCIICHAT_OK) {
+    asciichat_error_context_t context;
+    yyjson_mut_arr_add_strcpy(d, errors,
+                              HAS_ERRNO(&context) ? context.context_message : "Cannot enumerate microphones");
+  } else {
+    for (unsigned i = 0; i < microphone_count; ++i) {
+      yyjson_mut_val *device = yyjson_mut_obj(d);
+      if (microphones[i].is_default_input)
+        default_audio = microphones[i].index;
+      yyjson_mut_obj_add_int(d, device, "index", microphones[i].index);
+      yyjson_mut_obj_add_strcpy(d, device, "name", microphones[i].name);
+      yyjson_mut_obj_add_bool(d, device, "is_default", microphones[i].is_default_input);
+      yyjson_mut_arr_add_val(audio, device);
+    }
+  }
+  audio_free_device_list(microphones);
+  yyjson_mut_obj_add_val(d, data, "video_devices", video);
+  yyjson_mut_obj_add_val(d, data, "audio_devices", audio);
+  yyjson_mut_obj_add_val(d, data, "default_video_device",
+                         default_video < 0 ? yyjson_mut_null(d) : yyjson_mut_int(d, default_video));
+  yyjson_mut_obj_add_val(d, data, "default_audio_device",
+                         default_audio < 0 ? yyjson_mut_null(d) : yyjson_mut_int(d, default_audio));
+  yyjson_mut_obj_add_val(d, data, "errors", errors);
+  yyjson_mut_val *content = yyjson_mut_arr(d), *item = yyjson_mut_obj(d);
+  char *text = yyjson_mut_val_write(data, 0, NULL);
+  yyjson_mut_obj_add_str(d, item, "type", "text");
+  yyjson_mut_obj_add_strcpy(d, item, "text", text ? text : "Cannot serialize device list");
+  free(text);
+  yyjson_mut_arr_add_val(content, item);
+  yyjson_mut_obj_add_val(d, result, "content", content);
+  yyjson_mut_obj_add_bool(d, result, "isError", yyjson_mut_arr_size(errors) != 0);
+  yyjson_mut_obj_add_val(d, result, "structuredContent", data);
+  yyjson_mut_obj_add_val(d, yyjson_mut_doc_get_root(d), "result", result);
   return d;
 }
 static void *run_job(void *arg) {
@@ -175,6 +242,12 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   if (strcmp(name, "tools/call"))
     return mcp_error(id, -32601, "Method not found");
   const char *tool = yyjson_get_str(mcp_get(params, "name"));
+  if (tool && yyjson_get_len(mcp_get(params, "name")) == sizeof("device_list") - 1 && !strcmp(tool, "device_list")) {
+    if (s->policy.restricted)
+      return mcp_error(id, -32602, "Unknown tool");
+    ASCII_OTEL_ATTR_STRING("mcp.tool", "device_list");
+    return device_list_result(id, mcp_get(params, "arguments"));
+  }
   const char *names[] = {"render_file", "render_url", "render_webcam", "render_visualization"};
   int kind = -1;
   for (int i = 0; i < 4; ++i)

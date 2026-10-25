@@ -62,7 +62,7 @@ def main():
                                {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"})
             response = connection.getresponse()
             assert response.status == 200
-            assert len(json.loads(response.read())["result"]["tools"]) == 4
+            assert len(json.loads(response.read())["result"]["tools"]) == 5
             connection.close()
         finally:
             process.terminate()
