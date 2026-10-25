@@ -143,3 +143,16 @@ Test(source_audio_contract, cancelled_and_invalid_source_creation_fail_without_d
   cr_assert(media_source_at_end(NULL));
   cr_assert_eq(media_source_read_audio(NULL, NULL, 0), 0);
 }
+
+Test(source_audio_contract, audio_visualizations_do_not_require_a_webcam) {
+  cr_assert_eq(options_set_bool("test_pattern", false), ASCIICHAT_OK);
+  const char *visualizations[] = {"waveform", "fft"};
+  for (size_t i = 0; i < 2; ++i) {
+    cr_assert_eq(options_set_bool(visualizations[i], true), ASCIICHAT_OK);
+    cr_assert_not(media_source_uses_webcam(source));
+    cr_assert_eq(media_source_start_video(source), ASCIICHAT_OK);
+    cr_assert_not_null(media_source_read_video(source));
+    read_samples(.25f);
+    cr_assert_eq(options_set_bool(visualizations[i], false), ASCIICHAT_OK);
+  }
+}

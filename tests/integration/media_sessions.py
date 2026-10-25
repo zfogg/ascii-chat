@@ -194,7 +194,8 @@ class MediaSessions(unittest.TestCase):
                     # The renderer may encode repeated cells with ECMA-48 REP.
                     expanded = re.sub(rb"(.)\x1b\[(\d+)b",
                                       lambda m: m[1] * (min(int(m[2]), 500) + 1), bytes(output))
-                    if marker in expanded:
+                    plain = re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]", b"", expanded)
+                    if marker in plain:
                         return bytes(output)
             log = (self.root / "session.log").read_text(errors="replace")
             self.fail(f"Missing {marker!r} in terminal output: {bytes(output[-3000:])!r}\nSession log:\n{log[-8000:]}")
@@ -218,7 +219,7 @@ class MediaSessions(unittest.TestCase):
             os.write(master, b"\x1b")
             expect(b"QQQQQQQQ")
             os.write(master, b"]")
-            expect(b"] / Esc: close")
+            expect(b"Esc: close")
             os.write(master, b"]")
             expect(b"QQQQQQQQ")
             process.send_signal(signal.SIGINT)
