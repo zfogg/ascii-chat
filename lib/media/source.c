@@ -157,7 +157,9 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
   }
 
   // Local paths and native FFmpeg protocols never need site extraction.
-  bool is_site = strncmp(url, "http://", 7) == 0 || strncmp(url, "https://", 8) == 0;
+  bool is_site = platform_strncasecmp(url, "http://", sizeof("http://") - 1) == 0 ||
+                 platform_strncasecmp(url, "https://", sizeof("https://") - 1) == 0 ||
+                 (platform_strncasecmp(url, "ytsearch", sizeof("ytsearch") - 1) == 0 && strchr(url, ':'));
   bool is_direct = !is_site || url_is_direct_stream(url);
   ASCII_OTEL_ATTR_STRING("media.resolver", is_direct ? "ffmpeg" : "yt-dlp");
 

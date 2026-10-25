@@ -377,7 +377,9 @@ static void listener_accept(platform_event_stream_t *stream, void *arg) {
 
 static void *connection_receive(void *arg) {
   network_connection_t *c = arg;
-  asciichat_errno_scope_t open_scope = errno_scope_begin();
+  asciichat_errno_scope_t open_scope = {0};
+  if (c->server)
+    open_scope = errno_scope_begin();
   asciichat_error_t result = connection_open(c);
   if (c->server)
     errno_scope_end(open_scope, ASCIICHAT_ERRNO_HANDLED);

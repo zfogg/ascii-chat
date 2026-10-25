@@ -11,6 +11,9 @@ import _environment  # noqa: F401
 
 import argparse
 import fcntl
+import functools
+import http.server
+import json
 import os
 from pathlib import Path
 import pty
@@ -20,7 +23,9 @@ import signal
 import socket
 import struct
 import subprocess
+import sys
 import tempfile
+import threading
 import termios
 import time
 import unittest
@@ -100,6 +105,40 @@ class MediaSessions(unittest.TestCase):
                 rows = [line for line in frame.splitlines() if b"#" in line and set(line) <= set(b" .#")]
                 self.assertTrue(rows, "The generated configuration did not produce a rendered frame")
                 self.assertTrue(all(len(line) == expected_width for line in rows), rows)
+
+    def test_site_and_search_inputs_use_extractor_but_local_files_do_not(self):
+        tools = self.root / "extractor-tools"
+        tools.mkdir(exist_ok=True)
+        trace = self.root / "extractor-inputs.jsonl"
+        extractor = tools / "yt-dlp"
+        extractor.write_text(
+            f"#!{sys.executable}\n"
+            "import json, os, sys\n"
+            "if '--version' in sys.argv:\n"
+            "    print('2026.01.01')\n"
+            "else:\n"
+            "    with open(os.environ['EXTRACTOR_TRACE'], 'a') as output:\n"
+            "        output.write(json.dumps(sys.argv[-1]) + '\\n')\n"
+            "    print(os.environ['EXTRACTOR_MEDIA'])\n")
+        extractor.chmod(0o755)
+        handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(self.root))
+        with http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler) as server:
+            worker = threading.Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            try:
+                env = dict(self.env, PATH=str(tools) + os.pathsep + self.env.get("PATH", ""),
+                           EXTRACTOR_TRACE=str(trace),
+                           EXTRACTOR_MEDIA=f"http://127.0.0.1:{server.server_port}/pattern.ppm")
+                inputs = ["HtTpS://example.invalid/watch?id=fixture", "ytsearch:ascii fixture"]
+                for source in [str(self.image), *inputs]:
+                    with self.subTest(source=source):
+                        self.run_snapshot("mirror", "--file", source, "--snapshot", "--snapshot-delay", "0",
+                                          "--splash-screen=false", "--audio=false", "--width", "40", "--height", "12",
+                                          env=env)
+                self.assertEqual([json.loads(line) for line in trace.read_text().splitlines()], inputs)
+            finally:
+                server.shutdown()
+                worker.join(timeout=5)
 
     def test_explicit_configuration_errors_are_fatal(self):
         broken = self.root / "broken.toml"

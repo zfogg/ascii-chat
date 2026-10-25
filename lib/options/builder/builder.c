@@ -35,7 +35,7 @@ static asciichat_error_t builder_format_error(char **output, const char *format,
     va_end(arguments);
     return SET_ERRNO(ERROR_FORMAT, "Cannot measure option error message");
   }
-  char *message = SAFE_MALLOC((size_t)length + 1, char *);
+  char *message = ALLOC_MALLOC((size_t)length + 1);
   if (!message) {
     va_end(arguments);
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate option error message");

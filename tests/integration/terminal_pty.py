@@ -43,7 +43,8 @@ size_output = finish(start("size"))
 # diagnostics on stderr are independent of the in-process size assertions.
 assert b"\x1b" not in size_output, size_output
 expected = b"\x1b[2J\x1b[H\x1b[3;5H\x1b[3C\x1b[2D\x1b[?25l\x1b[?25h\x1b[H\x1b[3J\x1bc"
-assert finish(start("controls")) == expected
+controls_output = finish(start("controls"))
+assert controls_output == expected, controls_output
 child = start("raw")
 try:
     child.expect_exact(b"READY")
@@ -188,7 +189,11 @@ for mode, key, expected in [
         deadline = time.monotonic() + 5
         while "Continue" not in "\n".join(screen.display):
             assert time.monotonic() < deadline, screen.display
-            stream.feed(decoder.decode(child.read_nonblocking(4096, timeout=1)))
+            try:
+                chunk = child.read_nonblocking(4096, timeout=min(1, max(.01, deadline - time.monotonic())))
+            except pexpect.TIMEOUT:
+                continue
+            stream.feed(decoder.decode(chunk))
         prompt = "\n".join(screen.display)
         assert "Update available" in prompt and "Update now" in prompt
         assert "v7.1.0" in prompt and "v8.2.0" in prompt
