@@ -265,6 +265,8 @@ Test(audio_device, real_worker_publishes_microphone_samples_with_configured_sens
   cr_assert_eq(closes, opens);
 }
 
+// Signal counters are debug instrumentation; the sample-delivery tests run in every build.
+#ifndef NDEBUG
 Test(audio_device, capture_callbacks_notify_once_per_twenty_millisecond_batch) {
   cr_assert_eq(audio_start_duplex(&context), ASCIICHAT_OK);
   pause_processing();
@@ -276,6 +278,7 @@ Test(audio_device, capture_callbacks_notify_once_per_twenty_millisecond_batch) {
   cr_assert_eq(context.audio_processing_wakeup.signal_count, signals + 1);
   cr_assert_eq(audio_ring_buffer_available_read(context.raw_capture_rb), 960);
 }
+#endif
 
 Test(audio_device, real_worker_preserves_both_ten_millisecond_capture_blocks) {
   cr_assert_eq(audio_start_duplex(&context), ASCIICHAT_OK);
