@@ -196,7 +196,8 @@ Test(session_database, session_join_basic, .timeout = 5) {
 
   cr_expect_eq(result, ASCIICHAT_OK, "Session join should succeed");
   cr_expect_eq(join_response.success, 1, "Join should be successful");
-  cr_expect_neq(join_response.participant_id[0], 0, "Participant ID should be set");
+  const uint8_t empty_id[sizeof(join_response.participant_id)] = {0};
+  cr_expect_neq(memcmp(join_response.participant_id, empty_id, sizeof(empty_id)), 0, "Participant ID should be set");
 
   // Verify participant count increased
   acip_session_info_t lookup_response = {0};

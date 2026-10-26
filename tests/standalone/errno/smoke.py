@@ -42,7 +42,8 @@ def main():
         with (logs / f"{name}-output.log").open("wb") as output:
             result = subprocess.run(command(name, options), env=env, stdout=output,
                                     stderr=output, timeout=30)
-        assert result.returncode == expected, (name, result.returncode, expected, logs)
+        assert result.returncode == expected, (name, result.returncode, expected, logs,
+            (logs / f"{name}-output.log").read_text(encoding="utf-8", errors="replace")[-8000:])
         print(f"PASS {name}: exit {expected}", flush=True)
         return (logs / f"{name}.log").read_text(encoding="utf-8", errors="replace")
 
@@ -123,10 +124,12 @@ def main():
                     deadline = time.monotonic() + 15
                     while time.monotonic() < deadline:
                         assert holder.poll() is None, ("holder exited", logs)
-                        holder_log = logs / "holder.log"
-                        if holder_log.exists() and "Connected" in holder_log.read_text(encoding="utf-8", errors="replace"):
+                        server_log = logs / "server.log"
+                        if server_log.exists() and "announced video stream" in server_log.read_text(encoding="utf-8", errors="replace"):
                             break
                         time.sleep(0.1)
+                    else:
+                        raise AssertionError(("Holder was not admitted before the capacity check", logs))
                     run("session-full", ["client", f"127.0.0.1:{port}", "--password",
                         "errno-test-secret", "--video-codec", "raw", *synthetic_snapshot], 48)
                 finally:

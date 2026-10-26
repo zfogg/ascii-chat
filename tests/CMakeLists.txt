@@ -465,6 +465,8 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             target_link_libraries(${test_exe_name} ${PCRE2_LIBRARIES})
         endif()
 
+        target_link_directories(${test_exe_name} PRIVATE ${FFMPEG_LIBRARY_DIRS})
+
         # External dependencies needed because shared library has them as undefined symbols
         # (normal for dylibs - symbols resolved at runtime)
         target_link_libraries(${test_exe_name}
@@ -1927,7 +1929,7 @@ if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32 AND ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TEST_FFPROBE)
-    set(terminal_ui_args)
+    set(terminal_ui_args --artifacts ${CMAKE_BINARY_DIR}/terminal-ui)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         list(APPEND terminal_ui_args --debug-sync --debug-updates)
     endif()

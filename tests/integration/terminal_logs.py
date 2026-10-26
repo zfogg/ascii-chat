@@ -57,8 +57,8 @@ def exercise(term, name, artifacts):
     after = [line[:-1].rstrip() for line in search_open.splitlines()[4:-1] if line[:-1].strip()]
     assert after == before[-len(after):], "Search prompt changed the retained log rows"
     term.write("Volume DOWN")
-    typed = term.pump(.15)
-    assert typed.splitlines()[-1].strip() == "/Volume DOWN", "Search input was delayed"
+    term.expect(lambda text: text.splitlines()[-1].strip() == "/Volume DOWN",
+                "Search input was delayed", timeout=2)
     term.expect(lambda s: "KEYBOARD INPUT" not in s, "Debounced search did not filter")
     term.write("\r")
     term.expect(lambda s: "Volume DOWN" in s, "Search did not remain active after accepting input")

@@ -324,7 +324,8 @@ def main():
             term.interrupt()
             if os.name != "nt":
                 term.process.close()
-                assert term.process.exitstatus == 0, term.process.exitstatus
+                assert term.process.exitstatus == 0, (term.process.exitstatus,
+                    (root / "application.log").read_text(errors="replace")[-12000:])
             term.close()
 
         def small(term):

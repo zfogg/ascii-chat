@@ -128,12 +128,23 @@ def main():
                     term.pump(.02)
             raise AssertionError(f"Missing {message!r}: {text[-3000:]}")
 
+        def expect_discovery(term, predicate, message, name):
+            try:
+                return term.expect(predicate, message)
+            except AssertionError:
+                text = (root / f"{name}.log").read_text(errors="replace")
+                if sys.platform == "darwin" and re.search(r"Bonjour.*error -655(?:63|70)", text):
+                    print("SKIP: Bonjour discovery is unavailable or local-network access is denied")
+                    raise SystemExit(77)
+                raise
+
         try:
             waiting = client("empty-picker")
-            waiting.expect(lambda text: "LAN servers" in text, "Empty LAN picker missing")
+            expect_discovery(waiting, lambda text: "LAN servers" in text, "Empty LAN picker missing", "empty-picker")
             assert waiting.process.isalive(), "Empty initial discovery should keep refreshing"
             first = server(0, "first")
-            waiting.expect(lambda text: str(ports[0]) in text, "Live picker missed a later advertisement")
+            expect_discovery(waiting, lambda text: str(ports[0]) in text,
+                             "Live picker missed a later advertisement", "empty-picker")
             waiting.write("q")
             waiting.expect(lambda text: not waiting.process.isalive(), "Empty-start picker did not cancel")
             # Use a fresh deadline for the independent refresh and navigation scenario.
