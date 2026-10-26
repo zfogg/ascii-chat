@@ -367,7 +367,7 @@ jobs:
         uses: ./.github/actions/install-deps
         with:
           os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr' || 'gcovr' }}
+          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr pulseaudio pulseaudio-utils' || 'gcovr' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache build, dependencies, and ccache
@@ -456,6 +456,19 @@ jobs:
       - name: Clear cached coverage counters
         run: find build -name '*.gcda' -type f -delete
 
+      - name: Start private headless audio service
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          audio_runtime="$RUNNER_TEMP/ascii-chat-pulse"
+          install -d -m 700 "$audio_runtime"
+          PULSE_RUNTIME_PATH="$audio_runtime" pulseaudio --daemonize=yes --exit-idle-time=-1 -n \
+            --load="module-native-protocol-unix socket=$audio_runtime/native auth-anonymous=1" \
+            --load="module-null-sink sink_name=ascii_chat_ci" \
+            --log-target="file:$audio_runtime/server.log"
+          pulse_server="unix:$audio_runtime/native"
+          pactl --server="$pulse_server" info
+          echo "PULSE_SERVER=$pulse_server" >> "$GITHUB_ENV"
+
       - name: Build and run integration tests
         run: |
           cmake --build build --target all tests-criterion-build
@@ -470,6 +483,10 @@ jobs:
           ctest --test-dir build --label-regex "^integration$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 0 | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Integration tests completed successfully"
+
+      - name: Stop private headless audio service
+        if: always() && startsWith(matrix.os, 'ubuntu') && env.PULSE_SERVER != ''
+        run: pactl --server="$PULSE_SERVER" exit
 
       - name: Generate coverage report
         if: always()
