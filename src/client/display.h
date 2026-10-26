@@ -168,6 +168,9 @@ void display_disable_logging_for_first_frame(client_connection_t *connection);
  */
 void display_render_frame(client_connection_t *connection, const char *frame_data);
 
+/** Poll interactive controls from the connection owner, independently of received frames. */
+void display_poll_keyboard(client_connection_t *connection);
+
 /**
  * @brief Cleanup display subsystem
  *

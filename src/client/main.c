@@ -374,6 +374,7 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
   uint64_t last_progress_log_ns = 0;
   uint64_t advertised_revision = OPTIONS_REVISION_ANY;
   while (!should_exit() && server_connection_is_active(connection)) {
+    display_poll_keyboard(connection);
     terminal_size_t previous = connection->advertised_dimensions;
     if (session_protocol_update_settings(&connection->advertised_dimensions, &advertised_revision, client_send_settings,
                                          connection) == ASCIICHAT_OK &&
