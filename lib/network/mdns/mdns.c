@@ -204,8 +204,10 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mDNS TXT record value");
     }
   }
+  char instance_name[64];
+  safe_snprintf(instance_name, sizeof(instance_name), "%s-%u", service->name, service->port);
   DNSServiceErrorType error = DNSServiceRegister(
-      &mdns->dns_service_ref, 0, kDNSServiceInterfaceIndexAny, service->name, regtype, NULL, NULL, htons(service->port),
+      &mdns->dns_service_ref, 0, kDNSServiceInterfaceIndexAny, instance_name, regtype, NULL, NULL, htons(service->port),
       TXTRecordGetLength(&txt_record), TXTRecordGetBytesPtr(&txt_record), NULL, NULL);
   TXTRecordDeallocate(&txt_record);
   if (error != kDNSServiceErr_NoError)

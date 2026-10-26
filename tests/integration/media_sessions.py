@@ -68,8 +68,8 @@ class MediaSessions(unittest.TestCase):
             raise AssertionError("Coverage root was not supplied for an instrumented test")
         return {path: path.stat().st_mtime_ns for path in COVERAGE_ROOT.rglob(pattern)}
 
-    def run_snapshot(self, *args, env=None):
-        result = subprocess.run(self.command(*args), env=env or self.env, capture_output=True, timeout=25)
+    def run_snapshot(self, *args, env=None, cwd=None):
+        result = subprocess.run(self.command(*args), env=env or self.env, cwd=cwd, capture_output=True, timeout=25)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-5000:])
         self.assertGreater(len(result.stdout), 100, "Snapshot did not contain a rendered frame")
         return result.stdout
@@ -130,11 +130,13 @@ class MediaSessions(unittest.TestCase):
                            EXTRACTOR_TRACE=str(trace),
                            EXTRACTOR_MEDIA=f"http://127.0.0.1:{server.server_port}/pattern.ppm")
                 inputs = ["HtTpS://example.invalid/watch?id=fixture", "ytsearch:ascii fixture"]
-                for source in [str(self.image), *inputs]:
+                relative_image = self.root / "ytsearch-local.ppm"
+                relative_image.write_bytes(self.image.read_bytes())
+                for source in [str(self.image), relative_image.name, *inputs]:
                     with self.subTest(source=source):
                         self.run_snapshot("mirror", "--file", source, "--snapshot", "--snapshot-delay", "0",
                                           "--splash-screen=false", "--audio=false", "--width", "40", "--height", "12",
-                                          env=env)
+                                          env=env, cwd=self.root)
                 self.assertEqual([json.loads(line) for line in trace.read_text().splitlines()], inputs)
             finally:
                 server.shutdown()

@@ -128,10 +128,15 @@ def main():
             raise AssertionError(f"Missing {message!r}: {text[-3000:]}")
 
         try:
-            term = client("picker")
-            term.expect(lambda text: "LAN servers" in text, "Empty LAN picker missing")
-            assert term.process.isalive(), "Empty initial discovery should keep refreshing"
+            waiting = client("empty-picker")
+            waiting.expect(lambda text: "LAN servers" in text, "Empty LAN picker missing")
+            assert waiting.process.isalive(), "Empty initial discovery should keep refreshing"
             first = server(0, "first")
+            waiting.expect(lambda text: str(ports[0]) in text, "Live picker missed a later advertisement")
+            waiting.write("q")
+            waiting.expect(lambda text: not waiting.process.isalive(), "Empty-start picker did not cancel")
+            # Use a fresh deadline for the independent refresh and navigation scenario.
+            term = client("picker")
             term.expect(lambda text: "LAN servers" in text and str(ports[0]) in text, "--scan LAN picker missing")
             rows = term.screen.display
             occupied = [index for index, line in enumerate(rows) if line.strip()]
@@ -160,13 +165,12 @@ def main():
             assert "r: refresh" not in text
             assert "ascii-chat | LAN servers" not in text
             current = int(re.search(r"> \[(\d+)\]", text).group(1))
+            if current > 1:
+                term.write("k" * (current - 1))
+                term.expect(lambda text: "> [1]" in text, "Could not establish the first row for navigation")
             term.pump(.2)
             term.write("j")
-            expected = 2 if current == 1 else 1
-            term.expect(lambda text: f"> [{expected}]" in text, "j did not move selection", timeout=5)
-            if expected == 1:
-                term.write("k")
-                term.expect(lambda text: "> [2]" in text, "k did not wrap selection")
+            term.expect(lambda text: "> [2]" in text, "j did not move selection", timeout=5)
             # A PTY read can end after the selected row but before the footer.
             # Inspect colors only once all parts of the rendered frame arrived.
             term.expect(lambda text: "> [2]" in text and "Auto-refresh" in text
@@ -184,15 +188,23 @@ def main():
             slash = footer.index("/")
             assert term.screen.buffer[footer_row][slash].fg == term.screen.buffer[footer_row][footer.index("move")].fg
             assert term.screen.buffer[footer_row][slash - 1].fg != term.screen.buffer[footer_row][slash].fg
-            selected_port = next(port for port in ports[:2]
-                                 if str(port) in next(line for line in term.screen.display if "> [2]" in line))
+            owned_line = next(line for line in term.screen.display if str(ports[0]) in line)
+            target = int(re.search(r"\[(\d+)\]", owned_line).group(1))
+            term.write("k" + "j" * (target - 1))
+            term.expect(lambda text: any(
+                "> [" in line and str(ports[0]) in line for line in text.splitlines()),
+                "Could not highlight the fixture server")
+            selected_port = ports[0]
             term.pump(1.8)
-            term.expect(lambda text: re.search(r"> \[\d+\]", text) and "Auto-refresh" in text,
-                        "Background refresh did not finish drawing its selected row and footer")
-            assert str(selected_port) in next(line for line in term.screen.display if "> [2]" in line), "Background refresh moved the selection"
+            text = term.expect(lambda text: re.search(r"> \[\d+\]", text) and "Auto-refresh" in text,
+                               "Background refresh did not finish drawing its selected row and footer")
+            selected_line = next(line for line in text.splitlines() if "> [" in line)
+            assert str(selected_port) in selected_line, "Background refresh moved the selection"
             capture(term, args.artifacts, "highlighted-selection")
-            term.write("k")
-            term.expect(lambda text: "> [1]" in text, "k did not move selection")
+            current = int(re.search(r"> \[(\d+)\]", selected_line).group(1))
+            if current > 1:
+                term.write("k" * (current - 1))
+            term.expect(lambda text: "> [1]" in text, "k did not move selection to the first row")
             term.write("\x1b[B")
             term.expect(lambda text: "> [2]" in text, "Down arrow did not move selection")
             term.resize(4, 44)
@@ -205,6 +217,14 @@ def main():
             term.resize(24, 110)
             text = term.expect(lambda text: "> [2]" in text, "Covered Enter selected a server")
             chosen_line = next(line for line in text.splitlines() if "> [2]" in line)
+            if not any(str(port) in chosen_line for port in ports[:2]):
+                # Other development servers may share this LAN; select only our fixture.
+                owned_line = next(line for line in text.splitlines() if str(ports[0]) in line)
+                target = int(re.search(r"\[(\d+)\]", owned_line).group(1))
+                term.write("k" + "j" * (target - 1))
+                text = term.expect(lambda text: f"> [{target}]" in text and str(ports[0]) in text,
+                                   "Could not select the fixture server among other LAN services")
+                chosen_line = next(line for line in text.splitlines() if f"> [{target}]" in line)
             chosen = next(index for index, port in enumerate(ports[:2]) if str(port) in chosen_line)
             selected_host = chosen_line.rsplit("(", 1)[1].rsplit(":", 1)[0].strip("[]")
             term.write("\r")
@@ -277,11 +297,17 @@ def main():
             visible = [line for line in text.splitlines() if re.search(r"[ >] \[\d+\]", line)]
             assert len(visible) == 12, f"Expected 12 visible servers, got {len(visible)}: {visible}"
             assert boundary.process.isalive(), "Picker crashed while moving to server 14"
+            boundary.write("k" * 13)
+            boundary.expect(lambda text: "> [1]" in text, "Could not return to the first server")
+            boundary.write("k")
+            text = boundary.expect(lambda text: re.search(r"> \[(\d+)\]", text)
+                                   and int(re.search(r"> \[(\d+)\]", text).group(1)) >= 14,
+                                   "Up from server 1 produced an invalid negative selection")
+            last = int(re.search(r"> \[(\d+)\]", text).group(1))
             boundary.write("j")
             boundary.expect(lambda text: "> [1]" in text, "Down from the last server did not wrap to server 1")
             boundary.write("k")
-            text = boundary.expect(lambda text: "> [14]" in text,
-                                   "Up from server 1 produced an invalid negative selection")
+            text = boundary.expect(lambda text: f"> [{last}]" in text, "Up did not return to the last server")
             assert "[-1]" not in text
             assert boundary.process.isalive(), "Picker crashed at the negative selection boundary"
             capture(boundary, args.artifacts, "fourteen-server-scroll")
