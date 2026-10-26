@@ -1,1 +1,2 @@
+* whitespace=trailing-space,space-before-tab,cr-at-eol
 *.patch text eol=lf
