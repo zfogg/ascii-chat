@@ -68,7 +68,7 @@ typedef struct {
   uint16_t port;
   /** Service type (e.g., "_ascii-chat._tcp") */
   const char *type;
-  /** Host name with .local suffix (e.g., "myhost.local") */
+  /** Host name with .local suffix (e.g., "myhost.local"). Bonjour uses the system-registered local host. */
   const char *host;
   /** Optional TXT record properties (null-terminated array of "key=value" strings) */
   const char **txt_records;

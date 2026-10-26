@@ -330,7 +330,7 @@ def main():
             if args.artifacts:
                 args.artifacts.mkdir(parents=True, exist_ok=True)
                 for path in root.glob("*.log"):
-                    shutil.copyfile(path, args.artifacts / path.name)
+                    shutil.copyfile(path, args.artifacts / (path.stem + ".txt"))
             if sys.exc_info()[0] is not None:
                 for path in root.glob("*.log"):
                     print(f"--- {path.name} ---\n{path.read_text(errors='replace')[-12000:]}")

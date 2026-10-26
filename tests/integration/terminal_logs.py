@@ -49,13 +49,19 @@ def exercise(term, name, artifacts):
     term.expect(lambda s: "/: search logs" in s,
                 "C log emitted while hidden did not reach overlay")
     assert term.screen.cursor.hidden, "Idle log viewer left the cursor visible"
+    # Anchor the viewport while the live media process continues producing logs.
+    # Tail-following may legitimately advance between these two terminal frames.
+    term.write("k")
+    term.expect(lambda s: "1 rows from tail" in s, "Could not anchor logs before searching")
+    capture(term, artifacts / f"before-search-{name}.png")
     logs_before_search = term.pump(.3).splitlines()
     term.write("/")
     search_open = term.expect(lambda s: s.splitlines()[-1].strip() == "/", "Search prompt did not open")
     assert not term.screen.cursor.hidden, "Search input did not show its editing cursor"
     before = [line[:-1].rstrip() for line in logs_before_search[4:] if line[:-1].strip()]
     after = [line[:-1].rstrip() for line in search_open.splitlines()[4:-1] if line[:-1].strip()]
-    assert after == before[-len(after):], "Search prompt changed the retained log rows"
+    assert after and after == before[-len(after):], (
+        f"Search prompt changed the anchored log rows\nBefore: {before!r}\nAfter: {after!r}")
     term.write("Volume DOWN")
     term.expect(lambda text: text.splitlines()[-1].strip() == "/Volume DOWN",
                 "Search input was delayed", timeout=2)
@@ -67,6 +73,8 @@ def exercise(term, name, artifacts):
     term.expect(lambda s: "/: search logs" in s, "Escape closed overlay instead of search")
     assert term.screen.cursor.hidden, "Leaving search did not hide its editing cursor"
     capture(term, artifacts / f"session-logs-{name}.png")
+    term.write("j")
+    term.expect(lambda s: "0 rows from tail" in s, "Could not return to the live log tail")
     term.write("k")
     term.expect(lambda s: "1 rows from tail" in s, "k did not scroll one log row older")
     term.write("j")
@@ -89,7 +97,13 @@ def exercise(term, name, artifacts):
     term.expect(lambda s: "/: search logs" in s and "Log Viewer Keyboard Controls" not in s,
                 "Log help did not close back to the viewer")
     term.resize(10, 140)
-    term.expect(lambda s: "/: search logs" in s, "Log viewer did not survive compact resize")
+    # A footer retained from the old dimensions is not a resize acknowledgement.
+    # The search editor positions its prompt using the renderer's measured height.
+    term.write("/")
+    term.expect(lambda s: s.splitlines()[-1].strip() == "/", "Log viewer did not observe compact resize")
+    term.write("\x1b")
+    term.expect(lambda s: s.splitlines()[-1].strip() != "/" and "/: search logs" in s,
+                "Compact search did not close")
     term.write("?")
     term.expect(lambda s: "Help needs at least 12 terminal rows" in s, "Compact help warning missing")
     term.resize(12, 140)

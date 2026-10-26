@@ -153,9 +153,11 @@ static asciichat_error_t probe(const char *mode) {
     ui_errno_stacks_toggle();
     REQUIRE(ui_errno_stacks_visible());
     for (;;) {
-      char key = 0;
-      REQUIRE(platform_read(0, &key, 1) == 1);
-      if (key == '\033') {
+      // The sync collector may queue events before the fixture reads them.
+      keyboard_key_t key = ui_input_wait_key(UI_SCREEN_ERRNO, 100);
+      if (key == KEY_NONE)
+        continue;
+      if (key == KEY_ESCAPE) {
         REQUIRE(ui_errno_stacks_handle_key(KEY_ESCAPE));
         break;
       }

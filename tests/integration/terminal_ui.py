@@ -212,7 +212,15 @@ class Terminal:
                 self.raw.append(self.output.get(timeout=0.05))
             except queue.Empty:
                 pass
-        assert not self.process.isalive(), "UI shutdown did not join its worker"
+        if self.process.isalive():
+            diagnostics = ""
+            if os.name != "nt":
+                import termios
+                attributes = termios.tcgetattr(self.process.child_fd)
+                diagnostics = (f"; terminal ISIG={bool(attributes[3] & termios.ISIG)}"
+                               f", VINTR={attributes[6][termios.VINTR]!r}")
+            raise AssertionError(f"UI shutdown did not join its worker{diagnostics}\n"
+                                 + "".join(self.raw)[-4000:])
 
     def close(self):
         if os.name == "nt" and self.process.isalive():
@@ -234,6 +242,8 @@ def free_port():
 
 
 def check_update_centering(term, title):
+    term.expect(lambda text: title in text and "┌" in text and "┐" in text and "└" in text and "┘" in text,
+                "Update dialog did not finish drawing its border and title")
     lines = term.screen.display
     border_row = next(row for row, line in enumerate(lines) if "┌" in line)
     border = lines[border_row]
