@@ -15,6 +15,58 @@
 #include <ascii-chat/options/rcu.h>
 #include "../../../src/common/session/audio.h"
 
+// Recording workers consume injected PCM; no physical device or callback clock is needed.
+static unsigned device_stream;
+static const PaDeviceInfo recording_device = {
+    .structVersion = 2, .name = "recording speaker", .maxOutputChannels = 1, .defaultSampleRate = AUDIO_SAMPLE_RATE};
+PaError Pa_Initialize(void) {
+  return paNoError;
+}
+PaError Pa_Terminate(void) {
+  return paNoError;
+}
+PaDeviceIndex Pa_GetDeviceCount(void) {
+  return 1;
+}
+PaDeviceIndex Pa_GetDefaultInputDevice(void) {
+  return paNoDevice;
+}
+PaDeviceIndex Pa_GetDefaultOutputDevice(void) {
+  return 0;
+}
+const PaDeviceInfo *Pa_GetDeviceInfo(PaDeviceIndex device) {
+  return device == 0 ? &recording_device : NULL;
+}
+const char *Pa_GetErrorText(PaError error) {
+  return error == paNoError ? "Success" : "Recording fixture has no such device";
+}
+PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const PaStreamParameters *output, double rate,
+                      unsigned long frames, PaStreamFlags flags, PaStreamCallback *callback, void *data) {
+  (void)rate;
+  (void)frames;
+  (void)flags;
+  (void)callback;
+  (void)data;
+  if (input || !output || output->device != 0)
+    return paInvalidDevice;
+  *stream = (PaStream *)&device_stream;
+  return paNoError;
+}
+PaError Pa_StartStream(PaStream *stream) {
+  return stream == (PaStream *)&device_stream ? paNoError : paBadStreamPtr;
+}
+PaError Pa_StopStream(PaStream *stream) {
+  return stream == (PaStream *)&device_stream ? paNoError : paBadStreamPtr;
+}
+PaError Pa_CloseStream(PaStream *stream) {
+  return stream == (PaStream *)&device_stream ? paNoError : paBadStreamPtr;
+}
+PaError Pa_WriteStream(PaStream *stream, const void *buffer, unsigned long frames) {
+  (void)buffer;
+  (void)frames;
+  return stream == (PaStream *)&device_stream ? paNoError : paBadStreamPtr;
+}
+
 /* These tests exercise webcam selection without requiring physical camera access. */
 static int webcam_starts;
 static rgb_pixel_t webcam_pixel = {0, 255, 0};
@@ -48,6 +100,7 @@ static void setup(void) {
 static void teardown(void) {
   audio_recording_destroy(recording);
   recording = NULL;
+  audio_terminate_portaudio_final();
   errno_clear();
   options_state_destroy();
 }
