@@ -251,7 +251,7 @@ for mode, known in [("progress-known", True), ("progress-unknown", False)]:
         child.send(b"o")
         text = progress_view(lambda text: f"frame 2/{final_total}" in text and "FAILED-PREVIEW" not in text)
         assert "XXXXXXXX" not in text, text
-        child.send(b"q")
+        child.send(b"a")
         finish(child)
     finally:
         if child.isalive():
