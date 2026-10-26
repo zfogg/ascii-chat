@@ -158,3 +158,18 @@ Test(source_audio_contract, audio_visualizations_do_not_require_a_webcam) {
     cr_assert_eq(options_set_bool(visualizations[i], false), ASCIICHAT_OK);
   }
 }
+
+Test(source_audio_contract, live_audio_visualizations_create_frames_without_opening_a_camera) {
+  cr_assert_eq(options_set_bool("test_pattern", false), ASCIICHAT_OK);
+  const char *visualizations[] = {"waveform", "fft"};
+  for (size_t i = 0; i < 2; ++i) {
+    cr_assert_eq(options_set_bool(visualizations[i], true), ASCIICHAT_OK);
+    media_source_t *live = media_source_create(MEDIA_SOURCE_WEBCAM, "65535");
+    cr_assert_not_null(live);
+    cr_assert_not(media_source_uses_webcam(live));
+    cr_assert_eq(media_source_start_video(live), ASCIICHAT_OK);
+    cr_assert_not_null(media_source_read_video(live));
+    media_source_destroy(live);
+    cr_assert_eq(options_set_bool(visualizations[i], false), ASCIICHAT_OK);
+  }
+}

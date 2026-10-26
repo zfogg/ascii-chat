@@ -517,6 +517,8 @@ jobs:
             build/Testing/ctest-results.xml
             build/Testing/criterion-xml/*.xml
             build/backpressure/
+            build/Testing/mdns-terminal/
+            build/Testing/mirror-lazy-audio/
             /tmp/webrtc_e2e_*.log
             /tmp/acds_test.log
             /tmp/server_test.log
