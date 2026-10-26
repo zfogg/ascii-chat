@@ -630,13 +630,17 @@ def main():
                 updater.expect(lambda text: "Update available" in text,
                                "Updater scenario did not reach the update prompt")
                 updater.write("\r")
-                updater.expect(lambda text: "Run ascii-chat again" in text,
+                # The debug exit report can scroll this epilogue out of the viewport.
+                updater.expect(lambda text: "Run ascii-chat again" in "".join(updater.raw),
                                "Successful installer did not print restart instructions")
                 deadline = time.monotonic() + 10
                 while updater.process.isalive() and time.monotonic() < deadline:
                     updater.pump(.1)
                 assert not updater.process.isalive(), "Updater did not exit after installation"
                 assert marker.exists(), "Update command was not executed"
+                if os.name != "nt":
+                    updater.process.close()
+                    assert updater.process.exitstatus == 0, updater.process.exitstatus
                 updater.close()
                 print("PASS update checker: startup prompt, weekly dismissal, installer execution and clean exit")
 
