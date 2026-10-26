@@ -82,7 +82,8 @@ def main():
                 del os.environ[key]
         os.environ.update(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root),
                           XDG_CONFIG_HOME=str(root), TERM="xterm-256color",
-                          ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
+                          ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1",
+                          ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none")
         port_pairs = service_port_pairs(14)
         ports = [pair[0] for pair in port_pairs]
         services, terminals = [], []
@@ -230,7 +231,7 @@ def main():
             term.write("\r")
             log_wait("picker", "Selected server")
             selected_service = [first, second][chosen]
-            selected_service.wait_for("announced video stream")
+            log_wait(selected_service.log.stem, "announced video stream")
             selected_service.stop()
             services.remove(selected_service)
             log_wait("picker", "Connection failed, retrying")
@@ -239,7 +240,7 @@ def main():
                                and "LAN servers" not in text, "Reconnect UI lost the selected address")
             capture(term, args.artifacts, "reconnect-state")
             replacement = server(chosen, "replacement")
-            replacement.wait_for("announced video stream")
+            log_wait(replacement.log.stem, "announced video stream")
             assert (root / "picker.log").read_text(errors="replace").count("Selected server") == 1
             term.interrupt()
             term.close()

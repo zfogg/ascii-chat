@@ -53,7 +53,8 @@ class MediaSessions(unittest.TestCase):
             channel for _y in range(48) for x in range(96)
             for channel in ((0, 0, 0) if x < 32 else (128, 128, 128) if x < 64 else (255, 255, 255))))
         cls.env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
-        cls.env.update(HOME=str(cls.root), XDG_CONFIG_HOME=str(cls.root), TERM="xterm-256color")
+        cls.env.update(HOME=str(cls.root), XDG_CONFIG_HOME=str(cls.root), TERM="xterm-256color",
+                       ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none")
 
     @classmethod
     def tearDownClass(cls):
