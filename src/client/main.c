@@ -519,10 +519,6 @@ static asciichat_error_t client_select_destination(void *user_data) {
   ui_mdns_config_t config = {.timeout_ms = 2000, .max_servers = 20, .quiet = true};
   int count = 0;
   ui_mdns_server_t *servers = ui_mdns_query(&config, &count);
-  if (count == 0) {
-    ui_mdns_free_results(servers);
-    return SET_ERRNO(ERROR_NETWORK, "No ascii-chat servers found on the local network");
-  }
   uint64_t deadline = ui_input_deadline(30);
   ui_mdns_server_t selected;
   int selection = ui_mdns_select_live(servers, count, deadline, &selected);

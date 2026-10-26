@@ -128,8 +128,10 @@ def main():
             raise AssertionError(f"Missing {message!r}: {text[-3000:]}")
 
         try:
-            first = server(0, "first")
             term = client("picker")
+            term.expect(lambda text: "LAN servers" in text, "Empty LAN picker missing")
+            assert term.process.isalive(), "Empty initial discovery should keep refreshing"
+            first = server(0, "first")
             term.expect(lambda text: "LAN servers" in text and str(ports[0]) in text, "--scan LAN picker missing")
             rows = term.screen.display
             occupied = [index for index, line in enumerate(rows) if line.strip()]
