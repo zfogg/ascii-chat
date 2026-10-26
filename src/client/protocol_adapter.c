@@ -21,6 +21,7 @@
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/network/acip/handlers.h>
+#include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/acds.h>
@@ -321,6 +322,36 @@ static void *data_reception_thread_func(void *arg) {
  * Public Interface Functions
  * ============================================================================ */
 
+// Before the receive worker starts, an admission rejection can race STREAM_START.
+// Preserve the peer's public error instead of reporting only the failed write.
+static asciichat_error_t client_startup_peer_error(client_connection_t *connection, asciichat_error_t send_error) {
+  acip_transport_t *transport = server_connection_get_transport(connection);
+  if (!transport || (send_error != ERROR_NETWORK && send_error != ERROR_NETWORK_CONNECT))
+    return send_error;
+  uint64_t previous_timeout = transport->receive_timeout_ns;
+  uint64_t deadline = time_get_ns() + 500 * NS_PER_MS_INT;
+  asciichat_error_t result = send_error;
+  while (time_get_ns() < deadline && !should_exit()) {
+    transport->receive_timeout_ns = 100 * NS_PER_MS_INT;
+    packet_type_t type = 0;
+    void *payload = NULL, *allocation = NULL;
+    size_t length = 0;
+    bool notifications = errno_notifications_suppress(true);
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    asciichat_error_t received = packet_receive_via_transport(transport, &type, &payload, &length, &allocation);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_notifications_suppress(notifications);
+    if (received == ASCIICHAT_OK && type == PACKET_TYPE_ERROR_MESSAGE)
+      result = network_error_decode(type, payload, length);
+    buffer_release(allocation);
+    if (result != send_error ||
+        (received != ASCIICHAT_OK && received != ERROR_NETWORK_TIMEOUT && received != ERROR_NETWORK_INCOMPLETE))
+      break;
+  }
+  transport->receive_timeout_ns = previous_timeout;
+  return result;
+}
+
 asciichat_error_t client_protocol_start(client_connection_t *connection) {
   log_warn("[FRAME_RECV_INIT] 🟢 PROTOCOL_START: Starting client protocol initialization");
 
@@ -354,7 +385,7 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
       connection, (int)terminal_get_effective_width(), (int)terminal_get_effective_height());
   if (cap_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send terminal size capabilities");
-    return cap_result;
+    return client_startup_peer_error(connection, cap_result);
   }
 
   // Send STREAM_START packet with combined stream types
@@ -367,7 +398,7 @@ asciichat_error_t client_protocol_start(client_connection_t *connection) {
   asciichat_error_t stream_result = threaded_send_stream_start_packet(connection, stream_types);
   if (stream_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] Failed to send stream start");
-    return stream_result;
+    return client_startup_peer_error(connection, stream_result);
   }
 
   // Every transport has completed security negotiation before protocol startup.

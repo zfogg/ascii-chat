@@ -260,10 +260,10 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
     conn_data->transport = NULL; // NULL out immediately to prevent race condition
 
     log_debug("[LWS_CALLBACK_CLOSED] Closing transport=%p for wsi=%p", (void *)transport_snapshot, (void *)wsi);
-    // Now safely close the transport (methods pointer is stable)
-    if (transport_snapshot && transport_snapshot->methods) {
-      acip_transport_close(transport_snapshot);
-    }
+    // The handler may already be destroying the outbound queue. CLOSED owns
+    // only backend notification; its storage stays alive until server_detached.
+    if (transport_snapshot->methods && transport_snapshot->methods->close)
+      transport_snapshot->methods->close(transport_snapshot);
   }
 
   if (conn_data && conn_data->handler_started) {
@@ -279,6 +279,14 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
     transport_snapshot = NULL; // Don't destroy below
   }
 
+  if (detached && atomic_load_bool(&detached->server_handler_owned)) {
+    mutex_lock(&detached->state_mutex);
+    detached->context = NULL;
+    detached->wsi = NULL;
+    mutex_unlock(&detached->state_mutex);
+    atomic_store_bool(&detached->server_detached, true);
+  }
+
   // Destroy the transport only if the handler is NOT running
   // (Handler manages cleanup when it's running)
   if (transport_snapshot) {
@@ -289,14 +297,6 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
   // Ensure transport pointer is NULL
   if (conn_data) {
     conn_data->transport = NULL;
-  }
-
-  if (detached && atomic_load_bool(&detached->server_handler_owned)) {
-    mutex_lock(&detached->state_mutex);
-    detached->context = NULL;
-    detached->wsi = NULL;
-    mutex_unlock(&detached->state_mutex);
-    atomic_store_bool(&detached->server_detached, true);
   }
 
   uint64_t close_callback_end_ns = time_get_ns();

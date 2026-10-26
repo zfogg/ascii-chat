@@ -177,9 +177,11 @@ def main():
                 discovery.write('?')
                 title_pattern(discovery, connecting + re.escape(' • log viewer • help'), 'Discovery status lost under help')
             finally:
-                peer.close()
-                discovery.interrupt()
-                discovery.close()
+                try:
+                    discovery.interrupt()
+                finally:
+                    peer.close()
+                    discovery.close()
         print('PASS discovery connection spinner remains before TUI/help breadcrumbs')
 
         for unicode in (True, False):

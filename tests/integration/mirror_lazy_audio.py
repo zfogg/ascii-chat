@@ -93,8 +93,11 @@ def main():
                     assert max(map(float, memory_row.split()[-4:-2])) < 33 / 2, memory_row
                     assert "Mirror audio started on demand" not in logs()
                     term.write("0")
+                    term.expect(lambda text: "Sync primitives" not in text,
+                                "Sync closes before resizing")
                     term.resize(35, 140)
-                    term.expect(lambda text: "Sync primitives" not in text, "Sync closes")
+                    term.expect(lambda text: "Sync primitives" not in text,
+                                "Media recovers after sync resize")
                     if kind == "file":
                         for count, key in enumerate(("2", "3"), start=1):
                             term.write(key)
@@ -117,8 +120,11 @@ def main():
                                 assert rates["audio_processing_wakeup"] > 0, "Audio worker did not run"
                                 (args.artifacts / "active-rates.json").write_text(json.dumps(rates, indent=2))
                                 term.write("0")
+                                term.expect(lambda text: "Sync primitives" not in text,
+                                            "Active audio sync closes before resizing")
                                 term.resize(35, 140)
-                                term.expect(lambda text: "Sync primitives" not in text, "Active audio sync closes")
+                                term.expect(lambda text: "Sync primitives" not in text,
+                                            "Active audio media recovers after resizing")
                             term.pump(.25)
                             term.write(key)
                             await_log(lambda text: text.count("Mirror audio idle") == count,

@@ -163,9 +163,12 @@ static void audio_publish_local_capture(audio_context_t *ctx, float *samples, si
 static void *audio_worker_thread(void *arg) {
   audio_context_t *ctx = (audio_context_t *)arg;
   if (ctx->capture_media_source && ctx->playback_only && ctx->monitor_local_media) {
+    // Scheduling is optional; retain diagnostics without opening an error popup.
+    bool notifications = errno_notifications_suppress(true);
     asciichat_errno_scope_t scope = errno_scope_begin();
     (void)thread_set_realtime_priority();
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_notifications_suppress(notifications);
   }
   log_debug("Audio worker thread started (batch size: %d frames = %d samples)", WORKER_BATCH_FRAMES,
             WORKER_BATCH_SAMPLES);
@@ -529,9 +532,12 @@ static void audio_callback_prepare(void) {
   static _Thread_local bool prepared;
   if (!prepared) {
     prepared = true;
+    // Scheduling is optional; retain diagnostics without opening an error popup.
+    bool notifications = errno_notifications_suppress(true);
     asciichat_errno_scope_t scope = errno_scope_begin();
     (void)thread_set_realtime_priority();
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+    errno_notifications_suppress(notifications);
   }
 }
 
