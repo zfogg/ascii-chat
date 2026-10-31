@@ -624,10 +624,10 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     // Release read_frame_mutex now that traced_packet_read() is done
     mutex_unlock(&decoder->read_frame_mutex);
 
-    // FFmpeg reports application cancellation as AVERROR_EXIT. Keep that
-    // distinct from damaged media when shutdown races the next frame read.
+    // Shutdown can race a buffered read without FFmpeg returning AVERROR_EXIT.
+    // The caller's cancellation request is authoritative for this operation.
     bool (*cancel)(void *) = decoder->should_exit_callback;
-    bool cancelled = decode_result == AVERROR_EXIT && cancel && cancel(decoder->exit_callback_user_data);
+    bool cancelled = cancel && cancel(decoder->exit_callback_user_data);
 
     if (frame_decoded) {
       char read_time_str[32];
@@ -641,6 +641,8 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     // Mutex now held - update prefetch state
     bool obsolete = generation != decoder->seek_generation;
     bool interrupted = decoder->prefetch_should_stop || decoder->seeking_in_progress || obsolete || cancelled;
+    if (interrupted)
+      errno_scope_end(decode_scope, ASCIICHAT_ERRNO_HANDLED);
     if (obsolete) {
       frame_decoded = false;
       reached_eof = false;

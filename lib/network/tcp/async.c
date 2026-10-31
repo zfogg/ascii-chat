@@ -107,7 +107,11 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
     uint64_t elapsed = time_get_ns() - start;
     if (elapsed >= timeout) {
       mutex_unlock(&tcp->mutex);
-      return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "Async receive deadline expired");
+      // Short receive deadlines drive polling; the enclosing operation owns its final timeout.
+      bool previous = errno_notifications_suppress(true);
+      asciichat_error_t result = SET_ERRNO(ERROR_NETWORK_TIMEOUT, "Async receive deadline expired");
+      errno_notifications_suppress(previous);
+      return result;
     }
     uint64_t wait = timeout - elapsed;
     if (wait > 50 * NS_PER_MS_INT)

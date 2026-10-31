@@ -149,10 +149,11 @@ Test(builder_contract, environment_then_explicit_cli_and_already_set_values) {
 }
 
 Test(builder_contract, requires_and_conflicts_validate_the_final_option_set) {
-  for (unsigned conflict = 0; conflict < 2; ++conflict) {
+  for (unsigned variant = 0; variant < 3; ++variant) {
+    bool conflict = variant != 0;
     options_builder_t *b = builder();
     if (conflict)
-      options_builder_add_dependency_conflicts(b, "enabled", "companion", "Explicit conflict");
+      options_builder_add_dependency_conflicts(b, "enabled", "companion", variant == 1 ? "Explicit conflict" : NULL);
     else
       options_builder_add_dependency_requires(b, "enabled", "companion", NULL);
     options_config_t *c = options_builder_build(b);
@@ -164,7 +165,7 @@ Test(builder_contract, requires_and_conflicts_validate_the_final_option_set) {
     sample.companion = conflict;
     cr_assert_eq(options_config_validate(c, &sample, &error), ERROR_USAGE);
     cr_assert_not_null(error);
-    cr_assert_not_null(strstr(error, conflict ? "Explicit conflict" : "requires"));
+    cr_assert_not_null(strstr(error, variant == 1 ? "Explicit conflict" : conflict ? "conflicts" : "requires"));
     SAFE_FREE(error);
     sample.companion = !conflict;
     cr_assert_eq(options_config_validate(c, &sample, NULL), ASCIICHAT_OK);
@@ -330,4 +331,20 @@ Test(builder_contract, primary_port_environment_overrides_short_aliases) {
     SAFE_FREE(old_primary);
     SAFE_FREE(old_alias);
   }
+}
+
+Test(builder_contract, conflicting_color_options_return_an_owned_error_message) {
+  options_config_t *c = config();
+  sample_t sample = defaults();
+  sample.base.color = true;
+  sample.base.color_mode = TERM_COLOR_NONE;
+  char *error = NULL;
+  cr_assert_eq(options_config_validate(c, &sample, &error), ERROR_USAGE);
+  cr_assert_not_null(error);
+  cr_assert_not_null(strstr(error, "--color-mode=none"));
+  SAFE_FREE(error);
+  cr_assert_eq(options_config_validate(c, &sample, NULL), ERROR_USAGE);
+  sample.base.color = false;
+  cr_assert_eq(options_config_validate(c, &sample, NULL), ASCIICHAT_OK);
+  options_config_destroy(c);
 }

@@ -27,6 +27,12 @@
 #endif
 #ifdef __APPLE__
 #include <dns_sd.h>
+typedef struct {
+  asciichat_mdns_t *owner;
+  DNSServiceRef ref, address_ref;
+  char name[256];
+  asciichat_mdns_discovery_t found;
+} bonjour_resolver_t;
 #endif
 
 /** @brief Internal mDNS context structure */
@@ -47,9 +53,135 @@ struct asciichat_mdns_t {
   size_t discovered_count;
   uint16_t query_id; /**< Current query ID */
 #ifdef __APPLE__
-  DNSServiceRef dns_service_ref;
+  DNSServiceRef dns_service_ref, browser;
+  bonjour_resolver_t resolvers[64];
+  size_t resolver_count;
+  DNSServiceErrorType query_error;
 #endif
 };
+
+#ifdef __APPLE__
+static void bonjour_query_close(asciichat_mdns_t *mdns) {
+  for (size_t i = 0; i < mdns->resolver_count; ++i)
+    if (mdns->resolvers[i].ref) {
+      if (mdns->resolvers[i].address_ref)
+        DNSServiceRefDeallocate(mdns->resolvers[i].address_ref);
+      DNSServiceRefDeallocate(mdns->resolvers[i].ref);
+    }
+  mdns->resolver_count = 0;
+  if (mdns->browser)
+    DNSServiceRefDeallocate(mdns->browser);
+  mdns->browser = NULL;
+  mdns->query_error = kDNSServiceErr_NoError;
+}
+
+static void bonjour_record_error(asciichat_mdns_t *mdns, DNSServiceErrorType error) {
+  // An individual record may disappear while the remaining services are resolved.
+  if (error != kDNSServiceErr_NoSuchName && error != kDNSServiceErr_NoSuchRecord)
+    mdns->query_error = error;
+}
+
+static void bonjour_address(DNSServiceRef ref, DNSServiceFlags flags, uint32_t interface_index,
+                            DNSServiceErrorType error, const char *hostname, const struct sockaddr *address,
+                            uint32_t ttl, void *context) {
+  bonjour_resolver_t *resolver = context;
+  if (error != kDNSServiceErr_NoError) {
+    bonjour_record_error(resolver->owner, error);
+    return;
+  }
+  if (!(flags & kDNSServiceFlagsAdd) || !address || address->sa_family != AF_INET)
+    return;
+  const uint8_t *ip = (const uint8_t *)&((const struct sockaddr_in *)address)->sin_addr;
+  safe_snprintf(resolver->found.ipv4, sizeof(resolver->found.ipv4), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+  resolver->found.ttl = ttl;
+  resolver->owner->callback(&resolver->found, resolver->owner->callback_data);
+  (void)ref;
+  (void)interface_index;
+  (void)hostname;
+}
+
+static void bonjour_resolved(DNSServiceRef ref, DNSServiceFlags flags, uint32_t interface_index,
+                             DNSServiceErrorType error, const char *fullname, const char *host, uint16_t port,
+                             uint16_t txt_length, const unsigned char *txt, void *context) {
+  bonjour_resolver_t *resolver = context;
+  asciichat_mdns_t *mdns = resolver->owner;
+  if (error != kDNSServiceErr_NoError) {
+    bonjour_record_error(mdns, error);
+    return;
+  }
+  asciichat_mdns_discovery_t *found = &resolver->found;
+  SAFE_STRNCPY(found->name, resolver->name, sizeof(found->name));
+  SAFE_STRNCPY(found->type, fullname, sizeof(found->type));
+  SAFE_STRNCPY(found->host, host, sizeof(found->host));
+  found->port = ntohs(port);
+  uint8_t length = 0;
+  const void *session = TXTRecordGetValuePtr(txt_length, txt, "session_string", &length);
+  if (session)
+    safe_snprintf(found->txt, sizeof(found->txt), "session_string=%.*s", (int)length, (const char *)session);
+  if (resolver->address_ref)
+    return;
+  error = DNSServiceGetAddrInfo(&resolver->address_ref, 0, interface_index, kDNSServiceProtocol_IPv4, host,
+                                bonjour_address, resolver);
+  if (error != kDNSServiceErr_NoError)
+    bonjour_record_error(mdns, error);
+  (void)ref;
+  (void)flags;
+  (void)interface_index;
+}
+
+static void bonjour_browsed(DNSServiceRef ref, DNSServiceFlags flags, uint32_t interface_index,
+                            DNSServiceErrorType error, const char *name, const char *type, const char *domain,
+                            void *context) {
+  asciichat_mdns_t *mdns = context;
+  if (error != kDNSServiceErr_NoError) {
+    mdns->query_error = error;
+    return;
+  }
+  if (!(flags & kDNSServiceFlagsAdd) || mdns->resolver_count == 64)
+    return;
+  bonjour_resolver_t *resolver = &mdns->resolvers[mdns->resolver_count];
+  memset(resolver, 0, sizeof(*resolver));
+  resolver->owner = mdns;
+  SAFE_STRNCPY(resolver->name, name, sizeof(resolver->name));
+  error = DNSServiceResolve(&resolver->ref, 0, interface_index, name, type, domain, bonjour_resolved, resolver);
+  if (error == kDNSServiceErr_NoError)
+    ++mdns->resolver_count;
+  else
+    bonjour_record_error(mdns, error);
+  (void)ref;
+}
+
+static asciichat_error_t bonjour_update(asciichat_mdns_t *mdns, int timeout_ms) {
+  DNSServiceRef refs[129];
+  struct pollfd fds[129];
+  size_t count = 0;
+  if (mdns->browser)
+    refs[count++] = mdns->browser;
+  for (size_t i = 0; i < mdns->resolver_count; ++i) {
+    refs[count++] = mdns->resolvers[i].ref;
+    if (mdns->resolvers[i].address_ref)
+      refs[count++] = mdns->resolvers[i].address_ref;
+  }
+  for (size_t i = 0; i < count; ++i)
+    fds[i] = (struct pollfd){.fd = DNSServiceRefSockFD(refs[i]), .events = POLLIN};
+  if (count && socket_poll(fds, count, (int64_t)timeout_ms * NS_PER_MS_INT) > 0) {
+    for (size_t i = 0; i < count; ++i) {
+      if (fds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+        mdns->query_error = fds[i].revents & POLLNVAL ? kDNSServiceErr_BadReference : kDNSServiceErr_ServiceNotRunning;
+        continue;
+      }
+      if (!(fds[i].revents & POLLIN))
+        continue;
+      DNSServiceErrorType error = DNSServiceProcessResult(refs[i]);
+      if (error != kDNSServiceErr_NoError)
+        mdns->query_error = error;
+    }
+  }
+  if (mdns->query_error != kDNSServiceErr_NoError)
+    return SET_ERRNO(ERROR_NETWORK, "Bonjour discovery failed (error %d)", mdns->query_error);
+  return ASCIICHAT_OK;
+}
+#endif
 
 /** @brief mDNS packet buffer size (4KB should handle most service records) */
 #define MDNS_BUFFER_SIZE (4 * 1024)
@@ -147,6 +279,9 @@ void asciichat_mdns_destroy(asciichat_mdns_t *mdns) {
   }
 
   mdns_stop_advertising(mdns);
+#ifdef __APPLE__
+  bonjour_query_close(mdns);
+#endif
   if (mdns->socket_fd >= 0) {
     mdns_socket_close(mdns->socket_fd);
   }
@@ -204,8 +339,10 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mDNS TXT record value");
     }
   }
+  char instance_name[64];
+  safe_snprintf(instance_name, sizeof(instance_name), "%s-%u", service->name, service->port);
   DNSServiceErrorType error = DNSServiceRegister(
-      &mdns->dns_service_ref, 0, kDNSServiceInterfaceIndexAny, service->name, regtype, NULL, NULL, htons(service->port),
+      &mdns->dns_service_ref, 0, kDNSServiceInterfaceIndexAny, instance_name, regtype, NULL, NULL, htons(service->port),
       TXTRecordGetLength(&txt_record), TXTRecordGetBytesPtr(&txt_record), NULL, NULL);
   TXTRecordDeallocate(&txt_record);
   if (error != kDNSServiceErr_NoError)
@@ -433,6 +570,22 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
   mdns->callback_data = user_data;
   mdns->discovered_count = 0;
 
+#ifdef __APPLE__
+  bonjour_query_close(mdns);
+  char regtype[256];
+  SAFE_STRNCPY(regtype, service_type, sizeof(regtype));
+  char *domain = strstr(regtype, ".local");
+  if (domain)
+    *domain = '\0';
+  size_t length = strlen(regtype);
+  if (length && regtype[length - 1] == '.')
+    regtype[length - 1] = '\0';
+  DNSServiceErrorType error =
+      DNSServiceBrowse(&mdns->browser, 0, kDNSServiceInterfaceIndexAny, regtype, "local.", bonjour_browsed, mdns);
+  if (error != kDNSServiceErr_NoError)
+    return SET_ERRNO(ERROR_NETWORK, "Cannot browse mDNS services with Bonjour (error %d)", error);
+  return ASCIICHAT_OK;
+#else
   // Use the standard mDNS port so responders multicast their answers. Some
   // system mDNS responders do not return QU answers to an ephemeral source
   // port, and multicast answers are also visible across all active adapters.
@@ -458,6 +611,7 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
   log_debug("mDNS query sent for service type: %s (query_id: %d)", service_type, query_id);
 
   return ASCIICHAT_OK;
+#endif
 }
 
 asciichat_error_t asciichat_mdns_update(asciichat_mdns_t *mdns, int timeout_ms) {
@@ -467,6 +621,9 @@ asciichat_error_t asciichat_mdns_update(asciichat_mdns_t *mdns, int timeout_ms) 
   if (mdns->advertising)
     return ASCIICHAT_OK;
 
+#ifdef __APPLE__
+  return bonjour_update(mdns, timeout_ms);
+#else
   /* Process incoming mDNS packets (responses from previous queries)
    * mdns_query_recv processes all records received since last call
    * The callback function (mdns_record_callback) is invoked for each record
@@ -487,11 +644,16 @@ asciichat_error_t asciichat_mdns_update(asciichat_mdns_t *mdns, int timeout_ms) 
 
   (void)timeout_ms;
   return ASCIICHAT_OK;
+#endif
 }
 
 int asciichat_mdns_get_socket(asciichat_mdns_t *mdns) {
   if (!mdns) {
     return -1;
   }
+#ifdef __APPLE__
+  if (mdns->browser)
+    return DNSServiceRefSockFD(mdns->browser);
+#endif
   return mdns->socket_fd;
 }

@@ -61,7 +61,8 @@ Test(ffmpeg_decoder, decodes_zlib_compressed_png) {
 }
 
 static bool cancel_video_read(void *data) {
-  atomic_fetch_add_int((atomic_t *)data, 1);
+  if (atomic_fetch_add_int((atomic_t *)data, 1) == 0)
+    SET_ERRNO(ERROR_MEDIA_DECODE, "Interrupted decoder read");
   return true;
 }
 
@@ -100,4 +101,14 @@ Test(ffmpeg_decoder, cancelled_prefetch_is_not_a_decode_failure, .timeout = 10) 
   ffmpeg_decoder_stop_prefetch(decoder);
   cr_assert_neq(ffmpeg_decoder_poll_video(decoder, &frame, &failure), FFMPEG_FRAME_FAILED, "%s",
                 failure.context_message);
+  asciichat_errno_history_t history[32];
+  size_t count = errno_history_snapshot(history, 32);
+  bool handled = false;
+  for (size_t i = 0; i < count; ++i) {
+    if (strcmp(history[i].context.context_message, "Interrupted decoder read") == 0) {
+      cr_assert_eq(history[i].outcome, ASCIICHAT_ERRNO_HANDLED);
+      handled = true;
+    }
+  }
+  cr_assert(handled, "Cancelled read diagnostics should be resolved before the worker exits");
 }

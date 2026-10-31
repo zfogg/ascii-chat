@@ -15,6 +15,17 @@ static char config_path[256];
 static audio_context_t context;
 static client_audio_pipeline_t *pipeline;
 
+static void assert_audio_ok(asciichat_error_t result, const char *operation) {
+  if (result == ASCIICHAT_OK)
+    return;
+  asciichat_error_context_t error = {0};
+  (void)HAS_ERRNO(&error);
+  const PaHostErrorInfo *host = Pa_GetLastHostErrorInfo();
+  cr_assert_eq(result, ASCIICHAT_OK, "%s failed (%d): %s; host API %d code %ld: %s", operation, result,
+               error.context_message, host ? (int)host->hostApiType : -1, host ? host->errorCode : 0,
+               host && host->errorText ? host->errorText : "no host detail");
+}
+
 static void setup(void) {
   int fd;
   cr_assert_eq(platform_create_temp_file(config_path, sizeof(config_path), "ascii-null-audio", &fd), 0);
@@ -46,9 +57,9 @@ Test(null_device, duplex_callbacks_deliver_capture_and_stop_cleanly, .timeout = 
   pipeline = client_audio_pipeline_create(&config);
   cr_assert_not_null(pipeline);
   audio_set_pipeline(&context, pipeline);
-  cr_assert_eq(audio_start_duplex(&context), ASCIICHAT_OK);
+  assert_audio_ok(audio_start_duplex(&context), "start duplex");
   cr_assert(context.running);
-  cr_assert_eq(audio_start_duplex(&context), ASCIICHAT_OK);
+  assert_audio_ok(audio_start_duplex(&context), "start duplex");
   uint64_t deadline = platform_get_monotonic_time_us() + 3000000;
   while (audio_ring_buffer_available_read(context.capture_buffer) < 480 && platform_get_monotonic_time_us() < deadline)
     platform_sleep_ms(5);
@@ -69,7 +80,7 @@ Test(null_device, duplex_callbacks_deliver_capture_and_stop_cleanly, .timeout = 
 
 Test(null_device, playback_only_stream_consumes_queued_samples, .timeout = 20) {
   context.playback_only = true;
-  cr_assert_eq(audio_start_duplex(&context), ASCIICHAT_OK);
+  assert_audio_ok(audio_start_duplex(&context), "start duplex");
   cr_assert_not_null(context.output_stream);
   float input[9600] = {0.1f};
   cr_assert_eq(audio_write_samples(&context, input, 9600), ASCIICHAT_OK);
@@ -89,17 +100,17 @@ Test(null_device, input_only_device_is_enumerated_and_normalized_to_the_pipeline
   SAFE_FREE(options);
   audio_device_info_t *devices = NULL;
   unsigned int count = 0;
-  cr_assert_eq(audio_list_input_devices(&devices, &count), ASCIICHAT_OK);
+  assert_audio_ok(audio_list_input_devices(&devices, &count), "list input devices");
   cr_assert_gt(count, 0);
   audio_free_device_list(devices);
-  cr_assert_eq(audio_list_output_devices(&devices, &count), ASCIICHAT_OK);
+  assert_audio_ok(audio_list_output_devices(&devices, &count), "list output devices");
   cr_assert_gt(count, 0);
   audio_free_device_list(devices);
   client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
   pipeline = client_audio_pipeline_create(&config);
   cr_assert_not_null(pipeline);
   audio_set_pipeline(&context, pipeline);
-  cr_assert_eq(audio_start_duplex(&context), ASCIICHAT_OK);
+  assert_audio_ok(audio_start_duplex(&context), "start duplex");
   cr_assert_not_null(context.input_stream);
   cr_assert_null(context.output_stream);
   uint64_t deadline = platform_get_monotonic_time_us() + 3000000;

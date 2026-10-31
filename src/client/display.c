@@ -302,8 +302,8 @@ void display_disable_logging_for_first_frame(client_connection_t *connection) {
  * Render ASCII frame to display
  *
  * Uses session display library for frame output routing based on display
- * mode and snapshot requirements. Also polls for keyboard input for
- * interactive controls (volume, color mode, flip).
+ * mode and snapshot requirements. The connection owner polls keyboard input
+ * independently so skipped or absent frames do not stall interactive controls.
  *
  * @param frame_data ASCII frame data to render
  * @param is_snapshot_frame Whether this is the final snapshot frame
@@ -322,33 +322,20 @@ void display_render_frame(client_connection_t *connection, const char *frame_dat
   // This must be called BEFORE any frame rendering to prevent splash/frame flickering
   display_disable_logging_for_first_frame(connection);
 
-  // Render help screen if active (suppresses frame rendering)
+  // Help owns presentation while the connection owner continues polling input.
   if (keyboard_help_is_active(connection->display_context)) {
     keyboard_help_render(connection->display_context);
-
-    // Still poll keyboard for interactive controls while help is visible
-    if (g_keyboard_enabled) {
-      keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
-      if (key != KEY_NONE) {
-        session_handle_keyboard_input(connection->capture_context, connection->display_context, key);
-      }
-    }
-    return; // Skip normal frame rendering
+    return;
   }
-
-  // Use session display library for frame rendering
   session_display_render_frame(connection->display_context, frame_data);
+}
 
-  // Poll for keyboard input and handle interactive controls
-  // - If client mode has local media (--file/--url), pass capture context for full controls
-  //   (seek, pause, play, volume, color mode, flip)
-  // - If client mode is network-only, pass NULL (volume, color mode, flip work; seek/pause ignored)
-  if (g_keyboard_enabled) {
-    keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
-    if (key != KEY_NONE) {
-      session_handle_keyboard_input(connection->capture_context, connection->display_context, key);
-    }
-  }
+void display_poll_keyboard(client_connection_t *connection) {
+  if (!g_keyboard_enabled || !connection->display_context)
+    return;
+  keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
+  if (key != KEY_NONE)
+    session_handle_keyboard_input(connection->capture_context, connection->display_context, key);
 }
 
 /**

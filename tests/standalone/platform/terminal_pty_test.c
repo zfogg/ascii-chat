@@ -89,15 +89,16 @@ static asciichat_error_t probe(const char *mode) {
     REQUIRE(!update_banner_show_prompt(NULL));
     update_banner_wait_for_check();
     REQUIRE(options_set_bool("strip_ansi", true) == ASCIICHAT_OK);
-    update_check_result_t result = {.update_available = true,
+    update_check_result_t result = {.check_succeeded = true,
+                                    .update_available = true,
                                     .current_version = "v7.1.0",
                                     .latest_version = "v8.2.0",
                                     .current_sha = "1234567890abcdef",
                                     .release_url = "https://example.invalid/releases/v8.2.0"};
     update_banner_set_result(&result);
     REQUIRE(update_banner_has_update());
+    // The banner owns a copy; changing the caller's storage must not change it.
     memset(&result, 0, sizeof(result));
-    update_banner_set_result(&result);
     REQUIRE(update_banner_has_update());
     session_display_config_t config = {0};
     session_display_ctx_t *display = session_display_create(&config);
@@ -125,19 +126,18 @@ static asciichat_error_t probe(const char *mode) {
     render_progress_frame(progress, preview, true);
     memset(preview, 'Z', sizeof(preview) - 1);
     render_progress_begin(progress, 3, strcmp(mode, "progress-known") == 0);
-    char acknowledgement = 0;
-    REQUIRE(platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'f');
+    REQUIRE(ui_input_wait_key(UI_SCREEN_RENDER_PROGRESS, 5000) == 'f');
     render_progress_finalize(progress);
-    REQUIRE(platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'e');
+    REQUIRE(ui_input_wait_key(UI_SCREEN_RENDER_PROGRESS, 5000) == 'e');
     render_progress_frame(progress, "FAILED-PREVIEW", false);
-    REQUIRE(platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'o');
+    REQUIRE(ui_input_wait_key(UI_SCREEN_RENDER_PROGRESS, 5000) == 'o');
     size_t oversized_length = 1024 * 1024 + 1;
     char *oversized = SAFE_MALLOC(oversized_length + 1, char *);
     memset(oversized, 'X', oversized_length);
     oversized[oversized_length] = '\0';
     render_progress_frame(progress, oversized, true);
     SAFE_FREE(oversized);
-    REQUIRE(platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'q');
+    REQUIRE(ui_input_wait_key(UI_SCREEN_RENDER_PROGRESS, 5000) == 'a');
     render_progress_destroy(progress);
     ui_controller_shutdown();
     REQUIRE(terminal_set_raw_mode(false) == ASCIICHAT_OK);
@@ -152,9 +152,11 @@ static asciichat_error_t probe(const char *mode) {
     ui_errno_stacks_toggle();
     REQUIRE(ui_errno_stacks_visible());
     for (;;) {
-      char key = 0;
-      REQUIRE(platform_read(0, &key, 1) == 1);
-      if (key == '\033') {
+      // The sync collector may queue events before the fixture reads them.
+      keyboard_key_t key = ui_input_wait_key(UI_SCREEN_ERRNO, 100);
+      if (key == KEY_NONE)
+        continue;
+      if (key == KEY_ESCAPE) {
         REQUIRE(ui_errno_stacks_handle_key(KEY_ESCAPE));
         break;
       }
@@ -163,9 +165,10 @@ static asciichat_error_t probe(const char *mode) {
     REQUIRE(!ui_errno_stacks_visible());
     REQUIRE(!ui_errno_stacks_handle_key('j'));
     asciichat_error_context_t frames[8];
-    size_t count = errno_snapshot(thread_current_id(), frames, 8);
-    REQUIRE(count == 2);
-    for (size_t i = 0; i < count; ++i)
+    asciichat_errno_snapshot_t snapshot = errno_snapshot(thread_current_id(), frames, 8);
+    REQUIRE(snapshot.total == 2);
+    REQUIRE(snapshot.copied == 2);
+    for (size_t i = 0; i < snapshot.copied; ++i)
       REQUIRE(strcmp(frames[i].context_message, "ERR-BRAVO") != 0);
     ui_errno_stacks_hide();
     ui_controller_shutdown();

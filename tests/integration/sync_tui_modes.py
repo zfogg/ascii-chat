@@ -20,7 +20,7 @@ import subprocess
 import tempfile
 import time
 
-from terminal_ui import Terminal
+from terminal_ui import Terminal, load_terminal_font
 from server_lifecycle import Service, free_port, server_options
 
 
@@ -29,9 +29,7 @@ def capture(term, root, name):
     (root / f"{name}.txt").write_text("\n".join(term.screen.display), encoding="utf-8")
     (root / f"{name}.ansi").write_text("".join(term.raw), encoding="utf-8")
     from PIL import Image, ImageDraw, ImageFont
-    font_path = ("C:/Windows/Fonts/consola.ttf" if os.name == "nt" else
-                 "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf")
-    font = ImageFont.truetype(font_path, 16)
+    font = load_terminal_font(16)
     symbol_paths = ("C:/Windows/Fonts/seguisym.ttf",
                     "/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf")
     symbol_font = next((ImageFont.truetype(path, 16) for path in symbol_paths if Path(path).exists()), font)

@@ -218,10 +218,15 @@ ui_mdns_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool qui
     printf("🔍 Searching for ascii-chat servers on LAN...\n");
   }
 
+  // Discovery is retried in the live picker; failures remain in logs.
+  asciichat_errno_scope_t query_scope = errno_scope_begin();
+  bool previous_notifications = errno_notifications_suppress(true);
   // Initialize mDNS
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   if (!mdns) {
     log_warn("mDNS: Failed to initialize mDNS - discovery unavailable");
+    errno_notifications_suppress(previous_notifications);
+    errno_scope_end(query_scope, ASCIICHAT_ERRNO_HANDLED);
     return state.servers;
   }
 
@@ -232,6 +237,8 @@ ui_mdns_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool qui
   if (query_result != ASCIICHAT_OK) {
     log_info("mDNS: Query failed - no servers found via service discovery");
     asciichat_mdns_destroy(mdns);
+    errno_notifications_suppress(previous_notifications);
+    errno_scope_end(query_scope, ASCIICHAT_ERRNO_HANDLED);
     return state.servers;
   }
 
@@ -245,11 +252,14 @@ ui_mdns_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool qui
     if (poll_timeout > 100) {
       poll_timeout = 100; // Check every 100ms
     }
-    asciichat_mdns_update(mdns, poll_timeout);
+    if (asciichat_mdns_update(mdns, poll_timeout) != ASCIICHAT_OK)
+      break;
   }
 
   // Cleanup mDNS
   asciichat_mdns_destroy(mdns);
+  errno_notifications_suppress(previous_notifications);
+  errno_scope_end(query_scope, ASCIICHAT_ERRNO_HANDLED);
 
   if (!quiet) {
     if (state.count > 0) {

@@ -22,6 +22,13 @@ static bool fail_duplex, fail_all, no_input, no_output;
 static PaDeviceInfo input_info, output_info;
 static audio_context_t context;
 
+// Complete the PortAudio boundary so static linkers never pull in real devices.
+PaDeviceIndex Pa_GetDeviceCount(void) {
+  return 2;
+}
+const char *Pa_GetErrorText(PaError error) {
+  return error == paNoError ? "Success" : "Simulated audio device failure";
+}
 PaError Pa_Initialize(void) {
   initialized++;
   return paNoError;
@@ -265,6 +272,8 @@ Test(audio_device, real_worker_publishes_microphone_samples_with_configured_sens
   cr_assert_eq(closes, opens);
 }
 
+// Signal counters are debug instrumentation; the sample-delivery tests run in every build.
+#ifndef NDEBUG
 Test(audio_device, capture_callbacks_notify_once_per_twenty_millisecond_batch) {
   cr_assert_eq(audio_start_duplex(&context), ASCIICHAT_OK);
   pause_processing();
@@ -276,6 +285,7 @@ Test(audio_device, capture_callbacks_notify_once_per_twenty_millisecond_batch) {
   cr_assert_eq(context.audio_processing_wakeup.signal_count, signals + 1);
   cr_assert_eq(audio_ring_buffer_available_read(context.raw_capture_rb), 960);
 }
+#endif
 
 Test(audio_device, real_worker_preserves_both_ten_millisecond_capture_blocks) {
   cr_assert_eq(audio_start_duplex(&context), ASCIICHAT_OK);

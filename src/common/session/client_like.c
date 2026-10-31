@@ -42,7 +42,7 @@ static bool client_like_is_networked(session_client_like_kind_t kind);
 
 static asciichat_error_t client_like_validate_mirror_webcam_selection(const session_client_like_config_t *config) {
   if (!config || config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR || !terminal_is_stdout_tty() ||
-      GET_OPTION(test_pattern)) {
+      GET_OPTION(test_pattern) || GET_OPTION(waveform) || GET_OPTION(fft)) {
     return ASCIICHAT_OK;
   }
 
@@ -372,13 +372,15 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
     bool stdout_is_tty = terminal_is_stdout_tty();
     if (stdout_is_tty || SAFE_GETENV("ASCII_CHAT_MCP_WEBCAM")) {
       // Explicit MCP webcam capture also works with the isolated worker's pipe.
-      log_debug("Stdout is TTY, using local webcam");
-      log_info("Using local webcam");
+      bool visualizing = GET_OPTION(waveform) || GET_OPTION(fft);
+      log_debug("Using %s", visualizing ? "an audio visualization frame clock" : "the local webcam");
+      log_info("%s", visualizing ? "Visualizing audio" : "Using local webcam");
       state->capture_config.type = MEDIA_SOURCE_WEBCAM;
       static char webcam_index_str[32];
       safe_snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
       state->capture_config.path = webcam_index_str;
-      log_info("Using webcam device index %u", GET_OPTION(webcam_index));
+      if (!visualizing)
+        log_info("Using webcam device index %u", GET_OPTION(webcam_index));
       state->capture_config.loop = false;
     } else {
       // Piped output mode: use test pattern (webcam + pipes often fails)

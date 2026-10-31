@@ -42,7 +42,8 @@ def main():
         with (logs / f"{name}-output.log").open("wb") as output:
             result = subprocess.run(command(name, options), env=env, stdout=output,
                                     stderr=output, timeout=30)
-        assert result.returncode == expected, (name, result.returncode, expected, logs)
+        assert result.returncode == expected, (name, result.returncode, expected, logs,
+            (logs / f"{name}-output.log").read_text(encoding="utf-8", errors="replace")[-8000:])
         print(f"PASS {name}: exit {expected}", flush=True)
         return (logs / f"{name}.log").read_text(encoding="utf-8", errors="replace")
 
@@ -63,14 +64,15 @@ def main():
         both = run("both-reports", ["mirror", "--sync-state=0.05",
                                    "--errno-stacks=0.15", *synthetic_snapshot], 0)
         assert both.count("Pending error stacks") == 1
-        assert sync.count("SYNC_STATE:") == 1
-        assert both.count("SYNC_STATE:") == 1
-        assert both.index("SYNC_STATE:") < both.index("Pending error stacks")
+        # A partial registry warning also starts with SYNC_STATE: but is not another report.
+        assert sync.count("SYNC_STATE:\n") == 1, sync[-8000:]
+        assert both.count("SYNC_STATE:\n") == 1
+        # Independent report workers may publish in either order when both are overdue.
         # A later errno deadline must not delay or replace the earlier sync report.
         later = run("independent-deadlines", ["mirror", "--sync-state=0.05",
                                             "--errno-stacks=60", *synthetic_snapshot], 0)
         assert "Pending error stacks" not in later
-        assert later.count("SYNC_STATE:") == 1
+        assert later.count("SYNC_STATE:\n") == 1, later[-8000:]
     else:
         for flag in ("--errno-stacks", "--sync-state"):
             for suffix in ("", "=0.05"):
@@ -123,10 +125,12 @@ def main():
                     deadline = time.monotonic() + 15
                     while time.monotonic() < deadline:
                         assert holder.poll() is None, ("holder exited", logs)
-                        holder_log = logs / "holder.log"
-                        if holder_log.exists() and "Connected" in holder_log.read_text(encoding="utf-8", errors="replace"):
+                        server_log = logs / "server.log"
+                        if server_log.exists() and "announced video stream" in server_log.read_text(encoding="utf-8", errors="replace"):
                             break
                         time.sleep(0.1)
+                    else:
+                        raise AssertionError(("Holder was not admitted before the capacity check", logs))
                     run("session-full", ["client", f"127.0.0.1:{port}", "--password",
                         "errno-test-secret", "--video-codec", "raw", *synthetic_snapshot], 48)
                 finally:

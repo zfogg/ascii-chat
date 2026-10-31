@@ -61,8 +61,9 @@ foreach(OBJ ${OBJECT_LIST})
 endforeach()
 set(OBJECT_LIST "${FILTERED_OBJECTS}")
 
-# Create temporary directory for renamed objects
-set(TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/static_archive_temp")
+# Stage beside the output so publication stays on the same filesystem.
+get_filename_component(OUTPUT "${OUTPUT}" ABSOLUTE)
+set(TEMP_DIR "${OUTPUT}.objects")
 file(REMOVE_RECURSE "${TEMP_DIR}")
 file(MAKE_DIRECTORY "${TEMP_DIR}")
 
@@ -126,9 +127,13 @@ foreach(_object IN LISTS RENAMED_OBJECTS)
     string(APPEND _archive_arguments "\"${_object}\"\n")
 endforeach()
 file(WRITE "${_archive_response}" "${_archive_arguments}")
-message(STATUS "  Running: ${AR} crs ${OUTPUT} <${OBJECT_COUNT} objects>")
+# ar replaces named members but retains removed sources in an existing archive.
+# Build a fresh archive and preserve the previous output until indexing succeeds.
+get_filename_component(_archive_name "${OUTPUT}" NAME)
+set(_archive_output "${TEMP_DIR}/${_archive_name}")
+message(STATUS "  Running: ${AR} crs ${_archive_output} <${OBJECT_COUNT} objects>")
 execute_process(
-    COMMAND "${AR}" crs "${OUTPUT}" "@${_archive_response}"
+    COMMAND "${AR}" crs "${_archive_output}" "@${_archive_response}"
     RESULT_VARIABLE AR_RESULT
     OUTPUT_VARIABLE AR_OUTPUT
     ERROR_VARIABLE AR_ERROR
@@ -139,9 +144,9 @@ if(NOT AR_RESULT EQUAL 0)
 endif()
 
 # Run ranlib to update symbol table
-message(STATUS "  Running: ${RANLIB} ${OUTPUT}")
+message(STATUS "  Running: ${RANLIB} ${_archive_output}")
 execute_process(
-    COMMAND ${RANLIB} "${OUTPUT}"
+    COMMAND ${RANLIB} "${_archive_output}"
     RESULT_VARIABLE RANLIB_RESULT
     OUTPUT_VARIABLE RANLIB_OUTPUT
     ERROR_VARIABLE RANLIB_ERROR
@@ -150,6 +155,8 @@ execute_process(
 if(NOT RANLIB_RESULT EQUAL 0)
     message(FATAL_ERROR "ranlib failed with code ${RANLIB_RESULT}: ${RANLIB_ERROR}")
 endif()
+
+file(RENAME "${_archive_output}" "${OUTPUT}")
 
 # Clean up temp directory
 file(REMOVE_RECURSE "${TEMP_DIR}")

@@ -377,7 +377,12 @@ static void listener_accept(platform_event_stream_t *stream, void *arg) {
 
 static void *connection_receive(void *arg) {
   network_connection_t *c = arg;
+  asciichat_errno_scope_t open_scope = {0};
+  if (c->server)
+    open_scope = errno_scope_begin();
   asciichat_error_t result = connection_open(c);
+  if (c->server)
+    errno_scope_end(open_scope, ASCIICHAT_ERRNO_HANDLED);
   c->transport->receive_timeout_ns = 100 * NS_PER_MS_INT;
   while (result == ASCIICHAT_OK && !APP_CALLBACK_BOOL(should_exit) &&
          (!c->server || !atomic_load_bool(&c->server->stopping)) && network_connection_state(c) < NETWORK_CLOSING) {
@@ -645,8 +650,9 @@ asciichat_error_t network_connection_open(const char *name, const char *address,
   ASCII_OTEL_ATTR_STRING("network.connection.endpoint_protocol",
                          endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? "websocket" : "tcp");
   ASCII_OTEL_ATTR_INT("server.port", endpoint.port);
-  ASCII_OTEL_ATTR_INT("network.connection.timeout_ms",
-                      settings ? settings->timeout_ms : endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? 15000 : 3000);
+  ASCII_OTEL_ATTR_INT("network.connection.timeout_ms", settings ? settings->timeout_ms
+                                                       : endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET ? 15000
+                                                                                                            : 3000);
   if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
     transport = acip_websocket_client_transport_create(name, endpoint.input, NULL);
   } else {

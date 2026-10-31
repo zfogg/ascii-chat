@@ -465,6 +465,8 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             target_link_libraries(${test_exe_name} ${PCRE2_LIBRARIES})
         endif()
 
+        target_link_directories(${test_exe_name} PRIVATE ${FFMPEG_LIBRARY_DIRS})
+
         # External dependencies needed because shared library has them as undefined symbols
         # (normal for dylibs - symbols resolved at runtime)
         target_link_libraries(${test_exe_name}
@@ -905,6 +907,11 @@ endif()
 # Test Shared Library
 # =============================================================================
 if(BUILD_TESTS)
+    add_test(NAME cmake-static-archive
+        COMMAND "${CMAKE_COMMAND}" "-DCC=${CMAKE_C_COMPILER}" "-DAR=${CMAKE_AR}" "-DRANLIB=${CMAKE_RANLIB}"
+            "-DSTATIC_ARCHIVE_TEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/static-archive"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/static_archive.cmake")
+    set_tests_properties(cmake-static-archive PROPERTIES LABELS "unit" TIMEOUT 30)
     add_test(NAME cmake-patching
         COMMAND "${CMAKE_COMMAND}" "-DPATCH_TEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/patching"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patching.cmake")
@@ -1179,7 +1186,7 @@ if(BUILD_TESTS)
     # A separate native process tests first-call races in Windows critical sections too.
     add_executable(test-splash-init standalone/tui/splash_init.c)
     if(TARGET ascii-chat-shared)
-        target_link_libraries(test-splash-init PRIVATE ascii-chat-shared)
+        target_link_libraries(test-splash-init PRIVATE ascii-chat-shared ${MIMALLOC_LIBRARIES})
     else()
         target_link_libraries(test-splash-init PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     endif()
@@ -1192,7 +1199,7 @@ if(BUILD_TESTS)
     set_tests_properties(splash-init PROPERTIES LABELS "integration;thread" TIMEOUT 30
         ENVIRONMENT "TESTING=1;ASCII_CHAT_OTEL_ENABLED_TELEMETRY=none")
     if(TARGET ascii-chat-shared)
-        target_link_libraries(test-client-like-lifecycle PRIVATE ascii-chat-shared)
+        target_link_libraries(test-client-like-lifecycle PRIVATE ascii-chat-shared ${MIMALLOC_LIBRARIES})
     else()
         target_link_libraries(test-client-like-lifecycle PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     endif()
@@ -1217,7 +1224,7 @@ if(BUILD_TESTS)
         LABELS "integration" TIMEOUT 120)
     asciichat_add_python_test(mdns-terminal
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/mdns_terminal.py
-            --binary $<TARGET_FILE:ascii-chat>)
+            --binary $<TARGET_FILE:ascii-chat> --artifacts ${CMAKE_BINARY_DIR}/Testing/mdns-terminal)
     set_tests_properties(mdns-terminal PROPERTIES
         LABELS "integration;terminal" TIMEOUT 180 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
     asciichat_add_python_test(mdns-cross-host
@@ -1922,7 +1929,7 @@ if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32 AND ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TEST_FFPROBE)
-    set(terminal_ui_args)
+    set(terminal_ui_args --artifacts ${CMAKE_BINARY_DIR}/terminal-ui)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         list(APPEND terminal_ui_args --debug-sync --debug-updates)
     endif()

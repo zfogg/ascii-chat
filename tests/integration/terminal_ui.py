@@ -35,6 +35,20 @@ if missing:
 import pyte
 
 
+def load_terminal_font(size):
+    """Use an installed monospace font on each native test platform."""
+    from PIL import ImageFont
+    candidates = ("C:/Windows/Fonts/consola.ttf", "/System/Library/Fonts/Menlo.ttc",
+                  "/usr/share/fonts/TTF/DejaVuSansMono.ttf",
+                  "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", "DejaVuSansMono.ttf")
+    for candidate in candidates:
+        try:
+            return ImageFont.truetype(candidate, size)
+        except OSError:
+            continue
+    raise RuntimeError("Install a monospace font to capture terminal screenshots")
+
+
 class CaptureScreen(pyte.Screen):
     """Handle REP, used by the renderer and ConPTY to compress repeated cells."""
 
@@ -198,7 +212,15 @@ class Terminal:
                 self.raw.append(self.output.get(timeout=0.05))
             except queue.Empty:
                 pass
-        assert not self.process.isalive(), "UI shutdown did not join its worker"
+        if self.process.isalive():
+            diagnostics = ""
+            if os.name != "nt":
+                import termios
+                attributes = termios.tcgetattr(self.process.child_fd)
+                diagnostics = (f"; terminal ISIG={bool(attributes[3] & termios.ISIG)}"
+                               f", VINTR={attributes[6][termios.VINTR]!r}")
+            raise AssertionError(f"UI shutdown did not join its worker{diagnostics}\n"
+                                 + "".join(self.raw)[-4000:])
 
     def close(self):
         if os.name == "nt" and self.process.isalive():
@@ -220,6 +242,8 @@ def free_port():
 
 
 def check_update_centering(term, title):
+    term.expect(lambda text: title in text and "┌" in text and "┐" in text and "└" in text and "┘" in text,
+                "Update dialog did not finish drawing its border and title")
     lines = term.screen.display
     border_row = next(row for row, line in enumerate(lines) if "┌" in line)
     border = lines[border_row]
@@ -296,6 +320,7 @@ def main():
         )
         base = [binary, "--no-check-update", "--log-file", str(root / "application.log"), "--log-level", "info"]
         sessions = []
+        sockets = []
 
         def terminal(name, argv, check_updates=False, environment=None, **kwargs):
             command = [binary, "--log-file", str(root / "application.log"), "--log-level", "info"]
@@ -309,7 +334,8 @@ def main():
             term.interrupt()
             if os.name != "nt":
                 term.process.close()
-                assert term.process.exitstatus == 0, term.process.exitstatus
+                assert term.process.exitstatus == 0, (term.process.exitstatus,
+                    (root / "application.log").read_text(errors="replace")[-12000:])
             term.close()
 
         def small(term):
@@ -334,12 +360,13 @@ def main():
             })
             small(status)
             # The WebSocket handshake must continue behind the warning.
-            with socket.create_connection(("127.0.0.1", websocket_port), timeout=3) as sock:
-                sock.settimeout(3)
-                sock.sendall(b"GET / HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\n"
-                             b"Connection: Upgrade\r\nSec-WebSocket-Version: 13\r\n"
-                             b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n")
-                assert b"101" in sock.recv(4096), "WebSocket handshake stopped while covered"
+            sock = socket.create_connection(("127.0.0.1", websocket_port), timeout=3)
+            sockets.append(sock)
+            sock.settimeout(3)
+            sock.sendall(b"GET / HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\n"
+                         b"Connection: Upgrade\r\nSec-WebSocket-Version: 13\r\n"
+                         b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n")
+            assert b"101" in sock.recv(4096), "WebSocket handshake stopped while covered"
             status.write("/should-not-replay")
             status.pump(0.3)
             status.resize(25, 80)
@@ -357,6 +384,7 @@ def main():
             status.resize(12, 19)
             small(status)
             finish(status)
+            sock.close()
             print("PASS status: startup, resize, tiny terminal, input suppression, live handshake")
 
             mirror_args = ["mirror", "--file", str(media), "--loop", "--splash-screen=false",
@@ -383,15 +411,16 @@ def main():
                 mirror.expect(lambda text: "Sync primitives" in text and "Keyboard Shortcuts" not in text,
                               "Sync did not replace help")
                 mirror.write("?")
-                mirror.expect(lambda text: "Keyboard Shortcuts" in text and "Sync primitives |" not in text,
-                              "Help did not replace sync")
+                mirror.expect(lambda text: "Sync Viewer Keyboard Shortcuts" in text and "Sync primitives |" in text,
+                              "Context help did not overlay the sync viewer")
                 mirror.write("0")
-                mirror.expect(lambda text: "Sync primitives" in text, "Sync did not reopen")
+                mirror.expect(lambda text: "Sync primitives" in text and "Keyboard Shortcuts" not in text,
+                              "Sync did not reopen")
                 mirror.write("0")
                 video(mirror)
                 mirror.write("?")
                 mirror.expect(lambda text: "Keyboard Shortcuts" in text, "Help did not reopen")
-                print("PASS sync/help replacement and closing to media")
+                print("PASS sync context-help overlay and closing to media")
             mirror.resize(12, 19)
             small(mirror)
             mirror.write("?m ")
@@ -492,7 +521,7 @@ def main():
                 startup.write("\r")
                 startup.expect(lambda text: "Contacting GitHub Releases" in text,
                                "Enter did not activate the selected retry button")
-                startup.write("\t\x1b[D\x1b[C\x1b[A\x1b[B?qc m")
+                startup.write("\t\x1b[D\x1b[C\x1b[A\x1b[Bqc m")
                 startup.pump(.2)
                 check_update_selection(startup, "Close")
                 assert startup.process.isalive(), "Overlay-local keys leaked to the session"
@@ -601,13 +630,17 @@ def main():
                 updater.expect(lambda text: "Update available" in text,
                                "Updater scenario did not reach the update prompt")
                 updater.write("\r")
-                updater.expect(lambda text: "Run ascii-chat again" in text,
+                # The debug exit report can scroll this epilogue out of the viewport.
+                updater.expect(lambda text: "Run ascii-chat again" in "".join(updater.raw),
                                "Successful installer did not print restart instructions")
                 deadline = time.monotonic() + 10
                 while updater.process.isalive() and time.monotonic() < deadline:
                     updater.pump(.1)
                 assert not updater.process.isalive(), "Updater did not exit after installation"
                 assert marker.exists(), "Update command was not executed"
+                if os.name != "nt":
+                    updater.process.close()
+                    assert updater.process.exitstatus == 0, updater.process.exitstatus
                 updater.close()
                 print("PASS update checker: startup prompt, weekly dismissal, installer execution and clean exit")
 
@@ -638,6 +671,8 @@ def main():
             assert snapshot.stdout.strip() and b"Terminal too small" not in snapshot.stdout
             print("PASS redirected snapshot remains synchronous and contains only media output")
         finally:
+            for sock in sockets:
+                sock.close()
             if args.artifacts and (root / "application.log").exists():
                 args.artifacts.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(root / "application.log", args.artifacts / "application.log")

@@ -8,22 +8,25 @@
 bool g_snapshot_first_frame_rendered = false;
 #include "../../../src/common/session/pipeline.c"
 
-Test(media_pipeline, latest_queue_retires_exactly_one_owner) {
+Test(media_pipeline, bounded_queue_preserves_fifo_and_rejects_overflow) {
   log_init(NULL, LOG_ERROR, false, false);
-  frame_queue_t *queue = frame_queue_create(1, "latest_frame_test");
+  frame_queue_t *queue = frame_queue_create(2, "bounded_frame_test");
   cr_assert(queue);
-  unsigned frames[1000];
+  pipeline_frame_t frames[3] = {0};
   for (unsigned i = 0; i < 1000; ++i) {
-    frames[i] = i;
-    void *retired = frame_queue_replace_latest(queue, &frames[i]);
-    cr_assert_eq(retired, (i ? &frames[i - 1] : NULL));
-    cr_assert_eq(frame_queue_count(queue), 1);
+    for (unsigned frame = 0; frame < 3; ++frame)
+      frames[frame].captured_ns = time_get_ns();
+    cr_assert(frame_queue_push(queue, &frames[0], 0));
+    cr_assert(frame_queue_push(queue, &frames[1], 0));
+    cr_assert_not(frame_queue_push(queue, &frames[2], 0));
+    cr_assert_eq(frame_queue_count(queue), 2);
+    cr_assert_eq(frame_queue_pop(queue, 1), &frames[0]);
+    cr_assert_eq(frame_queue_pop(queue, 1), &frames[1]);
+    cr_assert_eq(frame_queue_count(queue), 0);
+    cr_assert_eq(frame_queue_pop(queue, 1), NULL);
   }
-  cr_assert_eq(frame_queue_pop(queue, 1), &frames[999]);
-  cr_assert_eq(frame_queue_count(queue), 0);
-  cr_assert_eq(frame_queue_pop(queue, 1), NULL);
-  cr_assert_eq(frame_queue_replace_latest(queue, &frames[0]), NULL);
-  cr_assert_eq(frame_queue_pop(queue, 1), &frames[0]);
+  cr_assert(frame_queue_push(queue, &frames[2], 0));
+  cr_assert_eq(frame_queue_pop(queue, 1), &frames[2]);
   frame_queue_destroy(queue);
 }
 

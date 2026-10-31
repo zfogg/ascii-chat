@@ -40,10 +40,13 @@ static ui_presentation_state_t fake_state(void) {
 static int fake_screen(void) {
   return test_screen;
 }
-static asciichat_error_t fake_present(const char *prompt, const char *text, size_t cursor) {
+static asciichat_error_t fake_present(const char *prompt, const char *text, size_t cursor, bool secret,
+                                      ui_prompt_kind_t kind) {
   (void)prompt;
   (void)text;
   (void)cursor;
+  (void)secret;
+  (void)kind;
   test_screen = UI_SCREEN_PROMPT;
   return ASCIICHAT_OK;
 }
@@ -69,7 +72,7 @@ static bool fake_cancel(session_capture_ctx_t *capture) {
 #define keyboard_input_available fake_input_available
 #define ui_controller_state fake_state
 #define ui_controller_current_screen fake_screen
-#define ui_prompt_present fake_present
+#define ui_prompt_present_kind fake_present
 #define ui_prompt_remove fake_remove
 #define log_search_is_entering fake_search_entering
 #include "../../../lib/tui/input.c"
@@ -80,7 +83,7 @@ static bool fake_cancel(session_capture_ctx_t *capture) {
 #undef ui_session_logs_key
 #undef log_search_is_entering
 #undef ui_prompt_remove
-#undef ui_prompt_present
+#undef ui_prompt_present_kind
 #undef ui_controller_current_screen
 #undef ui_controller_state
 #undef keyboard_read_nonblocking

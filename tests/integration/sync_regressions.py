@@ -48,7 +48,8 @@ def main():
             stop_path = Path(log + ".stop")
             stop_path.unlink(missing_ok=True)
             terminal = Terminal([binary, "deadlock" if mode == "deadlock-ascii" else mode, log], rows=30, cols=120,
-                                environment={"ASCII_CHAT_UTF8": "false" if mode == "deadlock-ascii" else "true"})
+                                environment={"ASCII_CHAT_UTF8": "false" if mode == "deadlock-ascii" else "true",
+                                             "TERM": "xterm-256color", "ASCII_CHAT_COLOR_MODE": "truecolor"})
             try:
                 terminal.expect(lambda text: "SYNC FIXTURE READY" in text, "Fixture did not start")
                 terminal.pump(2)
@@ -67,8 +68,10 @@ def main():
                     assert "cycle_b" in rows[5] and "DEADLOCK" in rows[5], text
                     label = "DEADLOCK!" if mode == "deadlock-ascii" else "DEADLOCK ❌"
                     detail_index = len(rows) - 2
-                    error_color = terminal.screen.buffer[detail_index][rows[detail_index].index("value=") + len("value=")].fg
-                    assert error_color != "default", rows[detail_index]
+                    # The cycle summary is an error; the numeric value may instead be a nonzero activity count.
+                    summary_start = len(rows[1]) - len(rows[1].lstrip())
+                    error_color = terminal.screen.buffer[1][summary_start].fg
+                    assert error_color != "default", rows[1]
                     for row_index in (4, 5, detail_index):
                         row = rows[row_index]
                         start = row.index("DEADLOCK")

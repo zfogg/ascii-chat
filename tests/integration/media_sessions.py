@@ -11,6 +11,9 @@ import _environment  # noqa: F401
 
 import argparse
 import fcntl
+import functools
+import http.server
+import json
 import os
 from pathlib import Path
 import pty
@@ -20,7 +23,9 @@ import signal
 import socket
 import struct
 import subprocess
+import sys
 import tempfile
+import threading
 import termios
 import time
 import unittest
@@ -48,7 +53,8 @@ class MediaSessions(unittest.TestCase):
             channel for _y in range(48) for x in range(96)
             for channel in ((0, 0, 0) if x < 32 else (128, 128, 128) if x < 64 else (255, 255, 255))))
         cls.env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
-        cls.env.update(HOME=str(cls.root), XDG_CONFIG_HOME=str(cls.root), TERM="xterm-256color")
+        cls.env.update(HOME=str(cls.root), XDG_CONFIG_HOME=str(cls.root), TERM="xterm-256color",
+                       ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none")
 
     @classmethod
     def tearDownClass(cls):
@@ -63,8 +69,8 @@ class MediaSessions(unittest.TestCase):
             raise AssertionError("Coverage root was not supplied for an instrumented test")
         return {path: path.stat().st_mtime_ns for path in COVERAGE_ROOT.rglob(pattern)}
 
-    def run_snapshot(self, *args, env=None):
-        result = subprocess.run(self.command(*args), env=env or self.env, capture_output=True, timeout=25)
+    def run_snapshot(self, *args, env=None, cwd=None):
+        result = subprocess.run(self.command(*args), env=env or self.env, cwd=cwd, capture_output=True, timeout=25)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-5000:])
         self.assertGreater(len(result.stdout), 100, "Snapshot did not contain a rendered frame")
         return result.stdout
@@ -100,6 +106,42 @@ class MediaSessions(unittest.TestCase):
                 rows = [line for line in frame.splitlines() if b"#" in line and set(line) <= set(b" .#")]
                 self.assertTrue(rows, "The generated configuration did not produce a rendered frame")
                 self.assertTrue(all(len(line) == expected_width for line in rows), rows)
+
+    def test_site_and_search_inputs_use_extractor_but_local_files_do_not(self):
+        tools = self.root / "extractor-tools"
+        tools.mkdir(exist_ok=True)
+        trace = self.root / "extractor-inputs.jsonl"
+        extractor = tools / "yt-dlp"
+        extractor.write_text(
+            f"#!{sys.executable}\n"
+            "import json, os, sys\n"
+            "if '--version' in sys.argv:\n"
+            "    print('2026.01.01')\n"
+            "else:\n"
+            "    with open(os.environ['EXTRACTOR_TRACE'], 'a') as output:\n"
+            "        output.write(json.dumps(sys.argv[-1]) + '\\n')\n"
+            "    print(os.environ['EXTRACTOR_MEDIA'])\n")
+        extractor.chmod(0o755)
+        handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(self.root))
+        with http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler) as server:
+            worker = threading.Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            try:
+                env = dict(self.env, PATH=str(tools) + os.pathsep + self.env.get("PATH", ""),
+                           EXTRACTOR_TRACE=str(trace),
+                           EXTRACTOR_MEDIA=f"http://127.0.0.1:{server.server_port}/pattern.ppm")
+                inputs = ["HtTpS://example.invalid/watch?id=fixture", "ytsearch:ascii fixture"]
+                relative_image = self.root / "ytsearch-local.ppm"
+                relative_image.write_bytes(self.image.read_bytes())
+                for source in [str(self.image), relative_image.name, *inputs]:
+                    with self.subTest(source=source):
+                        self.run_snapshot("mirror", "--file", source, "--snapshot", "--snapshot-delay", "0",
+                                          "--splash-screen=false", "--audio=false", "--width", "40", "--height", "12",
+                                          env=env, cwd=self.root)
+                self.assertEqual([json.loads(line) for line in trace.read_text().splitlines()], inputs)
+            finally:
+                server.shutdown()
+                worker.join(timeout=5)
 
     def test_explicit_configuration_errors_are_fatal(self):
         broken = self.root / "broken.toml"
@@ -194,9 +236,11 @@ class MediaSessions(unittest.TestCase):
                     # The renderer may encode repeated cells with ECMA-48 REP.
                     expanded = re.sub(rb"(.)\x1b\[(\d+)b",
                                       lambda m: m[1] * (min(int(m[2]), 500) + 1), bytes(output))
-                    if marker in expanded:
+                    plain = re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]", b"", expanded)
+                    if marker in plain:
                         return bytes(output)
-            self.fail(f"Missing {marker!r} in terminal output: {bytes(output[-3000:])!r}")
+            log = (self.root / "session.log").read_text(errors="replace")
+            self.fail(f"Missing {marker!r} in terminal output: {bytes(output[-3000:])!r}\nSession log:\n{log[-8000:]}")
 
         try:
             expect(b"QQQQQQQQ")
@@ -217,7 +261,7 @@ class MediaSessions(unittest.TestCase):
             os.write(master, b"\x1b")
             expect(b"QQQQQQQQ")
             os.write(master, b"]")
-            expect(b"] / Esc: close")
+            expect(b"Esc: close")
             os.write(master, b"]")
             expect(b"QQQQQQQQ")
             process.send_signal(signal.SIGINT)

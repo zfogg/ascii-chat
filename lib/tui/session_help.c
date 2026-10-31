@@ -14,6 +14,10 @@
 #define ENABLED_COLOR LOG_COLOR_INFO   /* Green */
 #define DISABLED_COLOR LOG_COLOR_ERROR /* Red */
 
+void ui_session_help_free(char *text) {
+  SAFE_FREE(text);
+}
+
 /* ============================================================================
  * Keyboard Help Rendering
  * ============================================================================ */

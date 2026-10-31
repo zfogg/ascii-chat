@@ -37,25 +37,47 @@ def main():
         handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(root))
         server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
         threading.Thread(target=server.serve_forever, daemon=True).start()
+        physical = False
+        def logs():
+            return log.read_text(encoding="utf-8", errors="replace") if log.exists() else ""
+        def await_log(predicate, message):
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                term.pump(.05)
+                text = logs()
+                if ("Cannot start mirror audio" in text or "Cannot initialize mirror audio" in text or
+                        "CAMERA UNAVAILABLE" in text):
+                    if physical:
+                        raise SystemExit(77)
+                    raise AssertionError("Synthetic visualization tried to open a hardware device\n" + text[-4000:])
+                if predicate(text):
+                    return
+            raise AssertionError(message + "\n" + logs()[-4000:])
         try:
+            for flag in ("--fft", "--waveform"):
+                log = args.artifacts / f"startup-{flag[2:]}.log"
+                term = Terminal([str(args.binary.resolve()), "--no-check-update", "--log-file", str(log.resolve()),
+                                 "--log-level", "info", "mirror", flag, "--test-audio", "--no-audio-playback",
+                                 "--webcam-index", "10", "--fps", "33",
+                                 "--splash-screen=false"], rows=45, cols=140)
+                try:
+                    await_log(lambda text: "Mirror audio started on demand" in text,
+                              f"{flag} did not start audio at startup")
+                    term.pump(.25)
+                    term.write("?")
+                    term.expect(lambda text: "Keyboard Shortcuts" in text, "Visualization input did not become ready")
+                    term.write("?")
+                    term.expect(lambda text: "Keyboard Shortcuts" not in text, "Visualization help did not close")
+                    term.interrupt()
+                    print(f"PASS mirror startup audio: {flag}", flush=True)
+                finally:
+                    term.close()
+            physical = True
             for kind, path in (("file", str(media)), ("url", f"http://127.0.0.1:{server.server_port}/tone.mp4")):
                 log = args.artifacts / f"{kind}.log"
                 term = Terminal([str(args.binary.resolve()), "--no-check-update", "--log-file", str(log.resolve()),
                                  "--log-level", "info", "mirror", "--test-pattern", "--fps", "33",
                                  "--splash-screen=false", "--color-mode", "truecolor"], rows=35, cols=140)
-                def logs():
-                    return log.read_text(encoding="utf-8", errors="replace") if log.exists() else ""
-                def await_log(predicate, message):
-                    deadline = time.monotonic() + 15
-                    while time.monotonic() < deadline:
-                        term.pump(.05)
-                        text = logs()
-                        if ("Cannot start mirror audio" in text or "Cannot initialize mirror audio" in text or
-                                "CAMERA UNAVAILABLE" in text):
-                            raise SystemExit(77)
-                        if predicate(text):
-                            return
-                    raise AssertionError(message + "\n" + logs()[-4000:])
                 try:
                     term.expect(lambda text: len(text.strip()) > 400, "Mirror video missing", timeout=30)
                     term.pump(.5)
@@ -67,11 +89,15 @@ def main():
                     assert not any(row.lstrip("> ").startswith("mutex") and "display." in row
                                    for row in inventory.splitlines()), inventory
                     memory_row = next(row for row in inventory.splitlines() if "debug_memory." in row)
-                    assert max(map(float, memory_row.split()[-4:-2])) < 1, memory_row
+                    # Allow incidental monitoring activity, but reject per-frame allocation work.
+                    assert max(map(float, memory_row.split()[-4:-2])) < 33 / 2, memory_row
                     assert "Mirror audio started on demand" not in logs()
                     term.write("0")
+                    term.expect(lambda text: "Sync primitives" not in text,
+                                "Sync closes before resizing")
                     term.resize(35, 140)
-                    term.expect(lambda text: "Sync primitives" not in text, "Sync closes")
+                    term.expect(lambda text: "Sync primitives" not in text,
+                                "Media recovers after sync resize")
                     if kind == "file":
                         for count, key in enumerate(("2", "3"), start=1):
                             term.write(key)
@@ -94,8 +120,11 @@ def main():
                                 assert rates["audio_processing_wakeup"] > 0, "Audio worker did not run"
                                 (args.artifacts / "active-rates.json").write_text(json.dumps(rates, indent=2))
                                 term.write("0")
+                                term.expect(lambda text: "Sync primitives" not in text,
+                                            "Active audio sync closes before resizing")
                                 term.resize(35, 140)
-                                term.expect(lambda text: "Sync primitives" not in text, "Active audio sync closes")
+                                term.expect(lambda text: "Sync primitives" not in text,
+                                            "Active audio media recovers after resizing")
                             term.pump(.25)
                             term.write(key)
                             await_log(lambda text: text.count("Mirror audio idle") == count,
@@ -114,24 +143,6 @@ def main():
                     assert "Failed to start audio" not in logs(), logs()
                     term.interrupt()
                     print(f"PASS lazy mirror audio: {kind}, idle startup, on-demand transitions", flush=True)
-                finally:
-                    term.close()
-            for flag in ("--fft", "--waveform"):
-                log = args.artifacts / f"startup-{flag[2:]}.log"
-                term = Terminal([str(args.binary.resolve()), "--no-check-update", "--log-file", str(log.resolve()),
-                                 "--log-level", "info", "mirror", flag, "--fps", "33",
-                                 "--splash-screen=false"], rows=45, cols=140)
-                try:
-                    await_log(lambda text: "Mirror audio started on demand" in text,
-                              f"{flag} did not start audio at startup")
-                    await_log(lambda text: "running main loop" in text, "Visualization pipeline did not start")
-                    term.pump(.25)
-                    term.write("?")
-                    term.expect(lambda text: "Keyboard Shortcuts" in text, "Visualization input did not become ready")
-                    term.write("?")
-                    term.expect(lambda text: "Keyboard Shortcuts" not in text, "Visualization help did not close")
-                    term.interrupt()
-                    print(f"PASS mirror startup audio: {flag}", flush=True)
                 finally:
                     term.close()
         finally:

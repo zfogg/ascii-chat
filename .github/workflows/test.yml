@@ -135,6 +135,17 @@ jobs:
           extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr libc6-dbg' || 'gcovr' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # CPython 3.12 retains allocations during teardown under preloaded ASan.
+      # Use Python 3.14 for ctypes hosts while keeping leak checks enabled.
+      - name: Set up Python for sanitizer hosts
+        id: unit-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install Python test dependencies
+        run: python -m pip install -r tests/requirements-terminal.txt
+
       - name: Cache build, dependencies, and ccache
         id: cache-build
         uses: ./.github/actions/cache-build
@@ -190,6 +201,7 @@ jobs:
           echo "Building with CMake build type: ${BUILD_TYPE}"
           cmake_args=(
             -DBUILD_TESTS=ON
+            -DPython3_EXECUTABLE="${{ steps.unit-python.outputs.python-path }}"
             -DUSE_MUSL=OFF
             -DASCIICHAT_FORCE_CRITERION_TESTS=ON
             -DASCIICHAT_ENABLE_ANALYZERS=OFF
@@ -355,7 +367,7 @@ jobs:
         uses: ./.github/actions/install-deps
         with:
           os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr' || 'gcovr' }}
+          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr pulseaudio pulseaudio-utils' || 'gcovr' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache build, dependencies, and ccache
@@ -377,6 +389,12 @@ jobs:
           rm -rf build/Testing/criterion-xml
           # macOS debug symbol bundles matching these paths are directories.
           rm -rf build/bin/test_* build/bin/ascii-chat build/bin/ascii-chat.dSYM build/lib/libasciichat*
+
+      - name: Set up Python test interpreter
+        id: integration-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
 
       - name: Install terminal test dependencies
         run: python -m pip install -r tests/requirements-terminal.txt
@@ -407,6 +425,7 @@ jobs:
           cmake --fresh -B build --preset github --debug-output \
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
+            -DPython3_EXECUTABLE="${{ steps.integration-python.outputs.python-path }}" \
             -DASCIICHAT_ENABLE_COVERAGE=ON \
             -DBUILD_TESTS=ON \
             -DASCIICHAT_FORCE_CRITERION_TESTS=ON \
@@ -437,6 +456,19 @@ jobs:
       - name: Clear cached coverage counters
         run: find build -name '*.gcda' -type f -delete
 
+      - name: Start private headless audio service
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          audio_runtime="$RUNNER_TEMP/ascii-chat-pulse"
+          install -d -m 700 "$audio_runtime"
+          PULSE_RUNTIME_PATH="$audio_runtime" pulseaudio --daemonize=yes --exit-idle-time=-1 -n \
+            --load="module-native-protocol-unix socket=$audio_runtime/native auth-anonymous=1" \
+            --load="module-null-sink sink_name=ascii_chat_ci" \
+            --log-target="file:$audio_runtime/server.log"
+          pulse_server="unix:$audio_runtime/native"
+          pactl --server="$pulse_server" info
+          echo "PULSE_SERVER=$pulse_server" >> "$GITHUB_ENV"
+
       - name: Build and run integration tests
         run: |
           cmake --build build --target all tests-criterion-build
@@ -451,6 +483,10 @@ jobs:
           ctest --test-dir build --label-regex "^integration$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 0 | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Integration tests completed successfully"
+
+      - name: Stop private headless audio service
+        if: always() && startsWith(matrix.os, 'ubuntu') && env.PULSE_SERVER != ''
+        run: pactl --server="$PULSE_SERVER" exit
 
       - name: Generate coverage report
         if: always()
@@ -498,6 +534,10 @@ jobs:
             build/Testing/ctest-results.xml
             build/Testing/criterion-xml/*.xml
             build/backpressure/
+            build/Testing/mdns-terminal/
+            build/mirror-lazy-audio/
+            build/terminal-ui/
+            build/terminal-logs/
             /tmp/webrtc_e2e_*.log
             /tmp/acds_test.log
             /tmp/server_test.log

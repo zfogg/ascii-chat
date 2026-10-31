@@ -374,6 +374,7 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
   uint64_t last_progress_log_ns = 0;
   uint64_t advertised_revision = OPTIONS_REVISION_ANY;
   while (!should_exit() && server_connection_is_active(connection)) {
+    display_poll_keyboard(connection);
     terminal_size_t previous = connection->advertised_dimensions;
     if (session_protocol_update_settings(&connection->advertised_dimensions, &advertised_revision, client_send_settings,
                                          connection) == ASCIICHAT_OK &&
@@ -519,10 +520,6 @@ static asciichat_error_t client_select_destination(void *user_data) {
   ui_mdns_config_t config = {.timeout_ms = 2000, .max_servers = 20, .quiet = true};
   int count = 0;
   ui_mdns_server_t *servers = ui_mdns_query(&config, &count);
-  if (count == 0) {
-    ui_mdns_free_results(servers);
-    return SET_ERRNO(ERROR_NETWORK, "No ascii-chat servers found on the local network");
-  }
   uint64_t deadline = ui_input_deadline(30);
   ui_mdns_server_t selected;
   int selection = ui_mdns_select_live(servers, count, deadline, &selected);

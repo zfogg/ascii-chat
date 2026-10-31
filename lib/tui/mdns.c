@@ -260,9 +260,7 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
     snprintf(line, sizeof(line), "%s [%d] %s (%s%s%s:%u)", i == list.selected ? ">" : " ", i + 1,
              snapshot->servers[i].name, strchr(address, ':') ? "[" : "", address, strchr(address, ':') ? "]" : "",
              snapshot->servers[i].port);
-    const ui_table_column_t column = {.heading = "LAN servers", .width = size.cols - 2};
-    const char *cells[] = {line};
-    ui_table_row(clipped, sizeof(clipped), &column, cells, 1, size.cols - 2, false, false);
+    truncate_with_ellipsis(line, clipped, sizeof(clipped), size.cols - 2);
     if (colors && i == list.selected)
       frame_buffer_printf(buffer, "%s", ui_text_color_prefix(LOG_COLOR_DEBUG));
     frame_buffer_render_centered(buffer, clipped, size.cols - 1);

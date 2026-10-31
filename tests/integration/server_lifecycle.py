@@ -67,7 +67,8 @@ class Service:
             flags = {"creationflags": subprocess.CREATE_NEW_CONSOLE, "startupinfo": startup}
         env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
         env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
-                   APPDATA=str(directory), XDG_CONFIG_HOME=str(directory))
+                   APPDATA=str(directory), XDG_CONFIG_HOME=str(directory),
+                   ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none")
         env.update(environment or {})
         self.process = subprocess.Popen(
             [str(binary), "--no-check-update", "--log-file", str(self.log), "--log-level", "debug", mode, *options],
@@ -118,7 +119,8 @@ def server_options(tcp_port, ws_port):
 def check_client(binary, directory, destination, name, extra=()):
     env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
     env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
-                   APPDATA=str(directory), XDG_CONFIG_HOME=str(directory))
+                   APPDATA=str(directory), XDG_CONFIG_HOME=str(directory),
+                   ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none")
     log = directory / (name + ".log")
     command = [str(binary), "--no-check-update", "--log-file", str(log), "client", destination,
          "--test-pattern", "--video-codec", "raw", "--audio=false", "--snapshot",

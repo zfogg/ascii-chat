@@ -165,12 +165,16 @@ def main():
             for source, (audio, cli_source) in sources.items():
                 case = f"{kind}-{source}"
                 try:
-                    response = client.call({"visualization": kind, "audio": audio, "options": options})
+                    case_options = dict(options)
+                    if case == "fft-test":
+                        # The synthetic audio worker needs a populated FFT window on slower hosts.
+                        case_options["snapshot-delay"] = 1.0
+                    response = client.call({"visualization": kind, "audio": audio, "options": case_options})
                     rendered = text_result(response)
                     (artifacts / f"{case}-mcp.txt").write_text(rendered, encoding="utf-8")
                     mcp_stats = validate_visual(rendered, kind)
                     command = [str(binary), "--no-check-update", "mirror", f"--{kind}", *cli_source,
-                               "--no-audio-playback", "--snapshot", "--snapshot-delay", "0.2",
+                               "--no-audio-playback", "--snapshot", "--snapshot-delay", str(case_options["snapshot-delay"]),
                                "--width", "64", "--height", "20", "--color-mode", "none", "--strip-ansi=true", "--splash-screen=false"]
                     (artifacts / f"{case}-command.json").write_text(json.dumps(command), encoding="utf-8")
                     cli = subprocess.run(command, capture_output=True, timeout=45, cwd=ROOT)

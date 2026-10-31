@@ -13,7 +13,7 @@ import ssl
 import subprocess
 import sys
 import tempfile
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'deps/ascii-chat-deps/gotel/c-gotel/testing/python'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'deps/ascii-chat-deps/gotel/c/testing/python'))
 from gotel_testing import Collector, service_names
 
 def main():

@@ -19,7 +19,7 @@ import socketserver
 import threading
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] /
-    'deps/ascii-chat-deps/gotel/c-gotel/testing/python'))
+    'deps/ascii-chat-deps/gotel/c/testing/python'))
 from gotel_testing import Collector, protobuf, records, service_names
 
 

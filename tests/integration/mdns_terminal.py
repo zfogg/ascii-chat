@@ -22,7 +22,7 @@ import tempfile
 import time
 
 try:
-    from terminal_ui import Terminal
+    from terminal_ui import Terminal, load_terminal_font
 except ImportError as error:
     print(f"SKIP: terminal prerequisites unavailable: {error}")
     raise SystemExit(77)
@@ -55,15 +55,7 @@ def capture(term, directory, name):
     except ImportError:
         return
     configured_font = os.environ.get("TERMINAL_CAPTURE_FONT")
-    font_candidates = [configured_font] if configured_font else []
-    if os.name == "nt":
-        font_candidates += [r"C:\Windows\Fonts\CascadiaMono.ttf", r"C:\Windows\Fonts\consola.ttf"]
-    else:
-        font_candidates += ["/System/Library/Fonts/Menlo.ttc", "DejaVuSansMono.ttf"]
-    font = next((ImageFont.truetype(path, 16) for path in font_candidates
-                 if path and Path(path).exists()), None)
-    if font is None:
-        raise AssertionError("PNG capture requires a Unicode monospace font; set TERMINAL_CAPTURE_FONT")
+    font = ImageFont.truetype(configured_font, 16) if configured_font else load_terminal_font(16)
     divider_mask = font.getmask("━")
     if not divider_mask.getbbox():
         raise AssertionError("Terminal capture font does not contain the UTF-8 divider glyph")
@@ -90,7 +82,8 @@ def main():
                 del os.environ[key]
         os.environ.update(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root),
                           XDG_CONFIG_HOME=str(root), TERM="xterm-256color",
-                          ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
+                          ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1",
+                          ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none")
         port_pairs = service_port_pairs(14)
         ports = [pair[0] for pair in port_pairs]
         services, terminals = [], []
@@ -100,7 +93,15 @@ def main():
                 "--websocket-port", str(port_pairs[index][1]), "--status-screen=false"])
             services.append(service)
             service.wait_for("Server accepting connections")
-            service.wait_for("mDNS: Server advertised")
+            try:
+                service.wait_for("mDNS: Server advertised")
+            except AssertionError as error:
+                text = service.text()
+                mdns_details = "\n".join(line for line in text.splitlines() if "mdns" in line.lower() or "bonjour" in line.lower())
+                if sys.platform == "darwin" and any(f"Bonjour (error {code})" in text for code in (-65563, -65570)):
+                    print("SKIP: Bonjour service is unavailable or local-network access is denied\n" + mdns_details)
+                    raise SystemExit(77) from error
+                raise AssertionError("mDNS advertisement failed:\n" + mdns_details) from error
             return service
 
         def client(name, destination=None, utf8="true", color="true", scan=True):
@@ -127,8 +128,26 @@ def main():
                     term.pump(.02)
             raise AssertionError(f"Missing {message!r}: {text[-3000:]}")
 
+        def expect_discovery(term, predicate, message, name):
+            try:
+                return term.expect(predicate, message)
+            except AssertionError:
+                text = (root / f"{name}.log").read_text(errors="replace")
+                if sys.platform == "darwin" and re.search(r"Bonjour.*error -655(?:63|70)", text):
+                    print("SKIP: Bonjour discovery is unavailable or local-network access is denied")
+                    raise SystemExit(77)
+                raise
+
         try:
+            waiting = client("empty-picker")
+            expect_discovery(waiting, lambda text: "LAN servers" in text, "Empty LAN picker missing", "empty-picker")
+            assert waiting.process.isalive(), "Empty initial discovery should keep refreshing"
             first = server(0, "first")
+            expect_discovery(waiting, lambda text: str(ports[0]) in text,
+                             "Live picker missed a later advertisement", "empty-picker")
+            waiting.write("q")
+            waiting.expect(lambda text: not waiting.process.isalive(), "Empty-start picker did not cancel")
+            # Use a fresh deadline for the independent refresh and navigation scenario.
             term = client("picker")
             term.expect(lambda text: "LAN servers" in text and str(ports[0]) in text, "--scan LAN picker missing")
             rows = term.screen.display
@@ -158,13 +177,12 @@ def main():
             assert "r: refresh" not in text
             assert "ascii-chat | LAN servers" not in text
             current = int(re.search(r"> \[(\d+)\]", text).group(1))
+            if current > 1:
+                term.write("k" * (current - 1))
+                term.expect(lambda text: "> [1]" in text, "Could not establish the first row for navigation")
             term.pump(.2)
             term.write("j")
-            expected = 2 if current == 1 else 1
-            term.expect(lambda text: f"> [{expected}]" in text, "j did not move selection", timeout=5)
-            if expected == 1:
-                term.write("k")
-                term.expect(lambda text: "> [2]" in text, "k did not wrap selection")
+            term.expect(lambda text: "> [2]" in text, "j did not move selection", timeout=5)
             # A PTY read can end after the selected row but before the footer.
             # Inspect colors only once all parts of the rendered frame arrived.
             term.expect(lambda text: "> [2]" in text and "Auto-refresh" in text
@@ -182,15 +200,23 @@ def main():
             slash = footer.index("/")
             assert term.screen.buffer[footer_row][slash].fg == term.screen.buffer[footer_row][footer.index("move")].fg
             assert term.screen.buffer[footer_row][slash - 1].fg != term.screen.buffer[footer_row][slash].fg
-            selected_port = next(port for port in ports[:2]
-                                 if str(port) in next(line for line in term.screen.display if "> [2]" in line))
+            owned_line = next(line for line in term.screen.display if str(ports[0]) in line)
+            target = int(re.search(r"\[(\d+)\]", owned_line).group(1))
+            term.write("k" + "j" * (target - 1))
+            term.expect(lambda text: any(
+                "> [" in line and str(ports[0]) in line for line in text.splitlines()),
+                "Could not highlight the fixture server")
+            selected_port = ports[0]
             term.pump(1.8)
-            term.expect(lambda text: re.search(r"> \[\d+\]", text) and "Auto-refresh" in text,
-                        "Background refresh did not finish drawing its selected row and footer")
-            assert str(selected_port) in next(line for line in term.screen.display if "> [2]" in line), "Background refresh moved the selection"
+            text = term.expect(lambda text: re.search(r"> \[\d+\]", text) and "Auto-refresh" in text,
+                               "Background refresh did not finish drawing its selected row and footer")
+            selected_line = next(line for line in text.splitlines() if "> [" in line)
+            assert str(selected_port) in selected_line, "Background refresh moved the selection"
             capture(term, args.artifacts, "highlighted-selection")
-            term.write("k")
-            term.expect(lambda text: "> [1]" in text, "k did not move selection")
+            current = int(re.search(r"> \[(\d+)\]", selected_line).group(1))
+            if current > 1:
+                term.write("k" * (current - 1))
+            term.expect(lambda text: "> [1]" in text, "k did not move selection to the first row")
             term.write("\x1b[B")
             term.expect(lambda text: "> [2]" in text, "Down arrow did not move selection")
             term.resize(4, 44)
@@ -203,20 +229,29 @@ def main():
             term.resize(24, 110)
             text = term.expect(lambda text: "> [2]" in text, "Covered Enter selected a server")
             chosen_line = next(line for line in text.splitlines() if "> [2]" in line)
+            if not any(str(port) in chosen_line for port in ports[:2]):
+                # Other development servers may share this LAN; select only our fixture.
+                owned_line = next(line for line in text.splitlines() if str(ports[0]) in line)
+                target = int(re.search(r"\[(\d+)\]", owned_line).group(1))
+                term.write("k" + "j" * (target - 1))
+                text = term.expect(lambda text: f"> [{target}]" in text and str(ports[0]) in text,
+                                   "Could not select the fixture server among other LAN services")
+                chosen_line = next(line for line in text.splitlines() if f"> [{target}]" in line)
             chosen = next(index for index, port in enumerate(ports[:2]) if str(port) in chosen_line)
             selected_host = chosen_line.rsplit("(", 1)[1].rsplit(":", 1)[0].strip("[]")
             term.write("\r")
             log_wait("picker", "Selected server")
             selected_service = [first, second][chosen]
-            selected_service.wait_for("announced video stream")
+            log_wait(selected_service.log.stem, "announced video stream")
             selected_service.stop()
             services.remove(selected_service)
             log_wait("picker", "Connection failed, retrying")
-            text = term.expect(lambda text: selected_host in text and "Connecting to" in text
-                               and "LAN servers" not in text, "Reconnect splash lost the selected address")
-            capture(term, args.artifacts, "reconnect-splash")
+            text = term.expect(lambda text: selected_host in text
+                               and ("Connecting to" in text or "Failed to connect to" in text)
+                               and "LAN servers" not in text, "Reconnect UI lost the selected address")
+            capture(term, args.artifacts, "reconnect-state")
             replacement = server(chosen, "replacement")
-            replacement.wait_for("announced video stream")
+            log_wait(replacement.log.stem, "announced video stream")
             assert (root / "picker.log").read_text(errors="replace").count("Selected server") == 1
             term.interrupt()
             term.close()
@@ -274,11 +309,17 @@ def main():
             visible = [line for line in text.splitlines() if re.search(r"[ >] \[\d+\]", line)]
             assert len(visible) == 12, f"Expected 12 visible servers, got {len(visible)}: {visible}"
             assert boundary.process.isalive(), "Picker crashed while moving to server 14"
+            boundary.write("k" * 13)
+            boundary.expect(lambda text: "> [1]" in text, "Could not return to the first server")
+            boundary.write("k")
+            text = boundary.expect(lambda text: re.search(r"> \[(\d+)\]", text)
+                                   and int(re.search(r"> \[(\d+)\]", text).group(1)) >= 14,
+                                   "Up from server 1 produced an invalid negative selection")
+            last = int(re.search(r"> \[(\d+)\]", text).group(1))
             boundary.write("j")
             boundary.expect(lambda text: "> [1]" in text, "Down from the last server did not wrap to server 1")
             boundary.write("k")
-            text = boundary.expect(lambda text: "> [14]" in text,
-                                   "Up from server 1 produced an invalid negative selection")
+            text = boundary.expect(lambda text: f"> [{last}]" in text, "Up did not return to the last server")
             assert "[-1]" not in text
             assert boundary.process.isalive(), "Picker crashed at the negative selection boundary"
             capture(boundary, args.artifacts, "fourteen-server-scroll")
@@ -289,7 +330,10 @@ def main():
             if args.artifacts:
                 args.artifacts.mkdir(parents=True, exist_ok=True)
                 for path in root.glob("*.log"):
-                    shutil.copyfile(path, args.artifacts / path.name)
+                    shutil.copyfile(path, args.artifacts / (path.stem + ".txt"))
+            if sys.exc_info()[0] is not None:
+                for path in root.glob("*.log"):
+                    print(f"--- {path.name} ---\n{path.read_text(errors='replace')[-12000:]}")
             for term in terminals:
                 term.close()
             for service in services:

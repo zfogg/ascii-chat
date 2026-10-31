@@ -156,7 +156,11 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
     return ERROR_INVALID_PARAM;
   }
 
-  bool is_direct = url_is_direct_stream(url);
+  // Local paths and native FFmpeg protocols never need site extraction.
+  bool is_site = platform_strncasecmp(url, "http://", sizeof("http://") - 1) == 0 ||
+                 platform_strncasecmp(url, "https://", sizeof("https://") - 1) == 0 ||
+                 (platform_strncasecmp(url, "ytsearch", sizeof("ytsearch") - 1) == 0 && strchr(url, ':'));
+  bool is_direct = !is_site || url_is_direct_stream(url);
   ASCII_OTEL_ATTR_STRING("media.resolver", is_direct ? "ffmpeg" : "yt-dlp");
 
   if (is_direct) {
@@ -169,7 +173,9 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
   log_debug("URL is complex site, attempting yt-dlp extraction: %s", url);
 
   // Try yt-dlp extraction (for complex sites like YouTube, Twitch, etc.)
+  asciichat_errno_scope_t extraction_scope = errno_scope_begin();
   asciichat_error_t yt_dlp_result = yt_dlp_extract_stream_url(url, yt_dlp_options, output_url, output_size);
+  errno_scope_end(extraction_scope, ASCIICHAT_ERRNO_HANDLED);
   if (yt_dlp_result == ASCIICHAT_OK) {
     log_debug("yt-dlp successfully extracted stream URL");
     return ASCIICHAT_OK;
@@ -216,6 +222,8 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
 
   switch (type) {
   case MEDIA_SOURCE_WEBCAM: {
+    if (GET_OPTION(waveform) || GET_OPTION(fft))
+      break;
     // Parse webcam index from path (if provided)
     unsigned short int index = 0;
     if (path) {
@@ -524,7 +532,8 @@ asciichat_error_t media_source_start_video(media_source_t *source) {
   ASCII_OTEL_SCOPE(MEDIA_SOURCE_START_VIDEO);
   if (!source)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing media source");
-  if (!source->audio_only || source->webcam_ctx || GET_OPTION(test_pattern))
+  if ((!source->audio_only && source->type != MEDIA_SOURCE_WEBCAM) || source->webcam_ctx || GET_OPTION(test_pattern) ||
+      GET_OPTION(waveform) || GET_OPTION(fft))
     return ASCIICHAT_OK;
   source->webcam_index = GET_OPTION(webcam_index);
   asciichat_error_t err = webcam_init_context(&source->webcam_ctx, source->webcam_index);
@@ -535,7 +544,8 @@ asciichat_error_t media_source_start_video(media_source_t *source) {
 }
 
 bool media_source_uses_webcam(media_source_t *source) {
-  return source && (source->type == MEDIA_SOURCE_WEBCAM || (source->audio_only && !GET_OPTION(test_pattern)));
+  return source && ((source->type == MEDIA_SOURCE_WEBCAM && !GET_OPTION(waveform) && !GET_OPTION(fft)) ||
+                    (source->audio_only && !GET_OPTION(test_pattern) && !GET_OPTION(waveform) && !GET_OPTION(fft)));
 }
 
 image_t *media_source_read_video(media_source_t *source) {
@@ -554,9 +564,11 @@ image_t *media_source_read_video(media_source_t *source) {
 
   if (source->audio_only && media_source_at_end(source))
     return NULL;
-  if (source->audio_only && GET_OPTION(test_pattern))
+  // Audio visualizations replace the image at display time and need only a frame clock.
+  if ((source->audio_only && GET_OPTION(test_pattern)) ||
+      ((source->audio_only || source->type == MEDIA_SOURCE_WEBCAM) && (GET_OPTION(waveform) || GET_OPTION(fft))))
     return read_test_pattern(source);
-  if (source->audio_only && !source->webcam_ctx) {
+  if ((source->audio_only || source->type == MEDIA_SOURCE_WEBCAM) && !source->webcam_ctx) {
     if (media_source_start_video(source) != ASCIICHAT_OK)
       return NULL;
   }

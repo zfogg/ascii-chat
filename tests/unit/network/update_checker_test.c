@@ -1,5 +1,7 @@
 #include <criterion/criterion.h>
 
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/string.h>
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/version.h>
 
@@ -133,4 +135,35 @@ Test(update_checker, notification_contains_action_and_exact_release_source) {
   cr_assert(strstr(notification, "v2.0.0") != NULL);
   cr_assert(strstr(notification, "https://github.com/zfogg/ascii-chat/releases/tag/v2.0.0") != NULL);
   cr_assert(strstr(notification, "Download:") != NULL || strstr(notification, "Run:") != NULL);
+}
+
+Test(update_checker, override_cache_directory_accepts_a_missing_or_existing_separator) {
+  set_test_config_root();
+  const char *existing = getenv("ASCII_CHAT_UPDATE_CACHE_DIR");
+  char *saved = existing ? platform_strdup(existing) : NULL;
+  char directory[1024], override[1024], cache_path[1024];
+  snprintf(directory, sizeof(directory), "%s/override", test_config_root);
+  snprintf(cache_path, sizeof(cache_path), "%s/last_update_check", directory);
+  update_check_result_t expected = {0};
+  snprintf(expected.latest_version, sizeof(expected.latest_version), "v99.0.0");
+  snprintf(expected.release_url, sizeof(expected.release_url), "https://example.com/release");
+  expected.last_check_time = time(NULL);
+  for (unsigned trailing = 0; trailing < 2; ++trailing) {
+    snprintf(override, sizeof(override), "%s%s", directory, trailing ? "/" : "");
+    cr_assert_eq(setenv("ASCII_CHAT_UPDATE_CACHE_DIR", override, 1), 0);
+    cr_assert_eq(update_check_save_cache(&expected), ASCIICHAT_OK);
+    struct stat status;
+    cr_assert_eq(stat(cache_path, &status), 0, "Cache must be inside the requested directory");
+    update_check_result_t loaded;
+    cr_assert_eq(update_check_load_cache(&loaded), ASCIICHAT_OK);
+    cr_assert_str_eq(loaded.latest_version, expected.latest_version);
+  }
+  if (saved)
+    cr_assert_eq(setenv("ASCII_CHAT_UPDATE_CACHE_DIR", saved, 1), 0);
+  else
+    cr_assert_eq(unsetenv("ASCII_CHAT_UPDATE_CACHE_DIR"), 0);
+  SAFE_FREE(saved);
+  (void)remove(cache_path);
+  (void)rmdir(directory);
+  restore_test_config_root();
 }

@@ -77,7 +77,9 @@ static char *get_cache_file_path(void) {
   // Build cache file path
   size_t path_len = strlen(config_dir) + strlen(UPDATE_CHECK_CACHE_FILENAME) + 2;
   char *cache_path = SAFE_MALLOC(path_len, char *);
-  snprintf(cache_path, path_len, "%s%s", config_dir, UPDATE_CHECK_CACHE_FILENAME);
+  size_t dir_len = strlen(config_dir);
+  const char *separator = dir_len && (config_dir[dir_len - 1] == '/' || config_dir[dir_len - 1] == '\\') ? "" : "/";
+  snprintf(cache_path, path_len, "%s%s%s", config_dir, separator, UPDATE_CHECK_CACHE_FILENAME);
   SAFE_FREE(config_dir);
 
   return cache_path;
@@ -287,13 +289,23 @@ static bool parse_github_release_json(const char *json, char *tag_name, size_t t
   return ok;
 }
 
+// A cache miss is resolved by a fresh check and must not cover the update dialog.
+static asciichat_error_t load_optional_cache(update_check_result_t *result) {
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  bool previous = errno_notifications_suppress(true);
+  asciichat_error_t error = update_check_load_cache(result);
+  errno_notifications_suppress(previous);
+  errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+  return error;
+}
+
 asciichat_error_t update_check_perform(update_check_result_t *result) {
   if (!result) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL result pointer");
   }
 
   update_check_result_t cached = {0};
-  bool have_cached = update_check_load_cache(&cached) == ASCIICHAT_OK;
+  bool have_cached = load_optional_cache(&cached) == ASCIICHAT_OK;
   memset(result, 0, sizeof(*result));
 
   // Fill in current version and SHA
@@ -533,7 +545,7 @@ asciichat_error_t update_check_startup(update_check_result_t *result) {
   update_check_result_t *target = result ? result : &local_result;
 
   // Try to load from cache first
-  asciichat_error_t cache_err = update_check_load_cache(target);
+  asciichat_error_t cache_err = load_optional_cache(target);
   if (cache_err == ASCIICHAT_OK && update_check_is_cache_fresh(target)) {
     // Cache is fresh, use it
     log_debug("Using cached update check result (age: %.1f days)",
