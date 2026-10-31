@@ -5,13 +5,11 @@
  */
 
 #include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/keyboard_stream.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/lifecycle.h>
-#include <ascii-chat/platform/keyboard_text.h>
 
 #include <windows.h>
 #include <string.h>

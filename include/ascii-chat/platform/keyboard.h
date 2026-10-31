@@ -315,3 +315,36 @@ keyboard_line_edit_result_t keyboard_apply_key(keyboard_line_edit_opts_t *opts);
 /** Background queries share the keyboard decoder when it owns terminal input. */
 bool keyboard_is_initialized(void);
 bool keyboard_query_background(uint8_t *r, uint8_t *g, uint8_t *b);
+
+/** Incremental UTF-8 decoder. Zero-initialize; incomplete input never becomes text. */
+typedef struct {
+  uint8_t bytes[4];
+  unsigned length, expected;
+} keyboard_text_decoder_t;
+
+/** Feed a byte or native special key. Invalid sequences are discarded; a new
+ * starter or special key interrupts incomplete text and is processed normally. */
+keyboard_key_t keyboard_text_decode(keyboard_text_decoder_t *state, int input);
+
+/** Encode a text key to NUL-terminated UTF-8. Returns 0 for non-text keys. */
+size_t keyboard_text_encode(keyboard_key_t key, char text[5]);
+
+/** Decode native UTF-16 console text. An unmatched surrogate is discarded;
+ * a following ordinary character is preserved. Zero-initialize pending_high. */
+keyboard_key_t keyboard_text_utf16(uint16_t *pending_high, uint16_t unit);
+
+/** Decode a nonblocking UTF-8 byte stream and terminal escape sequences. */
+keyboard_key_t keyboard_stream_read(int (*read_byte)(void));
+void keyboard_stream_reset(void);
+/** Decode available bytes and retain the next event without consuming it. */
+bool keyboard_stream_ready(int (*read_byte)(void));
+
+/** Last complete OSC 11 reply received from the terminal frontend. */
+uint64_t keyboard_stream_terminal_reply_ns(void);
+
+/** Query through the normal input decoder, preserving unrelated keyboard input. */
+bool keyboard_stream_query_background(int (*read_byte)(void), bool (*send_query)(void), uint8_t *r, uint8_t *g,
+                                      uint8_t *b);
+
+/** Most recently decoded OSC 11 reply, without reading or waiting for input. */
+bool keyboard_stream_background(uint8_t *r, uint8_t *g, uint8_t *b);

@@ -3,8 +3,8 @@
 Native keyboard input has four boundaries:
 
 - `lib/platform/{posix,windows}/keyboard.c` owns terminal/console access and restoration.
-- `lib/platform/keyboard_stream.c` frames terminal escape sequences and replies.
-  `keyboard_text.c` buffers fragmented text and delegates UTF-8 decoding, scalar
+- `lib/platform/keyboard.c` frames terminal escape sequences and replies,
+  buffers fragmented text and delegates UTF-8 decoding, scalar
   validation, and encoding to utf8proc. Windows UTF-16 surrogate pairs become the
   same normalized keys; console repeats apply to complete characters.
 - `lib/tui/input_events.c` collects bracketed paste and queues decoded events in
@@ -41,8 +41,8 @@ python tests/scripts/keyboard_text_coverage.py --build build
 
 This runs the same exhaustive Criterion tests for every non-NUL Unicode scalar,
 malformed UTF-8, fragmented input, and UTF-16 recovery. It requires **100% line and
-branch coverage of `lib/platform/keyboard_text.c`** and writes its counters, gcov
-listing, and summary under the sibling `build-keyboard-text-coverage/` directory. Ubuntu Debug CI enforces
-this check. The focused measurement excludes sanitizer-generated branches and
+branch coverage of the three `keyboard_text_*` Unicode functions in
+`lib/platform/keyboard.c`** and writes its counters, gcov listing, and summary under
+the sibling `build-keyboard-text-coverage/` directory. Ubuntu Debug CI enforces this check. The focused measurement excludes sanitizer-generated branches and
 vendored utf8proc internals; the ordinary integrated tests retain sanitizers.
 This percentage does not describe all Unicode utilities or the whole application.

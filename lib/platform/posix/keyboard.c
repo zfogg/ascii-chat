@@ -5,7 +5,6 @@
  */
 
 #include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/keyboard_stream.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>

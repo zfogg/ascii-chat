@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/ui/input.h>
-#include <ascii-chat/platform/keyboard_text.h>
+#include <ascii-chat/platform/keyboard.h>
 #include <string.h>
 
 Test(text_edit, insertion_is_atomic_and_keeps_valid_utf8) {

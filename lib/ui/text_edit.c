@@ -1,5 +1,5 @@
 #include <ascii-chat/ui/input.h>
-#include <ascii-chat/platform/keyboard_text.h>
+#include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/util/utf8.h>
 #include <string.h>
 #include <ctype.h>

@@ -1,7 +1,7 @@
 """Require complete line/branch coverage of the shared keyboard Unicode adapter.
 
 The ordinary Criterion target runs with the project's sanitizers. This separate
-measurement instruments only our adapter, without sanitizer-generated branches
+measurement reports only our Unicode adapter functions, without sanitizer-generated branches
 or vendored utf8proc internals. It runs the same Criterion source, not fixtures.
 """
 import argparse
@@ -11,6 +11,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 
 
 def run(command, cwd):
@@ -43,34 +44,61 @@ def main():
     # normal gcovr report merges from the configured build directory.
     output = build.with_name(build.name + "-keyboard-text-coverage")
     output.mkdir(parents=True, exist_ok=True)
-    for name in ("keyboard_text.gcda", "keyboard_text_test.gcda"):
+    for name in ("keyboard.gcda", "keyboard_text_test.gcda"):
         (output / name).unlink(missing_ok=True)
-    flags = ["-g", "-O0", "-DUTF8PROC_STATIC", "-I" + str(root / "include"), "-I" + str(root / "deps")]
+    flags = ["-g", "-O0", "-ffunction-sections", "-fdata-sections", "-DUTF8PROC_STATIC", "-I" + str(root / "include"), "-I" + str(root / "deps"), "-I" + str(build / "generated")]
     utf8proc = root / "deps/ascii-chat-deps/utf8proc/utf8proc.c"
     run([clang, *flags, "-c", utf8proc, "-o", "utf8proc.o"], output)
     criterion = shlex.split(run(["pkg-config", "--cflags", "criterion"], root))
-    for source in (root / "lib/platform/keyboard_text.c", root / "tests/unit/platform/keyboard_text_test.c"):
+    for source in (root / "lib/platform/keyboard.c", root / "tests/unit/platform/keyboard_text_test.c"):
         run([clang, *flags, *criterion, "--coverage", "-c", source, "-o", source.stem + ".o"], output)
     libraries = shlex.split(run(["pkg-config", "--libs", "criterion"], root))
-    run([clang, "--coverage", "keyboard_text.o", "keyboard_text_test.o", "utf8proc.o",
+    link_gc = "-Wl,-dead_strip" if sys.platform == "darwin" else "-Wl,--gc-sections"
+    run([clang, "--coverage", link_gc, "keyboard.o", "keyboard_text_test.o", "utf8proc.o",
          *libraries, "-o", "keyboard-text-test"], output)
     tests = run([output / "keyboard-text-test", "--jobs", "1"], output)
     print(tests, end="")
-    report = run([llvm_cov, "gcov", "-b", "-c", "-o", "keyboard_text.gcno",
-                  root / "lib/platform/keyboard_text.c"], output)
+    report = run([llvm_cov, "gcov", "-b", "-c", "-o", "keyboard.gcno",
+                  root / "lib/platform/keyboard.c"], output)
     print(report, end="")
-    (output / "summary.txt").write_text(tests + report, encoding="utf-8")
-    lines = re.search(r"Lines executed:([0-9.]+)% of ([0-9]+)", report)
-    branches = re.search(r"Taken at least once:([0-9.]+)% of ([0-9]+)", report)
-    if not lines or not branches or not int(lines[2]) or not int(branches[2]):
+    functions = {"keyboard_text_decode", "keyboard_text_encode", "keyboard_text_utf16"}
+    listing = (output / "keyboard.c.gcov").read_text(encoding="utf-8")
+    selected = []
+    active = False
+    found = set()
+    for line in listing.splitlines():
+        function = re.match(r"function (\w+) called", line)
+        if function:
+            active = function[1] in functions
+            if active:
+                found.add(function[1])
+        if active:
+            selected.append(line)
+    if found != functions:
+        raise RuntimeError("Missing Unicode function counters")
+    counters = []
+    branches = []
+    for line in selected:
+        count = re.match(r"\s*([^:]+):\s*\d+:", line)
+        if count and count[1].strip() != "-":
+            counters.append(count[1].strip().replace(",", ""))
+        branch = re.match(r"branch\s+\d+ taken (\d+)", line)
+        if branch:
+            branches.append(int(branch[1]))
+        elif line.startswith("branch "):
+            branches.append(0)
+    if not counters or not branches:
         raise RuntimeError("Missing execution counters")
-    summary = {"source": "lib/platform/keyboard_text.c", "line_percent": float(lines[1]),
-               "branch_percent": float(branches[1]), "lines": int(lines[2]), "branches": int(branches[2])}
+    covered = sum(value.rstrip("*").isdigit() and int(value.rstrip("*")) > 0 for value in counters)
+    summary = {"source": "lib/platform/keyboard.c", "functions": sorted(functions),
+               "line_percent": 100 * covered / len(counters),
+               "branch_percent": 100 * sum(value > 0 for value in branches) / len(branches),
+               "lines": len(counters), "branches": len(branches)}
+    (output / "unicode.gcov").write_text("\n".join(selected) + "\n", encoding="utf-8")
     (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
-    listing = (output / "keyboard_text.c.gcov").read_text(encoding="utf-8")
-    missed = re.search(r"^\s*#####:", listing, re.MULTILINE) or re.search(
-        r"^branch\s+\d+ taken 0(?:\s|$)", listing, re.MULTILINE)
-    if missed or summary["line_percent"] != 100 or summary["branch_percent"] != 100:
+    print(json.dumps(summary, indent=2))
+    (output / "summary.txt").write_text(tests + report + json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    if summary["line_percent"] != 100 or summary["branch_percent"] != 100:
         raise RuntimeError("Keyboard Unicode adapter requires 100% line and branch coverage")
 
 

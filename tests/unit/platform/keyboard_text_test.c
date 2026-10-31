@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/platform/keyboard_text.h>
+#include <ascii-chat/platform/keyboard.h>
 #include <string.h>
 
 Test(keyboard_text, every_unicode_scalar_round_trips) {

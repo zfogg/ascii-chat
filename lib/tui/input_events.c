@@ -1,5 +1,5 @@
 #include <ascii-chat/tui/input_events.h>
-#include <ascii-chat/platform/keyboard_text.h>
+#include <ascii-chat/platform/keyboard.h>
 #include <string.h>
 
 keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*read_key)(void),
