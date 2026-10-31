@@ -15,6 +15,7 @@
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/tui/sync.h>
 #include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/input_events.h>
 #include <ascii-chat/tui/prompt.h>
 #include <ascii-chat/media/playlist.h>
 #include <ascii-chat/tui/keyboard_help.h>
@@ -58,15 +59,12 @@ static bool g_switch_pending;
 static _Atomic bool g_input_buffered;
 
 static bool input_switch_key(keyboard_key_t key) {
-  return key == '=' || key == KEY_BACKTICK || key == KEY_QUESTION || key == ']' || key == 'o' || key == 'O' ||
-         key == 15;
+  tui_shortcut_t action = tui_shortcut_action(key);
+  return action == TUI_SHORTCUT_STATS || action == TUI_SHORTCUT_ERRORS || action == TUI_SHORTCUT_HELP ||
+         action == TUI_SHORTCUT_LOGS || action == TUI_SHORTCUT_MEDIA;
 }
 
-static bool g_pasting, g_paste_invalid, g_paste_ready;
-static char g_paste[8192];
-static size_t g_paste_length;
-static keyboard_key_t g_text_keys[8192];
-static size_t g_text_head, g_text_count;
+static tui_input_events_t g_events;
 
 typedef struct {
   char buffer[8192];
@@ -79,7 +77,7 @@ static input_editor_t g_media_editor;
 // Publish only whether routing work remains; the actual queues stay serialized.
 static void input_unlock(void) {
   atomic_store(&g_input_buffered,
-               g_sync_key_count || g_text_count || g_paste_ready || g_pasting || g_media_editor.active);
+               g_sync_key_count || g_events.count || g_events.ready || g_events.pasting || g_media_editor.active);
   mutex_unlock(&g_input_mutex);
 }
 
@@ -87,76 +85,13 @@ static bool input_ready(void) {
   return atomic_load(&g_input_buffered) || keyboard_input_available();
 }
 
+static bool input_media_paste(const char *text) {
+  return text[0] == '.' || text[0] == '/' || text[0] == '\\' || text[0] == '~' || text[0] == '\'' || text[0] == '"' ||
+         (strlen(text) > 2 && text[1] == ':') || strstr(text, "://") != NULL;
+}
+
 static keyboard_key_t input_read_event(void) {
-  if (g_paste_ready)
-    return KEY_NONE;
-  for (unsigned i = 0; i < 1024; ++i) {
-    bool buffered = g_text_count != 0;
-    keyboard_key_t key = buffered ? g_text_keys[g_text_head++] : keyboard_read_nonblocking();
-    if (buffered)
-      --g_text_count;
-    if (key == KEY_NONE)
-      return KEY_NONE;
-    if (key == KEY_PASTE_BEGIN) {
-      g_pasting = true;
-      g_paste_invalid = false;
-      g_paste_length = 0;
-      continue;
-    }
-    if (key == KEY_PASTE_END) {
-      if (!g_pasting)
-        continue;
-      g_pasting = false;
-      g_paste[g_paste_length] = '\0';
-      g_paste_ready = true;
-      return KEY_PASTE;
-    }
-    if (!g_pasting) {
-      if (buffered)
-        return key;
-      if (key < 32 || key > 255)
-        return key;
-      g_text_head = 0;
-      g_text_keys[0] = key;
-      size_t count = 1;
-      keyboard_key_t next;
-      while (count < 8192 && (next = keyboard_read_nonblocking()) != KEY_NONE) {
-        g_text_keys[count++] = next;
-        if (next == KEY_PASTE_BEGIN || next == KEY_PASTE_END)
-          break;
-      }
-      size_t text_count = count;
-      while (text_count && (g_text_keys[text_count - 1] == '\r' || g_text_keys[text_count - 1] == '\n'))
-        --text_count;
-      char text[8193];
-      bool printable = true;
-      for (size_t n = 0; n < count; ++n) {
-        if (n < text_count && (g_text_keys[n] < 32 || g_text_keys[n] > 255 || g_text_keys[n] == 127))
-          printable = false;
-        text[n] = (char)g_text_keys[n];
-      }
-      text[text_count] = '\0';
-      bool path = text[0] == '.' || text[0] == '/' || text[0] == '\\' || text[0] == '~' || text[0] == '\'' ||
-                  text[0] == '"' || (count > 2 && text[1] == ':') || strstr(text, "://") != NULL;
-      if (text_count > 1 && path) {
-        g_paste_invalid = !printable || text_count >= sizeof(g_paste);
-        g_paste_length = g_paste_invalid ? 0 : text_count;
-        memcpy(g_paste, text, g_paste_length);
-        g_paste[g_paste_length] = '\0';
-        g_paste_ready = true;
-        return KEY_PASTE;
-      }
-      g_text_head = 1;
-      g_text_count = count - 1;
-      return key;
-    }
-    if ((key < 32 && key != '\n' && key != '\r' && key != '\t') || key > 255 || key == 127 ||
-        g_paste_length + 1 >= sizeof(g_paste))
-      g_paste_invalid = true;
-    else
-      g_paste[g_paste_length++] = (char)key;
-  }
-  return KEY_NONE;
+  return tui_input_events_read(&g_events, keyboard_read_nonblocking, input_media_paste);
 }
 
 /* Background debug polling can retain an event before a modal screen appears. */
@@ -202,13 +137,13 @@ asciichat_error_t ui_input_take_paste(char *buffer, size_t capacity) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid paste buffer");
   mutex_lock(&g_input_mutex);
   asciichat_error_t result = ASCIICHAT_OK;
-  if (g_paste_invalid || g_paste_length >= capacity || !utf8_is_valid(g_paste))
+  if (g_events.invalid || g_events.length >= capacity || !utf8_is_valid(g_events.paste))
     result = SET_ERRNO(ERROR_INVALID_PARAM, "Paste media paths or URLs without terminal controls (maximum 8191 bytes)");
   else
-    memcpy(buffer, g_paste, g_paste_length + 1);
-  g_paste_length = 0;
-  sodium_memzero(g_paste, sizeof(g_paste));
-  g_paste_ready = false;
+    memcpy(buffer, g_events.paste, g_events.length + 1);
+  g_events.length = 0;
+  sodium_memzero(g_events.paste, sizeof(g_events.paste));
+  g_events.ready = false;
   input_unlock();
   return result;
 }
@@ -300,7 +235,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     if (key == KEY_ESCAPE || key == KEY_QUESTION)
       keyboard_help_toggle_terminal(ui_controller_active_fd());
     if (key == KEY_PASTE)
-      g_paste_ready = false;
+      g_events.ready = false;
     input_unlock();
     return KEY_NONE;
   }
@@ -309,7 +244,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     if (key != KEY_NONE)
       terminal_screen_logs_handle_key(key);
     if (key == KEY_PASTE)
-      g_paste_ready = false;
+      g_events.ready = false;
     input_unlock();
     return KEY_NONE;
   }
@@ -320,16 +255,16 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     else if (key != KEY_NONE && key != KEY_PASTE && key != 3)
       ui_error_popup_key(key);
     if (key == KEY_PASTE)
-      g_paste_ready = false;
+      g_events.ready = false;
     input_unlock();
     return key == 3 ? key : KEY_NONE;
   }
   if (state.screen == UI_SCREEN_NOTICE) {
-    g_paste_ready = false;
+    g_events.ready = false;
     g_sync_key_count = 0;
     keyboard_key_t notice_key = input_read_event();
     if (notice_key == KEY_PASTE)
-      g_paste_ready = false;
+      g_events.ready = false;
     if (notice_key == KEY_ESCAPE || notice_key == '\r' || notice_key == '\n' || notice_key == 'q' || notice_key == 3)
       ui_controller_remove(UI_SCREEN_NOTICE);
     input_unlock();
@@ -353,10 +288,10 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
   }
   if (screen == UI_SCREEN_MEDIA && g_media_editor.active && state.screen == UI_SCREEN_PROMPT) {
     if (state.covered || g_input_was_covered) {
-      g_paste_ready = false;
+      g_events.ready = false;
       g_sync_key_count = 0;
       for (unsigned n = 0; n < 256 && input_read_event() != KEY_NONE; ++n) {
-        g_paste_ready = false;
+        g_events.ready = false;
       }
       g_input_was_covered = state.covered;
       input_unlock();
@@ -380,7 +315,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     }
     if (key == KEY_ESCAPE || key == 3 || ui_input_expired(g_media_editor.deadline)) {
       if (key == KEY_PASTE)
-        g_paste_ready = false;
+        g_events.ready = false;
       ascii_otel_ui_usage("media_input_prompt", ui_input_expired(g_media_editor.deadline) ? "timed_out" : "cancelled",
                           0);
       g_media_editor.active = false;
@@ -395,10 +330,10 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
       if (key == KEY_PASTE)
         ascii_otel_ui_usage("media_input_prompt", "paste", 0);
       if (key == KEY_PASTE) {
-        if (!g_paste_invalid && utf8_is_valid(g_paste)) {
+        if (!g_events.invalid && utf8_is_valid(g_events.paste)) {
           media_playlist_t items = {0}, added = {0};
           bool valid = !g_media_editor.length || media_playlist_parse(g_media_editor.buffer, &items) == ASCIICHAT_OK;
-          valid = valid && media_playlist_parse(g_paste, &added) == ASCIICHAT_OK;
+          valid = valid && media_playlist_parse(g_events.paste, &added) == ASCIICHAT_OK;
           if (valid) {
             for (size_t i = 0; i < added.count && valid; ++i)
               valid = media_playlist_append(&items, added.paths[i], added.urls[i]) == ASCIICHAT_OK;
@@ -413,7 +348,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
             ascii_otel_ui_usage("media_input_prompt", "queue_changed", 0);
           CLEAR_ERRNO();
         }
-        g_paste_ready = false;
+        g_events.ready = false;
         g_media_editor.pasted = true;
       } else if (!(key == ' ' && g_media_editor.pasted && g_media_editor.cursor == g_media_editor.length)) {
         g_media_editor.pasted = false;
@@ -443,7 +378,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     if (state.covered || g_input_was_covered) {
       // Drain on recovery too, including keys buffered since the last poll.
       g_sync_key_count = 0;
-      g_paste_ready = false;
+      g_events.ready = false;
       for (int i = 0; i < 256 && input_read_event() != KEY_NONE; ++i) {
       }
     } else {
@@ -467,8 +402,14 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     }
     g_input_was_covered = state.covered;
   }
+  if (key == KEY_PASTE && log_search_is_entering()) {
+    if (!g_events.invalid)
+      (void)log_search_insert_text(g_events.paste);
+    g_events.ready = false;
+    key = KEY_NONE;
+  }
   if (key == KEY_PASTE && screen != UI_SCREEN_MEDIA && screen != UI_SCREEN_PROMPT) {
-    g_paste_ready = false;
+    g_events.ready = false;
     key = KEY_NONE;
   }
   if (key != KEY_NONE && update_banner_handle_key(key))
@@ -697,7 +638,7 @@ asciichat_error_t ui_input_prompt(const char *prompt, char *buffer, size_t max_l
 }
 
 asciichat_error_t ui_input_media_begin(const char *text) {
-  if (!text || strlen(text) >= sizeof(g_media_editor.buffer) || !input_initialize())
+  if (!text || !utf8_is_valid(text) || strlen(text) >= sizeof(g_media_editor.buffer) || !input_initialize())
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid media prompt text");
   mutex_lock(&g_input_mutex);
   memset(&g_media_editor, 0, sizeof(g_media_editor));

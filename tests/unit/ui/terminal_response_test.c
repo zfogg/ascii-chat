@@ -188,3 +188,44 @@ Test(terminal_response, extended_keyboard_controls_preserve_cancel_and_edit_keys
   for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); ++i)
     cr_assert_eq(keyboard_stream_read(next_byte), keys[i]);
 }
+
+Test(terminal_response, utf8_fragments_readiness_and_reset) {
+  keyboard_stream_reset();
+  input = "\xf0";
+  cr_assert_not(keyboard_stream_ready(next_byte));
+  input = "\x9f\x98";
+  cr_assert_not(keyboard_stream_ready(next_byte));
+  input = "\x80";
+  cr_assert(keyboard_stream_ready(next_byte));
+  cr_assert(keyboard_stream_ready(next_byte));
+  cr_assert_eq(keyboard_stream_read(next_byte), KEY_UNICODE_BASE + 0x1f600);
+  input = "\xe2";
+  cr_assert_eq(keyboard_stream_read(next_byte), KEY_NONE);
+  input = "\033[D";
+  cr_assert_eq(keyboard_stream_read(next_byte), KEY_LEFT);
+  input = "\xe2";
+  keyboard_stream_read(next_byte);
+  keyboard_stream_reset();
+  input = "\x82\xacq";
+  cr_assert_eq(keyboard_stream_read(next_byte), 'q');
+}
+
+Test(terminal_response, unicode_extended_keys_and_shift_enter_do_not_alias_pageup) {
+  keyboard_stream_reset();
+  input = "\033[233;2u\033[30028u\033[128512u\033[13;2u\033[5~";
+  const keyboard_key_t expected[] = {KEY_UNICODE_BASE + 233, KEY_UNICODE_BASE + 30028, KEY_UNICODE_BASE + 128512,
+                                     KEY_SHIFT_ENTER, KEY_PAGEUP};
+  cr_assert_neq(KEY_SHIFT_ENTER, KEY_PAGEUP);
+  for (size_t i = 0; i < sizeof(expected) / sizeof(*expected); ++i)
+    cr_assert_eq(keyboard_stream_read(next_byte), expected[i]);
+}
+
+Test(terminal_response, malformed_utf8_cannot_become_shortcuts) {
+  keyboard_stream_reset();
+  input = "\xc0\xaf\xed\xa0\x80\xf4\x90\x80\x80o";
+  cr_assert_eq(keyboard_stream_read(next_byte), 'o');
+  input = "\033[200~\xc3\xa9\033[201~";
+  const keyboard_key_t expected[] = {KEY_PASTE_BEGIN, 0xc3, 0xa9, KEY_PASTE_END};
+  for (size_t i = 0; i < sizeof(expected) / sizeof(*expected); ++i)
+    cr_assert_eq(keyboard_stream_read(next_byte), expected[i]);
+}

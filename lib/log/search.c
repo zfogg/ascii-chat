@@ -21,6 +21,7 @@
 #include "ascii-chat/util/flow_control.h"
 #include "ascii-chat/util/time.h"
 #include <ascii-chat/session/session_log_buffer.h>
+#include <ascii-chat/ui/input.h>
 #include "ascii-chat/options/options.h"
 #include <ascii-chat/video/terminal/ansi.h>
 
@@ -455,6 +456,34 @@ void log_search_process_pending(void) {
     atomic_store_bool(&g_search_state.needs_rerender, true);
 }
 
+asciichat_error_t log_search_insert_text(const char *text) {
+  if (!text || strlen(text) >= LOG_SEARCH_INPUT_BUFFER_SIZE)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Search paste exceeds input capacity");
+  if (!log_search_is_entering())
+    return SET_ERRNO(ERROR_INVALID_STATE, "Search input is not active");
+  char normalized[LOG_SEARCH_INPUT_BUFFER_SIZE];
+  size_t i;
+  for (i = 0; text[i]; ++i) {
+    unsigned char byte = (unsigned char)text[i];
+    normalized[i] = byte < 32 || byte == 127 ? ' ' : (char)byte;
+  }
+  normalized[i] = '\0';
+  mutex_lock(&g_search_state.mutex);
+  asciichat_error_t result = ASCIICHAT_OK;
+  if (g_search_state.mode != LOG_SEARCH_MODE_ENTERING)
+    result = SET_ERRNO(ERROR_INVALID_STATE, "Search input is not active");
+  else {
+    result = ui_input_insert(g_search_state.input_buffer, sizeof(g_search_state.input_buffer), &g_search_state.len,
+                             &g_search_state.cursor, normalized);
+    if (result == ASCIICHAT_OK)
+      flow_control_debounce_trigger(&g_search_state.debounce, time_get_ns(), LOG_SEARCH_DEBOUNCE_NS);
+  }
+  mutex_unlock(&g_search_state.mutex);
+  if (result == ASCIICHAT_OK)
+    atomic_store_bool(&g_search_state.needs_rerender, true);
+  return result;
+}
+
 asciichat_error_t log_search_handle_key(keyboard_key_t key) {
   mutex_lock(&g_search_state.mutex);
 
@@ -470,7 +499,7 @@ asciichat_error_t log_search_handle_key(keyboard_key_t key) {
   }
 
   // In input mode - use keyboard_read_line_interactive()
-  // CRITICAL: Keep mutex held during keyboard_read_line_interactive() to prevent races
+  // Keep the mutex held during editing to prevent races
   // with the rendering thread. The validator callback and buffer modifications must be
   // synchronized with readers in log_search_gather_and_filter_logs().
   keyboard_line_edit_opts_t opts = {

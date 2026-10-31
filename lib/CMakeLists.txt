@@ -42,6 +42,7 @@ set(CORE_SRCS
     ${LIB_DIR}/tui/controller.c
     ${LIB_DIR}/tui/render_progress.c
     ${LIB_DIR}/tui/input.c
+    ${LIB_DIR}/tui/input_events.c
     ${LIB_DIR}/tui/sync.c
     ${LIB_DIR}/tui/prompt.c
     ${LIB_DIR}/tui/error_popup.c
@@ -58,6 +59,7 @@ set(CORE_SRCS
     ${LIB_DIR}/tui/update_banner.c
     ${LIB_DIR}/tui/mdns.c
     ${LIB_DIR}/ui/input.c
+    ${LIB_DIR}/ui/text_edit.c
     ${LIB_DIR}/ui/output.c
     ${LIB_DIR}/ui/layout.c
     ${LIB_DIR}/ui/progress.c
@@ -410,7 +412,7 @@ target_link_libraries(ascii-chat-platform PRIVATE
 
 # Link render-file dependencies to platform module (for terminal renderers)
 target_include_directories(ascii-chat-platform PRIVATE ${PLATFORM_INCLUDES})
-target_link_libraries(ascii-chat-platform PRIVATE ${PLATFORM_LIBS})
+target_link_libraries(ascii-chat-platform PRIVATE ${PLATFORM_LIBS} ${UTF8PROC_LIBRARIES})
 
 # Add kernel headers for musl builds (needed for V4L2)
 if(USE_MUSL AND DEFINED MUSL_DEPS_DIR AND EXISTS "${MUSL_DEPS_DIR}/musl-deps/kernel-headers")

@@ -391,7 +391,7 @@ export function useAsciiRendererHandle({
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       const ui = ensureUi();
       if (!ui) return;
-      const action = ui.key(event.key);
+      const action = ui.key(event.key, event.shiftKey);
       if (action) {
         event.preventDefault();
         uiProps.current.onUiAction?.({
