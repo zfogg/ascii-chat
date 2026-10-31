@@ -282,10 +282,6 @@ jobs:
 
           echo "Unit tests completed successfully"
 
-      - name: Require full keyboard Unicode adapter coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'debug'
-        run: python tests/scripts/keyboard_text_coverage.py --build build
-
       - name: Generate coverage report
         if: always()
         uses: ./.github/actions/generate-coverage

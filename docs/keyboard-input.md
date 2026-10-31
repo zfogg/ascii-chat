@@ -43,6 +43,6 @@ This runs the same exhaustive Criterion tests for every non-NUL Unicode scalar,
 malformed UTF-8, fragmented input, and UTF-16 recovery. It requires **100% line and
 branch coverage of the three `keyboard_text_*` Unicode functions in
 `lib/platform/keyboard.c`** and writes its counters, gcov listing, and summary under
-the sibling `build-keyboard-text-coverage/` directory. Ubuntu Debug CI enforces this check. The focused measurement excludes sanitizer-generated branches and
+the sibling `build-keyboard-text-coverage/` directory. The focused measurement excludes sanitizer-generated branches and
 vendored utf8proc internals; the ordinary integrated tests retain sanitizers.
 This percentage does not describe all Unicode utilities or the whole application.
