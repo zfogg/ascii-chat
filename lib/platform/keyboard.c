@@ -1,9 +1,81 @@
-#include <ascii-chat/platform/keyboard_stream.h>
+#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/ui/input.h>
+#include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <string.h>
+#include <stdlib.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/system.h>
+
+keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
+  uint64_t deadline = time_get_ns() + (uint64_t)timeout_ms * NS_PER_MS_INT;
+  do {
+    keyboard_key_t key = keyboard_read_nonblocking();
+    if (key != KEY_NONE || timeout_ms == 0)
+      return key;
+    platform_sleep_ns(NS_PER_MS_INT);
+  } while (time_get_ns() < deadline);
+  return KEY_NONE;
+}
+
+keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_opts_t *opts) {
+  return keyboard_apply_key(opts);
+}
+
+keyboard_key_t keyboard_text_decode(keyboard_text_decoder_t *s, int input) {
+  if (input == 0)
+    return KEY_NONE;
+  if (s->length && input >= 0x80 && input <= 0xbf) {
+    s->bytes[s->length++] = (uint8_t)input;
+    if (s->length < s->expected)
+      return KEY_NONE;
+    s->length = 0;
+    utf8proc_int32_t cp;
+    if (utf8proc_iterate(s->bytes, s->expected, &cp) < 0)
+      return KEY_NONE;
+    return (keyboard_key_t)(KEY_UNICODE_BASE + cp);
+  }
+  s->length = 0;
+  if (input < 0x80 || input > 255)
+    return (keyboard_key_t)input;
+  s->expected = (unsigned)utf8proc_utf8class[input];
+  if (s->expected > 1) {
+    s->bytes[0] = (uint8_t)input;
+    s->length = 1;
+  }
+  return KEY_NONE;
+}
+
+size_t keyboard_text_encode(keyboard_key_t key, char text[5]) {
+  utf8proc_int32_t cp;
+  if (key > 0 && key < 128)
+    cp = (utf8proc_int32_t)key;
+  else if (key >= KEY_UNICODE_BASE + 0x80 && key <= KEY_UNICODE_BASE + 0x10ffff)
+    cp = (utf8proc_int32_t)key - KEY_UNICODE_BASE;
+  else
+    return 0;
+  if (!utf8proc_codepoint_valid(cp))
+    return 0;
+  size_t bytes = (size_t)utf8proc_encode_char(cp, (utf8proc_uint8_t *)text);
+  text[bytes] = '\0';
+  return bytes;
+}
+
+keyboard_key_t keyboard_text_utf16(uint16_t *pending_high, uint16_t unit) {
+  uint16_t high = *pending_high;
+  *pending_high = 0;
+  if (unit >= 0xd800 && unit <= 0xdbff) {
+    *pending_high = unit;
+    return KEY_NONE;
+  }
+  if (unit >= 0xdc00 && unit <= 0xdfff) {
+    if (!high)
+      return KEY_NONE;
+    return (keyboard_key_t)(KEY_UNICODE_BASE + 0x10000 + ((high - 0xd800) << 10) + unit - 0xdc00);
+  }
+  return unit < 128 ? (keyboard_key_t)unit : (keyboard_key_t)(KEY_UNICODE_BASE + unit);
+}
 
 static atomic_t parser_guard = {0};
 static atomic_t background_rgb = {0};
@@ -66,6 +138,7 @@ uint64_t keyboard_stream_terminal_reply_ns(void) {
 static size_t length;
 static uint64_t started;
 static bool pasting;
+static keyboard_text_decoder_t text_decoder;
 static bool pending_escape;
 static bool discarding_osc;
 static bool osc_escape;
@@ -77,6 +150,7 @@ void keyboard_stream_reset(void) {
   deferred_head = deferred_count = 0;
   length = 0;
   pasting = false;
+  memset(&text_decoder, 0, sizeof(text_decoder));
   pending_escape = discarding_osc = osc_escape = false;
   queued_key = KEY_NONE;
   parser_unlock();
@@ -121,8 +195,15 @@ static keyboard_key_t keyboard_stream_read_unlocked(int (*read_byte)(void)) {
       pending_escape |= length == 1;
       length = 0;
     }
-    if (!length && byte != 27)
-      return (keyboard_key_t)byte;
+    if (!length && byte != 27) {
+      if (pasting)
+        return (keyboard_key_t)byte;
+      keyboard_key_t text = keyboard_text_decode(&text_decoder, byte);
+      if (text != KEY_NONE)
+        return text;
+      continue;
+    }
+    text_decoder.length = 0;
     if (!length)
       started = time_get_ns();
     if (byte > 255 || length == sizeof(sequence) - 1) {
@@ -213,6 +294,16 @@ static keyboard_key_t keyboard_stream_read_unlocked(int (*read_byte)(void)) {
       key = KEY_CTRL_DELETE;
     else if (!strcmp(sequence, "\033[24~"))
       key = KEY_F12;
+    else if (sequence[1] == '[' && byte == 'u') {
+      char *end;
+      unsigned long cp = strtoul(sequence + 2, &end, 10);
+      unsigned long modifiers = 1;
+      if (*end == ';')
+        modifiers = strtoul(end + 1, &end, 10);
+      if (end == sequence + length - 1 && cp > 0 && cp <= 0x10ffff && utf8proc_codepoint_valid((utf8proc_int32_t)cp) &&
+          !(cp >= 0xe000 && cp <= 0xf8ff) && (modifiers == 1 || modifiers == 2))
+        key = cp < 128 ? (keyboard_key_t)cp : (keyboard_key_t)(KEY_UNICODE_BASE + cp);
+    }
     length = 0;
     if (pending_escape) {
       pending_escape = false;
@@ -295,4 +386,17 @@ bool keyboard_stream_background(uint8_t *r, uint8_t *g, uint8_t *b) {
   *g = (uint8_t)(rgb >> 8);
   *b = (uint8_t)rgb;
   return true;
+}
+
+keyboard_line_edit_result_t keyboard_apply_key(keyboard_line_edit_opts_t *opts) {
+  if (!opts || !opts->buffer || !opts->len || !opts->cursor || !opts->max_len || *opts->len >= opts->max_len ||
+      *opts->cursor > *opts->len || opts->key == KEY_NONE)
+    return LINE_EDIT_NO_INPUT;
+  keyboard_key_t key = opts->key;
+  if (key == '\r' || key == '\n')
+    return LINE_EDIT_ACCEPTED;
+  if (key == KEY_ESCAPE || key == 3 || ((key == 8 || key == 127 || key == 23) && !*opts->len))
+    return LINE_EDIT_CANCELLED;
+  ui_input_edit_key(opts->buffer, opts->max_len, opts->len, opts->cursor, key);
+  return LINE_EDIT_CONTINUE;
 }

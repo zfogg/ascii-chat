@@ -141,3 +141,27 @@ Test(log_search_behavior, single_highlight_survives_embedded_reset_and_zero_widt
   cr_assert_str_eq(stripped, "x x");
   SAFE_FREE(result);
 }
+
+Test(log_search_behavior, unicode_typing_paste_and_word_deletion) {
+  cr_assert_eq(log_search_insert_text("x"), ERROR_INVALID_STATE);
+  cr_assert_eq(log_search_insert_text(NULL), ERROR_INVALID_PARAM);
+  log_search_enter_mode();
+  log_search_handle_key((keyboard_key_t)(KEY_UNICODE_BASE + 0x754c));
+  log_search_handle_key((keyboard_key_t)(KEY_UNICODE_BASE + 0x1f600));
+  cr_assert_str_eq(log_search_get_input_buffer(), "界😀");
+  log_search_handle_key(KEY_LEFT);
+  cr_assert_eq(log_search_get_cursor_position(), 3);
+  cr_assert_eq(log_search_insert_text("é\n?=o"), ASCIICHAT_OK);
+  cr_assert_str_eq(log_search_get_input_buffer(), "界é ?=o😀");
+  cr_assert(log_search_is_entering());
+  cr_assert_eq(log_search_insert_text("\xc0\xaf"), ERROR_INVALID_PARAM);
+  cr_assert_str_eq(log_search_get_input_buffer(), "界é ?=o😀");
+  char too_long[256];
+  memset(too_long, 'x', sizeof(too_long) - 1);
+  too_long[sizeof(too_long) - 1] = 0;
+  cr_assert_eq(log_search_insert_text(too_long), ERROR_BUFFER_OVERFLOW);
+  cr_assert_str_eq(log_search_get_input_buffer(), "界é ?=o😀");
+  log_search_handle_key(KEY_END);
+  log_search_handle_key(23);
+  cr_assert_str_eq(log_search_get_input_buffer(), "界é ");
+}

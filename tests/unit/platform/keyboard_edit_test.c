@@ -120,3 +120,41 @@ Test(keyboard_edit, missing_state_is_rejected) {
   cr_assert_eq(keyboard_apply_key(&invalid), LINE_EDIT_NO_INPUT);
   expect(&edit, "", 0);
 }
+
+Test(keyboard_edit, unicode_movement_deletion_and_insertion_share_ui_editor) {
+  editor_t edit;
+  start(&edit, "a界😀b", 8);
+  key(&edit, KEY_LEFT);
+  expect(&edit, "a界😀b", 4);
+  key(&edit, 127);
+  expect(&edit, "a😀b", 1);
+  key(&edit, KEY_DELETE);
+  expect(&edit, "ab", 1);
+  key(&edit, (keyboard_key_t)(KEY_UNICODE_BASE + 0xe9));
+  expect(&edit, "aéb", 3);
+  key(&edit, KEY_CTRL_DELETE);
+  expect(&edit, "aé", 3);
+  key(&edit, 23);
+  expect(&edit, "", 0);
+  start(&edit, "界 😀 tail", 0);
+  key(&edit, KEY_CTRL_DELETE);
+  expect(&edit, "😀 tail", 0);
+  key(&edit, KEY_END);
+  key(&edit, 23);
+  expect(&edit, "😀 ", 5);
+  key(&edit, 23);
+  expect(&edit, "", 0);
+}
+
+Test(keyboard_edit, invalid_storage_is_not_dereferenced_or_modified) {
+  editor_t edit;
+  start(&edit, "x", 1);
+  edit.opts.max_len = 0;
+  cr_assert_eq(key(&edit, 'y'), LINE_EDIT_NO_INPUT);
+  edit.opts.max_len = 1;
+  cr_assert_eq(key(&edit, 'y'), LINE_EDIT_NO_INPUT);
+  edit.opts.max_len = sizeof(edit.text);
+  edit.cursor = 2;
+  cr_assert_eq(key(&edit, 'y'), LINE_EDIT_NO_INPUT);
+  cr_assert_str_eq(edit.text, "x");
+}

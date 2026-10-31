@@ -62,10 +62,14 @@ export class SessionUi {
     );
     if (result !== 0) throw new Error("Session UI rejected media frame");
   }
-  key(key: string): number {
+  key(key: string, shift = false): number {
     const special: Record<string, number> = {
       Escape: 27,
-      Enter: 13,
+      Enter: shift ? 271 : 13,
+      Tab: 9,
+      PageUp: 269,
+      PageDown: 270,
+      F12: 268,
       Backspace: 127,
       Delete: 260,
       Home: 261,
@@ -75,7 +79,16 @@ export class SessionUi {
       ArrowLeft: 258,
       ArrowRight: 259,
     };
-    const code = special[key] ?? (key.length === 1 ? key.charCodeAt(0) : 0);
+    const scalar =
+      Array.from(key).length === 1 ? key.codePointAt(0) : undefined;
+    // Match platform/keyboard.h: Unicode text is tagged above native special keys.
+    const text =
+      scalar && !(scalar >= 0xd800 && scalar <= 0xdfff)
+        ? scalar < 128
+          ? scalar
+          : 0x110000 + scalar
+        : 0;
+    const code = special[key] ?? text;
     return code ? this.module._wasm_ui_key(this.pointer, code) : 0;
   }
   tick(now: number): string | null {

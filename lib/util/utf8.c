@@ -25,31 +25,12 @@ bool utf8_output_enabled(void) {
 }
 
 int utf8_decode(const uint8_t *s, uint32_t *codepoint) {
-  if (s[0] < 0x80) {
-    *codepoint = s[0];
-    return 1;
-  }
-  if ((s[0] & 0xE0) == 0xC0) {
-    // Validate continuation byte
-    if ((s[1] & 0xC0) != 0x80)
-      return -1;
-    *codepoint = (((uint32_t)(s[0] & 0x1F) << 6) | (uint32_t)(s[1] & 0x3F));
-    return 2;
-  } else if ((s[0] & 0xF0) == 0xE0) {
-    // Validate continuation bytes
-    if ((s[1] & 0xC0) != 0x80 || (s[2] & 0xC0) != 0x80)
-      return -1;
-    *codepoint = (((uint32_t)(s[0] & 0x0F) << 12) | ((uint32_t)(s[1] & 0x3F) << 6) | (uint32_t)(s[2] & 0x3F));
-    return 3;
-  } else if ((s[0] & 0xF8) == 0xF0) {
-    // Validate continuation bytes
-    if ((s[1] & 0xC0) != 0x80 || (s[2] & 0xC0) != 0x80 || (s[3] & 0xC0) != 0x80)
-      return -1;
-    *codepoint = (((uint32_t)(s[0] & 0x07) << 18) | ((uint32_t)(s[1] & 0x3F) << 12) | ((uint32_t)(s[2] & 0x3F) << 6) |
-                  (uint32_t)(s[3] & 0x3F));
-    return 4;
-  }
-  return -1; // Invalid
+  utf8proc_int32_t decoded;
+  utf8proc_ssize_t count = utf8proc_iterate(s, -1, &decoded);
+  if (count < 0)
+    return -1;
+  *codepoint = (uint32_t)decoded;
+  return (int)count;
 }
 
 // Width measurement and truncation share the same bounded token walk.
@@ -208,45 +189,6 @@ int utf8_next_char_bytes(const char *str, size_t max_bytes) {
   }
 
   return (int)len;
-}
-
-int utf8_continuation_bytes_needed(unsigned char first_byte) {
-  if ((first_byte & 0x80) == 0) {
-    return 0; // ASCII (0xxxxxxx) - single byte, no continuation needed
-  }
-  if ((first_byte & 0xE0) == 0xC0) {
-    return 1; // 110xxxxx - 2 byte sequence, 1 continuation byte needed
-  }
-  if ((first_byte & 0xF0) == 0xE0) {
-    return 2; // 1110xxxx - 3 byte sequence, 2 continuation bytes needed
-  }
-  if ((first_byte & 0xF8) == 0xF0) {
-    return 3; // 11110xxx - 4 byte sequence, 3 continuation bytes needed
-  }
-  return -1; // Invalid UTF-8 start byte
-}
-
-int utf8_read_and_insert_continuation_bytes(char *buffer, size_t *cursor, size_t *len, size_t max_len,
-                                            int continuation_bytes, int (*read_byte_fn)(void)) {
-  if (!buffer || !cursor || !len || continuation_bytes <= 0 || !read_byte_fn) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "invalid params");
-    return -1;
-  }
-
-  for (int i = 0; i < continuation_bytes && *len < max_len - 1; i++) {
-    int next_byte = read_byte_fn();
-    if (next_byte == EOF) {
-      return -1; // EOF reached
-    }
-
-    // Shift characters right to make room
-    memmove(&buffer[*cursor + 1], &buffer[*cursor], *len - *cursor);
-    buffer[*cursor] = (char)next_byte;
-    (*len)++;
-    (*cursor)++;
-  }
-
-  return 0;
 }
 
 /* ============================================================================

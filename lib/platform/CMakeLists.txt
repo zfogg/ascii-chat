@@ -2,8 +2,7 @@
 
 set(PLATFORM_SRCS_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/wakeup.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/keyboard_edit.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/keyboard_stream.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/keyboard.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu.c
     ${CMAKE_CURRENT_SOURCE_DIR}/process_title.c
     ${CMAKE_CURRENT_SOURCE_DIR}/socket.c

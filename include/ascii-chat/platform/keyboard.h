@@ -22,8 +22,6 @@
  * @date January 2026
  */
 
-#pragma once
-
 #include <stdbool.h>
 #include <stddef.h>
 #include "../common/error_codes.h"
@@ -46,8 +44,8 @@
  * - Function keys: `KEY_DELETE` (260), `KEY_HOME` (261), `KEY_END` (262), `KEY_CTRL_DELETE` (263)
  * - ASCII/UTF-8 characters: Raw character code (1-26, 33-127)
  *
- * @note UTF-8 multibyte sequences are not currently supported in return values.
- *       Input is returned as UTF-8 bytes; paste boundaries are separate events.
+ * @note UTF-8 sequences are assembled before returning text keys.
+ *       Non-ASCII text uses KEY_UNICODE_BASE + Unicode scalar; paste payloads remain bytes.
  *
  * @ingroup platform
  */
@@ -67,21 +65,22 @@ typedef enum {
   KEY_PASTE_END = 265,
   KEY_PASTE = 266,
   KEY_MEDIA_SUBMIT = 267, ///< Nonblocking media prompt submitted
-  KEY_SHIFT_ENTER = 269,  ///< Shift+Enter (insert a newline in multiline prompts)
   KEY_F12 = 268,          ///< Open the version update checker TUI
   KEY_PAGEUP = 269,
   KEY_PAGEDOWN = 270,
-  KEY_MINUS = '-',    ///< '-' key - toggle FPS counter
-  KEY_0 = '0',        ///< '0' key - toggle sync debug screen
-  KEY_1 = '1',        ///< '1' key - toggle matrix rain effect
-  KEY_2 = '2',        ///< '2' key - toggle audio waveform
-  KEY_3 = '3',        ///< '3' key - toggle audio frequency display
-  KEY_C = 'c',        ///< 'c' key - cycle color modes
-  KEY_R = 'r',        ///< 'r' key - cycle render modes
-  KEY_M = 'm',        ///< 'm' key - toggle mute
-  KEY_F = 'f',        ///< 'f' key - flip webcam
-  KEY_QUESTION = '?', ///< '?' key - show help screen
-  KEY_BACKTICK = '`', ///< '`' key - print lock state (debug builds)
+  KEY_SHIFT_ENTER = 271,       ///< Shift+Enter (insert a newline in multiline prompts)
+  KEY_UNICODE_BASE = 0x110000, ///< Non-ASCII Unicode scalar values are tagged above special keys
+  KEY_MINUS = '-',             ///< '-' key - toggle FPS counter
+  KEY_0 = '0',                 ///< '0' key - toggle sync debug screen
+  KEY_1 = '1',                 ///< '1' key - toggle matrix rain effect
+  KEY_2 = '2',                 ///< '2' key - toggle audio waveform
+  KEY_3 = '3',                 ///< '3' key - toggle audio frequency display
+  KEY_C = 'c',                 ///< 'c' key - cycle color modes
+  KEY_R = 'r',                 ///< 'r' key - cycle render modes
+  KEY_M = 'm',                 ///< 'm' key - toggle mute
+  KEY_F = 'f',                 ///< 'f' key - flip webcam
+  KEY_QUESTION = '?',          ///< '?' key - show help screen
+  KEY_BACKTICK = '`',          ///< '`' key - print lock state (debug builds)
 } keyboard_key_t;
 
 /* ============================================================================
@@ -112,7 +111,7 @@ typedef enum {
  * - Call HAS_ERRNO() to check for error details after failure
  *
  * @note Must be paired with keyboard_destroy() before program exit
- * @note Calling multiple times is safe (reference-counted, idempotent)
+ * @note Calling multiple times is safe (idempotent)
  * @note Terminal state is restored by keyboard_destroy()
  * @note Safe to call before or after calling keyboard_read_nonblocking()
  *
@@ -151,15 +150,13 @@ void keyboard_destroy(void);
  * - Special keys: KEY_ESCAPE, KEY_SPACE
  * - ASCII characters: Returned as raw character codes (a-z, A-Z, 0-9, etc.)
  * - Control keys: Ctrl+C, Ctrl+Z, and other control sequences (codes 1-31)
- * - UTF-8: Multibyte characters are returned one byte at a time
+ * - UTF-8: Complete scalars are returned as KEY_UNICODE_BASE + codepoint
  *
  * **Platform behavior:**
  * - POSIX: Uses select() with zero timeout on stdin for non-blocking check
  * - POSIX: Parses ESC escape sequences for arrow keys (ESC [ A/B/C/D)
  * - POSIX: 50ms escape-sequence deadline to distinguish ESC from sequences
- * - Windows: Uses _kbhit() and _getch() for non-blocking input
- * - Windows: Handles 0xE0 and 0x00 extended key prefixes for arrow keys
- * - Windows: Arrow key mappings: 72/up, 80/down, 75/left, 77/right
+ * - Windows: Reads Unicode console events and normalizes UTF-16 and native keys
  *
  * **Return behavior:**
  * - Returns immediately with KEY_NONE if no input available (non-blocking)
@@ -211,7 +208,7 @@ typedef struct {
   char mask_char;                  ///< Mask character (0 for no masking, '*' for passwords)
   const char *prefix;              ///< Prefix to display (e.g., "/" for grep), NULL for none
   bool (*validator)(const char *); ///< Optional validator callback (for live feedback)
-  keyboard_key_t key;              ///< Pre-read key (use this instead of reading if not KEY_NONE)
+  keyboard_key_t key;              ///< Required pre-read key; KEY_NONE means no input
 } keyboard_line_edit_opts_t;
 
 /**
@@ -249,10 +246,8 @@ typedef enum {
  * - **UTF-8 multi-byte**: Full support for non-ASCII characters
  *
  * **Display behavior:**
- * - If `opts.echo` is true, characters are displayed as typed
- * - If `opts.mask_char` is non-zero, characters are masked (e.g., '*' for passwords)
- * - If `opts.prefix` is non-NULL, it's displayed before the input (e.g., "/" for grep)
- * - If `opts.validator` is non-NULL, it's called on every change (for live validation)
+ * - Editing never renders or reads the terminal. Callers render and validate.
+ * - echo, mask_char, prefix and validator remain for source compatibility.
  *
  * **Non-blocking design:**
  * - Returns immediately if no input available (LINE_EDIT_NO_INPUT)
@@ -260,13 +255,13 @@ typedef enum {
  * - Call repeatedly in a loop until LINE_EDIT_ACCEPTED or LINE_EDIT_CANCELLED
  *
  * **Errors:**
- * - Returns LINE_EDIT_NO_INPUT if keyboard not initialized
+ * - Returns LINE_EDIT_NO_INPUT if no pre-read key is supplied
  * - Returns LINE_EDIT_NO_INPUT if opts is NULL or buffer is NULL
  *
- * @note Terminal must be in raw mode (call keyboard_init() first)
+ * @note Supply decoded text/special keys from the shared input decoder
  * @note The buffer is modified in-place as user types
  * @note len and cursor are updated to reflect current state
- * @note Thread-safe (but only one editing session should be active at a time)
+ * @note Callers serialize access to their editing state
  *
  * @par Example
  * @code
@@ -287,6 +282,7 @@ typedef enum {
  * };
  *
  * while (true) {
+ *     opts.key = keyboard_read_nonblocking();
  *     keyboard_line_edit_result_t result = keyboard_read_line_interactive(&opts);
  *     switch (result) {
  *         case LINE_EDIT_ACCEPTED:
@@ -319,3 +315,36 @@ keyboard_line_edit_result_t keyboard_apply_key(keyboard_line_edit_opts_t *opts);
 /** Background queries share the keyboard decoder when it owns terminal input. */
 bool keyboard_is_initialized(void);
 bool keyboard_query_background(uint8_t *r, uint8_t *g, uint8_t *b);
+
+/** Incremental UTF-8 decoder. Zero-initialize; incomplete input never becomes text. */
+typedef struct {
+  uint8_t bytes[4];
+  unsigned length, expected;
+} keyboard_text_decoder_t;
+
+/** Feed a byte or native special key. Invalid sequences are discarded; a new
+ * starter or special key interrupts incomplete text and is processed normally. */
+keyboard_key_t keyboard_text_decode(keyboard_text_decoder_t *state, int input);
+
+/** Encode a text key to NUL-terminated UTF-8. Returns 0 for non-text keys. */
+size_t keyboard_text_encode(keyboard_key_t key, char text[5]);
+
+/** Decode native UTF-16 console text. An unmatched surrogate is discarded;
+ * a following ordinary character is preserved. Zero-initialize pending_high. */
+keyboard_key_t keyboard_text_utf16(uint16_t *pending_high, uint16_t unit);
+
+/** Decode a nonblocking UTF-8 byte stream and terminal escape sequences. */
+keyboard_key_t keyboard_stream_read(int (*read_byte)(void));
+void keyboard_stream_reset(void);
+/** Decode available bytes and retain the next event without consuming it. */
+bool keyboard_stream_ready(int (*read_byte)(void));
+
+/** Last complete OSC 11 reply received from the terminal frontend. */
+uint64_t keyboard_stream_terminal_reply_ns(void);
+
+/** Query through the normal input decoder, preserving unrelated keyboard input. */
+bool keyboard_stream_query_background(int (*read_byte)(void), bool (*send_query)(void), uint8_t *r, uint8_t *g,
+                                      uint8_t *b);
+
+/** Most recently decoded OSC 11 reply, without reading or waiting for input. */
+bool keyboard_stream_background(uint8_t *r, uint8_t *g, uint8_t *b);

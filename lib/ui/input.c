@@ -2,49 +2,6 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <string.h>
 #include <ascii-chat/util/utf8.h>
-void ui_input_edit_key(char *buffer, size_t max_len, size_t *length, size_t *position, keyboard_key_t key) {
-  if (!buffer || !max_len || !length || !position || *length >= max_len || *position > *length) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid line editor storage, length or cursor");
-    return;
-  }
-  size_t len = *length, cursor = *position;
-  if (key == KEY_HOME)
-    cursor = 0;
-  else if (key == KEY_END)
-    cursor = len;
-  else if (key == KEY_LEFT && cursor) {
-    do {
-      --cursor;
-    } while (cursor && ((unsigned char)buffer[cursor] & 0xc0) == 0x80);
-  } else if (key == KEY_RIGHT && cursor < len) {
-    do {
-      ++cursor;
-    } while (cursor < len && ((unsigned char)buffer[cursor] & 0xc0) == 0x80);
-  } else if ((key == 8 || key == 127) && cursor) {
-    size_t start = cursor;
-    do {
-      --start;
-    } while (start && ((unsigned char)buffer[start] & 0xc0) == 0x80);
-    memmove(buffer + start, buffer + cursor, len - cursor + 1);
-    len -= cursor - start;
-    cursor = start;
-  } else if (key == KEY_DELETE && cursor < len) {
-    size_t end = cursor + 1;
-    while (end < len && ((unsigned char)buffer[end] & 0xc0) == 0x80)
-      ++end;
-    memmove(buffer + cursor, buffer + end, len - end + 1);
-    len -= end - cursor;
-  } else if (key >= 32 && key < 256 && len < max_len - 1) {
-    memmove(buffer + cursor + 1, buffer + cursor, len - cursor + 1);
-    buffer[cursor++] = (char)key;
-    ++len;
-  } else if (key >= 32 && key < 256 && len >= max_len - 1) {
-    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Line editor buffer is full");
-  }
-  *length = len;
-  *position = cursor;
-}
-
 asciichat_error_t ui_input_render(frame_buffer_t *buffer, int row, int col, int width, int height, const char *text,
                                   size_t cursor, bool preserve_quotes) {
   if (!buffer || !text || row < 1 || col < 1 || width < 5 || height < 1 || cursor > strlen(text) ||
@@ -106,20 +63,5 @@ asciichat_error_t ui_input_render(frame_buffer_t *buffer, int row, int col, int 
     line = *end ? end + 1 : NULL;
   }
   frame_buffer_printf(buffer, "\033[%d;%dH\033[?25h", row + (int)cursor_line - first, cursor_col);
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t ui_input_insert(char *buffer, size_t capacity, size_t *length, size_t *cursor, const char *text) {
-  if (!buffer || !length || !cursor || !text || *length >= capacity || *cursor > *length ||
-      strnlen(buffer, capacity) != *length || !utf8_is_valid(text) || !utf8_is_valid(buffer) ||
-      (*cursor && ((unsigned char)buffer[*cursor] & 0xc0) == 0x80))
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid input insertion storage, text or cursor");
-  size_t bytes = strlen(text);
-  if (bytes >= capacity - *length)
-    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Input insertion exceeds field capacity");
-  memmove(buffer + *cursor + bytes, buffer + *cursor, *length - *cursor + 1);
-  memcpy(buffer + *cursor, text, bytes);
-  *cursor += bytes;
-  *length += bytes;
   return ASCIICHAT_OK;
 }
