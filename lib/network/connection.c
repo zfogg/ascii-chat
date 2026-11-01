@@ -279,6 +279,10 @@ static uint64_t connection_deadline(network_connection_t *c) {
 }
 
 static void connection_notify_error(network_connection_t *c, asciichat_error_t reason) {
+  // A closed backend can retain queued bytes until teardown. Enqueuing a
+  // reliable rejection there would delay producer shutdown behind dead output.
+  if (!acip_transport_is_connected(c->transport))
+    return;
   asciichat_errno_scope_t scope = errno_scope_begin();
   asciichat_error_t result = acip_send_error(c->transport, reason, NULL);
   if (result == ASCIICHAT_OK && acip_transport_get_type(c->transport) == ACIP_TRANSPORT_WEBSOCKET)

@@ -148,6 +148,7 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/session/protocol.c
     ${CMAKE_SOURCE_DIR}/src/common/session/frame_validation.c
     ${CMAKE_SOURCE_DIR}/src/common/session/connection.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/establish.c
     ${CMAKE_SOURCE_DIR}/src/common/session/client_like.c
     ${CMAKE_SOURCE_DIR}/src/common/session/consensus.c
     ${CMAKE_SOURCE_DIR}/src/common/session/consensus_integration.c
