@@ -503,3 +503,53 @@ describe("AudioPipeline", () => {
     expect(stopTrack).toHaveBeenCalledOnce();
   });
 });
+
+it("retains a file tap across pause/seek and rolls back a failed replacement", async () => {
+  class Track extends EventTarget {
+    readyState = "live";
+    stop = vi.fn();
+  }
+  class Stream extends EventTarget {
+    constructor(public tracks: Track[] = []) {
+      super();
+    }
+    getAudioTracks() {
+      return this.tracks;
+    }
+    getTracks() {
+      return this.tracks;
+    }
+  }
+  vi.stubGlobal("MediaStream", Stream);
+  const pipeline = new AudioPipeline();
+  await pipeline.startRecording();
+  const track = new Track();
+  const stream = new Stream([track]);
+  const element = Object.assign(document.createElement("audio"), {
+    captureStream: vi.fn(() => stream),
+  });
+  pipeline.setRecordingMedia(element);
+  const original = captureSources.at(-1)!;
+  element.dispatchEvent(new Event("pause"));
+  element.dispatchEvent(new Event("seeking"));
+  pipeline.setRecordingMedia(element);
+  expect(element.captureStream).toHaveBeenCalledOnce();
+  expect(track.stop).not.toHaveBeenCalled();
+  expect(original.disconnect).not.toHaveBeenCalled();
+  const rejected = Object.assign(document.createElement("video"), {
+    captureStream: () => {
+      throw new Error("capture failed");
+    },
+  });
+  expect(() => pipeline.setRecordingMedia(rejected)).toThrow("capture failed");
+  expect(track.stop).not.toHaveBeenCalled();
+  expect(original.disconnect).not.toHaveBeenCalled();
+  const replacement = new Track();
+  stream.tracks = [replacement];
+  stream.dispatchEvent(new Event("addtrack"));
+  expect(original.disconnect).toHaveBeenCalledOnce();
+  expect(captureSources.at(-1)!.connect).toHaveBeenCalledWith(recordingBus);
+  pipeline.setRecordingMedia(null);
+  expect(replacement.stop).toHaveBeenCalledOnce();
+  pipeline.close();
+});

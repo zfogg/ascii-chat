@@ -64,6 +64,8 @@ def main():
             run("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=64x48:rate=10",
                 "-f", "lavfi", "-i", f"sine=frequency={frequency}:sample_rate=48000", "-t", "30",
                 "-c:v", "mpeg4", "-c:a", "aac", "-movflags", "+faststart", str(root / f"{frequency}.mp4"))
+        run("ffmpeg", "-v", "error", "-i", str(root / "440.mp4"), "-t", "1",
+            "-c", "copy", str(root / "short440.mp4"))
         with socket.socket() as reservation:
             reservation.bind(("127.0.0.1", 0))
             port = reservation.getsockname()[1]
@@ -83,7 +85,36 @@ def main():
             return process
 
         try:
-            mirror = launch("mirror", "mirror", "--file", str(root / "440.mp4"), "--audio-capture-source", "media",
+            # A paused file must retain video until snapshot stop/finalization,
+            # even without a later resume to expose the gap to the encoder.
+            for name, source in (
+                ("paused", ("--file", str(root / "440.mp4"), "--pause")),
+                ("synthetic", ("--test-pattern", "--test-audio")),
+                ("playlist", ("--file", str(root / "short440.mp4"), "--file", str(root / "880.mp4"))),
+            ):
+                output = root / f"{name}.mp4"
+                process = launch(name, "mirror", *source, "--no-audio-playback",
+                                 "--snapshot", "--snapshot-delay", "2", "--fps", "10",
+                                 "--width", "32", "--height", "12", "--render-file", str(output))
+                process.wait(timeout=30)
+                assert process.returncode == 0, f"{name} exited with status {process.returncode}"
+                streams = json.loads(run("ffprobe", "-v", "error", "-show_streams", "-of", "json", str(output)).stdout)["streams"]
+                durations = {stream["codec_type"]: float(stream["duration"]) for stream in streams}
+                assert {"audio", "video"} <= durations.keys(), durations
+                assert 1.8 <= durations["video"] <= 3.0, (name, durations)
+                assert abs(durations["audio"] - durations["video"]) < 0.15, (name, durations)
+                pcm = run("ffmpeg", "-v", "error", "-i", str(output), "-vn", "-ac", "1",
+                          "-ar", "48000", "-f", "f32le", "pipe:1").stdout
+                samples = struct.unpack("<" + "f" * (len(pcm) // 4), pcm)
+                tail = samples[-48000:]
+                rms = math.sqrt(sum(sample * sample for sample in tail) / len(tail))
+                assert rms < 0.001 if name == "paused" else rms > 0.005, (name, rms)
+                print(f"{name}: finalized audio/video durations {durations}, tail RMS {rms:.4f}")
+                if name == "playlist":
+                    verify(output, (440, 880))
+            if "--transitions-only" in sys.argv[2:]:
+                return
+            mirror = launch("mirror", "mirror", "--file", str(root / "440.mp4"), "--audio-capture-source", "media", "--no-audio-playback",
                             "--snapshot", "--snapshot-delay", "3", "--fps", "10", "--width", "40", "--height", "12",
                             "--render-file", str(root / "mirror.mp4"))
             mirror.wait(timeout=20)
@@ -104,7 +135,7 @@ def main():
                 recording_seconds = 8 if frequency == 440 else 12
                 media_args = ("--url", f"http://127.0.0.1:{media_server.server_port}/{frequency}.mp4") if frequency == 440 else ("--file", str(root / f"{frequency}.mp4"))
                 clients.append(launch(str(frequency), "client", "127.0.0.1", "--port", str(port),
-                                      "--video-codec", "raw",
+                                      "--video-codec", "raw", "--no-audio-playback",
                                       *media_args, "--render-file", str(root / f"call-{frequency}.mp4"),
                                       "--width", "32", "--height", "16", "--fps", "10", "--splash-screen=false", "--snapshot", "--snapshot-delay", str(recording_seconds)))
                 deadline = time.monotonic() + 10

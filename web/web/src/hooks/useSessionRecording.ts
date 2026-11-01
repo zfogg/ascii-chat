@@ -157,7 +157,12 @@ export function useSessionRecording(options: Options) {
     };
   }, [options.sourceRevision]);
   useEffect(() => {
-    if (options.enabled === false) void owner.current?.stop();
+    if (options.enabled === false) {
+      // Invalidate preparation even if the connection returns before it resolves.
+      ++generation.current;
+      if (owner.current) void owner.current.stop();
+      else audio.current?.stopRecording();
+    }
   }, [options.enabled]);
   useEffect(() => {
     mounted.current = true;

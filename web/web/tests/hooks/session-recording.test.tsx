@@ -43,7 +43,7 @@ let pipeline: {
   stopRecording: ReturnType<typeof vi.fn>;
   setRecordingMedia: ReturnType<typeof vi.fn>;
 };
-let ensureAudio: ReturnType<typeof vi.fn>;
+let ensureAudio: ReturnType<typeof vi.fn<() => AudioPipeline>>;
 beforeEach(() => {
   fixture.supported = true;
   fixture.start.mockClear();
@@ -211,4 +211,31 @@ it("reports a source-switch failure consistently and finalizes the recording", a
     expect(result.current.error).toBe("File audio is unavailable"),
   );
   expect(fixture.stop).toHaveBeenCalledOnce();
+});
+
+it("cancels a pending start across disconnect and reconnect", async () => {
+  let prepared!: (ready: boolean) => void;
+  const prepare = vi.fn(
+    () =>
+      new Promise<boolean>((resolve) => {
+        prepared = resolve;
+      }),
+  );
+  const base = options();
+  const { result, rerender } = renderHook(
+    ({ enabled }) => useSessionRecording({ ...base, prepare, enabled }),
+    { initialProps: { enabled: true } },
+  );
+  act(() => {
+    void result.current.start();
+  });
+  expect(result.current.state).toBe("starting");
+  rerender({ enabled: false });
+  rerender({ enabled: true });
+  await act(async () => {
+    prepared(true);
+  });
+  expect(ensureAudio).not.toHaveBeenCalled();
+  expect(fixture.start).not.toHaveBeenCalled();
+  expect(result.current.state).toBe("idle");
 });

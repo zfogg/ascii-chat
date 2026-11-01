@@ -918,7 +918,8 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
     ctx->face_media_position = position;
     ctx->face_media_tick = now;
   }
-  if (is_file && !alternate && !GET_OPTION(snapshot_mode) && !GET_OPTION(render_file)[0]) {
+  bool recording = GET_OPTION(render_file)[0] != '\0';
+  if (is_file && !alternate && (!GET_OPTION(snapshot_mode) || recording)) {
     if (frame) {
       ctx->retained_frame_shown = false;
       if (!ctx->last_media_frame || ctx->last_media_frame->w != frame->w || ctx->last_media_frame->h != frame->h) {
@@ -928,11 +929,13 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
       }
       if (ctx->last_media_frame)
         memcpy(ctx->last_media_frame->pixels, frame->pixels, (size_t)frame->w * frame->h * sizeof(rgb_pixel_t));
-    } else if (media_source_at_end(ctx->source) || media_source_is_paused(ctx->source)) {
-      if (media_source_at_end(ctx->source))
+    } else if ((!recording && media_source_at_end(ctx->source)) || media_source_is_paused(ctx->source)) {
+      if (!recording && media_source_at_end(ctx->source))
         media_source_pause(ctx->source);
       bool redraw = atomic_exchange_bool(&ctx->redraw_media, false);
-      if (!ctx->retained_frame_shown || redraw) {
+      // A paused recording still advances session time, including when stopped
+      // before playback resumes. Retained frames do not increment frame_serial.
+      if (!ctx->retained_frame_shown || redraw || recording) {
         ctx->retained_frame_shown = true;
         bool debug = false;
 #ifndef NDEBUG

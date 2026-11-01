@@ -540,7 +540,9 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
   double render_fps = session_display_get_render_fps(display);
   bool has_file = session_display_has_render_file(display);
   media_source_t *source = session_capture_get_media_source(capture);
-  if (media_source_uses_webcam(source) || media_source_get_type(source) == MEDIA_SOURCE_FILE)
+  // Synthetic/visualization sessions can switch sources too. Their recording
+  // clock must remain elapsed session time across gaps and source FPS changes.
+  if (media_source_get_type(source) != MEDIA_SOURCE_STDIN)
     session_display_set_render_live_timing(display);
 
   // Playback FPS also has a default when no recording was requested. It must
