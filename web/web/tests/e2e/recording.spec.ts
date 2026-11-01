@@ -512,6 +512,8 @@ test("Mirror records muted file audio across screen replacement and source resto
     .locator("video")
     .first()
     .evaluate((element) => {
+      if (!(element instanceof HTMLVideoElement))
+        throw new Error("Expected a video element");
       element.muted = true;
     });
   await record(page, "mirror-file-screen", info, [570], async () => {
