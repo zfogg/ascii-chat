@@ -54,6 +54,10 @@ export type PacketReceivedCallback = (
   payload: Uint8Array,
 ) => void;
 
+// The WASM client context is shared. Drain a cancelled initialization before a
+// replacement session configures that context or installs its send callback.
+let initializationQueue: Promise<void> = Promise.resolve();
+
 export class ClientConnection {
   readonly transportType = "websocket" as const;
   private socket: (PacketTransport & { connect(): Promise<void> }) | null =
@@ -72,6 +76,7 @@ export class ClientConnection {
   private wasmReinitInProgress = false;
   private deferredPackets: Uint8Array[] = [];
   private socketHasEverOpened = false; // Track if this socket instance has ever opened
+  private connectPromise: Promise<void> | null = null;
 
   constructor(private options: ClientConnectionOptions) {}
 
@@ -96,54 +101,72 @@ export class ClientConnection {
   /**
    * Initialize WASM and connect to server
    */
-  async connect(): Promise<void> {
-    console.log("[ClientConnection] Initializing WASM client...");
+  connect(): Promise<void> {
+    this.connectPromise ??= this.start();
+    return this.connectPromise;
+  }
 
-    // Initialize WASM module
+  private async start(): Promise<void> {
+    try {
+      if (!(await this.initializeWasm())) return;
+      await this.connectSocket();
+    } catch (error) {
+      if (!this.isUserDisconnecting) {
+        this.disconnect();
+        this.transportState = ConnectionState.ERROR;
+        this.onStateChangeCallback?.(ConnectionState.ERROR);
+      }
+      throw error;
+    }
+  }
+
+  // Initial startup and reconnect publish crypto and callbacks in the same order.
+  // Cancellation is checked after every asynchronous boundary before publishing.
+  private initializeWasm(): Promise<boolean> {
+    const pending = initializationQueue.then(() => this.prepareWasm());
+    initializationQueue = pending.then(
+      () => {},
+      () => {},
+    );
+    return pending;
+  }
+
+  private async prepareWasm(): Promise<boolean> {
+    if (this.isUserDisconnecting) return false;
     const initOptions: ClientInitOptions = { ...this.options.wasmOptions };
     if (this.options.width !== undefined)
       initOptions.width = this.options.width;
     if (this.options.height !== undefined)
       initOptions.height = this.options.height;
     await initClientWasm(initOptions);
-    if (this.isUserDisconnecting) return;
+    if (this.isUserDisconnecting) {
+      cleanupClientWasm();
+      return false;
+    }
     await configureClientCrypto(this.options.cryptoOptions || {});
+    if (this.isUserDisconnecting) {
+      cleanupClientWasm();
+      return false;
+    }
     this.cryptoMode = resolveCryptoPolicy(
       this.options.serverUrl,
       this.options.applicationEncryption,
     );
-    console.log("[ClientConnection] WASM init complete");
-
-    // Register callback so WASM can send raw packets back through WebSocket
-    registerSendPacketCallback((rawPacket: Uint8Array) => {
-      if (!this.socket) {
-        console.error(
-          "[ClientConnection] Cannot send packet - socket not connected",
-        );
-        return;
-      }
-      this.socket.send(rawPacket);
-    });
-
-    // Generate client keypair
-    console.log("[ClientConnection] Generating keypair...");
-    this.clientPublicKey = await generateKeypair();
-    console.log("[ClientConnection] Client public key:", this.clientPublicKey);
-
-    if (this.isUserDisconnecting) return;
-    // Set server address for known_hosts verification
+    const publicKey = await generateKeypair();
+    if (this.isUserDisconnecting) {
+      cleanupClientWasm();
+      return false;
+    }
+    this.clientPublicKey = publicKey;
     const url = new URL(this.options.serverUrl);
-    const serverHost = url.hostname;
-    const serverPort =
-      parseInt(url.port) || (url.protocol === "wss:" ? 443 : 27226);
-    console.log(
-      "[ClientConnection] Setting server address:",
-      serverHost,
-      serverPort,
+    setServerAddress(
+      url.hostname,
+      parseInt(url.port) || (url.protocol === "wss:" ? 443 : 27226),
     );
-    setServerAddress(serverHost, serverPort);
-
-    await this.connectSocket();
+    registerSendPacketCallback((rawPacket: Uint8Array) => {
+      this.socket?.send(rawPacket);
+    });
+    return true;
   }
 
   private async connectSocket(): Promise<void> {
@@ -222,28 +245,8 @@ export class ClientConnection {
       this.onStateChangeCallback?.(ConnectionState.CONNECTING);
       cleanupClientWasm();
 
-      const url = new URL(this.options.serverUrl);
-      const serverHost = url.hostname;
-      const serverPort =
-        parseInt(url.port) || (url.protocol === "wss:" ? 443 : 27226);
-      const reinitOptions: ClientInitOptions = { ...this.options.wasmOptions };
-      if (this.options.width !== undefined)
-        reinitOptions.width = this.options.width;
-      if (this.options.height !== undefined)
-        reinitOptions.height = this.options.height;
-
       try {
-        await initClientWasm(reinitOptions);
-        await configureClientCrypto(this.options.cryptoOptions || {});
-        this.cryptoMode = resolveCryptoPolicy(
-          this.options.serverUrl,
-          this.options.applicationEncryption,
-        );
-        this.clientPublicKey = await generateKeypair();
-        setServerAddress(serverHost, serverPort);
-        registerSendPacketCallback((rawPacket: Uint8Array) => {
-          if (this.socket) this.socket.send(rawPacket);
-        });
+        if (!(await this.initializeWasm())) return;
 
         const deferred = this.deferredPackets;
         this.deferredPackets = [];
@@ -252,6 +255,9 @@ export class ClientConnection {
       } catch (error) {
         this.wasmReinitInProgress = false;
         console.error("[ClientConnection] WASM reinit failed:", error);
+        this.socket?.close();
+        cleanupClientWasm();
+        this.deferredPackets = [];
         this.transportState = ConnectionState.ERROR;
         this.onStateChangeCallback?.(ConnectionState.ERROR);
         return;
@@ -618,6 +624,7 @@ export class ClientConnection {
    * Disconnect and cleanup
    */
   disconnect(): void {
+    if (this.isUserDisconnecting) return;
     console.log("[ClientConnection] Disconnecting...");
     this.outbound?.close();
     this.outbound = null;
@@ -629,6 +636,8 @@ export class ClientConnection {
       this.socket.close();
       this.socket = null;
     }
+    this.deferredPackets = [];
+    this.clientPublicKey = null;
     cleanupClientWasm();
     this.onStateChangeCallback?.(ConnectionState.DISCONNECTED);
   }

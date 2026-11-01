@@ -7,6 +7,7 @@ import {
   screen,
 } from "@testing-library/react";
 import { HeadingProvider } from "@ascii-chat/shared/components";
+import { AsciiChatMode } from "../../src/utils/optionsHelp";
 import { BinarySettings } from "../../src/components/shared/BinarySettings";
 import {
   DEFAULT_PALETTE_CHARS,
@@ -25,7 +26,7 @@ test("shows the engine standard palette and applies typed characters after 750 m
   render(
     <BinarySettings
       config={DEFAULT_SETTINGS}
-      mode="mirror"
+      mode={AsciiChatMode.MIRROR}
       onChange={onChange}
     />,
     { wrapper: HeadingProvider },
@@ -62,7 +63,7 @@ test("resets the debounce while the user continues typing", () => {
   render(
     <BinarySettings
       config={DEFAULT_SETTINGS}
-      mode="mirror"
+      mode={AsciiChatMode.MIRROR}
       onChange={onChange}
     />,
     { wrapper: HeadingProvider },

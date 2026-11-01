@@ -416,6 +416,11 @@ static asciichat_error_t discovery_send_settings(const options_t *values, uint32
   return acip_settings_send(context, values, request, UINT32_MAX);
 }
 
+/**
+ * @brief Run media for the committed discovery role and dispatch role changes.
+ * Stops media workers before replacing borrowed transports, and preserves the
+ * existing recovery deadline while awaiting ACDS rather than restarting failover.
+ */
 static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_display_ctx_t *display,
                                        void *user_data) {
   (void)user_data; // Unused
@@ -792,9 +797,12 @@ role_dispatch:
       NAMED_UNREGISTER(&receiver.running);
       NAMED_UNREGISTER(&receiver.connection.state);
       if (!should_exit() && g_discovery->session_type == SESSION_TYPE_WEBRTC) {
-        if (!g_discovery->handoff_pending) {
-          g_discovery->state = DISCOVERY_STATE_MIGRATING;
-          g_discovery->migration.detection_time_ms = time_get_ns() / NS_PER_MS_INT;
+        if (!g_discovery->handoff_pending && g_discovery->state != DISCOVERY_STATE_MIGRATING) {
+          if (g_discovery->state == DISCOVERY_STATE_FAILED)
+            return g_discovery->error;
+          result = discovery_session_handle_host_disconnect(g_discovery, 1);
+          if (result != ASCIICHAT_OK)
+            return result;
         }
         goto role_dispatch;
       }

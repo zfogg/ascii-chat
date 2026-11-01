@@ -226,6 +226,38 @@ static void check_audio_seek_serialization(const char *path) {
   ffmpeg_decoder_destroy(decoder);
 }
 
+static void check_paused_recording(const char *path) {
+  options_t saved = *options_get();
+  options_t recording_options = saved;
+  SAFE_STRNCPY(recording_options.render_file, "paused-recording.mp4", sizeof(recording_options.render_file));
+  CHECK(options_state_set(&recording_options) == ASCIICHAT_OK);
+  session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = path, .target_fps = 30};
+  session_capture_ctx_t *ctx = session_capture_create(&config);
+  CHECK(ctx);
+  image_t *frame = NULL;
+  uint64_t deadline = time_get_ns() + NS_PER_SEC_INT;
+  while (!frame && time_get_ns() < deadline) {
+    frame = session_capture_read_frame(ctx);
+    platform_sleep_ms(1);
+  }
+  CHECK(frame);
+  uint64_t serial = session_capture_frame_serial(ctx);
+  media_source_pause(ctx->source);
+  for (unsigned i = 0; i < 3; ++i) {
+    frame = session_capture_read_frame(ctx);
+    CHECK(frame && frame->pixels);
+    CHECK(session_capture_frame_serial(ctx) == serial);
+    CHECK(!session_capture_at_end(ctx));
+  }
+  // A seek changes the decoder position, never the recording clock or freshness
+  // of the retained raster while paused.
+  CHECK(media_source_seek(ctx->source, 0.25) == ASCIICHAT_OK);
+  CHECK(session_capture_read_frame(ctx));
+  CHECK(session_capture_frame_serial(ctx) == serial);
+  session_capture_destroy(ctx);
+  CHECK(options_state_set(&saved) == ASCIICHAT_OK);
+}
+
 static unsigned drain_video(ffmpeg_decoder_t *decoder) {
   unsigned frames = 0;
   uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
@@ -409,6 +441,7 @@ int main(int argc, char **argv) {
   ui_controller_shutdown();
   check_recording_fast_path();
   check_atomic_pause();
+  check_paused_recording(argv[1]);
   check_prefetch_notifications(argv[1]);
   check_audio_seek_serialization(argv[1]);
   options_state_destroy();

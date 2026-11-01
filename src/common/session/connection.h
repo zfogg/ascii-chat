@@ -3,6 +3,7 @@
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/establish.h>
 
 typedef enum {
   SESSION_CONNECTION_STARTING,
@@ -34,3 +35,13 @@ void session_connection_request_stop(session_connection_t *connection);
 asciichat_error_t session_connection_stop(session_connection_t *connection);
 /* Normal-thread interruption; retains the transport and its callback context. */
 void session_connection_interrupt_transport(acip_transport_t *transport);
+
+/* Establish one media connection, retrying only a server password challenge.
+ * prepare retains mode-specific identity policy and publishes borrowed aliases.
+ * The caller owns the resulting network object, including on startup failure;
+ * no workers may use it until this call succeeds. Password storage is borrowed.
+ * detach clears borrowed aliases before a password retry releases its owner. */
+asciichat_error_t session_connection_establish(const char *name, const char *address, uint16_t port,
+                                               const network_connect_config_t *config, network_connection_t **owner,
+                                               char *password, size_t capacity, network_connection_prepare_fn prepare,
+                                               void (*detach)(void *), void *context);

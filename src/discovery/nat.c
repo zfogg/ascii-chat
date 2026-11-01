@@ -6,11 +6,9 @@
 
 #include "nat.h"
 
-#include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/socket.h>
@@ -333,157 +331,6 @@ asciichat_error_t nat_detect_quality(nat_quality_t *quality, const char *stun_se
            quality->upnp_available, quality->has_public_ip, nat_type_to_string(quality->nat_type));
 
   return ASCIICHAT_OK;
-}
-
-asciichat_error_t nat_measure_bandwidth(nat_quality_t *quality, socket_t acds_socket) {
-  if (!quality) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "quality is NULL");
-  }
-  if (acds_socket == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid socket");
-  }
-
-  // Prepare bandwidth test packet
-  acip_bandwidth_test_t test_msg = {0};
-  memset(test_msg.session_id, 0, sizeof(test_msg.session_id)); // Anonymous test
-  memset(test_msg.participant_id, 0, sizeof(test_msg.participant_id));
-  test_msg.test_size_bytes = 65536; // 64KB test payload
-  test_msg.client_send_time_ns = time_get_ns();
-
-  // Send BANDWIDTH_TEST packet
-  asciichat_error_t result = packet_send(acds_socket, PACKET_TYPE_ACIP_BANDWIDTH_TEST, &test_msg, sizeof(test_msg));
-  if (result != ASCIICHAT_OK) {
-    log_warn("Failed to send bandwidth test packet");
-    return result;
-  }
-
-  // Send test payload (64KB of data)
-  uint8_t *test_data = SAFE_MALLOC(test_msg.test_size_bytes, uint8_t *);
-  if (!test_data) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate bandwidth test payload");
-  }
-  memset(test_data, 0xAA, test_msg.test_size_bytes); // Fill with pattern
-
-  ssize_t sent = send(acds_socket, (const char *)test_data, test_msg.test_size_bytes, 0);
-  SAFE_FREE(test_data);
-
-  if (sent != (ssize_t)test_msg.test_size_bytes) {
-    log_warn("Failed to send bandwidth test payload: sent=%zd, expected=%u", sent, test_msg.test_size_bytes);
-    return SET_ERRNO(ERROR_NETWORK, "Bandwidth test payload send failed");
-  }
-
-  log_debug("Sent bandwidth test with %u bytes", test_msg.test_size_bytes);
-
-  // Set socket timeout for response (5 seconds)
-  if (socket_set_timeout(acds_socket, 5 * NS_PER_SEC_INT) != 0) {
-    log_warn("Failed to set socket timeout for bandwidth test");
-    return SET_ERRNO(ERROR_NETWORK, "Failed to set socket timeout");
-  }
-
-  // Wait for BANDWIDTH_RESULT response
-  packet_type_t response_type;
-  void *response_data = NULL;
-  size_t response_len = 0;
-
-  result = packet_receive(acds_socket, &response_type, &response_data, &response_len);
-
-  if (result != ASCIICHAT_OK) {
-    log_warn("Bandwidth test timeout or receive failed");
-    return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "No bandwidth test response from ACDS");
-  }
-
-  if (response_type != PACKET_TYPE_ACIP_BANDWIDTH_RESULT) {
-    buffer_release(response_data);
-    log_warn("Unexpected packet type %d (expected BANDWIDTH_RESULT)", response_type);
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Wrong packet type in bandwidth test response");
-  }
-
-  if (response_len != sizeof(acip_bandwidth_result_t)) {
-    buffer_release(response_data);
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid bandwidth result size");
-  }
-
-  // Parse results
-  acip_bandwidth_result_t *results = (acip_bandwidth_result_t *)response_data;
-  quality->upload_kbps = results->measured_upload_kbps;
-  quality->download_kbps = results->measured_download_kbps;
-  quality->rtt_to_acds_ns = results->rtt_ns;
-  quality->jitter_ns = results->jitter_ns;
-  quality->packet_loss_pct = results->packet_loss_pct;
-
-  buffer_release(response_data);
-
-  log_debug("Bandwidth measurement: upload=%u kbps, download=%u kbps, rtt=%lu ns", quality->upload_kbps,
-            quality->download_kbps, quality->rtt_to_acds_ns);
-
-  return ASCIICHAT_OK;
-}
-
-void nat_quality_to_acip(const nat_quality_t *quality, const uint8_t session_id[16], const uint8_t participant_id[16],
-                         acip_nat_quality_t *out) {
-  if (!quality || !out)
-    return;
-
-  memset(out, 0, sizeof(acip_nat_quality_t));
-
-  if (session_id)
-    memcpy(out->session_id, session_id, 16);
-  if (participant_id)
-    memcpy(out->participant_id, participant_id, 16);
-
-  out->has_public_ip = quality->has_public_ip ? 1 : 0;
-  out->upnp_available = quality->upnp_available ? 1 : 0;
-  out->upnp_mapped_port[0] = (uint8_t)(quality->upnp_mapped_port >> 8);
-  out->upnp_mapped_port[1] = (uint8_t)(quality->upnp_mapped_port & 0xFF);
-  out->stun_nat_type = (uint8_t)quality->nat_type;
-  out->lan_reachable = quality->lan_reachable ? 1 : 0;
-  out->stun_latency_ns = quality->stun_latency_ns;
-
-  out->upload_kbps = quality->upload_kbps;
-  out->download_kbps = quality->download_kbps;
-  out->rtt_to_acds_ns = quality->rtt_to_acds_ns;
-  out->jitter_ns = quality->jitter_ns;
-  out->packet_loss_pct = quality->packet_loss_pct;
-
-  SAFE_STRNCPY(out->public_address, quality->public_address, sizeof(out->public_address));
-  out->public_port = quality->public_port;
-
-  out->ice_candidate_types = 0;
-  if (quality->has_host_candidates)
-    out->ice_candidate_types |= 1;
-  if (quality->has_srflx_candidates)
-    out->ice_candidate_types |= 2;
-  if (quality->has_relay_candidates)
-    out->ice_candidate_types |= 4;
-}
-
-void nat_quality_from_acip(const acip_nat_quality_t *acip, nat_quality_t *out) {
-  if (!acip || !out)
-    return;
-
-  nat_quality_init(out);
-
-  out->has_public_ip = acip->has_public_ip != 0;
-  out->upnp_available = acip->upnp_available != 0;
-  out->upnp_mapped_port = ((uint16_t)acip->upnp_mapped_port[0] << 8) | acip->upnp_mapped_port[1];
-  out->nat_type = (acip_nat_type_t)acip->stun_nat_type;
-  out->lan_reachable = acip->lan_reachable != 0;
-  out->stun_latency_ns = acip->stun_latency_ns;
-
-  out->upload_kbps = acip->upload_kbps;
-  out->download_kbps = acip->download_kbps;
-  out->rtt_to_acds_ns = acip->rtt_to_acds_ns;
-  out->jitter_ns = acip->jitter_ns;
-  out->packet_loss_pct = acip->packet_loss_pct;
-
-  SAFE_STRNCPY(out->public_address, acip->public_address, sizeof(out->public_address));
-  out->public_port = acip->public_port;
-
-  out->has_host_candidates = (acip->ice_candidate_types & 1) != 0;
-  out->has_srflx_candidates = (acip->ice_candidate_types & 2) != 0;
-  out->has_relay_candidates = (acip->ice_candidate_types & 4) != 0;
-
-  out->detection_complete = true;
 }
 
 const char *nat_type_to_string(acip_nat_type_t type) {

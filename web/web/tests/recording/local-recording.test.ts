@@ -219,3 +219,18 @@ it("bounds an encoder that never sends stop, and suppresses late events after di
   expect(state).not.toHaveBeenCalled();
   expect(error).not.toHaveBeenCalled();
 });
+
+it("starts a clean recording after an encoder failure", async () => {
+  const error = vi.fn();
+  const owner = new LocalRecording(vi.fn(), error);
+  owner.start(canvas(), audio());
+  encoder.onerror?.();
+  encoder.finalChunk();
+  expect(await owner.completed()).toBeNull();
+  error.mockClear();
+  owner.start(canvas(), audio());
+  const completion = owner.stop();
+  encoder.finalChunk();
+  expect((await completion)?.blob.size).toBeGreaterThan(0);
+  expect(error).not.toHaveBeenCalled();
+});

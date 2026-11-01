@@ -38,6 +38,7 @@ extern const network_connection_callbacks_t acds_network_callbacks;
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/crypto/handshake/common.h>
 #include "discovery-service/main.h"
+#include <ascii-chat/discovery/key_set.h>
 #include <ascii-chat/discovery/session.h> // For host_lost_candidate_t and participant storage
 
 /**
@@ -47,18 +48,8 @@ extern const network_connection_callbacks_t acds_network_callbacks;
  * participant this connection represents. Used by signaling relay
  * to map participant_id to connection for message delivery.
  *
- * Multi-Key Session Creation Protocol:
- * =====================================
- * When creating a session with multiple identity keys (e.g., SSH + GPG):
- * 1. Client sends SESSION_CREATE with first key (creates session UUID)
- * 2. Client sends SESSION_CREATE with second key (adds to same session)
- * 3. Client sends SESSION_CREATE with zero key (finalizes session)
- *
- * During multi-key creation:
- * - in_multikey_session_create = true
- * - All keys stored in pending_session_keys[]
- * - Only PING/PONG allowed, other messages blocked
- * - Keys validated to ensure no duplicates
+ * Multiple-key creation is an ordered, counted sequence of Ed25519 proofs.
+ * No session is persisted until the entire sequence has passed validation.
  */
 typedef struct {
   uint8_t session_id[16];     ///< Session UUID (valid if joined_session)
@@ -69,10 +60,7 @@ typedef struct {
   network_negotiation_t negotiation;
 
   // Multi-key session creation state
-  bool in_multikey_session_create;                     ///< True during multi-key SESSION_CREATE sequence
-  acip_session_create_t pending_session;               ///< Pending session data (from first SESSION_CREATE)
-  uint8_t pending_session_keys[MAX_IDENTITY_KEYS][32]; ///< Array of identity public keys
-  size_t num_pending_keys;                             ///< Number of keys received so far
+  acds_create_key_set_t create_keys; ///< Pending connection-local key set
 
   // Transport abstraction
   acip_transport_t *transport; ///< Persistent transport for this client connection
@@ -80,20 +68,6 @@ typedef struct {
   // Protocol state
   bool session_established; ///< True after SESSION_CREATE/SESSION_JOIN completes; handler exits loop
 } acds_client_data_t;
-
-/**
- * @brief In-memory host migration context
- *
- * Tracks migration timeout for sessions undergoing host failover.
- * Used by monitor_host_migrations() to detect stalled migrations and timeout.
- *
- * NOTE: Election happens proactively (host picks future host every 5 minutes).
- * No candidate collection or election needed here - just timeout tracking.
- */
-typedef struct {
-  uint8_t session_id[16];      ///< Session UUID
-  uint64_t migration_start_ns; ///< When migration started (nanoseconds since sokol_time setup)
-} migration_context_t;
 
 /**
  * @brief Network statistics for both TCP and WebSocket connections
@@ -127,10 +101,6 @@ typedef struct {
 
   // Rate limiting
   struct rate_limiter_s *rate_limiter; ///< SQLite-backed rate limiter
-
-  // Host migration tracking (in-memory during active migrations)
-  migration_context_t active_migrations[32]; ///< Slots for up to 32 concurrent migrations
-  size_t num_active_migrations;              ///< Number of active migrations
 
   // Background worker threads (cleanup, etc.)
   thread_pool_t *worker_pool; ///< Thread pool for background workers

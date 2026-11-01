@@ -50,9 +50,9 @@ Test(handoff, no_successor_reports_failure_after_deadline_once) {
   consensus_handoff_message_t action;
   consensus_handoff_leave(&s, host_id);
   cr_assert_not(consensus_handoff_tick(&s, 100, &action));
-  cr_assert(consensus_handoff_tick(&s, 5100, &action));
+  cr_assert(consensus_handoff_tick(&s, 15100, &action));
   cr_assert_eq(action.kind, HANDOFF_FAILED);
-  cr_assert_not(consensus_handoff_tick(&s, 5200, &action));
+  cr_assert_not(consensus_handoff_tick(&s, 15200, &action));
 }
 Test(handoff, ties_ignore_arrival_order) {
   consensus_handoff_t s = setup();
@@ -188,4 +188,147 @@ Test(handoff, successive_commits_share_generation_but_advance_decision_sequence)
   cr_assert_gt(action.sequence, sequence);
   cr_assert_eq(state.host_sequence, action.sequence);
   cr_assert_arr_eq(action.participant, slow_id, 16);
+}
+
+Test(handoff, silent_incumbent_without_first_sample_has_bounded_failure) {
+  consensus_handoff_t s = setup();
+  consensus_handoff_message_t action;
+  cr_assert_not(consensus_handoff_tick(&s, 0, &action));
+  cr_assert_not(consensus_handoff_tick(&s, CONSENSUS_HANDOFF_FRESH_MS + 1, &action));
+  cr_assert(s.host_lost);
+  cr_assert(consensus_handoff_tick(&s, CONSENSUS_HANDOFF_FRESH_MS + 1 + CONSENSUS_HANDOFF_RECOVERY_MS, &action));
+  cr_assert_eq(action.kind, HANDOFF_FAILED);
+  sample(&s, fast_id, 31000, 31010, 1);
+  cr_assert_not(consensus_handoff_tick(&s, 31011, &action));
+}
+
+Test(handoff, fresh_samples_cannot_extend_failed_recovery) {
+  consensus_handoff_t s = setup();
+  consensus_handoff_message_t action;
+  sample(&s, fast_id, 100, 110, 1);
+  consensus_handoff_host_lost(&s, host_id);
+  cr_assert(consensus_handoff_tick(&s, 111, &action));
+  action.kind = HANDOFF_REJECT;
+  cr_assert_eq(consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 112), ASCIICHAT_OK);
+  sample(&s, fast_id, 2000, 2010, 2);
+  cr_assert_not(consensus_handoff_tick(&s, 2011, &action));
+  cr_assert(consensus_handoff_tick(&s, 15111, &action));
+  cr_assert_eq(action.kind, HANDOFF_FAILED);
+}
+
+Test(handoff, silent_preparation_fails_at_shared_deadline_even_with_other_candidates) {
+  consensus_handoff_t s = setup();
+  consensus_handoff_message_t action;
+  sample(&s, fast_id, 100, 110, 1);
+  sample(&s, slow_id, 100, 300, 1);
+  consensus_handoff_host_lost(&s, host_id);
+  cr_assert(consensus_handoff_tick(&s, 301, &action));
+  cr_assert_eq(action.kind, HANDOFF_PREPARE);
+  cr_assert(consensus_handoff_tick(&s, 5301, &action));
+  cr_assert_eq(action.kind, HANDOFF_PREPARE);
+  cr_assert_eq(memcmp(action.participant, slow_id, 16), 0);
+  cr_assert_not(consensus_handoff_tick(&s, 10301, &action));
+  cr_assert(consensus_handoff_tick(&s, 15301, &action));
+  cr_assert_eq(action.kind, HANDOFF_FAILED);
+}
+
+Test(handoff, rejected_successor_recovers_to_fresh_backup) {
+  consensus_handoff_t s = setup();
+  consensus_handoff_message_t action;
+  sample(&s, fast_id, 100, 110, 1);
+  sample(&s, slow_id, 100, 300, 1);
+  consensus_handoff_host_lost(&s, host_id);
+  cr_assert(consensus_handoff_tick(&s, 301, &action));
+  action.kind = HANDOFF_REJECT;
+  cr_assert_eq(consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 302), ASCIICHAT_OK);
+  cr_assert(consensus_handoff_tick(&s, 303, &action));
+  cr_assert_eq(memcmp(action.participant, slow_id, 16), 0);
+  action.kind = HANDOFF_READY;
+  cr_assert_eq(consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 304), ASCIICHAT_OK);
+  cr_assert(consensus_handoff_tick(&s, 305, &action));
+  cr_assert_eq(action.kind, HANDOFF_COMMIT);
+  consensus_handoff_host_lost(&s, host_id); // Delayed report about the old host.
+  cr_assert_not(s.host_lost);
+}
+
+Test(handoff, incomplete_refresh_cannot_change_eligible_metrics) {
+  consensus_handoff_t s = setup();
+  sample(&s, fast_id, 100, 110, 1);
+  consensus_handoff_message_t m = {.kind = HANDOFF_SAMPLE_START, .sequence = 2, .capabilities = 0, .nat_tier = 0};
+  memcpy(m.session, session_id, 16);
+  memcpy(m.participant, fast_id, 16);
+  cr_assert_eq(consensus_handoff_receive(&s, &m, CONSENSUS_HANDOFF_HEADER, 2000), ASCIICHAT_OK);
+  consensus_handoff_message_t action;
+  cr_assert(consensus_handoff_tick(&s, 2001, &action));
+  cr_assert_eq(memcmp(action.participant, fast_id, 16), 0);
+  action.kind = HANDOFF_READY;
+  cr_assert_eq(consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 2002), ASCIICHAT_OK);
+  m.kind = HANDOFF_SAMPLE_DATA;
+  cr_assert_eq(consensus_handoff_receive(&s, &m, CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES, 2010),
+               ASCIICHAT_OK);
+  // A completed refresh withdrawing host capability revokes the old preparation.
+  consensus_handoff_host_lost(&s, host_id);
+  cr_assert_not(consensus_handoff_tick(&s, 2011, &action));
+  cr_assert_not(s.ready);
+}
+
+Test(handoff, departed_peer_and_late_probe_cannot_win) {
+  consensus_handoff_t s = setup();
+  sample(&s, fast_id, 100, 110, 1);
+  consensus_handoff_leave(&s, fast_id);
+  consensus_handoff_message_t m = {.kind = HANDOFF_SAMPLE_DATA, .sequence = 1};
+  memcpy(m.session, session_id, 16);
+  memcpy(m.participant, fast_id, 16);
+  cr_assert_neq(consensus_handoff_receive(&s, &m, CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES, 111),
+                ASCIICHAT_OK);
+  sample(&s, slow_id, 100, 300, 1);
+  consensus_handoff_message_t action;
+  cr_assert(consensus_handoff_tick(&s, 301, &action));
+  cr_assert_eq(memcmp(action.participant, slow_id, 16), 0);
+}
+
+Test(handoff, completed_refresh_changes_the_election) {
+  consensus_handoff_t s = setup();
+  sample(&s, fast_id, 100, 110, 1);
+  sample(&s, slow_id, 100, 300, 1);
+  // The formerly fast peer now takes a second to upload the probe.
+  sample(&s, fast_id, 2000, 3000, 2);
+  consensus_handoff_message_t action;
+  cr_assert(consensus_handoff_tick(&s, 3001, &action));
+  cr_assert_eq(memcmp(action.participant, slow_id, 16), 0);
+}
+
+Test(handoff, stale_prepared_peer_cannot_commit_on_host_loss) {
+  consensus_handoff_t s = setup();
+  sample(&s, fast_id, 100, 110, 1);
+  consensus_handoff_message_t action;
+  cr_assert(consensus_handoff_tick(&s, 111, &action));
+  action.kind = HANDOFF_READY;
+  cr_assert_eq(consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 112), ASCIICHAT_OK);
+  consensus_handoff_host_lost(&s, host_id);
+  cr_assert_not(consensus_handoff_tick(&s, 16000, &action));
+  cr_assert(consensus_handoff_tick(&s, 31000, &action));
+  cr_assert_eq(action.kind, HANDOFF_FAILED);
+}
+
+Test(handoff, probe_body_after_timeout_is_ineligible) {
+  consensus_handoff_t s = setup();
+  sample(&s, fast_id, 100, 5101, 1);
+  consensus_handoff_message_t action;
+  cr_assert_not(consensus_handoff_tick(&s, 5102, &action));
+}
+
+Test(handoff, silent_successor_recovers_to_prepared_backup_within_budget) {
+  consensus_handoff_t s = setup();
+  consensus_handoff_message_t action;
+  sample(&s, fast_id, 100, 110, 1);
+  sample(&s, slow_id, 100, 300, 1);
+  consensus_handoff_host_lost(&s, host_id);
+  cr_assert(consensus_handoff_tick(&s, 301, &action));
+  cr_assert(consensus_handoff_tick(&s, 5301, &action));
+  cr_assert_eq(memcmp(action.participant, slow_id, 16), 0);
+  action.kind = HANDOFF_READY;
+  cr_assert_eq(consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 5302), ASCIICHAT_OK);
+  cr_assert(consensus_handoff_tick(&s, 5303, &action));
+  cr_assert_eq(action.kind, HANDOFF_COMMIT);
 }

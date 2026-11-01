@@ -3,8 +3,8 @@
  * @brief Host negotiation logic for discovery mode
  * @ingroup discovery
  *
- * Implements the host negotiation protocol where participants exchange
- * NAT quality information and determine who should become the host.
+ * Determines the initial native TCP role from local bootstrap observations.
+ * Ongoing host recovery uses the shared measured handoff policy at ACDS.
  */
 
 #pragma once
@@ -70,75 +70,15 @@ void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[16], const ui
                     bool is_initiator);
 
 /**
- * @brief Start NAT detection phase
- * @param ctx Negotiation context
- * @param stun_server STUN server URL
- * @param local_port Local port for detection
- * @return ASCIICHAT_OK on success
- */
-asciichat_error_t negotiate_start_detection(negotiate_ctx_t *ctx, const char *stun_server, uint16_t local_port);
-
-/**
- * @brief Process received peer NAT quality
- * @param ctx Negotiation context
- * @param peer_quality Peer's NAT quality from network
- * @return ASCIICHAT_OK on success
- */
-asciichat_error_t negotiate_receive_peer_quality(negotiate_ctx_t *ctx, const acip_nat_quality_t *peer_quality);
-
-/**
  * @brief Determine negotiation result
  *
- * Called after both parties have exchanged NAT quality.
+ * Called once bootstrap observations are available.
  * Sets we_are_host and related fields.
  *
  * @param ctx Negotiation context
  * @return ASCIICHAT_OK on success
  */
 asciichat_error_t negotiate_determine_result(negotiate_ctx_t *ctx);
-
-/**
- * @brief Get current negotiation state
- * @param ctx Negotiation context
- * @return Current state
- */
-negotiate_state_t negotiate_get_state(const negotiate_ctx_t *ctx);
-
-/**
- * @brief Check if negotiation is complete
- * @param ctx Negotiation context
- * @return True if negotiation finished (success or failure)
- */
-bool negotiate_is_complete(const negotiate_ctx_t *ctx);
-
-/**
- * @brief Get negotiation error (if failed)
- * @param ctx Negotiation context
- * @return Error code or ASCIICHAT_OK if no error
- */
-asciichat_error_t negotiate_get_error(const negotiate_ctx_t *ctx);
-
-/**
- * @brief Elect future host from multiple participants (NEW P2P design)
- *
- * Called by quorum leader after collecting NAT quality from all participants.
- * Determines who should become host if current host dies.
- * Uses deterministic algorithm so all participants independently reach same result.
- *
- * @param collected_quality Array of NAT quality from all participants
- * @param participant_ids Array of participant IDs (in same order as quality array)
- * @param num_participants Number of participants
- * @param out_future_host_id Output: Elected future host's participant ID
- * @return ASCIICHAT_OK on success
- *
- * @note All participants compute this independently on their own collected data
- *       and reach the same result (deterministic algorithm).
- * @note If only one participant remains, that one is elected.
- * @note If all have same quality, uses participant ID lexicographic order as tiebreaker.
- */
-asciichat_error_t negotiate_elect_future_host(const acip_nat_quality_t collected_quality[],
-                                              const uint8_t participant_ids[][16], size_t num_participants,
-                                              uint8_t out_future_host_id[16]);
 
 #ifdef __cplusplus
 }

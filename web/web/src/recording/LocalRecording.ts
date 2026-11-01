@@ -46,6 +46,7 @@ export class LocalRecording {
     readCanvas = () => canvas as HTMLCanvasElement | null,
   ): void {
     if (this.disposed || this.recorder) throw new Error("Recording is busy");
+    this.failure = undefined;
     const mimeType = recordingMimeType();
     if (!mimeType || typeof canvas.captureStream !== "function")
       throw new Error("This browser cannot record ASCII video with audio.");

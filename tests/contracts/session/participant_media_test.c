@@ -125,6 +125,10 @@ static asciichat_error_t fixture_join(asciichat_thread_t *thread) {
   return thread_join(thread, NULL);
 }
 #define network_connection_open test_connection_open
+#define session_connection_establish test_session_connection_establish
+#define network_connection_establish test_network_connection_establish
+#include "../../../lib/network/establish.c"
+#include "session/establish.c"
 static void test_capture_audio(session_capture_ctx_t *ctx, void *audio) {
   (void)ctx;
   (void)audio;
@@ -333,6 +337,9 @@ Test(participant_media, startup_failures_and_worker_lifecycle, .timeout = 60) {
   fail_join = true;
   discovery_session_destroy(session);
   cr_assert(transports_destroyed == 0 && workers == 2);
+  session->participant_ctx->connected = false;
+  cr_assert_eq(session_participant_connect(session->participant_ctx), ERROR_THREAD);
+  cr_assert(transports_destroyed == 0 && workers == 2);
   cr_assert_eq(session_participant_get_transport(session->participant_ctx), owned);
   fail_join = false;
   discovery_session_destroy(session);
@@ -398,6 +405,9 @@ Test(participant_media, startup_failures_and_worker_lifecycle, .timeout = 60) {
     cr_assert_eq(session_participant_take_connection(tcp_participant, &taken), ASCIICHAT_OK);
     cr_assert_eq(network_connection_transport(taken), tcp);
     cr_assert(!session_participant_has_transport(tcp_participant));
+    cr_assert_eq(session_participant_set_connection(tcp_participant, &taken), ASCIICHAT_OK);
+    cr_assert_null(taken);
+    cr_assert_eq(session_participant_take_connection(tcp_participant, &taken), ASCIICHAT_OK);
     cr_assert_eq(session_participant_set_transport(tcp_participant, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
     cr_assert_eq(session_participant_set_connection(tcp_participant, &taken), ASCIICHAT_OK);
     cr_assert(!taken);
