@@ -84,4 +84,16 @@ describe("socket establishment ownership", () => {
     expect(Socket.instances).toHaveLength(2);
     expect(bridge.isConnected()).toBe(true);
   });
+  it("lets a close-state callback cancel automatic reconnect", async () => {
+    bridge.onStateChange((state) => {
+      if (state === "closed") bridge.close();
+    });
+    const connecting = bridge.connect();
+    Socket.instances[0]!.open();
+    await connecting;
+    Socket.instances[0]!.closed();
+    await vi.runAllTimersAsync();
+    expect(Socket.instances).toHaveLength(1);
+    expect(bridge.isConnected()).toBe(false);
+  });
 });

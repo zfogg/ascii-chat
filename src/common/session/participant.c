@@ -692,7 +692,7 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
   if (ownership != ACIP_TRANSPORT_BORROWED && ownership != ACIP_TRANSPORT_OWNED)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport ownership");
   if (transport && transport == p->transport) {
-    if (transport && ownership != p->transport_ownership)
+    if (ownership != p->transport_ownership)
       return SET_ERRNO(ERROR_INVALID_STATE, "Detach before transferring transport ownership");
     return ASCIICHAT_OK;
   }

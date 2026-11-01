@@ -230,21 +230,8 @@ export class SocketBridge {
       this.reassemblySize = 0;
       this.onStateChangeCallback?.("closed");
 
-      // If user explicitly closed the connection, don't reconnect
-      if (this.isUserDisconnecting) {
-        console.log(
-          "[SocketBridge] User-initiated disconnect, not reconnecting",
-        );
-        return;
-      }
-
-      // Auto-reconnect if connection was dropped unexpectedly
-      if (this.wasEverConnected) {
-        console.log(
-          "[SocketBridge] Unexpected disconnect, scheduling reconnect",
-        );
-        this.scheduleReconnect();
-      }
+      // scheduleReconnect also checks cancellation from the state callback.
+      if (this.wasEverConnected) this.scheduleReconnect();
     };
 
     // Use addEventListener for event handling (works better with mocks and real browsers)
@@ -270,7 +257,7 @@ export class SocketBridge {
    */
   private scheduleReconnect(): void {
     if (this.isUserDisconnecting || this.reconnectTimeoutId !== null) {
-      return; // Already scheduled
+      return;
     }
 
     // Always retry indefinitely - don't give up after N attempts
