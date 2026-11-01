@@ -57,12 +57,16 @@ versions, timestamps and revocations), then backfills each non-anonymous host
 key without overriding a pre-existing revocation. Existing sessions get an
 unrestricted policy row. Session IDs, names, passwords, participants, timestamps
 and host state remain in their original tables. The old untyped `session_keys`
-table remains available for inspection; new key APIs use the typed table.
+table, when present, remains available for inspection; new key APIs use the typed
+table. Fresh databases no longer create the superseded table or its indexes.
 
 Policy rows mark migrated sessions. Reopening the database does not recopy stale
 legacy keys or resurrect a revoked key. Foreign keys cascade key sets and policy
 rows when a session is deleted. New session creation, policy and all member keys
 commit in one savepoint; storage failure rolls back the whole session. SQLite's
 connection mutex protects these multi-statement operations on the shared handle.
-Restricted join authorization and participant insertion run in the same locked
-transaction, so a concurrent key revocation cannot interleave them.
+Password verification runs outside that mutex so Argon2 work cannot block other
+clients' database operations. Restricted admission is checked before password
+verification and checked again with fresh capacity, session identity and password
+state inside the insertion transaction. Changes during password verification
+therefore reject the join or require a retry without rehashing under the lock.

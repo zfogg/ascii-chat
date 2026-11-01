@@ -1852,6 +1852,19 @@ if(BUILD_TESTS AND UNIX AND TARGET ascii-chat)
     set_tests_properties(kitty-output PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
 endif()
 
+# Replace only the Argon2 boundary to observe real shared-handle interleavings.
+if(BUILD_CRITERION_TESTS AND CRITERION_FOUND AND TARGET ascii-chat-static)
+    add_executable(test-discovery-password-lock contracts/discovery/password_lock_test.c)
+    target_link_libraries(test-discovery-password-lock PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
+        ${LIBSODIUM_LIBRARIES} ${SQLITE3_LIBRARIES})
+    target_include_directories(test-discovery-password-lock PRIVATE ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-discovery-password-lock)
+    set_target_properties(test-discovery-password-lock PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_configure_contract(test-discovery-password-lock)
+    asciichat_add_contract_test(discovery-password-lock test-discovery-password-lock)
+endif()
+
 # Preserve each suite's existing category while making all migrated contracts selectable.
 get_property(contract_tests DIRECTORY PROPERTY ASCIICHAT_CONTRACT_TESTS)
 foreach(contract_test IN LISTS contract_tests)

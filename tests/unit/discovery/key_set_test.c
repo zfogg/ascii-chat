@@ -3,6 +3,7 @@
 #include <ascii-chat/discovery/key_set.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/acip/acds_handlers.h>
+#include <ascii-chat/network/errors.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/tests/common.h>
@@ -61,7 +62,9 @@ static void expect_join(acip_session_join_t *req, bool success) {
   cr_assert_eq(database_session_join(db, req, &config, &response), ASCIICHAT_OK);
   cr_assert_eq(response.success, success);
   if (!success)
-    cr_assert_eq(response.error_code, ERROR_CRYPTO_VERIFICATION);
+    cr_assert_eq(response.error_code, ACIP_ERROR_INVALID_SIGNATURE);
+  if (!success)
+    cr_assert_eq(network_error_from_acip(response.error_code), ERROR_INVALID_SIGNATURE);
 }
 
 Test(discovery_key_set, ordered_proofs_and_any_active_member_can_join) {
@@ -206,6 +209,13 @@ Test(discovery_key_set, migration_retains_old_sessions_keys_revocations_and_admi
   acip_session_create_t req = create_request(0, 0);
   acip_session_created_t session;
   cr_assert_eq(database_session_create(db, &req, &config, &session), ASCIICHAT_OK);
+  cr_assert_eq(sqlite3_exec(db,
+                            "CREATE TABLE session_keys (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                            "session_string TEXT NOT NULL REFERENCES sessions(session_string) ON DELETE CASCADE, "
+                            "identity_pubkey BLOB NOT NULL, key_version INTEGER NOT NULL, added_at INTEGER NOT NULL, "
+                            "revoked INTEGER DEFAULT 0, UNIQUE(session_string, identity_pubkey))",
+                            NULL, NULL, NULL),
+               SQLITE_OK);
   // Reconstruct the pre-migration schema and retain a revoked host key plus a
   // second legacy rotation key. The old tables are left in place by migration.
   sqlite3_stmt *stmt;
@@ -345,4 +355,16 @@ Test(discovery_key_set, host_only_legacy_database_is_backfilled_and_new_restrict
   expect_join(&join, true);
   cr_assert_eq(sqlite3_exec(db, "DELETE FROM sessions", NULL, NULL, NULL), SQLITE_OK);
   cr_assert_not(database_session_verify_key(db, restricted.session_string, keys[1]));
+}
+
+Test(discovery_key_set, fresh_databases_do_not_create_superseded_key_tables_or_indexes) {
+  sqlite3_stmt *stmt;
+  cr_assert_eq(sqlite3_prepare_v2(db,
+                                  "SELECT COUNT(*) FROM sqlite_master WHERE name IN "
+                                  "('session_keys', 'idx_session_keys_session', 'idx_session_keys_active')",
+                                  -1, &stmt, NULL),
+               SQLITE_OK);
+  cr_assert_eq(sqlite3_step(stmt), SQLITE_ROW);
+  cr_assert_eq(sqlite3_column_int(stmt, 0), 0);
+  sqlite3_finalize(stmt);
 }

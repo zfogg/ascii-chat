@@ -20,7 +20,7 @@ asciichat_error_t acds_create_key_set_collect(acds_create_key_set_t *set, const 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Malformed or out-of-order create sequence");
   }
   for (size_t i = 0; i < set->count; ++i) {
-    if (memcmp(set->keys[i], req->identity_pubkey, 32) == 0) {
+    if (memcmp(set->keys[i], req->identity_pubkey, sizeof(req->identity_pubkey)) == 0) {
       memset(set, 0, sizeof(*set));
       return SET_ERRNO(ERROR_INVALID_PARAM, "Duplicate Ed25519 identity");
     }
@@ -38,9 +38,9 @@ asciichat_error_t acds_create_key_set_collect(acds_create_key_set_t *set, const 
   if (!set->count) {
     memcpy(&set->request, req, sizeof(*req));
     if (req->reserved_string_len)
-      memcpy(set->reserved_string, req + 1, req->reserved_string_len);
+      memcpy(set->reserved_string, req + 1, (size_t)req->reserved_string_len);
   }
-  memcpy(set->keys[set->count++], req->identity_pubkey, 32);
+  memcpy(set->keys[set->count++], req->identity_pubkey, sizeof(req->identity_pubkey));
   *complete = set->count == total;
   return ASCIICHAT_OK;
 }

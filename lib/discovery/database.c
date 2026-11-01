@@ -308,7 +308,7 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
 
   // Idempotent, transactional migration from the untyped key table. A policy
   // row is also the migration marker: reopening must never restore revoked keys.
-  const char *migration =
+  const char *schema =
       "BEGIN IMMEDIATE;"
       "CREATE TABLE IF NOT EXISTS session_key_policy ("
       " session_string TEXT PRIMARY KEY REFERENCES sessions(session_string) ON DELETE CASCADE,"
@@ -319,12 +319,8 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
       " identity_pubkey BLOB NOT NULL CHECK(typeof(identity_pubkey) = 'blob' AND length(identity_pubkey) = 32),"
       " key_version INTEGER NOT NULL, added_at INTEGER NOT NULL,"
       " revoked INTEGER NOT NULL DEFAULT 0 CHECK(revoked IN (0,1)),"
-      " PRIMARY KEY(session_string, key_type, identity_pubkey));"
-      "INSERT OR IGNORE INTO session_identity_keys "
-      " SELECT k.session_string, 'ed25519', k.identity_pubkey, k.key_version, k.added_at, CASE WHEN k.revoked = 0 THEN "
-      "0 ELSE 1 END"
-      " FROM session_keys k WHERE typeof(k.identity_pubkey) = 'blob' AND length(k.identity_pubkey) = 32 AND NOT EXISTS"
-      " (SELECT 1 FROM session_key_policy p WHERE p.session_string = k.session_string);"
+      " PRIMARY KEY(session_string, key_type, identity_pubkey));";
+  const char *backfill =
       "INSERT OR IGNORE INTO session_identity_keys "
       " SELECT s.session_string, 'ed25519', s.host_pubkey, 0, s.created_at, 0 FROM sessions s"
       " WHERE typeof(s.host_pubkey) = 'blob' AND length(s.host_pubkey) = 32 AND s.host_pubkey != zeroblob(32) AND NOT "
@@ -332,7 +328,33 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
       " (SELECT 1 FROM session_key_policy p WHERE p.session_string = s.session_string);"
       "INSERT OR IGNORE INTO session_key_policy SELECT session_string, 0 FROM sessions;"
       "COMMIT;";
-  rc = sqlite3_exec(*db, migration, NULL, NULL, &err_msg);
+  sqlite3_stmt *legacy_table = NULL;
+  rc = sqlite3_prepare_v2(*db, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'session_keys'", -1,
+                          &legacy_table, NULL);
+  bool has_legacy_keys = false;
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_step(legacy_table);
+    has_legacy_keys = rc == SQLITE_ROW;
+    if (rc == SQLITE_ROW || rc == SQLITE_DONE)
+      rc = SQLITE_OK;
+  }
+  sqlite3_finalize(legacy_table);
+  if (rc == SQLITE_OK)
+    rc = sqlite3_exec(*db, schema, NULL, NULL, &err_msg);
+  if (rc == SQLITE_OK && has_legacy_keys) {
+    // Read legacy keys only during migration; new databases do not create the
+    // superseded table or its indexes. Existing tables remain intact.
+    const char *legacy_import = "INSERT OR IGNORE INTO session_identity_keys "
+                                " SELECT k.session_string, 'ed25519', k.identity_pubkey, k.key_version, k.added_at, "
+                                "CASE WHEN k.revoked = 0 THEN "
+                                "0 ELSE 1 END"
+                                " FROM session_keys k WHERE typeof(k.identity_pubkey) = 'blob' AND "
+                                "length(k.identity_pubkey) = 32 AND NOT EXISTS"
+                                " (SELECT 1 FROM session_key_policy p WHERE p.session_string = k.session_string);";
+    rc = sqlite3_exec(*db, legacy_import, NULL, NULL, &err_msg);
+  }
+  if (rc == SQLITE_OK)
+    rc = sqlite3_exec(*db, backfill, NULL, NULL, &err_msg);
   if (rc != SQLITE_OK) {
     log_error("Failed to migrate session keys: %s", err_msg ? err_msg : "unknown error");
     sqlite3_free(err_msg);
@@ -470,6 +492,8 @@ asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create
   return database_session_create_keys(db, req, (const uint8_t (*)[32]) & req->identity_pubkey, 1, config, resp);
 }
 
+/** Persist a validated set as one savepoint, rolling back session and policy
+ * together when any member insert fails. The caller owns the connection mutex. */
 static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const acip_session_create_t *req,
                                                              const uint8_t (*keys)[32], size_t count,
                                                              const acds_config_t *config,
@@ -479,13 +503,13 @@ static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const 
   memset(resp, 0, sizeof(*resp));
   if ((req->total_keys ? req->total_keys : 1) != count || req->key_index != 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Create count does not match key set");
-  if (memcmp(keys[0], req->identity_pubkey, 32) != 0)
+  if (memcmp(keys[0], req->identity_pubkey, sizeof(req->identity_pubkey)) != 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Primary key does not match create request");
   for (size_t i = 0; i < count; ++i) {
     if (count > 1 && sodium_is_zero(keys[i], 32))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Anonymous keys cannot authorize a restricted session");
     for (size_t j = 0; j < i; ++j)
-      if (memcmp(keys[i], keys[j], 32) == 0)
+      if (memcmp(keys[i], keys[j], sizeof(keys[i])) == 0)
         return SET_ERRNO(ERROR_INVALID_PARAM, "Duplicate Ed25519 key");
   }
   if (sqlite3_exec(db, "SAVEPOINT create_key_set", NULL, NULL, NULL) != SQLITE_OK)
@@ -594,65 +618,43 @@ asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_strin
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t database_session_join_locked(sqlite3 *db, const acip_session_join_t *req,
-                                                      const acds_config_t *config, acip_session_joined_t *resp) {
-  ASCII_OTEL_SCOPE(DATABASE_SESSION_JOIN);
-  if (!db || !req || !config || !resp) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "db, req, config, or resp is NULL");
+/** Check the current policy and proof while the caller holds the connection mutex.
+ * A protocol rejection is ASCIICHAT_OK with a nonzero ACIP response error. */
+static asciichat_error_t database_session_authorize_join(sqlite3 *db, const acip_session_join_t *req,
+                                                         const acds_config_t *config, const char *session_string,
+                                                         acip_session_joined_t *resp) {
+  sqlite3_stmt *policy = NULL;
+  int policy_rc =
+      sqlite3_prepare_v2(db, "SELECT restricted FROM session_key_policy WHERE session_string = ?", -1, &policy, NULL);
+  if (policy_rc == SQLITE_OK) {
+    sqlite3_bind_text(policy, 1, session_string, -1, SQLITE_STATIC);
+    policy_rc = sqlite3_step(policy);
   }
-
-  memset(resp, 0, sizeof(*resp));
-  resp->success = 0;
-
-  if (req->session_string_len == 0 || req->session_string_len >= sizeof(req->session_string) ||
-      memchr(req->session_string, '\0', req->session_string_len) ||
-      req->session_string[req->session_string_len] != '\0' ||
-      (req->has_password && !memchr(req->password, '\0', sizeof(req->password))))
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Malformed join request");
-
-  // Extract session string
-  char session_string[ACIP_MAX_SESSION_STRING_LEN] = {0};
-  size_t len = req->session_string_len < (ACIP_MAX_SESSION_STRING_LEN - 1) ? req->session_string_len
-                                                                           : (ACIP_MAX_SESSION_STRING_LEN - 1);
-  memcpy(session_string, req->session_string, len);
-  session_string[len] = '\0';
-
-  // Find session
-  session_entry_t *session = database_session_find_by_string(db, session_string);
-  if (!session) {
-    ascii_otel_metric(ASCII_OTEL_METRIC_LOOKUP_MISS, 1);
-    resp->error_code = ACIP_ERROR_SESSION_NOT_FOUND;
-    SAFE_STRNCPY(resp->error_message, "Session not found", sizeof(resp->error_message));
-    log_warn("Session join failed: %s (not found)", session_string);
+  bool restricted = policy_rc == SQLITE_ROW && sqlite3_column_int(policy, 0) != 0;
+  sqlite3_finalize(policy);
+  if (policy_rc != SQLITE_ROW) {
+    return SET_ERRNO(ERROR_CONFIG, "Missing session key policy");
+  }
+  // Restricted admission always requires a current proof, regardless of the
+  // service-wide optional identity setting. An advertised key alone is no proof.
+  if ((restricted && !database_session_verify_key(db, session_string, req->identity_pubkey)) ||
+      ((restricted || config->require_client_identity) &&
+       (!acds_validate_timestamp(req->timestamp, 300) ||
+        acds_verify_session_join(req->identity_pubkey, req->timestamp, session_string, req->signature) !=
+            ASCIICHAT_OK))) {
+    resp->error_code = ACIP_ERROR_INVALID_SIGNATURE;
+    SAFE_STRNCPY(resp->error_message, "Session key authorization failed", sizeof(resp->error_message));
     return ASCIICHAT_OK;
   }
 
-  // Check if session is full
-  if (session->current_participants >= session->max_participants) {
-    session_entry_destroy(session);
-    resp->error_code = ACIP_ERROR_SESSION_FULL;
-    SAFE_STRNCPY(resp->error_message, "Session is full", sizeof(resp->error_message));
-    log_warn("Session join failed: %s (full)", session_string);
-    return ASCIICHAT_OK;
-  }
+  return ASCIICHAT_OK;
+}
 
-  // Verify password if required
-  if (session->has_password && req->has_password) {
-    if (!verify_password(req->password, session->password_hash)) {
-      session_entry_destroy(session);
-      resp->error_code = ACIP_ERROR_INVALID_PASSWORD;
-      SAFE_STRNCPY(resp->error_message, "Invalid password", sizeof(resp->error_message));
-      log_warn("Session join failed: %s (invalid password)", session_string);
-      return ASCIICHAT_OK;
-    }
-  } else if (session->has_password && !req->has_password) {
-    session_entry_destroy(session);
-    resp->error_code = ACIP_ERROR_INVALID_PASSWORD;
-    SAFE_STRNCPY(resp->error_message, "Password required", sizeof(resp->error_message));
-    log_warn("Session join failed: %s (password required)", session_string);
-    return ASCIICHAT_OK;
-  }
-
+/** Commit a join using fresh state; the caller holds the connection mutex.
+ * Password verification has already completed against the supplied snapshot. */
+static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_session_join_t *req,
+                                                      const acds_config_t *config, const session_entry_t *verified,
+                                                      acip_session_joined_t *resp, session_entry_t **joined) {
   // Generate participant ID
   uint8_t participant_id[16];
   generate_uuid(participant_id);
@@ -664,37 +666,40 @@ static asciichat_error_t database_session_join_locked(sqlite3 *db, const acip_se
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
-    session_entry_destroy(session);
     log_error("Failed to begin transaction: %s", err_msg ? err_msg : "unknown");
     sqlite3_free(err_msg);
     return SET_ERRNO(ERROR_CONFIG, "Failed to begin transaction");
   }
 
-  sqlite3_stmt *policy = NULL;
-  int policy_rc =
-      sqlite3_prepare_v2(db, "SELECT restricted FROM session_key_policy WHERE session_string = ?", -1, &policy, NULL);
-  if (policy_rc == SQLITE_OK) {
-    sqlite3_bind_text(policy, 1, session_string, -1, SQLITE_STATIC);
-    policy_rc = sqlite3_step(policy);
-  }
-  bool restricted = policy_rc == SQLITE_ROW && sqlite3_column_int(policy, 0) != 0;
-  sqlite3_finalize(policy);
-  if (policy_rc != SQLITE_ROW) {
+  // Reload inside the transaction: other joins or key administration may have
+  // run while this thread was verifying the password without the database lock.
+  const char *session_string = verified->session_string;
+  session_entry_t *session = database_session_find_by_string(db, session_string);
+  if (!session || memcmp(session->session_id, verified->session_id, sizeof(session->session_id)) != 0) {
     sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
     session_entry_destroy(session);
-    return SET_ERRNO(ERROR_CONFIG, "Missing session key policy");
+    resp->error_code = ACIP_ERROR_SESSION_NOT_FOUND;
+    SAFE_STRNCPY(resp->error_message, "Session changed during join", sizeof(resp->error_message));
+    return ASCIICHAT_OK;
   }
-  // Restricted admission always requires a current proof, regardless of the
-  // service-wide optional identity setting. An advertised key alone is no proof.
-  if ((restricted && !database_session_verify_key(db, session_string, req->identity_pubkey)) ||
-      ((restricted || config->require_client_identity) &&
-       (!acds_validate_timestamp(req->timestamp, 300) ||
-        acds_verify_session_join(req->identity_pubkey, req->timestamp, session_string, req->signature) !=
-            ASCIICHAT_OK))) {
+  asciichat_error_t result = database_session_authorize_join(db, req, config, session_string, resp);
+  if (result != ASCIICHAT_OK || resp->error_code != ACIP_ERROR_NONE) {
     sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
     session_entry_destroy(session);
-    resp->error_code = ERROR_CRYPTO_VERIFICATION;
-    SAFE_STRNCPY(resp->error_message, "Session key authorization failed", sizeof(resp->error_message));
+    return result;
+  }
+  if (session->has_password != verified->has_password || strcmp(session->password_hash, verified->password_hash) != 0) {
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    session_entry_destroy(session);
+    resp->error_code = ACIP_ERROR_INVALID_PASSWORD;
+    SAFE_STRNCPY(resp->error_message, "Session password changed; retry join", sizeof(resp->error_message));
+    return ASCIICHAT_OK;
+  }
+  if (session->current_participants >= session->max_participants) {
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    session_entry_destroy(session);
+    resp->error_code = ACIP_ERROR_SESSION_FULL;
+    SAFE_STRNCPY(resp->error_message, "Session is full", sizeof(resp->error_message));
     return ASCIICHAT_OK;
   }
 
@@ -773,10 +778,18 @@ static asciichat_error_t database_session_join_locked(sqlite3 *db, const acip_se
     return SET_ERRNO(ERROR_CONFIG, "Failed to commit transaction");
   }
 
+  memcpy(resp->participant_id, participant_id, sizeof(resp->participant_id));
+  *joined = session;
+  return ASCIICHAT_OK;
+}
+
+/** Format the committed snapshot after releasing the shared SQLite mutex. */
+static void database_session_join_response(sqlite3 *db, session_entry_t *session, const acds_config_t *config,
+                                           acip_session_joined_t *resp) {
+  const char *session_string = session->session_string;
   // Fill response
   resp->success = 1;
   resp->error_code = ACIP_ERROR_NONE;
-  memcpy(resp->participant_id, participant_id, 16);
   memcpy(resp->session_id, session->session_id, 16);
 
   // Discovery mode host negotiation fields
@@ -830,19 +843,86 @@ static asciichat_error_t database_session_join_locked(sqlite3 *db, const acip_se
 
   session_entry_destroy(session);
   database_telemetry_population(db);
-  return ASCIICHAT_OK;
 }
-
 asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *req, const acds_config_t *config,
                                         acip_session_joined_t *resp) {
-  if (!db)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing database");
-  // Keep key revocation and other operations on the shared handle from
-  // interleaving authorization with participant insertion.
+  ASCII_OTEL_SCOPE(DATABASE_SESSION_JOIN);
+  if (!db || !req || !config || !resp) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, req, config, or resp is NULL");
+  }
+
+  memset(resp, 0, sizeof(*resp));
+  resp->success = 0;
+
+  if (req->session_string_len == 0 || req->session_string_len >= sizeof(req->session_string) ||
+      memchr(req->session_string, '\0', (size_t)req->session_string_len) ||
+      req->session_string[req->session_string_len] != '\0' ||
+      (req->has_password && !memchr(req->password, '\0', sizeof(req->password))))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Malformed join request");
+
+  // Extract session string
+  char session_string[ACIP_MAX_SESSION_STRING_LEN] = {0};
+  size_t len = req->session_string_len < (ACIP_MAX_SESSION_STRING_LEN - 1) ? req->session_string_len
+                                                                           : (ACIP_MAX_SESSION_STRING_LEN - 1);
+  memcpy(session_string, req->session_string, len);
+  session_string[len] = '\0';
+
+  // Find session
+  session_entry_t *session = database_session_find_by_string(db, session_string);
+  if (!session) {
+    ascii_otel_metric(ASCII_OTEL_METRIC_LOOKUP_MISS, 1);
+    resp->error_code = ACIP_ERROR_SESSION_NOT_FOUND;
+    SAFE_STRNCPY(resp->error_message, "Session not found", sizeof(resp->error_message));
+    log_warn("Session join failed: %s (not found)", session_string);
+    return ASCIICHAT_OK;
+  }
+
+  // Reject unauthorized identities before spending Argon2 resources or revealing
+  // a password result. This preliminary check is repeated in the transaction.
   sqlite3_mutex *mutex = sqlite3_db_mutex(db);
   sqlite3_mutex_enter(mutex);
-  asciichat_error_t result = database_session_join_locked(db, req, config, resp);
+  asciichat_error_t result = database_session_authorize_join(db, req, config, session_string, resp);
   sqlite3_mutex_leave(mutex);
+  if (result != ASCIICHAT_OK || resp->error_code != ACIP_ERROR_NONE) {
+    session_entry_destroy(session);
+    return result;
+  }
+
+  // Check if session is full
+  if (session->current_participants >= session->max_participants) {
+    session_entry_destroy(session);
+    resp->error_code = ACIP_ERROR_SESSION_FULL;
+    SAFE_STRNCPY(resp->error_message, "Session is full", sizeof(resp->error_message));
+    log_warn("Session join failed: %s (full)", session_string);
+    return ASCIICHAT_OK;
+  }
+
+  // Verify password if required
+  if (session->has_password && req->has_password) {
+    if (!verify_password(req->password, session->password_hash)) {
+      session_entry_destroy(session);
+      resp->error_code = ACIP_ERROR_INVALID_PASSWORD;
+      SAFE_STRNCPY(resp->error_message, "Invalid password", sizeof(resp->error_message));
+      log_warn("Session join failed: %s (invalid password)", session_string);
+      return ASCIICHAT_OK;
+    }
+  } else if (session->has_password && !req->has_password) {
+    session_entry_destroy(session);
+    resp->error_code = ACIP_ERROR_INVALID_PASSWORD;
+    SAFE_STRNCPY(resp->error_message, "Password required", sizeof(resp->error_message));
+    log_warn("Session join failed: %s (password required)", session_string);
+    return ASCIICHAT_OK;
+  }
+
+  // The immutable snapshot records which session/password was verified. The
+  // commit helper reloads mutable state after BEGIN and never hashes under lock.
+  session_entry_t *joined = NULL;
+  sqlite3_mutex_enter(mutex);
+  result = database_session_join_commit(db, req, config, session, resp, &joined);
+  sqlite3_mutex_leave(mutex);
+  session_entry_destroy(session);
+  if (joined)
+    database_session_join_response(db, joined, config, resp);
   return result;
 }
 

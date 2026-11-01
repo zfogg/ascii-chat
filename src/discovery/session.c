@@ -141,8 +141,8 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
       uint8_t seckey[64] = {0};
       asciichat_error_t key_result = acds_identity_load(opts->identity_keys[i], pubkey, seckey);
       if (key_result == ASCIICHAT_OK) {
-        memcpy(session->identity_pubkeys[session->num_identity_keys], pubkey, 32);
-        memcpy(session->identity_seckeys[session->num_identity_keys++], seckey, 64);
+        memcpy(session->identity_pubkeys[session->num_identity_keys], pubkey, sizeof(pubkey));
+        memcpy(session->identity_seckeys[session->num_identity_keys++], seckey, sizeof(seckey));
         sodium_memzero(seckey, sizeof(seckey));
         char fingerprint[65];
         acds_identity_fingerprint(pubkey, fingerprint);
@@ -158,13 +158,13 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
       SET_ERRNO(ERROR_CRYPTO, "Could not load the complete discovery identity key set");
       return NULL;
     }
-    memcpy(session->identity_pubkey, session->identity_pubkeys[0], 32);
-    memcpy(session->identity_seckey, session->identity_seckeys[0], 64);
+    memcpy(session->identity_pubkey, session->identity_pubkeys[0], sizeof(session->identity_pubkey));
+    memcpy(session->identity_seckey, session->identity_seckeys[0], sizeof(session->identity_seckey));
     log_info("Loaded %zu identity key(s) for multi-key protocol", session->num_identity_keys);
   } else {
     // Single-key mode: use only the primary identity key
     memcpy(session->identity_pubkeys[0], session->identity_pubkey, 32);
-    memcpy(session->identity_seckeys[0], session->identity_seckey, 64);
+    memcpy(session->identity_seckeys[0], session->identity_seckey, sizeof(session->identity_seckey));
     session->num_identity_keys = 1;
   }
 

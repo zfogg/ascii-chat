@@ -414,8 +414,8 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
              resp.stun_count, resp.turn_count);
 
     // Store session/participant IDs and mark session as established
-    memcpy(client_data->session_id, resp.session_id, 16);
-    memcpy(client_data->participant_id, resp.participant_id, 16);
+    memcpy(client_data->session_id, resp.session_id, sizeof(client_data->session_id));
+    memcpy(client_data->participant_id, resp.participant_id, sizeof(client_data->participant_id));
     client_data->joined_session = true;
     client_data->session_established = true; // Signal handler to exit receive loop
   } else {
@@ -498,8 +498,8 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
 
     // Update client data (accessed via transport->user_data)
     if (client_data) {
-      memcpy(client_data->session_id, resp.session_id, 16);
-      memcpy(client_data->participant_id, resp.participant_id, 16);
+      memcpy(client_data->session_id, resp.session_id, sizeof(client_data->session_id));
+      memcpy(client_data->participant_id, resp.participant_id, sizeof(client_data->participant_id));
       client_data->joined_session = true;
       client_data->session_established = true; // Signal handler to exit receive loop
     }
