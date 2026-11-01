@@ -334,8 +334,10 @@ static inline void acds_track_packet_sent(acds_server_t *server, size_t payload_
 // Publish complete connection membership atomically with respect to host fanout.
 static void acds_client_joined(acds_server_t *server, acds_client_data_t *client, const uint8_t session_id[16],
                                const uint8_t participant_id[16]) {
-  if (!client)
+  if (!client) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Missing discovery client membership");
     return;
+  }
   mutex_lock(&server->handoff_mutex);
   memcpy(client->session_id, session_id, sizeof(client->session_id));
   memcpy(client->participant_id, participant_id, sizeof(client->participant_id));
@@ -926,6 +928,57 @@ static void acds_on_network_quality(const void *payload, size_t payload_len, aci
   }
 }
 
+static acip_host_designated_t acds_host_designation(const session_entry_t *session, uint32_t generation) {
+  acip_host_designated_t designated = {0};
+  memcpy(designated.session_id, session->session_id, sizeof(designated.session_id));
+  memcpy(designated.host_id, session->host_participant_id, sizeof(designated.host_id));
+  if (session->has_password || session->expose_ip_publicly)
+    SAFE_STRNCPY(designated.host_address, session->host_address, sizeof(designated.host_address));
+  designated.host_port = session->host_port;
+  designated.connection_type = session->host_connection_type;
+  designated.generation = HOST_TO_NET_U32(generation);
+  return designated;
+}
+
+static bool acds_host_endpoint_conflicts(const session_entry_t *stored, const acip_host_announcement_t *announcement,
+                                         const char *address) {
+  // Accepted endpoints are immutable within a generation; duplicates can repair delivery.
+  return stored->host_established && stored->host_address[0] &&
+         (memcmp(stored->host_participant_id, announcement->host_id, 16) || strcmp(stored->host_address, address) ||
+          stored->host_port != announcement->host_port ||
+          stored->host_connection_type != announcement->connection_type);
+}
+
+// Caller holds handoff_mutex through validation, persistence and delivery.
+static asciichat_error_t acds_update_announced_host(acds_server_t *server, const acip_host_announcement_t *announcement,
+                                                    const char *address) {
+  uint32_t generation = NET_TO_HOST_U32(announcement->generation);
+  consensus_handoff_t *handoff = acds_handoff_find(server, announcement->session_id, true);
+  if (!handoff || memcmp(handoff->host, announcement->host_id, 16) || generation != handoff->generation)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Obsolete or unauthorized host announcement");
+  session_entry_t *stored = database_session_find_by_id(server->db, announcement->session_id);
+  if (!stored)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Host announcement session not found");
+  if (acds_host_endpoint_conflicts(stored, announcement, address)) {
+    session_entry_destroy(stored);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Conflicting host endpoint");
+  }
+  asciichat_error_t result =
+      database_session_update_host(server->db, announcement->session_id, announcement->host_id, address,
+                                   announcement->host_port, announcement->connection_type);
+  if (result == ASCIICHAT_OK) {
+    memcpy(stored->host_participant_id, announcement->host_id, sizeof(stored->host_participant_id));
+    SAFE_STRNCPY(stored->host_address, address, sizeof(stored->host_address));
+    stored->host_port = announcement->host_port;
+    stored->host_connection_type = announcement->connection_type;
+    acip_host_designated_t designated = acds_host_designation(stored, generation);
+    result = signaling_broadcast(server->db, server->network_server, announcement->session_id,
+                                 PACKET_TYPE_ACIP_HOST_DESIGNATED, &designated, sizeof(designated), NULL);
+  }
+  session_entry_destroy(stored);
+  return result;
+}
+
 void acds_on_host_announcement(const acip_host_announcement_t *announcement, acip_transport_t *transport,
                                const char *client_ip, void *app_ctx) {
   ASCII_OTEL_SCOPE(DISCOVERY_HOST_ANNOUNCE);
@@ -949,50 +1002,13 @@ void acds_on_host_announcement(const acip_host_announcement_t *announcement, aci
   const char *host_address = announcement->host_address[0] ? announcement->host_address : client_ip;
   // Serialize authority validation, persistence and delivery with handoff commits.
   mutex_lock(&server->handoff_mutex);
-  consensus_handoff_t *handoff = acds_handoff_find(server, announcement->session_id, true);
-  if (!handoff || memcmp(handoff->host, announcement->host_id, 16) ||
-      NET_TO_HOST_U32(announcement->generation) != handoff->generation) {
-    mutex_unlock(&server->handoff_mutex);
-    acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Obsolete or unauthorized host announcement");
-    return;
-  }
-  session_entry_t *stored = database_session_find_by_id(server->db, announcement->session_id);
-  if (!stored) {
-    mutex_unlock(&server->handoff_mutex);
-    return;
-  }
-  // An accepted endpoint is immutable within its generation. Duplicates can
-  // repair missed delivery without allowing reordered endpoint replacements.
-  bool conflict =
-      stored->host_established && stored->host_address[0] &&
-      (memcmp(stored->host_participant_id, announcement->host_id, 16) || strcmp(stored->host_address, host_address) ||
-       stored->host_port != announcement->host_port || stored->host_connection_type != announcement->connection_type);
-  bool reveal_ip = stored->has_password || stored->expose_ip_publicly;
-  session_entry_destroy(stored);
-  if (conflict) {
-    mutex_unlock(&server->handoff_mutex);
-    acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Conflicting host endpoint");
-    return;
-  }
-  asciichat_error_t result =
-      database_session_update_host(server->db, announcement->session_id, announcement->host_id, host_address,
-                                   announcement->host_port, announcement->connection_type);
-  if (result == ASCIICHAT_OK) {
-    acip_host_designated_t designated = {0};
-    memcpy(designated.session_id, announcement->session_id, 16);
-    memcpy(designated.host_id, announcement->host_id, 16);
-    if (reveal_ip)
-      SAFE_STRNCPY(designated.host_address, host_address, sizeof(designated.host_address));
-    designated.host_port = announcement->host_port;
-    designated.connection_type = announcement->connection_type;
-    designated.generation = announcement->generation;
-    result = signaling_broadcast(server->db, server->network_server, announcement->session_id,
-                                 PACKET_TYPE_ACIP_HOST_DESIGNATED, &designated, sizeof(designated), NULL);
-  }
+  asciichat_error_t result = acds_update_announced_host(server, announcement, host_address);
   mutex_unlock(&server->handoff_mutex);
-  if (result != ASCIICHAT_OK)
-    log_warn("Host designation delivery failed: %s", asciichat_error_format(NULL, result));
-
+  if (result != ASCIICHAT_OK) {
+    acip_send_error(transport, result, "Host designation failed");
+    log_warn("Host designation failed: %s", asciichat_error_format(NULL, result));
+    return;
+  }
   log_info("Session host updated via HOST_ANNOUNCEMENT from %s", client_ip);
 }
 
@@ -1056,14 +1072,7 @@ void acds_send_current_host(acds_server_t *server, acip_transport_t *transport, 
   consensus_handoff_t *state = acds_handoff_find(server, id, true);
   session_entry_t *stored = database_session_find_by_id(server->db, id);
   if (state && stored && stored->host_established) {
-    acip_host_designated_t designated = {0};
-    memcpy(designated.session_id, id, 16);
-    memcpy(designated.host_id, stored->host_participant_id, 16);
-    if (stored->has_password || stored->expose_ip_publicly)
-      SAFE_STRNCPY(designated.host_address, stored->host_address, sizeof(designated.host_address));
-    designated.host_port = stored->host_port;
-    designated.connection_type = stored->host_connection_type;
-    designated.generation = HOST_TO_NET_U32(state->generation);
+    acip_host_designated_t designated = acds_host_designation(stored, state->generation);
     asciichat_error_t result =
         packet_send_via_transport(transport, PACKET_TYPE_ACIP_HOST_DESIGNATED, &designated, sizeof(designated), 0);
     if (result != ASCIICHAT_OK)

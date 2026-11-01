@@ -1182,6 +1182,25 @@ static asciichat_error_t discovery_handoff_send(discovery_session_t *session, co
   SAFE_FREE(bytes);
   return result;
 }
+static void discovery_commit_host(discovery_session_t *session, const consensus_handoff_message_t *message) {
+  if ((session->handoff_commit_received && message->generation <= session->handoff_commit_generation) ||
+      (session->host_designation_received && message->generation <= session->host_designation_generation))
+    return;
+  session->handoff_commit_received = true;
+  session->handoff_commit_generation = message->generation;
+  session->migration.detection_time_ms = session_get_current_time_ms();
+  if (memcmp(session->host_id, message->participant, 16))
+    NOTICE_ANNOUNCE("Session host changed", "The session has a new host.");
+  memcpy(session->host_id, message->participant, 16);
+  session->host_port = message->port;
+  session->host_address[0] = 0;
+  session->handoff_pending =
+      session->session_type == SESSION_TYPE_WEBRTC || !memcmp(session->host_id, session->participant_id, 16);
+  set_state(session, DISCOVERY_STATE_MIGRATING);
+  log_info("Committed successor %02x%02x generation=%u", message->participant[0], message->participant[1],
+           message->generation);
+}
+
 static void discovery_handoff_receive(discovery_session_t *session, const void *data, size_t length) {
   consensus_handoff_message_t message;
   if (consensus_handoff_decode(data, length, &message) != ASCIICHAT_OK ||
@@ -1214,22 +1233,7 @@ static void discovery_handoff_receive(discovery_session_t *session, const void *
   } else if (message.kind == HANDOFF_FAILED) {
     set_error(session, ERROR_NETWORK, "No eligible successor has fresh measurements and a prepared host");
   } else if (message.kind == HANDOFF_COMMIT) {
-    if ((session->handoff_commit_received && message.generation <= session->handoff_commit_generation) ||
-        (session->host_designation_received && message.generation <= session->host_designation_generation))
-      return;
-    session->handoff_commit_received = true;
-    session->handoff_commit_generation = message.generation;
-    session->migration.detection_time_ms = session_get_current_time_ms();
-    if (memcmp(session->host_id, message.participant, 16))
-      NOTICE_ANNOUNCE("Session host changed", "The session has a new host.");
-    memcpy(session->host_id, message.participant, 16);
-    session->host_port = message.port;
-    session->host_address[0] = 0;
-    session->handoff_pending =
-        session->session_type == SESSION_TYPE_WEBRTC || !memcmp(session->host_id, session->participant_id, 16);
-    set_state(session, DISCOVERY_STATE_MIGRATING);
-    log_info("Committed successor %02x%02x generation=%u", message.participant[0], message.participant[1],
-             message.generation);
+    discovery_commit_host(session, &message);
   }
 }
 asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session) {
@@ -1290,18 +1294,29 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
   return discovery_handoff_send(session, &message, true);
 }
 
+static bool discovery_host_designation_is_current(const discovery_session_t *session,
+                                                  const acip_host_designated_t *host, uint32_t generation) {
+  if (memcmp(host->session_id, session->session_id, 16) || !memchr(host->host_address, 0, sizeof(host->host_address)) ||
+      !host->host_port || host->connection_type > ACIP_CONNECTION_TYPE_TURN || generation < session->handoff_generation)
+    return false;
+  if (!session->host_designation_received || generation > session->host_designation_generation)
+    return true;
+  // The same authority may supply an endpoint that was not available at join time.
+  return generation == session->host_designation_generation && !memcmp(session->host_id, host->host_id, 16) &&
+         !session->host_address[0] && host->host_address[0];
+}
+
+static bool discovery_host_endpoint_ready(const discovery_session_t *session, const acip_host_designated_t *host) {
+  return session->session_type == SESSION_TYPE_WEBRTC || host->host_address[0] ||
+         !memcmp(host->host_id, session->participant_id, 16);
+}
+
 static void discovery_receive_host_designated(discovery_session_t *session, const void *data, size_t len) {
   if (!data || len != sizeof(acip_host_designated_t))
     return;
   const acip_host_designated_t *host = data;
   uint32_t generation = NET_TO_HOST_U32(host->generation);
-  if (memcmp(host->session_id, session->session_id, 16) || !memchr(host->host_address, 0, sizeof(host->host_address)) ||
-      !host->host_port || host->connection_type > ACIP_CONNECTION_TYPE_TURN ||
-      generation < session->handoff_generation ||
-      (session->host_designation_received &&
-       (generation < session->host_designation_generation ||
-        (generation == session->host_designation_generation &&
-         (memcmp(session->host_id, host->host_id, 16) || session->host_address[0] || !host->host_address[0])))))
+  if (!discovery_host_designation_is_current(session, host, generation))
     return;
   bool changed = memcmp(session->host_id, host->host_id, 16) != 0;
   bool active = session->state == DISCOVERY_STATE_ACTIVE;
@@ -1317,9 +1332,7 @@ static void discovery_receive_host_designated(discovery_session_t *session, cons
   session->host_port = host->host_port;
   if (changed && active)
     NOTICE_ANNOUNCE("Session host changed", "The session has a new host.");
-  if ((changed && (active || connecting) &&
-       (session->session_type == SESSION_TYPE_WEBRTC || host->host_address[0] ||
-        !memcmp(host->host_id, session->participant_id, 16))) ||
+  if ((changed && (active || connecting) && discovery_host_endpoint_ready(session, host)) ||
       (session->state == DISCOVERY_STATE_MIGRATING && session->session_type != SESSION_TYPE_WEBRTC &&
        host->host_address[0])) {
     // Worker teardown remains deferred to the existing role dispatcher.
