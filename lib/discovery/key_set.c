@@ -9,7 +9,7 @@ asciichat_error_t acds_create_key_set_collect(acds_create_key_set_t *set, const 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing create sequence parameters");
   *complete = false;
   size_t total = req->total_keys ? req->total_keys : 1;
-  if (total > MAX_IDENTITY_KEYS || req->key_index >= total || req->key_index != set->count ||
+  if (total > MAX_SESSION_KEYS || req->key_index >= total || req->key_index != set->count ||
       (!req->total_keys && set->count) ||
       (set->count && (req->total_keys != set->request.total_keys || req->capabilities != set->request.capabilities ||
                       req->max_participants != set->request.max_participants)) ||

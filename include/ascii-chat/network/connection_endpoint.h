@@ -8,6 +8,8 @@
  */
 #pragma once
 
+#include <ascii-chat/common/limits.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -20,8 +22,8 @@ typedef enum {
 
 typedef struct {
   connection_endpoint_protocol_t protocol;
-  char input[512];
-  char host[256];
+  char input[URL_BUFFER_SIZE];
+  char host[HOSTNAME_BUFFER_SIZE];
   uint16_t port;
   bool has_explicit_port;
 } connection_endpoint_t;

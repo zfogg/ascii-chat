@@ -376,7 +376,7 @@ float validate_opt_volume(const char *value_str, char *error_msg, size_t error_m
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_max_clients(const char *value_str, char *error_msg, size_t error_msg_size) {
-  int result = validate_int_range(value_str, 1, PARTICIPANT_LIMIT, "Max clients", error_msg, error_msg_size);
+  int result = validate_int_range(value_str, 1, MAX_SESSION_PARTICIPANTS, "Max clients", error_msg, error_msg_size);
   return (result == INT_MIN) ? -1 : result;
 }
 
@@ -533,7 +533,7 @@ int options_collect_identity_keys(options_t *opts, int argc, char *argv[]) {
   size_t key_count = 0;
 
   // Scan argv for all --key or -K flags
-  for (int i = 1; i < argc && key_count < MAX_IDENTITY_KEYS; i++) {
+  for (int i = 1; i < argc; i++) {
     const char *arg = argv[i];
 
     // Check if this is a --key or -K flag
@@ -554,6 +554,10 @@ int options_collect_identity_keys(options_t *opts, int argc, char *argv[]) {
     }
 
     if (is_key_flag && key_value && strlen(key_value) > 0) {
+      if (key_count >= MAX_SESSION_KEYS || strlen(key_value) >= sizeof(opts->identity_keys[0])) {
+        SET_ERRNO(ERROR_INVALID_PARAM, "Too many identity keys or key path exceeds storage capacity");
+        return -1;
+      }
       // Validate that local key files exist (skip for remote/virtual keys)
       if (!is_remote_key_path(key_value)) {
         struct stat st;

@@ -16,13 +16,13 @@
  * algorithms and leader election.
  */
 typedef struct consensus_topology {
-  uint8_t participant_ids[PARTICIPANT_LIMIT][16]; ///< Participant UUIDs in sorted order
+  uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16]; ///< Participant UUIDs in sorted order
   int num_participants;                           ///< Total number of participants
   int my_position;                                ///< My index in the sorted list
 } consensus_topology_t;
 
 // Helper: find position of UUID in array
-static int find_uuid_position(const uint8_t uuids[PARTICIPANT_LIMIT][16], int count, const uint8_t target[16]) {
+static int find_uuid_position(const uint8_t uuids[MAX_SESSION_PARTICIPANTS][16], int count, const uint8_t target[16]) {
   for (int i = 0; i < count; i++) {
     if (memcmp(uuids[i], target, 16) == 0) {
       return i;
@@ -36,9 +36,11 @@ static int qsort_uuid_compare(const void *a, const void *b) {
   return memcmp(a, b, 16);
 }
 
-asciichat_error_t consensus_topology_create(const uint8_t participant_ids[PARTICIPANT_LIMIT][16], int num_participants,
-                                            const uint8_t my_id[16], consensus_topology_t **out_topology) {
-  if (!participant_ids || !my_id || !out_topology || num_participants <= 0 || num_participants > PARTICIPANT_LIMIT) {
+asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
+                                            int num_participants, const uint8_t my_id[16],
+                                            consensus_topology_t **out_topology) {
+  if (!participant_ids || !my_id || !out_topology || num_participants <= 0 ||
+      num_participants > MAX_SESSION_PARTICIPANTS) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid topology creation parameters");
   }
 
@@ -110,7 +112,7 @@ asciichat_error_t consensus_topology_get_leader(const consensus_topology_t *topo
 }
 
 asciichat_error_t consensus_topology_get_all(const consensus_topology_t *topology,
-                                             uint8_t out_ids[PARTICIPANT_LIMIT][16], int *out_count) {
+                                             uint8_t out_ids[MAX_SESSION_PARTICIPANTS][16], int *out_count) {
   if (!topology || !out_ids || !out_count) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }

@@ -60,3 +60,35 @@ Test(connection_endpoint, resolve_invalid_scheme) {
 
   cr_assert_neq(result, ASCIICHAT_OK, "Expected resolution to fail for invalid scheme");
 }
+
+Test(connection_endpoint, url_storage_boundary_does_not_truncate_or_mutate_on_error) {
+  char input[URL_BUFFER_SIZE + 1];
+  const char *prefix = "wss://example.com/";
+  size_t prefix_len = strlen(prefix);
+  memcpy(input, prefix, prefix_len);
+  memset(input + prefix_len, 'a', MAX_URL_LENGTH - prefix_len);
+  input[MAX_URL_LENGTH] = '\0';
+  connection_endpoint_t endpoint = {0};
+  cr_assert_eq(connection_endpoint_resolve(input, 443, &endpoint), ASCIICHAT_OK);
+  cr_assert_str_eq(endpoint.input, input);
+  connection_endpoint_t before = endpoint;
+  input[MAX_URL_LENGTH] = 'a';
+  input[MAX_URL_LENGTH + 1] = '\0';
+  cr_assert_eq(connection_endpoint_resolve(input, 443, &endpoint), ERROR_INVALID_PARAM);
+  cr_assert_arr_eq(&endpoint, &before, sizeof(endpoint));
+}
+
+Test(connection_endpoint, host_storage_boundary_preserves_full_host) {
+  char host[HOSTNAME_BUFFER_SIZE + 1];
+  memset(host, 'a', sizeof(host));
+  host[63] = host[127] = host[191] = '.';
+  host[HOSTNAME_BUFFER_SIZE - 1] = '\0';
+  connection_endpoint_t endpoint = {0};
+  cr_assert_eq(connection_endpoint_resolve(host, 27224, &endpoint), ASCIICHAT_OK);
+  cr_assert_str_eq(endpoint.host, host);
+  connection_endpoint_t before = endpoint;
+  host[HOSTNAME_BUFFER_SIZE - 1] = 'a';
+  host[HOSTNAME_BUFFER_SIZE] = '\0';
+  cr_assert_eq(connection_endpoint_resolve(host, 27224, &endpoint), ERROR_INVALID_PARAM);
+  cr_assert_arr_eq(&endpoint, &before, sizeof(endpoint));
+}

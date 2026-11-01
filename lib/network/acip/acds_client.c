@@ -233,6 +233,9 @@ asciichat_error_t acds_protocol_create(acds_protocol_t *p, const acds_session_cr
                                        uint8_t total_keys, uint8_t key_index) {
   if (!p || !params)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery create parameters");
+  if (total_keys > MAX_SESSION_KEYS || key_index >= (total_keys ? total_keys : 1) || params->max_participants == 0 ||
+      params->max_participants > MAX_SESSION_PARTICIPANTS)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session key count/index or participant limit");
   if (params->reserved_string && params->reserved_string[0])
     return protocol_fail(p, ERROR_NOT_SUPPORTED, "Reserved session names are not supported", true);
   acip_session_create_t req = {0};
@@ -310,7 +313,7 @@ asciichat_error_t acds_protocol_enter(acds_protocol_t *p, bool create, const cha
   if (!create)
     return acds_protocol_lookup(p, name);
   acds_session_create_params_t params = {.capabilities = 3,
-                                         .max_participants = PARTICIPANT_LIMIT,
+                                         .max_participants = MAX_SESSION_PARTICIPANTS,
                                          .session_type = SESSION_TYPE_WEBRTC,
                                          .has_password = p->join.has_password};
   memcpy(params.identity_pubkey, p->join.identity_pubkey, sizeof(params.identity_pubkey));

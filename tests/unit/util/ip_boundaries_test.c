@@ -229,3 +229,23 @@ Test(ip_boundaries, formatted_addresses_round_trip_and_reject_short_destinations
   cr_assert_eq(format_ip_with_port("::1", 1, NULL, 32), ERROR_INVALID_PARAM);
   cr_assert_eq(format_ip_with_port("::1", 1, out, 0), ERROR_INVALID_PARAM);
 }
+
+Test(ip_boundaries, hostname_and_label_byte_limits) {
+  char host[MAX_HOSTNAME_LENGTH + 2], parsed[HOSTNAME_BUFFER_SIZE];
+  uint16_t port;
+  memset(host, 'a', sizeof(host));
+  host[63] = host[127] = host[191] = '.';
+  host[MAX_HOSTNAME_LENGTH] = '\0';
+  cr_assert_eq(parse_address_with_optional_port(host, parsed, sizeof(parsed), &port, 27224), 0);
+  cr_assert_str_eq(parsed, host);
+  host[MAX_HOSTNAME_LENGTH] = 'a';
+  host[MAX_HOSTNAME_LENGTH + 1] = '\0';
+  cr_assert_eq(parse_address_with_optional_port(host, parsed, sizeof(parsed), &port, 27224), -1);
+  memset(host, 'a', sizeof(host));
+  host[MAX_HOSTNAME_LABEL_LENGTH] = '\0';
+  cr_assert_eq(parse_address_with_optional_port(host, parsed, sizeof(parsed), &port, 27224), 0);
+  cr_assert_str_eq(parsed, host);
+  host[MAX_HOSTNAME_LABEL_LENGTH] = 'a';
+  host[MAX_HOSTNAME_LABEL_LENGTH + 1] = '\0';
+  cr_assert_eq(parse_address_with_optional_port(host, parsed, sizeof(parsed), &port, 27224), -1);
+}

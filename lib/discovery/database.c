@@ -202,7 +202,7 @@ static void load_session_participants(sqlite3 *db, session_entry_t *session) {
   sqlite3_bind_text(stmt, 1, session->session_string, -1, SQLITE_STATIC);
 
   size_t idx = 0;
-  while (sqlite3_step(stmt) == SQLITE_ROW && idx < PARTICIPANT_LIMIT) {
+  while (sqlite3_step(stmt) == SQLITE_ROW && idx < MAX_SESSION_PARTICIPANTS) {
     participant_t *p = SAFE_MALLOC(sizeof(participant_t), participant_t *);
     if (!p) {
       break;
@@ -423,9 +423,9 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   uint64_t expires_at = now + ACIP_SESSION_EXPIRATION_MS;
 
   // Calculate max_participants
-  uint8_t max_participants = req->max_participants > 0 && req->max_participants <= PARTICIPANT_LIMIT
+  uint8_t max_participants = req->max_participants > 0 && req->max_participants <= MAX_SESSION_PARTICIPANTS
                                  ? req->max_participants
-                                 : PARTICIPANT_LIMIT;
+                                 : MAX_SESSION_PARTICIPANTS;
 
   // Insert into database
   const char *sql = database_queries[QUERY_CreateSession].sql;
@@ -498,7 +498,7 @@ static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const 
                                                              const uint8_t (*keys)[32], size_t count,
                                                              const acds_config_t *config,
                                                              acip_session_created_t *resp) {
-  if (!db || !req || !keys || !config || !resp || count == 0 || count > MAX_IDENTITY_KEYS)
+  if (!db || !req || !keys || !config || !resp || count == 0 || count > MAX_SESSION_KEYS)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session key set");
   memset(resp, 0, sizeof(*resp));
   if ((req->total_keys ? req->total_keys : 1) != count || req->key_index != 0)

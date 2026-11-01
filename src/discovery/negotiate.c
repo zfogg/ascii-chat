@@ -12,8 +12,6 @@
 
 #include <string.h>
 
-// PARTICIPANT_LIMIT is defined in session.h (included via negotiate.h)
-
 void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[16], const uint8_t participant_id[16],
                     bool is_initiator) {
   if (!ctx)

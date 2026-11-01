@@ -21,6 +21,8 @@
  */
 
 #include <criterion/criterion.h>
+#include <ascii-chat/network/webrtc/stun.h>
+#include <ascii-chat/network/webrtc/turn.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/pcre2.h>
@@ -890,4 +892,51 @@ Test(url_validator, edge_cases) {
     const url_test_case_t *test = &edge_case_urls[i];
     assert_url_valid(test->url, test->note);
   }
+}
+
+Test(url_validator, normalized_schemeless_url_byte_boundary) {
+  char input[URL_BUFFER_SIZE];
+  const char *prefix = "example.com/";
+  size_t limit = MAX_URL_LENGTH - strlen("http://");
+  memcpy(input, prefix, strlen(prefix));
+  memset(input + strlen(prefix), 'a', limit - strlen(prefix));
+  input[limit] = '\0';
+  url_parts_t parts = {0};
+  cr_assert(url_is_valid(input));
+  cr_assert_eq(url_parse(input, &parts), ASCIICHAT_OK);
+  cr_assert_eq(strlen(parts.path), limit - strlen("example.com"));
+  url_parts_destroy(&parts);
+  input[limit] = 'a';
+  input[limit + 1] = '\0';
+  cr_assert_not(url_is_valid(input));
+  cr_assert_eq(url_parse(input, &parts), ERROR_INVALID_PARAM);
+}
+
+Test(url_validator, explicit_url_retains_allocated_component_support_beyond_scratch_limit) {
+  char input[URL_BUFFER_SIZE + 64];
+  const char *prefix = "https://example.com/";
+  memcpy(input, prefix, strlen(prefix));
+  memset(input + strlen(prefix), 'a', sizeof(input) - strlen(prefix) - 1);
+  input[sizeof(input) - 1] = '\0';
+  url_parts_t parts = {0};
+  cr_assert(url_is_valid(input));
+  cr_assert_eq(url_parse(input, &parts), ASCIICHAT_OK);
+  cr_assert_eq(strlen(parts.path), strlen(input) - strlen("https://example.com"));
+  url_parts_destroy(&parts);
+}
+
+Test(url_validator, stun_wire_capacity_includes_terminator) {
+  char url[STUN_URL_BUFFER_SIZE + 1];
+  memcpy(url, "stun:", 5);
+  memset(url + 5, 'a', sizeof(url) - 6);
+  url[STUN_URL_BUFFER_SIZE - 1] = '\0';
+  stun_server_t server = {0};
+  cr_assert_eq(stun_servers_parse(url, NULL, &server, 1), 1);
+  cr_assert_eq(server.host_len, STUN_URL_BUFFER_SIZE - 1);
+  cr_assert_str_eq(server.host, url);
+  url[STUN_URL_BUFFER_SIZE - 1] = 'a';
+  url[STUN_URL_BUFFER_SIZE] = '\0';
+  cr_assert_eq(stun_servers_parse(url, NULL, &server, 1), -1);
+  cr_assert_eq(sizeof(stun_server_t), 65, "STUN wire layout must remain compatible");
+  cr_assert_eq(sizeof(turn_server_t), 163, "TURN wire layout must remain compatible");
 }

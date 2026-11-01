@@ -54,7 +54,7 @@
  * ============================================================================ */
 
 /** @brief Default maximum clients */
-#define SESSION_HOST_DEFAULT_MAX_CLIENTS PARTICIPANT_LIMIT
+#define SESSION_HOST_DEFAULT_MAX_CLIENTS MAX_SESSION_PARTICIPANTS
 
 /* ============================================================================
  * Session Host Internal Types

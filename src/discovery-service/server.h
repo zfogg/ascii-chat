@@ -34,7 +34,7 @@ extern const network_connection_callbacks_t acds_network_callbacks;
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/options/options.h> // For MAX_IDENTITY_KEYS
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/crypto/handshake/common.h>
 #include "discovery-service/main.h"

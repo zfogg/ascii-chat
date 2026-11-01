@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ascii-chat/common/limits.h>
+
 /**
  * @file crypto/handshake/common.h
  * @brief Common declarations and data structures for cryptographic handshake
@@ -90,7 +92,7 @@ typedef struct crypto_handshake_context_t {
   char client_gpg_key_id[41]; /**< Client's GPG key ID (8/16/40 hex chars + null terminator, for server verification) */
 
   /** Connection info for known_hosts */
-  char server_hostname[256]; /**< Server hostname (user-provided) */
+  char server_hostname[HOSTNAME_BUFFER_SIZE]; /**< Server hostname (user-provided) */
   char server_ip[256];       /**< Server IP address (resolved from connection) */
   uint16_t server_port;      /**< Server port */
 

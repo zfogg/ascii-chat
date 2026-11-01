@@ -145,3 +145,21 @@ Test(option_validation_boundaries, enum_parsers_reject_unknown_values_without_ov
   SAFE_FREE(error);
   SAFE_FREE(options);
 }
+
+Test(option_validation_boundaries, session_key_array_rejects_excess_and_truncated_paths) {
+  options_t opts = {0};
+  char *args[MAX_SESSION_KEYS + 2];
+  args[0] = "ascii-chat";
+  for (size_t i = 1; i < MAX_SESSION_KEYS + 2; ++i)
+    args[i] = "--key=github:zfogg";
+  cr_assert_eq(options_collect_identity_keys(&opts, MAX_SESSION_KEYS + 1, args), MAX_SESSION_KEYS);
+  cr_assert_eq(opts.num_identity_keys, MAX_SESSION_KEYS);
+  cr_assert_eq(options_collect_identity_keys(&opts, MAX_SESSION_KEYS + 2, args), -1);
+  char path[OPTIONS_BUFF_SIZE + 7];
+  memcpy(path, "--key=", 6);
+  memset(path + 6, 'a', OPTIONS_BUFF_SIZE);
+  memcpy(path + 6, "github:", 7);
+  path[sizeof(path) - 1] = '\0';
+  args[1] = path;
+  cr_assert_eq(options_collect_identity_keys(&opts, 2, args), -1);
+}

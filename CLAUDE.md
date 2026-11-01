@@ -828,3 +828,31 @@ cmake --build build
 - **Crypto Protocol**: `docs/crypto.md`
 - **Platform Abstraction**: `lib/platform/README.md`
 - **Build System**: `cmake/` directory
+
+## Shared limits
+
+Use `include/ascii-chat/common/limits.h` (also included by `common.h`) for
+application limits. Include it directly when only constants are needed.
+
+- `MAX_SESSION_KEYS` bounds keys in one session creation sequence and CLI
+  identity-key arrays; it does not cap persisted key-rotation history.
+- `MAX_SESSION_PARTICIPANTS` bounds session membership, election, hosting and
+  related arrays. `MAX_CLIENTS` derives from it. Validate received counts before
+  indexing, allocating or serializing; wire counts are still uint8_t.
+- `MAX_HOSTNAME_LENGTH` and `MAX_HOSTNAME_LABEL_LENGTH` are ASCII DNS byte
+  limits excluding NUL (253 and 63). They describe `is_valid_hostname()` policy.
+  `HOSTNAME_BUFFER_SIZE` is the existing 256-byte endpoint/OS hostname capacity,
+  including NUL, also used for bracketed IP literals. It is not DNS validation.
+- `MAX_URL_LENGTH` excludes NUL and bounds the normalized schemeless URL,
+  including its added `http://` prefix. Allocate `URL_BUFFER_SIZE` bytes for
+  that representation. Explicit-scheme URLs with allocated components remain
+  unrestricted by this scratch-buffer limit; consumers check their own capacity.
+- Media URL cache capacities include NUL and only govern cache storage. Packed
+  STUN/TURN fields have separate protocol capacities; do not enlarge them to
+  match general URL or hostname buffers.
+
+Lengths from `strlen()` are bytes, not UTF-8 character counts. Allocate space
+for terminators and formatting prefixes/suffixes explicitly. Keep input checks,
+overflow checks before size arithmetic, and snprintf error/truncation checks.
+A constant documents a bound; it does not prove that untrusted data obeys it.
+Reuse semantic constants rather than replacing unrelated equal numeric values.

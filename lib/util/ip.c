@@ -254,7 +254,7 @@ asciichat_error_t format_ip_with_port(const char *ip, uint16_t port, char *outpu
 // Helper function to validate hostname format
 // Returns 1 if valid hostname, 0 otherwise
 static int is_valid_hostname(const char *hostname) {
-  if (!hostname || strlen(hostname) == 0 || strlen(hostname) > 253) {
+  if (!hostname || strlen(hostname) == 0 || strlen(hostname) > MAX_HOSTNAME_LENGTH) {
     return 0;
   }
 
@@ -270,13 +270,13 @@ static int is_valid_hostname(const char *hostname) {
     char c = hostname[i];
     if (c == '.') {
       // Label cannot be empty or exceed 63 characters
-      if (label_len == 0 || label_len > 63) {
+      if (label_len == 0 || label_len > MAX_HOSTNAME_LABEL_LENGTH) {
         return 0;
       }
       label_len = 0;
     } else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-') {
       label_len++;
-      if (label_len > 63) {
+      if (label_len > MAX_HOSTNAME_LABEL_LENGTH) {
         return 0;
       }
     } else {
@@ -285,7 +285,7 @@ static int is_valid_hostname(const char *hostname) {
   }
 
   // Check last label
-  if (label_len == 0 || label_len > 63) {
+  if (label_len == 0 || label_len > MAX_HOSTNAME_LABEL_LENGTH) {
     return 0;
   }
 

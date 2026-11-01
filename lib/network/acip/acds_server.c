@@ -30,14 +30,18 @@ asciichat_error_t acip_server_validate_session_create(const acip_session_create_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Session create request is NULL");
   }
 
+  if (req->total_keys > MAX_SESSION_KEYS || req->key_index >= (req->total_keys ? req->total_keys : 1)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session key count/index");
+  }
+
   // Validate capabilities (only bits 0-1 should be set)
   if (req->capabilities & ~0x03) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid capabilities bits (only 0-1 allowed)");
   }
 
   // Validate max_participants (1-128)
-  if (req->max_participants < 1 || req->max_participants > PARTICIPANT_LIMIT) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_participants (must be 1-128)");
+  if (req->max_participants < 1 || req->max_participants > MAX_SESSION_PARTICIPANTS) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_participants (must be 1-%d)", MAX_SESSION_PARTICIPANTS);
   }
 
   // Server address can be empty - ACDS will auto-detect from connection source IP

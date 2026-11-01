@@ -102,7 +102,7 @@ extern "C" {
  *
  * @ingroup audio
  */
-#define MIXER_MAX_SOURCES PARTICIPANT_LIMIT
+#define MIXER_MAX_SOURCES MAX_SESSION_PARTICIPANTS
 #define MIXER_MASK_WORDS ((MIXER_MAX_SOURCES + 63) / 64)
 
 /**

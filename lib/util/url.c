@@ -90,7 +90,7 @@ bool url_is_valid(const char *url) {
   }
 
   /* Check if URL needs http:// prefix (bare hostname or IP) */
-  char url_with_scheme[2048];
+  char url_with_scheme[URL_BUFFER_SIZE];
   const char *url_to_match = url;
 
   if (!strstr(url, "://")) {
@@ -181,9 +181,7 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
   }
 
   /* Check if URL needs http:// prefix (bare hostname or IP) */
-  // allocate twice the "safe limit" of 2048 for website URLs, even though modern browsers can handle up
-  // to 80k character URLs in some cases.
-  char url_with_scheme[4096];
+  char url_with_scheme[URL_BUFFER_SIZE];
   const char *url_to_match = url;
   const char *original_url = url;
 

@@ -141,8 +141,8 @@ typedef struct {
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t session_consensus_create(const uint8_t my_id[16], bool is_leader,
-                                           const uint8_t participant_ids[PARTICIPANT_LIMIT][16], int num_participants,
-                                           const session_consensus_callbacks_t *callbacks,
+                                           const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
+                                           int num_participants, const session_consensus_callbacks_t *callbacks,
                                            session_consensus_t **out_consensus);
 
 /**
@@ -184,7 +184,7 @@ asciichat_error_t session_consensus_process(session_consensus_t *consensus, uint
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t session_consensus_set_topology(session_consensus_t *consensus,
-                                                 const uint8_t participant_ids[PARTICIPANT_LIMIT][16],
+                                                 const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
                                                  int num_participants);
 
 /**

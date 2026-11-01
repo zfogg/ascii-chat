@@ -298,9 +298,6 @@ typedef enum {
  */
 #define OPTIONS_BUFF_SIZE 256
 
-/** @brief Maximum number of identity keys that can be loaded (for multi-key support) */
-#define MAX_IDENTITY_KEYS 32
-
 // ============================================================================
 // GENERAL CATEGORY - General-purpose options (from --help registry)
 // ============================================================================
@@ -1147,7 +1144,7 @@ typedef struct options_state {
 
   // Multi-key support: When multiple --key flags are provided, all keys are stored here
   // encrypt_key is duplicated in identity_keys[0] for backward compatibility
-  char identity_keys[MAX_IDENTITY_KEYS]
+  char identity_keys[MAX_SESSION_KEYS]
                     [OPTIONS_BUFF_SIZE]; ///< All identity keys (populated when --key is used multiple times)
   size_t num_identity_keys;              ///< Number of identity keys loaded (0 means single-key mode using encrypt_key)
 

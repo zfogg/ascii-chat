@@ -69,9 +69,12 @@ extern "C" {
  *
  * @ingroup stun
  */
+/** STUN wire URL capacity in bytes, including NUL (63 URL bytes). */
+#define STUN_URL_BUFFER_SIZE 64
+
 typedef struct __attribute__((packed)) {
   uint8_t host_len; ///< Length of host string (actual URL length)
-  char host[64];    ///< STUN server URL (e.g., "stun:discovery.ascii.chat:3478")
+  char host[STUN_URL_BUFFER_SIZE]; ///< STUN server URL (e.g., "stun:discovery.ascii.chat:3478")
 } stun_server_t;
 
 /**
@@ -85,9 +88,6 @@ typedef struct __attribute__((packed)) {
 
 /** @brief STUN over TLS port (RFC 5389) */
 #define STUN_TLS_DEFAULT_PORT 5349
-
-/** @brief Maximum STUN URL length */
-#define STUN_MAX_URL_LEN 64
 
 /** @} */
 
@@ -109,7 +109,7 @@ typedef struct __attribute__((packed)) {
  * @param max_count Maximum number of servers to parse
  * @return Number of servers parsed (0-max_count), or -1 on error
  *
- * @note Each server URL is limited to STUN_MAX_URL_LEN (64) characters
+ * @note Each server URL is limited to STUN_URL_BUFFER_SIZE - 1 bytes, excluding NUL
  * @note Function gracefully stops at max_count or if a server exceeds max length
  *
  * @ingroup stun

@@ -121,9 +121,9 @@ extern private_key_t g_server_private_key;
  * @brief Array of server identity keys
  *
  * Additional server identity keys for multi-key support.
- * Size is limited by MAX_IDENTITY_KEYS.
+ * Size is limited by MAX_SESSION_KEYS.
  */
-extern private_key_t g_server_identity_keys[MAX_IDENTITY_KEYS];
+extern private_key_t g_server_identity_keys[MAX_SESSION_KEYS];
 
 /**
  * @brief Number of server identity keys in use

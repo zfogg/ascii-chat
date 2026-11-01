@@ -106,8 +106,8 @@ static asciichat_error_t session_consensus_election_bridge(void *context, consen
 }
 
 asciichat_error_t session_consensus_create(const uint8_t my_id[16], bool is_leader,
-                                           const uint8_t participant_ids[PARTICIPANT_LIMIT][16], int num_participants,
-                                           const session_consensus_callbacks_t *callbacks,
+                                           const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
+                                           int num_participants, const session_consensus_callbacks_t *callbacks,
                                            session_consensus_t **out_consensus) {
   if (!my_id || !callbacks || !out_consensus) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: my_id=%p, callbacks=%p, out_consensus=%p", my_id,
@@ -119,7 +119,7 @@ asciichat_error_t session_consensus_create(const uint8_t my_id[16], bool is_lead
                      callbacks->send_packet, callbacks->on_election, callbacks->get_metrics);
   }
 
-  if (num_participants < 1 || num_participants > PARTICIPANT_LIMIT) {
+  if (num_participants < 1 || num_participants > MAX_SESSION_PARTICIPANTS) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant count: %d", num_participants);
   }
 
@@ -191,13 +191,13 @@ asciichat_error_t session_consensus_process(session_consensus_t *consensus, uint
 }
 
 asciichat_error_t session_consensus_set_topology(session_consensus_t *consensus,
-                                                 const uint8_t participant_ids[PARTICIPANT_LIMIT][16],
+                                                 const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
                                                  int num_participants) {
   if (!consensus || !participant_ids) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  if (num_participants < 1 || num_participants > PARTICIPANT_LIMIT) {
+  if (num_participants < 1 || num_participants > MAX_SESSION_PARTICIPANTS) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant count: %d", num_participants);
   }
 

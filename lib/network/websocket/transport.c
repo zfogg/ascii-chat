@@ -1302,7 +1302,7 @@ static const acip_transport_methods_t websocket_methods = {
 // =============================================================================
 
 typedef struct {
-  char host[256];
+  char host[HOSTNAME_BUFFER_SIZE];
   char path[256];
   int port;
   bool use_ssl;
@@ -1326,7 +1326,7 @@ static asciichat_error_t websocket_parse_endpoint(const char *url, websocket_end
   const char *port_start = strchr(host_start, ':');
   const char *path_start = strchr(host_start, '/');
 
-  char host[256] = {0};
+  char host[HOSTNAME_BUFFER_SIZE] = {0};
   int port = use_ssl ? 443 : 27226; // Default: wss:// uses 443, ws:// uses 27226 (ascii-chat WebSocket port)
   char path[256] = "/";
 

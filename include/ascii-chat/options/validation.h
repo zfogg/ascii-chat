@@ -268,7 +268,7 @@ ASCIICHAT_API int validate_opt_password(const char *value_str, char *error_msg, 
  * based on what the client expects.
  *
  * @note Must be called after options_parse() but before key loading
- * @note Supports up to MAX_IDENTITY_KEYS (32) keys
+ * @note Supports up to MAX_SESSION_KEYS (32) keys
  *
  * @ingroup options
  */

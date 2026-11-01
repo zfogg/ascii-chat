@@ -332,3 +332,22 @@ Test(handoff, silent_successor_recovers_to_prepared_backup_within_budget) {
   cr_assert(consensus_handoff_tick(&s, 5303, &action));
   cr_assert_eq(action.kind, HANDOFF_COMMIT);
 }
+
+Test(handoff, membership_capacity_rejects_excess_without_mutation) {
+  consensus_handoff_t s;
+  consensus_handoff_init(&s, session_id, host_id);
+  for (size_t i = 0; i < MAX_SESSION_PARTICIPANTS; ++i) {
+    uint8_t id[16] = {0};
+    id[0] = (uint8_t)i;
+    cr_assert_eq(consensus_handoff_join(&s, id), ASCIICHAT_OK);
+  }
+  cr_assert_eq(s.count, MAX_SESSION_PARTICIPANTS);
+  uint32_t generation = s.generation;
+  uint8_t extra[16] = {0, 1};
+  cr_assert_eq(consensus_handoff_join(&s, extra), ERROR_INVALID_STATE);
+  cr_assert_eq(s.count, MAX_SESSION_PARTICIPANTS);
+  cr_assert_eq(s.generation, generation);
+  uint8_t duplicate[16] = {0};
+  cr_assert_eq(consensus_handoff_join(&s, duplicate), ASCIICHAT_OK);
+  cr_assert_eq(s.count, MAX_SESSION_PARTICIPANTS);
+}

@@ -91,13 +91,18 @@ extern "C" {
  *
  * @ingroup turn
  */
+/** TURN wire string capacities in bytes, including NUL. */
+#define TURN_URL_BUFFER_SIZE 64
+#define TURN_USERNAME_BUFFER_SIZE 32
+#define TURN_CREDENTIAL_BUFFER_SIZE 64
+
 typedef struct __attribute__((packed)) {
   uint8_t url_len;        ///< Length of URL string (actual length)
-  char url[64];           ///< TURN server URL (e.g., "turn:discovery.ascii.chat:3478")
+  char url[TURN_URL_BUFFER_SIZE]; ///< TURN server URL (e.g., "turn:discovery.ascii.chat:3478")
   uint8_t username_len;   ///< Length of username string
-  char username[32];      ///< TURN authentication username
+  char username[TURN_USERNAME_BUFFER_SIZE]; ///< TURN authentication username
   uint8_t credential_len; ///< Length of credential string
-  char credential[64];    ///< Time-limited TURN credential/password
+  char credential[TURN_CREDENTIAL_BUFFER_SIZE]; ///< Time-limited TURN credential/password
 } turn_server_t;
 
 /**
@@ -111,15 +116,6 @@ typedef struct __attribute__((packed)) {
 
 /** @brief TURN over TLS port (RFC 5766) */
 #define TURN_TLS_DEFAULT_PORT 5349
-
-/** @brief Maximum TURN URL length */
-#define TURN_MAX_URL_LEN 64
-
-/** @brief Maximum TURN username length */
-#define TURN_MAX_USERNAME_LEN 32
-
-/** @brief Maximum TURN credential length */
-#define TURN_MAX_CREDENTIAL_LEN 64
 
 /** @brief Recommended credential expiration time (seconds) */
 #define TURN_CREDENTIAL_EXPIRY_SECS (24 * 60 * 60) // 24 hours

@@ -98,8 +98,8 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
         continue;
       }
 
-      if (len >= STUN_MAX_URL_LEN) {
-        log_warn("STUN server URL too long (max %d): %.*s", STUN_MAX_URL_LEN, (int)len, current);
+      if (len >= STUN_URL_BUFFER_SIZE) {
+        log_warn("STUN server URL too long (max %d): %.*s", STUN_URL_BUFFER_SIZE - 1, (int)len, current);
         return -1;
       }
 
@@ -140,8 +140,8 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
       break; // Group not matched
     }
 
-    if (len >= STUN_MAX_URL_LEN) {
-      log_warn("STUN server URL too long (max %d): %.*s", STUN_MAX_URL_LEN, (int)len, server_url);
+    if (len >= STUN_URL_BUFFER_SIZE) {
+      log_warn("STUN server URL too long (max %d): %.*s", STUN_URL_BUFFER_SIZE - 1, (int)len, server_url);
       pcre2_match_data_free(match_data);
       return -1;
     }
