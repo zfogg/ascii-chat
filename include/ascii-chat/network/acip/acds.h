@@ -908,6 +908,7 @@ typedef struct __attribute__((packed)) {
   char host_address[64];   ///< Where clients should connect
   uint16_t host_port;      ///< Port
   uint8_t connection_type; ///< acip_connection_type_t
+  uint32_t generation;     ///< Handoff generation in network byte order; one for initial host
 } acip_host_announcement_t;
 
 /**
@@ -926,6 +927,7 @@ typedef struct __attribute__((packed)) {
   char host_address[64];
   uint16_t host_port;
   uint8_t connection_type; ///< acip_connection_type_t
+  uint32_t generation;     ///< Handoff generation in network byte order; one for initial host
 } acip_host_designated_t;
 
 /**

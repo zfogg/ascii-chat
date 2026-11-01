@@ -72,6 +72,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   }
 
   session->state = DISCOVERY_STATE_INIT;
+  session->handoff_generation = 1; // Match consensus_handoff_init().
   session->acds_transport = NULL;
   session->peer_manager = NULL;
   session->webrtc_transport_ready = false;
@@ -1213,9 +1214,19 @@ static void discovery_handoff_receive(discovery_session_t *session, const void *
   } else if (message.kind == HANDOFF_FAILED) {
     set_error(session, ERROR_NETWORK, "No eligible successor has fresh measurements and a prepared host");
   } else if (message.kind == HANDOFF_COMMIT) {
+    if ((session->handoff_commit_received && message.generation <= session->handoff_commit_generation) ||
+        (session->host_designation_received && message.generation <= session->host_designation_generation))
+      return;
+    session->handoff_commit_received = true;
+    session->handoff_commit_generation = message.generation;
+    session->migration.detection_time_ms = session_get_current_time_ms();
+    if (memcmp(session->host_id, message.participant, 16))
+      NOTICE_ANNOUNCE("Session host changed", "The session has a new host.");
     memcpy(session->host_id, message.participant, 16);
     session->host_port = message.port;
-    session->handoff_pending = true;
+    session->host_address[0] = 0;
+    session->handoff_pending =
+        session->session_type == SESSION_TYPE_WEBRTC || !memcmp(session->host_id, session->participant_id, 16);
     set_state(session, DISCOVERY_STATE_MIGRATING);
     log_info("Committed successor %02x%02x generation=%u", message.participant[0], message.participant[1],
              message.generation);
@@ -1241,9 +1252,11 @@ asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session) 
   session->webrtc_transport_ready = false;
   session->webrtc_connection_initiated = false;
   session->webrtc_retry_attempt = 0;
-  asciichat_error_t result = initialize_webrtc_peer_manager(session);
-  if (result != ASCIICHAT_OK)
-    return result;
+  if (session->session_type == SESSION_TYPE_WEBRTC) {
+    asciichat_error_t result = initialize_webrtc_peer_manager(session);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
   session->migration.state = MIGRATION_STATE_NONE;
   set_state(session, session->is_host ? DISCOVERY_STATE_STARTING_HOST : DISCOVERY_STATE_CONNECTING_HOST);
   return ASCIICHAT_OK;
@@ -1277,12 +1290,56 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
   return discovery_handoff_send(session, &message, true);
 }
 
+static void discovery_receive_host_designated(discovery_session_t *session, const void *data, size_t len) {
+  if (!data || len != sizeof(acip_host_designated_t))
+    return;
+  const acip_host_designated_t *host = data;
+  uint32_t generation = NET_TO_HOST_U32(host->generation);
+  if (memcmp(host->session_id, session->session_id, 16) || !memchr(host->host_address, 0, sizeof(host->host_address)) ||
+      !host->host_port || host->connection_type > ACIP_CONNECTION_TYPE_TURN ||
+      generation < session->handoff_generation ||
+      (session->host_designation_received &&
+       (generation < session->host_designation_generation ||
+        (generation == session->host_designation_generation &&
+         (memcmp(session->host_id, host->host_id, 16) || session->host_address[0] || !host->host_address[0])))))
+    return;
+  bool changed = memcmp(session->host_id, host->host_id, 16) != 0;
+  bool active = session->state == DISCOVERY_STATE_ACTIVE;
+  bool connecting = session->state == DISCOVERY_STATE_CONNECTING_HOST;
+  session->host_designation_received = true;
+  session->host_designation_generation = generation;
+  session->handoff_generation = generation;
+  memcpy(session->host_id, host->host_id, 16);
+  if (changed)
+    session->host_address[0] = 0;
+  if (host->host_address[0])
+    SAFE_STRNCPY(session->host_address, host->host_address, sizeof(session->host_address));
+  session->host_port = host->host_port;
+  if (changed && active)
+    NOTICE_ANNOUNCE("Session host changed", "The session has a new host.");
+  if ((changed && (active || connecting) &&
+       (session->session_type == SESSION_TYPE_WEBRTC || host->host_address[0] ||
+        !memcmp(host->host_id, session->participant_id, 16))) ||
+      (session->state == DISCOVERY_STATE_MIGRATING && session->session_type != SESSION_TYPE_WEBRTC &&
+       host->host_address[0])) {
+    // Worker teardown remains deferred to the existing role dispatcher.
+    session->handoff_pending = true;
+    set_state(session, DISCOVERY_STATE_MIGRATING);
+  } else if (session->state == DISCOVERY_STATE_NEGOTIATING && host->host_address[0]) {
+    session->is_host = !memcmp(host->host_id, session->participant_id, 16);
+    set_state(session, session->is_host ? DISCOVERY_STATE_STARTING_HOST : DISCOVERY_STATE_CONNECTING_HOST);
+  }
+}
+
 static void handle_acds_webrtc_packet(discovery_session_t *session, packet_type_t type, void *data, size_t len) {
   if ((unsigned)type == CONSENSUS_HANDOFF_PACKET) {
     discovery_handoff_receive(session, data, len);
     return;
   }
   switch (type) {
+  case PACKET_TYPE_ACIP_HOST_DESIGNATED:
+    discovery_receive_host_designated(session, data, len);
+    break;
   case PACKET_TYPE_ACIP_WEBRTC_SDP:
     handle_discovery_webrtc_sdp(session, data, len);
     break;
@@ -1344,6 +1401,8 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   // Store session info
   memcpy(session->session_id, joined->session_id, 16);
   memcpy(session->participant_id, joined->participant_id, 16);
+
+  memcpy(session->host_id, joined->host_established ? joined->host_id : joined->initiator_id, 16);
 
   // Store session type and WebRTC credentials (if WebRTC)
   session->session_type = joined->session_type;
@@ -1598,7 +1657,7 @@ static void discovery_session_begin_negotiation(discovery_session_t *session) {
   session->negotiate.peer_quality.nat_type = ACIP_NAT_TYPE_SYMMETRIC;
 }
 
-static void discovery_session_receive_host_announcement(discovery_session_t *session) {
+static void discovery_session_receive_host_designation(discovery_session_t *session) {
   if (session->acds_transport && !session->is_initiator && !session->host_address[0]) {
     packet_type_t type;
     void *data = NULL;
@@ -1606,14 +1665,8 @@ static void discovery_session_receive_host_announcement(discovery_session_t *ses
     void *alloc_buffer = NULL;
 
     asciichat_error_t recv_result = acds_receive_packet(session->acds_transport, &type, &data, &len, &alloc_buffer);
-    if (recv_result == ASCIICHAT_OK && type == PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) {
-      acip_host_announcement_t *announcement = (acip_host_announcement_t *)data;
-      log_info("Received HOST_ANNOUNCEMENT from ACDS: %s:%u", announcement->host_address, announcement->host_port);
-      SAFE_STRNCPY(session->host_address, announcement->host_address, sizeof(session->host_address));
-      session->host_port = announcement->host_port;
-      buffer_release(alloc_buffer);
-      // Continue to host role determination below
-    } else if (recv_result == ASCIICHAT_OK) {
+    if (recv_result == ASCIICHAT_OK) {
+      handle_acds_webrtc_packet(session, type, data, len);
       buffer_release(alloc_buffer);
     }
   }
@@ -1651,10 +1704,10 @@ static asciichat_error_t discovery_session_select_host(discovery_session_t *sess
         SAFE_STRNCPY(session->host_address, session->negotiate.host_address, sizeof(session->host_address));
         session->host_port = session->negotiate.host_port;
 
-        // If host address is empty, wait for HOST_ANNOUNCEMENT from ACDS instead of using fallback
+        // If host address is empty, wait for HOST_DESIGNATED from ACDS instead of using fallback
         if (!session->host_address[0]) {
-          log_info("Waiting for HOST_ANNOUNCEMENT from ACDS to discover host address...");
-          // Stay in NEGOTIATING state to continue waiting for HOST_ANNOUNCEMENT
+          log_info("Waiting for HOST_DESIGNATED from ACDS to discover host address...");
+          // Stay in NEGOTIATING state to continue waiting for HOST_DESIGNATED
           return ASCIICHAT_OK;
         }
 
@@ -1672,7 +1725,9 @@ static asciichat_error_t discovery_session_negotiate(discovery_session_t *sessio
   if (session->negotiate.state == NEGOTIATE_STATE_INIT) {
     discovery_session_begin_negotiation(session);
   }
-  discovery_session_receive_host_announcement(session);
+  discovery_session_receive_host_designation(session);
+  if (session->state != DISCOVERY_STATE_NEGOTIATING)
+    return ASCIICHAT_OK;
   return discovery_session_select_host(session);
 }
 
@@ -1721,6 +1776,7 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
   SAFE_STRNCPY(announcement.host_address, session->host_address, sizeof(announcement.host_address));
   announcement.host_port = host_port;
   announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
+  announcement.generation = HOST_TO_NET_U32(session->handoff_generation);
 
   if (session->acds_transport) {
     packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement,
@@ -1864,8 +1920,7 @@ static asciichat_error_t discovery_session_connect_tcp(discovery_session_t *sess
 
 static asciichat_error_t discovery_session_process_active(discovery_session_t *session, int64_t timeout_ns) {
   // Receive and handle ACDS packets for WebRTC signaling (NEW)
-  if (session->session_type == SESSION_TYPE_WEBRTC && session->acds_transport &&
-      acip_transport_has_pending_data(session->acds_transport)) {
+  if (session->acds_transport && acip_transport_has_pending_data(session->acds_transport)) {
     packet_type_t type;
     void *data = NULL;
     size_t len = 0;
@@ -2323,6 +2378,7 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
   announcement.host_port = host_port;
   // Set connection type based on NAT quality (for now use DIRECT_PUBLIC for localhost dev environments)
   announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
+  announcement.generation = HOST_TO_NET_U32(session->handoff_generation);
 
   if (session->acds_transport) {
     packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement,

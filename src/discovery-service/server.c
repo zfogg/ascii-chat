@@ -448,10 +448,12 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
                resp.stun_count, resp.turn_count);
 
       // Store session/participant IDs and mark session as established
+      mutex_lock(&server->handoff_mutex);
       memcpy(client_data->session_id, resp.session_id, 16);
       memcpy(client_data->participant_id, resp.participant_id, 16);
       client_data->joined_session = true;
       client_data->session_established = true; // Signal handler to exit receive loop
+      mutex_unlock(&server->handoff_mutex);
     } else {
       // Error - send error response using proper error code
       acip_send_error(transport, create_result, "Failed to create session");
@@ -526,10 +528,12 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
                resp.stun_count, resp.turn_count);
 
       // Store session/participant IDs and mark session as established
+      mutex_lock(&server->handoff_mutex);
       memcpy(client_data->session_id, resp.session_id, 16);
       memcpy(client_data->participant_id, resp.participant_id, 16);
       client_data->joined_session = true;
       client_data->session_established = true; // Signal handler to exit receive loop
+      mutex_unlock(&server->handoff_mutex);
     } else {
       // Error - send error response using proper error code
       acip_send_error(transport, create_result, "Failed to create session");
@@ -747,14 +751,18 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
 
     // Update client data (accessed via transport->user_data)
     if (client_data) {
+      mutex_lock(&server->handoff_mutex);
       memcpy(client_data->session_id, resp.session_id, 16);
       memcpy(client_data->participant_id, resp.participant_id, 16);
       client_data->joined_session = true;
       client_data->session_established = true; // Signal handler to exit receive loop
+      mutex_unlock(&server->handoff_mutex);
     }
 
     log_info("Client %s joined session (participant %02x%02x...)", client_ip, resp.participant_id[0],
              resp.participant_id[1]);
+
+    acds_send_current_host(server, transport, resp.session_id);
 
     // Broadcast PARTICIPANT_JOINED notification to all other participants in the session
     acip_participant_joined_t participant_joined;
@@ -802,8 +810,8 @@ static asciichat_error_t acds_remove_client_from_session(acds_server_t *server, 
     return SET_ERRNO(result, "Failed to remove disconnected participant from session");
   }
 
-  client_data->joined_session = false;
   mutex_lock(&server->handoff_mutex);
+  client_data->joined_session = false;
   consensus_handoff_t *handoff = acds_handoff_find(server, client_data->session_id, false);
   if (handoff) {
     consensus_handoff_leave(handoff, client_data->participant_id);
@@ -925,12 +933,12 @@ static void acds_on_network_quality(const void *payload, size_t payload_len, aci
   }
 }
 
-static void acds_on_host_announcement(const acip_host_announcement_t *announcement, acip_transport_t *transport,
-                                      const char *client_ip, void *app_ctx) {
+void acds_on_host_announcement(const acip_host_announcement_t *announcement, acip_transport_t *transport,
+                               const char *client_ip, void *app_ctx) {
   ASCII_OTEL_SCOPE(DISCOVERY_HOST_ANNOUNCE);
   acds_server_t *server = (acds_server_t *)app_ctx;
 
-  log_info("HOST_ANNOUNCEMENT from %s: host_id=%02x%02x..., address=%s:%u, conn_type=%d", client_ip,
+  log_info("HOST_ANNOUNCEMENT from %s: host_id=%02x%02x..., address=%.64s:%u, conn_type=%d", client_ip,
            announcement->host_id[0], announcement->host_id[1], announcement->host_address, announcement->host_port,
            announcement->connection_type);
 
@@ -940,29 +948,57 @@ static void acds_on_host_announcement(const acip_host_announcement_t *announceme
     acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Host announcement identity mismatch");
     return;
   }
+  if (!memchr(announcement->host_address, 0, sizeof(announcement->host_address)) || !announcement->host_port ||
+      announcement->connection_type > ACIP_CONNECTION_TYPE_TURN) {
+    acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Invalid host endpoint");
+    return;
+  }
+  const char *host_address = announcement->host_address[0] ? announcement->host_address : client_ip;
+  // Serialize authority validation, persistence and delivery with handoff commits.
   mutex_lock(&server->handoff_mutex);
-  consensus_handoff_t *handoff = acds_handoff_find(server, announcement->session_id, false);
-  bool authorized = !handoff || !memcmp(handoff->host, announcement->host_id, 16);
-  mutex_unlock(&server->handoff_mutex);
-  if (!authorized) {
-    acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Obsolete host announcement");
+  consensus_handoff_t *handoff = acds_handoff_find(server, announcement->session_id, true);
+  if (!handoff || memcmp(handoff->host, announcement->host_id, 16) ||
+      NET_TO_HOST_U32(announcement->generation) != handoff->generation) {
+    mutex_unlock(&server->handoff_mutex);
+    acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Obsolete or unauthorized host announcement");
     return;
   }
-
-  // Update session host in database
+  session_entry_t *stored = database_session_find_by_id(server->db, announcement->session_id);
+  if (!stored) {
+    mutex_unlock(&server->handoff_mutex);
+    return;
+  }
+  // An accepted endpoint is immutable within its generation. Duplicates can
+  // repair missed delivery without allowing reordered endpoint replacements.
+  bool conflict =
+      stored->host_established && stored->host_address[0] &&
+      (memcmp(stored->host_participant_id, announcement->host_id, 16) || strcmp(stored->host_address, host_address) ||
+       stored->host_port != announcement->host_port || stored->host_connection_type != announcement->connection_type);
+  bool reveal_ip = stored->has_password || stored->expose_ip_publicly;
+  session_entry_destroy(stored);
+  if (conflict) {
+    mutex_unlock(&server->handoff_mutex);
+    acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Conflicting host endpoint");
+    return;
+  }
   asciichat_error_t result =
-      database_session_update_host(server->db, announcement->session_id, announcement->host_id,
-                                   announcement->host_address, announcement->host_port, announcement->connection_type);
-
-  if (result != ASCIICHAT_OK) {
-    acip_send_error(transport, result, "Failed to update session host");
-    log_warn("HOST_ANNOUNCEMENT failed from %s: %s", client_ip, asciichat_error_format(NULL, result));
-    return;
+      database_session_update_host(server->db, announcement->session_id, announcement->host_id, host_address,
+                                   announcement->host_port, announcement->connection_type);
+  if (result == ASCIICHAT_OK) {
+    acip_host_designated_t designated = {0};
+    memcpy(designated.session_id, announcement->session_id, 16);
+    memcpy(designated.host_id, announcement->host_id, 16);
+    if (reveal_ip)
+      SAFE_STRNCPY(designated.host_address, host_address, sizeof(designated.host_address));
+    designated.host_port = announcement->host_port;
+    designated.connection_type = announcement->connection_type;
+    designated.generation = announcement->generation;
+    result = signaling_broadcast(server->db, server->network_server, announcement->session_id,
+                                 PACKET_TYPE_ACIP_HOST_DESIGNATED, &designated, sizeof(designated), NULL);
   }
-
-  // TODO: Broadcast HOST_DESIGNATED to all participants in the session
-  // This requires iterating connected clients and sending to those in the same session
-  // For now, new participants will get host info when they join
+  mutex_unlock(&server->handoff_mutex);
+  if (result != ASCIICHAT_OK)
+    log_warn("Host designation delivery failed: %s", asciichat_error_format(NULL, result));
 
   log_info("Session host updated via HOST_ANNOUNCEMENT from %s", client_ip);
 }
@@ -1021,6 +1057,30 @@ static consensus_handoff_t *acds_handoff_find(acds_server_t *server, const uint8
   server->handoffs = entry;
   return &entry->state;
 }
+// Replay authority after SESSION_JOINED, including after reconnect.
+void acds_send_current_host(acds_server_t *server, acip_transport_t *transport, const uint8_t id[16]) {
+  mutex_lock(&server->handoff_mutex);
+  consensus_handoff_t *state = acds_handoff_find(server, id, true);
+  session_entry_t *stored = database_session_find_by_id(server->db, id);
+  if (state && stored && stored->host_established) {
+    acip_host_designated_t designated = {0};
+    memcpy(designated.session_id, id, 16);
+    memcpy(designated.host_id, stored->host_participant_id, 16);
+    if (stored->has_password || stored->expose_ip_publicly)
+      SAFE_STRNCPY(designated.host_address, stored->host_address, sizeof(designated.host_address));
+    designated.host_port = stored->host_port;
+    designated.connection_type = stored->host_connection_type;
+    designated.generation = HOST_TO_NET_U32(state->generation);
+    asciichat_error_t result =
+        packet_send_via_transport(transport, PACKET_TYPE_ACIP_HOST_DESIGNATED, &designated, sizeof(designated), 0);
+    if (result != ASCIICHAT_OK)
+      log_warn("Could not replay host designation: %s", asciichat_error_format(NULL, result));
+  }
+  if (stored)
+    session_entry_destroy(stored);
+  mutex_unlock(&server->handoff_mutex);
+}
+
 static asciichat_error_t acds_handoff_broadcast(acds_server_t *server, consensus_handoff_message_t *message) {
   uint8_t bytes[CONSENSUS_HANDOFF_HEADER];
   consensus_handoff_encode(message, bytes);
