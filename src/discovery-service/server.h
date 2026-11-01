@@ -81,19 +81,6 @@ typedef struct {
   bool session_established; ///< True after SESSION_CREATE/SESSION_JOIN completes; handler exits loop
 } acds_client_data_t;
 
-/**
- * @brief In-memory host migration context
- *
- * Tracks migration timeout for sessions undergoing host failover.
- * Used by monitor_host_migrations() to detect stalled migrations and timeout.
- *
- * NOTE: Election happens proactively (host picks future host every 5 minutes).
- * No candidate collection or election needed here - just timeout tracking.
- */
-typedef struct {
-  uint8_t session_id[16];      ///< Session UUID
-  uint64_t migration_start_ns; ///< When migration started (nanoseconds since sokol_time setup)
-} migration_context_t;
 
 /**
  * @brief Network statistics for both TCP and WebSocket connections
@@ -127,10 +114,6 @@ typedef struct {
 
   // Rate limiting
   struct rate_limiter_s *rate_limiter; ///< SQLite-backed rate limiter
-
-  // Host migration tracking (in-memory during active migrations)
-  migration_context_t active_migrations[32]; ///< Slots for up to 32 concurrent migrations
-  size_t num_active_migrations;              ///< Number of active migrations
 
   // Background worker threads (cleanup, etc.)
   thread_pool_t *worker_pool; ///< Thread pool for background workers

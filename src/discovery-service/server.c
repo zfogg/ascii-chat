@@ -37,71 +37,6 @@
 #include <ascii-chat/crypto/handshake/server.h>
 
 /**
- * @brief Get current time in nanoseconds
- * @return Current time in nanoseconds (using unified timing API)
- */
-static uint64_t get_current_time_ns(void) {
-  return time_get_ns();
-}
-
-/**
- * @brief Monitor host migrations and elect new hosts when ready
- *
- * Called periodically to check for completed migration windows.
- * When a migration window completes, elects the best new host.
- *
- * Algorithm:
- * 1. For each active migration, check if window expired
- * 2. When expired, elect best candidate using NAT quality comparison
- * 3. Update database with new host
- * 4. Remove migration from tracking
- *
- * @param server ACDS server instance
- * @param migration_window_ms Collection window duration (milliseconds)
- */
-static void monitor_host_migrations(acds_server_t *server, uint64_t migration_timeout_ms) {
-  if (!server || !server->db || server->num_active_migrations == 0) {
-    return;
-  }
-
-  uint64_t now = get_current_time_ns();
-  uint64_t migration_timeout_ns = migration_timeout_ms * NS_PER_MS_INT; // Convert ms to ns
-
-  size_t i = 0;
-  while (i < server->num_active_migrations) {
-    migration_context_t *ctx = &server->active_migrations[i];
-
-    // Check if migration has timed out (stuck for >migration_timeout_ns)
-    uint64_t elapsed_ns = now - ctx->migration_start_ns;
-    if (elapsed_ns < migration_timeout_ns) {
-      i++;
-      continue;
-    }
-
-    uint64_t elapsed_ms = elapsed_ns / NS_PER_MS_INT; // Convert ns to ms for logging
-    log_warn("Host migration timeout for session %02x%02x... (elapsed %llu ms)", ctx->session_id[0], ctx->session_id[1],
-             (unsigned long long)elapsed_ms);
-
-    // Migration timed out - mark session as failed and clear migration state
-    bool still_migrating = database_session_is_migration_ready(server->db, ctx->session_id, 0);
-    asciichat_error_t result =
-        still_migrating ? database_session_clear_host(server->db, ctx->session_id) : ASCIICHAT_OK;
-    if (still_migrating)
-      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
-    if (result != ASCIICHAT_OK) {
-      log_warn("Failed to clear host for timed-out migration: %s", asciichat_error_format(NULL, result));
-    }
-
-    // Remove this migration from tracking (shift remaining entries down)
-    if (i < server->num_active_migrations - 1) {
-      memmove(&server->active_migrations[i], &server->active_migrations[i + 1],
-              (server->num_active_migrations - i - 1) * sizeof(migration_context_t));
-    }
-    server->num_active_migrations--;
-  }
-}
-
-/**
  * @brief Background thread for periodic cleanup
  *
  * Wakes up every 5 minutes to:
@@ -153,9 +88,6 @@ static void *cleanup_thread_func(void *arg) {
     log_debug("Running expired session cleanup...");
     database_session_cleanup_expired(server->db);
 
-    // Monitor host migrations (check for completed windows)
-    log_debug("Checking for completed host migrations...");
-    monitor_host_migrations(server, 5000); // 5-second collection window for testing
   }
 
   log_info("Cleanup thread exiting");
@@ -856,31 +788,6 @@ static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t payload_len,
   }
 }
 
-static void acds_on_network_quality(const void *payload, size_t payload_len, acip_transport_t *transport,
-                                    const char *client_ip, void *app_ctx) {
-  acds_server_t *server = (acds_server_t *)app_ctx;
-  (void)transport; // Transport not needed for relay
-
-  log_debug_every(US_PER_SEC_INT, "★ ACDS_ON_NETWORK_QUALITY: received from %s, payload_len=%zu", client_ip,
-                  payload_len);
-
-  // Cast payload to acip_nat_quality_t for relay
-  const acip_nat_quality_t *quality = (const acip_nat_quality_t *)payload;
-
-  log_debug("NETWORK_QUALITY: session=%02x%02x..., participant=%02x%02x...", quality->session_id[0],
-            quality->session_id[1], quality->participant_id[0], quality->participant_id[1]);
-
-  // Validation and relay
-  asciichat_error_t relay_result =
-      signaling_relay_network_quality(server->db, server->network_server, quality, payload_len);
-  if (relay_result != ASCIICHAT_OK) {
-    acip_send_error(transport, relay_result, "NETWORK_QUALITY relay failed");
-    log_warn("NETWORK_QUALITY relay failed from %s: %s", client_ip, asciichat_error_format(NULL, relay_result));
-  } else {
-    log_debug_every(US_PER_SEC_INT, "★ ACDS_ON_NETWORK_QUALITY: relay completed successfully for %s", client_ip);
-  }
-}
-
 static void acds_on_host_announcement(const acip_host_announcement_t *announcement, acip_transport_t *transport,
                                       const char *client_ip, void *app_ctx) {
   ASCII_OTEL_SCOPE(DISCOVERY_HOST_ANNOUNCE);
@@ -1039,7 +946,6 @@ static const acip_acds_callbacks_t g_acds_callbacks = {
     .on_webrtc_ice = acds_on_webrtc_ice,
     .on_host_announcement = acds_on_host_announcement,
     .on_host_lost = acds_on_host_lost,
-    .on_network_quality = acds_on_network_quality,
     .on_handoff = acds_on_handoff,
     .app_ctx = NULL // Set dynamically to server instance
 };
