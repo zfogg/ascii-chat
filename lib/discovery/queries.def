@@ -118,31 +118,32 @@ DATABASE_QUERY(GetMigrationState, "SELECT\n"
                                   "FROM sessions\n"
                                   "WHERE\n"
                                   "  session_id = ?")
-DATABASE_QUERY(AddSessionKey,
-               "INSERT OR IGNORE INTO session_keys (session_string, identity_pubkey, key_version, added_at)\n"
-               "VALUES\n"
-               "  (?, ?, ?, ?)")
-DATABASE_QUERY(RevokeSessionKey, "UPDATE session_keys\n"
+DATABASE_QUERY(
+    AddSessionKey,
+    "INSERT OR IGNORE INTO session_identity_keys (session_string, key_type, identity_pubkey, key_version, added_at)\n"
+    "VALUES\n"
+    "  (?, 'ed25519', ?, ?, ?)")
+DATABASE_QUERY(RevokeSessionKey, "UPDATE session_identity_keys\n"
                                  "SET\n"
                                  "  revoked = 1\n"
                                  "WHERE\n"
                                  "  session_string = ?\n"
-                                 "  AND identity_pubkey = ?")
+                                 "  AND key_type = 'ed25519' AND identity_pubkey = ?")
 DATABASE_QUERY(VerifySessionKey, "SELECT\n"
                                  "  1\n"
-                                 "FROM session_keys\n"
+                                 "FROM session_identity_keys\n"
                                  "WHERE\n"
                                  "  session_string = ?\n"
-                                 "  AND identity_pubkey = ?\n"
+                                 "  AND key_type = 'ed25519' AND identity_pubkey = ?\n"
                                  "  AND revoked = 0")
 DATABASE_QUERY(GetSessionKeys, "SELECT\n"
                                "  identity_pubkey\n"
-                               "FROM session_keys\n"
+                               "FROM session_identity_keys\n"
                                "WHERE\n"
                                "  session_string = ?\n"
-                               "  AND revoked = 0\n"
+                               "  AND key_type = 'ed25519' AND revoked = 0\n"
                                "ORDER BY\n"
-                               "  key_version ASC")
+                               "  key_version ASC, identity_pubkey ASC")
 DATABASE_QUERY(GetStatsSnapshot, "SELECT\n"
                                  "  session_string,\n"
                                  "  current_participants,\n"
@@ -210,16 +211,6 @@ DATABASE_QUERY(SchemaParticipants,
                "  joined_at INTEGER NOT NULL,\n"
                "  FOREIGN KEY (session_string) REFERENCES sessions(session_string) ON DELETE CASCADE\n"
                ");")
-DATABASE_QUERY(SchemaSessionKeys, "CREATE TABLE IF NOT EXISTS session_keys (\n"
-                                  "  id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
-                                  "  session_string TEXT NOT NULL,\n"
-                                  "  identity_pubkey BLOB NOT NULL,\n"
-                                  "  key_version INTEGER NOT NULL,\n"
-                                  "  added_at INTEGER NOT NULL,\n"
-                                  "  revoked INTEGER DEFAULT 0,\n"
-                                  "  FOREIGN KEY (session_string) REFERENCES sessions(session_string) ON DELETE "
-                                  "CASCADE, UNIQUE(session_string, identity_pubkey)\n"
-                                  ");")
 DATABASE_QUERY(SchemaRateEvents, "CREATE TABLE IF NOT EXISTS rate_events (\n"
                                  "  id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
                                  "  ip_address TEXT NOT NULL,\n"
@@ -231,10 +222,6 @@ DATABASE_QUERY(SchemaIdxSessionsActivity,
                "CREATE INDEX IF NOT EXISTS idx_sessions_activity ON sessions(last_activity_at);")
 DATABASE_QUERY(SchemaIdxParticipantsSession,
                "CREATE INDEX IF NOT EXISTS idx_participants_session ON participants(session_string);")
-DATABASE_QUERY(SchemaIdxSessionKeysSession,
-               "CREATE INDEX IF NOT EXISTS idx_session_keys_session ON session_keys(session_string);")
-DATABASE_QUERY(SchemaIdxSessionKeysActive,
-               "CREATE INDEX IF NOT EXISTS idx_session_keys_active ON session_keys(session_string, revoked);")
 DATABASE_QUERY(SchemaIdxRateEvents,
                "CREATE INDEX IF NOT EXISTS idx_rate_events ON rate_events(ip_address, event_type, timestamp);")
 

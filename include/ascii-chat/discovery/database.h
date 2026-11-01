@@ -59,6 +59,12 @@ void database_close(sqlite3 *db);
 asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create_t *req, const acds_config_t *config,
                                           acip_session_created_t *resp);
 
+/** Create an explicit Ed25519 key set atomically. More than one key opts into
+ * allowlisted joins; count=1 preserves the legacy admission policy. The caller
+ * must verify each create proof before calling this persistence API. */
+asciichat_error_t database_session_create_keys(sqlite3 *db, const acip_session_create_t *req, const uint8_t (*keys)[32],
+                                               size_t count, const acds_config_t *config, acip_session_created_t *resp);
+
 /**
  * @brief Lookup session by string
  *
