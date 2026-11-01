@@ -400,12 +400,34 @@ static void *nat_detection_thread_fn(void *arg) {
     // Don't update - caller will use defaults
   }
 
+  mutex_lock(&session->nat_quality_mutex);
+  session->nat_detection_completed = true;
+  mutex_unlock(&session->nat_quality_mutex);
   return NULL;
 }
 
 static void start_nat_detection(discovery_session_t *session) {
-  if (session->nat_detection_thread_started)
+  uint64_t now = session_get_current_time_ms();
+  mutex_lock(&session->nat_quality_mutex);
+  bool fresh = session->nat_quality_cached && now - session->nat_quality_measured_ms <= CONSENSUS_HANDOFF_FRESH_MS;
+  bool completed = session->nat_detection_completed;
+  mutex_unlock(&session->nat_quality_mutex);
+  if (fresh)
     return;
+  if (session->nat_detection_thread_started) {
+    // Never join a detector that may still be doing network I/O. Poll a completed
+    // worker before reusing its handle; a failed join retains ownership for retry.
+    if (!completed || thread_join_timeout(&session->nat_detection_thread, NULL, 0) != 0)
+      return;
+    session->nat_detection_thread_started = false;
+  }
+  if (session->nat_detection_attempted && now - session->nat_detection_last_attempt_ms <= CONSENSUS_HANDOFF_FRESH_MS)
+    return;
+  session->nat_detection_attempted = true;
+  session->nat_detection_last_attempt_ms = now;
+  mutex_lock(&session->nat_quality_mutex);
+  session->nat_detection_completed = false;
+  mutex_unlock(&session->nat_quality_mutex);
   if (acthread_create(&session->nat_detection_thread, "nat_detection", nat_detection_thread_fn, session) == 0) {
     session->nat_detection_thread_started = true;
   } else {
@@ -1123,6 +1145,7 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
   if (session->handoff_last_sample_ms && now - session->handoff_last_sample_ms < 5000)
     return ASCIICHAT_OK;
   session->handoff_last_sample_ms = now;
+  start_nat_detection(session);
   if (!session->handoff_sequence)
     log_info("Handoff identity=%02x%02x%02x%02x", session->participant_id[0], session->participant_id[1],
              session->participant_id[2], session->participant_id[3]);
@@ -1743,6 +1766,9 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
     }
   }
 
+  if (session->handoff_pending || session->state != DISCOVERY_STATE_ACTIVE)
+    return ASCIICHAT_OK;
+
   if (session->session_type == SESSION_TYPE_WEBRTC && !session->is_host && session->peer_manager) {
     webrtc_state_t peer_state = WEBRTC_STATE_CLOSED;
     bool peer_found = webrtc_peer_manager_get_state(session->peer_manager, session->host_id, &peer_state);
@@ -1766,9 +1792,6 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
       return discovery_session_handle_host_disconnect(session, 1);
     }
   }
-
-  if (session->handoff_pending)
-    return ASCIICHAT_OK;
 
   // Session is active - check for host disconnect
   if (!session->is_host) {
@@ -2053,8 +2076,8 @@ asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *
   host_lost.disconnect_reason = disconnect_reason;
   host_lost.disconnect_time_ms = session->host_loss_detected_ms;
 
-  asciichat_error_t result = packet_send_via_transport(
-      session->acds_transport, PACKET_TYPE_ACIP_HOST_LOST, &host_lost, sizeof(host_lost), 0);
+  asciichat_error_t result =
+      packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_LOST, &host_lost, sizeof(host_lost), 0);
   if (result != ASCIICHAT_OK) {
     set_error(session, result, "Could not report host loss to ACDS");
     return result;

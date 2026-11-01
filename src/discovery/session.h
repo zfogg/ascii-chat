@@ -135,6 +135,9 @@ typedef struct {
   // NAT detection threading (non-blocking background detection)
   asciichat_thread_t nat_detection_thread;
   bool nat_detection_thread_started;
+  bool nat_detection_completed; ///< Protected by nat_quality_mutex
+  bool nat_detection_attempted;
+  uint64_t nat_detection_last_attempt_ms;
   mutex_t nat_quality_mutex;
 
   // Host liveness detection (participants only)

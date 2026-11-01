@@ -87,7 +87,6 @@ static void *cleanup_thread_func(void *arg) {
     // Run expired session cleanup
     log_debug("Running expired session cleanup...");
     database_session_cleanup_expired(server->db);
-
   }
 
   log_info("Cleanup thread exiting");

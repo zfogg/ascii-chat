@@ -1460,6 +1460,20 @@ if(BUILD_TESTS AND TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERI
     asciichat_add_contract_test(render-loop test-render-loop)
     set_tests_properties(render-loop PROPERTIES LABELS "unit" TIMEOUT 30)
 endif()
+# White-box discovery NAT refresh checks mock only worker/network boundaries.
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+    add_executable(test-nat-refresh contracts/discovery/nat_refresh_test.c)
+    asciichat_configure_contract(test-nat-refresh)
+    target_link_libraries(test-nat-refresh PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-nat-refresh PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/common)
+    apply_sanitizers_to_target(test-nat-refresh)
+    set_target_properties(test-nat-refresh PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_test(NAME discovery-nat-refresh COMMAND test-nat-refresh --jobs 1 --timeout 30
+        --xml=${CRITERION_XML_DIR}/discovery-nat-refresh.xml)
+    set_tests_properties(discovery-nat-refresh PROPERTIES LABELS "unit;criterion;contract" TIMEOUT 60
+        ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
+endif()
+
 # Shared discovery host rendering, including builds without Criterion.
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     add_executable(test-host-render EXCLUDE_FROM_ALL contracts/session/host_render_test.c)

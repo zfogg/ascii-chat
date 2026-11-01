@@ -81,7 +81,6 @@ typedef struct {
   bool session_established; ///< True after SESSION_CREATE/SESSION_JOIN completes; handler exits loop
 } acds_client_data_t;
 
-
 /**
  * @brief Network statistics for both TCP and WebSocket connections
  */
