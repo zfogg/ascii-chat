@@ -1236,8 +1236,12 @@ endif()
 
 # Exercises the production discovery state machine without external services.
 if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-discovery-session-process contracts/discovery/session_process_test.c)
+    add_executable(test-discovery-session-process
+        contracts/discovery/session_process_test.c
+        ${CMAKE_SOURCE_DIR}/src/discovery-service/server.c
+        ${CMAKE_SOURCE_DIR}/src/discovery-service/signaling.c)
     asciichat_configure_contract(test-discovery-session-process)
+    target_link_libraries(test-discovery-session-process PRIVATE ${SQLITE3_LIBRARIES})
     if(TARGET ascii-chat-shared)
         target_link_libraries(test-discovery-session-process PRIVATE ascii-chat-shared ${MIMALLOC_LIBRARIES})
     else()

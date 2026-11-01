@@ -148,6 +148,9 @@ typedef struct {
   uint32_t handoff_sequence;
   uint32_t handoff_generation;
   bool handoff_pending;
+  bool host_authority_received;
+  uint32_t host_authority_generation;
+  uint32_t host_authority_sequence;
 
   uint64_t host_loss_detected_ms; ///< Local deadline origin while awaiting ACDS recovery
 

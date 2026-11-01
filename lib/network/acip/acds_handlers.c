@@ -335,8 +335,8 @@ static asciichat_error_t handle_acds_host_announcement(const void *payload, size
     return ASCIICHAT_OK;
   }
 
-  if (payload_len < sizeof(acip_host_announcement_t)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "HOST_ANNOUNCEMENT payload too small from %s", client_ip);
+  if (payload_len != sizeof(acip_host_announcement_t)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "HOST_ANNOUNCEMENT payload size mismatch from %s", client_ip);
   }
 
   const acip_host_announcement_t *announcement = (const acip_host_announcement_t *)payload;

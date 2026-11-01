@@ -1,3 +1,4 @@
+#include <ascii-chat/otel.h>
 #include <ascii-chat/network/consensus/handoff.h>
 #include <string.h>
 
@@ -155,6 +156,39 @@ asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consen
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Client cannot announce a handoff decision");
   return ASCIICHAT_OK;
 }
+// Record decisions, not periodic ticks or per-peer measurements.
+static void handoff_record_action(consensus_handoff_t *state, const consensus_handoff_message_t *action, uint64_t now,
+                                  size_t candidates) {
+  ASCII_OTEL_SCOPE(DISCOVERY_HOST_SELECTION);
+  const char *outcome = action->kind == HANDOFF_PREPARE  ? "selected"
+                        : action->kind == HANDOFF_COMMIT ? "committed"
+                                                         : "failed";
+  ASCII_OTEL_ATTR_STRING("host.selection.phase", "successor");
+  ASCII_OTEL_ATTR_STRING("host.selection.outcome", outcome);
+  ASCII_OTEL_ATTR_STRING("host.selection.reason", action->kind == HANDOFF_PREPARE  ? "best_eligible_quality"
+                                                  : action->kind == HANDOFF_COMMIT ? "prepared_successor"
+                                                                                   : "no_eligible_successor");
+  ASCII_OTEL_ATTR_INT("host.generation", state->generation);
+  ASCII_OTEL_ATTR_INT("host.selection.round", state->round);
+  if (action->kind != HANDOFF_COMMIT)
+    ASCII_OTEL_ATTR_INT("host.selection.eligible_candidates", (int64_t)candidates);
+  ASCII_OTEL_ATTR_INT("host.selection.host_lost", state->host_lost);
+  consensus_handoff_peer_t *peer = find_peer(state, action->participant);
+  if (peer) {
+    ASCII_OTEL_ATTR_INT("host.selection.upload_kbps", peer->upload_kbps);
+    ASCII_OTEL_ATTR_INT("host.selection.nat_tier", peer->nat_tier);
+  }
+  ascii_otel_metric(action->kind == HANDOFF_PREPARE  ? ASCII_OTEL_METRIC_HOST_SELECTIONS
+                    : action->kind == HANDOFF_COMMIT ? ASCII_OTEL_METRIC_HOST_COMMITS
+                                                     : ASCII_OTEL_METRIC_HOST_FAILURES,
+                    1);
+  if (action->kind != HANDOFF_PREPARE && state->failure_deadline_ms >= CONSENSUS_HANDOFF_RECOVERY_MS) {
+    uint64_t started = state->failure_deadline_ms - CONSENSUS_HANDOFF_RECOVERY_MS;
+    if (now >= started)
+      ascii_otel_metric(ASCII_OTEL_METRIC_HOST_RECOVERY_DURATION, (double)(now - started) / 1000.0);
+  }
+}
+
 /**
  * @brief Advance measured successor selection and bounded host-loss recovery.
  * Fresh eligible peers prepare within five seconds; all recovery attempts share
@@ -187,6 +221,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
     memset(s->successor, 0, sizeof(s->successor));
     a->kind = HANDOFF_FAILED;
     a->sequence = s->round;
+    handoff_record_action(s, a, now, 0);
     return true;
   }
   if (s->ready && s->host_lost) {
@@ -197,6 +232,8 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
       a->sequence = s->round;
       a->port = p->port;
       a->capabilities = p->capabilities;
+      handoff_record_action(s, a, now, 1);
+      s->host_sequence = a->sequence;
       memcpy(s->host, s->successor, 16);
       s->host_lost = false;
       s->monitoring_started_ms = now;
@@ -237,6 +274,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
     m->rtt_ns = 500000000; /* Unknown RTT earns no latency bonus. */
   }
   if (!count)
+
     return false;
   int best = -1, backup = -1;
   if (consensus_election_choose_hosts(metrics, (int)count, &best, &backup) != ASCIICHAT_OK)
@@ -247,5 +285,6 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
   a->kind = HANDOFF_PREPARE;
   memcpy(a->participant, s->successor, 16);
   a->sequence = s->round;
+  handoff_record_action(s, a, now, count);
   return true;
 }

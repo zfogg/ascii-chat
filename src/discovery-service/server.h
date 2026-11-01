@@ -134,3 +134,7 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
  * @param server Server structure to clean up
  */
 void acds_server_shutdown(acds_server_t *server);
+
+// Host authority delivery; the transport must carry its joined connection identity.
+void acds_on_host_announcement(const acip_host_announcement_t *, acip_transport_t *, const char *, void *);
+void acds_send_current_host(acds_server_t *, acip_transport_t *, const uint8_t[16]);

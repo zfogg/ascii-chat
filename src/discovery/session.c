@@ -72,6 +72,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   }
 
   session->state = DISCOVERY_STATE_INIT;
+  session->handoff_generation = 1; // Match consensus_handoff_init().
   session->acds_transport = NULL;
   session->peer_manager = NULL;
   session->webrtc_transport_ready = false;
@@ -1065,6 +1066,46 @@ static asciichat_error_t discovery_handoff_send(discovery_session_t *session, co
   SAFE_FREE(bytes);
   return result;
 }
+// Membership generation and committed round together order host decisions.
+static int discovery_compare_host_decision(const discovery_session_t *session, uint32_t generation, uint32_t sequence) {
+  if (!session->host_authority_received)
+    return 1;
+  if (generation != session->host_authority_generation)
+    return generation > session->host_authority_generation ? 1 : -1;
+  if (sequence != session->host_authority_sequence)
+    return sequence > session->host_authority_sequence ? 1 : -1;
+  return 0;
+}
+
+static void discovery_record_host_decision(discovery_session_t *session, uint32_t generation, uint32_t sequence) {
+  session->host_authority_received = true;
+  session->host_authority_generation = generation;
+  session->host_authority_sequence = sequence;
+}
+
+static void discovery_commit_host(discovery_session_t *session, const consensus_handoff_message_t *message) {
+  ASCII_OTEL_SCOPE(DISCOVERY_HOST_RECONCILE);
+  ASCII_OTEL_ATTR_STRING("host.update.source", "commit");
+  ASCII_OTEL_ATTR_INT("host.generation", message->generation);
+  ASCII_OTEL_ATTR_STRING("host.update.outcome", "ignored");
+  ASCII_OTEL_ATTR_INT("host.decision.sequence", message->sequence);
+  if (discovery_compare_host_decision(session, message->generation, message->sequence) <= 0)
+    return;
+  ASCII_OTEL_ATTR_STRING("host.update.outcome", "queued");
+  discovery_record_host_decision(session, message->generation, message->sequence);
+  session->host_loss_detected_ms = session_get_current_time_ms();
+  if (memcmp(session->host_id, message->participant, 16))
+    NOTICE_ANNOUNCE("Session host changed", "The session has a new host.");
+  memcpy(session->host_id, message->participant, 16);
+  session->host_port = message->port;
+  session->host_address[0] = 0;
+  session->handoff_pending =
+      session->session_type == SESSION_TYPE_WEBRTC || !memcmp(session->host_id, session->participant_id, 16);
+  set_state(session, DISCOVERY_STATE_MIGRATING);
+  log_info("Committed successor %02x%02x generation=%u", message->participant[0], message->participant[1],
+           message->generation);
+}
+
 /**
  * @brief Apply a validated ACDS handoff action on the controlling thread.
  * PREPARE acknowledges actual host startup. COMMIT defers transport/role replacement
@@ -1103,12 +1144,7 @@ static void discovery_handoff_receive(discovery_session_t *session, const void *
   } else if (message.kind == HANDOFF_FAILED) {
     set_error(session, ERROR_NETWORK, "No eligible successor has fresh measurements and a prepared host");
   } else if (message.kind == HANDOFF_COMMIT) {
-    memcpy(session->host_id, message.participant, 16);
-    session->host_port = message.port;
-    session->handoff_pending = true;
-    set_state(session, DISCOVERY_STATE_MIGRATING);
-    log_info("Committed successor %02x%02x generation=%u", message.participant[0], message.participant[1],
-             message.generation);
+    discovery_commit_host(session, &message);
   }
 }
 /**
@@ -1142,10 +1178,14 @@ asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session) 
   session->liveness.consecutive_failures = 0;
   session->liveness.last_ping_sent_ms = session_get_current_time_ms();
   atomic_store_u64(&session->liveness.last_pong_received_ms, 0);
-  asciichat_error_t result = initialize_webrtc_peer_manager(session);
-  if (result != ASCIICHAT_OK)
-    return result;
+  if (session->session_type == SESSION_TYPE_WEBRTC) {
+    asciichat_error_t result = initialize_webrtc_peer_manager(session);
+    if (result != ASCIICHAT_OK)
+      return result;
+  }
+  ascii_otel_metric(ASCII_OTEL_METRIC_HOST_CHANGES_APPLIED, 1);
   session->host_loss_detected_ms = 0;
+
   set_state(session, session->is_host ? DISCOVERY_STATE_STARTING_HOST : DISCOVERY_STATE_CONNECTING_HOST);
   return ASCIICHAT_OK;
 }
@@ -1186,12 +1226,76 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
   return discovery_handoff_send(session, &message, true);
 }
 
+static bool discovery_host_designation_is_current(const discovery_session_t *session,
+                                                  const acip_host_designated_t *host, uint32_t generation) {
+  if (memcmp(host->session_id, session->session_id, 16) || !memchr(host->host_address, 0, sizeof(host->host_address)) ||
+      !host->host_port || host->connection_type > ACIP_CONNECTION_TYPE_TURN || generation < session->handoff_generation)
+    return false;
+  int order = discovery_compare_host_decision(session, generation, NET_TO_HOST_U32(host->sequence));
+  if (order != 0)
+    return order > 0;
+  // The same authority may supply an endpoint that was not available at join time.
+  return !memcmp(session->host_id, host->host_id, 16) && !session->host_address[0] && host->host_address[0];
+}
+
+static bool discovery_host_endpoint_ready(const discovery_session_t *session, const acip_host_designated_t *host) {
+  return session->session_type == SESSION_TYPE_WEBRTC || host->host_address[0] ||
+         !memcmp(host->host_id, session->participant_id, 16);
+}
+
+static void discovery_receive_host_designated(discovery_session_t *session, const void *data, size_t len) {
+  ASCII_OTEL_SCOPE(DISCOVERY_HOST_RECONCILE);
+  ASCII_OTEL_ATTR_STRING("host.update.source", "designation");
+  ASCII_OTEL_ATTR_STRING("host.update.outcome", "malformed");
+  if (!data || len != sizeof(acip_host_designated_t))
+    return;
+  const acip_host_designated_t *host = data;
+  uint32_t generation = NET_TO_HOST_U32(host->generation);
+  ASCII_OTEL_ATTR_INT("host.generation", generation);
+  ASCII_OTEL_ATTR_INT("host.decision.sequence", NET_TO_HOST_U32(host->sequence));
+  if (!discovery_host_designation_is_current(session, host, generation)) {
+    ASCII_OTEL_ATTR_STRING("host.update.outcome", "ignored");
+    ascii_otel_metric(ASCII_OTEL_METRIC_HOST_DESIGNATIONS_IGNORED, 1);
+    return;
+  }
+  ASCII_OTEL_ATTR_STRING("host.update.outcome", "accepted");
+  bool changed = memcmp(session->host_id, host->host_id, 16) != 0;
+  ASCII_OTEL_ATTR_INT("host.update.changed", changed);
+  ASCII_OTEL_ATTR_STRING("host.update.role",
+                         !memcmp(host->host_id, session->participant_id, 16) ? "host" : "participant");
+  bool active = session->state == DISCOVERY_STATE_ACTIVE;
+  bool connecting = session->state == DISCOVERY_STATE_CONNECTING_HOST;
+  discovery_record_host_decision(session, generation, NET_TO_HOST_U32(host->sequence));
+  session->handoff_generation = generation;
+  memcpy(session->host_id, host->host_id, 16);
+  if (changed)
+    session->host_address[0] = 0;
+  if (host->host_address[0])
+    SAFE_STRNCPY(session->host_address, host->host_address, sizeof(session->host_address));
+  session->host_port = host->host_port;
+  if (changed && active)
+    NOTICE_ANNOUNCE("Session host changed", "The session has a new host.");
+  if ((changed && (active || connecting) && discovery_host_endpoint_ready(session, host)) ||
+      (session->state == DISCOVERY_STATE_MIGRATING && session->session_type != SESSION_TYPE_WEBRTC &&
+       host->host_address[0])) {
+    // Worker teardown remains deferred to the existing role dispatcher.
+    session->handoff_pending = true;
+    set_state(session, DISCOVERY_STATE_MIGRATING);
+  } else if (session->state == DISCOVERY_STATE_NEGOTIATING && host->host_address[0]) {
+    session->is_host = !memcmp(host->host_id, session->participant_id, 16);
+    set_state(session, session->is_host ? DISCOVERY_STATE_STARTING_HOST : DISCOVERY_STATE_CONNECTING_HOST);
+  }
+}
+
 static void handle_acds_webrtc_packet(discovery_session_t *session, packet_type_t type, void *data, size_t len) {
   if ((unsigned)type == CONSENSUS_HANDOFF_PACKET) {
     discovery_handoff_receive(session, data, len);
     return;
   }
   switch (type) {
+  case PACKET_TYPE_ACIP_HOST_DESIGNATED:
+    discovery_receive_host_designated(session, data, len);
+    break;
   case PACKET_TYPE_ACIP_WEBRTC_SDP:
     handle_discovery_webrtc_sdp(session, data, len);
     break;
@@ -1254,6 +1358,8 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   memcpy(session->session_id, joined->session_id, 16);
   memcpy(session->participant_id, joined->participant_id, 16);
 
+  memcpy(session->host_id, joined->host_established ? joined->host_id : joined->initiator_id, 16);
+
   // Store session type and WebRTC credentials (if WebRTC)
   session->session_type = joined->session_type;
   if (GET_OPTION(no_webrtc)) {
@@ -1270,8 +1376,6 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     // address must not send the client through TCP/NAT host election. The
     // session initiator is the host for server-created sessions and is already
     // available even when IP details are withheld.
-    const uint8_t *host_id = joined->host_established ? joined->host_id : joined->initiator_id;
-    memcpy(session->host_id, host_id, sizeof(session->host_id));
     session->is_host = memcmp(session->host_id, session->participant_id, sizeof(session->host_id)) == 0;
   }
   if (GET_OPTION(webrtc_relay_only) && session->session_type != SESSION_TYPE_WEBRTC) {
@@ -1501,7 +1605,7 @@ static void discovery_session_begin_negotiation(discovery_session_t *session) {
   session->negotiate.peer_quality.nat_type = ACIP_NAT_TYPE_SYMMETRIC;
 }
 
-static void discovery_session_receive_host_announcement(discovery_session_t *session) {
+static void discovery_session_receive_host_designation(discovery_session_t *session) {
   if (session->acds_transport && !session->is_initiator && !session->host_address[0]) {
     packet_type_t type;
     void *data = NULL;
@@ -1509,14 +1613,8 @@ static void discovery_session_receive_host_announcement(discovery_session_t *ses
     void *alloc_buffer = NULL;
 
     asciichat_error_t recv_result = acds_receive_packet(session->acds_transport, &type, &data, &len, &alloc_buffer);
-    if (recv_result == ASCIICHAT_OK && type == PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) {
-      acip_host_announcement_t *announcement = (acip_host_announcement_t *)data;
-      log_info("Received HOST_ANNOUNCEMENT from ACDS: %s:%u", announcement->host_address, announcement->host_port);
-      SAFE_STRNCPY(session->host_address, announcement->host_address, sizeof(session->host_address));
-      session->host_port = announcement->host_port;
-      buffer_release(alloc_buffer);
-      // Continue to host role determination below
-    } else if (recv_result == ASCIICHAT_OK) {
+    if (recv_result == ASCIICHAT_OK) {
+      handle_acds_webrtc_packet(session, type, data, len);
       buffer_release(alloc_buffer);
     }
   }
@@ -1526,8 +1624,16 @@ static asciichat_error_t discovery_session_select_host(discovery_session_t *sess
   // Determine host role (now that peer_quality is set)
   if (session->negotiate.peer_quality_received && session->negotiate.state != NEGOTIATE_STATE_COMPARING) {
     log_info("Determining host role based on NAT qualities...");
+    ASCII_OTEL_SCOPE(DISCOVERY_HOST_SELECTION);
+    ASCII_OTEL_ATTR_STRING("host.selection.phase", "initial");
     asciichat_error_t result = negotiate_determine_result(&session->negotiate);
+    ASCII_OTEL_ATTR_INT("host.selection.error_code", result);
+    ASCII_OTEL_ATTR_STRING("host.selection.outcome", result == ASCIICHAT_OK ? "selected" : "failed");
     if (result == ASCIICHAT_OK) {
+      ASCII_OTEL_ATTR_STRING("host.selection.role", session->negotiate.we_are_host ? "host" : "participant");
+      ASCII_OTEL_ATTR_INT("host.selection.local_nat_tier", nat_compute_tier(&session->negotiate.our_quality));
+      ASCII_OTEL_ATTR_INT("host.selection.peer_nat_tier", nat_compute_tier(&session->negotiate.peer_quality));
+      ascii_otel_metric(ASCII_OTEL_METRIC_HOST_SELECTIONS, 1);
       session->is_host = session->negotiate.we_are_host;
       stats_runtime_connection_state(session->is_host ? "discovery host" : "discovery participant");
 
@@ -1554,10 +1660,10 @@ static asciichat_error_t discovery_session_select_host(discovery_session_t *sess
         SAFE_STRNCPY(session->host_address, session->negotiate.host_address, sizeof(session->host_address));
         session->host_port = session->negotiate.host_port;
 
-        // If host address is empty, wait for HOST_ANNOUNCEMENT from ACDS instead of using fallback
+        // If host address is empty, wait for HOST_DESIGNATED from ACDS instead of using fallback
         if (!session->host_address[0]) {
-          log_info("Waiting for HOST_ANNOUNCEMENT from ACDS to discover host address...");
-          // Stay in NEGOTIATING state to continue waiting for HOST_ANNOUNCEMENT
+          log_info("Waiting for HOST_DESIGNATED from ACDS to discover host address...");
+          // Stay in NEGOTIATING state to continue waiting for HOST_DESIGNATED
           return ASCIICHAT_OK;
         }
 
@@ -1575,7 +1681,9 @@ static asciichat_error_t discovery_session_negotiate(discovery_session_t *sessio
   if (session->negotiate.state == NEGOTIATE_STATE_INIT) {
     discovery_session_begin_negotiation(session);
   }
-  discovery_session_receive_host_announcement(session);
+  discovery_session_receive_host_designation(session);
+  if (session->state != DISCOVERY_STATE_NEGOTIATING)
+    return ASCIICHAT_OK;
   return discovery_session_select_host(session);
 }
 
@@ -1624,6 +1732,8 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
   SAFE_STRNCPY(announcement.host_address, session->host_address, sizeof(announcement.host_address));
   announcement.host_port = host_port;
   announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
+  announcement.generation = HOST_TO_NET_U32(session->handoff_generation);
+  announcement.sequence = HOST_TO_NET_U32(session->host_authority_sequence);
 
   if (session->acds_transport) {
     packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement,
@@ -1778,6 +1888,7 @@ static asciichat_error_t discovery_session_connect_tcp(discovery_session_t *sess
  */
 static asciichat_error_t discovery_session_process_active(discovery_session_t *session, int64_t timeout_ns) {
   // All session types dispatch ACDS recovery decisions without a blocking receive.
+
   if (session->acds_transport && acip_transport_has_pending_data(session->acds_transport)) {
     packet_type_t type;
     void *data = NULL;
@@ -2126,5 +2237,6 @@ asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *
   // A PLAN is advisory. Only ACDS COMMIT authorizes a role change after fresh
   // measurement and preparation. Continue dispatching while awaiting that decision.
   set_state(session, DISCOVERY_STATE_MIGRATING);
+
   return ASCIICHAT_OK;
 }
