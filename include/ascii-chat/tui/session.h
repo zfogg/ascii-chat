@@ -45,6 +45,7 @@ typedef enum {
 ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume);
 
 typedef struct ui_session ui_session_t;
+terminal_size_t ui_session_size(const ui_session_t *session);
 /** A borrowed view, valid for the duration of ui_session_render(). Hosts retain
  * snapshots and serialize access to a session; callbacks must not recurse into
  * its renderer. The runtime owns selection policy, transitions and animation.

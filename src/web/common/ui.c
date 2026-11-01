@@ -1,6 +1,18 @@
 #include <emscripten.h>
 #include <ascii-chat/tui/session.h>
+#include <ascii-chat/tui/controller.h>
 #include <ascii-chat/options/options.h>
+
+// Shared log navigation addresses the session executing the browser callback.
+static _Thread_local ui_session_t *active_session;
+
+terminal_size_t ui_controller_size(void) {
+  return ui_session_size(active_session);
+}
+
+void ui_controller_redraw(void) {
+  ui_session_redraw(active_session);
+}
 
 EMSCRIPTEN_KEEPALIVE ui_session_t *wasm_ui_create(void) {
   return ui_session_create();
@@ -21,10 +33,18 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t wasm_ui_media(ui_session_t *s, const char
   return ui_session_media(s, text, length);
 }
 EMSCRIPTEN_KEEPALIVE int wasm_ui_key(ui_session_t *s, int key) {
-  return ui_session_input(s, (keyboard_key_t)key);
+  ui_session_t *previous = active_session;
+  active_session = s;
+  int result = ui_session_input(s, (keyboard_key_t)key);
+  active_session = previous;
+  return result;
 }
 EMSCRIPTEN_KEEPALIVE const char *wasm_ui_tick(ui_session_t *s, double milliseconds) {
-  return ui_session_tick(s, (uint64_t)(milliseconds * 1000000));
+  ui_session_t *previous = active_session;
+  active_session = s;
+  const char *result = ui_session_tick(s, (uint64_t)(milliseconds * 1000000));
+  active_session = previous;
+  return result;
 }
 EMSCRIPTEN_KEEPALIVE void wasm_ui_clear(ui_session_t *s) {
   ui_session_clear(s);

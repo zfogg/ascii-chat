@@ -350,6 +350,10 @@ void ui_session_clear(ui_session_t *s) {
   }
 }
 
+terminal_size_t ui_session_size(const ui_session_t *s) {
+  return s ? s->size : (terminal_size_t){.cols = 80, .rows = 24};
+}
+
 void ui_session_redraw(ui_session_t *s) {
   if (s)
     s->dirty = true;

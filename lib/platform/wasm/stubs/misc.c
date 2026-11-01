@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/tui/update_banner.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -21,6 +22,10 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
 void audio_terminate_portaudio_final(void) {}
 
 /* Terminal/rendering stubs */
+bool update_banner_is_checking(void) {
+  return false;
+}
+
 tty_info_t get_current_tty(void) {
   tty_info_t tty = {0};
   return tty;
