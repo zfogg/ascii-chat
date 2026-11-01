@@ -7,10 +7,10 @@ Native keyboard input has four boundaries:
   buffers fragmented text and delegates UTF-8 decoding, scalar
   validation, and encoding to utf8proc. Windows UTF-16 surrogate pairs become the
   same normalized keys; console repeats apply to complete characters.
-- `lib/tui/input_events.c` collects bracketed paste and queues decoded events in
+- `lib/tui/input.c` collects bracketed paste and queues decoded events in
   order. The media screen supplies the policy for recognizing dropped path/URL
   bursts. Paste bytes are validated before insertion and never execute shortcuts.
-- `lib/ui/text_edit.c` edits caller-owned UTF-8 storage without terminal I/O or
+- `lib/ui/input.c` edits caller-owned UTF-8 storage without terminal I/O or
   rendering. Prompts and log search share this implementation; callers decide
   when to submit, cancel, mask, or insert newlines. `lib/tui/input.c` retains screen
   ownership and modal routing, and `shortcuts.c` owns shortcut aliases/help.

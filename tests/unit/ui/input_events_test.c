@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/tui/input_events.h>
+#include <ascii-chat/tui/input.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <string.h>
 

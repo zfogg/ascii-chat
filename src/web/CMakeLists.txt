@@ -323,7 +323,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/tui/session.c
     ${LIB_ROOT}/tui/session_status.c
     ${LIB_ROOT}/platform/keyboard.c
-    ${LIB_ROOT}/ui/text_edit.c
     ${LIB_ROOT}/tui/session_input.c
     ${LIB_ROOT}/tui/session_help.c
     ${LIB_ROOT}/tui/session_splash.c
