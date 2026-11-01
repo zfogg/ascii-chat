@@ -199,10 +199,9 @@ typedef struct {
   uint32_t handoff_sequence;
   uint32_t handoff_generation;
   bool handoff_pending;
-  bool host_designation_received;
-  uint32_t host_designation_generation;
-  uint32_t handoff_commit_generation;
-  bool handoff_commit_received;
+  bool host_authority_received;
+  uint32_t host_authority_generation;
+  uint32_t host_authority_sequence;
 
   // Migration state (host failover)
   migration_ctx_t migration;

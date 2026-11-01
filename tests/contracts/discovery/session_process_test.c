@@ -437,6 +437,33 @@ Test(discovery_session_process, authoritative_designation_is_idempotent_and_sess
   cr_assert_eq(discovery_session_step(&session, 0), ASCIICHAT_OK);
   cr_assert(session.handoff_pending);
   cr_assert_eq(session.host_port, 4000);
+  // A second committed round can replace a host without membership changing.
+  session.state = DISCOVERY_STATE_ACTIVE;
+  session.handoff_pending = false;
+  commit.sequence = 1;
+  commit.participant[0] = 9;
+  consensus_handoff_encode(&commit, bytes);
+  incoming_type = (packet_type_t)CONSENSUS_HANDOFF_PACKET;
+  incoming_payload = bytes;
+  incoming_length = sizeof(bytes);
+  cr_assert_eq(discovery_session_step(&session, 0), ASCIICHAT_OK);
+  cr_assert_eq(session.host_id[0], 9);
+  cr_assert_eq(session.host_authority_sequence, 1);
+  commit.sequence = 0;
+  commit.participant[0] = 8;
+  consensus_handoff_encode(&commit, bytes);
+  cr_assert_eq(discovery_session_step(&session, 0), ASCIICHAT_OK);
+  cr_assert_eq(session.host_id[0], 9);
+  incoming_type = PACKET_TYPE_ACIP_HOST_DESIGNATED;
+  incoming_payload = &host; // Delayed endpoint for the preceding committed round.
+  incoming_length = sizeof(host);
+  cr_assert_eq(discovery_session_step(&session, 0), ASCIICHAT_OK);
+  cr_assert_eq(session.host_id[0], 9);
+  cr_assert_not(session.handoff_pending);
+  host.host_id[0] = 9;
+  host.sequence = HOST_TO_NET_U32(1);
+  cr_assert_eq(discovery_session_step(&session, 0), ASCIICHAT_OK);
+  cr_assert(session.handoff_pending);
   incoming_length = 0;
   incoming_payload = NULL;
   options_state_destroy();
@@ -567,6 +594,11 @@ Test(discovery_session_process, host_fanout_authority_isolation_and_reconnect, .
   cr_assert_eq(atomic_load_int(&((designation_peer_t *)host->impl_data)->errors), 2);
   cr_assert_eq(atomic_load_int(&((designation_peer_t *)peer->impl_data)->errors), 2);
   cr_assert_eq(atomic_load_int(&((designation_peer_t *)peer->impl_data)->designated), 2);
+  announcement.sequence = HOST_TO_NET_U32(1);
+  announcement.host_port = 3456;
+  acds_on_host_announcement(&announcement, host, "fixture", &server);
+  cr_assert_eq(atomic_load_int(&((designation_peer_t *)peer->impl_data)->designated), 2);
+  announcement.sequence = 0;
   // A rejoined connection receives the persisted current endpoint and generation.
   acip_transport_t *reconnected = designation_peer(server.network_server, created.session_id, other, true);
   acds_send_current_host(&server, reconnected, created.session_id);

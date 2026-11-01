@@ -57,6 +57,7 @@ typedef struct {
   uint8_t successor[16];
   uint32_t generation;
   uint32_t round;
+  uint32_t host_sequence; ///< Last committed round; preparation does not change host authority.
   uint64_t prepare_deadline_ms;
   bool ready;
   bool host_lost;

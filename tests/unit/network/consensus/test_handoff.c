@@ -163,3 +163,29 @@ Test(handoff, fresh_measurement_retries_a_transient_preparation_failure) {
   cr_assert(consensus_handoff_tick(&s, 2011, &action));
   cr_assert_eq(action.kind, HANDOFF_PREPARE);
 }
+
+Test(handoff, successive_commits_share_generation_but_advance_decision_sequence) {
+  consensus_handoff_t state = setup();
+  consensus_handoff_message_t action;
+  sample(&state, fast_id, 100, 110, 1);
+  cr_assert(consensus_handoff_tick(&state, 111, &action));
+  action.kind = HANDOFF_READY;
+  cr_assert_eq(consensus_handoff_receive(&state, &action, CONSENSUS_HANDOFF_HEADER, 112), ASCIICHAT_OK);
+  consensus_handoff_leave(&state, host_id);
+  cr_assert(consensus_handoff_tick(&state, 113, &action));
+  cr_assert_eq(action.kind, HANDOFF_COMMIT);
+  uint32_t generation = action.generation, sequence = action.sequence;
+  cr_assert_eq(state.host_sequence, sequence);
+  sample(&state, slow_id, 16000, 16010, 1);
+  cr_assert(consensus_handoff_tick(&state, 16011, &action));
+  cr_assert_eq(action.kind, HANDOFF_PREPARE);
+  cr_assert_eq(state.host_sequence, sequence, "Preparation must not supersede committed authority");
+  action.kind = HANDOFF_READY;
+  cr_assert_eq(consensus_handoff_receive(&state, &action, CONSENSUS_HANDOFF_HEADER, 16012), ASCIICHAT_OK);
+  cr_assert(consensus_handoff_tick(&state, 16013, &action));
+  cr_assert_eq(action.kind, HANDOFF_COMMIT);
+  cr_assert_eq(action.generation, generation);
+  cr_assert_gt(action.sequence, sequence);
+  cr_assert_eq(state.host_sequence, action.sequence);
+  cr_assert_arr_eq(action.participant, slow_id, 16);
+}

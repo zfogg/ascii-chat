@@ -5,11 +5,11 @@ remain in the existing handoff implementation.
 
 A joined connection may announce only its own participant ID in its own session.
 ACDS accepts the announcement only when its host ID and generation match the
-current handoff authority. Before a handoff exists, authority is initialized from
+current handoff authority, including its committed round. Before a handoff exists, authority is initialized from
 the persisted host, or the session initiator. The endpoint must be terminated,
 have a nonzero port and a known connection type. An empty address uses the
 connection source address, as session creation already does. Once accepted, an endpoint is
-immutable within a generation; a conflicting replacement is rejected. An exact
+immutable within a committed decision; a conflicting replacement is rejected. An exact
 duplicate can repeat delivery.
 
 Authority validation, database updates and fanout are serialized with handoff
@@ -25,8 +25,10 @@ protected sessions or sessions with explicit public IP exposure disclose them.
 WebRTC participants can reconcile by participant ID without an address.
 
 HOST_ANNOUNCEMENT and HOST_DESIGNATED include a 32-bit handoff generation in
-network byte order, initially one. The extended payload requires matching
-client/server versions; old announcement sizes fail closed. The generation is
+network byte order, initially one, plus the committed handoff round (initially zero).
+The pair orders decisions: multiple hosts may be committed within one membership
+generation. Preparing a successor does not advance the current host decision.
+The extended payload requires matching client/server versions; old announcement sizes fail closed. The generation is
 scoped to the active ACDS handoff lifetime, not a durable epoch across ACDS restarts.
 
 Clients consume designations on the ACDS signaling transport, validate exact
@@ -43,3 +45,15 @@ has a new host.” It does not capture input, require acknowledgment, or introdu
 a modal popup over live video. Initial joins and duplicate events stay quiet.
 This is related to #280 (popup windows) and #297 (OS notifications). It does
 not implement a generic popup/help refactor or platform OS notifications.
+
+Telemetry uses the existing OpenTelemetry adapter. Host-selection spans distinguish
+initial negotiation from successor decisions, with selected/committed/failed
+outcomes, generation/round, eligible candidate count and the selected candidate's
+upload/NAT quality. Selection, commit and failure counters and a recovery-duration
+histogram record decisions rather than periodic ticks. Recovery duration measures
+observed host loss to commit/failure, rather than media resumption. Designation/reconciliation
+spans describe announcement/replay/commit sources, accepted/ignored/failed outcomes
+and local role. Ignored designation and applied role-change counters distinguish
+duplicates from actual transitions. Broadcast-attempted means the registry visit
+completed, not that every recipient acknowledged delivery. Attributes omit
+session strings, participant identifiers and network addresses.
