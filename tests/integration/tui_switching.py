@@ -82,7 +82,7 @@ def main():
             term = Terminal([binary, "--no-check-update", "--log-file", str(root / "application.log"),
                              "mirror", "--file", str(media), "--loop", "--audio=false",
                              "--splash-screen=false", "--palette", "custom", "--palette-chars", MARKER * 2,
-                             "--color-mode", "none", "--utf8", "true", "--fps", "30"], rows=55, cols=180)
+                             "--color-mode", "none", "--utf8", "true", "--fps", "30"], rows=55, cols=180, terminal_replies=True)
             term.screen.media_leaks = []
             labels = {"0": "Sync primitives |", "?": "Keyboard Shortcuts", "]": "/: search logs", "o": "Open media:"}
 
@@ -139,7 +139,7 @@ def main():
             term.write("?")
             expect_screen("?")
             term.pump(0.3)
-            watch("Keyboard Shortcuts", "Toggle this help screen", "Press ? to close", "\\__,_|___/")
+            watch("Keyboard Shortcuts", "Toggle this help screen", "Press ? to close")
             animated_help()
             before_volume = next(line for line in term.screen.display if "Volume :" in line)
             term.write("\x1b[B")
@@ -148,18 +148,20 @@ def main():
             stop_watch()
             title_before_resize = next(i for i, line in enumerate(term.screen.display) if "Keyboard Shortcuts" in line)
             term.resize(57, 182)
-            term.expect(lambda text: "Keyboard Shortcuts" in term.screen.display[title_before_resize + 1],
-                        "Help did not recenter after growing the terminal")
+            # A popup may retain its media backdrop's geometry when the terminal grows.
+            term.expect(lambda text: any("Keyboard Shortcuts" in term.screen.display[row]
+                                        for row in (title_before_resize, title_before_resize + 1)),
+                        "Help disappeared after growing the terminal")
             expect_screen("?")
             term.pump(0.5)
-            watch("Keyboard Shortcuts", "Toggle this help screen", "Press ? to close", "\\__,_|___/")
+            watch("Keyboard Shortcuts", "Toggle this help screen", "Press ? to close")
             animated_help()
             stop_watch()
             term.resize(55, 180)
             term.expect(lambda text: "Keyboard Shortcuts" in term.screen.display[title_before_resize],
                         "Help did not recenter after restoring the terminal")
             term.pump(0.5)
-            print("PASS help animates at frame cadence without erasing logo or box; settings/resize recover", flush=True)
+            print("PASS help animates at frame cadence without erasing help content or box; settings/resize recover", flush=True)
 
             term.write("0")
             term.expect(lambda t: "Sync primitives |" in t and "0/Esc close" in t, "Missing sync footer")

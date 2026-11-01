@@ -2,6 +2,8 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/options/rcu.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 #include <ascii-chat/util/password.h>
@@ -12,6 +14,9 @@
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/tui/render_progress.h>
+#include <ascii-chat/tui/prompt.h>
+#include <ascii-chat/tui/error_popup.h>
+#include <ascii-chat/tui/keyboard_help.h>
 #include "../../../src/common/session/display.h"
 
 #define REQUIRE(condition)                                                                                             \
@@ -20,7 +25,89 @@
       return SET_ERRNO(ERROR_INVALID_STATE, "Terminal contract failed: %s", #condition);                               \
   } while (0)
 static asciichat_error_t probe(const char *mode) {
-  if (strcmp(mode, "size") == 0) {
+  if (strcmp(mode, "modal-lifecycle") == 0) {
+    REQUIRE(keyboard_init() == ASCIICHAT_OK);
+    REQUIRE(ui_controller_present(UI_SCREEN_LOGS, 1, (terminal_size_t){.cols = 40, .rows = 6}, "PARENT-LOGS", 11) ==
+            ASCIICHAT_OK);
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
+    REQUIRE(ui_prompt_present("Modal", "", 0, false) == ASCIICHAT_OK);
+    keyboard_help_toggle_terminal(1);
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_HELP);
+    REQUIRE(ui_prompt_present("Modal refreshed", "", 0, false) == ASCIICHAT_OK);
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_HELP);
+    keyboard_help_toggle_terminal(1);
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_PROMPT);
+    ui_controller_dismiss(UI_SCREEN_PROMPT, UI_SCREEN_LOGS);
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
+    // A rejected submission must leave the owner and retained terminal intact.
+    REQUIRE(ui_controller_submit(UI_SCREEN_PROMPT, 1, (terminal_size_t){.cols = 40, .rows = 6}, NULL, "x", 1) ==
+            ERROR_INVALID_PARAM);
+    CLEAR_ERRNO();
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_ERROR);
+    keyboard_help_toggle_terminal(1);
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_HELP);
+    keyboard_help_toggle_terminal(1);
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_ERROR);
+    REQUIRE(platform_write_all(1, "MODAL-READY", 11) == 11);
+    uint64_t error_deadline = ui_input_deadline(60);
+    bool covered_input_drained = false;
+    while (ui_error_popup_visible() && !ui_input_expired(error_deadline)) {
+      bool covered = ui_controller_state().covered;
+      if (covered && !keyboard_input_available()) {
+        platform_sleep_ms(1);
+        continue;
+      }
+      bool covered_input = !covered_input_drained && covered;
+      (void)ui_input_read_key(UI_SCREEN_LOGS);
+      if (covered_input) {
+        covered_input_drained = true;
+        REQUIRE(platform_write_all(1, "COVER-DRAINED", 13) == 13);
+        // Leave the rest of the burst queued until the driver restores size.
+        // Recovery must drain more than one poll's budget without dismissing.
+        while (ui_controller_state().covered && !ui_input_expired(error_deadline))
+          platform_sleep_ms(1);
+        while (keyboard_input_available() && !ui_input_expired(error_deadline)) {
+          (void)ui_input_read_key(UI_SCREEN_LOGS);
+          REQUIRE(ui_error_popup_visible());
+        }
+        REQUIRE(platform_write_all(1, "RECOVERY-DRAINED", 16) == 16);
+      }
+    }
+    REQUIRE(!ui_error_popup_visible());
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
+    REQUIRE(ui_prompt_present("Removed parent", "", 0, false) == ASCIICHAT_OK);
+    ui_controller_remove(UI_SCREEN_LOGS);
+    ui_controller_dismiss(UI_SCREEN_PROMPT, UI_SCREEN_LOGS);
+    REQUIRE(ui_controller_interactive_screen() == -1);
+    REQUIRE(ui_controller_present(UI_SCREEN_LOGS, 1, (terminal_size_t){.cols = 40, .rows = 6}, "NEW-LOGS", 8) ==
+            ASCIICHAT_OK);
+    REQUIRE(ui_prompt_present("Replaced modal", "", 0, false) == ASCIICHAT_OK);
+    ui_controller_select_interactive(UI_SCREEN_LOGS);
+    ui_controller_dismiss(UI_SCREEN_PROMPT, -1);
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
+    char answer[32] = {0};
+    REQUIRE(ui_input_prompt("Answer then Enter", answer, sizeof(answer), PROMPT_OPTS_DEFAULT) == ASCIICHAT_OK);
+    REQUIRE(strcmp(answer, "answer") == 0);
+    REQUIRE(!update_banner_is_overlay_open());
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
+    REQUIRE(ui_input_prompt("Cancel with Escape", answer, sizeof(answer), PROMPT_OPTS_DEFAULT) != ASCIICHAT_OK);
+    CLEAR_ERRNO();
+    REQUIRE(ui_controller_interactive_screen() == UI_SCREEN_LOGS);
+    ui_error_popup_key(KEY_ESCAPE);
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
+    prompt_opts_t opts = PROMPT_OPTS_DEFAULT;
+    opts.timeout_seconds = 1;
+    REQUIRE(ui_input_prompt("Wait for timeout", answer, sizeof(answer), opts) == ERROR_PROMPT_TIMEOUT);
+    CLEAR_ERRNO();
+    REQUIRE(ui_controller_interactive_screen() == UI_SCREEN_LOGS);
+    ui_error_popup_key(KEY_ESCAPE);
+    REQUIRE(ui_controller_current_screen() == UI_SCREEN_LOGS);
+    ui_controller_remove(UI_SCREEN_LOGS);
+    ui_controller_restore_terminal();
+    ui_input_shutdown();
+    keyboard_destroy();
+    REQUIRE(platform_write_all(1, "MODALS-RESTORED", 15) == 15);
+  } else if (strcmp(mode, "size") == 0) {
     terminal_size_t size = {0};
     REQUIRE(platform_isatty(0));
     REQUIRE(platform_ttyname(0) != NULL);
@@ -196,14 +283,31 @@ static asciichat_error_t probe(const char *mode) {
 int main(int argc, char **argv) {
   if (argc != 2)
     return 2;
-  log_init(NULL, LOG_FATAL, false, false);
+  bool shared = strcmp(argv[1], "modal-lifecycle") == 0;
+  if (shared) {
+    if (asciichat_shared_init(NULL, false, true) != ASCIICHAT_OK)
+      return 2;
+    char *options[] = {"terminal-fixture", "--no-check-update", "mirror", "--audio=false", "--splash-screen=false"};
+    if (options_init((int)ARRAY_SIZE(options), options) != ASCIICHAT_OK)
+      return 2;
+  } else {
+    log_init(NULL, LOG_FATAL, false, false);
+    if (options_state_init() != ASCIICHAT_OK)
+      return 2;
+  }
   log_set_terminal_output(false);
-  if (options_state_init() != ASCIICHAT_OK)
-    return 2;
   asciichat_error_t result = probe(argv[1]);
-  if (result != ASCIICHAT_OK)
-    log_error("%s", asciichat_error_format(NULL, result));
-  options_state_destroy();
-  log_destroy();
+  if (result != ASCIICHAT_OK) {
+    char failure[2048];
+    int length = snprintf(failure, sizeof(failure), "PROBE FAILED: %s\n", asciichat_error_format(NULL, result));
+    if (length > 0)
+      platform_write_all(2, failure, MIN((size_t)length, sizeof(failure) - 1));
+  }
+  if (shared)
+    asciichat_shared_destroy();
+  else {
+    options_state_destroy();
+    log_destroy();
+  }
   return result == ASCIICHAT_OK ? 0 : 1;
 }

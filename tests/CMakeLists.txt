@@ -1659,7 +1659,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_tests_properties(peer-ready PROPERTIES LABELS "integration" TIMEOUT 30)
 endif()
 
-if(BUILD_TESTS AND UNIX AND NOT EMSCRIPTEN AND TARGET ascii-chat-static)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND TARGET ascii-chat-static)
     add_executable(test-terminal-pty standalone/platform/terminal_pty_test.c)
     target_link_libraries(test-terminal-pty PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     target_include_directories(test-terminal-pty PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
@@ -1671,9 +1671,15 @@ if(BUILD_TESTS AND UNIX AND NOT EMSCRIPTEN AND TARGET ascii-chat-static)
             add_dependencies(${test_build_target} test-terminal-pty)
         endif()
     endforeach()
-    add_test(NAME terminal-pty COMMAND ${Python3_EXECUTABLE}
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_pty.py $<TARGET_FILE:test-terminal-pty>)
-    set_tests_properties(terminal-pty PROPERTIES LABELS "integration" TIMEOUT 45)
+    asciichat_add_python_test(tui-modal-lifecycle
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/tui_modal_lifecycle.py --binary $<TARGET_FILE:test-terminal-pty>)
+    set_tests_properties(tui-modal-lifecycle PROPERTIES LABELS "integration;tui;terminal" TIMEOUT 120
+        SKIP_RETURN_CODE 77)
+    if(UNIX)
+        add_test(NAME terminal-pty COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_pty.py $<TARGET_FILE:test-terminal-pty>)
+        set_tests_properties(terminal-pty PROPERTIES LABELS "integration" TIMEOUT 45)
+    endif()
 endif()
 if(BUILD_TESTS AND WIN32)
     add_executable(test-terminal-resize standalone/session/terminal_resize_test.c)
