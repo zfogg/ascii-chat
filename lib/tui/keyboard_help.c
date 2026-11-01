@@ -49,14 +49,13 @@ static void render_help_snapshot(terminal_size_t size, const void *data) {
 }
 
 void keyboard_help_toggle_terminal(int fd) {
-  int parent = ui_controller_current_screen() == UI_SCREEN_HELP ? keyboard_help_parent_screen()
-                                                             : ui_controller_current_screen();
+  int parent =
+      ui_controller_current_screen() == UI_SCREEN_HELP ? keyboard_help_parent_screen() : ui_controller_current_screen();
   ascii_otel_ui_usage(keyboard_help_screen_name(parent), "shortcut", 0);
   if (ui_controller_current_screen() == UI_SCREEN_HELP) {
     // Keep the underlying worker active throughout dismissal. An intermediate
     // empty selection could make it retire its screen after we restore it.
-    ui_controller_select_interactive(keyboard_help_previous_interactive());
-    ui_controller_remove(UI_SCREEN_HELP);
+    ui_controller_dismiss(UI_SCREEN_HELP, keyboard_help_previous_interactive());
     return;
   }
   if (parent == UI_SCREEN_ERROR)

@@ -317,6 +317,17 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
   // The previous event has now been dispatched by the session. Background
   // polling must not overtake a pending switch with the next shortcut.
   g_switch_pending = false;
+  // Every modal obeys the same size-cover policy. Drain on recovery as well,
+  // so buffered confirmation/dismissal keys cannot act on an unseen dialog.
+  if (state.covered || atomic_load(&g_input_was_covered)) {
+    g_sync_key_count = 0;
+    g_events.ready = false;
+    for (unsigned n = 0; n < 256 && input_read_event() != KEY_NONE; ++n)
+      g_events.ready = false;
+    atomic_store(&g_input_was_covered, state.covered);
+    input_unlock();
+    return KEY_NONE;
+  }
   if (state.screen == UI_SCREEN_HELP &&
       (ui_error_popup_visible() || keyboard_help_parent_screen() == UI_SCREEN_ERROR)) {
     keyboard_key_t key = keyboard_help_check_signal_cancel() ? KEY_ESCAPE : input_next_key();
@@ -375,16 +386,6 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     return KEY_NONE;
   }
   if (screen == UI_SCREEN_MEDIA && g_media_editor.active && state.screen == UI_SCREEN_PROMPT) {
-    if (state.covered || g_input_was_covered) {
-      g_events.ready = false;
-      g_sync_key_count = 0;
-      for (unsigned n = 0; n < 256 && input_read_event() != KEY_NONE; ++n) {
-        g_events.ready = false;
-      }
-      g_input_was_covered = state.covered;
-      input_unlock();
-      return KEY_NONE;
-    }
     keyboard_key_t key = input_next_key();
     bool switch_screen = input_switch_key(key) && key != '=' && (g_media_editor.length == 0 || key == 15);
 #ifndef NDEBUG
@@ -463,32 +464,26 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
                 ((primary || server_owner) && state.screen <= UI_SCREEN_SYNC && state.screen != UI_SCREEN_STATS);
   keyboard_key_t key = KEY_NONE;
   if (active) {
-    if (state.covered || g_input_was_covered) {
-      // Drain on recovery too, including keys buffered since the last poll.
-      g_sync_key_count = 0;
-      g_events.ready = false;
-      for (int i = 0; i < 256 && input_read_event() != KEY_NONE; ++i) {
-      }
-    } else {
-      if (g_sync_key_count) {
-        key = g_sync_keys[g_sync_key_head];
-        g_sync_key_head = (g_sync_key_head + 1) % 256;
-        --g_sync_key_count;
-      }
-      if (key == KEY_NONE)
-        key = state.screen == UI_SCREEN_HELP && keyboard_help_check_signal_cancel() ? KEY_QUESTION : input_read_event();
-      if (key == KEY_F12) {
-        update_banner_handle_key(key);
-        key = KEY_NONE;
-      }
-      if (screen != UI_SCREEN_PROMPT) {
-        key = input_common_key(key, state.screen);
-        if (key != KEY_PASTE && !log_search_is_entering() &&
-            !(screen == UI_SCREEN_MDNS && state.screen == UI_SCREEN_MDNS))
-          key = ui_sync_handle_key(key);
-      }
+    if (g_sync_key_count) {
+      key = g_sync_keys[g_sync_key_head];
+      g_sync_key_head = (g_sync_key_head + 1) % 256;
+      --g_sync_key_count;
     }
-    g_input_was_covered = state.covered;
+    if (key == KEY_NONE)
+      key = state.screen == UI_SCREEN_HELP && keyboard_help_check_signal_cancel() ? KEY_QUESTION : input_read_event();
+    if (key == KEY_F12) {
+      // Synchronous prompts own their input, including function keys.
+      // Opening the update checker here would suspend credential entry.
+      if (screen != UI_SCREEN_PROMPT)
+        update_banner_handle_key(key);
+      key = KEY_NONE;
+    }
+    if (screen != UI_SCREEN_PROMPT) {
+      key = input_common_key(key, state.screen);
+      if (key != KEY_PASTE && !log_search_is_entering() &&
+          !(screen == UI_SCREEN_MDNS && state.screen == UI_SCREEN_MDNS))
+        key = ui_sync_handle_key(key);
+    }
   }
   if (key == KEY_PASTE && log_search_is_entering()) {
     if (!g_events.invalid)
@@ -500,7 +495,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     g_events.ready = false;
     key = KEY_NONE;
   }
-  if (key != KEY_NONE && update_banner_handle_key(key))
+  if (screen != UI_SCREEN_PROMPT && key != KEY_NONE && update_banner_handle_key(key))
     key = KEY_NONE;
   g_switch_pending |= input_switch_key(key);
   input_unlock();
@@ -556,6 +551,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
     SAFE_FREE(visible);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Prompt text is too long");
   }
+  int previous_interactive = ui_controller_interactive_screen();
   size_t len = (size_t)(end - buffer), cursor = len;
   unsigned seconds = opts.timeout_seconds ? opts.timeout_seconds : (opts.echo ? 30 : 60);
   uint64_t deadline = ui_input_deadline(seconds);
@@ -684,7 +680,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
                       : cancelled                      ? "cancelled"
                                                        : "failed",
                       0);
-  ui_prompt_remove();
+  ui_controller_dismiss(UI_SCREEN_PROMPT, previous_interactive);
   if (password_dialog) {
     const char *disable = "\033[<u\033[>4;0m";
     platform_write_all(STDERR_FILENO, disable, strlen(disable));

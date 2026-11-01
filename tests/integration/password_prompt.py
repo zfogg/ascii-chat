@@ -171,9 +171,12 @@ def main():
             save(peer, 'client-scrolled')
             end_x = peer.screen.cursor.x
             assert peer.screen.display[peer.screen.cursor.y].count('*') < 80, 'Long input did not scroll'
+            input_row, input_line = next((row, line) for row, line in enumerate(peer.screen.display)
+                                         if '> ' in line and line.count('*') >= 50)
+            home_x = input_line.index('> ') + 2
             peer.write('\x1b[H')
-            peer.expect(lambda _: peer.screen.cursor.x < end_x - 20, 'Home did not reveal input start')
-            home_x = peer.screen.cursor.x
+            peer.expect(lambda _: peer.screen.cursor.y == input_row and peer.screen.cursor.x == home_x,
+                        'Home did not reveal input start')
             peer.write('\x1b[C')
             peer.expect(lambda _: peer.screen.cursor.x == home_x + 1, 'Right did not move input cursor')
             selected(peer, '[ Confirm ]')
