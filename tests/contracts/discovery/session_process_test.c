@@ -584,7 +584,7 @@ Test(discovery_session_process, host_fanout_authority_isolation_and_reconnect, .
       .session_type = SESSION_TYPE_WEBRTC, .max_participants = 8, .expose_ip_publicly = true};
   acip_session_created_t created;
   cr_assert_eq(database_session_create(server.db, &request, &server.config, &created), ASCIICHAT_OK);
-  acip_session_join_t join = {0};
+  acip_session_join_t join = {.session_string_len = created.session_string_len};
   SAFE_STRNCPY(join.session_string, created.session_string, sizeof(join.session_string));
   acip_session_joined_t first;
   cr_assert_eq(database_session_join(server.db, &join, &server.config, &first), ASCIICHAT_OK);
