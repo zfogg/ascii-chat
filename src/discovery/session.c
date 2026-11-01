@@ -391,6 +391,7 @@ static void *nat_detection_thread_fn(void *arg) {
     mutex_lock(&session->nat_quality_mutex);
     memcpy(&session->cached_nat_quality, &quality, sizeof(nat_quality_t));
     session->nat_quality_cached = true;
+    session->nat_quality_measured_ms = session_get_current_time_ms();
     mutex_unlock(&session->nat_quality_mutex);
     log_debug("★ NAT_DETECTION_COMPLETE (thread): tier=%d, nat_type=%s", nat_compute_tier(&quality),
               nat_type_to_string(quality.nat_type));
@@ -452,23 +453,18 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS transport");
   }
 
-  // Use cached NAT quality if available, otherwise start background detection
+  // Only the detector publishes cached results. Do not overwrite a completed
+  // asynchronous measurement with the conservative defaults returned at startup.
   nat_quality_t our_quality;
-  if (!session->nat_quality_cached) {
-    log_debug("★ GATHERING_NAT_QUALITY (first time)");
+  mutex_lock(&session->nat_quality_mutex);
+  bool cached = session->nat_quality_cached;
+  if (cached)
+    memcpy(&our_quality, &session->cached_nat_quality, sizeof(our_quality));
+  mutex_unlock(&session->nat_quality_mutex);
+  if (!cached) {
     asciichat_error_t result = gather_nat_quality(session, &our_quality);
-    if (result != ASCIICHAT_OK) {
-      log_warn("Failed to gather NAT quality: %d", result);
+    if (result != ASCIICHAT_OK)
       return result;
-    }
-    // Use returned defaults (thread will update cached value when ready)
-    memcpy(&session->cached_nat_quality, &our_quality, sizeof(nat_quality_t));
-    session->nat_quality_cached = true;
-  } else {
-    log_debug("★ USING_CACHED_NAT_QUALITY");
-    mutex_lock(&session->nat_quality_mutex);
-    memcpy(&our_quality, &session->cached_nat_quality, sizeof(nat_quality_t));
-    mutex_unlock(&session->nat_quality_mutex);
   }
 
   // Convert to wire format
@@ -491,64 +487,10 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
   return send_result;
 }
 
-/**
- * @brief Receive NETWORK_QUALITY packet from ACDS relay
- * @param session Discovery session
- * @param timeout_ms Timeout in milliseconds
- * @return ASCIICHAT_OK if received, ERROR_NETWORK_TIMEOUT if no data
- *
- * Attempts to receive peer's NETWORK_QUALITY from ACDS.
- * Stores result in session->negotiate.peer_quality
- */
-// TODO: Wire up once ACDS relay-based quality exchange is enabled
-__attribute__((unused)) static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *session) {
-  if (!session || !session->acds_transport) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid session or ACDS transport");
-  }
-
-  log_debug("★ RECEIVE_NETWORK_QUALITY: waiting for packet from ACDS...");
-  // Receive packet
-  packet_type_t ptype;
-  void *data = NULL;
-  size_t len = 0;
-  void *alloc_buffer = NULL;
-  asciichat_error_t result = acds_receive_packet(session->acds_transport, &ptype, &data, &len, &alloc_buffer);
-
-  if (result != ASCIICHAT_OK) {
-    log_error("★ RECEIVE_NETWORK_QUALITY_FAILED: packet_receive_via_transport returned %s",
-              asciichat_error_format(NULL, result));
-    buffer_release(alloc_buffer);
-    return result;
-  }
-
-  log_debug("★ RECEIVE_NETWORK_QUALITY_GOT_PACKET: type=%u, len=%zu", ptype, len);
-  // Check if it's a NETWORK_QUALITY packet
-  if (ptype != PACKET_TYPE_ACIP_NETWORK_QUALITY) {
-    log_warn("★ RECEIVE_NETWORK_QUALITY_WRONG_TYPE: got type %u (expected %u)", ptype,
-             PACKET_TYPE_ACIP_NETWORK_QUALITY);
-    buffer_release(alloc_buffer);
-    return ERROR_NETWORK_PROTOCOL;
-  }
-
-  // Parse NETWORK_QUALITY
-  if (len < sizeof(acip_nat_quality_t)) {
-    log_error("NETWORK_QUALITY packet too small: %zu bytes", len);
-    buffer_release(alloc_buffer);
-    return ERROR_NETWORK_SIZE;
-  }
-
-  acip_nat_quality_t *wire_quality = (acip_nat_quality_t *)data;
-
-  // Convert from wire format
-  nat_quality_from_acip(wire_quality, &session->negotiate.peer_quality);
-  session->negotiate.peer_quality_received = true;
-
-  log_debug("Received NETWORK_QUALITY from peer (NAT tier: %d, upload: %u Kbps)",
-            nat_compute_tier(&session->negotiate.peer_quality), session->negotiate.peer_quality.upload_kbps);
-
-  SAFE_FREE(alloc_buffer);
-  return ASCIICHAT_OK;
-}
+/* Legacy NETWORK_QUALITY is relayed for compatibility, but does not feed the
+ * measured election: it contains sender claims with no receiver-side freshness
+ * or throughput measurement. The shared handoff protocol samples every 5s and
+ * expires incomplete/stale probes at ACDS without blocking packet dispatch. */
 
 static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   ASCII_OTEL_SCOPE(DISCOVERY_CONNECT);
@@ -1199,6 +1141,10 @@ static void discovery_handoff_receive(discovery_session_t *session, const void *
       session->host_ctx = session_host_create(&config);
       result = session->host_ctx ? session_host_start(session->host_ctx) : ERROR_MEMORY;
     }
+    if (result != ASCIICHAT_OK && session->host_ctx) {
+      session_host_destroy(session->host_ctx);
+      session->host_ctx = NULL;
+    }
     message.kind = result == ASCIICHAT_OK ? HANDOFF_READY : HANDOFF_REJECT;
     message.capabilities = session->session_type == SESSION_TYPE_WEBRTC ? 2 : 1;
     message.port = (uint16_t)GET_OPTION(port);
@@ -1241,6 +1187,11 @@ asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session) 
   session->webrtc_transport_ready = false;
   session->webrtc_connection_initiated = false;
   session->webrtc_retry_attempt = 0;
+  session->webrtc_disconnected_since_ms = 0;
+  session->liveness.ping_in_flight = false;
+  session->liveness.consecutive_failures = 0;
+  session->liveness.last_ping_sent_ms = session_get_current_time_ms();
+  atomic_store_u64(&session->liveness.last_pong_received_ms, 0);
   asciichat_error_t result = initialize_webrtc_peer_manager(session);
   if (result != ASCIICHAT_OK)
     return result;
@@ -1263,7 +1214,8 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
                                          .nat_tier = 255,
                                          .port = (uint16_t)GET_OPTION(port)};
   mutex_lock(&session->nat_quality_mutex);
-  if (session->nat_quality_cached && session->cached_nat_quality.detection_complete &&
+  if (session->nat_quality_cached && now - session->nat_quality_measured_ms <= CONSENSUS_HANDOFF_FRESH_MS &&
+      session->cached_nat_quality.detection_complete &&
       (session->cached_nat_quality.lan_reachable || session->cached_nat_quality.has_public_ip ||
        session->cached_nat_quality.upnp_available))
     message.nat_tier = (uint8_t)nat_compute_tier(&session->cached_nat_quality);
@@ -1797,7 +1749,8 @@ static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *s
     int timeout_ms = GET_OPTION(webrtc_ice_timeout_ms);
     int timed_out_count = webrtc_peer_manager_check_gathering_timeouts(session->peer_manager, timeout_ms);
 
-    if (timed_out_count > 0) {
+    bool attempt_expired = session_get_current_time_ms() - session->webrtc_last_attempt_time_ms >= (uint64_t)timeout_ms;
+    if (timed_out_count > 0 || attempt_expired) {
       log_error("WebRTC negotiation failed: %d peer(s) failed or exceeded the %dms gathering timeout", timed_out_count,
                 timeout_ms);
 
@@ -1863,9 +1816,8 @@ static asciichat_error_t discovery_session_connect_tcp(discovery_session_t *sess
 }
 
 static asciichat_error_t discovery_session_process_active(discovery_session_t *session, int64_t timeout_ns) {
-  // Receive and handle ACDS packets for WebRTC signaling (NEW)
-  if (session->session_type == SESSION_TYPE_WEBRTC && session->acds_transport &&
-      acip_transport_has_pending_data(session->acds_transport)) {
+  // All session types dispatch ACDS recovery decisions without a blocking receive.
+  if (session->acds_transport && acip_transport_has_pending_data(session->acds_transport)) {
     packet_type_t type;
     void *data = NULL;
     size_t len = 0;
@@ -1900,9 +1852,7 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
     if (session->webrtc_transport_ready && (peer_failed || disconnected_too_long)) {
       // Media workers still borrow this transport. The role dispatcher joins them
       // before applying the elected successor and releasing the old participant.
-      session->migration.detection_time_ms = session_get_current_time_ms();
-      set_state(session, DISCOVERY_STATE_MIGRATING);
-      return ASCIICHAT_OK;
+      return discovery_session_handle_host_disconnect(session, 1);
     }
   }
 
@@ -1944,7 +1894,7 @@ static asciichat_error_t discovery_session_process_migration(discovery_session_t
       handle_acds_webrtc_packet(session, type, data, length);
     buffer_release(allocated);
   }
-  if (session->handoff_pending)
+  if (session->handoff_pending || session->state == DISCOVERY_STATE_FAILED)
     return ASCIICHAT_OK;
   // Host migration in progress
   // Check if migration has timed out (if it takes >30 seconds, give up)
@@ -2102,19 +2052,11 @@ session_participant_t *discovery_session_get_participant(discovery_session_t *se
 // ============================================================================
 
 /**
- * @brief Collect NETWORK_QUALITY from all connected participants and run host election
+ * @brief Initialize compatibility ring bookkeeping.
  *
- * This is called by the host every 5 minutes to:
- * 1. Collect fresh NETWORK_QUALITY from all connected participants
- * 2. Measure the host's own NAT quality
- * 3. Run the deterministic election algorithm
- * 4. Broadcast FUTURE_HOST_ELECTED to all participants
- *
- * @param session Discovery session (must be host)
- * @return ASCIICHAT_OK on success
- *
- * NOTE: For MVP, participants' quality data comes from when they connected.
- * TODO: Extend to request fresh NETWORK_QUALITY from participants periodically.
+ * ACDS owns measured election. Native and browser clients independently send
+ * probes every five seconds, including while recovering; no synchronous quality
+ * receive or host-mediated five-minute collection is needed.
  */
 asciichat_error_t discovery_session_init_ring(discovery_session_t *session) {
   if (!session) {
@@ -2201,7 +2143,9 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
   if (!session->liveness.ping_in_flight && time_since_last_ping >= session->liveness.ping_interval_ms) {
     // Send ping to host via participant connection
     acip_transport_t *transport = session_participant_get_transport(session->participant_ctx);
-    if (transport && acip_transport_is_connected(transport)) {
+    if (!transport || !acip_transport_is_connected(transport))
+      return SET_ERRNO(ERROR_NETWORK, "Host transport disconnected");
+    if (transport) {
       asciichat_error_t result = acip_send_ping(transport);
       if (result == ASCIICHAT_OK) {
         session->liveness.last_ping_sent_ms = now_ms;
@@ -2244,33 +2188,17 @@ asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *
   host_lost.disconnect_reason = disconnect_reason;
   host_lost.disconnect_time_ms = session->migration.detection_time_ms;
 
-  packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_LOST, &host_lost, sizeof(host_lost), 0);
-
-  // Check if we have a pre-elected future host (from last 5-minute ring round)
-  if (session->ring.future_host_id[0] == 0) {
-    // No future host known! This shouldn't happen if we just received FUTURE_HOST_ELECTED
-    // within the last 5 minutes. Fall back to treating this as fatal.
-    log_error("No future host pre-elected! Session cannot recover from host disconnect.");
-    session->migration.state = MIGRATION_STATE_COMPLETE;
-    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
-    return ERROR_NETWORK; // Session should end
+  asciichat_error_t result = packet_send_via_transport(
+      session->acds_transport, PACKET_TYPE_ACIP_HOST_LOST, &host_lost, sizeof(host_lost), 0);
+  if (result != ASCIICHAT_OK) {
+    set_error(session, result, "Could not report host loss to ACDS");
+    return result;
   }
 
-  // **SIMPLIFIED**: No metrics exchange needed! Future host was already elected 5 minutes ago.
-  // Just failover to the pre-elected host.
-  session->migration.state = MIGRATION_STATE_FAILOVER;
-
-  // Check if I am the future host
-  if (session->ring.am_future_host) {
-    // I become the new host immediately! (no election delay!)
-    log_info("Becoming host (I'm the pre-elected future host)");
-    return discovery_session_become_host(session);
-  } else {
-    // Connect to pre-elected future host (address already stored!)
-    log_info("Connecting to pre-elected future host: %s:%u", session->ring.future_host_address,
-             session->ring.future_host_port);
-    return discovery_session_connect_to_future_host(session);
-  }
+  // A PLAN is advisory. Only ACDS COMMIT authorizes a role change after fresh
+  // measurement and preparation. Continue dispatching while awaiting that decision.
+  set_state(session, DISCOVERY_STATE_MIGRATING);
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t discovery_session_become_host(discovery_session_t *session) {

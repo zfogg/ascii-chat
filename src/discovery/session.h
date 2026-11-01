@@ -182,6 +182,7 @@ typedef struct {
   // Cached NAT quality (gathered once, reused for NETWORK_QUALITY packets)
   nat_quality_t cached_nat_quality;
   bool nat_quality_cached;
+  uint64_t nat_quality_measured_ms;
 
   // NAT detection threading (non-blocking background detection)
   asciichat_thread_t nat_detection_thread;

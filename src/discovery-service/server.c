@@ -37,55 +37,11 @@
 #include <ascii-chat/crypto/handshake/server.h>
 
 /**
- * @brief Find or create migration context for a session
- *
- * Searches active_migrations for the given session_id. If found, returns the context.
- * If not found and create=true, creates a new entry. Returns NULL if not found and
- * create=false, or if max migrations reached.
- *
- * @param server ACDS server instance
- * @param session_id Session UUID to find
- * @param create If true, create new entry if not found
- * @return Pointer to migration context, or NULL if not found/created
- */
-
-/**
  * @brief Get current time in nanoseconds
  * @return Current time in nanoseconds (using unified timing API)
  */
 static uint64_t get_current_time_ns(void) {
   return time_get_ns();
-}
-
-static migration_context_t *find_or_create_migration(acds_server_t *server, const uint8_t session_id[16], bool create) {
-  if (!server || !session_id) {
-    return NULL;
-  }
-
-  // Search for existing migration
-  for (size_t i = 0; i < server->num_active_migrations; i++) {
-    if (memcmp(server->active_migrations[i].session_id, session_id, 16) == 0) {
-      return &server->active_migrations[i];
-    }
-  }
-
-  // Not found
-  if (!create) {
-    return NULL;
-  }
-
-  // Create new entry if space available
-  if (server->num_active_migrations >= 32) {
-    log_warn("Too many active migrations (max 32)");
-    return NULL;
-  }
-
-  migration_context_t *ctx = &server->active_migrations[server->num_active_migrations];
-  memcpy(ctx->session_id, session_id, 16);
-  ctx->migration_start_ns = get_current_time_ns();
-  server->num_active_migrations++;
-
-  return ctx;
 }
 
 /**
@@ -977,30 +933,21 @@ static void acds_on_host_lost(const acip_host_lost_t *host_lost, acip_transport_
            host_lost->participant_id[1], host_lost->last_host_id[0], host_lost->last_host_id[1],
            host_lost->disconnect_reason);
 
-  // Start host migration (set in_migration flag in database for bookkeeping)
-  asciichat_error_t result = database_session_start_migration(server->db, host_lost->session_id);
-  if (result != ASCIICHAT_OK) {
-    acip_send_error(transport, result, "Failed to start host migration");
-    log_warn("HOST_LOST failed from %s: %s", client_ip, asciichat_error_format(NULL, result));
+  acds_client_data_t *client = transport ? transport->user_data : NULL;
+  if (!client || !client->joined_session || memcmp(client->session_id, host_lost->session_id, 16) ||
+      memcmp(client->participant_id, host_lost->participant_id, 16)) {
+    acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Host loss transport identity mismatch");
     return;
   }
-
-  // Track migration for timeout detection
-  // (Host already elected future host 5 minutes ago; participants will failover to pre-elected host)
-  migration_context_t *migration = find_or_create_migration(server, host_lost->session_id, true);
-  if (!migration) {
-    acip_send_error(transport, ERROR_MEMORY, "Failed to track migration");
-    log_warn("HOST_LOST: Failed to create migration context from %s", client_ip);
-    return;
+  mutex_lock(&server->handoff_mutex);
+  consensus_handoff_t *state = acds_handoff_find(server, host_lost->session_id, false);
+  if (state) {
+    consensus_handoff_host_lost(state, host_lost->last_host_id);
+    asciichat_error_t result = acds_handoff_tick(server, state);
+    if (result != ASCIICHAT_OK)
+      log_warn("Host loss recovery failed: %s", asciichat_error_format(NULL, result));
   }
-
-  log_info("Migration tracking started for session %02x%02x... (participant %02x%02x...)", host_lost->session_id[0],
-           host_lost->session_id[1], host_lost->participant_id[0], host_lost->participant_id[1]);
-
-  // NOTE: No candidate collection needed - future host was pre-elected 5 minutes ago.
-  // Participants already know who the new host is from the last FUTURE_HOST_ELECTED broadcast.
-  // They will instantly failover to the pre-elected host.
-  // ACDS just tracks migration timeout for cleanup.
+  mutex_unlock(&server->handoff_mutex);
 }
 
 static consensus_handoff_t *acds_handoff_find(acds_server_t *server, const uint8_t session[16], bool create) {
