@@ -73,17 +73,6 @@ void nat_quality_init(nat_quality_t *quality);
 asciichat_error_t nat_detect_quality(nat_quality_t *quality, const char *stun_server, uint16_t local_port);
 
 /**
- * @brief Measure upload bandwidth to ACDS server
- *
- * Uploads a test payload and measures throughput.
- *
- * @param quality Structure to update with bandwidth results
- * @param acds_socket Connected socket to ACDS
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t nat_measure_bandwidth(nat_quality_t *quality, socket_t acds_socket);
-
-/**
  * @brief Compare two NAT qualities and determine who should host
  *
  * Algorithm is deterministic - both sides get the same result.
@@ -95,23 +84,6 @@ asciichat_error_t nat_measure_bandwidth(nat_quality_t *quality, socket_t acds_so
  * @return -1 = we host, 0 = equal (initiator wins), 1 = they host
  */
 int nat_compare_quality(const nat_quality_t *ours, const nat_quality_t *theirs, bool we_are_initiator);
-
-/**
- * @brief Convert nat_quality_t to acip_nat_quality_t for network transmission
- * @param quality Local NAT quality
- * @param session_id Session UUID
- * @param participant_id Participant UUID
- * @param out Output ACIP message structure
- */
-void nat_quality_to_acip(const nat_quality_t *quality, const uint8_t session_id[16], const uint8_t participant_id[16],
-                         acip_nat_quality_t *out);
-
-/**
- * @brief Convert acip_nat_quality_t to nat_quality_t
- * @param acip ACIP message structure
- * @param out Output local NAT quality structure
- */
-void nat_quality_from_acip(const acip_nat_quality_t *acip, nat_quality_t *out);
 
 /**
  * @brief Get human-readable description of NAT type

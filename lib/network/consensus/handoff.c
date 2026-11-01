@@ -92,7 +92,7 @@ void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[16]) {
   }
 }
 void consensus_handoff_host_lost(consensus_handoff_t *s, const uint8_t host[16]) {
-  if (!memcmp(s->host, host, 16))
+  if (!memcmp(s->host, host, sizeof(s->host)))
     s->host_lost = true;
 }
 
@@ -166,7 +166,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
   if (s->host_lost && now >= s->failure_deadline_ms) {
     s->failure_announced = true;
     s->ready = false;
-    memset(s->successor, 0, 16);
+    memset(s->successor, 0, sizeof(s->successor));
     a->kind = HANDOFF_FAILED;
     a->sequence = s->round;
     return true;

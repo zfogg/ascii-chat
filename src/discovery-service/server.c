@@ -840,8 +840,9 @@ static void acds_on_host_lost(const acip_host_lost_t *host_lost, acip_transport_
            host_lost->disconnect_reason);
 
   acds_client_data_t *client = transport ? transport->user_data : NULL;
-  if (!client || !client->joined_session || memcmp(client->session_id, host_lost->session_id, 16) ||
-      memcmp(client->participant_id, host_lost->participant_id, 16)) {
+  if (!client || !client->joined_session ||
+      memcmp(client->session_id, host_lost->session_id, sizeof(client->session_id)) ||
+      memcmp(client->participant_id, host_lost->participant_id, sizeof(client->participant_id))) {
     acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Host loss transport identity mismatch");
     return;
   }

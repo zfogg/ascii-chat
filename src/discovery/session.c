@@ -350,14 +350,6 @@ static void set_error(discovery_session_t *session, asciichat_error_t error, con
 }
 
 /**
- * @brief Gather NAT quality information from local system
- * @param quality Output quality structure
- * @return ASCIICHAT_OK on success
- *
- * Collects NAT detection results using STUN and other methods.
- * This is non-blocking and may not have all data immediately.
- */
-/**
  * @brief Background thread function for NAT quality detection
  * Runs in a separate thread to avoid blocking the main thread
  */
@@ -368,18 +360,9 @@ static void *nat_detection_thread_fn(void *arg) {
 
   discovery_session_t *session = (discovery_session_t *)arg;
 
-  // Parse STUN servers
-  const char *stun_servers_option = GET_OPTION(stun_servers);
-  const char *stun_server_for_probe = OPT_ENDPOINT_STUN_FALLBACK;
-
-  if (stun_servers_option && stun_servers_option[0] != '\0') {
-    stun_server_for_probe = OPT_ENDPOINT_STUN_FALLBACK;
-  }
-
-  const char *probe_host = stun_server_for_probe;
-  if (strncmp(probe_host, "stun:", 5) == 0) {
-    probe_host = stun_server_for_probe + 5;
-  }
+  const char *probe_host = OPT_ENDPOINT_STUN_FALLBACK;
+  if (strncmp(probe_host, "stun:", 5) == 0)
+    probe_host += 5;
 
   // Run blocking NAT detection in this thread (not main thread)
   nat_quality_t quality;
@@ -396,8 +379,7 @@ static void *nat_detection_thread_fn(void *arg) {
     log_debug("★ NAT_DETECTION_COMPLETE (thread): tier=%d, nat_type=%s", nat_compute_tier(&quality),
               nat_type_to_string(quality.nat_type));
   } else {
-    log_warn("NAT detection failed in background thread, using defaults");
-    // Don't update - caller will use defaults
+    log_warn("NAT detection failed in background thread; retaining the previous cache");
   }
 
   mutex_lock(&session->nat_quality_mutex);
@@ -1798,7 +1780,7 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
     // We are a participant - check if host is still alive
     asciichat_error_t host_check = discovery_session_check_host_alive(session);
     if (host_check != ASCIICHAT_OK) {
-      // Host is down! Trigger automatic failover to pre-elected future host
+      // Report host loss and await the measured ACDS recovery decision.
       log_warn("Host disconnect detected during ACTIVE state");
 
       // If --prefer-webrtc is set, WebRTC failure is fatal (no TCP fallback)
@@ -2037,20 +2019,18 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
     acip_transport_t *transport = session_participant_get_transport(session->participant_ctx);
     if (!transport || !acip_transport_is_connected(transport))
       return SET_ERRNO(ERROR_NETWORK, "Host transport disconnected");
-    if (transport) {
-      asciichat_error_t result = acip_send_ping(transport);
-      if (result == ASCIICHAT_OK) {
-        session->liveness.last_ping_sent_ms = now_ms;
-        session->liveness.ping_in_flight = true;
-        log_debug("Sent ping to host (attempt %u/%u)", session->liveness.consecutive_failures + 1,
-                  session->liveness.max_failures);
-      } else {
-        log_warn("Failed to send ping to host: %d", result);
-        session->liveness.consecutive_failures++;
-        if (session->liveness.consecutive_failures >= session->liveness.max_failures) {
-          log_error("Host declared dead after %u consecutive send failures", session->liveness.consecutive_failures);
-          return ERROR_NETWORK;
-        }
+    asciichat_error_t result = acip_send_ping(transport);
+    if (result == ASCIICHAT_OK) {
+      session->liveness.last_ping_sent_ms = now_ms;
+      session->liveness.ping_in_flight = true;
+      log_debug("Sent ping to host (attempt %u/%u)", session->liveness.consecutive_failures + 1,
+                session->liveness.max_failures);
+    } else {
+      log_warn("Failed to send ping to host: %d", result);
+      session->liveness.consecutive_failures++;
+      if (session->liveness.consecutive_failures >= session->liveness.max_failures) {
+        log_error("Host declared dead after %u consecutive send failures", session->liveness.consecutive_failures);
+        return ERROR_NETWORK;
       }
     }
   }
