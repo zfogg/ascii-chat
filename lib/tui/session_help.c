@@ -219,7 +219,8 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
                          .settings = settings_text,
                          .settings_count = (size_t)settings_count,
                          .footer = footer,
-                         .top_margin = 0};
+                         // Browser sessions draw a four-row animated logo above the popup.
+                         .top_margin = browser ? 6 : 0};
   *minimum = ui_help_menu_measure(&menu);
   frame_buffer_t *output = frame_buffer_create(size.rows, size.cols);
   if (!output)
