@@ -91,6 +91,21 @@ void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[16]) {
     return;
   }
 }
+/**
+ * @brief Record loss of the incumbent, ignoring delayed reports about old hosts.
+ * The caller authenticates the reporter before the next tick starts recovery.
+ */
+void consensus_handoff_host_lost(consensus_handoff_t *s, const uint8_t host[16]) {
+  if (!memcmp(s->host, host, sizeof(s->host)))
+    s->host_lost = true;
+}
+
+/**
+ * @brief Accept a member's probe or preparation reply using receiver-clock time.
+ * Probe metadata becomes eligible only with a matched, timely body. Preparation
+ * replies must match the current generation, round, and selected successor.
+ * @return ASCIICHAT_OK if accepted, or a protocol error without accepting the frame.
+ */
 asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consensus_handoff_message_t *m, size_t length,
                                             uint64_t now) {
   if (memcmp(s->session, m->session, 16) != 0)
@@ -104,9 +119,9 @@ asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consen
     p->sequence = m->sequence;
     p->probe_started_ms = now;
     p->measuring = true;
-    p->capabilities = m->capabilities & 3;
-    p->nat_tier = m->nat_tier <= 4 ? m->nat_tier : 255;
-    p->port = m->port;
+    p->pending_capabilities = m->capabilities & 3;
+    p->pending_nat_tier = m->nat_tier <= 4 ? m->nat_tier : 255;
+    p->pending_port = m->port;
   } else if (m->kind == HANDOFF_SAMPLE_DATA) {
     if (!p->measuring || m->sequence != p->sequence ||
         length != CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES)
@@ -116,8 +131,14 @@ asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consen
     if (elapsed == 0)
       elapsed = 1;
     p->valid = elapsed <= 5000;
-    if (p->valid)
-      p->rejected = false;
+    if (p->valid) {
+      p->capabilities = p->pending_capabilities;
+      p->nat_tier = p->pending_nat_tier;
+      p->port = p->pending_port;
+      // A quality refresh cannot extend a failed recovery by retrying the same host.
+      if (!s->host_lost)
+        p->rejected = false;
+    }
     p->upload_kbps = (uint32_t)((uint64_t)CONSENSUS_HANDOFF_PROBE_BYTES * 8 / elapsed);
     p->measured_ms = now;
   } else if (m->kind == HANDOFF_READY || m->kind == HANDOFF_REJECT) {
@@ -134,18 +155,43 @@ asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consen
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Client cannot announce a handoff decision");
   return ASCIICHAT_OK;
 }
+/**
+ * @brief Advance measured successor selection and bounded host-loss recovery.
+ * Fresh eligible peers prepare within five seconds; all recovery attempts share
+ * one 15-second budget. Only a fresh prepared peer can commit, and failure is terminal.
+ * @param now Monotonic receiver time in milliseconds.
+ * @param a Output action to send when the function returns true.
+ * @return True if a PREPARE, COMMIT, or terminal FAILED action was produced.
+ */
 bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_handoff_message_t *a) {
   memset(a, 0, sizeof(*a));
   memcpy(a->session, s->session, 16);
   a->generation = s->generation;
+  if (s->failure_announced)
+    return false; // Terminal until the session is recreated.
+  if (!s->monitoring) {
+    s->monitoring = true;
+    s->monitoring_started_ms = now;
+  }
   consensus_handoff_peer_t *incumbent = find_peer(s, s->host);
-  if (incumbent && incumbent->valid && now - incumbent->measured_ms > CONSENSUS_HANDOFF_FRESH_MS)
+  uint64_t last_host_sample = incumbent && incumbent->valid ? incumbent->measured_ms : s->monitoring_started_ms;
+  if (now - last_host_sample > CONSENSUS_HANDOFF_FRESH_MS)
     s->host_lost = true;
   if (s->host_lost && !s->failure_deadline_ms)
-    s->failure_deadline_ms = now + CONSENSUS_HANDOFF_PREPARE_MS;
+    s->failure_deadline_ms = now + CONSENSUS_HANDOFF_RECOVERY_MS;
+  // The recovery budget is shared by all candidates, including silent/rejecting
+  // candidates that continue sending fresh probes. A late READY cannot revive it.
+  if (s->host_lost && now >= s->failure_deadline_ms) {
+    s->failure_announced = true;
+    s->ready = false;
+    memset(s->successor, 0, sizeof(s->successor));
+    a->kind = HANDOFF_FAILED;
+    a->sequence = s->round;
+    return true;
+  }
   if (s->ready && s->host_lost) {
     consensus_handoff_peer_t *p = find_peer(s, s->successor);
-    if (p && p->valid && now - p->measured_ms <= CONSENSUS_HANDOFF_FRESH_MS) {
+    if (p && p->valid && p->capabilities && now - p->measured_ms <= CONSENSUS_HANDOFF_FRESH_MS) {
       a->kind = HANDOFF_COMMIT;
       memcpy(a->participant, s->successor, 16);
       a->sequence = s->round;
@@ -153,6 +199,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
       a->capabilities = p->capabilities;
       memcpy(s->host, s->successor, 16);
       s->host_lost = false;
+      s->monitoring_started_ms = now;
       s->ready = false;
       s->failure_deadline_ms = 0;
       s->failure_announced = false;
@@ -167,7 +214,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
   uint8_t zero[16] = {0};
   if (memcmp(s->successor, zero, 16)) {
     consensus_handoff_peer_t *p = find_peer(s, s->successor);
-    if (p && p->valid && now - p->measured_ms <= CONSENSUS_HANDOFF_FRESH_MS &&
+    if (p && p->valid && p->capabilities && now - p->measured_ms <= CONSENSUS_HANDOFF_FRESH_MS &&
         (s->ready || now < s->prepare_deadline_ms))
       return false;
     if (p && !s->ready)
@@ -189,15 +236,8 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
     m->upload_kbps = p->upload_kbps;
     m->rtt_ns = 500000000; /* Unknown RTT earns no latency bonus. */
   }
-  if (!count) {
-    if (s->host_lost && !s->failure_announced && now >= s->failure_deadline_ms) {
-      s->failure_announced = true;
-      a->kind = HANDOFF_FAILED;
-      a->sequence = s->round;
-      return true;
-    }
+  if (!count)
     return false;
-  }
   int best = -1, backup = -1;
   if (consensus_election_choose_hosts(metrics, (int)count, &best, &backup) != ASCIICHAT_OK)
     return false;

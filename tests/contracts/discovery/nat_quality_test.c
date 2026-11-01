@@ -1,24 +1,21 @@
 #include "../worker_assert.h"
 #include "discovery/nat.h"
-#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/buffer.h>
 #include <ascii-chat/util/time.h>
 #include <limits.h>
 #include <string.h>
 
-static socket_t local = INVALID_SOCKET_VALUE, remote = INVALID_SOCKET_VALUE;
+static socket_t remote = INVALID_SOCKET_VALUE;
 static void setup(void) {
   log_init(NULL, LOG_FATAL, false, false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
 }
+/** @brief Release the loopback STUN fixture and restore per-case options/logging. */
 static void teardown(void) {
-  if (local != INVALID_SOCKET_VALUE)
-    socket_close(local);
   if (remote != INVALID_SOCKET_VALUE)
     socket_close(remote);
-  local = remote = INVALID_SOCKET_VALUE;
+  remote = INVALID_SOCKET_VALUE;
   options_state_destroy();
   CLEAR_ERRNO_ALL();
   log_destroy();
@@ -88,67 +85,6 @@ Test(nat_quality, bandwidth_override_does_not_wrap_large_peer_values) {
   cr_assert_eq(nat_compare_quality(&b, &a, true), 1);
 }
 
-Test(nat_quality, acip_roundtrip_preserves_observations_and_candidate_masks) {
-  nat_quality_t in = {.has_public_ip = true,
-                      .upnp_available = true,
-                      .upnp_mapped_port = 0xabcd,
-                      .nat_type = ACIP_NAT_TYPE_FULL_CONE,
-                      .lan_reachable = true,
-                      .stun_latency_ns = 123456789,
-                      .public_address = "203.0.113.7",
-                      .public_port = 54321,
-                      .upload_kbps = 999,
-                      .download_kbps = 2000,
-                      .rtt_to_acds_ns = 17,
-                      .jitter_ns = 3,
-                      .packet_loss_pct = 9};
-  uint8_t session[16], participant[16];
-  memset(session, 0x12, sizeof(session));
-  memset(participant, 0x34, sizeof(participant));
-  for (unsigned mask = 0; mask < 8; ++mask) {
-    in.has_host_candidates = !!(mask & 1);
-    in.has_srflx_candidates = !!(mask & 2);
-    in.has_relay_candidates = !!(mask & 4);
-    acip_nat_quality_t wire;
-    nat_quality_to_acip(&in, session, participant, &wire);
-    cr_assert_arr_eq(wire.session_id, session, 16);
-    cr_assert_arr_eq(wire.participant_id, participant, 16);
-    cr_assert_eq(wire.upnp_mapped_port[0], 0xab);
-    cr_assert_eq(wire.upnp_mapped_port[1], 0xcd);
-    cr_assert_eq(wire.ice_candidate_types, mask);
-    nat_quality_t out;
-    memset(&out, 0xa5, sizeof(out));
-    nat_quality_from_acip(&wire, &out);
-    cr_assert(out.detection_complete);
-    cr_assert_eq(out.error, ASCIICHAT_OK);
-    cr_assert(out.has_public_ip && out.upnp_available && out.lan_reachable);
-    cr_assert_eq(out.upnp_mapped_port, 0xabcd);
-    cr_assert_eq(out.nat_type, in.nat_type);
-    cr_assert_eq(out.stun_latency_ns, in.stun_latency_ns);
-    cr_assert_eq(out.public_port, in.public_port);
-    cr_assert_str_eq(out.public_address, in.public_address);
-    cr_assert_eq(out.upload_kbps, in.upload_kbps);
-    cr_assert_eq(out.download_kbps, in.download_kbps);
-    cr_assert_eq(out.rtt_to_acds_ns, in.rtt_to_acds_ns);
-    cr_assert_eq(out.jitter_ns, in.jitter_ns);
-    cr_assert_eq(out.packet_loss_pct, in.packet_loss_pct);
-    cr_assert_eq(out.has_host_candidates, in.has_host_candidates);
-    cr_assert_eq(out.has_srflx_candidates, in.has_srflx_candidates);
-    cr_assert_eq(out.has_relay_candidates, in.has_relay_candidates);
-  }
-  acip_nat_quality_t wire;
-  memset(&wire, 0xa5, sizeof(wire));
-  nat_quality_to_acip(NULL, NULL, NULL, &wire);
-  cr_assert_eq(wire.session_id[0], 0xa5);
-  nat_quality_to_acip(&in, NULL, NULL, &wire);
-  uint8_t zeros[16] = {0};
-  cr_assert_arr_eq(wire.session_id, zeros, 16);
-  cr_assert_arr_eq(wire.participant_id, zeros, 16);
-  nat_quality_to_acip(&in, NULL, NULL, NULL);
-  nat_quality_from_acip(NULL, &in);
-  nat_quality_from_acip(&wire, NULL);
-}
-
 typedef struct {
   unsigned mode;
 } response_t;
@@ -207,63 +143,4 @@ Test(nat_quality, real_stun_probe_records_only_supported_observations_and_recove
   cr_assert_eq(nat_detect_quality(&quality, "", 0), ASCIICHAT_OK);
   cr_assert(quality.has_relay_candidates && quality.has_host_candidates);
   cr_assert_not(quality.has_srflx_candidates);
-}
-
-static void *bandwidth_reply(void *data) {
-  response_t *response = data;
-  packet_type_t type;
-  void *payload = NULL;
-  size_t length = 0;
-  cr_assert_worker(packet_receive(remote, &type, &payload, &length) == ASCIICHAT_OK);
-  cr_assert_worker(type == PACKET_TYPE_ACIP_BANDWIDTH_TEST && length == sizeof(acip_bandwidth_test_t));
-  acip_bandwidth_test_t message;
-  memcpy(&message, payload, sizeof(message));
-  buffer_release(payload);
-  cr_assert_worker(message.test_size_bytes == 65536 && message.client_send_time_ns > 0);
-  uint8_t chunk[4096];
-  size_t remaining = 65536;
-  while (remaining) {
-    ssize_t count = socket_recv(remote, chunk, remaining < sizeof(chunk) ? remaining : sizeof(chunk), 0);
-    cr_assert_worker(count > 0);
-    for (ssize_t i = 0; i < count; ++i)
-      cr_assert_worker(chunk[i] == 0xaa);
-    remaining -= (size_t)count;
-  }
-  acip_bandwidth_result_t result = {.measured_upload_kbps = 1234,
-                                    .measured_download_kbps = 5678,
-                                    .rtt_ns = 123456,
-                                    .jitter_ns = 456,
-                                    .packet_loss_pct = 7};
-  cr_assert_worker(packet_send(remote, response->mode == 1 ? PACKET_TYPE_ACIP_ERROR : PACKET_TYPE_ACIP_BANDWIDTH_RESULT,
-                               &result, response->mode == 2 ? sizeof(result) - 1 : sizeof(result)) == ASCIICHAT_OK);
-  return NULL;
-}
-
-Test(nat_quality, bandwidth_probe_validates_peer_reply_and_preserves_previous_measurement_on_error) {
-  nat_quality_t quality = {.upload_kbps = 42};
-  cr_assert_eq(nat_measure_bandwidth(NULL, INVALID_SOCKET_VALUE), ERROR_INVALID_PARAM);
-  cr_assert_eq(nat_measure_bandwidth(&quality, INVALID_SOCKET_VALUE), ERROR_INVALID_PARAM);
-  for (unsigned mode = 0; mode < 3; ++mode) {
-    socket_t listener = socket_create("nat-bandwidth-listen", AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in address = bind_loopback(listener);
-    cr_assert_eq(socket_listen(listener, 1), 0);
-    local = socket_create("nat-bandwidth-probe", AF_INET, SOCK_STREAM, 0);
-    cr_assert_eq(socket_connect(local, (struct sockaddr *)&address, sizeof(address)), 0);
-    remote = socket_accept(listener, NULL, NULL, "nat-bandwidth-peer");
-    socket_close(listener);
-    cr_assert_neq(remote, INVALID_SOCKET_VALUE);
-    response_t response = {.mode = mode};
-    asciichat_thread_t thread;
-    cr_assert_eq(acthread_create(&thread, "nat-bandwidth-reply", bandwidth_reply, &response), 0);
-    cr_assert_eq(nat_measure_bandwidth(&quality, local), mode ? ERROR_NETWORK_PROTOCOL : ASCIICHAT_OK);
-    cr_assert_eq(thread_join(&thread, NULL), 0);
-    cr_assert_eq(quality.upload_kbps, 1234);
-    cr_assert_eq(quality.download_kbps, 5678);
-    cr_assert_eq(quality.rtt_to_acds_ns, 123456);
-    cr_assert_eq(quality.jitter_ns, 456);
-    cr_assert_eq(quality.packet_loss_pct, 7);
-    socket_close(local);
-    socket_close(remote);
-    local = remote = INVALID_SOCKET_VALUE;
-  }
 }

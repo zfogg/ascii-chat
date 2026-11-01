@@ -265,33 +265,3 @@ asciichat_error_t signaling_broadcast(sqlite3 *db, network_server_t *network_ser
 
   return ASCIICHAT_OK;
 }
-
-asciichat_error_t signaling_relay_network_quality(sqlite3 *db, network_server_t *network_server,
-                                                  const acip_nat_quality_t *quality, size_t total_packet_len) {
-  if (!db || !network_server || !quality) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "db, network server, or quality is NULL");
-  }
-
-  // Validate packet size
-  if (total_packet_len < sizeof(acip_nat_quality_t)) {
-    return SET_ERRNO(ERROR_NETWORK_SIZE, "NETWORK_QUALITY packet too small");
-  }
-
-  // Extract session_id and sender_id from the quality packet
-  const uint8_t *session_id = quality->session_id;
-  const uint8_t *sender_id = quality->participant_id;
-
-  // Find session by UUID using database lookup
-  log_debug("NETWORK_QUALITY relay: session_id=%02x%02x..., sender_id=%02x%02x...", session_id[0], session_id[1],
-            sender_id[0], sender_id[1]);
-  session_entry_t *session = database_session_find_by_id(db, session_id);
-  if (!session) {
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for NETWORK_QUALITY relay");
-  }
-  session_entry_destroy(session); // We only need to validate existence
-
-  // Broadcast to all participants in session (except sender)
-  log_debug("Broadcasting NETWORK_QUALITY to all participants in session (excluding sender)");
-  return signaling_broadcast(db, network_server, session_id, PACKET_TYPE_ACIP_NETWORK_QUALITY, quality,
-                             total_packet_len, sender_id);
-}

@@ -11,12 +11,16 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/network/consensus/handoff.h>
+#include <ascii-chat/network/crc32.h>
 #include <stdlib.h>
 
 static uint64_t now_ms = 100000;
 static unsigned int transitions, sends, receives;
 static bool connected = true;
 static asciichat_error_t send_result = ASCIICHAT_OK, recv_result = ERROR_NETWORK_TIMEOUT;
+static size_t incoming_length;
+static uint8_t incoming_payload[CONSENSUS_HANDOFF_HEADER];
 static packet_type_t incoming_type = PACKET_TYPE_ACIP_PARTICIPANT_JOINED;
 
 static uint64_t discovery_session_clock(void) {
@@ -41,17 +45,23 @@ static asciichat_error_t discovery_session_send(acip_transport_t *transport, con
   sends++;
   return send_result;
 }
+/** @brief Inject a framed signaling packet or a controlled transport receive failure. */
 static asciichat_error_t discovery_session_receive(acip_transport_t *transport, void **buffer, size_t *len,
                                                    void **allocation) {
   (void)transport;
   receives++;
   if (recv_result != ASCIICHAT_OK)
     return recv_result;
-  packet_header_t *header = buffer_alloc(NULL, sizeof(*header));
+  packet_header_t *header = buffer_alloc(NULL, sizeof(*header) + incoming_length);
   cr_assert(header);
-  *header = (packet_header_t){.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(incoming_type)};
+  *header = (packet_header_t){
+      .magic = HOST_TO_NET_U64(PACKET_MAGIC),
+      .type = HOST_TO_NET_U16(incoming_type),
+      .length = HOST_TO_NET_U32((uint32_t)incoming_length),
+      .crc32 = HOST_TO_NET_U32(incoming_length ? asciichat_crc32(incoming_payload, incoming_length) : 0)};
+  memcpy(header + 1, incoming_payload, incoming_length);
   *buffer = *allocation = header;
-  *len = sizeof(*header);
+  *len = sizeof(*header) + incoming_length;
   return ASCIICHAT_OK;
 }
 static discovery_session_t discovery_session_fixture(discovery_state_t state) {
@@ -294,15 +304,36 @@ Test(discovery_session_process, state_dispatch_keepalive_and_migration, .timeout
   session.webrtc_transport_ready = false;
   cr_assert(discovery_session_step(&session, 0) == ERROR_NETWORK && session.state == DISCOVERY_STATE_FAILED);
 
+  // A terminal ACDS decision must survive dead-host liveness in this same step.
+  recv_result = ASCIICHAT_OK;
+  incoming_type = (packet_type_t)CONSENSUS_HANDOFF_PACKET;
+  incoming_length = CONSENSUS_HANDOFF_HEADER;
+  consensus_handoff_message_t decision = {.kind = HANDOFF_FAILED, .generation = 1};
+  consensus_handoff_encode(&decision, incoming_payload);
+  for (int type = SESSION_TYPE_DIRECT_TCP; type <= SESSION_TYPE_WEBRTC; ++type) {
+    session = discovery_session_fixture(DISCOVERY_STATE_ACTIVE);
+    session.session_type = type;
+    session.acds_transport = &transport;
+    session.last_acds_keepalive_ns = time_get_ns();
+    transitions = 0;
+    unsigned int before_sends = sends;
+    cr_assert_eq(discovery_session_step(&session, 0), ASCIICHAT_OK);
+    cr_assert_eq(session.state, DISCOVERY_STATE_FAILED);
+    cr_assert_eq(session.error, ERROR_NETWORK);
+    cr_assert_eq(transitions, 1);
+    cr_assert_eq(sends, before_sends, "Terminal failure must not send a new HOST_LOST");
+    cr_assert_eq(discovery_session_step(&session, 0), ERROR_NETWORK);
+    cr_assert_eq(transitions, 1);
+  }
+  incoming_length = 0;
+  recv_result = ERROR_NETWORK_TIMEOUT;
+
   session = discovery_session_fixture(DISCOVERY_STATE_MIGRATING);
-  session.migration.detection_time_ms = now_ms - 30000;
+  session.host_loss_detected_ms = now_ms - 30000;
   cr_assert(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_MIGRATING);
   now_ms++;
   cr_assert(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_FAILED);
-  cr_assert_eq(discovery_session_step(&session, 0), ERROR_NETWORK);
-  session.state = DISCOVERY_STATE_MIGRATING;
-  session.migration.state = MIGRATION_STATE_COMPLETE;
-  cr_assert(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_ACTIVE);
+  cr_assert_eq(discovery_session_step(&session, 0), ERROR_NETWORK_TIMEOUT);
   options_state_destroy();
   asciichat_shared_destroy();
 }

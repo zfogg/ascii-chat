@@ -363,14 +363,6 @@ static void set_error(discovery_session_t *session, asciichat_error_t error, con
 }
 
 /**
- * @brief Gather NAT quality information from local system
- * @param quality Output quality structure
- * @return ASCIICHAT_OK on success
- *
- * Collects NAT detection results using STUN and other methods.
- * This is non-blocking and may not have all data immediately.
- */
-/**
  * @brief Background thread function for NAT quality detection
  * Runs in a separate thread to avoid blocking the main thread
  */
@@ -381,18 +373,9 @@ static void *nat_detection_thread_fn(void *arg) {
 
   discovery_session_t *session = (discovery_session_t *)arg;
 
-  // Parse STUN servers
-  const char *stun_servers_option = GET_OPTION(stun_servers);
-  const char *stun_server_for_probe = OPT_ENDPOINT_STUN_FALLBACK;
-
-  if (stun_servers_option && stun_servers_option[0] != '\0') {
-    stun_server_for_probe = OPT_ENDPOINT_STUN_FALLBACK;
-  }
-
-  const char *probe_host = stun_server_for_probe;
-  if (strncmp(probe_host, "stun:", 5) == 0) {
-    probe_host = stun_server_for_probe + 5;
-  }
+  const char *probe_host = OPT_ENDPOINT_STUN_FALLBACK;
+  if (strncmp(probe_host, "stun:", 5) == 0)
+    probe_host += 5;
 
   // Run blocking NAT detection in this thread (not main thread)
   nat_quality_t quality;
@@ -404,163 +387,53 @@ static void *nat_detection_thread_fn(void *arg) {
     mutex_lock(&session->nat_quality_mutex);
     memcpy(&session->cached_nat_quality, &quality, sizeof(nat_quality_t));
     session->nat_quality_cached = true;
+    session->nat_quality_measured_ms = session_get_current_time_ms();
     mutex_unlock(&session->nat_quality_mutex);
     log_debug("★ NAT_DETECTION_COMPLETE (thread): tier=%d, nat_type=%s", nat_compute_tier(&quality),
               nat_type_to_string(quality.nat_type));
   } else {
-    log_warn("NAT detection failed in background thread, using defaults");
-    // Don't update - caller will use defaults
+    log_warn("NAT detection failed in background thread; retaining the previous cache");
   }
 
-  session->nat_detection_in_progress = false;
+  mutex_lock(&session->nat_quality_mutex);
+  session->nat_detection_completed = true;
+  mutex_unlock(&session->nat_quality_mutex);
   return NULL;
 }
 
-static asciichat_error_t gather_nat_quality(discovery_session_t *session, nat_quality_t *quality) {
-  if (!quality) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "quality is NULL");
-  }
-  if (!session) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
-  }
-
-  // Initialize with defaults
-  nat_quality_init(quality);
-
-  // Start background NAT detection thread if not already running
-  if (!session->nat_detection_in_progress && !session->nat_detection_thread_started) {
-    log_debug("★ STARTING_NAT_DETECTION_THREAD: Starting background NAT detection");
-    session->nat_detection_in_progress = true;
-
-    int thread_result =
-        acthread_create(&session->nat_detection_thread, "nat_detection", nat_detection_thread_fn, (void *)session);
-    if (thread_result == 0) {
-      session->nat_detection_thread_started = true;
-      log_debug("★ NAT_DETECTION_THREAD_STARTED: Background thread created successfully");
-    } else {
-      log_warn("Failed to start NAT detection thread, using defaults");
-      session->nat_detection_in_progress = false;
-    }
-  }
-
-  // Return conservative defaults while thread is running
-  log_debug("★ GATHER_NAT_QUALITY: Returning defaults (background thread in progress)");
-  quality->detection_complete = true;
-  quality->nat_type = ACIP_NAT_TYPE_SYMMETRIC; // Conservative default
-  quality->has_host_candidates = true;
-  quality->has_relay_candidates = true;
-
-  return ASCIICHAT_OK;
-}
-
 /**
- * @brief Send NETWORK_QUALITY packet to ACDS
- * @param session Discovery session
- * @return ASCIICHAT_OK on success
- *
- * Sends our NAT quality metrics to ACDS so peers can receive them.
+ * @brief Refresh an expired NAT hint without overlapping detector workers.
+ * Only the controlling thread calls this function. Completion/cache fields are
+ * read under the mutex, and a completed worker must join before its handle is reused.
+ * Failed starts/detections are throttled; the previous cache remains available.
  */
-static asciichat_error_t send_network_quality_to_acds(discovery_session_t *session) {
-  if (!session || !session->acds_transport) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS transport");
+static void start_nat_detection(discovery_session_t *session) {
+  uint64_t now = session_get_current_time_ms();
+  mutex_lock(&session->nat_quality_mutex);
+  bool fresh = session->nat_quality_cached && now - session->nat_quality_measured_ms <= CONSENSUS_HANDOFF_FRESH_MS;
+  bool completed = session->nat_detection_completed;
+  mutex_unlock(&session->nat_quality_mutex);
+  if (fresh)
+    return;
+  if (session->nat_detection_thread_started) {
+    // Never join a detector that may still be doing network I/O. Poll a completed
+    // worker before reusing its handle; a failed join retains ownership for retry.
+    if (!completed || thread_join_timeout(&session->nat_detection_thread, NULL, 0) != 0)
+      return;
+    session->nat_detection_thread_started = false;
   }
-
-  // Use cached NAT quality if available, otherwise start background detection
-  nat_quality_t our_quality;
-  if (!session->nat_quality_cached) {
-    log_debug("★ GATHERING_NAT_QUALITY (first time)");
-    asciichat_error_t result = gather_nat_quality(session, &our_quality);
-    if (result != ASCIICHAT_OK) {
-      log_warn("Failed to gather NAT quality: %d", result);
-      return result;
-    }
-    // Use returned defaults (thread will update cached value when ready)
-    memcpy(&session->cached_nat_quality, &our_quality, sizeof(nat_quality_t));
-    session->nat_quality_cached = true;
+  if (session->nat_detection_attempted && now - session->nat_detection_last_attempt_ms <= CONSENSUS_HANDOFF_FRESH_MS)
+    return;
+  session->nat_detection_attempted = true;
+  session->nat_detection_last_attempt_ms = now;
+  mutex_lock(&session->nat_quality_mutex);
+  session->nat_detection_completed = false;
+  mutex_unlock(&session->nat_quality_mutex);
+  if (acthread_create(&session->nat_detection_thread, "nat_detection", nat_detection_thread_fn, session) == 0) {
+    session->nat_detection_thread_started = true;
   } else {
-    log_debug("★ USING_CACHED_NAT_QUALITY");
-    mutex_lock(&session->nat_quality_mutex);
-    memcpy(&our_quality, &session->cached_nat_quality, sizeof(nat_quality_t));
-    mutex_unlock(&session->nat_quality_mutex);
+    log_warn("Could not start NAT detection; handoff will use unknown NAT tier");
   }
-
-  // Convert to wire format
-  acip_nat_quality_t wire_quality;
-  nat_quality_to_acip(&our_quality, session->session_id, session->participant_id, &wire_quality);
-
-  log_debug("★ SEND_NETWORK_QUALITY: About to send type=%u, size=%zu", PACKET_TYPE_ACIP_NETWORK_QUALITY,
-            sizeof(wire_quality));
-  // Send via ACDS
-  asciichat_error_t send_result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_NETWORK_QUALITY,
-                                                            &wire_quality, sizeof(wire_quality), 0);
-
-  if (send_result == ASCIICHAT_OK) {
-    log_debug("★ SEND_NETWORK_QUALITY_SUCCESS: Sent to ACDS (NAT tier: %d, upload: %u Kbps)",
-              nat_compute_tier(&our_quality), our_quality.upload_kbps);
-  } else {
-    log_error("★ SEND_NETWORK_QUALITY_FAILED: %s", asciichat_error_format(NULL, send_result));
-  }
-
-  return send_result;
-}
-
-/**
- * @brief Receive NETWORK_QUALITY packet from ACDS relay
- * @param session Discovery session
- * @param timeout_ms Timeout in milliseconds
- * @return ASCIICHAT_OK if received, ERROR_NETWORK_TIMEOUT if no data
- *
- * Attempts to receive peer's NETWORK_QUALITY from ACDS.
- * Stores result in session->negotiate.peer_quality
- */
-// TODO: Wire up once ACDS relay-based quality exchange is enabled
-__attribute__((unused)) static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *session) {
-  if (!session || !session->acds_transport) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid session or ACDS transport");
-  }
-
-  log_debug("★ RECEIVE_NETWORK_QUALITY: waiting for packet from ACDS...");
-  // Receive packet
-  packet_type_t ptype;
-  void *data = NULL;
-  size_t len = 0;
-  void *alloc_buffer = NULL;
-  asciichat_error_t result = acds_receive_packet(session->acds_transport, &ptype, &data, &len, &alloc_buffer);
-
-  if (result != ASCIICHAT_OK) {
-    log_error("★ RECEIVE_NETWORK_QUALITY_FAILED: packet_receive_via_transport returned %s",
-              asciichat_error_format(NULL, result));
-    buffer_release(alloc_buffer);
-    return result;
-  }
-
-  log_debug("★ RECEIVE_NETWORK_QUALITY_GOT_PACKET: type=%u, len=%zu", ptype, len);
-  // Check if it's a NETWORK_QUALITY packet
-  if (ptype != PACKET_TYPE_ACIP_NETWORK_QUALITY) {
-    log_warn("★ RECEIVE_NETWORK_QUALITY_WRONG_TYPE: got type %u (expected %u)", ptype,
-             PACKET_TYPE_ACIP_NETWORK_QUALITY);
-    buffer_release(alloc_buffer);
-    return ERROR_NETWORK_PROTOCOL;
-  }
-
-  // Parse NETWORK_QUALITY
-  if (len < sizeof(acip_nat_quality_t)) {
-    log_error("NETWORK_QUALITY packet too small: %zu bytes", len);
-    buffer_release(alloc_buffer);
-    return ERROR_NETWORK_SIZE;
-  }
-
-  acip_nat_quality_t *wire_quality = (acip_nat_quality_t *)data;
-
-  // Convert from wire format
-  nat_quality_from_acip(wire_quality, &session->negotiate.peer_quality);
-  session->negotiate.peer_quality_received = true;
-
-  log_debug("Received NETWORK_QUALITY from peer (NAT tier: %d, upload: %u Kbps)",
-            nat_compute_tier(&session->negotiate.peer_quality), session->negotiate.peer_quality.upload_kbps);
-
-  SAFE_FREE(alloc_buffer);
-  return ASCIICHAT_OK;
 }
 
 static asciichat_error_t connect_to_acds(discovery_session_t *session) {
@@ -1180,7 +1053,7 @@ static void handle_discovery_webrtc_ice(discovery_session_t *session, void *data
 }
 
 /**
- * @brief Dispatch incoming ACDS packets for WebRTC signaling
+ * @brief Encode and send a handoff control frame or measured probe body
  */
 static asciichat_error_t discovery_handoff_send(discovery_session_t *session, consensus_handoff_message_t *message,
                                                 bool probe) {
@@ -1192,6 +1065,11 @@ static asciichat_error_t discovery_handoff_send(discovery_session_t *session, co
   SAFE_FREE(bytes);
   return result;
 }
+/**
+ * @brief Apply a validated ACDS handoff action on the controlling thread.
+ * PREPARE acknowledges actual host startup. COMMIT defers transport/role replacement
+ * until media workers stop; FAILED records a terminal session error.
+ */
 static void discovery_handoff_receive(discovery_session_t *session, const void *data, size_t length) {
   consensus_handoff_message_t message;
   if (consensus_handoff_decode(data, length, &message) != ASCIICHAT_OK ||
@@ -1210,15 +1088,16 @@ static void discovery_handoff_receive(discovery_session_t *session, const void *
       session->host_ctx = session_host_create(&config);
       result = session->host_ctx ? session_host_start(session->host_ctx) : ERROR_MEMORY;
     }
+    if (result != ASCIICHAT_OK && session->host_ctx) {
+      session_host_destroy(session->host_ctx);
+      session->host_ctx = NULL;
+    }
     message.kind = result == ASCIICHAT_OK ? HANDOFF_READY : HANDOFF_REJECT;
     message.capabilities = session->session_type == SESSION_TYPE_WEBRTC ? 2 : 1;
     message.port = (uint16_t)GET_OPTION(port);
     if (discovery_handoff_send(session, &message, false) != ASCIICHAT_OK)
       log_warn("Could not acknowledge successor preparation");
   } else if (message.kind == HANDOFF_PLAN) {
-    memcpy(session->ring.future_host_id, message.participant, 16);
-    session->ring.am_future_host = !memcmp(message.participant, session->participant_id, 16);
-    session->ring.future_host_elected_round = message.sequence;
     log_info("Prepared successor %02x%02x%02x%02x round=%u", message.participant[0], message.participant[1],
              message.participant[2], message.participant[3], message.sequence);
   } else if (message.kind == HANDOFF_FAILED) {
@@ -1232,6 +1111,12 @@ static void discovery_handoff_receive(discovery_session_t *session, const void *
              message.generation);
   }
 }
+/**
+ * @brief Replace the old role after a committed handoff and media-worker shutdown.
+ * Releases borrowed-role resources, resets liveness, and initializes the committed
+ * successor connection. Callers must stop media workers before entering this function.
+ * @return ASCIICHAT_OK if no handoff is pending or initialization succeeds.
+ */
 asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session) {
   if (!session || !session->handoff_pending)
     return ASCIICHAT_OK;
@@ -1252,19 +1137,31 @@ asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session) 
   session->webrtc_transport_ready = false;
   session->webrtc_connection_initiated = false;
   session->webrtc_retry_attempt = 0;
+  session->webrtc_disconnected_since_ms = 0;
+  session->liveness.ping_in_flight = false;
+  session->liveness.consecutive_failures = 0;
+  session->liveness.last_ping_sent_ms = session_get_current_time_ms();
+  atomic_store_u64(&session->liveness.last_pong_received_ms, 0);
   asciichat_error_t result = initialize_webrtc_peer_manager(session);
   if (result != ASCIICHAT_OK)
     return result;
-  session->migration.state = MIGRATION_STATE_NONE;
+  session->host_loss_detected_ms = 0;
   set_state(session, session->is_host ? DISCOVERY_STATE_STARTING_HOST : DISCOVERY_STATE_CONNECTING_HOST);
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Send a measured probe at most every five seconds, including during recovery.
+ * Refreshes expired native NAT hints asynchronously and advertises only fresh hints.
+ * ACDS measures the probe body rather than trusting a sender-supplied throughput value.
+ * @return The transport send error, or ASCIICHAT_OK when sent or not yet due.
+ */
 static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) {
   uint64_t now = session_get_current_time_ms();
   if (session->handoff_last_sample_ms && now - session->handoff_last_sample_ms < 5000)
     return ASCIICHAT_OK;
   session->handoff_last_sample_ms = now;
+  start_nat_detection(session);
   if (!session->handoff_sequence)
     log_info("Handoff identity=%02x%02x%02x%02x", session->participant_id[0], session->participant_id[1],
              session->participant_id[2], session->participant_id[3]);
@@ -1274,7 +1171,8 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
                                          .nat_tier = 255,
                                          .port = (uint16_t)GET_OPTION(port)};
   mutex_lock(&session->nat_quality_mutex);
-  if (session->nat_quality_cached && session->cached_nat_quality.detection_complete &&
+  if (session->nat_quality_cached && now - session->nat_quality_measured_ms <= CONSENSUS_HANDOFF_FRESH_MS &&
+      session->cached_nat_quality.detection_complete &&
       (session->cached_nat_quality.lan_reachable || session->cached_nat_quality.has_public_ip ||
        session->cached_nat_quality.upnp_available))
     message.nat_tier = (uint8_t)nat_compute_tier(&session->cached_nat_quality);
@@ -1586,21 +1484,15 @@ static asciichat_error_t discovery_session_wait_for_peer(discovery_session_t *se
   return ASCIICHAT_OK;
 }
 
+/** @brief Bootstrap the initial TCP role and start asynchronous NAT hint detection. */
 static void discovery_session_begin_negotiation(discovery_session_t *session) {
   // Initialize negotiation
   negotiate_init(&session->negotiate, session->session_id, session->participant_id, session->is_initiator);
   log_info("Starting NAT negotiation (initiator=%d)", session->is_initiator);
 
-  // Send our NETWORK_QUALITY to ACDS so peers can evaluate us
-  asciichat_error_t send_result = send_network_quality_to_acds(session);
-  if (send_result != ASCIICHAT_OK) {
-    log_warn("Failed to send initial NETWORK_QUALITY: %d", send_result);
-  }
+  start_nat_detection(session);
 
-  // ACDS relays NETWORK_QUALITY only to OTHER participants, not back to sender
-  // For now in discovery mode, assume we're the only one and become host immediately
-  // A real implementation would wait for peer to join via PARTICIPANT_JOINED, then connect directly
-  log_info("Proceeding as host (ACDS cannot relay peer quality in solo mode)");
+  // Bootstrap the initial TCP host. Subsequent host recovery is decided by ACDS.
   session->negotiate.our_quality.detection_complete = true;
   session->negotiate.peer_quality_received = true;
   memset(&session->negotiate.peer_quality, 0, sizeof(session->negotiate.peer_quality));
@@ -1775,6 +1667,11 @@ static asciichat_error_t discovery_session_retry_webrtc(discovery_session_t *ses
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Dispatch signaling until the host DataChannel opens or bounded retries fail.
+ * Each attempt has an end-to-end deadline, including the time after ICE gathering
+ * completes; configured retry limits determine when the connection becomes terminal.
+ */
 static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *session) {
   // Check if transport is ready (DataChannel opened)
   if (session->webrtc_transport_ready) {
@@ -1808,7 +1705,8 @@ static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *s
     int timeout_ms = GET_OPTION(webrtc_ice_timeout_ms);
     int timed_out_count = webrtc_peer_manager_check_gathering_timeouts(session->peer_manager, timeout_ms);
 
-    if (timed_out_count > 0) {
+    bool attempt_expired = session_get_current_time_ms() - session->webrtc_last_attempt_time_ms >= (uint64_t)timeout_ms;
+    if (timed_out_count > 0 || attempt_expired) {
       log_error("WebRTC negotiation failed: %d peer(s) failed or exceeded the %dms gathering timeout", timed_out_count,
                 timeout_ms);
 
@@ -1873,10 +1771,14 @@ static asciichat_error_t discovery_session_connect_tcp(discovery_session_t *sess
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Dispatch ACDS actions, then check liveness only while the session stays active.
+ * Terminal failures and deferred commitments return before any host-loss handling,
+ * preventing liveness checks from reviving a failed session or replacing a commitment.
+ */
 static asciichat_error_t discovery_session_process_active(discovery_session_t *session, int64_t timeout_ns) {
-  // Receive and handle ACDS packets for WebRTC signaling (NEW)
-  if (session->session_type == SESSION_TYPE_WEBRTC && session->acds_transport &&
-      acip_transport_has_pending_data(session->acds_transport)) {
+  // All session types dispatch ACDS recovery decisions without a blocking receive.
+  if (session->acds_transport && acip_transport_has_pending_data(session->acds_transport)) {
     packet_type_t type;
     void *data = NULL;
     size_t len = 0;
@@ -1890,6 +1792,9 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
       buffer_release(alloc_buffer);
     }
   }
+
+  if (session->handoff_pending || session->state != DISCOVERY_STATE_ACTIVE)
+    return ASCIICHAT_OK;
 
   if (session->session_type == SESSION_TYPE_WEBRTC && !session->is_host && session->peer_manager) {
     webrtc_state_t peer_state = WEBRTC_STATE_CLOSED;
@@ -1911,21 +1816,16 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
     if (session->webrtc_transport_ready && (peer_failed || disconnected_too_long)) {
       // Media workers still borrow this transport. The role dispatcher joins them
       // before applying the elected successor and releasing the old participant.
-      session->migration.detection_time_ms = session_get_current_time_ms();
-      set_state(session, DISCOVERY_STATE_MIGRATING);
-      return ASCIICHAT_OK;
+      return discovery_session_handle_host_disconnect(session, 1);
     }
   }
-
-  if (session->handoff_pending)
-    return ASCIICHAT_OK;
 
   // Session is active - check for host disconnect
   if (!session->is_host) {
     // We are a participant - check if host is still alive
     asciichat_error_t host_check = discovery_session_check_host_alive(session);
     if (host_check != ASCIICHAT_OK) {
-      // Host is down! Trigger automatic failover to pre-elected future host
+      // Report host loss and await the measured ACDS recovery decision.
       log_warn("Host disconnect detected during ACTIVE state");
 
       // If --prefer-webrtc is set, WebRTC failure is fatal (no TCP fallback)
@@ -1945,6 +1845,10 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Continue signaling while awaiting ACDS commitment or terminal failure.
+ * A 30-second local deadline also bounds recovery when the signaling decision is lost.
+ */
 static asciichat_error_t discovery_session_process_migration(discovery_session_t *session, int64_t timeout_ns) {
   if (session->acds_transport && acip_transport_has_pending_data(session->acds_transport)) {
     packet_type_t type;
@@ -1955,19 +1859,11 @@ static asciichat_error_t discovery_session_process_migration(discovery_session_t
       handle_acds_webrtc_packet(session, type, data, length);
     buffer_release(allocated);
   }
-  if (session->handoff_pending)
+  if (session->handoff_pending || session->state == DISCOVERY_STATE_FAILED)
     return ASCIICHAT_OK;
-  // Host migration in progress
-  // Check if migration has timed out (if it takes >30 seconds, give up)
-  if (session->migration.state == MIGRATION_STATE_COMPLETE) {
-    // Migration completed successfully
-    set_state(session, DISCOVERY_STATE_ACTIVE);
-    log_info("Migration complete, session resumed");
-  } else if (session_get_current_time_ms() - session->migration.detection_time_ms > 30 * MS_PER_SEC_INT) {
-    // Migration timed out after 30 seconds
-    log_error("Host migration timeout - session cannot recover");
-    set_state(session, DISCOVERY_STATE_FAILED);
-    session->error = ERROR_NETWORK;
+  // ACDS owns successor selection; this deadline also bounds a lost signaling decision.
+  if (session_get_current_time_ms() - session->host_loss_detected_ms > 30 * MS_PER_SEC_INT) {
+    set_error(session, ERROR_NETWORK_TIMEOUT, "Timed out waiting for ACDS host recovery");
   }
   platform_sleep_us(timeout_ns / 1000);
   return ASCIICHAT_OK;
@@ -2108,53 +2004,16 @@ session_participant_t *discovery_session_get_participant(discovery_session_t *se
   return session->participant_ctx;
 }
 
-// ============================================================================
-// Ring Consensus & Migration Implementation (Host-Mediated Proactive Election)
-// ============================================================================
-
-/**
- * @brief Collect NETWORK_QUALITY from all connected participants and run host election
- *
- * This is called by the host every 5 minutes to:
- * 1. Collect fresh NETWORK_QUALITY from all connected participants
- * 2. Measure the host's own NAT quality
- * 3. Run the deterministic election algorithm
- * 4. Broadcast FUTURE_HOST_ELECTED to all participants
- *
- * @param session Discovery session (must be host)
- * @return ASCIICHAT_OK on success
- *
- * NOTE: For MVP, participants' quality data comes from when they connected.
- * TODO: Extend to request fresh NETWORK_QUALITY from participants periodically.
- */
-asciichat_error_t discovery_session_init_ring(discovery_session_t *session) {
-  if (!session) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Simplified for new architecture: just initialize timing
-  // No participant list needed - host runs the election
-  session->ring.last_ring_round_ms = session_get_current_time_ms();
-  session->ring.am_future_host = false;
-  memset(session->ring.future_host_id, 0, 16);
-
-  log_info("Ring consensus initialized (host-mediated model)");
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t discovery_session_start_ring_round(discovery_session_t *session) {
-  if (!session)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing discovery session");
-  session->handoff_last_sample_ms = 0;
-  return discovery_handoff_sample(session);
-}
-
 void discovery_session_host_pong(discovery_session_t *session) {
   if (session)
     atomic_store_u64(&session->liveness.last_pong_received_ms, session_get_current_time_ms());
 }
 
+/**
+ * @brief Check host transport availability and advance TCP ping/pong liveness.
+ * Uses receiver-clock pong timestamps and bounded consecutive-failure tracking.
+ * @return ASCIICHAT_OK for a live host, or a network error after loss is detected.
+ */
 asciichat_error_t discovery_session_check_host_alive(discovery_session_t *session) {
   if (!session || session->is_host) {
     // We are the host, so "host" is always alive
@@ -2178,7 +2037,7 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
   }
 
   // Check migration state - if we're already migrating, host is definitely not alive
-  if (session->migration.state != MIGRATION_STATE_NONE) {
+  if (session->state == DISCOVERY_STATE_MIGRATING) {
     return ERROR_NETWORK; // Already detected disconnect
   }
 
@@ -2212,20 +2071,20 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
   if (!session->liveness.ping_in_flight && time_since_last_ping >= session->liveness.ping_interval_ms) {
     // Send ping to host via participant connection
     acip_transport_t *transport = session_participant_get_transport(session->participant_ctx);
-    if (transport && acip_transport_is_connected(transport)) {
-      asciichat_error_t result = acip_send_ping(transport);
-      if (result == ASCIICHAT_OK) {
-        session->liveness.last_ping_sent_ms = now_ms;
-        session->liveness.ping_in_flight = true;
-        log_debug("Sent ping to host (attempt %u/%u)", session->liveness.consecutive_failures + 1,
-                  session->liveness.max_failures);
-      } else {
-        log_warn("Failed to send ping to host: %d", result);
-        session->liveness.consecutive_failures++;
-        if (session->liveness.consecutive_failures >= session->liveness.max_failures) {
-          log_error("Host declared dead after %u consecutive send failures", session->liveness.consecutive_failures);
-          return ERROR_NETWORK;
-        }
+    if (!transport || !acip_transport_is_connected(transport))
+      return SET_ERRNO(ERROR_NETWORK, "Host transport disconnected");
+    asciichat_error_t result = acip_send_ping(transport);
+    if (result == ASCIICHAT_OK) {
+      session->liveness.last_ping_sent_ms = now_ms;
+      session->liveness.ping_in_flight = true;
+      log_debug("Sent ping to host (attempt %u/%u)", session->liveness.consecutive_failures + 1,
+                session->liveness.max_failures);
+    } else {
+      log_warn("Failed to send ping to host: %d", result);
+      session->liveness.consecutive_failures++;
+      if (session->liveness.consecutive_failures >= session->liveness.max_failures) {
+        log_error("Host declared dead after %u consecutive send failures", session->liveness.consecutive_failures);
+        return ERROR_NETWORK;
       }
     }
   }
@@ -2233,6 +2092,12 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Report host loss and await the authoritative ACDS handoff decision.
+ * Records the local recovery deadline origin. Advisory successor plans never
+ * authorize immediate promotion or reconnection from this function.
+ * @return ASCIICHAT_OK if the report was sent; a send error also fails the session.
+ */
 asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *session, uint32_t disconnect_reason) {
   if (!session) {
     SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
@@ -2241,11 +2106,7 @@ asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *
 
   log_warn("Host disconnect detected: reason=%u", disconnect_reason);
 
-  // Initialize migration context
-  session->migration.state = MIGRATION_STATE_DETECTED;
-  session->migration.detection_time_ms = session_get_current_time_ms();
-  memcpy(session->migration.last_host_id, session->host_id, 16);
-  session->migration.disconnect_reason = disconnect_reason;
+  session->host_loss_detected_ms = session_get_current_time_ms();
 
   // Notify ACDS of host loss (lightweight notification, no NAT data exchanged!)
   acip_host_lost_t host_lost = {0};
@@ -2253,194 +2114,17 @@ asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *
   memcpy(host_lost.participant_id, session->participant_id, 16);
   memcpy(host_lost.last_host_id, session->host_id, 16);
   host_lost.disconnect_reason = disconnect_reason;
-  host_lost.disconnect_time_ms = session->migration.detection_time_ms;
+  host_lost.disconnect_time_ms = session->host_loss_detected_ms;
 
-  packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_LOST, &host_lost, sizeof(host_lost), 0);
-
-  // Check if we have a pre-elected future host (from last 5-minute ring round)
-  if (session->ring.future_host_id[0] == 0) {
-    // No future host known! This shouldn't happen if we just received FUTURE_HOST_ELECTED
-    // within the last 5 minutes. Fall back to treating this as fatal.
-    log_error("No future host pre-elected! Session cannot recover from host disconnect.");
-    session->migration.state = MIGRATION_STATE_COMPLETE;
-    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
-    return ERROR_NETWORK; // Session should end
+  asciichat_error_t result =
+      packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_LOST, &host_lost, sizeof(host_lost), 0);
+  if (result != ASCIICHAT_OK) {
+    set_error(session, result, "Could not report host loss to ACDS");
+    return result;
   }
 
-  // **SIMPLIFIED**: No metrics exchange needed! Future host was already elected 5 minutes ago.
-  // Just failover to the pre-elected host.
-  session->migration.state = MIGRATION_STATE_FAILOVER;
-
-  // Check if I am the future host
-  if (session->ring.am_future_host) {
-    // I become the new host immediately! (no election delay!)
-    log_info("Becoming host (I'm the pre-elected future host)");
-    return discovery_session_become_host(session);
-  } else {
-    // Connect to pre-elected future host (address already stored!)
-    log_info("Connecting to pre-elected future host: %s:%u", session->ring.future_host_address,
-             session->ring.future_host_port);
-    return discovery_session_connect_to_future_host(session);
-  }
-}
-
-asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
-  if (!session) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
-    return ERROR_INVALID_PARAM;
-  }
-
-  log_info("Starting as new host after migration (participant ID: %02x%02x...)", session->participant_id[0],
-           session->participant_id[1]);
-
-  // Get configured port (or use default)
-  int host_port = GET_OPTION(port);
-
-  // Mark ourselves as host
-  session->is_host = true;
-
-  // Create host context if needed with configured port
-  if (!session->host_ctx) {
-    session_host_config_t hconfig = {
-        .port = host_port,
-        .ipv4_address = "0.0.0.0",
-        .max_clients = PARTICIPANT_LIMIT,
-        .encryption_enabled = true,
-    };
-
-    session->host_ctx = session_host_create(&hconfig);
-    if (!session->host_ctx) {
-      log_error("Failed to create host context for migration");
-      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
-      return ERROR_MEMORY;
-    }
-
-    // Start listening for new participant connections
-    asciichat_error_t hstart = session_host_start(session->host_ctx);
-    if (hstart != ASCIICHAT_OK) {
-      log_error("Failed to start host after migration: %d", hstart);
-      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
-      return hstart;
-    }
-
-    log_info("Host restarted after migration, listening on port %d", host_port);
-  }
-
-  // Send HOST_ANNOUNCEMENT to ACDS so other participants can reconnect
-  acip_host_announcement_t announcement = {0};
-  memcpy(announcement.session_id, session->session_id, sizeof(announcement.session_id));
-  memcpy(announcement.host_id, session->participant_id, 16);
-  SAFE_STRNCPY(announcement.host_address, session->host_address, sizeof(announcement.host_address));
-  announcement.host_port = host_port;
-  // Set connection type based on NAT quality (for now use DIRECT_PUBLIC for localhost dev environments)
-  announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
-
-  if (session->acds_transport) {
-    packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement,
-                              sizeof(announcement), 0);
-    log_info("Sent HOST_ANNOUNCEMENT to ACDS for new host %02x%02x... at %s:%u", announcement.host_id[0],
-             announcement.host_id[1], announcement.host_address, announcement.host_port);
-  }
-
-  // Mark migration complete
-  session->migration.state = MIGRATION_STATE_COMPLETE;
-  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HOST_MIGRATIONS, 1);
-
-  // Transition to ACTIVE state (host is ready)
-  set_state(session, DISCOVERY_STATE_ACTIVE);
-
+  // A PLAN is advisory. Only ACDS COMMIT authorizes a role change after fresh
+  // measurement and preparation. Continue dispatching while awaiting that decision.
+  set_state(session, DISCOVERY_STATE_MIGRATING);
   return ASCIICHAT_OK;
-}
-
-asciichat_error_t discovery_session_connect_to_future_host(discovery_session_t *session) {
-  if (!session) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
-    return ERROR_INVALID_PARAM;
-  }
-
-  log_info("Reconnecting to future host: %s:%u (connection type: %u)", session->ring.future_host_address,
-           session->ring.future_host_port, session->ring.future_host_connection_type);
-
-  // Destroy old participant context if present
-  if (session->participant_ctx) {
-    asciichat_error_t release_result = release_participant_transport(session);
-    if (release_result != ASCIICHAT_OK)
-      return release_result;
-    session_participant_destroy(session->participant_ctx);
-    session->participant_ctx = NULL;
-  }
-
-  release_host_control_transport(session);
-
-  // Create new participant context for the future host
-  session_participant_config_t pconfig = {
-      .address = session->ring.future_host_address,
-      .port = session->ring.future_host_port,
-      .enable_audio = true,
-      .enable_video = true,
-      .encryption_enabled = true,
-  };
-
-  session->participant_ctx = session_participant_create(&pconfig);
-  if (!session->participant_ctx) {
-    log_error("Failed to create participant context for future host");
-    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
-    return ERROR_MEMORY;
-  }
-
-  // Attempt connection to future host
-  asciichat_error_t pconn = session_participant_connect(session->participant_ctx);
-  if (pconn != ASCIICHAT_OK) {
-    log_error("Failed to connect to future host: %d", pconn);
-    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MIGRATION_FAILURES, 1);
-    return pconn;
-  }
-
-  log_info("Connected to future host after migration");
-
-  // Update our host info with the new future host details
-  memcpy(session->host_id, session->ring.future_host_id, 16);
-  SAFE_STRNCPY(session->host_address, session->ring.future_host_address, sizeof(session->host_address));
-  session->host_port = session->ring.future_host_port;
-
-  log_info("Updated host info to: %s:%u (id: %02x%02x...)", session->host_address, session->host_port,
-           session->host_id[0], session->host_id[1]);
-
-  // Mark migration complete (in real implementation, this would be done after successful connection)
-  session->migration.state = MIGRATION_STATE_COMPLETE;
-  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HOST_MIGRATIONS, 1);
-
-  // Transition to ACTIVE state (participant is ready)
-  set_state(session, DISCOVERY_STATE_ACTIVE);
-
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t discovery_session_get_future_host(const discovery_session_t *session, uint8_t out_id[16],
-                                                    char out_address[64], uint16_t *out_port,
-                                                    uint8_t *out_connection_type) {
-  if (!session || !out_id || !out_address || !out_port || !out_connection_type) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid output parameters");
-    return ERROR_INVALID_PARAM;
-  }
-
-  if (session->ring.future_host_id[0] == 0) {
-    SET_ERRNO(ERROR_NOT_FOUND, "Future host not elected yet");
-    return ERROR_NOT_FOUND;
-  }
-
-  memcpy(out_id, session->ring.future_host_id, 16);
-  SAFE_STRNCPY(out_address, session->ring.future_host_address, 64);
-  *out_port = session->ring.future_host_port;
-  *out_connection_type = session->ring.future_host_connection_type;
-
-  return ASCIICHAT_OK;
-}
-
-bool discovery_session_is_future_host(const discovery_session_t *session) {
-  if (!session) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "null session");
-    return false;
-  }
-  return session->ring.am_future_host;
 }

@@ -11,6 +11,7 @@
 #define CONSENSUS_HANDOFF_PROBE_BYTES 65536
 #define CONSENSUS_HANDOFF_FRESH_MS 15000
 #define CONSENSUS_HANDOFF_PREPARE_MS 5000
+#define CONSENSUS_HANDOFF_RECOVERY_MS 15000
 
 typedef enum {
   HANDOFF_SAMPLE_START = 1,
@@ -42,6 +43,9 @@ typedef struct {
   uint8_t capabilities;
   uint8_t nat_tier;
   uint16_t port;
+  uint8_t pending_capabilities;
+  uint8_t pending_nat_tier;
+  uint16_t pending_port;
   uint32_t sequence;
   uint32_t upload_kbps;
   uint64_t probe_started_ms;
@@ -62,6 +66,8 @@ typedef struct {
   bool host_lost;
   bool failure_announced;
   uint64_t failure_deadline_ms;
+  uint64_t monitoring_started_ms;
+  bool monitoring;
   consensus_handoff_peer_t peers[PARTICIPANT_LIMIT];
   size_t count;
 } consensus_handoff_t;
@@ -76,3 +82,6 @@ asciichat_error_t consensus_handoff_receive(consensus_handoff_t *state, const co
                                             size_t length, uint64_t now_ms);
 /* Returns one action, or false when the state is unchanged. */
 bool consensus_handoff_tick(consensus_handoff_t *state, uint64_t now_ms, consensus_handoff_message_t *action);
+
+/* Caller authenticates the reporter; obsolete host reports are ignored. */
+void consensus_handoff_host_lost(consensus_handoff_t *state, const uint8_t host[16]);
