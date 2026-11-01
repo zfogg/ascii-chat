@@ -287,7 +287,7 @@ asciichat_error_t ui_prompt_present_kind(const char *prompt, const char *visible
 
 void ui_prompt_dismiss(int previous) {
   ui_controller_dismiss(UI_SCREEN_PROMPT, previous);
-  if (ui_controller_state().screen < 0)
+  if (!ui_controller_is_presenting())
     ui_controller_write(prompt_fd(), "\r\n", 2);
 }
 

@@ -85,3 +85,26 @@ Test(controller_batch, prompt_dismissal_terminates_redirected_output) {
   ui_prompt_remove();
   cr_assert_stdout_eq_str("\r\n\r\n");
 }
+
+static void dismiss_over_sync(terminal_size_t size, const void *snapshot) {
+  (void)size;
+  (void)snapshot;
+  cr_assert(ui_controller_is_owner());
+  cr_assert_eq(ui_controller_current_screen(), UI_SCREEN_SYNC);
+  cr_assert_eq(ui_controller_state().screen, -1);
+  ui_prompt_dismiss(UI_SCREEN_SYNC);
+}
+
+Test(controller_batch, sync_mailbox_dismissal_does_not_emit_batch_newline) {
+  cr_redirect_stdout();
+  cr_redirect_stderr();
+  ui_controller_select_interactive(UI_SCREEN_SYNC);
+  const bool snapshot = true;
+  asciichat_error_t result =
+      ui_controller_submit(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){.cols = 8, .rows = 4}, dismiss_over_sync,
+                           &snapshot, sizeof(snapshot));
+  ui_controller_select_interactive(-1);
+  cr_assert_eq(result, ASCIICHAT_OK);
+  cr_assert_eq(ui_controller_write(STDOUT_FILENO, "sentinel", 8), ASCIICHAT_OK);
+  cr_assert_stdout_eq_str("sentinel");
+}
