@@ -1,4 +1,6 @@
 #include <criterion/criterion.h>
+#include <criterion/redirect.h>
+#include <ascii-chat/tui/prompt.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
@@ -73,4 +75,13 @@ Test(controller_batch, invalid_snapshots_and_frames_are_rejected_before_renderin
   cr_assert_eq(ui_controller_write(-1, NULL, 1), ASCIICHAT_OK);
   cr_assert_eq(ui_controller_write(-1, snapshot, 0), ASCIICHAT_OK);
   cr_assert_not(ui_controller_is_owner());
+}
+
+Test(controller_batch, prompt_dismissal_terminates_redirected_output) {
+  cr_redirect_stdout();
+  cr_redirect_stderr();
+  cr_assert_not(ui_controller_is_presenting());
+  ui_prompt_dismiss(-1);
+  ui_prompt_remove();
+  cr_assert_stdout_eq_str("\r\n\r\n");
 }

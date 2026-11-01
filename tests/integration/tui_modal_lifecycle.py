@@ -21,12 +21,14 @@ def main():
             except AssertionError as error:
                 raise AssertionError(f"{error}\nProcess alive: {term.process.isalive()}\nRaw: {''.join(term.raw)[-4000:]!r}") from error
 
+        term.expect(lambda _: "MODAL-READY" in "".join(term.raw), "Fixture did not finish its focus transitions")
         view("Invalid UI screen snapshot")
         term.resize(8, 24)
         view("Terminal too small")
-        term.write("\r")
+        term.write("\r" * 600)
         term.expect(lambda _: "COVER-DRAINED" in "".join(term.raw), "Hidden input was not consumed")
         term.resize(37, 91)
+        term.expect(lambda _: "RECOVERY-DRAINED" in "".join(term.raw), "Queued input survived recovery")
         view("Invalid UI screen snapshot")
         term.write("\x1b")
         view("Answer then Enter")

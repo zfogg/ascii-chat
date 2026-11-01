@@ -48,6 +48,7 @@ static asciichat_error_t probe(const char *mode) {
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_HELP);
     keyboard_help_toggle_terminal(1);
     REQUIRE(ui_controller_current_screen() == UI_SCREEN_ERROR);
+    REQUIRE(platform_write_all(1, "MODAL-READY", 11) == 11);
     uint64_t error_deadline = ui_input_deadline(60);
     bool covered_input_drained = false;
     while (ui_error_popup_visible() && !ui_input_expired(error_deadline)) {
@@ -61,6 +62,15 @@ static asciichat_error_t probe(const char *mode) {
       if (covered_input) {
         covered_input_drained = true;
         REQUIRE(platform_write_all(1, "COVER-DRAINED", 13) == 13);
+        // Leave the rest of the burst queued until the driver restores size.
+        // Recovery must drain more than one poll's budget without dismissing.
+        while (ui_controller_state().covered && !ui_input_expired(error_deadline))
+          platform_sleep_ms(1);
+        while (keyboard_input_available() && !ui_input_expired(error_deadline)) {
+          (void)ui_input_read_key(UI_SCREEN_LOGS);
+          REQUIRE(ui_error_popup_visible());
+        }
+        REQUIRE(platform_write_all(1, "RECOVERY-DRAINED", 16) == 16);
       }
     }
     REQUIRE(!ui_error_popup_visible());

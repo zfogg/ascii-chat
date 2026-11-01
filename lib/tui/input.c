@@ -51,7 +51,7 @@ void ui_input_timeout_report(unsigned seconds, const char *consequence) {
 static lifecycle_t g_input_lifecycle = LIFECYCLE_INIT;
 static mutex_t g_input_mutex;
 static mutex_t g_input_prompt_mutex;
-static _Atomic bool g_input_was_covered;
+static _Atomic bool g_discarding_covered_input;
 static keyboard_key_t g_sync_keys[256];
 static unsigned g_sync_key_head, g_sync_key_count;
 static bool g_switch_pending;
@@ -182,6 +182,30 @@ static keyboard_key_t input_read_event(void) {
   return tui_input_events_read(&g_events, keyboard_read_nonblocking, input_media_paste);
 }
 
+// Bound each poll so a continuous input stream cannot monopolize the input mutex.
+static bool input_discard_pending_events(void) {
+  const unsigned discard_budget = 256;
+  g_sync_key_count = 0;
+  for (unsigned n = 0; n < discard_budget; ++n) {
+    // Release completed paste events before reading again; retain unfinished
+    // paste framing so its remaining bytes cannot become application shortcuts.
+    g_events.ready = false;
+    if (input_read_event() == KEY_NONE)
+      return !g_events.pasting;
+  }
+  g_events.ready = false;
+  return false;
+}
+
+static bool input_discard_covered(bool covered) {
+  if (!covered && !atomic_load(&g_discarding_covered_input))
+    return false;
+  bool drained = input_discard_pending_events();
+  // Recovery ends only when both the size cover and its queued input are gone.
+  atomic_store(&g_discarding_covered_input, covered || !drained);
+  return true;
+}
+
 /* Background debug polling can retain an event before a modal screen appears. */
 static keyboard_key_t input_next_key(void) {
   if (g_sync_key_count) {
@@ -205,7 +229,7 @@ static bool input_initialize(void) {
       return false;
     }
     NAMED_REGISTER_ATOMIC(&g_input_lifecycle.state, "ui_input_lifecycle", NULL);
-    g_input_was_covered = false;
+    g_discarding_covered_input = false;
     g_switch_pending = false;
     lifecycle_init_commit(&g_input_lifecycle);
   }
@@ -308,8 +332,8 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
     return KEY_NONE;
   if (!input_ready()) {
     // Once recovery has an empty input queue, the next key is a fresh action.
-    if (atomic_load(&g_input_was_covered) && !ui_controller_state().covered)
-      atomic_store(&g_input_was_covered, false);
+    if (atomic_load(&g_discarding_covered_input) && !ui_controller_state().covered)
+      atomic_store(&g_discarding_covered_input, false);
     return KEY_NONE;
   }
   mutex_lock(&g_input_mutex);
@@ -317,14 +341,7 @@ keyboard_key_t ui_input_read_key(ui_screen_t screen) {
   // The previous event has now been dispatched by the session. Background
   // polling must not overtake a pending switch with the next shortcut.
   g_switch_pending = false;
-  // Every modal obeys the same size-cover policy. Drain on recovery as well,
-  // so buffered confirmation/dismissal keys cannot act on an unseen dialog.
-  if (state.covered || atomic_load(&g_input_was_covered)) {
-    g_sync_key_count = 0;
-    g_events.ready = false;
-    for (unsigned n = 0; n < 256 && input_read_event() != KEY_NONE; ++n)
-      g_events.ready = false;
-    atomic_store(&g_input_was_covered, state.covered);
+  if (input_discard_covered(state.covered)) {
     input_unlock();
     return KEY_NONE;
   }
@@ -680,7 +697,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
                       : cancelled                      ? "cancelled"
                                                        : "failed",
                       0);
-  ui_controller_dismiss(UI_SCREEN_PROMPT, previous_interactive);
+  ui_prompt_dismiss(previous_interactive);
   if (password_dialog) {
     const char *disable = "\033[<u\033[>4;0m";
     platform_write_all(STDERR_FILENO, disable, strlen(disable));

@@ -9,6 +9,9 @@ asciichat_error_t ui_prompt_present_kind(const char *prompt, const char *visible
                                          ui_prompt_kind_t kind);
 const char *ui_prompt_kind_name(ui_prompt_kind_t kind);
 const char *ui_prompt_usage_name(const void *snapshot);
+/** Dismiss a prompt and restore its previous interactive owner, if still live. */
+void ui_prompt_dismiss(int previous);
+/** Remove an asynchronous prompt without restoring an earlier interactive view. */
 void ui_prompt_remove(void);
 
 const char *ui_prompt_title(const void *snapshot);
