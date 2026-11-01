@@ -178,6 +178,12 @@ static asciichat_error_t handle_acds_session_create(const void *payload, size_t 
 
   const acip_session_create_t *req = (const acip_session_create_t *)payload;
 
+  if (req->reserved_string_len >= ACIP_MAX_SESSION_STRING_LEN ||
+      payload_len != sizeof(*req) + req->reserved_string_len ||
+      !memchr(req->server_address, '\0', sizeof(req->server_address)) ||
+      (req->has_password && !memchr(req->password_hash, '\0', sizeof(req->password_hash))))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Malformed SESSION_CREATE payload");
+
   // Multi-key protocol: validate parameters only for first key (key_index == 0)
   // total_keys > 0 indicates multi-key mode; skip validation for subsequent keys
   if (req->key_index == 0 || req->total_keys == 0) {

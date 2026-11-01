@@ -156,6 +156,7 @@ typedef struct {
 
   // Multi-key support: all identity keys for multi-key handshake
   uint8_t identity_pubkeys[MAX_IDENTITY_KEYS][32]; ///< All public keys for multi-key protocol
+  uint8_t identity_seckeys[MAX_IDENTITY_KEYS][64]; ///< Matching Ed25519 signing keys
   size_t num_identity_keys;                        ///< Number of identity keys loaded
 
   // ACDS connection

@@ -11,6 +11,7 @@
 
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/discovery/strings.h>
+#include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/webrtc/turn_credentials.h>
 #include <ascii-chat/util/time.h>
@@ -305,6 +306,42 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to create database schema");
   }
 
+  // Idempotent, transactional migration from the untyped key table. A policy
+  // row is also the migration marker: reopening must never restore revoked keys.
+  const char *migration =
+      "BEGIN IMMEDIATE;"
+      "CREATE TABLE IF NOT EXISTS session_key_policy ("
+      " session_string TEXT PRIMARY KEY REFERENCES sessions(session_string) ON DELETE CASCADE,"
+      " restricted INTEGER NOT NULL CHECK(restricted IN (0,1)));"
+      "CREATE TABLE IF NOT EXISTS session_identity_keys ("
+      " session_string TEXT NOT NULL REFERENCES sessions(session_string) ON DELETE CASCADE,"
+      " key_type TEXT NOT NULL CHECK(key_type = 'ed25519'),"
+      " identity_pubkey BLOB NOT NULL CHECK(typeof(identity_pubkey) = 'blob' AND length(identity_pubkey) = 32),"
+      " key_version INTEGER NOT NULL, added_at INTEGER NOT NULL,"
+      " revoked INTEGER NOT NULL DEFAULT 0 CHECK(revoked IN (0,1)),"
+      " PRIMARY KEY(session_string, key_type, identity_pubkey));"
+      "INSERT OR IGNORE INTO session_identity_keys "
+      " SELECT k.session_string, 'ed25519', k.identity_pubkey, k.key_version, k.added_at, CASE WHEN k.revoked = 0 THEN "
+      "0 ELSE 1 END"
+      " FROM session_keys k WHERE typeof(k.identity_pubkey) = 'blob' AND length(k.identity_pubkey) = 32 AND NOT EXISTS"
+      " (SELECT 1 FROM session_key_policy p WHERE p.session_string = k.session_string);"
+      "INSERT OR IGNORE INTO session_identity_keys "
+      " SELECT s.session_string, 'ed25519', s.host_pubkey, 0, s.created_at, 0 FROM sessions s"
+      " WHERE typeof(s.host_pubkey) = 'blob' AND length(s.host_pubkey) = 32 AND s.host_pubkey != zeroblob(32) AND NOT "
+      "EXISTS"
+      " (SELECT 1 FROM session_key_policy p WHERE p.session_string = s.session_string);"
+      "INSERT OR IGNORE INTO session_key_policy SELECT session_string, 0 FROM sessions;"
+      "COMMIT;";
+  rc = sqlite3_exec(*db, migration, NULL, NULL, &err_msg);
+  if (rc != SQLITE_OK) {
+    log_error("Failed to migrate session keys: %s", err_msg ? err_msg : "unknown error");
+    sqlite3_free(err_msg);
+    sqlite3_exec(*db, "ROLLBACK;", NULL, NULL, NULL);
+    sqlite3_close(*db);
+    *db = NULL;
+    return SET_ERRNO(ERROR_CONFIG, "Failed to migrate session keys");
+  }
+
   database_telemetry_population(*db);
   log_info("Database initialized successfully (SQLite as single source of truth)");
   return ASCIICHAT_OK;
@@ -323,8 +360,8 @@ void database_close(sqlite3 *db) {
 // Session Operations
 // ============================================================================
 
-asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create_t *req, const acds_config_t *config,
-                                          acip_session_created_t *resp) {
+static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_session_create_t *req,
+                                                     const acds_config_t *config, acip_session_created_t *resp) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_CREATE);
   if (!db || !req || !config || !resp) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, req, config, or resp is NULL");
@@ -426,6 +463,73 @@ asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create_t *req, const acds_config_t *config,
+                                          acip_session_created_t *resp) {
+  if (!req)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing create request");
+  return database_session_create_keys(db, req, (const uint8_t (*)[32]) & req->identity_pubkey, 1, config, resp);
+}
+
+static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const acip_session_create_t *req,
+                                                             const uint8_t (*keys)[32], size_t count,
+                                                             const acds_config_t *config,
+                                                             acip_session_created_t *resp) {
+  if (!db || !req || !keys || !config || !resp || count == 0 || count > MAX_IDENTITY_KEYS)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session key set");
+  memset(resp, 0, sizeof(*resp));
+  if ((req->total_keys ? req->total_keys : 1) != count || req->key_index != 0)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Create count does not match key set");
+  if (memcmp(keys[0], req->identity_pubkey, 32) != 0)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Primary key does not match create request");
+  for (size_t i = 0; i < count; ++i) {
+    if (count > 1 && sodium_is_zero(keys[i], 32))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Anonymous keys cannot authorize a restricted session");
+    for (size_t j = 0; j < i; ++j)
+      if (memcmp(keys[i], keys[j], 32) == 0)
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Duplicate Ed25519 key");
+  }
+  if (sqlite3_exec(db, "SAVEPOINT create_key_set", NULL, NULL, NULL) != SQLITE_OK)
+    return SET_ERRNO(ERROR_CONFIG, "Could not begin key-set creation");
+  asciichat_error_t result = database_session_create_row(db, req, config, resp);
+  sqlite3_stmt *stmt = NULL;
+  if (result == ASCIICHAT_OK) {
+    int rc = sqlite3_prepare_v2(db, "INSERT INTO session_key_policy VALUES (?, ?)", -1, &stmt, NULL);
+    if (rc == SQLITE_OK) {
+      sqlite3_bind_text(stmt, 1, resp->session_string, -1, SQLITE_STATIC);
+      sqlite3_bind_int(stmt, 2, count > 1);
+      rc = sqlite3_step(stmt);
+    }
+    sqlite3_finalize(stmt);
+    if (rc != SQLITE_DONE)
+      result = SET_ERRNO(ERROR_CONFIG, "Could not persist session key policy");
+  }
+  for (size_t i = 0; result == ASCIICHAT_OK && i < count; ++i) {
+    if (!sodium_is_zero(keys[i], 32))
+      result = database_session_add_key(db, resp->session_string, keys[i], (uint32_t)i);
+  }
+  if (result == ASCIICHAT_OK && sqlite3_exec(db, "RELEASE create_key_set", NULL, NULL, NULL) != SQLITE_OK)
+    result = SET_ERRNO(ERROR_CONFIG, "Could not commit session key set");
+  if (result != ASCIICHAT_OK) {
+    sqlite3_exec(db, "ROLLBACK TO create_key_set; RELEASE create_key_set", NULL, NULL, NULL);
+    memset(resp, 0, sizeof(*resp));
+  }
+  return result;
+}
+
+asciichat_error_t database_session_create_keys(sqlite3 *db, const acip_session_create_t *req, const uint8_t (*keys)[32],
+                                               size_t count, const acds_config_t *config,
+                                               acip_session_created_t *resp) {
+  if (!db)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing database");
+  // SQLite serializes statements, but a shared connection also needs to keep
+  // other client threads out of this multi-statement savepoint.
+  sqlite3_mutex *mutex = sqlite3_db_mutex(db);
+  sqlite3_mutex_enter(mutex);
+  asciichat_error_t result = database_session_create_keys_locked(db, req, keys, count, config, resp);
+  sqlite3_mutex_leave(mutex);
+  return result;
+}
+
 asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_string, const acds_config_t *config,
                                           acip_session_info_t *resp) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_LOOKUP);
@@ -490,8 +594,8 @@ asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_strin
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *req, const acds_config_t *config,
-                                        acip_session_joined_t *resp) {
+static asciichat_error_t database_session_join_locked(sqlite3 *db, const acip_session_join_t *req,
+                                                      const acds_config_t *config, acip_session_joined_t *resp) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_JOIN);
   if (!db || !req || !config || !resp) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, req, config, or resp is NULL");
@@ -499,6 +603,12 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
 
   memset(resp, 0, sizeof(*resp));
   resp->success = 0;
+
+  if (req->session_string_len == 0 || req->session_string_len >= sizeof(req->session_string) ||
+      memchr(req->session_string, '\0', req->session_string_len) ||
+      req->session_string[req->session_string_len] != '\0' ||
+      (req->has_password && !memchr(req->password, '\0', sizeof(req->password))))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Malformed join request");
 
   // Extract session string
   char session_string[ACIP_MAX_SESSION_STRING_LEN] = {0};
@@ -558,6 +668,34 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
     log_error("Failed to begin transaction: %s", err_msg ? err_msg : "unknown");
     sqlite3_free(err_msg);
     return SET_ERRNO(ERROR_CONFIG, "Failed to begin transaction");
+  }
+
+  sqlite3_stmt *policy = NULL;
+  int policy_rc =
+      sqlite3_prepare_v2(db, "SELECT restricted FROM session_key_policy WHERE session_string = ?", -1, &policy, NULL);
+  if (policy_rc == SQLITE_OK) {
+    sqlite3_bind_text(policy, 1, session_string, -1, SQLITE_STATIC);
+    policy_rc = sqlite3_step(policy);
+  }
+  bool restricted = policy_rc == SQLITE_ROW && sqlite3_column_int(policy, 0) != 0;
+  sqlite3_finalize(policy);
+  if (policy_rc != SQLITE_ROW) {
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    session_entry_destroy(session);
+    return SET_ERRNO(ERROR_CONFIG, "Missing session key policy");
+  }
+  // Restricted admission always requires a current proof, regardless of the
+  // service-wide optional identity setting. An advertised key alone is no proof.
+  if ((restricted && !database_session_verify_key(db, session_string, req->identity_pubkey)) ||
+      ((restricted || config->require_client_identity) &&
+       (!acds_validate_timestamp(req->timestamp, 300) ||
+        acds_verify_session_join(req->identity_pubkey, req->timestamp, session_string, req->signature) !=
+            ASCIICHAT_OK))) {
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    session_entry_destroy(session);
+    resp->error_code = ERROR_CRYPTO_VERIFICATION;
+    SAFE_STRNCPY(resp->error_message, "Session key authorization failed", sizeof(resp->error_message));
+    return ASCIICHAT_OK;
   }
 
   // Insert participant
@@ -693,6 +831,19 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   session_entry_destroy(session);
   database_telemetry_population(db);
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *req, const acds_config_t *config,
+                                        acip_session_joined_t *resp) {
+  if (!db)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing database");
+  // Keep key revocation and other operations on the shared handle from
+  // interleaving authorization with participant insertion.
+  sqlite3_mutex *mutex = sqlite3_db_mutex(db);
+  sqlite3_mutex_enter(mutex);
+  asciichat_error_t result = database_session_join_locked(db, req, config, resp);
+  sqlite3_mutex_leave(mutex);
+  return result;
 }
 
 asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[16], const uint8_t participant_id[16]) {
@@ -1101,7 +1252,7 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[1
 asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32],
                                            uint32_t key_version) {
   ASCII_OTEL_SCOPE(DATABASE_ADD_KEY);
-  if (!db || !session_string || !identity_pubkey) {
+  if (!db || !session_string || !identity_pubkey || sodium_is_zero(identity_pubkey, 32)) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for add_key");
   }
 

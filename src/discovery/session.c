@@ -141,7 +141,9 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
       uint8_t seckey[64] = {0};
       asciichat_error_t key_result = acds_identity_load(opts->identity_keys[i], pubkey, seckey);
       if (key_result == ASCIICHAT_OK) {
-        memcpy(session->identity_pubkeys[i], pubkey, 32);
+        memcpy(session->identity_pubkeys[session->num_identity_keys], pubkey, 32);
+        memcpy(session->identity_seckeys[session->num_identity_keys++], seckey, 64);
+        sodium_memzero(seckey, sizeof(seckey));
         char fingerprint[65];
         acds_identity_fingerprint(pubkey, fingerprint);
         log_info("Loaded identity key #%zu with fingerprint: %.16s...", i + 1, fingerprint);
@@ -149,11 +151,20 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
         log_warn("Failed to load identity key #%zu from %s", i + 1, opts->identity_keys[i]);
       }
     }
-    session->num_identity_keys = opts->num_identity_keys;
+    if (session->num_identity_keys != opts->num_identity_keys) {
+      sodium_memzero(session->identity_seckey, sizeof(session->identity_seckey));
+      sodium_memzero(session->identity_seckeys, sizeof(session->identity_seckeys));
+      SAFE_FREE(session);
+      SET_ERRNO(ERROR_CRYPTO, "Could not load the complete discovery identity key set");
+      return NULL;
+    }
+    memcpy(session->identity_pubkey, session->identity_pubkeys[0], 32);
+    memcpy(session->identity_seckey, session->identity_seckeys[0], 64);
     log_info("Loaded %zu identity key(s) for multi-key protocol", session->num_identity_keys);
   } else {
     // Single-key mode: use only the primary identity key
     memcpy(session->identity_pubkeys[0], session->identity_pubkey, 32);
+    memcpy(session->identity_seckeys[0], session->identity_seckey, 64);
     session->num_identity_keys = 1;
   }
 
@@ -302,6 +313,8 @@ asciichat_error_t discovery_session_destroy(discovery_session_t *session) {
 
   NAMED_UNREGISTER(&session->liveness.last_pong_received_ms);
   sodium_memzero(session->password, sizeof(session->password));
+  sodium_memzero(session->identity_seckey, sizeof(session->identity_seckey));
+  sodium_memzero(session->identity_seckeys, sizeof(session->identity_seckeys));
   SAFE_FREE(session);
   return ASCIICHAT_OK;
 }
@@ -613,16 +626,14 @@ static asciichat_error_t create_session(discovery_session_t *session) {
   for (size_t key_idx = 0; key_idx < session->num_identity_keys; ++key_idx) {
     acds_session_create_params_t params = {0};
     memcpy(params.identity_pubkey, session->identity_pubkeys[key_idx], sizeof(params.identity_pubkey));
-    memcpy(params.identity_seckey, session->identity_seckey, sizeof(params.identity_seckey));
-    if (key_idx == 0) {
-      params.capabilities = 3;
-      params.max_participants = PARTICIPANT_LIMIT;
-      params.session_type = SESSION_TYPE_WEBRTC;
-      params.has_password = session->password[0] != 0;
-      SAFE_STRNCPY(params.password, session->password, sizeof(params.password));
-      SAFE_STRNCPY(params.server_address, "127.0.0.1", sizeof(params.server_address));
-      params.server_port = ACIP_HOST_DEFAULT_PORT;
-    }
+    memcpy(params.identity_seckey, session->identity_seckeys[key_idx], sizeof(params.identity_seckey));
+    params.capabilities = 3;
+    params.max_participants = PARTICIPANT_LIMIT;
+    params.session_type = SESSION_TYPE_WEBRTC;
+    params.has_password = session->password[0] != 0;
+    SAFE_STRNCPY(params.password, session->password, sizeof(params.password));
+    SAFE_STRNCPY(params.server_address, "127.0.0.1", sizeof(params.server_address));
+    params.server_port = ACIP_HOST_DEFAULT_PORT;
     asciichat_error_t result =
         acds_protocol_create(&protocol, &params, (uint8_t)session->num_identity_keys, (uint8_t)key_idx);
     sodium_memzero(&params, sizeof(params));

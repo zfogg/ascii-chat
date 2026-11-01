@@ -118,31 +118,32 @@ DATABASE_QUERY(GetMigrationState, "SELECT\n"
                                   "FROM sessions\n"
                                   "WHERE\n"
                                   "  session_id = ?")
-DATABASE_QUERY(AddSessionKey,
-               "INSERT OR IGNORE INTO session_keys (session_string, identity_pubkey, key_version, added_at)\n"
-               "VALUES\n"
-               "  (?, ?, ?, ?)")
-DATABASE_QUERY(RevokeSessionKey, "UPDATE session_keys\n"
+DATABASE_QUERY(
+    AddSessionKey,
+    "INSERT OR IGNORE INTO session_identity_keys (session_string, key_type, identity_pubkey, key_version, added_at)\n"
+    "VALUES\n"
+    "  (?, 'ed25519', ?, ?, ?)")
+DATABASE_QUERY(RevokeSessionKey, "UPDATE session_identity_keys\n"
                                  "SET\n"
                                  "  revoked = 1\n"
                                  "WHERE\n"
                                  "  session_string = ?\n"
-                                 "  AND identity_pubkey = ?")
+                                 "  AND key_type = 'ed25519' AND identity_pubkey = ?")
 DATABASE_QUERY(VerifySessionKey, "SELECT\n"
                                  "  1\n"
-                                 "FROM session_keys\n"
+                                 "FROM session_identity_keys\n"
                                  "WHERE\n"
                                  "  session_string = ?\n"
-                                 "  AND identity_pubkey = ?\n"
+                                 "  AND key_type = 'ed25519' AND identity_pubkey = ?\n"
                                  "  AND revoked = 0")
 DATABASE_QUERY(GetSessionKeys, "SELECT\n"
                                "  identity_pubkey\n"
-                               "FROM session_keys\n"
+                               "FROM session_identity_keys\n"
                                "WHERE\n"
                                "  session_string = ?\n"
-                               "  AND revoked = 0\n"
+                               "  AND key_type = 'ed25519' AND revoked = 0\n"
                                "ORDER BY\n"
-                               "  key_version ASC")
+                               "  key_version ASC, identity_pubkey ASC")
 DATABASE_QUERY(GetStatsSnapshot, "SELECT\n"
                                  "  session_string,\n"
                                  "  current_participants,\n"

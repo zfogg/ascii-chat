@@ -134,6 +134,7 @@ set(CORE_SRCS
     # discovery/ (library)
     ${LIB_DIR}/discovery/session.c
     ${LIB_DIR}/discovery/database.c
+    ${LIB_DIR}/discovery/key_set.c
     ${LIB_DIR}/discovery/identity.c
     ${LIB_DIR}/discovery/strings.c
     ${LIB_DIR}/discovery/adjectives.c

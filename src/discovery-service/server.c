@@ -344,302 +344,87 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     return;
   }
 
-  // === MULTI-KEY PROTOCOL: Handle key by key_index ===
-  // total_keys > 0 indicates multi-key mode
-  // key_index == 0 starts a new sequence; subsequent keys are appended
-
-  if (req->total_keys > 0) {
-    // Multi-key mode: total_keys tells us how many to expect
-    if (req->key_index == 0) {
-      // First key in sequence - initialize state
-      log_info("SESSION_CREATE starting multi-key sequence from %s: expecting %u key(s)", client_ip, req->total_keys);
-
-      // Store the first packet's session parameters
-      memcpy(&client_data->pending_session, req, sizeof(acip_session_create_t));
-
-      // Allocate for keys (should already be sized for MAX_IDENTITY_KEYS, but validate bounds)
-      if (req->total_keys > MAX_IDENTITY_KEYS) {
-        log_error("Too many keys: %u (max %u)", req->total_keys, MAX_IDENTITY_KEYS);
-        acip_send_error(transport, ERROR_INVALID_PARAM, "Too many keys");
-        return;
-      }
-
-      client_data->num_pending_keys = 0;
-      client_data->in_multikey_session_create = true;
-    }
-
-    // Store this key
-    if (req->key_index >= req->total_keys) {
-      log_error("Invalid key_index: %u >= total_keys: %u", req->key_index, req->total_keys);
-      acip_send_error(transport, ERROR_INVALID_PARAM, "Invalid key index");
-      client_data->in_multikey_session_create = false;
-      client_data->num_pending_keys = 0;
-      return;
-    }
-
-    memcpy(client_data->pending_session_keys[req->key_index], req->identity_pubkey, 32);
-    client_data->num_pending_keys = req->key_index + 1;
-
-    log_debug("SESSION_CREATE received key %u/%u from %s", req->key_index + 1, req->total_keys, client_ip);
-
-    // Check if this is the last key
-    bool is_final_key = (req->key_index == req->total_keys - 1);
-    if (!is_final_key) {
-      // More keys expected - wait for next packet
-      log_debug("Waiting for remaining %u key(s)", req->total_keys - client_data->num_pending_keys);
-      return;
-    }
-
-    // Final key received - finalize session
-    log_info("SESSION_CREATE finalize from %s: received all %zu identity key(s)", client_ip,
-             client_data->num_pending_keys);
-
-    // Auto-detect server's public IP if not provided (empty address)
-    if (client_data->pending_session.server_address[0] == '\0') {
-      log_info("ACDS: Auto-detecting server public IP from connection source: %s", client_ip);
-      SAFE_STRNCPY(client_data->pending_session.server_address, client_ip,
-                   sizeof(client_data->pending_session.server_address));
-      log_info("ACDS: Auto-detected server_address='%s'", client_data->pending_session.server_address);
-    }
-
-    // Create session in database with all collected keys
-    // For now, database_session_create only supports single key, so use first key
-    // TODO: Extend database schema to support multiple keys per session
-    acip_session_created_t resp;
-    memset(&resp, 0, sizeof(resp));
-
-    asciichat_error_t create_result =
-        database_session_create(server->db, &client_data->pending_session, &server->config, &resp);
-    if (create_result == ASCIICHAT_OK) {
-      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_CREATES, 1);
-      // Build complete payload: fixed response + variable STUN/TURN servers
-      size_t stun_size = (size_t)resp.stun_count * sizeof(stun_server_t);
-      size_t turn_size = (size_t)resp.turn_count * sizeof(turn_server_t);
-      size_t total_size = sizeof(resp) + stun_size + turn_size;
-
-      uint8_t *payload = SAFE_MALLOC(total_size, uint8_t *);
-      if (!payload) {
-        acip_send_error(transport, ERROR_MEMORY, "Out of memory building response");
-        client_data->in_multikey_session_create = false;
-        client_data->num_pending_keys = 0;
-        return;
-      }
-
-      // Copy fixed response
-      memcpy(payload, &resp, sizeof(resp));
-
-      // Append STUN servers
-      if (resp.stun_count > 0) {
-        memcpy(payload + sizeof(resp), server->config.stun_servers, stun_size);
-      }
-
-      // Append TURN servers
-      if (resp.turn_count > 0) {
-        memcpy(payload + sizeof(resp) + stun_size, server->config.turn_servers, turn_size);
-      }
-
-      // Send complete response with variable-length data
-      packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, payload, total_size, 0);
-      acds_track_packet_sent(server, total_size);
-      SAFE_FREE(payload);
-
-      log_info("Session created: %.*s (UUID: %02x%02x..., %zu keys, %d STUN, %d TURN servers)", resp.session_string_len,
-               resp.session_string, resp.session_id[0], resp.session_id[1], client_data->num_pending_keys,
-               resp.stun_count, resp.turn_count);
-
-      // Store session/participant IDs and mark session as established
-      memcpy(client_data->session_id, resp.session_id, 16);
-      memcpy(client_data->participant_id, resp.participant_id, 16);
-      client_data->joined_session = true;
-      client_data->session_established = true; // Signal handler to exit receive loop
-    } else {
-      // Error - send error response using proper error code
-      acip_send_error(transport, create_result, "Failed to create session");
-      log_warn("Session creation failed for %s: %s", client_ip, asciichat_error_format(NULL, create_result));
-    }
-
-    // Clear multi-key state
-    client_data->in_multikey_session_create = false;
-    client_data->num_pending_keys = 0;
-
-    return;
-  } else {
-    // Legacy single-key mode (total_keys == 0)
-    log_debug("SESSION_CREATE single-key mode from %s", client_ip);
-    memcpy(&client_data->pending_session, req, sizeof(acip_session_create_t));
-    memcpy(client_data->pending_session_keys[0], req->identity_pubkey, 32);
-    client_data->num_pending_keys = 1;
-    client_data->in_multikey_session_create = false;
-    log_info("SESSION_CREATE finalize from %s: %zu identity key(s)", client_ip, client_data->num_pending_keys);
-
-    // Auto-detect server's public IP if not provided (empty address)
-    if (client_data->pending_session.server_address[0] == '\0') {
-      log_info("ACDS: Auto-detecting server public IP from connection source: %s", client_ip);
-      SAFE_STRNCPY(client_data->pending_session.server_address, client_ip,
-                   sizeof(client_data->pending_session.server_address));
-      log_info("ACDS: Auto-detected server_address='%s'", client_data->pending_session.server_address);
-    }
-
-    // Create session in database with all collected keys
-    // For now, database_session_create only supports single key, so use first key
-    // TODO: Extend database schema to support multiple keys per session
-    acip_session_created_t resp;
-    memset(&resp, 0, sizeof(resp));
-
-    asciichat_error_t create_result =
-        database_session_create(server->db, &client_data->pending_session, &server->config, &resp);
-    if (create_result == ASCIICHAT_OK) {
-      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_CREATES, 1);
-      // Build complete payload: fixed response + variable STUN/TURN servers
-      size_t stun_size = (size_t)resp.stun_count * sizeof(stun_server_t);
-      size_t turn_size = (size_t)resp.turn_count * sizeof(turn_server_t);
-      size_t total_size = sizeof(resp) + stun_size + turn_size;
-
-      uint8_t *payload = SAFE_MALLOC(total_size, uint8_t *);
-      if (!payload) {
-        acip_send_error(transport, ERROR_MEMORY, "Out of memory building response");
-        client_data->in_multikey_session_create = false;
-        client_data->num_pending_keys = 0;
-        return;
-      }
-
-      // Copy fixed response
-      memcpy(payload, &resp, sizeof(resp));
-
-      // Append STUN servers
-      if (resp.stun_count > 0) {
-        memcpy(payload + sizeof(resp), server->config.stun_servers, stun_size);
-      }
-
-      // Append TURN servers
-      if (resp.turn_count > 0) {
-        memcpy(payload + sizeof(resp) + stun_size, server->config.turn_servers, turn_size);
-      }
-
-      // Send complete response with variable-length data
-      packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, payload, total_size, 0);
-      acds_track_packet_sent(server, total_size);
-      SAFE_FREE(payload);
-
-      log_info("Session created: %.*s (UUID: %02x%02x..., %zu keys, %d STUN, %d TURN servers)", resp.session_string_len,
-               resp.session_string, resp.session_id[0], resp.session_id[1], client_data->num_pending_keys,
-               resp.stun_count, resp.turn_count);
-
-      // Store session/participant IDs and mark session as established
-      memcpy(client_data->session_id, resp.session_id, 16);
-      memcpy(client_data->participant_id, resp.participant_id, 16);
-      client_data->joined_session = true;
-      client_data->session_established = true; // Signal handler to exit receive loop
-    } else {
-      // Error - send error response using proper error code
-      acip_send_error(transport, create_result, "Failed to create session");
-      log_warn("Session creation failed for %s: %s", client_ip, asciichat_error_format(NULL, create_result));
-    }
-
-    // Clear multi-key state
-    client_data->in_multikey_session_create = false;
-    client_data->num_pending_keys = 0;
-
-    return;
-  }
-
-  // === MULTI-KEY PROTOCOL: Add key to pending session ===
-  if (client_data->in_multikey_session_create) {
-    // Subsequent SESSION_CREATE with non-zero key - add to pending keys
-
-    // Validate we haven't exceeded max keys
-    if (client_data->num_pending_keys >= MAX_IDENTITY_KEYS) {
-      acip_send_error(transport, ERROR_INVALID_PARAM, "Maximum identity keys exceeded");
-      return;
-    }
-
-    // Validate key is different from all existing keys
-    for (size_t i = 0; i < client_data->num_pending_keys; i++) {
-      if (memcmp(client_data->pending_session_keys[i], req->identity_pubkey, 32) == 0) {
-        acip_send_error(transport, ERROR_INVALID_PARAM, "Duplicate identity key");
-        return;
-      }
-    }
-
-    // Add key to pending array
-    memcpy(client_data->pending_session_keys[client_data->num_pending_keys], req->identity_pubkey, 32);
-    client_data->num_pending_keys++;
-
-    log_debug("SESSION_CREATE key #%zu from %s (pubkey: %02x%02x...)", client_data->num_pending_keys, client_ip,
-              req->identity_pubkey[0], req->identity_pubkey[1]);
-
-    // Don't send response yet - client will send more keys or zero-key to finalize
-    return;
-  }
-
-  // === MULTI-KEY PROTOCOL: Start new session ===
-  // First SESSION_CREATE with non-zero key - start multi-key mode
-
-  // Rate limiting check (only on first SESSION_CREATE)
-  {
+  // Rate-limit each new sequence, including legacy single-key requests.
+  if (req->key_index == 0) {
     bool allowed = false;
     asciichat_error_t rate_check =
         rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
+      memset(&client_data->create_keys, 0, sizeof(client_data->create_keys));
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
-      log_warn("Rate limit exceeded for SESSION_CREATE from %s", client_ip);
       return;
     }
     rate_limiter_record(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE);
   }
+  bool complete = false;
+  asciichat_error_t result =
+      acds_create_key_set_collect(&client_data->create_keys, req, server->config.require_server_identity, &complete);
+  if (result != ASCIICHAT_OK) {
+    acip_send_error(transport, result, "Invalid session key sequence or identity proof");
+    return;
+  }
+  if (!complete)
+    return;
 
-  // Cryptographic identity verification (if required)
-  if (server->config.require_server_identity) {
-    // Validate timestamp (5 minute window)
-    if (!acds_validate_timestamp(req->timestamp, 300)) {
-      log_warn("SESSION_CREATE rejected from %s: invalid timestamp (replay attack protection)", client_ip);
-      acip_send_error(transport, ERROR_CRYPTO_VERIFICATION, "Timestamp validation failed - too old or in the future");
+  acip_session_create_t *pending = &client_data->create_keys.request;
+  if (pending->server_address[0] == '\0')
+    SAFE_STRNCPY(pending->server_address, client_ip, sizeof(pending->server_address));
+  if (pending->session_type == SESSION_TYPE_DIRECT_TCP && strcmp(pending->server_address, client_ip) != 0) {
+    memset(&client_data->create_keys, 0, sizeof(client_data->create_keys));
+    acip_send_error(transport, ERROR_INVALID_PARAM, "Direct TCP address must match the connection source");
+    return;
+  }
+  acip_session_created_t resp = {0};
+  asciichat_error_t create_result = database_session_create_keys(
+      server->db, pending, client_data->create_keys.keys, client_data->create_keys.count, &server->config, &resp);
+  if (create_result == ASCIICHAT_OK) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_CREATES, 1);
+    // Build complete payload: fixed response + variable STUN/TURN servers
+    size_t stun_size = (size_t)resp.stun_count * sizeof(stun_server_t);
+    size_t turn_size = (size_t)resp.turn_count * sizeof(turn_server_t);
+    size_t total_size = sizeof(resp) + stun_size + turn_size;
+
+    uint8_t *payload = SAFE_MALLOC(total_size, uint8_t *);
+    if (!payload) {
+      acip_send_error(transport, ERROR_MEMORY, "Out of memory building response");
+      memset(&client_data->create_keys, 0, sizeof(client_data->create_keys));
       return;
     }
 
-    // Verify Ed25519 signature
-    asciichat_error_t verify_result = acds_verify_session_create(
-        req->identity_pubkey, req->timestamp, req->capabilities, req->max_participants, req->signature);
+    // Copy fixed response
+    memcpy(payload, &resp, sizeof(resp));
 
-    if (verify_result != ASCIICHAT_OK) {
-      log_warn("SESSION_CREATE rejected from %s: invalid signature (identity verification failed)", client_ip);
-      acip_send_error(transport, ERROR_CRYPTO_VERIFICATION, "Identity signature verification failed");
-      return;
+    // Append STUN servers
+    if (resp.stun_count > 0) {
+      memcpy(payload + sizeof(resp), server->config.stun_servers, stun_size);
     }
 
-    log_debug("SESSION_CREATE signature verified from %s (pubkey: %02x%02x...)", client_ip, req->identity_pubkey[0],
-              req->identity_pubkey[1]);
+    // Append TURN servers
+    if (resp.turn_count > 0) {
+      memcpy(payload + sizeof(resp) + stun_size, server->config.turn_servers, turn_size);
+    }
+
+    // Send complete response with variable-length data
+    packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, payload, total_size, 0);
+    acds_track_packet_sent(server, total_size);
+    SAFE_FREE(payload);
+
+    log_info("Session created: %.*s (UUID: %02x%02x..., %zu keys, %d STUN, %d TURN servers)", resp.session_string_len,
+             resp.session_string, resp.session_id[0], resp.session_id[1], client_data->create_keys.count,
+             resp.stun_count, resp.turn_count);
+
+    // Store session/participant IDs and mark session as established
+    memcpy(client_data->session_id, resp.session_id, 16);
+    memcpy(client_data->participant_id, resp.participant_id, 16);
+    client_data->joined_session = true;
+    client_data->session_established = true; // Signal handler to exit receive loop
+  } else {
+    // Error - send error response using proper error code
+    acip_send_error(transport, create_result, "Failed to create session");
+    log_warn("Session creation failed for %s: %s", client_ip, asciichat_error_format(NULL, create_result));
   }
 
-  // Reachability verification for Direct TCP sessions
-  if (req->session_type == SESSION_TYPE_DIRECT_TCP) {
-    // Auto-detect public IP if server_address is empty
-    if (req->server_address[0] == '\0') {
-      SAFE_STRNCPY(req->server_address, client_ip, sizeof(req->server_address));
-      log_info("SESSION_CREATE from %s: auto-detected server address (bind was 0.0.0.0)", client_ip);
-    }
-
-    // Verify server_address matches connection source
-    if (strcmp(req->server_address, client_ip) != 0) {
-      log_warn("SESSION_CREATE rejected from %s: server_address '%s' does not match actual connection IP", client_ip,
-               req->server_address);
-      acip_send_error(transport, ERROR_INVALID_PARAM,
-                      "Direct TCP sessions require server_address to match your actual IP");
-      return;
-    }
-    log_debug("SESSION_CREATE reachability verified: %s matches connection source", req->server_address);
-  }
-
-  // Store pending session data and first key
-  memcpy(&client_data->pending_session, req, sizeof(acip_session_create_t));
-  memcpy(client_data->pending_session_keys[0], req->identity_pubkey, 32);
-  client_data->num_pending_keys = 1;
-  client_data->in_multikey_session_create = true;
-
-  log_info("SESSION_CREATE started from %s: multi-key mode (key #1 stored, waiting for more or zero-key finalize)",
-           client_ip);
-
-  // Don't send response yet - wait for more keys or zero-key finalize
+  memset(&client_data->create_keys, 0, sizeof(client_data->create_keys));
 }
 
 static void acds_on_session_lookup(const acip_session_lookup_t *req, acip_transport_t *transport, const char *client_ip,
@@ -701,40 +486,6 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
       return;
     }
     rate_limiter_record(server->rate_limiter, client_ip, RATE_EVENT_SESSION_JOIN);
-  }
-
-  // Cryptographic identity verification (if required)
-  if (server->config.require_client_identity) {
-    // Validate timestamp (5 minute window)
-    if (!acds_validate_timestamp(req->timestamp, 300)) {
-      log_warn("SESSION_JOIN rejected from %s: invalid timestamp (replay attack protection)", client_ip);
-      acip_session_joined_t error_resp;
-      memset(&error_resp, 0, sizeof(error_resp));
-      error_resp.success = 0;
-      error_resp.error_code = ERROR_CRYPTO_VERIFICATION;
-      SAFE_STRNCPY(error_resp.error_message, "Timestamp validation failed", sizeof(error_resp.error_message));
-      acip_send_session_joined(transport, &error_resp);
-      return;
-    }
-
-    // Verify Ed25519 signature
-    asciichat_error_t verify_result =
-        acds_verify_session_join(req->identity_pubkey, req->timestamp, req->session_string, req->signature);
-
-    if (verify_result != ASCIICHAT_OK) {
-      log_warn("SESSION_JOIN rejected from %s: invalid signature (identity verification failed)", client_ip);
-      acip_session_joined_t error_resp;
-      memset(&error_resp, 0, sizeof(error_resp));
-      error_resp.success = 0;
-      error_resp.error_code = ERROR_CRYPTO_VERIFICATION;
-      SAFE_STRNCPY(error_resp.error_message, "Identity signature verification failed",
-                   sizeof(error_resp.error_message));
-      acip_send_session_joined(transport, &error_resp);
-      return;
-    }
-
-    log_debug("SESSION_JOIN signature verified from %s (pubkey: %02x%02x...)", client_ip, req->identity_pubkey[0],
-              req->identity_pubkey[1]);
   }
 
   acip_session_joined_t resp;
@@ -1137,7 +888,7 @@ static asciichat_error_t acds_connection_packet(network_connection_t *connection
   }
   atomic_fetch_add_u64(&server->stats.bytes_received, size + sizeof(packet_header_t));
   atomic_fetch_add_u64(&server->stats.packets_received, 1);
-  if (client->in_multikey_session_create && type != PACKET_TYPE_ACIP_SESSION_CREATE && type != PACKET_TYPE_PING &&
+  if (client->create_keys.count > 0 && type != PACKET_TYPE_ACIP_SESSION_CREATE && type != PACKET_TYPE_PING &&
       type != PACKET_TYPE_PONG)
     return acip_send_error(transport, ERROR_INVALID_PARAM,
                            "Only SESSION_CREATE/PING/PONG allowed during session creation");
