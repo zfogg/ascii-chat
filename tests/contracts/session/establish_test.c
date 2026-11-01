@@ -10,6 +10,8 @@ static int opens, destroys, negotiations, prompts, detached;
 static asciichat_error_t dial_result, prepare_result, negotiate_result, prompt_result;
 static bool challenge;
 static bool record_negotiation_errors, record_cleanup_error;
+static uint8_t expected_crypto_mode;
+static network_protocol_t expected_protocol;
 static asciichat_errno_scope_t test_errors;
 static crypto_handshake_context_t handshake;
 static network_connection_t *sentinel = (network_connection_t *)&handshake;
@@ -60,8 +62,8 @@ static void detach(void *context) {
 static asciichat_error_t negotiate(acip_transport_t *t, crypto_handshake_context_t *ctx, uint8_t crypto_mode,
                                    network_protocol_t profile) {
   cr_assert_eq(t, &transport);
-  cr_assert_eq(profile, NETWORK_PROTOCOL_MEDIA);
-  cr_assert_eq(crypto_mode, ACIP_CRYPTO_FULL);
+  cr_assert_eq(profile, expected_protocol);
+  cr_assert_eq(crypto_mode, expected_crypto_mode);
   cr_assert(ctx->defer_password_prompt);
   negotiations++;
   ctx->password_failure = challenge && negotiations == 1 ? AUTH_FAIL_PASSWORD_INCORRECT : 0;
@@ -90,6 +92,8 @@ static asciichat_error_t prompt(const char *target, char *password, size_t capac
 #define network_connection_ready ready
 #define network_client_negotiate negotiate
 #define ui_input_password prompt
+#define network_connection_establish fixture_network_establish
+#include "../../../lib/network/establish.c"
 #include "session/establish.c"
 
 static asciichat_error_t prepare(network_connection_t *owner, const connection_endpoint_t *endpoint,
@@ -109,6 +113,8 @@ static void setup(void) {
   challenge = false;
   record_negotiation_errors = true;
   record_cleanup_error = false;
+  expected_crypto_mode = ACIP_CRYPTO_FULL;
+  expected_protocol = NETWORK_PROTOCOL_MEDIA;
   test_errors = errno_scope_begin();
   memset(&handshake, 0, sizeof(handshake));
 }
@@ -207,4 +213,43 @@ Test(session_establishment, rejects_overwriting_an_existing_owner) {
   cr_assert_eq(establish(&owner), ERROR_INVALID_PARAM);
   cr_assert_eq(owner, sentinel);
   cr_assert_eq(opens, 0);
+}
+Test(session_establishment, network_attempt_reports_challenge_without_prompting_or_disposing) {
+  network_establish_config_t config = {.name = "fixture",
+                                       .address = "input",
+                                       .password = "initial",
+                                       .protocol = NETWORK_PROTOCOL_MEDIA,
+                                       .authenticate = true,
+                                       .prepare = prepare,
+                                       .context = &handshake};
+  network_connection_t *owner = NULL;
+  network_establish_result_t attempt;
+  challenge = true;
+  cr_assert_eq(fixture_network_establish(&config, &owner, &attempt), ERROR_CRYPTO_AUTH);
+  cr_assert_eq(owner, sentinel);
+  cr_assert_eq(attempt.password_failure, AUTH_FAIL_PASSWORD_INCORRECT);
+  cr_assert_str_eq(attempt.endpoint.host, "resolved-host");
+  cr_assert_eq(opens, 1);
+  cr_assert_eq(prompts, 0);
+  cr_assert_eq(destroys, 0);
+  cr_assert(errno_has_code(ERROR_CRYPTO_AUTH));
+}
+Test(session_establishment, network_attempt_uses_explicit_protocol_and_authentication_policy) {
+  network_establish_config_t config = {.name = "fixture",
+                                       .address = "input",
+                                       .password = "initial",
+                                       .protocol = NETWORK_PROTOCOL_DISCOVERY,
+                                       .authenticate = false,
+                                       .prepare = prepare,
+                                       .context = &handshake};
+  network_connection_t *owner = NULL;
+  network_establish_result_t attempt;
+  expected_crypto_mode = ACIP_CRYPTO_ENCRYPT;
+  expected_protocol = NETWORK_PROTOCOL_DISCOVERY;
+  cr_assert_eq(fixture_network_establish(&config, &owner, &attempt), ASCIICHAT_OK);
+  cr_assert_eq(owner, sentinel);
+  cr_assert_eq(attempt.password_failure, 0);
+  cr_assert_eq(opens, 1);
+  cr_assert_eq(prompts, 0);
+  cr_assert_eq(destroys, 0);
 }

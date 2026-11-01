@@ -3,7 +3,7 @@
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/establish.h>
 
 typedef enum {
   SESSION_CONNECTION_STARTING,
@@ -41,9 +41,7 @@ void session_connection_interrupt_transport(acip_transport_t *transport);
  * The caller owns the resulting network object, including on startup failure;
  * no workers may use it until this call succeeds. Password storage is borrowed.
  * detach clears borrowed aliases before a password retry releases its owner. */
-typedef asciichat_error_t (*session_connection_prepare_fn)(network_connection_t *, const connection_endpoint_t *,
-                                                           const char *, void *);
 asciichat_error_t session_connection_establish(const char *name, const char *address, uint16_t port,
                                                const network_connect_config_t *config, network_connection_t **owner,
-                                               char *password, size_t capacity, session_connection_prepare_fn prepare,
+                                               char *password, size_t capacity, network_connection_prepare_fn prepare,
                                                void (*detach)(void *), void *context);

@@ -126,6 +126,8 @@ static asciichat_error_t fixture_join(asciichat_thread_t *thread) {
 }
 #define network_connection_open test_connection_open
 #define session_connection_establish test_session_connection_establish
+#define network_connection_establish test_network_connection_establish
+#include "../../../lib/network/establish.c"
 #include "session/establish.c"
 static void test_capture_audio(session_capture_ctx_t *ctx, void *audio) {
   (void)ctx;
