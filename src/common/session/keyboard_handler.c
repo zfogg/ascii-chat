@@ -20,6 +20,7 @@
 #include <string.h>
 #include <signal.h>
 #include <ascii-chat/tui/input.h>
+#include <ascii-chat/tui/shortcuts.h>
 #include <ascii-chat/tui/prompt.h>
 #include <ascii-chat/tui/notice.h>
 #include <ascii-chat/platform/clipboard.h>
@@ -194,23 +195,15 @@ static void handle_keyboard_input(session_capture_ctx_t *capture, session_displa
 
 void session_handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
   bool text_entry = log_search_is_entering();
-  if (text_entry && key == KEY_PASTE) {
-    char pasted[8192];
-    if (ui_input_take_paste(pasted, sizeof(pasted)) == ASCIICHAT_OK)
-      for (const unsigned char *p = (const unsigned char *)pasted; *p; ++p)
-        ui_session_logs_key((keyboard_key_t)(*p >= 32 && *p != 127 ? *p : ' '));
-    CLEAR_ERRNO();
-    return;
-  }
   if (!text_entry && (key == '<' || key == '>')) {
     session_capture_skip_media(capture, key == '>' ? 1 : -1);
     return;
   }
   if (!text_entry && key == KEY_ESCAPE && session_capture_cancel_open(capture))
     return;
-  if (!text_entry && (key == KEY_MEDIA_SUBMIT || key == KEY_PASTE || key == 'o' || key == 'O' || key == 15 ||
+  if (!text_entry && (key == KEY_MEDIA_SUBMIT || key == KEY_PASTE || tui_shortcut_action(key) == TUI_SHORTCUT_MEDIA ||
                       key == 'v' || key == 'V')) {
-    if ((key == 'o' || key == 'O' || key == 15) && ui_controller_interactive_screen() == UI_SCREEN_PROMPT) {
+    if ((tui_shortcut_action(key) == TUI_SHORTCUT_MEDIA) && ui_controller_interactive_screen() == UI_SCREEN_PROMPT) {
       ui_prompt_remove();
       return;
     }

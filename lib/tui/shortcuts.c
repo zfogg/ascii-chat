@@ -1,30 +1,31 @@
 #include <ascii-chat/tui/shortcuts.h>
 #include <ascii-chat/asciichat_errno.h>
 typedef struct {
-  keyboard_key_t key;
+  keyboard_key_t keys[3];
   tui_shortcut_t action;
   const char *label, *description;
   bool native, media;
 } binding_t;
 static const binding_t bindings[] = {
-    {KEY_QUESTION, TUI_SHORTCUT_HELP, "?", "Toggle this help screen TUI", false, false},
-    {']', TUI_SHORTCUT_LOGS, "]", "Live log viewer/searcher TUI", false, false},
-    {'=', TUI_SHORTCUT_STATS, "=", "Running app statistics TUI", true, false},
+    {{KEY_QUESTION}, TUI_SHORTCUT_HELP, "?", "Toggle this help screen TUI", false, false},
+    {{']'}, TUI_SHORTCUT_LOGS, "]", "Live log viewer/searcher TUI", false, false},
+    {{'='}, TUI_SHORTCUT_STATS, "=", "Running app statistics TUI", true, false},
 #ifndef NDEBUG
-    {KEY_0, TUI_SHORTCUT_SYNC, "0", "C code sync primitives TUI", true, false},
+    {{KEY_0}, TUI_SHORTCUT_SYNC, "0", "C code sync primitives TUI", true, false},
 #endif
 #if defined(ASCIICHAT_DIAGNOSTIC_UI)
-    {KEY_BACKTICK, TUI_SHORTCUT_ERRORS, "`", "Error stacks diagnostic TUI", true, false},
+    {{KEY_BACKTICK}, TUI_SHORTCUT_ERRORS, "`", "Error stacks diagnostic TUI", true, false},
 #endif
-    {KEY_F12, TUI_SHORTCUT_UPDATE, "F12", "Version update checker TUI", true, false},
-    {'o', TUI_SHORTCUT_MEDIA, "o / Ctrl-O", "TUI to open media from path or URL", true, true},
+    {{KEY_F12}, TUI_SHORTCUT_UPDATE, "F12", "Version update checker TUI", true, false},
+    {{'o', 'O', 15}, TUI_SHORTCUT_MEDIA, "o / Ctrl-O", "TUI to open media from path or URL", true, true},
 };
 tui_shortcut_t tui_shortcut_action(keyboard_key_t key) {
-  if (key == 'O' || key == 15)
-    key = 'o';
+  if (key == KEY_NONE)
+    return TUI_SHORTCUT_NONE;
   for (size_t i = 0; i < sizeof(bindings) / sizeof(*bindings); ++i)
-    if (bindings[i].key == key)
-      return bindings[i].action;
+    for (size_t alias = 0; alias < 3; ++alias)
+      if (bindings[i].keys[alias] == key)
+        return bindings[i].action;
   return TUI_SHORTCUT_NONE;
 }
 size_t tui_shortcut_help(ui_help_entry_t *entries, size_t capacity, bool server, bool browser) {

@@ -116,6 +116,8 @@ bool log_search_should_handle(int key);
  * Escape cancels and restores previous patterns.
  */
 asciichat_error_t log_search_handle_key(keyboard_key_t key);
+/** Atomically insert UTF-8 paste into an active search; controls become spaces. */
+asciichat_error_t log_search_insert_text(const char *text);
 
 /** Apply a pending interactive-search action after its debounce interval. */
 void log_search_process_pending(void);

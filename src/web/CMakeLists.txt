@@ -33,7 +33,7 @@ if(EMSCRIPTEN)
 endif()
 
 # Required for Emscripten
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Note: EMSCRIPTEN_BUILD must be applied PER-TARGET, not globally
@@ -260,6 +260,7 @@ set(LIB_SRC_COMMON
 
     # Utilities (minimal set needed by options)
     ${LIB_ROOT}/util/format.c
+    ${LIB_ROOT}/util/flow_control.c
     ${LIB_ROOT}/util/string.c
     ${LIB_ROOT}/util/utf8.c
     ${LIB_ROOT}/util/display.c
@@ -322,7 +323,8 @@ set(LIB_SRC_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/common/ui.c
     ${LIB_ROOT}/tui/session.c
     ${LIB_ROOT}/tui/session_status.c
-    ${LIB_ROOT}/platform/keyboard_edit.c
+    ${LIB_ROOT}/tui/terminal_screen.c
+    ${LIB_ROOT}/platform/keyboard.c
     ${LIB_ROOT}/tui/session_input.c
     ${LIB_ROOT}/tui/session_help.c
     ${LIB_ROOT}/tui/session_splash.c

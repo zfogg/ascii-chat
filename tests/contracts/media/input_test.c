@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/media/input.h>
-#include <ascii-chat/platform/keyboard_stream.h>
+#include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/tui/input.h>
@@ -34,6 +34,7 @@ static keyboard_key_t fake_keyboard(void) {
 static int test_screen = UI_SCREEN_MEDIA;
 static bool search_entering, test_covered;
 static unsigned search_keys, cancel_calls;
+static char search_paste[256];
 static ui_presentation_state_t fake_state(void) {
   return (ui_presentation_state_t){.screen = test_screen, .covered = test_covered};
 }
@@ -61,6 +62,11 @@ static bool fake_logs_key(keyboard_key_t key) {
   ++search_keys;
   return true;
 }
+static asciichat_error_t fake_search_insert(const char *text) {
+  cr_assert_lt(strlen(text), sizeof(search_paste));
+  SAFE_STRNCPY(search_paste, text, sizeof(search_paste));
+  return ASCIICHAT_OK;
+}
 static bool fake_cancel(session_capture_ctx_t *capture) {
   (void)capture;
   ++cancel_calls;
@@ -75,12 +81,14 @@ static bool fake_cancel(session_capture_ctx_t *capture) {
 #define ui_prompt_present_kind fake_present
 #define ui_prompt_remove fake_remove
 #define log_search_is_entering fake_search_entering
+#define log_search_insert_text fake_search_insert
 #include "../../../lib/tui/input.c"
 #define ui_session_logs_key fake_logs_key
 #define session_capture_cancel_open fake_cancel
 #include "../../../src/common/session/keyboard_handler.c"
 #undef session_capture_cancel_open
 #undef ui_session_logs_key
+#undef log_search_insert_text
 #undef log_search_is_entering
 #undef ui_prompt_remove
 #undef ui_prompt_present_kind
@@ -262,7 +270,7 @@ Test(media_input, keyboard_stream_and_media_editor, .timeout = 10) {
   g_media_editor.deadline = 0;
   feed("\033[200~late.mp4\033[201~");
   cr_assert_eq(ui_input_read_key(UI_SCREEN_MEDIA), KEY_NONE);
-  cr_assert(!g_media_editor.active && !g_paste_ready);
+  cr_assert(!g_media_editor.active && !g_events.ready);
   feed("o");
   cr_assert_eq(ui_input_read_key(UI_SCREEN_MEDIA), 'o');
   cr_assert_eq(ui_input_media_begin(""), ASCIICHAT_OK);
@@ -307,10 +315,10 @@ Test(media_input, keyboard_stream_and_media_editor, .timeout = 10) {
   cr_assert_eq(cancel_calls, 0);
   cr_assert_eq(test_screen, UI_SCREEN_LOGS);
   feed("\033[200~video\033[201~");
-  cr_assert_eq(input_read_event(), KEY_PASTE);
-  session_handle_keyboard_input(NULL, NULL, KEY_PASTE);
-  cr_assert_eq(search_keys, strlen(search) + 6);
-  cr_assert(!g_paste_ready);
+  cr_assert_eq(ui_input_read_key(UI_SCREEN_MEDIA), KEY_NONE);
+  cr_assert_str_eq(search_paste, "video");
+  cr_assert_eq(search_keys, strlen(search) + 1);
+  cr_assert(!g_events.ready);
   feed("");
   cr_assert(!input_ready());
 #ifndef NDEBUG

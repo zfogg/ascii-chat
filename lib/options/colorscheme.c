@@ -22,7 +22,6 @@
 #include <limits.h>
 #include <stdatomic.h>
 #include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/keyboard_stream.h>
 
 /* ============================================================================
  * Global State

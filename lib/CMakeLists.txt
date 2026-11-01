@@ -410,7 +410,7 @@ target_link_libraries(ascii-chat-platform PRIVATE
 
 # Link render-file dependencies to platform module (for terminal renderers)
 target_include_directories(ascii-chat-platform PRIVATE ${PLATFORM_INCLUDES})
-target_link_libraries(ascii-chat-platform PRIVATE ${PLATFORM_LIBS})
+target_link_libraries(ascii-chat-platform PRIVATE ${PLATFORM_LIBS} ${UTF8PROC_LIBRARIES})
 
 # Add kernel headers for musl builds (needed for V4L2)
 if(USE_MUSL AND DEFINED MUSL_DEPS_DIR AND EXISTS "${MUSL_DEPS_DIR}/musl-deps/kernel-headers")

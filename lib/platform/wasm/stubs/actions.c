@@ -70,10 +70,6 @@ void platform_disable_keepawake(void) {
 // Keyboard input stubs
 #include <ascii-chat/platform/keyboard.h>
 
-keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_opts_t *opts) {
-  return keyboard_apply_key(opts);
-}
-
 bool keyboard_input_available(void) {
   return false;
 }
