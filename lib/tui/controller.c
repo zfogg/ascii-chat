@@ -1248,7 +1248,7 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
       minimum.rows <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid UI screen snapshot");
   if (interactive_screen(screen) && screen != UI_SCREEN_ERRNO && screen != UI_SCREEN_HELP &&
-      !(screen == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_ERRNO) &&
+      screen != UI_SCREEN_PROMPT &&
       (screen != UI_SCREEN_STATS || ui_controller_interactive_screen() == UI_SCREEN_STATS))
     ui_errno_stacks_hide();
   // A live slot retains its terminal even while LOG_IO redirects process stdio.
@@ -1378,7 +1378,9 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   errno_notifications_enable(true);
   *slot = (screen_t){
       .owned = copy, .snapshot = copy->data, .render = render, .minimum = minimum, .fd = output_fd, .dirty = true};
-  if (interactive_screen(screen) && screen != UI_SCREEN_STATS && (screen != UI_SCREEN_MDNS || !live))
+  if (interactive_screen(screen) && screen != UI_SCREEN_STATS && (screen != UI_SCREEN_MDNS || !live) &&
+      !(screen == UI_SCREEN_PROMPT && live && ui_controller_interactive_screen() == UI_SCREEN_HELP &&
+        keyboard_help_previous_interactive() == UI_SCREEN_PROMPT))
     ui_controller_select_interactive(screen);
   publish_screen_locked();
   mutex_unlock(&g_mutex);
@@ -1401,7 +1403,7 @@ asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size
   return submit_screen(screen, fd, minimum, render, snapshot, bytes, NULL, true);
 }
 
-void ui_controller_remove(ui_screen_t screen) {
+static void remove_screen(ui_screen_t screen, int previous) {
   if (screen < 0 || screen >= UI_SCREEN_COUNT || !lifecycle_is_initialized(&g_lifecycle))
     return;
   mutex_lock(&g_mutex);
@@ -1411,8 +1413,13 @@ void ui_controller_remove(ui_screen_t screen) {
     return;
   }
   screen_snapshot_t *retired = g_screens[screen].owned;
+  // Restore focus before retiring the modal so underlying workers never see an
+  // intermediate empty selection. A departed parent must not regain input.
+  if (previous < 0 || previous >= UI_SCREEN_COUNT || previous == (int)screen || !interactive_screen(previous) ||
+      (previous != UI_SCREEN_SYNC && !g_screens[previous].render))
+    previous = -1;
   int expected = screen;
-  atomic_compare_exchange_strong(&g_interactive_screen, &expected, -1);
+  atomic_compare_exchange_strong(&g_interactive_screen, &expected, previous);
   uint64_t pending = (g_rendering_layers & (1u << screen)) ? g_render_started : 0;
   screen_t *next = g_screens[screen].next;
   if (next) {
@@ -1435,6 +1442,14 @@ void ui_controller_remove(ui_screen_t screen) {
     cond_wait(&g_render_done, &g_mutex);
   mutex_unlock(&g_mutex);
   release_snapshot(retired);
+}
+
+void ui_controller_remove(ui_screen_t screen) {
+  remove_screen(screen, -1);
+}
+
+void ui_controller_dismiss(ui_screen_t screen, int previous) {
+  remove_screen(screen, previous);
 }
 
 ui_presentation_state_t ui_controller_state(void) {

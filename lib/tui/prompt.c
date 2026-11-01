@@ -285,10 +285,14 @@ asciichat_error_t ui_prompt_present_kind(const char *prompt, const char *visible
   return result;
 }
 
-void ui_prompt_remove(void) {
-  ui_controller_remove(UI_SCREEN_PROMPT);
-  if (ui_controller_state().screen < 0)
+void ui_prompt_dismiss(int previous) {
+  ui_controller_dismiss(UI_SCREEN_PROMPT, previous);
+  if (!ui_controller_is_presenting())
     ui_controller_write(prompt_fd(), "\r\n", 2);
+}
+
+void ui_prompt_remove(void) {
+  ui_prompt_dismiss(-1);
 }
 
 int ui_prompt_required_rows(const void *data, int cols) {

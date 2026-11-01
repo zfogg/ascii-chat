@@ -237,9 +237,9 @@ def navigation(args):
             f.key("?", "Error Popup Keyboard Shortcuts")
             f.key("?", "DEEP_BACKTRACE_ERROR")
             assert min(frames()) > 0, "Help reset the trace offset"
-            for _ in range(4):
-                f.term.write("\x1b[6~")
-            f.term.pump(.2)
+            f.term.write("\x1b[6~" * 10)
+            f.term.expect(lambda _: f.term.screen.buffer[track_rows[-1]][track_col].data in ("\u2588", "#"),
+                          "Backtrace scrollbar did not reach the bottom")
             last = frames()
             f.term.write("\x1b[6~")
             f.term.pump(.2)
@@ -282,7 +282,12 @@ def navigation(args):
         f.term.resize(8, 35)
         f.expect("Terminal too small")
         f.term.write("q")
+        f.term.pump(.2)
         f.term.resize(40, 120)
+        f.expect("LONG_ERROR line 00")
+        f.expect("? Help")
+        f.term.pump(.2)
+        f.key("\r", "MEDIA_BACKGROUND")
         f.absent("? Help")
         f.error(5, "CONTROL_ERROR")
         f.expect("?[2J payload")

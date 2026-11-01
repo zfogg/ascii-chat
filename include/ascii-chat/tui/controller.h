@@ -38,6 +38,9 @@ typedef void (*ui_render_fn)(terminal_size_t size, const void *snapshot);
 asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
                                        const void *snapshot, size_t bytes);
 void ui_controller_remove(ui_screen_t screen);
+/** Retire a modal and atomically restore its previous interactive owner if still live.
+ * Does not steal focus from a screen selected after the modal opened. */
+void ui_controller_dismiss(ui_screen_t screen, int previous);
 void ui_controller_shutdown(void);
 /** Start interactive title presentation. Producer events never write to the terminal. */
 asciichat_error_t ui_controller_title_start(const char *mode, int fd);
