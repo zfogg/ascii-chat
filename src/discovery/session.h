@@ -103,9 +103,9 @@ typedef struct {
   uint8_t identity_seckey[64]; ///< Ed25519 secret key for signing (primary key)
 
   // Multi-key support: all identity keys for multi-key handshake
-  uint8_t identity_pubkeys[MAX_SESSION_KEYS][32];  ///< All public keys for multi-key protocol
-  uint8_t identity_seckeys[MAX_SESSION_KEYS][64];  ///< Matching Ed25519 signing keys
-  size_t num_identity_keys;                        ///< Number of identity keys loaded
+  uint8_t identity_pubkeys[MAX_SESSION_KEYS][32]; ///< All public keys for multi-key protocol
+  uint8_t identity_seckeys[MAX_SESSION_KEYS][64]; ///< Matching Ed25519 signing keys
+  size_t num_identity_keys;                       ///< Number of identity keys loaded
 
   // ACDS connection
   network_connection_t *acds_connection;

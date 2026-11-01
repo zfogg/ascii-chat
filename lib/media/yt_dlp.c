@@ -32,9 +32,9 @@
 typedef struct {
   char url[MEDIA_URL_CACHE_SIZE];         // Original URL
   char stream_url[MEDIA_STREAM_URL_SIZE]; // Extracted stream URL
-  char yt_dlp_options[512]; // yt-dlp options used
-  time_t extracted_time;    // When URL was extracted
-  bool valid;               // Whether cache entry is valid
+  char yt_dlp_options[512];               // yt-dlp options used
+  time_t extracted_time;                  // When URL was extracted
+  bool valid;                             // Whether cache entry is valid
 } yt_dlp_cache_entry_t;
 
 static yt_dlp_cache_entry_t g_yt_dlp_cache = {0};

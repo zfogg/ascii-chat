@@ -17,8 +17,8 @@
  */
 typedef struct consensus_topology {
   uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16]; ///< Participant UUIDs in sorted order
-  int num_participants;                           ///< Total number of participants
-  int my_position;                                ///< My index in the sorted list
+  int num_participants;                                  ///< Total number of participants
+  int my_position;                                       ///< My index in the sorted list
 } consensus_topology_t;
 
 // Helper: find position of UUID in array

@@ -96,7 +96,7 @@ typedef struct {
   } source;                    ///< Which discovery method found the server
 
   // For mDNS results
-  char mdns_service_name[256]; ///< mDNS service instance name (e.g., "swift-river-mountain")
+  char mdns_service_name[256];              ///< mDNS service instance name (e.g., "swift-river-mountain")
   char mdns_hostname[HOSTNAME_BUFFER_SIZE]; ///< mDNS hostname (e.g., "mycomputer.local")
 
   // For ACDS results (if applicable)

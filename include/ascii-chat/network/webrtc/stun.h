@@ -73,7 +73,7 @@ extern "C" {
 #define STUN_URL_BUFFER_SIZE 64
 
 typedef struct __attribute__((packed)) {
-  uint8_t host_len; ///< Length of host string (actual URL length)
+  uint8_t host_len;                ///< Length of host string (actual URL length)
   char host[STUN_URL_BUFFER_SIZE]; ///< STUN server URL (e.g., "stun:discovery.ascii.chat:3478")
 } stun_server_t;
 

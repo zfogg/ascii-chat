@@ -93,8 +93,8 @@ typedef struct crypto_handshake_context_t {
 
   /** Connection info for known_hosts */
   char server_hostname[HOSTNAME_BUFFER_SIZE]; /**< Server hostname (user-provided) */
-  char server_ip[256];       /**< Server IP address (resolved from connection) */
-  uint16_t server_port;      /**< Server port */
+  char server_ip[256];                        /**< Server IP address (resolved from connection) */
+  uint16_t server_port;                       /**< Server port */
 
   /** Authentication configuration */
   bool addressless_transport;          /**< Peer transports use explicit identities, not IP:port TOFU. */

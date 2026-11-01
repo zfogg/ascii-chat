@@ -97,11 +97,11 @@ extern "C" {
 #define TURN_CREDENTIAL_BUFFER_SIZE 64
 
 typedef struct __attribute__((packed)) {
-  uint8_t url_len;        ///< Length of URL string (actual length)
-  char url[TURN_URL_BUFFER_SIZE]; ///< TURN server URL (e.g., "turn:discovery.ascii.chat:3478")
-  uint8_t username_len;   ///< Length of username string
-  char username[TURN_USERNAME_BUFFER_SIZE]; ///< TURN authentication username
-  uint8_t credential_len; ///< Length of credential string
+  uint8_t url_len;                              ///< Length of URL string (actual length)
+  char url[TURN_URL_BUFFER_SIZE];               ///< TURN server URL (e.g., "turn:discovery.ascii.chat:3478")
+  uint8_t username_len;                         ///< Length of username string
+  char username[TURN_USERNAME_BUFFER_SIZE];     ///< TURN authentication username
+  uint8_t credential_len;                       ///< Length of credential string
   char credential[TURN_CREDENTIAL_BUFFER_SIZE]; ///< Time-limited TURN credential/password
 } turn_server_t;
 
