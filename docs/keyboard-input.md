@@ -15,8 +15,8 @@ Native keyboard input has four boundaries:
   when to submit, cancel, mask, or insert newlines. `lib/tui/input.c` retains screen
   ownership and modal routing, and `shortcuts.c` owns shortcut aliases/help.
 
-ASCII/control keys retain their codes. Non-ASCII text uses
-`KEY_UNICODE_BASE + scalar`, avoiding collisions with special-key codes. The
+Text and control keys use their Unicode code points directly. Special keys start
+at `0x110000`, above the Unicode range, so no text tagging is needed. The
 browser SessionUi adapter uses the same representation, including supplementary
 characters. Bracketed POSIX paste payloads remain bytes until whole-paste validation.
 Malformed and truncated typed sequences cannot mutate a field; new starters or

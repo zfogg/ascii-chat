@@ -100,7 +100,6 @@ Test(keyboard_edit, completion_cancellation_and_ignored_keys_do_not_mutate_text)
   cr_assert_eq(key(&edit, KEY_NONE), LINE_EDIT_NO_INPUT);
   cr_assert_eq(key(&edit, 1), LINE_EDIT_CONTINUE);
   cr_assert_eq(key(&edit, KEY_UP), LINE_EDIT_CONTINUE);
-  cr_assert_eq(key(&edit, 0xe9), LINE_EDIT_CONTINUE);
   expect(&edit, "keep", 2);
 }
 
@@ -130,7 +129,7 @@ Test(keyboard_edit, unicode_movement_deletion_and_insertion_share_ui_editor) {
   expect(&edit, "a😀b", 1);
   key(&edit, KEY_DELETE);
   expect(&edit, "ab", 1);
-  key(&edit, (keyboard_key_t)(KEY_UNICODE_BASE + 0xe9));
+  key(&edit, (keyboard_key_t)(0xe9));
   expect(&edit, "aéb", 3);
   key(&edit, KEY_CTRL_DELETE);
   expect(&edit, "aé", 3);
@@ -157,4 +156,14 @@ Test(keyboard_edit, invalid_storage_is_not_dereferenced_or_modified) {
   edit.cursor = 2;
   cr_assert_eq(key(&edit, 'y'), LINE_EDIT_NO_INPUT);
   cr_assert_str_eq(edit.text, "x");
+}
+
+Test(keyboard_edit, unicode_codepoints_do_not_execute_old_special_keys) {
+  editor_t edit;
+  start(&edit, "ab", 1);
+  key(&edit, (keyboard_key_t)0x100);
+  expect(&edit, "aĀb", 3);
+  key(&edit, KEY_LEFT);
+  key(&edit, (keyboard_key_t)0x104);
+  expect(&edit, "aĄĀb", 3);
 }

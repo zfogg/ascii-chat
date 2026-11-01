@@ -91,7 +91,7 @@ keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*rea
     char text[5];
     size_t bytes = keyboard_text_encode(key, text);
     if (s->pasting) {
-      // POSIX paste payloads are raw bytes; Windows console text is normalized.
+      // Paste payloads remain raw UTF-8 bytes until whole-paste validation.
       if (key >= 128 && key <= 255) {
         text[0] = (char)key;
         bytes = 1;
@@ -116,7 +116,9 @@ keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*rea
       if (next == KEY_PASTE_BEGIN || next == KEY_PASTE_END)
         break;
     }
-    size_t text_count = count;
+    bool boundary = s->keys[count - 1] == KEY_PASTE_BEGIN || s->keys[count - 1] == KEY_PASTE_END;
+    size_t consumed = boundary ? count - 1 : count;
+    size_t text_count = consumed;
     while (text_count && (s->keys[text_count - 1] == '\r' || s->keys[text_count - 1] == '\n'))
       --text_count;
     char burst[8192];
@@ -133,6 +135,9 @@ keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*rea
     }
     burst[length] = '\0';
     if (text_count > 1 && classify_paste && classify_paste(burst)) {
+      // Keep the delimiter queued so the following payload remains framed.
+      s->head = consumed;
+      s->count = count - consumed;
       s->invalid = !valid;
       s->length = valid ? length : 0;
       memcpy(s->paste, burst, s->length);

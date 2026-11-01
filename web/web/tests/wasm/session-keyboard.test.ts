@@ -15,14 +15,14 @@ function session() {
 describe("shared keyboard representation", () => {
   it.each([
     ["a", 97],
-    ["é", 0x110000 + 0xe9],
-    ["Ā", 0x110000 + 0x100],
-    ["界", 0x110000 + 0x754c],
-    ["😀", 0x110000 + 0x1f600],
-    ["ArrowUp", 256],
-    ["PageUp", 269],
-    ["PageDown", 270],
-    ["F12", 268],
+    ["é", 0xe9],
+    ["Ā", 0x100],
+    ["界", 0x754c],
+    ["😀", 0x1f600],
+    ["ArrowUp", 0x110000],
+    ["PageUp", 0x11000d],
+    ["PageDown", 0x11000e],
+    ["F12", 0x11000c],
     ["Tab", 9],
   ])(
     "normalizes %s without colliding with a special key",
@@ -46,9 +46,9 @@ describe("shared keyboard representation", () => {
     ui.key("Enter");
     ui.key("PageUp");
     expect(key.mock.calls).toEqual([
-      [7, 271],
+      [7, 0x11000f],
       [7, 13],
-      [7, 269],
+      [7, 0x11000d],
     ]);
   });
 });

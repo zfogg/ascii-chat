@@ -40,47 +40,45 @@
  * - `KEY_NONE` (0): No key available
  * - `KEY_ESCAPE` (27): Escape key
  * - `KEY_SPACE` (32): Space bar
- * - Arrow keys: `KEY_UP`/`KEY_DOWN`/`KEY_LEFT`/`KEY_RIGHT` (256-259)
- * - Function keys: `KEY_DELETE` (260), `KEY_HOME` (261), `KEY_END` (262), `KEY_CTRL_DELETE` (263)
- * - ASCII/UTF-8 characters: Raw character code (1-26, 33-127)
+ * - Text: Unicode scalar values (1 through 0x10FFFF, excluding surrogates)
+ * - Special keys: KEY_UP and subsequent codes start at 0x110000
  *
  * @note UTF-8 sequences are assembled before returning text keys.
- *       Non-ASCII text uses KEY_UNICODE_BASE + Unicode scalar; paste payloads remain bytes.
+ *       Text is returned as Unicode scalar values; paste payloads remain UTF-8 bytes.
  *
  * @ingroup platform
  */
 typedef enum {
-  KEY_NONE = 0,          ///< No key pressed or no input available
-  KEY_ESCAPE = 27,       ///< Escape key (ESC)
-  KEY_SPACE = 32,        ///< Space bar
-  KEY_UP = 256,          ///< Up arrow key
-  KEY_DOWN = 257,        ///< Down arrow key
-  KEY_LEFT = 258,        ///< Left arrow key
-  KEY_RIGHT = 259,       ///< Right arrow key
-  KEY_DELETE = 260,      ///< Delete key (forward delete)
-  KEY_HOME = 261,        ///< Home key (move to start of line)
-  KEY_END = 262,         ///< End key (move to end of line)
-  KEY_CTRL_DELETE = 263, ///< Ctrl+Delete (delete word forward)
-  KEY_PASTE_BEGIN = 264,
-  KEY_PASTE_END = 265,
-  KEY_PASTE = 266,
-  KEY_MEDIA_SUBMIT = 267, ///< Nonblocking media prompt submitted
-  KEY_F12 = 268,          ///< Open the version update checker TUI
-  KEY_PAGEUP = 269,
-  KEY_PAGEDOWN = 270,
-  KEY_SHIFT_ENTER = 271,       ///< Shift+Enter (insert a newline in multiline prompts)
-  KEY_UNICODE_BASE = 0x110000, ///< Non-ASCII Unicode scalar values are tagged above special keys
-  KEY_MINUS = '-',             ///< '-' key - toggle FPS counter
-  KEY_0 = '0',                 ///< '0' key - toggle sync debug screen
-  KEY_1 = '1',                 ///< '1' key - toggle matrix rain effect
-  KEY_2 = '2',                 ///< '2' key - toggle audio waveform
-  KEY_3 = '3',                 ///< '3' key - toggle audio frequency display
-  KEY_C = 'c',                 ///< 'c' key - cycle color modes
-  KEY_R = 'r',                 ///< 'r' key - cycle render modes
-  KEY_M = 'm',                 ///< 'm' key - toggle mute
-  KEY_F = 'f',                 ///< 'f' key - flip webcam
-  KEY_QUESTION = '?',          ///< '?' key - show help screen
-  KEY_BACKTICK = '`',          ///< '`' key - print lock state (debug builds)
+  KEY_NONE = 0,               ///< No key pressed or no input available
+  KEY_ESCAPE = 27,            ///< Escape key (ESC)
+  KEY_SPACE = 32,             ///< Space bar
+  KEY_UP = 0x110000,          ///< Up arrow key
+  KEY_DOWN = 0x110001,        ///< Down arrow key
+  KEY_LEFT = 0x110002,        ///< Left arrow key
+  KEY_RIGHT = 0x110003,       ///< Right arrow key
+  KEY_DELETE = 0x110004,      ///< Delete key (forward delete)
+  KEY_HOME = 0x110005,        ///< Home key (move to start of line)
+  KEY_END = 0x110006,         ///< End key (move to end of line)
+  KEY_CTRL_DELETE = 0x110007, ///< Ctrl+Delete (delete word forward)
+  KEY_PASTE_BEGIN = 0x110008,
+  KEY_PASTE_END = 0x110009,
+  KEY_PASTE = 0x11000a,
+  KEY_MEDIA_SUBMIT = 0x11000b, ///< Nonblocking media prompt submitted
+  KEY_F12 = 0x11000c,          ///< Open the version update checker TUI
+  KEY_PAGEUP = 0x11000d,
+  KEY_PAGEDOWN = 0x11000e,
+  KEY_SHIFT_ENTER = 0x11000f, ///< Shift+Enter (insert a newline in multiline prompts)
+  KEY_MINUS = '-',            ///< '-' key - toggle FPS counter
+  KEY_0 = '0',                ///< '0' key - toggle sync debug screen
+  KEY_1 = '1',                ///< '1' key - toggle matrix rain effect
+  KEY_2 = '2',                ///< '2' key - toggle audio waveform
+  KEY_3 = '3',                ///< '3' key - toggle audio frequency display
+  KEY_C = 'c',                ///< 'c' key - cycle color modes
+  KEY_R = 'r',                ///< 'r' key - cycle render modes
+  KEY_M = 'm',                ///< 'm' key - toggle mute
+  KEY_F = 'f',                ///< 'f' key - flip webcam
+  KEY_QUESTION = '?',         ///< '?' key - show help screen
+  KEY_BACKTICK = '`',         ///< '`' key - print lock state (debug builds)
 } keyboard_key_t;
 
 /* ============================================================================
@@ -150,7 +148,7 @@ void keyboard_destroy(void);
  * - Special keys: KEY_ESCAPE, KEY_SPACE
  * - ASCII characters: Returned as raw character codes (a-z, A-Z, 0-9, etc.)
  * - Control keys: Ctrl+C, Ctrl+Z, and other control sequences (codes 1-31)
- * - UTF-8: Complete scalars are returned as KEY_UNICODE_BASE + codepoint
+ * - UTF-8: Complete scalars are returned as Unicode code points
  *
  * **Platform behavior:**
  * - POSIX: Uses select() with zero timeout on stdin for non-blocking check

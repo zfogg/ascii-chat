@@ -19,6 +19,8 @@
  * ============================================================================ */
 
 static uint16_t g_pending_high;
+static char g_utf8[5];
+static size_t g_utf8_next, g_utf8_count;
 static keyboard_key_t g_repeat_key;
 static WORD g_repeat_count;
 static INPUT_RECORD g_events[128];
@@ -26,6 +28,7 @@ static DWORD g_event_next, g_event_count;
 
 static void reset_console_input(void) {
   g_pending_high = 0;
+  g_utf8_next = g_utf8_count = 0;
   g_repeat_key = KEY_NONE;
   g_repeat_count = 0;
   g_event_next = g_event_count = 0;
@@ -149,7 +152,7 @@ static keyboard_key_t console_key(KEY_EVENT_RECORD key) {
   return special;
 }
 
-static int keyboard_raw_read(void) {
+static int keyboard_console_read(void) {
   if (!lifecycle_is_initialized(&g_keyboard_lc))
     return 0;
   if (g_repeat_count) {
@@ -178,6 +181,18 @@ static int keyboard_raw_read(void) {
     }
   }
   return 0;
+}
+
+static int keyboard_raw_read(void) {
+  if (g_utf8_next < g_utf8_count)
+    return (unsigned char)g_utf8[g_utf8_next++];
+  int key = keyboard_console_read();
+  if (key < 128 || key > 0x10ffff)
+    return key;
+  // Feed both console text and POSIX input through the shared UTF-8 stream decoder.
+  g_utf8_count = keyboard_text_encode((keyboard_key_t)key, g_utf8);
+  g_utf8_next = g_utf8_count ? 1 : 0;
+  return g_utf8_count ? (unsigned char)g_utf8[0] : 0;
 }
 
 bool keyboard_is_initialized(void) {

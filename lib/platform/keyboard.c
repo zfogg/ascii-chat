@@ -34,7 +34,7 @@ keyboard_key_t keyboard_text_decode(keyboard_text_decoder_t *s, int input) {
     utf8proc_int32_t cp;
     if (utf8proc_iterate(s->bytes, s->expected, &cp) < 0)
       return KEY_NONE;
-    return (keyboard_key_t)(KEY_UNICODE_BASE + cp);
+    return (keyboard_key_t)cp;
   }
   s->length = 0;
   if (input < 0x80 || input > 255)
@@ -48,15 +48,9 @@ keyboard_key_t keyboard_text_decode(keyboard_text_decoder_t *s, int input) {
 }
 
 size_t keyboard_text_encode(keyboard_key_t key, char text[5]) {
-  utf8proc_int32_t cp;
-  if (key > 0 && key < 128)
-    cp = (utf8proc_int32_t)key;
-  else if (key >= KEY_UNICODE_BASE + 0x80 && key <= KEY_UNICODE_BASE + 0x10ffff)
-    cp = (utf8proc_int32_t)key - KEY_UNICODE_BASE;
-  else
+  if (key == KEY_NONE || !utf8proc_codepoint_valid((utf8proc_int32_t)key))
     return 0;
-  if (!utf8proc_codepoint_valid(cp))
-    return 0;
+  utf8proc_int32_t cp = (utf8proc_int32_t)key;
   size_t bytes = (size_t)utf8proc_encode_char(cp, (utf8proc_uint8_t *)text);
   text[bytes] = '\0';
   return bytes;
@@ -72,9 +66,9 @@ keyboard_key_t keyboard_text_utf16(uint16_t *pending_high, uint16_t unit) {
   if (unit >= 0xdc00 && unit <= 0xdfff) {
     if (!high)
       return KEY_NONE;
-    return (keyboard_key_t)(KEY_UNICODE_BASE + 0x10000 + ((high - 0xd800) << 10) + unit - 0xdc00);
+    return (keyboard_key_t)(0x10000 + ((high - 0xd800) << 10) + unit - 0xdc00);
   }
-  return unit < 128 ? (keyboard_key_t)unit : (keyboard_key_t)(KEY_UNICODE_BASE + unit);
+  return (keyboard_key_t)unit;
 }
 
 static atomic_t parser_guard = {0};
@@ -302,7 +296,7 @@ static keyboard_key_t keyboard_stream_read_unlocked(int (*read_byte)(void)) {
         modifiers = strtoul(end + 1, &end, 10);
       if (end == sequence + length - 1 && cp > 0 && cp <= 0x10ffff && utf8proc_codepoint_valid((utf8proc_int32_t)cp) &&
           !(cp >= 0xe000 && cp <= 0xf8ff) && (modifiers == 1 || modifiers == 2))
-        key = cp < 128 ? (keyboard_key_t)cp : (keyboard_key_t)(KEY_UNICODE_BASE + cp);
+        key = (keyboard_key_t)cp;
     }
     length = 0;
     if (pending_escape) {

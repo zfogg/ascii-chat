@@ -198,7 +198,7 @@ Test(terminal_response, utf8_fragments_readiness_and_reset) {
   input = "\x80";
   cr_assert(keyboard_stream_ready(next_byte));
   cr_assert(keyboard_stream_ready(next_byte));
-  cr_assert_eq(keyboard_stream_read(next_byte), KEY_UNICODE_BASE + 0x1f600);
+  cr_assert_eq(keyboard_stream_read(next_byte), 0x1f600);
   input = "\xe2";
   cr_assert_eq(keyboard_stream_read(next_byte), KEY_NONE);
   input = "\033[D";
@@ -213,8 +213,7 @@ Test(terminal_response, utf8_fragments_readiness_and_reset) {
 Test(terminal_response, unicode_extended_keys_and_shift_enter_do_not_alias_pageup) {
   keyboard_stream_reset();
   input = "\033[233;2u\033[30028u\033[128512u\033[13;2u\033[5~";
-  const keyboard_key_t expected[] = {KEY_UNICODE_BASE + 233, KEY_UNICODE_BASE + 30028, KEY_UNICODE_BASE + 128512,
-                                     KEY_SHIFT_ENTER, KEY_PAGEUP};
+  const keyboard_key_t expected[] = {233, 30028, 128512, KEY_SHIFT_ENTER, KEY_PAGEUP};
   cr_assert_neq(KEY_SHIFT_ENTER, KEY_PAGEUP);
   for (size_t i = 0; i < sizeof(expected) / sizeof(*expected); ++i)
     cr_assert_eq(keyboard_stream_read(next_byte), expected[i]);
@@ -228,4 +227,13 @@ Test(terminal_response, malformed_utf8_cannot_become_shortcuts) {
   const keyboard_key_t expected[] = {KEY_PASTE_BEGIN, 0xc3, 0xa9, KEY_PASTE_END};
   for (size_t i = 0; i < sizeof(expected) / sizeof(*expected); ++i)
     cr_assert_eq(keyboard_stream_read(next_byte), expected[i]);
+}
+
+Test(terminal_response, unicode_characters_in_the_old_special_key_range_remain_text) {
+  keyboard_stream_reset();
+  input = "ĀāĂăĄąĆćĈĉĊċČčĎď";
+  for (unsigned cp = 0x100; cp <= 0x10f; ++cp)
+    cr_assert_eq(keyboard_stream_read(next_byte), (keyboard_key_t)cp);
+  cr_assert_gt(KEY_UP, 0x10ffff);
+  cr_assert_eq(keyboard_stream_read(next_byte), KEY_NONE);
 }

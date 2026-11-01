@@ -25,8 +25,7 @@ Test(input_events, bracketed_paste_preserves_unicode_and_shortcuts_as_text) {
   const keyboard_key_t start[] = {KEY_PASTE_BEGIN, '/', 0xc3};
   cr_assert_eq(read_keys(&state, start, 3), KEY_NONE);
   cr_assert(state.pasting);
-  const keyboard_key_t end[] = {
-      0xa9, (keyboard_key_t)(KEY_UNICODE_BASE + 0x1f600), '?', 'o', '=', '\r', '\n', '\t', KEY_PASTE_END, 'q'};
+  const keyboard_key_t end[] = {0xa9, (keyboard_key_t)(0x1f600), '?', 'o', '=', '\r', '\n', '\t', KEY_PASTE_END, 'q'};
   cr_assert_eq(read_keys(&state, end, sizeof(end) / sizeof(*end)), KEY_PASTE);
   cr_assert(state.ready);
   cr_assert_not(state.invalid);
@@ -51,9 +50,9 @@ Test(input_events, rejected_paste_is_drained_before_next_shortcut) {
 
 Test(input_events, text_bursts_round_trip_without_casting_unicode_to_bytes) {
   tui_input_events_t state = {0};
-  const keyboard_key_t input[] = {'a', (keyboard_key_t)(KEY_UNICODE_BASE + 0x754c), KEY_LEFT, 'b'};
+  const keyboard_key_t input[] = {'a', (keyboard_key_t)(0x754c), KEY_LEFT, 'b'};
   cr_assert_eq(read_keys(&state, input, 4), 'a');
-  cr_assert_eq(tui_input_events_read(&state, next_key, path), KEY_UNICODE_BASE + 0x754c);
+  cr_assert_eq(tui_input_events_read(&state, next_key, path), 0x754c);
   cr_assert_eq(tui_input_events_read(&state, next_key, path), KEY_LEFT);
   cr_assert_eq(tui_input_events_read(&state, next_key, path), 'b');
   cr_assert_eq(tui_input_events_read(&state, next_key, path), KEY_NONE);
@@ -61,7 +60,7 @@ Test(input_events, text_bursts_round_trip_without_casting_unicode_to_bytes) {
 
 Test(input_events, application_classifies_unicode_path_bursts) {
   tui_input_events_t state = {0};
-  const keyboard_key_t input[] = {'/', (keyboard_key_t)(KEY_UNICODE_BASE + 0x754c), '.', 'm', 'p', '4', '\r', '\n'};
+  const keyboard_key_t input[] = {'/', (keyboard_key_t)(0x754c), '.', 'm', 'p', '4', '\r', '\n'};
   cr_assert_eq(read_keys(&state, input, 8), KEY_PASTE);
   cr_assert_str_eq(state.paste, "/界.mp4");
   cr_assert_not(state.invalid);
@@ -69,7 +68,7 @@ Test(input_events, application_classifies_unicode_path_bursts) {
   keys = input;
   remaining = 8;
   cr_assert_eq(tui_input_events_read(&state, next_key, NULL), '/');
-  cr_assert_eq(tui_input_events_read(&state, next_key, NULL), KEY_UNICODE_BASE + 0x754c);
+  cr_assert_eq(tui_input_events_read(&state, next_key, NULL), 0x754c);
 }
 
 Test(input_events, a_boundary_in_a_burst_does_not_reorder_events) {
@@ -100,6 +99,30 @@ Test(input_events, full_payload_is_drained_and_never_overflows) {
   cr_assert(state.invalid);
   cr_assert_eq(state.length, sizeof(state.paste) - 1);
   cr_assert_eq(state.paste[state.length], 0);
+  state.ready = false;
+  cr_assert_eq(tui_input_events_read(&state, next_key, path), 'q');
+}
+
+Test(input_events, classified_path_keeps_the_following_bracketed_paste_framed) {
+  tui_input_events_t state = {0};
+  const keyboard_key_t input[] = {'/', 'x', KEY_PASTE_BEGIN, 'q', '?', 'o', '=', KEY_PASTE_END, KEY_LEFT};
+  cr_assert_eq(read_keys(&state, input, sizeof(input) / sizeof(*input)), KEY_PASTE);
+  cr_assert_not(state.invalid);
+  cr_assert_str_eq(state.paste, "/x");
+  state.ready = false;
+  cr_assert_eq(tui_input_events_read(&state, next_key, path), KEY_PASTE);
+  cr_assert_not(state.invalid);
+  cr_assert_str_eq(state.paste, "q?o=");
+  state.ready = false;
+  cr_assert_eq(tui_input_events_read(&state, next_key, path), KEY_LEFT);
+}
+
+Test(input_events, classified_path_preserves_a_stray_end_boundary_without_losing_the_next_key) {
+  tui_input_events_t state = {0};
+  const keyboard_key_t input[] = {'/', 'x', KEY_PASTE_END, 'q'};
+  cr_assert_eq(read_keys(&state, input, 4), KEY_PASTE);
+  cr_assert_not(state.invalid);
+  cr_assert_str_eq(state.paste, "/x");
   state.ready = false;
   cr_assert_eq(tui_input_events_read(&state, next_key, path), 'q');
 }

@@ -2,6 +2,7 @@
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <string.h>
+#include <locale.h>
 
 Test(text_edit, insertion_is_atomic_and_keeps_valid_utf8) {
   char text[16] = "a界b";
@@ -84,8 +85,8 @@ Test(text_edit, boundaries_word_operations_and_ignored_keys) {
   ui_input_edit_key(text, sizeof(text), &length, &cursor, KEY_UP);
   ui_input_edit_key(text, sizeof(text), &length, &cursor, 127);
   ui_input_edit_key(text, sizeof(text), &length, &cursor, 1);
-  ui_input_edit_key(text, sizeof(text), &length, &cursor, (keyboard_key_t)0x80);
-  ui_input_edit_key(text, sizeof(text), &length, &cursor, (keyboard_key_t)(KEY_UNICODE_BASE + 0x1f600));
+  ui_input_edit_key(text, sizeof(text), &length, &cursor, (keyboard_key_t)0x110000);
+  ui_input_edit_key(text, sizeof(text), &length, &cursor, (keyboard_key_t)(0x1f600));
   cr_assert_str_eq(text, "😀");
   ui_input_edit_key(text, sizeof(text), &length, &cursor, '\t');
   cr_assert_str_eq(text, "😀\t");
@@ -104,4 +105,26 @@ Test(text_edit, combining_marks_and_emoji_sequences_preserve_codepoint_boundarie
   ui_input_edit_key(text, sizeof(text), &length, &cursor, 127);
   ui_input_edit_key(text, sizeof(text), &length, &cursor, 127);
   cr_assert_str_eq(text, "e");
+}
+
+Test(text_edit, word_deletion_uses_ascii_delimiters_in_every_available_locale) {
+  const char *locales[] = {"C", "C.UTF-8", "en_US.ISO8859-1", "fr_FR.ISO8859-1"};
+  char original[128];
+  SAFE_STRNCPY(original, setlocale(LC_CTYPE, NULL), sizeof(original));
+  for (size_t i = 0; i < sizeof(locales) / sizeof(*locales); ++i) {
+    if (!setlocale(LC_CTYPE, locales[i]))
+      continue;
+    char text[64] = "abcàdef tail";
+    size_t length = strlen(text), cursor = length;
+    ui_input_edit_key(text, sizeof(text), &length, &cursor, 23);
+    cr_assert_str_eq(text, "abcàdef ");
+    ui_input_edit_key(text, sizeof(text), &length, &cursor, 23);
+    cr_assert_str_eq(text, "");
+    cr_assert_eq(ui_input_insert(text, sizeof(text), &length, &cursor, "abcàdef\t\n\r\v\f tail"), ASCIICHAT_OK);
+    cursor = 0;
+    ui_input_edit_key(text, sizeof(text), &length, &cursor, KEY_CTRL_DELETE);
+    cr_assert_str_eq(text, "tail");
+    cr_assert_eq(cursor, 0);
+  }
+  cr_assert_not_null(setlocale(LC_CTYPE, original));
 }

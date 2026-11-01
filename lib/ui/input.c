@@ -1,7 +1,6 @@
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <string.h>
-#include <ctype.h>
 #include <ascii-chat/util/utf8.h>
 asciichat_error_t ui_input_render(frame_buffer_t *buffer, int row, int col, int width, int height, const char *text,
                                   size_t cursor, bool preserve_quotes) {
@@ -67,6 +66,10 @@ asciichat_error_t ui_input_render(frame_buffer_t *buffer, int row, int col, int 
   return ASCIICHAT_OK;
 }
 
+static bool word_space(unsigned char byte) {
+  return byte == ' ' || (byte >= '\t' && byte <= '\r');
+}
+
 static size_t previous(const char *text, size_t cursor) {
   if (cursor) {
     do {
@@ -97,14 +100,14 @@ void ui_input_edit_key(char *buffer, size_t capacity, size_t *length, size_t *po
   else if (key == KEY_DELETE && cursor < len)
     end += (size_t)utf8_next_char_bytes(buffer + cursor, len - cursor);
   else if (key == 23) {
-    while (start && isspace((unsigned char)buffer[start - 1]))
+    while (start && word_space((unsigned char)buffer[start - 1]))
       start = previous(buffer, start);
-    while (start && !isspace((unsigned char)buffer[start - 1]))
+    while (start && !word_space((unsigned char)buffer[start - 1]))
       start = previous(buffer, start);
   } else if (key == KEY_CTRL_DELETE) {
-    while (end < len && !isspace((unsigned char)buffer[end]))
+    while (end < len && !word_space((unsigned char)buffer[end]))
       end += (size_t)utf8_next_char_bytes(buffer + end, len - end);
-    while (end < len && isspace((unsigned char)buffer[end]))
+    while (end < len && word_space((unsigned char)buffer[end]))
       ++end;
   } else {
     char text[5];

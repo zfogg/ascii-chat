@@ -146,8 +146,8 @@ Test(log_search_behavior, unicode_typing_paste_and_word_deletion) {
   cr_assert_eq(log_search_insert_text("x"), ERROR_INVALID_STATE);
   cr_assert_eq(log_search_insert_text(NULL), ERROR_INVALID_PARAM);
   log_search_enter_mode();
-  log_search_handle_key((keyboard_key_t)(KEY_UNICODE_BASE + 0x754c));
-  log_search_handle_key((keyboard_key_t)(KEY_UNICODE_BASE + 0x1f600));
+  log_search_handle_key((keyboard_key_t)(0x754c));
+  log_search_handle_key((keyboard_key_t)(0x1f600));
   cr_assert_str_eq(log_search_get_input_buffer(), "界😀");
   log_search_handle_key(KEY_LEFT);
   cr_assert_eq(log_search_get_cursor_position(), 3);

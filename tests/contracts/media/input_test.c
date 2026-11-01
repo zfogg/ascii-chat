@@ -64,7 +64,7 @@ static bool fake_logs_key(keyboard_key_t key) {
 }
 static asciichat_error_t fake_search_insert(const char *text) {
   cr_assert_lt(strlen(text), sizeof(search_paste));
-  memcpy(search_paste, text, strlen(text) + 1);
+  SAFE_STRNCPY(search_paste, text, sizeof(search_paste));
   return ASCIICHAT_OK;
 }
 static bool fake_cancel(session_capture_ctx_t *capture) {
