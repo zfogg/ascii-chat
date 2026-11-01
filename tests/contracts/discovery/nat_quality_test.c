@@ -11,6 +11,7 @@ static void setup(void) {
   log_init(NULL, LOG_FATAL, false, false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
 }
+/** @brief Release the loopback STUN fixture and restore per-case options/logging. */
 static void teardown(void) {
   if (remote != INVALID_SOCKET_VALUE)
     socket_close(remote);

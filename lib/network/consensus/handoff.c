@@ -91,11 +91,21 @@ void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[16]) {
     return;
   }
 }
+/**
+ * @brief Record loss of the incumbent, ignoring delayed reports about old hosts.
+ * The caller authenticates the reporter before the next tick starts recovery.
+ */
 void consensus_handoff_host_lost(consensus_handoff_t *s, const uint8_t host[16]) {
   if (!memcmp(s->host, host, sizeof(s->host)))
     s->host_lost = true;
 }
 
+/**
+ * @brief Accept a member's probe or preparation reply using receiver-clock time.
+ * Probe metadata becomes eligible only with a matched, timely body. Preparation
+ * replies must match the current generation, round, and selected successor.
+ * @return ASCIICHAT_OK if accepted, or a protocol error without accepting the frame.
+ */
 asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consensus_handoff_message_t *m, size_t length,
                                             uint64_t now) {
   if (memcmp(s->session, m->session, 16) != 0)
@@ -145,6 +155,14 @@ asciichat_error_t consensus_handoff_receive(consensus_handoff_t *s, const consen
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Client cannot announce a handoff decision");
   return ASCIICHAT_OK;
 }
+/**
+ * @brief Advance measured successor selection and bounded host-loss recovery.
+ * Fresh eligible peers prepare within five seconds; all recovery attempts share
+ * one 15-second budget. Only a fresh prepared peer can commit, and failure is terminal.
+ * @param now Monotonic receiver time in milliseconds.
+ * @param a Output action to send when the function returns true.
+ * @return True if a PREPARE, COMMIT, or terminal FAILED action was produced.
+ */
 bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_handoff_message_t *a) {
   memset(a, 0, sizeof(*a));
   memcpy(a->session, s->session, 16);

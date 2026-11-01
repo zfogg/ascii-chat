@@ -33,6 +33,7 @@ asciichat_error_t refresh_probe(nat_quality_t *quality, const char *host, uint16
   quality->has_public_ip = true;
   return probe_result;
 }
+/** @brief Schedule a controllable fake detector, or inject a thread-start failure. */
 int refresh_create(asciichat_thread_t *thread, const char *name, void *(*worker)(void *), void *arg) {
   (void)thread;
   (void)name;

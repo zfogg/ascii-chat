@@ -45,6 +45,7 @@ static asciichat_error_t discovery_session_send(acip_transport_t *transport, con
   sends++;
   return send_result;
 }
+/** @brief Inject a framed signaling packet or a controlled transport receive failure. */
 static asciichat_error_t discovery_session_receive(acip_transport_t *transport, void **buffer, size_t *len,
                                                    void **allocation) {
   (void)transport;

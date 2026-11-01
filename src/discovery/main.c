@@ -416,6 +416,11 @@ static asciichat_error_t discovery_send_settings(const options_t *values, uint32
   return acip_settings_send(context, values, request, UINT32_MAX);
 }
 
+/**
+ * @brief Run media for the committed discovery role and dispatch role changes.
+ * Stops media workers before replacing borrowed transports, and preserves the
+ * existing recovery deadline while awaiting ACDS rather than restarting failover.
+ */
 static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_display_ctx_t *display,
                                        void *user_data) {
   (void)user_data; // Unused

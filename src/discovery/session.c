@@ -388,6 +388,12 @@ static void *nat_detection_thread_fn(void *arg) {
   return NULL;
 }
 
+/**
+ * @brief Refresh an expired NAT hint without overlapping detector workers.
+ * Only the controlling thread calls this function. Completion/cache fields are
+ * read under the mutex, and a completed worker must join before its handle is reused.
+ * Failed starts/detections are throttled; the previous cache remains available.
+ */
 static void start_nat_detection(discovery_session_t *session) {
   uint64_t now = session_get_current_time_ms();
   mutex_lock(&session->nat_quality_mutex);
@@ -1036,7 +1042,7 @@ static void handle_discovery_webrtc_ice(discovery_session_t *session, void *data
 }
 
 /**
- * @brief Dispatch incoming ACDS packets for WebRTC signaling
+ * @brief Encode and send a handoff control frame or measured probe body
  */
 static asciichat_error_t discovery_handoff_send(discovery_session_t *session, consensus_handoff_message_t *message,
                                                 bool probe) {
@@ -1048,6 +1054,11 @@ static asciichat_error_t discovery_handoff_send(discovery_session_t *session, co
   SAFE_FREE(bytes);
   return result;
 }
+/**
+ * @brief Apply a validated ACDS handoff action on the controlling thread.
+ * PREPARE acknowledges actual host startup. COMMIT defers transport/role replacement
+ * until media workers stop; FAILED records a terminal session error.
+ */
 static void discovery_handoff_receive(discovery_session_t *session, const void *data, size_t length) {
   consensus_handoff_message_t message;
   if (consensus_handoff_decode(data, length, &message) != ASCIICHAT_OK ||
@@ -1089,6 +1100,12 @@ static void discovery_handoff_receive(discovery_session_t *session, const void *
              message.generation);
   }
 }
+/**
+ * @brief Replace the old role after a committed handoff and media-worker shutdown.
+ * Releases borrowed-role resources, resets liveness, and initializes the committed
+ * successor connection. Callers must stop media workers before entering this function.
+ * @return ASCIICHAT_OK if no handoff is pending or initialization succeeds.
+ */
 asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session) {
   if (!session || !session->handoff_pending)
     return ASCIICHAT_OK;
@@ -1122,6 +1139,12 @@ asciichat_error_t discovery_session_apply_handoff(discovery_session_t *session) 
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Send a measured probe at most every five seconds, including during recovery.
+ * Refreshes expired native NAT hints asynchronously and advertises only fresh hints.
+ * ACDS measures the probe body rather than trusting a sender-supplied throughput value.
+ * @return The transport send error, or ASCIICHAT_OK when sent or not yet due.
+ */
 static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) {
   uint64_t now = session_get_current_time_ms();
   if (session->handoff_last_sample_ms && now - session->handoff_last_sample_ms < 5000)
@@ -1450,6 +1473,7 @@ static asciichat_error_t discovery_session_wait_for_peer(discovery_session_t *se
   return ASCIICHAT_OK;
 }
 
+/** @brief Bootstrap the initial TCP role and start asynchronous NAT hint detection. */
 static void discovery_session_begin_negotiation(discovery_session_t *session) {
   // Initialize negotiation
   negotiate_init(&session->negotiate, session->session_id, session->participant_id, session->is_initiator);
@@ -1632,6 +1656,11 @@ static asciichat_error_t discovery_session_retry_webrtc(discovery_session_t *ses
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Dispatch signaling until the host DataChannel opens or bounded retries fail.
+ * Each attempt has an end-to-end deadline, including the time after ICE gathering
+ * completes; configured retry limits determine when the connection becomes terminal.
+ */
 static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *session) {
   // Check if transport is ready (DataChannel opened)
   if (session->webrtc_transport_ready) {
@@ -1731,6 +1760,11 @@ static asciichat_error_t discovery_session_connect_tcp(discovery_session_t *sess
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Dispatch ACDS actions, then check liveness only while the session stays active.
+ * Terminal failures and deferred commitments return before any host-loss handling,
+ * preventing liveness checks from reviving a failed session or replacing a commitment.
+ */
 static asciichat_error_t discovery_session_process_active(discovery_session_t *session, int64_t timeout_ns) {
   // All session types dispatch ACDS recovery decisions without a blocking receive.
   if (session->acds_transport && acip_transport_has_pending_data(session->acds_transport)) {
@@ -1800,6 +1834,10 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Continue signaling while awaiting ACDS commitment or terminal failure.
+ * A 30-second local deadline also bounds recovery when the signaling decision is lost.
+ */
 static asciichat_error_t discovery_session_process_migration(discovery_session_t *session, int64_t timeout_ns) {
   if (session->acds_transport && acip_transport_has_pending_data(session->acds_transport)) {
     packet_type_t type;
@@ -1960,6 +1998,11 @@ void discovery_session_host_pong(discovery_session_t *session) {
     atomic_store_u64(&session->liveness.last_pong_received_ms, session_get_current_time_ms());
 }
 
+/**
+ * @brief Check host transport availability and advance TCP ping/pong liveness.
+ * Uses receiver-clock pong timestamps and bounded consecutive-failure tracking.
+ * @return ASCIICHAT_OK for a live host, or a network error after loss is detected.
+ */
 asciichat_error_t discovery_session_check_host_alive(discovery_session_t *session) {
   if (!session || session->is_host) {
     // We are the host, so "host" is always alive
@@ -2038,6 +2081,12 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Report host loss and await the authoritative ACDS handoff decision.
+ * Records the local recovery deadline origin. Advisory successor plans never
+ * authorize immediate promotion or reconnection from this function.
+ * @return ASCIICHAT_OK if the report was sent; a send error also fails the session.
+ */
 asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *session, uint32_t disconnect_reason) {
   if (!session) {
     SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");

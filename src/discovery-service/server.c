@@ -829,6 +829,11 @@ static void acds_on_host_announcement(const acip_host_announcement_t *announceme
   log_info("Session host updated via HOST_ANNOUNCEMENT from %s", client_ip);
 }
 
+/**
+ * @brief Authenticate a host-loss report and advance the measured recovery policy.
+ * Session and participant IDs must match the joined signaling transport; obsolete
+ * incumbent reports are ignored by consensus. The handoff mutex serializes policy updates.
+ */
 static void acds_on_host_lost(const acip_host_lost_t *host_lost, acip_transport_t *transport, const char *client_ip,
                               void *app_ctx) {
   ASCII_OTEL_SCOPE(DISCOVERY_HOST_LOST);
