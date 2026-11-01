@@ -1,5 +1,4 @@
 #include <ascii-chat/util/password.h>
-#include <ascii-chat/tui/input.h>
 #include <sodium.h>
 #include <ascii-chat/network/acip/settings.h>
 /**
@@ -31,8 +30,6 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/connection.h>
-#include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/opus.h>
 
@@ -221,6 +218,19 @@ void session_participant_destroy(session_participant_t *p) {
  * Session Participant Connection Functions
  * ============================================================================ */
 
+static asciichat_error_t participant_prepare(network_connection_t *network, const connection_endpoint_t *endpoint,
+                                             const char *password, void *context) {
+  (void)endpoint;
+  session_participant_t *p = context;
+  asciichat_error_t result = network_connection_prepare_security(network, false, password);
+  if (result == ASCIICHAT_OK && p->server_key[0]) {
+    crypto_handshake_context_t *ctx = network_connection_handshake(network);
+    ctx->verify_server_key = true;
+    SAFE_STRNCPY(ctx->expected_server_key, p->server_key, sizeof(ctx->expected_server_key));
+  }
+  return result;
+}
+
 asciichat_error_t session_participant_connect(session_participant_t *p) {
   log_debug("p=%p", p);
 
@@ -238,65 +248,31 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   if (p->port > UINT16_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Participant port is outside the transport endpoint range");
 
-  session_participant_disconnect(p);
-  if (p->video_thread_created || p->audio_thread_created)
-    return SET_ERRNO(ERROR_INVALID_STATE, "Stop media before reconnecting");
-
+  asciichat_error_t result = session_connection_stop(&p->connection);
+  if (result != ASCIICHAT_OK)
+    return result;
   participant_connection_init(p);
-
-  asciichat_error_t result;
   char password[PASSWORD_BUFFER_SIZE] = {0};
-  bool entered = false;
-  for (;;) {
-    result = network_connection_open("participant", p->address, p->port, NULL, &p->network, NULL);
-    if (result != ASCIICHAT_OK)
-      break;
-    p->transport = network_connection_transport(p->network);
-    p->transport_ownership = ACIP_TRANSPORT_OWNED;
-    result = network_connection_prepare_security(p->network, false,
-                                                 entered          ? password
-                                                 : p->password[0] ? p->password
-                                                                  : NULL);
-    sodium_memzero(password, sizeof(password));
-    if (result != ASCIICHAT_OK)
-      break;
-    crypto_handshake_context_t *ctx = network_connection_handshake(p->network);
-    ctx->defer_password_prompt = true;
-    if (p->server_key[0]) {
-      ctx->verify_server_key = true;
-      SAFE_STRNCPY(ctx->expected_server_key, p->server_key, sizeof(ctx->expected_server_key));
-    }
-    uint8_t mode = network_connection_crypto_mode(p->network);
-    if (!GET_OPTION(no_auth))
-      mode |= ACIP_CRYPTO_AUTH;
-    result = network_client_negotiate(p->transport, ctx, mode, NETWORK_PROTOCOL_MEDIA);
-    uint8_t failure = ctx->password_failure;
-    if (result == ASCIICHAT_OK || !failure)
-      break;
-    network_connection_destroy(&p->network);
-    p->transport = NULL;
-    CLEAR_ERRNO();
-    char target[320];
-    snprintf(target, sizeof(target), "%s:%u", p->address, (unsigned)p->port);
-    result = ui_input_password(target, password, sizeof(password), failure & AUTH_FAIL_PASSWORD_INCORRECT);
-    if (result != ASCIICHAT_OK)
-      break;
-    entered = true;
-  }
+  SAFE_STRNCPY(password, p->password, sizeof(password));
+  result = session_connection_establish("participant", p->address, p->port, NULL, &p->network, password,
+                                        sizeof(password), participant_prepare, p);
   sodium_memzero(password, sizeof(password));
+  p->transport = network_connection_transport(p->network);
+  p->transport_ownership = p->network ? ACIP_TRANSPORT_OWNED : ACIP_TRANSPORT_BORROWED;
+  if (result == ASCIICHAT_OK)
+    result = session_connection_start(&p->connection);
   if (result != ASCIICHAT_OK) {
-    network_connection_destroy(&p->network);
-    p->transport = NULL;
+    asciichat_errno_scope_t cleanup = errno_scope_begin();
+    session_connection_stop(&p->connection);
+    errno_scope_end(cleanup, ASCIICHAT_ERRNO_HANDLED);
     return result;
   }
-  network_connection_ready(p->network);
   log_debug("session_participant_connect: setting p->connected=true");
 
   mutex_lock(&p->settings_mutex);
   p->settings_request = 0;
   p->settings.version = 0;
   mutex_unlock(&p->settings_mutex);
-  session_connection_start(&p->connection);
   p->connected = true;
   p->client_id = 0; // Will be assigned by server
 
@@ -715,7 +691,7 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
 
   if (ownership != ACIP_TRANSPORT_BORROWED && ownership != ACIP_TRANSPORT_OWNED)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport ownership");
-  if (transport == p->transport) {
+  if (transport && transport == p->transport) {
     if (transport && ownership != p->transport_ownership)
       return SET_ERRNO(ERROR_INVALID_STATE, "Detach before transferring transport ownership");
     return ASCIICHAT_OK;

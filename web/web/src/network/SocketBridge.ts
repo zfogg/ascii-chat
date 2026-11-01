@@ -44,6 +44,7 @@ export class SocketBridge {
   private reconnectAttempts = 0;
   private isUserDisconnecting = false;
   private wasEverConnected = false;
+  private rejectPending: ((error: Error) => void) | null = null;
   private readonly RECONNECT_DELAY = 1000; // 1 second fixed delay
   private readonly HEARTBEAT_INTERVAL = 1000; // 1 second heartbeat check (detect disconnects quickly)
 
@@ -61,10 +62,14 @@ export class SocketBridge {
    * Connect to WebSocket server with automatic reconnection
    */
   async connect(): Promise<void> {
+    if (this.isUserDisconnecting || this.ws)
+      throw new Error("Socket connection already started or closed");
     return new Promise((resolve, reject) => {
+      this.rejectPending = reject;
       try {
         this.createAndSetupWebSocket(resolve, reject);
       } catch (error) {
+        this.rejectPending = null;
         reject(error);
       }
     });
@@ -83,8 +88,13 @@ export class SocketBridge {
     // );
     this.ws = new WebSocket(this.options.url, "acip");
     this.ws.binaryType = "arraybuffer";
+    const socket = this.ws;
+    let opened = false;
 
     const handleOpen = () => {
+      if (this.ws !== socket || this.isUserDisconnecting || opened) return;
+      opened = true;
+      this.rejectPending = null;
       console.log("[SocketBridge] WebSocket connected");
       this.wasEverConnected = true;
       this.reconnectAttempts = 0;
@@ -98,6 +108,7 @@ export class SocketBridge {
     };
 
     const handleMessage = (event: Event) => {
+      if (this.ws !== socket || this.isUserDisconnecting) return;
       const msgEvent = event as MessageEvent;
       const fragment = new Uint8Array(msgEvent.data);
       recordDownload(fragment.byteLength);
@@ -186,6 +197,8 @@ export class SocketBridge {
     };
 
     const handleError = (event: Event) => {
+      if (this.ws !== socket || this.isUserDisconnecting) return;
+      this.rejectPending = null;
       console.error("[SocketBridge] WebSocket error event:", event);
       console.error(
         "[SocketBridge] WebSocket readyState:",
@@ -204,6 +217,9 @@ export class SocketBridge {
     };
 
     const handleClose = (event: Event) => {
+      if (this.ws !== socket || this.isUserDisconnecting) return;
+      this.rejectPending = null;
+      if (!opened) reject(new Error("WebSocket closed before opening"));
       const closeEvent = event as CloseEvent;
       console.log(
         `[SocketBridge] WebSocket CLOSED: code=${closeEvent.code} reason="${closeEvent.reason}" wasClean=${closeEvent.wasClean}`,
@@ -253,7 +269,7 @@ export class SocketBridge {
    * Schedule a reconnection attempt
    */
   private scheduleReconnect(): void {
-    if (this.reconnectTimeoutId !== null) {
+    if (this.isUserDisconnecting || this.reconnectTimeoutId !== null) {
       return; // Already scheduled
     }
 
@@ -403,6 +419,8 @@ export class SocketBridge {
   close(): void {
     console.log("[SocketBridge] User calling close()");
     this.isUserDisconnecting = true;
+    this.rejectPending?.(new Error("WebSocket connection cancelled"));
+    this.rejectPending = null;
 
     // Cancel any pending reconnection attempt
     if (this.reconnectTimeoutId !== null) {

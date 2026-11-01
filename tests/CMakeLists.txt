@@ -1599,7 +1599,8 @@ endif()
 
 # Criterion connection owner tests with real blocked TCP workers.
 if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-session-connections contracts/session/connection_test.c contracts/session/protocol_test.c)
+    add_executable(test-session-connections contracts/session/connection_test.c contracts/session/protocol_test.c
+        contracts/session/establish_test.c)
     asciichat_configure_contract(test-session-connections)
     target_link_libraries(test-session-connections PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     target_include_directories(test-session-connections PRIVATE

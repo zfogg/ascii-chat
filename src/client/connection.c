@@ -1,7 +1,5 @@
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/otel.h>
-#include <ascii-chat/tui/input.h>
-#include <ascii-chat/network/negotiation.h>
 #include "connection_internal.h"
 #include "server.h"
 #include "audio.h"
@@ -126,6 +124,18 @@ asciichat_error_t client_connection_create(client_connection_t **out) {
   return result;
 }
 
+static asciichat_error_t client_prepare(network_connection_t *network, const connection_endpoint_t *endpoint,
+                                        const char *password, void *context) {
+  client_connection_t *connection = context;
+  connection->transport = network_connection_transport(network);
+  server_connection_set_ip(connection, endpoint->host);
+  server_connection_set_port(connection, endpoint->port);
+  asciichat_error_t result = client_crypto_init(connection, password);
+  if (result == ASCIICHAT_OK && !GET_OPTION(no_auth))
+    connection->crypto_mode |= ACIP_CRYPTO_AUTH;
+  return result;
+}
+
 asciichat_error_t client_connection_start(client_connection_t *connection, const char *address, uint16_t port,
                                           char *password, size_t password_capacity) {
   ASCII_OTEL_SCOPE(CONNECTION_ATTEMPT);
@@ -134,39 +144,12 @@ asciichat_error_t client_connection_start(client_connection_t *connection, const
   if (!connection || atomic_load_int(&connection->lifecycle.state) != SESSION_CONNECTION_STARTING) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection is not ready for startup");
   }
-  connection_endpoint_t endpoint;
-  asciichat_error_t result;
-  for (;;) {
-    result = network_connection_open("client", address, port, NULL, &connection->network, &endpoint);
-    if (result != ASCIICHAT_OK)
-      break;
-    connection->transport = network_connection_transport(connection->network);
-    server_connection_set_ip(connection, endpoint.host);
-    server_connection_set_port(connection, endpoint.port);
-    result = client_crypto_init(connection, password[0] ? password : NULL);
-    if (result != ASCIICHAT_OK)
-      break;
-    connection->crypto_ctx->defer_password_prompt = true;
-    if (!GET_OPTION(no_auth))
-      connection->crypto_mode |= ACIP_CRYPTO_AUTH;
-    result = network_client_negotiate(connection->transport, connection->crypto_ctx, connection->crypto_mode,
-                                      NETWORK_PROTOCOL_MEDIA);
-    uint8_t failure = connection->crypto_ctx->password_failure;
-    if (result == ASCIICHAT_OK || !failure)
-      break;
-    network_connection_destroy(&connection->network);
-    connection->transport = NULL;
-    connection->crypto_ctx = NULL;
-    CLEAR_ERRNO();
-    char target[320];
-    snprintf(target, sizeof(target), "%s:%u", endpoint.host, endpoint.port);
-    result = ui_input_password(target, password, password_capacity, failure & AUTH_FAIL_PASSWORD_INCORRECT);
-    if (result != ASCIICHAT_OK)
-      break;
-  }
+  asciichat_error_t result = session_connection_establish("client", address, port, NULL, &connection->network, password,
+                                                          password_capacity, client_prepare, connection);
+  connection->transport = network_connection_transport(connection->network);
+  connection->crypto_ctx = connection->network ? network_connection_handshake(connection->network) : NULL;
   if (result != ASCIICHAT_OK)
     return result;
-  network_connection_ready(connection->network);
   if (should_exit())
     return SET_ERRNO(ERROR_NETWORK, "Connection startup interrupted");
   server_connection_set_transport(connection, connection->transport);
