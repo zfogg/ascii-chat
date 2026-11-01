@@ -9,6 +9,8 @@
 static int opens, destroys, negotiations, prompts, detached;
 static asciichat_error_t dial_result, prepare_result, negotiate_result, prompt_result;
 static bool challenge;
+static bool record_negotiation_errors, record_cleanup_error;
+static asciichat_errno_scope_t test_errors;
 static crypto_handshake_context_t handshake;
 static network_connection_t *sentinel = (network_connection_t *)&handshake;
 static acip_transport_t transport;
@@ -33,6 +35,8 @@ static void destroy(network_connection_t **owner) {
   cr_assert_eq(detached, destroys + 1, "Aliases must be detached before owner destruction");
   destroys++;
   *owner = NULL;
+  if (record_cleanup_error)
+    SET_ERRNO(ERROR_THREAD, "cleanup cause");
 }
 static crypto_handshake_context_t *security(network_connection_t *owner) {
   cr_assert_eq(owner, sentinel);
@@ -61,7 +65,14 @@ static asciichat_error_t negotiate(acip_transport_t *t, crypto_handshake_context
   cr_assert(ctx->defer_password_prompt);
   negotiations++;
   ctx->password_failure = challenge && negotiations == 1 ? AUTH_FAIL_PASSWORD_INCORRECT : 0;
-  return ctx->password_failure ? ERROR_CRYPTO_AUTH : negotiate_result;
+  if (ctx->password_failure) {
+    if (record_negotiation_errors) {
+      SET_ERRNO(ERROR_CRYPTO, "password proof mismatch");
+      SET_ERRNO(ERROR_CRYPTO_AUTH, "password rejected");
+    }
+    return ERROR_CRYPTO_AUTH;
+  }
+  return negotiate_result == ASCIICHAT_OK ? ASCIICHAT_OK : SET_ERRNO(negotiate_result, "negotiation cause");
 }
 static asciichat_error_t prompt(const char *target, char *password, size_t capacity, bool incorrect) {
   cr_assert_str_eq(target, "resolved-host:1234");
@@ -96,9 +107,13 @@ static void setup(void) {
   opens = destroys = negotiations = prompts = detached = 0;
   dial_result = prepare_result = negotiate_result = prompt_result = ASCIICHAT_OK;
   challenge = false;
+  record_negotiation_errors = true;
+  record_cleanup_error = false;
+  test_errors = errno_scope_begin();
   memset(&handshake, 0, sizeof(handshake));
 }
 static void teardown(void) {
+  errno_scope_end(test_errors, ASCIICHAT_ERRNO_HANDLED);
   options_state_destroy();
 }
 TestSuite(session_establishment, .init = setup, .fini = teardown);
@@ -130,6 +145,44 @@ Test(session_establishment, does_not_retry_protocol_failure) {
   cr_assert_eq(owner, sentinel);
   cr_assert_eq(opens, 1);
   cr_assert_eq(prompts, 0);
+  asciichat_error_context_t cause;
+  cr_assert(HAS_ERRNO(&cause));
+  cr_assert_eq(cause.code, ERROR_NETWORK_PROTOCOL);
+  cr_assert_str_eq(cause.context_message, "negotiation cause");
+}
+Test(session_establishment, password_retry_dismisses_only_negotiation_errors) {
+  SET_ERRNO(ERROR_INVALID_STATE, "earlier operation");
+  asciichat_error_context_t earlier, remaining;
+  cr_assert(HAS_ERRNO(&earlier));
+  challenge = true;
+  network_connection_t *owner = NULL;
+  cr_assert_eq(establish(&owner), ASCIICHAT_OK);
+  cr_assert(HAS_ERRNO(&remaining));
+  cr_assert_eq(remaining.error_id, earlier.error_id);
+  cr_assert_not(errno_has_code(ERROR_CRYPTO));
+  cr_assert_not(errno_has_code(ERROR_CRYPTO_AUTH));
+}
+Test(session_establishment, password_retry_without_recorded_errors_preserves_earlier_error) {
+  SET_ERRNO(ERROR_INVALID_STATE, "earlier operation");
+  asciichat_error_context_t earlier, remaining;
+  cr_assert(HAS_ERRNO(&earlier));
+  challenge = true;
+  record_negotiation_errors = false;
+  network_connection_t *owner = NULL;
+  cr_assert_eq(establish(&owner), ASCIICHAT_OK);
+  cr_assert(HAS_ERRNO(&remaining));
+  cr_assert_eq(remaining.error_id, earlier.error_id);
+}
+Test(session_establishment, password_retry_preserves_cleanup_errors) {
+  challenge = true;
+  record_cleanup_error = true;
+  network_connection_t *owner = NULL;
+  cr_assert_eq(establish(&owner), ASCIICHAT_OK);
+  asciichat_error_context_t cause;
+  cr_assert(HAS_ERRNO(&cause));
+  cr_assert_eq(cause.code, ERROR_THREAD);
+  cr_assert_str_eq(cause.context_message, "cleanup cause");
+  cr_assert_not(errno_has_code(ERROR_CRYPTO_AUTH));
 }
 Test(session_establishment, prompt_cancellation_has_no_live_owner) {
   challenge = true;

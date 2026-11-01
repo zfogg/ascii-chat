@@ -24,18 +24,21 @@ asciichat_error_t session_connection_establish(const char *name, const char *add
     uint8_t mode = network_connection_crypto_mode(*owner);
     if (!GET_OPTION(no_auth))
       mode |= ACIP_CRYPTO_AUTH;
+    asciichat_errno_scope_t negotiation_errors = errno_scope_begin();
     result = network_client_negotiate(network_connection_transport(*owner), handshake, mode, NETWORK_PROTOCOL_MEDIA);
     uint8_t failure = handshake->password_failure;
     if (result == ASCIICHAT_OK) {
+      errno_scope_end(negotiation_errors, ASCIICHAT_ERRNO_HANDLED);
       network_connection_ready(*owner);
       return ASCIICHAT_OK;
     }
     if (!failure)
       return result;
+    // Recover only the rejected negotiation; caller and cleanup errors remain pending.
+    errno_scope_end(negotiation_errors, ASCIICHAT_ERRNO_DISMISSED);
     if (detach)
       detach(context);
     network_connection_destroy(owner);
-    CLEAR_ERRNO();
     char target[320];
     snprintf(target, sizeof(target), "%s:%u", endpoint.host, endpoint.port);
     result = ui_input_password(target, password, capacity, failure & AUTH_FAIL_PASSWORD_INCORRECT);
