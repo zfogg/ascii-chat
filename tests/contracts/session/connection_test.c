@@ -176,6 +176,82 @@ Test(session_connections, webrtc_interrupt_cancels_pending_io) {
   webrtc_interrupt_test();
 }
 
+static atomic_t closed_peer_sends, closed_peer_receives, closed_peer_releases;
+static bool peer_disconnected(acip_transport_t *transport) {
+  (void)transport;
+  return false;
+}
+static asciichat_error_t peer_closed_recv(acip_transport_t *transport, void **data, size_t *length, void **allocation) {
+  (void)transport;
+  (void)data;
+  (void)length;
+  (void)allocation;
+  atomic_fetch_add_int(&closed_peer_receives, 1);
+  return SET_ERRNO(ERROR_NETWORK, "fixture peer closed");
+}
+static asciichat_error_t peer_closed_send(acip_transport_t *transport, const void *data, size_t length) {
+  (void)transport;
+  (void)data;
+  (void)length;
+  atomic_fetch_add_int(&closed_peer_sends, 1);
+  return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "dead backend cannot drain reliable output");
+}
+static asciichat_error_t peer_close(acip_transport_t *transport) {
+  (void)transport;
+  return ASCIICHAT_OK;
+}
+static asciichat_error_t peer_packet(network_connection_t *connection, packet_type_t type, const void *data,
+                                     size_t length, void *context) {
+  (void)connection;
+  (void)type;
+  (void)data;
+  (void)length;
+  (void)context;
+  return ASCIICHAT_OK;
+}
+static void peer_released(network_connection_t *connection, void *context) {
+  (void)connection;
+  (void)context;
+  atomic_fetch_add_int(&closed_peer_releases, 1);
+}
+
+Test(session_connections, disconnected_peer_preserves_receive_cause_without_queuing_rejection) {
+  const acip_transport_methods_t methods = {
+      .recv = peer_closed_recv, .send = peer_closed_send, .close = peer_close, .is_connected = peer_disconnected};
+  acip_transport_t *transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
+  transport->methods = &methods;
+  network_connection_t *connection = NULL;
+  cr_assert_eq(network_connection_adopt(transport, &connection), ASCIICHAT_OK);
+  const network_connection_callbacks_t callbacks = {.packet = peer_packet};
+  atomic_store_int(&closed_peer_sends, 0);
+  cr_assert_eq(network_connection_run(connection, &callbacks, NULL), ERROR_NETWORK);
+  cr_assert_eq(atomic_load_int(&closed_peer_sends), 0);
+  network_connection_destroy(&connection);
+  cr_assert_null(connection);
+
+  // Inbound owners must also drain promptly rather than enqueue a rejection
+  // behind output retained by a disconnected backend.
+  CLEAR_ERRNO();
+  atomic_store_int(&closed_peer_receives, 0);
+  atomic_store_int(&closed_peer_releases, 0);
+  network_server_config_t config = {
+      .bind_ipv4 = true, .ipv4_address = "127.0.0.1", .callbacks = {.packet = peer_packet, .closed = peer_released}};
+  network_server_t *server = NULL;
+  cr_assert_eq(network_server_create(&config, &server), ASCIICHAT_OK);
+  transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
+  transport->methods = &methods;
+  cr_assert_eq(network_server_adopt(server, transport, "closed-peer", false), ASCIICHAT_OK);
+  uint64_t deadline = time_get_ns() + 2 * NS_PER_SEC_INT;
+  while (!atomic_load_int(&closed_peer_releases) && time_get_ns() < deadline)
+    platform_sleep_ms(1);
+  cr_assert_eq(atomic_load_int(&closed_peer_releases), 1);
+  cr_assert_eq(atomic_load_int(&closed_peer_receives), 1);
+  cr_assert_eq(atomic_load_int(&closed_peer_sends), 0);
+  cr_assert_eq(network_server_stop(server), ASCIICHAT_OK);
+  network_server_destroy(&server);
+  cr_assert_null(server);
+}
+
 Test(session_connections, retains_owners_until_workers_join, .timeout = 60) {
   int interrupted[2] = {0};
   const acip_transport_methods_t dispatch_methods = {.interrupt = count_interrupt};

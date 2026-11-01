@@ -255,7 +255,7 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   char password[PASSWORD_BUFFER_SIZE] = {0};
   SAFE_STRNCPY(password, p->password, sizeof(password));
   result = session_connection_establish("participant", p->address, p->port, NULL, &p->network, password,
-                                        sizeof(password), participant_prepare, p);
+                                        sizeof(password), participant_prepare, NULL, p);
   sodium_memzero(password, sizeof(password));
   p->transport = network_connection_transport(p->network);
   p->transport_ownership = p->network ? ACIP_TRANSPORT_OWNED : ACIP_TRANSPORT_BORROWED;

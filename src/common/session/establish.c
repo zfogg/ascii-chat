@@ -8,7 +8,7 @@
 asciichat_error_t session_connection_establish(const char *name, const char *address, uint16_t port,
                                                const network_connect_config_t *config, network_connection_t **owner,
                                                char *password, size_t capacity, session_connection_prepare_fn prepare,
-                                               void *context) {
+                                               void (*detach)(void *), void *context) {
   if (!owner || *owner || !password || capacity < PASSWORD_BUFFER_SIZE || !prepare)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session establishment parameters");
   for (;;) {
@@ -32,6 +32,8 @@ asciichat_error_t session_connection_establish(const char *name, const char *add
     }
     if (!failure)
       return result;
+    if (detach)
+      detach(context);
     network_connection_destroy(owner);
     CLEAR_ERRNO();
     char target[320];

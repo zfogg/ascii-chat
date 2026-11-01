@@ -6,7 +6,7 @@
 #include <string.h>
 
 /* Isolate dial/prompt boundaries while exercising the production retry owner. */
-static int opens, destroys, negotiations, prompts;
+static int opens, destroys, negotiations, prompts, detached;
 static asciichat_error_t dial_result, prepare_result, negotiate_result, prompt_result;
 static bool challenge;
 static crypto_handshake_context_t handshake;
@@ -30,6 +30,7 @@ static asciichat_error_t dial(const char *name, const char *address, uint16_t po
 }
 static void destroy(network_connection_t **owner) {
   cr_assert_eq(*owner, sentinel);
+  cr_assert_eq(detached, destroys + 1, "Aliases must be detached before owner destruction");
   destroys++;
   *owner = NULL;
 }
@@ -47,6 +48,10 @@ static uint8_t get_mode(network_connection_t *owner) {
 }
 static void ready(network_connection_t *owner) {
   cr_assert_eq(owner, sentinel);
+}
+static void detach(void *context) {
+  cr_assert_eq(context, &handshake);
+  detached++;
 }
 static asciichat_error_t negotiate(acip_transport_t *t, crypto_handshake_context_t *ctx, uint8_t crypto_mode,
                                    network_protocol_t profile) {
@@ -88,7 +93,7 @@ static void setup(void) {
   options_t options = options_t_new();
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
-  opens = destroys = negotiations = prompts = 0;
+  opens = destroys = negotiations = prompts = detached = 0;
   dial_result = prepare_result = negotiate_result = prompt_result = ASCIICHAT_OK;
   challenge = false;
   memset(&handshake, 0, sizeof(handshake));
@@ -99,7 +104,7 @@ static void teardown(void) {
 TestSuite(session_establishment, .init = setup, .fini = teardown);
 static asciichat_error_t establish(network_connection_t **owner) {
   char password[PASSWORD_BUFFER_SIZE] = "initial";
-  return fixture_establish("fixture", "input", 0, NULL, owner, password, sizeof(password), prepare, &handshake);
+  return fixture_establish("fixture", "input", 0, NULL, owner, password, sizeof(password), prepare, detach, &handshake);
 }
 Test(session_establishment, retries_password_on_a_fresh_owner) {
   challenge = true;

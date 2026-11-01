@@ -124,6 +124,12 @@ asciichat_error_t client_connection_create(client_connection_t **out) {
   return result;
 }
 
+static void client_detach(void *context) {
+  client_connection_t *connection = context;
+  connection->transport = NULL;
+  connection->crypto_ctx = NULL;
+}
+
 static asciichat_error_t client_prepare(network_connection_t *network, const connection_endpoint_t *endpoint,
                                         const char *password, void *context) {
   client_connection_t *connection = context;
@@ -145,7 +151,7 @@ asciichat_error_t client_connection_start(client_connection_t *connection, const
     return SET_ERRNO(ERROR_INVALID_STATE, "Connection is not ready for startup");
   }
   asciichat_error_t result = session_connection_establish("client", address, port, NULL, &connection->network, password,
-                                                          password_capacity, client_prepare, connection);
+                                                          password_capacity, client_prepare, client_detach, connection);
   connection->transport = network_connection_transport(connection->network);
   connection->crypto_ctx = connection->network ? network_connection_handshake(connection->network) : NULL;
   if (result != ASCIICHAT_OK)
