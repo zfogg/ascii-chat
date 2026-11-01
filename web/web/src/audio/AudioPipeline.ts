@@ -43,13 +43,18 @@ export class AudioPipeline {
   private volume = 1;
   private playbackEnabled = false;
   private recording: MediaStreamAudioDestinationNode | null = null;
+  private recordingMedia: HTMLMediaElement | null = null;
   private recordingMediaCleanup: (() => void) | null = null;
 
   /** Replace the file-audio tap independently of element mute and speaker volume. */
   setRecordingMedia(element: HTMLMediaElement | null): void {
-    this.recordingMediaCleanup?.();
-    this.recordingMediaCleanup = null;
-    if (!element || !this.recording || !this.context) return;
+    if (element === this.recordingMedia) return;
+    if (!element || !this.recording || !this.context) {
+      this.recordingMediaCleanup?.();
+      this.recordingMediaCleanup = null;
+      this.recordingMedia = null;
+      return;
+    }
     const capture = element as HTMLMediaElement & {
       captureStream?: () => MediaStream;
       mozCaptureStream?: () => MediaStream;
@@ -77,13 +82,23 @@ export class AudioPipeline {
     };
     stream.addEventListener("addtrack", update);
     stream.addEventListener("removetrack", update);
-    this.recordingMediaCleanup = () => {
+    const cleanup = () => {
       stream.removeEventListener("addtrack", update);
       stream.removeEventListener("removetrack", update);
       source?.disconnect();
       stream.getTracks().forEach((track) => track.stop());
     };
-    update();
+    try {
+      update();
+    } catch (error) {
+      cleanup();
+      throw error;
+    }
+    // Commit only after capture and graph creation succeed. Keep the old tap
+    // alive on failure, and keep one tap for a retained element during seeking.
+    this.recordingMediaCleanup?.();
+    this.recordingMediaCleanup = cleanup;
+    this.recordingMedia = element;
   }
 
   /** A separate output bus: local inputs never connect to the loudspeakers. */
@@ -104,6 +119,7 @@ export class AudioPipeline {
 
   /** Detach recording taps while preserving microphone capture and monitoring. */
   stopRecording(): void {
+    this.recordingMedia = null;
     this.recordingMediaCleanup?.();
     this.recordingMediaCleanup = null;
     const bus = this.recording;
