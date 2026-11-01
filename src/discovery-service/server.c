@@ -331,6 +331,19 @@ static inline void acds_track_packet_sent(acds_server_t *server, size_t payload_
 // These callbacks are invoked by acip_handle_acds_packet() via O(1) array dispatch.
 // Each callback implements: Rate Limit → Crypto Verify → Business Logic → DB Save
 
+// Publish complete connection membership atomically with respect to host fanout.
+static void acds_client_joined(acds_server_t *server, acds_client_data_t *client, const uint8_t session_id[16],
+                               const uint8_t participant_id[16]) {
+  if (!client)
+    return;
+  mutex_lock(&server->handoff_mutex);
+  memcpy(client->session_id, session_id, sizeof(client->session_id));
+  memcpy(client->participant_id, participant_id, sizeof(client->participant_id));
+  client->joined_session = true;
+  client->session_established = true;
+  mutex_unlock(&server->handoff_mutex);
+}
+
 static void acds_on_session_create(const acip_session_create_t *req, acip_transport_t *transport, const char *client_ip,
                                    void *app_ctx) {
   ASCII_OTEL_SCOPE(DISCOVERY_CREATE);
@@ -447,13 +460,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
                resp.session_string, resp.session_id[0], resp.session_id[1], client_data->num_pending_keys,
                resp.stun_count, resp.turn_count);
 
-      // Store session/participant IDs and mark session as established
-      mutex_lock(&server->handoff_mutex);
-      memcpy(client_data->session_id, resp.session_id, 16);
-      memcpy(client_data->participant_id, resp.participant_id, 16);
-      client_data->joined_session = true;
-      client_data->session_established = true; // Signal handler to exit receive loop
-      mutex_unlock(&server->handoff_mutex);
+      acds_client_joined(server, client_data, resp.session_id, resp.participant_id);
     } else {
       // Error - send error response using proper error code
       acip_send_error(transport, create_result, "Failed to create session");
@@ -527,13 +534,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
                resp.session_string, resp.session_id[0], resp.session_id[1], client_data->num_pending_keys,
                resp.stun_count, resp.turn_count);
 
-      // Store session/participant IDs and mark session as established
-      mutex_lock(&server->handoff_mutex);
-      memcpy(client_data->session_id, resp.session_id, 16);
-      memcpy(client_data->participant_id, resp.participant_id, 16);
-      client_data->joined_session = true;
-      client_data->session_established = true; // Signal handler to exit receive loop
-      mutex_unlock(&server->handoff_mutex);
+      acds_client_joined(server, client_data, resp.session_id, resp.participant_id);
     } else {
       // Error - send error response using proper error code
       acip_send_error(transport, create_result, "Failed to create session");
@@ -749,15 +750,7 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_SESSION_JOINS, 1);
     acip_send_session_joined(transport, &resp);
 
-    // Update client data (accessed via transport->user_data)
-    if (client_data) {
-      mutex_lock(&server->handoff_mutex);
-      memcpy(client_data->session_id, resp.session_id, 16);
-      memcpy(client_data->participant_id, resp.participant_id, 16);
-      client_data->joined_session = true;
-      client_data->session_established = true; // Signal handler to exit receive loop
-      mutex_unlock(&server->handoff_mutex);
-    }
+    acds_client_joined(server, client_data, resp.session_id, resp.participant_id);
 
     log_info("Client %s joined session (participant %02x%02x...)", client_ip, resp.participant_id[0],
              resp.participant_id[1]);
