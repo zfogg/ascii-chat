@@ -52,3 +52,13 @@ clang-format, and the no-export integration test (six media flag/endpoint
 overrides plus MCP stdio/HTTP produced zero OTLP requests). Criterion unit tests
 cover wrapper return-code preservation on supported Unix platforms; Criterion
 is unavailable on Windows.
+
+Producer audit found no pre-existing running ascii-chat service. The main native
+executable was rebuilt against Gotel `v0.13.0` commit
+`d74c4536472d189e52a634341d061d1b16fc236c`, in addition to the standalone probe.
+A bounded run of that actual `discovery-service` executable listened on loopback
+with a temporary SQLite database and was stopped after verification. Its normal
+startup trace `6326ecd215d23dc06c8c31c9339ce92f` contains 17 database spans with
+`db.query.diagnostics: []`, including `storage.EnableWAL` span
+`909fdffed234031c` and `storage.SchemaSessions` span `278b8476cfad808c`.
+No previously running application producer was left on the old dependency.
