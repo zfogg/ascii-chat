@@ -10,6 +10,13 @@
  * Examples: --list-webcams, --list-microphones, --list-speakers, --show-capabilities
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_PARSING_ACTIONS_SIZE_BUFFER_SIZE 64
+#define OPTIONS_PARSING_ACTIONS_COLORS_BUFFER_SIZE 64
+#define OPTIONS_PARSING_ACTIONS_BITMASK_BUFFER_SIZE 64
+#define OPTIONS_PARSING_ACTIONS_NOTIFICATION_BUFFER_SIZE 1024
+#define OPTIONS_PARSING_ACTIONS_QUESTION_BUFFER_SIZE 4096
+
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/options/actions.h>
@@ -256,7 +263,7 @@ void action_show_capabilities_immediate(void) {
 
   printf("%s\n", colored_string(LOG_COLOR_WARN, "Terminal Capabilities:"));
 
-  char size_buf[64];
+  char size_buf[OPTIONS_PARSING_ACTIONS_SIZE_BUFFER_SIZE];
   snprintf(size_buf, sizeof(size_buf), "%ux%u", width, height);
   printf("  %s: %s\n", colored_string(label_color, "Terminal Size"), colored_string(number_color, size_buf));
 
@@ -265,7 +272,7 @@ void action_show_capabilities_immediate(void) {
   printf("  %s: %s\n", colored_string(label_color, "Color Level"),
          colored_string(color_level_color, (char *)color_level_name));
 
-  char colors_buf[64];
+  char colors_buf[OPTIONS_PARSING_ACTIONS_COLORS_BUFFER_SIZE];
   snprintf(colors_buf, sizeof(colors_buf), "%u", caps.color_count);
   printf("  %s: %s\n", colored_string(label_color, "Max Colors"), colored_string(number_color, colors_buf));
 
@@ -291,7 +298,7 @@ void action_show_capabilities_immediate(void) {
   printf("  %s: %s\n", colored_string(label_color, "Detection Reliable"),
          colored_string(reliable_color, (char *)(caps.detection_reliable ? "Yes" : "No")));
 
-  char bitmask_buf[64];
+  char bitmask_buf[OPTIONS_PARSING_ACTIONS_BITMASK_BUFFER_SIZE];
   snprintf(bitmask_buf, sizeof(bitmask_buf), "0x%08x", caps.capabilities);
   printf("  %s: %s\n", colored_string(label_color, "Capabilities Bitmask"), colored_string(number_color, bitmask_buf));
 
@@ -321,7 +328,7 @@ void action_check_update_immediate(void) {
     action_exit(1);
   }
   if (result.update_available) {
-    char notification[1024];
+    char notification[OPTIONS_PARSING_ACTIONS_NOTIFICATION_BUFFER_SIZE];
     update_check_format_notification(&result, notification, sizeof(notification));
     printf("\n%s\n\n", notification);
   } else {
@@ -378,7 +385,7 @@ static void execute_show_capabilities(void) {
 
   printf("%s\n", colored_string(LOG_COLOR_WARN, "Terminal Capabilities:"));
 
-  char size_buf[64];
+  char size_buf[OPTIONS_PARSING_ACTIONS_SIZE_BUFFER_SIZE];
   snprintf(size_buf, sizeof(size_buf), "%ux%u", width, height);
   printf("  %s: %s\n", colored_string(label_color, "Terminal Size"), colored_string(number_color, size_buf));
 
@@ -388,7 +395,7 @@ static void execute_show_capabilities(void) {
   printf("  %s: %s\n", colored_string(label_color, "Color Level"),
          colored_string(color_level_color, (char *)color_level_name));
 
-  char colors_buf[64];
+  char colors_buf[OPTIONS_PARSING_ACTIONS_COLORS_BUFFER_SIZE];
   snprintf(colors_buf, sizeof(colors_buf), "%u", caps.color_count);
   printf("  %s: %s\n", colored_string(label_color, "Max Colors"), colored_string(number_color, colors_buf));
 
@@ -416,7 +423,7 @@ static void execute_show_capabilities(void) {
   printf("  %s: %s\n", colored_string(label_color, "Detection Reliable"),
          colored_string(reliable_color, (char *)(caps.detection_reliable ? "Yes" : "No")));
 
-  char bitmask_buf[64];
+  char bitmask_buf[OPTIONS_PARSING_ACTIONS_BITMASK_BUFFER_SIZE];
   snprintf(bitmask_buf, sizeof(bitmask_buf), "0x%08x", caps.capabilities);
   printf("  %s: %s\n", colored_string(label_color, "Capabilities Bitmask"), colored_string(number_color, bitmask_buf));
 
@@ -595,10 +602,11 @@ void action_completions(const char *shell_name, const char *output_path) {
       // File exists - ask user if they want to overwrite
       log_plain("Completions file already exists: %s", output_path);
 
-      char question[4096];
+      char question[OPTIONS_PARSING_ACTIONS_QUESTION_BUFFER_SIZE];
       safe_snprintf(question, sizeof(question), "File already exists: %s\n\nOverwrite", output_path);
       asciichat_errno_scope_t prompt_scope = errno_checkpoint();
-      bool overwrite = ui_notice_confirm_kind(UI_PROMPT_COMPLETION_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
+      bool overwrite =
+          ui_notice_confirm_kind(UI_PROMPT_COMPLETION_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
       if (!overwrite) {
         log_plain("Completions generation cancelled.");
         asciichat_error_context_t context;
@@ -655,7 +663,7 @@ static void execute_check_update(void) {
 
   // Display results
   if (result.update_available) {
-    char notification[1024];
+    char notification[OPTIONS_PARSING_ACTIONS_NOTIFICATION_BUFFER_SIZE];
     update_check_format_notification(&result, notification, sizeof(notification));
     printf("\n%s\n\n", notification);
   } else {

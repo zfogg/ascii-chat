@@ -29,6 +29,18 @@
 
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_COLORSCHEME_NAME_BUFFER_SIZE 64
+#define OPTIONS_COLORSCHEME_DESCRIPTION_BUFFER_SIZE 256
+#define OPTIONS_COLORSCHEME_FOREGROUND_16_BUFFER_SIZE 16
+#define OPTIONS_COLORSCHEME_FOREGROUND_256_BUFFER_SIZE 24
+#define OPTIONS_COLORSCHEME_FOREGROUND_TRUECOLOR_BUFFER_SIZE 32
+#define OPTIONS_COLORSCHEME_FOREGROUND_BUFFER_SIZE 32
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define COLORSCHEME_LOG_LEVEL_COUNT 8
+#define COLORSCHEME_SGR_BUFFER_SIZE 32
+
 #include "../common.h"
 #include "../platform/terminal.h"
 #include <ascii-chat/video/rgba/image.h>
@@ -60,8 +72,8 @@ typedef enum {
  * Supports both dark and light mode variants.
  */
 typedef struct color_scheme_t {
-  char name[64];         /**< Scheme name (e.g., "pastel", "nord") */
-  char description[256]; /**< Scheme description */
+  char name[OPTIONS_COLORSCHEME_NAME_BUFFER_SIZE];               /**< Scheme name (e.g., "pastel", "nord") */
+  char description[OPTIONS_COLORSCHEME_DESCRIPTION_BUFFER_SIZE]; /**< Scheme description */
 
   /* Dark mode colors (default, 8 colors for log levels) */
   rgb_pixel_t log_colors_dark[8]; /**< DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET */
@@ -86,16 +98,18 @@ typedef struct {
   const char *codes_16[8];        /**< Array of 16-color ANSI code strings */
   const char *codes_256[8];       /**< Array of 256-color ANSI code strings */
   const char *codes_truecolor[8]; /**< Array of 24-bit truecolor ANSI code strings */
-  char foreground_16[16];         /**< Scheme neutral text color, not an ANSI reset */
-  char foreground_256[24];
-  char foreground_truecolor[32];
+  char
+      foreground_16[OPTIONS_COLORSCHEME_FOREGROUND_16_BUFFER_SIZE]; /**< Scheme neutral text color, not an ANSI reset */
+  char foreground_256[OPTIONS_COLORSCHEME_FOREGROUND_256_BUFFER_SIZE];
+  char foreground_truecolor[OPTIONS_COLORSCHEME_FOREGROUND_TRUECOLOR_BUFFER_SIZE];
 } compiled_color_scheme_t;
 
 /** A caller-owned palette: no shared string lifetime or allocation. */
 typedef struct {
-  char codes[8][32];
-  char background_codes[8][32]; /**< Matching live logging colors as background SGR sequences. */
-  char foreground[32];
+  char codes[COLORSCHEME_LOG_LEVEL_COUNT][COLORSCHEME_SGR_BUFFER_SIZE];
+  char background_codes[COLORSCHEME_LOG_LEVEL_COUNT]
+                       [COLORSCHEME_SGR_BUFFER_SIZE]; /**< Matching live logging colors as background SGR sequences. */
+  char foreground[OPTIONS_COLORSCHEME_FOREGROUND_BUFFER_SIZE];
   terminal_background_t background;
 } colorscheme_palette_t;
 

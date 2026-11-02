@@ -4,6 +4,10 @@
  * @ingroup options
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_CONFIG_SCHEMA_CLI_FLAG_BUFFER_SIZE 256
+#define OPTIONS_CONFIG_SCHEMA_CATEGORY_BUFFER_SIZE 64
+
 #include <ascii-chat/options/schema.h>
 #include <ascii-chat/options/validation.h>
 #include <ascii-chat/options/options.h>
@@ -295,8 +299,8 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
   // Build schema entries
   g_dynamic_schema_count = 0;
   char toml_key_buffer[BUFFER_SIZE_SMALL];
-  char cli_flag_buffer[256];
-  char category_buffer[64];
+  char cli_flag_buffer[OPTIONS_CONFIG_SCHEMA_CLI_FLAG_BUFFER_SIZE];
+  char category_buffer[OPTIONS_CONFIG_SCHEMA_CATEGORY_BUFFER_SIZE];
 
   for (size_t i = 0; i < descriptor_count; i++) {
     const option_descriptor_t *desc = all_descriptors[i];

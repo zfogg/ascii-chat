@@ -8,6 +8,10 @@
  * before logging starts.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_COLORSCHEME_TEMP_BUFFER_SIZE 128
+#define OPTIONS_COLORSCHEME_TOML_CONTENT_BUFFER_SIZE 8192
+
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
@@ -599,7 +603,7 @@ asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, termi
   rgb_to_truecolor_ansi(foreground.r, foreground.g, foreground.b, compiled->foreground_truecolor,
                         sizeof(compiled->foreground_truecolor));
   /* Helper: allocate and format a color code string */
-  char temp_buf[128];
+  char temp_buf[OPTIONS_COLORSCHEME_TEMP_BUFFER_SIZE];
 
   /* Compile for 16-color mode */
   for (int i = 0; i < 8; i++) {
@@ -678,7 +682,7 @@ asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char 
   }
 
   /* Generate TOML content */
-  char toml_content[8192] = {0};
+  char toml_content[OPTIONS_COLORSCHEME_TOML_CONTENT_BUFFER_SIZE] = {0};
   size_t offset = 0;
 
   /* Scheme header section */

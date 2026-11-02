@@ -7,6 +7,10 @@
  * option parsing modules (client.c, server.c, mirror.c).
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_COMMON_BUFFER_BUFFER_SIZE 256
+#define OPTIONS_COMMON_SUGGESTION_BUFFER_SIZE 256
+
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/common.h>
 
@@ -63,7 +67,7 @@ const char *find_similar_option(const char *unknown_opt, const struct option *op
 // Helper to format all available modes for an option (used in error messages)
 // Returns comma-separated list like "server, client, mirror" or "global options"
 const char *format_available_modes(option_mode_bitmask_t mode_bitmask) {
-  static char buffer[256];
+  static char buffer[OPTIONS_COMMON_BUFFER_BUFFER_SIZE];
   buffer[0] = '\0';
 
   bool first = true;
@@ -152,7 +156,7 @@ const char *find_similar_option_with_mode(const char *unknown_opt, const options
   // Check if the option is not available in current mode
   bool available_in_current_mode = (best_match->mode_bitmask & current_mode_bitmask) != 0;
 
-  static char suggestion[256];
+  static char suggestion[OPTIONS_COMMON_SUGGESTION_BUFFER_SIZE];
   if (available_in_current_mode) {
     // Option exists but user typed it wrong - just suggest the correct spelling
     safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s'?", best_match->long_name);

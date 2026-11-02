@@ -4,6 +4,13 @@
  * @ingroup options
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_BUILDER_FORMATTED_BUFFER_SIZE 32
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define OPTIONS_MAX_INT_DEFAULTS 256
+#define OPTIONS_MAX_DOUBLE_DEFAULTS 1024
+
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/options/builder.h>
@@ -53,7 +60,7 @@ static asciichat_error_t builder_format_error(char **output, const char *format,
 // ============================================================================
 // Static counters for default value storage
 // ============================================================================
-static int g_int_defaults[256];
+static int g_int_defaults[OPTIONS_MAX_INT_DEFAULTS];
 static size_t g_int_defaults_counter = 0;
 
 // ============================================================================
@@ -156,7 +163,7 @@ int format_option_default_value_str(const option_descriptor_t *desc, char *buf, 
       }
 
       // Format with appropriate precision (remove trailing zeros for integers)
-      char formatted[32];
+      char formatted[OPTIONS_BUILDER_FORMATTED_BUFFER_SIZE];
       safe_snprintf(formatted, sizeof(formatted), "%.1f", default_double);
 
       // Remove trailing zeros after decimal point
@@ -773,12 +780,12 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
 
   // Store default string pointer in static storage to avoid stack-use-after-return
   // Increased from 256 to 1024 to support multiple test builders without overflow
-  static const char *defaults[1024];
+  static const char *defaults[OPTIONS_MAX_DOUBLE_DEFAULTS];
   static size_t num_defaults = 0;
 
   const void *default_ptr = NULL;
   if (default_value) {
-    if (num_defaults >= 1024) {
+    if (num_defaults >= OPTIONS_MAX_DOUBLE_DEFAULTS) {
       log_error("Too many string options (max 1024)");
       return;
     }
@@ -809,10 +816,10 @@ void options_builder_add_double(options_builder_t *builder, const char *long_nam
   ensure_descriptor_capacity(builder);
 
   // Increased from 256 to 1024 to support multiple test builders without overflow
-  static double defaults[1024];
+  static double defaults[OPTIONS_MAX_DOUBLE_DEFAULTS];
   static size_t num_defaults = 0;
 
-  if (num_defaults >= 1024) {
+  if (num_defaults >= OPTIONS_MAX_DOUBLE_DEFAULTS) {
     log_error("Too many double options (max 1024)");
     return;
   }
@@ -844,10 +851,10 @@ void options_builder_add_double_with_metadata(options_builder_t *builder, const 
                                               bool optional_arg) {
   ensure_descriptor_capacity(builder);
 
-  static double defaults[1024];
+  static double defaults[OPTIONS_MAX_DOUBLE_DEFAULTS];
   static size_t num_defaults = 0;
 
-  if (num_defaults >= 1024) {
+  if (num_defaults >= OPTIONS_MAX_DOUBLE_DEFAULTS) {
     log_error("Too many double options (max 1024)");
     return;
   }

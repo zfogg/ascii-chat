@@ -4,6 +4,9 @@
  * @ingroup options
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_COMPLETIONS_LOWER_BUFFER_SIZE 32
+
 #include <ascii-chat/options/enums.h>
 #include <string.h>
 #include <ctype.h>
@@ -58,7 +61,7 @@ completion_format_t completions_parse_shell_name(const char *shell_name) {
   }
 
   /* Convert to lowercase for case-insensitive matching */
-  char lower[32] = {0};
+  char lower[OPTIONS_COMPLETIONS_LOWER_BUFFER_SIZE] = {0};
   size_t len = strlen(shell_name);
   if (len >= sizeof(lower)) {
     return COMPLETION_FORMAT_UNKNOWN;
