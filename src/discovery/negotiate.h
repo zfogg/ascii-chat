@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/discovery/session.h>
 #include "nat.h"
@@ -39,8 +40,8 @@ typedef enum {
  */
 typedef struct {
   // Session info
-  uint8_t session_id[16];
-  uint8_t participant_id[16];
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t participant_id[UUID_SIZE];
   bool is_initiator; ///< Did we create this session?
 
   // NAT qualities
@@ -66,8 +67,8 @@ typedef struct {
  * @param participant_id Our participant UUID
  * @param is_initiator True if we created the session
  */
-void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[16], const uint8_t participant_id[16],
-                    bool is_initiator);
+void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[SESSION_ID_SIZE],
+                    const uint8_t participant_id[UUID_SIZE], bool is_initiator);
 
 /**
  * @brief Determine negotiation result

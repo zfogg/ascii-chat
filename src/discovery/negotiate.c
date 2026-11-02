@@ -4,6 +4,7 @@
  * @ingroup discovery
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include "negotiate.h"
 
 #include <ascii-chat/common.h>
@@ -12,8 +13,8 @@
 
 #include <string.h>
 
-void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[16], const uint8_t participant_id[16],
-                    bool is_initiator) {
+void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[SESSION_ID_SIZE],
+                    const uint8_t participant_id[UUID_SIZE], bool is_initiator) {
   if (!ctx)
     return;
 

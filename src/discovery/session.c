@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/negotiation.h>
@@ -129,7 +130,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
     memset(session->identity_pubkey, 0, sizeof(session->identity_pubkey));
     memset(session->identity_seckey, 0, sizeof(session->identity_seckey));
   } else {
-    char fingerprint[65];
+    char fingerprint[HEX_STRING_SIZE_32];
     acds_identity_fingerprint(session->identity_pubkey, fingerprint);
     log_info("Using identity key with fingerprint: %.16s...", fingerprint);
   }
@@ -138,14 +139,14 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   if (opts && opts->num_identity_keys > 0) {
     // Load all identity keys from options
     for (size_t i = 0; i < opts->num_identity_keys && i < MAX_SESSION_KEYS; i++) {
-      uint8_t pubkey[32] = {0};
-      uint8_t seckey[64] = {0};
+      uint8_t pubkey[ED25519_PUBLIC_KEY_SIZE] = {0};
+      uint8_t seckey[ED25519_PRIVATE_KEY_SIZE] = {0};
       asciichat_error_t key_result = acds_identity_load(opts->identity_keys[i], pubkey, seckey);
       if (key_result == ASCIICHAT_OK) {
         memcpy(session->identity_pubkeys[session->num_identity_keys], pubkey, sizeof(pubkey));
         memcpy(session->identity_seckeys[session->num_identity_keys++], seckey, sizeof(seckey));
         sodium_memzero(seckey, sizeof(seckey));
-        char fingerprint[65];
+        char fingerprint[HEX_STRING_SIZE_32];
         acds_identity_fingerprint(pubkey, fingerprint);
         log_info("Loaded identity key #%zu with fingerprint: %.16s...", i + 1, fingerprint);
       } else {
@@ -556,8 +557,9 @@ static asciichat_error_t create_session(discovery_session_t *session) {
 /**
  * @brief Send SDP via ACDS signaling
  */
-static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                                     const char *sdp_type, const char *sdp, void *user_data) {
+static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[SESSION_ID_SIZE],
+                                                     const uint8_t recipient_id[UUID_SIZE], const char *sdp_type,
+                                                     const char *sdp, void *user_data) {
   discovery_session_t *session = (discovery_session_t *)user_data;
 
   if (!session || !session->acds_transport) {
@@ -599,8 +601,9 @@ static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[16
 /**
  * @brief Send ICE candidate via ACDS signaling
  */
-static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                                     const char *candidate, const char *mid, void *user_data) {
+static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[SESSION_ID_SIZE],
+                                                     const uint8_t recipient_id[UUID_SIZE], const char *candidate,
+                                                     const char *mid, void *user_data) {
   discovery_session_t *session = (discovery_session_t *)user_data;
 
   if (!session || !session->acds_transport) {
@@ -685,8 +688,8 @@ static uint32_t calculate_backoff_delay_ms(int attempt) {
  * the configured timeout. Trickle ICE can still establish a connection using
  * candidates gathered so far, so this is diagnostic rather than fatal.
  */
-static void discovery_on_gathering_timeout(const uint8_t participant_id[16], uint32_t timeout_ms, uint64_t elapsed_ms,
-                                           void *user_data) {
+static void discovery_on_gathering_timeout(const uint8_t participant_id[UUID_SIZE], uint32_t timeout_ms,
+                                           uint64_t elapsed_ms, void *user_data) {
   (void)user_data; // Session context not needed for logging
 
   log_warn("ICE candidate gathering is slower than expected; continuing trickle ICE");
@@ -712,7 +715,7 @@ static void discovery_on_gathering_timeout(const uint8_t participant_id[16], uin
  * - Security: DataChannel uses DTLS encryption (automatic from libdatachannel)
  * - Encryption: ACIP layer may add additional encryption on top if needed
  */
-static void discovery_on_transport_ready(acip_transport_t *transport, const uint8_t participant_id[16],
+static void discovery_on_transport_ready(acip_transport_t *transport, const uint8_t participant_id[UUID_SIZE],
                                          void *user_data) {
   discovery_session_t *session = (discovery_session_t *)user_data;
 

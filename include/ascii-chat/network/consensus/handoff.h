@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 #pragma once
 
@@ -27,8 +28,8 @@ typedef enum {
 
 typedef struct {
   uint8_t kind;
-  uint8_t session[16];
-  uint8_t participant[16];
+  uint8_t session[UUID_SIZE];
+  uint8_t participant[UUID_SIZE];
   uint32_t generation;
   uint32_t sequence;
   uint32_t upload_kbps;
@@ -39,7 +40,7 @@ typedef struct {
 } consensus_handoff_message_t;
 
 typedef struct {
-  uint8_t id[16];
+  uint8_t id[UUID_SIZE];
   uint8_t capabilities;
   uint8_t nat_tier;
   uint16_t port;
@@ -56,9 +57,9 @@ typedef struct {
 } consensus_handoff_peer_t;
 
 typedef struct {
-  uint8_t session[16];
-  uint8_t host[16];
-  uint8_t successor[16];
+  uint8_t session[UUID_SIZE];
+  uint8_t host[UUID_SIZE];
+  uint8_t successor[UUID_SIZE];
   uint32_t generation;
   uint32_t round;
   uint32_t host_sequence; ///< Last committed round; preparation does not change host authority.
@@ -75,9 +76,10 @@ typedef struct {
 
 asciichat_error_t consensus_handoff_decode(const void *data, size_t length, consensus_handoff_message_t *out);
 void consensus_handoff_encode(const consensus_handoff_message_t *message, uint8_t out[CONSENSUS_HANDOFF_HEADER]);
-void consensus_handoff_init(consensus_handoff_t *state, const uint8_t session[16], const uint8_t host[16]);
-asciichat_error_t consensus_handoff_join(consensus_handoff_t *state, const uint8_t id[16]);
-void consensus_handoff_leave(consensus_handoff_t *state, const uint8_t id[16]);
+void consensus_handoff_init(consensus_handoff_t *state, const uint8_t session[UUID_SIZE],
+                            const uint8_t host[UUID_SIZE]);
+asciichat_error_t consensus_handoff_join(consensus_handoff_t *state, const uint8_t id[UUID_SIZE]);
+void consensus_handoff_leave(consensus_handoff_t *state, const uint8_t id[UUID_SIZE]);
 /* Caller authenticates participant/session against the transport identity. */
 asciichat_error_t consensus_handoff_receive(consensus_handoff_t *state, const consensus_handoff_message_t *message,
                                             size_t length, uint64_t now_ms);
@@ -85,4 +87,4 @@ asciichat_error_t consensus_handoff_receive(consensus_handoff_t *state, const co
 bool consensus_handoff_tick(consensus_handoff_t *state, uint64_t now_ms, consensus_handoff_message_t *action);
 
 /* Caller authenticates the reporter; obsolete host reports are ignored. */
-void consensus_handoff_host_lost(consensus_handoff_t *state, const uint8_t host[16]);
+void consensus_handoff_host_lost(consensus_handoff_t *state, const uint8_t host[UUID_SIZE]);

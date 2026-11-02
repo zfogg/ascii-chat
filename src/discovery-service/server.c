@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/network/crc32.h>
@@ -219,8 +220,8 @@ static inline void acds_track_packet_sent(acds_server_t *server, size_t payload_
 // Each callback implements: Rate Limit → Crypto Verify → Business Logic → DB Save
 
 // Publish complete connection membership atomically with respect to host fanout.
-static void acds_client_joined(acds_server_t *server, acds_client_data_t *client, const uint8_t session_id[16],
-                               const uint8_t participant_id[16]) {
+static void acds_client_joined(acds_server_t *server, acds_client_data_t *client,
+                               const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[UUID_SIZE]) {
   if (!client) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Missing discovery client membership");
     return;
@@ -680,7 +681,7 @@ static void acds_on_host_lost(const acip_host_lost_t *host_lost, acip_transport_
   mutex_unlock(&server->handoff_mutex);
 }
 
-static consensus_handoff_t *acds_handoff_find(acds_server_t *server, const uint8_t session[16], bool create) {
+static consensus_handoff_t *acds_handoff_find(acds_server_t *server, const uint8_t session[UUID_SIZE], bool create) {
   for (acds_handoff_entry_t *entry = server->handoffs; entry; entry = entry->next)
     if (!memcmp(entry->state.session, session, 16))
       return &entry->state;
@@ -699,7 +700,7 @@ static consensus_handoff_t *acds_handoff_find(acds_server_t *server, const uint8
   return &entry->state;
 }
 // Replay authority after SESSION_JOINED, including after reconnect.
-void acds_send_current_host(acds_server_t *server, acip_transport_t *transport, const uint8_t id[16]) {
+void acds_send_current_host(acds_server_t *server, acip_transport_t *transport, const uint8_t id[UUID_SIZE]) {
   ASCII_OTEL_SCOPE(DISCOVERY_HOST_DESIGNATION);
   ASCII_OTEL_ATTR_STRING("host.update.source", "replay");
   ASCII_OTEL_ATTR_STRING("host.update.outcome", "unavailable");

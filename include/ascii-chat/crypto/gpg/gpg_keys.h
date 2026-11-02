@@ -27,6 +27,7 @@
  * @date October 2025
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include "../../common.h"
 #include "../../crypto/key_types.h" // Include the key type definitions
 #include <stdint.h>
@@ -135,7 +136,7 @@ asciichat_error_t validate_gpg_key_format(const char *gpg_key_text);
  *
  * @ingroup keys
  */
-asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_text, uint8_t ed25519_pk[32]);
+asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_text, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Convert GPG key to X25519 for key exchange
@@ -158,7 +159,7 @@ asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_text, uint8_t ed2
  *
  * @ingroup keys
  */
-asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_pk[32]);
+asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_pk[X25519_KEY_SIZE]);
 
 /** @} */
 
@@ -189,7 +190,7 @@ asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_
  *
  * @ingroup keys
  */
-asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerprint_out[20]);
+asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerprint_out[GPG_FINGERPRINT_SIZE]);
 
 /**
  * @brief Get GPG key ID (short fingerprint)

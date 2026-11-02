@@ -3,6 +3,7 @@
  * @brief Identity key management implementation
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/key_identity/keymask.h>
 #include <ascii-chat/discovery/identity.h>
 #include <ascii-chat/crypto/crypto.h>
@@ -16,7 +17,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-asciichat_error_t acds_identity_generate(uint8_t public_key[32], uint8_t secret_key[64]) {
+asciichat_error_t acds_identity_generate(uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
+                                         uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]) {
   if (!public_key || !secret_key) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "public_key and secret_key cannot be NULL");
   }
@@ -30,7 +32,8 @@ asciichat_error_t acds_identity_generate(uint8_t public_key[32], uint8_t secret_
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[32], uint8_t secret_key[64]) {
+asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
+                                     uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]) {
   if (!path || !public_key || !secret_key) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "path, public_key, and secret_key cannot be NULL");
   }
@@ -82,7 +85,8 @@ asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[32], u
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[32], const uint8_t secret_key[64]) {
+asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
+                                     const uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]) {
   if (!path || !public_key || !secret_key) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "path, public_key, and secret_key cannot be NULL");
   }
@@ -125,7 +129,8 @@ asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[
   return ASCIICHAT_OK;
 }
 
-void acds_identity_fingerprint(const uint8_t public_key[32], char fingerprint[65]) {
+void acds_identity_fingerprint(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
+                               char fingerprint[HEX_STRING_SIZE_32]) {
   if (!public_key || !fingerprint) {
     log_error("NULL parameters");
     return;

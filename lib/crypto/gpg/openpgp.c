@@ -4,6 +4,7 @@
  * @ingroup crypto
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/gpg/homedir.h>
 #include <ascii-chat/common.h>
@@ -164,7 +165,8 @@ asciichat_error_t openpgp_parse_packet_header(const uint8_t *data, size_t data_l
 // MPI (Multi-Precision Integer) Parsing
 // =============================================================================
 
-asciichat_error_t openpgp_extract_ed25519_from_mpi(const uint8_t *mpi, size_t mpi_len, uint8_t ed25519_pk[32]) {
+asciichat_error_t openpgp_extract_ed25519_from_mpi(const uint8_t *mpi, size_t mpi_len,
+                                                   uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]) {
   if (!mpi || !ed25519_pk || mpi_len < 35) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for MPI extraction (need at least 35 bytes)");
   }
@@ -287,7 +289,8 @@ asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, si
 // PGP Armored Format Parsing
 // =============================================================================
 
-asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_len, uint8_t ed25519_pk[32]) {
+asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_len,
+                                              uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]) {
   if (!data || data_len == 0 || !ed25519_pk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for binary OpenPGP public-key parsing");
   }
@@ -314,7 +317,7 @@ asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_l
   return SET_ERRNO(ERROR_CRYPTO_KEY, "No Ed25519 public key found in OpenPGP data");
 }
 
-asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t ed25519_pk[32]) {
+asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]) {
   if (!armored_text || !ed25519_pk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for armored pubkey parsing");
   }
@@ -606,7 +609,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   }
 
   // Parse fingerprint from output: find line starting with "fpr" and extract field 10
-  char key_fpr[41] = {0}; // Ed25519 fingerprints are 40 hex chars
+  char key_fpr[GPG_FINGERPRINT_HEX_BUFFER_SIZE] = {0}; // Ed25519 fingerprints are 40 hex chars
   const char *line = fpr_output;
   while (*line) {
     if (strncmp(line, "fpr:", 4) == 0) {
@@ -722,8 +725,9 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
 }
 #endif
 
-asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_len, uint8_t ed25519_pk[32],
-                                              uint8_t ed25519_sk[32]) {
+asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_len,
+                                              uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
+                                              uint8_t ed25519_sk[ED25519_SEED_SIZE]) {
   if (!data || data_len == 0 || !ed25519_pk || !ed25519_sk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for binary OpenPGP secret-key parsing");
   }
@@ -755,8 +759,8 @@ asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_l
   return SET_ERRNO(ERROR_CRYPTO_KEY, "No unencrypted Ed25519 secret key found in OpenPGP data");
 }
 
-asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t ed25519_pk[32],
-                                               uint8_t ed25519_sk[32]) {
+asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
+                                               uint8_t ed25519_sk[ED25519_SEED_SIZE]) {
   if (!armored_text || !ed25519_pk || !ed25519_sk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for armored seckey parsing");
   }

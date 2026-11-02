@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
  * @file network/acip/acds.h
@@ -194,9 +195,9 @@ typedef enum {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t identity_pubkey[32]; ///< Ed25519 public key of session host
-  uint8_t signature[64];       ///< Signs: type || timestamp || capabilities
-  uint64_t timestamp;          ///< Unix ms (replay protection)
+  uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Ed25519 public key of session host
+  uint8_t signature[ED25519_SIGNATURE_SIZE];        ///< Signs: type || timestamp || capabilities
+  uint64_t timestamp;                               ///< Unix ms (replay protection)
 
   uint8_t capabilities;     ///< Bit 0: video, Bit 1: audio
   uint8_t max_participants; ///< 1-128 participants allowed
@@ -258,11 +259,11 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_string_len; ///< Length of session string (e.g., 20 for "swift-river-mountain")
-  char session_string[48];    ///< Null-padded session string
-  uint8_t session_id[16];     ///< UUID as bytes (not string)
-  uint8_t participant_id[16]; ///< Creator's participant ID (they are a participant too)
-  uint64_t expires_at;        ///< Unix ms (created_at + 24 hours)
+  uint8_t session_string_len;          ///< Length of session string (e.g., 20 for "swift-river-mountain")
+  char session_string[48];             ///< Null-padded session string
+  uint8_t session_id[SESSION_ID_SIZE]; ///< UUID as bytes (not string)
+  uint8_t participant_id[UUID_SIZE];   ///< Creator's participant ID (they are a participant too)
+  uint64_t expires_at;                 ///< Unix ms (created_at + 24 hours)
 
   uint8_t stun_count; ///< Number of STUN servers
   uint8_t turn_count; ///< Number of TURN servers
@@ -339,10 +340,10 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t found;           ///< 0 = not found, 1 = found
-  uint8_t session_id[16];  ///< Valid only if found == 1
-  uint8_t host_pubkey[32]; ///< Host's Ed25519 public key
-  uint8_t capabilities;    ///< Session capabilities
+  uint8_t found;                                ///< 0 = not found, 1 = found
+  uint8_t session_id[SESSION_ID_SIZE];          ///< Valid only if found == 1
+  uint8_t host_pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Host's Ed25519 public key
+  uint8_t capabilities;                         ///< Session capabilities
   uint8_t max_participants;
   uint8_t current_participants;
   uint8_t session_type; ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC
@@ -395,9 +396,9 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
   uint8_t session_string_len;
   char session_string[48];
-  uint8_t identity_pubkey[32]; ///< Joiner's Ed25519 public key
-  uint8_t signature[64];       ///< Signs: type || timestamp || session_string
-  uint64_t timestamp;          ///< Unix ms
+  uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Joiner's Ed25519 public key
+  uint8_t signature[ED25519_SIGNATURE_SIZE];        ///< Signs: type || timestamp || session_string
+  uint64_t timestamp;                               ///< Unix ms
 
   uint8_t has_password;
   char password[128]; ///< Cleartext password (TLS protects transport)
@@ -450,13 +451,13 @@ typedef struct __attribute__((packed)) {
   uint8_t error_code;      ///< Error code if success == 0
   char error_message[128]; ///< Human-readable error
 
-  uint8_t participant_id[16]; ///< UUID for this participant (valid if success == 1)
-  uint8_t session_id[16];     ///< Session UUID
-  uint8_t initiator_id[16];   ///< Who created the session (controls settings)
+  uint8_t participant_id[UUID_SIZE];   ///< UUID for this participant (valid if success == 1)
+  uint8_t session_id[SESSION_ID_SIZE]; ///< Session UUID
+  uint8_t initiator_id[UUID_SIZE];     ///< Who created the session (controls settings)
 
   // Host status for discovery mode negotiation
-  uint8_t host_established; ///< 0 = no host yet (negotiate), 1 = host exists (connect directly)
-  uint8_t host_id[16];      ///< Host's participant ID (valid if host_established == 1)
+  uint8_t host_established;   ///< 0 = no host yet (negotiate), 1 = host exists (connect directly)
+  uint8_t host_id[UUID_SIZE]; ///< Host's participant ID (valid if host_established == 1)
 
   // Peer information for host negotiation (only relevant if host_established == 0)
   uint8_t peer_count; ///< Number of other participants to negotiate with
@@ -486,10 +487,10 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];             ///< Session UUID
-  uint8_t new_participant_id[16];     ///< UUID of the new participant
-  uint8_t new_participant_pubkey[32]; ///< Ed25519 public key of new participant
-  uint8_t current_participant_count;  ///< Total participants including new one
+  uint8_t session_id[SESSION_ID_SIZE];                     ///< Session UUID
+  uint8_t new_participant_id[UUID_SIZE];                   ///< UUID of the new participant
+  uint8_t new_participant_pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Ed25519 public key of new participant
+  uint8_t current_participant_count;                       ///< Total participants including new one
 } acip_participant_joined_t;
 
 /**
@@ -503,10 +504,10 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];          ///< Session UUID
-  uint8_t left_participant_id[16]; ///< UUID of participant who left
-  uint8_t was_host;                ///< 1 if the leaving participant was the host
-  uint8_t remaining_count;         ///< Participants remaining in session
+  uint8_t session_id[SESSION_ID_SIZE];    ///< Session UUID
+  uint8_t left_participant_id[UUID_SIZE]; ///< UUID of participant who left
+  uint8_t was_host;                       ///< 1 if the leaving participant was the host
+  uint8_t remaining_count;                ///< Participants remaining in session
 } acip_participant_left_t;
 
 /**
@@ -520,8 +521,8 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];
-  uint8_t participant_id[16];
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t participant_id[UUID_SIZE];
 } acip_session_leave_t;
 
 /**
@@ -535,8 +536,8 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];
-  uint8_t signature[64]; ///< Host proves ownership
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t signature[ED25519_SIGNATURE_SIZE]; ///< Host proves ownership
 } acip_session_end_t;
 
 /**
@@ -550,9 +551,9 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];
-  uint8_t participant_id[16];
-  uint8_t signature[64]; ///< Prove identity
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t participant_id[UUID_SIZE];
+  uint8_t signature[ED25519_SIGNATURE_SIZE]; ///< Prove identity
 } acip_session_reconnect_t;
 
 /** @} */
@@ -596,11 +597,11 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];   ///< Session UUID
-  uint8_t sender_id[16];    ///< Participant UUID
-  uint8_t recipient_id[16]; ///< All zeros = broadcast to all
-  uint8_t sdp_type;         ///< 0 = offer, 1 = answer
-  uint16_t sdp_len;         ///< Length of SDP data
+  uint8_t session_id[SESSION_ID_SIZE]; ///< Session UUID
+  uint8_t sender_id[UUID_SIZE];        ///< Participant UUID
+  uint8_t recipient_id[UUID_SIZE];     ///< All zeros = broadcast to all
+  uint8_t sdp_type;                    ///< 0 = offer, 1 = answer
+  uint16_t sdp_len;                    ///< Length of SDP data
   // char  sdp_data[];               ///< Variable length SDP string
 } acip_webrtc_sdp_t;
 
@@ -643,9 +644,9 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];
-  uint8_t sender_id[16];
-  uint8_t recipient_id[16];
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t sender_id[UUID_SIZE];
+  uint8_t recipient_id[UUID_SIZE];
   uint16_t candidate_len;
   // char  candidate[];              ///< Variable length ICE candidate
 } acip_webrtc_ice_t;
@@ -669,8 +670,8 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t identity_pubkey[32];
-  uint8_t signature[64];
+  uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE];
+  uint8_t signature[ED25519_SIGNATURE_SIZE];
   uint64_t timestamp;
   uint8_t string_len;
   char string[48];
@@ -703,8 +704,8 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t identity_pubkey[32];
-  uint8_t signature[64];
+  uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE];
+  uint8_t signature[ED25519_SIGNATURE_SIZE];
   uint64_t timestamp;
   uint8_t string_len;
   char string[48];
@@ -721,8 +722,8 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t identity_pubkey[32];
-  uint8_t signature[64];
+  uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE];
+  uint8_t signature[ED25519_SIGNATURE_SIZE];
   uint64_t timestamp;
   uint8_t string_len;
   char string[48];
@@ -763,7 +764,7 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];
+  uint8_t session_id[SESSION_ID_SIZE];
   uint8_t num_participants; ///< Number of participants in session
   // Followed by: participant_entry_t[num_participants] (variable length)
   // participant_entry_t {
@@ -782,7 +783,7 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t participant_id[16];
+  uint8_t participant_id[UUID_SIZE];
   char address[64];        ///< Participant's address (for direct connection)
   uint16_t port;           ///< Participant's listening port
   uint8_t connection_type; ///< acip_connection_type_t
@@ -805,10 +806,10 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];
-  uint8_t from_participant_id[16]; ///< Who is requesting
-  uint8_t to_participant_id[16];   ///< Who is requested
-  uint64_t round_number;           ///< Which 5-minute round (for detection of stale requests)
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t from_participant_id[UUID_SIZE]; ///< Who is requesting
+  uint8_t to_participant_id[UUID_SIZE];   ///< Who is requested
+  uint64_t round_number;                  ///< Which 5-minute round (for detection of stale requests)
 } acip_ring_collect_t;
 
 /** @} */
@@ -865,8 +866,8 @@ typedef enum {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];
-  uint8_t participant_id[16];
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t participant_id[UUID_SIZE];
 
   // NAT detection results
   uint8_t has_public_ip;       ///< STUN reflexive == local IP
@@ -903,13 +904,13 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];
-  uint8_t host_id[16];     ///< My participant ID
-  char host_address[64];   ///< Where clients should connect
-  uint16_t host_port;      ///< Port
-  uint8_t connection_type; ///< acip_connection_type_t
-  uint32_t generation;     ///< Handoff generation in network byte order; one for initial host
-  uint32_t sequence;       ///< Committed handoff round in network byte order; zero for initial host
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t host_id[UUID_SIZE]; ///< My participant ID
+  char host_address[64];      ///< Where clients should connect
+  uint16_t host_port;         ///< Port
+  uint8_t connection_type;    ///< acip_connection_type_t
+  uint32_t generation;        ///< Handoff generation in network byte order; one for initial host
+  uint32_t sequence;          ///< Committed handoff round in network byte order; zero for initial host
 } acip_host_announcement_t;
 
 /**
@@ -923,8 +924,8 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];
-  uint8_t host_id[16];
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t host_id[UUID_SIZE];
   char host_address[64];
   uint16_t host_port;
   uint8_t connection_type; ///< acip_connection_type_t
@@ -949,11 +950,11 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];
-  uint8_t participant_id[16];  ///< Who is reporting
-  uint8_t last_host_id[16];    ///< The host that disconnected
-  uint32_t disconnect_reason;  ///< 0=unknown, 1=timeout, 2=tcp_reset, 3=graceful
-  uint64_t disconnect_time_ms; ///< When disconnect was detected (Unix ms)
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t participant_id[UUID_SIZE]; ///< Who is reporting
+  uint8_t last_host_id[UUID_SIZE];   ///< The host that disconnected
+  uint32_t disconnect_reason;        ///< 0=unknown, 1=timeout, 2=tcp_reset, 3=graceful
+  uint64_t disconnect_time_ms;       ///< When disconnect was detected (Unix ms)
 } acip_host_lost_t;
 
 /**
@@ -977,12 +978,12 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];
-  uint8_t future_host_id[16];   ///< Who will host if current host dies
-  char future_host_address[64]; ///< Where to connect when needed
-  uint16_t future_host_port;    ///< Port number
-  uint8_t connection_type;      ///< acip_connection_type_t (DIRECT, UPNP, STUN, TURN)
-  uint64_t elected_at_round;    ///< Which 5-minute round this was elected in
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t future_host_id[UUID_SIZE]; ///< Who will host if current host dies
+  char future_host_address[64];      ///< Where to connect when needed
+  uint16_t future_host_port;         ///< Port number
+  uint8_t connection_type;           ///< acip_connection_type_t (DIRECT, UPNP, STUN, TURN)
+  uint64_t elected_at_round;         ///< Which 5-minute round this was elected in
 } acip_future_host_elected_t;
 
 /** @} */
@@ -1018,10 +1019,10 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];       ///< Session identifier
-  uint8_t participant_id[16];   ///< Participant identifier
-  uint32_t test_size_bytes;     ///< Size of test payload (typically 64KB)
-  uint64_t client_send_time_ns; ///< Timestamp when client sent packet
+  uint8_t session_id[SESSION_ID_SIZE]; ///< Session identifier
+  uint8_t participant_id[UUID_SIZE];   ///< Participant identifier
+  uint32_t test_size_bytes;            ///< Size of test payload (typically 64KB)
+  uint64_t client_send_time_ns;        ///< Timestamp when client sent packet
 } acip_bandwidth_test_t;
 
 /**
@@ -1053,10 +1054,10 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];     ///< Session UUID
-  uint8_t participant_id[16]; ///< Participant acknowledging
-  uint64_t broadcast_id;      ///< ID of broadcast being acknowledged
-  uint16_t packet_type;       ///< Type of packet being acknowledged
+  uint8_t session_id[SESSION_ID_SIZE]; ///< Session UUID
+  uint8_t participant_id[UUID_SIZE];   ///< Participant acknowledging
+  uint64_t broadcast_id;               ///< ID of broadcast being acknowledged
+  uint16_t packet_type;                ///< Type of packet being acknowledged
 } acip_broadcast_ack_t;
 
 /**

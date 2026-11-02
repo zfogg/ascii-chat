@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/discovery/database.h>
 /**
@@ -89,8 +90,8 @@ static asciichat_error_t acds_init_fn(void *user_data) {
   }
 
   // Load or generate identity keys
-  uint8_t public_key[32];
-  uint8_t secret_key[64];
+  uint8_t public_key[ED25519_PUBLIC_KEY_SIZE];
+  uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE];
 
   const char *acds_key_path = GET_OPTION(encrypt_key);
   char default_key_path[PLATFORM_MAX_PATH_LENGTH] = {0};
@@ -131,7 +132,7 @@ static asciichat_error_t acds_init_fn(void *user_data) {
   key_identity_announce("DISCOVERY SERVER PUBLIC IDENTITY", &identity);
 
   // Display server fingerprint
-  char fingerprint[65];
+  char fingerprint[HEX_STRING_SIZE_32];
   acds_identity_fingerprint(public_key, fingerprint);
   log_info("Discovery server identity: SHA256:%s", fingerprint);
   char msg[256];

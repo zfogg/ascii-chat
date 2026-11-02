@@ -32,6 +32,7 @@
  * @date October 2025
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -95,7 +96,7 @@
  * @ingroup crypto
  */
 int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
-                                const uint8_t signature[64]);
+                                const uint8_t signature[ED25519_SIGNATURE_SIZE]);
 
 /**
  * @brief Verify Ed25519 signature using libgcrypt (no GPG binary required)

@@ -29,6 +29,7 @@
 
 #pragma once
 
+#include <ascii-chat/crypto/sizes.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "../../common.h"
@@ -69,7 +70,7 @@ typedef enum {
  * - Use it for ACIP communication
  * - Call acip_transport_destroy() to free it
  */
-typedef void (*webrtc_transport_ready_callback_t)(acip_transport_t *transport, const uint8_t participant_id[16],
+typedef void (*webrtc_transport_ready_callback_t)(acip_transport_t *transport, const uint8_t participant_id[UUID_SIZE],
                                                   void *user_data);
 
 /**
@@ -83,7 +84,7 @@ typedef void (*webrtc_transport_ready_callback_t)(acip_transport_t *transport, c
  * timeout. Trickle ICE may still connect the peer, so this callback does not
  * imply that the peer connection will be closed.
  */
-typedef void (*webrtc_gathering_timeout_callback_t)(const uint8_t participant_id[16], uint32_t timeout_ms,
+typedef void (*webrtc_gathering_timeout_callback_t)(const uint8_t participant_id[UUID_SIZE], uint32_t timeout_ms,
                                                     uint64_t elapsed_ms, void *user_data);
 
 /**
@@ -115,8 +116,9 @@ typedef struct {
  *
  * Implementation should send PACKET_TYPE_ACIP_WEBRTC_SDP via ACDS.
  */
-typedef asciichat_error_t (*webrtc_send_sdp_callback_t)(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                                        const char *sdp_type, const char *sdp, void *user_data);
+typedef asciichat_error_t (*webrtc_send_sdp_callback_t)(const uint8_t session_id[SESSION_ID_SIZE],
+                                                        const uint8_t recipient_id[UUID_SIZE], const char *sdp_type,
+                                                        const char *sdp, void *user_data);
 
 /**
  * @brief Callback to send ICE candidate via ACDS signaling
@@ -129,8 +131,9 @@ typedef asciichat_error_t (*webrtc_send_sdp_callback_t)(const uint8_t session_id
  *
  * Implementation should send PACKET_TYPE_ACIP_WEBRTC_ICE via ACDS.
  */
-typedef asciichat_error_t (*webrtc_send_ice_callback_t)(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                                        const char *candidate, const char *mid, void *user_data);
+typedef asciichat_error_t (*webrtc_send_ice_callback_t)(const uint8_t session_id[SESSION_ID_SIZE],
+                                                        const uint8_t recipient_id[UUID_SIZE], const char *candidate,
+                                                        const char *mid, void *user_data);
 
 /**
  * @brief Signaling callbacks for sending SDP/ICE
@@ -216,13 +219,14 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
  *
  * Creator role uses webrtc_peer_manager_handle_sdp() to accept offers instead.
  */
-asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, const uint8_t session_id[16],
-                                              const uint8_t participant_id[16]);
+asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, const uint8_t session_id[SESSION_ID_SIZE],
+                                              const uint8_t participant_id[UUID_SIZE]);
 
 /** Return the current state for a participant's peer connection. */
-bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t participant_id[16],
+bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t participant_id[UUID_SIZE],
                                    webrtc_state_t *state_out);
-asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager, const uint8_t participant_id[16]);
+asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager,
+                                                  const uint8_t participant_id[UUID_SIZE]);
 
 // ============================================================================
 // Connection Health Monitoring

@@ -1,8 +1,10 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/key_identity/keymask.h>
 #include <sodium.h>
 #include <string.h>
 
-asciichat_error_t key_fingerprint_digest(const uint8_t public_key[32], uint8_t digest[KEYMASK_DIGEST_SIZE]) {
+asciichat_error_t key_fingerprint_digest(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
+                                         uint8_t digest[KEYMASK_DIGEST_SIZE]) {
   if (!public_key || !digest)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing public key or fingerprint output");
   if (crypto_hash_sha256(digest, public_key, 32) != 0)
@@ -11,7 +13,8 @@ asciichat_error_t key_fingerprint_digest(const uint8_t public_key[32], uint8_t d
 }
 
 // Independent feature hashes keep each choice stable as other features evolve.
-static void feature_seed(const uint8_t digest[32], const char *feature, uint8_t seed[32]) {
+static void feature_seed(const uint8_t digest[KEYMASK_DIGEST_SIZE], const char *feature,
+                         uint8_t seed[KEYMASK_DIGEST_SIZE]) {
   static const char domain[] = "ascii-chat/keymask/v2";
   crypto_hash_sha256_state state;
   crypto_hash_sha256_init(&state);

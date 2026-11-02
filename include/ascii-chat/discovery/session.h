@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 #pragma once
 
@@ -22,9 +23,9 @@
  * @brief Participant in a session
  */
 typedef struct {
-  uint8_t participant_id[16];  ///< UUID
-  uint8_t identity_pubkey[32]; ///< Ed25519 public key
-  uint64_t joined_at;          ///< Unix timestamp (ms)
+  uint8_t participant_id[UUID_SIZE];                ///< UUID
+  uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Ed25519 public key
+  uint64_t joined_at;                               ///< Unix timestamp (ms)
 } participant_t;
 
 /**
@@ -34,11 +35,11 @@ typedef struct {
  * info from remaining participants for re-election.
  */
 typedef struct {
-  uint8_t participant_id[16]; ///< Participant proposing new host
-  uint8_t nat_quality_tier;   ///< NAT tier for this participant
-  uint16_t upload_kbps;       ///< Upload bandwidth
-  uint32_t rtt_to_acds_ns;    ///< Latency to ACDS in nanoseconds
-  uint8_t connection_type;    ///< How they can be reached
+  uint8_t participant_id[UUID_SIZE]; ///< Participant proposing new host
+  uint8_t nat_quality_tier;          ///< NAT tier for this participant
+  uint16_t upload_kbps;              ///< Upload bandwidth
+  uint32_t rtt_to_acds_ns;           ///< Latency to ACDS in nanoseconds
+  uint8_t connection_type;           ///< How they can be reached
 } host_lost_candidate_t;
 
 /**
@@ -48,12 +49,12 @@ typedef struct {
  */
 typedef struct session_entry {
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< e.g., "affectionate-acquaintance-acquaintance"
-  uint8_t session_id[16];                          ///< UUID
+  uint8_t session_id[SESSION_ID_SIZE];             ///< UUID
 
-  uint8_t host_pubkey[32];      ///< Host's Ed25519 key
-  uint8_t capabilities;         ///< bit 0: video, bit 1: audio
-  uint8_t max_participants;     ///< 1-128
-  uint8_t current_participants; ///< Active participant count
+  uint8_t host_pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Host's Ed25519 key
+  uint8_t capabilities;                         ///< bit 0: video, bit 1: audio
+  uint8_t max_participants;                     ///< 1-128
+  uint8_t current_participants;                 ///< Active participant count
 
   char password_hash[128]; ///< Argon2id hash (if has_password)
   bool has_password;       ///< Password protection flag
@@ -69,12 +70,12 @@ typedef struct session_entry {
   uint16_t server_port;    ///< Port number for client connection
 
   // Discovery mode host negotiation fields
-  uint8_t initiator_id[16];        ///< First participant who created/joined the session
-  bool host_established;           ///< Whether a host has been designated (false = still negotiating)
-  uint8_t host_participant_id[16]; ///< Current host's participant_id (valid if host_established)
-  char host_address[64];           ///< Host's reachable address (valid if host_established)
-  uint16_t host_port;              ///< Host's port (valid if host_established)
-  uint8_t host_connection_type;    ///< acip_connection_type_t: how to reach host
+  uint8_t initiator_id[UUID_SIZE];        ///< First participant who created/joined the session
+  bool host_established;                  ///< Whether a host has been designated (false = still negotiating)
+  uint8_t host_participant_id[UUID_SIZE]; ///< Current host's participant_id (valid if host_established)
+  char host_address[64];                  ///< Host's reachable address (valid if host_established)
+  uint16_t host_port;                     ///< Host's port (valid if host_established)
+  uint8_t host_connection_type;           ///< acip_connection_type_t: how to reach host
 
   // Host migration state (when host disconnects)
   bool in_migration;           ///< Currently collecting HOST_LOST packets

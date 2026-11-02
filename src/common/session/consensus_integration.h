@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
  * @file session/consensus_integration.h
@@ -56,7 +57,8 @@ asciichat_error_t consensus_get_discovery_callbacks(void *context, session_conse
  * @param out_consensus Output: Created consensus handle
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_create_for_discovery(const uint8_t session_id[16], const uint8_t my_id[16],
+asciichat_error_t consensus_create_for_discovery(const uint8_t session_id[SESSION_ID_SIZE],
+                                                 const uint8_t my_id[UUID_SIZE],
                                                  const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
                                                  int num_participants, void *discovery_context,
                                                  session_consensus_t **out_consensus);

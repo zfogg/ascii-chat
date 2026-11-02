@@ -32,6 +32,7 @@
  * @date October 2025
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -170,7 +171,7 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
  * @ingroup crypto
  */
 int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
-                              uint8_t signature_out[64]);
+                              uint8_t signature_out[ED25519_SIGNATURE_SIZE]);
 
 /** @} */
 

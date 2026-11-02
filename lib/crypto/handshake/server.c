@@ -4,6 +4,7 @@
  * @brief Server-side handshake protocol implementation
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/tui/notice.h>
 
@@ -119,7 +120,7 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
     log_debug("Signing ephemeral key with server identity key");
 
     // Log key details in debug mode
-    char hex_ephemeral[65], hex_identity[65];
+    char hex_ephemeral[HEX_STRING_SIZE_32], hex_identity[65];
     for (int i = 0; i < 32; i++) {
       safe_snprintf(hex_ephemeral + i * 2, 3, "%02x", ctx->crypto_ctx.public_key[i]);
       safe_snprintf(hex_identity + i * 2, 3, "%02x", ctx->server_public_key.key[i]);
@@ -250,7 +251,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
 
     // Extract GPG key ID if present
     const char *client_gpg_key_id = NULL;
-    char gpg_key_id_buffer[41] = {0};
+    char gpg_key_id_buffer[GPG_FINGERPRINT_HEX_BUFFER_SIZE] = {0};
     size_t gpg_offset = ctx->crypto_ctx.public_key_size + ED25519_PUBLIC_KEY_SIZE + ED25519_SIGNATURE_SIZE;
     if (payload_len > gpg_offset) {
       uint8_t gpg_key_id_len = payload[gpg_offset];
@@ -538,7 +539,7 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
       size_t gpg_offset = ctx->crypto_ctx.signature_size + ctx->crypto_ctx.auth_challenge_size;
       uint8_t gpg_key_id_len = payload[gpg_offset];
       const char *client_gpg_key_id = NULL;
-      char gpg_key_id_buffer[41] = {0};
+      char gpg_key_id_buffer[GPG_FINGERPRINT_HEX_BUFFER_SIZE] = {0};
 
       if (gpg_key_id_len > 0 && gpg_key_id_len <= 40) {
         // Validate packet has enough bytes for GPG key ID

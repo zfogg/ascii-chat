@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/common.h>
 #pragma once
@@ -166,12 +167,12 @@ void acds_client_disconnect(acds_client_t *client);
  * @brief Session creation request parameters
  */
 typedef struct {
-  uint8_t identity_pubkey[32]; ///< Ed25519 public key (host identity)
-  uint8_t identity_seckey[64]; ///< Ed25519 secret key (for signing)
-  uint8_t capabilities;        ///< Bit 0: video, Bit 1: audio
-  uint8_t max_participants;    ///< Maximum participants (1-128)
-  bool has_password;           ///< Password protection enabled
-  char password[128];          ///< Optional password (if has_password)
+  uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE];  ///< Ed25519 public key (host identity)
+  uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE]; ///< Ed25519 secret key (for signing)
+  uint8_t capabilities;                              ///< Bit 0: video, Bit 1: audio
+  uint8_t max_participants;                          ///< Maximum participants (1-128)
+  bool has_password;                                 ///< Password protection enabled
+  char password[128];                                ///< Optional password (if has_password)
   bool acds_expose_ip;         ///< Explicitly allow public IP disclosure (--acds-expose-ip opt-in)
   uint8_t session_type;        ///< acds_session_type_t: 0=DIRECT_TCP (default), 1=WEBRTC
   const char *reserved_string; ///< Optional reserved string (NULL = auto-generate)
@@ -183,9 +184,9 @@ typedef struct {
  * @brief Session creation result
  */
 typedef struct {
-  char session_string[49]; ///< Generated session string (null-terminated)
-  uint8_t session_id[16];  ///< Session UUID
-  uint64_t expires_at;     ///< Expiration timestamp (Unix ms)
+  char session_string[49];             ///< Generated session string (null-terminated)
+  uint8_t session_id[SESSION_ID_SIZE]; ///< Session UUID
+  uint64_t expires_at;                 ///< Expiration timestamp (Unix ms)
 } acds_session_create_result_t;
 
 /**
@@ -208,17 +209,17 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
  * Server address is only revealed after successful authentication via acds_session_join().
  */
 typedef struct {
-  bool found;                   ///< Session exists
-  uint8_t session_id[16];       ///< Session UUID (if found)
-  uint8_t host_pubkey[32];      ///< Host's Ed25519 public key
-  uint8_t capabilities;         ///< Session capabilities
-  uint8_t max_participants;     ///< Maximum participants
-  uint8_t current_participants; ///< Current participant count
-  bool has_password;            ///< Password required to join
-  uint64_t created_at;          ///< Creation timestamp (Unix ms)
-  uint64_t expires_at;          ///< Expiration timestamp (Unix ms)
-  bool require_server_verify;   ///< ACDS policy: server must verify client identity
-  bool require_client_verify;   ///< ACDS policy: client must verify server identity
+  bool found;                                   ///< Session exists
+  uint8_t session_id[SESSION_ID_SIZE];          ///< Session UUID (if found)
+  uint8_t host_pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Host's Ed25519 public key
+  uint8_t capabilities;                         ///< Session capabilities
+  uint8_t max_participants;                     ///< Maximum participants
+  uint8_t current_participants;                 ///< Current participant count
+  bool has_password;                            ///< Password required to join
+  uint64_t created_at;                          ///< Creation timestamp (Unix ms)
+  uint64_t expires_at;                          ///< Expiration timestamp (Unix ms)
+  bool require_server_verify;                   ///< ACDS policy: server must verify client identity
+  bool require_client_verify;                   ///< ACDS policy: client must verify server identity
 } acds_session_lookup_result_t;
 
 /**
@@ -238,11 +239,11 @@ asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session
  * @brief Session join parameters
  */
 typedef struct {
-  const char *session_string;  ///< Session to join
-  uint8_t identity_pubkey[32]; ///< Participant's Ed25519 public key
-  uint8_t identity_seckey[64]; ///< Ed25519 secret key (for signing)
-  bool has_password;           ///< Password provided
-  char password[128];          ///< Password (if has_password)
+  const char *session_string;                        ///< Session to join
+  uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE];  ///< Participant's Ed25519 public key
+  uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE]; ///< Ed25519 secret key (for signing)
+  bool has_password;                                 ///< Password provided
+  char password[128];                                ///< Password (if has_password)
 } acds_session_join_params_t;
 
 /**
@@ -252,14 +253,14 @@ typedef struct {
  * This prevents IP address leakage to unauthenticated clients.
  */
 typedef struct {
-  bool success;               ///< Join succeeded
-  uint8_t participant_id[16]; ///< Participant UUID (if success)
-  uint8_t session_id[16];     ///< Session UUID (if success)
-  uint8_t error_code;         ///< Error code (if !success)
-  char error_message[129];    ///< Error message (if !success, null-terminated)
-  uint8_t session_type;       ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC (if success)
-  char server_address[65];    ///< Server IP/hostname (if success, null-terminated)
-  uint16_t server_port;       ///< Server port (if success)
+  bool success;                        ///< Join succeeded
+  uint8_t participant_id[UUID_SIZE];   ///< Participant UUID (if success)
+  uint8_t session_id[SESSION_ID_SIZE]; ///< Session UUID (if success)
+  uint8_t error_code;                  ///< Error code (if !success)
+  char error_message[129];             ///< Error message (if !success, null-terminated)
+  uint8_t session_type;                ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC (if success)
+  char server_address[65];             ///< Server IP/hostname (if success, null-terminated)
+  uint16_t server_port;                ///< Server port (if success)
 } acds_session_join_result_t;
 
 /**
@@ -291,8 +292,9 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
  * @param signature_out Output buffer for signature (64 bytes)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[64], uint64_t timestamp, uint8_t capabilities,
-                                           uint8_t max_participants, uint8_t signature_out[64]);
+asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE], uint64_t timestamp,
+                                           uint8_t capabilities, uint8_t max_participants,
+                                           uint8_t signature_out[ED25519_SIGNATURE_SIZE]);
 
 /**
  * @brief Verify SESSION_CREATE signature
@@ -306,9 +308,9 @@ asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[64], ui
  * @param signature Signature to verify (64 bytes)
  * @return ASCIICHAT_OK if valid, ERROR_CRYPTO_VERIFY_FAILED if invalid
  */
-asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[32], uint64_t timestamp,
+asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint64_t timestamp,
                                              uint8_t capabilities, uint8_t max_participants,
-                                             const uint8_t signature[64]);
+                                             const uint8_t signature[ED25519_SIGNATURE_SIZE]);
 
 /**
  * @brief Sign a SESSION_JOIN message
@@ -321,8 +323,8 @@ asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[32], 
  * @param signature_out Output buffer for signature (64 bytes)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[64], uint64_t timestamp,
-                                         const char *session_string, uint8_t signature_out[64]);
+asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE], uint64_t timestamp,
+                                         const char *session_string, uint8_t signature_out[ED25519_SIGNATURE_SIZE]);
 
 /**
  * @brief Verify SESSION_JOIN signature
@@ -335,8 +337,8 @@ asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[64], uint
  * @param signature Signature to verify (64 bytes)
  * @return ASCIICHAT_OK if valid, ERROR_CRYPTO_VERIFY_FAILED if invalid
  */
-asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[32], uint64_t timestamp,
-                                           const char *session_string, const uint8_t signature[64]);
+asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint64_t timestamp,
+                                           const char *session_string, const uint8_t signature[ED25519_SIGNATURE_SIZE]);
 
 /**
  * @brief Check if timestamp is within acceptable window

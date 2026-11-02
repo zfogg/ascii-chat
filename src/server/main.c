@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/network/errors.h>
@@ -282,7 +283,7 @@ static acip_transport_t *g_acds_transport = NULL;
  * Used as sender_id in WebRTC SDP/ICE packets sent via ACDS relay.
  * Set during SESSION_JOIN, all zeros if not using ACDS.
  */
-static uint8_t g_server_participant_id[16] = {0};
+static uint8_t g_server_participant_id[UUID_SIZE] = {0};
 
 /**
  * @brief Global WebRTC peer manager for accepting client connections
@@ -527,8 +528,9 @@ static void server_handle_sigint(int sig) {
  * @param user_data User context pointer (unused)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-static asciichat_error_t server_send_sdp(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                         const char *sdp_type, const char *sdp, void *user_data) {
+static asciichat_error_t server_send_sdp(const uint8_t session_id[SESSION_ID_SIZE],
+                                         const uint8_t recipient_id[UUID_SIZE], const char *sdp_type, const char *sdp,
+                                         void *user_data) {
   (void)user_data;
 
   if (!g_acds_transport) {
@@ -590,8 +592,9 @@ static asciichat_error_t server_send_sdp(const uint8_t session_id[16], const uin
  * @param user_data User context pointer (unused)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-static asciichat_error_t server_send_ice(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                         const char *candidate, const char *mid, void *user_data) {
+static asciichat_error_t server_send_ice(const uint8_t session_id[SESSION_ID_SIZE],
+                                         const uint8_t recipient_id[UUID_SIZE], const char *candidate, const char *mid,
+                                         void *user_data) {
   (void)user_data;
 
   if (!g_acds_transport) {
@@ -671,7 +674,8 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[16], const uin
  * @param participant_id Remote participant UUID (16 bytes)
  * @param user_data User context pointer (server_context_t*)
  */
-static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t participant_id[16], void *user_data) {
+static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t participant_id[UUID_SIZE],
+                                      void *user_data) {
   server_context_t *server_ctx = (server_context_t *)user_data;
   if (!transport || !participant_id || !server_ctx) {
     log_error("Invalid parameters");
@@ -813,7 +817,7 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
   // Add host public key to TXT records (for cryptographic verification)
   // Convert server's Ed25519 public key to hex format
   if (g_server_encryption_enabled) {
-    char hex_pubkey[65];
+    char hex_pubkey[HEX_STRING_SIZE_32];
     pubkey_to_hex(g_server_private_key.public_key, hex_pubkey);
     safe_snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=%s", hex_pubkey);
     txt_records[txt_count++] = txt_host_pubkey;
@@ -1061,7 +1065,7 @@ static int init_server_crypto(void) {
         log_debug("Successfully loaded identity key #%zu: %s", i + 1, key_path);
 
         // Display key fingerprint for verification
-        char hex_pubkey[65];
+        char hex_pubkey[HEX_STRING_SIZE_32];
         pubkey_to_hex(g_server_identity_keys[g_num_server_identity_keys].public_key, hex_pubkey);
         log_debug("  Key fingerprint: %s", hex_pubkey);
 

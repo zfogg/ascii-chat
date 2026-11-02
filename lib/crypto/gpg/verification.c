@@ -4,6 +4,7 @@
  * @brief GPG signature verification implementation
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/verification.h>
 #include <ascii-chat/crypto/gpg/signing.h>
 #include <ascii-chat/crypto/keys.h>
@@ -29,7 +30,7 @@
 #endif
 
 int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
-                                const uint8_t signature[64]) {
+                                const uint8_t signature[ED25519_SIGNATURE_SIZE]) {
   // Note: We don't use the raw signature parameter directly.
   // Instead, we regenerate the OpenPGP signature using GPG (Ed25519 is deterministic).
   (void)signature;
@@ -171,9 +172,9 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   }
 
   // Debug logging
-  char pubkey_hex[65];
-  char r_hex[65];
-  char s_hex[65];
+  char pubkey_hex[HEX_STRING_SIZE_32];
+  char r_hex[HEX_STRING_SIZE_32];
+  char s_hex[HEX_STRING_SIZE_32];
   char msg_hex[128];
 
   for (int i = 0; i < 32; i++) {

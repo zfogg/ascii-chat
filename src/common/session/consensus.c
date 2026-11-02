@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
  * @file session/consensus.c
@@ -32,7 +33,7 @@ typedef struct session_consensus {
   void *context;
 
   // Local identity
-  uint8_t my_id[16];
+  uint8_t my_id[UUID_SIZE];
   bool is_leader;
 } session_consensus_t;
 
@@ -105,7 +106,7 @@ static asciichat_error_t session_consensus_election_bridge(void *context, consen
   return result;
 }
 
-asciichat_error_t session_consensus_create(const uint8_t my_id[16], bool is_leader,
+asciichat_error_t session_consensus_create(const uint8_t my_id[UUID_SIZE], bool is_leader,
                                            const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
                                            int num_participants, const session_consensus_callbacks_t *callbacks,
                                            session_consensus_t **out_consensus) {
@@ -227,7 +228,7 @@ asciichat_error_t session_consensus_on_collection_start(session_consensus_t *con
   return consensus_coordinator_on_collection_start(consensus->coordinator, round_id, deadline_ns);
 }
 
-asciichat_error_t session_consensus_on_stats_update(session_consensus_t *consensus, const uint8_t sender_id[16],
+asciichat_error_t session_consensus_on_stats_update(session_consensus_t *consensus, const uint8_t sender_id[UUID_SIZE],
                                                     const participant_metrics_t *metrics, uint8_t num_metrics) {
   if (!consensus || !sender_id || !metrics) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
@@ -236,10 +237,10 @@ asciichat_error_t session_consensus_on_stats_update(session_consensus_t *consens
   return consensus_coordinator_on_stats_update(consensus->coordinator, sender_id, metrics, num_metrics);
 }
 
-asciichat_error_t session_consensus_on_election_result(session_consensus_t *consensus, const uint8_t host_id[16],
+asciichat_error_t session_consensus_on_election_result(session_consensus_t *consensus, const uint8_t host_id[UUID_SIZE],
                                                        const char host_address[64], uint16_t host_port,
-                                                       const uint8_t backup_id[16], const char backup_address[64],
-                                                       uint16_t backup_port) {
+                                                       const uint8_t backup_id[UUID_SIZE],
+                                                       const char backup_address[64], uint16_t backup_port) {
   if (!consensus || !host_id || !backup_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -259,9 +260,9 @@ asciichat_error_t session_consensus_on_election_result(session_consensus_t *cons
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t session_consensus_get_elected_host(session_consensus_t *consensus, uint8_t out_host_id[16],
+asciichat_error_t session_consensus_get_elected_host(session_consensus_t *consensus, uint8_t out_host_id[UUID_SIZE],
                                                      char out_host_address[64], uint16_t *out_host_port,
-                                                     uint8_t out_backup_id[16], char out_backup_address[64],
+                                                     uint8_t out_backup_id[UUID_SIZE], char out_backup_address[64],
                                                      uint16_t *out_backup_port) {
   if (!consensus || !out_host_id || !out_host_address || !out_host_port || !out_backup_id || !out_backup_address ||
       !out_backup_port) {
@@ -291,8 +292,8 @@ bool session_consensus_is_ready(session_consensus_t *consensus) {
   }
 
   // Check if we have a valid elected host
-  uint8_t host_id[16];
-  uint8_t backup_id[16];
+  uint8_t host_id[UUID_SIZE];
+  uint8_t backup_id[UUID_SIZE];
   asciichat_error_t err = consensus_coordinator_get_current_host(consensus->coordinator, host_id, backup_id);
 
   return err == ASCIICHAT_OK;

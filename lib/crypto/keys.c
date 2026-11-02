@@ -4,6 +4,7 @@
  * @brief 🔑 High-level key management interface with SSH, GPG, and HTTPS key support
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/key_types.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
@@ -250,8 +251,8 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     }
 
     // Get public key and keygrip from GPG keyring
-    uint8_t public_key[32];
-    char keygrip[64];
+    uint8_t public_key[ED25519_PUBLIC_KEY_SIZE];
+    char keygrip[GPG_KEYGRIP_BUFFER_SIZE];
     if (gpg_get_public_key(key_id, public_key, keygrip) != 0) {
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to get public key from GPG for key ID: %s", key_id);
     }
@@ -332,8 +333,8 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     fclose(f);
 
     // Parse OpenPGP armored secret key
-    uint8_t ed25519_pk[32];
-    uint8_t ed25519_sk[32];
+    uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
+    uint8_t ed25519_sk[ED25519_SEED_SIZE];
     asciichat_error_t openpgp_result = openpgp_parse_armored_seckey(file_content, ed25519_pk, ed25519_sk);
     SAFE_FREE(file_content);
     SAFE_FREE(normalized_path);
@@ -389,8 +390,8 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read binary OpenPGP key file: %s", key_path);
     }
 
-    uint8_t ed25519_pk[32];
-    uint8_t ed25519_sk[32];
+    uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
+    uint8_t ed25519_sk[ED25519_SEED_SIZE];
     asciichat_error_t openpgp_result = openpgp_parse_binary_seckey(file_content, content_read, ed25519_pk, ed25519_sk);
     sodium_memzero(file_content, content_read);
     SAFE_FREE(file_content);
@@ -549,7 +550,7 @@ asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, s
 // Key Conversion Functions
 // =============================================================================
 
-asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_pk[32]) {
+asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_pk[X25519_KEY_SIZE]) {
   if (!key || !x25519_pk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -568,7 +569,7 @@ asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_p
   return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported key type for X25519 conversion: %d", key->type);
 }
 
-asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[32]) {
+asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[X25519_KEY_SIZE]) {
   if (!key || !x25519_sk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -709,7 +710,7 @@ void format_public_key(const public_key_t *key, char *output, size_t output_size
     // Format as SSH Ed25519 public key
     // Simple base64 encoding for 32 bytes = 43 chars + padding
     // For now, just use hex encoding
-    char hex_key[65];
+    char hex_key[HEX_STRING_SIZE_32];
     for (size_t i = 0; i < 32; i++) {
       char hex_byte[3];
       safe_snprintf(hex_byte, sizeof(hex_byte), "%02x", key->key[i]);
@@ -720,7 +721,7 @@ void format_public_key(const public_key_t *key, char *output, size_t output_size
     safe_snprintf(output, output_size, "ssh-ed25519 %s %s", hex_key, key->comment);
   } else if (key->type == KEY_TYPE_X25519) {
     // Format as hex X25519 key
-    char hex_key[65];
+    char hex_key[HEX_STRING_SIZE_32];
     for (size_t i = 0; i < 32; i++) {
       char hex_byte[3];
       safe_snprintf(hex_byte, sizeof(hex_byte), "%02x", key->key[i]);

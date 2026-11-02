@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
  * @file network/consensus/topology.c
@@ -22,7 +23,8 @@ typedef struct consensus_topology {
 } consensus_topology_t;
 
 // Helper: find position of UUID in array
-static int find_uuid_position(const uint8_t uuids[MAX_SESSION_PARTICIPANTS][16], int count, const uint8_t target[16]) {
+static int find_uuid_position(const uint8_t uuids[MAX_SESSION_PARTICIPANTS][16], int count,
+                              const uint8_t target[UUID_SIZE]) {
   for (int i = 0; i < count; i++) {
     if (memcmp(uuids[i], target, 16) == 0) {
       return i;
@@ -37,7 +39,7 @@ static int qsort_uuid_compare(const void *a, const void *b) {
 }
 
 asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
-                                            int num_participants, const uint8_t my_id[16],
+                                            int num_participants, const uint8_t my_id[UUID_SIZE],
                                             consensus_topology_t **out_topology) {
   if (!participant_ids || !my_id || !out_topology || num_participants <= 0 ||
       num_participants > MAX_SESSION_PARTICIPANTS) {
@@ -82,7 +84,7 @@ bool consensus_topology_am_leader(const consensus_topology_t *topology) {
   return topology->my_position == (topology->num_participants - 1);
 }
 
-asciichat_error_t consensus_topology_get_next(const consensus_topology_t *topology, uint8_t out_id[16]) {
+asciichat_error_t consensus_topology_get_next(const consensus_topology_t *topology, uint8_t out_id[UUID_SIZE]) {
   if (!topology || !out_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -92,7 +94,7 @@ asciichat_error_t consensus_topology_get_next(const consensus_topology_t *topolo
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t consensus_topology_get_prev(const consensus_topology_t *topology, uint8_t out_id[16]) {
+asciichat_error_t consensus_topology_get_prev(const consensus_topology_t *topology, uint8_t out_id[UUID_SIZE]) {
   if (!topology || !out_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -102,7 +104,7 @@ asciichat_error_t consensus_topology_get_prev(const consensus_topology_t *topolo
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t consensus_topology_get_leader(const consensus_topology_t *topology, uint8_t out_id[16]) {
+asciichat_error_t consensus_topology_get_leader(const consensus_topology_t *topology, uint8_t out_id[UUID_SIZE]) {
   if (!topology || !out_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }

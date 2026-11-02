@@ -4,6 +4,7 @@
  * @brief GPG agent connection and communication implementation
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/agent.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/common.h>
@@ -313,7 +314,7 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
   *signature_len_out = 64;
 
   // DEBUG: Print signature in hex
-  char sig_hex[129];
+  char sig_hex[HEX_STRING_SIZE_64];
   for (int i = 0; i < 64; i++) {
     safe_snprintf(sig_hex + i * 2, 3, "%02x", (unsigned char)signature_out[i]);
   }

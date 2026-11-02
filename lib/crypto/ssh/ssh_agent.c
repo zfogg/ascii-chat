@@ -4,6 +4,7 @@
  * @brief 🔌 SSH agent protocol implementation for key authentication via ssh-agent
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/ssh/ssh_agent.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/bytes.h> // For write_u32_be, read_u32_be
@@ -254,7 +255,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
 }
 
 asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *message, size_t message_len,
-                                 uint8_t signature[64]) {
+                                 uint8_t signature[ED25519_SIGNATURE_SIZE]) {
   if (!public_key || !message || !signature) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: public_key=%p, message=%p, signature=%p", public_key,
                      message, signature);

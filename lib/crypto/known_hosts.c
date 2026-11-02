@@ -4,6 +4,7 @@
  * @brief 📜 SSH known_hosts file parser for host key verification and trust management
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/crypto/key_identity/keymask.h>
@@ -80,12 +81,14 @@ const char *get_known_hosts_path(void) {
 // Format: IP:port x25519 <hex> [comment]
 // IPv4 example: 192.0.2.1:8080 x25519 1234abcd... ascii-chat
 // IPv6 example: [2001:db8::1]:8080 x25519 1234abcd... ascii-chat
-asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]) {
+asciichat_error_t check_known_host(const char *server_ip, uint16_t port,
+                                   const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]) {
   return check_known_host_with_key(server_ip, port, server_key, NULL, NULL);
 }
 
-asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port, const uint8_t server_key[32],
-                                            uint8_t expected_key[32], bool *has_expected_key) {
+asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port,
+                                            const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE],
+                                            uint8_t expected_key[ED25519_PUBLIC_KEY_SIZE], bool *has_expected_key) {
   if (has_expected_key)
     *has_expected_key = false;
   // Validate parameters first
@@ -396,7 +399,8 @@ static asciichat_error_t mkdir_recursive(const char *path) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]) {
+asciichat_error_t add_known_host(const char *server_ip, uint16_t port,
+                                 const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]) {
   // Validate parameters first
   if (!server_ip || !server_key) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: server_ip=%p, server_key=%p", server_ip, server_key);
@@ -604,7 +608,7 @@ void compute_key_fingerprint(const uint8_t key[ED25519_PUBLIC_KEY_SIZE], char fi
 }
 
 // Interactive prompt for unknown host - returns true if user wants to add, false to abort
-bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]) {
+bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE]) {
   char fingerprint[CRYPTO_HEX_KEY_SIZE_NULL];
   compute_key_fingerprint(server_key, fingerprint);
 
@@ -674,8 +678,8 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
 
 // Display MITM warning with key comparison and prompt user for confirmation
 // Returns true if user accepts the risk and wants to continue, false otherwise
-bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t expected_key[32],
-                          const uint8_t received_key[32]) {
+bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t expected_key[ED25519_PUBLIC_KEY_SIZE],
+                          const uint8_t received_key[ED25519_PUBLIC_KEY_SIZE]) {
   public_key_t public_key = {.type = KEY_TYPE_ED25519};
   char expected_identity[KEY_IDENTITY_BUFFER_SIZE] = "No stored public identity available.\n";
   char received_identity[KEY_IDENTITY_BUFFER_SIZE] = "";

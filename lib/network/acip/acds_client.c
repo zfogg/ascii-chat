@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
  * @file network/acip/client.c
@@ -36,8 +37,9 @@
 // Cryptographic Signature Helpers
 // ============================================================================
 
-asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[64], uint64_t timestamp, uint8_t capabilities,
-                                           uint8_t max_participants, uint8_t signature_out[64]) {
+asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE], uint64_t timestamp,
+                                           uint8_t capabilities, uint8_t max_participants,
+                                           uint8_t signature_out[ED25519_SIGNATURE_SIZE]) {
   if (!identity_seckey || !signature_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -64,9 +66,9 @@ asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[64], ui
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[32], uint64_t timestamp,
+asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint64_t timestamp,
                                              uint8_t capabilities, uint8_t max_participants,
-                                             const uint8_t signature[64]) {
+                                             const uint8_t signature[ED25519_SIGNATURE_SIZE]) {
   if (!identity_pubkey || !signature) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -92,8 +94,8 @@ asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[32], 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[64], uint64_t timestamp,
-                                         const char *session_string, uint8_t signature_out[64]) {
+asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE], uint64_t timestamp,
+                                         const char *session_string, uint8_t signature_out[ED25519_SIGNATURE_SIZE]) {
   if (!identity_seckey || !session_string || !signature_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -127,8 +129,9 @@ asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[64], uint
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[32], uint64_t timestamp,
-                                           const char *session_string, const uint8_t signature[64]) {
+asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint64_t timestamp,
+                                           const char *session_string,
+                                           const uint8_t signature[ED25519_SIGNATURE_SIZE]) {
   if (!identity_pubkey || !session_string || !signature) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }

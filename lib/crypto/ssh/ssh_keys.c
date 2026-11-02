@@ -4,6 +4,7 @@
  * @brief 🔐 SSH key parsing and management for RSA, ECDSA, and Ed25519 key types
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/crypto/crypto.h> // Includes <sodium.h>
@@ -164,7 +165,7 @@ static asciichat_error_t base64_decode_ssh_key(const char *base64, size_t base64
 // SSH Key Parsing Implementation
 // =============================================================================
 
-asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[32]) {
+asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]) {
   if (!line || !ed25519_pk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: line=%p, ed25519_pk=%p", line, ed25519_pk);
   }
@@ -226,7 +227,7 @@ typedef struct {
   size_t dec_offset;
   char ciphername[32];
   uint8_t bcrypt_salt[16];
-  uint8_t ed25519_pubkey[32];
+  uint8_t ed25519_pubkey[ED25519_PUBLIC_KEY_SIZE];
 } ssh_private_key_parse_t;
 
 static void ssh_private_key_clear_password(ssh_private_key_parse_t *state) {
@@ -521,7 +522,8 @@ static asciichat_error_t ssh_private_key_read_password(ssh_private_key_parse_t *
       ssh_private_key_cleanup(state);
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for password");
     }
-    if (prompt_password_simple_kind("Encrypted SSH key - enter passphrase", state->password, 1024, UI_PROMPT_SSH_PASSPHRASE) != 0) {
+    if (prompt_password_simple_kind("Encrypted SSH key - enter passphrase", state->password, 1024,
+                                    UI_PROMPT_SSH_PASSPHRASE) != 0) {
       ssh_private_key_cleanup(state);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read passphrase for encrypted key: %s", key_path);
     }
@@ -676,7 +678,7 @@ static asciichat_error_t ssh_private_key_read_decrypted_material(ssh_private_key
     ssh_private_key_cleanup(state);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at pubkey data: %s", key_path);
   }
-  uint8_t ed25519_pk[32];
+  uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
   memcpy(ed25519_pk, state->decrypted_blob + state->dec_offset, 32);
   state->dec_offset += 32;
 
@@ -697,7 +699,7 @@ static asciichat_error_t ssh_private_key_read_decrypted_material(ssh_private_key
     ssh_private_key_cleanup(state);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at privkey data: %s", key_path);
   }
-  uint8_t ed25519_sk[64];
+  uint8_t ed25519_sk[ED25519_PRIVATE_KEY_SIZE];
   memcpy(ed25519_sk, state->decrypted_blob + state->dec_offset, 64);
   state->dec_offset += 64;
 
@@ -942,7 +944,7 @@ static asciichat_error_t ssh_private_key_read_private(ssh_private_key_parse_t *s
   }
 
   // Extract the Ed25519 private key (first 32 bytes)
-  uint8_t ed25519_privkey[32];
+  uint8_t ed25519_privkey[ED25519_SEED_SIZE];
   memcpy(ed25519_privkey, state->key_blob + state->offset, 32);
 
   // Verify the public key matches
@@ -1095,7 +1097,8 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
 // Key Conversion Functions
 // =============================================================================
 
-asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[32], uint8_t x25519_pk[32]) {
+asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
+                                           uint8_t x25519_pk[X25519_KEY_SIZE]) {
   if (!ed25519_pk || !x25519_pk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ed25519_pk=%p, x25519_pk=%p", ed25519_pk, x25519_pk);
   }
@@ -1108,7 +1111,8 @@ asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[32], uint8_t
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[64], uint8_t x25519_sk[32]) {
+asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[ED25519_PRIVATE_KEY_SIZE],
+                                            uint8_t x25519_sk[X25519_KEY_SIZE]) {
   if (!ed25519_sk || !x25519_sk) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ed25519_sk=%p, x25519_sk=%p", ed25519_sk, x25519_sk);
   }
@@ -1126,7 +1130,7 @@ asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[64], uint8_
 // =============================================================================
 
 asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len,
-                                       uint8_t signature[64]) {
+                                       uint8_t signature[ED25519_SIGNATURE_SIZE]) {
   if (!key || !message || !signature) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key=%p, message=%p, signature=%p", key, message,
                      signature);
@@ -1227,8 +1231,9 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message, size_t message_len,
-                                           const uint8_t signature[64], const char *gpg_key_id) {
+asciichat_error_t ed25519_verify_signature(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], const uint8_t *message,
+                                           size_t message_len, const uint8_t signature[ED25519_SIGNATURE_SIZE],
+                                           const char *gpg_key_id) {
   if (!public_key || !message || !signature) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: public_key=%p, message=%p, signature=%p", public_key,
                      message, signature);

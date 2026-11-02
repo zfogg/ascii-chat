@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/consensus/handoff.h>
 #include <string.h>
@@ -47,19 +48,19 @@ void consensus_handoff_encode(const consensus_handoff_message_t *m, uint8_t out[
   out[54] = (uint8_t)(m->port >> 8);
   out[55] = (uint8_t)m->port;
 }
-void consensus_handoff_init(consensus_handoff_t *s, const uint8_t session[16], const uint8_t host[16]) {
+void consensus_handoff_init(consensus_handoff_t *s, const uint8_t session[UUID_SIZE], const uint8_t host[UUID_SIZE]) {
   memset(s, 0, sizeof(*s));
   memcpy(s->session, session, 16);
   memcpy(s->host, host, 16);
   s->generation = 1;
 }
-static consensus_handoff_peer_t *find_peer(consensus_handoff_t *s, const uint8_t id[16]) {
+static consensus_handoff_peer_t *find_peer(consensus_handoff_t *s, const uint8_t id[UUID_SIZE]) {
   for (size_t i = 0; i < s->count; ++i)
     if (memcmp(s->peers[i].id, id, 16) == 0)
       return &s->peers[i];
   return NULL;
 }
-asciichat_error_t consensus_handoff_join(consensus_handoff_t *s, const uint8_t id[16]) {
+asciichat_error_t consensus_handoff_join(consensus_handoff_t *s, const uint8_t id[UUID_SIZE]) {
   if (find_peer(s, id))
     return ASCIICHAT_OK;
   if (s->count == MAX_SESSION_PARTICIPANTS)
@@ -73,7 +74,7 @@ asciichat_error_t consensus_handoff_join(consensus_handoff_t *s, const uint8_t i
   memset(s->successor, 0, 16);
   return ASCIICHAT_OK;
 }
-void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[16]) {
+void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[UUID_SIZE]) {
   // The incumbent can leave before its first measurement creates a peer entry.
   if (memcmp(s->host, id, 16) == 0)
     s->host_lost = true;
@@ -96,7 +97,7 @@ void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[16]) {
  * @brief Record loss of the incumbent, ignoring delayed reports about old hosts.
  * The caller authenticates the reporter before the next tick starts recovery.
  */
-void consensus_handoff_host_lost(consensus_handoff_t *s, const uint8_t host[16]) {
+void consensus_handoff_host_lost(consensus_handoff_t *s, const uint8_t host[UUID_SIZE]) {
   if (!memcmp(s->host, host, sizeof(s->host)))
     s->host_lost = true;
 }

@@ -27,6 +27,7 @@
  * @date January 2026
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include "../../common.h"
 #include <stdint.h>
 #include <stddef.h>
@@ -89,11 +90,11 @@ typedef struct {
  * containing algorithm, creation time, and key material.
  */
 typedef struct {
-  uint8_t version;    ///< Packet version (should be 4)
-  uint32_t created;   ///< Creation timestamp (Unix epoch)
-  uint8_t algorithm;  ///< Public key algorithm (22 = EdDSA)
-  uint8_t pubkey[32]; ///< Ed25519 public key (32 bytes)
-  uint64_t keyid;     ///< OpenPGP Key ID (last 8 bytes of fingerprint)
+  uint8_t version;                         ///< Packet version (should be 4)
+  uint32_t created;                        ///< Creation timestamp (Unix epoch)
+  uint8_t algorithm;                       ///< Public key algorithm (22 = EdDSA)
+  uint8_t pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Ed25519 public key (32 bytes)
+  uint64_t keyid;                          ///< OpenPGP Key ID (last 8 bytes of fingerprint)
 } openpgp_public_key_t;
 
 /** @} */
@@ -110,13 +111,13 @@ typedef struct {
  * containing algorithm, creation time, and both public and secret key material.
  */
 typedef struct {
-  uint8_t version;    ///< Packet version (should be 4)
-  uint32_t created;   ///< Creation timestamp (Unix epoch)
-  uint8_t algorithm;  ///< Public key algorithm (22 = EdDSA)
-  uint8_t pubkey[32]; ///< Ed25519 public key (32 bytes)
-  uint8_t seckey[32]; ///< Ed25519 secret key (32 bytes)
-  uint64_t keyid;     ///< OpenPGP Key ID (last 8 bytes of fingerprint)
-  bool is_encrypted;  ///< True if secret key material is encrypted
+  uint8_t version;                         ///< Packet version (should be 4)
+  uint32_t created;                        ///< Creation timestamp (Unix epoch)
+  uint8_t algorithm;                       ///< Public key algorithm (22 = EdDSA)
+  uint8_t pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Ed25519 public key (32 bytes)
+  uint8_t seckey[ED25519_SEED_SIZE];       ///< Ed25519 secret key (32 bytes)
+  uint64_t keyid;                          ///< OpenPGP Key ID (last 8 bytes of fingerprint)
+  bool is_encrypted;                       ///< True if secret key material is encrypted
 } openpgp_secret_key_t;
 
 /** @} */
@@ -155,10 +156,11 @@ typedef struct {
  *
  * @ingroup crypto
  */
-asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t ed25519_pk[32]);
+asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]);
 
 /** Parse a binary OpenPGP public-key packet stream and extract its Ed25519 key. */
-asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_len, uint8_t ed25519_pk[32]);
+asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_len,
+                                              uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Parse PGP armored secret key block and extract Ed25519 keypair
@@ -190,12 +192,13 @@ asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_l
  *
  * @ingroup crypto
  */
-asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t ed25519_pk[32],
-                                               uint8_t ed25519_sk[32]);
+asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
+                                               uint8_t ed25519_sk[ED25519_SEED_SIZE]);
 
 /** Parse an unencrypted binary OpenPGP secret-key packet stream. */
-asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_len, uint8_t ed25519_pk[32],
-                                              uint8_t ed25519_sk[32]);
+asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_len,
+                                              uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
+                                              uint8_t ed25519_sk[ED25519_SEED_SIZE]);
 
 /** @} */
 
@@ -286,7 +289,8 @@ asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, si
  *
  * @ingroup crypto
  */
-asciichat_error_t openpgp_extract_ed25519_from_mpi(const uint8_t *mpi, size_t mpi_len, uint8_t ed25519_pk[32]);
+asciichat_error_t openpgp_extract_ed25519_from_mpi(const uint8_t *mpi, size_t mpi_len,
+                                                   uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]);
 
 /** @} */
 

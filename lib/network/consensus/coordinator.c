@@ -3,6 +3,7 @@
  * @brief Ring consensus coordinator implementation
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/consensus/coordinator.h>
 #include <ascii-chat/network/consensus/election.h>
 #include <ascii-chat/network/consensus/metrics.h>
@@ -20,7 +21,7 @@
  * @brief Internal coordinator structure
  */
 typedef struct consensus_coordinator {
-  uint8_t my_id[16];
+  uint8_t my_id[UUID_SIZE];
   const consensus_topology_t *topology;
   consensus_state_t *state;
   consensus_election_func_t election_func;
@@ -34,15 +35,15 @@ typedef struct consensus_coordinator {
   uint64_t collection_deadline_ns; /* Deadline for current collection */
 
   /* Elected hosts - fallback storage */
-  uint8_t stored_host_id[16];
-  uint8_t stored_backup_id[16];
+  uint8_t stored_host_id[UUID_SIZE];
+  uint8_t stored_backup_id[UUID_SIZE];
   bool has_stored_result;
 } consensus_coordinator_t;
 
 /**
  * @brief Initialize coordinator with given parameters
  */
-asciichat_error_t consensus_coordinator_create(const uint8_t my_id[16], const consensus_topology_t *topology,
+asciichat_error_t consensus_coordinator_create(const uint8_t my_id[UUID_SIZE], const consensus_topology_t *topology,
                                                consensus_election_func_t election_func, void *election_context,
                                                consensus_coordinator_t **out_coordinator) {
   if (!my_id || !topology || !election_func || !out_coordinator) {
@@ -201,7 +202,7 @@ static asciichat_error_t complete_collection(consensus_coordinator_t *coordinato
     }
 
     /* Store elected hosts */
-    uint8_t host_id[16], backup_id[16];
+    uint8_t host_id[UUID_SIZE], backup_id[16];
     err = consensus_state_get_elected_host(coordinator->state, host_id);
     if (err == ASCIICHAT_OK) {
       err = consensus_state_get_elected_backup(coordinator->state, backup_id);
@@ -324,7 +325,7 @@ asciichat_error_t consensus_coordinator_on_collection_start(consensus_coordinato
  * @brief Handle STATS_UPDATE packet
  */
 asciichat_error_t consensus_coordinator_on_stats_update(consensus_coordinator_t *coordinator,
-                                                        const uint8_t sender_id[16],
+                                                        const uint8_t sender_id[UUID_SIZE],
                                                         const participant_metrics_t *metrics, uint8_t num_metrics) {
   if (!coordinator || !sender_id || !metrics) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameter");
@@ -352,7 +353,8 @@ asciichat_error_t consensus_coordinator_on_stats_update(consensus_coordinator_t 
  * @brief Handle ELECTION_RESULT packet
  */
 asciichat_error_t consensus_coordinator_on_election_result(consensus_coordinator_t *coordinator,
-                                                           const uint8_t host_id[16], const uint8_t backup_id[16]) {
+                                                           const uint8_t host_id[UUID_SIZE],
+                                                           const uint8_t backup_id[UUID_SIZE]) {
   if (!coordinator || !host_id || !backup_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameter");
   }
@@ -380,7 +382,8 @@ asciichat_error_t consensus_coordinator_on_election_result(consensus_coordinator
  * @brief Get currently elected host
  */
 asciichat_error_t consensus_coordinator_get_current_host(const consensus_coordinator_t *coordinator,
-                                                         uint8_t out_host_id[16], uint8_t out_backup_id[16]) {
+                                                         uint8_t out_host_id[UUID_SIZE],
+                                                         uint8_t out_backup_id[UUID_SIZE]) {
   if (!coordinator || !out_host_id || !out_backup_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameter");
   }

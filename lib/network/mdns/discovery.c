@@ -13,6 +13,7 @@
  * - UI wrapper: lan_discovery.c calls discovery_mdns_query() for interactive selection
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/network/mdns/discovery.h>
@@ -48,7 +49,7 @@ typedef struct {
 // Utility Functions
 // ============================================================================
 
-void pubkey_to_hex(const uint8_t pubkey[32], char hex_out[65]) {
+void pubkey_to_hex(const uint8_t pubkey[ED25519_PUBLIC_KEY_SIZE], char hex_out[HEX_STRING_SIZE_32]) {
   if (!pubkey || !hex_out)
     return;
   for (int i = 0; i < 32; i++) {
@@ -57,7 +58,7 @@ void pubkey_to_hex(const uint8_t pubkey[32], char hex_out[65]) {
   hex_out[64] = '\0';
 }
 
-asciichat_error_t hex_to_pubkey(const char *hex_str, uint8_t pubkey_out[32]) {
+asciichat_error_t hex_to_pubkey(const char *hex_str, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]) {
   if (!hex_str || !pubkey_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid hex_str or pubkey_out pointer");
     return ERROR_INVALID_PARAM;

@@ -7,6 +7,7 @@
  * @date January 2026
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/crypto/discovery_keys.h>
@@ -79,7 +80,7 @@ static bool is_official_server(const char *acds_server) {
 // HTTPS Download and Key Loading
 // ============================================================================
 
-asciichat_error_t discovery_keys_download_https(const char *url, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_download_https(const char *url, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]) {
   if (!url || !pubkey_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -98,7 +99,7 @@ asciichat_error_t discovery_keys_download_https(const char *url, uint8_t pubkey_
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t discovery_keys_load_file(const char *file_path, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_load_file(const char *file_path, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]) {
   if (!file_path || !pubkey_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -139,7 +140,7 @@ asciichat_error_t discovery_keys_get_cache_path(const char *acds_server, char *p
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t discovery_keys_load_cached(const char *acds_server, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_load_cached(const char *acds_server, uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]) {
   if (!acds_server || !pubkey_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -159,7 +160,7 @@ asciichat_error_t discovery_keys_load_cached(const char *acds_server, uint8_t pu
   return discovery_keys_load_file(cache_path, pubkey_out);
 }
 
-asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint8_t pubkey[32]) {
+asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint8_t pubkey[ED25519_PUBLIC_KEY_SIZE]) {
   if (!acds_server || !pubkey) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
@@ -234,13 +235,14 @@ asciichat_error_t discovery_keys_clear_cache(const char *acds_server) {
 // User Verification for Key Changes
 // ============================================================================
 
-asciichat_error_t discovery_keys_verify_change(const char *acds_server, const uint8_t old_pubkey[32],
-                                               const uint8_t new_pubkey[32]) {
+asciichat_error_t discovery_keys_verify_change(const char *acds_server,
+                                               const uint8_t old_pubkey[ED25519_PUBLIC_KEY_SIZE],
+                                               const uint8_t new_pubkey[ED25519_PUBLIC_KEY_SIZE]) {
   if (!acds_server || !old_pubkey || !new_pubkey) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
 
-  char old_fingerprint[65], new_fingerprint[65];
+  char old_fingerprint[HEX_STRING_SIZE_32], new_fingerprint[65];
   compute_key_fingerprint(old_pubkey, old_fingerprint);
   compute_key_fingerprint(new_pubkey, new_fingerprint);
 
@@ -264,12 +266,13 @@ asciichat_error_t discovery_keys_verify_change(const char *acds_server, const ui
 // Main Verification Function
 // ============================================================================
 
-asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec,
+                                        uint8_t pubkey_out[ED25519_PUBLIC_KEY_SIZE]) {
   if (!acds_server || !pubkey_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
 
-  uint8_t new_pubkey[32];
+  uint8_t new_pubkey[ED25519_PUBLIC_KEY_SIZE];
   asciichat_error_t result;
   bool is_official = is_official_server(acds_server);
 
@@ -316,7 +319,7 @@ asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key
   // Step 2: Check cache and handle key changes
   // ===========================================================================
 
-  uint8_t cached_pubkey[32];
+  uint8_t cached_pubkey[ED25519_PUBLIC_KEY_SIZE];
   result = discovery_keys_load_cached(acds_server, cached_pubkey);
 
   if (result == ASCIICHAT_OK) {

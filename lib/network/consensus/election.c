@@ -3,6 +3,7 @@
  * @brief Deterministic election algorithm
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/consensus/election.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/time.h>
@@ -104,8 +105,8 @@ asciichat_error_t consensus_election_choose_hosts(const participant_metrics_t *m
 }
 
 asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics, int num_metrics,
-                                            const uint8_t announced_host_id[16], const uint8_t announced_backup_id[16],
-                                            bool *out_valid) {
+                                            const uint8_t announced_host_id[UUID_SIZE],
+                                            const uint8_t announced_backup_id[UUID_SIZE], bool *out_valid) {
   if (!metrics || !announced_host_id || !announced_backup_id || !out_valid) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid verification parameters");
   }
@@ -137,7 +138,7 @@ asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics
   }
 
   // Check if computed result matches announced
-  uint8_t no_backup[16] = {0};
+  uint8_t no_backup[UUID_SIZE] = {0};
   *out_valid =
       host_idx == computed_host && (computed_backup < 0 ? memcmp(announced_backup_id, no_backup, sizeof(no_backup)) == 0
                                                         : backup_idx == computed_backup);

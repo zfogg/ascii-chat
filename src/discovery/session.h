@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/crypto/handshake/common.h>
 /**
@@ -89,9 +90,9 @@ typedef struct {
   uint64_t waiting_peer_start_ns; ///< Timestamp when entered WAITING_PEER state (for timeout)
 
   // Session info
-  uint8_t session_id[16];
-  uint8_t participant_id[16];
-  uint8_t initiator_id[16];
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t participant_id[UUID_SIZE];
+  uint8_t initiator_id[UUID_SIZE];
   char session_string[SESSION_STRING_BUFFER_SIZE];
   char password[128]; ///< Session password used when joining password-protected sessions
   bool is_initiator;
@@ -99,8 +100,8 @@ typedef struct {
   bool host_elected; ///< True if we've been elected as host (even if waiting for peer)
 
   // Identity keys (Ed25519) - Multi-key support
-  uint8_t identity_pubkey[32]; ///< Ed25519 public key for this participant (primary key)
-  uint8_t identity_seckey[64]; ///< Ed25519 secret key for signing (primary key)
+  uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE];  ///< Ed25519 public key for this participant (primary key)
+  uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE]; ///< Ed25519 secret key for signing (primary key)
 
   // Multi-key support: all identity keys for multi-key handshake
   uint8_t identity_pubkeys[MAX_SESSION_KEYS][32]; ///< All public keys for multi-key protocol
@@ -116,7 +117,7 @@ typedef struct {
   char acds_url[512]; ///< ACDS WebSocket URL (ws:// or wss://, if set uses WebSocket instead of TCP)
 
   // Host info (when not us)
-  uint8_t host_id[16];
+  uint8_t host_id[UUID_SIZE];
   char host_address[64];
   uint16_t host_port;
   uint8_t session_type; ///< 0 = DIRECT_TCP, 1 = WEBRTC

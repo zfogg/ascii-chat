@@ -4,6 +4,7 @@
  * @brief 🔐 Core cryptography: encryption/decryption, key exchange, authentication, and session rekeying with BearSSL
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/common.h>
@@ -804,7 +805,7 @@ crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uin
 // Authentication and handshake functions
 // =============================================================================
 
-crypto_result_t crypto_generate_nonce(uint8_t nonce[32]) {
+crypto_result_t crypto_generate_nonce(uint8_t nonce[AUTH_CHALLENGE_SIZE]) {
   if (!nonce) {
     SET_ERRNO(ERROR_INVALID_PARAM, "NULL nonce buffer");
     return CRYPTO_ERROR_INVALID_PARAMS;
@@ -819,8 +820,8 @@ crypto_result_t crypto_generate_nonce(uint8_t nonce[32]) {
   return CRYPTO_OK;
 }
 
-crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[32], const uint8_t data[32],
-                                    uint8_t hmac[32]) {
+crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[HMAC_SHA256_KEY_SIZE],
+                                    const uint8_t data[AUTH_CHALLENGE_SIZE], uint8_t hmac[HMAC_SHA256_SIZE]) {
   if (!ctx || !key || !data || !hmac) {
     return (crypto_result_t)SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, key=%p, data=%p, hmac=%p)", ctx,
                                       key, data, hmac);
@@ -835,8 +836,8 @@ crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[32]
   return CRYPTO_OK;
 }
 
-crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_t key[32], const uint8_t *data,
-                                       size_t data_len, uint8_t hmac[32]) {
+crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_t key[HMAC_SHA256_KEY_SIZE],
+                                       const uint8_t *data, size_t data_len, uint8_t hmac[HMAC_SHA256_SIZE]) {
   if (!ctx || !key || !data || !hmac || data_len == 0) {
     return (crypto_result_t)SET_ERRNO(ERROR_INVALID_PARAM,
                                       "Invalid parameters (ctx=%p, key=%p, data=%p, data_len=%zu, hmac=%p)", ctx, key,
@@ -852,13 +853,14 @@ crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_
   return CRYPTO_OK;
 }
 
-bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uint8_t expected_hmac[32]) {
+bool crypto_verify_hmac(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t data[AUTH_CHALLENGE_SIZE],
+                        const uint8_t expected_hmac[HMAC_SHA256_SIZE]) {
   if (!key || !data || !expected_hmac) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (key=%p, data=%p, expected_hmac=%p)", key, data, expected_hmac);
     return false;
   }
 
-  uint8_t computed_hmac[32];
+  uint8_t computed_hmac[HMAC_SHA256_SIZE];
   if (crypto_auth_hmacsha256(computed_hmac, data, 32, key) != 0) {
     return false;
   }
@@ -866,15 +868,15 @@ bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uin
   return sodium_memcmp(computed_hmac, expected_hmac, 32) == 0;
 }
 
-bool crypto_verify_hmac_ex(const uint8_t key[32], const uint8_t *data, size_t data_len,
-                           const uint8_t expected_hmac[32]) {
+bool crypto_verify_hmac_ex(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t *data, size_t data_len,
+                           const uint8_t expected_hmac[HMAC_SHA256_SIZE]) {
   if (!key || !data || !expected_hmac || data_len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (key=%p, data=%p, data_len=%zu, expected_hmac=%p)", key, data,
               data_len, expected_hmac);
     return false;
   }
 
-  uint8_t computed_hmac[32];
+  uint8_t computed_hmac[HMAC_SHA256_SIZE];
   if (crypto_auth_hmacsha256(computed_hmac, data, data_len, key) != 0) {
     return false;
   }
@@ -886,8 +888,8 @@ bool crypto_verify_hmac_ex(const uint8_t key[32], const uint8_t *data, size_t da
 // High-level authentication helpers (shared between client and server)
 // =============================================================================
 
-crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const uint8_t nonce[32],
-                                             uint8_t hmac_out[32]) {
+crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const uint8_t nonce[AUTH_CHALLENGE_SIZE],
+                                             uint8_t hmac_out[HMAC_SHA256_SIZE]) {
   if (!ctx || !nonce || !hmac_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, nonce=%p, hmac_out=%p)", ctx, nonce, hmac_out);
     return CRYPTO_ERROR_INVALID_PARAMS;
@@ -902,7 +904,7 @@ crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const 
 
   // Bind password HMAC to DH shared_secret to prevent MITM
   // Combined data: nonce || shared_secret
-  uint8_t combined_data[64];
+  uint8_t combined_data[AUTH_COMBINED_SIZE];
   memcpy(combined_data, nonce, 32);
   memcpy(combined_data + 32, ctx->shared_key, 32);
 
@@ -917,8 +919,8 @@ crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const 
   return result;
 }
 
-bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonce[32],
-                                 const uint8_t expected_hmac[32]) {
+bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonce[AUTH_CHALLENGE_SIZE],
+                                 const uint8_t expected_hmac[HMAC_SHA256_SIZE]) {
   if (!ctx || !nonce || !expected_hmac) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, nonce=%p, expected_hmac=%p)", ctx, nonce,
               expected_hmac);
@@ -934,7 +936,7 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
 
   // Bind password HMAC to DH shared_secret to prevent MITM
   // Combined data: nonce || shared_secret
-  uint8_t combined_data[64];
+  uint8_t combined_data[AUTH_COMBINED_SIZE];
   memcpy(combined_data, nonce, 32);
   memcpy(combined_data + 32, ctx->shared_key, 32);
 
@@ -1061,7 +1063,7 @@ asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint
 
   // Combine nonce and shared_secret for HMAC computation
   // This binds the password to the DH shared secret, preventing MITM attacks
-  uint8_t combined_data[64];
+  uint8_t combined_data[AUTH_COMBINED_SIZE];
   memcpy(combined_data, nonce, 32);
   memcpy(combined_data + 32, shared_secret, 32);
 

@@ -9,6 +9,7 @@
  * @ingroup discovery
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include "webrtc.h"
 
 #include <ascii-chat/common.h>
@@ -45,8 +46,8 @@ static acip_transport_t *g_tcp_transport = NULL;
  * Protected by g_webrtc_mutex.
  */
 static struct {
-  uint8_t session_id[16];
-  uint8_t participant_id[16];
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t participant_id[UUID_SIZE];
   bool is_set;
 } g_session_context = {0};
 
@@ -86,8 +87,9 @@ static void ensure_mutex_initialized(void) {
  * - Header: acip_webrtc_sdp_t (variable size)
  * - Variable payload: SDP string
  */
-static asciichat_error_t discovery_send_sdp(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                            const char *sdp_type, const char *sdp, void *user_data) {
+static asciichat_error_t discovery_send_sdp(const uint8_t session_id[SESSION_ID_SIZE],
+                                            const uint8_t recipient_id[UUID_SIZE], const char *sdp_type,
+                                            const char *sdp, void *user_data) {
   (void)recipient_id; // Unused - direct connection, no need to route
   (void)user_data;    // Unused
 
@@ -156,8 +158,9 @@ static asciichat_error_t discovery_send_sdp(const uint8_t session_id[16], const 
  *
  * Constructs PACKET_TYPE_ACIP_WEBRTC_ICE and sends via direct TCP transport.
  */
-static asciichat_error_t discovery_send_ice(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                            const char *candidate, const char *mid, void *user_data) {
+static asciichat_error_t discovery_send_ice(const uint8_t session_id[SESSION_ID_SIZE],
+                                            const uint8_t recipient_id[UUID_SIZE], const char *candidate,
+                                            const char *mid, void *user_data) {
   (void)recipient_id; // Unused - direct connection, no need to route
   (void)user_data;    // Unused
 
@@ -237,8 +240,8 @@ static asciichat_error_t discovery_send_ice(const uint8_t session_id[16], const 
 // =============================================================================
 
 webrtc_signaling_callbacks_t discovery_webrtc_get_direct_signaling_callbacks(acip_transport_t *tcp_transport,
-                                                                             const uint8_t session_id[16],
-                                                                             const uint8_t participant_id[16]) {
+                                                                             const uint8_t session_id[SESSION_ID_SIZE],
+                                                                             const uint8_t participant_id[UUID_SIZE]) {
   ensure_mutex_initialized();
   mutex_lock(&g_webrtc_mutex);
 
@@ -268,7 +271,8 @@ void discovery_webrtc_set_tcp_transport(acip_transport_t *transport) {
   mutex_unlock(&g_webrtc_mutex);
 }
 
-void discovery_webrtc_set_session_context(const uint8_t session_id[16], const uint8_t participant_id[16]) {
+void discovery_webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE],
+                                          const uint8_t participant_id[UUID_SIZE]) {
   ensure_mutex_initialized();
   mutex_lock(&g_webrtc_mutex);
 

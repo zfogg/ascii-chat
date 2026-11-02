@@ -4,6 +4,7 @@
  * @brief 🌐 HTTPS public key fetching from GitHub/GitLab with URL parsing and caching
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -515,7 +516,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
     // Extract full 40-character fingerprint from "fpr:" line
     // Format: fpr:::::::::FINGERPRINT:
     // The fingerprint is field 10 (after 9 colons)
-    char fingerprint[41] = {0};
+    char fingerprint[GPG_FINGERPRINT_HEX_BUFFER_SIZE] = {0};
     const char *fpr_marker = "\nfpr:";
     char *fpr_line = strstr(list_output, fpr_marker);
     if (fpr_line) {

@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /**
@@ -80,7 +81,7 @@ static const gotel_query_t database_queries[] = {
 #undef DATABASE_QUERY
 };
 
-static void generate_uuid(uint8_t uuid_out[16]) {
+static void generate_uuid(uint8_t uuid_out[UUID_SIZE]) {
   randombytes_buf(uuid_out, 16);
   uuid_out[6] = (uuid_out[6] & 0x0F) | 0x40; // Version 4
   uuid_out[8] = (uuid_out[8] & 0x3F) | 0x80; // RFC4122 variant
@@ -415,7 +416,7 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   }
 
   // Generate session ID
-  uint8_t session_id[16];
+  uint8_t session_id[SESSION_ID_SIZE];
   generate_uuid(session_id);
 
   // Set timestamps
@@ -656,7 +657,7 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
                                                       const acds_config_t *config, const session_entry_t *verified,
                                                       acip_session_joined_t *resp, session_entry_t **joined) {
   // Generate participant ID
-  uint8_t participant_id[16];
+  uint8_t participant_id[UUID_SIZE];
   generate_uuid(participant_id);
   uint64_t now = database_get_current_time_ms();
 
@@ -926,7 +927,8 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   return result;
 }
 
-asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[16], const uint8_t participant_id[16]) {
+asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
+                                         const uint8_t participant_id[UUID_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_LEAVE);
   if (!db || !session_id || !participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_id, or participant_id is NULL");
@@ -1060,7 +1062,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
   return ASCIICHAT_OK;
 }
 
-session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_id[16]) {
+session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE]) {
   if (!db || !session_id) {
     return NULL;
   }
@@ -1155,8 +1157,8 @@ void database_session_cleanup_expired(sqlite3 *db) {
   database_telemetry_population(db);
 }
 
-asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[16],
-                                               const uint8_t host_participant_id[16], const char *host_address,
+asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
+                                               const uint8_t host_participant_id[UUID_SIZE], const char *host_address,
                                                uint16_t host_port, uint8_t connection_type) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_UPDATE_HOST);
   if (!db || !session_id || !host_participant_id) {
@@ -1207,7 +1209,7 @@ asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t sessio
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session_id[16]) {
+asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_CLEAR_HOST);
   if (!db || !session_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db or session_id is NULL");
@@ -1246,7 +1248,7 @@ asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t session_id[16]) {
+asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_START_MIGRATION);
   if (!db || !session_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db or session_id is NULL");
@@ -1289,7 +1291,8 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
   return ASCIICHAT_OK;
 }
 
-bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[16], uint64_t migration_window_ms) {
+bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
+                                         uint64_t migration_window_ms) {
   ASCII_OTEL_SCOPE(DATABASE_MIGRATION_READY);
   if (!db || !session_id) {
     return false;
@@ -1329,7 +1332,8 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[1
 // Multi-Key Management Functions
 // ============================================================================
 
-asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32],
+asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string,
+                                           const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE],
                                            uint32_t key_version) {
   ASCII_OTEL_SCOPE(DATABASE_ADD_KEY);
   if (!db || !session_string || !identity_pubkey || sodium_is_zero(identity_pubkey, 32)) {
@@ -1362,7 +1366,7 @@ asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_stri
 }
 
 asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_string,
-                                              const uint8_t identity_pubkey[32]) {
+                                              const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_REVOKE_KEY);
   if (!db || !session_string || !identity_pubkey) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for revoke_key");
@@ -1391,7 +1395,8 @@ asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_s
   return ASCIICHAT_OK;
 }
 
-bool database_session_verify_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32]) {
+bool database_session_verify_key(sqlite3 *db, const char *session_string,
+                                 const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_VERIFY_KEY);
   if (!db || !session_string || !identity_pubkey) {
     return false;

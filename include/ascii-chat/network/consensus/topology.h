@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
  * @file network/consensus/topology.h
@@ -30,7 +31,7 @@ typedef struct consensus_topology consensus_topology_t;
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
-                                            int num_participants, const uint8_t my_id[16],
+                                            int num_participants, const uint8_t my_id[UUID_SIZE],
                                             consensus_topology_t **out_topology);
 
 /**
@@ -65,7 +66,7 @@ bool consensus_topology_am_leader(const consensus_topology_t *topology);
  * @param out_id Output 16-byte UUID of next participant
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_topology_get_next(const consensus_topology_t *topology, uint8_t out_id[16]);
+asciichat_error_t consensus_topology_get_next(const consensus_topology_t *topology, uint8_t out_id[UUID_SIZE]);
 
 /**
  * @brief Get previous participant ID in ring
@@ -76,7 +77,7 @@ asciichat_error_t consensus_topology_get_next(const consensus_topology_t *topolo
  * @param out_id Output 16-byte UUID of previous participant
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_topology_get_prev(const consensus_topology_t *topology, uint8_t out_id[16]);
+asciichat_error_t consensus_topology_get_prev(const consensus_topology_t *topology, uint8_t out_id[UUID_SIZE]);
 
 /**
  * @brief Get ring leader ID (last participant)
@@ -85,7 +86,7 @@ asciichat_error_t consensus_topology_get_prev(const consensus_topology_t *topolo
  * @param out_id Output 16-byte UUID of ring leader
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_topology_get_leader(const consensus_topology_t *topology, uint8_t out_id[16]);
+asciichat_error_t consensus_topology_get_leader(const consensus_topology_t *topology, uint8_t out_id[UUID_SIZE]);
 
 /**
  * @brief Get all participant IDs in ring order

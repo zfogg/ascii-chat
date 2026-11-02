@@ -20,6 +20,7 @@
  * @date January 2026
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include "webrtc.h"
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/protocol.h>
@@ -60,8 +61,8 @@ static acip_transport_t *g_webrtc_transport = NULL;
  * Protected by g_signaling_mutex.
  */
 static struct {
-  uint8_t session_id[16];
-  uint8_t participant_id[16];
+  uint8_t session_id[SESSION_ID_SIZE];
+  uint8_t participant_id[UUID_SIZE];
   bool is_set;
 } g_session_context = {0};
 
@@ -100,8 +101,9 @@ static void ensure_mutex_initialized(void) {
  * - Header: acip_webrtc_sdp_t (50 bytes)
  * - Payload: SDP string (variable length)
  */
-static asciichat_error_t client_send_sdp(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                         const char *sdp_type, const char *sdp, void *user_data) {
+static asciichat_error_t client_send_sdp(const uint8_t session_id[SESSION_ID_SIZE],
+                                         const uint8_t recipient_id[UUID_SIZE], const char *sdp_type, const char *sdp,
+                                         void *user_data) {
   (void)user_data;
 
   if (!session_id || !recipient_id || !sdp_type || !sdp) {
@@ -181,8 +183,9 @@ static asciichat_error_t client_send_sdp(const uint8_t session_id[16], const uin
  * - Header: acip_webrtc_ice_t (50 bytes)
  * - Payload: candidate string (null-terminated) + mid string (null-terminated)
  */
-static asciichat_error_t client_send_ice(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                         const char *candidate, const char *mid, void *user_data) {
+static asciichat_error_t client_send_ice(const uint8_t session_id[SESSION_ID_SIZE],
+                                         const uint8_t recipient_id[UUID_SIZE], const char *candidate, const char *mid,
+                                         void *user_data) {
   (void)user_data;
 
   if (!session_id || !recipient_id || !candidate || !mid) {
@@ -281,7 +284,7 @@ void webrtc_set_acds_transport(acip_transport_t *transport) {
   mutex_unlock(&g_signaling_mutex);
 }
 
-void webrtc_set_session_context(const uint8_t session_id[16], const uint8_t participant_id[16]) {
+void webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[UUID_SIZE]) {
   if (!session_id || !participant_id) {
     log_error("Invalid session context parameters");
     return;

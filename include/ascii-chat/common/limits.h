@@ -12,6 +12,11 @@
 
 #pragma once
 
+/** Binary UUID width shared by discovery, participants, and session identities. */
+#define UUID_SIZE 16
+/** Compact UUID hexadecimal storage, including NUL (no hyphens). */
+#define UUID_HEX_BUFFER_SIZE (UUID_SIZE * 2 + 1)
+
 /** Maximum members supported by session storage, hosting and elections. */
 #define MAX_SESSION_PARTICIPANTS 128
 

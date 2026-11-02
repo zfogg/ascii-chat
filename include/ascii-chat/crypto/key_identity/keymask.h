@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -12,7 +13,8 @@
 #define KEYMASK_BUFFER_SIZE 1655
 
 /** SHA-256 of the 32 public-key bytes, independent of key source or encoding. */
-asciichat_error_t key_fingerprint_digest(const uint8_t public_key[32], uint8_t digest[KEYMASK_DIGEST_SIZE]);
+asciichat_error_t key_fingerprint_digest(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
+                                         uint8_t digest[KEYMASK_DIGEST_SIZE]);
 
 /** Keymask v2: domain-separated constructed mask from the public-key digest.
  * ASCII and UTF-8 represent the same geometry. No terminal I/O or allocations.

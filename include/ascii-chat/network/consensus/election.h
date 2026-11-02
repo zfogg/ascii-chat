@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <ascii-chat/crypto/sizes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include "metrics.h"
@@ -40,5 +41,5 @@ asciichat_error_t consensus_election_choose_hosts(const participant_metrics_t *m
  * Used by all clients to validate election before accepting.
  */
 asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics, int num_metrics,
-                                            const uint8_t announced_host_id[16], const uint8_t announced_backup_id[16],
-                                            bool *out_valid);
+                                            const uint8_t announced_host_id[UUID_SIZE],
+                                            const uint8_t announced_backup_id[UUID_SIZE], bool *out_valid);

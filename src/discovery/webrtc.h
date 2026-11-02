@@ -30,6 +30,7 @@
 
 #pragma once
 
+#include <ascii-chat/crypto/sizes.h>
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
@@ -55,8 +56,8 @@ extern "C" {
  * @note Set tcp_transport to NULL to disable the callbacks.
  */
 webrtc_signaling_callbacks_t discovery_webrtc_get_direct_signaling_callbacks(acip_transport_t *tcp_transport,
-                                                                             const uint8_t session_id[16],
-                                                                             const uint8_t participant_id[16]);
+                                                                             const uint8_t session_id[SESSION_ID_SIZE],
+                                                                             const uint8_t participant_id[UUID_SIZE]);
 
 /**
  * @brief Set the TCP transport for direct peer-to-peer signaling
@@ -83,7 +84,8 @@ void discovery_webrtc_set_tcp_transport(acip_transport_t *transport);
  *
  * @note Callbacks will fail with ERROR_INVALID_STATE if IDs are not set.
  */
-void discovery_webrtc_set_session_context(const uint8_t session_id[16], const uint8_t participant_id[16]);
+void discovery_webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE],
+                                          const uint8_t participant_id[UUID_SIZE]);
 
 /**
  * @brief Cleanup and release the direct peer-to-peer transport

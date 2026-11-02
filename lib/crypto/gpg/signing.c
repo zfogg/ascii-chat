@@ -4,6 +4,7 @@
  * @brief GPG signing operations implementation
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/signing.h>
 #include <ascii-chat/crypto/gpg/agent.h>
 #include <ascii-chat/crypto/keys.h>
@@ -138,7 +139,7 @@ cleanup:
 }
 
 int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
-                              uint8_t signature_out[64]) {
+                              uint8_t signature_out[ED25519_SIGNATURE_SIZE]) {
   log_debug("Signing with key ID %s (fallback mode)", key_id);
 
   // Get OpenPGP signature packet from gpg --detach-sign
@@ -312,7 +313,7 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
   log_debug("Successfully extracted 64-byte Ed25519 signature from OpenPGP packet");
 
   // Debug: Log signature components
-  char hex_r[65], hex_s[65];
+  char hex_r[HEX_STRING_SIZE_32], hex_s[65];
   for (int i = 0; i < 32; i++) {
     safe_snprintf(hex_r + i * 2, 3, "%02x", signature_out[i]);
     safe_snprintf(hex_s + i * 2, 3, "%02x", signature_out[i + 32]);

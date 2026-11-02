@@ -4,6 +4,7 @@
  * @brief 🔑 GPG public key extraction and validation from GPG keyrings
  */
 
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/gpg_keys.h>
 #include <ascii-chat/crypto/gpg/openpgp.h> // For openpgp_parse_armored_pubkey()
 #include <ascii-chat/crypto/keys_validation.h>
@@ -51,7 +52,7 @@ asciichat_error_t parse_gpg_key(const char *gpg_key_id, public_key_t *key_out) {
   }
 
   // Extract Ed25519 public key from GPG keyring using gpg --list-keys
-  uint8_t ed25519_pk[32];
+  uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
   asciichat_error_t extract_result = extract_ed25519_from_gpg(key_id, ed25519_pk);
   if (extract_result != ASCIICHAT_OK) {
     return extract_result;
@@ -79,7 +80,7 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
     return ERROR_INVALID_PARAM;
   }
 
-  uint8_t ed25519_pk[32];
+  uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
   asciichat_error_t result;
   if (key_size >= strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----") &&
       memcmp(gpg_key_binary, "-----BEGIN PGP PUBLIC KEY BLOCK-----", strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----")) ==
@@ -108,7 +109,7 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_id, uint8_t ed25519_pk[32]) {
+asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_id, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]) {
   if (!gpg_key_id || !ed25519_pk) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_id=%p, ed25519_pk=%p", gpg_key_id, ed25519_pk);
     return ERROR_INVALID_PARAM;
@@ -116,7 +117,7 @@ asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_id, uint8_t ed255
 
   // Use gpg_get_public_key() to extract Ed25519 public key from GPG keyring
   // Note: gpg_key_id should be the key ID (e.g., "7FE90A79F2E80ED3")
-  char keygrip[64];
+  char keygrip[GPG_KEYGRIP_BUFFER_SIZE];
   if (gpg_get_public_key(gpg_key_id, ed25519_pk, keygrip) != 0) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to extract Ed25519 public key from GPG for key ID: %s", gpg_key_id);
   }
@@ -124,14 +125,14 @@ asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_id, uint8_t ed255
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_pk[32]) {
+asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_pk[X25519_KEY_SIZE]) {
   if (!gpg_key_text || !x25519_pk) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, x25519_pk=%p", gpg_key_text, x25519_pk);
     return ERROR_INVALID_PARAM;
   }
 
   // First extract the Ed25519 public key from the GPG key
-  uint8_t ed25519_pk[32];
+  uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE];
   asciichat_error_t extract_result = extract_ed25519_from_gpg(gpg_key_text, ed25519_pk);
   if (extract_result != ASCIICHAT_OK) {
     return extract_result;
@@ -150,7 +151,7 @@ asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_
 // GPG Key Operations
 // =============================================================================
 
-asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerprint_out[20]) {
+asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerprint_out[GPG_FINGERPRINT_SIZE]) {
   if (!gpg_key_text || !fingerprint_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, fingerprint_out=%p", gpg_key_text,
               fingerprint_out);

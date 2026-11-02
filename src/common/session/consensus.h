@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
  * @file session/consensus.h
@@ -50,7 +51,8 @@ typedef struct session_consensus session_consensus_t;
  * @param packet_size Size of packet in bytes
  * @return ASCIICHAT_OK on success, error code if sending failed
  */
-typedef asciichat_error_t (*session_consensus_send_packet_fn)(void *context, const uint8_t next_participant_id[16],
+typedef asciichat_error_t (*session_consensus_send_packet_fn)(void *context,
+                                                              const uint8_t next_participant_id[UUID_SIZE],
                                                               const uint8_t *packet, size_t packet_size);
 
 /**
@@ -71,9 +73,9 @@ typedef asciichat_error_t (*session_consensus_send_packet_fn)(void *context, con
  * @param backup_port Backup port
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-typedef asciichat_error_t (*session_consensus_on_election_fn)(void *context, const uint8_t host_id[16],
+typedef asciichat_error_t (*session_consensus_on_election_fn)(void *context, const uint8_t host_id[UUID_SIZE],
                                                               const char host_address[64], uint16_t host_port,
-                                                              const uint8_t backup_id[16],
+                                                              const uint8_t backup_id[UUID_SIZE],
                                                               const char backup_address[64], uint16_t backup_port);
 
 /**
@@ -92,7 +94,7 @@ typedef asciichat_error_t (*session_consensus_on_election_fn)(void *context, con
  * @param out_metrics Output metrics structure (caller-allocated)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-typedef asciichat_error_t (*session_consensus_get_metrics_fn)(void *context, const uint8_t my_id[16],
+typedef asciichat_error_t (*session_consensus_get_metrics_fn)(void *context, const uint8_t my_id[UUID_SIZE],
                                                               participant_metrics_t *out_metrics);
 
 /**
@@ -140,7 +142,7 @@ typedef struct {
  * @param out_consensus Output consensus handle (caller must destroy)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t session_consensus_create(const uint8_t my_id[16], bool is_leader,
+asciichat_error_t session_consensus_create(const uint8_t my_id[UUID_SIZE], bool is_leader,
                                            const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
                                            int num_participants, const session_consensus_callbacks_t *callbacks,
                                            session_consensus_t **out_consensus);
@@ -213,7 +215,7 @@ asciichat_error_t session_consensus_on_collection_start(session_consensus_t *con
  * @param num_metrics Count of metrics
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t session_consensus_on_stats_update(session_consensus_t *consensus, const uint8_t sender_id[16],
+asciichat_error_t session_consensus_on_stats_update(session_consensus_t *consensus, const uint8_t sender_id[UUID_SIZE],
                                                     const participant_metrics_t *metrics, uint8_t num_metrics);
 
 /**
@@ -231,10 +233,10 @@ asciichat_error_t session_consensus_on_stats_update(session_consensus_t *consens
  * @param backup_port Port of backup host
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t session_consensus_on_election_result(session_consensus_t *consensus, const uint8_t host_id[16],
+asciichat_error_t session_consensus_on_election_result(session_consensus_t *consensus, const uint8_t host_id[UUID_SIZE],
                                                        const char host_address[64], uint16_t host_port,
-                                                       const uint8_t backup_id[16], const char backup_address[64],
-                                                       uint16_t backup_port);
+                                                       const uint8_t backup_id[UUID_SIZE],
+                                                       const char backup_address[64], uint16_t backup_port);
 
 /**
  * @brief Get the currently elected host
@@ -251,9 +253,9 @@ asciichat_error_t session_consensus_on_election_result(session_consensus_t *cons
  * @param out_backup_port Output: Backup port
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t session_consensus_get_elected_host(session_consensus_t *consensus, uint8_t out_host_id[16],
+asciichat_error_t session_consensus_get_elected_host(session_consensus_t *consensus, uint8_t out_host_id[UUID_SIZE],
                                                      char out_host_address[64], uint16_t *out_host_port,
-                                                     uint8_t out_backup_id[16], char out_backup_address[64],
+                                                     uint8_t out_backup_id[UUID_SIZE], char out_backup_address[64],
                                                      uint16_t *out_backup_port);
 
 /**
