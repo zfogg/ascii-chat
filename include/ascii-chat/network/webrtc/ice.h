@@ -54,6 +54,11 @@
 
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_WEBRTC_ICE_FOUNDATION_BUFFER_SIZE 32
+#define NETWORK_WEBRTC_ICE_RADDR_BUFFER_SIZE 64
+#define NETWORK_WEBRTC_ICE_EXTENSIONS_BUFFER_SIZE 256
+
 #include <ascii-chat/common/limits.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -111,10 +116,10 @@ typedef enum {
  */
 typedef struct {
   /* Core candidate info */
-  char foundation[32];     ///< Unique identifier for candidate (for pairing)
-  uint32_t component_id;   ///< Component (1=RTP, 2=RTCP; usually 1)
-  ice_protocol_t protocol; ///< UDP or TCP
-  uint32_t priority;       ///< Candidate priority (used for preference)
+  char foundation[NETWORK_WEBRTC_ICE_FOUNDATION_BUFFER_SIZE]; ///< Unique identifier for candidate (for pairing)
+  uint32_t component_id;                                      ///< Component (1=RTP, 2=RTCP; usually 1)
+  ice_protocol_t protocol;                                    ///< UDP or TCP
+  uint32_t priority;                                          ///< Candidate priority (used for preference)
 
   /* Address info */
   char ip_address[IP_ADDRESS_BUFFER_SIZE]; ///< IP address (IPv4 or IPv6)
@@ -124,14 +129,14 @@ typedef struct {
   ice_candidate_type_t type; ///< host, srflx, prflx, or relay
 
   /* For srflx/prflx candidates: original address before NAT */
-  char raddr[64]; ///< Related address (for srflx/prflx)
-  uint16_t rport; ///< Related port
+  char raddr[NETWORK_WEBRTC_ICE_RADDR_BUFFER_SIZE]; ///< Related address (for srflx/prflx)
+  uint16_t rport;                                   ///< Related port
 
   /* For TCP candidates */
   ice_tcp_type_t tcp_type; ///< active, passive, so
 
   /* Extensions */
-  char extensions[256]; ///< Additional extensions (e.g., "tcptype passive")
+  char extensions[NETWORK_WEBRTC_ICE_EXTENSIONS_BUFFER_SIZE]; ///< Additional extensions (e.g., "tcptype passive")
 } ice_candidate_t;
 
 /* ============================================================================

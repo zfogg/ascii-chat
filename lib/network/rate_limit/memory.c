@@ -5,6 +5,9 @@
  * Thread-safe implementation for ascii-chat server where persistence is not needed.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_RATE_LIMIT_MEMORY_KEY_BUFFER_SIZE 256
+
 #include <ascii-chat/network/rate_limit/memory.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -18,12 +21,12 @@
  * @brief Rate event record in memory
  */
 typedef struct rate_event_s {
-  char key[256];        ///< Hash key: "ip_address:event_type"
-  uint64_t *timestamps; ///< Array of timestamps (circular buffer)
-  size_t count;         ///< Number of events in buffer
-  size_t capacity;      ///< Buffer capacity
-  size_t head;          ///< Head index (oldest event)
-  UT_hash_handle hh;    ///< uthash handle
+  char key[NETWORK_RATE_LIMIT_MEMORY_KEY_BUFFER_SIZE]; ///< Hash key: "ip_address:event_type"
+  uint64_t *timestamps;                                ///< Array of timestamps (circular buffer)
+  size_t count;                                        ///< Number of events in buffer
+  size_t capacity;                                     ///< Buffer capacity
+  size_t head;                                         ///< Head index (oldest event)
+  UT_hash_handle hh;                                   ///< uthash handle
 } rate_event_t;
 
 /**
@@ -99,7 +102,7 @@ static asciichat_error_t memory_check(void *backend_data, const char *ip_address
   uint64_t window_start_ns = now_ns - ((uint64_t)limit->window_secs * NS_PER_SEC_INT);
 
   // Create hash key
-  char key[256];
+  char key[NETWORK_RATE_LIMIT_MEMORY_KEY_BUFFER_SIZE];
   make_key(ip_address, event_type, key, sizeof(key));
 
   mutex_lock(&backend->lock);
@@ -135,7 +138,7 @@ static asciichat_error_t memory_record(void *backend_data, const char *ip_addres
   uint64_t now_ns = time_get_realtime_ns();
 
   // Create hash key
-  char key[256];
+  char key[NETWORK_RATE_LIMIT_MEMORY_KEY_BUFFER_SIZE];
   make_key(ip_address, event_type, key, sizeof(key));
 
   mutex_lock(&backend->lock);

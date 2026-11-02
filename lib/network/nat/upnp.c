@@ -1,3 +1,11 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_NAT_UPNP_CLIENT_BUFFER_SIZE 40
+#define NETWORK_NAT_UPNP_DESCRIPTION_BUFFER_SIZE 80
+#define NETWORK_NAT_UPNP_LEASE_BUFFER_SIZE 16
+#define NETWORK_NAT_UPNP_LAN_ADDRESS_BUFFER_SIZE 16
+#define NETWORK_NAT_UPNP_EXTERNAL_ADDRESS_BUFFER_SIZE 16
+
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/otel.h>
 /**
@@ -47,7 +55,9 @@ static asciichat_error_t upnp_map(nat_upnp_context_t *ctx) {
     return SET_ERRNO(ERROR_NETWORK, "UPnP: mapping request failed: %s", strupnperror(result));
   }
   // Some gateways silently shorten the requested lease. Read it back on every renewal.
-  char client[40] = {0}, port[6] = {0}, description[80] = {0}, enabled[4] = {0}, lease[16] = {0};
+  char client[NETWORK_NAT_UPNP_CLIENT_BUFFER_SIZE] = {0}, port[6] = {0},
+       description[NETWORK_NAT_UPNP_DESCRIPTION_BUFFER_SIZE] = {0}, enabled[4] = {0},
+       lease[NETWORK_NAT_UPNP_LEASE_BUFFER_SIZE] = {0};
   result = UPNP_GetSpecificPortMappingEntry(ctx->control_url, ctx->service_type, external_port, mapping_protocol(ctx),
                                             NULL, client, port, description, enabled, lease);
   uint32_t seconds = 60;
@@ -68,8 +78,8 @@ static asciichat_error_t upnp_map(nat_upnp_context_t *ctx) {
 static asciichat_error_t upnp_try_map_port(nat_upnp_context_t *ctx) {
   struct UPNPUrls urls = {0};
   struct IGDdatas data = {0};
-  char lan_address[16] = {0};
-  char external_address[16] = {0};
+  char lan_address[NETWORK_NAT_UPNP_LAN_ADDRESS_BUFFER_SIZE] = {0};
+  char external_address[NETWORK_NAT_UPNP_EXTERNAL_ADDRESS_BUFFER_SIZE] = {0};
   struct UPNPDev *devices = upnpDiscover(2000, NULL, NULL, 0, 0, 2, NULL);
   if (!devices) {
     return SET_ERRNO(ERROR_NETWORK, "UPnP: no gateway discovered (unsupported or disabled)");

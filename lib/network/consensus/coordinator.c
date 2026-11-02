@@ -3,6 +3,9 @@
  * @brief Ring consensus coordinator implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE 64
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/consensus/coordinator.h>
 #include <ascii-chat/network/consensus/election.h>
@@ -76,7 +79,7 @@ asciichat_error_t consensus_coordinator_create(const uint8_t my_id[UUID_SIZE], c
   coordinator->has_stored_result = false;
 
   /* Register coordinator with named registry */
-  char coordinator_name[64];
+  char coordinator_name[NETWORK_CONSENSUS_COORDINATOR_COORDINATOR_NAME_BUFFER_SIZE];
   snprintf(coordinator_name, sizeof(coordinator_name), "consensus_coordinator:node_%u", my_id[0]);
   NAMED_REGISTER(coordinator, coordinator_name, "consensus_coordinator_t", "0x%tx", NULL);
 

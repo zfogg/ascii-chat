@@ -1,5 +1,12 @@
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_MDNS_NAME_BUFFER_SIZE 256
+#define NETWORK_MDNS_TYPE_BUFFER_SIZE 256
+#define NETWORK_MDNS_IPV4_BUFFER_SIZE 16
+#define NETWORK_MDNS_IPV6_BUFFER_SIZE 46
+#define NETWORK_MDNS_TXT_BUFFER_SIZE 512
+
 #include <ascii-chat/common/limits.h>
 
 /**
@@ -83,19 +90,19 @@ typedef struct {
  */
 typedef struct {
   /** Service instance name */
-  char name[256];
+  char name[NETWORK_MDNS_NAME_BUFFER_SIZE];
   /** Service type */
-  char type[256];
+  char type[NETWORK_MDNS_TYPE_BUFFER_SIZE];
   /** Host name */
   char host[HOSTNAME_BUFFER_SIZE];
   /** Port number */
   uint16_t port;
   /** IPv4 address (dotted decimal, if available) */
-  char ipv4[16];
+  char ipv4[NETWORK_MDNS_IPV4_BUFFER_SIZE];
   /** IPv6 address (if available) */
-  char ipv6[46];
+  char ipv6[NETWORK_MDNS_IPV6_BUFFER_SIZE];
   /** TXT record data */
-  char txt[512];
+  char txt[NETWORK_MDNS_TXT_BUFFER_SIZE];
   /** TTL remaining (seconds) */
   uint32_t ttl;
 } asciichat_mdns_discovery_t;

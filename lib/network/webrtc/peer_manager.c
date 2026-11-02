@@ -11,6 +11,12 @@
  * @date January 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_WEBRTC_PEER_MANAGER_REMOTE_ICE_UFRAG_BUFFER_SIZE 257
+#define NETWORK_WEBRTC_PEER_MANAGER_INCOMING_ICE_UFRAG_BUFFER_SIZE 257
+#define NETWORK_WEBRTC_PEER_MANAGER_HEX_BUFFER_SIZE 64
+#define NETWORK_WEBRTC_PEER_MANAGER_ASCII_BUFFER_SIZE 20
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
 #include <ascii-chat/options/options.h>
@@ -36,11 +42,12 @@ typedef struct {
   acip_security_t *security;           ///< Owned until transferred to the transport
   atomic_t security_ready;
   atomic_t handshake_started_ns;
-  atomic_ptr_t pending_transport;      ///< Owned until authenticated and handed to the application
-  bool is_connected;                   ///< DataChannel opened
-  bool remote_sdp_attempted;           ///< A remote description was applied or attempted
-  bool remote_description_set;         ///< libdatachannel has installed the remote SDP and ICE transport
-  char remote_ice_ufrag[257];          ///< ICE generation currently installed on this peer
+  atomic_ptr_t pending_transport; ///< Owned until authenticated and handed to the application
+  bool is_connected;              ///< DataChannel opened
+  bool remote_sdp_attempted;      ///< A remote description was applied or attempted
+  bool remote_description_set;    ///< libdatachannel has installed the remote SDP and ICE transport
+  char remote_ice_ufrag[NETWORK_WEBRTC_PEER_MANAGER_REMOTE_ICE_UFRAG_BUFFER_SIZE]; ///< ICE generation currently
+                                                                                   ///< installed on this peer
   bool gathering_timeout_reported;     ///< ICE gathering timed out while trickle candidates may still connect
   struct webrtc_peer_manager *manager; ///< Back-reference to manager
   UT_hash_handle hh;                   ///< uthash handle
@@ -604,7 +611,7 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
   memcpy(sdp_str, sdp_data, sdp_len);
   sdp_str[sdp_len] = '\0'; // Null-terminate
 
-  char incoming_ice_ufrag[257] = {0};
+  char incoming_ice_ufrag[NETWORK_WEBRTC_PEER_MANAGER_INCOMING_ICE_UFRAG_BUFFER_SIZE] = {0};
   bool has_incoming_ice_ufrag = extract_ice_ufrag(sdp_str, incoming_ice_ufrag, sizeof(incoming_ice_ufrag));
 
   log_debug("Handling incoming SDP %s from remote peer (len=%u)", sdp_type, sdp_len);
@@ -722,8 +729,8 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
   const uint8_t *payload = (const uint8_t *)(ice + 1);
   log_debug("  [3] Hex dump of payload (first 100 bytes):");
   for (int i = 0; i < 100 && i < (int)candidate_str_len + 20; i += 16) {
-    char hex[64] = {0};
-    char ascii[20] = {0};
+    char hex[NETWORK_WEBRTC_PEER_MANAGER_HEX_BUFFER_SIZE] = {0};
+    char ascii[NETWORK_WEBRTC_PEER_MANAGER_ASCII_BUFFER_SIZE] = {0};
     for (int j = 0; j < 16 && (i + j) < 100; j++) {
       snprintf(hex + j * 3, sizeof(hex) - j * 3, "%02x ", payload[i + j]);
       ascii[j] = (payload[i + j] >= 32 && payload[i + j] < 127) ? payload[i + j] : '.';

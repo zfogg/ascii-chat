@@ -1,5 +1,9 @@
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_ACIP_SETTINGS_PALETTE_BUFFER_SIZE 256
+#define NETWORK_ACIP_SETTINGS_LUMINANCE_BUFFER_SIZE 256
+
 #include <ascii-chat/options/runtime.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
@@ -14,8 +18,8 @@ typedef struct {
   uint16_t width, height;
   uint32_t revision;
   uint16_t fps_limit;
-  char palette[256];
-  char luminance[256];
+  char palette[NETWORK_ACIP_SETTINGS_PALETTE_BUFFER_SIZE];
+  char luminance[NETWORK_ACIP_SETTINGS_LUMINANCE_BUFFER_SIZE];
   size_t palette_length;
 } acip_render_settings_t;
 

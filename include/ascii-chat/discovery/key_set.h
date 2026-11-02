@@ -7,7 +7,7 @@
 typedef struct {
   acip_session_create_t request;
   char reserved_string[ACIP_MAX_SESSION_STRING_LEN];
-  uint8_t keys[MAX_SESSION_KEYS][32];
+  uint8_t keys[MAX_SESSION_KEYS][ED25519_PUBLIC_KEY_SIZE];
   size_t count;
 } acds_create_key_set_t;
 

@@ -1,5 +1,9 @@
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_ACIP_ACDS_PROTOCOL_ERROR_BUFFER_SIZE 256
+#define NETWORK_ACIP_ACDS_PROTOCOL_NAME_BUFFER_SIZE 49
+
 #include <ascii-chat/network/acip/acds_client.h>
 
 /** Event-driven discovery protocol. Callbacks consume borrowed data before returning.
@@ -26,9 +30,9 @@ typedef struct {
   bool terminal;
   bool auto_join;
   bool require_webrtc;
-  char error[256];
+  char error[NETWORK_ACIP_ACDS_PROTOCOL_ERROR_BUFFER_SIZE];
   acds_session_join_params_t join;
-  char name[49];
+  char name[NETWORK_ACIP_ACDS_PROTOCOL_NAME_BUFFER_SIZE];
   acip_session_created_t created;
   acip_session_info_t info;
   acip_session_joined_t joined;

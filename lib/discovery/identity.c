@@ -137,7 +137,7 @@ void acds_identity_fingerprint(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE]
   }
 
   // Compute SHA256 hash of public key
-  uint8_t hash[32];
+  uint8_t hash[crypto_hash_sha256_BYTES];
   if (key_fingerprint_digest(public_key, hash) != ASCIICHAT_OK) {
     fingerprint[0] = '\0';
     return;

@@ -249,7 +249,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
     s->ready = false;
     memset(s->successor, 0, 16);
   }
-  uint8_t zero[16] = {0};
+  uint8_t zero[UUID_SIZE] = {0};
   if (memcmp(s->successor, zero, 16)) {
     consensus_handoff_peer_t *p = find_peer(s, s->successor);
     if (p && p->valid && p->capabilities && now - p->measured_ms <= CONSENSUS_HANDOFF_FRESH_MS &&

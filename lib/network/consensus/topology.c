@@ -114,7 +114,7 @@ asciichat_error_t consensus_topology_get_leader(const consensus_topology_t *topo
 }
 
 asciichat_error_t consensus_topology_get_all(const consensus_topology_t *topology,
-                                             uint8_t out_ids[MAX_SESSION_PARTICIPANTS][16], int *out_count) {
+                                             uint8_t out_ids[MAX_SESSION_PARTICIPANTS][UUID_SIZE], int *out_count) {
   if (!topology || !out_ids || !out_count) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }

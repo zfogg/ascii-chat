@@ -9,6 +9,9 @@
  * to the database. WAL mode provides concurrent read access.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE 64
+
 #include <ascii-chat/crypto/sizes.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -266,7 +269,7 @@ asciichat_error_t database_stats_unique_clients(sqlite3 *db, int64_t *count_out)
 
 /** Active-session snapshot for statistics; rows are copied and truncated to capacity. */
 typedef struct {
-  char session_string[64];
+  char session_string[DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE];
   uint32_t participants;
   bool host_ready;
   bool migrating;

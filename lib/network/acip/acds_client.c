@@ -1,3 +1,8 @@
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ACDS_SIGNATURE_PREFIX_SIZE (sizeof(uint8_t) + sizeof(uint64_t))
+#define ACDS_CREATE_SIGNATURE_MESSAGE_SIZE (ACDS_SIGNATURE_PREFIX_SIZE + 2 * sizeof(uint8_t))
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
@@ -45,7 +50,7 @@ asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[ED25519
   }
 
   // Build message: type (1 byte) || timestamp (8 bytes) || capabilities (1 byte) || max_participants (1 byte)
-  uint8_t message[11];
+  uint8_t message[ACDS_CREATE_SIGNATURE_MESSAGE_SIZE];
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_CREATE;
 
   // Convert timestamp to network byte order and pack into message
@@ -74,7 +79,7 @@ asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[ED255
   }
 
   // Build message: type (1 byte) || timestamp (8 bytes) || capabilities (1 byte) || max_participants (1 byte)
-  uint8_t message[11];
+  uint8_t message[ACDS_CREATE_SIGNATURE_MESSAGE_SIZE];
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_CREATE;
 
   // Convert timestamp to network byte order and pack into message
@@ -101,12 +106,12 @@ asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[ED25519_P
   }
 
   size_t session_len = strlen(session_string);
-  if (session_len > 48) {
+  if (session_len > ACIP_SESSION_STRING_SIZE) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Session string too long (max 48 chars)");
   }
 
   // Build message: type (1 byte) || timestamp (8 bytes) || session_string (variable length)
-  uint8_t message[1 + 8 + 48];
+  uint8_t message[ACDS_SIGNATURE_PREFIX_SIZE + ACIP_SESSION_STRING_SIZE];
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_JOIN;
 
   // Convert timestamp to network byte order and pack into message
@@ -116,7 +121,7 @@ asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[ED25519_P
   // Copy session string (copy exactly session_len bytes, no null terminator in signature)
   memcpy(&message[9], session_string, session_len);
 
-  size_t message_len = 9 + session_len;
+  size_t message_len = ACDS_SIGNATURE_PREFIX_SIZE + session_len;
 
   // Sign using Ed25519
   if (crypto_sign_detached(signature_out, NULL, message, message_len, identity_seckey) != 0) {
@@ -137,12 +142,12 @@ asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[ED25519
   }
 
   size_t session_len = strlen(session_string);
-  if (session_len > 48) {
+  if (session_len > ACIP_SESSION_STRING_SIZE) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Session string too long (max 48 chars)");
   }
 
   // Build message: type (1 byte) || timestamp (8 bytes) || session_string (variable length)
-  uint8_t message[1 + 8 + 48];
+  uint8_t message[ACDS_SIGNATURE_PREFIX_SIZE + ACIP_SESSION_STRING_SIZE];
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_JOIN;
 
   // Convert timestamp to network byte order and pack into message
@@ -152,7 +157,7 @@ asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[ED25519
   // Copy session string (copy exactly session_len bytes, no null terminator in signature)
   memcpy(&message[9], session_string, session_len);
 
-  size_t message_len = 9 + session_len;
+  size_t message_len = ACDS_SIGNATURE_PREFIX_SIZE + session_len;
 
   // Verify using Ed25519
   if (crypto_sign_verify_detached(signature, message, message_len, identity_pubkey) != 0) {

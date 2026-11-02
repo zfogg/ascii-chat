@@ -1,3 +1,10 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define NETWORK_WEBSOCKET_TRANSPORT_SSL_ERR_BUFFER_SIZE 256
+#define NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE 64
+#define NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE 64
+#define NETWORK_WEBSOCKET_TRANSPORT_SEND_NAME_BUFFER_SIZE 64
+
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/network/acip/backpressure.h>
@@ -424,7 +431,7 @@ static void websocket_on_connection_error(struct lws *wsi, websocket_transport_d
 
   // Get detailed OpenSSL error if available
   unsigned long ssl_err = ERR_get_error();
-  char ssl_err_str[256] = "no SSL error";
+  char ssl_err_str[NETWORK_WEBSOCKET_TRANSPORT_SSL_ERR_BUFFER_SIZE] = "no SSL error";
   if (ssl_err) {
     ERR_error_string_n(ssl_err, ssl_err_str, sizeof(ssl_err_str));
   }
@@ -1466,7 +1473,8 @@ static acip_transport_t *websocket_allocate_client_transport(const char *name) {
   }
 
   // Initialize synchronization primitives with transport-aware names
-  char recv_name[64], state_name[64];
+  char recv_name[NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE],
+      state_name[NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE];
   snprintf(recv_name, sizeof(recv_name), "recv_%s", name);
   snprintf(state_name, sizeof(state_name), "state_%s", name);
 
@@ -1701,7 +1709,9 @@ static acip_transport_t *websocket_allocate_server_transport(const char *name) {
   }
 
   // Initialize synchronization primitives with transport-aware names
-  char recv_name[64], send_name[64], state_name[64];
+  char recv_name[NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE],
+      send_name[NETWORK_WEBSOCKET_TRANSPORT_SEND_NAME_BUFFER_SIZE],
+      state_name[NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE];
   snprintf(recv_name, sizeof(recv_name), "recv_%s", name);
   snprintf(send_name, sizeof(send_name), "send_%s", name);
   snprintf(state_name, sizeof(state_name), "state_%s", name);

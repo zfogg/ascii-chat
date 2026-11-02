@@ -1,4 +1,9 @@
 
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_SESSION_SERVER_ADDRESS_BUFFER_SIZE 64
+#define DISCOVERY_SESSION_HOST_ADDRESS_BUFFER_SIZE 64
+
 #include <ascii-chat/network/acip/acds_sizes.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
@@ -68,16 +73,17 @@ typedef struct session_entry {
   uint64_t last_activity_at; ///< Unix timestamp (ms) - updated on join/leave/host updates (cleanup uses this)
 
   // Server connection information (where clients should connect)
-  char server_address[64]; ///< IPv4/IPv6 address or hostname
-  uint16_t server_port;    ///< Port number for client connection
+  char server_address[DISCOVERY_SESSION_SERVER_ADDRESS_BUFFER_SIZE]; ///< IPv4/IPv6 address or hostname
+  uint16_t server_port;                                              ///< Port number for client connection
 
   // Discovery mode host negotiation fields
   uint8_t initiator_id[UUID_SIZE];        ///< First participant who created/joined the session
   bool host_established;                  ///< Whether a host has been designated (false = still negotiating)
   uint8_t host_participant_id[UUID_SIZE]; ///< Current host's participant_id (valid if host_established)
-  char host_address[64];                  ///< Host's reachable address (valid if host_established)
-  uint16_t host_port;                     ///< Host's port (valid if host_established)
-  uint8_t host_connection_type;           ///< acip_connection_type_t: how to reach host
+  char host_address[DISCOVERY_SESSION_HOST_ADDRESS_BUFFER_SIZE]; ///< Host's reachable address (valid if
+                                                                 ///< host_established)
+  uint16_t host_port;                                            ///< Host's port (valid if host_established)
+  uint8_t host_connection_type;                                  ///< acip_connection_type_t: how to reach host
 
   // Host migration state (when host disconnects)
   bool in_migration;           ///< Currently collecting HOST_LOST packets
