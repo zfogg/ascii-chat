@@ -3,6 +3,9 @@
  * @brief Environment variable utilities with stack-based prompt responses
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UTIL_ENV_NEW_ENV_BUFFER_SIZE 1024
+
 #include <ascii-chat/util/env.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -170,7 +173,7 @@ bool env_pop_prompt_response(char *response_out, size_t response_size) {
 
   // Update environment variable with remaining responses
   if (remaining_valid && remaining[0] != '\0') {
-    char new_env[1024];
+    char new_env[UTIL_ENV_NEW_ENV_BUFFER_SIZE];
     int written = snprintf(new_env, sizeof(new_env), "ASCII_CHAT_QUESTION_PROMPT_RESPONSE=%s", remaining);
     if (written < 0 || (size_t)written >= sizeof(new_env)) {
       log_warn("Failed to format new environment variable");

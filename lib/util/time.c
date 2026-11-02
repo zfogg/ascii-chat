@@ -4,6 +4,9 @@
  * @brief ⏱️ High-precision timing utilities implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UTIL_TIME_TEMP_BUFFER_SIZE 64
+
 #include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/util/time.h>
 
@@ -443,7 +446,7 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
   // Microseconds (< 1ms)
   else if (nanoseconds < NS_PER_MS_INT) {
     double us = (double)nanoseconds / NS_PER_US;
-    char temp_buf[64];
+    char temp_buf[UTIL_TIME_TEMP_BUFFER_SIZE];
     // Use a direct snprintf with large enough buffer first
     snprintf(temp_buf, sizeof(temp_buf), "%.*fµs", actual_decimals, us);
     strip_trailing_zeros(temp_buf);
@@ -457,7 +460,7 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
   // Milliseconds (< 1s)
   else if (nanoseconds < NS_PER_SEC_INT) {
     double ms = (double)nanoseconds / NS_PER_MS;
-    char temp_buf[64];
+    char temp_buf[UTIL_TIME_TEMP_BUFFER_SIZE];
     snprintf(temp_buf, sizeof(temp_buf), "%.*fms", actual_decimals, ms);
     strip_trailing_zeros(temp_buf);
     written = (int)strlen(temp_buf);
@@ -470,7 +473,7 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
   // Seconds (< 1 minute)
   else if (nanoseconds < NS_PER_MIN_INT) {
     double s = (double)nanoseconds / NS_PER_SEC;
-    char temp_buf[64];
+    char temp_buf[UTIL_TIME_TEMP_BUFFER_SIZE];
     snprintf(temp_buf, sizeof(temp_buf), "%.*fs", actual_decimals, s);
     strip_trailing_zeros(temp_buf);
     written = (int)strlen(temp_buf);

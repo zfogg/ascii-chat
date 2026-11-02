@@ -33,8 +33,12 @@
  * @date September 2025
  */
 
-/* Existing buffer budgets in bytes, including NUL for text storage. */
+/* Storage capacities in elements; text buffers include the terminating NUL. */
 #define TIME_DURATION_BUFFER_SIZE 32
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UTIL_TIME_TIMER_NAME_BUFFER_SIZE 256
+#define UTIL_TIME_TIMER_NAME_WITH_TID_BUFFER_SIZE 280
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -336,8 +340,8 @@ bool timer_is_initialized(void);
 #define START_TIMER(name_fmt, ...)                                                                                     \
   do {                                                                                                                 \
     if (timer_is_initialized()) {                                                                                      \
-      char _timer_name_buf[256];                                                                                       \
-      char _timer_name_with_tid[280];                                                                                  \
+      char _timer_name_buf[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];                                                          \
+      char _timer_name_with_tid[UTIL_TIME_TIMER_NAME_WITH_TID_BUFFER_SIZE];                                            \
       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
       snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), "%s_tid%llu", _timer_name_buf,                      \
                (unsigned long long)thread_current_id());                                                               \
@@ -360,7 +364,7 @@ bool timer_is_initialized(void);
 #define START_TIMER_GLOBAL(name_fmt, ...)                                                                              \
   do {                                                                                                                 \
     if (timer_is_initialized()) {                                                                                      \
-      char _timer_name_buf[256];                                                                                       \
+      char _timer_name_buf[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];                                                          \
       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
       (void)timer_start(_timer_name_buf);                                                                              \
     }                                                                                                                  \
@@ -381,7 +385,7 @@ bool timer_is_initialized(void);
   ({                                                                                                                   \
     double _elapsed = -1.0;                                                                                            \
     if (timer_is_initialized()) {                                                                                      \
-      char _timer_name_buf[256];                                                                                       \
+      char _timer_name_buf[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];                                                          \
       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
       _elapsed = timer_stop(_timer_name_buf);                                                                          \
     }                                                                                                                  \
@@ -407,8 +411,8 @@ bool timer_is_initialized(void);
   ({                                                                                                                   \
     double _elapsed = -1.0;                                                                                            \
     if (timer_is_initialized()) {                                                                                      \
-      char _timer_name_buf[256];                                                                                       \
-      char _timer_name_with_tid[280];                                                                                  \
+      char _timer_name_buf[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];                                                          \
+      char _timer_name_with_tid[UTIL_TIME_TIMER_NAME_WITH_TID_BUFFER_SIZE];                                            \
       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
       snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), "%s_tid%llu", _timer_name_buf,                      \
                (unsigned long long)thread_current_id());                                                               \
