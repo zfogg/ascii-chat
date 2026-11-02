@@ -1,3 +1,6 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+
 #include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
@@ -255,9 +258,9 @@ static void *audio_worker_thread(void *arg) {
 
     // Log worker loop state every 100 iterations with detailed timing
     if (loop_count % 100 == 0) {
-      char avg_wait_str[TIME_DURATION_BUFFER_SIZE], max_wait_str[32];
-      char avg_capture_str[TIME_DURATION_BUFFER_SIZE], max_capture_str[32];
-      char avg_playback_str[TIME_DURATION_BUFFER_SIZE], max_playback_str[32];
+      char avg_wait_str[TIME_DURATION_BUFFER_SIZE], max_wait_str[TIME_DURATION_BUFFER_SIZE];
+      char avg_capture_str[TIME_DURATION_BUFFER_SIZE], max_capture_str[TIME_DURATION_BUFFER_SIZE];
+      char avg_playback_str[TIME_DURATION_BUFFER_SIZE], max_playback_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(total_wait_ns / loop_count), -1, avg_wait_str, sizeof(avg_wait_str));
       time_pretty(max_wait_ns, -1, max_wait_str, sizeof(max_wait_str));
       time_pretty((uint64_t)(total_capture_ns / (process_count > 0 ? process_count : 1)), -1, avg_capture_str,
@@ -397,7 +400,8 @@ static void *audio_worker_thread(void *arg) {
 
           if (aec3_count % 100 == 0) {
             long avg_ns = aec3_total_ns / aec3_count;
-            char avg_str[TIME_DURATION_BUFFER_SIZE], max_str[32], latest_str[32];
+            char avg_str[TIME_DURATION_BUFFER_SIZE], max_str[TIME_DURATION_BUFFER_SIZE],
+                latest_str[TIME_DURATION_BUFFER_SIZE];
             time_pretty((uint64_t)avg_ns, -1, avg_str, sizeof(avg_str));
             time_pretty((uint64_t)aec3_max_ns, -1, max_str, sizeof(max_str));
             time_pretty((uint64_t)aec3_ns, -1, latest_str, sizeof(latest_str));
@@ -485,7 +489,7 @@ static void *audio_worker_thread(void *arg) {
       max_loop_ns = loop_time_ns;
 
     if (loop_count % 100 == 0) {
-      char avg_loop_str[TIME_DURATION_BUFFER_SIZE], max_loop_str[32];
+      char avg_loop_str[TIME_DURATION_BUFFER_SIZE], max_loop_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(total_loop_ns / loop_count), -1, avg_loop_str, sizeof(avg_loop_str));
       time_pretty(max_loop_ns, -1, max_loop_str, sizeof(max_loop_str));
       log_debug("Worker loop timing: avg=%s max=%s", avg_loop_str, max_loop_str);
@@ -690,7 +694,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     max_callback_ns = callback_time_ns;
 
   if (callback_count % 500 == 0) { // Log every ~10 seconds @ 48 FPS
-    char avg_str[TIME_DURATION_BUFFER_SIZE], max_str[32];
+    char avg_str[TIME_DURATION_BUFFER_SIZE], max_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty((uint64_t)(total_callback_ns / callback_count), -1, avg_str, sizeof(avg_str));
     time_pretty(max_callback_ns, -1, max_str, sizeof(max_str));
     log_debug("Duplex callback timing: count=%lu, avg=%s, max=%s (budget: 2ms)", callback_count, avg_str, max_str);

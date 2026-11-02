@@ -1,5 +1,8 @@
 #pragma once
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SPECTRAL_BAND_COUNT 4
+
 #include <ascii-chat/asciichat_errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -19,9 +22,9 @@ typedef struct {
   bool pitch_correct; /**< Optional monophonic correction to nearest equal-tempered semitone. */
   bool auto_gain;
   float reduction_db;
-  float crossovers[3];
-  float thresholds_db[4];
-  float ratios[4];
+  float crossovers[SPECTRAL_BAND_COUNT - 1];
+  float thresholds_db[SPECTRAL_BAND_COUNT];
+  float ratios[SPECTRAL_BAND_COUNT];
 } spectral_config_t;
 
 spectral_config_t spectral_default_config(int sample_rate);
