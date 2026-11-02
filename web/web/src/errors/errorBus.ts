@@ -105,11 +105,12 @@ export function installJavaScriptErrorForwarding(): () => void {
 export function reportProtocolError(
   code: number,
   message: string,
+  origin = "Remote protocol error",
 ): BrowserErrorReport {
   const lines = message.split("\n").filter(Boolean);
   return publishBrowserError({
     source: "Protocol",
-    title: `Remote protocol error ${code}`,
+    title: `${origin} ${code}`,
     frames: (lines.length ? lines : [message]).map(parseProtocolFrame),
   });
 }

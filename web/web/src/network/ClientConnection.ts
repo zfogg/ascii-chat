@@ -32,11 +32,14 @@ import {
 import {
   forwardJavaScriptError,
   reportJavaScriptError,
-  reportProtocolError,
   setNetworkErrorReporter,
   type BrowserErrorReport,
 } from "../errors/errorBus";
-import { decodeRemoteError, encodeBrowserError } from "./errorProtocol";
+import {
+  presentRemoteError,
+  RemoteErrorAction,
+  encodeBrowserError,
+} from "./errorProtocol";
 
 export interface ClientConnectionOptions {
   serverUrl: string;
@@ -60,11 +63,14 @@ let initializationQueue: Promise<void> = Promise.resolve();
 
 export class ClientConnection {
   readonly transportType = "websocket" as const;
-  private socket: (PacketTransport & { connect(): Promise<void> }) | null =
-    null;
+  private socket:
+    | (PacketTransport & {
+        connect(): Promise<void>;
+        reconnect(): void;
+      })
+    | null = null;
   private transportState = ConnectionState.DISCONNECTED;
   private cryptoMode = 0;
-  private discoveryAccepted = false;
   private get usesApplicationEncryption(): boolean {
     return (this.cryptoMode & 1) !== 0;
   }
@@ -76,6 +82,7 @@ export class ClientConnection {
   private wasmReinitInProgress = false;
   private deferredPackets: Uint8Array[] = [];
   private socketHasEverOpened = false; // Track if this socket instance has ever opened
+  private retryingRemoteError = false;
   private connectPromise: Promise<void> | null = null;
 
   constructor(private options: ClientConnectionOptions) {}
@@ -90,11 +97,19 @@ export class ClientConnection {
   };
 
   private handleRemoteError(payload: Uint8Array): void {
-    try {
-      const error = decodeRemoteError(payload);
-      reportProtocolError(error.code, error.message);
-    } catch (error) {
-      reportProtocolError(49, (error as Error).message);
+    const action = presentRemoteError(payload);
+    if (action === RemoteErrorAction.Continue) return;
+    this.outbound?.close();
+    this.outbound = null;
+    if (action === RemoteErrorAction.Retry) {
+      this.retryingRemoteError = true;
+      this.transportState = ConnectionState.CONNECTING;
+      this.onStateChangeCallback?.(ConnectionState.CONNECTING);
+      this.socket?.reconnect();
+    } else {
+      this.socket?.close();
+      this.transportState = ConnectionState.ERROR;
+      this.onStateChangeCallback?.(ConnectionState.ERROR);
     }
   }
 
@@ -197,6 +212,9 @@ export class ClientConnection {
         } else if (state === "closed") {
           this.outbound?.close();
           this.outbound = null;
+          // A rejection may arrive before the first successful handshake.
+          // Keep that retry in progress instead of publishing a fatal failure.
+          if (this.retryingRemoteError) return;
           if (
             !this.isUserDisconnecting &&
             this.transportState === ConnectionState.ERROR
@@ -232,7 +250,7 @@ export class ClientConnection {
   }
 
   private async handleSocketOpen(): Promise<void> {
-    this.discoveryAccepted = false;
+    this.retryingRemoteError = false;
     const isReconnection = this.socketHasEverOpened;
     this.socketHasEverOpened = true;
 
@@ -299,6 +317,12 @@ export class ClientConnection {
    * Handle incoming packet from WebSocket
    */
   private handlePacket(rawPacket: Uint8Array): void {
+    if (
+      this.isUserDisconnecting ||
+      this.retryingRemoteError ||
+      this.transportState === ConnectionState.ERROR
+    )
+      return;
     // Defer packet handling if WASM is being reinitialized
     if (this.wasmReinitInProgress) {
       this.deferredPackets.push(rawPacket);
@@ -315,17 +339,8 @@ export class ClientConnection {
 
       if (parsed.type === PacketType.ERROR_MESSAGE) {
         this.handleRemoteError(payload);
-        throw new Error("Remote endpoint reported a protocol error");
+        return;
       }
-
-      // TLS-only discovery starts application traffic without a version ACK.
-      // A policy rejection must stop retries before its first application reply.
-      if (
-        this.options.discoveryHandshake &&
-        !this.discoveryAccepted &&
-        parsed.type === PacketType.ERROR_MESSAGE
-      )
-        throw new Error("Discovery security policy rejected");
 
       if (this.transportState !== ConnectionState.CONNECTED) {
         const module = getClientModule()!;
@@ -347,7 +362,6 @@ export class ClientConnection {
           if (result) throwWasmError(result, "Security handshake rejected");
           const next = getConnectionState();
           if (next === ConnectionState.CONNECTED) {
-            this.discoveryAccepted = true;
             this.wasEverConnected = true;
             this.transportState = ConnectionState.CONNECTED;
             setNetworkErrorReporter(this.reportToServer);
@@ -358,8 +372,6 @@ export class ClientConnection {
         }
         return;
       }
-
-      this.discoveryAccepted = true;
 
       // For non-handshake packets during handshake, log a warning
       const state = this.getState();
@@ -406,7 +418,7 @@ export class ClientConnection {
           const innerPayload = plaintext.slice(HEADER_SIZE);
           if (innerParsed.type === PacketType.ERROR_MESSAGE) {
             this.handleRemoteError(innerPayload);
-            throw new Error("Remote endpoint reported a protocol error");
+            return;
           }
           // console.log(
           //   `[ClientConnection] Inner payload extracted: ${innerPayload.length} bytes`,
@@ -445,15 +457,8 @@ export class ClientConnection {
       this.onPacketCallback?.(parsed, payload);
     } catch (error) {
       console.error("[ClientConnection] Failed to handle packet:", error);
-      if (
-        !(
-          error instanceof Error &&
-          error.message.startsWith("Remote endpoint reported")
-        )
-      ) {
-        if (isReportedWasmError(error)) forwardJavaScriptError(error);
-        else reportJavaScriptError(error);
-      }
+      if (isReportedWasmError(error)) forwardJavaScriptError(error);
+      else reportJavaScriptError(error);
       if (!this.isUserDisconnecting) {
         this.socket?.close();
         this.transportState = ConnectionState.ERROR;

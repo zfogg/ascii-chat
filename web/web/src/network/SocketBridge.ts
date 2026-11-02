@@ -255,6 +255,11 @@ export class SocketBridge {
   /**
    * Schedule a reconnection attempt
    */
+  /** Close this attempt while retaining the automatic reconnect loop. */
+  reconnect(): void {
+    if (!this.isUserDisconnecting) this.ws?.close();
+  }
+
   private scheduleReconnect(): void {
     if (this.isUserDisconnecting || this.reconnectTimeoutId !== null) {
       return;

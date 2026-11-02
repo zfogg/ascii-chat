@@ -2,9 +2,34 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   decodeRemoteError,
   encodeBrowserError,
+  presentRemoteError,
+  RemoteErrorAction,
 } from "../../src/network/errorProtocol";
 
 describe("browser error protocol bridge", () => {
+  it("presents a malformed rejection once as a fatal protocol error", () => {
+    const reports: string[] = [];
+    const listener = (event: Event) =>
+      reports.push((event as CustomEvent).detail.title);
+    window.addEventListener("ascii-chat:error", listener);
+    try {
+      expect(presentRemoteError(new Uint8Array(7))).toBe(
+        RemoteErrorAction.Stop,
+      );
+      expect(reports).toEqual(["Remote protocol error 44"]);
+    } finally {
+      window.removeEventListener("ascii-chat:error", listener);
+    }
+  });
+  it.each([7, 9, 4105])(
+    "rejects malformed or oversized payloads (%i bytes)",
+    (size) => {
+      const payload = new Uint8Array(size);
+      if (size >= 8)
+        new DataView(payload.buffer).setUint32(4, size === 4105 ? size - 8 : 0);
+      expect(() => decodeRemoteError(payload)).toThrow();
+    },
+  );
   it("encodes JavaScript errors for the server as ERROR_INTERNAL", () => {
     const payload = encodeBrowserError({
       id: 1,

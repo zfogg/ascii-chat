@@ -2,6 +2,7 @@ import { spawn, ChildProcess } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import * as net from "net";
+import { tmpdir } from "os";
 import { expect, type Page } from "@playwright/test";
 
 function getAsciiChatBinaryPath(): string {
@@ -54,7 +55,10 @@ export class ServerFixture {
       // Use separate ports for TCP and WebSocket: TCP on basePort, WebSocket on basePort+1
       const tcpPort = this.port;
       const wsPort = this.websocketPort;
-      const debugLogFile = `/tmp/ascii-chat-server-${this.port}.log`;
+      const debugLogFile = path.join(
+        tmpdir(),
+        `ascii-chat-server-${this.port}.log`,
+      );
       let logLevel = "info";
       const modeArgs: string[] = [];
       for (let index = 0; index < this.serverArgs.length; index++) {
@@ -71,6 +75,7 @@ export class ServerFixture {
       this.process = spawn(
         binaryPath,
         [
+          "--no-check-update",
           "--log-level",
           logLevel,
           "--log-file",
@@ -203,7 +208,7 @@ export class ServerFixture {
     let fileLogs = "";
     try {
       fileLogs = fs.readFileSync(
-        `/tmp/ascii-chat-server-${this.port}.log`,
+        path.join(tmpdir(), `ascii-chat-server-${this.port}.log`),
         "utf8",
       );
     } catch {

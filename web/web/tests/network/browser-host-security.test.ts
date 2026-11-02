@@ -7,6 +7,7 @@ const harness = vi.hoisted(() => ({
   packet: (_packet: { type: number }, _payload: Uint8Array) => {},
   disconnected: vi.fn(),
   module: {
+    _network_error_action: () => 1,
     _browser_host_create: () => 0,
     _browser_host_add_client: () => 1,
     _browser_host_remove_client: vi.fn(),
@@ -179,4 +180,42 @@ it("stops obsolete hosting when another participant commits", async () => {
   Reflect.get(handoff, "commit")(new Uint8Array(16).fill(1));
   expect(host.getState()).toBe(ConnectionState.ERROR);
   expect(harness.disconnected).toHaveBeenCalled();
+});
+
+it("presents a reporting participant error without retiring the host", async () => {
+  const host = new BrowserHostSession({
+    signalingUrl: "ws://localhost",
+    sessionName: "",
+    password: "",
+    stunServers: [],
+    turnServers: [],
+  });
+  const reports: Array<{ title: string }> = [];
+  const listener = (event: Event) =>
+    reports.push((event as CustomEvent).detail);
+  window.addEventListener("ascii-chat:error", listener);
+  const ready = host.connect();
+  harness.packet({ type: 1 }, new Uint8Array());
+  await ready;
+  harness.disconnected.mockClear();
+  const message = new TextEncoder().encode("Participant capture failed");
+  const payload = new Uint8Array(8 + message.length);
+  new DataView(payload.buffer).setUint32(0, 53);
+  new DataView(payload.buffer).setUint32(4, message.length);
+  payload.set(message, 8);
+  try {
+    Reflect.get(host, "receive").call(
+      host,
+      7,
+      PacketType.ERROR_MESSAGE,
+      payload,
+    );
+    expect(reports).toHaveLength(1);
+    expect(reports[0]?.title).toBe("Client 7 error 53");
+    expect(host.getState()).toBe(ConnectionState.CONNECTED);
+    expect(harness.disconnected).not.toHaveBeenCalled();
+  } finally {
+    window.removeEventListener("ascii-chat:error", listener);
+    host.disconnect();
+  }
 });
