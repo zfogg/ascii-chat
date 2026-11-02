@@ -131,7 +131,7 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
 
   const void *blob = sqlite3_column_blob(stmt, 1);
   if (blob) {
-    memcpy(session->session_id, blob, 16);
+    memcpy(session->session_id, blob, UUID_SIZE);
   }
 
   blob = sqlite3_column_blob(stmt, 2);
@@ -171,7 +171,7 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
 
   blob = sqlite3_column_blob(stmt, 17);
   if (blob) {
-    memcpy(session->host_participant_id, blob, 16);
+    memcpy(session->host_participant_id, blob, UUID_SIZE);
   }
 
   str = (const char *)sqlite3_column_text(stmt, 18);
@@ -212,7 +212,7 @@ static void load_session_participants(sqlite3 *db, session_entry_t *session) {
 
     const void *blob = sqlite3_column_blob(stmt, 0);
     if (blob) {
-      memcpy(p->participant_id, blob, 16);
+      memcpy(p->participant_id, blob, UUID_SIZE);
     }
 
     blob = sqlite3_column_blob(stmt, 1);
@@ -474,7 +474,7 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   // Fill response
   resp->session_string_len = (uint8_t)strlen(session_string);
   SAFE_STRNCPY(resp->session_string, session_string, sizeof(resp->session_string));
-  memcpy(resp->session_id, session_id, 16);
+  memcpy(resp->session_id, session_id, UUID_SIZE);
   resp->expires_at = expires_at;
   resp->stun_count = config->stun_count;
   resp->turn_count = config->turn_count;
@@ -591,7 +591,7 @@ asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_strin
 
   const void *blob = sqlite3_column_blob(stmt, 1);
   if (blob) {
-    memcpy(resp->session_id, blob, 16);
+    memcpy(resp->session_id, blob, UUID_SIZE);
   }
 
   blob = sqlite3_column_blob(stmt, 2);
@@ -762,7 +762,7 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
       sqlite3_bind_text(stmt, 2, session->session_string, -1, SQLITE_STATIC);
       sqlite3_step(stmt);
       sqlite3_finalize(stmt);
-      memcpy(session->initiator_id, participant_id, 16);
+      memcpy(session->initiator_id, participant_id, UUID_SIZE);
       log_debug("Set initiator_id to new participant %02x%02x...", participant_id[0], participant_id[1]);
     }
   }
@@ -791,13 +791,13 @@ static void database_session_join_response(sqlite3 *db, session_entry_t *session
   // Fill response
   resp->success = 1;
   resp->error_code = ACIP_ERROR_NONE;
-  memcpy(resp->session_id, session->session_id, 16);
+  memcpy(resp->session_id, session->session_id, UUID_SIZE);
 
   // Discovery mode host negotiation fields
   memcpy(resp->initiator_id, session->initiator_id, 16);
   resp->host_established = session->host_established ? 1 : 0;
   if (session->host_established) {
-    memcpy(resp->host_id, session->host_participant_id, 16);
+    memcpy(resp->host_id, session->host_participant_id, UUID_SIZE);
   }
   // peer_count = current_participants (excluding self) that need to negotiate
   resp->peer_count = session->current_participants; // Will be incremented after this returns

@@ -28,7 +28,7 @@ asciichat_error_t consensus_metrics_measure(const uint8_t my_id[UUID_SIZE], part
   if (!my_id || !out_metrics)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid measurement parameters");
   memset(out_metrics, 0, sizeof(*out_metrics));
-  memcpy(out_metrics->participant_id, my_id, 16);
+  memcpy(out_metrics->participant_id, my_id, UUID_SIZE);
   out_metrics->nat_tier = 4;
   return SET_ERRNO(ERROR_INVALID_STATE, "Network measurements require a session measurement provider");
 }

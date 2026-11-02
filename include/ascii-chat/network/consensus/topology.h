@@ -30,7 +30,7 @@ typedef struct consensus_topology consensus_topology_t;
  * @param out_topology Output topology handle (caller must destroy)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
+asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][UUID_SIZE],
                                             int num_participants, const uint8_t my_id[UUID_SIZE],
                                             consensus_topology_t **out_topology);
 

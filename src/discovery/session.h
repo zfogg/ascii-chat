@@ -1,3 +1,5 @@
+
+#include <ascii-chat/network/acip/acds_sizes.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/crypto/handshake/common.h>
@@ -94,7 +96,7 @@ typedef struct {
   uint8_t participant_id[UUID_SIZE];
   uint8_t initiator_id[UUID_SIZE];
   char session_string[SESSION_STRING_BUFFER_SIZE];
-  char password[128]; ///< Session password used when joining password-protected sessions
+  char password[ACIP_PASSWORD_SIZE]; ///< Session password used when joining password-protected sessions
   bool is_initiator;
   bool is_host;
   bool host_elected; ///< True if we've been elected as host (even if waiting for peer)
@@ -123,8 +125,8 @@ typedef struct {
   uint8_t session_type; ///< 0 = DIRECT_TCP, 1 = WEBRTC
 
   // WebRTC credentials (for WebRTC sessions)
-  char turn_username[128];
-  char turn_password[128];
+  char turn_username[ACIP_TURN_AUTH_SIZE];
+  char turn_password[ACIP_PASSWORD_SIZE];
 
   // Negotiation (initial host negotiation)
   negotiate_ctx_t negotiate;

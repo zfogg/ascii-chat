@@ -403,8 +403,8 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate peer entry");
   }
 
-  memcpy(peer->participant_id, participant_id, 16);
-  memcpy(peer->session_id, session_id, 16);
+  memcpy(peer->participant_id, participant_id, UUID_SIZE);
+  memcpy(peer->session_id, session_id, UUID_SIZE);
   peer->pc = NULL;
   peer->dc = NULL;
   peer->is_connected = false;
@@ -624,7 +624,7 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
       // Remove from hash with old ID
       HASH_DEL(manager->peers, peer);
       // Update to real participant_id
-      memcpy(peer->participant_id, sdp->sender_id, 16);
+      memcpy(peer->participant_id, sdp->sender_id, UUID_SIZE);
       // Re-add with new ID
       HASH_ADD(hh, manager->peers, participant_id, 16, peer);
     }

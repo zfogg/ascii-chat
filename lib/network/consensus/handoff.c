@@ -269,7 +269,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
       continue;
     participant_metrics_t *m = &metrics[count++];
     memset(m, 0, sizeof(*m));
-    memcpy(m->participant_id, p->id, 16);
+    memcpy(m->participant_id, p->id, UUID_SIZE);
     m->nat_tier = p->nat_tier <= 4 ? p->nat_tier : 4;
     m->upload_kbps = p->upload_kbps;
     m->rtt_ns = 500000000; /* Unknown RTT earns no latency bonus. */
@@ -280,7 +280,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
   int best = -1, backup = -1;
   if (consensus_election_choose_hosts(metrics, (int)count, &best, &backup) != ASCIICHAT_OK)
     return false;
-  memcpy(s->successor, metrics[best].participant_id, 16);
+  memcpy(s->successor, metrics[best].participant_id, UUID_SIZE);
   ++s->round;
   s->prepare_deadline_ms = now + CONSENSUS_HANDOFF_PREPARE_MS;
   a->kind = HANDOFF_PREPARE;

@@ -107,7 +107,7 @@ static asciichat_error_t session_consensus_election_bridge(void *context, consen
 }
 
 asciichat_error_t session_consensus_create(const uint8_t my_id[UUID_SIZE], bool is_leader,
-                                           const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
+                                           const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][UUID_SIZE],
                                            int num_participants, const session_consensus_callbacks_t *callbacks,
                                            session_consensus_t **out_consensus) {
   if (!my_id || !callbacks || !out_consensus) {
@@ -192,7 +192,7 @@ asciichat_error_t session_consensus_process(session_consensus_t *consensus, uint
 }
 
 asciichat_error_t session_consensus_set_topology(session_consensus_t *consensus,
-                                                 const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
+                                                 const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][UUID_SIZE],
                                                  int num_participants) {
   if (!consensus || !participant_ids) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");

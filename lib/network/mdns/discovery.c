@@ -13,6 +13,7 @@
  * - UI wrapper: lan_discovery.c calls discovery_mdns_query() for interactive selection
  */
 
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
@@ -488,8 +489,8 @@ static void *acds_thread_fn(void *arg) {
       ctx->state->result->source = DISCOVERY_SOURCE_ACDS;
 
       memcpy(ctx->state->result->host_pubkey, lookup_result.host_pubkey, 32);
-      memcpy(ctx->state->result->session_id, join_result.session_id, 16);
-      memcpy(ctx->state->result->participant_id, join_result.participant_id, 16);
+      memcpy(ctx->state->result->session_id, join_result.session_id, UUID_SIZE);
+      memcpy(ctx->state->result->participant_id, join_result.participant_id, UUID_SIZE);
 
       SAFE_STRNCPY(ctx->state->result->server_address, join_result.server_address,
                    sizeof(ctx->state->result->server_address) - 1);

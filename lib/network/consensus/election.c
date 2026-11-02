@@ -44,7 +44,7 @@ static bool ranks_before(const participant_metrics_t *metrics, const uint32_t *s
     return metrics[a].nat_tier < metrics[b].nat_tier;
   if (metrics[a].upload_kbps != metrics[b].upload_kbps)
     return metrics[a].upload_kbps > metrics[b].upload_kbps;
-  return memcmp(metrics[a].participant_id, metrics[b].participant_id, 16) < 0;
+  return memcmp(metrics[a].participant_id, metrics[b].participant_id, UUID_SIZE) < 0;
 }
 
 static void find_best_two(const participant_metrics_t *metrics, const uint32_t *scores, int count, int *best,
@@ -86,7 +86,7 @@ asciichat_error_t consensus_election_choose_hosts(const participant_metrics_t *m
     if (metrics[i].nat_tier > 4 || metrics[i].stun_probe_success_pct > 100)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Malformed participant metrics");
     for (int j = 0; j < i; ++j)
-      if (!memcmp(metrics[i].participant_id, metrics[j].participant_id, 16))
+      if (!memcmp(metrics[i].participant_id, metrics[j].participant_id, UUID_SIZE))
         return SET_ERRNO(ERROR_INVALID_PARAM, "Duplicate election participant");
   }
 
@@ -115,10 +115,10 @@ asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics
   int host_idx = -1, backup_idx = -1;
 
   for (int i = 0; i < num_metrics; i++) {
-    if (memcmp(metrics[i].participant_id, announced_host_id, 16) == 0) {
+    if (memcmp(metrics[i].participant_id, announced_host_id, UUID_SIZE) == 0) {
       host_idx = i;
     }
-    if (memcmp(metrics[i].participant_id, announced_backup_id, 16) == 0) {
+    if (memcmp(metrics[i].participant_id, announced_backup_id, UUID_SIZE) == 0) {
       backup_idx = i;
     }
   }

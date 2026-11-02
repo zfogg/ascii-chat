@@ -1,3 +1,5 @@
+
+#include <ascii-chat/network/acip/acds_sizes.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 #pragma once
@@ -56,8 +58,8 @@ typedef struct session_entry {
   uint8_t max_participants;                     ///< 1-128
   uint8_t current_participants;                 ///< Active participant count
 
-  char password_hash[128]; ///< Argon2id hash (if has_password)
-  bool has_password;       ///< Password protection flag
+  char password_hash[ACIP_PASSWORD_HASH_SIZE]; ///< Argon2id hash (if has_password)
+  bool has_password;                           ///< Password protection flag
   bool expose_ip_publicly; ///< Allow IP disclosure without verification (explicit opt-in via --acds-expose-ip)
   uint8_t session_type;    ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC
 

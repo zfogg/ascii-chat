@@ -17,13 +17,13 @@
  * algorithms and leader election.
  */
 typedef struct consensus_topology {
-  uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16]; ///< Participant UUIDs in sorted order
-  int num_participants;                                  ///< Total number of participants
-  int my_position;                                       ///< My index in the sorted list
+  uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][UUID_SIZE]; ///< Participant UUIDs in sorted order
+  int num_participants;                                         ///< Total number of participants
+  int my_position;                                              ///< My index in the sorted list
 } consensus_topology_t;
 
 // Helper: find position of UUID in array
-static int find_uuid_position(const uint8_t uuids[MAX_SESSION_PARTICIPANTS][16], int count,
+static int find_uuid_position(const uint8_t uuids[MAX_SESSION_PARTICIPANTS][UUID_SIZE], int count,
                               const uint8_t target[UUID_SIZE]) {
   for (int i = 0; i < count; i++) {
     if (memcmp(uuids[i], target, 16) == 0) {
@@ -38,7 +38,7 @@ static int qsort_uuid_compare(const void *a, const void *b) {
   return memcmp(a, b, 16);
 }
 
-asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
+asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][UUID_SIZE],
                                             int num_participants, const uint8_t my_id[UUID_SIZE],
                                             consensus_topology_t **out_topology) {
   if (!participant_ids || !my_id || !out_topology || num_participants <= 0 ||
@@ -90,7 +90,7 @@ asciichat_error_t consensus_topology_get_next(const consensus_topology_t *topolo
   }
 
   int next_pos = (topology->my_position + 1) % topology->num_participants;
-  memcpy(out_id, topology->participant_ids[next_pos], 16);
+  memcpy(out_id, topology->participant_ids[next_pos], UUID_SIZE);
   return ASCIICHAT_OK;
 }
 
@@ -100,7 +100,7 @@ asciichat_error_t consensus_topology_get_prev(const consensus_topology_t *topolo
   }
 
   int prev_pos = (topology->my_position - 1 + topology->num_participants) % topology->num_participants;
-  memcpy(out_id, topology->participant_ids[prev_pos], 16);
+  memcpy(out_id, topology->participant_ids[prev_pos], UUID_SIZE);
   return ASCIICHAT_OK;
 }
 
@@ -109,7 +109,7 @@ asciichat_error_t consensus_topology_get_leader(const consensus_topology_t *topo
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  memcpy(out_id, topology->participant_ids[topology->num_participants - 1], 16);
+  memcpy(out_id, topology->participant_ids[topology->num_participants - 1], UUID_SIZE);
   return ASCIICHAT_OK;
 }
 

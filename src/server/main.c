@@ -552,10 +552,10 @@ static asciichat_error_t server_send_sdp(const uint8_t session_id[SESSION_ID_SIZ
 
   // Fill header
   acip_webrtc_sdp_t *header = (acip_webrtc_sdp_t *)packet;
-  memcpy(header->session_id, session_id, 16);
+  memcpy(header->session_id, session_id, UUID_SIZE);
   // Use server's participant_id from SESSION_JOIN as sender
-  memcpy(header->sender_id, g_server_participant_id, 16);
-  memcpy(header->recipient_id, recipient_id, 16);
+  memcpy(header->sender_id, g_server_participant_id, UUID_SIZE);
+  memcpy(header->recipient_id, recipient_id, UUID_SIZE);
   header->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
   header->sdp_len = HOST_TO_NET_U16((uint16_t)sdp_len);
 
@@ -619,10 +619,10 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[SESSION_ID_SIZ
 
   // Fill header
   acip_webrtc_ice_t *header = (acip_webrtc_ice_t *)packet;
-  memcpy(header->session_id, session_id, 16);
+  memcpy(header->session_id, session_id, UUID_SIZE);
   // Use server's participant_id from SESSION_JOIN as sender
-  memcpy(header->sender_id, g_server_participant_id, 16);
-  memcpy(header->recipient_id, recipient_id, 16);
+  memcpy(header->sender_id, g_server_participant_id, UUID_SIZE);
+  memcpy(header->recipient_id, recipient_id, UUID_SIZE);
   header->candidate_len = HOST_TO_NET_U16((uint16_t)candidate_len); // FIXED: Use candidate length, not total payload
 
   // Copy candidate and mid after header
@@ -1480,10 +1480,10 @@ static void server_join_discovery_session(const acds_session_create_params_t *pa
     log_debug("Server joined session successfully (participant_id: %02x%02x...)", join_result.participant_id[0],
               join_result.participant_id[1]);
     // Store participant ID for WebRTC signaling (needed to identify server in SDP/ICE messages)
-    memcpy(g_server_participant_id, join_result.participant_id, 16);
+    memcpy(g_server_participant_id, join_result.participant_id, UUID_SIZE);
     log_debug("Stored server participant_id for signaling: %02x%02x...", g_server_participant_id[0],
               g_server_participant_id[1]);
-    memcpy(result->session_id, join_result.session_id, 16);
+    memcpy(result->session_id, join_result.session_id, UUID_SIZE);
   }
 }
 

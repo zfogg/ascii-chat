@@ -153,10 +153,10 @@ asciichat_error_t consensus_state_store_election(consensus_state_t *state, int b
       best_idx >= state->metrics_count || backup_idx < -1 || backup_idx >= state->metrics_count ||
       backup_idx == best_idx)
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid election result");
-  memcpy(state->election_result.host_id, state->metrics[best_idx].participant_id, 16);
-  memset(state->election_result.backup_id, 0, 16);
+  memcpy(state->election_result.host_id, state->metrics[best_idx].participant_id, UUID_SIZE);
+  memset(state->election_result.backup_id, 0, UUID_SIZE);
   if (backup_idx >= 0)
-    memcpy(state->election_result.backup_id, state->metrics[backup_idx].participant_id, 16);
+    memcpy(state->election_result.backup_id, state->metrics[backup_idx].participant_id, UUID_SIZE);
   state->election_result.timestamp_ns = time_get_realtime_ns();
   state->current_state = CONSENSUS_STATE_ELECTION_COMPLETE;
   return ASCIICHAT_OK;
@@ -191,7 +191,7 @@ asciichat_error_t consensus_state_get_elected_host(const consensus_state_t *stat
     return SET_ERRNO(ERROR_INVALID_STATE, "Election not complete, current state: %d", state->current_state);
   }
 
-  memcpy(out_host_id, state->election_result.host_id, 16);
+  memcpy(out_host_id, state->election_result.host_id, UUID_SIZE);
   return ASCIICHAT_OK;
 }
 
@@ -204,7 +204,7 @@ asciichat_error_t consensus_state_get_elected_backup(const consensus_state_t *st
     return SET_ERRNO(ERROR_INVALID_STATE, "Election not complete, current state: %d", state->current_state);
   }
 
-  memcpy(out_backup_id, state->election_result.backup_id, 16);
+  memcpy(out_backup_id, state->election_result.backup_id, UUID_SIZE);
   return ASCIICHAT_OK;
 }
 

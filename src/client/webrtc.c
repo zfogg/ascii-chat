@@ -142,9 +142,9 @@ static asciichat_error_t client_send_sdp(const uint8_t session_id[SESSION_ID_SIZ
 
   // Fill header
   acip_webrtc_sdp_t *header = (acip_webrtc_sdp_t *)packet;
-  memcpy(header->session_id, session_id, 16);
-  memcpy(header->sender_id, g_session_context.participant_id, 16);
-  memcpy(header->recipient_id, recipient_id, 16);
+  memcpy(header->session_id, session_id, UUID_SIZE);
+  memcpy(header->sender_id, g_session_context.participant_id, UUID_SIZE);
+  memcpy(header->recipient_id, recipient_id, UUID_SIZE);
   header->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
   header->sdp_len = HOST_TO_NET_U16((uint16_t)sdp_len);
 
@@ -227,9 +227,9 @@ static asciichat_error_t client_send_ice(const uint8_t session_id[SESSION_ID_SIZ
 
   // Fill header
   acip_webrtc_ice_t *header = (acip_webrtc_ice_t *)packet;
-  memcpy(header->session_id, session_id, 16);
-  memcpy(header->sender_id, g_session_context.participant_id, 16);
-  memcpy(header->recipient_id, recipient_id, 16);
+  memcpy(header->session_id, session_id, UUID_SIZE);
+  memcpy(header->sender_id, g_session_context.participant_id, UUID_SIZE);
+  memcpy(header->recipient_id, recipient_id, UUID_SIZE);
   header->candidate_len = HOST_TO_NET_U16((uint16_t)candidate_len); // FIXED: Use candidate length, not total payload
 
   // Copy candidate and mid after header
@@ -293,8 +293,8 @@ void webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE], const
   ensure_mutex_initialized();
   mutex_lock(&g_signaling_mutex);
 
-  memcpy(g_session_context.session_id, session_id, 16);
-  memcpy(g_session_context.participant_id, participant_id, 16);
+  memcpy(g_session_context.session_id, session_id, UUID_SIZE);
+  memcpy(g_session_context.participant_id, participant_id, UUID_SIZE);
   g_session_context.is_set = true;
 
   log_info("Session context set for WebRTC signaling (session=%.8s..., participant=%.8s...)", (const char *)session_id,

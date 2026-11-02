@@ -1,3 +1,5 @@
+
+#include <ascii-chat/network/acip/acds_sizes.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/common.h>
@@ -172,7 +174,7 @@ typedef struct {
   uint8_t capabilities;                              ///< Bit 0: video, Bit 1: audio
   uint8_t max_participants;                          ///< Maximum participants (1-128)
   bool has_password;                                 ///< Password protection enabled
-  char password[128];                                ///< Optional password (if has_password)
+  char password[ACIP_PASSWORD_SIZE];                 ///< Optional password (if has_password)
   bool acds_expose_ip;         ///< Explicitly allow public IP disclosure (--acds-expose-ip opt-in)
   uint8_t session_type;        ///< acds_session_type_t: 0=DIRECT_TCP (default), 1=WEBRTC
   const char *reserved_string; ///< Optional reserved string (NULL = auto-generate)
@@ -184,9 +186,9 @@ typedef struct {
  * @brief Session creation result
  */
 typedef struct {
-  char session_string[49];             ///< Generated session string (null-terminated)
-  uint8_t session_id[SESSION_ID_SIZE]; ///< Session UUID
-  uint64_t expires_at;                 ///< Expiration timestamp (Unix ms)
+  char session_string[ACIP_SESSION_STRING_SIZE + 1]; ///< Generated session string (null-terminated)
+  uint8_t session_id[SESSION_ID_SIZE];               ///< Session UUID
+  uint64_t expires_at;                               ///< Expiration timestamp (Unix ms)
 } acds_session_create_result_t;
 
 /**
@@ -243,7 +245,7 @@ typedef struct {
   uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE];  ///< Participant's Ed25519 public key
   uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE]; ///< Ed25519 secret key (for signing)
   bool has_password;                                 ///< Password provided
-  char password[128];                                ///< Password (if has_password)
+  char password[ACIP_PASSWORD_SIZE];                 ///< Password (if has_password)
 } acds_session_join_params_t;
 
 /**
@@ -253,14 +255,14 @@ typedef struct {
  * This prevents IP address leakage to unauthenticated clients.
  */
 typedef struct {
-  bool success;                        ///< Join succeeded
-  uint8_t participant_id[UUID_SIZE];   ///< Participant UUID (if success)
-  uint8_t session_id[SESSION_ID_SIZE]; ///< Session UUID (if success)
-  uint8_t error_code;                  ///< Error code (if !success)
-  char error_message[129];             ///< Error message (if !success, null-terminated)
-  uint8_t session_type;                ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC (if success)
-  char server_address[65];             ///< Server IP/hostname (if success, null-terminated)
-  uint16_t server_port;                ///< Server port (if success)
+  bool success;                                    ///< Join succeeded
+  uint8_t participant_id[UUID_SIZE];               ///< Participant UUID (if success)
+  uint8_t session_id[SESSION_ID_SIZE];             ///< Session UUID (if success)
+  uint8_t error_code;                              ///< Error code (if !success)
+  char error_message[ACIP_ERROR_MESSAGE_SIZE + 1]; ///< Error message (if !success, null-terminated)
+  uint8_t session_type;                            ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC (if success)
+  char server_address[ACIP_ADDRESS_SIZE + 1];      ///< Server IP/hostname (if success, null-terminated)
+  uint16_t server_port;                            ///< Server port (if success)
 } acds_session_join_result_t;
 
 /**

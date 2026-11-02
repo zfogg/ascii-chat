@@ -208,8 +208,8 @@ static asciichat_error_t complete_collection(consensus_coordinator_t *coordinato
       err = consensus_state_get_elected_backup(coordinator->state, backup_id);
     }
     if (err == ASCIICHAT_OK) {
-      memcpy(coordinator->stored_host_id, host_id, 16);
-      memcpy(coordinator->stored_backup_id, backup_id, 16);
+      memcpy(coordinator->stored_host_id, host_id, UUID_SIZE);
+      memcpy(coordinator->stored_backup_id, backup_id, UUID_SIZE);
       coordinator->has_stored_result = true;
       log_info("Election complete: host=%u, backup=%u", host_id[0], backup_id[0]);
     }
@@ -360,8 +360,8 @@ asciichat_error_t consensus_coordinator_on_election_result(consensus_coordinator
   }
 
   /* Store the elected host and backup */
-  memcpy(coordinator->stored_host_id, host_id, 16);
-  memcpy(coordinator->stored_backup_id, backup_id, 16);
+  memcpy(coordinator->stored_host_id, host_id, UUID_SIZE);
+  memcpy(coordinator->stored_backup_id, backup_id, UUID_SIZE);
   coordinator->has_stored_result = true;
 
   log_info("Election result received: host=%u, backup=%u", host_id[0], backup_id[0]);
@@ -402,8 +402,8 @@ asciichat_error_t consensus_coordinator_get_current_host(const consensus_coordin
 
   /* Fall back to stored result */
   if (coordinator->has_stored_result) {
-    memcpy(out_host_id, coordinator->stored_host_id, 16);
-    memcpy(out_backup_id, coordinator->stored_backup_id, 16);
+    memcpy(out_host_id, coordinator->stored_host_id, UUID_SIZE);
+    memcpy(out_backup_id, coordinator->stored_backup_id, UUID_SIZE);
     return ASCIICHAT_OK;
   }
 

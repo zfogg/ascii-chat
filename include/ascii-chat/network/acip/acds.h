@@ -1,3 +1,5 @@
+
+#include <ascii-chat/network/acip/acds_sizes.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
@@ -203,8 +205,8 @@ typedef struct __attribute__((packed)) {
   uint8_t max_participants; ///< 1-128 participants allowed
   uint8_t session_type;     ///< acds_session_type_t: 0=DIRECT_TCP (default), 1=WEBRTC
 
-  uint8_t has_password;       ///< 0 = no password, 1 = password protected
-  uint8_t password_hash[128]; ///< Argon2id hash (only if has_password == 1)
+  uint8_t has_password;                           ///< 0 = no password, 1 = password protected
+  uint8_t password_hash[ACIP_PASSWORD_HASH_SIZE]; ///< Argon2id hash (only if has_password == 1)
   uint8_t expose_ip_publicly; ///< 0 = require verification, 1 = allow public IP disclosure (explicit --acds-expose-ip
                               ///< opt-in)
 
@@ -218,8 +220,8 @@ typedef struct __attribute__((packed)) {
   // Server connection information (where clients should connect)
   // For DIRECT_TCP: server_address and server_port specify where to connect
   // For WEBRTC: these fields are ignored, signaling happens through ACDS
-  char server_address[64]; ///< IPv4/IPv6 address or hostname (null-terminated)
-  uint16_t server_port;    ///< Port number for client connection
+  char server_address[ACIP_ADDRESS_SIZE]; ///< IPv4/IPv6 address or hostname (null-terminated)
+  uint16_t server_port;                   ///< Port number for client connection
 } acip_session_create_t;
 
 /**
@@ -259,11 +261,11 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_string_len;          ///< Length of session string (e.g., 20 for "swift-river-mountain")
-  char session_string[48];             ///< Null-padded session string
-  uint8_t session_id[SESSION_ID_SIZE]; ///< UUID as bytes (not string)
-  uint8_t participant_id[UUID_SIZE];   ///< Creator's participant ID (they are a participant too)
-  uint64_t expires_at;                 ///< Unix ms (created_at + 24 hours)
+  uint8_t session_string_len;                    ///< Length of session string (e.g., 20 for "swift-river-mountain")
+  char session_string[ACIP_SESSION_STRING_SIZE]; ///< Null-padded session string
+  uint8_t session_id[SESSION_ID_SIZE];           ///< UUID as bytes (not string)
+  uint8_t participant_id[UUID_SIZE];             ///< Creator's participant ID (they are a participant too)
+  uint64_t expires_at;                           ///< Unix ms (created_at + 24 hours)
 
   uint8_t stun_count; ///< Number of STUN servers
   uint8_t turn_count; ///< Number of TURN servers
@@ -302,7 +304,7 @@ typedef struct __attribute__((packed)) {
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_string_len;
-  char session_string[48];
+  char session_string[ACIP_SESSION_STRING_SIZE];
 } acip_session_lookup_t;
 
 /**
@@ -395,13 +397,13 @@ typedef struct __attribute__((packed)) {
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_string_len;
-  char session_string[48];
+  char session_string[ACIP_SESSION_STRING_SIZE];
   uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Joiner's Ed25519 public key
   uint8_t signature[ED25519_SIGNATURE_SIZE];        ///< Signs: type || timestamp || session_string
   uint64_t timestamp;                               ///< Unix ms
 
   uint8_t has_password;
-  char password[128]; ///< Cleartext password (TLS protects transport)
+  char password[ACIP_PASSWORD_SIZE]; ///< Cleartext password (TLS protects transport)
 } acip_session_join_t;
 
 /**
@@ -447,9 +449,9 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t success;         ///< 0 = failed, 1 = joined
-  uint8_t error_code;      ///< Error code if success == 0
-  char error_message[128]; ///< Human-readable error
+  uint8_t success;                             ///< 0 = failed, 1 = joined
+  uint8_t error_code;                          ///< Error code if success == 0
+  char error_message[ACIP_ERROR_MESSAGE_SIZE]; ///< Human-readable error
 
   uint8_t participant_id[UUID_SIZE];   ///< UUID for this participant (valid if success == 1)
   uint8_t session_id[SESSION_ID_SIZE]; ///< Session UUID
@@ -464,15 +466,15 @@ typedef struct __attribute__((packed)) {
   // Followed by: uint8_t peer_ids[peer_count][16] (variable length)
 
   // Server connection information (ONLY if success == 1 AND host_established == 1)
-  uint8_t session_type;    ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC
-  char server_address[64]; ///< IPv4/IPv6 address or hostname (null-terminated)
-  uint16_t server_port;    ///< Port number for client connection
+  uint8_t session_type;                   ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC
+  char server_address[ACIP_ADDRESS_SIZE]; ///< IPv4/IPv6 address or hostname (null-terminated)
+  uint16_t server_port;                   ///< Port number for client connection
 
   // TURN credentials for WebRTC NAT traversal (ONLY if session_type == SESSION_TYPE_WEBRTC)
   // Generated by ACDS server using HMAC-SHA1 with shared secret
   // Format follows RFC 5766 time-limited TURN authentication
-  char turn_username[128]; ///< Format: "{timestamp}:{session_id}"
-  char turn_password[128]; ///< Base64-encoded HMAC-SHA1(secret, username)
+  char turn_username[ACIP_TURN_AUTH_SIZE]; ///< Format: "{timestamp}:{session_id}"
+  char turn_password[ACIP_PASSWORD_SIZE];  ///< Base64-encoded HMAC-SHA1(secret, username)
 } acip_session_joined_t;
 
 /**
@@ -674,7 +676,7 @@ typedef struct __attribute__((packed)) {
   uint8_t signature[ED25519_SIGNATURE_SIZE];
   uint64_t timestamp;
   uint8_t string_len;
-  char string[48];
+  char string[ACIP_SESSION_STRING_SIZE];
   uint32_t duration_days; ///< How long to reserve (1-365)
 } acip_string_reserve_t;
 
@@ -690,7 +692,7 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
   uint8_t success;
   uint8_t error_code;
-  char error_message[128];
+  char error_message[ACIP_ERROR_MESSAGE_SIZE];
   uint64_t expires_at; ///< Unix ms
 } acip_string_reserved_t;
 
@@ -708,7 +710,7 @@ typedef struct __attribute__((packed)) {
   uint8_t signature[ED25519_SIGNATURE_SIZE];
   uint64_t timestamp;
   uint8_t string_len;
-  char string[48];
+  char string[ACIP_SESSION_STRING_SIZE];
   uint32_t duration_days;
 } acip_string_renew_t;
 
@@ -726,7 +728,7 @@ typedef struct __attribute__((packed)) {
   uint8_t signature[ED25519_SIGNATURE_SIZE];
   uint64_t timestamp;
   uint8_t string_len;
-  char string[48];
+  char string[ACIP_SESSION_STRING_SIZE];
 } acip_string_release_t;
 
 /** @} */
@@ -769,7 +771,7 @@ typedef struct __attribute__((packed)) {
   // Followed by: participant_entry_t[num_participants] (variable length)
   // participant_entry_t {
   //   uint8_t participant_id[16];
-  //   char address[64];
+  //   char address[ACIP_ADDRESS_SIZE];
   //   uint16_t port;
   //   uint8_t connection_type;
   // }
@@ -784,9 +786,9 @@ typedef struct __attribute__((packed)) {
  */
 typedef struct __attribute__((packed)) {
   uint8_t participant_id[UUID_SIZE];
-  char address[64];        ///< Participant's address (for direct connection)
-  uint16_t port;           ///< Participant's listening port
-  uint8_t connection_type; ///< acip_connection_type_t
+  char address[ACIP_ADDRESS_SIZE]; ///< Participant's address (for direct connection)
+  uint16_t port;                   ///< Participant's listening port
+  uint8_t connection_type;         ///< acip_connection_type_t
 } acip_participant_entry_t;
 
 /**
@@ -885,8 +887,8 @@ typedef struct __attribute__((packed)) {
   uint8_t packet_loss_pct; ///< Packet loss percentage (0-100)
 
   // Connection info
-  char public_address[64]; ///< Our public IP (if has_public_ip or upnp)
-  uint16_t public_port;    ///< Our public port
+  char public_address[ACIP_ADDRESS_SIZE]; ///< Our public IP (if has_public_ip or upnp)
+  uint16_t public_port;                   ///< Our public port
 
   // ICE candidate summary
   uint8_t ice_candidate_types; ///< Bitmask: 1=host, 2=srflx, 4=relay
@@ -905,12 +907,12 @@ typedef struct __attribute__((packed)) {
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
-  uint8_t host_id[UUID_SIZE]; ///< My participant ID
-  char host_address[64];      ///< Where clients should connect
-  uint16_t host_port;         ///< Port
-  uint8_t connection_type;    ///< acip_connection_type_t
-  uint32_t generation;        ///< Handoff generation in network byte order; one for initial host
-  uint32_t sequence;          ///< Committed handoff round in network byte order; zero for initial host
+  uint8_t host_id[UUID_SIZE];           ///< My participant ID
+  char host_address[ACIP_ADDRESS_SIZE]; ///< Where clients should connect
+  uint16_t host_port;                   ///< Port
+  uint8_t connection_type;              ///< acip_connection_type_t
+  uint32_t generation;                  ///< Handoff generation in network byte order; one for initial host
+  uint32_t sequence;                    ///< Committed handoff round in network byte order; zero for initial host
 } acip_host_announcement_t;
 
 /**
@@ -926,7 +928,7 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
   uint8_t host_id[UUID_SIZE];
-  char host_address[64];
+  char host_address[ACIP_ADDRESS_SIZE];
   uint16_t host_port;
   uint8_t connection_type; ///< acip_connection_type_t
   uint32_t generation;     ///< Handoff generation in network byte order; one for initial host
@@ -979,11 +981,11 @@ typedef struct __attribute__((packed)) {
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[SESSION_ID_SIZE];
-  uint8_t future_host_id[UUID_SIZE]; ///< Who will host if current host dies
-  char future_host_address[64];      ///< Where to connect when needed
-  uint16_t future_host_port;         ///< Port number
-  uint8_t connection_type;           ///< acip_connection_type_t (DIRECT, UPNP, STUN, TURN)
-  uint64_t elected_at_round;         ///< Which 5-minute round this was elected in
+  uint8_t future_host_id[UUID_SIZE];           ///< Who will host if current host dies
+  char future_host_address[ACIP_ADDRESS_SIZE]; ///< Where to connect when needed
+  uint16_t future_host_port;                   ///< Port number
+  uint8_t connection_type;                     ///< acip_connection_type_t (DIRECT, UPNP, STUN, TURN)
+  uint64_t elected_at_round;                   ///< Which 5-minute round this was elected in
 } acip_future_host_elected_t;
 
 /** @} */
@@ -1005,8 +1007,8 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t error_code;      ///< Error code (see acip_error_code_t)
-  char error_message[256]; ///< Human-readable error
+  uint8_t error_code;                                 ///< Error code (see acip_error_code_t)
+  char error_message[ACIP_SIGNAL_ERROR_MESSAGE_SIZE]; ///< Human-readable error
 } acip_error_t;
 
 /**
@@ -1088,7 +1090,7 @@ typedef enum {
  */
 
 /** @brief Maximum session string length (e.g., "swift-river-mountain" = 20 chars) */
-#define ACIP_MAX_SESSION_STRING_LEN 48
+#define ACIP_MAX_SESSION_STRING_LEN ACIP_SESSION_STRING_SIZE
 
 /** @brief Session maximum lifetime (24 hours in milliseconds)
  *  Note: Sessions are actually cleaned up after 3 hours of inactivity (last_activity_at),

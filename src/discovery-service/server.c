@@ -406,8 +406,8 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
     // Broadcast PARTICIPANT_JOINED notification to all other participants in the session
     acip_participant_joined_t participant_joined;
     memset(&participant_joined, 0, sizeof(participant_joined));
-    memcpy(participant_joined.session_id, resp.session_id, 16);
-    memcpy(participant_joined.new_participant_id, resp.participant_id, 16);
+    memcpy(participant_joined.session_id, resp.session_id, UUID_SIZE);
+    memcpy(participant_joined.new_participant_id, resp.participant_id, UUID_SIZE);
     memcpy(participant_joined.new_participant_pubkey, req->identity_pubkey, 32);
     // peer_count is the number of OTHER participants; total = peer_count + 1 (the new one)
     participant_joined.current_participant_count = resp.peer_count + 1;
@@ -565,8 +565,8 @@ static bool acds_host_endpoint_conflicts(const session_entry_t *stored, const ac
                                          const char *address) {
   // Accepted endpoints are immutable within a committed decision; duplicates can repair delivery.
   return stored->host_established && stored->host_address[0] &&
-         (memcmp(stored->host_participant_id, announcement->host_id, 16) || strcmp(stored->host_address, address) ||
-          stored->host_port != announcement->host_port ||
+         (memcmp(stored->host_participant_id, announcement->host_id, UUID_SIZE) ||
+          strcmp(stored->host_address, address) || stored->host_port != announcement->host_port ||
           stored->host_connection_type != announcement->connection_type);
 }
 
@@ -579,7 +579,7 @@ static asciichat_error_t acds_update_announced_host(acds_server_t *server, const
   uint32_t generation = NET_TO_HOST_U32(announcement->generation);
   ASCII_OTEL_ATTR_INT("host.generation", generation);
   consensus_handoff_t *handoff = acds_handoff_find(server, announcement->session_id, true);
-  if (!handoff || memcmp(handoff->host, announcement->host_id, 16) || generation != handoff->generation ||
+  if (!handoff || memcmp(handoff->host, announcement->host_id, UUID_SIZE) || generation != handoff->generation ||
       NET_TO_HOST_U32(announcement->sequence) != handoff->host_sequence)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Obsolete or unauthorized host announcement");
   session_entry_t *stored = database_session_find_by_id(server->db, announcement->session_id);
@@ -621,8 +621,8 @@ void acds_on_host_announcement(const acip_host_announcement_t *announcement, aci
            announcement->connection_type);
 
   acds_client_data_t *client = transport ? transport->user_data : NULL;
-  if (!client || !client->joined_session || memcmp(client->participant_id, announcement->host_id, 16) ||
-      memcmp(client->session_id, announcement->session_id, 16)) {
+  if (!client || !client->joined_session || memcmp(client->participant_id, announcement->host_id, UUID_SIZE) ||
+      memcmp(client->session_id, announcement->session_id, UUID_SIZE)) {
     ASCII_OTEL_ATTR_STRING("host.update.reason", "identity_mismatch");
     acip_send_error(transport, ERROR_NETWORK_PROTOCOL, "Host announcement identity mismatch");
     return;
@@ -755,8 +755,8 @@ static asciichat_error_t acds_on_handoff(const void *data, size_t length, acip_t
   asciichat_error_t result = consensus_handoff_decode(data, length, &message);
   if (result != ASCIICHAT_OK)
     return result;
-  if (!client || !client->joined_session || memcmp(client->session_id, message.session, 16) ||
-      memcmp(client->participant_id, message.participant, 16))
+  if (!client || !client->joined_session || memcmp(client->session_id, message.session, UUID_SIZE) ||
+      memcmp(client->participant_id, message.participant, UUID_SIZE))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Handoff transport identity mismatch");
   mutex_lock(&server->handoff_mutex);
   consensus_handoff_t *state = acds_handoff_find(server, message.session, true);

@@ -21,9 +21,9 @@ void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[SESSION_ID_SI
   memset(ctx, 0, sizeof(negotiate_ctx_t));
 
   if (session_id)
-    memcpy(ctx->session_id, session_id, 16);
+    memcpy(ctx->session_id, session_id, UUID_SIZE);
   if (participant_id)
-    memcpy(ctx->participant_id, participant_id, 16);
+    memcpy(ctx->participant_id, participant_id, UUID_SIZE);
 
   ctx->is_initiator = is_initiator;
   ctx->state = NEGOTIATE_STATE_INIT;
