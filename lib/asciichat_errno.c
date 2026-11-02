@@ -2,6 +2,13 @@
  * @file asciichat_errno.c
  * @brief Bounded, synchronized error stacks with allocation-free recording.
  */
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE 256
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ERROR_RENDER_SLOT_COUNT 8
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/tui/notice.h>
@@ -127,10 +134,11 @@ static void notify_locked(const asciichat_error_context_t *context) {
 }
 
 const char *asciichat_error_format(const char *message, asciichat_error_t code) {
-  static PLATFORM_THREAD_LOCAL char buffers[8][ASCIICHAT_ERRNO_MESSAGE_MAX + 256];
+  static PLATFORM_THREAD_LOCAL char buffers[ERROR_RENDER_SLOT_COUNT]
+                                           [ASCIICHAT_ERRNO_MESSAGE_MAX + ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE];
   static PLATFORM_THREAD_LOCAL unsigned next;
   char *output = buffers[next++ % 8];
-  char suffix[256];
+  char suffix[ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE];
   snprintf(suffix, sizeof(suffix), "%s (code=%d)", asciichat_error_string(code), code);
   if (!message || !*message || !strcmp(message, asciichat_error_string(code))) {
     snprintf(output, sizeof(buffers[0]), "%s", suffix);
