@@ -8,6 +8,24 @@
  * No internal collection overhead - inspects lock structs directly.
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DEBUG_SYNC_LOCK_BUFFER_SIZE 64
+#define DEBUG_SYNC_UNLOCK_BUFFER_SIZE 64
+#define DEBUG_SYNC_HELD_BUFFER_SIZE 256
+#define DEBUG_SYNC_ELAPSED_BUFFER_SIZE 64
+#define DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE 256
+#define DEBUG_SYNC_RDLOCK_BUFFER_SIZE 64
+#define DEBUG_SYNC_WRLOCK_BUFFER_SIZE 64
+#define DEBUG_SYNC_WRITE_HELD_BUFFER_SIZE 256
+#define DEBUG_SYNC_READ_HELD_BUFFER_SIZE 256
+#define DEBUG_SYNC_STATUS_BUFFER_SIZE 128
+#define DEBUG_SYNC_WAIT_BUFFER_SIZE 64
+#define DEBUG_SYNC_SIGNAL_BUFFER_SIZE 64
+#define DEBUG_SYNC_BROADCAST_BUFFER_SIZE 64
+#define DEBUG_SYNC_WAITING_BUFFER_SIZE 256
+#define DEBUG_SYNC_TIMING_BUFFER_SIZE 256
+#define DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE 512
+
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/debug/debug_helpers.h>
 #include <ascii-chat/platform/thread.h>
@@ -64,24 +82,24 @@ static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) 
 
   int offset = 0;
   uint64_t now_ns = time_get_ns();
-  char lock_str[64] = "";
-  char unlock_str[64] = "";
-  char held_str[256] = "";
+  char lock_str[DEBUG_SYNC_LOCK_BUFFER_SIZE] = "";
+  char unlock_str[DEBUG_SYNC_UNLOCK_BUFFER_SIZE] = "";
+  char held_str[DEBUG_SYNC_HELD_BUFFER_SIZE] = "";
 
   if (mutex->last_lock_time_ns > 0 && mutex->last_lock_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[DEBUG_SYNC_ELAPSED_BUFFER_SIZE];
     format_elapsed(now_ns - mutex->last_lock_time_ns, elapsed_str, sizeof(elapsed_str));
     snprintf(lock_str, sizeof(lock_str), "lock=%s", elapsed_str);
   }
 
   if (mutex->last_unlock_time_ns > 0 && mutex->last_unlock_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[DEBUG_SYNC_ELAPSED_BUFFER_SIZE];
     format_elapsed(now_ns - mutex->last_unlock_time_ns, elapsed_str, sizeof(elapsed_str));
     snprintf(unlock_str, sizeof(unlock_str), "unlock=%s", elapsed_str);
   }
 
   if (mutex->currently_held_by_key != 0) {
-    char thread_name[256];
+    char thread_name[DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE];
     NAMED_GET_BY_PTR(mutex->currently_held_by_key, thread_name, sizeof(thread_name));
     snprintf(held_str, sizeof(held_str), "[LOCKED_BY=%s]", thread_name);
   } else {
@@ -111,33 +129,33 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
 
   int offset = 0;
   uint64_t now_ns = time_get_ns();
-  char rdlock_str[64] = "";
-  char wrlock_str[64] = "";
-  char unlock_str[64] = "";
-  char write_held_str[256] = "";
-  char read_held_str[256] = "";
-  char status_str[128] = "";
+  char rdlock_str[DEBUG_SYNC_RDLOCK_BUFFER_SIZE] = "";
+  char wrlock_str[DEBUG_SYNC_WRLOCK_BUFFER_SIZE] = "";
+  char unlock_str[DEBUG_SYNC_UNLOCK_BUFFER_SIZE] = "";
+  char write_held_str[DEBUG_SYNC_WRITE_HELD_BUFFER_SIZE] = "";
+  char read_held_str[DEBUG_SYNC_READ_HELD_BUFFER_SIZE] = "";
+  char status_str[DEBUG_SYNC_STATUS_BUFFER_SIZE] = "";
 
   if (rwlock->last_rdlock_time_ns > 0 && rwlock->last_rdlock_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[DEBUG_SYNC_ELAPSED_BUFFER_SIZE];
     format_elapsed(now_ns - rwlock->last_rdlock_time_ns, elapsed_str, sizeof(elapsed_str));
     snprintf(rdlock_str, sizeof(rdlock_str), "rdlock=%s", elapsed_str);
   }
 
   if (rwlock->last_wrlock_time_ns > 0 && rwlock->last_wrlock_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[DEBUG_SYNC_ELAPSED_BUFFER_SIZE];
     format_elapsed(now_ns - rwlock->last_wrlock_time_ns, elapsed_str, sizeof(elapsed_str));
     snprintf(wrlock_str, sizeof(wrlock_str), "wrlock=%s", elapsed_str);
   }
 
   if (rwlock->last_unlock_time_ns > 0 && rwlock->last_unlock_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[DEBUG_SYNC_ELAPSED_BUFFER_SIZE];
     format_elapsed(now_ns - rwlock->last_unlock_time_ns, elapsed_str, sizeof(elapsed_str));
     snprintf(unlock_str, sizeof(unlock_str), "unlock=%s", elapsed_str);
   }
 
   if (rwlock->write_held_by_key != 0) {
-    char thread_name[256];
+    char thread_name[DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE];
     NAMED_GET_BY_PTR(rwlock->write_held_by_key, thread_name, sizeof(thread_name));
     snprintf(write_held_str, sizeof(write_held_str), "[WRITE_LOCKED_BY=%s]", thread_name);
   }
@@ -175,33 +193,33 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
 
   int offset = 0;
   uint64_t now_ns = time_get_ns();
-  char wait_str[64] = "";
-  char signal_str[64] = "";
-  char broadcast_str[64] = "";
-  char waiting_str[256] = "";
-  char status_str[128] = "";
+  char wait_str[DEBUG_SYNC_WAIT_BUFFER_SIZE] = "";
+  char signal_str[DEBUG_SYNC_SIGNAL_BUFFER_SIZE] = "";
+  char broadcast_str[DEBUG_SYNC_BROADCAST_BUFFER_SIZE] = "";
+  char waiting_str[DEBUG_SYNC_WAITING_BUFFER_SIZE] = "";
+  char status_str[DEBUG_SYNC_STATUS_BUFFER_SIZE] = "";
 
   if (cond->last_wait_time_ns > 0 && cond->last_wait_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[DEBUG_SYNC_ELAPSED_BUFFER_SIZE];
     format_elapsed(now_ns - cond->last_wait_time_ns, elapsed_str, sizeof(elapsed_str));
     snprintf(wait_str, sizeof(wait_str), "wait=%s", elapsed_str);
   }
 
   if (cond->last_signal_time_ns > 0 && cond->last_signal_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[DEBUG_SYNC_ELAPSED_BUFFER_SIZE];
     format_elapsed(now_ns - cond->last_signal_time_ns, elapsed_str, sizeof(elapsed_str));
     snprintf(signal_str, sizeof(signal_str), "signal=%s", elapsed_str);
   }
 
   if (cond->last_broadcast_time_ns > 0 && cond->last_broadcast_time_ns <= now_ns) {
-    char elapsed_str[64];
+    char elapsed_str[DEBUG_SYNC_ELAPSED_BUFFER_SIZE];
     format_elapsed(now_ns - cond->last_broadcast_time_ns, elapsed_str, sizeof(elapsed_str));
     snprintf(broadcast_str, sizeof(broadcast_str), "broadcast=%s", elapsed_str);
   }
 
   uint64_t waiting_count = atomic_load_u64(&cond->waiting_count);
   if (waiting_count > 0) {
-    char thread_name[256];
+    char thread_name[DEBUG_SYNC_THREAD_NAME_BUFFER_SIZE];
     NAMED_GET_BY_PTR(cond->last_waiting_key, thread_name, sizeof(thread_name));
     snprintf(waiting_str, sizeof(waiting_str), "[WAITING=%" PRIu64 " threads, last=%s]", waiting_count, thread_name);
   } else {
@@ -320,7 +338,7 @@ static void mutex_iter_callback(uintptr_t key, const char *name, void *user_data
   if (!named_registry_read(key, "mutex", copy_mutex_timing, &snapshot))
     return;
   const mutex_t *mutex = &snapshot;
-  char timing_str[256] = {0};
+  char timing_str[DEBUG_SYNC_TIMING_BUFFER_SIZE] = {0};
   format_mutex_timing(mutex, timing_str, sizeof(timing_str));
 
   // Only append if mutex has been used
@@ -338,7 +356,7 @@ static void rwlock_iter_callback(uintptr_t key, const char *name, void *user_dat
   if (!named_registry_read(key, "rwlock", copy_rwlock_timing, &snapshot))
     return;
   const rwlock_t *rwlock = &snapshot;
-  char timing_str[512] = {0};
+  char timing_str[DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE] = {0};
   format_rwlock_timing(rwlock, timing_str, sizeof(timing_str));
 
   // Only append if rwlock has been used
@@ -356,7 +374,7 @@ static void cond_iter_callback(uintptr_t key, const char *name, void *user_data)
   if (!named_registry_read(key, "cond", copy_cond_timing, &snapshot))
     return;
   const cond_t *cond = &snapshot;
-  char timing_str[512] = {0};
+  char timing_str[DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE] = {0};
   format_cond_timing(cond, timing_str, sizeof(timing_str));
 
   // Only append if condition variable has been used
@@ -374,7 +392,7 @@ static void atomic_t_iter_callback(uintptr_t key, const char *name, void *user_d
   if (!named_registry_read(key, "atomic", copy_atomic_t_timing, &snapshot))
     return;
   const atomic_t *atomic = &snapshot;
-  char timing_str[512] = {0};
+  char timing_str[DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE] = {0};
   int bytes = debug_atomic_format_timing(atomic, timing_str, sizeof(timing_str));
 
   // Only append if atomic has been used
@@ -392,7 +410,7 @@ static void atomic_ptr_iter_callback(uintptr_t key, const char *name, void *user
   if (!named_registry_read(key, "atomic_ptr", copy_atomic_ptr_timing, &snapshot))
     return;
   const atomic_ptr_t *atomic = &snapshot;
-  char timing_str[512] = {0};
+  char timing_str[DEBUG_SYNC_TIMING_EXTENDED_BUFFER_SIZE] = {0};
   int bytes = debug_atomic_ptr_format_timing(atomic, timing_str, sizeof(timing_str));
 
   // Only append if atomic has been used
@@ -436,7 +454,7 @@ static void debug_sync_print_lock_stacks(sync_buffer_t *buf) {
       const char *state_str = (entry->state == MUTEX_STACK_STATE_LOCKED) ? "LOCKED" : "PENDING";
 
       uint64_t elapsed = time_get_ns() - entry->timestamp_ns;
-      char elapsed_str[64];
+      char elapsed_str[DEBUG_SYNC_ELAPSED_BUFFER_SIZE];
       time_pretty(elapsed, -1, elapsed_str, sizeof(elapsed_str));
 
       sync_buffer_append(buf, "    [%d] mutex @ %p (%s) %s", j, (void *)entry->mutex_key, state_str, elapsed_str);

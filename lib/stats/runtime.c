@@ -1,3 +1,9 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define STATS_RUNTIME_TRANSPORT_BUFFER_SIZE 16
+#define STATS_RUNTIME_STATE_BUFFER_SIZE 64
+#define STATS_RUNTIME_OUTPUT_BUFFER_SIZE 8192
+
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/ui/viewport.h>
 #include <ascii-chat/tui/stats.h>
@@ -26,7 +32,7 @@
 struct stats_peer {
   stats_scope_t *scope;
   stats_sampler_t *sampler;
-  char transport[16];
+  char transport[STATS_RUNTIME_TRANSPORT_BUFFER_SIZE];
   uint64_t id;
 };
 
@@ -37,7 +43,7 @@ static stats_peer_t *g_peers[64];
 static uint64_t g_peer_id, g_peer_count;
 static stats_provider_fn g_provider;
 static void *g_provider_data;
-static char g_mode[32], g_state[64];
+static char g_mode[STATS_RUNTIME_MODE_BUFFER_SIZE], g_state[STATS_RUNTIME_STATE_BUFFER_SIZE];
 static unsigned g_interval;
 static atomic_t g_stop, g_active;
 static asciichat_thread_t g_worker;
@@ -287,7 +293,7 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
 }
 
 static void print_summary(const stats_snapshot_t *snapshot, const stats_rates_t *rates) {
-  char output[8192];
+  char output[STATS_RUNTIME_OUTPUT_BUFFER_SIZE];
   int used = snprintf(output, sizeof(output), "stats mode=%s uptime_s=%.3f", g_mode,
                       (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9);
   for (int i = 0; i < STATS_COUNTER_COUNT; ++i)

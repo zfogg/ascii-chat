@@ -1,3 +1,13 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DEBUG_MUTEX_CYCLE_MSG_BUFFER_SIZE 4096
+#define DEBUG_MUTEX_THREAD_NAME_BUFFER_SIZE 256
+#define DEBUG_MUTEX_MUTEX_NAME_BUFFER_SIZE 256
+#define DEBUG_MUTEX_HELD_BY_NAME_BUFFER_SIZE 256
+#define DEBUG_MUTEX_STUCK_BUFFER_SIZE 64
+#define DEBUG_MUTEX_COND_BUFFER_SIZE 1024
+#define DEBUG_MUTEX_NAME_BUFFER_SIZE 256
+
 #include <ascii-chat/debug/stats.h>
 /**
  * @file debug/mutex.c
@@ -683,7 +693,7 @@ void mutex_stack_detect_deadlocks(void) {
       }
 
       // Cycle detected! Build complete message in one string
-      char cycle_msg[4096];
+      char cycle_msg[DEBUG_MUTEX_CYCLE_MSG_BUFFER_SIZE];
       int msg_len = 0;
 
       // Leading newline and header box
@@ -702,7 +712,8 @@ void mutex_stack_detect_deadlocks(void) {
         thread_lock_stack_t *current_stack = &snapshots[thread_idx];
         uintptr_t current_waiting = thread_waiting_for_mutex(current_stack);
 
-        char thread_name[256], mutex_name[256], held_by_name[256];
+        char thread_name[DEBUG_MUTEX_THREAD_NAME_BUFFER_SIZE], mutex_name[DEBUG_MUTEX_MUTEX_NAME_BUFFER_SIZE],
+            held_by_name[DEBUG_MUTEX_HELD_BY_NAME_BUFFER_SIZE];
         NAMED_GET_BY_PTR((uintptr_t)ids[thread_idx], thread_name, sizeof(thread_name));
         NAMED_GET_BY_PTR((uintptr_t)current_waiting, mutex_name, sizeof(mutex_name));
         NAMED_GET_BY_PTR((uintptr_t)ids[next_thread_idx], held_by_name, sizeof(held_by_name));
@@ -779,10 +790,10 @@ static void cond_deadlock_check_snapshot(const cond_deadlock_snapshot_t *cond, c
   }
 
   // Condition variable appears to be stuck - log detailed diagnostic info
-  char stuck_str[64];
+  char stuck_str[DEBUG_MUTEX_STUCK_BUFFER_SIZE];
   time_pretty(stuck_ns, -1, stuck_str, sizeof(stuck_str));
 
-  char cond_buf[1024] = {0};
+  char cond_buf[DEBUG_MUTEX_COND_BUFFER_SIZE] = {0};
   int cond_written =
       safe_snprintf(cond_buf, sizeof(cond_buf),
                     "Stuck cond '%s': %lu thread(s) waiting %s with no signal (most recent waiter: 0x%lx)\n", name,
@@ -806,7 +817,7 @@ extern bool debug_sync_is_cleanup_in_progress(void);
 
 typedef struct {
   cond_deadlock_snapshot_t state;
-  char name[256];
+  char name[DEBUG_MUTEX_NAME_BUFFER_SIZE];
 } cond_deadlock_entry_t;
 
 typedef struct {

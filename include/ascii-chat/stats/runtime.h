@@ -1,12 +1,19 @@
 #pragma once
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define STATS_RUNTIME_MODE_BUFFER_SIZE 32
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define STATS_VIEW_LINE_BUFFER_SIZE 160
+
 #include <ascii-chat/stats/stats.h>
 #include <stddef.h>
 
 typedef struct stats_peer stats_peer_t;
 #define STATS_VIEW_LINES 128
 typedef struct {
-  char mode[32];
-  char lines[STATS_VIEW_LINES][160];
+  char mode[STATS_RUNTIME_MODE_BUFFER_SIZE];
+  char lines[STATS_VIEW_LINES][STATS_VIEW_LINE_BUFFER_SIZE];
   bool headings[STATS_VIEW_LINES];
   unsigned count;
   unsigned offset;
