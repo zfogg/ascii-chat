@@ -155,7 +155,11 @@ static void handle_client_error_packet(client_info_t *client, const void *data, 
     return;
   }
 
-  log_error("Client %s reported %s", client_id, asciichat_error_format(message, reported_error));
+  reported_error = network_error_public_code(reported_error);
+  log_error("Client %s reported %s", client_id, asciichat_error_format(NULL, reported_error));
+  asciichat_errno_scope_t notification = errno_scope_begin();
+  SET_ERRNO(reported_error, "Client %s notification: %s", client_id, asciichat_error_string(reported_error));
+  errno_scope_end(notification, ASCIICHAT_ERRNO_HANDLED);
 }
 
 /**

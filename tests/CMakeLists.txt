@@ -1571,6 +1571,18 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN AND CMAKE_BUILD_TYPE MAT
     set_tests_properties(client-connection-lifecycle PROPERTIES LABELS "integration" TIMEOUT 300)
 endif()
 
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
+    asciichat_add_python_test(remote-error-popup
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/remote_error_popup.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(remote-error-popup PROPERTIES LABELS "integration;tui;network"
+        TIMEOUT 180 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    if(WIN32)
+        set_property(TEST remote-error-popup PROPERTY ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+            "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+    endif()
+endif()
+
 # Server handlers linked with their real media pipeline and fixture-owned application state.
 if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     add_executable(test-server-protocol contracts/network/server_protocol_test.c

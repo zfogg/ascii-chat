@@ -1,4 +1,5 @@
 #pragma once
+
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/platform/terminal.h>
@@ -9,3 +10,8 @@ terminal_size_t ui_error_popup_minimum(void);
 void ui_error_popup_render(frame_buffer_t *output, terminal_size_t size);
 void ui_error_popup_key(keyboard_key_t key);
 void ui_error_popup_reset(void);
+/** Preserve pending notifications after rendering stops, before the queue is retired.
+ * Does not wait for input; callers must prevent concurrent rendering. */
+void ui_error_popup_preserve(int fd);
+/** Write preserved terminal output after shutdown diagnostics, without allocating or using options. */
+void ui_error_popup_flush(void);

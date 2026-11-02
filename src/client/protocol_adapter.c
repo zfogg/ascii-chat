@@ -179,8 +179,8 @@ static bool handle_error_message_packet(client_connection_t *connection, const v
     return false;
   }
 
-  log_error("Server reported %s", asciichat_error_format(message, remote_error));
   remote_error = network_error_public_code(remote_error);
+  log_error("Server reported %s", asciichat_error_format(NULL, remote_error));
   asciichat_errno_scope_t notification = errno_scope_begin();
   SET_ERRNO(remote_error, "Server notification: %s", asciichat_error_string(remote_error));
   if (network_error_action(remote_error) == NETWORK_ERROR_CONTINUE) {
