@@ -1094,17 +1094,17 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for hostname resolution");
   }
 
-  // Initialize Winsock on Windows (required for getaddrinfo)
-  WSADATA wsaData;
-  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-    return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
-  }
-
   char ascii_hostname[HOSTNAME_BUFFER_SIZE];
   asciichat_error_t normalized = hostname_to_ascii(hostname, ascii_hostname, sizeof(ascii_hostname));
   if (normalized != ASCIICHAT_OK)
     return normalized;
   hostname = ascii_hostname;
+
+  // Initialize Winsock on Windows (required for getaddrinfo)
+  WSADATA wsaData;
+  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
+  }
 
   struct addrinfo hints, *result = NULL;
   memset(&hints, 0, sizeof(hints));
