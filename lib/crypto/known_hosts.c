@@ -4,6 +4,10 @@
  * @brief 📜 SSH known_hosts file parser for host key verification and trust management
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_KNOWN_HOSTS_ESCAPED_IP_WITH_PORT_BUFFER_SIZE 128
+#define CRYPTO_KNOWN_HOSTS_QUESTION_BUFFER_SIZE 2048
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/crypto/key_identity/display.h>
@@ -699,7 +703,7 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
     safe_snprintf(ip_with_port, sizeof(ip_with_port), "%s:%u", server_ip, port);
   }
 
-  char escaped_ip_with_port[128];
+  char escaped_ip_with_port[CRYPTO_KNOWN_HOSTS_ESCAPED_IP_WITH_PORT_BUFFER_SIZE];
   escape_ascii(ip_with_port, "[]", escaped_ip_with_port, 128);
   NOTICE(DANGER, "REMOTE HOST IDENTIFICATION HAS CHANGED",
          "\n"
@@ -830,7 +834,7 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
     return false;
   }
 
-  char question[2048];
+  char question[CRYPTO_KNOWN_HOSTS_QUESTION_BUFFER_SIZE];
   safe_snprintf(question, sizeof(question),
                 "Host '%s' has no identity key.\n"
                 "This connection is vulnerable to man-in-the-middle attacks.\n"

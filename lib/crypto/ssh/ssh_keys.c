@@ -4,6 +4,10 @@
  * @brief 🔐 SSH key parsing and management for RSA, ECDSA, and Ed25519 key types
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_SSH_SSH_KEYS_CIPHERNAME_BUFFER_SIZE 32
+#define CRYPTO_SSH_SSH_KEYS_KDFNAME_BUFFER_SIZE 32
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
@@ -225,7 +229,7 @@ typedef struct {
   uint8_t *decrypted_blob;
   size_t decrypted_blob_len;
   size_t dec_offset;
-  char ciphername[32];
+  char ciphername[CRYPTO_SSH_SSH_KEYS_CIPHERNAME_BUFFER_SIZE];
   uint8_t bcrypt_salt[16];
   uint8_t ed25519_pubkey[ED25519_PUBLIC_KEY_SIZE];
 } ssh_private_key_parse_t;
@@ -441,7 +445,7 @@ static asciichat_error_t ssh_private_key_read_encryption(ssh_private_key_parse_t
   }
 
   // Parse the KDF name from the stored position
-  char kdfname[32] = {0};
+  char kdfname[CRYPTO_SSH_SSH_KEYS_KDFNAME_BUFFER_SIZE] = {0};
   if (state->kdfname_len > 0 && state->kdfname_len < sizeof(kdfname)) {
     memcpy(kdfname, state->key_blob + state->kdfname_pos, state->kdfname_len);
   }

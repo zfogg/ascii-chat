@@ -4,6 +4,9 @@
  * @brief 🔌 SSH agent protocol implementation for key authentication via ssh-agent
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_SSH_SSH_AGENT_PIPE_PATH_BUFFER_SIZE 256
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/ssh/ssh_agent.h>
 #include <ascii-chat/common.h>
@@ -28,7 +31,7 @@
 
 // Open the SSH agent pipe/socket
 static pipe_t ssh_agent_open_pipe(void) {
-  char pipe_path[256];
+  char pipe_path[CRYPTO_SSH_SSH_AGENT_PIPE_PATH_BUFFER_SIZE];
   if (platform_get_ssh_agent_socket(pipe_path, sizeof(pipe_path)) != 0) {
     log_debug("Failed to get SSH agent socket path");
     return INVALID_PIPE_VALUE;

@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_KEY_IDENTITY_KEYMASK_CELLS_COUNT 16
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/key_identity/keymask.h>
 #include <sodium.h>
@@ -24,12 +28,13 @@ static void feature_seed(const uint8_t digest[KEYMASK_DIGEST_SIZE], const char *
   crypto_hash_sha256_final(&state, seed);
 }
 
-static void stamp(char cells[16][32], unsigned row, unsigned col, const char *text) {
+static void stamp(char cells[CRYPTO_KEY_IDENTITY_KEYMASK_CELLS_COUNT][32], unsigned row, unsigned col,
+                  const char *text) {
   for (; *text && col < 32; ++col, ++text)
     cells[row][col] = *text;
 }
 
-static void centered(char cells[16][32], unsigned row, const char *text) {
+static void centered(char cells[CRYPTO_KEY_IDENTITY_KEYMASK_CELLS_COUNT][32], unsigned row, const char *text) {
   stamp(cells, row, (unsigned)(32 - strlen(text)) / 2, text);
 }
 
@@ -40,7 +45,7 @@ asciichat_error_t keymask_render(const uint8_t digest[KEYMASK_DIGEST_SIZE], bool
   if (!digest)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing Keymask digest");
 
-  char cells[16][32];
+  char cells[CRYPTO_KEY_IDENTITY_KEYMASK_CELLS_COUNT][32];
   memset(cells, ' ', sizeof(cells));
   uint8_t outline[32], crown[32], eyes[32], center[32], mouth[32], marks[32];
   feature_seed(digest, "outline", outline);

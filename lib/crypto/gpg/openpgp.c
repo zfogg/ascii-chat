@@ -4,6 +4,10 @@
  * @ingroup crypto
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_GPG_OPENPGP_PASSPHRASE_BUFFER_SIZE 512
+#define CRYPTO_GPG_OPENPGP_FPR_OUTPUT_BUFFER_SIZE 4096
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/gpg/homedir.h>
@@ -504,7 +508,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
 
   // Get passphrase from environment variable or interactive prompt
   const char *passphrase = SAFE_GETENV("ASCII_CHAT_KEY_PASSWORD");
-  char passphrase_buffer[512] = {0};
+  char passphrase_buffer[CRYPTO_GPG_OPENPGP_PASSPHRASE_BUFFER_SIZE] = {0};
 
   if (!passphrase) {
     // No environment variable - try interactive prompt
@@ -597,7 +601,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
 
   // Step 2: Get the key fingerprint from the temporary homedir
   log_debug("Retrieving GPG key fingerprint");
-  char fpr_output[4096];
+  char fpr_output[CRYPTO_GPG_OPENPGP_FPR_OUTPUT_BUFFER_SIZE];
   const char *argv_list[] = {"gpg", "--homedir", homedir_path, "--batch", "--list-secret-keys", "--with-colons", NULL};
   LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_list, fpr_output, sizeof(fpr_output)); });
 

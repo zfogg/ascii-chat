@@ -4,6 +4,10 @@
  * @brief 🔐 Core cryptography: encryption/decryption, key exchange, authentication, and session rekeying with BearSSL
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_ENCRYPTED_BUFFER_SIZE 32
+#define CRYPTO_DECRYPTED_BUFFER_SIZE 32
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/otel.h>
@@ -201,7 +205,7 @@ void crypto_destroy(crypto_context_t *ctx) {
   secure_memzero(ctx->password_key, sizeof(ctx->password_key));
   secure_memzero(ctx->password_salt, sizeof(ctx->password_salt));
 
-  char encrypted_str[32], decrypted_str[32];
+  char encrypted_str[CRYPTO_ENCRYPTED_BUFFER_SIZE], decrypted_str[CRYPTO_DECRYPTED_BUFFER_SIZE];
   format_bytes_pretty(ctx->bytes_encrypted, encrypted_str, sizeof(encrypted_str));
   format_bytes_pretty(ctx->bytes_decrypted, decrypted_str, sizeof(decrypted_str));
 
@@ -1201,7 +1205,7 @@ crypto_result_t crypto_rekey_init(crypto_context_t *ctx) {
   time_t since_last_rekey = now - ctx->rekey_last_time;
   time_t min_interval_seconds = (time_t)(REKEY_MIN_INTERVAL / NS_PER_SEC_INT);
   if (since_last_rekey < min_interval_seconds) {
-    char elapsed_str[TIME_DURATION_BUFFER_SIZE], min_str[32];
+    char elapsed_str[TIME_DURATION_BUFFER_SIZE], min_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty((uint64_t)(since_last_rekey * 1e9), -1, elapsed_str, sizeof(elapsed_str));
     time_pretty((uint64_t)(min_interval_seconds * 1e9), -1, min_str, sizeof(min_str));
     log_warn("Rekey rate limited: %s since last rekey (minimum: %s)", elapsed_str, min_str);

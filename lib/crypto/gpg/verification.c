@@ -4,6 +4,11 @@
  * @brief GPG signature verification implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_GPG_VERIFICATION_CMD_BUFFER_SIZE 1024
+#define CRYPTO_GPG_VERIFICATION_OUTPUT_BUFFER_SIZE 4096
+#define CRYPTO_GPG_VERIFICATION_MSG_HEX_BUFFER_SIZE 128
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/verification.h>
 #include <ascii-chat/crypto/gpg/signing.h>
@@ -92,7 +97,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   close(sig_fd);
 
   // Call gpg --verify
-  char cmd[1024];
+  char cmd[CRYPTO_GPG_VERIFICATION_CMD_BUFFER_SIZE];
   safe_snprintf(cmd, sizeof(cmd), "gpg --verify '%s' '%s' 2>&1", sig_path, msg_path);
   log_debug("Running: %s", cmd);
 
@@ -105,7 +110,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
     return -1;
   }
 
-  char output[4096] = {0};
+  char output[CRYPTO_GPG_VERIFICATION_OUTPUT_BUFFER_SIZE] = {0};
   size_t output_len = fread(output, 1, sizeof(output) - 1, fp);
   int exit_code = platform_pclose(&fp);
 
@@ -175,7 +180,7 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   char pubkey_hex[HEX_STRING_SIZE_32];
   char r_hex[HEX_STRING_SIZE_32];
   char s_hex[HEX_STRING_SIZE_32];
-  char msg_hex[128];
+  char msg_hex[CRYPTO_GPG_VERIFICATION_MSG_HEX_BUFFER_SIZE];
 
   for (int i = 0; i < 32; i++) {
     safe_snprintf(pubkey_hex + i * 2, 3, "%02x", public_key[i]);

@@ -19,6 +19,9 @@
 
 #define SHA1HANDSOFF
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_SHA1_C_BUFFER_SIZE 64
+
 #include <ascii-chat/crypto/sha1.h>
 
 /* Portable endianness detection */
@@ -70,7 +73,7 @@
 void SHA1Transform(uint32_t state[5], const unsigned char buffer[SHA1_BLOCK_LENGTH]) {
   uint32_t a, b, c, d, e;
   typedef union {
-    unsigned char c[64];
+    unsigned char c[CRYPTO_SHA1_C_BUFFER_SIZE];
     uint32_t l[16];
   } CHAR64LONG16;
   CHAR64LONG16 *block;

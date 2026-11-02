@@ -4,6 +4,11 @@
  * @brief 🌐 HTTPS public key fetching from GitHub/GitLab with URL parsing and caching
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_HTTPS_KEYS_IMPORT_OUTPUT_BUFFER_SIZE 2048
+#define CRYPTO_HTTPS_KEYS_KEY_IDS_COUNT 16
+#define CRYPTO_HTTPS_KEYS_LIST_OUTPUT_BUFFER_SIZE 4096
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/common.h>
@@ -444,7 +449,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to run gpg --import");
   }
 
-  char import_output[2048];
+  char import_output[CRYPTO_HTTPS_KEYS_IMPORT_OUTPUT_BUFFER_SIZE];
   size_t import_len = fread(import_output, 1, sizeof(import_output) - 1, import_fp);
   import_output[import_len] = '\0';
   platform_pclose(&import_fp);
@@ -453,7 +458,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   // Extract ALL key IDs from import output (format: "gpg: key KEYID: ...")
   // GitHub often returns multiple keys in one armored block
   const char *key_marker = "gpg: key ";
-  char key_ids[16][17]; // Support up to 16 keys
+  char key_ids[CRYPTO_HTTPS_KEYS_KEY_IDS_COUNT][17]; // Support up to 16 keys
   size_t key_count = 0;
 
   log_debug("GPG import output:\n%s", import_output);
@@ -503,7 +508,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
       continue; // Skip this key if we can't list it
     }
 
-    char list_output[4096];
+    char list_output[CRYPTO_HTTPS_KEYS_LIST_OUTPUT_BUFFER_SIZE];
     size_t list_len = fread(list_output, 1, sizeof(list_output) - 1, list_fp);
     list_output[list_len] = '\0';
     platform_pclose(&list_fp);

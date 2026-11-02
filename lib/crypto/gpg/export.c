@@ -4,6 +4,9 @@
  * @brief GPG public key export implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_GPG_EXPORT_FOUND_KEYGRIP_BUFFER_SIZE 128
+
 #include <ascii-chat/crypto/gpg/export.h>
 #include <ascii-chat/crypto/gpg/agent.h>
 #include <ascii-chat/crypto/keys.h>
@@ -291,7 +294,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   }
 
   char line[BUFFER_SIZE_XLARGE];
-  char found_keygrip[128] = {0};
+  char found_keygrip[CRYPTO_GPG_EXPORT_FOUND_KEYGRIP_BUFFER_SIZE] = {0};
   bool found_key = false;
 
   // Parse gpg output

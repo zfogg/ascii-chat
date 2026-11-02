@@ -7,6 +7,11 @@
  * @date January 2026
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_DISCOVERY_KEYS_BASE64_KEY_BUFFER_SIZE 128
+#define CRYPTO_DISCOVERY_KEYS_NEW_FINGERPRINT_BUFFER_SIZE 65
+#define CRYPTO_DISCOVERY_KEYS_QUESTION_BUFFER_SIZE 2048
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
@@ -200,7 +205,7 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
   // OpenSSH encodes a length-prefixed algorithm name followed by the key string.
   uint8_t wire_key[51] = {0, 0, 0, 11, 's', 's', 'h', '-', 'e', 'd', '2', '5', '5', '1', '9', 0, 0, 0, 32};
   memcpy(wire_key + 19, pubkey, 32);
-  char base64_key[128];
+  char base64_key[CRYPTO_DISCOVERY_KEYS_BASE64_KEY_BUFFER_SIZE];
   sodium_bin2base64(base64_key, sizeof(base64_key), wire_key, sizeof(wire_key), sodium_base64_VARIANT_ORIGINAL);
 
   fprintf(f, "ssh-ed25519 %s acds-cached-key\n", base64_key);
@@ -242,12 +247,12 @@ asciichat_error_t discovery_keys_verify_change(const char *acds_server,
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
   }
 
-  char old_fingerprint[HEX_STRING_SIZE_32], new_fingerprint[65];
+  char old_fingerprint[HEX_STRING_SIZE_32], new_fingerprint[CRYPTO_DISCOVERY_KEYS_NEW_FINGERPRINT_BUFFER_SIZE];
   compute_key_fingerprint(old_pubkey, old_fingerprint);
   compute_key_fingerprint(new_pubkey, new_fingerprint);
 
   // Ask user to confirm
-  char question[2048];
+  char question[CRYPTO_DISCOVERY_KEYS_QUESTION_BUFFER_SIZE];
   safe_snprintf(question, sizeof(question),
                 "ACDS SERVER KEY HAS CHANGED\nServer: %s\n\nOld SHA256: %s\nNew SHA256: %s\n\n"
                 "This may indicate key rotation or a man-in-the-middle attack.\n"

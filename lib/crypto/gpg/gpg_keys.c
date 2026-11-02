@@ -4,6 +4,9 @@
  * @brief 🔑 GPG public key extraction and validation from GPG keyrings
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_GPG_GPG_KEYS_HEX_KEY_ID_BUFFER_SIZE 17
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/gpg_keys.h>
 #include <ascii-chat/crypto/gpg/openpgp.h> // For openpgp_parse_armored_pubkey()
@@ -301,7 +304,7 @@ asciichat_error_t format_gpg_key_display(const char *gpg_key_text, char *output,
   }
 
   // Format as hex key ID
-  char hex_key_id[17];
+  char hex_key_id[CRYPTO_GPG_GPG_KEYS_HEX_KEY_ID_BUFFER_SIZE];
   for (int i = 0; i < 8; i++) {
     safe_snprintf(hex_key_id + i * 2, 3, "%02x", key_id[i]);
   }

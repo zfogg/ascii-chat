@@ -4,6 +4,9 @@
  * @brief Server-side handshake protocol implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE 65
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/tui/notice.h>
@@ -120,7 +123,7 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
     log_debug("Signing ephemeral key with server identity key");
 
     // Log key details in debug mode
-    char hex_ephemeral[HEX_STRING_SIZE_32], hex_identity[65];
+    char hex_ephemeral[HEX_STRING_SIZE_32], hex_identity[CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE];
     for (int i = 0; i < 32; i++) {
       safe_snprintf(hex_ephemeral + i * 2, 3, "%02x", ctx->crypto_ctx.public_key[i]);
       safe_snprintf(hex_identity + i * 2, 3, "%02x", ctx->server_public_key.key[i]);

@@ -4,6 +4,9 @@
  * @brief 🔑 High-level key management interface with SSH, GPG, and HTTPS key support
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_KEYS_HEADER_BUFFER_SIZE 50
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/key_types.h>
@@ -299,7 +302,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   }
 
   // Read first 50 bytes to detect format
-  char header[50];
+  char header[CRYPTO_KEYS_HEADER_BUFFER_SIZE];
   size_t bytes_read = fread(header, 1, sizeof(header) - 1, f);
   header[bytes_read] = '\0';
   fclose(f);

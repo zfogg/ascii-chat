@@ -1,5 +1,8 @@
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define CRYPTO_HANDSHAKE_COMMON_EXPECTED_SERVER_KEY_BUFFER_SIZE 256
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common/limits.h>
 
@@ -87,7 +90,9 @@ typedef struct crypto_handshake_context_t {
   /** Client identity (client only) */
   public_key_t client_public_key;   /**< Client's Ed25519 public key (for authentication) */
   private_key_t client_private_key; /**< Client's Ed25519 private key (for signing challenges) */
-  char expected_server_key[256];    /**< Expected server key fingerprint (client only, for known_hosts) */
+  char
+      expected_server_key[CRYPTO_HANDSHAKE_COMMON_EXPECTED_SERVER_KEY_BUFFER_SIZE]; /**< Expected server key fingerprint
+                                                                                       (client only, for known_hosts) */
   uint8_t expected_server_key_bytes[ED25519_PUBLIC_KEY_SIZE]; /**< Expected Ed25519 identity key supplied by a browser
                                                                  client */
   bool expected_server_key_bytes_set;                         /**< Whether expected_server_key_bytes is configured */
