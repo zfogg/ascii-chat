@@ -17,6 +17,8 @@ include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
 function(asciichat_require_freetype_hvf)
     include(CheckCSourceCompiles)
     set(CMAKE_REQUIRED_INCLUDES ${ARGN})
+    # Recheck after package/SDK upgrades without requiring a fresh build tree.
+    unset(ASCIICHAT_FREETYPE_HAS_HVF CACHE)
     check_c_source_compiles("#include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_CONFIG_OPTIONS_H
