@@ -483,6 +483,7 @@ target_link_options(mirror-web PRIVATE -pthread -sUSE_PTHREADS=1 "-sPTHREAD_POOL
 # Link dependencies with explicit library paths for wasm-ld
 
 target_link_libraries(mirror-web PRIVATE
+    asciichat-icu
     ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
@@ -556,6 +557,7 @@ target_include_directories(client-web PRIVATE
 
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE
+    asciichat-icu
     ${UTF8PROC_LIBRARIES}
     ${FFTW_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}

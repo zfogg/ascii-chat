@@ -1000,3 +1000,17 @@ Test(url_validator, icu_checks_dns_label_bytes_after_punycode_expansion) {
   host[116] = '\0';
   cr_assert_eq(hostname_to_ascii(host, output, sizeof(output)), ERROR_INVALID_PARAM);
 }
+
+Test(url_validator, explicit_port_bounds_are_not_confused_with_missing_port) {
+  const char *valid[] = {"ws://example.com", "ws://example.com:1", "wss://example.com:65535"};
+  for (size_t i = 0; i < sizeof(valid) / sizeof(*valid); ++i)
+    cr_assert(url_is_valid(valid[i]));
+  const char *invalid[] = {"ws://example.com:0", "wss://example.com:0", "ws://example.com:65536"};
+  for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+    url_parts_t parts = {0};
+    cr_assert_not(url_is_valid(invalid[i]));
+    cr_assert_eq(url_parse(invalid[i], &parts), ERROR_INVALID_PARAM);
+    cr_assert_null(parts.host);
+    cr_assert_null(parts.scheme);
+  }
+}

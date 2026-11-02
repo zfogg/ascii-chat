@@ -583,3 +583,8 @@ Test(network_connections, unicode_hostname_tcp_echo) {
 Test(network_connections, unicode_hostname_websocket_echo) {
   scenario(3, false, false, 0, false);
 }
+
+Test(network_connections, explicit_zero_websocket_ports_are_rejected_before_connection) {
+  cr_assert_null(acip_websocket_client_transport_create("zero_port", "ws://localhost:0", NULL));
+  cr_assert_null(acip_websocket_client_transport_create("zero_port", "wss://localhost:0", NULL));
+}

@@ -15,7 +15,7 @@ if(EMSCRIPTEN)
         --emscripten "${_icu_emscripten_dir}" --output "${_icu_data_c}"
         COMMAND_ERROR_IS_FATAL ANY)
     add_library(asciichat-icu-data OBJECT "${_icu_data_c}")
-    target_sources(asciichat-icu INTERFACE $<TARGET_OBJECTS:asciichat-icu-data>)
+    target_link_libraries(asciichat-icu INTERFACE $<TARGET_OBJECTS:asciichat-icu-data>)
     target_compile_options(asciichat-icu INTERFACE -sUSE_ICU=1)
     target_link_options(asciichat-icu INTERFACE -sUSE_ICU=1)
 elseif(USE_MUSL OR PLATFORM_IOS)
@@ -83,6 +83,22 @@ else()
     if(DEFINED _icu_saved_suffixes)
         set(CMAKE_FIND_LIBRARY_SUFFIXES "${_icu_saved_suffixes}")
         target_compile_definitions(asciichat-icu INTERFACE U_STATIC_IMPLEMENTATION)
+    endif()
+    # Match CompilerDetection.cmake: Windows ASan uses the release DLL CRT.
+    # ICU's C API does not exchange C++ objects or CRT-owned allocations here.
+    if(WIN32 AND CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$" AND
+       CMAKE_MSVC_RUNTIME_LIBRARY STREQUAL "MultiThreadedDLL" AND
+       NOT VCPKG_TARGET_TRIPLET MATCHES "-static")
+        set_property(TARGET ICU::uc PROPERTY MAP_IMPORTED_CONFIG_DEBUG Release)
+        set_property(TARGET ICU::data PROPERTY MAP_IMPORTED_CONFIG_DEBUG Release)
+        set_property(TARGET ICU::uc PROPERTY MAP_IMPORTED_CONFIG_DEV Release)
+        set_property(TARGET ICU::data PROPERTY MAP_IMPORTED_CONFIG_DEV Release)
+        string(REGEX MATCH "^[0-9]+" _icu_major "${ICU_VERSION}")
+        get_filename_component(_icu_libdir "${ICU_UC_LIBRARY_RELEASE}" DIRECTORY)
+        get_filename_component(_icu_installed "${_icu_libdir}" DIRECTORY)
+        set(ASCIICHAT_ICU_RUNTIME_DLLS
+            "${_icu_installed}/bin/icuuc${_icu_major}.dll"
+            "${_icu_installed}/bin/icudt${_icu_major}.dll")
     endif()
     target_link_libraries(asciichat-icu INTERFACE ICU::uc ICU::data)
 endif()

@@ -250,6 +250,11 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
   if (port_str) {
     parts_out->port = (int)strtol(port_str, NULL, 10);
     SAFE_FREE(port_str);
+    if (parts_out->port <= 0 || parts_out->port > UINT16_MAX) {
+      pcre2_match_data_free(match_data);
+      url_parts_destroy(parts_out);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "URL port must be in the range 1-65535");
+    }
   }
 
   pcre2_match_data_free(match_data);
