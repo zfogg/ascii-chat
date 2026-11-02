@@ -1,3 +1,10 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE 128
+#define TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE 512
+#define TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE 1024
+#define TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE 512
+
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/tui/invitation.h>
 #include <ascii-chat/util/display.h>
@@ -22,7 +29,7 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
     return;
   }
 
-  char tagline_with_version[128];
+  char tagline_with_version[TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE];
   snprintf(tagline_with_version, sizeof(tagline_with_version), "Video chat in your terminal + %s",
            ASCII_CHAT_VERSION_STRING);
   const char *tagline = tagline_with_version;
@@ -30,7 +37,7 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
   invitation_render_logo(buf, term_size.cols - 1, (int)(ctx->animation.seconds * 60), ctx->use_colors, false);
 
   // Line 6: Tagline (centered, truncated if too long)
-  char plain_tagline[512];
+  char plain_tagline[TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE];
   int tagline_len = (int)strlen(tagline);
   int tagline_pad = (term_size.cols - tagline_len) / 2;
   if (tagline_pad < 0) {
@@ -56,7 +63,7 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
 
   // Line 7: Update notification (if available)
   if (ctx->update_notification[0] != '\0') {
-    char plain_update[1024];
+    char plain_update[TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE];
     int update_len = (int)strlen(ctx->update_notification);
     int update_pad = (term_size.cols - update_len) / 2;
     if (update_pad < 0) {
@@ -85,7 +92,7 @@ void ui_session_splash_render(frame_buffer_t *buf, terminal_size_t term_size, vo
   // Line 8 (or 7 if no update): Connection target (centered, truncated if too long)
   const char *connection_target = ctx->connection_target;
 
-  char plain_connection[512];
+  char plain_connection[TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE];
   int connection_len = (int)strlen(connection_target);
   int connection_pad = (term_size.cols - connection_len) / 2;
   if (connection_pad < 0) {

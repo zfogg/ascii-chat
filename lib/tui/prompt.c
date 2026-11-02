@@ -1,3 +1,9 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_PROMPT_CENTERED_BUFFER_SIZE 2048
+#define TUI_PROMPT_TARGET_BUFFER_SIZE 256
+#define TUI_PROMPT_SHORTCUTS_BUFFER_SIZE 1024
+
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/ui/popup.h>
@@ -122,7 +128,7 @@ static int password_lines(const prompt_snapshot_t *s) {
 }
 
 static void password_center_line(frame_buffer_t *buffer, const char *text, int row, int left, int width) {
-  char centered[2048];
+  char centered[TUI_PROMPT_CENTERED_BUFFER_SIZE];
   ui_text_cell(centered, sizeof(centered), text, width - 4, UI_ALIGN_CENTER);
   frame_buffer_printf(buffer, "\033[%d;%dH%s", row, left + 2, centered);
 }
@@ -143,7 +149,7 @@ static void password_panel(frame_buffer_t *buffer, terminal_size_t size, const p
     media_center_line(buffer, "Video chat in your terminal", top - 1, size.cols);
   int left = (size.cols - width) / 2 + 1;
   ui_popup_frame_titled(buffer, top, left, width, height, LOG_COLOR_RESET, "Password required");
-  char target[256];
+  char target[TUI_PROMPT_TARGET_BUFFER_SIZE];
   snprintf(target, sizeof(target), "Connect to %.*s", width - 15, s->text);
   password_center_line(buffer, target, top + 2, left, width);
   password_center_line(buffer, "This server requires a password.", top + 3, left, width);
@@ -159,7 +165,7 @@ static void password_panel(frame_buffer_t *buffer, terminal_size_t size, const p
   ui_buttons_render(buffer, top + 9 + lines, left + 2, width - 4, buttons, 2, s->selected_button);
   const char *orange = s->color ? ui_text_color_prefix(LOG_COLOR_DEV) : "";
   const char *foreground = s->color ? ui_text_color_prefix(LOG_COLOR_RESET) : "";
-  char shortcuts[1024];
+  char shortcuts[TUI_PROMPT_SHORTCUTS_BUFFER_SIZE];
   snprintf(shortcuts, sizeof(shortcuts), "%sTab%s select  %sEnter%s confirm  %sEsc%s cancel", orange, foreground,
            orange, foreground, orange, foreground);
   password_center_line(buffer, shortcuts, top + 10 + lines, left, width);

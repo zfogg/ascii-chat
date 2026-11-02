@@ -1,3 +1,13 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_CONTROLLER_LAST_TITLE_BUFFER_SIZE 512
+#define TUI_CONTROLLER_TITLE_BUFFER_SIZE 512
+#define TUI_CONTROLLER_BUFFER_BUFFER_SIZE 16384
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define TUI_MEDIA_SNAPSHOT_CAPACITY 3
+#define TUI_LAYER_CAPACITY 3
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/ui/text.h>
 #include <ascii-chat/ui/progress.h>
@@ -57,7 +67,7 @@ struct media_snapshot_slot {
   screen_snapshot_t *snapshot;
   size_t capacity;
 };
-static media_snapshot_slot_t g_media_snapshots[3];
+static media_snapshot_slot_t g_media_snapshots[TUI_MEDIA_SNAPSHOT_CAPACITY];
 
 typedef struct {
   int fd;
@@ -587,7 +597,7 @@ static int g_title_fd = -1;
 static uint64_t g_title_started;
 static atomic_t g_title_render = {0};
 static atomic_t g_title_ready = {0};
-static char g_last_title[512];
+static char g_last_title[TUI_CONTROLLER_LAST_TITLE_BUFFER_SIZE];
 static const char *g_title_mode;
 static atomic_t g_title_activity = {0};
 
@@ -644,7 +654,7 @@ static void title_update(int screen, const void *snapshot, bool covered) {
     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
     g_title_saved = true;
   }
-  char title[512] = {0};
+  char title[TUI_CONTROLLER_TITLE_BUFFER_SIZE] = {0};
   if (terminal_should_use_utf8()) {
     int phase = atomic_load_int(&g_title_render);
     int activity = atomic_load_int(&g_title_activity);
@@ -858,7 +868,7 @@ static void *presentation_main(void *unused) {
         time_get_ns() >= atomic_load_u64(&g_volume_until))
       refresh_deadline = iteration_started_ns + 100 * NS_PER_MS_INT;
     screen_t frame = {0};
-    screen_t layers[3] = {0};
+    screen_t layers[TUI_LAYER_CAPACITY] = {0};
     size_t layer_count = 0;
     if (active >= 0 && !g_finished && (!shutdown_is_requested() || active == UI_SCREEN_RENDER_PROGRESS)) {
       frame = g_screens[active];
@@ -1655,7 +1665,7 @@ void ui_controller_shutdown(void) {
 }
 
 asciichat_error_t ui_controller_printf(int fd, const char *format, ...) {
-  char buffer[16384];
+  char buffer[TUI_CONTROLLER_BUFFER_BUFFER_SIZE];
   va_list args;
   va_start(args, format);
   int len = vsnprintf(buffer, sizeof(buffer), format, args);

@@ -1,3 +1,15 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_INPUT_MESSAGE_BUFFER_SIZE 512
+#define TUI_INPUT_BURST_BUFFER_SIZE 8192
+#define TUI_INPUT_BUFFER_BUFFER_SIZE 8192
+#define TUI_INPUT_TIMED_PROMPT_BUFFER_SIZE 8192
+#define TUI_INPUT_PASTED_BUFFER_SIZE 8192
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define TUI_SYNC_KEY_CAPACITY 256
+
+#include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/tui/shortcuts.h>
@@ -40,7 +52,7 @@ bool ui_input_expired(uint64_t deadline) {
 }
 
 void ui_input_timeout_report(unsigned seconds, const char *consequence) {
-  char message[512];
+  char message[TUI_INPUT_MESSAGE_BUFFER_SIZE];
   int length = snprintf(message, sizeof(message), "\nPrompt timed out after %u seconds; %s.\n", seconds, consequence);
   // This diagnostic must remain visible even while a background screen owns the terminal.
   if (length > 0)
@@ -52,7 +64,7 @@ static lifecycle_t g_input_lifecycle = LIFECYCLE_INIT;
 static mutex_t g_input_mutex;
 static mutex_t g_input_prompt_mutex;
 static _Atomic bool g_discarding_covered_input;
-static keyboard_key_t g_sync_keys[256];
+static keyboard_key_t g_sync_keys[TUI_SYNC_KEY_CAPACITY];
 static unsigned g_sync_key_head, g_sync_key_count;
 static bool g_switch_pending;
 static _Atomic bool g_input_buffered;
@@ -88,7 +100,7 @@ keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*rea
       s->ready = true;
       return KEY_PASTE;
     }
-    char text[5];
+    char text[UTF8_BUFFER_SIZE];
     size_t bytes = keyboard_text_encode(key, text);
     if (s->pasting) {
       // Paste payloads remain raw UTF-8 bytes until whole-paste validation.
@@ -121,7 +133,7 @@ keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*rea
     size_t text_count = consumed;
     while (text_count && (s->keys[text_count - 1] == '\r' || s->keys[text_count - 1] == '\n'))
       --text_count;
-    char burst[8192];
+    char burst[TUI_INPUT_BURST_BUFFER_SIZE];
     size_t length = 0;
     bool valid = true;
     for (size_t n = 0; n < text_count; ++n) {
@@ -155,7 +167,7 @@ keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*rea
 static tui_input_events_t g_events;
 
 typedef struct {
-  char buffer[8192];
+  char buffer[TUI_INPUT_BUFFER_BUFFER_SIZE];
   size_t length, cursor;
   uint64_t deadline;
   bool active, submitted, pasted;
@@ -274,7 +286,7 @@ void ui_input_poll_sync(void) {
     keyboard_key_t key = input_read_event();
     if (key != KEY_PASTE && !log_search_is_entering())
       key = ui_sync_handle_key(key);
-    if (key && g_sync_key_count < 256) {
+    if (key && g_sync_key_count < TUI_SYNC_KEY_CAPACITY) {
       g_sync_keys[(g_sync_key_head + g_sync_key_count++) % 256] = key;
       g_switch_pending = input_switch_key(key);
     }
@@ -572,7 +584,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
   size_t len = (size_t)(end - buffer), cursor = len;
   unsigned seconds = opts.timeout_seconds ? opts.timeout_seconds : (opts.echo ? 30 : 60);
   uint64_t deadline = ui_input_deadline(seconds);
-  char timed_prompt[8192];
+  char timed_prompt[TUI_INPUT_TIMED_PROMPT_BUFFER_SIZE];
   snprintf(timed_prompt, sizeof(timed_prompt), "%s\n(Timeout: %us; cancels without an answer)", prompt, seconds);
   asciichat_error_t result = ASCIICHAT_OK;
   bool newline_limit = false, cancelled = false;
@@ -645,7 +657,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
     }
     // Validate the whole paste before editing so rejection cannot leave a partial password.
     if (key == KEY_PASTE || key == 22) {
-      char pasted[8192] = {0};
+      char pasted[TUI_INPUT_PASTED_BUFFER_SIZE] = {0};
       asciichat_error_t pasted_result =
           key == 22 ? platform_clipboard_read(pasted, sizeof(pasted)) : ui_input_take_paste(pasted, sizeof(pasted));
       if (pasted_result == ASCIICHAT_OK) {

@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TUI_INVITATION_LINE_BUFFER_SIZE 80
+
 #include <ascii-chat/video/anim/controller.h>
 #include <ascii-chat/tui/invitation.h>
 #include <ascii-chat/video/rgba/image.h>
@@ -45,7 +49,7 @@ void invitation_render_logo(frame_buffer_t *buf, int cols, int frame, bool color
       width = len;
   }
   for (int i = 0; i < 4; ++i) {
-    char line[80];
+    char line[TUI_INVITATION_LINE_BUFFER_SIZE];
     snprintf(line, sizeof(line), "%-*s", width, ascii_logo[i]);
     centered_line(buf, line, width < cols ? width : cols, cols, frame, colors);
   }

@@ -1,3 +1,20 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define UI_HELP_MENU_KEY_BUFFER_SIZE 96
+#define UI_HELP_MENU_TEXT_COUNT 64
+#define UI_HELP_MENU_LHS_BUFFER_SIZE 1024
+#define UI_HELP_MENU_RHS_BUFFER_SIZE 1024
+#define UI_HELP_MENU_PADDED_BUFFER_SIZE 2048
+#define UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE 256
+#define UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE 768
+#define UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE 512
+#define UI_HELP_MENU_BINDING_BUFFER_SIZE 64
+#define UI_HELP_MENU_STYLED_BUFFER_SIZE 512
+#define UI_HELP_MENU_VALUES_BUFFER_SIZE 512
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define HELP_MENU_TEXT_LINE_BUFFER_SIZE 2048
+
 #include <ascii-chat/ui/help_menu.h>
 #include <ascii-chat/ui/text.h>
 #include <ascii-chat/util/display.h>
@@ -26,7 +43,7 @@ void ui_help_keys(char *out, size_t cap, const char *keys) {
       const char *start = p;
       while (*p && *p != ' ' && *p != '/' && *p != '|' && *p != '(' && *p != ')')
         ++p;
-      char key[96];
+      char key[UI_HELP_MENU_KEY_BUFFER_SIZE];
       if ((size_t)(p - start) >= sizeof(key)) {
         SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Help key token is too long");
         return;
@@ -87,21 +104,22 @@ bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_hel
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid help output or entry counts");
     return false;
   }
-  char text[64][2048];
+  char text[UI_HELP_MENU_TEXT_COUNT][HELP_MENU_TEXT_LINE_BUFFER_SIZE];
   const char *lines[64];
   size_t rows = m->count > m->settings_count ? m->count : m->settings_count;
   int keys, left, right;
   measure(m, &keys, &left, &right);
   lines[0] = "";
   for (size_t i = 0; i < rows; ++i) {
-    char lhs[1024] = "", rhs[1024] = "", padded[2048];
+    char lhs[UI_HELP_MENU_LHS_BUFFER_SIZE] = "", rhs[UI_HELP_MENU_RHS_BUFFER_SIZE] = "",
+         padded[UI_HELP_MENU_PADDED_BUFFER_SIZE];
     if (i < m->count) {
       const ui_help_entry_t *entry = &m->entries[i];
       if (!entry->keys)
         snprintf(lhs, sizeof(lhs), "%s", entry->description);
       else {
-        char key[256], description[768];
-        char styled_keys[512];
+        char key[UI_HELP_MENU_KEY_EXTENDED_BUFFER_SIZE], description[UI_HELP_MENU_DESCRIPTION_BUFFER_SIZE];
+        char styled_keys[UI_HELP_MENU_STYLED_KEYS_BUFFER_SIZE];
         ui_help_keys(styled_keys, sizeof(styled_keys), entry->keys);
         ui_text_cell(key, sizeof(key), styled_keys, keys, UI_ALIGN_LEFT);
         ui_text_values_style(description, sizeof(description), entry->description, LOG_COLOR_FATAL);
@@ -112,10 +130,10 @@ bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_hel
       const char *setting = m->settings[i];
       const char *end = setting[0] == '(' ? strchr(setting, ')') : NULL;
       if (end) {
-        char binding[64], styled[512];
+        char binding[UI_HELP_MENU_BINDING_BUFFER_SIZE], styled[UI_HELP_MENU_STYLED_BUFFER_SIZE];
         snprintf(binding, sizeof(binding), "%.*s", (int)(end + 1 - setting), setting);
         ui_help_keys(styled, sizeof(styled), binding);
-        char values[512];
+        char values[UI_HELP_MENU_VALUES_BUFFER_SIZE];
         ui_text_values_style(values, sizeof(values), end + 1, LOG_COLOR_FATAL);
         snprintf(rhs, sizeof(rhs), "%s%s", styled, values);
       } else
