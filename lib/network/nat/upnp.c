@@ -1,3 +1,4 @@
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/otel.h>
 /**
  * @file nat/upnp.c
@@ -37,7 +38,7 @@ static void mapping_set_lease(nat_upnp_context_t *ctx, uint32_t seconds) {
 }
 
 static asciichat_error_t upnp_map(nat_upnp_context_t *ctx) {
-  char internal_port[6], external_port[6];
+  char internal_port[PORT_STRING_BUFFER_SIZE], external_port[6];
   safe_snprintf(internal_port, sizeof(internal_port), "%u", ctx->internal_port);
   safe_snprintf(external_port, sizeof(external_port), "%u", ctx->mapped_port);
   int result = UPNP_AddPortMapping(ctx->control_url, ctx->service_type, external_port, internal_port, ctx->internal_ip,
@@ -252,7 +253,7 @@ void nat_upnp_close(nat_upnp_context_t **ctx) {
 #endif
     {
 #ifdef HAVE_MINIUPNPC
-      char port[6];
+      char port[PORT_STRING_BUFFER_SIZE];
       safe_snprintf(port, sizeof(port), "%u", (*ctx)->mapped_port);
       int result =
           UPNP_DeletePortMapping((*ctx)->control_url, (*ctx)->service_type, port, mapping_protocol(*ctx), NULL);

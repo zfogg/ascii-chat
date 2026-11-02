@@ -12,6 +12,11 @@
 
 #pragma once
 
+/** Existing IP text storage budget, including NUL and room for common scope IDs. */
+#define IP_ADDRESS_BUFFER_SIZE 64
+/** Decimal TCP/UDP port storage (65535 plus NUL). */
+#define PORT_STRING_BUFFER_SIZE 6
+
 /** Binary UUID width shared by discovery, participants, and session identities. */
 #define UUID_SIZE 16
 /** Compact UUID hexadecimal storage, including NUL (no hyphens). */

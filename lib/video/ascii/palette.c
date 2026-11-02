@@ -5,6 +5,7 @@
  * @brief 🎨 Terminal color palette management with Unicode character width detection
  */
 
+#include <ascii-chat/video/ascii/common.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
@@ -276,7 +277,8 @@ int apply_palette_config(palette_type_t type, const char *custom_chars) {
 }
 
 // Build a per-client luminance palette without affecting global cache
-int build_client_luminance_palette(const char *palette_chars, size_t palette_len, char luminance_mapping[256]) {
+int build_client_luminance_palette(const char *palette_chars, size_t palette_len,
+                                   char luminance_mapping[ASCII_LUMINANCE_LEVELS]) {
   if (!palette_chars || palette_len == 0 || !luminance_mapping) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for client luminance palette");
     return -1;
@@ -296,8 +298,9 @@ int build_client_luminance_palette(const char *palette_chars, size_t palette_len
 }
 
 // Initialize a client's palette cache from their capabilities
-int initialize_client_palette(palette_type_t palette_type, const char *custom_chars, char client_palette_chars[256],
-                              size_t *client_palette_len, char client_luminance_palette[256]) {
+int initialize_client_palette(palette_type_t palette_type, const char *custom_chars,
+                              char client_palette_chars[ASCII_PALETTE_BUFFER_SIZE], size_t *client_palette_len,
+                              char client_luminance_palette[ASCII_LUMINANCE_LEVELS]) {
   const palette_def_t *palette = NULL;
   const char *chars_to_use = NULL;
   size_t len_to_use = 0;

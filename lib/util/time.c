@@ -317,7 +317,7 @@ double timer_stop(const char *name) {
   double elapsed_ns = stm_ns(elapsed_ticks);
 
   // Format duration for human-readable logging
-  char duration_str[32];
+  char duration_str[TIME_DURATION_BUFFER_SIZE];
   time_pretty((uint64_t)elapsed_ns, -1, duration_str, sizeof(duration_str));
 
   // Log the result (dev level - only shown with --verbose)

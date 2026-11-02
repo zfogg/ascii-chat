@@ -24,6 +24,12 @@
  * @date October 2025
  */
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define ASCII_LUMINANCE_LEVELS 256
+#define ASCII_PALETTE_BUFFER_SIZE 256
+#define ASCII_UTF8_MAX_BYTES 4
+#define ASCII_UTF8_BUFFER_SIZE (ASCII_UTF8_MAX_BYTES + 1)
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <ascii-chat/atomic.h>
@@ -133,7 +139,7 @@ void init_dec3(void);
 void ascii_simd_init(void);
 
 /** @brief Default luminance palette (256 characters) */
-extern char g_default_luminance_palette[256];
+extern char g_default_luminance_palette[ASCII_LUMINANCE_LEVELS];
 
 /**
  * @brief Initialize default luminance palette
@@ -255,7 +261,8 @@ ImageRGB alloc_image(int w, int h);
  *
  * @ingroup video
  */
-void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count, const char luminance_palette[256]);
+void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count,
+                           const char luminance_palette[ASCII_LUMINANCE_LEVELS]);
 
 /**
  * @brief Convert image to ASCII with newlines (scalar fallback)
@@ -265,7 +272,7 @@ void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int cou
  *
  * @ingroup video
  */
-char *convert_pixels_scalar_with_newlines(image_t *image, const char luminance_palette[256]);
+char *convert_pixels_scalar_with_newlines(image_t *image, const char luminance_palette[ASCII_LUMINANCE_LEVELS]);
 
 // Row-based functions removed - use image_print_color() instead
 
@@ -471,19 +478,19 @@ typedef struct {
 } utf8_char_t;
 
 typedef struct utf8_palette_cache {
-  utf8_char_t cache[256];       /**< Cache of all 256 luminance levels */
-  utf8_char_t cache64[64];      /**< Cache of 64 most common characters */
-  uint8_t char_index_ramp[256]; /**< Luminance to character index mapping */
-  atomic_t last_access_time;    /**< Last access timestamp */
-  atomic_t access_count;        /**< Total access count */
-  uint32_t total_age_seconds;   /**< Total age in seconds */
-  uint64_t creation_time;       /**< When this cache was created */
-  double cached_score;          /**< Eviction score (higher = keep longer) */
-  size_t heap_index;            /**< Index in the eviction min-heap */
-  uint32_t key;                 /**< Palette string hash (uthash key) */
-  char palette_hash[256];       /**< Original palette string for validation */
-  bool initialized;             /**< Whether cache is initialized */
-  bool is_valid;                /**< Whether cache has valid data */
+  utf8_char_t cache[256];                       /**< Cache of all 256 luminance levels */
+  utf8_char_t cache64[64];                      /**< Cache of 64 most common characters */
+  uint8_t char_index_ramp[256];                 /**< Luminance to character index mapping */
+  atomic_t last_access_time;                    /**< Last access timestamp */
+  atomic_t access_count;                        /**< Total access count */
+  uint32_t total_age_seconds;                   /**< Total age in seconds */
+  uint64_t creation_time;                       /**< When this cache was created */
+  double cached_score;                          /**< Eviction score (higher = keep longer) */
+  size_t heap_index;                            /**< Index in the eviction min-heap */
+  uint32_t key;                                 /**< Palette string hash (uthash key) */
+  char palette_hash[ASCII_PALETTE_BUFFER_SIZE]; /**< Original palette string for validation */
+  bool initialized;                             /**< Whether cache is initialized */
+  bool is_valid;                                /**< Whether cache has valid data */
 
   // uthash handle for hash table
   UT_hash_handle hh; /**< uthash handle */

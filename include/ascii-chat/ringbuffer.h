@@ -70,6 +70,7 @@
 
 // C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
 // atomic_t is always defined in ascii-chat/atomic.h (wraps C11 _Atomic)
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/atomic.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -406,7 +407,7 @@ typedef struct {
   /** @brief Magic number to detect corruption (FRAME_MAGIC when valid) */
   uint64_t magic;
   /** @brief Client ID that sent this frame */
-  char source_client_id[64];
+  char source_client_id[MAX_CLIENT_ID_LEN];
   /** @brief Frame sequence number for ordering */
   uint32_t frame_sequence;
   /** @brief Timestamp when frame was captured */

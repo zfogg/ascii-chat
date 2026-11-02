@@ -36,7 +36,7 @@ static lifecycle_t g_default_palette_lc = LIFECYCLE_INIT;
 
 // Global variable definitions for extern declarations in common.h
 global_dec3_cache_t g_dec3_cache = {0};
-char g_default_luminance_palette[256] = {0};
+char g_default_luminance_palette[ASCII_LUMINANCE_LEVELS] = {0};
 
 // Build 64-entry glyph LUT for vqtbl4q_u8 and other architecture's instrinsics (UTF-8 aware)
 void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars) {

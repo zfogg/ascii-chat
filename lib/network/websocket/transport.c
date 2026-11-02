@@ -1,3 +1,4 @@
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/network/acip/backpressure.h>
 /**
@@ -266,7 +267,7 @@ static void *websocket_service_thread(void *arg) {
       uint64_t service_end_ns = time_get_ns();
 
       if (loop_count <= 50) {
-        char service_duration_str[32];
+        char service_duration_str[TIME_DURATION_BUFFER_SIZE];
         time_pretty(service_end_ns - service_start_ns, -1, service_duration_str, sizeof(service_duration_str));
         log_debug_every(US_PER_SEC_INT, "[LOOP %d] lws_service() returned %d, duration %s", loop_count, result,
                         service_duration_str);

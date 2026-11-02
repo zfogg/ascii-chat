@@ -529,7 +529,7 @@ read_latest:
   QueryPerformanceCounter(&end);
   double elapsed_ms = ((double)(end.QuadPart - start.QuadPart)) * 1000.0 / (double)freq.QuadPart;
 
-  char duration_str[32];
+  char duration_str[TIME_DURATION_BUFFER_SIZE];
   time_pretty((uint64_t)(elapsed_ms * 1e6), -1, duration_str, sizeof(duration_str));
   log_debug_every(5 * NS_PER_SEC_INT, "ReadSample took %s (hr=0x%08x, flags=0x%08x, sample=%p)", duration_str, hr,
                   flags, sample);

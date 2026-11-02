@@ -132,7 +132,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
 
 char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
                     const bool _aspect_ratio, const bool stretch, const char *palette_chars,
-                    const char luminance_palette[256]) {
+                    const char luminance_palette[ASCII_LUMINANCE_LEVELS]) {
   if (original == NULL || !palette_chars || !luminance_palette) {
     log_error("invalid parameters");
     return NULL;

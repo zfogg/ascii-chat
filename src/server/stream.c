@@ -820,7 +820,7 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
   uint64_t convert_duration_ns = convert_end_ns - convert_start_ns;
 
   if (convert_duration_ns > 5 * NS_PER_MS_INT) { // Log if > 5ms
-    char duration_str[32];
+    char duration_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty((uint64_t)((double)convert_duration_ns), -1, duration_str, sizeof(duration_str));
     log_warn_every(US_PER_SEC_INT, "SLOW_ASCII_CONVERT: Client %s took %s to convert %dx%d image to ASCII",
                    target_client_id, duration_str, composite->w, composite->h);
@@ -1146,7 +1146,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   uint64_t frame_gen_end_ns = time_get_ns();
   uint64_t frame_gen_duration_ns = frame_gen_end_ns - frame_gen_start_ns;
   if (frame_gen_duration_ns > 10 * NS_PER_MS_INT) { // Log if > 10ms
-    char duration_str[32];
+    char duration_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty((uint64_t)((double)frame_gen_duration_ns), -1, duration_str, sizeof(duration_str));
     log_warn_every(LOG_RATE_DEFAULT, "SLOW_FRAME_GENERATION: Client %s full frame gen took %s", target_client_id,
                    duration_str);

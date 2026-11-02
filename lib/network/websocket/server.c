@@ -7,6 +7,7 @@
  * @date February 2026
  */
 
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/tui/notice.h>
 
 #include <ascii-chat/network/websocket/server.h>
@@ -137,7 +138,7 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
   conn_data->has_pending_send = false;
 
   // Get client address
-  char client_ip[64] = {0};
+  char client_ip[IP_ADDRESS_BUFFER_SIZE] = {0};
   if (!lws_get_peer_simple(wsi, client_ip, sizeof(client_ip)) || client_ip[0] == '\0') {
     safe_snprintf(client_ip, sizeof(client_ip), "unknown");
     log_warn("Could not determine WebSocket client IP address");
@@ -300,7 +301,7 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
   }
 
   uint64_t close_callback_end_ns = time_get_ns();
-  char total_duration_str[32];
+  char total_duration_str[TIME_DURATION_BUFFER_SIZE];
   time_pretty(close_callback_end_ns - close_callback_start_ns, -1, total_duration_str, sizeof(total_duration_str));
   log_debug("[LWS_CALLBACK_CLOSED] Complete cleanup took %s", total_duration_str);
 }

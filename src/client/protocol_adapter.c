@@ -119,7 +119,7 @@ static void handle_ascii_frame_packet(client_connection_t *connection, const asc
       }
 
       if (elapsed >= snapshot_delay) {
-        char duration_str[32];
+        char duration_str[TIME_DURATION_BUFFER_SIZE];
         time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
         log_info("Snapshot captured after %s (target=%.3f)", duration_str, snapshot_delay);
         signal_exit();

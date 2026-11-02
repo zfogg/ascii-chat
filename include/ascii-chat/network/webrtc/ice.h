@@ -54,6 +54,7 @@
 
 #pragma once
 
+#include <ascii-chat/common/limits.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -116,8 +117,8 @@ typedef struct {
   uint32_t priority;       ///< Candidate priority (used for preference)
 
   /* Address info */
-  char ip_address[64]; ///< IP address (IPv4 or IPv6)
-  uint16_t port;       ///< Port number
+  char ip_address[IP_ADDRESS_BUFFER_SIZE]; ///< IP address (IPv4 or IPv6)
+  uint16_t port;                           ///< Port number
 
   /* Candidate type and attributes */
   ice_candidate_type_t type; ///< host, srflx, prflx, or relay

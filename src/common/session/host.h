@@ -49,6 +49,7 @@
 
 #pragma once
 
+#include <ascii-chat/common/limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -84,7 +85,7 @@ typedef struct {
   uint32_t client_id;
 
   /** @brief Client IP address */
-  char ip_address[64];
+  char ip_address[IP_ADDRESS_BUFFER_SIZE];
 
   /** @brief Client port */
   int port;

@@ -145,14 +145,14 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
   if (is_test_environment()) {
     ctx->rekey_packet_threshold = REKEY_TEST_PACKET_THRESHOLD; // 1,000 packets
     ctx->rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
-    char duration_str[32];
+    char duration_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty(ctx->rekey_time_threshold, -1, duration_str, sizeof(duration_str));
     log_dev("Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)",
             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   } else {
     ctx->rekey_packet_threshold = REKEY_DEFAULT_PACKET_THRESHOLD; // 1 million packets
     ctx->rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // already in nanoseconds (3600 * NS_PER_SEC_INT)
-    char duration_str[32];
+    char duration_str[TIME_DURATION_BUFFER_SIZE];
     time_pretty(ctx->rekey_time_threshold, -1, duration_str, sizeof(duration_str));
     log_dev("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
@@ -1201,7 +1201,7 @@ crypto_result_t crypto_rekey_init(crypto_context_t *ctx) {
   time_t since_last_rekey = now - ctx->rekey_last_time;
   time_t min_interval_seconds = (time_t)(REKEY_MIN_INTERVAL / NS_PER_SEC_INT);
   if (since_last_rekey < min_interval_seconds) {
-    char elapsed_str[32], min_str[32];
+    char elapsed_str[TIME_DURATION_BUFFER_SIZE], min_str[32];
     time_pretty((uint64_t)(since_last_rekey * 1e9), -1, elapsed_str, sizeof(elapsed_str));
     time_pretty((uint64_t)(min_interval_seconds * 1e9), -1, min_str, sizeof(min_str));
     log_warn("Rekey rate limited: %s since last rekey (minimum: %s)", elapsed_str, min_str);

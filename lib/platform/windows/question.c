@@ -1,3 +1,4 @@
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 /**
  * @file platform/windows/question.c
@@ -31,7 +32,7 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
 
   // Consume explicit answers before checking terminal availability.
   {
-    char test_password[256];
+    char test_password[PASSWORD_BUFFER_SIZE];
     if (env_pop_prompt_response(test_password, sizeof(test_password))) {
       size_t len = strlen(test_password);
       if (len >= max_len) {

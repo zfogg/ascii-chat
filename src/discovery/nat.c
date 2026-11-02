@@ -4,6 +4,7 @@
  * @ingroup discovery
  */
 
+#include <ascii-chat/common/limits.h>
 #include "nat.h"
 
 #include <ascii-chat/common.h>
@@ -268,7 +269,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   }
 
   // Parse STUN response to extract reflexive address
-  char reflexive_addr[64] = {0};
+  char reflexive_addr[IP_ADDRESS_BUFFER_SIZE] = {0};
   uint16_t reflexive_port = 0;
   asciichat_error_t parse_result =
       nat_parse_stun_response(stun_response, (size_t)recv_len, reflexive_addr, &reflexive_port);

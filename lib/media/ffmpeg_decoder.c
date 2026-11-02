@@ -630,7 +630,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     bool cancelled = cancel && cancel(decoder->exit_callback_user_data);
 
     if (frame_decoded) {
-      char read_time_str[32];
+      char read_time_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty(time_elapsed_ns(read_start_ns, time_get_ns()), -1, read_time_str, sizeof(read_time_str));
       log_dev_every(5 * US_PER_SEC_INT, "PREFETCH: decoded frame in %s", read_time_str);
     }

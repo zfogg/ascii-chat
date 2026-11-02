@@ -73,13 +73,13 @@ typedef struct session_display_ctx {
   terminal_capabilities_t caps;
 
   /** @brief Palette character string for rendering */
-  char palette_chars[256];
+  char palette_chars[ASCII_PALETTE_BUFFER_SIZE];
 
   /** @brief Number of characters in palette */
   size_t palette_len;
 
   /** @brief Luminance-to-character mapping table (256 entries) */
-  char luminance_palette[256];
+  char luminance_palette[ASCII_LUMINANCE_LEVELS];
 
   /** @brief Configured palette type */
   palette_type_t palette_type;

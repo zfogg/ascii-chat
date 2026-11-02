@@ -1,3 +1,4 @@
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/otel.h>
 /**
  * @file yt_dlp.c
@@ -225,7 +226,7 @@ asciichat_error_t yt_dlp_extract_stream_url(const char *url, const char *yt_dlp_
   }
 
   // Read output looking for stream URL (should be last line starting with http)
-  char url_buffer[8192] = {0};
+  char url_buffer[MEDIA_STREAM_URL_SIZE] = {0};
   char full_output[16384] = {0};
   size_t ytdlp_output_len = 0;
   size_t url_size = 0;

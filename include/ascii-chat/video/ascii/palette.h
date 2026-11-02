@@ -63,6 +63,7 @@
  * @date 2025
  */
 
+#include <ascii-chat/video/ascii/common.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -398,7 +399,8 @@ int apply_palette_config(palette_type_t type, const char *custom_chars);
  *
  * @ingroup palette
  */
-int build_client_luminance_palette(const char *palette_chars, size_t palette_len, char luminance_mapping[256]);
+int build_client_luminance_palette(const char *palette_chars, size_t palette_len,
+                                   char luminance_mapping[ASCII_LUMINANCE_LEVELS]);
 
 /**
  * @brief Initialize client palette with full configuration
@@ -420,8 +422,9 @@ int build_client_luminance_palette(const char *palette_chars, size_t palette_len
  *
  * @ingroup palette
  */
-int initialize_client_palette(palette_type_t palette_type, const char *custom_chars, char client_palette_chars[256],
-                              size_t *client_palette_len, char client_luminance_palette[256]);
+int initialize_client_palette(palette_type_t palette_type, const char *custom_chars,
+                              char client_palette_chars[ASCII_PALETTE_BUFFER_SIZE], size_t *client_palette_len,
+                              char client_luminance_palette[ASCII_LUMINANCE_LEVELS]);
 
 /**
  * @name UTF-8 Palette Functions

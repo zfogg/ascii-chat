@@ -415,7 +415,7 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
       }
 
       if (elapsed >= snapshot_delay) {
-        char duration_str[32];
+        char duration_str[TIME_DURATION_BUFFER_SIZE];
         time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
         log_info("🎬 SNAPSHOT TIMEOUT FIRED (IN_MAIN_LOOP): Snapshot captured after %s! (target=%.3f)", duration_str,
                  snapshot_delay);
@@ -443,7 +443,7 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
                snapshot_delay);
 
       if (elapsed >= snapshot_delay) {
-        char duration_str[32];
+        char duration_str[TIME_DURATION_BUFFER_SIZE];
         time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
         log_info("🎬 SNAPSHOT TIMEOUT FIRED (ON_CONNECTION_LOSS): Snapshot captured after %s! (target=%.3f)",
                  duration_str, snapshot_delay);

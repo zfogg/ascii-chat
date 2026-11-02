@@ -351,7 +351,7 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
     ts_len = strlen(timestamp);
   }
 
-  char elapsed_buf[32];
+  char elapsed_buf[TIME_DURATION_BUFFER_SIZE];
   elapsed_buf[0] = '\0';
   if (g_ticks_initialized) {
     uint64_t now_ns = time_get_ns();

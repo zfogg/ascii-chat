@@ -4,6 +4,7 @@
  * @brief 🌍 IPv4/IPv6 address parsing, validation, and formatting utilities
  */
 
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/util/parsing.h>
@@ -1106,7 +1107,7 @@ int compare_ip_port_strings(const char *ip_port1, const char *ip_port2) {
   }
 
   // Parse both IP:port strings
-  char ip1[64], ip2[64];
+  char ip1[IP_ADDRESS_BUFFER_SIZE], ip2[64];
   uint16_t port1 = 0, port2 = 0;
 
   if (parse_ip_with_port(ip_port1, ip1, sizeof(ip1), &port1) != 0) {

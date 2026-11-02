@@ -33,6 +33,9 @@
  * @date September 2025
  */
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define TIME_DURATION_BUFFER_SIZE 32
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
@@ -615,7 +618,7 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
   do {                                                                                                                 \
     double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
     if (_elapsed_ns >= 0.0 && (threshold_ns == 0 || _elapsed_ns >= (double)(threshold_ns))) {                          \
-      char _duration_str[32];                                                                                          \
+      char _duration_str[TIME_DURATION_BUFFER_SIZE];                                                                   \
       time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                    \
       log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                                 \
     }                                                                                                                  \
@@ -655,7 +658,7 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
       uint64_t _log_every_last = atomic_load_u64(&_log_every_last_time);                                               \
       if (_log_every_now - _log_every_last >= (uint64_t)(interval_ns)) {                                               \
         if (atomic_cas_u64(&_log_every_last_time, &_log_every_last, _log_every_now)) {                                 \
-          char _duration_str[32];                                                                                      \
+          char _duration_str[TIME_DURATION_BUFFER_SIZE];                                                               \
           time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                \
           log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                             \
         }                                                                                                              \

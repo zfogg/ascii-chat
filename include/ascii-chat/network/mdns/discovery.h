@@ -89,7 +89,7 @@ extern "C" {
 typedef struct {
   bool success;                                 ///< Discovery succeeded
   uint8_t host_pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Ed25519 public key of discovered server
-  char server_address[256];                     ///< Server IP or hostname
+  char server_address[HOSTNAME_BUFFER_SIZE];    ///< Server IP or hostname
   uint16_t server_port;                         ///< Server port (typically 27224)
   enum {
     DISCOVERY_SOURCE_MDNS = 0, ///< Found via mDNS (local LAN)
@@ -97,8 +97,8 @@ typedef struct {
   } source;                    ///< Which discovery method found the server
 
   // For mDNS results
-  char mdns_service_name[256];              ///< mDNS service instance name (e.g., "swift-river-mountain")
-  char mdns_hostname[HOSTNAME_BUFFER_SIZE]; ///< mDNS hostname (e.g., "mycomputer.local")
+  char mdns_service_name[HOSTNAME_BUFFER_SIZE]; ///< mDNS service instance name (e.g., "swift-river-mountain")
+  char mdns_hostname[HOSTNAME_BUFFER_SIZE];     ///< mDNS hostname (e.g., "mycomputer.local")
 
   // For ACDS results (if applicable)
   uint8_t session_id[SESSION_ID_SIZE]; ///< ACDS session UUID
@@ -118,8 +118,8 @@ typedef struct {
   bool insecure_mode;             ///< Allow no verification (--acds-insecure flag)
 
   // Connection details
-  char acds_server[256]; ///< ACDS server address (e.g., "localhost" or "discovery.ascii-chat.com")
-  uint16_t acds_port;    ///< ACDS server port (default: 27225)
+  char acds_server[HOSTNAME_BUFFER_SIZE]; ///< ACDS server address (e.g., "localhost" or "discovery.ascii-chat.com")
+  uint16_t acds_port;                     ///< ACDS server port (default: 27225)
 
   // Timeouts
   uint32_t mdns_timeout_ms; ///< mDNS search timeout (default: 2000ms)
