@@ -103,7 +103,7 @@ void audio_terminate_portaudio_final(void) {
 }
 
 // AEC processes complete 480-sample blocks; the worker buffers must hold at least one block.
-#define WORKER_BATCH_FRAMES AUDIO_OPUS_FRAME_SAMPLES
+#define WORKER_BATCH_FRAMES OPUS_FRAME_SAMPLES
 #define WORKER_BATCH_SAMPLES (WORKER_BATCH_FRAMES * AUDIO_CHANNELS)
 // Device callbacks signal after capture/consumption. The fallback follows the
 // 20 ms worker cadence for software sources and missed notifications.
@@ -301,12 +301,11 @@ static void *audio_worker_thread(void *arg) {
       bool local_playback = use_media && ctx->monitor_local_media && ctx->output_stream;
       size_t queued = local_playback ? audio_ring_buffer_available_read(ctx->playback_buffer) : 0;
       size_t refill = queued < 7200 ? 7200 - queued : 0;
-      uint64_t due = local_playback ? media_samples + refill
-                                    : (now - media_start_ns) / (20 * NS_PER_MS_INT) * AUDIO_OPUS_FRAME_SAMPLES;
-      float media[AUDIO_OPUS_FRAME_SAMPLES];
+      uint64_t due =
+          local_playback ? media_samples + refill : (now - media_start_ns) / (20 * NS_PER_MS_INT) * OPUS_FRAME_SAMPLES;
+      float media[OPUS_FRAME_SAMPLES];
       while (media_samples < due) {
-        size_t count =
-            due - media_samples > AUDIO_OPUS_FRAME_SAMPLES ? AUDIO_OPUS_FRAME_SAMPLES : (size_t)(due - media_samples);
+        size_t count = due - media_samples > OPUS_FRAME_SAMPLES ? OPUS_FRAME_SAMPLES : (size_t)(due - media_samples);
         size_t read = count;
         if (test_audio)
           audio_test_pattern(media, count, media_samples, AUDIO_SAMPLE_RATE);
@@ -341,7 +340,7 @@ static void *audio_worker_thread(void *arg) {
     // frames where both render and capture are available. Remainders stay in
     // the ring buffers and get processed next iteration - no zero-padding,
     // no data corruption, no skipped echo cancellation.
-    const size_t AEC3_FRAME_SIZE = AUDIO_CAPTURE_FRAME_SAMPLES;
+    const size_t AEC3_FRAME_SIZE = AUDIO_FRAMES_PER_BUFFER;
     bool want_aec3 = !bypass_aec3_worker && ctx->audio_pipeline && (ctx->duplex_stream || ctx->output_stream);
 
     if (want_aec3) {
@@ -520,10 +519,10 @@ static void *audio_worker_thread(void *arg) {
 static void audio_monitor_test(audio_context_t *ctx, float *output, size_t count, uint32_t rate) {
   if (!GET_OPTION(test_audio) || !output)
     return;
-  float samples[AUDIO_CAPTURE_FRAME_SAMPLES];
+  float samples[AUDIO_FRAMES_PER_BUFFER];
   float volume = fmaxf(0, fminf(1, GET_OPTION(speakers_volume)));
   for (size_t offset = 0; offset < count;) {
-    size_t block = count - offset > AUDIO_CAPTURE_FRAME_SAMPLES ? AUDIO_CAPTURE_FRAME_SAMPLES : count - offset;
+    size_t block = count - offset > AUDIO_FRAMES_PER_BUFFER ? AUDIO_FRAMES_PER_BUFFER : count - offset;
     audio_test_pattern(samples, block, ctx->test_audio_playback_position, rate);
     for (size_t i = 0; i < block; ++i)
       output[offset + i] = fmaxf(-1, fminf(1, output[offset + i] + samples[i] * volume));
@@ -1128,8 +1127,8 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
 void audio_ring_buffer_set_jitter_target(audio_ring_buffer_t *rb, uint32_t samples) {
   if (!rb)
     return;
-  if (samples < AUDIO_OPUS_FRAME_SAMPLES)
-    samples = AUDIO_OPUS_FRAME_SAMPLES;
+  if (samples < OPUS_FRAME_SAMPLES)
+    samples = OPUS_FRAME_SAMPLES;
   if (samples > 7680)
     samples = 7680;
   rb->jitter_initial_samples = samples;
@@ -1402,7 +1401,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     // One bounded refill after a real shortage avoids alternating tiny fragments
     // and silence when packets resume. Low occupancy alone is not an underrun.
     rb->jitter_target_samples =
-        rb->jitter_target_samples < 6720 ? rb->jitter_target_samples + AUDIO_OPUS_FRAME_SAMPLES : 7680;
+        rb->jitter_target_samples < 6720 ? rb->jitter_target_samples + OPUS_FRAME_SAMPLES : 7680;
     rb->jitter_stable_samples = 0;
     rb->jitter_drift_phase = 0;
     atomic_store_bool(&rb->jitter_buffer_filled, false);

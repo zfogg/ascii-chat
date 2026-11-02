@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SESSION_PARTICIPANT_WEBCAM_INDEX_BUFFER_SIZE 32
+
 #include <ascii-chat/audio/limits.h>
 #include <ascii-chat/util/password.h>
 #include <sodium.h>
@@ -461,12 +465,12 @@ static void *participant_audio_capture_thread(void *arg) {
 
   log_info("Audio capture thread started");
 
-  float sample_buffer[AUDIO_OPUS_FRAME_SAMPLES]; // 20ms @ 48kHz
+  float sample_buffer[OPUS_FRAME_SAMPLES]; // 20ms @ 48kHz
   uint8_t opus_buffer[AUDIO_OPUS_SESSION_PACKET_CAPACITY];
 
   while (session_av_state_should_run(&p->audio)) {
     // Read microphone samples (20ms chunk)
-    size_t samples_read = session_audio_read_captured(p->audio_capture, sample_buffer, AUDIO_OPUS_FRAME_SAMPLES);
+    size_t samples_read = session_audio_read_captured(p->audio_capture, sample_buffer, OPUS_FRAME_SAMPLES);
     if (samples_read <= 0) {
       APP_CALLBACK_VOID(platform_pump_events);
       platform_sleep_ms(1);
@@ -529,7 +533,7 @@ asciichat_error_t session_participant_start_video(session_participant_t *p) {
     };
     const char *file = GET_OPTION(media_file);
     const char *url = GET_OPTION(media_url);
-    char webcam_index[32];
+    char webcam_index[SESSION_PARTICIPANT_WEBCAM_INDEX_BUFFER_SIZE];
     safe_snprintf(webcam_index, sizeof(webcam_index), "%u", GET_OPTION(webcam_index));
     config.path = webcam_index;
     if (url && url[0]) {

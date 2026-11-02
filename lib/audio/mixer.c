@@ -32,12 +32,12 @@ typedef struct mixer_listener_buffer {
 // Called with the source write lock. Drain each input once and fan it out to
 // independent listener queues so one recipient cannot consume another's audio.
 static void mixer_distribute_samples(mixer_t *mixer) {
-  float samples[AUDIO_OPUS_FRAME_SAMPLES];
+  float samples[OPUS_FRAME_SAMPLES];
   for (int source = 0; source < mixer->max_sources; source++) {
     if (!mixer->source_ids[source] || !mixer->source_buffers[source])
       continue;
     while (audio_ring_buffer_available_read(mixer->source_buffers[source]) > 0) {
-      size_t count = audio_ring_buffer_read(mixer->source_buffers[source], samples, AUDIO_OPUS_FRAME_SAMPLES);
+      size_t count = audio_ring_buffer_read(mixer->source_buffers[source], samples, OPUS_FRAME_SAMPLES);
       if (!count)
         break;
       for (int listener = 0; listener < mixer->max_sources; listener++) {

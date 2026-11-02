@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SESSION_HOST_KEY_PATH_BUFFER_SIZE 512
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/audio/limits.h>
@@ -94,7 +98,7 @@ typedef struct {
   ringbuffer_t *incoming_audio;
   opus_codec_t *opus_decoder;
   opus_codec_t *opus_encoder;
-  float audio_frame[AUDIO_OPUS_FRAME_SAMPLES];
+  float audio_frame[OPUS_FRAME_SAMPLES];
 } session_host_client_t;
 
 static void host_client_release_transport(session_host_client_t *client) {
@@ -143,7 +147,7 @@ typedef struct session_host {
   bool encryption_enabled;
 
   /** @brief Key path */
-  char key_path[512];
+  char key_path[SESSION_HOST_KEY_PATH_BUFFER_SIZE];
 
   /** @brief Password */
   char password[PASSWORD_BUFFER_SIZE];
@@ -408,9 +412,9 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
               }
               if (frame_size > 0) {
                 // Allocate buffer for decoded samples
-                float decoded_samples[AUDIO_OPUS_FRAME_SAMPLES]; // Max 20ms @ 48kHz
+                float decoded_samples[OPUS_FRAME_SAMPLES]; // Max 20ms @ 48kHz
                 int decoded_count = opus_codec_decode(host->clients[j].opus_decoder, current_frame, (int)frame_size,
-                                                      decoded_samples, AUDIO_OPUS_FRAME_SAMPLES);
+                                                      decoded_samples, OPUS_FRAME_SAMPLES);
                 if (decoded_count > 0) {
                   host->clients[j].audio_active = true;
                   // Write samples to ringbuffer one at a time
@@ -722,7 +726,7 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
   if (!host || !host->initialized)
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid host");
   uint64_t mix_start = time_get_ns();
-  double total[AUDIO_OPUS_FRAME_SAMPLES] = {0};
+  double total[OPUS_FRAME_SAMPLES] = {0};
   asciichat_error_t result = ASCIICHAT_OK;
   mutex_lock(&host->clients_mutex);
   // Drain each source once. Keep unclipped samples so mix-minus can subtract
@@ -732,7 +736,7 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
     memset(client->audio_frame, 0, sizeof(client->audio_frame));
     if (!client->active || !client->audio_active || !client->incoming_audio)
       continue;
-    for (int j = 0; j < AUDIO_OPUS_FRAME_SAMPLES; j++) {
+    for (int j = 0; j < OPUS_FRAME_SAMPLES; j++) {
       if (ringbuffer_read(client->incoming_audio, &client->audio_frame[j]))
         total[j] += client->audio_frame[j];
     }
@@ -748,14 +752,14 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
       result = SET_ERRNO(ERROR_AUDIO, "Failed to initialize participant encoder");
       continue;
     }
-    float mixed[AUDIO_OPUS_FRAME_SAMPLES];
-    for (int j = 0; j < AUDIO_OPUS_FRAME_SAMPLES; j++) {
+    float mixed[OPUS_FRAME_SAMPLES];
+    for (int j = 0; j < OPUS_FRAME_SAMPLES; j++) {
       float sample = (float)(total[j] - client->audio_frame[j]);
       mixed[j] = sample > 1.0f ? 1.0f : sample < -1.0f ? -1.0f : sample;
     }
     uint8_t opus_buffer[AUDIO_OPUS_SESSION_PACKET_CAPACITY];
     size_t opus_len =
-        opus_codec_encode(client->opus_encoder, mixed, AUDIO_OPUS_FRAME_SAMPLES, opus_buffer, sizeof(opus_buffer));
+        opus_codec_encode(client->opus_encoder, mixed, OPUS_FRAME_SAMPLES, opus_buffer, sizeof(opus_buffer));
     if (opus_len > 0) {
       uint16_t frame_sizes[1] = {(uint16_t)opus_len};
       asciichat_error_t sent =
@@ -767,10 +771,10 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
   mutex_unlock(&host->clients_mutex);
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_AUDIO_MIX, time_get_ns() - mix_start);
 #ifndef __EMSCRIPTEN__
-  float recorded[AUDIO_OPUS_FRAME_SAMPLES];
-  for (int j = 0; j < AUDIO_OPUS_FRAME_SAMPLES; j++)
+  float recorded[OPUS_FRAME_SAMPLES];
+  for (int j = 0; j < OPUS_FRAME_SAMPLES; j++)
     recorded[j] = total[j] > 1.0 ? 1.0f : total[j] < -1.0 ? -1.0f : (float)total[j];
-  audio_recording_submit(AUDIO_RECORDING_REMOTE, recorded, AUDIO_OPUS_FRAME_SAMPLES, time_get_ns());
+  audio_recording_submit(AUDIO_RECORDING_REMOTE, recorded, OPUS_FRAME_SAMPLES, time_get_ns());
 #endif
   return result;
 }
@@ -1060,7 +1064,7 @@ uint32_t session_host_add_client(session_host_t *host, acip_transport_t *transpo
       // Allocate media buffers
       host->clients[i].incoming_video = image_new(480, 270); // Network-optimal size (HD preview)
       host->clients[i].incoming_audio =
-          ringbuffer_create(sizeof(float), AUDIO_OPUS_FRAME_SAMPLES * 10); // ~200ms buffer @ 48kHz
+          ringbuffer_create(sizeof(float), OPUS_FRAME_SAMPLES * 10); // ~200ms buffer @ 48kHz
 
       if (!host->clients[i].incoming_video || !host->clients[i].incoming_audio) {
         // Cleanup on allocation failure
@@ -1137,7 +1141,7 @@ uint32_t session_host_add_memory_participant(session_host_t *host) {
 
       // Allocate media buffers (same as network clients)
       host->clients[i].incoming_video = image_new(480, 270);
-      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), AUDIO_OPUS_FRAME_SAMPLES * 10);
+      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), OPUS_FRAME_SAMPLES * 10);
 
       if (!host->clients[i].incoming_video || !host->clients[i].incoming_audio) {
         if (host->clients[i].incoming_video) {

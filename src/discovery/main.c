@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_MAIN_ERROR_BUFFER_SIZE 512
+
 #include <ascii-chat/audio/limits.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/debug/named.h>
@@ -140,9 +144,9 @@ typedef struct {
 
 static void *discovery_host_audio_capture(void *user_data) {
   discovery_host_audio_capture_t *capture = user_data;
-  float samples[AUDIO_OPUS_FRAME_SAMPLES];
+  float samples[OPUS_FRAME_SAMPLES];
   while (atomic_load_bool(&capture->running) && !should_exit()) {
-    size_t count = session_audio_read_captured(capture->audio, samples, AUDIO_OPUS_FRAME_SAMPLES);
+    size_t count = session_audio_read_captured(capture->audio, samples, OPUS_FRAME_SAMPLES);
     if (!count) {
       platform_sleep_ns(NS_PER_MS_INT);
       continue;
@@ -170,19 +174,18 @@ static void discovery_host_audio_join(discovery_host_audio_capture_t *capture) {
 
 static void *discovery_audio_send_thread(void *user_data) {
   discovery_video_receiver_t *ctx = user_data;
-  float samples[AUDIO_OPUS_FRAME_SAMPLES];
+  float samples[OPUS_FRAME_SAMPLES];
   uint8_t encoded[CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET];
   while (atomic_load_bool(&ctx->running) && !should_exit()) {
-    if (audio_ring_buffer_available_read(ctx->audio->capture_buffer) < AUDIO_OPUS_FRAME_SAMPLES) {
+    if (audio_ring_buffer_available_read(ctx->audio->capture_buffer) < OPUS_FRAME_SAMPLES) {
       platform_sleep_ns(NS_PER_MS_INT);
       continue;
     }
-    if (audio_ring_buffer_read(ctx->audio->capture_buffer, samples, AUDIO_OPUS_FRAME_SAMPLES) !=
-        AUDIO_OPUS_FRAME_SAMPLES)
+    if (audio_ring_buffer_read(ctx->audio->capture_buffer, samples, OPUS_FRAME_SAMPLES) != OPUS_FRAME_SAMPLES)
       continue;
     ASCII_OTEL_SCOPE(CLIENT_AUDIO_CAPTURE);
     int size =
-        client_audio_pipeline_capture(ctx->audio_pipeline, samples, AUDIO_OPUS_FRAME_SAMPLES, encoded, sizeof(encoded));
+        client_audio_pipeline_capture(ctx->audio_pipeline, samples, OPUS_FRAME_SAMPLES, encoded, sizeof(encoded));
     if (size <= 0)
       continue;
     uint16_t frame_size = (uint16_t)size;
@@ -356,7 +359,7 @@ static void on_session_ready(const char *session_string, void *user_data) {
 
 typedef struct {
   mutex_t mutex;
-  char error[512];
+  char error[DISCOVERY_MAIN_ERROR_BUFFER_SIZE];
   asciichat_error_t error_code;
 } discovery_ui_state_t;
 

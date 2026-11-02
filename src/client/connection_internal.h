@@ -26,8 +26,9 @@
 #include <ascii-chat/video/h265/encoder.h>
 
 typedef struct {
-  uint8_t data[CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES *
-               AUDIO_OPUS_PIPELINE_PACKET_CAPACITY]; // Queue storage permits the pipeline packet budget for each frame.
+  uint8_t
+      data[CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES *
+           CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET]; // Queue storage permits the pipeline packet budget for each frame.
   size_t size;
   uint16_t frame_sizes[CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES];
   int frame_count;

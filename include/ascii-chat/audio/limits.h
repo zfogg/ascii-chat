@@ -1,16 +1,22 @@
 #pragma once
 
-/** Shared mono audio framing contract used by capture, mixing, and Opus. */
-#define AUDIO_DEFAULT_SAMPLE_RATE 48000
+/** Audio rate and channel configuration shared by capture, mixing, and codecs. */
+#define AUDIO_SAMPLE_RATE 48000
+#define AUDIO_CHANNELS 1
+/** Capture uses 10-ms blocks for WebRTC AEC3. */
 #define AUDIO_CAPTURE_FRAME_MS 10
-#define AUDIO_CAPTURE_FRAME_SAMPLES (AUDIO_DEFAULT_SAMPLE_RATE * AUDIO_CAPTURE_FRAME_MS / 1000)
-#define AUDIO_OPUS_FRAME_MS 20
-#define AUDIO_OPUS_FRAME_SAMPLES (AUDIO_DEFAULT_SAMPLE_RATE * AUDIO_OPUS_FRAME_MS / 1000)
-/** Decoder storage permits packets representing up to 120 ms at the default rate. */
-#define AUDIO_OPUS_MAX_DECODE_MS 120
-#define AUDIO_OPUS_MAX_DECODE_SAMPLES (AUDIO_DEFAULT_SAMPLE_RATE * AUDIO_OPUS_MAX_DECODE_MS / 1000)
-/** Existing encoded-output budgets in bytes, distinct from PCM sample counts.
- * Encoders receive the actual budget; these are not codec-wide packet maxima. */
-#define AUDIO_OPUS_PIPELINE_PACKET_CAPACITY 4000
+#define AUDIO_FRAMES_PER_BUFFER (AUDIO_SAMPLE_RATE * AUDIO_CAPTURE_FRAME_MS / 1000)
+#define AUDIO_BUFFER_SIZE (AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS)
+
+/** Opus capture and mixing use 20-ms mono frames. */
+#define CLIENT_AUDIO_PIPELINE_FRAME_MS 20
+#define OPUS_FRAME_SAMPLES (AUDIO_SAMPLE_RATE * CLIENT_AUDIO_PIPELINE_FRAME_MS / 1000)
+/** Echo-reference storage holds half a second at the configured rate. */
+#define CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE (AUDIO_SAMPLE_RATE / 2)
+/** Existing encoder byte budgets; these are not codec-wide packet maxima. */
+#define CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET 4000
 #define AUDIO_OPUS_SESSION_PACKET_CAPACITY 1000
 #define AUDIO_OPUS_SERVER_PACKET_CAPACITY 1024
+/** Decoder storage permits packets representing up to 120 ms at the configured rate. */
+#define AUDIO_OPUS_MAX_DECODE_MS 120
+#define AUDIO_OPUS_MAX_DECODE_SAMPLES (AUDIO_SAMPLE_RATE * AUDIO_OPUS_MAX_DECODE_MS / 1000)

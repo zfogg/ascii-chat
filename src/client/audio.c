@@ -1,3 +1,6 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+
 #include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include "connection_internal.h"
@@ -511,7 +514,6 @@ static void *audio_capture_thread_func(void *arg) {
   int timeout_flush_count = 0;
 
 // Opus frame size: 960 samples = 20ms @ 48kHz (must match pipeline config)
-#define OPUS_FRAME_SAMPLES AUDIO_OPUS_FRAME_SAMPLES
 #define OPUS_MAX_PACKET_SIZE 500 // Max Opus packet size
 
   // Read enough samples per iteration to drain faster than we fill
@@ -769,10 +771,10 @@ static void *audio_capture_thread_func(void *arg) {
 
       // Comprehensive timing report every 100 iterations (~2 seconds)
       if (timing_loop_count % 100 == 0) {
-        char avg_loop_str[TIME_DURATION_BUFFER_SIZE], max_loop_str[32];
-        char avg_read_str[TIME_DURATION_BUFFER_SIZE], max_read_str[32];
-        char avg_encode_str[TIME_DURATION_BUFFER_SIZE], max_encode_str[32];
-        char avg_queue_str[TIME_DURATION_BUFFER_SIZE], max_queue_str[32];
+        char avg_loop_str[TIME_DURATION_BUFFER_SIZE], max_loop_str[TIME_DURATION_BUFFER_SIZE];
+        char avg_read_str[TIME_DURATION_BUFFER_SIZE], max_read_str[TIME_DURATION_BUFFER_SIZE];
+        char avg_encode_str[TIME_DURATION_BUFFER_SIZE], max_encode_str[TIME_DURATION_BUFFER_SIZE];
+        char avg_queue_str[TIME_DURATION_BUFFER_SIZE], max_queue_str[TIME_DURATION_BUFFER_SIZE];
 
         time_pretty((uint64_t)(total_loop_ns / timing_loop_count), -1, avg_loop_str, sizeof(avg_loop_str));
         time_pretty((uint64_t)(max_loop_ns), -1, max_loop_str, sizeof(max_loop_str));
