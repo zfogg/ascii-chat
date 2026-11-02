@@ -4,6 +4,7 @@
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <yyjson.h>
 #include <string.h>
 
@@ -36,10 +37,10 @@ typedef struct {
 typedef struct {
   char **argv;
   size_t argc;
-  char upload_dir[4096];
-  char stage_dir[4096];
-  char stage_file[4096];
-  char output_path[4096];
+  char upload_dir[PLATFORM_MAX_PATH_LENGTH];
+  char stage_dir[PLATFORM_MAX_PATH_LENGTH];
+  char stage_file[PLATFORM_MAX_PATH_LENGTH];
+  char output_path[PLATFORM_MAX_PATH_LENGTH];
   unsigned timeout_ms;
   bool capture_webcam;
 } mcp_render_request_t;
@@ -50,7 +51,7 @@ typedef struct {
   char error[2048];
   uint64_t elapsed_ms;
   bool timed_out;
-  char output_path[4096];
+  char output_path[PLATFORM_MAX_PATH_LENGTH];
 } mcp_render_result_t;
 
 typedef struct mcp_job {

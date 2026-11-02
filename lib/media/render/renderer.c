@@ -67,7 +67,7 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   }
 
   // Resolve font spec → platform-appropriate file path, family name, or bundled data.
-  char font_spec[512] = {0};
+  char font_spec[PLATFORM_MAX_PATH_LENGTH] = {0};
   bool font_is_path = false;
   const uint8_t *font_data = NULL;
   size_t font_data_size = 0;

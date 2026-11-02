@@ -271,7 +271,7 @@ static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, mcp_r
   asciichat_error_t err = platform_mkdtemp(r->upload_dir, sizeof(r->upload_dir), "ascii-mcp-input");
   if (err != ASCIICHAT_OK)
     return err;
-  char file[4096];
+  char file[PLATFORM_MAX_PATH_LENGTH];
   SAFE_SNPRINTF(file, sizeof(file), "%s/media", r->upload_dir);
   size_t cap = yyjson_get_len(data) / 4 * 3 + 3, len = 0;
   unsigned char *bytes = SAFE_MALLOC(cap, unsigned char *);
@@ -313,7 +313,7 @@ static asciichat_error_t stage_output(const char *path, mcp_render_request_t *r)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output already exists: %s", path);
   if (rc != UV_ENOENT)
     return SET_ERRNO(ERROR_FILE_OPERATION, "Cannot inspect output destination");
-  char parent[4096];
+  char parent[PLATFORM_MAX_PATH_LENGTH];
   SAFE_STRNCPY(parent, path, sizeof(parent));
   char *slash = strrchr(parent, '/'), *back = strrchr(parent, '\\');
   if (back && (!slash || back > slash))
@@ -377,7 +377,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
       return SET_ERRNO(ERROR_INVALID_PARAM, "timeout_ms must be 1000–60000");
     r->timeout_ms = (unsigned)yyjson_get_uint(timeout);
   }
-  char exe[4096];
+  char exe[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_executable_path(exe, sizeof(exe)))
     return SET_ERRNO(ERROR_FILE_OPERATION, "Cannot locate renderer executable");
   arg(r, exe);

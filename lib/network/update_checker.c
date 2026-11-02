@@ -407,7 +407,7 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
 #ifndef _WIN32
 static bool is_homebrew_install(void) {
   // Check if binary is in Homebrew Cellar directory
-  char exe_path[1024];
+  char exe_path[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
     return false;
   }
