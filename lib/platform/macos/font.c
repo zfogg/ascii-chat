@@ -5,6 +5,7 @@
  */
 #ifdef __APPLE__
 #include <ascii-chat/platform/font.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/font.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
@@ -42,7 +43,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
     if (out_font_data_size)
       *out_font_data_size = g_font_matrix_resurrected_size;
     // Also provide a temporary file path for the bundled font.
-    static char tmp_path[4096] = {0};
+    static char tmp_path[PLATFORM_MAX_PATH_LENGTH] = {0};
     if (tmp_path[0] == '\0' && out_font_data && *out_font_data) {
       strlcpy(tmp_path, "/tmp/ascii-chat-matrix-XXXXXX.ttf", sizeof(tmp_path));
       int fd = mkstemps(tmp_path, 4); // 4 = ".ttf" suffix
@@ -65,7 +66,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
     if (out_font_data_size)
       *out_font_data_size = g_font_default_size;
     // Also provide a temporary file path for the bundled font.
-    static char tmp_path_default[4096] = {0};
+    static char tmp_path_default[PLATFORM_MAX_PATH_LENGTH] = {0};
     if (tmp_path_default[0] == '\0' && out_font_data && *out_font_data) {
       strlcpy(tmp_path_default, "/tmp/ascii-chat-default-XXXXXX.ttf", sizeof(tmp_path_default));
       int fd = mkstemps(tmp_path_default, 4); // 4 = ".ttf" suffix
