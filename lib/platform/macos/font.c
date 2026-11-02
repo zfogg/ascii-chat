@@ -1,7 +1,7 @@
 /**
  * @file platform/macos/font.c
  * @ingroup platform
- * @brief Font resolution for macOS: CoreText family-name passthrough + bundled fallback
+ * @brief Font resolution for macOS: file paths, bundled fonts, and unresolved name passthrough
  */
 #ifdef __APPLE__
 #include <ascii-chat/platform/font.h>
@@ -41,7 +41,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
       *out_font_data = g_font_matrix_resurrected;
     if (out_font_data_size)
       *out_font_data_size = g_font_matrix_resurrected_size;
-    // For macOS, write bundled font to temp file since the renderer expects file paths
+    // Also provide a temporary file path for the bundled font.
     static char tmp_path[4096] = {0};
     if (tmp_path[0] == '\0' && out_font_data && *out_font_data) {
       strlcpy(tmp_path, "/tmp/ascii-chat-matrix-XXXXXX.ttf", sizeof(tmp_path));
@@ -64,7 +64,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
       *out_font_data = g_font_default;
     if (out_font_data_size)
       *out_font_data_size = g_font_default_size;
-    // For macOS, write bundled font to temp file since the renderer expects file paths
+    // Also provide a temporary file path for the bundled font.
     static char tmp_path_default[4096] = {0};
     if (tmp_path_default[0] == '\0' && out_font_data && *out_font_data) {
       strlcpy(tmp_path_default, "/tmp/ascii-chat-default-XXXXXX.ttf", sizeof(tmp_path_default));
@@ -82,14 +82,12 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
     return ASCIICHAT_OK;
   }
 
-  // Try to use system font (passed to CoreText).
-  // If this fails at runtime, CoreText will log an error but we can't detect that here.
-  // Note: macOS CoreText is more forgiving with font names than Linux fontconfig.
+  // Pass other specifications through unchanged; this does not resolve family names.
+  // The FreeType renderer treats this string as a file path and reports load failures.
   snprintf(out, out_size, "%s", eff);
   *out_is_path = false;
 
-  // Log that we're using a system font name (will be resolved by CoreText)
-  log_debug("using system font name '%s' (will be resolved by CoreText)", eff);
+  log_debug("passing unresolved font specification '%s' to the FreeType renderer", eff);
   return ASCIICHAT_OK;
 }
 #endif // __APPLE__
