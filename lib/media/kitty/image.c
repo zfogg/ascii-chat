@@ -1,3 +1,10 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define KITTY_BASE64_CHUNK_SIZE 4096
+#define KITTY_RAW_CHUNK_SIZE (KITTY_BASE64_CHUNK_SIZE / 4 * 3)
+#define KITTY_FRAMING_BUFFER_SIZE 128
+#define MEDIA_KITTY_IMAGE_PACKET_BUFFER_SIZE (KITTY_BASE64_CHUNK_SIZE + KITTY_FRAMING_BUFFER_SIZE)
+
 #include <ascii-chat/media/kitty/image.h>
 #include <ascii-chat/util/stdout_writer.h>
 #include <ascii-chat/tui/controller.h>
@@ -16,10 +23,10 @@ asciichat_error_t kitty_image_write(FILE *stream, const uint8_t *rgba, int width
   size_t offset = 0;
   bool first = true;
   while (offset < total) {
-    char packet[4224];
+    char packet[MEDIA_KITTY_IMAGE_PACKET_BUFFER_SIZE];
     size_t count = total - offset;
-    if (count > 3072)
-      count = 3072;
+    if (count > KITTY_RAW_CHUNK_SIZE)
+      count = KITTY_RAW_CHUNK_SIZE;
     bool more = offset + count < total;
     int prefix = first ? snprintf(packet, sizeof(packet), "\033_Ga=T,f=32,s=%d,v=%d,t=d,q=2,m=%d;", width, height, more)
                        : snprintf(packet, sizeof(packet), "\033_Gm=%d;", more);

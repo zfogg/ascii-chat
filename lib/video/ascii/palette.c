@@ -5,6 +5,9 @@
  * @brief 🎨 Terminal color palette management with Unicode character width detection
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE 256
+
 #include <ascii-chat/video/ascii/common.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -431,7 +434,7 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
   bytes_processed = 0;
 
   // Set locale for wcwidth - save a copy of the old locale
-  char old_locale[256] = {0};
+  char old_locale[VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE] = {0};
   char *current_locale = setlocale(LC_CTYPE, NULL);
   if (current_locale) {
     SAFE_STRNCPY(old_locale, current_locale, sizeof(old_locale));

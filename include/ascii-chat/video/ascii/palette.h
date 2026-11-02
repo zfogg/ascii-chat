@@ -63,6 +63,11 @@
  * @date 2025
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define VIDEO_ASCII_PALETTE_TERMINAL_TYPE_BUFFER_SIZE 32
+#define VIDEO_ASCII_PALETTE_LOCALE_ENCODING_BUFFER_SIZE 16
+
+#include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -141,9 +146,9 @@ typedef struct {
   /** @brief True if user forced UTF-8 via --utf8 flag */
   bool forced_utf8;
   /** @brief $TERM environment variable value (for detection) */
-  char terminal_type[32];
+  char terminal_type[VIDEO_ASCII_PALETTE_TERMINAL_TYPE_BUFFER_SIZE];
   /** @brief Current locale encoding (e.g., "UTF-8") */
-  char locale_encoding[16];
+  char locale_encoding[VIDEO_ASCII_PALETTE_LOCALE_ENCODING_BUFFER_SIZE];
 } utf8_capabilities_t;
 
 /**
@@ -213,7 +218,7 @@ typedef struct {
  */
 typedef struct {
   /** @brief UTF-8 byte sequence (max 4 bytes per character) */
-  char bytes[4];
+  char bytes[UTF8_MAX_BYTES];
   /** @brief Number of bytes in UTF-8 encoding (1-4) */
   uint8_t byte_len;
   /** @brief Terminal display width in character cells (1-2) */

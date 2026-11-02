@@ -8,6 +8,9 @@
  */
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define MEDIA_RENDER_RENDERER_FONT_SPEC_BUFFER_SIZE 512
+
 #include <stdint.h>
 #include <stddef.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -34,9 +37,9 @@ typedef struct {
   int rows;
   double font_size_pt; // point size, default 12.0 (fractional sizes supported)
   term_renderer_theme_t theme;
-  char font_spec[512];      // resolved by platform_font_resolve()
-  bool font_is_path;        // true = file path, false = family name (macOS)
-  const uint8_t *font_data; // non-NULL → load from memory (Linux only)
+  char font_spec[MEDIA_RENDER_RENDERER_FONT_SPEC_BUFFER_SIZE]; // resolved by platform_font_resolve()
+  bool font_is_path;                                           // true = file path, false = family name (macOS)
+  const uint8_t *font_data;                                    // non-NULL → load from memory (Linux only)
   size_t font_data_size;
 } term_renderer_config_t;
 

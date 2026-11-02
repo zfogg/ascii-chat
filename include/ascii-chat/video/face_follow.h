@@ -1,5 +1,11 @@
 #pragma once
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define FACE_FOLLOW_DETECT_WIDTH 320
+#define FACE_FOLLOW_DETECT_HEIGHT 240
+#define FACE_FOLLOW_RESULT_BUFFER_SIZE 0x9000
+#define FACE_FOLLOW_MAX_DETECTIONS 32
+
 #include <stdbool.h>
 #include <stddef.h>
 

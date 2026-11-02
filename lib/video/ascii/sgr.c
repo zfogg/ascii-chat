@@ -1,6 +1,11 @@
 /** @file video/ascii/sgr.c
  * Shared ANSI SGR encoders for scalar, SIMD, and compatibility entry points.
  */
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define VIDEO_ASCII_SGR_SEQ_BUFFER_SIZE 12
+#define VIDEO_ASCII_SGR_BUF_BUFFER_SIZE 32
+
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/video/ascii/common.h>
@@ -12,8 +17,8 @@
  * @brief Pre-computed 256-color ANSI SGR sequence
  */
 typedef struct {
-  char seq[12]; ///< ANSI sequence string (max 11 bytes for "\e[38;5;NNNm")
-  uint8_t len;  ///< Length of sequence string
+  char seq[VIDEO_ASCII_SGR_SEQ_BUFFER_SIZE]; ///< ANSI sequence string (max 11 bytes for "\e[38;5;NNNm")
+  uint8_t len;                               ///< Length of sequence string
 } sgr256_seq_t;
 
 static _Thread_local sgr256_seq_t sgr256_fg_cache[256];
@@ -109,7 +114,7 @@ char *get_sgr256_bg_string(uint8_t bg, uint8_t *len_out) {
 
 char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out) {
   // For FG+BG, still build on-demand since we'd need 256*256 cache
-  static __thread char buf[32];
+  static __thread char buf[VIDEO_ASCII_SGR_BUF_BUFFER_SIZE];
   return build_sgr256_fgbg(buf, fg, bg, len_out);
 }
 

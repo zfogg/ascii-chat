@@ -3,6 +3,9 @@
  * @brief FFmpeg-based media decoder implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE 256
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/common.h>
@@ -995,7 +998,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
   log_debug("FFmpeg decoder opened: %s (video=%s, audio=%s)", path, decoder->video_stream_idx >= 0 ? "yes" : "no",
             decoder->audio_stream_idx >= 0 ? "yes" : "no");
 
-  char decoder_name[256];
+  char decoder_name[MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE];
   snprintf(decoder_name, sizeof(decoder_name), "%s", path);
   NAMED_REGISTER_FFMPEG_DECODER(decoder, decoder_name, NULL);
   NAMED_REGISTER_ATOMIC(&decoder->eof_reached, "ffmpeg_eof", decoder);
