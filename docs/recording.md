@@ -40,9 +40,11 @@ platform's normal font-resolution policy.
 
 Apple HVF fonts (OpenType/TrueType containers with `hvgl` outlines) require
 FreeType 2.15 or newer built with HVF enabled, plus macOS 15.4 or iOS 18.4 or
-newer at runtime. Apple builds check the FreeType capability at configuration
-time; source builds use FreeType 2.15. The iOS dependency can be cross-built with
-Xcode's Clang and a recent iOS SDK while retaining an older deployment target;
+newer at runtime. Apple builds report the FreeType capability at configuration
+time; source builds use FreeType 2.15. Older FreeType packages or SDKs still
+support ordinary fonts and reject unsupported HVF input at runtime. The iOS
+dependency can be cross-built with Xcode's Clang and a recent iOS SDK while
+retaining an older deployment target;
 HVF remains unavailable on older OS versions. Windows, Linux, and browser builds
 do not support Apple HVF fonts and report unsupported font formats. Ordinary
 TrueType/OpenType fonts and the bundled fonts remain available on all platforms.
