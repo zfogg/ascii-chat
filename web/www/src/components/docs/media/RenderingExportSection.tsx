@@ -121,6 +121,21 @@ export default function RenderingExportSection() {
               <code className="code-inline">default</code>, JetBrains Mono,
               Courier New, or path to custom font file
             </p>
+            <h5
+              id="macos-hvf"
+              className="text-pink-200 font-semibold mt-4 mb-2"
+            >
+              macOS: render with an Apple HVF font
+            </h5>
+            <p className="text-gray-300 text-sm mb-3">
+              Try Chinese characters with the system PingFang HVF font on macOS
+              15.4 or newer. The font path may vary between macOS installations.
+            </p>
+            <CodeBlock language="bash">
+              {
+                'ascii-chat mirror --test-pattern --audio=false --snapshot \\\n  --palette custom --palette-chars "天地人中你好漢字" \\\n  --render-font /System/Library/PrivateFrameworks/FontServices.framework/Versions/A/Resources/Reserved/PingFangUI.ttc \\\n  --render-file hvf.png'
+              }
+            </CodeBlock>
           </div>
           <div className="card-standard accent-indigo">
             <Heading level={4} className="text-indigo-300 font-semibold mb-2">
