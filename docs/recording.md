@@ -33,8 +33,10 @@ ascii-chat client localhost --file music.wav --audio-capture-source both --rende
 Video containers such as MP4 and WebM support audio. Still images and GIF do not.
 
 Use `--render-font default`, `--render-font matrix`, or an absolute font-file path
-to select the font for pixel output. Explicit font failures stop rendering with
-an error rather than silently substituting the bundled default.
+to select the font for pixel output. Existing relative font files are accepted
+too. Explicit font-file failures stop rendering with an error rather than
+silently substituting the bundled default. Family-name aliases retain the
+platform's normal font-resolution policy.
 
 Apple HVF fonts (OpenType/TrueType containers with `hvgl` outlines) require
 FreeType 2.15 or newer built with HVF enabled, plus macOS 15.4 or iOS 18.4 or

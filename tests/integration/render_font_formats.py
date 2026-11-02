@@ -22,7 +22,7 @@ def main():
                 [binary, "--no-check-update", "mirror", "--test-pattern", "--audio=false",
                  "--snapshot", "--snapshot-delay", "0", "--splash-screen=false",
                  "--width", "40", "--height", "20", "--render-font", str(font),
-                 "--render-file", str(output)], capture_output=True, timeout=45)
+                 "--render-file", str(output)], capture_output=True, timeout=45, cwd=root)
             return result, output
 
         def supported(font, name):
@@ -43,9 +43,18 @@ def main():
         assert not output.exists(), "Unsupported font silently produced output"
         print("PASS: unsupported font exits with an explicit format error")
 
+        result, output = render(invalid.name, "unsupported-relative")
+        text = (result.stdout + result.stderr).decode(errors="replace")
+        assert result.returncode != 0 and "Unsupported font format" in text, text
+        assert not output.exists(), "Relative unsupported font silently produced output"
+        print("PASS: relative font files are validated rather than resolved as family names")
+
         result, output = render(root / "missing.ttf", "missing")
         assert result.returncode != 0 and not output.exists(), "Missing explicit font fell back to default"
         print("PASS: missing explicit font does not fall back")
+
+        result, output = render(os.path.join(".", "missing.ttf"), "missing-relative")
+        assert result.returncode != 0 and not output.exists(), "Missing relative path fell back to default"
 
         hvf = os.environ.get("ASCIICHAT_TEST_HVF_FONT")
         if not hvf and sys.platform == "darwin":
