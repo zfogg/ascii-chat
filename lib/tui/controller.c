@@ -1084,7 +1084,7 @@ static void *presentation_main(void *unused) {
       atomic_store_bool(&g_live, live);
       if (!live) {
         if (shutdown_is_requested())
-          ui_error_popup_preserve(atomic_load(&g_default_fd));
+          ui_error_popup_preserve(atomic_load(&g_default_fd), unpack_size(atomic_load(&g_size)));
         errno_notifications_enable(false);
       }
       cond_broadcast(&g_render_done);
@@ -1446,7 +1446,7 @@ static void remove_screen(ui_screen_t screen, int previous) {
     live |= g_screens[i].render != NULL;
   if (!live) {
     if (!g_render_snapshot && shutdown_is_requested())
-      ui_error_popup_preserve(atomic_load(&g_default_fd));
+      ui_error_popup_preserve(atomic_load(&g_default_fd), unpack_size(atomic_load(&g_size)));
     errno_notifications_enable(false);
   }
   mutex_unlock(&g_mutex);
@@ -1624,7 +1624,7 @@ void ui_controller_shutdown(void) {
   thread_join(&g_thread, NULL);
   // Shutdown may precede the next presentation tick. Keep pending errors readable
   // after exit without delaying transport teardown or waiting for terminal input.
-  ui_error_popup_preserve(atomic_load(&g_default_fd));
+  ui_error_popup_preserve(atomic_load(&g_default_fd), unpack_size(atomic_load(&g_size)));
   ui_session_destroy(g_session);
   g_session = NULL;
   errno_notifications_enable(false);

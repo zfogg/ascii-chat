@@ -296,7 +296,10 @@ static asciichat_error_t client_connection_packet(network_connection_t *network,
                                                   const void *payload, size_t length, void *arg) {
   (void)network;
   client_connection_t *connection = arg;
-  return session_protocol_dispatch(&connection->protocol, type, payload, length);
+  asciichat_error_t result = session_protocol_dispatch(&connection->protocol, type, payload, length);
+  // A recorded rejection already closed the transport. Stop this receive loop
+  // with its public reason instead of reading again and notifying a second EOF.
+  return result != ASCIICHAT_OK ? result : server_connection_get_remote_error(connection);
 }
 static void *data_reception_thread_func(void *arg) {
   client_connection_t *connection = arg;

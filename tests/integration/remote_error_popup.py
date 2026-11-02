@@ -90,9 +90,13 @@ def main():
     print(f"Protocol test logs: {directory}", flush=True)
 
     def command(name, *options):
-        return [binary, "--no-check-update", "--log-file", str(directory / f"{name}.log"),
-                *options, "--no-encrypt", "--no-auth", *([] if options[0] == "server" else
-                ["--audio=false", "--fps", "1", "--width", "40", "--height", "12"])]
+        arguments = [binary, "--no-check-update", "--log-file", str(directory / f"{name}.log"),
+                     *options, "--no-encrypt", "--no-auth"]
+        if options[0] != "server":
+            arguments.extend(["--audio=false", "--fps", "1", "--width", "40", "--height", "12"])
+        if options[0] == "client":
+            arguments.extend(["--video-codec", "raw"])
+        return arguments
 
     # A real server must keep serving a peer while its error popup is visible.
     port = free_port()
@@ -137,7 +141,7 @@ def main():
         listener.settimeout(15)
         address = f"127.0.0.1:{listener.getsockname()[1]}"
         client = Terminal(command("client", "client", address, "--test-pattern",
-                                  "--splash-screen=true", "--reconnect-attempts", "0"), rows=40, cols=120)
+                                  "--splash-screen=true", "--reconnect-attempts", "2"), rows=40, cols=120)
         try:
             peer, _ = listener.accept()
             with peer:
@@ -153,7 +157,19 @@ def main():
                 receive(peer, 5002)
                 client.write("\r")
                 client.expect(lambda value: "Dismiss all" not in value, "Popup did not dismiss")
-                error(peer, 44)  # ERROR_NETWORK_PROTOCOL: immediate exit.
+                error(peer, 48)
+            retry_peer, _ = listener.accept()
+            with retry_peer:
+                retry_peer.settimeout(10)
+                send(retry_peer, 1, receive(retry_peer, 1))
+                receive(retry_peer, 5005)
+                # The owner has now propagated the first connection's rejection.
+                # Its errno context must not duplicate the receive worker's popup.
+                expect(client, "ERROR_SESSION_FULL")
+                expect(client, "Error (1)   1 of 1")
+                client.write("\r")
+                client.expect(lambda value: "Dismiss all" not in value, "Retry popup did not dismiss")
+                error(retry_peer, 44)  # ERROR_NETWORK_PROTOCOL: immediate exit.
                 exited(client)
                 assert client.process.exitstatus == 44, client.process.exitstatus
                 # Inspect final screen, not merely a transient escape-stream match.

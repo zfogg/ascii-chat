@@ -349,8 +349,8 @@ static char g_final_output[65536];
 static size_t g_final_length;
 static int g_final_fd;
 
-void ui_error_popup_preserve(int fd) {
-  if (!platform_isatty(fd) || !errno_notifications_pending())
+void ui_error_popup_preserve(int fd, terminal_size_t size) {
+  if (!errno_notifications_pending())
     return;
   asciichat_error_context_t entries[ASCIICHAT_ERRNO_HISTORY_SIZE];
   size_t count = errno_notifications_snapshot(entries, ARRAY_SIZE(entries), NULL);
@@ -368,12 +368,10 @@ void ui_error_popup_preserve(int fd) {
       sanitize(message, sizeof(message), entries[i].context_message);
       frame_buffer_printf(text, "%s: %s\n", asciichat_error_name(entries[i].code), message);
     }
-    terminal_size_t size = {.cols = 80, .rows = 24};
-    (void)terminal_get_size_fd(fd, &size);
-    bool color = !GET_OPTION(strip_ansi) && terminal_should_color_output(fd);
     frame_buffer_append(output, "\033[0m\033[?25h\r\n", 12);
-    ui_notice_render(output, frame_buffer_get_content(text), UI_NOTICE_DANGER, size.cols, terminal_should_use_utf8(),
-                     color);
+    // Use a portable final box: console detection must not hold up queue retirement.
+    ui_notice_render(output, frame_buffer_get_content(text), UI_NOTICE_DANGER, size.cols > 0 ? size.cols : 80, false,
+                     false);
     // Narrow terminals can expand a box substantially. Keep complete terminal
     // controls, falling back to the bounded plain summary rather than cutting ANSI.
     frame_buffer_t *final = frame_buffer_get_length(output) <= sizeof(g_final_output) ? output : text;

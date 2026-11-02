@@ -468,8 +468,15 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
 
   // The receive worker publishes the rejection before marking the connection lost.
   asciichat_error_t remote_error = server_connection_get_remote_error(connection);
-  if (remote_error != ASCIICHAT_OK)
-    return SET_ERRNO(remote_error, "Server rejected connection: %s", asciichat_error_string(remote_error));
+  if (remote_error != ASCIICHAT_OK) {
+    // The receive worker already queued the peer notification. Keep the owner
+    // thread's failure context without presenting the same rejection twice.
+    bool previous = errno_notifications_suppress(true);
+    asciichat_error_t result =
+        SET_ERRNO(remote_error, "Server rejected connection: %s", asciichat_error_string(remote_error));
+    errno_notifications_suppress(previous);
+    return result;
+  }
   return ERROR_NETWORK;
 }
 
