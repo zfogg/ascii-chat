@@ -32,10 +32,10 @@ Test(option_validation_boundaries, finite_float_and_volume_inputs) {
 }
 
 Test(option_validation_boundaries, address_literals_and_local_hostname) {
-  const char *inputs[] = {"127.0.0.1", "0.0.0.0",     "192.0.2.123",   "::1",
-                          "[::1]",     "2001:db8::1", "[2001:db8::1]", "localhost"};
-  const char *expected[] = {"127.0.0.1", "0.0.0.0",     "192.0.2.123", "::1",
-                            "::1",       "2001:db8::1", "2001:db8::1", "127.0.0.1"};
+  const char *inputs[] = {"127.0.0.1",     "0.0.0.0",   "192.0.2.123",       "::1", "[::1]", "2001:db8::1",
+                          "[2001:db8::1]", "localhost", "ｌｏｃａｌｈｏｓｔ"};
+  const char *expected[] = {"127.0.0.1",   "0.0.0.0",     "192.0.2.123", "::1",      "::1",
+                            "2001:db8::1", "2001:db8::1", "127.0.0.1",   "127.0.0.1"};
   char parsed[256], error[256];
   for (size_t i = 0; i < sizeof(inputs) / sizeof(*inputs); ++i)
     for (int client = 0; client <= 1; ++client) {
@@ -144,4 +144,22 @@ Test(option_validation_boundaries, enum_parsers_reject_unknown_values_without_ov
   cr_assert_not(parse_palette_chars("", options->palette_custom, &error));
   SAFE_FREE(error);
   SAFE_FREE(options);
+}
+
+Test(option_validation_boundaries, session_key_array_rejects_excess_and_truncated_paths) {
+  options_t opts = {0};
+  char *args[MAX_SESSION_KEYS + 2];
+  args[0] = "ascii-chat";
+  for (size_t i = 1; i < MAX_SESSION_KEYS + 2; ++i)
+    args[i] = "--key=github:zfogg";
+  cr_assert_eq(options_collect_identity_keys(&opts, MAX_SESSION_KEYS + 1, args), MAX_SESSION_KEYS);
+  cr_assert_eq(opts.num_identity_keys, MAX_SESSION_KEYS);
+  cr_assert_eq(options_collect_identity_keys(&opts, MAX_SESSION_KEYS + 2, args), -1);
+  char path[OPTIONS_BUFF_SIZE + 7];
+  memcpy(path, "--key=", 6);
+  memset(path + 6, 'a', OPTIONS_BUFF_SIZE);
+  memcpy(path + 6, "github:", 7);
+  path[sizeof(path) - 1] = '\0';
+  args[1] = path;
+  cr_assert_eq(options_collect_identity_keys(&opts, 2, args), -1);
 }

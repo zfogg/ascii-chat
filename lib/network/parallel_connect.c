@@ -1,3 +1,4 @@
+#include <ascii-chat/util/url.h>
 /**
  * @file network/parallel_connect.c
  * @brief Parallel IPv4/IPv6 connection implementation
@@ -179,6 +180,11 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
 
   *out_socket = INVALID_SOCKET_VALUE;
 
+  char ascii_hostname[HOSTNAME_BUFFER_SIZE];
+  asciichat_error_t normalized = hostname_to_ascii(config->hostname, ascii_hostname, sizeof(ascii_hostname));
+  if (normalized != ASCIICHAT_OK)
+    return normalized;
+
   // Resolve hostname
   log_debug("PCONN: Resolving %s:%d", config->hostname, config->port);
 
@@ -198,7 +204,7 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
     if (otel_scope.retained)
       gotel_attr_string(&otel_scope.scope, "dns.question.name", config->hostname);
 #endif
-    gai_result = getaddrinfo(config->hostname, port_str, &hints, &result);
+    gai_result = getaddrinfo(ascii_hostname, port_str, &hints, &result);
 #ifdef ASCIICHAT_WITH_OTEL
     if (gai_result && otel_scope.retained)
       gotel_error(&otel_scope.scope, "dns.error", "DNS lookup failed");

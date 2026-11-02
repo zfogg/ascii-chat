@@ -137,7 +137,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   // Load multiple identity keys from options (multi-key protocol support)
   if (opts && opts->num_identity_keys > 0) {
     // Load all identity keys from options
-    for (size_t i = 0; i < opts->num_identity_keys && i < MAX_IDENTITY_KEYS; i++) {
+    for (size_t i = 0; i < opts->num_identity_keys && i < MAX_SESSION_KEYS; i++) {
       uint8_t pubkey[32] = {0};
       uint8_t seckey[64] = {0};
       asciichat_error_t key_result = acds_identity_load(opts->identity_keys[i], pubkey, seckey);
@@ -502,7 +502,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     memcpy(params.identity_pubkey, session->identity_pubkeys[key_idx], sizeof(params.identity_pubkey));
     memcpy(params.identity_seckey, session->identity_seckeys[key_idx], sizeof(params.identity_seckey));
     params.capabilities = 3;
-    params.max_participants = PARTICIPANT_LIMIT;
+    params.max_participants = MAX_SESSION_PARTICIPANTS;
     params.session_type = SESSION_TYPE_WEBRTC;
     params.has_password = session->password[0] != 0;
     SAFE_STRNCPY(params.password, session->password, sizeof(params.password));
@@ -1124,7 +1124,7 @@ static void discovery_handoff_receive(discovery_session_t *session, const void *
     if (!session->host_ctx) {
       session_host_config_t config = {.port = GET_OPTION(port),
                                       .ipv4_address = "0.0.0.0",
-                                      .max_clients = PARTICIPANT_LIMIT,
+                                      .max_clients = MAX_SESSION_PARTICIPANTS,
                                       .encryption_enabled = session->session_type != SESSION_TYPE_WEBRTC};
       session->host_ctx = session_host_create(&config);
       result = session->host_ctx ? session_host_start(session->host_ctx) : ERROR_MEMORY;
@@ -1697,7 +1697,7 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
     session_host_config_t hconfig = {
         .port = host_port,
         .ipv4_address = "0.0.0.0",
-        .max_clients = PARTICIPANT_LIMIT,
+        .max_clients = MAX_SESSION_PARTICIPANTS,
         .encryption_enabled = true,
     };
 

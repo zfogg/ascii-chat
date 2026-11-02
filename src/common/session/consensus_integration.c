@@ -143,7 +143,7 @@ asciichat_error_t consensus_get_discovery_callbacks(void *context, session_conse
  * @return ASCIICHAT_OK on success
  */
 asciichat_error_t consensus_create_for_discovery(const uint8_t session_id[16], const uint8_t my_id[16],
-                                                 const uint8_t participant_ids[PARTICIPANT_LIMIT][16],
+                                                 const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
                                                  int num_participants, void *discovery_context,
                                                  session_consensus_t **out_consensus) {
   (void)session_id; // Informational only, not needed by consensus itself
@@ -152,7 +152,7 @@ asciichat_error_t consensus_create_for_discovery(const uint8_t session_id[16], c
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  if (num_participants < 1 || num_participants > PARTICIPANT_LIMIT) {
+  if (num_participants < 1 || num_participants > MAX_SESSION_PARTICIPANTS) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant count: %d", num_participants);
   }
 

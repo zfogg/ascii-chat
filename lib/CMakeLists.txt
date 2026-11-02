@@ -361,7 +361,7 @@ endmacro()
 # -----------------------------------------------------------------------------
 list(FILTER UTIL_SRCS EXCLUDE REGEX "/utf8proc/utf8proc[.]c$")
 create_ascii_chat_module(ascii-chat-util "${UTIL_SRCS}")
-target_link_libraries(ascii-chat-util PRIVATE ${UTF8PROC_LIBRARIES})
+target_link_libraries(ascii-chat-util PRIVATE ${UTF8PROC_LIBRARIES} asciichat-icu)
 
 # PCRE2: Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
 # CRITICAL: Must be defined before including pcre2.h in any source file
@@ -1109,6 +1109,7 @@ add_library(ascii-chat-shared SHARED
     # These are needed because shared library is created from OBJECT files,
     # which don't automatically bring in their module dependencies
     target_link_libraries(ascii-chat-shared PRIVATE
+        asciichat-icu
         ${LIBSODIUM_LIBRARIES}
         zstd::libzstd
         ${OPUS_LIBRARIES}
@@ -1581,7 +1582,7 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 # Create an INTERFACE library for dependency propagation
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
 add_library(ascii-chat-static-lib-deps INTERFACE)
-target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${UTF8PROC_LIBRARIES})
+target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${UTF8PROC_LIBRARIES} asciichat-icu)
 
 # Link bundled dependencies (not available via package managers)
 # BearSSL and WebRTC AEC3 are embedded in the static library

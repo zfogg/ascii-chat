@@ -63,6 +63,8 @@
 
 #pragma once
 
+#include <ascii-chat/common/limits.h>
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
@@ -94,8 +96,8 @@ typedef struct {
   } source;                    ///< Which discovery method found the server
 
   // For mDNS results
-  char mdns_service_name[256]; ///< mDNS service instance name (e.g., "swift-river-mountain")
-  char mdns_hostname[256];     ///< mDNS hostname (e.g., "mycomputer.local")
+  char mdns_service_name[256];              ///< mDNS service instance name (e.g., "swift-river-mountain")
+  char mdns_hostname[HOSTNAME_BUFFER_SIZE]; ///< mDNS hostname (e.g., "mycomputer.local")
 
   // For ACDS results (if applicable)
   uint8_t session_id[16];     ///< ACDS session UUID

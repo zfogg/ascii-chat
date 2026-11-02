@@ -10,6 +10,14 @@
 
 #include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/util/url.h>
+#include <ascii-chat/util/ip.h>
+#include <unicode/uidna.h>
+#ifdef __EMSCRIPTEN__
+#include <unicode/udata.h>
+#include <ascii-chat/util/lifecycle.h>
+extern const unsigned char asciichat_icu_idna_data[];
+static lifecycle_t g_icu_idna_data_lc = LIFECYCLE_INIT;
+#endif
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/pcre2.h>
 #include <pcre2.h>
@@ -43,11 +51,10 @@ static const char *URL_REGEX_PATTERN =
     // IPv6 ADDRESS: e.g. [::1] or [fe80::1%eth0]
     // Supports zone IDs (e.g. %25eth0 for link-local addresses)
     "|(?:\\[(?<ipv6>[a-fA-F0-9:.]+(?:%25[a-zA-Z0-9._~!$&'()*+,;=-]+)?)\\])"
-    // HOSTNAME: e.g. example.com, localhost, or international domain names
-    // Negative lookahead rejects bare IP notation (digits.digits.digits format)
+    // Hostname syntax and DNS lengths are checked by ICU after IDNA mapping.
+    // Exclude ambiguous numeric-only hostnames and invalid IPv4 spellings.
     "|(?!\\d+(?:\\.\\d+)*(?:[:/"
-    "?#]|$))(?:[a-z0-9_\\x{00a1}-\\x{ffff}][a-z0-9\\x{00a1}-\\x{ffff}_-]{0,62})?[a-z0-9_\\x{00a1}-\\x{ffff}](?:\\.(?:["
-    "a-z0-9_\\x{00a1}-\\x{ffff}][a-z0-9\\x{00a1}-\\x{ffff}_-]{0,62})?[a-z0-9_\\x{00a1}-\\x{ffff}])*\\.?"
+    "?#]|$))[a-z0-9_.\\x{00a1}-\\x{10ffff}-]+"
     ")"
     // PORT: optional :port (1-5 digits, e.g. :8080, :443)
     "(?::(?<port>\\d{1,5}))?"
@@ -78,89 +85,67 @@ static pcre2_code *url_regex_get(void) {
  * PUBLIC API IMPLEMENTATION
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+asciichat_error_t hostname_to_ascii(const char *hostname, char *output, size_t capacity) {
+  if (!hostname || !*hostname || !output || capacity == 0)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing hostname or output buffer");
+  size_t length = strlen(hostname);
+  if (length > INT32_MAX)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Hostname input exceeds ICU length range");
+
+  // IP literals are addresses, not IDNA labels; preserve IPv6 zones and brackets.
+  if (length < HOSTNAME_BUFFER_SIZE && (is_valid_ipv4(hostname) || is_valid_ipv6(hostname))) {
+    if (length >= capacity)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Address exceeds output capacity");
+    memmove(output, hostname, length + 1);
+    return ASCIICHAT_OK;
+  }
+
+  UErrorCode status = U_ZERO_ERROR;
+#ifdef __EMSCRIPTEN__
+  while (!lifecycle_is_initialized(&g_icu_idna_data_lc)) {
+    if (lifecycle_init_once(&g_icu_idna_data_lc)) {
+      udata_setCommonData(asciichat_icu_idna_data, &status);
+      if (U_FAILURE(status)) {
+        lifecycle_init_abort(&g_icu_idna_data_lc);
+        return SET_ERRNO(ERROR_INIT, "Could not load ICU IDNA data: %s", u_errorName(status));
+      }
+      lifecycle_init_commit(&g_icu_idna_data_lc);
+    }
+  }
+#endif
+  UIDNA *idna = uidna_openUTS46(
+      UIDNA_NONTRANSITIONAL_TO_ASCII | UIDNA_CHECK_BIDI | UIDNA_CHECK_CONTEXTJ | UIDNA_CHECK_CONTEXTO, &status);
+  if (U_FAILURE(status) || !idna)
+    return SET_ERRNO(ERROR_INIT, "Could not initialize ICU IDNA: %s", u_errorName(status));
+  char ascii[HOSTNAME_BUFFER_SIZE];
+  UIDNAInfo info = UIDNA_INFO_INITIALIZER;
+  int32_t written = uidna_nameToASCII_UTF8(idna, hostname, (int32_t)length, ascii, sizeof(ascii), &info, &status);
+  uidna_close(idna);
+  // A trailing root dot is allowed, but does not count towards the DNS name limit.
+  size_t max_length = MAX_HOSTNAME_LENGTH;
+  if (written > 0 && written < (int32_t)sizeof(ascii) && ascii[written - 1] == '.')
+    ++max_length;
+  if (U_FAILURE(status) || info.errors || written <= 0 || (size_t)written > max_length ||
+      (size_t)written >= sizeof(ascii) || (size_t)written >= capacity)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IDNA hostname or insufficient capacity (ICU %s, errors 0x%x)",
+                     u_errorName(status), (unsigned)info.errors);
+  // Retain underscore hostnames used by local services, but reject other
+  // non-DNS ASCII punctuation permitted by ICU when STD3 rules are disabled.
+  for (int32_t i = 0; i < written; ++i) {
+    char c = ascii[i];
+    if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.' || c == '_'))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ASCII character in IDNA hostname");
+  }
+  memcpy(output, ascii, (size_t)written);
+  output[written] = '\0';
+  return ASCIICHAT_OK;
+}
+
 bool url_is_valid(const char *url) {
-  if (!url || !*url) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "URL is NULL or empty");
-    return false;
-  }
-
-  pcre2_code *regex = url_regex_get();
-  if (!regex) {
-    return false;
-  }
-
-  /* Check if URL needs http:// prefix (bare hostname or IP) */
-  char url_with_scheme[2048];
-  const char *url_to_match = url;
-
-  if (!strstr(url, "://")) {
-    /* No scheme - check if it looks like a bare hostname/IP */
-
-    /* Reject bare scheme words like "http", "https", "ftp" */
-    if (strcmp(url, "http") == 0 || strcmp(url, "https") == 0 || strcmp(url, "ftp") == 0 || strcmp(url, "ftps") == 0) {
-      return false;
-    }
-
-    /* Reject URLs that look like malformed schemes (http/ instead of http://) */
-    if (strncmp(url, "http/", 5) == 0 || strncmp(url, "https/", 6) == 0) {
-      return false;
-    }
-
-    /* Reject if it contains @ (email-like) */
-    if (strchr(url, '@')) {
-      return false;
-    }
-
-    /* Reject pure hex strings (raw keys, not hostnames) */
-    if (strlen(url) == 64) {
-      bool all_hex = true;
-      for (const char *p = url; *p && all_hex; p++) {
-        if (!((*p >= '0' && *p <= '9') || (*p >= 'a' && *p <= 'f') || (*p >= 'A' && *p <= 'F'))) {
-          all_hex = false;
-        }
-      }
-      if (all_hex) {
-        return false; /* Looks like raw hex key, not hostname */
-      }
-    }
-
-    /* Check colon handling */
-    const char *colon_pos = strchr(url, ':');
-    if (colon_pos) {
-      /* Has colon - reject unless colon is followed by port number */
-      const char *after_colon = colon_pos + 1;
-      bool looks_like_port = true;
-      for (const char *p = after_colon; *p && *p != '/'; p++) {
-        if (!(*p >= '0' && *p <= '9')) {
-          looks_like_port = false;
-          break;
-        }
-      }
-      if (!looks_like_port) {
-        return false; /* Colon but not a port number */
-      }
-    }
-
-    /* Looks like a bare hostname/IP - prepend http:// */
-    int result = snprintf(url_with_scheme, sizeof(url_with_scheme), "http://%s", url);
-    if (result < 0 || result >= (int)sizeof(url_with_scheme)) {
-      return false; /* URL too long */
-    }
-    url_to_match = url_with_scheme;
-  }
-
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
-  if (!match_data) {
-    return false;
-  }
-
-  /* Perform JIT match (falls back to interpreted if JIT unavailable) */
-  int rc = asciichat_pcre2_match(regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
-                                 0,                                                        /* options */
-                                 match_data, NULL);                                        /* mcontext */
-
-  pcre2_match_data_free(match_data);
-  return rc >= 0; /* rc >= 0 means successful match */
+  url_parts_t parts = {0};
+  asciichat_error_t result = url_parse(url, &parts);
+  url_parts_destroy(&parts);
+  return result == ASCIICHAT_OK;
 }
 
 asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
@@ -181,14 +166,14 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
   }
 
   /* Check if URL needs http:// prefix (bare hostname or IP) */
-  // allocate twice the "safe limit" of 2048 for website URLs, even though modern browsers can handle up
-  // to 80k character URLs in some cases.
-  char url_with_scheme[4096];
+  char url_with_scheme[URL_BUFFER_SIZE];
   const char *url_to_match = url;
   const char *original_url = url;
 
   if (!strstr(url, "://")) {
     /* No scheme - check if it looks like a bare hostname/IP */
+    if (strchr(url, '@'))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Ambiguous email address without URL scheme");
 
     /* Reject bare scheme words like "http", "https", "ftp" */
     if (strcmp(url, "http") == 0 || strcmp(url, "https") == 0 || strcmp(url, "ftp") == 0 || strcmp(url, "ftps") == 0) {
@@ -265,6 +250,11 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
   if (port_str) {
     parts_out->port = (int)strtol(port_str, NULL, 10);
     SAFE_FREE(port_str);
+    if (parts_out->port <= 0 || parts_out->port > UINT16_MAX) {
+      pcre2_match_data_free(match_data);
+      url_parts_destroy(parts_out);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "URL port must be in the range 1-65535");
+    }
   }
 
   pcre2_match_data_free(match_data);
@@ -275,6 +265,16 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing required URL components");
   }
 
+  if (!parts_out->ipv6) {
+    char ascii[HOSTNAME_BUFFER_SIZE];
+    asciichat_error_t result = hostname_to_ascii(parts_out->host, ascii, sizeof(ascii));
+    if (result != ASCIICHAT_OK) {
+      url_parts_destroy(parts_out);
+      return result;
+    }
+    SAFE_FREE(parts_out->host);
+    SAFE_STRDUP(parts_out->host, ascii);
+  }
   return ASCIICHAT_OK;
 }
 

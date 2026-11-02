@@ -1,3 +1,4 @@
+#include <ascii-chat/util/url.h>
 /**
  * @file network/dns.c
  * @brief DNS resolution utilities implementation
@@ -15,6 +16,12 @@ bool dns_test_connectivity(const char *hostname) {
     log_warn("NULL hostname provided to DNS connectivity test");
     return false;
   }
+
+  char ascii_hostname[HOSTNAME_BUFFER_SIZE];
+  asciichat_error_t normalized = hostname_to_ascii(hostname, ascii_hostname, sizeof(ascii_hostname));
+  if (normalized != ASCIICHAT_OK)
+    return false;
+  hostname = ascii_hostname;
 
   struct addrinfo hints, *result = NULL;
   memset(&hints, 0, sizeof(hints));

@@ -1,13 +1,13 @@
 #pragma once
 #include <ascii-chat/network/acip/acds.h>
-#include <ascii-chat/options/options.h>
+#include <ascii-chat/common/limits.h>
 
 /** Connection-local ordered Ed25519 create sequence. Never persists partial sets.
  * request and reserved_string are adjacent to preserve the legacy trailing name. */
 typedef struct {
   acip_session_create_t request;
   char reserved_string[ACIP_MAX_SESSION_STRING_LEN];
-  uint8_t keys[MAX_IDENTITY_KEYS][32];
+  uint8_t keys[MAX_SESSION_KEYS][32];
   size_t count;
 } acds_create_key_set_t;
 

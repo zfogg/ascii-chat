@@ -60,7 +60,8 @@ if("static" IN_LIST _asciichat_components AND ascii-chat_static_FOUND AND NOT TA
     find_dependency(OpenSSL)
     find_dependency(Freetype)
     find_dependency(ZLIB)
-    set(_asciichat_deps OpenSSL::SSL OpenSSL::Crypto Freetype::Freetype ZLIB::ZLIB)
+    find_dependency(ICU 60 COMPONENTS uc data)
+    set(_asciichat_deps ICU::uc ICU::data OpenSSL::SSL OpenSSL::Crypto Freetype::Freetype ZLIB::ZLIB)
     foreach(_module libsodium libzstd portaudio-2.0 opus libpcre2-8 sqlite3 libuv
             libavformat libavcodec libavutil libswscale libswresample miniupnpc)
         string(MAKE_C_IDENTIFIER "${_module}" _id)

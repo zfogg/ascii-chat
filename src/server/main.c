@@ -384,7 +384,7 @@ private_key_t g_server_private_key = {0};
  * @note g_server_private_key points to g_server_identity_keys[0] for compatibility
  * @ingroup server_main
  */
-private_key_t g_server_identity_keys[MAX_IDENTITY_KEYS] = {0};
+private_key_t g_server_identity_keys[MAX_SESSION_KEYS] = {0};
 
 /**
  * @brief Number of loaded server identity keys
@@ -793,7 +793,7 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
   }
 
   // Build session name from hostname for mDNS service name
-  char hostname[256] = {0};
+  char hostname[HOSTNAME_BUFFER_SIZE] = {0};
   // Reserve the service label suffix for the port used by the mDNS backend.
   char session_name[56] = "ascii-chat-Server";
   if (gethostname(hostname, sizeof(hostname) - 1) == 0 && strlen(hostname) > 0) {
@@ -1037,7 +1037,7 @@ static int init_server_crypto(void) {
     // Multi-key mode: load all identity keys from identity_keys[] array
     log_info("Loading %zu identity key(s) for multi-key support...", num_keys);
 
-    for (size_t i = 0; i < num_keys && i < MAX_IDENTITY_KEYS; i++) {
+    for (size_t i = 0; i < num_keys && i < MAX_SESSION_KEYS; i++) {
       const char *key_path = GET_OPTION(identity_keys[i]);
 
       if (strlen(key_path) == 0) {

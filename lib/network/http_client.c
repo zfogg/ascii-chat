@@ -1,3 +1,4 @@
+#include <ascii-chat/util/url.h>
 /**
  * @file network/http_client.c
  * @ingroup network
@@ -185,6 +186,12 @@ char *https_get(const char *hostname, const char *path) {
     log_error("Invalid arguments");
     return NULL;
   }
+
+  char ascii_hostname[HOSTNAME_BUFFER_SIZE];
+  asciichat_error_t normalized = hostname_to_ascii(hostname, ascii_hostname, sizeof(ascii_hostname));
+  if (normalized != ASCIICHAT_OK)
+    return NULL;
+  hostname = ascii_hostname;
 
   log_info("HTTPS GET https://%s%s", hostname, path);
 

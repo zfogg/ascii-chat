@@ -1,4 +1,5 @@
 #include <criterion/criterion.h>
+#include <ascii-chat/network/acip/acds_server.h>
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
@@ -350,4 +351,20 @@ Test(acip_handlers, unknown_packets_and_missing_dispatch_context_are_rejected) {
                ASCIICHAT_OK);
   cr_assert_eq(acip_handle_client_packet(&transport, PACKET_TYPE_ACIP_PARTICIPANT_LEFT, NULL, 0, &client),
                ASCIICHAT_OK);
+}
+
+Test(acip_handlers, session_create_participant_and_key_boundaries) {
+  acip_session_create_t req = {.max_participants = MAX_SESSION_PARTICIPANTS,
+                               .server_port = 27224,
+                               .total_keys = MAX_SESSION_KEYS,
+                               .key_index = MAX_SESSION_KEYS - 1};
+  cr_assert_eq(acip_server_validate_session_create(&req), ASCIICHAT_OK);
+  req.max_participants = MAX_SESSION_PARTICIPANTS + 1;
+  cr_assert_eq(acip_server_validate_session_create(&req), ERROR_INVALID_PARAM);
+  req.max_participants = MAX_SESSION_PARTICIPANTS;
+  req.total_keys = MAX_SESSION_KEYS + 1;
+  cr_assert_eq(acip_server_validate_session_create(&req), ERROR_INVALID_PARAM);
+  req.total_keys = MAX_SESSION_KEYS;
+  req.key_index = MAX_SESSION_KEYS;
+  cr_assert_eq(acip_server_validate_session_create(&req), ERROR_INVALID_PARAM);
 }

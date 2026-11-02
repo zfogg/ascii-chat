@@ -50,6 +50,13 @@
 #include <stdbool.h>
 #include "../asciichat_errno.h"
 
+/** Convert a UTF-8 DNS hostname to its canonical ASCII form using ICU UTS #46.
+ * Underscore hostnames remain accepted for local-service compatibility.
+ * Nontransitional processing preserves distinct names such as faß.de and fass.de.
+ * Valid IP literals are copied unchanged. Capacity includes NUL; output is unchanged
+ * on error. DNS label/name limits apply after conversion. URL paths are not processed. */
+asciichat_error_t hostname_to_ascii(const char *hostname, char *output, size_t capacity);
+
 /**
  * @brief Structure containing parsed URL components
  * @note All string fields are allocated with SAFE_MALLOC() and must be freed by caller
@@ -57,19 +64,19 @@
 typedef struct {
   char *scheme;   ///< Extracted scheme: "http" or "https" (allocated)
   char *userinfo; ///< Optional userinfo (user:pass) - may be NULL (allocated if present)
-  char *host;     ///< Extracted hostname or IP address (allocated)
+  char *host;     ///< Canonical ASCII hostname or IP address (allocated)
   char *ipv6;     ///< IPv6 address if host is bracketed IPv6 - may be NULL (allocated if present)
   int port;       ///< Extracted port number (0 if not specified)
   char *path;     ///< Extracted path, query, and fragment (allocated if present, may be NULL)
 } url_parts_t;
 
 /**
- * @brief Fast URL validation using production-grade regex (HTTP/HTTPS/WebSocket/TCP)
+ * @brief URL validation using shared parsing and ICU hostname checks
  * @param url Input URL string to validate
  * @return True if URL is valid, false otherwise
  *
- * Quickly validates a URL without extracting components. Uses PCRE2 with JIT
- * compilation for 10-100x performance over manual parsing.
+ * Validates with the same parser and IDNA checks used by url_parse(), then frees
+ * the extracted components.
  *
  * URL ACCEPTANCE CRITERIA:
  * - Scheme: http, https, ws, wss, or tcp (case-insensitive)

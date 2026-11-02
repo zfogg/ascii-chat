@@ -134,7 +134,7 @@ Test(ip_boundaries, optional_ports_parse_hostnames_ipv4_and_unambiguous_ipv6) {
     const char *input, *address;
     uint16_t port;
   } cases[] = {{"localhost", "localhost", 27224},
-               {"Example-host.test:443", "Example-host.test", 443},
+               {"Example-host.test:443", "example-host.test", 443},
                {"192.0.2.1", "192.0.2.1", 27224},
                {"192.0.2.1:1", "192.0.2.1", 1},
                {"192.0.2.1:65535", "192.0.2.1", 65535},
@@ -228,4 +228,32 @@ Test(ip_boundaries, formatted_addresses_round_trip_and_reject_short_destinations
   cr_assert_eq(format_ip_with_port(NULL, 1, out, sizeof(out)), ERROR_INVALID_PARAM);
   cr_assert_eq(format_ip_with_port("::1", 1, NULL, 32), ERROR_INVALID_PARAM);
   cr_assert_eq(format_ip_with_port("::1", 1, out, 0), ERROR_INVALID_PARAM);
+}
+
+Test(ip_boundaries, hostname_and_label_byte_limits) {
+  char host[MAX_HOSTNAME_LENGTH + 2], parsed[HOSTNAME_BUFFER_SIZE];
+  uint16_t port;
+  memset(host, 'a', sizeof(host));
+  host[63] = host[127] = host[191] = '.';
+  host[MAX_HOSTNAME_LENGTH] = '\0';
+  cr_assert_eq(parse_address_with_optional_port(host, parsed, sizeof(parsed), &port, 27224), 0);
+  cr_assert_str_eq(parsed, host);
+  host[MAX_HOSTNAME_LENGTH] = 'a';
+  host[MAX_HOSTNAME_LENGTH + 1] = '\0';
+  cr_assert_eq(parse_address_with_optional_port(host, parsed, sizeof(parsed), &port, 27224), -1);
+  memset(host, 'a', sizeof(host));
+  host[MAX_HOSTNAME_LABEL_LENGTH] = '\0';
+  cr_assert_eq(parse_address_with_optional_port(host, parsed, sizeof(parsed), &port, 27224), 0);
+  cr_assert_str_eq(parsed, host);
+  host[MAX_HOSTNAME_LABEL_LENGTH] = 'a';
+  host[MAX_HOSTNAME_LABEL_LENGTH + 1] = '\0';
+  cr_assert_eq(parse_address_with_optional_port(host, parsed, sizeof(parsed), &port, 27224), -1);
+}
+
+Test(ip_boundaries, unicode_hostname_with_port_is_normalized) {
+  char output[HOSTNAME_BUFFER_SIZE];
+  uint16_t port = 0;
+  cr_assert_eq(parse_address_with_optional_port("bücher.de:443", output, sizeof(output), &port, 27224), 0);
+  cr_assert_str_eq(output, "xn--bcher-kva.de");
+  cr_assert_eq(port, 443);
 }

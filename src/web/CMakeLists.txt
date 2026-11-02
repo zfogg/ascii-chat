@@ -66,6 +66,7 @@ include(FetchContent)
 get_filename_component(_cmake_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake" ABSOLUTE)
 include(${_cmake_dir}/deps/Libsodium.cmake)
 include(${_cmake_dir}/deps/PCRE2.cmake)
+include(${_cmake_dir}/deps/ICU.cmake)
 include(${_cmake_dir}/deps/Opus.cmake)
 include(${_cmake_dir}/deps/Zstd.cmake)
 include(${_cmake_dir}/deps/Libvterm.cmake)
@@ -430,6 +431,8 @@ endif()
 # These are set by Libsodium.cmake, PCRE2.cmake, Libvterm.cmake, etc.
 
 add_dependencies(wasm-common generate_version)
+target_link_libraries(wasm-common PUBLIC asciichat-icu)
+
 target_link_libraries(wasm-common PRIVATE
     ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
@@ -480,6 +483,7 @@ target_link_options(mirror-web PRIVATE -pthread -sUSE_PTHREADS=1 "-sPTHREAD_POOL
 # Link dependencies with explicit library paths for wasm-ld
 
 target_link_libraries(mirror-web PRIVATE
+    asciichat-icu
     ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${PCRE2_LIBRARIES}
@@ -553,6 +557,7 @@ target_include_directories(client-web PRIVATE
 
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE
+    asciichat-icu
     ${UTF8PROC_LIBRARIES}
     ${FFTW_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}

@@ -120,7 +120,7 @@ Test(discovery_key_set, malformed_sequences_clear_partial_state) {
       next.key_index = 2;
       break;
     case 2:
-      next.total_keys = MAX_IDENTITY_KEYS + 1;
+      next.total_keys = MAX_SESSION_KEYS + 1;
       break;
     case 3:
       next.total_keys = 3;
@@ -185,7 +185,7 @@ Test(discovery_key_set, invalid_key_sets_and_storage_failures_leave_no_partial_s
   memset(duplicate[1], 0, 32);
   cr_assert_eq(database_session_create_keys(db, &req, duplicate, 2, &config, &session), ERROR_INVALID_PARAM);
   cr_assert_eq(database_session_create_keys(db, &req, keys, 0, &config, &session), ERROR_INVALID_PARAM);
-  cr_assert_eq(database_session_create_keys(db, &req, keys, MAX_IDENTITY_KEYS + 1, &config, &session),
+  cr_assert_eq(database_session_create_keys(db, &req, keys, MAX_SESSION_KEYS + 1, &config, &session),
                ERROR_INVALID_PARAM);
   cr_assert_eq(sqlite3_exec(db,
                             "CREATE TRIGGER fail_key BEFORE INSERT ON session_identity_keys "
@@ -367,4 +367,32 @@ Test(discovery_key_set, fresh_databases_do_not_create_superseded_key_tables_or_i
   cr_assert_eq(sqlite3_step(stmt), SQLITE_ROW);
   cr_assert_eq(sqlite3_column_int(stmt, 0), 0);
   sqlite3_finalize(stmt);
+}
+
+Test(discovery_key_set, maximum_create_sequence_round_trips_storage) {
+  acds_create_key_set_t set = {0};
+  bool complete = false;
+  for (size_t i = 0; i < MAX_SESSION_KEYS; ++i) {
+    acip_session_create_t req = create_request(0, MAX_SESSION_KEYS);
+    uint8_t secret[64];
+    cr_assert_eq(crypto_sign_keypair(req.identity_pubkey, secret), 0);
+    req.key_index = (uint8_t)i;
+    req.max_participants = MAX_SESSION_PARTICIPANTS;
+    cr_assert_eq(acds_sign_session_create(secret, req.timestamp, req.capabilities, req.max_participants, req.signature),
+                 ASCIICHAT_OK);
+    sodium_memzero(secret, sizeof(secret));
+    cr_assert_eq(acds_create_key_set_collect(&set, &req, true, &complete), ASCIICHAT_OK);
+    cr_assert_eq(complete, i == MAX_SESSION_KEYS - 1);
+  }
+  acip_session_created_t response;
+  cr_assert_eq(database_session_create_keys(db, &set.request, set.keys, set.count, &config, &response), ASCIICHAT_OK);
+  uint8_t stored[MAX_SESSION_KEYS][32];
+  size_t count = 0;
+  cr_assert_eq(database_session_get_keys(db, response.session_string, stored, MAX_SESSION_KEYS, &count), ASCIICHAT_OK);
+  cr_assert_eq(count, MAX_SESSION_KEYS);
+  cr_assert_arr_eq(stored, set.keys, sizeof(stored));
+  session_entry_t *entry = database_session_find_by_id(db, response.session_id);
+  cr_assert_not_null(entry);
+  cr_assert_eq(entry->max_participants, MAX_SESSION_PARTICIPANTS);
+  session_entry_destroy(entry);
 }

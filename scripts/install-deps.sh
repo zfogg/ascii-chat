@@ -67,7 +67,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
   brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
     ninja mimalloc zstd libsodium portaudio opus fftw criterion doxygen sqlite3 \
-    miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets libuv openssl@3 yyjson \
+    miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets libuv icu4c openssl@3 yyjson \
     libvterm freetype fontconfig expat \
     >/dev/null 2>&1 || true
 
@@ -153,7 +153,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       doxygen \
       dpkg-dev rpm \
       yt-dlp \
-      libwebsockets-dev libuv1-dev  \
+      libwebsockets-dev libuv1-dev libicu-dev  \
       libvterm-dev libfreetype6-dev libfontconfig1-dev \
       curl unzip \
       || true
@@ -321,7 +321,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       emscripten \
       doxygen \
       rpm-build \
-      libvterm-devel freetype-devel fontconfig-devel
+      libvterm-devel freetype-devel fontconfig-devel libicu-devel
 
     python3 -m pip install -U "yt-dlp[default]"
 
@@ -349,7 +349,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       yyjson \
       emscripten \
       bun \
-      libwebsockets libuv \
+      libwebsockets libuv icu \
       libvterm freetype2 fontconfig
 
   else
