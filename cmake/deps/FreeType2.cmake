@@ -98,7 +98,9 @@ elseif(APPLE)
         foreach(_dependency IN LISTS FREETYPE_STATIC_LIBRARIES)
             if(_dependency STREQUAL "freetype")
                 continue()
-            elseif(_dependency MATCHES "^(bz2|z|m|iconv)$")
+            elseif(_dependency MATCHES "^(bz2|z|m|iconv|hvf)$")
+                # Apple system libraries are supplied by the SDK as .tbd stubs,
+                # not Homebrew static archives (including FreeType's HVF driver).
                 list(APPEND FREETYPE_LIBRARIES "${_dependency}")
             else()
                 find_file(_freetype_${_dependency}_archive NAMES "lib${_dependency}.a"
