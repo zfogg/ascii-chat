@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define LOG_SEARCH_OUTPUT_BUFFER_SIZE 512
+
 #include <ascii-chat/otel.h>
 /**
  * @file log/search.c
@@ -722,7 +726,7 @@ void log_search_render_input_line(int width) {
   }
 
   // Render the pattern and position terminal cursor at current edit position
-  char output_buf[512];
+  char output_buf[LOG_SEARCH_OUTPUT_BUFFER_SIZE];
 
   // Build output: "/" + pattern
   int pattern_len =

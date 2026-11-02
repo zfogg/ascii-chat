@@ -1,3 +1,12 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define LOG_BUFFER_BUFFER_SIZE 8192
+#define LOG_LOG_MSG_BUFFER_SIZE 256
+#define LOG_TIMESTAMP_BUFFER_SIZE 64
+#define LOG_LEVEL_BUFFER_SIZE 16
+#define LOG_FILE_PATH_BUFFER_SIZE 256
+#define LOG_FUNC_NAME_BUFFER_SIZE 256
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/network/acip/send.h>
 /**
@@ -459,7 +468,7 @@ static void rotate_log_locked(void) {
   }
 
   /* Copy tail to temp file */
-  char buffer[8192];
+  char buffer[LOG_BUFFER_BUFFER_SIZE];
   ssize_t bytes_read;
   size_t new_size = 0;
   while ((bytes_read = platform_read(read_file, buffer, sizeof(buffer))) > 0) {
@@ -505,7 +514,7 @@ static void rotate_log_locked(void) {
   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
   get_current_time_formatted(time_buf);
 
-  char log_msg[256];
+  char log_msg[LOG_LOG_MSG_BUFFER_SIZE];
   int log_msg_len =
       safe_snprintf(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n", time_buf, new_size);
   if (log_msg_len > 0 && log_msg_len < (int)sizeof(log_msg)) {
@@ -2088,7 +2097,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   }
 
   size_t timestamp_len = p - timestamp_start;
-  char timestamp[64];
+  char timestamp[LOG_TIMESTAMP_BUFFER_SIZE];
   if (timestamp_len >= sizeof(timestamp) || timestamp_len == 0) {
     return 0; // Invalid timestamp - empty or too long
   }
@@ -2114,7 +2123,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     return 0; // Missing closing bracket for level
   }
   size_t level_len = p - level_start;
-  char level_str[16];
+  char level_str[LOG_LEVEL_BUFFER_SIZE];
   if (level_len >= sizeof(level_str) || level_len == 0) {
     return 0; // Level string too long or empty
   }
@@ -2176,7 +2185,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     return 0; // Malformed
   }
   size_t file_len = p - file_start;
-  char file_path[256];
+  char file_path[LOG_FILE_PATH_BUFFER_SIZE];
   if (file_len >= sizeof(file_path)) {
     return 0;
   }
@@ -2229,7 +2238,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     func_len--;
   }
 
-  char func_name[256];
+  char func_name[LOG_FUNC_NAME_BUFFER_SIZE];
   if (func_len >= sizeof(func_name)) {
     func_len = sizeof(func_name) - 1;
   }
