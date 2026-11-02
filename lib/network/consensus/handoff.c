@@ -48,19 +48,20 @@ void consensus_handoff_encode(const consensus_handoff_message_t *m, uint8_t out[
   out[54] = (uint8_t)(m->port >> 8);
   out[55] = (uint8_t)m->port;
 }
-void consensus_handoff_init(consensus_handoff_t *s, const uint8_t session[UUID_SIZE], const uint8_t host[UUID_SIZE]) {
+void consensus_handoff_init(consensus_handoff_t *s, const uint8_t session[SESSION_ID_SIZE],
+                            const uint8_t host[SESSION_ID_SIZE]) {
   memset(s, 0, sizeof(*s));
   memcpy(s->session, session, 16);
   memcpy(s->host, host, 16);
   s->generation = 1;
 }
-static consensus_handoff_peer_t *find_peer(consensus_handoff_t *s, const uint8_t id[UUID_SIZE]) {
+static consensus_handoff_peer_t *find_peer(consensus_handoff_t *s, const uint8_t id[SESSION_ID_SIZE]) {
   for (size_t i = 0; i < s->count; ++i)
     if (memcmp(s->peers[i].id, id, 16) == 0)
       return &s->peers[i];
   return NULL;
 }
-asciichat_error_t consensus_handoff_join(consensus_handoff_t *s, const uint8_t id[UUID_SIZE]) {
+asciichat_error_t consensus_handoff_join(consensus_handoff_t *s, const uint8_t id[SESSION_ID_SIZE]) {
   if (find_peer(s, id))
     return ASCIICHAT_OK;
   if (s->count == MAX_SESSION_PARTICIPANTS)
@@ -74,7 +75,7 @@ asciichat_error_t consensus_handoff_join(consensus_handoff_t *s, const uint8_t i
   memset(s->successor, 0, 16);
   return ASCIICHAT_OK;
 }
-void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[UUID_SIZE]) {
+void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[SESSION_ID_SIZE]) {
   // The incumbent can leave before its first measurement creates a peer entry.
   if (memcmp(s->host, id, 16) == 0)
     s->host_lost = true;
@@ -97,7 +98,7 @@ void consensus_handoff_leave(consensus_handoff_t *s, const uint8_t id[UUID_SIZE]
  * @brief Record loss of the incumbent, ignoring delayed reports about old hosts.
  * The caller authenticates the reporter before the next tick starts recovery.
  */
-void consensus_handoff_host_lost(consensus_handoff_t *s, const uint8_t host[UUID_SIZE]) {
+void consensus_handoff_host_lost(consensus_handoff_t *s, const uint8_t host[SESSION_ID_SIZE]) {
   if (!memcmp(s->host, host, sizeof(s->host)))
     s->host_lost = true;
 }
@@ -249,7 +250,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
     s->ready = false;
     memset(s->successor, 0, 16);
   }
-  uint8_t zero[UUID_SIZE] = {0};
+  uint8_t zero[SESSION_ID_SIZE] = {0};
   if (memcmp(s->successor, zero, 16)) {
     consensus_handoff_peer_t *p = find_peer(s, s->successor);
     if (p && p->valid && p->capabilities && now - p->measured_ms <= CONSENSUS_HANDOFF_FRESH_MS &&
@@ -269,7 +270,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
       continue;
     participant_metrics_t *m = &metrics[count++];
     memset(m, 0, sizeof(*m));
-    memcpy(m->participant_id, p->id, UUID_SIZE);
+    memcpy(m->participant_id, p->id, SESSION_ID_SIZE);
     m->nat_tier = p->nat_tier <= 4 ? p->nat_tier : 4;
     m->upload_kbps = p->upload_kbps;
     m->rtt_ns = 500000000; /* Unknown RTT earns no latency bonus. */
@@ -280,7 +281,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
   int best = -1, backup = -1;
   if (consensus_election_choose_hosts(metrics, (int)count, &best, &backup) != ASCIICHAT_OK)
     return false;
-  memcpy(s->successor, metrics[best].participant_id, UUID_SIZE);
+  memcpy(s->successor, metrics[best].participant_id, SESSION_ID_SIZE);
   ++s->round;
   s->prepare_deadline_ms = now + CONSENSUS_HANDOFF_PREPARE_MS;
   a->kind = HANDOFF_PREPARE;

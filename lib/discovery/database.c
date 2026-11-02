@@ -81,7 +81,7 @@ static const gotel_query_t database_queries[] = {
 #undef DATABASE_QUERY
 };
 
-static void generate_uuid(uint8_t uuid_out[UUID_SIZE]) {
+static void generate_uuid(uint8_t uuid_out[SESSION_ID_SIZE]) {
   randombytes_buf(uuid_out, 16);
   uuid_out[6] = (uuid_out[6] & 0x0F) | 0x40; // Version 4
   uuid_out[8] = (uuid_out[8] & 0x3F) | 0x80; // RFC4122 variant
@@ -131,7 +131,7 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
 
   const void *blob = sqlite3_column_blob(stmt, 1);
   if (blob) {
-    memcpy(session->session_id, blob, UUID_SIZE);
+    memcpy(session->session_id, blob, SESSION_ID_SIZE);
   }
 
   blob = sqlite3_column_blob(stmt, 2);
@@ -171,7 +171,7 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
 
   blob = sqlite3_column_blob(stmt, 17);
   if (blob) {
-    memcpy(session->host_participant_id, blob, UUID_SIZE);
+    memcpy(session->host_participant_id, blob, SESSION_ID_SIZE);
   }
 
   str = (const char *)sqlite3_column_text(stmt, 18);
@@ -212,7 +212,7 @@ static void load_session_participants(sqlite3 *db, session_entry_t *session) {
 
     const void *blob = sqlite3_column_blob(stmt, 0);
     if (blob) {
-      memcpy(p->participant_id, blob, UUID_SIZE);
+      memcpy(p->participant_id, blob, SESSION_ID_SIZE);
     }
 
     blob = sqlite3_column_blob(stmt, 1);
@@ -474,7 +474,7 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   // Fill response
   resp->session_string_len = (uint8_t)strlen(session_string);
   SAFE_STRNCPY(resp->session_string, session_string, sizeof(resp->session_string));
-  memcpy(resp->session_id, session_id, UUID_SIZE);
+  memcpy(resp->session_id, session_id, SESSION_ID_SIZE);
   resp->expires_at = expires_at;
   resp->stun_count = config->stun_count;
   resp->turn_count = config->turn_count;
@@ -591,7 +591,7 @@ asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_strin
 
   const void *blob = sqlite3_column_blob(stmt, 1);
   if (blob) {
-    memcpy(resp->session_id, blob, UUID_SIZE);
+    memcpy(resp->session_id, blob, SESSION_ID_SIZE);
   }
 
   blob = sqlite3_column_blob(stmt, 2);
@@ -657,7 +657,7 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
                                                       const acds_config_t *config, const session_entry_t *verified,
                                                       acip_session_joined_t *resp, session_entry_t **joined) {
   // Generate participant ID
-  uint8_t participant_id[UUID_SIZE];
+  uint8_t participant_id[SESSION_ID_SIZE];
   generate_uuid(participant_id);
   uint64_t now = database_get_current_time_ms();
 
@@ -762,7 +762,7 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
       sqlite3_bind_text(stmt, 2, session->session_string, -1, SQLITE_STATIC);
       sqlite3_step(stmt);
       sqlite3_finalize(stmt);
-      memcpy(session->initiator_id, participant_id, UUID_SIZE);
+      memcpy(session->initiator_id, participant_id, SESSION_ID_SIZE);
       log_debug("Set initiator_id to new participant %02x%02x...", participant_id[0], participant_id[1]);
     }
   }
@@ -791,13 +791,13 @@ static void database_session_join_response(sqlite3 *db, session_entry_t *session
   // Fill response
   resp->success = 1;
   resp->error_code = ACIP_ERROR_NONE;
-  memcpy(resp->session_id, session->session_id, UUID_SIZE);
+  memcpy(resp->session_id, session->session_id, SESSION_ID_SIZE);
 
   // Discovery mode host negotiation fields
   memcpy(resp->initiator_id, session->initiator_id, 16);
   resp->host_established = session->host_established ? 1 : 0;
   if (session->host_established) {
-    memcpy(resp->host_id, session->host_participant_id, UUID_SIZE);
+    memcpy(resp->host_id, session->host_participant_id, SESSION_ID_SIZE);
   }
   // peer_count = current_participants (excluding self) that need to negotiate
   resp->peer_count = session->current_participants; // Will be incremented after this returns
@@ -928,7 +928,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
 }
 
 asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
-                                         const uint8_t participant_id[UUID_SIZE]) {
+                                         const uint8_t participant_id[SESSION_ID_SIZE]) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_LEAVE);
   if (!db || !session_id || !participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_id, or participant_id is NULL");
@@ -1158,8 +1158,8 @@ void database_session_cleanup_expired(sqlite3 *db) {
 }
 
 asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
-                                               const uint8_t host_participant_id[UUID_SIZE], const char *host_address,
-                                               uint16_t host_port, uint8_t connection_type) {
+                                               const uint8_t host_participant_id[SESSION_ID_SIZE],
+                                               const char *host_address, uint16_t host_port, uint8_t connection_type) {
   ASCII_OTEL_SCOPE(DATABASE_SESSION_UPDATE_HOST);
   if (!db || !session_id || !host_participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_id, or host_participant_id is NULL");

@@ -192,9 +192,9 @@ typedef struct {
  * @brief Session creation result
  */
 typedef struct {
-  char session_string[ACIP_SESSION_STRING_SIZE + 1]; ///< Generated session string (null-terminated)
-  uint8_t session_id[SESSION_ID_SIZE];               ///< Session UUID
-  uint64_t expires_at;                               ///< Expiration timestamp (Unix ms)
+  char session_string[ACIP_MAX_SESSION_STRING_LEN + 1]; ///< Generated session string (null-terminated)
+  uint8_t session_id[SESSION_ID_SIZE];                  ///< Session UUID
+  uint64_t expires_at;                                  ///< Expiration timestamp (Unix ms)
 } acds_session_create_result_t;
 
 /**
@@ -262,7 +262,7 @@ typedef struct {
  */
 typedef struct {
   bool success;                                    ///< Join succeeded
-  uint8_t participant_id[UUID_SIZE];               ///< Participant UUID (if success)
+  uint8_t participant_id[SESSION_ID_SIZE];         ///< Participant UUID (if success)
   uint8_t session_id[SESSION_ID_SIZE];             ///< Session UUID (if success)
   uint8_t error_code;                              ///< Error code (if !success)
   char error_message[ACIP_ERROR_MESSAGE_SIZE + 1]; ///< Error message (if !success, null-terminated)

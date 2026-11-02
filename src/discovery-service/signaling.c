@@ -14,7 +14,7 @@
 /**
  * @brief Helper: Check if UUID is all zeros (broadcast indicator)
  */
-static bool is_broadcast_uuid(const uint8_t uuid[UUID_SIZE]) {
+static bool is_broadcast_uuid(const uint8_t uuid[SESSION_ID_SIZE]) {
   for (int i = 0; i < 16; i++) {
     if (uuid[i] != 0) {
       return false;
@@ -26,7 +26,7 @@ static bool is_broadcast_uuid(const uint8_t uuid[UUID_SIZE]) {
 /**
  * @brief Helper: Compare two UUIDs for equality
  */
-static bool uuid_equals(const uint8_t a[16], const uint8_t b[16]) {
+static bool uuid_equals(const uint8_t a[SESSION_ID_SIZE], const uint8_t b[SESSION_ID_SIZE]) {
   return memcmp(a, b, 16) == 0;
 }
 

@@ -27,8 +27,6 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define ASCII_LUMINANCE_LEVELS 256
 #define ASCII_PALETTE_BUFFER_SIZE 256
-#define ASCII_UTF8_MAX_BYTES 4
-#define ASCII_UTF8_BUFFER_SIZE (ASCII_UTF8_MAX_BYTES + 1)
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -471,26 +469,26 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
 #define CACHE_MAX_LIFETIME 3600 // 1 hour maximum cache lifetime in seconds
 
 typedef struct {
-  uint8_t width;         /**< Character display width (1 or 2) */
-  uint8_t utf8_bytes[4]; /**< UTF-8 bytes (0-3) */
-  uint8_t byte_len;      /**< Number of bytes used */
-  uint8_t _pad;          /**< Padding for alignment */
+  uint8_t width;                      /**< Character display width (1 or 2) */
+  uint8_t utf8_bytes[UTF8_MAX_BYTES]; /**< UTF-8 bytes (0-3) */
+  uint8_t byte_len;                   /**< Number of bytes used */
+  uint8_t _pad;                       /**< Padding for alignment */
 } utf8_char_t;
 
 typedef struct utf8_palette_cache {
-  utf8_char_t cache[256];                       /**< Cache of all 256 luminance levels */
-  utf8_char_t cache64[64];                      /**< Cache of 64 most common characters */
-  uint8_t char_index_ramp[256];                 /**< Luminance to character index mapping */
-  atomic_t last_access_time;                    /**< Last access timestamp */
-  atomic_t access_count;                        /**< Total access count */
-  uint32_t total_age_seconds;                   /**< Total age in seconds */
-  uint64_t creation_time;                       /**< When this cache was created */
-  double cached_score;                          /**< Eviction score (higher = keep longer) */
-  size_t heap_index;                            /**< Index in the eviction min-heap */
-  uint32_t key;                                 /**< Palette string hash (uthash key) */
-  char palette_hash[ASCII_PALETTE_BUFFER_SIZE]; /**< Original palette string for validation */
-  bool initialized;                             /**< Whether cache is initialized */
-  bool is_valid;                                /**< Whether cache has valid data */
+  utf8_char_t cache[256];                          /**< Cache of all 256 luminance levels */
+  utf8_char_t cache64[64];                         /**< Cache of 64 most common characters */
+  uint8_t char_index_ramp[ASCII_LUMINANCE_LEVELS]; /**< Luminance to character index mapping */
+  atomic_t last_access_time;                       /**< Last access timestamp */
+  atomic_t access_count;                           /**< Total access count */
+  uint32_t total_age_seconds;                      /**< Total age in seconds */
+  uint64_t creation_time;                          /**< When this cache was created */
+  double cached_score;                             /**< Eviction score (higher = keep longer) */
+  size_t heap_index;                               /**< Index in the eviction min-heap */
+  uint32_t key;                                    /**< Palette string hash (uthash key) */
+  char palette_hash[ASCII_PALETTE_BUFFER_SIZE];    /**< Original palette string for validation */
+  bool initialized;                                /**< Whether cache is initialized */
+  bool is_valid;                                   /**< Whether cache has valid data */
 
   // uthash handle for hash table
   UT_hash_handle hh; /**< uthash handle */
@@ -508,7 +506,8 @@ void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256])
  *
  * @ingroup video
  */
-void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[256]);
+void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64],
+                             uint8_t char_index_ramp[ASCII_LUMINANCE_LEVELS]);
 
 /**
  * @brief Get UTF-8 palette cache for a character set

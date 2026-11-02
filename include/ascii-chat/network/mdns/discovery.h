@@ -104,8 +104,8 @@ typedef struct {
   char mdns_hostname[HOSTNAME_BUFFER_SIZE];     ///< mDNS hostname (e.g., "mycomputer.local")
 
   // For ACDS results (if applicable)
-  uint8_t session_id[SESSION_ID_SIZE]; ///< ACDS session UUID
-  uint8_t participant_id[UUID_SIZE];   ///< Assigned participant ID (from SESSION_JOIN)
+  uint8_t session_id[SESSION_ID_SIZE];     ///< ACDS session UUID
+  uint8_t participant_id[SESSION_ID_SIZE]; ///< Assigned participant ID (from SESSION_JOIN)
 
   // Error details
   asciichat_error_t error;                                              ///< Error code if !success

@@ -9,6 +9,9 @@
 
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_NEGOTIATE_HOST_ADDRESS_BUFFER_SIZE 64
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/discovery/session.h>
@@ -41,7 +44,7 @@ typedef enum {
 typedef struct {
   // Session info
   uint8_t session_id[SESSION_ID_SIZE];
-  uint8_t participant_id[UUID_SIZE];
+  uint8_t participant_id[SESSION_ID_SIZE];
   bool is_initiator; ///< Did we create this session?
 
   // NAT qualities
@@ -54,10 +57,10 @@ typedef struct {
   asciichat_error_t error;
 
   // Result
-  bool we_are_host;        ///< True if we should become host
-  char host_address[64];   ///< Host's address (ours if we_are_host)
-  uint16_t host_port;      ///< Host's port
-  uint8_t connection_type; ///< acip_connection_type_t
+  bool we_are_host;                                                ///< True if we should become host
+  char host_address[DISCOVERY_NEGOTIATE_HOST_ADDRESS_BUFFER_SIZE]; ///< Host's address (ours if we_are_host)
+  uint16_t host_port;                                              ///< Host's port
+  uint8_t connection_type;                                         ///< acip_connection_type_t
 } negotiate_ctx_t;
 
 /**
@@ -68,7 +71,7 @@ typedef struct {
  * @param is_initiator True if we created the session
  */
 void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[SESSION_ID_SIZE],
-                    const uint8_t participant_id[UUID_SIZE], bool is_initiator);
+                    const uint8_t participant_id[SESSION_ID_SIZE], bool is_initiator);
 
 /**
  * @brief Determine negotiation result

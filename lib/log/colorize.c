@@ -14,7 +14,6 @@
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define LOG_COLORIZE_SLOT_COUNT 4
-#define LOG_COLORIZE_BUFFER_SIZE LOG_MSG_BUFFER_SIZE
 
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/log.h>
@@ -546,7 +545,7 @@ const char *colorize_log_message_with_color(const char *message, bool enabled) {
   }
 
   // Keep concurrent report formatting separate while allowing nested calls.
-  static _Thread_local char buffers[LOG_COLORIZE_SLOT_COUNT][LOG_COLORIZE_BUFFER_SIZE];
+  static _Thread_local char buffers[LOG_COLORIZE_SLOT_COUNT][LOG_MSG_BUFFER_SIZE];
   static _Thread_local int buffer_index = 0;
 
   char *output = buffers[buffer_index];

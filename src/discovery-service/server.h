@@ -53,9 +53,9 @@ extern const network_connection_callbacks_t acds_network_callbacks;
  * No session is persisted until the entire sequence has passed validation.
  */
 typedef struct {
-  uint8_t session_id[SESSION_ID_SIZE]; ///< Session UUID (valid if joined_session)
-  uint8_t participant_id[UUID_SIZE];   ///< Participant UUID (valid if joined_session)
-  bool joined_session;                 ///< Whether client has successfully joined a session
+  uint8_t session_id[SESSION_ID_SIZE];     ///< Session UUID (valid if joined_session)
+  uint8_t participant_id[SESSION_ID_SIZE]; ///< Participant UUID (valid if joined_session)
+  bool joined_session;                     ///< Whether client has successfully joined a session
 
   // Crypto handshake state
   network_negotiation_t negotiation;

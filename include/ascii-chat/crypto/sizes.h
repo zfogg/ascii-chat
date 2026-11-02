@@ -50,8 +50,6 @@
 #define AES_IV_SIZE 16
 /** @brief AES-256 key + IV derived size in bytes (for bcrypt_pbkdf) */
 #define AES256_DERIVED_SIZE (AES256_KEY_SIZE + AES_IV_SIZE)
-/** @brief Session ID size in bytes */
-#define SESSION_ID_SIZE UUID_SIZE
 
 /** @} */
 

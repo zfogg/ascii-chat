@@ -489,8 +489,8 @@ static void *acds_thread_fn(void *arg) {
       ctx->state->result->source = DISCOVERY_SOURCE_ACDS;
 
       memcpy(ctx->state->result->host_pubkey, lookup_result.host_pubkey, 32);
-      memcpy(ctx->state->result->session_id, join_result.session_id, UUID_SIZE);
-      memcpy(ctx->state->result->participant_id, join_result.participant_id, UUID_SIZE);
+      memcpy(ctx->state->result->session_id, join_result.session_id, SESSION_ID_SIZE);
+      memcpy(ctx->state->result->participant_id, join_result.participant_id, SESSION_ID_SIZE);
 
       SAFE_STRNCPY(ctx->state->result->server_address, join_result.server_address,
                    sizeof(ctx->state->result->server_address) - 1);

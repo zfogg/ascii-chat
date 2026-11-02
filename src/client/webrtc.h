@@ -72,7 +72,8 @@ void webrtc_set_acds_transport(acip_transport_t *transport);
  * @note This is called automatically when joining ACDS session.
  * @note Callbacks will fail with ERROR_INVALID_STATE if IDs are not set.
  */
-void webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[UUID_SIZE]);
+void webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE],
+                                const uint8_t participant_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Set the WebRTC data channel transport

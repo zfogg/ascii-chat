@@ -47,7 +47,7 @@ static acip_transport_t *g_tcp_transport = NULL;
  */
 static struct {
   uint8_t session_id[SESSION_ID_SIZE];
-  uint8_t participant_id[UUID_SIZE];
+  uint8_t participant_id[SESSION_ID_SIZE];
   bool is_set;
 } g_session_context = {0};
 
@@ -88,7 +88,7 @@ static void ensure_mutex_initialized(void) {
  * - Variable payload: SDP string
  */
 static asciichat_error_t discovery_send_sdp(const uint8_t session_id[SESSION_ID_SIZE],
-                                            const uint8_t recipient_id[UUID_SIZE], const char *sdp_type,
+                                            const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type,
                                             const char *sdp, void *user_data) {
   (void)recipient_id; // Unused - direct connection, no need to route
   (void)user_data;    // Unused
@@ -129,9 +129,9 @@ static asciichat_error_t discovery_send_sdp(const uint8_t session_id[SESSION_ID_
   uint8_t sdp_msg_buf[sizeof(acip_webrtc_sdp_t) + 4096];
   acip_webrtc_sdp_t *sdp_msg = (acip_webrtc_sdp_t *)sdp_msg_buf;
 
-  memcpy(sdp_msg->session_id, session_id, UUID_SIZE);
-  memcpy(sdp_msg->sender_id, g_session_context.participant_id, UUID_SIZE);
-  memset(sdp_msg->recipient_id, 0, UUID_SIZE);                   // Broadcast to all
+  memcpy(sdp_msg->session_id, session_id, SESSION_ID_SIZE);
+  memcpy(sdp_msg->sender_id, g_session_context.participant_id, SESSION_ID_SIZE);
+  memset(sdp_msg->recipient_id, 0, SESSION_ID_SIZE);             // Broadcast to all
   sdp_msg->sdp_type = (strcmp(sdp_type, "answer") == 0) ? 1 : 0; // 0=offer, 1=answer
   sdp_msg->sdp_len = (uint16_t)sdp_len;
   // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
@@ -159,7 +159,7 @@ static asciichat_error_t discovery_send_sdp(const uint8_t session_id[SESSION_ID_
  * Constructs PACKET_TYPE_ACIP_WEBRTC_ICE and sends via direct TCP transport.
  */
 static asciichat_error_t discovery_send_ice(const uint8_t session_id[SESSION_ID_SIZE],
-                                            const uint8_t recipient_id[UUID_SIZE], const char *candidate,
+                                            const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate,
                                             const char *mid, void *user_data) {
   (void)recipient_id; // Unused - direct connection, no need to route
   (void)user_data;    // Unused
@@ -205,9 +205,9 @@ static asciichat_error_t discovery_send_ice(const uint8_t session_id[SESSION_ID_
   acip_webrtc_ice_t *ice_msg = (acip_webrtc_ice_t *)ice_msg_buf;
 
   // Fill header
-  memcpy(ice_msg->session_id, session_id, UUID_SIZE);
-  memcpy(ice_msg->sender_id, g_session_context.participant_id, UUID_SIZE);
-  memset(ice_msg->recipient_id, 0, UUID_SIZE); // Broadcast to all
+  memcpy(ice_msg->session_id, session_id, SESSION_ID_SIZE);
+  memcpy(ice_msg->sender_id, g_session_context.participant_id, SESSION_ID_SIZE);
+  memset(ice_msg->recipient_id, 0, SESSION_ID_SIZE); // Broadcast to all
   ice_msg->candidate_len = HOST_TO_NET_U16((uint16_t)candidate_len);
 
   // Copy candidate and mid after header
@@ -239,17 +239,18 @@ static asciichat_error_t discovery_send_ice(const uint8_t session_id[SESSION_ID_
 // Public API
 // =============================================================================
 
-webrtc_signaling_callbacks_t discovery_webrtc_get_direct_signaling_callbacks(acip_transport_t *tcp_transport,
-                                                                             const uint8_t session_id[SESSION_ID_SIZE],
-                                                                             const uint8_t participant_id[UUID_SIZE]) {
+webrtc_signaling_callbacks_t
+discovery_webrtc_get_direct_signaling_callbacks(acip_transport_t *tcp_transport,
+                                                const uint8_t session_id[SESSION_ID_SIZE],
+                                                const uint8_t participant_id[SESSION_ID_SIZE]) {
   ensure_mutex_initialized();
   mutex_lock(&g_webrtc_mutex);
 
   g_tcp_transport = tcp_transport;
 
   if (session_id && participant_id) {
-    memcpy(g_session_context.session_id, session_id, UUID_SIZE);
-    memcpy(g_session_context.participant_id, participant_id, UUID_SIZE);
+    memcpy(g_session_context.session_id, session_id, SESSION_ID_SIZE);
+    memcpy(g_session_context.participant_id, participant_id, SESSION_ID_SIZE);
     g_session_context.is_set = true;
   }
 
@@ -272,13 +273,13 @@ void discovery_webrtc_set_tcp_transport(acip_transport_t *transport) {
 }
 
 void discovery_webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE],
-                                          const uint8_t participant_id[UUID_SIZE]) {
+                                          const uint8_t participant_id[SESSION_ID_SIZE]) {
   ensure_mutex_initialized();
   mutex_lock(&g_webrtc_mutex);
 
   if (session_id && participant_id) {
-    memcpy(g_session_context.session_id, session_id, UUID_SIZE);
-    memcpy(g_session_context.participant_id, participant_id, UUID_SIZE);
+    memcpy(g_session_context.session_id, session_id, SESSION_ID_SIZE);
+    memcpy(g_session_context.participant_id, participant_id, SESSION_ID_SIZE);
     g_session_context.is_set = true;
   } else {
     g_session_context.is_set = false;

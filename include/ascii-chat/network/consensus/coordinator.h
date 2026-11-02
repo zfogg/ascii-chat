@@ -53,7 +53,8 @@ typedef struct consensus_coordinator consensus_coordinator_t;
  * @param out_coordinator Output coordinator handle (caller must destroy)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_coordinator_create(const uint8_t my_id[UUID_SIZE], const consensus_topology_t *topology,
+asciichat_error_t consensus_coordinator_create(const uint8_t my_id[SESSION_ID_SIZE],
+                                               const consensus_topology_t *topology,
                                                consensus_election_func_t election_func, void *election_context,
                                                consensus_coordinator_t **out_coordinator);
 
@@ -123,7 +124,7 @@ asciichat_error_t consensus_coordinator_on_collection_start(consensus_coordinato
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t consensus_coordinator_on_stats_update(consensus_coordinator_t *coordinator,
-                                                        const uint8_t sender_id[UUID_SIZE],
+                                                        const uint8_t sender_id[SESSION_ID_SIZE],
                                                         const participant_metrics_t *metrics, uint8_t num_metrics);
 
 /**
@@ -138,8 +139,8 @@ asciichat_error_t consensus_coordinator_on_stats_update(consensus_coordinator_t 
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t consensus_coordinator_on_election_result(consensus_coordinator_t *coordinator,
-                                                           const uint8_t host_id[UUID_SIZE],
-                                                           const uint8_t backup_id[UUID_SIZE]);
+                                                           const uint8_t host_id[SESSION_ID_SIZE],
+                                                           const uint8_t backup_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Get currently elected host
@@ -154,8 +155,8 @@ asciichat_error_t consensus_coordinator_on_election_result(consensus_coordinator
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t consensus_coordinator_get_current_host(const consensus_coordinator_t *coordinator,
-                                                         uint8_t out_host_id[UUID_SIZE],
-                                                         uint8_t out_backup_id[UUID_SIZE]);
+                                                         uint8_t out_host_id[SESSION_ID_SIZE],
+                                                         uint8_t out_backup_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Get current coordinator state

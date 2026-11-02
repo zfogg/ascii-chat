@@ -35,11 +35,11 @@
  * @brief Per-peer connection state
  */
 typedef struct {
-  uint8_t participant_id[UUID_SIZE];   ///< Remote participant UUID (hash key)
-  uint8_t session_id[SESSION_ID_SIZE]; ///< Session UUID
-  webrtc_peer_connection_t *pc;        ///< WebRTC peer connection
-  webrtc_data_channel_t *dc;           ///< WebRTC data channel
-  acip_security_t *security;           ///< Owned until transferred to the transport
+  uint8_t participant_id[SESSION_ID_SIZE]; ///< Remote participant UUID (hash key)
+  uint8_t session_id[SESSION_ID_SIZE];     ///< Session UUID
+  webrtc_peer_connection_t *pc;            ///< WebRTC peer connection
+  webrtc_data_channel_t *dc;               ///< WebRTC data channel
+  acip_security_t *security;               ///< Owned until transferred to the transport
   atomic_t security_ready;
   atomic_t handshake_started_ns;
   atomic_ptr_t pending_transport; ///< Owned until authenticated and handed to the application
@@ -54,7 +54,7 @@ typedef struct {
 } peer_entry_t;
 
 typedef struct pending_ice_candidate {
-  uint8_t participant_id[UUID_SIZE];
+  uint8_t participant_id[SESSION_ID_SIZE];
   char *candidate;
   char *mid;
   struct pending_ice_candidate *next;
@@ -87,8 +87,8 @@ static void free_pending_ice_candidate(pending_ice_candidate_t *candidate) {
 }
 
 static asciichat_error_t queue_pending_ice_candidate(webrtc_peer_manager_t *manager,
-                                                     const uint8_t participant_id[UUID_SIZE], const char *candidate,
-                                                     const char *mid) {
+                                                     const uint8_t participant_id[SESSION_ID_SIZE],
+                                                     const char *candidate, const char *mid) {
   if (manager->pending_ice_count >= MAX_PENDING_ICE_CANDIDATES) {
     return SET_ERRNO(ERROR_NETWORK, "Too many ICE candidates arrived before remote SDP");
   }
@@ -170,7 +170,7 @@ static bool extract_ice_ufrag(const char *sdp, char *ufrag, size_t capacity) {
  * @brief Find peer by participant_id
  * @note Caller must hold peers_mutex
  */
-static peer_entry_t *find_peer_locked(webrtc_peer_manager_t *manager, const uint8_t participant_id[UUID_SIZE]) {
+static peer_entry_t *find_peer_locked(webrtc_peer_manager_t *manager, const uint8_t participant_id[SESSION_ID_SIZE]) {
   peer_entry_t *peer = NULL;
   HASH_FIND(hh, manager->peers, participant_id, 16, peer);
   return peer;
@@ -231,7 +231,7 @@ asciichat_error_t webrtc_peer_manager_dispatch_ready(webrtc_peer_manager_t *mana
     return ASCIICHAT_OK;
   for (;;) {
     acip_transport_t *transport = NULL;
-    uint8_t participant_id[UUID_SIZE];
+    uint8_t participant_id[SESSION_ID_SIZE];
     mutex_lock(&manager->peers_mutex);
     peer_entry_t *peer, *tmp;
     HASH_ITER(hh, manager->peers, peer, tmp) {
@@ -395,7 +395,7 @@ static void on_state_change(webrtc_peer_connection_t *pc, webrtc_state_t state, 
  */
 static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *manager,
                                                        const uint8_t session_id[SESSION_ID_SIZE],
-                                                       const uint8_t participant_id[UUID_SIZE],
+                                                       const uint8_t participant_id[SESSION_ID_SIZE],
                                                        peer_entry_t **peer_out) {
   // Check if peer already exists
   peer_entry_t *existing = find_peer_locked(manager, participant_id);
@@ -410,8 +410,8 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate peer entry");
   }
 
-  memcpy(peer->participant_id, participant_id, UUID_SIZE);
-  memcpy(peer->session_id, session_id, UUID_SIZE);
+  memcpy(peer->participant_id, participant_id, SESSION_ID_SIZE);
+  memcpy(peer->session_id, session_id, SESSION_ID_SIZE);
   peer->pc = NULL;
   peer->dc = NULL;
   peer->is_connected = false;
@@ -624,14 +624,14 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
   // Special case: If receiving an answer and we're a joiner, we may have created
   // a peer with broadcast ID (00000000...) and need to update it to the real sender_id
   if (sdp->sdp_type == 1 && manager->role == WEBRTC_ROLE_JOINER) {
-    static const uint8_t broadcast_id[UUID_SIZE] = {0};
+    static const uint8_t broadcast_id[SESSION_ID_SIZE] = {0};
     peer = find_peer_locked(manager, broadcast_id);
     if (peer) {
       log_debug("Updating broadcast peer with real participant_id from answer");
       // Remove from hash with old ID
       HASH_DEL(manager->peers, peer);
       // Update to real participant_id
-      memcpy(peer->participant_id, sdp->sender_id, UUID_SIZE);
+      memcpy(peer->participant_id, sdp->sender_id, SESSION_ID_SIZE);
       // Re-add with new ID
       HASH_ADD(hh, manager->peers, participant_id, 16, peer);
     }
@@ -769,7 +769,7 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
 }
 
 asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, const uint8_t session_id[SESSION_ID_SIZE],
-                                              const uint8_t participant_id[UUID_SIZE]) {
+                                              const uint8_t participant_id[SESSION_ID_SIZE]) {
   if (!manager || !session_id || !participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -802,7 +802,7 @@ asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, co
   return ASCIICHAT_OK;
 }
 
-bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t participant_id[UUID_SIZE],
+bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t participant_id[SESSION_ID_SIZE],
                                    webrtc_state_t *state_out) {
   if (!manager || !participant_id || !state_out) {
     return false;
@@ -819,7 +819,7 @@ bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t
 }
 
 asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager,
-                                                  const uint8_t participant_id[UUID_SIZE]) {
+                                                  const uint8_t participant_id[SESSION_ID_SIZE]) {
   if (!manager || !participant_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Peer manager and participant ID are required");
   }

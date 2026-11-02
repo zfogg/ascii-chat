@@ -24,11 +24,11 @@ typedef struct consensus_metrics_collection {
   int capacity;                   ///< Allocated capacity
 } consensus_metrics_collection_t;
 
-asciichat_error_t consensus_metrics_measure(const uint8_t my_id[UUID_SIZE], participant_metrics_t *out_metrics) {
+asciichat_error_t consensus_metrics_measure(const uint8_t my_id[SESSION_ID_SIZE], participant_metrics_t *out_metrics) {
   if (!my_id || !out_metrics)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid measurement parameters");
   memset(out_metrics, 0, sizeof(*out_metrics));
-  memcpy(out_metrics->participant_id, my_id, UUID_SIZE);
+  memcpy(out_metrics->participant_id, my_id, SESSION_ID_SIZE);
   out_metrics->nat_tier = 4;
   return SET_ERRNO(ERROR_INVALID_STATE, "Network measurements require a session measurement provider");
 }

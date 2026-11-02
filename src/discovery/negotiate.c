@@ -14,16 +14,16 @@
 #include <string.h>
 
 void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[SESSION_ID_SIZE],
-                    const uint8_t participant_id[UUID_SIZE], bool is_initiator) {
+                    const uint8_t participant_id[SESSION_ID_SIZE], bool is_initiator) {
   if (!ctx)
     return;
 
   memset(ctx, 0, sizeof(negotiate_ctx_t));
 
   if (session_id)
-    memcpy(ctx->session_id, session_id, UUID_SIZE);
+    memcpy(ctx->session_id, session_id, SESSION_ID_SIZE);
   if (participant_id)
-    memcpy(ctx->participant_id, participant_id, UUID_SIZE);
+    memcpy(ctx->participant_id, participant_id, SESSION_ID_SIZE);
 
   ctx->is_initiator = is_initiator;
   ctx->state = NEGOTIATE_STATE_INIT;

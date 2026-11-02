@@ -1,3 +1,8 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SESSION_CONSENSUS_INTEGRATION_HOST_ADDRESS_BUFFER_SIZE 64
+#define SESSION_CONSENSUS_INTEGRATION_BACKUP_ADDRESS_BUFFER_SIZE 64
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
 /**
@@ -31,7 +36,7 @@
  * In server mode, packets would go directly to clients.
  * In client/acds modes, packets would use appropriate transports.
  */
-static asciichat_error_t consensus_send_via_discovery(void *context, const uint8_t next_participant_id[UUID_SIZE],
+static asciichat_error_t consensus_send_via_discovery(void *context, const uint8_t next_participant_id[SESSION_ID_SIZE],
                                                       const uint8_t *packet, size_t packet_size) {
   // context would be a discovery_session_t in real usage
   // This is a placeholder showing the pattern
@@ -56,10 +61,12 @@ static asciichat_error_t consensus_send_via_discovery(void *context, const uint8
  * Called when leader elects a new host.
  * Mode updates its state to connect to/become the elected host.
  */
-static asciichat_error_t consensus_on_election_result(void *context, const uint8_t host_id[UUID_SIZE],
-                                                      const char host_address[64], uint16_t host_port,
-                                                      const uint8_t backup_id[UUID_SIZE], const char backup_address[64],
-                                                      uint16_t backup_port) {
+static asciichat_error_t
+consensus_on_election_result(void *context, const uint8_t host_id[SESSION_ID_SIZE],
+                             const char host_address[SESSION_CONSENSUS_INTEGRATION_HOST_ADDRESS_BUFFER_SIZE],
+                             uint16_t host_port, const uint8_t backup_id[SESSION_ID_SIZE],
+                             const char backup_address[SESSION_CONSENSUS_INTEGRATION_BACKUP_ADDRESS_BUFFER_SIZE],
+                             uint16_t backup_port) {
   (void)backup_address; // unused in placeholder
   (void)backup_port;    // unused in placeholder
 
@@ -85,7 +92,7 @@ static asciichat_error_t consensus_on_election_result(void *context, const uint8
  * Collects NAT quality, bandwidth, RTT, etc.
  * These metrics are used by the ring consensus algorithm to select the best host.
  */
-static asciichat_error_t consensus_get_metrics(void *context, const uint8_t my_id[UUID_SIZE],
+static asciichat_error_t consensus_get_metrics(void *context, const uint8_t my_id[SESSION_ID_SIZE],
                                                participant_metrics_t *out_metrics) {
   // context would be a discovery_session_t in real usage
   if (!context || !my_id || !out_metrics) {
@@ -143,11 +150,10 @@ asciichat_error_t consensus_get_discovery_callbacks(void *context, session_conse
  * @param out_consensus Output: Created consensus handle
  * @return ASCIICHAT_OK on success
  */
-asciichat_error_t consensus_create_for_discovery(const uint8_t session_id[SESSION_ID_SIZE],
-                                                 const uint8_t my_id[UUID_SIZE],
-                                                 const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][UUID_SIZE],
-                                                 int num_participants, void *discovery_context,
-                                                 session_consensus_t **out_consensus) {
+asciichat_error_t
+consensus_create_for_discovery(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t my_id[SESSION_ID_SIZE],
+                               const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE],
+                               int num_participants, void *discovery_context, session_consensus_t **out_consensus) {
   (void)session_id; // Informational only, not needed by consensus itself
 
   if (!my_id || !participant_ids || !discovery_context || !out_consensus) {

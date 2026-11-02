@@ -102,7 +102,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
-                                         const uint8_t participant_id[UUID_SIZE]);
+                                         const uint8_t participant_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Find session by session_id
@@ -152,8 +152,8 @@ void database_session_cleanup_expired(sqlite3 *db);
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
-                                               const uint8_t host_participant_id[UUID_SIZE], const char *host_address,
-                                               uint16_t host_port, uint8_t connection_type);
+                                               const uint8_t host_participant_id[SESSION_ID_SIZE],
+                                               const char *host_address, uint16_t host_port, uint8_t connection_type);
 
 /**
  * @brief Clear session host (discovery mode - host migration)

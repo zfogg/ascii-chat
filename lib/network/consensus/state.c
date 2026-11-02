@@ -15,9 +15,9 @@
  * @brief Election result storage
  */
 typedef struct {
-  uint8_t host_id[UUID_SIZE];   /**< Elected host participant ID */
-  uint8_t backup_id[UUID_SIZE]; /**< Elected backup participant ID */
-  uint64_t timestamp_ns;        /**< Unix ns when elected */
+  uint8_t host_id[SESSION_ID_SIZE];   /**< Elected host participant ID */
+  uint8_t backup_id[SESSION_ID_SIZE]; /**< Elected backup participant ID */
+  uint64_t timestamp_ns;              /**< Unix ns when elected */
 } election_result_t;
 
 /**
@@ -26,7 +26,7 @@ typedef struct {
 typedef struct consensus_state {
   consensus_state_machine_t current_state; /**< Current state */
   consensus_topology_t *topology;          /**< Topology (not owned) */
-  uint8_t my_id[UUID_SIZE];                /**< My participant ID */
+  uint8_t my_id[SESSION_ID_SIZE];          /**< My participant ID */
 
   /* Collected metrics storage */
   participant_metrics_t *metrics; /**< Dynamic array of collected metrics */
@@ -37,7 +37,7 @@ typedef struct consensus_state {
   election_result_t election_result; /**< Last election result */
 } consensus_state_t;
 
-asciichat_error_t consensus_state_create(const uint8_t my_id[UUID_SIZE], const consensus_topology_t *topology,
+asciichat_error_t consensus_state_create(const uint8_t my_id[SESSION_ID_SIZE], const consensus_topology_t *topology,
                                          consensus_state_t **out_state) {
   if (!my_id || !topology || !out_state) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid state creation parameters");
@@ -153,10 +153,10 @@ asciichat_error_t consensus_state_store_election(consensus_state_t *state, int b
       best_idx >= state->metrics_count || backup_idx < -1 || backup_idx >= state->metrics_count ||
       backup_idx == best_idx)
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid election result");
-  memcpy(state->election_result.host_id, state->metrics[best_idx].participant_id, UUID_SIZE);
-  memset(state->election_result.backup_id, 0, UUID_SIZE);
+  memcpy(state->election_result.host_id, state->metrics[best_idx].participant_id, SESSION_ID_SIZE);
+  memset(state->election_result.backup_id, 0, SESSION_ID_SIZE);
   if (backup_idx >= 0)
-    memcpy(state->election_result.backup_id, state->metrics[backup_idx].participant_id, UUID_SIZE);
+    memcpy(state->election_result.backup_id, state->metrics[backup_idx].participant_id, SESSION_ID_SIZE);
   state->election_result.timestamp_ns = time_get_realtime_ns();
   state->current_state = CONSENSUS_STATE_ELECTION_COMPLETE;
   return ASCIICHAT_OK;
@@ -182,7 +182,8 @@ consensus_state_machine_t consensus_state_get_current_state(const consensus_stat
   return state->current_state;
 }
 
-asciichat_error_t consensus_state_get_elected_host(const consensus_state_t *state, uint8_t out_host_id[UUID_SIZE]) {
+asciichat_error_t consensus_state_get_elected_host(const consensus_state_t *state,
+                                                   uint8_t out_host_id[SESSION_ID_SIZE]) {
   if (!state || !out_host_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -191,11 +192,12 @@ asciichat_error_t consensus_state_get_elected_host(const consensus_state_t *stat
     return SET_ERRNO(ERROR_INVALID_STATE, "Election not complete, current state: %d", state->current_state);
   }
 
-  memcpy(out_host_id, state->election_result.host_id, UUID_SIZE);
+  memcpy(out_host_id, state->election_result.host_id, SESSION_ID_SIZE);
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t consensus_state_get_elected_backup(const consensus_state_t *state, uint8_t out_backup_id[UUID_SIZE]) {
+asciichat_error_t consensus_state_get_elected_backup(const consensus_state_t *state,
+                                                     uint8_t out_backup_id[SESSION_ID_SIZE]) {
   if (!state || !out_backup_id) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -204,7 +206,7 @@ asciichat_error_t consensus_state_get_elected_backup(const consensus_state_t *st
     return SET_ERRNO(ERROR_INVALID_STATE, "Election not complete, current state: %d", state->current_state);
   }
 
-  memcpy(out_backup_id, state->election_result.backup_id, UUID_SIZE);
+  memcpy(out_backup_id, state->election_result.backup_id, SESSION_ID_SIZE);
   return ASCIICHAT_OK;
 }
 

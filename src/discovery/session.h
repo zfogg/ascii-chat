@@ -1,4 +1,10 @@
 
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_SESSION_ACDS_ADDRESS_BUFFER_SIZE 64
+#define DISCOVERY_SESSION_ACDS_URL_BUFFER_SIZE 512
+#define DISCOVERY_SESSION_HOST_ADDRESS_BUFFER_SIZE 64
+
 #include <ascii-chat/network/acip/acds_sizes.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/connection.h>
@@ -93,8 +99,8 @@ typedef struct {
 
   // Session info
   uint8_t session_id[SESSION_ID_SIZE];
-  uint8_t participant_id[UUID_SIZE];
-  uint8_t initiator_id[UUID_SIZE];
+  uint8_t participant_id[SESSION_ID_SIZE];
+  uint8_t initiator_id[SESSION_ID_SIZE];
   char session_string[SESSION_STRING_BUFFER_SIZE];
   char password[ACIP_PASSWORD_SIZE]; ///< Session password used when joining password-protected sessions
   bool is_initiator;
@@ -106,21 +112,22 @@ typedef struct {
   uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE]; ///< Ed25519 secret key for signing (primary key)
 
   // Multi-key support: all identity keys for multi-key handshake
-  uint8_t identity_pubkeys[MAX_SESSION_KEYS][32]; ///< All public keys for multi-key protocol
-  uint8_t identity_seckeys[MAX_SESSION_KEYS][64]; ///< Matching Ed25519 signing keys
-  size_t num_identity_keys;                       ///< Number of identity keys loaded
+  uint8_t identity_pubkeys[MAX_SESSION_KEYS][ED25519_PUBLIC_KEY_SIZE];  ///< All public keys for multi-key protocol
+  uint8_t identity_seckeys[MAX_SESSION_KEYS][ED25519_PRIVATE_KEY_SIZE]; ///< Matching Ed25519 signing keys
+  size_t num_identity_keys;                                             ///< Number of identity keys loaded
 
   // ACDS connection
   network_connection_t *acds_connection;
   acip_transport_t *acds_transport; ///< Persistent transport for ACDS communication
   uint64_t last_acds_keepalive_ns;  ///< Last keepalive sent to the discovery service
-  char acds_address[64];
+  char acds_address[DISCOVERY_SESSION_ACDS_ADDRESS_BUFFER_SIZE];
   uint16_t acds_port;
-  char acds_url[512]; ///< ACDS WebSocket URL (ws:// or wss://, if set uses WebSocket instead of TCP)
+  char acds_url[DISCOVERY_SESSION_ACDS_URL_BUFFER_SIZE]; ///< ACDS WebSocket URL (ws:// or wss://, if set uses WebSocket
+                                                         ///< instead of TCP)
 
   // Host info (when not us)
-  uint8_t host_id[UUID_SIZE];
-  char host_address[64];
+  uint8_t host_id[SESSION_ID_SIZE];
+  char host_address[DISCOVERY_SESSION_HOST_ADDRESS_BUFFER_SIZE];
   uint16_t host_port;
   uint8_t session_type; ///< 0 = DIRECT_TCP, 1 = WEBRTC
 

@@ -106,12 +106,12 @@ asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[ED25519_P
   }
 
   size_t session_len = strlen(session_string);
-  if (session_len > ACIP_SESSION_STRING_SIZE) {
+  if (session_len > ACIP_MAX_SESSION_STRING_LEN) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Session string too long (max 48 chars)");
   }
 
   // Build message: type (1 byte) || timestamp (8 bytes) || session_string (variable length)
-  uint8_t message[ACDS_SIGNATURE_PREFIX_SIZE + ACIP_SESSION_STRING_SIZE];
+  uint8_t message[ACDS_SIGNATURE_PREFIX_SIZE + ACIP_MAX_SESSION_STRING_LEN];
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_JOIN;
 
   // Convert timestamp to network byte order and pack into message
@@ -142,12 +142,12 @@ asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[ED25519
   }
 
   size_t session_len = strlen(session_string);
-  if (session_len > ACIP_SESSION_STRING_SIZE) {
+  if (session_len > ACIP_MAX_SESSION_STRING_LEN) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Session string too long (max 48 chars)");
   }
 
   // Build message: type (1 byte) || timestamp (8 bytes) || session_string (variable length)
-  uint8_t message[ACDS_SIGNATURE_PREFIX_SIZE + ACIP_SESSION_STRING_SIZE];
+  uint8_t message[ACDS_SIGNATURE_PREFIX_SIZE + ACIP_MAX_SESSION_STRING_LEN];
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_JOIN;
 
   // Convert timestamp to network byte order and pack into message

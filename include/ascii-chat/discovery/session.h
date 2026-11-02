@@ -30,7 +30,7 @@
  * @brief Participant in a session
  */
 typedef struct {
-  uint8_t participant_id[UUID_SIZE];                ///< UUID
+  uint8_t participant_id[SESSION_ID_SIZE];          ///< UUID
   uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE]; ///< Ed25519 public key
   uint64_t joined_at;                               ///< Unix timestamp (ms)
 } participant_t;
@@ -42,11 +42,11 @@ typedef struct {
  * info from remaining participants for re-election.
  */
 typedef struct {
-  uint8_t participant_id[UUID_SIZE]; ///< Participant proposing new host
-  uint8_t nat_quality_tier;          ///< NAT tier for this participant
-  uint16_t upload_kbps;              ///< Upload bandwidth
-  uint32_t rtt_to_acds_ns;           ///< Latency to ACDS in nanoseconds
-  uint8_t connection_type;           ///< How they can be reached
+  uint8_t participant_id[SESSION_ID_SIZE]; ///< Participant proposing new host
+  uint8_t nat_quality_tier;                ///< NAT tier for this participant
+  uint16_t upload_kbps;                    ///< Upload bandwidth
+  uint32_t rtt_to_acds_ns;                 ///< Latency to ACDS in nanoseconds
+  uint8_t connection_type;                 ///< How they can be reached
 } host_lost_candidate_t;
 
 /**
@@ -77,9 +77,9 @@ typedef struct session_entry {
   uint16_t server_port;                                              ///< Port number for client connection
 
   // Discovery mode host negotiation fields
-  uint8_t initiator_id[UUID_SIZE];        ///< First participant who created/joined the session
-  bool host_established;                  ///< Whether a host has been designated (false = still negotiating)
-  uint8_t host_participant_id[UUID_SIZE]; ///< Current host's participant_id (valid if host_established)
+  uint8_t initiator_id[SESSION_ID_SIZE];        ///< First participant who created/joined the session
+  bool host_established;                        ///< Whether a host has been designated (false = still negotiating)
+  uint8_t host_participant_id[SESSION_ID_SIZE]; ///< Current host's participant_id (valid if host_established)
   char host_address[DISCOVERY_SESSION_HOST_ADDRESS_BUFFER_SIZE]; ///< Host's reachable address (valid if
                                                                  ///< host_established)
   uint16_t host_port;                                            ///< Host's port (valid if host_established)

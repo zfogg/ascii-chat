@@ -1,3 +1,16 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SERVER_MAIN_SESSION_STRING_BUFFER_SIZE 64
+#define SERVER_MAIN_HEX_BUFFER_SIZE 64
+#define SERVER_MAIN_ASCII_BUFFER_SIZE 20
+#define SERVER_MAIN_PARTICIPANT_BUFFER_SIZE 33
+#define SERVER_MAIN_SESSION_NAME_BUFFER_SIZE 56
+#define SERVER_MAIN_TXT_SESSION_STRING_BUFFER_SIZE 512
+#define SERVER_MAIN_TXT_HOST_PUBKEY_BUFFER_SIZE 512
+#define SERVER_MAIN_LABEL_BUFFER_SIZE 64
+#define SERVER_MAIN_TURN_AUTH_USERNAME_BUFFER_SIZE 128
+#define SERVER_MAIN_TURN_AUTH_CREDENTIAL_BUFFER_SIZE 128
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/debug/sync.h>
@@ -247,7 +260,7 @@ static time_t g_server_start_time = 0;
  * Holds the memorable session string (e.g., "happy-sunset-ocean") for display
  * in the status screen. Set when ACDS session is created, cleared on shutdown.
  */
-static char g_session_string[64] = {0};
+static char g_session_string[SERVER_MAIN_SESSION_STRING_BUFFER_SIZE] = {0};
 
 /**
  * @brief Whether the current session is mDNS-only (not registered with ACDS)
@@ -283,7 +296,7 @@ static acip_transport_t *g_acds_transport = NULL;
  * Used as sender_id in WebRTC SDP/ICE packets sent via ACDS relay.
  * Set during SESSION_JOIN, all zeros if not using ACDS.
  */
-static uint8_t g_server_participant_id[UUID_SIZE] = {0};
+static uint8_t g_server_participant_id[SESSION_ID_SIZE] = {0};
 
 /**
  * @brief Global WebRTC peer manager for accepting client connections
@@ -529,8 +542,8 @@ static void server_handle_sigint(int sig) {
  * @return ASCIICHAT_OK on success, error code on failure
  */
 static asciichat_error_t server_send_sdp(const uint8_t session_id[SESSION_ID_SIZE],
-                                         const uint8_t recipient_id[UUID_SIZE], const char *sdp_type, const char *sdp,
-                                         void *user_data) {
+                                         const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type,
+                                         const char *sdp, void *user_data) {
   (void)user_data;
 
   if (!g_acds_transport) {
@@ -552,10 +565,10 @@ static asciichat_error_t server_send_sdp(const uint8_t session_id[SESSION_ID_SIZ
 
   // Fill header
   acip_webrtc_sdp_t *header = (acip_webrtc_sdp_t *)packet;
-  memcpy(header->session_id, session_id, UUID_SIZE);
+  memcpy(header->session_id, session_id, SESSION_ID_SIZE);
   // Use server's participant_id from SESSION_JOIN as sender
-  memcpy(header->sender_id, g_server_participant_id, UUID_SIZE);
-  memcpy(header->recipient_id, recipient_id, UUID_SIZE);
+  memcpy(header->sender_id, g_server_participant_id, SESSION_ID_SIZE);
+  memcpy(header->recipient_id, recipient_id, SESSION_ID_SIZE);
   header->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
   header->sdp_len = HOST_TO_NET_U16((uint16_t)sdp_len);
 
@@ -593,8 +606,8 @@ static asciichat_error_t server_send_sdp(const uint8_t session_id[SESSION_ID_SIZ
  * @return ASCIICHAT_OK on success, error code on failure
  */
 static asciichat_error_t server_send_ice(const uint8_t session_id[SESSION_ID_SIZE],
-                                         const uint8_t recipient_id[UUID_SIZE], const char *candidate, const char *mid,
-                                         void *user_data) {
+                                         const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate,
+                                         const char *mid, void *user_data) {
   (void)user_data;
 
   if (!g_acds_transport) {
@@ -619,10 +632,10 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[SESSION_ID_SIZ
 
   // Fill header
   acip_webrtc_ice_t *header = (acip_webrtc_ice_t *)packet;
-  memcpy(header->session_id, session_id, UUID_SIZE);
+  memcpy(header->session_id, session_id, SESSION_ID_SIZE);
   // Use server's participant_id from SESSION_JOIN as sender
-  memcpy(header->sender_id, g_server_participant_id, UUID_SIZE);
-  memcpy(header->recipient_id, recipient_id, UUID_SIZE);
+  memcpy(header->sender_id, g_server_participant_id, SESSION_ID_SIZE);
+  memcpy(header->recipient_id, recipient_id, SESSION_ID_SIZE);
   header->candidate_len = HOST_TO_NET_U16((uint16_t)candidate_len); // FIXED: Use candidate length, not total payload
 
   // Copy candidate and mid after header
@@ -642,8 +655,8 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[SESSION_ID_SIZ
   // Hex dump payload for debugging
   log_debug("  [2] Hex dump of payload being sent (first 100 bytes):");
   for (size_t i = 0; i < 100 && i < payload_len; i += 16) {
-    char hex[64] = {0};
-    char ascii[20] = {0};
+    char hex[SERVER_MAIN_HEX_BUFFER_SIZE] = {0};
+    char ascii[SERVER_MAIN_ASCII_BUFFER_SIZE] = {0};
     for (size_t j = 0; j < 16 && (i + j) < 100 && (i + j) < payload_len; j++) {
       snprintf(hex + j * 3, sizeof(hex) - j * 3, "%02x ", payload[i + j]);
       ascii[j] = (payload[i + j] >= 32 && payload[i + j] < 127) ? payload[i + j] : '.';
@@ -674,7 +687,7 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[SESSION_ID_SIZ
  * @param participant_id Remote participant UUID (16 bytes)
  * @param user_data User context pointer (server_context_t*)
  */
-static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t participant_id[UUID_SIZE],
+static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t participant_id[SESSION_ID_SIZE],
                                       void *user_data) {
   server_context_t *server_ctx = (server_context_t *)user_data;
   if (!transport || !participant_id || !server_ctx) {
@@ -688,7 +701,7 @@ static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t
   log_debug("WebRTC transport ready for participant %.8s...", (const char *)participant_id);
 
   // Convert participant_id to string for logging (ASCII-safe portion)
-  char participant_str[33];
+  char participant_str[SERVER_MAIN_PARTICIPANT_BUFFER_SIZE];
   for (int i = 0; i < 16; i++) {
     safe_snprintf(participant_str + (i * 2), 3, "%02x", participant_id[i]);
   }
@@ -799,14 +812,14 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
   // Build session name from hostname for mDNS service name
   char hostname[HOSTNAME_BUFFER_SIZE] = {0};
   // Reserve the service label suffix for the port used by the mDNS backend.
-  char session_name[56] = "ascii-chat-Server";
+  char session_name[SERVER_MAIN_SESSION_NAME_BUFFER_SIZE] = "ascii-chat-Server";
   if (gethostname(hostname, sizeof(hostname) - 1) == 0 && strlen(hostname) > 0) {
     safe_snprintf(session_name, sizeof(session_name), "%s", hostname);
   }
 
   // Prepare TXT records with session string and host public key
-  char txt_session_string[512];
-  char txt_host_pubkey[512];
+  char txt_session_string[SERVER_MAIN_TXT_SESSION_STRING_BUFFER_SIZE];
+  char txt_host_pubkey[SERVER_MAIN_TXT_HOST_PUBKEY_BUFFER_SIZE];
   const char *txt_records[2];
   int txt_count = 0;
 
@@ -1132,7 +1145,7 @@ static int init_server_crypto(void) {
   for (size_t i = 0; i < g_num_server_identity_keys; ++i) {
     public_key_t identity = {.type = KEY_TYPE_ED25519};
     memcpy(identity.key, g_server_identity_keys[i].public_key, sizeof(identity.key));
-    char label[64];
+    char label[SERVER_MAIN_LABEL_BUFFER_SIZE];
     safe_snprintf(label, sizeof(label), "SERVER PUBLIC IDENTITY %zu", i + 1);
     key_identity_announce(label, &identity);
   }
@@ -1226,7 +1239,7 @@ typedef struct {
 } server_discovery_policy_t;
 
 typedef struct {
-  char session_string[64];
+  char session_string[SERVER_MAIN_SESSION_STRING_BUFFER_SIZE];
   bool mdns_only;
 } server_discovery_startup_t;
 
@@ -1480,10 +1493,10 @@ static void server_join_discovery_session(const acds_session_create_params_t *pa
     log_debug("Server joined session successfully (participant_id: %02x%02x...)", join_result.participant_id[0],
               join_result.participant_id[1]);
     // Store participant ID for WebRTC signaling (needed to identify server in SDP/ICE messages)
-    memcpy(g_server_participant_id, join_result.participant_id, UUID_SIZE);
+    memcpy(g_server_participant_id, join_result.participant_id, SESSION_ID_SIZE);
     log_debug("Stored server participant_id for signaling: %02x%02x...", g_server_participant_id[0],
               g_server_participant_id[1]);
-    memcpy(result->session_id, join_result.session_id, UUID_SIZE);
+    memcpy(result->session_id, join_result.session_id, SESSION_ID_SIZE);
   }
 }
 
@@ -1509,7 +1522,7 @@ static void server_start_discovery_keepalive(void) {
   }
 }
 
-static int server_configure_stun(stun_server_t stun_servers[4]) {
+static int server_configure_stun(stun_server_t stun_servers[MAX_CONFIGURED_STUN_SERVERS]) {
   static lifecycle_t g_stun_lc = LIFECYCLE_INIT;
   static int stun_count = 0; // Store actual count separately
 
@@ -1536,7 +1549,7 @@ static int server_configure_stun(stun_server_t stun_servers[4]) {
   return stun_count;
 }
 
-static size_t server_configure_turn(turn_server_t turn_servers[4], const char *turn_username,
+static size_t server_configure_turn(turn_server_t turn_servers[MAX_CONFIGURED_TURN_SERVERS], const char *turn_username,
                                     const char *turn_credential) {
   size_t turn_count = 0;
   if (turn_username[0] && turn_credential[0]) {
@@ -1578,12 +1591,12 @@ static void server_init_webrtc(void) {
     log_debug("WebRTC library initialized successfully");
 
     // Configure STUN servers for ICE gathering (static to persist for peer_manager lifetime)
-    static stun_server_t stun_servers[4] = {0};
+    static stun_server_t stun_servers[MAX_CONFIGURED_STUN_SERVERS] = {0};
     int stun_count = server_configure_stun(stun_servers);
 
-    static turn_server_t turn_servers[4];
-    static char turn_auth_username[128];
-    static char turn_auth_credential[128];
+    static turn_server_t turn_servers[MAX_CONFIGURED_TURN_SERVERS];
+    static char turn_auth_username[SERVER_MAIN_TURN_AUTH_USERNAME_BUFFER_SIZE];
+    static char turn_auth_credential[SERVER_MAIN_TURN_AUTH_CREDENTIAL_BUFFER_SIZE];
     size_t turn_count = 0;
     const char *turn_username = GET_OPTION(turn_username);
     const char *turn_credential = GET_OPTION(turn_credential);

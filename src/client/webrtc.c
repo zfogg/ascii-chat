@@ -62,7 +62,7 @@ static acip_transport_t *g_webrtc_transport = NULL;
  */
 static struct {
   uint8_t session_id[SESSION_ID_SIZE];
-  uint8_t participant_id[UUID_SIZE];
+  uint8_t participant_id[SESSION_ID_SIZE];
   bool is_set;
 } g_session_context = {0};
 
@@ -102,8 +102,8 @@ static void ensure_mutex_initialized(void) {
  * - Payload: SDP string (variable length)
  */
 static asciichat_error_t client_send_sdp(const uint8_t session_id[SESSION_ID_SIZE],
-                                         const uint8_t recipient_id[UUID_SIZE], const char *sdp_type, const char *sdp,
-                                         void *user_data) {
+                                         const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type,
+                                         const char *sdp, void *user_data) {
   (void)user_data;
 
   if (!session_id || !recipient_id || !sdp_type || !sdp) {
@@ -142,9 +142,9 @@ static asciichat_error_t client_send_sdp(const uint8_t session_id[SESSION_ID_SIZ
 
   // Fill header
   acip_webrtc_sdp_t *header = (acip_webrtc_sdp_t *)packet;
-  memcpy(header->session_id, session_id, UUID_SIZE);
-  memcpy(header->sender_id, g_session_context.participant_id, UUID_SIZE);
-  memcpy(header->recipient_id, recipient_id, UUID_SIZE);
+  memcpy(header->session_id, session_id, SESSION_ID_SIZE);
+  memcpy(header->sender_id, g_session_context.participant_id, SESSION_ID_SIZE);
+  memcpy(header->recipient_id, recipient_id, SESSION_ID_SIZE);
   header->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
   header->sdp_len = HOST_TO_NET_U16((uint16_t)sdp_len);
 
@@ -184,8 +184,8 @@ static asciichat_error_t client_send_sdp(const uint8_t session_id[SESSION_ID_SIZ
  * - Payload: candidate string (null-terminated) + mid string (null-terminated)
  */
 static asciichat_error_t client_send_ice(const uint8_t session_id[SESSION_ID_SIZE],
-                                         const uint8_t recipient_id[UUID_SIZE], const char *candidate, const char *mid,
-                                         void *user_data) {
+                                         const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate,
+                                         const char *mid, void *user_data) {
   (void)user_data;
 
   if (!session_id || !recipient_id || !candidate || !mid) {
@@ -227,9 +227,9 @@ static asciichat_error_t client_send_ice(const uint8_t session_id[SESSION_ID_SIZ
 
   // Fill header
   acip_webrtc_ice_t *header = (acip_webrtc_ice_t *)packet;
-  memcpy(header->session_id, session_id, UUID_SIZE);
-  memcpy(header->sender_id, g_session_context.participant_id, UUID_SIZE);
-  memcpy(header->recipient_id, recipient_id, UUID_SIZE);
+  memcpy(header->session_id, session_id, SESSION_ID_SIZE);
+  memcpy(header->sender_id, g_session_context.participant_id, SESSION_ID_SIZE);
+  memcpy(header->recipient_id, recipient_id, SESSION_ID_SIZE);
   header->candidate_len = HOST_TO_NET_U16((uint16_t)candidate_len); // FIXED: Use candidate length, not total payload
 
   // Copy candidate and mid after header
@@ -284,7 +284,8 @@ void webrtc_set_acds_transport(acip_transport_t *transport) {
   mutex_unlock(&g_signaling_mutex);
 }
 
-void webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[UUID_SIZE]) {
+void webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE],
+                                const uint8_t participant_id[SESSION_ID_SIZE]) {
   if (!session_id || !participant_id) {
     log_error("Invalid session context parameters");
     return;
@@ -293,8 +294,8 @@ void webrtc_set_session_context(const uint8_t session_id[SESSION_ID_SIZE], const
   ensure_mutex_initialized();
   mutex_lock(&g_signaling_mutex);
 
-  memcpy(g_session_context.session_id, session_id, UUID_SIZE);
-  memcpy(g_session_context.participant_id, participant_id, UUID_SIZE);
+  memcpy(g_session_context.session_id, session_id, SESSION_ID_SIZE);
+  memcpy(g_session_context.participant_id, participant_id, SESSION_ID_SIZE);
   g_session_context.is_set = true;
 
   log_info("Session context set for WebRTC signaling (session=%.8s..., participant=%.8s...)", (const char *)session_id,

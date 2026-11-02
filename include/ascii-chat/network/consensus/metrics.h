@@ -33,7 +33,7 @@
  * bandwidth estimates, latency, and probe success rates.
  */
 typedef struct {
-  uint8_t participant_id[UUID_SIZE];           ///< UUID of participant
+  uint8_t participant_id[SESSION_ID_SIZE];     ///< UUID of participant
   uint8_t nat_tier;                            ///< 0=LAN, 1=Public, 2=UPnP, 3=STUN, 4=TURN
   uint32_t upload_kbps;                        ///< Upload bandwidth in Kbps (network byte order)
   uint32_t rtt_ns;                             ///< RTT to current host in nanoseconds (network byte order)
@@ -77,7 +77,7 @@ typedef struct consensus_metrics_collection consensus_metrics_collection_t;
  * @note out_metrics must point to valid participant_metrics_t allocated by caller
  * @note Measurement window and timestamp are set automatically
  */
-asciichat_error_t consensus_metrics_measure(const uint8_t my_id[UUID_SIZE], participant_metrics_t *out_metrics);
+asciichat_error_t consensus_metrics_measure(const uint8_t my_id[SESSION_ID_SIZE], participant_metrics_t *out_metrics);
 
 /**
  * @brief Serialize metrics to wire format with network byte order
