@@ -5,6 +5,9 @@
 
 #pragma once
 
+/** Pattern storage capacity in bytes, including NUL. */
+#define LOG_GREP_PATTERN_BUFFER_SIZE 4096
+
 #include <ascii-chat/asciichat_errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -16,15 +19,15 @@
  * Shared between --grep CLI filtering and interactive grep.
  */
 typedef struct {
-  char pattern[4096];     ///< Parsed pattern string
-  uint32_t pcre2_options; ///< PCRE2 compile options
-  bool is_fixed_string;   ///< True if fixed string (not regex)
-  bool case_insensitive;  ///< Case-insensitive (i flag)
-  bool invert;            ///< Invert match (I flag)
-  bool global_flag;       ///< Highlight all matches (g flag)
-  int context_before;     ///< Lines before match (B<n> flag)
-  int context_after;      ///< Lines after match (A<n> flag)
-  bool valid;             ///< True if parsing succeeded
+  char pattern[LOG_GREP_PATTERN_BUFFER_SIZE]; ///< Parsed pattern string
+  uint32_t pcre2_options;                     ///< PCRE2 compile options
+  bool is_fixed_string;                       ///< True if fixed string (not regex)
+  bool case_insensitive;                      ///< Case-insensitive (i flag)
+  bool invert;                                ///< Invert match (I flag)
+  bool global_flag;                           ///< Highlight all matches (g flag)
+  int context_before;                         ///< Lines before match (B<n> flag)
+  int context_after;                          ///< Lines after match (A<n> flag)
+  bool valid;                                 ///< True if parsing succeeded
 } grep_parse_result_t;
 
 /**

@@ -73,7 +73,7 @@ __attribute__((weak)) void platform_log_hook(log_level_t level, const char *mess
 static void log_terminal_printf(int fd, const char *format, ...) {
   if (ui_controller_is_presenting())
     return;
-  char buffer[16384];
+  char buffer[LOG_TERMINAL_BUFFER_SIZE];
   va_list args;
   va_start(args, format);
   int length = vsnprintf(buffer, sizeof(buffer), format, args);
@@ -943,8 +943,8 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   const char *clean_msg = msg_buffer;
 
   // Use format system to generate the complete log line
-  char colored_log_line[LOG_MSG_BUFFER_SIZE + 512];
-  char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
+  char colored_log_line[LOG_MSG_BUFFER_SIZE + LOG_HEADER_BUFFER_SIZE];
+  char plain_log_line[LOG_MSG_BUFFER_SIZE + LOG_HEADER_BUFFER_SIZE];
 
   /* Apply format without colors first (plain version for grep matching)
    * Load format pointer once to prevent TOCTOU race condition where another
@@ -1082,7 +1082,7 @@ static void output_notice(log_level_t level, const char *file, int line, const c
   atomic_fetch_sub_u64_impl(&g_session_log_readers, 1);
   // Match the same uncolored template as ordinary terminal logs, including metadata.
   // Keep the complete body for notices that span multiple file-log records.
-  size_t capacity = strlen(text) + LOG_MSG_BUFFER_SIZE + 512;
+  size_t capacity = strlen(text) + LOG_MSG_BUFFER_SIZE + LOG_HEADER_BUFFER_SIZE;
   char *plain_log_line = SAFE_MALLOC(capacity, char *);
   char timestamp[LOG_TIMESTAMP_BUFFER_SIZE];
   uint64_t time_ns = time_get_realtime_ns();
@@ -1241,7 +1241,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
       bool use_colors = terminal_should_color_output(fd);
 
-      char header_buffer[512];
+      char header_buffer[LOG_HEADER_BUFFER_SIZE];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func,
                                          use_colors, time_ns);
 
@@ -1406,8 +1406,8 @@ static void log_colored_msg_internal(log_level_t level, const char *file, int li
   uint64_t time_ns = time_get_realtime_ns();
   get_current_time_formatted(time_buf);
 
-  char colored_header[512] = {0};
-  char plain_header[512] = {0};
+  char colored_header[LOG_HEADER_BUFFER_SIZE] = {0};
+  char plain_header[LOG_HEADER_BUFFER_SIZE] = {0};
   if (format_log_header(colored_header, sizeof(colored_header), level, time_buf, file, line, func, use_colors,
                         time_ns) < 0) {
     colored_header[0] = '\0';
@@ -1416,8 +1416,8 @@ static void log_colored_msg_internal(log_level_t level, const char *file, int li
     plain_header[0] = '\0';
   }
 
-  char colored_entry[16896];
-  char plain_entry[16896];
+  char colored_entry[LOG_TERMINAL_ENTRY_BUFFER_SIZE];
+  char plain_entry[LOG_TERMINAL_ENTRY_BUFFER_SIZE];
   safe_snprintf(colored_entry, sizeof(colored_entry), "%s%s", colored_header, colored_message);
   safe_snprintf(plain_entry, sizeof(plain_entry), "%s%s", plain_header, plain_message);
 
@@ -1519,7 +1519,7 @@ void log_plain_msg(const char *fmt, ...) {
       uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
 
-      char header_buffer[512];
+      char header_buffer[LOG_HEADER_BUFFER_SIZE];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
                                          0, "log_plain_msg", false, time_ns);
 
@@ -1599,7 +1599,7 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
       uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
 
-      char header_buffer[512];
+      char header_buffer[LOG_HEADER_BUFFER_SIZE];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
                                          0, "log_plain_stderr_msg", false, time_ns);
 
@@ -1693,7 +1693,7 @@ static void log_plain_stdout_internal_atomic(const char *fmt, va_list args, bool
       uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
 
-      char header_buffer[512];
+      char header_buffer[LOG_HEADER_BUFFER_SIZE];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
                                          0, "log_plain_stdout_msg", false, time_ns);
 
