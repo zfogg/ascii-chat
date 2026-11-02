@@ -179,3 +179,5 @@ ASCII_OTEL_OPERATION(MCP_HTTP_RESPONSE, "ascii-chat.mcp.http.response", false)
 ASCII_OTEL_OPERATION(DISCOVERY_HOST_SELECTION, "ascii-chat.discovery.host.selection", false)
 ASCII_OTEL_OPERATION(DISCOVERY_HOST_DESIGNATION, "ascii-chat.discovery.host.designation", false)
 ASCII_OTEL_OPERATION(DISCOVERY_HOST_RECONCILE, "ascii-chat.discovery.host.reconcile", false)
+
+ASCII_OTEL_OPERATION(DATABASE_PREPARE_FAILURE, "storage.sqlite.PrepareFailure", false)

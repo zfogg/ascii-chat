@@ -1,4 +1,5 @@
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/network/errors.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/options.h>
@@ -103,6 +104,16 @@ static int journal_contract(void) {
   SET_ERRNO(ERROR_MEDIA_OPEN, "Before TUI");
   CHECK(!errno_notifications_pending());
   errno_notifications_enable(true);
+  // Password authentication owns its deferred feedback even when the protocol
+  // decoder records a rejection while interactive notifications are enabled.
+  acip_error_t rejection = {.error_code = ACIP_ERROR_INVALID_PASSWORD};
+  SAFE_STRNCPY(rejection.error_message, "PRIVATE_REMOTE_PASSWORD_DETAIL", sizeof(rejection.error_message));
+  bool suppressed = errno_notifications_suppress(true);
+  CHECK(network_error_decode(PACKET_TYPE_ACIP_ERROR, &rejection, sizeof(rejection)) == ERROR_INVALID_PASSWORD);
+  errno_notifications_suppress(suppressed);
+  CHECK(!errno_notifications_pending());
+  CHECK(HAS_ERRNO_CODE(ERROR_INVALID_PASSWORD));
+  CLEAR_ERRNO();
   SET_ERRNO(ERROR_NETWORK_TIMEOUT, "First batch");
   CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);
   uint64_t cutoff = entries[0].error_id;

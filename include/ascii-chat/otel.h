@@ -53,6 +53,8 @@ void ascii_otel_pipeline_progress(unsigned stage, unsigned expected);
 void ascii_otel_http(ascii_otel_scope_t *scope, const char *hostname, const char *path);
 void ascii_otel_http_status(ascii_otel_scope_t *scope, int status);
 void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count);
+/** Prepare a NUL-terminated statement; rejected SQL receives a safe failure span. */
+int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **statement);
 #define ASCII_OTEL_ATTR_STRING(key, value) ascii_otel_scope_string(&otel_scope, key, value)
 #define ASCII_OTEL_ATTR_INT(key, value) ascii_otel_scope_int(&otel_scope, key, value)
 #define ASCII_OTEL_PACKET(type, size, action, transport) ascii_otel_packet(&otel_scope, type, size, action, transport)
@@ -70,6 +72,7 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count);
   ((void)(validator), (void)(reason), (void)(bytes), (void)(width), (void)(height), (void)(code))
 #define ascii_otel_pipeline_progress(stage, expected) ((void)(stage), (void)(expected))
 #define ascii_otel_ui_usage(screen, event, duration_ns) ((void)(screen), (void)(event), (void)(duration_ns))
+#define ascii_otel_sqlite_prepare(db, sql, statement) sqlite3_prepare_v2(db, sql, -1, statement, NULL)
 #define ascii_otel_enabled() false
 #define ascii_otel_current_operation() ""
 #define ascii_otel_call_session_used(session_string) ((void)(session_string))

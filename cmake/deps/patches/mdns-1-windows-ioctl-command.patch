@@ -1,0 +1,17 @@
+diff --git a/mdns.h b/mdns.h
+--- a/mdns.h
++++ b/mdns.h
+@@ -439,4 +439,4 @@ mdns_socket_setup_ipv4(int sock, const struct sockaddr_in* saddr) {
+ #ifdef _WIN32
+-	unsigned long param = 1;
+-	ioctlsocket(sock, FIONBIO, &param);
++	unsigned long param = 1;
++	ioctlsocket(sock, (long)FIONBIO, &param);
+ #else
+@@ -503,4 +503,4 @@ mdns_socket_setup_ipv6(int sock, const struct sockaddr_in6* saddr) {
+ #ifdef _WIN32
+-	unsigned long param = 1;
+-	ioctlsocket(sock, FIONBIO, &param);
++	unsigned long param = 1;
++	ioctlsocket(sock, (long)FIONBIO, &param);
+ #else

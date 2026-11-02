@@ -1,7 +1,7 @@
 name: ascii-chat-otel
 services:
   spaniel:
-    image: ${SPANIEL_IMAGE:-ghcr.io/zfogg/spaniel:latest}
+    image: ${SPANIEL_IMAGE:-spaniel:query-diagnostics-1325fa3}
     command: ["--db-path", "/data/spaniel.duckdb", "--no-browser", "--mcp-allow-writes", "--dashboards-dir", "/dashboards", "--alerts-dir", "/alerts"]
     environment:
       SPANIEL_BIND_ADDRESS_V4: 0.0.0.0
