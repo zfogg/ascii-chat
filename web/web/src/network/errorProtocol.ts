@@ -1,7 +1,31 @@
 import {
   formatReportForProtocol,
+  reportProtocolError,
   type BrowserErrorReport,
 } from "../errors/errorBus";
+import { getClientModule } from "../wasm/client";
+
+/** Values from network_error_action_t; policy stays in the shared C engine. */
+export enum RemoteErrorAction {
+  Retry,
+  Stop,
+  Continue,
+}
+
+export function presentRemoteError(
+  payload: Uint8Array,
+  origin?: string,
+): RemoteErrorAction {
+  try {
+    const error = decodeRemoteError(payload);
+    const action = getClientModule()!._network_error_action(error.code);
+    reportProtocolError(error.code, error.message, origin);
+    return action;
+  } catch (error) {
+    reportProtocolError(44, (error as Error).message, origin);
+    return RemoteErrorAction.Stop;
+  }
+}
 
 const ERROR_INTERNAL = 53;
 const MAX_ERROR_MESSAGE_LENGTH = 4096;
@@ -29,7 +53,7 @@ export function decodeRemoteError(payload: Uint8Array): {
   );
   const code = view.getUint32(0, false);
   const length = view.getUint32(4, false);
-  if (length > payload.length - 8)
+  if (length > MAX_ERROR_MESSAGE_LENGTH || length !== payload.length - 8)
     throw new Error("Remote error message length is invalid");
   return {
     code,

@@ -1,4 +1,10 @@
 import { OutboundQueue } from "./OutboundQueue";
+import {
+  encodeBrowserError,
+  presentRemoteError,
+  RemoteErrorAction,
+} from "./errorProtocol";
+import { setNetworkErrorReporter } from "../errors/errorBus";
 import { BrowserHostSession } from "./BrowserHostSession";
 import { HandoffProtocol } from "./HandoffProtocol";
 import { DiscoveryProtocol } from "./DiscoveryProtocol";
@@ -110,6 +116,14 @@ export class WebRTCSession implements ClientSession {
     if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
     this.disconnectedTimer = null;
     this.clearTimer();
+    setNetworkErrorReporter((report) => {
+      if (this.state !== ConnectionState.CONNECTED) return;
+      try {
+        this.sendPacket(PacketType.ERROR_MESSAGE, encodeBrowserError(report));
+      } catch (error) {
+        console.warn("[WebRTCSession] Could not report browser error:", error);
+      }
+    });
     this.setState(ConnectionState.CONNECTED);
     this.options.onProgress?.("Connected over WebRTC (DTLS encrypted)");
     this.resolveConnect?.();
@@ -360,6 +374,19 @@ export class WebRTCSession implements ClientSession {
             if (!decoded) return;
             bytes = decoded;
             const packet = parsePacket(bytes);
+            if (packet.type === PacketType.ERROR_MESSAGE) {
+              const action = presentRemoteError(bytes.slice(22));
+              if (action !== RemoteErrorAction.Continue) {
+                this.fail(
+                  action === RemoteErrorAction.Stop
+                    ? new SessionRejectedError(
+                        "Remote peer rejected the session",
+                      )
+                    : new Error("Remote peer requested reconnection"),
+                );
+              }
+              return;
+            }
             if (packet.type === PacketType.PING)
               this.sendPacket(PacketType.PONG, bytes.slice(22));
             else {

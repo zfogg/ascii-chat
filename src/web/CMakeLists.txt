@@ -633,6 +633,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
+    _network_error_action
     _wasm_error_snapshot _wasm_error_code _wasm_error_message _wasm_error_file _wasm_error_full_file _wasm_error_function _wasm_error_line _wasm_error_dismiss
     "_client_validate_frame"
     "_client_decode_frame_data"

@@ -26,6 +26,11 @@ cannot delay the checks. It covers:
 
 - Real browser WebSocket packet exchange, retry while the server is down,
   reconnection after restart, and cancellation after explicit disconnect.
+- Remote error overlays over plain/encrypted WebSockets and encrypted WebRTC
+  DataChannels: recoverable errors keep traffic alive, retryable errors permit
+  reconnection, fatal errors stop recovery, and browser reports reach the media
+  endpoint while a modal is open. These use real compiled security handshakes;
+  the WebRTC error cases exchange SDP locally, without a discovery server.
 - Render settings restored after reload and from a copied URL in a fresh browser
   context, default-value omission, and preservation of unrelated URL parameters.
 - Device preview playback and release/reacquisition of camera streams.
@@ -54,6 +59,11 @@ and performance tests. Run individual specs with `vp exec playwright test
 <spec-name>` and consult the spec for its required binaries or environment
 variables. Native-server fixtures use `build/bin/ascii-chat` by default, or the
 path supplied by `ASCII_CHAT_TEST_BINARY`.
+
+With `ASCII_CHAT_TEST_BINARY` set, run `vp exec playwright test
+remote-error-native.spec.ts` to check browser error reports and full-session
+recovery against a real native WebSocket server, with application encryption
+both enabled and disabled.
 
 ## Local ASCII recordings
 

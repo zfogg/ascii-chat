@@ -6,6 +6,7 @@ import base from "./playwright.config";
 export default defineConfig({
   ...base,
   testMatch: [
+    "error-overlay.integration.spec.ts",
     "connection-ci.spec.ts",
     "settings-lifecycle.spec.ts",
     "settings-persistence.spec.ts",

@@ -52,6 +52,7 @@ interface AsciiChatWasmExports {
 
 // Type definition for the Emscripten module
 interface ClientModuleExports {
+  _network_error_action(code: number): number;
   _wasm_error_snapshot(): number;
   _wasm_error_code(index: number): number;
   _wasm_error_message(index: number): number;
