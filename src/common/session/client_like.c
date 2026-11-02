@@ -1,3 +1,7 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SESSION_CLIENT_LIKE_WEBCAM_INDEX_BUFFER_SIZE 32
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/debug/errno.h>
@@ -376,7 +380,7 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
       log_debug("Using %s", visualizing ? "an audio visualization frame clock" : "the local webcam");
       log_info("%s", visualizing ? "Visualizing audio" : "Using local webcam");
       state->capture_config.type = MEDIA_SOURCE_WEBCAM;
-      static char webcam_index_str[32];
+      static char webcam_index_str[SESSION_CLIENT_LIKE_WEBCAM_INDEX_BUFFER_SIZE];
       safe_snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
       state->capture_config.path = webcam_index_str;
       if (!visualizing)

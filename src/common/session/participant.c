@@ -482,8 +482,8 @@ static void *participant_audio_capture_thread(void *arg) {
         opus_codec_encode(p->opus_encoder, sample_buffer, (int)samples_read, opus_buffer, sizeof(opus_buffer));
     if (opus_len > 0) {
       uint16_t frame_sizes[1] = {(uint16_t)opus_len};
-      asciichat_error_t err =
-          acip_send_audio_opus_batch(p->transport, opus_buffer, opus_len, frame_sizes, 1, 48000, 20);
+      asciichat_error_t err = acip_send_audio_opus_batch(p->transport, opus_buffer, opus_len, frame_sizes, 1,
+                                                         AUDIO_SAMPLE_RATE, CLIENT_AUDIO_PIPELINE_FRAME_MS);
       if (err != ASCIICHAT_OK) {
         log_warn_every(5 * US_PER_SEC_INT, "Failed to send audio packet: %d", err);
       }
@@ -633,7 +633,7 @@ asciichat_error_t session_participant_start_audio(session_participant_t *p) {
   // Create Opus encoder for audio compression (48kHz, VOIP mode, 24 kbps)
   if (!p->opus_encoder) {
     asciichat_errno_scope_t checkpoint = errno_checkpoint();
-    p->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+    p->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, AUDIO_SAMPLE_RATE, 24000);
     if (!p->opus_encoder) {
       asciichat_error_t error = participant_startup_error(checkpoint, "Failed to create Opus encoder");
       session_participant_stop_audio(p);

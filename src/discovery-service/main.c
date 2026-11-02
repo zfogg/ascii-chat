@@ -1,3 +1,10 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_SERVICE_MAIN_MSG_BUFFER_SIZE 256
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define DISCOVERY_STATS_ROW_CAPACITY 64
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/discovery/database.h>
@@ -51,7 +58,7 @@ static void acds_interrupt_fn(int sig) {
 
 static void acds_stats_provider(stats_view_t *view, void *data) {
   acds_server_t *server = data;
-  database_session_stats_t rows[64];
+  database_session_stats_t rows[DISCOVERY_STATS_ROW_CAPACITY];
   size_t count = 0;
   uint64_t sessions = 0, participants = 0;
   if (database_stats_snapshot(server->db, rows, 64, &count, &sessions, &participants) != ASCIICHAT_OK) {
@@ -135,7 +142,7 @@ static asciichat_error_t acds_init_fn(void *user_data) {
   char fingerprint[HEX_STRING_SIZE_32];
   acds_identity_fingerprint(public_key, fingerprint);
   log_info("Discovery server identity: SHA256:%s", fingerprint);
-  char msg[256];
+  char msg[DISCOVERY_SERVICE_MAIN_MSG_BUFFER_SIZE];
   safe_snprintf(msg, sizeof(msg), "Server fingerprint: SHA256:%s", fingerprint);
   log_console(LOG_INFO, msg);
 

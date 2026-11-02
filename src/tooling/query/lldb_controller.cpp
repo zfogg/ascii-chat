@@ -3,6 +3,9 @@
  * @brief LLDB process attachment and control implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TOOLING_QUERY_LLDB_CONTROLLER_PATH_BUFFER_SIZE 1024
+
 #include "lldb_controller.h"
 
 #include <lldb/API/SBBreakpoint.h>
@@ -877,7 +880,7 @@ BreakpointInfo LLDBController::breakpointToInfo(lldb::SBBreakpoint bp) {
         if (line_entry.IsValid()) {
           lldb::SBFileSpec file_spec = line_entry.GetFileSpec();
           if (file_spec.IsValid()) {
-            char path[1024];
+            char path[TOOLING_QUERY_LLDB_CONTROLLER_PATH_BUFFER_SIZE];
             file_spec.GetPath(path, sizeof(path));
             info.file = path;
           }

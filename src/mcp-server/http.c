@@ -1,3 +1,10 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define MCP_SERVER_HTTP_ORIGIN_BUFFER_SIZE 2048
+#define MCP_SERVER_HTTP_TYPE_BUFFER_SIZE 128
+#define MCP_SERVER_HTTP_ACCEPT_BUFFER_SIZE 512
+#define MCP_SERVER_HTTP_VERSION_BUFFER_SIZE 64
+
 #include "mcp.h"
 #include <ascii-chat/stats/runtime.h>
 #include <ascii-chat/options/options.h>
@@ -32,7 +39,7 @@ static int respond(struct lws *wsi, http_session_t *h, unsigned status, yyjson_m
   return 0;
 }
 static bool origin_allowed(struct lws *wsi, const mcp_policy_t *p) {
-  char origin[2048];
+  char origin[MCP_SERVER_HTTP_ORIGIN_BUFFER_SIZE];
   int n = lws_hdr_copy(wsi, origin, sizeof(origin), WSI_TOKEN_ORIGIN);
   if (n <= 0)
     return true;
@@ -52,15 +59,15 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
       return respond(wsi, h, 404, NULL);
     if (lws_hdr_total_length(wsi, WSI_TOKEN_POST_URI) <= 0)
       return respond(wsi, h, 405, NULL);
-    char type[128];
+    char type[MCP_SERVER_HTTP_TYPE_BUFFER_SIZE];
     lws_hdr_copy(wsi, type, sizeof(type), WSI_TOKEN_HTTP_CONTENT_TYPE);
     if (strncmp(type, "application/json", 16))
       return respond(wsi, h, 415, NULL);
-    char accept[512];
+    char accept[MCP_SERVER_HTTP_ACCEPT_BUFFER_SIZE];
     lws_hdr_copy(wsi, accept, sizeof(accept), WSI_TOKEN_HTTP_ACCEPT);
     if (!strstr(accept, "application/json") || !strstr(accept, "text/event-stream"))
       return respond(wsi, h, 406, NULL);
-    char version[64] = {0};
+    char version[MCP_SERVER_HTTP_VERSION_BUFFER_SIZE] = {0};
     int vn = lws_hdr_custom_copy(wsi, version, sizeof(version), "mcp-protocol-version:", 21);
     if (vn > 0 && strcmp(version, "2025-11-25") && strcmp(version, "2025-06-18") && strcmp(version, "2025-03-26"))
       return respond(wsi, h, 400, NULL);

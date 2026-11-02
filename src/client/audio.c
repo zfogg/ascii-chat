@@ -201,7 +201,7 @@ static int audio_queue_packet(client_connection_t *connection, const uint8_t *op
 #ifdef ASCIICHAT_WITH_OTEL
   packet->telemetry_context = ascii_otel_context();
 #endif
-  for (int i = 0; i < frame_count && i < CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES; i++) {
+  for (int i = 0; i < frame_count && i < MAX_BATCH_FRAMES; i++) {
     packet->frame_sizes[i] = frame_sizes[i];
   }
   connection->audio_send_queue_head = next_head;
@@ -527,7 +527,6 @@ static void *audio_capture_thread_func(void *arg) {
   int opus_frame_samples_collected = 0;
 
   // Batch buffer for multiple Opus frames - send all at once to reduce blocking
-#define MAX_BATCH_FRAMES CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES
 #define BATCH_TIMEOUT_NS (40LL * NS_PER_MS_INT) // Flush batch after 40ms even if not full (2 Opus frames @ 20ms each)
   uint8_t batch_buffer[MAX_BATCH_FRAMES * OPUS_MAX_PACKET_SIZE];
   uint16_t batch_frame_sizes[MAX_BATCH_FRAMES];

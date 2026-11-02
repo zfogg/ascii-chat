@@ -4,6 +4,13 @@
  * @ingroup discovery
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define DISCOVERY_NAT_PORT_BUFFER_SIZE 16
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define STUN_BINDING_HEADER_SIZE 20
+#define STUN_PROBE_RESPONSE_BUFFER_SIZE 512
+
 #include <ascii-chat/common/limits.h>
 #include "nat.h"
 
@@ -211,7 +218,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   hints.ai_socktype = SOCK_DGRAM;
 
   struct addrinfo *result = NULL;
-  char port_str[16];
+  char port_str[DISCOVERY_NAT_PORT_BUFFER_SIZE];
   safe_snprintf(port_str, sizeof(port_str), "%u", stun_port);
 
   int ret = getaddrinfo(host_buf, port_str, &hints, &result);
@@ -223,7 +230,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
 
   // Build minimal STUN binding request (RFC 5389)
   // Header: Magic (0x2112A442) + Transaction ID (96 bits)
-  uint8_t stun_request[20];
+  uint8_t stun_request[STUN_BINDING_HEADER_SIZE];
   stun_request[0] = 0x00; // Message type: Binding Request (0x0001), bits split
   stun_request[1] = 0x01;
   stun_request[2] = 0x00; // Message length: 0 (no attributes for simple probe)
@@ -250,7 +257,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   }
 
   // Receive STUN response
-  uint8_t stun_response[512];
+  uint8_t stun_response[STUN_PROBE_RESPONSE_BUFFER_SIZE];
   struct sockaddr_in peer_addr;
   socklen_t peer_addr_len = sizeof(peer_addr);
 

@@ -598,7 +598,7 @@ void *client_audio_render_thread(void *arg) {
   int opus_frame_accumulated = 0;
 
   // Create Opus encoder for this client's audio stream (48kHz, mono, 128kbps, AUDIO mode for music quality)
-  opus_codec_t *opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, 48000, 128000);
+  opus_codec_t *opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, AUDIO_SAMPLE_RATE, 128000);
   if (!opus_encoder) {
     log_error("Failed to create Opus encoder for audio render thread (client %s)", thread_client_id);
     return NULL;
@@ -733,9 +733,9 @@ void *client_audio_render_thread(void *arg) {
         // Opus data: raw encoded audio
 
         // Fixed values for Opus encoding (standard 48kHz, 960 samples per frame = 20ms)
-        const uint32_t sample_rate = 48000;
-        const uint32_t frame_duration = 20; // milliseconds (960 samples / 48kHz = 20ms)
-        const uint32_t frame_count = 1;     // one Opus frame per packet
+        const uint32_t sample_rate = AUDIO_SAMPLE_RATE;
+        const uint32_t frame_duration = CLIENT_AUDIO_PIPELINE_FRAME_MS; // milliseconds (960 samples / 48kHz = 20ms)
+        const uint32_t frame_count = 1;                                 // one Opus frame per packet
         const uint16_t frame_size = (uint16_t)opus_size;
 
         // Calculate total packet size: 16-byte header + frame_sizes + opus data

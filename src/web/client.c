@@ -1,3 +1,11 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE 256
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define BROWSER_PACKET_JSON_BUFFER_SIZE 1024
+
+#include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/compression.h>
 #include "session/frame_validation.h"
 #include <ascii-chat/network/crc32.h>
@@ -164,7 +172,7 @@ static bool g_initialized = false;
 static bool g_handshake_complete = false;
 static uint8_t g_crypto_mode = ACIP_CRYPTO_ENCRYPT;
 static bool g_version_received = false;
-static char g_crypto_password[256] = {0};
+static char g_crypto_password[WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE] = {0};
 static uint8_t g_client_identity_key[crypto_sign_SECRETKEYBYTES] = {0};
 static uint8_t g_expected_server_identity_key[crypto_sign_PUBLICKEYBYTES] = {0};
 static bool g_has_client_identity_key = false;
@@ -530,7 +538,7 @@ char *client_get_public_key_hex(void) {
   }
 
   // Allocate buffer for hex string (32 bytes = 64 hex chars + null terminator)
-  char *hex_buffer = SAFE_MALLOC(65, char *);
+  char *hex_buffer = SAFE_MALLOC(HEX_STRING_SIZE_32, char *);
   if (!hex_buffer) {
     return NULL;
   }
@@ -871,12 +879,13 @@ char *client_parse_packet(const uint8_t *raw_packet, size_t packet_len) {
   }
 
   // Build JSON response with packet metadata
-  char *json = SAFE_MALLOC(1024, char *);
+  char *json = SAFE_MALLOC(BROWSER_PACKET_JSON_BUFFER_SIZE, char *);
   if (!json) {
     return NULL;
   }
 
-  snprintf(json, 1024, "{\"type\":%u,\"length\":%u,\"client_id\":%u,\"crc32\":%u}", type, length, client_id, crc32);
+  snprintf(json, BROWSER_PACKET_JSON_BUFFER_SIZE, "{\"type\":%u,\"length\":%u,\"client_id\":%u,\"crc32\":%u}", type,
+           length, client_id, crc32);
 
   return json;
 }

@@ -396,7 +396,7 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
         for (int j = 0; j < host->max_clients; j++) {
           if (host->clients[j].client_id == client_id && host->clients[j].active && host->clients[j].incoming_audio) {
             if (!host->clients[j].opus_decoder)
-              host->clients[j].opus_decoder = opus_codec_create_decoder(48000);
+              host->clients[j].opus_decoder = opus_codec_create_decoder(AUDIO_SAMPLE_RATE);
             if (!host->clients[j].opus_decoder) {
               mutex_unlock(&host->clients_mutex);
               return SET_ERRNO(ERROR_AUDIO, "Failed to initialize participant decoder");
@@ -747,7 +747,7 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
       continue;
     ASCII_OTEL_SCOPE(SERVER_AUDIO);
     if (!client->opus_encoder)
-      client->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+      client->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, AUDIO_SAMPLE_RATE, 24000);
     if (!client->opus_encoder) {
       result = SET_ERRNO(ERROR_AUDIO, "Failed to initialize participant encoder");
       continue;
@@ -762,8 +762,8 @@ asciichat_error_t session_host_render_audio(session_host_t *host) {
         opus_codec_encode(client->opus_encoder, mixed, OPUS_FRAME_SAMPLES, opus_buffer, sizeof(opus_buffer));
     if (opus_len > 0) {
       uint16_t frame_sizes[1] = {(uint16_t)opus_len};
-      asciichat_error_t sent =
-          acip_send_audio_opus_batch(client->transport, opus_buffer, opus_len, frame_sizes, 1, 48000, 20);
+      asciichat_error_t sent = acip_send_audio_opus_batch(client->transport, opus_buffer, opus_len, frame_sizes, 1,
+                                                          AUDIO_SAMPLE_RATE, CLIENT_AUDIO_PIPELINE_FRAME_MS);
       if (sent != ASCIICHAT_OK)
         log_warn("Failed to send mixed audio to client %u", client->client_id);
     }

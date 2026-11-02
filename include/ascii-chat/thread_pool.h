@@ -70,6 +70,9 @@
  * @date December 2025
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define THREAD_POOL_NAME_BUFFER_SIZE 64
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "common.h"
@@ -97,12 +100,12 @@ typedef struct thread_pool_work_entry {
  * sorted linked list by stop_id for ordered cleanup.
  */
 struct thread_pool_entry {
-  asciichat_thread_t thread;      ///< Thread handle
-  int stop_id;                    ///< Cleanup order (lower = stop first, -1 = unordered)
-  void *(*thread_func)(void *);   ///< Thread function
-  void *thread_arg;               ///< Thread argument
-  char name[64];                  ///< Thread name for debugging
-  struct thread_pool_entry *next; ///< Linked list next pointer
+  asciichat_thread_t thread;               ///< Thread handle
+  int stop_id;                             ///< Cleanup order (lower = stop first, -1 = unordered)
+  void *(*thread_func)(void *);            ///< Thread function
+  void *thread_arg;                        ///< Thread argument
+  char name[THREAD_POOL_NAME_BUFFER_SIZE]; ///< Thread name for debugging
+  struct thread_pool_entry *next;          ///< Linked list next pointer
 };
 
 /**
@@ -116,10 +119,10 @@ struct thread_pool_entry {
  * 2. Work queue mode (new): pre-created workers pull tasks from a queue
  */
 struct thread_pool {
-  char name[64];                ///< Pool name for debugging
-  thread_pool_entry_t *threads; ///< Linked list of threads (sorted by stop_id)
-  mutex_t threads_mutex;        ///< Mutex protecting thread list
-  size_t thread_count;          ///< Number of threads in pool
+  char name[THREAD_POOL_NAME_BUFFER_SIZE]; ///< Pool name for debugging
+  thread_pool_entry_t *threads;            ///< Linked list of threads (sorted by stop_id)
+  mutex_t threads_mutex;                   ///< Mutex protecting thread list
+  size_t thread_count;                     ///< Number of threads in pool
 
   // Work queue mode fields (only used if num_workers > 0)
   bool is_work_queue_mode;              ///< True if using work queue mode

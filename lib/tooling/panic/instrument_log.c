@@ -11,6 +11,14 @@
 // SPDX-License-Identifier: MIT
 // Debug instrumentation logging runtime for ascii-chat line tracing
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TOOLING_PANIC_INSTRUMENT_LOG_TIMESTAMP_BUFFER_SIZE 32
+#define TOOLING_PANIC_INSTRUMENT_LOG_SNIPPET_BUFFER_SIZE 64
+#define TOOLING_PANIC_INSTRUMENT_LOG_TID_BUFFER_SIZE 32
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define INSTRUMENT_LOG_KEY_BUFFER_SIZE 8
+
 #include <ascii-chat/tooling/panic/instrument_log.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/mutex.h>
@@ -344,7 +352,7 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
     memset(&tm_now, 0, sizeof(tm_now));
   }
 
-  char timestamp[32];
+  char timestamp[TOOLING_PANIC_INSTRUMENT_LOG_TIMESTAMP_BUFFER_SIZE];
   size_t ts_len = strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S", &tm_now);
   if (ts_len == 0) {
     SAFE_STRNCPY(timestamp, "1970-01-01T00:00:00", sizeof(timestamp));
@@ -450,7 +458,7 @@ void asciichat_instr_log_pc(uintptr_t program_counter) {
     return;
   }
 
-  char snippet[64];
+  char snippet[TOOLING_PANIC_INSTRUMENT_LOG_SNIPPET_BUFFER_SIZE];
   safe_snprintf(snippet, sizeof(snippet), "pc=0x%zx", (size_t)program_counter);
   asciichat_instr_log_line("__coverage__", 0, "<coverage>", snippet, ASCII_INSTR_SOURCE_PRINT_MACRO_NONE);
 }
@@ -706,7 +714,7 @@ static bool asciichat_instr_env_is_enabled(const char *value) {
     return false;
   }
 
-  char lowered[8];
+  char lowered[INSTRUMENT_LOG_KEY_BUFFER_SIZE];
   size_t len = 0;
   while (value[len] != '\0' && len < sizeof(lowered) - 1) {
     lowered[len] = (char)tolower((unsigned char)value[len]);
@@ -1054,7 +1062,7 @@ static bool asciichat_instr_should_log(const asciichat_instr_runtime_t *runtime,
   }
 
   if (runtime->filter_thread != NULL) {
-    char tid_buf[32];
+    char tid_buf[TOOLING_PANIC_INSTRUMENT_LOG_TID_BUFFER_SIZE];
     safe_snprintf(tid_buf, sizeof(tid_buf), "%llu", (unsigned long long)runtime->thread_id);
     if (strstr(runtime->filter_thread, tid_buf) == NULL) {
       return false;

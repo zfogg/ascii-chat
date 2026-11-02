@@ -1,3 +1,13 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define MCP_SERVER_REQUEST_FILE_BUFFER_SIZE 4096
+#define MCP_SERVER_REQUEST_PARENT_BUFFER_SIZE 4096
+#define MCP_SERVER_REQUEST_EXE_BUFFER_SIZE 4096
+#define MCP_SERVER_REQUEST_BUF_BUFFER_SIZE 4097
+#define MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE 16
+#define MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE 64
+#define MCP_SERVER_REQUEST_B_BUFFER_SIZE 16
+
 #include "mcp.h"
 #include <ascii-chat/options/json.h>
 #include <ascii-chat/options/registry.h>
@@ -271,7 +281,7 @@ static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, mcp_r
   asciichat_error_t err = platform_mkdtemp(r->upload_dir, sizeof(r->upload_dir), "ascii-mcp-input");
   if (err != ASCIICHAT_OK)
     return err;
-  char file[4096];
+  char file[MCP_SERVER_REQUEST_FILE_BUFFER_SIZE];
   SAFE_SNPRINTF(file, sizeof(file), "%s/media", r->upload_dir);
   size_t cap = yyjson_get_len(data) / 4 * 3 + 3, len = 0;
   unsigned char *bytes = SAFE_MALLOC(cap, unsigned char *);
@@ -313,7 +323,7 @@ static asciichat_error_t stage_output(const char *path, mcp_render_request_t *r)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output already exists: %s", path);
   if (rc != UV_ENOENT)
     return SET_ERRNO(ERROR_FILE_OPERATION, "Cannot inspect output destination");
-  char parent[4096];
+  char parent[MCP_SERVER_REQUEST_PARENT_BUFFER_SIZE];
   SAFE_STRNCPY(parent, path, sizeof(parent));
   char *slash = strrchr(parent, '/'), *back = strrchr(parent, '\\');
   if (back && (!slash || back > slash))
@@ -377,7 +387,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
       return SET_ERRNO(ERROR_INVALID_PARAM, "timeout_ms must be 1000–60000");
     r->timeout_ms = (unsigned)yyjson_get_uint(timeout);
   }
-  char exe[4096];
+  char exe[MCP_SERVER_REQUEST_EXE_BUFFER_SIZE];
   if (!platform_get_executable_path(exe, sizeof(exe)))
     return SET_ERRNO(ERROR_FILE_OPERATION, "Cannot locate renderer executable");
   arg(r, exe);
@@ -404,7 +414,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
       const registry_entry_t *e = exposed(p, name);
       if (strlen(name) != yyjson_get_len(k) || !e)
         return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported option: %s", name);
-      char buf[4097];
+      char buf[MCP_SERVER_REQUEST_BUF_BUFFER_SIZE];
       bool omitted = false;
       err = options_json_parse_value(name, v, buf, sizeof(buf), &omitted);
       if (err)
@@ -425,7 +435,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   if (audio_device) {
     if (!yyjson_is_int(audio_device) || yyjson_get_sint(audio_device) < -1 || yyjson_get_sint(audio_device) > INT_MAX)
       return SET_ERRNO(ERROR_INVALID_PARAM, "audio_device must be -1 or a nonnegative device index");
-    char index[16];
+    char index[MCP_SERVER_REQUEST_INDEX_BUFFER_SIZE];
     SAFE_SNPRINTF(index, sizeof(index), "%d", (int)yyjson_get_sint(audio_device));
     err = option(r, "microphone-index", index);
     if (err)
@@ -434,7 +444,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   if (volume) {
     if (!yyjson_is_num(volume) || yyjson_get_num(volume) < 0 || yyjson_get_num(volume) > 1)
       return SET_ERRNO(ERROR_INVALID_PARAM, "volume must be a number from 0 to 1");
-    char value[64];
+    char value[MCP_SERVER_REQUEST_VALUE_BUFFER_SIZE];
     bool omitted = false;
     err = options_json_parse_value("microphone-volume", volume, value, sizeof(value), &omitted);
     if (err)
@@ -480,7 +490,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
     if (dev) {
       if (!yyjson_is_int(dev) || yyjson_get_sint(dev) < 0 || yyjson_get_sint(dev) > 10)
         return SET_ERRNO(ERROR_INVALID_PARAM, "video_device must be 0–10");
-      char b[16];
+      char b[MCP_SERVER_REQUEST_B_BUFFER_SIZE];
       SAFE_SNPRINTF(b, sizeof(b), "%d", (int)yyjson_get_sint(dev));
       option(r, "webcam-index", b);
     }

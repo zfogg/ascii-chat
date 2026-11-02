@@ -16,6 +16,9 @@
 
 #pragma once
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define JSON_UNICODE_ESCAPE_BUFFER_SIZE 8
+
 #include <cstdint>
 #include <sstream>
 #include <string>
@@ -57,7 +60,7 @@ inline std::string escape(const std::string &str) {
     default:
       if (static_cast<unsigned char>(c) < 0x20) {
         // Control character - escape as \uXXXX
-        char buf[8];
+        char buf[JSON_UNICODE_ESCAPE_BUFFER_SIZE];
         snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned char>(c));
         result += buf;
       } else {

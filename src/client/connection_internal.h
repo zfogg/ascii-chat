@@ -1,7 +1,7 @@
 #pragma once
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
-#define CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES 8
+#define MAX_BATCH_FRAMES 8
 
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/audio/limits.h>
@@ -26,11 +26,10 @@
 #include <ascii-chat/video/h265/encoder.h>
 
 typedef struct {
-  uint8_t
-      data[CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES *
-           CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET]; // Queue storage permits the pipeline packet budget for each frame.
+  uint8_t data[MAX_BATCH_FRAMES * CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET]; // Queue storage permits the pipeline packet
+                                                                          // budget for each frame.
   size_t size;
-  uint16_t frame_sizes[CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES];
+  uint16_t frame_sizes[MAX_BATCH_FRAMES];
   int frame_count;
 #ifdef ASCIICHAT_WITH_OTEL
   gotel_context_t telemetry_context;

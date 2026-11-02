@@ -1,3 +1,7 @@
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define FRAME_SGR_PARAMETER_CAPACITY 16
+
 #include "session/frame_validation.h"
 #include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <stdbool.h>
@@ -35,7 +39,7 @@ static bool valid_sgr(const uint32_t *p, size_t n, bool *neutral) {
 }
 
 static asciichat_error_t validate_contract(const char *text, size_t length, uint32_t width, uint32_t height,
-                                                  const acip_render_settings_t *settings, uint32_t effects) {
+                                           const acip_render_settings_t *settings, uint32_t effects) {
   if (!text || !length || !width || !height || width > 16384 || height > 16384 ||
       (uint64_t)width * height > FRAME_RENDER_MAX_BYTES || length > FRAME_RENDER_MAX_BYTES)
     return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid rendered frame bounds");
@@ -77,7 +81,7 @@ static asciichat_error_t validate_contract(const char *text, size_t length, uint
       if (length - i < 3 || text[++i] != '[')
         return SET_ERRNO(ERROR_INVALID_FRAME, "Unsupported frame escape at byte %zu", start);
       ++i;
-      uint32_t params[16] = {0};
+      uint32_t params[FRAME_SGR_PARAMETER_CAPACITY] = {0};
       size_t count = 1;
       while (i < length && ((text[i] >= '0' && text[i] <= '9') || text[i] == ';')) {
         if (i - start >= 64)

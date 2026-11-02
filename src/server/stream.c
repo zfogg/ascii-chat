@@ -128,6 +128,10 @@
  * @see palette.c For client palette management
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SERVER_STREAM_HEX_BUFFER_SIZE 300
+#define SERVER_STREAM_ASCII_BUFFER_SIZE 100
+
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <stdio.h>
@@ -1102,7 +1106,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
 
     // Debug: Log the last 50 bytes of the frame to see what's really there
     if (*out_size >= 50) {
-      char hex_buf[300] = {0};
+      char hex_buf[SERVER_STREAM_HEX_BUFFER_SIZE] = {0};
       size_t hex_len = 0;
       const uint8_t *last_bytes = (const uint8_t *)ascii_frame + (*out_size - 50);
       for (int i = 0; i < 50 && hex_len < sizeof(hex_buf) - 5; i++) {
@@ -1111,7 +1115,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
       log_dev_every(4500 * US_PER_MS_INT, "FRAME_LAST_50_BYTES (hex): %s", hex_buf);
 
       // Also log as ASCII for readability
-      char ascii_buf[100] = {0};
+      char ascii_buf[SERVER_STREAM_ASCII_BUFFER_SIZE] = {0};
       for (int i = 0; i < 50 && i < (int)sizeof(ascii_buf) - 1; i++) {
         if (last_bytes[i] >= 32 && last_bytes[i] < 127) {
           ascii_buf[i] = (char)last_bytes[i];

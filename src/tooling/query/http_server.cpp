@@ -3,6 +3,9 @@
  * @brief Minimal single-threaded HTTP/1.1 server implementation
  */
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define TOOLING_QUERY_HTTP_SERVER_BUFFER_BUFFER_SIZE 65536
+
 #include "http_server.h"
 
 #include <algorithm>
@@ -249,7 +252,7 @@ bool HttpServer::processOneRequest() {
 
 void HttpServer::handleClient(int client_socket) {
   // Read request (up to 64KB)
-  char buffer[65536];
+  char buffer[TOOLING_QUERY_HTTP_SERVER_BUFFER_BUFFER_SIZE];
   ssize_t bytes_read;
 
 #if defined(_WIN32)

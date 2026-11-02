@@ -1,5 +1,8 @@
 #pragma once
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define SESSION_SETTINGS_PALETTE_CUSTOM_BUFFER_SIZE 64
+
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 
@@ -9,7 +12,7 @@ typedef struct {
   int16_t width, height;
   int8_t color_mode;
   uint8_t render_mode, palette_type;
-  char palette_custom[64];
+  char palette_custom[SESSION_SETTINGS_PALETTE_CUSTOM_BUFFER_SIZE];
   uint8_t color_filter, fps;
   bool matrix_rain;
 } session_settings_t;
