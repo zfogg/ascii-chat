@@ -8,6 +8,10 @@
 # ============================================================================
 FROM zfogg/ascii-chat-deps:latest AS builder
 
+# Existing dependency images may predate the required ICU hostname support.
+RUN apt-get update && apt-get install -y --no-install-recommends libicu-dev && \
+    rm -rf /var/lib/apt/lists/*
+
 # Ensure we have the environment set (inherited from deps image)
 ENV SOURCE_COMMIT="docker-build"
 
