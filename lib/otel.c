@@ -15,6 +15,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/tests/test_env.h>
+#include <gotel/sql.h>
 #include <stdatomic.h>
 #include <math.h>
 #include <stdio.h>
@@ -587,8 +588,8 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   SAFE_SNPRINTF(address6_brackets, sizeof(address6_brackets), "[%s]", o->address6);
   SAFE_SNPRINTF(address_brackets_port, sizeof(address_brackets_port), "[%s]:%d", o->address, o->port);
   SAFE_SNPRINTF(address6_brackets_port, sizeof(address6_brackets_port), "[%s]:%d", o->address6, o->port);
-  const char *sensitive_values[] = {o->address, o->address6, address_port, address6_port, address_brackets,
-                                    address6_brackets, address_brackets_port, address6_brackets_port};
+  const char *sensitive_values[] = {o->address,       o->address6,       address_port,          address6_port,
+                                    address_brackets, address6_brackets, address_brackets_port, address6_brackets_port};
   gotel_command_policy_t argument_policy = {
 #ifdef NDEBUG
       .mode = GOTEL_COMMAND_REDACT_SELECTED,
@@ -777,6 +778,27 @@ void ascii_otel_http_status(ascii_otel_scope_t *s, int status) {
     gotel_http_attributes(&s->scope, "GET", status);
   }
 }
+int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **statement) {
+  int result = sqlite3_prepare_v2(db, sql, -1, statement, NULL);
+  // PROFILE never runs when SQLite rejects a statement during preparation.
+  if (result != SQLITE_OK) {
+    ASCII_OTEL_SCOPE(DATABASE_PREPARE_FAILURE);
+    if (otel_scope.retained) {
+      otlp_span_set_kind(otel_scope.scope.span, OTLP_SPAN_KIND_CLIENT);
+      sequel_options_t options = {.dialect = SEQUEL_SQLITE};
+      sequel_metadata_t metadata = {0};
+      if (sql && sequel_inspect(sql, &options, &metadata) == SEQUEL_OK)
+        gotel_sql_attributes(otel_scope.scope.span, &metadata, "sqlite", "", 0);
+      sequel_metadata_free(&metadata);
+      gotel_sql_diagnostics(otel_scope.scope.span, sql, SEQUEL_SQLITE);
+      gotel_attr_string(&otel_scope.scope, "db.system.name", "sqlite");
+      gotel_attr_int(&otel_scope.scope, "db.response.status_code", result);
+      gotel_error(&otel_scope.scope, "sqlite.prepare", "SQLite statement preparation failed");
+    }
+  }
+  return result;
+}
+
 void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count) {
   gotel_host_t *h = retain();
   if (!h)

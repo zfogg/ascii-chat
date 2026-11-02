@@ -316,6 +316,26 @@ Test(otel, sqlite_lifecycle_unknown_and_detach) {
   cr_assert_eq(gotel_drain(host), OTLP_OK);
   cr_assert_eq(stats().sent_metrics, 3);
 }
+Test(otel, sqlite_prepare_wrapper_preserves_success) {
+  sqlite3 *db = NULL;
+  cr_assert_eq(sqlite3_open(":memory:", &db), SQLITE_OK);
+  sqlite3_stmt *statement = NULL;
+  cr_assert_eq(ascii_otel_sqlite_prepare(db, "SELECT ?", &statement), SQLITE_OK);
+  cr_assert_eq(sqlite3_bind_int(statement, 1, 7), SQLITE_OK);
+  cr_assert_eq(sqlite3_step(statement), SQLITE_ROW);
+  cr_assert_eq(sqlite3_column_int(statement, 0), 7);
+  cr_assert_eq(sqlite3_finalize(statement), SQLITE_OK);
+  cr_assert_eq(sqlite3_close(db), SQLITE_OK);
+}
+Test(otel, sqlite_prepare_wrapper_preserves_rejection) {
+  sqlite3 *db = NULL;
+  cr_assert_eq(sqlite3_open(":memory:", &db), SQLITE_OK);
+  sqlite3_stmt *statement = NULL;
+  cr_assert_eq(ascii_otel_sqlite_prepare(db, "SELECT 'private-value", &statement), SQLITE_ERROR);
+  cr_assert_null(statement);
+  cr_assert_eq(sqlite3_errcode(db), SQLITE_ERROR);
+  cr_assert_eq(sqlite3_close(db), SQLITE_OK);
+}
 Test(otel, sqlite_close_frees_attachment_and_duplicate_sql_rejected) {
   create(config());
   sqlite3 *db = NULL;

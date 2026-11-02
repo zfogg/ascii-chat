@@ -495,6 +495,17 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
   endif()
   add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)
 endif()
+
+# Explicit local telemetry probe; never built or run by the test suite.
+if(TARGET gotel)
+    add_executable(ascii-chat-sql-diagnostics-probe EXCLUDE_FROM_ALL deploy/otel/probe.c)
+    target_link_libraries(ascii-chat-sql-diagnostics-probe PRIVATE
+        ascii-chat-static ${MIMALLOC_LIBRARIES} ${SQLITE3_LIBRARIES})
+    target_include_directories(ascii-chat-sql-diagnostics-probe PRIVATE ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(ascii-chat-sql-diagnostics-probe)
+    set_target_properties(ascii-chat-sql-diagnostics-probe PROPERTIES
+        LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+endif()
 # Optional CTest dashboard integration
 if(ASCIICHAT_ENABLE_CTEST_DASHBOARD)
     include(CTest)

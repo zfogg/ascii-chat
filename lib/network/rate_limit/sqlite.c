@@ -6,6 +6,7 @@
  */
 
 #include <ascii-chat/network/rate_limit/sqlite.h>
+#include <ascii-chat/otel.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/time.h>
 #include <sqlite3.h>
@@ -39,7 +40,7 @@ static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address
                     "  AND timestamp >= ?";
 
   sqlite3_stmt *stmt = NULL;
-  int rc = sqlite3_prepare_v2(backend->db, sql, -1, &stmt, NULL);
+  int rc = ascii_otel_sqlite_prepare(backend->db, sql, &stmt);
   if (rc != SQLITE_OK) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare rate limit query: %s", sqlite3_errmsg(backend->db));
   }
@@ -80,7 +81,7 @@ static asciichat_error_t sqlite_record(void *backend_data, const char *ip_addres
                     "  (?, ?, ?)";
 
   sqlite3_stmt *stmt = NULL;
-  int rc = sqlite3_prepare_v2(backend->db, sql, -1, &stmt, NULL);
+  int rc = ascii_otel_sqlite_prepare(backend->db, sql, &stmt);
   if (rc != SQLITE_OK) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare rate limit insert: %s", sqlite3_errmsg(backend->db));
   }
@@ -118,7 +119,7 @@ static asciichat_error_t sqlite_cleanup(void *backend_data, uint32_t max_age_sec
                     "  timestamp < ?";
 
   sqlite3_stmt *stmt = NULL;
-  int rc = sqlite3_prepare_v2(backend->db, sql, -1, &stmt, NULL);
+  int rc = ascii_otel_sqlite_prepare(backend->db, sql, &stmt);
   if (rc != SQLITE_OK) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare rate limit cleanup: %s", sqlite3_errmsg(backend->db));
   }

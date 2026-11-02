@@ -195,7 +195,7 @@ static void load_session_participants(sqlite3 *db, session_entry_t *session) {
   const char *sql = database_queries[QUERY_GetSessionParticipants].sql;
 
   sqlite3_stmt *stmt = NULL;
-  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+  if (ascii_otel_sqlite_prepare(db, sql, &stmt) != SQLITE_OK) {
     return;
   }
 
@@ -236,7 +236,7 @@ static void database_telemetry_population(sqlite3 *db) {
   if (!ascii_otel_enabled())
     return;
   sqlite3_stmt *statement = NULL;
-  if (sqlite3_prepare_v2(db, database_queries[QUERY_GetPopulation].sql, -1, &statement, NULL) != SQLITE_OK)
+  if (ascii_otel_sqlite_prepare(db, database_queries[QUERY_GetPopulation].sql, &statement) != SQLITE_OK)
     return;
   sqlite3_bind_int64(statement, 1, (sqlite3_int64)database_get_current_time_ms());
   if (sqlite3_step(statement) == SQLITE_ROW) {
@@ -329,8 +329,8 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
       "INSERT OR IGNORE INTO session_key_policy SELECT session_string, 0 FROM sessions;"
       "COMMIT;";
   sqlite3_stmt *legacy_table = NULL;
-  rc = sqlite3_prepare_v2(*db, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'session_keys'", -1,
-                          &legacy_table, NULL);
+  rc = ascii_otel_sqlite_prepare(*db, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'session_keys'",
+                                 &legacy_table);
   bool has_legacy_keys = false;
   if (rc == SQLITE_OK) {
     rc = sqlite3_step(legacy_table);
@@ -431,7 +431,7 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   const char *sql = database_queries[QUERY_CreateSession].sql;
 
   sqlite3_stmt *stmt = NULL;
-  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  int rc = ascii_otel_sqlite_prepare(db, sql, &stmt);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
@@ -517,7 +517,7 @@ static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const 
   asciichat_error_t result = database_session_create_row(db, req, config, resp);
   sqlite3_stmt *stmt = NULL;
   if (result == ASCIICHAT_OK) {
-    int rc = sqlite3_prepare_v2(db, "INSERT INTO session_key_policy VALUES (?, ?)", -1, &stmt, NULL);
+    int rc = ascii_otel_sqlite_prepare(db, "INSERT INTO session_key_policy VALUES (?, ?)", &stmt);
     if (rc == SQLITE_OK) {
       sqlite3_bind_text(stmt, 1, resp->session_string, -1, SQLITE_STATIC);
       sqlite3_bind_int(stmt, 2, count > 1);
@@ -566,7 +566,7 @@ asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_strin
   const char *sql = database_queries[QUERY_LookupSession].sql;
 
   sqlite3_stmt *stmt = NULL;
-  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  int rc = ascii_otel_sqlite_prepare(db, sql, &stmt);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
@@ -625,7 +625,7 @@ static asciichat_error_t database_session_authorize_join(sqlite3 *db, const acip
                                                          acip_session_joined_t *resp) {
   sqlite3_stmt *policy = NULL;
   int policy_rc =
-      sqlite3_prepare_v2(db, "SELECT restricted FROM session_key_policy WHERE session_string = ?", -1, &policy, NULL);
+      ascii_otel_sqlite_prepare(db, "SELECT restricted FROM session_key_policy WHERE session_string = ?", &policy);
   if (policy_rc == SQLITE_OK) {
     sqlite3_bind_text(policy, 1, session_string, -1, SQLITE_STATIC);
     policy_rc = sqlite3_step(policy);
@@ -706,7 +706,7 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
   // Insert participant
   const char *insert_sql = database_queries[QUERY_InsertParticipant].sql;
   sqlite3_stmt *stmt = NULL;
-  rc = sqlite3_prepare_v2(db, insert_sql, -1, &stmt, NULL);
+  rc = ascii_otel_sqlite_prepare(db, insert_sql, &stmt);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
@@ -735,7 +735,7 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
 
   // Update participant count and last activity
   const char *update_sql = database_queries[QUERY_IncrementParticipants].sql;
-  rc = sqlite3_prepare_v2(db, update_sql, -1, &stmt, NULL);
+  rc = ascii_otel_sqlite_prepare(db, update_sql, &stmt);
   if (rc == SQLITE_OK) {
     sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
     sqlite3_bind_text(stmt, 2, session->session_string, -1, SQLITE_STATIC);
@@ -755,7 +755,7 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
 
   if (is_first_participant || is_zero_initiator) {
     const char *initiator_sql = database_queries[QUERY_SetSessionInitiator].sql;
-    rc = sqlite3_prepare_v2(db, initiator_sql, -1, &stmt, NULL);
+    rc = ascii_otel_sqlite_prepare(db, initiator_sql, &stmt);
     if (rc == SQLITE_OK) {
       sqlite3_bind_blob(stmt, 1, participant_id, 16, SQLITE_STATIC);
       sqlite3_bind_text(stmt, 2, session->session_string, -1, SQLITE_STATIC);
@@ -936,7 +936,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
   char session_string[SESSION_STRING_BUFFER_SIZE] = {0};
   const char *lookup_sql = database_queries[QUERY_LookupSessionString].sql;
   sqlite3_stmt *stmt = NULL;
-  int rc = sqlite3_prepare_v2(db, lookup_sql, -1, &stmt, NULL);
+  int rc = ascii_otel_sqlite_prepare(db, lookup_sql, &stmt);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
@@ -975,7 +975,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
 
   // Delete participant
   const char *del_sql = database_queries[QUERY_DeleteParticipant].sql;
-  rc = sqlite3_prepare_v2(db, del_sql, -1, &stmt, NULL);
+  rc = ascii_otel_sqlite_prepare(db, del_sql, &stmt);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
@@ -1007,7 +1007,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
 
   // Decrement participant count and update last activity
   const char *update_sql = database_queries[QUERY_DecrementParticipants].sql;
-  rc = sqlite3_prepare_v2(db, update_sql, -1, &stmt, NULL);
+  rc = ascii_otel_sqlite_prepare(db, update_sql, &stmt);
   if (rc == SQLITE_OK) {
     sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
     sqlite3_bind_text(stmt, 2, session_string, -1, SQLITE_STATIC);
@@ -1017,7 +1017,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
 
   // Check if session is now empty and delete if so
   const char *check_sql = database_queries[QUERY_GetParticipantCount].sql;
-  rc = sqlite3_prepare_v2(db, check_sql, -1, &stmt, NULL);
+  rc = ascii_otel_sqlite_prepare(db, check_sql, &stmt);
   if (rc == SQLITE_OK) {
     sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
     if (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -1029,7 +1029,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
 
         // Delete empty session
         const char *del_session_sql = database_queries[QUERY_DeleteSession].sql;
-        rc = sqlite3_prepare_v2(db, del_session_sql, -1, &stmt, NULL);
+        rc = ascii_otel_sqlite_prepare(db, del_session_sql, &stmt);
         if (rc == SQLITE_OK) {
           sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
           sqlite3_step(stmt);
@@ -1068,7 +1068,7 @@ session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_
   const char *sql = database_queries[QUERY_GetSessionById].sql;
 
   sqlite3_stmt *stmt = NULL;
-  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+  if (ascii_otel_sqlite_prepare(db, sql, &stmt) != SQLITE_OK) {
     return NULL;
   }
 
@@ -1094,7 +1094,7 @@ session_entry_t *database_session_find_by_string(sqlite3 *db, const char *sessio
   const char *sql = database_queries[QUERY_GetSessionByString].sql;
 
   sqlite3_stmt *stmt = NULL;
-  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+  if (ascii_otel_sqlite_prepare(db, sql, &stmt) != SQLITE_OK) {
     return NULL;
   }
 
@@ -1126,7 +1126,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
   // Log sessions about to be deleted
   const char *log_sql = database_queries[QUERY_FindExpiredSessions].sql;
   sqlite3_stmt *stmt = NULL;
-  if (sqlite3_prepare_v2(db, log_sql, -1, &stmt, NULL) == SQLITE_OK) {
+  if (ascii_otel_sqlite_prepare(db, log_sql, &stmt) == SQLITE_OK) {
     sqlite3_bind_int64(stmt, 1, (sqlite3_int64)cutoff_time);
     while (sqlite3_step(stmt) == SQLITE_ROW) {
       const char *session_string = (const char *)sqlite3_column_text(stmt, 0);
@@ -1141,7 +1141,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
 
   // Delete inactive sessions (CASCADE deletes participants)
   const char *del_sql = database_queries[QUERY_DeleteExpiredSessions].sql;
-  if (sqlite3_prepare_v2(db, del_sql, -1, &stmt, NULL) == SQLITE_OK) {
+  if (ascii_otel_sqlite_prepare(db, del_sql, &stmt) == SQLITE_OK) {
     sqlite3_bind_int64(stmt, 1, (sqlite3_int64)cutoff_time);
     sqlite3_step(stmt);
     int deleted = sqlite3_changes(db);
@@ -1169,7 +1169,7 @@ asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t sessio
   const char *sql = database_queries[QUERY_UpdateHost].sql;
 
   sqlite3_stmt *stmt = NULL;
-  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  int rc = ascii_otel_sqlite_prepare(db, sql, &stmt);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
@@ -1216,7 +1216,7 @@ asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session
   const char *sql = database_queries[QUERY_ClearHost].sql;
 
   sqlite3_stmt *stmt = NULL;
-  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  int rc = ascii_otel_sqlite_prepare(db, sql, &stmt);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
@@ -1257,7 +1257,7 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
   const char *sql = database_queries[QUERY_StartMigration].sql;
 
   sqlite3_stmt *stmt = NULL;
-  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  int rc = ascii_otel_sqlite_prepare(db, sql, &stmt);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
@@ -1299,7 +1299,7 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[1
   const char *sql = database_queries[QUERY_GetMigrationState].sql;
 
   sqlite3_stmt *stmt = NULL;
-  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+  if (ascii_otel_sqlite_prepare(db, sql, &stmt) != SQLITE_OK) {
     return false;
   }
 
@@ -1339,7 +1339,7 @@ asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_stri
   const char *sql = database_queries[QUERY_AddSessionKey].sql;
 
   sqlite3_stmt *stmt = NULL;
-  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+  if (ascii_otel_sqlite_prepare(db, sql, &stmt) != SQLITE_OK) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare add_key statement: %s", sqlite3_errmsg(db));
   }
 
@@ -1371,7 +1371,7 @@ asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_s
   const char *sql = database_queries[QUERY_RevokeSessionKey].sql;
 
   sqlite3_stmt *stmt = NULL;
-  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+  if (ascii_otel_sqlite_prepare(db, sql, &stmt) != SQLITE_OK) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare revoke_key statement: %s", sqlite3_errmsg(db));
   }
 
@@ -1400,7 +1400,7 @@ bool database_session_verify_key(sqlite3 *db, const char *session_string, const 
   const char *sql = database_queries[QUERY_VerifySessionKey].sql;
 
   sqlite3_stmt *stmt = NULL;
-  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+  if (ascii_otel_sqlite_prepare(db, sql, &stmt) != SQLITE_OK) {
     return false;
   }
 
@@ -1423,7 +1423,7 @@ asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_str
   const char *sql = database_queries[QUERY_GetSessionKeys].sql;
 
   sqlite3_stmt *stmt = NULL;
-  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+  if (ascii_otel_sqlite_prepare(db, sql, &stmt) != SQLITE_OK) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare get_keys statement: %s", sqlite3_errmsg(db));
   }
 
@@ -1457,7 +1457,7 @@ asciichat_error_t database_stats_session_count(sqlite3 *db, int64_t *count_out) 
 
   const char *query = database_queries[QUERY_CountSessions].sql;
   sqlite3_stmt *stmt;
-  int rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+  int rc = ascii_otel_sqlite_prepare(db, query, &stmt);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
@@ -1493,7 +1493,7 @@ asciichat_error_t database_stats_unique_clients(sqlite3 *db, int64_t *count_out)
 
   const char *query = database_queries[QUERY_CountUniqueClients].sql;
   sqlite3_stmt *stmt;
-  int rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+  int rc = ascii_otel_sqlite_prepare(db, query, &stmt);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
@@ -1527,7 +1527,7 @@ asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t 
   *sessions = *participants = 0;
   sqlite3_stmt *stmt = NULL;
   const char *sql = database_queries[QUERY_GetStatsSnapshot].sql;
-  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK)
+  if (ascii_otel_sqlite_prepare(db, sql, &stmt) != SQLITE_OK)
     return SET_ERRNO(ERROR_CONFIG, "Cannot query active session statistics");
   sqlite3_bind_int64(stmt, 1, (sqlite3_int64)(time_get_realtime_ns() / NS_PER_MS_INT));
   int result;
