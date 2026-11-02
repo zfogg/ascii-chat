@@ -25,6 +25,8 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
+#include FT_FONT_FORMATS_H
+#include FT_TRUETYPE_TABLES_H
 #include <string.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -295,6 +297,11 @@ static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, ui
 }
 
 asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, terminal_renderer_t **out) {
+  if (!cfg || !out || cfg->cols <= 0 || cfg->rows <= 0)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing font renderer configuration or output");
+  *out = NULL;
+  if (cfg->font_data_size > LONG_MAX || (cfg->font_data_size && !cfg->font_data))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid font data or size");
   terminal_renderer_t *r = SAFE_CALLOC(1, sizeof(*r), terminal_renderer_t *);
   r->cols = cfg->cols;
   r->rows = cfg->rows;
@@ -305,19 +312,50 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
     return SET_ERRNO(ERROR_INIT, "FreeType init failed");
   }
 
+  FT_Error face_error;
   if (cfg->font_data && cfg->font_data_size > 0) {
-    if (FT_New_Memory_Face(r->ft_lib, cfg->font_data, (FT_Long)cfg->font_data_size, 0, &r->ft_face)) {
-      FT_Done_FreeType(r->ft_lib);
-      SAFE_FREE(r);
-      return SET_ERRNO(ERROR_INIT, "FreeType: cannot load bundled font");
-    }
+    face_error = FT_New_Memory_Face(r->ft_lib, cfg->font_data, (FT_Long)cfg->font_data_size, 0, &r->ft_face);
   } else {
-    if (FT_New_Face(r->ft_lib, cfg->font_spec, 0, &r->ft_face)) {
+    face_error = FT_New_Face(r->ft_lib, cfg->font_spec, 0, &r->ft_face);
+  }
+  if (face_error) {
+    FT_Done_FreeType(r->ft_lib);
+    SAFE_FREE(r);
+    if (face_error == FT_Err_Cannot_Open_Resource)
+      return SET_ERRNO(ERROR_NOT_FOUND, "Cannot open font '%s' (FreeType error %d)", cfg->font_spec, face_error);
+    // Older FreeType versions recognize an HVF SFNT wrapper, then reject its
+    // missing TrueType outline tables instead of reporting an unknown format.
+    if (face_error == FT_Err_Unknown_File_Format || face_error == FT_Err_Unimplemented_Feature ||
+        face_error == FT_Err_Locations_Missing)
+      return SET_ERRNO(ERROR_NOT_SUPPORTED,
+                       "Unsupported font format: '%s' (FreeType error %d). HVF fonts require HVF-enabled FreeType "
+                       "2.15+ on macOS 15.4+ or iOS 18.4+",
+                       cfg->font_spec, face_error);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid font '%s' (FreeType error %d)", cfg->font_spec, face_error);
+  }
+
+  // Some older FreeType drivers can open an SFNT container without supporting
+  // its outlines. Check the parsed table directory before accepting that face.
+  FT_ULong hvf_size = 0;
+  bool is_hvf = FT_IS_SFNT(r->ft_face) &&
+                FT_Load_Sfnt_Table(r->ft_face, FT_MAKE_TAG('h', 'v', 'g', 'l'), 0, NULL, &hvf_size) == 0;
+  const char *font_format = FT_Get_Font_Format(r->ft_face);
+  if (is_hvf) {
+    bool supported = false;
+#ifdef __APPLE__
+    if (__builtin_available(macOS 15.4, iOS 18.4, *))
+      supported = font_format && strcmp(font_format, "HVF") == 0;
+#endif
+    if (!supported) {
+      FT_Done_Face(r->ft_face);
       FT_Done_FreeType(r->ft_lib);
       SAFE_FREE(r);
-      return SET_ERRNO(ERROR_NOT_FOUND, "FreeType: cannot load font '%s'", cfg->font_spec);
+      return SET_ERRNO(ERROR_NOT_SUPPORTED,
+                       "Unsupported HVF font '%s': requires HVF-enabled FreeType 2.15+ on macOS 15.4+ or iOS 18.4+",
+                       cfg->font_spec);
     }
   }
+  log_debug("Loaded font '%s' using FreeType format %s", cfg->font_spec, font_format ? font_format : "unknown");
 
   // Detect if this is the matrix font (needs character mapping to Private Use Area)
   r->is_matrix_font = (strstr(cfg->font_spec, "matrix") != NULL || strstr(cfg->font_spec, "Matrix") != NULL) ||
@@ -339,6 +377,13 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
       err = FT_Select_Size(r->ft_face, 0); // Use first available strike
       log_debug("[BITMAP FALLBACK] FT_Select_Size(0) returned %d", err);
     }
+    if (err != 0) {
+      FT_Done_Face(r->ft_face);
+      FT_Done_FreeType(r->ft_lib);
+      SAFE_FREE(r);
+      return SET_ERRNO(ERROR_NOT_SUPPORTED, "Font '%s' has no usable bitmap size (FreeType error %d)", cfg->font_spec,
+                       err);
+    }
   } else {
     // Scalable font: use FT_Set_Char_Size
     // FT_Set_Char_Size takes 1/64pt units and DPI — supports fractional point sizes.
@@ -346,6 +391,12 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
     int err = FT_Set_Char_Size(r->ft_face, 0, (FT_F26Dot6)(cfg->font_size_pt * 64.0), 96, 96);
     log_debug("[SCALABLE] FT_Set_Char_Size(size_pt=%.1f → %ld 1/64pt) returned %d", cfg->font_size_pt,
               (long)(cfg->font_size_pt * 64.0), err);
+    if (err != 0) {
+      FT_Done_Face(r->ft_face);
+      FT_Done_FreeType(r->ft_lib);
+      SAFE_FREE(r);
+      return SET_ERRNO(ERROR_NOT_SUPPORTED, "Font '%s' cannot be sized (FreeType error %d)", cfg->font_spec, err);
+    }
   }
 
   // For matrix fonts, try PUA glyph first (U+E900) since ASCII chars might not have bitmap data
@@ -381,6 +432,14 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
         log_debug("FT_Load_Char(U+E900) returned %d", load_err);
       }
     }
+  }
+
+  if (load_err != 0) {
+    FT_Done_Face(r->ft_face);
+    FT_Done_FreeType(r->ft_lib);
+    SAFE_FREE(r);
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "Font '%s' cannot render glyphs (FreeType error %d)", cfg->font_spec,
+                     load_err);
   }
 
   // For monospace ASCII grid: use advance.x (proper character spacing) and rendered height

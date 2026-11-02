@@ -14,9 +14,26 @@
 
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
-if(PLATFORM_IOS AND NOT BUILD_EXECUTABLES)
-    return()
-endif()
+function(asciichat_require_freetype_hvf)
+    include(CheckCSourceCompiles)
+    set(CMAKE_REQUIRED_INCLUDES ${ARGN})
+    # Recheck after package/SDK upgrades without requiring a fresh build tree.
+    unset(ASCIICHAT_FREETYPE_HAS_HVF CACHE)
+    check_c_source_compiles("#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_CONFIG_OPTIONS_H
+#if FREETYPE_MAJOR < 2 || (FREETYPE_MAJOR == 2 && FREETYPE_MINOR < 15)
+#error FreeType 2.15 or newer is required
+#endif
+#ifndef FT_CONFIG_OPTION_HVF
+#error FreeType was built without Apple HVF support
+#endif
+int main(void) { return 0; }" ASCIICHAT_FREETYPE_HAS_HVF)
+    if(NOT ASCIICHAT_FREETYPE_HAS_HVF)
+        message(FATAL_ERROR "Apple font rendering requires FreeType >= 2.15 with HVF enabled and an HVF-capable Apple SDK")
+    endif()
+endfunction()
+
 if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
     function(asciichat_build_freetype)
         asciichat_dependency_defaults()
@@ -29,6 +46,14 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
         set(FT_DISABLE_BZIP2 ON)
         set(FT_DISABLE_HARFBUZZ ON)
         set(FT_DISABLE_BROTLI ON)
+        if(APPLE)
+            set(FT_DISABLE_HVF OFF)
+            set(_freetype_url https://github.com/freetype/freetype/archive/refs/tags/VER-2-15-0.tar.gz)
+            set(_freetype_hash 87c7f1f8699b91e89f773f7dcfa505b044e1dae67f62a55d4e29c3afdcac4fb8)
+        else()
+            set(_freetype_url https://github.com/freetype/freetype/archive/refs/tags/VER-2-13-2.tar.gz)
+            set(_freetype_hash 427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c)
+        endif()
         set(ZLIB_FOUND FALSE)
         set(BZIP2_FOUND FALSE)
         set(PNG_FOUND FALSE)
@@ -37,10 +62,13 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
         FetchContent_Declare(asciichat_freetype
             BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_freetype"
             EXCLUDE_FROM_ALL
-            URL https://github.com/freetype/freetype/archive/refs/tags/VER-2-13-2.tar.gz
-            URL_HASH SHA256=427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c
+            URL ${_freetype_url}
+            URL_HASH SHA256=${_freetype_hash}
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
         FetchContent_MakeAvailable(asciichat_freetype)
+        if(APPLE)
+            asciichat_require_freetype_hvf("${asciichat_freetype_BINARY_DIR}/include" "${asciichat_freetype_SOURCE_DIR}/include")
+        endif()
         set(FREETYPE_INCLUDE_DIRS "${asciichat_freetype_SOURCE_DIR}/include;${asciichat_freetype_BINARY_DIR}/include" PARENT_SCOPE)
         # Fontconfig's Autotools build consumes an installation, not CMake targets.
         add_custom_target(asciichat-freetype-stage
@@ -69,6 +97,7 @@ if(UNIX AND NOT APPLE)
     message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: ${FREETYPE_LIBRARIES}")
 
 elseif(APPLE)
+    find_package(Freetype 2.15 REQUIRED)
     # macOS: Try pkg-config first, then fall back to CMake FindFreetype
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
@@ -79,6 +108,7 @@ elseif(APPLE)
     if(NOT FREETYPE_FOUND)
         find_package(Freetype REQUIRED)
     endif()
+    asciichat_require_freetype_hvf(${FREETYPE_INCLUDE_DIRS})
 
     # Homebrew's dylib is versioned to the installed formula and is not a
     # suitable runtime dependency for a portable Release executable.

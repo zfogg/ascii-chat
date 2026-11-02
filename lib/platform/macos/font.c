@@ -30,7 +30,10 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
   if (out_font_data_size)
     *out_font_data_size = 0;
 
-  if (is_absolute_path(eff)) {
+  if (is_absolute_path(eff) || strchr(eff, '/') ||
+      (strcmp(eff, "default") != 0 && strcmp(eff, "matrix") != 0 && file_exists(eff))) {
+    if (strlen(eff) >= out_size)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "render-font: path exceeds output capacity");
     snprintf(out, out_size, "%s", eff);
     *out_is_path = true;
     return file_exists(out) ? ASCIICHAT_OK : SET_ERRNO(ERROR_NOT_FOUND, "render-font: not found: %s", out);

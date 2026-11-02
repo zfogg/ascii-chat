@@ -87,6 +87,10 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   asciichat_error_t fe =
       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
   if (fe != ASCIICHAT_OK) {
+    if (raw_font && raw_font[0]) {
+      SAFE_FREE(ctx);
+      return fe;
+    }
     log_warn("font resolution failed for '%s' — using bundled default", raw_font ? raw_font : "(explicit system)");
     fe = platform_font_resolve("default", font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
     if (fe != ASCIICHAT_OK) {
