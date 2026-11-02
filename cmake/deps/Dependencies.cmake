@@ -93,6 +93,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/SQLite3.cmake)
 
 # PCRE2 - Regular expression library for URL validation
 include(${CMAKE_SOURCE_DIR}/cmake/deps/PCRE2.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/ICU.cmake)
 
 # mdns - mDNS service discovery library (requires patching to exclude main())
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Mdns.cmake)

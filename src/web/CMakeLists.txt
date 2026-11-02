@@ -66,6 +66,7 @@ include(FetchContent)
 get_filename_component(_cmake_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake" ABSOLUTE)
 include(${_cmake_dir}/deps/Libsodium.cmake)
 include(${_cmake_dir}/deps/PCRE2.cmake)
+include(${_cmake_dir}/deps/ICU.cmake)
 include(${_cmake_dir}/deps/Opus.cmake)
 include(${_cmake_dir}/deps/Zstd.cmake)
 include(${_cmake_dir}/deps/Libvterm.cmake)
@@ -430,6 +431,8 @@ endif()
 # These are set by Libsodium.cmake, PCRE2.cmake, Libvterm.cmake, etc.
 
 add_dependencies(wasm-common generate_version)
+target_link_libraries(wasm-common PUBLIC asciichat-icu)
+
 target_link_libraries(wasm-common PRIVATE
     ${UTF8PROC_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}

@@ -8,6 +8,7 @@
   "supports": "!uwp",
   "dependencies": [
     "libuv",
+    "icu",
     "zstd",
     "libsodium",
     "opus",

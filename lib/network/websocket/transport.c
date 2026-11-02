@@ -1,3 +1,4 @@
+#include <ascii-chat/util/url.h>
 #include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file network/websocket/transport.c
@@ -1303,73 +1304,31 @@ static const acip_transport_methods_t websocket_methods = {
 
 typedef struct {
   char host[HOSTNAME_BUFFER_SIZE];
-  char path[256];
+  char path[URL_BUFFER_SIZE];
   int port;
   bool use_ssl;
 } websocket_endpoint_t;
 
 /**
- * @brief Parse the client endpoint without changing URL validation or default ports.
+ * @brief Parse the client endpoint with shared IDNA validation and transport defaults.
  */
 static asciichat_error_t websocket_parse_endpoint(const char *url, websocket_endpoint_t *endpoint) {
-  // Parse URL to extract host, port, and path
-  // Format: ws://host:port/path or wss://host:port/path
-  const char *protocol_end = strstr(url, "://");
-  if (!protocol_end) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid WebSocket URL format (missing ://)");
+  url_parts_t parts = {0};
+  asciichat_error_t result = url_parse(url, &parts);
+  if (result != ASCIICHAT_OK)
+    return result;
+  const char *host = parts.ipv6 ? parts.ipv6 : parts.host;
+  const char *path = parts.path ? parts.path : "/";
+  if (!url_is_websocket_scheme(parts.scheme) || parts.userinfo || parts.port > UINT16_MAX ||
+      strlen(host) >= sizeof(endpoint->host) || strlen(path) >= sizeof(endpoint->path)) {
+    url_parts_destroy(&parts);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid WebSocket endpoint or insufficient storage capacity");
   }
-
-  bool use_ssl = (strncmp(url, "wss://", 6) == 0);
-  const char *host_start = protocol_end + 3;
-
-  // Find port (if specified)
-  const char *port_start = strchr(host_start, ':');
-  const char *path_start = strchr(host_start, '/');
-
-  char host[HOSTNAME_BUFFER_SIZE] = {0};
-  int port = use_ssl ? 443 : 27226; // Default: wss:// uses 443, ws:// uses 27226 (ascii-chat WebSocket port)
-  char path[256] = "/";
-
-  if (port_start && (!path_start || port_start < path_start)) {
-    // Port is specified
-    size_t host_len = port_start - host_start;
-    if (host_len >= sizeof(host)) {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Host name too long");
-    }
-    memcpy(host, host_start, host_len);
-    host[host_len] = '\0';
-
-    // Extract port
-    char *endptr;
-    errno = 0;
-    long port_val = strtol(port_start + 1, &endptr, 10);
-    if (*endptr != '\0' || errno != 0 || port_val <= 0 || port_val > 65535) {
-      log_error("Invalid port number: %s", port_start + 1);
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port number");
-    }
-    port = (uint16_t)port_val;
-  } else {
-    // No port specified, use default
-    size_t host_len = path_start ? (size_t)(path_start - host_start) : strlen(host_start);
-    if (host_len >= sizeof(host)) {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Host name too long");
-    }
-    memcpy(host, host_start, host_len);
-    host[host_len] = '\0';
-  }
-
-  // Extract path
-  if (path_start) {
-    SAFE_STRNCPY(path, path_start, sizeof(path) - 1);
-    path[sizeof(path) - 1] = '\0';
-  }
-
-  log_info("Connecting to WebSocket: %s (host=%s, port=%d, path=%s, ssl=%d)", url, host, port, path, use_ssl);
-
+  endpoint->use_ssl = strlen(parts.scheme) == 3;
+  endpoint->port = parts.port ? parts.port : endpoint->use_ssl ? 443 : 27226;
   SAFE_STRNCPY(endpoint->host, host, sizeof(endpoint->host));
   SAFE_STRNCPY(endpoint->path, path, sizeof(endpoint->path));
-  endpoint->port = port;
-  endpoint->use_ssl = use_ssl;
+  url_parts_destroy(&parts);
   return ASCIICHAT_OK;
 }
 

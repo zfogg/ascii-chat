@@ -940,3 +940,63 @@ Test(url_validator, stun_wire_capacity_includes_terminator) {
   cr_assert_eq(sizeof(stun_server_t), 65, "STUN wire layout must remain compatible");
   cr_assert_eq(sizeof(turn_server_t), 163, "TURN wire layout must remain compatible");
 }
+
+Test(url_validator, icu_normalizes_international_hosts_without_rewriting_paths) {
+  const struct {
+    const char *input, *ascii;
+  } cases[] = {{"bücher.de", "xn--bcher-kva.de"},
+               {"BÜCHER.DE", "xn--bcher-kva.de"},
+               {"bu\xCC\x88"
+                "cher.de",
+                "xn--bcher-kva.de"},
+               {"faß.de", "xn--fa-hia.de"},
+               {"例子.测试", "xn--fsqu00a.xn--0zwm56d"},
+               {"bücher。de", "xn--bcher-kva.de"},
+               {"bücher.de.", "xn--bcher-kva.de."},
+               {"xn--bcher-kva.de", "xn--bcher-kva.de"}};
+  for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+    char output[HOSTNAME_BUFFER_SIZE];
+    cr_assert_eq(hostname_to_ascii(cases[i].input, output, sizeof(output)), ASCIICHAT_OK, "%s", cases[i].input);
+    cr_assert_str_eq(output, cases[i].ascii);
+    char url[URL_BUFFER_SIZE];
+    snprintf(url, sizeof(url), "https://%s/日本語?q=café#été", cases[i].input);
+    url_parts_t parts = {0};
+    cr_assert(url_is_valid(url));
+    cr_assert_eq(url_parse(url, &parts), ASCIICHAT_OK);
+    cr_assert_str_eq(parts.host, cases[i].ascii);
+    cr_assert_str_eq(parts.path, "/日本語?q=café#été");
+    url_parts_destroy(&parts);
+  }
+}
+
+Test(url_validator, icu_rejects_invalid_names_and_preserves_output_on_error) {
+  const char *invalid[] = {"\xC3\x28", "xn--.de", "a..de",
+                           "a\xE2\x80\x8D"
+                           "b.de",
+                           "אa.de"};
+  for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+    char output[HOSTNAME_BUFFER_SIZE] = "unchanged";
+    cr_assert_eq(hostname_to_ascii(invalid[i], output, sizeof(output)), ERROR_INVALID_PARAM);
+    cr_assert_str_eq(output, "unchanged");
+  }
+  char output[17] = "unchanged";
+  cr_assert_eq(hostname_to_ascii("bücher.de", output, sizeof(output) - 1), ERROR_INVALID_PARAM);
+  cr_assert_str_eq(output, "unchanged");
+  cr_assert_eq(hostname_to_ascii("bücher.de", output, sizeof(output)), ASCIICHAT_OK);
+  cr_assert_str_eq(output, "xn--bcher-kva.de");
+}
+
+Test(url_validator, icu_checks_dns_label_bytes_after_punycode_expansion) {
+  char host[128], output[HOSTNAME_BUFFER_SIZE];
+  for (size_t i = 0; i < 58; ++i) {
+    host[2 * i] = (char)0xC3;
+    host[2 * i + 1] = (char)0xBC;
+  }
+  host[114] = '\0'; // 57 ü characters encode to one 63-byte DNS label.
+  cr_assert_eq(hostname_to_ascii(host, output, sizeof(output)), ASCIICHAT_OK);
+  cr_assert_eq(strlen(output), MAX_HOSTNAME_LABEL_LENGTH);
+  host[114] = (char)0xC3;
+  host[115] = (char)0xBC;
+  host[116] = '\0';
+  cr_assert_eq(hostname_to_ascii(host, output, sizeof(output)), ERROR_INVALID_PARAM);
+}

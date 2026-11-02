@@ -32,10 +32,10 @@ Test(option_validation_boundaries, finite_float_and_volume_inputs) {
 }
 
 Test(option_validation_boundaries, address_literals_and_local_hostname) {
-  const char *inputs[] = {"127.0.0.1", "0.0.0.0",     "192.0.2.123",   "::1",
-                          "[::1]",     "2001:db8::1", "[2001:db8::1]", "localhost"};
-  const char *expected[] = {"127.0.0.1", "0.0.0.0",     "192.0.2.123", "::1",
-                            "::1",       "2001:db8::1", "2001:db8::1", "127.0.0.1"};
+  const char *inputs[] = {"127.0.0.1",     "0.0.0.0",   "192.0.2.123",       "::1", "[::1]", "2001:db8::1",
+                          "[2001:db8::1]", "localhost", "ｌｏｃａｌｈｏｓｔ"};
+  const char *expected[] = {"127.0.0.1",   "0.0.0.0",     "192.0.2.123", "::1",      "::1",
+                            "2001:db8::1", "2001:db8::1", "127.0.0.1",   "127.0.0.1"};
   char parsed[256], error[256];
   for (size_t i = 0; i < sizeof(inputs) / sizeof(*inputs); ++i)
     for (int client = 0; client <= 1; ++client) {

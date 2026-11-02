@@ -154,7 +154,7 @@ static void rtc_cleanup(rtc_endpoint_t endpoints[2]) {
   }
 }
 static void scenario(int backend, bool reject, bool stall, int corrupt, bool retained) {
-  bool websocket = backend == 1, rtc = backend == 2;
+  bool websocket = backend == 1 || backend == 3, rtc = backend == 2;
   rtc_endpoint_t endpoints[2] = {0};
   log_warn("Connection scenario: backend=%d reject=%d stall=%d corrupt=%d", backend, reject, stall, corrupt);
   fixture_t f = {.reject = reject, .stall = stall};
@@ -178,7 +178,8 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
   cr_assert_eq(acthread_create(&thread, "connection_fixture", run, &f), ASCIICHAT_OK);
   platform_sleep_ms(50);
   char endpoint[128];
-  safe_snprintf(endpoint, sizeof(endpoint), "%s://127.0.0.1:%u", websocket ? "ws" : "tcp", websocket ? ws : tcp);
+  safe_snprintf(endpoint, sizeof(endpoint), "%s://%s:%u%s", websocket ? "ws" : "tcp",
+                backend >= 3 ? "ｌｏｃａｌｈｏｓｔ" : "127.0.0.1", websocket ? ws : tcp, backend == 3 ? "/日本語" : "");
   network_connection_t *client = NULL;
   socket_t fragmented = INVALID_SOCKET_VALUE;
   asciichat_error_t open_result = ASCIICHAT_OK;
@@ -203,6 +204,8 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
     open_result = network_connection_open("connection_test", endpoint, tcp, NULL, &client, NULL);
   }
   cr_assert(open_result == ASCIICHAT_OK || (reject && open_result == ERROR_NETWORK_CONNECT));
+  if (backend >= 3)
+    cr_assert_str_eq(network_connection_peer(client), "localhost");
   wait_count(&f.opened, 1);
   uint64_t partial_started = time_get_ns();
   if (!reject && !stall) {
@@ -572,4 +575,11 @@ Test(network_connections, stalled_upgrade_deadline) {
 
 Test(network_connections, cancelled_upgrade) {
   cancelled_upgrade();
+}
+
+Test(network_connections, unicode_hostname_tcp_echo) {
+  scenario(4, false, false, 0, false);
+}
+Test(network_connections, unicode_hostname_websocket_echo) {
+  scenario(3, false, false, 0, false);
 }

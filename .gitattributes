@@ -1,2 +1,5 @@
 * whitespace=trailing-space,space-before-tab,cr-at-eol
 *.patch text eol=lf
+
+# Preserve upstream diff context, including whitespace, in the vendored ICU port.
+vcpkg-overlay/icu/*.patch -whitespace

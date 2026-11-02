@@ -19,7 +19,7 @@
 #define MAX_SESSION_KEYS 32
 
 /** Maximum ASCII DNS hostname bytes, excluding the NUL and a trailing root dot.
- * This is the existing is_valid_hostname() policy, not a Unicode codepoint limit. */
+ * Apply after IDNA conversion, not to UTF-8 input bytes or codepoint counts. */
 #define MAX_HOSTNAME_LENGTH 253
 
 /** Maximum bytes in an ASCII DNS label, excluding separators and NUL. */
