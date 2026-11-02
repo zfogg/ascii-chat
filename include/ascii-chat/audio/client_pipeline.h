@@ -46,6 +46,7 @@
 
 #pragma once
 
+#include <ascii-chat/audio/limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -85,10 +86,10 @@ extern "C" {
  */
 
 /** Default sample rate (48kHz, native for Opus) */
-#define CLIENT_AUDIO_PIPELINE_SAMPLE_RATE 48000
+#define CLIENT_AUDIO_PIPELINE_SAMPLE_RATE AUDIO_DEFAULT_SAMPLE_RATE
 
 /** Default frame size in milliseconds */
-#define CLIENT_AUDIO_PIPELINE_FRAME_MS 20
+#define CLIENT_AUDIO_PIPELINE_FRAME_MS AUDIO_OPUS_FRAME_MS
 
 /** Default frame size in samples at 48kHz */
 #define CLIENT_AUDIO_PIPELINE_FRAME_SIZE (CLIENT_AUDIO_PIPELINE_SAMPLE_RATE * CLIENT_AUDIO_PIPELINE_FRAME_MS / 1000)
@@ -97,7 +98,7 @@ extern "C" {
 #define CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE (CLIENT_AUDIO_PIPELINE_SAMPLE_RATE / 2)
 
 /** Maximum Opus packet size */
-#define CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET 4000
+#define CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET AUDIO_OPUS_PIPELINE_PACKET_CAPACITY
 
 /** @} */
 

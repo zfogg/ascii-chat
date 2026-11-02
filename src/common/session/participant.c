@@ -1,3 +1,4 @@
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/util/password.h>
 #include <sodium.h>
 #include <ascii-chat/network/acip/settings.h>
@@ -460,12 +461,12 @@ static void *participant_audio_capture_thread(void *arg) {
 
   log_info("Audio capture thread started");
 
-  float sample_buffer[960]; // 20ms @ 48kHz
-  uint8_t opus_buffer[1000];
+  float sample_buffer[AUDIO_OPUS_FRAME_SAMPLES]; // 20ms @ 48kHz
+  uint8_t opus_buffer[AUDIO_OPUS_SESSION_PACKET_CAPACITY];
 
   while (session_av_state_should_run(&p->audio)) {
     // Read microphone samples (20ms chunk)
-    size_t samples_read = session_audio_read_captured(p->audio_capture, sample_buffer, 960);
+    size_t samples_read = session_audio_read_captured(p->audio_capture, sample_buffer, AUDIO_OPUS_FRAME_SAMPLES);
     if (samples_read <= 0) {
       APP_CALLBACK_VOID(platform_pump_events);
       platform_sleep_ms(1);

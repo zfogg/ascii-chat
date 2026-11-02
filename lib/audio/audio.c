@@ -1,3 +1,4 @@
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 
@@ -99,7 +100,7 @@ void audio_terminate_portaudio_final(void) {
 }
 
 // AEC processes complete 480-sample blocks; the worker buffers must hold at least one block.
-#define WORKER_BATCH_FRAMES 960
+#define WORKER_BATCH_FRAMES AUDIO_OPUS_FRAME_SAMPLES
 #define WORKER_BATCH_SAMPLES (WORKER_BATCH_FRAMES * AUDIO_CHANNELS)
 // Device callbacks signal after capture/consumption. The fallback follows the
 // 20 ms worker cadence for software sources and missed notifications.
@@ -254,9 +255,9 @@ static void *audio_worker_thread(void *arg) {
 
     // Log worker loop state every 100 iterations with detailed timing
     if (loop_count % 100 == 0) {
-      char avg_wait_str[32], max_wait_str[32];
-      char avg_capture_str[32], max_capture_str[32];
-      char avg_playback_str[32], max_playback_str[32];
+      char avg_wait_str[TIME_DURATION_BUFFER_SIZE], max_wait_str[32];
+      char avg_capture_str[TIME_DURATION_BUFFER_SIZE], max_capture_str[32];
+      char avg_playback_str[TIME_DURATION_BUFFER_SIZE], max_playback_str[32];
       time_pretty((uint64_t)(total_wait_ns / loop_count), -1, avg_wait_str, sizeof(avg_wait_str));
       time_pretty(max_wait_ns, -1, max_wait_str, sizeof(max_wait_str));
       time_pretty((uint64_t)(total_capture_ns / (process_count > 0 ? process_count : 1)), -1, avg_capture_str,
@@ -297,10 +298,12 @@ static void *audio_worker_thread(void *arg) {
       bool local_playback = use_media && ctx->monitor_local_media && ctx->output_stream;
       size_t queued = local_playback ? audio_ring_buffer_available_read(ctx->playback_buffer) : 0;
       size_t refill = queued < 7200 ? 7200 - queued : 0;
-      uint64_t due = local_playback ? media_samples + refill : (now - media_start_ns) / (20 * NS_PER_MS_INT) * 960;
-      float media[960];
+      uint64_t due = local_playback ? media_samples + refill
+                                    : (now - media_start_ns) / (20 * NS_PER_MS_INT) * AUDIO_OPUS_FRAME_SAMPLES;
+      float media[AUDIO_OPUS_FRAME_SAMPLES];
       while (media_samples < due) {
-        size_t count = due - media_samples > 960 ? 960 : (size_t)(due - media_samples);
+        size_t count =
+            due - media_samples > AUDIO_OPUS_FRAME_SAMPLES ? AUDIO_OPUS_FRAME_SAMPLES : (size_t)(due - media_samples);
         size_t read = count;
         if (test_audio)
           audio_test_pattern(media, count, media_samples, AUDIO_SAMPLE_RATE);
@@ -335,7 +338,7 @@ static void *audio_worker_thread(void *arg) {
     // frames where both render and capture are available. Remainders stay in
     // the ring buffers and get processed next iteration - no zero-padding,
     // no data corruption, no skipped echo cancellation.
-    const size_t AEC3_FRAME_SIZE = 480;
+    const size_t AEC3_FRAME_SIZE = AUDIO_CAPTURE_FRAME_SAMPLES;
     bool want_aec3 = !bypass_aec3_worker && ctx->audio_pipeline && (ctx->duplex_stream || ctx->output_stream);
 
     if (want_aec3) {
@@ -394,7 +397,7 @@ static void *audio_worker_thread(void *arg) {
 
           if (aec3_count % 100 == 0) {
             long avg_ns = aec3_total_ns / aec3_count;
-            char avg_str[32], max_str[32], latest_str[32];
+            char avg_str[TIME_DURATION_BUFFER_SIZE], max_str[32], latest_str[32];
             time_pretty((uint64_t)avg_ns, -1, avg_str, sizeof(avg_str));
             time_pretty((uint64_t)aec3_max_ns, -1, max_str, sizeof(max_str));
             time_pretty((uint64_t)aec3_ns, -1, latest_str, sizeof(latest_str));
@@ -482,7 +485,7 @@ static void *audio_worker_thread(void *arg) {
       max_loop_ns = loop_time_ns;
 
     if (loop_count % 100 == 0) {
-      char avg_loop_str[32], max_loop_str[32];
+      char avg_loop_str[TIME_DURATION_BUFFER_SIZE], max_loop_str[32];
       time_pretty((uint64_t)(total_loop_ns / loop_count), -1, avg_loop_str, sizeof(avg_loop_str));
       time_pretty(max_loop_ns, -1, max_loop_str, sizeof(max_loop_str));
       log_debug("Worker loop timing: avg=%s max=%s", avg_loop_str, max_loop_str);
@@ -513,10 +516,10 @@ static void *audio_worker_thread(void *arg) {
 static void audio_monitor_test(audio_context_t *ctx, float *output, size_t count, uint32_t rate) {
   if (!GET_OPTION(test_audio) || !output)
     return;
-  float samples[480];
+  float samples[AUDIO_CAPTURE_FRAME_SAMPLES];
   float volume = fmaxf(0, fminf(1, GET_OPTION(speakers_volume)));
   for (size_t offset = 0; offset < count;) {
-    size_t block = count - offset > 480 ? 480 : count - offset;
+    size_t block = count - offset > AUDIO_CAPTURE_FRAME_SAMPLES ? AUDIO_CAPTURE_FRAME_SAMPLES : count - offset;
     audio_test_pattern(samples, block, ctx->test_audio_playback_position, rate);
     for (size_t i = 0; i < block; ++i)
       output[offset + i] = fmaxf(-1, fminf(1, output[offset + i] + samples[i] * volume));
@@ -687,7 +690,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     max_callback_ns = callback_time_ns;
 
   if (callback_count % 500 == 0) { // Log every ~10 seconds @ 48 FPS
-    char avg_str[32], max_str[32];
+    char avg_str[TIME_DURATION_BUFFER_SIZE], max_str[32];
     time_pretty((uint64_t)(total_callback_ns / callback_count), -1, avg_str, sizeof(avg_str));
     time_pretty(max_callback_ns, -1, max_str, sizeof(max_str));
     log_debug("Duplex callback timing: count=%lu, avg=%s, max=%s (budget: 2ms)", callback_count, avg_str, max_str);
@@ -1121,8 +1124,8 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
 void audio_ring_buffer_set_jitter_target(audio_ring_buffer_t *rb, uint32_t samples) {
   if (!rb)
     return;
-  if (samples < 960)
-    samples = 960;
+  if (samples < AUDIO_OPUS_FRAME_SAMPLES)
+    samples = AUDIO_OPUS_FRAME_SAMPLES;
   if (samples > 7680)
     samples = 7680;
   rb->jitter_initial_samples = samples;
@@ -1394,7 +1397,8 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     atomic_fetch_add_u64(&rb->underrun_count, 1);
     // One bounded refill after a real shortage avoids alternating tiny fragments
     // and silence when packets resume. Low occupancy alone is not an underrun.
-    rb->jitter_target_samples = rb->jitter_target_samples < 6720 ? rb->jitter_target_samples + 960 : 7680;
+    rb->jitter_target_samples =
+        rb->jitter_target_samples < 6720 ? rb->jitter_target_samples + AUDIO_OPUS_FRAME_SAMPLES : 7680;
     rb->jitter_stable_samples = 0;
     rb->jitter_drift_phase = 0;
     atomic_store_bool(&rb->jitter_buffer_filled, false);

@@ -1,3 +1,4 @@
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include "connection_internal.h"
 #include <ascii-chat/network/errors.h>
@@ -197,7 +198,7 @@ static int audio_queue_packet(client_connection_t *connection, const uint8_t *op
 #ifdef ASCIICHAT_WITH_OTEL
   packet->telemetry_context = ascii_otel_context();
 #endif
-  for (int i = 0; i < frame_count && i < 8; i++) {
+  for (int i = 0; i < frame_count && i < CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES; i++) {
     packet->frame_sizes[i] = frame_sizes[i];
   }
   connection->audio_send_queue_head = next_head;
@@ -268,7 +269,7 @@ static void *audio_sender_thread_func(void *arg) {
       errno_scope_end(send_scope, ASCIICHAT_ERRNO_HANDLED);
     }
     if (send_result == ASCIICHAT_OK && send_count % 50 == 0) {
-      char duration_str[32];
+      char duration_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(send_time_ns), -1, duration_str, sizeof(duration_str));
       log_debug("Audio network send #%d: %zu bytes (%d frames) in %s", send_count, packet.size, packet.frame_count,
                 duration_str);
@@ -510,7 +511,7 @@ static void *audio_capture_thread_func(void *arg) {
   int timeout_flush_count = 0;
 
 // Opus frame size: 960 samples = 20ms @ 48kHz (must match pipeline config)
-#define OPUS_FRAME_SAMPLES 960
+#define OPUS_FRAME_SAMPLES AUDIO_OPUS_FRAME_SAMPLES
 #define OPUS_MAX_PACKET_SIZE 500 // Max Opus packet size
 
   // Read enough samples per iteration to drain faster than we fill
@@ -524,7 +525,7 @@ static void *audio_capture_thread_func(void *arg) {
   int opus_frame_samples_collected = 0;
 
   // Batch buffer for multiple Opus frames - send all at once to reduce blocking
-#define MAX_BATCH_FRAMES 8
+#define MAX_BATCH_FRAMES CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES
 #define BATCH_TIMEOUT_NS (40LL * NS_PER_MS_INT) // Flush batch after 40ms even if not full (2 Opus frames @ 20ms each)
   uint8_t batch_buffer[MAX_BATCH_FRAMES * OPUS_MAX_PACKET_SIZE];
   uint16_t batch_frame_sizes[MAX_BATCH_FRAMES];
@@ -681,7 +682,7 @@ static void *audio_capture_thread_func(void *arg) {
           double opus_elapsed_ns = (double)time_elapsed_ns(opus_encode_start_ns, time_get_ns());
           if (encode_count % 50 == 0) {
             if (opus_elapsed_ns >= 0.0) {
-              char _duration_str[32];
+              char _duration_str[TIME_DURATION_BUFFER_SIZE];
               time_pretty((uint64_t)(opus_elapsed_ns), -1, _duration_str, sizeof(_duration_str));
               log_dev("Opus encode #%d: %d samples -> %d bytes in %s", encode_count, OPUS_FRAME_SAMPLES, opus_len,
                       _duration_str);
@@ -745,7 +746,7 @@ static void *audio_capture_thread_func(void *arg) {
           log_debug_every(LOG_RATE_VERY_FAST, "Failed to queue audio batch (queue full)");
         } else {
           if (batch_send_count <= 10 || batch_send_count % 50 == 0) {
-            char queue_duration_str[32];
+            char queue_duration_str[TIME_DURATION_BUFFER_SIZE];
             time_pretty((uint64_t)(queue_time_ns), -1, queue_duration_str, sizeof(queue_duration_str));
             log_debug("CLIENT: Queued Opus batch #%d (%d frames, %zu bytes) in %s", batch_send_count, batch_frame_count,
                       batch_total_size, queue_duration_str);
@@ -768,10 +769,10 @@ static void *audio_capture_thread_func(void *arg) {
 
       // Comprehensive timing report every 100 iterations (~2 seconds)
       if (timing_loop_count % 100 == 0) {
-        char avg_loop_str[32], max_loop_str[32];
-        char avg_read_str[32], max_read_str[32];
-        char avg_encode_str[32], max_encode_str[32];
-        char avg_queue_str[32], max_queue_str[32];
+        char avg_loop_str[TIME_DURATION_BUFFER_SIZE], max_loop_str[32];
+        char avg_read_str[TIME_DURATION_BUFFER_SIZE], max_read_str[32];
+        char avg_encode_str[TIME_DURATION_BUFFER_SIZE], max_encode_str[32];
+        char avg_queue_str[TIME_DURATION_BUFFER_SIZE], max_queue_str[32];
 
         time_pretty((uint64_t)(total_loop_ns / timing_loop_count), -1, avg_loop_str, sizeof(avg_loop_str));
         time_pretty((uint64_t)(max_loop_ns), -1, max_loop_str, sizeof(max_loop_str));

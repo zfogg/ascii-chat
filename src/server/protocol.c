@@ -109,6 +109,7 @@
  * @see network.h For packet structure definitions
  */
 
+#include <ascii-chat/audio/limits.h>
 #include <math.h>
 #include <stdarg.h>
 #include <ascii-chat/atomic.h>
@@ -1310,7 +1311,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   // Use static buffer for common case to avoid malloc in hot path
   // Typical batches: 1-32 frames of 960 samples = up to 30,720 samples
   // Static buffer holds 32 frames @ 48kHz 20ms = 30,720 samples (120KB)
-#define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960)
+#define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * AUDIO_OPUS_FRAME_SAMPLES)
   // Each client receive thread decodes independently. Sharing this scratch
   // buffer lets concurrent clients overwrite one another's PCM before it is
   // written to their source rings.
@@ -1491,13 +1492,13 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
 
   // Calculate expected samples per frame
   int samples_per_frame = (int)((sample_rate * frame_duration) / 1000);
-  if (samples_per_frame <= 0 || samples_per_frame > 5760) { // Max 120ms @ 48kHz
+  if (samples_per_frame <= 0 || samples_per_frame > AUDIO_OPUS_MAX_DECODE_SAMPLES) { // Max 120ms @ 48kHz
     disconnect_client_for_bad_data(client, "AUDIO_OPUS invalid samples_per_frame: %d", samples_per_frame);
     return;
   }
 
   // Decode Opus frame
-  float decoded_samples[5760]; // Max Opus frame size (120ms @ 48kHz)
+  float decoded_samples[AUDIO_OPUS_MAX_DECODE_SAMPLES]; // Max Opus frame size (120ms @ 48kHz)
   int decoded_count =
       opus_codec_decode((opus_codec_t *)client->opus_decoder, opus_data, opus_size, decoded_samples, samples_per_frame);
 

@@ -1,3 +1,4 @@
+#include <ascii-chat/audio/limits.h>
 #include "session/protocol.h"
 #include "session/frame_validation.h"
 #include <ascii-chat/tui/controller.h>
@@ -113,13 +114,13 @@ static void receive_opus(const void *data, size_t length, void *context) {
   session_protocol_t *protocol = context;
   if (!protocol->media.decode_opus || !protocol->media.on_samples)
     return;
-  float samples[5760]; // 120 ms at 48 kHz.
+  float samples[AUDIO_OPUS_MAX_DECODE_SAMPLES]; // 120 ms at 48 kHz.
   size_t decoded = 0;
-  protocol->callback_result =
-      protocol->media.decode_opus(data, length, samples, 5760, &decoded, protocol->media.context);
+  protocol->callback_result = protocol->media.decode_opus(data, length, samples, AUDIO_OPUS_MAX_DECODE_SAMPLES,
+                                                          &decoded, protocol->media.context);
   if (protocol->callback_result != ASCIICHAT_OK)
     return;
-  if (decoded > 5760) {
+  if (decoded > AUDIO_OPUS_MAX_DECODE_SAMPLES) {
     protocol->callback_result = SET_ERRNO(ERROR_AUDIO, "Participant decoder exceeded sample capacity");
     return;
   }

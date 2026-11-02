@@ -1,4 +1,10 @@
 #pragma once
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES 8
+
+#include <ascii-chat/common/limits.h>
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include "connection.h"
 #include "session/connection.h"
@@ -20,9 +26,10 @@
 #include <ascii-chat/video/h265/encoder.h>
 
 typedef struct {
-  uint8_t data[8 * 4000]; // Max 8 frames * ~500 bytes each (with safety margin)
+  uint8_t data[CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES *
+               AUDIO_OPUS_PIPELINE_PACKET_CAPACITY]; // Queue storage permits the pipeline packet budget for each frame.
   size_t size;
-  uint16_t frame_sizes[8];
+  uint16_t frame_sizes[CLIENT_AUDIO_SEND_MAX_BATCH_FRAMES];
   int frame_count;
 #ifdef ASCIICHAT_WITH_OTEL
   gotel_context_t telemetry_context;
@@ -61,7 +68,7 @@ struct client_connection {
   atomic_t telemetry_ping_ns;
   atomic_t connection_lost;
   uint32_t my_client_id;
-  char server_ip[256];
+  char server_ip[HOSTNAME_BUFFER_SIZE];
   int server_port;
   mutex_t send_mutex;
   crypto_handshake_context_t *crypto_ctx; // Borrowed from network until its users join.

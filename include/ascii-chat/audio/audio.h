@@ -57,6 +57,7 @@
  * @date October 2025
  */
 
+#include <ascii-chat/audio/limits.h>
 #include <stdbool.h>
 #include <ascii-chat/atomic.h>
 #include <portaudio.h>
@@ -82,9 +83,9 @@
  */
 
 /** @brief Audio sample rate (48kHz professional quality, Opus-compatible) */
-#define AUDIO_SAMPLE_RATE 48000
+#define AUDIO_SAMPLE_RATE AUDIO_DEFAULT_SAMPLE_RATE
 /** @brief Audio frames per buffer (480 = 10ms at 48kHz, matches WebRTC AEC3 frame size) */
-#define AUDIO_FRAMES_PER_BUFFER 480
+#define AUDIO_FRAMES_PER_BUFFER AUDIO_CAPTURE_FRAME_SAMPLES
 /** @brief Number of audio channels (1 = mono) */
 #define AUDIO_CHANNELS 1
 /** @brief Total audio buffer size (frames × channels) */

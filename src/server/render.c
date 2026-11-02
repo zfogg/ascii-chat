@@ -1,3 +1,4 @@
+#include <ascii-chat/audio/limits.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /* Per-client video conversion and audio mixing. Render workers submit media
@@ -392,7 +393,7 @@ void *client_video_render_thread(void *arg) {
     }
 
     if (frame_gen_count % 120 == 0) {
-      char sleep_str[32], create_str[32];
+      char sleep_str[TIME_DURATION_BUFFER_SIZE], create_str[32];
       time_pretty((uint64_t)(after_sleep_ns - iter_start_ns), -1, sleep_str, sizeof(sleep_str));
       time_pretty((uint64_t)(frame_create_end_ns - frame_create_start_ns), -1, create_str, sizeof(create_str));
       log_dev("render timing: adaptive_sleep=%s frame_create=%s", sleep_str, create_str);
@@ -584,11 +585,11 @@ void *client_audio_render_thread(void *arg) {
   // Mix buffer: up to 960 samples for adaptive reading
   // Normal: 480 samples = 10ms @ 48kHz
   // Catchup: 960 samples = 20ms when buffers are filling up
-  float mix_buffer[960];
+  float mix_buffer[AUDIO_OPUS_FRAME_SAMPLES];
 
 // Opus frame accumulation buffer (960 samples = 20ms @ 48kHz)
 // Opus requires minimum 480 samples, 960 is optimal for 20ms frames
-#define OPUS_FRAME_SAMPLES 960
+#define OPUS_FRAME_SAMPLES AUDIO_OPUS_FRAME_SAMPLES
   float opus_frame_buffer[OPUS_FRAME_SAMPLES];
   int opus_frame_accumulated = 0;
 
@@ -682,7 +683,7 @@ void *client_audio_render_thread(void *arg) {
     // Only encode and send when we have accumulated a full Opus frame
     if (opus_frame_accumulated >= OPUS_FRAME_SAMPLES) {
       // Encode accumulated Opus frame (960 samples = 20ms @ 48kHz)
-      uint8_t opus_buffer[1024]; // Max Opus frame size
+      uint8_t opus_buffer[AUDIO_OPUS_SERVER_PACKET_CAPACITY]; // Max Opus frame size
 
       START_TIMER("opus_encode_%s", client_id_snapshot);
 
