@@ -6,6 +6,11 @@
 
 #ifdef _WIN32
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_WINDOWS_THREAD_NAME_BUFFER_SIZE 128
+#define PLATFORM_WINDOWS_THREAD_EXCEPTION_BUFFER_SIZE 8192
+#define PLATFORM_WINDOWS_THREAD_STACK_BUFFER_SIZE 16384
+
 #include <windows.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
@@ -25,7 +30,7 @@
 typedef struct {
   void *(*posix_func)(void *);
   void *arg;
-  char name[128];
+  char name[PLATFORM_WINDOWS_THREAD_NAME_BUFFER_SIZE];
 } thread_wrapper_t;
 
 // Global to hold exception info from filter
@@ -426,7 +431,7 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
     DWORD threadId = GetCurrentThreadId();
 
     // Build consolidated exception message
-    char exception_buffer[8192];
+    char exception_buffer[PLATFORM_WINDOWS_THREAD_EXCEPTION_BUFFER_SIZE];
     build_exception_message(exception_buffer, sizeof(exception_buffer), exceptionCode, threadId);
 
     // Use direct printf instead of log_error to avoid logging system corruption
@@ -500,7 +505,7 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
         // Wrap the entire stack trace building in multiple try/except blocks for maximum safety
         __try {
           HANDLE hProcess = GetCurrentProcess();
-          char stack_buffer[16384];
+          char stack_buffer[PLATFORM_WINDOWS_THREAD_STACK_BUFFER_SIZE];
           memset(stack_buffer, 0, sizeof(stack_buffer));
 
           if (contextValid) {

@@ -70,8 +70,8 @@ asciichat_error_t prompt_password(const char *prompt_text, char *password_out, s
 // Preserve the browser's existing raw-key pinning path; there is no native
 // known_hosts file or terminal identity card in the browser.
 asciichat_error_t check_known_host_with_key(const char *server_ip, uint16_t port,
-                                            const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE], uint8_t stored_key[32],
-                                            bool *has_stored_key) {
+                                            const uint8_t server_key[ED25519_PUBLIC_KEY_SIZE],
+                                            uint8_t stored_key[ED25519_PUBLIC_KEY_SIZE], bool *has_stored_key) {
   if (has_stored_key)
     *has_stored_key = false;
   if (stored_key)

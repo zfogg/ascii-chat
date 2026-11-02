@@ -4,6 +4,9 @@
  */
 #ifdef _WIN32
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_WINDOWS_FONT_VALUE_NAME_BUFFER_SIZE 512
+
 #include <ascii-chat/platform/font.h>
 #include <ascii-chat/font.h>
 #include <ascii-chat/common.h>
@@ -48,7 +51,7 @@ static bool resolve_registry_font(HKEY root, const char *requested_name, const c
 
   bool found = false;
   for (DWORD index = 0; !found; index++) {
-    char value_name[512];
+    char value_name[PLATFORM_WINDOWS_FONT_VALUE_NAME_BUFFER_SIZE];
     char value_data[MAX_PATH];
     DWORD value_name_size = (DWORD)sizeof(value_name);
     DWORD value_data_size = (DWORD)sizeof(value_data);

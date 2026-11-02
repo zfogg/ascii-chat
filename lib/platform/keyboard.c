@@ -1,3 +1,11 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_KEYBOARD_SEQUENCE_BUFFER_SIZE 128
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define KEYBOARD_DEFERRED_KEY_CAPACITY 1024
+
+#include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/platform/system.h>
@@ -47,7 +55,7 @@ keyboard_key_t keyboard_text_decode(keyboard_text_decoder_t *s, int input) {
   return KEY_NONE;
 }
 
-size_t keyboard_text_encode(keyboard_key_t key, char text[5]) {
+size_t keyboard_text_encode(keyboard_key_t key, char text[UTF8_BUFFER_SIZE]) {
   if (key == KEY_NONE || !utf8proc_codepoint_valid((utf8proc_int32_t)key))
     return 0;
   utf8proc_int32_t cp = (utf8proc_int32_t)key;
@@ -74,7 +82,7 @@ keyboard_key_t keyboard_text_utf16(uint16_t *pending_high, uint16_t unit) {
 static atomic_t parser_guard = {0};
 static atomic_t background_rgb = {0};
 static atomic_t background_ns = {0};
-static keyboard_key_t deferred[1024];
+static keyboard_key_t deferred[KEYBOARD_DEFERRED_KEY_CAPACITY];
 static unsigned deferred_head, deferred_count;
 static bool querying_background;
 
@@ -123,7 +131,7 @@ static bool parse_background(const char *text, uint32_t *rgb) {
   return true;
 }
 
-static char sequence[128];
+static char sequence[PLATFORM_KEYBOARD_SEQUENCE_BUFFER_SIZE];
 static atomic_t terminal_reply_ns = {0};
 
 uint64_t keyboard_stream_terminal_reply_ns(void) {

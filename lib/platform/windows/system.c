@@ -1,3 +1,8 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_WINDOWS_SYSTEM_FRAME_BUFFER_SIZE 16
+#define PLATFORM_WINDOWS_SYSTEM_FULL_PATH_BUFFER_SIZE 512
+
 #include <ascii-chat/util/url.h>
 /**
  * @file platform/windows/system.c
@@ -481,7 +486,7 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
     }
 
     // Build colored frame number and manually embed it in buffer
-    char frame_buf[16];
+    char frame_buf[PLATFORM_WINDOWS_SYSTEM_FRAME_BUFFER_SIZE];
     safe_snprintf(frame_buf, sizeof(frame_buf), "%d", frame_num++);
     const char *colored_frame = colored_string(LOG_COLOR_FATAL, frame_buf);
     size_t colored_len = strlen(colored_frame);
@@ -566,7 +571,7 @@ void platform_log_backtrace_frame(int n) {
   // Format: [frame_num] function_name() (relative/path/file.c:line)
   // Extract repo-relative path from symbol
   const char *file_start = strchr(symbol, '(');
-  char frame_buf[16];
+  char frame_buf[PLATFORM_WINDOWS_SYSTEM_FRAME_BUFFER_SIZE];
   safe_snprintf(frame_buf, sizeof(frame_buf), "%d", n);
 
   if (file_start) {
@@ -575,7 +580,7 @@ void platform_log_backtrace_frame(int n) {
     const char *file_end = strchr(file_start, ')');
     if (file_end) {
       size_t file_len = (size_t)(file_end - file_start);
-      char full_path[512];
+      char full_path[PLATFORM_WINDOWS_SYSTEM_FULL_PATH_BUFFER_SIZE];
       safe_snprintf(full_path, sizeof(full_path), "%.*s", (int)file_len, file_start);
 
       const char *rel_file = extract_project_relative_path(full_path);

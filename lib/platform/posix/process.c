@@ -6,6 +6,9 @@
 
 #ifndef _WIN32
 
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_POSIX_PROCESS_LINE_BUFFER_SIZE 256
+
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/common.h>
@@ -44,7 +47,7 @@ asciichat_error_t platform_process_stats(platform_process_stats_t *out) {
 #elif defined(__linux__)
   FILE *status = fopen("/proc/self/status", "r");
   if (status) {
-    char line[256];
+    char line[PLATFORM_POSIX_PROCESS_LINE_BUFFER_SIZE];
     unsigned long long value;
     while (fgets(line, sizeof(line), status)) {
       if (sscanf(line, "VmRSS: %llu", &value) == 1)

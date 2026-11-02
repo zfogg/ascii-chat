@@ -1,3 +1,9 @@
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define PLATFORM_WINDOWS_QUESTION_TEST_RESPONSE_BUFFER_SIZE 256
+#define PLATFORM_WINDOWS_QUESTION_RESPONSE_BUFFER_SIZE 16
+#define PLATFORM_WINDOWS_QUESTION_QUESTION_BUFFER_SIZE 4096
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 /**
@@ -63,7 +69,7 @@ bool platform_prompt_yes_no_timeout(const char *prompt, bool default_yes, unsign
   }
 
   // Check for testing environment variable override
-  char test_response[256];
+  char test_response[PLATFORM_WINDOWS_QUESTION_TEST_RESPONSE_BUFFER_SIZE];
   if (env_pop_prompt_response(test_response, sizeof(test_response))) {
     if (_stricmp(test_response, "yes") == 0 || _stricmp(test_response, "y") == 0) {
       return true;
@@ -73,9 +79,9 @@ bool platform_prompt_yes_no_timeout(const char *prompt, bool default_yes, unsign
     // Invalid response - fall through to interactive prompt
   }
 
-  char response[16] = {0};
+  char response[PLATFORM_WINDOWS_QUESTION_RESPONSE_BUFFER_SIZE] = {0};
   if (platform_is_interactive()) {
-    char question[4096];
+    char question[PLATFORM_WINDOWS_QUESTION_QUESTION_BUFFER_SIZE];
     snprintf(question, sizeof(question), "%s %s", prompt, default_yes ? "(Y/n)?" : "(y/N)?");
     prompt_opts_t opts = PROMPT_OPTS_INLINE;
     opts.kind = ui_notice_prompt_kind();
