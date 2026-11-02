@@ -214,7 +214,7 @@ asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerpr
  *
  * @ingroup keys
  */
-asciichat_error_t get_gpg_key_id(const char *gpg_key_text, uint8_t key_id_out[8]);
+asciichat_error_t get_gpg_key_id(const char *gpg_key_text, uint8_t key_id_out[GPG_KEY_ID_SIZE]);
 
 /**
  * @brief Check if GPG key is expired

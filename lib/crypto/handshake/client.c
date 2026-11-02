@@ -4,6 +4,9 @@
  * @brief Client-side handshake protocol implementation
  */
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define HANDSHAKE_NONCE_PACKET_CAPACITY 256
+
 #include <ascii-chat/otel.h>
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/tui/notice.h>
@@ -710,7 +713,7 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
   // Copy nonce to local buffer before freeing payload
   // Use auth_challenge_size since that's what the server sent
   // Note: auth_challenge_size is uint8_t (max 255), buffer is 256 bytes, so always sufficient
-  uint8_t nonce_buffer[256];
+  uint8_t nonce_buffer[HANDSHAKE_NONCE_PACKET_CAPACITY];
   memcpy(nonce_buffer, payload + 1, ctx->crypto_ctx.auth_challenge_size);
   const uint8_t *nonce = nonce_buffer;
 

@@ -8,6 +8,12 @@
 #define CRYPTO_SSH_SSH_KEYS_CIPHERNAME_BUFFER_SIZE 32
 #define CRYPTO_SSH_SSH_KEYS_KDFNAME_BUFFER_SIZE 32
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SSH_PASSWORD_INPUT_BUFFER_SIZE 1024
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SSH_BCRYPT_SALT_SIZE 16
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
@@ -118,7 +124,7 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
     br_aes_ct_cbcdec_init(&aes_ctx, key, key_size);
 
     // Copy IV to working buffer
-    uint8_t working_iv[16];
+    uint8_t working_iv[AES_IV_SIZE];
     memcpy(working_iv, derived_iv, 16);
 
     // Decrypt in-place
@@ -230,7 +236,7 @@ typedef struct {
   size_t decrypted_blob_len;
   size_t dec_offset;
   char ciphername[CRYPTO_SSH_SSH_KEYS_CIPHERNAME_BUFFER_SIZE];
-  uint8_t bcrypt_salt[16];
+  uint8_t bcrypt_salt[SSH_BCRYPT_SALT_SIZE];
   uint8_t ed25519_pubkey[ED25519_PUBLIC_KEY_SIZE];
 } ssh_private_key_parse_t;
 
@@ -521,13 +527,13 @@ static asciichat_error_t ssh_private_key_read_password(ssh_private_key_parse_t *
     }
   } else {
     // Prompt for password interactively - allocate buffer for input
-    state->password = SAFE_CALLOC(1024, 1, char *);
+    state->password = SAFE_CALLOC(SSH_PASSWORD_INPUT_BUFFER_SIZE, 1, char *);
     if (!state->password) {
       ssh_private_key_cleanup(state);
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for password");
     }
-    if (prompt_password_simple_kind("Encrypted SSH key - enter passphrase", state->password, 1024,
-                                    UI_PROMPT_SSH_PASSPHRASE) != 0) {
+    if (prompt_password_simple_kind("Encrypted SSH key - enter passphrase", state->password,
+                                    SSH_PASSWORD_INPUT_BUFFER_SIZE, UI_PROMPT_SSH_PASSPHRASE) != 0) {
       ssh_private_key_cleanup(state);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read passphrase for encrypted key: %s", key_path);
     }

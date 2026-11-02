@@ -1,5 +1,8 @@
 #pragma once
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define GPG_SIGNATURE_PACKET_CAPACITY 512
+
 #include <ascii-chat/common/limits.h>
 
 /** Cryptographic storage and wire widths; usable without crypto context types or libsodium. */

@@ -12,6 +12,9 @@
 #define CRYPTO_DISCOVERY_KEYS_NEW_FINGERPRINT_BUFFER_SIZE 65
 #define CRYPTO_DISCOVERY_KEYS_QUESTION_BUFFER_SIZE 2048
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define SSH_ED25519_WIRE_KEY_SIZE (sizeof(uint32_t) + 11 + sizeof(uint32_t) + ED25519_PUBLIC_KEY_SIZE)
+
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
@@ -203,7 +206,8 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
   }
 
   // OpenSSH encodes a length-prefixed algorithm name followed by the key string.
-  uint8_t wire_key[51] = {0, 0, 0, 11, 's', 's', 'h', '-', 'e', 'd', '2', '5', '5', '1', '9', 0, 0, 0, 32};
+  uint8_t wire_key[SSH_ED25519_WIRE_KEY_SIZE] = {0,   0,   0,   11,  's', 's', 'h', '-', 'e', 'd',
+                                                 '2', '5', '5', '1', '9', 0,   0,   0,   32};
   memcpy(wire_key + 19, pubkey, 32);
   char base64_key[CRYPTO_DISCOVERY_KEYS_BASE64_KEY_BUFFER_SIZE];
   sodium_bin2base64(base64_key, sizeof(base64_key), wire_key, sizeof(wire_key), sodium_base64_VARIANT_ORIGINAL);

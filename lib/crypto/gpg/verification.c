@@ -49,7 +49,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
 
   // First, reconstruct OpenPGP signature by signing the same message
   // Since Ed25519 is deterministic, we should get the same OpenPGP packet
-  uint8_t openpgp_signature[512];
+  uint8_t openpgp_signature[GPG_SIGNATURE_PACKET_CAPACITY];
   size_t openpgp_len = 0;
 
   int sign_result = gpg_sign_with_key(key_id, message, message_len, openpgp_signature, &openpgp_len);

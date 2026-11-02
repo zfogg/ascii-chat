@@ -1,6 +1,7 @@
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
-#define CRYPTO_KEY_IDENTITY_KEYMASK_CELLS_COUNT 16
+#define KEYMASK_INTERIOR_ROWS (KEYMASK_ROWS - 2)
+#define KEYMASK_INTERIOR_COLUMNS (KEYMASK_WIDTH - 2)
 
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/key_identity/keymask.h>
@@ -11,7 +12,7 @@ asciichat_error_t key_fingerprint_digest(const uint8_t public_key[ED25519_PUBLIC
                                          uint8_t digest[KEYMASK_DIGEST_SIZE]) {
   if (!public_key || !digest)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing public key or fingerprint output");
-  if (crypto_hash_sha256(digest, public_key, 32) != 0)
+  if (crypto_hash_sha256(digest, public_key, ED25519_PUBLIC_KEY_SIZE) != 0)
     return SET_ERRNO(ERROR_CRYPTO, "Cannot compute public-key fingerprint");
   return ASCIICHAT_OK;
 }
@@ -23,19 +24,19 @@ static void feature_seed(const uint8_t digest[KEYMASK_DIGEST_SIZE], const char *
   crypto_hash_sha256_state state;
   crypto_hash_sha256_init(&state);
   crypto_hash_sha256_update(&state, (const unsigned char *)domain, sizeof(domain));
-  crypto_hash_sha256_update(&state, digest, 32);
+  crypto_hash_sha256_update(&state, digest, KEYMASK_DIGEST_SIZE);
   crypto_hash_sha256_update(&state, (const unsigned char *)feature, strlen(feature));
   crypto_hash_sha256_final(&state, seed);
 }
 
-static void stamp(char cells[CRYPTO_KEY_IDENTITY_KEYMASK_CELLS_COUNT][32], unsigned row, unsigned col,
+static void stamp(char cells[KEYMASK_INTERIOR_ROWS][KEYMASK_INTERIOR_COLUMNS], unsigned row, unsigned col,
                   const char *text) {
-  for (; *text && col < 32; ++col, ++text)
+  for (; *text && col < KEYMASK_INTERIOR_COLUMNS; ++col, ++text)
     cells[row][col] = *text;
 }
 
-static void centered(char cells[CRYPTO_KEY_IDENTITY_KEYMASK_CELLS_COUNT][32], unsigned row, const char *text) {
-  stamp(cells, row, (unsigned)(32 - strlen(text)) / 2, text);
+static void centered(char cells[KEYMASK_INTERIOR_ROWS][KEYMASK_INTERIOR_COLUMNS], unsigned row, const char *text) {
+  stamp(cells, row, (unsigned)(KEYMASK_INTERIOR_COLUMNS - strlen(text)) / 2, text);
 }
 
 asciichat_error_t keymask_render(const uint8_t digest[KEYMASK_DIGEST_SIZE], bool unicode, char *out, size_t size) {
@@ -45,9 +46,10 @@ asciichat_error_t keymask_render(const uint8_t digest[KEYMASK_DIGEST_SIZE], bool
   if (!digest)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing Keymask digest");
 
-  char cells[CRYPTO_KEY_IDENTITY_KEYMASK_CELLS_COUNT][32];
+  char cells[KEYMASK_INTERIOR_ROWS][KEYMASK_INTERIOR_COLUMNS];
   memset(cells, ' ', sizeof(cells));
-  uint8_t outline[32], crown[32], eyes[32], center[32], mouth[32], marks[32];
+  uint8_t outline[KEYMASK_DIGEST_SIZE], crown[KEYMASK_DIGEST_SIZE], eyes[KEYMASK_DIGEST_SIZE],
+      center[KEYMASK_DIGEST_SIZE], mouth[KEYMASK_DIGEST_SIZE], marks[KEYMASK_DIGEST_SIZE];
   feature_seed(digest, "outline", outline);
   feature_seed(digest, "crown", crown);
   feature_seed(digest, "eyes", eyes);

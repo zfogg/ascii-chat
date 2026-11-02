@@ -168,7 +168,7 @@ asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerpr
   return ERROR_CRYPTO_KEY;
 }
 
-asciichat_error_t get_gpg_key_id(const char *gpg_key_text, uint8_t key_id_out[8]) {
+asciichat_error_t get_gpg_key_id(const char *gpg_key_text, uint8_t key_id_out[GPG_KEY_ID_SIZE]) {
   if (!gpg_key_text || !key_id_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, key_id_out=%p", gpg_key_text, key_id_out);
     return ERROR_INVALID_PARAM;
@@ -295,7 +295,7 @@ asciichat_error_t format_gpg_key_display(const char *gpg_key_text, char *output,
   }
 
   // Extract key ID for display
-  uint8_t key_id[8];
+  uint8_t key_id[GPG_KEY_ID_SIZE];
   asciichat_error_t key_id_result = get_gpg_key_id(gpg_key_text, key_id);
   if (key_id_result != ASCIICHAT_OK) {
     // Fallback to generic GPG key display

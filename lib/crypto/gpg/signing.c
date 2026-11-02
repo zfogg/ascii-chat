@@ -147,7 +147,7 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
   log_debug("Signing with key ID %s (fallback mode)", key_id);
 
   // Get OpenPGP signature packet from gpg --detach-sign
-  uint8_t openpgp_signature[512];
+  uint8_t openpgp_signature[GPG_SIGNATURE_PACKET_CAPACITY];
   size_t openpgp_len = 0;
 
   int result = gpg_sign_with_key(key_id, message, message_len, openpgp_signature, &openpgp_len);

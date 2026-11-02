@@ -7,6 +7,9 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define CRYPTO_GPG_EXPORT_FOUND_KEYGRIP_BUFFER_SIZE 128
 
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define GPG_EXPORT_PACKET_CAPACITY 8192
+
 #include <ascii-chat/crypto/gpg/export.h>
 #include <ascii-chat/crypto/gpg/agent.h>
 #include <ascii-chat/crypto/keys.h>
@@ -76,7 +79,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   }
 
   // Read up to 8KB (should be more than enough for a public key packet)
-  uint8_t packet_data[8192];
+  uint8_t packet_data[GPG_EXPORT_PACKET_CAPACITY];
   size_t bytes_read = fread(packet_data, 1, sizeof(packet_data), fp);
   fclose(fp);
   platform_delete_temp_file(temp_path);

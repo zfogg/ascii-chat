@@ -1,3 +1,7 @@
+
+/* Existing buffer budgets in bytes, including NUL for text storage. */
+#define HANDSHAKE_ERROR_PLAINTEXT_CAPACITY 256
+
 #include <ascii-chat/otel.h>
 /**
  * @file crypto/handshake/common.c
@@ -613,7 +617,7 @@ asciichat_error_t crypto_handshake_process_rekey_complete(crypto_handshake_conte
   memcpy(ctx->crypto_ctx.shared_key, ctx->crypto_ctx.temp_shared_key, CRYPTO_SHARED_KEY_SIZE);
 
   // Attempt to decrypt with NEW key
-  uint8_t plaintext[256];
+  uint8_t plaintext[HANDSHAKE_ERROR_PLAINTEXT_CAPACITY];
   size_t plaintext_len = 0;
   crypto_result_t result =
       crypto_decrypt(&ctx->crypto_ctx, packet, packet_len, plaintext, sizeof(plaintext), &plaintext_len);

@@ -458,7 +458,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   // Extract ALL key IDs from import output (format: "gpg: key KEYID: ...")
   // GitHub often returns multiple keys in one armored block
   const char *key_marker = "gpg: key ";
-  char key_ids[CRYPTO_HTTPS_KEYS_KEY_IDS_COUNT][17]; // Support up to 16 keys
+  char key_ids[CRYPTO_HTTPS_KEYS_KEY_IDS_COUNT][GPG_KEY_ID_HEX_BUFFER_SIZE]; // Support up to 16 keys
   size_t key_count = 0;
 
   log_debug("GPG import output:\n%s", import_output);
