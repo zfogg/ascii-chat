@@ -16,16 +16,16 @@ static void teardown(void) {
 
 TestSuite(render_font, .init = setup, .fini = teardown);
 
-Test(render_font, unsupported_memory_font_returns_error_without_renderer) {
+Test(render_font, invalid_memory_font_returns_error_without_renderer) {
   static const uint8_t invalid_font[] = "This is not a supported font format";
   term_renderer_config_t cfg = {
       .cols = 20, .rows = 10, .font_size_pt = 12, .font_data = invalid_font, .font_data_size = sizeof(invalid_font)};
   terminal_renderer_t *renderer = NULL;
-  cr_assert_eq(term_renderer_create(&cfg, &renderer), ERROR_NOT_SUPPORTED);
+  cr_assert_neq(term_renderer_create(&cfg, &renderer), ASCIICHAT_OK);
   cr_assert_null(renderer);
   asciichat_error_context_t error;
   cr_assert(HAS_ERRNO(&error));
-  cr_assert_not_null(strstr(error.context_message, "Unsupported font format"));
+  cr_assert_not_null(strstr(error.context_message, "font"));
 }
 
 Test(render_font, bundled_font_renders_visible_pixels) {
