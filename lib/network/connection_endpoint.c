@@ -27,6 +27,10 @@ static asciichat_error_t connection_endpoint_from_parts(connection_endpoint_t *e
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid endpoint parse state");
   }
 
+  if (strlen(input) >= sizeof(endpoint_out->input) || strlen(parts->host) >= sizeof(endpoint_out->host)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Connection endpoint exceeds URL or host storage capacity");
+  }
+
   memset(endpoint_out, 0, sizeof(*endpoint_out));
   endpoint_out->protocol = protocol;
   SAFE_STRNCPY(endpoint_out->input, input, sizeof(endpoint_out->input));

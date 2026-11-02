@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ascii-chat/common/limits.h>
+
 /**
  * @file lib/network/mdns.h
  * @brief mDNS (Multicast DNS) service discovery for ascii-chat
@@ -85,7 +87,7 @@ typedef struct {
   /** Service type */
   char type[256];
   /** Host name */
-  char host[256];
+  char host[HOSTNAME_BUFFER_SIZE];
   /** Port number */
   uint16_t port;
   /** IPv4 address (dotted decimal, if available) */

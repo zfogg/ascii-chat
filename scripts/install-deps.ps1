@@ -171,6 +171,7 @@ $RequiredPackages = @(
     "libdatachannel",  # WebRTC DataChannels for P2P connections
     "miniupnpc",       # UPnP client library for automatic router port forwarding
     "abseil",          # C++ utility library (used by WebRTC AEC3)
+    "icu",            # Unicode IDNA hostname normalization
     "libuv",          # Native event-driven TCP I/O
     "libwebsockets",   # WebSocket transport library for browser clients
     "ffmpeg",          # Media file/URL streaming library
@@ -180,6 +181,9 @@ $RequiredPackages = @(
 )
 
 Write-Host "`nInstalling required packages..." -ForegroundColor Cyan
+
+# Classic-mode installs do not read this repository's vcpkg configuration.
+$OverlayPorts = Join-Path (Split-Path $PSScriptRoot -Parent) "vcpkg-overlay"
 
 foreach ($Package in $RequiredPackages) {
     $PackageSpec = "${Package}:${Triplet}"
@@ -194,9 +198,9 @@ foreach ($Package in $RequiredPackages) {
     }
 
     # Install the package using direct command execution (not Invoke-Expression)
-    Write-Host "    Running: vcpkg install $PackageSpec" -ForegroundColor Gray
+    Write-Host "    Running: vcpkg install $PackageSpec --overlay-ports=$OverlayPorts" -ForegroundColor Gray
     try {
-        & $VcpkgExe install $PackageSpec
+        & $VcpkgExe install $PackageSpec "--overlay-ports=$OverlayPorts"
         if ($LASTEXITCODE -ne 0) {
             throw "vcpkg install failed with exit code $LASTEXITCODE"
         }

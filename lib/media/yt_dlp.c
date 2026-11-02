@@ -30,11 +30,11 @@
  * Cache entry is valid for 30 seconds (typical stream URL duration).
  */
 typedef struct {
-  char url[2048];           // Original URL
-  char stream_url[8192];    // Extracted stream URL
-  char yt_dlp_options[512]; // yt-dlp options used
-  time_t extracted_time;    // When URL was extracted
-  bool valid;               // Whether cache entry is valid
+  char url[MEDIA_URL_CACHE_SIZE];         // Original URL
+  char stream_url[MEDIA_STREAM_URL_SIZE]; // Extracted stream URL
+  char yt_dlp_options[512];               // yt-dlp options used
+  time_t extracted_time;                  // When URL was extracted
+  bool valid;                             // Whether cache entry is valid
 } yt_dlp_cache_entry_t;
 
 static yt_dlp_cache_entry_t g_yt_dlp_cache = {0};
@@ -167,7 +167,7 @@ asciichat_error_t yt_dlp_extract_stream_url(const char *url, const char *yt_dlp_
   }
 
   // Check if we have a cached extraction for this URL+options combination
-  char cached_url[8192] = {0};
+  char cached_url[MEDIA_STREAM_URL_SIZE] = {0};
   if (yt_dlp_cache_get(url, yt_dlp_options, cached_url, sizeof(cached_url))) {
     ascii_otel_metric(ASCII_OTEL_METRIC_YTDLP_HIT, 1);
     ASCII_OTEL_ATTR_STRING("cache.result", *cached_url ? "hit" : "negative_hit");

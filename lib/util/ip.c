@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/url.h>
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
@@ -251,47 +252,6 @@ asciichat_error_t format_ip_with_port(const char *ip, uint16_t port, char *outpu
   return ASCIICHAT_OK;
 }
 
-// Helper function to validate hostname format
-// Returns 1 if valid hostname, 0 otherwise
-static int is_valid_hostname(const char *hostname) {
-  if (!hostname || strlen(hostname) == 0 || strlen(hostname) > 253) {
-    return 0;
-  }
-
-  // Hostname must not start or end with hyphen or dot
-  size_t len = strlen(hostname);
-  if (hostname[0] == '-' || hostname[0] == '.' || hostname[len - 1] == '-' || hostname[len - 1] == '.') {
-    return 0;
-  }
-
-  // Check each character: alphanumeric, hyphen, or dot
-  int label_len = 0;
-  for (size_t i = 0; i < len; i++) {
-    char c = hostname[i];
-    if (c == '.') {
-      // Label cannot be empty or exceed 63 characters
-      if (label_len == 0 || label_len > 63) {
-        return 0;
-      }
-      label_len = 0;
-    } else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-') {
-      label_len++;
-      if (label_len > 63) {
-        return 0;
-      }
-    } else {
-      return 0; // Invalid character
-    }
-  }
-
-  // Check last label
-  if (label_len == 0 || label_len > 63) {
-    return 0;
-  }
-
-  return 1;
-}
-
 // Parse IP address and port from string
 int parse_ip_with_port(const char *input, char *ip_output, size_t ip_output_size, uint16_t *port_output) {
   if (!input || !ip_output || !port_output || ip_output_size == 0) {
@@ -380,7 +340,7 @@ int parse_address_with_optional_port(const char *input, char *address_output, si
     return -1;
   }
 
-  if (input_len > 256) {
+  if (input_len >= URL_BUFFER_SIZE) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Address string too long");
     return -1;
   }
@@ -434,7 +394,7 @@ int parse_address_with_optional_port(const char *input, char *address_output, si
   // Case 2: Check if it's a valid IPv6 address without brackets (no port allowed in this case)
   // Examples: "::1" or "2001:db8::1" or "fe80::1"
   // Note: IPv6 addresses contain colons, so we can't use ':' as port separator without brackets
-  if (is_valid_ipv6(input)) {
+  if (input_len < HOSTNAME_BUFFER_SIZE && is_valid_ipv6(input)) {
     if (strlen(input) >= address_output_size) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Address too long for buffer");
       return -1;
@@ -450,18 +410,19 @@ int parse_address_with_optional_port(const char *input, char *address_output, si
 
   if (last_colon == NULL) {
     // No colon - just address/hostname, no port
-    if (strlen(input) >= address_output_size) {
-      SET_ERRNO(ERROR_INVALID_PARAM, "Address too long for buffer");
-      return -1;
-    }
-
-    // Validate it's a valid IPv4 or hostname
-    if (!is_valid_ipv4(input) && !is_valid_hostname(input)) {
+    // Validate and normalize before checking the ASCII output capacity.
+    char ascii[HOSTNAME_BUFFER_SIZE];
+    if (hostname_to_ascii(input, ascii, sizeof(ascii)) != ASCIICHAT_OK || strchr(ascii, '_') ||
+        ascii[strlen(ascii) - 1] == '.') {
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid address format: %s", input);
       return -1;
     }
 
-    SAFE_STRNCPY(address_output, input, address_output_size);
+    if (strlen(ascii) >= address_output_size) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Address too long for buffer");
+      return -1;
+    }
+    SAFE_STRNCPY(address_output, ascii, address_output_size);
     *port_output = default_port;
     return 0;
   }
@@ -472,26 +433,30 @@ int parse_address_with_optional_port(const char *input, char *address_output, si
     SET_ERRNO(ERROR_INVALID_PARAM, "Empty address before port: %s", input);
     return -1;
   }
-  if (addr_len >= address_output_size) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Address too long for buffer");
-    return -1;
-  }
-
-  memcpy(address_output, input, addr_len);
-  address_output[addr_len] = '\0';
+  char host_input[URL_BUFFER_SIZE];
+  memcpy(host_input, input, addr_len);
+  host_input[addr_len] = '\0';
 
   // Check if extracted address contains ':' - that would be IPv6 without brackets (invalid with port)
-  if (strchr(address_output, ':') != NULL) {
+  if (strchr(host_input, ':') != NULL) {
     SET_ERRNO(ERROR_INVALID_PARAM, "IPv6 addresses must use brackets when specifying port: [%s]:%s instead of %s",
-              address_output, last_colon + 1, input);
+              host_input, last_colon + 1, input);
     return -1;
   }
 
   // Validate address part is valid IPv4 or hostname
-  if (!is_valid_ipv4(address_output) && !is_valid_hostname(address_output)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid address format: %s", address_output);
+  char ascii[HOSTNAME_BUFFER_SIZE];
+  if (hostname_to_ascii(host_input, ascii, sizeof(ascii)) != ASCIICHAT_OK || strchr(ascii, '_') ||
+      ascii[strlen(ascii) - 1] == '.') {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid address format: %s", host_input);
     return -1;
   }
+
+  if (strlen(ascii) >= address_output_size) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Address too long for buffer");
+    return -1;
+  }
+  SAFE_STRNCPY(address_output, ascii, address_output_size);
 
   // Parse port
   if (parse_port(last_colon + 1, port_output) != ASCIICHAT_OK) {

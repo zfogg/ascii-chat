@@ -176,7 +176,7 @@ asciichat_error_t session_server_like_mdns_advertise(const char *name, const cha
     return SET_ERRNO(ERROR_INVALID_STATE, "mDNS context not initialized");
   }
 
-  char hostname[256] = {0};
+  char hostname[HOSTNAME_BUFFER_SIZE] = {0};
   gethostname(hostname, sizeof(hostname) - 1);
 
   asciichat_mdns_service_t service = {

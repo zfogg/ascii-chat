@@ -62,7 +62,7 @@ static consensus_handoff_peer_t *find_peer(consensus_handoff_t *s, const uint8_t
 asciichat_error_t consensus_handoff_join(consensus_handoff_t *s, const uint8_t id[16]) {
   if (find_peer(s, id))
     return ASCIICHAT_OK;
-  if (s->count == PARTICIPANT_LIMIT)
+  if (s->count == MAX_SESSION_PARTICIPANTS)
     return SET_ERRNO(ERROR_INVALID_STATE, "Handoff membership full");
   consensus_handoff_peer_t *p = &s->peers[s->count++];
   memset(p, 0, sizeof(*p));
@@ -259,7 +259,7 @@ bool consensus_handoff_tick(consensus_handoff_t *s, uint64_t now, consensus_hand
     memset(s->successor, 0, 16);
     s->ready = false;
   }
-  participant_metrics_t metrics[PARTICIPANT_LIMIT];
+  participant_metrics_t metrics[MAX_SESSION_PARTICIPANTS];
   size_t count = 0;
   for (size_t i = 0; i < s->count; ++i) {
     consensus_handoff_peer_t *p = &s->peers[i];

@@ -69,7 +69,7 @@ typedef struct {
   uint64_t failure_deadline_ms;
   uint64_t monitoring_started_ms;
   bool monitoring;
-  consensus_handoff_peer_t peers[PARTICIPANT_LIMIT];
+  consensus_handoff_peer_t peers[MAX_SESSION_PARTICIPANTS];
   size_t count;
 } consensus_handoff_t;
 

@@ -21,6 +21,8 @@
  */
 
 #include <criterion/criterion.h>
+#include <ascii-chat/network/webrtc/stun.h>
+#include <ascii-chat/network/webrtc/turn.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/pcre2.h>
@@ -889,5 +891,126 @@ Test(url_validator, edge_cases) {
   for (size_t i = 0; i < sizeof(edge_case_urls) / sizeof(edge_case_urls[0]); ++i) {
     const url_test_case_t *test = &edge_case_urls[i];
     assert_url_valid(test->url, test->note);
+  }
+}
+
+Test(url_validator, normalized_schemeless_url_byte_boundary) {
+  char input[URL_BUFFER_SIZE];
+  const char *prefix = "example.com/";
+  size_t limit = MAX_URL_LENGTH - strlen("http://");
+  memcpy(input, prefix, strlen(prefix));
+  memset(input + strlen(prefix), 'a', limit - strlen(prefix));
+  input[limit] = '\0';
+  url_parts_t parts = {0};
+  cr_assert(url_is_valid(input));
+  cr_assert_eq(url_parse(input, &parts), ASCIICHAT_OK);
+  cr_assert_eq(strlen(parts.path), limit - strlen("example.com"));
+  url_parts_destroy(&parts);
+  input[limit] = 'a';
+  input[limit + 1] = '\0';
+  cr_assert_not(url_is_valid(input));
+  cr_assert_eq(url_parse(input, &parts), ERROR_INVALID_PARAM);
+}
+
+Test(url_validator, explicit_url_retains_allocated_component_support_beyond_scratch_limit) {
+  char input[URL_BUFFER_SIZE + 64];
+  const char *prefix = "https://example.com/";
+  memcpy(input, prefix, strlen(prefix));
+  memset(input + strlen(prefix), 'a', sizeof(input) - strlen(prefix) - 1);
+  input[sizeof(input) - 1] = '\0';
+  url_parts_t parts = {0};
+  cr_assert(url_is_valid(input));
+  cr_assert_eq(url_parse(input, &parts), ASCIICHAT_OK);
+  cr_assert_eq(strlen(parts.path), strlen(input) - strlen("https://example.com"));
+  url_parts_destroy(&parts);
+}
+
+Test(url_validator, stun_wire_capacity_includes_terminator) {
+  char url[STUN_URL_BUFFER_SIZE + 1];
+  memcpy(url, "stun:", 5);
+  memset(url + 5, 'a', sizeof(url) - 6);
+  url[STUN_URL_BUFFER_SIZE - 1] = '\0';
+  stun_server_t server = {0};
+  cr_assert_eq(stun_servers_parse(url, NULL, &server, 1), 1);
+  cr_assert_eq(server.host_len, STUN_URL_BUFFER_SIZE - 1);
+  cr_assert_str_eq(server.host, url);
+  url[STUN_URL_BUFFER_SIZE - 1] = 'a';
+  url[STUN_URL_BUFFER_SIZE] = '\0';
+  cr_assert_eq(stun_servers_parse(url, NULL, &server, 1), -1);
+  cr_assert_eq(sizeof(stun_server_t), 65, "STUN wire layout must remain compatible");
+  cr_assert_eq(sizeof(turn_server_t), 163, "TURN wire layout must remain compatible");
+}
+
+Test(url_validator, icu_normalizes_international_hosts_without_rewriting_paths) {
+  const struct {
+    const char *input, *ascii;
+  } cases[] = {{"bücher.de", "xn--bcher-kva.de"},
+               {"BÜCHER.DE", "xn--bcher-kva.de"},
+               {"bu\xCC\x88"
+                "cher.de",
+                "xn--bcher-kva.de"},
+               {"faß.de", "xn--fa-hia.de"},
+               {"例子.测试", "xn--fsqu00a.xn--0zwm56d"},
+               {"bücher。de", "xn--bcher-kva.de"},
+               {"bücher.de.", "xn--bcher-kva.de."},
+               {"xn--bcher-kva.de", "xn--bcher-kva.de"}};
+  for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+    char output[HOSTNAME_BUFFER_SIZE];
+    cr_assert_eq(hostname_to_ascii(cases[i].input, output, sizeof(output)), ASCIICHAT_OK, "%s", cases[i].input);
+    cr_assert_str_eq(output, cases[i].ascii);
+    char url[URL_BUFFER_SIZE];
+    snprintf(url, sizeof(url), "https://%s/日本語?q=café#été", cases[i].input);
+    url_parts_t parts = {0};
+    cr_assert(url_is_valid(url));
+    cr_assert_eq(url_parse(url, &parts), ASCIICHAT_OK);
+    cr_assert_str_eq(parts.host, cases[i].ascii);
+    cr_assert_str_eq(parts.path, "/日本語?q=café#été");
+    url_parts_destroy(&parts);
+  }
+}
+
+Test(url_validator, icu_rejects_invalid_names_and_preserves_output_on_error) {
+  const char *invalid[] = {"\xC3\x28", "xn--.de", "a..de",
+                           "a\xE2\x80\x8D"
+                           "b.de",
+                           "אa.de"};
+  for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+    char output[HOSTNAME_BUFFER_SIZE] = "unchanged";
+    cr_assert_eq(hostname_to_ascii(invalid[i], output, sizeof(output)), ERROR_INVALID_PARAM);
+    cr_assert_str_eq(output, "unchanged");
+  }
+  char output[17] = "unchanged";
+  cr_assert_eq(hostname_to_ascii("bücher.de", output, sizeof(output) - 1), ERROR_INVALID_PARAM);
+  cr_assert_str_eq(output, "unchanged");
+  cr_assert_eq(hostname_to_ascii("bücher.de", output, sizeof(output)), ASCIICHAT_OK);
+  cr_assert_str_eq(output, "xn--bcher-kva.de");
+}
+
+Test(url_validator, icu_checks_dns_label_bytes_after_punycode_expansion) {
+  char host[128], output[HOSTNAME_BUFFER_SIZE];
+  for (size_t i = 0; i < 58; ++i) {
+    host[2 * i] = (char)0xC3;
+    host[2 * i + 1] = (char)0xBC;
+  }
+  host[114] = '\0'; // 57 ü characters encode to one 63-byte DNS label.
+  cr_assert_eq(hostname_to_ascii(host, output, sizeof(output)), ASCIICHAT_OK);
+  cr_assert_eq(strlen(output), MAX_HOSTNAME_LABEL_LENGTH);
+  host[114] = (char)0xC3;
+  host[115] = (char)0xBC;
+  host[116] = '\0';
+  cr_assert_eq(hostname_to_ascii(host, output, sizeof(output)), ERROR_INVALID_PARAM);
+}
+
+Test(url_validator, explicit_port_bounds_are_not_confused_with_missing_port) {
+  const char *valid[] = {"ws://example.com", "ws://example.com:1", "wss://example.com:65535"};
+  for (size_t i = 0; i < sizeof(valid) / sizeof(*valid); ++i)
+    cr_assert(url_is_valid(valid[i]));
+  const char *invalid[] = {"ws://example.com:0", "wss://example.com:0", "ws://example.com:65536"};
+  for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+    url_parts_t parts = {0};
+    cr_assert_not(url_is_valid(invalid[i]));
+    cr_assert_eq(url_parse(invalid[i], &parts), ERROR_INVALID_PARAM);
+    cr_assert_null(parts.host);
+    cr_assert_null(parts.scheme);
   }
 }

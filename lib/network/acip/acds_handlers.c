@@ -184,13 +184,16 @@ static asciichat_error_t handle_acds_session_create(const void *payload, size_t 
       (req->has_password && !memchr(req->password_hash, '\0', sizeof(req->password_hash))))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Malformed SESSION_CREATE payload");
 
+  if (req->total_keys > MAX_SESSION_KEYS || req->key_index >= (req->total_keys ? req->total_keys : 1))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session key count/index");
+
   // Multi-key protocol: validate parameters only for first key (key_index == 0)
   // total_keys > 0 indicates multi-key mode; skip validation for subsequent keys
   if (req->key_index == 0 || req->total_keys == 0) {
     // Validate session parameters for first key or single-key mode
-    if (req->max_participants == 0 || req->max_participants > PARTICIPANT_LIMIT) {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_participants: %u from %s (expected: 1-128)",
-                       req->max_participants, client_ip);
+    if (req->max_participants == 0 || req->max_participants > MAX_SESSION_PARTICIPANTS) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_participants: %u from %s (expected: 1-%d)",
+                       req->max_participants, client_ip, MAX_SESSION_PARTICIPANTS);
     }
 
     if (req->session_type > 1) {

@@ -1,3 +1,4 @@
+#include <ascii-chat/util/url.h>
 /**
  * @file platform/windows/system.c
  * @ingroup platform
@@ -1092,6 +1093,12 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
   if (!hostname || !ipv4_out || ipv4_out_size == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for hostname resolution");
   }
+
+  char ascii_hostname[HOSTNAME_BUFFER_SIZE];
+  asciichat_error_t normalized = hostname_to_ascii(hostname, ascii_hostname, sizeof(ascii_hostname));
+  if (normalized != ASCIICHAT_OK)
+    return normalized;
+  hostname = ascii_hostname;
 
   // Initialize Winsock on Windows (required for getaddrinfo)
   WSADATA wsaData;

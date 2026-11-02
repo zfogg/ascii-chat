@@ -29,8 +29,9 @@ typedef struct consensus_topology consensus_topology_t;
  * @param out_topology Output topology handle (caller must destroy)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_topology_create(const uint8_t participant_ids[PARTICIPANT_LIMIT][16], int num_participants,
-                                            const uint8_t my_id[16], consensus_topology_t **out_topology);
+asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SESSION_PARTICIPANTS][16],
+                                            int num_participants, const uint8_t my_id[16],
+                                            consensus_topology_t **out_topology);
 
 /**
  * @brief Destroy topology
@@ -95,4 +96,4 @@ asciichat_error_t consensus_topology_get_leader(const consensus_topology_t *topo
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t consensus_topology_get_all(const consensus_topology_t *topology,
-                                             uint8_t out_ids[PARTICIPANT_LIMIT][16], int *out_count);
+                                             uint8_t out_ids[MAX_SESSION_PARTICIPANTS][16], int *out_count);

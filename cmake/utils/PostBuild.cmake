@@ -60,7 +60,7 @@ function(copy_windows_dlls TARGET_NAME)
             )
 
             set(_webrtc_runtime_dir_ids "")
-            foreach(_runtime IN LISTS ASCIICHAT_WEBRTC_RUNTIME_DLLS)
+            foreach(_runtime IN LISTS ASCIICHAT_WEBRTC_RUNTIME_DLLS ASCIICHAT_ICU_RUNTIME_DLLS)
                 get_filename_component(_runtime_name "${_runtime}" NAME)
                 list(REMOVE_ITEM VCPKG_DLLS "${_runtime_name}")
                 get_filename_component(_runtime_dir "${_runtime}" DIRECTORY)
@@ -75,7 +75,7 @@ function(copy_windows_dlls TARGET_NAME)
                     TARGET ${TARGET_NAME}
                     NAMES ${_webrtc_runtime_names_${_runtime_dir_id}}
                     SOURCE_DIR "${_webrtc_runtime_dir_${_runtime_dir_id}}"
-                    COMMENT "matching WebRTC sanitizer runtime"
+                    COMMENT "matching dependency runtime"
                 )
             endforeach()
 
