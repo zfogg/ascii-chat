@@ -71,6 +71,13 @@ elseif(USE_MUSL OR PLATFORM_IOS)
     target_include_directories(asciichat-icu INTERFACE "${_icu_prefix}/include")
     target_compile_definitions(asciichat-icu INTERFACE U_STATIC_IMPLEMENTATION)
     target_link_libraries(asciichat-icu INTERFACE "${_icu_prefix}/lib/libicuuc.a" "${_icu_prefix}/lib/libicudata.a")
+elseif(UNIX AND NOT APPLE)
+    # pkg-config supplies the distro's multiarch library directories even when
+    # a newer Clang target is not recognized by CMake's architecture lookup.
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(ASCIICHAT_ICU REQUIRED IMPORTED_TARGET icu-uc>=60)
+    set(ICU_VERSION "${ASCIICHAT_ICU_VERSION}")
+    target_link_libraries(asciichat-icu INTERFACE PkgConfig::ASCIICHAT_ICU)
 else()
     if(APPLE AND HOMEBREW_PREFIX)
         list(PREPEND CMAKE_PREFIX_PATH "${HOMEBREW_PREFIX}/opt/icu4c")
