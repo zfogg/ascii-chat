@@ -1,7 +1,7 @@
 # =============================================================================
 # mdns Configuration Module
 # =============================================================================
-# This module handles mdns dependency patching to exclude the main() function.
+# This module handles mdns build integration and compatibility patches.
 #
 # The mdns library (https://github.com/mjansson/mdns) includes a main() function
 # for standalone testing which causes 5-second delays in our test suite due to
@@ -12,6 +12,7 @@
 #
 # Outputs:
 #   - Applies mdns-0-exclude-main.patch
+#   - Applies mdns-1-windows-ioctl-command.patch on Windows
 #   - Sets MDNS_NO_MAIN compile definition in Libraries.cmake
 # =============================================================================
 
@@ -34,6 +35,16 @@ function(configure_mdns)
         DESCRIPTION "Wrap main() in #ifndef MDNS_NO_MAIN to exclude from library builds"
         ASSUME_UNCHANGED
             mdns.c
+    )
+
+    # Winsock accepts a signed long command, while FIONBIO is unsigned.
+    apply_patch(
+        TARGET_DIR "${DEP_DIR}"
+        PATCH_FILE "${PATCHES_DIR}/mdns-1-windows-ioctl-command.patch"
+        PATCH_NUM 1
+        DESCRIPTION "Make the Windows ioctl command conversion explicit"
+        PLATFORM WIN32
+        ASSUME_UNCHANGED mdns.h
     )
 
     # Verify the source file exists

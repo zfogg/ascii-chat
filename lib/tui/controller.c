@@ -1082,8 +1082,11 @@ static void *presentation_main(void *unused) {
       for (int i = 0; i < UI_SCREEN_COUNT; ++i)
         live |= g_screens[i].render != NULL;
       atomic_store_bool(&g_live, live);
-      if (!live)
+      if (!live) {
+        if (shutdown_is_requested())
+          ui_error_popup_preserve(atomic_load(&g_default_fd), unpack_size(atomic_load(&g_size)));
         errno_notifications_enable(false);
+      }
       cond_broadcast(&g_render_done);
       mutex_unlock(&g_mutex);
     }
@@ -1434,12 +1437,18 @@ static void remove_screen(ui_screen_t screen, int previous) {
   for (int i = 0; i < UI_SCREEN_COUNT; ++i)
     live |= g_screens[i].render != NULL;
   atomic_store_bool(&g_live, live);
-  if (!live)
-    errno_notifications_enable(false);
   // Borrowed pointers inside snapshots may be freed as soon as remove returns.
   // A callback removing itself retains its owned bytes until the frame ends.
   while (!g_render_snapshot && g_render_completed < pending)
     cond_wait(&g_render_done, &g_mutex);
+  live = g_rendering_screen >= 0;
+  for (int i = 0; i < UI_SCREEN_COUNT; ++i)
+    live |= g_screens[i].render != NULL;
+  if (!live) {
+    if (!g_render_snapshot && shutdown_is_requested())
+      ui_error_popup_preserve(atomic_load(&g_default_fd), unpack_size(atomic_load(&g_size)));
+    errno_notifications_enable(false);
+  }
   mutex_unlock(&g_mutex);
   release_snapshot(retired);
 }
@@ -1613,6 +1622,9 @@ void ui_controller_shutdown(void) {
   cond_signal(&g_render_requested);
   mutex_unlock(&g_mutex);
   thread_join(&g_thread, NULL);
+  // Shutdown may precede the next presentation tick. Keep pending errors readable
+  // after exit without delaying transport teardown or waiting for terminal input.
+  ui_error_popup_preserve(atomic_load(&g_default_fd), unpack_size(atomic_load(&g_size)));
   ui_session_destroy(g_session);
   g_session = NULL;
   errno_notifications_enable(false);

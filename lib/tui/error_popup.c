@@ -1,5 +1,6 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/tui/error_popup.h>
+#include <ascii-chat/tui/notice.h>
 #include <ascii-chat/ui/buttons.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/too_small.h>
@@ -342,4 +343,51 @@ void ui_error_popup_reset(void) {
   g_latest = g_dropped = 0;
   unlock_state();
   g_cached_id = 0;
+}
+
+static char g_final_output[65536];
+static size_t g_final_length;
+static int g_final_fd;
+
+void ui_error_popup_preserve(int fd, terminal_size_t size) {
+  if (!errno_notifications_pending())
+    return;
+  asciichat_error_context_t entries[ASCIICHAT_ERRNO_HISTORY_SIZE];
+  size_t count = errno_notifications_snapshot(entries, ARRAY_SIZE(entries), NULL);
+  if (!count)
+    return;
+  bool previous = errno_notifications_suppress(true);
+  frame_buffer_t *text = frame_buffer_create(0, 0);
+  frame_buffer_t *output = frame_buffer_create(0, 0);
+  if (text && output) {
+    size_t first = count > 4 ? count - 4 : 0;
+    if (first)
+      frame_buffer_printf(text, "%zu pending notifications; showing the latest 4.\n", count);
+    for (size_t i = first; i < count; ++i) {
+      char message[ASCIICHAT_ERRNO_MESSAGE_MAX];
+      sanitize(message, sizeof(message), entries[i].context_message);
+      frame_buffer_printf(text, "%s: %s\n", asciichat_error_name(entries[i].code), message);
+    }
+    frame_buffer_append(output, "\033[0m\033[?25h\r\n", 12);
+    // Use a portable final box: console detection must not hold up queue retirement.
+    ui_notice_render(output, frame_buffer_get_content(text), UI_NOTICE_DANGER, size.cols > 0 ? size.cols : 80, false,
+                     false);
+    // Narrow terminals can expand a box substantially. Keep complete terminal
+    // controls, falling back to the bounded plain summary rather than cutting ANSI.
+    frame_buffer_t *final = frame_buffer_get_length(output) <= sizeof(g_final_output) ? output : text;
+    g_final_length = frame_buffer_get_length(final);
+    memcpy(g_final_output, frame_buffer_get_content(final), g_final_length);
+    g_final_fd = fd;
+  }
+  if (text)
+    frame_buffer_destroy(text);
+  if (output)
+    frame_buffer_destroy(output);
+  errno_notifications_suppress(previous);
+}
+
+void ui_error_popup_flush(void) {
+  if (g_final_length)
+    platform_write_all(g_final_fd, g_final_output, g_final_length);
+  g_final_length = 0;
 }

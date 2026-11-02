@@ -11,6 +11,7 @@
 
 // Platform abstraction includes memory sizing functions
 #include <ascii-chat/tui/controller.h>
+#include <ascii-chat/tui/error_popup.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/system.h>
@@ -360,6 +361,8 @@ void asciichat_shared_destroy(void) {
   // 25. Symbol cache cleanup
   symbol_cache_destroy();
 #endif
+  // No more shutdown diagnostics may scroll pending terminal errors away.
+  ui_error_popup_flush();
 }
 
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
