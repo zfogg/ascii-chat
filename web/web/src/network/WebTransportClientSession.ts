@@ -23,6 +23,7 @@ export interface WebTransportClientOptions {
   applicationEncryption?: boolean;
   cryptoOptions?: ClientCryptoOptions;
   preferDatagrams?: boolean;
+  onTransportReady?: () => void;
 }
 
 /** Direct browser session over HTTP/3 WebTransport and authenticated ACIP. */
@@ -140,6 +141,7 @@ export class WebTransportClientSession implements ClientSession {
         datagramDropped: () => {
           ++this.droppedDatagrams;
         },
+        transportReady: () => this.options.onTransportReady?.(),
         failed: (error) => this.fail(error),
       });
       this.channel = channel;

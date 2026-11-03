@@ -381,6 +381,10 @@ export function ClientPage({
     "serverUrl",
     params.get("testServerUrl") || "ws://localhost:27226",
   );
+  const [fallbackWebSocketUrl, setFallbackWebSocketUrl] = useUrlState<string>(
+    "fallbackWebSocketUrl",
+    "",
+  );
   const connectionCryptoTarget: VerificationKeyTarget = discoveryMode
     ? "discovery-service"
     : "client-server";
@@ -486,6 +490,7 @@ export function ClientPage({
     onAudioPacket,
     onConnectionStateChange,
     serverUrl,
+    ...(fallbackWebSocketUrl ? { fallbackWebSocketUrl } : {}),
     terminalDimensions,
     settings,
     rendererRef,
@@ -1536,6 +1541,24 @@ export function ClientPage({
                         />
                       </Tooltip>
                     </label>
+                    {serverUrl.startsWith("https://") && (
+                      <label className="flex flex-col gap-1 w-80 max-w-full min-w-0">
+                        WSS fallback URL (optional; requires a pinned server
+                        key)
+                        <Tooltip text={disabledSettingsHelp} className="block">
+                          <input
+                            aria-label="WSS fallback URL"
+                            disabled={settingsDisabled}
+                            value={fallbackWebSocketUrl}
+                            onChange={(event) =>
+                              setFallbackWebSocketUrl(event.target.value)
+                            }
+                            placeholder="wss://example.com:27226"
+                            className="bg-terminal-bg border border-terminal-8 rounded px-3 py-2 w-full font-mono"
+                          />
+                        </Tooltip>
+                      </label>
+                    )}
                     <label className="flex flex-col gap-1 w-56 max-w-full min-w-0">
                       <HelpLabel
                         label="Crypto password"

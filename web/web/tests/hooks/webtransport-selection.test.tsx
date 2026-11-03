@@ -36,6 +36,20 @@ vi.mock("../../src/network/WebTransportClientSession", () => ({
     }
   },
 }));
+vi.mock("../../src/network/WebTransportFallbackSession", () => ({
+  WebTransportFallbackSession: class {
+    constructor() {
+      chosen.transports.push("webtransport-fallback");
+    }
+    onStateChange() {}
+    onPacketReceived() {}
+    async connect() {}
+    disconnect() {}
+    getPublicKey() {
+      return null;
+    }
+  },
+}));
 import { useClientConnection } from "../../src/hooks/useClientConnection";
 
 afterEach(() => {
@@ -44,12 +58,18 @@ afterEach(() => {
 });
 describe("direct browser transport selection", () => {
   it.each([
-    ["https://example.test/chat", "webtransport"],
-    ["wss://example.test/", "websocket"],
-    ["ws://localhost:27226/", "websocket"],
-  ])("uses %s for %s", async (serverUrl, expected) => {
+    ["https://example.test/chat", "webtransport", ""],
+    [
+      "https://example.test/chat",
+      "webtransport-fallback",
+      "wss://example.test/ws",
+    ],
+    ["wss://example.test/", "websocket", ""],
+    ["ws://localhost:27226/", "websocket", ""],
+  ])("uses %s for %s", async (serverUrl, expected, fallbackWebSocketUrl) => {
     const options = {
       serverUrl,
+      fallbackWebSocketUrl,
       terminalDimensions: { cols: 80, rows: 40 },
       settings: {
         targetFps: 30,

@@ -16,7 +16,14 @@ authenticate packets against their flow, enforce the READY/ACK barrier, and
 request keyframes after visual loss. Its owner must initialize the shared WASM
 client and configure credentials before starting the handshake. In the direct
 browser client, an `https://` server URL selects this channel; `ws://` and
-`wss://` continue to select WebSocket. Automatic browser cross-transport fallback is not yet implemented.
+`wss://` continue to select WebSocket. A direct browser connection can optionally
+specify a WSS fallback URL and a pinned server public key. Fallback keeps ACIP
+application encryption enabled and uses the same identity pin. It is attempted
+only when the browser lacks WebTransport or its HTTP/3 session remains pending
+for ten seconds. Explicit connection failures, including certificate errors,
+and failures after HTTP/3 readiness do not trigger fallback. Browsers do not
+expose enough detail to safely classify every UDP failure, so an immediate
+opaque failure is reported rather than retried.
 
 For example, start a listener with `--quic-bind-address 127.0.0.1`,
 `--quic-port`, `--quic-tls-cert`, and `--quic-tls-key`, then connect with
@@ -50,7 +57,9 @@ it needs OpenSSL, ssh-keygen, and a Playwright Chromium installation (or
 `CHROME_PATH`). This probe covers pinned identity, origin and path rejection,
 certificate rejection, encrypted control traffic, and fragmented browser-to-server
 visual datagrams. It also runs two native QUIC participants alongside the browser
-and checks media traffic continues after the browser disconnects.
+and checks media traffic continues after the browser disconnects. It also checks
+WSS fallback when WebTransport is unavailable or remains pending, and rejects
+a wrong fallback identity key.
 
 ## Reliable streams
 

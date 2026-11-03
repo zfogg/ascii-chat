@@ -50,6 +50,17 @@ execFileSync(
 const identity = join(dir, "identity");
 execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-f", identity]);
 const serverPublicKey = readFileSync(`${identity}.pub`, "utf8");
+const otherIdentity = join(dir, "other-identity");
+execFileSync("ssh-keygen", [
+  "-q",
+  "-t",
+  "ed25519",
+  "-N",
+  "",
+  "-f",
+  otherIdentity,
+]);
+const wrongPublicKey = readFileSync(`${otherIdentity}.pub`, "utf8");
 const publicDir = join(dir, "public");
 mkdirSync(join(publicDir, "wasm"), { recursive: true });
 for (const file of ["client.js", "client.wasm"])
@@ -110,6 +121,10 @@ const server = spawn(
     String(tcpPort),
     "--websocket-port",
     String(wsPort),
+    "--websocket-tls-cert",
+    cert,
+    "--websocket-tls-key",
+    key,
     "--quic-bind-address",
     "127.0.0.1",
     "--quic-port",
@@ -320,9 +335,8 @@ try {
           });
         }
       };
-      const { WebTransportClientSession } = await import(
-        "/src/network/WebTransportClientSession.ts"
-      );
+      const { WebTransportClientSession } =
+        await import("/src/network/WebTransportClientSession.ts");
       const {
         buildCapabilitiesPacket,
         buildStreamStartPacket,
@@ -460,7 +474,98 @@ try {
     throw new Error(
       "browser session was not removed promptly after disconnect",
     );
+  for (const mode of ["unsupported", "blocked", "wrong-key"]) {
+    const fallbackResult = await page.evaluate(
+      async ({ udpPort, wsPort, serverPublicKey, wrongPublicKey, mode }) => {
+        const Original = globalThis.WebTransport;
+        globalThis.WebTransport =
+          mode !== "blocked"
+            ? undefined
+            : class {
+                ready = new Promise(() => {});
+                close() {}
+              };
+        const { WebTransportFallbackSession } =
+          await import("/src/network/WebTransportFallbackSession.ts");
+        const session = new WebTransportFallbackSession(
+          {
+            serverUrl: `https://127.0.0.1:${udpPort}/acip`,
+            cryptoOptions: {
+              password: "test-password",
+              expectedServerPublicKeyText:
+                mode === "wrong-key" ? wrongPublicKey : serverPublicKey,
+            },
+          },
+          `wss://127.0.0.1:${wsPort}`,
+          200,
+        );
+        const states = [];
+        const packets = [];
+        let resolveReady, rejectReady;
+        const ready = new Promise((resolve, reject) => {
+          resolveReady = resolve;
+          rejectReady = reject;
+        });
+        session.onStateChange((state) => {
+          states.push(state);
+          if (state === 3) resolveReady();
+          if (state === 4) rejectReady(new Error("fallback connection failed"));
+        });
+        session.onPacketReceived((packet) => packets.push(packet.type));
+        try {
+          await session.connect();
+          await Promise.race([
+            ready,
+            new Promise((_, reject) =>
+              setTimeout(
+                () => reject(new Error("fallback handshake timeout")),
+                15000,
+              ),
+            ),
+          ]);
+          const { buildCapabilitiesPacket, buildStreamStartPacket } =
+            await import("/src/network/packetBuilders.ts");
+          session.sendPacket(5000, buildCapabilitiesPacket(40, 12));
+          session.sendPacket(5005, buildStreamStartPacket(false));
+          session.sendPacket(5001, new Uint8Array());
+          const deadline = Date.now() + 8000;
+          while (!packets.includes(5002) && Date.now() < deadline)
+            await new Promise((resolve) => setTimeout(resolve, 25));
+          if (!packets.includes(5002)) throw new Error("fallback pong missing");
+          return {
+            ok: true,
+            states,
+            packets,
+            transport: session.transportType,
+          };
+        } catch (error) {
+          return { ok: false, states, packets, error: String(error) };
+        } finally {
+          session.disconnect();
+          globalThis.WebTransport = Original;
+        }
+      },
+      { udpPort, wsPort, serverPublicKey, wrongPublicKey, mode },
+    );
+    console.log("FALLBACK RESULT", mode, JSON.stringify(fallbackResult));
+    if (mode === "wrong-key") {
+      if (fallbackResult.ok || fallbackResult.states.includes(3))
+        throw new Error("fallback accepted the wrong server identity");
+    } else if (!fallbackResult.ok || fallbackResult.transport !== "websocket") {
+      throw new Error(`WSS fallback failed: ${fallbackResult.error}`);
+    }
+  }
 } catch (error) {
+  console.error(
+    "SERVER ERRORS",
+    logs
+      .split("\n")
+      .filter((line) =>
+        /ERROR|WARN|disconnect|handshake|Invalid|invalid/i.test(line),
+      )
+      .slice(-80)
+      .join("\n"),
+  );
   console.error("SERVER LOG", logs.slice(-12000));
   for (const participant of participants)
     console.error(

@@ -64,6 +64,7 @@ export class WebTransportBridge {
     private readonly onPacket: (packet: WebTransportPacket) => void,
     private readonly onError: (error: Error) => void,
     private readonly now: () => number = () => performance.now(),
+    private readonly onTransportReady?: () => void,
   ) {}
 
   async connect(): Promise<void> {
@@ -73,6 +74,7 @@ export class WebTransportBridge {
     try {
       await this.session.ready;
       if (this.stopped) throw new Error("WebTransport session closed");
+      this.onTransportReady?.();
       for (const flow of [0, 1, 2] as const) {
         const stream = await this.session.createUnidirectionalStream();
         if (this.stopped) throw new Error("WebTransport session closed");
@@ -296,6 +298,7 @@ export function createBrowserWebTransportBridge(
   onPacket: (packet: WebTransportPacket) => void,
   onError: (error: Error) => void,
   options?: WebTransportOptions,
+  onTransportReady?: () => void,
 ): WebTransportBridge {
   const endpoint = new URL(url);
   if (endpoint.protocol !== "https:")
@@ -306,5 +309,7 @@ export function createBrowserWebTransportBridge(
     new WebTransport(endpoint.href, options),
     onPacket,
     onError,
+    undefined,
+    onTransportReady,
   );
 }

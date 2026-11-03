@@ -25,6 +25,7 @@ export interface WebTransportAcipCallbacks {
   ready(): void;
   keyframe(type: number, stream: number): void;
   datagramDropped?(type: number, error: Error): void;
+  transportReady?(): void;
   failed(error: Error): void;
 }
 
@@ -82,6 +83,7 @@ export class WebTransportAcipChannel {
       (packet) => this.protocol.receive(packet),
       (error) => this.fail(error),
       options,
+      () => callbacks.transportReady?.(),
     );
   }
 
