@@ -51,3 +51,10 @@ reference and its connection must remain valid while callbacks may use them;
 the SSL app data must be cleared before freeing SSL if the connection has
 already been destroyed. The endpoint must also honor the lifetime of the
 ngtcp2 OpenSSL context associated with the connection.
+
+The private connection engine processes one UDP payload at a time on a single
+serialized lane. It uses monotonic nanosecond timestamps for QUIC timers and
+rejects timestamps that move backwards. Once it produces a packet, its owner
+must retain that packet if the socket cannot accept it and report successful
+transmission before requesting another packet; this updates ngtcp2's pacing
+state. TLS readiness from this engine does not imply ACIP authentication.

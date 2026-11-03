@@ -1,5 +1,8 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
+#include <network/quic/connection.h>
 #include <network/quic/tls.h>
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
@@ -136,6 +139,94 @@ static ngtcp2_conn *unused_connection(ngtcp2_crypto_conn_ref *ref) {
   return NULL;
 }
 
+static bool quic_handshake(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls, const char *server_name,
+                           bool drop_first_server_packet, bool *dropped, asciichat_error_t *failure) {
+  struct sockaddr_in client_address = {
+      .sin_family = AF_INET, .sin_port = HOST_TO_NET_U16(23456), .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  struct sockaddr_in server_address = {
+      .sin_family = AF_INET, .sin_port = HOST_TO_NET_U16(27224), .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  ngtcp2_path client_path = {.local = {.addr = (struct sockaddr *)&client_address, .addrlen = sizeof(client_address)},
+                             .remote = {.addr = (struct sockaddr *)&server_address, .addrlen = sizeof(server_address)}};
+  ngtcp2_path server_path = {.local = {.addr = (struct sockaddr *)&server_address, .addrlen = sizeof(server_address)},
+                             .remote = {.addr = (struct sockaddr *)&client_address, .addrlen = sizeof(client_address)}};
+  acip_quic_connection_t *client = NULL, *server = NULL;
+  *failure = ASCIICHAT_OK;
+  *dropped = false;
+  uint64_t now = NS_PER_SEC_INT;
+  ngtcp2_path invalid_path = client_path;
+  invalid_path.local.addrlen = 1;
+  CHECK(acip_quic_connection_client_create(client_tls, server_name, &invalid_path, now, &client) ==
+            ERROR_INVALID_PARAM &&
+        !client);
+  const uint8_t invalid_initial[16] = {0};
+  CHECK(acip_quic_connection_server_create(server_tls, &server_path, invalid_initial, sizeof(invalid_initial), now,
+                                           &server) == ERROR_NETWORK_PROTOCOL &&
+        !server);
+  CHECK(acip_quic_connection_client_create(client_tls, server_name, &client_path, now, &client) == ASCIICHAT_OK);
+  CHECK(!acip_quic_connection_tls_ready(client));
+  bool failed = false;
+  for (unsigned step = 0; step < 10000 && !failed; ++step, now += NS_PER_MS_INT) {
+    uint8_t packet[1452];
+    size_t length = 0;
+    ngtcp2_path_storage selected_path;
+    asciichat_error_t result = acip_quic_connection_write(client, &selected_path, packet, sizeof(packet), &length, now);
+    if (result != ASCIICHAT_OK) {
+      *failure = result;
+      failed = true;
+      break;
+    }
+    if (length) {
+      size_t second_length = 1;
+      uint8_t second_packet[1452];
+      ngtcp2_path_storage second_path;
+      CHECK(acip_quic_connection_write(client, &second_path, second_packet, sizeof(second_packet), &second_length,
+                                       now) == ERROR_INVALID_STATE &&
+            second_length == 0);
+      CHECK(acip_quic_connection_packet_sent(client, now - 1) == ERROR_INVALID_PARAM);
+      CHECK(acip_quic_connection_packet_sent(client, now) == ASCIICHAT_OK);
+      CHECK(acip_quic_connection_packet_sent(client, now) == ERROR_INVALID_STATE);
+      if (!server)
+        CHECK(acip_quic_connection_server_create(server_tls, &server_path, packet, length, now, &server) ==
+              ASCIICHAT_OK);
+      result = acip_quic_connection_receive(server, &server_path, packet, length, now);
+      if (result != ASCIICHAT_OK) {
+        *failure = result;
+        failed = true;
+        break;
+      }
+    }
+    if (server) {
+      result = acip_quic_connection_write(server, &selected_path, packet, sizeof(packet), &length, now);
+      if (result == ASCIICHAT_OK && length) {
+        CHECK(acip_quic_connection_packet_sent(server, now) == ASCIICHAT_OK);
+        if (drop_first_server_packet && !*dropped)
+          *dropped = true;
+        else
+          result = acip_quic_connection_receive(client, &client_path, packet, length, now);
+      }
+      if (result != ASCIICHAT_OK) {
+        *failure = result;
+        failed = true;
+        break;
+      }
+    }
+    if (server && acip_quic_connection_tls_ready(server) && acip_quic_connection_tls_ready(client))
+      break;
+    if (acip_quic_connection_expiry(client) <= now) {
+      *failure = acip_quic_connection_handle_expiry(client, now);
+      failed = *failure != ASCIICHAT_OK;
+    }
+    if (!failed && server && acip_quic_connection_expiry(server) <= now) {
+      *failure = acip_quic_connection_handle_expiry(server, now);
+      failed = *failure != ASCIICHAT_OK;
+    }
+  }
+  bool success = !failed && server && acip_quic_connection_tls_ready(server) && acip_quic_connection_tls_ready(client);
+  acip_quic_connection_destroy(&server);
+  acip_quic_connection_destroy(&client);
+  return success;
+}
+
 int main(int argc, char **argv) {
   CHECK(argc == 5);
   log_init(NULL, LOG_ERROR, false, false);
@@ -167,6 +258,17 @@ int main(int argc, char **argv) {
   CHECK(!handshake(server, client, "localhost", true, false, false));
   CHECK(!handshake(server, client, "localhost", false, true, false));
   CHECK(!handshake(server, client, "localhost", false, false, true));
+  asciichat_error_t quic_failure = ASCIICHAT_OK;
+  bool dropped = false;
+  CHECK(quic_handshake(server, client, "localhost", false, &dropped, &quic_failure) && quic_failure == ASCIICHAT_OK);
+  CHECK(quic_handshake(server, client, "localhost", true, &dropped, &quic_failure) && dropped &&
+        quic_failure == ASCIICHAT_OK);
+  CHECK(!quic_handshake(server, client, "other.example", false, &dropped, &quic_failure) &&
+        quic_failure == ERROR_CRYPTO);
+  CHECK(!quic_handshake(server, untrusted, "localhost", false, &dropped, &quic_failure) &&
+        quic_failure == ERROR_CRYPTO);
+  CHECK(!quic_handshake(server, wrong_alpn, "localhost", false, &dropped, &quic_failure) &&
+        quic_failure == ERROR_CRYPTO);
 
   acip_quic_tls_t *invalid = (acip_quic_tls_t *)server;
   CHECK(acip_quic_tls_server_create("acip/1", argv[1], argv[4], &invalid) == ERROR_CRYPTO && !invalid);
