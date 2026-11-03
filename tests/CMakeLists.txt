@@ -1719,7 +1719,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_configure_contract(test-participant-workers)
     target_link_libraries(test-participant-workers PRIVATE ascii-chat-static-lib-with-deps ${MIMALLOC_LIBRARIES})
     target_include_directories(test-participant-workers PRIVATE ${CMAKE_SOURCE_DIR}/src/common
-        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${LIBSODIUM_INCLUDE_DIRS})
     apply_sanitizers_to_target(test-participant-workers)
     set_target_properties(test-participant-workers PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
