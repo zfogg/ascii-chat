@@ -908,7 +908,7 @@ crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const 
 
   // Bind password HMAC to DH shared_secret to prevent MITM
   // Combined data: nonce || shared_secret
-  uint8_t combined_data[AUTH_COMBINED_SIZE];
+  uint8_t combined_data[AUTH_CHALLENGE_SIZE + CRYPTO_SHARED_KEY_SIZE];
   memcpy(combined_data, nonce, AUTH_CHALLENGE_SIZE);
   memcpy(combined_data + AUTH_CHALLENGE_SIZE, ctx->shared_key, CRYPTO_SHARED_KEY_SIZE);
 
@@ -940,7 +940,7 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
 
   // Bind password HMAC to DH shared_secret to prevent MITM
   // Combined data: nonce || shared_secret
-  uint8_t combined_data[AUTH_COMBINED_SIZE];
+  uint8_t combined_data[AUTH_CHALLENGE_SIZE + CRYPTO_SHARED_KEY_SIZE];
   memcpy(combined_data, nonce, AUTH_CHALLENGE_SIZE);
   memcpy(combined_data + AUTH_CHALLENGE_SIZE, ctx->shared_key, CRYPTO_SHARED_KEY_SIZE);
 
@@ -1067,7 +1067,7 @@ asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint
 
   // Combine nonce and shared_secret for HMAC computation
   // This binds the password to the DH shared secret, preventing MITM attacks
-  uint8_t combined_data[AUTH_COMBINED_SIZE];
+  uint8_t combined_data[AUTH_CHALLENGE_SIZE + CRYPTO_SHARED_KEY_SIZE];
   memcpy(combined_data, nonce, AUTH_CHALLENGE_SIZE);
   memcpy(combined_data + AUTH_CHALLENGE_SIZE, shared_secret, CRYPTO_SHARED_KEY_SIZE);
 
