@@ -94,6 +94,7 @@ EMSCRIPTEN_KEEPALIVE void peer_crypto_destroy(browser_peer_crypto_t *peer) {
   while (peer->output)
     peer_crypto_output_pop(peer);
   buffer_release(peer->received);
+  acip_quic_security_cleanup(&peer->quic);
   acip_security_cleanup(&peer->security);
   SAFE_FREE(peer);
 }
@@ -250,7 +251,7 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_packet(browser_peer_cryp
                                                                uint32_t delivery, const uint8_t *packet, size_t length,
                                                                uint8_t *output, size_t capacity, size_t *out_length,
                                                                uint64_t *sequence) {
-  const size_t overhead = sizeof(packet_header_t) + 16 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+  const size_t overhead = sizeof(packet_header_t) + 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
   if (!peer || !packet || !output || !out_length || !sequence || length > SIZE_MAX - overhead ||
       capacity < length + (seal ? overhead : 0))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer QUIC packet buffer");

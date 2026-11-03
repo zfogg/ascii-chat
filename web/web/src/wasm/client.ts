@@ -1194,7 +1194,7 @@ export function processQuicPacket(
   peer = 0,
 ): { packet: Uint8Array; sequence: bigint } {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  const capacity = packet.length + (operation === "seal" ? 78 : 0);
+  const capacity = packet.length + (operation === "seal" ? 94 : 0);
   const input = wasmModule._malloc(packet.length);
   const output = wasmModule._malloc(capacity);
   const length = wasmModule._malloc(4);

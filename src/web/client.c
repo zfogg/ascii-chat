@@ -449,7 +449,7 @@ void client_cleanup(void) {
   errno_destroy();
 
   // The QUIC security state borrows the handshake context.
-  memset(&g_quic_security, 0, sizeof(g_quic_security));
+  acip_quic_security_cleanup(&g_quic_security);
   // Clean up crypto handshake context
   crypto_handshake_destroy(&g_crypto_handshake_ctx);
   memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
@@ -482,7 +482,7 @@ int client_generate_keypair(void) {
   }
 
   // A replacement handshake must not retain the previous connection's sequence state.
-  memset(&g_quic_security, 0, sizeof(g_quic_security));
+  acip_quic_security_cleanup(&g_quic_security);
   // Reset handshake context if previously used (reconnection / React Strict Mode remount)
   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
     crypto_handshake_destroy(&g_crypto_handshake_ctx);
@@ -864,7 +864,7 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_quic_security_init(void) {
 EMSCRIPTEN_KEEPALIVE asciichat_error_t client_quic_security_seal(uint32_t flow, uint32_t delivery,
                                                                  const uint8_t *packet, size_t packet_len,
                                                                  uint8_t *output, size_t capacity, size_t *out_len) {
-  const size_t overhead = sizeof(packet_header_t) + 16 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+  const size_t overhead = sizeof(packet_header_t) + 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
   if (!packet || !output || !out_len || packet_len > SIZE_MAX - overhead || capacity < packet_len + overhead)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC security output buffer");
   *out_len = 0;

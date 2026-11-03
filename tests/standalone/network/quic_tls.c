@@ -211,7 +211,7 @@ static void quic_secure_framing(void) {
   for (size_t i = 0; i < 3; ++i)
     CHECK(acip_quic_security_seal(&client, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, audio, audio_length, &wire[i],
                                   &wire_length[i]) == ASCIICHAT_OK);
-  CHECK(memcmp(wire[0] + sizeof(packet_header_t), wire[1] + sizeof(packet_header_t), CRYPTO_NONCE_SIZE) != 0);
+  CHECK(memcmp(wire[0] + sizeof(packet_header_t) + 8, wire[1] + sizeof(packet_header_t) + 8, CRYPTO_NONCE_SIZE) != 0);
   CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_VISUAL, ACIP_DELIVERY_DATAGRAM, wire[1], wire_length[1], &plain,
                                 &plain_length) == ERROR_NETWORK_PROTOCOL &&
         !plain);
@@ -313,7 +313,7 @@ static void quic_secure_framing(void) {
   buffer_release(visual);
   server_crypto.rekey_in_progress = true;
   CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, wire[0], wire_length[0], &plain,
-                                &plain_length) == ERROR_INVALID_STATE &&
+                                &plain_length) == ERROR_CRYPTO &&
         !plain);
   server_crypto.rekey_in_progress = false;
   ++server_crypto.rekey_count;
@@ -325,6 +325,127 @@ static void quic_secure_framing(void) {
   buffer_release(control);
   crypto_destroy(&server_crypto);
   crypto_destroy(&client_crypto);
+}
+
+static void quic_secure_epochs(void) {
+  crypto_context_t client_crypto, server_crypto;
+  CHECK(crypto_init(&client_crypto) == CRYPTO_OK && crypto_init(&server_crypto) == CRYPTO_OK);
+  CHECK(crypto_set_peer_public_key(&client_crypto, server_crypto.public_key) == CRYPTO_OK);
+  CHECK(crypto_set_peer_public_key(&server_crypto, client_crypto.public_key) == CRYPTO_OK);
+  client_crypto.handshake_complete = server_crypto.handshake_complete = true;
+  acip_quic_security_t client = {0}, server = {0};
+  CHECK(acip_quic_security_init(&client, &client_crypto, false) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_init(&server, &server_crypto, true) == ASCIICHAT_OK);
+  size_t packet_length = 0, old_length = 0, next_length = 0, plain_length = 0;
+  uint8_t *packet = make_packet(PACKET_TYPE_AUDIO_BATCH, 32, &packet_length);
+  uint8_t *old = NULL, *next = NULL, *plain = NULL;
+  CHECK(acip_quic_security_seal(&client, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, packet, packet_length, &old,
+                                &old_length) == ASCIICHAT_OK);
+  uint8_t *stale = NULL, *old_visual = NULL;
+  size_t stale_length = 0, visual_length = 0, old_visual_length = 0;
+  CHECK(acip_quic_security_seal(&client, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, packet, packet_length, &stale,
+                                &stale_length) == ASCIICHAT_OK);
+  uint8_t *visual = make_packet(PACKET_TYPE_IMAGE_FRAME, 24, &visual_length);
+  CHECK(acip_quic_security_seal(&client, ACIP_TRAFFIC_VISUAL, ACIP_DELIVERY_RELIABLE, visual, visual_length,
+                                &old_visual, &old_visual_length) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_prepare_epoch(&client) == ERROR_INVALID_STATE);
+  client_crypto.rekey_last_time = 0;
+  CHECK(crypto_rekey_init(&client_crypto) == CRYPTO_OK);
+  CHECK(crypto_rekey_process_request(&server_crypto, client_crypto.temp_public_key) == CRYPTO_OK);
+  CHECK(crypto_rekey_process_response(&client_crypto, server_crypto.temp_public_key) == CRYPTO_OK);
+  CHECK(acip_quic_security_prepare_epoch(&client) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_prepare_epoch(&server) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_commit_epoch(&server) == ASCIICHAT_OK);
+  CHECK(server.key_epoch == 1 && server.previous_valid);
+  CHECK(acip_quic_security_seal(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, packet, packet_length, &next,
+                                &next_length) == ASCIICHAT_OK);
+  // An epoch selector is authenticated; changing it cannot switch keys or replay state.
+  uint8_t *forged = buffer_alloc(NULL, next_length);
+  CHECK(forged);
+  memcpy(forged, next, next_length);
+  memset(forged + sizeof(packet_header_t), 0, 8);
+  packet_header_t header;
+  memcpy(&header, forged, sizeof(header));
+  header.crc32 = HOST_TO_NET_U32(asciichat_crc32(forged + sizeof(header), next_length - sizeof(header)));
+  memcpy(forged, &header, sizeof(header));
+  CHECK(acip_quic_security_open(&client, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, forged, next_length, &plain,
+                                &plain_length) == ERROR_CRYPTO &&
+        !plain);
+  CHECK(client.key_epoch == 0 && client.pending_prepared && !client.previous_valid);
+  CHECK(acip_quic_security_open(&client, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, next, next_length, &plain,
+                                &plain_length) == ASCIICHAT_OK);
+  CHECK(client.key_epoch == 1 && client.previous_valid && plain_length == packet_length &&
+        !memcmp(packet, plain, packet_length));
+  buffer_release(plain);
+  plain = NULL;
+  // A delayed old datagram remains valid until its flow crosses the retirement marker.
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, old, old_length, &plain,
+                                &plain_length) == ASCIICHAT_OK);
+  buffer_release(plain);
+  plain = NULL;
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, old, old_length, &plain,
+                                &plain_length) == ERROR_CRYPTO &&
+        !plain);
+  CHECK(acip_quic_security_retire_epoch_flow(&server, ACIP_TRAFFIC_AUDIO, 2) == ERROR_INVALID_STATE);
+  CHECK(acip_quic_security_retire_epoch_flow(&server, ACIP_TRAFFIC_AUDIO, 1) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, old, old_length, &plain,
+                                &plain_length) == ERROR_CRYPTO &&
+        !plain);
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, stale, stale_length, &plain,
+                                &plain_length) == ERROR_CRYPTO &&
+        !plain);
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_VISUAL, ACIP_DELIVERY_RELIABLE, old_visual, old_visual_length,
+                                &plain, &plain_length) == ASCIICHAT_OK);
+  CHECK(plain_length == visual_length && !memcmp(plain, visual, visual_length));
+  buffer_release(plain);
+  plain = NULL;
+  server_crypto.rekey_last_time = 0;
+  CHECK(crypto_rekey_init(&server_crypto) == CRYPTO_OK);
+  CHECK(acip_quic_security_prepare_epoch(&server) == ERROR_INVALID_STATE);
+  crypto_rekey_abort(&server_crypto);
+  for (unsigned flow = 0; flow < 3; ++flow) {
+    CHECK(acip_quic_security_retire_epoch_flow(&client, (acip_traffic_class_t)flow, 1) == ASCIICHAT_OK);
+    if (flow != ACIP_TRAFFIC_AUDIO)
+      CHECK(acip_quic_security_retire_epoch_flow(&server, (acip_traffic_class_t)flow, 1) == ASCIICHAT_OK);
+  }
+  CHECK(!client.previous_valid && !server.previous_valid);
+  crypto_context_t erased = {0};
+  CHECK(!memcmp(&client.previous_crypto, &erased, sizeof(erased)));
+  CHECK(!memcmp(&server.previous_crypto, &erased, sizeof(erased)));
+  CHECK(client.send_sequence[ACIP_TRAFFIC_AUDIO][ACIP_DELIVERY_DATAGRAM] == 2 &&
+        server.receive_high[ACIP_TRAFFIC_AUDIO][ACIP_DELIVERY_DATAGRAM] == 1);
+  // A later rotation reuses the bounded old-key slot without resetting replay windows.
+  CHECK(crypto_rekey_init(&server_crypto) == CRYPTO_OK);
+  CHECK(crypto_rekey_process_request(&client_crypto, server_crypto.temp_public_key) == CRYPTO_OK);
+  CHECK(crypto_rekey_process_response(&server_crypto, client_crypto.temp_public_key) == CRYPTO_OK);
+  CHECK(acip_quic_security_prepare_epoch(&client) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_prepare_epoch(&server) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_commit_epoch(&server) == ASCIICHAT_OK);
+  buffer_release(next);
+  next = NULL;
+  CHECK(acip_quic_security_seal(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, packet, packet_length, &next,
+                                &next_length) == ASCIICHAT_OK);
+  CHECK(acip_quic_security_open(&client, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, next, next_length, &plain,
+                                &plain_length) == ASCIICHAT_OK);
+  buffer_release(plain);
+  plain = NULL;
+  CHECK(client.key_epoch == 2 && server.key_epoch == 2 &&
+        client.receive_high[ACIP_TRAFFIC_AUDIO][ACIP_DELIVERY_DATAGRAM] == 2);
+  CHECK(acip_quic_security_open(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, stale, stale_length, &plain,
+                                &plain_length) == ERROR_CRYPTO &&
+        !plain);
+  buffer_release(stale);
+  buffer_release(old_visual);
+  buffer_release(visual);
+  acip_quic_security_cleanup(&client);
+  acip_quic_security_cleanup(&server);
+  CHECK(!client.crypto && !server.crypto);
+  buffer_release(forged);
+  buffer_release(next);
+  buffer_release(old);
+  buffer_release(packet);
+  crypto_destroy(&client_crypto);
+  crypto_destroy(&server_crypto);
 }
 
 static bool contains_bytes(const uint8_t *bytes, size_t length, const uint8_t *needle, size_t needle_length) {
@@ -1598,7 +1719,7 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
     while (!atomic_load_u64(&receiver.started))
       time_sleep_ns(NS_PER_MS_INT);
     mutex_lock(&server_lane);
-    server_handshake.crypto_ctx.rekey_in_progress = true;
+    ++server_handshake.crypto_ctx.rekey_count;
     mutex_unlock(&server_lane);
     CHECK(acip_transport_send(client_transport, packets[0], lengths[0]) == ASCIICHAT_OK);
     CHECK(thread_join(&thread, NULL) == 0);
@@ -1944,6 +2065,7 @@ int main(int argc, char **argv) {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
   quic_secure_framing();
+  quic_secure_epochs();
   EVP_PKEY *key = make_key(), *other_key = make_key();
   X509 *cert = make_certificate(key), *other_cert = make_certificate(other_key);
   write_certificate(argv[1], cert);

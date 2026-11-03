@@ -298,22 +298,32 @@ same valid encrypted ACIP packet can therefore succeed at this layer.
 QUIC packet protection rejects QUIC-level replay between its endpoints, but a
 QUIC terminator that forwards ACIP ciphertext is a different trust boundary.
 The current ACIP encryption must be retained where end-to-end policy requires
-it. Before enabling this driver as an ACIP transport, the protocol needs
-authenticated per-flow replay state that tolerates independent reliable streams
-and lossy datagrams, and coordinated key epochs across control transitions.
-A single fixed window shared by all flows can reject an indefinitely delayed
-reliable control packet after enough media arrives. Media must not pass a rekey
-or setup barrier until the receiver has acknowledged the required state.
+it. The QUIC security codec supplies independent authenticated replay state so
+bulk media cannot displace a delayed reliable control packet from its replay
+window. Other application state transitions still need ordering barriers.
 
-An experimental private security codec binds sender direction, traffic class,
-delivery mode, and a per-flow sequence inside each ACIP-encrypted packet.
+The private security codec uses the `ACQ2` encrypted envelope. The outer ACIP
+ENCRYPTED payload begins with an eight-byte network-order key epoch, followed
+by the existing ACIP nonce and authenticated ciphertext. Its encrypted prefix
+is 24 bytes: `ACQ2`, sender direction, traffic class, delivery mode, one reserved
+zero byte, a network-order 64-bit sequence, and the same 64-bit epoch. The
+selector outside encryption is therefore checked against authenticated metadata.
 Reliable flows track their own monotonic receive sequence; media datagrams use
-separate 64-packet replay windows. Authentication and packet validation happen
-before receive state changes, and the codec rejects use during rekey or after
-the borrowed crypto context changes key epoch. Its owner must serialize all
-access to that context, retain exactly one security state for the epoch, and
-establish an acknowledged barrier before replacing the state. The private
-connection engine can enable it after TLS and a caller-confirmed ACIP handshake.
+separate 64-packet replay windows. Sequence and replay state span key changes.
+
+The codec can prepare a next epoch only after the owner completes an
+authenticated DH exchange. An authenticated next-epoch packet proves possession
+of that prepared key even when its media flow overtakes control confirmation.
+The codec retains one previous receive context so delayed packets in other
+flows can still authenticate. The owner retires the previous key separately for
+each flow after an in-order retirement marker; late old-epoch datagrams on that
+flow are then stale. A second transition is rejected until all three flows
+retire, bounding retained key material. Retired contexts and all codec-owned key
+copies are wiped. A direct uncoordinated mutation of the borrowed key epoch is
+still rejected. The transport orchestration for these transitions remains
+unfinished; the codec APIs alone do not enable periodic rekeying.
+
+The private connection engine can enable it after TLS and a caller-confirmed ACIP handshake.
 It accepts only initial handshake and error control packets before that point,
 and rejects no-encryption and premature rekey messages. Each side then sends an
 authenticated, versioned READY marker on the ordered control stream and replies

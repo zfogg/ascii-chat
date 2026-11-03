@@ -1455,6 +1455,7 @@ void acip_quic_connection_destroy(acip_quic_connection_t **connection) {
   }
   acip_quic_tls_session_destroy(&(*connection)->ssl);
   ngtcp2_crypto_ossl_ctx_del((*connection)->crypto);
+  acip_quic_security_cleanup(&(*connection)->security);
   SAFE_FREE(*connection);
 }
 
