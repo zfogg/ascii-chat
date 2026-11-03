@@ -32,6 +32,42 @@ static mixer_t *contract_mixer_create(int sources, int rate, int channels);
 static h265_server_context_t *contract_h265_create(void);
 #include <ascii-chat/network/webrtc/peer_manager.h>
 #include <ascii-chat/network/connection.h>
+#include <ascii-chat/network/mdns/mdns.h>
+#include <ascii-chat/tui/notice.h>
+#include "session/server_like.h"
+static asciichat_mdns_t *advertisement_context;
+static unsigned advertisement_calls, disclosure_prompts;
+static asciichat_error_t advertisement_result;
+static bool can_prompt, confirm_disclosure;
+static char advertisement_txt[2][256];
+static uint16_t advertisement_port;
+static asciichat_mdns_t *contract_mdns_context(void) {
+  return advertisement_context;
+}
+static asciichat_error_t contract_advertise(asciichat_mdns_t *context, const asciichat_mdns_service_t *service) {
+  cr_assert_eq(context, advertisement_context);
+  cr_assert_not_null(service->name);
+  cr_assert_not_null(service->host);
+  cr_assert_str_eq(service->type, "_ascii-chat._tcp");
+  cr_assert_eq(service->txt_count, 2);
+  for (unsigned i = 0; i < 2; ++i)
+    SAFE_STRNCPY(advertisement_txt[i], service->txt_records[i], sizeof(advertisement_txt[i]));
+  advertisement_port = service->port;
+  ++advertisement_calls;
+  return advertisement_result;
+}
+static bool contract_can_prompt(void) {
+  return can_prompt;
+}
+static bool contract_disclosure(ui_prompt_kind_t kind, ui_notice_severity_t severity, const char *text,
+                                unsigned timeout) {
+  cr_assert_eq(kind, UI_PROMPT_IP_DISCLOSURE);
+  cr_assert_eq(severity, UI_NOTICE_DANGER);
+  cr_assert_not_null(strstr(text, "PUBLIC IP DISCLOSURE"));
+  cr_assert_eq(timeout, 30);
+  ++disclosure_prompts;
+  return confirm_disclosure;
+}
 static unsigned sdp_calls, ice_calls, adopt_calls, destroyed_channels;
 static const void *forwarded_signal;
 static asciichat_error_t signal_result, adopt_result;
@@ -57,6 +93,10 @@ static asciichat_error_t contract_adopt(network_server_t *server, acip_transport
   ++adopt_calls;
   return adopt_result;
 }
+#define session_server_like_get_mdns_ctx contract_mdns_context
+#define asciichat_mdns_advertise contract_advertise
+#define terminal_can_prompt_user contract_can_prompt
+#define ui_notice_confirm_kind contract_disclosure
 #define webrtc_peer_manager_handle_sdp contract_sdp
 #define webrtc_peer_manager_handle_ice contract_ice
 #define network_server_adopt contract_adopt
@@ -67,6 +107,10 @@ static asciichat_error_t contract_adopt(network_server_t *server, acip_transport
 #define mixer_create_channels contract_mixer_create
 #define h265_server_context_create contract_h265_create
 #include "../../../src/server/main.c"
+#undef session_server_like_get_mdns_ctx
+#undef asciichat_mdns_advertise
+#undef terminal_can_prompt_user
+#undef ui_notice_confirm_kind
 #undef webrtc_peer_manager_handle_sdp
 #undef webrtc_peer_manager_handle_ice
 #undef network_server_adopt
@@ -476,4 +520,55 @@ Test(server_main_contract, ready_channels_transfer_ownership_only_after_authenti
   cr_assert_eq(destroyed_channels, 3);
   acip_transport_destroy(owned);
   cr_assert_eq(destroyed_channels, 4);
+}
+
+Test(server_main_contract, lan_advertisements_preserve_session_identity_port_and_encryption_policy) {
+  advertise_mdns_with_session("river-cloud-tree", 27001);
+  cr_assert_eq(advertisement_calls, 0);
+  unsigned opaque = 0;
+  advertisement_context = (asciichat_mdns_t *)&opaque;
+  g_server_encryption_enabled = false;
+  advertise_mdns_with_session("river-cloud-tree", 27001);
+  cr_assert_eq(advertisement_calls, 1);
+  cr_assert_eq(advertisement_port, 27001);
+  cr_assert_str_eq(advertisement_txt[0], "session_string=river-cloud-tree");
+  cr_assert_str_eq(advertisement_txt[1],
+                   "host_pubkey=0000000000000000000000000000000000000000000000000000000000000000");
+  g_server_encryption_enabled = true;
+  for (unsigned i = 0; i < 32; ++i)
+    g_server_private_key.public_key[i] = i;
+  advertisement_result = ERROR_NETWORK;
+  advertise_mdns_with_session("other-session-string", 27002);
+  cr_assert_eq(advertisement_calls, 2);
+  cr_assert_eq(advertisement_port, 27002);
+  cr_assert_str_eq(advertisement_txt[0], "session_string=other-session-string");
+  cr_assert_str_eq(advertisement_txt[1],
+                   "host_pubkey=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+  cr_assert(g_server_encryption_enabled);
+  advertisement_context = NULL;
+}
+Test(server_main_contract, public_disclosure_requires_confirmation_and_authenticated_discovery_stays_private) {
+  can_prompt = true;
+  server_discovery_policy_t policy = {.explicit_expose = true};
+  cr_assert_not(server_allow_discovery(&policy));
+  cr_assert_not(policy.expose_ip);
+  cr_assert_eq(disclosure_prompts, 1);
+  confirm_disclosure = true;
+  cr_assert(server_allow_discovery(&policy));
+  cr_assert(policy.expose_ip);
+  cr_assert_eq(disclosure_prompts, 2);
+  policy.has_password = true;
+  cr_assert(server_allow_discovery(&policy));
+  cr_assert_not(policy.expose_ip);
+  cr_assert_eq(disclosure_prompts, 2);
+  policy.has_password = false;
+  policy.has_identity = true;
+  cr_assert(server_allow_discovery(&policy));
+  cr_assert_not(policy.expose_ip);
+  cr_assert_eq(disclosure_prompts, 2);
+  can_prompt = false;
+  policy.has_identity = false;
+  cr_assert(server_allow_discovery(&policy));
+  cr_assert(policy.expose_ip);
+  cr_assert_eq(disclosure_prompts, 2);
 }
