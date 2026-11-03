@@ -218,8 +218,8 @@ peer permission. Multi-connection client endpoints and cross-family migration
 are not supported by this API. Automatic interface-change detection is left
 to the application.
 
-The native endpoint fixture moves an authenticated client from 127.0.0.1 to
-127.0.0.2, verifies the server observes its new address, and exchanges media
+The native endpoint fixture moves an authenticated client to a new UDP socket,
+using 127.0.0.2 when the OS permits that loopback alias and 127.0.0.1 otherwise. It verifies the server observes its new address, and exchanges media
 datagrams and reliable control after the move. It also checks invalid addresses,
 occupied local binds, listener rejection, and unchanged state after rejection.
 

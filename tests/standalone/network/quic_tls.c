@@ -1276,6 +1276,11 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   CHECK(acip_quic_endpoint_address(client, &unchanged_address, &unchanged_length) == ASCIICHAT_OK);
   CHECK(unchanged_length == client_address_length && !memcmp(&unchanged_address, &client_address, unchanged_length));
   struct sockaddr_in new_local = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(0x7f000002)};
+  socket_t migration_probe = socket_create("migration_probe", AF_INET, SOCK_DGRAM, 0);
+  CHECK(migration_probe != INVALID_SOCKET_VALUE);
+  if (socket_bind(migration_probe, (struct sockaddr *)&new_local, sizeof(new_local)) != 0)
+    new_local = loopback;
+  socket_close(migration_probe);
   start = time_get_ns();
   asciichat_error_t migration = ERROR_INVALID_STATE;
   do {

@@ -330,10 +330,10 @@ if(TARGET OpenSSL::Crypto)
 endif()
 
 # =============================================================================
-# Native Linux/macOS: Build OpenSSL from source for libwebsockets
+# Native Linux/macOS: Build the required QUIC-capable OpenSSL, including shared-dependency builds
 # Source builds use a versioned cache so upgrading does not replace existing caches.
 # =============================================================================
-if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
     set(OPENSSL_VERSION "${ASCIICHAT_OPENSSL_SOURCE_VERSION}")
     set(OPENSSL_DOWNLOAD_TAG "openssl-${OPENSSL_VERSION}")
     set(OPENSSL_EXPECTED_HASH "SHA256=${ASCIICHAT_OPENSSL_SOURCE_SHA256}")
@@ -347,7 +347,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
     # Release packages should not retain a runtime dependency on the build
     # machine's OpenSSL dylib or its install path. Debug/dev builds keep shared
     # OpenSSL for faster iteration.
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    if(NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
         set(OPENSSL_BUILD_SHARED OFF)
     else()
         set(OPENSSL_BUILD_SHARED ON)

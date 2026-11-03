@@ -85,7 +85,8 @@ jobs:
   web-playwright:
     needs: web-unit
     name: Web playwright
-    runs-on: ubuntu-latest
+    # Match the Linux platforms supported by the pinned Playwright release.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
