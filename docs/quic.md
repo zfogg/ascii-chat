@@ -375,7 +375,10 @@ ACIP handshakes. Reliable sequences are checked independently per flow, and
 datagrams use a replay window. The standalone worker fixture exercises a live
 rotation, while the mixed native/browser test checks audio, rendered video, and
 ping replies in epochs zero, one, and two. Enable its longer rekey run with
-`ASCII_CHAT_QUIC_REKEY_TEST=1`; CI runs this variant.
+`ASCII_CHAT_QUIC_REKEY_TEST=1`; CI runs this variant. The discovery browser
+fixture also uses that setting to wait for two rotations in all three host
+connections, require continued browser rendering and native media, and reject
+false ACDS host migration while the independent browser media context rekeys.
 
 ## Experimental datagram fragments
 

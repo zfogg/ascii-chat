@@ -33,14 +33,15 @@ class Native {
   readonly process: ChildProcess;
   readonly closed: Promise<void>;
   output = "";
-  constructor(binary: string, home: string, args: string[]) {
+  constructor(binary: string, home: string, args: string[], rekey = false) {
     this.process = spawn(
       binary,
-      ["--no-check-update", "--log-level", "info", ...args],
+      ["--no-check-update", "--log-level", rekey ? "debug" : "info", ...args],
       {
         windowsHide: true,
         env: {
           ...process.env,
+          ...(rekey ? { TESTING: "1" } : {}),
           HOME: home,
           USERPROFILE: home,
           APPDATA: home,
@@ -87,7 +88,9 @@ for (const browserQuic of [false, true])
   test(`native QUIC discovery clients and a browser share a ${browserQuic ? "QUIC WebTransport" : "WebRTC fallback"} discovery session`, async ({
     page,
   }, info) => {
-    test.setTimeout(120000);
+    const rekeyTest =
+      browserQuic && process.env["ASCII_CHAT_QUIC_REKEY_TEST"] === "1";
+    test.setTimeout(rekeyTest ? 180000 : 120000);
     const browserLog: string[] = [];
     page.on("console", (message) => browserLog.push(message.text()));
     page.on("pageerror", (error) => browserLog.push(error.message));
@@ -211,7 +214,7 @@ for (const browserQuic of [false, true])
     }
     const processes: Native[] = [];
     const start = (args: string[]) => {
-      const native = new Native(binary, root, args);
+      const native = new Native(binary, root, args, rekeyTest);
       processes.push(native);
       return native;
     };
@@ -379,6 +382,34 @@ for (const browserQuic of [false, true])
         expect(browserLog.join("\n")).toContain(
           "Server identity key verified against active browser key",
         );
+      if (rekeyTest) {
+        await expect
+          .poll(
+            () =>
+              (
+                host.output.match(
+                  /Rekey committed successfully \(rekey #2,/g,
+                ) || []
+              ).length,
+            { timeout: 110000 },
+          )
+          .toBeGreaterThanOrEqual(3);
+        expect(
+          clients.every((client) =>
+            client.output.includes("Rekey committed successfully (rekey #2,"),
+          ),
+        ).toBe(true);
+        const frames = await page.evaluate(
+          () => window.__clientFrameMetrics?.rendered ?? 0,
+        );
+        await expect
+          .poll(
+            () =>
+              page.evaluate(() => window.__clientFrameMetrics?.rendered ?? 0),
+            { timeout: 10000 },
+          )
+          .toBeGreaterThan(frames + 10);
+      }
       const during = host.output.length;
       await expect
         .poll(
