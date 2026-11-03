@@ -1,4 +1,5 @@
 #include <criterion/criterion.h>
+#include <ascii-chat/audio/limits.h>
 #include "session/protocol.h"
 #include "session/frame_validation.h"
 #include "session/participant.h"
