@@ -1652,6 +1652,10 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(session-h265-client test-session-h265-client)
     set_property(TEST session-h265-client APPEND PROPERTY LABELS unit)
 
+    if(TARGET test_unit_session_test_api_boundaries)
+        target_include_directories(test_unit_session_test_api_boundaries PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
+    endif()
+
     add_executable(test-client-audio contracts/network/client_audio_test.c
         ${CMAKE_SOURCE_DIR}/src/client/server.c
         ${CMAKE_SOURCE_DIR}/src/client/crypto.c
