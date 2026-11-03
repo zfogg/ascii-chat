@@ -495,6 +495,66 @@ static void quic_media_exchange(acip_quic_connection_t *client, acip_quic_connec
   if (drop_control && at_server.order[0] != ACIP_TRAFFIC_AUDIO)
     FATAL(ERROR_ASSERTION_FAILED, "Unexpected receive order %d, %d, %d after dropping control", at_server.order[0],
           at_server.order[1], at_server.order[2]);
+  CHECK(acip_quic_connection_clear_receiver(client, &at_client) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_clear_receiver(server, &at_server) == ASCIICHAT_OK);
+  media_capture_t datagram_client = {0}, datagram_server = {0};
+  datagram_client.packets[1] = datagram_server.packets[1] = packets[1];
+  datagram_client.lengths[1] = datagram_server.lengths[1] = lengths[1];
+  datagram_client.packets[2] = datagram_server.packets[2] = packets[2];
+  datagram_client.lengths[2] = datagram_server.lengths[2] = lengths[2];
+  CHECK(acip_quic_connection_set_receiver(client, capture_quic_packet, &datagram_client) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_set_receiver(server, capture_quic_packet, &datagram_server) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_datagram_payload(client) > 0 && acip_quic_connection_datagram_payload(server) > 0);
+  for (size_t peer = 0; peer < 2; ++peer) {
+    CHECK(acip_quic_connection_submit_datagram(peers[peer], ACIP_TRAFFIC_AUDIO, packets[1], lengths[1], 1) ==
+          ERROR_NETWORK_TIMEOUT);
+    CHECK(acip_quic_connection_submit_datagram(peers[peer], ACIP_TRAFFIC_AUDIO, packets[1], lengths[1], 0) ==
+          ASCIICHAT_OK);
+    CHECK(acip_quic_connection_submit_datagram(peers[peer], ACIP_TRAFFIC_VISUAL, packets[2], lengths[2], 0) ==
+          ASCIICHAT_OK);
+  }
+  for (unsigned step = 0; step < 10000 && (datagram_client.count < 2 || datagram_server.count < 2);
+       ++step, *clock_ns += NS_PER_MS_INT)
+    drive_barrier_step(client, server, client_path, server_path, *clock_ns, NULL);
+  CHECK(datagram_client.count == 2 && datagram_server.count == 2);
+  datagram_server.count = datagram_server.visual_count = 0;
+  CHECK(acip_quic_connection_submit_datagram(client, ACIP_TRAFFIC_VISUAL, packets[2], lengths[2], 0) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_submit_datagram(client, ACIP_TRAFFIC_AUDIO, packets[1], lengths[1], 0) == ASCIICHAT_OK);
+  bool visual_dropped = false;
+  for (unsigned step = 0; step < 2500; ++step, *clock_ns += NS_PER_MS_INT) {
+    uint8_t output[1452];
+    size_t output_length = 0;
+    ngtcp2_path_storage output_path;
+    CHECK(acip_quic_connection_write(client, &output_path, output, sizeof(output), &output_length, *clock_ns) ==
+          ASCIICHAT_OK);
+    if (output_length) {
+      acip_traffic_class_t flow;
+      bool drop =
+          !visual_dropped && acip_quic_connection_pending_packet_class(client, &flow) && flow == ACIP_TRAFFIC_VISUAL;
+      CHECK(acip_quic_connection_packet_sent(client, *clock_ns) == ASCIICHAT_OK);
+      if (drop)
+        visual_dropped = true;
+      else
+        CHECK(acip_quic_connection_receive(server, server_path, output, output_length, *clock_ns) == ASCIICHAT_OK);
+    }
+    CHECK(acip_quic_connection_write(server, &output_path, output, sizeof(output), &output_length, *clock_ns) ==
+          ASCIICHAT_OK);
+    if (output_length) {
+      CHECK(acip_quic_connection_packet_sent(server, *clock_ns) == ASCIICHAT_OK);
+      CHECK(acip_quic_connection_receive(client, client_path, output, output_length, *clock_ns) == ASCIICHAT_OK);
+    }
+    if (acip_quic_connection_expiry(client) <= *clock_ns)
+      CHECK(acip_quic_connection_handle_expiry(client, *clock_ns) == ASCIICHAT_OK);
+    if (acip_quic_connection_expiry(server) <= *clock_ns)
+      CHECK(acip_quic_connection_handle_expiry(server, *clock_ns) == ASCIICHAT_OK);
+  }
+  CHECK(visual_dropped && datagram_server.count == 1 && datagram_server.order[0] == ACIP_TRAFFIC_AUDIO);
+  CHECK(acip_quic_connection_submit_datagram(client, ACIP_TRAFFIC_VISUAL, packets[2], lengths[2], 0) == ASCIICHAT_OK);
+  for (unsigned step = 0; step < 10000 && datagram_server.count < 2; ++step, *clock_ns += NS_PER_MS_INT)
+    drive_barrier_step(client, server, client_path, server_path, *clock_ns, NULL);
+  CHECK(datagram_server.count == 2 && datagram_server.order[1] == ACIP_TRAFFIC_VISUAL);
+  CHECK(acip_quic_connection_clear_receiver(client, &datagram_client) == ASCIICHAT_OK);
+  CHECK(acip_quic_connection_clear_receiver(server, &datagram_server) == ASCIICHAT_OK);
   if (!drop_control) {
     size_t large_length = 0;
     uint8_t *large = make_packet(PACKET_TYPE_IMAGE_FRAME, 512 * 1024, &large_length);
@@ -531,6 +591,7 @@ static bool quic_handshake(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_
   ngtcp2_path server_path = {.local = {.addr = (struct sockaddr *)&server_address, .addrlen = sizeof(server_address)},
                              .remote = {.addr = (struct sockaddr *)&client_address, .addrlen = sizeof(client_address)}};
   acip_quic_connection_t *client = NULL, *server = NULL;
+  server_tls->enable_datagrams = client_tls->enable_datagrams = true;
   *failure = ASCIICHAT_OK;
   *dropped = false;
   uint64_t now = NS_PER_SEC_INT;
@@ -615,6 +676,7 @@ static bool quic_handshake(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_
   }
   acip_quic_connection_destroy(&server);
   acip_quic_connection_destroy(&client);
+  server_tls->enable_datagrams = client_tls->enable_datagrams = false;
   if (crypto_initialized) {
     crypto_destroy(&server_crypto);
     crypto_destroy(&client_crypto);
@@ -877,6 +939,7 @@ static void *quic_concurrent_send(void *arg) {
 }
 
 static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls, bool wrong_password) {
+  server_tls->enable_datagrams = client_tls->enable_datagrams = true;
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
@@ -951,7 +1014,7 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
       CHECK(acip_transport_recv(client_transport, &empty, &empty_length, &allocation) == ERROR_NETWORK_TIMEOUT);
       acip_send_options_t unsupported = {.traffic_class = ACIP_TRAFFIC_AUDIO, .delivery = ACIP_DELIVERY_DATAGRAM};
       socket_buffer_t unsupported_slice = {packets[1], lengths[1]};
-      CHECK(acip_transport_sendv_ex(client_transport, &unsupported_slice, 1, &unsupported) == ERROR_NOT_SUPPORTED);
+      CHECK(acip_transport_sendv_ex(client_transport, &unsupported_slice, 1, &unsupported) == ERROR_INVALID_STATE);
       CHECK(crypto_handshake_server_send_parameters(&server_handshake, server_transport) == ASCIICHAT_OK);
       CHECK(crypto_handshake_server_start(&server_handshake, server_transport) == ASCIICHAT_OK);
       handshake_started = true;
@@ -983,7 +1046,11 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
       acip_transport_t *peers[] = {client_transport, server_transport};
       for (size_t peer = 0; peer < 2; ++peer) {
         for (size_t i = 0; i < 6; ++i) {
-          if (i == 2) {
+          if (i == 1) {
+            socket_buffer_t slice = {packets[i], lengths[i]};
+            acip_send_options_t options = {.traffic_class = ACIP_TRAFFIC_AUDIO, .delivery = ACIP_DELIVERY_DATAGRAM};
+            CHECK(acip_transport_sendv_ex(peers[peer], &slice, 1, &options) == ASCIICHAT_OK);
+          } else if (i == 2) {
             socket_buffer_t slices[] = {{packets[i], sizeof(packet_header_t)},
                                         {packets[i] + sizeof(packet_header_t), lengths[i] - sizeof(packet_header_t)}};
             CHECK(acip_transport_sendv(peers[peer], slices, 2) == ASCIICHAT_OK);
@@ -1103,10 +1170,13 @@ static void quic_udp_secure_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_
   crypto_handshake_destroy(&server_handshake);
   for (size_t i = 0; i < 6; ++i)
     buffer_release(packets[i]);
+  server_tls->enable_datagrams = client_tls->enable_datagrams = false;
   socket_cleanup();
 }
 
 static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *client_tls) {
+  client_tls->enable_datagrams = true;
+  server_tls->enable_datagrams = false;
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   acip_quic_udp_endpoint_t *server = NULL, *client = NULL;
@@ -1152,6 +1222,9 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
             ERROR_CRYPTO);
       buffer_release(unauthenticated);
       for (size_t i = 0; i < 2; ++i) {
+        CHECK(acip_quic_connection_datagram_payload(clients[i]) == 0);
+        CHECK(acip_quic_connection_submit_datagram(clients[i], ACIP_TRAFFIC_AUDIO, packet, length, 0) ==
+              ERROR_NOT_SUPPORTED);
         CHECK(acip_quic_connection_submit(clients[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
         CHECK(acip_quic_connection_submit(server_state.peers[i], ACIP_TRAFFIC_CONTROL, packet, length) == ASCIICHAT_OK);
       }
@@ -1183,6 +1256,7 @@ static void quic_udp_exchange(acip_quic_tls_t *server_tls, acip_quic_tls_t *clie
   acip_quic_udp_endpoint_destroy(&client);
   acip_quic_udp_endpoint_destroy(&server);
   buffer_release(packet);
+  client_tls->enable_datagrams = false;
   socket_cleanup();
 }
 

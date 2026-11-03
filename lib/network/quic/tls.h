@@ -11,6 +11,8 @@ typedef struct {
   unsigned char alpn[256];
   unsigned int alpn_length;
   bool server;
+  /* Set before creating connections; defaults to disabled. */
+  bool enable_datagrams;
 } acip_quic_tls_t;
 
 /** Create a TLS 1.3 server context. Certificate and key are copied by OpenSSL. */

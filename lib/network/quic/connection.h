@@ -35,7 +35,7 @@ asciichat_error_t acip_quic_connection_receive(acip_quic_connection_t *connectio
 asciichat_error_t acip_quic_connection_write(acip_quic_connection_t *connection, ngtcp2_path_storage *path,
                                              void *packet, size_t capacity, size_t *length, uint64_t now_ns);
 asciichat_error_t acip_quic_connection_packet_sent(acip_quic_connection_t *connection, uint64_t now_ns);
-/** Reports the class of newly submitted stream data in the pending packet.
+/** Reports the class of newly submitted stream or datagram data in the pending packet.
  * Retransmissions from other streams may also be present in that packet. */
 bool acip_quic_connection_pending_packet_class(const acip_quic_connection_t *connection,
                                                acip_traffic_class_t *traffic_class);
@@ -67,6 +67,11 @@ bool acip_quic_connection_security_ready(const acip_quic_connection_t *connectio
  * submitted bytes until ngtcp2 acknowledges them or the connection is freed. */
 asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
                                               const void *packet, size_t length);
+/* Maximum ACQD payload for the current path, or zero when unavailable. */
+size_t acip_quic_connection_datagram_payload(const acip_quic_connection_t *connection);
+asciichat_error_t acip_quic_connection_submit_datagram(acip_quic_connection_t *connection,
+                                                       acip_traffic_class_t traffic_class, const void *packet,
+                                                       size_t length, uint64_t deadline_ns);
 size_t acip_quic_connection_pending_bytes(const acip_quic_connection_t *connection);
 /* Queue FIN after all previously admitted data for an open stream. No further
  * packets may be submitted to that class. ngtcp2 retransmits the FIN on loss. */

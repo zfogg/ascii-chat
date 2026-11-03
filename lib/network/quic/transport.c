@@ -78,8 +78,8 @@ static asciichat_error_t quic_sendv_ex(acip_transport_t *transport, const socket
   quic_transport_t *quic = transport->impl_data;
   if (!buffers || !count || count > SOCKET_IOV_MAX || !options)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC transport send arguments");
-  if (options->delivery != ACIP_DELIVERY_RELIABLE || options->deadline_ns)
-    return SET_ERRNO(ERROR_NOT_SUPPORTED, "QUIC datagrams and deadlines are not available");
+  if (options->delivery == ACIP_DELIVERY_RELIABLE && options->deadline_ns)
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "QUIC reliable deadlines are not available");
   size_t length = 0;
   for (size_t i = 0; i < count; ++i) {
     if ((!buffers[i].data && buffers[i].len) || buffers[i].len > SOCKET_SEND_BUFFER_MAX - length)
@@ -98,9 +98,12 @@ static asciichat_error_t quic_sendv_ex(acip_transport_t *transport, const socket
     offset += buffers[i].len;
   }
   lane_lock(quic);
-  asciichat_error_t result = quic->connected
-                                 ? acip_quic_connection_submit(quic->connection, options->traffic_class, packet, length)
-                                 : SET_ERRNO(quic->failure, "QUIC transport is closed");
+  asciichat_error_t result =
+      !quic->connected ? SET_ERRNO(quic->failure, "QUIC transport is closed")
+      : options->delivery == ACIP_DELIVERY_DATAGRAM
+          ? acip_quic_connection_submit_datagram(quic->connection, options->traffic_class, packet, length,
+                                                 options->deadline_ns)
+          : acip_quic_connection_submit(quic->connection, options->traffic_class, packet, length);
   if (result == ASCIICHAT_OK && quic->wake)
     quic->wake(quic->wake_context);
   lane_unlock(quic);

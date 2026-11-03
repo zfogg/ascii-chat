@@ -92,7 +92,8 @@ asciichat_error_t acip_transport_sendv_ex(acip_transport_t *transport, const soc
       (unsigned)options->traffic_class > ACIP_TRAFFIC_VISUAL ||
       (options->delivery != ACIP_DELIVERY_RELIABLE && options->delivery != ACIP_DELIVERY_DATAGRAM))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport send options");
-  if (options->delivery != ACIP_DELIVERY_RELIABLE || options->deadline_ns)
+  if ((options->delivery != ACIP_DELIVERY_RELIABLE || options->deadline_ns) &&
+      (!transport->methods->sendv_ex || transport->outbound))
     return SET_ERRNO(ERROR_NOT_SUPPORTED, "Datagrams and explicit deadlines are not supported by this transport");
 #ifndef __EMSCRIPTEN__
   if (transport && transport->outbound) {

@@ -1,4 +1,5 @@
 #include "connection.h"
+#include "datagram.h"
 
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
@@ -14,6 +15,8 @@
 #define ACIP_QUIC_INITIAL_CONNECTION_WINDOW (16U * 1024U * 1024U)
 #define ACIP_QUIC_IDLE_TIMEOUT_NS (30ULL * 1000000000ULL)
 #define ACIP_QUIC_FLOW_COUNT 3
+#define ACIP_QUIC_DATAGRAM_FRAME_LIMIT 1400U
+#define ACIP_QUIC_DATAGRAM_OVERHEAD 128U
 
 typedef struct send_chunk {
   struct send_chunk *next;
@@ -35,6 +38,14 @@ typedef struct {
   acip_quic_stream_reader_t reader;
   bool active, registered;
 } receive_stream_t;
+
+typedef struct datagram_send {
+  struct datagram_send *next;
+  uint8_t *data;
+  size_t length, cost;
+  uint64_t id, deadline_ns;
+  uint16_t unit, index, count;
+} datagram_send_t;
 
 struct acip_quic_connection {
   ngtcp2_conn *conn;
@@ -63,6 +74,10 @@ struct acip_quic_connection {
   bool peer_security_ready;
   uint8_t *early_security_packet;
   size_t early_security_length;
+  bool datagrams_enabled;
+  acip_quic_datagram_reader_t datagram_reader;
+  datagram_send_t *datagram_head[ACIP_QUIC_FLOW_COUNT], *datagram_tail[ACIP_QUIC_FLOW_COUNT];
+  uint64_t datagram_id[ACIP_QUIC_FLOW_COUNT];
 };
 
 static asciichat_error_t update_readiness(acip_quic_connection_t *connection);
@@ -314,6 +329,27 @@ static int receive_stop_sending(ngtcp2_conn *conn, int64_t stream_id, uint64_t a
   return NGTCP2_ERR_CALLBACK_FAILURE;
 }
 
+static int receive_datagram(ngtcp2_conn *conn, uint32_t flags, const uint8_t *data, size_t length, void *user_data) {
+  (void)conn;
+  acip_quic_connection_t *connection = user_data;
+  if ((flags & NGTCP2_DATAGRAM_FLAG_0RTT) || !connection->datagrams_enabled || !connection->security.crypto ||
+      !connection->peer_ready_seen || !connection->emit)
+    return 0;
+  uint8_t *wire = NULL, *plain = NULL;
+  size_t wire_length = 0, plain_length = 0;
+  acip_traffic_class_t flow = ACIP_TRAFFIC_CONTROL;
+  asciichat_error_t result = acip_quic_datagram_read(&connection->datagram_reader, data, length,
+                                                     connection->last_time_ns, &flow, &wire, &wire_length);
+  if (result == ASCIICHAT_OK && wire)
+    result = acip_quic_security_open(&connection->security, flow, ACIP_DELIVERY_DATAGRAM, wire, wire_length, &plain,
+                                     &plain_length);
+  if (result == ASCIICHAT_OK && plain)
+    (void)connection->emit(flow, plain, plain_length, connection->emit_context);
+  buffer_release(plain);
+  buffer_release(wire);
+  return 0;
+}
+
 static ngtcp2_conn *get_connection(ngtcp2_crypto_conn_ref *reference) {
   return ((acip_quic_connection_t *)reference->user_data)->conn;
 }
@@ -347,6 +383,7 @@ static ngtcp2_callbacks connection_callbacks(bool server) {
   callbacks.acked_stream_data_offset = acknowledged_stream_data;
   callbacks.stream_reset = reset_stream;
   callbacks.recv_stop_sending = receive_stop_sending;
+  callbacks.recv_datagram = receive_datagram;
   callbacks.recv_retry = server ? NULL : ngtcp2_crypto_recv_retry_cb;
   callbacks.rand = random_bytes;
   callbacks.update_key = ngtcp2_crypto_update_key_cb;
@@ -391,6 +428,7 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
   if (!connection)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate QUIC connection");
   connection->tls = tls;
+  connection->datagrams_enabled = tls->enable_datagrams;
   if (initial) {
     connection->initial_dcid = initial->dcid;
     connection->has_initial_dcid = true;
@@ -424,6 +462,8 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
   params.initial_max_stream_data_uni = ACIP_QUIC_INITIAL_STREAM_WINDOW;
   params.initial_max_data = ACIP_QUIC_INITIAL_CONNECTION_WINDOW;
   params.max_idle_timeout = ACIP_QUIC_IDLE_TIMEOUT_NS;
+  if (connection->datagrams_enabled)
+    params.max_datagram_frame_size = 65535;
   if (initial) {
     params.original_dcid = original_dcid ? *original_dcid : initial->dcid;
     params.original_dcid_present = 1;
@@ -512,6 +552,23 @@ static asciichat_error_t update_time(acip_quic_connection_t *connection, uint64_
   if (now_ns < connection->last_time_ns || now_ns == UINT64_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC monotonic time moved backwards or is invalid");
   connection->last_time_ns = now_ns;
+  acip_quic_datagram_expire(&connection->datagram_reader, now_ns);
+  for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
+    datagram_send_t **link = &connection->datagram_head[i], *tail = NULL;
+    while (*link) {
+      datagram_send_t *item = *link;
+      if (item->deadline_ns && item->deadline_ns <= now_ns) {
+        *link = item->next;
+        connection->pending_bytes -= item->cost;
+        buffer_release(item->data);
+        SAFE_FREE(item);
+      } else {
+        tail = item;
+        link = &item->next;
+      }
+    }
+    connection->datagram_tail[i] = tail;
+  }
   return ASCIICHAT_OK;
 }
 
@@ -591,6 +648,86 @@ asciichat_error_t acip_quic_connection_enable_security(acip_quic_connection_t *c
 
 bool acip_quic_connection_security_ready(const acip_quic_connection_t *connection) {
   return connection && connection->security.crypto && connection->peer_security_ready && !connection->failed;
+}
+
+size_t acip_quic_connection_datagram_payload(const acip_quic_connection_t *connection) {
+  if (!connection || !connection->conn || connection->failed || !connection->tls_ready ||
+      !connection->datagrams_enabled)
+    return 0;
+  const ngtcp2_transport_params *remote = ngtcp2_conn_get_remote_transport_params2(connection->conn);
+  if (!remote || remote->max_datagram_frame_size <= ACIP_QUIC_DATAGRAM_HEADER_SIZE + 9)
+    return 0;
+  size_t path = ngtcp2_conn_get_path_max_tx_udp_payload_size2(connection->conn);
+  if (path <= ACIP_QUIC_DATAGRAM_OVERHEAD + ACIP_QUIC_DATAGRAM_HEADER_SIZE)
+    return 0;
+  size_t frame = path - ACIP_QUIC_DATAGRAM_OVERHEAD;
+  if (frame > ACIP_QUIC_DATAGRAM_FRAME_LIMIT)
+    frame = ACIP_QUIC_DATAGRAM_FRAME_LIMIT;
+  if (frame > remote->max_datagram_frame_size - 9)
+    frame = (size_t)(remote->max_datagram_frame_size - 9);
+  return frame > ACIP_QUIC_DATAGRAM_HEADER_SIZE ? frame - ACIP_QUIC_DATAGRAM_HEADER_SIZE : 0;
+}
+
+asciichat_error_t acip_quic_connection_submit_datagram(acip_quic_connection_t *connection, acip_traffic_class_t flow,
+                                                       const void *packet, size_t length, uint64_t deadline_ns) {
+  if (!connection || (flow != ACIP_TRAFFIC_AUDIO && flow != ACIP_TRAFFIC_VISUAL))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC datagram flow");
+  size_t unit = acip_quic_connection_datagram_payload(connection);
+  if (!unit)
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "QUIC datagrams were not negotiated");
+  if (!connection->security.crypto || !connection->peer_security_ready || !connection->media_allowed)
+    return SET_ERRNO(ERROR_INVALID_STATE, "QUIC media security is not ready");
+  if (deadline_ns && deadline_ns <= connection->last_time_ns)
+    return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "QUIC datagram deadline expired");
+  if (connection->datagram_id[flow] == UINT64_MAX)
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "QUIC datagram ID exhausted");
+  size_t reserve = flow == ACIP_TRAFFIC_VISUAL ? ACIP_OUTBOUND_CONTROL_RESERVE + ACIP_OUTBOUND_AUDIO_RESERVE
+                                               : ACIP_OUTBOUND_CONTROL_RESERVE;
+  size_t limit = ACIP_OUTBOUND_BUDGET - reserve;
+  if (connection->pending_bytes > limit || length > limit - connection->pending_bytes)
+    return SET_ERRNO(ERROR_BUFFER_FULL, "QUIC datagram queue is full");
+  uint8_t *wire = NULL;
+  size_t wire_length = 0;
+  asciichat_error_t result =
+      acip_quic_security_seal(&connection->security, flow, ACIP_DELIVERY_DATAGRAM, packet, length, &wire, &wire_length);
+  if (result != ASCIICHAT_OK)
+    return result;
+  size_t count = (wire_length + unit - 1) / unit;
+  size_t cost = buffer_capacity(wire) + sizeof(datagram_send_t);
+  if (count > ACIP_QUIC_DATAGRAM_MAX_FRAGMENTS || cost > limit - connection->pending_bytes) {
+    buffer_release(wire);
+    return SET_ERRNO(count > ACIP_QUIC_DATAGRAM_MAX_FRAGMENTS ? ERROR_NETWORK_SIZE : ERROR_BUFFER_FULL,
+                     "QUIC datagram exceeds fragmentation or queue limit");
+  }
+  datagram_send_t *item = SAFE_CALLOC(1, sizeof(*item), datagram_send_t *);
+  if (!item) {
+    buffer_release(wire);
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate QUIC datagram queue entry");
+  }
+  item->data = wire;
+  item->length = wire_length;
+  item->cost = cost;
+  item->id = ++connection->datagram_id[flow];
+  item->deadline_ns = deadline_ns;
+  item->unit = (uint16_t)unit;
+  item->count = (uint16_t)count;
+  if (connection->datagram_tail[flow])
+    connection->datagram_tail[flow]->next = item;
+  else
+    connection->datagram_head[flow] = item;
+  connection->datagram_tail[flow] = item;
+  connection->pending_bytes += cost;
+  return ASCIICHAT_OK;
+}
+
+static void pop_datagram(acip_quic_connection_t *connection, acip_traffic_class_t flow) {
+  datagram_send_t *item = connection->datagram_head[flow];
+  connection->datagram_head[flow] = item->next;
+  if (!item->next)
+    connection->datagram_tail[flow] = NULL;
+  connection->pending_bytes -= item->cost;
+  buffer_release(item->data);
+  SAFE_FREE(item);
 }
 
 static asciichat_error_t queue_wire_packet(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
@@ -732,6 +869,30 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
                                   uint8_t *packet, size_t capacity, uint64_t now_ns) {
   connection->packet_has_stream_data = false;
   for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
+    acip_traffic_class_t flow = (acip_traffic_class_t)i;
+    while (connection->datagram_head[i] &&
+           ((connection->datagram_head[i]->deadline_ns && connection->datagram_head[i]->deadline_ns <= now_ns) ||
+            connection->datagram_head[i]->unit > acip_quic_connection_datagram_payload(connection)))
+      pop_datagram(connection, flow);
+    datagram_send_t *item = connection->datagram_head[i];
+    if (item) {
+      uint8_t fragment[ACIP_QUIC_DATAGRAM_FRAME_LIMIT];
+      size_t fragment_length = 0;
+      if (acip_quic_datagram_fragment(flow, item->id, item->data, item->length, item->unit, item->index, fragment,
+                                      sizeof(fragment), &fragment_length) != ASCIICHAT_OK)
+        return NGTCP2_ERR_CALLBACK_FAILURE;
+      int accepted = 0;
+      ngtcp2_ssize written =
+          ngtcp2_conn_write_datagram(connection->conn, path, info, packet, capacity, &accepted,
+                                     NGTCP2_WRITE_DATAGRAM_FLAG_NONE, 0, fragment, fragment_length, now_ns);
+      if (accepted) {
+        connection->packet_has_stream_data = true;
+        connection->packet_traffic_class = flow;
+        if (++item->index == item->count)
+          pop_datagram(connection, flow);
+      }
+      return written;
+    }
     send_stream_t *stream = &connection->sends[i];
     send_chunk_t *chunk = stream->head;
     while (chunk && chunk->submitted == chunk->length)
@@ -822,7 +983,20 @@ asciichat_error_t acip_quic_connection_packet_sent(acip_quic_connection_t *conne
 }
 
 uint64_t acip_quic_connection_expiry(const acip_quic_connection_t *connection) {
-  return connection && connection->conn && !connection->failed ? ngtcp2_conn_get_expiry(connection->conn) : UINT64_MAX;
+  if (!connection || !connection->conn || connection->failed)
+    return UINT64_MAX;
+  uint64_t expiry = ngtcp2_conn_get_expiry(connection->conn);
+  for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i)
+    for (const datagram_send_t *item = connection->datagram_head[i]; item; item = item->next)
+      if (item->deadline_ns && item->deadline_ns < expiry)
+        expiry = item->deadline_ns;
+  for (size_t i = 0; i < ACIP_QUIC_DATAGRAM_SLOTS; ++i) {
+    const acip_quic_datagram_slot_t *slot = &connection->datagram_reader.slots[i];
+    if (slot->data && slot->started_ns <= UINT64_MAX - ACIP_QUIC_DATAGRAM_EXPIRY_NS &&
+        slot->started_ns + ACIP_QUIC_DATAGRAM_EXPIRY_NS < expiry)
+      expiry = slot->started_ns + ACIP_QUIC_DATAGRAM_EXPIRY_NS;
+  }
+  return expiry;
 }
 
 asciichat_error_t acip_quic_connection_handle_expiry(acip_quic_connection_t *connection, uint64_t now_ns) {
@@ -831,7 +1005,7 @@ asciichat_error_t acip_quic_connection_handle_expiry(acip_quic_connection_t *con
   asciichat_error_t result = update_time(connection, now_ns);
   if (result != ASCIICHAT_OK)
     return result;
-  int rc = ngtcp2_conn_handle_expiry(connection->conn, now_ns);
+  int rc = ngtcp2_conn_get_expiry(connection->conn) <= now_ns ? ngtcp2_conn_handle_expiry(connection->conn, now_ns) : 0;
   if (rc != 0) {
     connection->failed = true;
     return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "QUIC timer failed: %s", ngtcp2_strerror(rc));
@@ -849,7 +1023,10 @@ void acip_quic_connection_destroy(acip_quic_connection_t **connection) {
   ngtcp2_conn_del((*connection)->conn);
   (*connection)->conn = NULL;
   buffer_release((*connection)->early_security_packet);
+  acip_quic_datagram_reset(&(*connection)->datagram_reader);
   for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
+    while ((*connection)->datagram_head[i])
+      pop_datagram(*connection, (acip_traffic_class_t)i);
     send_chunk_t *chunk = (*connection)->sends[i].head;
     while (chunk) {
       send_chunk_t *next = chunk->next;

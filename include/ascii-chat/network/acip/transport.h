@@ -277,9 +277,9 @@ void acip_transport_destroy(acip_transport_t *transport);
  */
 asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count);
 
-/** Send with explicit delivery metadata. Nonzero deadlines and datagrams are
- * currently rejected with ERROR_NOT_SUPPORTED; they are never silently changed
- * into reliable delivery. A future deadline uses time_get_ns()'s monotonic clock.
+/** Send with explicit delivery metadata. Unsupported datagrams or deadlines
+ * return ERROR_NOT_SUPPORTED and are never silently changed into reliable
+ * delivery. A deadline uses time_get_ns()'s monotonic clock.
  */
 asciichat_error_t acip_transport_sendv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
                                           const acip_send_options_t *options);

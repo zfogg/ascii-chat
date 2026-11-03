@@ -117,8 +117,8 @@ is removed; it does not prove ACIP authentication or the public call flow.
 
 The private transport adapter wraps one connection with the existing ACIP
 send/receive interface. It copies vectored sends, exposes complete received
-packets through a bounded queue, and reports QUIC as its transport type. It
-returns an explicit unsupported error for datagrams and deadlines. The adapter
+packets through a bounded queue, and reports QUIC as its transport type. Its
+private datagram path is opt-in; reliable deadlines remain unsupported. The adapter
 can use a borrowed lane mutex to serialize its operations with endpoint
 pumping; the owner must hold that mutex for every direct connection and pump
 operation. The serialized adapter supports a timed receive and interrupt wakes
@@ -187,9 +187,10 @@ replay protection for existing connections.
 
 ## Experimental datagram fragments
 
-The private fragment codec defines the `ACQD` version 1 envelope for audio
-and visual packets. It is not yet connected to ngtcp2 or exposed as a
-negotiated capability. Each fragment starts with the following network-order
+The private connection can opt into QUIC DATAGRAM transport parameters before
+the connection is created. It requires peer support and authenticated ACIP
+readiness before media admission. The private fragment codec defines the
+`ACQD` version 1 envelope for audio and visual packets. Each fragment starts with the following network-order
 fields, followed by that fragment's bytes from one encrypted ACIP packet:
 
 | Offset | Size | Meaning |
@@ -214,6 +215,14 @@ expire one second after their first received fragment. A caller must invoke
 expiry even when no datagrams arrive. The current ACIP crypto codec limits a
 plaintext to 1 MiB; larger media will require an explicit design rather than
 assuming fragmentation removes that limit.
+
+The sender selects a fragment size from the negotiated peer limit and current
+path payload size, leaving space for QUIC overhead. It discards the remainder
+of a packet if the path shrinks below that size, and may discard queued media
+whose explicit monotonic deadline expires. A UDP payload already handed to the
+endpoint can still be sent after that deadline during socket backpressure.
+The private adapter supports datagram sends without the outbound scheduler;
+public capability reporting and scheduler integration remain to be added.
 
 The envelope is protected by QUIC between transport endpoints, but it is not
 authenticated across a terminating intermediary. Reassembly output must pass
