@@ -260,11 +260,14 @@ Test(stereo, stereo_media_resampling_and_eof_preserve_duration_and_independent_c
   wav_writer_close(writer);
   ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
   cr_assert_not_null(decoder);
-  float pcm[254];
+  float pcm[255];
+  cr_assert_eq(ffmpeg_decoder_read_audio_samples(decoder, pcm, 1), 0);
+  pcm[254] = 42;
   size_t total = 0, count;
   double energy = 0;
-  while ((count = ffmpeg_decoder_read_audio_samples(decoder, pcm, 254)) > 0) {
+  while ((count = ffmpeg_decoder_read_audio_samples(decoder, pcm, 255)) > 0) {
     cr_assert_eq(count % 2, 0);
+    cr_assert_eq(pcm[254], 42);
     for (size_t frame = 0; frame < count / 2; frame++) {
       energy += pcm[frame * 2] * pcm[frame * 2];
       cr_assert_float_eq(pcm[frame * 2 + 1], 0, 1e-7);

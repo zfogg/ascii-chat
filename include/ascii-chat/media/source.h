@@ -16,7 +16,7 @@
  * - Unified API for webcam, files, and stdin
  * - FFmpeg-based decoding for all common formats
  * - Video frame extraction (RGB format)
- * - Audio sample extraction (48kHz float mono)
+ * - Audio sample extraction (48kHz interleaved stereo float)
  * - Loop support for file playback
  * - Automatic format detection
  *
@@ -198,11 +198,11 @@ bool media_source_has_video(media_source_t *source);
  * @return Number of samples actually read (may be less than requested)
  *
  * Reads audio samples from the media source. Samples are in 32-bit float
- * format, mono channel, 48kHz sample rate (compatible with Opus encoding).
+ * format, interleaved stereo, 48kHz sample rate (compatible with Opus encoding).
  *
  * **Audio format:**
  * - Format: 32-bit float
- * - Channels: Mono (1 channel)
+ * - Channels: Stereo (2 channels); sample counts include both channels
  * - Sample rate: 48000 Hz
  * - Range: -1.0 to 1.0
  *
@@ -213,7 +213,7 @@ bool media_source_has_video(media_source_t *source);
  *
  * @note WEBCAM type does NOT provide audio (returns 0)
  * @note FILE/STDIN types decode audio via FFmpeg if stream exists
- * @note Audio is resampled to 48kHz mono automatically
+ * @note Audio is resampled to 48kHz stereo automatically
  *
  * @ingroup media
  */

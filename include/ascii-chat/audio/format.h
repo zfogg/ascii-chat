@@ -21,7 +21,7 @@ extern "C" {
  */
 asciichat_error_t audio_route_capture(const float *input, size_t frames, unsigned channels, int first_channel,
                                       unsigned selected_channels, float *output);
-/** Convert interleaved mono/stereo PCM. In-place stereo-to-mono is supported. */
+/** Convert interleaved mono/stereo PCM. In-place conversion is supported in both directions. */
 asciichat_error_t audio_convert_channels(const float *input, size_t frames, unsigned input_channels, float *output,
                                          unsigned output_channels);
 

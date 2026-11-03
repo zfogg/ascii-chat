@@ -52,7 +52,7 @@ def main():
         with contextlib.ExitStack() as cleanup:
             def launch(name, mode, options, dump=False):
                 directory = root / name
-                directory.mkdir()
+                directory.mkdir(exist_ok=True)
                 environment = {"TMPDIR": str(directory), "TMP": str(directory), "TEMP": str(directory)}
                 if dump:
                     environment["ASCIICHAT_DUMP_AUDIO"] = "1"

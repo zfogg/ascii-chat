@@ -593,7 +593,7 @@ void *client_audio_render_thread(void *arg) {
   float opus_frame_buffer[OPUS_FRAME_SAMPLES];
   int opus_frame_accumulated = 0;
 
-  // Create Opus encoder for this client's audio stream (48kHz, mono, 128kbps, AUDIO mode for music quality)
+  // Create an Opus encoder matching this listener's mono/stereo capability.
   opus_codec_t *opus_encoder =
       opus_codec_create_encoder_channels(OPUS_APPLICATION_AUDIO, 48000, 128000, output_channels);
   if (!opus_encoder) {

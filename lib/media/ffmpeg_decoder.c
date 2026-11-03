@@ -1540,6 +1540,8 @@ double ffmpeg_decoder_get_video_fps(ffmpeg_decoder_t *decoder) {
 
 size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffer, size_t num_samples) {
   ASCII_OTEL_SCOPE(FFMPEG_DECODER_READ_AUDIO_SAMPLES);
+  // Keep channels and the playback clock aligned even with odd caller capacity.
+  num_samples -= num_samples % TARGET_CHANNELS;
   if (!decoder || decoder->audio_stream_idx < 0 || !buffer || num_samples == 0) {
     return 0;
   }
