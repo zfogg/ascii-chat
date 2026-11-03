@@ -66,7 +66,7 @@ static const acip_transport_methods_t methods = {.send = capture_send, .get_type
 static acip_transport_t transport = {.methods = &methods};
 
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   cr_assert_eq(options_set_int("max_clients", 3), ASCIICHAT_OK);

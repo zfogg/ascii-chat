@@ -103,7 +103,7 @@ static const acip_transport_methods_t audio_methods = {
     .send = audio_send, .recv = audio_receive, .is_connected = audio_connected};
 static acip_transport_t audio_transport = {.methods = &audio_methods};
 static void audio_contract_setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);

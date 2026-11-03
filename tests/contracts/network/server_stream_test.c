@@ -14,7 +14,7 @@ rwlock_t g_client_manager_rwlock;
 bool g_client_manager_rwlock_initialized;
 
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   cr_assert_eq(rwlock_init(&g_client_manager_rwlock, "stream-clients"), ASCIICHAT_OK);
   g_client_manager_rwlock_initialized = true;

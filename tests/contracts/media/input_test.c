@@ -416,7 +416,7 @@ static session_capture_ctx_t *input_file_capture(char path[PLATFORM_MAX_PATH_LEN
   return capture;
 }
 Test(media_input, session_seek_pause_and_media_toggle_preserve_capture_and_flush_borrowed_audio, .timeout = 15) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   test_screen = UI_SCREEN_MEDIA;
@@ -472,7 +472,7 @@ Test(media_input, session_seek_pause_and_media_toggle_preserve_capture_and_flush
   log_destroy();
 }
 Test(media_input, help_logs_volume_and_close_actions_route_to_the_owning_ui, .timeout = 10) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   test_screen = UI_SCREEN_MEDIA;

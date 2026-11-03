@@ -1692,6 +1692,17 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(mcp-requests test-mcp-requests)
     set_property(TEST mcp-requests APPEND PROPERTY LABELS unit)
 
+    add_executable(test-host-faults contracts/session/host_faults_test.c)
+    asciichat_configure_contract(test-host-faults)
+    target_link_libraries(test-host-faults PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_include_directories(test-host-faults PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-host-faults)
+    set_target_properties(test-host-faults PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(host-faults test-host-faults)
+    set_property(TEST host-faults APPEND PROPERTY LABELS unit)
+
     add_executable(test-client-video contracts/network/client_video_test.c
         ${CMAKE_SOURCE_DIR}/src/client/server.c ${CMAKE_SOURCE_DIR}/src/client/crypto.c
         ${CMAKE_SOURCE_DIR}/src/client/keepalive.c)

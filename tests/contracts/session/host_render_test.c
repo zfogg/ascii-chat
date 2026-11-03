@@ -390,7 +390,8 @@ static void test_audio_cadence(void) {
 }
 
 static void setup(void) {
-  log_init(NULL, LOG_WARN, false, false);
+  log_init(NULL, LOG_DEV, false, false);
+  log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
   *values = options_t_new();

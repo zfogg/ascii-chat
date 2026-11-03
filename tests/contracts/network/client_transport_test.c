@@ -54,7 +54,7 @@ static bool connected(acip_transport_t *transport) {
 static const acip_transport_methods_t methods = {.send = capture_send, .is_connected = connected};
 static acip_transport_t transport = {.methods = &methods};
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   cr_assert_eq(server_connection_init(&connection), 0);

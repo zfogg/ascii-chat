@@ -64,7 +64,7 @@ void mcp_stdio_send(mcp_server_t *server, yyjson_mut_doc *response) {
 #undef audio_free_device_list
 #undef acthread_create
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   errno_suppress(true);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);

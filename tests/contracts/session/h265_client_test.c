@@ -7,7 +7,7 @@
 
 static h265_client_context_t *client;
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   client = h265_client_context_create(64, 32);
   cr_assert_not_null(client);
 }

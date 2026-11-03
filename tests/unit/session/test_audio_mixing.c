@@ -7,7 +7,7 @@
 static session_audio_ctx_t *host, *participant;
 
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   host = session_audio_create(true);
   participant = session_audio_create(false);

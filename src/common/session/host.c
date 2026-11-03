@@ -1,3 +1,4 @@
+#include <ascii-chat/util/image.h>
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define SESSION_HOST_KEY_PATH_BUFFER_SIZE 512
@@ -1186,6 +1187,13 @@ asciichat_error_t session_host_inject_frame(session_host_t *host, uint32_t parti
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   }
 
+  if (!frame->pixels || frame->w <= 0 || frame->h <= 0 ||
+      image_validate_dimensions((size_t)frame->w, (size_t)frame->h) != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid injected image");
+  size_t pixel_bytes;
+  if (image_calc_rgb_size((size_t)frame->w, (size_t)frame->h, &pixel_bytes) != ASCIICHAT_OK)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Injected image size is outside supported limits");
+
   mutex_lock(&host->clients_mutex);
 
   // Find memory participant
@@ -1202,18 +1210,18 @@ asciichat_error_t session_host_inject_frame(session_host_t *host, uint32_t parti
       image_t *dest = host->clients[i].incoming_video;
       if (dest->w != frame->w || dest->h != frame->h) {
         // Reallocate if size changed
-        image_destroy(dest);
-        dest = image_new(frame->w, frame->h);
-        if (!dest) {
-          host->clients[i].incoming_video = NULL;
+        image_t *replacement = image_new(frame->w, frame->h);
+        if (!replacement) {
           mutex_unlock(&host->clients_mutex);
           return SET_ERRNO(ERROR_MEMORY, "Failed to reallocate video buffer");
         }
+        image_destroy(dest);
+        dest = replacement;
         host->clients[i].incoming_video = dest;
       }
 
       // Copy pixel data
-      memcpy(dest->pixels, frame->pixels, frame->w * frame->h * sizeof(rgb_pixel_t));
+      memcpy(dest->pixels, frame->pixels, pixel_bytes);
 
       host->clients[i].video_active = true;
 
@@ -1562,7 +1570,11 @@ void session_host_stop_render(session_host_t *host) {
   host->render_thread_running = false;
 
   // Wait for thread to complete
-  thread_join(&host->render_thread, NULL);
+  if (thread_join(&host->render_thread, NULL) != ASCIICHAT_OK) {
+    host->render_thread_running = true;
+    SET_ERRNO(ERROR_THREAD, "Render worker still owns host audio resources");
+    return;
+  }
 
   // Clean up audio resources
   if (host->audio_ctx) {

@@ -10,7 +10,7 @@ static session_display_ctx_t *display;
 static image_t *image;
 
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   options_t *options = SAFE_MALLOC(sizeof(*options), options_t *);

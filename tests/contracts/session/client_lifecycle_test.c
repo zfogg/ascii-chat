@@ -101,7 +101,7 @@ static asciichat_error_t lifecycle_attempt(session_capture_ctx_t *capture, sessi
   return attempts >= 3 ? ASCIICHAT_OK : attempt_result;
 }
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   static app_callbacks_t callbacks = {.should_exit = lifecycle_exit, .platform_sleep_ms = lifecycle_sleep};

@@ -187,7 +187,7 @@ Test(media_pipeline, corrupted_dimensions_and_missing_pixels_are_rejected_before
   }
 }
 static void pipeline_partial_start(unsigned fail_thread, bool fail_wakeup, bool recording) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   session_capture_config_t capture_config = {.type = MEDIA_SOURCE_TEST, .target_fps = 30};

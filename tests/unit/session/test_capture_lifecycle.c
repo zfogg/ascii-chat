@@ -10,7 +10,7 @@ static session_capture_ctx_t *capture;
 static char path[PLATFORM_MAX_PATH_LENGTH];
 
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   options_t *options = SAFE_MALLOC(sizeof(*options), options_t *);

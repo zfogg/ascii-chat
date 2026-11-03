@@ -123,7 +123,7 @@ static const acip_transport_methods_t video_methods = {.send = video_send, .is_c
 static acip_transport_t video_transport = {.methods = &video_methods};
 static session_display_ctx_t *owned_display;
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);

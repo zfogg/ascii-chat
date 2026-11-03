@@ -62,7 +62,7 @@ static session_consensus_callbacks_t callbacks(bool custom) {
                                          .context = &notifications};
 }
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   for (unsigned i = 0; i < 3; ++i)
     members[i][0] = (uint8_t)(3 - i); // The ring leader is the greatest UUID.
 }

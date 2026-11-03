@@ -58,7 +58,7 @@ static void render(void *context, const char *frame, size_t length, int width, i
   ++renders;
 }
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   session_host_config_t config = {

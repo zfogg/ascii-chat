@@ -161,7 +161,7 @@ static acds_config_t service_config(void) {
   return config;
 }
 static void setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   errno_suppress(true);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);

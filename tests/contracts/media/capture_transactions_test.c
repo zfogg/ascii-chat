@@ -116,7 +116,7 @@ static void transaction_file(char *path, rgb_pixel_t color) {
   cr_assert_eq(fclose(file), 0);
 }
 static void transaction_setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   errno_suppress(true);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
@@ -147,11 +147,24 @@ static void transaction_teardown(void) {
   log_destroy();
 }
 TestSuite(capture_transactions, .init = transaction_setup, .fini = transaction_teardown, .timeout = 20);
+static image_t *transaction_await_frame(void) {
+  uint64_t deadline = time_get_ns() + 500 * NS_PER_MS_INT;
+  image_t *frame = NULL;
+  while (time_get_ns() < deadline) {
+    asciichat_errno_scope_t scope = errno_checkpoint();
+    frame = session_capture_read_frame(current);
+    asciichat_error_context_t failure;
+    if (frame || errno_peek_since(scope, &failure))
+      break;
+    platform_sleep_ms(1);
+  }
+  return frame;
+}
 static void open_first(void) {
   session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = first_path, .target_fps = 30};
   current = session_capture_create(&config);
   cr_assert_not_null(current);
-  cr_assert_not_null(session_capture_read_frame(current));
+  cr_assert_not_null(transaction_await_frame());
   media_source_pause(current->source);
 }
 static void pending_replacement(void) {
@@ -310,7 +323,7 @@ static void toggle_roundtrip(bool camera) {
     cr_assert_not_null(current->empty_frame);
   }
   session_capture_toggle_media(current);
-  cr_assert_not_null(session_capture_read_frame(current));
+  cr_assert_not_null(transaction_await_frame());
   cr_assert(session_capture_media_active(current));
   cr_assert_not(media_source_is_paused(original));
   cr_assert_eq(borrowed_audio.capture_media_source, original);

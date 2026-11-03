@@ -90,7 +90,7 @@ static asciichat_error_t contract_send(acip_transport_t *transport, const void *
 static const acip_transport_methods_t contract_methods = {.send = contract_send};
 static acip_transport_t contract_transport = {.methods = &contract_methods};
 static void contract_setup(void) {
-  log_init(NULL, LOG_FATAL, false, false);
+  log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   contract_send_result = ASCIICHAT_OK;
