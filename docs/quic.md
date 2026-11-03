@@ -49,6 +49,11 @@ are available. `--quic-fallback-port` permits the existing authenticated TCP
 fallback after a pre-TLS timeout, provided a server key is pinned. Certificate
 and authentication failures do not trigger fallback. WebRTC remains the default
 for WebRTC discovery sessions, including browser participants.
+The mixed discovery Playwright test runs two native QUIC participants and a
+browser WebRTC participant, checks media in both directions, and keeps the
+session running past the host health freshness window. The server publishes
+periodic measured host samples to ACDS so an active host is not mistaken for a
+failed one during handoff selection.
 
 ## HTTP/3 WebTransport listener
 

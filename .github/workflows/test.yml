@@ -265,6 +265,16 @@ jobs:
           vp exec playwright install --with-deps chromium
           vp exec node scripts/wasm-build.mjs --publish-only
           vp exec node tests/network/webtransport-live.mjs ../../build/bin/ascii-chat src/wasm/dist
+          ASCII_CHAT_TEST_BINARY="${{ github.workspace }}/build/bin/ascii-chat" vp exec playwright test --config playwright.quic.config.ts
+
+      - name: Upload mixed discovery browser evidence
+        if: always() && matrix.os == 'ubuntu-latest' && matrix.build_type == 'debug'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mixed-discovery-browser-results
+          path: web/web/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Run unit tests
         run: |
