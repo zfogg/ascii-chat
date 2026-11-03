@@ -49,11 +49,14 @@
   [<i>file|url</i>]</p>
 <p class="Pp"><b>ascii-chat discovery-service</b> [<i>bind-address</i>]
     [<i>bind-address</i>] [<i>mode-options</i>]</p>
+<p class="Pp"><b>ascii-chat mcp-server</b> [<b>--transport</b>
+    <i>http|stdio</i>] [<b>--server</b>] [<i>bind-address</i>]
+    [<i>bind-address</i>] [<i>mode-options</i>]</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="MODES"><a class="permalink" href="#MODES">MODES</a></h1>
-<p class="Pp">The program operates in five modes:</p>
+<p class="Pp">The program operates in six modes:</p>
 <dl class="Bl-tag">
   <dt id="default"><a class="permalink" href="#default"><b>default</b></a></dt>
   <dd>The default operating mode when running <b>ascii-chat</b> without
@@ -79,10 +82,118 @@
   <dd>Runs an ACDS (ascii-chat Discovery Service) server for session discovery.
       Allows users of ascii-chat's default mode to discover each other using
       memorable session strings instead of IP addresses. See the SECURITY
-      section for notes on the official instance and its keys.
+      section for notes on the official instance and its keys.</dd>
+  <dt id="mcp-server"><a class="permalink" href="#mcp-server"><b>mcp-server</b></a></dt>
+  <dd>Exposes ASCII rendering as Model Context Protocol (MCP) tools over stdio.
+      Use <b>--transport http</b> for Streamable HTTP at /mcp (default
+      127.0.0.1:27228). See MCP SERVER below.
     <p class="Pp"></p>
   </dd>
 </dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="MCP_SERVER"><a class="permalink" href="#MCP_SERVER">MCP
+  SERVER</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Local_stdio_(default)"><a class="permalink" href="#Local_stdio_(default)">Local
+  stdio (default)</a></h2>
+<pre>ascii-chat mcp-server --transport stdio
+</pre>
+<p class="Pp">Without <b>--transport http</b>, the MCP client launches this
+    process and communicates through its stdin and stdout. No network listener
+    is opened. MCP mode automatically skips startup update checks for both
+    transports.</p>
+<p class="Pp">Start <b>ascii-chat mcp-server</b> from an MCP client for
+    newline-delimited JSON-RPC over stdio. Protocol output uses stdout;
+    diagnostics use stderr. The local tools are <b>render_file</b> (path or
+    base64 bytes), <b>render_url</b> (media URL), <b>render_webcam</b> (camera
+    device), and <b>render_visualization</b> (waveform or fft with test, file,
+    URL, or microphone audio).</p>
+<p class="Pp"><b>device_list</b> takes no arguments and lists video_devices and
+    audio_devices (microphones), each with index, name, and is_default. The
+    result also contains default_video_device and default_audio_device (null
+    when absent). The default webcam is index 0; the default microphone is
+    selected by the OS. Device enumeration and webcam capture are hidden with
+    <b>--server</b>.</p>
+<p class="Pp"><b>render_webcam</b> accepts video_device, audio_device, and
+    volume. <b>render_visualization</b> accepts audio_device and volume for
+    microphone input. An omitted audio_device or -1 selects the system
+    microphone; volume is microphone gain from 0 (mute) to 1 (normal). Timed
+    webcam exports capture the default microphone unless options.audio is false.
+    Use output_path ending in</p>
+<p class="Pp">Tools accept an <b>options</b> object using CLI long names without
+    leading dashes. Use <b>color-mode</b> for rendered color. Defaults are 100
+    by 40 characters, monochrome, and one snapshot. Use <b>seek</b> for a media
+    timestamp; <b>snapshot-delay</b> is capture duration after the first
+    rendered frame. <b>timeout_ms</b> bounds each request (1000 to 60000;
+    default 45000).</p>
+<p class="Pp">Local <b>output_path</b> saves an image or video selected by
+    filename extension. Its parent directory must exist. Existing files and
+    symlinks are never replaced. Set <b>render-font-size</b> (for example 28) to
+    enlarge images and videos; set <b>snapshot-delay</b> above zero to record a
+    clip. Results include text and <b>structuredContent</b> with ascii,
+    elapsed_ms, and saved_files.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Claude_Code_configuration"><a class="permalink" href="#Claude_Code_configuration">Claude
+  Code configuration</a></h2>
+<p class="Pp">Build the binary first. Place this project-scoped entry in
+    .mcp.json at the checkout root, then start Claude Code from that checkout.
+    Approve the project server when prompted and use /mcp to inspect the
+    connection.</p>
+<pre>{
+<br/>
+  &quot;mcpServers&quot;: {
+<br/>
+    &quot;ascii_chat&quot;: {
+<br/>
+      &quot;type&quot;: &quot;stdio&quot;,
+<br/>
+      &quot;command&quot;: &quot;./build/bin/ascii-chat&quot;,
+<br/>
+      &quot;args&quot;: [&quot;mcp-server&quot;]
+<br/>
+    }
+<br/>
+  }
+}
+</pre>
+<p class="Pp">For an independently running HTTP server, replace the entry with
+    <b>{&quot;type&quot;:&quot;http&quot;,&quot;url&quot;:&quot;http://127.0.0.1:27228/mcp&quot;}</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Networked_Streamable_HTTP"><a class="permalink" href="#Networked_Streamable_HTTP">Networked
+  Streamable HTTP</a></h2>
+<pre>ascii-chat mcp-server --transport http --address 127.0.0.1 --port 27228
+</pre>
+<p class="Pp">With <b>--transport http</b>, run the process independently and
+    configure the MCP client with the URL <b>http://127.0.0.1:27228/mcp</b>
+    instead of a launch command. The default bind address is loopback; use
+    <b>--address 0.0.0.0</b> to accept remote connections and configure the
+    client with the server hostname or IP.</p>
+<p class="Pp">HTTP mode uses <b>--port</b>, <b>--address</b>, <b>--address6</b>,
+    and positional bind addresses. TLS uses the http-tls-cert and http-tls-key
+    options. Add <b>--server</b> to disable devices, caller-selected filesystem
+    paths, output_path, custom fonts, and arbitrary yt-dlp options. Uploaded
+    bytes remain supported (limit 16 MiB decoded; request limit 24 MiB; returned
+    ASCII limit 8 MiB). Public deployments require an unprivileged sandbox and
+    network egress controls for media decoders, plus reverse-proxy
+    authentication and rate limits as appropriate.</p>
+<p class="Pp"></p>
+<pre>ascii-chat --log-level debug mcp-server --transport http --status-screen
+</pre>
+<p class="Pp">HTTP status supports the usual log viewer, error stacks, error
+    popups, and sync diagnostics. The normal <b>--otel-*</b> options enable
+    request/render traces, HTTP response status, and counters for failures,
+    cancellation, deadlines, and output. Render spans preserve request context
+    across worker threads. Test processes never export telemetry. MCP counters
+    and durations use the shared stats scope and canonical telemetry metrics.
+    Press = in HTTP mode for live statistics, or use <b>--stats-interval 1</b>
+    with either transport for stderr summaries. Stdio reserves stdin for MCP and
+    does not read terminal shortcuts. Full setup and tool examples:
+    https://ascii-chat.com/docs/mcp</p>
+<p class="Pp"></p>
+</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="ANIMATIONS"><a class="permalink" href="#ANIMATIONS">ANIMATIONS</a></h1>
@@ -91,7 +202,7 @@
   Digital Rain</a></h2>
 <p class="Pp">Use <b>--matrix</b> to overlay falling Matrix-style characters on
     the video rendering. The effect uses the digital palette by default and can
-    be combined with color filters. Press <b>0</b> while rendering to toggle
+    be combined with color filters. Press <b>1</b> while rendering to toggle
     Matrix rain.</p>
 <p class="Pp">For example, enable Matrix rain with the default colors or a green
     filter:</p>
@@ -143,10 +254,10 @@ ascii-chat client --audio-source call --fft
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty/unset) start new session. generates a session string to give someone to connect to you.
-furthest-peanut-fuss
-principal-thrust-soak
-fickle-dakota-transport
-partial-gate-morgue</pre>
+grownup-grave-tour
+sunrise-partner-puff
+freelance-aspect-babe
+tramontane-absurd-weave</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -207,6 +318,10 @@ https://example.com/stream.m3u8</pre>
   <dd>Join an existing session</dd>
   <dt><b>ascii-chat &lt;mode&gt; [options...]</b></dt>
   <dd>Run in a specific mode</dd>
+  <dt><b>ascii-chat mcp-server [--transport http|stdio] [--server]
+    [bind-address] [bind-address] [mode-options...]</b></dt>
+  <dd>MCP rendering tools (stdio locally, HTTP with --transport http, default
+      port 27228)</dd>
   <dt><b>ascii-chat server [bind-address] [bind-address]
     [mode-options...]</b></dt>
   <dd>Start server (can specify 0-2 bind addresses, one IPv4 and the other
@@ -228,21 +343,25 @@ https://example.com/stream.m3u8</pre>
 <section class="Sh">
 <h1 class="Sh" id="EXAMPLES"><a class="permalink" href="#EXAMPLES">EXAMPLES</a></h1>
 <dl class="Bl-tag">
+  <dt><b>ascii-chat mcp-server</b></dt>
+  <dd>Local MCP tools over stdio</dd>
+  <dt><b>ascii-chat mcp-server --transport http --address 127.0.0.1 --port
+    27228</b></dt>
+  <dd>Local MCP tools over Streamable HTTP</dd>
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat more-irish-wood</b></dt>
+  <dt><b>ascii-chat majestic-bitter-zebra</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat seventy-monthly-thorn --file video.mp4</b></dt>
+  <dt><b>ascii-chat shabby-nap-ultrasound --file video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat elusive-skipper-radio --url
+  <dt><b>ascii-chat hypocritical-pier-motorbike --url
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ'</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat oblique-showtime-squeeze -f -</b></dt>
+  <dt><b>ascii-chat behind-titus-ship -f -</b></dt>
   <dd>Join session and stream media from stdin</dd>
-  <dt><b>ascii-chat hysterical-mystic-narrator --palette-chars '@%#*+=-:.
-    '</b></dt>
+  <dt><b>ascii-chat chronic-prisoner-soap --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
-  <dt><b>ascii-chat seasick-chapter-flap --discovery-service
+  <dt><b>ascii-chat shameful-scorpion-monster --discovery-service
     --discovery-service-port 27225</b></dt>
   <dd>Join session via custom discovery server</dd>
   <dt><b>ascii-chat server</b></dt>
@@ -251,23 +370,23 @@ https://example.com/stream.m3u8</pre>
   <dd>Start on all IPv4 interfaces</dd>
   <dt><b>ascii-chat server 0.0.0.0 ::</b></dt>
   <dd>Start on all IPv4 and IPv6 interfaces (dual-stack)</dd>
-  <dt><b>ascii-chat server --port 8080</b></dt>
+  <dt><b>ascii-chat discovery-service --port 8080</b></dt>
   <dd>Start on custom port</dd>
   <dt><b>ascii-chat server --key ~/.ssh/id_ed25519 --discovery</b></dt>
   <dd>Start with identity key and discovery registration</dd>
-  <dt><b>ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
+  <dt><b>ascii-chat client --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
   <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
   <dt><b>ascii-chat client --url 'https://www.twitch.tv/ludwig'</b></dt>
   <dd>Stream Ludwig from videogames on Twitch</dd>
-  <dt><b>ascii-chat mirror -f video.mp4</b></dt>
+  <dt><b>ascii-chat client -f video.mp4</b></dt>
   <dd>Stream from local video file</dd>
-  <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Custom palette characters to use. UTF-8 is allowed.</dd>
-  <dt><b>ascii-chat mirror --snapshot</b></dt>
+  <dt><b>ascii-chat client --snapshot</b></dt>
   <dd>Print ascii art for --snapshot-delay's value of seconds then print the
       last frame and exit. In snapshot mode, --width, --height, and --color are
       NOT autodetected when piping stdin in or redirecting output.</dd>
-  <dt><b>ascii-chat client --color-filter cyan --palette cool</b></dt>
+  <dt><b>ascii-chat mirror --color-filter cyan --palette cool</b></dt>
   <dd>Apply cyan color filter and cool palette</dd>
   <dt><b>ascii-chat client example.com</b></dt>
   <dd>Connect to remote server</dd>
@@ -320,11 +439,27 @@ https://example.com/stream.m3u8</pre>
 <p class="Pp">The default mode (running <b>ascii-chat</b> with no mode) accepts
     both global and default mode options with no mode specified.</p>
 <section class="Ss">
+<h2 class="Ss" id="MCP"><a class="permalink" href="#MCP">MCP</a></h2>
+<dl class="Bl-tag">
+  <dt><b>--server <i>BOOLEAN</i></b></dt>
+  <dd>Restrict MCP capabilities for cloud deployment (no webcam or
+      caller-selected filesystem paths). (default: false)</dd>
+  <dt id="transport"><a class="permalink" href="#transport"><b>--transport
+    <i>STRING</i></b></a></dt>
+  <dd>MCP transport: http or stdio (default). --server independently restricts
+      cloud capabilities. (default: stdio)</dd>
+  <dt id="http-origin"><a class="permalink" href="#http-origin"><b>--http-origin
+    <i>STRING</i></b></a></dt>
+  <dd>Allowed browser Origin for MCP HTTP requests. (default:
+      https://mcp.ascii-chat.com)</dd>
+</dl>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="GENERAL"><a class="permalink" href="#GENERAL">GENERAL</a></h2>
 <dl class="Bl-tag">
   <dt id="h,"><a class="permalink" href="#h,"><b>-h, --help</b></a></dt>
-  <dd>Show this help message and exit. (modes: global, client, server, mirror,
-      discovery-service)</dd>
+  <dd>Show this help message and exit. (modes: global, default, client, server,
+      mirror, discovery-service)</dd>
   <dt id="v,"><a class="permalink" href="#v,"><b>-v, --version</b></a></dt>
   <dd>Show version information and exit. (mode: global)</dd>
   <dt id="splash-screen"><a class="permalink" href="#splash-screen"><b>--splash-screen
@@ -353,8 +488,54 @@ https://example.com/stream.m3u8</pre>
 </dl>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="OTEL"><a class="permalink" href="#OTEL">OTEL</a></h2>
+<dl class="Bl-tag">
+  <dt id="otel-log-level"><a class="permalink" href="#otel-log-level"><b>--otel-log-level
+    <i>LEVEL</i></b></a></dt>
+  <dd>Minimum exported log level: dev,debug,info,warn,error,fatal. (default:
+      info) (mode: global)</dd>
+  <dt id="otel-endpoint"><a class="permalink" href="#otel-endpoint"><b>--otel-endpoint
+    <i>VALUE</i></b></a></dt>
+  <dd>Collector base URL; enables telemetry. OTEL_EXPORTER_OTLP_PROTOCOL selects
+      http/protobuf or grpc. (mode: global)</dd>
+  <dt id="otel-ca-file"><a class="permalink" href="#otel-ca-file"><b>--otel-ca-file
+    <i>VALUE</i></b></a></dt>
+  <dd>PEM CA bundle for HTTPS telemetry; replaces system roots. (mode:
+    global)</dd>
+  <dt id="otel-enabled-telemetry"><a class="permalink" href="#otel-enabled-telemetry"><b>--otel-enabled-telemetry
+    <i>VALUE</i></b></a></dt>
+  <dd>Comma-separated traces,logs,metrics, or none. (default:
+      traces,logs,metrics) (mode: global)</dd>
+  <dt id="otel-realtime-sample-rate"><a class="permalink" href="#otel-realtime-sample-rate"><b>--otel-realtime-sample-rate
+    <i>VALUE</i></b></a></dt>
+  <dd>Sampling probability for frame/audio/packet operations (0..1). (default:
+      0.01) (mode: global)</dd>
+  <dt id="otel-realtime-max-per-second"><a class="permalink" href="#otel-realtime-max-per-second"><b>--otel-realtime-max-per-second
+    <i>VALUE</i></b></a></dt>
+  <dd>Maximum sampled realtime root operations per process per second. (default:
+      10) (mode: global)</dd>
+  <dt id="otel-metrics-interval"><a class="permalink" href="#otel-metrics-interval"><b>--otel-metrics-interval
+    <i>VALUE</i></b></a></dt>
+  <dd>Metrics export interval in milliseconds. (default: 10000) (mode:
+    global)</dd>
+  <dt id="otel-timeout"><a class="permalink" href="#otel-timeout"><b>--otel-timeout
+    <i>VALUE</i></b></a></dt>
+  <dd>Export and shutdown flush timeout in milliseconds. (default: 5000) (mode:
+      global)</dd>
+  <dt id="otel-queue-capacity"><a class="permalink" href="#otel-queue-capacity"><b>--otel-queue-capacity
+    <i>VALUE</i></b></a></dt>
+  <dd>Bounded exporter queue capacity (power of two). (default: 4096) (mode:
+      global)</dd>
+</dl>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="LOGGING"><a class="permalink" href="#LOGGING">LOGGING</a></h2>
 <dl class="Bl-tag">
+  <dt id="stats-interval"><a class="permalink" href="#stats-interval"><b>--stats-interval
+    <i>SECONDS</i></b></a></dt>
+  <dd>Write plain statistics to stdout (stderr for MCP) every N seconds (0
+      disables). Press = for live statistics. (default: 0) (modes: server,
+      discovery-service)</dd>
   <dt id="L,"><a class="permalink" href="#L,"><b>-L, --log-file
     <i>FILE</i></b></a></dt>
   <dd>Set FILE as path for log file (default: $TMPDIR/ascii-chat/ or
@@ -425,14 +606,15 @@ https://example.com/stream.m3u8</pre>
   <dd>Terminal color level (auto, none, 16, 256, truecolor). This controls what
       ANSI escape codes ascii-chat will use for console logging and display
       output if color is enabled. Press 'c' during rendering to cycle. See also
-      --color. (modes: default, client, mirror)</dd>
+      --color. (modes: global, client, server, mirror, discovery-service)</dd>
   <dt id="show-capabilities"><a class="permalink" href="#show-capabilities"><b>--show-capabilities</b></a></dt>
   <dd>Show detected terminal capabilities and exit (useful for debugging and
       scripting). (mode: global)</dd>
   <dt id="utf8"><a class="permalink" href="#utf8"><b>--utf8
     <i>VALUE</i></b></a></dt>
   <dd>UTF-8 support setting: 'auto' (default, auto-detect), 'true' (force UTF-8
-      on), or 'false' (force UTF-8 off). (modes: default, client, mirror)</dd>
+      on), or 'false' (force UTF-8 off). (modes: global, client, server, mirror,
+      discovery-service)</dd>
   <dt id="strip-ansi"><a class="permalink" href="#strip-ansi"><b>--strip-ansi
     <i>BOOLEAN</i></b></a></dt>
   <dd>Strip ANSI escape sequences from output before printing. Useful for
@@ -467,6 +649,10 @@ https://example.com/stream.m3u8</pre>
 <section class="Ss">
 <h2 class="Ss" id="DISPLAY"><a class="permalink" href="#DISPLAY">DISPLAY</a></h2>
 <dl class="Bl-tag">
+  <dt id="zalgo"><a class="permalink" href="#zalgo"><b>--zalgo
+    <i>LEVEL</i></b></a></dt>
+  <dd>Add combining marks at intensity 1-10 (default when enabled: 7). Omit to
+      disable. Terminal/text output only. (modes: default, client, mirror)</dd>
   <dt id="waveform"><a class="permalink" href="#waveform"><b>--waveform
     <i>BOOLEAN</i></b></a></dt>
   <dd>Replace the video image with a live waveform of the source selected by
@@ -509,6 +695,10 @@ https://example.com/stream.m3u8</pre>
     <i>INTEGER</i></b></a></dt>
   <dd>Target framerate for rendering (1-144). (default: 60) (modes: default,
       client, mirror)</dd>
+  <dt id="fps-counter"><a class="permalink" href="#fps-counter"><b>--fps-counter
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Show FPS counter overlay in top-right corner. Press '-' to toggle.
+      (default: false) (modes: default, client, mirror)</dd>
   <dt id="S,"><a class="permalink" href="#S,"><b>-S, --snapshot
     <i>BOOLEAN</i></b></a></dt>
   <dd>Snapshot mode (one frame and exit). (default: false) (modes: default,
@@ -524,15 +714,15 @@ https://example.com/stream.m3u8</pre>
   <dd>Enable Matrix-style digital rain effect. Works with --render-mode
       truecolor|256 and --color-filter [color]. (default: false) (modes:
       default, client, mirror)</dd>
-  <dt id="fps-counter"><a class="permalink" href="#fps-counter"><b>--fps-counter
+  <dt id="face-follow"><a class="permalink" href="#face-follow"><b>--face-follow
     <i>BOOLEAN</i></b></a></dt>
-  <dd>Show FPS counter overlay in top-right corner. Press '-' to toggle.
-      (default: false) (modes: default, client, mirror)</dd>
+  <dd>Automatically zoom and pan to follow your face, with smooth full-frame
+      fallback. (default: false) (modes: default, client, mirror)</dd>
   <dt id="flip-x"><a class="permalink" href="#flip-x"><b>--flip-x
     <i>BOOLEAN</i></b></a></dt>
-  <dd>Flip video horizontally (X-axis). Works with webcam, files, and streams.
-      Note: Ignored for webcam on macOS (respects platform default like
-      FaceTime). (default: false) (modes: default, client, mirror)</dd>
+  <dd>Flip video horizontally (X-axis). Webcam defaults to mirrored; media and
+      audio animations do not. Explicit choices apply to all sources until exit.
+      (default: true) (modes: default, client, mirror)</dd>
   <dt id="flip-y"><a class="permalink" href="#flip-y"><b>--flip-y
     <i>BOOLEAN</i></b></a></dt>
   <dd>Flip video vertically (Y-axis). Works with webcam, files, and streams.
@@ -547,9 +737,9 @@ https://example.com/stream.m3u8</pre>
   <dd>Webcam device index to use for video input. (default: 0) (modes: default,
       client, mirror)</dd>
   <dt id="test-pattern"><a class="permalink" href="#test-pattern"><b>--test-pattern
-    <i>BOOLEAN</i></b></a></dt>
-  <dd>Use test pattern instead of webcam. (default: false) (modes: default,
-      client, mirror)</dd>
+    <i>[0|1]</i></b></a></dt>
+  <dd>Use synthetic video: 0 = gradient and square (default), 1 = rainbow and
+      circle. (modes: default, client, mirror)</dd>
   <dt id="list-webcams"><a class="permalink" href="#list-webcams"><b>--list-webcams</b></a></dt>
   <dd>List available webcam devices by index and exit. (mode: global)</dd>
 </dl>
@@ -557,14 +747,60 @@ https://example.com/stream.m3u8</pre>
 <section class="Ss">
 <h2 class="Ss" id="AUDIO"><a class="permalink" href="#AUDIO">AUDIO</a></h2>
 <dl class="Bl-tag">
+  <dt id="test-audio"><a class="permalink" href="#test-audio"><b>--test-audio
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Send a gentle repeating test signal instead of microphone audio and
+      monitor it on speakers; enables audio. (default: false) (modes: default,
+      client, mirror)</dd>
+  <dt id="audio-spectral-agc"><a class="permalink" href="#audio-spectral-agc"><b>--audio-spectral-agc
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Enable spectral RMS gain control with --spectral-audio. (default: false)
+      (modes: default, client, server)</dd>
+  <dt id="audio-pitch-correct"><a class="permalink" href="#audio-pitch-correct"><b>--audio-pitch-correct
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Experimental monophonic semitone correction with --spectral-audio.
+      (default: false) (modes: default, client)</dd>
+  <dt id="spectral-audio"><a class="permalink" href="#spectral-audio"><b>--spectral-audio
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Process microphone audio with FFTW (default on; media/test audio bypass
+      it). Disable with --spectral-audio=false. (default: true) (modes: default,
+      client, server)</dd>
+  <dt id="audio-spectral-mixer"><a class="permalink" href="#audio-spectral-mixer"><b>--audio-spectral-mixer
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Opt in to FFTW processing of the entire server mix, including media and
+      test signals (default off). (default: false) (modes: default, server)</dd>
+  <dt id="audio-spectral-gate"><a class="permalink" href="#audio-spectral-gate"><b>--audio-spectral-gate
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Enable adaptive spectral noise reduction with --spectral-audio. (default:
+      true) (modes: default, client, server)</dd>
+  <dt id="audio-multiband"><a class="permalink" href="#audio-multiband"><b>--audio-multiband
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Enable four-band compression with --spectral-audio. (default: false)
+      (modes: default, client, server)</dd>
+  <dt id="audio-adaptive-eq"><a class="permalink" href="#audio-adaptive-eq"><b>--audio-adaptive-eq
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Enable bounded spectral EQ balancing with --spectral-audio. (default:
+      false) (modes: default, client, server)</dd>
+  <dt id="audio-fft-size"><a class="permalink" href="#audio-fft-size"><b>--audio-fft-size
+    <i>INTEGER</i></b></a></dt>
+  <dd>Spectral FFT size: 512, 1024, or 2048 (latency versus frequency
+      resolution). (default: 1024) (modes: default, client, server)</dd>
   <dt id="A,"><a class="permalink" href="#A,"><b>-A, --audio
     <i>BOOLEAN</i></b></a></dt>
   <dd>Enable audio streaming (press 'm' during rendering to toggle). (default:
       true) (modes: default, client, mirror)</dd>
+  <dt id="microphone-channels"><a class="permalink" href="#microphone-channels"><b>--microphone-channels
+    <i>INTEGER</i></b></a></dt>
+  <dd>Microphone layout: 1 for centered speech, 2 for a stereo pair. (default:
+      1) (modes: default, client, mirror)</dd>
+  <dt id="microphone-channel"><a class="permalink" href="#microphone-channel"><b>--microphone-channel
+    <i>INTEGER</i></b></a></dt>
+  <dd>First zero-based microphone channel; -1 averages all inputs to mono.
+      (default: 0) (modes: default, client, mirror)</dd>
   <dt id="microphone-index"><a class="permalink" href="#microphone-index"><b>--microphone-index
     <i>INTEGER</i></b></a></dt>
   <dd>Microphone device index for audio input. (default: -1) (modes: default,
-      client)</dd>
+      client, mirror)</dd>
   <dt id="speakers-index"><a class="permalink" href="#speakers-index"><b>--speakers-index
     <i>INTEGER</i></b></a></dt>
   <dd>Speakers device index to use for audio output. (default: -1) (modes:
@@ -593,7 +829,8 @@ https://example.com/stream.m3u8</pre>
       remote. (modes: default, client, mirror)</dd>
   <dt id="no-audio-playback"><a class="permalink" href="#no-audio-playback"><b>--no-audio-playback
     <i>BOOLEAN</i></b></a></dt>
-  <dd>Disable speakers output. (default: false) (modes: default, client)</dd>
+  <dd>Disable speakers output. (default: false) (modes: default, client,
+    mirror)</dd>
   <dt id="encode-audio"><a class="permalink" href="#encode-audio"><b>--encode-audio
     <i>BOOLEAN</i></b></a></dt>
   <dd>Enable Opus audio encoding. (default: true) (modes: default, client)</dd>
@@ -616,19 +853,21 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="f,"><a class="permalink" href="#f,"><b>-f, --file
     <i>STRING</i></b></a></dt>
-  <dd>Stream from media file or stdin (use '-' for stdin). Supported formats:
-      see man ffmpeg-formats; codecs: see man ffmpeg-codecs. (modes: default,
-      client, mirror)</dd>
+  <dd>Append a media file to the playback playlist (repeat --file/--url in
+      order). Stream from media file or stdin (use '-' for stdin). Supported
+      formats: see man ffmpeg-formats; codecs: see man ffmpeg-codecs. (modes:
+      default, client, mirror)</dd>
   <dt id="u,"><a class="permalink" href="#u,"><b>-u, --url
     <i>STRING</i></b></a></dt>
-  <dd>Stream from network URL. Direct HTTP/HTTPS/RTSP streams use FFmpeg;
-      complex sites (YouTube, TikTok, etc.) use yt-dlp. Supported formats: see
-      man ffmpeg-formats; codecs: see man ffmpeg-codecs; sites: yt-dlp
+  <dd>Append a network URL to the playback playlist (repeat --file/--url in
+      order). Direct HTTP/HTTPS/RTSP streams use FFmpeg; complex sites (YouTube,
+      TikTok, etc.) use yt-dlp. Supported formats: see man ffmpeg-formats;
+      codecs: see man ffmpeg-codecs; sites: yt-dlp
       https://github.com/yt-dlp/yt-dlp/blob/master/README.md#supported-sites.
       (modes: default, client, mirror)</dd>
   <dt id="l,"><a class="permalink" href="#l,"><b>-l, --loop
     <i>BOOLEAN</i></b></a></dt>
-  <dd>Loop media file playback (not supported for --url). (default: false)
+  <dd>Loop single media or repeat the complete playlist. (default: false)
       (modes: default, client, mirror)</dd>
   <dt id="pause"><a class="permalink" href="#pause"><b>--pause
     <i>BOOLEAN</i></b></a></dt>
@@ -645,13 +884,21 @@ https://example.com/stream.m3u8</pre>
       --cookies-from-browser=firefox. (modes: default, client, mirror)</dd>
   <dt id="video-codec"><a class="permalink" href="#video-codec"><b>--video-codec
     <i>CODEC</i></b></a></dt>
-  <dd>Video codec for streaming (raw, hevc). raw=uncompressed RGB, hevc=H.265
-      compression. Default: hevc. (default: hevc) (modes: client, mirror)</dd>
+  <dd>Video codec: auto (default) tries HEVC, H.264, then raw RGB. Explicit
+      hevc, h264, or raw never falls back. (default: auto) (modes: client,
+      mirror)</dd>
+  <dt id="render-kitty"><a class="permalink" href="#render-kitty"><b>--render-kitty
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Display a snapshot using Kitty graphics (requires --snapshot). Combine
+      with --render-file to save it. (default: false) (modes: default, client,
+      mirror)</dd>
   <dt id="render-file"><a class="permalink" href="#render-file"><b>--render-file
     <i>PATH</i></b></a></dt>
   <dd>Render ASCII frames to stdout or video/image file. Use '-' for stdout;
       extension determines format: .mp4, .mov, .webm, .avi, .gif, .png, .jpg.
-      (modes: default, client, mirror)</dd>
+      Named files retain ASCII on stdout and show terminal progress while
+      finishing; redirect stdout to hide it. (modes: default, client,
+    mirror)</dd>
   <dt id="render-theme"><a class="permalink" href="#render-theme"><b>--render-theme
     <i>THEME</i></b></a></dt>
   <dd>Terminal color scheme for rendered output: dark, light, auto. (modes:
@@ -672,21 +919,30 @@ https://example.com/stream.m3u8</pre>
 <section class="Ss">
 <h2 class="Ss" id="NETWORK"><a class="permalink" href="#NETWORK">NETWORK</a></h2>
 <dl class="Bl-tag">
-  <dt id="p,"><a class="permalink" href="#p,"><b>-p, --port
-    <i>VALUE</i></b></a></dt>
-  <dd>Port to host a server or discovery-service on, or port to connect to a
-      server as a client (default: 27224 for server/client, 27225 for
-      discovery-service). (modes: default, client, server,
-    discovery-service)</dd>
+  <dt><b>--address <i>STRING</i></b></dt>
+  <dd>MCP bind address (IPv4 or IPv6); also accepts positional bind addresses.
+      (default: 127.0.0.1)</dd>
+  <dt id="address6"><a class="permalink" href="#address6"><b>--address6
+    <i>STRING</i></b></a></dt>
+  <dd>Additional MCP IPv6 bind address. .TP <b>-p, --port <i>VALUE</i></b> Port
+      to host a server or discovery-service on, or port to connect to a server
+      as a client (default: 27224 for server/client, 27225 for
+      discovery-service, 27228 for mcp-server). (modes: default, client, server,
+      discovery-service)</dd>
   <dt id="websocket-port"><a class="permalink" href="#websocket-port"><b>--websocket-port
     <i>INTEGER</i></b></a></dt>
   <dd>WebSocket server port (default: 27226 for server, 27227 for
       discovery-service, 443 when TLS cert+key provided). (default: 0) (modes:
       server, discovery-service)</dd>
-  <dt id="websocket-tls-cert"><a class="permalink" href="#websocket-tls-cert"><b>--websocket-tls-cert
+  <dt id="http-tls-cert"><a class="permalink" href="#http-tls-cert"><b>--http-tls-cert
     <i>STRING</i></b></a></dt>
-  <dd>WebSocket TLS certificate file path for WSS (secure WebSocket) support
-      (server/discovery-service only). (modes: server, discovery-service)</dd>
+  <dd>HTTP TLS certificate file path for MCP HTTPS. .TP <b>--http-tls-key
+      <i>STRING</i></b> HTTP TLS private key file path for MCP HTTPS. .TP
+      <b>--http-tls-key-password <i>STRING</i></b> HTTP TLS private key password
+      (use ASCII_CHAT_HTTP_TLS_KEY_PASSWORD). .TP <b>--websocket-tls-cert
+      <i>STRING</i></b> WebSocket TLS certificate file path for WSS (secure
+      WebSocket) support (server/discovery-service only). (modes: server,
+      discovery-service)</dd>
   <dt id="websocket-tls-key"><a class="permalink" href="#websocket-tls-key"><b>--websocket-tls-key
     <i>STRING</i></b></a></dt>
   <dd>WebSocket TLS private key file path for WSS (secure WebSocket) support
@@ -706,9 +962,9 @@ https://example.com/stream.m3u8</pre>
       (default: -1) (modes: default, client)</dd>
   <dt id="port-forwarding"><a class="permalink" href="#port-forwarding"><b>--port-forwarding
     <i>BOOLEAN</i></b></a></dt>
-  <dd>Use UPnP/NAT-PMP port mapping to open a port in your router to ascii-chat
-      (might fail with some routers). (default: false) (modes: server,
-      discovery-service)</dd>
+  <dd>Map active TCP/WebSocket listeners and native WebRTC UDP ports with
+      UPnP/NAT-PMP (router support required). (default: false) (modes: default,
+      client, server, discovery-service)</dd>
   <dt id="scan"><a class="permalink" href="#scan"><b>--scan
     <i>BOOLEAN</i></b></a></dt>
   <dd>Scan for servers on local network via mDNS. (default: false) (modes:
@@ -740,6 +996,10 @@ https://example.com/stream.m3u8</pre>
     <i>BOOLEAN</i></b></a></dt>
   <dd>Enable discovery session registration. (default: false) (modes:
     server)</dd>
+  <dt id="webrtc-bind-address"><a class="permalink" href="#webrtc-bind-address"><b>--webrtc-bind-address
+    <i>STRING</i></b></a></dt>
+  <dd>Bind WebRTC ICE sockets to a local IPv4 or IPv6 address (default: all
+      interfaces). (modes: default, client, server)</dd>
   <dt id="webrtc"><a class="permalink" href="#webrtc"><b>--webrtc
     <i>BOOLEAN</i></b></a></dt>
   <dd>Make calls using WebRTC p2p connections. (default: true) (modes: default,
@@ -805,9 +1065,8 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="E,"><a class="permalink" href="#E,"><b>-E, --encrypt
     <i>BOOLEAN</i></b></a></dt>
-  <dd>Enable end-to-end encryption (requires the other party to be encrypted as
-      well). (default: true) (modes: default, client, server,
-    discovery-service)</dd>
+  <dd>Explicitly enable ACIP payload encryption, including over WSS. (default:
+      false) (modes: default, client, server, discovery-service)</dd>
   <dt id="K,"><a class="permalink" href="#K,"><b>-K, --key
     <i>STRING</i></b></a></dt>
   <dd>Server identity key (SSH Ed25519 or GPG key file, gpg:FINGERPRINT,
@@ -820,8 +1079,9 @@ https://example.com/stream.m3u8</pre>
       client, server, discovery-service)</dd>
   <dt id="no-encrypt"><a class="permalink" href="#no-encrypt"><b>--no-encrypt
     <i>BOOLEAN</i></b></a></dt>
-  <dd>Disable encryption (requires the other party to be unencrypted as well).
-      (default: false) (modes: default, client, server, discovery-service)</dd>
+  <dd>Disable ACIP payload encryption; configured keys/password still
+      authenticate. (default: false) (modes: default, client, server,
+      discovery-service)</dd>
   <dt id="no-auth"><a class="permalink" href="#no-auth"><b>--no-auth
     <i>BOOLEAN</i></b></a></dt>
   <dd>Disable authentication layer (--no-auth). Use with --no-encrypt to bypass
@@ -992,8 +1252,17 @@ https://example.com/stream.m3u8</pre>
 </dl>
 <p class="Pp"><b>Animation Controls</b></p>
 <dl class="Bl-tag">
-  <dt><b>0</b></dt>
-  <dd>Toggle Matrix-style digital rain effect.</dd>
+  <dt><b>1</b></dt>
+  <dd>Toggle Matrix-style digital rain effect, disabling both audio
+      visualizations.</dd>
+  <dt><b>2</b></dt>
+  <dd>Toggle the live audio waveform, disabling Matrix rain and the frequency
+      display.</dd>
+  <dt><b>3</b></dt>
+  <dd>Toggle the live audio frequency display (FFT), disabling Matrix rain and
+      the waveform. Both visualizations use the source selected by
+      --audio-source. Press the active visualization's key again to return to
+      video.</dd>
 </dl>
 <p class="Pp"><b>Keyboard Configuration</b></p>
 <div class="Bd-indent">
@@ -1210,12 +1479,30 @@ https://example.com/stream.m3u8</pre>
   <dt id="APPDATA"><a class="permalink" href="#APPDATA"><b>APPDATA</b></a></dt>
   <dd>Windows configuration directory for user-specific application data
       (%APPDATA%\ascii-chat). Primary location for config files on Windows.</dd>
+  <dt id="ASCII_CHAT_ADDRESS"><a class="permalink" href="#ASCII_CHAT_ADDRESS"><b>ASCII_CHAT_ADDRESS</b></a></dt>
+  <dd>See: <b>--address</b></dd>
+  <dt id="ASCII_CHAT_ADDRESS6"><a class="permalink" href="#ASCII_CHAT_ADDRESS6"><b>ASCII_CHAT_ADDRESS6</b></a></dt>
+  <dd>See: <b>--address6</b></dd>
   <dt id="ASCII_CHAT_AUDIO"><a class="permalink" href="#ASCII_CHAT_AUDIO"><b>ASCII_CHAT_AUDIO</b></a></dt>
   <dd>See: <b>--audio</b></dd>
+  <dt id="ASCII_CHAT_AUDIO_ADAPTIVE_EQ"><a class="permalink" href="#ASCII_CHAT_AUDIO_ADAPTIVE_EQ"><b>ASCII_CHAT_AUDIO_ADAPTIVE_EQ</b></a></dt>
+  <dd>See: <b>--audio-adaptive-eq</b></dd>
   <dt id="ASCII_CHAT_AUDIO_CAPTURE_SOURCE"><a class="permalink" href="#ASCII_CHAT_AUDIO_CAPTURE_SOURCE"><b>ASCII_CHAT_AUDIO_CAPTURE_SOURCE</b></a></dt>
   <dd>See: <b>--audio-capture-source</b></dd>
+  <dt id="ASCII_CHAT_AUDIO_FFT_SIZE"><a class="permalink" href="#ASCII_CHAT_AUDIO_FFT_SIZE"><b>ASCII_CHAT_AUDIO_FFT_SIZE</b></a></dt>
+  <dd>See: <b>--audio-fft-size</b></dd>
+  <dt id="ASCII_CHAT_AUDIO_MULTIBAND"><a class="permalink" href="#ASCII_CHAT_AUDIO_MULTIBAND"><b>ASCII_CHAT_AUDIO_MULTIBAND</b></a></dt>
+  <dd>See: <b>--audio-multiband</b></dd>
+  <dt id="ASCII_CHAT_AUDIO_PITCH_CORRECT"><a class="permalink" href="#ASCII_CHAT_AUDIO_PITCH_CORRECT"><b>ASCII_CHAT_AUDIO_PITCH_CORRECT</b></a></dt>
+  <dd>See: <b>--audio-pitch-correct</b></dd>
   <dt id="ASCII_CHAT_AUDIO_SOURCE"><a class="permalink" href="#ASCII_CHAT_AUDIO_SOURCE"><b>ASCII_CHAT_AUDIO_SOURCE</b></a></dt>
   <dd>See: <b>--audio-source</b></dd>
+  <dt id="ASCII_CHAT_AUDIO_SPECTRAL_AGC"><a class="permalink" href="#ASCII_CHAT_AUDIO_SPECTRAL_AGC"><b>ASCII_CHAT_AUDIO_SPECTRAL_AGC</b></a></dt>
+  <dd>See: <b>--audio-spectral-agc</b></dd>
+  <dt id="ASCII_CHAT_AUDIO_SPECTRAL_GATE"><a class="permalink" href="#ASCII_CHAT_AUDIO_SPECTRAL_GATE"><b>ASCII_CHAT_AUDIO_SPECTRAL_GATE</b></a></dt>
+  <dd>See: <b>--audio-spectral-gate</b></dd>
+  <dt id="ASCII_CHAT_AUDIO_SPECTRAL_MIXER"><a class="permalink" href="#ASCII_CHAT_AUDIO_SPECTRAL_MIXER"><b>ASCII_CHAT_AUDIO_SPECTRAL_MIXER</b></a></dt>
+  <dd>See: <b>--audio-spectral-mixer</b></dd>
   <dt id="ASCII_CHAT_CLIENT_KEYS"><a class="permalink" href="#ASCII_CHAT_CLIENT_KEYS"><b>ASCII_CHAT_CLIENT_KEYS</b></a></dt>
   <dd>See: <b>--client-keys</b></dd>
   <dt id="ASCII_CHAT_COLOR"><a class="permalink" href="#ASCII_CHAT_COLOR"><b>ASCII_CHAT_COLOR</b></a></dt>
@@ -1248,6 +1535,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--encode-audio</b></dd>
   <dt id="ASCII_CHAT_ENCRYPT"><a class="permalink" href="#ASCII_CHAT_ENCRYPT"><b>ASCII_CHAT_ENCRYPT</b></a></dt>
   <dd>See: <b>--encrypt</b></dd>
+  <dt id="ASCII_CHAT_FACE_FOLLOW"><a class="permalink" href="#ASCII_CHAT_FACE_FOLLOW"><b>ASCII_CHAT_FACE_FOLLOW</b></a></dt>
+  <dd>See: <b>--face-follow</b></dd>
   <dt id="ASCII_CHAT_FFT"><a class="permalink" href="#ASCII_CHAT_FFT"><b>ASCII_CHAT_FFT</b></a></dt>
   <dd>See: <b>--fft</b></dd>
   <dt id="ASCII_CHAT_FILE"><a class="permalink" href="#ASCII_CHAT_FILE"><b>ASCII_CHAT_FILE</b></a></dt>
@@ -1264,6 +1553,14 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--grep</b></dd>
   <dt id="ASCII_CHAT_HEIGHT"><a class="permalink" href="#ASCII_CHAT_HEIGHT"><b>ASCII_CHAT_HEIGHT</b></a></dt>
   <dd>See: <b>--height</b></dd>
+  <dt id="ASCII_CHAT_HTTP_ORIGIN"><a class="permalink" href="#ASCII_CHAT_HTTP_ORIGIN"><b>ASCII_CHAT_HTTP_ORIGIN</b></a></dt>
+  <dd>See: <b>--http-origin</b></dd>
+  <dt id="ASCII_CHAT_HTTP_TLS_CERT"><a class="permalink" href="#ASCII_CHAT_HTTP_TLS_CERT"><b>ASCII_CHAT_HTTP_TLS_CERT</b></a></dt>
+  <dd>See: <b>--http-tls-cert</b></dd>
+  <dt id="ASCII_CHAT_HTTP_TLS_KEY"><a class="permalink" href="#ASCII_CHAT_HTTP_TLS_KEY"><b>ASCII_CHAT_HTTP_TLS_KEY</b></a></dt>
+  <dd>See: <b>--http-tls-key</b></dd>
+  <dt id="ASCII_CHAT_HTTP_TLS_KEY_PASSWORD"><a class="permalink" href="#ASCII_CHAT_HTTP_TLS_KEY_PASSWORD"><b>ASCII_CHAT_HTTP_TLS_KEY_PASSWORD</b></a></dt>
+  <dd>See: <b>--http-tls-key-password</b></dd>
   <dt id="ASCII_CHAT_IVOLUME"><a class="permalink" href="#ASCII_CHAT_IVOLUME"><b>ASCII_CHAT_IVOLUME</b></a></dt>
   <dd>See: <b>--ivolume</b></dd>
   <dt id="ASCII_CHAT_JSON"><a class="permalink" href="#ASCII_CHAT_JSON"><b>ASCII_CHAT_JSON</b></a></dt>
@@ -1289,6 +1586,10 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--matrix</b></dd>
   <dt id="ASCII_CHAT_MAX_CLIENTS"><a class="permalink" href="#ASCII_CHAT_MAX_CLIENTS"><b>ASCII_CHAT_MAX_CLIENTS</b></a></dt>
   <dd>See: <b>--max-clients</b></dd>
+  <dt id="ASCII_CHAT_MICROPHONE_CHANNEL"><a class="permalink" href="#ASCII_CHAT_MICROPHONE_CHANNEL"><b>ASCII_CHAT_MICROPHONE_CHANNEL</b></a></dt>
+  <dd>See: <b>--microphone-channel</b></dd>
+  <dt id="ASCII_CHAT_MICROPHONE_CHANNELS"><a class="permalink" href="#ASCII_CHAT_MICROPHONE_CHANNELS"><b>ASCII_CHAT_MICROPHONE_CHANNELS</b></a></dt>
+  <dd>See: <b>--microphone-channels</b></dd>
   <dt id="ASCII_CHAT_MICROPHONE_INDEX"><a class="permalink" href="#ASCII_CHAT_MICROPHONE_INDEX"><b>ASCII_CHAT_MICROPHONE_INDEX</b></a></dt>
   <dd>See: <b>--microphone-index</b></dd>
   <dt id="ASCII_CHAT_MICROPHONE_VOLUME"><a class="permalink" href="#ASCII_CHAT_MICROPHONE_VOLUME"><b>ASCII_CHAT_MICROPHONE_VOLUME</b></a></dt>
@@ -1311,6 +1612,24 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--no-keepawake</b></dd>
   <dt id="ASCII_CHAT_NO_WEBRTC"><a class="permalink" href="#ASCII_CHAT_NO_WEBRTC"><b>ASCII_CHAT_NO_WEBRTC</b></a></dt>
   <dd>See: <b>--no-webrtc</b></dd>
+  <dt id="ASCII_CHAT_OTEL_CA_FILE"><a class="permalink" href="#ASCII_CHAT_OTEL_CA_FILE"><b>ASCII_CHAT_OTEL_CA_FILE</b></a></dt>
+  <dd>See: <b>--otel-ca-file</b></dd>
+  <dt id="ASCII_CHAT_OTEL_ENABLED_TELEMETRY"><a class="permalink" href="#ASCII_CHAT_OTEL_ENABLED_TELEMETRY"><b>ASCII_CHAT_OTEL_ENABLED_TELEMETRY</b></a></dt>
+  <dd>See: <b>--otel-enabled-telemetry</b></dd>
+  <dt id="ASCII_CHAT_OTEL_ENDPOINT"><a class="permalink" href="#ASCII_CHAT_OTEL_ENDPOINT"><b>ASCII_CHAT_OTEL_ENDPOINT</b></a></dt>
+  <dd>See: <b>--otel-endpoint</b></dd>
+  <dt id="ASCII_CHAT_OTEL_LOG_LEVEL"><a class="permalink" href="#ASCII_CHAT_OTEL_LOG_LEVEL"><b>ASCII_CHAT_OTEL_LOG_LEVEL</b></a></dt>
+  <dd>See: <b>--otel-log-level</b></dd>
+  <dt id="ASCII_CHAT_OTEL_METRICS_INTERVAL"><a class="permalink" href="#ASCII_CHAT_OTEL_METRICS_INTERVAL"><b>ASCII_CHAT_OTEL_METRICS_INTERVAL</b></a></dt>
+  <dd>See: <b>--otel-metrics-interval</b></dd>
+  <dt id="ASCII_CHAT_OTEL_QUEUE_CAPACITY"><a class="permalink" href="#ASCII_CHAT_OTEL_QUEUE_CAPACITY"><b>ASCII_CHAT_OTEL_QUEUE_CAPACITY</b></a></dt>
+  <dd>See: <b>--otel-queue-capacity</b></dd>
+  <dt id="ASCII_CHAT_OTEL_REALTIME_MAX_PER_SECOND"><a class="permalink" href="#ASCII_CHAT_OTEL_REALTIME_MAX_PER_SECOND"><b>ASCII_CHAT_OTEL_REALTIME_MAX_PER_SECOND</b></a></dt>
+  <dd>See: <b>--otel-realtime-max-per-second</b></dd>
+  <dt id="ASCII_CHAT_OTEL_REALTIME_SAMPLE_RATE"><a class="permalink" href="#ASCII_CHAT_OTEL_REALTIME_SAMPLE_RATE"><b>ASCII_CHAT_OTEL_REALTIME_SAMPLE_RATE</b></a></dt>
+  <dd>See: <b>--otel-realtime-sample-rate</b></dd>
+  <dt id="ASCII_CHAT_OTEL_TIMEOUT"><a class="permalink" href="#ASCII_CHAT_OTEL_TIMEOUT"><b>ASCII_CHAT_OTEL_TIMEOUT</b></a></dt>
+  <dd>See: <b>--otel-timeout</b></dd>
   <dt id="ASCII_CHAT_PALETTE"><a class="permalink" href="#ASCII_CHAT_PALETTE"><b>ASCII_CHAT_PALETTE</b></a></dt>
   <dd>See: <b>--palette</b></dd>
   <dt id="ASCII_CHAT_PALETTE_CHARS"><a class="permalink" href="#ASCII_CHAT_PALETTE_CHARS"><b>ASCII_CHAT_PALETTE_CHARS</b></a></dt>
@@ -1342,6 +1661,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--render-font</b></dd>
   <dt id="ASCII_CHAT_RENDER_FONT_SIZE"><a class="permalink" href="#ASCII_CHAT_RENDER_FONT_SIZE"><b>ASCII_CHAT_RENDER_FONT_SIZE</b></a></dt>
   <dd>See: <b>--render-font-size</b></dd>
+  <dt id="ASCII_CHAT_RENDER_KITTY"><a class="permalink" href="#ASCII_CHAT_RENDER_KITTY"><b>ASCII_CHAT_RENDER_KITTY</b></a></dt>
+  <dd>See: <b>--render-kitty</b></dd>
   <dt id="ASCII_CHAT_RENDER_MODE"><a class="permalink" href="#ASCII_CHAT_RENDER_MODE"><b>ASCII_CHAT_RENDER_MODE</b></a></dt>
   <dd>See: <b>--render-mode</b></dd>
   <dt id="ASCII_CHAT_RENDER_THEME"><a class="permalink" href="#ASCII_CHAT_RENDER_THEME"><b>ASCII_CHAT_RENDER_THEME</b></a></dt>
@@ -1354,6 +1675,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--scan</b></dd>
   <dt id="ASCII_CHAT_SEEK"><a class="permalink" href="#ASCII_CHAT_SEEK"><b>ASCII_CHAT_SEEK</b></a></dt>
   <dd>See: <b>--seek</b></dd>
+  <dt id="ASCII_CHAT_SERVER"><a class="permalink" href="#ASCII_CHAT_SERVER"><b>ASCII_CHAT_SERVER</b></a></dt>
+  <dd>See: <b>--server</b></dd>
   <dt id="ASCII_CHAT_SERVER_KEY"><a class="permalink" href="#ASCII_CHAT_SERVER_KEY"><b>ASCII_CHAT_SERVER_KEY</b></a></dt>
   <dd>See: <b>--server-key</b></dd>
   <dt id="ASCII_CHAT_SNAPSHOT"><a class="permalink" href="#ASCII_CHAT_SNAPSHOT"><b>ASCII_CHAT_SNAPSHOT</b></a></dt>
@@ -1364,8 +1687,12 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--speakers-index</b></dd>
   <dt id="ASCII_CHAT_SPEAKERS_VOLUME"><a class="permalink" href="#ASCII_CHAT_SPEAKERS_VOLUME"><b>ASCII_CHAT_SPEAKERS_VOLUME</b></a></dt>
   <dd>See: <b>--speakers-volume</b></dd>
+  <dt id="ASCII_CHAT_SPECTRAL_AUDIO"><a class="permalink" href="#ASCII_CHAT_SPECTRAL_AUDIO"><b>ASCII_CHAT_SPECTRAL_AUDIO</b></a></dt>
+  <dd>See: <b>--spectral-audio</b></dd>
   <dt id="ASCII_CHAT_SPLASH_SCREEN"><a class="permalink" href="#ASCII_CHAT_SPLASH_SCREEN"><b>ASCII_CHAT_SPLASH_SCREEN</b></a></dt>
   <dd>See: <b>--splash-screen</b></dd>
+  <dt id="ASCII_CHAT_STATS_INTERVAL"><a class="permalink" href="#ASCII_CHAT_STATS_INTERVAL"><b>ASCII_CHAT_STATS_INTERVAL</b></a></dt>
+  <dd>See: <b>--stats-interval</b></dd>
   <dt id="ASCII_CHAT_STATUS_SCREEN"><a class="permalink" href="#ASCII_CHAT_STATUS_SCREEN"><b>ASCII_CHAT_STATUS_SCREEN</b></a></dt>
   <dd>See: <b>--status-screen</b></dd>
   <dt id="ASCII_CHAT_STRETCH"><a class="permalink" href="#ASCII_CHAT_STRETCH"><b>ASCII_CHAT_STRETCH</b></a></dt>
@@ -1374,6 +1701,10 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--strip-ansi</b></dd>
   <dt id="ASCII_CHAT_STUN_SERVERS"><a class="permalink" href="#ASCII_CHAT_STUN_SERVERS"><b>ASCII_CHAT_STUN_SERVERS</b></a></dt>
   <dd>See: <b>--stun-servers</b></dd>
+  <dt id="ASCII_CHAT_TEST_AUDIO"><a class="permalink" href="#ASCII_CHAT_TEST_AUDIO"><b>ASCII_CHAT_TEST_AUDIO</b></a></dt>
+  <dd>See: <b>--test-audio</b></dd>
+  <dt id="ASCII_CHAT_TRANSPORT"><a class="permalink" href="#ASCII_CHAT_TRANSPORT"><b>ASCII_CHAT_TRANSPORT</b></a></dt>
+  <dd>See: <b>--transport</b></dd>
   <dt id="ASCII_CHAT_TURN_CREDENTIAL"><a class="permalink" href="#ASCII_CHAT_TURN_CREDENTIAL"><b>ASCII_CHAT_TURN_CREDENTIAL</b></a></dt>
   <dd>See: <b>--turn-credential</b></dd>
   <dt id="ASCII_CHAT_TURN_SECRET"><a class="permalink" href="#ASCII_CHAT_TURN_SECRET"><b>ASCII_CHAT_TURN_SECRET</b></a></dt>
@@ -1398,6 +1729,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--webcam-index</b></dd>
   <dt id="ASCII_CHAT_WEBRTC"><a class="permalink" href="#ASCII_CHAT_WEBRTC"><b>ASCII_CHAT_WEBRTC</b></a></dt>
   <dd>See: <b>--webrtc</b></dd>
+  <dt id="ASCII_CHAT_WEBRTC_BIND_ADDRESS"><a class="permalink" href="#ASCII_CHAT_WEBRTC_BIND_ADDRESS"><b>ASCII_CHAT_WEBRTC_BIND_ADDRESS</b></a></dt>
+  <dd>See: <b>--webrtc-bind-address</b></dd>
   <dt id="ASCII_CHAT_WEBRTC_DISABLE_TURN"><a class="permalink" href="#ASCII_CHAT_WEBRTC_DISABLE_TURN"><b>ASCII_CHAT_WEBRTC_DISABLE_TURN</b></a></dt>
   <dd>See: <b>--webrtc-disable-turn</b></dd>
   <dt id="ASCII_CHAT_WEBRTC_ICE_TIMEOUT"><a class="permalink" href="#ASCII_CHAT_WEBRTC_ICE_TIMEOUT"><b>ASCII_CHAT_WEBRTC_ICE_TIMEOUT</b></a></dt>
@@ -1422,6 +1755,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--width</b></dd>
   <dt id="ASCII_CHAT_YT_DLP_OPTIONS"><a class="permalink" href="#ASCII_CHAT_YT_DLP_OPTIONS"><b>ASCII_CHAT_YT_DLP_OPTIONS</b></a></dt>
   <dd>See: <b>--yt-dlp-options</b></dd>
+  <dt id="ASCII_CHAT_ZALGO"><a class="permalink" href="#ASCII_CHAT_ZALGO"><b>ASCII_CHAT_ZALGO</b></a></dt>
+  <dd>See: <b>--zalgo</b></dd>
   <dt id="COLORTERM"><a class="permalink" href="#COLORTERM"><b>COLORTERM</b></a></dt>
   <dd>Terminal color capability indicator. Set by your terminal emulator to
       indicate</dd>
@@ -1576,7 +1911,7 @@ https://example.com/stream.m3u8</pre>
 <section class="Sh">
 <h1 class="Sh" id="LICENSE"><a class="permalink" href="#LICENSE">LICENSE</a></h1>
 <p class="Pp"><b>ascii-chat</b> is licensed under the MIT License.</p>
-<p class="Pp">Copyright (c) 2013-2026 Zachary Fogg</p>
+<p class="Pp">Copyright (c) 2013-2013 Zachary Fogg</p>
 <p class="Pp">Permission is hereby granted, free of charge, to any person
     obtaining a copy of this software and associated documentation files (the
     &quot;Software&quot;), to deal in the Software without restriction,
@@ -1597,8 +1932,8 @@ https://example.com/stream.m3u8</pre>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">2026-10-03</td>
-    <td class="foot-os">ascii-chat 0.11.33</td>
+    <td class="foot-date">2013-11-20</td>
+    <td class="foot-os">ascii-chat 0.14.6</td>
   </tr>
 </table>
 </body>
