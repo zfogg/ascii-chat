@@ -1704,9 +1704,9 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
     add_executable(test-entry-signals contracts/entry/signals_test.c)
     asciichat_configure_contract(test-entry-signals)
-    target_link_libraries(test-entry-signals PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
+    target_link_libraries(test-entry-signals PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES} ${YYJSON_LIBRARIES})
     target_include_directories(test-entry-signals PRIVATE ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS} ${YYJSON_INCLUDE_DIRS})
     apply_sanitizers_to_target(test-entry-signals)
     set_target_properties(test-entry-signals PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
